@@ -2,10 +2,10 @@ import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/c
 import { whereDisponibleEn } from "@/core/catalogo/public";
 import { armarMenuCarta, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, wherePromoOfrecidaEn, type CartaV1, type MenuArmado } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
-import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
+import { opcionesDeLosProductosDeLaCarta, type GrupoParaLaCarta } from "@/server/lecturas/carta/opciones";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
 import { esBaseConfigurable } from "@/core/opciones/public";
-import { resumenDePrecios, type GrupoParaVender } from "@/core/pos/public";
+import { resumenDePrecios, tablaDePreciosParaLaCarta } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -60,7 +60,7 @@ export async function resolverMenuCartaConDiagnostico(
         precioVenta: true,
         modoDeVenta: true,
         categoria: { select: { nombre: true } },
-        contenidosCarta: { where: whereCartaDeSucursal(sucursalId), select: { seccionCartaId: true, descripcion: true, tags: true, especial: true, orden: true }, take: 1 },
+        contenidosCarta: { where: whereCartaDeSucursal(sucursalId), select: { seccionCartaId: true, descripcion: true, tags: true, especial: true, orden: true, mostrarNombreArriba: true }, take: 1 },
         // GO-2d: si admite algún grupo de opciones (en la misma consulta): solo esos se leen después, así una carta sin opciones hace las mismas consultas que antes.
         gruposAdmitidos: { where: { activo: true }, select: { id: true }, take: 1 },
       },
@@ -108,7 +108,7 @@ export async function resolverMenuCartaConDiagnostico(
     preciosLocalesVigentes(sucursalId, db, idsConPrecio, precioLocalActivoLeido),
     descuentosDeProductoEnSucursal(sucursalId, db, productos.map((p) => p.id), precioLocalActivoLeido),
     precioLocalActivoLeido,
-    conGrupos.length ? opcionesDeLosProductosDeLaCarta(db, sucursalId, conGrupos) : Promise.resolve(new Map<string, GrupoParaVender[]>()),
+    conGrupos.length ? opcionesDeLosProductosDeLaCarta(db, sucursalId, conGrupos) : Promise.resolve(new Map<string, GrupoParaLaCarta[]>()),
     conGrupos.length ? preciosLocalesDeOpcionVigentesEnProductos(sucursalId, db, conGrupos, precioLocalActivoLeido) : Promise.resolve(new Map<string, number>()),
   ]);
   // GO-2d: el resumen de precios de cada PV con opciones (la regla de la venta), con y sin el descuento de producto; el precio base es el mismo que la carta muestra del producto suelto.
@@ -122,14 +122,24 @@ export async function resolverMenuCartaConDiagnostico(
     const local = preciosLocales.get(productoId);
     const precioBase = precioDeCarta(Number(p.precioVenta), local ? { precio: local.precio, habilitado: local.habilitado } : null);
     const esBase = esBaseConfigurable(p.modoDeVenta);
-    return [{ productoId, conDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto: descuentos.get(productoId) ?? null, esBase }), sinDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto: null, esBase }) }];
+    const descuentoDeProducto = descuentos.get(productoId) ?? null;
+    return [
+      {
+        productoId,
+        conDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto, esBase }),
+        sinDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto: null, esBase }),
+        // Fase 5 («carta pareja»): el precio de cada celda de la carta, con la misma regla (y el mismo descuento) que se cobra.
+        tabla: tablaDePreciosParaLaCarta({ grupos, precioBase, descuentoDeProducto, esBase }),
+        esBase,
+      },
+    ];
   });
   // Fase 4 (ADR-035): una base sin ningún grupo vigente (quitado o archivado) no sale en la carta con su precio guardado: falla cerrado, como un grupo obligatorio sin opciones.
   const conResumen = new Set(opcionesDeProductos.map((o) => o.productoId));
   for (const p of conOpciones ? productos : []) {
     if (!esBaseConfigurable(p.modoDeVenta) || conResumen.has(p.id)) continue;
     const sinPrecio = resumenDePrecios({ grupos: [], precioBase: 0, descuentoDeProducto: null, esBase: true });
-    opcionesDeProductos.push({ productoId: p.id, conDescuento: sinPrecio, sinDescuento: sinPrecio });
+    opcionesDeProductos.push({ productoId: p.id, conDescuento: sinPrecio, sinDescuento: sinPrecio, tabla: null, esBase: true });
   }
 
   return armarMenuCarta({

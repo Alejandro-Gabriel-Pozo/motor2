@@ -24,6 +24,7 @@
 
 import { aplicarDescuentoDeProducto } from "./descuento-producto";
 import { opcionesParaLaCarta, type GrupoCartaV1, type OpcionesSinCostoCartaV1, type ResumenDePreciosParaCarta } from "./opciones-en-carta";
+import type { TablaDePreciosParaCarta } from "./presentacion-en-carta";
 
 export interface ItemCartaV1 {
   productoId: string;
@@ -131,6 +132,8 @@ export interface ContenidoCartaEntrada {
   tags: readonly string[];
   especial: boolean;
   orden: number;
+  /** Fase 5 (DEC-11): «Mostrar el nombre arriba» de un producto base con un solo eje (`ContenidoCartaProducto.mostrarNombreArriba`). Sin la clave: apagado (la base sale oculta). */
+  mostrarNombreArriba?: boolean;
 }
 
 export interface ProductoCartaEntrada {
@@ -186,6 +189,13 @@ export interface OpcionesDeProductoEntrada {
   productoId: string;
   conDescuento: ResumenDePreciosParaCarta;
   sinDescuento: ResumenDePreciosParaCarta;
+  /**
+   * Fase 5 («carta pareja»): la tabla de precios de la carta del producto (`tablaDePreciosParaLaCarta`, la regla de la venta: cada celda con el descuento de producto), o `null` si hoy no se puede
+   * pedir. Opcional: sin ella, el producto sale como antes (sin `presentacion`).
+   */
+  tabla?: TablaDePreciosParaCarta | null;
+  /** Fase 4/5: el producto se vende por opción (`modoDeVenta = BASE_CONFIGURABLE`): decide si la carta lo lee como «base» (oculta, con el nombre arriba o en tabla). */
+  esBase?: boolean;
 }
 
 export interface OpcionAgrupadoEntrada {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA, leerOpcionEnCarta, ordenarPorRol, primeraEnMinuscula, rolDelGrupo, unirConO, type GrupoParaRol } from "../../src/core/opciones/public";
+import { LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA, ejesDeLaCarta, leerOpcionEnCarta, ordenarPorRol, primeraEnMinuscula, rolDelGrupo, unirConO, type GrupoParaRol } from "../../src/core/opciones/public";
 
 /** Fase 4 de la ola «precio y carta» (ADR-035, DEC-34): cómo lee la carta una opción con «se lee en la carta como». */
 describe("leerOpcionEnCarta", () => {
@@ -79,5 +79,28 @@ describe("rolDelGrupo, ordenarPorRol y los textos de las aclaraciones", () => {
     expect(unirConO(["carne", "hongos"])).toBe("carne u hongos");
     expect(unirConO(["pollo", "orégano"])).toBe("pollo u orégano");
     expect(unirConO(["papas", "huevo"])).toBe("papas o huevo");
+  });
+});
+
+describe("ejesDeLaCarta: columnas, filas y lo que no cabe, por papeles y nunca por nombres", () => {
+  const sinCosto = (n: number) => Array.from({ length: n }, () => ({ esNinguna: false, precioFinal: null, diferencia: 0 }));
+  const g = (grupoId: string, x: Partial<GrupoParaRol>): GrupoParaRol & { grupoId: string } => ({ grupoId, tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1, prefijoEnCarta: null, opciones: sinCosto(2), ...x });
+  const tamano = (grupoId: string, ...precios: number[]) => g(grupoId, { tipo: "MEDIDA", opciones: precios.map((p) => ({ esNinguna: false, precioFinal: p, diferencia: 0 })) });
+
+  it("el tamaño con precios distintos es la columna; la variante con prefijo o con costo, la fila; sin columnas, filas solas", () => {
+    expect(ejesDeLaCarta([tamano("t", 1, 2), g("de", { prefijoEnCarta: "De" })], false)).toEqual({ columnas: "t", filas: "de", sinLugar: [] });
+    expect(ejesDeLaCarta([g("de", { prefijoEnCarta: "De" }), tamano("t", 1, 2)], false)).toEqual({ columnas: "t", filas: "de", sinLugar: [] });
+    expect(ejesDeLaCarta([g("de", { prefijoEnCarta: "De" })], false)).toEqual({ columnas: null, filas: "de", sinLugar: [] });
+    expect(ejesDeLaCarta([g("guarnicion", { tipo: "INCLUIDA" })], false)).toEqual({ columnas: null, filas: null, sinLugar: [] });
+  });
+
+  it("una base cuyo tamaño cuesta igual en todas sus opciones igual lo tiene de columna (es lo que nombra cada configuración); un directo, no", () => {
+    expect(ejesDeLaCarta([tamano("t", 5, 5)], true)).toEqual({ columnas: "t", filas: null, sinLugar: [] });
+    expect(ejesDeLaCarta([tamano("t", 5, 5)], false)).toEqual({ columnas: null, filas: null, sinLugar: [] });
+  });
+
+  it("una segunda variante con costo no cabe (sin lugar); una con prefijo y sin costo se lee como aclaración", () => {
+    const conCosto = (id: string) => g(id, { opciones: [{ esNinguna: false, precioFinal: null, diferencia: 0 }, { esNinguna: false, precioFinal: null, diferencia: 100 }] });
+    expect(ejesDeLaCarta([tamano("t", 1, 2), conCosto("a"), conCosto("b"), g("c", { prefijoEnCarta: "Con" })], false)).toEqual({ columnas: "t", filas: "a", sinLugar: ["b"] });
   });
 });

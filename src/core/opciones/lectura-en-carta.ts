@@ -84,6 +84,41 @@ export function ordenarPorRol<G extends { cantidadMinima: number }>(grupos: read
     .map((x) => x.g);
 }
 
+/** Los ejes de la carta de un producto: el grupo de las COLUMNAS, el de las FILAS (sus `grupoId`) y los que cambian el precio y no caben en dos ejes. */
+export interface EjesDeLaCarta {
+  columnas: string | null;
+  filas: string | null;
+  /**
+   * Los grupos que CAMBIAN el precio (definen el precio, o van en filas con costo) y no son un eje: un tercer eje, o un tamaño que no es de elegir uno. La carta no puede leerlos con el precio exacto de
+   * cada combinación: el producto sale como antes (sin forma nueva) y queda en el diagnóstico. Un grupo de filas SIN costo (solo con prefijo) que no es eje no está acá: se lee como aclaración.
+   */
+  sinLugar: string[];
+}
+
+/**
+ * Qué grupos son los EJES de la carta de un producto (Fase 5, «carta pareja»; DEC-06, DEC-10, DEC-11), siempre por sus papeles (`rolDelGrupo`) y su orden en el producto, nunca por nombres:
+ *  - las COLUMNAS: el primer grupo de elegir uno que define el precio (un tamaño con precios distintos). En un producto BASE («se vende por opción»), si ningún tamaño tiene precios distintos, su primer
+ *    tamaño de elegir uno igual hace de eje: es lo que nombra cada configuración;
+ *  - las FILAS: el segundo grupo que define el precio o, si no hay, el primero de filas (una variante con costo o con prefijo: «De carne», «De pollo»);
+ *  - sin columnas pero con filas (un producto directo con «De carne / De pollo»), las filas solas.
+ */
+export function ejesDeLaCarta<G extends GrupoParaRol & { grupoId: string }>(grupos: readonly G[], esBase: boolean): EjesDeLaCarta {
+  const conRol = grupos.map((g) => ({ g, rol: rolDelGrupo(g), eje: esDeUnaObligatoria(g) }));
+  const definen = conRol.filter((x) => x.eje && x.rol === "define-el-precio").map((x) => x.g.grupoId);
+  const enFilas = conRol.filter((x) => x.eje && x.rol === "filas").map((x) => x.g.grupoId);
+  const deRespaldo = esBase && definen.length === 0 ? conRol.find((x) => x.eje && x.g.tipo === "MEDIDA")?.g.grupoId : undefined;
+  const columnas = definen[0] ?? deRespaldo ?? null;
+  const filas = definen[1] ?? enFilas[0] ?? null;
+  const cambiaElPrecio = (x: (typeof conRol)[number]) => x.rol === "define-el-precio" || (x.rol === "filas" && x.g.opciones.some((o) => o.diferencia !== 0));
+  const sinLugar = conRol.filter((x) => cambiaElPrecio(x) && x.g.grupoId !== columnas && x.g.grupoId !== filas).map((x) => x.g.grupoId);
+  return { columnas, filas, sinLugar };
+}
+
+/** Las opciones de un eje, en el orden del grupo: cada una es una columna o una fila (sin la «ninguna» de un tamaño, que no es un precio). Lo comparten la tabla de precios y la carta. */
+export function opcionesDelEje<O extends { esNinguna: boolean }>(g: { tipo: TipoDeGrupoDeOpciones; opciones: readonly O[] }): O[] {
+  return g.tipo === "MEDIDA" ? g.opciones.filter((o) => !o.esNinguna) : [...g.opciones];
+}
+
 /** El tope de «se lee en la carta como» (CHECK `GrupoDeOpciones_prefijo_en_carta_chk`). */
 export const LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA = 20;
 

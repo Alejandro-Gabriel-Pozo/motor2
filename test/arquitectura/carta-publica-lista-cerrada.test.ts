@@ -36,7 +36,9 @@ import { accesosA, accesosDeTexto, alcanzables, consultasCrudas, RAIZ, relativa 
 const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   CapacidadSucursal: ["accionClave", "habilitado", "sucursalId"],
   CategoriaProducto: ["nombre"],
-  ContenidoCartaProducto: ["descripcion", "especial", "orden", "seccionCartaId", "tags"],
+  // Fase 5 de la ola «precio y carta» (DEC-11; decisión técnica aprobada por el dueño: «modo, prefijo y mostrarNombreArriba entran a la lista cerrada»): + `mostrarNombreArriba`, el interruptor de un
+  // producto base con un solo eje (encabezado u oculto). Se LEE en el servidor para decidir la forma; no sale como campo propio (sale la forma ya resuelta, `presentacion`).
+  ContenidoCartaProducto: ["descripcion", "especial", "mostrarNombreArriba", "orden", "seccionCartaId", "tags"],
   DescuentoProductoSucursal: ["porcentaje", "productoId"],
   Empresa: ["id", "nombre", "slug"],
   ItemAgrupadoCarta: ["descripcion", "especial", "id", "nombre", "opciones", "orden", "seccionCartaId", "tags"],
@@ -62,7 +64,9 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   // del aviso «admite algún grupo» de `menu.ts` (así una carta sin opciones hace las mismas consultas que antes: lo fija `lecturas-tramo-a.golden.json`).
   // CARTA-C (pastillas, 2026-10-14): NO suma ninguna lectura. Las opciones sin costo salen del MISMO resumen de precios que ya se lee (`nombre`, `esNinguna`, `diferenciaPrecio`); lo que cambia es la SALIDA (un campo por ítem, solo textos),
   // que cierra `CLAVES_DE_LA_CARTA` en `test/carta/salida-publica-inventariada.test.ts`. Por eso esta lista y la cantidad de consultas (`lecturas-tramo-a.golden.json`) quedan exactamente igual.
-  GrupoDeOpciones: ["activo", "cantidadMaxima", "cantidadMinima", "id", "nombre", "opciones", "tipo"],
+  // Fase 5 de la ola «precio y carta» (misma decisión técnica): + `prefijoEnCarta` («se lee en la carta como», Fase 4), para el papel del grupo (DEC-10: con prefijo, filas) y el rótulo de cada fila
+  // («De carne»). Se LEE en el servidor; lo que sale es el rótulo ya armado.
+  GrupoDeOpciones: ["activo", "cantidadMaxima", "cantidadMinima", "id", "nombre", "opciones", "prefijoEnCarta", "tipo"],
   OpcionApagadaEnSucursal: ["apagada"],
   OpcionDeGrupo: ["activa", "apagadasEnSucursal", "esNinguna", "grupo", "grupoId", "id", "nombre", "orden", "productosQueLaAdmiten", "versiones"],
   PrecioLocalDeOpcion: ["habilitado", "opcion", "opcionId", "precio", "productoId"],

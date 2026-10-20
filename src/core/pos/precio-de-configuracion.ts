@@ -1,6 +1,17 @@
 import { aplicarDescuentoDeProducto } from "@/core/carta/public";
 import { totalDeLineas } from "@/core/moneda";
-import { componerPrecioDeLinea, validarOpcionesElegidas, type OpcionElegida, type OpcionParaPrecio, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import {
+  componerPrecioDeLinea,
+  ejesDeLaCarta,
+  opcionesDelEje,
+  rolDelGrupo,
+  validarOpcionesElegidas,
+  type EjesDeLaCarta,
+  type OpcionElegida,
+  type OpcionParaPrecio,
+  type RolDelGrupoEnCarta,
+  type TipoDeGrupoDeOpciones,
+} from "@/core/opciones/public";
 import type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
 import { opcionParaPrecio } from "./opcion-para-precio";
 
@@ -21,7 +32,7 @@ export function opcionDisponible(opcion: Pick<OpcionParaVender, "activa" | "admi
 }
 
 /** Los grupos que cuentan para vender: los que el producto admite (fila activa) y están prendidos para la empresa. */
-function gruposVigentes(grupos: readonly GrupoParaVender[]): GrupoParaVender[] {
+function gruposVigentes<G extends GrupoParaVender>(grupos: readonly G[]): G[] {
   return grupos.filter((g) => g.admitido && g.activo);
 }
 
@@ -88,30 +99,48 @@ function precioDeReferenciaDeBase(vigentes: readonly GrupoParaVender[]): number 
  * sin costo se puede elegir aunque el guardado sea 0, y el resultado no depende de ese valor (en el cobro tampoco: con la medida en ABSOLUTO el precio base sale de la suma y una base no admite
  * porcentajes). Sin precio de referencia, no se puede vender.
  */
+/** El precio sobre el que se compone: el del producto o, en una base (Fase 4), su precio de referencia (`null` si una base no tiene ninguno: no se puede vender). */
+function baseDeComposicion(vigentes: readonly GrupoParaVender[], entrada: { precioBase: number; esBase?: boolean }): { precioBase: number; sinReferencia: boolean } {
+  const referencia = entrada.esBase ? precioDeReferenciaDeBase(vigentes) : null;
+  return { precioBase: referencia ?? entrada.precioBase, sinReferencia: entrada.esBase === true && referencia === null };
+}
+
+/** Las opciones de un grupo que se pueden elegir hoy y tienen un precio que se compone, con lo que aporta cada una sola sobre el precio base, en el orden del grupo. */
+function opcionesConPrecio(g: GrupoParaVender, precioBase: number): { opcion: OpcionParaVender; aporte: { lista: number; diferencia: number } }[] {
+  return g.opciones.flatMap((o) => {
+    if (!opcionDisponible(o)) return [];
+    if (o.esNinguna && g.tipo === "ADICIONAL") return [{ opcion: o, aporte: { lista: precioBase, diferencia: 0 } }];
+    const aporte = aporteDe(g, o, precioBase);
+    return aporte ? [{ opcion: o, aporte }] : [];
+  });
+}
+
+/**
+ * Lo más barato de un grupo OBLIGATORIO que no es adicional (lo que el precio del producto ya incluye: el «desde» y cada celda de la carta), o `null` si el grupo no aporta (un adicional va en su propia
+ * línea; un grupo opcional no se elige; la «ninguna» de un tamaño no es un precio).
+ */
+function masBarataDelGrupo(g: GrupoParaVender, conPrecio: ReturnType<typeof opcionesConPrecio>): OpcionParaPrecio | null {
+  if (g.cantidadMinima <= 0 || g.tipo === "ADICIONAL" || conPrecio.length === 0) return null;
+  const barata = conPrecio.reduce((a, b) => (b.aporte.lista < a.aporte.lista ? b : a));
+  return barata.opcion.esNinguna && g.tipo === "MEDIDA" ? null : opcionParaPrecio(g, barata.opcion, 1);
+}
+
 export function resumenDePrecios(entrada: { grupos: readonly GrupoParaVender[]; precioBase: number; descuentoDeProducto: number | null; esBase?: boolean }): ResumenDePrecios {
   const { descuentoDeProducto } = entrada;
   const final = (lista: number) => aplicarDescuentoDeProducto(lista, descuentoDeProducto).precio;
   const vigentes = gruposVigentes(entrada.grupos);
-  const referencia = entrada.esBase ? precioDeReferenciaDeBase(vigentes) : null;
-  const precioBase = referencia ?? entrada.precioBase;
-  let vendible = !entrada.grupos.some((g) => g.admitido && !g.activo && g.cantidadMinima > 0) && !(entrada.esBase && referencia === null);
+  const { precioBase, sinReferencia } = baseDeComposicion(vigentes, entrada);
+  let vendible = !entrada.grupos.some((g) => g.admitido && !g.activo && g.cantidadMinima > 0) && !sinReferencia;
   let hayVariacion = false;
   const masBaratas: OpcionParaPrecio[] = [];
 
   const grupos: GrupoConPrecios[] = vigentes.map((g) => {
-    const conPrecio = g.opciones.flatMap((o) => {
-      if (!opcionDisponible(o)) return [];
-      if (o.esNinguna && g.tipo === "ADICIONAL") return [{ opcion: o, aporte: { lista: precioBase, diferencia: 0 } }];
-      const aporte = aporteDe(g, o, precioBase);
-      return aporte ? [{ opcion: o, aporte }] : [];
-    });
+    const conPrecio = opcionesConPrecio(g, precioBase);
     if (g.cantidadMinima > 0 && conPrecio.length === 0) vendible = false;
     if (g.tipo === "MEDIDA" || (g.tipo === "VARIANTE" && conPrecio.some((c) => c.aporte.diferencia !== 0))) hayVariacion = true;
     // Lo más barato de cada grupo obligatorio (un adicional va en su propia línea: no entra en el «desde» del producto).
-    if (g.cantidadMinima > 0 && g.tipo !== "ADICIONAL" && conPrecio.length > 0) {
-      const barata = conPrecio.reduce((a, b) => (b.aporte.lista < a.aporte.lista ? b : a));
-      if (!(barata.opcion.esNinguna && g.tipo === "MEDIDA")) masBaratas.push(opcionParaPrecio(g, barata.opcion, 1));
-    }
+    const barata = masBarataDelGrupo(g, conPrecio);
+    if (barata) masBaratas.push(barata);
     return {
       grupoId: g.grupoId,
       nombre: g.nombre,
@@ -135,6 +164,86 @@ export function resumenDePrecios(entrada: { grupos: readonly GrupoParaVender[]; 
     if (!r.ok) vendible = false;
   }
   return { grupos, desde, hayVariacion, vendible };
+}
+
+/** Un grupo vigente tal como lo lee la carta: su papel y lo que se puede elegir hoy, con el precio de la regla de la venta (el final de un tamaño, con el descuento; lo que suma o resta lo demás). */
+export interface GrupoDeLaTablaDeLaCarta {
+  grupoId: string;
+  nombre: string;
+  tipo: TipoDeGrupoDeOpciones;
+  cantidadMinima: number;
+  cantidadMaxima: number;
+  prefijoEnCarta: string | null;
+  rol: RolDelGrupoEnCarta;
+  opciones: { opcionId: string; nombre: string; esNinguna: boolean; orden: number; precioFinal: number | null; diferencia: number }[];
+}
+
+/**
+ * La carta de un producto con opciones EN PRECIOS (Fase 5 de la ola «precio y carta», «carta pareja»): sus grupos con su papel, sus ejes y el precio de CADA CELDA. Lo traduce a la forma pública
+ * `core/carta/presentacion-en-carta.ts` (que no calcula ningún precio).
+ */
+export interface TablaDePreciosParaLaCarta {
+  grupos: GrupoDeLaTablaDeLaCarta[];
+  ejes: EjesDeLaCarta;
+  /**
+   * `celdas[fila][columna]`: el precio final de la configuración «la opción de la columna × la de la fila × lo más barato de cada otro grupo obligatorio», con el descuento de producto aplicado sobre la
+   * lista compuesta; `null` si esa combinación no se compone. Las columnas y las filas son las opciones del grupo de cada eje en `grupos` (sin la «ninguna» de un tamaño), en ese orden; sin eje de
+   * filas hay UNA fila, y sin eje de columnas, UNA columna.
+   */
+  celdas: (number | null)[][];
+}
+
+/**
+ * La TABLA DE PRECIOS de la carta de un producto (Fase 5): cada celda la compone la MISMA cuenta que la venta (`componerPrecioDeLinea` con `opcionParaPrecio`, la función única de la Fase 2): la opción
+ * de la columna, la de la fila y lo más barato de cada OTRO grupo obligatorio, sobre el mismo precio base que el resumen (en una base, su precio de referencia), y el descuento de producto va sobre la
+ * lista YA COMPUESTA (nunca se suman partes: los porcentajes se calculan sobre la base y el redondeo del descuento cambia el resultado). Los adicionales no entran: van en su propia línea, sin descuento.
+ * La paridad celda por celda con `vistaPreviaDeConfiguracion` y `armarLineaConfigurada` la fija `test/pos/tabla-de-precios-para-la-carta.test.ts` (propiedades). `null` si el producto hoy no se puede pedir.
+ *
+ * El papel de cada grupo y los ejes salen de `rolDelGrupo` y `ejesDeLaCarta` (`core/opciones`), con los precios del resumen y el prefijo de la carta (`prefijoEnCarta`, que solo la carta lee).
+ */
+export function tablaDePreciosParaLaCarta(entrada: {
+  grupos: readonly (GrupoParaVender & { prefijoEnCarta?: string | null })[];
+  precioBase: number;
+  descuentoDeProducto: number | null;
+  esBase?: boolean;
+}): TablaDePreciosParaLaCarta | null {
+  const resumen = resumenDePrecios(entrada);
+  if (!resumen.vendible) return null;
+  const vigentes = gruposVigentes(entrada.grupos);
+  const { precioBase } = baseDeComposicion(vigentes, entrada);
+  const porId = new Map(vigentes.map((g) => [g.grupoId, g]));
+  const grupos: GrupoDeLaTablaDeLaCarta[] = resumen.grupos.map((r) => {
+    const g = porId.get(r.grupoId)!;
+    const conRol = { ...r, prefijoEnCarta: g.prefijoEnCarta ?? null };
+    const orden = new Map(g.opciones.map((o) => [o.opcionId, o.orden]));
+    return {
+      grupoId: r.grupoId,
+      nombre: r.nombre,
+      tipo: r.tipo,
+      cantidadMinima: r.cantidadMinima,
+      cantidadMaxima: r.cantidadMaxima,
+      prefijoEnCarta: conRol.prefijoEnCarta,
+      rol: rolDelGrupo(conRol),
+      opciones: r.opciones.map((o) => ({ opcionId: o.opcionId, nombre: o.nombre, esNinguna: o.esNinguna, orden: orden.get(o.opcionId) ?? 0, precioFinal: o.precioFinal, diferencia: o.diferencia })),
+    };
+  });
+  const ejes = ejesDeLaCarta(grupos, entrada.esBase === true);
+  // Lo que el precio ya incluye de cada OTRO grupo obligatorio (el mismo criterio que el «desde»).
+  const otras = vigentes.flatMap((g) => (g.grupoId === ejes.columnas || g.grupoId === ejes.filas ? [] : (masBarataDelGrupo(g, opcionesConPrecio(g, precioBase)) ?? [])));
+  const delEje = (grupoId: string | null) => {
+    const g = grupoId === null ? undefined : porId.get(grupoId);
+    const eje = grupos.find((x) => x.grupoId === grupoId);
+    return g && eje ? opcionesDelEje(eje).map((o) => opcionParaPrecio(g, g.opciones.find((x) => x.opcionId === o.opcionId)!, 1)) : [undefined];
+  };
+  const columnas = delEje(ejes.columnas);
+  const filas = delEje(ejes.filas);
+  const celdas = filas.map((fila) =>
+    columnas.map((columna) => {
+      const r = componerPrecioDeLinea({ precioBase, cantidad: 1, opciones: [...(columna ? [columna] : []), ...(fila ? [fila] : []), ...otras] });
+      return r.ok ? aplicarDescuentoDeProducto(r.precio.precioDeLista, entrada.descuentoDeProducto).precio : null;
+    })
+  );
+  return { grupos, ejes, celdas };
 }
 
 /** El total de una configuración elegida, para mostrarlo ANTES de confirmar. Los errores son los mismos códigos y mensajes de la validación y de la composición de la venta. */
