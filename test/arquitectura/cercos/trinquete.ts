@@ -128,7 +128,7 @@ export function medirPorArchivo(opciones: {
     const cuentas: Cuentas = {};
     for (const ruta of listarArchivos(raizDelRepo, opciones.raices, opciones.extensiones)) {
       if (opciones.incluir && !opciones.incluir(ruta)) continue;
-      const porTipo = sinCeros(opciones.contar(sinComentarios(leer(raizDelRepo, ruta), ruta), ruta));
+      const porTipo = sinCeros(opciones.contar(sinComentariosConMemoria(leer(raizDelRepo, ruta), ruta), ruta));
       if (Object.keys(porTipo).length > 0) cuentas[ruta] = porTipo;
     }
     return cuentas;
@@ -213,6 +213,16 @@ export function sinComentarios(fuente: string, ruta: string): string {
     } else i++;
   }
   return blanquear(texto, comentarios);
+}
+
+/** Varios cercos del mismo archivo de test recorren los mismos archivos: el texto sin comentarios se reusa mientras la fuente no cambie. */
+const memoria = new Map<string, { fuente: string; limpia: string }>();
+function sinComentariosConMemoria(fuente: string, ruta: string): string {
+  const previa = memoria.get(ruta);
+  if (previa?.fuente === fuente) return previa.limpia;
+  const limpia = sinComentarios(fuente, ruta);
+  memoria.set(ruta, { fuente, limpia });
+  return limpia;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------

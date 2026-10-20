@@ -1,0 +1,96 @@
+{
+  "regla": "colores",
+  "meta": "0 en la Fase 6 (DEC-03: los colores salen de los tokens de globals.css)",
+  "total": 113,
+  "entradas": 27,
+  "porTipo": {
+    "clase-arbitraria": 46,
+    "funcion-de-color": 15,
+    "hex": 52
+  },
+  "cuentas": {
+    "src/app/(app)/carta/carta-mant.module.css": {
+      "funcion-de-color": 4,
+      "hex": 41
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/lectura-del-factor.tsx": {
+      "clase-arbitraria": 2
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": {
+      "clase-arbitraria": 3
+    },
+    "src/app/(app)/catalogo/opciones/limpiar/limpiar-opciones.tsx": {
+      "clase-arbitraria": 10
+    },
+    "src/app/(app)/catalogo/opciones/page.tsx": {
+      "clase-arbitraria": 2
+    },
+    "src/app/(app)/catalogo/productos/[id]/opciones/page.tsx": {
+      "clase-arbitraria": 1
+    },
+    "src/app/(app)/movimientos/menu-del-dia/menu-del-dia.tsx": {
+      "clase-arbitraria": 1
+    },
+    "src/app/(app)/reportes/historial/grafico-saldo.tsx": {
+      "hex": 1
+    },
+    "src/app/(app)/reportes/periodo/grafico-gasto-grupo.tsx": {
+      "hex": 1
+    },
+    "src/app/(carta-publica)/error.tsx": {
+      "hex": 2
+    },
+    "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
+      "clase-arbitraria": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
+      "clase-arbitraria": 2
+    },
+    "src/app/(pos)/mesas/[mesaId]/elegir-opciones.tsx": {
+      "clase-arbitraria": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/estilos.ts": {
+      "clase-arbitraria": 2
+    },
+    "src/app/(pos)/mesas/[mesaId]/selector-carta.tsx": {
+      "clase-arbitraria": 9
+    },
+    "src/app/(pos)/mesas/limite-mesas.tsx": {
+      "clase-arbitraria": 1
+    },
+    "src/app/(pos)/mesas/nueva-mesa.tsx": {
+      "clase-arbitraria": 1
+    },
+    "src/app/(pos)/mesas/page.tsx": {
+      "clase-arbitraria": 1
+    },
+    "src/app/global-error.tsx": {
+      "hex": 3
+    },
+    "src/components/aviso-con-deshacer.tsx": {
+      "clase-arbitraria": 9
+    },
+    "src/components/carta-publica/carta-vista.tsx": {
+      "funcion-de-color": 1
+    },
+    "src/components/carta-publica/navegacion-carta.tsx": {
+      "funcion-de-color": 5
+    },
+    "src/components/carta-publica/portada.tsx": {
+      "funcion-de-color": 1,
+      "hex": 1
+    },
+    "src/components/carta-publica/portal-vista.tsx": {
+      "funcion-de-color": 1
+    },
+    "src/components/carta-publica/seccion.tsx": {
+      "funcion-de-color": 3
+    },
+    "src/components/carta/campo-color.tsx": {
+      "hex": 1
+    },
+    "src/components/mesas/mesa-card.tsx": {
+      "hex": 2
+    }
+  }
+}
