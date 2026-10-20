@@ -439,6 +439,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoPorId": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerUnidadesDelProducto": { id: (k) => k.productoId },
+  // Fase 4 (C9): el grupo de precio final del producto. El PV con opciones es el que admite la MEDIDA en precio propio (su nombre lleva el marcador: el control positivo lo encuentra).
+  "consulta|consultas/catalogo/productos.ts|grupoConElPrecioFinal": { id: (k) => k.productoConOpcionesId },
   "consulta|consultas/catalogo/proveedores.ts|obtenerFichaProveedor": { id: (k) => k.proveedorId },
   "consulta|consultas/catalogo/proveedores.ts|obtenerProveedorPorId": { id: (k) => k.proveedorId },
   // Estos ayudantes de gobierno reciben el usuario OBJETIVO (el que el cliente eligió), no el actor: en la matriz es el de otra empresa.
