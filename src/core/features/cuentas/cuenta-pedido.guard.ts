@@ -1,5 +1,5 @@
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
-import { tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
+import { esImporteAlCentavo } from "@/core/datos/importe";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { CANTIDAD_MAXIMA_DE_OPCION } from "@/core/opciones/public";
 import { componentesDeEleccion, MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/public";
@@ -59,9 +59,12 @@ export const MAXIMO_OPCIONES_POR_ITEM = 20;
 
 const MENSAJE_OPCIONES_INVALIDAS = "Las opciones elegidas no son válidas: volvé a elegirlas.";
 
-/** GO-3b: un precio que vio el mozo: un número de 0 o más, con 2 decimales a lo sumo. */
+/**
+ * GO-3b: un precio que vio el mozo: un número de 0 o más, con 2 decimales a lo sumo. El núcleo (finito, 2 decimales) es el de `core/datos/importe.ts`; la regla PROPIA es
+ * esta: un `number` (no un texto), no negativo y SIN tope (Fase 2, C3: no se le agrega el de la columna, que cambiaría qué se acepta).
+ */
 function esImporteVisto(v: unknown): v is number {
-  return typeof v === "number" && Number.isFinite(v) && v >= 0 && tieneALoSumoDecimales(v, 2);
+  return typeof v === "number" && v >= 0 && esImporteAlCentavo(v);
 }
 
 function esTextoNoVacio(v: unknown): v is string {

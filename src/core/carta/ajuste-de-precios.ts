@@ -1,3 +1,5 @@
+import { CENTAVOS_MAXIMOS } from "@/core/datos/importe";
+
 /**
  * CARTA-MANT F4 («Precios», prototipo aprobado: «Ajustar sección» con vista previa): el CÁLCULO del precio nuevo de un producto al subir o bajar una sección entera (o uno solo), en DECIMAL
  * EXACTO. Puro: trabaja en CENTAVOS con enteros (`bigint`), nunca con coma flotante; entra y sale como texto decimal con dos decimales («14900.00»), como `Decimal(14,2)` en la base.
@@ -36,8 +38,6 @@ const CIEN = BigInt(100);
 const DIEZ_MIL = BigInt(10000);
 const PORCENTAJE_MAXIMO_AL_SUBIR = BigInt(50000);
 const PORCENTAJE_MAXIMO_AL_BAJAR = BigInt(9999);
-/** Tope del precio (`Decimal(14,2)`): 12 dígitos enteros. */
-const CENTAVOS_MAXIMOS = BigInt("99999999999999");
 
 /** «14900», «14900,50», «14900.5» → centavos. Acepta coma o punto decimal (no separador de miles: «14.900» con punto es 14,9). `null` si no es un número positivo o cero con hasta dos decimales. */
 export function aCentavos(texto: string): bigint | null {

@@ -1,21 +1,16 @@
 {
   "regla": "primitivas-de-dominio",
   "meta": "bajar en la Fase 2: importe y porcentaje se validan solo con core/datos/importe.ts (sin cambiar qué se acepta)",
-  "total": 6,
-  "entradas": 4,
+  "total": 4,
+  "entradas": 3,
   "porTipo": {
-    "tope-1e12": 2,
-    "tope-en-centavos": 1,
+    "tope-1e12": 1,
     "validador:esImporteVisto": 1,
     "validador:esPrecioValido": 1,
     "validador:validarPrecioCarta": 1
   },
   "cuentas": {
-    "src/core/carta/ajuste-de-precios.ts": {
-      "tope-en-centavos": 1
-    },
     "src/core/carta/validaciones.ts": {
-      "tope-1e12": 1,
       "validador:validarPrecioCarta": 1
     },
     "src/core/features/cuentas/cuenta-pedido.guard.ts": {
