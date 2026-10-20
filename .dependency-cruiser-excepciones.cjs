@@ -418,11 +418,6 @@ const PERSISTENCIA_DE_OTRO_DOMINIO = [
   { desde: "src/server/actions/movimientos/casos-de-uso/anular-compra.ts", hacia: "src/server/persistencia/compras/escribir-anulacion-de-compra.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts", hacia: "src/server/persistencia/compras/cargar-compra-para-corregir.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts", hacia: "src/server/persistencia/compras/escribir-correccion-de-compra.ts", motivo: MOTIVO_COMPRAS },
-  {
-    desde: "src/server/actions/movimientos/casos-de-uso/registrar-movimiento.ts",
-    hacia: "src/server/persistencia/catalogo/upsert-proveedor-por-producto.ts",
-    motivo: `${DEUDA} ProveedorPorProducto es de Catálogo (DEC-36) y lo escribe, por SQL crudo, el registro de una compra de Movimientos llamando directo a la persistencia de Catálogo; tiene que pasar por un comando de Catálogo.`,
-  },
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock.ts", motivo: MOTIVO_STOCK },
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/escribir-movimiento-de-stock.ts", motivo: MOTIVO_STOCK },
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/idempotencia.ts", motivo: MOTIVO_IDEMPOTENCIA },
@@ -444,9 +439,16 @@ const CASOS_DE_USO_IMPORTADOS_FUERA_DE_ACCIONES = [];
 
 /**
  * Comandos públicos (R3): casos de uso o pasos de un dominio que los casos de uso de OTRO dominio pueden importar, cada uno con su motivo.
- * Vacía: declarar uno es una decisión de diseño (qué expone el dueño del dato), no un trámite para que la regla pase.
+ * Declarar uno es una decisión de diseño (qué expone el dueño del dato), no un trámite para que la regla pase. La ficha de un caso de uso que
+ * importa uno (`@/…`) sigue su auditoría como la de un paso compartido (`test/arquitectura/ficha-de-caso-de-uso.test.ts`).
  */
-const COMANDOS_PUBLICOS = [];
+const COMANDOS_PUBLICOS = [
+  {
+    ruta: "src/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx.ts",
+    motivo:
+      "Decisión del dueño (Fase 2b, D2; DEC-36): el vínculo proveedor↔producto (ProveedorPorProducto) es de Catálogo y lo registra, con la auditoría de su precio, este comando de Catálogo; el registro de una Compra de Movimientos (registrar-movimiento.ts) lo invoca dentro de su propia transacción en vez de llamar a la persistencia de Catálogo.",
+  },
+];
 
 module.exports = {
   "persistencia-de-otro-dominio": PERSISTENCIA_DE_OTRO_DOMINIO,

@@ -23,9 +23,9 @@ import { leer, listarArchivos, probarCerco, RAIZ_DEL_REPO, sinComentarios, type 
  * Cada entrada lleva su motivo (`MOTIVOS`). Un modelo nuevo escrito desde dos dominios, o un dominio más escribiendo uno de la lista,
  * hace fallar el cerco.
  *
- * Lo que este cerco NO ve, a propósito: QUIÉN llama a la persistencia. `ProveedorPorProducto` lo escribe solo `persistencia/catalogo`
- * (su dueño, DEC-36), pero lo llama un caso de uso de Movimientos (`registrar-movimiento.ts`); ese cruce lo cuenta la regla R2 de
- * dependency-cruiser (`persistencia-de-otro-dominio`).
+ * Lo que este cerco NO ve, a propósito: QUIÉN llama a la persistencia. Ese cruce lo cuenta la regla R2 de dependency-cruiser
+ * (`persistencia-de-otro-dominio`): p. ej. `ProveedorPorProducto` lo escribe solo `persistencia/catalogo` (su dueño, DEC-36), y desde la
+ * Fase 2b (D2) el registro de una compra de Movimientos ya no la llama directo sino por el comando de Catálogo `registrar-vinculo-de-compra-en-tx.ts`.
  *
  * Mecanismo, regeneración (`BAJAR_CERCOS=1`) y excepciones: `test/arquitectura/cercos/trinquete.ts`.
  */

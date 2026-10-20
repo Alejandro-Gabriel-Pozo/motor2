@@ -2,6 +2,7 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join, relative, sep } from "node:path";
 import { descubrirCasosDeUsoReales } from "./guardas/casos-de-uso";
 import { tieneUseServer } from "./guardas/analizador";
@@ -26,7 +27,8 @@ import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/a
  *    una transacción común; `NINGUNA` si no abre ninguna.
  *  - `idempotencia`: `I3` si y solo si llama a `chequearIdempotencia` (clave + hash del payload); `POR_ESTADO` (el estado del documento arbitra el reintento),
  *    `OPTIMISTA` (versión esperada) y `NO_APLICA` no pueden llamarla.
- *  - `auditoria`: `REGISTRO_AUDITORIA` si llama a `registrarCambioAuditado` (él o un paso compartido que importa de su misma carpeta `casos-de-uso/`, `./<archivo>`);
+ *  - `auditoria`: `REGISTRO_AUDITORIA` si llama a `registrarCambioAuditado` (él o un paso compartido que importa de su misma carpeta `casos-de-uso/`, `./<archivo>`, o
+ *    un comando de OTRO dominio declarado en `COMANDOS_PUBLICOS` de `.dependency-cruiser-excepciones.cjs` que importa por `@/…`; Fase 2b, D2);
  *    `DOCUMENTO_PROPIO` si no (el documento que escribe lleva su usuario y su fecha).
  *  - `periodo` (decisión del dueño, 2026-10-08): `VERIFICA_CIERRE` si el caso de uso llama a `verificarPeriodoAbierto` (la verificación del cierre de períodos que va a traer la Etapa A en
  *    `core/periodos`: sin esto el cierre no tiene forma mecánica de alcanzar TODAS las escrituras con fecha de imputación); `NO_APLICA` si no la llama. HOY ningún caso de uso la llama porque la
@@ -93,21 +95,43 @@ function serializablesDelRepositorio(fuenteDeConGobierno: string): ReadonlySet<s
 const SERIALIZABLES = serializablesDelRepositorio(readFileSync(join(__dirname, "../../src/server/actions/con-gobierno.ts"), "utf8"));
 
 /**
+ * Un comando público de OTRO dominio que un caso de uso importa por `@/…` (Fase 2b, D2: `registrar-movimiento.ts` → el vínculo proveedor↔producto de Catálogo): su fuente
+ * y el lector de SUS hermanos, o `null` si el especificador no es uno de los declarados en `COMANDOS_PUBLICOS`. Solo los declarados: un import cualquiera de otro dominio
+ * no cuenta (y la regla R3 de dependency-cruiser ya lo prohíbe).
+ */
+type LeerComando = (especificador: string) => { fuente: string; leer: (nombre: string) => string | null } | null;
+
+/**
  * Los PASOS COMPARTIDOS que un caso de uso importa de su misma carpeta `casos-de-uso/` (`import … from "./<archivo>"`), recorridos de forma transitiva: la
  * auditoría de un caso de uso puede vivir en un paso compartido (Fase I del Hito 3: la gerencia, las invitaciones de usuario), y sin seguirlo la ficha tendría que
- * mentir `DOCUMENTO_PROPIO`. `leer(nombre)` devuelve la fuente del hermano `nombre` (sin extensión), o `null` si no existe.
+ * mentir `DOCUMENTO_PROPIO`. `leer(nombre)` devuelve la fuente del hermano `nombre` (sin extensión), o `null` si no existe. También sigue los comandos públicos
+ * declarados de otro dominio (`leerComando`), con los pasos de SU carpeta.
  */
-function pasosCompartidos(codigo: string, leer: (nombre: string) => string | null, vistos: Set<string> = new Set()): string[] {
+function pasosCompartidos(
+  codigo: string,
+  leer: (nombre: string) => string | null,
+  vistos: Set<string> = new Set(),
+  leerComando: LeerComando = () => null,
+  comandosVistos: Set<string> = new Set()
+): string[] {
   const fuente = ts.createSourceFile("caso.ts", codigo, ts.ScriptTarget.Latest, true);
   const pasos: string[] = [];
   for (const stmt of fuente.statements) {
     if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
     const m = /^\.\/([^/]+?)(?:\.tsx?)?$/.exec(stmt.moduleSpecifier.text);
-    if (!m || vistos.has(m[1])) continue;
+    if (!m) {
+      const especificador = stmt.moduleSpecifier.text;
+      const comando = comandosVistos.has(especificador) ? null : leerComando(especificador);
+      if (comando === null) continue;
+      comandosVistos.add(especificador);
+      pasos.push(comando.fuente, ...pasosCompartidos(comando.fuente, comando.leer, new Set(), leerComando, comandosVistos));
+      continue;
+    }
+    if (vistos.has(m[1])) continue;
     vistos.add(m[1]);
     const hermano = leer(m[1]);
     if (hermano === null) continue;
-    pasos.push(hermano, ...pasosCompartidos(hermano, leer, vistos));
+    pasos.push(hermano, ...pasosCompartidos(hermano, leer, vistos, leerComando, comandosVistos));
   }
   return pasos;
 }
@@ -121,6 +145,24 @@ const leerHermanoDe =
       if (existsSync(ruta)) return readFileSync(ruta, "utf8");
     }
     return null;
+  };
+
+/** Los comandos públicos declarados (`COMANDOS_PUBLICOS`, `.dependency-cruiser-excepciones.cjs`), por su ruta desde la raíz del repo. */
+const RAIZ_DEL_REPO = join(__dirname, "..", "..");
+const COMANDOS_PUBLICOS: ReadonlySet<string> = new Set(
+  (createRequire(__filename)(join(RAIZ_DEL_REPO, ".dependency-cruiser-excepciones.cjs")) as { COMANDOS_PUBLICOS: { ruta: string }[] }).COMANDOS_PUBLICOS.map((e) => e.ruta)
+);
+
+/** `LeerComando` del repositorio: un `@/…` que resuelve a un comando público declarado. */
+const leerComandoPublico =
+  (declarados: ReadonlySet<string>): LeerComando =>
+  (especificador) => {
+    if (!especificador.startsWith("@/")) return null;
+    const base = `src/${especificador.slice(2)}`;
+    const ruta = [base, `${base}.ts`, `${base}.tsx`].find((r) => declarados.has(r) && existsSync(join(RAIZ_DEL_REPO, r)));
+    if (!ruta) return null;
+    const absoluta = join(RAIZ_DEL_REPO, ruta);
+    return { fuente: readFileSync(absoluta, "utf8"), leer: leerHermanoDe(dirname(absoluta)) };
   };
 
 /** Lo que el código del caso de uso HACE (AST, fuera de los comentarios). La auditoría también cuenta si la hace un paso compartido (`pasos`). */
@@ -239,6 +281,26 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     expect(pasosCompartidos(caso("@/server/auditoria/registrar-cambio-auditado"), leer)).toEqual([]);
   });
 
+  it("auditoría: cuenta si la hace un comando público DECLARADO de otro dominio (y sus pasos); uno sin declarar no (Fase 2b, D2)", () => {
+    const deCatalogo: Record<string, string> = {
+      "paso-del-comando": "export async function p(tx: any) { await registrarCambioAuditado(tx, {}); }",
+    };
+    const comandos: Record<string, string> = {
+      "@/server/actions/catalogo/casos-de-uso/comando-que-audita": "export async function c(tx: any) { await registrarCambioAuditado(tx, {}); }",
+      "@/server/actions/catalogo/casos-de-uso/comando-con-paso": 'import { p } from "./paso-del-comando";\nexport async function c(tx: any) { await p(tx); }',
+    };
+    const leerComando: LeerComando = (e) => (e in comandos ? { fuente: comandos[e], leer: (n) => deCatalogo[n] ?? null } : null);
+    const caso = (desde: string) => `import { x } from "${desde}";\nexport async function f(tx: any) { await x(tx); }`;
+    const auditoria = (desde: string, lector: LeerComando) => observar(caso(desde), { pasos: pasosCompartidos(caso(desde), () => null, new Set(), lector) }).auditoria;
+    expect(auditoria("@/server/actions/catalogo/casos-de-uso/comando-que-audita", leerComando)).toBe("REGISTRO_AUDITORIA");
+    expect(auditoria("@/server/actions/catalogo/casos-de-uso/comando-con-paso", leerComando)).toBe("REGISTRO_AUDITORIA");
+    // Sin declarar (el lector no lo reconoce): no cuenta.
+    expect(auditoria("@/server/actions/catalogo/casos-de-uso/comando-que-audita", () => null)).toBe("DOCUMENTO_PROPIO");
+    // El lector real solo reconoce lo que está en COMANDOS_PUBLICOS.
+    expect(leerComandoPublico(new Set())("@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx")).toBeNull();
+    expect(leerComandoPublico(COMANDOS_PUBLICOS)("@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx")?.fuente).toContain("registrarCambioAuditado(");
+  });
+
   it("idempotencia I3 solo si llama a chequearIdempotencia; auditoría solo si llama a registrarCambioAuditado", () => {
     expect(observar("export async function f(tx: any) { await chequearIdempotencia(tx, 'k'); }").llamaAChequearIdempotencia).toBe(true);
     expect(observar("export async function f(tx: any) { await otraCosa(tx); }").llamaAChequearIdempotencia).toBe(false);
@@ -353,7 +415,7 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
     for (const c of casos) {
       const ficha = leerFicha(c.fuente);
       if (!ficha) continue;
-      const visto = observar(c.fuente, { pasos: pasosCompartidos(c.fuente, leerHermanoDe(dirname(c.absoluta))) });
+      const visto = observar(c.fuente, { pasos: pasosCompartidos(c.fuente, leerHermanoDe(dirname(c.absoluta)), new Set(), leerComandoPublico(COMANDOS_PUBLICOS)) });
       if (ficha.transaccion !== visto.transaccion) mentiras.push(`${c.ruta}: la ficha dice transaccion=${ficha.transaccion} y el código hace ${visto.transaccion}`);
       if (ficha.auditoria !== visto.auditoria) mentiras.push(`${c.ruta}: la ficha dice auditoria=${ficha.auditoria} y el código hace ${visto.auditoria}`);
       if (ficha.periodo !== visto.periodo) mentiras.push(`${c.ruta}: la ficha dice periodo=${ficha.periodo} y el código hace ${visto.periodo}`);
