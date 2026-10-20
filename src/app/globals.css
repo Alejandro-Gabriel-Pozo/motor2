@@ -425,9 +425,14 @@ html:has([data-carta-libro]) body {
   .carta-shell .carta-solo-papel {
     display: block !important;
   }
-  .carta-shell .carta-pagina:has(+ [data-carta-pie-impreso]) {
+  .carta-shell .carta-pagina:has(+ [data-carta-pie-impreso]),
+  .carta-shell [data-carta-impresa] > .carta-pagina:last-child {
     page-break-after: auto;
     break-after: auto;
+  }
+  /* Paso 10b: si hoy hay algo agotado, el papel lleva la carta COMPLETA (`[data-carta-impresa]`) en lugar de las páginas de la pantalla. */
+  .carta-shell .carta-solo-pantalla {
+    display: none !important;
   }
 }
 

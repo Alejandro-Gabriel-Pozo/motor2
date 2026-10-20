@@ -97,6 +97,16 @@ const CLAVES_DE_LA_CARTA = [
   "carta.version",
 ];
 
+/**
+ * Fase 5, paso 10b (DEC-20; aditivo): si hoy hay algo agotado, la carta COMPLETA del papel (`seccionesImpresas`), con EXACTAMENTE las mismas claves que `secciones` (la misma proyección, campo por
+ * campo): ninguna clave propia.
+ */
+const CLAVES_DE_LA_CARTA_CON_PAPEL = [
+  ...CLAVES_DE_LA_CARTA,
+  "carta.seccionesImpresas",
+  ...CLAVES_DE_LA_CARTA.filter((r) => r.startsWith("carta.secciones[]")).map((r) => r.replace(/^carta\.secciones\[\]/, "carta.seccionesImpresas[]")),
+];
+
 describe("la salida de la carta pública está inventariada", () => {
   let central: string;
 
@@ -193,11 +203,23 @@ describe("la salida de la carta pública está inventariada", () => {
     expect(carta.secciones[0].items.some((i) => i.opciones !== undefined)).toBe(true);
     expect(carta.secciones[0].promos).toHaveLength(1);
 
-    const sobrantes = unicas(rutasDeClaves({ carta })).filter((r) => !CLAVES_DE_LA_CARTA.includes(r));
+    const sobrantes = unicas(rutasDeClaves({ carta })).filter((r) => !CLAVES_DE_LA_CARTA_CON_PAPEL.includes(r));
     expect(sobrantes, "la carta pública emite una clave nueva: revisá que sea pública y agregala a CLAVES_DE_LA_CARTA").toEqual([]);
 
     const serializado = JSON.stringify({ carta, estilo });
     for (const interno of [CANARIO, "555.55", "4242", "COD-", "IVA_27", "1.2345", "0.7777", "ANCLA-", "MEDIDA", "ADICIONAL"]) expect(serializado, `la salida pública contiene «${interno}»`).not.toContain(interno);
+  });
+
+  it("paso 10b (DEC-20): con algo agotado hoy, la carta del papel sale COMPLETA (el té, cuyo único tamaño está agotado, y la leche agotada) y la de la pantalla no", async () => {
+    const { carta } = (await cartaPublica(empresa, "central", AHORA_DE_LA_CORRIDA))!;
+    expect(carta.secciones[0].items.map((i) => i.nombre)).not.toContain("Té");
+    const papel = carta.seccionesImpresas![0].items;
+    expect(papel.map((i) => i.nombre)).toContain("Té");
+    // En papel la leche agotada vuelve: suma dentro del precio y el café tiene descuento, así que no se puede leer exacta en una forma y el café sale como antes (con sus `grupos`).
+    expect(papel.find((i) => i.nombre === "Café")!.grupos).toContainEqual({ nombre: "Leche", opciones: [{ nombre: "Agotada hoy", tipo: "recargo", recargo: 50 }] });
+    // Sin nada agotado hoy, no viaja la carta del papel (es la misma que la de la pantalla).
+    await prisma.opcionApagadaEnSucursal.updateMany({ data: { apagada: false } });
+    expect("seccionesImpresas" in (await cartaPublica(empresa, "central", AHORA_DE_LA_CORRIDA))!.carta).toBe(false);
   });
 
   it("GO-2d y CARTA-B: el café sale SOLO con lo que cambia el precio (lo agotado y lo gratis no), el descuento solo sobre el tamaño, y el té sin nada para elegir no sale", async () => {
@@ -254,7 +276,8 @@ describe("la salida de la carta pública está inventariada", () => {
       opcionesSinCosto: [{ grupo: "Vaso", opciones: ["Chico", "Grande"] }],
       presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Vaso", opciones: ["chico", "grande"] }] },
     });
-    const serializado = JSON.stringify(carta);
+    // La carta de la PANTALLA (la del papel, completa, puede llevar lo agotado hoy: lo prueba el paso 10b).
+    const serializado = JSON.stringify(carta.secciones);
     for (const oculto of ["Punto de cocción", "Jugoso", "Agotada hoy", "Vaca"]) expect(serializado, `la carta muestra «${oculto}»: una sola opción o agotada, no hay nada que elegir`).not.toContain(oculto);
   });
 

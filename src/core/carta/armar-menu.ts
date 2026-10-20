@@ -120,6 +120,11 @@ export interface CartaV1 {
   generadoEn: string;
   sucursal: { id: string; nombre: string };
   secciones: SeccionCartaV1[];
+  /**
+   * Fase 5, paso 10b (DEC-20): SOLO si hoy hay algo agotado que cambia lo que se ve: la carta COMPLETA, como si nada estuviera agotado hoy (la que sale en papel). La arma la lectura de la carta
+   * pública (`server/lecturas/carta/menu.ts`) con este mismo `armarMenuCarta`; sin nada agotado, no lleva la clave.
+   */
+  seccionesImpresas?: SeccionCartaV1[];
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

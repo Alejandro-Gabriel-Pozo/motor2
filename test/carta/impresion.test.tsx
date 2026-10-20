@@ -60,3 +60,20 @@ describe("el pie de la carta impresa", () => {
     expect(html).toMatch(/<p data-carta-pie-impreso="true" class="carta-solo-papel[^"]*">Precios vigentes al 20\/10\/2026 · http:\/\/carta\.localhost\/centro<\/p><\/main>/);
   });
 });
+
+describe("paso 10b: con algo agotado hoy, el papel lleva la carta COMPLETA (DEC-20, decisión del dueño)", () => {
+  const seccion = (items: string[]) => ({ nombre: "Platos", titulo: null, descripcion: null, imagenUrl: null, orden: 0, items: items.map((nombre) => ({ nombre, categoria: "Platos", descripcion: null, precio: 1000, tags: [], especial: false, imagenUrl: null })), promos: [] });
+
+  it("las páginas de la pantalla quedan solo para la pantalla y la carta completa va aparte, solo para el papel (antes del pie)", () => {
+    const carta: CartaPublicaV1 = { version: 1, generadoEn: "2026-10-20T15:00:00.000Z", sucursal: { nombre: "Centro" }, secciones: [seccion(["Café"])], seccionesImpresas: [seccion(["Café", "Té"])] };
+    const html = renderToStaticMarkup(<CartaVista carta={carta} estilo={resolverEstiloCarta({})} />);
+    expect(html).toMatch(/<div class="carta-pagina flex flex-col carta-solo-pantalla">/);
+    expect(html).toMatch(/<div data-carta-impresa="true" class="carta-solo-papel"><div class="carta-pagina flex flex-col">.*Té.*<\/div><\/div><p data-carta-pie-impreso/);
+    expect(IMPRESION).toMatch(/\.carta-shell \.carta-solo-pantalla \{\s*display: none !important;/);
+  });
+
+  it("sin nada agotado (sin `seccionesImpresas`), una sola carta para los dos", () => {
+    const html = renderToStaticMarkup(<CartaVista carta={{ version: 1, generadoEn: "2026-10-20T15:00:00.000Z", sucursal: { nombre: "Centro" }, secciones: [seccion(["Café"])] }} estilo={resolverEstiloCarta({})} />);
+    expect(html).not.toMatch(/carta-solo-pantalla|data-carta-impresa/);
+  });
+});

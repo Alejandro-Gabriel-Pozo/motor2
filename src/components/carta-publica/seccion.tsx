@@ -9,11 +9,24 @@ import { TagIcon } from "./iconos";
  * responsive. La imagen de sección es siempre el fondo de la banda: un `<img>` de fondo con `object-fit`, sin la lógica de
  * posicionamiento fino del original (nivel (a) del diagnóstico: correcto y accesible, no pixel-a-pixel idéntico).
  */
-export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCartaPublica; indice: number; total: number; estilo: EstiloCarta }) {
+export function Seccion({
+  seccion,
+  indice,
+  total,
+  estilo,
+  soloPantalla = false,
+}: {
+  seccion: SeccionCartaPublica;
+  indice: number;
+  total: number;
+  estilo: EstiloCarta;
+  /** Fase 5, paso 10b: la página es solo de pantalla (hoy hay algo agotado y el papel lleva la carta completa, `seccionesImpresas`). */
+  soloPantalla?: boolean;
+}) {
   const img = estilo.imagenSeccion;
   const c = estilo.colores;
   return (
-    <div className="carta-pagina flex flex-col">
+    <div className={`carta-pagina flex flex-col${soloPantalla ? " carta-solo-pantalla" : ""}`}>
       <div
         data-carta-banda
         className="relative h-[var(--banda-alto-m)] shrink-0 overflow-hidden border-b sm:h-[var(--banda-alto-d)]"

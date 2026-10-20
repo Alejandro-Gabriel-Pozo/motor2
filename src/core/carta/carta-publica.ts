@@ -99,6 +99,8 @@ export interface CartaPublicaV1 {
   generadoEn: string;
   sucursal: { nombre: string };
   secciones: SeccionCartaPublica[];
+  /** Fase 5, paso 10b: SOLO si hoy hay algo agotado que cambia lo que se ve: la carta completa que sale en papel (las mismas claves que `secciones`). */
+  seccionesImpresas?: SeccionCartaPublica[];
 }
 
 const proyectarOpcion = (o: OpcionItemCartaV1): OpcionItemCartaPublica => ({ nombre: o.nombre, precio: o.precio });
@@ -181,11 +183,17 @@ export function etiquetaDeCacheDeCartasPublicas(empresaSlug: string): string {
 /**
  * La VERSIÓN de la forma de la carta armada que se guarda en el caché de la carta pública (Fase 5, «carta pareja»): va en la clave de `unstable_cache` (`server/carta-publica/sin-sesion.ts`), así un
  * despliegue que cambia lo que arma el servidor (la `presentacion` de cada ítem y las `tandas` de cada sección) no sirve durante 60 s una carta guardada por el código anterior. Se cambia cada vez que
- * cambia la FORMA de `CartaV1` (no los datos).
+ * cambia la FORMA de `CartaV1` (no los datos). «carta-pareja-2»: suma `seccionesImpresas` (la carta completa del papel, paso 10b).
  */
-export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-1";
+export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-2";
 
 /** La carta armada, sin los ids internos: lo que la carta pública emite hacia el navegador. */
 export function proyectarCartaPublica(carta: CartaV1): CartaPublicaV1 {
-  return { version: carta.version, generadoEn: carta.generadoEn, sucursal: { nombre: carta.sucursal.nombre }, secciones: carta.secciones.map(proyectarSeccion) };
+  return {
+    version: carta.version,
+    generadoEn: carta.generadoEn,
+    sucursal: { nombre: carta.sucursal.nombre },
+    secciones: carta.secciones.map(proyectarSeccion),
+    ...(carta.seccionesImpresas !== undefined ? { seccionesImpresas: carta.seccionesImpresas.map(proyectarSeccion) } : {}),
+  };
 }

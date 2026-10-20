@@ -90,8 +90,17 @@ export function CartaVista({
       </div>
 
       {carta.secciones.map((seccion, i) => (
-        <Seccion key={paginaDeSeccion(i)} seccion={seccion} indice={i} total={carta.secciones.length} estilo={estilo} />
+        <Seccion key={paginaDeSeccion(i)} seccion={seccion} indice={i} total={carta.secciones.length} estilo={estilo} soloPantalla={carta.seccionesImpresas !== undefined} />
       ))}
+
+      {/* DEC-20 (Fase 5, paso 10b): si hoy hay algo agotado, el papel sale con la carta COMPLETA (sin lo «agotado hoy»), que el servidor arma aparte; en pantalla no se ve. */}
+      {carta.seccionesImpresas && (
+        <div data-carta-impresa className="carta-solo-papel">
+          {carta.seccionesImpresas.map((seccion, i) => (
+            <Seccion key={`impresa-${i}`} seccion={seccion} indice={i} total={carta.seccionesImpresas!.length} estilo={estilo} />
+          ))}
+        </div>
+      )}
 
       {/* DEC-20 (Fase 5, paso 10): el pie de la carta IMPRESA, con la fecha de los precios y la dirección pública en texto (sin QR, decisión del dueño). En pantalla no se ve. */}
       <p data-carta-pie-impreso className="carta-solo-papel carta-rol-aclaracion px-6 pt-4 sm:px-10">
