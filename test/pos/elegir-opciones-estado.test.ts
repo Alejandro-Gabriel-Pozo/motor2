@@ -7,6 +7,7 @@ import {
   elegidasParaPedir,
   estadoInicialElegirOpciones,
   grupoCompleto,
+  gruposEnOrdenParaElegir,
   gruposQueFaltan,
   masPedidasParaElDialogo,
   reducirElegirOpciones,
@@ -15,7 +16,8 @@ import {
   type EstadoElegirOpciones,
 } from "../../src/core/pos/elegir-opciones-estado";
 import { estadoInicialListaPorAgregar, itemsDeListaPorAgregar, reducirListaPorAgregar } from "../../src/core/pos/agregar-lista-estado";
-import { vistaPreviaDeConfiguracion } from "../../src/core/pos/precio-de-configuracion";
+import { resumenDePrecios, vistaPreviaDeConfiguracion } from "../../src/core/pos/precio-de-configuracion";
+import { PRODUCTOS_DE_REFERENCIA } from "../setup/referencia-precio-y-carta";
 
 /**
  * GO-2d: el estado PURO del diálogo «Elegir opciones» del POS y la línea por configuración de «Por agregar». Propiedades: el ORDEN en que se elige no cambia lo elegido ni el precio;
@@ -236,5 +238,28 @@ describe("«Lo más pedido acá» (modelo 3) y el aviso en las promos (GO-2d pas
     expect(avisoEnPromo([GUARNICION])).toBe("Lleva opciones: pedilo suelto");
     expect(avisoEnPromo([LECHE])).toBeNull();
     expect(avisoEnPromo([{ ...TAMANO, admitido: false }])).toBeNull();
+  });
+});
+
+describe("Fase 5 («carta pareja»): el diálogo muestra primero el grupo que define el precio", () => {
+  const ordenDe = (p: (typeof PRODUCTOS_DE_REFERENCIA)[number]) =>
+    gruposEnOrdenParaElegir(p.grupos, resumenDePrecios({ grupos: p.grupos, precioBase: p.precioBase, descuentoDeProducto: p.descuentoDeProducto })).map((g) => g.nombre);
+  const deReferencia = (nombre: string) => PRODUCTOS_DE_REFERENCIA.find((p) => p.nombre === nombre)!;
+
+  it("un tamaño con precios distintos va primero aunque el producto tenga antes un grupo obligatorio sin costo; los adicionales, al final", () => {
+    const guarnicion = grupo("Guarnición", "INCLUIDA", 1, 1, [opcion("o-pure", "Puré"), opcion("o-papas", "Papas")]);
+    const tamano = grupo("Tamaño", "MEDIDA", 1, 1, [opcion("o-chico", "Chico"), opcion("o-grande", "Grande", { diferenciaDeLaVersion: { tipo: "MONTO", monto: 500 } })]);
+    const extras = grupo("Extras", "ADICIONAL", 0, 2, [opcion("o-huevo", "Huevo", { productoAnclaId: "p-huevo", diferenciaDeLaVersion: { tipo: "MONTO", monto: 600 } })]);
+    const grupos = [extras, guarnicion, tamano];
+    expect(gruposEnOrdenParaElegir(grupos, resumenDePrecios({ grupos, precioBase: 1000, descuentoDeProducto: null })).map((g) => g.nombre)).toEqual(["Tamaño", "Guarnición", "Extras"]);
+    // Un tamaño con todos los precios iguales no define nada: queda como cualquier grupo obligatorio sin costo, en el orden del producto.
+    const vasos = grupo("Vaso", "MEDIDA", 1, 1, [opcion("o-v1", "Chico"), opcion("o-v2", "Grande")]);
+    expect(gruposEnOrdenParaElegir([guarnicion, vasos], resumenDePrecios({ grupos: [guarnicion, vasos], precioBase: 1000, descuentoDeProducto: null })).map((g) => g.nombre)).toEqual(["Guarnición", "Vaso"]);
+  });
+
+  it("el catálogo de referencia: el café, la milanesa y el bife se eligen en el orden de su carta", () => {
+    expect(ordenDe(deReferencia("Café"))).toEqual(["Tamaño del Café", "Preparación del café", "Intensidad", "Extras"]);
+    expect(ordenDe(deReferencia("Milanesas (M1: terminación con precio absoluto)"))).toEqual(["Tipo de Milanesa", "Milanesas de"]);
+    expect(ordenDe(deReferencia("Bife a la criolla"))).toEqual(["Guarnición", "Extras"]);
   });
 });

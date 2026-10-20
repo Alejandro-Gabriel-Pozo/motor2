@@ -9,6 +9,7 @@ import {
   estadoInicialElegirOpciones,
   formatearMonto,
   grupoCompleto,
+  gruposEnOrdenParaElegir,
   gruposQueFaltan,
   opcionDisponible,
   reducirElegirOpciones,
@@ -32,7 +33,7 @@ const OPCION_RADIO =
  * «Elegir opciones» de un producto en el POS (GO-2d; ADR-030): el diálogo que se abre al tocar un producto que admite opciones (uno sin opciones se sigue agregando con un toque). Es
  * el `Dialogo` del sistema de diseño (hoja inferior en el celular, centrado desde `sm:`, Escape cierra, el foco queda adentro), siempre claro como el resto del salón.
  *
- * - Cada grupo es un `fieldset` con su `legend` («Tamaño · Elegí 1»), en el orden del producto con los obligatorios primero.
+ * - Cada grupo es un `fieldset` con su `legend` («Tamaño · Elegí 1»), primero el que define el precio (el mismo orden que la carta, `ordenarPorRol`) y, dentro de cada papel, los obligatorios primero.
  * - Un grupo de una sola elección (un tamaño, una variante, la guarnición) son radios nativos con forma de botón grande: las flechas los recorren. Uno de varias (adicionales) usa
  *   −/+ con «+ $ 600 c/u» y el tope. Una opción agotada en la sucursal se ve deshabilitada con «Agotada hoy». Si el sistema registra stock 0 de un insumo de una opción, se marca
  *   discretamente: se puede vender igual (el stock teórico avisa, nunca bloquea).
@@ -62,12 +63,14 @@ export function ElegirOpciones({
   onConfirmar: (elegidas: { opcionId: string; cantidad: number; versionDeOpcionId: string }[], cantidad: number) => void;
 }) {
   const { precioBase, descuentoDeProducto, esBase, sinStock } = configuracion;
-  // Solo los grupos que hoy cuentan, con los obligatorios primero (orden estable del producto).
-  const grupos = useMemo(() => {
-    const vigentes = configuracion.grupos.filter((g) => g.admitido && g.activo).map((g) => ({ ...g, opciones: g.opciones.filter((o) => o.activa && o.admitida) }));
-    return [...vigentes.filter((g) => g.cantidadMinima > 0), ...vigentes.filter((g) => g.cantidadMinima === 0)];
-  }, [configuracion]);
-  const precios = useMemo(() => resumenDePrecios({ grupos, precioBase, descuentoDeProducto, esBase }), [grupos, precioBase, descuentoDeProducto, esBase]);
+  // Solo los grupos que hoy cuentan.
+  const vigentes = useMemo(
+    () => configuracion.grupos.filter((g) => g.admitido && g.activo).map((g) => ({ ...g, opciones: g.opciones.filter((o) => o.activa && o.admitida) })),
+    [configuracion]
+  );
+  const precios = useMemo(() => resumenDePrecios({ grupos: vigentes, precioBase, descuentoDeProducto, esBase }), [vigentes, precioBase, descuentoDeProducto, esBase]);
+  // Fase 5 («carta pareja»): el mismo orden que la carta, primero el grupo que define el precio (`gruposEnOrdenParaElegir`).
+  const grupos = useMemo(() => gruposEnOrdenParaElegir(vigentes, precios), [vigentes, precios]);
   const [estado, despachar] = useReducer(reducirElegirOpciones, undefined, () => {
     const vacio = estadoInicialElegirOpciones();
     return inicial ? reducirElegirOpciones(vacio, { tipo: "precargar", grupos, elegidas: inicial }) : vacio;

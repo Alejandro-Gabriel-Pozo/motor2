@@ -1,5 +1,6 @@
+import { ordenarPorRol, rolDelGrupo } from "@/core/opciones/public";
 import type { GrupoParaVender } from "./linea-configurada";
-import { opcionDisponible } from "./precio-de-configuracion";
+import { opcionDisponible, type ResumenDePrecios } from "./precio-de-configuracion";
 
 /**
  * El estado PURO del diálogo «Elegir opciones» del POS (GO-2d): qué opción y cuántas eligió el mozo en cada grupo, y cuántas unidades del producto. Reductor sin DOM, testeable en
@@ -33,6 +34,18 @@ export type AccionElegirOpciones =
 
 export function estadoInicialElegirOpciones(): EstadoElegirOpciones {
   return { elegidas: {}, cantidad: 1 };
+}
+
+/**
+ * El ORDEN en que el diálogo muestra los grupos (Fase 5 de la ola «precio y carta», «carta pareja»): el mismo que lee la carta (`ordenarPorRol`): primero el grupo que define el precio, después las
+ * variantes que lo cambian, lo que se elige sin costo y los adicionales; dentro de cada papel, los obligatorios primero y el orden del producto. El papel sale de los precios que ya calculó la regla de
+ * la venta (`resumenDePrecios` de esos mismos grupos). El POS no lee el prefijo de la carta (muestra grupo y opción tal cual): el papel se calcula sin él.
+ */
+export function gruposEnOrdenParaElegir<G extends GrupoParaVender>(grupos: readonly G[], precios: Pick<ResumenDePrecios, "grupos">): G[] {
+  const opcionesConPrecio = new Map(precios.grupos.map((r) => [r.grupoId, r.opciones]));
+  return ordenarPorRol(grupos, (g) =>
+    rolDelGrupo({ tipo: g.tipo, cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima, prefijoEnCarta: null, opciones: opcionesConPrecio.get(g.grupoId) ?? [] })
+  );
 }
 
 /** Si el grupo se elige de a una (como un radio). */
