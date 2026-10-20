@@ -395,6 +395,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "M0-IVA (O.266; ADITIVO, no cambia comportamiento): `Producto.alicuotaIvaVenta` y `Producto.alicuotaIvaCompra` (migración 20261015100000) aparecen en una sola entrada de la lectura, en null («sin declarar»). Revisado con `git diff --word-diff`: solo se suman esas dos claves.",
       },
+      {
+        blob: "ff1ea4de397303f109ddafa1fc27a1a035fbba2c",
+        // El commit PADRE de este (8ff510de) es el último antes del cambio; el golden se regenera en el commit siguiente (Fase 4, C1).
+        commit: "8ff510de",
+        motivo:
+          "Ola «precio y carta», Fase 4, C1 (ADITIVO, no cambia comportamiento): `Producto.modoDeVenta` (migración 20261021130000) aparece en la única entrada de la lectura que trae la fila del producto, en «DIRECTO» (el default: lo que ya hacía). Revisado con `git diff`: una sola línea agregada, `\"modoDeVenta\": \"DIRECTO\"`.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -505,6 +512,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "48741e0",
         motivo:
           "GO-3b D3 (CAMBIA COMPORTAMIENTO, decidido en el diseño de GO-3, ADR-032: guardar los cupos ya no borra): en el paso «promo: sin cupos vuelve a informativa» los dos cupos que antes se BORRABAN ahora quedan dados de baja (`activo=false`): la huella muestra la fila vieja y la nueva (2 líneas `+ PROMO_CUPO … activo=false`). Revisado con `git diff --word-diff`: el resultado, los efectos y las 4 líneas de auditoría son idénticos; ningún importe cambia.",
+      },
+      {
+        blob: "09fcd693f4fe1145296fe7a9dbe7c33d12360ffc",
+        // El commit PADRE de este (8ff510de) es el último antes del cambio; el golden se regenera en el commit siguiente (Fase 4, C1).
+        commit: "8ff510de",
+        motivo:
+          "Ola «precio y carta», Fase 4, C1 (ADITIVO, no cambia comportamiento): las 13 filas PRODUCTO de la huella suman `modoDeVenta=DIRECTO` (migración 20261021130000; el default, lo que ya hacía). Revisado con `git diff`: quitando ese campo, cada línea es idéntica a la anterior; ningún importe ni regla de dinero cambia.",
       },
     ],
   },

@@ -2579,6 +2579,7 @@
               "observaciones": null,
               "insumoId": "ins-queso",
               "precioVenta": "<decimal 0>",
+              "modoDeVenta": "DIRECTO",
               "alicuotaIvaVenta": null,
               "alicuotaIvaCompra": null,
               "pasoVenta": null,

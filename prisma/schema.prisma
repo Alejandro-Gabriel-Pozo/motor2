@@ -379,6 +379,11 @@ model Producto {
   /// Con IVA incluido (D-IVA): lo que paga el cliente. El neto sin IVA se deduce con la alícuota, no se guarda.
   precioVenta Decimal @default(0) @db.Decimal(14, 2)
 
+  /// Fase 4 de la ola «precio y carta» (ADR-035): cómo se vende. `DIRECTO` (default): tiene su precio (`precioVenta`). `BASE_CONFIGURABLE`: se vende por opción, el precio final está en cada
+  /// opción de su grupo de medida en ABSOLUTO y `precioVenta` se CONSERVA pero queda bloqueado (no se cobra ni se edita). Lista cerrada (`MODOS_DE_VENTA` en src/core/opciones/tipos.ts) con los
+  /// CHECK "Producto_modoDeVenta_check" y "Producto_modoDeVenta_base_check" (solo un PV que no se produce) que agrega la migración a mano (Prisma no declara CHECK).
+  modoDeVenta String @default("DIRECTO")
+
   /// M0-IVA: alícuota de IVA con la que se VENDE este producto y la que trae la factura de proveedor cuando se COMPRA. Código semántico de lista cerrada
   /// (`ALICUOTAS_IVA` en src/core/fiscal/iva.ts), con los CHECK "Producto_alicuotaIvaVenta_check" y "Producto_alicuotaIvaCompra_check" que agrega la
   /// migración a mano (Prisma no declara CHECK). NULL = «sin declarar» (ninguna fila existente recibe un valor deducido). Que la de venta solo tenga

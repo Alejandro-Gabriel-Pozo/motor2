@@ -26,6 +26,13 @@ export type EfectoDeConsumoDeOpcion = (typeof EFECTOS_DE_CONSUMO_DE_OPCION)[numb
 export const TIPOS_DE_DIFERENCIA = ["MONTO", "PORCENTAJE"] as const;
 export type TipoDeDiferencia = (typeof TIPOS_DE_DIFERENCIA)[number];
 
+/**
+ * Cómo se vende un PRODUCTO (Fase 4 de la ola «precio y carta», ADR-035; `Producto.modoDeVenta`, CHECK `Producto_modoDeVenta_check`): DIRECTO tiene su precio; BASE_CONFIGURABLE se vende por
+ * opción (el precio final de cada configuración está en su grupo de medida en ABSOLUTO y el precio guardado del producto no se cobra). `test/catalogo/migracion-producto-modo-de-venta.test.ts`
+ * compara esta lista con el CHECK.
+ */
+export const MODOS_DE_VENTA = ["DIRECTO", "BASE_CONFIGURABLE"] as const;
+
 /** Una diferencia de precio ya resuelta (la del producto si la sobrescribe, si no la de la versión de la opción). El porcentaje es el de `DECIMAL(7,4)`: hasta 4 decimales. */
 export type DiferenciaDePrecio = { tipo: "MONTO"; monto: number } | { tipo: "PORCENTAJE"; porcentaje: number };
 
