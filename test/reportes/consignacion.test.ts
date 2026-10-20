@@ -75,7 +75,7 @@ describe("generarReporteConsignacion", () => {
     it("un pago reduce el saldo debido — antes de esto, el saldo solo podía crecer (hallazgo de la auditoría)", async () => {
       const consignante = await armarConsignanteConDeuda(60);
 
-      const resultado = await registrarPagoConsignante(consignante.id, 40, new Date());
+      const resultado = await registrarPagoConsignante(consignante.id, 40, new Date(), undefined, crypto.randomUUID());
       expect(resultado.ok, resultado.mensaje).toBe(true);
 
       const rep = await generarReporteConsignacion(sucursalId, prisma);
@@ -87,8 +87,8 @@ describe("generarReporteConsignacion", () => {
 
     it("varios pagos parciales pueden saldar el total", async () => {
       const consignante = await armarConsignanteConDeuda(60);
-      await registrarPagoConsignante(consignante.id, 40, new Date());
-      await registrarPagoConsignante(consignante.id, 20, new Date());
+      await registrarPagoConsignante(consignante.id, 40, new Date(), undefined, crypto.randomUUID());
+      await registrarPagoConsignante(consignante.id, 20, new Date(), undefined, crypto.randomUUID());
 
       const rep = await generarReporteConsignacion(sucursalId, prisma);
       expect(rep.debidoPorConsignante.find((d) => d.proveedorId === consignante.id)?.importe).toBe(0);
@@ -96,20 +96,20 @@ describe("generarReporteConsignacion", () => {
 
     it("rechaza un importe que no sea mayor a 0", async () => {
       const consignante = await armarConsignanteConDeuda(60);
-      const resultado = await registrarPagoConsignante(consignante.id, 0, new Date());
+      const resultado = await registrarPagoConsignante(consignante.id, 0, new Date(), undefined, crypto.randomUUID());
       expect(resultado.ok).toBe(false);
     });
 
     it("rechaza un importe negativo", async () => {
       const consignante = await armarConsignanteConDeuda(60);
-      const resultado = await registrarPagoConsignante(consignante.id, -40, new Date());
+      const resultado = await registrarPagoConsignante(consignante.id, -40, new Date(), undefined, crypto.randomUUID());
       expect(resultado.ok).toBe(false);
       expect(resultado.mensaje).toBe("El importe no puede ser negativo.");
     });
 
     it("rechaza un importe que no es un número (NaN)", async () => {
       const consignante = await armarConsignanteConDeuda(60);
-      const resultado = await registrarPagoConsignante(consignante.id, Number.NaN, new Date());
+      const resultado = await registrarPagoConsignante(consignante.id, Number.NaN, new Date(), undefined, crypto.randomUUID());
       expect(resultado.ok).toBe(false);
     });
 
@@ -118,20 +118,32 @@ describe("generarReporteConsignacion", () => {
     // casera y podía fallar feo contra la columna Decimal en vez de dar este mensaje entendible.
     it("rechaza un importe con más de 2 decimales, con el mensaje de validarImporte", async () => {
       const consignante = await armarConsignanteConDeuda(60);
-      const resultado = await registrarPagoConsignante(consignante.id, 40.123, new Date());
+      const resultado = await registrarPagoConsignante(consignante.id, 40.123, new Date(), undefined, crypto.randomUUID());
       expect(resultado.ok).toBe(false);
       expect(resultado.mensaje).toBe("El importe admite como máximo 2 decimales.");
     });
 
     it("rechaza un importe astronómicamente grande (tope de las columnas Decimal)", async () => {
       const consignante = await armarConsignanteConDeuda(60);
-      const resultado = await registrarPagoConsignante(consignante.id, 1e13, new Date());
+      const resultado = await registrarPagoConsignante(consignante.id, 1e13, new Date(), undefined, crypto.randomUUID());
       expect(resultado.ok).toBe(false);
       expect(resultado.mensaje).toBe("El importe es demasiado grande.");
     });
 
+    // Ola «precio y carta», Fase 2, B1: la clave de reintento es obligatoria (es dinero). Sin ella (pantalla vieja o llamada a mano) se rechaza y no se escribe ni se audita nada; antes se
+    // registraba igual, sin idempotencia: un doble envío pagaba dos veces.
+    it("SIN clave de reintento → rechazo explícito, 0 pagos y 0 auditorías (también con la clave vacía o nula)", async () => {
+      const consignante = await armarConsignanteConDeuda(60);
+      for (const clave of [undefined, "", null]) {
+        expect(await registrarPagoConsignante(consignante.id, 40, new Date(), undefined, clave as never)).toEqual({ ok: false, mensaje: "Falta la clave de reintento: recargá la pantalla." });
+      }
+      expect(await registrarPagoConsignante(consignante.id, 40, new Date(), undefined, "no-es-un-uuid")).toEqual({ ok: false, mensaje: "Clave de reintento inválida." });
+      expect(await prisma.pagoConsignante.count()).toBe(0);
+      expect(await prisma.registroAuditoria.count({ where: { entidad: "PagoConsignante" } })).toBe(0);
+    });
+
     it("rechaza un proveedor inexistente", async () => {
-      const resultado = await registrarPagoConsignante("no-existe", 10, new Date());
+      const resultado = await registrarPagoConsignante("no-existe", 10, new Date(), undefined, crypto.randomUUID());
       expect(resultado.ok).toBe(false);
     });
 
@@ -140,7 +152,7 @@ describe("generarReporteConsignacion", () => {
       const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId, rolId: rolOperadorId });
       await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
 
-      const resultado = await registrarPagoConsignante(consignante.id, 10, new Date());
+      const resultado = await registrarPagoConsignante(consignante.id, 10, new Date(), undefined, crypto.randomUUID());
       expect(resultado.ok).toBe(false);
     });
 
@@ -234,7 +246,7 @@ describe("generarReporteConsignacion", () => {
   describe("filtro de período", () => {
     it("sin filtro, el saldo es el acumulado de siempre — filtrando por un período sin movimiento, no hay filas", async () => {
       const consignante = await armarConsignanteConDeuda(60);
-      await registrarPagoConsignante(consignante.id, 20, new Date());
+      await registrarPagoConsignante(consignante.id, 20, new Date(), undefined, crypto.randomUUID());
 
       const haceUnAño = new Date();
       haceUnAño.setFullYear(haceUnAño.getFullYear() - 1);

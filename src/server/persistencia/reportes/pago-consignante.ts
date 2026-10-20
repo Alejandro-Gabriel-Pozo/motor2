@@ -37,9 +37,10 @@ export interface PagoConsignanteAEscribir {
   fecha: Date;
   notas: string | undefined;
   usuarioId: string;
-  claveIdempotencia: string | null;
-  payloadHash: string | null;
-  resultadoMensaje: string | null;
+  /** Obligatoria desde la ola «precio y carta» (Fase 2, B1); la columna sigue admitiendo `null` para los pagos viejos (sin migración). */
+  claveIdempotencia: string;
+  payloadHash: string;
+  resultadoMensaje: string;
 }
 
 /**

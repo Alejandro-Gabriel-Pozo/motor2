@@ -19,8 +19,11 @@ export interface ComandoRegistrarPagoConsignante {
   importe: number;
   fecha: Date;
   notas?: string;
-  /** I3 — UUID generado por el cliente al abrir el modal de pago, reenviado tal cual en reintentos. Opcional durante el rollout. */
-  claveIdempotencia?: string;
+  /**
+   * I3 — UUID generado por el cliente al abrir el formulario de pago, reenviado tal cual en reintentos. OBLIGATORIA desde la ola «precio y carta» (Fase 2, B1): sin
+   * ella un doble envío registraba el pago dos veces (el guard la rechaza ausente).
+   */
+  claveIdempotencia: string;
 }
 
 export type CodigoRegistrarPagoConsignante = "CONFLICTO_IDEMPOTENCIA" | "PROVEEDOR_NO_ENCONTRADO";

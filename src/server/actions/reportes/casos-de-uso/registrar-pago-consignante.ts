@@ -21,9 +21,9 @@ import { cargarPagoConsignantePorClave, cargarProveedorActivo, crearPagoConsigna
  * I3", que el índice único de `PagoConsignante.claveIdempotencia` + un `prisma.$transaction` SIMPLE ya resuelven — si dos requests
  * concurrentes con la MISMA clave corren la carrera, una gana el insert y la otra recibe un P2002, que se atrapa más abajo.
  *
- * Orden:
- *  1. si hay `claveIdempotencia`: `cargarPagoConsignantePorClave` — mismo payload (mismo hash) y ya resuelto → éxito repetido, sin
- *     volver a escribir nada; distinto hash → conflicto;
+ * Orden (la clave es obligatoria desde la ola «precio y carta», Fase 2, B1: el guard la rechaza ausente, así que no hay camino «sin clave»):
+ *  1. `cargarPagoConsignantePorClave` — mismo payload (mismo hash) y ya resuelto → éxito repetido, sin volver a escribir nada; distinto
+ *     hash → conflicto;
  *  2. `cargarProveedorActivo` — no existe o inactivo → el mismo mensaje de siempre;
  *  3. el mensaje de éxito se arma ANTES del insert (Opción B: proveedor e importe ya se conocen, a diferencia de `Operacion`, donde
  *     el mensaje puede depender de algo escrito después en la misma transacción);
@@ -41,20 +41,16 @@ export async function registrarPagoConsignanteCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "db" | "transaccion">,
   comando: ComandoRegistrarPagoConsignante
 ): Promise<ResultadoRegistrarPagoConsignante> {
-  const payloadHash = comando.claveIdempotencia
-    ? calcularPayloadHash("PAGO_CONSIGNANTE", actor.sucursalId, { ...comando, claveIdempotencia: undefined })
-    : "";
+  const payloadHash = calcularPayloadHash("PAGO_CONSIGNANTE", actor.sucursalId, { ...comando, claveIdempotencia: undefined });
 
   try {
     return await actor.transaccion(async (tx): Promise<ResultadoRegistrarPagoConsignante> => {
-      if (comando.claveIdempotencia) {
-        const existente = await cargarPagoConsignantePorClave(tx, comando.claveIdempotencia);
-        if (existente) {
-          if (existente.payloadHash === payloadHash && existente.resultadoMensaje !== null) {
-            return exito(existente.resultadoMensaje, { pagoId: null, repetido: true });
-          }
-          return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+      const existente = await cargarPagoConsignantePorClave(tx, comando.claveIdempotencia);
+      if (existente) {
+        if (existente.payloadHash === payloadHash && existente.resultadoMensaje !== null) {
+          return exito(existente.resultadoMensaje, { pagoId: null, repetido: true });
         }
+        return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
       }
 
       const proveedor = await cargarProveedorActivo(tx, comando.proveedorId);
@@ -69,9 +65,9 @@ export async function registrarPagoConsignanteCasoDeUso(
         fecha: comando.fecha,
         notas: comando.notas,
         usuarioId: actor.usuarioId,
-        claveIdempotencia: comando.claveIdempotencia ?? null,
-        payloadHash: comando.claveIdempotencia ? payloadHash : null,
-        resultadoMensaje: comando.claveIdempotencia ? mensaje : null,
+        claveIdempotencia: comando.claveIdempotencia,
+        payloadHash,
+        resultadoMensaje: mensaje,
       });
 
       await registrarCambioAuditado(tx, {
@@ -92,7 +88,7 @@ export async function registrarPagoConsignanteCasoDeUso(
     // `@@unique` — se relee fuera de la transacción fallida. Solo se devuelve éxito repetido si el ganador tiene el MISMO payloadHash
     // (igual que el chequeo previo): con otro hash es un CONFLICTO, no un reenvío — decirle "ya está" a quien mandó otro importe
     // sería perder su pago en silencio. Fail closed (mismo criterio que el resto de I3): si no se puede confirmar qué pasó, se relanza.
-    if (comando.claveIdempotencia && esChoqueDeIndiceUnico(e)) {
+    if (esChoqueDeIndiceUnico(e)) {
       const ganador = await actor.db.pagoConsignante.findUnique({
         where: { claveIdempotencia: comando.claveIdempotencia },
         select: { payloadHash: true, resultadoMensaje: true },

@@ -64,7 +64,7 @@ describe("las acciones que registran operaciones validan la fecha", () => {
     });
 
     it("registrarPagoConsignante", async () => {
-      expect(await registrarPagoConsignante(proveedorId, 40, fecha)).toEqual({ ok: false, mensaje });
+      expect(await registrarPagoConsignante(proveedorId, 40, fecha, undefined, crypto.randomUUID())).toEqual({ ok: false, mensaje });
       expect(await prisma.pagoConsignante.count()).toBe(0);
     });
   });
@@ -72,6 +72,6 @@ describe("las acciones que registran operaciones validan la fecha", () => {
   it("una fecha de hoy y una de ayer siguen funcionando", async () => {
     expect((await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId, cantidad: 3, precioTotal: 30 }] })).ok).toBe(true);
     expect((await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(Date.now() - DIA), seccionId, items: [{ productoId, cantidad: 3, precioTotal: 30 }] })).ok).toBe(true);
-    expect((await registrarPagoConsignante(proveedorId, 40, new Date())).ok).toBe(true);
+    expect((await registrarPagoConsignante(proveedorId, 40, new Date(), undefined, crypto.randomUUID())).ok).toBe(true);
   });
 });
