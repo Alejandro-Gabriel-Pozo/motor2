@@ -1,3 +1,4 @@
+import { esImporteDeColumna, esPorcentajeDeDiferencia } from "@/core/datos/importe";
 import { importeDeLinea, porcentajeDeImporte, redondearMoneda, totalDeLineas } from "@/core/moneda";
 import {
   CANTIDAD_MAXIMA_DE_OPCION,
@@ -124,25 +125,14 @@ export interface FallaDePrecio {
 }
 export type ResultadoDePrecio = { ok: true; precio: PrecioComponido } | FallaDePrecio;
 
-/** Tope de un importe: `DECIMAL(14,2)` guarda 12 dígitos enteros. */
-const LIMITE_DE_IMPORTE = 1e12;
-
 function falla(codigo: CodigoDeErrorDePrecio, mensaje: string, opcionId?: string): FallaDePrecio {
   return { ok: false, codigo, mensaje, ...(opcionId === undefined ? {} : { opcionId }) };
 }
 
-/** Un importe de `DECIMAL(14,2)`: finito, con a lo sumo 2 decimales. */
-function esImporte(n: number): boolean {
-  return Number.isFinite(n) && Math.abs(n) < LIMITE_DE_IMPORTE && redondearMoneda(n) === n;
-}
-
-/** Un porcentaje de `DECIMAL(7,4)`: finito, con a lo sumo 4 decimales, mayor que -100 y hasta 999,9999. */
-function esPorcentaje(p: number): boolean {
-  return Number.isFinite(p) && p > -100 && p <= 999.9999 && Number(p.toFixed(4)) === p;
-}
-
 function esDiferenciaValida(d: DiferenciaDePrecio): boolean {
-  return d.tipo === "MONTO" ? esImporte(d.monto) : esPorcentaje(d.porcentaje);
+  // Un importe de `DECIMAL(14,2)` (finito, a lo sumo 2 decimales, |n| < 10^12) y un porcentaje de `DECIMAL(7,4)` (finito, a lo sumo 4 decimales, mayor que -100 y hasta
+  // 999,9999): el núcleo de `core/datos/importe.ts`, sin regla propia (Fase 2, C2).
+  return d.tipo === "MONTO" ? esImporteDeColumna(d.monto) : esPorcentajeDeDiferencia(d.porcentaje);
 }
 
 /** Lo que aporta una diferencia por unidad: el monto tal cual, o el porcentaje del precio base redondeado al centavo (una sola vez). */
@@ -184,7 +174,7 @@ function detalleDeOpcion(op: OpcionParaPrecio, precioBase: number): Detalle {
   if (op.tipo === "MEDIDA") {
     if (op.modoPrecio === "ABSOLUTO") {
       const precio = op.precioAbsoluto;
-      if (precio === null || !esImporte(precio) || precio < IMPORTE_MINIMO) {
+      if (precio === null || !esImporteDeColumna(precio) || precio < IMPORTE_MINIMO) {
         return mal("PRECIO_DE_OPCION_INVALIDO", `«${op.nombre}» no tiene un precio válido para este producto: tiene que ser de 0,01 o más.`);
       }
       return { ok: true, detalle: detalleBase(op, redondearMoneda(precio), null) };
@@ -211,7 +201,7 @@ function detalleDeOpcion(op: OpcionParaPrecio, precioBase: number): Detalle {
   }
 
   // ADICIONAL: solo monto fijo, de 0,01 o más.
-  if (op.diferencia === null || op.diferencia.tipo !== "MONTO" || !esImporte(op.diferencia.monto) || op.diferencia.monto < IMPORTE_MINIMO) {
+  if (op.diferencia === null || op.diferencia.tipo !== "MONTO" || !esImporteDeColumna(op.diferencia.monto) || op.diferencia.monto < IMPORTE_MINIMO) {
     return mal("RECARGO_INVALIDO", `«${op.nombre}» es un adicional: su recargo tiene que ser un monto fijo de 0,01 o más.`);
   }
   return { ok: true, detalle: detalleBase(op, redondearMoneda(op.diferencia.monto), op.diferencia) };
