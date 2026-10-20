@@ -1,0 +1,31 @@
+{
+  "regla": "escritores-de-precio-con-visto",
+  "meta": "0 en la Fase 2: todo caso de uso que escribe un precio compara el valor visto y responde PRECIO_DESACTUALIZADO/VERSION_DESACTUALIZADA",
+  "total": 6,
+  "entradas": 6,
+  "porTipo": {
+    "PrecioLocalProducto": 3,
+    "Producto.precioVenta": 2,
+    "PromoCartaSucursal.precioLocal": 1
+  },
+  "cuentas": {
+    "src/server/actions/carta/casos-de-uso/guardar-precio-local-promo-carta.ts": {
+      "PromoCartaSucursal.precioLocal": 1
+    },
+    "src/server/actions/catalogo/casos-de-uso/actualizar-producto.ts": {
+      "Producto.precioVenta": 1
+    },
+    "src/server/actions/catalogo/casos-de-uso/sincronizar-precio-grupo-carta.ts": {
+      "Producto.precioVenta": 1
+    },
+    "src/server/actions/movimientos/casos-de-uso/guardar-precio-local-en-tx.ts": {
+      "PrecioLocalProducto": 1
+    },
+    "src/server/actions/movimientos/casos-de-uso/set-precio-local-producto.ts": {
+      "PrecioLocalProducto": 1
+    },
+    "src/server/actions/movimientos/casos-de-uso/sincronizar-precio-local-grupo-carta.ts": {
+      "PrecioLocalProducto": 1
+    }
+  }
+}
