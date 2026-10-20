@@ -66,6 +66,11 @@ export interface KitDeEmpresa {
   cupoListaId: string;
   entradaDeCupoId: string;
   cupoDelDiaId: string;
+  /**
+   * Fase 5 (DEC-11): un PRODUCTO BASE (`BASE_CONFIGURABLE`) disponible en las sucursales del kit, con un solo eje en la carta (su propia MEDIDA en precio propio, con una opción): el control positivo de
+   * `basesDeUnEjeEnLaCarta`. Grupo y opción propios a propósito: así ningún control positivo de los escritores de opciones (que no dejan a una base sin su precio final) se cruza con él.
+   */
+  productoBaseId: string;
 }
 
 export interface KitDeSucursal {
@@ -257,6 +262,13 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   const promoCombo = await db.promoCarta.create({ data: { id: id("promo-combo"), empresaId, seccionCartaId: seccionCarta.id, titulo: `Combo ${marca}`, precio: 6000 } });
   const cupoLista = await db.promoCartaCupo.create({ data: { id: id("cupo-lista"), empresaId, promoCartaId: promoCombo.id, tipo: "LISTA", nombre: `Entrada ${marca}`, cantidadMinima: 1, cantidadMaxima: 1, orden: 1 } });
   const cupoDelDia = await db.promoCartaCupo.create({ data: { id: id("cupo-del-dia"), empresaId, promoCartaId: promoCombo.id, tipo: "DEL_DIA", nombre: `Plato ${marca}`, cantidadMinima: 1, cantidadMaxima: 1, orden: 2 } });
+  // Fase 5 (DEC-11): el producto base de un eje (ver `productoBaseId`).
+  const pvBase = await producto("pv-base", "PV", { modoDeVenta: "BASE_CONFIGURABLE" });
+  const grupoMedidaBase = await db.grupoDeOpciones.create({ data: { id: id("grupo-medida-base"), empresaId, nombre: `Porción ${marca}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1 } });
+  const opcionMedidaBase = await db.opcionDeGrupo.create({ data: { id: id("opcion-medida-base"), empresaId, grupoId: grupoMedidaBase.id, nombre: `Entera ${marca}`, orden: 1 } });
+  await db.versionDeOpcion.create({ data: { id: `${opcionMedidaBase.id}-v1`, empresaId, opcionId: opcionMedidaBase.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: 0, creadoPorId: usuarioId } });
+  await db.productoAdmiteGrupo.create({ data: { id: id("admite-medida-base"), empresaId, productoId: pvBase.id, grupoId: grupoMedidaBase.id, orden: 0, modoPrecio: "ABSOLUTO" } });
+  await db.productoAdmiteOpcion.create({ data: { id: id("admite-entera"), empresaId, productoId: pvBase.id, opcionId: opcionMedidaBase.id, precioAbsoluto: 2500 } });
   const entradaDeCupo = await db.entradaDeCupo.create({ data: { id: id("entrada-de-cupo"), empresaId, cupoId: cupoLista.id, productoId: pv.id } });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
   return {
@@ -293,6 +305,7 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
     cupoListaId: cupoLista.id,
     entradaDeCupoId: entradaDeCupo.id,
     cupoDelDiaId: cupoDelDia.id,
+    productoBaseId: pvBase.id,
   };
 }
 
@@ -307,7 +320,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   // Una sección dada de baja de la sucursal propia: la lectura `seccionesDesactivadas` (P17) devuelve solo estas, y la matriz de
   // denegación exige que la lectura PROPIA devuelva algo con la marca propia.
   await db.seccion.create({ data: { id: id("seccion-baja"), empresaId, sucursalId, nombre: `Sección dada de baja ${marca}`, activa: false } });
-  for (const productoId of [k.productoId, k.productoPvId, k.productoMp2Id, k.productoMp3Id, k.productoPv2Id]) {
+  for (const productoId of [k.productoId, k.productoPvId, k.productoMp2Id, k.productoMp3Id, k.productoPv2Id, k.productoBaseId]) {
     await db.disponibilidadProducto.create({ data: { empresaId, sucursalId, productoId, disponible: true } });
   }
   const membresia = await db.usuarioSucursal.create({ data: { id: id("membresia"), empresaId, usuarioId: miembro.id, sucursalId, rolId: miembro.rolId, notas: `Notas ${marca}` } });
