@@ -89,3 +89,41 @@ describe("8a: forma simple (el bife: su precio y las aclaraciones debajo)", () =
     expect(raro).toContain("&lt;b&gt;G&lt;/b&gt;:");
   });
 });
+
+describe("8b: una tanda (el café y el cortado comparten Chico | Mediano | Grande) es UNA tabla real", () => {
+  const cafe = item({
+    nombre: "Café",
+    categoria: "Cafetería",
+    precio: 4000,
+    presentacion: { forma: "columnas", celdas: [4000, 4100, 4300], aclaraciones: [{ tipo: "extras", rotulo: "Preparación del café", opciones: [{ nombre: "solo", recargo: 0 }, { nombre: "lágrima", recargo: 200 }] }] },
+  });
+  const cortado = item({ nombre: "Cortado", categoria: "Cafetería", precio: 4200, especial: true, descuentoPorcentaje: 10, presentacion: { forma: "columnas", celdas: [4200, null, 4500], aclaraciones: [] } });
+  const medialuna = item({ nombre: "Medialuna", categoria: "Cafetería", precio: 1500 });
+  const html = dibujar([cafe, cortado, medialuna], [{ primero: 0, ultimo: 1, rotulos: ["Chico", "Mediano", "Grande"] }]);
+  const tanda = filaCon(html, "data-tanda");
+
+  it("una sola tabla para los dos, con los rótulos como encabezados de columna y cada producto como encabezado de fila", () => {
+    expect(html.match(/<table/g)).toHaveLength(1);
+    expect(tanda).toMatch(/^<li data-tanda/);
+    expect(tanda.match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map((t) => texto(t))).toEqual(["Chico", "Mediano", "Grande"]);
+    expect(tanda.match(/<th scope="row"/g)).toHaveLength(2);
+    expect(tanda).toMatch(/<th scope="row"[^>]*><span data-rol="producto" class="carta-rol-producto[^"]*"[^>]*>Café<\/span><\/th>/);
+  });
+
+  it("cada celda con su precio (rol Opción 600) y «–» donde no se ofrece, con «no se ofrece» para el lector de pantalla; sin «desde»", () => {
+    expect(texto(tanda)).toBe("Chico Mediano Grande Café $4.000 $4.100 $4.300 Preparación del café: solo, lágrima +$200 Cortado ★ −10 % $4.200 – $4.500");
+    expect(tanda).toContain('<span class="sr-only">no se ofrece</span>');
+    expect(tanda.match(/data-rol="opcion-precio"/g)).toHaveLength(5);
+    expect(tanda).not.toMatch(/desde/i);
+  });
+
+  it("ningún título dentro de una celda de encabezado (el HTML no lo admite): el nombre no es un h3; la descripción y las aclaraciones, en una fila de todo el ancho", () => {
+    expect(tanda).not.toMatch(/<th[^>]*>(?:(?!<\/th>).)*<h[1-6]/s);
+    expect(tanda).toMatch(/<td colSpan="4"[^>]*><p data-aclaracion="Preparación del café"/);
+  });
+
+  it("lo que no está en la tanda (la medialuna) sigue debajo, como un ítem más", () => {
+    expect(filaCon(html, "Medialuna")).toMatch(/<h3 data-rol="producto"[^>]*>Medialuna<\/h3>/);
+    expect(html.indexOf("Medialuna")).toBeGreaterThan(html.indexOf("</table>"));
+  });
+});

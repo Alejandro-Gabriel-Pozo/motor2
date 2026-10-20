@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import type { AclaracionCartaPublica, EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
+import type { AclaracionCartaPublica, EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica, TandaCartaPublica } from "@/core/carta/public";
 import { formatearPrecioCarta, recargoEnPesos, textoDeLaAclaracion } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
 
@@ -46,9 +46,12 @@ export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCa
 
       <ul data-carta-scroll className="min-h-0 flex-1 divide-y overflow-y-auto px-6 sm:px-10" style={{ borderColor: "var(--carta-border)" }}>
         {/* S-25: las `key` son la posición, no el id de la fila: React serializa la `key` de cada elemento en el payload RSC que baja al navegador. */}
-        {seccion.items.map((item, i) => (
-          <ItemFila key={`item-${i}`} item={item} estilo={estilo} />
-        ))}
+        {seccion.items.map((item, i) => {
+          // Fase 5: una TANDA (productos consecutivos que comparten columnas, Chico | Mediano | Grande) se dibuja UNA vez, en su primer ítem, como una tabla; los demás de la tanda van adentro.
+          const tanda = seccion.tandas?.find((t) => i >= t.primero && i <= t.ultimo);
+          if (tanda) return i === tanda.primero ? <TandaFila key={`item-${i}`} tanda={tanda} items={seccion.items.slice(tanda.primero, tanda.ultimo + 1)} estilo={estilo} /> : null;
+          return <ItemFila key={`item-${i}`} item={item} estilo={estilo} />;
+        })}
         {seccion.promos.map((promo, i) => (
           <PromoFila key={`promo-${i}`} promo={promo} />
         ))}
@@ -162,7 +165,7 @@ function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly Aclaraci
  * tamaño y un solo peso por rol).
  *
  * Con opciones, el ítem se DIBUJA SEGÚN SU FORMA (`presentacion`, que resuelve el servidor: `core/carta/presentacion-en-carta.ts`; ADR-035): `simple` (el nombre y su precio, con las aclaraciones
- * debajo). Sin `presentacion` (un producto sin opciones, o una carta guardada por el código anterior) se dibuja como antes.
+ * debajo); `columnas` va dentro de su tanda (`TandaFila`). Sin `presentacion` (un producto sin opciones, o una carta guardada por el código anterior) se dibuja como antes.
  */
 function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
   const colores = coloresDelItem(item.especial, estilo.valores);
@@ -180,6 +183,98 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
     );
   }
   return <ItemComoAntes item={item} colores={colores} />;
+}
+
+/** Una celda de precio de una tabla (rol Opción, 600), o «–» donde el producto no ofrece esa opción (con «no se ofrece» para el lector de pantalla: no depende de ver la raya). */
+function CeldaDePrecio({ precio, color }: { precio: number | null; color: string }) {
+  if (precio === null) {
+    return (
+      <>
+        <span aria-hidden="true" data-rol="opcion" className="carta-rol-opcion" style={{ color: "var(--carta-ink-soft)" }}>
+          –
+        </span>
+        <span className="sr-only">no se ofrece</span>
+      </>
+    );
+  }
+  return (
+    <span data-rol="opcion-precio" className="carta-rol-opcion-precio carta-titulo" style={{ color }}>
+      {formatearPrecioCarta(precio)}
+    </span>
+  );
+}
+
+/** Los rótulos de las columnas de una tabla (rol Aclaración 600), como encabezados de columna reales. */
+function EncabezadosDeColumna({ rotulos }: { rotulos: readonly string[] }) {
+  return rotulos.map((r, i) => (
+    <th key={`columna-${i}`} scope="col" data-rol="aclaracion-rotulo" className="carta-rol-aclaracion-rotulo pb-0.5 pl-3 text-right align-bottom" style={{ color: "var(--carta-ink-soft)" }}>
+      {r}
+    </th>
+  ));
+}
+
+/**
+ * Una TANDA (DEC-06, forma `columnas`): los productos consecutivos de la sección que comparten el grupo que define el precio (el café y el cortado: Chico | Mediano | Grande) en UNA tabla real
+ * (`<table>`, con `<th scope="col">` en los rótulos y `<th scope="row">` en cada producto: el HTML no admite un título dentro de una celda de encabezado, así que acá el nombre no es un `h3`), con
+ * «–» donde un producto no ofrece un tamaño. Debajo de cada producto, en una fila que ocupa todo el ancho, su descripción, sus tags y sus aclaraciones. Sin «desde»: cada celda dice su precio.
+ */
+function TandaFila({ tanda, items, estilo }: { tanda: TandaCartaPublica; items: readonly ItemCartaPublico[]; estilo: EstiloCarta }) {
+  return (
+    <li data-tanda className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
+      <table data-tabla-carta className="w-full border-collapse">
+        <thead>
+          <tr>
+            <td />
+            <EncabezadosDeColumna rotulos={tanda.rotulos} />
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, k) => (
+            <FilaDeTanda key={`fila-${k}`} item={item} columnas={tanda.rotulos.length} primera={k === 0} estilo={estilo} />
+          ))}
+        </tbody>
+      </table>
+    </li>
+  );
+}
+
+function FilaDeTanda({ item, columnas, primera, estilo }: { item: ItemCartaPublico; columnas: number; primera: boolean; estilo: EstiloCarta }) {
+  const colores = coloresDelItem(item.especial, estilo.valores);
+  const celdas = item.presentacion?.forma === "columnas" ? item.presentacion.celdas : Array.from({ length: columnas }, () => null);
+  const aclaraciones = item.presentacion?.aclaraciones ?? [];
+  const conDetalle = item.descripcion !== null || item.tags.length > 0 || aclaraciones.length > 0;
+  const borde = primera ? undefined : { borderTopWidth: 1, borderColor: "var(--carta-border)" };
+  return (
+    <>
+      <tr style={borde}>
+        <th scope="row" className="py-1 pr-1 text-left align-baseline font-normal">
+          <span data-rol="producto" className="carta-rol-producto carta-titulo" style={{ color: colores.nombre, overflowWrap: "anywhere" }}>
+            {item.nombre}
+            {item.especial && <Estrella color={colores.estrella} />}
+          </span>
+          {item.descuentoPorcentaje !== undefined && (
+            <>
+              {" "}
+              <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />
+            </>
+          )}
+        </th>
+        {celdas.map((precio, c) => (
+          <td key={`celda-${c}`} className="whitespace-nowrap py-1 pl-3 text-right align-baseline">
+            <CeldaDePrecio precio={precio} color={colores.precio} />
+          </td>
+        ))}
+      </tr>
+      {conDetalle && (
+        <tr>
+          <td colSpan={columnas + 1} className="pb-1.5">
+            <DescripcionYTags item={item} colores={colores} />
+            <Aclaraciones aclaraciones={aclaraciones} color={colores.descripcion} />
+          </td>
+        </tr>
+      )}
+    </>
+  );
 }
 
 /** Un ítem sin forma: sin opciones (el renglón de siempre) o con las listas de antes (`grupos` y `opcionesSinCosto`), mientras falte `presentacion`. */
