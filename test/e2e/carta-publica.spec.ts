@@ -240,15 +240,18 @@ test.describe("carta de una sucursal", () => {
         await expect(filas.cafe).not.toContainText("desde");
         await expect(filas.cafe).not.toContainText("Ver opciones");
         expect(await filas.cafe.locator("details").count(), "ningún desplegable").toBe(0);
-        // Lo que se suma aparte (el adicional) se lee debajo, con cuánto suma cada uno; ninguna lista vieja (tamaños, «Adicionales:», pastillas).
+        // Lo que se suma aparte (el adicional) se lee debajo en «P1»: la etiqueta del grupo y, en su PROPIA fila, cada opción con lo que suma a la derecha; ninguna lista vieja (tamaños, «Adicionales:», pastillas).
         const extrasCafe = filas.cafe.locator(`[data-aclaracion='Extras ${m}']`);
-        await expect(extrasCafe).toHaveText(`Extras ${m}: medialuna +$600, shot +$500`);
+        await expect(extrasCafe.locator("[data-rol=aclaracion-rotulo]")).toHaveText(`Extras ${m}`);
+        await expect(extrasCafe.locator("[data-rol=opcion]")).toHaveText(["medialuna", "shot"]);
+        await expect(extrasCafe.locator("[data-rol=opcion-precio]")).toHaveText(["+$600", "+$500"]);
         await expect(filas.cafe.locator("[data-tamanos-carta], [data-suma-carta], [data-opciones-sin-costo]")).toHaveCount(0);
-        // La milanesa (Fase 5, forma «simple»): su precio base de siempre y, debajo, la aclaración «Guarnición: papas fritas, puré o ensalada» (sin «Ver opciones» ni desplegable; sin la «ninguna»); el flan, un producto común.
+        // La milanesa (Fase 5, forma «simple»): su precio base de siempre y, debajo, la etiqueta «Guarnición» y, en una línea, «Elegí: papas fritas, puré o ensalada» (sin «Ver opciones» ni desplegable; sin la «ninguna»); el flan, un producto común.
         await expect(filas.milanesa).toContainText("$9.500");
         const guarnicionMila = filas.milanesa.locator(`[data-aclaracion='Guarnición ${m}']`);
         await expect(guarnicionMila).toBeVisible();
-        await expect(guarnicionMila).toHaveText(`Guarnición ${m}: papas fritas, puré o ensalada`);
+        await expect(guarnicionMila.locator("[data-rol=aclaracion-rotulo]")).toHaveText(`Guarnición ${m}`);
+        await expect(guarnicionMila.locator("[data-rol=eleccion]")).toHaveText("Elegí: papas fritas, puré o ensalada");
         await expect(filas.milanesa).not.toContainText("Ver opciones");
         await expect(filas.milanesa).not.toContainText("Sin guarnición");
         expect(await filas.milanesa.locator("details").count(), "ningún desplegable").toBe(0);
@@ -256,13 +259,13 @@ test.describe("carta de una sucursal", () => {
         await expect(filas.flan).toContainText("$3.200");
         await expect(filas.flan.locator("[data-opciones-sin-costo]")).toHaveCount(0);
         await expect(page.locator("body")).not.toContainText("Sin guarnición");
-        // Legibilidad (escala única, DEC-35): nombre del ítem 19 px (rol Producto, con o sin opciones), filas y celdas 16 px (rol Opción), aclaraciones 14 px (rol Aclaración).
+        // Legibilidad (escala única, DEC-35): nombre del ítem 19 px (rol Producto, con o sin opciones), filas y celdas 16 px (rol Opción), la etiqueta del grupo 14 px (rol Aclaración 600) y la línea de lo que no cuesta 15 px (rol Elección).
         expect(await tamanoPx(filas.cafe.getByRole("heading", { name: cafe }))).toBe(19);
         expect(await tamanoPx(filas.flan.getByRole("heading", { name: flan }))).toBe(19);
         expect(await tamanoPx(tabla.getByRole("rowheader").first())).toBe(16);
         expect(await tamanoPx(tabla.getByRole("cell").first().locator("span"))).toBe(16);
-        expect(await tamanoPx(extrasCafe)).toBe(14);
-        expect(await tamanoPx(guarnicionMila)).toBe(14);
+        expect(await tamanoPx(extrasCafe.locator("[data-rol=aclaracion-rotulo]"))).toBe(14);
+        expect(await tamanoPx(guarnicionMila.locator("[data-rol=eleccion]"))).toBe(15);
         // Sin desborde horizontal: ni la página ni la fila del café.
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `la página se desborda a ${ancho} px`).toBe(true);
         expect(await filas.cafe.evaluate((el) => el.scrollWidth <= el.clientWidth), `el café se desborda a ${ancho} px`).toBe(true);

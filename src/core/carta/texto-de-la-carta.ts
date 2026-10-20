@@ -25,6 +25,18 @@ export function textoDeLaAclaracion(a: Aclaracion): string {
 }
 
 /**
+ * Una aclaración partida para leerse en «P1» (jerarquía de la carta pública): lo que NO cuesta en UNA línea y cada opción que SÍ suma o resta, aparte, para dibujarla en su propia fila con el
+ * recargo a la derecha. Una ELECCIÓN (ninguna suma): «Elegí: ensalada, papas fritas o puré». Unos EXTRAS: las opciones sin recargo (`recargo === 0`) van en `libres`, «Incluida: solo» (una) o
+ * «Incluidas: solo, cortado» (varias), y `null` si no hay ninguna; las que suman o restan (`recargo !== 0`) van en `conRecargo`, en su orden. Puro.
+ */
+export function partirLaAclaracion(a: Aclaracion): { libres: string | null; conRecargo: { nombre: string; recargo: number }[] } {
+  if (a.tipo === "eleccion") return { libres: a.opciones.length > 0 ? `Elegí: ${unirConO(a.opciones)}` : null, conRecargo: [] };
+  const gratis = a.opciones.filter((o) => o.recargo === 0).map((o) => o.nombre);
+  const libres = gratis.length === 0 ? null : `${gratis.length === 1 ? "Incluida" : "Incluidas"}: ${gratis.join(", ")}`;
+  return { libres, conRecargo: a.opciones.filter((o) => o.recargo !== 0).map((o) => ({ nombre: o.nombre, recargo: o.recargo })) };
+}
+
+/**
  * El PIE de la carta impresa (DEC-20, Fase 5 paso 10): «Precios vigentes al 20/10/2026 · https://la-cuadra.cartas.ar/centro». La fecha es la del armado de la carta (`generadoEn`), en la hora de
  * Argentina (la carta no lleva la zona de la empresa; la convención de la carta es es-AR fija, como el precio); la dirección pública, EN TEXTO (decisión del dueño: no se genera QR), solo si la
  * instalación tiene dominio de cartas.

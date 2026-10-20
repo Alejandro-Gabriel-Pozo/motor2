@@ -1,5 +1,5 @@
 import type { AclaracionCartaPublica, EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica, TandaCartaPublica } from "@/core/carta/public";
-import { formatearPrecioCarta, textoDeLaAclaracion } from "@/core/carta/public";
+import { formatearPrecioCarta, partirLaAclaracion, recargoEnPesos, textoDeLaAclaracion } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
 
 /**
@@ -160,8 +160,45 @@ function DescripcionYTags({ item, colores }: { item: ItemCartaPublico; colores: 
 }
 
 /**
- * Lo que se lee DEBAJO del plato (DEC-07), una línea por grupo en el orden del producto: «Guarnición: ensalada, papas fritas o puré», «Extras: extra de papas +$2.000, huevo frito +$1.500». El
- * rótulo (el nombre del grupo) en Aclaración 600 y el resto en Aclaración: el mismo texto que la vista previa de la administración (`textoDeLaAclaracion`).
+ * Lo que se lee DEBAJO del plato (DEC-07), un GRUPO por aclaración en el orden del producto, en «P1»: la etiqueta del grupo (rol Aclaración 600, sin dos puntos); lo que NO cuesta en UNA línea
+ * («Elegí: ensalada, papas fritas o puré»; «Incluidas: solo, cortado» cuando el grupo mezcla gratis y con recargo; rol Elección); y cada opción que SÍ suma o resta en su PROPIA fila, con el recargo
+ * a la derecha («+$200»; rol Opción). La partición es la de `partirLaAclaracion`, la misma que usa la vista previa de la administración.
+ */
+function GruposDeOpciones({ aclaraciones, colores }: { aclaraciones: readonly AclaracionCartaPublica[]; colores: ColoresDelItem }) {
+  return aclaraciones.map((a, i) => {
+    const { libres, conRecargo } = partirLaAclaracion(a);
+    return (
+      <div key={`aclaracion-${i}`} data-aclaracion={a.rotulo} className="mt-3">
+        <p data-rol="aclaracion-rotulo" className="carta-rol-aclaracion-rotulo" style={{ color: "var(--carta-ink)", overflowWrap: "anywhere" }}>
+          {a.rotulo}
+        </p>
+        {libres && (
+          <p data-rol="eleccion" className="carta-rol-eleccion mt-0.5" style={{ color: colores.descripcion, overflowWrap: "anywhere" }}>
+            {libres}
+          </p>
+        )}
+        {conRecargo.length > 0 && (
+          <ul aria-label={a.rotulo} data-recargos-carta className="mt-0.5 flex flex-col divide-y" style={{ borderColor: "var(--carta-border)" }}>
+            {conRecargo.map((r, k) => (
+              <li key={`recargo-${k}`} className="flex items-baseline justify-between gap-3 py-1.5" style={{ borderColor: "var(--carta-border)" }}>
+                <span data-rol="opcion" className="carta-rol-opcion min-w-0" style={{ overflowWrap: "anywhere" }}>
+                  {r.nombre}
+                </span>
+                <span data-rol="opcion-precio" className="carta-rol-opcion-precio shrink-0 carta-titulo" style={{ color: colores.precio }}>
+                  {recargoEnPesos(r.recargo)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  });
+}
+
+/**
+ * La línea ÚNICA de siempre, «Guarnición: ensalada, papas fritas o puré»: el rótulo en Aclaración 600 y el resto en Aclaración (`textoDeLaAclaracion`). Queda SOLO en `ItemComoAntes`: lo que la
+ * carta no puede leer exacto sale como antes (no se le arma la jerarquía de grupos y filas).
  */
 function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly AclaracionCartaPublica[]; color: string | undefined }) {
   return aclaraciones.map((a, i) => (
@@ -191,7 +228,7 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
           <PrecioDelRenglon item={item} color={colores.precio} />
         </div>
         <DescripcionYTags item={item} colores={colores} />
-        <Aclaraciones aclaraciones={p.aclaraciones} color={colores.descripcion} />
+        <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
       </li>
     );
   }
@@ -226,7 +263,7 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
           </tbody>
         </table>
         <DescripcionYTags item={item} colores={colores} />
-        <Aclaraciones aclaraciones={p.aclaraciones} color={colores.descripcion} />
+        <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
       </li>
     );
   }
@@ -240,7 +277,7 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
         </div>
         <DescripcionYTags item={item} colores={colores} />
         <FilasDeOpcion nombre={item.nombre} filas={p.filas} colorPrecio={colores.precio} />
-        <Aclaraciones aclaraciones={p.aclaraciones} color={colores.descripcion} />
+        <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
       </li>
     );
   }
@@ -264,7 +301,7 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
         {(item.descuentoPorcentaje !== undefined || p.aclaraciones.length > 0) && (
           <div className="pb-2.5">
             {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
-            <Aclaraciones aclaraciones={p.aclaraciones} color={colores.descripcion} />
+            <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
           </div>
         )}
       </li>
@@ -379,7 +416,7 @@ function FilaDeTanda({ item, columnas, primera, estilo }: { item: ItemCartaPubli
         <tr>
           <td colSpan={columnas + 1} className="pb-1.5">
             <DescripcionYTags item={item} colores={colores} />
-            <Aclaraciones aclaraciones={aclaraciones} color={colores.descripcion} />
+            <GruposDeOpciones aclaraciones={aclaraciones} colores={colores} />
           </td>
         </tr>
       )}
