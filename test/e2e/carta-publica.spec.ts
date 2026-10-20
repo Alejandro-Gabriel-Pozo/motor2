@@ -261,13 +261,14 @@ test.describe("carta de una sucursal", () => {
         await expect(filas.flan).toContainText("$3.200");
         await expect(filas.flan.locator("[data-opciones-sin-costo]")).toHaveCount(0);
         await expect(page.locator("body")).not.toContainText("Sin guarnición");
-        // Legibilidad: nombre y precio del ítem con opciones ≥ 19 px, tamaños y «Adicionales» ≥ 16 px, pastillas ≥ 15 px y su etiqueta ≥ 14,5 px.
+        // Legibilidad (escala única, DEC-35): nombre del ítem 19 px (rol Producto), tamaños 16 px (rol Opción), «Adicionales» y pastillas 14 px (rol Aclaración); el flan, sin opciones, también 19 px.
         expect(await tamanoPx(filas.cafe.getByRole("heading", { name: cafe }))).toBeGreaterThanOrEqual(19);
-        expect(await tamanoPx(lista.getByRole("listitem").first())).toBeGreaterThanOrEqual(16);
-        expect(await tamanoPx(suma)).toBeGreaterThanOrEqual(16);
+        expect(await tamanoPx(filas.flan.getByRole("heading", { name: flan }))).toBeGreaterThanOrEqual(19);
+        expect(await tamanoPx(lista.getByRole("listitem").first().locator("span").first())).toBeGreaterThanOrEqual(16);
+        expect(await tamanoPx(suma)).toBeGreaterThanOrEqual(14);
         for (const pastillas of [pastillasCafe, pastillasMila]) {
-          expect(await tamanoPx(pastillas.locator("p"))).toBeGreaterThanOrEqual(14.5);
-          for (const pastilla of await pastillas.getByRole("listitem").all()) expect(await tamanoPx(pastilla)).toBeGreaterThanOrEqual(15);
+          expect(await tamanoPx(pastillas.locator("p"))).toBeGreaterThanOrEqual(14);
+          for (const pastilla of await pastillas.getByRole("listitem").all()) expect(await tamanoPx(pastilla)).toBeGreaterThanOrEqual(14);
         }
         // Sin desborde horizontal tampoco de las pastillas (envuelven a la línea siguiente).
         for (const pastillas of [pastillasCafe, pastillasMila]) expect(await pastillas.evaluate((el) => el.scrollWidth <= el.clientWidth), `las pastillas se desbordan a ${ancho} px`).toBe(true);

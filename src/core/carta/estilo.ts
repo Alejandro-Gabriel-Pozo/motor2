@@ -1,4 +1,5 @@
 import { resolveHeroInk, resolvePrimaryForeground } from "./color-css";
+import { variablesDeLaEscala } from "./escala";
 import { CLAVES_TEMA_V1, validarValorTema, type ClaveTema, type DefinicionClaveTema, type FamiliaTipografica } from "./tema";
 
 /**
@@ -76,7 +77,7 @@ export interface EstiloCarta {
    * Una variable CSS por cada una de las 64 claves, lista para setear en la raíz `.carta-shell` (`--carta-<clave-con-
    * guiones>`). Valor validado si lo hay, si no el default de `CLAVES_TEMA_V1` (`""` = sin default: la variable queda vacía
    * y el CSS base de `.carta-shell` decide). `--carta-hero-ink` lleva el valor YA RESUELTO (`resolveHeroInk`), no el
-   * "claro"/"oscuro" crudo — eso no es un color CSS válido por sí solo.
+   * "claro"/"oscuro" crudo — eso no es un color CSS válido por sí solo. Más las de la escala de letra única (`--carta-fs-<rol>`, `escala.ts`, DEC-35).
    */
   variablesCss: Readonly<Record<string, string>>;
   /** Acceso directo por clave a los mismos valores resueltos (validado o default) — para lo que un componente necesita leer como dato, no como CSS. */
@@ -144,6 +145,12 @@ export function resolverEstiloCarta(valoresGuardados: unknown): EstiloCarta {
 
   const heroInk = valores.hero_ink ? resolveHeroInk(valores.hero_ink) : null;
   if (heroInk) variablesCss[aVariableCss("hero_ink")] = heroInk;
+
+  // DEC-35 (Fase 5): la escala de letra única (`escala.ts`), con el piso de cada rol y el tema de la sucursal mandando solo hacia arriba.
+  Object.assign(
+    variablesCss,
+    variablesDeLaEscala({ nombre: valores.carta_fuente_item_nombre, precio: valores.carta_fuente_item_precio, descripcion: valores.carta_fuente_item_descripcion, tags: valores.carta_fuente_item_tags }),
+  );
 
   const familiaTipografica = valores.carta_fuente_familia as FamiliaTipografica;
   variablesCss[aVariableCss("carta_fuente_familia")] = FAMILIA_CSS[familiaTipografica];

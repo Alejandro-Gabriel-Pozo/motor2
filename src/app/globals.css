@@ -130,6 +130,52 @@ body {
   font-family: var(--carta-fuente-familia, var(--font-carta-serif, ui-serif, serif), serif);
 }
 
+/* Fase 5 (DEC-35, ADR-035): la ESCALA DE LETRA ÚNICA de la carta. Cada texto tiene un ROL y cada rol un solo tamaño y un solo peso, el mismo para todo ítem (con o sin
+   opciones, plato o promo). Los tamaños son las variables `--carta-fs-<rol>` que arma `src/core/carta/escala.ts` (con el piso de cada rol y el tema de la sucursal mandando
+   solo hacia arriba) y pone `resolverEstiloCarta` en la raíz de la carta (el portal, en la suya): ningún componente de la carta escribe un tamaño (lo vigila el cerco
+   `carta-publica-tipografia`). */
+.carta-shell .carta-rol-producto {
+  font-size: var(--carta-fs-producto);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.carta-shell .carta-rol-precio {
+  font-size: var(--carta-fs-precio);
+  font-weight: 600;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.carta-shell .carta-rol-opcion {
+  font-size: var(--carta-fs-opcion);
+  font-weight: 400;
+  line-height: 1.375;
+}
+.carta-shell .carta-rol-opcion-precio {
+  font-size: var(--carta-fs-opcion);
+  font-weight: 600;
+  line-height: 1.375;
+  font-variant-numeric: tabular-nums;
+}
+.carta-shell .carta-rol-aclaracion {
+  font-size: var(--carta-fs-aclaracion);
+  font-weight: 400;
+  line-height: 1.375;
+  color: var(--carta-ink-soft);
+}
+.carta-shell .carta-rol-aclaracion-rotulo {
+  font-size: var(--carta-fs-aclaracion);
+  font-weight: 600;
+  line-height: 1.375;
+}
+.carta-shell .carta-rol-etiqueta {
+  font-size: var(--carta-fs-etiqueta);
+  font-weight: 400;
+}
+.carta-shell .carta-rol-titulo {
+  font-size: var(--carta-fs-titulo);
+  font-weight: 500;
+}
+
 /* Portal de sucursales (`PortalVista`): colores y tamaños llegan como `--portal-*` desde `resolverEstiloPortal` (config de
    `PortalCartaEmpresa`). Sin valor cargado cae a los tokens `--carta-*` (contraste AA). */
 .carta-shell .portal {

@@ -175,11 +175,11 @@ export const CLAVES_TEMA_V1 = [
   { clave: "carta_fuente_banda_titulo", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño del título de la banda", defaultCarta: "0.95rem", ...FUENTE },
   { clave: "carta_fuente_banda_descripcion", bloque: "D", zona: "Tipografía de banda", etiqueta: "Tamaño de la descripción de la banda", defaultCarta: "0.6875rem", ...FUENTE },
 
-  // Tipografía de ítems
-  { clave: "carta_fuente_item_nombre", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño del nombre del ítem", defaultCarta: "0.88rem", ...FUENTE },
-  { clave: "carta_fuente_item_precio", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño del precio del ítem", defaultCarta: "0.88rem", ...FUENTE },
-  { clave: "carta_fuente_item_descripcion", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de la descripción del ítem", defaultCarta: "0.6875rem", ...FUENTE },
-  { clave: "carta_fuente_item_tags", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de los tags del ítem", defaultCarta: "0.6875rem", ...FUENTE },
+  // Tipografía de ítems. Fase 5 (DEC-35): los defaults son los pisos de la escala única (`escala.ts`); el tema solo puede pedir MÁS (la carta toma `max(piso, tema)`).
+  { clave: "carta_fuente_item_nombre", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño del nombre del ítem", defaultCarta: "1.1875rem", ...FUENTE },
+  { clave: "carta_fuente_item_precio", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño del precio del ítem", defaultCarta: "1.1875rem", ...FUENTE },
+  { clave: "carta_fuente_item_descripcion", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de la descripción del ítem", defaultCarta: "0.875rem", ...FUENTE },
+  { clave: "carta_fuente_item_tags", bloque: "D", zona: "Tipografía de ítems", etiqueta: "Tamaño de los tags del ítem", defaultCarta: "0.75rem", ...FUENTE },
 
   // Banda e imagen de sección
   { clave: "carta_banda_alto_mobile", bloque: "D", zona: "Banda e imagen de sección", etiqueta: "Alto de la banda en mobile", defaultCarta: "90", tipo: "altoBandaMobile" },
