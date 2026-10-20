@@ -1,4 +1,6 @@
-import { posix } from "node:path";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, posix } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { arbolDe, leer, listarArchivos, probarCerco, RAIZ_DEL_REPO, sinComentarios, type Cerco, type Cuentas } from "./cercos/trinquete";
@@ -18,8 +20,9 @@ import { arbolDe, leer, listarArchivos, probarCerco, RAIZ_DEL_REPO, sinComentari
  *  2. Un caso de uso (cualquier archivo de `server/actions/<d>/casos-de-uso/`) escribe un precio si importa una de esas funciones, o si importa
  *     un valor de otro caso de uso que lo escribe (`set-precio-local-producto` → `guardar-precio-local-en-tx` → `escribirPrecioLocal`).
  *  3. Declara control del valor visto si su código (fuera de los comentarios) usa el código `"PRECIO_DESACTUALIZADO"` o `"VERSION_DESACTUALIZADA"`.
- *     Un paso compartido que lo HEREDA de su llamador (`guardar-precio-local-en-tx` dentro de `ajustar-precios-de-la-carta`) no lo declara: cuenta,
- *     porque otros llamadores lo usan sin control.
+ *     Un PASO COMPARTIDO (un caso de uso que solo importan otros casos de uso, nunca una Server Action) lo HEREDA si TODOS sus llamadores lo controlan
+ *     (Fase 2, paso A7: `guardar-precio-local-en-tx`, que llaman `set-precio-local-producto`, `sincronizar-precio-local-grupo-carta` y
+ *     `ajustar-precios-de-la-carta`); con un solo llamador sin control, cuenta.
  * Una entrada por caso de uso, un tipo por precio que escribe; cada entrada con su motivo.
  *
  * Mecanismo, regeneración (`BAJAR_CERCOS=1`) y excepciones: `test/arquitectura/cercos/trinquete.ts`.
@@ -37,11 +40,8 @@ const ESCRITORES_INDIRECTOS: readonly { ruta: string; funcion: string; precio: P
 
 const CODIGOS_DE_VISTO = /["'`](?:PRECIO_DESACTUALIZADO|VERSION_DESACTUALIZADA)["'`]/;
 const RE_CASO_DE_USO = /^src\/server\/actions\/[^/]+\/casos-de-uso\/[^/]+\.ts$/;
-const SIN_CONTROL = "Deuda de la ola precio y carta (Fase 2):";
-
-const MOTIVOS: Readonly<Record<string, string>> = {
-  "src/server/actions/movimientos/casos-de-uso/guardar-precio-local-en-tx.ts": `${SIN_CONTROL} paso compartido que escribe el precio local; el control lo pone solo uno de sus llamadores (ajustar-precios-de-la-carta), no él.`,
-};
+/** Motivo de cada entrada de la línea de base (deuda con nombre propio). Fase 2 cerrada: vacío; un escritor nuevo sin control necesita su motivo además de subir la cuenta. */
+const MOTIVOS: Readonly<Record<string, string>> = {};
 
 /** Qué precios escribe el cuerpo de una función de persistencia (ya sin comentarios). */
 function preciosQueEscribe(cuerpo: string): Precio[] {
@@ -94,13 +94,22 @@ function importsDeValor(fuente: string, ruta: string): { destino: string | null;
   });
 }
 
-/** Caso de uso → precios que escribe (directo o por otro caso de uso) y si declara control del valor visto. */
-function escritoresDePrecio(raizDelRepo: string): Map<string, { precios: Set<Precio>; conVisto: boolean }> {
+interface EscritorDePrecio {
+  precios: Set<Precio>;
+  /** Controla el valor visto: él mismo (usa el código) o, si es un paso compartido, heredado de TODOS sus llamadores. */
+  conVisto: boolean;
+  /** El control le llega de sus llamadores (paso compartido), no lo declara él. */
+  heredado: boolean;
+}
+
+/** Caso de uso → precios que escribe (directo o por otro caso de uso) y si controla el valor visto (propio o heredado). */
+function escritoresDePrecio(raizDelRepo: string): Map<string, EscritorDePrecio> {
   const persistencia = escritoresEnPersistencia(raizDelRepo);
-  const casos = listarArchivos(raizDelRepo, ["src/server/actions"], [".ts"]).filter((r) => RE_CASO_DE_USO.test(r));
+  const deAcciones = listarArchivos(raizDelRepo, ["src/server/actions"], [".ts"]);
+  const casos = deAcciones.filter((r) => RE_CASO_DE_USO.test(r));
   const fuentes = new Map(casos.map((r) => [r, sinComentarios(leer(raizDelRepo, r), r)]));
   const imports = new Map(casos.map((r) => [r, importsDeValor(fuentes.get(r)!, r)]));
-  const resultado = new Map(casos.map((r) => [r, { precios: new Set<Precio>(), conVisto: CODIGOS_DE_VISTO.test(fuentes.get(r)!) }]));
+  const resultado = new Map<string, EscritorDePrecio>(casos.map((r) => [r, { precios: new Set<Precio>(), conVisto: CODIGOS_DE_VISTO.test(fuentes.get(r)!), heredado: false }]));
   for (const caso of casos) {
     for (const { destino, nombres } of imports.get(caso)!) {
       const funciones = destino ? persistencia.get(destino) : undefined;
@@ -119,6 +128,29 @@ function escritoresDePrecio(raizDelRepo: string): Map<string, { precios: Set<Pre
             cambio = true;
           }
         }
+      }
+    }
+  }
+  // Herencia (Fase 2, paso A7): un PASO COMPARTIDO —un caso de uso que importan otros casos de uso y ninguna Server Action— hereda el control del valor visto si TODOS los archivos que lo
+  // importan (con un import de valor) son casos de uso que lo controlan (propio o heredado). Basta un llamador sin control, o uno que no sea un caso de uso, para que cuente. Los importadores se
+  // buscan en `src/server/actions`: R4 (`.dependency-cruiser.cjs`) no deja importar un caso de uso desde otro lado.
+  const importadores = new Map<string, string[]>();
+  for (const ruta of deAcciones) {
+    const deLaRuta = imports.get(ruta) ?? importsDeValor(sinComentarios(leer(raizDelRepo, ruta), ruta), ruta);
+    for (const { destino, nombres } of deLaRuta) {
+      if (!destino || destino === ruta || !resultado.has(destino) || nombres.length === 0) continue;
+      importadores.set(destino, [...(importadores.get(destino) ?? []), ruta]);
+    }
+  }
+  for (let cambio = true; cambio; ) {
+    cambio = false;
+    for (const [caso, r] of resultado) {
+      if (r.conVisto) continue;
+      const llamadores = importadores.get(caso) ?? [];
+      if (llamadores.length > 0 && llamadores.every((l) => resultado.get(l)?.conVisto === true)) {
+        r.conVisto = true;
+        r.heredado = true;
+        cambio = true;
       }
     }
   }
@@ -153,9 +185,36 @@ describe("cerco «escritores de precio con visto»: el cálculo", () => {
 
   it("ve los escritores CON control del valor visto (no pasa en vacío) y el paso compartido por transitividad", () => {
     const escritores = escritoresDePrecio(RAIZ_DEL_REPO);
-    expect(escritores.get("src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts")).toEqual({ precios: new Set(["Producto.precioVenta"]), conVisto: true });
-    expect(escritores.get("src/server/actions/movimientos/casos-de-uso/ajustar-precios-de-la-carta.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true });
-    expect(escritores.get("src/server/actions/movimientos/casos-de-uso/set-precio-local-producto.ts")?.precios).toEqual(new Set(["PrecioLocalProducto"]));
+    expect(escritores.get("src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts")).toEqual({ precios: new Set(["Producto.precioVenta"]), conVisto: true, heredado: false });
+    expect(escritores.get("src/server/actions/movimientos/casos-de-uso/ajustar-precios-de-la-carta.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: false });
+    expect(escritores.get("src/server/actions/movimientos/casos-de-uso/set-precio-local-producto.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: false });
+    // El paso compartido lo hereda: sus tres llamadores controlan el valor visto.
+    expect(escritores.get("src/server/actions/movimientos/casos-de-uso/guardar-precio-local-en-tx.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: true });
+  });
+
+  it("la herencia del paso compartido: lo hereda solo si TODOS sus llamadores son casos de uso con control (en un repo de mentira)", () => {
+    const raiz = mkdtempSync(join(tmpdir(), "cerco-escritores-"));
+    const escribir = (ruta: string, texto: string) => {
+      mkdirSync(join(raiz, posix.dirname(ruta)), { recursive: true });
+      writeFileSync(join(raiz, ruta), texto);
+    };
+    try {
+      escribir("src/server/persistencia/d/precio.ts", "export async function escribir(db) { await db.precioLocalProducto.upsert({}); }\n");
+      escribir("src/server/actions/d/casos-de-uso/paso.ts", 'import { escribir } from "@/server/persistencia/d/precio";\nexport async function paso(tx) { await escribir(tx); }\n');
+      escribir("src/server/actions/d/casos-de-uso/con-control.ts", 'import { paso } from "./paso";\nexport async function a(tx) { if (Math.random()) return "PRECIO_DESACTUALIZADO"; await paso(tx); }\n');
+      const paso = "src/server/actions/d/casos-de-uso/paso.ts";
+      expect(escritoresDePrecio(raiz).get(paso)).toMatchObject({ conVisto: true, heredado: true });
+      // Un segundo llamador SIN control: el paso cuenta (y ese llamador también).
+      escribir("src/server/actions/d/casos-de-uso/sin-control.ts", 'import { paso } from "./paso";\nexport async function b(tx) { await paso(tx); }\n');
+      expect(escritoresDePrecio(raiz).get(paso)).toMatchObject({ conVisto: false, heredado: false });
+      expect(Object.keys(medirSinVisto(raiz)).sort()).toEqual([paso, "src/server/actions/d/casos-de-uso/sin-control.ts"]);
+      // Sin llamadores no hay de quién heredar; una Server Action que lo importe directo tampoco deja heredar.
+      rmSync(join(raiz, "src/server/actions/d/casos-de-uso/sin-control.ts"));
+      escribir("src/server/actions/d/accion.ts", 'import { paso } from "./casos-de-uso/paso";\nexport async function accion(tx) { await paso(tx); }\n');
+      expect(escritoresDePrecio(raiz).get(paso)).toMatchObject({ conVisto: false });
+    } finally {
+      rmSync(raiz, { recursive: true, force: true });
+    }
   });
 
   it("el detector de la persistencia: escritura con el campo de precio sí; un alta, una lectura u otra columna, no", () => {

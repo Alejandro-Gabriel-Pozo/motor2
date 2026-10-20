@@ -1,14 +1,8 @@
 {
   "regla": "escritores-de-precio-con-visto",
   "meta": "0 en la Fase 2: todo caso de uso que escribe un precio compara el valor visto y responde PRECIO_DESACTUALIZADO/VERSION_DESACTUALIZADA",
-  "total": 1,
-  "entradas": 1,
-  "porTipo": {
-    "PrecioLocalProducto": 1
-  },
-  "cuentas": {
-    "src/server/actions/movimientos/casos-de-uso/guardar-precio-local-en-tx.ts": {
-      "PrecioLocalProducto": 1
-    }
-  }
+  "total": 0,
+  "entradas": 0,
+  "porTipo": {},
+  "cuentas": {}
 }
