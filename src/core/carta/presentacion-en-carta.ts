@@ -15,6 +15,8 @@ import { leerOpcionEnCarta, opcionesDelEje, primeraEnMinuscula, type EjesDeLaCar
  *    base con dos ejes sale SIEMPRE así (DEC-11). Más de 3 columnas: `lista`, una fila por combinación;
  *  - `lista`: un eje en filas con su precio final. Una BASE de un solo eje (las pizzas) sale OCULTA por defecto (`encabezado: false`: cada opción es una fila con su nombre completo, «Pizza
  *    muzzarella $18.000») y con el nombre arriba si su interruptor está prendido (DEC-11). Un producto directo en lista lleva siempre el nombre arriba.
+ * JERARQUÍA de la `lista` (campo aditivo `protagonista`): sin el campo protagonizan las OPCIONES (una base, las filas que definen el plato, las combinaciones: lo que se lee primero es cada fila); con
+ * `protagonista: "nombre"` protagoniza el NOMBRE del producto, porque las filas son sus tamaños (cómo lo querés, no qué plato es). Solo lo pone la caída de una tanda de más de 3 tamaños.
  * Las ACLARACIONES van debajo del plato, en el orden del producto (DEC-07): lo que se elige sin costo («Guarnición: ensalada, papas fritas o puré»: el nombre del grupo como rótulo y la primera letra de
  * cada opción en minúscula) y, si algo suma o resta, la línea con cada recargo («Extras: papas +$2.000»; el recargo de un adicional NUNCA lleva el descuento de producto). Una sola opción sin costo no
  * tiene línea.
@@ -51,7 +53,17 @@ export type PresentacionCartaV1 =
   | { forma: "simple"; aclaraciones: AclaracionCartaV1[] }
   | { forma: "columnas"; celdas: (number | null)[]; aclaraciones: AclaracionCartaV1[] }
   | { forma: "tabla"; columnas: string[]; filas: { rotulo: string; celdas: (number | null)[] }[]; aclaraciones: AclaracionCartaV1[] }
-  | { forma: "lista"; encabezado: boolean; filas: { rotulo: string; precio: number }[]; aclaraciones: AclaracionCartaV1[] };
+  | {
+      forma: "lista";
+      encabezado: boolean;
+      /**
+       * Quién protagoniza la lista. Sin el campo protagonizan las opciones (base, filas que definen el plato, combinaciones); `"nombre"` cuando las filas son los tamaños de un producto directo
+       * (cómo lo querés, no qué plato es). Solo lo pone la caída de una tanda de más de 3 tamaños.
+       */
+      protagonista?: "nombre";
+      filas: { rotulo: string; precio: number }[];
+      aclaraciones: AclaracionCartaV1[];
+    };
 
 /** Una tanda de una sección: los ítems `primero`…`ultimo` (índices en `items`, inclusive) comparten los rótulos de sus columnas. */
 export interface TandaCartaV1 {
@@ -185,7 +197,7 @@ export function resolverTandas(pendientes: readonly (PendienteDeTanda | null)[])
     const ordenadas = [...union.values()].sort((a, b) => a.orden - b.orden || (a.opcionId < b.opcionId ? -1 : a.opcionId > b.opcionId ? 1 : 0));
     grupo.forEach((p, k) => {
       if (ordenadas.length > MAXIMO_DE_COLUMNAS_EN_CARTA) {
-        porItem.set(i + k, { forma: "lista", encabezado: true, filas: p.columnas.map((c) => ({ rotulo: c.rotulo, precio: c.precio })), aclaraciones: p.aclaraciones });
+        porItem.set(i + k, { forma: "lista", encabezado: true, protagonista: "nombre", filas: p.columnas.map((c) => ({ rotulo: c.rotulo, precio: c.precio })), aclaraciones: p.aclaraciones });
         caidasALista.push({ indice: i + k, columnas: ordenadas.length });
         return;
       }

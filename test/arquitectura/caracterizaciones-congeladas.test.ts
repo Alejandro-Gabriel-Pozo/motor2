@@ -542,6 +542,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 5 («carta pareja»), paso 7 (ADITIVO; SOLO la parte de CARTA, el COBRO idéntico): la carta pública suma, por PV con opciones, la forma ya resuelta en el servidor (`presentacion`) y, por sección, sus `tandas` de columnas compartidas. El test las vuelca en su PROPIA línea (`presentacion {…}` y `tandas […]`, JSON tal como viaja) y las saca de la línea ITEM/SECCION (que quedan idénticas). Cambian SOLO 7 líneas, todas agregadas: 5 `presentacion` (Pizzas, Milanesas, Bife a la criolla, Café, y el Café de la carta con la grilla de la sucursal, con Mediano 4200) y 2 `tandas` (Platos y Cafetería; la carta del café con la grilla solo vuelca su ítem). Revisado con `git diff -U0`: ninguna línea quitada ni cambiada; de `## COBRO` en adelante la ÚNICA diferencia es la línea `presentacion` del café con la grilla (que es carta). Pizzas y Milanesas salen como productos DIRECTOS (la semilla no los marca como base): Pizzas cae a lista con el nombre arriba (6 columnas > 3) y Milanesas en columnas con «Milanesas de» como aclaración (sin prefijo cargado). Ningún texto visible cambia en esta tanda: el dibujo nuevo es de la tanda B.",
       },
+      {
+        blob: "b087742c0b75fb85ef52b2e10b2851df843dc0c4",
+        // El commit PADRE de este (9c8f7b88) es el último antes del cambio; el golden se regenera en el commit siguiente (Fase 5, tanda C2).
+        commit: "9c8f7b88",
+        motivo:
+          "Ola «precio y carta», Fase 5 tanda C (jerarquía; ADITIVO, solo CARTA, el COBRO idéntico): la lista que cae de una tanda de más de 3 tamaños lleva protagonista: \"nombre\". Revisado con `git diff -U0`: cambia SOLO la línea `presentacion` de Pizzas (producto directo con 6 tamaños), que suma `\"protagonista\":\"nombre\"` después de `\"encabezado\":true`; de `## COBRO` en adelante nada cambia.",
+      },
     ],
   },
   "test/e2e/linea-de-base-precio-y-carta.golden.txt": {

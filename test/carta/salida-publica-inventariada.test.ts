@@ -73,6 +73,8 @@ const CLAVES_DE_LA_CARTA = [
   "carta.secciones[].items[].presentacion.celdas",
   "carta.secciones[].items[].presentacion.columnas",
   "carta.secciones[].items[].presentacion.encabezado",
+  // Fase 5 tanda C (aditivo): quién protagoniza una lista; valor fijo.
+  "carta.secciones[].items[].presentacion.protagonista",
   "carta.secciones[].items[].presentacion.filas",
   "carta.secciones[].items[].presentacion.filas[].celdas",
   "carta.secciones[].items[].presentacion.filas[].precio",

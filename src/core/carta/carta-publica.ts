@@ -53,7 +53,7 @@ export type PresentacionCartaPublica =
   | { forma: "simple"; aclaraciones: AclaracionCartaPublica[] }
   | { forma: "columnas"; celdas: (number | null)[]; aclaraciones: AclaracionCartaPublica[] }
   | { forma: "tabla"; columnas: string[]; filas: { rotulo: string; celdas: (number | null)[] }[]; aclaraciones: AclaracionCartaPublica[] }
-  | { forma: "lista"; encabezado: boolean; filas: { rotulo: string; precio: number }[]; aclaraciones: AclaracionCartaPublica[] };
+  | { forma: "lista"; encabezado: boolean; protagonista?: "nombre"; filas: { rotulo: string; precio: number }[]; aclaraciones: AclaracionCartaPublica[] };
 
 /** Fase 5: los ítems `primero`…`ultimo` de la sección (índices en `items`) comparten los rótulos de sus columnas. */
 export interface TandaCartaPublica {
@@ -126,7 +126,7 @@ function proyectarPresentacion(p: PresentacionCartaV1): PresentacionCartaPublica
     case "tabla":
       return { forma: "tabla", columnas: [...p.columnas], filas: p.filas.map((f) => ({ rotulo: f.rotulo, celdas: [...f.celdas] })), aclaraciones };
     case "lista":
-      return { forma: "lista", encabezado: p.encabezado, filas: p.filas.map((f) => ({ rotulo: f.rotulo, precio: f.precio })), aclaraciones };
+      return { forma: "lista", encabezado: p.encabezado, ...(p.protagonista !== undefined ? { protagonista: p.protagonista } : {}), filas: p.filas.map((f) => ({ rotulo: f.rotulo, precio: f.precio })), aclaraciones };
   }
 }
 
@@ -184,8 +184,9 @@ export function etiquetaDeCacheDeCartasPublicas(empresaSlug: string): string {
  * La VERSIÓN de la forma de la carta armada que se guarda en el caché de la carta pública (Fase 5, «carta pareja»): va en la clave de `unstable_cache` (`server/carta-publica/sin-sesion.ts`), así un
  * despliegue que cambia lo que arma el servidor (la `presentacion` de cada ítem y las `tandas` de cada sección) no sirve durante 60 s una carta guardada por el código anterior. Se cambia cada vez que
  * cambia la FORMA de `CartaV1` (no los datos). «carta-pareja-2»: suma `seccionesImpresas` (la carta completa del papel, paso 10b).
+ * «carta-pareja-3»: suma `protagonista` en la lista (tanda C, jerarquía).
  */
-export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-2";
+export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-3";
 
 /** La carta armada, sin los ids internos: lo que la carta pública emite hacia el navegador. */
 export function proyectarCartaPublica(carta: CartaV1): CartaPublicaV1 {

@@ -243,16 +243,18 @@ describe("6d · lista de una base: las pizzas", () => {
   it("con «Mostrar el nombre arriba» prendido, el nombre va de encabezado; el prefijo es opcional y NO decide el encabezado", () => {
     const conNombre = carta([{ id: "pizzas", nombre: "Pizzas", precioBase: PIZZAS.precioBase, esBase: true, grupos: PIZZAS.grupos, mostrarNombreArriba: true }]);
     expect(item(conNombre, "Pizzas")!.presentacion).toMatchObject({ forma: "lista", encabezado: true });
+    expect(item(conNombre, "Pizzas")!.presentacion, "una base con el nombre arriba: protagonizan las opciones").not.toHaveProperty("protagonista");
     expect(conNombre.diagnostico.basesOcultas).toBeUndefined();
     const conPrefijoSinInterruptor = carta([{ id: "pizzas", nombre: "Pizzas", precioBase: PIZZAS.precioBase, esBase: true, grupos: conPrefijo(PIZZAS.grupos, "Tipos de Pizza", "De") }]);
     const conPrefijoLista = item(conPrefijoSinInterruptor, "Pizzas")!.presentacion!;
     expect(conPrefijoLista).toMatchObject({ forma: "lista", encabezado: false });
+    expect(conPrefijoLista).not.toHaveProperty("protagonista");
     expect(conPrefijoLista.forma === "lista" && conPrefijoLista.filas[0]).toEqual({ rotulo: "De pizza muzzarella", precio: 18000 });
   });
 
   it("el mismo grupo en un producto DIRECTO no es una base: sale en columnas (o en lista con el nombre arriba si son más de 3)", () => {
     const directo = carta([{ id: "pizzas", nombre: "Pizzas", precioBase: PIZZAS.precioBase, grupos: PIZZAS.grupos }]);
-    expect(item(directo, "Pizzas")!.presentacion).toMatchObject({ forma: "lista", encabezado: true });
+    expect(item(directo, "Pizzas")!.presentacion).toMatchObject({ forma: "lista", encabezado: true, protagonista: "nombre" });
   });
 });
 
@@ -296,7 +298,7 @@ describe("6g · límites y diagnóstico interno", () => {
 
   it("más de 3 columnas en una tanda: cada producto cae a lista con el nombre arriba, sin tanda, y queda en el diagnóstico", () => {
     const armado = carta([{ id: "te", nombre: "Té", precioBase: 1000, grupos: [tamanos(4)] }]);
-    expect(item(armado, "Té")!.presentacion).toMatchObject({ forma: "lista", encabezado: true, filas: [{ rotulo: "T0", precio: 1000 }, { rotulo: "T1" }, { rotulo: "T2" }, { rotulo: "T3", precio: 1300 }] });
+    expect(item(armado, "Té")!.presentacion).toMatchObject({ forma: "lista", encabezado: true, protagonista: "nombre", filas: [{ rotulo: "T0", precio: 1000 }, { rotulo: "T1" }, { rotulo: "T2" }, { rotulo: "T3", precio: 1300 }] });
     expect(armado.carta.secciones[0]).not.toHaveProperty("tandas");
     expect(armado.diagnostico.productosConMuchasColumnas).toEqual([{ productoId: "te", nombre: "Té", columnas: 4 }]);
   });
@@ -306,6 +308,7 @@ describe("6g · límites y diagnóstico interno", () => {
     const de = { ...MILANESA.grupos[1]!, prefijoEnCarta: "De" };
     const armado = carta([{ id: "mila", nombre: "Milanesas", precioBase: 1000, esBase: true, grupos: [g, de] }]);
     const p = item(armado, "Milanesas")!.presentacion!;
+    expect(p, "las combinaciones son opciones: protagonizan ellas").not.toHaveProperty("protagonista");
     expect(p.forma === "lista" && p.filas.slice(0, 2)).toEqual([
       { rotulo: "T0, de carne", precio: 1000 },
       { rotulo: "T1, de carne", precio: 1100 },

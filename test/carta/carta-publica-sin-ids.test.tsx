@@ -185,6 +185,28 @@ describe("Fase 5 («carta pareja»): la forma y las tandas también se copian ca
             imagenUrl: null,
             presentacion: { forma: "tabla", columnas: ["Simple"], filas: [{ rotulo: "De carne", celdas: [20000], opcionId: "opcion-interna" }], aclaraciones: [], prefijoEnCarta: "De" },
           },
+          {
+            productoId: "prod-interno-3",
+            nombre: "Té",
+            categoria: "Cafetería",
+            descripcion: null,
+            precio: 1,
+            tags: [],
+            especial: false,
+            imagenUrl: null,
+            presentacion: { forma: "lista", encabezado: true, protagonista: "nombre", filas: [{ rotulo: "T0", precio: 1, opcionId: "opcion-interna" }], aclaraciones: [], grupoId: "grupo-interno" },
+          },
+          {
+            productoId: "prod-interno-4",
+            nombre: "Pizzas",
+            categoria: "Cafetería",
+            descripcion: null,
+            precio: 1,
+            tags: [],
+            especial: false,
+            imagenUrl: null,
+            presentacion: { forma: "lista", encabezado: false, filas: [{ rotulo: "Pizza muzzarella", precio: 1, opcionId: "opcion-interna" }], aclaraciones: [], grupoId: "grupo-interno" },
+          },
         ],
         promos: [],
         tandas: [{ primero: 0, ultimo: 0, rotulos: ["Chico", "Grande"], grupoId: "grupo-interno" }],
@@ -206,6 +228,14 @@ describe("Fase 5 («carta pareja»): la forma y las tandas también se copian ca
     });
     expect(publica.secciones[0].items[1].presentacion).toEqual({ forma: "tabla", columnas: ["Simple"], filas: [{ rotulo: "De carne", celdas: [20000] }], aclaraciones: [] });
     expect(publica.secciones[0].tandas).toEqual([{ primero: 0, ultimo: 0, rotulos: ["Chico", "Grande"] }]);
+  });
+
+  it("la lista copia `protagonista` solo si está: con el campo sale (valor fijo, sin ids); sin el campo la clave no existe", () => {
+    const items = proyectarCartaPublica(conForma as unknown as CartaV1).secciones[0].items;
+    expect(items[2].presentacion).toEqual({ forma: "lista", encabezado: true, protagonista: "nombre", filas: [{ rotulo: "T0", precio: 1 }], aclaraciones: [] });
+    const sinCampo = items[3].presentacion!;
+    expect(sinCampo).toEqual({ forma: "lista", encabezado: false, filas: [{ rotulo: "Pizza muzzarella", precio: 1 }], aclaraciones: [] });
+    expect("protagonista" in sinCampo).toBe(false);
   });
 
   it("un ítem sin forma y una sección sin tandas no llevan esas claves (el JSON queda igual que antes)", () => {

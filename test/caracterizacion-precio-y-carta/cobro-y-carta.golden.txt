@@ -5,7 +5,7 @@ carta: version=1 generadoEn=<fecha> sucursal={"nombre":"Central"} secciones=4
 SECCION «Pizzas» descripcion=null imagenUrl=null orden=1 titulo=null items=1 promos=0
   ITEM «Pizzas» categoria="Pizzas" descripcion=null especial=false imagenUrl=null precio=18000 tags=[]
     lista «Tipos de Pizza»: Pizza muzzarella precio=18000 | Pizza de verduras asadas precio=20000 | Pizza fugazzeta precio=22000 | Pizza napolitana precio=22000 | Pizza con papas fritas precio=25000 | Pizza bomba precio=25000
-    presentacion {"forma":"lista","encabezado":true,"filas":[{"rotulo":"Pizza muzzarella","precio":18000},{"rotulo":"Pizza de verduras asadas","precio":20000},{"rotulo":"Pizza fugazzeta","precio":22000},{"rotulo":"Pizza napolitana","precio":22000},{"rotulo":"Pizza con papas fritas","precio":25000},{"rotulo":"Pizza bomba","precio":25000}],"aclaraciones":[]}
+    presentacion {"forma":"lista","encabezado":true,"protagonista":"nombre","filas":[{"rotulo":"Pizza muzzarella","precio":18000},{"rotulo":"Pizza de verduras asadas","precio":20000},{"rotulo":"Pizza fugazzeta","precio":22000},{"rotulo":"Pizza napolitana","precio":22000},{"rotulo":"Pizza con papas fritas","precio":25000},{"rotulo":"Pizza bomba","precio":25000}],"aclaraciones":[]}
 SECCION «Platos» descripcion=null imagenUrl=null orden=2 titulo=null items=3 promos=0
   tandas [{"primero":0,"ultimo":0,"rotulos":["Simple","Napolitana"]}]
   ITEM «Milanesas» categoria="Platos" descripcion=null especial=false imagenUrl=null precio=20000 tags=[]
