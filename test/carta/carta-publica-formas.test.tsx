@@ -118,7 +118,7 @@ describe("8b: una tanda (el café y el cortado comparten Chico | Mediano | Grand
   });
 
   it("ningún título dentro de una celda de encabezado (el HTML no lo admite): el nombre no es un h3; la descripción y las aclaraciones, en una fila de todo el ancho", () => {
-    expect(tanda).not.toMatch(/<th[^>]*>(?:(?!<\/th>).)*<h[1-6]/s);
+    expect(tanda).not.toMatch(/<th[^>]*>(?:(?!<\/th>)[\s\S])*<h[1-6]/);
     expect(tanda).toMatch(/<td colSpan="4"[^>]*><p data-aclaracion="Preparación del café"/);
   });
 
