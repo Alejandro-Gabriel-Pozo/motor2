@@ -515,6 +515,13 @@ const CONGELADAS: Record<string, Congelada> = {
       "Ola «precio y carta», Fase 0: foto de lo que HOY cobra la acción real del POS (agregarItems) y de la carta pública que recibe el navegador (CartaPublicaV1) sobre el catálogo de referencia sembrado en Postgres. NO es una aprobación. Las fases siguientes la regeneran declarándolo acá; el retiro de GO-3a (Fase 3) NO debe moverla.",
     regeneraciones: [],
   },
+  "test/e2e/linea-de-base-precio-y-carta.golden.txt": {
+    blob: "11a7b90078489a6eb2cc26e499b2aa363c5a3ead",
+    desde: "30a9994",
+    motivo:
+      "Ola «precio y carta», Fase 0: foto en navegador (375 y 1280 px) del texto visible de la carta pública, con su tipografía computada de hoy (ítems sin opciones a 14,08 px frente a 19 px con opciones), y de las pantallas de opciones de Pizzas, del grupo «Tipos de Pizza» y de la parametrización de secciones. NO es una aprobación. Las Fases 5 (escala de letra única, carta pareja) y 6 (interfaz del producto) la regeneran declarándolo acá.",
+    regeneraciones: [],
+  },
 };
 
 /** `git hash-object` del contenido normalizado a LF (lo que `core.autocrlf=true` guarda en el blob). */
