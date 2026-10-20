@@ -3492,9 +3492,8 @@ model ProductoAdmiteGrupo {
   version        Int             @default(1)
   creadoEn       DateTime        @default(now())
   actualizadoEn  DateTime        @default(now())
-  /// GO-3 (ADR-032): 1 o 2 (CHECK) si este grupo es un EJE de las combinaciones del producto (a lo sumo uno por número: índice único parcial que solo vive en la migración); NULL = no es eje. Un eje es MEDIDA o VARIANTE con
-  /// mínimo = máximo = 1, a lo sumo una MEDIDA, y no cambia mientras exista una combinación del producto (lo controla la aplicación, `validarEjesDeCombinacion`).
-  ejeDeCombinacion Int?          @db.SmallInt
+  // (GO-3a declaraba acá `ejeDeCombinacion`, el eje de las combinaciones del producto: se retiró del modelo en la Fase 3 de la ola «precio y carta», paso 3.5. La columna —nulable, NULL en
+  // todas las filas— sigue en la base hasta la migración de retiro, con su CHECK y su índice único parcial; Prisma no la ve ni la pide.)
 
   @@unique([productoId, grupoId])
   @@unique([empresaId, id])
