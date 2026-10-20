@@ -10,6 +10,8 @@ import { AyudaCampo } from "@/components/ayuda-campo";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
+import { EnlaceInterno } from "@/components/enlace-interno";
+import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import { darDeAltaProducto, actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
@@ -55,6 +57,7 @@ export function ProductoForm({
   presentacionesIniciales,
   cantidadSucursales,
   nombreSucursalActual,
+  venta,
 }: {
   unidades: OpcionUnidad[];
   insumosIniciales: Opcion[];
@@ -79,6 +82,12 @@ export function ProductoForm({
   /** Solo para el alta (§4.1, docs/plan-disponibilidad-por-sucursal-2026-09-23.md) — sin esto el tilde no dice nada concreto. */
   cantidadSucursales?: number;
   nombreSucursalActual?: string;
+  /**
+   * Fase 4 de la ola «precio y carta» (ADR-035): «¿Cómo se vende?», solo en la edición de un PV. `modo`: el guardado; `grupoConPrecioFinal`: el grupo de medida con el precio final de cada opción, si lo
+   * tiene (sin él, «Por opción» se ve apagado con el motivo). Cambiarlo es de quien tiene `producto_campos_sensibles` (sin ella, solo lectura). Siendo base, el precio guardado se muestra en solo
+   * lectura y el formulario NO lo manda (el servidor lo conserva y rechaza otro). La regla completa la decide el servidor al guardar.
+   */
+  venta?: { modo: "DIRECTO" | "BASE_CONFIGURABLE"; grupoConPrecioFinal: string | null };
 }) {
   const router = useRouter();
   const [insumos, setInsumos] = useState(insumosIniciales);
@@ -93,6 +102,9 @@ export function ProductoForm({
   const [proveedorConsignacionId, setProveedorConsignacionId] = useState(productoExistente?.proveedorConsignacionId ?? "");
   // Default tildado (decisión 2 del dueño): lo común (insumos/platos compartidos) tiene cero fricción.
   const [activoEnTodas, setActivoEnTodas] = useState(true);
+  // Fase 4: el modo elegido en el formulario (decide si se muestra el precio editable o el guardado en solo lectura).
+  const [modoDeVenta, setModoDeVenta] = useState<"DIRECTO" | "BASE_CONFIGURABLE">(venta?.modo ?? "DIRECTO");
+  const esBase = venta !== undefined && modoDeVenta === "BASE_CONFIGURABLE";
 
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -126,7 +138,10 @@ export function ProductoForm({
           precioVenta: numeroDelCampo(String(form.get("precioVenta") ?? "")) ?? 0,
         };
         const sensiblesDelAlta: DatosSensibles = puedeEditarCamposSensibles ? delFormulario : { unidadCompraId: null, unidadStockId, factorConversion: 1, precioVenta: 0 };
-        const sensiblesDeLaEdicion: Partial<DatosSensibles> = puedeEditarCamposSensibles ? delFormulario : {};
+        // Fase 4: siendo (o pasando a ser) base, el precio de venta NO se manda: el servidor conserva el guardado.
+        const { precioVenta: _precioDelFormulario, ...delFormularioSinPrecio } = delFormulario;
+        void _precioDelFormulario;
+        const sensiblesDeLaEdicion: Partial<DatosSensibles> = puedeEditarCamposSensibles ? (esBase ? delFormularioSinPrecio : delFormulario) : {};
         const datos: Omit<DatosProducto, CampoSensibleDelProducto> = {
           codigo: editando ? undefined : texto(form.get("codigo")) || undefined,
           nombre: texto(form.get("nombre")),
@@ -149,7 +164,13 @@ export function ProductoForm({
         startTransition(async () => {
           const resultado = editando
             ? // El precio que mostraba el formulario (control del valor visto): si otra persona lo cambió mientras se editaba, el servidor no pisa su cambio y pide recargar.
-              await actualizarProducto(productoExistente!.id, { ...datos, ...sensiblesDeLaEdicion, precioVentaVisto: productoExistente!.precioVenta })
+              await actualizarProducto(productoExistente!.id, {
+                ...datos,
+                ...sensiblesDeLaEdicion,
+                precioVentaVisto: productoExistente!.precioVenta,
+                // Fase 4: el modo solo lo manda quien puede cambiarlo (sin la clave, «no viene» es «queda como estaba»).
+                ...(venta && puedeEditarCamposSensibles ? { modoDeVenta } : {}),
+              })
             : await darDeAltaProducto({ ...datos, ...sensiblesDelAlta });
           setMensaje(resultado.mensaje);
           setSincronizable(null);
@@ -313,7 +334,49 @@ export function ProductoForm({
         </AyudaCampo>
       </div>
 
+      {tipo === "PV" && venta && (
+        <div className="flex flex-col gap-1" data-modo-de-venta={modoDeVenta}>
+          {puedeEditarCamposSensibles ? (
+            <OpcionesExcluyentes
+              leyenda="¿Cómo se vende?"
+              nombre="modoDeVenta"
+              valorInicial={venta.modo}
+              alCambiar={(valor) => setModoDeVenta(valor === "BASE_CONFIGURABLE" ? "BASE_CONFIGURABLE" : "DIRECTO")}
+              opciones={[
+                { valor: "DIRECTO", etiqueta: "Directo: tiene su precio" },
+                {
+                  valor: "BASE_CONFIGURABLE",
+                  etiqueta: "Por opción: el precio final está en cada opción",
+                  ayuda: venta.grupoConPrecioFinal ? `El precio final de cada opción está en «${venta.grupoConPrecioFinal}».` : undefined,
+                  deshabilitada: venta.modo !== "BASE_CONFIGURABLE" && venta.grupoConPrecioFinal === null,
+                  motivo: "Para venderlo por opción, primero asignale un grupo de tamaños con el precio final de cada opción (en «Opciones de venta» del producto).",
+                },
+              ]}
+            />
+          ) : (
+            <ValorSoloLectura campo="modoDeVenta" etiqueta="¿Cómo se vende?">
+              {venta.modo === "BASE_CONFIGURABLE" ? "Por opción: el precio final está en cada opción" : "Directo: tiene su precio"}
+            </ValorSoloLectura>
+          )}
+        </div>
+      )}
+
+      {tipo === "PV" && esBase && (
+        <div className="flex flex-col gap-1">
+          <ValorSoloLectura campo="precioVenta" etiqueta="Precio guardado (no se cobra)">
+            {pesos(productoExistente?.precioVenta ?? 0)}
+          </ValorSoloLectura>
+          <AyudaCampo>
+            {venta?.grupoConPrecioFinal ? `El precio final de cada opción está en «${venta.grupoConPrecioFinal}». ` : "El precio final de cada opción está en su grupo de tamaños. "}
+            <EnlaceInterno href={`/catalogo/productos/${productoExistente!.id}/opciones`} className="underline">
+              Ver las opciones de venta del producto
+            </EnlaceInterno>
+          </AyudaCampo>
+        </div>
+      )}
+
       {tipo === "PV" &&
+        !esBase &&
         (puedeEditarCamposSensibles ? (
           <CampoNumero
             name="precioVenta"

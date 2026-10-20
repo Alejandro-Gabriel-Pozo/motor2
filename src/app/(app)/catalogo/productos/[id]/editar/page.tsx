@@ -5,7 +5,7 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoEnAlgunaSucursal, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
-import { obtenerProductoPorId, obtenerUnidadesDelProducto } from "@/server/consultas/catalogo/productos";
+import { grupoConElPrecioFinal, obtenerProductoPorId, obtenerUnidadesDelProducto } from "@/server/consultas/catalogo/productos";
 import { ProductoForm, type ProductoExistente } from "../../producto-form";
 import { cargarOpcionesFormularioProducto, conLasUnidadesDelProducto } from "../../opciones-formulario";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
@@ -59,6 +59,8 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
     observaciones: p.observaciones ?? undefined,
   };
   const presentaciones: PresentacionOpcion[] = p.tipo === "MP" ? await listarPresentaciones(p.id) : [];
+  // Fase 4 (ADR-035): «¿Cómo se vende?» (solo un PV): el modo guardado y el grupo donde está el precio final de cada opción, si lo tiene.
+  const venta = p.tipo === "PV" ? { modo: p.modoDeVenta === "BASE_CONFIGURABLE" ? ("BASE_CONFIGURABLE" as const) : ("DIRECTO" as const), grupoConPrecioFinal: await grupoConElPrecioFinal(p.id, ctx.db) } : undefined;
 
   return (
     <div className="max-w-xl">
@@ -78,6 +80,7 @@ export default async function EditarProductoPage({ params }: { params: Promise<{
         puedeEditarCamposSensibles={puedeEditarCamposSensibles}
         productoExistente={productoExistente}
         presentacionesIniciales={presentaciones}
+        venta={venta}
       />
     </div>
   );

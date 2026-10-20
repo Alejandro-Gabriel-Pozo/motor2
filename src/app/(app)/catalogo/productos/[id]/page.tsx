@@ -123,7 +123,15 @@ export default async function FichaProductoPage({
           <Dato etiqueta="Factor de conversión">
             {Number(p.factorConversion).toLocaleString("es-AR")} {p.unidadStock.nombre} por {p.unidadCompra?.nombre ?? "unidad de compra"}
           </Dato>
-          {p.tipo === "PV" && <Dato etiqueta="Precio de venta">{plata(Number(p.precioVenta))}</Dato>}
+          {/* Fase 4 (ADR-035): de una base no se cobra el precio guardado: la ficha dice cómo se vende y lo muestra como guardado. */}
+          {p.tipo === "PV" &&
+            (p.modoDeVenta === "BASE_CONFIGURABLE" ? (
+              <Dato etiqueta="Cómo se vende">
+                <span data-se-vende-por-opcion="">Se vende por opción</span> · precio guardado {plata(Number(p.precioVenta))} (no se cobra: el precio final está en cada opción)
+              </Dato>
+            ) : (
+              <Dato etiqueta="Precio de venta">{plata(Number(p.precioVenta))}</Dato>
+            ))}
           {p.tipo === "PV" && (
             <Dato etiqueta="Venta fraccionada">
               {p.pasoVenta !== null ? (

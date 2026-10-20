@@ -16,6 +16,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
 import { AltaDeOpcion } from "./alta-de-opcion";
+import { CampoSeLeeEnLaCarta } from "./campo-se-lee-en-la-carta";
 import { CambiarPrecio } from "./cambiar-precio";
 import { OrdenarOpciones } from "./ordenar-opciones";
 import { versionDelFormulario } from "./version-del-formulario";
@@ -85,6 +86,8 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
   const maximo = grupo.cantidadMaxima;
   const activo = grupo.activo;
   const esTamano = tipo === "MEDIDA";
+  // Fase 4 (ADR-035): «se lee en la carta como», solo en variantes y tamaños.
+  const conPrefijo = tipo === "VARIANTE" || tipo === "MEDIDA";
   const admiteNinguna = (tipo === "VARIANTE" || tipo === "INCLUIDA") && !opciones.some((o) => o.esNinguna);
   const siguienteOrden = (opciones.reduce((max, o) => Math.max(max, o.orden), 0) || 0) + PASO_DE_ORDEN;
   const referencia = datos.referencia ? { ...datos.referencia, sucursalNombre: ctx.sucursalNombre } : null;
@@ -141,6 +144,8 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                     cantidadMinima: numeroDelCampo(String(formData.get("cantidadMinima") ?? "")),
                     cantidadMaxima: numeroDelCampo(String(formData.get("cantidadMaxima") ?? "")),
                     activo,
+                    // Fase 4: va siempre (vacío = sin prefijo), así entra en la comparación de la versión; en los demás tipos no se manda.
+                    ...(conPrefijo ? { prefijoEnCarta: String(formData.get("prefijoEnCarta") ?? "") } : {}),
                   });
                 }}
                 className="flex max-w-xl flex-col gap-3"
@@ -168,6 +173,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                 <p className="text-xs text-neutral-600 dark:text-neutral-400">
                   {esTamano ? "Un tamaño se elige siempre una vez: mínimo 1 y máximo 1." : tipo === "INCLUIDA" ? "Lo incluido es obligatorio: el mínimo es 1 o más." : "Con mínimo 0 el grupo es opcional."}
                 </p>
+                {conPrefijo && <CampoSeLeeEnLaCarta prefijoInicial={grupo.prefijoEnCarta} opciones={enUso.map((o) => ({ nombre: o.nombre, esNinguna: o.esNinguna }))} />}
                 <button type="submit" className="self-start rounded bg-neutral-900 px-4 py-2 text-white">
                   Guardar
                 </button>
