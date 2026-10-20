@@ -17,8 +17,11 @@ export function SincronizarPrecioGrupo({
   alTerminar,
 }: {
   sincronizable: SincronizablePrecioGrupo;
-  /** Llama a la acción de sincronizar (sincronizarPrecioGrupoCarta / sincronizarPrecioLocalGrupoCarta) con los hermanos y el precio. */
-  aplicar: (productoIds: string[], precio: number) => Promise<ResultadoAccion>;
+  /**
+   * Llama a la acción de sincronizar (sincronizarPrecioGrupoCarta / sincronizarPrecioLocalGrupoCarta) con los hermanos y el precio. Cada hermano va con el
+   * `precioActual` que esta pantalla le mostró (el valor visto): la acción lo vuelve a comparar con la base antes de escribir.
+   */
+  aplicar: (hermanos: { productoId: string; precioActual: number }[], precio: number) => Promise<ResultadoAccion>;
   /** Cuando se aplicó bien o se eligió dejarlo como está. */
   alTerminar: (aplicado: boolean) => void;
 }) {
@@ -41,7 +44,7 @@ export function SincronizarPrecioGrupo({
           onClick={() =>
             startTransition(async () => {
               const r = await aplicar(
-                s.hermanos.map((h) => h.productoId),
+                s.hermanos.map((h) => ({ productoId: h.productoId, precioActual: h.precioActual })),
                 s.precioNuevo
               );
               setResultado(r);

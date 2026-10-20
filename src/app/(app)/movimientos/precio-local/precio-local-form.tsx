@@ -88,8 +88,8 @@ export function PrecioLocalForm({ sucursalId }: { sucursalId: string }) {
       {sincronizable && (
         <SincronizarPrecioGrupo
           sincronizable={sincronizable}
-          aplicar={async (productoIds, precioNuevo) => {
-            const r = await sincronizarPrecioLocalGrupoCarta(sucursalId, productoIds, precioNuevo, true);
+          aplicar={async (hermanos, precioNuevo) => {
+            const r = await sincronizarPrecioLocalGrupoCarta(sucursalId, hermanos.map((h) => h.productoId), precioNuevo, true);
             // Bien: el bloque se cierra y su resultado pasa al mensaje del formulario (si no, se perdería al cerrarlo).
             if (r.ok) {
               setMensaje(r.mensaje);

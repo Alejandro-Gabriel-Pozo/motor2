@@ -451,7 +451,7 @@ export function ProductoForm({
       {mensaje && <p className={mensaje.startsWith("Producto") ? "text-sm text-green-700" : "text-sm text-red-600"}>{mensaje}</p>}
 
       {sincronizable && productoExistente && (
-        <SincronizarPrecioGrupo sincronizable={sincronizable} aplicar={sincronizarPrecioGrupoCarta} alTerminar={() => irALaFicha(productoExistente.id)} />
+        <SincronizarPrecioGrupo sincronizable={sincronizable} aplicar={(hermanos, precio) => sincronizarPrecioGrupoCarta(hermanos.map((h) => h.productoId), precio)} alTerminar={() => irALaFicha(productoExistente.id)} />
       )}
 
       <button type="submit" disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
