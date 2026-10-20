@@ -1,7 +1,7 @@
 -- Reversa de 20261022100000_retiro_go3a_rls (retiro de GO-3a, políticas): vuelve a crear las 8 políticas RESTRICTIVE de RLS por sucursal de CombinacionEnLinea y PrecioLocalDeCombinacion, con el
 -- mismo SQL que 20261021111000_go3a_rls_sucursal_combinaciones: la salida EXACTA de sqlDePoliticasDeAlcance(["CombinacionEnLinea", "PrecioLocalDeCombinacion"]) (B7 lo exige).
 -- No toca datos. Se corre DESPUÉS del down.sql de 20261022101000_retiro_go3a (las tablas tienen que existir) y ANTES de bajar B1 (las funciones del alcance).
--- A mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1 -f down.sql`; después `npx prisma migrate resolve --rolled-back 20261022100000_retiro_go3a_rls`.
+-- A mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1 -f down.sql`; después borrar su fila de `_prisma_migrations` (`DELETE FROM _prisma_migrations WHERE migration_name = '20261022100000_retiro_go3a_rls'`; `prisma migrate resolve --rolled-back` responde P3012 sobre una migración ya aplicada).
 
 -- M.3 RLS por sucursal: políticas RESTRICTIVE por comando, TO motor2_app (generado por test/setup/politicas-de-alcance-de-sucursal.ts; no editar a mano).
 -- CombinacionEnLinea

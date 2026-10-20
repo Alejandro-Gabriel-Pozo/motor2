@@ -11,8 +11,8 @@
 -- columna en la lectura de las opciones de toda venta y de la carta, y el anterior a 3.4 lee la foto al cerrar. Después de aplicarla, Instant Rollback SOLO a despliegues >= 3.5.
 -- AL APLICAR: borrar CombinacionEnLinea suelta su clave foránea hacia `CuentaItem` (bloqueo breve sobre `CuentaItem`) y `ProductoAdmiteGrupo` toma ACCESS EXCLUSIVE hasta el COMMIT (tabla chica):
 -- con `SET lock_timeout = '5s'` y FUERA DEL HORARIO DE SERVICIO. Los permisos de las tablas y el de la columna caen con ellas.
--- Reversa: down.sql (vuelve a crear todo VACÍO, con el mismo SQL de GO-3a), a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1 -f down.sql` y `npx prisma migrate resolve --rolled-back
--- 20261022101000_retiro_go3a`; después, el down.sql de 20261022100000_retiro_go3a_rls.
+-- Reversa: down.sql (vuelve a crear todo VACÍO, con el mismo SQL de GO-3a), a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1 -f down.sql` y borrar su fila de `_prisma_migrations` (`DELETE FROM _prisma_migrations WHERE migration_name = '20261022101000_retiro_go3a'`;
+-- `prisma migrate resolve --rolled-back` responde P3012 sobre una migración ya aplicada); después, el down.sql de 20261022100000_retiro_go3a_rls.
 
 DO $$
 DECLARE

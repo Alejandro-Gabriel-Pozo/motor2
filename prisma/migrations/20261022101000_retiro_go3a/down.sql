@@ -2,7 +2,7 @@
 -- sin cambios): la columna `ProductoAdmiteGrupo.ejeDeCombinacion` con su CHECK y su índice único parcial, las seis tablas con sus índices, reglas, claves foráneas, RLS por empresa y privilegios, y la
 -- clave `grupos_de_precio_definir` con su siembra al rol `admin` de cada empresa. No hay datos que devolver: la migración solo se aplicó si no había ninguno.
 -- A mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1 -f down.sql` (UNA transacción), fuera del horario de servicio (`SET lock_timeout = '5s'`: la clave foránea de la foto toma un bloqueo breve
--- sobre `CuentaItem`); después `npx prisma migrate resolve --rolled-back 20261022101000_retiro_go3a`. Se corre ANTES del down.sql de 20261022100000_retiro_go3a_rls (que vuelve a crear las
+-- sobre `CuentaItem`); después borrar su fila de `_prisma_migrations` (`DELETE FROM _prisma_migrations WHERE migration_name = '20261022101000_retiro_go3a'`; `prisma migrate resolve --rolled-back` responde P3012 sobre una migración ya aplicada). Se corre ANTES del down.sql de 20261022100000_retiro_go3a_rls (que vuelve a crear las
 -- políticas de sucursal de dos de estas tablas). Con la reversa aplicada, el código de la Fase 3 sigue andando (no lee estas tablas); el código anterior a la Fase 3 vuelve a poder desplegarse.
 
 ALTER TABLE "ProductoAdmiteGrupo" ADD COLUMN IF NOT EXISTS "ejeDeCombinacion" SMALLINT;
