@@ -1,8 +1,19 @@
 import "server-only";
 import { whereDisponibleEn } from "@/core/catalogo/public";
-import { opcionesParaLaCarta, organizarCartaParaMantener, precioDeCarta, vistaPreviaDeOpciones, whereCartaDeSucursal, wherePromoOfrecidaEn, type CartaParaMantener, type ProductoParaMantener } from "@/core/carta/public";
+import {
+  opcionesParaLaCarta,
+  organizarCartaParaMantener,
+  precioDeCarta,
+  presentacionDeUnProductoSolo,
+  vistaPreviaDeLaForma,
+  vistaPreviaDeOpciones,
+  whereCartaDeSucursal,
+  wherePromoOfrecidaEn,
+  type CartaParaMantener,
+  type ProductoParaMantener,
+} from "@/core/carta/public";
 import { esBaseConfigurable } from "@/core/opciones/public";
-import { resumenDePrecios } from "@/core/pos/public";
+import { resumenDePrecios, tablaDePreciosParaLaCarta } from "@/core/pos/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
@@ -15,9 +26,9 @@ import type { Db } from "@/lib/db-tipos";
  * su precio de esta sucursal, si está disponible, si es el ancla de un adicional y si está dentro de un ítem agrupado de esta sucursal. Sin N+1: secciones, productos, disponibilidad y precios
  * locales para todo el lote. Todo lo de la sucursal se filtra por `sucursalId` (y la RLS por sucursal, por debajo). Sin guarda de permiso adentro: la pone la página (`carta_ver`).
  *
- * A los de «Fuera de carta» con opciones de venta les arma la vista previa de «Agregar a la carta» («Va a mostrar: …») con las MISMAS lecturas y la MISMA presentación que la carta pública
- * (`opcionesDeLosProductosDeLaCarta`, la grilla de tamaños de la sucursal, `resumenDePrecios` y `opcionesParaLaCarta`), sin el descuento de producto (la vista previa dice qué opciones salen, no
- * el precio final). No toca la carta pública: la lee igual que ella.
+ * A los de «Fuera de carta» con opciones de venta les arma la vista previa de «Agregar a la carta» («Va a mostrar …») con las MISMAS lecturas y la MISMA forma que la carta pública
+ * (`opcionesDeLosProductosDeLaCarta`, la grilla de tamaños de la sucursal, `tablaDePreciosParaLaCarta` y `presentacionDeUnProductoSolo`; Fase 5, paso 9), sin el descuento de producto (la vista
+ * previa dice cómo se va a leer, no el precio final). Lo que la carta no puede leer exacto, como antes (`opcionesParaLaCarta`). No toca la carta pública: la lee igual que ella.
  */
 export async function cargarCartaParaMantener(db: Db, sucursalId: string): Promise<CartaParaMantener> {
   const [secciones, productos, precioLocalActivo] = await Promise.all([
@@ -75,7 +86,12 @@ export async function cargarCartaParaMantener(db: Db, sucursalId: string): Promi
     const grupos = leidos.map((g) =>
       g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO" ? { ...g, opciones: g.opciones.map((o) => ({ ...o, precioDeSucursal: grilla.get(`${p.id}|${o.opcionId}`) ?? null })) } : g
     );
-    p.vistaPrevia = vistaPreviaDeOpciones(true, opcionesParaLaCarta(resumenDePrecios({ grupos, precioBase: p.precioAca, descuentoDeProducto: null, esBase: bases.has(p.id) })));
+    const esBase = bases.has(p.id);
+    const enCarta = opcionesParaLaCarta(resumenDePrecios({ grupos, precioBase: p.precioAca, descuentoDeProducto: null, esBase }));
+    // Fase 5, paso 9: con la FORMA que le va a dar la carta (la misma proyección del servidor), si la carta lo puede leer exacto; si no (o si hoy no se puede pedir), como antes.
+    const tabla = enCarta ? tablaDePreciosParaLaCarta({ grupos, precioBase: p.precioAca, descuentoDeProducto: null, esBase }) : null;
+    const forma = tabla ? presentacionDeUnProductoSolo({ tabla, esBase, mostrarNombreArriba: false, conDescuento: false }) : null;
+    p.vistaPrevia = forma ? vistaPreviaDeLaForma(p.nombre, forma) : vistaPreviaDeOpciones(true, enCarta);
   }
   return carta;
 }

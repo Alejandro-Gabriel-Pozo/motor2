@@ -90,10 +90,6 @@ describe("8a: forma simple (el bife: su precio y las aclaraciones debajo)", () =
     expect(conLoViejo).not.toMatch(/data-tamanos-carta|data-opciones-sin-costo|data-suma-carta|Adicionales:/);
   });
 
-  it("sin `presentacion` (una carta guardada por el código anterior) se dibuja como antes", () => {
-    const viejo = filaCon(dibujar([item({ nombre: "Café", precio: 2500, grupos: [{ nombre: "Tamaño", opciones: [{ nombre: "Chico", tipo: "final", precio: 2500 }] }] })]), "Café");
-    expect(viejo).toMatch(/data-tamanos-carta="Tamaño"/);
-  });
 
   it("los nombres del negocio se escapan (no son HTML crudo)", () => {
     const raro = filaCon(dibujar([item({ nombre: "Plato", precio: 1, presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "<b>G</b>", opciones: ['<img src=x onerror="alert(1)">', "b"] }] } })]), "Plato");
@@ -203,5 +199,34 @@ describe("8d: lista de un eje (la base de las pizzas: oculta por defecto; con «
     const html = filaCon(dibujar([{ ...pizzas(false), descuentoPorcentaje: 10 }]), "Pizza muzzarella");
     expect(html.match(/data-descuento-producto/g)).toHaveLength(1);
     expect(html).not.toMatch(/<s[ >]/);
+  });
+});
+
+describe("paso 9: sin forma (lo que la carta no puede leer exacto, o una carta guardada por el código anterior) se dibuja con las MISMAS piezas, sin las listas viejas", () => {
+  const cafe = item({
+    nombre: "Café",
+    categoria: "Cafetería",
+    precio: 2500,
+    grupos: [
+      { nombre: "Tamaño", opciones: [{ nombre: "Chico", tipo: "final", precio: 2500 }, { nombre: "Grande", tipo: "final", precio: 3100 }] },
+      { nombre: "Extras", opciones: [{ nombre: "Medialuna", tipo: "recargo", recargo: 600 }, { nombre: "Sin azúcar", tipo: "recargo", recargo: -100 }] },
+    ],
+    opcionesSinCosto: [{ grupo: "Preparación", opciones: ["Solo", "Cortado"] }],
+  });
+  const html = filaCon(dibujar([cafe]), "Café");
+
+  it("los tamaños como filas de opción (sin el precio al lado del nombre), lo que no cambia nada y lo que suma como aclaraciones debajo", () => {
+    expect(texto(html)).toBe("Café Chico $2.500 Grande $3.100 Preparación: Solo o Cortado Adicionales: Medialuna +$600, Sin azúcar −$100");
+    expect(html).toMatch(/<ul aria-label="Tamaño" data-filas-carta/);
+    expect(html).not.toMatch(/data-rol="precio"/);
+  });
+
+  it("ninguna de las piezas retiradas (lista de tamaños, pastillas, línea «Adicionales» propia)", () => {
+    expect(html).not.toMatch(/data-tamanos-carta|data-opciones-sin-costo|data-suma-carta|rounded-full/);
+  });
+
+  it("un ítem sin opciones, el renglón de siempre", () => {
+    const flan = filaCon(dibujar([item({ nombre: "Flan", precio: 3200 })]), "Flan");
+    expect(texto(flan)).toBe("Flan $3.200");
   });
 });

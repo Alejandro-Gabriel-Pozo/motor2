@@ -197,3 +197,15 @@ export function resolverTandas(pendientes: readonly (PendienteDeTanda | null)[])
   }
   return { porItem, tandas, caidasALista };
 }
+
+/**
+ * La forma de UN producto mirado SOLO, sin sus vecinos de sección (la vista previa «Va a mostrar» de «Agregar a la carta», paso 9): lo mismo que la carta, y si sus columnas quedan pendientes de
+ * una tanda, la tanda de él solo (con más de 3 columnas, cae a lista como en la carta). `null` si la carta no lo puede leer con el precio exacto (sale como antes). `rotulos`: los de sus columnas.
+ */
+export function presentacionDeUnProductoSolo(entrada: Parameters<typeof presentacionDelProducto>[0]): { presentacion: PresentacionCartaV1; rotulos: string[] } | null {
+  const r = presentacionDelProducto(entrada);
+  if (r.tipo === "sin-forma") return null;
+  if (r.tipo === "lista") return { presentacion: r.presentacion, rotulos: [] };
+  const { porItem, tandas } = resolverTandas([{ grupoId: r.grupoId, columnas: r.columnas, aclaraciones: r.aclaraciones }]);
+  return { presentacion: porItem.get(0)!, rotulos: tandas[0]?.rotulos ?? [] };
+}
