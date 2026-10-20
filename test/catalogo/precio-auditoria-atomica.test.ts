@@ -95,7 +95,7 @@ describe("cambio de precio y su auditoría son atómicos", () => {
   describe("sincronizarPrecioGrupoCarta", () => {
     it("falla la auditoría del SEGUNDO producto → ninguno de los dos cambia de precio, sin auditoría", async () => {
       interruptor.fallarEnLlamada = 2;
-      await expect(sincronizarPrecioGrupoCarta([ids.coca, ids.sprite], 5500)).rejects.toThrow("auditoría caída");
+      await expect(sincronizarPrecioGrupoCarta([ids.coca, ids.sprite], 5500, { [ids.coca]: 5000, [ids.sprite]: 5000 })).rejects.toThrow("auditoría caída");
       expect(await precioVenta(ids.coca)).toBe(5000);
       expect(await precioVenta(ids.sprite)).toBe(5000);
       expect(await prisma.registroAuditoria.count()).toBe(0);

@@ -380,15 +380,17 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
  * Aplica el mismo precio de venta GLOBAL a varios productos de UN mismo ítem agrupado de la carta (el paso que ofrece
  * `actualizarProducto` con `sincronizable`; docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8). Misma auditoría que editar el precio de cada uno a mano,
  * y desde M.2 (D-3) los mismos permisos que cambiar un precio: `producto_sincronizar_precio_carta` más `producto_campos_sensibles`. Solo toca los `productoIds` pasados, y solo si son todos del mismo ítem agrupado.
+ * `preciosVistos` (ola «precio y carta», Fase 2, paso A5): el precio de venta que la pantalla mostró de cada producto al ofrecer igualarlo; si alguno cambió desde entonces, no se cambia ninguno y el
+ * mensaje pide recargar (`PRECIO_DESACTUALIZADO`).
  *
  * Desde el Hito 4 (H4C-13): permiso (`conPermisoDeEmpresa("producto_sincronizar_precio_carta")`) → formato del precio y de la lista
  * (`guardComandoSincronizarPrecioGrupoCarta`, core/features/catalogo/productos.guard.ts, DENTRO del envoltorio) → caso de uso
  * (`casos-de-uso/sincronizar-precio-grupo-carta.ts`: el ítem agrupado, y los precios con su auditoría en UNA transacción) → revalidar la carta pública si salió
  * bien → `aResultadoAccion`.
  */
-export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio: number): Promise<ResultadoAccion> {
+export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio: number, preciosVistos?: Readonly<Record<string, number>>): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("producto_sincronizar_precio_carta", async (ctx) => {
-    const comando = guardComandoSincronizarPrecioGrupoCarta({ productoIds, precio });
+    const comando = guardComandoSincronizarPrecioGrupoCarta({ productoIds, precio, preciosVistos });
     if (!comando.ok) return error(comando.mensaje);
     // M.2 (D-3): sincronizar es cambiar el precio de venta de varios productos: además de la clave de sincronizar pide `producto_campos_sensibles` (el caso de uso lo rechaza antes de leer nada).
     const resultado = await sincronizarPrecioGrupoCartaCasoDeUso(ctx, { ...comando.valor, puedeEditarCamposSensibles: await puedeEditarCamposSensiblesDelProducto(ctx) });

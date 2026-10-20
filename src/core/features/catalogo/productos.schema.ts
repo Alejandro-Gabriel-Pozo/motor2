@@ -145,6 +145,11 @@ export type ResultadoActualizarProducto = ResultadoCaso<
 export interface ComandoSincronizarPrecioGrupoCarta {
   productoIds: string[];
   precio: number;
+  /**
+   * El precio de venta que la pantalla mostró de cada producto al ofrecer igualarlo (el `precioActual` del `sincronizable`), por id (ola «precio y carta», Fase 2, paso A5). Un producto sin precio
+   * visto que haya que cambiar se rechaza (`PRECIO_DESACTUALIZADO`).
+   */
+  preciosVistos: Readonly<Record<string, number>>;
 }
 
 /**
@@ -157,9 +162,10 @@ export interface PedidoSincronizarPrecioGrupoCarta extends ComandoSincronizarPre
 
 /**
  *  - `NO_MISMO_ITEM`: los productos no son todos del mismo ítem agrupado de la carta (en la sucursal activa);
- *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (M.2, D-3): quien lo pide no tiene `producto_campos_sensibles`; se decide antes de leer el ítem agrupado.
+ *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (M.2, D-3): quien lo pide no tiene `producto_campos_sensibles`; se decide antes de leer el ítem agrupado;
+ *  - `PRECIO_DESACTUALIZADO`: el precio de venta de alguno cambió desde que se ofreció igualarlo (o la pantalla no lo mandó): no se cambia ninguno.
  */
-export type ResultadoSincronizarPrecioGrupoCarta = ResultadoCaso<null, "NO_MISMO_ITEM" | "SIN_PERMISO_CAMPOS_SENSIBLES">;
+export type ResultadoSincronizarPrecioGrupoCarta = ResultadoCaso<null, "NO_MISMO_ITEM" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "PRECIO_DESACTUALIZADO">;
 
 /** Comando «asignar un insumo a una materia prima existente» (la mitad retroactiva del asistente de hermanar): los dos ids, sin validar (sin guard). */
 export interface ComandoAsignarInsumoAProducto {

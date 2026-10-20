@@ -44,7 +44,7 @@ describe("el catálogo invalida la carta pública al cambiar lo que ella muestra
   });
 
   it("sincronizarPrecioGrupoCarta", async () => {
-    expect((await sincronizarPrecioGrupoCarta([productoId, hermanoId], 1500)).ok).toBe(true);
+    expect((await sincronizarPrecioGrupoCarta([productoId, hermanoId], 1500, { [productoId]: 1000, [hermanoId]: 1000 })).ok).toBe(true);
     expect(revalidarCartasPublicas).toHaveBeenCalledTimes(1);
   });
 

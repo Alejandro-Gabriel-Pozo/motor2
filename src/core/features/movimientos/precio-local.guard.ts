@@ -1,4 +1,4 @@
-import { validarImporte } from "@/core/datos/importe";
+import { validarImporte, validarImportesVistosPorId } from "@/core/datos/importe";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import type { ComandoSetPrecioLocalProducto, ComandoSincronizarPrecioLocalGrupoCarta, PrecioLocalDeProductoVisto } from "./precio-local.schema";
 
@@ -42,22 +42,6 @@ export function guardComandoSetPrecioLocalProducto(entrada: { productoId: string
   return aceptar({ productoId: entrada.productoId, precio: precio.valor, habilitado: entrada.habilitado, esperado: esperado.valor });
 }
 
-/**
- * Los precios que la pantalla mostró de cada producto al ofrecer igualarlos (ola «precio y carta», Fase 2, paso A3): `undefined` o `null` es «ninguno» (el caso de
- * uso rechaza si hay algo que cambiar); si vienen, un objeto id → importe válido.
- */
-function validarPreciosVistos(preciosVistos: unknown): ResultadoDato<Record<string, number>> {
-  if (preciosVistos === null || preciosVistos === undefined) return aceptar({});
-  if (typeof preciosVistos !== "object" || Array.isArray(preciosVistos)) return rechazar("formato", MENSAJE_VISTOS_INVALIDOS);
-  const vistos: [string, number][] = [];
-  for (const [id, valor] of Object.entries(preciosVistos)) {
-    const precio = validarImporte(valor, { etiqueta: "El precio que mostraba la pantalla", obligatorio: true });
-    if (!precio.ok) return rechazar("formato", MENSAJE_VISTOS_INVALIDOS);
-    vistos.push([id, precio.valor!]);
-  }
-  return aceptar(Object.fromEntries(vistos));
-}
-
 const MENSAJE_VISTOS_INVALIDOS = "Los precios que mostraba la pantalla no son válidos: recargala.";
 
 /**
@@ -78,7 +62,8 @@ export function guardComandoSincronizarPrecioLocalGrupoCarta(entrada: {
   if (!precio.ok) return rechazar(precio.codigo, precio.mensaje);
   const productoIds = [...new Set(entrada.productoIds)];
   if (!productoIds.length) return rechazar("vacio", "No hay productos para actualizar.");
-  const preciosVistos = validarPreciosVistos(entrada.preciosVistos);
+  // Los precios que la pantalla mostró de cada producto al ofrecer igualarlos (ola «precio y carta», Fase 2, paso A3).
+  const preciosVistos = validarImportesVistosPorId(entrada.preciosVistos, MENSAJE_VISTOS_INVALIDOS);
   if (!preciosVistos.ok) return rechazar(preciosVistos.codigo, preciosVistos.mensaje);
   return aceptar({ productoIds, precio: precio.valor, habilitado: entrada.habilitado, preciosVistos: preciosVistos.valor });
 }

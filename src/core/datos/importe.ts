@@ -54,3 +54,19 @@ export function mismosCentavos(a: number | null, b: number | null): boolean {
   if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
   return centavosDeImporte(a) === centavosDeImporte(b);
 }
+
+/**
+ * Los precios que una pantalla MOSTRÓ, por id (el control del valor visto de un «¿Aplicar $X también?»: ola «precio y carta», Fase 2): `undefined` o `null` es «ninguno» (el caso de uso
+ * rechaza si hay algo que cambiar); si vienen, un objeto id → importe válido (no negativo, a lo sumo 2 decimales, dentro del tope). Cualquier otra forma se rechaza con `mensaje`.
+ */
+export function validarImportesVistosPorId(valor: unknown, mensaje: string): ResultadoDato<Record<string, number>> {
+  if (valor === null || valor === undefined) return aceptar({});
+  if (typeof valor !== "object" || Array.isArray(valor)) return rechazar("formato", mensaje);
+  const vistos: [string, number][] = [];
+  for (const [id, importe] of Object.entries(valor)) {
+    const validado = validarImporte(importe, { etiqueta: "El precio que mostraba la pantalla", obligatorio: true });
+    if (!validado.ok) return rechazar("formato", mensaje);
+    vistos.push([id, validado.valor!]);
+  }
+  return aceptar(Object.fromEntries(vistos));
+}

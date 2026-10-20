@@ -387,7 +387,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   // Activar un producto ya activo es idempotente; desactivar `mp` se rechaza (está en la receta vigente y tiene saldo).
   "accion|actions/catalogo/productos.ts|actualizarDisponibilidadProducto": { disponible: (_k, c) => c.escenario === "controlMutacion" },
   // Los hermanos de UN ítem agrupado de la carta: el PV (en el mundo, la única opción del ítem).
-  "accion|actions/catalogo/productos.ts|sincronizarPrecioGrupoCarta": { productoIds: (k) => [k.productoPvId] },
+  // `preciosVistos` (ola «precio y carta», Fase 2, A5): el precio de venta que «vio» la pantalla, el del PV del mundo (1000).
+  "accion|actions/catalogo/productos.ts|sincronizarPrecioGrupoCarta": { productoIds: (k) => [k.productoPvId], preciosVistos: (k) => ({ [k.productoPvId]: 1000 }) },
   // El precio local que «vio» la pantalla (ola «precio y carta», Fase 2, A2): el del mundo en la sucursal propia (1234, habilitado). No lleva ids.
   "accion|actions/movimientos/precio-local.ts|setPrecioLocalProducto": { esperado: () => ({ precio: 1234, habilitado: true }) },
   "accion|actions/catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": { sucursalOrigenId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },

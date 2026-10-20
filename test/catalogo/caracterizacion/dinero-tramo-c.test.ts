@@ -380,7 +380,7 @@ describe("Huella de dinero del tramo C", () => {
     );
     await paso("producto: la Fainá sin cambios de precio", await actualizarProducto(faina.id, { nombre: "Fainá", tipo: "PV", unidadStockId: u.id, factorConversion: 1, precioVenta: 5200 }));
     await paso("producto: cambiar el tipo", await actualizarProducto(faina.id, { nombre: "Fainá", tipo: "MP", unidadStockId: u.id, factorConversion: 1 }));
-    await paso("sincronizar precio global: Pizza y Fainá a $11000", await sincronizarPrecioGrupoCarta([pizza.id, faina.id], 11000));
+    await paso("sincronizar precio global: Pizza y Fainá a $11000", await sincronizarPrecioGrupoCarta([pizza.id, faina.id], 11000, { [pizza.id]: 12000, [faina.id]: 5200 }));
     await paso("sincronizar precio global: negativo", await sincronizarPrecioGrupoCarta([pizza.id, faina.id], -5));
     await paso("sincronizar precio global: no son del mismo ítem", await sincronizarPrecioGrupoCarta([pizza.id, flan.id], 100));
     await paso("presentación: alta de la caja de 25 kg", await agregarPresentacionAlternativa(harina.id, caja.id, 25));
