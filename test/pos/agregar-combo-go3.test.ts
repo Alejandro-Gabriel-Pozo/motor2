@@ -123,19 +123,6 @@ describe("vender un combo con cupos de entradas (GO-3b, I2)", () => {
     expect([Number(mila!.precioUnitario), Number(mila!.precioCartaUnitario)]).toEqual([6844.11, 9000]);
   });
 
-  it("con una COMBINACIÓN del café (el eje es el tamaño): la entrada pesa con su precio y la línea lleva la foto de la combinación", async () => {
-    await prisma.productoAdmiteGrupo.update({ where: { productoId_grupoId: { productoId: c.cafeId, grupoId: c.grupoMedidaId } }, data: { ejeDeCombinacion: 1 } });
-    const mediano = await prisma.combinacionDeProducto.create({ data: { productoId: c.cafeId, opcionEje1Id: c.medianoId, precio: "1350.00" } });
-    const m = await menuDelDia();
-    expect((await agregar([m.pedir()])).ok).toBe(true);
-    const cafe = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId, productoId: c.cafeId }, include: { combinacionEnLinea: true } });
-    // 1350 (la combinación) + 150 (almendras) = 1500 de lista.
-    expect(Number(cafe.precioCartaUnitario)).toBe(1500);
-    expect(cafe.combinacionEnLinea.map((f) => [f.combinacionId, f.origenPrecio, Number(f.precio)])).toEqual([[mediano.id, "PROPIO", 1350]]);
-    const total = (await prisma.cuentaItem.findMany({ where: { cuentaId } })).reduce((t, l) => t + Number(l.precioUnitario) * Number(l.cantidad), 0);
-    expect(Math.round(total * 100) / 100).toBe(10000);
-  });
-
   describe("rechazos tipados (y ninguno escribe nada)", () => {
     const casos: [string, () => Promise<ComandoAgregarItems["promos"]>, string, RegExp][] = [
       ["el precio que vio el mozo ya no es el de hoy", async () => [(await menuDelDia()).pedir(undefined, { precioEsperado: 9500 })], "PROMO_CAMBIO", /el precio de la promo cambió/],

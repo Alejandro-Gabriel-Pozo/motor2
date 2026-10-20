@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
  *
  * Cómo se regenera a propósito: se suma una entrada a `regeneraciones` de la ruta con el blob NUEVO, el commit que la regenera y por
  * qué. El esperado es el blob de la última regeneración (o el de `blob` si no hubo ninguna). Nunca se edita `blob` ni se borra una
- * regeneración: es el registro.
+ * regeneración: es el registro. Un golden que se BORRA (su prueba se retira) pasa de `CONGELADAS` a `RETIRADAS`, con su último blob.
  */
 const RAIZ = join(__dirname, "../..");
 
@@ -515,13 +515,6 @@ const CONGELADAS: Record<string, Congelada> = {
       "Ola «precio y carta», Fase 0: foto de lo que HOY se cobra y se muestra (venta, vista previa del POS, resumen del POS y de la carta pública) sobre el catálogo de referencia que reproduce producción y los casos CU-01 a CU-12. NO es una aprobación: incluye la trampa de la milanesa M2 con base cargada por error ($38.000). Las fases siguientes la regeneran declarándolo acá; el retiro de GO-3a (Fase 3) NO debe moverla.",
     regeneraciones: [],
   },
-  "test/caracterizacion-precio-y-carta/combinaciones.golden.txt": {
-    blob: "551283ff305dcfff5d8341fa2d50cdd18a1a744c",
-    desde: "31354ad",
-    motivo:
-      "Ola «precio y carta», Fase 0: foto de las combinaciones GO-3a (CU-07 y CU-11) en el precio cobrado y mostrado. Aparte del golden de precios a propósito: la Fase 3 retira GO-3a entero (DEC-02, DEC-16) y borra este golden junto con su prueba.",
-    regeneraciones: [],
-  },
   "test/caracterizacion-precio-y-carta/cobro-y-carta.golden.txt": {
     blob: "c565330202519909cf9f0f931b6e737b2cede797",
     desde: "9c88d3d",
@@ -535,6 +528,29 @@ const CONGELADAS: Record<string, Congelada> = {
     motivo:
       "Ola «precio y carta», Fase 0: foto en navegador (375 y 1280 px) del texto visible de la carta pública, con su tipografía computada de hoy (ítems sin opciones a 14,08 px frente a 19 px con opciones), y de las pantallas de opciones de Pizzas, del grupo «Tipos de Pizza» y de la parametrización de secciones. NO es una aprobación. Las Fases 5 (escala de letra única, carta pareja) y 6 (interfaz del producto) la regeneran declarándolo acá.",
     regeneraciones: [],
+  },
+};
+
+interface Retirada {
+  /** Blob de git del ÚLTIMO contenido que tuvo el golden (el congelado o su última regeneración), para cruzarlo contra la historia. */
+  blob: string;
+  /** Commit que lo retira (como en las regeneraciones, el PADRE: un commit no puede llevar su propio hash). */
+  commit: string;
+  motivo: string;
+}
+
+/**
+ * Goldens RETIRADOS (Fase 3 de la ola «precio y carta»: el retiro de GO-3a borra el golden de las combinaciones junto con su prueba). Un golden no se borra de `CONGELADAS` en silencio: pasa
+ * acá con su último blob, el commit y el motivo, y se revisan las dos direcciones: el archivo ya NO existe (si alguien lo vuelve a crear, rojo: o se congela de nuevo o no vuelve) y la ruta ya NO
+ * está en `CONGELADAS` (una ruta no puede estar congelada y retirada a la vez). Nunca se borra una entrada: es el registro.
+ */
+const RETIRADAS: Record<string, Retirada> = {
+  "test/caracterizacion-precio-y-carta/combinaciones.golden.txt": {
+    blob: "551283ff305dcfff5d8341fa2d50cdd18a1a744c",
+    // El commit PADRE de este (ed9ff97, Fase 3 paso 3.2) es el último que lo tiene; se borra en el commit siguiente (paso 3.3).
+    commit: "ed9ff97",
+    motivo:
+      "Ola «precio y carta», Fase 3, paso 3.3 (retiro de GO-3a, DEC-02 y DEC-16; en producción GO-3a no tiene filas ni ventas): la venta y la vista previa ya no leen combinaciones, así que la foto de las combinaciones (CU-07 y CU-11) se borra junto con su prueba (`combinaciones.test.ts`) y su catálogo (`test/setup/referencia-combinaciones.ts`). Congelada en 31354ad con este blob y nunca regenerada. Los goldens de los demás productos (`precios.golden.txt`) y el integrado (`cobro-y-carta.golden.txt`) NO se mueven: esa es la prueba de que el retiro no cambió el precio de nadie.",
   },
 };
 
@@ -572,6 +588,19 @@ describe("caracterizaciones congeladas: un golden solo cambia con una regeneraci
         expect(r.commit, ruta).toMatch(/^[0-9a-f]{7,40}$/);
         expect(r.motivo.trim(), ruta).not.toBe("");
       }
+    }
+  });
+
+  it.each(Object.entries(RETIRADAS))("%s está retirada: el archivo ya no existe y no figura en CONGELADAS", (ruta) => {
+    expect(existsSync(join(RAIZ, ruta)), `${ruta} está RETIRADA y volvió a existir: o se congela de nuevo (sacala de RETIRADAS y sumala a CONGELADAS) o se borra`).toBe(false);
+    expect(Object.hasOwn(CONGELADAS, ruta), `${ruta} no puede estar congelada y retirada a la vez`).toBe(false);
+  });
+
+  it("cada retirada está completa (último blob y commit con forma de hash, motivo escrito)", () => {
+    for (const [ruta, r] of Object.entries(RETIRADAS)) {
+      expect(r.blob, ruta).toMatch(/^[0-9a-f]{40}$/);
+      expect(r.commit, ruta).toMatch(/^[0-9a-f]{7,40}$/);
+      expect(r.motivo.trim(), ruta).not.toBe("");
     }
   });
 

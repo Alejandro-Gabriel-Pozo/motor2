@@ -12,9 +12,11 @@ import { describe, expect, it } from "vitest";
  *    motivo: esos leen la versión que se VENDIÓ (la congelada al agregar el ítem), nunca la vigente.
  *
  * Los comentarios se descartan sobre el archivo entero y los patrones se buscan también a través de saltos de línea. Verificado en las dos direcciones.
+ *
+ * Fase 3 de la ola «precio y carta», paso 3.3: la venta ya no lee la receta VIGENTE de una combinación (se retiró GO-3a de la venta) y el embudo se borró: la capa 1 pasa a exigir que NADIE la lea.
+ * La capa 2 (el cierre que lee la versión congelada) se va en el paso 3.4, junto con este guardián.
  */
 const SRC = join(__dirname, "../../src");
-const EMBUDO = "server/lecturas/catalogo/recetas-de-combinacion.ts";
 
 const LECTORES_DE_LA_VERSION_CONGELADA: readonly { ruta: string; motivo: string }[] = [
   {
@@ -65,20 +67,13 @@ describe("lectores de la receta propia de una combinación: el embudo es el úni
     expect(fuentes.size).toBeGreaterThan(50);
   });
 
-  it("ningún archivo fuera del embudo lee o elige versiones de la receta de una combinación por su cuenta", () => {
-    const sueltos = [...fuentes].filter(([nombre, fuente]) => nombre !== EMBUDO && eligeLaRecetaPorSuCuenta(fuente)).map(([nombre]) => nombre);
-    expect(sueltos, `Estos archivos eligen o leen la receta de una combinación sin pasar por ${EMBUDO}:\n${sueltos.join("\n")}`).toEqual([]);
-  });
-
-  it("el embudo existe, lee las versiones y elige la vigente con la regla pura", () => {
-    const fuente = fuentes.get(EMBUDO);
-    expect(fuente, `${EMBUDO} no existe: actualizá EMBUDO`).toBeDefined();
-    expect(eligeLaRecetaPorSuCuenta(fuente!), `${EMBUDO} ya no lee las versiones`).toBe(true);
-    expect(sinComentarios(fuente!)).toMatch(/\bversionVigente\s*\(/);
+  it("ningún archivo lee o elige versiones de la receta de una combinación (el embudo se retiró con GO-3a)", () => {
+    const sueltos = [...fuentes].filter(([, fuente]) => eligeLaRecetaPorSuCuenta(fuente)).map(([nombre]) => nombre);
+    expect(sueltos, `Estos archivos eligen o leen la receta de una combinación (retirada en la Fase 3):\n${sueltos.join("\n")}`).toEqual([]);
   });
 
   it("todo lector de la versión congelada está declarado, y ninguno declarado dejó de serlo", () => {
-    const encontrados = new Set([...fuentes].filter(([nombre, fuente]) => nombre !== EMBUDO && necesitaClasificacion(fuente)).map(([nombre]) => nombre));
+    const encontrados = new Set([...fuentes].filter(([, fuente]) => necesitaClasificacion(fuente)).map(([nombre]) => nombre));
     expect([...encontrados].filter((n) => !RUTAS_CLASIFICADAS.has(n)), "leen la receta congelada de una combinación y no están declarados").toEqual([]);
     expect([...RUTAS_CLASIFICADAS].filter((n) => !encontrados.has(n)), "declarados que ya no la leen: sacalos de la lista").toEqual([]);
   });

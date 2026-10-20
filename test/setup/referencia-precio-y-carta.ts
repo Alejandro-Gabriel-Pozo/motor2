@@ -4,17 +4,17 @@ import type { DiferenciaDePrecio } from "../../src/core/opciones/public";
 /**
  * CATÁLOGO DE REFERENCIA de precio y carta (Fase 0 de la ola «precio y carta», 2026-10-19). Datos PUROS: sin base ni red. Reproduce las configuraciones reales de
  * producción (pizzas con precio absoluto, milanesas con terminación absoluta y variante «Milanesas de», café con tamaño absoluto y variante de preparación, bife con
- * guarnición incluida) más los casos del paquete de auditoría (CU-01 a CU-12) que producción todavía no usa (adicionales, porcentajes, precio de sucursal). Las COMBINACIONES (GO-3a: CU-07, CU-11) viven aparte, en `referencia-combinaciones.ts`, para que
- * retirarlas no toque los goldens del resto.
+ * guarnición incluida) más los casos del paquete de auditoría (CU-01 a CU-12) que producción todavía no usa (adicionales, porcentajes, precio de sucursal). Las COMBINACIONES (GO-3a: CU-07, CU-11) vivían aparte, en `referencia-combinaciones.ts`, para que
+ * retirarlas no tocara los goldens del resto: se retiraron en la Fase 3, paso 3.3, sin mover ni un byte de ellos.
  *
  * Lo usan las caracterizaciones de `test/caracterizacion-precio-y-carta/`: congelan lo que se cobra y lo que se muestra HOY, para poder demostrar en las fases
  * siguientes que «el precio cobrado no cambió». Un cambio en estos datos cambia los goldens: se declara en `caracterizaciones-congeladas.test.ts`.
  */
 
-export const monto = (m: number): DiferenciaDePrecio => ({ tipo: "MONTO", monto: m });
+const monto = (m: number): DiferenciaDePrecio => ({ tipo: "MONTO", monto: m });
 const porcentaje = (p: number): DiferenciaDePrecio => ({ tipo: "PORCENTAJE", porcentaje: p });
 
-export function opcion(opcionId: string, nombre: string, extra: Partial<OpcionParaVender> = {}): OpcionParaVender {
+function opcion(opcionId: string, nombre: string, extra: Partial<OpcionParaVender> = {}): OpcionParaVender {
   return {
     opcionId,
     nombre,
@@ -37,9 +37,9 @@ export function opcion(opcionId: string, nombre: string, extra: Partial<OpcionPa
 }
 
 /** Las opciones con su `orden` en la lista (el orden del grupo es el de la lista). */
-export const ordenadas = (opciones: OpcionParaVender[]): OpcionParaVender[] => opciones.map((o, i) => ({ ...o, orden: i }));
+const ordenadas = (opciones: OpcionParaVender[]): OpcionParaVender[] => opciones.map((o, i) => ({ ...o, orden: i }));
 
-export function grupo(g: Omit<GrupoParaVender, "activo" | "admitido" | "orden" | "modoPrecio"> & Partial<Pick<GrupoParaVender, "orden" | "modoPrecio">>): GrupoParaVender {
+function grupo(g: Omit<GrupoParaVender, "activo" | "admitido" | "orden" | "modoPrecio"> & Partial<Pick<GrupoParaVender, "orden" | "modoPrecio">>): GrupoParaVender {
   return { activo: true, admitido: true, orden: 0, modoPrecio: null, ...g };
 }
 
@@ -61,7 +61,7 @@ export interface EscenarioDeReferencia {
   elegidas: { opcionId: string; cantidad: number }[];
 }
 
-export const uno = (opcionId: string) => ({ opcionId, cantidad: 1 });
+const uno = (opcionId: string) => ({ opcionId, cantidad: 1 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Productos
@@ -296,7 +296,7 @@ export const PRODUCTOS_DE_REFERENCIA: readonly ProductoDeReferencia[] = [
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Escenarios: una elección concreta sobre un producto (lo que arma el mozo)
 
-export const esc = (caso: string, descripcion: string, producto: ProductoDeReferencia, elegidas: { opcionId: string; cantidad: number }[], cantidad = 1): EscenarioDeReferencia => ({
+const esc = (caso: string, descripcion: string, producto: ProductoDeReferencia, elegidas: { opcionId: string; cantidad: number }[], cantidad = 1): EscenarioDeReferencia => ({
   caso,
   descripcion,
   producto,

@@ -11,7 +11,7 @@ import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta"
 import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarYAplanarEleccionPromo, type ComponentePromoElegido, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
 import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
-import { armarLineaConfigurada, type CombinacionesDelProducto, type LineaConfigurada } from "@/core/pos/linea-configurada";
+import { armarLineaConfigurada, type LineaConfigurada } from "@/core/pos/linea-configurada";
 import { validarOpcionesElegidas } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
@@ -22,7 +22,6 @@ import { cargarOpcionesParaVender, completarPreciosDeSucursal } from "@/server/l
 import { cargarAgregadoDeCuentaPorClave, escribirAgregadoDeCuenta, escribirItemsDeCuenta, escribirLineaConfigurada, escribirPromoDeCuenta } from "@/server/persistencia/pos/pedido";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
 import { cargarOrigenDeStockParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
-import { cargarCombinacionesParaVender } from "@/server/lecturas/catalogo/combinaciones";
 import { cargarAlicuotasDeProductos } from "@/server/lecturas/carta/componentes-de-promo";
 import { revisarAlicuotasDeCombo } from "@/core/pos/public";
 import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
@@ -119,13 +118,6 @@ export async function agregarItemsCasoDeUso(
       items_.flatMap((i) => (typeof i?.productoId === "string" && Array.isArray(i.opciones) ? [{ productoId: i.productoId, opcionIds: i.opciones.map((o) => o.opcionId) }] : []))
     );
 
-    // GO-3b (ADR-032, frente A): las combinaciones de los productos del pedido que tienen EJES (lo dice la lectura de arriba); sin ninguno, no se lee nada más.
-    const conEjes = [...opcionesLeidas].filter(([, o]) => o.grupos.some((g) => g.ejeDeCombinacion !== undefined)).map(([id]) => id);
-    const combinacionesLeidas =
-      conEjes.length > 0
-        ? await cargarCombinacionesParaVender(tx, { sucursalId: actor.sucursalId, productoIds: conEjes })
-        : new Map<string, CombinacionesDelProducto>();
-
     // RECETA (ADR-033, sin receta no se vende): de cada producto del pedido (sueltos y componentes), si tiene origen de stock — receta vigente en ESTA sucursal o stock propio —, en
     // lecturas agrupadas por pedido. Es el error temprano para el mozo: el cobro lo vuelve a mirar (`armarLinea`), por si la receta se desactivó entre medio.
     const origenDeStock = await cargarOrigenDeStockParaVender(tx, { sucursalId: actor.sucursalId, productoIds: productoIdsDelPedido });
@@ -156,15 +148,14 @@ export async function agregarItemsCasoDeUso(
       const rechazoReceta = sinReceta(producto.id, producto.nombre);
       if (rechazoReceta !== null) return fracaso(CODIGO_PRODUCTO_SIN_RECETA, rechazoReceta);
       const elegidas = item.opciones ?? [];
-      // GO-3b: el precio de LISTA que vio el mozo (opcional): si cambió desde entonces (la tarifa, la combinación, el precio local, una opción), no se cobra otro en silencio: `PRECIO_CAMBIO`.
+      // GO-3b: el precio de LISTA que vio el mozo (opcional): si cambió desde entonces (el precio local, una opción), no se cobra otro en silencio: `PRECIO_CAMBIO`.
       const esperado = typeof item.precioDeListaEsperado === "number" ? item.precioDeListaEsperado : null;
       const cambioElPrecio = (lista: number) => esperado !== null && redondearMoneda(lista) !== redondearMoneda(esperado);
       const mensajeDePrecioCambiado = `«${producto.nombre}»: el precio cambió desde que lo elegiste. Volvé a mirarlo y agregalo de nuevo.`;
       if (admite.grupos.length > 0 || elegidas.length > 0) {
-        const combinaciones = combinacionesLeidas.get(producto.id);
-        const armada = armarLineaConfigurada({ grupos: admite.grupos, elegidas, precioBase: precioDeLista, descuentoDeProducto: descuento, cantidad: cantidad.cantidad, ...(combinaciones ? { combinaciones } : {}) });
+        const armada = armarLineaConfigurada({ grupos: admite.grupos, elegidas, precioBase: precioDeLista, descuentoDeProducto: descuento, cantidad: cantidad.cantidad });
         if (!armada.ok) {
-          const codigo = armada.codigo === "OPCION_CAMBIO" || armada.codigo === "COMBINACION_NO_DISPONIBLE" ? armada.codigo : "OPCIONES_INVALIDAS";
+          const codigo = armada.codigo === "OPCION_CAMBIO" ? armada.codigo : "OPCIONES_INVALIDAS";
           return fracaso(codigo, `«${producto.nombre}»: ${armada.mensaje}`);
         }
         if (armada.linea) {
@@ -192,7 +183,7 @@ export async function agregarItemsCasoDeUso(
       precio: number;
       componentes: (ComponentePromoElegido & { precioCarta: number })[];
       filas: FilaPromoProrrateada[];
-      /** GO-3b: la línea configurada de cada `claveComponente` de una entrada que la lleva (se escribe con su huella, sus fotos y su combinación). */
+      /** GO-3b: la línea configurada de cada `claveComponente` de una entrada que la lleva (se escribe con su huella y sus fotos). */
       lineaPorClave: ReadonlyMap<string, LineaConfigurada>;
     }[] = [];
     // GO-3b: el día de calendario de la zona de la empresa (la vigencia de cada promo y los platos del día).
@@ -300,7 +291,6 @@ export async function agregarItemsCasoDeUso(
           precioCartaUnitario: c.linea.precioUnitario,
           huellaOpciones: c.linea.huellaOpciones,
           fotos: c.linea.fotos,
-          ...(c.linea.combinacion ? { combinacion: c.linea.combinacion } : {}),
           promoCuentaId: c.promoCuentaId,
         },
         adicionales: [],
@@ -317,7 +307,6 @@ export async function agregarItemsCasoDeUso(
           precioCartaUnitario: c.linea.precioCartaUnitario,
           huellaOpciones: c.linea.huellaOpciones,
           fotos: c.linea.fotos,
-          ...(c.linea.combinacion ? { combinacion: c.linea.combinacion } : {}),
         },
         adicionales: c.linea.adicionales.map((a) => ({ productoId: a.productoId, cantidad: a.cantidad, precioUnitario: a.precioUnitario, foto: a.foto })),
       });

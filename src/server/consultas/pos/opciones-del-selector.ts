@@ -1,10 +1,9 @@
 import "server-only";
-import { combinacionesParaMostrar, masPedidasParaElDialogo, pediblesDeEntrada, resumenDePreciosConCombinaciones, type ConfiguracionDelSelector, type GrupoParaVender, type ProductoPedible, type SelectorCartaPos } from "@/core/pos/public";
+import { masPedidasParaElDialogo, pediblesDeEntrada, resumenDePrecios, type ConfiguracionDelSelector, type GrupoParaVender, type ProductoPedible, type SelectorCartaPos } from "@/core/pos/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
-import { cargarCombinacionesParaVender } from "@/server/lecturas/catalogo/combinaciones";
 import { saldosTeoricosEnSucursal } from "@/server/lecturas/movimientos/saldos";
 import { configuracionesMasPedidasEnSucursal } from "@/server/lecturas/pos/mas-pedidas";
 import { diaDeCalendario, inicioDelDia, sumarDias } from "@/core/tiempo/zona-horaria";
@@ -44,15 +43,12 @@ export async function cargarOpcionesDelSelector(
   const conDescuento = conOpciones.filter((id) => pedibles.get(id)!.precioLista !== undefined);
   const insumoIds = conOpciones.flatMap((id) => opciones.get(id)!.grupos.flatMap((g) => g.opciones.flatMap((o) => o.consumos.map((c) => c.insumoProductoId))));
   const desde = cuando ? inicioDelDia(sumarDias(diaDeCalendario(cuando.ahora, cuando.zonaHoraria), -29), cuando.zonaHoraria) : null;
-  // GO-3b: las combinaciones de los productos con ejes (solo si hay alguno), para que la vista previa y el «desde» cobren lo que cobra la venta.
-  const conEjes = conOpciones.filter((id) => opciones.get(id)!.grupos.some((g) => g.ejeDeCombinacion !== undefined));
-  const [grilla, descuentos, saldos, insumos, pedidas, combinaciones] = await Promise.all([
+  const [grilla, descuentos, saldos, insumos, pedidas] = await Promise.all([
     preciosLocalesDeOpcionVigentesEnProductos(sucursalId, db, conOpciones, capacidad),
     conDescuento.length ? descuentosDeProductoEnSucursal(sucursalId, db, conDescuento, capacidad) : Promise.resolve(new Map<string, number>()),
     saldosTeoricosEnSucursal(sucursalId, insumoIds, db),
     insumoIds.length ? db.producto.findMany({ where: { id: { in: [...new Set(insumoIds)] } }, select: { id: true, nombre: true } }) : Promise.resolve([]),
     desde ? configuracionesMasPedidasEnSucursal(db, sucursalId, conOpciones, desde) : Promise.resolve(new Map<string, never[]>()),
-    conEjes.length ? cargarCombinacionesParaVender(db, { sucursalId, productoIds: conEjes }) : Promise.resolve(new Map()),
   ]);
   const nombreDeInsumo = new Map(insumos.map((i) => [i.id, i.nombre]));
 
@@ -74,11 +70,9 @@ export async function cargarOpcionesDelSelector(
     // El precio base es el mismo que el selector muestra para el producto suelto (precio local vigente o el de venta), antes del descuento.
     const precioBase = pedible.precioLista ?? pedible.precio;
     const descuentoDeProducto = descuentos.get(productoId) ?? null;
-    const delProducto = combinaciones.get(productoId);
-    const paraMostrar = delProducto ? combinacionesParaMostrar(delProducto) : undefined;
-    const resumen = resumenDePreciosConCombinaciones({ grupos, precioBase, descuentoDeProducto, ...(paraMostrar ? { combinaciones: paraMostrar } : {}) });
+    const resumen = resumenDePrecios({ grupos, precioBase, descuentoDeProducto });
     const masPedidas = masPedidasParaElDialogo(grupos, pedidas.get(productoId) ?? []);
-    salida[productoId] = { grupos, precioBase, descuentoDeProducto, desde: resumen.desde, hayVariacion: resumen.hayVariacion, vendible: resumen.vendible, sinStock, masPedidas, ...(paraMostrar ? { combinaciones: paraMostrar } : {}) };
+    salida[productoId] = { grupos, precioBase, descuentoDeProducto, desde: resumen.desde, hayVariacion: resumen.hayVariacion, vendible: resumen.vendible, sinStock, masPedidas };
   }
   return salida;
 }

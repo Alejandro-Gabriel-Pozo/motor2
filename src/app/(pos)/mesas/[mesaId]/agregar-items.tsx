@@ -144,13 +144,13 @@ export function AgregarItems({
   };
 
   /**
-   * GO-3b (ADR-032): el precio de LISTA que el mozo está viendo de cada ítem (el de la vista previa con su configuración y su combinación, o el del pedible), para que el servidor no cobre otro en
+   * GO-3b (ADR-032): el precio de LISTA que el mozo está viendo de cada ítem (el de la vista previa con su configuración, o el del pedible), para que el servidor no cobre otro en
    * silencio si cambió entre medio (`PRECIO_CAMBIO`). Uno que no se puede calcular acá no se manda (el servidor cobra el de hoy, como siempre).
    */
   const precioQueSeVe = (item: ReturnType<typeof itemsDeListaPorAgregar>[number]): number | null => {
     const conf = configuraciones[item.productoId];
     if (item.opciones && conf) {
-      const vista = vistaPreviaDeConfiguracion({ grupos: conf.grupos, elegidas: item.opciones, precioBase: conf.precioBase, descuentoDeProducto: conf.descuentoDeProducto, cantidad: 1, ...(conf.combinaciones ? { combinaciones: conf.combinaciones } : {}) });
+      const vista = vistaPreviaDeConfiguracion({ grupos: conf.grupos, elegidas: item.opciones, precioBase: conf.precioBase, descuentoDeProducto: conf.descuentoDeProducto, cantidad: 1 });
       return vista.ok ? (vista.precioLista ?? vista.precioUnitario) : null;
     }
     const p = pediblePorId.get(item.productoId);
@@ -192,7 +192,7 @@ export function AgregarItems({
    */
   const lineaConOpciones = (clave: string, opciones: { opcionId: string; cantidad: number; versionDeOpcionId: string }[], cantidad: number, cantidadTexto: string, error: string | null, p: ProductoPedible, conf: ConfiguracionDelSelector) => {
     const { titulo, adicionales } = resumenDeConfiguracion(p.nombre, conf.grupos, opciones);
-    const vista = vistaPreviaDeConfiguracion({ grupos: conf.grupos, elegidas: opciones, precioBase: conf.precioBase, descuentoDeProducto: conf.descuentoDeProducto, cantidad, ...(conf.combinaciones ? { combinaciones: conf.combinaciones } : {}) });
+    const vista = vistaPreviaDeConfiguracion({ grupos: conf.grupos, elegidas: opciones, precioBase: conf.precioBase, descuentoDeProducto: conf.descuentoDeProducto, cantidad });
     const idError = `error-linea-${clave}`;
     return (
       <li key={clave} data-linea-por-agregar={titulo} className="flex flex-col gap-1 bg-white py-2 first:rounded-t-lg last:rounded-b-lg">

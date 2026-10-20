@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { armarLineaConfigurada } from "../../src/core/pos/linea-configurada";
-import { resumenDePrecios, resumenDePreciosConCombinaciones, vistaPreviaDeConfiguracion } from "../../src/core/pos/precio-de-configuracion";
+import { resumenDePrecios, vistaPreviaDeConfiguracion } from "../../src/core/pos/precio-de-configuracion";
 import { ESCENARIOS_DE_REFERENCIA, PRODUCTOS_DE_REFERENCIA, type ProductoDeReferencia } from "../setup/referencia-precio-y-carta";
 import { n, textoDeCarta, textoDeResumen } from "./texto";
 
@@ -18,14 +18,15 @@ import { n, textoDeCarta, textoDeResumen } from "./texto";
  * corrige en las fases siguientes declarando la regeneración en `test/arquitectura/caracterizaciones-congeladas.test.ts`. Para regenerarla A PROPÓSITO:
  * `REGENERAR_PRECIOS_PRECIO_Y_CARTA=1 npx vitest run test/caracterizacion-precio-y-carta/precios.test.ts`.
  *
- * Las COMBINACIONES (GO-3a) se caracterizan aparte (`combinaciones.test.ts`): retirarlas en la Fase 3 no mueve ni un byte de este golden, y esa es la prueba de que el
- * retiro no cambió el precio de nadie. Los rótulos de acá son neutros a propósito, por lo mismo.
+ * Las COMBINACIONES (GO-3a) se caracterizaban aparte (`combinaciones.test.ts`, retirado con su golden en la Fase 3, paso 3.3): retirarlas no movió ni un byte de este golden, y esa
+ * es la prueba de que el retiro no cambió el precio de nadie. Los rótulos de acá son neutros a propósito, por lo mismo. Desde 3.3 el POS usa el mismo `resumenDePrecios` que la carta
+ * (antes, `resumenDePreciosConCombinaciones`, que sin combinaciones devolvía exactamente eso).
  */
 const ARCHIVO = join(__dirname, "precios.golden.txt");
 
 function textoDelProducto(p: ProductoDeReferencia): string[] {
   const entrada = { grupos: p.grupos, precioBase: p.precioBase, descuentoDeProducto: p.descuentoDeProducto };
-  const delPos = resumenDePreciosConCombinaciones(entrada);
+  const delPos = resumenDePrecios(entrada);
   const delaCarta = resumenDePrecios(entrada);
   const out = [`##### ${p.nombre} (base ${n(p.precioBase)}, descuento ${p.descuentoDeProducto ?? "-"})`];
   out.push("resumen del POS:", ...textoDeResumen(delPos).map((l) => `  ${l}`));
@@ -69,8 +70,8 @@ describe("Caracterización del precio y la carta (Fase 0): funciones puras sobre
     const casos = new Set(ESCENARIOS_DE_REFERENCIA.map((e) => e.caso));
     for (let k = 1; k <= 12; k++) {
       const cu = `CU-${String(k).padStart(2, "0")}`;
-      // CU-07 y CU-11 (combinaciones) los cubre `combinaciones.test.ts`; CU-09 (carta de milanesas con encabezado) y CU-12 (receta propia por combinación) no son del precio:
-      // los cubren la proyección de la carta y la caracterización integrada.
+      // CU-07 y CU-11 (combinaciones) y CU-12 (receta propia por combinación) se retiraron con GO-3a en la Fase 3; CU-09 (carta de milanesas con encabezado) no es del precio:
+      // la cubren la proyección de la carta y la caracterización integrada.
       if (cu === "CU-07" || cu === "CU-09" || cu === "CU-11" || cu === "CU-12") continue;
       expect(casos.has(cu), `${cu} sin escenario`).toBe(true);
     }

@@ -28,6 +28,11 @@ const RUTAS_HISTORICAS: Record<string, string> = {
   "ADR-007-instalacion-multiempresa-activada-con-una.md|scripts/crear-empresa.ts": "script retirado en E5 (2026-10-04): el alta pasó a la consola de plataforma, ver ADR-020",
   "ADR-007-instalacion-multiempresa-activada-con-una.md|src/core/features/empresa/crear-empresa.ts": "mudada a test/setup/crear-empresa.ts en E8 (2026-10-05): es una fixture de pruebas, ver ADR-024",
   "ADR-019-consola-de-plataforma-ingreso-y-sesion.md|scripts/crear-empresa.ts": "script retirado en E5 (2026-10-04): el alta pasó a la consola de plataforma, ver ADR-020",
+  // Fase 3 de la ola «precio y carta» (retiro de GO-3a, DEC-02 y DEC-16): el ADR-032 conserva su historia (frentes A y B) y las rutas que se borraron con el retiro.
+  "ADR-032-combos-menu-del-dia-y-combinaciones.md|src/core/opciones/combinaciones.ts": "el precio puro por combinación, borrado en la Fase 3 (paso 3.3) con el retiro de GO-3a",
+  "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/core/opciones/combinaciones.test.ts": "su prueba, borrada con él en la Fase 3 (paso 3.3)",
+  "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/persistencia/migracion-go3a.test.ts": "la prueba de la migración de GO-3a, borrada en la Fase 3 (paso 3.3): la migración queda como historia y la prueba su retiro (paso 3.7)",
+  "ADR-032-combos-menu-del-dia-y-combinaciones.md|server/lecturas/catalogo/precio-local-de-combinaciones.ts": "el embudo del precio local de las combinaciones, borrado en la Fase 3 (paso 3.3): la venta ya no lee combinaciones",
 };
 
 /** `adr|clave` → clave o guarda retirada que el ADR nombra a propósito, como historia. */

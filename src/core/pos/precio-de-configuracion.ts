@@ -1,7 +1,6 @@
 import { aplicarDescuentoDeProducto } from "@/core/carta/public";
 import { totalDeLineas } from "@/core/moneda";
-import { componerPrecioDeLinea, entradaConPrecioDeCombinacion, validarOpcionesElegidas, type OpcionElegida, type OpcionParaPrecio, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
-import { combinacionElegida, combinacionesDesdeMostrar, type CombinacionesParaMostrar } from "./combinacion-elegida";
+import { componerPrecioDeLinea, validarOpcionesElegidas, type OpcionElegida, type OpcionParaPrecio, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
 import { opcionParaPrecio } from "./opcion-para-precio";
 
@@ -134,17 +133,12 @@ export type VistaPreviaDeConfiguracion =
     }
   | { ok: false; codigo: string; mensaje: string; grupoId?: string };
 
-/**
- * GO-3b (ADR-032): con `combinaciones` (las del producto con ejes, en su forma serializable), la combinación elegida decide igual que en la venta (`combinacionElegida`, la MISMA función): apagada es
- * `COMBINACION_NO_DISPONIBLE`; con precio propio, de la tarifa o local, ese es el precio del producto en esos ejes. Un producto con ejes y sin `combinaciones` falla cerrado, como la venta.
- */
 export function vistaPreviaDeConfiguracion(entrada: {
   grupos: readonly GrupoParaVender[];
   elegidas: readonly OpcionElegida[];
   precioBase: number;
   descuentoDeProducto: number | null;
   cantidad: number;
-  combinaciones?: CombinacionesParaMostrar;
 }): VistaPreviaDeConfiguracion {
   const { grupos, elegidas, precioBase, descuentoDeProducto, cantidad } = entrada;
   const validacion = validarOpcionesElegidas(grupos, elegidas);
@@ -155,10 +149,7 @@ export function vistaPreviaDeConfiguracion(entrada: {
       const grupo = grupos.find((x) => x.grupoId === v.grupoId)!;
       return { grupo, opcion: grupo.opciones.find((o) => o.opcionId === v.opcionId)!, cantidad: v.cantidad };
     });
-  const elegida = combinacionElegida(grupos, queCuentan, entrada.combinaciones ? combinacionesDesdeMostrar(entrada.combinaciones) : undefined);
-  if (!elegida.ok) return { ok: false, codigo: elegida.codigo, mensaje: elegida.mensaje };
-  const entradaDePrecio = { precioBase, cantidad, opciones: queCuentan.map((e) => opcionParaPrecio(e.grupo, e.opcion, e.cantidad)) };
-  const r = componerPrecioDeLinea(elegida.precio === null ? entradaDePrecio : entradaConPrecioDeCombinacion(entradaDePrecio, elegida.precio, elegida.opcionesDeEjes));
+  const r = componerPrecioDeLinea({ precioBase, cantidad, opciones: queCuentan.map((e) => opcionParaPrecio(e.grupo, e.opcion, e.cantidad)) });
   if (!r.ok) return { ok: false, codigo: r.codigo, mensaje: r.mensaje };
   const aplicado = aplicarDescuentoDeProducto(r.precio.precioDeLista, descuentoDeProducto);
   const adicionales = r.precio.adicionales.map((a) => ({ opcionId: a.opcionId, nombre: a.nombre, cantidad: a.cantidad, precioUnitario: a.recargoUnitario }));
@@ -169,77 +160,4 @@ export function vistaPreviaDeConfiguracion(entrada: {
     adicionales,
     total: totalDeLineas([{ cantidad, precioUnitario: aplicado.precio }, ...adicionales.map((a) => ({ cantidad: a.cantidad, precioUnitario: a.precioUnitario }))]),
   };
-}
-
-/**
- * GO-3b (ADR-032): las opciones de un EJE que, con lo que ya está elegido en el otro eje (o solas, si hay un eje solo), caen en una combinación APAGADA (la fila o su tarifa): el diálogo las muestra
- * deshabilitadas («No disponible») en vez de dejar que el mozo arme algo que la venta va a rechazar. Con dos ejes y el otro todavía sin elegir, no se deshabilita nada (no se sabe todavía).
- */
-export function opcionesConCombinacionApagada(grupos: readonly GrupoParaVender[], elegidas: readonly { opcionId: string }[], combinaciones: CombinacionesParaMostrar | undefined): Set<string> {
-  const apagadas = new Set<string>();
-  if (!combinaciones) return apagadas;
-  const ejes = [...grupos].filter((g) => g.ejeDeCombinacion !== undefined).sort((a, b) => a.ejeDeCombinacion! - b.ejeDeCombinacion!);
-  if (ejes.length === 0) return apagadas;
-  const filas = new Map(combinaciones.filas.map((f) => [f.clave, f]));
-  const elegidas_ = new Set(elegidas.map((e) => e.opcionId));
-  const elegidaDe = (g: GrupoParaVender) => g.opciones.find((o) => elegidas_.has(o.opcionId) && !o.esNinguna)?.opcionId ?? null;
-  for (const g of ejes) {
-    const otro = ejes.find((x) => x !== g);
-    const delOtro = otro ? elegidaDe(otro) : null;
-    if (otro && delOtro === null) continue;
-    for (const o of g.opciones) {
-      if (o.esNinguna) continue;
-      const [uno, dos] = g.ejeDeCombinacion === 1 ? [o.opcionId, delOtro] : [delOtro!, o.opcionId];
-      const fila = filas.get(`${uno}|${dos ?? ""}`);
-      if (fila && (!fila.activa || (fila.grupo !== null && !fila.grupo.activo))) apagadas.add(o.opcionId);
-    }
-  }
-  return apagadas;
-}
-
-/**
- * GO-3b (ADR-032): el resumen de precios de un producto con EJES, corregido por sus combinaciones (la misma regla que la venta): con UN eje, cada opción del eje muestra el precio de SU combinación (y una
- * apagada no se ofrece); el «desde» es el más barato de las combinaciones que se pueden pedir (cada una con lo más barato de los demás grupos obligatorios). Con dos ejes, el precio de cada opción
- * depende del otro eje: se deja el de la regla general y el «desde» recorre todos los pares. Sin `combinaciones`, el resumen de siempre.
- */
-export function resumenDePreciosConCombinaciones(entrada: { grupos: readonly GrupoParaVender[]; precioBase: number; descuentoDeProducto: number | null; combinaciones?: CombinacionesParaMostrar }): ResumenDePrecios {
-  const base = resumenDePrecios(entrada);
-  const { combinaciones } = entrada;
-  const ejes = entrada.grupos.filter((g) => g.ejeDeCombinacion !== undefined && g.admitido && g.activo).sort((a, b) => a.ejeDeCombinacion! - b.ejeDeCombinacion!);
-  if (!combinaciones || ejes.length === 0 || !base.vendible) return base;
-  // Lo más barato de cada grupo obligatorio que no es eje (como en el «desde» de siempre).
-  const masBaratas = base.grupos
-    .filter((g) => g.cantidadMinima > 0 && g.tipo !== "ADICIONAL" && !ejes.some((e) => e.grupoId === g.grupoId) && g.opciones.length > 0)
-    .map((g) => {
-      const barata = g.opciones.reduce((a, b) => ((b.precioFinal ?? b.diferencia) < (a.precioFinal ?? a.diferencia) ? b : a));
-      return { opcionId: barata.opcionId, cantidad: 1 };
-    });
-  const disponiblesDe = (grupoId: string) => (base.grupos.find((g) => g.grupoId === grupoId)?.opciones ?? []).filter((o) => !o.esNinguna).map((o) => o.opcionId);
-  const precioDe = (ejeIds: string[]) => {
-    const v = vistaPreviaDeConfiguracion({ ...entrada, elegidas: [...ejeIds.map((opcionId) => ({ opcionId, cantidad: 1 })), ...masBaratas], cantidad: 1 });
-    return v.ok ? v.precioUnitario : null;
-  };
-  const pares: string[][] = ejes.length === 1 ? disponiblesDe(ejes[0]!.grupoId).map((a) => [a]) : disponiblesDe(ejes[0]!.grupoId).flatMap((a) => disponiblesDe(ejes[1]!.grupoId).map((b) => [a, b]));
-  const precios = pares.map((p) => ({ par: p, precio: precioDe(p) }));
-  const vendibles = precios.flatMap((p) => (p.precio === null ? [] : [p.precio]));
-  const desde = vendibles.length ? Math.min(...vendibles) : null;
-  let grupos = base.grupos;
-  if (ejes.length === 1) {
-    const eje = ejes[0]!;
-    const porOpcion = new Map(precios.map((p) => [p.par[0]!, p.precio]));
-    grupos = base.grupos.map((g) =>
-      g.grupoId !== eje.grupoId
-        ? g
-        : {
-            ...g,
-            opciones: g.opciones.flatMap((o) => {
-              if (o.esNinguna) return [o];
-              const precio = porOpcion.get(o.opcionId);
-              if (precio === null || precio === undefined) return [];
-              return [g.tipo === "MEDIDA" ? { ...o, precioFinal: precio } : o];
-            }),
-          },
-    );
-  }
-  return { ...base, grupos, desde, vendible: desde !== null, hayVariacion: base.hayVariacion || new Set(vendibles).size > 1 };
 }

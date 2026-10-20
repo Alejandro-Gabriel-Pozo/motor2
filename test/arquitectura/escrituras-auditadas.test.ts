@@ -64,8 +64,6 @@ const MODELOS_QUE_SON_SU_PROPIA_HISTORIA: Record<string, string> = {
   promoCuenta: "Promo cobrada en una cuenta (documento del POS): copia el precio congelado de la carta, no es una configuración editable.",
   opcionElegidaEnLinea:
     "GO-2b: la FOTO de las opciones elegidas en una línea de la cuenta (documento del POS, ADR-030): solo se agrega (la app no tiene UPDATE ni DELETE; se va solo con el borrador de su línea, ON DELETE CASCADE) y congela el importe de cada opción al pedir.",
-  combinacionEnLinea:
-    "GO-3b (ADR-032): la FOTO de la combinación vendida en una línea de la cuenta (documento del POS): solo se agrega, 1 a 1 con su línea (se va solo con el borrador, ON DELETE CASCADE), y congela el origen del precio, la tarifa y la versión de la receta propia al pedir.",
   cotizacionDolar: "Dato de una fuente externa sincronizado por un cron, una fila por día: no lo edita nadie a mano.",
   indicePrecio: "Dato de una fuente externa (IPC) sincronizado por un cron: no lo edita nadie a mano.",
 };

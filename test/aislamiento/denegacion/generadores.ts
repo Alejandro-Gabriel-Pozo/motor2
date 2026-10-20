@@ -417,12 +417,7 @@ const parametros: Record<string, Record<string, Valor>> = {
     lugares: (k) => ({ seccionCartaIds: [k.seccionCartaId], cupoListaIds: [k.cupoListaId], cupoDelDiaIds: [k.cupoDelDiaId] }),
     args: (_k, c) => ({ desdeDia: "2000-01-01", sucursalIds: [c.propio.sucursalId] }),
   },
-  // GO-3b (frente A): la receta propia vigente de la combinación y los precios locales de la combinación y de la tarifa en la sucursal (lo que lee la venta).
-  "lectura|lecturas/catalogo/recetas-de-combinacion.ts|cargarRecetasVigentesDeCombinaciones": { combinacionIds: (k) => [k.combinacionId] },
-  "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|preciosLocalesDeCombinacionVigentes": { ids: (k) => ({ combinacionIds: [k.combinacionId], grupoDePrecioIds: [k.grupoDePrecioId] }), precioLocalActivo: () => true },
-  // GO-3b (F5): las combinaciones del PV con opciones para venderlo (I1), los cupos de entradas del combo de la empresa tal como se venden el día del plato del mundo (I2) y ese día para la
-  // promo a agregar (vigencia y platos del día).
-  "lectura|lecturas/catalogo/combinaciones.ts|cargarCombinacionesParaVender": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoConOpcionesId] }) },
+  // GO-3b (F5): los cupos de entradas del combo de la empresa tal como se venden el día del plato del mundo (I2) y ese día para la promo a agregar (vigencia y platos del día).
   "lectura|lecturas/pos/entradas-de-promo-para-vender.ts|cargarEntradasDePromoParaVender": {
     args: (k) => ({
       sucursalId: k.sucursalId,

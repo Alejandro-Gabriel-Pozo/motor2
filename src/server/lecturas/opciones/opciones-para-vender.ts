@@ -55,8 +55,6 @@ export async function cargarOpcionesParaVender(
           cantidadMaxima: true,
           modoPrecio: true,
           activo: true,
-          // GO-3b: si el grupo es un eje de las combinaciones del producto (la venta lee entonces sus combinaciones; sin ejes, la línea de siempre).
-          ejeDeCombinacion: true,
           grupo: {
             select: {
               id: true,
@@ -114,7 +112,6 @@ export async function cargarOpcionesParaVender(
       cantidadMaxima: pg.cantidadMaxima ?? pg.grupo.cantidadMaxima,
       orden: pg.orden,
       modoPrecio: pg.modoPrecio as ModoDePrecioDeMedida | null,
-      ...(pg.ejeDeCombinacion !== null ? { ejeDeCombinacion: pg.ejeDeCombinacion } : {}),
       opciones: pg.grupo.opciones.flatMap((o): OpcionParaVender[] => {
         const vigente = versionVigente(o.versiones);
         if (!vigente) return [];

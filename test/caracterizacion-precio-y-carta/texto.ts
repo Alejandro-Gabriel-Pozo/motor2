@@ -2,8 +2,8 @@ import { opcionesParaLaCarta } from "../../src/core/carta/opciones-en-carta";
 import type { ResumenDePrecios } from "../../src/core/pos/precio-de-configuracion";
 
 /**
- * Texto de las caracterizaciones de precio y carta (Fase 0 de la ola «precio y carta»): las dos pruebas (la de los productos del catálogo de referencia y la de las
- * combinaciones GO-3a) escriben con las mismas líneas, para que el golden de una se lea igual que el de la otra.
+ * Texto de las caracterizaciones de precio y carta (Fase 0 de la ola «precio y carta»): las pruebas escriben con las mismas líneas (la de las combinaciones GO-3a, que
+ * también las usaba, se retiró en la Fase 3).
  */
 export const n = (x: number | null | undefined): string => (x === null || x === undefined ? "-" : x.toFixed(2));
 
