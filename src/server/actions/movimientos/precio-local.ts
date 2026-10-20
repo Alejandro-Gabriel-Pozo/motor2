@@ -1,8 +1,8 @@
 "use server";
 
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
-import { guardComandoSetPrecioLocalProducto, guardComandoSincronizarPrecioLocalGrupoCarta } from "@/core/features/movimientos/precio-local.guard";
-import type { PrecioLocalDeProductoVisto } from "@/core/features/movimientos/precio-local.schema";
+import { guardComandoSetPrecioLocalProducto, guardComandoSincronizarPrecioLocalGrupoCarta } from "@/core/features/catalogo/precio-local.guard";
+import type { PrecioLocalDeProductoVisto } from "@/core/features/catalogo/precio-local.schema";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { conPermiso } from "../con-permiso";
@@ -46,7 +46,7 @@ export async function listarPreciosLocales(sucursalId: string) {
  * desde entonces, no se escribe nada y el mensaje pide recargar (`PRECIO_DESACTUALIZADO`); el mismo pedido repetido no vuelve a escribir.
  *
  * Desde el Hito 4 (H4C-4): permiso (`conPermiso("precio_local")`) → formato del precio (`guardComandoSetPrecioLocalProducto`,
- * core/features/movimientos/precio-local.guard.ts, DENTRO del envoltorio) → caso de uso (`casos-de-uso/set-precio-local-producto.ts`) → revalidar la carta
+ * core/features/catalogo/precio-local.guard.ts, DENTRO del envoltorio) → caso de uso (`casos-de-uso/set-precio-local-producto.ts`) → revalidar la carta
  * pública → y DESPUÉS de revalidar, el `sincronizable` (lee el ítem agrupado con la base del contexto, como antes) → el resultado sin `datos` ni `codigo`
  * (`aResultadoAccion`, más el `sincronizable` elegido a mano).
  */

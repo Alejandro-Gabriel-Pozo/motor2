@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
-import type { ComandoSincronizarPrecioLocalGrupoCarta, ResultadoSincronizarPrecioLocalGrupoCarta } from "@/core/features/movimientos/precio-local.schema";
+import type { ComandoSincronizarPrecioLocalGrupoCarta, ResultadoSincronizarPrecioLocalGrupoCarta } from "@/core/features/catalogo/precio-local.schema";
 import { precioDeCarta } from "@/core/carta/public";
 import { mismosCentavos } from "@/core/datos/importe";
 import { exito, fracaso } from "@/core/resultado-caso";

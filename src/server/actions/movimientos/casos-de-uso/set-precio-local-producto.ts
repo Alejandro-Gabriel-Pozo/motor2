@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
-import type { ComandoSetPrecioLocalProducto, ResultadoSetPrecioLocalProducto } from "@/core/features/movimientos/precio-local.schema";
+import type { ComandoSetPrecioLocalProducto, ResultadoSetPrecioLocalProducto } from "@/core/features/catalogo/precio-local.schema";
 import { mismosCentavos } from "@/core/datos/importe";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";

@@ -10,7 +10,7 @@ import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
-import type { PrecioLocalDeProductoVisto } from "@/core/features/movimientos/precio-local.schema";
+import type { PrecioLocalDeProductoVisto } from "@/core/features/catalogo/precio-local.schema";
 
 /**
  * `sucursalId`: la sucursal activa que ve la pantalla (la acción de sincronizar la vuelve a comparar con la del servidor). `preciosLocales`: el precio local que

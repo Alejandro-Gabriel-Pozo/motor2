@@ -11,7 +11,7 @@ import { cargarGrillaDeTamanosDeLaSucursal } from "@/server/consultas/catalogo/o
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { formatearMonto } from "@/core/pos/public";
-import type { PrecioLocalDeProductoVisto } from "@/core/features/movimientos/precio-local.schema";
+import type { PrecioLocalDeProductoVisto } from "@/core/features/catalogo/precio-local.schema";
 
 /**
  * MOVIL (O.463): las dos tablas de esta pantalla (4 y 5 columnas, con un campo y botones por fila) no entran en 375 px: se cortaban («Guardar» → «Guard», columnas «Habilitado» y «Volver…»
