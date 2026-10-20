@@ -12,6 +12,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { texto } from "@/core/texto";
 import { datosParaGuardar, validarDatosDeProducto } from "@/server/lecturas/catalogo/datos-de-producto";
 import { productoTieneHistoria, productoTieneLiquidaciones } from "@/server/lecturas/catalogo/historia-de-producto";
+import { itemAgrupadoDelProductoEn } from "@/server/lecturas/carta/grupo-de-producto";
 import { actualizarCamposDeProducto, tomarFilaDeProducto } from "@/server/persistencia/catalogo/productos";
 import { admisionesParaSerBase } from "./opciones-de-venta-en-tx";
 
@@ -174,12 +175,11 @@ async function actualizarProductoEnTransaccion(
       let admisiones: AdmisionParaSerBase[] = [];
       if (pasaABase) {
         await tomarFilaDeProducto(tx, productoId);
-        const [ancla, agrupado] = await Promise.all([
-          tx.opcionDeGrupo.findFirst({ where: { productoId }, select: { id: true } }),
-          tx.opcionItemAgrupadoCarta.findFirst({ where: { productoId }, select: { itemAgrupadoCarta: { select: { nombre: true } } } }),
-        ]);
+        // El ítem agrupado, en TODAS las sucursales de la empresa (la transacción es la de verificación: lee la empresa entera).
+        const sucursalIds = (await tx.sucursal.findMany({ select: { id: true } })).map((sucursal) => sucursal.id);
+        const [ancla, agrupado] = await Promise.all([tx.opcionDeGrupo.findFirst({ where: { productoId }, select: { id: true } }), itemAgrupadoDelProductoEn(productoId, sucursalIds, tx)]);
         comoBase.esAnclaDeAdicional = ancla !== null;
-        comoBase.itemAgrupado = agrupado?.itemAgrupadoCarta.nombre ?? null;
+        comoBase.itemAgrupado = agrupado;
         admisiones = await admisionesParaSerBase(tx, productoId);
       }
       const rechazo = pasaABase ? rechazoDeBaseConfigurable(comoBase, admisiones) : rechazoDelProductoComoBase(comoBase);

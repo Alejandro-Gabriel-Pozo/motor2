@@ -45,7 +45,9 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   PortalCartaEmpresa: ["valores"],
   PrecioLocalProducto: ["habilitado", "precio", "productoId"],
   // GO-2d: + `gruposAdmitidos` y `opcionesAdmitidas` (las opciones de venta que la carta muestra, decisión del dueño 2026-10-13; abajo, sus modelos).
-  Producto: ["categoria", "contenidosCarta", "gruposAdmitidos", "id", "nombre", "opcionesAdmitidas", "precioVenta"],
+  // Fase 4 de la ola «precio y carta» (ADR-035; decisión técnica del dueño: «modo y prefijo entran a la lista cerrada»): + `modoDeVenta`, para que la carta componga una base sobre su precio de
+  // referencia y no muestre su precio guardado. Se LEE en el servidor; no viaja a `CartaV1` (la proyección no cambia en esta fase).
+  Producto: ["categoria", "contenidosCarta", "gruposAdmitidos", "id", "modoDeVenta", "nombre", "opcionesAdmitidas", "precioVenta"],
   PromoCarta: ["descripcion", "id", "orden", "precio", "seccionCartaId", "sucursales", "titulo"],
   PromoCartaSucursal: ["activa", "precioLocal"],
   SeccionCarta: ["descripcion", "id", "imagenUrl", "nombre", "orden", "titulo"],
