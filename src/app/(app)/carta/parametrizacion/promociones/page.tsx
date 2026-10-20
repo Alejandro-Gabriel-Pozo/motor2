@@ -15,6 +15,7 @@ import {
 } from "@/server/actions/carta/promos";
 import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo, guardarVigenciaPromoCarta } from "@/server/actions/carta/combos";
 import { precioMinimoPromo } from "@/core/pos/public";
+import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { AgregarEntradaDeLugar } from "../../agregar-entrada-de-lugar";
@@ -224,13 +225,16 @@ export default async function PromocionesDeCartaPage() {
                         {l.nombre} · {l.tipo === "DEL_DIA" ? "del día" : esFijo(l) ? "viene fijo" : `se elige ${l.cantidadMinima === l.cantidadMaxima ? l.cantidadMaxima : `de ${l.cantidadMinima} a ${l.cantidadMaxima}`}`}
                       </h4>
                       {l.tipo === "DEL_DIA" ? (
-                        <p className="text-sm text-neutral-500">
-                          El plato lo carga cada sucursal por día en{" "}
-                          <EnlaceInterno href="/movimientos/menu-del-dia" className="underline">
-                            Menú del día
-                          </EnlaceInterno>
-                          .
-                        </p>
+                        // Con el menú del día apagado (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20) no se nombra ni se enlaza su pantalla (no existe).
+                        MENU_DEL_DIA_VISIBLE ? (
+                          <p className="text-sm text-neutral-500">
+                            El plato lo carga cada sucursal por día en{" "}
+                            <EnlaceInterno href="/movimientos/menu-del-dia" className="underline">
+                              Menú del día
+                            </EnlaceInterno>
+                            .
+                          </p>
+                        ) : null
                       ) : (
                         <>
                           {l.entradas.length === 0 ? (

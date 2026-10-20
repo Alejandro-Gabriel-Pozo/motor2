@@ -4,6 +4,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
+import { MENU_DEL_DIA_VISIBLE } from "../../src/core/carta/menu-del-dia";
 import { diaDeCalendario, fechaDeColumnaDate, ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
 
 /**
@@ -13,6 +14,9 @@ import { diaDeCalendario, fechaDeColumnaDate, ZONA_ARGENTINA } from "../../src/c
  *
  * Siembra en «Central» una sección «E2E Menús» (con la gaseosa visible: la promo vive ahí) y la promo «E2E Menú» de $ 10.000 con tres cupos de entradas; cada caso limpia lo suyo en `finally`.
  */
+
+// Interruptor del menú del día (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20): mientras esté apagado, no se pueden armar lugares «del día» en una promo, así que el POS no tiene menú del día que vender. Encendido, este spec vuelve a correr entero.
+test.skip(!MENU_DEL_DIA_VISIBLE, "el menú del día está apagado (MENU_DEL_DIA_VISIBLE = false en src/core/carta/menu-del-dia.ts): no se pueden armar lugares «del día» en una promo, así que el POS no tiene menú del día que vender");
 
 const barra = (page: Page) => page.getByRole("group", { name: "Secciones de la carta" });
 

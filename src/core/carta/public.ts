@@ -81,7 +81,7 @@ export type { EntradaPortalCarta } from "./portal";
 export { TODOS_LOS_DIAS, mascaraDeDias, promoVigenteEl, validarVigenciaDePromo } from "./vigencia-de-promo";
 export type { VigenciaDePromo } from "./vigencia-de-promo";
 // GO-3b (ADR-032, D-1): la fecha del menú del día (de hoy a hoy + 13, en la zona de la empresa).
-export { DIAS_DE_ANTICIPACION_DEL_MENU, validarFechaDeMenuDelDia } from "./menu-del-dia";
+export { DIAS_DE_ANTICIPACION_DEL_MENU, MENSAJE_MENU_DEL_DIA_APAGADO, MENU_DEL_DIA_VISIBLE, lugarDelDiaApagado, validarFechaDeMenuDelDia } from "./menu-del-dia";
 export type { CandidatoAPlato, MenuDelDiaDeLaSucursal } from "./menu-del-dia";
 // CARTA-MANT (mantenimiento de la carta): en qué lista va cada producto de la pantalla de la carta («Fuera de carta» es el POS y el menú del día, no un faltante).
 export { coincideConLaBusqueda, lugaresParaPoner, ordenAlFinalDeLaSeccion, organizarCartaParaMantener, ponerEnElLugar, vistaPreviaDeOpciones } from "./mantenimiento";

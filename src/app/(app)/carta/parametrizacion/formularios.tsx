@@ -3,7 +3,7 @@ import { FormConResultado } from "@/components/form-con-resultado";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
 import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
 import { Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
-import type { LugarDeCombo, ProductoCartaAdmin, ProductoParaMantener, VigenciaDePromoAdmin } from "@/core/carta/public";
+import { MENU_DEL_DIA_VISIBLE, type LugarDeCombo, type ProductoCartaAdmin, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
 import { guardarDescuentoProducto } from "@/server/actions/carta/descuento-producto";
 import { quitarProductoDeLaCarta } from "@/server/actions/carta/mantenimiento";
@@ -247,7 +247,8 @@ export function CamposVigencia({ vigencia }: { vigencia: VigenciaDePromoAdmin })
 
 /**
  * GO-3b (U1): los lugares de ENTRADAS de la promo en el formulario de cupos: cada uno con «incluir» (destildado, se da de baja: sus entradas quedan guardadas por si vuelve) y su mínimo y máximo;
- * el nombre es su identidad (cambiarlo es otro lugar). Abajo, una fila para sumar un lugar nuevo: una LISTA («Bebida») o uno DEL DÍA («Plato del día»).
+ * el nombre es su identidad (cambiarlo es otro lugar). Abajo, una fila para sumar un lugar nuevo: una LISTA («Bebida») o uno DEL DÍA («Plato del día»). Con el menú del día apagado
+ * (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20) no se ofrece el DEL DÍA (el servidor igual lo rechaza); los lugares del día que ya existían se siguen listando.
  */
 export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
   return (
@@ -277,7 +278,7 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           Tipo
           <select name="nuevo_lugar_tipo" defaultValue="LISTA" className={CLASE_INPUT}>
             <option value="LISTA">Lista de productos</option>
-            <option value="DEL_DIA">Plato del día</option>
+            {MENU_DEL_DIA_VISIBLE ? <option value="DEL_DIA">Plato del día</option> : null}
           </select>
         </label>
         <label className="col-span-2 flex flex-col gap-1">
