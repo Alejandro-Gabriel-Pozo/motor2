@@ -205,8 +205,9 @@ misma regla de qué factor es válido que el servidor). A quien tiene el «Ver»
 mismo producto de referencia del precio (el primero que usa el grupo), en la sucursal activa: «harina 0,25 kg → 0,325 kg». Esas cantidades NO salen de una cuenta propia: la receta se lee con la
 lectura de la venta (`cargarRecetaVigenteParaVender`, la receta efectiva de la sucursal con sus calibraciones) y se calcula con la función de la venta (`consumoDeLaBaseConFactor` en
 `src/core/movimientos/consumo-de-la-base-con-factor.ts`, que llama dos veces a `consumoDeLineaConfigurada`), así lo que el operario lee es lo que la venta pide descontar por unidad. La pantalla
-dice también lo que esa vista no muestra: los consumos propios de la opción se multiplican por el factor solo con «Escala con el tamaño», y la receta propia de una combinación cuyo eje es el
-tamaño ya es la de ese tamaño y no se escala (ADR-032). Sin el permiso o sin el módulo, solo la frase.
+dice también lo que esa vista no muestra: los consumos propios de la opción se multiplican por el factor solo con «Escala con el tamaño». (Decía además que la receta propia de una combinación
+cuyo eje es el tamaño ya era la de ese tamaño y no se escalaba, ADR-032: la receta propia por combinación se retiró con GO-3a en la Fase 3 de la ola «precio y carta» y la pantalla ya no lo dice.)
+Sin el permiso o sin el módulo, solo la frase.
 
 ## Consecuencias
 

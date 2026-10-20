@@ -63,6 +63,8 @@ Precedencia real del precio (VERIFICADA leyendo el código; el golden de las fun
 5. Base: el precio local del producto habilitado (si la capacidad `precio_local` está prendida) o `Producto.precioVenta` (`core/carta/armar-menu.ts:253-254`; `server/actions/pos/casos-de-uso/agregar-items.ts:149`).
 6. Descuento de producto: se aplica sobre la lista compuesta, nunca sobre el adicional (`precio-de-configuracion.ts:175`).
 
+> **Actualización (Fase 3, 2026-10-20):** GO-3a se retiró del código (ADR-032, «Fase 3: retiro de GO-3a»): los pasos 1 a 3 de esta precedencia (combinación inactiva, precio local de la combinación o de su tarifa, precio propio o de tarifa) ya no existen y rige siempre el aditivo (paso 4). El golden de combinaciones se retiró con su prueba; el de los demás productos no se movió.
+
 La tabla §3.1 del paquete de auditoría no decía tres cosas: que tarifa y precio propio son excluyentes, que el precio local de la combinación (o de su tarifa) le gana a ambos, y que el porcentaje
 se calcula sobre la base del producto.
 
