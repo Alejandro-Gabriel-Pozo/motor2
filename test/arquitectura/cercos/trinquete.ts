@@ -87,7 +87,7 @@ export interface Revision {
 const CARPETAS_IGNORADAS = new Set(["node_modules", ".next"]);
 
 /** Ruta relativa a `raiz`, con `/` en cualquier sistema. */
-export function rutaPortable(raiz: string, ruta: string): string {
+function rutaPortable(raiz: string, ruta: string): string {
   return relative(raiz, ruta).split(sep).join("/");
 }
 
