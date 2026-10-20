@@ -30,7 +30,10 @@ const RETIRADO: readonly { patron: RegExp; que: string }[] = [
 ];
 
 /** Rutas exactas que pueden nombrar lo retirado, con su motivo. */
-const EXCEPCIONES: Readonly<Record<string, string>> = {};
+const EXCEPCIONES: Readonly<Record<string, string>> = {
+  "scripts/operaciones/verificar-retiro-go3a.sql":
+    "La verificación previa de SOLO LECTURA del retiro (paso 3.7): cuenta las filas de las seis tablas de GO-3a, los ejes y la clave para saber, antes de pedir el OK, si la migración abortaría.",
+};
 
 const MODELOS_RETIRADOS = ["GrupoDePrecio", "CombinacionDeProducto", "PrecioLocalDeCombinacion", "RecetaDeCombinacionVersion", "RecetaDeCombinacionIngrediente", "CombinacionEnLinea"];
 
