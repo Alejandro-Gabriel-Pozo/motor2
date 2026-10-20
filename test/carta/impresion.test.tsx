@@ -41,6 +41,10 @@ describe("la carta en papel (@media print)", () => {
     expect(IMPRESION).toMatch(/\.carta-rol-producto,\s*\.carta-shell \.carta-rol-precio \{\s*font-size: var\(--carta-fs-producto-impresa\) !important;/);
     expect(IMPRESION).toMatch(/\.carta-rol-opcion,\s*\.carta-shell \.carta-rol-opcion-precio \{\s*font-size: var\(--carta-fs-opcion-impresa\) !important;/);
     expect(IMPRESION).toMatch(/\.carta-rol-aclaracion,\s*\.carta-shell \.carta-rol-aclaracion-rotulo \{\s*font-size: var\(--carta-fs-aclaracion-impresa\) !important;/);
+    // Los roles nuevos (rótulo, columna, tamaño, elección), cada uno en su regla.
+    for (const rol of ["rotulo", "columna", "tamano", "eleccion"]) {
+      expect(IMPRESION).toMatch(new RegExp(String.raw`\.carta-shell \.carta-rol-${rol} \{\s*font-size: var\(--carta-fs-${rol}-impresa\) !important;`));
+    }
     expect(enPapel(".carta-shell .carta-solo-papel")).toMatch(/display:\s*block !important/);
     // En pantalla, el pie no se ve.
     expect(CSS).toMatch(/\.carta-shell \.carta-solo-papel \{\s*display: none;\s*\}/);

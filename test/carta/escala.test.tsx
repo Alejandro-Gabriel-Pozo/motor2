@@ -37,6 +37,16 @@ describe("la escala de letra única (DEC-35)", () => {
   it("los pisos: Producto 19 px, Opción 16 px, Aclaración 14 px, Etiqueta 12 px; en papel 12/11/10/9 pt", () => {
     expect(ESCALA_DE_LA_CARTA).toMatchObject({ producto: "1.1875rem", opcion: "1rem", aclaracion: "0.875rem", etiqueta: "0.75rem" });
     expect(ESCALA_IMPRESA).toMatchObject({ producto: "12pt", opcion: "11pt", aclaracion: "10pt", etiqueta: "9pt" });
+    // Los roles nuevos de la jerarquía: rótulo 13 px, columna 16 px, tamaño 15 px, elección 15 px; en papel 9,5/11/10,5/10,5 pt.
+    expect(ESCALA_DE_LA_CARTA).toMatchObject({ rotulo: "0.8125rem", columna: "1rem", tamano: "0.9375rem", eleccion: "0.9375rem" });
+    expect(ESCALA_IMPRESA).toMatchObject({ rotulo: "9.5pt", columna: "11pt", tamano: "10.5pt", eleccion: "10.5pt" });
+  });
+
+  it("mínimo 14 px para lo que el cliente necesita para decidir (solo el rótulo y la etiqueta bajan de ahí)", () => {
+    for (const [rol, valor] of Object.entries(ESCALA_DE_LA_CARTA)) {
+      if (rol === "rotulo" || rol === "etiqueta") continue;
+      expect(parseFloat(valor) * 16, rol).toBeGreaterThanOrEqual(14);
+    }
   });
 
   it("el tema manda solo hacia arriba: cada variable es max(piso, tema); la Opción no tiene tema", () => {
@@ -47,8 +57,16 @@ describe("la escala de letra única (DEC-35)", () => {
     expect(v["--carta-fs-etiqueta"]).toBe("max(0.75rem, 0.6rem)");
     expect(v["--carta-fs-opcion"]).toBe("1rem");
     expect(v["--carta-fs-producto-impresa"]).toBe("12pt");
+    // La elección sigue al tema de la descripción, solo hacia arriba.
+    expect(v["--carta-fs-eleccion"]).toBe("max(0.9375rem, 11px)");
     // Sin tema (el portal), el piso solo.
-    expect(variablesDeLaEscala()["--carta-fs-producto"]).toBe("1.1875rem");
+    const sinTema = variablesDeLaEscala();
+    expect(sinTema["--carta-fs-producto"]).toBe("1.1875rem");
+    expect(sinTema["--carta-fs-rotulo"]).toBe("0.8125rem");
+    expect(sinTema["--carta-fs-columna"]).toBe("1rem");
+    expect(sinTema["--carta-fs-tamano"]).toBe("0.9375rem");
+    expect(sinTema["--carta-fs-eleccion"]).toBe("0.9375rem");
+    expect(sinTema["--carta-fs-rotulo-impresa"]).toBe("9.5pt");
   });
 
   it("resolverEstiloCarta pone la escala en la raíz de la carta, con el tema guardado (también uno más chico que el piso) y con los defaults", () => {
@@ -67,12 +85,19 @@ describe("la escala de letra única (DEC-35)", () => {
       "carta-rol-aclaracion": { size: "var(--carta-fs-aclaracion)", weight: "400" },
       "carta-rol-aclaracion-rotulo": { size: "var(--carta-fs-aclaracion)", weight: "600" },
       "carta-rol-etiqueta": { size: "var(--carta-fs-etiqueta)", weight: "400" },
+      "carta-rol-rotulo": { size: "var(--carta-fs-rotulo)", weight: "600" },
+      "carta-rol-columna": { size: "var(--carta-fs-columna)", weight: "600" },
+      "carta-rol-tamano": { size: "var(--carta-fs-tamano)", weight: "600" },
+      "carta-rol-eleccion": { size: "var(--carta-fs-eleccion)", weight: "400" },
     };
     for (const [clase, { size, weight }] of Object.entries(esperado)) {
       const r = reglaDe(clase);
       expect(r["font-size"], clase).toBe(size);
       expect(r["font-weight"], clase).toBe(weight);
     }
+    // El rótulo va en mayúsculas espaciadas.
+    expect(reglaDe("carta-rol-rotulo")["text-transform"]).toBe("uppercase");
+    expect(reglaDe("carta-rol-rotulo")["letter-spacing"]).toBe("0.2em");
   });
 });
 
