@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { decidirLayoutPortal, type EstiloPortal } from "@/core/carta/public";
+import { decidirLayoutPortal, variablesDeLaEscala, type EstiloPortal } from "@/core/carta/public";
 import type { EntradaPortalCarta } from "@/core/carta/public";
 
 /**
@@ -83,8 +83,8 @@ function Encabezado({ estilo, empresaNombre, publico }: { estilo: EstiloPortal; 
         // eslint-disable-next-line @next/next/no-img-element
         <img src={logo} alt={empresaNombre} className="mx-auto mb-3 max-h-16 w-auto" />
       )}
-      {etiqueta && <p className="portal-etiqueta text-xs uppercase tracking-widest">{etiqueta}</p>}
-      {titulo && <Titulo className="portal-titulo carta-titulo text-2xl font-medium">{titulo}</Titulo>}
+      {etiqueta && <p className="portal-etiqueta carta-rol-etiqueta uppercase tracking-widest">{etiqueta}</p>}
+      {titulo && <Titulo className="portal-titulo carta-rol-titulo carta-titulo">{titulo}</Titulo>}
     </header>
   );
 }
@@ -97,12 +97,13 @@ export function PortalVista({ sucursales, empresaNombre, estilo, hrefDe, modo }:
   const Cuerpo = publico ? "main" : "div";
 
   return (
-    <div className={`portal ${publico ? "min-h-screen" : ""}`} style={estilo.variablesCss as CSSProperties}>
+    // Fase 5 (DEC-35): la escala de letra única de la carta (sin tema: el portal no tiene tamaños de ítem), y encima lo del portal.
+    <div className={`portal ${publico ? "min-h-screen" : ""}`} style={{ ...variablesDeLaEscala(), ...estilo.variablesCss } as CSSProperties}>
       <Encabezado estilo={estilo} empresaNombre={empresaNombre} publico={publico} />
       <Cuerpo className="mx-auto px-6 pb-10 pt-4" style={{ maxWidth: layout.modo === "mapa" ? 648 : 576 }}>
         {publico && !hayTitulo && <h1 className="sr-only">Sucursales</h1>}
         {sucursales.length === 0 ? (
-          <p className="text-center text-sm opacity-60">Todavía no hay cartas publicadas.</p>
+          <p className="carta-rol-aclaracion text-center">Todavía no hay cartas publicadas.</p>
         ) : (
           <>
             {layout.modo === "mapa" && estilo.imagenFondo && (
@@ -137,7 +138,7 @@ export function PortalVista({ sucursales, empresaNombre, estilo, hrefDe, modo }:
         )}
       </Cuerpo>
       {derechos && (
-        <footer className="portal-footer px-6 pb-8 text-center text-xs">
+        <footer className="portal-footer carta-rol-etiqueta px-6 pb-8 text-center">
           © {new Date().getFullYear()} {derechos}
         </footer>
       )}

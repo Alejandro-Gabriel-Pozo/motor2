@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contarCoincidencias, medirPorArchivo, probarCerco, sinComentarios, type Cerco } from "./cercos/trinquete";
+import { RAIZ_DEL_REPO, contarCoincidencias, medirPorArchivo, probarCerco, sinComentarios, type Cerco } from "./cercos/trinquete";
 
 /**
  * Cerco «tipografía» (ola «precio y carta», Fase 1; auditoría §19.4: «el error del café más grande fue de escala tipográfica, no de
@@ -14,9 +14,9 @@ import { contarCoincidencias, medirPorArchivo, probarCerco, sinComentarios, type
  *    `carta-publica/seccion.tsx` no se esconden detrás de un nombre.
  * Las clases de la escala de Tailwind (`text-sm`, `text-lg`) no cuentan: son una escala, no un tamaño a mano.
  *
- * Dos líneas de base: `tipografia` (todo `src/` y `plataforma/src/`) y `carta-publica-tipografia` (solo `src/components/carta-publica/`,
- * meta 0 en la Fase 5: un solo piso para todo ítem y ningún bloque escribe su propio tamaño; el tema del cliente sigue mandando con
- * `carta_fuente_*`). El tema de la carta (`core/carta/tema.ts`, `estilo.ts`, `css-valores.ts`) guarda sus defaults como `defaultCarta:`
+ * Una línea de base, `tipografia` (todo `src/` y `plataforma/src/`), y una REGLA DURA, `carta-publica-tipografia` (solo `src/components/carta-publica/`): fue un cerco con meta 0 en
+ * la Fase 5 y llegó a 0 en el paso 4 (DEC-35): desde ahí no hay línea de base sino `toEqual([])`, y además cuenta las clases de la escala de Tailwind (`text-xs`, `text-2xl`…): en la
+ * carta pública todo tamaño sale de un rol de la escala única (`carta-rol-*`, `src/core/carta/escala.ts`) o del tema del cliente (`carta_fuente_*`), nunca de una clase suelta. El tema de la carta (`core/carta/tema.ts`, `estilo.ts`, `css-valores.ts`) guarda sus defaults como `defaultCarta:`
  * y los valida como cadenas: los detectores no los marcan, así que no hace falta exceptuarlos (una excepción sin violaciones sobra).
  *
  * Mecanismo, regeneración (`BAJAR_CERCOS=1`) y excepciones: `test/arquitectura/cercos/trinquete.ts`.
@@ -42,17 +42,22 @@ function contarTipografia(fuente: string): Record<string, number> {
   };
 }
 
+/** Una clase de la escala de Tailwind (`text-xs`, `sm:text-lg`, `text-2xl`): fuera de la carta pública es una escala válida; adentro, un tamaño suelto (la carta usa sus roles). */
+const RE_CLASE_DE_ESCALA = /(?<![\w-])(?:[a-z0-9]+:)*text-(?:xs|sm|base|lg|[2-9]?xl)(?![\w-])/g;
+
+/** Lo de `contarTipografia` más las clases de la escala de Tailwind: lo que mide la regla dura de la carta pública. */
+function contarTipografiaDeLaCarta(fuente: string): Record<string, number> {
+  return { ...contarTipografia(fuente), "clase-de-escala": contarCoincidencias(fuente, RE_CLASE_DE_ESCALA) };
+}
+
 const CERCO_TIPOGRAFIA: Cerco = {
   regla: "tipografia",
   meta: "bajar hacia 0 a medida que la escala tipográfica pase a tokens (auditoría §19.4); la carta pública tiene su propia línea de base",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src"], extensiones: [".ts", ".tsx", ".css"], contar: contarTipografia }),
 };
 
-const CERCO_CARTA_PUBLICA: Cerco = {
-  regla: "carta-publica-tipografia",
-  meta: "0 en la Fase 5 (DEC-35: un solo piso de letra para todo plato; ningún bloque de la carta escribe su propio tamaño)",
-  medir: medirPorArchivo({ raices: ["src/components/carta-publica"], extensiones: [".ts", ".tsx", ".css"], contar: contarTipografia }),
-};
+/** La regla dura de la carta pública (DEC-35): lo que mide tiene que ser NADA. */
+const medirCartaPublica = medirPorArchivo({ raices: ["src/components/carta-publica"], extensiones: [".ts", ".tsx", ".css"], contar: contarTipografiaDeLaCarta });
 
 describe("cerco «tipografía»: el detector", () => {
   const contar = (fuente: string, ruta = "x.tsx") => contarTipografia(sinComentarios(fuente, ruta));
@@ -78,7 +83,17 @@ describe("cerco «tipografía»: el detector", () => {
   it("una constante de medida cuenta si se usa como tamaño de letra o si su nombre lo dice; una medida de otra cosa, no", () => {
     expect(contar('const PISO_ACLARACION = "0.875rem";\nconst GRANDE = "2rem";\nconst ANCHO = "12rem";\n<p style={{ fontSize: GRANDE, width: ANCHO }} />')).toEqual({ ...nada, "constante-de-tamano": 2 });
   });
+
+  it("en la carta, una clase de la escala de Tailwind también cuenta (con o sin prefijo de pantalla); text-[length:var(--x)] y text-balance no", () => {
+    expect(contarTipografiaDeLaCarta(sinComentarios('<p className="text-xs sm:text-lg text-2xl text-[length:var(--fs)] text-balance text-center">x</p>', "x.tsx"))).toEqual({ ...nada, "clase-de-escala": 3 });
+  });
 });
 
 probarCerco(CERCO_TIPOGRAFIA);
-probarCerco(CERCO_CARTA_PUBLICA);
+
+describe("regla «carta-publica-tipografia» (dura desde la Fase 5, paso 4; DEC-35): ningún componente de la carta pública escribe un tamaño", () => {
+  it("ningún tamaño a mano ni clase de la escala de Tailwind en src/components/carta-publica (todo sale de un rol de la escala única o del tema)", () => {
+    const medido = medirCartaPublica(RAIZ_DEL_REPO);
+    expect(Object.entries(medido).map(([ruta, cuentas]) => `${ruta}: ${JSON.stringify(cuentas)}`)).toEqual([]);
+  });
+});

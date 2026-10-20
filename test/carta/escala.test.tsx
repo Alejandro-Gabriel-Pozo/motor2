@@ -3,8 +3,9 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ESCALA_DE_LA_CARTA, ESCALA_IMPRESA, variablesDeLaEscala } from "../../src/core/carta/escala";
-import { resolverEstiloCarta, type SeccionCartaPublica } from "../../src/core/carta/public";
+import { resolverEstiloCarta, resolverEstiloPortal, type SeccionCartaPublica } from "../../src/core/carta/public";
 import { Seccion } from "../../src/components/carta-publica/seccion";
+import { PortalVista } from "../../src/components/carta-publica/portal-vista";
 
 /**
  * Fase 5 de la ola «precio y carta» (DEC-35, ADR-035): la ESCALA DE LETRA ÚNICA de la carta pública. Fija:
@@ -119,5 +120,19 @@ describe("todo ítem lleva los mismos roles (DEC-35: el piso vale para todo íte
     const lista = html.slice(html.indexOf("data-carta-scroll"));
     expect(lista).not.toMatch(/font-size/);
     expect(lista).not.toMatch(/\btext-(xs|sm|base|lg|xl)\b/);
+  });
+});
+
+describe("las pantallas de la carta usan la misma escala (paso 4: sin tamaños a mano)", () => {
+  it("el portal de sucursales lleva la escala en su raíz y sus textos chicos van en los roles (etiqueta, título, aclaración)", () => {
+    const html = renderToStaticMarkup(
+      <PortalVista sucursales={[]} empresaNombre="La Cuadra" estilo={resolverEstiloPortal({ portal_etiqueta: "Elegí", portal_titulo: "Sucursales", footer_texto_derechos: "La Cuadra" })} hrefDe={(s) => `/${s}`} modo="publico" />,
+    );
+    expect(html).toContain("--carta-fs-etiqueta:0.75rem");
+    expect(html).toContain("--carta-fs-titulo:1.5rem");
+    expect(html).toMatch(/class="portal-etiqueta carta-rol-etiqueta[^"]*"/);
+    expect(html).toMatch(/<h1 class="portal-titulo carta-rol-titulo[^"]*"/);
+    expect(html).toMatch(/<p class="carta-rol-aclaracion[^"]*">Todavía no hay cartas publicadas\.<\/p>/);
+    expect(html).toMatch(/<footer class="portal-footer carta-rol-etiqueta/);
   });
 });

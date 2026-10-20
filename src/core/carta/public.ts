@@ -33,6 +33,7 @@ export { formatearPrecioCarta } from "./precio-carta";
 export { whereCartaDeSucursal } from "./carta-de-sucursal";
 export type { EstiloCarta } from "./estilo";
 export { resolverEstiloCarta } from "./estilo";
+export { variablesDeLaEscala } from "./escala";
 export type { EstiloPortal } from "./portal";
 export { decidirLayoutPortal, resolverEstiloPortal } from "./portal";
 export type { ItemAgrupadoAdmin } from "./admin-tipos";

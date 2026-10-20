@@ -46,7 +46,7 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
 
       <div className="carta-pagina flex flex-col px-6 sm:px-10">
         {estilo.valores.carta_texto_indice_etiqueta && (
-          <p className="mb-0.5 mt-4 text-xs font-light uppercase tracking-[0.5em]" style={{ fontSize: estilo.valores.carta_fuente_indice_etiqueta, color: "var(--carta-primary)" }}>
+          <p className="mb-0.5 mt-4 font-light uppercase tracking-[0.5em]" style={{ fontSize: estilo.valores.carta_fuente_indice_etiqueta, color: "var(--carta-primary)" }}>
             {estilo.valores.carta_texto_indice_etiqueta}
           </p>
         )}

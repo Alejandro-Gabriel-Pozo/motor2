@@ -196,7 +196,7 @@ export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIc
                 <button
                   type="button"
                   onClick={() => irAId("indice")}
-                  className="flex h-9 min-w-[80px] items-center justify-center gap-1.5 rounded-full px-4 text-xs font-medium uppercase tracking-[0.3em]"
+                  className="carta-rol-etiqueta flex h-9 min-w-[80px] items-center justify-center gap-1.5 rounded-full px-4 uppercase tracking-[0.3em]"
                   style={{ backgroundColor: "color-mix(in oklch, var(--carta-primary) 12%, transparent)", color: "var(--carta-primary)" }}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
@@ -206,7 +206,7 @@ export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIc
                   Índice
                 </button>
               ) : (
-                <p className="text-[11px] font-light opacity-60">
+                <p className="carta-rol-etiqueta" style={{ color: "var(--carta-ink-soft)" }}>
                   {current + 1} / {total}
                 </p>
               )}
