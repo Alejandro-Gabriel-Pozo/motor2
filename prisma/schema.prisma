@@ -3372,6 +3372,10 @@ model GrupoDeOpciones {
   version        Int      @default(1)
   creadoEn       DateTime @default(now())
   actualizadoEn  DateTime @default(now())
+  /// Fase 4 de la ola «precio y carta» (ADR-035, DEC-34): «se lee en la carta como», el prefijo OPCIONAL con que la carta lee cada opción («De» → «De carne»). NULL = sin prefijo. Solo VARIANTE y MEDIDA
+  /// (lo aplica el caso de uso); solo lo lee la carta (ni el precio, ni la foto de la venta, ni el POS, ni el ticket). CHECK "GrupoDeOpciones_prefijo_en_carta_chk": visible, sin espacios a los costados,
+  /// hasta 20 caracteres. Tiene su propio GRANT de UPDATE por columna para `motor2_app` (la tabla tiene privilegios por columna).
+  prefijoEnCarta String?
 
   opciones          OpcionDeGrupo[]
   productosQueLoAdmiten ProductoAdmiteGrupo[]
