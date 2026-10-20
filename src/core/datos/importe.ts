@@ -1,3 +1,4 @@
+import { redondearMoneda } from "@/core/moneda";
 import { numeroDeEntrada, tieneALoSumoDecimales } from "./numero-tecleado";
 import { aceptar, enMinuscula, rechazar, type ResultadoDato } from "./resultado";
 
@@ -32,4 +33,24 @@ export function validarImporte(valor: unknown, opciones: OpcionesImporte): Resul
   if (Math.abs(n) >= IMPORTE_MAXIMO) return rechazar("rango", `${etiqueta} es demasiado grande.`);
   if (!tieneALoSumoDecimales(n, DECIMALES_IMPORTE)) return rechazar("decimales", `${etiqueta} admite como máximo ${DECIMALES_IMPORTE} decimales.`);
   return aceptar(n);
+}
+
+/**
+ * Los CENTAVOS (entero) de un importe de dinero que ya tiene a lo sumo 2 decimales (de una columna `Decimal(14,2)` pasada a `number`, o validado con
+ * `validarImporte`). Redondea primero en decimal exacto (`redondearMoneda`) y después pasa a entero: así el ruido de la coma flotante (`0.1 + 0.2`) no
+ * cambia el resultado. Es para COMPARAR dinero, nunca para hacer cuentas.
+ */
+export function centavosDeImporte(n: number): number {
+  return Math.round(redondearMoneda(n) * 100);
+}
+
+/**
+ * ¿Dos importes son el MISMO dinero, al centavo? La regla única del control del valor visto (ola «precio y carta», Fase 2): lo que vio la pantalla
+ * contra lo que hay en la base, sin comparar `number` con `===` (`0.1 + 0.2 !== 0.3`). `null` es «sin importe» (un precio local que no hay): solo es
+ * igual a otro `null`. Un valor no finito (`NaN`, `±Infinity`) no es igual a nada.
+ */
+export function mismosCentavos(a: number | null, b: number | null): boolean {
+  if (a === null || b === null) return a === b;
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  return centavosDeImporte(a) === centavosDeImporte(b);
 }
