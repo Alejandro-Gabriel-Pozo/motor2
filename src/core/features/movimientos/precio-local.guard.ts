@@ -43,8 +43,27 @@ export function guardComandoSetPrecioLocalProducto(entrada: { productoId: string
 }
 
 /**
+ * Los precios que la pantalla mostró de cada producto al ofrecer igualarlos (ola «precio y carta», Fase 2, paso A3): `undefined` o `null` es «ninguno» (el caso de
+ * uso rechaza si hay algo que cambiar); si vienen, un objeto id → importe válido.
+ */
+function validarPreciosVistos(preciosVistos: unknown): ResultadoDato<Record<string, number>> {
+  if (preciosVistos === null || preciosVistos === undefined) return aceptar({});
+  if (typeof preciosVistos !== "object" || Array.isArray(preciosVistos)) return rechazar("formato", MENSAJE_VISTOS_INVALIDOS);
+  const vistos: [string, number][] = [];
+  for (const [id, valor] of Object.entries(preciosVistos)) {
+    const precio = validarImporte(valor, { etiqueta: "El precio que mostraba la pantalla", obligatorio: true });
+    if (!precio.ok) return rechazar("formato", MENSAJE_VISTOS_INVALIDOS);
+    vistos.push([id, precio.valor!]);
+  }
+  return aceptar(Object.fromEntries(vistos));
+}
+
+const MENSAJE_VISTOS_INVALIDOS = "Los precios que mostraba la pantalla no son válidos: recargala.";
+
+/**
  * Guard de `sincronizarPrecioLocalGrupoCarta`, en el orden de siempre: 1. la sucursal que vio la pantalla tiene que ser la activa (si cambió en el medio, no se
- * escribe nada); 2. el precio; 3. los ids sin repetidos, al menos uno. Que sean del mismo ítem agrupado lo resuelve el caso de uso (lee la carta).
+ * escribe nada); 2. el precio; 3. los ids sin repetidos, al menos uno; y al final 4. el formato de los precios vistos. Que sean del mismo ítem agrupado (y que lo
+ * visto siga siendo lo que hay) lo resuelve el caso de uso (lee la carta).
  */
 export function guardComandoSincronizarPrecioLocalGrupoCarta(entrada: {
   sucursalId: string;
@@ -52,11 +71,14 @@ export function guardComandoSincronizarPrecioLocalGrupoCarta(entrada: {
   productoIds: string[];
   precio: unknown;
   habilitado: boolean;
+  preciosVistos?: unknown;
 }): ResultadoDato<ComandoSincronizarPrecioLocalGrupoCarta> {
   if (entrada.sucursalId !== entrada.sucursalActivaId) return rechazar("formato", "La sucursal activa cambió desde que se cargó la pantalla: recargala y volvé a intentar.");
   const precio = validarPrecio(entrada.precio);
   if (!precio.ok) return rechazar(precio.codigo, precio.mensaje);
   const productoIds = [...new Set(entrada.productoIds)];
   if (!productoIds.length) return rechazar("vacio", "No hay productos para actualizar.");
-  return aceptar({ productoIds, precio: precio.valor, habilitado: entrada.habilitado });
+  const preciosVistos = validarPreciosVistos(entrada.preciosVistos);
+  if (!preciosVistos.ok) return rechazar(preciosVistos.codigo, preciosVistos.mensaje);
+  return aceptar({ productoIds, precio: precio.valor, habilitado: entrada.habilitado, preciosVistos: preciosVistos.valor });
 }

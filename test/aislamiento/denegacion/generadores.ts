@@ -339,11 +339,12 @@ const completos: Record<string, Valor> = {
   "lectura|lecturas/movimientos/receta-para-vender.ts|cargarOrigenDeStockParaVender": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, productoIds: [k.productoPvId] }],
   "lectura|lecturas/permisos/gobierno.ts|invarianteRolSinUsuariosActivos": (k, c) => [c.db, { id: k.rolId, nombre: "Rol de prueba" }],
 
-  // El ítem agrupado se resuelve desde el primer producto en la sucursal activa: el ajeno y el propio no se mezclan; la sucursal que llega tiene que ser la activa.
+  // El ítem agrupado se resuelve desde el primer producto en la sucursal activa: el ajeno y el propio no se mezclan; la sucursal que llega tiene que ser la activa. El último argumento es el precio que
+  // «vio» la pantalla de cada producto (ola «precio y carta», Fase 2, A3): el del mundo en la sucursal propia (precio local de 1234, habilitado).
   "accion|actions/movimientos/precio-local.ts|sincronizarPrecioLocalGrupoCarta": (k, c) =>
     conVariantes(
-      intento(c, ["sucursalId"], [k.sucursalId, [c.propio.productoPvId], 1, false]),
-      intento(c, ["productoPvId"], [c.propio.sucursalId, [k.productoPvId], 1, false]),
+      intento(c, ["sucursalId"], [k.sucursalId, [c.propio.productoPvId], 1, false, { [c.propio.productoPvId]: 1234 }]),
+      intento(c, ["productoPvId"], [c.propio.sucursalId, [k.productoPvId], 1, false, { [k.productoPvId]: 1234 }]),
     ),
 
   // --- POS ---

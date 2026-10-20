@@ -43,7 +43,15 @@ export interface ComandoSincronizarPrecioLocalGrupoCarta {
   productoIds: string[];
   precio: number;
   habilitado: boolean;
+  /**
+   * El precio que la pantalla mostró de cada producto al ofrecer igualarlo (el `precioActual` del `sincronizable`: el que la carta muestra en la sucursal), por
+   * id (ola «precio y carta», Fase 2, paso A3). Un producto sin precio visto que haya que cambiar se rechaza (`PRECIO_DESACTUALIZADO`).
+   */
+  preciosVistos: Readonly<Record<string, number>>;
 }
 
-/** `NO_SON_DEL_MISMO_ITEM`: los productos no son todos opciones del mismo ítem agrupado de la carta en la sucursal activa. */
-export type ResultadoSincronizarPrecioLocalGrupoCarta = ResultadoCaso<null, "NO_SON_DEL_MISMO_ITEM">;
+/**
+ * `NO_SON_DEL_MISMO_ITEM`: los productos no son todos opciones del mismo ítem agrupado de la carta en la sucursal activa. `PRECIO_DESACTUALIZADO`: el precio de
+ * alguno cambió desde que se ofreció igualarlo (o la pantalla no lo mandó): no se cambia ninguno.
+ */
+export type ResultadoSincronizarPrecioLocalGrupoCarta = ResultadoCaso<null, "NO_SON_DEL_MISMO_ITEM" | "PRECIO_DESACTUALIZADO">;

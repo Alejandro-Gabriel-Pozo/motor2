@@ -335,7 +335,7 @@ describe("Huella de dinero del tramo C", () => {
     await paso("precio local: negativo", await setPrecioLocalProducto(flan.id, -1, true));
     await paso("precio local: tres decimales", await setPrecioLocalProducto(flan.id, 1.234, true));
     await paso("precio local: producto inexistente", await setPrecioLocalProducto("no-existe", 100, true));
-    await paso("sincronizar precio local: Pizza y Fainá a $13000", await sincronizarPrecioLocalGrupoCarta(central, [pizza.id, faina.id, pizza.id], 13000, true));
+    await paso("sincronizar precio local: Pizza y Fainá a $13000", await sincronizarPrecioLocalGrupoCarta(central, [pizza.id, faina.id, pizza.id], 13000, true, { [pizza.id]: 12000, [faina.id]: 5000 }));
     await paso("sincronizar precio local: la pantalla era de otra sucursal", await sincronizarPrecioLocalGrupoCarta(norte, [pizza.id, faina.id], 13000, true));
     await paso("sincronizar precio local: no son del mismo ítem", await sincronizarPrecioLocalGrupoCarta(central, [pizza.id, flan.id], 13000, true));
     await paso("sincronizar precio local: lista vacía", await sincronizarPrecioLocalGrupoCarta(central, [], 13000, true));

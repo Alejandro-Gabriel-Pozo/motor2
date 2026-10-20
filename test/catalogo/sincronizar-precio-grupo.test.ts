@@ -196,7 +196,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
 
     it("sincronizarPrecioLocalGrupoCarta: upsert solo de los productoIds pasados y solo en la sucursal activa, con su auditoría", async () => {
       await setPrecioLocalProducto(ids.fanta, 5500, true);
-      const r = await sincronizarPrecioLocalGrupoCarta(sucursalId, [ids.coca, ids.sprite], 5500, true);
+      const r = await sincronizarPrecioLocalGrupoCarta(sucursalId, [ids.coca, ids.sprite], 5500, true, { [ids.coca]: 5000, [ids.sprite]: 5000 });
       expect(r).toEqual({ ok: true, mensaje: 'Precio local de "Coca-Cola 500cc", "Sprite 500cc" fijado en 5500 en "Central" («Gaseosa 500 CC»).' });
       for (const id of [ids.coca, ids.sprite]) expect(await local(id)).toMatchObject({ habilitado: true });
       expect(Number((await local(ids.coca))!.precio)).toBe(5500);

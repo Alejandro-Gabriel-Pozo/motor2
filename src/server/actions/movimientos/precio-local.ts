@@ -76,14 +76,21 @@ export async function setPrecioLocalProducto(
  * Aplica el mismo precio local (en la sucursal activa) a varios productos de UN mismo ítem agrupado de la carta: el paso que ofrece
  * `setPrecioLocalProducto` con `sincronizable` (docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8). Mismo permiso, mismo upsert y
  * misma auditoría que fijarlo a mano en cada uno. `sucursalId` tiene que ser la sucursal activa (la que vio la pantalla): si cambió en
- * el medio, no se escribe nada.
+ * el medio, no se escribe nada. `preciosVistos` (ola «precio y carta», Fase 2, paso A3): el precio que la pantalla mostró de cada producto al ofrecer igualarlo; si
+ * alguno cambió desde entonces, no se cambia ninguno y el mensaje pide recargar (`PRECIO_DESACTUALIZADO`).
  *
  * Desde el Hito 4 (H4C-4): permiso → formato (`guardComandoSincronizarPrecioLocalGrupoCarta`: la sucursal de la pantalla, el precio y la lista, en ese orden,
  * DENTRO del envoltorio) → caso de uso (`casos-de-uso/sincronizar-precio-local-grupo-carta.ts`) → revalidar la carta pública si salió bien → `aResultadoAccion`.
  */
-export async function sincronizarPrecioLocalGrupoCarta(sucursalId: string, productoIds: string[], precio: number, habilitado: boolean): Promise<ResultadoAccion> {
+export async function sincronizarPrecioLocalGrupoCarta(
+  sucursalId: string,
+  productoIds: string[],
+  precio: number,
+  habilitado: boolean,
+  preciosVistos?: Readonly<Record<string, number>>,
+): Promise<ResultadoAccion> {
   return conPermiso("precio_local", async (ctx) => {
-    const comando = guardComandoSincronizarPrecioLocalGrupoCarta({ sucursalId, sucursalActivaId: ctx.sucursalId, productoIds, precio, habilitado });
+    const comando = guardComandoSincronizarPrecioLocalGrupoCarta({ sucursalId, sucursalActivaId: ctx.sucursalId, productoIds, precio, habilitado, preciosVistos });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await sincronizarPrecioLocalGrupoCartaCasoDeUso(ctx, comando.valor);
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
