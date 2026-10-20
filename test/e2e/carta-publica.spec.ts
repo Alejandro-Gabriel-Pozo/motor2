@@ -196,7 +196,7 @@ test.describe("carta de una sucursal", () => {
     }
   });
 
-  test("CARTA-B y CARTA-C: tamaños en lista con puntitos, línea «Adicionales:» y las opciones sin costo (preparación, guarnición) como pastillas bajo el nombre de su grupo, sin «Ver opciones»; marcar una opción agotada desde la app la saca al instante", async ({
+  test("carta pareja (Fase 5): el café con dos ejes en tabla, lo que se suma y la guarnición debajo del plato, sin «desde» ni «Ver opciones»; marcar una opción agotada desde la app la saca al instante", async ({
     page,
     paginaAutenticada,
     sucursalId,
@@ -229,25 +229,21 @@ test.describe("carta de una sucursal", () => {
       for (const ancho of [375, 1280]) {
         await page.setViewportSize({ width: ancho, height: ancho === 375 ? 800 : 900 });
         const filas = await abrir();
-        const lista = filas.cafe.locator(`[data-tamanos-carta='Tamaño ${m}']`);
-        // La lista de tamaños está a la vista sin tocar nada: un renglón por tamaño con su precio FINAL, y el renglón del nombre va sin precio ni «desde».
-        await expect(lista).toBeVisible();
-        await expect(lista.getByRole("listitem")).toHaveText(["Chico$2.500", "Mediano$2.800", "Grande$3.100"]);
-        await expect(filas.cafe.locator("h3").locator("..")).not.toContainText("$");
+        // Fase 5 («carta pareja»), forma «tabla»: el café tiene DOS ejes (el tamaño define el precio y la preparación suma: «Con leche +400»), así que se lee como una tabla real con el
+        // nombre arriba, los tamaños como columnas y una fila por preparación con el precio FINAL de cada celda; sin «desde», sin «Ver opciones», sin desplegables.
+        const tabla = filas.cafe.locator("table");
+        await expect(tabla).toBeVisible();
+        await expect(tabla.getByRole("columnheader")).toHaveText(["Chico", "Mediano", "Grande"]);
+        await expect(tabla.getByRole("rowheader")).toHaveText(["Solo", "Flat white", "Cortado", "Con leche"]);
+        await expect(tabla.getByRole("row", { name: /^Solo/ }).getByRole("cell")).toHaveText(["$2.500", "$2.800", "$3.100"]);
+        await expect(tabla.getByRole("row", { name: /^Con leche/ }).getByRole("cell")).toHaveText(["$2.900", "$3.200", "$3.500"]);
         await expect(filas.cafe).not.toContainText("desde");
         await expect(filas.cafe).not.toContainText("Ver opciones");
         expect(await filas.cafe.locator("details").count(), "ningún desplegable").toBe(0);
-        // La línea «Adicionales:» con lo que suma una variante o un adicional; «Solo», «Flat white» y «Cortado» (sin costo) NO están ahí: van como pastillas.
-        const suma = filas.cafe.locator("[data-suma-carta]");
-        await expect(suma).toBeVisible();
-        await expect(suma).toHaveText("Adicionales: Con leche +$400 · Medialuna +$600 · Shot +$500");
-        await expect(suma.locator("strong")).toHaveText("Adicionales:");
-        // Las pastillas de la preparación: bajo el nombre del grupo, a la vista, en el orden del grupo, en una lista con el nombre del grupo; no son botones.
-        const pastillasCafe = filas.cafe.locator(`[data-opciones-sin-costo='Preparación ${m}']`);
-        await expect(pastillasCafe).toBeVisible();
-        await expect(pastillasCafe.locator("p")).toHaveText(`Preparación ${m}`);
-        await expect(filas.cafe.getByRole("list", { name: `Preparación ${m}` }).getByRole("listitem")).toHaveText(["Solo", "Flat white", "Cortado"]);
-        await expect(pastillasCafe.locator("button, [role='button'], [tabindex], a")).toHaveCount(0);
+        // Lo que se suma aparte (el adicional) se lee debajo, con cuánto suma cada uno; ninguna lista vieja (tamaños, «Adicionales:», pastillas).
+        const extrasCafe = filas.cafe.locator(`[data-aclaracion='Extras ${m}']`);
+        await expect(extrasCafe).toHaveText(`Extras ${m}: medialuna +$600, shot +$500`);
+        await expect(filas.cafe.locator("[data-tamanos-carta], [data-suma-carta], [data-opciones-sin-costo]")).toHaveCount(0);
         // La milanesa (Fase 5, forma «simple»): su precio base de siempre y, debajo, la aclaración «Guarnición: papas fritas, puré o ensalada» (sin «Ver opciones» ni desplegable; sin la «ninguna»); el flan, un producto común.
         await expect(filas.milanesa).toContainText("$9.500");
         const guarnicionMila = filas.milanesa.locator(`[data-aclaracion='Guarnición ${m}']`);
@@ -260,16 +256,13 @@ test.describe("carta de una sucursal", () => {
         await expect(filas.flan).toContainText("$3.200");
         await expect(filas.flan.locator("[data-opciones-sin-costo]")).toHaveCount(0);
         await expect(page.locator("body")).not.toContainText("Sin guarnición");
-        // Legibilidad (escala única, DEC-35): nombre del ítem 19 px (rol Producto), tamaños 16 px (rol Opción), «Adicionales» y pastillas 14 px (rol Aclaración); el flan, sin opciones, también 19 px.
-        expect(await tamanoPx(filas.cafe.getByRole("heading", { name: cafe }))).toBeGreaterThanOrEqual(19);
-        expect(await tamanoPx(filas.flan.getByRole("heading", { name: flan }))).toBeGreaterThanOrEqual(19);
-        expect(await tamanoPx(lista.getByRole("listitem").first().locator("span").first())).toBeGreaterThanOrEqual(16);
-        expect(await tamanoPx(suma)).toBeGreaterThanOrEqual(14);
-        expect(await tamanoPx(pastillasCafe.locator("p"))).toBeGreaterThanOrEqual(14);
-        for (const pastilla of await pastillasCafe.getByRole("listitem").all()) expect(await tamanoPx(pastilla)).toBeGreaterThanOrEqual(14);
-        expect(await tamanoPx(guarnicionMila)).toBeGreaterThanOrEqual(14);
-        // Sin desborde horizontal tampoco de las pastillas (envuelven a la línea siguiente).
-        expect(await pastillasCafe.evaluate((el) => el.scrollWidth <= el.clientWidth), `las pastillas se desbordan a ${ancho} px`).toBe(true);
+        // Legibilidad (escala única, DEC-35): nombre del ítem 19 px (rol Producto, con o sin opciones), filas y celdas 16 px (rol Opción), aclaraciones 14 px (rol Aclaración).
+        expect(await tamanoPx(filas.cafe.getByRole("heading", { name: cafe }))).toBe(19);
+        expect(await tamanoPx(filas.flan.getByRole("heading", { name: flan }))).toBe(19);
+        expect(await tamanoPx(tabla.getByRole("rowheader").first())).toBe(16);
+        expect(await tamanoPx(tabla.getByRole("cell").first().locator("span"))).toBe(16);
+        expect(await tamanoPx(extrasCafe)).toBe(14);
+        expect(await tamanoPx(guarnicionMila)).toBe(14);
         // Sin desborde horizontal: ni la página ni la fila del café.
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `la página se desborda a ${ancho} px`).toBe(true);
         expect(await filas.cafe.evaluate((el) => el.scrollWidth <= el.clientWidth), `el café se desborda a ${ancho} px`).toBe(true);
@@ -284,8 +277,9 @@ test.describe("carta de una sucursal", () => {
       await pildora.click();
       await expect(paginaAutenticada.getByRole("status").filter({ hasText: "quedó agotada" })).toBeVisible();
       const despues = await abrir();
-      await expect(despues.cafe.getByRole("listitem").filter({ hasText: "Chico" })).toBeVisible();
-      await expect(despues.cafe.locator(`[data-tamanos-carta='Tamaño ${m}']`).getByRole("listitem")).toHaveText(["Chico$2.500", "Grande$3.100"]);
+      // La columna agotada en todo el producto desaparece de la tabla.
+      await expect(despues.cafe.locator("table").getByRole("columnheader")).toHaveText(["Chico", "Grande"]);
+      await expect(despues.cafe.locator("table").getByRole("row", { name: /^Solo/ }).getByRole("cell")).toHaveText(["$2.500", "$3.100"]);
       await expect(despues.cafe).not.toContainText("Mediano");
     } finally {
       await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });

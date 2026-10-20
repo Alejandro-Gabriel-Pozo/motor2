@@ -165,7 +165,7 @@ function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly Aclaraci
  * tamaño y un solo peso por rol).
  *
  * Con opciones, el ítem se DIBUJA SEGÚN SU FORMA (`presentacion`, que resuelve el servidor: `core/carta/presentacion-en-carta.ts`; ADR-035): `simple` (el nombre y su precio, con las aclaraciones
- * debajo); `columnas` va dentro de su tanda (`TandaFila`). Sin `presentacion` (un producto sin opciones, o una carta guardada por el código anterior) se dibuja como antes.
+ * debajo); `tabla` (dos ejes: el nombre arriba y una tabla real); `columnas` va dentro de su tanda (`TandaFila`). Sin `presentacion` (un producto sin opciones, o una carta guardada por el código anterior) se dibuja como antes.
  */
 function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
   const colores = coloresDelItem(item.especial, estilo.valores);
@@ -177,6 +177,41 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
           <NombreDelItem item={item} colores={colores} />
           <PrecioDelRenglon item={item} color={colores.precio} />
         </div>
+        <DescripcionYTags item={item} colores={colores} />
+        <Aclaraciones aclaraciones={p.aclaraciones} color={colores.descripcion} />
+      </li>
+    );
+  }
+  if (p?.forma === "tabla") {
+    // Dos ejes (la milanesa: Simple | Napolitana × De carne / De pollo; DEC-06, DEC-10, DEC-11): una tabla real con el nombre arriba, en la esquina (un h3 en una celda común: el HTML no admite
+    // títulos dentro de un th), los rótulos de las columnas como encabezados de columna y una fila por opción del otro eje (nunca se juntan aunque cuesten igual), cada una con su precio.
+    return (
+      <li data-forma="tabla" className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
+        <table data-tabla-carta className="w-full border-collapse">
+          <thead>
+            <tr>
+              <td className="pb-0.5 pr-1 text-left align-bottom">
+                <NombreDelItem item={item} colores={colores} />
+                {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
+              </td>
+              <EncabezadosDeColumna rotulos={p.columnas} />
+            </tr>
+          </thead>
+          <tbody>
+            {p.filas.map((f, i) => (
+              <tr key={`fila-${i}`}>
+                <th scope="row" data-rol="opcion" className="carta-rol-opcion py-0.5 pr-1 text-left align-baseline" style={{ overflowWrap: "anywhere" }}>
+                  {f.rotulo}
+                </th>
+                {f.celdas.map((precio, c) => (
+                  <td key={`celda-${c}`} className="whitespace-nowrap py-0.5 pl-3 text-right align-baseline">
+                    <CeldaDePrecio precio={precio} color={colores.precio} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
         <DescripcionYTags item={item} colores={colores} />
         <Aclaraciones aclaraciones={p.aclaraciones} color={colores.descripcion} />
       </li>

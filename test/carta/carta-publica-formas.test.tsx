@@ -118,12 +118,44 @@ describe("8b: una tanda (el café y el cortado comparten Chico | Mediano | Grand
   });
 
   it("ningún título dentro de una celda de encabezado (el HTML no lo admite): el nombre no es un h3; la descripción y las aclaraciones, en una fila de todo el ancho", () => {
-    expect(tanda).not.toMatch(/<th[^>]*>(?:(?!<\/th>)[\s\S])*<h[1-6]/);
+    expect(tanda).not.toMatch(/<th(?=[\s>])[^>]*>(?:(?!<\/th>)[\s\S])*<h[1-6]/);
     expect(tanda).toMatch(/<td colSpan="4"[^>]*><p data-aclaracion="Preparación del café"/);
   });
 
   it("lo que no está en la tanda (la medialuna) sigue debajo, como un ítem más", () => {
     expect(filaCon(html, "Medialuna")).toMatch(/<h3 data-rol="producto"[^>]*>Medialuna<\/h3>/);
     expect(html.indexOf("Medialuna")).toBeGreaterThan(html.indexOf("</table>"));
+  });
+});
+
+describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / De pollo / De trucha)", () => {
+  const milanesas = item({
+    nombre: "Milanesas",
+    precio: 20000,
+    descripcion: "Con papas",
+    presentacion: {
+      forma: "tabla",
+      columnas: ["Simple", "Napolitana"],
+      filas: [
+        { rotulo: "De carne", celdas: [20000, 25000] },
+        { rotulo: "De pollo", celdas: [20000, 25000] },
+        { rotulo: "De trucha", celdas: [23000, null] },
+      ],
+      aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["papas fritas", "puré"] }],
+    },
+  });
+  const html = filaCon(dibujar([milanesas]), "Milanesas");
+
+  it("el nombre arriba como h3 (en la esquina, nunca dentro de un th), los rótulos como encabezados de columna y una fila por opción del otro eje", () => {
+    expect(html).toMatch(/^<li data-forma="tabla"/);
+    expect(html).toMatch(/<thead><tr><td[^>]*><h3 data-rol="producto"[^>]*>Milanesas<\/h3><\/td>/);
+    expect(html).not.toMatch(/<th(?=[\s>])[^>]*>(?:(?!<\/th>)[\s\S])*<h[1-6]/);
+    expect(html.match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map((t) => texto(t))).toEqual(["Simple", "Napolitana"]);
+    expect(html.match(/<th scope="row" data-rol="opcion"[^>]*>([^<]*)<\/th>/g)?.map((t) => texto(t))).toEqual(["De carne", "De pollo", "De trucha"]);
+  });
+
+  it("las filas no se juntan aunque cuesten igual (DEC-10); «–» donde no se ofrece; sin «desde»; debajo, la descripción y las aclaraciones", () => {
+    expect(texto(html)).toBe("Milanesas Simple Napolitana De carne $20.000 $25.000 De pollo $20.000 $25.000 De trucha $23.000 – Con papas Guarnición: papas fritas o puré");
+    expect(html).not.toMatch(/desde/i);
   });
 });
