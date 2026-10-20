@@ -70,9 +70,10 @@ export async function cargarOpcionesDelSelector(
     // El precio base es el mismo que el selector muestra para el producto suelto (precio local vigente o el de venta), antes del descuento.
     const precioBase = pedible.precioLista ?? pedible.precio;
     const descuentoDeProducto = descuentos.get(productoId) ?? null;
-    const resumen = resumenDePrecios({ grupos, precioBase, descuentoDeProducto });
+    const esBase = opciones.get(productoId)!.esBase;
+    const resumen = resumenDePrecios({ grupos, precioBase, descuentoDeProducto, esBase });
     const masPedidas = masPedidasParaElDialogo(grupos, pedidas.get(productoId) ?? []);
-    salida[productoId] = { grupos, precioBase, descuentoDeProducto, desde: resumen.desde, hayVariacion: resumen.hayVariacion, vendible: resumen.vendible, sinStock, masPedidas };
+    salida[productoId] = { grupos, precioBase, descuentoDeProducto, esBase, desde: resumen.desde, hayVariacion: resumen.hayVariacion, vendible: resumen.vendible, sinStock, masPedidas };
   }
   return salida;
 }

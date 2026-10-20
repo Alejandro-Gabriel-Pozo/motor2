@@ -61,13 +61,13 @@ export function ElegirOpciones({
   onCerrar: () => void;
   onConfirmar: (elegidas: { opcionId: string; cantidad: number; versionDeOpcionId: string }[], cantidad: number) => void;
 }) {
-  const { precioBase, descuentoDeProducto, sinStock } = configuracion;
+  const { precioBase, descuentoDeProducto, esBase, sinStock } = configuracion;
   // Solo los grupos que hoy cuentan, con los obligatorios primero (orden estable del producto).
   const grupos = useMemo(() => {
     const vigentes = configuracion.grupos.filter((g) => g.admitido && g.activo).map((g) => ({ ...g, opciones: g.opciones.filter((o) => o.activa && o.admitida) }));
     return [...vigentes.filter((g) => g.cantidadMinima > 0), ...vigentes.filter((g) => g.cantidadMinima === 0)];
   }, [configuracion]);
-  const precios = useMemo(() => resumenDePrecios({ grupos, precioBase, descuentoDeProducto }), [grupos, precioBase, descuentoDeProducto]);
+  const precios = useMemo(() => resumenDePrecios({ grupos, precioBase, descuentoDeProducto, esBase }), [grupos, precioBase, descuentoDeProducto, esBase]);
   const [estado, despachar] = useReducer(reducirElegirOpciones, undefined, () => {
     const vacio = estadoInicialElegirOpciones();
     return inicial ? reducirElegirOpciones(vacio, { tipo: "precargar", grupos, elegidas: inicial }) : vacio;

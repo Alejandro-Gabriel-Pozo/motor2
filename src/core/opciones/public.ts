@@ -42,3 +42,6 @@ export type { CriterioDeLimpieza, GrupoParaLimpiar, OpcionParaLimpiar, VentasRec
 
 // OPCIONES-FACTOR: el factor de un tamaño en palabras («Factor 1,3 = lleva 30% más que el tamaño base»), para el campo «El factor» de `/catalogo/opciones/[grupoId]`.
 export { leerFactorDeEscala } from "./factor-de-escala";
+
+// Fase 4 de la ola «precio y carta» (ADR-035): el modo de venta del producto (directo o «se vende por opción»).
+export { esBaseConfigurable } from "./modo-de-venta";

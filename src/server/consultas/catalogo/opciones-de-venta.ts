@@ -262,7 +262,7 @@ export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucu
   const delProducto = paraVender.get(productoId);
   const medidas = (delProducto?.grupos ?? []).filter((g) => g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO").flatMap((g) => g.opciones.map((o) => o.opcionId));
   const conGrilla = delProducto && medidas.length ? await completarPreciosDeSucursal(db, sucursalId, paraVender, [{ productoId, opcionIds: medidas }]) : paraVender;
-  const vistaPrevia = resumenDePrecios({ grupos: conGrilla.get(productoId)?.grupos ?? [], precioBase, descuentoDeProducto: null });
+  const vistaPrevia = resumenDePrecios({ grupos: conGrilla.get(productoId)?.grupos ?? [], precioBase, descuentoDeProducto: null, esBase: delProducto?.esBase ?? false });
 
   const porGrupo = new Map(catalogo.map((g) => [g.id, g]));
   const admitidos: GrupoAdmitidoDelPanel[] = filas.flatMap((f) => {

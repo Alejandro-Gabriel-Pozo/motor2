@@ -1,6 +1,7 @@
 import "server-only";
 import { whereDisponibleEn } from "@/core/catalogo/public";
 import { opcionesParaLaCarta, organizarCartaParaMantener, precioDeCarta, vistaPreviaDeOpciones, whereCartaDeSucursal, wherePromoOfrecidaEn, type CartaParaMantener, type ProductoParaMantener } from "@/core/carta/public";
+import { esBaseConfigurable } from "@/core/opciones/public";
 import { resumenDePrecios } from "@/core/pos/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
@@ -27,6 +28,7 @@ export async function cargarCartaParaMantener(db: Db, sucursalId: string): Promi
         id: true,
         nombre: true,
         precioVenta: true,
+        modoDeVenta: true,
         opcionQueRespalda: { select: { id: true } },
         gruposAdmitidos: { where: { activo: true }, select: { id: true }, take: 1 },
         contenidosCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { visibleEnCarta: true, seccionCartaId: true, orden: true } },
@@ -56,6 +58,7 @@ export async function cargarCartaParaMantener(db: Db, sucursalId: string): Promi
 
   // La vista previa, solo para los de «Fuera de carta» (los que se pueden agregar).
   const conGrupos = new Set(productos.filter((p) => p.gruposAdmitidos.length > 0).map((p) => p.id));
+  const bases = new Set(productos.filter((p) => esBaseConfigurable(p.modoDeVenta)).map((p) => p.id));
   const fueraConGrupos = carta.fueraDeCarta.filter((p) => conGrupos.has(p.id)).map((p) => p.id);
   const [opciones, grilla] = await Promise.all([
     opcionesDeLosProductosDeLaCarta(db, sucursalId, fueraConGrupos),
@@ -71,7 +74,7 @@ export async function cargarCartaParaMantener(db: Db, sucursalId: string): Promi
     const grupos = leidos.map((g) =>
       g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO" ? { ...g, opciones: g.opciones.map((o) => ({ ...o, precioDeSucursal: grilla.get(`${p.id}|${o.opcionId}`) ?? null })) } : g
     );
-    p.vistaPrevia = vistaPreviaDeOpciones(true, opcionesParaLaCarta(resumenDePrecios({ grupos, precioBase: p.precioAca, descuentoDeProducto: null })));
+    p.vistaPrevia = vistaPreviaDeOpciones(true, opcionesParaLaCarta(resumenDePrecios({ grupos, precioBase: p.precioAca, descuentoDeProducto: null, esBase: bases.has(p.id) })));
   }
   return carta;
 }

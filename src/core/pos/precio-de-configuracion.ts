@@ -69,14 +69,32 @@ function aporteDe(grupo: GrupoParaVender, opcion: OpcionParaVender, precioBase: 
 }
 
 /**
+ * Fase 4 de la ola «precio y carta» (ADR-035): el PRECIO DE REFERENCIA de un producto que se vende por opción (`modoDeVenta = BASE_CONFIGURABLE`): el precio final más barato de sus medidas en
+ * ABSOLUTO vigentes y disponibles, ya resuelto con la grilla de la sucursal (la misma composición que la venta: una medida en ABSOLUTO reemplaza al precio base, así que se compone sobre 0). `null`
+ * si no tiene ninguna con precio: entonces la base no se puede vender (falla cerrado, nunca cae al precio guardado).
+ */
+function precioDeReferenciaDeBase(vigentes: readonly GrupoParaVender[]): number | null {
+  const precios = vigentes
+    .filter((g) => g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO")
+    .flatMap((g) => g.opciones.filter(opcionDisponible).flatMap((o) => aporteDe(g, o, 0)?.lista ?? []));
+  return precios.length ? Math.min(...precios) : null;
+}
+
+/**
  * El resumen de precios de un producto con opciones en una sucursal: las opciones que se pueden elegir hoy con su precio, el «desde» y si se puede vender. Un producto sin grupos
  * vigentes devuelve `grupos: []`, `desde` = su precio (con descuento) y `hayVariacion: false`.
+ *
+ * `esBase` (Fase 4, ADR-035): el producto se vende por opción. Su precio guardado NO se usa: cada opción se compone sobre el precio de referencia (`precioDeReferenciaDeBase`), así una variante
+ * sin costo se puede elegir aunque el guardado sea 0, y el resultado no depende de ese valor (en el cobro tampoco: con la medida en ABSOLUTO el precio base sale de la suma y una base no admite
+ * porcentajes). Sin precio de referencia, no se puede vender.
  */
-export function resumenDePrecios(entrada: { grupos: readonly GrupoParaVender[]; precioBase: number; descuentoDeProducto: number | null }): ResumenDePrecios {
-  const { precioBase, descuentoDeProducto } = entrada;
+export function resumenDePrecios(entrada: { grupos: readonly GrupoParaVender[]; precioBase: number; descuentoDeProducto: number | null; esBase?: boolean }): ResumenDePrecios {
+  const { descuentoDeProducto } = entrada;
   const final = (lista: number) => aplicarDescuentoDeProducto(lista, descuentoDeProducto).precio;
   const vigentes = gruposVigentes(entrada.grupos);
-  let vendible = !entrada.grupos.some((g) => g.admitido && !g.activo && g.cantidadMinima > 0);
+  const referencia = entrada.esBase ? precioDeReferenciaDeBase(vigentes) : null;
+  const precioBase = referencia ?? entrada.precioBase;
+  let vendible = !entrada.grupos.some((g) => g.admitido && !g.activo && g.cantidadMinima > 0) && !(entrada.esBase && referencia === null);
   let hayVariacion = false;
   const masBaratas: OpcionParaPrecio[] = [];
 

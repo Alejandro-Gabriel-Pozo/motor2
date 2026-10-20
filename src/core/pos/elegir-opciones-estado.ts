@@ -183,6 +183,8 @@ export interface ConfiguracionDelSelector {
   precioBase: number;
   /** El % de descuento de producto que rige hoy en la sucursal (`null` = ninguno). */
   descuentoDeProducto: number | null;
+  /** Fase 4 (ADR-035): el producto se vende por opción; la vista previa de cada opción usa su precio de referencia, nunca `precioBase` (`resumenDePrecios`). */
+  esBase: boolean;
   desde: number | null;
   hayVariacion: boolean;
   vendible: boolean;

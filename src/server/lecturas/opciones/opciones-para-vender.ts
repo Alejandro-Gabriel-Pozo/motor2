@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { versionVigente, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import { esBaseConfigurable, versionVigente, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { GrupoParaVender, OpcionParaVender } from "@/core/pos/public";
 import type { EfectoDeConsumoDeOpcion } from "@/core/opciones/public";
 import { precioLocalActivoEn } from "@/server/lecturas/catalogo/precio-local";
@@ -26,6 +26,8 @@ export interface OpcionesDeProducto {
   grupos: GrupoParaVender[];
   /** Si el producto es el ancla de un adicional: el id de esa opción (se vende solo como adicional). */
   anclaDeOpcionId: string | null;
+  /** Fase 4 (ADR-035): el producto se vende por opción (`modoDeVenta = BASE_CONFIGURABLE`): su precio guardado no se cobra ni se muestra. */
+  esBase: boolean;
 }
 
 function diferencia(tipo: string | null, monto: Prisma.Decimal | null, porcentaje: Prisma.Decimal | null): DiferenciaDePrecio | null {
@@ -45,6 +47,7 @@ export async function cargarOpcionesParaVender(
     where: { id: { in: ids } },
     select: {
       id: true,
+      modoDeVenta: true,
       opcionQueRespalda: { select: { id: true } },
       opcionesAdmitidas: { select: { opcionId: true, cantidadMaxima: true, precioAbsoluto: true, tipoDeDiferencia: true, diferenciaPrecio: true, porcentaje: true, activo: true } },
       gruposAdmitidos: {
@@ -148,7 +151,7 @@ export async function cargarOpcionesParaVender(
         ];
       }),
     }));
-    resultado.set(p.id, { grupos, anclaDeOpcionId: p.opcionQueRespalda?.id ?? null });
+    resultado.set(p.id, { grupos, anclaDeOpcionId: p.opcionQueRespalda?.id ?? null, esBase: esBaseConfigurable(p.modoDeVenta) });
   }
   return resultado;
 }

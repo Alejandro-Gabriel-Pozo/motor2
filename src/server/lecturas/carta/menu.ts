@@ -4,6 +4,7 @@ import { armarMenuCarta, precioDeCarta, precioDePromo, seleccionDeSucursalDeProm
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
+import { esBaseConfigurable } from "@/core/opciones/public";
 import { resumenDePrecios, type GrupoParaVender } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 
@@ -57,6 +58,7 @@ export async function resolverMenuCartaConDiagnostico(
         id: true,
         nombre: true,
         precioVenta: true,
+        modoDeVenta: true,
         categoria: { select: { nombre: true } },
         contenidosCarta: { where: whereCartaDeSucursal(sucursalId), select: { seccionCartaId: true, descripcion: true, tags: true, especial: true, orden: true }, take: 1 },
         // GO-2d: si admite algún grupo de opciones (en la misma consulta): solo esos se leen después, así una carta sin opciones hace las mismas consultas que antes.
@@ -119,7 +121,8 @@ export async function resolverMenuCartaConDiagnostico(
     );
     const local = preciosLocales.get(productoId);
     const precioBase = precioDeCarta(Number(p.precioVenta), local ? { precio: local.precio, habilitado: local.habilitado } : null);
-    return [{ productoId, conDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto: descuentos.get(productoId) ?? null }), sinDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto: null }) }];
+    const esBase = esBaseConfigurable(p.modoDeVenta);
+    return [{ productoId, conDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto: descuentos.get(productoId) ?? null, esBase }), sinDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto: null, esBase }) }];
   });
 
   return armarMenuCarta({

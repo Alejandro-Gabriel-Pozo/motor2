@@ -32,6 +32,7 @@ export type TipoDeDiferencia = (typeof TIPOS_DE_DIFERENCIA)[number];
  * compara esta lista con el CHECK.
  */
 export const MODOS_DE_VENTA = ["DIRECTO", "BASE_CONFIGURABLE"] as const;
+export type ModoDeVenta = (typeof MODOS_DE_VENTA)[number];
 
 /** Una diferencia de precio ya resuelta (la del producto si la sobrescribe, si no la de la versión de la opción). El porcentaje es el de `DECIMAL(7,4)`: hasta 4 decimales. */
 export type DiferenciaDePrecio = { tipo: "MONTO"; monto: number } | { tipo: "PORCENTAJE"; porcentaje: number };
