@@ -1,0 +1,21 @@
+# ADR-035: Modo de venta del producto y «se lee en la carta como»
+
+> Redactado el 2026-10-20 (rama `alegp/stoic-davinci-185dm4`, Fase 4 de la ola «precio y carta», sobre el retiro de GO-3a de la Fase 3). **Estado: aceptado por el dueño (decisiones cerradas DEC-18 y DEC-34 y las de la Fase 4 del 2026-10-19); implementado en el código. Las dos migraciones son aditivas y REQUIEREN AUTORIZACIÓN EXPRESA para aplicarse en una base real.**
+
+## Contexto
+
+Hasta acá un producto con opciones guardaba SIEMPRE un precio propio (`Producto.precioVenta`), aunque se vendiera por tamaño con el precio final de cada tamaño cargado aparte («Pizzas» 18.000 con «Tipos de Pizza» en precio propio). Ese valor guardado no se cobraba (la medida en ABSOLUTO lo reemplaza), pero seguía decidiendo cosas: el resumen de precios componía cada opción sola sobre él (con 0, una variante sin costo desaparecía y el producto dejaba de venderse), los porcentajes de una variante se calculaban sobre él, y «quitar» el grupo de precio dejaba el producto vendiéndose suelto a ese valor. La carta, además, no tenía un dato declarado para leer una opción con su preposición («De carne», «De pollo»): lo deducía o no lo decía.
+
+## Decisión
+
+1. **`Producto.modoDeVenta`**, TEXT de lista cerrada (`MODOS_DE_VENTA` en `src/core/opciones/tipos.ts`, migración `prisma/migrations/20261021130000_producto_modo_de_venta/migration.sql`): `DIRECTO` (default, lo de siempre) o `BASE_CONFIGURABLE` («se vende por opción»). El CHECK de la base repite que solo un PV que no se produce puede ser base.
+2. **Una base conserva su precio guardado pero no lo usa ni lo deja editar.** La regla pura vive en `src/core/opciones/modo-de-venta.ts` (`rechazoDeBaseConfigurable`): PV, no se produce, no es de consignación (decisión del dueño), no respalda un adicional, no está en un ítem agrupado de la carta, tiene al menos un grupo de medida activo en ABSOLUTO con el precio final de cada opción ofrecida (es el único camino al precio final desde que no hay eje de combinación) y no tiene diferencias en porcentaje. El mensaje base es «Falta el precio final de cada opción: …».
+3. **Quién cambia el modo:** quien tiene `producto_campos_sensibles` además de `producto_editar` (opción A del dueño, sin clave nueva). Lo aplica la edición del producto (`src/server/actions/catalogo/casos-de-uso/actualizar-producto.ts`): pasar a base toma primero la fila del producto (`tomarFilaDeProducto`, `FOR UPDATE`) y valida la regla con lo leído en la misma transacción (`BASE_INVALIDA`); siendo base, otro precio se rechaza (`PRECIO_BLOQUEADO_EN_BASE`) y lo que no viene queda como estaba; volver a directo se puede siempre. Cada cambio deja su fila de auditoría (`Producto.modoDeVenta`).
+4. **El precio de referencia de una base** es la medida en ABSOLUTO disponible más barata, con la grilla de la sucursal (`src/core/pos/precio-de-configuracion.ts`, `resumenDePrecios` con `esBase`). Lo usan solo la carta, el selector y las vistas previas para componer cada opción; la vista previa y el cobro no cambian (`test/pos/base-configurable-precio-de-referencia.test.ts`, propiedad con cualquier valor guardado). Sin referencia, la base no se vende: falla cerrado, nunca cae al guardado.
+5. **`GrupoDeOpciones.prefijoEnCarta`** («se lee en la carta como», DEC-34; migración `prisma/migrations/20261021131000_grupo_prefijo_en_carta/migration.sql`): opcional, hasta 20 caracteres, sin espacios a los costados; solo la lee la carta (Fase 5): no entra al precio ni a la foto de la venta, y el POS y el ticket muestran grupo y opción tal cual. La tabla tiene UPDATE por columna, así que la migración da el suyo a `motor2_app`.
+
+## Consecuencias
+
+- Las ventas pasadas no se tocan (las fotos `CuentaItem` y `OpcionElegidaEnLinea` están congeladas) y marcar base un producto cuyo guardado repite la opción más barata no cambia ningún precio cobrado ni mostrado (`test/catalogo/modo-de-venta-cobro.test.ts`). La caracterización de precio y carta de la Fase 0 no se mueve.
+- El margen de una base en el reporte de costos es «Por opción», sin margen. El ajuste masivo «Precios» de la carta está apagado (`PRECIOS_EDITABLES`) y no se tocó.
+- Marcar Pizzas y Milanesas como base en producción se hace A MANO desde la pantalla del producto; los prefijos («De», «Con») y el renombre de esos grupos son un paso aparte del dueño.

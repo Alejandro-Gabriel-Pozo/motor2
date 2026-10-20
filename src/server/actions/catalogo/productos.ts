@@ -9,6 +9,7 @@ import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
+import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
@@ -283,6 +284,11 @@ export type DatosProductoEdicion = Omit<DatosProducto, CampoSensibleDelProducto>
      * se guarda nada y el mensaje pide recargar. Si no viene y el precio cambia, también (falla cerrado).
      */
     precioVentaVisto?: number;
+    /**
+     * Fase 4 de la ola «precio y carta» (ADR-035): «¿Cómo se vende?» (`DIRECTO` / `BASE_CONFIGURABLE`). No viene = queda como estaba. Cambiarlo exige `producto_campos_sensibles` y pasar a
+     * «por opción» exige la regla de la base; lo decide el caso de uso.
+     */
+    modoDeVenta?: ModoDeVenta;
   };
 
 /**

@@ -44,4 +44,7 @@ export type { CriterioDeLimpieza, GrupoParaLimpiar, OpcionParaLimpiar, VentasRec
 export { leerFactorDeEscala } from "./factor-de-escala";
 
 // Fase 4 de la ola «precio y carta» (ADR-035): el modo de venta del producto (directo o «se vende por opción»).
-export { esBaseConfigurable } from "./modo-de-venta";
+export { MENSAJE_FALTA_PRECIO_FINAL, esBaseConfigurable, precioDeReferenciaDeAdmisiones, rechazoDeAdmisionesDeBase, rechazoDeBaseConfigurable, rechazoDelProductoComoBase } from "./modo-de-venta";
+export type { AdmisionParaSerBase, ProductoParaSerBase } from "./modo-de-venta";
+export { MODOS_DE_VENTA } from "./tipos";
+export type { ModoDeVenta } from "./tipos";

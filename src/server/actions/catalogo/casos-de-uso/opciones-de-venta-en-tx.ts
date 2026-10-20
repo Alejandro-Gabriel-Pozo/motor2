@@ -1,6 +1,16 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { cantidadesEfectivas, validarGrupo, type ConsumoDeConfiguracion, type ContenidoDeVersion, type DiferenciaDePrecio, type EfectoDeConsumoDeOpcion, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import {
+  cantidadesEfectivas,
+  validarGrupo,
+  type AdmisionParaSerBase,
+  type ConsumoDeConfiguracion,
+  type ContenidoDeVersion,
+  type DiferenciaDePrecio,
+  type EfectoDeConsumoDeOpcion,
+  type ModoDePrecioDeMedida,
+  type TipoDeGrupoDeOpciones,
+} from "@/core/opciones/public";
 
 /**
  * Las lecturas que los casos de uso del catálogo de opciones de venta (GO-2a) hacen DENTRO de su transacción SERIALIZABLE, compartidas (no es un caso de uso: ninguna Server
@@ -227,4 +237,46 @@ export function columnasDeVersion(v: { diferencia: DiferenciaDePrecio; factorEsc
     porcentaje: v.diferencia.tipo === "PORCENTAJE" ? v.diferencia.porcentaje : null,
     factorEscala: v.factorEscala,
   };
+}
+
+// ───────────────────────────── Fase 4: el producto que se vende por opción ─────────────────────────────
+
+const diferenciaDeFilaDeProducto = (tipo: string | null, monto: unknown, porcentaje: unknown): DiferenciaDePrecio | null =>
+  tipo === "MONTO" ? { tipo: "MONTO", monto: Number(monto) } : tipo === "PORCENTAJE" ? { tipo: "PORCENTAJE", porcentaje: Number(porcentaje) } : null;
+
+/**
+ * Fase 4 de la ola «precio y carta» (ADR-035): TODO lo que el producto tiene asignado (cada grupo, activo o no en el producto, con sus opciones como las admite y la diferencia que rige: la del producto
+ * si la sobrescribe, si no la de la versión vigente), en la forma de la regla pura de la base configurable (`rechazoDeAdmisionesDeBase`). Se lee con el mismo `tx` que después escribe: quien llama ya
+ * tomó la fila del producto (`tomarFilaDeProducto`).
+ */
+export async function admisionesParaSerBase(tx: Tx, productoId: string): Promise<AdmisionParaSerBase[]> {
+  const [grupos, filas] = await Promise.all([
+    tx.productoAdmiteGrupo.findMany({
+      where: { productoId },
+      orderBy: [{ orden: "asc" }, { id: "asc" }],
+      select: { activo: true, modoPrecio: true, grupo: { select: { nombre: true, tipo: true, activo: true, opciones: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { id: true, nombre: true, activa: true, esNinguna: true } } } } },
+    }),
+    tx.productoAdmiteOpcion.findMany({ where: { productoId }, select: { opcionId: true, activo: true, precioAbsoluto: true, tipoDeDiferencia: true, diferenciaPrecio: true, porcentaje: true } }),
+  ]);
+  const filaDe = new Map(filas.map((f) => [f.opcionId, f]));
+  const admisiones: AdmisionParaSerBase[] = [];
+  for (const g of grupos) {
+    const opciones = [];
+    for (const o of g.grupo.opciones) {
+      const fila = filaDe.get(o.id);
+      const delProducto = fila ? diferenciaDeFilaDeProducto(fila.tipoDeDiferencia, fila.diferenciaPrecio, fila.porcentaje) : null;
+      // La versión vigente solo hace falta si el producto no sobrescribe la diferencia de una opción que ofrece.
+      const deLaVersion = fila?.activo && o.activa && delProducto === null ? ((await versionVigenteEnTx(tx, o.id))?.diferencia ?? null) : null;
+      opciones.push({
+        nombre: o.nombre,
+        activa: o.activa,
+        admitida: fila?.activo ?? false,
+        esNinguna: o.esNinguna,
+        precioAbsoluto: fila?.precioAbsoluto == null ? null : Number(fila.precioAbsoluto),
+        diferencia: delProducto ?? deLaVersion,
+      });
+    }
+    admisiones.push({ grupo: { nombre: g.grupo.nombre, tipo: g.grupo.tipo as TipoDeGrupoDeOpciones, activo: g.grupo.activo }, activa: g.activo, modoPrecio: g.modoPrecio as ModoDePrecioDeMedida | null, opciones });
+  }
+  return admisiones;
 }

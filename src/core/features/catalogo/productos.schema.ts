@@ -1,4 +1,5 @@
 import type { ResultadoDato } from "@/core/datos/resultado";
+import type { ModoDeVenta } from "@/core/opciones/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -47,6 +48,11 @@ export type EntradaEdicionProducto = Omit<EntradaProducto, CampoSensibleDelProdu
      * guardado: si no, `PRECIO_DESACTUALIZADO` y no se guarda nada (también si no viene: falla cerrado). Si el precio no cambia, no se mira.
      */
     precioVentaVisto?: number;
+    /**
+     * Fase 4 de la ola «precio y carta» (ADR-035): «¿Cómo se vende?». No viene = queda como estaba. Cambiarlo es de quien tiene `producto_campos_sensibles` (como el precio de venta). Pasar a
+     * BASE_CONFIGURABLE exige la regla de la base (`rechazoDeBaseConfigurable`); volver a DIRECTO se puede siempre.
+     */
+    modoDeVenta?: ModoDeVenta;
   };
 
 /**
@@ -123,7 +129,10 @@ export interface DatosActualizarProducto {
  *  - `SIN_PERMISO_COSTO`: el formulario cambia el costo de consignación (es consignación, proveedor o precio) y quien lo pide no tiene `pagar_consignante` (S-12, D8);
  *  - `SIN_PERMISO_CAMPOS_SENSIBLES`: el formulario cambia el precio de venta, el factor de conversión o una unidad (de stock o de compra) y quien lo pide no tiene `producto_campos_sensibles` (M.2); va ANTES de `UNIDAD_CON_HISTORIA` y `CONSIGNANTE_CON_HISTORIA`;
  *  - `REFERENCIA_NO_ENCONTRADA`: un id del formulario (categoría, insumo, unidad, proveedor de consignación) no es de esta empresa o no existe: la clave foránea compuesta de la base rechazó el `update` y se traduce a «No se encontró …» fuera de la transacción abortada (O.175);
- *  - `PRECIO_DESACTUALIZADO`: el formulario cambia el precio de venta y el que mostraba (`precioVentaVisto`) ya no es el guardado (otra persona lo cambió mientras editaba, o no vino): no se guarda nada.
+ *  - `PRECIO_DESACTUALIZADO`: el formulario cambia el precio de venta y el que mostraba (`precioVentaVisto`) ya no es el guardado (otra persona lo cambió mientras editaba, o no vino): no se guarda nada;
+ *  - `BASE_INVALIDA` (Fase 4, ADR-035): el producto queda «se vende por opción» sin cumplir la regla de la base (pasar a base sin grupo de precio final, con porcentajes, de consignación, en un ítem
+ *    agrupado…; o, siendo base, tildar «se produce» o «es consignación»), o el modo pedido no es uno de la lista;
+ *  - `PRECIO_BLOQUEADO_EN_BASE` (Fase 4): el producto se vende por opción y el formulario trae otro precio de venta: el precio guardado se conserva y no se cambia (volviendo a directo en el mismo envío, sí).
  */
 export type ResultadoActualizarProducto = ResultadoCaso<
   DatosActualizarProducto,
@@ -136,6 +145,8 @@ export type ResultadoActualizarProducto = ResultadoCaso<
   | "SIN_PERMISO_CAMPOS_SENSIBLES"
   | "REFERENCIA_NO_ENCONTRADA"
   | "PRECIO_DESACTUALIZADO"
+  | "BASE_INVALIDA"
+  | "PRECIO_BLOQUEADO_EN_BASE"
 >;
 
 /**

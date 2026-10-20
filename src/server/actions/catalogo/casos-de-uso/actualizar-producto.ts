@@ -4,6 +4,7 @@ import type { ComandoActualizarProducto, EntradaProducto, ResultadoActualizarPro
 import { guardComandoDatosDeProducto, MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";
 import { mismosCentavos } from "@/core/datos/importe";
+import { MODOS_DE_VENTA, esBaseConfigurable, rechazoDeBaseConfigurable, rechazoDelProductoComoBase, type AdmisionParaSerBase } from "@/core/opciones/public";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
@@ -11,7 +12,8 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { texto } from "@/core/texto";
 import { datosParaGuardar, validarDatosDeProducto } from "@/server/lecturas/catalogo/datos-de-producto";
 import { productoTieneHistoria, productoTieneLiquidaciones } from "@/server/lecturas/catalogo/historia-de-producto";
-import { actualizarCamposDeProducto } from "@/server/persistencia/catalogo/productos";
+import { actualizarCamposDeProducto, tomarFilaDeProducto } from "@/server/persistencia/catalogo/productos";
+import { admisionesParaSerBase } from "./opciones-de-venta-en-tx";
 
 /**
  * Caso de uso «editar un producto del catálogo» (Hito 4 de la pureza, bloque 4.3, paso H4C-13 — `docs/plan-hito-4-pureza.md` §3). Es el cuerpo que antes vivía en
@@ -46,16 +48,24 @@ import { actualizarCamposDeProducto } from "@/server/persistencia/catalogo/produ
  * (`datos.precioVentaVisto`) tiene que ser el guardado (al centavo): si no (otra persona lo cambió, o la pantalla no lo mandó), `PRECIO_DESACTUALIZADO` y no se guarda nada. Si el precio no cambia, no se
  * mira. Todo dentro de UNA transacción SERIALIZABLE (antes READ COMMITTED): el mismo guardado repetido no escribe ni audita de nuevo.
  *
+ * MODO DE VENTA (Fase 4 de la ola «precio y carta», ADR-035): «¿Cómo se vende?» (`datos.modoDeVenta`; no viene = queda como estaba). Cambiarlo es de quien tiene `producto_campos_sensibles` (sin ella,
+ * `SIN_PERMISO_CAMPOS_SENSIBLES` y no se escribe). Pasar a BASE_CONFIGURABLE toma primero la fila del producto (`tomarFilaDeProducto`, `FOR UPDATE`: los escritores de lo que admite el producto toman
+ * la misma fila, así un «quitar el grupo de precio» concurrente espera, y si confirmó antes, este cuerpo se repite y lo ve) y valida con lo leído en la misma transacción la regla pura de la base
+ * (`rechazoDeBaseConfigurable`: PV, no se produce, no es consignación ni ancla ni está en un ítem agrupado, al menos un grupo de medida en ABSOLUTO con el precio final de cada opción, sin porcentajes):
+ * si no, `BASE_INVALIDA`. Siendo base (o pasando a serlo), el precio de venta guardado se CONSERVA y no se cambia (`PRECIO_BLOQUEADO_EN_BASE`; que no venga es «como estaba»), ni se puede tildar «se
+ * produce» o «es consignación» (`BASE_INVALIDA`; el CHECK de la base repite lo de «se produce»). Volver a DIRECTO se puede siempre, y en el mismo envío el precio nuevo se acepta (con el control del
+ * precio visto). Cada cambio de modo deja su fila de auditoría (`modoDeVenta`).
+ *
  * La Server Action quedó como adaptador (`conPermisoDeEmpresa("producto_editar")` → este caso de uso → `aResultadoAccion` → si salió bien, revalidar la carta
  * pública y DESPUÉS, si el precio de venta cambió (`datos.precioAnterior`/`precioNuevo`), ofrecer sincronizarlo con los hermanos del ítem agrupado —
  * `sincronizable`, docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8—, como antes). Sin guard: la validación lee la unidad de stock a mitad de camino.
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos.
  *
- * @contract Deja el producto con los datos pedidos (sin cambiar su tipo, ni su unidad de stock si ya tiene historia, ni su consignante si ya tiene liquidaciones, ni su costo de consignación sin el permiso, ni su precio de venta, factor y unidades sin la clave fina, ni su precio de venta si cambió desde que se abrió el formulario) y una fila de auditoría por cada uno de sus valores de mayor impacto que cambió: todo o nada. Lo sensible que no viene queda como estaba.
+ * @contract Deja el producto con los datos pedidos (sin cambiar su tipo, ni su unidad de stock si ya tiene historia, ni su consignante si ya tiene liquidaciones, ni su costo de consignación sin el permiso, ni su precio de venta, factor, unidades y modo de venta sin la clave fina, ni su precio de venta si cambió desde que se abrió el formulario o si se vende por opción, ni lo deja «por opción» sin cumplir la regla de la base) y una fila de auditoría por cada uno de sus valores de mayor impacto que cambió: todo o nada. Lo sensible que no viene queda como estaba.
  * @idempotency Optimista — el precio de venta visto se compara dentro de la transacción cuando el precio cambia; repetir el mismo pedido no cambia nada (sin filas de auditoría nuevas), y con un precio visto viejo da `PRECIO_DESACTUALIZADO`.
  * @transaction conTransaccionSerializable (SERIALIZABLE) sobre la base de verificación: la lectura del producto, la validación, la pregunta por su historia, el `update` y sus auditorías, todo junto.
- * @sideEffects registrarCambioAuditado (Producto.precioVenta, .precioConsignacion, .pasoVenta, .factorConversion, .unidadStockId, .unidadCompraId, .seProduce, .esConsignacion y .proveedorConsignacionId, del anterior al nuevo), en la misma transacción. La revalidación de
+ * @sideEffects registrarCambioAuditado (Producto.precioVenta, .precioConsignacion, .pasoVenta, .modoDeVenta, .factorConversion, .unidadStockId, .unidadCompraId, .seProduce, .esConsignacion y .proveedorConsignacionId, del anterior al nuevo), en la misma transacción. La revalidación de
  *   la carta pública y el `sincronizable` los hace la Server Action.
  * @ficha permiso=producto_editar transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
@@ -88,6 +98,11 @@ async function actualizarProductoEnTransaccion(
   return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoActualizarProducto> => {
     const existente = await tx.producto.findUnique({ where: { id: productoId } });
     if (!existente) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
+    // Fase 4 (ADR-035): el modo de venta. No viene = queda como estaba; uno que no es de la lista se rechaza (el CHECK de la base también lo haría, con un error crudo).
+    if (comando.datos.modoDeVenta !== undefined && !(MODOS_DE_VENTA as readonly unknown[]).includes(comando.datos.modoDeVenta)) {
+      return fracaso("BASE_INVALIDA", "«¿Cómo se vende?» no tiene un valor válido: recargá la pantalla y volvé a elegirlo.");
+    }
+    const modoNuevo = comando.datos.modoDeVenta ?? existente.modoDeVenta;
 
     // M.2: un campo sensible AUSENTE no es «ponelo en cero» ni «borralo» sino «queda como estaba», TENGA O NO quien edita la clave: el formulario arma un FormData y un input deshabilitado no viaja (sin la clave), y
     // si le dan la clave mientras tiene el formulario abierto, el servidor la ve y el formulario sigue sin mandarlos (M.2-A4). Sin completar, `datosParaGuardar` convertiría un precio ausente en 0 y una unidad de
@@ -147,8 +162,34 @@ async function actualizarProductoEnTransaccion(
         Number(nuevos.precioVenta) !== Number(existente.precioVenta) ||
         Number(nuevos.factorConversion) !== Number(existente.factorConversion) ||
         nuevos.unidadStockId !== existente.unidadStockId ||
-        nuevos.unidadCompraId !== existente.unidadCompraId;
+        nuevos.unidadCompraId !== existente.unidadCompraId ||
+        modoNuevo !== existente.modoDeVenta;
       if (cambiaUnCampoSensible) return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES);
+    }
+
+    // Fase 4 (ADR-035): la base configurable. Pasar a base toma la fila del producto ANTES de leer lo que admite (los escritores de admisiones la toman también) y valida la regla con lo leído acá.
+    if (esBaseConfigurable(modoNuevo)) {
+      const pasaABase = !esBaseConfigurable(existente.modoDeVenta);
+      const comoBase = { nombre: nombreActual, tipo: existente.tipo, seProduce: nuevos.seProduce, esConsignacion: nuevos.esConsignacion, esAnclaDeAdicional: false, itemAgrupado: null as string | null };
+      let admisiones: AdmisionParaSerBase[] = [];
+      if (pasaABase) {
+        await tomarFilaDeProducto(tx, productoId);
+        const [ancla, agrupado] = await Promise.all([
+          tx.opcionDeGrupo.findFirst({ where: { productoId }, select: { id: true } }),
+          tx.opcionItemAgrupadoCarta.findFirst({ where: { productoId }, select: { itemAgrupadoCarta: { select: { nombre: true } } } }),
+        ]);
+        comoBase.esAnclaDeAdicional = ancla !== null;
+        comoBase.itemAgrupado = agrupado?.itemAgrupadoCarta.nombre ?? null;
+        admisiones = await admisionesParaSerBase(tx, productoId);
+      }
+      const rechazo = pasaABase ? rechazoDeBaseConfigurable(comoBase, admisiones) : rechazoDelProductoComoBase(comoBase);
+      if (rechazo) return fracaso("BASE_INVALIDA", rechazo);
+      if (!mismosCentavos(Number(nuevos.precioVenta), Number(existente.precioVenta))) {
+        return fracaso(
+          "PRECIO_BLOQUEADO_EN_BASE",
+          `El precio de «${existente.nombre}» no se cambia: se vende por opción y el precio final de cada una está en su grupo de medida. Cambiá los precios desde «Opciones de venta» del producto (o cambiá antes «¿Cómo se vende?» a Directo).`,
+        );
+      }
     }
 
     // Control del valor visto (ola «precio y carta», Fase 2, A4): si el precio de venta cambia, el que mostraba el formulario tiene que ser el guardado. Sin la clave fina no se llega acá con un precio
@@ -184,7 +225,8 @@ async function actualizarProductoEnTransaccion(
     // de la ola «precio y carta» la lectura de `existente` y esta escritura van en la misma transacción SERIALIZABLE: un cambio de otra persona en el medio hace reintentar el cuerpo entero).
     const { precioVenta, factorConversion, unidadStockId, unidadCompraId, ...sinCamposSensibles } = nuevos;
     void [precioVenta, factorConversion, unidadStockId, unidadCompraId];
-    await actualizarCamposDeProducto(tx, { id: productoId, campos: comando.puedeEditarCamposSensibles ? nuevos : sinCamposSensibles });
+    // El modo de venta solo lo escribe quien tiene la clave fina (sin ella, ya se comprobó arriba que es el guardado).
+    await actualizarCamposDeProducto(tx, { id: productoId, campos: comando.puedeEditarCamposSensibles ? { ...nuevos, modoDeVenta: modoNuevo } : sinCamposSensibles });
 
     // Auditoría administrativa (A3, Pivote 6) — los precios, que son los campos de mayor impacto de negocio/control interno (ver
     // docs/auditoria-motor2-fase6-seguridad-2026-09-18.md)...
@@ -197,6 +239,12 @@ async function actualizarProductoEnTransaccion(
       entidad: "Producto", entidadId: productoId, campo: "precioConsignacion",
       descripcion: `Producto "${nombreActual}": precio de consignación`,
       valorAnterior: Number(existente.precioConsignacion), valorNuevo: Number(nuevos.precioConsignacion), actorId: actor.usuarioId,
+    });
+    // Fase 4 (ADR-035): «¿Cómo se vende?» (Directo / Por opción): cambia qué precio se cobra.
+    await registrarCambioAuditado(tx, {
+      entidad: "Producto", entidadId: productoId, campo: "modoDeVenta",
+      descripcion: `Producto "${nombreActual}": cómo se vende (${esBaseConfigurable(modoNuevo) ? "por opción" : "directo"})`,
+      valorAnterior: existente.modoDeVenta, valorNuevo: modoNuevo, actorId: actor.usuarioId,
     });
     // Venta fraccionada (Task #25): se audita igual que el resto de los campos de mayor impacto de negocio.
     await registrarCambioAuditado(tx, {

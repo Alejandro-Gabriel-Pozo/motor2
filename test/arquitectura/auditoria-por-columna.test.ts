@@ -23,7 +23,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   {
     archivo: "src/server/actions/catalogo/casos-de-uso/actualizar-producto.ts",
     entidad: "Producto",
-    campos: ["precioVenta", "precioConsignacion", "pasoVenta", "factorConversion", "unidadStockId", "unidadCompraId", "seProduce", "esConsignacion", "proveedorConsignacionId"],
+    // Fase 4 de la ola «precio y carta» (ADR-035): `modoDeVenta` («¿Cómo se vende?»: directo o por opción).
+    campos: ["precioVenta", "precioConsignacion", "pasoVenta", "modoDeVenta", "factorConversion", "unidadStockId", "unidadCompraId", "seProduce", "esConsignacion", "proveedorConsignacionId"],
   },
   {
     archivo: "src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts",
