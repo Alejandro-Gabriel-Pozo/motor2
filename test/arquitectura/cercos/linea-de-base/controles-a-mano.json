@@ -1,0 +1,560 @@
+{
+  "regla": "controles-a-mano",
+  "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
+  "total": 672,
+  "entradas": 140,
+  "porTipo": {
+    "button": 359,
+    "input": 209,
+    "input-hidden": 18,
+    "select": 71,
+    "textarea": 15
+  },
+  "cuentas": {
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/botones.tsx": {
+      "button": 4,
+      "input": 9
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/confirmacion.tsx": {
+      "button": 3
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/nueva/formulario.tsx": {
+      "button": 1,
+      "input": 6
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/error.tsx": {
+      "button": 1
+    },
+    "plataforma/src/app/login/formulario.tsx": {
+      "button": 1,
+      "input": 3,
+      "input-hidden": 1
+    },
+    "plataforma/src/app/page.tsx": {
+      "button": 1
+    },
+    "src/app/(app)/administracion/capacidades-sucursal/page.tsx": {
+      "button": 1
+    },
+    "src/app/(app)/administracion/gerencia/traspaso-gerencia.tsx": {
+      "button": 1,
+      "input": 1,
+      "select": 1
+    },
+    "src/app/(app)/administracion/permisos/permisos-matriz.tsx": {
+      "button": 8
+    },
+    "src/app/(app)/administracion/roles/roles-tabla.tsx": {
+      "button": 4,
+      "input": 2
+    },
+    "src/app/(app)/administracion/sucursales/page.tsx": {
+      "button": 2,
+      "input": 3
+    },
+    "src/app/(app)/administracion/usuarios/usuarios-tabla.tsx": {
+      "button": 2,
+      "input": 1,
+      "select": 2
+    },
+    "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
+      "button": 1,
+      "select": 2
+    },
+    "src/app/(app)/carta/agrupados/page.tsx": {
+      "button": 6,
+      "input": 4,
+      "select": 3,
+      "textarea": 1
+    },
+    "src/app/(app)/carta/mantenimiento-de-carta.tsx": {
+      "button": 23,
+      "input": 4
+    },
+    "src/app/(app)/carta/parametrizacion/formularios.tsx": {
+      "button": 3,
+      "input": 26,
+      "input-hidden": 3,
+      "select": 3,
+      "textarea": 3
+    },
+    "src/app/(app)/carta/parametrizacion/generos/page.tsx": {
+      "button": 3
+    },
+    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": {
+      "button": 8,
+      "input": 1
+    },
+    "src/app/(app)/carta/parametrizacion/secciones/ordenar-secciones.tsx": {
+      "button": 11
+    },
+    "src/app/(app)/carta/parametrizacion/secciones/page.tsx": {
+      "button": 3
+    },
+    "src/app/(app)/carta/portal/page.tsx": {
+      "button": 3,
+      "input": 6
+    },
+    "src/app/(app)/carta/tema/page.tsx": {
+      "button": 1
+    },
+    "src/app/(app)/catalogo/categorias/page.tsx": {
+      "button": 2,
+      "input": 1
+    },
+    "src/app/(app)/catalogo/clientes/page.tsx": {
+      "button": 3,
+      "input": 4
+    },
+    "src/app/(app)/catalogo/insumos-grupos/page.tsx": {
+      "button": 5,
+      "input": 2,
+      "select": 2
+    },
+    "src/app/(app)/catalogo/margen-objetivo/page.tsx": {
+      "button": 2,
+      "input": 2
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
+      "button": 1,
+      "input": 2,
+      "select": 1
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/cambiar-precio.tsx": {
+      "button": 3
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/campos-de-version.tsx": {
+      "input": 2,
+      "input-hidden": 3
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/editor-de-consumos.tsx": {
+      "button": 2,
+      "input": 1,
+      "input-hidden": 1,
+      "select": 3
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/ordenar-opciones.tsx": {
+      "button": 6
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": {
+      "button": 2,
+      "input": 4
+    },
+    "src/app/(app)/catalogo/opciones/alta-de-grupo.tsx": {
+      "button": 1,
+      "input": 4
+    },
+    "src/app/(app)/catalogo/opciones/limpiar/limpiar-opciones.tsx": {
+      "button": 3,
+      "input": 2
+    },
+    "src/app/(app)/catalogo/productos/[id]/combinaciones/page.tsx": {
+      "button": 4,
+      "input": 5,
+      "select": 4
+    },
+    "src/app/(app)/catalogo/productos/[id]/opciones/admision-de-grupo.tsx": {
+      "button": 1,
+      "input": 7,
+      "input-hidden": 2,
+      "select": 1
+    },
+    "src/app/(app)/catalogo/productos/[id]/opciones/page.tsx": {
+      "button": 1,
+      "select": 1
+    },
+    "src/app/(app)/catalogo/productos/page.tsx": {
+      "button": 1,
+      "input": 1
+    },
+    "src/app/(app)/catalogo/productos/producto-form.tsx": {
+      "button": 1,
+      "input": 7,
+      "select": 5,
+      "textarea": 1
+    },
+    "src/app/(app)/catalogo/proveedores/page.tsx": {
+      "button": 1
+    },
+    "src/app/(app)/catalogo/proveedores/proveedor-form.tsx": {
+      "button": 1,
+      "input": 6,
+      "textarea": 1
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
+      "button": 9,
+      "input": 4,
+      "input-hidden": 1,
+      "select": 5,
+      "textarea": 6
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/receta-de-la-sucursal.tsx": {
+      "button": 6,
+      "input": 2,
+      "input-hidden": 1,
+      "select": 2
+    },
+    "src/app/(app)/catalogo/tarifas/page.tsx": {
+      "button": 3,
+      "input": 6
+    },
+    "src/app/(app)/catalogo/unidades/page.tsx": {
+      "button": 3,
+      "input": 2,
+      "select": 1
+    },
+    "src/app/(app)/error.tsx": {
+      "button": 1
+    },
+    "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
+      "button": 3,
+      "input": 5,
+      "select": 6
+    },
+    "src/app/(app)/movimientos/conteo-fisico/acciones-historial.tsx": {
+      "button": 7
+    },
+    "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": {
+      "button": 3,
+      "input": 3,
+      "select": 1
+    },
+    "src/app/(app)/movimientos/conteo-fisico/page.tsx": {
+      "button": 1,
+      "select": 1
+    },
+    "src/app/(app)/movimientos/destinos-consumo/page.tsx": {
+      "button": 2,
+      "input": 2
+    },
+    "src/app/(app)/movimientos/menu-del-dia/menu-del-dia.tsx": {
+      "button": 3,
+      "select": 1
+    },
+    "src/app/(app)/movimientos/motivos-merma/page.tsx": {
+      "button": 2,
+      "input": 2
+    },
+    "src/app/(app)/movimientos/opciones-agotadas/opciones-agotadas.tsx": {
+      "button": 2,
+      "input": 1
+    },
+    "src/app/(app)/movimientos/precio-local/page.tsx": {
+      "button": 3
+    },
+    "src/app/(app)/movimientos/precio-local/precio-local-form.tsx": {
+      "button": 1,
+      "input": 1
+    },
+    "src/app/(app)/movimientos/secciones/page.tsx": {
+      "button": 4,
+      "input": 2
+    },
+    "src/app/(app)/movimientos/venta/venta-form.tsx": {
+      "button": 3,
+      "input": 3,
+      "select": 1
+    },
+    "src/app/(app)/reportes/compras/formulario-corregir-compra.tsx": {
+      "button": 3,
+      "input": 2,
+      "select": 1
+    },
+    "src/app/(app)/reportes/compras/page.tsx": {
+      "button": 1,
+      "input": 3,
+      "select": 1
+    },
+    "src/app/(app)/reportes/consignacion/page.tsx": {
+      "button": 1,
+      "input": 2
+    },
+    "src/app/(app)/reportes/consignacion/registrar-pago-consignante.tsx": {
+      "button": 1,
+      "input": 2
+    },
+    "src/app/(app)/reportes/conteos/filtros-conteos.tsx": {
+      "button": 2,
+      "input": 2,
+      "select": 1
+    },
+    "src/app/(app)/reportes/devoluciones/page.tsx": {
+      "button": 1,
+      "input": 1
+    },
+    "src/app/(app)/reportes/historial/historial-filtros.tsx": {
+      "button": 1,
+      "input": 2,
+      "select": 3
+    },
+    "src/app/(app)/reportes/perdidas/page.tsx": {
+      "button": 1,
+      "input": 1
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/fila-compartida.tsx": {
+      "button": 6
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/fila-simple.tsx": {
+      "button": 6
+    },
+    "src/app/(app)/reportes/tickets/page.tsx": {
+      "button": 1,
+      "input": 2,
+      "input-hidden": 1
+    },
+    "src/app/(app)/reportes/trazabilidad/boton-anular-venta.tsx": {
+      "button": 3
+    },
+    "src/app/(app)/reportes/trazabilidad/page.tsx": {
+      "button": 1,
+      "input": 2
+    },
+    "src/app/(app)/reportes/vencimientos/page.tsx": {
+      "button": 1,
+      "input": 1
+    },
+    "src/app/(app)/stock/conteo-frecuencia/boton-eliminar.tsx": {
+      "button": 3
+    },
+    "src/app/(app)/stock/conteo-frecuencia/conteo-frecuencia-form.tsx": {
+      "button": 1
+    },
+    "src/app/(app)/stock/minimo/boton-eliminar.tsx": {
+      "button": 3
+    },
+    "src/app/(app)/stock/minimo/stock-minimo-form.tsx": {
+      "button": 1,
+      "select": 1
+    },
+    "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": {
+      "button": 3,
+      "input": 4,
+      "select": 2
+    },
+    "src/app/(app)/stock/seccion-habitual/boton-quitar.tsx": {
+      "button": 3
+    },
+    "src/app/(app)/stock/seccion-habitual/seccion-habitual-form.tsx": {
+      "button": 1,
+      "select": 1
+    },
+    "src/app/(app)/traspasos/bandeja.tsx": {
+      "button": 3,
+      "input": 2,
+      "select": 2
+    },
+    "src/app/(app)/traspasos/enviar/enviar-form.tsx": {
+      "button": 1,
+      "input": 1,
+      "select": 2
+    },
+    "src/app/(app)/traspasos/solicitar/solicitar-form.tsx": {
+      "button": 1,
+      "input": 1,
+      "select": 2
+    },
+    "src/app/(carta-publica)/error.tsx": {
+      "button": 1
+    },
+    "src/app/(pos)/error.tsx": {
+      "button": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
+      "button": 4,
+      "input": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
+      "button": 9,
+      "input": 2
+    },
+    "src/app/(pos)/mesas/[mesaId]/anular-item.tsx": {
+      "button": 3,
+      "textarea": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/anular-promo.tsx": {
+      "button": 3,
+      "textarea": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/armar-promo.tsx": {
+      "button": 4
+    },
+    "src/app/(pos)/mesas/[mesaId]/cerrar-cuenta.tsx": {
+      "button": 3
+    },
+    "src/app/(pos)/mesas/[mesaId]/cliente-cuenta.tsx": {
+      "button": 3,
+      "select": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/comensales-cuenta.tsx": {
+      "button": 3,
+      "input": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/cuentas-cerradas.tsx": {
+      "button": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/elegir-opciones.tsx": {
+      "button": 6,
+      "input": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/emitir-ticket-corregido.tsx": {
+      "button": 3,
+      "textarea": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/imprimir.tsx": {
+      "button": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/liberar-mesa.tsx": {
+      "button": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/otro-igual.tsx": {
+      "button": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/selector-carta.tsx": {
+      "button": 6
+    },
+    "src/app/(pos)/mesas/[mesaId]/sin-enviar.tsx": {
+      "button": 5
+    },
+    "src/app/(pos)/mesas/limite-mesas.tsx": {
+      "button": 3,
+      "input": 1
+    },
+    "src/app/(pos)/mesas/nueva-mesa.tsx": {
+      "button": 3
+    },
+    "src/app/(pos)/mesas/page.tsx": {
+      "button": 1,
+      "input": 1,
+      "input-hidden": 1
+    },
+    "src/app/global-error.tsx": {
+      "button": 1
+    },
+    "src/app/invitacion/aceptar-de-usuario.tsx": {
+      "button": 1
+    },
+    "src/app/invitacion/formulario-de-aceptacion.tsx": {
+      "button": 3,
+      "input": 2,
+      "input-hidden": 1
+    },
+    "src/app/invitacion/page.tsx": {
+      "button": 2
+    },
+    "src/app/login/page.tsx": {
+      "button": 3
+    },
+    "src/components/agregar-colapsable.tsx": {
+      "button": 2
+    },
+    "src/components/app-shell.tsx": {
+      "button": 1
+    },
+    "src/components/aviso-con-deshacer.tsx": {
+      "button": 3
+    },
+    "src/components/avisos-de-accion.tsx": {
+      "button": 1
+    },
+    "src/components/boton-activar-desactivar.tsx": {
+      "button": 4
+    },
+    "src/components/boton-con-confirmacion.tsx": {
+      "button": 3
+    },
+    "src/components/campo-numero.tsx": {
+      "input": 1,
+      "input-hidden": 1
+    },
+    "src/components/carta-publica/carta-vista.tsx": {
+      "button": 1
+    },
+    "src/components/carta-publica/navegacion-carta.tsx": {
+      "button": 4
+    },
+    "src/components/carta/campo-color.tsx": {
+      "input": 2
+    },
+    "src/components/carta/copiar-carta-de-sucursal.tsx": {
+      "select": 1
+    },
+    "src/components/carta/editor-portal.tsx": {
+      "button": 1,
+      "input": 5
+    },
+    "src/components/carta/editor-tema.tsx": {
+      "button": 1,
+      "input": 6,
+      "select": 1
+    },
+    "src/components/carta/seccion-y-orden.tsx": {
+      "input": 1,
+      "select": 1
+    },
+    "src/components/carta/sincronizar-precio-grupo.tsx": {
+      "button": 2
+    },
+    "src/components/catalogo/asistente-hermanar.tsx": {
+      "button": 4,
+      "input": 1
+    },
+    "src/components/catalogo/form-renombrar-insumo.tsx": {
+      "button": 3,
+      "input": 1
+    },
+    "src/components/catalogo/gestion-presentaciones.tsx": {
+      "button": 2,
+      "select": 1
+    },
+    "src/components/catalogo/quick-crear-producto.tsx": {
+      "button": 1,
+      "input": 1,
+      "select": 1
+    },
+    "src/components/catalogo/quick-crear.tsx": {
+      "button": 1,
+      "input": 1
+    },
+    "src/components/form-con-resultado.tsx": {
+      "button": 1
+    },
+    "src/components/menu-celular.tsx": {
+      "button": 3,
+      "input": 1
+    },
+    "src/components/mesas/mesa-card.tsx": {
+      "button": 3
+    },
+    "src/components/modal.tsx": {
+      "button": 1
+    },
+    "src/components/pos-shell.tsx": {
+      "button": 1
+    },
+    "src/components/selector-empresa.tsx": {
+      "select": 1
+    },
+    "src/components/selector-producto.tsx": {
+      "input": 1,
+      "input-hidden": 1
+    },
+    "src/components/selector-rango.tsx": {
+      "button": 1,
+      "input": 2,
+      "input-hidden": 1,
+      "select": 1
+    },
+    "src/components/selector-sucursal.tsx": {
+      "select": 1
+    },
+    "src/components/sidebar-colapsable.tsx": {
+      "button": 1
+    },
+    "src/components/sidebar-nav.tsx": {
+      "button": 2
+    },
+    "src/components/tabla-reporte.tsx": {
+      "button": 1
+    }
+  }
+}

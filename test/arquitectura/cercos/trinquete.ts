@@ -215,6 +215,11 @@ export function sinComentarios(fuente: string, ruta: string): string {
   return blanquear(texto, comentarios);
 }
 
+/** El AST de TypeScript de una fuente (TSX si la ruta termina en `x`), para los detectores que miran elementos y atributos de JSX. */
+export function arbolDe(fuente: string, ruta: string): ts.SourceFile {
+  return ts.createSourceFile(ruta, fuente, ts.ScriptTarget.Latest, true, /x$/.test(ruta) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+}
+
 /** Varios cercos del mismo archivo de test recorren los mismos archivos: el texto sin comentarios se reusa mientras la fuente no cambie. */
 const memoria = new Map<string, { fuente: string; limpia: string }>();
 function sinComentariosConMemoria(fuente: string, ruta: string): string {
