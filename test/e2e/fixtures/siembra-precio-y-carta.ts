@@ -34,6 +34,8 @@ interface Opcion {
   diferencia?: string;
   /** El producto ANCLA de un adicional (PV sin precio, con este nombre). */
   ancla?: { codigo: string; nombre: string };
+  /** Fase 5 (paso 13): agotada HOY en la sucursal (la carta de la pantalla no la muestra; la del papel, completa, sí). */
+  agotadaHoy?: true;
 }
 
 interface Grupo {
@@ -43,6 +45,8 @@ interface Grupo {
   cantidadMinima: number;
   cantidadMaxima: number;
   modoPrecio?: "ABSOLUTO";
+  /** Fase 4 (DEC-34): «se lee en la carta como» («De» para «Milanesas de»). */
+  prefijoEnCarta?: string;
   opciones: Opcion[];
 }
 
@@ -53,6 +57,8 @@ interface Producto {
   precioVenta: string;
   seccion: string;
   ordenEnSeccion: number;
+  /** Fase 4 (DEC-18): un producto BASE (se vende por opción). Fase 5: Pizzas (base de un eje: oculta) y Milanesas (base de dos ejes: tabla). */
+  modoDeVenta?: "BASE_CONFIGURABLE";
   grupos: Grupo[];
 }
 
@@ -64,6 +70,8 @@ const SECCIONES: readonly { nombre: string; orden: number }[] = [
 ];
 
 // Copia de `PRODUCTOS` de test/setup/siembra-precio-y-carta.ts (mismos nombres, tipos, límites, órdenes y precios); solo cambian los códigos (prefijo `LB_`).
+// Fase 5 (paso 13, capturas de la carta pareja): además, como va a quedar producción cuando el dueño los marque a mano, Pizzas y Milanesas son productos BASE y «Milanesas de» se lee «De»;
+// y «Pizza bomba» está agotada hoy (la carta impresa sale completa). Así la carta muestra las cuatro formas: lista (pizzas, oculta), tabla (milanesas), simple (bife) y columnas (café).
 const PRODUCTOS: readonly Producto[] = [
   {
     clave: "pizzas",
@@ -72,6 +80,7 @@ const PRODUCTOS: readonly Producto[] = [
     precioVenta: "18000.00",
     seccion: "Pizzas",
     ordenEnSeccion: 0,
+    modoDeVenta: "BASE_CONFIGURABLE",
     grupos: [
       {
         clave: "tiposDePizza",
@@ -86,7 +95,7 @@ const PRODUCTOS: readonly Producto[] = [
           { nombre: "Pizza fugazzeta", absoluto: "22000.00" },
           { nombre: "Pizza napolitana", absoluto: "22000.00" },
           { nombre: "Pizza con papas fritas", absoluto: "25000.00" },
-          { nombre: "Pizza bomba", absoluto: "25000.00" },
+          { nombre: "Pizza bomba", absoluto: "25000.00", agotadaHoy: true },
         ],
       },
     ],
@@ -98,6 +107,7 @@ const PRODUCTOS: readonly Producto[] = [
     precioVenta: "20000.00",
     seccion: "Platos",
     ordenEnSeccion: 0,
+    modoDeVenta: "BASE_CONFIGURABLE",
     grupos: [
       {
         clave: "tipoDeMilanesa",
@@ -111,7 +121,7 @@ const PRODUCTOS: readonly Producto[] = [
           { nombre: "Napolitana", absoluto: "25000.00" },
         ],
       },
-      { clave: "milanesasDe", nombre: "Milanesas de", tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1, opciones: [{ nombre: "Carne" }, { nombre: "Pollo" }] },
+      { clave: "milanesasDe", nombre: "Milanesas de", tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1, prefijoEnCarta: "De", opciones: [{ nombre: "Carne" }, { nombre: "Pollo" }] },
     ],
   },
   {
@@ -225,12 +235,15 @@ export async function limpiarLineaDeBasePrecioYCarta(): Promise<void> {
     await prisma.sucursalPublica.deleteMany({ where: { sucursalId: sucursal.id } });
     await prisma.contenidoCartaProducto.deleteMany({ where: { sucursalId: sucursal.id } });
     await prisma.capacidadSucursal.deleteMany({ where: { sucursalId: sucursal.id } });
+    // El tema oscuro de las capturas (paso 13).
+    await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId: sucursal.id } });
   }
   const pvIds = (await prisma.producto.findMany({ where: { codigo: { in: CODIGOS_PV } }, select: { id: true } })).map((p) => p.id);
   const anclaIds = (await prisma.producto.findMany({ where: { codigo: { in: CODIGOS_ANCLA } }, select: { id: true } })).map((p) => p.id);
   const mpIds = (await prisma.producto.findMany({ where: { codigo: { in: CODIGOS_PV.map((c) => `MP_REV_${c}`) } }, select: { id: true } })).map((p) => p.id);
   const grupoIds = (await prismaAdmin.grupoDeOpciones.findMany({ where: { nombre: { in: NOMBRES_DE_GRUPOS } }, select: { id: true } })).map((g) => g.id);
   // Las tablas de opciones: solo el dueño las puede borrar (GO-1). Primero lo que las referencia.
+  await prismaAdmin.opcionApagadaEnSucursal.deleteMany({ where: { opcion: { grupoId: { in: grupoIds } } } });
   await prismaAdmin.productoAdmiteOpcion.deleteMany({ where: { OR: [{ productoId: { in: pvIds } }, { opcion: { grupoId: { in: grupoIds } } }] } });
   await prismaAdmin.productoAdmiteGrupo.deleteMany({ where: { OR: [{ productoId: { in: pvIds } }, { grupoId: { in: grupoIds } }] } });
   await prismaAdmin.consumoDeOpcion.deleteMany({ where: { versionDeOpcion: { opcion: { grupoId: { in: grupoIds } } } } });
@@ -291,14 +304,14 @@ export async function sembrarLineaDeBasePrecioYCarta(): Promise<LineaDeBaseSembr
     const productoId: Record<string, string> = {};
     const grupoId: Record<string, string> = {};
     for (const p of PRODUCTOS) {
-      const pv = await prisma.producto.create({ data: { codigo: p.codigo, nombre: p.nombre, tipo: "PV", unidadStockId: unidad.id, precioVenta: p.precioVenta } });
+      const pv = await prisma.producto.create({ data: { codigo: p.codigo, nombre: p.nombre, tipo: "PV", unidadStockId: unidad.id, precioVenta: p.precioVenta, ...(p.modoDeVenta ? { modoDeVenta: p.modoDeVenta } : {}) } });
       productoId[p.clave] = pv.id;
       await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursal.id, productoId: pv.id, disponible: true } });
       await darRecetaDeReventa(prisma, pv, { sucursalIds: [sucursal.id] });
       await prisma.contenidoCartaProducto.create({ data: { sucursalId: sucursal.id, productoId: pv.id, visibleEnCarta: true, seccionCartaId: seccionId[p.seccion]!, orden: p.ordenEnSeccion } });
 
       for (const [ordenGrupo, g] of p.grupos.entries()) {
-        const id = (await prisma.grupoDeOpciones.create({ data: { nombre: g.nombre, tipo: g.tipo, cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima } })).id;
+        const id = (await prisma.grupoDeOpciones.create({ data: { nombre: g.nombre, tipo: g.tipo, cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima, ...(g.prefijoEnCarta ? { prefijoEnCarta: g.prefijoEnCarta } : {}) } })).id;
         grupoId[g.clave] = id;
         await prisma.productoAdmiteGrupo.create({ data: { productoId: pv.id, grupoId: id, orden: ordenGrupo, ...(g.modoPrecio ? { modoPrecio: g.modoPrecio } : {}) } });
         for (const [ordenOpcion, o] of g.opciones.entries()) {
@@ -308,6 +321,7 @@ export async function sembrarLineaDeBasePrecioYCarta(): Promise<LineaDeBaseSembr
           await prisma.productoAdmiteOpcion.create({
             data: { productoId: pv.id, opcionId, ...(o.absoluto ? { precioAbsoluto: o.absoluto } : {}), ...(g.tipo === "ADICIONAL" ? { cantidadMaxima: g.cantidadMaxima } : {}) },
           });
+          if (o.agotadaHoy) await prisma.opcionApagadaEnSucursal.create({ data: { sucursalId: sucursal.id, opcionId, apagada: true, actualizadoPorId: firmante.id } });
         }
       }
     }

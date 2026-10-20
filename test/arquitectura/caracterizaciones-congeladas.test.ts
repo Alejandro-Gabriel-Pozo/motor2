@@ -557,6 +557,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 3, paso 3.2 (retiro de GO-3a; CAMBIA UN TEXTO de administración, no la carta): la pantalla de opciones del producto deja de enlazar a «Combinaciones» (la pantalla se borró). Cambian SOLO 2 líneas (la de Pizzas a 1280 px y la de 375 px): «… se arman en [enlace: Opciones de venta]. Las combinaciones (un precio o una receta propia para «grande con almendras») se arman en [enlace: Combinaciones].» pasa a «… se arman en [enlace: Opciones de venta].». Regenerado A MANO (el e2e no se corre en esta tanda; el texto sale del JSX: `en{\" \"}<EnlaceInterno>…</EnlaceInterno>` seguido de `.`): a confirmar con `npm run test:e2e` en el gate final. Ni una línea de la carta pública ni de la tipografía cambia.",
       },
+      {
+        blob: "4d8ffc781df0d2bb3a792eada0831bcb93b489c7",
+        // El commit PADRE de este (25d9243e, Fase 5 paso 12) es el último antes de la regeneración; los cambios visuales son de los pasos 3, 4, 8, 9 y 10 (tanda B).
+        commit: "25d9243e",
+        motivo:
+          "Ola «precio y carta», Fase 5 tanda B (CAMBIO VISUAL DELIBERADO, «carta pareja»; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en la corrida de capturas del paso 13, contra motor2_e2e local). (1) DATOS de la siembra e2e: Pizzas y Milanesas como producto BASE, «Milanesas de» con «De» y «Pizza bomba» agotada hoy (lo que el dueño va a cargar a mano), así salen las cuatro formas; cambian por eso las pantallas de administración de Pizzas. (2) El volcado lee la FORMA de cada ítem (lista sin encabezado para las pizzas, tabla para las milanesas, simple para el bife, tanda para el café) en lugar de las listas de tamaños, pastillas y «Adicionales:» retiradas. (3) La tipografía: todo plato a 19 px (antes 14,08 px sin opciones), filas de opción 16 px, aclaraciones 14 px, con UN par tamaño/peso por rol a 375 y 1280 px (se agrega la sección «Escala única»). (4) Se agrega «Impresión»: 0 listas cortadas, el pie con la fecha enmascarada y la dirección, la carta completa con lo agotado hoy y la escala en puntos. El precio cobrado no se toca (precios.golden.txt y cobro-y-carta.golden.txt sin cambios).",
+      },
     ],
   },
 };

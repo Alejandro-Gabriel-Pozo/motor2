@@ -13,28 +13,30 @@
   03 Cafetería
   04 Bebidas
 ### Sección «Pizzas» (banda «01 / 04»)
-  ÍTEM «Pizzas» · precio del renglón: (ninguno)
-    lista de tamaños «Tipos de Pizza»: Pizza muzzarella … $18.000 | Pizza de verduras asadas … $20.000 | Pizza fugazzeta … $22.000 | Pizza napolitana … $22.000 | Pizza con papas fritas … $25.000 | Pizza bomba … $25.000
-    texto visible: «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000» «Pizza bomba» «$25.000»
+  ÍTEM «Pizza muzzarella | Pizza de verduras asadas | Pizza fugazzeta | Pizza napolitana | Pizza con papas fritas» · forma: lista-sin-encabezado · precio del renglón: (ninguno)
+    filas: «Pizza muzzarella $18.000» «Pizza de verduras asadas $20.000» «Pizza fugazzeta $22.000» «Pizza napolitana $22.000» «Pizza con papas fritas $25.000»
+    texto visible: «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000»
 ### Sección «Platos» (banda «02 / 04»)
-  ÍTEM «Milanesas» · precio del renglón: (ninguno)
-    lista de tamaños «Tipo de Milanesa»: Simple … $20.000 | Napolitana … $25.000
-    pastillas «Milanesas de» (lista «Milanesas de»): Carne | Pollo
-    texto visible: «Milanesas» «Simple» «$20.000» «Napolitana» «$25.000» «Milanesas de» «Carne» «Pollo»
-  ÍTEM «Bife a la criolla» · precio del renglón: «$20.000»
-    pastillas «Guarnicion» (lista «Guarnicion»): Ensalada | Papas fritas | Puré
-    adicionales: «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500»
-    texto visible: «Bife a la criolla» «$20.000» «Guarnicion» «Ensalada» «Papas fritas» «Puré» «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500»
-  ÍTEM «Wok de verduras» · precio del renglón: «$19.000»
+  ÍTEM «Milanesas» · forma: tabla · precio del renglón: (ninguno)
+    tabla: columnas «Simple» «Napolitana»
+      fila: De carne | $20.000 | $25.000
+      fila: De pollo | $20.000 | $25.000
+    texto visible: «Milanesas» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000»
+  ÍTEM «Bife a la criolla» · forma: simple · precio del renglón: «$20.000»
+    debajo: «Guarnicion: ensalada, papas fritas o puré»
+    debajo: «Extras: extra de papas +$2.000, huevo frito +$1.500»
+    texto visible: «Bife a la criolla» «$20.000» «Guarnicion: ensalada, papas fritas o puré» «Extras: extra de papas +$2.000, huevo frito +$1.500»
+  ÍTEM «Wok de verduras» · forma: sin opciones · precio del renglón: «$19.000»
     texto visible: «Wok de verduras» «$19.000»
 ### Sección «Cafetería» (banda «03 / 04»)
-  ÍTEM «Café» · precio del renglón: (ninguno)
-    lista de tamaños «Tamaño del Café»: Chico … $4.000 | Mediano … $4.100 | Grande … $4.300
-    pastillas «Preparación del café» (lista «Preparación del café»): Solo | Cortado
-    adicionales: «Adicionales: Lágrima +$200 · Con leche +$300»
-    texto visible: «Café» «Chico» «$4.000» «Mediano» «$4.100» «Grande» «$4.300» «Preparación del café» «Solo» «Cortado» «Adicionales: Lágrima +$200 · Con leche +$300»
+  ÍTEM «Café» · forma: tanda · precio del renglón: (ninguno)
+    tabla: columnas «Chico» «Mediano» «Grande»
+      fila: Café | $4.000 | $4.100 | $4.300
+      fila: Preparación del café: solo, cortado, lágrima +$200, con leche +$300
+    debajo: «Preparación del café: solo, cortado, lágrima +$200, con leche +$300»
+    texto visible: «Chico Mediano Grande» «Café $4.000 $4.100 $4.300» «Preparación del café: solo, cortado, lágrima +$200, con leche +$300»
 ### Sección «Bebidas» (banda «04 / 04»)
-  ÍTEM «Gaseosa 500 cc» · precio del renglón: «$4.000»
+  ÍTEM «Gaseosa 500 cc» · forma: sin opciones · precio del renglón: «$4.000»
     texto visible: «Gaseosa 500 cc» «$4.000»
 ### Barra de navegación (en la portada)
   botón «Página anterior» (deshabilitado)
@@ -42,11 +44,11 @@
 ### Texto plano de cada página (innerText, una línea por renglón)
   [1 portada] «L» «LB Precio y carta»
   [2 índice] «Índice» «01» «Pizzas» «02» «Platos» «03» «Cafetería» «04» «Bebidas»
-  [3 sección] «01 / 04» «Pizzas» «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000» «Pizza bomba» «$25.000»
-  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple» «$20.000» «Napolitana» «$25.000» «Milanesas de» «Carne» «Pollo» «Bife a la criolla» «$20.000» «Guarnicion» «Ensalada» «Papas fritas» «Puré» «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500» «Wok de verduras» «$19.000»
-  [5 sección] «03 / 04» «Cafetería» «Café» «Chico» «$4.000» «Mediano» «$4.100» «Grande» «$4.300» «Preparación del café» «Solo» «Cortado» «Adicionales: Lágrima +$200 · Con leche +$300»
+  [3 sección] «01 / 04» «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000»
+  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000» «Bife a la criolla» «$20.000» «Guarnicion: ensalada, papas fritas o puré» «Extras: extra de papas +$2.000, huevo frito +$1.500» «Wok de verduras» «$19.000»
+  [5 sección] «03 / 04» «Cafetería» «Chico Mediano Grande» «Café $4.000 $4.100 $4.300» «Preparación del café: solo, cortado, lágrima +$200, con leche +$300»
   [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$4.000»
-### Tipografía computada (getComputedStyle: fontSize / fontWeight) — FOTO DE HOY, NO APROBACIÓN: es la escala que la Fase 5 va a unificar
+### Tipografía computada (getComputedStyle: fontSize / fontWeight)
   barra superior · volver (enlace): 12px / 300
   portada · nombre (h1): 27.2px / 500
   índice · título (h1): 19.2px / 500
@@ -54,18 +56,30 @@
   índice · nombre de la sección: 13.12px / 500
   banda · etiqueta «01 / NN» (p): 11px / 300
   banda · título de la sección (h2): 15.2px / 500
-  ítem con lista de tamaños «Pizzas» · nombre (h3): 19px / 600
-  lista de tamaños «Pizzas» · fila (li): 17px / 400
-  lista de tamaños «Pizzas» · nombre del tamaño: 17px / 400
-  lista de tamaños «Pizzas» · precio del tamaño: 17px / 700
-  pastillas «Milanesas» · nombre del grupo (p): 14.5px / 600
-  pastillas «Milanesas» · pastilla (li): 15px / 400
-  ítem con opciones y precio en el renglón «Bife a la criolla» · nombre (h3): 19px / 600
-  ítem con opciones y precio en el renglón «Bife a la criolla» · precio del renglón: 19px / 600
-  adicionales «Bife a la criolla» · línea (p): 16px / 400
-  adicionales «Bife a la criolla» · «Adicionales:» (strong): 16px / 600
-  ítem sin opciones «Wok de verduras» · nombre (h3): 14.08px / 600
-  ítem sin opciones «Wok de verduras» · precio del renglón: 14.08px / 600
+  forma «lista-sin-encabezado» «Pizza muzzarella» · nombre: 19px / 600
+  forma «tabla» «Milanesas» · nombre: 19px / 600
+  forma «simple» «Bife a la criolla» · nombre: 19px / 600
+  forma «simple» «Bife a la criolla» · precio del renglón: 19px / 600
+  forma «sin opciones» «Wok de verduras» · nombre: 19px / 600
+  forma «sin opciones» «Wok de verduras» · precio del renglón: 19px / 600
+  forma «tanda» «Café» · nombre: 19px / 600
+### Escala única (DEC-35): cada rol, con su ÚNICO par tamaño / peso
+  aclaracion: 14px / 400
+  aclaracion-rotulo: 14px / 600
+  opcion: 16px / 400
+  opcion-precio: 16px / 600
+  precio: 19px / 600
+  producto: 19px / 600
+### Impresión a 375 px (emulada)
+  listas cortadas: 0
+  pie: «Precios vigentes al «fecha» · http://carta.localhost/lb-precio-y-carta»
+  con lo agotado hoy («Pizza bomba»): sí
+  aclaracion-rotulo: 13.3333px / 600
+  aclaracion: 13.3333px / 400
+  opcion-precio: 14.6667px / 600
+  opcion: 14.6667px / 400
+  precio: 16px / 600
+  producto: 16px / 600
 
 ## CARTA PÚBLICA a 1280 px (/carta-publica/e2e/lb-precio-y-carta)
 ### Barra superior
@@ -79,28 +93,30 @@
   03 Cafetería
   04 Bebidas
 ### Sección «Pizzas» (banda «01 / 04»)
-  ÍTEM «Pizzas» · precio del renglón: (ninguno)
-    lista de tamaños «Tipos de Pizza»: Pizza muzzarella … $18.000 | Pizza de verduras asadas … $20.000 | Pizza fugazzeta … $22.000 | Pizza napolitana … $22.000 | Pizza con papas fritas … $25.000 | Pizza bomba … $25.000
-    texto visible: «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000» «Pizza bomba» «$25.000»
+  ÍTEM «Pizza muzzarella | Pizza de verduras asadas | Pizza fugazzeta | Pizza napolitana | Pizza con papas fritas» · forma: lista-sin-encabezado · precio del renglón: (ninguno)
+    filas: «Pizza muzzarella $18.000» «Pizza de verduras asadas $20.000» «Pizza fugazzeta $22.000» «Pizza napolitana $22.000» «Pizza con papas fritas $25.000»
+    texto visible: «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000»
 ### Sección «Platos» (banda «02 / 04»)
-  ÍTEM «Milanesas» · precio del renglón: (ninguno)
-    lista de tamaños «Tipo de Milanesa»: Simple … $20.000 | Napolitana … $25.000
-    pastillas «Milanesas de» (lista «Milanesas de»): Carne | Pollo
-    texto visible: «Milanesas» «Simple» «$20.000» «Napolitana» «$25.000» «Milanesas de» «Carne» «Pollo»
-  ÍTEM «Bife a la criolla» · precio del renglón: «$20.000»
-    pastillas «Guarnicion» (lista «Guarnicion»): Ensalada | Papas fritas | Puré
-    adicionales: «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500»
-    texto visible: «Bife a la criolla» «$20.000» «Guarnicion» «Ensalada» «Papas fritas» «Puré» «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500»
-  ÍTEM «Wok de verduras» · precio del renglón: «$19.000»
+  ÍTEM «Milanesas» · forma: tabla · precio del renglón: (ninguno)
+    tabla: columnas «Simple» «Napolitana»
+      fila: De carne | $20.000 | $25.000
+      fila: De pollo | $20.000 | $25.000
+    texto visible: «Milanesas» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000»
+  ÍTEM «Bife a la criolla» · forma: simple · precio del renglón: «$20.000»
+    debajo: «Guarnicion: ensalada, papas fritas o puré»
+    debajo: «Extras: extra de papas +$2.000, huevo frito +$1.500»
+    texto visible: «Bife a la criolla» «$20.000» «Guarnicion: ensalada, papas fritas o puré» «Extras: extra de papas +$2.000, huevo frito +$1.500»
+  ÍTEM «Wok de verduras» · forma: sin opciones · precio del renglón: «$19.000»
     texto visible: «Wok de verduras» «$19.000»
 ### Sección «Cafetería» (banda «03 / 04»)
-  ÍTEM «Café» · precio del renglón: (ninguno)
-    lista de tamaños «Tamaño del Café»: Chico … $4.000 | Mediano … $4.100 | Grande … $4.300
-    pastillas «Preparación del café» (lista «Preparación del café»): Solo | Cortado
-    adicionales: «Adicionales: Lágrima +$200 · Con leche +$300»
-    texto visible: «Café» «Chico» «$4.000» «Mediano» «$4.100» «Grande» «$4.300» «Preparación del café» «Solo» «Cortado» «Adicionales: Lágrima +$200 · Con leche +$300»
+  ÍTEM «Café» · forma: tanda · precio del renglón: (ninguno)
+    tabla: columnas «Chico» «Mediano» «Grande»
+      fila: Café | $4.000 | $4.100 | $4.300
+      fila: Preparación del café: solo, cortado, lágrima +$200, con leche +$300
+    debajo: «Preparación del café: solo, cortado, lágrima +$200, con leche +$300»
+    texto visible: «Chico Mediano Grande» «Café $4.000 $4.100 $4.300» «Preparación del café: solo, cortado, lágrima +$200, con leche +$300»
 ### Sección «Bebidas» (banda «04 / 04»)
-  ÍTEM «Gaseosa 500 cc» · precio del renglón: «$4.000»
+  ÍTEM «Gaseosa 500 cc» · forma: sin opciones · precio del renglón: «$4.000»
     texto visible: «Gaseosa 500 cc» «$4.000»
 ### Barra de navegación (en la portada)
   botón «Página anterior» (deshabilitado)
@@ -108,11 +124,11 @@
 ### Texto plano de cada página (innerText, una línea por renglón)
   [1 portada] «L» «LB Precio y carta»
   [2 índice] «Índice» «01» «Pizzas» «02» «Platos» «03» «Cafetería» «04» «Bebidas»
-  [3 sección] «01 / 04» «Pizzas» «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000» «Pizza bomba» «$25.000»
-  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple» «$20.000» «Napolitana» «$25.000» «Milanesas de» «Carne» «Pollo» «Bife a la criolla» «$20.000» «Guarnicion» «Ensalada» «Papas fritas» «Puré» «Adicionales: Extra de papas +$2.000 · Huevo frito +$1.500» «Wok de verduras» «$19.000»
-  [5 sección] «03 / 04» «Cafetería» «Café» «Chico» «$4.000» «Mediano» «$4.100» «Grande» «$4.300» «Preparación del café» «Solo» «Cortado» «Adicionales: Lágrima +$200 · Con leche +$300»
+  [3 sección] «01 / 04» «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000»
+  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000» «Bife a la criolla» «$20.000» «Guarnicion: ensalada, papas fritas o puré» «Extras: extra de papas +$2.000, huevo frito +$1.500» «Wok de verduras» «$19.000»
+  [5 sección] «03 / 04» «Cafetería» «Chico Mediano Grande» «Café $4.000 $4.100 $4.300» «Preparación del café: solo, cortado, lágrima +$200, con leche +$300»
   [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$4.000»
-### Tipografía computada (getComputedStyle: fontSize / fontWeight) — FOTO DE HOY, NO APROBACIÓN: es la escala que la Fase 5 va a unificar
+### Tipografía computada (getComputedStyle: fontSize / fontWeight)
   barra superior · volver (enlace): 12px / 300
   portada · nombre (h1): 33.6px / 500
   índice · título (h1): 28px / 500
@@ -120,18 +136,30 @@
   índice · nombre de la sección: 15.2px / 500
   banda · etiqueta «01 / NN» (p): 11px / 300
   banda · título de la sección (h2): 22.8px / 500
-  ítem con lista de tamaños «Pizzas» · nombre (h3): 19px / 600
-  lista de tamaños «Pizzas» · fila (li): 17px / 400
-  lista de tamaños «Pizzas» · nombre del tamaño: 17px / 400
-  lista de tamaños «Pizzas» · precio del tamaño: 17px / 700
-  pastillas «Milanesas» · nombre del grupo (p): 14.5px / 600
-  pastillas «Milanesas» · pastilla (li): 15px / 400
-  ítem con opciones y precio en el renglón «Bife a la criolla» · nombre (h3): 19px / 600
-  ítem con opciones y precio en el renglón «Bife a la criolla» · precio del renglón: 19px / 600
-  adicionales «Bife a la criolla» · línea (p): 16px / 400
-  adicionales «Bife a la criolla» · «Adicionales:» (strong): 16px / 600
-  ítem sin opciones «Wok de verduras» · nombre (h3): 14.08px / 600
-  ítem sin opciones «Wok de verduras» · precio del renglón: 14.08px / 600
+  forma «lista-sin-encabezado» «Pizza muzzarella» · nombre: 19px / 600
+  forma «tabla» «Milanesas» · nombre: 19px / 600
+  forma «simple» «Bife a la criolla» · nombre: 19px / 600
+  forma «simple» «Bife a la criolla» · precio del renglón: 19px / 600
+  forma «sin opciones» «Wok de verduras» · nombre: 19px / 600
+  forma «sin opciones» «Wok de verduras» · precio del renglón: 19px / 600
+  forma «tanda» «Café» · nombre: 19px / 600
+### Escala única (DEC-35): cada rol, con su ÚNICO par tamaño / peso
+  aclaracion: 14px / 400
+  aclaracion-rotulo: 14px / 600
+  opcion: 16px / 400
+  opcion-precio: 16px / 600
+  precio: 19px / 600
+  producto: 19px / 600
+### Impresión a 1280 px (emulada)
+  listas cortadas: 0
+  pie: «Precios vigentes al «fecha» · http://carta.localhost/lb-precio-y-carta»
+  con lo agotado hoy («Pizza bomba»): sí
+  aclaracion-rotulo: 13.3333px / 600
+  aclaracion: 13.3333px / 400
+  opcion-precio: 14.6667px / 600
+  opcion: 14.6667px / 400
+  precio: 16px / 600
+  producto: 16px / 600
 
 ## ADMINISTRACIÓN a 1280 px: Opciones de venta del producto «Pizzas» (/catalogo/productos/<id de Pizzas>/opciones)
   [enlace: ← Pizzas]
@@ -188,7 +216,7 @@
   No se borra nada: lo que admite de cada opción queda guardado.
   ## [lector: Así se cobra]
   Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000
-  Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000 · Pizza de verduras asadas $ 20.000 · Pizza fugazzeta $ 22.000 · Pizza napolitana $ 22.000 · Pizza con papas fritas $ 25.000 · Pizza bomba $ 25.000
+  Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000 · Pizza de verduras asadas $ 20.000 · Pizza fugazzeta $ 22.000 · Pizza napolitana $ 22.000 · Pizza con papas fritas $ 25.000
 
 ## ADMINISTRACIÓN a 375 px: Opciones de venta del producto «Pizzas» (/catalogo/productos/<id de Pizzas>/opciones)
   [enlace: ← Pizzas]
@@ -245,7 +273,7 @@
   No se borra nada: lo que admite de cada opción queda guardado.
   ## [lector: Así se cobra]
   Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000
-  Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000 · Pizza de verduras asadas $ 20.000 · Pizza fugazzeta $ 22.000 · Pizza napolitana $ 22.000 · Pizza con papas fritas $ 25.000 · Pizza bomba $ 25.000
+  Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000 · Pizza de verduras asadas $ 20.000 · Pizza fugazzeta $ 22.000 · Pizza napolitana $ 22.000 · Pizza con papas fritas $ 25.000
 
 ## ADMINISTRACIÓN a 1280 px: Grupo de opciones «Tipos de Pizza» (/catalogo/opciones/<id de Tipos de Pizza>)
   [enlace: ← Opciones de venta]
@@ -259,6 +287,10 @@
   Máximo a elegir
   [campo: «1», solo lectura]
   Un tamaño se elige siempre una vez: mínimo 1 y máximo 1.
+  Se lee en la carta como
+  [campo: vacío, ayuda «Por ejemplo: De»]
+  Opcional, hasta 20 caracteres (0/20). Solo lo usa la carta: el POS y el ticket muestran el grupo y la opción tal cual.
+  Sin prefijo: cada opción se lee con su nombre.
   [botón: Guardar]
   [botón: Archivar grupo (lector: «Archivar el grupo Tipos de Pizza»)]
   Lo usa 1 producto: archivado, no se ofrece en ninguno y, como es obligatorio, esos productos no se van a poder vender. Se restaura con un toque desde «Archivados».
@@ -334,6 +366,10 @@
   Máximo a elegir
   [campo: «1», solo lectura]
   Un tamaño se elige siempre una vez: mínimo 1 y máximo 1.
+  Se lee en la carta como
+  [campo: vacío, ayuda «Por ejemplo: De»]
+  Opcional, hasta 20 caracteres (0/20). Solo lo usa la carta: el POS y el ticket muestran el grupo y la opción tal cual.
+  Sin prefijo: cada opción se lee con su nombre.
   [botón: Guardar]
   [botón: Archivar grupo (lector: «Archivar el grupo Tipos de Pizza»)]
   Lo usa 1 producto: archivado, no se ofrece en ninguno y, como es obligatorio, esos productos no se van a poder vender. Se restaura con un toque desde «Archivados».
@@ -526,6 +562,11 @@
     [campo: «0»]
     Género (opcional)
     [selección: — sin género (sale suelto) —]
+    Mostrar el nombre del producto arriba
+    [x]
+    No: cada opción sale sola en la carta, con su nombre completo
+    [ ]
+    Sí: «Pizzas» arriba y las opciones debajo
     Descripción (opcional)
     [campo: vacío]
     Tags (separados por coma)
@@ -777,6 +818,11 @@
     [campo: «0»]
     Género (opcional)
     [selección: — sin género (sale suelto) —]
+    Mostrar el nombre del producto arriba
+    [x]
+    No: cada opción sale sola en la carta, con su nombre completo
+    [ ]
+    Sí: «Pizzas» arriba y las opciones debajo
     Descripción (opcional)
     [campo: vacío]
     Tags (separados por coma)
