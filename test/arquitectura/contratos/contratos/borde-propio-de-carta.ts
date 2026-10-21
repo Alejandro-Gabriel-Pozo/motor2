@@ -42,7 +42,7 @@ export const BORDE_PROPIO_DE_CARTA: Contrato = {
       aprobacion: { por: "dueño", referencia: "DEC-01" },
       creada: "2026-10-21",
       renovaciones: [],
-      vence: "2027-10-21",
+      vence: "2026-12-20",
     },
     {
       archivo: "src/components/carta-publica/seccion.tsx",
@@ -52,7 +52,7 @@ export const BORDE_PROPIO_DE_CARTA: Contrato = {
       aprobacion: { por: "dueño", referencia: "DEC-01" },
       creada: "2026-10-21",
       renovaciones: [],
-      vence: "2027-10-21",
+      vence: "2026-12-20",
     },
   ],
   deuda: [],

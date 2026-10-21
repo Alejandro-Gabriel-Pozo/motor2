@@ -23,7 +23,7 @@ import { EXCLUSIONES, type Exclusion } from "./exclusiones";
 
 /**
  * Guardián «clasificación de rutas» (G2): corre `clasificacion.ts` sobre el repo real (UNA prueba) y prueba el mecanismo con listas sintéticas y con un repo git
- * temporal (nunca el repo real). Las pruebas de borde usan LITERALES (19 y 20 caracteres, el día del vencimiento y el siguiente, 365 y 366 días), no las constantes de
+ * temporal (nunca el repo real). Las pruebas de borde usan LITERALES (19 y 20 caracteres, el día del vencimiento y el siguiente, 59, 60 y 61 días), no las constantes de
  * `politica.ts`: bajar un umbral en la política rompe estas pruebas.
  */
 
@@ -282,13 +282,13 @@ describe("exclusiones: cantidad exacta", () => {
 });
 
 describe("exclusiones: gobierno (literales)", () => {
-  // Con LITERALES: 19 y 20 caracteres, el día del vencimiento y el siguiente, 365 y 366 días desde HOY (2026-10-21).
+  // Con LITERALES: 19 y 20 caracteres, el día del vencimiento y el siguiente, 59, 60 y 61 días desde HOY (2026-10-21).
   const E: Exclusion = {
     ruta: "prisma/fase-a/",
     motivo: "un motivo escrito con más de veinte caracteres",
     responsable: "dueño",
     aprobacion: { por: "dueño", referencia: "PR #12" },
-    vence: "2027-04-30",
+    vence: "2026-12-19",
     archivos: 5,
   };
   const con1 = (cambio: Partial<Exclusion>): ResultadoDeClasificacion => clasificarRutas(entrada({ exclusiones: [{ ...E, ...cambio }] }));
@@ -310,8 +310,8 @@ describe("exclusiones: gobierno (literales)", () => {
   });
 
   it("la fecha es la inyectada: la misma exclusión vence si hoy avanza", () => {
-    expect(vistos(clasificarRutas(entrada({ exclusiones: [E], hoy: "2027-04-30" })))).toEqual([]);
-    expect(vistos(clasificarRutas(entrada({ exclusiones: [E], hoy: "2027-05-01" })))).toEqual([["excepcion-vencida", "prisma/fase-a/"]]);
+    expect(vistos(clasificarRutas(entrada({ exclusiones: [E], hoy: "2026-12-19" })))).toEqual([]);
+    expect(vistos(clasificarRutas(entrada({ exclusiones: [E], hoy: "2026-12-20" })))).toEqual([["excepcion-vencida", "prisma/fase-a/"]]);
   });
 
   it("motivo de 19 caracteres → excepcion-sin-motivo; de 20, verde", () => {
@@ -320,9 +320,12 @@ describe("exclusiones: gobierno (literales)", () => {
     expect(vistos(con1({ motivo: "                    " }))).toEqual([["excepcion-sin-motivo", "prisma/fase-a/"]]);
   });
 
-  it("vence a 365 días → verde; a 366 → horizonte-excedido", () => {
-    expect(vistos(con1({ vence: "2027-10-21" }))).toEqual([]);
-    expect(vistos(con1({ vence: "2027-10-22" }))).toEqual([["horizonte-excedido", "prisma/fase-a/"]]);
+  it("vence a 59 y a 60 días → verde; a 61 → horizonte-excedido (tope de toda excepción, decisión del dueño)", () => {
+    expect(vistos(con1({ vence: "2026-12-19" }))).toEqual([]);
+    expect(vistos(con1({ vence: "2026-12-20" }))).toEqual([]);
+    expect(vistos(con1({ vence: "2026-12-21" }))).toEqual([["horizonte-excedido", "prisma/fase-a/"]]);
+    // Lo que antes era el tope (365 y 366 días) ya no pasa.
+    expect(vistos(con1({ vence: "2027-10-21" }))).toEqual([["horizonte-excedido", "prisma/fase-a/"]]);
   });
 
   it("responsable fuera de la lista cerrada → excepcion-sin-responsable", () => {

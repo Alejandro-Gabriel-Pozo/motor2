@@ -7,7 +7,7 @@ import type { Aprobacion, Responsable, TipoDeHallazgo } from "../tipos";
  *  - `ruta`: una carpeta (termina en `/`) o un archivo, con `/`, sin comodines y con al menos dos tramos (no se puede excluir `src/` ni `docs/`);
  *  - `motivo`: 20 caracteres o más;
  *  - `responsable` de la lista cerrada y `aprobacion` con la referencia `PR #n`, `commit <sha>` o `DEC-nn` (la misma validación de forma que el motor de contratos);
- *  - `vence`: `AAAA-MM-DD`, rige hasta el final de ese día y como mucho 365 días después de HOY (el mismo `evaluarVencimientos` del motor);
+ *  - `vence`: `AAAA-MM-DD`, rige hasta el final de ese día y como mucho 60 días después de HOY (tope de toda excepción, decisión del dueño: `politica.ts`) (el mismo `evaluarVencimientos` del motor);
  *  - `archivos`: la CANTIDAD EXACTA de archivos que hay hoy bajo la ruta. Un archivo más (código movido ahí adentro) es `exclusion-ampliada`; uno menos o ninguno, `exclusion-sin-uso`.
  * Sin campos opcionales: `tsc` rechaza una exclusión a la que le falte algo. Lo que no está versionado (`node_modules`, `.next`…) no se lista y no necesita exclusión.
  */
@@ -28,9 +28,10 @@ export const EXCLUSIONES: readonly Exclusion[] = [
     ruta: "prisma/fase-a/",
     motivo: "prototipo de la Fase A de multi-tenancy (ADR-004): schema, config y smoke test experimentales, aislados de prisma/schema.prisma a propósito; se corren a mano y nadie los importa",
     responsable: "dueño",
-    // Referencia con la forma válida (la forma es lo único que se verifica desde el repo): el commit que dejó esta carpeta en el árbol. El dueño la cambia por la suya al renovar.
-    aprobacion: { por: "dueño", referencia: "commit 2a328632" },
-    vence: "2027-04-30",
+    // DEC-02: la decisión del dueño que fija el tope de 60 días para toda excepción (G1b). La exclusión no tiene `creada` ni renovaciones: el plazo se cuenta desde HOY, así que
+    // al vencer se renueva escribiendo una nueva fecha de hasta 60 días desde ese día, con motivo y aprobación vigentes. Hoy es 2026-10-21: hoy + 60 días = 2026-12-20.
+    aprobacion: { por: "dueño", referencia: "DEC-02" },
+    vence: "2026-12-20",
     archivos: 5,
   },
 ];

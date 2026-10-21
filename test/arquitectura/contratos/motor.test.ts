@@ -588,9 +588,13 @@ describe("motor: gobierno de excepciones y deuda (bordes con literales)", () => 
     expect(tipos(conExcepcion({ vence: "2026-12-19" }, "2026-12-20"))).toEqual(["excepcion-vencida"]);
   });
 
-  it("tope de una excepción desde su creación: 365 días pasa; 366, horizonte-excedido", () => {
-    expect(tipos(conExcepcion({ vence: "2027-10-21" }))).toEqual([]);
-    expect(vistos(conExcepcion({ vence: "2027-10-22" }))).toEqual([["horizonte-excedido", "src/malo.ts", 1, 1]]);
+  it("tope de una excepción desde su creación: 59 y 60 días pasan; 61, horizonte-excedido (el mismo tope que la deuda)", () => {
+    expect(tipos(conExcepcion({ vence: "2026-12-19" }))).toEqual([]);
+    expect(tipos(conExcepcion({ vence: "2026-12-20" }))).toEqual([]);
+    expect(vistos(conExcepcion({ vence: "2026-12-21" }))).toEqual([["horizonte-excedido", "src/malo.ts", 1, 1]]);
+    // Lo que antes era el tope de una excepción (365 y 366 días) ya no pasa.
+    expect(tipos(conExcepcion({ vence: "2027-10-21" }))).toEqual(["horizonte-excedido"]);
+    expect(tipos(conExcepcion({ vence: "2027-10-22" }))).toEqual(["horizonte-excedido"]);
   });
 
   it("tope de una deuda desde su creación: 59 y 60 días pasan; 61, horizonte-excedido", () => {
@@ -613,9 +617,11 @@ describe("motor: gobierno de excepciones y deuda (bordes con literales)", () => 
     ];
     expect(tipos(conDeuda({ creada: "2026-06-01", renovaciones: dos, vence: "2026-11-30" }))).toEqual([]);
     expect(tipos(conDeuda({ creada: "2026-06-01", renovaciones: dos, vence: "2026-12-01" }))).toEqual(["horizonte-excedido"]);
-    // Excepción: 365 días desde la renovación.
-    expect(tipos(conExcepcion({ creada: "2026-01-01", renovaciones: [{ fecha: "2026-10-01", motivo: MOTIVO, aprobacion: aprobada }], vence: "2027-10-01" }))).toEqual([]);
-    expect(tipos(conExcepcion({ creada: "2026-01-01", renovaciones: [{ fecha: "2026-10-01", motivo: MOTIVO, aprobacion: aprobada }], vence: "2027-10-02" }))).toEqual(["horizonte-excedido"]);
+    // Excepción: 59 y 60 días desde la renovación pasan; 61, no.
+    const renovadaExc = (vence: string) => ({ creada: "2026-01-01", renovaciones: [{ fecha: "2026-10-01", motivo: MOTIVO, aprobacion: aprobada }], vence });
+    expect(tipos(conExcepcion(renovadaExc("2026-11-29")))).toEqual([]);
+    expect(tipos(conExcepcion(renovadaExc("2026-11-30")))).toEqual([]);
+    expect(tipos(conExcepcion(renovadaExc("2026-12-01")))).toEqual(["horizonte-excedido"]);
   });
 
   it("una renovación sin motivo, o con un motivo de 19 caracteres, da rojo; con 20, verde", () => {
@@ -703,12 +709,12 @@ describe("evaluarVencimientos: función pura con `hoy` inyectado", () => {
 
   it("clasifica vencidas, excedidas y por vencer con literales", () => {
     const r = evaluarVencimientos(
-      [e("excepcion", "2026-10-20"), e("excepcion", "2026-10-21"), e("excepcion", "2027-10-21"), e("excepcion", "2027-10-22"), e("deuda", "2026-12-20"), e("deuda", "2026-12-21"), e("deuda", "2026-11-04"), e("deuda", "2026-11-05")],
+      [e("excepcion", "2026-10-20"), e("excepcion", "2026-10-21"), e("excepcion", "2026-12-20"), e("excepcion", "2026-12-21"), e("deuda", "2026-12-20"), e("deuda", "2026-12-21"), e("deuda", "2026-11-04"), e("deuda", "2026-11-05")],
       "2026-10-21"
     );
     expect(r.vencidas.map((x) => x.vence)).toEqual(["2026-10-20"]);
     expect(r.excedidas.map((x) => [x.clase, x.vence, x.tope])).toEqual([
-      ["excepcion", "2027-10-22", 365],
+      ["excepcion", "2026-12-21", 60],
       ["deuda", "2026-12-21", 60],
     ]);
     expect(r.porVencer.map((x) => [x.vence, x.dias])).toEqual([
@@ -717,10 +723,13 @@ describe("evaluarVencimientos: función pura con `hoy` inyectado", () => {
     ]);
   });
 
-  it("cruza el fin de año y los años bisiestos por el calendario, no por 365 fijo", () => {
+  it("cruza el fin de año y los años bisiestos por el calendario, no por un mes de largo fijo", () => {
     expect(evaluarVencimientos([e("deuda", "2028-02-29", "2028-02-29")], "2028-02-29").porVencer.map((x) => x.dias)).toEqual([0]);
-    expect(evaluarVencimientos([e("excepcion", "2029-02-28", "2028-02-29")], "2028-02-29").excedidas).toEqual([]);
-    expect(evaluarVencimientos([e("excepcion", "2029-03-01", "2028-02-29")], "2028-02-29").excedidas).toHaveLength(1);
+    // 60 días desde el 1 de enero: en un año bisiesto (febrero de 29 días) son hasta el 1 de marzo; en uno común, hasta el 2 de marzo.
+    expect(evaluarVencimientos([e("excepcion", "2028-03-01", "2028-01-01")], "2028-01-01").excedidas).toEqual([]);
+    expect(evaluarVencimientos([e("excepcion", "2028-03-02", "2028-01-01")], "2028-01-01").excedidas).toHaveLength(1);
+    expect(evaluarVencimientos([e("deuda", "2027-03-02", "2027-01-01")], "2027-01-01").excedidas).toEqual([]);
+    expect(evaluarVencimientos([e("deuda", "2027-03-03", "2027-01-01")], "2027-01-01").excedidas).toHaveLength(1);
     expect(evaluarVencimientos([e("deuda", "2027-01-01", "2026-12-31")], "2026-12-31").porVencer.map((x) => x.dias)).toEqual([1]);
   });
 

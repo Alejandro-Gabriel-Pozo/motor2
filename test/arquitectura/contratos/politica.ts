@@ -1,8 +1,12 @@
 import type { Responsable } from "./tipos";
 
 /**
- * La política de gobierno de las excepciones y la deuda de los contratos (decisión del dueño). Los plazos son los que el dueño todavía tiene que CONFIRMAR: viven acá,
- * en un solo lugar, y los tests de borde usan literales (no estas constantes) para que cambiarlos obligue a tocar los tests.
+ * La política de gobierno de las excepciones y la deuda de los contratos (decisión del dueño). Los plazos viven acá, en un solo lugar, y los tests de borde usan literales
+ * (no estas constantes) para que cambiarlos obligue a tocar los tests.
+ *
+ * Decisión del dueño (paso G1b): «cualquier excepción requiere justificación y aprobación explícitas, responsable y fecha de vencimiento, con un máximo de 60 días».
+ * Vale para TODA excepción (las de los contratos, las exclusiones de clasificación de `gobernanza/exclusiones.ts`) y para la deuda. Lo que es legítimo y permanente no
+ * es una excepción: es parte de la definición del contrato (`casosLegitimos`, sin vencimiento; ver `LEEME.md`).
  */
 
 /** Un motivo (o un `porQue`) necesita al menos esta cantidad de caracteres. */
@@ -11,9 +15,9 @@ export const MOTIVO_MINIMO = 20;
 /** Quién puede responder por una excepción o una deuda. Lista cerrada (el tipo `Responsable` la acompaña). */
 export const RESPONSABLES: readonly Responsable[] = ["dueño"];
 
-/** Una excepción no puede vencer más de estos días después de su última renovación (o de su creación). */
-const HORIZONTE_EXCEPCION_DIAS = 365;
-/** Una deuda no puede vencer más de estos días después de su última renovación (o de su creación). */
+/** Una excepción no puede vencer más de estos días después de su última renovación (o de su creación): tope de 60 días por decisión del dueño (G1b), el mismo que la deuda. */
+const HORIZONTE_EXCEPCION_DIAS = 60;
+/** Una deuda no puede vencer más de estos días después de su última renovación (o de su creación): tope de 60 días por decisión del dueño (G1b), el mismo que la excepción. */
 const HORIZONTE_DEUDA_DIAS = 60;
 /** Una deuda con MÁS renovaciones que estas se avisa en el reporte, sin fallar. */
 export const RENOVACIONES_SIN_AVISO = 2;
