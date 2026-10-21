@@ -1,13 +1,13 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 522,
-  "entradas": 108,
+  "total": 515,
+  "entradas": 107,
   "porTipo": {
-    "button": 279,
-    "input": 161,
+    "button": 276,
+    "input": 158,
     "input-hidden": 16,
-    "select": 51,
+    "select": 50,
     "textarea": 15
   },
   "cuentas": {
@@ -204,11 +204,6 @@
     "src/app/(app)/movimientos/precio-local/precio-local-form.tsx": {
       "button": 1,
       "input": 1
-    },
-    "src/app/(app)/movimientos/venta/venta-form.tsx": {
-      "button": 3,
-      "input": 3,
-      "select": 1
     },
     "src/app/(app)/reportes/compras/formulario-corregir-compra.tsx": {
       "button": 3,
