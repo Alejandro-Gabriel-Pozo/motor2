@@ -10,6 +10,8 @@ import { actualizarDolarSiHaceFalta } from "@/server/actions/reportes/sincroniza
 import { cotizacionVencida } from "@/core/reportes/public";
 import { obtenerUltimaCotizacionSinRomper } from "@/server/consultas/reportes/cotizacion-dolar";
 import { reportarErrorUnaVez } from "@/lib/reportar-error";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { BotonDeServidor } from "./boton-de-servidor";
 import { CotizacionEncabezado } from "./en-dolares";
 import { AccionesVisiblesProvider } from "./enlace-interno";
 import { MenuCelular } from "./menu-celular";
@@ -58,7 +60,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
           `overflow-x-auto`, ensancha esta columna y con ella la PÁGINA entera (la matriz de permisos con varios roles llegaba a 1700 px). Con min-w-0 la
           columna se queda del ancho que sobra junto al menú y el scroll es el de la tabla. */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-neutral-200 px-6 py-3 text-sm text-neutral-500 dark:border-neutral-800">
+        <header className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-borde bg-superficie px-6 py-3 text-sm text-tinta-suave">
           <MenuCelular grupos={grupos} hrefsDelMenu={hrefsDelMenu()} />
           <CotizacionEncabezado cotizacion={cotizacion} />
           <span className="flex items-center gap-1">
@@ -81,16 +83,18 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
               await signOut();
             }}
           >
-            <button type="submit" className="underline">
+            <BotonDeServidor type="submit" variante="enlace" tamano="compacto">
               Salir
-            </button>
+            </BotonDeServidor>
           </form>
         </header>
         {registro !== "CON_MODULOS" && (
-          <p role="status" className="border-b border-amber-300 bg-amber-50 px-6 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-            Esta empresa todavía no tiene ningún módulo activo, por eso solo está disponible Administración. Pedile a quien administra la plataforma que active
-            los módulos contratados.
-          </p>
+          <div className="px-6 pt-6">
+            <Aviso variante="advertencia" forma="caja">
+              Esta empresa todavía no tiene ningún módulo activo, por eso solo está disponible Administración. Pedile a quien administra la plataforma que active
+              los módulos contratados.
+            </Aviso>
+          </div>
         )}
         <main data-panel className="flex-1 p-6">
           <AccionesVisiblesProvider acciones={[...puedeVer]}>{children}</AccionesVisiblesProvider>
