@@ -158,6 +158,22 @@ body:has(main[data-panel]) {
   }
 }
 
+/* Borde por defecto de TODA la aplicación (Fase 6): el preflight de Tailwind resetea cada borde con `border: 0 solid` y un borde sin color declarado cae a `currentColor`, el color del
+   TEXTO (negro): los recuadros y las tablas de la administración con `border` a secas salían con un contorno negro. Fallo cerrado visual: un borde sin color NUNCA cae al color del texto;
+   el default es el borde de CONTROLES (`--color-borde-control`: gris medio, 3,67:1 sobre blanco y 3,51:1 sobre papel) y no el decorativo claro, porque un <input> con solo `border` perdería el
+   contraste de objeto (WCAG 1.4.11). Lo decorativo (separadores, tarjetas) usa `border-borde` explícito. Va en `@layer base`, después del preflight (que también es `base`: gana por orden), así
+   que las utilidades (`border-red-500`, `border-borde`, de `@layer utilities`) y las reglas sin capa le ganan; la carta pública tiene la suya, más específica (`.carta-shell *`, más abajo).
+   Lo vigila `test/arquitectura/borde-por-defecto-de-la-aplicacion.test.ts`. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-borde-control);
+  }
+}
+
 /* Carta pública (módulo interno, ADR-006, route group `(carta-publica)`): mismo criterio que `.pos-shell` — tokens propios,
    NUNCA en `:root`, para no ensuciar el namespace de la administración ni heredar el problema de contraste del tema por
    defecto de `restaurant-menu-design` (ámbar sobre casi blanco). Sin tema aplicado (`TemaCartaSucursal.aplicarEnCarta`,
