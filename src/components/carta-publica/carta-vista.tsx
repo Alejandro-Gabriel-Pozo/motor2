@@ -68,7 +68,7 @@ export function CartaVista({
         </h1>
         <ol data-carta-indice-lista data-carta-scroll className="mt-4 grid min-h-0 flex-1 grid-cols-1 content-start gap-x-12 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
           {carta.secciones.map((seccion, i) => (
-            <li key={paginaDeSeccion(i)} className="border-b border-dotted" style={{ borderColor: "var(--carta-border)" }}>
+            <li key={paginaDeSeccion(i)} className="carta-borde border-b border-dotted">
               <button
                 type="button"
                 data-ir-a={paginaDeSeccion(i)}

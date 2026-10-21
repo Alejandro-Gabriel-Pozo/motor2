@@ -206,6 +206,17 @@ body {
   border-bottom: 1px solid color-mix(in oklch, var(--carta-ink) 28%, var(--carta-bg));
 }
 
+/* El COLOR de todo separador de la carta, declarado UNA sola vez (lo vigila `test/arquitectura/carta-separadores-declarados.test.ts`).
+   - `carta-divisor`: va en la lista que usa `divide-y`/`divide-x`; el borde que pinta `divide-y` toma el color DEL HIJO (no del padre), así que se declara en los hijos.
+   - `carta-borde`: va en el elemento que dibuja su PROPIO borde con una clase de ancho (`border-t`, `border-b`, `border`).
+   Sin una de las dos, el borde cae al color del texto (negro). La forma de un producto nunca decide el color del separador. */
+.carta-shell .carta-divisor > * {
+  border-color: var(--carta-border);
+}
+.carta-shell .carta-borde {
+  border-color: var(--carta-border);
+}
+
 /* Lo que solo sale en PAPEL (el pie de la carta impresa): en pantalla no se ve. */
 .carta-shell .carta-solo-papel {
   display: none;

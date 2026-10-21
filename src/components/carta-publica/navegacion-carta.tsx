@@ -161,8 +161,8 @@ export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIc
           ref={navRef}
           data-carta-nav
           aria-label="Navegación de la carta"
-          className="absolute bottom-0 left-0 right-0 z-40 border-t backdrop-blur-sm"
-          style={{ backgroundColor: "color-mix(in oklch, var(--carta-bg) 90%, transparent)", borderColor: "var(--carta-border)" }}
+          className="carta-borde absolute bottom-0 left-0 right-0 z-40 border-t backdrop-blur-sm"
+          style={{ backgroundColor: "color-mix(in oklch, var(--carta-bg) 90%, transparent)" }}
         >
           <div className="flex h-14 items-center justify-between px-3">
             <button
@@ -227,7 +227,7 @@ export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIc
           </div>
 
           {!esPortada && hayRedes && (
-            <div className="flex items-center justify-center gap-6 border-t py-2" style={{ borderColor: "var(--carta-border)" }}>
+            <div className="carta-borde flex items-center justify-center gap-6 border-t py-2">
               {redesSociales.map((r) => {
                 const Icono = ICONO_POR_RED[r.id];
                 return (
@@ -253,8 +253,8 @@ const ESTILO_FLECHA = {
   backgroundColor: "color-mix(in oklch, var(--carta-flechas, var(--carta-primary)) 10%, transparent)",
 } as const;
 
-const ESTILO_TOPBAR = { backgroundColor: "color-mix(in oklch, var(--carta-bg) 88%, transparent)", borderColor: "var(--carta-border)" } as const;
-const CLASE_TOPBAR = "absolute left-0 right-0 top-0 z-40 flex h-10 items-center justify-between border-b px-3 backdrop-blur-sm";
+const ESTILO_TOPBAR = { backgroundColor: "color-mix(in oklch, var(--carta-bg) 88%, transparent)" } as const;
+const CLASE_TOPBAR = "carta-borde absolute left-0 right-0 top-0 z-40 flex h-10 items-center justify-between border-b px-3 backdrop-blur-sm";
 const CLASE_VOLVER = "font-light uppercase tracking-[0.3em]";
 
 // Con `topbar_back_color` cargado el color es FINAL (sin la opacidad decorativa); sin él, el gris tenue de siempre.

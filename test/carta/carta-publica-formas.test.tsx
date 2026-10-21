@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { partirLaAclaracion, recargoEnPesos, resolverEstiloCarta, textoDeLaAclaracion, type AclaracionCartaPublica, type ItemCartaPublico, type SeccionCartaPublica } from "../../src/core/carta/public";
 import { Seccion } from "../../src/components/carta-publica/seccion";
+
+const CSS_GLOBAL = readFileSync(join(__dirname, "../../src/app/globals.css"), "utf8");
 
 /**
  * Fase 5 de la ola «precio y carta» («carta pareja», ADR-035), paso 8: lo que DIBUJA la carta pública con la forma de cada producto (`presentacion`, que resuelve el servidor), sin base ni navegador.
@@ -188,7 +192,7 @@ describe("8b: una tanda (el café y el cortado comparten Chico | Mediano | Grand
 
   it("el segundo producto va separado del primero por una línea; lo que no está en la tanda (la medialuna) sigue debajo, como un ítem más", () => {
     expect(productos[0]).not.toMatch(/^[^>]*border-t/);
-    expect(productos[1]).toMatch(/^="true" class="mt-2\.5 border-t pt-2\.5"/);
+    expect(productos[1]).toMatch(/^="true" class="carta-borde mt-2\.5 border-t pt-2\.5"/);
     expect(filaCon(html, "Medialuna")).toMatch(/<h3 data-rol="producto"[^>]*>Medialuna<\/h3>/);
     expect(html.indexOf("Medialuna")).toBeGreaterThan(html.lastIndexOf("</table>"));
   });
@@ -232,9 +236,9 @@ describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / 
     expect(tabla).not.toContain('data-rol="opcion-precio"');
     expect(tabla).not.toContain('data-rol="opcion"');
     const trs = tabla.slice(tabla.indexOf("<tbody>")).split("<tr");
-    expect(trs[1]).not.toContain("border-top-width");
-    expect(trs[2]).toContain("border-top-width:1px");
-    expect(trs[3]).toContain("border-top-width:1px");
+    expect(trs[1]).not.toContain("border-t");
+    expect(trs[2]).toContain('class="carta-borde border-t"');
+    expect(trs[3]).toContain('class="carta-borde border-t"');
     expect(html).toContain('class="carta-linea-fina');
   });
 
@@ -375,7 +379,8 @@ describe("C9: la carta con P1 no usa verbos en las aclaraciones", () => {
 });
 
 describe("C12: la línea que separa un producto del siguiente es la misma clara en toda forma", () => {
-  // `divide-y` pinta el borde de abajo de cada `<li>` con el color DEL `<li>` (no del `ul`): un `<li>` sin su `borderColor` cae al color del texto y se ve negro. La forma de un producto no puede cambiar el separador.
+  // `divide-y` pinta el borde de abajo de cada `<li>` con el color DEL `<li>` (no del `ul`): un `<li>` sin color cae al color del texto y se ve negro. La forma de un producto no puede cambiar el separador.
+  // C13: el color se declara UNA vez, en `globals.css` (`.carta-shell .carta-divisor > *`), y la lista de productos de la sección lleva `carta-divisor`: ningún `<li>` lo escribe por su cuenta.
   const aclaracion: AclaracionCartaPublica = { tipo: "eleccion", rotulo: "Guarnición", opciones: ["papas fritas", "puré"] };
   const filas = [{ rotulo: "Pizza muzzarella", precio: 18000 }, { rotulo: "Pizza napolitana", precio: 22000 }];
   const siguiente = item({ nombre: "Flan", precio: 3200 });
@@ -406,9 +411,19 @@ describe("C12: la línea que separa un producto del siguiente es la misma clara 
     },
   ];
 
-  it.each(formas)("$forma: cada `<li>` de la lista, el del producto y el del que le sigue, declara el color claro del separador", ({ productos, tandas }) => {
-    const filasLi = filasDeLaSeccion(dibujar([...productos, siguiente], tandas));
+  it("globals.css declara el color del separador UNA vez: `.carta-shell .carta-divisor > *` con `border-color: var(--carta-border)` (y `.carta-borde` para el borde propio)", () => {
+    const regla = (selector: string) => CSS_GLOBAL.match(new RegExp(`${selector.replace(/[.*>]/g, "\\$&")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+    expect(regla(".carta-shell .carta-divisor > *")).toMatch(/(?:^|[\s;])border-color:\s*var\(--carta-border\)\s*;/);
+    expect(regla(".carta-shell .carta-borde")).toMatch(/(?:^|[\s;])border-color:\s*var\(--carta-border\)\s*;/);
+  });
+
+  it.each(formas)("$forma: la lista de productos de la sección lleva `carta-divisor` y ningún `<li>` escribe el color por su cuenta", ({ productos, tandas }) => {
+    const html = dibujar([...productos, siguiente], tandas);
+    const abre = html.slice(html.indexOf("<ul data-carta-scroll"), html.indexOf(">", html.indexOf("<ul data-carta-scroll")));
+    const clases = (/class="([^"]*)"/.exec(abre)?.[1] ?? "").split(/\s+/);
+    expect(clases).toEqual(expect.arrayContaining(["divide-y", "carta-divisor"]));
+    const filasLi = filasDeLaSeccion(html);
     expect(filasLi.length).toBeGreaterThanOrEqual(2);
-    for (const li of filasLi) expect(li.slice(0, li.indexOf(">") + 1)).toMatch(/style="[^"]*border-color:var\(--carta-border\)/);
+    expect(html).not.toMatch(/border-color:\s*var\(--carta-border\)/);
   });
 });

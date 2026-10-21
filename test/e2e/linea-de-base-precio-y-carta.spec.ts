@@ -100,6 +100,8 @@ interface CartaVolcada {
   secciones: { etiqueta: string; titulo: string; items: ItemDeCarta[] }[];
   navegacion: string[];
   tipografia: Letra[];
+  /** Fase 5 (C13): el color computado (`borderBottomColor`) del separador bajo cada producto de la lista de cada sección (todos menos el último), y el de la tinta (`--carta-ink`) para compararlo. */
+  separadores: { secciones: { titulo: string; colores: string[] }[]; tinta: string };
   /** Fase 5 (DEC-35, la escala única): cada ROL (`data-rol`) con los pares tamaño / peso distintos que se ven en la carta (tiene que ser UNO por rol). */
   roles: { rol: string; pares: string[] }[];
 }
@@ -193,8 +195,32 @@ function volcarCarta(page: Page): Promise<CartaVolcada> {
       porRol.set(rol, (porRol.get(rol) ?? new Set()).add(`${c.fontSize} / ${c.fontWeight}`));
     }
     const roles = [...porRol].map(([rol, pares]) => ({ rol, pares: [...pares].sort() })).sort((a, b) => a.rol.localeCompare(b.rol));
-    return { barraSuperior, paginas, indice, secciones, navegacion, tipografia, roles };
+    // C13: el color de cada separador entre productos (el borde de abajo de cada ítem de la lista de la sección, salvo el último) y el de la tinta, que es el que un separador sin color declarado heredaría (negro).
+    const sonda = document.createElement("div");
+    sonda.style.color = "var(--carta-ink)";
+    libro.appendChild(sonda);
+    const tinta = getComputedStyle(sonda).color;
+    sonda.remove();
+    const separadores = {
+      tinta,
+      secciones: paginasEl
+        .filter((p) => tipoDe(p) === "sección")
+        .map((p) => ({
+          titulo: texto(p.querySelector("[data-carta-banda] h2")),
+          colores: [...p.querySelectorAll<HTMLElement>("[data-carta-scroll] > li")].slice(0, -1).map((li) => getComputedStyle(li).borderBottomColor),
+        })),
+    };
+    return { barraSuperior, paginas, indice, secciones, navegacion, tipografia, separadores, roles };
   });
+}
+
+/** C13: el color del separador se declara UNA vez (`carta-divisor`): todos los de una sección y de toda la carta son el mismo, y no es el de la tinta (el negro al que caía cuando una forma se olvidaba de declararlo). */
+function afirmarSeparadores(c: CartaVolcada, ancho: number): void {
+  const todos = c.separadores.secciones.flatMap((s) => s.colores);
+  expect(todos.length, `hay separadores entre productos a ${ancho} px`).toBeGreaterThan(0);
+  for (const s of c.separadores.secciones) expect(new Set(s.colores).size, `los separadores de «${s.titulo}» tienen el mismo color a ${ancho} px: ${s.colores.join(" · ")}`).toBeLessThanOrEqual(1);
+  expect([...new Set(todos)], `los separadores de toda la carta tienen el mismo color a ${ancho} px`).toHaveLength(1);
+  expect(todos[0], `el separador no es el color del texto (--carta-ink) a ${ancho} px`).not.toBe(c.separadores.tinta);
 }
 
 function textoDeCarta(c: CartaVolcada): string[] {
@@ -217,6 +243,8 @@ function textoDeCarta(c: CartaVolcada): string[] {
   for (const [i, p] of c.paginas.entries()) out.push(`  [${i + 1} ${p.tipo}] ${p.texto.map((l) => `«${l}»`).join(" ")}`);
   out.push("### Tipografía computada (getComputedStyle: fontSize / fontWeight)");
   for (const l of c.tipografia) out.push(`  ${l.que}: ${l.fontSize} / ${l.fontWeight}`);
+  out.push("### Separadores entre productos (getComputedStyle: borderBottomColor de cada ítem de la lista de la sección, salvo el último)", `  tinta (--carta-ink): ${c.separadores.tinta}`);
+  for (const s of c.separadores.secciones) out.push(`  «${s.titulo}»: ${s.colores.length ? s.colores.join(" · ") : "(un solo producto: sin separadores)"}`);
   out.push("### Escala única (DEC-35): cada rol, con su ÚNICO par tamaño / peso");
   for (const r of c.roles) out.push(`  ${r.rol}: ${r.pares.join(" · ")}`);
   return out;
@@ -336,6 +364,8 @@ test("línea de base de navegador de la carta pública y del catálogo de opcion
       expect(carta.secciones.map((s) => s.titulo), "las secciones sembradas, en su orden").toEqual(d.secciones);
       // DEC-35 (escala única, P41 del plan): cada rol con UN solo par tamaño / peso, a cada ancho.
       expect(carta.roles.filter((r) => r.pares.length !== 1), `escala única a ${ancho} px`).toEqual([]);
+      // C13: el mismo separador claro en toda forma de producto.
+      afirmarSeparadores(carta, ancho);
       // Lo agotado hoy no se ve en la pantalla.
       expect(carta.paginas.flatMap((x) => x.texto).join(" "), "«Pizza bomba» está agotada hoy").not.toContain("Pizza bomba");
       const titulos = carta.secciones.map((s) => `seccion-${s.titulo}`);
