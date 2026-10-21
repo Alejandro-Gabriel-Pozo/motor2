@@ -124,6 +124,20 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Defensa por defecto del COLOR de todo borde de la carta: el preflight de Tailwind resetea cada borde con `border: 0 solid`, y un borde sin color declarado cae a
+   `currentColor`, el color del TEXTO (negro en la carta clara): el bug de los separadores negros de C12. Acá todo lo que está dentro de `.carta-shell` (y sus
+   `::before`/`::after`) arranca con el color de borde de la carta, así un borde olvidado nunca sale negro. Va en `@layer base`: las utilidades de Tailwind
+   (`@layer utilities`: `border-red-500`, `border-transparent`…) y las reglas centrales sin capa de más abajo (`carta-divisor`, `carta-borde`, el portal) la pisan siempre. Es
+   solo la red de seguridad; el contrato sigue siendo declarar `carta-divisor` / `carta-borde` (ver abajo). */
+@layer base {
+  .carta-shell,
+  .carta-shell *,
+  .carta-shell ::before,
+  .carta-shell ::after {
+    border-color: var(--carta-border);
+  }
+}
+
 /* Títulos, nombres de ítem y precios: la familia de `carta_fuente_familia` (`--carta-fuente-familia`, la pone `resolverEstiloCarta`); donde no
    hay tema (el portal de la empresa) cae a Playfair, la de siempre. */
 .carta-shell .carta-titulo {
