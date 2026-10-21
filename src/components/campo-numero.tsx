@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { interpretarNumero, textoCanonico } from "@/core/datos/numero-tecleado";
 import { validarImporte } from "@/core/datos/importe";
 import { validarCantidad } from "@/core/datos/cantidad";
+import { Campo } from "@/ui/primitivas/campo";
 
 interface Props {
   id?: string;
@@ -22,7 +23,7 @@ interface Props {
   ariaLabel?: string;
   /** Ej. "$" — se muestra al costado del campo, nunca dentro del valor editable (mismo criterio que ERPNext/Dolibarr: el símbolo no es parte de lo que se tipea). */
   prefijo?: string;
-  /** "normal" (px-3 py-2, campo de formulario apilado) o "compacto" (px-2 py-1.5 text-sm, campo dentro de una fila). */
+  /** El tamaño de `Campo`: "normal" (campo de formulario apilado) o "compacto" (campo dentro de una fila); los dos, de 44 px en celular. */
   tamano?: "normal" | "compacto";
   className?: string;
   /**
@@ -76,7 +77,7 @@ interface Props {
  *  - un número válido → su texto canónico ("1234.56": dígitos y un solo punto);
  *  - un texto que no es número → el texto TAL CUAL (nunca "" ni "0"), así un
  *    `required` o un `!== ""` lo cuentan como cargado y no se manda un 0 falso.
- * Con un texto inválido el campo queda `aria-invalid` y con
+ * Con un texto inválido el campo queda `invalido` (`aria-invalid` y borde de error, sin mensaje en pantalla) y con
  * `setCustomValidity(mensaje)`: el navegador frena el envío del formulario
  * (validación nativa, antes del evento `submit`). La validez se calcula desde
  * el valor EMITIDO, no desde el texto formateado que se ve.
@@ -168,12 +169,13 @@ export function CampoNumero({
   }, [enFoco]);
 
   return (
-    <div className={`relative ${className ?? ""}`}>
+    <div className={className}>
       {name && <input type="hidden" name={name} value={valorReal} onChange={() => {}} />}
-      {prefijo && <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-tinta-suave">{prefijo}</span>}
-      {/* F6 6.8.7: el <input> sigue a mano (no `Campo`): `Campo` exige su propia etiqueta (solo 4 de los 47 usos pasan `ariaLabel`: el resto se nombra con un <label> de afuera), pisa el `aria-invalid` del campo y su `error` mostraría el
-          mensaje en pantalla, y no alinea a la derecha ni deja lugar para el prefijo; sin cambiar la primitiva ni pasarle clases de presentación (6.7) no se puede. */}
-      <input
+      {/* `Campo` dibuja el <input> (aspecto, foco, 44 px en celular). No dibuja `<label>`: el nombre lo pone `ariaLabel` o la etiqueta de afuera que envuelve al campo o se ata por `htmlFor`
+          (la regla `campos-con-nombre` lo verifica en cada uso). `etiqueta` NO se le pasa: es el sujeto del mensaje de error, no un rótulo. El mensaje de error NO se muestra: el campo solo
+          queda `invalido` (`aria-invalid` y borde) y `setCustomValidity` frena el envío. */}
+      <Campo
+        {...(ariaLabel ? { "aria-label": ariaLabel } : { nombradoPorFuera: true as const })}
         ref={entrada}
         id={id}
         type="text"
@@ -181,10 +183,12 @@ export function CampoNumero({
         autoComplete="off"
         value={texto}
         placeholder={placeholder}
-        aria-label={ariaLabel}
         required={required}
         autoFocus={autoFocus}
-        aria-invalid={error ? true : undefined}
+        invalido={error !== null}
+        tamano={tamano}
+        alinear="fin"
+        prefijo={prefijo}
         onFocus={() => {
           setEnFoco(true);
           setTexto(valorReal);
@@ -212,7 +216,6 @@ export function CampoNumero({
           setEnFoco(false);
           setTexto(formatear(valorReal));
         }}
-        className={`w-full rounded border text-right text-sm max-md:min-h-11 max-md:text-base ${tamano === "compacto" ? "px-2 py-1.5" : "px-3 py-2"} ${prefijo ? "pl-5" : ""}`}
       />
     </div>
   );
