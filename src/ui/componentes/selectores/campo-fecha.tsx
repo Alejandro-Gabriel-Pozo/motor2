@@ -37,9 +37,9 @@ export function RangoDeFechas({ leyenda, desde, hasta, minimo, maximo, ayuda, er
         <CampoFecha etiqueta={desde.etiqueta ?? "Desde"} name={desde.name} defaultValue={desde.defaultValue} min={minimo} max={hasta.defaultValue || maximo} />
         <CampoFecha etiqueta={hasta.etiqueta ?? "Hasta"} name={hasta.name} defaultValue={hasta.defaultValue} min={desde.defaultValue || minimo} max={maximo} />
       </div>
-      {ayuda ? <p className="text-xs text-neutral-600 dark:text-neutral-400">{ayuda}</p> : null}
+      {ayuda ? <p className="text-xs text-tinta-suave">{ayuda}</p> : null}
       {error ? (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-error">
           {error}
         </p>
       ) : null}

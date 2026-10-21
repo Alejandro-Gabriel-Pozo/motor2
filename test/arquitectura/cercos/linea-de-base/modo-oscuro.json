@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 424,
-  "entradas": 107,
+  "total": 418,
+  "entradas": 105,
   "porTipo": {
-    "dark:": 424
+    "dark:": 418
   },
   "cuentas": {
     "src/app/(app)/administracion/auditoria/tabla-auditoria.tsx": {
@@ -321,12 +321,6 @@
     },
     "src/components/sidebar-nav.tsx": {
       "dark:": 15
-    },
-    "src/ui/componentes/datos/tabla-de-datos.tsx": {
-      "dark:": 4
-    },
-    "src/ui/componentes/selectores/campo-fecha.tsx": {
-      "dark:": 2
     }
   }
 }
