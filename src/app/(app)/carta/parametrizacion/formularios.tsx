@@ -1,26 +1,10 @@
-import { EnlaceInterno } from "@/components/enlace-interno";
-import { FormConResultado } from "@/components/form-con-resultado";
-import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
-import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
-import { Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
-import { MENU_DEL_DIA_VISIBLE, type LugarDeCombo, type ProductoCartaAdmin, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
-import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
-import { guardarDescuentoProducto } from "@/server/actions/carta/descuento-producto";
-import { quitarProductoDeLaCarta } from "@/server/actions/carta/mantenimiento";
-import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
-import type { ResultadoAccion } from "@/server/actions/tipos";
+import { MENU_DEL_DIA_VISIBLE, type LugarDeCombo, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
 
 /**
  * CARTA-MANT (prototipo aprobado): los formularios de PARAMETRIZACIÓN de la carta —lo que se cambia pocas veces— que antes iban apilados en `/carta` y ahora viven detrás de cada tarjeta del hub
- * (`/carta/parametrizacion/{secciones,generos,promociones}`). Son los MISMOS formularios, con las mismas Server Actions y los mismos permisos (movidos tal cual); se suma «Quitar de la carta» en la
- * ficha de cada producto. Los closures "use server" capturan solo ids (texto): lo que captura un closure viaja al cliente.
+ * (`/carta/parametrizacion/{secciones,generos,promociones}`). Son los MISMOS formularios, con las mismas Server Actions y los mismos permisos (movidos tal cual). La ficha de cada producto (descripción, tags, ★, género, sección y orden,
+ * descuento y «Quitar de la carta») ya no vive acá: es `ContenidoDelProducto` (`src/components/carta/contenido-del-producto.tsx`), que comparte con el espacio del producto (Fase 6, 6.17a).
  */
-const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
-const refrescarSiOk = (r: ResultadoAccion) => {
-  if (r.ok) refrescarVistaSiHaceFalta();
-  return r;
-};
-
 // MOVIL (O.461): en celular (< 768 px) los campos y botones miden 44 px de alto como mínimo (se tocan con el dedo) y el texto de los campos 16 px (iOS hace zoom con menos); en escritorio, igual que siempre.
 export const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
 export const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11";
@@ -37,11 +21,6 @@ const CLASE_CASILLA = "max-md:min-h-11";
 const CLASE_FILA_DE_CUPO = "grid grid-cols-2 gap-2 rounded border p-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:rounded-none sm:border-0 sm:p-0";
 const CLASE_NOMBRE_DE_CUPO = `col-span-2 flex items-center gap-2 sm:min-w-[10rem] ${CLASE_CASILLA} [overflow-wrap:anywhere]`;
 const CLASE_CANTIDAD_DE_CUPO = "flex flex-col gap-1 sm:flex-row sm:items-center";
-
-type OpcionSeccion = { id: string; nombre: string; activa: boolean };
-type OpcionGenero = { id: string; nombre: string; activo: boolean };
-/** Para el select de sección + orden sugerido (DA6): las secciones, y cuántos ítems ya tiene cada una. */
-export type UbicacionEnCarta = { secciones: OpcionSeccion[]; cantidadPorSeccion: Record<string, number>; generos: OpcionGenero[] };
 
 /**
  * CARTA-MANT: un grupo plegado de la carta (una sección, los ocultos sin sección o los que están dentro de un agrupado): el nombre con cuántos productos tiene (y cuántos ocultos) en el resumen,
@@ -132,24 +111,6 @@ export function CamposGenero({
         <input name="orden" type="number" step={1} defaultValue={valores?.orden ?? ordenSugerido} className={CLASE_INPUT} />
       </label>
     </>
-  );
-}
-
-/** El select "Género (opcional)" del contenido de un PV o de un ítem agrupado (docs/plan-genero-carta-2026-09-26.md). */
-function SelectGenero({ generos, guardado }: { generos: OpcionGenero[]; guardado: string | null }) {
-  return (
-    <label className="flex flex-col gap-1 text-sm">
-      Género (opcional)
-      <select name="generoCartaId" defaultValue={guardado ?? ""} className={CLASE_INPUT}>
-        <option value="">— sin género (sale suelto) —</option>
-        {generos.map((g) => (
-          <option key={g.id} value={g.id} disabled={!g.activo}>
-            {g.nombre}
-            {g.activo ? "" : " (apagado)"}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 
@@ -329,198 +290,5 @@ export function CamposCupos({
         );
       })}
     </div>
-  );
-}
-
-export function ContenidoProducto({
-  producto: p,
-  ubicacion,
-  puedeEditar,
-  puedeDescuento,
-  precioLocalActivo,
-  sucursalId,
-  mostrarNombreArriba,
-}: {
-  producto: ProductoCartaAdmin;
-  ubicacion: UbicacionEnCarta;
-  puedeEditar: boolean;
-  puedeDescuento: boolean;
-  precioLocalActivo: boolean;
-  /** La sucursal que vio la pantalla (el eco de «Quitar de la carta»). */
-  sucursalId: string;
-  /**
-   * Fase 5 (DEC-11): SOLO en un producto base con un solo eje en la carta (`basesDeUnEjeEnLaCarta`), el valor guardado de «Mostrar el nombre del producto arriba»; `undefined` en los demás: el
-   * formulario no lo muestra ni lo manda (queda como estaba). Pantalla mínima: la definitiva es del paso «En la carta» del espacio del producto (Fase 6).
-   */
-  mostrarNombreArriba?: boolean;
-}) {
-  const productoId = p.id;
-  // CARTA-MANT: lo que se pierde al «Quitar de la carta» (si hay algo, se pide confirmarlo).
-  const cargado = p.contenido ? [p.contenido.descripcion ? "la descripción" : null, p.contenido.tags.length ? "los tags" : null, p.contenido.especial ? "el ★" : null, p.contenido.generoCartaId ? "el género" : null].filter(Boolean) : [];
-  // Un PV agrupado sale solo dentro de su ítem agrupado (docs/plan-agrupacion-items-carta-2026-09-24.md, D3/M6): su contenido propio se ignora mientras tanto.
-  const estado = p.agrupadoEn
-    ? `en «${p.agrupadoEn}»`
-    : !p.contenido
-      ? "sin contenido"
-      : p.contenido.visibleEnCarta
-        ? (p.seccionCarta ? "se muestra" : "visible, sin sección")
-        : "oculto";
-  return (
-    <li className="rounded border p-3" data-contenido-carta={p.nombre}>
-      <details>
-        <summary className="cursor-pointer text-sm max-md:min-h-11 max-md:py-2">
-          <span className="font-medium">{p.nombre}</span> · {p.seccionCarta ?? "sin sección de carta"} · ${p.precio.toLocaleString("es-AR")} ·{" "}
-          {estado}
-          {p.contenido?.especial ? " · ★" : ""}
-          {p.generoCarta ? ` · ${p.generoCarta}` : ""}
-          {p.descuento !== null ? ` · −${p.descuento} %${precioLocalActivo ? "" : " (no rige: precio local apagado)"}` : ""}
-        </summary>
-        {p.agrupadoEn && (
-          <p className="mt-2 text-sm text-neutral-500">
-            Sale en la carta dentro de «{p.agrupadoEn}» (
-            <EnlaceInterno href="/carta/agrupados" className="underline">
-              Ítems agrupados de la carta
-            </EnlaceInterno>
-            ): mientras esté agrupado, el contenido de acá no se usa.
-          </p>
-        )}
-        {!puedeEditar ? (
-          <ContenidoSoloLectura producto={p} ubicacion={ubicacion} mostrarNombreArriba={mostrarNombreArriba} />
-        ) : (
-          <FormConResultado
-            accion={async (fd: FormData) => {
-              "use server";
-              return refrescarSiOk(
-                await guardarContenidoCartaProducto(productoId, {
-                  visibleEnCarta: fd.get("visibleEnCarta") === "on",
-                  seccionCartaId: campo(fd, "seccionCartaId") || null,
-                  descripcion: campo(fd, "descripcion"),
-                  tags: campo(fd, "tags"),
-                  especial: fd.get("especial") === "on",
-                  orden: campo(fd, "orden"),
-                  generoCartaId: campo(fd, "generoCartaId") || null,
-                  // Fase 5 (DEC-11): solo si el formulario lo mostró (una base de un eje); si no, no viaja y queda como estaba.
-                  ...(fd.get("mostrarNombreArriba") === null ? {} : { mostrarNombreArriba: fd.get("mostrarNombreArriba") === "si" }),
-                })
-              );
-            }}
-            className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
-          >
-            <label className={`flex items-center gap-2 text-sm ${CLASE_CASILLA}`}>
-              <input name="visibleEnCarta" type="checkbox" defaultChecked={p.contenido?.visibleEnCarta ?? true} /> Se muestra en la carta
-            </label>
-            <label className={`flex items-center gap-2 text-sm ${CLASE_CASILLA}`}>
-              <input name="especial" type="checkbox" defaultChecked={p.contenido?.especial ?? false} /> Especial (★)
-            </label>
-            <SeccionYOrden
-              secciones={ubicacion.secciones}
-              cantidadPorSeccion={ubicacion.cantidadPorSeccion}
-              guardado={p.contenido && { seccionCartaId: p.contenido.seccionCartaId, orden: p.contenido.orden }}
-              etiquetaSeccion="Sección de carta (obligatoria si se muestra)"
-            />
-            <SelectGenero generos={ubicacion.generos} guardado={p.contenido?.generoCartaId ?? null} />
-            {mostrarNombreArriba !== undefined && (
-              <div className="sm:col-span-2" data-mostrar-nombre-arriba={p.nombre}>
-                {/* Dos opciones excluyentes (la primitiva de `src/ui`): no hay primitiva de casilla y el cerco de controles a mano no deja sumar un `<input>` suelto. */}
-                <OpcionesExcluyentes
-                  leyenda="Mostrar el nombre del producto arriba"
-                  nombre="mostrarNombreArriba"
-                  valorInicial={mostrarNombreArriba ? "si" : "no"}
-                  opciones={[
-                    { valor: "no", etiqueta: "No: cada opción sale sola en la carta, con su nombre completo" },
-                    { valor: "si", etiqueta: `Sí: «${p.nombre}» arriba y las opciones debajo` },
-                  ]}
-                />
-              </div>
-            )}
-            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-              Descripción (opcional)
-              <textarea name="descripcion" rows={2} defaultValue={p.contenido?.descripcion ?? ""} className={CLASE_INPUT} />
-            </label>
-            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-              Tags (separados por coma)
-              <input name="tags" defaultValue={p.contenido?.tags.join(", ") ?? ""} placeholder="Regional, Sin TACC" className={CLASE_INPUT} />
-            </label>
-            <div className="sm:col-span-2">
-              <button type="submit" className={CLASE_BOTON}>
-                Guardar contenido de «{p.nombre}»
-              </button>
-            </div>
-          </FormConResultado>
-        )}
-
-        {/* Producto con descuento (% por sucursal; no es una promo). Un producto agrupado no lo admite: el renglón agrupado muestra un solo precio. */}
-        {!p.agrupadoEn &&
-          (puedeDescuento ? (
-            <FormConResultado
-              accion={async (fd: FormData) => {
-                "use server";
-                const texto = campo(fd, "descuento").trim();
-                return refrescarSiOk(await guardarDescuentoProducto(productoId, texto === "" ? null : texto));
-              }}
-              className="mt-3 flex flex-wrap items-end gap-2"
-            >
-              <label className="flex flex-col gap-1 text-sm">
-                Descuento en esta sucursal, % (vacío = sin descuento)
-                <input name="descuento" type="number" min={0} max={99.99} step="0.01" defaultValue={p.descuento ?? ""} className={CLASE_INPUT} />
-              </label>
-              <button type="submit" className={CLASE_BOTON}>
-                Guardar descuento de «{p.nombre}»
-              </button>
-              {!precioLocalActivo && p.descuento !== null && <p className="w-full text-sm text-neutral-500">No rige: el precio local está apagado en esta sucursal (se cobra el precio de lista).</p>}
-            </FormConResultado>
-          ) : (
-            <DatosSoloLectura className="mt-3">
-              <Dato etiqueta="Descuento en esta sucursal">{p.descuento !== null ? `${p.descuento} %${precioLocalActivo ? "" : " (no rige: precio local apagado)"}` : "Sin descuento"}</Dato>
-            </DatosSoloLectura>
-          ))}
-
-        {/* CARTA-MANT (decisión del dueño): «Quitar de la carta» lo devuelve a «Fuera de carta» (POS y menú del día). Si tiene algo cargado a mano, se confirma que se pierde. */}
-        {puedeEditar && p.contenido && (
-          <FormConResultado
-            accion={async (fd: FormData) => {
-              "use server";
-              return refrescarSiOk(await quitarProductoDeLaCarta({ sucursalId, productoId, confirmado: fd.get("confirmado") === "on" }));
-            }}
-            className="mt-3 flex flex-col gap-2 border-t pt-3"
-          >
-            {cargado.length > 0 && (
-              <label className={`flex items-center gap-2 text-sm ${CLASE_CASILLA}`}>
-                <input name="confirmado" type="checkbox" required /> Entiendo que se pierde {cargado.join(", ")}
-              </label>
-            )}
-            <div>
-              <button type="submit" className={CLASE_ENLACE_DE_ACCION}>
-                Quitar «{p.nombre}» de la carta (vuelve a «Fuera de carta»)
-              </button>
-            </div>
-          </FormConResultado>
-        )}
-      </details>
-    </li>
-  );
-}
-
-/** El contenido de carta de un PV como texto, para quien puede ver la carta pero no editarla. */
-function ContenidoSoloLectura({ producto: p, ubicacion, mostrarNombreArriba }: { producto: ProductoCartaAdmin; ubicacion: UbicacionEnCarta; mostrarNombreArriba?: boolean }) {
-  const c = p.contenido;
-  if (!c) return <p className="mt-3 text-sm text-neutral-500">Todavía no tiene contenido de carta.</p>;
-  const seccion = ubicacion.secciones.find((s) => s.id === c.seccionCartaId);
-  const genero = ubicacion.generos.find((g) => g.id === c.generoCartaId);
-  return (
-    <DatosSoloLectura className="mt-3">
-      <Dato etiqueta="Se muestra en la carta">{c.visibleEnCarta ? "Sí" : "No"}</Dato>
-      <Dato etiqueta="Especial (★)">{c.especial ? "Sí" : "No"}</Dato>
-      <Dato etiqueta="Sección de carta">{seccion && `${seccion.nombre}${seccion.activa ? "" : " (apagada)"}`}</Dato>
-      <Dato etiqueta="Género">{genero && `${genero.nombre}${genero.activo ? "" : " (apagado)"}`}</Dato>
-      <Dato etiqueta="Orden">{c.orden}</Dato>
-      {mostrarNombreArriba !== undefined && <Dato etiqueta="Nombre del producto arriba">{mostrarNombreArriba ? "Sí" : "No: cada opción sale sola"}</Dato>}
-      <Dato etiqueta="Descripción" ancho>
-        {c.descripcion}
-      </Dato>
-      <Dato etiqueta="Tags" ancho>
-        {c.tags.join(", ")}
-      </Dato>
-    </DatosSoloLectura>
   );
 }

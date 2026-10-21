@@ -54,7 +54,7 @@ export const AREAS: DeclaracionDeAreas = {
   "app/invitacion": [],
   "app/login": [],
   "components": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-selector", "tokens-visuales"],
-  "components/carta": [],
+  "components/carta": ["primitiva-area-de-texto", "primitiva-campo", "primitiva-casilla", "primitiva-selector", "tokens-visuales"],
   "components/carta-publica": CARTA,
   "components/catalogo": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-selector", "tokens-visuales"],
   "components/mesas": [],

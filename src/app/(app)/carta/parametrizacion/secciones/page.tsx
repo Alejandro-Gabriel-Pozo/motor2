@@ -11,7 +11,8 @@ import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
-import { CLASE_BOTON, CLASE_ENLACE_DE_ACCION, CamposSeccion, ContenidoProducto, GrupoDeLaCarta, type UbicacionEnCarta } from "../formularios";
+import { ContenidoDelProducto, type UbicacionEnCarta } from "@/components/carta/contenido-del-producto";
+import { CLASE_BOTON, CLASE_ENLACE_DE_ACCION, CamposSeccion, GrupoDeLaCarta } from "../formularios";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { OrdenarSecciones } from "./ordenar-secciones";
@@ -60,7 +61,7 @@ export default async function SeccionesDeCartaPage() {
     const admin = adminPorId.get(p.id);
     if (admin)
       return (
-        <ContenidoProducto
+        <ContenidoDelProducto
           key={p.id}
           producto={admin}
           ubicacion={ubicacion}
