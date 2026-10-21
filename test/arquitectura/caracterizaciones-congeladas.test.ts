@@ -599,6 +599,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 5 tanda C, tercera regeneración (ADITIVO: el volcado suma la sección «Separadores entre productos», a 375 y a 1280 px; el resto del texto y la tipografía no cambian; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). Mide con getComputedStyle el borderBottomColor de cada ítem de la lista de cada sección y el spec afirma que todos son el mismo color claro (rgb(231, 229, 228)) y que ninguno es el color del texto (rgb(28, 27, 25)): fija en navegador real el bug de los separadores negros que arreglaron C12 y C13.",
       },
+      {
+        blob: "a4c8fcd74fbaf86955c37681b2c13dd321a5c810",
+        // El commit PADRE de este (fa3028e4) es el último antes de la regeneración; el texto lo cambió el paso 6.15a (carril A), que agregó la lectura del precio a la pantalla de opciones del producto.
+        commit: "fa3028e4",
+        motivo:
+          "Ola «precio y carta», Fase 6, paso 6.15a (CAMBIA UN TEXTO de administración, no la carta pública; decisión del ingeniero con el visto del dueño para regenerar solo las secciones de ADMINISTRACIÓN): la pantalla de opciones del producto «Pizzas» (y su par a 1280 px) muestra bajo cada importe la lectura del precio de la opción («Pizza muzzarella = $ 18.000», y las otras cinco de «Tipos de Pizza»). Cambian SOLO 12 líneas, todas agregadas (6 por ancho) dentro de la sección de ADMINISTRACIÓN; revisado con `git diff`: la carta pública y el resto del texto quedaron idénticos byte a byte.",
+      },
     ],
   },
 };

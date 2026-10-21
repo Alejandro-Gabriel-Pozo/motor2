@@ -222,31 +222,37 @@
   [lector: Precio de Pizza muzzarella en este producto]
   $
   [campo: «18.000»]
+  Pizza muzzarella = $ 18.000
   [x]
   Pizza de verduras asadas
   [lector: Precio de Pizza de verduras asadas en este producto]
   $
   [campo: «20.000»]
+  Pizza de verduras asadas = $ 20.000
   [x]
   Pizza fugazzeta
   [lector: Precio de Pizza fugazzeta en este producto]
   $
   [campo: «22.000»]
+  Pizza fugazzeta = $ 22.000
   [x]
   Pizza napolitana
   [lector: Precio de Pizza napolitana en este producto]
   $
   [campo: «22.000»]
+  Pizza napolitana = $ 22.000
   [x]
   Pizza con papas fritas
   [lector: Precio de Pizza con papas fritas en este producto]
   $
   [campo: «25.000»]
+  Pizza con papas fritas = $ 25.000
   [x]
   Pizza bomba
   [lector: Precio de Pizza bomba en este producto]
   $
   [campo: «25.000»]
+  Pizza bomba = $ 25.000
   [botón: Guardar «Tipos de Pizza»]
   [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
   No se borra nada: lo que admite de cada opción queda guardado.
@@ -279,31 +285,37 @@
   [lector: Precio de Pizza muzzarella en este producto]
   $
   [campo: «18.000»]
+  Pizza muzzarella = $ 18.000
   [x]
   Pizza de verduras asadas
   [lector: Precio de Pizza de verduras asadas en este producto]
   $
   [campo: «20.000»]
+  Pizza de verduras asadas = $ 20.000
   [x]
   Pizza fugazzeta
   [lector: Precio de Pizza fugazzeta en este producto]
   $
   [campo: «22.000»]
+  Pizza fugazzeta = $ 22.000
   [x]
   Pizza napolitana
   [lector: Precio de Pizza napolitana en este producto]
   $
   [campo: «22.000»]
+  Pizza napolitana = $ 22.000
   [x]
   Pizza con papas fritas
   [lector: Precio de Pizza con papas fritas en este producto]
   $
   [campo: «25.000»]
+  Pizza con papas fritas = $ 25.000
   [x]
   Pizza bomba
   [lector: Precio de Pizza bomba en este producto]
   $
   [campo: «25.000»]
+  Pizza bomba = $ 25.000
   [botón: Guardar «Tipos de Pizza»]
   [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
   No se borra nada: lo que admite de cada opción queda guardado.
