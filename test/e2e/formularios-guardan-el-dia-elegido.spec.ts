@@ -88,6 +88,11 @@ test.describe(`con el navegador en ${zona}`, () => {
       const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
       const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
       const consignante = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_FDE_${marca}`, nombre: `E2E Consignante Día ${marca}` } });
+      // Desde B2 (ola «precio y carta», Fase 2) solo se le registra un pago a quien es consignante de algún producto: sin esto el servidor lo rechaza («no es el proveedor de consignación de ningún producto»).
+      const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+      await prisma.producto.create({
+        data: { codigo: `E2E-FDE-CONS-${marca}`, nombre: `E2E Consignado Día ${marca}`, tipo: "MP", unidadStockId: kg.id, esConsignacion: true, proveedorConsignacionId: consignante.id, precioConsignacion: 1234 },
+      });
       // Un pago viejo (fuera del día de la prueba) para que el consignante aparezca en la tabla y tenga su botón «Registrar pago».
       await prisma.pagoConsignante.create({ data: { sucursalId, proveedorId: consignante.id, importe: 1, fecha: new Date(Date.now() - 30 * DIA_MS), usuarioId: admin.id } });
 
