@@ -28,7 +28,7 @@ import { usosDeContratos, type UsosDeContrato } from "./usos";
  * guardián la cruza con él: un id de acá que el manifiesto no tiene es `dependencia-falsa`; un contrato del manifiesto que falte acá no se puede declarar y, si un
  * área lo usa, es `dependencia-omitida` con la pista de agregarlo.
  */
-export const IDS_DE_CONTRATO = ["borde-propio-de-carta", "separador-de-lista-de-carta", "tokens-visuales", "primitiva-boton", "primitiva-campo", "primitiva-selector", "primitiva-area-de-texto", "primitiva-casilla", "primitiva-aviso", "primitiva-insignia"] as const;
+export const IDS_DE_CONTRATO = ["borde-propio-de-carta", "separador-de-lista-de-carta", "tokens-visuales", "primitiva-boton", "primitiva-campo", "primitiva-selector", "primitiva-area-de-texto", "primitiva-casilla", "primitiva-aviso", "primitiva-insignia", "primitiva-enlace"] as const;
 export type IdDeContrato = (typeof IDS_DE_CONTRATO)[number];
 
 /** Área → contratos que declara. `[]` es «no dependo de ninguno» (explícito y obligatorio). Los nombres se derivan de la ruta (`areaDe`). */

@@ -140,6 +140,11 @@ export const EJEMPLOS_DE_CONTRATOS: Readonly<Record<string, EjemplosDeContrato>>
     definicion: "export function Insignia() {\n  return null;\n}\n",
     extensiones: { uso: ".tsx", definicion: ".tsx" },
   },
+  "primitiva-enlace": {
+    uso: 'export const ZzUso = () => <Enlace href="/x">x</Enlace>;\n',
+    definicion: "export function Enlace() {\n  return null;\n}\n",
+    extensiones: { uso: ".tsx", definicion: ".tsx" },
+  },
 };
 
 const ARCHIVO_DE_CUMPLIMIENTO_TEST = "test/arquitectura/contratos/gobernanza/cumplimiento.test.ts";

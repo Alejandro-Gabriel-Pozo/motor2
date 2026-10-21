@@ -120,6 +120,7 @@ export const APROBACIONES: readonly Aprobacion[] = [
   { archivo: "test/arquitectura/contratos/contratos/primitiva-aviso.ts#gobernado", blob: "885e4069cf57798e95976b1304eba6152e48d6cf", referencia: "DEC-03", motivo: "F6 6.6f: contrato de la primitiva Aviso (fuente única src/ui/primitivas/aviso.tsx; quien dibuja <Aviso> la importa de ahí; el rol sale de la variante)" },
   { archivo: "test/arquitectura/contratos/contratos/primitiva-insignia.ts#gobernado", blob: "b3c0bbab4ad38524ab258cb0e5ed71666466a0db", referencia: "DEC-03", motivo: "F6 6.6g: contrato de la primitiva Insignia (fuente única src/ui/primitivas/insignia.tsx; quien dibuja <Insignia> la importa de ahí; el texto es obligatorio)" },
   { archivo: "test/arquitectura/contratos/mutaciones/operadores.ts", blob: "4253cc72d37e47aa631dfcd2b4987b9e3565c396", referencia: "DEC-03", motivo: "F6 6.6g: borrar-fuente y mover toleran declaracion-sin-uso: --color-marca-tinte solo lo usa insignia.tsx y sacarla de src/ui deja ese token sin uso (misma lógica que 6.4 con extension-no-analizada)" },
+  { archivo: "test/arquitectura/contratos/contratos/primitiva-enlace.ts#gobernado", blob: "3c89d3ed079c56e81af89a788891a0f5abfc97d2", referencia: "DEC-03", motivo: "F6 6.6h: contrato de la primitiva Enlace (fuente única src/ui/primitivas/enlace.tsx sobre next/link; quien dibuja <Enlace> la importa de ahí)" },
 ];
 
 // ---------------------------------------------------------------------------------------------------------------------------------

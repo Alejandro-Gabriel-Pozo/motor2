@@ -9,9 +9,13 @@ import { obtenerConfigProceso } from "../../src/core/movimientos/ui-config";
  * Un enlace de una pantalla a OTRA pantalla que el rol del usuario no puede abrir termina en «no tenés permiso». Por eso los
  * enlaces entre pantallas con permisos distintos usan `EnlaceInterno` (deja el texto sin enlace si el rol no puede ver el
  * destino). Un `Link` a secas solo se admite hacia una pantalla que se protege con la MISMA acción que la pantalla donde está
- * (los enlaces de la propia familia: lista → ficha, paginación, «volver»).
+ * (los enlaces de la propia familia: lista → ficha, paginación, «volver»). `<Enlace>` (la primitiva `src/ui/primitivas/enlace.tsx`, un `Link` con el aspecto del sistema) cuenta igual que `<Link>`:
+ * si no, usarla sería una manera de saltearse esta guarda.
  */
 const RAIZ = join(__dirname, "../../src/app/(app)");
+
+/** Un `<Link>` o un `<Enlace>` con su `href` (literal, plantilla o expresión): lo que esta guarda mira. `<EnlaceInterno>` NO casa (el `\b` no corta entre `Enlace` e `Interno`): es justo el que sí decide por permiso. */
+const RE_ENLACE_CON_HREF = /<(?:Link|Enlace)\b[^>]*?\shref=(?:"([^"]*)"|\{`([^`$]*)|\{([^}]+)\})/g;
 
 function archivos(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {
@@ -87,12 +91,12 @@ describe("los enlaces entre pantallas con permisos distintos usan EnlaceInterno"
     expect(todos.length).toBeGreaterThan(50);
   });
 
-  it("todo `<Link href=…>` hacia una ruta estática va a una pantalla con la misma acción que la pantalla donde está", () => {
+  it("todo `<Link href=…>` (o `<Enlace href=…>`) hacia una ruta estática va a una pantalla con la misma acción que la pantalla donde está", () => {
     const infractores: string[] = [];
     for (const archivo of todos) {
       const fuente = readFileSync(archivo, "utf8");
       const propia = accionDeLaPantalla(archivo);
-      for (const m of fuente.matchAll(/<Link\b[^>]*?\shref=(?:"([^"]*)"|\{`([^`$]*)|\{([^}]+)\})/g)) {
+      for (const m of fuente.matchAll(RE_ENLACE_CON_HREF)) {
         const enlace = `${relative(RAIZ, archivo).split(sep).join("/")}: ${m[0].slice(0, 90).replace(/\s+/g, " ")}`;
         const ruta = m[1] ?? m[2];
         if (ruta === undefined) {
@@ -107,6 +111,16 @@ describe("los enlaces entre pantallas con permisos distintos usan EnlaceInterno"
       }
     }
     expect(infractores, `Links a otra pantalla con distinto permiso:\n${infractores.join("\n")}`).toEqual([]);
+  });
+
+  it("el detector ve `<Link>` y `<Enlace>` con su href, y no ve `<EnlaceInterno>` (que es el que decide por permiso)", () => {
+    const ver = (fuente: string): (string | undefined)[] => [...fuente.matchAll(RE_ENLACE_CON_HREF)].map((m) => m[1] ?? m[2] ?? m[3]);
+    expect(ver('<Link href="/reportes/historial">Historial</Link>')).toEqual(["/reportes/historial"]);
+    expect(ver('<Enlace href="/reportes/historial">Historial</Enlace>')).toEqual(["/reportes/historial"]);
+    expect(ver('<Enlace variante="sin-estilo" className="block" href={`/catalogo/recetas/${id}`}>x</Enlace>')).toEqual(["/catalogo/recetas/"]);
+    expect(ver("<Enlace href={destino}>x</Enlace>")).toEqual(["destino"]);
+    expect(ver('<EnlaceInterno href="/reportes/historial">Historial</EnlaceInterno>')).toEqual([]);
+    expect(ver('<EnlaceDeAlgo href="/reportes/historial">x</EnlaceDeAlgo>')).toEqual([]);
   });
 
   it("los enlaces de la ficha de receta que apuntan a `volver` son de la propia receta", () => {
