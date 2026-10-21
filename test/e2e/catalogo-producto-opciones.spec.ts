@@ -80,6 +80,8 @@ test("dos pestañas sobre lo que admite el producto: la vieja se rechaza con «R
   const choque = enB.getByRole("alert").filter({ hasText: "cambió mientras lo editabas" });
   await expect(choque).toBeVisible();
   await expect(choque.getByRole("button", { name: "Recargar" })).toBeVisible();
+  // «Recargar» mide 44 px también en escritorio (`tamano="tactil"`; antes de migrar a `Boton` era `min-h-[44px]` fijo): la viewport por defecto de Playwright es de escritorio.
+  expect((await choque.getByRole("button", { name: "Recargar" }).boundingBox())?.height).toBeGreaterThanOrEqual(44);
   expect((await prisma.productoAdmiteGrupo.findFirstOrThrow({ where: { productoId } })).cantidadMinima).toBeNull();
   expect((await new AxeBuilder({ page: pestañaB }).analyze()).violations, "con el choque a la vista").toEqual([]);
 });

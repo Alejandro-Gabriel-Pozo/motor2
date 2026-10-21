@@ -124,7 +124,7 @@ export function FormConResultado({
           <Aviso ref={refResultado} variante={resultado.ok ? "exito" : "error"} forma="en-linea">
             {resultado.mensaje}
             {ofrecerRecargar && !resultado.ok && PIDE_RECARGAR.test(resultado.mensaje) && (
-              <Boton variante="secundario" tamano="compacto" onClick={() => window.location.reload()} className="ml-2">
+              <Boton variante="secundario" tamano="tactil" onClick={() => window.location.reload()} className="ml-2">
                 Recargar
               </Boton>
             )}
