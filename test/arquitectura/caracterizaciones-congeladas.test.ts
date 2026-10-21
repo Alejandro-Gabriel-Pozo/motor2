@@ -578,6 +578,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 5 tanda C (CAMBIO VISUAL DELIBERADO, jerarquía de la carta aprobada por el dueño con maquetas; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en la corrida de capturas «despues2», contra motor2_e2e local). (1) Milanesas (tabla de dos ejes): el nombre pasa a ser un RÓTULO en mayúsculas de 13 px (el innerText lo vuelve «MILANESAS»; antes 19 px), con línea fina; las filas y los precios quedan como platos. (2) Aclaraciones y adicionales en P1: el bife lee «Guarnicion Elegí: …» (una línea) y cada extra en su propia fila con el recargo a la derecha; el café lee «Preparación del café Incluidas: solo, cortado» y lágrima y con leche cada una en su fila con su recargo. (3) La tanda del café: una tabla por producto con el nombre arriba (sin la celda del nombre en la tabla). (4) Escala única: sumas de los roles columna 16 px / 600, eleccion 15 px / 400, rotulo 13 px / 600 y tamano 15 px / 600 (en papel, 14,67 / 14 / 12,67 / 14 px); el rol aclaracion deja de aparecer porque la carta de esta siembra ya no dibuja aclaraciones en una línea. Las pantallas de administración y las Pizzas no cambian; el precio cobrado no se toca.",
       },
+      {
+        blob: "fe0a9dff7e5c66ad312760ded4fdcde40cc92b18",
+        // El commit PADRE de este (c29a0a8b, Fase 5 tanda C paso 10) es el último antes de la regeneración; los cambios son de los pasos C9 (textos neutros) y C10 (café de especialidad).
+        commit: "c29a0a8b",
+        motivo:
+          "Ola «precio y carta», Fase 5 tanda C, segunda regeneración (CAMBIO VISUAL DELIBERADO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en la corrida de capturas «despues3», contra motor2_e2e local). (1) Textos neutros de las aclaraciones (C9, decisión del dueño): el grupo donde todo es gratis se lee «Guarnicion ensalada · papas fritas · puré» (sin «Elegí:» ni «o») y el grupo que mezcla se lee «Sin cargo: solo · cortado» (antes «Incluidas:») con cada recargo en su fila. (2) Datos de la siembra e2e (C10): se suma «Café de especialidad» (tamaño Chico/Mediano/Grande más preparación obligatoria Solo/Cortado/Lágrima +$200/Con leche +$300) a la sección Cafetería, que sale como TABLA DE DOBLE ENTRADA con precios finales; por eso cambian las pantallas de administración que listan los productos de la carta (Cafetería: 2 productos; el nuevo producto en la parametrización). La carta y la tipografía del resto no cambian; el precio cobrado no se toca.",
+      },
     ],
   },
 };

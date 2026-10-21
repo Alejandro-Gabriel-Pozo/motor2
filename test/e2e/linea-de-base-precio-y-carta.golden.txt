@@ -23,17 +23,24 @@
       fila: De pollo | $20.000 | $25.000
     texto visible: «MILANESAS» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000»
   ÍTEM «Bife a la criolla» · forma: simple · precio del renglón: «$20.000»
-    debajo: «Guarnicion Elegí: ensalada, papas fritas o puré»
+    debajo: «Guarnicion ensalada · papas fritas · puré»
     debajo: «Extras extra de papas +$2.000 huevo frito +$1.500»
-    texto visible: «Bife a la criolla» «$20.000» «Guarnicion» «Elegí: ensalada, papas fritas o puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500»
+    texto visible: «Bife a la criolla» «$20.000» «Guarnicion» «ensalada · papas fritas · puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500»
   ÍTEM «Wok de verduras» · forma: sin opciones · precio del renglón: «$19.000»
     texto visible: «Wok de verduras» «$19.000»
 ### Sección «Cafetería» (banda «03 / 04»)
   ÍTEM «Café» · forma: tanda · precio del renglón: (ninguno)
     tabla: columnas «Chico» «Mediano» «Grande»
       fila: $4.000 | $4.100 | $4.300
-    debajo: «Preparación del café Incluidas: solo, cortado lágrima +$200 con leche +$300»
-    texto visible: «Café» «Chico Mediano Grande» «$4.000 $4.100 $4.300» «Preparación del café» «Incluidas: solo, cortado» «lágrima» «+$200» «con leche» «+$300»
+    debajo: «Preparación del café Sin cargo: solo · cortado lágrima +$200 con leche +$300»
+    texto visible: «Café» «Chico Mediano Grande» «$4.000 $4.100 $4.300» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$200» «con leche» «+$300»
+  ÍTEM «CAFÉ DE ESPECIALIDAD» · forma: tabla · precio del renglón: (ninguno)
+    tabla: columnas «Chico» «Mediano» «Grande»
+      fila: Solo | $4.000 | $4.100 | $4.300
+      fila: Cortado | $4.000 | $4.100 | $4.300
+      fila: Lágrima | $4.200 | $4.300 | $4.500
+      fila: Con leche | $4.300 | $4.400 | $4.600
+    texto visible: «CAFÉ DE ESPECIALIDAD» «Chico Mediano Grande» «Solo $4.000 $4.100 $4.300» «Cortado $4.000 $4.100 $4.300» «Lágrima $4.200 $4.300 $4.500» «Con leche $4.300 $4.400 $4.600»
 ### Sección «Bebidas» (banda «04 / 04»)
   ÍTEM «Gaseosa 500 cc» · forma: sin opciones · precio del renglón: «$4.000»
     texto visible: «Gaseosa 500 cc» «$4.000»
@@ -44,8 +51,8 @@
   [1 portada] «L» «LB Precio y carta»
   [2 índice] «Índice» «01» «Pizzas» «02» «Platos» «03» «Cafetería» «04» «Bebidas»
   [3 sección] «01 / 04» «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000»
-  [4 sección] «02 / 04» «Platos» «MILANESAS» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000» «Bife a la criolla» «$20.000» «Guarnicion» «Elegí: ensalada, papas fritas o puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500» «Wok de verduras» «$19.000»
-  [5 sección] «03 / 04» «Cafetería» «Café» «Chico Mediano Grande» «$4.000 $4.100 $4.300» «Preparación del café» «Incluidas: solo, cortado» «lágrima» «+$200» «con leche» «+$300»
+  [4 sección] «02 / 04» «Platos» «MILANESAS» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000» «Bife a la criolla» «$20.000» «Guarnicion» «ensalada · papas fritas · puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500» «Wok de verduras» «$19.000»
+  [5 sección] «03 / 04» «Cafetería» «Café» «Chico Mediano Grande» «$4.000 $4.100 $4.300» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$200» «con leche» «+$300» «CAFÉ DE ESPECIALIDAD» «Chico Mediano Grande» «Solo $4.000 $4.100 $4.300» «Cortado $4.000 $4.100 $4.300» «Lágrima $4.200 $4.300 $4.500» «Con leche $4.300 $4.400 $4.600»
   [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$4.000»
 ### Tipografía computada (getComputedStyle: fontSize / fontWeight)
   barra superior · volver (enlace): 12px / 300
@@ -108,17 +115,24 @@
       fila: De pollo | $20.000 | $25.000
     texto visible: «MILANESAS» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000»
   ÍTEM «Bife a la criolla» · forma: simple · precio del renglón: «$20.000»
-    debajo: «Guarnicion Elegí: ensalada, papas fritas o puré»
+    debajo: «Guarnicion ensalada · papas fritas · puré»
     debajo: «Extras extra de papas +$2.000 huevo frito +$1.500»
-    texto visible: «Bife a la criolla» «$20.000» «Guarnicion» «Elegí: ensalada, papas fritas o puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500»
+    texto visible: «Bife a la criolla» «$20.000» «Guarnicion» «ensalada · papas fritas · puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500»
   ÍTEM «Wok de verduras» · forma: sin opciones · precio del renglón: «$19.000»
     texto visible: «Wok de verduras» «$19.000»
 ### Sección «Cafetería» (banda «03 / 04»)
   ÍTEM «Café» · forma: tanda · precio del renglón: (ninguno)
     tabla: columnas «Chico» «Mediano» «Grande»
       fila: $4.000 | $4.100 | $4.300
-    debajo: «Preparación del café Incluidas: solo, cortado lágrima +$200 con leche +$300»
-    texto visible: «Café» «Chico Mediano Grande» «$4.000 $4.100 $4.300» «Preparación del café» «Incluidas: solo, cortado» «lágrima» «+$200» «con leche» «+$300»
+    debajo: «Preparación del café Sin cargo: solo · cortado lágrima +$200 con leche +$300»
+    texto visible: «Café» «Chico Mediano Grande» «$4.000 $4.100 $4.300» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$200» «con leche» «+$300»
+  ÍTEM «CAFÉ DE ESPECIALIDAD» · forma: tabla · precio del renglón: (ninguno)
+    tabla: columnas «Chico» «Mediano» «Grande»
+      fila: Solo | $4.000 | $4.100 | $4.300
+      fila: Cortado | $4.000 | $4.100 | $4.300
+      fila: Lágrima | $4.200 | $4.300 | $4.500
+      fila: Con leche | $4.300 | $4.400 | $4.600
+    texto visible: «CAFÉ DE ESPECIALIDAD» «Chico Mediano Grande» «Solo $4.000 $4.100 $4.300» «Cortado $4.000 $4.100 $4.300» «Lágrima $4.200 $4.300 $4.500» «Con leche $4.300 $4.400 $4.600»
 ### Sección «Bebidas» (banda «04 / 04»)
   ÍTEM «Gaseosa 500 cc» · forma: sin opciones · precio del renglón: «$4.000»
     texto visible: «Gaseosa 500 cc» «$4.000»
@@ -129,8 +143,8 @@
   [1 portada] «L» «LB Precio y carta»
   [2 índice] «Índice» «01» «Pizzas» «02» «Platos» «03» «Cafetería» «04» «Bebidas»
   [3 sección] «01 / 04» «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000»
-  [4 sección] «02 / 04» «Platos» «MILANESAS» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000» «Bife a la criolla» «$20.000» «Guarnicion» «Elegí: ensalada, papas fritas o puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500» «Wok de verduras» «$19.000»
-  [5 sección] «03 / 04» «Cafetería» «Café» «Chico Mediano Grande» «$4.000 $4.100 $4.300» «Preparación del café» «Incluidas: solo, cortado» «lágrima» «+$200» «con leche» «+$300»
+  [4 sección] «02 / 04» «Platos» «MILANESAS» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000» «Bife a la criolla» «$20.000» «Guarnicion» «ensalada · papas fritas · puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500» «Wok de verduras» «$19.000»
+  [5 sección] «03 / 04» «Cafetería» «Café» «Chico Mediano Grande» «$4.000 $4.100 $4.300» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$200» «con leche» «+$300» «CAFÉ DE ESPECIALIDAD» «Chico Mediano Grande» «Solo $4.000 $4.100 $4.300» «Cortado $4.000 $4.100 $4.300» «Lágrima $4.200 $4.300 $4.500» «Con leche $4.300 $4.400 $4.600»
   [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$4.000»
 ### Tipografía computada (getComputedStyle: fontSize / fontWeight)
   barra superior · volver (enlace): 12px / 300
@@ -471,7 +485,7 @@
   [botón: Apagar «Pizzas»]
   ▸ Platos · orden 2 · 3 ítem(s) · activa
   [botón: Apagar «Platos»]
-  ▸ Cafetería · orden 3 · 1 ítem(s) · activa
+  ▸ Cafetería · orden 3 · 2 ítem(s) · activa
   [botón: Apagar «Cafetería»]
   ▸ Bebidas · orden 4 · 1 ítem(s) · activa
   [botón: Apagar «Bebidas»]
@@ -497,7 +511,7 @@
   3 productos
   ▸
   Cafetería
-  1 producto
+  2 productos
   ▸
   Bebidas
   1 producto
@@ -530,7 +544,7 @@
     [botón: Guardar sección]
     [botón: Apagar «Platos»]
   --- data-seccion-carta=«Cafetería» (abierto)
-    ▾ Cafetería · orden 3 · 1 ítem(s) · activa
+    ▾ Cafetería · orden 3 · 2 ítem(s) · activa
     Nombre
     [campo: «Cafetería», ayuda «Platos Principales»]
     Título (opcional, si no se usa el nombre)
@@ -653,7 +667,7 @@
   --- data-grupo-de-la-carta=«Cafetería» (abierto)
     ▾
     Cafetería
-    1 producto
+    2 productos
     ▾ Café · Cafetería · $4.000 · se muestra
     [x]
     Se muestra en la carta
@@ -674,6 +688,26 @@
     [campo: vacío]
     [botón: Guardar descuento de «Café»]
     [botón: Quitar «Café» de la carta (vuelve a «Fuera de carta»)]
+    ▾ Café de especialidad · Cafetería · $4.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Cafetería]
+    Orden dentro de su sección
+    [campo: «1»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Café de especialidad»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Café de especialidad»]
+    [botón: Quitar «Café de especialidad» de la carta (vuelve a «Fuera de carta»)]
   --- data-grupo-de-la-carta=«Bebidas» (abierto)
     ▾
     Bebidas
@@ -727,7 +761,7 @@
   [botón: Apagar «Pizzas»]
   ▸ Platos · orden 2 · 3 ítem(s) · activa
   [botón: Apagar «Platos»]
-  ▸ Cafetería · orden 3 · 1 ítem(s) · activa
+  ▸ Cafetería · orden 3 · 2 ítem(s) · activa
   [botón: Apagar «Cafetería»]
   ▸ Bebidas · orden 4 · 1 ítem(s) · activa
   [botón: Apagar «Bebidas»]
@@ -753,7 +787,7 @@
   3 productos
   ▸
   Cafetería
-  1 producto
+  2 productos
   ▸
   Bebidas
   1 producto
@@ -786,7 +820,7 @@
     [botón: Guardar sección]
     [botón: Apagar «Platos»]
   --- data-seccion-carta=«Cafetería» (abierto)
-    ▾ Cafetería · orden 3 · 1 ítem(s) · activa
+    ▾ Cafetería · orden 3 · 2 ítem(s) · activa
     Nombre
     [campo: «Cafetería», ayuda «Platos Principales»]
     Título (opcional, si no se usa el nombre)
@@ -909,7 +943,7 @@
   --- data-grupo-de-la-carta=«Cafetería» (abierto)
     ▾
     Cafetería
-    1 producto
+    2 productos
     ▾ Café · Cafetería · $4.000 · se muestra
     [x]
     Se muestra en la carta
@@ -930,6 +964,26 @@
     [campo: vacío]
     [botón: Guardar descuento de «Café»]
     [botón: Quitar «Café» de la carta (vuelve a «Fuera de carta»)]
+    ▾ Café de especialidad · Cafetería · $4.000 · se muestra
+    [x]
+    Se muestra en la carta
+    [ ]
+    Especial (★)
+    Sección de carta (obligatoria si se muestra)
+    [selección: Cafetería]
+    Orden dentro de su sección
+    [campo: «1»]
+    Género (opcional)
+    [selección: — sin género (sale suelto) —]
+    Descripción (opcional)
+    [campo: vacío]
+    Tags (separados por coma)
+    [campo: vacío, ayuda «Regional, Sin TACC»]
+    [botón: Guardar contenido de «Café de especialidad»]
+    Descuento en esta sucursal, % (vacío = sin descuento)
+    [campo: vacío]
+    [botón: Guardar descuento de «Café de especialidad»]
+    [botón: Quitar «Café de especialidad» de la carta (vuelve a «Fuera de carta»)]
   --- data-grupo-de-la-carta=«Bebidas» (abierto)
     ▾
     Bebidas
