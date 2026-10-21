@@ -49,3 +49,6 @@ export type { AlcanceCentral, AlcanceDeReceta } from "./recetas-vigentes";
 // Hito 4, paso A5 (O.8a): el armado puro de la comparativa de precios por insumo (lo usa el lector de la comparativa, server/lecturas/catalogo/ofertas-de-proveedor.ts).
 export { armarComparativaDePrecios } from "./comparativa-de-precios";
 export type { FilaComparativaPrecios } from "./comparativa-de-precios";
+// Fase 6 («el espacio del producto», 6.9b): los pasos del espacio de un producto según su tipo, sus rutas, sus pendientes y qué pasos abre cada usuario (puro; lo dibuja el marco del espacio).
+export { PASOS_DEL_ESPACIO, pasosDelEspacio, pendientesDelProducto, rutaDelPaso } from "./espacio-del-producto";
+export type { AccesoAlEspacio, EstadoDelPaso, FormaDelProducto, HechosDelProducto, PasoDelEspacio } from "./espacio-del-producto";
