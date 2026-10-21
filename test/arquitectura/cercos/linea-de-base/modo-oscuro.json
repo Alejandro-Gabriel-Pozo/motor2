@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 285,
-  "entradas": 71,
+  "total": 281,
+  "entradas": 67,
   "porTipo": {
-    "dark:": 285
+    "dark:": 281
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -115,9 +115,6 @@
     "src/app/(app)/reportes/descuentos-clientes/tabla-descuentos-clientes.tsx": {
       "dark:": 2
     },
-    "src/app/(app)/reportes/devoluciones/tabla-devoluciones.tsx": {
-      "dark:": 1
-    },
     "src/app/(app)/reportes/diferencias/tabla-diferencias.tsx": {
       "dark:": 2
     },
@@ -133,9 +130,6 @@
     "src/app/(app)/reportes/historial/tabla-historial.tsx": {
       "dark:": 1
     },
-    "src/app/(app)/reportes/insumos-sin-receta/tabla-insumos-sin-receta.tsx": {
-      "dark:": 1
-    },
     "src/app/(app)/reportes/loading.tsx": {
       "dark:": 4
     },
@@ -146,9 +140,6 @@
       "dark:": 4
     },
     "src/app/(app)/reportes/perdidas/page.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/reportes/perdidas/tabla-perdidas.tsx": {
       "dark:": 1
     },
     "src/app/(app)/reportes/periodo/digest-alertas.tsx": {
@@ -182,9 +173,6 @@
       "dark:": 3
     },
     "src/app/(app)/reportes/trazabilidad/boton-anular-venta.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/reportes/trazabilidad/tabla-trazabilidad.tsx": {
       "dark:": 1
     },
     "src/app/(app)/reportes/valuacion/page.tsx": {

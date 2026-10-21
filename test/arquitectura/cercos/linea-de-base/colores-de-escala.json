@@ -1,11 +1,11 @@
 {
   "regla": "colores-de-escala",
   "meta": "0 en la Fase 6 (DEC-03: las clases de color de Tailwind pasan a los tokens del salón)",
-  "total": 921,
-  "entradas": 158,
+  "total": 912,
+  "entradas": 150,
   "porTipo": {
     "blanco-negro": 126,
-    "escala": 795
+    "escala": 786
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -248,9 +248,6 @@
       "blanco-negro": 1,
       "escala": 2
     },
-    "src/app/(app)/reportes/consignacion/tabla-consignacion.tsx": {
-      "escala": 1
-    },
     "src/app/(app)/reportes/consolidado/page.tsx": {
       "escala": 8
     },
@@ -280,9 +277,6 @@
       "blanco-negro": 1,
       "escala": 5
     },
-    "src/app/(app)/reportes/devoluciones/tabla-devoluciones.tsx": {
-      "escala": 1
-    },
     "src/app/(app)/reportes/diferencias/page.tsx": {
       "escala": 3
     },
@@ -294,9 +288,6 @@
     },
     "src/app/(app)/reportes/historial/como-se-compro.tsx": {
       "escala": 2
-    },
-    "src/app/(app)/reportes/historial/como-se-vendio.tsx": {
-      "escala": 1
     },
     "src/app/(app)/reportes/historial/grafico-saldo.tsx": {
       "escala": 2
@@ -317,9 +308,6 @@
     "src/app/(app)/reportes/insumos-sin-receta/page.tsx": {
       "escala": 3
     },
-    "src/app/(app)/reportes/insumos-sin-receta/tabla-insumos-sin-receta.tsx": {
-      "escala": 1
-    },
     "src/app/(app)/reportes/loading.tsx": {
       "escala": 4
     },
@@ -335,9 +323,6 @@
     "src/app/(app)/reportes/perdidas/page.tsx": {
       "blanco-negro": 1,
       "escala": 5
-    },
-    "src/app/(app)/reportes/perdidas/tabla-perdidas.tsx": {
-      "escala": 1
     },
     "src/app/(app)/reportes/periodo/comparativa-precios.tsx": {
       "escala": 3
@@ -377,14 +362,8 @@
     "src/app/(app)/reportes/salud/page.tsx": {
       "escala": 3
     },
-    "src/app/(app)/reportes/salud/tabla-salud.tsx": {
-      "escala": 2
-    },
     "src/app/(app)/reportes/sin-receta/page.tsx": {
       "escala": 3
-    },
-    "src/app/(app)/reportes/tabla-resumen.tsx": {
-      "escala": 1
     },
     "src/app/(app)/reportes/tickets/page.tsx": {
       "blanco-negro": 1,
@@ -396,9 +375,6 @@
     "src/app/(app)/reportes/trazabilidad/page.tsx": {
       "blanco-negro": 1,
       "escala": 7
-    },
-    "src/app/(app)/reportes/trazabilidad/tabla-trazabilidad.tsx": {
-      "escala": 1
     },
     "src/app/(app)/reportes/valuacion/page.tsx": {
       "escala": 6
