@@ -74,7 +74,7 @@ Si la opción define QUÉ PLATO es (el tipo de carne de la milanesa, cada pizza)
 
 - **BC2** (las opciones protagonizan): el rótulo del nombre en sans de 13 px, peso 600, mayúsculas con espaciado, con una línea fina de ancho completo debajo (y, a la derecha, el «−x %» si hay descuento); las filas en serif de 19 px (rol Producto) con un separador fino (el borde de la carta) entre una y otra; los precios en 19 px (rol Precio); en la tabla de dos ejes, los encabezados de columna en 16 px, peso 600.
 - **N** (el nombre protagoniza: la tanda y la lista por caída de tanda): el nombre en serif de 19 px (rol Producto) con una línea fina debajo; los encabezados de tamaño en 15 px, peso 600; los precios en 16 px (rol Opción precio). **UNA TABLA POR PRODUCTO**, con los encabezados repetidos bajo el nombre de cada uno (decisión del dueño; reemplaza la tabla única compartida con el nombre en la primera celda) y `table-fixed`: las columnas son iguales y comparten ancho en todos los productos de la tanda. La lista por caída de tanda dibuja el nombre con su línea fina y los tamaños debajo, en rol Opción, con puntitos.
-- **P1** (lo que se lee debajo del plato, `GruposDeOpciones`): la etiqueta del grupo en 14 px, peso 600; lo gratis en UNA línea de 15 px (rol Elección): «Elegí: ensalada, papas fritas o puré» si todas las opciones del grupo son gratis, «Incluidas: solo, cortado» o «Incluida: solo» si el grupo mezcla gratis y con recargo; cada recargo en SU fila (rol Opción, 16 px) con el precio a la derecha, siempre en pesos («+$200») aunque la regla sea en porcentaje. Lo que la carta no puede mostrar exacto (un recargo dentro del precio con descuento de producto) sale como antes, en una línea única («Adicionales: …», `ItemComoAntes`). La partición es `partirLaAclaracion` (`texto-de-la-carta.ts`), la misma de la vista previa de la administración.
+- **P1** (lo que se lee debajo del plato, `GruposDeOpciones`): la etiqueta del grupo en 14 px, peso 600; lo gratis en UNA línea de 15 px (rol Elección), en texto neutro y sin verbo (C9): «ensalada · papas fritas · puré» (las opciones separadas por « · », sin prefijo) si todas las opciones del grupo son gratis, «Sin cargo: solo · cortado» o «Sin cargo: solo» si el grupo mezcla gratis y con recargo; cada recargo en SU fila (rol Opción, 16 px) con el precio a la derecha, siempre en pesos («+$200») aunque la regla sea en porcentaje. Lo que la carta no puede mostrar exacto (un recargo dentro del precio con descuento de producto) sale como antes, en una línea única («Adicionales: …», `ItemComoAntes`). La partición es `partirLaAclaracion` (`texto-de-la-carta.ts`), la misma de la vista previa de la administración.
 
 #### La escala: cuatro roles nuevos
 
@@ -85,7 +85,7 @@ Pantalla y papel, en `src/core/carta/escala.ts` (variables `--carta-fs-<rol>` y 
 | `rotulo` | 13 px, 600, mayúsculas, espaciado | 9,5 pt | el nombre paraguas (BC2) |
 | `columna` | 16 px, 600 | 11 pt | encabezado de columna de la tabla de dos ejes |
 | `tamano` | 15 px, 600 | 10,5 pt | encabezado de tamaño de la tanda (N) |
-| `eleccion` | 15 px, 400 | 10,5 pt | la línea «Elegí: …» / «Incluidas: …» (P1); toma `max(15 px, tema de la descripción)` |
+| `eleccion` | 15 px, 400 | 10,5 pt | la línea de lo gratis, «ensalada · papas fritas · puré» / «Sin cargo: …» (P1); toma `max(15 px, tema de la descripción)` |
 
 Se suma la clase `carta-linea-fina` (un trazo de 1 px del color de la tinta, atenuado hacia el fondo, `color-mix` al 28 %), que usan el rótulo y el nombre protagonista. **Mínimo de 14 px** para todo texto que el cliente necesita para decidir; las únicas excepciones son el rótulo en mayúsculas de 13 px y los tags de 12 px. Por eso (C6) la descripción de la banda de sección sube de 11 a un piso de 14 px (`max(--carta-fs-aclaracion, tema)`: el tema solo puede pedir más). El cerco `carta-publica-tipografia` sigue en cero: los componentes usan las clases de los roles.
 
@@ -102,9 +102,9 @@ Se suma la clase `carta-linea-fina` (un trazo de 1 px del color de la tinta, ate
 - El mínimo de 14 px para el texto de decisión.
 - Repetir los encabezados de tamaño en cada producto de la tanda (una tabla por producto).
 - Subir la descripción de la banda a 14 px (C6).
-- «Elegí:» en los grupos opcionales gratis: queda a revisar en las capturas.
+- «Elegí:» en los grupos opcionales gratis: se revisó en las capturas y se reemplazó (C9) por un texto neutro sin verbo.
 
 #### Pendiente conocido
 
-«Elegí: …» puede sonar obligatorio en un grupo opcional gratis: la carta pública no tiene un dato de obligatoriedad del grupo (no se emite), así que la línea no puede distinguirlos. Se revisa en las capturas; si molesta, hace falta un dato público de obligatoriedad (no una deducción).
+Resuelto en C9 (decisión del dueño): «Elegí: …» / «Incluidas: …» sugerían algo que la carta no sabe (obligatoriedad, cuántas se eligen, que vienen juntas), porque la carta pública no tiene un dato de obligatoriedad del grupo (no se emite). Ahora la línea es neutra, sin verbo: las opciones separadas por « · » si todas son gratis, o «Sin cargo: …» si el grupo mezcla. Si alguna vez hace falta decir «obligatorio» o «una sola», hace falta un dato público (no una deducción).
 

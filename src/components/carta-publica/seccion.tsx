@@ -178,7 +178,7 @@ function DescripcionYTags({ item, colores }: { item: ItemCartaPublico; colores: 
 
 /**
  * Lo que se lee DEBAJO del plato (DEC-07), un GRUPO por aclaración en el orden del producto, en «P1»: la etiqueta del grupo (rol Aclaración 600, sin dos puntos); lo que NO cuesta en UNA línea
- * («Elegí: ensalada, papas fritas o puré»; «Incluidas: solo, cortado» cuando el grupo mezcla gratis y con recargo; rol Elección); y cada opción que SÍ suma o resta en su PROPIA fila, con el recargo
+ * («ensalada · papas fritas · puré» si todo es gratis; «Sin cargo: solo · cortado» cuando el grupo mezcla gratis y con recargo; rol Elección); y cada opción que SÍ suma o resta en su PROPIA fila, con el recargo
  * a la derecha («+$200»; rol Opción). La partición es la de `partirLaAclaracion`, la misma que usa la vista previa de la administración.
  */
 function GruposDeOpciones({ aclaraciones, colores }: { aclaraciones: readonly AclaracionCartaPublica[]; colores: ColoresDelItem }) {

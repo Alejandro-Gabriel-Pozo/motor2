@@ -24,15 +24,19 @@ export function textoDeLaAclaracion(a: Aclaracion): string {
   return a.tipo === "eleccion" ? unirConO(a.opciones) : a.opciones.map((o) => (o.recargo === 0 ? o.nombre : `${o.nombre} ${recargoEnPesos(o.recargo)}`)).join(", ");
 }
 
+/** El separador de las opciones en la línea de lo que no cuesta: espacio, punto medio (U+00B7), espacio. */
+const SEPARADOR_DE_OPCIONES = " · ";
+
 /**
  * Una aclaración partida para leerse en «P1» (jerarquía de la carta pública): lo que NO cuesta en UNA línea y cada opción que SÍ suma o resta, aparte, para dibujarla en su propia fila con el
- * recargo a la derecha. Una ELECCIÓN (ninguna suma): «Elegí: ensalada, papas fritas o puré». Unos EXTRAS: las opciones sin recargo (`recargo === 0`) van en `libres`, «Incluida: solo» (una) o
- * «Incluidas: solo, cortado» (varias), y `null` si no hay ninguna; las que suman o restan (`recargo !== 0`) van en `conRecargo`, en su orden. Puro.
+ * recargo a la derecha. Texto NEUTRO, sin verbo (no sugiere obligatoriedad, cuántas se eligen ni que vienen juntas: la carta no lo sabe). Una ELECCIÓN (ninguna suma): solo las opciones unidas
+ * por « · », «ensalada · papas fritas · puré». Unos EXTRAS: las opciones sin recargo (`recargo === 0`) van en `libres`, «Sin cargo: solo · cortado» (también con UNA sola: «Sin cargo: solo»), y
+ * `null` si no hay ninguna; las que suman o restan (`recargo !== 0`) van en `conRecargo`, en su orden. Puro.
  */
 export function partirLaAclaracion(a: Aclaracion): { libres: string | null; conRecargo: { nombre: string; recargo: number }[] } {
-  if (a.tipo === "eleccion") return { libres: a.opciones.length > 0 ? `Elegí: ${unirConO(a.opciones)}` : null, conRecargo: [] };
+  if (a.tipo === "eleccion") return { libres: a.opciones.length > 0 ? a.opciones.join(SEPARADOR_DE_OPCIONES) : null, conRecargo: [] };
   const gratis = a.opciones.filter((o) => o.recargo === 0).map((o) => o.nombre);
-  const libres = gratis.length === 0 ? null : `${gratis.length === 1 ? "Incluida" : "Incluidas"}: ${gratis.join(", ")}`;
+  const libres = gratis.length === 0 ? null : `Sin cargo: ${gratis.join(SEPARADOR_DE_OPCIONES)}`;
   return { libres, conRecargo: a.opciones.filter((o) => o.recargo !== 0).map((o) => ({ nombre: o.nombre, recargo: o.recargo })) };
 }
 

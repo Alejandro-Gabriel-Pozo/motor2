@@ -246,12 +246,12 @@ test.describe("carta de una sucursal", () => {
         await expect(extrasCafe.locator("[data-rol=opcion]")).toHaveText(["medialuna", "shot"]);
         await expect(extrasCafe.locator("[data-rol=opcion-precio]")).toHaveText(["+$600", "+$500"]);
         await expect(filas.cafe.locator("[data-tamanos-carta], [data-suma-carta], [data-opciones-sin-costo]")).toHaveCount(0);
-        // La milanesa (Fase 5, forma «simple»): su precio base de siempre y, debajo, la etiqueta «Guarnición» y, en una línea, «Elegí: papas fritas, puré o ensalada» (sin «Ver opciones» ni desplegable; sin la «ninguna»); el flan, un producto común.
+        // La milanesa (Fase 5, forma «simple»): su precio base de siempre y, debajo, la etiqueta «Guarnición» y, en una línea, «papas fritas · puré · ensalada» (sin «Ver opciones» ni desplegable; sin la «ninguna»); el flan, un producto común.
         await expect(filas.milanesa).toContainText("$9.500");
         const guarnicionMila = filas.milanesa.locator(`[data-aclaracion='Guarnición ${m}']`);
         await expect(guarnicionMila).toBeVisible();
         await expect(guarnicionMila.locator("[data-rol=aclaracion-rotulo]")).toHaveText(`Guarnición ${m}`);
-        await expect(guarnicionMila.locator("[data-rol=eleccion]")).toHaveText("Elegí: papas fritas, puré o ensalada");
+        await expect(guarnicionMila.locator("[data-rol=eleccion]")).toHaveText("papas fritas · puré · ensalada");
         await expect(filas.milanesa).not.toContainText("Ver opciones");
         await expect(filas.milanesa).not.toContainText("Sin guarnición");
         expect(await filas.milanesa.locator("details").count(), "ningún desplegable").toBe(0);
