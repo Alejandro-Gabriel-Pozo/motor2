@@ -45,7 +45,6 @@ const CERCO_DIALOGOS_Y_AVISOS: Cerco = {
   meta: "bajar hacia 0 en la Fase 6: diálogos y avisos salen de las primitivas de src/ui (Dialogo, Aviso)",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src"], extensiones: [".tsx", ".jsx"], incluir: (ruta) => !ruta.startsWith("src/ui/"), contar: contarDialogosYAvisos }),
   excepciones: [
-    { ruta: "src/components/aviso-con-deshacer.tsx", motivo: `${COMPARTIDO} de aviso: el aviso flotante con «deshacer» que reusan las pantallas. F6 6.8.3 lo dejó en 0 en colores, modo oscuro y controles a mano; queda el role a mano porque Aviso no tiene una forma flotante sobre tinta (sus formas son en-linea y caja, de fondo tintado y texto de color) y el diseño aprobado es la barra oscura. Sale cuando Aviso la tenga.` },
     { ruta: "src/components/menu-celular.tsx", motivo: `${COMPARTIDO} de diálogo: el cajón del menú en celular, sobre el <dialog> nativo con el mismo criterio que ui/…/dialogo.tsx.` },
   ],
 };
