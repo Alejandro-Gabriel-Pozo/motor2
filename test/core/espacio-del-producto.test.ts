@@ -126,6 +126,7 @@ describe("pendientesDelProducto", () => {
     ["oculto", "pendiente"],
     ["fuera", "pendiente"],
     ["no-disponible", "pendiente"],
+    ["sin-seccion", "pendiente"],
     ["visible", "listo"],
     ["agrupado", "listo"],
   ] as const)("en la carta: %s ⇒ %s", (estado, tipo) => {

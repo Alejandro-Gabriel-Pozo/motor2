@@ -477,6 +477,8 @@ const porArchivo: Record<string, Record<string, Valor>> = {
   "lecturas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId },
   // GO-2d: lo mismo en las consultas de las pantallas de opciones de venta.
   "consultas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId, productoIds: (k) => [k.productoConOpcionesId] },
+  // Fase 6 (6.17b): el estado de UN producto en la carta es el de un PV.
+  "consultas/carta/admin.ts": { productoId: (k) => k.productoPvId },
   // GO-2d: los avisos de stock de la carta son de platos (PV con receta).
   "consultas/carta/avisos-de-stock.ts": { productoIds: (k) => [k.productoPvId, k.productoPv2Id] },
 };
