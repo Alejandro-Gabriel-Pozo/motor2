@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 310,
-  "entradas": 76,
+  "total": 300,
+  "entradas": 75,
   "porTipo": {
-    "dark:": 310
+    "dark:": 300
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -204,9 +204,6 @@
     },
     "src/app/invitacion/page.tsx": {
       "dark:": 2
-    },
-    "src/app/login/page.tsx": {
-      "dark:": 10
     },
     "src/components/agregar-colapsable.tsx": {
       "dark:": 1
