@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { contarCoincidencias, medirPorArchivo, probarCerco, sinComentarios, type Cerco } from "./cercos/trinquete";
+import { contarCoincidencias, medirPorArchivo, sinComentarios, type Cerco } from "./cercos/trinquete";
+import { probarCerco } from "./cercos/probar-cerco";
 
 /**
  * Cerco «modo oscuro» (ola «precio y carta», Fase 1; DEC-04 del dueño: sin modo oscuro en NINGUNA parte, también la carta del

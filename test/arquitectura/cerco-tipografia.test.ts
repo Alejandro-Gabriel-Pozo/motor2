@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { RAIZ_DEL_REPO, contarCoincidencias, medirPorArchivo, probarCerco, sinComentarios, type Cerco } from "./cercos/trinquete";
+import { RAIZ_DEL_REPO, contarCoincidencias, medirPorArchivo, sinComentarios, type Cerco } from "./cercos/trinquete";
+import { probarCerco } from "./cercos/probar-cerco";
 
 /**
  * Cerco «tipografía» (ola «precio y carta», Fase 1; auditoría §19.4: «el error del café más grande fue de escala tipográfica, no de

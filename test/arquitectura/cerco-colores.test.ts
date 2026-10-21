@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { contarCoincidencias, medirPorArchivo, probarCerco, sinComentarios, type Cerco } from "./cercos/trinquete";
+import { contarCoincidencias, medirPorArchivo, sinComentarios, type Cerco } from "./cercos/trinquete";
+import { probarCerco } from "./cercos/probar-cerco";
 
 /**
  * Cercos de color (ola «precio y carta», Fase 1; DEC-03: una sola fuente visual, los tokens del salón en `src/app/globals.css`).

@@ -29,9 +29,10 @@ import type { Contrato, Deuda, Detector, Excepcion } from "../tipos";
 
 /**
  * Quién emite un hallazgo: el motor de contratos, la clasificación de rutas, las áreas, el manifiesto (lanza), las pruebas del propio guardián (rojas), el cumplimiento del cableado
- * (`gobernanza/cumplimiento.ts`) o el registro de aprobaciones del mecanismo (`gobernanza/aprobaciones.ts`).
+ * (`gobernanza/cumplimiento.ts`), el registro de aprobaciones del mecanismo (`gobernanza/aprobaciones.ts`) o la evidencia por corrida (`gobernanza/evidencia.ts`: ids distintos del aprobado, alcance de 0
+ * archivos, menos archivos leídos que el piso).
  */
-export type Verifica = "motor" | "clasificacion" | "areas" | "manifiesto" | "pruebas" | "cumplimiento" | "aprobaciones";
+export type Verifica = "motor" | "clasificacion" | "areas" | "manifiesto" | "pruebas" | "cumplimiento" | "aprobaciones" | "evidencia";
 
 export type Cambio = { op: "escribir"; ruta: string; contenido: string } | { op: "borrar"; ruta: string } | { op: "mover"; de: string; a: string };
 
@@ -56,6 +57,8 @@ export interface Mutacion {
   politicaDeTipos: typeof POLITICA_DE_TIPOS | null;
   /** El registro de aprobaciones alterado en memoria (null = el real). */
   registro: readonly Aprobacion[] | null;
+  /** El piso de archivos leídos de la evidencia alterado en memoria (null = el de la copia, que es mínimo: la copia no tiene los 2.500 archivos del repo). */
+  piso: number | null;
   crons: readonly string[] | null;
   ignoradas: readonly string[] | null;
   listadoVacio: boolean;
@@ -128,6 +131,7 @@ const mutacion = (descripcion: string, linea: (raiz: string) => number, resto: P
   exclusiones: null,
   politicaDeTipos: null,
   registro: null,
+  piso: null,
   crons: null,
   ignoradas: null,
   listadoVacio: false,
@@ -645,6 +649,8 @@ const fueraDelManifiesto: Operador = {
         { verifica: "areas", tipo: "dependencia-falsa" },
         { verifica: "aprobaciones", tipo: "archivo-ausente" },
         { verifica: "cumplimiento", tipo: "aprobado-ausente-del-manifiesto" },
+        // La evidencia por corrida también lo dice: el conjunto de contratos ya no es el aprobado.
+        { verifica: "evidencia", tipo: "ids-distintos-del-aprobado" },
       ],
     });
   },
@@ -664,6 +670,7 @@ const vaciarManifiesto: Operador = {
         { verifica: "areas", tipo: "dependencia-falsa" },
         { verifica: "aprobaciones", tipo: "archivo-ausente" },
         { verifica: "cumplimiento", tipo: "aprobado-ausente-del-manifiesto" },
+        { verifica: "evidencia", tipo: "ids-distintos-del-aprobado" },
       ],
     });
   },
@@ -699,6 +706,8 @@ const sacarAlcance: Operador = {
         { verifica: "motor", tipo: "alcance-vacio" },
         { verifica: "areas", tipo: "area-fantasma" },
         { verifica: "areas", tipo: "area-sin-declaracion" },
+        // Los contratos que comparten la carpeta quedan con alcance 0 todos: la evidencia lo dice de cada uno.
+        { verifica: "evidencia", tipo: "alcance-cero" },
       ],
     });
   },
@@ -989,6 +998,14 @@ const politicaDeTipos: Operador = {
   },
 };
 
+const pisoDeEvidencia: Operador = {
+  id: "piso-de-evidencia",
+  aplicaA: "el piso de archivos leídos de la evidencia por corrida (`PISO_DE_ARCHIVOS_LEIDOS`): se sube por encima de lo que el motor lee, en memoria. El motor lee lo mismo y el piso es mayor",
+  aplicar() {
+    return mutacion("el piso de archivos leídos queda por encima de lo que el motor lee", () => 1, { piso: Number.MAX_SAFE_INTEGER });
+  },
+};
+
 export const OPERADORES: Readonly<Record<string, Operador>> = Object.fromEntries(
-  [ancla, marca, borrarFuente, quitarDeclaracion, quitarToken, agregarToken, quitarTodasLasDeclaraciones, insertar, quitarEntrada, fueraDelManifiesto, vaciarManifiesto, manifiestoRoto, sacarAlcance, extensionNoAnalizada, area, reglas, listado, exclusion, gobierno, texto, mover, archivo, registro, politicaDeTipos].map((o) => [o.id, o])
+  [ancla, marca, borrarFuente, quitarDeclaracion, quitarToken, agregarToken, quitarTodasLasDeclaraciones, insertar, quitarEntrada, fueraDelManifiesto, vaciarManifiesto, manifiestoRoto, sacarAlcance, extensionNoAnalizada, area, reglas, listado, exclusion, gobierno, texto, mover, archivo, registro, politicaDeTipos, pisoDeEvidencia].map((o) => [o.id, o])
 );

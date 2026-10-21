@@ -1,6 +1,7 @@
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { arbolDe, medirPorArchivo, probarCerco, type Cerco } from "./cercos/trinquete";
+import { arbolDe, medirPorArchivo, type Cerco } from "./cercos/trinquete";
+import { probarCerco } from "./cercos/probar-cerco";
 
 /**
  * Cerco «diálogos y avisos a mano» (ola «precio y carta», Fase 1; inventario de pantallas y primitivas §2: «Aviso está disperso»). Cuenta,

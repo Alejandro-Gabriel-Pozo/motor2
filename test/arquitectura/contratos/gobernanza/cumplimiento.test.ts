@@ -181,7 +181,7 @@ const PAQUETE_VALIDO = [
   "{",
   '  "name": "x",',
   '  "scripts": {',
-  '    "arquitectura": "depcruise src plataforma next.config.ts --config .dependency-cruiser.cjs",',
+  '    "arquitectura": "depcruise src plataforma next.config.ts --config .dependency-cruiser.cjs && tsx test/arquitectura/contratos/ejecutar.ts",',
   '    "test": "vitest run",',
   '    "lint": "eslint"',
   "  },",
@@ -200,6 +200,9 @@ describe("evaluarScripts (package.json)", () => {
     { titulo: "el script `test` pasa a otro comando", de: '"test": "vitest run"', a: '"test": "vitest run --passWithNoTests"', tipo: "script-distinto", donde: '"test": "vitest run --pass' },
     { titulo: "el script `test` solo hace echo", de: '"test": "vitest run"', a: '"test": "echo ok"', tipo: "script-distinto", donde: '"test": "echo ok"' },
     { titulo: "el script `arquitectura` cambia", de: "--config .dependency-cruiser.cjs", a: "--config otra.cjs", tipo: "script-distinto", donde: '"arquitectura"' },
+    { titulo: "el script `arquitectura` deja de encadenar el ejecutor de evidencia (solo dependency-cruiser)", de: " && tsx test/arquitectura/contratos/ejecutar.ts", a: "", tipo: "script-distinto", donde: '"arquitectura"' },
+    { titulo: "el script `arquitectura` encadena el ejecutor con `|| true` (su fallo no frena nada)", de: "ejecutar.ts\",", a: 'ejecutar.ts || true",', tipo: "script-distinto", donde: '"arquitectura"' },
+    { titulo: "el script `arquitectura` solo corre el ejecutor (sin dependency-cruiser)", de: "depcruise src plataforma next.config.ts --config .dependency-cruiser.cjs && ", a: "", tipo: "script-distinto", donde: '"arquitectura"' },
     { titulo: "aparece un `pretest`", de: '    "lint": "eslint"', a: '    "pretest": "echo",\n    "lint": "eslint"', tipo: "script-de-ganchos", donde: '"pretest"' },
     { titulo: "aparece un `posttest`", de: '    "lint": "eslint"', a: '    "posttest": "echo",\n    "lint": "eslint"', tipo: "script-de-ganchos", donde: '"posttest"' },
   ];

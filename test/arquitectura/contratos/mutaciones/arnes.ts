@@ -3,8 +3,9 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, 
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { formatearHallazgo, revisarContratos } from "../motor";
-import { APROBACIONES, revisarAprobaciones, rutasDelMecanismo, type Aprobacion } from "../gobernanza/aprobaciones";
+import { APROBACIONES, idsDeContratosAprobados, revisarAprobaciones, rutasDelMecanismo, type Aprobacion } from "../gobernanza/aprobaciones";
 import { GUARDIANES_ADICIONALES, revisarCumplimiento } from "../gobernanza/cumplimiento";
+import { archivosEnAlcance, problemasEstructurales } from "../gobernanza/evidencia";
 import { ARCHIVO_DE_AREAS, AREAS, POLITICA_DE_TIPOS, areaDe, compararAreas, posicionEnTexto, type DeclaracionDeAreas } from "../gobernanza/areas";
 import { REGLAS_DE_RUTA, clasificarRutas, leerCronsDeVercel, listarRutasConGit, type ReglaDeRuta, type TipoDeRuta } from "../gobernanza/clasificacion";
 import { EXCLUSIONES, type Exclusion } from "../gobernanza/exclusiones";
@@ -82,7 +83,7 @@ export interface ResultadoDelArnes {
   corridas: number;
   milisegundos: number;
   /** En qué se fue el tiempo (ms, acumulado de todas las verificaciones). */
-  tiempos: Readonly<Record<"motor" | "clasificacion" | "areas" | "cumplimiento" | "aprobaciones", number>>;
+  tiempos: Readonly<Record<"motor" | "clasificacion" | "areas" | "cumplimiento" | "aprobaciones" | "evidencia", number>>;
   /** Lo que da el guardián sobre la copia SIN mutar: tiene que ser vacío. */
   baseLimpia: readonly Observado[];
 }
@@ -176,10 +177,15 @@ interface Escenario {
   exclusiones: readonly Exclusion[];
   politicaDeTipos: typeof POLITICA_DE_TIPOS;
   registro: readonly Aprobacion[];
+  /** El piso de archivos leídos de la evidencia. La copia es mínima (no tiene los 2.500 archivos del repo): el piso real se prueba en el repo real, acá solo hace falta que el control exista y falle cuando se lo sube. */
+  piso: number;
   crons: readonly string[];
   ignoradas: readonly string[];
   archivos: readonly string[];
 }
+
+/** El piso de archivos leídos en la copia mínima: basta con que el motor haya leído alguno. */
+const PISO_DE_LA_COPIA = 1;
 
 const escenarioBase = (base: BaseDeMutacion): Escenario => ({
   contratos: base.contratos,
@@ -189,13 +195,14 @@ const escenarioBase = (base: BaseDeMutacion): Escenario => ({
   exclusiones: base.exclusiones,
   politicaDeTipos: POLITICA_DE_TIPOS,
   registro: APROBACIONES,
+  piso: PISO_DE_LA_COPIA,
   crons: base.crons,
   ignoradas: [],
   archivos: base.archivos,
 });
 
 /** Cuánto tardó cada verificación (ms), acumulado: para medir y optimizar el arnés. */
-const tiempos = { motor: 0, clasificacion: 0, areas: 0, cumplimiento: 0, aprobaciones: 0 };
+const tiempos = { motor: 0, clasificacion: 0, areas: 0, cumplimiento: 0, aprobaciones: 0, evidencia: 0 };
 const medir = <T>(clave: keyof typeof tiempos, f: () => T): T => {
   const t0 = performance.now();
   try {
@@ -206,14 +213,17 @@ const medir = <T>(clave: keyof typeof tiempos, f: () => T): T => {
 };
 
 /**
- * `conMecanismo`: además del motor, la clasificación y las áreas, corre el cumplimiento del cableado y el registro de aprobaciones. Se pide en las mutaciones de evasión y en las que tocan el mecanismo
+ * `conMecanismo`: además del motor, la clasificación y las áreas, corre el cumplimiento del cableado, el registro de aprobaciones y los controles estructurales de la evidencia por corrida (`gobernanza/evidencia.ts`). Se pide en las mutaciones de evasión y en las que tocan el mecanismo
  * (ver `tocaElMecanismo`): son las que pueden dar uno de esos hallazgos, y correrlos en las cientos de mutaciones de contratos sería pagar tiempo para no mirar nada.
  */
 function observar(base: BaseDeMutacion, e: Escenario, soloMotor: boolean, conMecanismo: boolean): Observado[] {
   const salida: Observado[] = [];
   let manifiestoValido = true;
+  let archivosLeidos = 0;
   try {
-    for (const h of medir("motor", () => revisarContratos({ raiz: base.raiz, contratos: e.contratos, hoy: e.hoy })).hallazgos) {
+    const del = medir("motor", () => revisarContratos({ raiz: base.raiz, contratos: e.contratos, hoy: e.hoy }));
+    archivosLeidos = del.resumen.archivosLeidos;
+    for (const h of del.hallazgos) {
       salida.push({ verifica: "motor", tipo: h.tipo, archivo: h.archivo, linea: h.linea, columna: h.columna, sujeto: h.contrato, que: h.que, como: `${h.como} · ${formatearHallazgo(h).split("\n")[0]}` });
     }
   } catch (error) {
@@ -238,6 +248,17 @@ function observar(base: BaseDeMutacion, e: Escenario, soloMotor: boolean, conMec
   }
   const aprobaciones = medir("aprobaciones", () => revisarAprobaciones({ raiz: base.raiz, contratos: e.contratos, exclusiones: e.exclusiones, politicaDeTipos: e.politicaDeTipos, registro: e.registro }));
   for (const h of aprobaciones.hallazgos) salida.push({ verifica: "aprobaciones", tipo: h.tipo, archivo: h.archivo, linea: h.linea, columna: h.columna, sujeto: h.clave, que: h.que, como: h.como });
+  // La evidencia por corrida: los tres controles que separan «pasó» de «no encontró nada» (ids distintos del aprobado, alcance de 0 archivos, menos archivos leídos que el piso).
+  const estructurales = medir("evidencia", () =>
+    problemasEstructurales({
+      ids: e.contratos.map((c) => c.id).sort(),
+      aprobados: idsDeContratosAprobados(e.registro),
+      alcances: e.contratos.map((c) => ({ id: c.id, raices: c.alcance.raices, archivos: archivosEnAlcance(base.raiz, c).length })),
+      archivosLeidos,
+      piso: e.piso,
+    })
+  );
+  for (const p of estructurales) salida.push({ verifica: "evidencia", tipo: p.tipo, archivo: p.archivo, linea: 1, columna: 1, sujeto: p.sujeto, que: p.que, como: p.como });
   return salida;
 }
 
@@ -394,8 +415,8 @@ function evaluar(e: MutacionDeMatriz, m: Mutacion, obs: readonly Observado[], ra
  * cambia un archivo del mecanismo, de la carpeta de contratos o uno de los guardianes adicionales.
  */
 function tocaElMecanismo(e: MutacionDeMatriz, m: Mutacion, mecanismo: ReadonlySet<string>): boolean {
-  if (e.clase === "evasion" || e.ademas.length > 0 || e.esperado.verifica === "cumplimiento" || e.esperado.verifica === "aprobaciones") return true;
-  if (m.contratos !== null || m.exclusiones !== null || m.politicaDeTipos !== null || m.registro !== null) return true;
+  if (e.clase === "evasion" || e.ademas.length > 0 || e.esperado.verifica === "cumplimiento" || e.esperado.verifica === "aprobaciones" || e.esperado.verifica === "evidencia") return true;
+  if (m.contratos !== null || m.exclusiones !== null || m.politicaDeTipos !== null || m.registro !== null || m.piso !== null) return true;
   const afecta = (ruta: string): boolean => ruta.startsWith(PREFIJO_DEL_GUARDIAN) || [...mecanismo].some((r) => r === ruta || r.startsWith(`${ruta}/`));
   return m.cambios.some((c) => (c.op === "mover" ? afecta(c.de) || afecta(c.a) : afecta(c.ruta)));
 }
@@ -408,6 +429,7 @@ const escenarioDe = (base: BaseDeMutacion, m: Mutacion): Escenario => ({
   exclusiones: m.exclusiones ?? base.exclusiones,
   politicaDeTipos: m.politicaDeTipos ?? POLITICA_DE_TIPOS,
   registro: m.registro ?? APROBACIONES,
+  piso: m.piso ?? PISO_DE_LA_COPIA,
   crons: m.crons ?? base.crons,
   ignoradas: m.ignoradas ?? [],
   archivos: m.listadoVacio ? [] : aplicarAlListado(base.archivos, m.cambios),
@@ -419,7 +441,7 @@ const textoEsperado = (e: MutacionDeMatriz): string =>
 
 export async function ejecutarMatriz(o: OpcionesDelArnes): Promise<ResultadoDelArnes> {
   const inicio = Date.now();
-  tiempos.motor = tiempos.clasificacion = tiempos.areas = 0;
+  tiempos.motor = tiempos.clasificacion = tiempos.areas = tiempos.cumplimiento = tiempos.aprobaciones = tiempos.evidencia = 0;
   const p = prepararBase(o);
   try {
     const matriz = o.alterar ? o.alterar(construirMatriz(p.base)) : construirMatriz(p.base);

@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import ts from "typescript";
-import { describe, expect, it } from "vitest";
 
 /**
  * Cercos de la ola «precio y carta», Fase 1 (DEC-01: «cercos primero, línea de base que solo baja»; auditoría §19.5).
@@ -30,7 +29,6 @@ import { describe, expect, it } from "vitest";
  */
 
 export const RAIZ_DEL_REPO = join(__dirname, "../../..");
-const DIR_LINEA_DE_BASE = join(__dirname, "linea-de-base");
 
 /** Entrada (ruta relativa a la raíz del repo, con `/`; o un nombre, como un modelo) → tipo de violación → cuenta (> 0). */
 export type Cuentas = Record<string, Record<string, number>>;
@@ -357,19 +355,4 @@ export function revisarCerco(cerco: Cerco, opciones: OpcionesDeRevision): Revisi
     else problemas.push(`El JSON de «${cerco.regla}» no está en su forma canónica (totales, orden o meta desactualizados): regeneralo con BAJAR_CERCOS=1 ${comando}.`);
   }
   return { problemas, escritura: "ninguna", medido };
-}
-
-/** Registra en Vitest el test del trinquete de `cerco` contra la línea de base real del repo (`linea-de-base/`). */
-export function probarCerco(cerco: Cerco): void {
-  describe(`cerco «${cerco.regla}»: la línea de base solo baja`, () => {
-    it("ninguna cuenta subió, ninguna bajó sin fijarse, y las excepciones y los motivos siguen haciendo falta", () => {
-      const revision = revisarCerco(cerco, {
-        raizDelRepo: RAIZ_DEL_REPO,
-        dirLineaDeBase: DIR_LINEA_DE_BASE,
-        bajar: process.env.BAJAR_CERCOS === "1",
-        crear: process.env.CREAR_CERCOS === "1",
-      });
-      expect(revision.problemas, revision.problemas.join("\n\n")).toEqual([]);
-    });
-  });
 }

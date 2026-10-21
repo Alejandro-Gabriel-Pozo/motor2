@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { claveDeContrato } from "../gobernanza/aprobaciones";
 import { ARCHIVO_DE_AREAS } from "../gobernanza/areas";
 import { TIPOS_DE_CUMPLIMIENTO } from "../gobernanza/cumplimiento";
-import { MOTIVO_MINIMO, RESPONSABLES, esFechaValida, evaluarVencimientos, referenciaValida } from "../politica";
+import { MOTIVO_MINIMO, PISO_DE_ARCHIVOS_LEIDOS, RESPONSABLES, esFechaValida, evaluarVencimientos, referenciaValida } from "../politica";
 import type { Deuda, Contrato } from "../tipos";
 import { ARCHIVO_DEL_MANIFIESTO, archivosDelAlcance, elegirConsumidor, elegirTokenUsado, hallazgoDeEntrada, primerUsoDelArea, rutaNuevaEnElAlcance, type BaseDeMutacion, type EjemplosDeContrato, type Verifica } from "./operadores";
 
@@ -111,7 +112,7 @@ const TITULO_DE_COBERTURA_DE_CUMPLIMIENTO = "cada tipo de hallazgo de cumplimien
 /**
  * Los tipos de hallazgo que ninguna mutación del arnés produce y que cubre un test: `verifica/tipo` → el archivo y el título EXACTO del test (el meta-test verifica que existe). Hoy: los
  * tipos del cumplimiento del cableado (cada uno tiene un caso rojo en `cumplimiento.test.ts`, que lo exige con un meta-test; el arnés además produce varios) y `aprobacion-invalida` del registro
- * de aprobaciones (una entrada mal armada, que el arnés no puede fabricar sin tocar el registro real).
+ * de aprobaciones (una entrada mal armada, que el arnés no puede fabricar sin tocar el registro real), y dos tipos de la evidencia por corrida (`hallazgos` y `matriz-con-huecos`).
  */
 export const CUBIERTOS_EN_MOTOR_TEST: Readonly<Record<string, { archivo: string; titulo: string }>> = {
   "aprobaciones/aprobacion-invalida": {
@@ -119,6 +120,8 @@ export const CUBIERTOS_EN_MOTOR_TEST: Readonly<Record<string, { archivo: string;
     titulo: "una aprobación mal armada es un hallazgo: motivo de 19 caracteres, referencia inventada, huella que no es un hash",
   },
   ...Object.fromEntries(TIPOS_DE_CUMPLIMIENTO.map((tipo) => [`cumplimiento/${tipo}`, { archivo: ARCHIVO_DE_CUMPLIMIENTO_TEST, titulo: TITULO_DE_COBERTURA_DE_CUMPLIMIENTO }])),
+  // De la evidencia por corrida, la matriz produce los tres controles estructurales; `hallazgos` (cualquier hallazgo de cualquier mecanismo) y `matriz-con-huecos` (un hueco en esta misma matriz) los cubre el test de la evidencia.
+  ...Object.fromEntries(["hallazgos", "matriz-con-huecos"].map((tipo) => [`evidencia/${tipo}`, { archivo: "test/arquitectura/contratos/gobernanza/evidencia.test.ts", titulo: "cada tipo de problema de evidencia que la matriz no produce lo cubre un caso rojo de este archivo" }])),
 };
 
 /** Un hueco conocido y su deuda: la misma forma y el mismo gobierno que la deuda del motor (`Deuda`), con el id del hueco como `fragmento`. */
@@ -618,6 +621,49 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
         ]),
       ],
       noAplica: [],
+    });
+  }
+
+  // --- 9. La evidencia por corrida no está vacía: «pasó» no es «no encontró nada» (el ejecutor de evidencia, camino B, encadenado en `npm run arquitectura`).
+  if (primero !== undefined) {
+    const inv = "guardian/evidencia-no-vacia";
+    const evidencia = el("test/arquitectura/contratos/gobernanza/evidencia.ts", "la evidencia por corrida y sus controles (ids, alcance, piso)");
+    const ejecutor = el("test/arquitectura/contratos/ejecutar.ts", "el ejecutor de evidencia (camino B: tsx, sin Vitest)");
+    const piso = el(POLITICA.ruta, "PISO_DE_ARCHIVOS_LEIDOS: el piso aprobado de archivos leídos");
+    const elPaquete = el("package.json", 'el script "arquitectura" (encadena el ejecutor)');
+    const definicionDelPrimero = `test/arquitectura/contratos/contratos/${primero.id}.ts`;
+    const marcaDelPrimero = esp("motor", "marca-desconocida", primero.fuente.archivo, "calculada", "no es de ningún contrato del manifiesto");
+    out.push({
+      id: inv,
+      descripcion:
+        "La corrida deja evidencia de lo que cubrió y FALLA si pasó en vacío: el conjunto de contratos del manifiesto es exactamente el aprobado, todo contrato tiene archivos en su alcance, el motor leyó al menos el piso aprobado de archivos y no hay ningún hallazgo. Quitar el ejecutor de `npm run arquitectura`, borrarlo o bajar el piso lo ve el cumplimiento y el registro de aprobaciones.",
+      origen: "guardian",
+      mecanismo: ["evidencia", "cumplimiento", "aprobaciones", "motor"],
+      elementos: {
+        definen: [evidencia, piso, ejecutor],
+        aplican: [elPaquete, el(MANIFIESTO.ruta, "los contratos cuyo conjunto se compara con el aprobado"), REGISTRO],
+        verifican: [evidencia, el("test/arquitectura/contratos/gobernanza/evidencia.test.ts", "el test de la evidencia: casos sintéticos rojo y verde y la corrida sobre el repo real"), CUMPLIMIENTO, REGISTRO, ARNES],
+      },
+      mutaciones: [
+        // El manifiesto vaciado: el motor no vigila nada y termina en verde. Lo dice la evidencia (ids distintos del aprobado), además del motor (las marcas quedan sueltas) y el cumplimiento.
+        mut(inv, "eliminacion", "vaciar-manifiesto", {}, MANIFIESTO, esp("evidencia", "ids-distintos-del-aprobado", ARCHIVO_DEL_MANIFIESTO, "sin-posicion", "ningún contrato"), "", [marcaDelPrimero, esp("cumplimiento", "manifiesto-vacio", ARCHIVO_DEL_MANIFIESTO, "sin-posicion", "ningún contrato")]),
+        // El piso por encima de lo que el motor lee: el recorrido «no mira el repo entero».
+        mut(inv, "alteracion", "piso-de-evidencia", {}, piso, esp("evidencia", "archivos-bajo-el-piso", POLITICA.ruta, "sin-posicion", "el piso aprobado es")),
+        // Un contrato en el manifiesto al que el registro de aprobaciones no conoce: el conjunto ya no es el aprobado.
+        mut(inv, "desconexion", "registro", { modo: "quitar-aprobacion", clave: claveDeContrato(primero.id) }, REGISTRO, esp("evidencia", "ids-distintos-del-aprobado", ARCHIVO_DEL_MANIFIESTO, "sin-posicion", `sobran «${primero.id}»`), "", [
+          esp("cumplimiento", "contrato-sin-aprobar", ARCHIVO_DEL_MANIFIESTO, "sin-posicion", `«${primero.id}»`),
+          esp("aprobaciones", "sin-aprobacion", definicionDelPrimero, "sin-posicion", "no tiene ninguna aprobación"),
+        ]),
+        // El alcance de un contrato movido de carpeta: sin archivos que mirar el motor pasaría en vacío; la evidencia lo dice con el id del contrato.
+        mut(inv, "exclusion-del-analisis", "sacar-alcance", { contrato: primero.id }, el(primero.alcance.raices[0] ?? primero.fuente.archivo, `el alcance de «${primero.id}» (${primero.alcance.raices.join(", ")}) queda sin archivos`), esp("evidencia", "alcance-cero", definicionDelPrimero, "sin-posicion", "no tiene ningún archivo en su alcance"), "", [
+          esp("motor", "alcance-vacio", primero.fuente.archivo, "sin-posicion", "no encontró ningún archivo"),
+        ]),
+        // Evasiones: sacar el ejecutor de `npm run arquitectura`, borrarlo, o bajar el piso a 1.
+        mut(inv, "evasion", "texto", { ruta: "package.json", de: " && tsx test/arquitectura/contratos/ejecutar.ts", a: "", donde: '"arquitectura": "depcruise' }, elPaquete, esp("cumplimiento", "script-distinto", "package.json", "calculada", "ejecutar.ts"), "", [huella("package.json", "package.json#scripts")]),
+        mut(inv, "evasion", "archivo", { ruta: ejecutor.ruta, modo: "borrar" }, ejecutor, esp("aprobaciones", "archivo-ausente", ejecutor.ruta, "sin-posicion", "ya no existe")),
+        mut(inv, "evasion", "texto", { ruta: POLITICA.ruta, de: `PISO_DE_ARCHIVOS_LEIDOS = ${PISO_DE_ARCHIVOS_LEIDOS};`, a: "PISO_DE_ARCHIVOS_LEIDOS = 1;" }, piso, huella(POLITICA.ruta, "archivo del mecanismo, entero")),
+      ],
+      noAplica: [{ clase: "duplicacion", motivo: "un contrato repetido en el manifiesto lo rechaza el propio motor (manifiesto mal armado: lanza y el ejecutor sale con código 1): está en guardian/manifiesto-consistente" }],
     });
   }
   return out;

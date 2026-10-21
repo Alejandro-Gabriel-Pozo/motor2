@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { contarCoincidencias, medirPorArchivo, probarCerco, sinComentarios, type Cerco } from "./cercos/trinquete";
+import { contarCoincidencias, medirPorArchivo, sinComentarios, type Cerco } from "./cercos/trinquete";
+import { probarCerco } from "./cercos/probar-cerco";
 
 /**
  * Cerco «primitivas de dominio» (ola «precio y carta», Fase 1; auditoría §3.6 y §19.4): la validación de un importe o de un porcentaje

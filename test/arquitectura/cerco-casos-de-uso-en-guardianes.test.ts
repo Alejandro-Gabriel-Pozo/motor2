@@ -1,7 +1,8 @@
 import { posix } from "node:path";
 import { describe, expect, it } from "vitest";
 import { descubrirCasosDeUsoReales } from "./guardas/casos-de-uso";
-import { leer, listarArchivos, probarCerco, RAIZ_DEL_REPO, sinComentarios, type Cerco, type Cuentas } from "./cercos/trinquete";
+import { leer, listarArchivos, RAIZ_DEL_REPO, sinComentarios, type Cerco, type Cuentas } from "./cercos/trinquete";
+import { probarCerco } from "./cercos/probar-cerco";
 
 /**
  * Cerco «casos de uso en los guardianes» (ola «precio y carta», Fase 1; contexto «dueño del dato»: los atajos de Carta usan el permiso y

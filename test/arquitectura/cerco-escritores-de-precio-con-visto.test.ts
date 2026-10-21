@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join, posix } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { arbolDe, leer, listarArchivos, probarCerco, RAIZ_DEL_REPO, sinComentarios, type Cerco, type Cuentas } from "./cercos/trinquete";
+import { arbolDe, leer, listarArchivos, RAIZ_DEL_REPO, sinComentarios, type Cerco, type Cuentas } from "./cercos/trinquete";
+import { probarCerco } from "./cercos/probar-cerco";
 
 /**
  * Cerco «escritores de precio con visto» (ola «precio y carta», Fase 1; auditoría §19.2 cerco 5, «no sobrescribir»). Informativo, con

@@ -24,6 +24,14 @@ export const RENOVACIONES_SIN_AVISO = 2;
 /** Lo que vence dentro de estos días (o menos) se avisa en el reporte, sin fallar. */
 const AVISO_DE_VENCIMIENTO_DIAS = 14;
 
+/**
+ * El PISO de archivos que el motor tiene que haber LEÍDO al correr sobre el repo real (`Resumen.archivosLeidos`): lo que separa «pasó» de «no encontró nada». Un guardián que recorre 12 archivos en vez
+ * de 2.500 (una carpeta movida, un recorrido que falla en silencio, un filtro) no encuentra nada y dice «verde»; la evidencia por corrida (`ejecutar.ts`, encadenado en `npm run arquitectura`) falla si se leyó
+ * menos que esto. Se fijó en el 90 % de lo medido el 2026-10-21 (2.505 archivos leídos → 2.254, el 90 % redondeado hacia abajo): el repo crece más de lo que se achica, así que el piso no estorba, y bajarlo es cambiar este archivo, que
+ * está congelado por hash en el registro de aprobaciones. Subirlo con el repo es lo esperable (volver a medir con `npm run arquitectura` y tomar el 90 %).
+ */
+export const PISO_DE_ARCHIVOS_LEIDOS = 2254;
+
 /** La referencia de una aprobación: `PR #12`, `commit 1f8d2c5c` (7 a 40 hexadecimales en minúscula) o `DEC-01`. */
 const RE_REFERENCIA = /^(?:PR #\d+|commit [0-9a-f]{7,40}|DEC-\d{2,})$/;
 export const referenciaValida = (referencia: string): boolean => RE_REFERENCIA.test(referencia);
@@ -39,7 +47,8 @@ export function esFechaValida(fecha: string): boolean {
 export const fechaUtcDeHoy = (): string => new Date().toISOString().slice(0, 10);
 
 const DIA_MS = 86_400_000;
-const diasEntre = (desde: string, hasta: string): number => Math.round((Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / DIA_MS);
+/** Los días de calendario de `desde` a `hasta` (`AAAA-MM-DD`); negativo si `hasta` es anterior. Lo usan el vencimiento y la evidencia por corrida (`gobernanza/evidencia.ts`). */
+export const diasEntre = (desde: string, hasta: string): number => Math.round((Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / DIA_MS);
 
 export interface EntradaConVencimiento {
   clase: "excepcion" | "deuda";

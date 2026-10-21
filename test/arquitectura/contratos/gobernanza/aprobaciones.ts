@@ -16,8 +16,8 @@ import type { Exclusion } from "./exclusiones";
  * borra una entrada: el registro es el historial.
  *
  * QUÉ SE HASHEA (las piezas se llaman «claves»; la clave de una pieza que no es un archivo entero lleva `#forma`):
- *  - ENTEROS: `motor.ts`, `tipos.ts`, `politica.ts`, `indice.ts`, `adaptadores/*.ts`, `gobernanza/{clasificacion,usos,cumplimiento}.ts`, `mutaciones/{arnes,operadores}.ts`,
- *    `vitest.config.ts`, `playwright.config.ts` y `.gitignore`.
+ *  - ENTEROS: `motor.ts`, `tipos.ts`, `politica.ts`, `indice.ts`, `ejecutar.ts` (el ejecutor de evidencia, G5), `adaptadores/*.ts`, `gobernanza/{clasificacion,usos,cumplimiento,evidencia}.ts`,
+ *    `mutaciones/{arnes,operadores}.ts`, `vitest.config.ts`, `playwright.config.ts` y `.gitignore`.
  *  - LA LÓGICA sin los datos (`#logica`): `gobernanza/areas.ts`, `gobernanza/exclusiones.ts` y este archivo. Sus DATOS (las declaraciones de `AREAS`, los ids de `IDS_DE_CONTRATO`, la
  *    lista `EXCLUSIONES`, el registro `APROBACIONES`) cambian a menudo y se vigilan por su forma canónica o por otro guardián. Solo se sacan del hash las sentencias que son
  *    datos PUROS (literales, listas, objetos, referencias a otra constante); una que tenga una llamada, una función o una cuenta se queda en el hash.
@@ -81,6 +81,15 @@ export const APROBACIONES: readonly Aprobacion[] = [
   { archivo: "test/arquitectura/contratos/mutaciones/operadores.ts", blob: "d65b7bc07dd01c5c9206fab04cb8a2943d2f4c1c", referencia: "DEC-03", motivo: "G6: los 7 huecos conocidos de la matriz pasan a mutaciones protegidas (el arnés verifica también el cumplimiento y el registro de aprobaciones; los evaluadores memorizan por texto)" },
   // Paso F6 6.4 (DEC-03): la carta del panel pasa a los tokens; varios consumidores de un mismo token y de un área que declara `tokens-visuales`
   { archivo: "test/arquitectura/contratos/mutaciones/operadores.ts", blob: "24f843bff00e4112a93605bb8ff5360b722ecd0d", referencia: "DEC-03", motivo: "cambio del paso F6 6.4: quitar-token, extension-no-analizada y reglas toleran los efectos legítimos de que un token tenga varios usos y de que un área declare tokens-visuales (la mutación esperada sigue siendo obligatoria)" },
+  // Paso G5 (DEC-03): ejecutor de evidencia por corrida (camino B, tsx, encadenado en npm run arquitectura), su módulo de veredicto, el piso de archivos leídos y el invariante «evidencia no vacía» de la matriz.
+  { archivo: "package.json#scripts", blob: "0f83a78fb47af6cee80d68608e491dff85477c17", referencia: "DEC-03", motivo: "G5: ejecutor de evidencia por corrida encadenado en npm run arquitectura; «pasó» no es «no encontró nada» (ids aprobados, alcance > 0, piso de archivos leídos, 0 hallazgos)" },
+  { archivo: "test/arquitectura/contratos/ejecutar.ts", blob: "aed3d54625bd3361f1a10a01eded005d1d0a179c", referencia: "DEC-03", motivo: "G5: ejecutor de evidencia por corrida encadenado en npm run arquitectura; «pasó» no es «no encontró nada» (ids aprobados, alcance > 0, piso de archivos leídos, 0 hallazgos)" },
+  { archivo: "test/arquitectura/contratos/gobernanza/aprobaciones.ts#logica", blob: "6f756ca6019dba331280d0200810cf8ffcd70114", referencia: "DEC-03", motivo: "G5: ejecutor de evidencia por corrida encadenado en npm run arquitectura; «pasó» no es «no encontró nada» (ids aprobados, alcance > 0, piso de archivos leídos, 0 hallazgos)" },
+  { archivo: "test/arquitectura/contratos/gobernanza/cumplimiento.ts", blob: "30c8d213b3a114c2129071c2d69b8cad50eb1d0f", referencia: "DEC-03", motivo: "G5: ejecutor de evidencia por corrida encadenado en npm run arquitectura; «pasó» no es «no encontró nada» (ids aprobados, alcance > 0, piso de archivos leídos, 0 hallazgos)" },
+  { archivo: "test/arquitectura/contratos/gobernanza/evidencia.ts", blob: "28bc272be777d0cb937ba71c2d636b648ae89044", referencia: "DEC-03", motivo: "G5: ejecutor de evidencia por corrida encadenado en npm run arquitectura; «pasó» no es «no encontró nada» (ids aprobados, alcance > 0, piso de archivos leídos, 0 hallazgos)" },
+  { archivo: "test/arquitectura/contratos/mutaciones/arnes.ts", blob: "61c05fa0d7c47059d06a5cd3250e6994f5a299c8", referencia: "DEC-03", motivo: "G5: ejecutor de evidencia por corrida encadenado en npm run arquitectura; «pasó» no es «no encontró nada» (ids aprobados, alcance > 0, piso de archivos leídos, 0 hallazgos)" },
+  { archivo: "test/arquitectura/contratos/mutaciones/operadores.ts", blob: "b966056de369f154e01c0c809d47f33e039c2acf", referencia: "DEC-03", motivo: "G5: ejecutor de evidencia por corrida encadenado en npm run arquitectura; «pasó» no es «no encontró nada» (ids aprobados, alcance > 0, piso de archivos leídos, 0 hallazgos)" },
+  { archivo: "test/arquitectura/contratos/politica.ts", blob: "c51c23975238a6d944e6de72846ed288162ac254", referencia: "DEC-03", motivo: "G5: ejecutor de evidencia por corrida encadenado en npm run arquitectura; «pasó» no es «no encontró nada» (ids aprobados, alcance > 0, piso de archivos leídos, 0 hallazgos)" },
 ];
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -95,6 +104,8 @@ const ARCHIVOS_ENTEROS: readonly string[] = [
   `${CARPETA}/gobernanza/clasificacion.ts`,
   `${CARPETA}/gobernanza/usos.ts`,
   `${CARPETA}/gobernanza/cumplimiento.ts`,
+  `${CARPETA}/gobernanza/evidencia.ts`,
+  `${CARPETA}/ejecutar.ts`,
   `${CARPETA}/mutaciones/arnes.ts`,
   `${CARPETA}/mutaciones/operadores.ts`,
   "vitest.config.ts",

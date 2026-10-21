@@ -6,6 +6,7 @@ import { RAIZ_DEL_REPO } from "../cercos/trinquete";
 import { AREAS, type TipoDeHallazgoDeArea } from "./gobernanza/areas";
 import type { TipoDeHallazgoDeAprobacion } from "./gobernanza/aprobaciones";
 import { TIPOS_DE_CUMPLIMIENTO, evaluarConfigDeVitest } from "./gobernanza/cumplimiento";
+import { TIPOS_DE_PROBLEMA_DE_EVIDENCIA } from "./gobernanza/evidencia";
 import type { TipoDeHallazgoDeRuta } from "./gobernanza/clasificacion";
 import { MANIFIESTO } from "./manifiesto";
 import { CLASES_DE_MUTACION, CUBIERTOS_EN_MOTOR_TEST, DEUDA_DE_HUECOS, EJEMPLOS_DE_CONTRATOS, problemasDeHuecos, problemasDeLaDeuda, type DeudaDeHueco, type Matriz } from "./mutaciones/matriz";
@@ -107,7 +108,7 @@ describe("meta-tests de la matriz", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("(ii) cada tipo de hallazgo del motor, de las áreas, de la clasificación, del cumplimiento y del registro de aprobaciones lo produce alguna mutación protegida, o lo cubre un test que existe (CUBIERTOS_EN_MOTOR_TEST)", () => {
+  it("(ii) cada tipo de hallazgo del motor, de las áreas, de la clasificación, del cumplimiento, del registro de aprobaciones y de la evidencia lo produce alguna mutación protegida, o lo cubre un test que existe (CUBIERTOS_EN_MOTOR_TEST)", () => {
     // Exhaustivos por tipo: un tipo nuevo en `areas.ts` o `clasificacion.ts` no compila hasta que se lo lista acá.
     const deAreas: Record<TipoDeHallazgoDeArea, true> = { "area-sin-declaracion": true, "area-fantasma": true, "dependencia-omitida": true, "dependencia-falsa": true, "area-sin-clasificar": true };
     const deRutas: Record<TipoDeHallazgoDeRuta, true> = {
@@ -133,6 +134,7 @@ describe("meta-tests de la matriz", () => {
       ...Object.keys(deRutas).map((t) => `clasificacion/${t}`),
       ...Object.keys(deAprobaciones).map((t) => `aprobaciones/${t}`),
       ...TIPOS_DE_CUMPLIMIENTO.map((t) => `cumplimiento/${t}`),
+      ...TIPOS_DE_PROBLEMA_DE_EVIDENCIA.map((t) => `evidencia/${t}`),
     ];
     const sinCubrir = requeridos.filter((r) => !producidos.has(r) && !(r in CUBIERTOS_EN_MOTOR_TEST));
     expect(sinCubrir, "ningún invariante de la matriz produce estos tipos de hallazgo: agregá una mutación o listalos en CUBIERTOS_EN_MOTOR_TEST con el test que los cubre").toEqual([]);
@@ -140,7 +142,7 @@ describe("meta-tests de la matriz", () => {
       expect(existeElTest(readFileSync(join(RAIZ_DEL_REPO, ...archivo.split("/")), "utf8"), titulo), `${tipo}: no existe el test «${titulo}» en ${archivo}`).toBe(true);
     }
     // El arnés mismo produce los tipos principales del cumplimiento y del registro (no solo los cubre un test): sin esto el guardián del guardián no estaría en la matriz.
-    for (const tipo of ["cumplimiento/prueba-desactivada", "cumplimiento/vitest-excluye-guardian", "cumplimiento/guardian-ausente", "cumplimiento/ci-sin-paso", "cumplimiento/ci-continue-on-error", "cumplimiento/script-ausente", "aprobaciones/huella-distinta", "aprobaciones/sin-aprobacion", "aprobaciones/archivo-ausente"]) {
+    for (const tipo of ["evidencia/ids-distintos-del-aprobado", "evidencia/alcance-cero", "evidencia/archivos-bajo-el-piso", "cumplimiento/prueba-desactivada", "cumplimiento/vitest-excluye-guardian", "cumplimiento/guardian-ausente", "cumplimiento/ci-sin-paso", "cumplimiento/ci-continue-on-error", "cumplimiento/script-ausente", "aprobaciones/huella-distinta", "aprobaciones/sin-aprobacion", "aprobaciones/archivo-ausente"]) {
       expect(producidos.has(tipo), tipo).toBe(true);
     }
   });

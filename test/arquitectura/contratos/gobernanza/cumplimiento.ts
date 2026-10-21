@@ -305,10 +305,13 @@ function workflowSinMemoria(texto: string, archivo: string): HallazgoDeCumplimie
 // (b) package.json
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/** Los scripts cuyo valor exacto se exige. `arquitectura` es el actual de `package.json`: si cambia (p. ej. se le encadena otro comando) se cambia acá, con su aprobación. */
+/**
+ * Los scripts cuyo valor exacto se exige. `arquitectura` es el actual de `package.json`: dependency-cruiser Y el ejecutor de evidencia de los contratos (`ejecutar.ts`, el camino B del guardián, con `tsx` y sin Vitest);
+ * sacar cualquiera de los dos es un `script-distinto`. Si cambia (p. ej. se le encadena otro comando) se cambia acá, con su aprobación.
+ */
 const SCRIPTS_ESPERADOS: Readonly<Record<string, string>> = {
   test: "vitest run",
-  arquitectura: "depcruise src plataforma next.config.ts --config .dependency-cruiser.cjs",
+  arquitectura: "depcruise src plataforma next.config.ts --config .dependency-cruiser.cjs && tsx test/arquitectura/contratos/ejecutar.ts",
 };
 const GANCHOS_PROHIBIDOS = ["pretest", "posttest", "prearquitectura", "postarquitectura"];
 

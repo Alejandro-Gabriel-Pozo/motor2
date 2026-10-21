@@ -3,7 +3,8 @@ import { join } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { llamadasALaBase } from "../../scripts/arquitectura/analizar-fuente";
-import { leer, listarArchivos, probarCerco, RAIZ_DEL_REPO, sinComentarios, type Cerco, type Cuentas } from "./cercos/trinquete";
+import { leer, listarArchivos, RAIZ_DEL_REPO, sinComentarios, type Cerco, type Cuentas } from "./cercos/trinquete";
+import { probarCerco } from "./cercos/probar-cerco";
 
 /**
  * Cerco «dueño único por modelo» (ola «precio y carta», Fase 1; contexto «dueño del dato» y regla 7: un atajo desde otra pantalla es
