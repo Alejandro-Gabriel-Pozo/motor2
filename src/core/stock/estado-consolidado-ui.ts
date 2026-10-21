@@ -22,7 +22,7 @@ export const ESTADO_STOCK_CONSOLIDADO_LABEL: Record<EstadoStockConsolidado, stri
 
 export const ESTADO_STOCK_CONSOLIDADO_COLOR: Record<EstadoStockConsolidado, string> = {
   NEGATIVO: "text-red-600",
-  CON_DESVIO: "text-amber-600",
+  CON_DESVIO: "text-amber-700",
   SIN_CONTEO: "text-neutral-500",
   // text-neutral-400 daba 2.58:1 sobre blanco (WCAG AA pide 4.5:1 para texto normal) — encontrado corriendo el proyecto
   // Playwright de la demo (§5, docs/planes-demo-y-claridad-reportes-2026-09-21.md, tramo 5) con datos reales: ninguna de
