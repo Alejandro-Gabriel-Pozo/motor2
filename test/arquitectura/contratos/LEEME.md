@@ -118,9 +118,76 @@ HUECO: contrato/borde-propio-de-carta · eliminacion · src/app/globals.css · l
 
 **Límite honesto.** El arnés prueba el MECANISMO sobre los contratos declarados: que el guardián protege que la fuente única exista, esté marcada, esté declarada por quien la usa y no se copie. NO muta el comportamiento de una función de negocio (por ejemplo, qué devuelve `redondearMoneda`): eso lo cubren las pruebas de esa función, y la prueba de mutación real del código con StrykerJS se corre aparte. Las constantes de la política de plazos sí se mutan (60 → 365, motivo mínimo, responsables), pero se verifican corriendo las pruebas de borde del propio guardián en un banco aparte, no con un hallazgo.
 
+## Guardián del guardián y aprobaciones (paso G6)
+
+Decisiones del dueño: fail-closed estricto; todo guardián necesita su guardián; la «aprobación independiente» es SOLO DETECCIÓN (el dueño trabaja solo: sin cuenta aparte y sin CODEOWNERS obligatorio); toda excepción y toda deuda vencen como mucho a los 60 días; los casos legítimos permanentes son parte de la definición del contrato; cambiar el mecanismo tiene que quedar registrado y aprobado. Dos piezas lo cumplen, las dos dentro de `npm test` (y en el arnés de mutaciones):
+
+- **Registro de aprobaciones** (`gobernanza/aprobaciones.ts`, probado por `aprobaciones.test.ts`): la huella de cada pieza del mecanismo y quién aprobó cada cambio. Es el patrón de `test/arquitectura/caracterizaciones-congeladas.test.ts`.
+- **Cumplimiento** (`gobernanza/cumplimiento.ts`, probado por `cumplimiento.test.ts`): evaluadores PUROS del cableado (texto de entrada, hallazgos con `archivo:línea` y corrección) para `ci.yml`, `package.json`, `vitest.config.ts` y los tests protegidos. Dice POR QUÉ un cambio apaga al guardián aunque alguien ya lo haya aprobado en el registro.
+
+### Qué se hashea y por qué
+
+La huella es el hash de blob de git (`git hash-object`) del contenido normalizado a LF; en las formas canónicas, el blob del JSON de claves ordenadas. Cada pieza (la «clave» del registro) es un archivo o `archivo#forma`:
+
+| Pieza | Forma | Por qué |
+|---|---|---|
+| `motor.ts`, `tipos.ts`, `politica.ts`, `indice.ts`, `adaptadores/*.ts` (cada uno), `gobernanza/{clasificacion,usos,cumplimiento}.ts`, `mutaciones/{arnes,operadores}.ts`, `vitest.config.ts`, `playwright.config.ts`, `.gitignore` | archivo entero | es el mecanismo: un byte distinto es otro guardián (`.gitignore` esconde código, las configuraciones deciden qué corre) |
+| `gobernanza/areas.ts#logica`, `gobernanza/exclusiones.ts#logica`, `gobernanza/aprobaciones.ts#logica` | el archivo SIN sus datos (`AREAS`, `IDS_DE_CONTRATO`, `EXCLUSIONES`, `APROBACIONES`) | los datos cambian a menudo y los vigila otra pieza; solo se sacan sentencias que son datos puros (literales, listas, objetos, referencias a otra constante): una que llame a una función o haga una cuenta se queda en el hash |
+| `contratos/<id>.ts#gobernado` (uno por contrato) | `{ id, excepciones, casosLegitimos }` canónico | son los dos campos que pueden SILENCIAR un uso; el resto de la definición cambia con el contrato y lo vigilan el motor y las mutaciones |
+| `gobernanza/exclusiones.ts#exclusiones` | las exclusiones de la clasificación, enteras | es la única puerta para dejar un archivo fuera de las reglas de rutas |
+| `gobernanza/areas.ts#politica-de-tipos` | qué tipos de ruta declaran contratos | un tipo que pasa a «no declara» se exime de toda declaración |
+| `package.json#scripts` | solo la clave `scripts`, canónica | Dependabot cambia las dependencias y no tiene que disparar nada |
+| `.github/workflows/ci.yml#sin-sha` | el workflow con `uses: dueño/repo@<sha> # versión` reducido a `uses: dueño/repo@SHA` | una actualización de Dependabot no pone rojo cada pull request (los SHA los vigila `despliegues-y-cadena-de-suministro.test.ts`); cualquier otro cambio del workflow sí |
+
+**Lo que NO se hashea:** la deuda (ya la gobiernan los vencimientos de 60 días), `manifiesto.ts`, `matriz.ts`, los tests y el resto de la definición de cada contrato (`senales`, `alcance`, `declaracion`). Es el costo de no congelar cada cambio legítimo: ver los límites de abajo.
+
+### Cómo se agrega una aprobación
+
+1. Hacé el cambio. El guardián se pone rojo con el archivo, la huella actual y la línea para pegar:
+
+```
+test/arquitectura/contratos/motor.ts:1:1  [aprobaciones · huella-distinta]
+  «test/arquitectura/contratos/motor.ts» (archivo del mecanismo, entero) cambió: huella actual 3f2a…, aprobada a6d7… → si el cambio es a propósito, agregá la aprobación (referencia + motivo) al registro APROBACIONES de test/arquitectura/contratos/gobernanza/aprobaciones.ts; si no, revertí el cambio. Entrada para pegar al final: { archivo: "test/arquitectura/contratos/motor.ts", blob: "3f2a…", referencia: "DEC-nn | PR #n | commit <sha>", motivo: "por qué cambia (20 caracteres o más)" },
+```
+
+2. Pegá esa entrada AL FINAL de `APROBACIONES`, con la referencia real (`PR #n`, `commit <sha>` o `DEC-nn`) y un motivo de 20 caracteres o más. Las entradas viejas no se editan ni se borran: el registro es el historial, y la huella vigente de una pieza es la de su última entrada.
+3. Una pieza nueva (un adaptador nuevo, un contrato nuevo) sale como `sin-aprobacion`; una que se borra, como `archivo-ausente`. Para retirarla a propósito, agregá una entrada con `blob: "retirado"`.
+4. Cambiar `ci.yml`, `vitest.config.ts` o un script de `package.json` es cambiar el mecanismo: va con su entrada. Cuando cambia `cumplimiento.ts` (por ejemplo `CONDICIONES_PERMITIDAS` o `SCRIPTS_ESPERADOS` porque el CI ganó un paso), su entrada va en el mismo commit.
+
+La primera carga (la línea de base del mecanismo, `referencia: "DEC-03"`) queda pendiente de que el dueño la ratifique antes del pull request.
+
+### Qué revisa el cumplimiento
+
+| Evaluador | Qué exige | Tipos de hallazgo |
+|---|---|---|
+| `evaluarWorkflow` (`ci.yml`) | `estatico` corre `npm run arquitectura` e `integracion` corre `npm test`, sin `if`, `working-directory` ni `shell`; `gate` necesita los cinco jobs, su expresión los nombra y se llama «Gate (requerido)»; ningún `continue-on-error` (salvo `false`); ningún `if` fuera de `CONDICIONES_PERMITIDAS` (cada una con su motivo); sin `paths` ni `paths-ignore` en `on:`; ni `CREAR_CERCOS`, `BAJAR_CERCOS`, `REGENERAR_*`, `GOLDEN_ACTUALIZAR` ni `CONTRATOS_*` en ningún lugar | `ci-ilegible`, `ci-job-ausente`, `ci-sin-paso`, `ci-paso-alterado`, `ci-continue-on-error`, `ci-condicion-no-permitida`, `ci-gate-sin-needs`, `ci-gate-expresion`, `ci-gate-renombrado`, `ci-filtro-de-rutas`, `ci-variable-prohibida` |
+| `evaluarScripts` (`package.json`) | `scripts.test` vale `vitest run`, `scripts.arquitectura` vale lo que hoy, y no hay `pretest`, `posttest`, `prearquitectura` ni `postarquitectura` | `package-ilegible`, `script-ausente`, `script-distinto`, `script-de-ganchos` |
+| `evaluarConfigDeVitest` (`vitest.config.ts`, AST) | ningún `test.exclude` deja afuera un guardián protegido, un `test.include` los cubre, `allowOnly` no es true, ni `projects`, `workspace`, `dir`, `root` ni `testNamePattern`; lo que no se puede analizar (una propagación, un glob raro) es un hallazgo | `vitest-excluye-guardian`, `vitest-include-no-cubre`, `vitest-allowonly`, `vitest-clave-peligrosa`, `vitest-no-analizable` |
+| `evaluarPruebaProtegida` (AST) | ningún `skip`, `only`, `todo`, `skipIf`, `runIf`, `ctx.skip`, `xit`, `xdescribe` en los tests protegidos, y al menos un `it`/`test`; una mención en un texto o un comentario no cuenta | `prueba-desactivada`, `guardian-sin-pruebas` |
+| `evaluarCableado` | los guardianes esperados existen, están bajo `test/` y terminan en `.test.ts`; un `.ts` con `describe`/`it`/`test` que no termina en `.test.ts` no corre | `guardian-ausente`, `guardian-mal-cableado`, `prueba-sin-sufijo-test` |
+| `evaluarManifiesto` | el manifiesto no está vacío y su conjunto de ids es el de los contratos aprobados en el registro (que cada contrato tenga alcance > 0 archivos lo hace el motor: `alcance-vacio`) | `manifiesto-vacio`, `contrato-sin-aprobar`, `aprobado-ausente-del-manifiesto` |
+
+**Tests protegidos:** todo `test/arquitectura/contratos/**/*.test.ts` que exista (se descubre solo: un test nuevo queda protegido sin tocar nada) más los que `GUARDIANES_ESPERADOS` y `GUARDIANES_ADICIONALES` nombran (los de esta carpeta, y `caracterizaciones-congeladas`, `despliegues-y-cadena-de-suministro`, `rol-de-pruebas-solo-local`, `dominios-clasificados`, `entornos-y-escapes` y `cercos/trinquete`). Uno que se borra o se renombra falla aunque nadie lo haya listado dos veces.
+
+Un reporte tiene la misma forma que los demás:
+
+```
+test/arquitectura/contratos/contratos.test.ts:15:1  [cumplimiento · prueba-desactivada]
+  `describe.skip` desactiva o recorta pruebas de un guardián protegido (`.skip`) → sacá `.skip`: los tests de un guardián corren todos, siempre
+```
+
+`revisarCumplimiento(raiz)` corre todos los evaluadores sobre un árbol (el repo real o la copia del arnés). Tarda menos de un segundo; el registro de aprobaciones, unas decenas de milisegundos.
+
+### Qué NO puede garantizar
+
+- **Un cambio coordinado.** Quien en un mismo commit cambia el guardián, su huella y el registro (o `cumplimiento.ts` y su aprobación) pasa los tests: solo lo frena la lectura del diff por el dueño. La «aprobación independiente» es solo detección porque el dueño trabaja solo; no hay una segunda llave. El registro hace que ese cambio sea visible y tenga motivo escrito, no que sea imposible.
+- **La configuración externa de GitHub.** Un administrador del repositorio puede cambiar la regla de la rama, sacar el gate de los checks requeridos, desactivar Actions o fusionar sin esperar al CI; y un despliegue manual (`vercel deploy --prod`) no pasa por el CI. Eso se vigila fuera del repo; cómo se cablea el CI en GitHub es el paso siguiente.
+- **Lo que no se hashea.** Editar los tests (`contratos.test.ts` con otra aserción, por ejemplo), `manifiesto.ts`, `matriz.ts` o las señales y el alcance de un contrato no pone rojo el registro; lo cubren el motor, las pruebas de cada contrato y la lectura del diff. Los evaluadores de `cumplimiento.ts` revisan el cableado (que los tests existan, corran y no estén apagados), no que cada aserción siga siendo la de siempre.
+- **Los evaluadores de YAML son de texto** (sin dependencias nuevas): un workflow reescrito con una sintaxis que el lector no entiende es un hallazgo (`ci-ilegible`, `ci-sin-paso`), no un «todo bien»; el hash es la defensa principal.
+
 ## Límites a conocer
 
-- Un caso legítimo no vence y NO lleva aprobación propia: ampliar o agregar uno es editar el archivo del contrato (`contratos/<id>.ts`), y hoy nada más lo frena que la revisión del cambio. Límite conocido: cuando el mecanismo guarde un hash aprobado de la definición de cada contrato, agregar o cambiar un caso legítimo (parte de esa definición) exigirá la aprobación que hoy no exige; mientras tanto el reporte cuenta los casos por contrato para que no crezcan en silencio.
+- Un caso legítimo no vence y NO lleva aprobación propia dentro del contrato, pero agregar, cambiar o sacar uno cambia la huella de los campos gobernados del contrato (`contratos/<id>.ts#gobernado`, ver «Guardián del guardián y aprobaciones») y pone rojo el registro hasta que se suma la aprobación (referencia + motivo). Además el reporte cuenta los casos por contrato para que no crezcan en silencio.
 - Un manifiesto mal armado (id repetido o no kebab-case, declaración incompatible con sus señales, sin señales, un `vence` que no es una fecha válida) **lanza un error**, no es un hallazgo.
 - Las marcas se buscan en `.ts`, `.tsx` y `.css` de `src`, `plataforma`, `scripts`, `prisma` y `test`.
 - `@/` se resuelve siempre a `src/`. Los nombres dinámicos (`--x-${rol}`) no se enumeran: para `nombre-definido-en-la-fuente` la fuente tiene que escribirlos. Para mutar un contrato de este tipo el arnés tiene tres operadores propios (`mutaciones/operadores.ts`): `quitar-declaracion` también rompe un consumidor que usa un token en una clase (`bg-papel/50` pasa a `bg-papel-inexistente/50`, con la opacidad intacta), `quitar-token` borra de la regla ancla la definición de un token que algo usa y `agregar-token` agrega uno que nadie usa; los tres se activan solos cuando el contrato es de nombres con una fuente CSS (con consumidores en clases, solo cuando existe uno real). El ejemplo de la matriz puede traer `extensiones: { uso, definicion }` para que el uso crudo vaya en un `.tsx` y la redefinición en un `.css` (`tokens-visuales`). Una entrada de `deuda` que cubre el mismo tipo de hallazgo en el mismo archivo que otra se prueba una sola vez (los 15 alias del salón de `tokens-visuales` son una mutación, no 15).
