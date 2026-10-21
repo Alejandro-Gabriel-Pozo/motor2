@@ -77,7 +77,7 @@ describe("áreas y contratos declarados (repo real)", () => {
 
   it("las áreas con contratos hoy son las que el motor dice y todas las demás declaran [] explícito", () => {
     const conContratos = Object.entries(AREAS).filter(([, ids]) => ids.length > 0).map(([a]) => a);
-    expect(conContratos).toEqual(["app/(app)/carta", "app/(app)/catalogo", "components", "components/carta-publica", "ui"]);
+    expect(conContratos).toEqual(["app/(app)/carta", "app/(app)/catalogo", "components", "components/carta-publica", "components/catalogo", "ui"]);
     for (const ids of Object.values(AREAS)) expect(Array.isArray(ids)).toBe(true);
   });
 

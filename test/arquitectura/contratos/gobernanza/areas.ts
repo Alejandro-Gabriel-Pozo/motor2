@@ -56,7 +56,7 @@ export const AREAS: DeclaracionDeAreas = {
   "components": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "tokens-visuales"],
   "components/carta": [],
   "components/carta-publica": CARTA,
-  "components/catalogo": [],
+  "components/catalogo": ["primitiva-aviso", "primitiva-boton", "primitiva-campo"],
   "components/mesas": [],
   "components/receta": [],
   "ui": ["tokens-visuales"],

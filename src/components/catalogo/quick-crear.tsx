@@ -3,6 +3,9 @@
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/modal";
 import type { ResultadoConId } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 
 /**
  * Alta rápida inline de un catálogo secundario (Insumo, Categoría,
@@ -32,7 +35,8 @@ export function QuickCrear({
     if (!nombre || pending) return;
     startTransition(async () => {
       const resultado = await accion(nombre);
-      setMensaje(resultado.mensaje);
+      // El mensaje se muestra solo si falló: al salir bien el modal se cierra y un aviso de error viejo (alert) se anunciaría al volver a abrirlo.
+      setMensaje(resultado.ok ? null : resultado.mensaje);
       if (resultado.ok) {
         onCreado({ id: resultado.id, nombre: resultado.nombre });
         setNombre("");
@@ -53,8 +57,8 @@ export function QuickCrear({
         // form exterior perdía su estado al crear un insumo/categoría/
         // proveedor inline).
         <div className="flex flex-col gap-2">
-          <label className="text-sm">{campoLabel}</label>
-          <input
+          <Campo
+            etiqueta={campoLabel}
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             onKeyDown={(e) => {
@@ -63,14 +67,13 @@ export function QuickCrear({
                 crear(cerrar);
               }
             }}
-            className="rounded border px-3 py-2"
             autoFocus
             required
           />
-          {mensaje && <p className="text-sm text-red-600">{mensaje}</p>}
-          <button type="button" onClick={() => crear(cerrar)} disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+          {mensaje && <Aviso variante="error" forma="en-linea">{mensaje}</Aviso>}
+          <Boton onClick={() => crear(cerrar)} disabled={pending}>
             {pending ? "Guardando..." : "Crear"}
-          </button>
+          </Boton>
         </div>
       )}
     </Modal>
