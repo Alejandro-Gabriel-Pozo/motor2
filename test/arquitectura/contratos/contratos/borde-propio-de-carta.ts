@@ -6,6 +6,8 @@ import type { Contrato } from "../tipos";
  * (negro). El color se declara UNA vez en `globals.css` (`.carta-shell .carta-borde`) y el elemento lleva la clase `carta-borde`. La línea fina (`carta-linea-fina`) trae
  * su propio color en `globals.css`, por eso es equivalente. Nunca se escribe el color del borde en el componente: ni un `borderColor` suelto con `carta-border` o un color
  * literal, ni un color literal en una clase arbitraria (`border-[#e7e5e4]`).
+ * Dos usos son legítimos y permanentes, y por eso están en `casosLegitimos` (la definición del contrato) y no en `excepciones` (que vencen a los 60 días): la flecha de
+ * página (un botón circular con el color de las flechas) y los puntitos de `FilasDeOpcion` (una línea guía, no un separador).
  * Su par es `separador-de-lista-de-carta` (la lista con `divide-y`); comparten la fuente `globals.css` y por eso son DOS contratos con una marca cada uno.
  */
 const FRASE_DE_ANCHO = "dibuja su propio borde con una clase de ancho";
@@ -33,27 +35,19 @@ export const BORDE_PROPIO_DE_CARTA: Contrato = {
     { adaptador: "clases", token: /^border(?:-[tblrxyse])?-\[(?:#|(?:rgb|hsl|oklch|oklab|lab|lch|hwb)a?\(|var\(--carta-border\))/, que: "escribe el color de un borde en una clase suelta" },
   ],
   consumidores: "descubiertos",
-  excepciones: [
+  // Dos usos legítimos y permanentes (parte de la definición del contrato, no excepciones temporales): ninguno es un separador, que es lo que el contrato vigila.
+  casosLegitimos: [
     {
       archivo: "src/components/carta-publica/navegacion-carta.tsx",
       fragmento: "flex h-12 w-12 items-center justify-center rounded-full border transition-opacity hover:opacity-80 disabled:opacity-25",
       motivo: "la flecha de página es un botón circular: su borde es del color de marca/flechas (`ESTILO_FLECHA`, un color-mix de `--carta-flechas`), no un separador",
-      responsable: "dueño",
-      aprobacion: { por: "dueño", referencia: "DEC-01" },
-      creada: "2026-10-21",
-      renovaciones: [],
-      vence: "2026-12-20",
     },
     {
       archivo: "src/components/carta-publica/seccion.tsx",
       fragmento: "min-w-3 flex-1 -translate-y-1 border-b-[1.5px] border-dotted",
       motivo: "los puntitos entre la opción y su precio son decoración del color de la tinta atenuada (`--carta-ink-soft`), no un separador entre productos",
-      responsable: "dueño",
-      aprobacion: { por: "dueño", referencia: "DEC-01" },
-      creada: "2026-10-21",
-      renovaciones: [],
-      vence: "2026-12-20",
     },
   ],
+  excepciones: [],
   deuda: [],
 };

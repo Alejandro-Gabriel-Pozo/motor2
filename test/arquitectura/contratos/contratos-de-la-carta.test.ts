@@ -10,7 +10,7 @@ import type { Contrato, TipoDeHallazgo } from "./tipos";
 /**
  * Las MUTACIONES de los dos contratos de la carta (`separador-de-lista-de-carta` y `borde-propio-de-carta`) con sus declaraciones REALES del manifiesto, sobre un árbol
  * TEMPORAL (nunca el repo). Son los casos que tenía el guardián local `carta-separadores-declarados.test.ts` (retirado en el paso G3b): el motor común tiene que dar rojo
- * en lo mismo y verde en lo mismo. Las dos excepciones del contrato real se prueban aparte: en estos árboles se vacían para que no sobren.
+ * en lo mismo y verde en lo mismo. Los dos casos legítimos del contrato real (parte de su definición, sin vencimiento) se prueban aparte: en estos árboles se vacían para que no sobren.
  */
 let raiz: string;
 
@@ -45,8 +45,8 @@ afterEach(() => {
   rmSync(raiz, { recursive: true, force: true });
 });
 
-const sinExcepciones = (c: Contrato): Contrato => ({ ...c, excepciones: [] });
-function correr(contratos: readonly Contrato[] = [SEPARADOR_DE_LISTA_DE_CARTA, sinExcepciones(BORDE_PROPIO_DE_CARTA)]): [string, TipoDeHallazgo, number, number][] {
+const sinCasosLegitimos = (c: Contrato): Contrato => ({ ...c, casosLegitimos: [] });
+function correr(contratos: readonly Contrato[] = [SEPARADOR_DE_LISTA_DE_CARTA, sinCasosLegitimos(BORDE_PROPIO_DE_CARTA)]): [string, TipoDeHallazgo, number, number][] {
   return revisarContratos({ raiz, contratos, hoy: "2026-10-21" }).hallazgos.map((h) => [h.contrato, h.tipo, h.linea, h.columna]);
 }
 let ultima = "";
@@ -109,12 +109,31 @@ describe("contratos de la carta: separadores", () => {
     expect(correr()).toEqual([en("separador-de-lista-de-carta", "definicion-duplicada", "divide-[#e7e5e4]")]);
   });
 
-  it("las dos excepciones del contrato real (la flecha de página y los puntitos) cubren su cadena exacta; otra cadena con border sin carta-borde sigue en rojo", () => {
-    const flecha = BORDE_PROPIO_DE_CARTA.excepciones[0];
-    const puntitos = BORDE_PROPIO_DE_CARTA.excepciones[1];
+  it("los dos casos legítimos del contrato real (la flecha de página y los puntitos) cubren su cadena exacta; otra cadena con border sin carta-borde sigue en rojo", () => {
+    const [flecha, puntitos] = BORDE_PROPIO_DE_CARTA.casosLegitimos;
     escribir({ [flecha.archivo]: `const CLASE_FLECHA = "${flecha.fragmento}";\n`, [puntitos.archivo]: `export const P = () => <span className="${puntitos.fragmento}" />;\n` });
     expect(correr([SEPARADOR_DE_LISTA_DE_CARTA, BORDE_PROPIO_DE_CARTA])).toEqual([]);
     escribir({ [flecha.archivo]: `const CLASE_FLECHA = "${flecha.fragmento} mt-1";\n` });
-    expect(correr([SEPARADOR_DE_LISTA_DE_CARTA, BORDE_PROPIO_DE_CARTA]).map((h) => h[1])).toEqual(["excepcion-sobrante", "uso-sin-declarar"]);
+    expect(correr([SEPARADOR_DE_LISTA_DE_CARTA, BORDE_PROPIO_DE_CARTA]).map((h) => h[1])).toEqual(["caso-legitimo-sobrante", "uso-sin-declarar"]);
+  });
+
+  it("quitar un caso legítimo de la definición del contrato vuelve a poner en rojo su uso (la flecha, los puntitos)", () => {
+    const [flecha, puntitos] = BORDE_PROPIO_DE_CARTA.casosLegitimos;
+    escribir({ [flecha.archivo]: `const CLASE_FLECHA = "${flecha.fragmento}";\n`, [puntitos.archivo]: `export const P = () => <span className="${puntitos.fragmento}" />;\n` });
+    const sin = (...quedan: typeof flecha[]): [string, TipoDeHallazgo, number, number][] => correr([SEPARADOR_DE_LISTA_DE_CARTA, { ...BORDE_PROPIO_DE_CARTA, casosLegitimos: quedan }]);
+    expect(sin(flecha, puntitos)).toEqual([]);
+    expect(sin(puntitos)).toEqual([["borde-propio-de-carta", "uso-sin-declarar", 1, `const CLASE_FLECHA = "`.length + flecha.fragmento.indexOf(" border ") + 2]]);
+    expect(sin(flecha).map((h) => h[1])).toEqual(["uso-sin-declarar"]);
+    expect(sin().map((h) => h[1])).toEqual(["uso-sin-declarar", "uso-sin-declarar"]);
+  });
+
+  it("el contrato real no tiene excepciones temporales: los usos legítimos permanentes son sus casos legítimos (sin vencimiento)", () => {
+    expect(BORDE_PROPIO_DE_CARTA.excepciones).toEqual([]);
+    expect(BORDE_PROPIO_DE_CARTA.casosLegitimos).toHaveLength(2);
+    const [flecha, puntitos] = BORDE_PROPIO_DE_CARTA.casosLegitimos;
+    escribir({ [flecha.archivo]: `const CLASE_FLECHA = "${flecha.fragmento}";\n`, [puntitos.archivo]: `export const P = () => <span className="${puntitos.fragmento}" />;\n` });
+    const lejos = revisarContratos({ raiz, contratos: [SEPARADOR_DE_LISTA_DE_CARTA, BORDE_PROPIO_DE_CARTA], hoy: "2040-01-01" });
+    expect(lejos.hallazgos).toEqual([]);
+    expect(lejos.resumen.casosLegitimosPorContrato).toEqual({ "borde-propio-de-carta": 2 });
   });
 });

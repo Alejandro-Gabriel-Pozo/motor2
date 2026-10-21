@@ -21,6 +21,7 @@ export const SEPARADOR_DE_LISTA_DE_CARTA: Contrato = {
     { adaptador: "clases", token: /^divide(?:-[tblrxyse])?-\[(?:#|(?:rgb|hsl|oklch|oklab|lab|lch|hwb)a?\(|var\(--carta-border\))/, que: "escribe el color de un separador en una clase suelta" },
   ],
   consumidores: "descubiertos",
+  casosLegitimos: [],
   excepciones: [],
   deuda: [],
 };

@@ -153,7 +153,10 @@ function revisarContrato(c: Contrato, indice: Indice, marcas: readonly Marca[], 
     hallazgos.push({ contrato: c.id, tipo, archivo: ruta, ...pos(ruta, desde), que, como, fragmento, fuente: fuenteTexto });
   };
 
-  // --- Excepciones y deuda: las que no tienen motivo fallan aunque se usen.
+  // --- Casos legítimos, excepciones y deuda: los que no tienen motivo fallan aunque se usen.
+  for (const k of c.casosLegitimos) {
+    if (k.motivo.trim().length < MOTIVO_MINIMO) agregar("caso-legitimo-sin-motivo", k.archivo, 0, `el caso legítimo de «${colapsar(k.fragmento)}» no tiene motivo (${MOTIVO_MINIMO} caracteres o más)`, "escribí por qué este uso es legítimo y permanente: no es un separador ni lo que el contrato regula");
+  }
   for (const e of c.excepciones) {
     if (e.motivo.trim().length < MOTIVO_MINIMO) agregar("excepcion-sin-motivo", e.archivo, 0, `la excepción de «${e.fragmento}» no tiene motivo (${MOTIVO_MINIMO} caracteres o más)`, "escribí por qué este uso no declara el contrato");
   }
@@ -305,11 +308,17 @@ function revisarContrato(c: Contrato, indice: Indice, marcas: readonly Marca[], 
     }
   }
 
-  // --- Excepciones (cubren todos los usos con ese fragmento) y deuda (una entrada por uso real); lo que sobra, falla.
+  // --- Casos legítimos y excepciones (cubren todos los usos de ese archivo con ese fragmento) y deuda (una entrada por uso real); lo que sobra, falla.
+  const casoUsado = new Set<number>();
   const exUsada = new Set<number>();
   const deudaUsada = new Set<number>();
   for (const dato of datos.sort((a, b) => (a.ruta < b.ruta ? -1 : a.ruta > b.ruta ? 1 : a.desde - b.desde))) {
     const f = colapsar(dato.fragmento);
+    const k = c.casosLegitimos.findIndex((x) => x.archivo === dato.ruta && colapsar(x.fragmento) === f);
+    if (k >= 0) {
+      casoUsado.add(k);
+      continue;
+    }
     const e = c.excepciones.findIndex((x) => x.archivo === dato.ruta && colapsar(x.fragmento) === f);
     if (e >= 0) {
       exUsada.add(e);
@@ -322,6 +331,9 @@ function revisarContrato(c: Contrato, indice: Indice, marcas: readonly Marca[], 
     }
     agregar(dato.tipo, dato.ruta, dato.desde, dato.que, dato.como, f);
   }
+  c.casosLegitimos.forEach((k, i) => {
+    if (!casoUsado.has(i)) agregar("caso-legitimo-sobrante", k.archivo, 0, `el caso legítimo de «${colapsar(k.fragmento)}» ya no corresponde a ningún uso`, "sacalo de `casosLegitimos` del contrato");
+  });
   c.excepciones.forEach((e, i) => {
     if (!exUsada.has(i)) agregar("excepcion-sobrante", e.archivo, 0, `la excepción de «${colapsar(e.fragmento)}» ya no corresponde a ningún uso`, "sacala de `excepciones` del contrato");
   });
@@ -374,7 +386,11 @@ export function revisarContratos(opciones: OpcionesDelMotor): Resultado {
   const ordenados = [...unicos.values()].sort((a, b) => comparar(a.archivo, b.archivo) || a.linea - b.linea || a.columna - b.columna || comparar(a.contrato, b.contrato) || comparar(a.tipo, b.tipo) || comparar(a.que, b.que));
 
   const deudaPorContrato: Record<string, number> = {};
-  for (const c of opciones.contratos) if (c.deuda.length > 0) deudaPorContrato[c.id] = c.deuda.length;
+  const casosLegitimosPorContrato: Record<string, number> = {};
+  for (const c of opciones.contratos) {
+    if (c.deuda.length > 0) deudaPorContrato[c.id] = c.deuda.length;
+    if (c.casosLegitimos.length > 0) casosLegitimosPorContrato[c.id] = c.casosLegitimos.length;
+  }
   return {
     hallazgos: ordenados,
     avisos: avisos.sort((a, b) => comparar(a.tipo, b.tipo) || comparar(a.contrato, b.contrato) || comparar(a.archivo, b.archivo) || comparar(a.fragmento, b.fragmento)),
@@ -384,6 +400,8 @@ export function revisarContratos(opciones: OpcionesDelMotor): Resultado {
       deudaTotal: opciones.contratos.reduce((n, c) => n + c.deuda.length, 0),
       deudaPorContrato,
       excepcionesTotal: opciones.contratos.reduce((n, c) => n + c.excepciones.length, 0),
+      casosLegitimosTotal: opciones.contratos.reduce((n, c) => n + c.casosLegitimos.length, 0),
+      casosLegitimosPorContrato,
     },
   };
 }
@@ -400,13 +418,16 @@ export function formatearHallazgo(h: Hallazgo): string {
   return lineas.join("\n");
 }
 
-/** La línea de resumen del reporte: cuántos contratos, cuánta deuda (por contrato) y cuántas excepciones. */
+/** La línea de resumen del reporte: cuántos contratos, cuánta deuda (por contrato), cuántas excepciones y cuántos casos legítimos (por contrato). */
 export function resumirContratos(resultado: Resultado): string {
   const r = resultado.resumen;
   const deuda = Object.entries(r.deudaPorContrato)
     .map(([id, n]) => `${id}: ${n}`)
     .join(", ");
-  return `${r.contratos} contratos · ${r.archivosLeidos} archivos leídos · deuda declarada: ${r.deudaTotal} usos${deuda ? ` (${deuda})` : ""} · excepciones: ${r.excepcionesTotal}`;
+  const casos = Object.entries(r.casosLegitimosPorContrato)
+    .map(([id, n]) => `${id}: ${n}`)
+    .join(", ");
+  return `${r.contratos} contratos · ${r.archivosLeidos} archivos leídos · deuda declarada: ${r.deudaTotal} usos${deuda ? ` (${deuda})` : ""} · excepciones: ${r.excepcionesTotal} · casos legítimos: ${r.casosLegitimosTotal}${casos ? ` (${casos})` : ""}`;
 }
 
 /** Un aviso (no falla): lo que vence pronto, o una deuda renovada demasiadas veces. */

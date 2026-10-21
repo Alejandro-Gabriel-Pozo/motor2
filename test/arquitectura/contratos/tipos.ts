@@ -21,6 +21,8 @@ export type TipoDeHallazgo =
   | "excepcion-sin-motivo"
   | "deuda-sobrante"
   | "deuda-sin-motivo"
+  | "caso-legitimo-sobrante"
+  | "caso-legitimo-sin-motivo"
   | "excepcion-vencida"
   | "deuda-vencida"
   | "excepcion-sin-responsable"
@@ -100,6 +102,18 @@ export interface Excepcion {
 }
 
 /**
+ * Un uso que es legítimo y permanente: es PARTE DE LA DEFINICIÓN del contrato, no una excepción. Si el contrato regula «un borde con ancho sin color», el borde punteado
+ * de una línea guía (que no es un separador) está fuera de lo que el contrato quiere vigilar, para siempre. Por eso no lleva responsable, aprobación ni vencimiento: lo
+ * decide quien define el contrato (ver «Casos legítimos» en `LEEME.md`). Coincide por el MISMO `archivo` y el `fragmento` exacto (con los espacios colapsados), y se revisa
+ * en las dos direcciones: sin uso real sobra (`caso-legitimo-sobrante`) y sin motivo (20 caracteres o más) falla (`caso-legitimo-sin-motivo`).
+ */
+export interface CasoLegitimo {
+  archivo: string;
+  fragmento: string;
+  motivo: string;
+}
+
+/**
  * Un uso o una definición que se arregla más adelante: UNA entrada por cada uso real (dos usos iguales en un archivo son dos entradas). Sin uso real sobra; sin motivo
  * (20 caracteres o más) o sin `resuelveEn` (dónde se paga: un paso, una fase, un pendiente) falla; con el mismo gobierno que una excepción (`responsable`,
  * `aprobacion`, `vence`) y un horizonte más corto. El motor informa cuánta deuda hay.
@@ -135,6 +149,8 @@ export interface Contrato {
   definicion: readonly Detector[];
   /** `"descubiertos"`: consumidor es todo archivo del alcance que declara el contrato (tiene que haber al menos uno). Una lista: los consumidores exactos, en las dos direcciones. */
   consumidores: "descubiertos" | readonly string[];
+  /** Los usos legítimos y permanentes que el contrato no quiere vigilar, parte de su definición y sin vencimiento (`[]` si no hay). Una excepción o una deuda, en cambio, es temporal. */
+  casosLegitimos: readonly CasoLegitimo[];
   excepciones: readonly Excepcion[];
   deuda: readonly Deuda[];
 }
@@ -166,6 +182,9 @@ export interface Resumen {
   deudaTotal: number;
   deudaPorContrato: Readonly<Record<string, number>>;
   excepcionesTotal: number;
+  /** Cuántos casos legítimos hay en total y por contrato (solo los contratos que los tienen): se cuentan en el reporte para que no crezcan en silencio. */
+  casosLegitimosTotal: number;
+  casosLegitimosPorContrato: Readonly<Record<string, number>>;
 }
 
 /** Un aviso del reporte que NO falla: algo que vence pronto, o una deuda que ya se renovó demasiadas veces. */

@@ -6,7 +6,7 @@ import { sinVariantes } from "./adaptadores/clases-tsx";
 import { leerReglas } from "./adaptadores/css";
 import { formatearAviso, formatearHallazgo, formatearReporte, resumirContratos, revisarContratos } from "./motor";
 import { evaluarVencimientos, fechaUtcDeHoy } from "./politica";
-import type { Contrato, Deuda, Excepcion, Resultado, TipoDeHallazgo } from "./tipos";
+import type { CasoLegitimo, Contrato, Deuda, Excepcion, Resultado, TipoDeHallazgo } from "./tipos";
 
 /**
  * Las MUTACIONES del propio motor de contratos, sobre un árbol TEMPORAL (nunca el repo; mismo criterio que `cercos/trinquete.test.ts`). Cada caso arma un árbol chico,
@@ -71,6 +71,7 @@ function dinero(extra: Partial<Contrato> = {}): Contrato {
     declaracion: { tipo: "importar-ancla" },
     definicion: [{ adaptador: "ts", tipo: "declara", nombre: /^redondearMoneda$/, que: "declara otra `redondearMoneda`" }],
     consumidores: "descubiertos",
+    casosLegitimos: [],
     excepciones: [],
     deuda: [],
     ...extra,
@@ -257,6 +258,79 @@ describe("motor: excepciones (por fragmento exacto, con motivo, en las dos direc
   });
 });
 
+describe("motor: casos legítimos (parte de la definición del contrato: sin vencimiento, archivo + fragmento exacto)", () => {
+  const USO = "Math.round(n * 100) / 100";
+  const caso = (c: Partial<CasoLegitimo> = {}): CasoLegitimo => ({ archivo: "src/malo.ts", fragmento: USO, motivo: MOTIVO, ...c });
+  const tipos = (r: Resultado): TipoDeHallazgo[] => r.hallazgos.map((h) => h.tipo);
+
+  it("un caso legítimo con motivo deja pasar ese uso, y el reporte lo cuenta por contrato", () => {
+    arbolDinero({ "src/malo.ts": USO_MALO });
+    const r = correr(dinero({ casosLegitimos: [caso()] }));
+    expect(vistos(r)).toEqual([]);
+    expect(r.resumen.casosLegitimosTotal).toBe(1);
+    expect(r.resumen.casosLegitimosPorContrato).toEqual({ "redondeo-de-dinero": 1 });
+    expect(resumirContratos(r)).toContain("excepciones: 0 · casos legítimos: 1 (redondeo-de-dinero: 1)");
+    // Sin casos, la cuenta es cero y no nombra contratos.
+    expect(resumirContratos(correr(dinero()))).toContain("casos legítimos: 0");
+    expect(resumirContratos(correr(dinero()))).not.toContain("casos legítimos: 0 (");
+  });
+
+  it("un caso legítimo que ya no corresponde a ningún uso es caso-legitimo-sobrante", () => {
+    arbolDinero();
+    expect(vistos(correr(dinero({ casosLegitimos: [caso()] })))).toEqual([["caso-legitimo-sobrante", "src/malo.ts", 1, 1]]);
+  });
+
+  it("un caso con otro fragmento no cubre el uso: el uso sigue en rojo y el caso sobra", () => {
+    arbolDinero({ "src/malo.ts": USO_MALO });
+    expect(vistos(correr(dinero({ casosLegitimos: [caso({ fragmento: "Math.round(x * 100) / 100" })] })))).toEqual([
+      ["caso-legitimo-sobrante", "src/malo.ts", 1, 1],
+      ["uso-sin-declarar", "src/malo.ts", 2, 10],
+    ]);
+  });
+
+  it("motivo de 19 caracteres: rojo (aunque se use); de 20: verde", () => {
+    arbolDinero({ "src/malo.ts": USO_MALO });
+    const m19 = "abcdefghijklmnopqrs";
+    const m20 = "abcdefghijklmnopqrst";
+    expect([m19.length, m20.length]).toEqual([19, 20]);
+    expect(vistos(correr(dinero({ casosLegitimos: [caso({ motivo: m19 })] })))).toEqual([["caso-legitimo-sin-motivo", "src/malo.ts", 1, 1]]);
+    expect(tipos(correr(dinero({ casosLegitimos: [caso({ motivo: "                    " })] })))).toEqual(["caso-legitimo-sin-motivo"]);
+    expect(tipos(correr(dinero({ casosLegitimos: [caso({ motivo: m20 })] })))).toEqual([]);
+  });
+
+  it("el alcance es archivo + fragmento: el mismo uso en OTRO archivo sigue en rojo", () => {
+    arbolDinero({ "src/malo.ts": USO_MALO, "src/otro.ts": USO_MALO.replace("f(", "g(") });
+    expect(vistos(correr(dinero({ casosLegitimos: [caso()] })))).toEqual([["uso-sin-declarar", "src/otro.ts", 2, 10]]);
+  });
+
+  it("el caso de un archivo equivocado no cubre nada: el uso sigue en rojo y el caso sobra", () => {
+    arbolDinero({ "src/malo.ts": USO_MALO });
+    expect(vistos(correr(dinero({ casosLegitimos: [caso({ archivo: "src/otro.ts" })] })))).toEqual([
+      ["uso-sin-declarar", "src/malo.ts", 2, 10],
+      ["caso-legitimo-sobrante", "src/otro.ts", 1, 1],
+    ]);
+  });
+
+  it("no vence: el mismo caso sigue en verde años después (a diferencia de una excepción)", () => {
+    arbolDinero({ "src/malo.ts": USO_MALO });
+    expect(tipos(correrCon("2040-01-01", dinero({ casosLegitimos: [caso()] })))).toEqual([]);
+    expect(tipos(correrCon("2040-01-01", dinero({ excepciones: [exc({ archivo: "src/malo.ts", fragmento: USO })] })))).toEqual(["excepcion-vencida"]);
+  });
+
+  it("cubre también una definición duplicada con el mismo archivo y fragmento", () => {
+    arbolDinero({ "src/dup.ts": "export function redondearMoneda(n: number): number {\n  return n;\n}\n" });
+    const r = correr(dinero());
+    expect(r.hallazgos.map((h) => [h.tipo, h.archivo])).toEqual([["definicion-duplicada", "src/dup.ts"]]);
+    expect(tipos(correr(dinero({ casosLegitimos: [caso({ archivo: "src/dup.ts", fragmento: r.hallazgos[0].fragmento })] })))).toEqual([]);
+  });
+
+  it("tiene prioridad sobre una excepción o una deuda del mismo uso: ésas sobran", () => {
+    arbolDinero({ "src/malo.ts": USO_MALO });
+    const r = correr(dinero({ casosLegitimos: [caso()], excepciones: [exc({ archivo: "src/malo.ts", fragmento: USO })], deuda: [deu({ archivo: "src/malo.ts", fragmento: USO })] }));
+    expect(tipos(r).sort()).toEqual(["deuda-sobrante", "excepcion-sobrante"]);
+  });
+});
+
 describe("motor: deuda escrita uso por uso (nada de líneas de base que solo cuentan)", () => {
   const USO = "Math.round(n * 100) / 100";
   const entrada = deu({ archivo: "src/malo.ts", fragmento: USO });
@@ -319,6 +393,7 @@ function borde(extra: Partial<Contrato> = {}): Contrato {
       { adaptador: "clases", token: /^border-\[#/, que: "escribe un color literal en una clase" },
     ],
     consumidores: "descubiertos",
+    casosLegitimos: [],
     excepciones: [],
     deuda: [],
     ...extra,
@@ -429,6 +504,7 @@ function variables(extra: Partial<Contrato> = {}): Contrato {
     declaracion: { tipo: "nombre-definido-en-la-fuente" },
     definicion: [{ adaptador: "css", tipo: "define-variable", nombre: /^--carta-/, que: "define una variable de la carta" }],
     consumidores: "descubiertos",
+    casosLegitimos: [],
     excepciones: [],
     deuda: [],
     ...extra,
@@ -482,7 +558,7 @@ describe("motor: reporte determinista y manifiesto mal armado", () => {
         "  fuente: src/core/moneda.ts:2 · fragmento (para excepción o deuda): «Math.round(n * 100) / 100»",
       ].join("\n")
     );
-    expect(formatearReporte(r).split("\n").at(-1)).toBe("1 contratos · 3 archivos leídos · deuda declarada: 0 usos · excepciones: 0");
+    expect(formatearReporte(r).split("\n").at(-1)).toBe("1 contratos · 3 archivos leídos · deuda declarada: 0 usos · excepciones: 0 · casos legítimos: 0");
   });
 
   it("los hallazgos salen ordenados por archivo, línea y columna, y dos corridas dan lo mismo", () => {
