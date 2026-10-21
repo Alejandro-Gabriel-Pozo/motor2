@@ -3,6 +3,10 @@
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/modal";
 import { darDeAltaProductoRapido } from "@/server/actions/catalogo/productos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
 
 interface Opcion {
   id: string;
@@ -36,7 +40,8 @@ export function QuickCrearProducto({
     if (!nombre || !unidadStockId || pending) return;
     startTransition(async () => {
       const resultado = await darDeAltaProductoRapido(nombre, unidadStockId);
-      setMensaje(resultado.mensaje);
+      // El mensaje se muestra solo si falló: al salir bien el modal se cierra y un aviso de error viejo (alert) se anunciaría al volver a abrirlo.
+      setMensaje(resultado.ok ? null : resultado.mensaje);
       if (resultado.ok) {
         onCreado({ id: resultado.id, etiqueta: resultado.nombre });
         setNombre("");
@@ -58,40 +63,34 @@ export function QuickCrearProducto({
         // Confirmado en navegador real: clickear "Crear" reseteaba
         // proveedor + fila antes de este fix.
         <div className="flex flex-col gap-2">
-          <label className="text-sm">
-            Nombre
-            <input
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  crear(cerrar);
-                }
-              }}
-              className="mt-1 w-full rounded border px-3 py-2"
-              autoFocus
-              required
-            />
-          </label>
-          <label className="text-sm">
-            Unidad de stock
-            <select value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} className="mt-1 w-full rounded border px-3 py-2" required>
-              <option value="">Elegí una unidad</option>
-              {unidades.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="text-xs text-neutral-500">
+          <Campo
+            etiqueta="Nombre"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                crear(cerrar);
+              }
+            }}
+            autoFocus
+            required
+          />
+          <Selector etiqueta="Unidad de stock" value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required>
+            <option value="">Elegí una unidad</option>
+            {unidades.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nombre}
+              </option>
+            ))}
+          </Selector>
+          <p className="text-xs text-tinta-suave">
             Categoría, insumo/familia y otros datos del catálogo se pueden completar después en Catálogo → Productos — esto no bloquea la compra de hoy.
           </p>
-          {mensaje && <p className="text-sm text-red-600">{mensaje}</p>}
-          <button type="button" onClick={() => crear(cerrar)} disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+          {mensaje && <Aviso variante="error" forma="en-linea">{mensaje}</Aviso>}
+          <Boton onClick={() => crear(cerrar)} disabled={pending}>
             {pending ? "Guardando..." : "Crear"}
-          </button>
+          </Boton>
         </div>
       )}
     </Modal>
