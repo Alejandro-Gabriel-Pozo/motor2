@@ -402,7 +402,7 @@ export default async function RecetaEditorPage({
                               {avisoDeUnidad}
                             </p>
                           )}
-                          <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} placeholder="Merma %" className="w-24" />
+                          <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} ariaLabel={`Merma de ${ing.insumoProducto.nombre}`} placeholder="Merma %" className="w-24" />
                           {aceptaSustitutos &&
                             (() => {
                               const opcionesBase = opcionesSustitutoPorIngrediente.get(ing.insumoProductoId) ?? [];
@@ -537,8 +537,8 @@ export default async function RecetaEditorPage({
             </select>
             <p className="text-xs text-neutral-500">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
             <div className="flex gap-2">
-              <CampoNumero id="cantidad-ingrediente-nuevo" name="cantidad" placeholder="Cantidad" required className="flex-1" />
-              <CampoNumero name="mermaPorcentaje" placeholder="Merma %" className="w-28" />
+              <CampoNumero id="cantidad-ingrediente-nuevo" name="cantidad" placeholder="Cantidad" ariaLabel="Cantidad" required className="flex-1" />
+              <CampoNumero name="mermaPorcentaje" placeholder="Merma %" ariaLabel="Merma" className="w-28" />
             </div>
           </LecturaDeCantidad>
           <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
@@ -576,7 +576,7 @@ export default async function RecetaEditorPage({
                       >
                         <input name="nombre" defaultValue={paso.nombre ?? ""} placeholder="Nombre corto (opcional)" className="rounded border px-2 py-1.5" />
                         <textarea name="instruccion" defaultValue={paso.instruccion} required className="rounded border px-2 py-1.5" rows={2} />
-                        <CampoNumero name="minutos" defaultValue={paso.minutos ? String(paso.minutos) : ""} placeholder="Minutos (opcional)" className="w-32" tamano="compacto" />
+                        <CampoNumero name="minutos" defaultValue={paso.minutos ? String(paso.minutos) : ""} placeholder="Minutos (opcional)" ariaLabel="Minutos del paso" className="w-32" tamano="compacto" />
                         {vigente.ingredientes.length > 0 && (
                           <fieldset className="flex flex-col gap-1">
                             <span className="text-xs text-neutral-500">¿Este paso usa solo algunos ingredientes en particular? (opcional)</span>
@@ -696,7 +696,7 @@ export default async function RecetaEditorPage({
               )}
               <input name="nombre" placeholder="Nombre corto (opcional)" className="rounded border px-3 py-2" />
               <textarea name="instruccion" placeholder="Instrucción" required className="rounded border px-3 py-2" rows={2} />
-              <CampoNumero name="minutos" placeholder="Minutos (opcional)" className="w-32" />
+              <CampoNumero name="minutos" placeholder="Minutos (opcional)" ariaLabel="Minutos del paso" className="w-32" />
               {vigente.ingredientes.length > 0 && (
                 <fieldset className="flex flex-col gap-1">
                   <span className="text-xs text-neutral-500">¿Este paso usa solo algunos ingredientes en particular? (opcional)</span>
