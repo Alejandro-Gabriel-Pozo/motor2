@@ -4,9 +4,11 @@ import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { RAIZ_DEL_REPO } from "../cercos/trinquete";
 import { AREAS, type TipoDeHallazgoDeArea } from "./gobernanza/areas";
+import type { TipoDeHallazgoDeAprobacion } from "./gobernanza/aprobaciones";
+import { TIPOS_DE_CUMPLIMIENTO, evaluarConfigDeVitest } from "./gobernanza/cumplimiento";
 import type { TipoDeHallazgoDeRuta } from "./gobernanza/clasificacion";
 import { MANIFIESTO } from "./manifiesto";
-import { CLASES_DE_MUTACION, CUBIERTOS_EN_MOTOR_TEST, DEUDA_DE_HUECOS, EJEMPLOS_DE_CONTRATOS, problemasDeLaDeuda, type Matriz } from "./mutaciones/matriz";
+import { CLASES_DE_MUTACION, CUBIERTOS_EN_MOTOR_TEST, DEUDA_DE_HUECOS, EJEMPLOS_DE_CONTRATOS, problemasDeHuecos, problemasDeLaDeuda, type DeudaDeHueco, type Matriz } from "./mutaciones/matriz";
 import { ejecutarMatriz, existeElTest, falla, tablaComoJson, tablaComoTexto, type ResultadoDelArnes } from "./mutaciones/arnes";
 import { fechaUtcDeHoy } from "./politica";
 import { TIPOS_DE_HALLAZGO, type Contrato } from "./tipos";
@@ -20,6 +22,18 @@ import { TIPOS_DE_HALLAZGO, type Contrato } from "./tipos";
  */
 
 const HOY = "2026-10-21";
+/** Una deuda de hueco bien armada, con literales: sirve para probar `problemasDeLaDeuda` y `problemasDeHuecos` (la lista real está vacía). */
+const DEUDA_DE_PRUEBA: DeudaDeHueco = {
+  archivo: "test/arquitectura/contratos/contratos.test.ts",
+  fragmento: "evasion/test-desactivado",
+  motivo: "un hueco de prueba con un motivo escrito de más de veinte caracteres",
+  resuelveEn: "G6",
+  responsable: "dueño",
+  aprobacion: { por: "dueño", referencia: "DEC-02" },
+  creada: "2026-10-21",
+  renovaciones: [],
+  vence: "2026-12-20",
+};
 const ARCHIVO_DEL_ARNES = "test/arquitectura/contratos/mutaciones-de-contratos.test.ts";
 
 let real: ResultadoDelArnes;
@@ -32,7 +46,7 @@ beforeAll(async () => {
   matriz = real.matriz;
   const por = (v: string): number => real.filas.filter((f) => f.veredicto === v).length;
   console.info(
-    `[mutaciones] ${matriz.invariantes.length} invariantes · ${real.filas.length} mutaciones en la matriz · ${real.corridas} corridas · protegidas ${por("protegido")} · huecos conocidos ${por("hueco-conocido-confirmado")} · no aplican ${por("no-aplica")} · ${(real.milisegundos / 1000).toFixed(1)} s (motor ${(real.tiempos.motor / 1000).toFixed(1)} · clasificación ${(real.tiempos.clasificacion / 1000).toFixed(1)} · áreas ${(real.tiempos.areas / 1000).toFixed(1)})`
+    `[mutaciones] ${matriz.invariantes.length} invariantes · ${real.filas.length} mutaciones en la matriz · ${real.corridas} corridas · protegidas ${por("protegido")} · huecos conocidos ${por("hueco-conocido-confirmado")} · no aplican ${por("no-aplica")} · ${(real.milisegundos / 1000).toFixed(1)} s (motor ${(real.tiempos.motor / 1000).toFixed(1)} · clasificación ${(real.tiempos.clasificacion / 1000).toFixed(1)} · áreas ${(real.tiempos.areas / 1000).toFixed(1)} · cumplimiento ${(real.tiempos.cumplimiento / 1000).toFixed(1)} · aprobaciones ${(real.tiempos.aprobaciones / 1000).toFixed(1)})`
   );
 }, 180_000);
 
@@ -93,7 +107,7 @@ describe("meta-tests de la matriz", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("(ii) cada tipo de hallazgo del motor, de las áreas y de la clasificación lo produce alguna mutación protegida, o lo cubre un test que existe (CUBIERTOS_EN_MOTOR_TEST)", () => {
+  it("(ii) cada tipo de hallazgo del motor, de las áreas, de la clasificación, del cumplimiento y del registro de aprobaciones lo produce alguna mutación protegida, o lo cubre un test que existe (CUBIERTOS_EN_MOTOR_TEST)", () => {
     // Exhaustivos por tipo: un tipo nuevo en `areas.ts` o `clasificacion.ts` no compila hasta que se lo lista acá.
     const deAreas: Record<TipoDeHallazgoDeArea, true> = { "area-sin-declaracion": true, "area-fantasma": true, "dependencia-omitida": true, "dependencia-falsa": true, "area-sin-clasificar": true };
     const deRutas: Record<TipoDeHallazgoDeRuta, true> = {
@@ -110,12 +124,24 @@ describe("meta-tests de la matriz", () => {
       "horizonte-excedido": true,
       "alcance-vacio": true,
     };
-    const producidos = new Set(real.filas.filter((f) => f.veredicto === "protegido").map((f) => f.esperado.split(" · ")[0]));
-    const requeridos = [...TIPOS_DE_HALLAZGO.map((t) => `motor/${t}`), ...Object.keys(deAreas).map((t) => `areas/${t}`), ...Object.keys(deRutas).map((t) => `clasificacion/${t}`)];
-    const sinCubrir = requeridos.filter((r) => !producidos.has(r) && !(r.split("/")[1] in CUBIERTOS_EN_MOTOR_TEST));
+    const deAprobaciones: Record<TipoDeHallazgoDeAprobacion, true> = { "huella-distinta": true, "sin-aprobacion": true, "archivo-ausente": true, "aprobacion-invalida": true };
+    // `esperado` de una mutación con más de un mecanismo es «verifica/tipo · archivo:línea · «mensaje» + otro…»: cuenta cada pieza.
+    const producidos = new Set(real.filas.filter((f) => f.veredicto === "protegido").flatMap((f) => f.esperado.split(" + ").map((x) => x.split(" · ")[0])));
+    const requeridos = [
+      ...TIPOS_DE_HALLAZGO.map((t) => `motor/${t}`),
+      ...Object.keys(deAreas).map((t) => `areas/${t}`),
+      ...Object.keys(deRutas).map((t) => `clasificacion/${t}`),
+      ...Object.keys(deAprobaciones).map((t) => `aprobaciones/${t}`),
+      ...TIPOS_DE_CUMPLIMIENTO.map((t) => `cumplimiento/${t}`),
+    ];
+    const sinCubrir = requeridos.filter((r) => !producidos.has(r) && !(r in CUBIERTOS_EN_MOTOR_TEST));
     expect(sinCubrir, "ningún invariante de la matriz produce estos tipos de hallazgo: agregá una mutación o listalos en CUBIERTOS_EN_MOTOR_TEST con el test que los cubre").toEqual([]);
     for (const [tipo, { archivo, titulo }] of Object.entries(CUBIERTOS_EN_MOTOR_TEST)) {
       expect(existeElTest(readFileSync(join(RAIZ_DEL_REPO, ...archivo.split("/")), "utf8"), titulo), `${tipo}: no existe el test «${titulo}» en ${archivo}`).toBe(true);
+    }
+    // El arnés mismo produce los tipos principales del cumplimiento y del registro (no solo los cubre un test): sin esto el guardián del guardián no estaría en la matriz.
+    for (const tipo of ["cumplimiento/prueba-desactivada", "cumplimiento/vitest-excluye-guardian", "cumplimiento/guardian-ausente", "cumplimiento/ci-sin-paso", "cumplimiento/ci-continue-on-error", "cumplimiento/script-ausente", "aprobaciones/huella-distinta", "aprobaciones/sin-aprobacion", "aprobaciones/archivo-ausente"]) {
+      expect(producidos.has(tipo), tipo).toBe(true);
     }
   });
 
@@ -149,21 +175,51 @@ describe("meta-tests de la matriz", () => {
 
   it("(iv) cada hueco conocido tiene su deuda vigente (motivo, responsable, aprobación, 60 días como máximo, resuelve en G6), y cada deuda corresponde a un hueco", () => {
     const huecos = matriz.invariantes.flatMap((i) => i.mutaciones.filter((m) => m.estado === "hueco-conocido"));
-    const problemas: string[] = [];
-    for (const h of huecos) {
-      const deuda = DEUDA_DE_HUECOS.filter((d) => d.fragmento === h.hueco);
-      if (deuda.length !== 1) problemas.push(`el hueco «${h.hueco}» (${h.id}) tiene ${deuda.length} entradas de deuda en DEUDA_DE_HUECOS (tiene que tener una)`);
-    }
-    for (const d of DEUDA_DE_HUECOS) {
-      if (!huecos.some((h) => h.hueco === d.fragmento)) problemas.push(`la deuda «${d.fragmento}» no corresponde a ningún hueco conocido de la matriz: sobra`);
-      problemas.push(...problemasDeLaDeuda(d, fechaUtcDeHoy()));
-    }
-    expect(problemas).toEqual([]);
+    expect(problemasDeHuecos(huecos, DEUDA_DE_HUECOS, fechaUtcDeHoy())).toEqual([]);
     for (const h of matriz.invariantes.flatMap((i) => i.mutaciones)) expect(h.estado === "protegido" ? h.hueco : "-", h.id).toBe(h.estado === "protegido" ? "" : "-");
   });
 
+  it("(iv) los 7 huecos conocidos de G6 ya no son deuda: DEUDA_DE_HUECOS está vacía y cada uno es una mutación protegida con el hallazgo del cumplimiento o del registro de aprobaciones", () => {
+    expect(DEUDA_DE_HUECOS).toEqual([]);
+    expect(real.filas.filter((f) => f.estado === "hueco-conocido" || f.veredicto === "hueco-conocido-confirmado")).toEqual([]);
+    const siete: { hueco: string; mutacion: string; esperado: string[] }[] = [
+      { hueco: "test desactivado (describe.skip)", mutacion: 'describe.skip("contratos compartidos declarados (repo real)"', esperado: ["cumplimiento/prueba-desactivada"] },
+      { hueco: "test excluido en vitest.config.ts", mutacion: 'exclude: [...configDefaults.exclude, "test/arquitectura/**"', esperado: ["cumplimiento/vitest-excluye-guardian", "aprobaciones/huella-distinta"] },
+      { hueco: "test renombrado a un .ts", mutacion: "mueve test/arquitectura/contratos/contratos.test.ts a test/arquitectura/contratos/contratos-guardian.ts", esperado: ["cumplimiento/guardian-ausente", "cumplimiento/prueba-sin-sufijo-test"] },
+      { hueco: "paso de ci.yml reemplazado", mutacion: "«run: npm test» → «run: echo omitido»", esperado: ["cumplimiento/ci-sin-paso", "aprobaciones/huella-distinta"] },
+      { hueco: "continue-on-error en el paso de ci.yml", mutacion: "- name: npm test\n        continue-on-error: true", esperado: ["cumplimiento/ci-continue-on-error", "aprobaciones/huella-distinta"] },
+      { hueco: "script test quitado de package.json", mutacion: 'en package.json: «    "test": "vitest run",\n» → «»', esperado: ["cumplimiento/script-ausente", "aprobaciones/huella-distinta"] },
+      { hueco: "caso legítimo que silencia un uso crudo", mutacion: "un caso legítimo nuevo tapa un uso crudo", esperado: ["aprobaciones/huella-distinta"] },
+    ];
+    for (const h of siete) {
+      const filas = real.filas.filter((f) => f.veredicto === "protegido" && f.mutacion.includes(h.mutacion));
+      expect(filas.length, `${h.hueco}: ninguna mutación protegida (${h.mutacion})`).toBeGreaterThan(0);
+      for (const e of h.esperado) expect(filas.some((f) => f.esperado.includes(e)), `${h.hueco}: falta ${e} en ${filas.map((f) => f.esperado).join(" | ")}`).toBe(true);
+    }
+    // «Alterar la política» (60 → 365) la ven las pruebas de borde Y el registro de aprobaciones; «agregar una exclusión», la huella de las exclusiones.
+    const politica = real.filas.filter((f) => f.veredicto === "protegido" && f.mutacion.includes("«HORIZONTE_EXCEPCION_DIAS = 60;» → «HORIZONTE_EXCEPCION_DIAS = 365;»"));
+    expect(politica.length).toBeGreaterThan(0);
+    for (const f of politica) {
+      expect(f.esperado).toContain("pruebas/prueba-roja");
+      expect(f.esperado).toContain("aprobaciones/huella-distinta");
+    }
+    const exclusion = real.filas.filter((f) => f.veredicto === "protegido" && f.mutacion.includes("una exclusión nueva (bien gobernada)"));
+    expect(exclusion.length).toBe(1);
+    expect(exclusion[0].esperado).toContain("aprobaciones/huella-distinta");
+  });
+
+  it("(iv) el meta-test sigue exigiendo la deuda de un hueco conocido: un hueco sin deuda, una deuda sin hueco y una deuda vencida son problemas", () => {
+    const deuda: DeudaDeHueco = { ...DEUDA_DE_PRUEBA, fragmento: "evasion/uno" };
+    const hueco = { id: "guardian/x/evasion/texto", hueco: "evasion/uno" };
+    expect(problemasDeHuecos([hueco], [deuda], "2026-10-21")).toEqual([]);
+    expect(problemasDeHuecos([hueco], [], "2026-10-21").join("|")).toContain("tiene 0 entradas de deuda");
+    expect(problemasDeHuecos([], [deuda], "2026-10-21").join("|")).toContain("sobra");
+    expect(problemasDeHuecos([hueco], [deuda], "2026-12-21").join("|")).toContain("venció el 2026-12-20");
+    expect(problemasDeHuecos([hueco], [deuda, deuda], "2026-10-21").join("|")).toContain("tiene 2 entradas");
+  });
+
   it("(iv) problemasDeLaDeuda rechaza una deuda vencida, sin motivo, sin resolver en G6, con más de 60 días o con otro responsable", () => {
-    const [d] = DEUDA_DE_HUECOS;
+    const d = DEUDA_DE_PRUEBA;
     expect(problemasDeLaDeuda(d, "2026-10-21")).toEqual([]);
     expect(problemasDeLaDeuda(d, "2026-12-20")).toEqual([]);
     expect(problemasDeLaDeuda(d, "2026-12-21").join("|")).toContain("venció el 2026-12-20");
@@ -176,9 +232,8 @@ describe("meta-tests de la matriz", () => {
 
   it("(v) el arnés corre dentro de npm test: es un .test.ts bajo test/ y vitest.config.ts no lo excluye", () => {
     expect(ARCHIVO_DEL_ARNES.startsWith("test/") && ARCHIVO_DEL_ARNES.endsWith(".test.ts")).toBe(true);
-    const config = readFileSync(join(RAIZ_DEL_REPO, "vitest.config.ts"), "utf8");
-    const exclude = /exclude:\s*\[([^\]]*)\]/.exec(config)?.[1] ?? "";
-    expect(exclude).not.toContain("arquitectura");
+    // El análisis estático del AST de `vitest.config.ts` (el mismo del cumplimiento): ningún `exclude` ni `include` lo deja afuera.
+    expect(evaluarConfigDeVitest(readFileSync(join(RAIZ_DEL_REPO, "vitest.config.ts"), "utf8"), [ARCHIVO_DEL_ARNES])).toEqual([]);
   });
 });
 
@@ -196,13 +251,39 @@ describe("el arnés detecta cuando el guardián NO protege", () => {
       ejemplos: EJEMPLOS_DE_CONTRATOS,
       hoy: HOY,
       soloContratos: false,
-      filtro: soloEstas("evasion/texto[test/arquitectura/contratos/contratos.test.ts"),
-      // El describe.skip sobrevive HOY (es un hueco conocido): quien lo marque protegido tiene que ver el rojo.
-      alterar: (m): Matriz => ({ ...m, invariantes: m.invariantes.map((i) => ({ ...i, mutaciones: i.mutaciones.map((x) => ({ ...x, estado: "protegido" as const, hueco: "" })) })) }),
+      filtro: soloEstas('describe.skip("contratos'),
+      // Se arma una "evasión" que NO apaga nada (el `describe` solo gana un comentario): ningún mecanismo la detecta y, como se la marca protegida, tiene que verse el rojo.
+      alterar: (m): Matriz => ({
+        ...m,
+        invariantes: m.invariantes.map((i) => ({
+          ...i,
+          mutaciones: i.mutaciones.map((x) => (x.operador === "texto" && x.parametros.a?.startsWith("describe.skip(") ? { ...x, parametros: { ...x.parametros, a: `${x.parametros.de} /* comentario inofensivo */` } } : x)),
+        })),
+      }),
     });
     expect(r.filas).toHaveLength(1);
     expect(r.filas[0].veredicto).toBe("HUECO");
+    expect(r.filas[0].real).toContain("ningún hallazgo");
     expect(tablaComoTexto(r.filas, true)).toMatch(/^HUECO: guardian\/guardian-no-neutralizable · evasion · test\/arquitectura\/contratos\/contratos\.test\.ts · .*: el guardián no protege esto/);
+  }, 60_000);
+
+  it("un hueco que de verdad sigue sin detectarse se confirma con su deuda (el mecanismo del hueco conocido sigue andando)", async () => {
+    const r = await ejecutarMatriz({
+      raizReal: RAIZ_DEL_REPO,
+      contratos: MANIFIESTO,
+      ejemplos: EJEMPLOS_DE_CONTRATOS,
+      hoy: HOY,
+      soloContratos: false,
+      filtro: soloEstas('describe.skip("contratos'),
+      alterar: (m): Matriz => ({
+        ...m,
+        invariantes: m.invariantes.map((i) => ({
+          ...i,
+          mutaciones: i.mutaciones.map((x) => (x.operador === "texto" && x.parametros.a?.startsWith("describe.skip(") ? { ...x, parametros: { ...x.parametros, a: `${x.parametros.de} /* comentario inofensivo */` }, estado: "hueco-conocido" as const, hueco: "evasion/inventado" } : x)),
+        })),
+      }),
+    });
+    expect(r.filas.map((f) => f.veredicto)).toEqual(["hueco-conocido-confirmado"]);
   }, 60_000);
 
   it("un hueco conocido que ya se detecta pide pasarlo a protegido; y un esperado equivocado es un HUECO con el resultado real", async () => {

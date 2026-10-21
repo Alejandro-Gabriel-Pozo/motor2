@@ -72,6 +72,20 @@ export interface HallazgoDeCumplimiento {
   como: string;
 }
 
+/**
+ * Memoria de los evaluadores: el mismo texto da siempre los mismos hallazgos (son funciones puras), y el arnés de mutaciones los corre cientos de veces sobre árboles que casi no cambian. La clave
+ * incluye el texto entero, así que una mutación que lo cambia siempre se evalúa de nuevo.
+ */
+const memoria = new Map<string, HallazgoDeCumplimiento[]>();
+function memorizado(clave: string, calcular: () => HallazgoDeCumplimiento[]): HallazgoDeCumplimiento[] {
+  let previo = memoria.get(clave);
+  if (previo === undefined) {
+    previo = calcular();
+    memoria.set(clave, previo);
+  }
+  return previo.map((h) => ({ ...h }));
+}
+
 type Agregar = (tipo: TipoDeCumplimiento, linea: number, que: string, como: string, columna?: number) => void;
 
 function armar(archivo: string): { hallazgos: HallazgoDeCumplimiento[]; agregar: Agregar } {
@@ -207,7 +221,9 @@ const CONDICIONES_PERMITIDAS: readonly { job: string; paso: string | null; condi
 /** Variables que cambian lo que hacen los guardianes (regeneran una línea de base o un golden): jamás en el CI. */
 const RE_VARIABLE_PROHIBIDA = /\b(CREAR_CERCOS|BAJAR_CERCOS|GOLDEN_ACTUALIZAR|REGENERAR_[A-Z0-9_]+|CONTRATOS_[A-Z0-9_]+)\b/;
 
-export function evaluarWorkflow(texto: string, archivo: string = RUTA_DE_CI): HallazgoDeCumplimiento[] {
+export const evaluarWorkflow = (texto: string, archivo: string = RUTA_DE_CI): HallazgoDeCumplimiento[] => memorizado(`workflow\0${archivo}\0${texto}`, () => workflowSinMemoria(texto, archivo));
+
+function workflowSinMemoria(texto: string, archivo: string): HallazgoDeCumplimiento[] {
   const { hallazgos, agregar } = armar(archivo);
   const raiz = parsearYaml(texto);
   const jobsNodo = hijoDe(raiz, "jobs");
@@ -303,7 +319,9 @@ const posicionDe = (fuente: ts.SourceFile, nodo: ts.Node): { linea: number; colu
   return { linea: line + 1, columna: character + 1 };
 };
 
-export function evaluarScripts(texto: string, archivo: string = RUTA_DE_PAQUETE): HallazgoDeCumplimiento[] {
+export const evaluarScripts = (texto: string, archivo: string = RUTA_DE_PAQUETE): HallazgoDeCumplimiento[] => memorizado(`scripts\0${archivo}\0${texto}`, () => scriptsSinMemoria(texto, archivo));
+
+function scriptsSinMemoria(texto: string, archivo: string): HallazgoDeCumplimiento[] {
   const { hallazgos, agregar } = armar(archivo);
   try {
     JSON.parse(texto);
@@ -392,7 +410,10 @@ export function patronAlcanza(patron: string, ruta: string): boolean | null {
 
 const CLAVES_QUE_CAMBIAN_QUE_SE_CORRE = ["projects", "workspace", "dir", "root", "testNamePattern"];
 
-export function evaluarConfigDeVitest(texto: string, protegidos: readonly string[], archivo: string = RUTA_DE_VITEST): HallazgoDeCumplimiento[] {
+export const evaluarConfigDeVitest = (texto: string, protegidos: readonly string[], archivo: string = RUTA_DE_VITEST): HallazgoDeCumplimiento[] =>
+  memorizado(`vitest\0${archivo}\0${protegidos.join(",")}\0${texto}`, () => configDeVitestSinMemoria(texto, protegidos, archivo));
+
+function configDeVitestSinMemoria(texto: string, protegidos: readonly string[], archivo: string): HallazgoDeCumplimiento[] {
   const { hallazgos, agregar } = armar(archivo);
   const fuente = arbolMemoizado(archivo, lf(texto));
   const noAnalizable = (nodo: ts.Node, que: string): void => {
@@ -493,7 +514,9 @@ function raizDe(e: ts.Expression): string | null {
 }
 
 /** Un test protegido: ningún `skip`/`only`/`todo`/`skipIf`/`runIf`/`ctx.skip`/`xit`/`xdescribe` (mirando el AST: una mención en un texto o en un comentario no cuenta) y al menos un `it` o `test`. */
-export function evaluarPruebaProtegida(texto: string, archivo: string): HallazgoDeCumplimiento[] {
+export const evaluarPruebaProtegida = (texto: string, archivo: string): HallazgoDeCumplimiento[] => memorizado(`prueba\0${archivo}\0${texto}`, () => pruebaProtegidaSinMemoria(texto, archivo));
+
+function pruebaProtegidaSinMemoria(texto: string, archivo: string): HallazgoDeCumplimiento[] {
   const { hallazgos, agregar } = armar(archivo);
   const fuente = arbolMemoizado(archivo, lf(texto));
   let pruebas = 0;

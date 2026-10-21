@@ -75,6 +75,10 @@ export const APROBACIONES: readonly Aprobacion[] = [
   { archivo: "test/arquitectura/contratos/politica.ts", blob: "0c27289b1498bad7fd109d9b99594fa715c269b9", referencia: "DEC-03", motivo: "línea de base del mecanismo, Fase 6; a ratificar por el dueño antes del pull request" },
   { archivo: "test/arquitectura/contratos/tipos.ts", blob: "aa18f677245425dc594da6a34d3ccab424b94907", referencia: "DEC-03", motivo: "línea de base del mecanismo, Fase 6; a ratificar por el dueño antes del pull request" },
   { archivo: "vitest.config.ts", blob: "04ef0a71c2ee0b39cd543c1e3a955add3f67d794", referencia: "DEC-03", motivo: "línea de base del mecanismo, Fase 6; a ratificar por el dueño antes del pull request" },
+  // Paso G6, segundo commit (DEC-03): el arnés verifica también el cumplimiento y el registro; los 7 huecos conocidos pasan a mutaciones protegidas.
+  { archivo: "test/arquitectura/contratos/gobernanza/cumplimiento.ts", blob: "d554388126eae0b34899fce709ec95c44f05ee46", referencia: "DEC-03", motivo: "G6: los 7 huecos conocidos de la matriz pasan a mutaciones protegidas (el arnés verifica también el cumplimiento y el registro de aprobaciones; los evaluadores memorizan por texto)" },
+  { archivo: "test/arquitectura/contratos/mutaciones/arnes.ts", blob: "773e798a0836178844c1e9cd1011181190b6a68c", referencia: "DEC-03", motivo: "G6: los 7 huecos conocidos de la matriz pasan a mutaciones protegidas (el arnés verifica también el cumplimiento y el registro de aprobaciones; los evaluadores memorizan por texto)" },
+  { archivo: "test/arquitectura/contratos/mutaciones/operadores.ts", blob: "d65b7bc07dd01c5c9206fab04cb8a2943d2f4c1c", referencia: "DEC-03", motivo: "G6: los 7 huecos conocidos de la matriz pasan a mutaciones protegidas (el arnés verifica también el cumplimiento y el registro de aprobaciones; los evaluadores memorizan por texto)" },
 ];
 
 // ---------------------------------------------------------------------------------------------------------------------------------

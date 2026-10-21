@@ -3,12 +3,14 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, 
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { formatearHallazgo, revisarContratos } from "../motor";
+import { APROBACIONES, revisarAprobaciones, rutasDelMecanismo, type Aprobacion } from "../gobernanza/aprobaciones";
+import { GUARDIANES_ADICIONALES, revisarCumplimiento } from "../gobernanza/cumplimiento";
 import { ARCHIVO_DE_AREAS, AREAS, POLITICA_DE_TIPOS, areaDe, compararAreas, posicionEnTexto, type DeclaracionDeAreas } from "../gobernanza/areas";
 import { REGLAS_DE_RUTA, clasificarRutas, leerCronsDeVercel, listarRutasConGit, type ReglaDeRuta, type TipoDeRuta } from "../gobernanza/clasificacion";
 import { EXCLUSIONES, type Exclusion } from "../gobernanza/exclusiones";
 import { usosDeContratos } from "../gobernanza/usos";
 import type { Contrato } from "../tipos";
-import { construirMatriz, type ClaseDeMutacion, type EstadoDeMutacion, type Matriz, type MutacionDeMatriz } from "./matriz";
+import { construirMatriz, type ClaseDeMutacion, type EsperadoDeMutacion, type EstadoDeMutacion, type Matriz, type MutacionDeMatriz } from "./matriz";
 import { ARCHIVO_DEL_MANIFIESTO, OPERADORES, archivosDelAlcance, esNoAplica, type BaseDeMutacion, type Cambio, type EjemplosDeContrato, type Mutacion, type Verifica } from "./operadores";
 
 /**
@@ -80,7 +82,7 @@ export interface ResultadoDelArnes {
   corridas: number;
   milisegundos: number;
   /** En qué se fue el tiempo (ms, acumulado de todas las verificaciones). */
-  tiempos: Readonly<Record<"motor" | "clasificacion" | "areas", number>>;
+  tiempos: Readonly<Record<"motor" | "clasificacion" | "areas" | "cumplimiento" | "aprobaciones", number>>;
   /** Lo que da el guardián sobre la copia SIN mutar: tiene que ser vacío. */
   baseLimpia: readonly Observado[];
 }
@@ -125,6 +127,8 @@ function prepararBase(o: OpcionesDelArnes): Preparada {
     if (RAICES_DE_MARCAS.some((r) => ruta.startsWith(r)) && /\.(tsx?|css)$/.test(ruta) && readFileSync(abs(o.raizReal, ruta), "utf8").includes("@contrato")) aCopiar.add(ruta);
     if (ruta.startsWith(PREFIJO_DEL_GUARDIAN) || DEL_GUARDIAN.includes(ruta)) aCopiar.add(ruta);
   }
+  // Lo que el cumplimiento y el registro de aprobaciones leen: el mecanismo entero (también lo que hashean en parte) y los guardianes adicionales que protegen.
+  if (!o.soloContratos) for (const r of [...rutasDelMecanismo(o.raizReal), ...GUARDIANES_ADICIONALES]) if (existsSync(abs(o.raizReal, r))) aCopiar.add(r);
   for (const c of o.contratos) {
     for (const r of archivosDelAlcance({ archivos }, c)) aCopiar.add(r);
     for (const r of [c.fuente.archivo, `${PREFIJO_DEL_GUARDIAN}contratos/${c.id}.ts`]) if (archivos.includes(r)) aCopiar.add(r);
@@ -170,15 +174,28 @@ interface Escenario {
   areas: DeclaracionDeAreas;
   reglas: readonly ReglaDeRuta[];
   exclusiones: readonly Exclusion[];
+  politicaDeTipos: typeof POLITICA_DE_TIPOS;
+  registro: readonly Aprobacion[];
   crons: readonly string[];
   ignoradas: readonly string[];
   archivos: readonly string[];
 }
 
-const escenarioBase = (base: BaseDeMutacion): Escenario => ({ contratos: base.contratos, hoy: base.hoy, areas: base.areas, reglas: base.reglas, exclusiones: base.exclusiones, crons: base.crons, ignoradas: [], archivos: base.archivos });
+const escenarioBase = (base: BaseDeMutacion): Escenario => ({
+  contratos: base.contratos,
+  hoy: base.hoy,
+  areas: base.areas,
+  reglas: base.reglas,
+  exclusiones: base.exclusiones,
+  politicaDeTipos: POLITICA_DE_TIPOS,
+  registro: APROBACIONES,
+  crons: base.crons,
+  ignoradas: [],
+  archivos: base.archivos,
+});
 
 /** Cuánto tardó cada verificación (ms), acumulado: para medir y optimizar el arnés. */
-const tiempos = { motor: 0, clasificacion: 0, areas: 0 };
+const tiempos = { motor: 0, clasificacion: 0, areas: 0, cumplimiento: 0, aprobaciones: 0 };
 const medir = <T>(clave: keyof typeof tiempos, f: () => T): T => {
   const t0 = performance.now();
   try {
@@ -188,7 +205,11 @@ const medir = <T>(clave: keyof typeof tiempos, f: () => T): T => {
   }
 };
 
-function observar(base: BaseDeMutacion, e: Escenario, soloMotor: boolean): Observado[] {
+/**
+ * `conMecanismo`: además del motor, la clasificación y las áreas, corre el cumplimiento del cableado y el registro de aprobaciones. Se pide en las mutaciones de evasión y en las que tocan el mecanismo
+ * (ver `tocaElMecanismo`): son las que pueden dar uno de esos hallazgos, y correrlos en las cientos de mutaciones de contratos sería pagar tiempo para no mirar nada.
+ */
+function observar(base: BaseDeMutacion, e: Escenario, soloMotor: boolean, conMecanismo: boolean): Observado[] {
   const salida: Observado[] = [];
   let manifiestoValido = true;
   try {
@@ -211,6 +232,12 @@ function observar(base: BaseDeMutacion, e: Escenario, soloMotor: boolean): Obser
   if (tipos === null || !manifiestoValido) return salida;
   const ar = medir("areas", () => compararAreas({ tipos, declaraciones: e.areas, usos: usosDeContratos(base.raiz, e.contratos), posicionDeEntrada: (a) => posicionEnTexto(base.textoDeAreas, a) }));
   for (const h of ar.hallazgos) salida.push({ verifica: "areas", tipo: h.tipo, archivo: h.archivo, linea: h.linea, columna: h.columna, sujeto: h.area, que: h.que, como: h.como });
+  if (!conMecanismo) return salida;
+  for (const h of medir("cumplimiento", () => revisarCumplimiento(base.raiz, { contratos: e.contratos, registro: e.registro })).hallazgos) {
+    salida.push({ verifica: "cumplimiento", tipo: h.tipo, archivo: h.archivo, linea: h.linea, columna: h.columna, sujeto: "", que: h.que, como: h.como });
+  }
+  const aprobaciones = medir("aprobaciones", () => revisarAprobaciones({ raiz: base.raiz, contratos: e.contratos, exclusiones: e.exclusiones, politicaDeTipos: e.politicaDeTipos, registro: e.registro }));
+  for (const h of aprobaciones.hallazgos) salida.push({ verifica: "aprobaciones", tipo: h.tipo, archivo: h.archivo, linea: h.linea, columna: h.columna, sujeto: h.clave, que: h.que, como: h.como });
   return salida;
 }
 
@@ -327,23 +354,33 @@ async function correrPruebasEnBanco(p: Preparada, m: Mutacion): Promise<Observad
 const describir = (o: Observado): string => `${o.verifica}/${o.tipo} ${o.archivo}:${o.linea}:${o.columna}${o.sujeto ? ` [${o.sujeto}]` : ""} «${o.que.slice(0, 160)}»`;
 const describirLista = (os: readonly Observado[]): string => (os.length === 0 ? "ningún hallazgo (la verificación pasa)" : os.slice(0, 6).map(describir).join(" ; ") + (os.length > 6 ? ` ; … y ${os.length - 6} más` : ""));
 
+/** ¿Algún hallazgo observado cumple lo que se espera (tipo, archivo, línea real y un fragmento del mensaje)? Si no, por qué. */
+function cumple(x: EsperadoDeMutacion, m: Mutacion, obs: readonly Observado[], raizMutada: string): { ok: true } | { ok: false; detalle: string } {
+  const lineaEsperada = x.linea === "calculada" ? m.linea(raizMutada) : x.linea === "sin-posicion" ? 1 : x.linea;
+  const mismos = obs.filter((o) => o.verifica === x.verifica && o.tipo === x.tipo && o.archivo === x.archivo);
+  if (mismos.length === 0) return { ok: false, detalle: `no apareció ${x.verifica}/${x.tipo} en ${x.archivo}` };
+  const buenos = mismos.filter((o) => o.linea === lineaEsperada && `${o.que} ${o.como}`.includes(x.mensajeIncluye));
+  if (buenos.length === 0) {
+    const porLinea = mismos.some((o) => o.linea === lineaEsperada);
+    return { ok: false, detalle: porLinea ? `apareció ${x.tipo} en la línea ${lineaEsperada} pero el mensaje no dice «${x.mensajeIncluye}»` : `apareció ${x.tipo} pero no en la línea ${lineaEsperada} (dio ${mismos.map((o) => o.linea).join(", ")})` };
+  }
+  if (lineaEsperada < 1 || buenos.some((o) => o.linea < 1 || o.como.trim() === "")) return { ok: false, detalle: "el hallazgo no trae una línea real (≥ 1) o una corrección sugerida" };
+  return { ok: true };
+}
+
 function evaluar(e: MutacionDeMatriz, m: Mutacion, obs: readonly Observado[], raizMutada: string): { veredicto: Veredicto; detalle: string } {
   if (e.estado === "hueco-conocido") {
     return obs.length === 0
       ? { veredicto: "hueco-conocido-confirmado", detalle: `sigue sin detectarse (deuda ${e.hueco})` }
       : { veredicto: "hueco-ya-protegido", detalle: `el hueco «${e.hueco}» ya se detecta (${describirLista(obs)}): pasalo a protegido y sacá su deuda` };
   }
-  const x = e.esperado;
-  const lineaEsperada = x.linea === "calculada" ? m.linea(raizMutada) : x.linea === "sin-posicion" ? 1 : x.linea;
-  const mismos = obs.filter((o) => o.verifica === x.verifica && o.tipo === x.tipo && o.archivo === x.archivo);
-  if (mismos.length === 0) return { veredicto: "HUECO", detalle: `no apareció ${x.verifica}/${x.tipo} en ${x.archivo}` };
-  const buenos = mismos.filter((o) => o.linea === lineaEsperada && `${o.que} ${o.como}`.includes(x.mensajeIncluye));
-  if (buenos.length === 0) {
-    const porLinea = mismos.some((o) => o.linea === lineaEsperada);
-    return { veredicto: "HUECO", detalle: porLinea ? `apareció ${x.tipo} en la línea ${lineaEsperada} pero el mensaje no dice «${x.mensajeIncluye}»` : `apareció ${x.tipo} pero no en la línea ${lineaEsperada} (dio ${mismos.map((o) => o.linea).join(", ")})` };
+  // Lo esperado (el hallazgo principal) y, además, lo que otros mecanismos tienen que decir de la misma mutación (p. ej. el registro de aprobaciones además del cumplimiento).
+  const esperados = [e.esperado, ...e.ademas];
+  for (const x of esperados) {
+    const r = cumple(x, m, obs, raizMutada);
+    if (!r.ok) return { veredicto: "HUECO", detalle: r.detalle };
   }
-  if (lineaEsperada < 1 || buenos.some((o) => o.linea < 1 || o.como.trim() === "")) return { veredicto: "HUECO", detalle: "el hallazgo no trae una línea real (≥ 1) o una corrección sugerida" };
-  const sobran = obs.filter((o) => !(o.verifica === x.verifica && o.tipo === x.tipo && o.archivo === x.archivo) && !m.tolerados.some((t) => t.verifica === o.verifica && t.tipo === o.tipo));
+  const sobran = obs.filter((o) => !esperados.some((x) => o.verifica === x.verifica && o.tipo === x.tipo && o.archivo === x.archivo) && !m.tolerados.some((t) => t.verifica === o.verifica && t.tipo === o.tipo));
   if (sobran.length > 0) return { veredicto: "HUECO", detalle: `además de lo esperado dio otros hallazgos que la mutación no explica: ${describirLista(sobran)}` };
   return { veredicto: "protegido", detalle: "" };
 }
@@ -352,19 +389,33 @@ function evaluar(e: MutacionDeMatriz, m: Mutacion, obs: readonly Observado[], ra
 // Correr la matriz
 // ---------------------------------------------------------------------------------------------------------------------------------
 
+/**
+ * ¿La mutación puede dar un hallazgo del cumplimiento o del registro de aprobaciones? Sí si es de evasión, si espera uno, si altera en memoria el manifiesto, las exclusiones, la política o el registro, o si
+ * cambia un archivo del mecanismo, de la carpeta de contratos o uno de los guardianes adicionales.
+ */
+function tocaElMecanismo(e: MutacionDeMatriz, m: Mutacion, mecanismo: ReadonlySet<string>): boolean {
+  if (e.clase === "evasion" || e.ademas.length > 0 || e.esperado.verifica === "cumplimiento" || e.esperado.verifica === "aprobaciones") return true;
+  if (m.contratos !== null || m.exclusiones !== null || m.politicaDeTipos !== null || m.registro !== null) return true;
+  const afecta = (ruta: string): boolean => ruta.startsWith(PREFIJO_DEL_GUARDIAN) || [...mecanismo].some((r) => r === ruta || r.startsWith(`${ruta}/`));
+  return m.cambios.some((c) => (c.op === "mover" ? afecta(c.de) || afecta(c.a) : afecta(c.ruta)));
+}
+
 const escenarioDe = (base: BaseDeMutacion, m: Mutacion): Escenario => ({
   contratos: m.contratos ?? base.contratos,
   hoy: m.hoy ?? base.hoy,
   areas: m.areas ?? base.areas,
   reglas: m.reglas ?? base.reglas,
   exclusiones: m.exclusiones ?? base.exclusiones,
+  politicaDeTipos: m.politicaDeTipos ?? POLITICA_DE_TIPOS,
+  registro: m.registro ?? APROBACIONES,
   crons: m.crons ?? base.crons,
   ignoradas: m.ignoradas ?? [],
   archivos: m.listadoVacio ? [] : aplicarAlListado(base.archivos, m.cambios),
 });
 
+const textoDe = (x: EsperadoDeMutacion): string => `${x.verifica}/${x.tipo} · ${x.archivo}:${x.linea} · «${x.mensajeIncluye}»`;
 const textoEsperado = (e: MutacionDeMatriz): string =>
-  e.estado === "hueco-conocido" ? `hueco conocido «${e.hueco}»: hoy no hay hallazgo (lo que debería decir: ${e.esperado.tipo} · «${e.esperado.mensajeIncluye}»)` : `${e.esperado.verifica}/${e.esperado.tipo} · ${e.esperado.archivo}:${e.esperado.linea} · «${e.esperado.mensajeIncluye}»`;
+  e.estado === "hueco-conocido" ? `hueco conocido «${e.hueco}»: hoy no hay hallazgo (lo que debería decir: ${e.esperado.tipo} · «${e.esperado.mensajeIncluye}»)` : [e.esperado, ...e.ademas].map(textoDe).join(" + ");
 
 export async function ejecutarMatriz(o: OpcionesDelArnes): Promise<ResultadoDelArnes> {
   const inicio = Date.now();
@@ -373,7 +424,8 @@ export async function ejecutarMatriz(o: OpcionesDelArnes): Promise<ResultadoDelA
   try {
     const matriz = o.alterar ? o.alterar(construirMatriz(p.base)) : construirMatriz(p.base);
     const invariantes = o.soloContratos ? matriz.invariantes.filter((i) => i.origen === "contrato") : matriz.invariantes;
-    const baseLimpia = observar(p.base, escenarioBase(p.base), o.soloContratos);
+    const mecanismo = new Set([...rutasDelMecanismo(o.raizReal), ...GUARDIANES_ADICIONALES]);
+    const baseLimpia = observar(p.base, escenarioBase(p.base), o.soloContratos, true);
     const filas: FilaDeResultado[] = [];
     let corridas = 0;
 
@@ -383,6 +435,8 @@ export async function ejecutarMatriz(o: OpcionesDelArnes): Promise<ResultadoDelA
       e: MutacionDeMatriz;
       m: Mutacion;
       pruebas: Promise<Observado[]> | null;
+      /** Una mutación verificada por las pruebas del banco que además espera hallazgos del cumplimiento o del registro: lo que se observa en la copia, con la mutación aplicada. */
+      enLaCopia: { obs: Observado[]; aislamiento: string } | null;
     }
     const armadas: Armada[] = [];
     const fila = (inv: string, e: MutacionDeMatriz, mutacion: string, real: string, veredicto: Veredicto, detalle: string): FilaDeResultado => ({
@@ -413,39 +467,48 @@ export async function ejecutarMatriz(o: OpcionesDelArnes): Promise<ResultadoDelA
         try {
           const m = operador.aplicar(p.base, e.parametros);
           if (esNoAplica(m)) filas.push(fila(inv.id, e, "(no aplica)", "", "no-aplica", m.noAplica));
-          else armadas.push({ inv: inv.id, e, m, pruebas: m.pruebas === null ? null : correrPruebasEnBanco(p, m) });
+          else armadas.push({ inv: inv.id, e, m, pruebas: m.pruebas === null ? null : correrPruebasEnBanco(p, m), enLaCopia: null });
         } catch (error) {
           filas.push(fila(inv.id, e, "", "", "error-del-operador", (error as Error).message));
         }
       }
     }
 
-    // Fase 2: aplicar, verificar y revertir, una por una (las pruebas del banco ya corren en paralelo).
+    // Fase 2: aplicar, verificar y revertir, una por una (las pruebas del banco ya corren en paralelo). Una mutación del banco que además espera hallazgos del cumplimiento o del registro
+    // pasa también por acá, para que ellos la vean en la copia.
     for (const a of armadas) {
       corridas++;
-      if (a.pruebas !== null) continue;
+      if (a.pruebas !== null && a.e.ademas.length === 0) continue;
       let deshacer: Deshacer | null = null;
       try {
         deshacer = aplicarEnDisco(p.base.raiz, a.m.cambios);
-        const obs = observar(p.base, escenarioDe(p.base, a.m), o.soloContratos);
-        const { veredicto, detalle } = evaluar(a.e, a.m, obs, p.base.raiz);
+        const conMecanismo = tocaElMecanismo(a.e, a.m, mecanismo);
+        const obs = observar(p.base, escenarioDe(p.base, a.m), o.soloContratos, conMecanismo);
+        const { veredicto, detalle } = a.pruebas === null ? evaluar(a.e, a.m, obs, p.base.raiz) : { veredicto: "protegido" as Veredicto, detalle: "" };
         deshacer.revertir();
         deshacer = null;
         let final = { veredicto, detalle };
+        let aislamiento = "";
         if (a.m.cambios.length > 0) {
-          const despues = observar(p.base, escenarioBase(p.base), o.soloContratos);
-          if (despues.length > 0) final = { veredicto: "aislamiento-roto", detalle: `después de revertir quedaron hallazgos: ${describirLista(despues)}` };
+          const despues = observar(p.base, escenarioBase(p.base), o.soloContratos, conMecanismo);
+          if (despues.length > 0) {
+            aislamiento = `después de revertir quedaron hallazgos: ${describirLista(despues)}`;
+            final = { veredicto: "aislamiento-roto", detalle: aislamiento };
+          }
         }
-        filas.push(fila(a.inv, a.e, a.m.descripcion, describirLista(obs), final.veredicto, final.detalle));
+        if (a.pruebas === null) filas.push(fila(a.inv, a.e, a.m.descripcion, describirLista(obs), final.veredicto, final.detalle));
+        else a.enLaCopia = { obs, aislamiento };
       } catch (error) {
         deshacer?.revertir();
         filas.push(fila(a.inv, a.e, a.m.descripcion, "", "error-del-operador", (error as Error).message));
+        a.enLaCopia = { obs: [], aislamiento: "error-del-operador" };
       }
     }
     for (const a of armadas) {
       if (a.pruebas === null) continue;
-      const obs = await a.pruebas;
-      const { veredicto, detalle } = evaluar(a.e, a.m, obs, p.base.raiz);
+      if (a.enLaCopia?.aislamiento === "error-del-operador") continue;
+      const obs = [...(a.enLaCopia?.obs ?? []), ...(await a.pruebas)];
+      const { veredicto, detalle } = a.enLaCopia !== null && a.enLaCopia.aislamiento !== "" ? { veredicto: "aislamiento-roto" as Veredicto, detalle: a.enLaCopia.aislamiento } : evaluar(a.e, a.m, obs, p.base.raiz);
       filas.push(fila(a.inv, a.e, a.m.descripcion, describirLista(obs), veredicto, detalle));
     }
     return { matriz, filas, corridas, milisegundos: Date.now() - inicio, tiempos: { ...tiempos }, baseLimpia };

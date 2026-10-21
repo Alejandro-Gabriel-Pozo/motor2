@@ -6,8 +6,9 @@ import { cadenasDeClases, coincidenciasDeClases, coincidenciasPorToken } from ".
 import { colapsar, prueba, type Coincidencia } from "../adaptadores/coincidencia";
 import { coincidenciasDeCss, dentroDeLaRegla, leerReglas, posicionDelAncla, reglaDelAncla, variablesDefinidas } from "../adaptadores/css";
 import { codigoSolo, coincidenciasDeTs, importaElAncla, posicionDelSimboloExportado } from "../adaptadores/ts";
-import type { DeclaracionDeAreas, IdDeContrato } from "../gobernanza/areas";
+import { POLITICA_DE_TIPOS, type DeclaracionDeAreas, type IdDeContrato } from "../gobernanza/areas";
 import type { ReglaDeRuta } from "../gobernanza/clasificacion";
+import { APROBACIONES, type Aprobacion } from "../gobernanza/aprobaciones";
 import type { Exclusion } from "../gobernanza/exclusiones";
 import { usosDeContratos, type UsoEnArchivo } from "../gobernanza/usos";
 import { arbolMemoizado, cadenasMemoizadas, esCss, esTs } from "../indice";
@@ -26,8 +27,11 @@ import type { Contrato, Deuda, Detector, Excepcion } from "../tipos";
 // Tipos
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/** Quién emite un hallazgo: el motor de contratos, la clasificación de rutas, las áreas, el manifiesto (lanza), o las pruebas del propio guardián (rojas). */
-export type Verifica = "motor" | "clasificacion" | "areas" | "manifiesto" | "pruebas";
+/**
+ * Quién emite un hallazgo: el motor de contratos, la clasificación de rutas, las áreas, el manifiesto (lanza), las pruebas del propio guardián (rojas), el cumplimiento del cableado
+ * (`gobernanza/cumplimiento.ts`) o el registro de aprobaciones del mecanismo (`gobernanza/aprobaciones.ts`).
+ */
+export type Verifica = "motor" | "clasificacion" | "areas" | "manifiesto" | "pruebas" | "cumplimiento" | "aprobaciones";
 
 export type Cambio = { op: "escribir"; ruta: string; contenido: string } | { op: "borrar"; ruta: string } | { op: "mover"; de: string; a: string };
 
@@ -48,6 +52,10 @@ export interface Mutacion {
   areas: DeclaracionDeAreas | null;
   reglas: readonly ReglaDeRuta[] | null;
   exclusiones: readonly Exclusion[] | null;
+  /** La política de tipos de ruta alterada en memoria (null = la real). */
+  politicaDeTipos: typeof POLITICA_DE_TIPOS | null;
+  /** El registro de aprobaciones alterado en memoria (null = el real). */
+  registro: readonly Aprobacion[] | null;
   crons: readonly string[] | null;
   ignoradas: readonly string[] | null;
   listadoVacio: boolean;
@@ -118,6 +126,8 @@ const mutacion = (descripcion: string, linea: (raiz: string) => number, resto: P
   areas: null,
   reglas: null,
   exclusiones: null,
+  politicaDeTipos: null,
+  registro: null,
   crons: null,
   ignoradas: null,
   listadoVacio: false,
@@ -615,7 +625,8 @@ const quitarEntrada: Operador = {
         const k = [...delContrato(c, entrada.archivo, t, "senales"), ...delContrato(c, entrada.archivo, t, "definicion")].find((x) => x.fragmento === colapsar(entrada.fragmento));
         return k ? lineaDe(t, k.desde) : fallo(`el fragmento de ${lista}[${i}] ya no está en ${entrada.archivo}`);
       },
-      { contratos: base.contratos.map((x) => (x.id === c.id ? nuevo : x)) }
+      // Sacar un caso legítimo o una excepción cambia los campos gobernados de la definición (huella del registro de aprobaciones); la deuda no se hashea.
+      { contratos: base.contratos.map((x) => (x.id === c.id ? nuevo : x)), tolerados: lista === "deuda" ? [] : [{ verifica: "aprobaciones", tipo: "huella-distinta" }] }
     );
   },
 };
@@ -628,8 +639,12 @@ const fueraDelManifiesto: Operador = {
     const texto = leerTexto(base.raiz, c.fuente.archivo);
     return mutacion(`saca «${c.id}» del manifiesto (la marca queda en ${c.fuente.archivo})`, () => lineaDe(texto, posicionDeMarca(texto, c.fuente.archivo, c.id)), {
       contratos: base.contratos.filter((x) => x.id !== c.id),
-      // Las áreas que declaraban el id ahora declaran un contrato que no existe.
-      tolerados: [{ verifica: "areas", tipo: "dependencia-falsa" }],
+      // Las áreas que declaraban el id ahora declaran un contrato que no existe, y el registro de aprobaciones tiene aprobado un contrato que el manifiesto ya no trae.
+      tolerados: [
+        { verifica: "areas", tipo: "dependencia-falsa" },
+        { verifica: "aprobaciones", tipo: "archivo-ausente" },
+        { verifica: "cumplimiento", tipo: "aprobado-ausente-del-manifiesto" },
+      ],
     });
   },
 };
@@ -646,6 +661,8 @@ const vaciarManifiesto: Operador = {
       tolerados: [
         { verifica: "motor", tipo: "marca-desconocida" },
         { verifica: "areas", tipo: "dependencia-falsa" },
+        { verifica: "aprobaciones", tipo: "archivo-ausente" },
+        { verifica: "cumplimiento", tipo: "aprobado-ausente-del-manifiesto" },
       ],
     });
   },
@@ -789,9 +806,11 @@ const exclusion: Operador = {
     const modo = parametro(p, "modo");
     const primera = base.exclusiones[0];
     if (primera === undefined) return { noAplica: "no hay ninguna exclusión real" };
-    if (modo === "sin-motivo") return mutacion("la exclusión real pierde su motivo", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, motivo: "corto" } : e)) });
-    if (modo === "sin-responsable") return mutacion("la exclusión real tiene un responsable fuera de la lista", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, responsable: "tercero" as never } : e)) });
-    if (modo === "sin-aprobacion") return mutacion("la exclusión real pierde su aprobación", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, aprobacion: { por: "dueño", referencia: "nada" } } : e)) });
+    // Cambiar el motivo, el responsable, la aprobación o el vencimiento de una exclusión cambia su huella en el registro de aprobaciones (las exclusiones se hashean enteras).
+    const huellaDeExclusiones = [{ verifica: "aprobaciones", tipo: "huella-distinta" }] as const;
+    if (modo === "sin-motivo") return mutacion("la exclusión real pierde su motivo", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, motivo: "corto" } : e)), tolerados: huellaDeExclusiones });
+    if (modo === "sin-responsable") return mutacion("la exclusión real tiene un responsable fuera de la lista", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, responsable: "tercero" as never } : e)), tolerados: huellaDeExclusiones });
+    if (modo === "sin-aprobacion") return mutacion("la exclusión real pierde su aprobación", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, aprobacion: { por: "dueño", referencia: "nada" } } : e)), tolerados: huellaDeExclusiones });
     // Al correr el reloj también vencen la deuda y las excepciones de los contratos que vencen ese mismo día: es lo que tiene que pasar, no un hueco.
     if (modo === "vencida") {
       return mutacion("pasa el día de vencimiento de la exclusión real", () => 1, {
@@ -802,7 +821,7 @@ const exclusion: Operador = {
         ],
       });
     }
-    if (modo === "lejana") return mutacion("la exclusión real vence en 2099", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, vence: "2099-12-31" } : e)) });
+    if (modo === "lejana") return mutacion("la exclusión real vence en 2099", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, vence: "2099-12-31" } : e)), tolerados: huellaDeExclusiones });
     if (modo === "ampliada") return mutacion("un archivo más bajo la exclusión real", () => 1, { cambios: [escribir(`${primera.ruta.replace(/\/$/, "")}/zz-codigo-nuevo.ts`, "export const Nuevo = 1;\n")] });
     if (modo === "sin-uso") {
       const uno = base.archivos.find((a) => a.startsWith(primera.ruta));
@@ -836,8 +855,17 @@ const gobierno: Operador = {
     const deuda: Deuda = { ...base0, resuelveEn: "G6" };
     const caso = { archivo: ruta, fragmento: uso.fragmento, motivo: MOTIVO_VALIDO };
     const con = (x: Partial<Contrato>): Contrato[] => base.contratos.map((k) => (k.id === c.id ? { ...k, ...x } : k));
-    const m = (descripcion: string, x: Partial<Contrato>, resto: Partial<Mutacion> = {}, linea: (raiz: string) => number = () => 1): Mutacion =>
-      mutacion(`${descripcion} (${ruta})`, linea, { cambios: [escribir(ruta, contenido)], contratos: con(x), ...resto });
+    // Agregar o repetir una excepción o un caso legítimo cambia la definición gobernada del contrato (huella del registro de aprobaciones). El caso que silencia un uso lo espera la matriz: no se tolera.
+    const m = (descripcion: string, x: Partial<Contrato>, resto: Partial<Mutacion> = {}, linea: (raiz: string) => number = () => 1): Mutacion => {
+      const { tolerados: propios = [], ...demas } = resto;
+      const cambiaLoGobernado = (x.excepciones !== undefined || x.casosLegitimos !== undefined) && defecto !== "caso-que-silencia";
+      return mutacion(`${descripcion} (${ruta})`, linea, {
+        cambios: [escribir(ruta, contenido)],
+        contratos: con(x),
+        tolerados: [...propios, ...(cambiaLoGobernado ? ([{ verifica: "aprobaciones", tipo: "huella-distinta" }] as const) : [])],
+        ...demas,
+      });
+    };
     const lineaDelUso = (): number => lineaDe(contenido, uso.desde);
     switch (defecto) {
       case "excepcion-valida":
@@ -878,7 +906,7 @@ const gobierno: Operador = {
 
 const texto: Operador = {
   id: "texto",
-  aplicaA: "cualquier archivo de la copia o del banco de pruebas: se reemplaza la primera aparición de `de` por `a`. Con `pruebas` (archivos separados por coma) la verificación son las pruebas del banco",
+  aplicaA: "cualquier archivo de la copia o del banco de pruebas: se reemplaza la primera aparición de `de` por `a`. Con `pruebas` (archivos separados por coma) la verificación son las pruebas del banco; con `donde`, la línea esperada es la de ese texto en el archivo ya mutado",
   aplicar(base, p) {
     const ruta = parametro(p, "ruta");
     const de = parametro(p, "de");
@@ -888,7 +916,10 @@ const texto: Operador = {
     if (i < 0) return fallo(`«${ruta}» no contiene el texto «${de}»`);
     const nuevo = original.slice(0, i) + a + original.slice(i + de.length);
     const pruebas = p.pruebas === undefined ? null : p.pruebas.split(",");
-    return mutacion(`en ${ruta}: «${de}» → «${a}»`, () => lineaDe(nuevo, i), { cambios: [escribir(ruta, nuevo)], pruebas });
+    // `donde`: el texto, ya mutado, cuya línea tiene que señalar el hallazgo (por defecto, la del propio cambio).
+    const donde = p.donde === undefined ? i : nuevo.indexOf(p.donde);
+    if (donde < 0) return fallo(`«${ruta}» mutado no contiene «${p.donde ?? ""}»`);
+    return mutacion(`en ${ruta}: «${de}» → «${a}»`, () => lineaDe(nuevo, donde), { cambios: [escribir(ruta, nuevo)], pruebas });
   },
 };
 
@@ -905,12 +936,54 @@ const mover: Operador = {
       tolerados: [
         { verifica: "areas", tipo: "area-fantasma" },
         { verifica: "areas", tipo: "area-sin-declaracion" },
+        // Mover una pieza del mecanismo o un guardián deja al registro de aprobaciones y a la lista de guardianes sin lo que esperaban.
+        { verifica: "aprobaciones", tipo: "archivo-ausente" },
+        { verifica: "cumplimiento", tipo: "guardian-ausente" },
         ...(esCarpeta ? [{ verifica: "clasificacion", tipo: "ruta-sin-clasificar" } as const] : []),
       ],
     });
   },
 };
 
+const archivo: Operador = {
+  id: "archivo",
+  aplicaA: "cualquier archivo de la copia. Parámetros `ruta` y `modo`: un-byte (un espacio al final) | borrar | copiar (con `destino`: el archivo donde queda la copia)",
+  aplicar(base, p) {
+    const ruta = parametro(p, "ruta");
+    const modo = parametro(p, "modo");
+    const original = leerTexto(base.raiz, ruta);
+    if (modo === "un-byte") return mutacion(`agrega un byte (un espacio) al final de ${ruta}`, () => 1, { cambios: [escribir(ruta, `${original} `)] });
+    if (modo === "borrar") return mutacion(`borra ${ruta}`, () => 1, { cambios: [{ op: "borrar", ruta }] });
+    const destino = parametro(p, "destino");
+    return mutacion(`copia ${ruta} a ${destino}`, () => 1, { cambios: [escribir(destino, original)] });
+  },
+};
+
+const registro: Operador = {
+  id: "registro",
+  aplicaA: "el registro de aprobaciones (`APROBACIONES`). Parámetros `modo` y `clave`: quitar-aprobacion (se borran las entradas de esa pieza) | huella-vieja (su última entrada pasa a una huella que no es la actual)",
+  aplicar(_base, p) {
+    const clave = parametro(p, "clave");
+    const modo = parametro(p, "modo");
+    const propias = APROBACIONES.filter((a) => a.archivo === clave);
+    if (propias.length === 0) return fallo(`el registro no tiene entradas de «${clave}»`);
+    if (modo === "quitar-aprobacion") return mutacion(`se borran del registro las aprobaciones de «${clave}»`, () => 1, { registro: APROBACIONES.filter((a) => a.archivo !== clave) });
+    const ultima = propias[propias.length - 1];
+    const vieja: Aprobacion = { ...ultima, blob: ultima.blob.replace(/^./, (c) => (c === "0" ? "1" : "0")) };
+    return mutacion(`la última aprobación de «${clave}» queda con una huella que no es la actual`, () => 1, { registro: APROBACIONES.map((a) => (a === ultima ? vieja : a)) });
+  },
+};
+
+const politicaDeTipos: Operador = {
+  id: "politica-de-tipos",
+  aplicaA: "la política de tipos de ruta (`POLITICA_DE_TIPOS`). Parámetro `tipo`: un tipo que declaraba contratos pasa a no declararlos",
+  aplicar(_base, p) {
+    const tipo = parametro(p, "tipo") as keyof typeof POLITICA_DE_TIPOS;
+    if (POLITICA_DE_TIPOS[tipo]?.declara !== true) return fallo(`el tipo de ruta «${tipo}» no declara contratos en la política real`);
+    return mutacion(`el tipo de ruta «${tipo}» pasa a no declarar contratos`, () => 1, { politicaDeTipos: { ...POLITICA_DE_TIPOS, [tipo]: { declara: false, motivo: "eximido por la mutación del arnés" } } });
+  },
+};
+
 export const OPERADORES: Readonly<Record<string, Operador>> = Object.fromEntries(
-  [ancla, marca, borrarFuente, quitarDeclaracion, quitarToken, agregarToken, quitarTodasLasDeclaraciones, insertar, quitarEntrada, fueraDelManifiesto, vaciarManifiesto, manifiestoRoto, sacarAlcance, extensionNoAnalizada, area, reglas, listado, exclusion, gobierno, texto, mover].map((o) => [o.id, o])
+  [ancla, marca, borrarFuente, quitarDeclaracion, quitarToken, agregarToken, quitarTodasLasDeclaraciones, insertar, quitarEntrada, fueraDelManifiesto, vaciarManifiesto, manifiestoRoto, sacarAlcance, extensionNoAnalizada, area, reglas, listado, exclusion, gobierno, texto, mover, archivo, registro, politicaDeTipos].map((o) => [o.id, o])
 );

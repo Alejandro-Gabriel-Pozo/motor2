@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ARCHIVO_DE_AREAS } from "../gobernanza/areas";
+import { TIPOS_DE_CUMPLIMIENTO } from "../gobernanza/cumplimiento";
 import { MOTIVO_MINIMO, RESPONSABLES, esFechaValida, evaluarVencimientos, referenciaValida } from "../politica";
 import type { Deuda, Contrato } from "../tipos";
 import { ARCHIVO_DEL_MANIFIESTO, archivosDelAlcance, elegirConsumidor, elegirTokenUsado, hallazgoDeEntrada, primerUsoDelArea, rutaNuevaEnElAlcance, type BaseDeMutacion, type EjemplosDeContrato, type Verifica } from "./operadores";
@@ -36,8 +39,10 @@ export interface EsperadoDeMutacion {
 }
 
 /**
- * `protegido`: la mutación tiene que dar `esperado`. `hueco-conocido`: HOY nada la detecta (el mecanismo que la detectaría es un paso siguiente, G6/G7); el arnés comprueba que
- * SIGUE sin detectarse y exige una entrada de deuda (`DEUDA_DE_HUECOS`) con el mismo `hueco`; `esperado` dice lo que el mecanismo futuro tendría que decir.
+ * `protegido`: la mutación tiene que dar `esperado` (y todo lo de `ademas`). `hueco-conocido`: HOY nada la detecta; el arnés comprueba que SIGUE sin detectarse y exige una entrada de deuda
+ * (`DEUDA_DE_HUECOS`) con el mismo `hueco`; `esperado` dice lo que el mecanismo futuro tendría que decir. Desde G6 la lista de huecos está vacía: los siete que había (el test apagado,
+ * excluido o renombrado, el paso del CI reemplazado o con `continue-on-error`, el script `test` quitado y el caso legítimo que silencia un uso) los detectan el cumplimiento y el registro de
+ * aprobaciones; el mecanismo del estado sigue, para que un hueco nuevo se anote con su deuda en vez de callarse.
  */
 export type EstadoDeMutacion = "protegido" | "hueco-conocido";
 
@@ -49,6 +54,11 @@ export interface MutacionDeMatriz {
   operador: string;
   parametros: Readonly<Record<string, string>>;
   esperado: EsperadoDeMutacion;
+  /**
+   * Lo que OTROS mecanismos tienen que decir además de `esperado` sobre la misma mutación (p. ej. el cumplimiento y, además, el registro de aprobaciones). Cada uno tiene que aparecer, con su
+   * archivo, su línea y su mensaje; un hallazgo que no está acá ni en `tolerados` del operador es un hallazgo sin explicar.
+   */
+  ademas: readonly EsperadoDeMutacion[];
   estado: EstadoDeMutacion;
   /** El id del hueco en `DEUDA_DE_HUECOS` (cadena vacía si está protegido). */
   hueco: string;
@@ -95,73 +105,31 @@ export const EJEMPLOS_DE_CONTRATOS: Readonly<Record<string, EjemplosDeContrato>>
   },
 };
 
+const ARCHIVO_DE_CUMPLIMIENTO_TEST = "test/arquitectura/contratos/gobernanza/cumplimiento.test.ts";
+const TITULO_DE_COBERTURA_DE_CUMPLIMIENTO = "cada tipo de hallazgo de cumplimiento lo produce algún caso rojo de este archivo";
+
 /**
- * Los tipos de hallazgo que ninguna mutación del arnés puede producir y que cubre un test de `motor.test.ts`, `clasificacion.test.ts` o `areas.test.ts`: tipo → el título EXACTO del
- * test (el meta-test verifica que existe). Hoy cada tipo tiene una mutación, así que está vacío a propósito.
+ * Los tipos de hallazgo que ninguna mutación del arnés produce y que cubre un test: `verifica/tipo` → el archivo y el título EXACTO del test (el meta-test verifica que existe). Hoy: los
+ * tipos del cumplimiento del cableado (cada uno tiene un caso rojo en `cumplimiento.test.ts`, que lo exige con un meta-test; el arnés además produce varios) y `aprobacion-invalida` del registro
+ * de aprobaciones (una entrada mal armada, que el arnés no puede fabricar sin tocar el registro real).
  */
-export const CUBIERTOS_EN_MOTOR_TEST: Readonly<Record<string, { archivo: string; titulo: string }>> = {};
+export const CUBIERTOS_EN_MOTOR_TEST: Readonly<Record<string, { archivo: string; titulo: string }>> = {
+  "aprobaciones/aprobacion-invalida": {
+    archivo: "test/arquitectura/contratos/gobernanza/aprobaciones.test.ts",
+    titulo: "una aprobación mal armada es un hallazgo: motivo de 19 caracteres, referencia inventada, huella que no es un hash",
+  },
+  ...Object.fromEntries(TIPOS_DE_CUMPLIMIENTO.map((tipo) => [`cumplimiento/${tipo}`, { archivo: ARCHIVO_DE_CUMPLIMIENTO_TEST, titulo: TITULO_DE_COBERTURA_DE_CUMPLIMIENTO }])),
+};
 
 /** Un hueco conocido y su deuda: la misma forma y el mismo gobierno que la deuda del motor (`Deuda`), con el id del hueco como `fragmento`. */
 export type DeudaDeHueco = Deuda;
 
-const GOBIERNO_DE_HUECOS = {
-  responsable: "dueño",
-  aprobacion: { por: "dueño", referencia: "DEC-02" },
-  creada: "2026-10-21",
-  renovaciones: [],
-  vence: "2026-12-20",
-  resuelveEn: "G6",
-} as const;
-
 /**
- * DEUDA de los huecos conocidos: cosas que un intento de neutralizar el guardián puede hacer HOY sin que nada falle. El mecanismo que las detecta (el «guardián del guardián» y la
- * revisión del CI) es el paso G6/G7. Una entrada por hueco, con motivo, responsable, aprobación, fecha de creación y vencimiento a 60 días como máximo (la política de `politica.ts`,
- * evaluada con las mismas funciones que usa el motor); vencida, sin hueco que la use, o un hueco sin su entrada: el meta-test falla.
+ * DEUDA de los huecos conocidos: cosas que un intento de neutralizar el guardián puede hacer sin que nada falle. Una entrada por hueco, con motivo, responsable, aprobación, fecha de creación y
+ * vencimiento a 60 días como máximo (la política de `politica.ts`, evaluada con las mismas funciones que usa el motor); vencida, sin hueco que la use, o un hueco sin su entrada: el meta-test falla.
+ * VACÍA desde G6: los siete huecos que había son mutaciones protegidas (el cumplimiento y el registro de aprobaciones las detectan).
  */
-export const DEUDA_DE_HUECOS: readonly DeudaDeHueco[] = [
-  {
-    archivo: "test/arquitectura/contratos/contratos.test.ts",
-    fragmento: "evasion/test-desactivado",
-    motivo: "un it.skip, describe.skip o .only en el test del guardián lo apaga y nada lo detecta todavía: falta el guardián del guardián",
-    ...GOBIERNO_DE_HUECOS,
-  },
-  {
-    archivo: "vitest.config.ts",
-    fragmento: "evasion/test-excluido-en-vitest",
-    motivo: "agregar el test del guardián al exclude de vitest.config.ts lo deja fuera de npm test sin que nada falle todavía",
-    ...GOBIERNO_DE_HUECOS,
-  },
-  {
-    archivo: "test/arquitectura/contratos/contratos.test.ts",
-    fragmento: "evasion/test-renombrado-a-ts",
-    motivo: "renombrar el test del guardián a un .ts que no termina en .test.ts lo saca de la corrida y la clasificación lo sigue aceptando",
-    ...GOBIERNO_DE_HUECOS,
-  },
-  {
-    archivo: ".github/workflows/ci.yml",
-    fragmento: "desconexion/ci-sin-paso",
-    motivo: "quitar o reemplazar el paso npm test del workflow de CI desconecta al guardián del Gate y nada revisa el CI todavía",
-    ...GOBIERNO_DE_HUECOS,
-  },
-  {
-    archivo: ".github/workflows/ci.yml",
-    fragmento: "desconexion/ci-continue-on-error",
-    motivo: "poner continue-on-error en el paso de tests del CI deja que el guardián falle sin romper el Gate y nada lo revisa todavía",
-    ...GOBIERNO_DE_HUECOS,
-  },
-  {
-    archivo: "package.json",
-    fragmento: "desconexion/script-quitado",
-    motivo: "quitar el script test de package.json desconecta al guardián de npm test y nada revisa los scripts todavía",
-    ...GOBIERNO_DE_HUECOS,
-  },
-  {
-    archivo: "test/arquitectura/contratos/motor.ts",
-    fragmento: "evasion/caso-legitimo-silencia-un-uso",
-    motivo: "un caso legítimo nuevo en la definición de un contrato silencia un uso crudo sin aprobación ni vencimiento: falta el hash aprobado de la definición",
-    ...GOBIERNO_DE_HUECOS,
-  },
-];
+export const DEUDA_DE_HUECOS: readonly DeudaDeHueco[] = [];
 
 /**
  * Lo que está mal en la deuda de un hueco (lista vacía = en regla): las mismas reglas del motor para una deuda —motivo, responsable de la lista cerrada, aprobación con
@@ -182,6 +150,23 @@ export function problemasDeLaDeuda(d: DeudaDeHueco, hoy: string): string[] {
   return problemas;
 }
 
+/**
+ * Lo que está mal entre los huecos conocidos de la matriz y su deuda (lista vacía = en regla): un hueco sin su entrada (o con dos), una deuda que no corresponde a ningún hueco y una deuda
+ * fuera de regla (`problemasDeLaDeuda`). Hoy no hay huecos y la lista de deuda está vacía; el meta-test lo sigue exigiendo para que un hueco nuevo no se calle.
+ */
+export function problemasDeHuecos(huecos: readonly { id: string; hueco: string }[], deudas: readonly DeudaDeHueco[], hoy: string): string[] {
+  const problemas: string[] = [];
+  for (const h of huecos) {
+    const deuda = deudas.filter((d) => d.fragmento === h.hueco);
+    if (deuda.length !== 1) problemas.push(`el hueco «${h.hueco}» (${h.id}) tiene ${deuda.length} entradas de deuda en DEUDA_DE_HUECOS (tiene que tener una)`);
+  }
+  for (const d of deudas) {
+    if (!huecos.some((h) => h.hueco === d.fragmento)) problemas.push(`la deuda «${d.fragmento}» no corresponde a ningún hueco conocido de la matriz: sobra`);
+    problemas.push(...problemasDeLaDeuda(d, hoy));
+  }
+  return problemas;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------------------
 // Constructores
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -195,10 +180,11 @@ function mut(
   parametros: Parametros,
   elemento: ElementoDeMatriz,
   esperado: EsperadoDeMutacion,
-  hueco = ""
+  hueco = "",
+  ademas: readonly EsperadoDeMutacion[] = []
 ): MutacionDeMatriz {
   const clave = Object.values(parametros).join("+");
-  return { id: `${invariante}/${clase}/${operador}${clave ? `[${clave}]` : ""}`, clase, elemento, operador, parametros, esperado, estado: hueco === "" ? "protegido" : "hueco-conocido", hueco };
+  return { id: `${invariante}/${clase}/${operador}${clave ? `[${clave}]` : ""}`, clase, elemento, operador, parametros, esperado, ademas, estado: hueco === "" ? "protegido" : "hueco-conocido", hueco };
 }
 
 const esp = (verifica: EsperadoDeMutacion["verifica"], tipo: string, archivo: string, linea: EsperadoDeMutacion["linea"], mensajeIncluye: string): EsperadoDeMutacion => ({ verifica, tipo, archivo, linea, mensajeIncluye });
@@ -212,7 +198,14 @@ const AREAS = el(ARCHIVO_DE_AREAS, "la declaración de áreas (AREAS) y su compa
 const CLASIFICACION = el("test/arquitectura/contratos/gobernanza/clasificacion.ts", "la clasificación de rutas (REGLAS_DE_RUTA y clasificarRutas)");
 const EXCLUSIONES = el("test/arquitectura/contratos/gobernanza/exclusiones.ts", "las exclusiones de la clasificación (EXCLUSIONES)");
 const POLITICA = el("test/arquitectura/contratos/politica.ts", "la política de plazos y motivos (constantes y evaluarVencimientos)");
+const CUMPLIMIENTO = el("test/arquitectura/contratos/gobernanza/cumplimiento.ts", "el cumplimiento del cableado (evaluadores de ci.yml, package.json, vitest.config.ts, skip/only y guardianes)");
+const REGISTRO = el("test/arquitectura/contratos/gobernanza/aprobaciones.ts", "el registro de aprobaciones (APROBACIONES: la huella aprobada de cada pieza del mecanismo)");
+const TEST_DE_CUMPLIMIENTO = el("test/arquitectura/contratos/gobernanza/cumplimiento.test.ts", "el test del cumplimiento: cada evaluador con casos rojo y verde y las mutaciones sobre una copia");
+const TEST_DEL_REGISTRO = el("test/arquitectura/contratos/gobernanza/aprobaciones.test.ts", "el test del registro de aprobaciones sobre el repo real y sobre una copia del mecanismo");
 const VERIFICAN_GENERALES: readonly ElementoDeMatriz[] = [MOTOR, TEST_DE_CONTRATOS, ARNES];
+
+/** Lo que dice el registro de aprobaciones cuando una pieza del mecanismo cambia: `huella-distinta`, en la ruta de la pieza y sin posición (la pieza entera es la unidad). */
+const huella = (archivo: string, mensajeIncluye: string): EsperadoDeMutacion => esp("aprobaciones", "huella-distinta", archivo, "sin-posicion", mensajeIncluye);
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 // Invariantes derivados de cada contrato
@@ -378,7 +371,10 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
       mut(inv, "alteracion", "area", { area: sinContratos, modo: "id-sin-uso", id: idSinUso }, entrada, esp("areas", "dependencia-falsa", ARCHIVO_DE_AREAS, "calculada", "ningún archivo del área lo usa")),
       mut(inv, "alteracion", "reglas", { modo: "frontend-sin-area" }, el(CLASIFICACION.ruta, "una regla de frontend en una carpeta que areaDe no sabe derivar"), esp("areas", "area-sin-clasificar", "src/zz-sin-area/x.ts", "sin-posicion", "no cae en ninguna área")),
       mut(inv, "duplicacion", "area", { area: sinContratos, modo: "id-repetido", id: idSinUso }, entrada, esp("areas", "dependencia-falsa", ARCHIVO_DE_AREAS, "calculada", "más de una vez")),
-      mut(inv, "exclusion-del-analisis", "exclusion", { modo: "sobre-codigo", area: "ui" }, el(EXCLUSIONES.ruta, "una exclusión nueva sobre src/ui/ (bien gobernada): el área deja de tener archivos"), esp("areas", "area-fantasma", ARCHIVO_DE_AREAS, "calculada", "no hay ningún archivo en esa área")),
+      // Agregar una exclusión (aunque esté bien gobernada) cambia la huella de las exclusiones en el registro de aprobaciones: además del área que se queda sin archivos.
+      mut(inv, "exclusion-del-analisis", "exclusion", { modo: "sobre-codigo", area: "ui" }, el(EXCLUSIONES.ruta, "una exclusión nueva sobre src/ui/ (bien gobernada): el área deja de tener archivos"), esp("areas", "area-fantasma", ARCHIVO_DE_AREAS, "calculada", "no hay ningún archivo en esa área"), "", [huella(EXCLUSIONES.ruta, "EXCLUSIONES")]),
+      // Eximir a un tipo de ruta de declarar contratos (todas sus áreas dejarían de comparar) es cambiar POLITICA_DE_TIPOS: el registro de aprobaciones lo ve.
+      mut(inv, "evasion", "politica-de-tipos", { tipo: "frontend" }, el(ARCHIVO_DE_AREAS, "POLITICA_DE_TIPOS: el tipo `frontend` pasa a no declarar contratos"), huella(ARCHIVO_DE_AREAS, "POLITICA_DE_TIPOS")),
     ];
     if (pareja !== undefined) mutaciones.push(mut(inv, "desconexion", "area", { area: pareja[0], modo: "vaciar", contrato: pareja[1] }, el(ARCHIVO_DE_AREAS, `la entrada del área «${pareja[0]}» que declara «${pareja[1]}»`), esp("areas", "dependencia-omitida", primerUsoDelArea(base, base.raiz, base.contratos.find((c) => c.id === pareja[1]) ?? base.contratos[0], pareja[0]).ruta, "calculada", "y no lo declara")));
     if (hayMesas) {
@@ -389,10 +385,10 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
       id: inv,
       descripcion: "Cada área (carpeta de primer o segundo nivel) declara de qué contratos depende —o `[]`— y la declaración coincide con los usos reales en las dos direcciones; toda ruta de un tipo que declara pertenece a un área.",
       origen: "guardian",
-      mecanismo: ["areas", "clasificacion"],
-      elementos: { definen: [el(ARCHIVO_DE_AREAS, "AREAS: área → contratos que declara")], aplican: [el("test/arquitectura/contratos/gobernanza/usos.ts", "los usos reales de cada contrato por archivo"), CLASIFICACION], verifican: [AREAS, el("test/arquitectura/contratos/gobernanza/areas.test.ts", "el test de áreas sobre el repo real"), ARNES] },
+      mecanismo: ["areas", "clasificacion", "aprobaciones"],
+      elementos: { definen: [el(ARCHIVO_DE_AREAS, "AREAS: área → contratos que declara, y POLITICA_DE_TIPOS: qué tipos de ruta los declaran")], aplican: [el("test/arquitectura/contratos/gobernanza/usos.ts", "los usos reales de cada contrato por archivo"), CLASIFICACION], verifican: [AREAS, el("test/arquitectura/contratos/gobernanza/areas.test.ts", "el test de áreas sobre el repo real"), REGISTRO, ARNES] },
       mutaciones,
-      noAplica: [{ clase: "evasion", motivo: MOTIVO_EVASION_TRANSVERSAL }],
+      noAplica: [],
     });
   }
 
@@ -402,17 +398,17 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
     const nueva = rutaNuevaEnElAlcance(base, conUso, "gobierno") ?? "";
     const P = { contrato: conUso.id };
     const entrada = (que: string): ElementoDeMatriz => el(`test/arquitectura/contratos/contratos/${conUso.id}.ts`, que);
-    const g = (clase: ClaseDeMutacion, defecto: string, que: string, tipo: string, mensaje: string, linea: EsperadoDeMutacion["linea"] = "sin-posicion", hueco = ""): MutacionDeMatriz =>
-      mut(inv, clase, "gobierno", { ...P, defecto }, entrada(que), esp(hueco === "" ? "motor" : "ninguno", tipo, nueva, linea, mensaje), hueco);
+    const g = (clase: ClaseDeMutacion, defecto: string, que: string, tipo: string, mensaje: string, linea: EsperadoDeMutacion["linea"] = "sin-posicion"): MutacionDeMatriz =>
+      mut(inv, clase, "gobierno", { ...P, defecto }, entrada(que), esp("motor", tipo, nueva, linea, mensaje));
     out.push({
       id: inv,
       descripcion: "Toda excepción, deuda y exclusión lleva motivo, responsable de la lista cerrada, aprobación con referencia válida y vencimiento dentro del plazo; vencida, duplicada, sin uso o sin gobierno falla. Los casos legítimos llevan motivo y se revisan en las dos direcciones.",
       origen: "guardian",
-      mecanismo: ["motor", "politica", "clasificacion"],
+      mecanismo: ["motor", "politica", "clasificacion", "aprobaciones"],
       elementos: {
         definen: [el(`test/arquitectura/contratos/contratos/${conUso.id}.ts`, "casosLegitimos, excepciones y deuda de la definición del contrato"), el(EXCLUSIONES.ruta, "EXCLUSIONES de la clasificación")],
         aplican: [MOTOR, EXCLUSIONES],
-        verifican: [MOTOR, CLASIFICACION, POLITICA, ARNES],
+        verifican: [MOTOR, CLASIFICACION, POLITICA, REGISTRO, ARNES],
       },
       mutaciones: [
         g("eliminacion", "motivo-corto-excepcion", "el motivo de una excepción", "excepcion-sin-motivo", "no tiene motivo"),
@@ -435,7 +431,8 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
         mut(inv, "exclusion-del-analisis", "exclusion", { modo: "ampliada" }, el(EXCLUSIONES.ruta, `la cantidad exacta de archivos de ${exclusion.ruta}`), esp("clasificacion", "exclusion-ampliada", exclusion.ruta, "sin-posicion", "excluir más pide una aprobación nueva")),
         mut(inv, "exclusion-del-analisis", "exclusion", { modo: "sin-uso" }, el(EXCLUSIONES.ruta, `la cantidad exacta de archivos de ${exclusion.ruta}`), esp("clasificacion", "exclusion-sin-uso", exclusion.ruta, "sin-posicion", "bajá `archivos`")),
         mut(inv, "evasion", "exclusion", { modo: "lejana" }, el(EXCLUSIONES.ruta, `el vencimiento de la exclusión de ${exclusion.ruta} (sin vencimiento real)`), esp("clasificacion", "horizonte-excedido", exclusion.ruta, "sin-posicion", "más de 60 días")),
-        g("evasion", "caso-que-silencia", "un caso legítimo agregado para tapar un uso crudo", "caso-legitimo-sin-aprobacion", "un caso legítimo nuevo exige aprobación", "calculada", "evasion/caso-legitimo-silencia-un-uso"),
+        // Un caso legítimo nuevo SILENCIA el uso crudo (el motor ya no dice nada): lo que lo frena es la huella de los campos gobernados del contrato en el registro de aprobaciones.
+        mut(inv, "evasion", "gobierno", { ...P, defecto: "caso-que-silencia" }, entrada("un caso legítimo agregado para tapar un uso crudo"), huella(`test/arquitectura/contratos/contratos/${conUso.id}.ts`, "casos legítimos")),
       ],
       noAplica: [],
     });
@@ -444,19 +441,32 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
   // --- 4. Política de plazos (60 días) y motivos.
   {
     const inv = "guardian/politica-de-plazos";
+    // Cada cambio de la política rompe además las pruebas de borde del propio guardián (banco aparte) Y cambia la huella de politica.ts en el registro de aprobaciones.
     const t = (clase: ClaseDeMutacion, de: string, a: string, que: string, mensaje: string): MutacionDeMatriz =>
-      mut(inv, clase, "texto", { ruta: POLITICA.ruta, de, a, pruebas: "test/arquitectura/contratos/motor.test.ts" }, el(POLITICA.ruta, que), esp("pruebas", "prueba-roja", POLITICA.ruta, "calculada", mensaje));
+      mut(inv, clase, "texto", { ruta: POLITICA.ruta, de, a, pruebas: "test/arquitectura/contratos/motor.test.ts" }, el(POLITICA.ruta, que), esp("pruebas", "prueba-roja", POLITICA.ruta, "calculada", mensaje), "", [huella(POLITICA.ruta, "archivo del mecanismo, entero")]);
     out.push({
       id: inv,
-      descripcion: "Toda excepción y toda deuda vencen como mucho 60 días después de su inicio, con motivo de 20 caracteres o más y un responsable de la lista cerrada; el vencimiento se evalúa con `evaluarVencimientos` y el motor lo aplica.",
+      descripcion: "Toda excepción y toda deuda vencen como mucho 60 días después de su inicio, con motivo de 20 caracteres o más y un responsable de la lista cerrada; el vencimiento se evalúa con `evaluarVencimientos` y el motor lo aplica. Cambiar la política o su aplicación rompe las pruebas de borde con literales y la huella del registro de aprobaciones.",
       origen: "guardian",
-      mecanismo: ["politica", "pruebas"],
-      elementos: { definen: [POLITICA], aplican: [MOTOR, el(EXCLUSIONES.ruta, "revisarGobiernoDeExclusiones")], verifican: [el("test/arquitectura/contratos/motor.test.ts", "los tests de borde con literales (59/60/61 días, 19/20 caracteres)"), ARNES] },
+      mecanismo: ["politica", "pruebas", "aprobaciones"],
+      elementos: { definen: [POLITICA], aplican: [MOTOR, el(EXCLUSIONES.ruta, "revisarGobiernoDeExclusiones")], verifican: [el("test/arquitectura/contratos/motor.test.ts", "los tests de borde con literales (59/60/61 días, 19/20 caracteres)"), REGISTRO, ARNES] },
       mutaciones: [
         t("eliminacion", 'RESPONSABLES: readonly Responsable[] = ["dueño"];', "RESPONSABLES: readonly Responsable[] = [];", "RESPONSABLES (la lista cerrada de responsables)", "responsable"),
         t("alteracion", "MOTIVO_MINIMO = 20;", "MOTIVO_MINIMO = 1;", "MOTIVO_MINIMO (largo mínimo de un motivo)", "motivo de 19 caracteres"),
-        mut(inv, "desconexion", "texto", { ruta: "test/arquitectura/contratos/motor.ts", de: "const vencimientos = evaluarVencimientos(entradas, hoy);", a: "const vencimientos = { vencidas: [], excedidas: [], porVencer: [] };", pruebas: "test/arquitectura/contratos/motor.test.ts" }, el("test/arquitectura/contratos/motor.ts", "la llamada a evaluarVencimientos en revisarContrato"), esp("pruebas", "prueba-roja", "test/arquitectura/contratos/motor.ts", "calculada", "vence ayer")),
-        mut(inv, "exclusion-del-analisis", "mover", { de: POLITICA.ruta, a: "docs/politica.ts" }, POLITICA, esp("clasificacion", "ruta-sin-clasificar", "docs/politica.ts", "sin-posicion", "ninguna regla de clasificación reconoce este archivo")),
+        mut(
+          inv,
+          "desconexion",
+          "texto",
+          { ruta: "test/arquitectura/contratos/motor.ts", de: "const vencimientos = evaluarVencimientos(entradas, hoy);", a: "const vencimientos = { vencidas: [], excedidas: [], porVencer: [] };", pruebas: "test/arquitectura/contratos/motor.test.ts" },
+          el("test/arquitectura/contratos/motor.ts", "la llamada a evaluarVencimientos en revisarContrato"),
+          esp("pruebas", "prueba-roja", "test/arquitectura/contratos/motor.ts", "calculada", "vence ayer"),
+          "",
+          [huella(MOTOR.ruta, "archivo del mecanismo, entero")]
+        ),
+        // Sacar la política de su lugar: la clasificación no reconoce `docs/politica.ts` y el registro de aprobaciones echa de menos el archivo aprobado.
+        mut(inv, "exclusion-del-analisis", "mover", { de: POLITICA.ruta, a: "docs/politica.ts" }, POLITICA, esp("clasificacion", "ruta-sin-clasificar", "docs/politica.ts", "sin-posicion", "ninguna regla de clasificación reconoce este archivo"), "", [
+          esp("aprobaciones", "archivo-ausente", POLITICA.ruta, "sin-posicion", "ya no existe"),
+        ]),
         t("evasion", "HORIZONTE_EXCEPCION_DIAS = 60;", "HORIZONTE_EXCEPCION_DIAS = 365;", "HORIZONTE_EXCEPCION_DIAS (60 → 365)", "tope de una excepción"),
         t("evasion", "HORIZONTE_DEUDA_DIAS = 60;", "HORIZONTE_DEUDA_DIAS = 365;", "HORIZONTE_DEUDA_DIAS (60 → 365)", "tope de una deuda"),
       ],
@@ -515,30 +525,99 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
   if (primero !== undefined) {
     const inv = "guardian/guardian-no-neutralizable";
     const t = "test/arquitectura/contratos/contratos.test.ts";
-    const futuro = (m: string): EsperadoDeMutacion => esp("ninguno", "guardian-neutralizado", t, "calculada", m);
+    const ci = ".github/workflows/ci.yml";
+    const regCi = huella(ci, "ci.yml");
+    const regPaquete = huella("package.json", "package.json#scripts");
+    const regVitest = huella("vitest.config.ts", "vitest.config.ts");
+    const elCi = el(ci, "el workflow de CI (job `integracion`, paso `npm test`)");
+    const elVitest = el("vitest.config.ts", "la configuración de Vitest (include/exclude/allowOnly)");
+    const elPaquete = el("package.json", 'los scripts ("test")');
+    const textoDeT = (() => {
+      try {
+        return readFileSync(join(base.raiz, ...t.split("/")), "utf8").replace(/\r\n/g, "\n");
+      } catch {
+        return "";
+      }
+    })();
+    // La línea (1-based) del primer `describe(` de contratos.test.ts: donde el cumplimiento señala un test que dejó de llamarse `.test.ts`.
+    const lineaDelDescribe = Math.max(1, textoDeT.split("\n").findIndex((l) => l.startsWith("describe(")) + 1);
+    const texto = (clase: ClaseDeMutacion, parametros: Parametros, elemento: ElementoDeMatriz, esperado: EsperadoDeMutacion, ademas: readonly EsperadoDeMutacion[] = []): MutacionDeMatriz => mut(inv, clase, "texto", parametros, elemento, esperado, "", ademas);
     out.push({
       id: inv,
-      descripcion: "Apagar, excluir, renombrar, mover o desconectar del CI el test del guardián, vaciar el manifiesto o bajar un plazo tiene que fallar. HOY algunos intentos no tienen mecanismo (el guardián del guardián y la revisión del CI son G6/G7): quedan como hueco conocido con su deuda.",
+      descripcion:
+        "Apagar, excluir, renombrar, mover o desconectar del CI el test del guardián, vaciar el manifiesto o bajar un plazo tiene que fallar: el cumplimiento del cableado (ci.yml, package.json, vitest.config.ts, skip/only, guardianes esperados) lo dice con archivo y línea, y el registro de aprobaciones atrapa que el mecanismo cambió.",
       origen: "guardian",
-      mecanismo: ["motor", "clasificacion", "pruebas"],
+      mecanismo: ["motor", "clasificacion", "pruebas", "cumplimiento", "aprobaciones"],
       elementos: {
-        definen: [TEST_DE_CONTRATOS, MANIFIESTO, el("vitest.config.ts", "la configuración de Vitest (include/exclude)"), el(".github/workflows/ci.yml", "el workflow de CI (paso npm test)"), el("package.json", "los scripts (test)")],
-        aplican: [POLITICA, el("vitest.config.ts", "qué archivos corre npm test")],
-        verifican: [MOTOR, CLASIFICACION, el("test/arquitectura/contratos/motor.test.ts", "los tests de borde de la política"), ARNES],
+        definen: [TEST_DE_CONTRATOS, MANIFIESTO, elVitest, elCi, elPaquete],
+        aplican: [POLITICA, elVitest, CUMPLIMIENTO, REGISTRO],
+        verifican: [MOTOR, CLASIFICACION, CUMPLIMIENTO, REGISTRO, TEST_DE_CUMPLIMIENTO, TEST_DEL_REGISTRO, el("test/arquitectura/contratos/motor.test.ts", "los tests de borde de la política"), ARNES],
       },
       mutaciones: [
-        mut(inv, "eliminacion", "vaciar-manifiesto", {}, MANIFIESTO, esp("motor", "marca-desconocida", primero.fuente.archivo, "calculada", "no es de ningún contrato del manifiesto")),
-        mut(inv, "alteracion", "texto", { ruta: POLITICA.ruta, de: "HORIZONTE_EXCEPCION_DIAS = 60;", a: "HORIZONTE_EXCEPCION_DIAS = 365;", pruebas: "test/arquitectura/contratos/motor.test.ts" }, el(POLITICA.ruta, "el plazo de una excepción (60 → 365)"), esp("pruebas", "prueba-roja", POLITICA.ruta, "calculada", "tope de una excepción")),
-        mut(inv, "desconexion", "texto", { ruta: ".github/workflows/ci.yml", de: "run: npm test", a: "run: echo omitido" }, el(".github/workflows/ci.yml", "el paso `npm test` del job de integración"), futuro("el workflow ya no corre npm test"), "desconexion/ci-sin-paso"),
-        mut(inv, "desconexion", "texto", { ruta: ".github/workflows/ci.yml", de: "- name: npm test\n", a: "- name: npm test\n        continue-on-error: true\n" }, el(".github/workflows/ci.yml", "el paso `npm test` del job de integración"), futuro("el paso de tests tiene continue-on-error"), "desconexion/ci-continue-on-error"),
-        mut(inv, "desconexion", "texto", { ruta: "package.json", de: '    "test": "vitest run",\n', a: "" }, el("package.json", 'el script "test"'), futuro('package.json ya no tiene el script "test"'), "desconexion/script-quitado"),
+        mut(inv, "eliminacion", "vaciar-manifiesto", {}, MANIFIESTO, esp("motor", "marca-desconocida", primero.fuente.archivo, "calculada", "no es de ningún contrato del manifiesto"), "", [esp("cumplimiento", "manifiesto-vacio", ARCHIVO_DEL_MANIFIESTO, "sin-posicion", "ningún contrato")]),
+        // Alterar la política (60 → 365): las pruebas de borde con literales (banco aparte) Y el registro de aprobaciones.
+        mut(
+          inv,
+          "alteracion",
+          "texto",
+          { ruta: POLITICA.ruta, de: "HORIZONTE_EXCEPCION_DIAS = 60;", a: "HORIZONTE_EXCEPCION_DIAS = 365;", pruebas: "test/arquitectura/contratos/motor.test.ts" },
+          el(POLITICA.ruta, "el plazo de una excepción (60 → 365)"),
+          esp("pruebas", "prueba-roja", POLITICA.ruta, "calculada", "tope de una excepción"),
+          "",
+          [huella(POLITICA.ruta, "archivo del mecanismo, entero")]
+        ),
+        // El paso del CI que corre `npm test` reemplazado, con `continue-on-error: true`, y el script `test` quitado o cambiado.
+        texto("desconexion", { ruta: ci, de: "run: npm test", a: "run: echo omitido", donde: "  integracion:" }, elCi, esp("cumplimiento", "ci-sin-paso", ci, "calculada", "no tiene un paso que corra `npm test`"), [regCi]),
+        texto("desconexion", { ruta: ci, de: "- name: npm test\n", a: "- name: npm test\n        continue-on-error: true\n", donde: "continue-on-error: true" }, elCi, esp("cumplimiento", "ci-continue-on-error", ci, "calculada", "continue-on-error: true"), [regCi]),
+        texto("desconexion", { ruta: "package.json", de: '    "test": "vitest run",\n', a: "", donde: '"scripts"' }, elPaquete, esp("cumplimiento", "script-ausente", "package.json", "calculada", "no tiene el script `test`"), [regPaquete]),
         mut(inv, "exclusion-del-analisis", "mover", { de: ARCHIVO_DEL_MANIFIESTO, a: "docs/manifiesto.ts" }, MANIFIESTO, esp("clasificacion", "ruta-sin-clasificar", "docs/manifiesto.ts", "sin-posicion", "ninguna regla de clasificación reconoce este archivo")),
-        mut(inv, "exclusion-del-analisis", "mover", { de: t, a: `${t}.bak` }, TEST_DE_CONTRATOS, esp("clasificacion", "ruta-sin-clasificar", `${t}.bak`, "sin-posicion", "ninguna regla de clasificación reconoce este archivo")),
-        mut(inv, "evasion", "texto", { ruta: t, de: 'describe("contratos compartidos declarados (repo real)"', a: 'describe.skip("contratos compartidos declarados (repo real)"' }, TEST_DE_CONTRATOS, futuro("el test del guardián está apagado (describe.skip)"), "evasion/test-desactivado"),
-        mut(inv, "evasion", "texto", { ruta: "vitest.config.ts", de: 'exclude: [...configDefaults.exclude, "test/e2e/**"', a: 'exclude: [...configDefaults.exclude, "test/arquitectura/**", "test/e2e/**"' }, el("vitest.config.ts", "el exclude de Vitest"), futuro("vitest.config.ts excluye el test del guardián"), "evasion/test-excluido-en-vitest"),
-        mut(inv, "evasion", "mover", { de: t, a: "test/arquitectura/contratos/contratos-guardian.ts" }, TEST_DE_CONTRATOS, futuro("el test del guardián ya no termina en .test.ts"), "evasion/test-renombrado-a-ts"),
+        mut(inv, "exclusion-del-analisis", "mover", { de: t, a: `${t}.bak` }, TEST_DE_CONTRATOS, esp("clasificacion", "ruta-sin-clasificar", `${t}.bak`, "sin-posicion", "ninguna regla de clasificación reconoce este archivo"), "", [esp("cumplimiento", "guardian-ausente", t, "sin-posicion", "no existe")]),
+        // Evasiones: apagar el test (`describe.skip`, `it.only`), excluirlo en vitest.config.ts, dejarlo en `allowOnly`, renombrarlo a un `.ts`, filtrar el CI por carpetas, regenerar una línea de base desde el CI, cambiar el script `test`.
+        texto("evasion", { ruta: t, de: 'describe("contratos compartidos declarados (repo real)"', a: 'describe.skip("contratos compartidos declarados (repo real)"' }, TEST_DE_CONTRATOS, esp("cumplimiento", "prueba-desactivada", t, "calculada", "describe.skip")),
+        texto("evasion", { ruta: t, de: 'it("ningún uso sin declarar, ninguna definición duplicada', a: 'it.only("ningún uso sin declarar, ninguna definición duplicada' }, TEST_DE_CONTRATOS, esp("cumplimiento", "prueba-desactivada", t, "calculada", "it.only")),
+        texto("evasion", { ruta: "vitest.config.ts", de: 'exclude: [...configDefaults.exclude, "test/e2e/**"', a: 'exclude: [...configDefaults.exclude, "test/arquitectura/**", "test/e2e/**"' }, elVitest, esp("cumplimiento", "vitest-excluye-guardian", "vitest.config.ts", "calculada", "test/arquitectura/**"), [regVitest]),
+        texto("evasion", { ruta: "vitest.config.ts", de: 'environment: "node",', a: 'environment: "node",\n    allowOnly: true,', donde: "allowOnly" }, elVitest, esp("cumplimiento", "vitest-allowonly", "vitest.config.ts", "calculada", "allowOnly"), [regVitest]),
+        mut(inv, "evasion", "mover", { de: t, a: "test/arquitectura/contratos/contratos-guardian.ts" }, TEST_DE_CONTRATOS, esp("cumplimiento", "guardian-ausente", t, "sin-posicion", "no existe"), "", [
+          esp("cumplimiento", "prueba-sin-sufijo-test", "test/arquitectura/contratos/contratos-guardian.ts", lineaDelDescribe, "no termina en `.test.ts`"),
+        ]),
+        texto("evasion", { ruta: ci, de: "  pull_request:\n    branches: [main]\n", a: "  pull_request:\n    branches: [main]\n    paths-ignore: ['test/**']\n", donde: "paths-ignore" }, elCi, esp("cumplimiento", "ci-filtro-de-rutas", ci, "calculada", "paths-ignore"), [regCi]),
+        texto("evasion", { ruta: ci, de: "NODE_OPTIONS: --max-old-space-size=4096", a: 'NODE_OPTIONS: --max-old-space-size=4096\n          CREAR_CERCOS: "1"', donde: "CREAR_CERCOS" }, elCi, esp("cumplimiento", "ci-variable-prohibida", ci, "calculada", "CREAR_CERCOS"), [regCi]),
+        texto("evasion", { ruta: "package.json", de: '"test": "vitest run",', a: '"test": "vitest run --passWithNoTests",', donde: '"test": "vitest run --pass' }, elPaquete, esp("cumplimiento", "script-distinto", "package.json", "calculada", "vitest run --passWithNoTests"), [regPaquete]),
       ],
       noAplica: [{ clase: "duplicacion", motivo: "duplicar el guardián no lo neutraliza: dos copias del test hacen lo mismo y nada se evade" }],
+    });
+  }
+
+  // --- 8. El mecanismo solo cambia con una aprobación registrada (el guardián del guardián).
+  {
+    const inv = "guardian/mecanismo-aprobado";
+    const motor = MOTOR.ruta;
+    const adaptador = "test/arquitectura/contratos/adaptadores/ts.ts";
+    const scripts = "package.json#scripts";
+    const sinAprobacion = (clave: string): EsperadoDeMutacion => esp("aprobaciones", "sin-aprobacion", clave.split("#")[0], "sin-posicion", "no tiene ninguna aprobación");
+    out.push({
+      id: inv,
+      descripcion:
+        "Cada pieza del mecanismo (el motor, los tipos, la política, el índice, los adaptadores, la gobernanza, el arnés, las configuraciones, los scripts, el CI sin SHA y los campos gobernados de cada contrato) tiene la huella de su última aprobación en el registro: cambiarla, copiarla, borrarla o moverla pone el guardián en rojo hasta registrar la aprobación (referencia + motivo).",
+      origen: "guardian",
+      mecanismo: ["aprobaciones", "cumplimiento", "clasificacion"],
+      elementos: {
+        definen: [REGISTRO, MOTOR, el("test/arquitectura/contratos/tipos.ts", "los tipos del motor"), el("package.json", "los scripts")],
+        aplican: [CUMPLIMIENTO, el("test/arquitectura/contratos/mutaciones/operadores.ts", "el catálogo de operadores"), el(".github/workflows/ci.yml", "el workflow de CI")],
+        verifican: [REGISTRO, TEST_DEL_REGISTRO, CUMPLIMIENTO, TEST_DE_CUMPLIMIENTO, ARNES],
+      },
+      mutaciones: [
+        mut(inv, "eliminacion", "archivo", { ruta: adaptador, modo: "borrar" }, el(adaptador, "un adaptador del mecanismo (se borra)"), esp("aprobaciones", "archivo-ausente", adaptador, "sin-posicion", "ya no existe")),
+        mut(inv, "alteracion", "archivo", { ruta: motor, modo: "un-byte" }, MOTOR, huella(motor, "archivo del mecanismo, entero")),
+        mut(inv, "duplicacion", "archivo", { ruta: adaptador, modo: "copiar", destino: "test/arquitectura/contratos/adaptadores/zz-copia.ts" }, el(adaptador, "un adaptador del mecanismo (se copia a uno nuevo)"), sinAprobacion("test/arquitectura/contratos/adaptadores/zz-copia.ts")),
+        mut(inv, "desconexion", "registro", { modo: "quitar-aprobacion", clave: motor }, REGISTRO, sinAprobacion(motor)),
+        mut(inv, "exclusion-del-analisis", "mover", { de: motor, a: "docs/motor.ts" }, MOTOR, esp("clasificacion", "ruta-sin-clasificar", "docs/motor.ts", "sin-posicion", "ninguna regla de clasificación reconoce este archivo"), "", [esp("aprobaciones", "archivo-ausente", motor, "sin-posicion", "ya no existe")]),
+        mut(inv, "evasion", "registro", { modo: "huella-vieja", clave: scripts }, REGISTRO, huella("package.json", "package.json#scripts")),
+        mut(inv, "evasion", "texto", { ruta: "package.json", de: '"test": "vitest run",', a: '"test": "echo ok",' }, el("package.json", 'el script "test"'), huella("package.json", "package.json#scripts"), "", [
+          esp("cumplimiento", "script-distinto", "package.json", "calculada", "echo ok"),
+        ]),
+      ],
+      noAplica: [],
     });
   }
   return out;
