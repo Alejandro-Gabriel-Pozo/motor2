@@ -90,39 +90,60 @@ function rutaPortable(raiz: string, ruta: string): string {
 }
 
 /**
- * Lo que ya se leyó y se listó dentro de `conRecorridoCompartido`; `null` fuera de él (sin ninguna caché: cada llamada va al disco, como siempre).
+ * Lo que ya se leyó y se listó dentro de `RecorridoCompartido.correr`; `null` fuera de él (sin ninguna caché: cada llamada va al disco, como siempre).
  * Un ARCHIVO leído por su ruta absoluta y una CARPETA por su ruta absoluta (sus entradas ya ordenadas, con si cada una es una carpeta).
  */
-let lecturasCompartidas: Map<string, string> | null = null;
-let carpetasCompartidas: Map<string, readonly { nombre: string; esCarpeta: boolean }[]> | null = null;
+interface Memoria {
+  lecturas: Map<string, string>;
+  carpetas: Map<string, readonly { nombre: string; esCarpeta: boolean }[]>;
+}
+let memoriaActiva: Memoria | null = null;
 
 /**
- * Corre `f` reusando las lecturas y los listados que ya hizo: SOLO para quien sabe que el disco no cambia mientras `f` corre (el arnés de mutaciones, que en una misma verificación corre
- * el motor, las áreas y la evidencia sobre el mismo árbol y les hacía releer los mismos cientos de archivos). Al salir (también si `f` lanza) la memoria se descarta; las anidaciones comparten la de afuera.
+ * Una memoria de lecturas y listados que `leer` y `listarArchivos` reusan mientras corre `correr(f)`. SOLO para quien sabe QUÉ cambia en el disco entre una corrida y otra y lo avisa con `invalidar`
+ * (el arnés de mutaciones: corre cientos de veces el motor, las áreas y la evidencia sobre una copia donde cada mutación toca unos pocos archivos, y todas releían los mismos cientos de archivos).
+ * Fuera de `correr` no hay ninguna caché. Las anidaciones de `correr` usan la memoria de afuera.
  */
-export function conRecorridoCompartido<T>(f: () => T): T {
-  if (lecturasCompartidas !== null) return f();
-  lecturasCompartidas = new Map();
-  carpetasCompartidas = new Map();
-  try {
-    return f();
-  } finally {
-    lecturasCompartidas = null;
-    carpetasCompartidas = null;
-  }
+export interface RecorridoCompartido {
+  correr<T>(f: () => T): T;
+  /** Olvida lo leído y listado de estas rutas ABSOLUTAS (un archivo, o una carpeta con todo lo que tiene adentro) y los listados de todas sus carpetas contenedoras (entró o salió una entrada). */
+  invalidar(rutas: readonly string[]): void;
+}
+
+export function crearRecorridoCompartido(): RecorridoCompartido {
+  const memoria: Memoria = { lecturas: new Map(), carpetas: new Map() };
+  return {
+    correr<T>(f: () => T): T {
+      if (memoriaActiva !== null) return f();
+      memoriaActiva = memoria;
+      try {
+        return f();
+      } finally {
+        memoriaActiva = null;
+      }
+    },
+    invalidar(rutas) {
+      for (const ruta of rutas) {
+        const dentro = `${ruta}${sep}`;
+        for (const clave of [...memoria.lecturas.keys()]) if (clave === ruta || clave.startsWith(dentro)) memoria.lecturas.delete(clave);
+        for (const clave of [...memoria.carpetas.keys()]) if (clave === ruta || clave.startsWith(dentro)) memoria.carpetas.delete(clave);
+        for (let dir = dirname(ruta); dir !== dirname(dir); dir = dirname(dir)) memoria.carpetas.delete(dir);
+      }
+    },
+  };
 }
 
 /** Todos los archivos bajo `raices` (relativas a `raizDelRepo`) con alguna de las `extensiones`, en orden determinista y con `/`. */
 export function listarArchivos(raizDelRepo: string, raices: readonly string[], extensiones: readonly string[]): string[] {
   const salida: string[] = [];
   const entradasDe = (dir: string): readonly { nombre: string; esCarpeta: boolean }[] => {
-    const previas = carpetasCompartidas?.get(dir);
+    const previas = memoriaActiva?.carpetas.get(dir);
     if (previas !== undefined) return previas;
     const entradas = readdirSync(dir)
       .sort()
       .filter((nombre) => !CARPETAS_IGNORADAS.has(nombre))
       .map((nombre) => ({ nombre, esCarpeta: statSync(join(dir, nombre)).isDirectory() }));
-    carpetasCompartidas?.set(dir, entradas);
+    memoriaActiva?.carpetas.set(dir, entradas);
     return entradas;
   };
   const recorrer = (dir: string): void => {
@@ -142,10 +163,10 @@ export function listarArchivos(raizDelRepo: string, raices: readonly string[], e
 /** Lee un archivo del repo por su ruta portable. */
 export function leer(raizDelRepo: string, ruta: string): string {
   const absoluta = join(raizDelRepo, ...ruta.split("/"));
-  const previa = lecturasCompartidas?.get(absoluta);
+  const previa = memoriaActiva?.lecturas.get(absoluta);
   if (previa !== undefined) return previa;
   const texto = readFileSync(absoluta, "utf8");
-  lecturasCompartidas?.set(absoluta, texto);
+  memoriaActiva?.lecturas.set(absoluta, texto);
   return texto;
 }
 

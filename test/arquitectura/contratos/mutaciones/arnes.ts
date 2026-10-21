@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { conRecorridoCompartido } from "../../cercos/trinquete";
+import { crearRecorridoCompartido, type RecorridoCompartido } from "../../cercos/trinquete";
 import { formatearHallazgo, revisarContratos } from "../motor";
 import { APROBACIONES, idsDeContratosAprobados, revisarAprobaciones, rutasDelMecanismo, type Aprobacion } from "../gobernanza/aprobaciones";
 import { GUARDIANES_ADICIONALES, revisarCumplimiento } from "../gobernanza/cumplimiento";
@@ -112,6 +112,8 @@ function caminar(raiz: string, dir = ""): string[] {
 
 interface Preparada {
   base: BaseDeMutacion;
+  /** Lo que se leyó y se listó de la copia, compartido entre observaciones; cada mutación avisa lo que cambia (`rutasTocadas`). */
+  recorrido: RecorridoCompartido;
   /** Los datos reales de la clasificación (no cambian entre mutaciones). */
   raizReal: string;
   limpiar: () => void;
@@ -163,7 +165,7 @@ function prepararBase(o: OpcionesDelArnes): Preparada {
     areaDeArchivo,
     ejemplos: o.ejemplos,
   };
-  return { base, raizReal: o.raizReal, limpiar: () => rmSync(raizCopia, { recursive: true, force: true }) };
+  return { base, recorrido: crearRecorridoCompartido(), raizReal: o.raizReal, limpiar: () => rmSync(raizCopia, { recursive: true, force: true }) };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -217,10 +219,14 @@ const medir = <T>(clave: keyof typeof tiempos, f: () => T): T => {
  * `conMecanismo`: además del motor, la clasificación y las áreas, corre el cumplimiento del cableado, el registro de aprobaciones y los controles estructurales de la evidencia por corrida (`gobernanza/evidencia.ts`). Se pide en las mutaciones de evasión y en las que tocan el mecanismo
  * (ver `tocaElMecanismo`): son las que pueden dar uno de esos hallazgos, y correrlos en las cientos de mutaciones de contratos sería pagar tiempo para no mirar nada.
  */
-function observar(base: BaseDeMutacion, e: Escenario, soloMotor: boolean, conMecanismo: boolean): Observado[] {
-  // El disco no cambia mientras se observa: el motor, las áreas y la evidencia comparten lo que leen y lo que listan (cada verificación releía los mismos cientos de archivos).
-  return conRecorridoCompartido(() => observarSobreElDisco(base, e, soloMotor, conMecanismo));
+function observar(base: BaseDeMutacion, recorrido: RecorridoCompartido, e: Escenario, soloMotor: boolean, conMecanismo: boolean): Observado[] {
+  // El disco no cambia mientras se observa, y entre una observación y otra solo cambia lo que dicen los `cambios` de la mutación (y se avisa con `invalidar`): el motor, las áreas y la evidencia
+  // comparten lo que leen y lo que listan, en vez de releer los mismos cientos de archivos en cada una de las cientos de mutaciones.
+  return recorrido.correr(() => observarSobreElDisco(base, e, soloMotor, conMecanismo));
 }
+
+/** Las rutas absolutas que toca una lista de cambios (la copia, o el destino de un movimiento): lo que hay que olvidar de la memoria compartida antes de observar y de nuevo al revertir. */
+const rutasTocadas = (raiz: string, cambios: readonly Cambio[]): string[] => cambios.flatMap((c) => (c.op === "mover" ? [abs(raiz, c.de), abs(raiz, c.a)] : [abs(raiz, c.ruta)]));
 
 function observarSobreElDisco(base: BaseDeMutacion, e: Escenario, soloMotor: boolean, conMecanismo: boolean): Observado[] {
   const salida: Observado[] = [];
@@ -454,7 +460,7 @@ export async function ejecutarMatriz(o: OpcionesDelArnes): Promise<ResultadoDelA
     const matriz = o.alterar ? o.alterar(construirMatriz(p.base)) : construirMatriz(p.base);
     const invariantes = o.soloContratos ? matriz.invariantes.filter((i) => i.origen === "contrato") : matriz.invariantes;
     const mecanismo = new Set([...rutasDelMecanismo(o.raizReal), ...GUARDIANES_ADICIONALES]);
-    const baseLimpia = observar(p.base, escenarioBase(p.base), o.soloContratos, true);
+    const baseLimpia = observar(p.base, p.recorrido, escenarioBase(p.base), o.soloContratos, true);
     const filas: FilaDeResultado[] = [];
     let corridas = 0;
 
@@ -511,15 +517,17 @@ export async function ejecutarMatriz(o: OpcionesDelArnes): Promise<ResultadoDelA
       let deshacer: Deshacer | null = null;
       try {
         deshacer = aplicarEnDisco(p.base.raiz, a.m.cambios);
+        p.recorrido.invalidar(rutasTocadas(p.base.raiz, a.m.cambios));
         const conMecanismo = tocaElMecanismo(a.e, a.m, mecanismo);
-        const obs = observar(p.base, escenarioDe(p.base, a.m), o.soloContratos, conMecanismo);
+        const obs = observar(p.base, p.recorrido, escenarioDe(p.base, a.m), o.soloContratos, conMecanismo);
         const { veredicto, detalle } = a.pruebas === null ? evaluar(a.e, a.m, obs, p.base.raiz) : { veredicto: "protegido" as Veredicto, detalle: "" };
         deshacer.revertir();
         deshacer = null;
+        p.recorrido.invalidar(rutasTocadas(p.base.raiz, a.m.cambios));
         let final = { veredicto, detalle };
         let aislamiento = "";
         if (a.m.cambios.length > 0) {
-          const despues = observar(p.base, escenarioBase(p.base), o.soloContratos, conMecanismo);
+          const despues = observar(p.base, p.recorrido, escenarioBase(p.base), o.soloContratos, conMecanismo);
           if (despues.length > 0) {
             aislamiento = `después de revertir quedaron hallazgos: ${describirLista(despues)}`;
             final = { veredicto: "aislamiento-roto", detalle: aislamiento };
@@ -529,6 +537,7 @@ export async function ejecutarMatriz(o: OpcionesDelArnes): Promise<ResultadoDelA
         else a.enLaCopia = { obs, aislamiento };
       } catch (error) {
         deshacer?.revertir();
+        p.recorrido.invalidar(rutasTocadas(p.base.raiz, a.m.cambios));
         filas.push(fila(a.inv, a.e, a.m.descripcion, "", "error-del-operador", (error as Error).message));
         a.enLaCopia = { obs: [], aislamiento: "error-del-operador" };
       }
