@@ -170,7 +170,9 @@ export function CampoNumero({
   return (
     <div className={`relative ${className ?? ""}`}>
       {name && <input type="hidden" name={name} value={valorReal} onChange={() => {}} />}
-      {prefijo && <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-neutral-400">{prefijo}</span>}
+      {prefijo && <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-tinta-suave">{prefijo}</span>}
+      {/* F6 6.8.7: el <input> sigue a mano (no `Campo`): `Campo` exige su propia etiqueta (solo 4 de los 47 usos pasan `ariaLabel`: el resto se nombra con un <label> de afuera), pisa el `aria-invalid` del campo y su `error` mostraría el
+          mensaje en pantalla, y no alinea a la derecha ni deja lugar para el prefijo; sin cambiar la primitiva ni pasarle clases de presentación (6.7) no se puede. */}
       <input
         ref={entrada}
         id={id}
