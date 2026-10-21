@@ -14,7 +14,8 @@ import { cargarCuentaParaCerrar, cargarOperacionDelConsumo, cargarUltimoNumeroDe
 import type { ConsumoDeOpcionParaVender, LineaConfiguradaEnTx, OpcionConConsumo } from "@/core/movimientos/public";
 import type { EfectoDeConsumoDeOpcion } from "@/core/opciones/public";
 import { enlazarItemsConOperaciones, escribirEjemplarOriginalDeTicket, marcarCuentaCerrada } from "@/server/persistencia/pos/cerrar-cuenta";
-import { describirAviso, formatearCantidad, MONEDA } from "../cuenta-comun";
+import { formatearMonto } from "@/core/pos/public";
+import { describirAviso, formatearCantidad } from "../cuenta-comun";
 
 /**
  * Caso de uso «cerrar la cuenta de una mesa» (Task #41, Fase M12a — ver docs/arquitectura-casos-de-uso-2026-09-27.md). Es la
@@ -146,7 +147,7 @@ export async function cerrarCuentaCasoDeUso(
     // aplicado si hay cliente), no la suma cruda re-redondeada: el total del mensaje coincide centavo a centavo con lo registrado.
     const total = redondearMoneda(lineasVenta.reduce((suma, l) => suma + importeDeLinea(l.cantidadVendida, l.precioUnitario), 0));
     const conCliente = cuenta.clienteNombre !== null ? ` (con ${descuento}% de descuento a «${cuenta.clienteNombre}»)` : "";
-    const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${MONEDA.format(total)}${conCliente}.`;
+    const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${formatearMonto(total)}${conCliente}.`;
     if (!venta.avisosStockNegativo.length) return exito(mensaje, datos);
 
     // STOCK INSUFICIENTE NO BLOQUEA (B6bis): cada insumo que quedó en negativo deja una fila de auditoría enlazada a la venta que lo
