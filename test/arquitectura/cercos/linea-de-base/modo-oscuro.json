@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 229,
-  "entradas": 49,
+  "total": 228,
+  "entradas": 48,
   "porTipo": {
-    "dark:": 229
+    "dark:": 228
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -123,9 +123,6 @@
     },
     "src/app/(app)/reportes/tickets/page.tsx": {
       "dark:": 3
-    },
-    "src/app/(app)/reportes/trazabilidad/boton-anular-venta.tsx": {
-      "dark:": 1
     },
     "src/components/agregar-colapsable.tsx": {
       "dark:": 1
