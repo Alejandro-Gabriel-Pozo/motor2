@@ -1,11 +1,11 @@
 {
   "regla": "colores-de-escala",
   "meta": "0 en la Fase 6 (DEC-03: las clases de color de Tailwind pasan a los tokens del salón)",
-  "total": 706,
-  "entradas": 108,
+  "total": 685,
+  "entradas": 106,
   "porTipo": {
-    "blanco-negro": 117,
-    "escala": 589
+    "blanco-negro": 115,
+    "escala": 570
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -228,14 +228,6 @@
     "src/app/(app)/movimientos/venta/venta-form.tsx": {
       "blanco-negro": 1,
       "escala": 6
-    },
-    "src/app/(app)/reportes/compras/formulario-corregir-compra.tsx": {
-      "blanco-negro": 1,
-      "escala": 4
-    },
-    "src/app/(app)/reportes/compras/page.tsx": {
-      "blanco-negro": 1,
-      "escala": 15
     },
     "src/app/(app)/reportes/periodo/page.tsx": {
       "escala": 18
