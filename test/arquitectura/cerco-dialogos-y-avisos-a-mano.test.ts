@@ -45,7 +45,6 @@ const CERCO_DIALOGOS_Y_AVISOS: Cerco = {
   meta: "bajar hacia 0 en la Fase 6: diálogos y avisos salen de las primitivas de src/ui (Dialogo, Aviso)",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src"], extensiones: [".tsx", ".jsx"], incluir: (ruta) => !ruta.startsWith("src/ui/"), contar: contarDialogosYAvisos }),
   excepciones: [
-    { ruta: "src/components/avisos-de-accion.tsx", motivo: `${COMPARTIDO} de aviso: el aviso del resultado de una acción que reusan las pantallas (pasa a src/ui como Aviso en la Fase 6).` },
     { ruta: "src/components/aviso-con-deshacer.tsx", motivo: `${COMPARTIDO} de aviso: el aviso flotante con «deshacer» que reusan las pantallas (pasa a src/ui como Aviso en la Fase 6).` },
     { ruta: "src/components/menu-celular.tsx", motivo: `${COMPARTIDO} de diálogo: el cajón del menú en celular, sobre el <dialog> nativo con el mismo criterio que ui/…/dialogo.tsx.` },
   ],

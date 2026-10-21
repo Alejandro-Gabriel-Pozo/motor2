@@ -12,8 +12,9 @@ import type { Contrato } from "../tipos";
  * `velo`, `sombra`, `superficie`) tras una utilidad de color; un nombre nuevo de familia se agrega acá junto con su token.
  *
  * DEUDA INICIAL (DEC-03, inventario inicial de la Fase 6: PENDIENTE de ratificación del dueño antes del pull request). Lo que no se pudo resolver en 6.1 está escrito
- * uso por uso en `deuda`, con su motivo y el paso que lo paga: los 15 alias de `.pos-shell` (6.30, lote POS), el alias
- * `--color-background` de `@theme inline` (6.8.2) y los dos colores sueltos de `:root` (6.27). Todas vencen a los 60 días de su creación. (La paleta propia de la carta del panel, ADR-034, se pagó en 6.4: `carta-mant.module.css` ya consume los tokens.)
+ * uso por uso en `deuda`, con su motivo y el paso que lo paga: los 15 alias de `.pos-shell` (6.30, lote POS)
+ * y los dos colores sueltos de `:root` (6.27). Todas vencen a los 60 días de su creación. (La paleta propia de la carta del panel, ADR-034, se pagó en 6.4: `carta-mant.module.css` ya consume los tokens;
+ * el alias `--color-background` de `@theme inline` se pagó en 6.8.2: `avisos-de-accion.tsx` usa `bg-superficie` y nadie más lo leía.)
  */
 const RE_UTILIDAD_DE_TOKEN = new RegExp(
   "^(?:bg|text|border(?:-[xytrblse])?|ring(?:-offset)?|outline|divide|fill|stroke|accent|caret|decoration|placeholder|from|via|to|shadow)-" +
@@ -71,15 +72,7 @@ export const TOKENS_VISUALES: Contrato = {
     { archivo: "src/app/globals.css", fragmento: "--mesa-draft-ink: var(--color-aviso-tinta)", motivo: MOTIVO_ALIAS_DEL_SALON, resuelveEn: "6.30 (lote POS, después del bloque 2)", ...DEUDA_COMUN },
     { archivo: "src/app/globals.css", fragmento: "--mesa-ocupada: var(--color-error)", motivo: MOTIVO_ALIAS_DEL_SALON, resuelveEn: "6.30 (lote POS, después del bloque 2)", ...DEUDA_COMUN },
     { archivo: "src/app/globals.css", fragmento: "--mesa-ocupada-tint: var(--color-error-tinte)", motivo: MOTIVO_ALIAS_DEL_SALON, resuelveEn: "6.30 (lote POS, después del bloque 2)", ...DEUDA_COMUN },
-    // 2) El alias de Tailwind de `@theme inline`: `bg-background` lo usa `avisos-de-accion.tsx`; pasa a una utilidad de token (`bg-superficie`) y el alias se retira.
-    {
-      archivo: "src/app/globals.css",
-      fragmento: "--color-background: var(--background)",
-      motivo: "`bg-background` (avisos-de-accion.tsx) sigue leyendo el fondo suelto de `:root`; el alias de `@theme inline` se retira cuando ese componente use un token",
-      resuelveEn: "6.8.2",
-      ...DEUDA_COMUN,
-    },
-    // 3) Los dos colores sueltos de `:root`: los usan `grafico-saldo.tsx` y `grafico-gasto-grupo.tsx` (más el `body`); nacen como tokens cuando se migren los gráficos.
+    // 2) Los dos colores sueltos de `:root`: los usan `grafico-saldo.tsx` y `grafico-gasto-grupo.tsx` (más el `body`); nacen como tokens cuando se migren los gráficos.
     {
       archivo: "src/app/globals.css",
       fragmento: "--background: #ffffff",
