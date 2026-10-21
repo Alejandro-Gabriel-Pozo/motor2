@@ -1,87 +1,27 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { obtenerMiNivelPermisoEnAlgunaSucursal, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
-import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
-import { grupoConElPrecioFinal, obtenerProductoPorId, obtenerUnidadesDelProducto } from "@/server/consultas/catalogo/productos";
-import { ProductoForm, type ProductoExistente } from "../../producto-form";
-import { cargarOpcionesFormularioProducto, conLasUnidadesDelProducto } from "../../opciones-formulario";
-import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { rutaDelPaso } from "@/core/catalogo/public";
 
-/** Edición de un producto. Al guardar, vuelve a su ficha, que muestra el aviso de que se guardó. */
+/**
+ * La ruta VIEJA de la edición de un producto (Fase 6, 6.13; DEC-12): el editor vive ahora en el paso 1 del espacio, `/catalogo/productos/[id]/datos`, para todos los tipos de producto. Esta página queda para que los
+ * enlaces, los favoritos y las pestañas viejas sigan funcionando: pasa las MISMAS guardas de siempre (quien no puede editar recibe acá el mismo «No tenés permiso» y no se le revela nada) y recién después redirige (307),
+ * sin leer el producto y sin condición por tipo. Un id que no existe llega a `/datos`, que da el 404.
+ */
 export default async function EditarProductoPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
-  // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate.
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <Aviso variante="error" forma="en-linea">{MENSAJE_DEMASIADAS_LECTURAS}</Aviso>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  // Además de Ver (que ubica la pantalla en su familia), EDITAR: quien solo ve productos no tiene por qué recibir el formulario completo para descubrir
-  // recién al guardar que no puede. La barrera es esta, en el servidor; esconder el enlace en la lista y la ficha es solo cortesía de la interfaz.
+  if (!gate.ok) return <Aviso variante="error" forma="en-linea">{gate.mensaje}</Aviso>;
   const gateEditar = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db);
-  if (!gateEditar.ok) return <p className="text-red-600">{gateEditar.mensaje}</p>;
-
-  // S-12 (D8 del dueño): el costo de consignación (precio y consignante) solo viaja al formulario —un componente de cliente: sus props van al navegador— si el usuario tiene
-  // `pagar_consignante` EDITAR en alguna de sus sucursales de la empresa (P20, D23: no importa cuál esté activa). La consulta no lo devuelve sin la bandera, y la lista de proveedores del selector (solo se usa para elegir el consignante)
-  // tampoco se manda.
-  const { editar: puedeGestionarConsignacion } = await obtenerMiNivelPermisoEnAlgunaSucursal(ctx, "pagar_consignante");
-
-  // M.2 (P6): cambiar el precio de venta, el factor de conversión y las unidades exige además `producto_campos_sensibles`. Sin la clave el formulario los muestra en solo lectura (con el valor guardado) y no
-  // manda esos campos: «no viene» es «no cambia» en el servidor, que rechaza igual un valor distinto del guardado (`actualizarProducto`).
-  const puedeEditarCamposSensibles = await puedeEditarCamposSensiblesDelProducto(ctx);
+  if (!gateEditar.ok) return <Aviso variante="error" forma="en-linea">{gateEditar.mensaje}</Aviso>;
 
   const { id } = await params;
-  const p = await obtenerProductoPorId(id, ctx.db, { conCostoDeConsignacion: puedeGestionarConsignacion });
-  if (!p) notFound();
-
-  const [{ unidades: unidadesActivas, insumos, categorias, proveedores, puedeCrear }, unidadesDelProducto] = await Promise.all([cargarOpcionesFormularioProducto(ctx), obtenerUnidadesDelProducto(id, ctx.db)]);
-  // M.2-A4 (D): las unidades que el producto usa hoy van en las opciones aunque se hayan desactivado (`listarUnidadesActivas` trae solo las activas): sin esto el formulario las mostraba como «sin unidad» y, con la clave, las borraba al guardar.
-  const unidades = conLasUnidadesDelProducto(unidadesActivas, [unidadesDelProducto?.unidadStock ?? null, unidadesDelProducto?.unidadCompra ?? null]);
-  const productoExistente: ProductoExistente = {
-    id: p.id,
-    codigo: p.codigo,
-    nombre: p.nombre,
-    tipo: p.tipo,
-    categoriaId: p.categoriaId,
-    unidadCompraId: p.unidadCompraId,
-    unidadStockId: p.unidadStockId,
-    factorConversion: Number(p.factorConversion),
-    insumoId: p.insumoId,
-    precioVenta: Number(p.precioVenta),
-    pasoVenta: p.pasoVenta !== null ? Number(p.pasoVenta) : null,
-    seProduce: p.seProduce,
-    esConsignacion: p.esConsignacion,
-    proveedorConsignacionId: p.proveedorConsignacionId,
-    precioConsignacion: p.precioConsignacion ? Number(p.precioConsignacion) : 0,
-    observaciones: p.observaciones ?? undefined,
-  };
-  const presentaciones: PresentacionOpcion[] = p.tipo === "MP" ? await listarPresentaciones(p.id) : [];
-  // Fase 4 (ADR-035): «¿Cómo se vende?» (solo un PV): el modo guardado y el grupo donde está el precio final de cada opción, si lo tiene.
-  const venta = p.tipo === "PV" ? { modo: p.modoDeVenta === "BASE_CONFIGURABLE" ? ("BASE_CONFIGURABLE" as const) : ("DIRECTO" as const), grupoConPrecioFinal: await grupoConElPrecioFinal(p.id, ctx.db) } : undefined;
-
-  return (
-    <div className="max-w-xl">
-      <Link href={`/catalogo/productos/${p.id}`} className="mb-3 inline-block text-sm underline">
-        ← Volver a la ficha
-      </Link>
-      {/* La pantalla de alta ya tiene su h1; esta no lo tenía (solo el h2 del formulario) y axe marca «la página debe tener un encabezado de nivel 1». */}
-      <h1 className="mb-4 text-xl font-semibold">Editar producto</h1>
-      <ProductoForm
-        key={p.id}
-        unidades={unidades}
-        insumosIniciales={insumos}
-        categoriasIniciales={categorias}
-        proveedoresIniciales={puedeGestionarConsignacion ? proveedores : []}
-        puedeCrear={puedeCrear}
-        puedeGestionarConsignacion={puedeGestionarConsignacion}
-        puedeEditarCamposSensibles={puedeEditarCamposSensibles}
-        productoExistente={productoExistente}
-        presentacionesIniciales={presentaciones}
-        venta={venta}
-      />
-    </div>
-  );
+  redirect(rutaDelPaso(id, "datos"));
 }

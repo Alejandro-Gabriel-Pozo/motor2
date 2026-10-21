@@ -7,7 +7,7 @@ import { prisma } from "./fixtures/db";
  * Bug encontrado por el usuario en producción (2026-09-18): el formulario de edición mostraba el nombre y las observaciones del producto, pero
  * NO su categoría, unidad de stock, precio de venta ni factor de conversión. Causa: la lista y el formulario vivían en la misma página, y al
  * tocar «Editar» React reutilizaba el formulario ya montado en modo alta (estado interno que solo se inicializa al montarse). Desde que la
- * edición tiene su propia ruta (`/catalogo/productos/[id]/editar`) esa clase de bug no puede ocurrir; la prueba se mantiene para asegurar que
+ * edición tiene su propia ruta (`/catalogo/productos/[id]/datos`, el paso 1 del espacio del producto) esa clase de bug no puede ocurrir; la prueba se mantiene para asegurar que
  * la pantalla de edición cargue TODOS los datos. Ni tsc, ni eslint, ni vitest lo ven: solo un navegador real.
  */
 test("al tocar «Editar» en la lista, la pantalla de edición carga TODOS los datos del producto", async ({ paginaAutenticada: page }) => {
@@ -30,7 +30,7 @@ test("al tocar «Editar» en la lista, la pantalla de edición carga TODOS los d
 
   await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
   await page.getByRole("row", { name: new RegExp(producto.codigo) }).getByRole("link", { name: "Editar", exact: true }).click();
-  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/editar$`));
+  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
   await expect(page.getByText(`Editar "${producto.nombre}"`)).toBeVisible();
 
   // Todos los campos tienen que reflejar el producto, no solo los que siguen a `defaultValue`.

@@ -43,7 +43,7 @@ export default async function FichaProductoPage({
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `producto_editar` en la ruta /editar y en la acción. Es un permiso de EDITAR, así que no
+  // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `producto_editar` en la ruta /datos y en la acción. Es un permiso de EDITAR, así que no
   // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
   const { editar: puedeEditarProducto } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db);
   const { editar: puedeCambiarDisponibilidad } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db);
@@ -94,7 +94,7 @@ export default async function FichaProductoPage({
           </div>
           {puedeEditarProducto && (
             <div className="flex items-start gap-4">
-              <Link href={`/catalogo/productos/${p.id}/editar`} className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
+              <Link href={`/catalogo/productos/${p.id}/datos`} className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
                 Editar
               </Link>
             </div>

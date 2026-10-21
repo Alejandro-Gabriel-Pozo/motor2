@@ -49,13 +49,18 @@ async function crearProducto(marca: number, sucursalId: string) {
   return producto;
 }
 
-test("un rol que solo VE productos no abre /editar por URL directa: no se dibuja el formulario", async ({ browser, baseURL, sucursalId }) => {
+test("un rol que solo VE productos no abre /editar por URL directa: no se dibuja el formulario y la ruta vieja no lo redirige", async ({ browser, baseURL, sucursalId }) => {
   const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, {});
   try {
     await page.goto(`/catalogo/productos/${producto.id}/editar`);
     await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
     await expect(page.locator('input[name="nombre"]'), "el formulario de edición no tenía que llegar a dibujarse").toHaveCount(0);
+    // La guarda corre ANTES de la redirección: a quien no puede editar no se le lleva (ni se le revela) el paso 1.
+    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}/editar$`));
+    const respuesta = await page.request.get(`/catalogo/productos/${producto.id}/editar`, { maxRedirects: 0, failOnStatusCode: false });
+    expect(respuesta.status(), "sin permiso de editar no hay redirección").toBe(200);
+    expect(respuesta.headers()["location"]).toBeUndefined();
   } finally {
     await limpiar();
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
@@ -63,12 +68,29 @@ test("un rol que solo VE productos no abre /editar por URL directa: no se dibuja
   }
 });
 
-test("un rol CON producto_editar sí abre /editar y ve el formulario con el nombre cargado", async ({ browser, baseURL, sucursalId }) => {
-  // Contraespejo del caso anterior: impide «arreglarlo» cerrando la ruta para todos.
+test("un rol que solo VE productos no abre /datos (el paso 1) por URL directa: no se dibuja el formulario", async ({ browser, baseURL, sucursalId }) => {
+  const producto = await crearProducto(Date.now(), sucursalId);
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, {});
+  try {
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
+    await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
+    await expect(page.locator('input[name="nombre"]'), "el formulario del paso 1 no tenía que llegar a dibujarse").toHaveCount(0);
+  } finally {
+    await limpiar();
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
+
+test("un rol CON producto_editar sí abre /datos y /editar (que lo lleva a /datos) y ve el formulario con el nombre cargado", async ({ browser, baseURL, sucursalId }) => {
+  // Contraespejo de los dos casos anteriores: impide «arreglarlo» cerrando la ruta para todos.
   const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true });
   try {
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
+    await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
     await page.goto(`/catalogo/productos/${producto.id}/editar`);
+    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
   } finally {
     await limpiar();
@@ -80,7 +102,7 @@ test("un rol CON producto_editar sí abre /editar y ve el formulario con el nomb
 test("un rol que solo VE productos no tiene enlace «Editar» ni en la lista ni en la ficha", async ({ browser, baseURL, sucursalId }) => {
   const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, {});
-  const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/editar"]`);
+  const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/datos"]`);
   try {
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
     await expect(page.getByRole("link", { name: producto.nombre })).toBeVisible(); // la fila está: es la lista, no un mensaje de permiso
@@ -102,7 +124,7 @@ test("un rol CON producto_editar y producto_disponibilidad ve «Editar» y «Des
   // Contraespejo: impide «arreglarlo» escondiendo el enlace para todos.
   const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true, disponibilidad: true });
-  const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/editar"]`);
+  const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/datos"]`);
   try {
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
     await expect(enlaceEditar).toHaveCount(1);
@@ -122,7 +144,7 @@ test("un rol CON producto_editar y producto_disponibilidad ve «Editar» y «Des
 
 test("«Editar» y «Desactivar» son permisos separados: cada uno muestra solo su control", async ({ browser, baseURL, sucursalId }) => {
   const producto = await crearProducto(Date.now(), sucursalId);
-  const enlaceEditar = (page: import("@playwright/test").Page) => page.locator(`a[href="/catalogo/productos/${producto.id}/editar"]`);
+  const enlaceEditar = (page: import("@playwright/test").Page) => page.locator(`a[href="/catalogo/productos/${producto.id}/datos"]`);
   const soloEditar = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true });
   const soloDisponibilidad = await abrirComoRol(browser, baseURL, sucursalId, { disponibilidad: true });
   try {
