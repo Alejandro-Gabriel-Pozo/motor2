@@ -571,6 +571,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 5 tanda B (CAMBIO VISUAL DELIBERADO, «carta pareja»; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en la corrida de capturas del paso 13, contra motor2_e2e local). (1) DATOS de la siembra e2e: Pizzas y Milanesas como producto BASE, «Milanesas de» con «De» y «Pizza bomba» agotada hoy (lo que el dueño va a cargar a mano), así salen las cuatro formas; cambian por eso las pantallas de administración de Pizzas. (2) El volcado lee la FORMA de cada ítem (lista sin encabezado para las pizzas, tabla para las milanesas, simple para el bife, tanda para el café) en lugar de las listas de tamaños, pastillas y «Adicionales:» retiradas. (3) La tipografía: todo plato a 19 px (antes 14,08 px sin opciones), filas de opción 16 px, aclaraciones 14 px, con UN par tamaño/peso por rol a 375 y 1280 px (se agrega la sección «Escala única»). (4) Se agrega «Impresión»: 0 listas cortadas, el pie con la fecha enmascarada y la dirección, la carta completa con lo agotado hoy y la escala en puntos. El precio cobrado no se toca (precios.golden.txt y cobro-y-carta.golden.txt sin cambios).",
       },
+      {
+        blob: "709df8a9dbe7444475baa38b22fd5d461164331e",
+        // El commit PADRE de este (b74d4423, Fase 5 tanda C paso 7) es el último antes de la regeneración; los cambios visuales son de los pasos C1 a C6.
+        commit: "b74d4423",
+        motivo:
+          "Ola «precio y carta», Fase 5 tanda C (CAMBIO VISUAL DELIBERADO, jerarquía de la carta aprobada por el dueño con maquetas; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en la corrida de capturas «despues2», contra motor2_e2e local). (1) Milanesas (tabla de dos ejes): el nombre pasa a ser un RÓTULO en mayúsculas de 13 px (el innerText lo vuelve «MILANESAS»; antes 19 px), con línea fina; las filas y los precios quedan como platos. (2) Aclaraciones y adicionales en P1: el bife lee «Guarnicion Elegí: …» (una línea) y cada extra en su propia fila con el recargo a la derecha; el café lee «Preparación del café Incluidas: solo, cortado» y lágrima y con leche cada una en su fila con su recargo. (3) La tanda del café: una tabla por producto con el nombre arriba (sin la celda del nombre en la tabla). (4) Escala única: sumas de los roles columna 16 px / 600, eleccion 15 px / 400, rotulo 13 px / 600 y tamano 15 px / 600 (en papel, 14,67 / 14 / 12,67 / 14 px); el rol aclaracion deja de aparecer porque la carta de esta siembra ya no dibuja aclaraciones en una línea. Las pantallas de administración y las Pizzas no cambian; el precio cobrado no se toca.",
+      },
     ],
   },
 };
