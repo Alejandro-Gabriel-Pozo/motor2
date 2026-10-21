@@ -16,6 +16,7 @@ import { actualizarVisibleEnCarta } from "@/server/actions/carta/contenido-produ
 import { actualizarActivaSeccionCarta } from "@/server/actions/carta/secciones";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { PRECIOS_EDITABLES } from "@/core/carta/public";
 import { formatearCantidad } from "@/core/pos/public";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
@@ -41,12 +42,6 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 };
 
 const PESTANAS: readonly PestanaDeMantenimiento[] = ["hoy", "precios", "visibilidad"];
-/**
- * F4 «Precios» (ADR-034): el interruptor para apagarlo sin tocar nada más. En `false` la pestaña queda de solo lectura («próximamente») y la pantalla no ofrece ajustar; las acciones
- * (`src/server/actions/carta/precios.ts`) siguen exigiendo sus permisos de siempre.
- * Apagado por decisión del dueño (Fase 2b, 2026-10-20): el precio local pasa a ser de Catálogo y el ajuste masivo queda sin ofrecer hasta nuevo aviso. Volver a `true` lo reactiva tal cual.
- */
-const PRECIOS_EDITABLES = false;
 const pesos = (n: number) => `$ ${n.toLocaleString("es-AR")}`;
 
 export default async function CartaPage({ searchParams }: { searchParams: Promise<{ [clave: string]: string | string[] | undefined }> }) {

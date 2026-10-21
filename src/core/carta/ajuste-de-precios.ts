@@ -13,6 +13,15 @@ import { CENTAVOS_MAXIMOS } from "@/core/datos/importe";
  *  4. Piso: el precio nunca queda en $0 ni negativo: como mínimo $0,01, o el múltiplo elegido si hay redondeo.
  */
 
+/**
+ * INTERRUPTOR del ajuste masivo «Precios» de la carta (F4, ADR-034). Una sola constante, leída por la página de la carta (`src/app/(app)/carta/page.tsx`) y por el e2e
+ * `test/e2e/carta-mantenimiento-precios.spec.ts` (que con `false` se omite con el motivo a la vista; mismo patrón que `MENU_DEL_DIA_VISIBLE`).
+ * En `false` la pestaña «Precios» queda de solo lectura («próximamente») y la pantalla no ofrece «Ajustar sección» ni «Cambiar precio»; las acciones (`server/actions/carta/precios.ts`)
+ * siguen exigiendo sus permisos de siempre. Apagado por decisión del dueño (Fase 2b, 2026-10-20): el precio local pasa a ser de Catálogo y el ajuste masivo queda sin ofrecer hasta nuevo
+ * aviso. Volver a `true` lo reactiva tal cual.
+ */
+export const PRECIOS_EDITABLES: boolean = false;
+
 const REDONDEOS_DE_PRECIO = [0, 10, 50, 100] as const;
 /** En pesos; 0 = sin redondeo (al centavo). */
 export type RedondeoDePrecio = (typeof REDONDEOS_DE_PRECIO)[number];

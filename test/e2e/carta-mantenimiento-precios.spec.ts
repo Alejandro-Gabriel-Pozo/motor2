@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
+import { PRECIOS_EDITABLES } from "../../src/core/carta/ajuste-de-precios";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular } from "./fixtures/movil";
@@ -11,6 +12,9 @@ import { capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular } fr
  *    el precio de lista.
  * Sin desborde, 44 px en celular y axe 0. Datos propios con una marca única; se limpian al final (precios locales incluidos).
  */
+// Interruptor del ajuste masivo «Precios» (`PRECIOS_EDITABLES`, decisión del dueño 2026-10-20, commit 5d749120): mientras esté apagado, la pantalla no ofrece «Ajustar sección» (el botón queda deshabilitado) ni «Cambiar precio». Encendido, este spec vuelve a correr entero.
+test.skip(!PRECIOS_EDITABLES, "el ajuste masivo «Precios» está apagado (PRECIOS_EDITABLES = false en src/core/carta/ajuste-de-precios.ts): la carta no ofrece «Ajustar sección» ni «Cambiar precio»");
+
 async function sembrar(sucursalId: string) {
   const m = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
