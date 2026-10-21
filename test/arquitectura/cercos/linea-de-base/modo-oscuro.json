@@ -1,15 +1,12 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 338,
-  "entradas": 89,
+  "total": 337,
+  "entradas": 88,
   "porTipo": {
-    "dark:": 338
+    "dark:": 337
   },
   "cuentas": {
-    "src/app/(app)/administracion/gerencia/traspaso-gerencia.tsx": {
-      "dark:": 1
-    },
     "src/app/(app)/administracion/permisos/permisos-matriz.tsx": {
       "dark:": 2
     },
