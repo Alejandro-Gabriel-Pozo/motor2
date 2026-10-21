@@ -63,7 +63,9 @@ test("con la sesión del invitado: valida el CUIT, acepta una sola vez y la empr
   // CUIT con el dígito verificador mal: se explica en el mismo paso y la invitación sigue pendiente.
   await page.getByLabel("CUIT de la empresa").fill("30-71234567-4");
   await page.getByRole("button", { name: "Revisar el CUIT" }).click();
-  await expect(page.locator("#error-cuit")).toContainText(/dígito verificador/);
+  // El mensaje lo dibuja `Campo` (role="alert", atado al campo con aria-describedby) con un id propio: se lo busca por su rol y su texto.
+  await expect(page.getByRole("alert").filter({ hasText: /dígito verificador/ })).toBeVisible();
+  await expect(page.getByLabel("CUIT de la empresa")).toHaveAttribute("aria-invalid", "true");
   expect((await leerInvitacion(inv.token)).estado).toBe("PENDIENTE");
 
   // CUIT válido: se muestra formateado con el nombre de la empresa; sin tildar la verificación no se puede aceptar; "Corregir" vuelve al campo.

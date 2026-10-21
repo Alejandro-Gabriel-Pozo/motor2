@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 300,
-  "entradas": 75,
+  "total": 288,
+  "entradas": 72,
   "porTipo": {
-    "dark:": 300
+    "dark:": 288
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -194,15 +194,6 @@
       "dark:": 1
     },
     "src/app/(app)/reportes/ventas-por-seccion/page.tsx": {
-      "dark:": 2
-    },
-    "src/app/invitacion/abrir-invitacion.tsx": {
-      "dark:": 1
-    },
-    "src/app/invitacion/formulario-de-aceptacion.tsx": {
-      "dark:": 9
-    },
-    "src/app/invitacion/page.tsx": {
       "dark:": 2
     },
     "src/components/agregar-colapsable.tsx": {
