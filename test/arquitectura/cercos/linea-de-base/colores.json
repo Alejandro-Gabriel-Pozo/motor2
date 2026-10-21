@@ -1,12 +1,12 @@
 {
   "regla": "colores",
   "meta": "0 en la Fase 6 (DEC-03: los colores salen de los tokens de globals.css)",
-  "total": 57,
-  "entradas": 25,
+  "total": 55,
+  "entradas": 23,
   "porTipo": {
     "clase-arbitraria": 37,
     "funcion-de-color": 9,
-    "hex": 11
+    "hex": 9
   },
   "cuentas": {
     "src/app/(app)/catalogo/opciones/[grupoId]/lectura-del-factor.tsx": {
@@ -26,12 +26,6 @@
     },
     "src/app/(app)/movimientos/menu-del-dia/menu-del-dia.tsx": {
       "clase-arbitraria": 1
-    },
-    "src/app/(app)/reportes/historial/grafico-saldo.tsx": {
-      "hex": 1
-    },
-    "src/app/(app)/reportes/periodo/grafico-gasto-grupo.tsx": {
-      "hex": 1
     },
     "src/app/(carta-publica)/error.tsx": {
       "hex": 2
