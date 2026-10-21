@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { BotonActivarDesactivar } from "../../src/components/boton-activar-desactivar";
 import { BotonConConfirmacion } from "../../src/components/boton-con-confirmacion";
+import { Modal } from "../../src/components/modal";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined }) }));
 
@@ -17,6 +18,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined
 const FUENTES = {
   activarDesactivar: "src/components/boton-activar-desactivar.tsx",
   conConfirmacion: "src/components/boton-con-confirmacion.tsx",
+  modal: "src/components/modal.tsx",
 } as const;
 
 /** Las etiquetas de apertura `<Boton …>` (y `<BotonDeServidor …>`) de un archivo, completas: salta las llaves para no cortar en el `=>` de un `onClick`. */
@@ -77,5 +79,19 @@ describe("BotonConConfirmacion: acciones de la altura del texto en escritorio", 
     const etiquetas = etiquetasDeBoton(FUENTES.conConfirmacion);
     expect(etiquetas).toHaveLength(3);
     for (const e of etiquetas) expect(e, e).toContain('tamano="en-fila"');
+  });
+});
+
+describe("Modal: el disparador es de la altura del texto en escritorio", () => {
+  it("«+ Nuevo …», «Registrar pago»…: el botón que abre el modal usa tamano en-fila (min-h-11, md:min-h-0, sin px)", () => {
+    const html = renderToStaticMarkup(
+      <Modal triggerLabel="Registrar pago" title="Pago">
+        {() => <p>contenido</p>}
+      </Modal>
+    );
+    const botones = clasesDeLosBotones(html);
+    expect(botones).toHaveLength(1);
+    expect(esEnFila(botones[0]), botones[0].join(" ")).toBe(true);
+    expect(etiquetasDeBoton(FUENTES.modal)).toHaveLength(1);
   });
 });

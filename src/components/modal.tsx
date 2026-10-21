@@ -27,7 +27,7 @@ export function Modal({
 
   return (
     <>
-      <Boton variante="enlace" tamano="compacto" onClick={() => setAbierto(true)} disabled={deshabilitado}>
+      <Boton variante="enlace" tamano="en-fila" onClick={() => setAbierto(true)} disabled={deshabilitado}>
         {triggerLabel}
       </Boton>
       {/* Sobre el `<dialog>` nativo (ver `ui/componentes/superposiciones/dialogo.tsx`): rol de diálogo, foco atrapado y devuelto, Escape y hoja inferior en celular. */}
