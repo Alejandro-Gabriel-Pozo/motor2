@@ -10,21 +10,21 @@ export default async function StockConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_stock", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const [filas, enTransito] = await Promise.all([calcularStockConsolidado(ctx.sucursalId, ctx.db), calcularStockEnTransito(ctx.sucursalId, ctx.db)]);
 
   return (
     <div>
       <h1 className="mb-1 text-xl font-semibold">Stock consolidado</h1>
-      <p className="mb-4 text-sm text-neutral-500">
+      <p className="mb-4 text-sm text-tinta-tenue">
         Teórico (libro mayor) vs. último conteo físico. &quot;Diferencia&quot; es la del último conteo — se congela ahí, no se recalcula contra el teórico de hoy.
       </p>
       {enTransito.length > 0 && (
-        <section aria-labelledby="stock-en-transito" className="mb-6 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+        <section aria-labelledby="stock-en-transito" className="mb-6 rounded border border-aviso bg-aviso-tinte p-3 text-sm text-aviso-tinta">
           <h2 id="stock-en-transito" className="font-medium">
             Stock en tránsito entre sucursales
           </h2>
@@ -33,7 +33,7 @@ export default async function StockConsolidadoPage() {
           </p>
           <table className="w-full">
             <thead>
-              <tr className="border-b border-amber-300 text-left">
+              <tr className="border-b border-aviso text-left">
                 <th className="py-1">Producto</th>
                 <th>Por recibir (pendiente de aceptar acá)</th>
                 <th>Enviado (el destino todavía no aceptó)</th>
@@ -42,7 +42,7 @@ export default async function StockConsolidadoPage() {
             </thead>
             <tbody>
               {enTransito.map((f) => (
-                <tr key={f.productoId} className="border-b border-amber-200">
+                <tr key={f.productoId} className="border-b border-aviso/40">
                   <td className="py-1">
                     {f.productoCodigo} — {f.productoNombre}
                   </td>
@@ -57,7 +57,7 @@ export default async function StockConsolidadoPage() {
       )}
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-neutral-500">
+          <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Producto</th>
             <th>Insumo</th>
             <th>Sección</th>
@@ -80,9 +80,9 @@ export default async function StockConsolidadoPage() {
               <td>{f.ultimoFisico ?? "—"}</td>
               <td>{f.diferencia !== null ? (f.diferencia > 0 ? `+${f.diferencia}` : f.diferencia) : "—"}</td>
               <td>
-                {f.entradasDesdeConteo > 0 && <span className="text-green-700">+{f.entradasDesdeConteo}</span>}
+                {f.entradasDesdeConteo > 0 && <span className="text-ok-tinta">+{f.entradasDesdeConteo}</span>}
                 {f.entradasDesdeConteo > 0 && f.salidasDesdeConteo > 0 && " / "}
-                {f.salidasDesdeConteo > 0 && <span className="text-red-600">−{f.salidasDesdeConteo}</span>}
+                {f.salidasDesdeConteo > 0 && <span className="text-error">−{f.salidasDesdeConteo}</span>}
                 {!f.entradasDesdeConteo && !f.salidasDesdeConteo && "—"}
               </td>
               <td className={ESTADO_COLOR[f.estado]}>{ESTADO_LABEL[f.estado]}</td>
@@ -90,7 +90,7 @@ export default async function StockConsolidadoPage() {
           ))}
         </tbody>
       </table>
-      {!filas.length && <p className="text-sm text-neutral-500">No hay productos elegibles (MP, o PV &quot;Se produce&quot;) todavía.</p>}
+      {!filas.length && <p className="text-sm text-tinta-tenue">No hay productos elegibles (MP, o PV &quot;Se produce&quot;) todavía.</p>}
     </div>
   );
 }

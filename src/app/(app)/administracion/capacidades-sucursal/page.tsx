@@ -11,10 +11,10 @@ export default async function CapacidadesSucursalPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "capacidades_sucursal", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { acciones, sucursales, capacidades } = await listarCapacidades();
   const capacidadDe = (accionClave: string, sucursalId: string | null) =>
@@ -23,13 +23,13 @@ export default async function CapacidadesSucursalPage() {
   return (
     <AvisosDeAccion className="space-y-4">
       <h1 className="text-xl font-semibold">Capacidades por sucursal (matriz de la Central)</h1>
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-tinta-tenue">
         Columna &quot;Default&quot; = comportamiento para cualquier sucursal sin fila propia. Sin ninguna fila, la acción está habilitada.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-neutral-500">
+            <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2 pr-4">Acción</th>
               <th className="pr-4">Default</th>
               {sucursales.map((s) => (

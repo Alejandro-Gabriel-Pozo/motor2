@@ -5,6 +5,8 @@ import { useState, useTransition } from "react";
 import { setFrecuenciaConteo } from "@/server/actions/stock/frecuencia-conteo";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 
 export interface FilaFrecuenciaConteoEnEdicion {
   productoId: string;
@@ -73,11 +75,15 @@ export function ConteoFrecuenciaForm({
         <CampoNumero value={frecuenciaDias} onChange={setFrecuenciaDias} required />
       </label>
 
-      {mensaje && <p className={`text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+      {mensaje && (
+        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
+      )}
 
-      <button type="submit" disabled={pending} className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+      <Boton type="submit" disabled={pending} className="self-start">
         {pending ? "Guardando..." : "Guardar"}
-      </button>
+      </Boton>
     </form>
   );
 }

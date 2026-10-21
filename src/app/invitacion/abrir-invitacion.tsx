@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { tokenDelFragmento } from "@/core/features/empresa/invitacion";
 import { abrirInvitacion } from "@/server/actions/auth/invitacion";
+import { Aviso } from "@/ui/primitivas/aviso";
 
 /**
  * Lee el token del fragmento del enlace (`#t=...`), que el navegador no manda al servidor, y se lo pasa a `abrirInvitacion`, que lo guarda en una cookie y
@@ -21,8 +22,8 @@ export function AbrirInvitacion() {
   }, []);
 
   return (
-    <p role="status" className="text-sm text-neutral-500 dark:text-neutral-400">
+    <Aviso variante="informacion" forma="en-linea">
       {mensaje ?? "Abriendo tu invitación…"}
-    </p>
+    </Aviso>
   );
 }

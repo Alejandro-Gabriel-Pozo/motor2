@@ -9,10 +9,10 @@ export default async function AlertasStockPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_stock", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const alertas = await calcularAlertasStock(ctx.sucursalId, ctx.db);
   const criticos = alertas.filter((a) => a.estado === "CRITICO").length;
@@ -21,12 +21,12 @@ export default async function AlertasStockPage() {
   return (
     <div>
       <h1 className="mb-1 text-xl font-semibold">Alertas de stock</h1>
-      <p className="mb-4 text-sm text-neutral-500">
+      <p className="mb-4 text-sm text-tinta-tenue">
         {alertas.length ? `${criticos} crítico(s), ${bajos} bajo(s).` : "Sin alertas — todo por encima de su Stock Mínimo configurado."}
       </p>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-neutral-500">
+          <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Producto</th>
             <th>Sección</th>
             <th>Saldo actual</th>
@@ -44,8 +44,8 @@ export default async function AlertasStockPage() {
               <td>{a.saldoActual}</td>
               <td>{a.stockMinimo}</td>
               <td>{a.diferencia}</td>
-              <td className={a.estado === "CRITICO" ? "text-red-600 font-medium" : "text-amber-700 dark:text-amber-600"}>{a.estado}</td>
-              <td className="text-neutral-500">{a.ultimaFecha ? diaDeCalendario(a.ultimaFecha, ctx.empresaZonaHoraria) : "—"}</td>
+              <td className={a.estado === "CRITICO" ? "text-error font-medium" : "text-aviso-tinta"}>{a.estado}</td>
+              <td className="text-tinta-tenue">{a.ultimaFecha ? diaDeCalendario(a.ultimaFecha, ctx.empresaZonaHoraria) : "—"}</td>
             </tr>
           ))}
         </tbody>

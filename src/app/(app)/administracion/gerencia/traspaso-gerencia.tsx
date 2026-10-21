@@ -1,9 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { useId, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { transferirGerencia } from "@/server/actions/auth/usuarios";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
+import { Enlace } from "@/ui/primitivas/enlace";
+import { Selector } from "@/ui/primitivas/selector";
 
 interface Candidato {
   id: string;
@@ -12,8 +16,6 @@ interface Candidato {
 }
 
 export function TraspasoGerencia({ candidatos }: { candidatos: Candidato[] }) {
-  const idDestino = useId();
-  const idEmail = useId();
   const [destinoId, setDestinoId] = useState(candidatos[0]?.id ?? "");
   const [email, setEmail] = useState("");
   const [resultado, setResultado] = useState<ResultadoAccion | null>(null);
@@ -22,14 +24,12 @@ export function TraspasoGerencia({ candidatos }: { candidatos: Candidato[] }) {
   if (resultado?.ok) {
     return (
       <div className="flex max-w-lg flex-col gap-2">
-        <p role="status" className="text-sm text-green-700">
+        <Aviso variante="exito" forma="en-linea">
           {resultado.mensaje}
-        </p>
+        </Aviso>
         <p className="text-sm">
           Ya no sos el gerente de la empresa: la nueva gerencia es la única que puede volver a traspasarla.{" "}
-          <Link href="/inicio" className="underline">
-            Ir al inicio
-          </Link>
+          <Enlace href="/inicio">Ir al inicio</Enlace>
         </p>
       </div>
     );
@@ -50,36 +50,26 @@ export function TraspasoGerencia({ candidatos }: { candidatos: Candidato[] }) {
         startTransition(async () => setResultado(await transferirGerencia(destinoId, email)));
       }}
     >
-      <div className="flex flex-col gap-1">
-        <label htmlFor={idDestino} className="text-sm font-medium">
-          Nuevo gerente
-        </label>
-        <select id={idDestino} value={destinoId} onChange={(e) => setDestinoId(e.target.value)} className="rounded border px-3 py-2">
-          {candidatos.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre ? `${c.nombre} — ${c.email}` : c.email}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor={idEmail} className="text-sm font-medium">
-          Para confirmar, escribí el email de esa persona
-        </label>
-        <input id={idEmail} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" required className="rounded border px-3 py-2" />
-      </div>
-      <button type="submit" disabled={pendiente} className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-60">
+      <Selector etiqueta="Nuevo gerente" value={destinoId} onChange={(e) => setDestinoId(e.target.value)}>
+        {candidatos.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.nombre ? `${c.nombre} — ${c.email}` : c.email}
+          </option>
+        ))}
+      </Selector>
+      <Campo etiqueta="Para confirmar, escribí el email de esa persona" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" required />
+      <Boton type="submit" disabled={pendiente} className="self-start">
         Traspasar la gerencia
-      </button>
+      </Boton>
       {pendiente && (
-        <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+        <Aviso variante="informacion" forma="en-linea">
           Traspasando…
-        </p>
+        </Aviso>
       )}
       {resultado && !resultado.ok && (
-        <p role="alert" className="text-sm text-red-600">
+        <Aviso variante="error" forma="en-linea">
           {resultado.mensaje}
-        </p>
+        </Aviso>
       )}
     </form>
   );

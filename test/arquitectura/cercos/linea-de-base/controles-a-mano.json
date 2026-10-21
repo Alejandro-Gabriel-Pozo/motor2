@@ -1,13 +1,13 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 611,
-  "entradas": 128,
+  "total": 536,
+  "entradas": 111,
   "porTipo": {
-    "button": 332,
-    "input": 184,
+    "button": 287,
+    "input": 167,
     "input-hidden": 16,
-    "select": 64,
+    "select": 51,
     "textarea": 15
   },
   "cuentas": {
@@ -36,26 +36,8 @@
     "src/app/(app)/administracion/capacidades-sucursal/page.tsx": {
       "button": 1
     },
-    "src/app/(app)/administracion/gerencia/traspaso-gerencia.tsx": {
-      "button": 1,
-      "input": 1,
-      "select": 1
-    },
     "src/app/(app)/administracion/permisos/permisos-matriz.tsx": {
-      "button": 8
-    },
-    "src/app/(app)/administracion/roles/roles-tabla.tsx": {
-      "button": 4,
-      "input": 2
-    },
-    "src/app/(app)/administracion/sucursales/page.tsx": {
-      "button": 2,
-      "input": 3
-    },
-    "src/app/(app)/administracion/usuarios/usuarios-tabla.tsx": {
-      "button": 2,
-      "input": 1,
-      "select": 2
+      "button": 1
     },
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
       "button": 1,
@@ -298,46 +280,6 @@
       "button": 1,
       "input": 1
     },
-    "src/app/(app)/stock/conteo-frecuencia/boton-eliminar.tsx": {
-      "button": 3
-    },
-    "src/app/(app)/stock/conteo-frecuencia/conteo-frecuencia-form.tsx": {
-      "button": 1
-    },
-    "src/app/(app)/stock/minimo/boton-eliminar.tsx": {
-      "button": 3
-    },
-    "src/app/(app)/stock/minimo/stock-minimo-form.tsx": {
-      "button": 1,
-      "select": 1
-    },
-    "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": {
-      "button": 3,
-      "input": 4,
-      "select": 2
-    },
-    "src/app/(app)/stock/seccion-habitual/boton-quitar.tsx": {
-      "button": 3
-    },
-    "src/app/(app)/stock/seccion-habitual/seccion-habitual-form.tsx": {
-      "button": 1,
-      "select": 1
-    },
-    "src/app/(app)/traspasos/bandeja.tsx": {
-      "button": 3,
-      "input": 2,
-      "select": 2
-    },
-    "src/app/(app)/traspasos/enviar/enviar-form.tsx": {
-      "button": 1,
-      "input": 1,
-      "select": 2
-    },
-    "src/app/(app)/traspasos/solicitar/solicitar-form.tsx": {
-      "button": 1,
-      "input": 1,
-      "select": 2
-    },
     "src/app/(carta-publica)/error.tsx": {
       "button": 1
     },
@@ -415,19 +357,8 @@
     "src/app/global-error.tsx": {
       "button": 1
     },
-    "src/app/invitacion/aceptar-de-usuario.tsx": {
-      "button": 1
-    },
     "src/app/invitacion/formulario-de-aceptacion.tsx": {
-      "button": 3,
-      "input": 2,
       "input-hidden": 1
-    },
-    "src/app/invitacion/page.tsx": {
-      "button": 2
-    },
-    "src/app/login/page.tsx": {
-      "button": 3
     },
     "src/components/agregar-colapsable.tsx": {
       "button": 2

@@ -1,30 +1,12 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 340,
-  "entradas": 91,
+  "total": 285,
+  "entradas": 71,
   "porTipo": {
-    "dark:": 340
+    "dark:": 285
   },
   "cuentas": {
-    "src/app/(app)/administracion/auditoria/tabla-auditoria.tsx": {
-      "dark:": 3
-    },
-    "src/app/(app)/administracion/empresa/page.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/administracion/gerencia/page.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/administracion/gerencia/traspaso-gerencia.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/administracion/permisos/permisos-matriz.tsx": {
-      "dark:": 2
-    },
-    "src/app/(app)/administracion/usuarios/usuarios-tabla.tsx": {
-      "dark:": 3
-    },
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
       "dark:": 2
     },
@@ -93,9 +75,6 @@
     },
     "src/app/(app)/catalogo/unidades/page.tsx": {
       "dark:": 1
-    },
-    "src/app/(app)/inicio/page.tsx": {
-      "dark:": 4
     },
     "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
       "dark:": 10
@@ -213,45 +192,6 @@
     },
     "src/app/(app)/reportes/ventas-por-seccion/page.tsx": {
       "dark:": 2
-    },
-    "src/app/(app)/stock/alertas/page.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/stock/conteo-frecuencia/boton-eliminar.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/stock/conteo-frecuencia/page.tsx": {
-      "dark:": 3
-    },
-    "src/app/(app)/stock/minimo/boton-eliminar.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/stock/por-familia/page.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/stock/seccion-habitual/boton-quitar.tsx": {
-      "dark:": 5
-    },
-    "src/app/(app)/stock/seccion-habitual/page.tsx": {
-      "dark:": 3
-    },
-    "src/app/(app)/stock/seccion-habitual/seccion-habitual-form.tsx": {
-      "dark:": 2
-    },
-    "src/app/invitacion/abrir-invitacion.tsx": {
-      "dark:": 1
-    },
-    "src/app/invitacion/formulario-de-aceptacion.tsx": {
-      "dark:": 9
-    },
-    "src/app/invitacion/page.tsx": {
-      "dark:": 2
-    },
-    "src/app/login/page.tsx": {
-      "dark:": 10
     },
     "src/components/agregar-colapsable.tsx": {
       "dark:": 1

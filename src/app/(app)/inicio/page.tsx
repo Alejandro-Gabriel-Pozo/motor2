@@ -15,14 +15,14 @@ export default async function InicioPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
   const tarjetas = await tarjetasDelUsuario(ctx);
 
   if (tarjetas.length === 0) {
     return (
       <div className="max-w-md space-y-2">
         <h1 className="text-xl font-semibold">Todavía no tenés pantallas habilitadas</h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Tu rol no tiene permiso para ver ninguna sección en esta sucursal. Pedile a un admin que te lo habilite desde Administración → Permisos.
         </p>
       </div>
@@ -37,15 +37,15 @@ export default async function InicioPage() {
           <li key={t.id}>
             <EnlaceInterno
               href={t.href}
-              className="flex h-full items-start gap-3 rounded border border-neutral-200 p-4 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
+              className="flex h-full items-start gap-3 rounded border border-borde bg-superficie p-4 hover:bg-superficie-suave"
             >
-              <IconoDeModulo id={t.id} className="mt-0.5 h-5 w-5 shrink-0 text-neutral-600 dark:text-neutral-300" />
+              <IconoDeModulo id={t.id} className="mt-0.5 h-5 w-5 shrink-0 text-tinta-suave" />
               <span>
                 <span className="block font-medium">
                   {t.label}
                   <IndicadorDeEnlace />
                 </span>
-                <span className="block text-sm text-neutral-500 dark:text-neutral-400">{t.descripcion}</span>
+                <span className="block text-sm text-tinta-tenue">{t.descripcion}</span>
               </span>
             </EnlaceInterno>
           </li>

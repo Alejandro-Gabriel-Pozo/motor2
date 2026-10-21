@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { eliminarFrecuenciaConteo } from "@/server/actions/stock/frecuencia-conteo";
 import { IconoDeAccion } from "@/components/iconos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 
 /** Mismo patrón de confirmación inline que BotonEliminarStockMinimo (stock/minimo/boton-eliminar.tsx) — nunca window.confirm. */
 export function BotonEliminarFrecuenciaConteo({ id, etiqueta }: { id: string; etiqueta: string }) {
@@ -26,27 +28,35 @@ export function BotonEliminarFrecuenciaConteo({ id, etiqueta }: { id: string; et
   if (confirmando) {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-amber-700 dark:text-amber-600">¿Eliminar la agenda de conteo de {etiqueta}? Deja de sugerirse como pendiente de contar.</p>
+        <p className="text-xs text-aviso-tinta">¿Eliminar la agenda de conteo de {etiqueta}? Deja de sugerirse como pendiente de contar.</p>
         <div className="flex gap-2">
-          <button type="button" disabled={pending} onClick={eliminar} className="text-sm text-red-600 underline">
+          <Boton variante="enlace-peligro" tamano="en-fila" disabled={pending} onClick={eliminar}>
             {pending ? "Eliminando…" : "Sí, eliminar"}
-          </button>
-          <button type="button" onClick={() => setConfirmando(false)} className="text-sm underline">
+          </Boton>
+          <Boton variante="enlace" tamano="en-fila" onClick={() => setConfirmando(false)}>
             Volver
-          </button>
+          </Boton>
         </div>
-        {mensaje && <p className={`text-xs ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+        {mensaje && (
+          <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+            {mensaje}
+          </Aviso>
+        )}
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-1">
-      <button type="button" onClick={() => setConfirmando(true)} className="text-sm underline inline-flex items-center gap-1">
+      <Boton variante="enlace" tamano="en-fila" onClick={() => setConfirmando(true)}>
         <IconoDeAccion id="eliminar" />
         Eliminar
-      </button>
-      {mensaje && <p className={`text-xs ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+      </Boton>
+      {mensaje && (
+        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
+      )}
     </div>
   );
 }
