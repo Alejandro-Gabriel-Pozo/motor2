@@ -52,3 +52,7 @@ export { LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA, MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDI
 // Fase 5 («carta pareja»): el papel de cada grupo en la carta y el orden en que se leen y se eligen (lo comparten la carta y el diálogo del POS), y los textos de las aclaraciones.
 export { ejesDeLaCarta, opcionesDelEje, ordenarPorRol, primeraEnMinuscula, rolDelGrupo, unirConO } from "./lectura-en-carta";
 export type { EjesDeLaCarta, GrupoParaRol, RolDelGrupoEnCarta } from "./lectura-en-carta";
+// Fase 6 («el espacio del producto», 6.9a): la lectura del precio de una opción mientras se teclea y la forma de un grupo según «¿Cambia el precio?». La frase recibe el formateador de dinero
+// por parámetro (`core/pos` ya importa `core/opciones`: importarlo desde acá armaría un ciclo).
+export { fraseDeLecturaDePrecio, formaDelGrupoPorRespuesta, leerPrecioDeOpcion, respuestaDelGrupo } from "./lectura-de-precio";
+export type { ComoCambiaElPrecio, FormaDelGrupo, LecturaDePrecio } from "./lectura-de-precio";
