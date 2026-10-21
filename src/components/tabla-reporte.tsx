@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { AyudaIcono } from "@/components/ayuda-campo";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 // Solo el tipo (se borra al compilar): importar el módulo de verdad traería la librería de Excel a la carga inicial.
 import type { TipoFecha } from "@/core/excel";
 
@@ -107,30 +109,25 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
     <div className="flex flex-col gap-1">
       {nombreExport && (
         <div className="flex flex-col items-end gap-0.5 self-end">
-          <button
-            type="button"
-            onClick={() => void exportarExcel()}
-            disabled={exportando}
-            className="text-xs text-neutral-500 underline hover:text-neutral-900 disabled:cursor-wait disabled:opacity-60"
-          >
+          <Boton variante="enlace" tamano="chico" onClick={() => void exportarExcel()} cargando={exportando}>
             {exportando ? "Exportando…" : "Exportar Excel"}
-          </button>
+          </Boton>
           {errorExport && (
-            <p role="alert" className="text-xs text-red-600">
+            <Aviso variante="error" forma="en-linea">
               {errorExport}
-            </p>
+            </Aviso>
           )}
         </div>
       )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-neutral-500">
+            <tr className="border-b text-left text-tinta-tenue">
               {columnas.map((c) => (
                 <th
                   key={c.clave}
                   onClick={() => alHacerClicEncabezado(c.clave, Boolean(c.valor))}
-                  className={`px-2 py-1 first:pl-0 ${c.valor ? "cursor-pointer select-none hover:text-neutral-900" : ""} ${c.alinear === "derecha" ? "text-right" : ""}`}
+                  className={`px-2 py-1 first:pl-0 ${c.valor ? "cursor-pointer select-none hover:text-tinta" : ""} ${c.alinear === "derecha" ? "text-right" : ""}`}
                 >
                   {/* Una columna sin etiqueta (ej. "acción"/"ver", un link o botón fijo sin texto de encabezado propio) deja un <th> vacío —
                       invisible para un lector de pantalla, no solo visualmente (axe empty-table-header). Encontrado corriendo el proyecto
@@ -160,7 +157,7 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
             ))}
             {!filasOrdenadas.length && (
               <tr>
-                <td className="py-1 text-neutral-500" colSpan={columnas.length}>
+                <td className="py-1 text-tinta-tenue" colSpan={columnas.length}>
                   {sinFilasTexto}
                 </td>
               </tr>
