@@ -220,7 +220,7 @@ test("sin sesión, /mesas lleva al login recordando la pantalla", async ({ brows
   }
 });
 
-test("con el sistema en modo oscuro, el salón sigue claro (tokens en .pos-shell, no en :root)", async ({ paginaAutenticada: page }) => {
+test("con el sistema en modo oscuro, el salón sigue claro (tokens en .pos-shell, el :root declara color-scheme: light)", async ({ paginaAutenticada: page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/mesas");
   await expect(page.getByRole("heading", { level: 1, name: "Mapa de mesas" })).toBeVisible();
@@ -231,7 +231,7 @@ test("con el sistema en modo oscuro, el salón sigue claro (tokens en .pos-shell
     const s = getComputedStyle(shell);
     return { fondo: s.backgroundColor, texto: s.color, esquema: s.colorScheme, titulo: getComputedStyle(h1).color, raiz: getComputedStyle(document.documentElement).colorScheme };
   });
-  expect(estilos).toEqual({ fondo: "rgb(250, 250, 248)", texto: "rgb(28, 27, 25)", esquema: "light", titulo: "rgb(28, 27, 25)", raiz: "light dark" });
+  expect(estilos).toEqual({ fondo: "rgb(250, 250, 248)", texto: "rgb(28, 27, 25)", esquema: "light", titulo: "rgb(28, 27, 25)", raiz: "light" });
 });
 
 test("«Nueva mesa»: notación científica en el número no se acepta en silencio — queda inválido, con mensaje, y no se crea nada", async ({ paginaAutenticada: page, sucursalId }) => {

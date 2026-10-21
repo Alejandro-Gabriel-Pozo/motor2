@@ -1,9 +1,14 @@
 @import "tailwindcss";
 
-/* `light dark`: el navegador dibuja sus propios controles (lista desplegada de un <select>, scrollbars, autocompletado) en el esquema del sistema, en
-   sintonía con los colores de más abajo. Sin esto, en modo oscuro salen claros con el texto claro heredado. */
+/* DEC-04: la aplicación NO tiene modo oscuro; es siempre clara, aun con el sistema operativo en oscuro. La variante `dark:` de Tailwind deja de
+   depender de `prefers-color-scheme`: solo se activaría bajo la clase `.modo-oscuro-retirado`, que nadie usa (lo vigila
+   `test/arquitectura/sin-modo-oscuro.test.ts`). Las clases `dark:` que quedan en los componentes son CSS muerto que no se activa; se retiran por lotes. */
+@custom-variant dark (&:where(.modo-oscuro-retirado, .modo-oscuro-retirado *));
+
+/* `color-scheme: light` (DEC-04): el navegador dibuja claros sus propios controles (lista desplegada de un <select>, scrollbars, autocompletado)
+   aunque el sistema esté en oscuro, en sintonía con los colores de más abajo. */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #171717;
 }
@@ -13,13 +18,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 /* Un <th> con texto solo para lectores de pantalla (<span class="sr-only">Acciones</span>, en las columnas de botones) es position:absolute. Sin
@@ -67,10 +65,9 @@ form[aria-busy="true"] [type="submit"] {
 }
 
 /* Salón (módulo POS, route group `(pos)`): tokens de color del mapa de mesas, aplicados por `PosShell` en `.pos-shell` y NUNCA en
-   `:root`. Dos razones: (1) `:root` declara `color-scheme: light dark` y en modo oscuro pinta texto casi blanco (#ededed), pero las
-   tarjetas del salón son blancas fijas: el número de mesa y los totales quedarían ilegibles; (2) nombres genéricos como `--border` o
-   `--ink-soft` ensuciarían el namespace de toda la administración. El salón no tiene modo oscuro todavía: `color-scheme: light` hace
-   que el navegador dibuje claros también sus controles (el <select> de sucursal, los scrollbars).
+   `:root`: nombres genéricos como `--border` o `--ink-soft` ensuciarían el namespace de toda la administración. La aplicación no tiene
+   modo oscuro (DEC-04): el `:root` ya declara `color-scheme: light` y aquí se repite para que el salón siga claro (el <select> de
+   sucursal, los scrollbars) si alguien cambiara el del `:root`.
    Contraste (plan §A.3, ajuste aprobado por el dueño): `--ink-faint` pasó de #A8A49C (2,48:1) a #76726A (4,79:1 sobre blanco,
    4,58:1 sobre papel), y los textos de estado usan `--mesa-libre-ink`/`--mesa-draft-ink` en vez del color de estado. Barras, puntos
    y fondos de estado quedan exactamente como en el diseño. */

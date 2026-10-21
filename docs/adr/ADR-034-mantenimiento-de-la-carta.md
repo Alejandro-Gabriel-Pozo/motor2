@@ -30,7 +30,7 @@
 
 ## Decisión (v2: la pantalla del prototipo, a pedido del dueño)
 
-El dueño rechazó la primera versión (la página larga vieja con «Fuera de carta» abajo): `/carta` pasa a ser la pantalla del prototipo aprobado, con su misma cara (`src/app/(app)/carta/carta-mant.module.css`: los tokens del prototipo, bordes finos, controles cuadrados de 44–48 px, modo oscuro).
+El dueño rechazó la primera versión (la página larga vieja con «Fuera de carta» abajo): `/carta` pasa a ser la pantalla del prototipo aprobado, con su misma cara (`src/app/(app)/carta/carta-mant.module.css`: los tokens del prototipo, bordes finos, controles cuadrados de 44–48 px; sin modo oscuro, DEC-04, Fase 6).
 
 1. **Dos puertas** arriba: «Mantenimiento» (`/carta`) y «Parametrización» (`/carta/parametrizacion`), con la barra «Carta · …» y la sucursal.
 2. **Mantenimiento** (`src/app/(app)/carta/mantenimiento-de-carta.tsx`), tres niveles (el elegido queda en `?nivel=`):

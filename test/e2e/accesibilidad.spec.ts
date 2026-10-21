@@ -274,14 +274,15 @@ testAutenticado("movimientos/precio-local: el selector de producto abierto (con 
   }
 });
 
-testAutenticado("modo oscuro: la página declara color-scheme, para que los controles nativos (lista de un <select>, scrollbars) se dibujen oscuros", async ({ paginaAutenticada: page }) => {
-  // Los inputs de la app tienen fondo transparente (preflight de Tailwind), así que el fondo de un <input> no dice nada; lo que sí se ve mal sin
-  // `color-scheme` son los controles que dibuja el navegador: la lista desplegada de un <select> sale blanca con el texto claro heredado, y las
-  // barras de scroll salen claras. Se verifica la declaración (no se puede fotografiar un popup nativo en headless).
+testAutenticado("con el sistema en oscuro, la app declara color-scheme: light (DEC-04)", async ({ paginaAutenticada: page }) => {
+  // La app no tiene modo oscuro (DEC-04): aun con el sistema en oscuro, la raíz declara `color-scheme: light` (los controles que dibuja el navegador —la
+  // lista desplegada de un <select>, las barras de scroll— salen claros) y el fondo del <body> sigue blanco. Se verifica la declaración y el fondo (no se
+  // puede fotografiar un popup nativo en headless).
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/catalogo/unidades");
   await conTitulo(page, "Unidades de medida");
-  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "color-scheme de la raíz en modo oscuro").toContain("dark");
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "color-scheme de la raíz con el sistema en oscuro").toBe("light");
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "fondo del body con el sistema en oscuro").toBe("rgb(255, 255, 255)");
 });
 
 testAutenticado("catalogo/productos: la lista, con la confirmación de «Desactivar» abierta y con el bloqueo mostrado, sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {

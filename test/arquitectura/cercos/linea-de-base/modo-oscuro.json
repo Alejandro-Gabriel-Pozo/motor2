@@ -1,17 +1,12 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 447,
-  "entradas": 113,
+  "total": 443,
+  "entradas": 110,
   "porTipo": {
-    "color-scheme-oscuro": 1,
-    "dark:": 443,
-    "prefers-color-scheme": 3
+    "dark:": 443
   },
   "cuentas": {
-    "plataforma/src/app/globals.css": {
-      "prefers-color-scheme": 1
-    },
     "src/app/(app)/administracion/auditoria/tabla-auditoria.tsx": {
       "dark:": 3
     },
@@ -35,9 +30,6 @@
     },
     "src/app/(app)/carta/agrupados/page.tsx": {
       "dark:": 4
-    },
-    "src/app/(app)/carta/carta-mant.module.css": {
-      "prefers-color-scheme": 1
     },
     "src/app/(app)/carta/parametrizacion/formularios.tsx": {
       "dark:": 1
@@ -251,10 +243,6 @@
     },
     "src/app/(app)/stock/seccion-habitual/seccion-habitual-form.tsx": {
       "dark:": 2
-    },
-    "src/app/globals.css": {
-      "color-scheme-oscuro": 1,
-      "prefers-color-scheme": 1
     },
     "src/app/invitacion/abrir-invitacion.tsx": {
       "dark:": 1

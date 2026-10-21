@@ -1,6 +1,6 @@
 /*
  * CARTA-MANT (ADR-034): la cara del prototipo APROBADO «Mantenimiento / Parametrización» de la carta, portada tal cual (mismos tokens de color, bordes finos, controles cuadrados,
- * objetivos de 44–48 px). Solo vale dentro de `.raiz`: no toca el resto del panel. Modo oscuro con los mismos tokens oscuros del prototipo.
+ * objetivos de 44–48 px). Solo vale dentro de `.raiz`: no toca el resto del panel.
  */
 .raiz {
   --nav: #1b2735;
@@ -30,30 +30,6 @@
   margin: -1.5rem;
   padding-bottom: 96px;
   min-height: 70vh;
-}
-@media (prefers-color-scheme: dark) {
-  .raiz {
-    --nav: #0f1822;
-    --nav-ink: #eef2f6;
-    --bg: #0b1118;
-    --panel: #151f2a;
-    --panel2: #1b2733;
-    --line: #2e3b49;
-    --line2: #243140;
-    --ink: #e8edf2;
-    --ink2: #a5b0bb;
-    --ink3: #8f9ba7;
-    --sel: #e8edf2;
-    --sel-ink: #0f1822;
-    --ok: #6fd0a1;
-    --ok-bg: #16352a;
-    --warn: #e8b95a;
-    --warn-bg: #392c10;
-    --bad: #f08a8a;
-    --bad-bg: #3a1b1b;
-    --mute-bg: #212d3a;
-    --focus: #7fb0ff;
-  }
 }
 .raiz :focus-visible {
   outline: 3px solid var(--focus);

@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --fondo: #f6f7f9;
   --superficie: #ffffff;
   --texto: #1b1f24;
@@ -7,19 +8,6 @@
   --acento: #1d4ed8;
   --acento-texto: #ffffff;
   --error: #b42318;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --fondo: #0f1318;
-    --superficie: #181d24;
-    --texto: #eef1f5;
-    --texto-suave: #b4bcc8;
-    --borde: #3a4350;
-    --acento: #7aa2ff;
-    --acento-texto: #0b1020;
-    --error: #ff9b8f;
-  }
 }
 
 * {
