@@ -11,10 +11,10 @@ export default async function UsuariosPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin(); // el layout ya redirige
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "gestion_usuarios", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   // La pantalla se abre con `gestion_usuarios`; activar o desactivar a alguien es otra acción y pide su propia clave.
   const [membresias, invitaciones, roles, sucursales, activar] = await Promise.all([
