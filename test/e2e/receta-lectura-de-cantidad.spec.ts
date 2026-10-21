@@ -19,9 +19,9 @@ async function capturarFormulario(formulario: Locator, nombre: string): Promise<
   const carpeta = process.env.MOTOR2_CAPTURAS_MOVIL;
   if (!carpeta) return;
   mkdirSync(carpeta, { recursive: true });
-  // Con `next dev`, el indicador de desarrollo de Next tapa el pie del formulario en la captura (en producción no existe).
-  await formulario.page().addStyleTag({ content: "nextjs-portal { display: none !important; }" });
-  await formulario.screenshot({ path: join(carpeta, `${nombre}.png`) });
+  // Con `next dev`, el indicador de desarrollo de Next tapa el pie del formulario en la captura (en producción no existe). La opción `style` la aplica Playwright al capturar: no pasa por la CSP
+  // del servidor de producción (`style-src 'self' 'nonce-…'`), que bloquea el `<style>` que agregaría `page.addStyleTag`.
+  await formulario.screenshot({ path: join(carpeta, `${nombre}.png`), style: "nextjs-portal { display: none !important; }" });
 }
 
 for (const ancho of [375, 1280]) {
