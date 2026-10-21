@@ -69,6 +69,12 @@
   forma «sin opciones» «Wok de verduras» · nombre: 19px / 600
   forma «sin opciones» «Wok de verduras» · precio del renglón: 19px / 600
   forma «tanda» «Café» · nombre: 19px / 600
+### Separadores entre productos (getComputedStyle: borderBottomColor de cada ítem de la lista de la sección, salvo el último)
+  tinta (--carta-ink): rgb(28, 27, 25)
+  «Pizzas»: (un solo producto: sin separadores)
+  «Platos»: rgb(231, 229, 228) · rgb(231, 229, 228)
+  «Cafetería»: rgb(231, 229, 228)
+  «Bebidas»: (un solo producto: sin separadores)
 ### Escala única (DEC-35): cada rol, con su ÚNICO par tamaño / peso
   aclaracion-rotulo: 14px / 600
   columna: 16px / 600
@@ -161,6 +167,12 @@
   forma «sin opciones» «Wok de verduras» · nombre: 19px / 600
   forma «sin opciones» «Wok de verduras» · precio del renglón: 19px / 600
   forma «tanda» «Café» · nombre: 19px / 600
+### Separadores entre productos (getComputedStyle: borderBottomColor de cada ítem de la lista de la sección, salvo el último)
+  tinta (--carta-ink): rgb(28, 27, 25)
+  «Pizzas»: (un solo producto: sin separadores)
+  «Platos»: rgb(231, 229, 228) · rgb(231, 229, 228)
+  «Cafetería»: rgb(231, 229, 228)
+  «Bebidas»: (un solo producto: sin separadores)
 ### Escala única (DEC-35): cada rol, con su ÚNICO par tamaño / peso
   aclaracion-rotulo: 14px / 600
   columna: 16px / 600

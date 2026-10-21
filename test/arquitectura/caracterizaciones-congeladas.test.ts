@@ -585,6 +585,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 5 tanda C, segunda regeneración (CAMBIO VISUAL DELIBERADO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en la corrida de capturas «despues3», contra motor2_e2e local). (1) Textos neutros de las aclaraciones (C9, decisión del dueño): el grupo donde todo es gratis se lee «Guarnicion ensalada · papas fritas · puré» (sin «Elegí:» ni «o») y el grupo que mezcla se lee «Sin cargo: solo · cortado» (antes «Incluidas:») con cada recargo en su fila. (2) Datos de la siembra e2e (C10): se suma «Café de especialidad» (tamaño Chico/Mediano/Grande más preparación obligatoria Solo/Cortado/Lágrima +$200/Con leche +$300) a la sección Cafetería, que sale como TABLA DE DOBLE ENTRADA con precios finales; por eso cambian las pantallas de administración que listan los productos de la carta (Cafetería: 2 productos; el nuevo producto en la parametrización). La carta y la tipografía del resto no cambian; el precio cobrado no se toca.",
       },
+      {
+        blob: "65ce97796ee07f83128c4b26aee2367bf8f7d1ab",
+        // El commit PADRE de este (1f8d2c5c, Fase 5 tanda C paso 13) es el último antes de la regeneración; el cambio es del paso C13.
+        commit: "1f8d2c5c",
+        motivo:
+          "Ola «precio y carta», Fase 5 tanda C, tercera regeneración (ADITIVO: el volcado suma la sección «Separadores entre productos», a 375 y a 1280 px; el resto del texto y la tipografía no cambian; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). Mide con getComputedStyle el borderBottomColor de cada ítem de la lista de cada sección y el spec afirma que todos son el mismo color claro (rgb(231, 229, 228)) y que ninguno es el color del texto (rgb(28, 27, 25)): fija en navegador real el bug de los separadores negros que arreglaron C12 y C13.",
+      },
     ],
   },
 };
