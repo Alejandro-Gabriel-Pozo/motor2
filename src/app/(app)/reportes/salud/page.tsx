@@ -9,10 +9,10 @@ export default async function SaludPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_salud", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   // La hora se fija acá, en el borde (D.3a): el reporte la recibe por parámetro.
   const ahora = new Date();
@@ -23,7 +23,7 @@ export default async function SaludPage() {
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Salud por producto</h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Cruce de Stock Consolidado, Alertas, Diferencias de Ajuste e Insumos sin receta — no reemplaza a ninguno, resume si algún eje tiene algo
           para revisar. {conAtencion} de {filas.length} fila(s) necesitan atención.
         </p>

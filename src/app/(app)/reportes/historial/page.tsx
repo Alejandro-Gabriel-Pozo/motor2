@@ -35,10 +35,10 @@ export default async function HistorialProductoPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_historial", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   // Cableado ANTES de las vistas "Cómo se compró"/"Cómo se vendió" (pasos 8-9) a propósito: así ningún commit intermedio
   // llega a mostrarle precio a un rol que tiene reporte_historial pero no reporte_historial_importes — mismo patrón que ya
@@ -90,7 +90,7 @@ export default async function HistorialProductoPage({
             {historial.codigo} — {historial.producto} ({historial.tipo})
             {historial.tieneStockPropio && ` — saldo actual: ${historial.saldoActual} ${historial.unidadStockNombre}`}
           </h2>
-          <p className="mb-2 text-xs text-neutral-500">
+          <p className="mb-2 text-xs text-tinta-tenue">
             Mostrando {ETIQUETA_RANGO_HISTORIAL[rango]}: {eventos.length} evento(s) visible(s), de {historial.totalMovimientos} movimiento(s) y{" "}
             {historial.totalConteos} conteo(s) en total
             {historial.tieneStockPropio && " (el saldo corriente arranca del primer movimiento real, no del rango elegido)"}.{" "}

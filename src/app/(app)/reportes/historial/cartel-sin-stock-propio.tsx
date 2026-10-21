@@ -20,9 +20,9 @@ import type { IngredienteRecetaVigente } from "@/core/reportes/public";
  */
 export function CartelSinStockPropio({ productoId, ingredientes }: { productoId: string; ingredientes: IngredienteRecetaVigente[] }) {
   return (
-    <div className="mb-4 rounded border border-neutral-300 p-4 text-sm dark:border-neutral-700">
+    <div className="mb-4 rounded border border-borde p-4 text-sm">
       <p className="mb-2 font-medium">Producto de reventa: no lleva stock propio.</p>
-      <p className="mb-3 text-neutral-600 dark:text-neutral-400">
+      <p className="mb-3 text-tinta-suave">
         Se arma al venderse, consumiendo los ingredientes de su receta vigente — el stock real está en esos ingredientes, no en este producto.
       </p>
       {ingredientes.length > 0 ? (
@@ -34,7 +34,7 @@ export function CartelSinStockPropio({ productoId, ingredientes }: { productoId:
           ))}
         </ul>
       ) : (
-        <p className="mb-3 text-neutral-600 dark:text-neutral-400">Todavía no tiene una receta cargada.</p>
+        <p className="mb-3 text-tinta-suave">Todavía no tiene una receta cargada.</p>
       )}
       <EnlaceInterno href={`/catalogo/recetas/${productoId}`} className="underline inline-flex items-center gap-1">
         <IconoDeAccion id="ver" />
