@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 429,
-  "entradas": 108,
+  "total": 424,
+  "entradas": 107,
   "porTipo": {
-    "dark:": 429
+    "dark:": 424
   },
   "cuentas": {
     "src/app/(app)/administracion/auditoria/tabla-auditoria.tsx": {
@@ -327,9 +327,6 @@
     },
     "src/ui/componentes/selectores/campo-fecha.tsx": {
       "dark:": 2
-    },
-    "src/ui/componentes/superposiciones/dialogo.tsx": {
-      "dark:": 5
     }
   }
 }

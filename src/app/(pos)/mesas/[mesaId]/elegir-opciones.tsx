@@ -109,7 +109,7 @@ export function ElegirOpciones({
     : null;
 
   return (
-    <Dialogo abierto titulo={nombre} onCerrar={onCerrar} siempreClaro>
+    <Dialogo abierto titulo={nombre} onCerrar={onCerrar}>
       <div className="flex flex-col gap-4" data-elegir-opciones={nombre}>
         {precargas.length > 0 && (
           <div role="group" aria-label="Lo más pedido acá" className="flex flex-col gap-1.5">

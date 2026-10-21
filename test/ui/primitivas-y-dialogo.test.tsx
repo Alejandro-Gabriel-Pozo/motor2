@@ -131,4 +131,85 @@ describe("Dialogo", () => {
     expect(html).toContain("sm:my-auto");
     expect(html).toContain("max-h-[90dvh]");
   });
+
+  /** Las clases del `<dialog>` (el HTML de un diálogo abierto, sin los hijos). */
+  const clasesDelDialogo = (html: string) => /<dialog[^>]*class="([^"]*)"/.exec(html)?.[1].split(" ") ?? [];
+
+  it("sin props es centrado y angosto, con los tokens del sistema (superficie, tinta y velo) y sin ninguna variante dark:", () => {
+    const html = renderToStaticMarkup(
+      <Dialogo abierto titulo="x" onCerrar={() => {}}>
+        <p>c</p>
+      </Dialogo>,
+    );
+    const clases = clasesDelDialogo(html);
+    expect(clases).toEqual(expect.arrayContaining(["bg-superficie", "text-tinta", "backdrop:bg-velo", "sm:max-w-sm", "max-w-md", "rounded-t-lg", "sm:rounded-lg"]));
+    expect(clases).not.toEqual(expect.arrayContaining(["md:max-w-2xl"]));
+    expect(clases).not.toContain("ml-auto");
+    expect(html, "ni dark:, ni grises de escala, ni blanco o negro literales").not.toMatch(/dark:|neutral-|bg-white|black\//);
+  });
+
+  it("ancho=ancho agranda el diálogo desde md: (max-w-2xl) y deja de ser angosto; ancho=angosto es lo mismo que no decir nada", () => {
+    const ancho = clasesDelDialogo(
+      renderToStaticMarkup(
+        <Dialogo abierto titulo="x" onCerrar={() => {}} ancho="ancho">
+          <p>c</p>
+        </Dialogo>,
+      ),
+    );
+    expect(ancho).toContain("md:max-w-2xl");
+    expect(ancho).not.toContain("sm:max-w-sm");
+    expect(ancho, "sigue siendo la hoja inferior del celular").toContain("mt-auto");
+
+    const angosto = renderToStaticMarkup(
+      <Dialogo abierto titulo="x" onCerrar={() => {}} ancho="angosto">
+        <p>c</p>
+      </Dialogo>,
+    );
+    const sinProps = renderToStaticMarkup(
+      <Dialogo abierto titulo="x" onCerrar={() => {}}>
+        <p>c</p>
+      </Dialogo>,
+    );
+    expect(clasesDelDialogo(angosto)).toEqual(clasesDelDialogo(sinProps));
+    expect(clasesDelDialogo(angosto)).toContain("sm:max-w-sm");
+  });
+
+  it("forma=lateral es un panel pegado a la derecha, de alto completo y sin esquinas redondeadas, de ancho fijo (md:max-w-md); ya no es hoja inferior ni centrado", () => {
+    const html = renderToStaticMarkup(
+      <Dialogo abierto titulo="Detalle" onCerrar={() => {}} forma="lateral">
+        <p>c</p>
+      </Dialogo>,
+    );
+    const clases = clasesDelDialogo(html);
+    expect(clases).toEqual(expect.arrayContaining(["ml-auto", "mr-0", "h-dvh", "max-h-dvh", "rounded-none", "md:max-w-md", "bg-superficie", "text-tinta", "backdrop:bg-velo"]));
+    for (const deHojaOCentrado of ["mx-auto", "mt-auto", "max-h-[90dvh]", "rounded-t-lg", "sm:my-auto", "sm:max-w-sm", "md:max-w-2xl"]) expect(clases, deHojaOCentrado).not.toContain(deHojaOCentrado);
+    // Lo que hace de él un diálogo accesible no cambia con la forma.
+    const id = /<dialog[^>]*aria-labelledby="([^"]+)"/.exec(html)?.[1];
+    expect(id).toBeTruthy();
+    expect(html).toContain(`<h2 id="${id}"`);
+    expect(html).toContain('aria-label="Cerrar"');
+  });
+
+  it("el tipo no deja combinar forma=lateral con un ancho (el panel lateral mide siempre lo mismo)", () => {
+    const lateralConAncho = (
+      // @ts-expect-error `ancho` no existe con `forma="lateral"`.
+      <Dialogo abierto titulo="x" onCerrar={() => {}} forma="lateral" ancho="ancho">
+        <p>c</p>
+      </Dialogo>
+    );
+    expect(clasesDelDialogo(renderToStaticMarkup(lateralConAncho))).not.toContain("md:max-w-2xl");
+  });
+
+  it("el botón Cerrar usa tokens (tinta suave, foco del sistema) y conserva su zona táctil de 44 px en celular", () => {
+    const html = renderToStaticMarkup(
+      <Dialogo abierto titulo="x" onCerrar={() => {}}>
+        <p>c</p>
+      </Dialogo>,
+    );
+    const cerrar = /<button[^>]*aria-label="Cerrar"[^>]*>/.exec(html)?.[0] ?? "";
+    expect(cerrar).toMatch(/\btext-tinta-suave\b/);
+    expect(cerrar).toMatch(/\bfocus-visible:outline-foco\b/);
+    expect(cerrar).toMatch(/\bmin-h-11\b/);
+    expect(cerrar).toMatch(/\bmin-w-11\b/);
+  });
 });
