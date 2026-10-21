@@ -137,10 +137,10 @@ export function BotonConConfirmacion({
           {aviso}
         </Aviso>
         <div className="flex flex-wrap gap-x-3 gap-y-1">
-          <Boton variante="enlace-peligro" tamano="compacto" aria-describedby={idAviso} disabled={pending || deshabilitado} onClick={confirmar}>
+          <Boton variante="enlace-peligro" tamano="en-fila" aria-describedby={idAviso} disabled={pending || deshabilitado} onClick={confirmar}>
             {pending ? etiquetaEnCurso : etiquetaConfirmar}
           </Boton>
-          <Boton id={idVolver} variante="enlace" tamano="compacto" aria-describedby={idAviso} disabled={pending} onClick={cancelar}>
+          <Boton id={idVolver} variante="enlace" tamano="en-fila" aria-describedby={idAviso} disabled={pending} onClick={cancelar}>
             {etiquetaVolver}
           </Boton>
         </div>
@@ -150,7 +150,7 @@ export function BotonConConfirmacion({
 
   return (
     <div className="flex flex-col gap-1">
-      <Boton id={idDisparador} variante="enlace-peligro" tamano="compacto" aria-label={etiquetaAccesible} disabled={deshabilitado} onClick={abrirConfirmacion} className={claseDisparador}>
+      <Boton id={idDisparador} variante="enlace-peligro" tamano="en-fila" aria-label={etiquetaAccesible} disabled={deshabilitado} onClick={abrirConfirmacion} className={claseDisparador}>
         {etiqueta}
       </Boton>
       {avisoResultado}

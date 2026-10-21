@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { BotonActivarDesactivar } from "../../src/components/boton-activar-desactivar";
+import { BotonConConfirmacion } from "../../src/components/boton-con-confirmacion";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined }) }));
 
 /**
  * DENSIDAD de las acciones de fila (Fase 6, ola de primitivas): «Desactivar», «Sí, desactivar», «Cancelar»… eran enlaces o botones de texto de ~20 px; al migrar a `Boton` con
@@ -13,6 +16,7 @@ import { BotonActivarDesactivar } from "../../src/components/boton-activar-desac
  */
 const FUENTES = {
   activarDesactivar: "src/components/boton-activar-desactivar.tsx",
+  conConfirmacion: "src/components/boton-con-confirmacion.tsx",
 } as const;
 
 /** Las etiquetas de apertura `<Boton …>` (y `<BotonDeServidor …>`) de un archivo, completas: salta las llaves para no cortar en el `=>` de un `onClick`. */
@@ -54,6 +58,24 @@ describe("BotonActivarDesactivar: acciones de la altura del texto en escritorio"
   it("los cuatro botones del archivo (Activar, Desactivar, «Sí, desactivar» y Cancelar) usan tamano en-fila", () => {
     const etiquetas = etiquetasDeBoton(FUENTES.activarDesactivar);
     expect(etiquetas).toHaveLength(4);
+    for (const e of etiquetas) expect(e, e).toContain('tamano="en-fila"');
+  });
+});
+
+describe("BotonConConfirmacion: acciones de la altura del texto en escritorio", () => {
+  it("el disparador usa tamano en-fila (min-h-11, md:min-h-0, sin px) y conserva la ubicacion que le pasa la pantalla", () => {
+    const html = renderToStaticMarkup(
+      <BotonConConfirmacion etiqueta="Cancelar solicitud" aviso="No se puede deshacer." etiquetaConfirmar="Sí, cancelar" etiquetaEnCurso="Cancelando…" accion={async () => ({ ok: true, mensaje: "listo" })} />
+    );
+    const botones = clasesDeLosBotones(html);
+    expect(botones).toHaveLength(1);
+    expect(esEnFila(botones[0]), botones[0].join(" ")).toBe(true);
+    expect(botones[0]).toContain("self-start");
+  });
+
+  it("los tres botones del archivo (disparador, «Sí, …» y «Volver») usan tamano en-fila", () => {
+    const etiquetas = etiquetasDeBoton(FUENTES.conConfirmacion);
+    expect(etiquetas).toHaveLength(3);
     for (const e of etiquetas) expect(e, e).toContain('tamano="en-fila"');
   });
 });
