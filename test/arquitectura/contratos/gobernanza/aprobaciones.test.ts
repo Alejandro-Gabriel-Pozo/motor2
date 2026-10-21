@@ -228,7 +228,7 @@ describe("cambiar el mecanismo pone el guardián en rojo hasta registrar la apro
     mostrar("un caso legítimo nuevo en borde-propio-de-carta", r);
     expect(tipos(r)).toEqual([`huella-distinta · ${claveDeContrato(conCaso.id)}`]);
     expect(r[0].archivo).toBe(`${CARPETA}/contratos/${conCaso.id}.ts`);
-    expect(r[0].que).toContain("id, excepciones y casos legítimos");
+    expect(r[0].que).toContain("definición completa");
     expect(correr({ contratos, registro: [...APROBACIONES, aprobar(claveDeContrato(conCaso.id), { contratos })] })).toEqual([]);
     // Sacar un caso legítimo existente también cambia la definición.
     const sinCaso: Contrato = { ...BORDE_PROPIO_DE_CARTA, casosLegitimos: BORDE_PROPIO_DE_CARTA.casosLegitimos.slice(1) };
@@ -243,6 +243,76 @@ describe("cambiar el mecanismo pone el guardián en rojo hasta registrar la apro
     expect(correr({ contratos: MANIFIESTO.map((c) => (c.id === reordenado.id ? reordenado : c)) })).toEqual([]);
     const otraDeuda = MANIFIESTO.map((c) => ({ ...c, deuda: [...c.deuda].reverse() }));
     expect(correr({ contratos: otraDeuda })).toEqual([]);
+  });
+
+  describe("la huella de un contrato es su definición COMPLETA menos la deuda", () => {
+    const base = MANIFIESTO[0];
+    const otro = (c: Contrato): readonly Contrato[] => MANIFIESTO.map((x) => (x.id === c.id ? c : x));
+    const clave = claveDeContrato(base.id);
+    const regexDe = (c: Contrato): RegExp => {
+      const d = c.senales.find((x) => x.adaptador === "clases");
+      if (d === undefined || d.adaptador !== "clases") throw new Error("el contrato de prueba necesita una señal de clases");
+      return d.token;
+    };
+
+    /** Un cambio de la definición que NO es la deuda: rojo con el archivo del contrato, la huella actual y la línea para pegar; verde solo con la aprobación. */
+    const casos: { titulo: string; cambiar: (c: Contrato) => Contrato }[] = [
+      { titulo: "se estrecha el `alcance` (otra raíz)", cambiar: (c) => ({ ...c, alcance: { ...c.alcance, raices: ["src/components/carta-publica/seccion.tsx"] } }) },
+      { titulo: "se agrega una extensión al `alcance`", cambiar: (c) => ({ ...c, alcance: { ...c.alcance, extensiones: [...c.alcance.extensiones, ".jsx"] } }) },
+      { titulo: "una señal cambia el texto de su `que`", cambiar: (c) => ({ ...c, senales: c.senales.map((x, i) => (i === 0 ? { ...x, que: `${x.que} (aflojada)` } : x)) }) },
+      { titulo: "una señal se afloja (otra expresión regular)", cambiar: (c) => ({ ...c, senales: c.senales.map((x) => (x.adaptador === "clases" ? { ...x, token: /^nunca-coincide$/ } : x)) }) },
+      { titulo: "una señal cambia solo las banderas de su expresión regular", cambiar: (c) => ({ ...c, senales: c.senales.map((x) => (x.adaptador === "clases" ? { ...x, token: new RegExp(x.token.source, "i") } : x)) }) },
+      { titulo: "se agrega una señal", cambiar: (c) => ({ ...c, senales: [...c.senales, ...c.senales] }) },
+      { titulo: "cambia la `declaracion` (otra clase compañera)", cambiar: (c) => ({ ...c, declaracion: { tipo: "clase-companera", clase: "otra-clase", equivalentes: [] } }) },
+      { titulo: "la `declaracion` acepta una clase equivalente", cambiar: (c) => ({ ...c, declaracion: { tipo: "clase-companera", clase: c.declaracion.tipo === "clase-companera" ? c.declaracion.clase : "x", equivalentes: ["zz-equivalente"] } }) },
+      { titulo: "cambia una `definicion` (la redefinición que se detecta)", cambiar: (c) => ({ ...c, definicion: c.definicion.map((x) => ({ ...x, que: `${x.que} (aflojada)` })) }) },
+      { titulo: "`consumidores` pasa de «descubiertos» a una lista cerrada", cambiar: (c) => ({ ...c, consumidores: ["src/components/carta-publica/seccion.tsx"] }) },
+      { titulo: "cambia la `fuente`", cambiar: (c) => ({ ...c, fuente: { ...c.fuente, ancla: `${c.fuente.ancla} ` } }) },
+      { titulo: "cambia el `porQue`", cambiar: (c) => ({ ...c, porQue: `${c.porQue}, aunque ya no importe` }) },
+    ];
+    for (const caso of casos) {
+      it(`rojo: ${caso.titulo}; verde con la aprobación`, () => {
+        const cambiado = caso.cambiar(base);
+        expect(JSON.stringify(cambiado, (_k, v: unknown) => (v instanceof RegExp ? v.toString() : v)), "el caso tiene que cambiar algo").not.toBe(JSON.stringify(base, (_k, v: unknown) => (v instanceof RegExp ? v.toString() : v)));
+        const contratos = otro(cambiado);
+        const r = correr({ contratos });
+        mostrar(`${base.id}: ${caso.titulo}`, r);
+        expect(tipos(r)).toEqual([`huella-distinta · ${clave}`]);
+        expect(r[0].archivo).toBe(`${CARPETA}/contratos/${base.id}.ts`);
+        expect(r[0].que).toContain("definición completa");
+        expect(r[0].que).toContain(r[0].huella);
+        expect(r[0].como).toContain(`Entrada para pegar al final: { archivo: "${clave}", blob: "${r[0].huella}"`);
+        expect(correr({ contratos, registro: [...APROBACIONES, aprobar(clave, { contratos })] })).toEqual([]);
+      });
+    }
+
+    it("verde: cambiar SOLO la deuda (agregar una entrada, cambiarla o reordenarla) no cambia la huella", () => {
+      const conDeuda = MANIFIESTO.find((c) => c.deuda.length > 0);
+      if (conDeuda === undefined) throw new Error("el test necesita un contrato con deuda");
+      const entrada = conDeuda.deuda[0];
+      for (const deuda of [[...conDeuda.deuda, { ...entrada, fragmento: "otro fragmento de deuda" }], conDeuda.deuda.slice(1), [...conDeuda.deuda].reverse(), conDeuda.deuda.map((d) => ({ ...d, motivo: "otro motivo escrito con más de veinte caracteres", vence: "2026-12-01" })), []]) {
+        expect(correr({ contratos: otro({ ...conDeuda, deuda }) })).toEqual([]);
+      }
+    });
+
+    it("verde: el orden de las señales, de las raíces del alcance y de las extensiones no es parte de la definición", () => {
+      const doble = MANIFIESTO.find((c) => c.alcance.raices.length > 1 || c.alcance.extensiones.length > 1 || c.senales.length > 1);
+      if (doble === undefined) throw new Error("el test necesita un contrato con más de una raíz, extensión o señal");
+      const reordenado: Contrato = { ...doble, senales: [...doble.senales].reverse(), alcance: { raices: [...doble.alcance.raices].reverse(), extensiones: [...doble.alcance.extensiones].reverse() } };
+      expect(correr({ contratos: otro(reordenado) })).toEqual([]);
+    });
+
+    it("las expresiones regulares van por `source` y `flags`: la misma expresión armada de nuevo no cambia la huella, otra sí", () => {
+      const mismo: Contrato = { ...base, senales: base.senales.map((x) => (x.adaptador === "clases" ? { ...x, token: new RegExp(x.token.source, x.token.flags) } : x)) };
+      expect(correr({ contratos: otro(mismo) })).toEqual([]);
+      const hash = (c: Contrato): string => huellasActuales(real({ raiz: copia, contratos: otro(c) })).get(clave)?.huella ?? "";
+      const distinto = (re: RegExp): string => hash({ ...base, senales: base.senales.map((x) => (x.adaptador === "clases" ? { ...x, token: re } : x)) });
+      const origen = regexDe(base);
+      expect(distinto(origen)).toBe(hash(base));
+      expect(distinto(new RegExp(origen.source, `${origen.flags}i`))).not.toBe(hash(base));
+      expect(distinto(new RegExp(`${origen.source}x`, origen.flags))).not.toBe(hash(base));
+      expect(distinto(/^a$/)).not.toBe(distinto(/^b$/));
+    });
   });
 
   it("cambiar una exclusión (otra ruta, otra cantidad, una nueva) → rojo; verde con la aprobación", () => {

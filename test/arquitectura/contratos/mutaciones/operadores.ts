@@ -998,6 +998,23 @@ const politicaDeTipos: Operador = {
   },
 };
 
+const contratoAlterado: Operador = {
+  id: "contrato-alterado",
+  aplicaA: "la definición de un contrato (todo menos la deuda), alterada en memoria de una forma que NO cambia lo que el motor ve (el alcance gana una raíz que no existe, una señal cambia el texto de su `que`, la declaración acepta una clase equivalente que nadie lleva): lo único que cambia es la huella del registro de aprobaciones. Parámetros `contrato` y `campo`: alcance | senales | declaracion",
+  aplicar(base, p) {
+    const c = contratoDe(base, p.contrato);
+    const campo = parametro(p, "campo");
+    let alterado: Contrato;
+    if (campo === "alcance") alterado = { ...c, alcance: { ...c.alcance, raices: [...c.alcance.raices, "src/zz-no-existe"] } };
+    else if (campo === "senales") alterado = { ...c, senales: c.senales.map((s, i) => (i === 0 ? { ...s, que: `${s.que} (alterada)` } : s)) };
+    else if (campo === "declaracion") {
+      if (c.declaracion.tipo !== "clase-companera") return { noAplica: `la declaración de «${c.id}» (${c.declaracion.tipo}) no tiene clases equivalentes que sumar` };
+      alterado = { ...c, declaracion: { ...c.declaracion, equivalentes: [...c.declaracion.equivalentes, "zz-equivalente"] } };
+    } else return fallo(`campo desconocido «${campo}»`);
+    return mutacion(`${campo} de «${c.id}» alterado (el motor ve lo mismo; cambia la definición del contrato)`, () => 1, { contratos: base.contratos.map((x) => (x.id === c.id ? alterado : x)) });
+  },
+};
+
 const pisoDeEvidencia: Operador = {
   id: "piso-de-evidencia",
   aplicaA: "el piso de archivos leídos de la evidencia por corrida (`PISO_DE_ARCHIVOS_LEIDOS`): se sube por encima de lo que el motor lee, en memoria. El motor lee lo mismo y el piso es mayor",
@@ -1007,5 +1024,5 @@ const pisoDeEvidencia: Operador = {
 };
 
 export const OPERADORES: Readonly<Record<string, Operador>> = Object.fromEntries(
-  [ancla, marca, borrarFuente, quitarDeclaracion, quitarToken, agregarToken, quitarTodasLasDeclaraciones, insertar, quitarEntrada, fueraDelManifiesto, vaciarManifiesto, manifiestoRoto, sacarAlcance, extensionNoAnalizada, area, reglas, listado, exclusion, gobierno, texto, mover, archivo, registro, politicaDeTipos, pisoDeEvidencia].map((o) => [o.id, o])
+  [ancla, marca, borrarFuente, quitarDeclaracion, quitarToken, agregarToken, quitarTodasLasDeclaraciones, insertar, quitarEntrada, fueraDelManifiesto, vaciarManifiesto, manifiestoRoto, sacarAlcance, extensionNoAnalizada, area, reglas, listado, exclusion, gobierno, texto, mover, archivo, registro, politicaDeTipos, pisoDeEvidencia, contratoAlterado].map((o) => [o.id, o])
 );

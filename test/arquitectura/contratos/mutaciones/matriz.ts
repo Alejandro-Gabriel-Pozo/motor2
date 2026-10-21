@@ -434,8 +434,8 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
         mut(inv, "exclusion-del-analisis", "exclusion", { modo: "ampliada" }, el(EXCLUSIONES.ruta, `la cantidad exacta de archivos de ${exclusion.ruta}`), esp("clasificacion", "exclusion-ampliada", exclusion.ruta, "sin-posicion", "excluir más pide una aprobación nueva")),
         mut(inv, "exclusion-del-analisis", "exclusion", { modo: "sin-uso" }, el(EXCLUSIONES.ruta, `la cantidad exacta de archivos de ${exclusion.ruta}`), esp("clasificacion", "exclusion-sin-uso", exclusion.ruta, "sin-posicion", "bajá `archivos`")),
         mut(inv, "evasion", "exclusion", { modo: "lejana" }, el(EXCLUSIONES.ruta, `el vencimiento de la exclusión de ${exclusion.ruta} (sin vencimiento real)`), esp("clasificacion", "horizonte-excedido", exclusion.ruta, "sin-posicion", "más de 60 días")),
-        // Un caso legítimo nuevo SILENCIA el uso crudo (el motor ya no dice nada): lo que lo frena es la huella de los campos gobernados del contrato en el registro de aprobaciones.
-        mut(inv, "evasion", "gobierno", { ...P, defecto: "caso-que-silencia" }, entrada("un caso legítimo agregado para tapar un uso crudo"), huella(`test/arquitectura/contratos/contratos/${conUso.id}.ts`, "casos legítimos")),
+        // Un caso legítimo nuevo SILENCIA el uso crudo (el motor ya no dice nada): lo que lo frena es la huella de la definición completa del contrato en el registro de aprobaciones.
+        mut(inv, "evasion", "gobierno", { ...P, defecto: "caso-que-silencia" }, entrada("un caso legítimo agregado para tapar un uso crudo"), huella(`test/arquitectura/contratos/contratos/${conUso.id}.ts`, "definición completa")),
       ],
       noAplica: [],
     });
@@ -621,6 +621,12 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
         mut(inv, "desconexion", "registro", { modo: "quitar-aprobacion", clave: motor }, REGISTRO, sinAprobacion(motor)),
         mut(inv, "exclusion-del-analisis", "mover", { de: motor, a: "docs/motor.ts" }, MOTOR, esp("clasificacion", "ruta-sin-clasificar", "docs/motor.ts", "sin-posicion", "ninguna regla de clasificación reconoce este archivo"), "", [esp("aprobaciones", "archivo-ausente", motor, "sin-posicion", "ya no existe")]),
         mut(inv, "evasion", "registro", { modo: "huella-vieja", clave: scripts }, REGISTRO, huella("package.json", "package.json#scripts")),
+        // La huella de cada contrato es su definición COMPLETA menos la deuda: estrechar el alcance, aflojar una señal o cambiar la declaración también pide aprobación (y no cambia nada de lo que el motor ve).
+        ...(primero === undefined
+          ? []
+          : (["alcance", "senales", "declaracion"] as const).map((campo) =>
+              mut(inv, "alteracion", "contrato-alterado", { contrato: primero.id, campo }, el(`test/arquitectura/contratos/contratos/${primero.id}.ts`, `${campo === "senales" ? "una señal" : campo === "alcance" ? "el alcance" : "la declaración"} de «${primero.id}»`), huella(`test/arquitectura/contratos/contratos/${primero.id}.ts`, "definición completa"))
+            )),
         mut(inv, "evasion", "texto", { ruta: "package.json", de: '"test": "vitest run",', a: '"test": "echo ok",' }, el("package.json", 'el script "test"'), huella("package.json", "package.json#scripts"), "", [
           esp("cumplimiento", "script-distinto", "package.json", "calculada", "echo ok"),
         ]),

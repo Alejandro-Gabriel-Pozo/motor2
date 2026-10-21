@@ -21,9 +21,12 @@ import type { Exclusion } from "./exclusiones";
  *  - LA LÓGICA sin los datos (`#logica`): `gobernanza/areas.ts`, `gobernanza/exclusiones.ts` y este archivo. Sus DATOS (las declaraciones de `AREAS`, los ids de `IDS_DE_CONTRATO`, la
  *    lista `EXCLUSIONES`, el registro `APROBACIONES`) cambian a menudo y se vigilan por su forma canónica o por otro guardián. Solo se sacan del hash las sentencias que son
  *    datos PUROS (literales, listas, objetos, referencias a otra constante); una que tenga una llamada, una función o una cuenta se queda en el hash.
- *  - LA FORMA CANÓNICA (JSON de claves ordenadas) de los campos GOBERNADOS: por cada contrato, `{ id, excepciones, casosLegitimos }` (`<id>.ts#gobernado`: los dos campos que pueden
- *    silenciar un uso); las exclusiones de la clasificación (`exclusiones.ts#exclusiones`); y qué tipos de ruta declaran contratos (`areas.ts#politica-de-tipos`). La deuda NO se
- *    hashea: ya la gobiernan los vencimientos de 60 días.
+ *  - LA FORMA CANÓNICA (JSON de claves ordenadas) de la DEFINICIÓN COMPLETA de cada contrato MENOS la deuda (`<id>.ts#gobernado`): `id`, `porQue`, `fuente`, `alcance`, `senales`, `declaracion`,
+ *    `definicion`, `consumidores`, `casosLegitimos` y `excepciones` (y todo campo que `Contrato` gane más adelante: se excluye `deuda` por nombre, no se incluye por nombre). Las expresiones
+ *    regulares se serializan por su `source` y sus `flags`. Cualquier cambio que pueda silenciar un uso (estrechar el `alcance`, sacar o aflojar una señal, cambiar la `declaracion`, una lista
+ *    cerrada de `consumidores`, un caso legítimo, una excepción) pide una aprobación explícita: es la fricción deseada de un guardián fail-closed. El orden de las listas no cuenta. La deuda NO se
+ *    hashea: ya la gobiernan los vencimientos de 60 días y el diff de la deuda. Además: las exclusiones de la clasificación (`exclusiones.ts#exclusiones`) y qué tipos de ruta declaran
+ *    contratos (`areas.ts#politica-de-tipos`).
  *  - `package.json#scripts` (solo la clave `scripts`: Dependabot cambia las dependencias y no tiene que disparar nada) y `ci.yml#sin-sha` (el workflow con las referencias
  *    `uses: dueño/repo@<sha> # versión` reemplazadas por `uses: dueño/repo@SHA`, para que una actualización de Dependabot no ponga rojo cada pull request; los SHA los vigila
  *    `despliegues-y-cadena-de-suministro.test.ts`).
@@ -94,6 +97,12 @@ export const APROBACIONES: readonly Aprobacion[] = [
   { archivo: ".github/workflows/ci.yml#sin-sha", blob: "2866adda4577ce7c5c1ca1afb3850df0e96fd769", referencia: "DEC-03", motivo: "G7: el CI sube resultado-contratos.json como artefacto (if-no-files-found: error) y Playwright prohíbe test.only en el CI (forbidOnly); evaluadores nuevos en cumplimiento.ts" },
   { archivo: "playwright.config.ts", blob: "2be7cbf60124cef9650fc1a49bbed2e8478d0e97", referencia: "DEC-03", motivo: "G7: el CI sube resultado-contratos.json como artefacto (if-no-files-found: error) y Playwright prohíbe test.only en el CI (forbidOnly); evaluadores nuevos en cumplimiento.ts" },
   { archivo: "test/arquitectura/contratos/gobernanza/cumplimiento.ts", blob: "42cb67593016cd4e5a3a612a55810a515a91afcf", referencia: "DEC-03", motivo: "G7: el CI sube resultado-contratos.json como artefacto (if-no-files-found: error) y Playwright prohíbe test.only en el CI (forbidOnly); evaluadores nuevos en cumplimiento.ts" },
+  // Línea de base ampliada (DEC-03): el registro hashea la definición COMPLETA de cada contrato (menos la deuda), con las expresiones regulares por source y flags; antes solo { id, excepciones, casosLegitimos }.
+  { archivo: "test/arquitectura/contratos/contratos/borde-propio-de-carta.ts#gobernado", blob: "64f0fb1d44cca3ed3b685504654869c28e0226f0", referencia: "DEC-03", motivo: "línea de base ampliada: definición completa del contrato" },
+  { archivo: "test/arquitectura/contratos/contratos/separador-de-lista-de-carta.ts#gobernado", blob: "bd2c25ad11c9728c70b91bb2057a3c393ddea1da", referencia: "DEC-03", motivo: "línea de base ampliada: definición completa del contrato" },
+  { archivo: "test/arquitectura/contratos/contratos/tokens-visuales.ts#gobernado", blob: "cdd517c6556e4d5861307c70812c38ae5f37a135", referencia: "DEC-03", motivo: "línea de base ampliada: definición completa del contrato" },
+  { archivo: "test/arquitectura/contratos/gobernanza/aprobaciones.ts#logica", blob: "a48c1ed5126a6ab55fbdc37563547e81fc6aa6f2", referencia: "DEC-03", motivo: "la huella de cada contrato cubre su definición completa menos la deuda (alcance, señales, declaración, consumidores): lógica del registro y operador contrato-alterado del arnés" },
+  { archivo: "test/arquitectura/contratos/mutaciones/operadores.ts", blob: "b43789d581e1167c4fb72f115462ecfc30503f08", referencia: "DEC-03", motivo: "la huella de cada contrato cubre su definición completa menos la deuda (alcance, señales, declaración, consumidores): lógica del registro y operador contrato-alterado del arnés" },
 ];
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -138,6 +147,8 @@ export function huellaDeBlob(texto: string): string {
 }
 
 function ordenarClaves(valor: unknown): unknown {
+  // Una expresión regular no tiene claves propias: sin esto `JSON.stringify` la dejaría en `{}` y cambiar un detector no cambiaría ninguna huella.
+  if (Object.prototype.toString.call(valor) === "[object RegExp]") return { regexp: (valor as RegExp).source, flags: (valor as RegExp).flags };
   if (Array.isArray(valor)) return valor.map(ordenarClaves);
   if (valor !== null && typeof valor === "object") return Object.fromEntries(Object.entries(valor as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([k, v]) => [k, ordenarClaves(v)]));
   return valor;
@@ -148,8 +159,25 @@ const jsonCanonico = (valor: unknown): string => JSON.stringify(ordenarClaves(va
 
 const ordenadas = <T>(lista: readonly T[]): T[] => [...lista].sort((a, b) => (jsonCanonico(a) < jsonCanonico(b) ? -1 : jsonCanonico(a) > jsonCanonico(b) ? 1 : 0));
 
-/** La forma canónica de la definición gobernada de un contrato: sus excepciones y sus casos legítimos (lo que puede silenciar un uso), sin importar el orden. */
-const formaGobernadaDeContrato = (c: Contrato): string => jsonCanonico({ id: c.id, excepciones: ordenadas(c.excepciones), casosLegitimos: ordenadas(c.casosLegitimos) });
+const textosOrdenados = (lista: readonly string[]): string[] => [...lista].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+
+/**
+ * La forma canónica de la definición gobernada de un contrato: TODA su definición MENOS la deuda (`deuda`, que ya gobiernan los vencimientos). Se arma desde los campos del propio objeto, sacando `deuda` por
+ * nombre: un campo nuevo de `Contrato` queda gobernado sin tocar esto (fail-closed). Las listas cuyo orden no cambia nada (señales, definiciones, excepciones, casos legítimos, raíces, extensiones,
+ * equivalentes y una lista cerrada de consumidores) se ordenan; las expresiones regulares van por `source` y `flags` (`ordenarClaves`).
+ */
+function formaGobernadaDeContrato(c: Contrato): string {
+  const definicion: Record<string, unknown> = {};
+  for (const [campo, valor] of Object.entries(c)) if (campo !== "deuda") definicion[campo] = valor;
+  definicion.senales = ordenadas(c.senales);
+  definicion.definicion = ordenadas(c.definicion);
+  definicion.excepciones = ordenadas(c.excepciones);
+  definicion.casosLegitimos = ordenadas(c.casosLegitimos);
+  definicion.alcance = { raices: textosOrdenados(c.alcance.raices), extensiones: textosOrdenados(c.alcance.extensiones) };
+  definicion.consumidores = c.consumidores === "descubiertos" ? c.consumidores : textosOrdenados(c.consumidores);
+  definicion.declaracion = c.declaracion.tipo === "clase-companera" ? { ...c.declaracion, equivalentes: textosOrdenados(c.declaracion.equivalentes) } : c.declaracion;
+  return jsonCanonico(definicion);
+}
 
 /** La forma canónica de las exclusiones de la clasificación (cada una, entera), sin importar el orden. */
 const formaGobernadaDeExclusiones = (exclusiones: readonly Exclusion[]): string => jsonCanonico(ordenadas(exclusiones));
@@ -257,7 +285,7 @@ export function huellasActuales(entrada: Omit<EntradaDeAprobaciones, "registro">
   if (paquete !== null) poner(`${ARCHIVO_DE_PAQUETE}#scripts`, huellaDeBlob(formaGobernadaDeLosScripts(paquete)), "la clave `scripts` de package.json");
   const ci = leerONulo(entrada.raiz, ARCHIVO_DE_CI);
   if (ci !== null) poner(`${ARCHIVO_DE_CI}#sin-sha`, huellaDeBlob(normalizarWorkflow(ci)), "el workflow de CI con las actions sin su SHA");
-  for (const c of entrada.contratos) poner(claveDeContrato(c.id), huellaDeBlob(formaGobernadaDeContrato(c)), `la definición gobernada de «${c.id}» (id, excepciones y casos legítimos)`);
+  for (const c of entrada.contratos) poner(claveDeContrato(c.id), huellaDeBlob(formaGobernadaDeContrato(c)), `la definición completa de «${c.id}» (todo menos la deuda: fuente, alcance, señales, declaración, consumidores, casos legítimos y excepciones)`);
   return mapa;
 }
 
