@@ -261,7 +261,25 @@ describe("el catálogo de operadores sobre contratos de TypeScript y de nombres 
     excepciones: [],
     deuda: [],
   };
+  // Una fuente CSS con regla ancla `@theme static` y tokens usados en CLASES (como `tokens-visuales`): los operadores `quitar-declaracion`, `quitar-token` y `agregar-token` sobre un consumidor real.
+  const TOKENS: Contrato = {
+    id: "tokens-de-prueba",
+    porQue: "un token mal escrito en una clase cae en silencio a otro color",
+    fuente: { archivo: "src/estilos/tokens.css", ancla: "@theme static" },
+    alcance: { raices: ["src/vistas"], extensiones: [".css", ".tsx"] },
+    senales: [
+      { adaptador: "css", tipo: "variable", nombre: /^--color-/, que: "lee un token con var()" },
+      { adaptador: "clases", token: new RegExp("^(?:bg|text|border)-(?<nombre>(?:papel|tinta)[\\w-]*)(?:\\/[\\w.%[\\]]+)?$"), que: "usa un token en una clase" },
+    ],
+    declaracion: { tipo: "nombre-definido-en-la-fuente", prefijoDeNombre: "--color-" },
+    definicion: [{ adaptador: "css", tipo: "define-variable", nombre: /^--color-/, que: "define un token fuera de `@theme static`" }],
+    consumidores: "descubiertos",
+    casosLegitimos: [],
+    excepciones: [],
+    deuda: [],
+  };
   const EJEMPLOS = {
+    "tokens-de-prueba": { uso: 'export const ZzUso = () => <p className="text-tinta-sueve">x</p>;\n', definicion: ".zz {\n  --color-tinta: red;\n}\n", extensiones: { uso: ".tsx", definicion: ".css" } },
     "redondeo-de-dinero": {
       uso: "export function f(n: number) {\n  return Math.round(n * 100) / 100;\n}\n",
       definicion: "export function redondearMoneda(n: number) {\n  return n;\n}\n",
@@ -281,20 +299,32 @@ describe("el catálogo de operadores sobre contratos de TypeScript y de nombres 
     escribir("src/app/ok.ts", 'import { redondearMoneda } from "@/core/moneda";\nexport const a = redondearMoneda(1.005) + Math.round(2 * 100) / 100;\n');
     escribir("src/estilos/tema.css", "/* @contrato variables-de-carta */\n:root {\n  --carta-tinta: #111;\n  --carta-papel: #fff;\n}\n");
     escribir("src/componentes/uno.css", ".a {\n  color: var(--carta-tinta);\n  background: var(--carta-papel);\n}\n");
+    escribir("test/arquitectura/contratos/contratos/tokens-de-prueba.ts", '// definición\nexport const C = {\n  id: "tokens-de-prueba",\n};\n');
+    escribir("src/estilos/tokens.css", "/* @contrato tokens-de-prueba */\n@theme static {\n  --color-papel: #fff;\n  --color-tinta: #111;\n}\n");
+    escribir("src/vistas/uno.tsx", 'export const A = () => <p className="hover:bg-papel/50 text-tinta">x</p>;\n');
   });
   afterAll(() => {
     rmSync(raiz, { recursive: true, force: true });
   });
 
   it("cada clase (menos la evasión, que es transversal) tiene una mutación protegida en cada contrato, y ninguna sobrevive", async () => {
-    const r = await ejecutarMatriz({ raizReal: raiz, contratos: [DINERO, VARIABLES], ejemplos: EJEMPLOS, hoy: HOY, soloContratos: true });
+    const r = await ejecutarMatriz({ raizReal: raiz, contratos: [DINERO, VARIABLES, TOKENS], ejemplos: EJEMPLOS, hoy: HOY, soloContratos: true });
     expect(r.baseLimpia).toEqual([]);
     expect(r.filas.filter(falla).map((f) => `${f.veredicto} · ${f.invariante} · ${f.clase} · ${f.operador}: ${f.detalle}`), `\n${tablaComoTexto(r.filas, true)}`).toEqual([]);
-    for (const id of ["contrato/redondeo-de-dinero", "contrato/variables-de-carta"]) {
+    for (const id of ["contrato/redondeo-de-dinero", "contrato/variables-de-carta", "contrato/tokens-de-prueba"]) {
       for (const clase of ["eliminacion", "alteracion", "duplicacion", "desconexion", "exclusion-del-analisis"]) {
         expect(r.filas.some((f) => f.invariante === id && f.clase === clase && f.veredicto === "protegido"), `${id} · ${clase}`).toBe(true);
       }
     }
+    // Un contrato de tokens en clases: un consumidor real que usa `bg-papel/50` deja de declarar (el token pasa a `bg-papel-inexistente/50`, con la opacidad intacta), se borra de la regla ancla
+    // un token que la clase usa, y se agrega uno que nadie usa: cada uno con su hallazgo y su línea real.
+    const deTokens = r.filas.filter((f) => f.invariante === "contrato/tokens-de-prueba" && f.veredicto === "protegido");
+    const por = (operador: string) => deTokens.find((f) => f.operador === operador);
+    expect(por("quitar-declaracion")?.mutacion).toContain("src/vistas/uno.tsx");
+    expect(por("quitar-declaracion")?.esperado).toBe("motor/uso-sin-declarar · src/vistas/uno.tsx:calculada · «que la fuente no define»");
+    expect(por("quitar-token")?.mutacion).toContain("--color-papel");
+    expect(por("quitar-token")?.esperado).toContain("src/vistas/uno.tsx");
+    expect(por("agregar-token")?.esperado).toContain("motor/declaracion-sin-uso · src/estilos/tokens.css");
     const tipos = new Set(r.filas.filter((f) => f.veredicto === "protegido").map((f) => f.esperado.split(" · ")[0]));
     for (const t of ["motor/fuente-ausente", "motor/marca-desconocida", "motor/marca-duplicada", "motor/definicion-duplicada", "motor/uso-sin-declarar", "motor/declaracion-sin-uso", "motor/alcance-vacio"]) expect(tipos.has(t), t).toBe(true);
   }, 60_000);

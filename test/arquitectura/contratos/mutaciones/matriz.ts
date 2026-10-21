@@ -1,7 +1,7 @@
 import { ARCHIVO_DE_AREAS } from "../gobernanza/areas";
 import { MOTIVO_MINIMO, RESPONSABLES, esFechaValida, evaluarVencimientos, referenciaValida } from "../politica";
 import type { Deuda, Contrato } from "../tipos";
-import { ARCHIVO_DEL_MANIFIESTO, archivosDelAlcance, elegirConsumidor, primerUsoDelArea, rutaNuevaEnElAlcance, type BaseDeMutacion, type EjemplosDeContrato, type Verifica } from "./operadores";
+import { ARCHIVO_DEL_MANIFIESTO, archivosDelAlcance, elegirConsumidor, elegirTokenUsado, hallazgoDeEntrada, primerUsoDelArea, rutaNuevaEnElAlcance, type BaseDeMutacion, type EjemplosDeContrato, type Verifica } from "./operadores";
 
 /**
  * La MATRIZ de invariantes del guardián de contratos (paso G6a): «invariante × elementos que lo definen, lo aplican y lo verifican × mutaciones que demuestran su protección».
@@ -86,6 +86,12 @@ export const EJEMPLOS_DE_CONTRATOS: Readonly<Record<string, EjemplosDeContrato>>
   "borde-propio-de-carta": {
     uso: 'export const ZzUso = () => <div className="mt-2 border-t">x</div>;\n',
     definicion: 'export const ZzDefinicion = () => <li className="carta-borde border-b border-[#e7e5e4]">x</li>;\n',
+  },
+  // El uso crudo es un token mal escrito en una clase (un TSX); la redefinición, un token escrito fuera de `@theme static` (un CSS): cada ejemplo va en su propio tipo de archivo.
+  "tokens-visuales": {
+    uso: 'export const ZzUso = () => <p className="text-tinta-sueve">x</p>;\n',
+    definicion: ".zz-definicion {\n  --color-tinta: red;\n}\n",
+    extensiones: { uso: ".tsx", definicion: ".css" },
   },
 };
 
@@ -236,14 +242,31 @@ function invarianteDeContrato(base: BaseDeMutacion, c: Contrato): Invariante {
     ["deuda", c.deuda],
   ] as const;
   for (const [lista, entradas] of listas) {
+    const probadas = new Set<string>();
     entradas.forEach((e, i) => {
-      m.push(mut(inv, "eliminacion", "quitar-entrada", { ...P, lista, indice: String(i) }, el(definicion, `${lista}[${i}] de la definición (${e.archivo})`), esp("motor", "uso-sin-declarar", e.archivo, "calculada", "sin declarar el contrato")));
+      // Sacar la entrada vuelve a poner en rojo lo que cubría: un uso sin declarar, o una redefinición si el fragmento es de las que detecta `definicion`.
+      const que = hallazgoDeEntrada(base, c, e);
+      // Las entradas de una lista que cubren el mismo tipo de hallazgo en el mismo archivo pasan por el mismo detector (los 15 alias del salón de `tokens-visuales`): se prueba la primera, no
+      // las 15, para que el arnés no crezca con la deuda. Una entrada de otro archivo o de otro tipo de hallazgo se prueba aparte.
+      const clave = `${lista}|${e.archivo}|${que.tipo}`;
+      if (probadas.has(clave)) return;
+      probadas.add(clave);
+      m.push(mut(inv, "eliminacion", "quitar-entrada", { ...P, lista, indice: String(i) }, el(definicion, `${lista}[${i}] de la definición (${e.archivo})`), esp("motor", que.tipo, e.archivo, "calculada", que.mensaje)));
     });
+  }
+
+  // Una fuente CSS de nombres: se le borra un token que algo usa (el uso queda sin definir) y, aparte, se le agrega uno que nadie usa.
+  const tokenUsado = elegirTokenUsado(base, c);
+  if (tokenUsado !== null) {
+    m.push(mut(inv, "eliminacion", "quitar-token", P, el(fuente, `la definición de \`${tokenUsado.nombre}\` en la regla ancla (la usa ${tokenUsado.uso.ruta})`), esp("motor", "uso-sin-declarar", tokenUsado.uso.ruta, "calculada", "que la fuente no define")));
   }
 
   // --- alteración: el ancla renombrada, la marca con otro id.
   m.push(mut(inv, "alteracion", "ancla", { ...P, modo: "renombrar" }, ancla, esp("motor", "fuente-ausente", fuente, "calculada", `la fuente de «${c.id}» no tiene el ancla`)));
   m.push(mut(inv, "alteracion", "marca", { ...P, modo: "renombrar" }, marca, esp("motor", "marca-desconocida", fuente, "calculada", "no es de ningún contrato del manifiesto")));
+  if (c.declaracion.tipo === "nombre-definido-en-la-fuente" && fuente.endsWith(".css")) {
+    m.push(mut(inv, "alteracion", "agregar-token", P, ancla, esp("motor", "declaracion-sin-uso", fuente, "calculada", "y nadie lo usa")));
+  }
 
   // --- duplicación: la marca copiada, una redefinición dentro del alcance.
   m.push(mut(inv, "duplicacion", "marca", { ...P, modo: "copiar", destino: `src/zz-marca-copiada-${c.id}.ts` }, marca, esp("motor", "marca-duplicada", `src/zz-marca-copiada-${c.id}.ts`, "calculada", "hay dos fuentes")));
@@ -270,7 +293,19 @@ function invarianteDeContrato(base: BaseDeMutacion, c: Contrato): Invariante {
   }
 
   // --- exclusión del análisis: el alcance movido de carpeta, un consumidor con una extensión que nadie analiza.
-  m.push(mut(inv, "exclusion-del-analisis", "sacar-alcance", P, el(c.alcance.raices[0] ?? fuente, `el alcance del contrato (${c.alcance.raices.join(", ")})`), esp("motor", "alcance-vacio", fuente, "sin-posicion", "no encontró ningún archivo")));
+  const dentroDe = (raiz: string, ruta: string): boolean => ruta === raiz || ruta.startsWith(`${raiz.replace(/\/$/, "")}/`);
+  if (!c.alcance.raices.some((r) => dentroDe(r, fuente))) {
+    m.push(mut(inv, "exclusion-del-analisis", "sacar-alcance", P, el(c.alcance.raices[0] ?? fuente, `el alcance del contrato (${c.alcance.raices.join(", ")})`), esp("motor", "alcance-vacio", fuente, "sin-posicion", "no encontró ningún archivo")));
+  } else {
+    // La fuente vive DENTRO del alcance (un CSS global): mover todo el alcance se llevaría también la fuente y las de los demás contratos que la comparten, y no aislaría nada. Se mueve la última
+    // raíz que no la contiene; el código que sale de las carpetas que el contrato mira no desaparece en silencio: la clasificación de rutas no reconoce la carpeta nueva.
+    const raiz = [...c.alcance.raices].reverse().find((r) => !dentroDe(r, fuente) && base.archivos.some((a) => dentroDe(r, a) && a !== r));
+    const movido = raiz === undefined ? undefined : base.archivos.find((a) => dentroDe(raiz, a) && a !== raiz);
+    if (raiz !== undefined && movido !== undefined) {
+      const dir = raiz.replace(/\/$/, "");
+      m.push(mut(inv, "exclusion-del-analisis", "mover", { de: dir, a: `${dir}-movida` }, el(raiz, `una carpeta del alcance del contrato (${raiz}) cambia de nombre y queda fuera de lo que mira`), esp("clasificacion", "ruta-sin-clasificar", `${dir}-movida${movido.slice(dir.length)}`, "sin-posicion", "ninguna regla de clasificación reconoce este archivo")));
+    }
+  }
   if (consumidor !== null) {
     const ext = c.alcance.extensiones.find((e) => consumidor.ruta.endsWith(e)) ?? "";
     m.push(mut(inv, "exclusion-del-analisis", "extension-no-analizada", { ...P, ruta: consumidor.ruta }, el(consumidor.ruta, "un consumidor real que pasa a una extensión fuera del alcance"), esp("clasificacion", "ruta-sin-clasificar", `${consumidor.ruta.slice(0, consumidor.ruta.length - ext.length)}.jsx`, "sin-posicion", "ninguna regla de clasificación reconoce este archivo")));

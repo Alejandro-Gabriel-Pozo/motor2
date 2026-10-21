@@ -15,6 +15,26 @@ import { codigoSolo, type ArchivoTs } from "./adaptadores/ts";
  */
 const memoLimpia = new Map<string, { fuente: string; limpia: string }>();
 const memoArbol = new Map<string, { fuente: string; arbol: ts.SourceFile }>();
+const memoCadenas = new Map<string, { fuente: string; cadenas: CadenaDeClases[] }>();
+const memoReglas = new Map<string, { fuente: string; reglas: ReglaCss[] }>();
+
+/** El AST de un archivo con la memoria entre corridas: lo usan el índice y los operadores del arnés de mutaciones (que leen el árbol de la copia sin pasar por un índice). */
+export function arbolMemoizado(ruta: string, fuente: string): ts.SourceFile {
+  const previo = memoArbol.get(ruta);
+  if (previo?.fuente === fuente) return previo.arbol;
+  const arbol = arbolDe(fuente, ruta);
+  memoArbol.set(ruta, { fuente, arbol });
+  return arbol;
+}
+
+/** Las cadenas de clases de un archivo con la memoria entre corridas (ver `arbolMemoizado`). */
+export function cadenasMemoizadas(ruta: string, fuente: string): CadenaDeClases[] {
+  const previa = memoCadenas.get(ruta);
+  if (previa?.fuente === fuente) return previa.cadenas;
+  const cadenas = cadenasDeClases(arbolMemoizado(ruta, fuente), fuente);
+  memoCadenas.set(ruta, { fuente, cadenas });
+  return cadenas;
+}
 
 export const esCss = (ruta: string): boolean => ruta.endsWith(".css");
 export const esTs = (ruta: string): boolean => /\.tsx?$/.test(ruta);
@@ -76,13 +96,7 @@ export class Indice {
   arbol(ruta: string): ts.SourceFile {
     let a = this.arboles.get(ruta);
     if (a === undefined) {
-      const fuente = this.fuente(ruta);
-      const previo = memoArbol.get(ruta);
-      if (previo?.fuente === fuente) a = previo.arbol;
-      else {
-        a = arbolDe(fuente, ruta);
-        memoArbol.set(ruta, { fuente, arbol: a });
-      }
+      a = arbolMemoizado(ruta, this.fuente(ruta));
       this.arboles.set(ruta, a);
     }
     return a;
@@ -101,7 +115,7 @@ export class Indice {
   cadenas(ruta: string): CadenaDeClases[] {
     let c = this.cadenasMemo.get(ruta);
     if (c === undefined) {
-      c = cadenasDeClases(this.arbol(ruta), this.fuente(ruta));
+      c = cadenasMemoizadas(ruta, this.fuente(ruta));
       this.cadenasMemo.set(ruta, c);
     }
     return c;
@@ -110,7 +124,13 @@ export class Indice {
   reglas(ruta: string): ReglaCss[] {
     let r = this.reglasMemo.get(ruta);
     if (r === undefined) {
-      r = leerReglas(this.limpia(ruta));
+      const fuente = this.fuente(ruta);
+      const previa = memoReglas.get(ruta);
+      if (previa?.fuente === fuente) r = previa.reglas;
+      else {
+        r = leerReglas(this.limpia(ruta));
+        memoReglas.set(ruta, { fuente, reglas: r });
+      }
       this.reglasMemo.set(ruta, r);
     }
     return r;

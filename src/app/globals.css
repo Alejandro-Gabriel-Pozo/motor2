@@ -15,9 +15,35 @@
 
 @theme inline {
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+/* Fase 6 (6.1): los TOKENS del sistema visual. Nombres solo `--color-*`; con `@theme static` Tailwind los publica en `:root` aunque ninguna utilidad los use todavía, y de
+   ellos salen las utilidades (`bg-papel`, `text-tinta-suave`, `border-borde`…). Es la FUENTE del contrato `tokens-visuales` (`test/arquitectura/contratos/contratos/tokens-visuales.ts`):
+   un token se define solo acá, lo que use un nombre que no esté acá falla, y un token que nadie usa también. Solo nacen los que ya usan los alias de `.pos-shell`; los demás
+   nacen en el paso que los usa por primera vez. Los pares de texto sobre fondo y los gráficos están medidos en `test/arquitectura/tokens-del-sistema-visual.test.ts`
+   (texto >= 4,5:1; `ok`, `aviso` y `error` como color de gráfico >= 3:1 sobre papel). La aplicación no tiene modo oscuro (DEC-04): un solo valor por token. */
+/* @contrato tokens-visuales */
+@theme static {
+  --color-papel: #FAFAF8;
+  --color-tinta: #1C1B19;
+  --color-tinta-suave: #6B6862;
+  --color-tinta-tenue: #76726A;
+  --color-borde: #E8E5DF;
+  --color-marca: #A8431F;
+  --color-marca-hover: #8A3618;
+
+  --color-ok: #3F7A5C;
+  --color-ok-tinte: #EBF3EE;
+  --color-ok-tinta: #356A4F;
+
+  --color-aviso: #B8860B;
+  --color-aviso-tinte: #FBF3DE;
+  --color-aviso-tinta: #7A5A07;
+
+  --color-error: #A63D3D;
+  --color-error-tinte: #FAEBEB;
 }
 
 /* Un <th> con texto solo para lectores de pantalla (<span class="sr-only">Acciones</span>, en las columnas de botones) es position:absolute. Sin
@@ -70,27 +96,29 @@ form[aria-busy="true"] [type="submit"] {
    sucursal, los scrollbars) si alguien cambiara el del `:root`.
    Contraste (plan §A.3, ajuste aprobado por el dueño): `--ink-faint` pasó de #A8A49C (2,48:1) a #76726A (4,79:1 sobre blanco,
    4,58:1 sobre papel), y los textos de estado usan `--mesa-libre-ink`/`--mesa-draft-ink` en vez del color de estado. Barras, puntos
-   y fondos de estado quedan exactamente como en el diseño. */
+   y fondos de estado quedan exactamente como en el diseño.
+   Fase 6 (6.1): los 15 alias de abajo son ahora `var()` de los tokens `--color-*` de `@theme static` (mismo valor resultante). Siguen existiendo solo porque el
+   salón los usa; son deuda del contrato `tokens-visuales` (se retiran con el lote POS, 6.30). */
 .pos-shell {
   color-scheme: light;
-  --paper: #FAFAF8;
-  --ink: #1C1B19;
-  --brand: #A8431F;
-  --brand-hover: #8A3618;
-  --border: #E8E5DF;
-  --ink-soft: #6B6862;
-  --ink-faint: #76726A;
+  --paper: var(--color-papel);
+  --ink: var(--color-tinta);
+  --brand: var(--color-marca);
+  --brand-hover: var(--color-marca-hover);
+  --border: var(--color-borde);
+  --ink-soft: var(--color-tinta-suave);
+  --ink-faint: var(--color-tinta-tenue);
 
-  --mesa-libre: #3F7A5C;
-  --mesa-libre-tint: #EBF3EE;
-  --mesa-libre-ink: #356A4F;
+  --mesa-libre: var(--color-ok);
+  --mesa-libre-tint: var(--color-ok-tinte);
+  --mesa-libre-ink: var(--color-ok-tinta);
 
-  --mesa-draft: #B8860B;
-  --mesa-draft-tint: #FBF3DE;
-  --mesa-draft-ink: #7A5A07;
+  --mesa-draft: var(--color-aviso);
+  --mesa-draft-tint: var(--color-aviso-tinte);
+  --mesa-draft-ink: var(--color-aviso-tinta);
 
-  --mesa-ocupada: #A63D3D;
-  --mesa-ocupada-tint: #FAEBEB;
+  --mesa-ocupada: var(--color-error);
+  --mesa-ocupada-tint: var(--color-error-tinte);
 
   background: var(--paper);
   color: var(--ink);

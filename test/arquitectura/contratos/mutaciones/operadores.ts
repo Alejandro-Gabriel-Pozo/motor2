@@ -4,13 +4,13 @@ import ts from "typescript";
 import { arbolDe, sinComentarios } from "../../cercos/trinquete";
 import { cadenasDeClases, coincidenciasDeClases, coincidenciasPorToken } from "../adaptadores/clases-tsx";
 import { colapsar, prueba, type Coincidencia } from "../adaptadores/coincidencia";
-import { coincidenciasDeCss, leerReglas, posicionDelAncla, reglaDelAncla, variablesDefinidas } from "../adaptadores/css";
+import { coincidenciasDeCss, dentroDeLaRegla, leerReglas, posicionDelAncla, reglaDelAncla, variablesDefinidas } from "../adaptadores/css";
 import { codigoSolo, coincidenciasDeTs, importaElAncla, posicionDelSimboloExportado } from "../adaptadores/ts";
 import type { DeclaracionDeAreas, IdDeContrato } from "../gobernanza/areas";
 import type { ReglaDeRuta } from "../gobernanza/clasificacion";
 import type { Exclusion } from "../gobernanza/exclusiones";
 import { usosDeContratos, type UsoEnArchivo } from "../gobernanza/usos";
-import { esCss, esTs } from "../indice";
+import { arbolMemoizado, cadenasMemoizadas, esCss, esTs } from "../indice";
 import type { Contrato, Deuda, Detector, Excepcion } from "../tipos";
 
 /**
@@ -70,6 +70,11 @@ export interface EjemplosDeContrato {
   uso: string | null;
   /** Un archivo del alcance con una redefinición de lo que la fuente define (declarando el contrato, para que sea lo único que falle). */
   definicion: string | null;
+  /**
+   * La extensión del archivo nuevo de cada ejemplo, si no es la primera extensión del alcance (`.tsx` para un uso en una clase y `.css` para una redefinición de una variable en el mismo
+   * contrato). El ejemplo de `uso` también es el de las mutaciones de gobierno.
+   */
+  extensiones?: { uso?: string; definicion?: string };
 }
 
 /** Lo que un operador mira: la copia base (sin mutar) y los datos REALES del guardián. Solo lectura. */
@@ -165,8 +170,8 @@ function posicionDelAnclaEn(c: Contrato, texto: string): number | null {
 function coincidenciasEn(d: Detector, ruta: string, texto: string, prefijoDeNombre: string | null): Coincidencia[] {
   if (d.adaptador === "css") return esCss(ruta) ? coincidenciasDeCss(leerReglas(sinComentarios(texto, ruta)), d) : [];
   if (!esTs(ruta)) return [];
-  const arbol = arbolDe(texto, ruta);
-  if (d.adaptador === "clases") return prefijoDeNombre === null ? coincidenciasDeClases(cadenasDeClases(arbol, texto), d.token) : coincidenciasPorToken(cadenasDeClases(arbol, texto), d.token, prefijoDeNombre);
+  if (d.adaptador === "clases") return prefijoDeNombre === null ? coincidenciasDeClases(cadenasMemoizadas(ruta, texto), d.token) : coincidenciasPorToken(cadenasMemoizadas(ruta, texto), d.token, prefijoDeNombre);
+  const arbol = arbolMemoizado(ruta, texto);
   return coincidenciasDeTs({ fuente: texto, codigo: codigoSolo(sinComentarios(texto, ruta), arbol), arbol }, d);
 }
 
@@ -228,7 +233,11 @@ export function elegirConsumidor(base: BaseDeMutacion, c: Contrato): Consumidor 
       if (i >= 0) return { ruta, cadena: i };
     } else if (d.tipo === "importar-ancla" && esTs(ruta) && importaElAncla(arbolDe(texto, ruta), ruta, c.fuente.archivo, c.fuente.ancla) !== null && delContrato(c, ruta, texto, "senales").length > 0) {
       return { ruta, cadena: -1 };
-    } else if (d.tipo === "nombre-definido-en-la-fuente" && esCss(ruta) && c.senales.some((s) => s.adaptador === "css" && s.tipo === "variable")) {
+    } else if (
+      d.tipo === "nombre-definido-en-la-fuente" &&
+      ((esCss(ruta) && c.senales.some((s) => s.adaptador === "css" && s.tipo === "variable")) || (esTs(ruta) && c.senales.some((s) => s.adaptador === "clases")))
+    ) {
+      // Un `var(--x)` en un CSS o un token en una clase (`bg-papel`) de un TSX cuyo nombre la fuente define.
       const definidos = nombresDefinidos(base, c);
       if (delContrato(c, ruta, texto, "senales").some((k) => definidos.has(k.nombre))) return { ruta, cadena: -1 };
     }
@@ -276,10 +285,66 @@ function sinDeclaracion(c: Contrato, definidos: ReadonlySet<string>, ruta: strin
     if (!elemento) return null;
     return { texto: texto.slice(0, elemento.getStart(arbol)) + texto.slice(elemento.end).replace(/^,\s*/, ""), posicion: 0 };
   }
-  // nombre-definido-en-la-fuente (CSS): el primer `var(--x)` con un nombre que la fuente define pasa a un nombre que no define.
+  // nombre-definido-en-la-fuente: el primer uso de un nombre que la fuente define pasa a un nombre que no define.
   const uso = delContrato(c, ruta, texto, "senales").find((k) => definidos.has(k.nombre));
   if (!uso) return null;
+  if (esTs(ruta)) {
+    // Un token en una clase (`hover:bg-papel/50`): se le agrega un sufijo al nombre, antes de la opacidad (`bg-papel-inexistente/50`); la expresión laxa del contrato lo sigue casando.
+    const token = cadenasDeClases(arbolDe(texto, ruta), texto).flatMap((ch) => ch.tokens).find((t) => t.desde === uso.desde);
+    if (!token) return null;
+    const barra = token.base.lastIndexOf("/");
+    const corte = texto.indexOf(token.base, token.desde) + (barra >= 0 ? barra : token.base.length - (token.base.endsWith("!") ? 1 : 0));
+    return { texto: `${texto.slice(0, corte)}-inexistente${texto.slice(corte)}`, posicion: uso.desde };
+  }
   return { texto: `${texto.slice(0, uso.desde)}${uso.nombre}-inexistente${texto.slice(uso.desde + uso.nombre.length)}`, posicion: uso.desde };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Tokens de una fuente CSS (nombre-definido-en-la-fuente) y entradas de la definición del contrato
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+export interface TokenUsado {
+  nombre: string;
+  /** Posición (0-based) de la declaración del token dentro de la regla ancla de la fuente. */
+  desde: number;
+  /** El primer archivo del alcance (la fuente incluida, fuera del ancla) que usa el token, con la posición del uso. */
+  uso: { ruta: string; desde: number };
+}
+
+/** Las coincidencias de las señales del contrato en un texto, sin las que caen dentro de la regla ancla (lo que define la fuente no es un uso). */
+function usosFueraDelAncla(c: Contrato, ruta: string, texto: string): Coincidencia[] {
+  const regla = ruta === c.fuente.archivo && esCss(ruta) ? reglaDelAncla(leerReglas(sinComentarios(texto, ruta)), c.fuente.ancla) : null;
+  return delContrato(c, ruta, texto, "senales").filter((k) => regla === null || !dentroDeLaRegla(regla, k.desde));
+}
+
+/**
+ * El primer token (en orden de definición) de la regla ancla de una fuente CSS que algún archivo usa —en un `var()` o en una clase—, o null si el contrato no es de nombres, la
+ * fuente no es CSS o ningún token tiene un uso. Lo usan `quitar-token` y la matriz (que necesita el archivo del uso para decir dónde tiene que aparecer el hallazgo).
+ */
+export function elegirTokenUsado(base: BaseDeMutacion, c: Contrato): TokenUsado | null {
+  if (c.declaracion.tipo !== "nombre-definido-en-la-fuente" || !esCss(c.fuente.archivo) || !existsSync(abs(base.raiz, c.fuente.archivo))) return null;
+  const textoFuente = leerTexto(base.raiz, c.fuente.archivo);
+  const reglas = leerReglas(sinComentarios(textoFuente, c.fuente.archivo));
+  const regla = reglaDelAncla(reglas, c.fuente.ancla);
+  if (regla === null) return null;
+  const rutas = [c.fuente.archivo, ...archivosDelAlcance(base, c)];
+  const usos = rutas.flatMap((ruta) => usosFueraDelAncla(c, ruta, ruta === c.fuente.archivo ? textoFuente : leerTexto(base.raiz, ruta)).map((k) => ({ ruta, ...k })));
+  for (const [nombre, desde] of [...variablesDefinidas(reglas, regla)].sort((a, b) => a[1] - b[1])) {
+    const uso = usos.find((u) => u.nombre === nombre);
+    if (uso !== undefined) return { nombre, desde, uso: { ruta: uso.ruta, desde: uso.desde } };
+  }
+  return null;
+}
+
+/**
+ * Qué hallazgo da una entrada de la definición del contrato (caso legítimo, excepción o deuda) cuando se la saca: si su fragmento es el de una REDEFINICIÓN (lo que detectan
+ * `definicion`), `definicion-duplicada`; si no, un uso sin declarar. El mensaje es un trozo de lo que dice el motor en cada caso.
+ */
+export function hallazgoDeEntrada(base: BaseDeMutacion, c: Contrato, entrada: { archivo: string; fragmento: string }): { tipo: "uso-sin-declarar" | "definicion-duplicada"; mensaje: string } {
+  const texto = leerTexto(base.raiz, entrada.archivo);
+  const fragmento = colapsar(entrada.fragmento);
+  if (delContrato(c, entrada.archivo, texto, "definicion").some((k) => k.fragmento === fragmento)) return { tipo: "definicion-duplicada", mensaje: "fuera de la fuente" };
+  return { tipo: "uso-sin-declarar", mensaje: c.declaracion.tipo === "nombre-definido-en-la-fuente" ? "que la fuente no define" : "sin declarar el contrato" };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -328,12 +393,13 @@ const ancla: Operador = {
       },
       {
         cambios: [escribir(ruta, nuevo)],
-        // Sin la fuente, lo que se declaraba contra ella (los nombres que define) queda suelto.
+        // Sin la fuente, lo que se declaraba contra ella (los nombres que define) queda suelto; y en una fuente CSS con regla ancla, los tokens que definía el ancla pasan a ser definiciones fuera de ella.
         tolerados: [
           { verifica: "motor", tipo: "fuente-ausente" },
           { verifica: "motor", tipo: "uso-sin-declarar" },
           { verifica: "motor", tipo: "declaracion-sin-uso" },
           { verifica: "motor", tipo: "consumidor-fantasma" },
+          { verifica: "motor", tipo: "definicion-duplicada" },
         ],
       }
     );
@@ -426,6 +492,53 @@ const quitarDeclaracion: Operador = {
   },
 };
 
+const quitarToken: Operador = {
+  id: "quitar-token",
+  aplicaA: "nombre-definido-en-la-fuente con fuente CSS: se borra de la regla ancla la definición de un token que algo usa (en un `var()` o en una clase) y ese uso queda sin definir",
+  aplicar(base, p) {
+    const c = contratoDe(base, p.contrato);
+    const elegido = elegirTokenUsado(base, c);
+    if (elegido === null) return { noAplica: "el contrato no es de nombres con una fuente CSS, o ningún token de la regla ancla tiene un uso" };
+    const ruta = c.fuente.archivo;
+    const texto = leerTexto(base.raiz, ruta);
+    const limpia = sinComentarios(texto, ruta);
+    // La declaración entera: desde el principio de su línea hasta el `;` y el salto de línea que lo sigue.
+    const fin = limpia.indexOf(";", elegido.desde);
+    if (fin < 0) return fallo(`no se ubicó el fin de la declaración de ${elegido.nombre} en ${ruta}`);
+    const principio = texto.lastIndexOf("\n", elegido.desde) + 1;
+    const nuevo = texto.slice(0, principio) + texto.slice(fin + 1).replace(/^[ \t]*\n/, "");
+    const reglas = leerReglas(sinComentarios(nuevo, ruta));
+    const regla = reglaDelAncla(reglas, c.fuente.ancla);
+    if (regla === null || variablesDefinidas(reglas, regla).has(elegido.nombre)) return fallo(`${elegido.nombre} sigue definido en el ancla después de borrarlo`);
+    return mutacion(
+      `borra la definición de «${elegido.nombre}» de la regla ancla «${c.fuente.ancla}» de ${ruta} (lo usa ${elegido.uso.ruta})`,
+      (raiz) => {
+        const t = leerTexto(raiz, elegido.uso.ruta);
+        const uso = usosFueraDelAncla(c, elegido.uso.ruta, t).find((k) => k.nombre === elegido.nombre);
+        return uso === undefined ? fallo(`el uso de ${elegido.nombre} ya no está en ${elegido.uso.ruta}`) : lineaDe(t, uso.desde);
+      },
+      // Si era el único uso que declaraba el contrato, el contrato se queda sin consumidores.
+      { cambios: [escribir(ruta, nuevo)], tolerados: [{ verifica: "motor", tipo: "consumidor-fantasma" }] }
+    );
+  },
+};
+
+const agregarToken: Operador = {
+  id: "agregar-token",
+  aplicaA: "nombre-definido-en-la-fuente con fuente CSS: se agrega a la regla ancla un token que nadie usa",
+  aplicar(base, p) {
+    const c = contratoDe(base, p.contrato);
+    if (c.declaracion.tipo !== "nombre-definido-en-la-fuente" || !esCss(c.fuente.archivo)) return { noAplica: "solo un contrato de nombres con una fuente CSS define tokens en una regla ancla" };
+    const ruta = c.fuente.archivo;
+    const texto = leerTexto(base.raiz, ruta);
+    const regla = reglaDelAncla(leerReglas(sinComentarios(texto, ruta)), c.fuente.ancla);
+    if (regla === null) return fallo(`«${c.id}» ya no tiene su ancla en la copia base`);
+    const nombre = `--${c.declaracion.prefijoDeNombre.replace(/^--/, "")}zz-token-sin-uso`;
+    const nuevo = `${texto.slice(0, regla.hasta)}  ${nombre}: #000000;\n${texto.slice(regla.hasta)}`;
+    return mutacion(`agrega a la regla ancla «${c.fuente.ancla}» de ${ruta} el token «${nombre}», que nadie usa`, (raiz) => lineaDe(leerTexto(raiz, ruta), leerTexto(raiz, ruta).indexOf(nombre)), { cambios: [escribir(ruta, nuevo)] });
+  },
+};
+
 const quitarTodasLasDeclaraciones: Operador = {
   id: "quitar-todas-las-declaraciones",
   aplicaA: "clase-companera con señales de clases: ningún archivo del alcance declara el contrato (consumidores descubiertos queda vacío)",
@@ -455,7 +568,9 @@ const quitarTodasLasDeclaraciones: Operador = {
 /** La ruta del archivo nuevo que un operador mete en el alcance del contrato. */
 export function rutaNuevaEnElAlcance(base: BaseDeMutacion, c: Contrato, nombre: string): string | null {
   const lugar = lugarEnElAlcance(base.raiz, c);
-  return lugar === null ? null : `${lugar.carpeta}/zz-mutacion-${nombre}${lugar.ext}`;
+  if (lugar === null) return null;
+  const ejemplo = nombre === "definicion" ? "definicion" : nombre === "uso" || nombre === "gobierno" ? "uso" : null;
+  return `${lugar.carpeta}/zz-mutacion-${nombre}${(ejemplo === null ? undefined : base.ejemplos[c.id]?.extensiones?.[ejemplo]) ?? lugar.ext}`;
 }
 
 const insertar: Operador = {
@@ -677,7 +792,16 @@ const exclusion: Operador = {
     if (modo === "sin-motivo") return mutacion("la exclusión real pierde su motivo", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, motivo: "corto" } : e)) });
     if (modo === "sin-responsable") return mutacion("la exclusión real tiene un responsable fuera de la lista", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, responsable: "tercero" as never } : e)) });
     if (modo === "sin-aprobacion") return mutacion("la exclusión real pierde su aprobación", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, aprobacion: { por: "dueño", referencia: "nada" } } : e)) });
-    if (modo === "vencida") return mutacion("pasa el día de vencimiento de la exclusión real", () => 1, { hoy: masDias(primera.vence, 1) });
+    // Al correr el reloj también vencen la deuda y las excepciones de los contratos que vencen ese mismo día: es lo que tiene que pasar, no un hueco.
+    if (modo === "vencida") {
+      return mutacion("pasa el día de vencimiento de la exclusión real", () => 1, {
+        hoy: masDias(primera.vence, 1),
+        tolerados: [
+          { verifica: "motor", tipo: "deuda-vencida" },
+          { verifica: "motor", tipo: "excepcion-vencida" },
+        ],
+      });
+    }
     if (modo === "lejana") return mutacion("la exclusión real vence en 2099", () => 1, { exclusiones: base.exclusiones.map((e, i) => (i === 0 ? { ...e, vence: "2099-12-31" } : e)) });
     if (modo === "ampliada") return mutacion("un archivo más bajo la exclusión real", () => 1, { cambios: [escribir(`${primera.ruta.replace(/\/$/, "")}/zz-codigo-nuevo.ts`, "export const Nuevo = 1;\n")] });
     if (modo === "sin-uso") {
@@ -774,16 +898,19 @@ const mover: Operador = {
   aplicar(base, p) {
     const de = parametro(p, "de");
     if (!existsSync(abs(base.raiz, de)) && !base.archivos.some((a) => a === de || a.startsWith(`${de}/`))) return fallo(`«${de}» no existe`);
+    // Una carpeta entera deja muchos archivos sin clasificar: el esperado es uno de ellos y los demás son lo mismo.
+    const esCarpeta = base.archivos.some((a) => a.startsWith(`${de}/`));
     return mutacion(`mueve ${de} a ${parametro(p, "a")}`, () => (p.area === undefined ? 1 : lineaDeEntradaDeArea(base, p.area)), {
       cambios: [{ op: "mover", de, a: parametro(p, "a") }],
       tolerados: [
         { verifica: "areas", tipo: "area-fantasma" },
         { verifica: "areas", tipo: "area-sin-declaracion" },
+        ...(esCarpeta ? [{ verifica: "clasificacion", tipo: "ruta-sin-clasificar" } as const] : []),
       ],
     });
   },
 };
 
 export const OPERADORES: Readonly<Record<string, Operador>> = Object.fromEntries(
-  [ancla, marca, borrarFuente, quitarDeclaracion, quitarTodasLasDeclaraciones, insertar, quitarEntrada, fueraDelManifiesto, vaciarManifiesto, manifiestoRoto, sacarAlcance, extensionNoAnalizada, area, reglas, listado, exclusion, gobierno, texto, mover].map((o) => [o.id, o])
+  [ancla, marca, borrarFuente, quitarDeclaracion, quitarToken, agregarToken, quitarTodasLasDeclaraciones, insertar, quitarEntrada, fueraDelManifiesto, vaciarManifiesto, manifiestoRoto, sacarAlcance, extensionNoAnalizada, area, reglas, listado, exclusion, gobierno, texto, mover].map((o) => [o.id, o])
 );
