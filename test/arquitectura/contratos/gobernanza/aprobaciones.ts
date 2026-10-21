@@ -117,6 +117,7 @@ export const APROBACIONES: readonly Aprobacion[] = [
   { archivo: "test/arquitectura/contratos/contratos/primitiva-area-de-texto.ts#gobernado", blob: "ca2e97fefadec45c613402062d71eda5a5adf4f9", referencia: "DEC-03", motivo: "F6 6.6d: contrato de la primitiva AreaDeTexto (fuente única src/ui/primitivas/area-de-texto.tsx; quien dibuja <AreaDeTexto> la importa de ahí)" },
   { archivo: "test/arquitectura/contratos/mutaciones/arnes.ts", blob: "21506f917fb203f924e061934b6381ee9c3aaba9", referencia: "DEC-03", motivo: "F6 6.6d: la memoria compartida de lecturas y listados dura toda la matriz y cada mutación avisa lo que toca (rutasTocadas, al aplicar y al revertir); mismos hallazgos, el arnés de 7 contratos vuelve a ~35 s" },
   { archivo: "test/arquitectura/contratos/contratos/primitiva-casilla.ts#gobernado", blob: "4e9f3b195c25baa003af4dfc381fefa8a0cc97a0", referencia: "DEC-03", motivo: "F6 6.6e: contrato de la primitiva Casilla (fuente única src/ui/primitivas/casilla.tsx; quien dibuja <Casilla> la importa de ahí)" },
+  { archivo: "test/arquitectura/contratos/contratos/primitiva-aviso.ts#gobernado", blob: "885e4069cf57798e95976b1304eba6152e48d6cf", referencia: "DEC-03", motivo: "F6 6.6f: contrato de la primitiva Aviso (fuente única src/ui/primitivas/aviso.tsx; quien dibuja <Aviso> la importa de ahí; el rol sale de la variante)" },
 ];
 
 // ---------------------------------------------------------------------------------------------------------------------------------

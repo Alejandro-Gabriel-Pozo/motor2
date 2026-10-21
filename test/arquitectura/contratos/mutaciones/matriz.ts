@@ -130,6 +130,11 @@ export const EJEMPLOS_DE_CONTRATOS: Readonly<Record<string, EjemplosDeContrato>>
     definicion: "export function Casilla() {\n  return null;\n}\n",
     extensiones: { uso: ".tsx", definicion: ".tsx" },
   },
+  "primitiva-aviso": {
+    uso: 'export const ZzUso = () => <Aviso variante="error">x</Aviso>;\n',
+    definicion: "export function Aviso() {\n  return null;\n}\n",
+    extensiones: { uso: ".tsx", definicion: ".tsx" },
+  },
 };
 
 const ARCHIVO_DE_CUMPLIMIENTO_TEST = "test/arquitectura/contratos/gobernanza/cumplimiento.test.ts";
