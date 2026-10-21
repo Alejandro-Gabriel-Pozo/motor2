@@ -12,6 +12,10 @@ import {
   revocarInvitacion,
   type EstadoDeCuentaGoogle,
 } from "@/server/actions/auth/usuarios";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
 
 interface Rol {
   id: string;
@@ -106,15 +110,15 @@ export function UsuariosTabla({
   return (
     <div className="space-y-8">
       {mensaje && (
-        <p role={mensaje.ok ? "status" : "alert"} className={mensaje.ok ? "text-sm text-green-700" : "text-sm text-red-600"}>
+        <Aviso variante={mensaje.ok ? "exito" : "error"} forma="en-linea">
           {mensaje.texto}
-        </p>
+        </Aviso>
       )}
 
       <table className="w-full text-sm">
         <caption className="sr-only">Usuarios de la sucursal</caption>
         <thead>
-          <tr className="border-b text-left text-neutral-500">
+          <tr className="border-b text-left text-tinta-tenue">
             <th scope="col" className="py-2">Email</th>
             <th scope="col">Rol</th>
             <th scope="col">Activo</th>
@@ -139,15 +143,15 @@ export function UsuariosTabla({
                   />
                 )}
                 {m.google !== "vinculada" && (
-                  <button
-                    type="button"
+                  <Boton
+                    variante="enlace"
+                    tamano="en-fila"
                     disabled={pending && pendingId === m.id}
                     onClick={() => vincular(m)}
                     aria-label={`${m.google === "sin-invitacion" ? "Invitar a vincular" : "Reenviar la invitación a"} ${m.usuario.email}`}
-                    className="text-sm underline disabled:opacity-50"
                   >
                     {m.google === "sin-invitacion" ? "Invitar a vincular" : "Reenviar invitación"}
-                  </button>
+                  </Boton>
                 )}
               </td>
             </tr>
@@ -158,12 +162,12 @@ export function UsuariosTabla({
       <section aria-labelledby="titulo-invitaciones" className="space-y-2">
         <h2 id="titulo-invitaciones" className="font-medium">Invitaciones pendientes</h2>
         {invitaciones.length === 0 ? (
-          <p className="text-sm text-neutral-500">No hay invitaciones pendientes. Las personas nuevas aparecen acá hasta que aceptan.</p>
+          <p className="text-sm text-tinta-tenue">No hay invitaciones pendientes. Las personas nuevas aparecen acá hasta que aceptan.</p>
         ) : (
           <table className="w-full text-sm">
             <caption className="sr-only">Invitaciones pendientes de esta sucursal</caption>
             <thead>
-              <tr className="border-b text-left text-neutral-500">
+              <tr className="border-b text-left text-tinta-tenue">
                 <th scope="col" className="py-2">Email</th>
                 <th scope="col">Acceso que da</th>
                 <th scope="col">Invitó</th>
@@ -182,7 +186,7 @@ export function UsuariosTabla({
                           {a.sucursal} — {a.rol}
                         </li>
                       ))}
-                      {i.enOtrasSucursales > 0 && <li className="text-neutral-500">y {i.enOtrasSucursales === 1 ? "1 acceso más" : `${i.enOtrasSucursales} accesos más`} en otras sucursales</li>}
+                      {i.enOtrasSucursales > 0 && <li className="text-tinta-tenue">y {i.enOtrasSucursales === 1 ? "1 acceso más" : `${i.enOtrasSucursales} accesos más`} en otras sucursales</li>}
                     </ul>
                   </td>
                   <td>{i.invitadoPor ?? "—"}</td>
@@ -215,36 +219,27 @@ export function UsuariosTabla({
 
       <form action={guardarUsuario} className="flex max-w-md flex-col gap-2">
         <h2 className="font-medium">Agregar / actualizar usuario</h2>
-        <label className="flex flex-col gap-1 text-sm text-neutral-500">
-          Email
-          <input name="email" type="email" placeholder="email@negocio.com" required className="rounded border px-3 py-2 text-neutral-900 dark:text-neutral-100" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-neutral-500">
-          Sucursal
-          <select name="sucursalId" defaultValue={sucursalActualId} required className="rounded border px-3 py-2 text-neutral-900 dark:text-neutral-100">
-            {sucursales.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nombre}
-                {s.id === sucursalActualId ? " (donde estás ahora)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm text-neutral-500">
-          Rol
-          <select name="rolId" required className="rounded border px-3 py-2 text-neutral-900 dark:text-neutral-100">
-            {roles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+        <Campo etiqueta="Email" name="email" type="email" placeholder="email@negocio.com" required />
+        <Selector etiqueta="Sucursal" name="sucursalId" defaultValue={sucursalActualId} required>
+          {sucursales.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nombre}
+              {s.id === sucursalActualId ? " (donde estás ahora)" : ""}
+            </option>
+          ))}
+        </Selector>
+        <Selector etiqueta="Rol" name="rolId" required>
+          {roles.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.nombre}
+            </option>
+          ))}
+        </Selector>
+        <Boton type="submit" disabled={pending}>
           {pending ? "Guardando..." : "Guardar"}
-        </button>
+        </Boton>
       </form>
-      <p className="max-w-md text-xs text-neutral-500">
+      <p className="max-w-md text-xs text-tinta-tenue">
         Si la persona todavía no es parte de la empresa, se le manda una invitación por mail: tiene acceso recién cuando la acepta con su cuenta de Google. Si ya es parte, se le suma la
         sucursal o se le cambia el rol al instante. Para que alguien vea varias sucursales (ej. un súper admin de las 5), agregalo acá una vez por cada sucursal.
       </p>
