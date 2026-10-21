@@ -41,7 +41,7 @@ export const AREAS: DeclaracionDeAreas = {
   "app": [],
   "app/(app)": [],
   "app/(app)/administracion": [],
-  "app/(app)/carta": [],
+  "app/(app)/carta": ["tokens-visuales"],
   "app/(app)/catalogo": [],
   "app/(app)/inicio": [],
   "app/(app)/movimientos": [],

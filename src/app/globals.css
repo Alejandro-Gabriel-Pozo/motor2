@@ -21,17 +21,21 @@
 
 /* Fase 6 (6.1): los TOKENS del sistema visual. Nombres solo `--color-*`; con `@theme static` Tailwind los publica en `:root` aunque ninguna utilidad los use todavía, y de
    ellos salen las utilidades (`bg-papel`, `text-tinta-suave`, `border-borde`…). Es la FUENTE del contrato `tokens-visuales` (`test/arquitectura/contratos/contratos/tokens-visuales.ts`):
-   un token se define solo acá, lo que use un nombre que no esté acá falla, y un token que nadie usa también. Solo nacen los que ya usan los alias de `.pos-shell`; los demás
-   nacen en el paso que los usa por primera vez. Los pares de texto sobre fondo y los gráficos están medidos en `test/arquitectura/tokens-del-sistema-visual.test.ts`
+   un token se define solo acá, lo que use un nombre que no esté acá falla, y un token que nadie usa también. Solo nacen los que ya usan los alias de `.pos-shell` y la carta del panel
+   (6.4); los demás nacen en el paso que los usa por primera vez. Los pares de texto sobre fondo y los gráficos están medidos en `test/arquitectura/tokens-del-sistema-visual.test.ts`
    (texto >= 4,5:1; `ok`, `aviso` y `error` como color de gráfico >= 3:1 sobre papel). La aplicación no tiene modo oscuro (DEC-04): un solo valor por token. */
 /* @contrato tokens-visuales */
 @theme static {
   --color-papel: #FAFAF8;
   --color-superficie: #FFFFFF;
+  --color-superficie-suave: #F1EFEA;
   --color-tinta: #1C1B19;
   --color-tinta-suave: #6B6862;
   --color-tinta-tenue: #76726A;
   --color-borde: #E8E5DF;
+  /* Borde de CONTROLES (inputs, botones, recuadros de datos): gris medio, 3,67:1 sobre blanco y 3,51:1 sobre papel (WCAG 1.4.11, 3:1 para el contorno de un componente). `borde` (claro) es solo
+     decorativo (separadores); un control con ese borde perdería contraste de objeto. */
+  --color-borde-control: #8A857C;
   --color-marca: #A8431F;
   --color-marca-hover: #8A3618;
 
@@ -47,6 +51,11 @@
   --color-error-tinte: #FAEBEB;
 
   --color-foco: var(--color-tinta);
+
+  /* Con transparencia (velo de una hoja modal, sombra de un aviso, borde de un botón sobre `tinta`): no se miden en `tokens-del-sistema-visual.test.ts` (su contraste depende de lo que hay detrás). */
+  --color-velo: rgb(28 27 25 / 0.55);
+  --color-sombra: rgb(0 0 0 / 0.35);
+  --color-borde-sobre-tinta: rgb(255 255 255 / 0.5);
 }
 
 /* Un <th> con texto solo para lectores de pantalla (<span class="sr-only">Acciones</span>, en las columnas de botones) es position:absolute. Sin

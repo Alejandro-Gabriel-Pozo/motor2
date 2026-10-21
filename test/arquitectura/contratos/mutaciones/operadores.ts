@@ -527,8 +527,9 @@ const quitarToken: Operador = {
         const uso = usosFueraDelAncla(c, elegido.uso.ruta, t).find((k) => k.nombre === elegido.nombre);
         return uso === undefined ? fallo(`el uso de ${elegido.nombre} ya no está en ${elegido.uso.ruta}`) : lineaDe(t, uso.desde);
       },
-      // Si era el único uso que declaraba el contrato, el contrato se queda sin consumidores.
-      { cambios: [escribir(ruta, nuevo)], tolerados: [{ verifica: "motor", tipo: "consumidor-fantasma" }] }
+      // Si era el único uso que declaraba el contrato, el contrato se queda sin consumidores. Y el token puede tener más usos en OTROS archivos (`--color-papel` lo leen `globals.css` y la carta del
+      // panel): todos quedan sin definir. El hallazgo esperado (el uso elegido, con su archivo y línea) sigue siendo obligatorio; los demás usos son el mismo hallazgo en otro lugar.
+      { cambios: [escribir(ruta, nuevo)], tolerados: [{ verifica: "motor", tipo: "consumidor-fantasma" }, { verifica: "motor", tipo: "uso-sin-declarar" }] }
     );
   },
 };
@@ -713,9 +714,11 @@ const extensionNoAnalizada: Operador = {
     if (ext === undefined) return { noAplica: `«${ruta}» no tiene una extensión del alcance` };
     return mutacion(`${ruta} pasa a una extensión que el alcance no analiza`, () => 1, {
       cambios: [{ op: "mover", de: ruta, a: `${ruta.slice(0, -ext.length)}.jsx` }],
-      // Si era el único consumidor, el contrato se queda sin ninguno, y lo que se apoyaba en ese archivo (un caso legítimo, la declaración del área) queda suelto.
+      // Si era el único consumidor, el contrato se queda sin ninguno, y lo que se apoyaba en ese archivo (un caso legítimo, la declaración del área) queda suelto. Si era el único que usaba
+      // un token (`--color-borde-control` solo lo lee la carta del panel), ese token queda sin uso.
       tolerados: [
         { verifica: "motor", tipo: "consumidor-fantasma" },
+        { verifica: "motor", tipo: "declaracion-sin-uso" },
         { verifica: "motor", tipo: "caso-legitimo-sobrante" },
         { verifica: "areas", tipo: "dependencia-falsa" },
       ],
@@ -762,6 +765,8 @@ const reglas: Operador = {
       { verifica: "clasificacion", tipo: "ruta-sin-clasificar" },
       { verifica: "clasificacion", tipo: "clasificacion-ambigua" },
       { verifica: "areas", tipo: "area-fantasma" },
+      // Un área que declara un contrato (hoy `app/(app)/carta` declara `tokens-visuales`) y se queda sin ningún archivo clasificado por la mutación ya no usa nada.
+      { verifica: "areas", tipo: "dependencia-falsa" },
     ] as const;
     if (modo === "frontend-sin-area") {
       const regla: ReglaDeRuta = { tipo: "frontend", prefijo: "src/zz-sin-area/", profundidad: "recursiva", extensiones: [".ts"], nombres: [], motivo: "regla de prueba del arnés de mutaciones: frontend sin área" };

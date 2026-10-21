@@ -30,7 +30,9 @@
 
 ## Decisión (v2: la pantalla del prototipo, a pedido del dueño)
 
-El dueño rechazó la primera versión (la página larga vieja con «Fuera de carta» abajo): `/carta` pasa a ser la pantalla del prototipo aprobado, con su misma cara (`src/app/(app)/carta/carta-mant.module.css`: los tokens del prototipo, bordes finos, controles cuadrados de 44–48 px; sin modo oscuro, DEC-04, Fase 6).
+El dueño rechazó la primera versión (la página larga vieja con «Fuera de carta» abajo): `/carta` pasa a ser la pantalla del prototipo aprobado, con su misma cara (`src/app/(app)/carta/carta-mant.module.css`: bordes finos, controles cuadrados de 44–48 px; sin modo oscuro, DEC-04, Fase 6).
+
+> **Actualización (2026-10-21, Fase 6, paso 6.4): la paleta propia del prototipo queda REEMPLAZADA.** La administración de la carta ya no trae sus colores (`--nav`, `--ink`, `--panel`, `--line`, `--ok`, `--warn`, `--bad`…, una paleta azulada aparte): `carta-mant.module.css` usa solo los tokens `--color-*` del sistema visual único (DEC-03, DEC-04), definidos una vez en `src/app/globals.css` (`@theme static`) y vigilados por el contrato `tokens-visuales` (`test/arquitectura/contratos/contratos/tokens-visuales.ts`) y por el test de contraste `test/arquitectura/tokens-del-sistema-visual.test.ts`. Cambio visual deliberado y leve: papel cálido y tinta cálida en lugar del gris azulado, bordes de controles en gris medio (3,6:1) y el foco de teclado único del sistema. La estructura, los tamaños y el comportamiento no cambian.
 
 1. **Dos puertas** arriba: «Mantenimiento» (`/carta`) y «Parametrización» (`/carta/parametrizacion`), con la barra «Carta · …» y la sucursal.
 2. **Mantenimiento** (`src/app/(app)/carta/mantenimiento-de-carta.tsx`), tres niveles (el elegido queda en `?nivel=`):

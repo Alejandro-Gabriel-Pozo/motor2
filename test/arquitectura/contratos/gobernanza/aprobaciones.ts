@@ -79,6 +79,8 @@ export const APROBACIONES: readonly Aprobacion[] = [
   { archivo: "test/arquitectura/contratos/gobernanza/cumplimiento.ts", blob: "d554388126eae0b34899fce709ec95c44f05ee46", referencia: "DEC-03", motivo: "G6: los 7 huecos conocidos de la matriz pasan a mutaciones protegidas (el arnés verifica también el cumplimiento y el registro de aprobaciones; los evaluadores memorizan por texto)" },
   { archivo: "test/arquitectura/contratos/mutaciones/arnes.ts", blob: "773e798a0836178844c1e9cd1011181190b6a68c", referencia: "DEC-03", motivo: "G6: los 7 huecos conocidos de la matriz pasan a mutaciones protegidas (el arnés verifica también el cumplimiento y el registro de aprobaciones; los evaluadores memorizan por texto)" },
   { archivo: "test/arquitectura/contratos/mutaciones/operadores.ts", blob: "d65b7bc07dd01c5c9206fab04cb8a2943d2f4c1c", referencia: "DEC-03", motivo: "G6: los 7 huecos conocidos de la matriz pasan a mutaciones protegidas (el arnés verifica también el cumplimiento y el registro de aprobaciones; los evaluadores memorizan por texto)" },
+  // Paso F6 6.4 (DEC-03): la carta del panel pasa a los tokens; varios consumidores de un mismo token y de un área que declara `tokens-visuales`
+  { archivo: "test/arquitectura/contratos/mutaciones/operadores.ts", blob: "24f843bff00e4112a93605bb8ff5360b722ecd0d", referencia: "DEC-03", motivo: "cambio del paso F6 6.4: quitar-token, extension-no-analizada y reglas toleran los efectos legítimos de que un token tenga varios usos y de que un área declare tokens-visuales (la mutación esperada sigue siendo obligatoria)" },
 ];
 
 // ---------------------------------------------------------------------------------------------------------------------------------

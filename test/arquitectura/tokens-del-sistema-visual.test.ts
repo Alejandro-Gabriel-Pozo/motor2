@@ -9,6 +9,10 @@ import { TOKENS_VISUALES } from "./contratos/contratos/tokens-visuales";
  * color y deja de llegar hace fallar la prueba con el par, el valor y el piso.
  *  - Texto (1.4.3, AA): 4,5:1.
  *  - Color de un gráfico, de una barra de estado o del contorno del foco de teclado (1.4.11): 3:1. `aviso` sobre papel da ~3,11:1: es el piso, no hay margen para aclararlo.
+ * Los tokens CON ALFA (`velo`, `sombra`, `borde-sobre-tinta`: `rgb(r g b / a)`, 6.4) NO se miden: su contraste depende de lo que haya detrás (un velo sobre una hoja, una sombra, el borde de un botón
+ * sobre `tinta`), no es un par fijo. Solo se exige que tengan la forma `rgb(r g b / a)` y que sean exactamente esos tres: un token con alfa nuevo se agrega acá a propósito.
+ * Dos tokens de 6.4 se miden aparte: `borde-control` (el borde de los controles, >= 3:1 contra superficie y papel, WCAG 1.4.11) y `superficie-suave` (el fondo de los chips y del botón «maestro» de
+ * la carta del panel), sobre el que `tinta-tenue` NO sirve como texto (4,17:1): ver el bloque «carta del panel».
  * El bloque «fondo y foco» (6.5) mide lo que no es un valor: que el foco único esté en `@layer base` (para que las utilidades `focus-visible:` y las reglas sin capa le ganen) y excluya la
  * carta pública, y que solo la administración (`main[data-panel]`) vaya sobre papel.
  * Un par nuevo (un token nuevo que se usa como texto o fondo) se agrega acá junto con el token. El calculador es propio y mínimo: el de `src/core/carta/color-css.ts` es una copia literal
@@ -20,6 +24,9 @@ const GRAFICO = 3;
 const RE_HEX = /^#[0-9A-Fa-f]{6}$/;
 /** Un token que es un alias de otro (`--color-foco: var(--color-tinta)`). */
 const RE_ALIAS = /^var\((--color-[\w-]+)\)$/;
+/** Un token con transparencia: `rgb(28 27 25 / 0.55)`. No tiene un par de contraste fijo (ver el encabezado). */
+const RE_RGB_ALFA = /^rgb\(\d{1,3} \d{1,3} \d{1,3} \/ 0?\.\d+\)$/;
+const TOKENS_CON_ALFA = ["--color-borde-sobre-tinta", "--color-sombra", "--color-velo"];
 
 /** Los valores de las propiedades `--color-*` de la regla ancla de la fuente del contrato. */
 function tokensDelAncla(): Map<string, string> {
@@ -66,6 +73,12 @@ const TEXTO_SOBRE_FONDO: readonly (readonly [string, string])[] = [
   ["ok-tinta", "ok-tinte"],
   ["aviso-tinta", "aviso-tinte"],
   ["error", "error-tinte"],
+  // 6.4: la carta del panel (`carta-mant.module.css`). `tinta-tenue` NO está acá sobre `superficie-suave` ni sobre los tintes: no llega (ver «carta del panel»).
+  ["tinta", "superficie-suave"],
+  ["tinta-suave", "superficie-suave"],
+  ["tinta", "aviso-tinte"],
+  ["tinta-suave", "aviso-tinte"],
+  [BLANCO, "error"],
 ];
 const GRAFICOS_SOBRE_PAPEL: readonly (readonly [string, string])[] = [
   ["ok", "papel"],
@@ -73,7 +86,9 @@ const GRAFICOS_SOBRE_PAPEL: readonly (readonly [string, string])[] = [
   ["error", "papel"],
   // 6.5: el contorno del foco de teclado, contra el papel de la administración y contra las tarjetas blancas (WCAG 1.4.11, componentes de interfaz).
   ["foco", "papel"],
-  ["foco", "superficie"],
+  ["foco", "superficie"],  // 6.4: el borde de los controles (WCAG 1.4.11, contorno de un componente de interfaz) contra la superficie blanca y contra el papel de la administración.
+  ["borde-control", "superficie"],
+  ["borde-control", "papel"],
 ];
 
 describe("tokens del sistema visual: contraste de los pares (WCAG 2.1)", () => {
@@ -87,12 +102,19 @@ describe("tokens del sistema visual: contraste de los pares (WCAG 2.1)", () => {
     expect(contraste("#A8A49C", "#FAFAF8")).toBeLessThan(TEXTO);
   });
 
-  it("el ancla define tokens, y cada valor es un hex de 6 dígitos o un alias de otro token que llega a uno", () => {
+  it("el ancla define tokens, y cada valor es un hex de 6 dígitos, un alias de otro token que llega a uno o (solo velo, sombra y borde-sobre-tinta) un rgb con alfa", () => {
     expect(tokens.size).toBeGreaterThan(0);
     for (const [nombre, valor] of tokens) {
+      if (TOKENS_CON_ALFA.includes(nombre)) continue;
       const llega = RE_HEX.test(valor) || (RE_ALIAS.test(valor) && RE_HEX.test(resolver(tokens, nombre.slice("--color-".length))));
       expect(llega, `${nombre}: «${valor}» no es #RRGGBB ni un alias de un token que lo sea`).toBe(true);
     }
+  });
+
+  it("los tokens con alfa son exactamente velo, sombra y borde-sobre-tinta, escritos `rgb(r g b / a)` (no se miden: su contraste depende de lo que hay detrás)", () => {
+    const conAlfa = [...tokens].filter(([, valor]) => valor.startsWith("rgb(")).map(([nombre]) => nombre).sort();
+    expect(conAlfa).toEqual(TOKENS_CON_ALFA);
+    for (const nombre of TOKENS_CON_ALFA) expect(RE_RGB_ALFA.test(tokens.get(nombre) ?? ""), `${nombre}: «${tokens.get(nombre)}»`).toBe(true);
   });
 
   it("la superficie es blanca (las tarjetas de la administración y el fondo de la carta y del login)", () => {
@@ -148,5 +170,46 @@ describe("fondo y foco de la aplicación (Fase 6, 6.5)", () => {
     const panel = reglas.find((r) => r.selector === "body:has(main[data-panel])");
     expect(panel, "la regla `body:has(main[data-panel])`").toBeDefined();
     expect(valorDe(panel!, "background"), "fondo de la administración").toBe("var(--color-papel)");
+  });
+});
+
+describe("carta del panel (Fase 6, 6.4): `tinta-tenue` no se usa como texto sobre `superficie-suave` ni sobre los tintes", () => {
+  const RUTA = "src/app/(app)/carta/carta-mant.module.css";
+  const reglas = leerReglas(sinComentarios(leer(RAIZ_DEL_REPO, RUTA), RUTA));
+  const tokens = tokensDelAncla();
+  const fondoDe = (r: ReglaCss): string | undefined => valorDe(r, "background") ?? valorDe(r, "background-color");
+  /** Las reglas que pintan el texto con `tinta-tenue`. */
+  const conTenue = reglas.filter((r) => valorDe(r, "color") === "var(--color-tinta-tenue)");
+
+  it("`tinta-tenue` sobre `superficie-suave` y sobre los tintes de aviso y ok no llega a 4,5:1 (por eso no se usa ahí)", () => {
+    for (const fondo of ["superficie-suave", "aviso-tinte", "ok-tinte", "error-tinte"]) {
+      expect(contraste(resolver(tokens, "tinta-tenue"), resolver(tokens, fondo)), `tinta-tenue sobre ${fondo}`).toBeLessThan(TEXTO);
+    }
+  });
+
+  it("ninguna regla de la carta pinta texto `tinta-tenue` sobre un fondo suave o tintado en la misma regla", () => {
+    expect(conTenue.length, "la carta usa tinta-tenue en los rótulos y los iconos").toBeGreaterThan(0);
+    for (const r of conTenue) {
+      expect(["", "transparent", "var(--color-superficie)", "var(--color-papel)"], `${r.selector}: texto tinta-tenue sobre ${fondoDe(r)}`).toContain(fondoDe(r) ?? "");
+    }
+  });
+
+  it("los lugares donde se usa `tinta-tenue` son estos (todos sobre la superficie blanca de una tarjeta o el papel); un lugar nuevo se agrega acá midiendo su fondo", () => {
+    // `.contador small` y `.ordenN` tienen una variante con el fondo tintado de aviso (`aria-pressed`, `ordenElegida`) que cambia el texto a `tinta-suave`.
+    expect(conTenue.map((r) => r.selector).sort()).toEqual([".chevron", ".contador small", ".flecha", ".ordenN", ".rotulo"]);
+    for (const selector of [".contador[aria-pressed=\"true\"] small", ".ordenElegida .ordenN"]) {
+      const regla = reglas.find((r) => r.selector === selector);
+      expect(regla, selector).toBeDefined();
+      expect(valorDe(regla!, "color"), selector).toBe("var(--color-tinta-suave)");
+    }
+  });
+
+  it("ninguna regla de la carta declara un color suelto ni una variable propia: todo sale de `--color-*`", () => {
+    for (const r of reglas) {
+      for (const d of r.declaraciones) {
+        expect(d.propiedad.startsWith("--"), `${r.selector}: define ${d.propiedad} (la carta del panel no trae paleta propia)`).toBe(false);
+        expect(/#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(d.valor), `${r.selector}: ${d.propiedad}: ${d.valor}`).toBe(false);
+      }
+    }
   });
 });
