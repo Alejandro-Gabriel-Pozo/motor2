@@ -1,11 +1,11 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 625,
+  "total": 622,
   "entradas": 129,
   "porTipo": {
-    "button": 335,
-    "input": 192,
+    "button": 333,
+    "input": 191,
     "input-hidden": 18,
     "select": 65,
     "textarea": 15
@@ -482,8 +482,7 @@
       "select": 1
     },
     "src/components/menu-celular.tsx": {
-      "button": 3,
-      "input": 1
+      "button": 1
     },
     "src/components/mesas/mesa-card.tsx": {
       "button": 3

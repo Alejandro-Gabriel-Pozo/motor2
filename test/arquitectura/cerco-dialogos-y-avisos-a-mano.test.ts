@@ -45,7 +45,7 @@ const CERCO_DIALOGOS_Y_AVISOS: Cerco = {
   meta: "bajar hacia 0 en la Fase 6: diálogos y avisos salen de las primitivas de src/ui (Dialogo, Aviso)",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src"], extensiones: [".tsx", ".jsx"], incluir: (ruta) => !ruta.startsWith("src/ui/"), contar: contarDialogosYAvisos }),
   excepciones: [
-    { ruta: "src/components/menu-celular.tsx", motivo: `${COMPARTIDO} de diálogo: el cajón del menú en celular, sobre el <dialog> nativo con el mismo criterio que ui/…/dialogo.tsx.` },
+    { ruta: "src/components/menu-celular.tsx", motivo: `${COMPARTIDO} de diálogo: el cajón del menú en celular, sobre el <dialog> nativo con el mismo criterio que ui/…/dialogo.tsx. Es el único <dialog> que queda a mano (el ☰, el ✕, el buscador y el aviso «Sin resultados» ya usan las primitivas): pasa a Dialogo forma="lateral" en la Fase 7, con el rediseño del menú.` },
   ],
 };
 
