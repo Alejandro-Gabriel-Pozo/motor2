@@ -465,8 +465,12 @@ const borrarFuente: Operador = {
     const c = contratoDe(base, p.contrato);
     return mutacion(`borra el archivo de la fuente ${c.fuente.archivo}`, () => 1, {
       cambios: [{ op: "borrar", ruta: c.fuente.archivo }],
-      // Otro contrato que comparta la fuente también la echa de menos.
-      tolerados: [{ verifica: "motor", tipo: "fuente-ausente" }],
+      // Otro contrato que comparta la fuente también la echa de menos; y si la fuente era el único archivo de su área que usaba un contrato que el área declara (el `Boton` de `src/ui` es el
+      // único que lee tokens del área `ui`), el área queda declarando un contrato sin uso.
+      tolerados: [
+        { verifica: "motor", tipo: "fuente-ausente" },
+        { verifica: "areas", tipo: "dependencia-falsa" },
+      ],
     });
   },
 };
@@ -950,6 +954,9 @@ const mover: Operador = {
       tolerados: [
         { verifica: "areas", tipo: "area-fantasma" },
         { verifica: "areas", tipo: "area-sin-declaracion" },
+        // Mover una carpeta que contiene la fuente de un contrato (`src/ui` lleva las primitivas) deja a ese contrato con la marca en el lugar nuevo (duplicada) y sin su fuente en el viejo.
+        { verifica: "motor", tipo: "marca-duplicada" },
+        { verifica: "motor", tipo: "fuente-ausente" },
         // Mover una pieza del mecanismo o un guardián deja al registro de aprobaciones y a la lista de guardianes sin lo que esperaban.
         { verifica: "aprobaciones", tipo: "archivo-ausente" },
         { verifica: "cumplimiento", tipo: "guardian-ausente" },

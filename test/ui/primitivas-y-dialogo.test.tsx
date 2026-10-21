@@ -1,7 +1,7 @@
 import type { MouseEvent, ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { Boton, claseDeBoton } from "../../src/ui/primitivas/boton";
+import { Boton, claseDeBoton, type TamanoDeBoton, type VarianteDeBoton } from "../../src/ui/primitivas/boton";
 import { Campo } from "../../src/ui/primitivas/campo";
 import { Dialogo } from "../../src/ui/componentes/superposiciones/dialogo";
 
@@ -9,6 +9,9 @@ import { Dialogo } from "../../src/ui/componentes/superposiciones/dialogo";
  * Contrato de las piezas de `src/ui` que se puede comprobar sin navegador (el comportamiento del `<dialog>` nativo —foco atrapado, Escape, hoja inferior— se prueba en un
  * navegador real: test/e2e/ui-dialogo.spec.ts). Entorno de Vitest = Node, así que se mira el HTML que dibuja el servidor y el elemento que devuelve el componente.
  */
+const VARIANTES_DE_BOTON: readonly VarianteDeBoton[] = ["primario", "acento", "secundario", "peligro", "enlace", "enlace-peligro"];
+const TAMANOS_DE_BOTON: readonly TamanoDeBoton[] = ["normal", "compacto", "chico"];
+
 function propsDe(elemento: ReactElement): Record<string, unknown> {
   return elemento.props as Record<string, unknown>;
 }
@@ -19,9 +22,9 @@ describe("Boton", () => {
     expect(renderToStaticMarkup(<Boton type="submit">Guardar</Boton>)).toContain('type="submit"');
   });
 
-  it("zona táctil de 44 px en celular en todas las variantes y tamaños", () => {
-    for (const variante of ["primario", "secundario", "peligro", "enlace"] as const) {
-      for (const tamano of ["normal", "chico"] as const) expect(claseDeBoton(variante, tamano), `${variante}/${tamano}`).toMatch(/(^| )min-h-11( |$)/);
+  it("zona táctil de 44 px en celular en las 18 combinaciones de variante y tamaño", () => {
+    for (const variante of VARIANTES_DE_BOTON) {
+      for (const tamano of TAMANOS_DE_BOTON) expect(claseDeBoton(variante, tamano), `${variante}/${tamano}`).toMatch(/(^| )min-h-11( |$)/);
     }
   });
 

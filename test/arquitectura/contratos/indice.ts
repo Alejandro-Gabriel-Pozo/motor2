@@ -17,6 +17,7 @@ const memoLimpia = new Map<string, { fuente: string; limpia: string }>();
 const memoArbol = new Map<string, { fuente: string; arbol: ts.SourceFile }>();
 const memoCadenas = new Map<string, { fuente: string; cadenas: CadenaDeClases[] }>();
 const memoReglas = new Map<string, { fuente: string; reglas: ReglaCss[] }>();
+const memoCodigo = new Map<string, { fuente: string; codigo: string }>();
 
 /** El AST de un archivo con la memoria entre corridas: lo usan el índice y los operadores del arnés de mutaciones (que leen el árbol de la copia sin pasar por un índice). */
 export function arbolMemoizado(ruta: string, fuente: string): ts.SourceFile {
@@ -106,7 +107,16 @@ export class Indice {
     let a = this.archivosTs.get(ruta);
     if (a === undefined) {
       const arbol = this.arbol(ruta);
-      a = { fuente: this.fuente(ruta), codigo: codigoSolo(this.limpia(ruta), arbol), arbol };
+      const fuente = this.fuente(ruta);
+      // El código sin comentarios ni interior de strings recorre todo el AST: con la memoria entre corridas se calcula una vez por texto (el arnés de mutaciones cambia un archivo por corrida).
+      const previo = memoCodigo.get(ruta);
+      let codigo: string;
+      if (previo?.fuente === fuente) codigo = previo.codigo;
+      else {
+        codigo = codigoSolo(this.limpia(ruta), arbol);
+        memoCodigo.set(ruta, { fuente, codigo });
+      }
+      a = { fuente, codigo, arbol };
       this.archivosTs.set(ruta, a);
     }
     return a;

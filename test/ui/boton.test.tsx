@@ -1,0 +1,111 @@
+import type { MouseEvent, ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
+import { Boton, claseDeBoton, type TamanoDeBoton, type VarianteDeBoton } from "../../src/ui/primitivas/boton";
+
+/**
+ * Contrato de `Boton` (src/ui/primitivas/boton.tsx, contrato `primitiva-boton`): las 18 combinaciones de variante y tamaño, solo con tokens del sistema visual, sin modo oscuro, con el
+ * punto de corte `md:` y la zona táctil de 44 px en celular. El comportamiento de `cargando` también se prueba en `primitivas-y-dialogo.test.tsx` (la prueba de la capa entera); acá se
+ * prueba la estructura que dibuja cada combinación. Entorno de Vitest = Node: se mira el HTML del servidor y las props del elemento.
+ */
+const VARIANTES: Readonly<Record<VarianteDeBoton, string>> = {
+  primario: "bg-tinta text-superficie hover:bg-tinta/85",
+  acento: "bg-marca text-superficie hover:bg-marca-hover",
+  secundario: "border border-borde-control bg-superficie text-tinta hover:bg-superficie-suave",
+  peligro: "bg-error text-superficie hover:bg-error/90",
+  enlace: "text-tinta-suave underline hover:text-tinta",
+  "enlace-peligro": "text-error underline hover:decoration-2",
+};
+const TAMANOS: Readonly<Record<TamanoDeBoton, string>> = {
+  normal: "min-h-11 px-4 text-sm md:min-h-9 md:px-3",
+  compacto: "min-h-11 px-3 text-sm md:min-h-8",
+  chico: "min-h-11 px-2 text-xs md:min-h-7",
+};
+
+const clases = (html: string): string[] => (/class="([^"]*)"/.exec(html)?.[1] ?? "").split(/\s+/).filter(Boolean);
+const propsDe = (e: ReactElement): Record<string, unknown> => e.props as Record<string, unknown>;
+
+describe("Boton: variantes y tamaños", () => {
+  for (const [variante, esperadas] of Object.entries(VARIANTES) as [VarianteDeBoton, string][]) {
+    for (const [tamano, esperadosDelTamano] of Object.entries(TAMANOS) as [TamanoDeBoton, string][]) {
+      it(`${variante} / ${tamano}: las clases de la variante y del tamaño, y la base accesible`, () => {
+        const html = renderToStaticMarkup(
+          <Boton variante={variante} tamano={tamano}>
+            Guardar
+          </Boton>,
+        );
+        const dibujadas = clases(html);
+        for (const clase of [...esperadas.split(" "), ...esperadosDelTamano.split(" ")]) expect(dibujadas, `${variante}/${tamano} sin «${clase}»`).toContain(clase);
+        // Foco con el token `foco` y forma del sistema.
+        for (const clase of ["rounded", "font-medium", "focus-visible:outline-2", "focus-visible:outline-offset-2", "focus-visible:outline-foco"]) expect(dibujadas).toContain(clase);
+        expect(html).toContain('type="button"');
+        expect(html).toContain(">Guardar</button>");
+      });
+    }
+  }
+
+  it("el botón por defecto es primario y normal", () => {
+    const porDefecto = clases(renderToStaticMarkup(<Boton>x</Boton>));
+    const explicito = clases(renderToStaticMarkup(<Boton variante="primario" tamano="normal">x</Boton>));
+    expect(porDefecto).toEqual(explicito);
+  });
+
+  it("solo tokens del sistema visual: ningún color de la escala de Tailwind, ni blanco/negro, ni modo oscuro, ni el corte sm:", () => {
+    for (const variante of Object.keys(VARIANTES) as VarianteDeBoton[]) {
+      for (const tamano of Object.keys(TAMANOS) as TamanoDeBoton[]) {
+        const clase = claseDeBoton(variante, tamano);
+        expect(clase, `${variante}/${tamano}`).not.toMatch(/(^|[\s:])dark:/);
+        expect(clase, `${variante}/${tamano}`).not.toMatch(/(^|[\s:])sm:/);
+        expect(clase, `${variante}/${tamano}`).not.toMatch(/(^|[:\s-])(?:neutral|gray|slate|zinc|stone|red|white|black)(?:-\d+)?(?=[\s/]|$)/);
+        expect(clase, `${variante}/${tamano}`).not.toMatch(/\[[^\]]*\]/);
+      }
+    }
+  });
+
+  it("zona táctil de 44 px en celular y el tamaño compacto solo desde md:", () => {
+    for (const variante of Object.keys(VARIANTES) as VarianteDeBoton[]) {
+      for (const tamano of Object.keys(TAMANOS) as TamanoDeBoton[]) {
+        const dibujadas = claseDeBoton(variante, tamano).split(" ");
+        expect(dibujadas, `${variante}/${tamano}`).toContain("min-h-11");
+        // Toda altura menor está detrás de `md:`: sin `min-h-*` sin prefijo que no sea la de 44 px.
+        expect(dibujadas.filter((c) => /^min-h-/.test(c)), `${variante}/${tamano}`).toEqual(["min-h-11"]);
+        expect(dibujadas.some((c) => /^md:min-h-/.test(c))).toBe(true);
+      }
+    }
+  });
+
+  it("className se suma al final sin quitar las clases del sistema", () => {
+    const dibujadas = clases(renderToStaticMarkup(<Boton className="w-full">x</Boton>));
+    expect(dibujadas[dibujadas.length - 1]).toBe("w-full");
+    expect(dibujadas).toContain("min-h-11");
+  });
+});
+
+describe("Boton: accesibilidad y estado cargando", () => {
+  const clic = (el: ReactElement, preventDefault = vi.fn()) => (propsDe(el).onClick as (e: MouseEvent<HTMLButtonElement>) => void)({ preventDefault } as unknown as MouseEvent<HTMLButtonElement>);
+
+  it("cargando: aria-busy, el clic no llega al consumidor y se frena el envío del formulario", () => {
+    const alClic = vi.fn();
+    const preventDefault = vi.fn();
+    const enCurso = Boton({ cargando: true, onClick: alClic, type: "submit", children: "Cobrar" });
+    clic(enCurso, preventDefault);
+    expect(alClic).not.toHaveBeenCalled();
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(renderToStaticMarkup(<Boton cargando>Cobrar</Boton>)).toContain('aria-busy="true"');
+    // El atributo (no la variante de Tailwind `aria-busy:`, que sí está en la clase).
+    expect(renderToStaticMarkup(<Boton>Cobrar</Boton>)).not.toMatch(/<button[^>]*\saria-busy=/);
+  });
+
+  it("sin cargando el clic llega al consumidor y no se frena nada", () => {
+    const alClic = vi.fn();
+    const preventDefault = vi.fn();
+    clic(Boton({ onClick: alClic, children: "Cobrar" }), preventDefault);
+    expect(alClic).toHaveBeenCalledTimes(1);
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("cargando no pone el atributo disabled (se perdería el foco del teclado); disabled sí", () => {
+    expect(renderToStaticMarkup(<Boton cargando>Cobrar</Boton>)).not.toMatch(/<button[^>]*\sdisabled[\s=>]/);
+    expect(renderToStaticMarkup(<Boton disabled>Cobrar</Boton>)).toMatch(/<button[^>]*\sdisabled[\s=>]/);
+  });
+});

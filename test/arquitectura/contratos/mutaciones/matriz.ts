@@ -104,6 +104,12 @@ export const EJEMPLOS_DE_CONTRATOS: Readonly<Record<string, EjemplosDeContrato>>
     definicion: ".zz-definicion {\n  --color-tinta: red;\n}\n",
     extensiones: { uso: ".tsx", definicion: ".css" },
   },
+  // Las primitivas: el uso crudo es la etiqueta JSX sin importar la fuente; la redefinición, una función local con el nombre de la primitiva. Los dos ejemplos son TSX (llevan JSX).
+  "primitiva-boton": {
+    uso: "export const ZzUso = () => <Boton>x</Boton>;\n",
+    definicion: "export function Boton() {\n  return null;\n}\n",
+    extensiones: { uso: ".tsx", definicion: ".tsx" },
+  },
 };
 
 const ARCHIVO_DE_CUMPLIMIENTO_TEST = "test/arquitectura/contratos/gobernanza/cumplimiento.test.ts";
@@ -290,8 +296,11 @@ function invarianteDeContrato(base: BaseDeMutacion, c: Contrato): Invariante {
 
   // --- exclusión del análisis: el alcance movido de carpeta, un consumidor con una extensión que nadie analiza.
   const dentroDe = (raiz: string, ruta: string): boolean => ruta === raiz || ruta.startsWith(`${raiz.replace(/\/$/, "")}/`);
+  const fuenteDeOtroContratoEnElAlcance = c.alcance.raices.some((r) => base.contratos.some((k) => dentroDe(r, k.fuente.archivo)));
   if (!c.alcance.raices.some((r) => dentroDe(r, fuente))) {
-    m.push(mut(inv, "exclusion-del-analisis", "sacar-alcance", P, el(c.alcance.raices[0] ?? fuente, `el alcance del contrato (${c.alcance.raices.join(", ")})`), esp("motor", "alcance-vacio", fuente, "sin-posicion", "no encontró ningún archivo")));
+    // Si alguna raíz del alcance contiene la fuente de OTRO contrato (las primitivas miran `src/app`, donde vive `globals.css`), mover todas las raíces se llevaría esa fuente y rompería otros contratos: no
+    // aislaría nada. En ese caso la clase queda cubierta por la extensión no analizada de un consumidor real (más abajo).
+    if (!fuenteDeOtroContratoEnElAlcance) m.push(mut(inv, "exclusion-del-analisis", "sacar-alcance", P, el(c.alcance.raices[0] ?? fuente, `el alcance del contrato (${c.alcance.raices.join(", ")})`), esp("motor", "alcance-vacio", fuente, "sin-posicion", "no encontró ningún archivo")));
   } else {
     // La fuente vive DENTRO del alcance (un CSS global): mover todo el alcance se llevaría también la fuente y las de los demás contratos que la comparten, y no aislaría nada. Se mueve la última
     // raíz que no la contiene; el código que sale de las carpetas que el contrato mira no desaparece en silencio: la clasificación de rutas no reconoce la carpeta nueva.

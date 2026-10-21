@@ -77,7 +77,7 @@ describe("áreas y contratos declarados (repo real)", () => {
 
   it("las áreas con contratos hoy son las que el motor dice y todas las demás declaran [] explícito", () => {
     const conContratos = Object.entries(AREAS).filter(([, ids]) => ids.length > 0).map(([a]) => a);
-    expect(conContratos).toEqual(["app/(app)/carta", "components/carta-publica"]);
+    expect(conContratos).toEqual(["app/(app)/carta", "components/carta-publica", "ui"]);
     for (const ids of Object.values(AREAS)) expect(Array.isArray(ids)).toBe(true);
   });
 
@@ -405,16 +405,16 @@ describe("mutaciones sobre una copia exacta del repo", () => {
 
   it("agregar un id falso → no compila, y si se cuela es dependencia-falsa", () => {
     // @ts-expect-error «id-falso» no es un IdDeContrato.
-    const ids: DeclaracionDeAreas = { ...AREAS, ui: ["id-falso"] };
+    const ids: DeclaracionDeAreas = { ...AREAS, lib: ["id-falso"] };
     const r = correr(ids);
-    mostrar('ui: ["id-falso"]', r);
-    expect(vistos(r)).toEqual([["dependencia-falsa", "ui"]]);
+    mostrar('lib: ["id-falso"]', r);
+    expect(vistos(r)).toEqual([["dependencia-falsa", "lib"]]);
   }, 60_000);
 
   it("declarar un contrato real en un área que no lo usa → dependencia-falsa", () => {
-    const r = correr({ ...AREAS, ui: ["borde-propio-de-carta"] });
-    mostrar('ui: ["borde-propio-de-carta"]', r);
-    expect(vistos(r)).toEqual([["dependencia-falsa", "ui"]]);
+    const r = correr({ ...AREAS, lib: ["borde-propio-de-carta"] });
+    mostrar('lib: ["borde-propio-de-carta"]', r);
+    expect(vistos(r)).toEqual([["dependencia-falsa", "lib"]]);
   }, 60_000);
 
   it("la copia se deshace sola: el repo real no se tocó", () => {

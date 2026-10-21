@@ -28,7 +28,7 @@ import { usosDeContratos, type UsosDeContrato } from "./usos";
  * guardián la cruza con él: un id de acá que el manifiesto no tiene es `dependencia-falsa`; un contrato del manifiesto que falte acá no se puede declarar y, si un
  * área lo usa, es `dependencia-omitida` con la pista de agregarlo.
  */
-export const IDS_DE_CONTRATO = ["borde-propio-de-carta", "separador-de-lista-de-carta", "tokens-visuales"] as const;
+export const IDS_DE_CONTRATO = ["borde-propio-de-carta", "separador-de-lista-de-carta", "tokens-visuales", "primitiva-boton"] as const;
 export type IdDeContrato = (typeof IDS_DE_CONTRATO)[number];
 
 /** Área → contratos que declara. `[]` es «no dependo de ninguno» (explícito y obligatorio). Los nombres se derivan de la ruta (`areaDe`). */
@@ -59,7 +59,7 @@ export const AREAS: DeclaracionDeAreas = {
   "components/catalogo": [],
   "components/mesas": [],
   "components/receta": [],
-  "ui": [],
+  "ui": ["tokens-visuales"],
   // --- trabajo-programado: los crons de vercel.json.
   "app/api/cron": [],
   // --- nucleo: una por carpeta de src/core (las 21 de `.dependency-cruiser-dominios.cjs`) y los archivos sueltos de la raíz.

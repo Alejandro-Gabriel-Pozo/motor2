@@ -3,28 +3,33 @@ import type { ButtonHTMLAttributes, MouseEvent } from "react";
 /**
  * Botón del sistema de diseño (capa `ui/primitivas`: no conoce el negocio, no importa nada de `core/`, `server/`, `components/` ni `app/`; ver test/arquitectura/ui-sin-negocio.test.ts).
  *
- * - Zona táctil de 44 px en celular (`min-h-11`) que baja a la compacta en pantallas anchas (`sm:`): mobile first.
+ * - Solo tokens del sistema visual (`--color-*` de `@theme static`, src/app/globals.css) y sin modo oscuro (DEC-04): ni colores de la escala de Tailwind ni la variante de modo oscuro.
+ * - Zona táctil de 44 px en celular (`min-h-11`) que baja a la compacta desde `md:` (el punto de corte del sistema): mobile first.
  * - `cargando`: la acción está en curso. NO se deshabilita de verdad (se perdería el foco del teclado, mismo criterio que `form-con-resultado.tsx`): se marca `aria-busy`,
  *   se atenúa y se ignora el clic, así un doble clic no manda dos envíos. La clave de idempotencia sigue siendo asunto del servidor.
  * - `type` es `button` por defecto: un botón dentro de un formulario no lo envía por accidente.
- * - Foco visible siempre.
+ * - Foco visible siempre, del color del token `foco` (el mismo contorno de 2 px que dibuja la regla global de `globals.css`: acá se repite con las MISMAS propiedades para que el
+ *   botón no dependa de la capa base y, al ser una utilidad, no se suma un segundo anillo).
  */
-export type VarianteDeBoton = "primario" | "secundario" | "peligro" | "enlace";
-export type TamanoDeBoton = "normal" | "chico";
+export type VarianteDeBoton = "primario" | "acento" | "secundario" | "peligro" | "enlace" | "enlace-peligro";
+export type TamanoDeBoton = "normal" | "compacto" | "chico";
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 dark:focus-visible:outline-neutral-100 disabled:opacity-50 aria-busy:cursor-progress aria-busy:opacity-70";
+  "inline-flex items-center justify-center gap-2 rounded font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco disabled:opacity-50 aria-busy:cursor-progress aria-busy:opacity-70";
 
 const VARIANTES: Record<VarianteDeBoton, string> = {
-  primario: "bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200",
-  secundario: "border border-neutral-400 bg-transparent hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800",
-  peligro: "bg-red-700 text-white hover:bg-red-800",
-  enlace: "text-neutral-700 underline hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100",
+  primario: "bg-tinta text-superficie hover:bg-tinta/85",
+  acento: "bg-marca text-superficie hover:bg-marca-hover",
+  secundario: "border border-borde-control bg-superficie text-tinta hover:bg-superficie-suave",
+  peligro: "bg-error text-superficie hover:bg-error/90",
+  enlace: "text-tinta-suave underline hover:text-tinta",
+  "enlace-peligro": "text-error underline hover:decoration-2",
 };
 
 const TAMANOS: Record<TamanoDeBoton, string> = {
-  normal: "min-h-11 px-4 text-sm sm:min-h-9 sm:px-3",
-  chico: "min-h-11 px-3 text-sm sm:min-h-7 sm:px-2 sm:text-xs",
+  normal: "min-h-11 px-4 text-sm md:min-h-9 md:px-3",
+  compacto: "min-h-11 px-3 text-sm md:min-h-8",
+  chico: "min-h-11 px-2 text-xs md:min-h-7",
 };
 
 export function claseDeBoton(variante: VarianteDeBoton = "primario", tamano: TamanoDeBoton = "normal"): string {
@@ -38,6 +43,7 @@ export interface PropsDeBoton extends ButtonHTMLAttributes<HTMLButtonElement> {
   cargando?: boolean;
 }
 
+// @contrato primitiva-boton
 export function Boton({ variante = "primario", tamano = "normal", cargando = false, type = "button", className, onClick, children, ...resto }: PropsDeBoton) {
   function alHacerClic(e: MouseEvent<HTMLButtonElement>) {
     if (cargando) {

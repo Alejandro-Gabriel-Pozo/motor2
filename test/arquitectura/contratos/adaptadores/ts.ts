@@ -57,6 +57,28 @@ export interface ArchivoTs {
   arbol: ts.SourceFile;
 }
 
+/**
+ * Las declaraciones de un archivo (nombre y posición de cada función, clase, interfaz, tipo, enum o variable), en el orden del recorrido, memorizadas por AST. El AST ya viene memorizado entre
+ * corridas (`arbolMemoizado`), así que el arnés de mutaciones, que corre el motor cientos de veces con varios contratos que buscan declaraciones (las primitivas de `src/ui`), recorre cada archivo
+ * UNA vez y no una por contrato y por corrida. Es una caché pura: el resultado es el mismo que recorrer el árbol cada vez.
+ */
+const declaracionesMemo = new WeakMap<ts.SourceFile, readonly { nombre: string; desde: number }[]>();
+function declaracionesDe(arbol: ts.SourceFile): readonly { nombre: string; desde: number }[] {
+  let lista = declaracionesMemo.get(arbol);
+  if (lista === undefined) {
+    const acumulada: { nombre: string; desde: number }[] = [];
+    const recorrer = (nodo: ts.Node): void => {
+      const nombre = nombreDeclarado(nodo);
+      if (nombre) acumulada.push({ nombre: nombre.text, desde: nombre.getStart(arbol) });
+      ts.forEachChild(nodo, recorrer);
+    };
+    recorrer(arbol);
+    lista = acumulada;
+    declaracionesMemo.set(arbol, lista);
+  }
+  return lista;
+}
+
 export function coincidenciasDeTs(archivo: ArchivoTs, detector: DetectorTs): Coincidencia[] {
   const { fuente, codigo, arbol } = archivo;
   const salida: Coincidencia[] = [];
@@ -76,12 +98,12 @@ export function coincidenciasDeTs(archivo: ArchivoTs, detector: DetectorTs): Coi
         salida.push({ desde: nodo.getStart(arbol), fragmento: colapsar(nodo.getText(arbol)), nombre: nodo.name.text, companeras: [] });
       }
     }
-    if (detector.tipo === "declara") {
-      const nombre = nombreDeclarado(nodo);
-      if (nombre && prueba(detector.nombre, nombre.text)) salida.push({ desde: nombre.getStart(arbol), fragmento: nombre.text, nombre: nombre.text, companeras: [] });
-    }
     ts.forEachChild(nodo, visitar);
   };
+  if (detector.tipo === "declara") {
+    for (const d of declaracionesDe(arbol)) if (prueba(detector.nombre, d.nombre)) salida.push({ desde: d.desde, fragmento: d.nombre, nombre: d.nombre, companeras: [] });
+    return salida;
+  }
   visitar(arbol);
   return salida;
 }
