@@ -21,12 +21,13 @@ export const ESTADO_STOCK_CONSOLIDADO_LABEL: Record<EstadoStockConsolidado, stri
 };
 
 export const ESTADO_STOCK_CONSOLIDADO_COLOR: Record<EstadoStockConsolidado, string> = {
-  NEGATIVO: "text-red-600",
-  CON_DESVIO: "text-amber-700",
-  SIN_CONTEO: "text-neutral-500",
-  // text-neutral-400 daba 2.58:1 sobre blanco (WCAG AA pide 4.5:1 para texto normal) — encontrado corriendo el proyecto
+  NEGATIVO: "text-error",
+  CON_DESVIO: "text-aviso-tinta",
+  SIN_CONTEO: "text-tinta-tenue",
+  // Un gris más claro daba 2.58:1 sobre blanco (WCAG AA pide 4.5:1 para texto normal) — encontrado corriendo el proyecto
   // Playwright de la demo (§5, docs/planes-demo-y-claridad-reportes-2026-09-21.md, tramo 5) con datos reales: ninguna de
   // las dos pantallas que usan este estado (/stock/consolidado, /reportes/salud) tenía chequeo de axe hasta ahora.
-  SIN_MOVIMIENTOS: "text-neutral-500",
-  CONCILIADO: "text-green-700",
+  // `tinta-tenue` está medido en test/arquitectura/tokens-del-sistema-visual.test.ts (>= 4,5:1).
+  SIN_MOVIMIENTOS: "text-tinta-tenue",
+  CONCILIADO: "text-ok-tinta",
 };
