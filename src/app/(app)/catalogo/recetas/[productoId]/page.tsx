@@ -244,7 +244,7 @@ export default async function RecetaEditorPage({
                     tipo="cantidad"
                     etiqueta="La cantidad de raciones"
                     decimales={0}
-                    className="w-20"
+                    className="w-24"
                     tamano="compacto"
                   />
                 </label>
@@ -278,7 +278,7 @@ export default async function RecetaEditorPage({
                     tipo="cantidad"
                     etiqueta="El tiempo de preparación"
                     decimales={0}
-                    className="w-20"
+                    className="w-24"
                     tamano="compacto"
                   />
                 </label>
@@ -290,7 +290,7 @@ export default async function RecetaEditorPage({
                     tipo="cantidad"
                     etiqueta="El tiempo de cocción"
                     decimales={0}
-                    className="w-20"
+                    className="w-24"
                     tamano="compacto"
                   />
                 </label>
