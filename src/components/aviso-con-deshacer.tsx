@@ -86,7 +86,7 @@ export function useAvisoConDeshacer(): Contexto {
 
 /**
  * Un botón que hace un cambio con «Deshacer» (archivar o restaurar, quitar o volver a vincular): `accion(valor)` al tocarlo y `accion(!valor)` al deshacer. Va adentro de un
- * `AvisoConDeshacer`. Con la cara de `Boton` (`secundario`; el principal, `primario`) y 44 px de alto en celular.
+ * `AvisoConDeshacer`. Con la cara de `Boton` (`secundario`; el principal, `primario`) y 44 px de alto en cualquier ancho (`tamano="tactil"`, como antes de migrar a `Boton`).
  */
 export function BotonConDeshacer({
   accion,
@@ -107,7 +107,7 @@ export function BotonConDeshacer({
   return (
     <Boton
       variante={principal ? "primario" : "secundario"}
-      tamano="compacto"
+      tamano="tactil"
       aria-label={etiquetaAccesible}
       aria-disabled={ocupado || undefined}
       cargando={ocupado}
