@@ -161,3 +161,24 @@ describe("las pantallas de la carta usan la misma escala (paso 4: sin tamaños a
     expect(html).toMatch(/<footer class="portal-footer carta-rol-etiqueta/);
   });
 });
+
+describe("la descripción de la banda de la sección (decisión del dueño: piso de 14 px)", () => {
+  const dibujarBanda = (tema: Record<string, string>) =>
+    renderToStaticMarkup(
+      <Seccion seccion={{ nombre: "Platos", titulo: null, descripcion: "Todas con papas", imagenUrl: null, orden: 0, items: [], promos: [] }} indice={0} total={1} estilo={resolverEstiloCarta(tema)} />,
+    );
+  const parrafo = (html: string) => html.match(/<p class="line-clamp-1[^"]*" style="([^"]*)">Todas con papas<\/p>/)?.[1] ?? "";
+
+  it("el <p> lleva el piso del rol Aclaración con el tema por defecto (11 px): no queda por debajo de 14 px", () => {
+    const estilo = resolverEstiloCarta({});
+    expect(estilo.valores.carta_fuente_banda_descripcion).toBe("0.6875rem");
+    expect(parrafo(dibujarBanda({}))).toContain("font-size:max(var(--carta-fs-aclaracion), 0.6875rem)");
+    // La variable de la escala es max(0.875rem, …): con el tema por defecto, la letra es de 14 px como mínimo.
+    expect(estilo.variablesCss["--carta-fs-aclaracion"]).toMatch(/^max\(0\.875rem, /);
+    expect(parseFloat(ESCALA_DE_LA_CARTA.aclaracion) * 16).toBeGreaterThanOrEqual(14);
+  });
+
+  it("el tema sigue mandando hacia arriba: un tamaño mayor entra en el max()", () => {
+    expect(parrafo(dibujarBanda({ carta_fuente_banda_descripcion: "1.25rem" }))).toContain("font-size:max(var(--carta-fs-aclaracion), 1.25rem)");
+  });
+});

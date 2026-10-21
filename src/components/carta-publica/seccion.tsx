@@ -48,8 +48,9 @@ export function Seccion({
           >
             {seccion.titulo ?? seccion.nombre}
           </h2>
+          {/* Piso de 14 px (decisión del dueño): la descripción de la banda sigue al tema SOLO hacia arriba, como todo texto de la carta (`--carta-fs-aclaracion`: el piso del rol Aclaración). */}
           {seccion.descripcion && (
-            <p className={`line-clamp-1 font-light leading-snug${c.bandaDescripcion ? "" : " opacity-70"}`} style={{ fontSize: estilo.valores.carta_fuente_banda_descripcion, color: c.bandaDescripcion ?? undefined }}>
+            <p className={`line-clamp-1 font-light leading-snug${c.bandaDescripcion ? "" : " opacity-70"}`} style={{ fontSize: `max(var(--carta-fs-aclaracion), ${estilo.valores.carta_fuente_banda_descripcion})`, color: c.bandaDescripcion ?? undefined }}>
               {seccion.descripcion}
             </p>
           )}
