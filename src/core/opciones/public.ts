@@ -56,3 +56,6 @@ export type { EjesDeLaCarta, GrupoParaRol, RolDelGrupoEnCarta } from "./lectura-
 // por parámetro (`core/pos` ya importa `core/opciones`: importarlo desde acá armaría un ciclo).
 export { fraseDeLecturaDePrecio, formaDelGrupoPorRespuesta, leerPrecioDeOpcion, respuestaDelGrupo } from "./lectura-de-precio";
 export type { ComoCambiaElPrecio, FormaDelGrupo, LecturaDePrecio } from "./lectura-de-precio";
+// Fase 6 (6.15a): la lectura del precio dentro de «Opciones de venta» de un producto (qué filas se leen y contra qué referencia).
+export { leerPrecioDeFilaDeAdmision, referenciaDePrecioDeAdmisiones } from "./lectura-de-precio-en-admision";
+export type { AdmisionParaLaReferencia, FilaDeAdmisionParaLeer, ReferenciaDePrecio } from "./lectura-de-precio-en-admision";
