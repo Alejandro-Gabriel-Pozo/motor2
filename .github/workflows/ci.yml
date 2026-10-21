@@ -1,5 +1,5 @@
 # Gate de verificación en CI: los mismos 8 comandos que AGENTS.md exige correr limpios en la misma corrida, más la auditoría de dependencias (GT-23).
-#   estático    → tsc, lint, arquitectura (dependency-cruiser), código muerto (knip), auditar:dependencias
+#   estático    → tsc, lint, arquitectura (dependency-cruiser + evidencia de los contratos, que sube como artefacto), código muerto (knip), auditar:dependencias
 #   build       → npm run build + npm run plataforma:build (con su propia base migrada)
 #   integración → npm test (Vitest contra Postgres real), repartido en PARTES_VITEST jobs con `--shard`
 #   conteo      → comprueba que las partes juntas corrieron todos los archivos de test una sola vez y suma los conteos
@@ -68,7 +68,20 @@ jobs:
       - run: npm run lint
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+      # `npm run arquitectura` = dependency-cruiser + el EJECUTOR DE EVIDENCIA de los contratos (`test/arquitectura/contratos/ejecutar.ts`, con tsx y sin Vitest: el camino B del guardián). Escribe en
+      # `CONTRATOS_EVIDENCIA` el JSON de lo que corrió y cubrió, y el resumen en el `GITHUB_STEP_SUMMARY` de la corrida; falla si el guardián pasó en vacío (ver `test/arquitectura/contratos/LEEME.md`).
+      # `CONTRATOS_EVIDENCIA` no cambia lo que hace ningún guardián: solo dice adónde se escribe lo ya calculado.
       - run: npm run arquitectura
+        env:
+          CONTRATOS_EVIDENCIA: resultado-contratos.json
+      # La evidencia queda como artefacto de la corrida. Sin `if` ni `continue-on-error`, y con `if-no-files-found: error`: si el ejecutor no la dejó, este paso falla (y `cumplimiento.ts` exige que el paso exista).
+      - name: Evidencia de contratos (artefacto)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: resultado-contratos
+          path: resultado-contratos.json
+          if-no-files-found: error
+          retention-days: 7
       - run: npm run analizar:muerto
       # Cadena de suministro (GT-23, E.7): falla ante un aviso alto o crítico de las dependencias de producción que no tenga una excepción vigente en
       # `scripts/auditoria-dependencias-excepciones.ts`. Consulta el registro de npm: depende de la red y de avisos nuevos, a propósito (un aviso nuevo pone rojo el Gate).

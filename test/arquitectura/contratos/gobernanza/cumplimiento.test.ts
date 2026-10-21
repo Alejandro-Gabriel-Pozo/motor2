@@ -7,6 +7,7 @@ import {
   GUARDIANES_ADICIONALES,
   TIPOS_DE_CUMPLIMIENTO,
   evaluarCableado,
+  evaluarConfigDePlaywright,
   evaluarConfigDeVitest,
   evaluarManifiesto,
   evaluarPruebaProtegida,
@@ -82,6 +83,15 @@ const CI_VALIDO = [
   `      - uses: actions/checkout@${SHA} # v4.4.0`,
   "      - run: npm ci",
   "      - run: npm run arquitectura",
+  "        env:",
+  "          CONTRATOS_EVIDENCIA: resultado-contratos.json",
+  "      - name: Evidencia de contratos (artefacto)",
+  `        uses: actions/upload-artifact@${SHA} # v4.6.2`,
+  "        with:",
+  "          name: resultado-contratos",
+  "          path: resultado-contratos.json",
+  "          if-no-files-found: error",
+  "          retention-days: 7",
   "  build:",
   "    runs-on: ubuntu-latest",
   "    steps:",
@@ -146,6 +156,19 @@ describe("evaluarWorkflow (ci.yml)", () => {
     { titulo: "`CREAR_CERCOS` en un `env`", de: "          X: y\n", a: "          X: y\n          CREAR_CERCOS: '1'\n", tipo: "ci-variable-prohibida", donde: "CREAR_CERCOS" },
     { titulo: "`BAJAR_CERCOS=1` delante de un comando", de: "      - run: npm run build", a: "      - run: BAJAR_CERCOS=1 npm run build", tipo: "ci-variable-prohibida", donde: "BAJAR_CERCOS=1" },
     { titulo: "una variable que regenera un golden", de: "          X: y\n", a: "          X: y\n          REGENERAR_HUELLA_DE_LOGIN: '1'\n", tipo: "ci-variable-prohibida", donde: "REGENERAR_HUELLA" },
+    { titulo: "otra variable `CONTRATOS_*` (solo `CONTRATOS_EVIDENCIA` está permitida)", de: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n", a: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n          CONTRATOS_REGENERAR: '1'\n", tipo: "ci-variable-prohibida", donde: "CONTRATOS_REGENERAR" },
+    { titulo: "una variable que empieza como la permitida (`CONTRATOS_EVIDENCIAS`) no está permitida", de: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n", a: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n          CONTRATOS_EVIDENCIAS: '1'\n", tipo: "ci-variable-prohibida", donde: "CONTRATOS_EVIDENCIAS" },
+    { titulo: "el gate deja de esperar a `estatico` (el job que corre la evidencia)", de: "needs: [estatico, build, integracion, conteo, e2e]", a: "needs: [build, integracion, conteo, e2e]", tipo: "ci-gate-sin-needs", donde: "needs: [build, integracion, conteo, e2e]" },
+    { titulo: "la expresión del gate deja de nombrar a `estatico`", de: '"${{ needs.estatico.result }}" = "success" -a ', a: "", tipo: "ci-gate-expresion", donde: "- name: Todos los jobs" },
+    { titulo: "evidencia: el paso de `npm run arquitectura` pierde `CONTRATOS_EVIDENCIA` (el ejecutor no deja su JSON)", de: "        env:\n          CONTRATOS_EVIDENCIA: resultado-contratos.json\n", a: "", tipo: "ci-sin-evidencia", donde: "- run: npm run arquitectura" },
+    { titulo: "evidencia: `CONTRATOS_EVIDENCIA` apunta a otro archivo que el que se sube", de: "CONTRATOS_EVIDENCIA: resultado-contratos.json", a: "CONTRATOS_EVIDENCIA: otro.json", tipo: "ci-sin-evidencia", donde: "CONTRATOS_EVIDENCIA: otro.json" },
+    { titulo: "evidencia: se quita el paso que sube la evidencia", de: "      - name: Evidencia de contratos (artefacto)\n        uses: actions/upload-artifact@" + SHA + " # v4.6.2\n        with:\n          name: resultado-contratos\n          path: resultado-contratos.json\n          if-no-files-found: error\n          retention-days: 7\n", a: "", tipo: "ci-sin-evidencia", donde: "- run: npm run arquitectura" },
+    { titulo: "evidencia: el paso ya no es `actions/upload-artifact`", de: "uses: actions/upload-artifact@" + SHA + " # v4.6.2\n        with:\n          name: resultado-contratos", a: "uses: actions/cache@" + SHA + " # v4.2.0\n        with:\n          name: resultado-contratos", tipo: "ci-sin-evidencia", donde: "- run: npm run arquitectura" },
+    { titulo: "evidencia: el paso sube otro archivo", de: "          path: resultado-contratos.json\n", a: "          path: otro.json\n", tipo: "ci-sin-evidencia", donde: "- run: npm run arquitectura" },
+    { titulo: "evidencia: `if-no-files-found: ignore` (si no hay evidencia el CI sigue en verde)", de: "          if-no-files-found: error\n", a: "          if-no-files-found: ignore\n", tipo: "ci-sin-evidencia", donde: "if-no-files-found: ignore" },
+    { titulo: "evidencia: sin `if-no-files-found` (el valor por defecto solo avisa)", de: "          if-no-files-found: error\n", a: "", tipo: "ci-sin-evidencia", donde: "- name: Evidencia de contratos" },
+    { titulo: "evidencia: el paso que sube lleva `continue-on-error: true`", de: "      - name: Evidencia de contratos (artefacto)\n", a: "      - name: Evidencia de contratos (artefacto)\n        continue-on-error: true\n", tipo: "ci-continue-on-error", donde: "continue-on-error: true" },
+    { titulo: "evidencia: el paso que sube lleva un `if` (se puede saltear)", de: "      - name: Evidencia de contratos (artefacto)\n", a: "      - name: Evidencia de contratos (artefacto)\n        if: github.ref == 'refs/heads/main'\n", tipo: "ci-condicion-no-permitida", donde: "if: github.ref" },
   ];
   for (const c of casos) {
     it(`rojo: ${c.titulo}`, () => {
@@ -166,6 +189,16 @@ describe("evaluarWorkflow (ci.yml)", () => {
   it("rojo: sin `jobs` o sin `on` el workflow no se puede comprobar (falla cerrado)", () => {
     expect(resumen(anotar(evaluarWorkflow("name: CI\non:\n  push:\n    branches: [main]\n")))).toEqual([["ci-ilegible", 1]]);
     expect(resumen(anotar(evaluarWorkflow(CI_VALIDO.replace("on:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n", ""))))).toEqual([["ci-ilegible", 1]]);
+  });
+
+  it("rojo: el paso que sube la evidencia está ANTES del de `npm run arquitectura` (sube un archivo que todavía no existe)", () => {
+    const paso = "      - run: npm run arquitectura\n        env:\n          CONTRATOS_EVIDENCIA: resultado-contratos.json\n";
+    const subida = CI_VALIDO.slice(CI_VALIDO.indexOf("      - name: Evidencia de contratos (artefacto)"), CI_VALIDO.indexOf("  build:\n"));
+    const mal = CI_VALIDO.replace(paso + subida, subida + paso);
+    expect(mal).not.toBe(CI_VALIDO);
+    const r = anotar(evaluarWorkflow(mal));
+    expect(resumen(r)).toEqual([["ci-sin-evidencia", lineaDe(mal, "- run: npm run arquitectura")]]);
+    expect(sinCorreccion(r)).toEqual([]);
   });
 
   it("verde: un workflow con CRLF se lee igual", () => {
@@ -297,6 +330,55 @@ describe("evaluarConfigDeVitest (vitest.config.ts)", () => {
     expect(patronAlcanza("test/[ab]/x.ts", "test/b/x.ts")).toBe(true);
     expect(patronAlcanza("./test/a/**", "test/a/x.ts")).toBe(true);
     expect(patronAlcanza("test/!(a)/x.ts", "test/b/x.ts")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// (c') playwright.config.ts: forbidOnly (G7)
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+const PLAYWRIGHT_VALIDO = [
+  'import { defineConfig } from "@playwright/test";',
+  "export default defineConfig({",
+  '  testDir: "./test/e2e",',
+  "  workers: 1,",
+  "  forbidOnly: !!process.env.CI,",
+  "  retries: process.env.CI ? 1 : 0,",
+  "});",
+  "",
+].join("\n");
+
+describe("evaluarConfigDePlaywright (playwright.config.ts)", () => {
+  it("verde: `forbidOnly: !!process.env.CI`, `Boolean(process.env.CI)` y `true` prohíben el `.only` en el CI", () => {
+    expect(evaluarConfigDePlaywright(PLAYWRIGHT_VALIDO)).toEqual([]);
+    expect(evaluarConfigDePlaywright(PLAYWRIGHT_VALIDO.replace("!!process.env.CI", "Boolean(process.env.CI)"))).toEqual([]);
+    expect(evaluarConfigDePlaywright(PLAYWRIGHT_VALIDO.replace("!!process.env.CI", "true"))).toEqual([]);
+  });
+
+  const casos: { titulo: string; de: string; a: string; tipo: TipoDeCumplimiento; donde: string }[] = [
+    { titulo: "`forbidOnly` no está", de: "  forbidOnly: !!process.env.CI,\n", a: "", tipo: "playwright-sin-forbidonly", donde: "export default defineConfig({" },
+    { titulo: "`forbidOnly: false`", de: "forbidOnly: !!process.env.CI", a: "forbidOnly: false", tipo: "playwright-sin-forbidonly", donde: "forbidOnly: false" },
+    { titulo: "`forbidOnly` negado (`!process.env.CI`: solo prohíbe el `.only` FUERA del CI)", de: "!!process.env.CI", a: "!process.env.CI", tipo: "playwright-sin-forbidonly", donde: "forbidOnly: !process" },
+    { titulo: "`forbidOnly` mira otra variable", de: "!!process.env.CI", a: "!!process.env.OTRA", tipo: "playwright-sin-forbidonly", donde: "forbidOnly: !!process.env.OTRA" },
+    { titulo: "`forbidOnly` vale un texto", de: "!!process.env.CI", a: '"1"', tipo: "playwright-sin-forbidonly", donde: 'forbidOnly: "1"' },
+    { titulo: "la configuración propaga otra (`...base`) y no se puede comprobar", de: "  workers: 1,\n", a: "  ...base,\n  workers: 1,\n", tipo: "playwright-no-analizable", donde: "...base" },
+    { titulo: "el archivo no exporta `defineConfig({ … })`", de: "export default defineConfig({", a: "const config = ({", tipo: "playwright-no-analizable", donde: "const config" },
+  ];
+  for (const c of casos) {
+    it(`rojo: ${c.titulo}`, () => {
+      expect(PLAYWRIGHT_VALIDO.includes(c.de), `el caso necesita «${c.de}»`).toBe(true);
+      const mal = PLAYWRIGHT_VALIDO.replace(c.de, c.a);
+      const r = anotar(evaluarConfigDePlaywright(mal));
+      // El caso de la propagación no declara `forbidOnly` ausente: sí lo declara, así que solo es «no analizable».
+      expect(resumen(r)).toEqual([[c.tipo, c.donde === "const config" ? 1 : lineaDe(mal, c.donde)]]);
+      expect(sinCorreccion(r)).toEqual([]);
+      expect(r[0].archivo).toBe("playwright.config.ts");
+    });
+  }
+
+  it("verde: un comentario que nombra `forbidOnly` no cuenta, y CRLF se lee igual", () => {
+    expect(evaluarConfigDePlaywright(PLAYWRIGHT_VALIDO.replace(/\n/g, "\r\n"))).toEqual([]);
+    expect(resumen(evaluarConfigDePlaywright(PLAYWRIGHT_VALIDO.replace("  forbidOnly: !!process.env.CI,\n", "  // forbidOnly: !!process.env.CI,\n")))).toEqual([["playwright-sin-forbidonly", 2]]);
   });
 });
 
@@ -443,7 +525,7 @@ describe("mutaciones sobre una copia exacta del repo (el repo real no se toca)",
       }
     };
     recorrer("test/arquitectura/contratos");
-    for (const r of [".github/workflows/ci.yml", "package.json", "vitest.config.ts", ...GUARDIANES_ADICIONALES]) copiar(r);
+    for (const r of [".github/workflows/ci.yml", "package.json", "vitest.config.ts", "playwright.config.ts", ...GUARDIANES_ADICIONALES]) copiar(r);
   }, 30_000);
   afterAll(() => {
     rmSync(copia, { recursive: true, force: true });
@@ -507,13 +589,35 @@ describe("mutaciones sobre una copia exacta del repo (el repo real no se toca)",
     expect(r2.map((h) => h.tipo)).toEqual(["vitest-allowonly"]);
   });
 
+  it("9. sacar `forbidOnly` de playwright.config.ts → playwright-sin-forbidonly (un `test.only` pasaría en el CI)", () => {
+    const r = mutar("playwright.config.ts", "  forbidOnly: !!process.env.CI,\n", "", "forbidOnly quitado de playwright.config.ts");
+    expect(r.map((h) => h.tipo)).toEqual(["playwright-sin-forbidonly"]);
+    expect(r[0].archivo).toBe("playwright.config.ts");
+    const r2 = mutar("playwright.config.ts", "forbidOnly: !!process.env.CI,", "forbidOnly: false,", "forbidOnly: false en playwright.config.ts");
+    expect(r2.map((h) => h.tipo)).toEqual(["playwright-sin-forbidonly"]);
+  });
+
+  it("10. quitar de ci.yml el paso que sube la evidencia → ci-sin-evidencia; el gate sin `estatico` → ci-gate-sin-needs", () => {
+    const original = leer(".github/workflows/ci.yml");
+    const desde = original.indexOf("      - name: Evidencia de contratos (artefacto)");
+    const hasta = original.indexOf("      - run: npm run analizar:muerto");
+    expect(desde).toBeGreaterThan(0);
+    expect(hasta).toBeGreaterThan(desde);
+    const r = mutar(".github/workflows/ci.yml", original.slice(desde, hasta), "", "paso que sube la evidencia quitado de ci.yml");
+    expect(r.map((h) => h.tipo)).toEqual(["ci-sin-evidencia"]);
+    expect(r[0].archivo).toBe(".github/workflows/ci.yml");
+    expect(r[0].que).toContain("resultado-contratos.json");
+    const g = mutar(".github/workflows/ci.yml", "needs: [estatico, build, integracion, conteo, e2e]", "needs: [build, integracion, conteo, e2e]", "el gate sin estatico en needs");
+    expect(g.map((h) => h.tipo)).toEqual(["ci-gate-sin-needs"]);
+  });
+
   it("8. el manifiesto vacío y los archivos que faltan", () => {
     const vacio = revisarCumplimiento(copia, { contratos: [] });
     expect(vacio.hallazgos.map((h) => h.tipo)).toContain("manifiesto-vacio");
     const sinNada = mkdtempSync(join(tmpdir(), "cumplimiento-vacia-"));
     try {
       const r = anotar(revisarCumplimiento(sinNada).hallazgos);
-      expect(r.filter((h) => h.tipo === "archivo-ausente").map((h) => h.archivo).sort()).toEqual([".github/workflows/ci.yml", "package.json", "vitest.config.ts"]);
+      expect(r.filter((h) => h.tipo === "archivo-ausente").map((h) => h.archivo).sort()).toEqual([".github/workflows/ci.yml", "package.json", "playwright.config.ts", "vitest.config.ts"]);
     } finally {
       rmSync(sinNada, { recursive: true, force: true });
     }

@@ -532,8 +532,10 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
     const regCi = huella(ci, "ci.yml");
     const regPaquete = huella("package.json", "package.json#scripts");
     const regVitest = huella("vitest.config.ts", "vitest.config.ts");
+    const regPlaywright = huella("playwright.config.ts", "playwright.config.ts");
     const elCi = el(ci, "el workflow de CI (job `integracion`, paso `npm test`)");
     const elVitest = el("vitest.config.ts", "la configuración de Vitest (include/exclude/allowOnly)");
+    const elPlaywright = el("playwright.config.ts", "la configuración de Playwright (forbidOnly)");
     const elPaquete = el("package.json", 'los scripts ("test")');
     const textoDeT = (() => {
       try {
@@ -586,6 +588,9 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
         texto("evasion", { ruta: ci, de: "  pull_request:\n    branches: [main]\n", a: "  pull_request:\n    branches: [main]\n    paths-ignore: ['test/**']\n", donde: "paths-ignore" }, elCi, esp("cumplimiento", "ci-filtro-de-rutas", ci, "calculada", "paths-ignore"), [regCi]),
         texto("evasion", { ruta: ci, de: "NODE_OPTIONS: --max-old-space-size=4096", a: 'NODE_OPTIONS: --max-old-space-size=4096\n          CREAR_CERCOS: "1"', donde: "CREAR_CERCOS" }, elCi, esp("cumplimiento", "ci-variable-prohibida", ci, "calculada", "CREAR_CERCOS"), [regCi]),
         texto("evasion", { ruta: "package.json", de: '"test": "vitest run",', a: '"test": "vitest run --passWithNoTests",', donde: '"test": "vitest run --pass' }, elPaquete, esp("cumplimiento", "script-distinto", "package.json", "calculada", "vitest run --passWithNoTests"), [regPaquete]),
+        // G7: sin `forbidOnly` un `test.only` en un spec de Playwright pasa en el CI sin avisar; y un gate que no espera a `estatico` deja pasar la corrida aunque el guardián (y su evidencia) falle.
+        texto("evasion", { ruta: "playwright.config.ts", de: "  forbidOnly: !!process.env.CI,\n", a: "", donde: "export default defineConfig({" }, elPlaywright, esp("cumplimiento", "playwright-sin-forbidonly", "playwright.config.ts", "calculada", "forbidOnly"), [regPlaywright]),
+        texto("evasion", { ruta: ci, de: "needs: [estatico, build, integracion, conteo, e2e]", a: "needs: [build, integracion, conteo, e2e]", donde: "needs: [build, integracion, conteo, e2e]" }, elCi, esp("cumplimiento", "ci-gate-sin-needs", ci, "calculada", "el gate no espera al job `estatico`"), [regCi]),
       ],
       noAplica: [{ clase: "duplicacion", motivo: "duplicar el guardián no lo neutraliza: dos copias del test hacen lo mismo y nada se evade" }],
     });
@@ -631,6 +636,9 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
     const ejecutor = el("test/arquitectura/contratos/ejecutar.ts", "el ejecutor de evidencia (camino B: tsx, sin Vitest)");
     const piso = el(POLITICA.ruta, "PISO_DE_ARCHIVOS_LEIDOS: el piso aprobado de archivos leídos");
     const elPaquete = el("package.json", 'el script "arquitectura" (encadena el ejecutor)');
+    const ci = ".github/workflows/ci.yml";
+    const elCi = el(ci, "el job `estatico` de ci.yml: el paso de `npm run arquitectura` (CONTRATOS_EVIDENCIA) y el paso que sube la evidencia como artefacto");
+    const regCi = huella(ci, "ci.yml");
     const definicionDelPrimero = `test/arquitectura/contratos/contratos/${primero.id}.ts`;
     const marcaDelPrimero = esp("motor", "marca-desconocida", primero.fuente.archivo, "calculada", "no es de ningún contrato del manifiesto");
     out.push({
@@ -662,6 +670,10 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
         mut(inv, "evasion", "texto", { ruta: "package.json", de: " && tsx test/arquitectura/contratos/ejecutar.ts", a: "", donde: '"arquitectura": "depcruise' }, elPaquete, esp("cumplimiento", "script-distinto", "package.json", "calculada", "ejecutar.ts"), "", [huella("package.json", "package.json#scripts")]),
         mut(inv, "evasion", "archivo", { ruta: ejecutor.ruta, modo: "borrar" }, ejecutor, esp("aprobaciones", "archivo-ausente", ejecutor.ruta, "sin-posicion", "ya no existe")),
         mut(inv, "evasion", "texto", { ruta: POLITICA.ruta, de: `PISO_DE_ARCHIVOS_LEIDOS = ${PISO_DE_ARCHIVOS_LEIDOS};`, a: "PISO_DE_ARCHIVOS_LEIDOS = 1;" }, piso, huella(POLITICA.ruta, "archivo del mecanismo, entero")),
+        // El CI (G7): la evidencia se sube como artefacto. Reemplazar la subida, hacer que no falle si falta el archivo o sacar la variable que le dice al ejecutor dónde escribirlo la dejan sin subir.
+        mut(inv, "desconexion", "texto", { ruta: ci, de: "- name: Evidencia de contratos (artefacto)\n        uses: actions/upload-artifact", a: "- name: Evidencia de contratos (artefacto)\n        uses: actions/cache", donde: "- run: npm run arquitectura" }, elCi, esp("cumplimiento", "ci-sin-evidencia", ci, "calculada", "sube `resultado-contratos.json`"), "", [regCi]),
+        mut(inv, "evasion", "texto", { ruta: ci, de: "          if-no-files-found: error", a: "          if-no-files-found: ignore", donde: "if-no-files-found: ignore" }, elCi, esp("cumplimiento", "ci-sin-evidencia", ci, "calculada", "if-no-files-found: ignore"), "", [regCi]),
+        mut(inv, "evasion", "texto", { ruta: ci, de: "        env:\n          CONTRATOS_EVIDENCIA: resultado-contratos.json\n", a: "", donde: "- run: npm run arquitectura" }, elCi, esp("cumplimiento", "ci-sin-evidencia", ci, "calculada", "no define `env: CONTRATOS_EVIDENCIA"), "", [regCi]),
       ],
       noAplica: [{ clase: "duplicacion", motivo: "un contrato repetido en el manifiesto lo rechaza el propio motor (manifiesto mal armado: lanza y el ejecutor sale con código 1): está en guardian/manifiesto-consistente" }],
     });

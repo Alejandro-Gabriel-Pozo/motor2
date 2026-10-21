@@ -15,8 +15,11 @@ import { APROBACIONES, idsDeContratosAprobados, type Aprobacion } from "./aproba
  *  (a) `.github/workflows/ci.yml`: el job `estatico` corre `npm run arquitectura` y el job `integracion` corre `npm test`, sin `if`, sin `continue-on-error` ni cambio de carpeta; el job `gate`
  *      necesita los cinco jobs, su expresión los nombra y se llama «Gate (requerido)»; ningún `continue-on-error` en todo el workflow; ningún `if` fuera de la lista declarada
  *      (`CONDICIONES_PERMITIDAS`); sin `paths` ni `paths-ignore` en `on:`; ninguna variable que cambie el comportamiento de los guardianes (`CREAR_CERCOS`, `BAJAR_CERCOS`, `REGENERAR_*`…).
+ *      Y la evidencia por corrida (paso G7): el paso `npm run arquitectura` define `CONTRATOS_EVIDENCIA: resultado-contratos.json` y un paso POSTERIOR de `estatico` sube ese archivo con `actions/upload-artifact`
+ *      y `if-no-files-found: error` (`ci-sin-evidencia`). `CONTRATOS_EVIDENCIA` es la única variable `CONTRATOS_*` permitida: solo dice adónde se escribe lo ya calculado y no cambia ningún guardián.
  *  (b) `package.json`: `scripts.test` y `scripts.arquitectura` valen lo esperado y no hay ganchos `pre`/`post` de ellos.
- *  (c) `vitest.config.ts` (análisis estático del AST): ningún `exclude` deja afuera un guardián, un `include` los cubre, `allowOnly` no está en true y no hay claves que cambien qué se corre.
+ *  (c) `vitest.config.ts` (análisis estático del AST): ningún `exclude` deja afuera un guardián, un `include` los cubre, `allowOnly` no está en true y no hay claves que cambien qué se corre. Y
+ *      `playwright.config.ts` (G7): `forbidOnly: !!process.env.CI` (un `test.only` en un spec pasa en el CI sin avisar si no está).
  *  (d) skip/only (AST, no regex): ningún `skip`, `only`, `todo`, `skipIf`, `runIf`, `ctx.skip`, `xit` ni `xdescribe` en los tests protegidos, y cada uno tiene al menos un test.
  *  (e) cableado: los guardianes esperados existen, terminan en `.test.ts` y están bajo `test/`; un `.ts` con pruebas que no termina en `.test.ts` no corre.
  *  (f) manifiesto: no vacío, y el conjunto de ids es el de los contratos aprobados en el registro. (Que cada contrato tenga alcance > 0 archivos lo hace el motor: `alcance-vacio`.)
@@ -25,6 +28,7 @@ import { APROBACIONES, idsDeContratosAprobados, type Aprobacion } from "./aproba
 const RUTA_DE_CI = ".github/workflows/ci.yml";
 const RUTA_DE_PAQUETE = "package.json";
 const RUTA_DE_VITEST = "vitest.config.ts";
+const RUTA_DE_PLAYWRIGHT = "playwright.config.ts";
 const CARPETA_DE_CONTRATOS = "test/arquitectura/contratos";
 
 export const TIPOS_DE_CUMPLIMIENTO = [
@@ -40,6 +44,7 @@ export const TIPOS_DE_CUMPLIMIENTO = [
   "ci-gate-renombrado",
   "ci-filtro-de-rutas",
   "ci-variable-prohibida",
+  "ci-sin-evidencia",
   "package-ilegible",
   "script-ausente",
   "script-distinto",
@@ -49,6 +54,8 @@ export const TIPOS_DE_CUMPLIMIENTO = [
   "vitest-include-no-cubre",
   "vitest-allowonly",
   "vitest-clave-peligrosa",
+  "playwright-no-analizable",
+  "playwright-sin-forbidonly",
   "prueba-desactivada",
   "guardian-sin-pruebas",
   "guardian-ausente",
@@ -218,8 +225,14 @@ const CONDICIONES_PERMITIDAS: readonly { job: string; paso: string | null; condi
   { job: "e2e", paso: "Trazas de los specs que fallaron", condicion: "failure()", motivo: "sube las trazas solo si Playwright falló" },
 ];
 
-/** Variables que cambian lo que hacen los guardianes (regeneran una línea de base o un golden): jamás en el CI. */
-const RE_VARIABLE_PROHIBIDA = /\b(CREAR_CERCOS|BAJAR_CERCOS|GOLDEN_ACTUALIZAR|REGENERAR_[A-Z0-9_]+|CONTRATOS_[A-Z0-9_]+)\b/;
+/**
+ * Variables que cambian lo que hacen los guardianes (regeneran una línea de base o un golden): jamás en el CI. De las `CONTRATOS_*` se permite UNA, `CONTRATOS_EVIDENCIA` (la ruta adonde el ejecutor de evidencia
+ * escribe lo que ya calculó: no cambia ningún veredicto; ver `ejecutar.ts`), y solo en el paso de `npm run arquitectura` (lo exige `ci-sin-evidencia`).
+ */
+const RE_VARIABLE_PROHIBIDA = /\b(CREAR_CERCOS|BAJAR_CERCOS|GOLDEN_ACTUALIZAR|REGENERAR_[A-Z0-9_]+|CONTRATOS_(?!EVIDENCIA\b)[A-Z0-9_]+)\b/;
+/** La evidencia por corrida en el CI: el archivo que escribe el ejecutor (`CONTRATOS_EVIDENCIA`) y que sube un paso posterior de `estatico`. */
+const VARIABLE_DE_EVIDENCIA = "CONTRATOS_EVIDENCIA";
+const ARCHIVO_DE_EVIDENCIA = "resultado-contratos.json";
 
 export const evaluarWorkflow = (texto: string, archivo: string = RUTA_DE_CI): HallazgoDeCumplimiento[] => memorizado(`workflow\0${archivo}\0${texto}`, () => workflowSinMemoria(texto, archivo));
 
@@ -262,6 +275,27 @@ function workflowSinMemoria(texto: string, archivo: string): HallazgoDeCumplimie
     }
     const condicion = hijoDe(paso.nodo, "if");
     if (condicion !== undefined) agregar("ci-condicion-no-permitida", condicion.linea, `el paso \`${g.descripcion}\` de \`${g.job}\` tiene \`if: ${escalar(condicion)}\`: puede saltearse`, "sacá el `if`: los pasos de los guardianes corren siempre");
+  }
+
+  // La evidencia por corrida: el paso de `npm run arquitectura` define la variable, y un paso POSTERIOR de ese job sube el archivo como artefacto y falla si no está.
+  const estatico = jobs.get("estatico");
+  const pasoArquitectura = estatico === undefined ? undefined : pasosDe(estatico).findIndex((p) => PASOS_DE_LOS_GUARDIANES[0].corre(p.run));
+  if (estatico !== undefined && pasoArquitectura !== undefined && pasoArquitectura >= 0) {
+    const pasos = pasosDe(estatico);
+    const paso = pasos[pasoArquitectura];
+    const variable = hijoDe(hijoDe(paso.nodo, "env"), VARIABLE_DE_EVIDENCIA);
+    if (escalar(variable) !== ARCHIVO_DE_EVIDENCIA) {
+      agregar("ci-sin-evidencia", variable?.linea ?? paso.nodo.linea, `el paso \`npm run arquitectura\` de \`estatico\` no define \`env: ${VARIABLE_DE_EVIDENCIA}: ${ARCHIVO_DE_EVIDENCIA}\` (vale «${escalar(variable)}»): el ejecutor de evidencia no deja su JSON y no hay nada que subir`, `agregá a ese paso \`env:\` con \`${VARIABLE_DE_EVIDENCIA}: ${ARCHIVO_DE_EVIDENCIA}\``);
+    }
+    const subida = pasos.slice(pasoArquitectura + 1).find((p) => escalar(hijoDe(p.nodo, "uses")).startsWith("actions/upload-artifact@") && escalar(hijoDe(hijoDe(p.nodo, "with"), "path")) === ARCHIVO_DE_EVIDENCIA);
+    if (subida === undefined) {
+      agregar("ci-sin-evidencia", paso.nodo.linea, `ningún paso de \`estatico\` DESPUÉS de \`npm run arquitectura\` sube \`${ARCHIVO_DE_EVIDENCIA}\` con \`actions/upload-artifact\`: la evidencia de la corrida se pierde`, `agregá después de ese paso un \`uses: actions/upload-artifact@<sha>\` con \`path: ${ARCHIVO_DE_EVIDENCIA}\`, \`if-no-files-found: error\` y \`retention-days: 7\``);
+    } else {
+      const sinArchivo = hijoDe(hijoDe(subida.nodo, "with"), "if-no-files-found");
+      if (escalar(sinArchivo) !== "error") {
+        agregar("ci-sin-evidencia", sinArchivo?.linea ?? subida.nodo.linea, `el paso que sube \`${ARCHIVO_DE_EVIDENCIA}\` tiene \`if-no-files-found: ${escalar(sinArchivo) || "(sin definir: avisa y sigue)"}\`: si el ejecutor no dejó la evidencia, el CI sigue en verde`, "poné `if-no-files-found: error`");
+      }
+    }
   }
 
   // Ningún continue-on-error y ningún if fuera de la lista.
@@ -499,6 +533,47 @@ function configDeVitestSinMemoria(texto: string, protegidos: readonly string[], 
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
+// (c') playwright.config.ts: forbidOnly
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/** ¿Es `true`, `!!process.env.CI` o `Boolean(process.env.CI)`? Las únicas formas que prohíben el `.only` en el CI (y solo en el CI). */
+function prohibeElOnlyEnElCi(e: ts.Expression): boolean {
+  if (e.kind === ts.SyntaxKind.TrueKeyword) return true;
+  const esElCi = (x: ts.Expression): boolean => ts.isPropertyAccessExpression(x) && x.name.text === "CI" && ts.isPropertyAccessExpression(x.expression) && x.expression.name.text === "env" && ts.isIdentifier(x.expression.expression) && x.expression.expression.text === "process";
+  if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.ExclamationToken && ts.isPrefixUnaryExpression(e.operand) && e.operand.operator === ts.SyntaxKind.ExclamationToken) return esElCi(e.operand.operand);
+  return ts.isCallExpression(e) && ts.isIdentifier(e.expression) && e.expression.text === "Boolean" && e.arguments.length === 1 && esElCi(e.arguments[0]);
+}
+
+export const evaluarConfigDePlaywright = (texto: string, archivo: string = RUTA_DE_PLAYWRIGHT): HallazgoDeCumplimiento[] => memorizado(`playwright\0${archivo}\0${texto}`, () => configDePlaywrightSinMemoria(texto, archivo));
+
+function configDePlaywrightSinMemoria(texto: string, archivo: string): HallazgoDeCumplimiento[] {
+  const { hallazgos, agregar } = armar(archivo);
+  const fuente = arbolMemoizado(archivo, lf(texto));
+  const exportada = fuente.statements.find((s): s is ts.ExportAssignment => ts.isExportAssignment(s));
+  const llamada = exportada?.expression;
+  const argumento = llamada !== undefined && ts.isCallExpression(llamada) ? llamada.arguments[0] : llamada;
+  if (argumento === undefined || !ts.isObjectLiteralExpression(argumento)) {
+    agregar("playwright-no-analizable", 1, "playwright.config.ts no exporta `defineConfig({ … })` con un objeto literal: no se puede comprobar `forbidOnly`", "restaurá `export default defineConfig({ … })` con un objeto literal");
+    return hallazgos;
+  }
+  for (const p of argumento.properties) {
+    if (!ts.isPropertyAssignment(p) && !ts.isShorthandPropertyAssignment(p) && !ts.isMethodDeclaration(p)) {
+      const d = posicionDe(fuente, p);
+      agregar("playwright-no-analizable", d.linea, "la configuración usa una propagación (`...`) que puede traer o pisar `forbidOnly`: no se puede comprobar estáticamente", "escribí las claves a mano en el objeto de `defineConfig`", d.columna);
+    }
+  }
+  const forbidOnly = propiedadDe(argumento, "forbidOnly");
+  if (forbidOnly === undefined) {
+    const d = posicionDe(fuente, argumento);
+    agregar("playwright-sin-forbidonly", d.linea, "`defineConfig` no tiene `forbidOnly`: un `test.only` olvidado en un spec pasa en el CI sin avisar y el resto de los specs no corre", "agregá `forbidOnly: !!process.env.CI`", d.columna);
+  } else if (!prohibeElOnlyEnElCi(forbidOnly.initializer)) {
+    const d = posicionDe(fuente, forbidOnly);
+    agregar("playwright-sin-forbidonly", d.linea, `\`forbidOnly\` vale «${forbidOnly.initializer.getText(fuente)}» y tiene que ser \`!!process.env.CI\` (o \`true\`): así no prohíbe el \`.only\` en el CI`, "poné `forbidOnly: !!process.env.CI`", d.columna);
+  }
+  return hallazgos.sort((a, b) => a.linea - b.linea || a.columna - b.columna);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
 // (d) skip / only en los tests protegidos
 // ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -685,6 +760,10 @@ export function revisarCumplimiento(raiz: string, opciones: OpcionesDeCumplimien
   const vitest = leerONulo(raiz, RUTA_DE_VITEST);
   if (vitest === null) sinArchivo(RUTA_DE_VITEST);
   else hallazgos.push(...evaluarConfigDeVitest(vitest, protegidos));
+
+  const playwright = leerONulo(raiz, RUTA_DE_PLAYWRIGHT);
+  if (playwright === null) sinArchivo(RUTA_DE_PLAYWRIGHT);
+  else hallazgos.push(...evaluarConfigDePlaywright(playwright));
 
   const existentes = new Map(deContratos);
   for (const r of GUARDIANES_ADICIONALES) {

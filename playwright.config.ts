@@ -102,6 +102,8 @@ export default defineConfig({
   testDir: "./test/e2e",
   fullyParallel: false,
   workers: 1,
+  // Un `test.only` olvidado en un spec hace que el resto de los specs no corra: en el CI hace fallar la corrida entera (la guarda `cumplimiento.ts` exige esta línea).
+  forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   // En CI, además del `list`, el resultado en JSON: el job e2e cuenta de ahí (total, pasados, salteados, flaky) y lo sube como artefacto.
   reporter: process.env.CI ? [["list"], ["json", { outputFile: "resultado-playwright.json" }]] : "list",
