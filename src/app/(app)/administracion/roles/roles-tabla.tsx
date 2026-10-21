@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { BotonActivarDesactivar } from "@/components/boton-activar-desactivar";
 import { crearRol, renombrarRol, actualizarActivoRol } from "@/server/actions/permisos/roles";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 
 interface Rol {
   id: string;
@@ -55,7 +58,7 @@ export function RolesTabla({ rolesIniciales, puedeRenombrar }: { rolesIniciales:
     <div className="space-y-4">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-neutral-500">
+          <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Nombre</th>
             <th>Activo</th>
             <th><span className="sr-only">Acciones</span></th>
@@ -67,26 +70,21 @@ export function RolesTabla({ rolesIniciales, puedeRenombrar }: { rolesIniciales:
               <td className="py-2">
                 {renombrandoId === r.id ? (
                   <form action={(formData) => renombrar(r, formData)} className="flex max-w-md gap-2">
-                    <input
-                      name="nombre"
-                      defaultValue={r.nombre}
-                      aria-label={`Nuevo nombre del rol ${r.nombre}`}
-                      required
-                      autoFocus
-                      className="flex-1 rounded border px-3 py-1"
-                    />
-                    <button type="submit" disabled={pending} className="rounded bg-neutral-900 px-3 py-1 text-white disabled:opacity-50">
+                    <div className="flex-1">
+                      <Campo name="nombre" defaultValue={r.nombre} aria-label={`Nuevo nombre del rol ${r.nombre}`} tamano="compacto" required autoFocus />
+                    </div>
+                    <Boton type="submit" tamano="compacto" disabled={pending}>
                       {pending && pendingId === r.id ? "Guardando..." : "Guardar"}
-                    </button>
-                    <button type="button" onClick={() => setRenombrandoId(null)} className="rounded border px-3 py-1">
+                    </Boton>
+                    <Boton variante="secundario" tamano="compacto" onClick={() => setRenombrandoId(null)}>
                       Cancelar
-                    </button>
+                    </Boton>
                   </form>
                 ) : (
                   <>
                     {r.nombre}
                     {r.clave !== null && (
-                      <span className="ml-2 text-xs text-neutral-500" title="Rol de sistema: puede cambiar de nombre, no de función.">
+                      <span className="ml-2 text-xs text-tinta-tenue" title="Rol de sistema: puede cambiar de nombre, no de función.">
                         (rol de sistema · clave técnica «{r.clave}»)
                       </span>
                     )}
@@ -96,9 +94,9 @@ export function RolesTabla({ rolesIniciales, puedeRenombrar }: { rolesIniciales:
               <td>{r.activo ? "Sí" : "No"}</td>
               <td className="space-x-2">
                 {puedeRenombrar && renombrandoId !== r.id && (
-                  <button type="button" onClick={() => setRenombrandoId(r.id)} className="rounded border px-2 py-1" aria-label={`Renombrar el rol ${r.nombre}`}>
+                  <Boton variante="secundario" tamano="compacto" onClick={() => setRenombrandoId(r.id)} aria-label={`Renombrar el rol ${r.nombre}`}>
                     Renombrar
-                  </button>
+                  </Boton>
                 )}
                 {r.clave === null && (
                   <BotonActivarDesactivar
@@ -115,16 +113,19 @@ export function RolesTabla({ rolesIniciales, puedeRenombrar }: { rolesIniciales:
       </table>
 
       <form action={crear} className="flex max-w-md gap-2">
-        <input name="nombre" placeholder="nombre del rol" aria-label="Nombre del rol nuevo" required className="flex-1 rounded border px-3 py-2" />
-        <button type="submit" disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+        <div className="flex-1">
+          <Campo name="nombre" placeholder="nombre del rol" aria-label="Nombre del rol nuevo" required />
+        </div>
+        <Boton type="submit" disabled={pending}>
           {pending && pendingId === null ? "Creando..." : "Crear"}
-        </button>
+        </Boton>
       </form>
 
       {mensaje && (
-        <p role="status" className={mensaje.ok ? "text-sm text-green-700" : "text-sm text-red-600"}>
+        // Un rechazo (nombre reservado, sin permiso…) sigue anunciándose con `role="status"`, como antes: `Aviso` de error es `role="alert"`, y el spec de renombrar espera el estado.
+        <Aviso variante={mensaje.ok ? "exito" : "advertencia"} forma="en-linea">
           {mensaje.texto}
-        </p>
+        </Aviso>
       )}
     </div>
   );
