@@ -279,7 +279,7 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
                 </th>
                 {f.celdas.map((precio, c) => (
                   <td key={`celda-${c}`} className="whitespace-nowrap py-1.5 pl-3 text-right align-baseline">
-                    <CeldaDePrecio precio={precio} color={colores.precio} rol="precio" />
+                    <CeldaDePrecio precio={precio} color={colores.precio} papel="precio" />
                   </td>
                 ))}
               </tr>
@@ -380,14 +380,14 @@ function FilasDeOpcion({ nombre, filas, colorPrecio }: { nombre: string; filas: 
 }
 
 /**
- * Una celda de precio de una tabla, o «–» donde el producto no ofrece esa opción (con «no se ofrece» para el lector de pantalla: no depende de ver la raya). `rol`: `"precio"` en la tabla de dos
+ * Una celda de precio de una tabla, o «–» donde el producto no ofrece esa opción (con «no se ofrece» para el lector de pantalla: no depende de ver la raya). `papel`: `"precio"` en la tabla de dos
  * ejes (las opciones son platos: rol Precio) y `"opcion-precio"` en la tanda (rol Opción, 600). Las clases van escritas enteras: el cerco de tipografía y Tailwind las necesitan visibles.
  */
-function CeldaDePrecio({ precio, color, rol }: { precio: number | null; color: string; rol: "precio" | "opcion-precio" }) {
+function CeldaDePrecio({ precio, color, papel }: { precio: number | null; color: string; papel: "precio" | "opcion-precio" }) {
   if (precio === null) {
     return (
       <>
-        {rol === "precio" ? (
+        {papel === "precio" ? (
           <span aria-hidden="true" data-rol="precio" className="carta-rol-precio carta-titulo" style={{ color: "var(--carta-ink-soft)" }}>
             –
           </span>
@@ -400,7 +400,7 @@ function CeldaDePrecio({ precio, color, rol }: { precio: number | null; color: s
       </>
     );
   }
-  if (rol === "precio") {
+  if (papel === "precio") {
     return (
       <span data-rol="precio" className="carta-rol-precio carta-titulo" style={{ color }}>
         {formatearPrecioCarta(precio)}
@@ -454,7 +454,7 @@ function ProductoDeTanda({ item, rotulos, primero, estilo }: { item: ItemCartaPu
           <tr>
             {celdas.map((precio, i) => (
               <td key={`cel-${i}`} className="whitespace-nowrap py-1.5 text-left align-baseline">
-                <CeldaDePrecio precio={precio} color={colores.precio} rol="opcion-precio" />
+                <CeldaDePrecio precio={precio} color={colores.precio} papel="opcion-precio" />
               </td>
             ))}
           </tr>
