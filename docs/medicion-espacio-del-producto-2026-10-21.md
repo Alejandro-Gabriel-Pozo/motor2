@@ -97,23 +97,25 @@ Antes de fiarse de los números, dos mutaciones a mano (están en el encabezado 
 1. Cambiar el selector de un paso: la tarea tiene que fallar nombrando el paso, sin escribir JSON.
 2. Sacar un clic: el recorrido falla, o el número `clics` baja en uno.
 
-## 5. Tabla «antes» (a completar con la primera corrida)
+## 5. Tabla «antes» (primera corrida)
 
-Commit de la medición: _______ · Fecha de la corrida: _______ · Servidor: _______
+Commit de la medición: c17c3c52 (spec) · Fecha de la corrida: 2026-10-21 · Servidor: `MOTOR2_E2E_SERVIDOR=dev` (4 pruebas pasaron en 1,5 min)
 
 | Tarea | Pantallas | Clics | Campos | Salidas | Visitas |
 |---|---|---|---|---|---|
-| a) Producto directo vendible | — | — | — | no aplica | — |
-| b) Base configurable (3 opciones + 1 incluida) | — | — | — | — | — |
-| c) Cambiar el precio final de una opción | — | — | — | — | — |
-| d) Publicar en la carta | — | — | — | — | — |
+| a) Producto directo vendible | 3 | 3 | 4 | no aplica | 3 |
+| b) Base configurable (3 opciones + 1 incluida) | 7 | 28 | 22 | 6 | 11 |
+| c) Cambiar el precio final de una opción | 2 | 2 | 1 | 1 | 2 |
+| d) Publicar en la carta | 2 | 6 | 1 | 1 | 2 |
 
-Rutas de cada tarea (`rutas` del JSON), a copiar de la corrida:
+Rutas de cada tarea (`rutas` del JSON de la corrida; los ids se normalizan a `[id]`):
 
-- a) _______
-- b) _______
-- c) _______
-- d) _______
+- **a)** `/catalogo/productos` → `/catalogo/productos/nuevo` → `/catalogo/productos/[id]`.
+- **b)** `/catalogo/opciones` → `/catalogo/opciones/[id]` → `/catalogo/productos` → `/catalogo/productos/nuevo` → `/catalogo/productos/[id]` → `/catalogo/productos/[id]/opciones` → `/catalogo/productos/[id]/editar` (11 visitas: se vuelve atrás a la lista de grupos y a la ficha varias veces; para dejar la base armada hay que salir del grupo, crear el producto y volver a editarlo para pasarlo a «Por opción»).
+- **c)** `/catalogo/productos/[id]` → `/catalogo/productos/[id]/opciones`.
+- **d)** `/catalogo/productos/[id]` → `/carta`.
+
+Lectura: crear una base configurable (b) es la tarea más pesada de hoy, con 7 pantallas, 28 clics, 22 campos y 6 salidas; es la vara que el espacio del producto tiene que mejorar.
 
 ## 6. Después (6.21)
 
