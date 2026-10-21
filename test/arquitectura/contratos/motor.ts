@@ -1,0 +1,421 @@
+import { existsSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { listarArchivos } from "../cercos/trinquete";
+import { primeraClase, coincidenciasDeClases } from "./adaptadores/clases-tsx";
+import { colapsar, prueba, type Coincidencia } from "./adaptadores/coincidencia";
+import { coincidenciasDeCss, posicionDelAncla, primeraReglaConClase, variablesDefinidas } from "./adaptadores/css";
+import { coincidenciasDeTs, importaElAncla, posicionDelSimboloExportado } from "./adaptadores/ts";
+import { Indice, esCss, esTs } from "./indice";
+import { MOTIVO_MINIMO, RENOVACIONES_SIN_AVISO, RESPONSABLES, esFechaValida, evaluarVencimientos, referenciaValida, type EntradaConVencimiento } from "./politica";
+import type { Aviso, Contrato, Detector, Hallazgo, Resultado, TipoDeHallazgo } from "./tipos";
+
+/**
+ * El motor común de «contratos compartidos declarados» (ver `LEEME.md`). Recibe la raíz de un repo y un manifiesto de contratos y devuelve los hallazgos, ordenados y
+ * deterministas. Fail-closed: lo que se USA sin declarar de qué contrato depende falla; no hay línea de base que solo cuente, la deuda se escribe uso por uso.
+ *
+ * UN solo recorrido: se lista el repo una vez, cada archivo se lee y se parsea una vez (`Indice`) y los adaptadores comparten ese índice entre todos los contratos.
+ * Reusa del trinquete de los cercos el recorrido (`listarArchivos`) y `sinComentarios`, sin modificarlos.
+ *
+ * Un manifiesto mal armado (id repetido, declaración incompatible con sus señales…) no es un hallazgo: es un error del propio manifiesto y el motor lo lanza.
+ */
+
+/** Dónde se buscan marcas sueltas del contrato: una marca que no es de ningún contrato del manifiesto es un hallazgo. */
+const RAICES_DE_MARCAS: readonly string[] = ["src", "plataforma", "scripts", "prisma", "test"];
+const EXTENSIONES_BASE: readonly string[] = [".ts", ".tsx", ".css"];
+const RE_ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+/** La marca de la fuente: el arroba, la palabra «contrato» y el id de un contrato; solo cuenta dentro de un comentario. */
+const RE_MARCA = /@contrato[ \t]+([A-Za-z0-9][\w-]*)/g;
+
+export interface OpcionesDelMotor {
+  /** Raíz del repo (o de un árbol temporal en las pruebas). */
+  raiz: string;
+  contratos: readonly Contrato[];
+  /** El día de hoy, `AAAA-MM-DD`: lo inyecta quien llama (los tests, uno fijo; el guardián real, `fechaUtcDeHoy()`). */
+  hoy: string;
+}
+
+interface Marca {
+  id: string;
+  ruta: string;
+  desde: number;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Validación del manifiesto
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+function validarManifiesto(contratos: readonly Contrato[]): void {
+  const problemas: string[] = [];
+  const ids = new Set<string>();
+  for (const c of contratos) {
+    const en = `contrato «${c.id}»`;
+    if (!RE_ID.test(c.id)) problemas.push(`${en}: el id tiene que ser kebab-case (minúsculas, dígitos y guiones)`);
+    if (ids.has(c.id)) problemas.push(`${en}: id repetido en el manifiesto`);
+    ids.add(c.id);
+    if (c.porQue.trim().length < MOTIVO_MINIMO) problemas.push(`${en}: \`porQue\` tiene que decir el riesgo (${MOTIVO_MINIMO} caracteres o más)`);
+    if (!/\.(css|tsx?)$/.test(c.fuente.archivo)) problemas.push(`${en}: la fuente tiene que ser un .ts, .tsx o .css (${c.fuente.archivo})`);
+    if (!c.fuente.ancla.trim()) problemas.push(`${en}: la fuente necesita un ancla`);
+    if (c.senales.length === 0) problemas.push(`${en}: sin \`senales\` el contrato nunca detectaría un uso`);
+    const adaptadores = c.senales.map((s) => (s.adaptador === "ts" ? `ts/${s.tipo}` : s.adaptador === "css" ? `css/${s.tipo}` : "clases"));
+    if (c.declaracion.tipo === "importar-ancla" && c.senales.some((s) => s.adaptador !== "ts")) problemas.push(`${en}: «importar-ancla» solo va con señales del adaptador ts (hay ${adaptadores.join(", ")})`);
+    if (c.declaracion.tipo === "importar-ancla" && !/\.tsx?$/.test(c.fuente.archivo)) problemas.push(`${en}: «importar-ancla» necesita una fuente .ts o .tsx`);
+    if (c.declaracion.tipo === "clase-companera" && c.senales.some((s) => s.adaptador === "ts")) problemas.push(`${en}: «clase-companera» solo va con señales de clases o css (hay ${adaptadores.join(", ")})`);
+    if (c.declaracion.tipo === "clase-companera" && !c.declaracion.clase.trim()) problemas.push(`${en}: la clase compañera no puede ser vacía`);
+    if (c.declaracion.tipo === "nombre-definido-en-la-fuente" && c.senales.some((s) => !((s.adaptador === "css" && s.tipo === "variable") || (s.adaptador === "ts" && s.tipo === "codigo")))) {
+      problemas.push(`${en}: «nombre-definido-en-la-fuente» solo va con señales css/variable o ts/codigo (hay ${adaptadores.join(", ")})`);
+    }
+    for (const [clase, entradas] of [["excepción", c.excepciones], ["deuda", c.deuda]] as const) {
+      for (const e of entradas) {
+        const fechas = [["vence", e.vence], ["creada", e.creada], ...e.renovaciones.map((r) => ["renovación", r.fecha])];
+        for (const [campo, valor] of fechas) if (!esFechaValida(valor)) problemas.push(`${en}: la ${clase} de «${e.fragmento}» tiene ${campo} «${valor}», que no es una fecha AAAA-MM-DD válida`);
+      }
+    }
+    if (Array.isArray(c.consumidores) && new Set(c.consumidores).size !== c.consumidores.length) problemas.push(`${en}: \`consumidores\` repite un archivo`);
+  }
+  if (problemas.length > 0) throw new Error(`Manifiesto de contratos mal armado:\n${problemas.map((p) => `  - ${p}`).join("\n")}`);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Recorrido
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/** Lista el repo UNA vez: las raíces de marcas, las carpetas de los alcances y las fuentes, con las extensiones que hagan falta. */
+function listar(raiz: string, contratos: readonly Contrato[]): string[] {
+  const carpetas = new Set<string>(RAICES_DE_MARCAS);
+  const sueltos = new Set<string>();
+  const extensiones = new Set<string>(EXTENSIONES_BASE);
+  const agregar = (ruta: string): void => {
+    const absoluta = join(raiz, ...ruta.split("/"));
+    if (!existsSync(absoluta)) return;
+    if (statSync(absoluta).isDirectory()) carpetas.add(ruta);
+    else sueltos.add(ruta);
+  };
+  for (const c of contratos) {
+    c.alcance.raices.forEach(agregar);
+    c.alcance.extensiones.forEach((e) => extensiones.add(e));
+    agregar(c.fuente.archivo);
+  }
+  const salida = new Set(listarArchivos(raiz, [...carpetas], [...extensiones]));
+  for (const s of sueltos) if ([...extensiones].some((e) => s.endsWith(e))) salida.add(s);
+  return [...salida].sort();
+}
+
+const enAlcance = (c: Contrato, ruta: string): boolean => c.alcance.extensiones.some((e) => ruta.endsWith(e)) && c.alcance.raices.some((r) => ruta === r || ruta.startsWith(`${r.replace(/\/$/, "")}/`));
+
+/** Las marcas del contrato en comentarios de todo el repo. Una marca dentro de un string no cuenta: el `@` sigue ahí cuando se quitan los comentarios. */
+function leerMarcas(indice: Indice): Marca[] {
+  const marcas: Marca[] = [];
+  for (const ruta of indice.todas) {
+    const fuente = indice.fuente(ruta);
+    if (!fuente.includes("@contrato")) continue;
+    const limpia = indice.limpia(ruta);
+    for (const m of fuente.matchAll(RE_MARCA)) if (limpia[m.index] !== "@") marcas.push({ id: m[1], ruta, desde: m.index });
+  }
+  return marcas;
+}
+
+/** Lo que un detector encuentra en un archivo (los adaptadores que no aplican a la extensión del archivo no encuentran nada). */
+function coincidenciasDe(d: Detector, ruta: string, indice: Indice): Coincidencia[] {
+  if (d.adaptador === "css") return esCss(ruta) ? coincidenciasDeCss(indice.reglas(ruta), d) : [];
+  if (!esTs(ruta)) return [];
+  if (d.adaptador === "clases") return coincidenciasDeClases(indice.cadenas(ruta), d.token);
+  // El texto crudo es un superset del código: si el patrón no está ni ahí, no hace falta parsear el archivo.
+  if (d.tipo === "codigo" && !prueba(d.patron, indice.fuente(ruta))) return [];
+  return coincidenciasDeTs(indice.archivoTs(ruta), d);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Un contrato
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+interface Dato {
+  ruta: string;
+  desde: number;
+  /** El hallazgo si nadie lo exceptúa ni lo declara como deuda. */
+  tipo: "uso-sin-declarar" | "definicion-duplicada";
+  que: string;
+  como: string;
+  fragmento: string;
+}
+
+function comoDeclarar(c: Contrato): string {
+  const d = c.declaracion;
+  if (d.tipo === "importar-ancla") return `importá \`${c.fuente.ancla}\` de «${c.fuente.archivo}»`;
+  if (d.tipo === "clase-companera") return `agregá la clase \`${d.clase}\` a esa cadena de clases (o \`.${d.clase}\` al selector de la regla)`;
+  return `usá un nombre que defina «${c.fuente.archivo}» (o definilo ahí)`;
+}
+
+function revisarContrato(c: Contrato, indice: Indice, marcas: readonly Marca[], hoy: string, avisos: Aviso[]): Hallazgo[] {
+  const hallazgos: Hallazgo[] = [];
+  let fuenteTexto = c.fuente.archivo;
+  const pos = (ruta: string, desde: number): { linea: number; columna: number } => (indice.tiene(ruta) ? indice.posicion(ruta, desde) : { linea: 1, columna: 1 });
+  const agregar = (tipo: TipoDeHallazgo, ruta: string, desde: number, que: string, como: string, fragmento = ""): void => {
+    hallazgos.push({ contrato: c.id, tipo, archivo: ruta, ...pos(ruta, desde), que, como, fragmento, fuente: fuenteTexto });
+  };
+
+  // --- Excepciones y deuda: las que no tienen motivo fallan aunque se usen.
+  for (const e of c.excepciones) {
+    if (e.motivo.trim().length < MOTIVO_MINIMO) agregar("excepcion-sin-motivo", e.archivo, 0, `la excepción de «${e.fragmento}» no tiene motivo (${MOTIVO_MINIMO} caracteres o más)`, "escribí por qué este uso no declara el contrato");
+  }
+  for (const d of c.deuda) {
+    if (d.motivo.trim().length < MOTIVO_MINIMO) agregar("deuda-sin-motivo", d.archivo, 0, `la deuda de «${d.fragmento}» no tiene motivo (${MOTIVO_MINIMO} caracteres o más)`, "escribí por qué quedó sin declarar");
+    else if (!d.resuelveEn.trim()) agregar("deuda-sin-motivo", d.archivo, 0, `la deuda de «${d.fragmento}» no dice dónde se resuelve`, "completá `resuelveEn` (el paso, la fase o el pendiente que la paga)");
+  }
+
+  // --- Gobierno de las excepciones y la deuda: responsable de la lista cerrada, aprobación con referencia válida, vencimiento dentro del horizonte.
+  const entradas: EntradaConVencimiento[] = [];
+  for (const [clase, lista] of [["excepcion", c.excepciones], ["deuda", c.deuda]] as const) {
+    for (const e of lista) {
+      const nombre = `la ${clase === "deuda" ? "deuda" : "excepción"} de «${colapsar(e.fragmento)}»`;
+      if (!RESPONSABLES.includes(e.responsable)) agregar("excepcion-sin-responsable", e.archivo, 0, `${nombre} tiene un responsable que no es de la lista cerrada («${e.responsable}»)`, `poné uno de: ${RESPONSABLES.join(", ")}`);
+      if (!e.aprobacion.por.trim() || !referenciaValida(e.aprobacion.referencia)) {
+        agregar("excepcion-sin-aprobacion", e.archivo, 0, `${nombre} no tiene aprobación válida (por «${e.aprobacion.por}», referencia «${e.aprobacion.referencia}»)`, "escribí quién la aprobó y la referencia: `PR #n`, `commit <sha>` o `DEC-nn`");
+      }
+      // Una renovación sin justificación o sin aprobación no renueva nada: falla como una entrada nueva sin motivo o sin aprobación.
+      for (const r of e.renovaciones) {
+        if (r.motivo.trim().length < MOTIVO_MINIMO) {
+          agregar(clase === "deuda" ? "deuda-sin-motivo" : "excepcion-sin-motivo", e.archivo, 0, `la renovación del ${r.fecha} de ${nombre} no tiene motivo (${MOTIVO_MINIMO} caracteres o más)`, "escribí por qué se renueva: no se renueva sin justificación");
+        }
+        if (!r.aprobacion.por.trim() || !referenciaValida(r.aprobacion.referencia)) {
+          agregar("excepcion-sin-aprobacion", e.archivo, 0, `la renovación del ${r.fecha} de ${nombre} no tiene aprobación válida (por «${r.aprobacion.por}», referencia «${r.aprobacion.referencia}»)`, "escribí quién la aprobó y la referencia: `PR #n`, `commit <sha>` o `DEC-nn`");
+        }
+      }
+      if (clase === "deuda" && e.renovaciones.length > RENOVACIONES_SIN_AVISO) {
+        avisos.push({ contrato: c.id, clase, archivo: e.archivo, fragmento: colapsar(e.fragmento), tipo: "muchas-renovaciones", renovaciones: e.renovaciones.length });
+      }
+      const inicio = e.renovaciones.reduce((ultima, r) => (r.fecha > ultima ? r.fecha : ultima), e.creada);
+      entradas.push({ clase, archivo: e.archivo, fragmento: colapsar(e.fragmento), inicio, vence: e.vence });
+    }
+  }
+  const vencimientos = evaluarVencimientos(entradas, hoy);
+  for (const v of vencimientos.vencidas) {
+    agregar(v.clase === "deuda" ? "deuda-vencida" : "excepcion-vencida", v.archivo, 0, `${v.clase === "deuda" ? "la deuda" : "la excepción"} de «${v.fragmento}» venció el ${v.vence} (hoy es ${hoy})`, "pagala (sacala y declará el contrato) o renovala con una nueva aprobación y otra fecha");
+  }
+  for (const v of vencimientos.excedidas) {
+    const quien = `${v.clase === "deuda" ? "la deuda" : "la excepción"} de «${v.fragmento}»`;
+    const que = v.inicio > hoy ? `${quien} tiene un inicio (${v.inicio}) posterior a hoy (${hoy})` : `${quien} vence el ${v.vence}, más de ${v.tope} días después de su inicio (${v.inicio}: la última renovación o la creación)`;
+    agregar("horizonte-excedido", v.archivo, 0, que, "poné una fecha de vencimiento más cercana o renová con motivo y aprobación (los topes están en `politica.ts`)");
+  }
+  for (const v of vencimientos.porVencer) avisos.push({ contrato: c.id, clase: v.clase, archivo: v.archivo, fragmento: v.fragmento, tipo: "vence-pronto", vence: v.vence, dias: v.dias });
+
+  // --- La fuente: existe, lleva UNA marca y tiene el ancla.
+  const fuenteEsta = indice.tiene(c.fuente.archivo);
+  const delContrato = marcas.filter((m) => m.id === c.id);
+  const enFuente = delContrato.filter((m) => m.ruta === c.fuente.archivo);
+  if (!fuenteEsta) agregar("fuente-ausente", c.fuente.archivo, 0, "el archivo de la fuente no existe", "corregí `fuente.archivo` del contrato o creá la fuente");
+  else if (enFuente.length === 0) agregar("fuente-ausente", c.fuente.archivo, 0, `la fuente no lleva la marca \`@contrato ${c.id}\` en un comentario`, `agregá un comentario con \`@contrato ${c.id}\` junto al ancla`);
+  for (const m of [...enFuente.slice(1), ...delContrato.filter((x) => x.ruta !== c.fuente.archivo)]) {
+    agregar("marca-duplicada", m.ruta, m.desde, `la marca \`@contrato ${c.id}\` ya está en la fuente «${c.fuente.archivo}»: hay dos fuentes`, "dejá UNA sola marca en la fuente (si el contrato se copió, sacá la copia y que use la fuente)");
+  }
+  if (fuenteEsta) {
+    const ancla = esCss(c.fuente.archivo) ? posicionDelAncla(indice.reglas(c.fuente.archivo), c.fuente.ancla) : posicionDelSimboloExportado(indice.arbol(c.fuente.archivo), c.fuente.ancla);
+    if (ancla === null) {
+      agregar("fuente-ausente", c.fuente.archivo, 0, `la fuente no tiene el ancla \`${c.fuente.ancla}\``, esCss(c.fuente.archivo) ? "agregá la regla con ese selector o corregí `fuente.ancla`" : "exportá ese símbolo o corregí `fuente.ancla`");
+    } else fuenteTexto = `${c.fuente.archivo}:${indice.posicion(c.fuente.archivo, ancla).linea}`;
+    if (c.declaracion.tipo === "clase-companera" && esCss(c.fuente.archivo) && primeraReglaConClase(indice.reglas(c.fuente.archivo), c.declaracion.clase) === null) {
+      agregar("fuente-ausente", c.fuente.archivo, 0, `la fuente no define la clase compañera \`.${c.declaracion.clase}\``, "definí esa clase en la fuente o corregí `declaracion.clase`");
+    }
+  }
+
+  // --- El alcance.
+  const archivos = indice.todas.filter((r) => enAlcance(c, r) && r !== c.fuente.archivo);
+  if (!indice.todas.some((r) => enAlcance(c, r))) {
+    agregar("alcance-vacio", c.fuente.archivo, 0, `el alcance (${c.alcance.raices.join(", ")} · ${c.alcance.extensiones.join(", ")}) no encontró ningún archivo`, "corregí las raíces o las extensiones: un contrato sin archivos pasaría en vacío");
+    return hallazgos;
+  }
+  if (!fuenteEsta) return hallazgos;
+
+  // --- Cada archivo del alcance: usos, definiciones y si declara.
+  const datos: Dato[] = [];
+  const declaran = new Map<string, number>();
+  const nombresUsados = new Set<string>();
+  const declara = c.declaracion;
+  const definidos = declara.tipo === "nombre-definido-en-la-fuente" ? nombresDeLaFuente(c, indice) : new Map<string, number>();
+  const visto = new Set<string>();
+  const nuevo = (rol: string, ruta: string, desde: number): boolean => {
+    const clave = `${rol}|${ruta}|${desde}`;
+    if (visto.has(clave)) return false;
+    visto.add(clave);
+    return true;
+  };
+
+  for (const ruta of archivos) {
+    const imp = declara.tipo === "importar-ancla" && esTs(ruta) && (c.fuente.ancla === "default" || indice.fuente(ruta).includes(c.fuente.ancla)) ? importaElAncla(indice.arbol(ruta), ruta, c.fuente.archivo, c.fuente.ancla) : null;
+    let usos = 0;
+    let primeroValido = -1;
+    for (const s of c.senales) {
+      for (const k of coincidenciasDe(s, ruta, indice)) {
+        usos++;
+        nombresUsados.add(k.nombre);
+        let declarado: boolean;
+        if (declara.tipo === "importar-ancla") declarado = imp !== null;
+        else if (declara.tipo === "clase-companera") declarado = k.companeras.includes(declara.clase) || declara.equivalentes.some((q) => k.companeras.includes(q));
+        else declarado = definidos.has(k.nombre);
+        if (declarado && primeroValido < 0) primeroValido = k.desde;
+        if (declarado || !nuevo("uso", ruta, k.desde)) continue;
+        const detalle = declara.tipo === "nombre-definido-en-la-fuente" ? `usa \`${k.nombre}\`, que la fuente no define` : `${s.que} sin declarar el contrato`;
+        datos.push({ ruta, desde: k.desde, tipo: "uso-sin-declarar", que: detalle, como: comoDeclarar(c), fragmento: k.fragmento });
+      }
+    }
+    for (const d of c.definicion) {
+      for (const k of coincidenciasDe(d, ruta, indice)) {
+        if (!nuevo("definicion", ruta, k.desde)) continue;
+        datos.push({ ruta, desde: k.desde, tipo: "definicion-duplicada", que: `${d.que} fuera de la fuente «${c.fuente.archivo}»`, como: `usá la fuente (\`${c.fuente.ancla}\`) en vez de redefinirla`, fragmento: k.fragmento });
+      }
+    }
+
+    // Consumidor: el archivo que declara el contrato. Y una declaración sin ningún uso detrás sobra.
+    if (declara.tipo === "importar-ancla") {
+      if (imp) {
+        declaran.set(ruta, imp.desde);
+        if (!imp.usada && usos === 0) agregar("declaracion-sin-uso", ruta, imp.desde, `importa \`${c.fuente.ancla}\` y no lo usa ni usa nada que el contrato regule`, "sacá el import o usá la fuente");
+      }
+    } else if (declara.tipo === "clase-companera") {
+      const donde = esCss(ruta) ? primeraReglaConClase(indice.reglas(ruta), declara.clase) : primeraClase(indice.cadenas(ruta), declara.clase);
+      if (donde !== null) {
+        declaran.set(ruta, donde);
+        if (usos === 0) agregar("declaracion-sin-uso", ruta, donde, `lleva la clase \`${declara.clase}\` y no tiene ningún uso que el contrato regule`, `sacá la clase \`${declara.clase}\` o agregá lo que la necesita`);
+      }
+    } else if (primeroValido >= 0) declaran.set(ruta, primeroValido);
+  }
+
+  // --- «nombre definido en la fuente»: un nombre definido que nadie usa también falla (en la fuente y en el alcance).
+  if (declara.tipo === "nombre-definido-en-la-fuente") {
+    const ruta = c.fuente.archivo;
+    for (const s of c.senales) for (const k of coincidenciasDe(s, ruta, indice)) nombresUsados.add(k.nombre);
+    for (const [nombre, desde] of definidos) {
+      if (!nombresUsados.has(nombre)) agregar("declaracion-sin-uso", ruta, desde, `la fuente define \`${nombre}\` y nadie lo usa`, "usalo en un consumidor o sacalo de la fuente");
+    }
+  }
+
+  // --- Los consumidores: descubiertos (al menos uno) o una lista cerrada en las dos direcciones.
+  if (c.consumidores === "descubiertos") {
+    if (declaran.size === 0) {
+      agregar("consumidor-fantasma", c.fuente.archivo, 0, "ningún archivo del alcance declara el contrato: no tiene consumidores", `declaralo en quien lo usa (${comoDeclarar(c)}) o sacá el contrato`);
+    }
+  } else {
+    if (c.consumidores.length === 0) agregar("consumidor-fantasma", c.fuente.archivo, 0, "la lista cerrada de consumidores está vacía", "listá los archivos que dependen del contrato o usá \"descubiertos\"");
+    for (const ruta of c.consumidores) {
+      if (!indice.tiene(ruta)) agregar("consumidor-fantasma", ruta, 0, `«${ruta}» figura como consumidor y no existe`, "sacalo de `consumidores`");
+      else if (!enAlcance(c, ruta) || ruta === c.fuente.archivo) agregar("consumidor-fantasma", ruta, 0, `«${ruta}» figura como consumidor y está fuera del alcance del contrato`, "sacalo de `consumidores` o ampliá el alcance");
+      else if (!declaran.has(ruta)) agregar("consumidor-fantasma", ruta, 0, `«${ruta}» figura como consumidor y no declara el contrato`, `${comoDeclarar(c)} o sacalo de \`consumidores\``);
+    }
+    for (const [ruta, desde] of declaran) {
+      if (!c.consumidores.includes(ruta)) agregar("uso-sin-declarar", ruta, desde, "declara el contrato pero no figura en la lista cerrada `consumidores`", "agregalo a `consumidores` (la lista se revisa en las dos direcciones)");
+    }
+  }
+
+  // --- Excepciones (cubren todos los usos con ese fragmento) y deuda (una entrada por uso real); lo que sobra, falla.
+  const exUsada = new Set<number>();
+  const deudaUsada = new Set<number>();
+  for (const dato of datos.sort((a, b) => (a.ruta < b.ruta ? -1 : a.ruta > b.ruta ? 1 : a.desde - b.desde))) {
+    const f = colapsar(dato.fragmento);
+    const e = c.excepciones.findIndex((x) => x.archivo === dato.ruta && colapsar(x.fragmento) === f);
+    if (e >= 0) {
+      exUsada.add(e);
+      continue;
+    }
+    const d = c.deuda.findIndex((x, i) => !deudaUsada.has(i) && x.archivo === dato.ruta && colapsar(x.fragmento) === f);
+    if (d >= 0) {
+      deudaUsada.add(d);
+      continue;
+    }
+    agregar(dato.tipo, dato.ruta, dato.desde, dato.que, dato.como, f);
+  }
+  c.excepciones.forEach((e, i) => {
+    if (!exUsada.has(i)) agregar("excepcion-sobrante", e.archivo, 0, `la excepción de «${colapsar(e.fragmento)}» ya no corresponde a ningún uso`, "sacala de `excepciones` del contrato");
+  });
+  c.deuda.forEach((d, i) => {
+    if (!deudaUsada.has(i)) agregar("deuda-sobrante", d.archivo, 0, `la deuda de «${colapsar(d.fragmento)}» ya no corresponde a ningún uso real (o sobra una entrada repetida)`, "sacala de `deuda` del contrato: ya está pagada");
+  });
+  return hallazgos;
+}
+
+/** Los nombres que define la fuente (`--x`) con la posición de su primera definición. CSS: las propiedades personalizadas; TS: todo `--x` escrito en el código. */
+function nombresDeLaFuente(c: Contrato, indice: Indice): Map<string, number> {
+  const ruta = c.fuente.archivo;
+  if (esCss(ruta)) return variablesDefinidas(indice.reglas(ruta));
+  const nombres = new Map<string, number>();
+  for (const m of indice.limpia(ruta).matchAll(/--[A-Za-z][\w-]*/g)) if (!nombres.has(m[0])) nombres.set(m[0], m.index);
+  return nombres;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// El motor
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+const comparar = (a: string | number, b: string | number): number => (a < b ? -1 : a > b ? 1 : 0);
+
+export function revisarContratos(opciones: OpcionesDelMotor): Resultado {
+  validarManifiesto(opciones.contratos);
+  const indice = new Indice(opciones.raiz, listar(opciones.raiz, opciones.contratos));
+  const marcas = leerMarcas(indice);
+  const conocidos = new Set(opciones.contratos.map((c) => c.id));
+
+  const hallazgos: Hallazgo[] = [];
+  const avisos: Aviso[] = [];
+  for (const m of marcas) {
+    if (conocidos.has(m.id)) continue;
+    hallazgos.push({
+      contrato: m.id,
+      tipo: "marca-desconocida",
+      archivo: m.ruta,
+      ...indice.posicion(m.ruta, m.desde),
+      que: `la marca \`@contrato ${m.id}\` no es de ningún contrato del manifiesto`,
+      como: "declarar el contrato en `manifiesto.ts` o sacar la marca",
+      fragmento: "",
+      fuente: "",
+    });
+  }
+  for (const c of opciones.contratos) hallazgos.push(...revisarContrato(c, indice, marcas, opciones.hoy, avisos));
+
+  const unicos = new Map<string, Hallazgo>();
+  for (const h of hallazgos) unicos.set(`${h.archivo}|${h.linea}|${h.columna}|${h.contrato}|${h.tipo}|${h.que}`, h);
+  const ordenados = [...unicos.values()].sort((a, b) => comparar(a.archivo, b.archivo) || a.linea - b.linea || a.columna - b.columna || comparar(a.contrato, b.contrato) || comparar(a.tipo, b.tipo) || comparar(a.que, b.que));
+
+  const deudaPorContrato: Record<string, number> = {};
+  for (const c of opciones.contratos) if (c.deuda.length > 0) deudaPorContrato[c.id] = c.deuda.length;
+  return {
+    hallazgos: ordenados,
+    avisos: avisos.sort((a, b) => comparar(a.tipo, b.tipo) || comparar(a.contrato, b.contrato) || comparar(a.archivo, b.archivo) || comparar(a.fragmento, b.fragmento)),
+    resumen: {
+      contratos: opciones.contratos.length,
+      archivosLeidos: indice.leidos,
+      deudaTotal: opciones.contratos.reduce((n, c) => n + c.deuda.length, 0),
+      deudaPorContrato,
+      excepcionesTotal: opciones.contratos.reduce((n, c) => n + c.excepciones.length, 0),
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Reporte
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/** Un hallazgo en el formato del reporte: `archivo:línea:columna  [contrato · tipo]`, qué falta → cómo se corrige, y la fuente con el fragmento para exceptuarlo. */
+export function formatearHallazgo(h: Hallazgo): string {
+  const lineas = [`${h.archivo}:${h.linea}:${h.columna}  [${h.contrato} · ${h.tipo}]`, `  ${h.que} → ${h.como}`];
+  const cola = [h.fuente ? `fuente: ${h.fuente}` : "", h.fragmento ? `fragmento (para excepción o deuda): «${h.fragmento}»` : ""].filter(Boolean);
+  if (cola.length > 0) lineas.push(`  ${cola.join(" · ")}`);
+  return lineas.join("\n");
+}
+
+/** La línea de resumen del reporte: cuántos contratos, cuánta deuda (por contrato) y cuántas excepciones. */
+export function resumirContratos(resultado: Resultado): string {
+  const r = resultado.resumen;
+  const deuda = Object.entries(r.deudaPorContrato)
+    .map(([id, n]) => `${id}: ${n}`)
+    .join(", ");
+  return `${r.contratos} contratos · ${r.archivosLeidos} archivos leídos · deuda declarada: ${r.deudaTotal} usos${deuda ? ` (${deuda})` : ""} · excepciones: ${r.excepcionesTotal}`;
+}
+
+/** Un aviso (no falla): lo que vence pronto, o una deuda renovada demasiadas veces. */
+export function formatearAviso(a: Aviso): string {
+  const que = `aviso: [${a.contrato}] ${a.clase === "deuda" ? "la deuda" : "la excepción"} de «${a.fragmento}» en ${a.archivo}`;
+  if (a.tipo === "muchas-renovaciones") return `${que} ya se renovó ${a.renovaciones} veces: pagala en vez de renovarla otra vez`;
+  return `${que} ${a.dias === 0 ? "vence hoy" : `vence en ${a.dias} ${a.dias === 1 ? "día" : "días"} (${a.vence})`}`;
+}
+
+export function formatearReporte(resultado: Resultado): string {
+  return [...resultado.hallazgos.map(formatearHallazgo), ...resultado.avisos.map(formatearAviso), resumirContratos(resultado)].join("\n");
+}
