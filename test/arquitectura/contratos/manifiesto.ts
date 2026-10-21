@@ -1,9 +1,9 @@
+import { BORDE_PROPIO_DE_CARTA } from "./contratos/borde-propio-de-carta";
+import { SEPARADOR_DE_LISTA_DE_CARTA } from "./contratos/separador-de-lista-de-carta";
 import type { Contrato } from "./tipos";
 
 /**
  * El manifiesto de contratos compartidos declarados: el índice de todos los contratos del repo. Cada contrato es un objeto TS plano y completo (`Contrato` no tiene
- * campos opcionales). Se declara uno nuevo con la receta de `LEEME.md`.
- *
- * Por ahora está VACÍO a propósito: el motor (paso M1) no trae contratos; los portan los pasos siguientes, cada uno en su commit.
+ * campos opcionales) y vive en su propio archivo de `contratos/`. Se declara uno nuevo con la receta de `LEEME.md`.
  */
-export const MANIFIESTO: readonly Contrato[] = [];
+export const MANIFIESTO: readonly Contrato[] = [SEPARADOR_DE_LISTA_DE_CARTA, BORDE_PROPIO_DE_CARTA];
