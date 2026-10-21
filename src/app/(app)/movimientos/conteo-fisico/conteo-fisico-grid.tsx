@@ -11,6 +11,10 @@ import { CampoNumero } from "@/components/campo-numero";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
+import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 
 const ACCIONES: { value: AccionConteo; label: string; titulo: string }[] = [
   { value: "AJUSTAR", label: "Ajustar", titulo: "Escribe el movimiento de corrección ahora — el stock queda en lo contado." },
@@ -217,14 +221,13 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
 
   return (
     <div className="flex flex-col gap-3">
-      <label className="flex w-48 flex-col gap-1 text-sm">
-        Fecha del conteo
-        <input type="date" value={fechaConteo} onChange={(e) => setFechaConteo(e.target.value)} className="rounded border px-3 py-2" />
-      </label>
+      <div className="w-48">
+        <CampoFecha etiqueta="Fecha del conteo" value={fechaConteo} onChange={(e) => setFechaConteo(e.target.value)} />
+      </div>
 
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-neutral-500">
+          <tr className="border-b text-left text-tinta-tenue">
             <th className="py-1 pr-2">Producto</th>
             <th className="px-2">Lote</th>
             <th className="px-2 text-right">Sistema</th>
@@ -250,11 +253,11 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
                 <td className="py-1 pr-2">{f.etiqueta}</td>
                 <td className="px-2">
                   {esManual ? (
-                    <input
-                      type="date"
+                    <CampoFecha
+                      aria-label={`Lote de ${f.etiqueta}`}
+                      tamano="compacto"
                       value={f.loteVencimiento ?? ""}
                       onChange={(e) => setFilasManuales((prev) => prev.map((m) => (m.key === f.key ? { ...m, loteVencimiento: e.target.value } : m)))}
-                      className="rounded border px-2 py-1 text-sm"
                     />
                   ) : (
                     (f.loteVencimiento ?? (f.esTotalDeLotes ? "Todos los lotes (total)" : "—"))
@@ -266,31 +269,34 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
                 </td>
                 <td className={`px-2 text-right ${diferencia ? "font-medium" : ""}`}>{diferencia === null ? "—" : diferencia > 0 ? `+${diferencia}` : diferencia}</td>
                 <td className="px-2">
-                  <select
+                  <Selector
+                    etiqueta={`Acción de ${f.etiqueta}`}
+                    etiquetaOculta
+                    tamano="compacto"
                     value={estado.accion}
                     onChange={(e) => actualizarEstado(f.key, { accion: e.target.value as AccionConteo })}
-                    className="rounded border px-2 py-1.5 text-sm"
                   >
                     {accionesOfrecidas.map((a) => (
                       <option key={a.value} value={a.value} title={a.titulo}>
                         {a.label}
                       </option>
                     ))}
-                  </select>
+                  </Selector>
                 </td>
                 <td className="px-2">
-                  <input
+                  <Campo
+                    aria-label={`Detalle de ${f.etiqueta}`}
+                    tamano="compacto"
                     value={estado.detalle}
                     onChange={(e) => actualizarEstado(f.key, { detalle: e.target.value })}
                     placeholder="opcional"
-                    className="w-full rounded border px-2 py-1.5 text-sm"
                   />
                 </td>
                 <td className="px-2">
                   {esManual && (
-                    <button type="button" onClick={() => quitarManual(f.key)} className="text-xs text-neutral-500 underline">
+                    <Boton variante="enlace" tamano="en-fila" onClick={() => quitarManual(f.key)}>
                       quitar
-                    </button>
+                    </Boton>
                   )}
                 </td>
               </tr>
@@ -298,7 +304,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
           })}
           {!filas.length && (
             <tr>
-              <td className="py-2 text-neutral-500" colSpan={8}>
+              <td className="py-2 text-tinta-tenue" colSpan={8}>
                 Sin productos con stock registrado en esta sección todavía — agregá uno abajo si hay algo que nunca se contó.
               </td>
             </tr>
@@ -316,8 +322,8 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
             limpiarSenal={limpiarSelector}
           />
         </label>
-        <button
-          type="button"
+        <Boton
+          variante="secundario"
           onClick={() =>
             void (async () => {
               if (!nuevoProductoId) return;
@@ -328,14 +334,13 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
               if (producto) agregarProducto(producto.id, `${producto.codigo} — ${producto.nombre}`);
             })()
           }
-          className="rounded border px-3 py-2 text-sm"
         >
           Agregar fila
-        </button>
+        </Boton>
       </div>
 
       {resumen && (
-        <div className={`text-sm ${resumen.ok ? "text-green-700" : "text-red-600"}`}>
+        <div className={`text-sm ${resumen.ok ? "text-ok-tinta" : "text-error"}`}>
           <p>{resumen.texto}</p>
           {resumen.errores.length > 0 && (
             <ul className="list-disc pl-5">
@@ -347,14 +352,9 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => void confirmar()}
-        disabled={pending}
-        className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50"
-      >
+      <Boton onClick={() => void confirmar()} disabled={pending} className="self-start">
         {pending ? (progreso ?? "Guardando...") : "Registrar conteo"}
-      </button>
+      </Boton>
     </div>
   );
 }
