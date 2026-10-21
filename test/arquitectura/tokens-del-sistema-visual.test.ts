@@ -73,6 +73,8 @@ const TEXTO_SOBRE_FONDO: readonly (readonly [string, string])[] = [
   ["ok-tinta", "ok-tinte"],
   ["aviso-tinta", "aviso-tinte"],
   ["error", "error-tinte"],
+  // 6.6g: la insignia de tono `marca` (`insignia.tsx`): texto `marca` sobre el tinte de la marca (5,34:1).
+  ["marca", "marca-tinte"],
   // 6.4: la carta del panel (`carta-mant.module.css`). `tinta-tenue` NO está acá sobre `superficie-suave` ni sobre los tintes: no llega (ver «carta del panel»).
   ["tinta", "superficie-suave"],
   ["tinta-suave", "superficie-suave"],

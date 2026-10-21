@@ -38,6 +38,8 @@
   --color-borde-control: #8A857C;
   --color-marca: #A8431F;
   --color-marca-hover: #8A3618;
+  /* Fondo tenue de la marca (6.6g, la insignia de tono `marca`): texto `marca` sobre él 5,34:1 (medido en `tokens-del-sistema-visual.test.ts`). */
+  --color-marca-tinte: #FBEFEA;
 
   --color-ok: #3F7A5C;
   --color-ok-tinte: #EBF3EE;

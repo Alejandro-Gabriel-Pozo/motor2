@@ -466,9 +466,11 @@ const borrarFuente: Operador = {
     return mutacion(`borra el archivo de la fuente ${c.fuente.archivo}`, () => 1, {
       cambios: [{ op: "borrar", ruta: c.fuente.archivo }],
       // Otro contrato que comparta la fuente también la echa de menos; y si la fuente era el único archivo de su área que usaba un contrato que el área declara (el `Boton` de `src/ui` es el
-      // único que lee tokens del área `ui`), el área queda declarando un contrato sin uso.
+      // único que lee tokens del área `ui`), el área queda declarando un contrato sin uso. Y si la fuente era la única que usaba un token (`--color-marca-tinte` solo lo lee `insignia.tsx`), ese
+      // token queda sin uso.
       tolerados: [
         { verifica: "motor", tipo: "fuente-ausente" },
+        { verifica: "motor", tipo: "declaracion-sin-uso" },
         { verifica: "areas", tipo: "dependencia-falsa" },
       ],
     });
@@ -957,6 +959,8 @@ const mover: Operador = {
         // Mover una carpeta que contiene la fuente de un contrato (`src/ui` lleva las primitivas) deja a ese contrato con la marca en el lugar nuevo (duplicada) y sin su fuente en el viejo.
         { verifica: "motor", tipo: "marca-duplicada" },
         { verifica: "motor", tipo: "fuente-ausente" },
+        // Y si lo que se lleva era lo único que usaba un token (`src/ui` lleva `insignia.tsx`, la única que lee `--color-marca-tinte`), ese token queda sin uso.
+        { verifica: "motor", tipo: "declaracion-sin-uso" },
         // Mover una pieza del mecanismo o un guardián deja al registro de aprobaciones y a la lista de guardianes sin lo que esperaban.
         { verifica: "aprobaciones", tipo: "archivo-ausente" },
         { verifica: "cumplimiento", tipo: "guardian-ausente" },
