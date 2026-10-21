@@ -66,7 +66,7 @@ export function BotonActivarDesactivar({
 
   if (!activo) {
     return (
-      <Boton variante="enlace" tamano="compacto" onClick={onCambiar}>
+      <Boton variante="enlace" tamano="en-fila" onClick={onCambiar}>
         <IconoDeAccion id="activar" />
         Activar
       </Boton>
@@ -75,7 +75,7 @@ export function BotonActivarDesactivar({
 
   if (!mostrarConfirmacion) {
     return (
-      <Boton id={idDesactivar} variante="enlace" tamano="compacto" onClick={() => setConfirmando(true)}>
+      <Boton id={idDesactivar} variante="enlace" tamano="en-fila" onClick={() => setConfirmando(true)}>
         <IconoDeAccion id="activar" />
         Desactivar
       </Boton>
@@ -94,7 +94,7 @@ export function BotonActivarDesactivar({
       </Aviso>
       <Boton
         variante="enlace-peligro"
-        tamano="compacto"
+        tamano="en-fila"
         aria-describedby={idAviso}
         onClick={() => {
           setConfirmando(false);
@@ -103,7 +103,7 @@ export function BotonActivarDesactivar({
       >
         Sí, desactivar
       </Boton>
-      <Boton id={idCancelar} variante="enlace" tamano="compacto" aria-describedby={idAviso} onClick={cancelar}>
+      <Boton id={idCancelar} variante="enlace" tamano="en-fila" aria-describedby={idAviso} onClick={cancelar}>
         Cancelar
       </Boton>
     </div>
