@@ -170,23 +170,43 @@ describe("motor: contrato de TypeScript (importar el ancla)", () => {
 });
 
 describe("motor: la fuente y sus marcas", () => {
-  it("la fuente ausente da fuente-ausente", () => {
-    escribir({ "src/ok.ts": USO_OK });
-    expect(vistos(correr(dinero()))).toEqual([["fuente-ausente", "src/core/moneda.ts", 1, 1]]);
-  });
+  /** El archivo donde vive la definición del contrato, con su `id:` en la línea 3 (la convención que el diagnóstico cita). */
+  const DEFINICION = { "test/arquitectura/contratos/contratos/redondeo-de-dinero.ts": '// definición del contrato\nexport const C = {\n  id: "redondeo-de-dinero",\n};\n' };
 
-  it("el ancla ausente da fuente-ausente", () => {
-    arbolDinero({ "src/core/moneda.ts": "/** @contrato redondeo-de-dinero */\nexport function otraCosa() {}\n" });
-    const r = correr(dinero());
-    expect(r.hallazgos.filter((h) => h.tipo === "fuente-ausente").map((h) => [h.archivo, h.linea, h.columna])).toEqual([["src/core/moneda.ts", 1, 1]]);
-    expect(r.hallazgos[0].que).toContain("el ancla `redondearMoneda`");
-  });
-
-  it("la fuente sin marca da fuente-ausente", () => {
-    arbolDinero({ "src/core/moneda.ts": "export function redondearMoneda(n: number) {\n  return n;\n}\n" });
+  it("la fuente ausente da fuente-ausente en 1:1, con el id del contrato, dónde se define (archivo y línea de su id) y qué corregir", () => {
+    escribir({ "src/ok.ts": USO_OK, ...DEFINICION });
     const r = correr(dinero());
     expect(vistos(r)).toEqual([["fuente-ausente", "src/core/moneda.ts", 1, 1]]);
+    expect(r.hallazgos[0].que).toContain("«redondeo-de-dinero»");
+    expect(r.hallazgos[0].como).toContain("«test/arquitectura/contratos/contratos/redondeo-de-dinero.ts:3»");
+    expect(r.hallazgos[0].como).toContain("restaurá «src/core/moneda.ts»");
+  });
+
+  it("el ancla ausente apunta a la línea y la columna de la MARCA (la que sí está)", () => {
+    arbolDinero({ "src/core/moneda.ts": "// uno\n// dos\n/** @contrato redondeo-de-dinero */\nexport function otraCosa() {}\n" });
+    const r = correr(dinero());
+    expect(r.hallazgos.filter((h) => h.tipo === "fuente-ausente").map((h) => [h.archivo, h.linea, h.columna])).toEqual([["src/core/moneda.ts", 3, 5]]);
+    expect(r.hallazgos[0].que).toContain("el ancla `redondearMoneda`");
+    expect(r.hallazgos[0].que).toContain("«redondeo-de-dinero»");
+  });
+
+  it("la fuente sin marca apunta a la línea y la columna del ANCLA (la que sí está)", () => {
+    arbolDinero({ "src/core/moneda.ts": "// uno\n// dos\n  export function redondearMoneda(n: number) {\n  return n;\n}\n" });
+    const r = correr(dinero());
+    expect(vistos(r)).toEqual([["fuente-ausente", "src/core/moneda.ts", 3, 3]]);
     expect(r.hallazgos[0].que).toContain("marca");
+    expect(r.hallazgos[0].que).toContain("«redondeo-de-dinero»");
+  });
+
+  it("sin marca y sin ancla: 1:1, y el mensaje dice dónde se define el contrato (dos hallazgos, uno por cosa que falta)", () => {
+    escribir({ "src/ok.ts": USO_OK, "src/core/moneda.ts": "export function otraCosa() {}\n", ...DEFINICION });
+    const r = correr(dinero());
+    expect(vistos(r)).toEqual([
+      ["fuente-ausente", "src/core/moneda.ts", 1, 1],
+      ["fuente-ausente", "src/core/moneda.ts", 1, 1],
+    ]);
+    expect(r.hallazgos.map((h) => h.que).join("|")).toMatch(/marca.*\|.*ancla|ancla.*\|.*marca/);
+    expect(r.hallazgos.every((h) => h.como.includes("redondeo-de-dinero.ts:3") && h.como.length > 0)).toBe(true);
   });
 
   it("dos marcas en la fuente: la segunda es marca-duplicada, en su posición", () => {
@@ -483,9 +503,9 @@ describe("motor: contrato de clases (clase compañera) y de CSS", () => {
 
   it("una fuente CSS sin el selector ancla, o sin la clase compañera, da fuente-ausente", () => {
     arbolBorde();
-    expect(vistos(correr(borde({ fuente: { archivo: "src/app/globals.css", ancla: ".carta-shell .carta-nada" } })))).toEqual([["fuente-ausente", "src/app/globals.css", 1, 1]]);
+    expect(vistos(correr(borde({ fuente: { archivo: "src/app/globals.css", ancla: ".carta-shell .carta-nada" } })))).toEqual([["fuente-ausente", "src/app/globals.css", 1, 4]]); // la línea y la columna de la MARCA
     const sinClase = correr(borde({ declaracion: { tipo: "clase-companera", clase: "carta-nada", equivalentes: [] } })).hallazgos.filter((h) => h.tipo === "fuente-ausente");
-    expect(sinClase.map((h) => [h.archivo, h.linea, h.columna])).toEqual([["src/app/globals.css", 1, 1]]);
+    expect(sinClase.map((h) => [h.archivo, h.linea, h.columna])).toEqual([["src/app/globals.css", 2, 1]]); // la línea del ANCLA (la regla `.carta-shell .carta-borde`)
     expect(sinClase[0].que).toContain("`.carta-nada`");
   });
 });

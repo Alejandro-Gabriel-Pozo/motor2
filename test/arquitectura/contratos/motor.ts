@@ -1,4 +1,4 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { listarArchivos } from "../cercos/trinquete";
 import { primeraClase, coincidenciasDeClases } from "./adaptadores/clases-tsx";
@@ -25,6 +25,8 @@ const EXTENSIONES_BASE: readonly string[] = [".ts", ".tsx", ".css"];
 const RE_ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 /** La marca de la fuente: el arroba, la palabra «contrato» y el id de un contrato; solo cuenta dentro de un comentario. */
 const RE_MARCA = /@contrato[ \t]+([A-Za-z0-9][\w-]*)/g;
+/** Dónde vive la definición de cada contrato del repo (un archivo por contrato, con el nombre de su id): el diagnóstico de la fuente la cita. */
+const CARPETA_DE_DEFINICIONES = "test/arquitectura/contratos/contratos";
 
 export interface OpcionesDelMotor {
   /** Raíz del repo (o de un árbol temporal en las pruebas). */
@@ -145,7 +147,17 @@ function comoDeclarar(c: Contrato): string {
   return `usá un nombre que defina «${c.fuente.archivo}» (o definilo ahí)`;
 }
 
-function revisarContrato(c: Contrato, indice: Indice, marcas: readonly Marca[], hoy: string, avisos: Aviso[]): Hallazgo[] {
+/** Dónde está definido el contrato (convención: `contratos/<id>.ts`): la ruta con la línea de su `id:` si el archivo existe en `raiz`; si no, dice que no está en este árbol. */
+function dondeSeDefine(raiz: string, id: string): string {
+  const ruta = `${CARPETA_DE_DEFINICIONES}/${id}.ts`;
+  const absoluta = join(raiz, ...ruta.split("/"));
+  if (!existsSync(absoluta)) return `el manifiesto de contratos (no hay «${ruta}» en este árbol)`;
+  const lineas = readFileSync(absoluta, "utf8").split("\n");
+  const i = lineas.findIndex((l) => new RegExp(`\\bid:\\s*["']${id}["']`).test(l));
+  return `«${ruta}:${i < 0 ? 1 : i + 1}»`;
+}
+
+function revisarContrato(c: Contrato, indice: Indice, marcas: readonly Marca[], hoy: string, avisos: Aviso[], raiz: string): Hallazgo[] {
   const hallazgos: Hallazgo[] = [];
   let fuenteTexto = c.fuente.archivo;
   const pos = (ruta: string, desde: number): { linea: number; columna: number } => (indice.tiene(ruta) ? indice.posicion(ruta, desde) : { linea: 1, columna: 1 });
@@ -201,22 +213,34 @@ function revisarContrato(c: Contrato, indice: Indice, marcas: readonly Marca[], 
   }
   for (const v of vencimientos.porVencer) avisos.push({ contrato: c.id, clase: v.clase, archivo: v.archivo, fragmento: v.fragmento, tipo: "vence-pronto", vence: v.vence, dias: v.dias });
 
-  // --- La fuente: existe, lleva UNA marca y tiene el ancla.
+  // --- La fuente: existe, lleva UNA marca y tiene el ancla. Cada hallazgo apunta a una línea real: si falta la marca, a la del ancla; si falta el ancla, a la de la marca;
+  // si falta todo (o el archivo), a 1:1 y el mensaje dice DÓNDE está definido el contrato y qué corregir.
   const fuenteEsta = indice.tiene(c.fuente.archivo);
   const delContrato = marcas.filter((m) => m.id === c.id);
   const enFuente = delContrato.filter((m) => m.ruta === c.fuente.archivo);
-  if (!fuenteEsta) agregar("fuente-ausente", c.fuente.archivo, 0, "el archivo de la fuente no existe", "corregí `fuente.archivo` del contrato o creá la fuente");
-  else if (enFuente.length === 0) agregar("fuente-ausente", c.fuente.archivo, 0, `la fuente no lleva la marca \`@contrato ${c.id}\` en un comentario`, `agregá un comentario con \`@contrato ${c.id}\` junto al ancla`);
+  const definido = dondeSeDefine(raiz, c.id);
+  const ancla = !fuenteEsta ? null : esCss(c.fuente.archivo) ? posicionDelAncla(indice.reglas(c.fuente.archivo), c.fuente.ancla) : posicionDelSimboloExportado(indice.arbol(c.fuente.archivo), c.fuente.ancla);
+  const dondeApuntar = ancla ?? enFuente[0]?.desde ?? 0;
+  if (!fuenteEsta) {
+    agregar("fuente-ausente", c.fuente.archivo, 0, `la fuente de «${c.id}» no existe: el archivo de la fuente no existe`, `restaurá «${c.fuente.archivo}» o corregí \`fuente.archivo\` del contrato, definido en ${definido}`);
+  } else if (enFuente.length === 0) {
+    agregar("fuente-ausente", c.fuente.archivo, ancla ?? 0, `la fuente de «${c.id}» no lleva la marca \`@contrato ${c.id}\` en un comentario`, `agregá un comentario con \`@contrato ${c.id}\` junto al ancla \`${c.fuente.ancla}\` (el contrato está definido en ${definido})`);
+  }
   for (const m of [...enFuente.slice(1), ...delContrato.filter((x) => x.ruta !== c.fuente.archivo)]) {
     agregar("marca-duplicada", m.ruta, m.desde, `la marca \`@contrato ${c.id}\` ya está en la fuente «${c.fuente.archivo}»: hay dos fuentes`, "dejá UNA sola marca en la fuente (si el contrato se copió, sacá la copia y que use la fuente)");
   }
   if (fuenteEsta) {
-    const ancla = esCss(c.fuente.archivo) ? posicionDelAncla(indice.reglas(c.fuente.archivo), c.fuente.ancla) : posicionDelSimboloExportado(indice.arbol(c.fuente.archivo), c.fuente.ancla);
     if (ancla === null) {
-      agregar("fuente-ausente", c.fuente.archivo, 0, `la fuente no tiene el ancla \`${c.fuente.ancla}\``, esCss(c.fuente.archivo) ? "agregá la regla con ese selector o corregí `fuente.ancla`" : "exportá ese símbolo o corregí `fuente.ancla`");
+      agregar(
+        "fuente-ausente",
+        c.fuente.archivo,
+        dondeApuntar,
+        `la fuente de «${c.id}» no tiene el ancla \`${c.fuente.ancla}\``,
+        `${esCss(c.fuente.archivo) ? "agregá la regla con ese selector o corregí `fuente.ancla`" : "exportá ese símbolo o corregí `fuente.ancla`"} (el contrato está definido en ${definido})`
+      );
     } else fuenteTexto = `${c.fuente.archivo}:${indice.posicion(c.fuente.archivo, ancla).linea}`;
     if (c.declaracion.tipo === "clase-companera" && esCss(c.fuente.archivo) && primeraReglaConClase(indice.reglas(c.fuente.archivo), c.declaracion.clase) === null) {
-      agregar("fuente-ausente", c.fuente.archivo, 0, `la fuente no define la clase compañera \`.${c.declaracion.clase}\``, "definí esa clase en la fuente o corregí `declaracion.clase`");
+      agregar("fuente-ausente", c.fuente.archivo, dondeApuntar, `la fuente de «${c.id}» no define la clase compañera \`.${c.declaracion.clase}\``, `definí esa clase en la fuente o corregí \`declaracion.clase\` (el contrato está definido en ${definido})`);
     }
   }
 
@@ -379,7 +403,7 @@ export function revisarContratos(opciones: OpcionesDelMotor): Resultado {
       fuente: "",
     });
   }
-  for (const c of opciones.contratos) hallazgos.push(...revisarContrato(c, indice, marcas, opciones.hoy, avisos));
+  for (const c of opciones.contratos) hallazgos.push(...revisarContrato(c, indice, marcas, opciones.hoy, avisos, opciones.raiz));
 
   const unicos = new Map<string, Hallazgo>();
   for (const h of hallazgos) unicos.set(`${h.archivo}|${h.linea}|${h.columna}|${h.contrato}|${h.tipo}|${h.que}`, h);
