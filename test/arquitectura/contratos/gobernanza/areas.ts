@@ -40,7 +40,7 @@ export const AREAS: DeclaracionDeAreas = {
   // --- frontend: src/app (las secciones de `(app)`, los grupos de rutas, la API, las pantallas sueltas y la raíz), src/components y src/ui.
   "app": [],
   "app/(app)": [],
-  "app/(app)/administracion": [],
+  "app/(app)/administracion": ["primitiva-enlace", "tokens-visuales"],
   "app/(app)/carta": ["tokens-visuales"],
   "app/(app)/catalogo": ["primitiva-campo"],
   "app/(app)/inicio": [],
