@@ -9,6 +9,13 @@ import { codigoSolo, type ArchivoTs } from "./adaptadores/ts";
  * reglas de CSS. Todo se calcula la primera vez que alguien lo pide y se reusa: cada archivo se lee una vez y se parsea una vez, sin importar cuántos contratos
  * y adaptadores lo miren. La fuente se normaliza (`\r\n` → `\n`): todas las posiciones son 0-based sobre ese texto.
  */
+/**
+ * Memoria ENTRE corridas, con una ranura por ruta que solo vale mientras el texto sea idéntico: el arnés de mutaciones corre el motor cientos de veces sobre el mismo árbol y
+ * cambia un archivo por vez, así que lo que no cambió no se vuelve a parsear. Una sola corrida (el guardián real) no se entera: la primera vez siempre se calcula.
+ */
+const memoLimpia = new Map<string, { fuente: string; limpia: string }>();
+const memoArbol = new Map<string, { fuente: string; arbol: ts.SourceFile }>();
+
 export const esCss = (ruta: string): boolean => ruta.endsWith(".css");
 export const esTs = (ruta: string): boolean => /\.tsx?$/.test(ruta);
 
@@ -54,7 +61,13 @@ export class Indice {
   limpia(ruta: string): string {
     let l = this.limpias.get(ruta);
     if (l === undefined) {
-      l = sinComentarios(this.fuente(ruta), ruta);
+      const fuente = this.fuente(ruta);
+      const previa = memoLimpia.get(ruta);
+      if (previa?.fuente === fuente) l = previa.limpia;
+      else {
+        l = sinComentarios(fuente, ruta);
+        memoLimpia.set(ruta, { fuente, limpia: l });
+      }
       this.limpias.set(ruta, l);
     }
     return l;
@@ -63,7 +76,13 @@ export class Indice {
   arbol(ruta: string): ts.SourceFile {
     let a = this.arboles.get(ruta);
     if (a === undefined) {
-      a = arbolDe(this.fuente(ruta), ruta);
+      const fuente = this.fuente(ruta);
+      const previo = memoArbol.get(ruta);
+      if (previo?.fuente === fuente) a = previo.arbol;
+      else {
+        a = arbolDe(fuente, ruta);
+        memoArbol.set(ruta, { fuente, arbol: a });
+      }
       this.arboles.set(ruta, a);
     }
     return a;

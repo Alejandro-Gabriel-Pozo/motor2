@@ -112,7 +112,7 @@ export const AREAS: DeclaracionDeAreas = {
 };
 
 /** Dónde vive este archivo: lo usan los hallazgos para decir dónde pegar o borrar una línea. */
-const ARCHIVO_DE_AREAS = "test/arquitectura/contratos/gobernanza/areas.ts";
+export const ARCHIVO_DE_AREAS = "test/arquitectura/contratos/gobernanza/areas.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 // Qué tipos de ruta declaran contratos

@@ -8,27 +8,33 @@
  * `Contrato` NO tiene campos opcionales: `tsc` rechaza un contrato al que le falte algo. «Nada» se escribe a propósito (`[]`, `"descubiertos"`).
  */
 
-/** Los únicos hallazgos que el motor sabe dar. Cerrado: agregar uno obliga a tocar el motor, su reporte y sus pruebas. */
-export type TipoDeHallazgo =
-  | "uso-sin-declarar"
-  | "definicion-duplicada"
-  | "consumidor-fantasma"
-  | "declaracion-sin-uso"
-  | "fuente-ausente"
-  | "marca-desconocida"
-  | "marca-duplicada"
-  | "excepcion-sobrante"
-  | "excepcion-sin-motivo"
-  | "deuda-sobrante"
-  | "deuda-sin-motivo"
-  | "caso-legitimo-sobrante"
-  | "caso-legitimo-sin-motivo"
-  | "excepcion-vencida"
-  | "deuda-vencida"
-  | "excepcion-sin-responsable"
-  | "excepcion-sin-aprobacion"
-  | "horizonte-excedido"
-  | "alcance-vacio";
+/**
+ * Los únicos hallazgos que el motor sabe dar. Cerrado: agregar uno obliga a tocar el motor, su reporte y sus pruebas, y el meta-test del arnés de mutaciones
+ * (`mutaciones-de-contratos.test.ts`) exige que algún invariante de la matriz lo produzca o que un test de `motor.test.ts` lo cubra. La lista es la fuente del tipo.
+ */
+export const TIPOS_DE_HALLAZGO = [
+  "uso-sin-declarar",
+  "definicion-duplicada",
+  "consumidor-fantasma",
+  "declaracion-sin-uso",
+  "fuente-ausente",
+  "marca-desconocida",
+  "marca-duplicada",
+  "excepcion-sobrante",
+  "excepcion-sin-motivo",
+  "deuda-sobrante",
+  "deuda-sin-motivo",
+  "caso-legitimo-sobrante",
+  "caso-legitimo-sin-motivo",
+  "excepcion-vencida",
+  "deuda-vencida",
+  "excepcion-sin-responsable",
+  "excepcion-sin-aprobacion",
+  "horizonte-excedido",
+  "alcance-vacio",
+] as const;
+
+export type TipoDeHallazgo = (typeof TIPOS_DE_HALLAZGO)[number];
 
 /**
  * Qué busca un detector. Todo es texto y AST: no se lee ninguna configuración de Tailwind, de Next ni de PostCSS.
