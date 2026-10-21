@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import type { ComandoCrearGrupoDeOpciones, ResultadoCrearGrupoDeOpciones } from "@/core/features/catalogo/opciones-de-venta.schema";
 import { MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA, admitePrefijoEnCarta, validarGrupo } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -14,7 +15,7 @@ import { grupoConElMismoNombre } from "./opciones-de-venta-en-tx";
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. El permiso (`opciones_definir`) y el formato (`guardComandoCrearGrupoDeOpciones`) ya los resolvió la Server Action.
  *
- * Pasos: 1. las cantidades según el tipo (`validarGrupo`, puro); 2. en UNA transacción SERIALIZABLE: busca un grupo con el mismo nombre sin distinguir mayúsculas — si es el mismo
+ * Pasos, en UNA transacción SERIALIZABLE (`crearGrupoDeOpcionesEnTx`): 1. las cantidades según el tipo (`validarGrupo`, puro); 2. busca un grupo con el mismo nombre sin distinguir mayúsculas — si es el mismo
  * (tipo y cantidades) devuelve ese («ya existía»: un doble clic o un reintento no crea otro); si es otro, `NOMBRE_REPETIDO`; si no hay, lo crea y audita el alta por columna.
  * Dos altas simultáneas con el mismo nombre (aunque cambien las mayúsculas) chocan con el único `lower(nombre)`: la perdedora recibe 23505, se reintenta (`tambienChoqueDeUnico`)
  * y su relectura ve el grupo de la ganadora.
@@ -29,40 +30,46 @@ export async function crearGrupoDeOpcionesCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "transaccion" | "ahora">,
   comando: ComandoCrearGrupoDeOpciones
 ): Promise<ResultadoCrearGrupoDeOpciones> {
+  return conTransaccionSerializable(actor.transaccion, (tx) => crearGrupoDeOpcionesEnTx(tx, actor, comando), undefined, undefined, true);
+}
+
+/**
+ * El cuerpo del alta, DENTRO de una transacción SERIALIZABLE que abre quien llama: este caso de uso y, Fase 6 («el espacio del producto», 6.14), el comando compuesto «crear un grupo sin salir del
+ * producto», que lo encadena con el alta de sus opciones y la admisión en UNA sola transacción. Hace lo de siempre y en el mismo orden: las cantidades según el tipo (`validarGrupo`), «se lee en la
+ * carta como» solo en VARIANTE y MEDIDA, la búsqueda del nombre (el idéntico se devuelve como «ya existía»; otro, `NOMBRE_REPETIDO`), el alta y su auditoría por columna con el mismo `tx` y la misma hora.
+ * Un rechazo de las reglas puras sale sin haber escrito nada.
+ */
+export async function crearGrupoDeOpcionesEnTx(
+  tx: Prisma.TransactionClient,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "ahora">,
+  comando: ComandoCrearGrupoDeOpciones
+): Promise<ResultadoCrearGrupoDeOpciones> {
   const regla = validarGrupo(comando);
   if (!regla.ok) return fracaso("CONFIGURACION_INVALIDA", regla.mensaje);
   // Fase 4 (ADR-035): «se lee en la carta como» solo en VARIANTE y MEDIDA.
   const prefijoEnCarta = comando.prefijoEnCarta ?? null;
   if (prefijoEnCarta !== null && !admitePrefijoEnCarta(comando.tipo)) return fracaso("CONFIGURACION_INVALIDA", MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA);
 
-  return conTransaccionSerializable(
-    actor.transaccion,
-    async (tx): Promise<ResultadoCrearGrupoDeOpciones> => {
-      const existente = await grupoConElMismoNombre(tx, comando.nombre, null);
-      if (existente) {
-        const identico =
-          existente.tipo === comando.tipo && existente.cantidadMinima === comando.cantidadMinima && existente.cantidadMaxima === comando.cantidadMaxima && existente.prefijoEnCarta === prefijoEnCarta;
-        return identico
-          ? exito(`Ya existía el grupo «${existente.nombre}»: no se creó otro.`, { grupoId: existente.id, yaExistia: true })
-          : fracaso("NOMBRE_REPETIDO", `Ya hay un grupo llamado «${existente.nombre}». Elegí otro nombre.`);
-      }
-      const creado = await crearGrupoDeOpciones(tx, { ...comando, prefijoEnCarta, ahora: actor.ahora });
-      const descripcion = `Grupo de opciones «${comando.nombre}»: alta.`;
-      const cambios = [
-        { campo: "nombre", valorNuevo: comando.nombre },
-        { campo: "tipo", valorNuevo: comando.tipo },
-        { campo: "cantidadMinima", valorNuevo: comando.cantidadMinima },
-        { campo: "cantidadMaxima", valorNuevo: comando.cantidadMaxima },
-        // Fase 4 (ADR-035): sin prefijo (null) no deja fila (no cambió nada).
-        { campo: "prefijoEnCarta", valorNuevo: prefijoEnCarta },
-      ];
-      for (const c of cambios) {
-        await registrarCambioAuditado(tx, { entidad: "GrupoDeOpciones", entidadId: creado.id, campo: c.campo, descripcion, valorAnterior: null, valorNuevo: c.valorNuevo, actorId: actor.usuarioId, sucursalId: null });
-      }
-      return exito(`Grupo «${comando.nombre}» creado.`, { grupoId: creado.id, yaExistia: false });
-    },
-    undefined,
-    undefined,
-    true
-  );
+  const existente = await grupoConElMismoNombre(tx, comando.nombre, null);
+  if (existente) {
+    const identico =
+      existente.tipo === comando.tipo && existente.cantidadMinima === comando.cantidadMinima && existente.cantidadMaxima === comando.cantidadMaxima && existente.prefijoEnCarta === prefijoEnCarta;
+    return identico
+      ? exito(`Ya existía el grupo «${existente.nombre}»: no se creó otro.`, { grupoId: existente.id, yaExistia: true })
+      : fracaso("NOMBRE_REPETIDO", `Ya hay un grupo llamado «${existente.nombre}». Elegí otro nombre.`);
+  }
+  const creado = await crearGrupoDeOpciones(tx, { ...comando, prefijoEnCarta, ahora: actor.ahora });
+  const descripcion = `Grupo de opciones «${comando.nombre}»: alta.`;
+  const cambios = [
+    { campo: "nombre", valorNuevo: comando.nombre },
+    { campo: "tipo", valorNuevo: comando.tipo },
+    { campo: "cantidadMinima", valorNuevo: comando.cantidadMinima },
+    { campo: "cantidadMaxima", valorNuevo: comando.cantidadMaxima },
+    // Fase 4 (ADR-035): sin prefijo (null) no deja fila (no cambió nada).
+    { campo: "prefijoEnCarta", valorNuevo: prefijoEnCarta },
+  ];
+  for (const c of cambios) {
+    await registrarCambioAuditado(tx, { entidad: "GrupoDeOpciones", entidadId: creado.id, campo: c.campo, descripcion, valorAnterior: null, valorNuevo: c.valorNuevo, actorId: actor.usuarioId, sucursalId: null });
+  }
+  return exito(`Grupo «${comando.nombre}» creado.`, { grupoId: creado.id, yaExistia: false });
 }
