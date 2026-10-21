@@ -88,7 +88,11 @@ const GRAFICOS_SOBRE_PAPEL: readonly (readonly [string, string])[] = [
   ["error", "papel"],
   // 6.5: el contorno del foco de teclado, contra el papel de la administración y contra las tarjetas blancas (WCAG 1.4.11, componentes de interfaz).
   ["foco", "papel"],
-  ["foco", "superficie"],  // 6.4: el borde de los controles (WCAG 1.4.11, contorno de un componente de interfaz) contra la superficie blanca y contra el papel de la administración.
+  ["foco", "superficie"],
+  // 6.8.3: el contorno del foco sobre los fondos oscuros (la barra de «Deshacer» es `tinta` o, si falló, `error`).
+  ["foco-sobre-tinta", "tinta"],
+  ["foco-sobre-tinta", "error"],
+  // 6.4: el borde de los controles (WCAG 1.4.11, contorno de un componente de interfaz) contra la superficie blanca y contra el papel de la administración.
   ["borde-control", "superficie"],
   ["borde-control", "papel"],
 ];

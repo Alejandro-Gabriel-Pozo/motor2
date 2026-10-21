@@ -52,6 +52,9 @@
   --color-error-tinte: #FAEBEB;
 
   --color-foco: var(--color-tinta);
+  /* Contorno de foco sobre los fondos OSCUROS del sistema (`tinta` y `error`: el aviso flotante con «Deshacer»): el blanco da 17,2:1 sobre `tinta` y 6,26:1 sobre `error`; `foco` (la tinta)
+     no se ve sobre `tinta` (1:1) y da ~2,75:1 sobre `error`. Medido en `tokens-del-sistema-visual.test.ts` (>= 3:1). */
+  --color-foco-sobre-tinta: var(--color-superficie);
 
   /* Con transparencia (velo de una hoja modal, sombra de un aviso, borde de un botón sobre `tinta`): no se miden en `tokens-del-sistema-visual.test.ts` (su contraste depende de lo que hay detrás). */
   --color-velo: rgb(28 27 25 / 0.55);
