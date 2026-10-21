@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Dialogo } from "@/ui/componentes/superposiciones/dialogo";
+import { Boton } from "@/ui/primitivas/boton";
 
 /**
  * Modal liviano y genérico — base del patrón "+ Nuevo X" inline (alta
@@ -26,14 +27,9 @@ export function Modal({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setAbierto(true)}
-        disabled={deshabilitado}
-        className="text-sm text-neutral-500 underline hover:text-neutral-900 disabled:opacity-50 dark:hover:text-neutral-100"
-      >
+      <Boton variante="enlace" tamano="compacto" onClick={() => setAbierto(true)} disabled={deshabilitado}>
         {triggerLabel}
-      </button>
+      </Boton>
       {/* Sobre el `<dialog>` nativo (ver `ui/componentes/superposiciones/dialogo.tsx`): rol de diálogo, foco atrapado y devuelto, Escape y hoja inferior en celular. */}
       <Dialogo abierto={abierto} titulo={title} onCerrar={() => setAbierto(false)}>
         {children(() => setAbierto(false))}

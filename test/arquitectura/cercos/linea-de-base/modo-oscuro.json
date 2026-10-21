@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 399,
-  "entradas": 99,
+  "total": 398,
+  "entradas": 98,
   "porTipo": {
-    "dark:": 399
+    "dark:": 398
   },
   "cuentas": {
     "src/app/(app)/administracion/auditoria/tabla-auditoria.tsx": {
@@ -285,9 +285,6 @@
     },
     "src/components/menu-celular.tsx": {
       "dark:": 24
-    },
-    "src/components/modal.tsx": {
-      "dark:": 1
     },
     "src/components/receta/lectura-de-cantidad.tsx": {
       "dark:": 3
