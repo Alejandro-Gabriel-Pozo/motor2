@@ -122,6 +122,7 @@ export const REGLAS_DE_RUTA: readonly ReglaDeRuta[] = [
       "playwright.demo.config.ts",
       "postcss.config.mjs",
       "stryker.config.mjs",
+      "stryker.piloto.config.mjs",
       "tsconfig.json",
       "vercel.json",
       "vitest.config.ts",
