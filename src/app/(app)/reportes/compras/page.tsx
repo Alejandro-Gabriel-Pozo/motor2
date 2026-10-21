@@ -12,6 +12,7 @@ import { FormularioCorregirCompra } from "./formulario-corregir-compra";
 import { formatearNumeroComprobante, leerNumeroComprobante } from "@/core/datos/numero-comprobante";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { ZONA_UTC, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { redondearMoneda } from "@/core/moneda";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -115,7 +116,7 @@ export default async function ComprasRegistradasPage({
       ) : (
         <>
           <p className="text-xs text-neutral-500">
-            {items.length} compra(s) en esta página · suman {plata(Math.round(totalPagina * 100) / 100)}
+            {items.length} compra(s) en esta página · suman {plata(redondearMoneda(totalPagina))}
             {cantidadAnuladas > 0 && ` (sin contar ${cantidadAnuladas} anulada(s))`}
           </p>
           <div className="flex flex-col gap-2">
