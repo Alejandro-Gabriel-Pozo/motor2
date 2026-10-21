@@ -34,8 +34,11 @@ describe("SelectorRango: aviso cuando el rango se recortó (M-21)", () => {
 
   it("el formulario del selector sigue siendo el mismo con y sin aviso", () => {
     const con = dibujar({ desde: "2000-01-01" });
-    expect(con).toContain('<select id="rango" name="rango"');
+    // La primitiva `Selector` escribe los atributos en su orden: se mira que el `<select>` tenga los dos, y que su etiqueta esté atada con `for`.
+    expect(con).toMatch(/<select(?=[^>]*\bid="rango")(?=[^>]*\bname="rango")/);
+    expect(con).toContain('<label for="rango"');
     expect(con).toContain('name="desde"');
+    expect(con).toMatch(/<button type="submit"[^>]*>Actualizar<\/button>/);
   });
 });
 
