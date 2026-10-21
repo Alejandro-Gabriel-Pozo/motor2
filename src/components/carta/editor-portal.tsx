@@ -162,7 +162,7 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
             </summary>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {campos.map((d) => (
-                <Campo key={d.clave} d={d as DefinicionClavePortal} inicial={valoresIniciales[d.clave] ?? ""} actual={valores[d.clave] ?? ""} aviso={d.clave === "portal_bg_image_url" ? avisoMapa : null} />
+                <CampoDeClave key={d.clave} d={d as DefinicionClavePortal} inicial={valoresIniciales[d.clave] ?? ""} actual={valores[d.clave] ?? ""} aviso={d.clave === "portal_bg_image_url" ? avisoMapa : null} />
               ))}
             </div>
           </details>
@@ -211,7 +211,7 @@ const AYUDA: Partial<Record<DefinicionClavePortal["tipo"], string>> = {
   porcentaje: "Porcentaje del alto del mapa (0 a 100). Cada sucursal puede tener su propio alto en su posición.",
 };
 
-function Campo({ d, inicial, actual, aviso }: { d: DefinicionClavePortal; inicial: string; actual: string; aviso: string | null }) {
+function CampoDeClave({ d, inicial, actual, aviso }: { d: DefinicionClavePortal; inicial: string; actual: string; aviso: string | null }) {
   const id = `portal-${d.clave}`;
   const r = actual.trim() ? validarValorPortal(d.clave, actual) : null;
   const error = r && !r.ok ? r.mensaje : null;

@@ -62,7 +62,7 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
                 </summary>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {campos.map((d) => (
-                    <Campo key={d.clave} d={d as DefinicionClaveTema} inicial={valoresIniciales[d.clave] ?? ""} actual={valores[d.clave] ?? ""} />
+                    <CampoDeClave key={d.clave} d={d as DefinicionClaveTema} inicial={valoresIniciales[d.clave] ?? ""} actual={valores[d.clave] ?? ""} />
                   ))}
                 </div>
               </details>
@@ -112,7 +112,7 @@ const AYUDA: Partial<Record<DefinicionClaveTema["tipo"], string>> = {
   telefono: "Con código de país: +54 9 294 123-4567.",
 };
 
-function Campo({ d, inicial, actual }: { d: DefinicionClaveTema; inicial: string; actual: string }) {
+function CampoDeClave({ d, inicial, actual }: { d: DefinicionClaveTema; inicial: string; actual: string }) {
   const id = `tema-${d.clave}`;
   const r = actual.trim() ? validarValorTema(d.clave, actual) : null;
   const error = r && !r.ok ? r.mensaje : null;

@@ -48,19 +48,27 @@ function coincidenciasDe(d: Detector, ruta: string, indice: Indice, prefijoDeNom
   return coincidenciasDeTs(indice.archivoTs(ruta), d);
 }
 
-/** Los archivos del alcance del contrato (carpetas recorridas, archivos sueltos incluidos), sin la fuente. */
-function archivosDelAlcance(raiz: string, c: Contrato): string[] {
-  const salida = new Set<string>();
-  const carpetas: string[] = [];
-  for (const r of c.alcance.raices) {
-    const absoluta = join(raiz, ...r.split("/"));
-    if (!existsSync(absoluta)) continue;
-    if (statSync(absoluta).isDirectory()) carpetas.push(r);
-    else if (c.alcance.extensiones.some((e) => r.endsWith(e))) salida.add(r);
+/**
+ * Los archivos del alcance del contrato (carpetas recorridas, archivos sueltos incluidos), sin la fuente. `recorridos` guarda lo que ya se listó para un mismo alcance en esta consulta: los
+ * contratos de las primitivas de `src/ui` comparten raíces y extensiones, y cada recorrido del disco se hacía una vez por contrato y por corrida del arnés de mutaciones.
+ */
+function archivosDelAlcance(raiz: string, c: Contrato, recorridos: Map<string, readonly string[]>): string[] {
+  const clave = JSON.stringify([c.alcance.raices, c.alcance.extensiones]);
+  let listados = recorridos.get(clave);
+  if (listados === undefined) {
+    const salida = new Set<string>();
+    const carpetas: string[] = [];
+    for (const r of c.alcance.raices) {
+      const absoluta = join(raiz, ...r.split("/"));
+      if (!existsSync(absoluta)) continue;
+      if (statSync(absoluta).isDirectory()) carpetas.push(r);
+      else if (c.alcance.extensiones.some((e) => r.endsWith(e))) salida.add(r);
+    }
+    for (const r of listarArchivos(raiz, carpetas, c.alcance.extensiones)) salida.add(r);
+    listados = [...salida].sort();
+    recorridos.set(clave, listados);
   }
-  for (const r of listarArchivos(raiz, carpetas, c.alcance.extensiones)) salida.add(r);
-  salida.delete(c.fuente.archivo);
-  return [...salida].sort();
+  return listados.filter((r) => r !== c.fuente.archivo);
 }
 
 /** Los nombres que define la fuente (`--x`): CSS, las propiedades personalizadas de la regla ancla; TS, todo `--x` escrito en el código. */
@@ -77,7 +85,8 @@ function nombresDeLaFuente(c: Contrato, indice: Indice): ReadonlySet<string> {
 
 /** Para cada contrato, los archivos de su alcance que lo usan. Un solo `Indice` compartido: cada archivo se lee y se parsea una vez. */
 export function usosDeContratos(raiz: string, contratos: readonly Contrato[]): UsosDeContrato[] {
-  const porContrato = contratos.map((c) => ({ c, rutas: archivosDelAlcance(raiz, c) }));
+  const recorridos = new Map<string, readonly string[]>();
+  const porContrato = contratos.map((c) => ({ c, rutas: archivosDelAlcance(raiz, c, recorridos) }));
   const fuentes = contratos.map((c) => c.fuente.archivo);
   const indice = new Indice(raiz, [...new Set([...porContrato.flatMap((p) => p.rutas), ...fuentes.filter((f) => existsSync(join(raiz, ...f.split("/"))))])]);
 

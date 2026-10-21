@@ -110,6 +110,11 @@ export const EJEMPLOS_DE_CONTRATOS: Readonly<Record<string, EjemplosDeContrato>>
     definicion: "export function Boton() {\n  return null;\n}\n",
     extensiones: { uso: ".tsx", definicion: ".tsx" },
   },
+  "primitiva-campo": {
+    uso: 'export const ZzUso = () => <Campo etiqueta="x" />;\n',
+    definicion: "export function Campo() {\n  return null;\n}\n",
+    extensiones: { uso: ".tsx", definicion: ".tsx" },
+  },
 };
 
 const ARCHIVO_DE_CUMPLIMIENTO_TEST = "test/arquitectura/contratos/gobernanza/cumplimiento.test.ts";
