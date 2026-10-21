@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 314,
-  "entradas": 77,
+  "total": 310,
+  "entradas": 76,
   "porTipo": {
-    "dark:": 314
+    "dark:": 310
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -78,9 +78,6 @@
     },
     "src/app/(app)/catalogo/unidades/page.tsx": {
       "dark:": 1
-    },
-    "src/app/(app)/inicio/page.tsx": {
-      "dark:": 4
     },
     "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
       "dark:": 10
