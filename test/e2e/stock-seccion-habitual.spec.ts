@@ -72,7 +72,7 @@ test("configurar, editar y quitar la sección habitual de un producto", async ({
 
     // Alta.
     await elegirProducto(page, s.pizza.nombre);
-    await page.getByLabel("Sección habitual", { exact: true }).selectOption({ label: s.cocina.nombre });
+    await page.getByRole("combobox", { name: "Sección habitual", exact: true }).selectOption({ label: s.cocina.nombre });
     await page.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByText(`Sección habitual de «${s.pizza.nombre}»: «${s.cocina.nombre}».`)).toBeVisible();
     await expect(filaDe(page, s.pizza.nombre)).toContainText(s.cocina.nombre);
@@ -80,7 +80,7 @@ test("configurar, editar y quitar la sección habitual de un producto", async ({
     // Editar: el producto viene cargado, se cambia la sección.
     await filaDe(page, s.pizza.nombre).getByRole("link", { name: "Editar" }).click();
     await expect(page.getByRole("heading", { name: "Editar sección habitual" })).toBeVisible();
-    await page.getByLabel("Sección habitual", { exact: true }).selectOption({ label: s.deposito.nombre });
+    await page.getByRole("combobox", { name: "Sección habitual", exact: true }).selectOption({ label: s.deposito.nombre });
     await page.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByRole("heading", { name: "Fijar sección habitual" })).toBeVisible();
     await expect(filaDe(page, s.pizza.nombre)).toContainText(s.deposito.nombre);
