@@ -1,9 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { setSeccionHabitual } from "@/server/actions/stock/seccion-habitual";
 import { SelectorProducto } from "@/components/selector-producto";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Selector } from "@/ui/primitivas/selector";
 
 export interface FilaSeccionHabitualEnEdicion {
   productoId: string;
@@ -21,7 +24,6 @@ export function SeccionHabitualForm({ secciones, filaEnEdicion }: { secciones: {
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
   const [resetCount, setResetCount] = useState(0);
-  const idSeccion = useId();
 
   return (
     <form
@@ -59,28 +61,24 @@ export function SeccionHabitualForm({ secciones, filaEnEdicion }: { secciones: {
         />
       </label>
 
-      {/* Etiqueta con htmlFor (no envolviendo): el nombre accesible del <select> queda «Sección habitual», sin el texto de sus opciones. */}
-      <div className="flex flex-col gap-1 text-sm">
-        <label htmlFor={idSeccion}>Sección habitual</label>
-        <select id={idSeccion} value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required className="rounded border px-3 py-2">
-          <option value="">Elegí una sección</option>
-          {secciones.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Selector etiqueta="Sección habitual" value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required>
+        <option value="">Elegí una sección</option>
+        {secciones.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nombre}
+          </option>
+        ))}
+      </Selector>
 
       {mensaje && (
-        <p role={ok ? "status" : "alert"} className={`text-sm ${ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
           {mensaje}
-        </p>
+        </Aviso>
       )}
 
-      <button type="submit" disabled={pending} className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+      <Boton type="submit" disabled={pending} className="self-start">
         {pending ? "Guardando..." : "Guardar"}
-      </button>
+      </Boton>
     </form>
   );
 }
