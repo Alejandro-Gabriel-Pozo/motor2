@@ -22,10 +22,10 @@ export default async function TraspasosPage({ searchParams }: { searchParams: Pr
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "traspaso_ver_bandeja", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { cursor } = unicosDeUrl(await searchParams);
   const [bandeja, secciones, aprobar, rechazarSolicitud, aceptar, rechazarEnvio, confirmarReingreso, cancelarSolicitud] = await Promise.all([
@@ -67,7 +67,7 @@ export default async function TraspasosPage({ searchParams }: { searchParams: Pr
     <div>
       <div className="mb-4">
         <h1 className="mb-1 text-xl font-semibold">Traspasos entre sucursales</h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           El stock no se teletransporta: cada paso queda registrado y auditado. Ver &quot;Solicitar&quot;/&quot;Enviar directo&quot; en el nav
           para empezar uno nuevo.
         </p>

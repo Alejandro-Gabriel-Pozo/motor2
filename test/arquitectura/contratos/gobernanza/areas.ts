@@ -47,7 +47,7 @@ export const AREAS: DeclaracionDeAreas = {
   "app/(app)/movimientos": [],
   "app/(app)/reportes": [],
   "app/(app)/stock": [],
-  "app/(app)/traspasos": [],
+  "app/(app)/traspasos": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-selector", "tokens-visuales"],
   "app/(carta-publica)": [],
   "app/(pos)": [],
   "app/api": [],
