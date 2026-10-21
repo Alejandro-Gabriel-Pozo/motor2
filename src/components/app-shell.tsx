@@ -83,7 +83,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
               await signOut();
             }}
           >
-            <BotonDeServidor type="submit" variante="enlace" tamano="compacto">
+            <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
               Salir
             </BotonDeServidor>
           </form>

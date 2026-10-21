@@ -19,6 +19,7 @@ const FUENTES = {
   activarDesactivar: "src/components/boton-activar-desactivar.tsx",
   conConfirmacion: "src/components/boton-con-confirmacion.tsx",
   modal: "src/components/modal.tsx",
+  appShell: "src/components/app-shell.tsx",
 } as const;
 
 /** Las etiquetas de apertura `<Boton …>` (y `<BotonDeServidor …>`) de un archivo, completas: salta las llaves para no cortar en el `=>` de un `onClick`. */
@@ -93,5 +94,15 @@ describe("Modal: el disparador es de la altura del texto en escritorio", () => {
     expect(botones).toHaveLength(1);
     expect(esEnFila(botones[0]), botones[0].join(" ")).toBe(true);
     expect(etiquetasDeBoton(FUENTES.modal)).toHaveLength(1);
+  });
+});
+
+describe("AppShell: «Salir» no agranda la cabecera de escritorio", () => {
+  it("«Salir» usa tamano en-fila: 44 px en celular y la altura del texto desde md: (la cabecera mide 44 px, no 56)", () => {
+    // AppShell es un componente de servidor asíncrono (sesión, permisos, base): no se dibuja acá; se mira su única etiqueta de botón.
+    const etiquetas = etiquetasDeBoton(FUENTES.appShell);
+    expect(etiquetas).toHaveLength(1);
+    expect(etiquetas[0]).toContain("<BotonDeServidor");
+    expect(etiquetas[0]).toContain('tamano="en-fila"');
   });
 });
