@@ -97,6 +97,37 @@ describe("EnvolturaDeCampo", () => {
   });
 });
 
+describe("EnvolturaDeCampo: invalido y sin etiqueta", () => {
+  const dibujar = (props: { etiqueta?: string; invalido?: boolean; error?: string; ayuda?: string }): string =>
+    renderToStaticMarkup(<EnvolturaDeCampo {...props}>{(control: AtributosDeControl) => <input {...control} name="n" />}</EnvolturaDeCampo>);
+
+  it("invalido sin error: el control queda aria-invalid y con borde de error, sin mensaje, sin role=alert y sin aria-describedby", () => {
+    const html = dibujar({ etiqueta: "Nombre", invalido: true });
+    expect(html).toContain('aria-invalid="true"');
+    expect(clasesDe(html, "input")).toContain("border-error");
+    expect(clasesDe(html, "input")).not.toContain("border-borde-control");
+    expect(html).not.toContain('role="alert"');
+    expect(html).not.toContain("aria-describedby");
+    expect(html).not.toContain("<p");
+  });
+
+  it("invalido en falso (o ausente) no marca nada; con error y con invalido a la vez, el mensaje sale UNA vez", () => {
+    const sinMarca = dibujar({ etiqueta: "Nombre", invalido: false });
+    expect(sinMarca).not.toContain("aria-invalid");
+    expect(clasesDe(sinMarca, "input")).toContain("border-borde-control");
+    const ambos = dibujar({ etiqueta: "Nombre", invalido: true, error: "Mal" });
+    expect([...ambos.matchAll(/role="alert"/g)]).toHaveLength(1);
+    expect([...ambos.matchAll(/aria-invalid="true"/g)]).toHaveLength(1);
+  });
+
+  it("sin etiqueta no dibuja ningún <label>; el control sigue con su id", () => {
+    const html = dibujar({});
+    expect(html).not.toContain("<label");
+    expect(html).toMatch(/<input id="[^"]+"/);
+    expect(dibujar({ etiqueta: "Nombre" })).toContain("<label");
+  });
+});
+
 describe("Campo", () => {
   it("dibuja un input con su etiqueta atada y deja pasar los atributos del input", () => {
     const html = renderToStaticMarkup(<Campo etiqueta="CUIT" name="cuit" maxLength={11} placeholder="Sin guiones" />);
@@ -153,5 +184,79 @@ describe("Campo", () => {
     const input = envoltura.props.children({ id: "i", "aria-describedby": undefined, "aria-invalid": undefined, className: "" });
     expect(input.type).toBe("input");
     expect((input.props as { ref: unknown }).ref).toBe(ref);
+  });
+});
+
+describe("Campo: cómo se nombra (NombreDeCampo)", () => {
+  it("con etiqueta dibuja el <label> atado (lo de siempre)", () => {
+    const html = renderToStaticMarkup(<Campo etiqueta="CUIT" name="cuit" />);
+    expect(html).toContain("<label");
+    expect(html).not.toContain("aria-label");
+  });
+
+  it("con aria-label el input lleva el nombre y NO hay <label>", () => {
+    const html = renderToStaticMarkup(<Campo aria-label="Cantidad" name="cantidad" />);
+    expect(html).not.toContain("<label");
+    expect(html).toMatch(/<input[^>]*\saria-label="Cantidad"/);
+  });
+
+  it("con nombradoPorFuera no hay <label> ni el atributo llega al DOM (quien lo nombra es un <label> de afuera)", () => {
+    const html = renderToStaticMarkup(
+      <label>
+        Cantidad
+        <Campo nombradoPorFuera name="cantidad" />
+      </label>,
+    );
+    expect([...html.matchAll(/<label/g)]).toHaveLength(1);
+    expect(html).not.toMatch(/nombrado|nombrado-por-fuera/i);
+    expect(html).toContain('name="cantidad"');
+  });
+
+  it("el tipo exige UNA forma de nombre: sin ninguna, o mezclando etiqueta con nombradoPorFuera o con aria-label, no compila", () => {
+    // @ts-expect-error falta cómo se nombra: ni etiqueta, ni aria-label, ni nombradoPorFuera.
+    const sinNombre: ReactElement = <Campo name="x" />;
+    // @ts-expect-error etiqueta y nombradoPorFuera a la vez: dibujaría un <label> y diría que lo pone otro.
+    const mezclado: ReactElement = <Campo etiqueta="x" nombradoPorFuera />;
+    // @ts-expect-error etiqueta y aria-label a la vez: dos nombres para el mismo control.
+    const doble: ReactElement = <Campo etiqueta="x" aria-label="y" />;
+    // @ts-expect-error nombradoPorFuera solo admite `true`.
+    const apagado: ReactElement = <Campo nombradoPorFuera={false} />;
+    for (const e of [sinNombre, mezclado, doble, apagado]) expect(e.type).toBe(Campo);
+  });
+});
+
+describe("Campo: invalido, alinear y prefijo", () => {
+  it("invalido sin error: aria-invalid, borde de error, sin role=alert ni aria-describedby ni mensaje", () => {
+    const html = renderToStaticMarkup(<Campo aria-label="Importe" invalido />);
+    expect(html).toContain('aria-invalid="true"');
+    expect(clasesDe(html, "input")).toContain("border-error");
+    expect(html).not.toContain('role="alert"');
+    expect(html).not.toContain("aria-describedby");
+    expect(renderToStaticMarkup(<Campo aria-label="Importe" />)).not.toContain("aria-invalid");
+  });
+
+  it("alinear=\"fin\" pone text-right; por defecto (inicio) no", () => {
+    expect(clasesDe(renderToStaticMarkup(<Campo aria-label="n" alinear="fin" />), "input")).toContain("text-right");
+    expect(clasesDe(renderToStaticMarkup(<Campo aria-label="n" alinear="inicio" />), "input")).not.toContain("text-right");
+    expect(clasesDe(renderToStaticMarkup(<Campo aria-label="n" />), "input")).not.toContain("text-right");
+  });
+
+  it("prefijo: el símbolo va ANTES del input dentro de un contenedor relative, sin aria-hidden, y el input deja lugar (pl-5)", () => {
+    const html = renderToStaticMarkup(<Campo aria-label="Importe" prefijo="$" />);
+    expect(html).toMatch(/<div class="relative"><span class="pointer-events-none absolute left-2 top-1\/2 -translate-y-1\/2 text-sm text-tinta-suave">\$<\/span><input /);
+    expect(html).not.toContain("aria-hidden");
+    expect(clasesDe(html, "input")).toContain("pl-5");
+    // Sin prefijo: ni el contenedor ni el relleno.
+    const sin = renderToStaticMarkup(<Campo aria-label="Importe" />);
+    expect(sin).not.toContain("relative");
+    expect(clasesDe(sin, "input")).not.toContain("pl-5");
+  });
+
+  it("className sigue al final aunque haya alinear y prefijo, y nada de eso trae modo oscuro ni colores de escala", () => {
+    const html = renderToStaticMarkup(<Campo aria-label="n" alinear="fin" prefijo="$" invalido className="w-24" />);
+    const input = clasesDe(html, "input");
+    expect(input[input.length - 1]).toBe("w-24");
+    expect(html).not.toMatch(/(^|[\s":])dark:/);
+    expect(html).not.toMatch(/(^|[\s":-])(?:neutral|gray|slate|zinc|stone|red|white|black)-\d/);
   });
 });

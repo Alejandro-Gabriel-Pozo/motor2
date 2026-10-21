@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Campo, type PropsDeCampo } from "@/ui/primitivas/campo";
+import { Campo, type NombreDeCampo, type PropsBaseDeCampo } from "@/ui/primitivas/campo";
 
 /**
  * Selector de fecha y de rango de fechas del sistema de diseño (capa `ui/componentes`: sin negocio; ver test/arquitectura/ui-sin-negocio.test.ts).
@@ -11,7 +11,8 @@ import { Campo, type PropsDeCampo } from "@/ui/primitivas/campo";
  * Las fechas son TEXTO `AAAA-MM-DD` (lo que manda el input), nunca `Date`: así no hay corrimiento por zona horaria entre el navegador y el servidor. `min` y `max` guían al selector
  * del navegador, pero NO son una validación: el servidor sigue siendo quien decide si el rango es válido.
  */
-export function CampoFecha(props: Omit<PropsDeCampo, "type">) {
+// `Omit` sobre la unión de `PropsDeCampo` la aplanaría (perdería la exigencia de nombre): se omite `type` de la base y se vuelve a unir `NombreDeCampo`.
+export function CampoFecha(props: Omit<PropsBaseDeCampo, "type"> & NombreDeCampo) {
   return <Campo {...props} type="date" />;
 }
 
