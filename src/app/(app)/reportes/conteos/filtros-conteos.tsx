@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
+import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
+import { Boton } from "@/ui/primitivas/boton";
+import { Selector } from "@/ui/primitivas/selector";
 
 interface Props {
   secciones: { id: string; nombre: string }[];
@@ -40,36 +43,26 @@ export function FiltrosConteos({ secciones, seccionId: seccionIdInicial, product
 
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-3 text-sm">
-      <label className="flex flex-col gap-1">
+      {/* El selector de producto es un combobox que no lleva su propia etiqueta: lo nombra este <label> de afuera. */}
+      <label className="flex flex-col gap-1 font-medium">
         Producto (opcional)
         <SelectorProducto value={productoId} onChange={setProductoId} etiquetaInicial={productoEtiqueta} className="w-56" />
       </label>
-      <label className="flex flex-col gap-1">
-        Sección (opcional)
-        <select value={seccionId} onChange={(e) => setSeccionId(e.target.value)} className="rounded border px-3 py-2">
-          <option value="">Todas</option>
-          {secciones.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1">
-        Desde
-        <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded border px-3 py-2" />
-      </label>
-      <label className="flex flex-col gap-1">
-        Hasta
-        <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded border px-3 py-2" />
-      </label>
-      <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-        Filtrar
-      </button>
+      <Selector etiqueta="Sección (opcional)" value={seccionId} onChange={(e) => setSeccionId(e.target.value)}>
+        <option value="">Todas</option>
+        {secciones.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nombre}
+          </option>
+        ))}
+      </Selector>
+      <CampoFecha etiqueta="Desde" value={desde} onChange={(e) => setDesde(e.target.value)} />
+      <CampoFecha etiqueta="Hasta" value={hasta} onChange={(e) => setHasta(e.target.value)} />
+      <Boton type="submit">Filtrar</Boton>
       {hayFiltro && (
-        <button type="button" onClick={() => router.push("/reportes/conteos")} className="text-sm underline">
+        <Boton variante="enlace" tamano="en-fila" onClick={() => router.push("/reportes/conteos")}>
           Limpiar
-        </button>
+        </Boton>
       )}
     </form>
   );
