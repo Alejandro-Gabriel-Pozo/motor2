@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Boton, claseDeBoton, type TamanoDeBoton, type VarianteDeBoton } from "../../src/ui/primitivas/boton";
 
 /**
- * Contrato de `Boton` (src/ui/primitivas/boton.tsx, contrato `primitiva-boton`): las 28 combinaciones de variante y tamaño, solo con tokens del sistema visual, sin modo oscuro, con el
+ * Contrato de `Boton` (src/ui/primitivas/boton.tsx, contrato `primitiva-boton`): las 35 combinaciones de variante y tamaño, solo con tokens del sistema visual, sin modo oscuro, con el
  * punto de corte `md:` y la zona táctil de 44 px en celular. El comportamiento de `cargando` también se prueba en `primitivas-y-dialogo.test.tsx` (la prueba de la capa entera); acá se
  * prueba la estructura que dibuja cada combinación. Entorno de Vitest = Node: se mira el HTML del servidor y las props del elemento.
  */
@@ -32,9 +32,10 @@ const TAMANOS: Readonly<Record<TamanoDeBoton, string>> = {
   compacto: "min-h-11 px-3 text-sm md:min-h-8",
   chico: "min-h-11 px-2 text-xs md:min-h-7",
   tactil: "min-h-11 px-3 text-sm",
+  "en-fila": "min-h-11 text-sm md:min-h-0",
 };
 /** Los tamaños que bajan de alto desde `md:`; `tactil` mide 44 px en cualquier ancho. */
-const TAMANOS_QUE_BAJAN: readonly TamanoDeBoton[] = ["normal", "compacto", "chico"];
+const TAMANOS_QUE_BAJAN: readonly TamanoDeBoton[] = ["normal", "compacto", "chico", "en-fila"];
 
 const clases = (html: string): string[] => (/class="([^"]*)"/.exec(html)?.[1] ?? "").split(/\s+/).filter(Boolean);
 const propsDe = (e: ReactElement): Record<string, unknown> => e.props as Record<string, unknown>;
@@ -95,6 +96,14 @@ describe("Boton: variantes y tamaños", () => {
       const dibujadas = claseDeBoton(variante, "tactil").split(" ");
       expect(dibujadas.filter((c) => /min-h-/.test(c)), variante).toEqual(["min-h-11"]);
       expect(dibujadas.some((c) => /^md:/.test(c)), `${variante}: ninguna clase de md:`).toBe(false);
+    }
+  });
+
+  it("tamano en-fila: 44 px en celular y la altura del texto desde md:, sin ningún relleno horizontal (la fila de escritorio no crece)", () => {
+    for (const variante of Object.keys(VARIANTES) as VarianteDeBoton[]) {
+      const dibujadas = claseDeBoton(variante, "en-fila").split(" ");
+      expect(dibujadas.filter((c) => /min-h-/.test(c)), variante).toEqual(["min-h-11", "md:min-h-0"]);
+      expect(dibujadas.filter((c) => /^(md:)?p[xylrtb]?-/.test(c)), `${variante}: sin relleno propio`).toEqual([]);
     }
   });
 

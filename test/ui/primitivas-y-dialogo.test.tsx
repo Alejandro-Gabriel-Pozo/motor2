@@ -10,7 +10,7 @@ import { Dialogo } from "../../src/ui/componentes/superposiciones/dialogo";
  * navegador real: test/e2e/ui-dialogo.spec.ts). Entorno de Vitest = Node, así que se mira el HTML que dibuja el servidor y el elemento que devuelve el componente.
  */
 const VARIANTES_DE_BOTON: readonly VarianteDeBoton[] = ["primario", "acento", "secundario", "peligro", "enlace", "enlace-peligro", "sobre-tinta"];
-const TAMANOS_DE_BOTON: readonly TamanoDeBoton[] = ["normal", "compacto", "chico", "tactil"];
+const TAMANOS_DE_BOTON: readonly TamanoDeBoton[] = ["normal", "compacto", "chico", "tactil", "en-fila"];
 
 function propsDe(elemento: ReactElement): Record<string, unknown> {
   return elemento.props as Record<string, unknown>;
@@ -22,7 +22,7 @@ describe("Boton", () => {
     expect(renderToStaticMarkup(<Boton type="submit">Guardar</Boton>)).toContain('type="submit"');
   });
 
-  it("zona táctil de 44 px en celular en las 28 combinaciones de variante y tamaño", () => {
+  it("zona táctil de 44 px en celular en las 35 combinaciones de variante y tamaño", () => {
     for (const variante of VARIANTES_DE_BOTON) {
       for (const tamano of TAMANOS_DE_BOTON) expect(claseDeBoton(variante, tamano), `${variante}/${tamano}`).toMatch(/(^| )min-h-11( |$)/);
     }
