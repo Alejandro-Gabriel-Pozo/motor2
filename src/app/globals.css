@@ -27,6 +27,7 @@
 /* @contrato tokens-visuales */
 @theme static {
   --color-papel: #FAFAF8;
+  --color-superficie: #FFFFFF;
   --color-tinta: #1C1B19;
   --color-tinta-suave: #6B6862;
   --color-tinta-tenue: #76726A;
@@ -44,6 +45,8 @@
 
   --color-error: #A63D3D;
   --color-error-tinte: #FAEBEB;
+
+  --color-foco: var(--color-tinta);
 }
 
 /* Un <th> con texto solo para lectores de pantalla (<span class="sr-only">Acciones</span>, en las columnas de botones) es position:absolute. Sin
@@ -124,10 +127,26 @@ form[aria-busy="true"] [type="submit"] {
   color: var(--ink);
 }
 
+/* Fase 6 (6.5): el fondo de la aplicación es la SUPERFICIE blanca (la carta pública y el login quedan sobre blanco). Toda la administración —lo que dibuja `AppShell`, su
+   `<main data-panel>`— va sobre el PAPEL cálido del salón, con tarjetas blancas encima: una sola regla `:has`, sin tocar ningún componente. `--background`/`--foreground` de
+   `:root` ya no los lee el `body`: quedan para los gráficos (deuda del contrato `tokens-visuales`, 6.27). */
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-superficie);
+  color: var(--color-tinta);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+body:has(main[data-panel]) {
+  background: var(--color-papel);
+}
+
+/* Foco de teclado ÚNICO (6.5): un contorno de 2 px del color `foco` (la tinta: 16,5:1 sobre papel y 17,2:1 sobre blanco, >= 3:1 de WCAG 1.4.11) para todo lo que se enfoca con el
+   teclado. Va en `@layer base`: lo que ya trae su propio foco (las utilidades `focus-visible:` de Tailwind, de `@layer utilities`) y las reglas sin capa (`.raiz :focus-visible` de
+   `carta-mant.module.css`, `.carta-shell .portal-card:focus-visible`) le ganan siempre. La carta pública (`.carta-shell`) conserva su foco temático. */
+@layer base {
+  :focus-visible:not(.carta-shell *) {
+    outline: 2px solid var(--color-foco);
+    outline-offset: 2px;
+  }
 }
 
 /* Carta pública (módulo interno, ADR-006, route group `(carta-publica)`): mismo criterio que `.pos-shell` — tokens propios,

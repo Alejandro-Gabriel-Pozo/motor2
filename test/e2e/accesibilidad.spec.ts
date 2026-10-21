@@ -274,15 +274,41 @@ testAutenticado("movimientos/precio-local: el selector de producto abierto (con 
   }
 });
 
-testAutenticado("con el sistema en oscuro, la app declara color-scheme: light (DEC-04)", async ({ paginaAutenticada: page }) => {
+testAutenticado("con el sistema en oscuro, la app declara color-scheme: light (DEC-04) y la administración va sobre el papel (6.5)", async ({ paginaAutenticada: page }) => {
   // La app no tiene modo oscuro (DEC-04): aun con el sistema en oscuro, la raíz declara `color-scheme: light` (los controles que dibuja el navegador —la
-  // lista desplegada de un <select>, las barras de scroll— salen claros) y el fondo del <body> sigue blanco. Se verifica la declaración y el fondo (no se
-  // puede fotografiar un popup nativo en headless).
+  // lista desplegada de un <select>, las barras de scroll— salen claros) y el fondo del <body> sigue claro. Se verifica la declaración y el fondo (no se
+  // puede fotografiar un popup nativo en headless). Fase 6 (6.5): /catalogo/unidades es una pantalla de administración (`AppShell`, `main[data-panel]`),
+  // que va sobre el papel cálido (#FAFAF8) con tarjetas blancas; el login y la carta pública siguen sobre blanco (el caso de abajo).
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/catalogo/unidades");
   await conTitulo(page, "Unidades de medida");
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "color-scheme de la raíz con el sistema en oscuro").toBe("light");
-  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "fondo del body con el sistema en oscuro").toBe("rgb(255, 255, 255)");
+  expect(await page.locator("main[data-panel]").count(), "la pantalla de administración dibuja main[data-panel]").toBe(1);
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "fondo del body de la administración con el sistema en oscuro").toBe("rgb(250, 250, 248)");
+});
+
+base("el login, que no es administración, queda sobre blanco aun con el sistema en oscuro (6.5)", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/login");
+  expect(await page.locator("main[data-panel]").count(), "el login no dibuja main[data-panel]").toBe(0);
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "color-scheme de la raíz").toBe("light");
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "fondo del body del login").toBe("rgb(255, 255, 255)");
+});
+
+testAutenticado("foco de teclado único (6.5): con Tab sobre un botón de la administración se ve un contorno de la tinta, de 2 px", async ({ paginaAutenticada: page }) => {
+  await page.goto("/catalogo/unidades");
+  await conTitulo(page, "Unidades de medida");
+  // Tab hasta el primer botón del contenido de la pantalla (antes hay enlaces del menú). `:focus-visible` solo aparece con el teclado.
+  const enBotonDelPanel = () => page.evaluate(() => document.activeElement?.tagName === "BUTTON" && document.activeElement.closest("main[data-panel]") !== null);
+  for (let i = 0; i < 60 && !(await enBotonDelPanel()); i++) await page.keyboard.press("Tab");
+  expect(await enBotonDelPanel(), "se llegó con Tab a un botón dentro de main[data-panel]").toBe(true);
+  const contorno = await page.evaluate(() => {
+    const e = getComputedStyle(document.activeElement as Element);
+    return { estilo: e.outlineStyle, color: e.outlineColor, ancho: e.outlineWidth };
+  });
+  expect(contorno.estilo, "outlineStyle del botón enfocado").not.toBe("none");
+  expect(contorno.color, "outlineColor del botón enfocado: la tinta (--color-foco)").toBe("rgb(28, 27, 25)");
+  expect(contorno.ancho, "outlineWidth").toBe("2px");
 });
 
 testAutenticado("catalogo/productos: la lista, con la confirmación de «Desactivar» abierta y con el bloqueo mostrado, sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
