@@ -47,6 +47,11 @@ interface Grupo {
   modoPrecio?: "ABSOLUTO";
   /** Fase 4 (DEC-34): «se lee en la carta como» («De» para «Milanesas de»). */
   prefijoEnCarta?: string;
+  /**
+   * Paso C10: el producto admite un grupo que YA creó otro producto de esta siembra (la clave del grupo, que tiene que haberse sembrado antes): no se crea grupo ni opciones nuevas, solo la
+   * admisión del producto con el `absoluto` que da cada opción (por nombre) en este producto. `nombre`, `tipo` y los límites tienen que ser los del grupo compartido.
+   */
+  comparteElGrupo?: true;
   opciones: Opcion[];
 }
 
@@ -178,6 +183,41 @@ const PRODUCTOS: readonly Producto[] = [
       },
     ],
   },
+  // Paso C10: un café DIRECTO (no base) con TAMAÑO y PREPARACIÓN OBLIGATORIA: sale en la carta como tabla de doble entrada con precios finales (filas = preparaciones, columnas = tamaños). Comparte con el
+  // café de arriba el grupo «Tamaño del Café» (cada producto con su precio por tamaño en la admisión) y tiene su propio grupo de preparación, obligatorio y de una sola elección, sin prefijo en la carta.
+  // No toca ningún dato del café ni de los demás productos.
+  {
+    clave: "cafeDeEspecialidad",
+    codigo: `${PREFIJO}PV_CAFE_ESPECIALIDAD`,
+    nombre: "Café de especialidad",
+    precioVenta: "4000.00",
+    seccion: "Cafetería",
+    ordenEnSeccion: 1,
+    grupos: [
+      {
+        clave: "tamanoDelCafe",
+        nombre: "Tamaño del Café",
+        tipo: "MEDIDA",
+        cantidadMinima: 1,
+        cantidadMaxima: 1,
+        modoPrecio: "ABSOLUTO",
+        comparteElGrupo: true,
+        opciones: [
+          { nombre: "Chico", absoluto: "4000.00" },
+          { nombre: "Mediano", absoluto: "4100.00" },
+          { nombre: "Grande", absoluto: "4300.00" },
+        ],
+      },
+      {
+        clave: "preparacionObligatoria",
+        nombre: "Preparación obligatoria",
+        tipo: "VARIANTE",
+        cantidadMinima: 1,
+        cantidadMaxima: 1,
+        opciones: [{ nombre: "Solo" }, { nombre: "Cortado" }, { nombre: "Lágrima", diferencia: "200.00" }, { nombre: "Con leche", diferencia: "300.00" }],
+      },
+    ],
+  },
   { clave: "gaseosa", codigo: `${PREFIJO}PV_GASEOSA`, nombre: "Gaseosa 500 cc", precioVenta: "4000.00", seccion: "Bebidas", ordenEnSeccion: 0, grupos: [] },
 ];
 
@@ -303,6 +343,8 @@ export async function sembrarLineaDeBasePrecioYCarta(): Promise<LineaDeBaseSembr
 
     const productoId: Record<string, string> = {};
     const grupoId: Record<string, string> = {};
+    /** Las opciones sembradas, por «clave del grupo/nombre»: las que un grupo compartido reutiliza. */
+    const opcionPorGrupo: Record<string, string> = {};
     for (const p of PRODUCTOS) {
       const pv = await prisma.producto.create({ data: { codigo: p.codigo, nombre: p.nombre, tipo: "PV", unidadStockId: unidad.id, precioVenta: p.precioVenta, ...(p.modoDeVenta ? { modoDeVenta: p.modoDeVenta } : {}) } });
       productoId[p.clave] = pv.id;
@@ -311,12 +353,23 @@ export async function sembrarLineaDeBasePrecioYCarta(): Promise<LineaDeBaseSembr
       await prisma.contenidoCartaProducto.create({ data: { sucursalId: sucursal.id, productoId: pv.id, visibleEnCarta: true, seccionCartaId: seccionId[p.seccion]!, orden: p.ordenEnSeccion } });
 
       for (const [ordenGrupo, g] of p.grupos.entries()) {
+        if (g.comparteElGrupo) {
+          // Un grupo ya sembrado por otro producto: solo la admisión de este producto (el grupo y su modo de precio) y la de cada opción con su precio propio.
+          const existente = grupoId[g.clave]!;
+          await prisma.productoAdmiteGrupo.create({ data: { productoId: pv.id, grupoId: existente, orden: ordenGrupo, ...(g.modoPrecio ? { modoPrecio: g.modoPrecio } : {}) } });
+          for (const o of g.opciones) {
+            const opcionId = opcionPorGrupo[`${g.clave}/${o.nombre}`]!;
+            await prisma.productoAdmiteOpcion.create({ data: { productoId: pv.id, opcionId, ...(o.absoluto ? { precioAbsoluto: o.absoluto } : {}) } });
+          }
+          continue;
+        }
         const id = (await prisma.grupoDeOpciones.create({ data: { nombre: g.nombre, tipo: g.tipo, cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima, ...(g.prefijoEnCarta ? { prefijoEnCarta: g.prefijoEnCarta } : {}) } })).id;
         grupoId[g.clave] = id;
         await prisma.productoAdmiteGrupo.create({ data: { productoId: pv.id, grupoId: id, orden: ordenGrupo, ...(g.modoPrecio ? { modoPrecio: g.modoPrecio } : {}) } });
         for (const [ordenOpcion, o] of g.opciones.entries()) {
           const anclaId = o.ancla ? (await prisma.producto.create({ data: { codigo: o.ancla.codigo, nombre: o.ancla.nombre, tipo: "PV", unidadStockId: unidad.id, precioVenta: "0.00" } })).id : undefined;
           const opcionId = (await prisma.opcionDeGrupo.create({ data: { grupoId: id, nombre: o.nombre, orden: ordenOpcion, ...(anclaId ? { productoId: anclaId } : {}) } })).id;
+          opcionPorGrupo[`${g.clave}/${o.nombre}`] = opcionId;
           await prisma.versionDeOpcion.create({ data: { opcionId, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: o.diferencia ?? "0.00", creadoPorId: firmante.id } });
           await prisma.productoAdmiteOpcion.create({
             data: { productoId: pv.id, opcionId, ...(o.absoluto ? { precioAbsoluto: o.absoluto } : {}), ...(g.tipo === "ADICIONAL" ? { cantidadMaxima: g.cantidadMaxima } : {}) },
