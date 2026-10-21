@@ -180,6 +180,8 @@ export interface ResultadoDeClasificacion {
   clasificados: number;
   excluidos: number;
   porTipo: Readonly<Record<TipoDeRuta, number>>;
+  /** El tipo de cada archivo clasificado (ruta → tipo); lo no clasificado y lo excluido no figura. Lo usa `areas.ts` para derivar las áreas. */
+  tipos: ReadonlyMap<string, TipoDeRuta>;
 }
 
 export interface EntradaDeClasificacion {
@@ -330,7 +332,7 @@ export function clasificarRutas(entrada: EntradaDeClasificacion): ResultadoDeCla
 
   const ordenados = hallazgos.sort((a, b) => comparar(a.archivo, b.archivo) || a.linea - b.linea || a.columna - b.columna || comparar(a.tipo, b.tipo) || comparar(a.que, b.que));
   const clasificados = tipoDe.size;
-  return { hallazgos: ordenados, avisos, total: archivos.length, clasificados, excluidos, porTipo };
+  return { hallazgos: ordenados, avisos, total: archivos.length, clasificados, excluidos, porTipo, tipos: tipoDe };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
