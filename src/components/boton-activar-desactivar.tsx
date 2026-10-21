@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { IconoDeAccion } from "@/components/iconos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 
 /**
  * «Activar» / «Desactivar» de una fila de administración (roles, usuarios).
@@ -32,8 +34,9 @@ export function BotonActivarDesactivar({
   const [confirmando, setConfirmando] = useState(false);
   const [activoPrevio, setActivoPrevio] = useState(activo);
   const idAviso = useId();
-  const botonDesactivar = useRef<HTMLButtonElement>(null);
-  const botonCancelar = useRef<HTMLButtonElement>(null);
+  // `Boton` no recibe `ref` (su tipo es el de los atributos del <button>): el foco se maneja por `id`.
+  const idDesactivar = `${idAviso}-desactivar`;
+  const idCancelar = `${idAviso}-cancelar`;
   const volverAlBoton = useRef(false);
 
   // Si el estado de la fila cambia desde afuera (otra pestaña, otro usuario), la confirmación
@@ -47,62 +50,62 @@ export function BotonActivarDesactivar({
 
   useEffect(() => {
     if (mostrarConfirmacion) {
-      botonCancelar.current?.focus();
+      document.getElementById(idCancelar)?.focus();
     } else if (volverAlBoton.current) {
       volverAlBoton.current = false;
-      botonDesactivar.current?.focus();
+      document.getElementById(idDesactivar)?.focus();
     }
-  }, [mostrarConfirmacion]);
+  }, [mostrarConfirmacion, idCancelar, idDesactivar]);
 
   function cancelar() {
     volverAlBoton.current = true;
     setConfirmando(false);
   }
 
-  if (ocupado) return <span className="text-sm text-neutral-500">...</span>;
+  if (ocupado) return <span className="text-sm text-tinta-suave">...</span>;
 
   if (!activo) {
     return (
-      <button type="button" onClick={onCambiar} className="text-sm underline inline-flex items-center gap-1">
+      <Boton variante="enlace" tamano="compacto" onClick={onCambiar}>
         <IconoDeAccion id="activar" />
         Activar
-      </button>
+      </Boton>
     );
   }
 
   if (!mostrarConfirmacion) {
     return (
-      <button ref={botonDesactivar} type="button" onClick={() => setConfirmando(true)} className="text-sm underline inline-flex items-center gap-1">
+      <Boton id={idDesactivar} variante="enlace" tamano="compacto" onClick={() => setConfirmando(true)}>
         <IconoDeAccion id="activar" />
         Desactivar
-      </button>
+      </Boton>
     );
   }
 
   return (
-    <span
+    <div
       className="flex flex-wrap items-center gap-x-3 gap-y-1"
       onKeyDown={(evento) => {
         if (evento.key === "Escape") cancelar();
       }}
     >
-      <span id={idAviso} role="alert" className="text-sm text-red-600">
+      <Aviso id={idAviso} variante="error" forma="en-linea">
         {aviso}
-      </span>
-      <button
-        type="button"
+      </Aviso>
+      <Boton
+        variante="enlace-peligro"
+        tamano="compacto"
         aria-describedby={idAviso}
         onClick={() => {
           setConfirmando(false);
           onCambiar();
         }}
-        className="text-sm font-medium text-red-600 underline"
       >
         Sí, desactivar
-      </button>
-      <button ref={botonCancelar} type="button" aria-describedby={idAviso} onClick={cancelar} className="text-sm underline">
+      </Boton>
+      <Boton id={idCancelar} variante="enlace" tamano="compacto" aria-describedby={idAviso} onClick={cancelar}>
         Cancelar
-      </button>
-    </span>
+      </Boton>
+    </div>
   );
 }
