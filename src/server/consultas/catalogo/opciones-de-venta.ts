@@ -1,5 +1,5 @@
 import "server-only";
-import type { DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import { esBaseConfigurable, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { IngredienteDeBase } from "@/core/movimientos/public";
 import { resumenDePrecios, type ResumenDePrecios } from "@/core/pos/public";
 import { cargarAdmisionDeProducto, cargarGrupoDeOpciones, listarGruposDeOpciones } from "@/server/lecturas/catalogo/opciones-de-venta";
@@ -229,7 +229,8 @@ export interface GrupoAdmitidoDelPanel {
 }
 
 export interface OpcionesDelProductoDelPanel {
-  producto: { id: string; nombre: string; tipo: "MP" | "PV"; esAnclaDeAdicional: boolean };
+  /** `esBase`: se vende por opción (`modoDeVenta = BASE_CONFIGURABLE`): su precio guardado no se cobra, rige el precio final de sus opciones. */
+  producto: { id: string; nombre: string; tipo: "MP" | "PV"; esAnclaDeAdicional: boolean; esBase: boolean };
   /** Los grupos que el producto tiene asignados (activos o no en el producto), en su orden. */
   admitidos: GrupoAdmitidoDelPanel[];
   /** Los grupos prendidos de la empresa que el producto todavía no tiene: los que ofrece «Agregar grupo», con sus opciones prendidas y el máximo del grupo. */
@@ -250,7 +251,7 @@ const diferenciaDeFila = (tipo: string | null, monto: number | null, porcentaje:
  * otra empresa (la RLS no lo deja ver).
  */
 export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucursalId: string): Promise<OpcionesDelProductoDelPanel | null> {
-  const producto = await db.producto.findFirst({ where: { id: productoId }, select: { id: true, nombre: true, tipo: true, precioVenta: true, opcionQueRespalda: { select: { id: true } } } });
+  const producto = await db.producto.findFirst({ where: { id: productoId }, select: { id: true, nombre: true, tipo: true, precioVenta: true, modoDeVenta: true, opcionQueRespalda: { select: { id: true } } } });
   if (!producto) return null;
   const [filas, catalogo, paraVender, locales] = await Promise.all([
     cargarAdmisionDeProducto(db, productoId),
@@ -295,7 +296,7 @@ export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucu
   });
   const yaAsignados = new Set(filas.map((f) => f.grupoId));
   return {
-    producto: { id: producto.id, nombre: producto.nombre, tipo: producto.tipo, esAnclaDeAdicional: producto.opcionQueRespalda !== null },
+    producto: { id: producto.id, nombre: producto.nombre, tipo: producto.tipo, esAnclaDeAdicional: producto.opcionQueRespalda !== null, esBase: esBaseConfigurable(producto.modoDeVenta) },
     admitidos,
     paraAgregar: catalogo
       .filter((g) => g.activo && !yaAsignados.has(g.id))

@@ -6,7 +6,7 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { fijarAdmisionDeGrupoEnProducto, vincularGrupoEnProducto } from "@/server/actions/catalogo/opciones-de-venta";
 import { cargarOpcionesDelProducto } from "@/server/consultas/catalogo/opciones-de-venta";
-import { nombreDelTipoDeGrupo } from "@/core/opciones/public";
+import { nombreDelTipoDeGrupo, referenciaDePrecioDeAdmisiones } from "@/core/opciones/public";
 import { AvisoConDeshacer, BotonConDeshacer } from "@/components/aviso-con-deshacer";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
@@ -63,6 +63,10 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
   }
   const enUso = admitidos.filter((g) => g.fila.activo);
   const quitados = admitidos.filter((g) => !g.fila.activo);
+  // 6.15a: contra qué precio se lee lo que suma una opción (la lectura debajo de cada importe): lo más barato GUARDADO del grupo que fija el precio (una medida en ABSOLUTO reemplaza al precio base, en un
+  // directo y en una base) o, si no hay, el precio de lista. Un producto que se vende por opción cobra el precio de sus opciones y no el guardado: sin referencia, no hay con qué sumar y no se lee (`null`).
+  const referencia = referenciaDePrecioDeAdmisiones(enUso);
+  const precioDeLista = producto.esBase ? null : datos.precioBase;
   const siguienteOrden = admitidos.reduce((max, g) => Math.max(max, g.fila.orden), 0) + PASO_DE_ORDEN;
   // Para «Agregar grupo»: de cada grupo, su tipo y sus opciones prendidas, que se admiten todas al agregarlo (con la diferencia de cada opción; un adicional con el tope del
   // grupo, las demás con 1). Después se ajusta cada una en el formulario del grupo.
@@ -150,6 +154,8 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
               <section key={g.grupoId} aria-label={`Grupo ${g.nombre}`} className="flex flex-col gap-3 rounded border p-4" data-admision-grupo={g.nombre}>
                 <AdmisionDeGrupo
                   grupo={g}
+                  referencia={referencia}
+                  precioDeLista={precioDeLista}
                   accion={async (formData: FormData) => {
                     "use server";
                     return fijarAdmisionDeGrupoEnProducto({ productoId, grupoId, versionEsperada, ...admisionDelFormulario(formData) });

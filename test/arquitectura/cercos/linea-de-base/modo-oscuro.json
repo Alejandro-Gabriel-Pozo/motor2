@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 343,
-  "entradas": 92,
+  "total": 340,
+  "entradas": 91,
   "porTipo": {
-    "dark:": 343
+    "dark:": 340
   },
   "cuentas": {
     "src/app/(app)/administracion/auditoria/tabla-auditoria.tsx": {
@@ -66,9 +66,6 @@
     },
     "src/app/(app)/catalogo/opciones/page.tsx": {
       "dark:": 9
-    },
-    "src/app/(app)/catalogo/productos/[id]/opciones/admision-de-grupo.tsx": {
-      "dark:": 3
     },
     "src/app/(app)/catalogo/productos/[id]/opciones/page.tsx": {
       "dark:": 8
