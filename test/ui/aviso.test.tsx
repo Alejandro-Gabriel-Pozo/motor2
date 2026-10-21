@@ -2,11 +2,11 @@ import type { ReactElement } from "react";
 import { createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { Aviso, type FormaDeAviso, type VarianteDeAviso } from "../../src/ui/primitivas/aviso";
+import { Aviso, type FormaDeAviso, type VarianteDeAviso, type VarianteDeAvisoFlotante } from "../../src/ui/primitivas/aviso";
 
 /**
  * Contrato de `Aviso` (src/ui/primitivas/aviso.tsx, contrato `primitiva-aviso`): la variante (éxito, advertencia, error, información) decide el tono Y el rol (el error es `role="alert"`, el resto
- * `role="status"`), la forma (caja o en línea) decide cómo se ve, solo tokens, sin modo oscuro y `ref` hasta el `<div>`. Entorno de Vitest = Node: se mira el HTML del servidor.
+ * `role="status"`), la forma (caja, en línea o flotante) decide cómo se ve, solo tokens, sin modo oscuro y `ref` hasta el `<div>`. Entorno de Vitest = Node: se mira el HTML del servidor.
  */
 const clasesDe = (html: string): string[] => (/<div[^>]*class="([^"]*)"/.exec(html)?.[1] ?? "").split(/\s+/).filter(Boolean);
 const rolDe = (html: string): string | undefined => /<div[^>]*\srole="([^"]*)"/.exec(html)?.[1];
@@ -96,5 +96,69 @@ describe("Aviso", () => {
     const aviso = Aviso({ variante: "exito", ref, children: "ok" }) as ReactElement;
     expect(aviso.type).toBe("div");
     expect((aviso.props as { ref: unknown }).ref).toBe(ref);
+  });
+});
+
+/** La forma flotante (6.8.3b): la barra oscura de «Deshacer». Sin advertencia, que el tipo no deja. */
+describe("Aviso forma=flotante", () => {
+  const FLOTANTES: readonly VarianteDeAvisoFlotante[] = ["exito", "informacion", "error"];
+  const flotante = (variante: VarianteDeAvisoFlotante, extra: { className?: string } = {}): string =>
+    renderToStaticMarkup(
+      <Aviso variante={variante} forma="flotante" {...extra}>
+        Se archivó
+      </Aviso>,
+    );
+
+  it.each([
+    ["exito", "bg-tinta"],
+    ["informacion", "bg-tinta"],
+    ["error", "bg-error"],
+  ] as const)("%s: barra con el fondo %s, texto blanco y sombra, todo tokens y sin recuadro redondeado", (variante, fondo) => {
+    const c = clasesDe(flotante(variante));
+    for (const clase of ["flex", "items-center", "gap-3", "px-3.5", "py-3", "text-sm", "text-superficie", "shadow-lg", "shadow-sombra", fondo]) expect(c, `${variante}: ${clase}`).toContain(clase);
+    expect(c.filter((x) => /^bg-/.test(x)), variante).toEqual([fondo]);
+    expect(c.some((x) => /^(rounded|border)/.test(x)), `${variante}: sin recuadro`).toBe(false);
+  });
+
+  it("el rol sale de la variante igual que en las otras formas: el error es alert y el resto status", () => {
+    expect(rolDe(flotante("error"))).toBe("alert");
+    expect(rolDe(flotante("exito"))).toBe("status");
+    expect(rolDe(flotante("informacion"))).toBe("status");
+  });
+
+  it("la advertencia flotante no compila (el ámbar no llega a 4,5:1 con texto blanco)", () => {
+    // @ts-expect-error `advertencia` no es una variante de la forma flotante.
+    const elemento: ReactElement = <Aviso variante="advertencia" forma="flotante">Ojo</Aviso>;
+    expect(elemento.type).toBe(Aviso);
+  });
+
+  it("las demás formas siguen admitiendo la advertencia", () => {
+    expect(rolDe(dibujar("advertencia", "caja"))).toBe("status");
+    expect(rolDe(dibujar("advertencia", "en-linea"))).toBe("status");
+  });
+
+  it("deja pasar los atributos (data-*, id) y className se suma al final", () => {
+    const html = renderToStaticMarkup(
+      <Aviso variante="exito" forma="flotante" data-aviso-con-deshacer="" id="barra" className="mt-2">
+        <span>Listo</span>
+      </Aviso>,
+    );
+    expect(html).toContain('data-aviso-con-deshacer=""');
+    expect(html).toContain('id="barra"');
+    const c = clasesDe(html);
+    expect(c[c.length - 1]).toBe("mt-2");
+    expect(c).toContain("bg-tinta");
+  });
+
+  it("no se posiciona sola (el envoltorio del consumidor la ubica) y nunca trae sm:, modo oscuro ni colores de escala", () => {
+    for (const variante of FLOTANTES) {
+      const html = flotante(variante);
+      const c = clasesDe(html);
+      expect(c.some((x) => /^(fixed|absolute|sticky|top-|bottom-|left-|right-|z-|inset|w-|-translate)/.test(x)), `${variante}: sin ubicación`).toBe(false);
+      expect(html, variante).not.toMatch(/(^|[\s":])dark:/);
+      expect(html, variante).not.toMatch(/(^|[\s":])sm:/);
+      expect(html, variante).not.toMatch(/(^|[\s":-])(?:neutral|gray|slate|zinc|stone|red|green|amber|yellow|blue|white|black)-\d/);
+      expect(html, variante).not.toMatch(/\[[^\]]*\]/);
+    }
   });
 });
