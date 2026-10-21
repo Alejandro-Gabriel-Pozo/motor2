@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 315,
-  "entradas": 78,
+  "total": 314,
+  "entradas": 77,
   "porTipo": {
-    "dark:": 315
+    "dark:": 314
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -198,9 +198,6 @@
     },
     "src/app/(app)/reportes/ventas-por-seccion/page.tsx": {
       "dark:": 2
-    },
-    "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": {
-      "dark:": 1
     },
     "src/app/invitacion/abrir-invitacion.tsx": {
       "dark:": 1
