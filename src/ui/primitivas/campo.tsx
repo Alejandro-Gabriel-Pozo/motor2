@@ -87,7 +87,8 @@ export function EnvolturaDeCampo({ id, etiqueta, etiquetaOculta = false, requeri
   );
 }
 
-const ALTURA_DEL_CAMPO: Record<TamanoDeCampo, string> = {
+/** El alto de un control de una línea por tamaño: 44 px en celular y el del escritorio desde `md:`. Lo comparten `Campo` y `Selector`. */
+export const ALTURA_DEL_CAMPO: Record<TamanoDeCampo, string> = {
   normal: "min-h-11 md:min-h-9",
   compacto: "min-h-11 md:min-h-8",
 };

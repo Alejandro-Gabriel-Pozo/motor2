@@ -89,14 +89,46 @@ function rutaPortable(raiz: string, ruta: string): string {
   return relative(raiz, ruta).split(sep).join("/");
 }
 
+/**
+ * Lo que ya se leyó y se listó dentro de `conRecorridoCompartido`; `null` fuera de él (sin ninguna caché: cada llamada va al disco, como siempre).
+ * Un ARCHIVO leído por su ruta absoluta y una CARPETA por su ruta absoluta (sus entradas ya ordenadas, con si cada una es una carpeta).
+ */
+let lecturasCompartidas: Map<string, string> | null = null;
+let carpetasCompartidas: Map<string, readonly { nombre: string; esCarpeta: boolean }[]> | null = null;
+
+/**
+ * Corre `f` reusando las lecturas y los listados que ya hizo: SOLO para quien sabe que el disco no cambia mientras `f` corre (el arnés de mutaciones, que en una misma verificación corre
+ * el motor, las áreas y la evidencia sobre el mismo árbol y les hacía releer los mismos cientos de archivos). Al salir (también si `f` lanza) la memoria se descarta; las anidaciones comparten la de afuera.
+ */
+export function conRecorridoCompartido<T>(f: () => T): T {
+  if (lecturasCompartidas !== null) return f();
+  lecturasCompartidas = new Map();
+  carpetasCompartidas = new Map();
+  try {
+    return f();
+  } finally {
+    lecturasCompartidas = null;
+    carpetasCompartidas = null;
+  }
+}
+
 /** Todos los archivos bajo `raices` (relativas a `raizDelRepo`) con alguna de las `extensiones`, en orden determinista y con `/`. */
 export function listarArchivos(raizDelRepo: string, raices: readonly string[], extensiones: readonly string[]): string[] {
   const salida: string[] = [];
+  const entradasDe = (dir: string): readonly { nombre: string; esCarpeta: boolean }[] => {
+    const previas = carpetasCompartidas?.get(dir);
+    if (previas !== undefined) return previas;
+    const entradas = readdirSync(dir)
+      .sort()
+      .filter((nombre) => !CARPETAS_IGNORADAS.has(nombre))
+      .map((nombre) => ({ nombre, esCarpeta: statSync(join(dir, nombre)).isDirectory() }));
+    carpetasCompartidas?.set(dir, entradas);
+    return entradas;
+  };
   const recorrer = (dir: string): void => {
-    for (const nombre of readdirSync(dir).sort()) {
-      if (CARPETAS_IGNORADAS.has(nombre)) continue;
+    for (const { nombre, esCarpeta } of entradasDe(dir)) {
       const ruta = join(dir, nombre);
-      if (statSync(ruta).isDirectory()) recorrer(ruta);
+      if (esCarpeta) recorrer(ruta);
       else if (extensiones.some((e) => nombre.endsWith(e))) salida.push(rutaPortable(raizDelRepo, ruta));
     }
   };
@@ -109,7 +141,12 @@ export function listarArchivos(raizDelRepo: string, raices: readonly string[], e
 
 /** Lee un archivo del repo por su ruta portable. */
 export function leer(raizDelRepo: string, ruta: string): string {
-  return readFileSync(join(raizDelRepo, ...ruta.split("/")), "utf8");
+  const absoluta = join(raizDelRepo, ...ruta.split("/"));
+  const previa = lecturasCompartidas?.get(absoluta);
+  if (previa !== undefined) return previa;
+  const texto = readFileSync(absoluta, "utf8");
+  lecturasCompartidas?.set(absoluta, texto);
+  return texto;
 }
 
 /**

@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { conRecorridoCompartido } from "../../cercos/trinquete";
 import { formatearHallazgo, revisarContratos } from "../motor";
 import { APROBACIONES, idsDeContratosAprobados, revisarAprobaciones, rutasDelMecanismo, type Aprobacion } from "../gobernanza/aprobaciones";
 import { GUARDIANES_ADICIONALES, revisarCumplimiento } from "../gobernanza/cumplimiento";
@@ -217,6 +218,11 @@ const medir = <T>(clave: keyof typeof tiempos, f: () => T): T => {
  * (ver `tocaElMecanismo`): son las que pueden dar uno de esos hallazgos, y correrlos en las cientos de mutaciones de contratos sería pagar tiempo para no mirar nada.
  */
 function observar(base: BaseDeMutacion, e: Escenario, soloMotor: boolean, conMecanismo: boolean): Observado[] {
+  // El disco no cambia mientras se observa: el motor, las áreas y la evidencia comparten lo que leen y lo que listan (cada verificación releía los mismos cientos de archivos).
+  return conRecorridoCompartido(() => observarSobreElDisco(base, e, soloMotor, conMecanismo));
+}
+
+function observarSobreElDisco(base: BaseDeMutacion, e: Escenario, soloMotor: boolean, conMecanismo: boolean): Observado[] {
   const salida: Observado[] = [];
   let manifiestoValido = true;
   let archivosLeidos = 0;
@@ -249,11 +255,12 @@ function observar(base: BaseDeMutacion, e: Escenario, soloMotor: boolean, conMec
   const aprobaciones = medir("aprobaciones", () => revisarAprobaciones({ raiz: base.raiz, contratos: e.contratos, exclusiones: e.exclusiones, politicaDeTipos: e.politicaDeTipos, registro: e.registro }));
   for (const h of aprobaciones.hallazgos) salida.push({ verifica: "aprobaciones", tipo: h.tipo, archivo: h.archivo, linea: h.linea, columna: h.columna, sujeto: h.clave, que: h.que, como: h.como });
   // La evidencia por corrida: los tres controles que separan «pasó» de «no encontró nada» (ids distintos del aprobado, alcance de 0 archivos, menos archivos leídos que el piso).
+  const recorridos = new Map<string, readonly string[]>();
   const estructurales = medir("evidencia", () =>
     problemasEstructurales({
       ids: e.contratos.map((c) => c.id).sort(),
       aprobados: idsDeContratosAprobados(e.registro),
-      alcances: e.contratos.map((c) => ({ id: c.id, raices: c.alcance.raices, archivos: archivosEnAlcance(base.raiz, c).length })),
+      alcances: e.contratos.map((c) => ({ id: c.id, raices: c.alcance.raices, archivos: archivosEnAlcance(base.raiz, c, recorridos).length })),
       archivosLeidos,
       piso: e.piso,
     })

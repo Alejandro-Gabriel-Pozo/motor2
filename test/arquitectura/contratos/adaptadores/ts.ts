@@ -79,6 +79,8 @@ function declaracionesDe(arbol: ts.SourceFile): readonly { nombre: string; desde
   return lista;
 }
 
+const coincidenciasDeDeclaraMemo = new WeakMap<ts.SourceFile, Map<string, readonly Coincidencia[]>>();
+
 export function coincidenciasDeTs(archivo: ArchivoTs, detector: DetectorTs): Coincidencia[] {
   const { fuente, codigo, arbol } = archivo;
   const salida: Coincidencia[] = [];
@@ -101,8 +103,21 @@ export function coincidenciasDeTs(archivo: ArchivoTs, detector: DetectorTs): Coi
     ts.forEachChild(nodo, visitar);
   };
   if (detector.tipo === "declara") {
-    for (const d of declaracionesDe(arbol)) if (prueba(detector.nombre, d.nombre)) salida.push({ desde: d.desde, fragmento: d.nombre, nombre: d.nombre, companeras: [] });
-    return salida;
+    // Lo que un nombre busca en un archivo no cambia mientras el AST (memorizado por texto) sea el mismo: se guarda por expresión.
+    const clave = `${detector.nombre.source}/${detector.nombre.flags}`;
+    let porNombre = coincidenciasDeDeclaraMemo.get(arbol);
+    if (porNombre === undefined) {
+      porNombre = new Map();
+      coincidenciasDeDeclaraMemo.set(arbol, porNombre);
+    }
+    let guardadas = porNombre.get(clave);
+    if (guardadas === undefined) {
+      guardadas = declaracionesDe(arbol)
+        .filter((d) => prueba(detector.nombre, d.nombre))
+        .map((d) => ({ desde: d.desde, fragmento: d.nombre, nombre: d.nombre, companeras: [] as readonly string[] }));
+      porNombre.set(clave, guardadas);
+    }
+    return [...guardadas];
   }
   visitar(arbol);
   return salida;
@@ -165,6 +180,22 @@ export interface ImportDelAncla {
  * Un `import` de otro símbolo de la misma fuente no declara nada. Null si no declara.
  */
 export function importaElAncla(arbol: ts.SourceFile, rutaDelArchivo: string, archivoDeLaFuente: string, ancla: string): ImportDelAncla | null {
+  // Función pura del AST (memorizado por texto entre corridas del arnés) y de sus tres parámetros: se guarda por AST.
+  const clave = `${rutaDelArchivo}|${archivoDeLaFuente}|${ancla}`;
+  let guardadas = importesDelAnclaMemo.get(arbol);
+  if (guardadas === undefined) {
+    guardadas = new Map();
+    importesDelAnclaMemo.set(arbol, guardadas);
+  }
+  if (guardadas.has(clave)) return guardadas.get(clave) ?? null;
+  const resultado = calcularImportDelAncla(arbol, rutaDelArchivo, archivoDeLaFuente, ancla);
+  guardadas.set(clave, resultado);
+  return resultado;
+}
+
+const importesDelAnclaMemo = new WeakMap<ts.SourceFile, Map<string, ImportDelAncla | null>>();
+
+function calcularImportDelAncla(arbol: ts.SourceFile, rutaDelArchivo: string, archivoDeLaFuente: string, ancla: string): ImportDelAncla | null {
   const locales = new Set<string>();
   const espacios = new Set<string>();
   let desde = -1;

@@ -107,7 +107,11 @@ export function problemasEstructurales(e: EntradaEstructural): ProblemaDeEvidenc
 }
 
 /** Los archivos del alcance de un contrato tal como los lista el motor: las carpetas de `raices` recorridas con las extensiones del alcance, más los archivos sueltos que cumplen una extensión. */
-export function archivosEnAlcance(raiz: string, c: Contrato): string[] {
+export function archivosEnAlcance(raiz: string, c: Contrato, recorridos: Map<string, readonly string[]> = new Map()): string[] {
+  // Contratos con el mismo alcance (las primitivas de `src/ui`) comparten un solo recorrido del disco por armado de evidencia.
+  const clave = JSON.stringify([c.alcance.raices, c.alcance.extensiones]);
+  const previo = recorridos.get(clave);
+  if (previo !== undefined) return [...previo];
   const carpetas: string[] = [];
   const sueltos: string[] = [];
   for (const r of c.alcance.raices) {
@@ -117,7 +121,9 @@ export function archivosEnAlcance(raiz: string, c: Contrato): string[] {
   }
   const salida = new Set(listarArchivos(raiz, carpetas, c.alcance.extensiones));
   for (const s of sueltos) if (c.alcance.extensiones.some((x) => s.endsWith(x))) salida.add(s);
-  return [...salida].sort();
+  const listados = [...salida].sort();
+  recorridos.set(clave, listados);
+  return [...listados];
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -254,8 +260,9 @@ export function armarEvidencia(o: OpcionesDeEvidencia): Evidencia {
   const aprobaciones = revisarAprobaciones({ raiz: o.raiz, contratos, exclusiones, politicaDeTipos: POLITICA_DE_TIPOS, registro });
   const huellas = huellasActuales({ raiz: o.raiz, contratos, exclusiones, politicaDeTipos: POLITICA_DE_TIPOS });
 
+  const recorridos = new Map<string, readonly string[]>();
   const delContrato: EvidenciaDeContrato[] = contratos.map((c) => {
-    const alcance = archivosEnAlcance(o.raiz, c);
+    const alcance = archivosEnAlcance(o.raiz, c, recorridos);
     const uso = usos.find((u) => u.id === c.id);
     const declaran = (uso?.archivos ?? []).filter((a) => a.declara).map((a) => a.ruta);
     return {
