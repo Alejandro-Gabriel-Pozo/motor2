@@ -402,6 +402,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 4, C1 (ADITIVO, no cambia comportamiento): `Producto.modoDeVenta` (migración 20261021130000) aparece en la única entrada de la lectura que trae la fila del producto, en «DIRECTO» (el default: lo que ya hacía). Revisado con `git diff`: una sola línea agregada, `\"modoDeVenta\": \"DIRECTO\"`.",
       },
+      {
+        blob: "1c5bde01c794b7fafd6432a6b1790978ab267f63",
+        // El commit PADRE de este (2f39a774) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "2f39a774",
+        motivo:
+          "Ola «precio y carta», Fase 5 (CAMBIA COMPORTAMIENTO a propósito, decisión del dueño: escala de letra de la carta con mínimo de 14 px para el texto de decisión): en las dos lecturas de `carta.resolverCartaPublica` los tamaños por defecto del tema suben (`carta_fuente_item_nombre` y `_precio` de 0.88rem a 1.1875rem, `_descripcion` de 0.6875rem a 0.875rem y `_tags` de 0.6875rem a 0.75rem, y sus variables `--carta-fuente-item-*`) y se suman las variables `--carta-fs-*` (producto, precio, opción, aclaración, etiqueta, título, rótulo, columna, tamaño y elección, con su versión impresa). Revisado con `git diff`: cambian solo esos valores y se suman esas claves; ningún precio, nombre, orden ni conteo de consultas se movió. Quedó rojo en la CI (parte 4 de Integración) desde la Fase 5 porque nadie regeneró este golden.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
