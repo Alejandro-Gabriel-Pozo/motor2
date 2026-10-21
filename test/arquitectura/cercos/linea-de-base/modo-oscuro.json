@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 402,
-  "entradas": 101,
+  "total": 400,
+  "entradas": 100,
   "porTipo": {
-    "dark:": 402
+    "dark:": 400
   },
   "cuentas": {
     "src/app/(app)/administracion/auditoria/tabla-auditoria.tsx": {
@@ -255,9 +255,6 @@
     },
     "src/app/login/page.tsx": {
       "dark:": 10
-    },
-    "src/components/activar-desactivar-fila.tsx": {
-      "dark:": 2
     },
     "src/components/agregar-colapsable.tsx": {
       "dark:": 1
