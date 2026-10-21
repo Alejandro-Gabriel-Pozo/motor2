@@ -9,7 +9,7 @@ import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 /** Mismo texto/estilo que la marca "Anulada" de /reportes/compras (page.tsx) — una compra o venta anulada no ocurrió, esto lo deja a la vista en vez de verse como un "movimiento fantasma". */
 function MarcaAnulada() {
   return (
-    <span className="ml-1 rounded border border-red-600 px-1.5 text-xs text-red-600" title="Esta operación está anulada: el contra-asiento de al lado la revierte.">
+    <span className="ml-1 rounded border border-error px-1.5 text-xs text-error" title="Esta operación está anulada: el contra-asiento de al lado la revierte.">
       Anulada
     </span>
   );
@@ -17,7 +17,7 @@ function MarcaAnulada() {
 
 /** D6 (docs/plan-sustitucion-insumos-receta-2026-09-26.md), mismo criterio que tabla-trazabilidad.tsx — texto, no solo color. */
 function MarcaSustituto({ nombrePrincipal }: { nombrePrincipal: string }) {
-  return <span className="ml-1 text-xs font-medium text-amber-700 dark:text-amber-600">Sustituto de «{nombrePrincipal}»</span>;
+  return <span className="ml-1 text-xs font-medium text-aviso-tinta">Sustituto de «{nombrePrincipal}»</span>;
 }
 
 function columnas(mostrarSaldo: boolean, zona: string): ColumnaReporte<EventoHistorialProducto>[] {

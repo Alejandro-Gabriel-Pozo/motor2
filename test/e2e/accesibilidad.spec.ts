@@ -32,8 +32,8 @@ testAutenticado("inicio: el panel con las tarjetas de módulos (iconos decorativ
 });
 
 testAutenticado("reportes/costos: sin violaciones de accesibilidad detectables por axe, contraste incluido", async ({ paginaAutenticada: page }) => {
-  // Un producto de venta con receta cuyo insumo NO tiene ninguna compra: su costo queda incompleto y la tabla lo marca en ámbar (text-amber-700 / dark:
-  // text-amber-600). Sin este dato la pantalla no dibuja ningún texto ámbar y el chequeo de contraste no auditaría nada.
+  // Un producto de venta con receta cuyo insumo NO tiene ninguna compra: su costo queda incompleto y la tabla lo marca en ámbar (text-aviso-tinta, el token del
+  // aviso). Sin este dato la pantalla no dibuja ningún texto ámbar y el chequeo de contraste no auditaría nada.
   const marca = Date.now();
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CMP-${marca}`, nombre: `E2E Insumo Sin Compra ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
@@ -42,8 +42,8 @@ testAutenticado("reportes/costos: sin violaciones de accesibilidad detectables p
   try {
     await page.goto("/reportes/costos");
     await expect(page.getByRole("heading", { name: "Costos y márgenes" })).toBeVisible();
-    await expect(page.locator("tr", { hasText: pv.nombre }).locator("[class*=\"text-amber-\"]").first(), "el caso sembrado tiene que dibujar texto ámbar").toBeVisible();
-    // Scan completo, SIN desactivar reglas: antes `color-contrast` iba afuera porque text-amber-600 no llegaba al mínimo AA.
+    await expect(page.locator("tr", { hasText: pv.nombre }).locator("[class*=\"text-aviso-tinta\"]").first(), "el caso sembrado tiene que dibujar texto ámbar").toBeVisible();
+    // Scan completo, SIN desactivar reglas: antes `color-contrast` iba afuera porque el ámbar de entonces (text-amber-600) no llegaba al mínimo AA.
     const resultados = await new AxeBuilder({ page }).analyze();
     expect(resultados.violations).toEqual([]);
   } finally {

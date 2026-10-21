@@ -7,12 +7,12 @@ const AYUDA_MARGEN =
   'Costo congelado al momento de cada venta, o reconstruido con el historial de compras cuando no se guardó (mismo criterio que Período/Promociones). "parcial" si alguna venta de ese cliente no se pudo costear así.';
 
 function celdaMargen(valor: number | null, pct: number | null, reconstruido: boolean, completo: boolean) {
-  if (valor === null) return <span className="text-neutral-500 dark:text-neutral-400">—</span>;
+  if (valor === null) return <span className="text-tinta-tenue">—</span>;
   return (
     <>
       ${valor.toLocaleString("es-AR")} ({pct}%)
       {reconstruido ? " · reconstruido" : ""}
-      {!completo && <span className="text-amber-700 dark:text-amber-600"> · parcial</span>}
+      {!completo && <span className="text-aviso-tinta"> · parcial</span>}
     </>
   );
 }

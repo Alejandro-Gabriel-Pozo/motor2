@@ -11,7 +11,7 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
     valor: (v) => v.producto,
     render: (v) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${v.productoId}`} className="underline">
-        {v.producto} {v.ingresoEstimado && <span className="text-amber-700 dark:text-amber-600">(estimado)</span>}
+        {v.producto} {v.ingresoEstimado && <span className="text-aviso-tinta">(estimado)</span>}
       </EnlaceInterno>
     ),
   },
@@ -26,12 +26,12 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
       if (v.margen !== null) return `$${v.margen.toLocaleString("es-AR")} (${v.margenPct}%)`;
       if (v.accionFaltante) {
         return (
-          <EnlaceInterno href={v.accionFaltante.href} className="text-amber-700 dark:text-amber-600 underline">
+          <EnlaceInterno href={v.accionFaltante.href} className="text-aviso-tinta underline">
             {v.accionFaltante.etiqueta}
           </EnlaceInterno>
         );
       }
-      return <span className="text-amber-700 dark:text-amber-600">costo incompleto</span>;
+      return <span className="text-aviso-tinta">costo incompleto</span>;
     },
     ayuda: "Con la receta y el precio de insumos de HOY aplicados a lo vendido en el período — no el costo real al momento de cada venta (ver «Ganancia de lo vendido» arriba, que sí usa el costo de cada momento).",
   },
@@ -90,7 +90,7 @@ export function TablaComprasPorProveedor({ filas, desde, hasta }: { filas: FilaC
 
 const COLUMNAS_GASTO_INSUMO: ColumnaReporte<FilaGastoPorInsumo>[] = [
   { clave: "insumo", etiqueta: "Insumo", valor: (f) => f.insumo, render: (f) => f.insumo },
-  { clave: "grupo", etiqueta: "Categoría", valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-neutral-500 dark:text-neutral-400">Sin categoría</span> },
+  { clave: "grupo", etiqueta: "Categoría", valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-tinta-tenue">Sin categoría</span> },
   { clave: "importe", etiqueta: "Gastado", alinear: "derecha", valor: (f) => f.importe, render: (f) => `$${f.importe.toLocaleString("es-AR")}` },
   {
     clave: "porcentaje",
@@ -119,7 +119,7 @@ const COLUMNAS_GASTO_INSUMO: ColumnaReporte<FilaGastoPorInsumo>[] = [
     clave: "proveedores",
     etiqueta: "Proveedores",
     valor: (f) => f.proveedores.join(", "),
-    render: (f) => (f.proveedores.length ? f.proveedores.join(", ") : <span className="text-neutral-500 dark:text-neutral-400">—</span>),
+    render: (f) => (f.proveedores.length ? f.proveedores.join(", ") : <span className="text-tinta-tenue">—</span>),
   },
 ];
 
@@ -133,15 +133,15 @@ export function TablaGastoPorInsumo({ filas }: { filas: FilaGastoPorInsumo[] }) 
       nombreExport="gasto-por-insumo"
       ordenInicial="importe"
       direccionInicial="desc"
-      claseFila={(f) => (f.dentroDel80 ? "bg-amber-50 dark:bg-amber-950/30" : undefined)}
+      claseFila={(f) => (f.dentroDel80 ? "bg-aviso-tinte" : undefined)}
     />
   );
 }
 
 function claseDelta(delta: number | null): string {
-  if (delta === null) return "text-neutral-500 dark:text-neutral-400";
-  if (delta > 0) return "text-red-600";
-  if (delta < 0) return "text-green-700";
+  if (delta === null) return "text-tinta-tenue";
+  if (delta > 0) return "text-error";
+  if (delta < 0) return "text-ok-tinta";
   return "";
 }
 
@@ -154,14 +154,14 @@ const COLUMNAS_PRECIO_INSUMO: ColumnaReporte<FilaPrecioInsumo>[] = [
       <span className="flex items-center gap-1">
         {f.insumo}
         {f.sospechoso && (
-          <span title="Variación poco creíble para una suba real de precio — probable error de carga (unidad/presentación mal tipeada). Revisá esta compra antes de asumir que es un aumento real." className="text-amber-700 dark:text-amber-600">
+          <span title="Variación poco creíble para una suba real de precio — probable error de carga (unidad/presentación mal tipeada). Revisá esta compra antes de asumir que es un aumento real." className="text-aviso-tinta">
             ⚠
           </span>
         )}
       </span>
     ),
   },
-  { clave: "grupo", etiqueta: "Categoría", valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-neutral-500 dark:text-neutral-400">Sin categoría</span> },
+  { clave: "grupo", etiqueta: "Categoría", valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-tinta-tenue">Sin categoría</span> },
   {
     clave: "precioActual",
     etiqueta: "$/unidad este período",
@@ -175,7 +175,7 @@ const COLUMNAS_PRECIO_INSUMO: ColumnaReporte<FilaPrecioInsumo>[] = [
     etiqueta: "$/unidad antes",
     alinear: "derecha",
     valor: (f) => f.precioUnitarioAnterior,
-    render: (f) => (f.precioUnitarioAnterior !== null ? `$${f.precioUnitarioAnterior.toLocaleString("es-AR")}` : <span className="text-neutral-500 dark:text-neutral-400">primera compra</span>),
+    render: (f) => (f.precioUnitarioAnterior !== null ? `$${f.precioUnitarioAnterior.toLocaleString("es-AR")}` : <span className="text-tinta-tenue">primera compra</span>),
     ayuda: "Precio de la última compra de este insumo ANTES de que empezara el período elegido — el punto de comparación.",
   },
   {
@@ -183,7 +183,7 @@ const COLUMNAS_PRECIO_INSUMO: ColumnaReporte<FilaPrecioInsumo>[] = [
     etiqueta: "Δ%",
     alinear: "derecha",
     valor: (f) => f.deltaPct,
-    render: (f) => (f.deltaPct !== null ? <span className={claseDelta(f.deltaPct)}>{f.deltaPct > 0 ? "+" : ""}{f.deltaPct}%</span> : <span className="text-neutral-500 dark:text-neutral-400">—</span>),
+    render: (f) => (f.deltaPct !== null ? <span className={claseDelta(f.deltaPct)}>{f.deltaPct > 0 ? "+" : ""}{f.deltaPct}%</span> : <span className="text-tinta-tenue">—</span>),
   },
   {
     clave: "impacto",
@@ -196,7 +196,7 @@ const COLUMNAS_PRECIO_INSUMO: ColumnaReporte<FilaPrecioInsumo>[] = [
           {f.deltaImpacto > 0 ? "+" : ""}${f.deltaImpacto.toLocaleString("es-AR")}
         </span>
       ) : (
-        <span className="text-neutral-500 dark:text-neutral-400">—</span>
+        <span className="text-tinta-tenue">—</span>
       ),
     ayuda: "(precio de este período − precio anterior) × cantidad comprada — lo que ese cambio de precio realmente costó (o ahorró) a la cantidad que compraste. Ordena la tabla por esto, no por %: un insumo barato que sube mucho puede pesar menos que uno caro con una suba moderada.",
   },
@@ -246,7 +246,7 @@ const COLUMNAS_IMPACTO_RECETA: ColumnaReporte<FilaImpactoRecetaPorPeriodo>[] = [
           {f.foodCostPctAntes}% <span className={claseDelta(f.foodCostPctActual - f.foodCostPctAntes)}>→ {f.foodCostPctActual}%</span>
         </span>
       ) : (
-        <span className="text-neutral-500 dark:text-neutral-400">sin precio de venta</span>
+        <span className="text-tinta-tenue">sin precio de venta</span>
       ),
   },
 ];

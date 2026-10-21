@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 281,
-  "entradas": 67,
+  "total": 251,
+  "entradas": 59,
   "porTipo": {
-    "dark:": 281
+    "dark:": 251
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -109,32 +109,14 @@
     "src/app/(app)/reportes/compras/page.tsx": {
       "dark:": 3
     },
-    "src/app/(app)/reportes/costos/tabla-costos.tsx": {
-      "dark:": 2
-    },
-    "src/app/(app)/reportes/descuentos-clientes/tabla-descuentos-clientes.tsx": {
-      "dark:": 2
-    },
-    "src/app/(app)/reportes/diferencias/tabla-diferencias.tsx": {
-      "dark:": 2
-    },
     "src/app/(app)/reportes/historial/cartel-sin-stock-propio.tsx": {
       "dark:": 3
-    },
-    "src/app/(app)/reportes/historial/como-se-compro.tsx": {
-      "dark:": 2
     },
     "src/app/(app)/reportes/historial/grafico-saldo.tsx": {
       "dark:": 1
     },
-    "src/app/(app)/reportes/historial/tabla-historial.tsx": {
-      "dark:": 1
-    },
     "src/app/(app)/reportes/loading.tsx": {
       "dark:": 4
-    },
-    "src/app/(app)/reportes/margen-promociones/tabla-margen-promociones.tsx": {
-      "dark:": 3
     },
     "src/app/(app)/reportes/page.tsx": {
       "dark:": 4
@@ -151,9 +133,6 @@
     "src/app/(app)/reportes/periodo/page.tsx": {
       "dark:": 3
     },
-    "src/app/(app)/reportes/periodo/tabla-periodo.tsx": {
-      "dark:": 13
-    },
     "src/app/(app)/reportes/rendimiento-recetas/fila-compartida.tsx": {
       "dark:": 10
     },
@@ -162,9 +141,6 @@
     },
     "src/app/(app)/reportes/rendimiento-recetas/page.tsx": {
       "dark:": 1
-    },
-    "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/tabla-por-sucursal.tsx": {
-      "dark:": 5
     },
     "src/app/(app)/reportes/rotacion-mesas/page.tsx": {
       "dark:": 3

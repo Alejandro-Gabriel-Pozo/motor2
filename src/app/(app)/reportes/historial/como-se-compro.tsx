@@ -29,7 +29,7 @@ function columnas(mostrarDinero: boolean, zona: string): ColumnaReporte<FilaComp
     base.splice(
       1,
       0,
-      { clave: "proveedor", etiqueta: "Proveedor", valor: (f) => f.proveedor, render: (f) => f.proveedor ?? <span className="text-neutral-500 dark:text-neutral-400">Sin proveedor</span> },
+      { clave: "proveedor", etiqueta: "Proveedor", valor: (f) => f.proveedor, render: (f) => f.proveedor ?? <span className="text-tinta-tenue">Sin proveedor</span> },
       { clave: "factura", etiqueta: "N.º de factura", valor: (f) => f.nroFactura, render: (f) => f.nroFactura ?? "—" }
     );
     base.push(
@@ -63,7 +63,7 @@ export function ComoSeCompro({ resumen, unidad, mostrarDinero, zona = ZONA_ARGEN
   return (
     <div className="mb-4">
       <h3 className="mb-2 text-sm font-medium">Cómo se compró</h3>
-      <p className="mb-2 text-sm text-neutral-600 dark:text-neutral-400">{armarProsa(resumen, unidad, mostrarDinero)}</p>
+      <p className="mb-2 text-sm text-tinta-suave">{armarProsa(resumen, unidad, mostrarDinero)}</p>
       <TablaReporte columnas={columnas(mostrarDinero, zona)} filas={resumen.filas} claveFila={(f, i) => `${f.fecha.toISOString()}-${i}`} sinFilasTexto="Sin compras en el rango elegido." nombreExport="como-se-compro" />
     </div>
   );

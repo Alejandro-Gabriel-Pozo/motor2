@@ -1,11 +1,11 @@
 {
   "regla": "colores-de-escala",
   "meta": "0 en la Fase 6 (DEC-03: las clases de color de Tailwind pasan a los tokens del salón)",
-  "total": 912,
-  "entradas": 150,
+  "total": 871,
+  "entradas": 141,
   "porTipo": {
     "blanco-negro": 126,
-    "escala": 786
+    "escala": 745
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -261,14 +261,8 @@
     "src/app/(app)/reportes/costos/page.tsx": {
       "escala": 3
     },
-    "src/app/(app)/reportes/costos/tabla-costos.tsx": {
-      "escala": 2
-    },
     "src/app/(app)/reportes/descuentos-clientes/page.tsx": {
       "escala": 4
-    },
-    "src/app/(app)/reportes/descuentos-clientes/tabla-descuentos-clientes.tsx": {
-      "escala": 2
     },
     "src/app/(app)/reportes/descuentos-productos/page.tsx": {
       "escala": 3
@@ -280,14 +274,8 @@
     "src/app/(app)/reportes/diferencias/page.tsx": {
       "escala": 3
     },
-    "src/app/(app)/reportes/diferencias/tabla-diferencias.tsx": {
-      "escala": 6
-    },
     "src/app/(app)/reportes/historial/cartel-sin-stock-propio.tsx": {
       "escala": 3
-    },
-    "src/app/(app)/reportes/historial/como-se-compro.tsx": {
-      "escala": 2
     },
     "src/app/(app)/reportes/historial/grafico-saldo.tsx": {
       "escala": 2
@@ -297,9 +285,6 @@
       "escala": 1
     },
     "src/app/(app)/reportes/historial/page.tsx": {
-      "escala": 3
-    },
-    "src/app/(app)/reportes/historial/tabla-historial.tsx": {
       "escala": 3
     },
     "src/app/(app)/reportes/huecos-catalogo/page.tsx": {
@@ -313,9 +298,6 @@
     },
     "src/app/(app)/reportes/margen-promociones/page.tsx": {
       "escala": 4
-    },
-    "src/app/(app)/reportes/margen-promociones/tabla-margen-promociones.tsx": {
-      "escala": 3
     },
     "src/app/(app)/reportes/page.tsx": {
       "escala": 17
@@ -336,9 +318,6 @@
     "src/app/(app)/reportes/periodo/page.tsx": {
       "escala": 18
     },
-    "src/app/(app)/reportes/periodo/tabla-periodo.tsx": {
-      "escala": 15
-    },
     "src/app/(app)/reportes/rendimiento-recetas/fila-compartida.tsx": {
       "blanco-negro": 1,
       "escala": 15
@@ -352,9 +331,6 @@
     },
     "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/page.tsx": {
       "escala": 4
-    },
-    "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/tabla-por-sucursal.tsx": {
-      "escala": 5
     },
     "src/app/(app)/reportes/rotacion-mesas/page.tsx": {
       "escala": 14
@@ -381,9 +357,6 @@
     },
     "src/app/(app)/reportes/vencimientos/page.tsx": {
       "blanco-negro": 1,
-      "escala": 3
-    },
-    "src/app/(app)/reportes/vencimientos/tabla-vencimientos.tsx": {
       "escala": 3
     },
     "src/app/(app)/reportes/ventas-por-seccion/page.tsx": {
