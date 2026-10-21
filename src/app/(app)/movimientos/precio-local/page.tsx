@@ -12,6 +12,8 @@ import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { formatearMonto } from "@/core/pos/public";
 import type { PrecioLocalDeProductoVisto } from "@/core/features/catalogo/precio-local.schema";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { Aviso } from "@/ui/primitivas/aviso";
 
 /**
  * MOVIL (O.463): las dos tablas de esta pantalla (4 y 5 columnas, con un campo y botones por fila) no entran en 375 px: se cortaban («Guardar» → «Guard», columnas «Habilitado» y «Volver…»
@@ -23,16 +25,16 @@ const TABLA = "w-full text-sm max-md:block";
 const ENCABEZADO = "max-md:sr-only";
 const CUERPO = "max-md:block";
 const FILA = "border-b align-top max-md:mb-3 max-md:block max-md:rounded max-md:border max-md:p-3";
-const CELDA = "max-md:block max-md:py-1 max-md:before:block max-md:before:text-xs max-md:before:text-neutral-600 max-md:before:content-[attr(data-label)] dark:max-md:before:text-neutral-400";
+const CELDA = "max-md:block max-md:py-1 max-md:before:block max-md:before:text-xs max-md:before:text-tinta-suave max-md:before:content-[attr(data-label)]";
 
 export default async function PrecioLocalPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "precio_local", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const [precios, tamanos] = await Promise.all([listarPreciosLocales(ctx.sucursalId), cargarGrillaDeTamanosDeLaSucursal(ctx.db, ctx.sucursalId)]);
   const sucursalId = ctx.sucursalId;
@@ -48,7 +50,7 @@ export default async function PrecioLocalPage() {
         <div className="overflow-x-auto">
           <table role="table" className={TABLA}>
             <thead role="rowgroup" className={ENCABEZADO}>
-              <tr role="row" className="border-b text-left text-neutral-500">
+              <tr role="row" className="border-b text-left text-tinta-tenue">
                 <th role="columnheader" className="py-2 pr-3">Producto</th>
                 <th role="columnheader" className="pr-3">Precio local</th>
                 <th role="columnheader" className="pr-3">Precio global</th>
@@ -81,9 +83,9 @@ export default async function PrecioLocalPage() {
                           return r;
                         }}
                       >
-                        <button type="submit" className="text-sm underline max-md:inline-flex max-md:min-h-11 max-md:items-center">
+                        <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                           {habilitado ? "Deshabilitar" : "Habilitar"}
-                        </button>
+                        </BotonDeServidor>
                       </FormConResultado>
                     </td>
                   </tr>
@@ -103,19 +105,19 @@ export default async function PrecioLocalPage() {
         <h2 id="titulo-precios-por-tamano" className="text-lg font-medium">
           Precios por tamaño en esta sucursal
         </h2>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-tinta-suave">
           Solo los tamaños que un producto cobra con precio propio. Si no cargás nada, en «{ctx.sucursalNombre}» rige el precio de la empresa.
         </p>
         {tamanos.length === 0 ? (
-          <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+          <Aviso variante="informacion" forma="en-linea">
             Ningún producto disponible acá cobra sus tamaños con precio propio.
-          </p>
+          </Aviso>
         ) : (
           <div className="overflow-x-auto">
             <table role="table" className={TABLA}>
               <caption className="sr-only">Precios por tamaño en esta sucursal</caption>
               <thead role="rowgroup" className={ENCABEZADO}>
-                <tr role="row" className="border-b text-left text-neutral-600 dark:text-neutral-400">
+                <tr role="row" className="border-b text-left text-tinta-suave">
                   <th role="columnheader" scope="col" className="py-2 pr-2 font-medium">
                     Producto y tamaño
                   </th>
@@ -138,7 +140,7 @@ export default async function PrecioLocalPage() {
                   return (
                     <tr key={`${productoId}-${opcionId}`} role="row" className={FILA} data-tamano={etiqueta}>
                       <td role="cell" className="py-2 pr-2 max-md:py-1">
-                        {t.productoNombre} · <span className="font-medium">{t.opcionNombre}</span> <span className="text-neutral-600 dark:text-neutral-400">({t.grupoNombre})</span>
+                        {t.productoNombre} · <span className="font-medium">{t.opcionNombre}</span> <span className="text-tinta-suave">({t.grupoNombre})</span>
                       </td>
                       <td role="cell" data-label="Precio de la empresa" className={`py-2 pr-2 tabular-nums ${CELDA}`}>{t.precioDeLaEmpresa === null ? "Sin precio" : formatearMonto(t.precioDeLaEmpresa)}</td>
                       <td role="cell" data-label="En esta sucursal" className={`py-2 pr-2 ${CELDA}`}>
@@ -156,9 +158,9 @@ export default async function PrecioLocalPage() {
                             </label>
                             <CampoNumero id={`tamano-${productoId}-${opcionId}`} name="precio" defaultValue={t.enLaSucursal?.habilitado ? String(t.enLaSucursal.precio) : ""} prefijo="$" tipo="importe" etiqueta="El precio" tamano="compacto" required className="w-32" />
                             {/* Un botón por tamaño: el nombre accesible dice cuál (varios «Guardar» iguales en la misma pantalla no se distinguen con un lector de pantalla). */}
-                            <button type="submit" className="min-h-[44px] min-w-[44px] text-sm underline" aria-label={`Guardar el precio de ${etiqueta}`}>
+                            <BotonDeServidor type="submit" variante="enlace" tamano="tactil" aria-label={`Guardar el precio de ${etiqueta}`} className="min-w-11">
                               Guardar
-                            </button>
+                            </BotonDeServidor>
                           </div>
                         </FormConResultado>
                       </td>
@@ -173,9 +175,9 @@ export default async function PrecioLocalPage() {
                         >
                           <span className="mr-2">{t.enLaSucursal?.habilitado ? "Sí" : "No"}</span>
                           {t.enLaSucursal?.habilitado && (
-                            <button type="submit" className="min-h-[44px] text-sm underline" aria-label={`Volver al de la empresa en ${etiqueta}`}>
+                            <BotonDeServidor type="submit" variante="enlace" tamano="tactil" aria-label={`Volver al de la empresa en ${etiqueta}`}>
                               Volver al de la empresa
-                            </button>
+                            </BotonDeServidor>
                           )}
                         </FormConResultado>
                       </td>
