@@ -5,6 +5,8 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { crearDestinoConsumo, actualizarActivoDestinoConsumo, listarDestinosConsumoParaPanel } from "@/server/actions/movimientos/motivos";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { Campo } from "@/ui/primitivas/campo";
 
 /**
  * Administración del catálogo Destino de Consumo (antes una lista fija en el código, ui-config.ts; plan "motivos de Consumo/Merma como
@@ -15,10 +17,10 @@ export default async function DestinosConsumoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "motivos_destino_consumo", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const [destinos, { editar: puedeEditar }] = await Promise.all([
     listarDestinosConsumoParaPanel(),
@@ -32,7 +34,7 @@ export default async function DestinosConsumoPage() {
       <section className="space-y-4">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-neutral-500">
+            <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Nombre</th>
               <th>Activo</th>
               <th><span className="sr-only">Acciones</span></th>
@@ -43,7 +45,7 @@ export default async function DestinosConsumoPage() {
               <tr key={d.id} className="border-b align-top">
                 <td className="py-2">
                   <div>{d.nombre}</div>
-                  {d.descripcion && <div className="text-xs text-neutral-500">{d.descripcion}</div>}
+                  {d.descripcion && <div className="text-xs text-tinta-tenue">{d.descripcion}</div>}
                 </td>
                 <td>{d.activo ? "Sí" : "No"}</td>
                 <td>
@@ -54,10 +56,10 @@ export default async function DestinosConsumoPage() {
                         return actualizarActivoDestinoConsumo(d.id, !d.activo);
                       }}
                     >
-                      <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                      <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                         <IconoDeAccion id="activar" />
                         {d.activo ? "Desactivar" : "Activar"}
-                      </button>
+                      </BotonDeServidor>
                     </FormConResultado>
                   )}
                 </td>
@@ -75,12 +77,12 @@ export default async function DestinosConsumoPage() {
             className="max-w-md space-y-1"
           >
             <div className="flex gap-2">
-              <input name="nombre" placeholder="nombre del destino" required className="flex-1 rounded border px-3 py-2" />
-              <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-                Crear
-              </button>
+              <div className="flex-1">
+                <Campo name="nombre" aria-label="Nombre del destino" placeholder="nombre del destino" required />
+              </div>
+              <BotonDeServidor type="submit">Crear</BotonDeServidor>
             </div>
-            <input name="descripcion" placeholder="descripción (opcional)" className="w-full rounded border px-3 py-2" />
+            <Campo name="descripcion" aria-label="Descripción (opcional)" placeholder="descripción (opcional)" />
           </FormConResultado>
         )}
       </section>
