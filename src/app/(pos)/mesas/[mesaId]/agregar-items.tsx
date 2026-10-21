@@ -262,7 +262,6 @@ export function AgregarItems({
               filtro={{ tipo: "PV", soloDisponibles: true }}
               placeholder="Buscar por nombre o código…"
               limpiarSenal={estado.limpiarBuscador}
-              siempreClaro
             />
           </div>
         </div>
