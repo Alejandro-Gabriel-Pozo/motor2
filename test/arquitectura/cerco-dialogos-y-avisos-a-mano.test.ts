@@ -47,7 +47,6 @@ const CERCO_DIALOGOS_Y_AVISOS: Cerco = {
   excepciones: [
     { ruta: "src/components/avisos-de-accion.tsx", motivo: `${COMPARTIDO} de aviso: el aviso del resultado de una acción que reusan las pantallas (pasa a src/ui como Aviso en la Fase 6).` },
     { ruta: "src/components/aviso-con-deshacer.tsx", motivo: `${COMPARTIDO} de aviso: el aviso flotante con «deshacer» que reusan las pantallas (pasa a src/ui como Aviso en la Fase 6).` },
-    { ruta: "src/components/form-con-resultado.tsx", motivo: `${COMPARTIDO} de aviso: el formulario que muestra su resultado, usado por decenas de pantallas (pasa a src/ui en la Fase 6).` },
     { ruta: "src/components/menu-celular.tsx", motivo: `${COMPARTIDO} de diálogo: el cajón del menú en celular, sobre el <dialog> nativo con el mismo criterio que ui/…/dialogo.tsx.` },
   ],
 };

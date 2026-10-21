@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 import { useGrupoDeFormularios } from "./grupo-de-formularios";
 
 /**
@@ -50,13 +52,13 @@ export function FormConResultado({
   const [resultado, setResultado] = useState<ResultadoAccion | null>(null);
   const [pendiente, startTransition] = useTransition();
   const enviando = useRef(false);
-  const refResultado = useRef<HTMLParagraphElement>(null);
+  const refResultado = useRef<HTMLDivElement>(null);
   const grupo = useGrupoDeFormularios();
   // La ronda del grupo en la que se rechazó un envío por estar ocupado (ver `GrupoDeFormularios`): el aviso se muestra mientras siga siendo la misma.
   const [esperaEnRonda, setEsperaEnRonda] = useState<number | null>(null);
   const liberarGrupo = useRef<(() => void) | null>(null);
 
-  // El mensaje está al pie del form y puede quedar fuera de vista: se trae a la vista (sin animar, respeta "reducir movimiento"). Depende de `pendiente` porque el <p> del resultado recién existe cuando termina la transición.
+  // El mensaje está al pie del form y puede quedar fuera de vista: se trae a la vista (sin animar, respeta "reducir movimiento"). Depende de `pendiente` porque el aviso del resultado recién existe cuando termina la transición.
   useEffect(() => {
     if (resultado && !pendiente) refResultado.current?.scrollIntoView({ block: "nearest" });
   }, [resultado, pendiente]);
@@ -108,25 +110,25 @@ export function FormConResultado({
       }}
     >
       {children}
-      {/* role: un lector de pantalla anuncia el resultado sin que la persona tenga que ir a buscarlo (error → alert, ok → status). */}
+      {/* El rol sale de la variante del aviso: un lector de pantalla anuncia el resultado sin que la persona tenga que ir a buscarlo (error → alert, ok → status). */}
       {pendiente ? (
-        <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+        <Aviso variante="informacion" forma="en-linea">
           Guardando…
-        </p>
+        </Aviso>
       ) : enEspera ? (
-        <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+        <Aviso variante="informacion" forma="en-linea">
           {AVISO_GRUPO_OCUPADO}
-        </p>
+        </Aviso>
       ) : (
         resultado && (
-          <p ref={refResultado} role={resultado.ok ? "status" : "alert"} className={`text-sm ${resultado.ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+          <Aviso ref={refResultado} variante={resultado.ok ? "exito" : "error"} forma="en-linea">
             {resultado.mensaje}
             {ofrecerRecargar && !resultado.ok && PIDE_RECARGAR.test(resultado.mensaje) && (
-              <button type="button" onClick={() => window.location.reload()} className="ml-2 inline-flex min-h-[44px] items-center rounded border border-current px-3 py-1 font-medium">
+              <Boton variante="secundario" tamano="compacto" onClick={() => window.location.reload()} className="ml-2">
                 Recargar
-              </button>
+              </Boton>
             )}
-          </p>
+          </Aviso>
         )
       )}
     </form>
