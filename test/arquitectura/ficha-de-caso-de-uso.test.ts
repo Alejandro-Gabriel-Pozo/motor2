@@ -23,6 +23,9 @@ import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/a
  *    envoltorios lo vigila `sincronizaciones-solo-desde-crons-y-shell.test.ts`. `SIN_PERMISO` si lo envuelve un ENDPOINT (`"use server"`) que no usa ningún `conPermiso*` porque todavía no
  *    hay sesión ni membresía (aceptar una invitación: la autoridad es el token del enlace, no un permiso). Es un agujero deliberado en la matriz de permisos: por eso hay una LISTA CERRADA
  *    (`CASOS_SIN_PERMISO`, abajo) con el motivo de cada uno, revisada en las dos direcciones (D-7 del plan de la Fase 4).
+ *    Una acción de EMPRESA con DOS claves (un comando compuesto: Fase 6, 6.14) declara `permiso=a+b`, las dos ordenadas alfabéticamente: la primera la pide el envoltorio (`conPermisoDeEmpresa("a", …)`) y la
+ *    segunda, `exigirTambienPermisoDeEmpresa(ctx, "b")` escrita DENTRO de ese envoltorio (`src/server/actions/con-permiso.ts`). Si la llamada se borra, o su clave no es una literal, la ficha miente y este test se pone rojo.
+ *    El `|` sigue siendo «alguna de varias Server Actions protege al caso de uso con esta otra clave».
  *  - `transaccion`: `SERIALIZABLE` si llama a `conTransaccionSerializable` (o a `conGobierno`, mientras `con-gobierno.ts` la llame: se deriva del código); `SIMPLE` si abre
  *    una transacción común; `NINGUNA` si no abre ninguna.
  *  - `idempotencia`: `I3` si y solo si llama a `chequearIdempotencia` (clave + hash del payload); `POR_ESTADO` (el estado del documento arbitra el reintento),
@@ -185,7 +188,41 @@ function observar(codigo: string, opciones: { serializables?: ReadonlySet<string
  */
 const ES_ENVOLTORIO_DE_PERMISO = /^(?:conPermiso\w*|conEdicionDePermisos)$/;
 
-/** Los permisos con los que la Server Action que envuelve al caso de uso lo protege (`conPermiso*("clave", …)` alrededor de la llamada); `POR_PROCESO` si ninguno es literal. */
+/** El envoltorio que suma una SEGUNDA clave de empresa (`exigirTambienPermisoDeEmpresa(ctx, "clave")`, `src/server/actions/con-permiso.ts`): su clave es el segundo argumento. */
+const LLAMADA_DE_SEGUNDA_CLAVE = "exigirTambienPermisoDeEmpresa";
+
+/**
+ * Las segundas claves que exige lo que está DENTRO de un envoltorio `conPermiso*` (las literales de `exigirTambienPermisoDeEmpresa(ctx, "clave")`). Una que no es literal no se puede verificar: se
+ * devuelve como `?`, que ninguna ficha declara, así que la ficha sale como mentira en vez de dejar pasar una clave que nadie lee.
+ */
+function segundasClavesDentroDe(envoltorio: ts.CallExpression): string[] {
+  const claves: string[] = [];
+  const buscar = (n: ts.Node): void => {
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === LLAMADA_DE_SEGUNDA_CLAVE) {
+      const clave = n.arguments[1];
+      claves.push(clave && ts.isStringLiteralLike(clave) ? clave.text : "?");
+    }
+    ts.forEachChild(n, buscar);
+  };
+  ts.forEachChild(envoltorio, buscar);
+  return claves;
+}
+
+/** Las claves que declara el campo `permiso` de una ficha: separa las alternativas (`|`) y las claves que se exigen juntas (`+`). `POR_PROCESO`, `SISTEMA` y `SIN_PERMISO` no son claves (ver `clavesDesconocidasDeLaFicha`). */
+function clavesDeLaFicha(permiso: string): string[] {
+  return permiso.split(/[|+]/);
+}
+
+/** Las claves del `permiso` de una ficha que NO son una acción de `ACCIONES` (cada una de las alternativas y cada una de las claves exigidas juntas); los valores especiales no son claves. */
+function clavesDesconocidasDeLaFicha(permiso: string, acciones: ReadonlySet<string>): string[] {
+  if (permiso === "POR_PROCESO" || permiso === "SISTEMA" || permiso === "SIN_PERMISO") return [];
+  return clavesDeLaFicha(permiso).filter((clave) => !acciones.has(clave));
+}
+
+/**
+ * Los permisos con los que la Server Action que envuelve al caso de uso lo protege (`conPermiso*("clave", …)` alrededor de la llamada); `POR_PROCESO` si ninguno es literal. Si dentro del envoltorio hay
+ * `exigirTambienPermisoDeEmpresa(ctx, "otra")`, el permiso de ese envoltorio es `clave+otra` (todas ordenadas: `a+b`); varias Server Actions distintas se juntan con `|`.
+ */
 function permisosObservados(fuenteDelCaso: string, envolventes: string[]): string {
   const funciones = [...fuenteDelCaso.matchAll(/export\s+(?:async\s+)?function\s+(\w+)/g)].map((m) => m[1]);
   const permisos = new Set<string>();
@@ -201,7 +238,7 @@ function permisosObservados(fuenteDelCaso: string, envolventes: string[]): strin
         for (let p: ts.Node | undefined = n.parent; p; p = p.parent) {
           if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && ES_ENVOLTORIO_DE_PERMISO.test(p.expression.text)) {
             protegida = true;
-            if (p.arguments[0] && ts.isStringLiteralLike(p.arguments[0])) permisos.add(p.arguments[0].text);
+            if (p.arguments[0] && ts.isStringLiteralLike(p.arguments[0])) permisos.add([p.arguments[0].text, ...segundasClavesDentroDe(p)].sort().join("+"));
             else conConPermisoVariable = true;
             break;
           }
@@ -337,6 +374,54 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     expect(permisosObservados(caso, ['"use server";\nexport async function a(db: unknown) { return conPermiso("x_y", async () => anular(db)); }\nexport async function b(db: unknown) { return anular(db); }'])).toBe("x_y");
   });
 
+  it("permiso con dos claves (a+b): la del envoltorio más las de exigirTambienPermisoDeEmpresa de adentro, ordenadas", () => {
+    const caso = "export async function crear(ctx: any) { return 1; }";
+    const conDos = [
+      '"use server";\nexport async function a(e: unknown) { return conPermisoDeEmpresa("producto_opciones_admitidas", async (ctx) => {\n const tambien = await exigirTambienPermisoDeEmpresa(ctx, "opciones_definir");\n if (!tambien.ok) return error(tambien.mensaje);\n return crear(ctx); }); }',
+    ];
+    expect(permisosObservados(caso, conDos)).toBe("opciones_definir+producto_opciones_admitidas");
+    // Tres claves: todas, en orden alfabético, sin importar en qué orden se escribieron.
+    const conTres = ['"use server";\nexport async function a() { return conPermisoDeEmpresa("z_clave", async (ctx) => {\n await exigirTambienPermisoDeEmpresa(ctx, "m_clave");\n await exigirTambienPermisoDeEmpresa(ctx, "a_clave");\n return crear(ctx); }); }'];
+    expect(permisosObservados(caso, conTres)).toBe("a_clave+m_clave+z_clave");
+    // Una Server Action con dos claves y otra con una sola (otra pantalla): las dos formas se juntan con `|`.
+    const mixto = [
+      '"use server";\nexport async function a() { return conPermisoDeEmpresa("b", async (ctx) => { await exigirTambienPermisoDeEmpresa(ctx, "a"); return crear(ctx); }); }\nexport async function c() { return conPermisoDeEmpresa("d", async (ctx) => crear(ctx)); }',
+    ];
+    expect(permisosObservados(caso, mixto)).toBe("a+b|d");
+  });
+
+  it("permiso con dos claves: sin la llamada la Server Action protege solo con la primera (la ficha a+b mentiría), y lo que está FUERA del envoltorio o no es literal no se acepta", () => {
+    const caso = "export async function crear(ctx: any) { return 1; }";
+    // Mutación sintética de la propia regla: borrar la segunda clave del código deja la clave sola, distinta de la ficha «a+b».
+    const sinLaSegunda = ['"use server";\nexport async function a() { return conPermisoDeEmpresa("b", async (ctx) => crear(ctx)); }'];
+    expect(permisosObservados(caso, sinLaSegunda)).toBe("b");
+    expect(permisosObservados(caso, sinLaSegunda)).not.toBe("a+b");
+    // Una llamada a exigirTambienPermisoDeEmpresa FUERA del envoltorio no suma nada.
+    const afuera = ['"use server";\nexport async function a(ctx: any) { await exigirTambienPermisoDeEmpresa(ctx, "a"); return conPermisoDeEmpresa("b", async (ctx2) => crear(ctx2)); }'];
+    expect(permisosObservados(caso, afuera)).toBe("b");
+    // Una segunda clave que no es literal no se puede verificar: queda como «?» y ninguna ficha la declara.
+    const variable = ['"use server";\nexport async function a(clave: any) { return conPermisoDeEmpresa("b", async (ctx) => { await exigirTambienPermisoDeEmpresa(ctx, clave); return crear(ctx); }); }'];
+    expect(permisosObservados(caso, variable)).toBe("?+b");
+    // Un conPermiso de sucursal con una segunda clave también se lee (la regla no distingue el envoltorio).
+    expect(permisosObservados(caso, ['"use server";\nexport async function a() { return conPermiso("b", async (ctx) => { await exigirTambienPermisoDeEmpresa(ctx, "a"); return crear(ctx); }); }'])).toBe("a+b");
+  });
+
+  it("clavesDeLaFicha: separa las alternativas (|) y las claves exigidas juntas (+); el control contra ACCIONES las mira todas", () => {
+    expect(clavesDeLaFicha("a")).toEqual(["a"]);
+    expect(clavesDeLaFicha("a|b")).toEqual(["a", "b"]);
+    expect(clavesDeLaFicha("a+b")).toEqual(["a", "b"]);
+    expect(clavesDeLaFicha("a+b|c")).toEqual(["a", "b", "c"]);
+    // El control contra ACCIONES (el mismo que corre sobre las fichas reales): una clave inventada en la segunda posición se detecta igual que en la primera.
+    const conocidas = new Set(["producto_opciones_admitidas", "opciones_definir"]);
+    expect(clavesDesconocidasDeLaFicha("opciones_definir+producto_opciones_admitidas", conocidas)).toEqual([]);
+    expect(clavesDesconocidasDeLaFicha("opciones_definir+clave_que_no_existe", conocidas)).toEqual(["clave_que_no_existe"]);
+    expect(clavesDesconocidasDeLaFicha("clave_que_no_existe+opciones_definir|otra_inventada", conocidas)).toEqual(["clave_que_no_existe", "otra_inventada"]);
+    expect(clavesDesconocidasDeLaFicha("POR_PROCESO", conocidas)).toEqual([]);
+    expect(clavesDesconocidasDeLaFicha("SISTEMA", conocidas)).toEqual([]);
+    expect(clavesDesconocidasDeLaFicha("SIN_PERMISO", conocidas)).toEqual([]);
+    expect(clavesDesconocidasDeLaFicha("inventada", conocidas)).toEqual(["inventada"]);
+  });
+
   it("problemasDeSinPermiso: la lista cerrada se revisa en las dos direcciones", () => {
     expect(problemasDeSinPermiso([], {})).toEqual([]);
     expect(problemasDeSinPermiso(["a.ts"], { "a.ts": "motivo" })).toEqual([]);
@@ -351,6 +436,11 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
       idempotencia: "I3",
       auditoria: "DOCUMENTO_PROPIO",
       reloj: "INYECTADO",
+    });
+    // Dos claves exigidas juntas: el valor es «a+b» tal cual (el par se parte en el primer «=»).
+    expect(leerFicha("/**\n * @ficha permiso=opciones_definir+producto_opciones_admitidas transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA\n */")).toMatchObject({
+      permiso: "opciones_definir+producto_opciones_admitidas",
+      idempotencia: "POR_ESTADO",
     });
     expect(leerFicha("/** sin ficha */")).toBeNull();
     expect(leerFicha("/**\n * @ficha permiso=a\n * @ficha permiso=b\n */")).toBeNull();
@@ -403,8 +493,8 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
       for (const [campo, valores] of Object.entries(VOCABULARIO)) {
         if (ficha[campo] && !(valores as readonly string[]).includes(ficha[campo])) problemas.push(`${c.ruta}: ${campo}=${ficha[campo]} no es uno de ${valores.join(", ")}`);
       }
-      if (ficha.permiso && ficha.permiso !== "POR_PROCESO" && ficha.permiso !== "SISTEMA" && ficha.permiso !== "SIN_PERMISO") {
-        for (const p of ficha.permiso.split("|")) if (!acciones.has(p)) problemas.push(`${c.ruta}: permiso=${p} no es una acción de ACCIONES`);
+      if (ficha.permiso) {
+        for (const p of clavesDesconocidasDeLaFicha(ficha.permiso, acciones)) problemas.push(`${c.ruta}: permiso=${p} no es una acción de ACCIONES`);
       }
     }
     expect(problemas, `Cada caso de uso lleva su línea @ficha (ver el docstring de este test):\n${problemas.join("\n")}`).toEqual([]);
