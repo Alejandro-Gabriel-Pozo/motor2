@@ -223,6 +223,11 @@ const completos: Record<string, Valor> = {
       intento(c, ["grupoDeOpcionesId"], [admisionDe(c.propio.productoConOpcionesId, k.grupoDeOpcionesId, k.opcionDeGrupoId)]),
       intento(c, ["opcionDeGrupoId"], [admisionDe(c.propio.productoConOpcionesId, c.propio.grupoDeOpcionesId, k.opcionDeGrupoId)]),
     ),
+  // Fase 6 (6.14c): crear un grupo sin salir del producto. El único id que llega del cliente es el del producto (el grupo y sus opciones se crean adentro): una sola variante, con el producto base ajeno.
+  "accion|actions/catalogo/opciones-de-venta.ts|crearGrupoEnElProducto": (k, c) =>
+    conVariantes(
+      intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, nombre: "Presentación ZZ", respuesta: "PRECIO_FINAL", prefijoEnCarta: null, opciones: [{ nombre: "Simple", importe: 1500 }] }]),
+    ),
   // La sucursal que vio la pantalla (tiene que ser la activa: el eco) y, desde la propia, una opción o un producto ajenos.
   "accion|actions/catalogo/opciones-por-sucursal.ts|apagarOpcionEnSucursal": (k, c) =>
     conVariantes(

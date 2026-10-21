@@ -4,6 +4,7 @@ import {
   guardComandoAgregarVersionDeOpcion,
   guardComandoArchivarOpciones,
   guardComandoCrearGrupoDeOpciones,
+  guardComandoCrearGrupoEnElProducto,
   guardComandoCrearOpcionDeGrupo,
   guardComandoEditarGrupoDeOpciones,
   guardComandoEditarOpcionDeGrupo,
@@ -13,13 +14,14 @@ import {
 } from "@/core/features/catalogo/opciones-de-venta.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { azarDelProceso } from "@/lib/azar";
-import { conPermisoDeEmpresa } from "../con-permiso";
+import { conPermisoDeEmpresa, exigirTambienPermisoDeEmpresa } from "../con-permiso";
 import { revalidarCartasPublicas } from "../carta/revalidar";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { error, type ResultadoAccion } from "../tipos";
 import { agregarVersionDeOpcionCasoDeUso } from "./casos-de-uso/agregar-version-de-opcion";
 import { archivarOpcionesCasoDeUso } from "./casos-de-uso/archivar-opciones";
 import { crearGrupoDeOpcionesCasoDeUso } from "./casos-de-uso/crear-grupo-de-opciones";
+import { crearGrupoEnElProductoCasoDeUso } from "./casos-de-uso/crear-grupo-en-el-producto";
 import { crearOpcionDeGrupoCasoDeUso } from "./casos-de-uso/crear-opcion-de-grupo";
 import { editarGrupoDeOpcionesCasoDeUso } from "./casos-de-uso/editar-grupo-de-opciones";
 import { editarOpcionDeGrupoCasoDeUso } from "./casos-de-uso/editar-opcion-de-grupo";
@@ -182,6 +184,26 @@ export async function vincularGrupoEnProducto(entrada: { productoId: unknown; gr
     const resultado = await vincularGrupoEnProductoCasoDeUso(ctx, comando.valor);
     if (resultado.ok) {
       // La carta pública muestra las opciones de cada producto: quitar un grupo lo saca de ese producto.
+      revalidarCartasPublicas(ctx.empresaSlug);
+      refrescarVistaSiHaceFalta();
+    }
+    return aResultadoAccion(resultado);
+  });
+}
+
+// Fase 6 («el espacio del producto», 6.14c; ADR-030, «El comando compuesto»): CREAR UN GRUPO sin salir del producto, todo o nada: el grupo de la biblioteca, sus opciones y lo que el producto admite de ellas, en UNA
+// transacción. Pide las DOS claves que hoy se piden en dos pantallas (crear el grupo, `opciones_definir`; agregarlo al producto, `producto_opciones_admitidas`): ninguna clave nueva y nadie puede nada que antes no pudiera.
+// La primera la pide el envoltorio y la segunda va como PRIMERA línea de adentro (`exigirTambienPermisoDeEmpresa`), antes de formatear nada: la ficha del caso de uso la declara (`permiso=a+b`) y
+// `ficha-de-caso-de-uso.test.ts` la lee del código. Nunca modifica un grupo de la biblioteca: uno idéntico se adopta, uno distinto se rechaza.
+export async function crearGrupoEnElProducto(entrada: { productoId: unknown; nombre: unknown; respuesta: unknown; prefijoEnCarta?: unknown; opciones: unknown }): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("producto_opciones_admitidas", async (ctx) => {
+    const tambien = await exigirTambienPermisoDeEmpresa(ctx, "opciones_definir");
+    if (!tambien.ok) return error(tambien.mensaje);
+    const comando = guardComandoCrearGrupoEnElProducto(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await crearGrupoEnElProductoCasoDeUso(ctx, comando.valor, azarDelProceso);
+    if (resultado.ok) {
+      // La carta pública muestra las opciones de cada producto (y sus precios): se invalida su caché, solo la de esta empresa.
       revalidarCartasPublicas(ctx.empresaSlug);
       refrescarVistaSiHaceFalta();
     }

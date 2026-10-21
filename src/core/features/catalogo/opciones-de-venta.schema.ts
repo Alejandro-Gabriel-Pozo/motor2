@@ -1,4 +1,4 @@
-import type { ConsumoDeConfiguracion, DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import type { ComoCambiaElPrecio, ConsumoDeConfiguracion, DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -203,4 +203,39 @@ export interface ComandoVincularGrupoEnProducto {
 export type ResultadoVincularGrupoEnProducto = ResultadoCaso<
   { huboCambio: boolean },
   "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_ELEGIBLE" | "GRUPO_NO_ENCONTRADO" | "NO_VINCULADO" | "VERSION_DESACTUALIZADA" | "GRUPO_INACTIVO" | "OPCION_INACTIVA" | "BASE_SIN_PRECIO_FINAL" | ConfiguracionInvalida
+>;
+
+// ───────────────────────────── Fase 6 (el espacio del producto): crear un grupo sin salir del producto ─────────────────────────────
+
+/**
+ * Una opción del grupo que se crea desde el producto. `importe`, según lo que responde «¿Cambia el precio?»: PRECIO_FINAL, el precio final de esa opción (mayor que 0); SUMA, lo que suma sobre el precio
+ * del producto (0 o más); INCLUIDO, `null` (una opción incluida no lleva importe). Siempre en pesos, con a lo sumo 2 decimales.
+ */
+export interface OpcionNuevaEnElProducto {
+  nombre: string;
+  importe: number | null;
+}
+
+/**
+ * El comando compuesto «crear un grupo de opciones y agregarlo a este producto», TODO O NADA (ADR-030, «El comando compuesto»): el grupo, sus opciones con su versión 1 y lo que el producto admite de
+ * ellas, en UNA transacción. La forma del grupo (tipo y cantidades) sale de `respuesta` (`formaDelGrupoPorRespuesta`): no se elige aparte. Nunca modifica un grupo que ya está en la biblioteca.
+ */
+export interface ComandoCrearGrupoEnElProducto {
+  productoId: string;
+  nombre: string;
+  respuesta: ComoCambiaElPrecio;
+  /** «Se lee en la carta como» (`null` = sin prefijo). Solo SUMA y PRECIO_FINAL (el grupo es VARIANTE o MEDIDA). */
+  prefijoEnCarta: string | null;
+  /** De 1 a `MAX_OPCIONES_EN_UN_ALTA`, con nombres que no se repiten sin distinguir mayúsculas. */
+  opciones: OpcionNuevaEnElProducto[];
+}
+
+/**
+ * `yaExistia`: el grupo ya estaba en la biblioteca con ESAS mismas opciones (mismo conjunto de nombres activos y mismo precio de cada una) y se adoptó tal cual, o ya estaba en el producto exactamente
+ * como se pedía (un doble clic, un reintento): no se creó otro. Un grupo de la biblioteca que se llama igual pero es otro se rechaza con `NOMBRE_REPETIDO` y no se toca. `GRUPO_INACTIVO`: el grupo
+ * que se adoptaría está archivado.
+ */
+export type ResultadoCrearGrupoEnElProducto = ResultadoCaso<
+  { grupoId: string; admisionId: string; yaExistia: boolean },
+  "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_ELEGIBLE" | "NOMBRE_REPETIDO" | "VERSION_DESACTUALIZADA" | "CONFIGURACION_INVALIDA" | "GRUPO_INACTIVO" | "REFERENCIA_NO_ENCONTRADA"
 >;
