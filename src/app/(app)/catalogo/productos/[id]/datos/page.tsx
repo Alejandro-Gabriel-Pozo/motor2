@@ -5,12 +5,16 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
+import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
+import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
 import { ProductoForm } from "../../producto-form";
 import { cargarEdicionDelProducto } from "../../datos-de-edicion";
 
 /**
- * Paso 1 del espacio del producto (Fase 6, 6.13; DEC-12): los datos del producto, para TODOS los tipos (ADDENDUM del 2026-10-21: un solo espacio y una sola URL; en un producto de venta el paso se llama «Qué se vende» y
- * en una materia prima «Datos»). Es el formulario de siempre (`ProductoForm`, el mismo que servía `/editar`, que ahora redirige acá). Al guardar, vuelve a la ficha, que muestra el aviso de que se guardó.
+ * Paso 1 del espacio del producto (Fase 6, 6.12 y 6.13; DEC-12): los datos del producto, para TODOS los tipos (ADDENDUM del 2026-10-21: un solo espacio y una sola URL; en un producto de venta el paso se llama
+ * «Qué se vende» y en una materia prima «Datos»). Es el formulario de siempre (`ProductoForm`, el mismo que servía `/editar`, que ahora redirige acá), dentro del marco del espacio. Al guardar, vuelve a la
+ * ficha, que muestra el aviso de que se guardó. El producto de respaldo de un adicional no se maneja con el espacio de venta: se edita sin marco, con su vuelta a la ficha.
  */
 export default async function DatosDelProductoPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await obtenerContextoUsuario();
@@ -26,17 +30,32 @@ export default async function DatosDelProductoPage({ params }: { params: Promise
   if (!gateEditar.ok) return <Aviso variante="error" forma="en-linea">{gateEditar.mensaje}</Aviso>;
 
   const { id } = await params;
+  const producto = await leerProductoDelEspacio(ctx.db, id);
+  if (!producto) notFound();
   const formulario = await cargarEdicionDelProducto(ctx, id);
   if (!formulario) notFound();
+  const editor = <ProductoForm key={id} {...formulario} />;
 
+  if (producto.esAnclaDeAdicional) {
+    return (
+      <div className="max-w-xl">
+        <Link href={`/catalogo/productos/${id}`} className="mb-3 inline-block text-sm underline">
+          ← Volver a la ficha
+        </Link>
+        <h1 className="mb-4 text-xl font-semibold">{producto.nombre}</h1>
+        {editor}
+      </div>
+    );
+  }
+
+  const marco = await cargarMarcoDelEspacio(ctx, producto);
   return (
-    <div className="max-w-xl">
-      <Link href={`/catalogo/productos/${id}`} className="mb-3 inline-block text-sm underline">
-        ← Volver a la ficha
-      </Link>
-      {/* La pantalla de alta ya tiene su h1; esta no lo tenía (solo el h2 del formulario) y axe marca «la página debe tener un encabezado de nivel 1». */}
-      <h1 className="mb-4 text-xl font-semibold">Editar producto</h1>
-      <ProductoForm key={id} {...formulario} />
-    </div>
+    <MarcoDelEspacio
+      producto={{ id, nombre: producto.nombre, codigo: producto.codigo, tipo: producto.tipo, modoDeVenta: producto.modoDeVenta, disponibleAca: marco.disponibleAca, sucursalNombre: ctx.sucursalNombre }}
+      pasos={marco.pasos}
+      actual="datos"
+    >
+      <div className="max-w-xl">{editor}</div>
+    </MarcoDelEspacio>
   );
 }

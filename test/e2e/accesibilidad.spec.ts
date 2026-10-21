@@ -394,6 +394,28 @@ testAutenticado("catalogo/productos/nuevo: el formulario de alta (materia prima,
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta de producto de venta").toEqual([]);
 });
 
+testAutenticado("catalogo/productos/[id]: la portada del espacio (el marco con su tira de pasos, «Qué falta» y las insignias) de un producto de venta y de una materia prima, sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  const marca = Date.now();
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PORTADA-PV-${marca}`, nombre: `E2E A11y Portada PV ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 3200 } });
+  const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PORTADA-MP-${marca}`, nombre: `E2E A11y Portada MP ${marca}`, tipo: "MP", unidadStockId: kg.id, seProduce: true } });
+  try {
+    for (const [producto, donde] of [[pv, "producto de venta (sin receta: con «Qué falta»)"], [mp, "materia prima que se produce"]] as const) {
+      await page.goto(`/catalogo/productos/${producto.id}`);
+      await conTitulo(page, producto.nombre);
+      await expect(page.getByRole("navigation", { name: "Pasos del producto" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Qué falta" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, `portada de un ${donde}`).toEqual([]);
+    }
+    // El paso 1 dentro del marco (la tira con «Qué se vende» como pantalla actual y el formulario debajo).
+    await page.goto(`/catalogo/productos/${pv.id}/datos`);
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ })).toHaveAttribute("aria-current", "page");
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 1 dentro del marco").toEqual([]);
+  } finally {
+    await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
+  }
+});
+
 testAutenticado("catalogo/productos/[id]/datos: el formulario de edición sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   const marca = Date.now();
   const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
