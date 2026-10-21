@@ -256,7 +256,7 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
     // Dos ejes (la milanesa: Simple | Napolitana × De carne / De pollo; DEC-06, DEC-10, DEC-11): el nombre es un RÓTULO con su línea fina (un h3 FUERA de la tabla: el HTML no admite títulos dentro de un
     // th), los rótulos de las columnas como encabezados de columna y una fila por opción del otro eje (nunca se juntan aunque cuesten igual), cada una como un plato con su precio.
     return (
-      <li data-forma="tabla" className="pb-2.5 pt-3.5">
+      <li data-forma="tabla" className="pb-2.5 pt-3.5" style={{ borderColor: "var(--carta-border)" }}>
         <RotuloDelItem item={item} colores={colores} />
         <table data-tabla-carta className="mb-0.5 w-full border-collapse">
           <thead>
@@ -294,7 +294,7 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
   if (p?.forma === "lista" && p.encabezado && p.protagonista === "nombre") {
     // Las filas son TAMAÑOS (cómo lo querés; la caída de una tanda de más de 3): protagoniza el NOMBRE, con su línea fina, y las filas con puntitos van debajo en rol Opción.
     return (
-      <li data-forma="lista" data-protagonista="nombre" className="py-2.5">
+      <li data-forma="lista" data-protagonista="nombre" className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
         <div className="carta-linea-fina flex items-baseline justify-between gap-3 pb-1.5">
           <NombreDelItem item={item} colores={colores} />
           {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
@@ -309,7 +309,7 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
     // Un eje en filas con el nombre arriba (un producto directo con filas, o una base con «Mostrar el nombre arriba»; DEC-11): las OPCIONES protagonizan (cada fila es un plato con su precio) y el
     // nombre es un rótulo con su línea fina.
     return (
-      <li data-forma="lista" className="pt-3.5">
+      <li data-forma="lista" className="pt-3.5" style={{ borderColor: "var(--carta-border)" }}>
         <RotuloDelItem item={item} colores={colores} />
         <DescripcionYTags item={item} colores={colores} />
         <FilasComoPlatos nombre={item.nombre} filas={p.filas} colores={colores} />
@@ -422,7 +422,7 @@ function CeldaDePrecio({ precio, color, rol }: { precio: number | null; color: s
  */
 function TandaFila({ tanda, items, estilo }: { tanda: TandaCartaPublica; items: readonly ItemCartaPublico[]; estilo: EstiloCarta }) {
   return (
-    <li data-tanda className="py-2.5">
+    <li data-tanda className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
       {items.map((item, k) => (
         <ProductoDeTanda key={`producto-${k}`} item={item} rotulos={tanda.rotulos} primero={k === 0} estilo={estilo} />
       ))}

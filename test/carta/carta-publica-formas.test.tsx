@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { partirLaAclaracion, recargoEnPesos, resolverEstiloCarta, textoDeLaAclaracion, type ItemCartaPublico, type SeccionCartaPublica } from "../../src/core/carta/public";
+import { partirLaAclaracion, recargoEnPesos, resolverEstiloCarta, textoDeLaAclaracion, type AclaracionCartaPublica, type ItemCartaPublico, type SeccionCartaPublica } from "../../src/core/carta/public";
 import { Seccion } from "../../src/components/carta-publica/seccion";
 
 /**
@@ -371,5 +371,44 @@ describe("C9: la carta con P1 no usa verbos en las aclaraciones", () => {
     expect(textos[0]).toContain("ensalada · papas fritas · puré");
     expect(textos[1]).toContain("Sin cargo: solo · cortado");
     expect(textos[2]).toContain("Sin cargo: solo");
+  });
+});
+
+describe("C12: la línea que separa un producto del siguiente es la misma clara en toda forma", () => {
+  // `divide-y` pinta el borde de abajo de cada `<li>` con el color DEL `<li>` (no del `ul`): un `<li>` sin su `borderColor` cae al color del texto y se ve negro. La forma de un producto no puede cambiar el separador.
+  const aclaracion: AclaracionCartaPublica = { tipo: "eleccion", rotulo: "Guarnición", opciones: ["papas fritas", "puré"] };
+  const filas = [{ rotulo: "Pizza muzzarella", precio: 18000 }, { rotulo: "Pizza napolitana", precio: 22000 }];
+  const siguiente = item({ nombre: "Flan", precio: 3200 });
+  const formas: { forma: string; productos: ItemCartaPublico[]; tandas?: SeccionCartaPublica["tandas"] }[] = [
+    { forma: "simple", productos: [item({ nombre: "Bife", precio: 20000, presentacion: { forma: "simple", aclaraciones: [aclaracion] } })] },
+    {
+      forma: "tabla",
+      productos: [item({ nombre: "Milanesas", precio: 20000, presentacion: { forma: "tabla", columnas: ["Simple", "Napolitana"], filas: [{ rotulo: "De carne", celdas: [20000, 25000] }, { rotulo: "De pollo", celdas: [20000, 25000] }], aclaraciones: [] } })],
+    },
+    { forma: "lista con rótulo", productos: [item({ nombre: "Pizzas", precio: 18000, presentacion: { forma: "lista", encabezado: true, filas, aclaraciones: [] } })] },
+    {
+      forma: "lista con el nombre protagonista",
+      productos: [item({ nombre: "Licuado", precio: 2000, presentacion: { forma: "lista", encabezado: true, protagonista: "nombre", filas: [{ rotulo: "Mini", precio: 2000 }, { rotulo: "Chico", precio: 2500 }], aclaraciones: [] } })],
+    },
+    { forma: "lista oculta (sin encabezado)", productos: [item({ nombre: "Empanadas", precio: 18000, presentacion: { forma: "lista", encabezado: false, filas, aclaraciones: [] } })] },
+    {
+      forma: "tanda",
+      productos: [
+        item({ nombre: "Café", precio: 4000, presentacion: { forma: "columnas", celdas: [4000, 4100], aclaraciones: [] } }),
+        item({ nombre: "Cortado", precio: 4200, presentacion: { forma: "columnas", celdas: [4200, 4500], aclaraciones: [] } }),
+      ],
+      tandas: [{ primero: 0, ultimo: 1, rotulos: ["Chico", "Grande"] }],
+    },
+    { forma: "sin opciones", productos: [item({ nombre: "Tostado", precio: 5000 })] },
+    {
+      forma: "sin forma (ItemComoAntes)",
+      productos: [item({ nombre: "Té", precio: 2500, grupos: [{ nombre: "Tamaño", opciones: [{ nombre: "Chico", tipo: "final", precio: 2500 }, { nombre: "Grande", tipo: "final", precio: 3100 }] }] })],
+    },
+  ];
+
+  it.each(formas)("$forma: cada `<li>` de la lista, el del producto y el del que le sigue, declara el color claro del separador", ({ productos, tandas }) => {
+    const filasLi = filasDeLaSeccion(dibujar([...productos, siguiente], tandas));
+    expect(filasLi.length).toBeGreaterThanOrEqual(2);
+    for (const li of filasLi) expect(li.slice(0, li.indexOf(">") + 1)).toMatch(/style="[^"]*border-color:var\(--carta-border\)/);
   });
 });
