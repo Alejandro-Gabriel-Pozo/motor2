@@ -136,7 +136,7 @@ describe("8a: forma simple (el bife: su precio y las aclaraciones debajo)", () =
   });
 });
 
-describe("8b: una tanda (el café y el cortado comparten Chico | Mediano | Grande) es UNA tabla real", () => {
+describe("8b: una tanda (el café y el cortado comparten Chico | Mediano | Grande): una tabla por producto, el nombre protagonista", () => {
   const cafe = item({
     nombre: "Café",
     categoria: "Cafetería",
@@ -147,31 +147,50 @@ describe("8b: una tanda (el café y el cortado comparten Chico | Mediano | Grand
   const medialuna = item({ nombre: "Medialuna", categoria: "Cafetería", precio: 1500 });
   const html = dibujar([cafe, cortado, medialuna], [{ primero: 0, ultimo: 1, rotulos: ["Chico", "Mediano", "Grande"] }]);
   const tanda = filaCon(html, "data-tanda");
+  /** Los bloques `data-producto-de-tanda` de la tanda (cada uno: nombre con su línea, su tabla y lo que va debajo). */
+  const productos = tanda.split("<div data-producto-de-tanda").slice(1);
+  const tablas = tanda.match(/<table[\s\S]*?<\/table>/g) ?? [];
 
-  it("una sola tabla para los dos, con los rótulos como encabezados de columna y cada producto como encabezado de fila", () => {
-    expect(html.match(/<table/g)).toHaveLength(1);
+  it("una tabla por producto (con su nombre accesible, columnas iguales `table-fixed`) y los tamaños REPETIDOS como encabezados de columna en cada una; ningún encabezado de fila", () => {
+    expect(html.match(/<table/g)).toHaveLength(2);
     expect(tanda).toMatch(/^<li data-tanda/);
-    expect(tanda.match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map((t) => texto(t))).toEqual(["Chico", "Mediano", "Grande"]);
-    expect(tanda.match(/<th scope="row"/g)).toHaveLength(2);
-    expect(tanda).toMatch(/<th scope="row"[^>]*><span data-rol="producto" class="carta-rol-producto[^"]*"[^>]*>Café<\/span><\/th>/);
+    expect(productos).toHaveLength(2);
+    expect(tablas).toHaveLength(2);
+    expect(tablas[0]).toMatch(/^<table data-tabla-carta="true" aria-label="Café" class="w-full table-fixed/);
+    expect(tablas[1]).toMatch(/^<table data-tabla-carta="true" aria-label="Cortado" class="w-full table-fixed/);
+    for (const t of tablas) {
+      expect(t.match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map((h) => texto(h))).toEqual(["Chico", "Mediano", "Grande"]);
+      expect(t.match(/<th scope="col" data-rol="tamano" class="carta-rol-tamano/g)).toHaveLength(3);
+    }
+    expect(tanda.match(/<th scope="row"/g)).toBeNull();
   });
 
-  it("cada celda con su precio (rol Opción 600) y «–» donde no se ofrece, con «no se ofrece» para el lector de pantalla; sin «desde»", () => {
-    expect(texto(tanda)).toBe("Chico Mediano Grande Café $4.000 $4.100 $4.300 Preparación del café Incluida: solo lágrima +$200 Cortado ★ −10 % $4.200 – $4.500");
-    expect(tanda).toContain('<span class="sr-only">no se ofrece</span>');
-    // 5 celdas de precio con valor + el recargo de «lágrima +$200» en su fila (P1).
-    expect(tanda.match(/data-rol="opcion-precio"/g)).toHaveLength(6);
-    expect(tanda).not.toMatch(/desde/i);
-  });
-
-  it("ningún título dentro de una celda de encabezado (el HTML no lo admite): el nombre no es un h3; la descripción y las aclaraciones, en una fila de todo el ancho", () => {
+  it("el nombre protagoniza: un h3 (rol Producto) con su línea fina debajo, antes de su tabla; el descuento del cortado, a la derecha del nombre; la ★ en el especial", () => {
+    expect(productos[0]).toMatch(/^[^>]*><div class="carta-linea-fina[^"]*"><h3 data-rol="producto" class="carta-rol-producto[^"]*"[^>]*>Café<\/h3><\/div><table/);
+    expect(productos[1]).toMatch(/^[^>]*><div class="carta-linea-fina[^"]*"><h3 data-rol="producto" class="carta-rol-producto[^"]*"[^>]*>Cortado[\s\S]*?<\/h3>[\s\S]*?−10 %[\s\S]*?<\/div><table/);
+    expect(productos[1]).toContain("Especial");
+    expect(tanda).not.toContain('data-rol="rotulo"');
+    // Dentro de la tanda el nombre de cada producto va fuera de la tabla: ningún título dentro de una celda de encabezado.
     expect(tanda).not.toMatch(/<th(?=[\s>])[^>]*>(?:(?!<\/th>)[\s\S])*<h[1-6]/);
-    expect(tanda).toMatch(/<td colSpan="4"[^>]*><div data-aclaracion="Preparación del café"/);
   });
 
-  it("lo que no está en la tanda (la medialuna) sigue debajo, como un ítem más", () => {
+  it("cada celda con su precio (rol Opción precio) y «–» donde no se ofrece, con «no se ofrece» para el lector de pantalla; sin «desde»; la aclaración (P1) debajo de la tabla de su producto", () => {
+    expect(texto(tanda)).toBe("Café Chico Mediano Grande $4.000 $4.100 $4.300 Preparación del café Incluida: solo lágrima +$200 Cortado ★ −10 % Chico Mediano Grande $4.200 – $4.500");
+    expect(tablas[1]).toContain('<span class="sr-only">no se ofrece</span>');
+    expect(tablas[1]).toContain('data-rol="opcion" class="carta-rol-opcion"');
+    // 5 celdas de precio con valor (3 del café y 2 del cortado) + el recargo de «lágrima +$200» en su fila (P1).
+    expect(tanda.match(/data-rol="opcion-precio"/g)).toHaveLength(6);
+    expect(tablas.map((t) => t.match(/data-rol="opcion-precio"/g)?.length ?? 0)).toEqual([3, 2]);
+    expect(tanda).not.toMatch(/desde/i);
+    expect(productos[0].indexOf('data-aclaracion="Preparación del café"')).toBeGreaterThan(productos[0].indexOf("</table>"));
+    expect(productos[1]).not.toContain("data-aclaracion");
+  });
+
+  it("el segundo producto va separado del primero por una línea; lo que no está en la tanda (la medialuna) sigue debajo, como un ítem más", () => {
+    expect(productos[0]).not.toMatch(/^[^>]*border-t/);
+    expect(productos[1]).toMatch(/^="true" class="mt-2\.5 border-t pt-2\.5"/);
     expect(filaCon(html, "Medialuna")).toMatch(/<h3 data-rol="producto"[^>]*>Medialuna<\/h3>/);
-    expect(html.indexOf("Medialuna")).toBeGreaterThan(html.indexOf("</table>"));
+    expect(html.indexOf("Medialuna")).toBeGreaterThan(html.lastIndexOf("</table>"));
   });
 });
 

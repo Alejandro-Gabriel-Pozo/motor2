@@ -77,9 +77,9 @@ interface Letra {
 }
 
 interface ItemDeCarta {
-  /** Fase 5 («carta pareja»): la forma con que se dibuja (`data-forma`), «tanda» (una tabla de columnas compartidas) o «sin opciones» / «sin forma». */
+  /** Fase 5 («carta pareja»): la forma con que se dibuja (`data-forma`), «tanda» (una tabla por producto, de columnas compartidas) o «sin opciones» / «sin forma». */
   forma: string;
-  /** El nombre (los h3; en una tanda, los encabezados de fila). */
+  /** El nombre (los h3; en una tanda, el de cada producto, que protagoniza con su tabla propia). */
   nombre: string;
   /** Lo que se dibuja a la derecha del nombre (null: nada; en una tabla o una lista, cada fila dice su precio). */
   precioDelRenglon: string | null;
@@ -157,7 +157,7 @@ function volcarCarta(page: Page): Promise<CartaVolcada> {
         const items = [...p.querySelectorAll("[data-carta-scroll] > li")].map((li): ItemDeCarta => {
           const conOpciones = li.querySelector("[data-filas-carta], [data-aclaracion]") !== null;
           const forma = li.getAttribute("data-forma") ?? (li.hasAttribute("data-tanda") ? "tanda" : conOpciones ? "sin forma (como antes)" : "sin opciones");
-          const nombres = forma === "tanda" ? [...li.querySelectorAll("th[scope=row]")].map(texto) : [...li.querySelectorAll("h3")].map(texto);
+          const nombres = [...li.querySelectorAll("h3")].map(texto);
           const nombre = nombres.join(" | ");
           const precio = li.querySelector(":scope > div > [data-rol=precio]");
           const tablaEl = li.querySelector("table");
@@ -170,7 +170,7 @@ function volcarCarta(page: Page): Promise<CartaVolcada> {
           const filas = [...li.querySelectorAll("[data-filas-carta] > li")].map(texto);
           const aclaraciones = [...li.querySelectorAll("[data-aclaracion]")].map(texto);
           if (primeraVez(`forma ${forma}`)) {
-            letra(`forma «${forma}» «${nombres[0] ?? ""}» · nombre`, forma === "tanda" ? li.querySelector("th[scope=row] [data-rol]") : li.querySelector("h3"));
+            letra(`forma «${forma}» «${nombres[0] ?? ""}» · nombre`, li.querySelector("h3"));
             if (precio) letra(`forma «${forma}» «${nombres[0] ?? ""}» · precio del renglón`, precio);
           }
           return { forma, nombre, precioDelRenglon: precio ? texto(precio) : null, tabla, filas, aclaraciones, texto: lineas(li) };

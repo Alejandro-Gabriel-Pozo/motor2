@@ -231,10 +231,10 @@ function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly Aclaraci
  *
  * Con opciones, el ítem se DIBUJA SEGÚN SU FORMA (`presentacion`, que resuelve el servidor: `core/carta/presentacion-en-carta.ts`; ADR-035): `simple` (el nombre y su precio, con las aclaraciones
  * debajo); `tabla` (dos ejes: el nombre como RÓTULO con su línea fina y una tabla real); `lista` (un eje en filas: con el nombre arriba, o la base OCULTA, cada opción como un plato); `columnas` va dentro de
- * su tanda (`TandaFila`). Sin `presentacion` (un producto sin opciones, o uno cuya forma la carta no puede leer exacta) va `ItemComoAntes`.
+ * su tanda (`TandaFila`: una tabla por producto). Sin `presentacion` (un producto sin opciones, o uno cuya forma la carta no puede leer exacta) va `ItemComoAntes`.
  *
  * JERARQUÍA («BC2»): si la opción define QUÉ PLATO es (De carne / De pollo; cada pizza; una combinación) → las OPCIONES protagonizan (letra de plato, rol Producto, y su precio en rol Precio) y el nombre del
- * producto es un RÓTULO (rol Rótulo, con una línea fina debajo). Si la opción es CÓMO lo querés (el tamaño) → el NOMBRE protagoniza (`protagonista: "nombre"`) y las filas son tamaños chicos (rol Opción).
+ * producto es un RÓTULO (rol Rótulo, con una línea fina debajo). Si la opción es CÓMO lo querés (el tamaño) → el NOMBRE protagoniza (`protagonista: "nombre"`) y las filas son tamaños chicos (rol Opción). La tanda sigue la misma regla: sus columnas son tamaños → protagoniza el nombre.
  */
 function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
   const colores = coloresDelItem(item.especial, estilo.valores);
@@ -413,76 +413,55 @@ function CeldaDePrecio({ precio, color, rol }: { precio: number | null; color: s
   );
 }
 
-/** Los rótulos de las columnas de una tabla (rol Aclaración 600), como encabezados de columna reales. */
-function EncabezadosDeColumna({ rotulos }: { rotulos: readonly string[] }) {
-  return rotulos.map((r, i) => (
-    <th key={`columna-${i}`} scope="col" data-rol="aclaracion-rotulo" className="carta-rol-aclaracion-rotulo pb-0.5 pl-3 text-right align-bottom" style={{ color: "var(--carta-ink-soft)" }}>
-      {r}
-    </th>
-  ));
-}
-
 /**
- * Una TANDA (DEC-06, forma `columnas`): los productos consecutivos de la sección que comparten el grupo que define el precio (el café y el cortado: Chico | Mediano | Grande) en UNA tabla real
- * (`<table>`, con `<th scope="col">` en los rótulos y `<th scope="row">` en cada producto: el HTML no admite un título dentro de una celda de encabezado, así que acá el nombre no es un `h3`), con
- * «–» donde un producto no ofrece un tamaño. Debajo de cada producto, en una fila que ocupa todo el ancho, su descripción, sus tags y sus aclaraciones. Sin «desde»: cada celda dice su precio.
+ * Una TANDA (DEC-06, forma `columnas`): los productos consecutivos de la sección que comparten el grupo que define el precio (el café y el cortado: Chico | Mediano | Grande). Una tabla por
+ * producto, columnas iguales y compartidas por la tanda (`table-fixed`); el nombre es el protagonista (un `h3`, rol Producto, con su línea fina debajo y el aviso del descuento a la derecha),
+ * los tamaños se REPITEN como encabezados de columna (rol Tamaño) bajo el nombre de cada producto y cada celda dice su precio (rol Opción precio), con «–» donde el producto no ofrece ese
+ * tamaño. Debajo de la tabla de cada producto, su descripción, sus tags y sus aclaraciones. Sin «desde».
  */
 function TandaFila({ tanda, items, estilo }: { tanda: TandaCartaPublica; items: readonly ItemCartaPublico[]; estilo: EstiloCarta }) {
   return (
-    <li data-tanda className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
-      <table data-tabla-carta className="w-full border-collapse">
-        <thead>
-          <tr>
-            <td />
-            <EncabezadosDeColumna rotulos={tanda.rotulos} />
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item, k) => (
-            <FilaDeTanda key={`fila-${k}`} item={item} columnas={tanda.rotulos.length} primera={k === 0} estilo={estilo} />
-          ))}
-        </tbody>
-      </table>
+    <li data-tanda className="py-2.5">
+      {items.map((item, k) => (
+        <ProductoDeTanda key={`producto-${k}`} item={item} rotulos={tanda.rotulos} primero={k === 0} estilo={estilo} />
+      ))}
     </li>
   );
 }
 
-function FilaDeTanda({ item, columnas, primera, estilo }: { item: ItemCartaPublico; columnas: number; primera: boolean; estilo: EstiloCarta }) {
+function ProductoDeTanda({ item, rotulos, primero, estilo }: { item: ItemCartaPublico; rotulos: readonly string[]; primero: boolean; estilo: EstiloCarta }) {
   const colores = coloresDelItem(item.especial, estilo.valores);
-  const celdas = item.presentacion?.forma === "columnas" ? item.presentacion.celdas : Array.from({ length: columnas }, () => null);
+  const celdas = item.presentacion?.forma === "columnas" ? item.presentacion.celdas : rotulos.map(() => null);
   const aclaraciones = item.presentacion?.aclaraciones ?? [];
-  const conDetalle = item.descripcion !== null || item.tags.length > 0 || aclaraciones.length > 0;
-  const borde = primera ? undefined : { borderTopWidth: 1, borderColor: "var(--carta-border)" };
   return (
-    <>
-      <tr style={borde}>
-        <th scope="row" className="py-1 pr-1 text-left align-baseline font-normal">
-          <span data-rol="producto" className="carta-rol-producto carta-titulo" style={{ color: colores.nombre, overflowWrap: "anywhere" }}>
-            {item.nombre}
-            {item.especial && <Estrella color={colores.estrella} />}
-          </span>
-          {item.descuentoPorcentaje !== undefined && (
-            <>
-              {" "}
-              <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />
-            </>
-          )}
-        </th>
-        {celdas.map((precio, c) => (
-          <td key={`celda-${c}`} className="whitespace-nowrap py-1 pl-3 text-right align-baseline">
-            <CeldaDePrecio precio={precio} color={colores.precio} rol="opcion-precio" />
-          </td>
-        ))}
-      </tr>
-      {conDetalle && (
-        <tr>
-          <td colSpan={columnas + 1} className="pb-1.5">
-            <DescripcionYTags item={item} colores={colores} />
-            <GruposDeOpciones aclaraciones={aclaraciones} colores={colores} />
-          </td>
-        </tr>
-      )}
-    </>
+    <div data-producto-de-tanda className={primero ? undefined : "mt-2.5 border-t pt-2.5"} style={primero ? undefined : { borderColor: "var(--carta-border)" }}>
+      <div className="carta-linea-fina flex items-baseline justify-between gap-3 pb-1.5">
+        <NombreDelItem item={item} colores={colores} />
+        {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
+      </div>
+      <table data-tabla-carta aria-label={item.nombre} className="w-full table-fixed border-collapse">
+        <thead>
+          <tr>
+            {rotulos.map((r, i) => (
+              <th key={`tam-${i}`} scope="col" data-rol="tamano" className="carta-rol-tamano pb-1 pt-1 text-left align-bottom">
+                {r}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            {celdas.map((precio, i) => (
+              <td key={`cel-${i}`} className="whitespace-nowrap py-1.5 text-left align-baseline">
+                <CeldaDePrecio precio={precio} color={colores.precio} rol="opcion-precio" />
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+      <DescripcionYTags item={item} colores={colores} />
+      <GruposDeOpciones aclaraciones={aclaraciones} colores={colores} />
+    </div>
   );
 }
 
