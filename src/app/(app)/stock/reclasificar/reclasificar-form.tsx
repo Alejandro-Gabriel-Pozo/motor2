@@ -128,17 +128,17 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="flex gap-3">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <CampoFecha etiqueta="Fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
         </div>
-        <label className="flex flex-1 flex-col gap-1 text-sm">
+        <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
           Producto
           <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloDisponibles: true }} required />
         </label>
       </div>
 
       <div className="flex gap-3">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <Selector etiqueta="Sección origen" value={seccionOrigenId} onChange={(e) => setSeccionOrigenId(e.target.value)} required>
             <option value="">Elegí una sección</option>
             {secciones.map((s) => (
@@ -148,7 +148,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
             ))}
           </Selector>
         </div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <CampoFecha etiqueta="Lote origen (opcional — vacío = total sin lote puntual)" value={loteOrigen} onChange={(e) => cambiarLoteOrigen(e.target.value)} />
         </div>
       </div>
@@ -182,7 +182,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
                 ))}
               </Selector>
             </div>
-            <div className="w-36">
+            <div className="w-44">
               <CampoFecha etiqueta="Lote destino (opcional)" tamano="compacto" value={d.loteVencimiento} onChange={(e) => actualizarDestino(idx, { loteVencimiento: e.target.value })} />
             </div>
             <label className="flex w-28 flex-col gap-1 text-sm">
