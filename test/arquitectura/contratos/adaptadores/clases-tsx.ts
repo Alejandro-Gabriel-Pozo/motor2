@@ -80,6 +80,24 @@ export function coincidenciasDeClases(cadenas: readonly CadenaDeClases[], token:
   return salida;
 }
 
+/**
+ * Una coincidencia por TOKEN de cada cadena (no solo el primero): para un contrato cuyo uso es un nombre dentro de la clase (`bg-papel` usa el token `--color-papel`). El token
+ * se compara SIN variantes (`hover:bg-papel` casa como `bg-papel`) y tiene que traer el grupo con nombre `(?<nombre>…)`; el nombre de la coincidencia es `prefijo + grupos.nombre`.
+ * La posición es la del token tal como está escrito en el archivo (con sus variantes): ahí apunta el hallazgo. El fragmento es la cadena entera, como en `coincidenciasDeClases`.
+ */
+export function coincidenciasPorToken(cadenas: readonly CadenaDeClases[], token: RegExp, prefijo: string): Coincidencia[] {
+  const salida: Coincidencia[] = [];
+  for (const cadena of cadenas) {
+    for (const t of cadena.tokens) {
+      token.lastIndex = 0;
+      const m = token.exec(t.base);
+      token.lastIndex = 0;
+      if (m) salida.push({ desde: t.desde, fragmento: cadena.texto, nombre: `${prefijo}${m.groups?.nombre ?? ""}`, companeras: cadena.tokens.map((x) => x.base) });
+    }
+  }
+  return salida;
+}
+
 /** La posición del primer token `clase` de cualquier cadena (la declaración de un consumidor), o null. */
 export function primeraClase(cadenas: readonly CadenaDeClases[], clase: string): number | null {
   for (const cadena of cadenas) {

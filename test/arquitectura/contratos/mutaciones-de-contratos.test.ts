@@ -254,7 +254,7 @@ describe("el catálogo de operadores sobre contratos de TypeScript y de nombres 
     fuente: { archivo: "src/estilos/tema.css", ancla: ":root" },
     alcance: { raices: ["src/componentes"], extensiones: [".css"] },
     senales: [{ adaptador: "css", tipo: "variable", nombre: /^--carta-/, que: "lee una variable de la carta" }],
-    declaracion: { tipo: "nombre-definido-en-la-fuente" },
+    declaracion: { tipo: "nombre-definido-en-la-fuente", prefijoDeNombre: "" },
     definicion: [{ adaptador: "css", tipo: "define-variable", nombre: /^--carta-/, que: "define una variable de la carta" }],
     consumidores: "descubiertos",
     casosLegitimos: [],

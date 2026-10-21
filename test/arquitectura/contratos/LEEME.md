@@ -10,7 +10,15 @@ Corre dentro de `npm test` (`contratos.test.ts`, un solo recorrido del repo). Su
 |---|---|---|
 | `importar-ancla` | importa el ancla de la fuente (nombrado, con alias, por defecto, o `import * as ns` usando `ns.ancla`) | `ts` |
 | `clase-companera` | lleva la clase compañera en la MISMA cadena de clases; en CSS, la nombra en el selector de la regla | `clases`, `css` |
-| `nombre-definido-en-la-fuente` | usa un nombre (`var(--x)`) que la fuente define; un nombre definido que nadie usa también falla | `css/variable`, `ts/codigo` |
+| `nombre-definido-en-la-fuente` (con `prefijoDeNombre`) | usa un nombre (`var(--x)`, o una clase como `bg-papel`) que la fuente define; un nombre definido que nadie usa también falla | `css/variable`, `ts/codigo`, `clases` |
+
+### `nombre-definido-en-la-fuente`: fuente CSS con regla ancla y tokens en clases
+
+La declaración es `{ tipo: "nombre-definido-en-la-fuente", prefijoDeNombre }` (`prefijoDeNombre: ""` si no hay señales de clases). Qué hace el motor con ella:
+
+- **Solo cuenta la regla ancla.** Si la fuente es CSS, un nombre está «definido» únicamente si lo declara una propiedad `--x` DENTRO de la regla ancla (`reglaDelAncla`: la primera regla cuyo selector es el ancla; un at-rule como `@theme static` es una regla más, y sus reglas anidadas cuentan). Las variables del resto del archivo (un `.pos-shell { --paper: … }`) no son definiciones de la fuente. Las fuentes TS no cambian: todo `--x` escrito en su código.
+- **La fuente CSS se revisa como consumidor** si está dentro del alcance del contrato: sus señales, sus definiciones y su declaración se miran como en cualquier archivo, y se DESCARTA lo que cae entre el principio y la `}` de la regla ancla (`ReglaCss.desde` y `hasta`): lo que define la propia fuente no es un uso. Un `var(--x)` sin definir fuera del ancla es `uso-sin-declarar`; un nombre ya definido antes en el ancla y definido otra vez (en el ancla o fuera de ella) es `definicion-duplicada` (hace falta un detector `definicion` que lo reconozca, p. ej. `css/define-variable`). Con la fuente en el alcance puede figurar en una lista cerrada de `consumidores`. Con la fuente fuera del alcance todo sigue como antes (sus usos propios cuentan como usos de los nombres).
+- **Las clases pueden nombrar un token.** Un detector `clases` con esta declaración lleva el grupo con nombre `(?<nombre>…)` en su regex; el nombre que se verifica es `prefijoDeNombre + grupos.nombre` (`--color-` + `papel` = `--color-papel` para `bg-papel`) y CUENTA CADA TOKEN de la cadena, no solo el primero (`coincidenciasPorToken`). Las variantes (`hover:`, `md:`) y el `!` se ignoran para casar el nombre, pero el hallazgo apunta a la posición del token tal como está escrito. El motor lanza si falta `prefijoDeNombre` o el grupo. El regex tiene que casar también el nombre MAL escrito (`bg-papell`): si solo casa nombres válidos, un error de tipeo no se detecta. En TS, los grupos con nombre se escriben con `new RegExp("…")` (el `target` del repo no admite el literal).
 
 Un comentario del tipo «dependo de X» no declara nada. Una mención en un comentario o en un texto tampoco es un uso (los detectores `ts/codigo` miran el código sin comentarios ni interior de strings).
 
@@ -115,6 +123,6 @@ HUECO: contrato/borde-propio-de-carta · eliminacion · src/app/globals.css · l
 - Un caso legítimo no vence y NO lleva aprobación propia: ampliar o agregar uno es editar el archivo del contrato (`contratos/<id>.ts`), y hoy nada más lo frena que la revisión del cambio. Límite conocido: cuando el mecanismo guarde un hash aprobado de la definición de cada contrato, agregar o cambiar un caso legítimo (parte de esa definición) exigirá la aprobación que hoy no exige; mientras tanto el reporte cuenta los casos por contrato para que no crezcan en silencio.
 - Un manifiesto mal armado (id repetido o no kebab-case, declaración incompatible con sus señales, sin señales, un `vence` que no es una fecha válida) **lanza un error**, no es un hallazgo.
 - Las marcas se buscan en `.ts`, `.tsx` y `.css` de `src`, `plataforma`, `scripts`, `prisma` y `test`.
-- `@/` se resuelve siempre a `src/`. Los nombres dinámicos (`--x-${rol}`) no se enumeran: para `nombre-definido-en-la-fuente` la fuente tiene que escribirlos.
+- `@/` se resuelve siempre a `src/`. Los nombres dinámicos (`--x-${rol}`) no se enumeran: para `nombre-definido-en-la-fuente` la fuente tiene que escribirlos. El arnés de mutaciones todavía no sabe mutar un consumidor que usa un token en una clase (`elegirConsumidor` solo entiende `var()` en CSS): un contrato real de ese tipo necesita su operador y su ejemplo en la matriz.
 - `hoy` se inyecta al motor; el guardián real usa `fechaUtcDeHoy()` (reloj UTC del sistema) y NO lee variables de entorno: no hay forma de mover la fecha desde afuera.
 - Sin dependencias nuevas: el lector de CSS es propio y el de TypeScript es el AST de `typescript`.

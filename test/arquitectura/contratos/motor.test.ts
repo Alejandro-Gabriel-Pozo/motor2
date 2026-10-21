@@ -2,8 +2,9 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { sinVariantes } from "./adaptadores/clases-tsx";
-import { leerReglas } from "./adaptadores/css";
+import { cadenasDeClases, coincidenciasPorToken, sinVariantes } from "./adaptadores/clases-tsx";
+import { leerReglas, reglaDelAncla } from "./adaptadores/css";
+import { arbolDe } from "../cercos/trinquete";
 import { formatearAviso, formatearHallazgo, formatearReporte, resumirContratos, revisarContratos } from "./motor";
 import { evaluarVencimientos, fechaUtcDeHoy } from "./politica";
 import type { CasoLegitimo, Contrato, Deuda, Excepcion, Resultado, TipoDeHallazgo } from "./tipos";
@@ -521,7 +522,7 @@ function variables(extra: Partial<Contrato> = {}): Contrato {
     fuente: { archivo: "src/app/tema.css", ancla: ":root" },
     alcance: { raices: ["src/components"], extensiones: [".css"] },
     senales: [{ adaptador: "css", tipo: "variable", nombre: /^--carta-/, que: "lee una variable de la carta" }],
-    declaracion: { tipo: "nombre-definido-en-la-fuente" },
+    declaracion: { tipo: "nombre-definido-en-la-fuente", prefijoDeNombre: "" },
     definicion: [{ adaptador: "css", tipo: "define-variable", nombre: /^--carta-/, que: "define una variable de la carta" }],
     consumidores: "descubiertos",
     casosLegitimos: [],
@@ -560,6 +561,145 @@ describe("motor: contrato de nombres (nombre definido en la fuente)", () => {
       "src/components/uso.css": ".a {\n  color: var(--carta-tinta);\n  fill: var(--carta-otra);\n}\n",
     });
     expect(vistos(correr(variables({ fuente: { archivo: "src/app/tema.ts", ancla: "tema" } })))).toEqual([["uso-sin-declarar", "src/components/uso.css", 3, 13]]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Contrato de tokens: la fuente CSS es su regla ancla (`@theme static`) y las clases pueden nombrar un token (`bg-papel` usa `--color-papel`)
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/** La utilidad que nombra un token: `bg-papel`, `text-tinta-suave`… También casa el nombre mal escrito (`bg-papell`), que es justo lo que el contrato tiene que atrapar. */
+// (Con `new RegExp`: el target de TypeScript del repo no admite grupos con nombre en un literal.)
+const RE_UTILIDAD = new RegExp("^(?:bg|text|border)-(?<nombre>(?:papel|tinta)[\\w-]*)$");
+
+function tokens(extra: Partial<Contrato> = {}): Contrato {
+  return {
+    id: "tokens-visuales",
+    porQue: "un token mal escrito cae en silencio a otro color y separa la pantalla del sistema visual",
+    fuente: { archivo: "src/app/globals.css", ancla: "@theme static" },
+    alcance: { raices: ["src/app", "src/components"], extensiones: [".css", ".tsx"] },
+    senales: [
+      { adaptador: "css", tipo: "variable", nombre: /^--(?:color|otro)-/, que: "lee un token" },
+      { adaptador: "clases", token: RE_UTILIDAD, que: "usa una utilidad de token" },
+    ],
+    declaracion: { tipo: "nombre-definido-en-la-fuente", prefijoDeNombre: "--color-" },
+    definicion: [{ adaptador: "css", tipo: "define-variable", nombre: /^--color-/, que: "define un token" }],
+    consumidores: "descubiertos",
+    casosLegitimos: [],
+    excepciones: [],
+    deuda: [],
+    ...extra,
+  };
+}
+
+const GLOBALS_TOKENS = "/* @contrato tokens-visuales */\n@theme static {\n  --color-papel: #fafaf8;\n  --color-tinta: #1c1b19;\n}\n";
+const PANTALLA = 'export const A = () => <div className="bg-papel text-tinta">x</div>;\n';
+
+describe("motor: contrato de tokens (fuente CSS con regla ancla y tokens en clases)", () => {
+  it("usar los tokens en clases (con variantes) y en var(), todos los que define el ancla, es verde", () => {
+    escribir({
+      "src/app/globals.css": `${GLOBALS_TOKENS}.pos-shell {\n  --paper: var(--color-papel);\n}\n`,
+      "src/components/a.tsx": 'export const A = () => <div className="hover:bg-papel md:text-tinta">x</div>;\n',
+    });
+    expect(vistos(correr(tokens()))).toEqual([]);
+  });
+
+  it("una variable definida en la fuente FUERA de la regla ancla no cuenta como definida", () => {
+    escribir({
+      "src/app/globals.css": `${GLOBALS_TOKENS}.pos-shell {\n  --otro-extra: red;\n}\n`,
+      "src/components/a.tsx": PANTALLA,
+      "src/components/uso.css": ".a {\n  color: var(--otro-extra);\n}\n",
+    });
+    expect(vistos(correr(tokens()))).toEqual([["uso-sin-declarar", "src/components/uso.css", 2, 14]]);
+  });
+
+  it("un token definido dos veces es definicion-duplicada: en el ancla y fuera de ella, o dos veces en el ancla (la segunda)", () => {
+    escribir({ "src/app/globals.css": `${GLOBALS_TOKENS}.pos-shell {\n  --color-papel: red;\n}\n`, "src/components/a.tsx": PANTALLA });
+    expect(vistos(correr(tokens()))).toEqual([["definicion-duplicada", "src/app/globals.css", 7, 3]]);
+    escribir({ "src/app/globals.css": "/* @contrato tokens-visuales */\n@theme static {\n  --color-papel: #fafaf8;\n  --color-tinta: #1c1b19;\n  --color-papel: #ffffff;\n}\n" });
+    const r = correr(tokens());
+    expect(vistos(r)).toEqual([["definicion-duplicada", "src/app/globals.css", 5, 3]]);
+    expect(r.hallazgos[0].que).toContain("`--color-papel` ya está definido antes en el ancla");
+  });
+
+  it("la fuente CSS fuera del ancla es un consumidor: su var() sin definir es uso-sin-declarar", () => {
+    escribir({ "src/app/globals.css": `${GLOBALS_TOKENS}.pos-shell {\n  --paper: var(--color-papelito);\n}\n`, "src/components/a.tsx": PANTALLA });
+    expect(vistos(correr(tokens()))).toEqual([["uso-sin-declarar", "src/app/globals.css", 7, 16]]);
+  });
+
+  it("lo que cae dentro del ancla no es un uso: un var() de un token a otro ni se informa ni cuenta como uso", () => {
+    escribir({
+      "src/app/globals.css": "/* @contrato tokens-visuales */\n@theme static {\n  --color-papel: #fafaf8;\n  --color-tinta: var(--color-papel);\n  --color-raro: var(--color-fantasma);\n}\n",
+      "src/components/a.tsx": 'export const A = () => <div className="text-tinta">x</div>;\n',
+    });
+    // `--color-papel` solo lo lee otro token del ancla: sin uso. `--color-fantasma` dentro del ancla no es un uso sin declarar.
+    expect(vistos(correr(tokens()))).toEqual([
+      ["declaracion-sin-uso", "src/app/globals.css", 3, 3],
+      ["declaracion-sin-uso", "src/app/globals.css", 5, 3],
+    ]);
+  });
+
+  it("bg-papel registra el uso de --color-papel: sin esa clase el token queda sin uso", () => {
+    escribir({ "src/app/globals.css": "/* @contrato tokens-visuales */\n@theme static {\n  --color-papel: #fafaf8;\n}\n", "src/components/a.tsx": 'export const A = () => <div className="bg-papel">x</div>;\n' });
+    expect(vistos(correr(tokens()))).toEqual([]);
+    escribir({ "src/components/a.tsx": 'export const A = () => <div className="flex">x</div>;\n' });
+    expect(vistos(correr(tokens())).map((v) => v[0]).sort()).toEqual(["consumidor-fantasma", "declaracion-sin-uso"]);
+  });
+
+  it("bg-papell (token mal escrito) es uso-sin-declarar en la columna del token", () => {
+    escribir({ "src/app/globals.css": GLOBALS_TOKENS, "src/components/a.tsx": PANTALLA, "src/components/b.tsx": 'export const B = () => <div className="p-2 bg-papell">x</div>;\n' });
+    const r = correr(tokens());
+    expect(vistos(r)).toEqual([["uso-sin-declarar", "src/components/b.tsx", 1, 44]]);
+    expect(r.hallazgos[0].que).toContain("usa `--color-papell`, que la fuente no define");
+  });
+
+  it("dos tokens en una misma cadena cuentan los dos: los dos mal escritos son dos hallazgos, y el segundo bien escrito evita su declaración sin uso", () => {
+    escribir({ "src/app/globals.css": GLOBALS_TOKENS, "src/components/ok.tsx": 'export const A = () => <div className="bg-papel text-tinta">x</div>;\n', "src/components/mal.tsx": 'export const B = () => <div className="bg-papell text-tintaa">x</div>;\n' });
+    expect(vistos(correr(tokens()))).toEqual([
+      ["uso-sin-declarar", "src/components/mal.tsx", 1, 40],
+      ["uso-sin-declarar", "src/components/mal.tsx", 1, 50],
+    ]);
+    // `--color-tinta` solo se usa como SEGUNDO token de la cadena: si solo contara el primero, sobraría.
+    escribir({ "src/components/ok.tsx": 'export const A = () => <div className="bg-papel text-tinta">x</div>;\n', "src/components/mal.tsx": "export const B = 1;\n" });
+    expect(vistos(correr(tokens()))).toEqual([]);
+  });
+
+  it("las variantes (hover:, md:) casan sin ellas y el hallazgo apunta al token tal como está escrito", () => {
+    escribir({ "src/app/globals.css": GLOBALS_TOKENS, "src/components/a.tsx": PANTALLA, "src/components/v.tsx": 'export const V = () => <div className="md:hover:bg-papell">x</div>;\n' });
+    expect(vistos(correr(tokens()))).toEqual([["uso-sin-declarar", "src/components/v.tsx", 1, 40]]);
+  });
+
+  it("una mención en un comentario no cuenta, ni en TSX ni en CSS", () => {
+    escribir({
+      "src/app/globals.css": `${GLOBALS_TOKENS}/* .x { color: var(--color-fantasma) } */\n`,
+      "src/components/a.tsx": `// <div className="bg-papell"> en un comentario\n/* text-tintaa */\n${PANTALLA}`,
+      "src/components/c.css": "/* .a { color: var(--color-fantasma); } */\n",
+    });
+    expect(vistos(correr(tokens()))).toEqual([]);
+  });
+
+  it("un token mal escrito puede exceptuarse por la cadena, y la excepción sobrante se detecta", () => {
+    escribir({ "src/app/globals.css": GLOBALS_TOKENS, "src/components/a.tsx": PANTALLA, "src/components/b.tsx": 'export const B = () => <div className="bg-papell">x</div>;\n' });
+    const excepcion = exc({ archivo: "src/components/b.tsx", fragmento: "bg-papell" });
+    expect(vistos(correr(tokens({ excepciones: [excepcion] })))).toEqual([]);
+    escribir({ "src/components/b.tsx": 'export const B = () => <div className="bg-papel">x</div>;\n' });
+    expect(vistos(correr(tokens({ excepciones: [excepcion] })))).toEqual([["excepcion-sobrante", "src/components/b.tsx", 1, 1]]);
+  });
+
+  it("la fuente dentro del alcance puede figurar en una lista cerrada de consumidores; fuera del alcance, no", () => {
+    escribir({ "src/app/globals.css": `${GLOBALS_TOKENS}.pos-shell {\n  --paper: var(--color-papel);\n}\n`, "src/components/a.tsx": 'export const A = () => <div className="text-tinta">x</div>;\n' });
+    expect(vistos(correr(tokens({ consumidores: ["src/app/globals.css", "src/components/a.tsx"] })))).toEqual([]);
+    expect(vistos(correr(tokens({ alcance: { raices: ["src/components"], extensiones: [".css", ".tsx"] }, consumidores: ["src/app/globals.css", "src/components/a.tsx"] })))).toEqual([
+      ["consumidor-fantasma", "src/app/globals.css", 1, 1],
+    ]);
+  });
+
+  it("un manifiesto con señales de clases y «nombre-definido-en-la-fuente» exige prefijoDeNombre y el grupo (?<nombre>…)", () => {
+    escribir({ "src/app/globals.css": GLOBALS_TOKENS, "src/components/a.tsx": PANTALLA });
+    expect(() => correr(tokens({ declaracion: { tipo: "nombre-definido-en-la-fuente", prefijoDeNombre: "" } }))).toThrow(/prefijoDeNombre/);
+    expect(() => correr(tokens({ senales: [{ adaptador: "clases", token: /^bg-papel$/, que: "x" }] }))).toThrow(/\(\?<nombre>/);
+    expect(() => correr(tokens({ senales: [{ adaptador: "ts", tipo: "declara", nombre: /^x$/, que: "x" }] }))).toThrow(/solo va con señales/);
+    expect(vistos(correr(tokens()))).toEqual([]);
   });
 });
 
@@ -630,6 +770,19 @@ describe("adaptador de CSS: el lector de reglas", () => {
     ]);
     expect(reglas[1].declaraciones[2].valor).toBe("url(data:image/png;base64,AA)");
     expect(css.slice(reglas[0].declaraciones[0].desde, reglas[0].declaraciones[0].desde + 9)).toBe("--color-a");
+  });
+
+  it("cada regla sabe dónde cierra (la } propia, anidadas incluidas) y reglaDelAncla la encuentra, también un at-rule", () => {
+    const css = "@theme static {\n  --a: 1;\n}\n.n { color: blue; &:hover { color: red } margin: 0 }\n.sin-cerrar { top: 0;";
+    const reglas = leerReglas(css);
+    const tema = reglaDelAncla(reglas, "@theme static");
+    expect(tema).not.toBeNull();
+    expect(css[tema?.hasta ?? 0]).toBe("}");
+    expect(css.slice(tema?.desde, (tema?.hasta ?? 0) + 1)).toBe("@theme static {\n  --a: 1;\n}");
+    const n = reglaDelAncla(reglas, ".n");
+    expect(css.slice(n?.desde, (n?.hasta ?? 0) + 1)).toBe(".n { color: blue; &:hover { color: red } margin: 0 }");
+    expect(reglaDelAncla(reglas, ".sin-cerrar")?.hasta).toBe(css.length);
+    expect(reglaDelAncla(reglas, ".no-esta")).toBeNull();
   });
 });
 
@@ -834,5 +987,21 @@ describe("evaluarVencimientos: función pura con `hoy` inyectado", () => {
     expect(fechaUtcDeHoy()).toBe(new Date().toISOString().slice(0, 10));
     expect(readFileSync(join(__dirname, "politica.ts"), "utf8")).not.toContain("process.env");
     expect(readFileSync(join(__dirname, "motor.ts"), "utf8")).not.toContain("process.env");
+  });
+});
+
+describe("adaptador de clases: una coincidencia por token", () => {
+  it("informa CADA token que casa (no solo el primero), con el nombre prefijado y la posición real del token", () => {
+    const texto = 'export const A = "p-2 hover:bg-papel text-tinta/50 bg-x";\n';
+    const cadenas = cadenasDeClases(arbolDe(texto, "a.tsx"), texto);
+    const re = new RegExp("^(?:bg|text)-(?<nombre>papel|tinta)(?:/\\d+)?$", "g");
+    const k = coincidenciasPorToken(cadenas, re, "--color-");
+    expect(k.map((x) => [x.nombre, texto.slice(x.desde, x.desde + 8)])).toEqual([
+      ["--color-papel", "hover:bg"],
+      ["--color-tinta", "text-tin"],
+    ]);
+    expect(k.every((x) => x.fragmento === "p-2 hover:bg-papel text-tinta/50 bg-x")).toBe(true);
+    // El regex con la bandera `g` no arrastra estado entre llamadas.
+    expect(coincidenciasPorToken(cadenas, re, "--color-")).toHaveLength(2);
   });
 });

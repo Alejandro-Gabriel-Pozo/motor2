@@ -39,7 +39,8 @@ export type TipoDeHallazgo = (typeof TIPOS_DE_HALLAZGO)[number];
 /**
  * Qué busca un detector. Todo es texto y AST: no se lee ninguna configuración de Tailwind, de Next ni de PostCSS.
  *  - `clases`: un token de una cadena de clases (un literal de texto de un `.ts`/`.tsx`: `className`, constantes, plantillas), SIN las variantes (`sm:`, `hover:`,
- *    `[&>li]:`, `!`). Una cadena es la unidad: se informa una vez por cadena y detector.
+ *    `[&>li]:`, `!`). Una cadena es la unidad: se informa una vez por cadena y detector. EXCEPTO con la declaración `nombre-definido-en-la-fuente`: ahí el token es un
+ *    NOMBRE (`bg-papel` usa el token `--color-papel`), el regex lleva el grupo con nombre `(?<nombre>…)` y se informa CADA token de la cadena que casa, no solo el primero.
  *  - `ts / codigo`: una expresión regular sobre el CÓDIGO del archivo: sin comentarios y sin el interior de los strings, las plantillas ni los regex literales.
  *    Una mención en un comentario o en un texto no cuenta. La expresión lleva la bandera `g`.
  *  - `ts / propiedad`: una propiedad de un objeto literal (`{ nombre: valor }`) cuyo nombre y cuyo texto de valor coinciden.
@@ -63,12 +64,17 @@ export type Detector =
  *  - `importar-ancla`: (TS) importa el ancla de la fuente (con o sin alias, o por `import * as`). Va con señales `ts`.
  *  - `clase-companera`: (clases y CSS) la misma cadena de clases lleva `clase` (o una de las `equivalentes`, clases que traen lo mismo por su cuenta); en CSS, el
  *    selector de la regla la nombra. Va con señales `clases` o `css`.
- *  - `nombre-definido-en-la-fuente`: el nombre que se usa (`var(--x)`) tiene que estar definido en la fuente; y un nombre definido que nadie usa también falla.
+ *  - `nombre-definido-en-la-fuente`: el nombre que se usa (`var(--x)`, o una clase como `bg-papel`) tiene que estar definido en la fuente; y un nombre definido que nadie
+ *    usa también falla. Va con señales `css/variable`, `ts/codigo` o `clases`. Si la fuente es CSS, solo cuentan las variables definidas DENTRO de la regla ancla (no las del
+ *    resto del archivo), y si el archivo de la fuente está en el alcance se revisa como cualquier consumidor, descartando lo que cae dentro del ancla (lo que define la
+ *    propia fuente no es un uso ni un duplicado, salvo el mismo nombre definido otra vez).
+ *    `prefijoDeNombre` se antepone al grupo `(?<nombre>…)` de un detector `clases` para armar el nombre que se verifica (`"--color-"` + `papel` = `--color-papel`); es
+ *    obligatorio y no vacío si hay un detector `clases` (el motor lo exige, y que el regex del detector traiga el grupo). Con señales `css` o `ts` no se usa: va `""`.
  */
 export type Declaracion =
   | { tipo: "importar-ancla" }
   | { tipo: "clase-companera"; clase: string; equivalentes: readonly string[] }
-  | { tipo: "nombre-definido-en-la-fuente" };
+  | { tipo: "nombre-definido-en-la-fuente"; prefijoDeNombre: string };
 
 /** Quién responde por una excepción o una deuda. Lista cerrada (ver `politica.ts`). */
 export type Responsable = "dueño";

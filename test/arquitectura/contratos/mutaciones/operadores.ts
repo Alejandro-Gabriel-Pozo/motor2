@@ -2,9 +2,9 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import ts from "typescript";
 import { arbolDe, sinComentarios } from "../../cercos/trinquete";
-import { cadenasDeClases, coincidenciasDeClases } from "../adaptadores/clases-tsx";
+import { cadenasDeClases, coincidenciasDeClases, coincidenciasPorToken } from "../adaptadores/clases-tsx";
 import { colapsar, prueba, type Coincidencia } from "../adaptadores/coincidencia";
-import { coincidenciasDeCss, leerReglas, posicionDelAncla, variablesDefinidas } from "../adaptadores/css";
+import { coincidenciasDeCss, leerReglas, posicionDelAncla, reglaDelAncla, variablesDefinidas } from "../adaptadores/css";
 import { codigoSolo, coincidenciasDeTs, importaElAncla, posicionDelSimboloExportado } from "../adaptadores/ts";
 import type { DeclaracionDeAreas, IdDeContrato } from "../gobernanza/areas";
 import type { ReglaDeRuta } from "../gobernanza/clasificacion";
@@ -162,15 +162,16 @@ function posicionDelAnclaEn(c: Contrato, texto: string): number | null {
 }
 
 /** Lo que un detector encuentra en el texto de un archivo (mismos adaptadores que el motor). */
-function coincidenciasEn(d: Detector, ruta: string, texto: string): Coincidencia[] {
+function coincidenciasEn(d: Detector, ruta: string, texto: string, prefijoDeNombre: string | null): Coincidencia[] {
   if (d.adaptador === "css") return esCss(ruta) ? coincidenciasDeCss(leerReglas(sinComentarios(texto, ruta)), d) : [];
   if (!esTs(ruta)) return [];
   const arbol = arbolDe(texto, ruta);
-  if (d.adaptador === "clases") return coincidenciasDeClases(cadenasDeClases(arbol, texto), d.token);
+  if (d.adaptador === "clases") return prefijoDeNombre === null ? coincidenciasDeClases(cadenasDeClases(arbol, texto), d.token) : coincidenciasPorToken(cadenasDeClases(arbol, texto), d.token, prefijoDeNombre);
   return coincidenciasDeTs({ fuente: texto, codigo: codigoSolo(sinComentarios(texto, ruta), arbol), arbol }, d);
 }
 
-const delContrato = (c: Contrato, ruta: string, texto: string, lista: "senales" | "definicion"): Coincidencia[] => c[lista].flatMap((d) => coincidenciasEn(d, ruta, texto)).sort((a, b) => a.desde - b.desde);
+const delContrato = (c: Contrato, ruta: string, texto: string, lista: "senales" | "definicion"): Coincidencia[] =>
+  c[lista].flatMap((d) => coincidenciasEn(d, ruta, texto, c.declaracion.tipo === "nombre-definido-en-la-fuente" ? c.declaracion.prefijoDeNombre : null)).sort((a, b) => a.desde - b.desde);
 
 /** La carpeta donde un archivo nuevo cae dentro del alcance del contrato, y la extensión que el alcance admite. */
 function lugarEnElAlcance(raiz: string, c: Contrato): { carpeta: string; ext: string } | null {
@@ -239,7 +240,12 @@ function nombresDefinidos(base: BaseDeMutacion, c: Contrato): ReadonlySet<string
   const fuente = c.fuente.archivo;
   if (!existsSync(abs(base.raiz, fuente))) return new Set();
   const texto = leerTexto(base.raiz, fuente);
-  return esCss(fuente) ? new Set(variablesDefinidas(leerReglas(sinComentarios(texto, fuente))).keys()) : new Set([...sinComentarios(texto, fuente).matchAll(/--[A-Za-z][\w-]*/g)].map((m) => m[0]));
+  if (esCss(fuente)) {
+    const reglas = leerReglas(sinComentarios(texto, fuente));
+    const regla = reglaDelAncla(reglas, c.fuente.ancla);
+    return regla === null ? new Set() : new Set(variablesDefinidas(reglas, regla).keys());
+  }
+  return new Set([...sinComentarios(texto, fuente).matchAll(/--[A-Za-z][\w-]*/g)].map((m) => m[0]));
 }
 
 /** El texto sin el token `[desde, desde+largo)` de una cadena de clases, con un espacio vecino. */

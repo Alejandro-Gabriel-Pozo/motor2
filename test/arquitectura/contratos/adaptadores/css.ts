@@ -20,6 +20,8 @@ export interface ReglaCss {
   /** Lo que va antes de `{`, con los espacios colapsados (`.a > .b`, `@theme static`, `@media (min-width: 40rem)`). */
   selector: string;
   desde: number;
+  /** Posición (0-based) de la `}` que cierra la regla (el largo del texto si la regla nunca se cierra). Con `desde`, el rango `[desde, hasta]` es la regla entera, anidadas incluidas. */
+  hasta: number;
   declaraciones: DeclaracionCss[];
 }
 
@@ -61,14 +63,15 @@ export function leerReglas(limpia: string): ReglaCss[] {
     else if (parentesis > 0) continue;
     else if (c === "{") {
       const previo = limpia.slice(inicio, i);
-      const regla: ReglaCss = { selector: colapsar(previo), desde: inicio + (previo.length - previo.trimStart().length), declaraciones: [] };
+      const regla: ReglaCss = { selector: colapsar(previo), desde: inicio + (previo.length - previo.trimStart().length), hasta: limpia.length, declaraciones: [] };
       reglas.push(regla);
       abiertas.push(regla);
       inicio = i + 1;
     } else if (c === ";") cerrarDeclaracion(i);
     else if (c === "}") {
       cerrarDeclaracion(i);
-      abiertas.pop();
+      const cerrada = abiertas.pop();
+      if (cerrada) cerrada.hasta = i;
     }
   }
   return reglas;
@@ -97,11 +100,20 @@ function partesDelSelector(selector: string): string[] {
   return partes.map(normalizarSelector).filter(Boolean);
 }
 
-/** La posición de la regla cuyo selector (algún elemento de su lista) es EXACTAMENTE `ancla`, o null. */
-export function posicionDelAncla(reglas: readonly ReglaCss[], ancla: string): number | null {
+/** La primera regla cuyo selector (algún elemento de su lista) es EXACTAMENTE `ancla`, o null. Un at-rule con bloque (`@theme static`) es una regla más: su «selector» es el prelude. */
+export function reglaDelAncla(reglas: readonly ReglaCss[], ancla: string): ReglaCss | null {
   const buscada = normalizarSelector(ancla);
-  const regla = reglas.find((r) => partesDelSelector(r.selector).includes(buscada));
-  return regla ? regla.desde : null;
+  return reglas.find((r) => partesDelSelector(r.selector).includes(buscada)) ?? null;
+}
+
+/** La posición de la regla ancla, o null. */
+export function posicionDelAncla(reglas: readonly ReglaCss[], ancla: string): number | null {
+  return reglaDelAncla(reglas, ancla)?.desde ?? null;
+}
+
+/** ¿La posición cae dentro de la regla, entre su principio y la `}` que la cierra (anidadas incluidas)? */
+export function dentroDeLaRegla(regla: ReglaCss, posicion: number): boolean {
+  return posicion >= regla.desde && posicion <= regla.hasta;
 }
 
 /** Las clases (`.nombre`) que nombra un selector. */
@@ -115,10 +127,14 @@ export function primeraReglaConClase(reglas: readonly ReglaCss[], clase: string)
   return regla ? regla.desde : null;
 }
 
-/** Los nombres `--x` que definen las declaraciones de las reglas, con la posición de la primera definición. */
-export function variablesDefinidas(reglas: readonly ReglaCss[]): Map<string, number> {
+/** Los nombres `--x` que definen las declaraciones de las reglas, con la posición de la primera definición. Con `soloDe`, solo las declaraciones que caen dentro de esa regla. */
+export function variablesDefinidas(reglas: readonly ReglaCss[], soloDe?: ReglaCss): Map<string, number> {
   const nombres = new Map<string, number>();
-  for (const regla of reglas) for (const d of regla.declaraciones) if (d.propiedad.startsWith("--") && !nombres.has(d.propiedad)) nombres.set(d.propiedad, d.desde);
+  for (const regla of reglas) {
+    for (const d of regla.declaraciones) {
+      if (d.propiedad.startsWith("--") && !nombres.has(d.propiedad) && (soloDe === undefined || dentroDeLaRegla(soloDe, d.desde))) nombres.set(d.propiedad, d.desde);
+    }
+  }
   return nombres;
 }
 

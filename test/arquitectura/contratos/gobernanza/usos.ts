@@ -1,9 +1,9 @@
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { listarArchivos } from "../../cercos/trinquete";
-import { coincidenciasDeClases, primeraClase } from "../adaptadores/clases-tsx";
+import { coincidenciasDeClases, coincidenciasPorToken, primeraClase } from "../adaptadores/clases-tsx";
 import { prueba, type Coincidencia } from "../adaptadores/coincidencia";
-import { coincidenciasDeCss, primeraReglaConClase, variablesDefinidas } from "../adaptadores/css";
+import { coincidenciasDeCss, primeraReglaConClase, reglaDelAncla, variablesDefinidas } from "../adaptadores/css";
 import { coincidenciasDeTs, importaElAncla } from "../adaptadores/ts";
 import { Indice, esCss, esTs } from "../indice";
 import type { Contrato, Detector } from "../tipos";
@@ -40,10 +40,10 @@ export interface UsosDeContrato {
 }
 
 /** Lo que un detector encuentra en un archivo (los adaptadores que no aplican a la extensión del archivo no encuentran nada). Igual que el motor. */
-function coincidenciasDe(d: Detector, ruta: string, indice: Indice): Coincidencia[] {
+function coincidenciasDe(d: Detector, ruta: string, indice: Indice, prefijoDeNombre: string | null): Coincidencia[] {
   if (d.adaptador === "css") return esCss(ruta) ? coincidenciasDeCss(indice.reglas(ruta), d) : [];
   if (!esTs(ruta)) return [];
-  if (d.adaptador === "clases") return coincidenciasDeClases(indice.cadenas(ruta), d.token);
+  if (d.adaptador === "clases") return prefijoDeNombre === null ? coincidenciasDeClases(indice.cadenas(ruta), d.token) : coincidenciasPorToken(indice.cadenas(ruta), d.token, prefijoDeNombre);
   if (d.tipo === "codigo" && !prueba(d.patron, indice.fuente(ruta))) return [];
   return coincidenciasDeTs(indice.archivoTs(ruta), d);
 }
@@ -63,11 +63,15 @@ function archivosDelAlcance(raiz: string, c: Contrato): string[] {
   return [...salida].sort();
 }
 
-/** Los nombres que define la fuente (`--x`): CSS, las propiedades personalizadas; TS, todo `--x` escrito en el código. */
+/** Los nombres que define la fuente (`--x`): CSS, las propiedades personalizadas de la regla ancla; TS, todo `--x` escrito en el código. */
 function nombresDeLaFuente(c: Contrato, indice: Indice): ReadonlySet<string> {
   const ruta = c.fuente.archivo;
   if (!indice.tiene(ruta)) return new Set();
-  if (esCss(ruta)) return new Set(variablesDefinidas(indice.reglas(ruta)).keys());
+  if (esCss(ruta)) {
+    const reglas = indice.reglas(ruta);
+    const regla = reglaDelAncla(reglas, c.fuente.ancla);
+    return regla === null ? new Set() : new Set(variablesDefinidas(reglas, regla).keys());
+  }
   return new Set([...indice.limpia(ruta).matchAll(/--[A-Za-z][\w-]*/g)].map((m) => m[0]));
 }
 
@@ -80,9 +84,10 @@ export function usosDeContratos(raiz: string, contratos: readonly Contrato[]): U
   return porContrato.map(({ c, rutas }) => {
     const declaracion = c.declaracion;
     const definidos = declaracion.tipo === "nombre-definido-en-la-fuente" ? nombresDeLaFuente(c, indice) : new Set<string>();
+    const prefijoDeNombre = declaracion.tipo === "nombre-definido-en-la-fuente" ? declaracion.prefijoDeNombre : null;
     const archivos: UsoEnArchivo[] = [];
     for (const ruta of rutas) {
-      const coincidencias = c.senales.flatMap((s) => coincidenciasDe(s, ruta, indice));
+      const coincidencias = c.senales.flatMap((s) => coincidenciasDe(s, ruta, indice, prefijoDeNombre));
       let declaraDesde: number | null = null;
       switch (declaracion.tipo) {
         case "importar-ancla": {
