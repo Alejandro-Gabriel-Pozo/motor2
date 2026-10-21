@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useGrupoDeFormularios } from "@/components/grupo-de-formularios";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Boton } from "@/ui/primitivas/boton";
 
 /** Lo que hace un toque: el cambio y, si sale bien, cómo deshacerlo (`null` = no se ofrece «Deshacer»). */
 type Ejecutar = (hacer: () => Promise<ResultadoAccion>, deshacer: (() => Promise<ResultadoAccion>) | null) => void;
@@ -60,22 +61,17 @@ export function AvisoConDeshacer({ children }: { children: ReactNode }) {
           key={ultimo.vez}
           role={ultimo.resultado.ok ? "status" : "alert"}
           data-aviso-con-deshacer=""
-          className={`fixed bottom-4 left-1/2 z-50 flex w-[min(398px,calc(100vw-32px))] -translate-x-1/2 items-center gap-3 px-3.5 py-3 text-sm shadow-[0_6px_24px_rgba(0,0,0,0.35)] ${ultimo.resultado.ok ? "bg-[#1b2735] text-[#f3f6f9] dark:bg-[#0f1822] dark:text-[#eef2f6]" : "bg-[#a23a3a] text-white"}`}
+          className={`fixed bottom-4 left-1/2 z-50 flex w-[min(398px,calc(100vw-32px))] -translate-x-1/2 items-center gap-3 px-3.5 py-3 text-sm text-superficie shadow-lg shadow-sombra ${ultimo.resultado.ok ? "bg-tinta" : "bg-error"}`}
         >
           <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{ultimo.resultado.mensaje}</span>
           {deshacer && (
-            <button
-              type="button"
-              disabled={pendiente}
-              onClick={() => ejecutar(deshacer, null)}
-              className="min-h-[44px] min-w-[44px] shrink-0 border border-white/50 bg-transparent px-3 py-2 font-semibold disabled:opacity-60"
-            >
+            <Boton variante="secundario" tamano="compacto" disabled={pendiente} onClick={() => ejecutar(deshacer, null)} className="min-w-11 shrink-0">
               Deshacer
-            </button>
+            </Boton>
           )}
-          <button type="button" onClick={() => setUltimo(null)} aria-label="Cerrar el aviso" className="min-h-[44px] min-w-[44px] shrink-0 text-lg leading-none opacity-80">
+          <Boton variante="secundario" tamano="compacto" onClick={() => setUltimo(null)} aria-label="Cerrar el aviso" className="min-w-11 shrink-0">
             ×
-          </button>
+          </Boton>
         </div>
       )}
     </ContextoDeDeshacer.Provider>
@@ -91,7 +87,7 @@ export function useAvisoConDeshacer(): Contexto {
 
 /**
  * Un botón que hace un cambio con «Deshacer» (archivar o restaurar, quitar o volver a vincular): `accion(valor)` al tocarlo y `accion(!valor)` al deshacer. Va adentro de un
- * `AvisoConDeshacer`. Con la cara de los botones secundarios del prototipo (borde fino, cuadrado, 44 px de alto).
+ * `AvisoConDeshacer`. Con la cara de `Boton` (`secundario`; el principal, `primario`) y 44 px de alto en celular.
  */
 export function BotonConDeshacer({
   accion,
@@ -110,18 +106,16 @@ export function BotonConDeshacer({
 }) {
   const { ejecutar, ocupado } = useAvisoConDeshacer();
   return (
-    <button
-      type="button"
+    <Boton
+      variante={principal ? "primario" : "secundario"}
+      tamano="compacto"
       aria-label={etiquetaAccesible}
       aria-disabled={ocupado || undefined}
+      cargando={ocupado}
       onClick={() => ejecutar(() => accion(valor), () => accion(!valor))}
-      className={`min-h-[44px] shrink-0 border px-3.5 py-2 text-sm aria-disabled:cursor-progress aria-disabled:opacity-60 ${
-        principal
-          ? "border-[#1b2735] bg-[#1b2735] font-semibold text-white dark:border-neutral-200 dark:bg-neutral-200 dark:text-neutral-900"
-          : "border-[#cdd5dd] bg-white font-medium text-neutral-900 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-100"
-      }`}
+      className="shrink-0"
     >
       {children}
-    </button>
+    </Boton>
   );
 }
