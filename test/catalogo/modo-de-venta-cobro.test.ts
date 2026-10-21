@@ -68,27 +68,42 @@ describe("C4: una base cobra y se muestra igual que antes, aunque su precio guar
     }
     return out;
   }
-  async function carta(): Promise<string> {
+  async function secciones() {
     const empresa = await empresaCartaPublica("principal");
     const entregada = await cartaPublica(empresa!, cat.slug, AHORA_DE_LA_CORRIDA);
-    return JSON.stringify(entregada!.carta.secciones);
+    return entregada!.carta.secciones;
   }
+  async function carta(): Promise<string> {
+    return JSON.stringify(await secciones());
+  }
+  /**
+   * Lo que la carta DICE y cobra (nombres, precios, opciones), sin la forma con que se lee. Desde la Fase 5 (DEC-11) una base se lee distinto a propósito (oculta, sin encabezado, en lista) y
+   * `presentacion` y `tandas` son esa lectura: lo que no puede cambiar nunca al marcar base son los precios.
+   */
+  async function cartaSinLaForma(): Promise<string> {
+    const sinForma = (await secciones()).map((sc) => ({ ...sc, tandas: undefined, items: sc.items.map((item) => ({ ...item, presentacion: undefined })) }));
+    return JSON.stringify(sinForma);
+  }
+  const formaDe = async (nombre: string) => (await secciones()).flatMap((sc) => sc.items).find((i) => i.nombre === nombre)?.presentacion;
 
   it("base con su precio guardado: el cobro y la carta son idénticos a los de directo; con el guardado en 0, también", async () => {
     const cobroDirecto = await cobrar();
-    const cartaDirecto = await carta();
+    const cartaDirecto = await cartaSinLaForma();
     expect(cobroDirecto.every((l) => l.includes("ok=true")), cobroDirecto.join("\n")).toBe(true);
     expect(cobroDirecto[0]).toContain("18000.00");
 
     await marcarBase(cat.producto.pizzas!);
     await marcarBase(cat.producto.milanesas!);
     expect(await cobrar(), "marcarlas base no cambia el cobro").toEqual(cobroDirecto);
-    expect(await carta(), "ni la carta pública").toEqual(cartaDirecto);
+    expect(await cartaSinLaForma(), "ni los precios ni las opciones de la carta pública").toEqual(cartaDirecto);
+    // La forma sí cambia, por diseño (DEC-11): la base de un eje sale oculta (sin encabezado) y la de dos ejes pierde las columnas compartidas, con las mismas filas y los mismos precios.
+    expect(await formaDe("Pizzas"), "Pizzas base: lista oculta").toMatchObject({ forma: "lista", encabezado: false });
+    expect(await formaDe("Milanesas"), "Milanesas base: lista con los mismos precios").toMatchObject({ forma: "lista", encabezado: false, filas: [{ rotulo: "Simple", precio: 20000 }, { rotulo: "Napolitana", precio: 25000 }] });
 
     // El guardado ya no se usa: ponerlo en 0 (por SQL, como dueño; la pantalla no lo deja) no cambia nada.
     await prismaAdmin.producto.updateMany({ where: { id: { in: [cat.producto.pizzas!, cat.producto.milanesas!] } }, data: { precioVenta: 0 } });
     expect(await cobrar(), "con el guardado en 0, el cobro es el mismo").toEqual(cobroDirecto);
-    expect(await carta(), "y la carta también").toEqual(cartaDirecto);
+    expect(await cartaSinLaForma(), "y la carta también").toEqual(cartaDirecto);
   });
 
   it("cambiar el modo con ventas previas no toca las fotos congeladas (CuentaItem y OpcionElegidaEnLinea quedan byte a byte)", async () => {

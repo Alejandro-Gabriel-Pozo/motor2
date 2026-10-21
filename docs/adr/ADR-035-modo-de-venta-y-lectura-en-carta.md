@@ -16,7 +16,7 @@ Hasta acá un producto con opciones guardaba SIEMPRE un precio propio (`Producto
 
 ## Consecuencias
 
-- Las ventas pasadas no se tocan (las fotos `CuentaItem` y `OpcionElegidaEnLinea` están congeladas) y marcar base un producto cuyo guardado repite la opción más barata no cambia ningún precio cobrado ni mostrado (`test/catalogo/modo-de-venta-cobro.test.ts`). La caracterización de precio y carta de la Fase 0 no se mueve.
+- Las ventas pasadas no se tocan (las fotos `CuentaItem` y `OpcionElegidaEnLinea` están congeladas) y marcar base un producto cuyo guardado repite la opción más barata no cambia ningún precio cobrado ni mostrado (`test/catalogo/modo-de-venta-cobro.test.ts`). Lo que sí cambia, por diseño (DEC-11), es la forma con que la carta lee una base (oculta, sin encabezado, en lista): el test fija que los precios y las opciones no cambian y que la forma es esa. La caracterización de precio y carta de la Fase 0 no se mueve.
 - El margen de una base en el reporte de costos es «Por opción», sin margen. El ajuste masivo «Precios» de la carta está apagado (`PRECIOS_EDITABLES`) y no se tocó.
 - Marcar Pizzas y Milanesas como base en producción se hace A MANO desde la pantalla del producto; los prefijos («De», «Con») y el renombre de esos grupos son un paso aparte del dueño.
 
