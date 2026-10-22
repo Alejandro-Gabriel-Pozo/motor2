@@ -6,6 +6,7 @@ import { MAXIMO_DE_CUENTAS_EN_ROTACION, resolverRangoDeReporte } from "@/core/re
 import { generarReporteRotacionMesas } from "@/server/consultas/reportes/rotacion-mesas";
 import { SelectorRango } from "@/components/selector-rango";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { Aviso } from "@/ui/primitivas/aviso";
 
 const MINUTOS = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
 const UNO = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
@@ -19,10 +20,10 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rotacion_mesas", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
@@ -35,7 +36,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
         <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
       </div>
 
-      <p data-resumen className="text-sm text-neutral-500">
+      <p data-resumen className="text-sm text-tinta-tenue">
         {rep.atendidas} cuenta{rep.atendidas === 1 ? "" : "s"} atendida{rep.atendidas === 1 ? "" : "s"} en el rango.
         {rep.liberadasSinConsumo > 0 && ` ${rep.liberadasSinConsumo} liberada${rep.liberadasSinConsumo === 1 ? "" : "s"} sin consumo (no entran en las métricas).`}
         {rep.abiertasSinCerrar > 0 && ` ${rep.abiertasSinCerrar} todavía abierta${rep.abiertasSinCerrar === 1 ? "" : "s"}.`}
@@ -43,33 +44,33 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
       </p>
 
       {rep.truncado && (
-        <p data-aviso-truncado role="status" className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+        <Aviso variante="advertencia" data-aviso-truncado="">
           El rango tiene más de {MAXIMO_DE_CUENTAS_EN_ROTACION.toLocaleString("es-AR")} cuentas: estos números son de las primeras {MAXIMO_DE_CUENTAS_EN_ROTACION.toLocaleString("es-AR")}, no de todo el rango. Elegí un rango más corto
           para verlo completo.
-        </p>
+        </Aviso>
       )}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Comensales por cuenta</p>
+          <p className="text-xs text-tinta-tenue">Comensales por cuenta</p>
           <p data-metrica="comensales-promedio" className="text-lg font-semibold">
             {rep.comensalesPromedio !== null ? UNO.format(rep.comensalesPromedio) : "—"}
           </p>
         </div>
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Duración de mesa</p>
+          <p className="text-xs text-tinta-tenue">Duración de mesa</p>
           <p data-metrica="duracion-promedio" className="text-lg font-semibold">
             {rep.duracionPromedioMin !== null ? `${MINUTOS.format(rep.duracionPromedioMin)} min` : "—"}
           </p>
         </div>
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Cuentas atendidas</p>
+          <p className="text-xs text-tinta-tenue">Cuentas atendidas</p>
           <p data-metrica="atendidas" className="text-lg font-semibold">
             {rep.atendidas}
           </p>
         </div>
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Con dato de comensales</p>
+          <p className="text-xs text-tinta-tenue">Con dato de comensales</p>
           <p data-metrica="con-comensales" className="text-lg font-semibold">
             {rep.cuentasConComensales}/{rep.atendidas}
           </p>
@@ -81,11 +82,11 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
           Por franja horaria
         </h2>
         {rep.porFranjaHoraria.length === 0 ? (
-          <p className="text-sm text-neutral-500">Sin cuentas atendidas en este rango.</p>
+          <p className="text-sm text-tinta-tenue">Sin cuentas atendidas en este rango.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-neutral-500">
+              <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Hora (Argentina)</th>
                 <th>Cuentas</th>
                 <th>Comensales prom.</th>
@@ -111,11 +112,11 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
           Por tamaño de grupo
         </h2>
         {rep.porTamanoGrupo.length === 0 ? (
-          <p className="text-sm text-neutral-500">Sin datos de comensales en este rango.</p>
+          <p className="text-sm text-tinta-tenue">Sin datos de comensales en este rango.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-neutral-500">
+              <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Comensales</th>
                 <th>Cuentas</th>
                 <th>Duración prom.</th>
