@@ -12,6 +12,8 @@ import { NuevaMesa } from "./nueva-mesa";
 import { LimiteMesasAbiertas } from "./limite-mesas";
 import { formatearHora } from "@/core/tiempo/zona-horaria";
 import { obtenerLimiteMesasAbiertas } from "@/server/consultas/pos/mesas";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { Campo } from "@/ui/primitivas/campo";
 
 /** Pestañas de filtro: `null` = todas. El punto de color usa el color de estado (no es texto); el texto va en la tinta del filtro. */
 const FILTROS: { estado: EstadoMesa | null; label: string; punto?: string }[] = [
@@ -116,25 +118,17 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
           </ul>
         </nav>
 
-        <form method="get" action="/mesas" role="search" className="flex items-center gap-2 self-start rounded-full border border-borde bg-superficie px-3.5 py-2 md:self-auto">
+        <form method="get" action="/mesas" role="search" className="flex items-end gap-2 self-start md:self-auto">
           {estado && <input type="hidden" name="estado" value={estado} />}
-          <label htmlFor="buscar-mesa" className="sr-only">
-            Buscar mesa
-          </label>
-          <input
-            id="buscar-mesa"
-            name="q"
-            type="search"
-            defaultValue={q}
-            placeholder="Buscar mesa"
-            className="w-32 bg-transparent text-[13px] text-tinta outline-none placeholder:text-tinta-tenue"
-          />
-          <button type="submit" aria-label="Buscar" className="rounded-full text-tinta-suave hover:text-tinta">
+          <div className="w-44">
+            <Campo id="buscar-mesa" etiqueta="Buscar mesa" etiquetaOculta name="q" type="search" defaultValue={q} placeholder="Buscar mesa" tamano="compacto" />
+          </div>
+          <BotonDeServidor type="submit" variante="secundario" tamano="compacto" aria-label="Buscar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" aria-hidden>
               <circle cx="11" cy="11" r="7" />
               <path d="m21 21-4.3-4.3" />
             </svg>
-          </button>
+          </BotonDeServidor>
         </form>
       </div>
 

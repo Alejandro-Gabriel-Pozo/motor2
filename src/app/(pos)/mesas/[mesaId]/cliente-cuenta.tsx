@@ -2,7 +2,9 @@
 
 import { useId, useState } from "react";
 import { asignarClienteACuenta } from "@/server/actions/pos/cuenta-apertura";
-import { BOTON_CHICO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Selector } from "@/ui/primitivas/selector";
 import { useAccionMesa } from "./usar-accion";
 
 export interface ClienteParaAsignar {
@@ -58,9 +60,9 @@ export function ClienteCuenta({
       <span className="inline-flex items-center gap-1.5 text-[13.5px] text-tinta-suave">
         {clienteNombre ? `Cliente: ${clienteNombre} (−${descuentoPorcentaje}%)` : "Sin cliente"}
         {puede && (
-          <button type="button" onClick={abrir} className="text-[12.5px] font-semibold underline hover:text-tinta">
+          <Boton variante="enlace" tamano="en-fila" onClick={abrir}>
             {clienteNombre ? "Cambiar" : "Asignar cliente"}
-          </button>
+          </Boton>
         )}
       </span>
     );
@@ -68,27 +70,24 @@ export function ClienteCuenta({
 
   return (
     <form onSubmit={guardar} className="inline-flex flex-wrap items-center gap-1.5">
-      <label htmlFor={`${base}-cliente`} className="sr-only">
-        Cliente
-      </label>
-      <select id={`${base}-cliente`} autoFocus value={seleccion} onChange={(e) => setSeleccion(e.target.value)} className={`${CAMPO} py-1 text-[13px]`}>
+      <Selector id={`${base}-cliente`} etiqueta="Cliente" etiquetaOculta tamano="compacto" autoFocus value={seleccion} onChange={(e) => setSeleccion(e.target.value)}>
         <option value="">Sin cliente</option>
         {clientes.map((c) => (
           <option key={c.id} value={c.id}>
             {c.nombre} (−{c.descuentoPorcentaje}%)
           </option>
         ))}
-      </select>
-      <button type="submit" disabled={pending} className={BOTON_CHICO}>
+      </Selector>
+      <Boton type="submit" variante="secundario" tamano="compacto" disabled={pending}>
         {pending ? "Guardando…" : "Guardar"}
-      </button>
-      <button type="button" onClick={cancelar} className={BOTON_SECUNDARIO}>
+      </Boton>
+      <Boton variante="secundario" tamano="compacto" onClick={cancelar}>
         Cancelar
-      </button>
+      </Boton>
       {error && (
-        <p role="alert" className="text-[13px] text-error">
+        <Aviso variante="error" forma="en-linea">
           {error}
-        </p>
+        </Aviso>
       )}
     </form>
   );

@@ -1,10 +1,10 @@
 {
   "regla": "tipografia",
   "meta": "bajar hacia 0 a medida que la escala tipográfica pase a tokens (auditoría §19.4); la carta pública tiene su propia línea de base",
-  "total": 183,
+  "total": 169,
   "entradas": 26,
   "porTipo": {
-    "clase-arbitraria": 132,
+    "clase-arbitraria": 118,
     "font-size-literal": 49,
     "fontSize-literal": 2
   },
@@ -34,10 +34,10 @@
       "clase-arbitraria": 6
     },
     "src/app/(pos)/mesas/[mesaId]/cliente-cuenta.tsx": {
-      "clase-arbitraria": 4
+      "clase-arbitraria": 1
     },
     "src/app/(pos)/mesas/[mesaId]/comensales-cuenta.tsx": {
-      "clase-arbitraria": 4
+      "clase-arbitraria": 1
     },
     "src/app/(pos)/mesas/[mesaId]/cuentas-cerradas.tsx": {
       "clase-arbitraria": 3
@@ -70,10 +70,10 @@
       "clase-arbitraria": 9
     },
     "src/app/(pos)/mesas/limite-mesas.tsx": {
-      "clase-arbitraria": 6
+      "clase-arbitraria": 1
     },
     "src/app/(pos)/mesas/page.tsx": {
-      "clase-arbitraria": 8
+      "clase-arbitraria": 7
     },
     "src/app/global-error.tsx": {
       "fontSize-literal": 2
@@ -85,7 +85,7 @@
       "clase-arbitraria": 1
     },
     "src/components/mesas/mesa-card.tsx": {
-      "clase-arbitraria": 12
+      "clase-arbitraria": 10
     }
   }
 }

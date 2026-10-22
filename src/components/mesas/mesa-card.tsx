@@ -8,6 +8,7 @@
 // El total se formatea con `formatearMonto` (el mismo del ticket y de la pantalla de la mesa, centavos incluidos; P19, decisión del dueño 2026-10-11).
 
 import Link from "next/link";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import type { ReactNode } from "react";
 import { formatearMonto, type EstadoMesa } from "@/core/pos/public";
@@ -60,15 +61,9 @@ export function MesaCard(props: MesaCardProps) {
         </div>
 
         {estado === "ocupada" ? (
-          <button
-            type="button"
-            disabled
-            aria-label="Opciones de mesa"
-            title="Mover o unir mesas todavía no está disponible."
-            className="-mr-1 rounded-md p-1 text-tinta-tenue enabled:hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <BotonDeServidor variante="enlace" tamano="chico" disabled aria-label="Opciones de mesa" title="Mover o unir mesas todavía no está disponible." className="-mr-1">
             <IconDots />
-          </button>
+          </BotonDeServidor>
         ) : (
           <span className="rounded-md px-2 py-1 text-[11px] font-semibold" style={{ color: cfg.varTexto, background: cfg.varTint }}>
             {cfg.label}
@@ -126,9 +121,9 @@ export function MesaCard(props: MesaCardProps) {
               <IndicadorDeEnlace />
             </Link>
           ) : (
-            <button type="button" disabled className="w-full rounded-lg border border-borde py-[9px] text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+            <BotonDeServidor variante="secundario" disabled className="w-full">
               Ver pedidos
-            </button>
+            </BotonDeServidor>
           )}
           <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefFacturar}>
             Facturar
@@ -155,15 +150,11 @@ function ActionButton({ color, textColor, href, icon, children }: { color: strin
     );
   }
   return (
-    <button
-      type="button"
-      disabled
-      className="flex w-full items-center justify-center gap-1.5 rounded-lg py-[9px] text-[13px] font-semibold transition-opacity enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-      style={{ background: color, color: textColor }}
-    >
+    // El color es el del ESTADO de la mesa (dato: libre, en pedido, ocupada), no una variante del botón: va en `style`, que le gana a la variante.
+    <BotonDeServidor disabled className="w-full" style={{ background: color, color: textColor }}>
       {icon}
       {children}
-    </button>
+    </BotonDeServidor>
   );
 }
 

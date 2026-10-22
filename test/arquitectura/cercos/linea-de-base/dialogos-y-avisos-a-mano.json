@@ -1,10 +1,10 @@
 {
   "regla": "dialogos-y-avisos-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: diálogos y avisos salen de las primitivas de src/ui (Dialogo, Aviso)",
-  "total": 67,
-  "entradas": 38,
+  "total": 64,
+  "entradas": 35,
   "porTipo": {
-    "role-alert": 36,
+    "role-alert": 33,
     "role-dialog": 8,
     "role-status": 23
   },
@@ -107,12 +107,6 @@
       "role-alert": 1,
       "role-dialog": 1
     },
-    "src/app/(pos)/mesas/[mesaId]/cliente-cuenta.tsx": {
-      "role-alert": 1
-    },
-    "src/app/(pos)/mesas/[mesaId]/comensales-cuenta.tsx": {
-      "role-alert": 1
-    },
     "src/app/(pos)/mesas/[mesaId]/emitir-ticket-corregido.tsx": {
       "role-alert": 1,
       "role-dialog": 1
@@ -124,9 +118,6 @@
       "role-alert": 1
     },
     "src/app/(pos)/mesas/[mesaId]/sin-enviar.tsx": {
-      "role-alert": 1
-    },
-    "src/app/(pos)/mesas/limite-mesas.tsx": {
       "role-alert": 1
     },
     "src/app/global-error.tsx": {
