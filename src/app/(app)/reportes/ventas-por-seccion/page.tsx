@@ -7,6 +7,7 @@ import { resolverRangoDeReporte } from "@/core/reportes/public";
 import { TablaCategoriasDeSeccion } from "./tabla-seccion";
 import { SelectorRango } from "@/components/selector-rango";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 
 /**
  * Ventas por sección de carta (docs/plan-carta-catalogo-2026-09-24.md, M7): las mismas ventas que «Por categoría», agrupadas
@@ -26,7 +27,7 @@ export default async function VentasPorSeccionPage({ searchParams }: { searchPar
   const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
-  const rep = await generarReporteVentasPorSeccion(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), ctx.db, ctx.empresaZonaHoraria);
+  const rep = await generarReporteVentasPorSeccion(ctx.sucursalId, fechaDeColumnaDate(desdeStr), fechaDeColumnaDate(hastaStr), ctx.db, ctx.empresaZonaHoraria);
 
   return (
     <div className="flex flex-col gap-6">

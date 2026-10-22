@@ -12,7 +12,7 @@ import { BotonAnularCompra } from "./boton-anular-compra";
 import { FormularioCorregirCompra } from "./formulario-corregir-compra";
 import { formatearNumeroComprobante, leerNumeroComprobante } from "@/core/datos/numero-comprobante";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
-import { ZONA_UTC, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { ZONA_UTC, diaDeCalendario, esDiaISOReal, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { redondearMoneda } from "@/core/moneda";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 import { Campo } from "@/ui/primitivas/campo";
@@ -48,12 +48,12 @@ export default async function ComprasRegistradasPage({
   const fechaCorta = (f: Date) => diaDeCalendario(f, ctx.empresaZonaHoraria);
   const fechaDeLote = (f: Date) => diaDeCalendario(f, ZONA_UTC);
   const sp = unicosDeUrl(await searchParams);
-  const desde = sp.desde && !Number.isNaN(new Date(sp.desde).getTime()) ? sp.desde : "";
-  const hasta = sp.hasta && !Number.isNaN(new Date(sp.hasta).getTime()) ? sp.hasta : "";
+  const desde = esDiaISOReal(sp.desde) ? sp.desde : "";
+  const hasta = esDiaISOReal(sp.hasta) ? sp.hasta : "";
   const [{ items, nextCursor }, proveedores] = await Promise.all([
     listarComprasRegistradas(ctx.sucursalId, {
-      desde: desde ? new Date(desde) : undefined,
-      hasta: hasta ? new Date(hasta) : undefined,
+      desde: desde ? fechaDeColumnaDate(desde) : undefined,
+      hasta: hasta ? fechaDeColumnaDate(hasta) : undefined,
       proveedorId: sp.proveedorId || undefined,
       factura: sp.factura || undefined,
       cursor: sp.cursor,

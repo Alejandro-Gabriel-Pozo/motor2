@@ -13,6 +13,7 @@ import { AyudaIcono } from "@/components/ayuda-campo";
 import { EnDolares } from "@/components/en-dolares";
 import { SelectorRango } from "@/components/selector-rango";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 
 export default async function PeriodoPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -32,7 +33,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
   const [rep, cotizacion, gateCostos] = await Promise.all([
-    obtenerReportePorPeriodo(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), undefined, ctx.db, ahora, ctx.empresaZonaHoraria),
+    obtenerReportePorPeriodo(ctx.sucursalId, fechaDeColumnaDate(desdeStr), fechaDeColumnaDate(hastaStr), undefined, ctx.db, ahora, ctx.empresaZonaHoraria),
     obtenerUltimaCotizacionSinRomper(ctx.db),
     requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_costos", ctx.db),
   ]);

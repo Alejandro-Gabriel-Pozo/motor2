@@ -7,6 +7,7 @@ import { generarReporteVentasPorCategoria } from "@/server/consultas/reportes/pe
 import { TablaProductosCategoria } from "./tabla-categorias";
 import { SelectorRango } from "@/components/selector-rango";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 
 export default async function CategoriasPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -21,7 +22,7 @@ export default async function CategoriasPage({ searchParams }: { searchParams: P
   const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
-  const rep = await generarReporteVentasPorCategoria(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), ctx.db, ctx.empresaZonaHoraria);
+  const rep = await generarReporteVentasPorCategoria(ctx.sucursalId, fechaDeColumnaDate(desdeStr), fechaDeColumnaDate(hastaStr), ctx.db, ctx.empresaZonaHoraria);
 
   return (
     <div className="flex flex-col gap-6">

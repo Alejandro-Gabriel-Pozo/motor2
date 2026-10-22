@@ -11,7 +11,7 @@ import { SelectorRango } from "@/components/selector-rango";
 import { FilaRendimientoSimple } from "./fila-simple";
 import { FilaRendimientoCompartida } from "./fila-compartida";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
-import { diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
+import { diaDeCalendario, sumarDias, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 
 const AYUDA_RENDIMIENTO_REAL =
   "«Medido» (con dos Conteos Físicos que cubren el insumo, al principio y al final del tramo): el consumo real, sumado directo del Kardex entre esos dos conteos ÷ lo vendido en ese mismo tramo — una medición, no una estimación. «Estimado» (sin esos dos conteos): total comprado ÷ total vendido en el rango elegido — asume que lo que se compra en la ventana es lo que se consume en la ventana, algo que no siempre es cierto si comprás por lote (ej. caja x12). El método de esta fila se muestra debajo del número.";
@@ -63,8 +63,8 @@ export default async function RendimientoRecetasPage({
   const rango = resolverRangoDeReporte(sp, ahora, ctx.empresaZonaHoraria);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
-  const desde = new Date(desdeStr);
-  const hasta = new Date(hastaStr);
+  const desde = fechaDeColumnaDate(desdeStr);
+  const hasta = fechaDeColumnaDate(hastaStr);
 
   // Las dos tablas con UNA construcción de pools y UNA lectura del costo (O.30): antes se llamaba a las dos fases por separado y cada una repetía las suyas.
   const [{ simples: todasLasSimples, compartidas: todasLasCompartidas }, { editar: puedeCalibrar }] = await Promise.all([

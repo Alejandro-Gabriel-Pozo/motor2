@@ -393,9 +393,9 @@ export default async function RecetaEditorPage({
                           accion={async (formData: FormData) => {
                             "use server";
                             const resultado = await actualizarIngredienteDeReceta(producto.id, ing.insumoProductoId, {
-                              cantidad: Number(formData.get("cantidad")),
+                              cantidad: numeroDelCampo(String(formData.get("cantidad") ?? "")) ?? Number.NaN,
                               unidadId: String(formData.get("unidadId") ?? ""),
-                              mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
+                              mermaPorcentaje: numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0,
                               insumoSustitutoIds: aceptaSustitutos ? formData.getAll("insumoSustitutoIds").map(String).filter((v) => v !== "") : undefined,
                             }, versionVista);
                             // Sale del modo edición al guardar — si no, `editar=` queda pegado en la URL y la fila se muestra siempre editable.
@@ -531,10 +531,10 @@ export default async function RecetaEditorPage({
             const insumoProductoId = String(formData.get("insumoProductoId") ?? "");
             return agregarIngredienteAReceta(producto.id, {
               insumoProductoId,
-              cantidad: Number(formData.get("cantidad")),
+              cantidad: numeroDelCampo(String(formData.get("cantidad") ?? "")) ?? Number.NaN,
               // U7 / D3: la unidad es la de stock de la MP elegida (el servidor la vuelve a comparar con la real al guardar).
               unidadId: unidadDeStockPorMp[insumoProductoId] ?? "",
-              mermaPorcentaje: Number(formData.get("mermaPorcentaje") || 0),
+              mermaPorcentaje: numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0,
             }, versionVista);
           }}
           className="flex max-w-lg flex-col gap-2"
@@ -580,7 +580,7 @@ export default async function RecetaEditorPage({
                           const resultado = await actualizarPasoDeReceta(producto.id, paso.orden, {
                             nombre: String(formData.get("nombre") ?? ""),
                             instruccion: String(formData.get("instruccion") ?? ""),
-                            minutos: formData.get("minutos") ? Number(formData.get("minutos")) : undefined,
+                            minutos: numeroDelCampo(String(formData.get("minutos") ?? "")),
                             insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
                           }, versionVista);
                           if (resultado.ok) redirect(volver);
@@ -683,7 +683,7 @@ export default async function RecetaEditorPage({
                 const datos = {
                   nombre: String(formData.get("nombre") ?? ""),
                   instruccion: String(formData.get("instruccion") ?? ""),
-                  minutos: formData.get("minutos") ? Number(formData.get("minutos")) : undefined,
+                  minutos: numeroDelCampo(String(formData.get("minutos") ?? "")),
                   insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
                 };
                 const posicion = String(formData.get("posicion") ?? "final");

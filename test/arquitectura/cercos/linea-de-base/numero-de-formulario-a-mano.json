@@ -1,23 +1,8 @@
 {
   "regla": "numero-de-formulario-a-mano",
   "meta": "0 (lote 6.33: todo número de un formulario se lee con numeroDelCampo y el parser de su tipo)",
-  "total": 14,
-  "entradas": 4,
-  "porTipo": {
-    "numero-de-formulario": 14
-  },
-  "cuentas": {
-    "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
-      "numero-de-formulario": 6
-    },
-    "src/app/(app)/catalogo/recetas/[productoId]/receta-de-la-sucursal.tsx": {
-      "numero-de-formulario": 4
-    },
-    "src/app/(app)/reportes/rendimiento-recetas/fila-compartida.tsx": {
-      "numero-de-formulario": 2
-    },
-    "src/app/(app)/reportes/rendimiento-recetas/fila-simple.tsx": {
-      "numero-de-formulario": 2
-    }
-  }
+  "total": 0,
+  "entradas": 0,
+  "porTipo": {},
+  "cuentas": {}
 }

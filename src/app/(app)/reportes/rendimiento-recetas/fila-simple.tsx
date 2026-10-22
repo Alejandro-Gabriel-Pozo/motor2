@@ -11,6 +11,7 @@ import { fijarRendimientoLocal, volverAlRendimientoCentral } from "@/server/acti
 import { ETIQUETA_ROTULO, desvioEsNotable, explicarConfianza, type Confianza, type RotuloLinea, type MetodoRendimiento } from "@/core/reportes/public";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 // rendimiento-conciliado.ts es puro (sin @/lib/db, ver su propio docstring) — importable desde un componente cliente sin arrastrar Prisma al bundle.
 
 /** Mismo criterio de "fecha corta" que compras/page.tsx (`fechaCorta`) — YYYY-MM-DD, no se reinventa un formato nuevo acá. */
@@ -145,8 +146,8 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
         <td colSpan={11} className="px-2 py-2" onKeyDown={(e) => e.key === "Escape" && cancelar()}>
           <FormConResultado
             accion={async (formData) => {
-              const cantidad = Number(formData.get("cantidad"));
-              const mermaPorcentaje = Number(formData.get("mermaPorcentaje") || 0);
+              const cantidad = numeroDelCampo(String(formData.get("cantidad") ?? "")) ?? Number.NaN;
+              const mermaPorcentaje = numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0;
               const r = await fijarRendimientoLocal(recetaIngredienteId, { cantidad, mermaPorcentaje }, {
                 tipo: "sugerencia_simple",
                 sucursalCalculoId: sucursalId,

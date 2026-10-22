@@ -38,7 +38,6 @@ function contarFechasDeTexto(fuente: string, ruta: string): Record<string, numbe
 }
 
 const VENCIMIENTO = "El vencimiento de un lote que sale de un `<input type=\"date\">` (`AAAA-MM-DD`): pasa a `fechaDeColumnaDate` / `esDiaISOReal` (el navegador manda un día real, pero el servidor tiene que poder decirlo).";
-const URL_DESDE_HASTA = "`?desde=` y `?hasta=` de la URL leídos con `new Date(texto)`: pasa a `esDiaISOReal` + `inicioDelDia` / `rangoDeDias` con la zona de la empresa (corte de día en hora argentina).";
 
 const CERCO_FECHA_DE_TEXTO: Cerco = {
   regla: "fecha-de-texto-a-mano",
@@ -47,17 +46,8 @@ const CERCO_FECHA_DE_TEXTO: Cerco = {
   motivos: {
     "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": VENCIMIENTO,
     "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": VENCIMIENTO,
-    "src/app/(app)/reportes/categorias/page.tsx": URL_DESDE_HASTA,
-    "src/app/(app)/reportes/compras/page.tsx": `${URL_DESDE_HASTA} Además valida con \`!Number.isNaN(new Date(sp.desde).getTime())\`, que acepta el 2026-02-30 (lo corre al 2 de marzo).`,
-    "src/app/(app)/reportes/consignacion/page.tsx": URL_DESDE_HASTA,
-    "src/app/(app)/reportes/conteos/page.tsx": URL_DESDE_HASTA,
-    "src/app/(app)/reportes/periodo/page.tsx": URL_DESDE_HASTA,
-    "src/app/(app)/reportes/rendimiento-recetas/page.tsx": URL_DESDE_HASTA,
-    "src/app/(app)/reportes/ventas-por-seccion/page.tsx": URL_DESDE_HASTA,
     "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": VENCIMIENTO,
     "src/core/excel.ts": "Fecha de una celda de una planilla importada: se lee con su propio chequeo del formato (`AAAA-MM-DD` o un instante). Pasa a `esDiaISOReal` / `fechaDeColumnaDate` cuando se unifique la lectura de fechas de las planillas.",
-    "src/core/reportes/historial-vistas.ts": URL_DESDE_HASTA,
-    "src/core/reportes/tickets-emitidos.ts": "Valida un día con la expresión `AAAA-MM-DD` y `!Number.isNaN(new Date(valor).getTime())`, que acepta el 2026-02-30: pasa a `esDiaISOReal` (de `core/tiempo`).",
     "src/server/actions/reportes/casos-de-uso/sincronizar-dolar.ts": "El día de una cotización que viene de la API de dólar (`dia.fecha`, `AAAA-MM-DD`), no de una persona: pasa a `fechaDeColumnaDate` (medianoche UTC del día) cuando se unifique con la persistencia.",
     "src/server/persistencia/reportes/cotizacion-dolar.ts": "El día de una cotización (`dia.fecha` y `fechaISO`, `AAAA-MM-DD`) como medianoche UTC: pasa a `fechaDeColumnaDate`.",
   },

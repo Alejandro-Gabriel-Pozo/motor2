@@ -8,7 +8,7 @@ import { probarCerco } from "./cercos/probar-cerco";
  * vacío → `undefined`, número → el número, cualquier otra cosa → `NaN`, nunca 0) y el servidor lo vuelve a validar con el parser del tipo (`validarImporte`, `validarCantidad`). `Number(formData.get("x"))` lee un
  * campo vacío como 0 (`Number("")`), acepta `0x10`, `1e3` y `Infinity`, y no sabe de la coma decimal. Cuenta, por archivo, las llamadas a `Number(…)`, `parseFloat(…)` y `parseInt(…)` cuyo argumento contiene una
  * lectura `formData.get(…)` (el receptor se llama `formData`, `fd`, `form`, `datos` o termina en `FormData`) en `src/` y en `plataforma/src/`. Mira el AST: un comentario o un string no cuentan.
- * Meta: 0 (cada una pasa a `numeroDelCampo`). Hoy es deuda declarada, con su motivo por archivo.
+ * Meta: 0, ALCANZADA en el lote 6.33 (recetas y rendimiento pasaron a `numeroDelCampo`): la línea de base queda en 0 y el cerco cuida que no vuelva.
  *
  * Mecanismo, regeneración (`BAJAR_CERCOS=1`) y excepciones: `test/arquitectura/cercos/trinquete.ts`.
  */
@@ -30,18 +30,10 @@ function contarNumerosDeFormulario(fuente: string, ruta: string): Record<string,
   return cuenta;
 }
 
-const MOTIVO_RECETA = "La cantidad y la merma de un ingrediente se leen con `Number(formData.get(…))` (un vacío da 0): pasan a `numeroDelCampo` con el tipo del campo (`cantidad`, `porcentaje`).";
-
 const CERCO_NUMERO_DE_FORMULARIO: Cerco = {
   regla: "numero-de-formulario-a-mano",
   meta: "0 (lote 6.33: todo número de un formulario se lee con numeroDelCampo y el parser de su tipo)",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src"], extensiones: [".ts", ".tsx"], contar: contarNumerosDeFormulario }),
-  motivos: {
-    "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": `${MOTIVO_RECETA} También los minutos de un paso (entero).`,
-    "src/app/(app)/catalogo/recetas/[productoId]/receta-de-la-sucursal.tsx": MOTIVO_RECETA,
-    "src/app/(app)/reportes/rendimiento-recetas/fila-compartida.tsx": MOTIVO_RECETA,
-    "src/app/(app)/reportes/rendimiento-recetas/fila-simple.tsx": MOTIVO_RECETA,
-  },
 };
 
 describe("cerco «número de un formulario a mano»: el detector", () => {
