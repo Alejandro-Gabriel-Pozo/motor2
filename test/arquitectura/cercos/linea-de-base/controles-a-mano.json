@@ -1,10 +1,10 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 252,
-  "entradas": 55,
+  "total": 249,
+  "entradas": 54,
   "porTipo": {
-    "button": 132,
+    "button": 129,
     "input": 74,
     "input-hidden": 16,
     "select": 22,
@@ -146,9 +146,6 @@
     },
     "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
       "input": 2
-    },
-    "src/app/(pos)/mesas/[mesaId]/cerrar-cuenta.tsx": {
-      "button": 3
     },
     "src/app/(pos)/mesas/[mesaId]/elegir-opciones.tsx": {
       "button": 1,

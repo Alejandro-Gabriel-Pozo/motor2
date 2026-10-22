@@ -739,6 +739,50 @@ test("«Emitir ticket corregido»: el foco va al motivo, Escape y el fondo cierr
   }
 });
 
+test("«Cerrar cuenta»: el foco va a «Cerrar y registrar la venta», Escape, el fondo y Cancelar no cierran la cuenta, y mientras se cierra no se cierra el diálogo y un doble clic registra la venta UNA vez", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 974 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const cuenta = await prisma.cuenta.create({
+    data: { mesaId: mesa.id, abiertaPorId: admin.id, items: { create: [{ productoId: cat.milanesa.id, cantidad: 2, precioUnitario: 9000, numeroEnvio: 1, creadoPorId: admin.id }] } },
+  });
+  const ventas = () => prisma.operacion.count({ where: { proceso: "VENTA", detalleLibre: "Mesa 974", sucursalId } });
+  try {
+    await interceptarImpresion(page);
+    await page.goto(`/mesas/${mesa.id}`);
+    const disparador = page.getByRole("button", { name: "Cerrar cuenta", exact: true });
+    const dialogo = page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 974" });
+    const confirmar = dialogo.getByRole("button", { name: "Cerrar y registrar la venta" });
+    await cierraConEscapeYConElFondo(page, () => disparador.click(), dialogo, disparador);
+    await disparador.click();
+    await expect(confirmar, "el foco inicial es «Cerrar y registrar la venta»").toBeFocused();
+    await dialogo.getByRole("button", { name: "Cancelar" }).click();
+    await expect(dialogo).toBeHidden();
+    // Ni Escape, ni el fondo, ni Cancelar tocaron la cuenta: sigue abierta y sin ninguna venta.
+    expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).toBeNull();
+    expect(await ventas()).toBe(0);
+
+    await disparador.click();
+    const { vistas, liberar } = await retenerAcciones(page);
+    await confirmar.dblclick();
+    await expect.poll(() => vistas.length).toBe(1);
+    await expect(dialogo.getByRole("button", { name: "Cerrando…" })).toBeDisabled();
+    await noSeCierraEnCurso(page, dialogo);
+    expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn, "con la acción retenida todavía no se cerró nada").toBeNull();
+
+    liberar();
+    await expect(dialogo).toBeHidden();
+    await expect(aviso(page)).toHaveText(/^Cuenta de la mesa 974 cerrada: se registró la venta por \$\s?18\.000\.$/);
+    expect(vistas, "un doble clic manda UNA sola acción").toHaveLength(1);
+    expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).not.toBeNull();
+    expect(await ventas(), "una sola venta").toBe(1);
+    expect(await prisma.ejemplarTicket.count({ where: { cuentaId: cuenta.id } }), "un solo ticket").toBe(1);
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["ticket"]);
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
 test("cerrar una cuenta sin venta (todo anulado) no imprime ticket", async ({ paginaAutenticada: page, sucursalId }) => {
   const cat = await sembrarCatalogo(sucursalId);
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 974 } });

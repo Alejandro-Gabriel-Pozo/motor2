@@ -2,7 +2,9 @@
 
 import { useId, useState } from "react";
 import { cerrarCuenta } from "@/server/actions/pos/cuenta-cierre";
-import { BOTON_PRIMARIO, BOTON_SECUNDARIO } from "./estilos";
+import { Dialogo } from "@/ui/componentes/superposiciones/dialogo";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 import { formatearMonto } from "@/core/pos/public";
 import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
@@ -50,81 +52,63 @@ export function CerrarCuenta({
 
   return (
     <div className="flex flex-col items-start gap-1.5">
-      <button
-        type="button"
-        className={BOTON_PRIMARIO}
+      <Boton
+        variante="acento"
         disabled={!puede || bloqueo !== null}
         title={puede ? undefined : "Cerrar la cuenta (registrar la venta) requiere un permiso que tu rol no tiene."}
         aria-describedby={bloqueo ? `${base}-bloqueo` : undefined}
         onClick={abrir}
       >
         Cerrar cuenta
-      </button>
+      </Boton>
       {bloqueo && (
         <p id={`${base}-bloqueo`} className="text-[12.5px] text-tinta-suave">
           {bloqueo}
         </p>
       )}
 
-      {abierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={cerrar}>
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`${base}-titulo`}
-            className="w-full max-w-md rounded-[14px] bg-superficie p-5 text-left shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") cerrar();
-            }}
-          >
-            <h2 id={`${base}-titulo`} className="mb-1 text-lg font-extrabold tracking-tight">
-              Cerrar cuenta · {titulo}
-            </h2>
-            <p className="mb-4 text-[13px] text-tinta-suave">Se registra la venta y la mesa queda libre.</p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                ejecutar(
-                  () => cerrarCuenta(cuentaId),
-                  () => {
-                    setAbierto(false);
-                    if (total > 0) pedir({ tipo: "ticket", cuentaId });
-                  }
-                );
-              }}
-              className="flex flex-col gap-3"
-            >
-              <div className="flex items-baseline justify-between rounded-lg bg-papel px-3 py-2">
-                <span className="text-[13px] font-semibold">Total</span>
-                <span data-total-cierre className="text-xl font-extrabold tabular-nums">
-                  {formatearMonto(total)}
-                </span>
-              </div>
-              {haySecciones ? (
-                <p className="text-[13px] text-tinta-suave">Cada producto se descuenta de su sección habitual; si ahí no alcanza, de otra sección con stock.</p>
-              ) : (
-                <p className="text-[13px] text-error">
-                  Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.
-                </p>
-              )}
-              {error && (
-                <p role="alert" className="text-[13px] text-error">
-                  {error}
-                </p>
-              )}
-              <div className="mt-1 flex justify-end gap-2">
-                <button type="button" onClick={cerrar} className={BOTON_SECUNDARIO}>
-                  Cancelar
-                </button>
-                <button type="submit" autoFocus disabled={pending || !haySecciones} className={BOTON_PRIMARIO}>
-                  {pending ? "Cerrando…" : "Cerrar y registrar la venta"}
-                </button>
-              </div>
-            </form>
+      <Dialogo abierto={abierto} titulo={`Cerrar cuenta · ${titulo}`} onCerrar={cerrar} cerrable={!pending}>
+        <p className="mb-4 text-sm text-tinta-suave">Se registra la venta y la mesa queda libre.</p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            ejecutar(
+              () => cerrarCuenta(cuentaId),
+              () => {
+                setAbierto(false);
+                if (total > 0) pedir({ tipo: "ticket", cuentaId });
+              }
+            );
+          }}
+          className="flex flex-col gap-3"
+        >
+          <div className="flex items-baseline justify-between rounded-lg bg-papel px-3 py-2">
+            <span className="text-sm font-semibold">Total</span>
+            <span data-total-cierre className="text-xl font-extrabold tabular-nums">
+              {formatearMonto(total)}
+            </span>
           </div>
-        </div>
-      )}
+          {haySecciones ? (
+            <p className="text-sm text-tinta-suave">Cada producto se descuenta de su sección habitual; si ahí no alcanza, de otra sección con stock.</p>
+          ) : (
+            <p className="text-sm text-error">Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.</p>
+          )}
+          {error && (
+            <Aviso variante="error" forma="en-linea">
+              {error}
+            </Aviso>
+          )}
+          <div className="mt-1 flex justify-end gap-2">
+            <Boton variante="secundario" onClick={cerrar}>
+              Cancelar
+            </Boton>
+            {/* El foco inicial es «Cerrar y registrar la venta» (como antes con `autoFocus`): `Dialogo` lo enfoca con `data-foco-inicial`. */}
+            <Boton type="submit" variante="acento" data-foco-inicial="" disabled={pending || !haySecciones}>
+              {pending ? "Cerrando…" : "Cerrar y registrar la venta"}
+            </Boton>
+          </div>
+        </form>
+      </Dialogo>
     </div>
   );
 }
