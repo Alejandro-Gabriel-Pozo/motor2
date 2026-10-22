@@ -52,6 +52,19 @@ describe("validarCantidad con texto: el contexto es la unidad", () => {
     expect(validarCantidad("1205", kg, cantidad)).toEqual({ ok: true, valor: 1205 });
   });
 
+  it("RIESGO DE STOCK: «1.205» en los kg y l del sembrado (2 decimales, como un importe) NO se lee como 1205: es ambiguo; en g (0 decimales) y en un importe sí es 1205", () => {
+    const kgDelSembrado = { nombre: "kg", decimales: 2 };
+    const g = { nombre: "g", decimales: 0 };
+    expect(falla(validarCantidad("1.205", kgDelSembrado, cantidad))).toEqual({ codigo: "ambiguo", mensaje: "La cantidad: ¿1,205 o 1205? Escribí 1205 o 1,205." });
+    expect(falla(validarCantidad("21.000", kgDelSembrado, cantidad))?.codigo).toBe("ambiguo");
+    expect(validarCantidad("1.205", g, cantidad)).toEqual({ ok: true, valor: 1205 });
+    expect(validarImporte("1.205", { etiqueta: "El precio" })).toEqual({ ok: true, valor: 1205 });
+    // «1,205» con 3 decimales vale; con los 2 del sembrado sobra un decimal (no es ambiguo, es otro error).
+    expect(validarCantidad("1,205", kg, cantidad)).toEqual({ ok: true, valor: 1.205 });
+    expect(falla(validarCantidad("1,205", kgDelSembrado, cantidad))?.codigo).toBe("decimales");
+    expect(validarCantidad("0.125", kg, cantidad)).toEqual({ ok: true, valor: 0.125 });
+  });
+
   it("en una unidad entera «1.000» son mil y un decimal es error con el nombre de la unidad", () => {
     expect(validarCantidad("1.000", entera, cantidad)).toEqual({ ok: true, valor: 1000 });
     expect(falla(validarCantidad("1,5", entera, cantidad))).toEqual({ codigo: "decimales", mensaje: 'La cantidad tiene que ser un número entero (la unidad "unidad" no admite decimales).' });
@@ -63,10 +76,10 @@ describe("validarCantidad con texto: el contexto es la unidad", () => {
 });
 
 describe("porcentajes, factor y food cost con texto", () => {
-  it("el % de descuento (2 decimales): «10,5» vale, «10,555» es error de decimales y «1.000» son mil (fuera de rango)", () => {
+  it("el % de descuento (2 decimales): «10,5» vale, «10,555» es error de decimales y «1.000» es ambiguo (un porcentaje es una cantidad con decimales: no se adivina)", () => {
     expect(validarPorcentajeDescuento("10,5")).toEqual({ ok: true, valor: 10.5 });
     expect(falla(validarPorcentajeDescuento("10,555"))?.codigo).toBe("decimales");
-    expect(falla(validarPorcentajeDescuento("1.000"))?.codigo).toBe("rango");
+    expect(falla(validarPorcentajeDescuento("1.000"))?.codigo).toBe("ambiguo");
   });
 
   it("el porcentaje de una diferencia y el factor (4 decimales): «1.500» es ambiguo y «1,5» vale", () => {
