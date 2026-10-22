@@ -437,3 +437,26 @@ test("la pestaña vieja: /editar de un producto de venta termina en /datos con e
   await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
   await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ })).toHaveAttribute("aria-current", "page");
 });
+
+test("a 375 px la tira de pasos deja a la vista la pestaña actual en cada paso, y la página no se mueve", async ({ paginaAutenticada: page, sucursalId }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  const m = marca();
+  const carta = await productoParaLaCarta(m, sucursalId);
+  try {
+    for (const ruta of ["datos", "opciones", "en-la-carta"]) {
+      await page.goto(`/catalogo/productos/${carta.producto.id}/${ruta}`);
+      const actual = page.getByRole("navigation", { name: "Pasos del producto" }).locator('[aria-current="page"]');
+      await expect(actual).toBeVisible();
+      // La tira desborda a 375 px (cuatro pasos y el Resumen): la actual se trae a la vista al montar, entera y sin mover la página.
+      await expect
+        .poll(async () => {
+          const caja = await actual.boundingBox();
+          return caja !== null && caja.x >= 0 && caja.x + caja.width <= 375;
+        }, { message: `${ruta}: la pestaña actual dentro de los 375 px` })
+        .toBe(true);
+      expect(await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY })), `${ruta}: la página no se movió`).toEqual({ x: 0, y: 0 });
+    }
+  } finally {
+    await carta.limpiar();
+  }
+});

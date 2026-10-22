@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import { Enlace } from "@/ui/primitivas/enlace";
 import { Insignia, type TonoDeInsignia } from "@/ui/primitivas/insignia";
 
@@ -9,7 +12,8 @@ import { Insignia, type TonoDeInsignia } from "@/ui/primitivas/insignia";
  *   (el trazo inferior y el texto en tinta): el énfasis NO es lo único que la marca.
  * - Una pestaña con `href: null` es un paso que el usuario no puede abrir: se dibuja como texto, SIN enlace (nunca un `<a>` sin destino, ni un enlace que lleva a «No tenés permiso»).
  * - `insignia` suma una etiqueta corta al lado del texto («Falta», «Listo»): el texto lo dice, el tono lo refuerza.
- * - En celular la tira se desplaza hacia el costado (375 px no alcanzan para cuatro pasos); cada pestaña mide 44 px de alto como mínimo.
+ * - En celular la tira se desplaza hacia el costado (375 px no alcanzan para cuatro pasos); cada pestaña mide 44 px de alto como mínimo. Al montarse, la tira se desplaza para dejar a la vista la pestaña actual
+ *   (si no, en un paso del final quedaba fuera de pantalla y no se veía dónde se está): mueve solo la tira (`scrollLeft`), nunca la página, y sin animación. Por eso es un componente de cliente.
  *
  * Quién puede abrir cada pestaña lo decide quien la usa (en el servidor, con el permiso de cada pantalla): este componente solo dibuja lo que recibe. Solo tokens del sistema visual (src/app/globals.css) y sin
  * modo oscuro (DEC-04).
@@ -38,11 +42,21 @@ function clasesDeLaPestana(p: PestanaDeRuta): string {
 }
 
 export function PestanasDeRuta({ etiqueta, pestanas }: PropsDePestanasDeRuta) {
+  const tira = useRef<HTMLUListElement>(null);
+  // Al montar: la pestaña actual al centro de la tira, si la tira desborda (en escritorio no hay nada que mover).
+  useEffect(() => {
+    const lista = tira.current;
+    const actual = lista?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!lista || !actual) return;
+    // Posición de la pestaña dentro del contenido de la tira (la lista no es el `offsetParent` de sus enlaces: se mide con los rectángulos).
+    const izquierda = actual.getBoundingClientRect().left - lista.getBoundingClientRect().left + lista.scrollLeft;
+    lista.scrollLeft = izquierda - (lista.clientWidth - actual.offsetWidth) / 2;
+  }, []);
   if (etiqueta.trim() === "") throw new Error("PestanasDeRuta: la etiqueta de la navegación es obligatoria");
   if (pestanas.filter((p) => p.actual).length > 1) throw new Error("PestanasDeRuta: solo una pestaña puede ser la actual");
   return (
     <nav aria-label={etiqueta}>
-      <ul className="flex overflow-x-auto border-b border-borde">
+      <ul ref={tira} className="flex overflow-x-auto border-b border-borde">
         {pestanas.map((p) => (
           <li key={p.texto} className="shrink-0">
             {p.href === null ? (
