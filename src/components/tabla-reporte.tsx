@@ -109,7 +109,7 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
     <div className="flex flex-col gap-1">
       {nombreExport && (
         <div className="flex flex-col items-end gap-0.5 self-end">
-          <Boton variante="enlace" tamano="chico" onClick={() => void exportarExcel()} cargando={exportando}>
+          <Boton variante="enlace" tamano="en-fila" onClick={() => void exportarExcel()} cargando={exportando}>
             {exportando ? "Exportando…" : "Exportar Excel"}
           </Boton>
           {errorExport && (
