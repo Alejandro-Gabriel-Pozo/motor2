@@ -241,6 +241,8 @@ export interface OpcionesDelProductoDelPanel {
   precioBase: number;
   /** El precio GLOBAL (`Producto.precioVenta`), el que rige donde no hay precio local habilitado. */
   precioGlobal: number;
+  /** Las unidades activas, para el producto de respaldo de un extra nuevo («+ Extra» en un grupo de adicionales). */
+  unidades: { id: string; nombre: string }[];
   /** El precio local del producto en la sucursal activa tal como está guardado (habilitado o no) y si la sucursal usa precio propio: lo que vio quien lo edita. Solo lo dibuja quien tiene `precio_local`. */
   precioLocal: { guardado: { precio: number; habilitado: boolean } | null; capacidadActiva: boolean };
 }
@@ -257,12 +259,13 @@ const diferenciaDeFila = (tipo: string | null, monto: number | null, porcentaje:
 export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucursalId: string): Promise<OpcionesDelProductoDelPanel | null> {
   const producto = await db.producto.findFirst({ where: { id: productoId }, select: { id: true, nombre: true, tipo: true, precioVenta: true, modoDeVenta: true, opcionQueRespalda: { select: { id: true } } } });
   if (!producto) return null;
-  const [filas, catalogo, paraVender, locales, precioLocal] = await Promise.all([
+  const [filas, catalogo, paraVender, locales, precioLocal, unidades] = await Promise.all([
     cargarAdmisionDeProducto(db, productoId),
     listarGruposDeOpciones(db, { incluirInactivos: true }),
     cargarOpcionesParaVender(db, { sucursalId, productoIds: [productoId] }),
     preciosLocalesVigentes(sucursalId, db, [productoId]),
     precioLocalGuardadoDe(sucursalId, db, productoId),
+    db.unidad.findMany({ where: { activa: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
   ]);
   const precioBase = locales.get(productoId)?.precio ?? Number(producto.precioVenta);
   // La grilla de la sucursal, para TODAS las medidas en precio propio del producto (la vista previa muestra cada tamaño).
@@ -309,6 +312,7 @@ export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucu
     vistaPrevia,
     precioBase,
     precioGlobal: Number(producto.precioVenta),
+    unidades,
     precioLocal,
   };
 }

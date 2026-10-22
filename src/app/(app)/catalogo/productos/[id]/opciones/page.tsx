@@ -13,6 +13,7 @@ import { formatearMonto } from "@/core/pos/public";
 import { AvisoConDeshacer, BotonConDeshacer } from "@/components/aviso-con-deshacer";
 import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
 import { AgregarGrupoExistente } from "@/components/catalogo/agregar-grupo-existente";
+import { NuevaOpcionEnElGrupo } from "@/components/catalogo/nueva-opcion-en-el-grupo";
 import { NuevoGrupoEnElProducto } from "@/components/catalogo/nuevo-grupo-en-el-producto";
 import { ResumenDeOpciones } from "@/components/catalogo/resumen-de-opciones";
 import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
@@ -37,6 +38,9 @@ const PASO_DE_ORDEN = 10;
  * Cómo se suma un grupo, sin salir del producto: «Agregar un grupo existente» (una ventana con el selector de la biblioteca; la acción es el cierre de esta página) y «+ Nuevo grupo» (una ventana que
  * crea el grupo, sus opciones y lo que el producto admite de ellas, todo o nada, con `crearGrupoEnElProducto`). El segundo pide además Editar de `opciones_definir`: se calcula ACÁ, en el servidor, y sin
  * esa clave no se dibuja el botón (la acción vuelve a exigir las dos claves; esto es cortesía de la interfaz).
+ *
+ * Cada tarjeta de grupo suma «+ Opción» (o «+ Extra», en un grupo de adicionales): agrega una opción al grupo y la admite en este producto, todo o nada (`crearOpcionEnElProducto`), con las mismas dos claves que «+ Nuevo grupo»
+ * (se calcula ACÁ, en el servidor: sin Editar de `opciones_definir` no se dibuja) y sin cambiar lo que admiten los otros productos del grupo. Con Editar de `precio_local`, encima de los grupos, el precio de la sucursal activa se carga ahí mismo (`PrecioDeLaSucursal`).
  *
  * Cada grupo es un formulario aparte (`GrupoDeFormularios`: mientras uno guarda, los demás esperan) con la versión de sus filas que vio la pantalla. Los closures "use server"
  * capturan solo textos, números y listas de ids.
@@ -200,6 +204,18 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
                     }}
                   />
                   <div className="flex flex-wrap items-center gap-3 border-t border-borde pt-3">
+                    {puedeCrearGrupos ? (
+                      <NuevaOpcionEnElGrupo
+                        productoId={productoId}
+                        productoNombre={producto.nombre}
+                        grupoId={grupoId}
+                        grupoNombre={g.nombre}
+                        tipo={g.tipo}
+                        modoPrecio={g.fila.modoPrecio}
+                        versionEsperada={versionEsperada}
+                        unidades={datos.unidades}
+                      />
+                    ) : null}
                     <BotonConDeshacer
                       valor={false}
                       etiquetaAccesible={`Quitar ${g.nombre} de este producto`}
