@@ -64,21 +64,21 @@ describe("CampoNumero dibuja la primitiva Campo", () => {
   });
 
   it("el <input type=\"hidden\"> del modo no controlado va ANTES del campo visible y lleva el valor real; sin name no hay hidden", () => {
-    const html = renderToStaticMarkup(<CampoNumero name="cantidad" defaultValue="1234.5" ariaLabel="Cantidad" />);
+    const html = renderToStaticMarkup(<CampoNumero tipo="cantidad" name="cantidad" defaultValue="1234.5" ariaLabel="Cantidad" />);
     const oculto = html.indexOf('type="hidden"');
     const visible = html.indexOf('type="text"');
     expect(oculto).toBeGreaterThanOrEqual(0);
     expect(oculto).toBeLessThan(visible);
     expect(html).toMatch(/<input[^>]*type="hidden"[^>]*name="cantidad"[^>]*value="1234.5"|<input[^>]*name="cantidad"[^>]*type="hidden"[^>]*value="1234.5"/);
     expect([...html.matchAll(/type="hidden"/g)]).toHaveLength(1);
-    expect(renderToStaticMarkup(<CampoNumero value="1" ariaLabel="Cantidad" />)).not.toContain('type="hidden"');
+    expect(renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" ariaLabel="Cantidad" />)).not.toContain('type="hidden"');
   });
 
   it("dentro de un <label> hay UN solo <label>: la primitiva no dibuja el suyo (quedaría anidado)", () => {
     const html = renderToStaticMarkup(
       <label>
         Cantidad
-        <CampoNumero value="2" />
+        <CampoNumero tipo="cantidad" value="2" />
       </label>,
     );
     expect([...html.matchAll(/<label/g)]).toHaveLength(1);
@@ -87,10 +87,10 @@ describe("CampoNumero dibuja la primitiva Campo", () => {
   });
 
   it("ariaLabel va al input y no se dibuja <label>; sin ariaLabel no hay aria-label", () => {
-    const con = renderToStaticMarkup(<CampoNumero value="2" ariaLabel="Cantidad" />);
+    const con = renderToStaticMarkup(<CampoNumero tipo="cantidad" value="2" ariaLabel="Cantidad" />);
     expect(entradaVisible(con)).toContain('aria-label="Cantidad"');
     expect(con).not.toContain("<label");
-    expect(renderToStaticMarkup(<CampoNumero value="2" />)).not.toContain("aria-label");
+    expect(renderToStaticMarkup(<CampoNumero tipo="cantidad" value="2" />)).not.toContain("aria-label");
   });
 
   it("`etiqueta` es el sujeto del mensaje de error, NO el rótulo: con un valor válido no aparece en el HTML, y con uno inválido solo dentro del mensaje", () => {
@@ -101,11 +101,11 @@ describe("CampoNumero dibuja la primitiva Campo", () => {
   });
 
   it("el prefijo «$» va antes del input, sin aria-hidden, y el input deja lugar (pl-5); sin prefijo no hay ni símbolo ni relleno", () => {
-    const html = renderToStaticMarkup(<CampoNumero value="10" prefijo="$" ariaLabel="Precio" />);
+    const html = renderToStaticMarkup(<CampoNumero tipo="importe" value="10" prefijo="$" ariaLabel="Precio" />);
     expect(html).toMatch(/<span class="[^"]*text-tinta-suave[^"]*">\$<\/span><input /);
     expect(html).not.toContain("aria-hidden");
     expect(clasesDe(entradaVisible(html))).toContain("pl-5");
-    const sin = renderToStaticMarkup(<CampoNumero value="10" ariaLabel="Precio" />);
+    const sin = renderToStaticMarkup(<CampoNumero tipo="cantidad" value="10" ariaLabel="Precio" />);
     expect(sin).not.toContain("<span");
     expect(clasesDe(entradaVisible(sin))).not.toContain("pl-5");
   });
@@ -113,13 +113,13 @@ describe("CampoNumero dibuja la primitiva Campo", () => {
   it("el número va siempre alineado a la derecha, con y sin prefijo, en los dos tamaños", () => {
     for (const tamano of ["normal", "compacto"] as const) {
       for (const prefijo of [undefined, "$"]) {
-        expect(clasesDe(entradaVisible(renderToStaticMarkup(<CampoNumero value="1" tamano={tamano} prefijo={prefijo} ariaLabel="n" />))), `${tamano} ${prefijo}`).toContain("text-right");
+        expect(clasesDe(entradaVisible(renderToStaticMarkup(<CampoNumero tipo="importe" value="1" tamano={tamano} prefijo={prefijo} ariaLabel="n" />))), `${tamano} ${prefijo}`).toContain("text-right");
       }
     }
   });
 
   it("conserva el tipo de campo: texto con teclado decimal, sin autocompletar, y placeholder, required, id y autoFocus llegan al input", () => {
-    const entrada = entradaVisible(renderToStaticMarkup(<CampoNumero id="precio-x" value="" placeholder="Precio" required autoFocus ariaLabel="Precio" />));
+    const entrada = entradaVisible(renderToStaticMarkup(<CampoNumero tipo="cantidad" id="precio-x" value="" placeholder="Precio" required autoFocus ariaLabel="Precio" />));
     expect(entrada).toContain('type="text"');
     expect(entrada).toContain('inputMode="decimal"');
     expect(entrada).toContain('autoComplete="off"');
@@ -129,15 +129,15 @@ describe("CampoNumero dibuja la primitiva Campo", () => {
   });
 
   it("el tamaño compacto usa la altura compacta de Campo (44 px en celular y la compacta desde md:); el normal, la normal", () => {
-    expect(clasesDe(entradaVisible(renderToStaticMarkup(<CampoNumero value="1" tamano="compacto" ariaLabel="n" />)))).toEqual(expect.arrayContaining(["min-h-11", "md:min-h-8"]));
-    expect(clasesDe(entradaVisible(renderToStaticMarkup(<CampoNumero value="1" ariaLabel="n" />)))).toEqual(expect.arrayContaining(["min-h-11", "md:min-h-9"]));
+    expect(clasesDe(entradaVisible(renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" tamano="compacto" ariaLabel="n" />)))).toEqual(expect.arrayContaining(["min-h-11", "md:min-h-8"]));
+    expect(clasesDe(entradaVisible(renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" ariaLabel="n" />)))).toEqual(expect.arrayContaining(["min-h-11", "md:min-h-9"]));
   });
 
   it("className va al contenedor (no al input) y el contenedor ya no es `relative` (el prefijo lo ubica Campo); sin className no queda un class vacío", () => {
-    const con = renderToStaticMarkup(<CampoNumero value="1" className="w-28" ariaLabel="n" />);
+    const con = renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" className="w-28" ariaLabel="n" />);
     expect(con.startsWith('<div class="w-28">')).toBe(true);
     expect(clasesDe(entradaVisible(con))).not.toContain("w-28");
-    const sin = renderToStaticMarkup(<CampoNumero value="1" ariaLabel="n" />);
+    const sin = renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" ariaLabel="n" />);
     expect(sin.startsWith("<div>")).toBe(true);
     expect(sin).not.toMatch(/<div class="relative/);
   });

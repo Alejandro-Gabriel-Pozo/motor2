@@ -242,7 +242,7 @@ export function AdmisionDeGrupo({
                               value={f.valor}
                               onChange={(v) => cambiar(o.opcionId, { valor: v })}
                               prefijo={f.precio === "MONTO" ? "$" : undefined}
-                              tipo={f.precio === "MONTO" ? "importe" : undefined}
+                              tipo={f.precio === "MONTO" ? "importe" : "porcentaje"}
                               permitirNegativo={grupo.tipo !== "ADICIONAL"}
                               etiqueta="La diferencia"
                               tamano="compacto"

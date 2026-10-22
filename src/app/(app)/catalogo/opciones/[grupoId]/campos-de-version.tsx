@@ -114,7 +114,7 @@ export function CamposDeVersion({
             {modo === "MONTO" ? (
               <CampoNumero key="monto" id={`${id}-valor`} name="valorDiferencia" value={monto} onChange={setMonto} prefijo="$" tipo="importe" permitirNegativo etiqueta="La diferencia" required className="w-40" />
             ) : (
-              <CampoNumero key="porcentaje" id={`${id}-valor`} name="valorDiferencia" value={porcentaje} onChange={setPorcentaje} etiqueta="El porcentaje" required className="w-28" />
+              <CampoNumero tipo="porcentaje" key="porcentaje" id={`${id}-valor`} name="valorDiferencia" value={porcentaje} onChange={setPorcentaje} permitirNegativo etiqueta="El porcentaje" required className="w-28" />
             )}
             {modo === "PORCENTAJE" && <span className="text-sm">%</span>}
           </div>
@@ -136,7 +136,7 @@ export function CamposDeVersion({
           <label htmlFor={`${id}-factor`} className="text-sm font-medium">
             Cuánto consume respecto del tamaño base
           </label>
-          <CampoNumero id={`${id}-factor`} name="factorEscala" value={factor} onChange={setFactor} etiqueta="El factor" required className="w-28" />
+          <CampoNumero tipo="cantidad" id={`${id}-factor`} name="factorEscala" value={factor} onChange={setFactor} etiqueta="El factor" required className="w-28" />
           <p className="text-xs text-tinta-suave">Cuánto consume este tamaño respecto del base: 1 = igual, 1,5 = 50% más, 0,7 = 30% menos (máximo 10).</p>
           <LecturaDelFactor valor={valorDelFactor} receta={receta} />
         </div>

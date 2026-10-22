@@ -81,7 +81,7 @@ export function StockMinimoForm({
 
       <label className="flex flex-col gap-1 text-sm">
         Mínimo
-        <CampoNumero value={minimo} onChange={setMinimo} required />
+        <CampoNumero tipo="cantidad" value={minimo} onChange={setMinimo} required />
       </label>
 
       {mensaje && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { contextoDelCampo, errorDelCampo, textoParaEditar, textoParaVer, valorAEmitir } from "@/core/datos/campo-numero-logica";
+import { contextoDelCampo, errorDelCampo, textoParaEditar, textoParaVer, valorAEmitir, type TipoDeCampoNumerico } from "@/core/datos/campo-numero-logica";
 import { Campo } from "@/ui/primitivas/campo";
 
 interface Props {
@@ -25,14 +25,14 @@ interface Props {
   tamano?: "normal" | "compacto";
   className?: string;
   /**
-   * Opcionales y serializables (un Server Component puede pasarlas). Sin `tipo`, el campo solo valida el formato del número. Con
-   * `tipo="importe"` valida con `validarImporte` (2 decimales, no negativo salvo `permitirNegativo`); con `tipo="cantidad"` con
-   * `validarCantidad` (hasta `decimales` decimales). El servidor vuelve a validar todo con las mismas funciones.
+   * El TIPO de dato que recibe el campo: OBLIGATORIO (lo bloquea el compilador; cercos de `type="number"` y de `Number(formData.get(…))`). `importe` (plata: 2 decimales, no negativo salvo `permitirNegativo`,
+   * validado con `validarImporte`), `cantidad` (hasta `decimales` decimales, los de su unidad; validado con `validarCantidad`), `entero` (sin decimales: minutos, días) y `porcentaje` (una merma, una
+   * diferencia: los 4 decimales de su columna salvo que se diga otra cosa). El servidor vuelve a validar todo con las mismas funciones. Serializable (un Server Component puede pasarlo).
    */
-  tipo?: "importe" | "cantidad";
+  tipo: TipoDeCampoNumerico;
   /** Sujeto del mensaje de error ("El precio total" → "El precio total no es un número válido."). */
   etiqueta?: string;
-  /** Solo `tipo="cantidad"`: decimales que admite la unidad. */
+  /** Solo `tipo="cantidad"` y `tipo="porcentaje"`: decimales que admite la unidad o la columna (sin ellos, los 4 de las columnas `Decimal(14,4)`). */
   decimales?: number;
   permitirNegativo?: boolean;
 }

@@ -72,7 +72,7 @@ export function ConteoFrecuenciaForm({
 
       <label className="flex flex-col gap-1 text-sm">
         Cada cuántos días (0 = desactivada)
-        <CampoNumero value={frecuenciaDias} onChange={setFrecuenciaDias} decimales={0} required />
+        <CampoNumero tipo="entero" value={frecuenciaDias} onChange={setFrecuenciaDias} required />
       </label>
 
       {mensaje && (

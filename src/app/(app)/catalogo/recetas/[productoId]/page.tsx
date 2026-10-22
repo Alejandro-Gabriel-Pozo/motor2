@@ -270,9 +270,8 @@ export default async function RecetaEditorPage({
                     name="racionesCantidad"
                     ariaLabel="Raciones"
                     defaultValue={vigente.racionesCantidad ? String(vigente.racionesCantidad) : ""}
-                    tipo="cantidad"
+                    tipo="entero"
                     etiqueta="La cantidad de raciones"
-                    decimales={0}
                     className="w-24"
                     tamano="compacto"
                   />
@@ -306,9 +305,8 @@ export default async function RecetaEditorPage({
                     name="tiempoPreparacionMinutos"
                     ariaLabel="Prep. (min)"
                     defaultValue={vigente.tiempoPreparacionMinutos ? String(vigente.tiempoPreparacionMinutos) : ""}
-                    tipo="cantidad"
+                    tipo="entero"
                     etiqueta="El tiempo de preparación"
-                    decimales={0}
                     className="w-24"
                     tamano="compacto"
                   />
@@ -319,9 +317,8 @@ export default async function RecetaEditorPage({
                     name="tiempoCoccionMinutos"
                     ariaLabel="Cocción (min)"
                     defaultValue={vigente.tiempoCoccionMinutos ? String(vigente.tiempoCoccionMinutos) : ""}
-                    tipo="cantidad"
+                    tipo="entero"
                     etiqueta="El tiempo de cocción"
-                    decimales={0}
                     className="w-24"
                     tamano="compacto"
                   />
@@ -409,7 +406,7 @@ export default async function RecetaEditorPage({
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
                           <LecturaDeCantidad campoId={`cantidad-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null}>
-                            <CampoNumero id={`cantidad-${ing.id}`} name="cantidad" defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
+                            <CampoNumero tipo="cantidad" id={`cantidad-${ing.id}`} name="cantidad" defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
                             {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
                             <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
                             <span title="Unidad de stock de la materia prima" className="rounded border bg-superficie-suave px-2 py-1.5 text-sm">
@@ -422,7 +419,7 @@ export default async function RecetaEditorPage({
                               {avisoDeUnidad}
                             </Aviso>
                           )}
-                          <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} ariaLabel={`Merma de ${ing.insumoProducto.nombre}`} placeholder="Merma %" className="w-24" />
+                          <CampoNumero tipo="porcentaje" name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} ariaLabel={`Merma de ${ing.insumoProducto.nombre}`} placeholder="Merma %" className="w-24" />
                           {aceptaSustitutos &&
                             (() => {
                               const opcionesBase = opcionesSustitutoPorIngrediente.get(ing.insumoProductoId) ?? [];
@@ -554,8 +551,8 @@ export default async function RecetaEditorPage({
             </Selector>
             <p className="text-xs text-tinta-tenue">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
             <div className="flex gap-2">
-              <CampoNumero id="cantidad-ingrediente-nuevo" name="cantidad" placeholder="Cantidad" ariaLabel="Cantidad" required className="flex-1" />
-              <CampoNumero name="mermaPorcentaje" placeholder="Merma %" ariaLabel="Merma" className="w-28" />
+              <CampoNumero tipo="cantidad" id="cantidad-ingrediente-nuevo" name="cantidad" placeholder="Cantidad" ariaLabel="Cantidad" required className="flex-1" />
+              <CampoNumero tipo="porcentaje" name="mermaPorcentaje" placeholder="Merma %" ariaLabel="Merma" className="w-28" />
             </div>
           </LecturaDeCantidad>
           <BotonDeServidor type="submit">
@@ -593,7 +590,7 @@ export default async function RecetaEditorPage({
                       >
                         <Campo aria-label="Nombre corto" name="nombre" defaultValue={paso.nombre ?? ""} placeholder="Nombre corto (opcional)" />
                         <AreaDeTexto etiqueta="Instrucción" etiquetaOculta name="instruccion" defaultValue={paso.instruccion} required rows={2} />
-                        <CampoNumero name="minutos" decimales={0} defaultValue={paso.minutos ? String(paso.minutos) : ""} placeholder="Minutos (opcional)" ariaLabel="Minutos del paso" className="w-32" tamano="compacto" />
+                        <CampoNumero tipo="entero" name="minutos" defaultValue={paso.minutos ? String(paso.minutos) : ""} placeholder="Minutos (opcional)" ariaLabel="Minutos del paso" className="w-32" tamano="compacto" />
                         {vigente.ingredientes.length > 0 && (
                           <fieldset className="flex flex-col gap-1">
                             <span className="text-xs text-tinta-tenue">¿Este paso usa solo algunos ingredientes en particular? (opcional)</span>
@@ -708,7 +705,7 @@ export default async function RecetaEditorPage({
               )}
               <Campo aria-label="Nombre corto" name="nombre" placeholder="Nombre corto (opcional)" />
               <AreaDeTexto etiqueta="Instrucción" etiquetaOculta name="instruccion" placeholder="Instrucción" required rows={2} />
-              <CampoNumero name="minutos" decimales={0} placeholder="Minutos (opcional)" ariaLabel="Minutos del paso" className="w-32" />
+              <CampoNumero tipo="entero" name="minutos" placeholder="Minutos (opcional)" ariaLabel="Minutos del paso" className="w-32" />
               {vigente.ingredientes.length > 0 && (
                 <fieldset className="flex flex-col gap-1">
                   <span className="text-xs text-tinta-tenue">¿Este paso usa solo algunos ingredientes en particular? (opcional)</span>

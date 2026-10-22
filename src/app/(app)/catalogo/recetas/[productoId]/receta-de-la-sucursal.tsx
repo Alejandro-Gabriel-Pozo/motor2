@@ -129,6 +129,7 @@ export function RecetaDeLaSucursal({
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
                           <LecturaDeCantidad campoId={`cantidad-propia-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null}>
                             <CampoNumero
+                              tipo="cantidad"
                               id={`cantidad-propia-${ing.id}`}
                               name="cantidad"
                               defaultValue={String(Number(ing.cantidad))}
@@ -148,7 +149,7 @@ export function RecetaDeLaSucursal({
                               {avisoDeUnidad}
                             </Aviso>
                           )}
-                          <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} ariaLabel={`Merma de ${ing.insumoProducto.nombre} en la receta propia`} placeholder="Merma %" className="w-24" />
+                          <CampoNumero tipo="porcentaje" name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} ariaLabel={`Merma de ${ing.insumoProducto.nombre} en la receta propia`} placeholder="Merma %" className="w-24" />
                           <BotonDeServidor type="submit" tamano="compacto">
                             Guardar
                           </BotonDeServidor>
@@ -244,8 +245,8 @@ export function RecetaDeLaSucursal({
               </Selector>
               <p className="text-xs text-tinta-tenue">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
               <div className="flex gap-2">
-                <CampoNumero id="cantidad-ingrediente-nuevo-propia" name="cantidad" placeholder="Cantidad" ariaLabel="Cantidad en la receta propia" required className="flex-1" />
-                <CampoNumero name="mermaPorcentaje" placeholder="Merma %" ariaLabel="Merma en la receta propia" className="w-28" />
+                <CampoNumero tipo="cantidad" id="cantidad-ingrediente-nuevo-propia" name="cantidad" placeholder="Cantidad" ariaLabel="Cantidad en la receta propia" required className="flex-1" />
+                <CampoNumero tipo="porcentaje" name="mermaPorcentaje" placeholder="Merma %" ariaLabel="Merma en la receta propia" className="w-28" />
               </div>
             </LecturaDeCantidad>
             <BotonDeServidor type="submit">

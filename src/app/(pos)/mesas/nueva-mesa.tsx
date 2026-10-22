@@ -74,7 +74,7 @@ export function NuevaMesa({ siguienteNumero, puedeCrear }: { siguienteNumero: nu
           </label>
           {/* El foco inicial va al número (lo marca `data-foco-inicial`; un autoFocus de React no enfoca dentro de un <dialog> todavía cerrado). */}
           <div data-foco-inicial="">
-            <CampoNumero id="nueva-mesa-numero" value={numero} onChange={setNumero} decimales={0} required />
+            <CampoNumero tipo="entero" id="nueva-mesa-numero" value={numero} onChange={setNumero} required />
           </div>
           {error && (
             <Aviso id="nueva-mesa-error" variante="error" forma="en-linea">

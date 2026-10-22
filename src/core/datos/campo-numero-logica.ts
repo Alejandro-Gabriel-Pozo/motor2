@@ -11,13 +11,29 @@ import { CONTEXTO_CANTIDAD_SIN_UNIDAD, CONTEXTO_IMPORTE, contextoDeCantidad, int
  *  - el «canal de valor» (lo que el campo emite, y lo que los formularios y la base le pasan: `value`, `defaultValue`, el campo oculto): dígitos y un punto decimal (`leerNumeroCanonico`).
  */
 
-export type TipoDeCampoNumerico = "importe" | "cantidad";
+/**
+ * El TIPO de dato que recibe un campo numérico (lo declara cada uso de `CampoNumero`; es obligatorio y lo bloquea el compilador, lote 6.33):
+ *  - `importe`: plata, hasta 2 decimales («21.000» es veintiún mil).
+ *  - `cantidad`: lo que se cuenta, pesa o mide, con los decimales de su unidad (`decimales`; sin ellos, los 4 de las columnas `Decimal(14,4)`: «1.205» es ambiguo, nunca se adivina).
+ *  - `entero`: un número sin decimales (minutos, días, el número de una mesa). Es una cantidad de 0 decimales.
+ *  - `porcentaje`: un porcentaje (merma, diferencia de precio), con los 4 decimales de su columna salvo que se diga otra cosa.
+ */
+export type TipoDeCampoNumerico = "importe" | "cantidad" | "entero" | "porcentaje";
 
-/** El contexto del campo: un importe (2 decimales), una cantidad (los de su unidad) o, sin tipo y sin decimales, una cantidad de unidad desconocida (4: el máximo, así «1.205» nunca se adivina). */
-export function contextoDelCampo(tipo: TipoDeCampoNumerico | undefined, decimales: number | undefined): ContextoNumerico {
+/** El contexto del campo: un importe (2 decimales), un entero (0), una cantidad o un porcentaje (los de su unidad o columna, o, sin `decimales`, los 4: el máximo, así «1.205» nunca se adivina). */
+export function contextoDelCampo(tipo: TipoDeCampoNumerico, decimales: number | undefined): ContextoNumerico {
   if (tipo === "importe") return CONTEXTO_IMPORTE;
+  if (tipo === "entero") return contextoDeCantidad(0);
   return decimales === undefined ? CONTEXTO_CANTIDAD_SIN_UNIDAD : contextoDeCantidad(decimales);
 }
+
+/** El sujeto del mensaje cuando el uso no pone `etiqueta`: el nombre del tipo («El importe no es un número válido.»). */
+const SUJETO_DEL_TIPO: Readonly<Record<TipoDeCampoNumerico, string>> = {
+  importe: "El importe",
+  cantidad: "La cantidad",
+  entero: "El valor",
+  porcentaje: "El porcentaje",
+};
 
 /**
  * Lo que el campo EMITE al tipear: vacío → ""; un número válido → su texto canónico; lo que no es un número en este contexto → el texto TAL CUAL (nunca "" ni "0"), marcado si PARECE canónico
@@ -47,7 +63,7 @@ export function textoParaEditar(valor: string): string {
 }
 
 export interface OpcionesDeErrorDeCampo {
-  tipo?: TipoDeCampoNumerico;
+  tipo: TipoDeCampoNumerico;
   /** Sujeto del mensaje, en mayúscula («El precio»). */
   etiqueta?: string;
   permitirNegativo?: boolean;
@@ -62,19 +78,15 @@ export function errorDelCampo(valor: string, contexto: ContextoNumerico, { tipo,
     const tecleado = interpretarNumeroTecleado(sinMarcaDeNoCanonico(valor), contexto);
     // Un texto que no es canónico pero que el parser SÍ entiende (un valor que llegó en otra notación por afuera) no es un error del campo.
     if (tecleado.ok) return null;
-    // Con tipo, el mensaje lleva el sujeto del campo (como el de la Server Action); sin tipo, el del parser tal cual.
-    const sujeto = etiqueta ?? (tipo === "importe" ? "El importe" : tipo === "cantidad" ? "La cantidad" : undefined);
-    return { origen: "tecleado", mensaje: mensajeDeNumeroRechazado(tecleado, tipo === undefined ? etiqueta : sujeto) };
+    // El mensaje lleva el sujeto del campo (como el de la Server Action): la etiqueta del uso o, si no hay, el nombre del tipo.
+    return { origen: "tecleado", mensaje: mensajeDeNumeroRechazado(tecleado, etiqueta ?? SUJETO_DEL_TIPO[tipo]) };
   }
   if (leido.valor === null) return null;
   if (tipo === "importe") {
     const r = validarImporte(leido.valor, { etiqueta: etiqueta ?? "El importe", permitirNegativo });
     return r.ok ? null : { origen: "regla", mensaje: r.mensaje };
   }
-  if (tipo === "cantidad") {
-    // El cero lo decide cada proceso en el servidor (Ajuste lo admite): acá solo formato, signo, tope y decimales.
-    const r = validarCantidad(leido.valor, { nombre: "", decimales: contexto.decimales }, { etiqueta: etiqueta ?? "La cantidad", permitirNegativo, permitirCero: true });
-    return r.ok ? null : { origen: "regla", mensaje: r.mensaje };
-  }
-  return null;
+  // Cantidad, entero y porcentaje: la misma regla, con los decimales del contexto. El cero lo decide cada proceso en el servidor (Ajuste lo admite): acá solo formato, signo, tope y decimales.
+  const r = validarCantidad(leido.valor, { nombre: "", decimales: contexto.decimales }, { etiqueta: etiqueta ?? SUJETO_DEL_TIPO[tipo], permitirNegativo, permitirCero: true });
+  return r.ok ? null : { origen: "regla", mensaje: r.mensaje };
 }

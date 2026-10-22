@@ -124,7 +124,7 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
             </label>
             <label className="flex w-28 flex-col gap-1 text-sm">
               <span className="font-medium">Cantidad</span>
-              <CampoNumero value={fila.cantidadVendida} onChange={(v) => actualizarFila(idx, { cantidadVendida: v })} required tamano="compacto" />
+              <CampoNumero tipo="cantidad" value={fila.cantidadVendida} onChange={(v) => actualizarFila(idx, { cantidadVendida: v })} required tamano="compacto" />
             </label>
             <Boton variante="secundario" tamano="compacto" onClick={() => quitarFila(idx)} disabled={ventas.length === 1}>
               Quitar

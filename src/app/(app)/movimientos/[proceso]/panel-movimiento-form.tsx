@@ -402,9 +402,11 @@ export function PanelMovimientoForm({
                 )}
               </span>
               <CampoNumero
+                tipo="cantidad"
                 value={fila.cantidad}
                 onChange={(v) => actualizarFila(idx, { cantidad: v })}
                 placeholder={config.cantidadConSigno ? "ej. -5 o 5" : undefined}
+                permitirNegativo={config.cantidadConSigno}
                 required
                 tamano="compacto"
               />
@@ -427,7 +429,7 @@ export function PanelMovimientoForm({
                 </label>
                 <label className="flex w-32 flex-col gap-1 text-sm">
                   <span className="font-medium">Peso real</span>
-                  <CampoNumero value={fila.pesoReal} onChange={(v) => actualizarFila(idx, { pesoReal: v })} tamano="compacto" />
+                  <CampoNumero tipo="cantidad" value={fila.pesoReal} onChange={(v) => actualizarFila(idx, { pesoReal: v })} tamano="compacto" />
                 </label>
                 {(presentacionesPorFila[idx]?.length ?? 0) > 0 && (
                   <div className="w-44">

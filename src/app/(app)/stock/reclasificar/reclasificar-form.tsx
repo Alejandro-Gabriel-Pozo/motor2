@@ -187,7 +187,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
             </div>
             <label className="flex w-28 flex-col gap-1 text-sm">
               Cantidad
-              <CampoNumero value={d.cantidad} onChange={(v) => actualizarDestino(idx, { cantidad: v })} required tamano="compacto" />
+              <CampoNumero tipo="cantidad" value={d.cantidad} onChange={(v) => actualizarDestino(idx, { cantidad: v })} required tamano="compacto" />
             </label>
             <Boton variante="secundario" tamano="compacto" onClick={() => quitarDestino(idx)} disabled={destinos.length === 1}>
               Quitar

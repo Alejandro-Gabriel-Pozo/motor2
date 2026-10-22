@@ -183,11 +183,11 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
             <div className="flex flex-wrap items-end gap-2">
               <label className="flex flex-col gap-1 text-xs">
                 Cantidad
-                <CampoNumero name="cantidad" defaultValue={String(cantidadEstimada)} required className="w-28" />
+                <CampoNumero tipo="cantidad" name="cantidad" defaultValue={String(cantidadEstimada)} required className="w-28" />
               </label>
               <label className="flex flex-col gap-1 text-xs">
                 Merma %
-                <CampoNumero name="mermaPorcentaje" defaultValue={String(mermaActual)} className="w-24" />
+                <CampoNumero tipo="porcentaje" name="mermaPorcentaje" defaultValue={String(mermaActual)} className="w-24" />
               </label>
               <Boton type="submit" tamano="compacto">
                 Guardar como rendimiento de «{sucursalNombre}»
