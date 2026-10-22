@@ -16,7 +16,7 @@ export function EnDolares({ pesos, cotizacion, className }: { pesos: number; cot
   if (!cotizacion) return null;
   const usd = pesosADolares(pesos, cotizacion.venta);
   return (
-    <span className={className ?? "text-xs text-neutral-500"} title={`${textoCotizacion(cotizacion)}. Conversión a la cotización de hoy, no a la del día de cada operación.`}>
+    <span className={className ?? "text-xs text-tinta-tenue"} title={`${textoCotizacion(cotizacion)}. Conversión a la cotización de hoy, no a la del día de cada operación.`}>
       ≈ US$ {usd.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </span>
   );
