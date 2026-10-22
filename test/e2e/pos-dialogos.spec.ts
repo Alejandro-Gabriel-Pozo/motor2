@@ -97,3 +97,34 @@ test("«Nueva mesa»: el foco va al número, Escape y el fondo cierran, y mientr
     await limpiarMesas(mesas.map((m) => m.id));
   }
 });
+
+test("«Abrir cuenta»: Escape y el fondo cierran, un doble clic en «Confirmar apertura» abre UNA cuenta y mientras se abre no se cierra", async ({ paginaAutenticada: page, sucursalId }) => {
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 7000 + Math.floor(Math.random() * 900) } });
+  try {
+    await page.goto(`/mesas/${mesa.id}`);
+    const disparador = page.getByRole("button", { name: "Abrir cuenta" });
+    const dialogo = page.getByRole("dialog", { name: "¿Cuántos comensales?" });
+    await cierraConEscapeYConElFondo(page, () => disparador.click(), dialogo, disparador);
+
+    await disparador.click();
+    // Sin elegir nada, confirmar dice por qué no y NO manda nada (no hay acción en curso).
+    await dialogo.getByRole("button", { name: "Confirmar apertura" }).click();
+    await expect(dialogo.getByRole("alert")).toHaveText("Elegí cuántos comensales son.");
+    await dialogo.getByRole("button", { name: "4", exact: true }).click();
+    await expect(dialogo.getByRole("button", { name: "4", exact: true })).toHaveAttribute("aria-pressed", "true");
+    const { vistas, liberar } = await retenerAcciones(page);
+    await dialogo.getByRole("button", { name: "Confirmar apertura" }).dblclick();
+    await expect.poll(() => vistas.length).toBe(1);
+    await expect(dialogo.getByRole("button", { name: "Abriendo…" })).toBeDisabled();
+    await noSeCierraEnCurso(page, dialogo);
+
+    liberar();
+    await expect(dialogo).toBeHidden();
+    await expect(page.getByRole("button", { name: "Cerrar cuenta" })).toBeVisible();
+    expect(vistas, "un doble clic manda UNA sola acción").toHaveLength(1);
+    const cuentas = await prisma.cuenta.findMany({ where: { mesaId: mesa.id }, select: { comensales: true, cerradaEn: true } });
+    expect(cuentas).toEqual([{ comensales: 4, cerradaEn: null }]);
+  } finally {
+    await limpiarMesas([mesa.id]);
+  }
+});

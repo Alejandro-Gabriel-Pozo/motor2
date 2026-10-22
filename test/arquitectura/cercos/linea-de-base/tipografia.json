@@ -1,10 +1,10 @@
 {
   "regla": "tipografia",
   "meta": "bajar hacia 0 a medida que la escala tipográfica pase a tokens (auditoría §19.4); la carta pública tiene su propia línea de base",
-  "total": 189,
-  "entradas": 28,
+  "total": 183,
+  "entradas": 26,
   "porTipo": {
-    "clase-arbitraria": 138,
+    "clase-arbitraria": 132,
     "font-size-literal": 49,
     "fontSize-literal": 2
   },
@@ -14,9 +14,6 @@
     },
     "src/app/(app)/carta/carta-mant.module.css": {
       "font-size-literal": 30
-    },
-    "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
-      "clase-arbitraria": 5
     },
     "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
       "clase-arbitraria": 15
@@ -74,9 +71,6 @@
     },
     "src/app/(pos)/mesas/limite-mesas.tsx": {
       "clase-arbitraria": 6
-    },
-    "src/app/(pos)/mesas/nueva-mesa.tsx": {
-      "clase-arbitraria": 1
     },
     "src/app/(pos)/mesas/page.tsx": {
       "clase-arbitraria": 8

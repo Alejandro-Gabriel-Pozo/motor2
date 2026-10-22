@@ -62,9 +62,9 @@ export function NuevaMesa({ siguienteNumero, puedeCrear }: { siguienteNumero: nu
         Nueva mesa
       </Boton>
       {aviso && (
-        <p role="status" className="text-[12.5px] text-ok-tinta">
+        <Aviso variante="exito" forma="en-linea">
           {aviso}
-        </p>
+        </Aviso>
       )}
 
       <Dialogo abierto={abierto} titulo="Nueva mesa" onCerrar={cerrar} cerrable={!pending}>
