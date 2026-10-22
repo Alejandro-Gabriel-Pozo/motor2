@@ -56,7 +56,7 @@ export function tieneALoSumoDecimales(n: number, decimales: number): boolean {
 
 /**
  * Número de una entrada de tipo desconocido (Server Action, script, seed), leída con el CONTEXTO del campo: `number` finito tal cual; texto por el parser de lo tecleado (`interpretarNumeroTecleado`: «21.000» es
- * veintiún mil en un importe y ambiguo en una cantidad de 3 decimales; nunca se adivina); `null`/`undefined`/texto vacío → `null`. Cualquier otra cosa (booleano, objeto, NaN, ±Infinity) es error de formato.
+ * veintiún mil en un importe y en una cantidad sin decimales, y ambiguo en una cantidad con decimales; nunca se adivina); `null`/`undefined`/texto vacío → `null`. Cualquier otra cosa (booleano, objeto, NaN, ±Infinity) es error de formato.
  * Base común de validarImporte, validarCantidad y los demás, que ponen su propio mensaje. El servidor no confía en el cliente: lo que llega como texto se lee con la misma regla que en la pantalla.
  */
 export function numeroDeEntrada(valor: unknown, contexto: ContextoNumerico): ResultadoDato<number | null> {
@@ -71,26 +71,36 @@ export function numeroDeEntrada(valor: unknown, contexto: ContextoNumerico): Res
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Para qué es el número que se está leyendo: cuántos decimales admite. Un importe admite 2; una cantidad, los de su unidad (`Unidad.decimales`); un porcentaje o un factor, los de su columna. El contexto
- * decide dos cosas: si «21.000» es miles o es ambiguo, y cuántas cifras decimales TECLEADAS se aceptan (las cuenta sobre el texto, no sobre el valor: «21,000» tiene 3 aunque valga 21).
+ * Para qué es el número que se está leyendo: su TIPO y cuántos decimales admite. El contexto decide dos cosas: si «21.000» es miles o es ambiguo, y cuántas cifras decimales TECLEADAS se aceptan (las cuenta
+ * sobre el texto, no sobre el valor: «21,000» tiene 3 aunque valga 21).
+ *  - `importe`: plata, hasta 2 decimales (`DECIMALES_IMPORTE`). Un punto con tres cifras («21.000») es SIEMPRE miles: un importe nunca tiene tres decimales.
+ *  - `cantidad`: lo que se cuenta, pesa o mide, con los decimales de su unidad (`Unidad.decimales`), y también un porcentaje o un factor (los de su columna). Con 1 o más decimales posibles, «1.205» puede ser 1,205
+ *    o 1205 (en kg y l del sembrado, que tienen 2 decimales, también): no se adivina, es ambiguo. Sin decimales (g, ml, unidad) solo puede ser miles.
+ * El tipo no sale de contar decimales: un importe y los kg del sembrado tienen los mismos 2, y «21.000» es miles en uno y ambiguo en el otro (un error de mil veces en el stock).
  */
 export interface ContextoNumerico {
+  tipo: "importe" | "cantidad";
   decimales: number;
 }
 
 /** Un importe en pesos: hasta 2 decimales (`DECIMALES_IMPORTE`, el de las columnas `Decimal(14,2)`). */
-export const CONTEXTO_IMPORTE: ContextoNumerico = { decimales: 2 };
+export const CONTEXTO_IMPORTE: ContextoNumerico = { tipo: "importe", decimales: 2 };
 
 /** Una cantidad cuya unidad no se conoce: los 4 decimales de las columnas `Decimal(14,4)`, el máximo que admite el sistema. Con ese contexto «1.205» es ambiguo (error), nunca se adivina. */
-export const CONTEXTO_CANTIDAD_SIN_UNIDAD: ContextoNumerico = { decimales: 4 };
+export const CONTEXTO_CANTIDAD_SIN_UNIDAD: ContextoNumerico = { tipo: "cantidad", decimales: 4 };
 
-/** El contexto de una cantidad en una unidad con `decimales` decimales. */
+/** El contexto de una cantidad en una unidad con `decimales` decimales (también el de un porcentaje o un factor, con los de su columna). */
 export function contextoDeCantidad(decimales: number): ContextoNumerico {
-  return { decimales };
+  return { tipo: "cantidad", decimales };
 }
 
-/** Con 3 o más decimales posibles, «1.205» puede ser 1,205 o 1205: no se adivina. Con menos, un punto con 3 cifras detrás solo puede ser miles. */
-const DECIMALES_QUE_VUELVEN_AMBIGUO_EL_PUNTO = 3;
+/**
+ * ¿Un solo punto con tres cifras detrás («21.000», «1.205») es de MILES en este contexto? Sí en un importe y en una cantidad sin decimales (g, ml, unidad: no hay otra lectura posible). No en una cantidad con 1 o más
+ * decimales: puede ser 1,205 o 1205 y no se adivina.
+ */
+function elPuntoConTresCifrasEsMiles(contexto: ContextoNumerico): boolean {
+  return contexto.tipo === "importe" || contexto.decimales === 0;
+}
 
 const RE_SOLO_SEPARADORES_Y_DIGITOS = /^[\d.,]*$/;
 
@@ -134,8 +144,8 @@ function separarSinComa(cuerpo: string, contexto: ContextoNumerico): SinComa {
   if (b === "") return { entero: a, decimal: "" }; // «21.»: tecleo a medias, se ignora el separador
   if (a === "") return { entero: "", decimal: b }; // «.5»
   if (b.length === 3 && RE_GRUPO_INICIAL.test(a)) {
-    // «21.000» / «1.205»: miles o decimales. Si la unidad admite 3 o más decimales no se adivina.
-    return contexto.decimales >= DECIMALES_QUE_VUELVEN_AMBIGUO_EL_PUNTO ? { ambiguo: { entero: a, decimal: b } } : { entero: a + b, decimal: "" };
+    // «21.000» / «1.205»: miles en un importe y en una cantidad sin decimales; en una cantidad con decimales puede ser 1,205 o 1205 y no se adivina.
+    return elPuntoConTresCifrasEsMiles(contexto) ? { entero: a + b, decimal: "" } : { ambiguo: { entero: a, decimal: b } };
   }
   return { entero: a, decimal: b };
 }
@@ -153,7 +163,7 @@ function formatearMilesParaPista(digitos: string): string {
 
 /**
  * Lee lo que la PERSONA escribió en un campo numérico, con la notación argentina (decisión del dueño, 2026-10-20): coma decimal siempre; punto de miles bien agrupado; un solo punto con 1 o 2 cifras es decimal («21.5»);
- * un solo punto con 3 cifras («21.000», «1.205») es miles si el contexto admite menos de 3 decimales (importes y unidades chicas) y es AMBIGUO (error, no se adivina) si admite 3 o más; «0.125» es decimal; una coma seguida
+ * un solo punto con 3 cifras («21.000», «1.205») es miles en un importe y en una cantidad sin decimales (g, ml, unidad) y es AMBIGUO (error, no se adivina) en una cantidad con 1 o más decimales (kg, l, porcentajes); «0.125» es decimal; una coma seguida
  * de más cifras que los decimales del contexto es error de decimales («21,000» en un importe), contadas sobre lo tecleado. Un separador final sin cifras se ignora («5,», «21.»); «,5» y «.5» valen 0,5. Vacío → `null` (campo
  * sin cargar). Notación científica, símbolos, espacios y texto son error de formato; nada se borra en silencio ni se redondea.
  *
@@ -182,7 +192,7 @@ export function interpretarNumeroTecleado(texto: string, contexto: ContextoNumer
     }
     ({ entero, decimal } = separado);
   }
-  if (decimal.length > contexto.decimales) return rechazar("decimales", mensajeDeDecimales(contexto, contexto.decimales < DECIMALES_QUE_VUELVEN_AMBIGUO_EL_PUNTO ? pistaDeMiles : null));
+  if (decimal.length > contexto.decimales) return rechazar("decimales", mensajeDeDecimales(contexto, pistaDeMiles));
   const n = Number(`${negativo ? "-" : ""}${entero || "0"}${decimal ? `.${decimal}` : ""}`);
   if (!Number.isFinite(n)) return rechazar("formato", MENSAJE_NUMERO_INVALIDO);
   return aceptar(n === 0 ? 0 : n); // nunca -0
