@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 119,
-  "entradas": 21,
+  "total": 118,
+  "entradas": 20,
   "porTipo": {
-    "dark:": 119
+    "dark:": 118
   },
   "cuentas": {
     "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
@@ -48,9 +48,6 @@
     },
     "src/app/(app)/catalogo/recetas/[productoId]/receta-de-la-sucursal.tsx": {
       "dark:": 4
-    },
-    "src/app/(app)/catalogo/unidades/page.tsx": {
-      "dark:": 1
     },
     "src/components/agregar-colapsable.tsx": {
       "dark:": 1

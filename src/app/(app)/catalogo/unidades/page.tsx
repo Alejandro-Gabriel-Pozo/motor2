@@ -10,16 +10,19 @@ import {
   listarUnidadesParaPanel,
   detectarInsumosConUnidadMezclada,
 } from "@/server/actions/catalogo/unidades";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
 
 export default async function UnidadesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "unidades", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const [unidades, mezclados] = await Promise.all([listarUnidadesParaPanel(), detectarInsumosConUnidadMezclada()]);
 
@@ -29,7 +32,7 @@ export default async function UnidadesPage() {
 
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-neutral-500">
+          <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Nombre</th>
             <th>Magnitud</th>
             <th>Decimales</th>
@@ -53,10 +56,12 @@ export default async function UnidadesPage() {
                   className="space-y-1"
                 >
                   <div className="flex items-center gap-1">
-                    <input name="decimales" type="number" required aria-label={`Decimales de ${u.nombre}`} min={0} max={6} defaultValue={u.decimales} className="w-16 rounded border px-2 py-1" />
-                    <button type="submit" className="text-sm underline">
+                    <div className="w-20">
+                      <Campo name="decimales" type="number" required aria-label={`Decimales de ${u.nombre}`} min={0} max={6} defaultValue={u.decimales} />
+                    </div>
+                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                       Guardar
-                    </button>
+                    </BotonDeServidor>
                   </div>
                 </FormConResultado>
               </td>
@@ -68,10 +73,10 @@ export default async function UnidadesPage() {
                     return actualizarActivaUnidad(u.id, !u.activa);
                   }}
                 >
-                  <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                  <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                     <IconoDeAccion id="activar" />
                     {u.activa ? "Desactivar" : "Activar"}
-                  </button>
+                  </BotonDeServidor>
                 </FormConResultado>
               </td>
             </tr>
@@ -90,19 +95,17 @@ export default async function UnidadesPage() {
         className="flex max-w-md flex-col gap-2"
       >
         <h2 className="font-medium">Nueva unidad</h2>
-        <input name="nombre" placeholder="nombre (ej. kg)" required className="rounded border px-3 py-2" />
-        <select name="magnitud" aria-label="Magnitud" required className="rounded border px-3 py-2">
+        <Campo aria-label="Nombre de la unidad" name="nombre" placeholder="nombre (ej. kg)" required />
+        <Selector etiqueta="Magnitud" etiquetaOculta name="magnitud" required>
           <option value="PESO">Peso</option>
           <option value="VOLUMEN">Volumen</option>
           <option value="CANTIDAD">Cantidad</option>
-        </select>
-        <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-          Crear
-        </button>
+        </Selector>
+        <BotonDeServidor type="submit">Crear</BotonDeServidor>
       </FormConResultado>
 
       {mezclados.ok && mezclados.datos.length > 0 && (
-        <div className="rounded border border-amber-400 bg-amber-50 p-3 text-sm dark:bg-amber-950">
+        <div className="rounded border border-aviso bg-aviso-tinte p-3 text-sm">
           <h2 className="mb-2 font-medium">Insumos con unidad de stock mezclada</h2>
           <ul className="list-disc pl-5">
             {mezclados.datos.map((m) => (
