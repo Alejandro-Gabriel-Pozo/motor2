@@ -11,7 +11,13 @@ import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
 import { EnlaceInterno } from "@/components/enlace-interno";
+import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
+import { Casilla } from "@/ui/primitivas/casilla";
 import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
+import { Selector } from "@/ui/primitivas/selector";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import { darDeAltaProducto, actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
@@ -208,18 +214,20 @@ export function ProductoForm({
         </div>
       )}
 
-      {!editando && <input name="codigo" placeholder="Código (opcional, se autogenera)" aria-label="Código (opcional, se autogenera)" className="rounded border px-3 py-2" />}
-      <input name="nombre" placeholder="Nombre" aria-label="Nombre" defaultValue={productoExistente?.nombre} required className="rounded border px-3 py-2" />
+      {!editando && <Campo name="codigo" placeholder="Código (opcional, se autogenera)" aria-label="Código (opcional, se autogenera)" />}
+      <Campo name="nombre" placeholder="Nombre" aria-label="Nombre" defaultValue={productoExistente?.nombre} required />
 
       <div className="flex items-center gap-2">
-        <select aria-label="Categoría" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="flex-1 rounded border px-3 py-2">
-          <option value="">Sin categoría</option>
-          {categorias.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre}
-            </option>
-          ))}
-        </select>
+        <div className="flex-1">
+          <Selector etiqueta="Categoría" etiquetaOculta value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
+            <option value="">Sin categoría</option>
+            {categorias.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </Selector>
+        </div>
         {puedeCrear.categoria && (
           <QuickCrear
             triggerLabel="+ Nueva categoría"
@@ -237,14 +245,16 @@ export function ProductoForm({
       {tipo === "MP" && (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <select aria-label="Insumo" value={insumoId} onChange={(e) => setInsumoId(e.target.value)} className="flex-1 rounded border px-3 py-2">
-              <option value="">Sin insumo</option>
-              {insumos.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.nombre}
-                </option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <Selector etiqueta="Insumo" etiquetaOculta value={insumoId} onChange={(e) => setInsumoId(e.target.value)}>
+                <option value="">Sin insumo</option>
+                {insumos.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.nombre}
+                  </option>
+                ))}
+              </Selector>
+            </div>
             {puedeCrear.insumo && (
               <QuickCrear
                 triggerLabel="+ Nuevo insumo"
@@ -275,14 +285,16 @@ export function ProductoForm({
       <div className="flex flex-col gap-1">
         <div className="flex gap-2">
           {unidadDeStockEditable ? (
-            <select aria-label="Unidad de stock" value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required className="flex-1 rounded border px-3 py-2">
-              <option value="">Unidad de stock</option>
-              {unidades.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {etiquetaDeUnidad(u)}
-                </option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <Selector etiqueta="Unidad de stock" etiquetaOculta value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required>
+                <option value="">Unidad de stock</option>
+                {unidades.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {etiquetaDeUnidad(u)}
+                  </option>
+                ))}
+              </Selector>
+            </div>
           ) : (
             <ValorSoloLectura campo="unidadStockId" etiqueta="Unidad de stock">
               {nombreDeUnidad(unidadStockId) ?? "—"}
@@ -290,14 +302,16 @@ export function ProductoForm({
           )}
           {tipo === "MP" &&
             (puedeEditarCamposSensibles ? (
-              <select aria-label="Unidad de compra" name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""} className="flex-1 rounded border px-3 py-2">
-                <option value="">Unidad de compra (default)</option>
-                {unidades.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {etiquetaDeUnidad(u)}
-                  </option>
-                ))}
-              </select>
+              <div className="flex-1">
+                <Selector etiqueta="Unidad de compra" etiquetaOculta name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""}>
+                  <option value="">Unidad de compra (default)</option>
+                  {unidades.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {etiquetaDeUnidad(u)}
+                    </option>
+                  ))}
+                </Selector>
+              </div>
             ) : (
               <ValorSoloLectura campo="unidadCompraId" etiqueta="Unidad de compra">
                 {nombreDeUnidad(productoExistente?.unidadCompraId) ?? "Sin unidad de compra"}
@@ -425,16 +439,12 @@ export function ProductoForm({
       )}
 
       {tipo === "MP" && (
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="seProduce" defaultChecked={productoExistente?.seProduce} /> Se produce (tiene receta propia, se fabrica por lote)
-        </label>
+        <Casilla name="seProduce" defaultChecked={productoExistente?.seProduce} etiqueta="Se produce (tiene receta propia, se fabrica por lote)" />
       )}
 
       {!editando && (
         <div className="flex flex-col gap-1">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={activoEnTodas && !naceSinPoderVenderse} disabled={naceSinPoderVenderse} onChange={(e) => setActivoEnTodas(e.target.checked)} /> Activo en todas las sucursales
-          </label>
+          <Casilla checked={activoEnTodas && !naceSinPoderVenderse} disabled={naceSinPoderVenderse} onChange={(e) => setActivoEnTodas(e.target.checked)} etiqueta="Activo en todas las sucursales" />
           {naceSinPoderVenderse ? (
             <AvisoAltaSinPrecio />
           ) : (
@@ -449,9 +459,7 @@ export function ProductoForm({
 
       {puedeGestionarConsignacion ? (
         <div className="flex flex-col gap-1">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={esConsignacion} onChange={(e) => setEsConsignacion(e.target.checked)} /> Es consignación
-          </label>
+          <Casilla checked={esConsignacion} onChange={(e) => setEsConsignacion(e.target.checked)} etiqueta="Es consignación" />
           <AyudaCampo>
             El producto queda en tu depósito pero sigue siendo propiedad del proveedor hasta que se vende — recién ahí se liquida (se le paga por
             lo vendido, no por lo entregado).
@@ -469,19 +477,16 @@ export function ProductoForm({
       {puedeGestionarConsignacion && esConsignacion && (
         <>
           <div className="flex items-center gap-2">
-            <select
-              aria-label="Proveedor de consignación"
-              value={proveedorConsignacionId}
-              onChange={(e) => setProveedorConsignacionId(e.target.value)}
-              className="flex-1 rounded border px-3 py-2"
-            >
-              <option value="">Proveedor de consignación</option>
-              {proveedores.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}
-                </option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <Selector etiqueta="Proveedor de consignación" etiquetaOculta value={proveedorConsignacionId} onChange={(e) => setProveedorConsignacionId(e.target.value)}>
+                <option value="">Proveedor de consignación</option>
+                {proveedores.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </Selector>
+            </div>
             {puedeCrear.proveedor && (
               <QuickCrear
                 triggerLabel="+ Nuevo proveedor"
@@ -510,9 +515,13 @@ export function ProductoForm({
         </>
       )}
 
-      <textarea name="observaciones" placeholder="Observaciones" aria-label="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} className="rounded border px-3 py-2" />
+      <AreaDeTexto etiqueta="Observaciones" etiquetaOculta name="observaciones" placeholder="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} />
 
-      {mensaje && <p className={mensaje.startsWith("Producto") ? "text-sm text-green-700" : "text-sm text-red-600"}>{mensaje}</p>}
+      {mensaje && (
+        <Aviso variante={mensaje.startsWith("Producto") ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
+      )}
 
       {sincronizable && productoExistente && (
         <SincronizarPrecioGrupo sincronizable={sincronizable} aplicar={(hermanos, precio) =>
@@ -524,9 +533,9 @@ export function ProductoForm({
           } alTerminar={() => irALaFicha(productoExistente.id)} />
       )}
 
-      <button type="submit" disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+      <Boton type="submit" disabled={pending}>
         {pending ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}
-      </button>
+      </Boton>
     </form>
   );
 }

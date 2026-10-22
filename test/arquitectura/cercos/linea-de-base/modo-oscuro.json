@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 18,
-  "entradas": 6,
+  "total": 10,
+  "entradas": 4,
   "porTipo": {
-    "dark:": 18
+    "dark:": 10
   },
   "cuentas": {
     "src/app/(app)/catalogo/productos/page.tsx": {
@@ -12,12 +12,6 @@
     },
     "src/components/agregar-colapsable.tsx": {
       "dark:": 1
-    },
-    "src/components/catalogo/asistente-hermanar.tsx": {
-      "dark:": 2
-    },
-    "src/components/catalogo/campos-sensibles-solo-lectura.tsx": {
-      "dark:": 6
     },
     "src/components/catalogo/resumen-de-opciones.tsx": {
       "dark:": 4

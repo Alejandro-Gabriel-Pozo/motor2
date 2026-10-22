@@ -6,6 +6,9 @@ import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { AvisoPresentacionesSinPermiso } from "@/components/catalogo/campos-sensibles-solo-lectura";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Selector } from "@/ui/primitivas/selector";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import {
   agregarPresentacionAlternativa,
@@ -93,7 +96,7 @@ export function GestionPresentaciones({
       {presentaciones.length > 0 && (
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b text-left text-neutral-500">
+            <tr className="border-b text-left text-tinta-tenue">
               <th className="py-1">Unidad de compra</th>
               <th>Factor de conversión</th>
               <th>Activa</th>
@@ -107,10 +110,10 @@ export function GestionPresentaciones({
                 <td>{p.factorConversion}</td>
                 <td>{p.activa ? "Sí" : "No"}</td>
                 <td>
-                  <button type="button" disabled={pending} className="inline-flex items-center gap-1 underline" onClick={() => toggle(p)}>
+                  <Boton variante="enlace" tamano="en-fila" disabled={pending} onClick={() => toggle(p)}>
                     <IconoDeAccion id="activar" />
                     {p.activa ? "Desactivar" : "Activar"}
-                  </button>
+                  </Boton>
                 </td>
               </tr>
             ))}
@@ -120,18 +123,17 @@ export function GestionPresentaciones({
 
       {puedeEditarCamposSensibles ? (
         <div className="flex items-end gap-2">
-          <label className="flex flex-1 flex-col gap-1 text-xs text-neutral-500">
-            Unidad de compra
-            <select value={unidadCompraId} onChange={(e) => setUnidadCompraId(e.target.value)} className="rounded border px-2 py-1.5 text-sm">
+          <div className="flex-1">
+            <Selector etiqueta="Unidad de compra" tamano="compacto" value={unidadCompraId} onChange={(e) => setUnidadCompraId(e.target.value)}>
               <option value="">Elegí una unidad</option>
               {unidades.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nombre}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="flex w-40 flex-col gap-1 text-xs text-neutral-500">
+            </Selector>
+          </div>
+          <label className="flex w-40 flex-col gap-1 text-xs text-tinta-tenue">
             Factor de conversión
             <CampoNumero
               value={factorConversion}
@@ -142,20 +144,19 @@ export function GestionPresentaciones({
               decimales={unidadStockDecimales}
             />
           </label>
-          <button
-            type="button"
-            disabled={pending || !unidadCompraId || !factorConversion}
-            className="rounded border px-3 py-1.5 text-sm disabled:opacity-50"
-            onClick={agregar}
-          >
+          <Boton variante="secundario" tamano="compacto" disabled={pending || !unidadCompraId || !factorConversion} onClick={agregar}>
             Agregar
-          </button>
+          </Boton>
         </div>
       ) : (
         <AvisoPresentacionesSinPermiso />
       )}
 
-      {resultado && <p className={`text-xs ${resultado.ok ? "text-green-700" : "text-red-600"}`}>{resultado.texto}</p>}
+      {resultado && (
+        <Aviso variante={resultado.ok ? "exito" : "error"} forma="en-linea">
+          {resultado.texto}
+        </Aviso>
+      )}
     </div>
   );
 }
