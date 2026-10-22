@@ -207,7 +207,6 @@ function guardarMedicion(medicion: Medicion): void {
 
 const marca = () => `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
 
-const MENU_CARTA: DestinoDelMenu = { href: "/carta", panel: "sucursal", grupo: "Carta" };
 
 /** Una base ya armada para las tareas c y d: un producto «Por opción» con un grupo «Tamaño» de 3 opciones, cada una con su precio final. */
 async function sembrarBase(sucursalId: string, m: string) {
@@ -366,17 +365,13 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
     try {
       await m.ir(`/catalogo/productos/${base.productoId}`, "abrir la ficha del producto");
       await m.ver("la ficha es la del producto", () => expect(page.getByRole("heading", { name: base.nombre, level: 1 })).toBeVisible());
-      await m.irPorElMenu(MENU_CARTA);
-      await m.ver("se abre la carta", () => expect(page.getByRole("heading", { name: "Carta", level: 1 })).toBeVisible());
-      await m.clic(page.getByRole("button", { name: "Visibilidad", exact: true }), "tocar «Visibilidad»");
-      await m.ver("se abre «Visibilidad»", () => expect(page).toHaveURL(/nivel=visibilidad/));
-      const fuera = page.locator("[data-fuera-de-carta]");
-      await m.clic(fuera.locator("> summary"), "abrir «Fuera de carta»");
-      await m.llenar(fuera.getByRole("searchbox", { name: "Buscar en «Fuera de carta»" }), base.nombre, "buscar el producto en «Fuera de carta»");
-      const producto = fuera.locator(`[data-fuera-de-carta-producto="${base.nombre}"]`);
-      await m.clic(producto.getByRole("button", { name: `${base.nombre}: Agregar a la carta` }), "tocar «Agregar a la carta»");
-      await m.clic(producto.getByRole("button", { name: seccion.nombre, exact: true }), "elegir la sección de la carta");
-      await m.ver("el aviso dice que ya sale en la carta", () => expect(page.locator("[data-aviso-carta]").locator("> span")).toHaveText(`«${base.nombre}» ya sale en la carta, al final de «${seccion.nombre}».`));
+      // Desde la Fase 6 (6.17c) la carta es un paso del espacio del producto: «En la carta» está en la tira de pasos y su ficha de carta del producto (la de Secciones) se guarda sin salir de él.
+      await m.clic(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^En la carta/ }), "tocar «En la carta» (el paso 4)");
+      await m.ver("se abre el paso «En la carta»", () => expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible());
+      const ficha = page.locator(`[data-contenido-carta="${base.nombre}"]`);
+      await m.elegir(ficha.getByLabel(/^Sección de carta/), seccion.nombre, "elegir la sección de la carta");
+      await m.clic(ficha.getByRole("button", { name: `Guardar contenido de «${base.nombre}»` }), "tocar «Guardar contenido»");
+      await m.ver("el aviso dice que se guardó", () => expect(ficha.getByRole("status").filter({ hasText: /guardad/i }).first()).toBeVisible());
 
       const medicion = m.resultado(true);
       const contenido = await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: base.productoId } } });

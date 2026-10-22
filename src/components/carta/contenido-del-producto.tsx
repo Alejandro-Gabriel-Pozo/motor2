@@ -59,6 +59,7 @@ export function ContenidoDelProducto({
   sucursalId,
   mostrarNombreArriba,
   abierto = false,
+  abrirEnElProducto = false,
 }: {
   producto: ProductoCartaAdmin;
   ubicacion: UbicacionEnCarta;
@@ -74,6 +75,8 @@ export function ContenidoDelProducto({
   mostrarNombreArriba?: boolean;
   /** La ficha llega desplegada (el paso «En la carta» del producto muestra una sola y no tiene sentido plegarla). */
   abierto?: boolean;
+  /** «Abrir en el producto»: un enlace al paso «En la carta» de ESTE producto (Parametrización › Secciones lo ofrece; el paso mismo no). Va por `EnlaceInterno`: solo se ve el enlace si el rol puede abrir ese paso. */
+  abrirEnElProducto?: boolean;
 }) {
   const productoId = p.id;
   // CARTA-MANT: lo que se pierde al «Quitar de la carta» (si hay algo, se pide confirmarlo).
@@ -96,6 +99,13 @@ export function ContenidoDelProducto({
           {p.generoCarta ? ` · ${p.generoCarta}` : ""}
           {p.descuento !== null ? ` · −${p.descuento} %${precioLocalActivo ? "" : " (no rige: precio local apagado)"}` : ""}
         </summary>
+        {abrirEnElProducto && (
+          <p className="mt-2 text-sm">
+            <EnlaceInterno href={`/catalogo/productos/${encodeURIComponent(productoId)}/en-la-carta`} className="underline">
+              Abrir en el producto
+            </EnlaceInterno>
+          </p>
+        )}
         {p.agrupadoEn && (
           <p className="mt-2 text-sm text-tinta-suave">
             Sale en la carta dentro de «{p.agrupadoEn}» (

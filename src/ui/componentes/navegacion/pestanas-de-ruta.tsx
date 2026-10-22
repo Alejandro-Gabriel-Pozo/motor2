@@ -11,9 +11,6 @@ import { Insignia, type TonoDeInsignia } from "@/ui/primitivas/insignia";
  * - `insignia` suma una etiqueta corta al lado del texto («Falta», «Listo»): el texto lo dice, el tono lo refuerza.
  * - En celular la tira se desplaza hacia el costado (375 px no alcanzan para cuatro pasos); cada pestaña mide 44 px de alto como mínimo.
  *
- * Los enlaces NO se precargan (`prefetch={false}`): cada pestaña es una pantalla que se arma en el servidor con su propia guarda de permiso, y precargar las de todos los pasos en cada vista pedía varias
- * pantallas que quizá no se abran (y una que todavía no existe dejaba la red ocupada decenas de segundos, lo que cuelga a quien espera `networkidle`). Se abre al tocarla, como cualquier otro enlace.
- *
  * Quién puede abrir cada pestaña lo decide quien la usa (en el servidor, con el permiso de cada pantalla): este componente solo dibuja lo que recibe. Solo tokens del sistema visual (src/app/globals.css) y sin
  * modo oscuro (DEC-04).
  */
@@ -54,7 +51,7 @@ export function PestanasDeRuta({ etiqueta, pestanas }: PropsDePestanasDeRuta) {
                 {p.insignia && <Insignia tono={p.insignia.tono}>{p.insignia.texto}</Insignia>}
               </span>
             ) : (
-              <Enlace variante="sin-estilo" href={p.href} prefetch={false} aria-current={p.actual ? "page" : undefined} className={clasesDeLaPestana(p)}>
+              <Enlace variante="sin-estilo" href={p.href} aria-current={p.actual ? "page" : undefined} className={clasesDeLaPestana(p)}>
                 {p.texto}
                 {p.insignia && <Insignia tono={p.insignia.tono}>{p.insignia.texto}</Insignia>}
               </Enlace>

@@ -3,6 +3,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { expectObjetivosTactiles, expectSinDesborde } from "./fixtures/movil";
 import { sembrarGrupo } from "./fixtures/opciones";
+import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
 
 /**
  * El ESPACIO DEL PRODUCTO (Fase 6, DEC-12), paso 2 «Opciones y precio»: la ventana «+ Nuevo grupo» (6.15c), que crea un grupo de la biblioteca, sus opciones y lo que el producto admite de ellas, todo en
@@ -10,6 +11,8 @@ import { sembrarGrupo } from "./fixtures/opciones";
  *  - un grupo de precio final con 3 opciones y uno incluido, desde el paso 2, con la lectura del precio, sin desborde, objetivos táctiles (a 375) y axe con la ventana abierta;
  *  - DOBLE CLIC en «Crear grupo»: un solo envío al servidor y UN grupo en la base;
  *  - quién ve el botón: solo quien además de las opciones del producto puede Editar `opciones_definir`; quien no, ve la frase «Los grupos nuevos los crea quien arma las opciones».
+ *
+ * El paso 4, «En la carta» (6.17c): publicar el producto en la carta de la sucursal sin salir del espacio; quién lo abre y qué ve (las celdas del rol «admin» se ajustan y se devuelven, como en `carta-solo-ver.spec.ts`).
  * Lo sembrado de opciones no se borra (ver `fixtures/opciones.ts`): nombres con marca propia.
  */
 
@@ -149,5 +152,152 @@ test("«+ Nuevo grupo» es de quien además puede Editar `opciones_definir`: sin
     await expect(frase).toHaveCount(0);
   } finally {
     await prisma.permisoRol.update({ where: clave, data: antes });
+  }
+});
+
+/** Un producto de venta disponible acá, con una sección de carta propia y SIN contenido de carta (para publicarlo). */
+async function productoParaLaCarta(m: string, sucursalId: string, conContenido = false) {
+  const producto = await productoDirecto(m, sucursalId);
+  const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Sección espacio ${m}`, orden: 901 } });
+  if (conContenido) await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: producto.id, visibleEnCarta: true, seccionCartaId: seccion.id, descripcion: `Contenido espacio ${m}`, tags: ["Sin TACC"], orden: 1 } });
+  return {
+    producto,
+    seccion,
+    limpiar: async () => {
+      await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: producto.id } });
+      await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
+      await prisma.producto.deleteMany({ where: { id: producto.id } });
+    },
+  };
+}
+
+const NOMBRE_DEL_PASO = /^En la carta/;
+
+for (const { ancho, alto } of [
+  { ancho: 375, alto: 800 },
+  { ancho: 1280, alto: 800 },
+]) {
+  test(`paso 4 «En la carta» a ${ancho} px: publicar el producto en la carta sin salir del espacio`, async ({ paginaAutenticada: page, sucursalId }) => {
+    await page.setViewportSize({ width: ancho, height: alto });
+    const m = marca();
+    const carta = await productoParaLaCarta(m, sucursalId);
+    try {
+      // Desde la portada: el paso «En la carta» está en la tira, con su pendiente («Todavía no está en la carta»).
+      await page.goto(`/catalogo/productos/${carta.producto.id}`);
+      const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
+      await expect(pasos.getByRole("link", { name: NOMBRE_DEL_PASO })).toContainText("Pendiente");
+      await pasos.getByRole("link", { name: NOMBRE_DEL_PASO }).click();
+      await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${carta.producto.id}/en-la-carta$`));
+      await expect(page.getByRole("heading", { level: 1 })).toContainText(carta.producto.nombre);
+      await expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible();
+      await expect(pasos.getByRole("link", { name: NOMBRE_DEL_PASO })).toHaveAttribute("aria-current", "page");
+
+      // La ficha de carta del producto viene abierta: se elige la sección y se guarda.
+      const ficha = page.locator(`[data-contenido-carta="${carta.producto.nombre}"]`);
+      await expect(ficha.getByLabel(/^Sección de carta/)).toBeVisible();
+      await expectSinDesborde(page, `${ancho} px: el paso «En la carta»`);
+      expect((await new AxeBuilder({ page }).analyze()).violations, `${ancho} px: el paso «En la carta»`).toEqual([]);
+      await ficha.getByLabel(/^Sección de carta/).selectOption({ label: carta.seccion.nombre });
+      await ficha.getByRole("button", { name: `Guardar contenido de «${carta.producto.nombre}»` }).click();
+      await expect(ficha.getByRole("status").filter({ hasText: /guardad/i }).first()).toBeVisible();
+
+      const contenido = await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: carta.producto.id } } });
+      expect({ visibleEnCarta: contenido.visibleEnCarta, seccionCartaId: contenido.seccionCartaId }).toEqual({ visibleEnCarta: true, seccionCartaId: carta.seccion.id });
+      // Sigue en el paso, y la tira ya no lo marca como pendiente.
+      await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${carta.producto.id}/en-la-carta$`));
+      await expect(pasos.getByRole("link", { name: NOMBRE_DEL_PASO })).not.toContainText("Pendiente");
+    } finally {
+      await carta.limpiar();
+    }
+  });
+}
+
+test("paso 4 «En la carta»: quien solo VE la carta lo abre en solo lectura, sin campos ni botones; con el Editar de vuelta están los formularios", async ({ paginaAutenticada: page, sucursalId }) => {
+  const m = marca();
+  const carta = await productoParaLaCarta(m, sucursalId, true);
+  const admin = await ajustarCeldasDelAdmin({ carta_ver: { puedeVer: true, puedeEditar: false }, carta_contenido_producto: { puedeVer: true, puedeEditar: false }, carta_producto_descuento: { puedeVer: true, puedeEditar: false } });
+  try {
+    await page.goto(`/catalogo/productos/${carta.producto.id}/en-la-carta`);
+    const main = page.locator("main");
+    await expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible();
+    await expect(main.locator("[data-aviso-solo-lectura]")).toHaveText("Solo lectura: tu rol no tiene permiso para editar la carta.");
+    const ficha = main.locator(`[data-contenido-carta="${carta.producto.nombre}"]`);
+    await expect(ficha.locator("[data-solo-lectura]").first()).toContainText(`Contenido espacio ${m}`);
+    await expect(ficha.locator("[data-solo-lectura]").first()).toContainText("Sin TACC");
+    await expect(main.locator("input, textarea, select"), "no tenía que haber ningún campo editable").toHaveCount(0);
+    await expect(main.getByRole("button", { name: /Guardar|Quitar/ }), "no tenía que haber botones de edición").toHaveCount(0);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 4 en solo lectura").toEqual([]);
+
+    // Contraespejo: con el Editar de las claves de la carta, los formularios están.
+    await admin.cambiar({ carta_contenido_producto: { puedeVer: true, puedeEditar: true }, carta_producto_descuento: { puedeVer: true, puedeEditar: true } });
+    await page.goto(`/catalogo/productos/${carta.producto.id}/en-la-carta`);
+    await expect(ficha.getByRole("button", { name: `Guardar contenido de «${carta.producto.nombre}»` })).toBeVisible();
+    await expect(main.locator("[data-aviso-solo-lectura]")).toHaveCount(0);
+  } finally {
+    await admin.restaurar();
+    await carta.limpiar();
+  }
+});
+
+test("paso 4 «En la carta»: sin el Ver de la carta no se abre por URL y la tira lo muestra sin enlace", async ({ paginaAutenticada: page, sucursalId }) => {
+  const m = marca();
+  const carta = await productoParaLaCarta(m, sucursalId);
+  const admin = await ajustarCeldasDelAdmin({ carta_ver: { puedeVer: false, puedeEditar: false } });
+  try {
+    await page.goto(`/catalogo/productos/${carta.producto.id}/en-la-carta`);
+    await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
+    await expect(page.locator(`[data-contenido-carta]`), "no tenía que llegar a dibujarse la ficha de carta").toHaveCount(0);
+    // En la portada el paso se ve, SIN enlace (ni un camino a «No tenés permiso»), y sin su pendiente (no se leyó la carta).
+    await page.goto(`/catalogo/productos/${carta.producto.id}`);
+    const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
+    await expect(pasos).toContainText("En la carta");
+    await expect(pasos.getByRole("link", { name: NOMBRE_DEL_PASO })).toHaveCount(0);
+    await expect(pasos).not.toContainText("Pendiente");
+  } finally {
+    await admin.restaurar();
+    await carta.limpiar();
+  }
+});
+
+test("paso 4 «En la carta»: quien ve la carta pero NO el catálogo lo abre sin el código, el tipo ni cómo se vende, y sin enlaces al Resumen ni a Productos", async ({ paginaAutenticada: page, sucursalId }) => {
+  const m = marca();
+  const carta = await productoParaLaCarta(m, sucursalId);
+  const admin = await ajustarCeldasDelAdmin({ producto_ver_catalogo: { puedeVer: false, puedeEditar: false } });
+  try {
+    await page.goto(`/catalogo/productos/${carta.producto.id}/en-la-carta`);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(carta.producto.nombre);
+    await expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible();
+    const main = page.locator("main");
+    await expect(main).not.toContainText(`E2E-EP-${m}`);
+    await expect(main).not.toContainText("Producto de venta (PV)");
+    await expect(main).not.toContainText("Directo");
+    await expect(main.getByRole("link", { name: "← Productos" })).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: "Resumen" })).toHaveCount(0);
+    // Y la pantalla de la ficha (que no puede ver) sigue negada por su propia guarda.
+    await page.goto(`/catalogo/productos/${carta.producto.id}`);
+    await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
+  } finally {
+    await admin.restaurar();
+    await carta.limpiar();
+  }
+});
+
+test("paso 4 «En la carta»: un id que no existe da 404; una materia prima y un producto que no se vende acá dicen por qué no tienen ficha de carta", async ({ paginaAutenticada: page }) => {
+  const m = marca();
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const mp = await prisma.producto.create({ data: { codigo: `E2E-EP-MP-${m}`, nombre: `E2E Espacio Harina ${m}`, tipo: "MP", unidadStockId: unidad.id } });
+  const pvSinDisponibilidad = await prisma.producto.create({ data: { codigo: `E2E-EP-ND-${m}`, nombre: `E2E Espacio No disponible ${m}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 1500 } });
+  try {
+    const respuesta = await page.goto("/catalogo/productos/no-existe-este-id/en-la-carta");
+    expect(respuesta?.status()).toBe(404);
+    await page.goto(`/catalogo/productos/${mp.id}/en-la-carta`);
+    await expect(page.getByText(`«${mp.nombre}» no es un producto de venta: solo un producto de venta sale en la carta.`)).toBeVisible();
+    await expect(page.locator("[data-contenido-carta]")).toHaveCount(0);
+    await page.goto(`/catalogo/productos/${pvSinDisponibilidad.id}/en-la-carta`);
+    await expect(page.getByText(/no está disponible en «/)).toBeVisible();
+    await expect(page.locator("[data-contenido-carta]")).toHaveCount(0);
+  } finally {
+    await prisma.producto.deleteMany({ where: { id: { in: [mp.id, pvSinDisponibilidad.id] } } });
   }
 });
