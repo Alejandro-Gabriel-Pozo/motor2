@@ -17,7 +17,7 @@ test("Enter en Nombre no crea la sección; el botón sí", async ({ paginaAutent
     // CARTA-MANT: los formularios de las secciones y la ficha de cada producto viven en Parametrización › Secciones.
     await page.goto("/carta/parametrizacion/secciones");
     const nuevaSeccion = page.locator("form", { has: page.getByRole("heading", { name: "Nueva sección de carta" }) });
-    const campoNombre = nuevaSeccion.getByLabel("Nombre", { exact: true });
+    const campoNombre = nuevaSeccion.getByRole("textbox", { name: "Nombre", exact: true });
     await campoNombre.fill(nombre);
     await campoNombre.press("Enter");
 

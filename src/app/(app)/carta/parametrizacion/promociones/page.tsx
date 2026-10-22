@@ -16,15 +16,17 @@ import {
 import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo, guardarVigenciaPromoCarta } from "@/server/actions/carta/combos";
 import { precioMinimoPromo } from "@/core/pos/public";
 import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { AgregarEntradaDeLugar } from "../../agregar-entrada-de-lugar";
 import { lugaresDelFormulario } from "./lugares-del-formulario";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
-import { CLASE_BOTON, CLASE_ENLACE_DE_ACCION, CLASE_INPUT, CamposCupos, CamposLugares, CamposPromo, CamposVigencia, esFijo, textoDeVigencia } from "../formularios";
+import { CamposCupos, CamposLugares, CamposPromo, CamposVigencia, esFijo, textoDeVigencia } from "../formularios";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Campo } from "@/ui/primitivas/campo";
 
 /** Ayudantes puros de los closures "use server" de esta página (locales a propósito: `use-server-solo-donde-corresponde` solo los acepta definidos en el mismo archivo). */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
@@ -42,10 +44,10 @@ export default async function PromocionesDeCartaPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   const [nivelPromoDefinir, nivelPromoActivar, nivelPromoPrecio] = await Promise.all([
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_promo_definir", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_promo_activar", ctx.db),
@@ -74,7 +76,7 @@ export default async function PromocionesDeCartaPage() {
         <h2 id="titulo-promos" className="text-lg font-medium">
           Promos
         </h2>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Una promo se define una sola vez para toda la empresa. Cada sucursal decide si la prende (apagada no sale en la carta ni en el POS) y, si quiere, le pone su propio precio.
         </p>
         <ul className="flex flex-col gap-2">
@@ -114,9 +116,9 @@ export default async function PromocionesDeCartaPage() {
                     >
                       <CamposPromo secciones={datos.secciones} valores={pr} />
                       <div className="sm:col-span-2">
-                        <button type="submit" className={CLASE_BOTON}>
+                        <BotonDeServidor type="submit" tamano="compacto">
                           Guardar promo
-                        </button>
+                        </BotonDeServidor>
                       </div>
                     </FormConResultado>
                   ) : (
@@ -141,13 +143,10 @@ export default async function PromocionesDeCartaPage() {
                       }}
                       className="mt-3 flex flex-wrap items-end gap-2"
                     >
-                      <label className="flex flex-col gap-1 text-sm">
-                        Precio en esta sucursal (vacío = el de la empresa)
-                        <input name="precioLocal" type="number" min={0} step="0.01" defaultValue={pr.precioLocal ?? ""} className={CLASE_INPUT} />
-                      </label>
-                      <button type="submit" className={CLASE_BOTON}>
+                      <Campo etiqueta="Precio en esta sucursal (vacío = el de la empresa)" name="precioLocal" type="number" min={0} step="0.01" defaultValue={pr.precioLocal ?? ""} />
+                      <BotonDeServidor type="submit" tamano="compacto">
                         Guardar precio de esta sucursal
-                      </button>
+                      </BotonDeServidor>
                     </FormConResultado>
                   ) : (
                     <DatosSoloLectura className="mt-3">
@@ -173,7 +172,7 @@ export default async function PromocionesDeCartaPage() {
                       }}
                       className="mt-1 flex flex-col gap-2"
                     >
-                      <p className="text-sm text-neutral-500">Tildá de qué secciones se arma esta promo, con cuántas unidades mínimas y máximas de cada una (D1).</p>
+                      <p className="text-sm text-tinta-tenue">Tildá de qué secciones se arma esta promo, con cuántas unidades mínimas y máximas de cada una (D1).</p>
                       {/* Paso 13 (opcional, no bloqueante): con los cupos YA guardados, cuánta holgura hay hoy antes de tocar el piso de
                           $0,01 por unidad en el peor caso (D3) — guardarCuposPromoCarta rechaza de una si un cambio lo cruza; esto avisa
                           ANTES de intentarlo, con lo que hay guardado ahora mismo (no recalcula en vivo lo que se está tipeando). */}
@@ -183,7 +182,7 @@ export default async function PromocionesDeCartaPage() {
                           const minimo = precioMinimoPromo([{ cantidad: unidadesEnElPeorCaso }]);
                           const holgura = pr.precio - minimo;
                           return (
-                            <p className="text-xs text-neutral-500" data-aviso-peor-caso={pr.titulo}>
+                            <p className="text-xs text-tinta-tenue" data-aviso-peor-caso={pr.titulo}>
                               Con los cupos de hoy, el peor caso son {unidadesEnElPeorCaso} unidad{unidadesEnElPeorCaso === 1 ? "" : "es"} y el precio mínimo permitido es $
                               {minimo.toLocaleString("es-AR")}
                               {holgura > 0 ? ` — hay $${holgura.toLocaleString("es-AR")} de margen antes de ese piso si subís algún máximo.` : "."}
@@ -193,9 +192,9 @@ export default async function PromocionesDeCartaPage() {
                       <CamposCupos secciones={datos.secciones} guardados={pr.cupos} />
                       <CamposLugares lugares={lugares} />
                       <div>
-                        <button type="submit" className={CLASE_BOTON}>
+                        <BotonDeServidor type="submit" tamano="compacto">
                           Guardar cupos
-                        </button>
+                        </BotonDeServidor>
                       </div>
                     </FormConResultado>
                   ) : pr.cupos.length + lugares.length ? (
@@ -212,7 +211,7 @@ export default async function PromocionesDeCartaPage() {
                       ))}
                     </DatosSoloLectura>
                   ) : (
-                    <p className="mt-1 text-sm text-neutral-500">Sin cupos: esta promo es solo informativa, el POS la ignora.</p>
+                    <p className="mt-1 text-sm text-tinta-tenue">Sin cupos: esta promo es solo informativa, el POS la ignora.</p>
                   )}
 
                   {/* GO-3b (U1): las entradas de cada lugar LISTA (con una sola y mínimo = máximo, viene FIJO). Los platos de un lugar «del día» se cargan en Movimientos → Menú del día. */}
@@ -227,7 +226,7 @@ export default async function PromocionesDeCartaPage() {
                       {l.tipo === "DEL_DIA" ? (
                         // Con el menú del día apagado (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20) no se nombra ni se enlaza su pantalla (no existe).
                         MENU_DEL_DIA_VISIBLE ? (
-                          <p className="text-sm text-neutral-500">
+                          <p className="text-sm text-tinta-tenue">
                             El plato lo carga cada sucursal por día en{" "}
                             <EnlaceInterno href="/movimientos/menu-del-dia" className="underline">
                               Menú del día
@@ -238,7 +237,7 @@ export default async function PromocionesDeCartaPage() {
                       ) : (
                         <>
                           {l.entradas.length === 0 ? (
-                            <p className="text-sm text-neutral-500">Sin entradas todavía: sumá los productos que se pueden elegir acá.</p>
+                            <p className="text-sm text-tinta-tenue">Sin entradas todavía: sumá los productos que se pueden elegir acá.</p>
                           ) : (
                             <ul className="flex flex-col divide-y text-sm">
                               {l.entradas.map((e) => {
@@ -246,7 +245,7 @@ export default async function PromocionesDeCartaPage() {
                                 const activaAhora = e.activa;
                                 return (
                                   <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-1" data-entrada-de-lugar={e.nombre}>
-                                    <span className={e.activa ? "" : "text-neutral-500 line-through"}>{e.nombre}</span>
+                                    <span className={e.activa ? "" : "text-tinta-tenue line-through"}>{e.nombre}</span>
                                     {puedeDefinirPromos && (
                                       <FormConResultado
                                         accion={async () => {
@@ -254,9 +253,9 @@ export default async function PromocionesDeCartaPage() {
                                           return refrescarSiOk(await actualizarActivaEntradaDeCupo({ entradaId, activa: !activaAhora }));
                                         }}
                                       >
-                                        <button type="submit" className={CLASE_ENLACE_DE_ACCION}>
+                                        <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                                           {e.activa ? `Sacar «${e.nombre}»` : `Volver a ofrecer «${e.nombre}»`}
-                                        </button>
+                                        </BotonDeServidor>
                                       </FormConResultado>
                                     )}
                                   </li>
@@ -297,9 +296,9 @@ export default async function PromocionesDeCartaPage() {
                     >
                       <CamposVigencia vigencia={combo.vigencia} />
                       <div>
-                        <button type="submit" className={CLASE_BOTON}>
+                        <BotonDeServidor type="submit" tamano="compacto">
                           Guardar vigencia
-                        </button>
+                        </BotonDeServidor>
                       </div>
                     </FormConResultado>
                   ) : (
@@ -314,9 +313,9 @@ export default async function PromocionesDeCartaPage() {
                     }}
                     className="mt-2"
                   >
-                    <button type="submit" className={CLASE_ENLACE_DE_ACCION}>
+                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                       {pr.prendidaAca ? `Apagar «${pr.titulo}» en esta sucursal` : `Prender «${pr.titulo}» en esta sucursal`}
-                    </button>
+                    </BotonDeServidor>
                   </FormConResultado>
                 )}
                 {puedeDefinirPromos && (
@@ -327,15 +326,15 @@ export default async function PromocionesDeCartaPage() {
                     }}
                     className="mt-2"
                   >
-                    <button type="submit" className={CLASE_ENLACE_DE_ACCION}>
+                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                       {pr.activa ? `Apagar «${pr.titulo}» en toda la empresa` : `Prender «${pr.titulo}» en toda la empresa`}
-                    </button>
+                    </BotonDeServidor>
                   </FormConResultado>
                 )}
               </li>
             );
           })}
-          {!datos.promos.length && <li className="text-sm text-neutral-500">La empresa no tiene promos cargadas.</li>}
+          {!datos.promos.length && <li className="text-sm text-tinta-tenue">La empresa no tiene promos cargadas.</li>}
         </ul>
 
         {!puedeDefinirPromos ? null : seccionesActivas.length > 0 ? (
@@ -351,13 +350,13 @@ export default async function PromocionesDeCartaPage() {
             <h3 className="text-sm font-medium sm:col-span-2">Nueva promo (queda prendida en esta sucursal)</h3>
             <CamposPromo secciones={seccionesActivas} />
             <div className="sm:col-span-2">
-              <button type="submit" className={CLASE_BOTON}>
+              <BotonDeServidor type="submit" tamano="compacto">
                 Crear promo
-              </button>
+              </BotonDeServidor>
             </div>
           </FormConResultado>
         ) : (
-          <p className="text-sm text-neutral-500">Para cargar una promo hace falta al menos una sección de carta activa.</p>
+          <p className="text-sm text-tinta-tenue">Para cargar una promo hace falta al menos una sección de carta activa.</p>
         )}
       </section>
           </div>

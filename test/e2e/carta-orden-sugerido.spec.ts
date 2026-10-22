@@ -36,7 +36,7 @@ test("el orden se autosugiere al crear una sección y al elegir la sección de u
     await page.goto("/carta/parametrizacion/secciones");
     const nuevaSeccion = page.locator("form", { has: page.getByRole("heading", { name: "Nueva sección de carta" }) });
     await expect(nuevaSeccion.getByLabel("Orden")).toHaveValue(String(cantidadSecciones));
-    await nuevaSeccion.getByLabel("Nombre", { exact: true }).fill(nombreSeccionNueva);
+    await nuevaSeccion.getByRole("textbox", { name: "Nombre", exact: true }).fill(nombreSeccionNueva);
     await nuevaSeccion.getByRole("button", { name: "Crear sección" }).click();
     await expect(nuevaSeccion.getByRole("status")).toHaveText(`Sección de carta "${nombreSeccionNueva}" creada.`);
     expect((await prisma.seccionCarta.findFirstOrThrow({ where: { nombre: nombreSeccionNueva } })).orden).toBe(cantidadSecciones);
