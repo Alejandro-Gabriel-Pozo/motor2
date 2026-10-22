@@ -261,6 +261,7 @@
   [campo: «25.000»]
   Pizza bomba = $ 25.000
   [botón: Guardar «Tipos de Pizza»]
+  [botón: + Opción (lector: «+ Opción en Tipos de Pizza»)]
   [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
   No se borra nada: lo que admite de cada opción queda guardado.
   ### Cómo se va a ver en la carta
@@ -344,6 +345,7 @@
   [campo: «25.000»]
   Pizza bomba = $ 25.000
   [botón: Guardar «Tipos de Pizza»]
+  [botón: + Opción (lector: «+ Opción en Tipos de Pizza»)]
   [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
   No se borra nada: lo que admite de cada opción queda guardado.
   ### Cómo se va a ver en la carta

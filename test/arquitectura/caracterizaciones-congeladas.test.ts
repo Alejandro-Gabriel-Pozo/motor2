@@ -634,6 +634,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 6, paso 6.18 (CAMBIA UN TEXTO de administración, no la carta pública; ADITIVO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_cb_e2e local, con el visto del dueño para regenerar solo las secciones de ADMINISTRACIÓN). La pantalla de opciones de Pizzas (a 1280 y a 375 px) suma, antes de «Así se cobra», la sección «Cómo se va a ver en la carta» (la forma que le da la carta pública: las pizzas como platos sueltos con su precio de lista). Son 26 líneas agregadas (13 por ancho) y ninguna borrada; las secciones de la carta pública, la tipografía y el resto de la administración quedan idénticos (lo verifica el diff del golden: solo líneas agregadas dentro de las dos secciones «Opciones de venta del producto «Pizzas»»).",
       },
+      {
+        blob: "1a24a6420e673f56a84dd5a26c270bc25281fab0",
+        // El commit PADRE de este (7e676180) es el último antes de la regeneración; el texto lo cambia «+ Opción» / «+ Extra» (bloque 3 de la Fase 6).
+        commit: "7e676180",
+        motivo:
+          "Fase 6, bloque 3 («+ Opción» y «+ Extra»; ADITIVO, solo ADMINISTRACIÓN, la carta pública y el cobro idénticos; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): la tarjeta de cada grupo del paso 2 «Opciones y precio» suma el botón «+ Opción» (con el nombre accesible «+ Opción en <grupo>») antes de «Quitar de este producto», para quien puede Editar `opciones_definir`. Revisado con `git diff -U0`: cambian SOLO 2 líneas, las dos de la tarjeta de «Tipos de Pizza» (1280 y 375 px), que suman `[botón: + Opción (lector: «+ Opción en Tipos de Pizza»)]`; las secciones de la carta pública no cambian.",
+      },
     ],
   },
 };
