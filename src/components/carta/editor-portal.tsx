@@ -6,6 +6,9 @@ import { PortalVista } from "@/components/carta-publica/portal-vista";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { type EntradaVistaPreviaPortal, decidirLayoutPortal, resolverEstiloPortal, avisoImagenSinMapa, CLAVES_PORTAL_V1, validarValorPortal, ZONAS_PORTAL, type DefinicionClavePortal } from "@/core/carta/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 import { CampoColor } from "./campo-color";
 
 /**
@@ -38,15 +41,13 @@ export function EditorPortal({ valoresIniciales, version, accion, empresaNombre,
     <FormConResultado accion={accion} className="flex flex-col gap-4">
       <CuerpoEditor key={version} valoresIniciales={valoresIniciales} empresaNombre={empresaNombre} sucursales={sucursales} urlsPorSlug={urlsPorSlug} mover={mover} />
       <div>
-        <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11">
+        <Boton type="submit" tamano="compacto">
           Guardar apariencia
-        </button>
+        </Boton>
       </div>
     </FormConResultado>
   );
 }
-
-const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
 
 function leerValores(form: HTMLFormElement): Record<string, string> {
   const fd = new FormData(form);
@@ -158,7 +159,7 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
         return (
           <details key={zona} open={i === 0} className="rounded border p-3" data-zona-portal={zona}>
             <summary className="cursor-pointer text-sm font-medium">
-              {zona} <span className="font-normal text-neutral-500">({cargados} de {campos.length} cargados)</span>
+              {zona} <span className="font-normal text-tinta-tenue">({cargados} de {campos.length} cargados)</span>
             </summary>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {campos.map((d) => (
@@ -177,17 +178,17 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
         <div className={`carta-shell ${clasesFuentesCarta} overflow-hidden rounded border`} data-vista-previa-portal data-arrastrando={arrastrando ? "" : undefined} onPointerDown={alPresionar}>
           <PortalVista sucursales={sucursales} empresaNombre={empresaNombre} estilo={estilo} hrefDe={(slug) => urlsPorSlug[slug] ?? "#"} modo="vista-previa" />
         </div>
-        <p className="text-xs text-neutral-500" data-modo-portal={layout.modo}>
+        <p className="text-xs text-tinta-tenue" data-modo-portal={layout.modo}>
           {textoDelModo(layout.modo, layout.enMapa.length, layout.enGrilla.length, Boolean(estilo.imagenFondo), sucursales.length)}
         </p>
         {layout.modo === "mapa" && (
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-tinta-tenue">
             Arrastrá una tarjeta con el mouse para moverla (se guarda al soltar). Sin mouse, cargá los números en «Posición en el mapa del portal» de cada sucursal.
           </p>
         )}
-        <p role="status" className="text-xs" data-aviso-posicion>
+        <Aviso variante="informacion" forma="en-linea" data-aviso-posicion>
           {aviso}
-        </p>
+        </Aviso>
       </section>
     </div>
   );
@@ -214,53 +215,45 @@ const AYUDA: Partial<Record<DefinicionClavePortal["tipo"], string>> = {
 function CampoDeClave({ d, inicial, actual, aviso }: { d: DefinicionClavePortal; inicial: string; actual: string; aviso: string | null }) {
   const id = `portal-${d.clave}`;
   const r = actual.trim() ? validarValorPortal(d.clave, actual) : null;
-  const error = r && !r.ok ? r.mensaje : null;
+  const error = r && !r.ok ? `No es válido: ${r.mensaje}.` : undefined;
   const ayuda = AYUDA[d.tipo];
-  const describedBy = [ayuda ? `${id}-ayuda` : null, error ? `${id}-error` : null, aviso ? `${id}-aviso` : null].filter(Boolean).join(" ") || undefined;
   const placeholder = d.defaultPortal || "sin valor";
-  const comun = { id, name: d.clave, defaultValue: inicial, "aria-invalid": error ? true : undefined, "aria-describedby": describedBy } as const;
+  // El aviso del mapa (solo la imagen del fondo) es un texto más de la ayuda del campo: el lector de pantalla lo lee al entrar (`aria-describedby`) y, como `role="status"`, también cuando aparece.
+  const ayudaConAviso =
+    aviso && !error ? (
+      <>
+        {ayuda}
+        <span role="status" className="mt-1 block text-aviso-tinta" data-aviso-mapa>
+          {aviso}
+        </span>
+      </>
+    ) : (
+      ayuda
+    );
+  // Lo que cada control lleva igual: el rótulo, la ayuda y el error los dibuja la primitiva (atados con `aria-describedby`).
+  const comun = { id, name: d.clave, defaultValue: inicial, etiqueta: d.etiqueta, ayuda: ayudaConAviso, error } as const;
 
   let control: React.ReactNode;
   switch (d.tipo) {
     case "color":
-      control = <CampoColor comun={comun} etiqueta={d.etiqueta} inicial={inicial} placeholder={placeholder} />;
+      control = <CampoColor id={id} name={d.clave} inicial={inicial} etiqueta={d.etiqueta} placeholder={placeholder} ayuda={ayuda} error={error} />;
       break;
     case "porcentaje":
-      control = <input {...comun} type="number" min={0} max={100} step="0.01" placeholder={placeholder} className={CLASE_INPUT} />;
+      control = <Campo {...comun} type="number" min={0} max={100} step="0.01" placeholder={placeholder} />;
       break;
     case "fraccion":
-      control = <input {...comun} type="number" min={0} max={1} step="0.05" placeholder={placeholder} className={CLASE_INPUT} />;
+      control = <Campo {...comun} type="number" min={0} max={1} step="0.05" placeholder={placeholder} />;
       break;
     case "texto":
-      control = <input {...comun} type="text" maxLength={d.maximo} placeholder={placeholder} className={CLASE_INPUT} />;
+      control = <Campo {...comun} type="text" maxLength={d.maximo} placeholder={placeholder} />;
       break;
     case "imagen":
       // Texto con teclado de URL (y no type="url"): la validación nativa trabaría el envío por un campo escondido en un <details> cerrado.
-      control = <input {...comun} type="text" inputMode="url" placeholder="https://…" className={CLASE_INPUT} />;
+      control = <Campo {...comun} type="text" inputMode="url" placeholder="https://…" />;
       break;
     default:
-      control = <input {...comun} type="text" placeholder={placeholder} className={`${CLASE_INPUT} font-mono text-sm`} />;
+      control = <Campo {...comun} type="text" placeholder={placeholder} />;
   }
 
-  return (
-    <div className="flex flex-col gap-1 text-sm" data-campo-portal={d.clave}>
-      <label htmlFor={id}>{d.etiqueta}</label>
-      {control}
-      {ayuda && (
-        <p id={`${id}-ayuda`} className="text-xs text-neutral-500">
-          {ayuda}
-        </p>
-      )}
-      {error && (
-        <p id={`${id}-error`} className="text-xs text-red-600">
-          No es válido: {error}.
-        </p>
-      )}
-      {aviso && !error && (
-        <p id={`${id}-aviso`} role="status" className="text-xs text-amber-700 dark:text-amber-600" data-aviso-mapa>
-          {aviso}
-        </p>
-      )}
-    </div>
-  );
+  return <div data-campo-portal={d.clave}>{control}</div>;
 }

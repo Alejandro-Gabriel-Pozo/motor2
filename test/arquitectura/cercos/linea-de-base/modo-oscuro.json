@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 230,
-  "entradas": 59,
+  "total": 229,
+  "entradas": 58,
   "porTipo": {
-    "dark:": 230
+    "dark:": 229
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -164,9 +164,6 @@
       "dark:": 2
     },
     "src/components/agregar-colapsable.tsx": {
-      "dark:": 1
-    },
-    "src/components/carta/editor-portal.tsx": {
       "dark:": 1
     },
     "src/components/catalogo/asistente-hermanar.tsx": {

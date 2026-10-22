@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-
-const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
+import { useRef, useState, type ReactNode } from "react";
+import { Campo } from "@/ui/primitivas/campo";
 
 const RE_HEX6 = /^#[0-9a-f]{6}$/i;
 const RE_HEX3 = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i;
@@ -16,14 +15,20 @@ const hexDelSwatch = (v: string): string | null => {
 /**
  * Color: el campo de texto (con `name`) es el valor; el selector nativo (sin `name`) solo escribe en él. Si el texto no es un hex
  * (oklch, rgb, un nombre, claro/oscuro), el selector queda en un gris neutro y se avisa "formato avanzado".
+ *
+ * El rótulo, el texto de ayuda y el error los dibuja `Campo` (el de texto lleva el nombre por la etiqueta de este componente, atada con `htmlFor`); el selector nativo del color queda a mano a
+ * propósito: `<input type="color">` no tiene primitiva (el navegador dibuja su propio selector y exige un valor `#rrggbb`, por eso el `#808080` de abajo no es un color de la interfaz).
  */
-export function CampoColor({ comun, etiqueta, inicial, placeholder }: { comun: { id: string; name: string; defaultValue: string }; etiqueta: string; inicial: string; placeholder: string }) {
+export function CampoColor({ id, name, inicial, etiqueta, placeholder, ayuda, error }: { id: string; name: string; inicial: string; etiqueta: string; placeholder: string; ayuda?: string; error: ReactNode }) {
   const texto = useRef<HTMLInputElement>(null);
   const [actual, setActual] = useState(inicial);
   const hex = hexDelSwatch(actual);
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
+      <label htmlFor={id} className="text-sm font-medium">
+        {etiqueta}
+      </label>
+      <div className="flex items-start gap-2">
         <input
           type="color"
           aria-label={`${etiqueta}: selector de color`}
@@ -34,11 +39,23 @@ export function CampoColor({ comun, etiqueta, inicial, placeholder }: { comun: {
             setActual(e.currentTarget.value);
           }}
           onChange={() => {}}
-          className="h-8 w-10 shrink-0 cursor-pointer rounded border"
+          className="h-11 w-10 shrink-0 cursor-pointer rounded border border-borde-control md:h-9"
         />
-        <input {...comun} ref={texto} type="text" placeholder={placeholder} onInput={(e) => setActual(e.currentTarget.value)} className={`${CLASE_INPUT} min-w-0 flex-1 font-mono text-sm`} />
+        <div className="min-w-0 flex-1">
+          <Campo
+            nombradoPorFuera
+            id={id}
+            name={name}
+            ref={texto}
+            type="text"
+            defaultValue={inicial}
+            placeholder={placeholder}
+            onInput={(e) => setActual(e.currentTarget.value)}
+            ayuda={[ayuda, actual.trim() && !hex ? "Formato avanzado: el selector no lo muestra." : null].filter(Boolean).join(" ") || undefined}
+            error={error}
+          />
+        </div>
       </div>
-      {actual.trim() && !hex && <p className="text-xs text-neutral-500">Formato avanzado: el selector no lo muestra.</p>}
     </div>
   );
 }
