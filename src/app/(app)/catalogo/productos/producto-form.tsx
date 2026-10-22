@@ -204,14 +204,17 @@ export function ProductoForm({
           </AyudaCampo>
         </div>
       ) : (
-        <div className="flex gap-4">
-          <label className="flex items-center gap-1 text-sm">
-            <input type="radio" name="tipoRadio" checked={tipo === "MP"} onChange={() => setTipo("MP")} /> Materia prima (MP)
-          </label>
-          <label className="flex items-center gap-1 text-sm">
-            <input type="radio" name="tipoRadio" checked={tipo === "PV"} onChange={() => setTipo("PV")} /> Producto de venta (PV)
-          </label>
-        </div>
+        <OpcionesExcluyentes
+          presentacion="fila"
+          leyenda={<span className="sr-only">Tipo de producto</span>}
+          nombre="tipoRadio"
+          valorInicial={tipo}
+          alCambiar={(valor) => setTipo(valor === "PV" ? "PV" : "MP")}
+          opciones={[
+            { valor: "MP", etiqueta: "Materia prima (MP)" },
+            { valor: "PV", etiqueta: "Producto de venta (PV)" },
+          ]}
+        />
       )}
 
       {!editando && <Campo name="codigo" placeholder="Código (opcional, se autogenera)" aria-label="Código (opcional, se autogenera)" />}

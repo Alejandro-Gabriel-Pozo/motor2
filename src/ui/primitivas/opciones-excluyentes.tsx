@@ -6,9 +6,11 @@ import { useId, type ReactNode } from "react";
  * - `fieldset` + `legend`: el lector de pantalla anuncia la pregunta al entrar al grupo; las flechas se mueven entre las opciones (comportamiento nativo de los radios con el mismo `name`).
  * - Cada opción con su etiqueta atada (`htmlFor`) y, si la tiene, su ayuda (`aria-describedby`). Una opción DESHABILITADA dice por qué (`motivo`, visible y conectado con `aria-describedby`):
  *   un control apagado sin explicación no le sirve a nadie.
- * - Dos presentaciones (`presentacion`): `lista` (por defecto: una opción debajo de la otra, sin recuadro; es la que usan las pantallas de hoy) y `tarjetas` (cada opción es un recuadro de
- *   44 px de alto como mínimo que se toca entero, con el borde de la elegida marcado). Es la MISMA primitiva: el fieldset, la leyenda, las etiquetas atadas y los motivos no cambian.
- * - La presentación `lista` no trae colores propios: el texto hereda del contenedor. Las `tarjetas` usan solo tokens del sistema visual (src/app/globals.css), sin modo oscuro (DEC-04).
+ * - Tres presentaciones (`presentacion`): `lista` (por defecto: una opción debajo de la otra, sin recuadro; es la que usan las pantallas de hoy), `tarjetas` (cada opción es un recuadro de
+ *   44 px de alto como mínimo que se toca entero, con el borde de la elegida marcado) y `fila` (las opciones una al lado de la otra, sin recuadro, y que bajan de renglón si no entran: dos o tres
+ *   respuestas cortas, «Monto en pesos» / «Porcentaje»; cada opción mide 44 px de alto como mínimo y se toca entera, radio y texto). Es la MISMA primitiva: el fieldset, la leyenda, las etiquetas
+ *   atadas y los motivos no cambian, y el grupo sigue siendo un solo radio group nativo (mismo `name`): una sola parada del tabulador, las flechas mueven la elección y el lector anuncia la leyenda.
+ * - Las presentaciones `lista` y `fila` no traen colores propios: el texto hereda del contenedor. Las `tarjetas` usan solo tokens del sistema visual (src/app/globals.css), sin modo oscuro (DEC-04).
  */
 export interface OpcionExcluyente {
   valor: string;
@@ -19,7 +21,7 @@ export interface OpcionExcluyente {
   motivo?: ReactNode;
 }
 
-export type PresentacionDeOpciones = "lista" | "tarjetas";
+export type PresentacionDeOpciones = "lista" | "tarjetas" | "fila";
 
 export interface PropsDeOpcionesExcluyentes {
   leyenda: ReactNode;
@@ -37,8 +39,9 @@ export interface PropsDeOpcionesExcluyentes {
 export function OpcionesExcluyentes({ leyenda, nombre, opciones, valorInicial, alCambiar, presentacion = "lista" }: PropsDeOpcionesExcluyentes) {
   const base = useId();
   const tarjetas = presentacion === "tarjetas";
+  const fila = presentacion === "fila";
   return (
-    <fieldset className="flex flex-col gap-2">
+    <fieldset className={fila ? "flex flex-wrap gap-4" : "flex flex-col gap-2"}>
       <legend className={tarjetas ? "text-sm font-medium text-tinta" : "text-sm font-medium"}>{leyenda}</legend>
       {opciones.map((o, i) => {
         const id = `${base}-${i}`;
@@ -51,7 +54,9 @@ export function OpcionesExcluyentes({ leyenda, nombre, opciones, valorInicial, a
             className={
               tarjetas
                 ? "relative flex min-h-11 items-start gap-2 rounded border border-borde-control bg-superficie p-3 text-tinta has-checked:border-tinta has-checked:bg-superficie-suave has-disabled:bg-superficie-suave has-disabled:text-tinta-suave md:min-h-9"
-                : "flex items-start gap-2"
+                : fila
+                  ? "relative flex min-h-11 items-center gap-2"
+                  : "flex items-start gap-2"
             }
           >
             <input
@@ -63,10 +68,10 @@ export function OpcionesExcluyentes({ leyenda, nombre, opciones, valorInicial, a
               disabled={o.deshabilitada}
               aria-describedby={describedBy}
               onChange={alCambiar ? (e) => e.target.checked && alCambiar(o.valor) : undefined}
-              className={tarjetas ? "mt-1 h-4 w-4 accent-tinta" : "mt-1 h-4 w-4"}
+              className={tarjetas ? "mt-1 h-4 w-4 accent-tinta" : fila ? "h-4 w-4" : "mt-1 h-4 w-4"}
             />
             <div className="flex flex-col">
-              <label htmlFor={id} className={tarjetas ? "text-sm after:absolute after:inset-0" : "text-sm"}>
+              <label htmlFor={id} className={tarjetas || fila ? "text-sm after:absolute after:inset-0" : "text-sm"}>
                 {o.etiqueta}
               </label>
               {o.ayuda ? (

@@ -5,6 +5,7 @@ import { CampoNumero } from "@/components/campo-numero";
 import { interpretarNumero } from "@/core/datos/numero-tecleado";
 import { espejoDeDiferencia, textoDePorcentaje, type DiferenciaDePrecio, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import { formatearMonto } from "@/core/pos/public";
+import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
 import { Insignia } from "@/ui/primitivas/insignia";
 import { EditorDeConsumos, type ConsumoEnEdicion, type InsumoParaConsumo } from "./editor-de-consumos";
 import { LecturaDelFactor, type RecetaDeReferencia } from "./lectura-del-factor";
@@ -94,18 +95,18 @@ export function CamposDeVersion({
           <CampoNumero id={`${id}-valor`} name="valorDiferencia" value={monto} onChange={setMonto} prefijo="$" tipo="importe" etiqueta="El recargo" required className="w-40" />
         </div>
       ) : (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium">{tipo === "MEDIDA" ? "Diferencia sobre el precio base" : "Cuánto cambia el precio"}</legend>
-          <div className="flex flex-wrap gap-4">
-            <label className="flex min-h-[44px] items-center gap-2 text-sm">
-              <input type="radio" name={`${id}-modo`} checked={modo === "MONTO"} onChange={() => setModo("MONTO")} />
-              Monto en pesos
-            </label>
-            <label className="flex min-h-[44px] items-center gap-2 text-sm">
-              <input type="radio" name={`${id}-modo`} checked={modo === "PORCENTAJE"} onChange={() => setModo("PORCENTAJE")} />
-              Porcentaje
-            </label>
-          </div>
+        <div className="flex flex-col gap-2">
+          <OpcionesExcluyentes
+            presentacion="fila"
+            leyenda={tipo === "MEDIDA" ? "Diferencia sobre el precio base" : "Cuánto cambia el precio"}
+            nombre={`${id}-modo`}
+            valorInicial={modo}
+            alCambiar={(valor) => setModo(valor === "PORCENTAJE" ? "PORCENTAJE" : "MONTO")}
+            opciones={[
+              { valor: "MONTO", etiqueta: "Monto en pesos" },
+              { valor: "PORCENTAJE", etiqueta: "Porcentaje" },
+            ]}
+          />
           <div className="flex flex-wrap items-center gap-3">
             <label htmlFor={`${id}-valor`} className="sr-only">
               {modo === "MONTO" ? "Diferencia en pesos" : "Diferencia en porcentaje"}
@@ -118,7 +119,7 @@ export function CamposDeVersion({
             {modo === "PORCENTAJE" && <span className="text-sm">%</span>}
           </div>
           <p className="text-xs text-tinta-suave">En negativo, resta (por ejemplo, un tamaño más chico). Con 0 no cambia el precio.</p>
-        </fieldset>
+        </div>
       )}
       {referencia && !soloMonto && (
         <p id={idEspejo} aria-live="polite" className="text-sm text-tinta-suave" data-espejo>
