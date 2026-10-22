@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { resolverConteoPendiente, cancelarConteoFisico } from "@/server/actions/movimientos/conteo-fisico";
+import { Boton } from "@/ui/primitivas/boton";
 
 /**
  * "Ajustar ahora" y "Cancelar" son las dos acciones del módulo con más
@@ -14,7 +15,7 @@ import { resolverConteoPendiente, cancelarConteoFisico } from "@/server/actions/
  */
 function Mensaje({ mensaje, ok }: { mensaje: string | null; ok: boolean }) {
   if (!mensaje) return null;
-  return <p className={`text-xs ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>;
+  return <p className={`text-xs ${ok ? "text-ok-tinta" : "text-error"}`}>{mensaje}</p>;
 }
 
 /** `puedeAjustar`: cortesía, no barrera (S-09, D3): «Ajustar ahora» mueve el stock y la acción exige `proceso_ajuste`; sin él solo se ofrece «Ya se cargó». */
@@ -47,14 +48,14 @@ export function AccionesConteoPendiente({ conteoId, puedeAjustar }: { conteoId: 
   if (confirmandoAjuste) {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-amber-700 dark:text-amber-600">Esto va a escribir un ajuste de stock contra el saldo de HOY. ¿Confirmás?</p>
+        <p className="text-xs text-aviso-tinta">Esto va a escribir un ajuste de stock contra el saldo de HOY. ¿Confirmás?</p>
         <div className="flex gap-2">
-          <button type="button" disabled={pending} onClick={ajustar} className="text-sm text-red-600 underline">
+          <Boton variante="enlace-peligro" tamano="en-fila" disabled={pending} onClick={ajustar}>
             {pending ? "Ajustando…" : "Sí, ajustar"}
-          </button>
-          <button type="button" onClick={() => setConfirmandoAjuste(false)} className="text-sm underline">
+          </Boton>
+          <Boton variante="enlace" tamano="en-fila" onClick={() => setConfirmandoAjuste(false)}>
             Volver
-          </button>
+          </Boton>
         </div>
         <Mensaje mensaje={mensaje} ok={ok} />
       </div>
@@ -64,13 +65,13 @@ export function AccionesConteoPendiente({ conteoId, puedeAjustar }: { conteoId: 
   return (
     <div className="flex flex-col gap-1">
       <div className="flex gap-2">
-        <button type="button" disabled={pending} onClick={marcarResuelto} className="text-sm underline">
+        <Boton variante="enlace" tamano="en-fila" disabled={pending} onClick={marcarResuelto}>
           Ya se cargó
-        </button>
+        </Boton>
         {puedeAjustar && (
-          <button type="button" disabled={pending} onClick={() => setConfirmandoAjuste(true)} className="text-sm underline">
+          <Boton variante="enlace" tamano="en-fila" disabled={pending} onClick={() => setConfirmandoAjuste(true)}>
             Ajustar ahora
-          </button>
+          </Boton>
         )}
       </div>
       <Mensaje mensaje={mensaje} ok={ok} />
@@ -98,14 +99,14 @@ export function BotonCancelarConteo({ conteoId }: { conteoId: string }) {
   if (confirmando) {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-amber-700 dark:text-amber-600">Esto va a revertir el ajuste de stock que hizo este conteo. ¿Confirmás?</p>
+        <p className="text-xs text-aviso-tinta">Esto va a revertir el ajuste de stock que hizo este conteo. ¿Confirmás?</p>
         <div className="flex gap-2">
-          <button type="button" disabled={pending} onClick={cancelar} className="text-sm text-red-600 underline">
+          <Boton variante="enlace-peligro" tamano="en-fila" disabled={pending} onClick={cancelar}>
             {pending ? "Cancelando…" : "Sí, cancelar"}
-          </button>
-          <button type="button" onClick={() => setConfirmando(false)} className="text-sm underline">
+          </Boton>
+          <Boton variante="enlace" tamano="en-fila" onClick={() => setConfirmando(false)}>
             Volver
-          </button>
+          </Boton>
         </div>
         <Mensaje mensaje={mensaje} ok={ok} />
       </div>
@@ -114,9 +115,9 @@ export function BotonCancelarConteo({ conteoId }: { conteoId: string }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <button type="button" onClick={() => setConfirmando(true)} className="text-sm underline">
+      <Boton variante="enlace" tamano="en-fila" onClick={() => setConfirmando(true)} className="self-start">
         Cancelar
-      </button>
+      </Boton>
       <Mensaje mensaje={mensaje} ok={ok} />
     </div>
   );

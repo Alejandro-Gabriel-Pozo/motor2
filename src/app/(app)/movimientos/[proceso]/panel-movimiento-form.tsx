@@ -14,6 +14,11 @@ import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { QuickCrearProducto } from "@/components/catalogo/quick-crear-producto";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
+import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 
 interface Opcion {
   id: string;
@@ -286,18 +291,16 @@ export function PanelMovimientoForm({
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       {productoInicial && (
-        <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <Aviso variante="advertencia">
           Viniste desde un reporte para cargar precio de <strong>{productoInicial.etiqueta}</strong> — completá sección, cantidad y precio para resolverlo.
-        </p>
+        </Aviso>
       )}
-      <div className="flex gap-3">
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          Fecha
-          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="rounded border px-3 py-2" />
-        </label>
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          {config.proceso === "TRANSFERENCIA" ? "Sección origen" : "Sección"}
-          <select value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required className="rounded border px-3 py-2">
+      <div className="flex flex-wrap gap-3">
+        <div className="min-w-36 flex-1">
+          <CampoFecha etiqueta="Fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
+        </div>
+        <div className="min-w-36 flex-1">
+          <Selector etiqueta={config.proceso === "TRANSFERENCIA" ? "Sección origen" : "Sección"} value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required>
             <option value="">Elegí una sección</option>
             {secciones.map((s) => (
               <option key={s.id} value={s.id}>
@@ -309,78 +312,69 @@ export function PanelMovimientoForm({
                 {`${s.nombre} (desactivada)`}
               </option>
             ))}
-          </select>
-        </label>
+          </Selector>
+        </div>
         {config.proceso === "TRANSFERENCIA" && (
-          <label className="flex flex-1 flex-col gap-1 text-sm">
-            Sección destino
-            <select value={seccionDestinoId} onChange={(e) => setSeccionDestinoId(e.target.value)} required className="rounded border px-3 py-2">
+          <div className="min-w-36 flex-1">
+            <Selector etiqueta="Sección destino" value={seccionDestinoId} onChange={(e) => setSeccionDestinoId(e.target.value)} required>
               <option value="">Elegí una sección</option>
               {secciones.filter((s) => s.id !== seccionId).map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nombre}
                 </option>
               ))}
-            </select>
-          </label>
+            </Selector>
+          </div>
         )}
       </div>
 
       {config.requiereProveedor && (
-        <div className="flex gap-3">
-          <label className="flex flex-1 flex-col gap-1 text-sm">
-            Proveedor
-            <select value={proveedorId} onChange={(e) => elegirProveedor(e.target.value)} className="rounded border px-3 py-2">
+        <div className="flex flex-wrap gap-3">
+          <div className="min-w-36 flex-1">
+            <Selector etiqueta="Proveedor" value={proveedorId} onChange={(e) => elegirProveedor(e.target.value)}>
               <option value="">Sin proveedor</option>
               {proveedores.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.nombre}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="flex flex-1 flex-col gap-1 text-sm">
-            N° de factura
-            <input value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} maxLength={LARGO_MAXIMO_NRO_FACTURA} className="rounded border px-3 py-2" />
-          </label>
+            </Selector>
+          </div>
+          <div className="min-w-36 flex-1">
+            <Campo etiqueta="N° de factura" value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} maxLength={LARGO_MAXIMO_NRO_FACTURA} />
+          </div>
         </div>
       )}
 
       {config.pideMotivo && (
-        <label className="flex flex-col gap-1 text-sm">
-          Motivo
-          <select value={motivoId} onChange={(e) => setMotivoId(e.target.value)} required className="rounded border px-3 py-2">
-            <option value="">Elegí un motivo</option>
-            {motivos?.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Selector etiqueta="Motivo" value={motivoId} onChange={(e) => setMotivoId(e.target.value)} required>
+          <option value="">Elegí un motivo</option>
+          {motivos?.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.nombre}
+            </option>
+          ))}
+        </Selector>
       )}
 
       {config.pideDestino && (
-        <label className="flex flex-col gap-1 text-sm">
-          Destino
-          <select value={destinoId} onChange={(e) => setDestinoId(e.target.value)} className="rounded border px-3 py-2">
-            <option value="">Sin destino específico</option>
-            {destinos?.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Selector etiqueta="Destino" value={destinoId} onChange={(e) => setDestinoId(e.target.value)}>
+          <option value="">Sin destino específico</option>
+          {destinos?.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.nombre}
+            </option>
+          ))}
+        </Selector>
       )}
 
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">Productos</span>
-        {precargaPorProveedor && infoProveedor && <p className="text-xs text-neutral-500 dark:text-neutral-400">{infoProveedor}</p>}
+        {precargaPorProveedor && infoProveedor && <p className="text-xs text-tinta-tenue">{infoProveedor}</p>}
         {items.map((fila, idx) => (
           <div key={`${versionItems}-${idx}`} className="flex flex-wrap items-end gap-2 rounded border p-2">
-            <label className="flex flex-1 min-w-40 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
-              Producto
+            <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm">
+              <span className="font-medium">Producto</span>
               <SelectorProducto
                 value={fila.productoId}
                 onChange={(id) => cambiarProducto(idx, id)}
@@ -388,7 +382,7 @@ export function PanelMovimientoForm({
                 etiquetaInicial={fila.etiquetaInicial}
                 required
               />
-              {fila.ultimaCompraTexto && <span className="text-neutral-500 dark:text-neutral-400">{fila.ultimaCompraTexto}</span>}
+              {fila.ultimaCompraTexto && <span className="text-xs text-tinta-tenue">{fila.ultimaCompraTexto}</span>}
               {config.proceso === "COMPRA" && unidades && (
                 // Deshabilitado mientras se cargan los productos del proveedor: cuando esa carga responde
                 // cambia `versionItems`, y con él la `key` de la fila, que se remonta y se lleva puesto un
@@ -400,8 +394,8 @@ export function PanelMovimientoForm({
                 />
               )}
             </label>
-            <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
-              <span>
+            <label className="flex w-28 flex-col gap-1 text-sm">
+              <span className="font-medium">
                 Cantidad
                 {config.cantidadConSigno && (
                   <AyudaIcono texto="El ajuste es el DELTA, ya con signo: cargá negativo (ej. -5) para bajar el stock, positivo para subirlo." />
@@ -415,19 +409,13 @@ export function PanelMovimientoForm({
                 tamano="compacto"
               />
             </label>
-            <label className="flex w-36 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
-              Lote (Fecha VTO.)
-              <input
-                type="date"
-                value={fila.loteVencimiento}
-                onChange={(e) => actualizarFila(idx, { loteVencimiento: e.target.value })}
-                className="rounded border px-2 py-1.5 text-sm"
-              />
-            </label>
+            <div className="w-44">
+              <CampoFecha etiqueta="Lote (Fecha VTO.)" tamano="compacto" value={fila.loteVencimiento} onChange={(e) => actualizarFila(idx, { loteVencimiento: e.target.value })} />
+            </div>
             {config.esCompraLike && (
               <>
-                <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  Precio total (con IVA incluido)
+                <label className="flex w-32 flex-col gap-1 text-sm">
+                  <span className="font-medium">Precio total (con IVA incluido)</span>
                   <CampoNumero
                     value={fila.precioTotal}
                     onChange={(v) => actualizarFila(idx, { precioTotal: v })}
@@ -437,65 +425,56 @@ export function PanelMovimientoForm({
                     etiqueta="El precio total"
                   />
                 </label>
-                <label className="flex w-32 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  Peso real
+                <label className="flex w-32 flex-col gap-1 text-sm">
+                  <span className="font-medium">Peso real</span>
                   <CampoNumero value={fila.pesoReal} onChange={(v) => actualizarFila(idx, { pesoReal: v })} tamano="compacto" />
                 </label>
                 {(presentacionesPorFila[idx]?.length ?? 0) > 0 && (
-                  <label className="flex w-44 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
-                    Presentación
-                    <select
-                      value={fila.unidadCompraId}
-                      onChange={(e) => actualizarFila(idx, { unidadCompraId: e.target.value })}
-                      className="rounded border px-2 py-1.5 text-sm"
-                    >
+                  <div className="w-44">
+                    <Selector etiqueta="Presentación" tamano="compacto" value={fila.unidadCompraId} onChange={(e) => actualizarFila(idx, { unidadCompraId: e.target.value })}>
                       <option value="">Unidad de compra por defecto</option>
                       {presentacionesPorFila[idx].map((p) => (
                         <option key={p.id} value={p.unidadCompraId}>
                           {p.unidadCompraNombre} (×{p.factorConversion})
                         </option>
                       ))}
-                    </select>
-                  </label>
+                    </Selector>
+                  </div>
                 )}
               </>
             )}
             {precargaPorProveedor && (
-              <label className="flex w-40 flex-col gap-1 text-xs text-neutral-500 dark:text-neutral-400">
-                Código/nombre del proveedor
-                <input
+              <div className="w-44">
+                <Campo
+                  etiqueta="Código/nombre del proveedor"
+                  tamano="compacto"
                   value={fila.referenciaProveedor}
                   onChange={(e) => actualizarFila(idx, { referenciaProveedor: e.target.value })}
                   placeholder="opcional"
-                  className="rounded border px-2 py-1.5 text-sm"
                 />
-              </label>
+              </div>
             )}
-            <button
-              type="button"
-              onClick={() => quitarFila(idx)}
-              disabled={items.length === 1}
-              className="rounded border px-2 py-1.5 text-sm text-neutral-500 dark:text-neutral-400 disabled:opacity-30"
-            >
+            <Boton variante="secundario" tamano="compacto" onClick={() => quitarFila(idx)} disabled={items.length === 1}>
               Quitar
-            </button>
+            </Boton>
           </div>
         ))}
-        <button type="button" onClick={agregarFila} disabled={cargandoProveedor} className="self-start text-sm underline disabled:opacity-50">
+        <Boton variante="enlace" tamano="en-fila" onClick={agregarFila} disabled={cargandoProveedor} className="self-start">
           + Agregar producto{precargaPorProveedor && proveedorId ? " (que no está en la lista de este proveedor)" : ""}
-        </button>
+        </Boton>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Detalle (opcional)
-        <input value={detalleLibre} onChange={(e) => setDetalleLibre(e.target.value)} className="rounded border px-3 py-2" />
-      </label>
+      <Campo etiqueta="Detalle (opcional)" value={detalleLibre} onChange={(e) => setDetalleLibre(e.target.value)} />
 
-      {mensaje && <p className={`text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+      {mensaje && (
+        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
+      )}
 
-      <button type="submit" disabled={pending} className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+      <Boton type="submit" disabled={pending} className="self-start">
         {pending ? "Guardando..." : "Confirmar"}
-      </button>
+      </Boton>
     </form>
   );
 }

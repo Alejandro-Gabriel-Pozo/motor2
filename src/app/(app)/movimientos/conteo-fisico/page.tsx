@@ -9,12 +9,14 @@ import { ConteoFisicoGrid, type FilaBaseConteo } from "./conteo-fisico-grid";
 import { AccionesConteoPendiente, BotonCancelarConteo } from "./acciones-historial";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { Selector } from "@/ui/primitivas/selector";
 
 const ESTADO_COLOR: Record<string, string> = {
-  RESUELTO: "text-green-700",
-  PENDIENTE: "text-amber-700 dark:text-amber-600",
-  DESCARTADO: "text-neutral-500",
-  CANCELADO: "text-neutral-500",
+  RESUELTO: "text-ok-tinta",
+  PENDIENTE: "text-aviso-tinta",
+  DESCARTADO: "text-tinta-tenue",
+  CANCELADO: "text-tinta-tenue",
 };
 
 // El botón «Registrar conteo» manda toda la grilla en una sola llamada al servidor (registrarConteosFisicos), que recorre las
@@ -25,10 +27,10 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "proceso_control", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   // Cortesía de la interfaz, no barrera: la acción exige `conteo_resolver_pendiente` (clave propia, antes compartía `proceso_control`).
   const { editar: puedeResolverPendiente } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "conteo_resolver_pendiente", ctx.db);
   // Igual: aplicar la diferencia al stock (AJUSTAR en la grilla, «Ajustar ahora» en un pendiente) exige además `proceso_ajuste` (S-09, D3).
@@ -60,30 +62,27 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
     <div className="flex flex-col gap-10">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Conteo físico</h1>
-        <p className="mb-4 text-sm text-neutral-500">
+        <p className="mb-4 text-sm text-tinta-tenue">
           La grilla trae precargado todo lo que ya tiene stock en la sección elegida — tipeá solo lo que difiere, dejá vacío lo que coincide.
         </p>
         <form className="mb-4 flex items-end gap-3 text-sm">
-          <label className="flex flex-col gap-1">
-            Sección a contar
-            <select name="seccionId" defaultValue={seccionElegida} className="rounded border px-3 py-2">
+          <div className="min-w-0">
+            <Selector etiqueta="Sección a contar" name="seccionId" defaultValue={seccionElegida}>
               <option value="">Elegí una sección</option>
               {secciones.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nombre}
                 </option>
               ))}
-            </select>
-          </label>
-          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-            Cargar
-          </button>
+            </Selector>
+          </div>
+          <BotonDeServidor type="submit">Cargar</BotonDeServidor>
         </form>
 
         {seccionElegida ? (
           <ConteoFisicoGrid seccionId={seccionElegida} filasBase={filasBase} puedeAjustar={puedeAjustar} />
         ) : (
-          <p className="text-sm text-neutral-500">Elegí una sección para ver su grilla de conteo.</p>
+          <p className="text-sm text-tinta-tenue">Elegí una sección para ver su grilla de conteo.</p>
         )}
       </div>
 
@@ -91,7 +90,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
         <h2 className="mb-3 text-lg font-semibold">Historial reciente</h2>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-neutral-500">
+            <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2 pr-2">Fecha</th>
               <th className="px-2">Producto</th>
               <th className="px-2">Sección</th>

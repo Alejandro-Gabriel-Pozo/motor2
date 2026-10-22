@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 277,
-  "entradas": 70,
+  "total": 234,
+  "entradas": 61,
   "porTipo": {
-    "dark:": 277
+    "dark:": 234
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -71,33 +71,6 @@
       "dark:": 1
     },
     "src/app/(app)/catalogo/unidades/page.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
-      "dark:": 10
-    },
-    "src/app/(app)/movimientos/conteo-fisico/acciones-historial.tsx": {
-      "dark:": 2
-    },
-    "src/app/(app)/movimientos/conteo-fisico/page.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/movimientos/menu-del-dia/menu-del-dia.tsx": {
-      "dark:": 5
-    },
-    "src/app/(app)/movimientos/menu-del-dia/page.tsx": {
-      "dark:": 2
-    },
-    "src/app/(app)/movimientos/opciones-agotadas/opciones-agotadas.tsx": {
-      "dark:": 13
-    },
-    "src/app/(app)/movimientos/opciones-agotadas/page.tsx": {
-      "dark:": 4
-    },
-    "src/app/(app)/movimientos/precio-local/page.tsx": {
-      "dark:": 5
-    },
-    "src/app/(app)/movimientos/secciones/page.tsx": {
       "dark:": 1
     },
     "src/app/(app)/reportes/categorias/page.tsx": {

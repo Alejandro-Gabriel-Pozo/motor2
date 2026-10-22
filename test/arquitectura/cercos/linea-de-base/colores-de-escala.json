@@ -1,11 +1,11 @@
 {
   "regla": "colores-de-escala",
   "meta": "0 en la Fase 6 (DEC-03: las clases de color de Tailwind pasan a los tokens del salón)",
-  "total": 903,
-  "entradas": 157,
+  "total": 792,
+  "entradas": 141,
   "porTipo": {
-    "blanco-negro": 125,
-    "escala": 778
+    "blanco-negro": 115,
+    "escala": 677
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -163,64 +163,6 @@
     "src/app/(app)/error.tsx": {
       "blanco-negro": 1,
       "escala": 2
-    },
-    "src/app/(app)/movimientos/[proceso]/page.tsx": {
-      "escala": 2
-    },
-    "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
-      "blanco-negro": 1,
-      "escala": 15
-    },
-    "src/app/(app)/movimientos/conteo-fisico/acciones-historial.tsx": {
-      "escala": 6
-    },
-    "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": {
-      "blanco-negro": 1,
-      "escala": 6
-    },
-    "src/app/(app)/movimientos/conteo-fisico/page.tsx": {
-      "blanco-negro": 1,
-      "escala": 10
-    },
-    "src/app/(app)/movimientos/destinos-consumo/page.tsx": {
-      "blanco-negro": 1,
-      "escala": 5
-    },
-    "src/app/(app)/movimientos/menu-del-dia/menu-del-dia.tsx": {
-      "blanco-negro": 1,
-      "escala": 4
-    },
-    "src/app/(app)/movimientos/menu-del-dia/page.tsx": {
-      "escala": 4
-    },
-    "src/app/(app)/movimientos/motivos-merma/page.tsx": {
-      "blanco-negro": 1,
-      "escala": 5
-    },
-    "src/app/(app)/movimientos/opciones-agotadas/opciones-agotadas.tsx": {
-      "blanco-negro": 1,
-      "escala": 13
-    },
-    "src/app/(app)/movimientos/opciones-agotadas/page.tsx": {
-      "escala": 6
-    },
-    "src/app/(app)/movimientos/precio-local/page.tsx": {
-      "escala": 8
-    },
-    "src/app/(app)/movimientos/precio-local/precio-local-form.tsx": {
-      "blanco-negro": 1,
-      "escala": 4
-    },
-    "src/app/(app)/movimientos/secciones/page.tsx": {
-      "blanco-negro": 1,
-      "escala": 5
-    },
-    "src/app/(app)/movimientos/venta/page.tsx": {
-      "escala": 2
-    },
-    "src/app/(app)/movimientos/venta/venta-form.tsx": {
-      "blanco-negro": 1,
-      "escala": 6
     },
     "src/app/(app)/reportes/categorias/page.tsx": {
       "escala": 5

@@ -11,6 +11,9 @@ import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
 import type { PrecioLocalDeProductoVisto } from "@/core/features/catalogo/precio-local.schema";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Casilla } from "@/ui/primitivas/casilla";
 
 /**
  * `sucursalId`: la sucursal activa que ve la pantalla (la acción de sincronizar la vuelve a comparar con la del servidor). `preciosLocales`: el precio local que
@@ -73,12 +76,12 @@ export function PrecioLocalForm({ sucursalId, preciosLocales }: { sucursalId: st
       <h2 className="font-medium">Fijar precio local</h2>
 
       <label className="flex flex-col gap-1 text-sm">
-        Producto (PV)
+        <span className="font-medium">Producto (PV)</span>
         <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ tipo: "PV", soloDisponibles: true }} limpiarSenal={resetCount} required />
       </label>
 
       {productoId && (
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-tinta-tenue">
           {precioGlobal !== null && <span className="block">Precio global actual: ${precioGlobal.toLocaleString("es-AR")}</span>}
           <span className="block">
             {precioLocalActual
@@ -89,15 +92,17 @@ export function PrecioLocalForm({ sucursalId, preciosLocales }: { sucursalId: st
       )}
 
       <label className="flex flex-col gap-1 text-sm">
-        Precio local
+        <span className="font-medium">Precio local</span>
         <CampoNumero value={precio} onChange={setPrecio} prefijo="$" required tipo="importe" etiqueta="El precio" />
       </label>
 
-      <label className="flex items-center gap-2 text-sm max-md:min-h-11">
-        <input type="checkbox" checked={habilitado} onChange={(e) => setHabilitado(e.target.checked)} /> Habilitado (si no, se usa el precio global igual)
-      </label>
+      <Casilla etiqueta="Habilitado (si no, se usa el precio global igual)" checked={habilitado} onChange={(e) => setHabilitado(e.target.checked)} />
 
-      {mensaje && <p className={`text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+      {mensaje && (
+        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
+      )}
 
       {sincronizable && (
         <SincronizarPrecioGrupo
@@ -124,9 +129,9 @@ export function PrecioLocalForm({ sucursalId, preciosLocales }: { sucursalId: st
         />
       )}
 
-      <button type="submit" disabled={pending} className="self-start rounded bg-neutral-900 px-4 py-2 text-white max-md:min-h-11 disabled:opacity-50">
+      <Boton type="submit" disabled={pending} className="self-start">
         {pending ? "Guardando..." : "Guardar"}
-      </button>
+      </Boton>
     </form>
   );
 }

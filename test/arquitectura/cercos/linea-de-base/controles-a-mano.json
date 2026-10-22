@@ -1,13 +1,13 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 526,
-  "entradas": 111,
+  "total": 464,
+  "entradas": 100,
   "porTipo": {
-    "button": 284,
-    "input": 162,
+    "button": 251,
+    "input": 143,
     "input-hidden": 16,
-    "select": 50,
+    "select": 40,
     "textarea": 14
   },
   "cuentas": {
@@ -172,54 +172,8 @@
     "src/app/(app)/error.tsx": {
       "button": 1
     },
-    "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
-      "button": 3,
-      "input": 5,
-      "select": 6
-    },
-    "src/app/(app)/movimientos/conteo-fisico/acciones-historial.tsx": {
-      "button": 7
-    },
-    "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": {
-      "button": 3,
-      "input": 3,
-      "select": 1
-    },
-    "src/app/(app)/movimientos/conteo-fisico/page.tsx": {
-      "button": 1,
-      "select": 1
-    },
-    "src/app/(app)/movimientos/destinos-consumo/page.tsx": {
-      "button": 2,
-      "input": 2
-    },
-    "src/app/(app)/movimientos/menu-del-dia/menu-del-dia.tsx": {
-      "button": 3,
-      "select": 1
-    },
-    "src/app/(app)/movimientos/motivos-merma/page.tsx": {
-      "button": 2,
-      "input": 2
-    },
     "src/app/(app)/movimientos/opciones-agotadas/opciones-agotadas.tsx": {
-      "button": 2,
-      "input": 1
-    },
-    "src/app/(app)/movimientos/precio-local/page.tsx": {
-      "button": 3
-    },
-    "src/app/(app)/movimientos/precio-local/precio-local-form.tsx": {
-      "button": 1,
-      "input": 1
-    },
-    "src/app/(app)/movimientos/secciones/page.tsx": {
-      "button": 4,
-      "input": 2
-    },
-    "src/app/(app)/movimientos/venta/venta-form.tsx": {
-      "button": 3,
-      "input": 3,
-      "select": 1
+      "button": 1
     },
     "src/app/(app)/reportes/compras/formulario-corregir-compra.tsx": {
       "button": 3,
