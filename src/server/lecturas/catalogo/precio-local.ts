@@ -14,6 +14,23 @@ export async function precioLocalActivoEn(sucursalId: string, db: Db): Promise<b
 }
 
 /**
+ * La fila del precio local de UN producto en la sucursal —habilitada o no— y si la sucursal tiene prendido el precio propio, para EDITARLO (el paso 2 del espacio del producto, «Precio en la sucursal»):
+ * es lo que vio quien guarda, el valor que `setPrecioLocalProducto` compara dentro de la transacción. NO decide ningún precio: lo que se cobra lo dice `preciosLocalesVigentes`. Quien la llama
+ * decide si quien mira puede ver el precio local (`precio_local`): esta lectura no pone permisos.
+ */
+export async function precioLocalGuardadoDe(
+  sucursalId: string,
+  db: Db,
+  productoId: string
+): Promise<{ guardado: { precio: number; habilitado: boolean } | null; capacidadActiva: boolean }> {
+  const [capacidadActiva, fila] = await Promise.all([
+    precioLocalActivoEn(sucursalId, db),
+    db.precioLocalProducto.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } }, select: { precio: true, habilitado: true } }),
+  ]);
+  return { guardado: fila ? { precio: Number(fila.precio), habilitado: fila.habilitado } : null, capacidadActiva };
+}
+
+/**
  * El ÚNICO lugar que lee `PrecioLocalProducto` para decidir un precio: devuelve los Precios Locales VIGENTES de la sucursal
  * (capacidad `precio_local` + fila habilitada, ver `filtrarPreciosLocalesVigentes`), en 2 consultas para todo el lote. Todo
  * id que no esté en el mapa se cobra y se muestra al precio central. Sin `productoIds`, trae los de toda la sucursal.

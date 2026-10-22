@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { obtenerMiNivelPermisoDeEmpresa, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { fijarAdmisionDeGrupoEnProducto, vincularGrupoEnProducto } from "@/server/actions/catalogo/opciones-de-venta";
 import { basesDeUnEjeEnLaCarta } from "@/server/consultas/carta/admin";
 import { cargarVistaPreviaDeLaCarta } from "@/server/consultas/carta/vista-previa-de-un-producto";
@@ -17,6 +17,7 @@ import { NuevoGrupoEnElProducto } from "@/components/catalogo/nuevo-grupo-en-el-
 import { ResumenDeOpciones } from "@/components/catalogo/resumen-de-opciones";
 import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
 import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
+import { PrecioDeLaSucursal } from "@/components/catalogo/espacio-del-producto/precio-de-la-sucursal";
 import { VistaPreviaDeLaCarta } from "@/components/catalogo/espacio-del-producto/vista-previa-de-la-carta";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { Aviso } from "@/ui/primitivas/aviso";
@@ -72,9 +73,11 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
     );
   }
   // El marco (la tira de pasos con su enlace y su estado). Las opciones ya están leídas: no se vuelven a leer. Y si el usuario además puede CREAR grupos (Editar de `opciones_definir`), se dibuja «+ Nuevo grupo».
-  const [marco, puedeCrearGrupos] = await Promise.all([
+  // También se pregunta si quien mira puede Editar el precio de la sucursal (`precio_local`, piso administrador, en la sucursal activa): sin esa clave no se dibuja el campo del precio (la acción la vuelve a exigir).
+  const [marco, puedeCrearGrupos, puedeEditarElPrecio] = await Promise.all([
     cargarMarcoDelEspacio(ctx, productoDelEspacio, { opciones: datos }),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db).then((nivel) => nivel.editar),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "precio_local", ctx.db).then((nivel) => nivel.editar),
   ]);
   const puedeEditarDatos = marco.pasos.some((p) => p.paso === "datos" && p.href !== null);
   // La vista previa de la carta (6.18): el «nombre arriba» es del contenido de carta del producto, así que solo se lee si quien mira puede abrir el paso «En la carta»; si no, se dibuja con el valor por defecto.
@@ -120,13 +123,25 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
               {producto.esBase
                 ? `Se vende por opción: el precio guardado (${formatearMonto(datos.precioBase)}) no se cobra, rige el precio final de cada opción.`
                 : `Precio de lista en «${ctx.sucursalNombre}»: ${formatearMonto(datos.precioBase)}.`}{" "}
-              El precio de cada sucursal se cambia en{" "}
+              {puedeEditarElPrecio && !producto.esBase ? "Las otras sucursales se comparan y se cambian en " : "El precio de cada sucursal se cambia en "}
               <EnlaceInterno href="/movimientos/precio-local" className="underline">
                 Precio local
               </EnlaceInterno>
               .
             </p>
           </div>
+
+          {puedeEditarElPrecio && !producto.esBase ? (
+            <PrecioDeLaSucursal
+              productoId={productoId}
+              sucursalId={ctx.sucursalId}
+              sucursalNombre={ctx.sucursalNombre}
+              precioVigente={datos.precioBase}
+              precioGlobal={datos.precioGlobal}
+              guardado={datos.precioLocal.guardado}
+              capacidadActiva={datos.precioLocal.capacidadActiva}
+            />
+          ) : null}
 
           {faltaMarcarloPorOpcion ? (
             <Aviso variante="advertencia" data-falta-por-opcion="">
