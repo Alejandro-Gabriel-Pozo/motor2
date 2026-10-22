@@ -52,3 +52,19 @@ export type { FilaComparativaPrecios } from "./comparativa-de-precios";
 // Fase 6 («el espacio del producto», 6.9b): los pasos del espacio de un producto según su tipo, sus rutas, sus pendientes y qué pasos abre cada usuario (puro; lo dibuja el marco del espacio).
 export { PASOS_DEL_ESPACIO, pasosDelEspacio, pendientesDelProducto, rutaDelPaso } from "./espacio-del-producto";
 export type { AccesoAlEspacio, EstadoDelPaso, EstadoEnLaCarta, FormaDelProducto, HechosDelProducto, PasoDeLaPortada, PasoDelEspacio } from "./espacio-del-producto";
+// Fase 6, bloque 3 (3b): los filtros de la lista de Productos (palabras de listas cerradas en la URL, su validación y su re-escritura; puro).
+export {
+  DISPONIBILIDADES_FILTRABLES,
+  ETIQUETA_DE_LA_DISPONIBILIDAD,
+  ETIQUETA_DE_LA_FALTA,
+  ETIQUETA_DEL_MODO,
+  ETIQUETA_DEL_TIPO,
+  FALTAS_FILTRABLES,
+  MODOS_FILTRABLES,
+  SIN_FILTROS,
+  TIPOS_FILTRABLES,
+  consultaDeLosFiltros,
+  hayFiltrosDeProductos,
+  leerFiltrosDeProductos,
+} from "./filtros-de-productos";
+export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos } from "./filtros-de-productos";

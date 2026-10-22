@@ -9,7 +9,21 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { actualizarDisponibilidadProducto, listarProductosPagina } from "@/server/actions/catalogo/productos";
 import { IconoDeAccion } from "@/components/iconos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
-import { rutaDelPaso } from "@/core/catalogo/public";
+import {
+  DISPONIBILIDADES_FILTRABLES,
+  ETIQUETA_DE_LA_DISPONIBILIDAD,
+  ETIQUETA_DE_LA_FALTA,
+  ETIQUETA_DEL_MODO,
+  ETIQUETA_DEL_TIPO,
+  MODOS_FILTRABLES,
+  TIPOS_FILTRABLES,
+  consultaDeLosFiltros,
+  hayFiltrosDeProductos,
+  leerFiltrosDeProductos,
+  rutaDelPaso,
+} from "@/core/catalogo/public";
+import { FiltrosDeLista } from "@/components/filtros-de-lista";
+import { faltasQueSePuedenFiltrar } from "@/server/consultas/catalogo/filtros-de-productos";
 import { gruposDeOpcionesPorProducto } from "@/server/consultas/catalogo/opciones-de-venta";
 
 /**
@@ -19,7 +33,7 @@ import { gruposDeOpcionesPorProducto } from "@/server/consultas/catalogo/opcione
 export default async function ProductosPage({
   searchParams,
 }: {
-  searchParams: Promise<ParametrosDeUrl<"id" | "q" | "cursor">>;
+  searchParams: Promise<ParametrosDeUrl<"id" | "q" | "cursor" | "tipo" | "modo" | "disponible" | "falta">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
@@ -35,11 +49,15 @@ export default async function ProductosPage({
   const { editar: puedeCambiarDisponibilidad } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db);
   const { editar: puedeDarDeAlta } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
 
-  const { id, q, cursor } = unicosDeUrl(await searchParams);
+  const { id, cursor, ...enLaUrl } = unicosDeUrl(await searchParams);
   // Los enlaces y favoritos viejos apuntaban a `/catalogo/productos?id=…` (la edición estaba en esta misma pantalla).
   if (id) redirect(rutaDelPaso(id, "datos"));
 
-  const pagina = await listarProductosPagina(cursor, q);
+  // Los filtros de la URL, validados contra sus listas cerradas (lo que no es de la lista se ignora); el servidor los vuelve a validar y es quien filtra (`listarProductosPagina`).
+  const faltas = await faltasQueSePuedenFiltrar(ctx);
+  const leidos = leerFiltrosDeProductos(enLaUrl);
+  const filtros = { ...leidos, falta: leidos.falta && faltas.includes(leidos.falta) ? leidos.falta : null };
+  const pagina = await listarProductosPagina(cursor, filtros.q, filtros);
   // GO-2d: la etiqueta «Opciones: Tamaño, Leche» de cada producto de la página (una sola lectura).
   const gruposDeOpciones = await gruposDeOpcionesPorProducto(ctx.db, pagina.items.map((p) => p.id));
 
@@ -53,17 +71,19 @@ export default async function ProductosPage({
           </EnlaceInterno>
         )}
       </div>
-      <form className="mb-3 flex gap-2 text-sm">
-        <input type="text" name="q" defaultValue={q ?? ""} placeholder="Buscar por código o nombre…" className="w-64 rounded border px-3 py-2" />
-        <button type="submit" className="rounded border px-3 py-2">
-          Buscar
-        </button>
-        {q && (
-          <Link href="/catalogo/productos" className="self-center text-sm underline">
-            Limpiar
-          </Link>
-        )}
-      </form>
+      <FiltrosDeLista
+        accion="/catalogo/productos"
+        etiquetaDeLaBusqueda="Buscar por nombre o código"
+        marcadorDeLaBusqueda="Buscar por código o nombre…"
+        busqueda={filtros.q}
+        hayFiltros={hayFiltrosDeProductos(filtros)}
+        filtros={[
+          { nombre: "tipo", etiqueta: "Tipo", valor: filtros.tipo ?? "", opciones: TIPOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_TIPO[v] })) },
+          { nombre: "modo", etiqueta: "Cómo se vende", valor: filtros.modo ?? "", opciones: MODOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_MODO[v] })) },
+          { nombre: "disponible", etiqueta: "Disponibilidad", valor: filtros.disponible ?? "", opciones: DISPONIBILIDADES_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_DISPONIBILIDAD[v] })) },
+          { nombre: "falta", etiqueta: "Le falta algo", valor: filtros.falta ?? "", opciones: faltas.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_FALTA[v] })) },
+        ]}
+      />
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -120,7 +140,7 @@ export default async function ProductosPage({
             {!pagina.items.length && (
               <tr>
                 <td className="py-2 text-neutral-500" colSpan={6}>
-                  Sin productos{q ? " que coincidan con la búsqueda" : ""}.
+                  Sin productos{hayFiltrosDeProductos(filtros) ? " que coincidan con la búsqueda y los filtros" : ""}.
                 </td>
               </tr>
             )}
@@ -128,7 +148,7 @@ export default async function ProductosPage({
         </table>
       </div>
       {pagina.nextCursor && (
-        <Link href={`/catalogo/productos?${q ? `q=${encodeURIComponent(q)}&` : ""}cursor=${pagina.nextCursor}`} className="mt-3 inline-block text-sm underline">
+        <Link href={`/catalogo/productos?${consultaDeLosFiltros(filtros, pagina.nextCursor)}`} className="mt-3 inline-block text-sm underline">
           Página siguiente →
         </Link>
       )}

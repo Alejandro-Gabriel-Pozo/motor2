@@ -6,8 +6,9 @@ import { obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal }
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
+import { necesitaLaEmpresaEntera, whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
+import { leerFiltrosDeProductos, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
@@ -198,14 +199,23 @@ export interface PaginaProductos {
 
 const TAMANO_PAGINA_CATALOGO = 50;
 
-/** Tabla de administración de catálogo (`/catalogo/productos`) — paginado por cursor, con búsqueda opcional. Exige el «Ver» de `producto_ver_catalogo`, la clave de esa página (H8). */
-export async function listarProductosPagina(cursor?: string, termino?: string): Promise<PaginaProductos> {
+/**
+ * Tabla de administración de catálogo (`/catalogo/productos`) — paginado por cursor, con búsqueda y filtros opcionales. Exige el «Ver» de `producto_ver_catalogo`, la clave de esa página (H8).
+ * `filtros` viene del cliente (es un endpoint): se valida contra las listas cerradas de `core/catalogo/filtros-de-productos.ts` (lo que no es de la lista se ignora) y se traduce a un `where` en el servidor,
+ * siempre dentro de la empresa y la sucursal activa (`server/lecturas/catalogo/filtros-de-productos.ts`).
+ */
+export async function listarProductosPagina(cursor?: string, termino?: string, filtros?: EntradaDeFiltrosDeProductos): Promise<PaginaProductos> {
   const ctx = await requerirVerDeEmpresa("producto_ver_catalogo");
-  const t = textoDeBusqueda(termino);
+  // Aunque el tipo diga texto, es un endpoint: `leerFiltrosDeProductos` acepta cualquier cosa y deja solo lo que está en sus listas cerradas.
+  const f = leerFiltrosDeProductos({ ...(typeof filtros === "object" && filtros !== null ? filtros : {}), q: termino });
   // El cursor es un identificador que puede venir del cliente: sin NUL ni sustitutos sueltos (Postgres no los recibe), y vacío = primera página.
   const cursorLimpio = cursor ? textoDeBusqueda(cursor) : "";
-  const items = await ctx.db.producto.findMany({
-    where: t ? { OR: [{ nombre: { contains: escaparComodinesLike(t), mode: "insensitive" } }, { codigo: { contains: escaparComodinesLike(t), mode: "insensitive" } }] } : {},
+  // P2 (RLS por sucursal): la N de «Sucursales N de M» cuenta las sucursales donde el producto está disponible (en toda la empresa) y la M son las de la empresa (`Sucursal`, que la RLS por sucursal no toca): el conteo corre con
+  // la base de VERIFICACIÓN (lectura en toda la empresa; es un número, la disponibilidad ya es pública por la carta). Sin eso la N se achicaría a la sucursal activa y la M no. Con ella corre también la lista cuando el
+  // filtro pregunta por «alguna/ninguna sucursal»: devuelve filas de `Producto` (tabla de la empresa), nunca la disponibilidad de otra sucursal.
+  const lista = necesitaLaEmpresaEntera(f) ? await lecturaDeVerificacionEnLaEmpresa(ctx) : ctx;
+  const items = await lista.db.producto.findMany({
+    where: await whereDeLosProductos(ctx, lista.db, f),
     select: { id: true, codigo: true, nombre: true, tipo: true },
     orderBy: [{ nombre: "asc" }, { id: "asc" }],
     take: TAMANO_PAGINA_CATALOGO + 1,
@@ -218,8 +228,6 @@ export async function listarProductosPagina(cursor?: string, termino?: string): 
 
   // Batch, sin N+1 (una página entera de 50 filas): disponibilidad EN ESTA sucursal + cuántas sucursales en total la
   // tienen, para "Disponible acá" y "Sucursales" (§10/P10, ver disponibilidad-producto-consulta.ts).
-  // P2 (RLS por sucursal), E3: la N de «Sucursales N de M» cuenta las sucursales donde el producto está disponible (en toda la empresa) y la M son las de la empresa (`Sucursal`, que la RLS por sucursal no toca): el conteo corre con
-  // la base de VERIFICACIÓN (lectura en toda la empresa; es un número, la disponibilidad ya es pública por la carta). Sin eso la N se achicaría a la sucursal activa y la M no.
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);
   const [disponibleAcaPorProducto, conteos, totalSucursales] = await Promise.all([
     disponibilidadDeProductos(ctx.sucursalId, ids, ctx.db),
