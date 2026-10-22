@@ -88,9 +88,10 @@ export function TablaComprasPorProveedor({ filas, desde, hasta }: { filas: FilaC
   );
 }
 
+// Las filas dentro del 80 % van sobre `aviso-tinte`: ahí el texto atenuado es `tinta-suave` (5,02:1 sobre ese fondo) y no `tinta-tenue` (4,33:1, no llega a AA; lo midió axe en accesibilidad.spec.ts).
 const COLUMNAS_GASTO_INSUMO: ColumnaReporte<FilaGastoPorInsumo>[] = [
   { clave: "insumo", etiqueta: "Insumo", valor: (f) => f.insumo, render: (f) => f.insumo },
-  { clave: "grupo", etiqueta: "Categoría", valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-tinta-tenue">Sin categoría</span> },
+  { clave: "grupo", etiqueta: "Categoría", valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-tinta-suave">Sin categoría</span> },
   { clave: "importe", etiqueta: "Gastado", alinear: "derecha", valor: (f) => f.importe, render: (f) => `$${f.importe.toLocaleString("es-AR")}` },
   {
     clave: "porcentaje",
@@ -119,7 +120,7 @@ const COLUMNAS_GASTO_INSUMO: ColumnaReporte<FilaGastoPorInsumo>[] = [
     clave: "proveedores",
     etiqueta: "Proveedores",
     valor: (f) => f.proveedores.join(", "),
-    render: (f) => (f.proveedores.length ? f.proveedores.join(", ") : <span className="text-tinta-tenue">—</span>),
+    render: (f) => (f.proveedores.length ? f.proveedores.join(", ") : <span className="text-tinta-suave">—</span>),
   },
 ];
 
