@@ -25,7 +25,7 @@ export function GraficoGastoPorGrupo({ filas }: { filas: FilaGastoPorGrupo[] }) 
           <YAxis type="category" dataKey="grupo" stroke="currentColor" tick={{ fill: "currentColor" }} width={110} />
           <Tooltip
             formatter={(value) => [`$${Number(value).toLocaleString("es-AR")}`, "Gastado"]}
-            contentStyle={{ background: "var(--background)", color: "var(--foreground)", border: "1px solid currentColor" }}
+            contentStyle={{ background: "var(--color-superficie)", color: "var(--color-tinta)", border: "1px solid currentColor" }}
           />
           <Bar dataKey="importe" fill="var(--color-marca)" radius={[0, 4, 4, 0]}>
             <LabelList dataKey="importe" position="right" formatter={(v: React.ReactNode) => `$${Number(v).toLocaleString("es-AR")}`} fill="currentColor" fontSize={11} />

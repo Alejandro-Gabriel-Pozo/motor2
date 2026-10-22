@@ -14,8 +14,8 @@ const RUTA_MAPA_DE_MESAS = "/mesas";
  * enlace de vuelta a la administración para quien la tiene (quien solo ve el salón entra directo a /mesas: para esa persona
  * la «pantalla de inicio» ES esta, y el enlace no aparece).
  *
- * `pos-shell` aplica los tokens de color del salón (src/app/globals.css): fondo papel, tinta oscura y `color-scheme: light`, fijos
- * aunque el sistema esté en modo oscuro. Van acá y no en `:root` para no ensuciar el namespace de toda la administración.
+ * `pos-shell` (src/app/globals.css) pone el fondo papel, la tinta oscura y `color-scheme: light`, fijos aunque el sistema esté en modo oscuro; el resto de los
+ * colores del salón son las utilidades de los tokens (`text-tinta-suave`, `bg-marca`…).
  */
 export async function PosShell({ ctx, children }: { ctx: ContextoUsuario; children: React.ReactNode }) {
   const { inicio, acciones } = await navegacionDelUsuario(ctx);

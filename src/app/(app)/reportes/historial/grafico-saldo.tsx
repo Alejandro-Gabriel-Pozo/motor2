@@ -33,7 +33,7 @@ export function GraficoSaldoCorriente({ eventos, unidadStockNombre, zona = ZONA_
           <YAxis stroke="currentColor" tick={{ fill: "currentColor" }} width={60} />
           <Tooltip
             formatter={(value) => [`${value} ${unidadStockNombre}`, "Saldo"]}
-            contentStyle={{ background: "var(--background)", color: "var(--foreground)", border: "1px solid currentColor" }}
+            contentStyle={{ background: "var(--color-superficie)", color: "var(--color-tinta)", border: "1px solid currentColor" }}
           />
           <Line type="stepAfter" dataKey="saldo" stroke="var(--color-marca)" strokeWidth={2} dot={false} />
         </LineChart>

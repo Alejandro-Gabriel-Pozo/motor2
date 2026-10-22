@@ -1,5 +1,5 @@
 // Tarjeta de mesa para el mapa de salón. Tres estados: libre / en_pedido / ocupada.
-// Requiere las variables CSS del bloque `.pos-shell` de src/app/globals.css (las aplica PosShell, nunca `:root`).
+// Colores: los tokens del sistema visual (`var(--color-*)` en los `style`, src/app/globals.css); desde 6.30 no lee los alias del salón (`.pos-shell`).
 //
 // Insumo de diseño provisto (mesa-card.tsx + mesas-tokens.css), con los ajustes del plan
 // docs/plan-mapa-de-mesas-2026-09-24.md §A.4: colores de texto con el contraste aprobado por el dueño (§A.3) y `EstadoMesa`
