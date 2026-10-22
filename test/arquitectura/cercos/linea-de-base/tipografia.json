@@ -1,10 +1,10 @@
 {
   "regla": "tipografia",
   "meta": "bajar hacia 0 a medida que la escala tipográfica pase a tokens (auditoría §19.4); la carta pública tiene su propia línea de base",
-  "total": 194,
+  "total": 189,
   "entradas": 28,
   "porTipo": {
-    "clase-arbitraria": 143,
+    "clase-arbitraria": 138,
     "font-size-literal": 49,
     "fontSize-literal": 2
   },
@@ -76,7 +76,7 @@
       "clase-arbitraria": 6
     },
     "src/app/(pos)/mesas/nueva-mesa.tsx": {
-      "clase-arbitraria": 6
+      "clase-arbitraria": 1
     },
     "src/app/(pos)/mesas/page.tsx": {
       "clase-arbitraria": 8
