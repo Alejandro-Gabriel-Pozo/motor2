@@ -1,22 +1,11 @@
 import { aceptar, rechazar, type ResultadoDato } from "./resultado";
 
 /**
- * Parser ESTRICTO de un número tecleado en es-AR (reemplaza al `normalizar` que tenía CampoNumero, que borraba en silencio todo lo
- * que no fuera dígito o separador: "1e3" daba 13, "5-3" daba 53, "1,2,3" daba 1,23 y "1.000.000" daba NaN → 0).
- *
- * Reglas (tabla completa en docs/plan-validacion-de-datos-2026-09-25.md):
- *  - Recorta espacios; vacío → `null` (campo sin cargar, NO es 0).
- *  - Un solo `-` al inicio (si el signo está permitido lo decide cada validador). Cualquier otro carácter que no sea dígito, `,` o `.`
- *    (`$`, espacios internos, `e`, `+`, `%`, `Infinity`) es error de formato.
- *  - Un solo separador es el DECIMAL, sea coma o punto ("1,5" = "1.5" = 1,5; "1.234" = 1,234 a propósito — si es un importe, lo frena la
- *    regla de 2 decimales).
- *  - El mismo separador repetido es de MILES y tiene que agrupar bien: el primer grupo de 1 a 3 dígitos, SIN ceros a la izquierda
- *    (un número con miles no empieza con 0), y los siguientes de 3 ("1.000.000" = 1000000; "1,2,3", "1.2.3", "12.34.5" y "1.5000.02"
- *    son error; "0.021.500" y "0.021,5" también: es lo que queda al tipear «1.500» o «1,5» detrás de un «0.02» que no se reemplazó,
- *    y leerlo como 21500 o 21,5 guardaba otro número). Sin miles, los ceros a la izquierda siguen valiendo ("007" = 7, "0,30" = 0,3).
- *  - Con los dos separadores, el último es el decimal (una sola vez) y el otro tiene que ser una agrupación de miles válida
- *    ("1.234,56" = "1,234.56" = 1234,56; "1.23,4" es error).
- *  - Acepta ",5" y "5," (tecleo a medias).
+ * Números tecleados y números de entrada (docs/plan-validacion-de-datos-2026-09-25.md; micro-paso 2c: decisiones-cerradas-2026-10-19, «REGLA NUMÉRICA FINAL — NOTACIÓN ARGENTINA»). Dos lectores, porque el mismo
+ * texto significa cosas distintas según quién lo escribió:
+ *  - `interpretarNumeroTecleado(texto, contexto)`: lo que la PERSONA escribe en un campo (coma decimal, punto de miles, ambiguo = error). Lo usan el campo en pantalla y la Server Action con el MISMO contexto.
+ *  - `leerNumeroCanonico(texto)`: el «canal de valor» de `CampoNumero` (dígitos y un punto decimal).
+ * Pura: sin React, Prisma ni `server-only`.
  */
 const MENSAJE_NUMERO_INVALIDO = "No es un número válido.";
 
@@ -27,46 +16,9 @@ function agrupacionDeMilesValida(partes: string[]): boolean {
   return RE_GRUPO_INICIAL.test(partes[0]) && partes.slice(1).every((p) => RE_GRUPO_MILES.test(p));
 }
 
-/** Parte entera y decimal (solo dígitos) del texto sin signo, o null si el formato no es válido. */
-function separar(cuerpo: string): { entero: string; decimal: string } | null {
-  if (!/^[\d.,]*$/.test(cuerpo) || !/\d/.test(cuerpo)) return null;
-  const comas = cuerpo.split(",").length - 1;
-  const puntos = cuerpo.split(".").length - 1;
-
-  if (comas === 0 && puntos === 0) return { entero: cuerpo, decimal: "" };
-
-  if (comas === 0 || puntos === 0) {
-    const sep = comas > 0 ? "," : ".";
-    const partes = cuerpo.split(sep);
-    if (partes.length === 2) return { entero: partes[0], decimal: partes[1] };
-    return agrupacionDeMilesValida(partes) ? { entero: partes.join(""), decimal: "" } : null;
-  }
-
-  const sepDecimal = cuerpo.lastIndexOf(",") > cuerpo.lastIndexOf(".") ? "," : ".";
-  const sepMiles = sepDecimal === "," ? "." : ",";
-  const partes = cuerpo.split(sepDecimal);
-  if (partes.length !== 2) return null;
-  const [conMiles, decimal] = partes;
-  if (decimal.includes(sepMiles)) return null;
-  const grupos = conMiles.split(sepMiles);
-  if (!agrupacionDeMilesValida(grupos)) return null;
-  return { entero: grupos.join(""), decimal };
-}
-
-export function interpretarNumero(texto: string): ResultadoDato<number | null> {
-  const t = String(texto ?? "").trim();
-  if (!t) return aceptar(null);
-  const negativo = t.startsWith("-");
-  const partes = separar(negativo ? t.slice(1) : t);
-  if (!partes) return rechazar("formato", MENSAJE_NUMERO_INVALIDO);
-  const n = Number(`${negativo ? "-" : ""}${partes.entero || "0"}${partes.decimal ? `.${partes.decimal}` : ""}`);
-  if (!Number.isFinite(n)) return rechazar("formato", MENSAJE_NUMERO_INVALIDO);
-  return aceptar(n === 0 ? 0 : n); // nunca -0
-}
-
 /**
  * Texto canónico de un número: dígitos, un solo punto decimal, sin notación exponencial ni separador de miles. Es lo que CampoNumero
- * emite hacia el formulario, así volver a interpretarlo nunca es ambiguo (`interpretarNumero(textoCanonico(n)) === n`).
+ * emite hacia el formulario, así volver a leerlo nunca es ambiguo (`leerNumeroCanonico(textoCanonico(n))` da `n`).
  */
 export function textoCanonico(n: number): string {
   if (n === 0) return "0";
@@ -103,14 +55,14 @@ export function tieneALoSumoDecimales(n: number, decimales: number): boolean {
 }
 
 /**
- * Número de una entrada de tipo desconocido (Server Action, script, seed): `number` finito tal cual, texto por el parser es-AR,
- * `null`/`undefined`/texto vacío → `null`. Cualquier otra cosa (booleano, objeto, NaN, ±Infinity) es error de formato. Base común de
- * validarImporte y validarCantidad, que ponen su propio mensaje.
+ * Número de una entrada de tipo desconocido (Server Action, script, seed), leída con el CONTEXTO del campo: `number` finito tal cual; texto por el parser de lo tecleado (`interpretarNumeroTecleado`: «21.000» es
+ * veintiún mil en un importe y ambiguo en una cantidad de 3 decimales; nunca se adivina); `null`/`undefined`/texto vacío → `null`. Cualquier otra cosa (booleano, objeto, NaN, ±Infinity) es error de formato.
+ * Base común de validarImporte, validarCantidad y los demás, que ponen su propio mensaje. El servidor no confía en el cliente: lo que llega como texto se lee con la misma regla que en la pantalla.
  */
-export function numeroDeEntrada(valor: unknown): ResultadoDato<number | null> {
+export function numeroDeEntrada(valor: unknown, contexto: ContextoNumerico): ResultadoDato<number | null> {
   if (valor === null || valor === undefined) return aceptar(null);
   if (typeof valor === "number") return Number.isFinite(valor) ? aceptar(valor === 0 ? 0 : valor) : rechazar("formato", MENSAJE_NUMERO_INVALIDO);
-  if (typeof valor === "string") return interpretarNumero(valor);
+  if (typeof valor === "string") return interpretarNumeroTecleado(valor, contexto);
   return rechazar("formato", MENSAJE_NUMERO_INVALIDO);
 }
 
@@ -142,6 +94,19 @@ const DECIMALES_QUE_VUELVEN_AMBIGUO_EL_PUNTO = 3;
 
 const RE_SOLO_SEPARADORES_Y_DIGITOS = /^[\d.,]*$/;
 
+/** «21,000»: casi seguro quiso decir veintiún mil. Las cifras juntas («21000») cuando el entero es de 1 a 3 dígitos sin cero inicial y sin puntos, y detrás de la coma hay EXACTAMENTE 3; si no, `null`. */
+function cifrasDeUnaPistaDeMiles(izquierda: string, derecha: string): string | null {
+  return !izquierda.includes(".") && RE_GRUPO_INICIAL.test(izquierda) && RE_GRUPO_MILES.test(derecha) ? `${izquierda}${derecha}` : null;
+}
+
+/** La pista para un número tecleado con coma y tres cifras detrás («21,000» → «Para 21000 escribí 21000 o 21.000,00.»), o `null` si no corresponde. Sirve para los mensajes de decimales de los validadores. */
+export function pistaDeMiles(texto: unknown): string | null {
+  if (typeof texto !== "string") return null;
+  const m = /^\s*-?([^,]*),([^,]*)\s*$/.exec(texto);
+  const cifras = m ? cifrasDeUnaPistaDeMiles(m[1], m[2].trim()) : null;
+  return cifras === null ? null : `Para ${cifras} escribí ${cifras} o ${formatearMilesParaPista(cifras)},00.`;
+}
+
 /** La coma es SIEMPRE el decimal; lo que va antes (si trae puntos) tiene que ser miles bien agrupados. */
 function separarConComa(cuerpo: string): { entero: string; decimal: string; pistaDeMiles: string | null } | null {
   const partes = cuerpo.split(",");
@@ -154,9 +119,7 @@ function separarConComa(cuerpo: string): { entero: string; decimal: string; pist
     if (!agrupacionDeMilesValida(grupos)) return null;
     entero = grupos.join("");
   }
-  // «21,000»: casi seguro quiso decir veintiún mil. La pista se arma solo cuando el entero es de 1 a 3 cifras sin cero inicial y detrás hay EXACTAMENTE 3.
-  const pistaDeMiles = !izquierda.includes(".") && RE_GRUPO_INICIAL.test(izquierda) && RE_GRUPO_MILES.test(derecha) ? `${izquierda}${derecha}` : null;
-  return { entero, decimal: derecha, pistaDeMiles };
+  return { entero, decimal: derecha, pistaDeMiles: cifrasDeUnaPistaDeMiles(izquierda, derecha) };
 }
 
 type SinComa = { entero: string; decimal: string } | { ambiguo: { entero: string; decimal: string } } | null;
@@ -274,4 +237,17 @@ export function mensajeDeNumeroRechazado(rechazo: { codigo: string; mensaje: str
   if (rechazo.codigo === "formato") return `${sujeto} no es un número válido.`;
   if (rechazo.codigo === "ambiguo") return `${sujeto}: ${rechazo.mensaje}`;
   return `${sujeto} ${rechazo.mensaje.charAt(0).toLowerCase()}${rechazo.mensaje.slice(1)}`;
+}
+
+/**
+ * El rechazo de un número de entrada que no se pudo leer, para los validadores del servidor (y de la pantalla): el código del parser y el mensaje con el sujeto («El precio no es un número válido.», «El factor: ¿1,205 o 1205?
+ * Escribí 1205 o 1,205.»). Los errores de DECIMALES llevan el mensaje propio de cada validador (`mensajeDeDecimales`: el de la unidad, el de la columna…) y, si el texto era «21,000», la pista de cómo escribir
+ * veintiún mil.
+ */
+export function rechazoDeNumeroDeEntrada(rechazo: { codigo: string; mensaje: string }, sujeto: string, mensajeDeDecimales: string, valor: unknown): ResultadoDato<never> {
+  if (rechazo.codigo === "decimales") {
+    const pista = pistaDeMiles(valor);
+    return rechazar("decimales", pista === null ? mensajeDeDecimales : `${mensajeDeDecimales} ${pista}`);
+  }
+  return rechazar(rechazo.codigo === "ambiguo" ? "ambiguo" : "formato", mensajeDeNumeroRechazado(rechazo, sujeto));
 }

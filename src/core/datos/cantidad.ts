@@ -1,4 +1,4 @@
-import { numeroDeEntrada, tieneALoSumoDecimales } from "./numero-tecleado";
+import { contextoDeCantidad, numeroDeEntrada, rechazoDeNumeroDeEntrada, tieneALoSumoDecimales } from "./numero-tecleado";
 import { aceptar, enMinuscula, rechazar, type ResultadoDato } from "./resultado";
 
 /** Tope de las columnas `Decimal(14,4)` de cantidades: la cantidad tiene que ser menor. */
@@ -28,8 +28,14 @@ export interface OpcionesCantidad {
  */
 export function validarCantidad(valor: unknown, unidad: UnidadDeCantidad, opciones: OpcionesCantidad): ResultadoDato<number | null> {
   const { etiqueta, obligatorio = false, permitirNegativo = false, permitirCero = false } = opciones;
-  const numero = numeroDeEntrada(valor);
-  if (!numero.ok) return rechazar("formato", `${etiqueta} no es un número válido.`);
+  // Sin nombre de unidad (la pantalla no siempre la conoce), el mensaje no la menciona.
+  const nombre = unidad.nombre.trim();
+  const mensajeDeDecimales =
+    unidad.decimales === 0
+      ? `${etiqueta} tiene que ser un número entero${nombre ? ` (la unidad "${nombre}" no admite decimales)` : ""}.`
+      : `${etiqueta} admite como máximo ${unidad.decimales} decimales${nombre ? ` (unidad "${nombre}")` : ""}.`;
+  const numero = numeroDeEntrada(valor, contextoDeCantidad(unidad.decimales));
+  if (!numero.ok) return rechazoDeNumeroDeEntrada(numero, etiqueta, mensajeDeDecimales, valor);
   const n = numero.valor;
   if (n === null) return obligatorio ? rechazar("vacio", `Falta ${enMinuscula(etiqueta)}.`) : aceptar(null);
   if (n < 0 && !permitirNegativo) {
@@ -37,15 +43,6 @@ export function validarCantidad(valor: unknown, unidad: UnidadDeCantidad, opcion
   }
   if (n === 0 && !permitirCero) return rechazar("cero", `${etiqueta} tiene que ser mayor que cero.`);
   if (Math.abs(n) >= CANTIDAD_MAXIMA) return rechazar("rango", `${etiqueta} es demasiado grande.`);
-  if (!tieneALoSumoDecimales(n, unidad.decimales)) {
-    // Sin nombre de unidad (la pantalla no siempre la conoce), el mensaje no la menciona.
-    const nombre = unidad.nombre.trim();
-    return rechazar(
-      "decimales",
-      unidad.decimales === 0
-        ? `${etiqueta} tiene que ser un número entero${nombre ? ` (la unidad "${nombre}" no admite decimales)` : ""}.`
-        : `${etiqueta} admite como máximo ${unidad.decimales} decimales${nombre ? ` (unidad "${nombre}")` : ""}.`
-    );
-  }
+  if (!tieneALoSumoDecimales(n, unidad.decimales)) return rechazar("decimales", mensajeDeDecimales);
   return aceptar(n);
 }

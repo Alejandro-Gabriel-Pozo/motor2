@@ -1,4 +1,4 @@
-import { numeroDeEntrada, tieneALoSumoDecimales } from "./numero-tecleado";
+import { contextoDeCantidad, numeroDeEntrada, rechazoDeNumeroDeEntrada, tieneALoSumoDecimales } from "./numero-tecleado";
 import { aceptar, enMinuscula, rechazar, type ResultadoDato } from "./resultado";
 
 /**
@@ -23,8 +23,8 @@ export interface OpcionesPorcentajeDescuento {
 export function validarPorcentajeDescuento(valor: unknown, opciones: OpcionesPorcentajeDescuento = {}): ResultadoDato<number | null> {
   const { obligatorio = true } = opciones;
   const etiqueta = "El % de descuento";
-  const numero = numeroDeEntrada(valor);
-  if (!numero.ok) return rechazar("formato", `${etiqueta} no es un número válido.`);
+  const numero = numeroDeEntrada(valor, contextoDeCantidad(DECIMALES_PORCENTAJE_DESCUENTO));
+  if (!numero.ok) return rechazoDeNumeroDeEntrada(numero, etiqueta, `${etiqueta} admite como máximo ${DECIMALES_PORCENTAJE_DESCUENTO} decimales.`, valor);
   const n = numero.valor;
   if (n === null) return obligatorio ? rechazar("vacio", `Falta ${enMinuscula(etiqueta)}.`) : aceptar(null);
   if (n < 0) return rechazar("negativo", `${etiqueta} no puede ser negativo.`);

@@ -1,4 +1,4 @@
-import { numeroDeEntrada, tieneALoSumoDecimales } from "./numero-tecleado";
+import { contextoDeCantidad, numeroDeEntrada, rechazoDeNumeroDeEntrada, tieneALoSumoDecimales } from "./numero-tecleado";
 import { aceptar, rechazar, type ResultadoDato } from "./resultado";
 
 /** Decimales que admite el food cost objetivo (coincide con `DECIMAL(5,2)` de `MargenObjetivo.foodCostObjetivoPct`). */
@@ -11,8 +11,8 @@ export const DECIMALES_FOOD_COST_OBJETIVO = 2;
  */
 export function validarFoodCostObjetivo(valor: unknown): ResultadoDato<number | null> {
   const etiqueta = "El food cost objetivo";
-  const numero = numeroDeEntrada(valor);
-  if (!numero.ok) return rechazar("formato", `${etiqueta} no es un número válido.`);
+  const numero = numeroDeEntrada(valor, contextoDeCantidad(DECIMALES_FOOD_COST_OBJETIVO));
+  if (!numero.ok) return rechazoDeNumeroDeEntrada(numero, etiqueta, `${etiqueta} admite como máximo ${DECIMALES_FOOD_COST_OBJETIVO} decimales.`, valor);
   const n = numero.valor;
   if (n === null) return aceptar(null);
   if (n <= 0) return rechazar("rango", `${etiqueta} tiene que ser mayor que 0 %.`);

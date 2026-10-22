@@ -1,205 +1,19 @@
 import { describe, expect, it } from "vitest";
-import fc from "fast-check";
-import { interpretarNumero, numeroDelCampo, textoCanonico, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
+import {
+  CONTEXTO_IMPORTE,
+  contextoDeCantidad,
+  leerNumeroCanonico,
+  mensajeDeNumeroRechazado,
+  numeroDeEntrada,
+  numeroDelCampo,
+  pistaDeMiles,
+  rechazoDeNumeroDeEntrada,
+  textoCanonico,
+  textoParaEscribir,
+  tieneALoSumoDecimales,
+} from "@/core/datos/numero-tecleado";
 
-// Sin base de datos: el parser es puro. Tabla de compatibilidad con el `normalizar` que tenía CampoNumero
-// (docs/plan-validacion-de-datos-2026-09-25.md): lo que ya andaba da el mismo número; lo que se guardaba mal pasa a ser error.
-function valor(texto: string) {
-  const r = interpretarNumero(texto);
-  if (!r.ok) throw new Error(`esperaba ok para ${JSON.stringify(texto)}: ${r.mensaje}`);
-  return r.valor;
-}
-
-describe("interpretarNumero — lo que ya andaba da el mismo número", () => {
-  it.each([
-    ["0", 0],
-    ["5", 5],
-    ["10", 10],
-    ["1000", 1000],
-    ["-5", -5],
-    ["1,5", 1.5],
-    ["1.5", 1.5],
-    ["0,07", 0.07],
-    ["10,01", 10.01],
-    ["1.234,56", 1234.56],
-    ["1,234.56", 1234.56],
-    ["12.345.678,9", 12345678.9],
-    ["1.234", 1.234], // ambigüedad a propósito: un solo separador es el decimal
-    ["1,234", 1.234],
-    ["12,345", 12.345],
-    ["  42  ", 42],
-    [",5", 0.5], // tecleo a medias
-    ["5,", 5],
-    ["-,5", -0.5],
-    ["007", 7],
-  ])("%j → %d", (texto, esperado) => {
-    expect(valor(texto)).toBe(esperado);
-  });
-
-  it("vacío o solo espacios → null (campo sin cargar)", () => {
-    expect(valor("")).toBeNull();
-    expect(valor("   ")).toBeNull();
-  });
-
-  it("'-0' se interpreta como 0 (nunca -0)", () => {
-    expect(Object.is(valor("-0"), 0)).toBe(true);
-  });
-});
-
-describe("interpretarNumero — se arregla lo que antes daba NaN / 0", () => {
-  it.each([
-    ["1.000.000", 1_000_000],
-    ["1,000,000", 1_000_000],
-    ["1.000.000,50", 1_000_000.5],
-    ["1,000,000.50", 1_000_000.5],
-  ])("%j → %d", (texto, esperado) => {
-    expect(valor(texto)).toBe(esperado);
-  });
-});
-
-describe("interpretarNumero — pasan a ser error de formato (antes se guardaban mal o en 0)", () => {
-  it.each([
-    "...,.,.,...",
-    "1,2,3",
-    "1.2.3",
-    "1.23,4",
-    "1,23.4",
-    ".234,5",
-    "1.234,5,6",
-    "abc",
-    "Infinity",
-    "-Infinity",
-    "NaN",
-    "1e3",
-    "5-3",
-    "--5",
-    "-",
-    ".",
-    ",",
-    "$ 100",
-    "$100",
-    "1 000",
-    "10%",
-    "+5",
-    "0x10",
-    "9".repeat(400),
-  ])("%j", (texto) => {
-    const r = interpretarNumero(texto);
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.codigo).toBe("formato");
-      expect(r.mensaje).toBe("No es un número válido.");
-    }
-  });
-});
-
-describe("interpretarNumero — agrupación de miles mal formada: error de formato (antes 0.021.500 se leía 21500)", () => {
-  // Lo que deja tipear «1.500» o «1,5» DETRÁS de un «0.02» que el campo no reemplazó (src/components/campo-numero.tsx): un número con
-  // miles no empieza con 0, y cada grupo de miles tiene exactamente 3 cifras.
-  it.each([
-    "0.021.500", // antes 21500
-    "0,021,500", // antes 21500
-    "0.021,5", // antes 21,5
-    "0,021.5", // antes 21,5
-    "-0.021.500",
-    "0.000.000", // antes 0
-    "00.123.456",
-    "012.345.678",
-    "01.234,5",
-    "1.5000.02",
-    "12.34.5",
-    "1.00.000",
-    "1.0000.000",
-    "1.000.00",
-    "1.000,5.0",
-  ])("%j", (texto) => {
-    const r = interpretarNumero(texto);
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.codigo).toBe("formato");
-      expect(r.mensaje).toBe("No es un número válido.");
-    }
-  });
-
-  it("propiedad: un grupo inicial que empieza con 0, seguido de miles (o de miles y decimal), nunca se acepta", () => {
-    fc.assert(
-      fc.property(
-        fc.stringMatching(/^0\d{0,2}$/),
-        fc.array(fc.stringMatching(/^\d{3}$/), { minLength: 1, maxLength: 4 }),
-        fc.option(fc.stringMatching(/^\d{1,4}$/), { nil: undefined }),
-        fc.constantFrom([".", ","] as const, [",", "."] as const),
-        fc.boolean(),
-        (inicial, grupos, decimal, [miles, sepDecimal], negativo) => {
-          // Un solo separador sin decimal ("0.021") es un DECIMAL (regla de siempre), no una agrupación: queda afuera.
-          fc.pre(grupos.length >= 2 || decimal !== undefined);
-          const texto = `${negativo ? "-" : ""}${[inicial, ...grupos].join(miles)}${decimal !== undefined ? `${sepDecimal}${decimal}` : ""}`;
-          expect(interpretarNumero(texto).ok, texto).toBe(false);
-        }
-      )
-    );
-  });
-});
-
-describe("interpretarNumero — los casos válidos de siempre no cambian con el endurecimiento", () => {
-  it.each([
-    ["3", 3],
-    ["0,30", 0.3],
-    ["0,300", 0.3],
-    ["0.300", 0.3],
-    ["3.000", 3], // un solo punto es decimal (documentado y fijado)
-    ["1.500", 1.5],
-    ["12.345", 12.345],
-    ["1.000.000", 1_000_000],
-    ["1.234,5", 1234.5],
-    [",5", 0.5],
-    ["0,021", 0.021], // un solo separador: decimal, aunque empiece con 0
-    ["0.02", 0.02],
-    ["007", 7], // sin miles, los ceros a la izquierda siguen valiendo
-    ["00,5", 0.5],
-    ["999.999.999", 999_999_999],
-    ["100.000,25", 100_000.25],
-  ])("%j → %d", (texto, esperado) => {
-    expect(valor(texto)).toBe(esperado);
-  });
-
-  /** Separador de miles cada 3 cifras desde la derecha (sin depender del Intl del entorno). */
-  function agrupar(entero: number, sep: string): string {
-    return String(entero).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
-  }
-
-  it("propiedad: un número bien agrupado con decimal (es-AR «1.234,56» o en «1,234.56») se lee igual que sus cifras", () => {
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 0, max: 99_999_999_999 }),
-        fc.stringMatching(/^\d{1,4}$/),
-        fc.constantFrom([".", ","] as const, [",", "."] as const),
-        (entero, decimal, [miles, sepDecimal]) => {
-          expect(valor(`${agrupar(entero, miles)}${sepDecimal}${decimal}`)).toBe(Number(`${entero}.${decimal}`));
-        }
-      )
-    );
-  });
-
-  it("propiedad: un entero de un millón o más, agrupado de a 3 (dos separadores o más), se lee igual", () => {
-    fc.assert(
-      fc.property(fc.integer({ min: 1_000_000, max: 99_999_999_999 }), fc.constantFrom(".", ","), (entero, miles) => {
-        expect(valor(agrupar(entero, miles))).toBe(entero);
-      })
-    );
-  });
-
-  it("propiedad: lo que muestra el campo al salir (es-AR) se vuelve a leer como el mismo número", () => {
-    fc.assert(
-      fc.property(fc.integer({ min: 0, max: 99_999_999_999 }), fc.integer({ min: 0, max: 99 }), (entero, centavos) => {
-        const n = Number(`${entero}.${String(centavos).padStart(2, "0")}`);
-        const mostrado = n.toLocaleString("es-AR", { maximumFractionDigits: 4 });
-        // Con un solo separador de miles y sin decimales («3.000») es un decimal a propósito: esa ambigüedad no es de este cambio.
-        fc.pre(!/^\d{1,3}\.\d{3}$/.test(mostrado));
-        expect(valor(mostrado)).toBe(n);
-      })
-    );
-  });
-});
+// Sin base de datos: todo es puro. El parser de lo que la persona escribe (con su contexto) se prueba en `datos-numero-tecleado-contexto.test.ts`; acá, lo que lo rodea.
 
 describe("textoCanonico — dígitos, un solo punto decimal, sin notación exponencial", () => {
   it.each([
@@ -221,9 +35,10 @@ describe("textoCanonico — dígitos, un solo punto decimal, sin notación expon
   });
 
   it.each([0, 1, -1, 0.07, 10.01, 1234.56, 1_000_000, 12345678.9, 1.2345, 0.0000001, 1e21, 999_999_999_999.99])(
-    "ida y vuelta: interpretar el texto canónico de %d da el mismo número",
+    "ida y vuelta: leer el texto canónico de %d da el mismo número",
     (n) => {
-      expect(valor(textoCanonico(n))).toBe(n);
+      const r = leerNumeroCanonico(textoCanonico(n));
+      expect(r.ok && r.valor).toBe(n);
     }
   );
 });
@@ -265,5 +80,61 @@ describe("tieneALoSumoDecimales — sin falsos rechazos por ruido de punto flota
     [1.23456, 4],
   ])("%d tiene más de %d decimales", (n, d) => {
     expect(tieneALoSumoDecimales(n, d)).toBe(false);
+  });
+});
+
+
+describe("textoParaEscribir — el número como se escribe para editarlo", () => {
+  it.each([
+    [1.205, "1,205"],
+    [21000, "21000"],
+    [0.5, "0,5"],
+    [-3.25, "-3,25"],
+    [0, "0"],
+    [1e-7, "0,0000001"],
+  ])("%d → %j", (n, esperado) => {
+    expect(textoParaEscribir(n)).toBe(esperado);
+  });
+});
+
+describe("numeroDeEntrada — el servidor lee un texto con el MISMO contexto que la pantalla (nunca confía en el cliente)", () => {
+  it("un número va tal cual; null o undefined son «sin valor»; cualquier otra cosa es error de formato", () => {
+    expect(numeroDeEntrada(5, CONTEXTO_IMPORTE)).toEqual({ ok: true, valor: 5 });
+    expect(numeroDeEntrada(-0, CONTEXTO_IMPORTE)).toEqual({ ok: true, valor: 0 });
+    expect(numeroDeEntrada(null, CONTEXTO_IMPORTE)).toEqual({ ok: true, valor: null });
+    expect(numeroDeEntrada(undefined, CONTEXTO_IMPORTE)).toEqual({ ok: true, valor: null });
+    for (const raro of [Number.NaN, Infinity, true, {}, [], "abc"]) expect(numeroDeEntrada(raro, CONTEXTO_IMPORTE).ok, String(raro)).toBe(false);
+  });
+
+  it("un texto «21.000»: veintiún mil en un importe (el servidor ya no lo lee como 21) y ambiguo en una cantidad de 3 decimales", () => {
+    expect(numeroDeEntrada("21.000", CONTEXTO_IMPORTE)).toEqual({ ok: true, valor: 21000 });
+    expect(numeroDeEntrada("21.000", contextoDeCantidad(3))).toMatchObject({ ok: false, codigo: "ambiguo" });
+    expect(numeroDeEntrada("21,000", CONTEXTO_IMPORTE)).toMatchObject({ ok: false, codigo: "decimales" });
+  });
+});
+
+describe("mensajes de un número que no se pudo leer", () => {
+  it("con sujeto: «no es un número válido», el ambiguo con sus dos lecturas y los decimales con el sujeto adelante; sin sujeto, el del parser", () => {
+    expect(mensajeDeNumeroRechazado({ codigo: "formato", mensaje: "No es un número válido." }, "El precio")).toBe("El precio no es un número válido.");
+    expect(mensajeDeNumeroRechazado({ codigo: "ambiguo", mensaje: "¿1,205 o 1205? Escribí 1205 o 1,205." }, "El factor")).toBe("El factor: ¿1,205 o 1205? Escribí 1205 o 1,205.");
+    expect(mensajeDeNumeroRechazado({ codigo: "decimales", mensaje: "Admite como máximo 2 decimales." }, "El precio")).toBe("El precio admite como máximo 2 decimales.");
+    expect(mensajeDeNumeroRechazado({ codigo: "decimales", mensaje: "Admite como máximo 2 decimales." })).toBe("Admite como máximo 2 decimales.");
+  });
+
+  it("pistaDeMiles: solo para «a,bbb» con a de 1 a 3 cifras sin cero inicial", () => {
+    expect(pistaDeMiles("21,000")).toBe("Para 21000 escribí 21000 o 21.000,00.");
+    expect(pistaDeMiles(" -1,205 ")).toBe("Para 1205 escribí 1205 o 1.205,00.");
+    for (const t of ["21,00", "0,125", "1.234,567", "1234,567", "21.000", "abc", 21, null]) expect(pistaDeMiles(t), String(t)).toBeNull();
+  });
+
+  it("rechazoDeNumeroDeEntrada: los decimales llevan el mensaje del validador (y la pista); lo demás, el del parser con sujeto", () => {
+    const decimales = { codigo: "decimales", mensaje: "x" };
+    expect(rechazoDeNumeroDeEntrada(decimales, "El precio", "El precio admite como máximo 2 decimales.", "21,000")).toEqual({
+      ok: false,
+      codigo: "decimales",
+      mensaje: "El precio admite como máximo 2 decimales. Para 21000 escribí 21000 o 21.000,00.",
+    });
+    expect(rechazoDeNumeroDeEntrada(decimales, "El precio", "El precio admite como máximo 2 decimales.", "0,555")).toMatchObject({ mensaje: "El precio admite como máximo 2 decimales." });
+    expect(rechazoDeNumeroDeEntrada({ codigo: "formato", mensaje: "No es un número válido." }, "El precio", "x", "abc")).toEqual({ ok: false, codigo: "formato", mensaje: "El precio no es un número válido." });
   });
 });

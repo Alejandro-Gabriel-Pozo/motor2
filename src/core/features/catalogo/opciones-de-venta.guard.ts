@@ -2,7 +2,7 @@ import { esIdentificador } from "@/core/datos/identificador";
 import { validarImporte } from "@/core/datos/importe";
 import { ENTERO_MAXIMO_RAZONABLE, validarTopeDeLista } from "@/core/datos/limites";
 import { validarNombreCatalogo } from "@/core/datos/nombre-catalogo";
-import { numeroDeEntrada, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
+import { contextoDeCantidad, numeroDeEntrada, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 import { validarFactorDeEscala, validarPorcentajeDeDiferencia } from "@/core/datos/porcentaje-y-factor";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { validarTextoCatalogo } from "@/core/texto";
@@ -80,7 +80,7 @@ function booleano(valor: unknown, etiqueta: string): ResultadoDato<boolean> {
 }
 
 function entero(valor: unknown, etiqueta: string, minimo: number, maximo: number): ResultadoDato<number> {
-  const numero = numeroDeEntrada(valor);
+  const numero = numeroDeEntrada(valor, contextoDeCantidad(0));
   if (!numero.ok || numero.valor === null) return rechazar("formato", `${etiqueta} no es un número válido.`);
   const n = numero.valor;
   if (!Number.isInteger(n) || n < minimo || n > maximo) return rechazar("rango", `${etiqueta} tiene que ser un número entero entre ${minimo} y ${maximo}.`);
@@ -137,11 +137,11 @@ function consumo(valor: unknown, linea: number): ResultadoDato<ConsumoDeConfigur
   if (!insumo.ok) return insumo;
   const reemplazado = idONulo(c.reemplazaAProductoId, `${etiqueta} no tiene un insumo reemplazado válido.`);
   if (!reemplazado.ok) return reemplazado;
-  const cantidad = numeroDeEntrada(c.cantidad);
+  const cantidad = numeroDeEntrada(c.cantidad, contextoDeCantidad(4));
   if (!cantidad.ok || cantidad.valor === null || !(cantidad.valor > 0) || cantidad.valor >= CANTIDAD_DE_CONSUMO_MAXIMA || !tieneALoSumoDecimales(cantidad.valor, 4)) {
     return rechazar("rango", `${etiqueta}: la cantidad tiene que ser mayor que 0, con hasta 4 decimales.`);
   }
-  const merma = numeroDeEntrada(c.mermaPorcentaje ?? 0);
+  const merma = numeroDeEntrada(c.mermaPorcentaje ?? 0, contextoDeCantidad(2));
   if (!merma.ok || merma.valor === null || merma.valor < 0 || merma.valor > MERMA_MAXIMA_DE_CONSUMO || !tieneALoSumoDecimales(merma.valor, 2)) {
     return rechazar("rango", `${etiqueta}: la merma tiene que estar entre 0 y ${MERMA_MAXIMA_DE_CONSUMO}, con hasta 2 decimales.`);
   }
