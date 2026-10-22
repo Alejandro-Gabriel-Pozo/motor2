@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 117,
-  "entradas": 19,
+  "total": 111,
+  "entradas": 18,
   "porTipo": {
-    "dark:": 117
+    "dark:": 111
   },
   "cuentas": {
     "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
@@ -39,9 +39,6 @@
     },
     "src/app/(app)/catalogo/productos/page.tsx": {
       "dark:": 2
-    },
-    "src/app/(app)/catalogo/proveedores/[id]/page.tsx": {
-      "dark:": 6
     },
     "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
       "dark:": 5

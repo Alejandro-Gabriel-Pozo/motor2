@@ -42,7 +42,7 @@ export const AREAS: DeclaracionDeAreas = {
   "app/(app)": [],
   "app/(app)/administracion": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-selector", "tokens-visuales"],
   "app/(app)/carta": ["primitiva-area-de-texto", "primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-casilla", "primitiva-selector", "tokens-visuales"],
-  "app/(app)/catalogo": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-casilla", "primitiva-enlace", "primitiva-selector", "tokens-visuales"],
+  "app/(app)/catalogo": ["primitiva-area-de-texto", "primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-casilla", "primitiva-enlace", "primitiva-selector", "tokens-visuales"],
   "app/(app)/inicio": ["tokens-visuales"],
   "app/(app)/movimientos": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-casilla", "primitiva-selector", "tokens-visuales"],
   "app/(app)/reportes": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-selector", "tokens-visuales"],
