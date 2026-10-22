@@ -1,14 +1,8 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 1,
-  "entradas": 1,
-  "porTipo": {
-    "dark:": 1
-  },
-  "cuentas": {
-    "src/components/agregar-colapsable.tsx": {
-      "dark:": 1
-    }
-  }
+  "total": 0,
+  "entradas": 0,
+  "porTipo": {},
+  "cuentas": {}
 }
