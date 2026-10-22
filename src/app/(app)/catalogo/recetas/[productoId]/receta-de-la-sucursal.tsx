@@ -2,7 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
 import { CampoNumero } from "@/components/campo-numero";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Casilla } from "@/ui/primitivas/casilla";
+import { Selector } from "@/ui/primitivas/selector";
 import { IconoDeAccion } from "@/components/iconos";
 import { LecturaDeCantidad } from "@/components/receta/lectura-de-cantidad";
 import type { UnidadDeLectura } from "@/core/catalogo/public";
@@ -77,10 +81,10 @@ export function RecetaDeLaSucursal({
       )}
 
       {centralCambio && centralVigente && (
-        <p role="status" className="rounded border border-amber-600 p-2 text-sm text-amber-800 dark:text-amber-500">
+        <Aviso variante="advertencia">
           La receta central cambió (ahora va por la versión {centralVigente.version}) desde que se armó la receta propia de esta sucursal. No se aplicó nada: revisala y,
           si querés, ajustá la propia.
-        </p>
+        </Aviso>
       )}
 
       {habilitada && propia && (
@@ -134,20 +138,20 @@ export function RecetaDeLaSucursal({
                             />
                             {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
                             <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
-                            <span title="Unidad de stock de la materia prima" className="rounded border bg-neutral-100 px-2 py-1.5 text-sm dark:bg-neutral-800">
+                            <span title="Unidad de stock de la materia prima" className="rounded border bg-superficie-suave px-2 py-1.5 text-sm">
                               <span className="sr-only">Unidad de {ing.insumoProducto.nombre} en la receta propia: </span>
                               {unidadDeStock}
                             </span>
                           </LecturaDeCantidad>
                           {avisoDeUnidad && (
-                            <p role="alert" className="w-full text-xs text-amber-700 dark:text-amber-600">
+                            <p role="alert" className="w-full text-xs text-aviso-tinta">
                               {avisoDeUnidad}
                             </p>
                           )}
                           <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} ariaLabel={`Merma de ${ing.insumoProducto.nombre} en la receta propia`} placeholder="Merma %" className="w-24" />
-                          <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+                          <BotonDeServidor type="submit" tamano="compacto">
                             Guardar
-                          </button>
+                          </BotonDeServidor>
                           <Link href={volver} className="text-sm underline">
                             Cancelar
                           </Link>
@@ -158,7 +162,7 @@ export function RecetaDeLaSucursal({
                         <td className="py-2">
                           {ing.insumoProducto.nombre}
                           {avisoDeUnidad && (
-                            <p role="alert" className="text-xs text-amber-700 dark:text-amber-600">
+                            <p role="alert" className="text-xs text-aviso-tinta">
                               {avisoDeUnidad}
                             </p>
                           )}
@@ -180,10 +184,10 @@ export function RecetaDeLaSucursal({
                                   return quitarIngredienteDeRecetaPropia(producto.id, ing.insumoProductoId, versionVista, habilitada);
                                 }}
                               >
-                                <button type="submit" className="inline-flex items-center gap-1 text-sm underline">
+                                <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                                   <IconoDeAccion id="eliminar" />
                                   Quitar<span className="sr-only"> {ing.insumoProducto.nombre} de la receta propia</span>
-                                </button>
+                                </BotonDeServidor>
                               </FormConResultado>
                             </div>
                           </td>
@@ -206,9 +210,9 @@ export function RecetaDeLaSucursal({
           }}
           className="flex flex-col gap-2"
         >
-          <button type="submit" className="self-start rounded bg-neutral-900 px-4 py-2 text-sm text-white">
+          <BotonDeServidor type="submit" className="self-start">
             Crear receta propia a partir de la central
-          </button>
+          </BotonDeServidor>
         </FormConResultado>
       )}
 
@@ -230,23 +234,23 @@ export function RecetaDeLaSucursal({
           >
             <h3 className="font-medium">Agregar ingrediente a la receta de {sucursalNombre} (genera su próxima versión)</h3>
             <LecturaDeCantidad campoId="cantidad-ingrediente-nuevo-propia" unidadDeStockPorMp={unidadDeStockPorMp} unidades={lecturaPorUnidad}>
-              <select name="insumoProductoId" required aria-label="Materia prima de la receta propia" className="rounded border px-3 py-2">
+              <Selector etiqueta="Materia prima de la receta propia" etiquetaOculta name="insumoProductoId" required>
                 <option value="">Materia prima</option>
                 {materiasPrimas.map((mp) => (
                   <option key={mp.id} value={mp.id}>
                     {mp.nombre} ({nombreDeUnidad(mp.unidadStockId)})
                   </option>
                 ))}
-              </select>
-              <p className="text-xs text-neutral-500">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
+              </Selector>
+              <p className="text-xs text-tinta-tenue">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
               <div className="flex gap-2">
                 <CampoNumero id="cantidad-ingrediente-nuevo-propia" name="cantidad" placeholder="Cantidad" ariaLabel="Cantidad en la receta propia" required className="flex-1" />
                 <CampoNumero name="mermaPorcentaje" placeholder="Merma %" ariaLabel="Merma en la receta propia" className="w-28" />
               </div>
             </LecturaDeCantidad>
-            <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
+            <BotonDeServidor type="submit">
               Agregar a la receta propia
-            </button>
+            </BotonDeServidor>
           </FormConResultado>
         </AgregarColapsable>
       )}
@@ -260,24 +264,18 @@ export function RecetaDeLaSucursal({
           className="flex max-w-lg flex-col gap-2 border-t pt-3"
         >
           <h3 className="font-medium">Copiar la receta propia de otra sucursal</h3>
-          <label className="flex flex-col gap-1 text-sm">
-            Copiar desde
-            <select name="sucursalOrigenId" required className="rounded border px-3 py-2">
-              <option value="">Sucursal</option>
-              {otrasConRecetaPropia.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="confirmar" required className="mt-1" />
-            Entiendo que la receta de {sucursalNombre} pasa a ser una copia de esa y que la actual, si hay, queda en el historial.
-          </label>
-          <button type="submit" className="self-start rounded border px-4 py-2 text-sm">
+          <Selector etiqueta="Copiar desde" name="sucursalOrigenId" required>
+            <option value="">Sucursal</option>
+            {otrasConRecetaPropia.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre}
+              </option>
+            ))}
+          </Selector>
+          <Casilla name="confirmar" required etiqueta={`Entiendo que la receta de ${sucursalNombre} pasa a ser una copia de esa y que la actual, si hay, queda en el historial.`} />
+          <BotonDeServidor type="submit" variante="secundario" className="self-start">
             Copiar receta
-          </button>
+          </BotonDeServidor>
         </FormConResultado>
       )}
 
@@ -290,17 +288,14 @@ export function RecetaDeLaSucursal({
           className="flex max-w-lg flex-col gap-2 border-t pt-3"
         >
           <h3 className="font-medium">Volver a la receta central</h3>
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="confirmar" required className="mt-1" />
-            Entiendo que {sucursalNombre} deja de usar su receta propia de {producto.nombre} y pasa a usar la central; la propia queda en el historial.
-          </label>
-          <button type="submit" className="self-start rounded border px-4 py-2 text-sm">
+          <Casilla name="confirmar" required etiqueta={`Entiendo que ${sucursalNombre} deja de usar su receta propia de ${producto.nombre} y pasa a usar la central; la propia queda en el historial.`} />
+          <BotonDeServidor type="submit" variante="secundario" className="self-start">
             Volver a la receta central
-          </button>
+          </BotonDeServidor>
         </FormConResultado>
       )}
 
-      {sinNadaQueHacer && <p className="text-sm text-neutral-500">Tu rol no puede cambiar la receta de esta sucursal.</p>}
+      {sinNadaQueHacer && <p className="text-sm text-tinta-tenue">Tu rol no puede cambiar la receta de esta sucursal.</p>}
     </section>
   );
 }

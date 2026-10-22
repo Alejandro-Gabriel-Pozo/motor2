@@ -50,7 +50,7 @@ for (const ancho of [375, 1280]) {
     await expect(lectura).toHaveAttribute("aria-live", "polite");
 
     // Vacío: nada que leer.
-    await formulario.getByLabel("Materia prima", { exact: true }).selectOption({ label: `${harina.nombre} (kg)` });
+    await formulario.getByRole("combobox", { name: "Materia prima", exact: true }).selectOption({ label: `${harina.nombre} (kg)` });
     await expect(lectura).toHaveText("");
     await capturarFormulario(formulario, `receta-lectura-${ancho}-vacio`);
 
@@ -77,17 +77,17 @@ for (const ancho of [375, 1280]) {
     if (ancho === 375) await expectObjetivosTactiles(cantidad, "campo de cantidad en celular", { ancho: 0 });
 
     // Otra materia prima, otra unidad: la lectura sigue a la unidad de stock de la elegida.
-    await formulario.getByLabel("Materia prima", { exact: true }).selectOption({ label: `${huevo.nombre} (unidad)` });
+    await formulario.getByRole("combobox", { name: "Materia prima", exact: true }).selectOption({ label: `${huevo.nombre} (unidad)` });
     await expect(lectura).toContainText("= 3 unidad");
 
     // Es solo información: no bloquea el envío y lo que se guarda es lo que interpretó el parser (0,30 → 0,3 kg).
-    await formulario.getByLabel("Materia prima", { exact: true }).selectOption({ label: `${harina.nombre} (kg)` });
+    await formulario.getByRole("combobox", { name: "Materia prima", exact: true }).selectOption({ label: `${harina.nombre} (kg)` });
     await cantidad.fill("0,30");
     await expect(lectura).toContainText("= 300 g");
     await formulario.getByRole("button", { name: "Agregar", exact: true }).click();
     await expect(page.locator("tbody tr").filter({ hasText: harina.nombre })).toBeVisible();
     // El formulario se resetea al guardar bien («Materia prima» vuelve a vacío): la lectura deja de hablar en la unidad de la harina.
-    await expect(formulario.getByLabel("Materia prima", { exact: true })).toHaveValue("");
+    await expect(formulario.getByRole("combobox", { name: "Materia prima", exact: true })).toHaveValue("");
     await expect(lectura).not.toContainText(" g");
     const vigente = await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: pizza.id, sucursalId: null }, orderBy: { version: "desc" }, include: { ingredientes: true } });
     expect(Number(vigente.ingredientes.find((i) => i.insumoProductoId === harina.id)?.cantidad)).toBe(0.3);
