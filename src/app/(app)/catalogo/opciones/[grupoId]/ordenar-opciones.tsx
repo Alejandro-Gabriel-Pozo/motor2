@@ -92,9 +92,9 @@ export function OrdenarOpciones({ opciones, accion }: { opciones: OpcionParaOrde
     if (elegida === null || destino === desde || destino === desde + 1 || (destino === 0 && elegidaEsNinguna)) return null;
     return (
       <li key={`lugar-${destino}`}>
-        <button type="button" onClick={() => poner(destino)} className="min-h-[44px] w-full rounded border border-dashed border-borde-control px-3 py-2 text-sm">
+        <Boton variante="secundario" tamano="tactil" onClick={() => poner(destino)} className="w-full">
           {destino === lista.length ? "Poner al final" : "Poner acá"}
-        </button>
+        </Boton>
       </li>
     );
   };
