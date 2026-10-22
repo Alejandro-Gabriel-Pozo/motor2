@@ -15,7 +15,7 @@ test("un precio de venta con 3 decimales queda inválido en el campo y no se cre
   const nombreProducto = `E2E Precio Inválido ${Date.now()}`;
   await page.locator('input[name="nombre"]').fill(nombreProducto);
   await page.getByLabel("Producto de venta (PV)").check();
-  await page.locator('select[aria-label="Unidad de stock"]').selectOption({ label: "kg" });
+  await page.getByLabel("Unidad de stock").selectOption({ label: "kg" });
 
   const precio = page.getByLabel("Precio de venta");
   await precio.fill("100,123");
@@ -32,7 +32,7 @@ test("un precio de venta negativo queda inválido en el campo", async ({ paginaA
 
   await page.locator('input[name="nombre"]').fill(`E2E Precio Negativo ${Date.now()}`);
   await page.getByLabel("Producto de venta (PV)").check();
-  await page.locator('select[aria-label="Unidad de stock"]').selectOption({ label: "kg" });
+  await page.getByLabel("Unidad de stock").selectOption({ label: "kg" });
 
   const precio = page.getByLabel("Precio de venta");
   await precio.fill("-100");
@@ -47,7 +47,7 @@ test("un factor de conversión con más decimales de los que admite la unidad de
 
   const nombreProducto = `E2E Factor Inválido ${Date.now()}`;
   await page.locator('input[name="nombre"]').fill(nombreProducto);
-  await page.locator('select[aria-label="Unidad de stock"]').selectOption({ label: "kg" });
+  await page.getByLabel("Unidad de stock").selectOption({ label: "kg" });
 
   const factor = page.getByLabel("Factor de conversión (unidades de stock por unidad de compra)");
   await factor.fill("1,234");

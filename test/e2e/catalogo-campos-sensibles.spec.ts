@@ -93,7 +93,7 @@ test("el administrador (con la clave) ve los campos editables y sin avisos, y ca
     await expect(aviso(page)).toHaveCount(0);
     await expect(page.locator("[data-aviso-presentaciones-sin-permiso]")).toHaveCount(0);
     await expect(page.getByLabel("Unidad de stock")).toBeEnabled();
-    await expect(page.getByLabel("Unidad de compra", { exact: true })).toBeEnabled();
+    await expect(page.locator('select[name="unidadCompraId"]')).toBeEnabled();
 
     await escribirNumero(page, "Factor de conversión (unidades de stock por unidad de compra)", "30");
     await page.getByRole("button", { name: "Guardar cambios" }).click();
@@ -102,7 +102,8 @@ test("el administrador (con la clave) ve los campos editables y sin avisos, y ca
 
     // Una presentación nueva en «ml» (la «g» es la unidad de compra por defecto y la «l» ya es una presentación).
     await page.goto(`/catalogo/productos/${mp.id}/datos`);
-    await page.locator("label", { hasText: "Unidad de compra" }).locator("select").selectOption({ label: "ml" });
+    // El selector de la unidad de compra de la presentación (el del bloque «Presentaciones de compra alternativas»; el de arriba es el de la unidad por defecto del producto).
+    await page.locator("div", { has: page.getByText("Presentaciones de compra alternativas", { exact: true }) }).last().getByLabel("Unidad de compra").selectOption({ label: "ml" });
     const factorPresentacion = page.locator("label", { hasText: "Factor de conversión" }).locator("input[type=text]");
     await factorPresentacion.focus();
     await factorPresentacion.fill("50");
@@ -244,7 +245,7 @@ test("un formulario abierto ANTES de que le quiten la clave: «Agregar» una pre
     await page.goto(`/catalogo/productos/${mp.id}/datos`);
     await expect(page.getByRole("button", { name: "Agregar", exact: true })).toBeVisible();
     await quitarLaClaveFina();
-    await page.locator("label", { hasText: "Unidad de compra" }).locator("select").selectOption({ label: "ml" });
+    await page.locator("div", { has: page.getByText("Presentaciones de compra alternativas", { exact: true }) }).last().getByLabel("Unidad de compra").selectOption({ label: "ml" });
     const factorPresentacion = page.locator("label", { hasText: "Factor de conversión" }).locator("input[type=text]");
     await factorPresentacion.focus();
     await factorPresentacion.fill("50");
