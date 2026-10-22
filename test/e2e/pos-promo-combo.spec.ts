@@ -321,6 +321,36 @@ test("«Anular promo»: el foco va al motivo, Escape y el fondo cierran, y mient
   }
 });
 
+test("«Armar promo»: Escape, el fondo y Cancelar la cierran sin agregar nada, el foco vuelve a la promo y «Agregar promo» suma UNA promo a «Por agregar»", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarPromoCombo(sucursalId);
+  const { mesa } = await mesaConCuenta(sucursalId, 997);
+  try {
+    await page.goto(`/mesas/${mesa.id}`);
+    await barra(page).getByRole("button", { name: cat.entradas.nombre }).click();
+    const disparador = page.getByRole("region", { name: cat.entradas.nombre }).getByRole("button", { name: cat.titulo });
+    const dialogo = page.getByRole("dialog", { name: `Armar «${cat.titulo}»` });
+    await cierraConEscapeYConElFondo(page, () => disparador.click(), dialogo, disparador);
+
+    // Cancelar cierra, y lo elegido a medias no queda en «Por agregar».
+    await disparador.click();
+    await dialogo.getByRole("button", { name: `Sumar ${cat.empanada.nombre} a ${cat.entradas.nombre}` }).click();
+    await dialogo.getByRole("button", { name: "Cancelar" }).click();
+    await expect(dialogo).toBeHidden();
+    await expect(page.locator("[data-promo-por-agregar]")).toHaveCount(0);
+
+    // Volver a abrirla la deja en cero (los hijos se montan de nuevo); elegir y confirmar la suma UNA vez.
+    await disparador.click();
+    await expect(dialogo.getByRole("group", { name: `${cat.entradas.nombre} · 0/1 (mínimo 1)` })).toBeVisible();
+    await dialogo.getByRole("button", { name: `Sumar ${cat.empanada.nombre} a ${cat.entradas.nombre}` }).click();
+    await dialogo.getByRole("button", { name: "Agregar promo" }).click();
+    await expect(dialogo).toBeHidden();
+    await expect(page.locator("[data-promo-por-agregar]")).toHaveCount(1);
+    await expect(page.locator(`[data-promo-por-agregar="${cat.titulo}"]`)).toBeVisible();
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
 test("accesibilidad: con el diálogo «Armar promo» abierto, sin violaciones", async ({ paginaAutenticada: page, sucursalId }) => {
   const cat = await sembrarPromoCombo(sucursalId);
   const { mesa } = await mesaConCuenta(sucursalId, 995);

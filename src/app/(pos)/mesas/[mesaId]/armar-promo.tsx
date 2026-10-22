@@ -1,23 +1,22 @@
 "use client";
 
-import { useEffect, useId, useReducer } from "react";
+import { useReducer } from "react";
 import { type EntradaPromoSelectorCarta, cantidadElegida, claveDeCupo, eleccionParaAgregar, estadoInicialArmarPromo, puedeConfirmarArmarPromo, reducirArmarPromo, totalElegidoDelCupo, type EleccionParaAgregar, formatearMonto } from "@/core/pos/public";
-import { BOTON_CHICO, BOTON_PRIMARIO, BOTON_SECUNDARIO } from "./estilos";
+import { Dialogo } from "@/ui/componentes/superposiciones/dialogo";
+import { Boton } from "@/ui/primitivas/boton";
 
 /**
  * Diálogo "Armar promo" (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 11): por cada cupo, los productos elegibles con
  * −/+ y un contador ("Entradas 1/2"). "Agregar promo" queda deshabilitado hasta que TODOS los cupos cumplan mínimo (D1) y
- * máximo — el reductor puro (`armar-promo-estado.ts`) ya impide pasar del máximo tocando +. Mismo patrón de modal que
- * `AnularItem` (backdrop, `role="dialog"`, Escape cierra). No manda nada al servidor por sí solo: al confirmar, entrega la
+ * máximo — el reductor puro (`armar-promo-estado.ts`) ya impide pasar del máximo tocando +. No manda nada al servidor por sí solo: al confirmar, entrega la
  * elección al padre (`AgregarItems`), que la suma a «Por agregar» junto con los sueltos — todo se manda junto recién al
  * confirmar la lista entera (`agregarItems(cuentaId, items, promos, claveIdempotencia)`). La clave de idempotencia (P3) la maneja el padre y cambia sola con el contenido de «Por agregar»: armar,
  * confirmar o quitar una promo es un cambio de contenido y renueva la clave, así que acá no hay nada que hacer con ella.
  *
- * Escape cierra con un listener a nivel `window` (`useEffect`), NO `onKeyDown` sobre el div del diálogo (a diferencia de
- * `AnularItem`, que sí puede: su campo lleva `autoFocus`): acá NINGÚN control arranca enfocado, y encima cada botón "Sumar"
- * que llega al máximo de su cupo se deshabilita A SÍ MISMO en el click que lo enfocó — el navegador le saca el foco al
- * quedar disabled (se lo lleva a `<body>`), así que un `onKeyDown` que dependa de que el foco siga DENTRO del diálogo
- * dejaría de andar justo en ese momento (hallazgo real de `test/e2e/pos-promo-combo.spec.ts`, paso 11).
+ * Va sobre el `Dialogo` del sistema (`<dialog>` nativo con `showModal()`): Escape y el clic en el fondo cierran y el foco vuelve al botón de la promo. No hay un listener de `window` para Escape: el
+ * cierre por Escape lo resuelve el navegador sobre el diálogo modal aunque el foco se haya ido a `<body>` (un botón «Sumar» que llega al máximo de su cupo se deshabilita A SÍ MISMO en el clic que lo
+ * enfocó, y el navegador le saca el foco; hallazgo real de `test/e2e/pos-promo-combo.spec.ts`, paso 11). Ningún control arranca enfocado a propósito (sin `data-foco-inicial`): el foco inicial queda
+ * en la ✕ de cerrar, nunca en «Agregar promo».
  *
  * GO-2d (ADR-030): un producto con un grupo de opciones obligatorio se ve con su aviso («Con tamaño: pedilo suelto») y sin «+»: en una promo todavía no lleva opciones y el
  * servidor lo rechazaría (`PROMO_CON_OPCIONES`).
@@ -40,30 +39,11 @@ export function ArmarPromo({
 }) {
   const [estado, despachar] = useReducer(reducirArmarPromo, entrada, estadoInicialArmarPromo);
   const puedeConfirmar = puedeConfirmarArmarPromo(estado);
-  const base = useId();
-
-  useEffect(() => {
-    const escuchar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCerrar();
-    };
-    window.addEventListener("keydown", escuchar);
-    return () => window.removeEventListener("keydown", escuchar);
-  }, [onCerrar]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCerrar}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`${base}-titulo`}
-        data-armar-promo={entrada.promoCartaId}
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-[14px] bg-superficie p-5 text-left shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id={`${base}-titulo`} className="mb-1 text-lg font-extrabold tracking-tight">
-          Armar «{entrada.titulo}»
-        </h2>
-        <p className="mb-4 text-[13px] text-tinta-suave">{formatearMonto(entrada.precio)} en total, sea cual sea lo que elijas en cada cupo.</p>
+    <Dialogo abierto titulo={`Armar «${entrada.titulo}»`} onCerrar={onCerrar} ancho="ancho">
+      <div data-armar-promo={entrada.promoCartaId}>
+        <p className="mb-4 text-sm text-tinta-suave">{formatearMonto(entrada.precio)} en total, sea cual sea lo que elijas en cada cupo.</p>
 
         <div className="flex flex-col gap-4">
           {estado.cupos.map((cupo) => {
@@ -104,28 +84,26 @@ export function ArmarPromo({
                             )}
                           </span>
                           <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              className={BOTON_CHICO}
+                            <Boton
+                              variante="secundario" tamano="chico" className="min-w-11"
                               aria-label={`Restar ${p.nombre} de ${nombreDelCupo}`}
                               disabled={cantidad === 0}
                               onClick={() => despachar({ tipo: "decrementar", seccionCartaId: clave, productoId: p.clave })}
                             >
                               −
-                            </button>
+                            </Boton>
                             <span aria-live="polite" className="w-5 text-center text-[13.5px] tabular-nums">
                               {cantidad}
                             </span>
-                            <button
-                              type="button"
-                              className={BOTON_CHICO}
+                            <Boton
+                              variante="secundario" tamano="chico" className="min-w-11"
                               aria-label={`Sumar ${p.nombre} a ${nombreDelCupo}`}
                               disabled={llegoAlMaximo || noSeArma !== undefined}
                               title={noSeArma ?? (llegoAlMaximo ? `Ya elegiste el máximo de ${nombreDelCupo} (${cupo.cantidadMaximaCupo}).` : undefined)}
                               onClick={() => despachar({ tipo: "incrementar", seccionCartaId: clave, productoId: p.clave })}
                             >
                               +
-                            </button>
+                            </Boton>
                           </div>
                         </li>
                       );
@@ -138,14 +116,14 @@ export function ArmarPromo({
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onCerrar} className={BOTON_SECUNDARIO}>
+          <Boton onClick={onCerrar} variante="secundario">
             Cancelar
-          </button>
-          <button type="button" disabled={!puedeConfirmar} onClick={() => onConfirmar(eleccionParaAgregar(estado))} className={BOTON_PRIMARIO}>
+          </Boton>
+          <Boton disabled={!puedeConfirmar} onClick={() => onConfirmar(eleccionParaAgregar(estado))} variante="acento">
             Agregar promo
-          </button>
+          </Boton>
         </div>
       </div>
-    </div>
+    </Dialogo>
   );
 }
