@@ -1,11 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { CampoCodigo } from "@/components/campo-codigo";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { formatearCuit, validarCuit } from "@/core/fiscal/public";
 import { aceptarMiInvitacion } from "@/server/actions/auth/invitacion";
 import { Boton } from "@/ui/primitivas/boton";
-import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
 
 /**
@@ -55,11 +55,12 @@ export function FormularioDeAceptacion({ nombreEmpresa }: { nombreEmpresa: strin
 
   return (
     <div className="space-y-3 text-left">
-      <Campo
+      <CampoCodigo
         etiqueta="CUIT de la empresa"
         name="cuit-a-revisar"
-        inputMode="numeric"
         autoComplete="off"
+        longitudMaxima={13}
+        patron="[0-9\-]*"
         value={cuit}
         onChange={(e) => setCuit(e.target.value)}
         onKeyDown={(e) => {
