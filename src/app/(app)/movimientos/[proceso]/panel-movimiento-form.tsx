@@ -374,7 +374,7 @@ export function PanelMovimientoForm({
         {items.map((fila, idx) => (
           <div key={`${versionItems}-${idx}`} className="flex flex-wrap items-end gap-2 rounded border p-2">
             <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm">
-              Producto
+              <span className="font-medium">Producto</span>
               <SelectorProducto
                 value={fila.productoId}
                 onChange={(id) => cambiarProducto(idx, id)}
@@ -395,7 +395,7 @@ export function PanelMovimientoForm({
               )}
             </label>
             <label className="flex w-28 flex-col gap-1 text-sm">
-              <span>
+              <span className="font-medium">
                 Cantidad
                 {config.cantidadConSigno && (
                   <AyudaIcono texto="El ajuste es el DELTA, ya con signo: cargá negativo (ej. -5) para bajar el stock, positivo para subirlo." />
@@ -415,7 +415,7 @@ export function PanelMovimientoForm({
             {config.esCompraLike && (
               <>
                 <label className="flex w-32 flex-col gap-1 text-sm">
-                  Precio total (con IVA incluido)
+                  <span className="font-medium">Precio total (con IVA incluido)</span>
                   <CampoNumero
                     value={fila.precioTotal}
                     onChange={(v) => actualizarFila(idx, { precioTotal: v })}
@@ -426,7 +426,7 @@ export function PanelMovimientoForm({
                   />
                 </label>
                 <label className="flex w-32 flex-col gap-1 text-sm">
-                  Peso real
+                  <span className="font-medium">Peso real</span>
                   <CampoNumero value={fila.pesoReal} onChange={(v) => actualizarFila(idx, { pesoReal: v })} tamano="compacto" />
                 </label>
                 {(presentacionesPorFila[idx]?.length ?? 0) > 0 && (

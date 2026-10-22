@@ -113,7 +113,7 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
         {ventas.map((fila, idx) => (
           <div key={idx} className="flex flex-wrap items-end gap-2 rounded border p-2">
             <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm">
-              Producto
+              <span className="font-medium">Producto</span>
               <SelectorProducto
                 value={fila.productoId}
                 onChange={(id) => actualizarFila(idx, { productoId: id })}
@@ -123,7 +123,7 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
               />
             </label>
             <label className="flex w-28 flex-col gap-1 text-sm">
-              Cantidad
+              <span className="font-medium">Cantidad</span>
               <CampoNumero value={fila.cantidadVendida} onChange={(v) => actualizarFila(idx, { cantidadVendida: v })} required tamano="compacto" />
             </label>
             <Boton variante="secundario" tamano="compacto" onClick={() => quitarFila(idx)} disabled={ventas.length === 1}>

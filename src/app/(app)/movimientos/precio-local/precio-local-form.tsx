@@ -76,7 +76,7 @@ export function PrecioLocalForm({ sucursalId, preciosLocales }: { sucursalId: st
       <h2 className="font-medium">Fijar precio local</h2>
 
       <label className="flex flex-col gap-1 text-sm">
-        Producto (PV)
+        <span className="font-medium">Producto (PV)</span>
         <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ tipo: "PV", soloDisponibles: true }} limpiarSenal={resetCount} required />
       </label>
 
@@ -92,7 +92,7 @@ export function PrecioLocalForm({ sucursalId, preciosLocales }: { sucursalId: st
       )}
 
       <label className="flex flex-col gap-1 text-sm">
-        Precio local
+        <span className="font-medium">Precio local</span>
         <CampoNumero value={precio} onChange={setPrecio} prefijo="$" required tipo="importe" etiqueta="El precio" />
       </label>
 

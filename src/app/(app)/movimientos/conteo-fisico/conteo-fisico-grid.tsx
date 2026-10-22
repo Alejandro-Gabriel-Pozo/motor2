@@ -314,7 +314,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
 
       <div className="flex items-end gap-2">
         <label className="flex flex-1 flex-col gap-1 text-sm">
-          + Agregar producto (nunca contado en esta sección, sin factura, etc.)
+          <span className="font-medium">+ Agregar producto (nunca contado en esta sección, sin factura, etc.)</span>
           <SelectorProducto
             value={nuevoProductoId}
             onChange={setNuevoProductoId}
