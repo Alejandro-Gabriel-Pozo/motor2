@@ -271,7 +271,7 @@ export async function registrarMovimientoCasoDeUso(
     }
 
     return exito(mensaje, { operacionId: operacion.id, movimientos: filas.length, repetida: false });
-  }, 5, {}, true).catch((e) => {
+  }, undefined, undefined, true).catch((e) => {
     // La transacción ya hizo rollback para cuando este catch la recibe — nunca se intenta seguir operando
     // sobre ella. Choque de la carrera de factura duplicada (dos requests simultáneos, ver el comentario del
     // chequeo previo más arriba): mismo mensaje de negocio, no un error 500. Cualquier otro P2002 (ej. la

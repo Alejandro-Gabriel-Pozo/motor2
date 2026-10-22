@@ -182,5 +182,5 @@ export async function reclasificarStockCasoDeUso(
     }
 
     return exito(mensaje, { operacionId: operacion.id, disponible, destinosCantidad: comando.destinos.length, repetida: false });
-  }, 5, {}, true);
+  }, undefined, undefined, true);
 }
