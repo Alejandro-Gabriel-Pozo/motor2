@@ -1,35 +1,12 @@
 {
   "regla": "colores",
   "meta": "0 en la Fase 6 (DEC-03: los colores salen de los tokens de globals.css)",
-  "total": 16,
-  "entradas": 8,
+  "total": 1,
+  "entradas": 1,
   "porTipo": {
-    "funcion-de-color": 9,
-    "hex": 7
+    "hex": 1
   },
   "cuentas": {
-    "src/app/(carta-publica)/error.tsx": {
-      "hex": 2
-    },
-    "src/app/global-error.tsx": {
-      "hex": 3
-    },
-    "src/components/carta-publica/carta-vista.tsx": {
-      "funcion-de-color": 1
-    },
-    "src/components/carta-publica/navegacion-carta.tsx": {
-      "funcion-de-color": 5
-    },
-    "src/components/carta-publica/portada.tsx": {
-      "funcion-de-color": 1,
-      "hex": 1
-    },
-    "src/components/carta-publica/portal-vista.tsx": {
-      "funcion-de-color": 1
-    },
-    "src/components/carta-publica/seccion.tsx": {
-      "funcion-de-color": 1
-    },
     "src/components/carta/campo-color.tsx": {
       "hex": 1
     }
