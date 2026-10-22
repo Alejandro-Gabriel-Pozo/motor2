@@ -5,7 +5,7 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { lecturaDeVerificacionEnLaEmpresa, lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
-import { obtenerMiNivelPermiso, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import {
   obtenerRecetaVigente,
   agregarIngredienteAReceta,
@@ -22,6 +22,9 @@ import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { disponibilidadDeProductoEnSucursales } from "@/server/consultas/catalogo/disponibilidad";
 import { secuenciaMoviendo, unidadesDeLectura } from "@/core/catalogo/public";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
+import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
+import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
+import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
 import {
   listarMpDisponiblesEnAlguna,
   listarOpcionesDeSustituto,
@@ -160,17 +163,35 @@ export default async function RecetaEditorPage({
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "receta_sucursal_volver_central", ctx.db),
   ]);
 
+  // Fase 6 (3a): la receta es el paso «Receta» del ESPACIO DEL PRODUCTO (un producto de venta o una materia prima que se produce): se dibuja dentro del marco (el nombre como `h1`, la tira de pasos con
+  // «Receta» como la pantalla actual). El producto interno de un adicional no tiene receta ni espacio de venta: queda como siempre, sin marco. El gate de arriba (`guardar_receta`, con el módulo Recetas) es
+  // la barrera de esta pantalla; el marco solo ofrece los demás pasos a quien puede abrirlos.
+  const productoDelEspacio = await leerProductoDelEspacio(ctx.db, producto.id);
+  const conMarco = productoDelEspacio !== null && !productoDelEspacio.esAnclaDeAdicional;
+  const [marco, nivelFicha] = conMarco
+    ? await Promise.all([cargarMarcoDelEspacio(ctx, productoDelEspacio), obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db)])
+    : [null, null];
+
   // Todos los formularios del editor (central y receta propia) en UN grupo (O.2): mientras uno guarda, los demás esperan en vez de salir con la versión que
   // la pantalla mostraba antes de ese cambio; al terminar, la respuesta de la acción trae la pantalla refrescada y el cambio siguiente sale con la nueva.
-  return (
+  const editor = (
     <GrupoDeFormularios className="flex max-w-2xl flex-col gap-8">
       <div>
-        <Link href="/catalogo/recetas" className="text-sm underline">
-          ← Volver a Recetas
-        </Link>
-        <h1 className="mt-2 text-lg font-medium">
-          {producto.nombre} — versión vigente: {vigente?.version ?? "sin receta todavía"}
-        </h1>
+        {!conMarco && (
+          <Link href="/catalogo/recetas" className="text-sm underline">
+            ← Volver a Recetas
+          </Link>
+        )}
+        {/* Dentro del marco el `h1` es el producto: el título de la receta baja a `h2`. */}
+        {conMarco ? (
+          <h2 className="text-lg font-medium">
+            {producto.nombre} — versión vigente: {vigente?.version ?? "sin receta todavía"}
+          </h2>
+        ) : (
+          <h1 className="mt-2 text-lg font-medium">
+            {producto.nombre} — versión vigente: {vigente?.version ?? "sin receta todavía"}
+          </h1>
+        )}
         {vigente && (
           <div className="flex gap-3">
             <Link href={`${volver}/historial`} className="text-sm text-neutral-500 underline inline-flex items-center gap-1">
@@ -729,5 +750,25 @@ export default async function RecetaEditorPage({
         volver={volver}
       />
     </GrupoDeFormularios>
+  );
+
+  if (!conMarco || !productoDelEspacio || !marco || !nivelFicha) return editor;
+  return (
+    <MarcoDelEspacio
+      producto={{
+        id: producto.id,
+        nombre: producto.nombre,
+        codigo: producto.codigo,
+        tipo: productoDelEspacio.tipo,
+        modoDeVenta: productoDelEspacio.modoDeVenta,
+        disponibleAca: marco.disponibleAca,
+        sucursalNombre: ctx.sucursalNombre,
+        fichaVisible: nivelFicha.ver,
+      }}
+      pasos={marco.pasos}
+      actual="receta"
+    >
+      {editor}
+    </MarcoDelEspacio>
   );
 }
