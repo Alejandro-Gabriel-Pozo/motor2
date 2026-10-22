@@ -1,12 +1,11 @@
 {
   "regla": "tipografia",
   "meta": "bajar hacia 0 a medida que la escala tipográfica pase a tokens (auditoría §19.4); la carta pública tiene su propia línea de base",
-  "total": 194,
-  "entradas": 28,
+  "total": 192,
+  "entradas": 27,
   "porTipo": {
     "clase-arbitraria": 143,
-    "font-size-literal": 49,
-    "fontSize-literal": 2
+    "font-size-literal": 49
   },
   "cuentas": {
     "plataforma/src/app/globals.css": {
@@ -80,9 +79,6 @@
     },
     "src/app/(pos)/mesas/page.tsx": {
       "clase-arbitraria": 8
-    },
-    "src/app/global-error.tsx": {
-      "fontSize-literal": 2
     },
     "src/app/globals.css": {
       "font-size-literal": 11

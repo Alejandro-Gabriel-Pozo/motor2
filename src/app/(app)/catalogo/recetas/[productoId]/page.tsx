@@ -35,6 +35,7 @@ import { LecturaDeCantidad } from "@/components/receta/lectura-de-cantidad";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { Aviso } from "@/ui/primitivas/aviso";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
@@ -417,9 +418,9 @@ export default async function RecetaEditorPage({
                             </span>
                           </LecturaDeCantidad>
                           {avisoDeUnidad && (
-                            <p role="alert" className="w-full text-xs text-aviso-tinta">
+                            <Aviso variante="advertencia" forma="en-linea" className="w-full">
                               {avisoDeUnidad}
-                            </p>
+                            </Aviso>
                           )}
                           <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} ariaLabel={`Merma de ${ing.insumoProducto.nombre}`} placeholder="Merma %" className="w-24" />
                           {aceptaSustitutos &&
@@ -461,14 +462,14 @@ export default async function RecetaEditorPage({
                         <td className="py-2">
                           {ing.insumoProducto.nombre}
                           {avisoDeUnidad && (
-                            <p role="alert" className="text-xs text-aviso-tinta">
+                            <Aviso variante="advertencia" forma="en-linea">
                               {avisoDeUnidad}
-                            </p>
+                            </Aviso>
                           )}
                           {sucursalesSinIngrediente.has(ing.insumoProductoId) && (
-                            <p role="alert" className="text-xs text-aviso-tinta">
+                            <Aviso variante="advertencia" forma="en-linea">
                               No disponible en {sucursalesSinIngrediente.get(ing.insumoProductoId)!.join(", ")} — ahí este plato no se va a poder vender.
-                            </p>
+                            </Aviso>
                           )}
                           {aceptaSustitutos && ing.sustitutos.length > 0 && (
                             <>
@@ -477,9 +478,9 @@ export default async function RecetaEditorPage({
                                 const opcionesIds = new Set((opcionesSustitutoPorIngrediente.get(ing.insumoProductoId) ?? []).map((o) => o.id));
                                 const invalidos = ing.sustitutos.filter((s) => !opcionesIds.has(s.insumoSustitutoId));
                                 return invalidos.length > 0 ? (
-                                  <p role="alert" className="text-xs text-aviso-tinta">
+                                  <Aviso variante="advertencia" forma="en-linea">
                                     {invalidos.map((s) => `"${s.insumoSustituto.nombre}"`).join(", ")} quedó inactivo o con otra unidad de stock — no se va a usar como sustituto hasta que se corrija.
-                                  </p>
+                                  </Aviso>
                                 ) : null;
                               })()}
                             </>

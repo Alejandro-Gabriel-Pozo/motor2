@@ -1,3 +1,5 @@
+import { Insignia } from "@/ui/primitivas/insignia";
+import { claseDeBoton } from "@/ui/primitivas/boton";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
@@ -38,10 +40,10 @@ export default async function ProductosPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `producto_editar` en la ruta /datos y en la acción. Es un permiso de EDITAR, así que no
   // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
   const { editar: puedeEditarProducto } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db);
@@ -66,7 +68,7 @@ export default async function ProductosPage({
       <div className="mb-4 flex items-center justify-between gap-4">
         <h1 className="text-xl font-semibold">Productos</h1>
         {puedeDarDeAlta && (
-          <EnlaceInterno href="/catalogo/productos/nuevo" className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
+          <EnlaceInterno href="/catalogo/productos/nuevo" className={claseDeBoton()}>
             + Nuevo producto
           </EnlaceInterno>
         )}
@@ -87,7 +89,7 @@ export default async function ProductosPage({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-neutral-500">
+            <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Código</th>
               <th>Nombre</th>
               <th>Tipo</th>
@@ -105,9 +107,7 @@ export default async function ProductosPage({
                     {p.nombre}
                   </Link>
                   {gruposDeOpciones.has(p.id) && (
-                    <span className="ml-2 rounded bg-neutral-100 px-1.5 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300" data-etiqueta-opciones>
-                      Opciones: {gruposDeOpciones.get(p.id)!.join(", ")}
-                    </span>
+                    <Insignia className="ml-2" data-etiqueta-opciones>{`Opciones: ${gruposDeOpciones.get(p.id)!.join(", ")}`}</Insignia>
                   )}
                 </td>
                 <td>{p.tipo}</td>
@@ -139,7 +139,7 @@ export default async function ProductosPage({
             ))}
             {!pagina.items.length && (
               <tr>
-                <td className="py-2 text-neutral-500" colSpan={6}>
+                <td className="py-2 text-tinta-tenue" colSpan={6}>
                   Sin productos{hayFiltrosDeProductos(filtros) ? " que coincidan con la búsqueda y los filtros" : ""}.
                 </td>
               </tr>

@@ -87,6 +87,34 @@ const CERCO_COLORES: Cerco = {
       ruta: "src/core/carta/tema.ts",
       motivo: "Tema de la carta del cliente: catálogo de claves y validación de los colores que carga el cliente; el literal es el ejemplo del mensaje de error («ej. #8b4513, rgb(…)»), no un color de la interfaz.",
     },
+    {
+      ruta: "src/app/global-error.tsx",
+      motivo: "Último recurso: reemplaza al layout raíz y se pinta sin `globals.css` (ni Tailwind ni tokens existen en esa pantalla), por eso lleva sus colores literales en estilos en línea.",
+    },
+    {
+      ruta: "src/app/(carta-publica)/error.tsx",
+      motivo: "Pantalla de error de la carta del cliente: el botón toma la tinta del TEMA (`var(--carta-ink)`); el hex es solo el respaldo si el tema no cargó, y el blanco, el texto sobre esa tinta.",
+    },
+    {
+      ruta: "src/components/carta-publica/carta-vista.tsx",
+      motivo: "Tema de la carta del cliente: define la variable del tema `--carta-ink-soft` mezclando con `color-mix` la tinta base que cargó el cliente con su fondo (`--carta-bg`); no es un color de la interfaz.",
+    },
+    {
+      ruta: "src/components/carta-publica/navegacion-carta.tsx",
+      motivo: "Tema de la carta del cliente: las flechas, la píldora del índice y la barra superior se derivan con `color-mix` de `--carta-primary`, `--carta-flechas` y `--carta-bg`; no son colores de la interfaz.",
+    },
+    {
+      ruta: "src/components/carta-publica/portada.tsx",
+      motivo: "Tema de la carta del cliente: el velo sobre la foto se deriva con `color-mix` de `--carta-bg`, y el blanco es el color de texto sobre el fondo `--carta-primary` sólido cuando el cliente no cargó `hero_ink` (el contraste 3:1 lo exige).",
+    },
+    {
+      ruta: "src/components/carta-publica/portal-vista.tsx",
+      motivo: "Tema de la carta del cliente: el velo de la imagen del portal es un `oklch(0 0 0 / …)` con la opacidad del estilo (`estilo.overlay`), que sale del tema del cliente; no es un color de la interfaz.",
+    },
+    {
+      ruta: "src/components/carta-publica/seccion.tsx",
+      motivo: "Tema de la carta del cliente: el borde punteado entre el nombre y el precio se deriva con `color-mix` de `--carta-ink-soft` (variable del tema); no es un color de la interfaz.",
+    },
   ],
 };
 

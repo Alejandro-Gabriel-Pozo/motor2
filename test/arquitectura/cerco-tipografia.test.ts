@@ -55,6 +55,9 @@ const CERCO_TIPOGRAFIA: Cerco = {
   regla: "tipografia",
   meta: "bajar hacia 0 a medida que la escala tipográfica pase a tokens (auditoría §19.4); la carta pública tiene su propia línea de base",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src"], extensiones: [".ts", ".tsx", ".css"], contar: contarTipografia }),
+  excepciones: [
+    { ruta: "src/app/global-error.tsx", motivo: "Último recurso: reemplaza al layout raíz y no carga `globals.css`, así que no hay escala tipográfica de tokens: el tamaño va literal en estilos en línea." },
+  ],
 };
 
 /** La regla dura de la carta pública (DEC-35): lo que mide tiene que ser NADA. */

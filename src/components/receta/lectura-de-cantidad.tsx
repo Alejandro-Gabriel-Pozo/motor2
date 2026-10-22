@@ -78,14 +78,14 @@ export function LecturaDeCantidad({
       {children}
       <div aria-live="polite" data-lectura-de={campoId} className="w-full text-sm">
         {lectura.tipo === "valor" && (
-          <p className="text-neutral-700 dark:text-neutral-300">
+          <p className="text-tinta-suave">
             <span className="sr-only">El sistema lee: </span>
             <span className="font-medium">{lectura.lectura}</span>
           </p>
         )}
-        {lectura.tipo === "invalido" && <p className="text-red-700 dark:text-red-400">{lectura.mensaje}</p>}
+        {lectura.tipo === "invalido" && <p className="text-error">{lectura.mensaje}</p>}
         {advertencia && (
-          <p className="mt-1 flex items-start gap-1 rounded border border-amber-600 px-2 py-1 text-amber-700 dark:text-amber-600">
+          <p className="mt-1 flex items-start gap-1 rounded border border-aviso px-2 py-1 text-aviso-tinta">
             <span aria-hidden="true">⚠</span>
             <span>
               <strong>Atención:</strong> {advertencia}

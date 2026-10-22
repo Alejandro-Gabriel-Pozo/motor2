@@ -45,6 +45,8 @@ const CERCO_DIALOGOS_Y_AVISOS: Cerco = {
   meta: "bajar hacia 0 en la Fase 6: diálogos y avisos salen de las primitivas de src/ui (Dialogo, Aviso)",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src"], extensiones: [".tsx", ".jsx"], incluir: (ruta) => !ruta.startsWith("src/ui/"), contar: contarDialogosYAvisos }),
   excepciones: [
+    { ruta: "src/app/global-error.tsx", motivo: "Último recurso: reemplaza al layout raíz y no carga `globals.css`; su panel con `role=\"alert\"` no puede usar `Aviso` (se vestiría con clases de tokens que acá no existen)." },
+    { ruta: "src/app/(carta-publica)/error.tsx", motivo: "Pantalla de error de la carta del cliente: es el panel entero (título, texto y botón con la tinta del tema) en `role=\"alert\"`, no un aviso en línea; el color del botón es del tema del cliente." },
     { ruta: "src/components/menu-celular.tsx", motivo: `${COMPARTIDO} de diálogo: el cajón del menú en celular, sobre el <dialog> nativo con el mismo criterio que ui/…/dialogo.tsx. Es el único <dialog> que queda a mano (el ☰, el ✕, el buscador y el aviso «Sin resultados» ya usan las primitivas): pasa a Dialogo forma="lateral" en la Fase 7, con el rediseño del menú.` },
   ],
 };
