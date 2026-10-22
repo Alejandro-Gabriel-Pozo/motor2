@@ -53,7 +53,7 @@ jobs:
       MOTOR2_E2E_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
       MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -102,7 +102,7 @@ jobs:
       # M.3-A8: igual que en `integracion` (el guardián del rol de pruebas pide la misma forma en todo job que prepara la base); el build no siembra nada.
       MOTOR2_PRUEBAS_DATABASE_URL: postgresql://motor2_app_pruebas:ci-pruebas-descartable@localhost:5432/motor2_dev
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -161,7 +161,7 @@ jobs:
       # M.3-A8: con esta URL (rol de pruebas, MISMA base) siembran los fixtures de Vitest; el código bajo prueba usa DATABASE_URL (motor2_app).
       MOTOR2_PRUEBAS_DATABASE_URL: postgresql://motor2_app_pruebas:ci-pruebas-descartable@localhost:5432/motor2_dev
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -224,7 +224,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -327,7 +327,7 @@ jobs:
       MOTOR2_E2E_B_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_b_e2e
       MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_b_e2e
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
