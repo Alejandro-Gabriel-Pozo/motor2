@@ -5,6 +5,7 @@ import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate"
 import { apagarOpcionEnSucursal } from "@/server/actions/catalogo/opciones-por-sucursal";
 import { cargarOpcionesDeLaSucursal } from "@/server/consultas/catalogo/opciones-por-sucursal";
 import { OpcionesAgotadas } from "./opciones-agotadas";
+import { Aviso } from "@/ui/primitivas/aviso";
 
 /**
  * «Opciones agotadas» de la sucursal activa (GO-2d; ADR-030 §5, clave `opcion_apagar_en_sucursal`: de sucursal, piso operario, delegable al encargado del turno). Lo que se acabó
@@ -17,10 +18,10 @@ export default async function OpcionesAgotadasPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "opcion_apagar_en_sucursal", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   const [{ editar: puedeCambiar }, datos] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "opcion_apagar_en_sucursal", ctx.db),
     cargarOpcionesDeLaSucursal(ctx.db, ctx.sucursalId),
@@ -31,16 +32,16 @@ export default async function OpcionesAgotadasPage() {
     <div className="flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">Opciones agotadas en «{ctx.sucursalNombre}»</h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-tinta-suave">
           Lo que se acabó hoy: tocá una opción para marcarla agotada. No se ofrece en el salón ni en la carta de esta sucursal hasta que la vuelvas a prender (no se prende sola).
         </p>
-        <p role="status" className="text-sm font-medium" data-agotadas-ahora>
-          Agotadas ahora: {datos.agotadasAhora}
-        </p>
+        <Aviso variante="informacion" forma="en-linea" data-agotadas-ahora>
+          <span className="font-medium">Agotadas ahora: {datos.agotadasAhora}</span>
+        </Aviso>
       </div>
 
       {datos.sinPoderVenderse.length > 0 && (
-        <section aria-labelledby="titulo-sin-vender" className="rounded border border-amber-700 p-3 text-sm text-amber-700 dark:border-amber-600 dark:text-amber-600">
+        <section aria-labelledby="titulo-sin-vender" className="rounded border border-aviso-tinta p-3 text-sm text-aviso-tinta">
           <h2 id="titulo-sin-vender" className="font-medium">
             Con esto, hoy no se pueden vender en «{ctx.sucursalNombre}»:
           </h2>
@@ -55,9 +56,9 @@ export default async function OpcionesAgotadasPage() {
       )}
 
       {datos.grupos.length === 0 ? (
-        <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+        <Aviso variante="informacion" forma="en-linea">
           La empresa todavía no tiene opciones de venta.
-        </p>
+        </Aviso>
       ) : (
         <OpcionesAgotadas
           grupos={datos.grupos}
