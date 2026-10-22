@@ -4,6 +4,9 @@ import { useId, useState } from "react";
 import { CampoNumero } from "@/components/campo-numero";
 import { interpretarNumero } from "@/core/datos/numero-tecleado";
 import type { TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import { Boton } from "@/ui/primitivas/boton";
+import { Casilla } from "@/ui/primitivas/casilla";
+import { Selector } from "@/ui/primitivas/selector";
 
 /** Una materia prima de la empresa para elegir en un consumo, con su unidad de stock (el consumo va siempre en ella: se muestra, no se elige). */
 export interface InsumoParaConsumo {
@@ -53,7 +56,7 @@ export function EditorDeConsumos({ tipo, insumos, inicial }: { tipo: TipoDeGrupo
     <fieldset className="flex flex-col gap-2">
       <legend className="text-sm font-medium">Qué consume (stock)</legend>
       <input type="hidden" name="consumos" value={JSON.stringify(paraEnviar)} />
-      {lineas.length === 0 && <p className="text-xs text-neutral-600 dark:text-neutral-400">Sin consumos: la opción no cambia lo que descuenta la receta.</p>}
+      {lineas.length === 0 && <p className="text-xs text-tinta-suave">Sin consumos: la opción no cambia lo que descuenta la receta.</p>}
       <ol className="flex flex-col gap-3">
         {lineas.map((l, i) => {
           const insumo = porId.get(l.insumoProductoId);
@@ -62,44 +65,29 @@ export function EditorDeConsumos({ tipo, insumos, inicial }: { tipo: TipoDeGrupo
             <li key={i} className="flex flex-col gap-2 rounded border p-2" data-consumo={i + 1}>
               <div className="flex flex-wrap items-end gap-3">
                 {!esAdicional && (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor={`${base}-efecto`} className="text-xs font-medium">
-                      Línea {i + 1}
-                    </label>
-                    <select id={`${base}-efecto`} value={l.efecto} onChange={(e) => cambiar(i, { efecto: e.target.value as ConsumoEnEdicion["efecto"] })} className="rounded border px-2 py-1.5 text-sm">
-                      <option value="SUMA">Suma</option>
-                      <option value="REEMPLAZA">Reemplaza</option>
-                    </select>
-                  </div>
+                  <Selector id={`${base}-efecto`} etiqueta={`Línea ${i + 1}`} tamano="compacto" value={l.efecto} onChange={(e) => cambiar(i, { efecto: e.target.value as ConsumoEnEdicion["efecto"] })}>
+                    <option value="SUMA">Suma</option>
+                    <option value="REEMPLAZA">Reemplaza</option>
+                  </Selector>
                 )}
                 {l.efecto === "REEMPLAZA" && (
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor={`${base}-reemplaza`} className="text-xs font-medium">
-                      Ingrediente que reemplaza
-                    </label>
-                    <select id={`${base}-reemplaza`} value={l.reemplazaAProductoId} onChange={(e) => cambiar(i, { reemplazaAProductoId: e.target.value })} className="max-w-[14rem] rounded border px-2 py-1.5 text-sm">
-                      <option value="">Elegí cuál</option>
-                      {insumos.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={`${base}-insumo`} className="text-xs font-medium">
-                    {l.efecto === "REEMPLAZA" ? "Por" : "Insumo"}
-                  </label>
-                  <select id={`${base}-insumo`} value={l.insumoProductoId} onChange={(e) => cambiar(i, { insumoProductoId: e.target.value })} className="max-w-[14rem] rounded border px-2 py-1.5 text-sm">
-                    <option value="">Elegí el insumo</option>
+                  <Selector id={`${base}-reemplaza`} etiqueta="Ingrediente que reemplaza" tamano="compacto" value={l.reemplazaAProductoId} onChange={(e) => cambiar(i, { reemplazaAProductoId: e.target.value })} className="max-w-[14rem]">
+                    <option value="">Elegí cuál</option>
                     {insumos.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.nombre}
                       </option>
                     ))}
-                  </select>
-                </div>
+                  </Selector>
+                )}
+                <Selector id={`${base}-insumo`} etiqueta={l.efecto === "REEMPLAZA" ? "Por" : "Insumo"} tamano="compacto" value={l.insumoProductoId} onChange={(e) => cambiar(i, { insumoProductoId: e.target.value })} className="max-w-[14rem]">
+                  <option value="">Elegí el insumo</option>
+                  {insumos.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nombre}
+                    </option>
+                  ))}
+                </Selector>
                 <div className="flex flex-col gap-1">
                   <label htmlFor={`${base}-cantidad`} className="text-xs font-medium">
                     Cantidad{insumo ? ` (${insumo.unidadNombre})` : ""}
@@ -114,27 +102,23 @@ export function EditorDeConsumos({ tipo, insumos, inicial }: { tipo: TipoDeGrupo
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-4">
-                {!esAdicional && (
-                  <label className="flex min-h-[44px] items-center gap-2 text-sm">
-                    <input type="checkbox" checked={l.escalaConLaMedida} onChange={(e) => cambiar(i, { escalaConLaMedida: e.target.checked })} />
-                    Escala con el tamaño
-                  </label>
-                )}
-                <button type="button" onClick={() => setLineas((ls) => ls.filter((_, j) => j !== i))} className="min-h-[44px] text-sm underline" aria-label={`Quitar la línea ${i + 1} del consumo`}>
+                {!esAdicional && <Casilla etiqueta="Escala con el tamaño" checked={l.escalaConLaMedida} onChange={(e) => cambiar(i, { escalaConLaMedida: e.target.checked })} />}
+                <Boton variante="enlace" tamano="tactil" onClick={() => setLineas((ls) => ls.filter((_, j) => j !== i))} aria-label={`Quitar la línea ${i + 1} del consumo`}>
                   Quitar
-                </button>
+                </Boton>
               </div>
             </li>
           );
         })}
       </ol>
-      <button
-        type="button"
+      <Boton
+        variante="enlace"
+        tamano="tactil"
         onClick={() => setLineas((ls) => [...ls, { efecto: "SUMA", insumoProductoId: "", reemplazaAProductoId: "", cantidad: "", mermaPorcentaje: "", escalaConLaMedida: false }])}
-        className="min-h-[44px] self-start text-sm underline"
+        className="self-start"
       >
         + Agregar línea de consumo
-      </button>
+      </Boton>
     </fieldset>
   );
 }

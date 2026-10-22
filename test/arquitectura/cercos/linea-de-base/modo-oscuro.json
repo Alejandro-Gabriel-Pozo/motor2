@@ -1,33 +1,12 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 76,
-  "entradas": 15,
+  "total": 27,
+  "entradas": 8,
   "porTipo": {
-    "dark:": 76
+    "dark:": 27
   },
   "cuentas": {
-    "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/cambiar-precio.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/campos-de-version.tsx": {
-      "dark:": 7
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/editor-de-consumos.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/lectura-del-factor.tsx": {
-      "dark:": 10
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/ordenar-opciones.tsx": {
-      "dark:": 7
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": {
-      "dark:": 22
-    },
     "src/app/(app)/catalogo/productos/page.tsx": {
       "dark:": 2
     },

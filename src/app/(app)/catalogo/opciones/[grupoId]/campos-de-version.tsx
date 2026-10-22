@@ -5,6 +5,7 @@ import { CampoNumero } from "@/components/campo-numero";
 import { interpretarNumero } from "@/core/datos/numero-tecleado";
 import { espejoDeDiferencia, textoDePorcentaje, type DiferenciaDePrecio, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import { formatearMonto } from "@/core/pos/public";
+import { Insignia } from "@/ui/primitivas/insignia";
 import { EditorDeConsumos, type ConsumoEnEdicion, type InsumoParaConsumo } from "./editor-de-consumos";
 import { LecturaDelFactor, type RecetaDeReferencia } from "./lectura-del-factor";
 
@@ -59,7 +60,7 @@ export function CamposDeVersion({
   const editorDeConsumos = sinPrecio ? null : consumos ? (
     <EditorDeConsumos tipo={tipo} insumos={consumos.insumos} inicial={consumos.inicial} />
   ) : (
-    <p className="text-xs text-neutral-600 dark:text-neutral-400">Lo que consume una opción usa el módulo Recetas, que tu empresa no tiene activo: se guarda sin consumos.</p>
+    <p className="text-xs text-tinta-suave">Lo que consume una opción usa el módulo Recetas, que tu empresa no tiene activo: se guarda sin consumos.</p>
   );
 
   if (sinPrecio || tipo === "INCLUIDA") {
@@ -67,7 +68,7 @@ export function CamposDeVersion({
       <div className="flex flex-col gap-3">
         <input type="hidden" name="tipoDiferencia" value="MONTO" />
         <input type="hidden" name="valorDiferencia" value="0" />
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">{sinPrecio ? "La opción «ninguna» no lleva precio ni consumo." : "Va incluida en el precio del producto: no lleva recargo."}</p>
+        <p className="text-sm text-tinta-suave">{sinPrecio ? "La opción «ninguna» no lleva precio ni consumo." : "Va incluida en el precio del producto: no lleva recargo."}</p>
         {editorDeConsumos}
       </div>
     );
@@ -116,17 +117,17 @@ export function CamposDeVersion({
             )}
             {modo === "PORCENTAJE" && <span className="text-sm">%</span>}
           </div>
-          <p className="text-xs text-neutral-600 dark:text-neutral-400">En negativo, resta (por ejemplo, un tamaño más chico). Con 0 no cambia el precio.</p>
+          <p className="text-xs text-tinta-suave">En negativo, resta (por ejemplo, un tamaño más chico). Con 0 no cambia el precio.</p>
         </fieldset>
       )}
       {referencia && !soloMonto && (
-        <p id={idEspejo} aria-live="polite" className="text-sm text-neutral-700 dark:text-neutral-300" data-espejo>
+        <p id={idEspejo} aria-live="polite" className="text-sm text-tinta-suave" data-espejo>
           {espejo
             ? espejo.tipo === "PORCENTAJE"
               ? `≈ ${espejo.porcentaje >= 0 ? "" : "−"}${textoDePorcentaje(Math.abs(espejo.porcentaje))} % del precio base de «${referencia.productoNombre}» en «${referencia.sucursalNombre}» (${formatearMonto(referencia.precio)})`
               : `≈ ${espejo.monto >= 0 ? "+" : "−"} ${formatearMonto(Math.abs(espejo.monto))} sobre el precio base de «${referencia.productoNombre}» en «${referencia.sucursalNombre}» (${formatearMonto(referencia.precio)})`
             : `Precio base de «${referencia.productoNombre}» en «${referencia.sucursalNombre}»: ${formatearMonto(referencia.precio)}`}{" "}
-          <span className="rounded bg-neutral-100 px-1 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">referencia</span>
+          <Insignia>referencia</Insignia>
         </p>
       )}
       {tipo === "MEDIDA" && (
@@ -135,7 +136,7 @@ export function CamposDeVersion({
             Cuánto consume respecto del tamaño base
           </label>
           <CampoNumero id={`${id}-factor`} name="factorEscala" value={factor} onChange={setFactor} etiqueta="El factor" required className="w-28" />
-          <p className="text-xs text-neutral-600 dark:text-neutral-400">Cuánto consume este tamaño respecto del base: 1 = igual, 1,5 = 50% más, 0,7 = 30% menos (máximo 10).</p>
+          <p className="text-xs text-tinta-suave">Cuánto consume este tamaño respecto del base: 1 = igual, 1,5 = 50% más, 0,7 = 30% menos (máximo 10).</p>
           <LecturaDelFactor valor={valorDelFactor} receta={receta} />
         </div>
       )}

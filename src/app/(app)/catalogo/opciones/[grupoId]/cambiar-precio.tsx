@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FormConResultado } from "@/components/form-con-resultado";
 import type { DiferenciaDePrecio, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Boton } from "@/ui/primitivas/boton";
 import { CamposDeVersion, type ReferenciaDePrecio } from "./campos-de-version";
 import type { ConsumoEnEdicion, InsumoParaConsumo } from "./editor-de-consumos";
 import type { RecetaDeReferencia } from "./lectura-del-factor";
@@ -36,9 +37,9 @@ export function CambiarPrecio({
   const [abierto, setAbierto] = useState(false);
   if (!abierto) {
     return (
-      <button type="button" onClick={() => setAbierto(true)} aria-label={`Cambiar precio o consumo de ${nombre}`} className="min-h-[44px] self-start text-sm underline">
+      <Boton variante="enlace" tamano="tactil" onClick={() => setAbierto(true)} aria-label={`Cambiar precio o consumo de ${nombre}`} className="self-start">
         Cambiar precio o consumo
-      </button>
+      </Boton>
     );
   }
   return (
@@ -46,13 +47,13 @@ export function CambiarPrecio({
       <p className="text-sm font-medium">Cambio de precio o de consumo de «{nombre}» (rige desde que lo guardás)</p>
       <FormConResultado ofrecerRecargar accion={accion} className="flex flex-col gap-3">
         <CamposDeVersion tipo={tipo} sinPrecio={esNinguna} referencia={referencia} receta={receta} inicial={rige} consumos={insumos ? { insumos, inicial: rige.consumos } : null} />
-        <button type="submit" className="self-start rounded bg-neutral-900 px-4 py-2 text-white">
+        <Boton type="submit" className="self-start">
           Guardar el cambio
-        </button>
+        </Boton>
       </FormConResultado>
-      <button type="button" onClick={() => setAbierto(false)} className="self-start text-xs text-neutral-500 underline dark:text-neutral-400">
+      <Boton variante="enlace" tamano="chico" onClick={() => setAbierto(false)} className="self-start">
         Cerrar
-      </button>
+      </Boton>
     </div>
   );
 }

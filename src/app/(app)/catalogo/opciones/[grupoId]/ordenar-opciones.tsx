@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 
 export interface OpcionParaOrdenar {
   id: string;
@@ -62,22 +64,22 @@ export function OrdenarOpciones({ opciones, accion }: { opciones: OpcionParaOrde
   };
 
   const mensaje = resultado && (
-    <p role={resultado.ok ? "status" : "alert"} className={`text-sm ${resultado.ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+    <Aviso variante={resultado.ok ? "exito" : "error"} forma="en-linea">
       {resultado.mensaje}
       {!resultado.ok && /Recargá la pantalla/.test(resultado.mensaje) && (
-        <button type="button" onClick={() => window.location.reload()} className="ml-2 inline-flex min-h-[44px] items-center rounded border border-current px-3 py-1 font-medium">
+        <Boton variante="secundario" tamano="tactil" onClick={() => window.location.reload()} className="ml-2">
           Recargar
-        </button>
+        </Boton>
       )}
-    </p>
+    </Aviso>
   );
 
   if (!ordenando) {
     return (
       <div className="flex flex-col gap-1">
-        <button type="button" onClick={empezar} className="min-h-[44px] self-start rounded border px-3 py-2 text-sm">
+        <Boton variante="secundario" tamano="tactil" onClick={empezar} className="self-start">
           Ordenar opciones
-        </button>
+        </Boton>
         {mensaje}
       </div>
     );
@@ -90,7 +92,7 @@ export function OrdenarOpciones({ opciones, accion }: { opciones: OpcionParaOrde
     if (elegida === null || destino === desde || destino === desde + 1 || (destino === 0 && elegidaEsNinguna)) return null;
     return (
       <li key={`lugar-${destino}`}>
-        <button type="button" onClick={() => poner(destino)} className="min-h-[44px] w-full rounded border border-dashed border-neutral-500 px-3 py-2 text-sm">
+        <button type="button" onClick={() => poner(destino)} className="min-h-[44px] w-full rounded border border-dashed border-borde-control px-3 py-2 text-sm">
           {destino === lista.length ? "Poner al final" : "Poner acá"}
         </button>
       </li>
@@ -99,9 +101,9 @@ export function OrdenarOpciones({ opciones, accion }: { opciones: OpcionParaOrde
 
   return (
     <section aria-label="Ordenar las opciones" className="flex flex-col gap-2 rounded border p-3">
-      <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+      <Aviso variante="informacion" forma="en-linea">
         {elegida === null ? "Tocá la opción que querés mover." : "Ahora tocá dónde va."}
-      </p>
+      </Aviso>
       <ol className="flex flex-col gap-1">
         {lista.flatMap((o, i) => [
           lugar(i),
@@ -110,12 +112,12 @@ export function OrdenarOpciones({ opciones, accion }: { opciones: OpcionParaOrde
               type="button"
               aria-pressed={elegida === o.id}
               onClick={() => setElegida(elegida === o.id ? null : o.id)}
-              className="flex min-h-[44px] w-full items-center gap-2 rounded border px-3 py-2 text-left text-sm aria-pressed:border-neutral-900 aria-pressed:font-semibold dark:aria-pressed:border-neutral-100"
+              className="flex min-h-[44px] w-full items-center gap-2 rounded border px-3 py-2 text-left text-sm aria-pressed:border-tinta aria-pressed:font-semibold"
             >
-              <span className="tabular-nums text-neutral-600 dark:text-neutral-400">{i + 1}.</span>
+              <span className="tabular-nums text-tinta-suave">{i + 1}.</span>
               <span>{o.nombre}</span>
-              {o.esNinguna && <span className="text-xs text-neutral-600 dark:text-neutral-400">(ninguna)</span>}
-              {!o.activa && <span className="text-xs text-neutral-600 dark:text-neutral-400">(archivada)</span>}
+              {o.esNinguna && <span className="text-xs text-tinta-suave">(ninguna)</span>}
+              {!o.activa && <span className="text-xs text-tinta-suave">(archivada)</span>}
               {elegida === o.id && <span className="ml-auto text-xs">Elegida</span>}
             </button>
           </li>,
@@ -123,12 +125,12 @@ export function OrdenarOpciones({ opciones, accion }: { opciones: OpcionParaOrde
         {lugar(lista.length)}
       </ol>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={guardar} disabled={pendiente} className="min-h-[44px] rounded bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-60">
+        <Boton tamano="tactil" onClick={guardar} disabled={pendiente}>
           {pendiente ? "Guardando…" : "Guardar orden"}
-        </button>
-        <button type="button" onClick={() => setOrdenando(false)} className="min-h-[44px] rounded border px-4 py-2 text-sm">
+        </Boton>
+        <Boton variante="secundario" tamano="tactil" onClick={() => setOrdenando(false)}>
           Cancelar
-        </button>
+        </Boton>
       </div>
       {mensaje}
     </section>
