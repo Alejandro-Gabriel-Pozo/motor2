@@ -117,7 +117,7 @@ export function MesaCard(props: MesaCardProps) {
             {hrefVerPedidos ? (
               <Link
                 href={hrefVerPedidos}
-                className="flex w-full min-w-0 items-center justify-center rounded-lg border border-borde py-[9px] text-[13px] font-semibold hover:bg-black/[0.03] max-md:min-h-11"
+                className="flex w-full min-w-0 items-center justify-center rounded-lg border border-borde py-[9px] text-sm font-semibold hover:bg-black/[0.03] max-md:min-h-11"
               >
                 Ver pedidos
                 <IndicadorDeEnlace />
@@ -127,7 +127,7 @@ export function MesaCard(props: MesaCardProps) {
                 Ver pedidos
               </BotonDeServidor>
             )}
-            <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefFacturar}>
+            <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefFacturar} grande>
               Facturar
             </ActionButton>
           </div>
@@ -138,12 +138,12 @@ export function MesaCard(props: MesaCardProps) {
 }
 
 /** Con `href`, un enlace con aspecto de botón; sin él, un botón deshabilitado (la acción no está disponible). */
-function ActionButton({ color, textColor, href, icon, children }: { color: string; textColor: string; href?: string; icon?: ReactNode; children: ReactNode }) {
+function ActionButton({ color, textColor, href, icon, grande = false, children }: { color: string; textColor: string; href?: string; icon?: ReactNode; grande?: boolean; children: ReactNode }) {
   if (href) {
     return (
       <Link
         href={href}
-        className="flex w-full min-w-0 items-center justify-center gap-1.5 rounded-lg py-[9px] text-[13px] font-semibold transition-opacity hover:opacity-90 max-md:min-h-11"
+        className={`flex w-full min-w-0 items-center justify-center gap-1.5 rounded-lg py-[9px] ${grande ? "text-sm" : "text-[13px]"} font-semibold transition-opacity hover:opacity-90 max-md:min-h-11`}
         style={{ background: color, color: textColor }}
       >
         {icon}

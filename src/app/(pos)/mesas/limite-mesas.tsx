@@ -52,7 +52,7 @@ export function LimiteMesasAbiertas({ abiertas, limite, puedeEditar }: { abierta
 
   if (!editando) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[12.5px] text-tinta-tenue">
+      <span className="inline-flex flex-wrap items-center gap-x-1.5 text-sm text-tinta-tenue">
         {texto}
         {puedeEditar && (
           <Boton variante="enlace" tamano="en-fila" onClick={abrir}>
@@ -83,7 +83,7 @@ export function LimiteMesasAbiertas({ abiertas, limite, puedeEditar }: { abierta
           invalido={Boolean(error)}
         />
       </div>
-      <Boton type="submit" variante="secundario" tamano="chico" disabled={pending}>
+      <Boton type="submit" variante="secundario" tamano="compacto" disabled={pending}>
         {pending ? "Guardando…" : "Guardar"}
       </Boton>
       <Boton variante="enlace" tamano="en-fila" onClick={cancelar}>
