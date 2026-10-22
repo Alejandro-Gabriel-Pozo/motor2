@@ -855,6 +855,16 @@ const exclusion: Operador = {
   },
 };
 
+/**
+ * Correr el reloj un día después del vencimiento de la entrada mutada vence TAMBIÉN toda deuda, excepción y exclusión real que caduque ese mismo día (la de `prisma/fase-a/` también vence el 2026-12-20) (hoy + 59 días de la mutación cae, desde el 2026-10-22, en el 2026-12-20 de la deuda
+ * inicial de los tokens): es lo que tiene que pasar, no un hueco. Es el mismo criterio de la mutación `vencida` de las exclusiones.
+ */
+const VENCEN_CON_EL_RELOJ = [
+  { verifica: "motor", tipo: "deuda-vencida" },
+  { verifica: "motor", tipo: "excepcion-vencida" },
+  { verifica: "clasificacion", tipo: "excepcion-vencida" },
+] as const;
+
 const GOBIERNO_VALIDO = { responsable: "dueño", aprobacion: { por: "dueño", referencia: "PR #12" }, renovaciones: [] } as const;
 const MOTIVO_VALIDO = "un motivo escrito con más de veinte caracteres";
 
@@ -901,9 +911,9 @@ const gobierno: Operador = {
       case "motivo-corto-caso":
         return m("caso legítimo con motivo de 5 caracteres", { casosLegitimos: [...c.casosLegitimos, { ...caso, motivo: "corto" }] });
       case "vencida-excepcion":
-        return m("la excepción vence ayer", { excepciones: [...c.excepciones, excepcion] }, { hoy: masDias(excepcion.vence, 1) });
+        return m("la excepción vence ayer", { excepciones: [...c.excepciones, excepcion] }, { hoy: masDias(excepcion.vence, 1), tolerados: VENCEN_CON_EL_RELOJ });
       case "vencida-deuda":
-        return m("la deuda vence ayer", { deuda: [...c.deuda, deuda] }, { hoy: masDias(deuda.vence, 1) });
+        return m("la deuda vence ayer", { deuda: [...c.deuda, deuda] }, { hoy: masDias(deuda.vence, 1), tolerados: VENCEN_CON_EL_RELOJ });
       case "plazo-excedido-excepcion":
         return m("la excepción vence a 365 días", { excepciones: [...c.excepciones, { ...excepcion, vence: masDias(base.hoy, 365) }] });
       case "plazo-excedido-deuda":
