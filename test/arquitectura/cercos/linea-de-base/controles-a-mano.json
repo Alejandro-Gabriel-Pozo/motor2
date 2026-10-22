@@ -1,13 +1,13 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 464,
-  "entradas": 100,
+  "total": 462,
+  "entradas": 99,
   "porTipo": {
     "button": 251,
-    "input": 143,
+    "input": 142,
     "input-hidden": 16,
-    "select": 40,
+    "select": 39,
     "textarea": 14
   },
   "cuentas": {
@@ -338,10 +338,6 @@
     "src/components/carta/editor-tema.tsx": {
       "button": 1,
       "input": 6,
-      "select": 1
-    },
-    "src/components/carta/seccion-y-orden.tsx": {
-      "input": 1,
       "select": 1
     },
     "src/components/carta/sincronizar-precio-grupo.tsx": {

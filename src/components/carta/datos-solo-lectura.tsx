@@ -18,8 +18,8 @@ export function Dato({ etiqueta, children, ancho = false }: { etiqueta: string; 
   const vacio = children === null || children === undefined || children === "";
   return (
     <div className={`flex flex-col gap-0.5 ${ancho ? "sm:col-span-2" : ""}`}>
-      <dt className="text-xs text-neutral-500">{etiqueta}</dt>
-      <dd className="text-sm">{vacio ? <span className="text-neutral-500 dark:text-neutral-400">—</span> : children}</dd>
+      <dt className="text-xs text-tinta-tenue">{etiqueta}</dt>
+      <dd className="text-sm">{vacio ? <span className="text-tinta-tenue">—</span> : children}</dd>
     </div>
   );
 }

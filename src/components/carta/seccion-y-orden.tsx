@@ -2,8 +2,8 @@
 
 import { useRef, type ChangeEvent } from "react";
 import { ordenSugeridoAlElegirSeccion } from "@/core/carta/public";
-
-const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
+import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
 
 /**
  * El select de sección de carta + el orden dentro de esa sección, de un producto suelto (/carta) o de un ítem agrupado
@@ -42,22 +42,16 @@ export function SeccionYOrden({
 
   return (
     <>
-      <label className="flex flex-col gap-1 text-sm">
-        {etiquetaSeccion}
-        <select name="seccionCartaId" required={requerida} defaultValue={guardado?.seccionCartaId ?? ""} onChange={alCambiarSeccion} className={CLASE_INPUT}>
-          {conOpcionVacia && <option value="">— elegí una —</option>}
-          {secciones.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-              {s.activa ? "" : " (apagada)"}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Orden dentro de su sección
-        <input ref={orden} name="orden" type="number" step={1} defaultValue={guardado?.orden ?? 0} className={CLASE_INPUT} />
-      </label>
+      <Selector etiqueta={etiquetaSeccion} name="seccionCartaId" required={requerida} defaultValue={guardado?.seccionCartaId ?? ""} onChange={alCambiarSeccion}>
+        {conOpcionVacia && <option value="">— elegí una —</option>}
+        {secciones.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nombre}
+            {s.activa ? "" : " (apagada)"}
+          </option>
+        ))}
+      </Selector>
+      <Campo etiqueta="Orden dentro de su sección" ref={orden} name="orden" type="number" step={1} defaultValue={guardado?.orden ?? 0} />
     </>
   );
 }
