@@ -68,7 +68,7 @@ interface Props {
  *
  * Lo tecleado se interpreta con el parser central `interpretarNumeroTecleado` (src/core/datos/numero-tecleado.ts, micro-paso 2c) y el CONTEXTO del campo: un importe admite 2 decimales, una
  * cantidad los de su unidad (`decimales`) y, sin `tipo`, los 4 de las columnas `Decimal(14,4)`. Notación argentina: la coma es el decimal; el punto agrupa miles bien formados («1.000.000») y
- * un solo punto con tres cifras («21.000») es miles donde el decimal no puede tener tres cifras (importes y unidades chicas) y AMBIGUO (error, no se adivina) donde sí («1.205» kg: ¿1,205 o
+ * un solo punto con tres cifras («21.000») es miles en un importe y en una cantidad sin decimales (g, ml, unidad) y AMBIGUO (error, no se adivina) en una cantidad con decimales, también en los kg y l del sembrado («1.205» kg: ¿1,205 o
  * 1205?). Lo que no se entiende se dice junto al campo, con cómo escribirlo; nada se borra en silencio.
  *
  * Lo que el campo EMITE (`onChange` / el `<input type="hidden">`) es el «canal de valor» (`leerNumeroCanonico`):

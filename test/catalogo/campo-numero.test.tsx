@@ -31,6 +31,19 @@ describe("CampoNumero dibuja la primitiva Campo", () => {
     expect(entradaVisible(ambiguo)).not.toContain(MARCA_DE_NO_CANONICO);
   });
 
+  it("2c, riesgo de stock: «1.205» en un campo de kg o l del sembrado (cantidad de 2 decimales, como un importe) es ambiguo y lo dice; en g (0 decimales) y en un importe no hay error", () => {
+    const kg = renderToStaticMarkup(<CampoNumero value={`1.205${MARCA_DE_NO_CANONICO}`} tipo="cantidad" decimales={2} ariaLabel="Kilos" />);
+    expect(kg).toContain("La cantidad: ¿1,205 o 1205? Escribí 1205 o 1,205.");
+    expect(entradaVisible(kg)).toContain('aria-invalid="true"');
+    // Lo que emite un campo de g o de importe para «1.205» es 1205 (canónico, sin marca): se ve «1.205» y sin error.
+    const g = renderToStaticMarkup(<CampoNumero value="1205" tipo="cantidad" decimales={0} ariaLabel="Gramos" />);
+    const importe = renderToStaticMarkup(<CampoNumero value="1205" tipo="importe" etiqueta="El precio" ariaLabel="Precio" />);
+    for (const html of [g, importe]) {
+      expect(html).not.toContain('role="alert"');
+      expect(entradaVisible(html)).toContain('value="1.205"');
+    }
+  });
+
   it("2c: «21,000» en un importe dice que admite 2 decimales y cómo escribir veintiún mil", () => {
     const html = renderToStaticMarkup(<CampoNumero value="21,000" tipo="importe" etiqueta="El precio" ariaLabel="Precio" />);
     expect(html).toContain("El precio admite como máximo 2 decimales. Para 21000 escribí 21000 o 21.000,00.");

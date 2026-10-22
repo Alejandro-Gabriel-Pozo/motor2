@@ -13,8 +13,8 @@ describe("contextoDelCampo", () => {
   it("un importe admite 2 decimales; una cantidad, los de su unidad; sin tipo o sin decimales, los 4 de las columnas (nunca se adivina «1.205»)", () => {
     expect(contextoDelCampo("importe", undefined)).toEqual(CONTEXTO_IMPORTE);
     expect(contextoDelCampo("importe", 5)).toEqual(CONTEXTO_IMPORTE); // `decimales` es de las cantidades
-    expect(contextoDelCampo("cantidad", 3)).toEqual({ decimales: 3 });
-    expect(contextoDelCampo("cantidad", 0)).toEqual({ decimales: 0 });
+    expect(contextoDelCampo("cantidad", 3)).toEqual({ tipo: "cantidad", decimales: 3 });
+    expect(contextoDelCampo("cantidad", 0)).toEqual({ tipo: "cantidad", decimales: 0 });
     expect(contextoDelCampo("cantidad", undefined)).toEqual(CONTEXTO_CANTIDAD_SIN_UNIDAD);
     expect(contextoDelCampo(undefined, undefined)).toEqual(CONTEXTO_CANTIDAD_SIN_UNIDAD);
   });
@@ -28,6 +28,7 @@ describe("valorAEmitir — lo que sale del campo al tipear", () => {
     ["0,5", KG, "0.5"],
     ["1,205", KG, "1.205"], // canónico: el punto es el decimal
     ["1.205", ENTERA, "1205"],
+    ["1.205", CONTEXTO_IMPORTE, "1205"], // en un importe, miles
     [" 5 ", KG, "5"],
     ["5,", KG, "5"],
     ["", KG, ""],
@@ -49,6 +50,32 @@ describe("valorAEmitir — lo que sale del campo al tipear", () => {
 
   it("«1.5» en una unidad entera (error de decimales) también parece canónico: sale marcado", () => {
     expect(valorAEmitir("1.5", ENTERA)).toBe(`1.5${MARCA_DE_NO_CANONICO}`);
+  });
+});
+
+describe("el tipo del campo manda (riesgo de stock): «1.205» en kg y l del sembrado (2 decimales) NO es 1205", () => {
+  const KG_DEL_SEMBRADO = contextoDelCampo("cantidad", 2); // prisma/seed.ts: kg y l con 2 decimales, los mismos que un importe
+
+  it("el campo de kg/l (tipo cantidad, 2 decimales) no emite 1205: sale marcado como no canónico y el error es el ambiguo", () => {
+    const emitido = valorAEmitir("1.205", KG_DEL_SEMBRADO);
+    expect(emitido).toBe(`1.205${MARCA_DE_NO_CANONICO}`);
+    expect(leerNumeroCanonico(emitido).ok).toBe(false);
+    expect(errorDelCampo(emitido, KG_DEL_SEMBRADO, { tipo: "cantidad", etiqueta: "El peso" })).toEqual({ origen: "tecleado", mensaje: "El peso: ¿1,205 o 1205? Escribí 1205 o 1,205." });
+  });
+
+  it("el mismo texto en un importe es 1205, y en g (0 decimales) también", () => {
+    expect(valorAEmitir("1.205", contextoDelCampo("importe", undefined))).toBe("1205");
+    expect(valorAEmitir("1.205", contextoDelCampo("cantidad", 0))).toBe("1205");
+  });
+
+  it("«21.000» en un importe es 21000 y en kg del sembrado es ambiguo", () => {
+    expect(valorAEmitir("21.000", contextoDelCampo("importe", undefined))).toBe("21000");
+    expect(valorAEmitir("21.000", KG_DEL_SEMBRADO)).toBe(`21.000${MARCA_DE_NO_CANONICO}`);
+  });
+
+  it("«0.125» y «1,205» en una unidad de 3 decimales valen 0,125 y 1,205", () => {
+    expect(valorAEmitir("0.125", KG)).toBe("0.125");
+    expect(valorAEmitir("1,205", KG)).toBe("1.205");
   });
 });
 

@@ -16,11 +16,12 @@ import {
 /**
  * Micro-paso 2c (decisiones-cerradas-2026-10-19, «REGLA NUMÉRICA FINAL — NOTACIÓN ARGENTINA»): el parser de lo que la persona ESCRIBE, con el contexto del campo. Tabla de casos borde y propiedades.
  *
- * Los contextos de la tabla: un importe (2 decimales), una unidad entera (0), una de 2 decimales, los kilos (3) y una cantidad sin unidad conocida (4).
+ * Los contextos de la tabla: un importe (2 decimales), una cantidad en unidad entera (g, ml, unidad: 0), una cantidad de 2 decimales (los kg y l del SEMBRADO, prisma/seed.ts), una de 3 y una cantidad sin unidad
+ * conocida (4). El TIPO manda, no la cantidad de decimales: un importe y los kg del sembrado tienen los mismos 2 decimales y «21.000» es miles en uno y AMBIGUO en el otro.
  */
 const IMPORTE = CONTEXTO_IMPORTE;
 const ENTERA = contextoDeCantidad(0);
-const DOS = contextoDeCantidad(2);
+const DOS = contextoDeCantidad(2); // kg y l del sembrado
 const KG = contextoDeCantidad(3);
 const SIN_UNIDAD = CONTEXTO_CANTIDAD_SIN_UNIDAD;
 
@@ -34,18 +35,18 @@ function resultado(texto: string, contexto: ContextoNumerico): Esperado {
 const NOMBRES = new Map<ContextoNumerico, string>([
   [IMPORTE, "importe"],
   [ENTERA, "entera"],
-  [DOS, "2 dec"],
+  [DOS, "kg/l del sembrado (2 dec)"],
   [KG, "kg (3 dec)"],
   [SIN_UNIDAD, "sin unidad (4 dec)"],
 ]);
 
-/** texto → [importe, entera, 2 decimales, kg, sin unidad] */
+/** texto → [importe, entera, 2 decimales (kg y l del sembrado), 3 decimales, sin unidad] */
 const TABLA: readonly (readonly [string, readonly [Esperado, Esperado, Esperado, Esperado, Esperado]])[] = [
-  // «21.000»: miles donde el decimal no puede tener 3 cifras; ambiguo donde sí (no se adivina).
-  ["21.000", [21000, 21000, 21000, "ambiguo", "ambiguo"]],
-  ["1.205", [1205, 1205, 1205, "ambiguo", "ambiguo"]],
-  ["2.000", [2000, 2000, 2000, "ambiguo", "ambiguo"]],
-  ["999.999", [999999, 999999, 999999, "ambiguo", "ambiguo"]],
+  // «21.000»: miles en un importe y en una cantidad sin decimales; ambiguo en toda cantidad con 1 o más decimales (kg y l del sembrado incluidos: no se adivina).
+  ["21.000", [21000, 21000, "ambiguo", "ambiguo", "ambiguo"]],
+  ["1.205", [1205, 1205, "ambiguo", "ambiguo", "ambiguo"]],
+  ["2.000", [2000, 2000, "ambiguo", "ambiguo", "ambiguo"]],
+  ["999.999", [999999, 999999, "ambiguo", "ambiguo", "ambiguo"]],
   // La coma es SIEMPRE decimal: «21,000» no es veintiún mil.
   ["21,000", ["decimales", "decimales", "decimales", 21, 21]],
   ["1,205", ["decimales", "decimales", "decimales", 1.205, 1.205]],
@@ -96,7 +97,7 @@ const TABLA: readonly (readonly [string, readonly [Esperado, Esperado, Esperado,
   ["  42  ", [42, 42, 42, 42, 42]],
   // Negativos: el signo solo al principio y una vez.
   ["-5", [-5, -5, -5, -5, -5]],
-  ["-21.000", [-21000, -21000, -21000, "ambiguo", "ambiguo"]],
+  ["-21.000", [-21000, -21000, "ambiguo", "ambiguo", "ambiguo"]],
   ["-,5", [-0.5, "decimales", -0.5, -0.5, -0.5]],
   ["-0", [0, 0, 0, 0, 0]],
   ["--5", ["formato", "formato", "formato", "formato", "formato"]],
@@ -132,7 +133,8 @@ describe("interpretarNumeroTecleado: tabla de casos por contexto", () => {
 });
 
 describe("interpretarNumeroTecleado: los mensajes dicen qué escribir", () => {
-  it("ambiguo: las dos lecturas, con las cifras tal cual", () => {
+  it("ambiguo: las dos lecturas, con las cifras tal cual (también en los kg y l del sembrado, de 2 decimales)", () => {
+    expect(interpretarNumeroTecleado("1.205", DOS)).toEqual({ ok: false, codigo: "ambiguo", mensaje: "¿1,205 o 1205? Escribí 1205 o 1,205." });
     expect(interpretarNumeroTecleado("1.205", KG)).toEqual({ ok: false, codigo: "ambiguo", mensaje: "¿1,205 o 1205? Escribí 1205 o 1,205." });
     expect(interpretarNumeroTecleado("2.000", KG)).toEqual({ ok: false, codigo: "ambiguo", mensaje: "¿2,000 o 2000? Escribí 2000 o 2,000." });
   });
@@ -152,28 +154,69 @@ describe("interpretarNumeroTecleado: los mensajes dicen qué escribir", () => {
   });
 });
 
+describe("interpretarNumeroTecleado: el TIPO manda, no los decimales (riesgo de stock: «1.205» kg no puede leerse como 1205)", () => {
+  // El sembrado (prisma/seed.ts) deja kg y l con 2 decimales, los mismos que un importe; g, ml y unidad con 0.
+  const KG_DEL_SEMBRADO = contextoDeCantidad(2);
+  const L_DEL_SEMBRADO = contextoDeCantidad(2);
+  const G = contextoDeCantidad(0);
+
+  it("«1.205»: error ambiguo en kg y en l del sembrado y en una unidad de 3 decimales; 1205 en g; 1205 en un importe", () => {
+    for (const contexto of [KG_DEL_SEMBRADO, L_DEL_SEMBRADO, KG]) expect(interpretarNumeroTecleado("1.205", contexto), JSON.stringify(contexto)).toMatchObject({ ok: false, codigo: "ambiguo" });
+    expect(interpretarNumeroTecleado("1.205", G)).toEqual({ ok: true, valor: 1205 });
+    expect(interpretarNumeroTecleado("1.205", IMPORTE)).toEqual({ ok: true, valor: 1205 });
+  });
+
+  it("«21.000»: miles en un importe y en g; ambiguo en kg y l del sembrado", () => {
+    expect(interpretarNumeroTecleado("21.000", IMPORTE)).toEqual({ ok: true, valor: 21000 });
+    expect(interpretarNumeroTecleado("21.000", G)).toEqual({ ok: true, valor: 21000 });
+    expect(interpretarNumeroTecleado("21.000", KG_DEL_SEMBRADO)).toMatchObject({ ok: false, codigo: "ambiguo" });
+  });
+
+  it("«0.125» y «1,205» con los decimales que la unidad admite (3): válidos y exactos; en kg del sembrado (2) sobran decimales, no es ambiguo", () => {
+    expect(interpretarNumeroTecleado("0.125", KG)).toEqual({ ok: true, valor: 0.125 });
+    expect(interpretarNumeroTecleado("1,205", KG)).toEqual({ ok: true, valor: 1.205 });
+    expect(interpretarNumeroTecleado("0.125", KG_DEL_SEMBRADO)).toMatchObject({ ok: false, codigo: "decimales" });
+    expect(interpretarNumeroTecleado("1,205", KG_DEL_SEMBRADO)).toMatchObject({ ok: false, codigo: "decimales" });
+  });
+
+  it("«21,000» sobra de decimales en kg del sembrado, en g y en un importe, y en los tres la pista («21000» o «21.000,00», que con coma SÍ es veintiún mil) es correcta", () => {
+    for (const contexto of [KG_DEL_SEMBRADO, G, IMPORTE]) {
+      expect(interpretarNumeroTecleado("21,000", contexto), JSON.stringify(contexto)).toMatchObject({ ok: false, codigo: "decimales", mensaje: expect.stringContaining("21.000,00") });
+    }
+    expect(interpretarNumeroTecleado("21.000,00", KG_DEL_SEMBRADO)).toEqual({ ok: true, valor: 21000 });
+  });
+
+  it("propiedad: en un importe, un solo punto con 3 cifras detrás (entero de 1 a 3 dígitos) es SIEMPRE miles", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 999 }), fc.integer({ min: 0, max: 999 }), (a, b) => {
+        expect(interpretarNumeroTecleado(`${a}.${String(b).padStart(3, "0")}`, IMPORTE)).toEqual({ ok: true, valor: a * 1000 + b });
+      })
+    );
+  });
+});
+
 describe("interpretarNumeroTecleado: propiedades", () => {
   const contextoArb = fc.integer({ min: 0, max: 6 }).map(contextoDeCantidad);
   const agrupar = (entero: number) => String(entero).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
-  it("un entero bien agrupado con puntos (como lo muestra es-AR) se lee igual en cualquier contexto, salvo el de un solo grupo de 3 con decimales posibles (ambiguo)", () => {
+  it("un entero bien agrupado con puntos (como lo muestra es-AR) se lee igual en cualquier contexto, salvo el de un solo grupo de 3 en una cantidad con decimales (ambiguo)", () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 99_999_999_999 }), contextoArb, (n, contexto) => {
         const texto = agrupar(n);
         const r = interpretarNumeroTecleado(texto, contexto);
         const unSoloGrupoDeTres = /^[1-9]\d{0,2}\.\d{3}$/.test(texto);
-        if (unSoloGrupoDeTres && contexto.decimales >= 3) expect(r.ok ? "ok" : r.codigo, texto).toBe("ambiguo");
+        if (unSoloGrupoDeTres && contexto.decimales >= 1) expect(r.ok ? "ok" : r.codigo, texto).toBe("ambiguo");
         else expect(r.ok && r.valor, texto).toBe(n);
       })
     );
   });
 
-  it("nunca se adivina: un solo punto con 3 cifras detrás y un entero de 1 a 3 dígitos da miles (menos de 3 decimales) o ambiguo (3 o más), jamás un decimal en silencio", () => {
+  it("nunca se adivina: un solo punto con 3 cifras detrás y un entero de 1 a 3 dígitos da miles (una cantidad sin decimales) o ambiguo (una cantidad con 1 o más decimales), jamás un decimal en silencio", () => {
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 999 }), fc.integer({ min: 0, max: 999 }), contextoArb, (a, b, contexto) => {
         const grupo = String(b).padStart(3, "0");
         const r = interpretarNumeroTecleado(`${a}.${grupo}`, contexto);
-        if (contexto.decimales >= 3) {
+        if (contexto.decimales >= 1) {
           expect(r.ok).toBe(false);
           if (!r.ok) expect(r.codigo).toBe("ambiguo");
         } else {
