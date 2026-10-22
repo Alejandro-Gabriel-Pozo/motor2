@@ -18,7 +18,7 @@ import {
   type ConfiguracionDelSelector,
 } from "@/core/pos/public";
 import { Dialogo } from "@/ui/componentes/superposiciones/dialogo";
-import { BOTON_CHICO, BOTON_PRIMARIO } from "./estilos";
+import { Boton } from "@/ui/primitivas/boton";
 
 /** Una elección precargada: lo más pedido de la sucursal u «Otro igual» de una línea. */
 export interface EleccionPrecargada {
@@ -26,8 +26,12 @@ export interface EleccionPrecargada {
   elegidas: { opcionId: string; cantidad: number }[];
 }
 
+/** «Agregar» del pie: 48 px de alto (más que los 44 mínimos) y el color de marca. Va a mano a propósito: `Boton` no tiene un tamaño de 48 y migrarlo lo achicaría. */
+const BOTON_AGREGAR =
+  "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-lg bg-marca px-4 py-2 text-sm font-semibold text-superficie transition-colors enabled:hover:bg-marca-hover disabled:cursor-not-allowed disabled:opacity-50";
+
 const OPCION_RADIO =
-  "flex min-h-[48px] w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-borde bg-superficie px-3 py-2 text-[14px] font-semibold has-[:checked]:border-marca has-[:checked]:bg-superficie-suave has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-marca has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60";
+  "flex min-h-[48px] w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-borde bg-superficie px-3 py-2 text-sm font-semibold has-[:checked]:border-marca has-[:checked]:bg-superficie-suave has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-marca has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60";
 
 /**
  * «Elegir opciones» de un producto en el POS (GO-2d; ADR-030): el diálogo que se abre al tocar un producto que admite opciones (uno sin opciones se sigue agregando con un toque). Es
@@ -113,12 +117,12 @@ export function ElegirOpciones({
       <div className="flex flex-col gap-4" data-elegir-opciones={nombre}>
         {precargas.length > 0 && (
           <div role="group" aria-label="Lo más pedido acá" className="flex flex-col gap-1.5">
-            <p className="text-[12.5px] font-semibold text-tinta-suave">Lo más pedido acá</p>
+            <p className="text-sm font-semibold text-tinta-suave">Lo más pedido acá</p>
             <div className="flex flex-wrap gap-2">
               {precargas.map((p) => (
-                <button key={p.etiqueta} type="button" className={BOTON_CHICO} onClick={() => despachar({ tipo: "precargar", grupos, elegidas: p.elegidas })}>
+                <Boton key={p.etiqueta} variante="secundario" tamano="compacto" className="min-w-11" onClick={() => despachar({ tipo: "precargar", grupos, elegidas: p.elegidas })}>
                   {p.etiqueta}
-                </button>
+                </Boton>
               ))}
             </div>
           </div>
@@ -136,7 +140,7 @@ export function ElegirOpciones({
               className="flex min-w-0 flex-col gap-2"
               data-grupo-opciones={g.nombre}
             >
-              <legend className="mb-1 text-[14px] font-bold">
+              <legend className="mb-1 text-sm font-bold">
                 {g.nombre} · {g.cantidadMinima > 0 ? textoDeLimites(g.cantidadMinima, g.cantidadMaxima).replace(/^E/, "e") : textoDeLimites(g.cantidadMinima, g.cantidadMaxima).toLowerCase()}
               </legend>
               {g.opciones.map((o) => {
@@ -144,7 +148,7 @@ export function ElegirOpciones({
                 const noDisponible = "Agotada hoy";
                 const precio = textoDePrecio(g.tipo, g.grupoId, o.opcionId);
                 const enCero = sinStock[o.opcionId];
-                const marca = enCero?.length ? <span className="block text-[11.5px] font-normal text-tinta-suave">Sistema: stock 0 de {enCero.join(", ")}</span> : null;
+                const marca = enCero?.length ? <span className="block text-xs font-normal text-tinta-suave">Sistema: stock 0 de {enCero.join(", ")}</span> : null;
                 if (unaSola) {
                   return (
                     <label key={o.opcionId} className={OPCION_RADIO}>
@@ -166,30 +170,29 @@ export function ElegirOpciones({
                           {marca}
                         </span>
                       </span>
-                      <span className="text-[13px] font-normal tabular-nums">{disponible ? precio : noDisponible}</span>
+                      <span className="text-sm font-normal tabular-nums">{disponible ? precio : noDisponible}</span>
                     </label>
                   );
                 }
                 const cuantas = estado.elegidas[o.opcionId] ?? 0;
                 return (
                   <div key={o.opcionId} className="flex min-h-[48px] items-center justify-between gap-2 rounded-lg border border-borde bg-superficie px-3 py-2">
-                    <span className="text-[14px] font-semibold">
+                    <span className="text-sm font-semibold">
                       {o.nombre}
-                      <span className="block text-[12.5px] font-normal text-tinta-suave">
+                      <span className="block text-sm font-normal text-tinta-suave">
                         {disponible ? `${precio ? `${precio} · ` : ""}hasta ${o.cantidadMaxima}` : noDisponible}
                       </span>
                       {marca}
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <button type="button" className={`${BOTON_CHICO} min-h-[44px] min-w-[44px]`} aria-label={`Restar uno de ${o.nombre}`} disabled={cuantas === 0} onClick={() => despachar({ tipo: "restar", opcionId: o.opcionId })}>
+                      <Boton variante="secundario" tamano="tactil" className="min-w-11" aria-label={`Restar uno de ${o.nombre}`} disabled={cuantas === 0} onClick={() => despachar({ tipo: "restar", opcionId: o.opcionId })}>
                         −
-                      </button>
+                      </Boton>
                       <span className="w-6 text-center tabular-nums" data-cuantas={o.nombre}>
                         {cuantas}
                       </span>
-                      <button
-                        type="button"
-                        className={`${BOTON_CHICO} min-h-[44px] min-w-[44px]`}
+                      <Boton
+                        variante="secundario" tamano="tactil" className="min-w-11"
                         aria-label={`Sumar uno de ${o.nombre}`}
                         disabled={!disponible}
                         onClick={() => {
@@ -199,7 +202,7 @@ export function ElegirOpciones({
                         }}
                       >
                         +
-                      </button>
+                      </Boton>
                     </span>
                   </div>
                 );
@@ -209,32 +212,32 @@ export function ElegirOpciones({
         })}
 
         {puedeAgotar && (
-          <Link href="/movimientos/opciones-agotadas" className="self-start text-[12.5px] underline">
+          <Link href="/movimientos/opciones-agotadas" className="self-start text-sm underline">
             ¿Se acabó algo? Marcarlo agotado
           </Link>
         )}
 
         <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-col gap-2 border-t border-borde bg-superficie p-4">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[13px] font-semibold">Cantidad</span>
+            <span className="text-sm font-semibold">Cantidad</span>
             <span className="flex items-center gap-1.5">
-              <button type="button" className={`${BOTON_CHICO} min-h-[44px] min-w-[44px]`} aria-label="Restar una unidad" disabled={estado.cantidad <= 1} onClick={() => despachar({ tipo: "cantidad", delta: -1 })}>
+              <Boton variante="secundario" tamano="tactil" className="min-w-11" aria-label="Restar una unidad" disabled={estado.cantidad <= 1} onClick={() => despachar({ tipo: "cantidad", delta: -1 })}>
                 −
-              </button>
+              </Boton>
               <span className="w-8 text-center tabular-nums" data-cantidad-producto>
                 {estado.cantidad}
               </span>
-              <button type="button" className={`${BOTON_CHICO} min-h-[44px] min-w-[44px]`} aria-label="Sumar una unidad" onClick={() => despachar({ tipo: "cantidad", delta: 1 })}>
+              <Boton variante="secundario" tamano="tactil" className="min-w-11" aria-label="Sumar una unidad" onClick={() => despachar({ tipo: "cantidad", delta: 1 })}>
                 +
-              </button>
+              </Boton>
             </span>
           </div>
-          <p aria-live="polite" className="text-[13px] text-tinta-suave" data-total-opciones>
+          <p aria-live="polite" className="text-sm text-tinta-suave" data-total-opciones>
             {faltan.length > 0 ? `Falta elegir: ${faltan.map((g) => g.nombre).join(", ")}` : vista.ok ? desglose : vista.mensaje}
           </p>
           <button
             type="button"
-            className={`${BOTON_PRIMARIO} min-h-[48px]`}
+            className={BOTON_AGREGAR}
             disabled={!puedeConfirmar}
             onClick={() => {
               if (!puedeConfirmar) return;

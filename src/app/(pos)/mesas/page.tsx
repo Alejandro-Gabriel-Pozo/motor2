@@ -12,6 +12,8 @@ import { NuevaMesa } from "./nueva-mesa";
 import { LimiteMesasAbiertas } from "./limite-mesas";
 import { formatearHora } from "@/core/tiempo/zona-horaria";
 import { obtenerLimiteMesasAbiertas } from "@/server/consultas/pos/mesas";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { Campo } from "@/ui/primitivas/campo";
 
 /** Pestañas de filtro: `null` = todas. El punto de color usa el color de estado (no es texto); el texto va en la tinta del filtro. */
 const FILTROS: { estado: EstadoMesa | null; label: string; punto?: string }[] = [
@@ -75,7 +77,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
       <header className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">Mapa de mesas</h1>
-          <p className="text-[13.5px] text-tinta-suave">
+          <p className="text-sm text-tinta-suave">
             {ctx.sucursalNombre} · actualizado a las {formatearHora(ahora, ctx.empresaZonaHoraria)}
           </p>
           <p className="mt-1">
@@ -102,7 +104,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
                   <Link
                     href={hrefMapa(f.estado, q)}
                     aria-current={activo ? "true" : undefined}
-                    className={`flex items-center gap-[7px] whitespace-nowrap rounded-full border border-transparent px-[13px] py-[7px] text-[13px] font-semibold transition-colors ${
+                    className={`flex items-center gap-[7px] whitespace-nowrap rounded-full border border-transparent px-[13px] py-[7px] text-sm font-semibold transition-colors ${
                       activo ? "bg-tinta text-superficie" : "text-tinta-suave hover:bg-superficie-suave"
                     }`}
                   >
@@ -116,39 +118,31 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
           </ul>
         </nav>
 
-        <form method="get" action="/mesas" role="search" className="flex items-center gap-2 self-start rounded-full border border-borde bg-superficie px-3.5 py-2 md:self-auto">
+        <form method="get" action="/mesas" role="search" className="flex items-end gap-2 self-start md:self-auto">
           {estado && <input type="hidden" name="estado" value={estado} />}
-          <label htmlFor="buscar-mesa" className="sr-only">
-            Buscar mesa
-          </label>
-          <input
-            id="buscar-mesa"
-            name="q"
-            type="search"
-            defaultValue={q}
-            placeholder="Buscar mesa"
-            className="w-32 bg-transparent text-[13px] text-tinta outline-none placeholder:text-tinta-tenue"
-          />
-          <button type="submit" aria-label="Buscar" className="rounded-full text-tinta-suave hover:text-tinta">
+          <div className="w-44">
+            <Campo id="buscar-mesa" etiqueta="Buscar mesa" etiquetaOculta name="q" type="search" defaultValue={q} placeholder="Buscar mesa" tamano="compacto" />
+          </div>
+          <BotonDeServidor type="submit" variante="secundario" tamano="compacto" aria-label="Buscar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" aria-hidden>
               <circle cx="11" cy="11" r="7" />
               <path d="m21 21-4.3-4.3" />
             </svg>
-          </button>
+          </BotonDeServidor>
         </form>
       </div>
 
       {mapa.mesas.length === 0 ? (
         <div className="rounded-[14px] border border-dashed border-borde bg-superficie px-6 py-10 text-center">
           <p className="font-semibold">Todavía no hay mesas en esta sucursal.</p>
-          <p className="mt-1 text-[13px] text-tinta-suave">
+          <p className="mt-1 text-sm text-tinta-suave">
             {altaMesa.editar ? "Cargá la primera con «Nueva mesa»." : "Pedile a un admin que las cargue."}
           </p>
         </div>
       ) : visibles.length === 0 ? (
         <div className="rounded-[14px] border border-dashed border-borde bg-superficie px-6 py-10 text-center">
           <p className="font-semibold">Ninguna mesa coincide con el filtro.</p>
-          <Link href="/mesas" className="mt-1 inline-block text-[13px] text-tinta-suave underline hover:text-tinta">
+          <Link href="/mesas" className="mt-1 inline-block text-sm text-tinta-suave underline hover:text-tinta">
             Ver todas las mesas
           </Link>
         </div>
@@ -182,7 +176,7 @@ function Metrica({ label, valor, color }: { label: string; valor: number; color?
     <div data-metrica={label} className="rounded-[14px] border border-borde bg-superficie px-4 py-3.5">
       <div className="mb-1 flex items-center gap-1.5">
         {color && <span className="size-1.5 flex-none rounded-full" style={{ background: color }} aria-hidden />}
-        <span className="text-[11px] font-medium text-tinta-tenue">{label}</span>
+        <span className="text-xs font-medium text-tinta-tenue">{label}</span>
       </div>
       <div className="text-2xl font-extrabold tabular-nums" style={color ? { color } : undefined}>
         {valor}

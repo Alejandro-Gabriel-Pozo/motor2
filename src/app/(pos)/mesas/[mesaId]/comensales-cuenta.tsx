@@ -2,7 +2,9 @@
 
 import { useId, useState } from "react";
 import { corregirComensales } from "@/server/actions/pos/cuenta-apertura";
-import { BOTON_CHICO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 import { useAccionMesa } from "./usar-accion";
 
 /**
@@ -39,12 +41,12 @@ export function ComensalesCuenta({ cuentaId, comensales, puede }: { cuentaId: st
 
   if (!editando) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[13.5px] text-tinta-suave">
+      <span className="inline-flex items-center gap-1.5 text-sm text-tinta-suave">
         {comensales !== null ? `${comensales} comensal${comensales === 1 ? "" : "es"}` : "Comensales: sin datos"}
         {puede && (
-          <button type="button" onClick={abrir} className="text-[12.5px] font-semibold underline hover:text-tinta">
+          <Boton variante="enlace" tamano="en-fila" onClick={abrir}>
             Editar
-          </button>
+          </Boton>
         )}
       </span>
     );
@@ -52,33 +54,33 @@ export function ComensalesCuenta({ cuentaId, comensales, puede }: { cuentaId: st
 
   return (
     <form onSubmit={guardar} className="inline-flex flex-wrap items-center gap-1.5">
-      <label htmlFor={`${base}-comensales`} className="sr-only">
-        Comensales
-      </label>
-      <input
-        id={`${base}-comensales`}
-        inputMode="numeric"
-        autoComplete="off"
-        autoFocus
-        min={1}
-        max={99}
-        value={valor}
-        onChange={(e) => setValor(e.target.value)}
-        onFocus={(e) => e.target.select()}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${base}-error` : undefined}
-        className={`${CAMPO} w-16 py-1 text-[13px] tabular-nums`}
-      />
-      <button type="submit" disabled={pending} className={BOTON_CHICO}>
+      <div className="w-16">
+        <Campo
+          id={`${base}-comensales`}
+          etiqueta="Comensales"
+          etiquetaOculta
+          tamano="compacto"
+          inputMode="numeric"
+          autoComplete="off"
+          autoFocus
+          min={1}
+          max={99}
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          onFocus={(e) => e.target.select()}
+          invalido={Boolean(error)}
+        />
+      </div>
+      <Boton type="submit" variante="secundario" tamano="compacto" disabled={pending}>
         {pending ? "Guardando…" : "Guardar"}
-      </button>
-      <button type="button" onClick={cancelar} className={BOTON_SECUNDARIO}>
+      </Boton>
+      <Boton variante="secundario" tamano="compacto" onClick={cancelar}>
         Cancelar
-      </button>
+      </Boton>
       {error && (
-        <p id={`${base}-error`} role="alert" className="text-[13px] text-error">
+        <Aviso id={`${base}-error`} variante="error" forma="en-linea">
           {error}
-        </p>
+        </Aviso>
       )}
     </form>
   );
