@@ -36,7 +36,7 @@ export default async function OpcionesAgotadasPage() {
           Lo que se acabó hoy: tocá una opción para marcarla agotada. No se ofrece en el salón ni en la carta de esta sucursal hasta que la vuelvas a prender (no se prende sola).
         </p>
         <Aviso variante="informacion" forma="en-linea" data-agotadas-ahora>
-          <span className="font-medium">Agotadas ahora: {datos.agotadasAhora}</span>
+          <span className="font-medium text-tinta">Agotadas ahora: {datos.agotadasAhora}</span>
         </Aviso>
       </div>
 
