@@ -1,11 +1,11 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 108,
-  "entradas": 33,
+  "total": 102,
+  "entradas": 30,
   "porTipo": {
-    "button": 60,
-    "input": 30,
+    "button": 58,
+    "input": 26,
     "input-hidden": 16,
     "select": 2
   },
@@ -49,20 +49,10 @@
       "button": 11
     },
     "src/app/(app)/catalogo/opciones/[grupoId]/campos-de-version.tsx": {
-      "input": 2,
       "input-hidden": 3
     },
     "src/app/(app)/catalogo/opciones/[grupoId]/editor-de-consumos.tsx": {
       "input-hidden": 1
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/ordenar-opciones.tsx": {
-      "button": 1
-    },
-    "src/app/(app)/catalogo/opciones/limpiar/limpiar-opciones.tsx": {
-      "button": 1
-    },
-    "src/app/(app)/catalogo/productos/producto-form.tsx": {
-      "input": 2
     },
     "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
       "input-hidden": 1

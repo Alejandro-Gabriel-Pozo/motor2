@@ -211,6 +211,8 @@ const existente = (extra: Partial<ProductoExistente> = {}): ProductoExistente =>
 });
 const dibujar = (puede: boolean, productoExistente?: ProductoExistente) =>
   renderToStaticMarkup(<ProductoForm {...comunes} puedeEditarCamposSensibles={puede} productoExistente={productoExistente} presentacionesIniciales={[]} cantidadSucursales={1} nombreSucursalActual="Central" />);
+/** El desplegable «Unidad de stock» lleva su etiqueta (visible solo para el lector) atada por `for`/`id`: ya no es un `aria-label`. */
+const UNIDAD_DE_STOCK = /<label[^>]*class="sr-only"[^>]*>Unidad de stock/;
 const soloLectura = (html: string, campo: string) => html.match(new RegExp(`data-solo-lectura="${campo}"[^>]*>([\\s\\S]*?)</dl>`))?.[1] ?? null;
 // Solo para leer el texto de un fragmento YA renderizado por React en un test (no sanea nada para mostrarlo): se parte por las etiquetas en vez de borrarlas con `replace`.
 const textoPlano = (html: string | null) => (html ?? "").split(/<[^>]*>/).join("");
@@ -220,7 +222,7 @@ describe("(3) ProductoForm: edición", () => {
     const html = dibujar(false, existente());
     expect(html).not.toContain('name="factorConversion"');
     expect(html).not.toContain('name="unidadCompraId"');
-    expect(html).not.toContain('aria-label="Unidad de stock"');
+    expect(html).not.toMatch(UNIDAD_DE_STOCK);
     expect(textoPlano(soloLectura(html, "unidadStockId"))).toContain("kg");
     expect(textoPlano(soloLectura(html, "unidadCompraId"))).toContain("bolsa");
     expect(textoPlano(soloLectura(html, "factorConversion"))).toContain("25");
@@ -238,7 +240,8 @@ describe("(3) ProductoForm: edición", () => {
 
   it("CON la clave dibuja los controles de siempre y ningún aviso", () => {
     const mp = dibujar(true, existente());
-    for (const control of ['name="factorConversion"', 'name="unidadCompraId"', 'aria-label="Unidad de stock"']) expect(mp).toContain(control);
+    for (const control of ['name="factorConversion"', 'name="unidadCompraId"']) expect(mp).toContain(control);
+    expect(mp).toMatch(UNIDAD_DE_STOCK);
     expect(mp).not.toContain("data-solo-lectura");
     expect(mp).not.toContain("data-aviso-campos-sensibles");
     const pv = dibujar(true, existente({ tipo: "PV", precioVenta: 3200 }));
@@ -277,7 +280,7 @@ describe("(3) ProductoForm: edición con una unidad INACTIVA (M.2-A4, D)", () =>
 
   it("CON la clave, el desplegable de la unidad de compra ofrece la inactiva y la deja elegida (antes: no estaba, mandaba vacío y borraba la unidad al guardar)", () => {
     const html = dibujarConInactiva(true);
-    const desplegable = html.match(/<select[^>]*aria-label="Unidad de compra"[^>]*>[\s\S]*?<\/select>/)?.[0] ?? "";
+    const desplegable = html.match(/<select[^>]*name="unidadCompraId"[^>]*>[\s\S]*?<\/select>/)?.[0] ?? "";
     expect(desplegable).toMatch(/<option value="u-bolsa"[^>]*selected[^>]*>bolsa \(inactiva\)<\/option>/);
   });
 
@@ -303,20 +306,20 @@ describe("(3) ProductoForm: alta", () => {
     expect(mp).not.toContain('name="unidadCompraId"');
     expect(textoPlano(soloLectura(mp, "factorConversion"))).toContain("1");
     expect(textoPlano(soloLectura(mp, "unidadCompraId"))).toContain("Sin unidad de compra");
-    expect(mp).toContain('aria-label="Unidad de stock"'); // el servidor deja libre la unidad de stock del alta
+    expect(mp).toMatch(UNIDAD_DE_STOCK); // el servidor deja libre la unidad de stock del alta
     expect(mp).not.toContain('data-solo-lectura="unidadStockId"');
     expect(mp).toContain("data-aviso-campos-sensibles");
   });
 
   // M.2-A4: el tilde de las sucursales y su aviso. Un PV sin la clave (tilde apagado, deshabilitado y con aviso) solo se puede dibujar tras elegir el tipo en el navegador: lo cubre el e2e
   // (`catalogo-campos-sensibles.spec.ts`). Acá, lo que NO debe cambiar en el alta de una materia prima, que no se vende.
-  const tildeDeSucursales = (html: string) => html.match(/<input[^>]*type="checkbox"[^>]*\/>\s*Activo en todas las sucursales/)?.[0] ?? null;
+  const tildeDeSucursales = (html: string) => html.match(/<input[^>]*type="checkbox"[^>]*\/><label[^>]*>Activo en todas las sucursales/)?.[0] ?? null;
   it("SIN la clave, el alta de una MATERIA PRIMA deja el tilde de sucursales tildado y libre, y no avisa que no se podrá vender", () => {
     const mp = dibujar(false);
     const tilde = tildeDeSucursales(mp);
     expect(tilde).not.toBeNull();
     expect(tilde).toContain('checked=""');
-    expect(tilde).not.toContain("disabled");
+    expect(tilde).not.toMatch(/\sdisabled(=""|\s|\/)/); // el atributo, no la clase `disabled:` de la casilla
     expect(mp).not.toContain("data-aviso-alta-sin-precio");
   });
 
@@ -324,7 +327,8 @@ describe("(3) ProductoForm: alta", () => {
     const mp = dibujar(true);
     expect(tildeDeSucursales(mp)).toContain('checked=""');
     expect(mp).not.toContain("data-aviso-alta-sin-precio");
-    for (const control of ['name="factorConversion"', 'name="unidadCompraId"', 'aria-label="Unidad de stock"']) expect(mp).toContain(control);
+    for (const control of ['name="factorConversion"', 'name="unidadCompraId"']) expect(mp).toContain(control);
+    expect(mp).toMatch(UNIDAD_DE_STOCK);
     expect(mp).not.toContain("data-aviso-campos-sensibles");
   });
 });

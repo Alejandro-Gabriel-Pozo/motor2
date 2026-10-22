@@ -89,15 +89,9 @@ export function LimpiarOpciones({
         <legend className="mb-2 text-xs font-medium uppercase tracking-wide text-tinta-suave">Qué mostrar</legend>
         <div className="flex flex-wrap gap-2">
           {CRITERIOS_DE_LIMPIEZA.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-pressed={criterio === c}
-              onClick={() => setCriterio(c)}
-              className="min-h-[44px] border border-borde-control bg-superficie px-3.5 py-2 text-sm font-medium aria-pressed:border-tinta aria-pressed:bg-tinta aria-pressed:font-semibold aria-pressed:text-superficie"
-            >
+            <Boton key={c} variante="seleccion" tamano="tactil" aria-pressed={criterio === c} onClick={() => setCriterio(c)}>
               {ETIQUETA[c]}
-            </button>
+            </Boton>
           ))}
         </div>
       </fieldset>

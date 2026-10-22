@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Boton, claseDeBoton, type TamanoDeBoton, type VarianteDeBoton } from "../../src/ui/primitivas/boton";
 
 /**
- * Contrato de `Boton` (src/ui/primitivas/boton.tsx, contrato `primitiva-boton`): las 40 combinaciones de variante y tamaño, solo con tokens del sistema visual, sin modo oscuro, con el
+ * Contrato de `Boton` (src/ui/primitivas/boton.tsx, contrato `primitiva-boton`): las 45 combinaciones de variante y tamaño, solo con tokens del sistema visual, sin modo oscuro, con el
  * punto de corte `md:` y la zona táctil de 44 px en celular. El comportamiento de `cargando` también se prueba en `primitivas-y-dialogo.test.tsx` (la prueba de la capa entera); acá se
  * prueba la estructura que dibuja cada combinación. Entorno de Vitest = Node: se mira el HTML del servidor y las props del elemento.
  */
@@ -17,6 +17,7 @@ const VARIANTES: Readonly<Record<VarianteDeBoton, string>> = {
   "enlace-peligro": "text-error underline hover:decoration-2",
   "sobre-tinta": "border border-borde-sobre-tinta text-superficie hover:bg-superficie/10",
   interruptor: "border aria-pressed:border-ok aria-pressed:text-ok-tinta not-aria-pressed:border-error not-aria-pressed:bg-error-tinte not-aria-pressed:text-error",
+  seleccion: "border border-borde-control bg-superficie text-tinta not-aria-pressed:hover:bg-superficie-suave aria-pressed:border-tinta aria-pressed:bg-tinta aria-pressed:font-semibold aria-pressed:text-superficie",
 };
 /** La forma: `rounded` para todos y píldora (`rounded-full`) para el interruptor; nunca los dos radios a la vez. */
 const FORMA: Readonly<Record<VarianteDeBoton, string>> = {
@@ -28,6 +29,7 @@ const FORMA: Readonly<Record<VarianteDeBoton, string>> = {
   "enlace-peligro": "rounded",
   "sobre-tinta": "rounded",
   interruptor: "rounded-full",
+  seleccion: "rounded",
 };
 /** El contorno del foco va por variante: `foco` (la tinta) salvo sobre un fondo oscuro, donde se ve `foco-sobre-tinta` (blanco). */
 const FOCO: Readonly<Record<VarianteDeBoton, string>> = {
@@ -39,6 +41,7 @@ const FOCO: Readonly<Record<VarianteDeBoton, string>> = {
   "enlace-peligro": "focus-visible:outline-foco",
   "sobre-tinta": "focus-visible:outline-foco-sobre-tinta",
   interruptor: "focus-visible:outline-foco",
+  seleccion: "focus-visible:outline-foco",
 };
 const TAMANOS: Readonly<Record<TamanoDeBoton, string>> = {
   normal: "min-h-11 px-4 text-sm md:min-h-9 md:px-3",
@@ -136,6 +139,15 @@ describe("Boton: variantes y tamaños", () => {
     expect(renderToStaticMarkup(<Boton variante="interruptor" aria-pressed={true}>Disponible</Boton>)).toMatch(/<button[^>]*\saria-pressed="true"/);
     // Las demás variantes siguen al 50 % y con el radio común.
     expect(clases(renderToStaticMarkup(<Boton>x</Boton>))).toContain("disabled:opacity-50");
+  });
+
+  it("seleccion: sin elegir es el secundario y elegida lleva fondo tinta con texto superficie por aria-pressed; sin tono de error, rounded común y 50 % deshabilitado", () => {
+    const dibujadas = clases(renderToStaticMarkup(<Boton variante="seleccion" tamano="tactil" aria-pressed={false}>Elegida</Boton>));
+    for (const clase of ["rounded", "border", "border-borde-control", "bg-superficie", "aria-pressed:border-tinta", "aria-pressed:bg-tinta", "aria-pressed:text-superficie", "aria-pressed:font-semibold", "not-aria-pressed:hover:bg-superficie-suave", "disabled:opacity-50", "min-h-11"]) {
+      expect(dibujadas, clase).toContain(clase);
+    }
+    expect(dibujadas.filter((c) => /error|rounded-full/.test(c))).toEqual([]);
+    expect(renderToStaticMarkup(<Boton variante="seleccion" aria-pressed={true}>Elegida</Boton>)).toMatch(/<button[^>]*\saria-pressed="true"/);
   });
 
   it("className se suma al final sin quitar las clases del sistema", () => {
