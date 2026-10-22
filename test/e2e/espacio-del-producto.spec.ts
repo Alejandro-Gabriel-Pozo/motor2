@@ -330,7 +330,7 @@ for (const { ancho, alto } of [
     await page.getByRole("link", { name: "+ Nuevo producto" }).click();
     await page.getByRole("radio", { name: "Producto de venta (PV)" }).check();
     await page.locator('input[name="nombre"]').fill(nombre);
-    await page.getByLabel("Unidad de stock", { exact: true }).selectOption({ label: "unidad" });
+    await page.getByLabel("Unidad de stock").selectOption({ label: "unidad" });
     await page.getByRole("textbox", { name: "Precio de venta" }).fill("18000");
     await page.getByRole("button", { name: "Crear producto" }).click();
     await expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/);
