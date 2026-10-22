@@ -41,7 +41,7 @@ env:
   AUTH_GOOGLE_SECRET: ci-google-secret
   # En cuántas partes se reparte Vitest (tiene que coincidir con la lista de `matrix.parte` del job `integracion`: un paso de control lo comprueba contra `strategy.job-total`, y el job `conteo`
   # exige exactamente esta cantidad de resultados).
-  PARTES_VITEST: "4"
+  PARTES_VITEST: "8"
   # En cuántas partes se reparte Playwright (tiene que coincidir con la lista de `matrix.parte` del job `e2e`: un paso de control lo comprueba contra `strategy.job-total`, y el job `conteo-e2e` exige
   # exactamente esta cantidad de resultados). Playwright reparte por ARCHIVO de spec (con `fullyParallel` falso un archivo nunca se parte) y en bloques contiguos por cantidad de pruebas;
   # un spec enorme (`maquetacion-general`, 138 pruebas baratas) no se parte, así que con más de 7 partes alguna queda vacía. Cambiar la cantidad es esta variable y la lista de la matriz del job `e2e` (el resto se deriva).
@@ -156,7 +156,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        parte: [1, 2, 3, 4]
+        parte: [1, 2, 3, 4, 5, 6, 7, 8]
     services:
       postgres:
         image: postgres:17
