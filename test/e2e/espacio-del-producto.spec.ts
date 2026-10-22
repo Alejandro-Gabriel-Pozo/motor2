@@ -3,7 +3,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { capturar, expectObjetivosTactiles, expectSinDesborde } from "./fixtures/movil";
 import { abrirComoRol } from "./fixtures/rol-pos";
-import { sembrarGrupo } from "./fixtures/opciones";
+import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
 
 /**
@@ -531,5 +531,26 @@ test("paso 3 «Receta»: quien ve las recetas pero NO el catálogo la abre sin e
     await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: "Resumen" })).toHaveCount(0);
   } finally {
     await admin.restaurar();
+  }
+});
+
+test("la biblioteca: «Productos que lo usan» lleva al paso 2 del producto a quien puede editar sus opciones, y a la portada a quien no", async ({ browser, baseURL, paginaAutenticada: page, sucursalId }) => {
+  const m = marca();
+  const grupo = await sembrarGrupo({ nombre: `E2E Biblioteca ${m}`, tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Con queso", monto: 500 }] });
+  const { productoId } = await sembrarProductoConOpciones({ nombre: `E2E Usa el grupo ${m}`, codigo: `E2E-BIB-${m}`, precioVenta: 1000, sucursalId, grupos: [{ grupo }] });
+  const { page: soloVe, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { opciones_definir: "ver", producto_ver_catalogo: "ver" });
+  try {
+    await page.goto(`/catalogo/opciones/${grupo.grupoId}`);
+    const enlace = page.getByRole("region", { name: "Productos que lo usan" }).getByRole("link", { name: `E2E Usa el grupo ${m}` });
+    await expect(enlace).toHaveAttribute("href", `/catalogo/productos/${productoId}/opciones`);
+    await enlace.click();
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Opciones y precio/ })).toHaveAttribute("aria-current", "page");
+
+    // Contraespejo: quien ve el grupo pero no edita las opciones del producto va a la portada (donde el paso 2 es texto), no a una pantalla que le diría «No tenés permiso».
+    await soloVe.goto(`/catalogo/opciones/${grupo.grupoId}`);
+    await expect(soloVe.getByRole("region", { name: "Productos que lo usan" }).getByRole("link", { name: `E2E Usa el grupo ${m}` })).toHaveAttribute("href", `/catalogo/productos/${productoId}`);
+  } finally {
+    // Lo sembrado de opciones no se borra (ver `fixtures/opciones.ts`): nombres con marca propia; la base E2E se vacía al empezar cada corrida.
+    await limpiar();
   }
 });
