@@ -1,0 +1,56 @@
+{
+  "regla": "fecha-de-texto-a-mano",
+  "meta": "0 (lote 6.33: todo día tecleado o de la URL se lee con core/tiempo: esDiaISOReal, inicioDelDia, rangoDeDias)",
+  "total": 28,
+  "entradas": 15,
+  "porTipo": {
+    "fecha-de-texto": 28
+  },
+  "cuentas": {
+    "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
+      "fecha-de-texto": 1
+    },
+    "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": {
+      "fecha-de-texto": 1
+    },
+    "src/app/(app)/reportes/categorias/page.tsx": {
+      "fecha-de-texto": 2
+    },
+    "src/app/(app)/reportes/compras/page.tsx": {
+      "fecha-de-texto": 4
+    },
+    "src/app/(app)/reportes/consignacion/page.tsx": {
+      "fecha-de-texto": 4
+    },
+    "src/app/(app)/reportes/conteos/page.tsx": {
+      "fecha-de-texto": 1
+    },
+    "src/app/(app)/reportes/periodo/page.tsx": {
+      "fecha-de-texto": 2
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/page.tsx": {
+      "fecha-de-texto": 2
+    },
+    "src/app/(app)/reportes/ventas-por-seccion/page.tsx": {
+      "fecha-de-texto": 2
+    },
+    "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": {
+      "fecha-de-texto": 3
+    },
+    "src/core/excel.ts": {
+      "fecha-de-texto": 1
+    },
+    "src/core/reportes/historial-vistas.ts": {
+      "fecha-de-texto": 2
+    },
+    "src/core/reportes/tickets-emitidos.ts": {
+      "fecha-de-texto": 1
+    },
+    "src/server/actions/reportes/casos-de-uso/sincronizar-dolar.ts": {
+      "fecha-de-texto": 1
+    },
+    "src/server/persistencia/reportes/cotizacion-dolar.ts": {
+      "fecha-de-texto": 1
+    }
+  }
+}
