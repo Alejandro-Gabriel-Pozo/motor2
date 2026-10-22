@@ -233,6 +233,13 @@ const completos: Record<string, Valor> = {
     conVariantes(
       intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, nombre: "Presentación ZZ", respuesta: "PRECIO_FINAL", prefijoEnCarta: null, opciones: [{ nombre: "Simple", importe: 1500 }] }]),
     ),
+  // «+ Opción» / «+ Extra»: agregar una opción a un grupo que el producto ya usa. Llegan dos ids del cliente (el producto y el grupo; la opción y el respaldo se crean adentro): una variante por cada uno ajeno. El control
+  // positivo agrega una opción a la MEDIDA en precio propio que el PV del mundo ya usa (su fila de lo que admite está en la versión 1).
+  "accion|actions/catalogo/opciones-de-venta.ts|crearOpcionEnElProducto": (k, c) =>
+    conVariantes(
+      intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, grupoId: c.propio.grupoMedidaId, versionEsperada: 1, nombre: "Opción ZZ", importe: 1800, unidadStockId: null }]),
+      intento(c, ["grupoMedidaId"], [{ productoId: c.propio.productoConOpcionesId, grupoId: k.grupoMedidaId, versionEsperada: 1, nombre: "Opción ZZ", importe: 1800, unidadStockId: null }]),
+    ),
   // La sucursal que vio la pantalla (tiene que ser la activa: el eco) y, desde la propia, una opción o un producto ajenos.
   "accion|actions/catalogo/opciones-por-sucursal.ts|apagarOpcionEnSucursal": (k, c) =>
     conVariantes(

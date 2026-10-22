@@ -6,6 +6,7 @@ import {
   guardComandoCrearGrupoDeOpciones,
   guardComandoCrearGrupoEnElProducto,
   guardComandoCrearOpcionDeGrupo,
+  guardComandoCrearOpcionEnElProducto,
   guardComandoEditarGrupoDeOpciones,
   guardComandoEditarOpcionDeGrupo,
   guardComandoFijarAdmisionDeGrupo,
@@ -23,6 +24,7 @@ import { archivarOpcionesCasoDeUso } from "./casos-de-uso/archivar-opciones";
 import { crearGrupoDeOpcionesCasoDeUso } from "./casos-de-uso/crear-grupo-de-opciones";
 import { crearGrupoEnElProductoCasoDeUso } from "./casos-de-uso/crear-grupo-en-el-producto";
 import { crearOpcionDeGrupoCasoDeUso } from "./casos-de-uso/crear-opcion-de-grupo";
+import { crearOpcionEnElProductoCasoDeUso } from "./casos-de-uso/crear-opcion-en-el-producto";
 import { editarGrupoDeOpcionesCasoDeUso } from "./casos-de-uso/editar-grupo-de-opciones";
 import { editarOpcionDeGrupoCasoDeUso } from "./casos-de-uso/editar-opcion-de-grupo";
 import { fijarAdmisionDeGrupoEnProductoCasoDeUso } from "./casos-de-uso/fijar-admision-de-grupo-en-producto";
@@ -202,6 +204,26 @@ export async function crearGrupoEnElProducto(entrada: { productoId: unknown; nom
     const comando = guardComandoCrearGrupoEnElProducto(entrada);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await crearGrupoEnElProductoCasoDeUso(ctx, comando.valor, azarDelProceso);
+    if (resultado.ok) {
+      // La carta pública muestra las opciones de cada producto (y sus precios): se invalida su caché, solo la de esta empresa.
+      revalidarCartasPublicas(ctx.empresaSlug);
+      refrescarVistaSiHaceFalta();
+    }
+    return aResultadoAccion(resultado);
+  });
+}
+
+// «+ Opción» / «+ Extra»: AGREGAR UNA OPCIÓN a un grupo que el producto ya usa, sin salir del producto, todo o nada: la opción en el grupo de la biblioteca (y, en un extra, su producto de respaldo) y lo que ESTE producto
+// admite de ella, en UNA transacción. Las mismas DOS claves que «+ Nuevo grupo» y por la misma razón (hoy son dos pantallas: crear la opción, `opciones_definir`; admitirla en el producto, `producto_opciones_admitidas`): ninguna
+// clave nueva y nadie puede nada que antes no pudiera. La primera la pide el envoltorio y la segunda va como PRIMERA línea de adentro (`exigirTambienPermisoDeEmpresa`), antes de formatear nada: la ficha del caso de uso la
+// declara (`permiso=a+b`) y `ficha-de-caso-de-uso.test.ts` la lee del código. Qué lleva la opción (un precio final, una suma o nada; el respaldo solo en un adicional) lo decide el caso de uso con el tipo del grupo que lee.
+export async function crearOpcionEnElProducto(entrada: { productoId: unknown; grupoId: unknown; versionEsperada: unknown; nombre: unknown; importe?: unknown; unidadStockId?: unknown }): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("producto_opciones_admitidas", async (ctx) => {
+    const tambien = await exigirTambienPermisoDeEmpresa(ctx, "opciones_definir");
+    if (!tambien.ok) return error(tambien.mensaje);
+    const comando = guardComandoCrearOpcionEnElProducto(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await crearOpcionEnElProductoCasoDeUso(ctx, comando.valor, azarDelProceso);
     if (resultado.ok) {
       // La carta pública muestra las opciones de cada producto (y sus precios): se invalida su caché, solo la de esta empresa.
       revalidarCartasPublicas(ctx.empresaSlug);

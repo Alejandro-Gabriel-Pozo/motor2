@@ -239,3 +239,38 @@ export type ResultadoCrearGrupoEnElProducto = ResultadoCaso<
   { grupoId: string; admisionId: string; yaExistia: boolean },
   "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_ELEGIBLE" | "NOMBRE_REPETIDO" | "VERSION_DESACTUALIZADA" | "CONFIGURACION_INVALIDA" | "GRUPO_INACTIVO" | "REFERENCIA_NO_ENCONTRADA"
 >;
+
+/**
+ * El comando compuesto «+ Opción» / «+ Extra» (ADR-030, «El comando compuesto»): AGREGAR UNA OPCIÓN a un grupo que el producto ya usa y admitirla, todo o nada, en UNA transacción. «+ Opción» es el de un grupo
+ * de variantes, de medidas o de incluidas; «+ Extra», el de un grupo de adicionales (la opción lleva su producto de respaldo, que crea el sistema). El grupo es de la biblioteca: la opción nueva queda en él, pero
+ * solo ESTE producto la admite. `versionEsperada` es la `version` de lo que el producto admite del grupo que vio la pantalla (control optimista). `importe` según el grupo, que lee el caso de uso: el precio final de la
+ * opción en una medida en ABSOLUTO (mayor que 0), lo que suma en una variante, una medida en DIFERENCIA o un adicional (0 o más), `null` en un grupo incluido. `unidadStockId`: solo y siempre en un adicional.
+ */
+export interface ComandoCrearOpcionEnElProducto {
+  productoId: string;
+  grupoId: string;
+  versionEsperada: number;
+  nombre: string;
+  importe: number | null;
+  unidadStockId: string | null;
+}
+
+/**
+ * `yaExistia`: la opción ya estaba en el grupo, igual a la pedida, y el producto ya la admitía con ese importe (un doble clic, un reintento): no se hizo nada más. `GRUPO_NO_ADMITIDO`: el producto no usa el grupo (o
+ * lo quitó). `NOMBRE_REPETIDO`: el grupo ya tiene una opción con ese nombre pero distinta, o el producto ya la admite con otro importe: no se pisa. `NOMBRE_DE_ANCLA_REPETIDO`: ya hay un producto con el nombre del
+ * extra (el respaldo lleva su mismo nombre).
+ */
+export type ResultadoCrearOpcionEnElProducto = ResultadoCaso<
+  { opcionId: string; admisionId: string; yaExistia: boolean },
+  | "PRODUCTO_NO_ENCONTRADO"
+  | "PRODUCTO_NO_ELEGIBLE"
+  | "GRUPO_NO_ENCONTRADO"
+  | "GRUPO_INACTIVO"
+  | "GRUPO_NO_ADMITIDO"
+  | "NOMBRE_REPETIDO"
+  | "NOMBRE_DE_ANCLA_REPETIDO"
+  | "VERSION_DESACTUALIZADA"
+  | "CONFIGURACION_INVALIDA"
+  | "REFERENCIA_NO_ENCONTRADA"
+  | "OPCION_INACTIVA"
+>;

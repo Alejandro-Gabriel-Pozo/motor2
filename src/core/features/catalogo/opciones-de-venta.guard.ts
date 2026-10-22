@@ -30,6 +30,7 @@ import type {
   ComandoCrearGrupoDeOpciones,
   ComandoCrearGrupoEnElProducto,
   ComandoCrearOpcionDeGrupo,
+  ComandoCrearOpcionEnElProducto,
   ComandoEditarGrupoDeOpciones,
   ComandoEditarOpcionDeGrupo,
   ComandoFijarAdmisionDeGrupo,
@@ -504,4 +505,36 @@ export function guardComandoCrearGrupoEnElProducto(entrada: { productoId: unknow
     opciones.push(r.valor);
   }
   return aceptar({ productoId: productoId.valor, nombre: grupo.valor.nombre, respuesta: respuesta.valor, prefijoEnCarta: prefijo, opciones });
+}
+
+/**
+ * Formato y rango de «+ Opción» / «+ Extra» (`crearOpcionEnElProducto`): el producto, el grupo, la versión de lo que el producto admite del grupo que vio la pantalla, el nombre de la opción, su importe (con
+ * `validarImporte`, el de `CampoNumero tipo="importe"`: a lo sumo 2 decimales, 0 o más, `null` si no lleva) y la unidad del producto de respaldo (solo un adicional). Qué lleva cada grupo (un precio final, una suma o
+ * nada; el respaldo solo y siempre en un adicional) lo decide el caso de uso, que lee el tipo del grupo: el cliente no lo dice.
+ */
+export function guardComandoCrearOpcionEnElProducto(entrada: {
+  productoId: unknown;
+  grupoId: unknown;
+  versionEsperada: unknown;
+  nombre: unknown;
+  importe?: unknown;
+  unidadStockId?: unknown;
+}): ResultadoDato<ComandoCrearOpcionEnElProducto> {
+  const productoId = id(entrada.productoId, "No se encontró el producto.");
+  if (!productoId.ok) return productoId;
+  const grupoId = id(entrada.grupoId, MENSAJE_GRUPO_NO_ENCONTRADO);
+  if (!grupoId.ok) return grupoId;
+  const version = versionEsperada(entrada.versionEsperada, 1);
+  if (!version.ok) return version;
+  const n = nombre(entrada.nombre, "El nombre de la opción");
+  if (!n.ok) return n;
+  let importe: number | null = null;
+  if (entrada.importe !== null && entrada.importe !== undefined && entrada.importe !== "") {
+    const i = validarImporte(entrada.importe, { etiqueta: "El importe de la opción", obligatorio: true, permitirCero: true });
+    if (!i.ok) return rechazar(i.codigo, i.mensaje);
+    importe = i.valor;
+  }
+  const unidadStockId = idONulo(entrada.unidadStockId, "Elegí la unidad del producto de respaldo.");
+  if (!unidadStockId.ok) return unidadStockId;
+  return aceptar({ productoId: productoId.valor, grupoId: grupoId.valor, versionEsperada: version.valor, nombre: n.valor, importe, unidadStockId: unidadStockId.valor });
 }
