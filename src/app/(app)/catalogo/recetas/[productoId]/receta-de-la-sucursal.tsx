@@ -144,9 +144,9 @@ export function RecetaDeLaSucursal({
                             </span>
                           </LecturaDeCantidad>
                           {avisoDeUnidad && (
-                            <p role="alert" className="w-full text-xs text-aviso-tinta">
+                            <Aviso variante="advertencia" forma="en-linea" className="w-full">
                               {avisoDeUnidad}
-                            </p>
+                            </Aviso>
                           )}
                           <CampoNumero name="mermaPorcentaje" defaultValue={String(Number(ing.mermaPorcentaje))} ariaLabel={`Merma de ${ing.insumoProducto.nombre} en la receta propia`} placeholder="Merma %" className="w-24" />
                           <BotonDeServidor type="submit" tamano="compacto">
@@ -162,9 +162,9 @@ export function RecetaDeLaSucursal({
                         <td className="py-2">
                           {ing.insumoProducto.nombre}
                           {avisoDeUnidad && (
-                            <p role="alert" className="text-xs text-aviso-tinta">
+                            <Aviso variante="advertencia" forma="en-linea">
                               {avisoDeUnidad}
-                            </p>
+                            </Aviso>
                           )}
                         </td>
                         <td>{Number(ing.cantidad)}</td>
