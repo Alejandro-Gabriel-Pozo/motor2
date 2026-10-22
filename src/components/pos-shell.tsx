@@ -22,9 +22,9 @@ export async function PosShell({ ctx, children }: { ctx: ContextoUsuario; childr
 
   return (
     <div className="pos-shell flex flex-1 flex-col">
-      <header className="border-b border-[var(--border)] bg-white">
-        <div className="mx-auto flex w-full max-w-[1180px] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3 text-sm text-[var(--ink-soft)] md:px-8">
-          <span className="flex items-center gap-2 font-semibold text-[var(--ink)]">
+      <header className="border-b border-borde bg-superficie">
+        <div className="mx-auto flex w-full max-w-[1180px] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3 text-sm text-tinta-suave md:px-8">
+          <span className="flex items-center gap-2 font-semibold text-tinta">
             Salón ·{" "}
             {ctx.membresias.length > 1 ? <SelectorSucursal membresias={ctx.membresias} actual={ctx.sucursalId} /> : ctx.sucursalNombre}
           </span>
@@ -39,7 +39,7 @@ export async function PosShell({ ctx, children }: { ctx: ContextoUsuario; childr
                 await signOut();
               }}
             >
-              <button type="submit" className="underline hover:text-[var(--ink)]">
+              <button type="submit" className="underline hover:text-tinta">
                 Salir
               </button>
             </form>
