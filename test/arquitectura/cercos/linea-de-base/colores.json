@@ -1,10 +1,10 @@
 {
   "regla": "colores",
   "meta": "0 en la Fase 6 (DEC-03: los colores salen de los tokens de globals.css)",
-  "total": 54,
-  "entradas": 22,
+  "total": 53,
+  "entradas": 21,
   "porTipo": {
-    "clase-arbitraria": 36,
+    "clase-arbitraria": 35,
     "funcion-de-color": 9,
     "hex": 9
   },
@@ -20,9 +20,6 @@
     },
     "src/app/(app)/catalogo/opciones/page.tsx": {
       "clase-arbitraria": 2
-    },
-    "src/app/(app)/catalogo/productos/[id]/opciones/page.tsx": {
-      "clase-arbitraria": 1
     },
     "src/app/(carta-publica)/error.tsx": {
       "hex": 2

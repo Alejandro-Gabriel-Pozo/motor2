@@ -122,7 +122,7 @@ export function AdmisionDeGrupo({
   return (
     <FormConResultado ofrecerRecargar accion={enviar} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-medium">{grupo.nombre}</h2>
+        <h3 className="text-lg font-medium">{grupo.nombre}</h3>
         <span className="text-sm text-tinta-suave">
           {nombreDelTipoDeGrupo(grupo.tipo)} · del grupo: {textoDeLimites(grupo.cantidadMinimaDelGrupo, grupo.cantidadMaximaDelGrupo)}
           {grupo.activoEnEmpresa ? "" : " · archivado: no se ofrece"}

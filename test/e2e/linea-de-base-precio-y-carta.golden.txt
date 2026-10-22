@@ -198,15 +198,22 @@
   tamano: 14px / 600
 
 ## ADMINISTRACIÓN a 1280 px: Opciones de venta del producto «Pizzas» (/catalogo/productos/<id de Pizzas>/opciones)
-  [enlace: ← Pizzas]
-  # Opciones de venta de «Pizzas»
+  [enlace: ← Productos]
+  # Pizzas
+  LB_PV_PIZZAS · Producto de venta (PV)
+  Por opción
+  Disponible en «LB Precio y carta»
+  [enlace: Resumen]
+  [enlace: Qué se vende]
+  [enlace: Opciones y precio]
+  [enlace: Receta]
+  [enlace: En la carta]
+  ## Opciones y precio
   Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en [enlace: Opciones de venta].
-  ## Agregar grupo
-  Grupo
-  [selección: Elegí un grupo]
-  [botón: Agregar]
-  Al agregarlo, marcá abajo qué opciones de ese grupo admite este producto.
-  ## Tipos de Pizza
+  Se vende por opción: el precio guardado ($ 18.000) no se cobra, rige el precio final de cada opción. El precio de cada sucursal se cambia en [enlace: Precio local].
+  [botón: + Nuevo grupo]
+  [botón: Agregar un grupo existente]
+  ### Tipos de Pizza
   Tamaño · del grupo: Elegí 1
   Orden en el producto
   [campo: «0»]
@@ -256,20 +263,27 @@
   [botón: Guardar «Tipos de Pizza»]
   [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
   No se borra nada: lo que admite de cada opción queda guardado.
-  ## [lector: Así se cobra]
+  ### [lector: Así se cobra]
   Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000
   Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000 · Pizza de verduras asadas $ 20.000 · Pizza fugazzeta $ 22.000 · Pizza napolitana $ 22.000 · Pizza con papas fritas $ 25.000
 
 ## ADMINISTRACIÓN a 375 px: Opciones de venta del producto «Pizzas» (/catalogo/productos/<id de Pizzas>/opciones)
-  [enlace: ← Pizzas]
-  # Opciones de venta de «Pizzas»
+  [enlace: ← Productos]
+  # Pizzas
+  LB_PV_PIZZAS · Producto de venta (PV)
+  Por opción
+  Disponible en «LB Precio y carta»
+  [enlace: Resumen]
+  [enlace: Qué se vende]
+  [enlace: Opciones y precio]
+  [enlace: Receta]
+  [enlace: En la carta]
+  ## Opciones y precio
   Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en [enlace: Opciones de venta].
-  ## Agregar grupo
-  Grupo
-  [selección: Elegí un grupo]
-  [botón: Agregar]
-  Al agregarlo, marcá abajo qué opciones de ese grupo admite este producto.
-  ## Tipos de Pizza
+  Se vende por opción: el precio guardado ($ 18.000) no se cobra, rige el precio final de cada opción. El precio de cada sucursal se cambia en [enlace: Precio local].
+  [botón: + Nuevo grupo]
+  [botón: Agregar un grupo existente]
+  ### Tipos de Pizza
   Tamaño · del grupo: Elegí 1
   Orden en el producto
   [campo: «0»]
@@ -319,7 +333,7 @@
   [botón: Guardar «Tipos de Pizza»]
   [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
   No se borra nada: lo que admite de cada opción queda guardado.
-  ## [lector: Así se cobra]
+  ### [lector: Así se cobra]
   Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000
   Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000 · Pizza de verduras asadas $ 20.000 · Pizza fugazzeta $ 22.000 · Pizza napolitana $ 22.000 · Pizza con papas fritas $ 25.000
 

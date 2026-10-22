@@ -24,10 +24,16 @@ test("asignar un tamaño con precio propio: la vista previa muestra los precios 
   await sembrarGrupo({ nombre: `E2E Tamaño ficha ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico", factorEscala: 0.75 }, { nombre: "Mediano", factorEscala: 1 }, { nombre: "Grande", factorEscala: 1.5 }] });
 
   await page.goto(`/catalogo/productos/${producto.id}/opciones`);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Opciones de venta de");
+  // Fase 6 (6.15b): la pantalla es el paso 2 del espacio del producto: el h1 es el producto (lo pone el marco) y el h2 el paso. «Agregar un grupo existente» abre una ventana con el selector del grupo.
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(producto.nombre);
+  await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
   await expect(page.getByText("todavía no admite opciones")).toBeVisible();
-  await page.getByLabel("Grupo", { exact: true }).selectOption({ label: `E2E Tamaño ficha ${m} (Tamaño)` });
-  await page.getByRole("button", { name: "Agregar", exact: true }).click();
+  await page.getByRole("button", { name: "Agregar un grupo existente", exact: true }).click();
+  const ventana = page.getByRole("dialog", { name: "Agregar un grupo existente" });
+  // El selector es `required`: su etiqueta lleva un asterisco decorativo («Grupo *»), así que el rótulo se busca por su comienzo (sigue siendo el único «Grupo…» de la ventana).
+  await ventana.getByLabel(/^Grupo/).selectOption({ label: `E2E Tamaño ficha ${m} (Tamaño)` });
+  await ventana.getByRole("button", { name: "Agregar", exact: true }).click();
+  await expect(ventana).toBeHidden();
   const grupo = page.locator(`[data-admision-grupo='E2E Tamaño ficha ${m}']`);
   await expect(grupo).toBeVisible();
   // Arranca con «diferencia sobre el precio base» y las tres opciones admitidas: todas al precio base.

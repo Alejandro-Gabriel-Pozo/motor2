@@ -606,6 +606,20 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 6, paso 6.15a (CAMBIA UN TEXTO de administración, no la carta pública; decisión del ingeniero con el visto del dueño para regenerar solo las secciones de ADMINISTRACIÓN): la pantalla de opciones del producto «Pizzas» (y su par a 1280 px) muestra bajo cada importe la lectura del precio de la opción («Pizza muzzarella = $ 18.000», y las otras cinco de «Tipos de Pizza»). Cambian SOLO 12 líneas, todas agregadas (6 por ancho) dentro de la sección de ADMINISTRACIÓN; revisado con `git diff`: la carta pública y el resto del texto quedaron idénticos byte a byte.",
       },
+      {
+        blob: "a41765be9e598bead836060c092370fcde07dc16",
+        // El commit PADRE de este (ec86a946) es el último antes de la regeneración; el texto lo cambió el paso 6.15b (carril B): la pantalla de opciones del producto pasó a ser el paso 2 del espacio del producto.
+        commit: "ec86a946",
+        motivo:
+          "Ola «precio y carta», Fase 6, paso 6.15b (CAMBIA UN TEXTO de administración, no la carta pública; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_cb_e2e local, con el visto del dueño para regenerar solo las secciones de ADMINISTRACIÓN). La pantalla de opciones de Pizzas (a 1280 y a 375 px) queda dentro del marco del espacio del producto: el título pasa de «Opciones de venta de «Pizzas»» a «Pizzas» con el código, «Por opción», «Disponible en «…»» y la tira de pasos (Resumen, Qué se vende, Opciones y precio, Receta, En la carta), y el paso se titula «Opciones y precio»; «Agregar grupo» (el selector y su botón) pasa a ser el botón «Agregar un grupo existente» que abre una ventana; suma la línea del precio por sucursal con el enlace «Precio local»; y los títulos de los grupos y de «Así se cobra» bajan de nivel (## a ###). Revisado con `git diff`: cambian SOLO las dos secciones «## ADMINISTRACIÓN … Opciones de venta del producto «Pizzas»» (a 1280 y a 375 px); la carta pública (todo lo anterior a la primera sección de ADMINISTRACIÓN), «Grupo de opciones «Tipos de Pizza»» y «Carta › Parametrización › Secciones» quedan idénticos byte a byte.",
+      },
+      {
+        blob: "fb96a2af391557ade14cfefe3cc8b7532e11305a",
+        // El commit PADRE de este (401bfba2) es el último antes de la regeneración; el texto lo cambió el paso 6.15c (carril B): el paso 2 del producto suma el botón «+ Nuevo grupo».
+        commit: "401bfba2",
+        motivo:
+          "Ola «precio y carta», Fase 6, paso 6.15c (CAMBIA UN TEXTO de administración, no la carta pública; ADITIVO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_cb_e2e local). La pantalla de opciones de Pizzas (a 1280 y a 375 px) suma el botón «+ Nuevo grupo», que se dibuja porque el usuario de la foto es el administrador y tiene el «Editar» de `opciones_definir`. Revisado con `git diff`: cambian SOLO 2 líneas, `[botón: + Nuevo grupo]`, una en la sección de 1280 px y otra en la de 375 px, justo antes de `[botón: Agregar un grupo existente]`; la carta pública, «Tipos de Pizza» y Secciones quedan idénticos byte a byte.",
+      },
     ],
   },
 };
