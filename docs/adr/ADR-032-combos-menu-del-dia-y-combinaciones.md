@@ -1,5 +1,7 @@
 # ADR-032: GO-3. Precio y receta por combinación, combos y menú del día
 
+> **Fase 3 de la ola «precio y carta» (2026-10-20): GO-3a —el precio por combinación, las tarifas compartidas y la receta propia por combinación (frentes A y B)— se RETIRÓ del código; GO-3d (combos con entradas y menú del día) se conserva.** Lo que sigue es la historia tal como se decidió y construyó; el retiro está en la sección final «Fase 3: retiro de GO-3a».
+
 > **Estado: BASE construida en la rama `go3-base` (esquema, núcleo puro y lectores tolerantes). Las cuatro migraciones están APLICADAS a la base de producción desde el 2026-10-13 (respaldo `respaldo-pre-go3-20261013`, ensayo subir/bajar/subir y verificación por huella; ver `docs/deploy-con-migraciones.md`, sección GO-3); cada base nueva REQUIERE AUTORIZACIÓN EXPRESA.** Los casos de uso, la administración, la venta y las pantallas (F3 a F6 del plan) están CONSTRUIDOS en la rama `go3-tanda2` (sección «GO-3b» al final), sin migraciones nuevas y pendientes de la fusión. Construye sobre GO-1 (`docs/adr/ADR-030-elemento-configurable-grupos-de-opciones.md`, ya aplicado).
 
 ## Contexto
@@ -124,3 +126,34 @@ un toque, con registro y con forma de volver atrás. Verificado contra el códig
 - **Receta de un producto:** «Quitar» un ingrediente genera una versión nueva (el historial de versiones es el registro). NO se le agregó «Deshacer»: volver a la versión anterior perdería
   las calibraciones locales de ese ingrediente (`RendimientoLocalIngrediente` se arrastra de la versión vigente, que ya no lo tiene) y eso es stock; queda como decisión del dueño (fila O.497
   de `docs/pureza-integracion.md`).
+
+## Fase 3: retiro de GO-3a (DEC-02, DEC-16; ola «precio y carta», 2026-10-20)
+
+> **Estado: el retiro del CÓDIGO está hecho en la rama de la ola (PR 1). La migración que borra las tablas, la columna y la clave va en un PR APARTE (PR 2, rama `alegp/fase-3-migracion-retiro`) y REQUIERE AUTORIZACIÓN EXPRESA para aplicarse; por ahora, solo a la base de producción.** Decisiones del dueño (cerradas): se retira TODO GO-3a; GO-3d se conserva; se borra también la columna `ProductoAdmiteGrupo.ejeDeCombinacion`. En producción GO-3a tiene 0 filas en sus seis tablas, 0 ventas con combinación y ningún producto declara un eje.
+
+**Por qué.** Las combinaciones nunca se usaron (0 filas) y la carta pública nunca las leyó: con una combinación de precio propio, la carta mostraba el aditivo y se cobraba otro (ver `docs/linea-de-base-precio-y-carta-2026-10-19.md`). La precedencia de precios queda en una sola regla para el POS, la vista previa y la carta (`resumenDePrecios`). Lo que el dueño quería expresar con una combinación se carga como producto aparte o con un recargo fijo (decisión de la Fase 5).
+
+**Frentes retirados.** A (ejes, combinaciones, tarifas y precio local de combinación o de tarifa) y B (receta propia por combinación y su foto en la venta). La decisión D-3 sigue valiendo para lo que queda de GO-3d; D-4 se retiró entera.
+
+| Paso | Qué | Commit |
+|---|---|---|
+| 3.0b | Rescate de la cobertura que NO es de GO-3a: el precio visto (`PRECIO_CAMBIO`, `test/pos/agregar-precio-visto.test.ts`), los dos comportamientos de los combos configurados al cerrar (`test/pos/cerrar-combo-configurado-go3.test.ts`) y los reportes de combos sin receta propia | `0c12131` |
+| 3.1 | Tarifas (`GrupoDePrecio`): pantalla, comandos y clave `grupos_de_precio_definir` (sale de `ACCIONES`; la base la conserva hasta la migración) | `990ff83` |
+| 3.2 | Pantalla de combinaciones de un producto y sus comandos (ejes, combinación, precio local, receta propia) | `ed9ff97`, `cf4f325` |
+| 3.3 | La venta, el selector, el diálogo de opciones y los combos dejan de leer combinaciones y de escribir la foto; la lectura de opciones para vender deja de pedir `ejeDeCombinacion`. Se retira el golden de combinaciones de la Fase 0 | `9750d6b` |
+| 3.4 | El cierre consume sin receta propia (`consumoDeLineaConfigurada` pierde la rama `excepcion`; `lineasDeVenta`, la clave de la versión) | `d21145e` |
+| 3.5 | `ejeDeCombinacion` sale del modelo de Prisma; cerco `test/arquitectura/go3a-retirado.test.ts` | `132fdcd` |
+
+**El precio cobrado no cambió.** Sin ejes declarados, cada rama borrada devolvía la misma entrada que recibía. Lo prueban, en cada commit y sin regenerarse: `test/caracterizacion-precio-y-carta/precios.golden.txt`, `test/caracterizacion-precio-y-carta/cobro-y-carta.golden.txt`, `test/pos/caracterizacion/venta-con-opciones.golden.txt`, `test/pos/caracterizacion/huella-del-pos.golden.txt`, las dos matrices de la venta y la huella de escritores del Kardex; y la paridad exhaustiva y de propiedad del consumo contra el oráculo anterior (`test/core/opciones/consumo-paridad-con-el-anterior.test.ts`). El golden de las combinaciones de la Fase 0 se RETIRÓ con su prueba (registro `RETIRADAS` de `test/arquitectura/caracterizaciones-congeladas.test.ts`).
+
+**Orden de despliegue («código antes que tablas»).**
+1. PR 1 (este código) a producción. El build no tiene migraciones pendientes. Las tablas siguen y nadie las lee ni las escribe.
+2. Con el código ≥ 3.5 en producción y verificado, PR 2: la migración de retiro, en dos carpetas (políticas y esquema, por el guardián B7), con su verificación previa de solo lectura que ABORTA si hay una sola fila, un eje o la clave configurada fuera de la semilla, y su `down.sql`. Ver `docs/deploy-con-migraciones.md`, sección «Retiro de GO-3a».
+3. Volver atrás: antes de la migración, Instant Rollback sin restricción. Después de la migración, Instant Rollback SOLO a un despliegue ≥ 3.5: antes de 3.3 la lectura de las opciones de toda venta y de la carta pide `ejeDeCombinacion`; antes de 3.4 el cierre de una cuenta con opciones lee `CombinacionEnLinea`; y antes de 3.5 el modelo de Prisma todavía declara la columna (un `create` de `ProductoAdmiteGrupo` la devolvería). Para ir más atrás, primero las reversas de la migración.
+
+**Riesgos.** Los previews viejos comparten la base de producción y se rompen al borrar las tablas. Borrar `CombinacionEnLinea` toma un bloqueo breve sobre `CuentaItem` (fuera de horario, `lock_timeout`). Si `RegistroAuditoria` tiene filas de las entidades retiradas, la pantalla de auditoría ya no las ofrece como filtro (las filas quedan).
+
+## Actualización (2026-10-20): el «Menú del día» se oculta (decisión del dueño)
+
+Hasta que se rediseñe, el «Menú del día» no se ve: un interruptor de una sola constante (`MENU_DEL_DIA_VISIBLE` en `src/core/carta/menu-del-dia.ts`, mismo patrón que `PRECIOS_EDITABLES`) saca su entrada de Movimientos, hace que su pantalla responda «no existe», no ofrece el lugar «Plato del día» al armar una promo, y el servidor rechaza sumar un lugar del día o cargar y copiar platos. No se borra nada ni se toca la base: los lugares y platos que ya existían quedan como están. Volver a `true` lo restituye (`test/carta/menu-del-dia-interruptor.test.tsx`).
+

@@ -35,6 +35,24 @@ export async function conPermisoDeEmpresa<T extends ResultadoAccion = ResultadoA
 }
 
 /**
+ * Una acción de EMPRESA que exige DOS claves (un comando compuesto, Fase 6 «el espacio del producto», 6.14): la primera la pide el envoltorio (`conPermisoDeEmpresa("a", …)`) y la segunda va ACÁ, como
+ * primera línea de la función que recibe, antes de formatear o escribir nada:
+ *
+ *   conPermisoDeEmpresa("producto_opciones_admitidas", async (ctx) => {
+ *     const tambien = await exigirTambienPermisoDeEmpresa(ctx, "opciones_definir");
+ *     if (!tambien.ok) return error(tambien.mensaje);
+ *     …
+ *
+ * Mismo gate que `conPermisoDeEmpresa` (`requierePermisoDeEmpresa`: membresía, rol, módulo y piso de nivel, con el mismo mensaje de denegación), así que NO es una clave nueva ni cambia quién puede qué:
+ * pide por adelantado lo que hoy se pide en dos pantallas. La ficha del caso de uso la declara con `+` (`permiso=a+b`) y `test/arquitectura/ficha-de-caso-de-uso.test.ts` la lee del código: la literal de
+ * la segunda clave tiene que estar escrita ahí adentro (una variable no se puede verificar y la ficha sale como mentira).
+ */
+export async function exigirTambienPermisoDeEmpresa(ctx: ContextoUsuario, accionClave: AccionDeEmpresa): Promise<{ ok: true } | { ok: false; mensaje: string }> {
+  const gate = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, accionClave, ctx.db);
+  return gate.ok ? { ok: true } : { ok: false, mensaje: gate.mensaje };
+}
+
+/**
  * Como `conPermisoDeEmpresa` para lo que EDITA los permisos de la empresa (la matriz de `PermisoRol` y el alta/activación de roles): además de
  * la clave, exige que la PLATAFORMA le deje a la empresa editar permisos (`politicaDeEmpresa`, el add-on de ADR-008). Primero se gatea la clave
  * (quien no tiene el permiso no se entera de la política) y después la política. Toda escritura de `PermisoRol`/`Rol` de `src/` pasa por

@@ -9,6 +9,9 @@ import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { fijarRendimientoLocal, volverAlRendimientoCentral } from "@/server/actions/catalogo/rendimiento-local";
 import { ETIQUETA_ROTULO, desvioEsNotable, type RotuloLinea, type MetodoRendimiento } from "@/core/reportes/public";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 // rendimiento-conciliado.ts es puro (sin @/lib/db) — importable desde un componente cliente sin arrastrar Prisma al bundle. Ver el docstring de este mapa en fila-simple.tsx.
 
 const ETIQUETA_METODO: Record<MetodoRendimiento, string> = {
@@ -25,9 +28,9 @@ const AYUDA_ROTULO: Record<Exclude<RotuloLinea, null>, string> = {
 };
 
 function claseImpacto(pesos: number | null): string {
-  if (pesos === null) return "text-neutral-500 dark:text-neutral-400";
-  if (pesos > 0) return "text-red-600";
-  if (pesos < 0) return "text-green-700";
+  if (pesos === null) return "text-tinta-tenue";
+  if (pesos > 0) return "text-error";
+  if (pesos < 0) return "text-ok-tinta";
   return "";
 }
 
@@ -92,21 +95,22 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
   const router = useRouter();
   const [modo, setModo] = useState<"usar" | "volver" | null>(null);
   const idAviso = useId();
-  const botonUsar = useRef<HTMLButtonElement>(null);
-  const botonVolver = useRef<HTMLButtonElement>(null);
-  const botonCancelar = useRef<HTMLButtonElement>(null);
+  // `Boton` no recibe `ref` (su tipo es el de los atributos del botón): el foco se maneja por `id`.
+  const idUsar = `${idAviso}-usar`;
+  const idVolver = `${idAviso}-volver`;
+  const idCancelar = `${idAviso}-cancelar`;
   const volverAlBotonQueAbrio = useRef<"usar" | "volver" | null>(null);
 
   useEffect(() => {
     if (modo) {
-      botonCancelar.current?.focus();
+      document.getElementById(idCancelar)?.focus();
     } else if (volverAlBotonQueAbrio.current === "usar") {
-      botonUsar.current?.focus();
+      document.getElementById(idUsar)?.focus();
     } else if (volverAlBotonQueAbrio.current === "volver") {
-      botonVolver.current?.focus();
+      document.getElementById(idVolver)?.focus();
     }
     volverAlBotonQueAbrio.current = null;
-  }, [modo]);
+  }, [modo, idCancelar, idUsar, idVolver]);
 
   function cancelar() {
     volverAlBotonQueAbrio.current = modo;
@@ -119,8 +123,8 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
         <td colSpan={7} className="px-2 py-2" onKeyDown={(e) => e.key === "Escape" && cancelar()}>
           <FormConResultado
             accion={async (formData) => {
-              const cantidad = Number(formData.get("cantidad"));
-              const mermaPorcentaje = Number(formData.get("mermaPorcentaje") || 0);
+              const cantidad = numeroDelCampo(String(formData.get("cantidad") ?? "")) ?? Number.NaN;
+              const mermaPorcentaje = numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0;
               const r = await fijarRendimientoLocal(recetaIngredienteId, { cantidad, mermaPorcentaje }, {
                 tipo: "sugerencia_pool",
                 sucursalCalculoId: sucursalId,
@@ -137,15 +141,15 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
             }}
             className="flex flex-col gap-2"
           >
-            <p id={idAviso} role="alert" className="text-sm text-amber-700 dark:text-amber-600">
+            <Aviso id={idAviso} variante="error" forma="en-linea">
               ¿Calibrar el rendimiento de {productoVentaNombre} en «{sucursalNombre}»? Pasás de {cantidadActual} a {cantidadEstimada} {unidadRecetaNombre}.
-            </p>
-            <p className="text-xs text-neutral-500">
+            </Aviso>
+            <p className="text-xs text-tinta-tenue">
               Insumo compartido por {cantidadPlatosEnPool} plato(s) · {semanasConDatos} semana(s) con datos
               {r2 !== null && ` · ajuste R² ${r2.toFixed(2)}`}.
               {rotulo && ` ${AYUDA_ROTULO[rotulo]}`}
             </p>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tinta-tenue">
               Esto cambia solo el rendimiento de «{sucursalNombre}». La receta central ({cantidadActualCentral} {unidadRecetaNombre}) y las otras
               sucursales no se tocan.{" "}
               <EnlaceInterno href="/reportes/rendimiento-recetas/por-sucursal" className="underline">
@@ -156,18 +160,18 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
             <div className="flex flex-wrap items-end gap-2">
               <label className="flex flex-col gap-1 text-xs">
                 Cantidad
-                <CampoNumero name="cantidad" defaultValue={String(cantidadEstimada)} required className="w-28" />
+                <CampoNumero tipo="cantidad" name="cantidad" defaultValue={String(cantidadEstimada)} required className="w-28" />
               </label>
               <label className="flex flex-col gap-1 text-xs">
                 Merma %
-                <CampoNumero name="mermaPorcentaje" defaultValue={String(mermaActual)} className="w-24" />
+                <CampoNumero tipo="porcentaje" name="mermaPorcentaje" defaultValue={String(mermaActual)} className="w-24" />
               </label>
-              <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white">
+              <Boton type="submit" tamano="compacto">
                 Guardar como rendimiento de «{sucursalNombre}»
-              </button>
-              <button ref={botonCancelar} type="button" onClick={cancelar} className="text-sm underline">
+              </Boton>
+              <Boton id={idCancelar} variante="enlace" tamano="en-fila" onClick={cancelar}>
                 Cancelar
-              </button>
+              </Boton>
             </div>
           </FormConResultado>
         </td>
@@ -190,16 +194,16 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
             }}
             className="flex flex-col gap-1"
           >
-            <p id={idAviso} role="alert" className="text-sm text-amber-700 dark:text-amber-600">
+            <Aviso id={idAviso} variante="error" forma="en-linea">
               ¿Volver «{productoVentaNombre}» al valor central ({cantidadActualCentral} {unidadRecetaNombre}) en «{sucursalNombre}»?
-            </p>
+            </Aviso>
             <div className="flex gap-3">
-              <button type="submit" className="text-sm font-medium text-amber-700 underline dark:text-amber-600" aria-describedby={idAviso}>
+              <Boton type="submit" variante="enlace-peligro" tamano="en-fila" aria-describedby={idAviso}>
                 Sí, volver al valor central
-              </button>
-              <button ref={botonCancelar} type="button" onClick={cancelar} className="text-sm underline">
+              </Boton>
+              <Boton id={idCancelar} variante="enlace" tamano="en-fila" onClick={cancelar}>
                 Cancelar
-              </button>
+              </Boton>
             </div>
           </FormConResultado>
         </td>
@@ -212,7 +216,7 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
       <td className="px-2 py-2 first:pl-0">
         {productoVentaNombre}
         {rotulo && (
-          <span className="ml-1 text-xs text-neutral-500 dark:text-neutral-400">
+          <span className="ml-1 text-xs text-tinta-tenue">
             ({ETIQUETA_ROTULO[rotulo]})
             <AyudaIcono texto={AYUDA_ROTULO[rotulo]} />{" "}
             <EnlaceInterno href={`/reportes/historial?productoId=${insumoProductoId}`} className="underline inline-flex items-center gap-1">
@@ -225,7 +229,7 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
       <td className="px-2 py-2">
         {cantidadActual} {unidadRecetaNombre}
         {calibradoLocal && (
-          <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+          <span className="block text-xs text-tinta-tenue">
             (calibrado acá; central: {cantidadActualCentral} {unidadRecetaNombre})
           </span>
         )}
@@ -234,13 +238,13 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
         {cantidadEstimada !== null ? (
           `${cantidadEstimada} ${unidadRecetaNombre}`
         ) : (
-          <span className="text-neutral-500 dark:text-neutral-400" title={motivoSinEstimacion ?? undefined}>
+          <span className="text-tinta-tenue" title={motivoSinEstimacion ?? undefined}>
             {motivoSinEstimacion ?? "—"}
           </span>
         )}
-        <span className="block text-xs text-neutral-500 dark:text-neutral-400">{ETIQUETA_METODO[metodo]}</span>
+        <span className="block text-xs text-tinta-tenue">{ETIQUETA_METODO[metodo]}</span>
       </td>
-      <td className={`px-2 py-2 ${desvioEsNotable(desviacionPorcentaje) ? "font-medium text-amber-700 dark:text-amber-600" : ""}`}>
+      <td className={`px-2 py-2 ${desvioEsNotable(desviacionPorcentaje) ? "font-medium text-aviso-tinta" : ""}`}>
         {desviacionPorcentaje !== null ? `${desviacionPorcentaje > 0 ? "+" : ""}${desviacionPorcentaje}%` : "—"}
       </td>
       <td className="px-2 py-2">{totalVendido}</td>
@@ -250,20 +254,20 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
             {impactoPesos > 0 ? "+" : ""}${impactoPesos.toLocaleString("es-AR")}
           </>
         ) : (
-          <span className="text-neutral-500 dark:text-neutral-400">{sinCosto ? "sin costo conocido" : "—"}</span>
+          <span className="text-tinta-tenue">{sinCosto ? "sin costo conocido" : "—"}</span>
         )}
       </td>
       <td className="px-2 py-2">
         <div className="flex flex-col gap-1">
           {puedeCalibrar && cantidadEstimada !== null && (
-            <button ref={botonUsar} type="button" aria-label={`Usar este valor para ${productoVentaNombre}`} onClick={() => setModo("usar")} className="text-sm underline">
+            <Boton id={idUsar} variante="enlace" tamano="en-fila" aria-label={`Usar este valor para ${productoVentaNombre}`} onClick={() => setModo("usar")}>
               Usar este valor
-            </button>
+            </Boton>
           )}
           {puedeCalibrar && calibradoLocal && (
-            <button ref={botonVolver} type="button" onClick={() => setModo("volver")} className="text-sm underline">
+            <Boton id={idVolver} variante="enlace" tamano="en-fila" onClick={() => setModo("volver")}>
               Volver al valor central
-            </button>
+            </Boton>
           )}
         </div>
       </td>

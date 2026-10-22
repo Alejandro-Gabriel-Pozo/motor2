@@ -18,7 +18,9 @@ import { registrarPagoConsignanteCasoDeUso } from "./casos-de-uso/registrar-pago
  * (`conPermiso("pagar_consignante")`) → formato del comando (`guardComandoRegistrarPagoConsignante`,
  * `core/features/reportes/pago-consignante.guard.ts`: proveedor en blanco, importe, formato de la clave I3) → caso de uso
  * (`casos-de-uso/registrar-pago-consignante.ts`: idempotencia I3, transacción, persistencia, auditoría) → `aResultadoAccion`. Antes
- * no tenía transacción, idempotencia ni auditoría — un doble clic real registraba el pago dos veces (hallazgo del backlog, M14).
+ * no tenía transacción, idempotencia ni auditoría — un doble clic real registraba el pago dos veces (hallazgo del backlog, M14). Desde la ola «precio y carta» (Fase 2,
+ * B1) `claveIdempotencia` es obligatoria: sin ella el guard rechaza («Falta la clave de reintento: recargá la pantalla.») y no se escribe nada. Sigue opcional en la firma
+ * (`notas` va antes y es opcional), pero ausente nunca llega al caso de uso.
  */
 export async function registrarPagoConsignante(
   proveedorId: string,

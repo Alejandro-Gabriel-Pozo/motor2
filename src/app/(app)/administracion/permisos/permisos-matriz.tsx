@@ -17,6 +17,8 @@ import {
   type CambioPermiso,
   type EstadoPermiso,
 } from "@/core/permisos/matriz";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 
 interface Accion {
   clave: string;
@@ -134,22 +136,20 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
     <div className="space-y-4">
       {!editando ? (
         <div className="flex items-center gap-3">
-          <button type="button" onClick={empezarEdicion} className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
-            Editar permisos
-          </button>
-          <span className="text-xs text-neutral-500">Solo lectura. Los cambios se hacen en el modo edición y se guardan todos juntos.</span>
+          <Boton onClick={empezarEdicion}>Editar permisos</Boton>
+          <span className="text-xs text-tinta-tenue">Solo lectura. Los cambios se hacen en el modo edición y se guardan todos juntos.</span>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-3 rounded border border-amber-500 bg-amber-50 px-3 py-2 text-sm dark:bg-amber-950/30">
+        <div className="flex flex-wrap items-center gap-3 rounded border border-aviso bg-aviso-tinte px-3 py-2 text-sm text-aviso-tinta">
           <strong>Modo edición</strong>
           <span data-cambios-pendientes>{cambios.length === 0 ? "Sin cambios todavía" : `${cambios.length} cambio(s) sin guardar`} — no se aplican hasta que los guardes.</span>
           <div className="ml-auto flex gap-2">
-            <button type="button" disabled={cambios.length === 0 || pending} onClick={() => setRevisando(true)} className="rounded bg-neutral-900 px-3 py-1.5 text-white disabled:opacity-50">
+            <Boton tamano="compacto" disabled={cambios.length === 0 || pending} onClick={() => setRevisando(true)}>
               Revisar y guardar
-            </button>
-            <button type="button" disabled={pending} onClick={salirDeLaEdicion} className="rounded border px-3 py-1.5">
+            </Boton>
+            <Boton variante="secundario" tamano="compacto" disabled={pending} onClick={salirDeLaEdicion}>
               {cambios.length === 0 ? "Salir del modo edición" : "Descartar cambios"}
-            </button>
+            </Boton>
           </div>
         </div>
       )}
@@ -164,38 +164,39 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
               </li>
             ))}
           </ul>
-          <p className="text-xs text-neutral-500">Se guardan todos juntos o ninguno. Si otra persona cambió alguno de estos permisos mientras editabas, no se guarda nada.</p>
+          <p className="text-xs text-tinta-tenue">Se guardan todos juntos o ninguno. Si otra persona cambió alguno de estos permisos mientras editabas, no se guarda nada.</p>
           <div className="flex gap-2">
-            <button type="button" disabled={pending} onClick={guardar} className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+            <Boton tamano="compacto" disabled={pending} onClick={guardar}>
               {pending ? "Guardando…" : "Confirmar y guardar"}
-            </button>
-            <button type="button" disabled={pending} onClick={() => setRevisando(false)} className="rounded border px-3 py-1.5 text-sm">
+            </Boton>
+            <Boton variante="secundario" tamano="compacto" disabled={pending} onClick={() => setRevisando(false)}>
               Seguir editando
-            </button>
+            </Boton>
           </div>
         </div>
       )}
 
       {mensaje && (
-        <div role="status" className={`text-sm ${mensaje.ok ? "text-green-700" : "text-red-600"}`}>
+        // Un rechazo o un conflicto sigue anunciándose con `role="status"`, como antes (el spec de guardar lo espera): `Aviso` de error es `role="alert"`, así que el rechazo va como advertencia.
+        <Aviso variante={mensaje.ok ? "exito" : "advertencia"} forma="en-linea">
           <p>{mensaje.texto}</p>
           {mensaje.conflicto && (
-            <button type="button" onClick={recargar} className="mt-1 underline">
+            <Boton variante="enlace" tamano="en-fila" className="mt-1" onClick={recargar}>
               Recargar la matriz
-            </button>
+            </Boton>
           )}
           {mensaje.reintentable && (
-            <button type="button" disabled={pending} onClick={guardar} className="mt-1 underline disabled:opacity-50">
+            <Boton variante="enlace" tamano="en-fila" className="mt-1" disabled={pending} onClick={guardar}>
               Reintentar
-            </button>
+            </Boton>
           )}
-        </div>
+        </Aviso>
       )}
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-neutral-500">
+            <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2 pr-4">Acción</th>
               {roles.map((r) => (
                 <th key={r.id} colSpan={2} className="pr-4 text-center">
@@ -203,7 +204,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                 </th>
               ))}
             </tr>
-            <tr className="border-b text-left text-xs text-neutral-500">
+            <tr className="border-b text-left text-xs text-tinta-tenue">
               <td />
               {roles.map((r) => (
                 <Fragment key={r.id}>
@@ -218,9 +219,9 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
               <tr key={a.clave} className="border-b">
                 <td className="py-2 pr-4">
                   <div className="font-medium">{a.clave}</div>
-                  <div className="text-xs text-neutral-500">{a.descripcion}</div>
+                  <div className="text-xs text-tinta-tenue">{a.descripcion}</div>
                   {claveEnCatalogo(a.clave) && nivelMinimoDeAccion(a.clave) !== "operario" && (
-                    <div className="text-xs text-neutral-500">Piso: {etiquetaDelPiso(nivelMinimoDeAccion(a.clave))}</div>
+                    <div className="text-xs text-tinta-tenue">Piso: {etiquetaDelPiso(nivelMinimoDeAccion(a.clave))}</div>
                   )}
                 </td>
                 {roles.map((r) => {
@@ -232,7 +233,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                   const marca = (encendido: boolean) => (encendido ? "✅" : "⬜");
                   const celda = (cual: "ver" | "editar", encendido: boolean, difiere: boolean) => {
                     const etiqueta = `${r.nombre}: ${a.clave}, ${cual === "ver" ? "ver" : "editar"}`;
-                    const fondo = difiere ? "rounded bg-amber-200 px-1 dark:bg-amber-800" : "px-1";
+                    const fondo = difiere ? "rounded bg-aviso/30 px-1" : "px-1";
                     if (fueraDeNivel) return <span title="Esta acción es de un nivel más alto que el de este rol: no se le puede dar" aria-label={`${etiqueta}: no aplica`}>🚫</span>;
                     if (!editando) return <span aria-label={`${etiqueta}: ${encendido ? "sí" : "no"}`}>{marca(encendido)}</span>;
                     if (fija) return <span title="El rol administrador siempre conserva este permiso" aria-label={`${etiqueta}: fijo`}>🔒</span>;
@@ -262,7 +263,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-tinta-tenue">
         Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos», «gestion_roles», «gestion_usuarios», «activar_usuario_sucursal», «notas_usuario_sucursal» y «apagar_cuenta_empresa» siempre conservan Editar para el rol administrador (🔒). Las acciones con «Piso» no se le pueden dar a un rol de un nivel más bajo (🚫): las de piso «administrador» y «administrador de sistema» (el gobierno de la empresa: usuarios, roles, permisos, sucursales y auditoría) no se le dan a un rol de nivel operario, y las de piso «gerente» las tiene solo el gerente.
         {editando && " Lo marcado en amarillo es lo que cambiaste."}
       </p>

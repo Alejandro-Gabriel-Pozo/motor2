@@ -23,7 +23,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   {
     archivo: "src/server/actions/catalogo/casos-de-uso/actualizar-producto.ts",
     entidad: "Producto",
-    campos: ["precioVenta", "precioConsignacion", "pasoVenta", "factorConversion", "unidadStockId", "unidadCompraId", "seProduce", "esConsignacion", "proveedorConsignacionId"],
+    // Fase 4 de la ola «precio y carta» (ADR-035): `modoDeVenta` («¿Cómo se vende?»: directo o por opción).
+    campos: ["precioVenta", "precioConsignacion", "pasoVenta", "modoDeVenta", "factorConversion", "unidadStockId", "unidadCompraId", "seProduce", "esConsignacion", "proveedorConsignacionId"],
   },
   {
     archivo: "src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts",
@@ -33,8 +34,9 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   // GO-2a: el catálogo de opciones de venta y lo que decide cada sucursal. Cada caso de uso audita por columna, con el antes y el después. Los que auditan DOS o más entidades (la admisión:
   // `ProductoAdmiteGrupo` y `ProductoAdmiteOpcion`; el alta de una opción: la opción, su versión 1 y el ancla) no entran en esta lista de una entidad por archivo: su auditoría por columna la
   // prueban `test/catalogo/opciones-admision.test.ts` y `opciones-versiones.test.ts`, y `escrituras-auditadas` exige la cadena.
-  { archivo: "src/server/actions/catalogo/casos-de-uso/crear-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "tipo", "cantidadMinima", "cantidadMaxima"] },
-  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "cantidadMinima", "cantidadMaxima", "activo"] },
+  // Fase 4 de la ola «precio y carta» (ADR-035): + `prefijoEnCarta` («se lee en la carta como»).
+  { archivo: "src/server/actions/catalogo/casos-de-uso/crear-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "tipo", "cantidadMinima", "cantidadMaxima", "prefijoEnCarta"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "cantidadMinima", "cantidadMaxima", "activo", "prefijoEnCarta"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["nombre", "orden", "activa"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/agregar-version-de-opcion.ts", entidad: "VersionDeOpcion", campos: ["numero", "tipoDeDiferencia", "diferenciaPrecio", "porcentaje", "factorEscala"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/apagar-opcion-en-sucursal.ts", entidad: "OpcionApagadaEnSucursal", campos: ["apagada"] },
@@ -43,6 +45,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   { archivo: "src/server/actions/catalogo/casos-de-uso/reordenar-opciones-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["orden"] },
   // CARTA-MANT: «Agregar a la carta» un producto fuera de carta (de `null` a visible).
   { archivo: "src/server/actions/carta/casos-de-uso/agregar-producto-a-la-carta.ts", entidad: "ContenidoCartaProducto", campos: ["visibleEnCarta"] },
+  // Fase 5 de la ola «precio y carta» (DEC-11): «Mostrar el nombre arriba» de un producto base con un solo eje (cómo se LEE en la carta pública). El resto del contenido sigue sin auditoría.
+  { archivo: "src/server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts", entidad: "ContenidoCartaProducto", campos: ["mostrarNombreArriba"] },
   // CARTA-MANT F3: «Ordenar» las secciones de la empresa, una fila por sección que cambió de lugar.
   { archivo: "src/server/actions/carta/casos-de-uso/ordenar-secciones-carta.ts", entidad: "SeccionCarta", campos: ["orden"] },
 ];

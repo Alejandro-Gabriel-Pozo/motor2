@@ -37,8 +37,6 @@ export { TICKETS_RECIENTES_POR_MESA, armarTicketImpresoEn, armarTicketsDeCuentas
 export type { EstadoDeTicket, ItemConVenta, LineaDeTicket, TicketDeCuenta } from "./ticket";
 // GO-2b (ADR-030): la forma de lo que un producto admite para venderse, que arma la lectura de las opciones para vender (`server/lecturas/opciones/`).
 export type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
-// GO-3b (F5): las combinaciones de un producto para venderlo.
-export type { CombinacionesDelProducto } from "./linea-configurada";
 // GO-3b (ADR-032): si un producto puede ser componente de un combo o plato del día (D-8 y D-9), las alícuotas de un combo (D-2) y la clave canónica de una configuración FIJA de una entrada
 // (`claveDeConfiguracionFija`: otra cosa que la `claveDeConfiguracion` de la lista «Por agregar» de GO-2d, que identifica una línea en pantalla).
 export { rechazoDeComponenteDeCombo } from "./componente-de-combo";
@@ -47,10 +45,8 @@ export { revisarAlicuotasDeCombo } from "./alicuotas-de-combo";
 export type { ComponenteConAlicuota } from "./alicuotas-de-combo";
 export { claveDeConfiguracion as claveDeConfiguracionFija } from "./promo-combo";
 // GO-2d (ADR-030 «Pantallas»): los precios PARA MOSTRAR de un producto con opciones (el «desde», cada tamaño, la vista previa del diálogo del POS), con la misma regla que la venta.
-export { opcionDisponible, opcionesConCombinacionApagada, resumenDePrecios, resumenDePreciosConCombinaciones, vistaPreviaDeConfiguracion } from "./precio-de-configuracion";
-// GO-3b (ADR-032): las combinaciones en la forma que viaja al cliente (el diálogo de opciones del POS).
-export { combinacionesParaMostrar } from "./combinacion-elegida";
+export { opcionDisponible, resumenDePrecios, tablaDePreciosParaLaCarta, vistaPreviaDeConfiguracion } from "./precio-de-configuracion";
 export type { ResumenDePrecios } from "./precio-de-configuracion";
-export { avisoEnPromo, claveDeConfiguracion, elegidasParaPedir, esDeUnaSolaEleccion, estadoInicialElegirOpciones, grupoCompleto, gruposQueFaltan, masPedidasParaElDialogo, reducirElegirOpciones, resumenDeConfiguracion } from "./elegir-opciones-estado";
+export { avisoEnPromo, claveDeConfiguracion, elegidasParaPedir, esDeUnaSolaEleccion, estadoInicialElegirOpciones, grupoCompleto, gruposEnOrdenParaElegir, gruposQueFaltan, masPedidasParaElDialogo, reducirElegirOpciones, resumenDeConfiguracion } from "./elegir-opciones-estado";
 export type { ConfiguracionDelSelector } from "./elegir-opciones-estado";
 export { agruparConAdicionales, elegidasDeLaLinea } from "./lineas-con-adicionales";

@@ -128,6 +128,8 @@ export async function cargarGrupoDeOpciones(db: Db, grupoId: string) {
       cantidadMaxima: true,
       activo: true,
       version: true,
+      // Fase 4 (ADR-035): «se lee en la carta como».
+      prefijoEnCarta: true,
       creadoEn: true,
       actualizadoEn: true,
       opciones: {

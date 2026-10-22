@@ -3,6 +3,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
+import { MENU_DEL_DIA_VISIBLE } from "../../src/core/carta/menu-del-dia";
 import { diaDeCalendario, sumarDias, ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
 import { capturar, expectObjetivosTactiles, expectSinDesborde } from "./fixtures/movil";
 
@@ -10,6 +11,9 @@ import { capturar, expectObjetivosTactiles, expectSinDesborde } from "./fixtures
  * GO-3b (ADR-032, F6 paso U2): la pantalla «Menú del día» de la sucursal. Fija: cargar el plato de hoy (doble clic: una sola fila), quitarlo, volver a cargarlo y copiarlo a mañana con «Copiar el
  * día anterior»; un producto sin receta se ve con su motivo y no se puede elegir; axe sin violaciones.
  */
+
+// Interruptor del menú del día (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20): mientras esté apagado, la pantalla «Menú del día» (/movimientos/menu-del-dia) responde «no existe». Encendido, este spec vuelve a correr entero.
+test.skip(!MENU_DEL_DIA_VISIBLE, "el menú del día está apagado (MENU_DEL_DIA_VISIBLE = false en src/core/carta/menu-del-dia.ts): la pantalla «Menú del día» (/movimientos/menu-del-dia) responde «no existe»");
 async function sembrar(sucursalId: string) {
   const m = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });

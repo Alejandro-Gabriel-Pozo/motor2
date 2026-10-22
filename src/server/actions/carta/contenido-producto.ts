@@ -32,6 +32,8 @@ export interface DatosContenidoCarta {
   orden?: number | string | null;
   /** Carpeta de género del POS (docs/plan-genero-carta-2026-09-26.md), OPCIONAL: vacío/null = sin género (sale suelto). */
   generoCartaId?: string | null;
+  /** Fase 5 (DEC-11): «Mostrar el nombre del producto arriba» (producto base con un solo eje). OPCIONAL: sin la clave, queda como estaba. */
+  mostrarNombreArriba?: boolean;
 }
 
 /** Permiso → caso de uso (`casos-de-uso/guardar-contenido-carta-producto.ts`: el producto, la validación, la sección, el género y el `upsert`) → revalidar si salió bien → `aResultadoAccion`. */

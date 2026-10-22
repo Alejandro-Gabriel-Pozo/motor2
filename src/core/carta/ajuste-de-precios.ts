@@ -1,3 +1,5 @@
+import { CENTAVOS_MAXIMOS } from "@/core/datos/importe";
+
 /**
  * CARTA-MANT F4 («Precios», prototipo aprobado: «Ajustar sección» con vista previa): el CÁLCULO del precio nuevo de un producto al subir o bajar una sección entera (o uno solo), en DECIMAL
  * EXACTO. Puro: trabaja en CENTAVOS con enteros (`bigint`), nunca con coma flotante; entra y sale como texto decimal con dos decimales («14900.00»), como `Decimal(14,2)` en la base.
@@ -10,6 +12,15 @@
  *     puede quedar en el mismo precio o un poco por debajo (subir $14.903 un 0,01 % y redondear a $10 da $14.900). Si se prefiere «al subir, hacia arriba», se cambia SOLO `redondearAlMultiplo`.
  *  4. Piso: el precio nunca queda en $0 ni negativo: como mínimo $0,01, o el múltiplo elegido si hay redondeo.
  */
+
+/**
+ * INTERRUPTOR del ajuste masivo «Precios» de la carta (F4, ADR-034). Una sola constante, leída por la página de la carta (`src/app/(app)/carta/page.tsx`) y por el e2e
+ * `test/e2e/carta-mantenimiento-precios.spec.ts` (que con `false` se omite con el motivo a la vista; mismo patrón que `MENU_DEL_DIA_VISIBLE`).
+ * En `false` la pestaña «Precios» queda de solo lectura («próximamente») y la pantalla no ofrece «Ajustar sección» ni «Cambiar precio»; las acciones (`server/actions/carta/precios.ts`)
+ * siguen exigiendo sus permisos de siempre. Apagado por decisión del dueño (Fase 2b, 2026-10-20): el precio local pasa a ser de Catálogo y el ajuste masivo queda sin ofrecer hasta nuevo
+ * aviso. Volver a `true` lo reactiva tal cual.
+ */
+export const PRECIOS_EDITABLES: boolean = false;
 
 const REDONDEOS_DE_PRECIO = [0, 10, 50, 100] as const;
 /** En pesos; 0 = sin redondeo (al centavo). */
@@ -36,8 +47,6 @@ const CIEN = BigInt(100);
 const DIEZ_MIL = BigInt(10000);
 const PORCENTAJE_MAXIMO_AL_SUBIR = BigInt(50000);
 const PORCENTAJE_MAXIMO_AL_BAJAR = BigInt(9999);
-/** Tope del precio (`Decimal(14,2)`): 12 dígitos enteros. */
-const CENTAVOS_MAXIMOS = BigInt("99999999999999");
 
 /** «14900», «14900,50», «14900.5» → centavos. Acepta coma o punto decimal (no separador de miles: «14.900» con punto es 14,9). `null` si no es un número positivo o cero con hasta dos decimales. */
 export function aCentavos(texto: string): bigint | null {

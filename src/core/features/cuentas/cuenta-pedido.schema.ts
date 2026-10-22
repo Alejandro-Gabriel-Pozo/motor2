@@ -64,9 +64,9 @@ export interface ComandoAgregarItems {
  *    `OPCIONES_INVALIDAS` (lo elegido no cumple lo que el producto admite, su precio o su consumo están mal configurados, o con los adicionales se pasa el tope de
  *    líneas) y `PROMO_CON_OPCIONES` (un componente de una promo tiene un grupo obligatorio: en v1 los componentes no llevan opciones).
  *  - RECETA (ADR-033): `PRODUCTO_SIN_RECETA` — un ítem suelto (después de sus chequeos de producto) o un componente de una promo no tiene receta vigente en la sucursal ni stock propio.
- *  - GO-3b (ADR-032): `COMBINACION_NO_DISPONIBLE` (la combinación elegida está apagada, o su tarifa) y `PRECIO_CAMBIO` (el precio de lista que vio el mozo ya no es el de hoy).
+ *  - GO-3b (ADR-032): `PRECIO_CAMBIO` (el precio de lista que vio el mozo ya no es el de hoy). (`COMBINACION_NO_DISPONIBLE` se retiró con GO-3a en la Fase 3 de la ola «precio y carta».)
  *  - GO-3b, en cada promo (después de encontrarla): `PROMO_CAMBIO` (su precio de hoy no es el que vio el mozo), `MENU_DEL_DIA_SIN_CARGAR` (un lugar del día sin plato de hoy),
- *    `ENTRADA_NO_DISPONIBLE` (una entrada elegida ya no se puede elegir hoy: se desactivó, se quitó del día, se apagó una opción o la combinación) y `COMBO_ALICUOTAS_DISTINTAS` (lo elegido en
+ *    `ENTRADA_NO_DISPONIBLE` (una entrada elegida ya no se puede elegir hoy: se desactivó, se quitó del día o se apagó una opción) y `COMBO_ALICUOTAS_DISTINTAS` (lo elegido en
  *    un combo con cupos de entradas mezcla alícuotas de IVA declaradas distintas, D-2). Una promo fuera de su vigencia es `PROMO_INVALIDA` (no está disponible hoy).
  * Todo se valida ANTES de la primera escritura: un rechazo no deja nada escrito.
  */
@@ -81,7 +81,6 @@ export type ResultadoAgregarItems = ResultadoCaso<
   | "OPCION_CAMBIO"
   | "PROMO_CON_OPCIONES"
   | "PRODUCTO_SIN_RECETA"
-  | "COMBINACION_NO_DISPONIBLE"
   | "PRECIO_CAMBIO"
   | "PROMO_CAMBIO"
   | "MENU_DEL_DIA_SIN_CARGAR"

@@ -7,28 +7,29 @@ import { generarReporteVentasPorCategoria } from "@/server/consultas/reportes/pe
 import { TablaProductosCategoria } from "./tabla-categorias";
 import { SelectorRango } from "@/components/selector-rango";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 
 export default async function CategoriasPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_categorias", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
-  const rep = await generarReporteVentasPorCategoria(ctx.sucursalId, new Date(desdeStr), new Date(hastaStr), ctx.db, ctx.empresaZonaHoraria);
+  const rep = await generarReporteVentasPorCategoria(ctx.sucursalId, fechaDeColumnaDate(desdeStr), fechaDeColumnaDate(hastaStr), ctx.db, ctx.empresaZonaHoraria);
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Ventas por categoría</h1>
         <SelectorRango opcion={rango.opcion} desdeISO={desdeStr} hastaISO={hastaStr} recortadoDesde={rango.recortadoDesde} />
-        <p className="mt-2 text-sm text-neutral-500">Total facturado: ${rep.totalFacturado.toLocaleString("es-AR")}</p>
+        <p className="mt-2 text-sm text-tinta-tenue">Total facturado: ${rep.totalFacturado.toLocaleString("es-AR")}</p>
       </div>
 
       {rep.porCategoria.map((c) => (
@@ -39,11 +40,11 @@ export default async function CategoriasPage({ searchParams }: { searchParams: P
           <TablaProductosCategoria filas={c.productos} nombreExport={`ventas-categoria-${c.categoria}`} />
         </div>
       ))}
-      {!rep.porCategoria.length && <p className="text-sm text-neutral-500">Sin ventas en el período.</p>}
+      {!rep.porCategoria.length && <p className="text-sm text-tinta-tenue">Sin ventas en el período.</p>}
 
       {rep.pvSinCategoria.length > 0 && (
         <div>
-          <h2 className="mb-2 text-sm font-medium text-amber-700 dark:text-amber-600">PV disponibles acá sin categoría asignada</h2>
+          <h2 className="mb-2 text-sm font-medium text-aviso-tinta">PV disponibles acá sin categoría asignada</h2>
           <ul className="list-disc pl-5 text-sm">
             {rep.pvSinCategoria.map((p) => (
               <li key={p}>{p}</li>

@@ -18,17 +18,20 @@ test("cargar el formulario, guardar, aplicar y desaplicar el tema de la carta", 
 
     // 1. Cargar el formulario (sin guardar).
     await page.locator('[name="color_item_nombre"]').fill("#aa3300");
-    await page.locator('[name="carta_fuente_item_nombre"]').fill("clamp(0.8rem, 2vw, 1rem)");
+    // Fase 5 (DEC-35): el tamaño del nombre tiene un piso de 19 px; el tema solo puede pedir más. Primero uno MÁS CHICO que el piso (se ve en el piso) y después uno más grande (manda el tema).
+    await page.locator('[name="carta_fuente_item_nombre"]').fill("0.8rem");
 
     // 2. Un valor inválido se marca en su campo…
     await page.locator('[name="color_item_precio"]').fill("red;background:url(x)");
     await expect(page.locator('[data-campo-tema="color_item_precio"]')).toContainText("No es válido");
     await page.locator('[name="color_item_precio"]').fill("");
-    // …y el color y el tamaño calculados en la vista previa: clamp(0.8rem, 2vw, 1rem) a 1280 px = 1rem = 16px.
+    // …y el color y el tamaño calculados en la vista previa: 0.8rem (12,8 px) queda en el piso de 19 px; clamp(1.2rem, 2vw, 1.5rem) a 1280 px = min(25,6 px, 24 px) = 24 px.
     // (El ítem "Provoleta" de la carta de ejemplo no es especial: usa color_item_nombre; el especial usa color_especial_item_nombre.)
     const nombreItem = page.locator("[data-vista-previa-tema]").getByRole("heading", { name: "Provoleta", level: 3 });
     await expect(nombreItem).toHaveCSS("color", "rgb(170, 51, 0)");
-    await expect(nombreItem).toHaveCSS("font-size", "16px");
+    await expect(nombreItem).toHaveCSS("font-size", "19px");
+    await page.locator('[name="carta_fuente_item_nombre"]').fill("clamp(1.2rem, 2vw, 1.5rem)");
+    await expect(nombreItem).toHaveCSS("font-size", "24px");
     // Nada se guardó todavía.
     expect(await prisma.temaCartaSucursal.count({ where: { sucursalId } })).toBe(0);
 
@@ -38,9 +41,9 @@ test("cargar el formulario, guardar, aplicar y desaplicar el tema de la carta", 
     await page.reload();
     await expect(page.locator("[data-estado-tema]")).toContainText("Tema: borrador");
     await expect(page.locator('[name="color_item_nombre"]')).toHaveValue("#aa3300");
-    await expect(page.locator('[name="carta_fuente_item_nombre"]')).toHaveValue("clamp(0.8rem, 2vw, 1rem)");
+    await expect(page.locator('[name="carta_fuente_item_nombre"]')).toHaveValue("clamp(1.2rem, 2vw, 1.5rem)");
     await expect(page.locator('[name="color_item_precio"]')).toHaveValue("");
-    expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } })).valores).toEqual({ color_item_nombre: "#aa3300", carta_fuente_item_nombre: "clamp(0.8rem, 2vw, 1rem)" });
+    expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } })).valores).toEqual({ color_item_nombre: "#aa3300", carta_fuente_item_nombre: "clamp(1.2rem, 2vw, 1.5rem)" });
 
     // 4. Aplicar: la fila queda aplicada en la carta, con lo guardado (el efecto en la carta pública lo cubre el test siguiente).
     expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } })).aplicarEnCarta).toBe(false);
@@ -49,7 +52,7 @@ test("cargar el formulario, guardar, aplicar y desaplicar el tema de la carta", 
     await expect(page.locator("[data-estado-tema]")).toContainText("Tema: tema aplicado");
     const aplicado = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } });
     expect(aplicado.aplicarEnCarta).toBe(true);
-    expect(aplicado.valores).toMatchObject({ color_item_nombre: "#aa3300", carta_fuente_item_nombre: "clamp(0.8rem, 2vw, 1rem)" });
+    expect(aplicado.valores).toMatchObject({ color_item_nombre: "#aa3300", carta_fuente_item_nombre: "clamp(1.2rem, 2vw, 1.5rem)" });
 
     // 5. Desaplicar: deja de aplicarse, y los valores se conservan.
     await page.getByRole("button", { name: "Desaplicar el tema" }).click();

@@ -151,7 +151,7 @@ export function OrdenarSecciones({
           const contenido = (
             <>
               <span className={s.ordenN}>{i + 1}</span>
-              <b style={x.activa ? undefined : { color: "var(--ink2)" }}>{x.nombre}</b>
+              <b style={x.activa ? undefined : { color: "var(--color-tinta-suave)" }}>{x.nombre}</b>
               {!x.activa && <span className={s.etiqueta}>Oculta</span>}
             </>
           );

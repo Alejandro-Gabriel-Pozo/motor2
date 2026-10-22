@@ -52,8 +52,6 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta", panel: "empresa" },
       // GO-2d (ADR-030): los grupos de opciones de venta (tamaños, variantes, incluidas y adicionales) son del catálogo de la empresa.
       { href: "/catalogo/opciones", label: "Opciones de venta", accion: "opciones_definir", panel: "empresa" },
-      // GO-3b (ADR-032): los precios compartidos por varias combinaciones.
-      { href: "/catalogo/tarifas", label: "Tarifas", accion: "grupos_de_precio_definir", panel: "empresa" },
       { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos", accion: "grupos_familia", panel: "empresa" },
       { href: "/catalogo/categorias", label: "Categorías", accion: "categorias", panel: "empresa" },
       { href: "/catalogo/unidades", label: "Unidades", accion: "unidades", panel: "empresa" },
@@ -157,11 +155,35 @@ export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [
 ];
 
 /**
+ * Rutas HIJAS con acción propia (Fase 6, 6.17c; el espacio del producto): una pantalla cuya ruta cuelga de un ítem del menú pero que se protege con OTRA acción. `accionDeRuta` resuelve por prefijo del menú, así que
+ * `/catalogo/productos/[id]/en-la-carta` (el paso «En la carta» del producto) daría la acción de Productos (`producto_ver_catalogo`) y `EnlaceInterno` mentiría: le mostraría el enlace a quien ve productos y no
+ * la carta (y se lo escondería a quien ve la carta y no los productos). Acá se declara la excepción, por patrón (el id del producto es un segmento dinámico) y con la página que la cumple: un test comprueba que esa
+ * página pide esa acción. NO es un ítem del menú: el menú no cambia (`GRUPOS_NAV` ni `RUTAS_FUERA_DEL_MENU`).
+ */
+export interface RutaHijaConAccionPropia {
+  /** Contra la ruta ya limpia (sin consulta, ancla ni barra final). */
+  patron: RegExp;
+  accion: AccionClave;
+  /** La página que la sirve, relativa a `src/app/(app)`. */
+  pagina: string;
+}
+
+export const RUTAS_HIJAS_CON_ACCION_PROPIA: readonly RutaHijaConAccionPropia[] = [
+  { patron: /^\/catalogo\/productos\/[^/]+\/en-la-carta$/, accion: "carta_ver", pagina: "catalogo/productos/[id]/en-la-carta/page.tsx" },
+];
+
+const limpiarRuta = (href: string) => href.split(/[?#]/)[0].replace(/\/+$/, "");
+
+/**
  * La acción de «Ver» que protege la pantalla a la que apunta un enlace interno, o `null` si no se conoce (la raíz, una ruta
  * desconocida). Se resuelve por el ítem del menú (o de `RUTAS_FUERA_DEL_MENU`) cuya ruta es la más larga que es prefijo de la del
  * enlace: la consulta (`?…`) y el ancla (`#…`) se ignoran. Es lo que permite mostrar un enlace solo a quien puede abrir su destino.
  */
 export function accionDeRuta(href: string, grupos: GrupoNav[] = GRUPOS_NAV): AccionClave | null {
+  const ruta = limpiarRuta(href);
+  // Las rutas hijas con acción propia mandan sobre el prefijo del menú (ver `RUTAS_HIJAS_CON_ACCION_PROPIA`).
+  const propia = RUTAS_HIJAS_CON_ACCION_PROPIA.find((r) => r.patron.test(ruta));
+  if (propia) return propia.accion;
   return itemDeRuta(href, grupos)?.accion ?? null;
 }
 
@@ -225,9 +247,9 @@ export function mostrarSelectorDePaneles(grupos: GrupoNav[]): boolean {
   return grupos.some((g) => g.items.some((i) => i.panel === "empresa")) && particionarMenu(grupos).sucursal.length > 0;
 }
 
-/** Las acciones del menú más las de las pantallas fuera del menú: todo lo que hay que consultar para decidir qué enlaces mostrar. */
+/** Las acciones del menú más las de las pantallas fuera del menú y las de las rutas hijas con acción propia: todo lo que hay que consultar para decidir qué enlaces mostrar. */
 export function accionesDeNavegacion(grupos: GrupoNav[] = GRUPOS_NAV): AccionClave[] {
-  return [...new Set([...accionesDelMenu(grupos), ...RUTAS_FUERA_DEL_MENU.flatMap((i) => (i.accion ? [i.accion] : []))])];
+  return [...new Set([...accionesDelMenu(grupos), ...RUTAS_FUERA_DEL_MENU.flatMap((i) => (i.accion ? [i.accion] : [])), ...RUTAS_HIJAS_CON_ACCION_PROPIA.map((r) => r.accion)])];
 }
 
 /** Todas las acciones que aparecen en algún ítem del menú: lo que hay que consultar para saber qué se muestra. */

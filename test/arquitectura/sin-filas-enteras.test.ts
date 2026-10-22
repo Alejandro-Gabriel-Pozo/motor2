@@ -98,7 +98,7 @@ const SIN_SELECT: Record<string, string> = {
   "src/server/actions/movimientos/motivos.ts|destinoConsumo.findMany sin select|listarDestinosConsumoParaPanel": TABLA_DE_CATALOGO,
   "src/server/actions/movimientos/motivos.ts|motivoMerma.findMany sin select|listarMotivosMermaActivos": TABLA_DE_CATALOGO,
   "src/server/actions/movimientos/motivos.ts|motivoMerma.findMany sin select|listarMotivosMermaParaPanel": TABLA_DE_CATALOGO,
-  "src/server/actions/movimientos/precio-local.ts|precioLocalProducto.findUnique sin select|obtenerPrecioLocalProducto": "El precio local de un producto en la sucursal (precio, habilitado): lo dibuja el formulario de `precio_local`.",
+  "src/server/actions/catalogo/precio-local.ts|precioLocalProducto.findUnique sin select|obtenerPrecioLocalProducto": "El precio local de un producto en la sucursal (precio, habilitado): lo dibuja el formulario de `precio_local`.",
   "src/server/actions/movimientos/secciones.ts|seccion.findMany sin select|listarSeccionesActivas": TABLA_DE_CATALOGO,
   "src/server/actions/movimientos/secciones.ts|seccion.findMany sin select|listarSeccionesParaPanel": TABLA_DE_CATALOGO,
   "src/server/actions/permisos/capacidades-sucursal.ts|accion.findMany sin select|listarCapacidades": "Catálogo de acciones y capacidades de la pantalla de gobierno (`capacidades_sucursal`, administrador de sistema).",

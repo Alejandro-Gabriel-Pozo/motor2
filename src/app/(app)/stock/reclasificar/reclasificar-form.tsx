@@ -8,6 +8,11 @@ import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
+import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 
 interface FilaDestino {
@@ -123,43 +128,42 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="flex gap-3">
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          Fecha
-          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="rounded border px-3 py-2" />
-        </label>
-        <label className="flex flex-1 flex-col gap-1 text-sm">
+        <div className="min-w-0 flex-1">
+          <CampoFecha etiqueta="Fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
+        </div>
+        <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
           Producto
           <SelectorProducto value={productoId} onChange={setProductoId} filtro={{ soloDisponibles: true }} required />
         </label>
       </div>
 
       <div className="flex gap-3">
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          Sección origen
-          <select value={seccionOrigenId} onChange={(e) => setSeccionOrigenId(e.target.value)} required className="rounded border px-3 py-2">
+        <div className="min-w-0 flex-1">
+          <Selector etiqueta="Sección origen" value={seccionOrigenId} onChange={(e) => setSeccionOrigenId(e.target.value)} required>
             <option value="">Elegí una sección</option>
             {secciones.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.nombre}
               </option>
             ))}
-          </select>
-        </label>
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          Lote origen (opcional — vacío = total sin lote puntual)
-          <input type="date" value={loteOrigen} onChange={(e) => cambiarLoteOrigen(e.target.value)} className="rounded border px-3 py-2" />
-        </label>
+          </Selector>
+        </div>
+        <div className="min-w-0 flex-1">
+          <CampoFecha etiqueta="Lote origen (opcional — vacío = total sin lote puntual)" value={loteOrigen} onChange={(e) => cambiarLoteOrigen(e.target.value)} />
+        </div>
       </div>
 
       {productoId && seccionOrigenId && (
-        <p className="text-sm text-neutral-500">
-          Disponible en origen: <span className="font-medium text-neutral-900 dark:text-neutral-100">{disponible ?? "—"}</span>
+        <div className="flex flex-wrap items-baseline gap-x-2 text-sm text-tinta-tenue">
+          <p>
+            Disponible en origen: <span className="font-medium text-tinta">{disponible ?? "—"}</span>
+          </p>
           {saldoNoDisponible && (
-            <span role="alert" className="ml-2 text-red-600">
+            <Aviso variante="error" forma="en-linea">
               No se pudo consultar el disponible. Volvé a elegir el origen para reintentar.
-            </span>
+            </Aviso>
           )}
-        </p>
+        </div>
       )}
 
       <div className="flex flex-col gap-2">
@@ -168,45 +172,44 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
         </span>
         {destinos.map((d, idx) => (
           <div key={idx} className="flex flex-wrap items-end gap-2 rounded border p-2">
-            <label className="flex flex-1 min-w-40 flex-col gap-1 text-xs text-neutral-500">
-              Sección
-              <select value={d.seccionId} onChange={(e) => actualizarDestino(idx, { seccionId: e.target.value })} required className="rounded border px-2 py-1.5 text-sm">
+            <div className="min-w-40 flex-1">
+              <Selector etiqueta="Sección" tamano="compacto" value={d.seccionId} onChange={(e) => actualizarDestino(idx, { seccionId: e.target.value })} required>
                 <option value="">Elegí una sección</option>
                 {secciones.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.nombre}
                   </option>
                 ))}
-              </select>
-            </label>
-            <label className="flex w-36 flex-col gap-1 text-xs text-neutral-500">
-              Lote destino (opcional)
-              <input type="date" value={d.loteVencimiento} onChange={(e) => actualizarDestino(idx, { loteVencimiento: e.target.value })} className="rounded border px-2 py-1.5 text-sm" />
-            </label>
-            <label className="flex w-28 flex-col gap-1 text-xs text-neutral-500">
+              </Selector>
+            </div>
+            <div className="w-44">
+              <CampoFecha etiqueta="Lote destino (opcional)" tamano="compacto" value={d.loteVencimiento} onChange={(e) => actualizarDestino(idx, { loteVencimiento: e.target.value })} />
+            </div>
+            <label className="flex w-28 flex-col gap-1 text-sm">
               Cantidad
-              <CampoNumero value={d.cantidad} onChange={(v) => actualizarDestino(idx, { cantidad: v })} required tamano="compacto" />
+              <CampoNumero tipo="cantidad" value={d.cantidad} onChange={(v) => actualizarDestino(idx, { cantidad: v })} required tamano="compacto" />
             </label>
-            <button type="button" onClick={() => quitarDestino(idx)} disabled={destinos.length === 1} className="rounded border px-2 py-1.5 text-sm text-neutral-500 disabled:opacity-30">
+            <Boton variante="secundario" tamano="compacto" onClick={() => quitarDestino(idx)} disabled={destinos.length === 1}>
               Quitar
-            </button>
+            </Boton>
           </div>
         ))}
-        <button type="button" onClick={agregarDestino} className="self-start text-sm underline">
+        <Boton variante="enlace" tamano="en-fila" onClick={agregarDestino} className="self-start">
           + Agregar destino
-        </button>
+        </Boton>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Detalle (opcional)
-        <input value={detalle} onChange={(e) => setDetalle(e.target.value)} className="rounded border px-3 py-2" />
-      </label>
+      <Campo etiqueta="Detalle (opcional)" value={detalle} onChange={(e) => setDetalle(e.target.value)} />
 
-      {mensaje && <p className={`text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+      {mensaje && (
+        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
+      )}
 
-      <button type="submit" disabled={pending} className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+      <Boton type="submit" disabled={pending} className="self-start">
         {pending ? "Guardando..." : "Reclasificar"}
-      </button>
+      </Boton>
     </form>
   );
 }

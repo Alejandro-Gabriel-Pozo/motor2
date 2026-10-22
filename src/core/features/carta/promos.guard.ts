@@ -63,6 +63,17 @@ export function guardComandoGuardarPrecioLocalPromoCarta(entrada: { precioLocal:
 }
 
 /**
+ * El precio de la promo en esta sucursal que MOSTRABA la pantalla (ola «precio y carta», Fase 2, paso A6): `null`, `undefined` o vacío = «no tenía precio propio» (también si la pantalla no lo manda:
+ * falla cerrado, el caso de uso compara con lo que hay); si viene, un precio de carta válido (el mismo validador que el precio). Lo calcula la acción y su rechazo lo aplica el caso de uso.
+ */
+export function guardPrecioVistoDePromo(precioVisto: unknown): ResultadoDato<number | null> {
+  if (precioVisto === null || precioVisto === undefined || String(precioVisto).trim() === "") return aceptar(null);
+  const precio = validarPrecioCarta(typeof precioVisto === "object" ? Number.NaN : precioVisto);
+  if (!precio.ok) return rechazar("formato", "El precio que mostraba la pantalla no es válido: recargala.");
+  return aceptar(precio.valor);
+}
+
+/**
  * Guard del comando «guardar los cupos de una promo» (S-52): EXACTAMENTE la validación del bucle que antes vivía en el caso de uso, con los MISMOS textos y en el MISMO
  * orden por cupo (la sección elegida, la sección repetida, el mínimo, el máximo, «al menos 1» y mínimo ≤ máximo), más lo que antes reventaba o no tenía tope: la lista tiene que
  * ser un arreglo de a lo sumo `MAXIMO_CUPOS_POR_PROMO` cupos y cada cupo un objeto con la sección como texto (un cupo `null` o con la sección numérica daba un error crudo). Lo

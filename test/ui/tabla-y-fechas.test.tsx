@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { TablaDeDatos, type ColumnaDeTabla } from "../../src/ui/componentes/datos/tabla-de-datos";
+import { TablaDeDatos, type ColumnaDeTabla, type PropsDeTablaDeDatos } from "../../src/ui/componentes/datos/tabla-de-datos";
 import { CampoFecha, RangoDeFechas } from "../../src/ui/componentes/selectores/campo-fecha";
 
 /**
@@ -28,9 +28,12 @@ const COLUMNAS: ColumnaDeTabla<Compra>[] = [
 ];
 const VACIO = "Todavía no hay compras. Registrá la primera desde Movimientos.";
 
-function dibujar(filas: Compra[] = FILAS, columnas = COLUMNAS) {
-  return renderToStaticMarkup(<TablaDeDatos titulo="Compras registradas" columnas={columnas} filas={filas} claveDeFila={(f) => f.id} vacio={VACIO} />);
+function dibujar(filas: Compra[] = FILAS, columnas = COLUMNAS, extra: Partial<PropsDeTablaDeDatos<Compra>> = {}) {
+  return renderToStaticMarkup(<TablaDeDatos titulo="Compras registradas" columnas={columnas} filas={filas} claveDeFila={(f) => f.id} vacio={VACIO} {...extra} />);
 }
+
+/** Lo que no puede aparecer en ningún HTML de la capa: variantes dark:, grises de escala, rojos de escala, blanco o negro literales. */
+const COLOR_DE_ESCALA = /dark:|\b(?:bg|text|border)-(?:neutral|gray|red|white|black)\b|black\//;
 
 describe("TablaDeDatos", () => {
   it("dibuja la tabla con caption, encabezados scope=col y una fila por dato", () => {
@@ -85,6 +88,64 @@ describe("TablaDeDatos", () => {
     expect(() => dibujar(FILAS, repetidas)).toThrow(/mismo id/);
   });
 
+  it("por defecto el celular ve tarjetas (lo exige el e2e de catalogo-opciones a 375 px): decirlo o no decirlo es lo mismo, y la tabla queda oculta en celular", () => {
+    const porDefecto = dibujar();
+    expect(dibujar(FILAS, COLUMNAS, { presentacionCelular: "tarjetas" })).toBe(porDefecto);
+    expect(porDefecto).toMatch(/<ul aria-label="Compras registradas"[^>]*class="[^"]*\bsm:hidden\b/);
+    expect(porDefecto).toMatch(/<div role="region"[^>]*class="[^"]*\bhidden\b/);
+    expect(porDefecto).not.toContain("max-sm:min-w-max");
+  });
+
+  it("presentacionCelular=tabla-con-scroll: no hay tarjetas y la tabla se ve siempre, con scroll horizontal en celular (la misma tabla, con caption y encabezados scope=col)", () => {
+    const html = dibujar(FILAS, COLUMNAS, { presentacionCelular: "tabla-con-scroll" });
+    expect(html).not.toContain("<ul");
+    expect(html).not.toContain("<li");
+    const region = /<div role="region"[^>]*class="([^"]*)"/.exec(html)?.[1].split(" ") ?? [];
+    expect(region).toContain("overflow-x-auto");
+    expect(region, "visible también en celular").not.toContain("hidden");
+    expect(html).toContain("max-sm:min-w-max");
+    expect(html).toMatch(/<div role="region" aria-label="Compras registradas" tabindex="0"/);
+    expect(html).toContain("<caption");
+    expect([...html.matchAll(/<th [^>]*scope="col"/g)]).toHaveLength(4);
+    expect([...html.matchAll(/<tr class="border-b">/g)]).toHaveLength(2);
+    expect(html, "la columna solo-en-tabla sí está").toContain("pagada");
+  });
+
+  it("claseFila agrega clases a la fila de la tabla y a su tarjeta según el dato, y una fila sin clase no deja «undefined» ni espacios de más", () => {
+    const html = dibujar(FILAS, COLUMNAS, { claseFila: (f) => (f.nota === "pendiente" ? "bg-aviso-tinte" : undefined) });
+    expect(html).toContain('<tr class="border-b bg-aviso-tinte">');
+    expect([...html.matchAll(/<tr class="border-b">/g)], "la otra fila queda como estaba").toHaveLength(1);
+    const tarjetas = [...html.matchAll(/<li class="([^"]*)"/g)].map((m) => m[1]);
+    expect(tarjetas).toHaveLength(2);
+    expect(tarjetas.filter((c) => c.includes("bg-aviso-tinte"))).toHaveLength(1);
+    expect(html).not.toContain("undefined");
+    expect(tarjetas.every((c) => !c.endsWith(" "))).toBe(true);
+  });
+
+  it("orden muestra el sentido con aria-sort solo en el encabezado de esa columna y no reordena las filas", () => {
+    const ascendente = dibujar(FILAS, COLUMNAS, { orden: { columna: "fecha", sentido: "ascendente" } });
+    const encabezados = [...ascendente.matchAll(/<th [^>]*>[\s\S]*?<\/th>/g)].map((m) => m[0]);
+    expect(encabezados).toHaveLength(4);
+    expect(encabezados.filter((t) => t.includes("aria-sort"))).toHaveLength(1);
+    expect(encabezados.find((t) => t.includes("Fecha"))).toContain('aria-sort="ascending"');
+    expect(dibujar(FILAS, COLUMNAS, { orden: { columna: "total", sentido: "descendente" } })).toMatch(/<th [^>]*aria-sort="descending"[^>]*>Total/);
+    expect(dibujar(), "sin orden no hay aria-sort").not.toContain("aria-sort");
+    // Las filas salen en el orden en que llegaron, aunque el orden diga otra cosa.
+    const invertidas = dibujar([...FILAS].reverse(), COLUMNAS, { orden: { columna: "proveedor", sentido: "ascendente" } });
+    expect(invertidas.indexOf("Lácteos del Valle")).toBeLessThan(invertidas.indexOf("Molino Sur"));
+  });
+
+  it("un orden que nombra una columna que no existe se rechaza (no hay un aria-sort que no apunta a nada)", () => {
+    expect(() => dibujar(FILAS, COLUMNAS, { orden: { columna: "zzz", sentido: "ascendente" } })).toThrow(/columna «zzz»/);
+  });
+
+  it("solo tokens del sistema en las tres presentaciones (tabla, tarjetas y vacío): sin dark:, sin grises ni rojos de escala", () => {
+    const todo = [dibujar(), dibujar(FILAS, COLUMNAS, { presentacionCelular: "tabla-con-scroll", orden: { columna: "fecha", sentido: "ascendente" } }), dibujar([])].join("\n");
+    expect(todo).not.toMatch(COLOR_DE_ESCALA);
+    expect(todo).toContain("text-tinta-suave");
+    expect(todo).toContain("border-borde");
+  });
+
   it("es un componente de servidor: no lleva «use client» ni usa hooks de estado (no manda JavaScript al navegador)", () => {
     const fuente = readFileSync(join(__dirname, "../../src/ui/componentes/datos/tabla-de-datos.tsx"), "utf8");
     expect(fuente).not.toMatch(/^\s*["']use client["']/m);
@@ -131,6 +192,13 @@ describe("CampoFecha y RangoDeFechas", () => {
     expect(con).toContain('role="alert"');
     expect(con).toContain("no puede ser anterior");
     expect(renderToStaticMarkup(<RangoDeFechas leyenda="Período" desde={{ name: "d" }} hasta={{ name: "h" }} />)).not.toContain('role="alert"');
+  });
+
+  it("la ayuda y el error del rango usan tokens (tinta suave y error), sin dark: ni colores de escala", () => {
+    const html = renderToStaticMarkup(<RangoDeFechas leyenda="Período" desde={{ name: "d" }} hasta={{ name: "h" }} ayuda="Fechas inclusivas" error="«Hasta» no puede ser anterior a «Desde»." />);
+    expect(html).toMatch(/<p class="[^"]*\btext-tinta-suave\b[^"]*">Fechas inclusivas<\/p>/);
+    expect(html).toMatch(/<p role="alert" class="[^"]*\btext-error\b[^"]*">/);
+    expect(html).not.toMatch(COLOR_DE_ESCALA);
   });
 
   it("también es un componente de servidor (sin JavaScript, como SelectorRango)", () => {

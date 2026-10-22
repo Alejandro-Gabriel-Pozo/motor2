@@ -156,6 +156,8 @@ Lo que GO-2b escribió para cumplir «lo que GO-2 hereda», sin migraciones, sin
 
 ### CARTA-B y CARTA-C: la carta pública muestra lo que cambia el precio y, aparte, lo que no cuesta nada (2026-10-14; decisión del dueño, variante B «lista clásica» y pastillas)
 
+> **Reemplazado por la «carta pareja» (Fase 5, 2026-10-20; ADR-035, sección «Carta pareja»).** La carta ya no dibuja la lista de tamaños con puntitos, las pastillas ni la línea «Adicionales:»: cada producto con opciones se lee con una FORMA resuelta en el servidor (simple, columnas en una tanda, tabla de dos ejes o lista, con la base oculta por defecto) y lo que no cambia el precio o se suma aparte va en una línea debajo del plato. Los pisos de letra de abajo (punto 5) los reemplaza la escala única (DEC-35), que vale para todo ítem, y el «límite conocido» del punto 6 (los productos sin opciones con la letra del tema) quedó resuelto. `grupos` y `opcionesSinCosto` se siguen emitiendo. Lo que sigue es la historia.
+
 Cambia la PRESENTACIÓN de la carta pública, no sus datos de origen ni su seguridad: la lectura (`src/server/lecturas/carta/opciones.ts`) lee los mismos campos y la carta sigue cacheada por ISR. Reemplaza los puntos 1 y 3 de arriba en lo que dicen del «desde» y del desplegable.
 
 1. **Qué se muestra de cada grupo.** Lo decide el SERVIDOR al armar la salida (`src/core/carta/opciones-en-carta.ts`), así que el navegador nunca recibe lo que no se dibuja. Un grupo de **tamaños con precios finales distintos** va como lista clásica; en **todos los demás grupos**, las opciones disponibles **sin costo** (diferencia 0: «Solo», «Flat white», «Cortado»; guarnición; punto de cocción) van como **pastillas bajo el nombre del grupo**, y las que suman o restan, a la línea «Adicionales». Un grupo con una sola opción sin costo no muestra pastillas (no hay nada que elegir); la «ninguna» («Sin guarnición») nunca es una pastilla; lo agotado o apagado y un grupo sin opciones disponibles no salen. (CARTA-B ocultaba las opciones sin costo y el cliente no se enteraba de que existían: por eso CARTA-C.)
@@ -205,8 +207,39 @@ misma regla de qué factor es válido que el servidor). A quien tiene el «Ver»
 mismo producto de referencia del precio (el primero que usa el grupo), en la sucursal activa: «harina 0,25 kg → 0,325 kg». Esas cantidades NO salen de una cuenta propia: la receta se lee con la
 lectura de la venta (`cargarRecetaVigenteParaVender`, la receta efectiva de la sucursal con sus calibraciones) y se calcula con la función de la venta (`consumoDeLaBaseConFactor` en
 `src/core/movimientos/consumo-de-la-base-con-factor.ts`, que llama dos veces a `consumoDeLineaConfigurada`), así lo que el operario lee es lo que la venta pide descontar por unidad. La pantalla
-dice también lo que esa vista no muestra: los consumos propios de la opción se multiplican por el factor solo con «Escala con el tamaño», y la receta propia de una combinación cuyo eje es el
-tamaño ya es la de ese tamaño y no se escala (ADR-032). Sin el permiso o sin el módulo, solo la frase.
+dice también lo que esa vista no muestra: los consumos propios de la opción se multiplican por el factor solo con «Escala con el tamaño». (Decía además que la receta propia de una combinación
+cuyo eje es el tamaño ya era la de ese tamaño y no se escalaba, ADR-032: la receta propia por combinación se retiró con GO-3a en la Fase 3 de la ola «precio y carta» y la pantalla ya no lo dice.)
+Sin el permiso o sin el módulo, solo la frase.
+
+## El comando compuesto «crear un grupo sin salir del producto» (Fase 6, «el espacio del producto», 6.14c; 2026-10-21; decisión del dueño: un comando, todo o nada)
+
+Crear un grupo de opciones para un producto eran tres pantallas y tres permisos puestos de a uno: crear el grupo, crear cada opción y agregar el grupo al producto. El espacio del producto lo hace en una ventana,
+sin salir, con `crearGrupoEnElProducto` (`src/server/actions/catalogo/opciones-de-venta.ts`) y su caso de uso (`src/server/actions/catalogo/casos-de-uso/crear-grupo-en-el-producto.ts`). **Sin migraciones y sin clave nueva.**
+
+- **La forma del grupo sale de «¿Cambia el precio?»** (`formaDelGrupoPorRespuesta`, `src/core/opciones/lectura-de-precio.ts`): INCLUIDO es un grupo de opciones incluidas de 1 a 1; SUMA, uno de variantes de 1 a 1;
+  PRECIO_FINAL, uno de medida de 1 a 1 con el precio ABSOLUTO. «Se cobra aparte» (ADICIONAL, que necesita su producto de respaldo) no entra: queda para el bloque 3. El importe de cada opción: en PRECIO_FINAL el precio final
+  (mayor que 0, va en lo que admite el producto), en SUMA lo que suma (0 o más, va en la versión 1 de la opción) y en INCLUIDO ninguno. Con `validarImporte` (2 decimales: más se rechaza, no se redondea) y
+  entre 1 y `MAX_OPCIONES_EN_UN_ALTA` (20) opciones sin repetir el nombre (sin distinguir mayúsculas); el guard es `guardComandoCrearGrupoEnElProducto` (`src/core/features/catalogo/opciones-de-venta.guard.ts`).
+- **Dos claves, las mismas de hoy.** El envoltorio pide `producto_opciones_admitidas` (la de la pantalla del producto) y, como primera línea de adentro, `exigirTambienPermisoDeEmpresa(ctx, "opciones_definir")`
+  (`src/server/actions/con-permiso.ts`): el mismo gate, el mismo mensaje de denegación y el mismo piso. Se piden por adelantado, antes de formatear, las dos que hoy se piden en dos pantallas: nadie puede nada que antes
+  no pudiera. La ficha del caso de uso lo declara (`permiso=opciones_definir+producto_opciones_admitidas`) y `test/arquitectura/ficha-de-caso-de-uso.test.ts` lo lee del código: si la llamada se borra, la ficha miente y el test se pone rojo.
+- **Todo o nada, en UNA transacción SERIALIZABLE** con los cuerpos que ya existían (`crearGrupoDeOpcionesEnTx`, `crearOpcionDeGrupoEnTx`, `fijarAdmisionDeGrupoEnTx`) y el mismo `tx` y la misma hora del pedido (`actor.ahora`) para todo lo que se escribe, auditoría incluida. El
+  orden: la fila del producto PRIMERO (`FOR UPDATE`, igual que `actualizarProducto` y `fijarAdmisionDeGrupoEnTx`: así no hay bloqueos cruzados), el grupo, las opciones (orden de a 10, versión 1), el orden del grupo en el
+  producto (el máximo de sus grupos más 10, **leído dentro de la transacción**) y lo que el producto admite, con sus reglas puras, la regla de la base y el control del precio de lista.
+- **Un rechazo se lanza, no se devuelve.** Dentro de `conTransaccionSerializable`, devolver un `fracaso` NO deshace lo ya escrito: Prisma confirma lo que la función terminó sin lanzar. Un rechazo de la admisión (una opción a $ 0, la regla
+  de la base, el precio de lista) llega con el grupo y las opciones ya escritos; por eso TODO rechazo del comando es una excepción propia (`PasoRechazado`, como `LoteDesactualizado` en `archivar-opciones.ts`) que se captura afuera, ya con la
+  transacción deshecha, y recién ahí se devuelve como resultado. Es el error más probable de esta clase de comando; lo cubren `opciones-grupo-en-el-producto` (rechazo tardío: no queda nada) y
+  `opciones-grupo-en-el-producto-auditoria-atomica` (si la auditoría falla en cualquiera de sus llamadas, una por una, no queda nada).
+- **Nunca modifica un grupo de la biblioteca.** Si ya hay uno con ese nombre (sin distinguir mayúsculas) y es el mismo (tipo, cantidades, prefijo, el mismo conjunto de opciones activas por nombre y lo mismo que suma cada una) se «adopta»:
+  solo se le agrega al producto lo que admite (`yaExistia: true`). Si es otro, `NOMBRE_REPETIDO` con el camino a «Agregar un grupo existente», sin escribir nada. Un grupo idéntico pero archivado da `GRUPO_INACTIVO`. Si el producto ya tiene
+  ese grupo y está distinto de lo que se pide, tampoco se pisa (`NOMBRE_REPETIDO`).
+- **Idempotencia por estado, sin migración** (decisión del ingeniero, declarada al dueño: el nombre único arbitra). No hay clave de reintento ni columna nueva: el nombre del grupo (único sin distinguir mayúsculas) y el de cada opción en su grupo son
+  los árbitros, y `fijarAdmisionDeGrupoEnTx` no escribe si ya está como se pide. Repetir el pedido (un reintento) no crea ni audita nada de nuevo. El doble clic simultáneo: la segunda transacción espera la fila del producto, choca con el único
+  del grupo (o con 40001), se reintenta (`tambienChoqueDeUnico`) y su relectura ve el grupo de la ganadora: las dos responden bien y queda UN grupo, sus N opciones y UNA admisión (`opciones-grupo-en-el-producto-concurrencia`, con
+  `Promise.allSettled` en loop y la guarda contra el falso verde). Es seguro reintentar porque el cuerpo no tiene efectos fuera de la base (ni ancla, ni correo: el `azar` solo se usa con un ADICIONAL, que no entra).
+- **Dinero:** `validarImporte`, columnas `Decimal` y comparaciones al centavo (`mismosCentavos`); ningún `float` por el medio y el precio que se lee en pantalla sale de `componerPrecioDeLinea` (`leerPrecioDeOpcion`, 6.9a).
+- **Aislamiento:** todo por el `tx` de la sesión (RLS por empresa): un `productoId` de otra empresa es `PRODUCTO_NO_ENCONTRADO` y no queda ninguna fila en ninguna empresa (`test/aislamiento/grupo-en-el-producto-otra-empresa.test.ts`).
+- **Auditoría:** la de los tres pasos, sin evento nuevo: el grupo (por columna), cada opción con su versión 1 y la admisión del producto con cada opción admitida. Las filas de una alta compuesta se reconocen por el actor y por la entidad de cada una.
 
 ## Consecuencias
 

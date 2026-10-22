@@ -8,7 +8,8 @@ import { precioParaObjetivo, resolverObjetivoFoodCost, superaFoodCostObjetivo, t
  * (el costo congelado, dentro de su transacción) y los reportes.
  */
 
-export type EstadoCosto = "MARGEN_NEGATIVO" | "FOOD_COST_ALTO" | "COSTO_INCOMPLETO" | "SIN_PRECIO_VENTA" | "SIN_RECETA" | "OK";
+/** `POR_OPCION` (Fase 4, ADR-035): el producto se vende por opción; su precio guardado no se cobra, así que no hay un margen único (el margen por opción es una mejora aparte). */
+export type EstadoCosto = "MARGEN_NEGATIVO" | "FOOD_COST_ALTO" | "COSTO_INCOMPLETO" | "SIN_PRECIO_VENTA" | "SIN_RECETA" | "POR_OPCION" | "OK";
 
 interface CostoResuelto {
   costoUnitario: number;
@@ -110,7 +111,8 @@ const ORDEN_ESTADO: Record<EstadoCosto, number> = {
   COSTO_INCOMPLETO: 2,
   SIN_PRECIO_VENTA: 3,
   SIN_RECETA: 4,
-  OK: 5,
+  POR_OPCION: 5,
+  OK: 6,
 };
 
 /**
@@ -195,10 +197,13 @@ export function calcularCostosYMargenesDesde(
     const precioVenta = info.precioVenta;
     const objetivoPct = resolverObjetivoFoodCost(objetivos, info.categoriaId);
     const conocido = !costoIncompleto && costoTotal > 0;
-    const margen = conocido && precioVenta > 0 ? precioVenta - costoTotal : null;
+    // Fase 4 (ADR-035): el precio guardado de una base no se cobra: ni margen ni food cost contra él («Por opción»). El costo de su receta común se sigue mostrando.
+    const sobrePrecio = !info.esBase && precioVenta > 0;
+    const margen = conocido && sobrePrecio ? precioVenta - costoTotal : null;
 
     let estado: EstadoCosto;
-    if (!precioVenta) estado = "SIN_PRECIO_VENTA";
+    if (info.esBase) estado = "POR_OPCION";
+    else if (!precioVenta) estado = "SIN_PRECIO_VENTA";
     else if (!tieneReceta) estado = "SIN_RECETA";
     else if (costoIncompleto) estado = "COSTO_INCOMPLETO";
     else if (margen !== null && margen < 0) estado = "MARGEN_NEGATIVO";
@@ -213,11 +218,11 @@ export function calcularCostosYMargenesDesde(
       precioVenta,
       costo: conocido ? redondearMoneda(costoTotal) : null,
       margen: margen === null ? null : redondearMoneda(margen),
-      margenPct: margen !== null && precioVenta > 0 ? Math.round((margen / precioVenta) * 1000) / 10 : null,
-      foodCostPct: conocido && precioVenta > 0 ? Math.round(((costoTotal - costoNoComestible) / precioVenta) * 1000) / 10 : null,
+      margenPct: margen !== null && sobrePrecio ? Math.round((margen / precioVenta) * 1000) / 10 : null,
+      foodCostPct: conocido && sobrePrecio ? Math.round(((costoTotal - costoNoComestible) / precioVenta) * 1000) / 10 : null,
       costoNoComestible: redondearMoneda(costoNoComestible),
       objetivoFoodCostPct: objetivoPct,
-      precioSugerido: costoIncompleto ? null : precioParaObjetivo(costoTotal - costoNoComestible, objetivoPct),
+      precioSugerido: costoIncompleto || info.esBase ? null : precioParaObjetivo(costoTotal - costoNoComestible, objetivoPct),
       costoIncompleto,
       componentes,
       estado,
@@ -372,8 +377,9 @@ export function calcularImpactoRecetasPorPeriodoDesde(
       costoAntes: redondearMoneda(costoAntes),
       costoActual: redondearMoneda(costoActual),
       deltaCosto: redondearMoneda(costoActual - costoAntes),
-      foodCostPctAntes: info.precioVenta > 0 ? Math.round((comidaAntes / info.precioVenta) * 1000) / 10 : null,
-      foodCostPctActual: info.precioVenta > 0 ? Math.round((comidaActual / info.precioVenta) * 1000) / 10 : null,
+      // Fase 4 (ADR-035): de una base no hay food cost contra su precio guardado (no se cobra).
+      foodCostPctAntes: !info.esBase && info.precioVenta > 0 ? Math.round((comidaAntes / info.precioVenta) * 1000) / 10 : null,
+      foodCostPctActual: !info.esBase && info.precioVenta > 0 ? Math.round((comidaActual / info.precioVenta) * 1000) / 10 : null,
     });
   }
 

@@ -37,8 +37,16 @@ describe("cargarOpcionesParaVender (lectura A)", () => {
     expect(almendras).toMatchObject({ versionVigenteId: c.versionDe[c.almendrasId], diferenciaDeLaVersion: { tipo: "MONTO", monto: 150 }, admitida: true, apagadaEnSucursal: false });
     expect(almendras.consumos).toEqual([{ efecto: "REEMPLAZA", insumoProductoId: c.almendrasInsumoId, reemplazaAProductoId: c.lecheId, cantidad: 0.2, unidadStockId: s.kg.id, mermaPorcentaje: 0, escalaConLaMedida: false }]);
     expect(cafe.grupos[2]!.opciones[0]).toMatchObject({ opcionId: c.shotId, productoAnclaId: c.anclaDelShotId, cantidadMaxima: 3 });
-    expect(opciones.get(c.anclaDelShotId)).toEqual({ grupos: [], anclaDeOpcionId: c.shotId });
-    expect(opciones.get(s.milanesa.id)).toEqual({ grupos: [], anclaDeOpcionId: null });
+    expect(opciones.get(c.anclaDelShotId)).toEqual({ grupos: [], anclaDeOpcionId: c.shotId, esBase: false });
+    expect(opciones.get(s.milanesa.id)).toEqual({ grupos: [], anclaDeOpcionId: null, esBase: false });
+    expect(cafe.esBase).toBe(false);
+  });
+
+  it("Fase 4 (ADR-035): `esBase` dice si el producto se vende por opción (lo lee de `Producto.modoDeVenta`)", async () => {
+    await prisma.producto.update({ where: { id: c.cafeId }, data: { modoDeVenta: "BASE_CONFIGURABLE" } });
+    const opciones = await enTx((tx) => cargarOpcionesParaVender(tx, { sucursalId: s.sucursalId, productoIds: [c.cafeId, s.milanesa.id] }));
+    expect(opciones.get(c.cafeId)!.esBase).toBe(true);
+    expect(opciones.get(s.milanesa.id)!.esBase).toBe(false);
   });
 
   it("la vigente es la versión de NÚMERO mayor (no la última creada ni la primera)", async () => {

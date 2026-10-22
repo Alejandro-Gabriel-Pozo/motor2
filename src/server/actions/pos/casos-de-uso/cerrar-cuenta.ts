@@ -14,7 +14,8 @@ import { cargarCuentaParaCerrar, cargarOperacionDelConsumo, cargarUltimoNumeroDe
 import type { ConsumoDeOpcionParaVender, LineaConfiguradaEnTx, OpcionConConsumo } from "@/core/movimientos/public";
 import type { EfectoDeConsumoDeOpcion } from "@/core/opciones/public";
 import { enlazarItemsConOperaciones, escribirEjemplarOriginalDeTicket, marcarCuentaCerrada } from "@/server/persistencia/pos/cerrar-cuenta";
-import { describirAviso, formatearCantidad, MONEDA } from "../cuenta-comun";
+import { formatearMonto } from "@/core/pos/public";
+import { describirAviso, formatearCantidad } from "../cuenta-comun";
 
 /**
  * Caso de uso «cerrar la cuenta de una mesa» (Task #41, Fase M12a — ver docs/arquitectura-casos-de-uso-2026-09-27.md). Es la
@@ -72,10 +73,7 @@ export async function cerrarCuentaCasoDeUso(
     // CuentaItem más abajo (CuentaItem.precioUnitario NUNCA cambia de semántica con el descuento de cliente, Task #14). `promoCuentaId`
     // (Task #16, D4) evita mezclar un suelto con un componente del mismo producto al mismo precio en la MISMA Operacion.
     // GO-2b: cada adicional lleva la versión de su opción (la de su foto) para no juntar dos versiones distintas en una línea.
-    // GO-3b: cada línea que cayó en una combinación con receta propia lleva la versión congelada (dos versiones distintas no se juntan: consumen distinto).
-    const lineas = lineasDeVenta(
-      cuenta.items.map((i) => ({ ...i, versionDeAdicional: i.fotos?.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null, recetaDeCombinacion: i.recetaDeCombinacion?.versionId ?? null }))
-    );
+    const lineas = lineasDeVenta(cuenta.items.map((i) => ({ ...i, versionDeAdicional: i.fotos?.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null })));
     if (!lineas.length) {
       await cerrar();
       return exito(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`, { desenlace: "SIN_VENTA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 });
@@ -149,7 +147,7 @@ export async function cerrarCuentaCasoDeUso(
     // aplicado si hay cliente), no la suma cruda re-redondeada: el total del mensaje coincide centavo a centavo con lo registrado.
     const total = redondearMoneda(lineasVenta.reduce((suma, l) => suma + importeDeLinea(l.cantidadVendida, l.precioUnitario), 0));
     const conCliente = cuenta.clienteNombre !== null ? ` (con ${descuento}% de descuento a «${cuenta.clienteNombre}»)` : "";
-    const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${MONEDA.format(total)}${conCliente}.`;
+    const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${formatearMonto(total)}${conCliente}.`;
     if (!venta.avisosStockNegativo.length) return exito(mensaje, datos);
 
     // STOCK INSUFICIENTE NO BLOQUEA (B6bis): cada insumo que quedó en negativo deja una fila de auditoría enlazada a la venta que lo
@@ -215,15 +213,5 @@ function configuracionDeLaLinea(l: ReturnType<typeof lineasDeVenta>[number], ite
         consumos: f.esNinguna ? [] : consumosDeLaFoto(f),
       })
     );
-  // GO-3b: la receta propia CONGELADA de la combinación (la de la foto de su línea), si la tiene: el consumo la usa en lugar de la receta de la base.
-  const receta = original.recetaDeCombinacion;
-  if (!receta) return { tipo: "PRODUCTO", opciones };
-  return {
-    tipo: "PRODUCTO",
-    opciones,
-    excepcion: {
-      opcionesDeEjes: receta.opcionesDeEjes,
-      ingredientes: receta.ingredientes.map((i) => ({ insumoProductoId: i.insumoProductoId, cantidad: i.cantidad, mermaPorcentaje: i.mermaPorcentaje, unidadStockId: i.unidadId })),
-    },
-  };
+  return { tipo: "PRODUCTO", opciones };
 }

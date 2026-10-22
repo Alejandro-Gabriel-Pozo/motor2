@@ -91,13 +91,9 @@ describe("S-25: la carta pública no emite ids internos", () => {
     const entregada = (await cartaPublica(empresa, "central", AHORA_DE_LA_CORRIDA))!;
     const html = renderToStaticMarkup(<CartaVista carta={entregada.carta} estilo={entregada.estilo} hrefVolver="/carta-publica/principal" />);
     expect(html).toContain("Bife");
-    // GO-2d, CARTA-B y CARTA-C: la opción que SÍ cambia el precio se dibuja en la línea «Adicionales:»; «Jugoso» y «Bien cocido», que no suman nada, se dibujan como pastillas bajo el nombre
-    // de su grupo («Punto»). Todo sin ids.
-    expect(html).toContain("Adicionales:");
-    expect(html).toContain("A punto +$100");
-    expect(html).toMatch(/data-opciones-sin-costo="Punto"[^>]*>.*Punto.*<ul aria-label="Punto".*Jugoso.*Bien cocido/);
-    expect(html).toContain("Jugoso");
-    expect(html).toContain("Bien cocido");
+    // Fase 5 («carta pareja»): el punto es una variante obligatoria que suma («A punto +$100»), así que el bife se lee como una LISTA con el nombre arriba: una fila por punto con su precio
+    // final (con el 10 % de descuento ya aplicado). Todo sin ids.
+    expect(html).toMatch(/<li data-forma="lista"[^>]*>.*<ul aria-label="Bife" data-filas-carta[^>]*>.*Jugoso.*\$900.*A punto.*\$990.*Bien cocido.*\$900/);
     expect(html).toContain('data-ir-a="seccion-0"');
     for (const [clase, id] of Object.entries(ids)) expect(html, `el HTML contiene el id de ${clase}`).not.toContain(id);
     expect(html).not.toMatch(CUID);
@@ -142,5 +138,110 @@ describe("proyectarCartaPublica: copia campo por campo", () => {
     const item = proyectarCartaPublica(completa as unknown as CartaV1).secciones[0].items[1];
     expect("precioLista" in item).toBe(false);
     expect("descuentoPorcentaje" in item).toBe(false);
+  });
+});
+
+describe("Fase 5 («carta pareja»): la forma y las tandas también se copian campo por campo", () => {
+  const conForma = {
+    version: 1,
+    generadoEn: "2026-01-01T00:00:00.000Z",
+    sucursal: { id: "suc-interna", nombre: "Central" },
+    secciones: [
+      {
+        id: "sec-interna",
+        nombre: "Cafetería",
+        titulo: null,
+        descripcion: null,
+        imagenUrl: null,
+        orden: 1,
+        items: [
+          {
+            productoId: "prod-interno",
+            nombre: "Café",
+            categoria: "Cafetería",
+            descripcion: null,
+            precio: 4000,
+            tags: [],
+            especial: false,
+            imagenUrl: null,
+            presentacion: {
+              forma: "columnas",
+              grupoId: "grupo-interno",
+              celdas: [4000, null],
+              aclaraciones: [
+                { tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"], tipoDelGrupo: "VARIANTE" },
+                { tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "shot", recargo: 600, opcionId: "opcion-interna", productoAnclaId: "ancla-interna" }] },
+              ],
+            },
+          },
+          {
+            productoId: "prod-interno-2",
+            nombre: "Milanesas",
+            categoria: "Cafetería",
+            descripcion: null,
+            precio: 20000,
+            tags: [],
+            especial: false,
+            imagenUrl: null,
+            presentacion: { forma: "tabla", columnas: ["Simple"], filas: [{ rotulo: "De carne", celdas: [20000], opcionId: "opcion-interna" }], aclaraciones: [], prefijoEnCarta: "De" },
+          },
+          {
+            productoId: "prod-interno-3",
+            nombre: "Té",
+            categoria: "Cafetería",
+            descripcion: null,
+            precio: 1,
+            tags: [],
+            especial: false,
+            imagenUrl: null,
+            presentacion: { forma: "lista", encabezado: true, protagonista: "nombre", filas: [{ rotulo: "T0", precio: 1, opcionId: "opcion-interna" }], aclaraciones: [], grupoId: "grupo-interno" },
+          },
+          {
+            productoId: "prod-interno-4",
+            nombre: "Pizzas",
+            categoria: "Cafetería",
+            descripcion: null,
+            precio: 1,
+            tags: [],
+            especial: false,
+            imagenUrl: null,
+            presentacion: { forma: "lista", encabezado: false, filas: [{ rotulo: "Pizza muzzarella", precio: 1, opcionId: "opcion-interna" }], aclaraciones: [], grupoId: "grupo-interno" },
+          },
+        ],
+        promos: [],
+        tandas: [{ primero: 0, ultimo: 0, rotulos: ["Chico", "Grande"], grupoId: "grupo-interno" }],
+      },
+    ],
+  };
+
+  it("ningún campo interno que CartaV1 traiga dentro de la forma o de una tanda sale al público", () => {
+    const publica = proyectarCartaPublica(conForma as unknown as CartaV1);
+    const salida = JSON.stringify(publica);
+    for (const interno of ["grupo-interno", "opcion-interna", "ancla-interna", "VARIANTE", "tipoDelGrupo", "prefijoEnCarta", "prod-interno"]) expect(salida, interno).not.toContain(interno);
+    expect(publica.secciones[0].items[0].presentacion).toEqual({
+      forma: "columnas",
+      celdas: [4000, null],
+      aclaraciones: [
+        { tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"] },
+        { tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "shot", recargo: 600 }] },
+      ],
+    });
+    expect(publica.secciones[0].items[1].presentacion).toEqual({ forma: "tabla", columnas: ["Simple"], filas: [{ rotulo: "De carne", celdas: [20000] }], aclaraciones: [] });
+    expect(publica.secciones[0].tandas).toEqual([{ primero: 0, ultimo: 0, rotulos: ["Chico", "Grande"] }]);
+  });
+
+  it("la lista copia `protagonista` solo si está: con el campo sale (valor fijo, sin ids); sin el campo la clave no existe", () => {
+    const items = proyectarCartaPublica(conForma as unknown as CartaV1).secciones[0].items;
+    expect(items[2].presentacion).toEqual({ forma: "lista", encabezado: true, protagonista: "nombre", filas: [{ rotulo: "T0", precio: 1 }], aclaraciones: [] });
+    const sinCampo = items[3].presentacion!;
+    expect(sinCampo).toEqual({ forma: "lista", encabezado: false, filas: [{ rotulo: "Pizza muzzarella", precio: 1 }], aclaraciones: [] });
+    expect("protagonista" in sinCampo).toBe(false);
+  });
+
+  it("un ítem sin forma y una sección sin tandas no llevan esas claves (el JSON queda igual que antes)", () => {
+    const sinForma = { ...conForma, secciones: [{ ...conForma.secciones[0], tandas: undefined, items: [{ ...conForma.secciones[0].items[0], presentacion: undefined }] }] };
+    const publica = proyectarCartaPublica(sinForma as unknown as CartaV1);
+    expect("presentacion" in publica.secciones[0].items[0]).toBe(false);
+    expect("tandas" in publica.secciones[0]).toBe(false);
   });
 });

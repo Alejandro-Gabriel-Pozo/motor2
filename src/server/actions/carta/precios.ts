@@ -6,7 +6,7 @@ import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-se
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
 import { ajustarPreciosDeLaEmpresaCasoDeUso } from "../catalogo/casos-de-uso/ajustar-precios-de-la-empresa";
-import { ajustarPreciosDeLaCartaCasoDeUso } from "../movimientos/casos-de-uso/ajustar-precios-de-la-carta";
+import { ajustarPreciosDeLaCartaCasoDeUso } from "../catalogo/casos-de-uso/ajustar-precios-de-la-carta";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**

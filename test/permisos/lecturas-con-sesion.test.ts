@@ -22,7 +22,7 @@ import { listarProveedores, listarProveedoresParaSelector } from "../../src/serv
 import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/actions/catalogo/recetas";
 import { listarUnidadesActivas, listarUnidadesParaPanel } from "../../src/server/actions/catalogo/unidades";
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
-import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
+import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/catalogo/precio-local";
 import { listarSeccionesActivas, listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
 import { listarDestinosConsumoActivos, listarMotivosMermaActivos } from "../../src/server/actions/movimientos/motivos";
 import { listarCapacidades } from "../../src/server/actions/permisos/capacidades-sucursal";

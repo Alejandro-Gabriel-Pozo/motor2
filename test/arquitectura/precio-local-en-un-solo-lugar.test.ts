@@ -8,8 +8,8 @@ import { describe, expect, it } from "vitest";
  * lector que consulte `PrecioLocalProducto` por su cuenta se salta la capacidad: la sucursal que la tiene apagada seguiría
  * cobrando (y mostrando) el precio local, y TypeScript no lo detecta — los dos tipan igual.
  *
- * Lo que sí puede leer la tabla cruda: el CRUD administrativo (`server/actions/movimientos/precio-local.ts`: lista las filas, con capacidad
- * apagada o no; desde el Hito 4, H4C-4, la escritura y la lectura de la fila ANTERIOR para la auditoría viven en `server/persistencia/movimientos/precio-local.ts`)
+ * Lo que sí puede leer la tabla cruda: el CRUD administrativo (`server/actions/catalogo/precio-local.ts`: lista las filas, con capacidad
+ * apagada o no; desde el Hito 4, H4C-4, la escritura y la lectura de la fila ANTERIOR para la auditoría viven en `server/persistencia/catalogo/precio-local.ts`)
  * y el reporte de la comparativa de precios (`core/reportes/periodo-precios.ts`, que solo traduce el id de una fila auditada a su producto, sin leer ningún
  * precio).
  *
@@ -22,8 +22,8 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../../src");
 const ARCHIVOS_PERMITIDOS = [
   "server/lecturas/catalogo/precio-local.ts",
-  "server/actions/movimientos/precio-local.ts",
-  "server/persistencia/movimientos/precio-local.ts",
+  "server/actions/catalogo/precio-local.ts",
+  "server/persistencia/catalogo/precio-local.ts",
   "server/consultas/reportes/periodo-precios.ts",
 ];
 
@@ -178,48 +178,5 @@ describe("precio local: un solo lugar decide cuál rige (capacidad + fila habili
       const fuente = ["const vigentes = await preciosLocalesVigentes(sucursalId, db);", "await tx.precioLocalProducto.upsert({});"].join("\n");
       expect(lineasQueLeenPrecioLocalDirecto(fuente)).toEqual([]);
     });
-  });
-});
-
-// GO-3 (ADR-032, D-4): el precio local de las COMBINACIONES y de los GRUPOS DE PRECIO (`PrecioLocalDeCombinacion`) tiene el mismo embudo que el de las opciones. Bloque propio al final, para no pisarse
-// con los cambios de GO-2a en este archivo. GO-3b: el embudo vive en un archivo PROPIO, `server/lecturas/catalogo/precio-local-de-combinaciones.ts` (como la grilla de las opciones,
-// `precio-local-de-opciones.ts`, y por el mismo motivo: la carta pública alcanza `precio-local.ts` y su lista cerrada crecería sin que la carta lo use); la capacidad sigue en `precioLocalActivoEn`.
-
-/** Las líneas (1-based) que leen `precioLocalDeCombinacion` (find*) fuera de un comentario. */
-function lineasQueLeenPrecioLocalDeCombinacionDirecto(fuente: string): number[] {
-  const malas: number[] = [];
-  fuente
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .forEach((linea, i) => {
-      if (esComentario(linea)) return;
-      if (/precioLocalDeCombinacion\s*\.\s*find/.test(linea)) malas.push(i + 1);
-    });
-  return malas;
-}
-
-describe("precio local de las combinaciones (GO-3): un solo lugar lo lee", () => {
-  it("ningún archivo fuera de `server/lecturas/catalogo/precio-local-de-combinaciones.ts` lee `precioLocalDeCombinacion.find*` directo", () => {
-    const problemas: string[] = [];
-    for (const ruta of archivos(RAIZ)) {
-      const nombre = relative(RAIZ, ruta).split(sep).join("/");
-      if (nombre === "server/lecturas/catalogo/precio-local-de-combinaciones.ts") continue;
-      for (const linea of lineasQueLeenPrecioLocalDeCombinacionDirecto(readFileSync(ruta, "utf8"))) problemas.push(`${nombre}:${linea}`);
-    }
-    expect(problemas, `Estas líneas leen PrecioLocalDeCombinacion a mano y se saltan el embudo del precio local:\n${problemas.join("\n")}`).toEqual([]);
-    expect(
-      lineasQueLeenPrecioLocalDeCombinacionDirecto(readFileSync(join(RAIZ, "server/lecturas/catalogo/precio-local-de-combinaciones.ts"), "utf8")).length,
-      "precio-local-de-combinaciones.ts ya no lee el precio local de las combinaciones: ¿se movió?",
-    ).toBeGreaterThan(0);
-  });
-
-  it("el detector marca la lectura directa (también sobre una transacción) y no una escritura ni un comentario", () => {
-    const fuente = [
-      "const filas = await db.precioLocalDeCombinacion.findMany({ where: { sucursalId } });",
-      "await tx.precioLocalDeCombinacion . findFirst({});",
-      "await tx.precioLocalDeCombinacion.upsert({});",
-      "// antes: db.precioLocalDeCombinacion.findMany — ahora pasa por el embudo.",
-    ].join("\n");
-    expect(lineasQueLeenPrecioLocalDeCombinacionDirecto(fuente)).toEqual([1, 2]);
   });
 });

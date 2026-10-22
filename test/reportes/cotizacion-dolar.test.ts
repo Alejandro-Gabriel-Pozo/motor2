@@ -59,6 +59,16 @@ describe("lectura de las respuestas", () => {
   it("pesos a dólares con 2 decimales", () => {
     expect(pesosADolares(3_995_000, 1535)).toBe(2602.61);
   });
+
+  it("pesos a dólares: el empate de medio centavo se aleja del cero (redondearMoneda), no se pierde como con Math.round(x * 100) / 100", () => {
+    // 1005 / 1000 = 1.005 y 128045 / 1000 = 128.045: los dos quedan apenas debajo del empate al multiplicar por 100 (100.49999999999999 y 12804.499999999998).
+    expect(Math.round((1005 / 1000) * 100) / 100).toBe(1);
+    expect(pesosADolares(1005, 1000)).toBe(1.01);
+    expect(Math.round((128_045 / 1000) * 100) / 100).toBe(128.04);
+    expect(pesosADolares(128_045, 1000)).toBe(128.05);
+    expect(pesosADolares(-128_045, 1000)).toBe(-128.05);
+    expect(pesosADolares(0, 1535)).toBe(0);
+  });
 });
 
 describe("sincronizarDolar", () => {

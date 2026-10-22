@@ -4,6 +4,9 @@ import { useMemo, useState } from "react";
 import { useAvisoConDeshacer } from "@/components/aviso-con-deshacer";
 import { CRITERIOS_DE_LIMPIEZA, candidatosALimpiar, nombreDelTipoDeGrupo, productosAfectados, type CriterioDeLimpieza, type GrupoParaLimpiar, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Casilla } from "@/ui/primitivas/casilla";
 
 export interface GrupoDeLimpieza extends GrupoParaLimpiar {
   tipo: TipoDeGrupoDeOpciones;
@@ -78,41 +81,34 @@ export function LimpiarOpciones({
     setOpcionIds(new Set());
   };
 
-  const casilla = "size-5 shrink-0 accent-[#1b2735] dark:accent-neutral-200";
-  const tarjeta = "flex min-h-[56px] cursor-pointer items-center gap-3 border border-[#cdd5dd] bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900";
+  const tarjeta = "flex min-h-[56px] items-center border border-borde-control bg-superficie px-3 py-2";
 
   return (
     <div className="flex flex-col gap-4">
       <fieldset className="min-w-0">
-        <legend className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">Qué mostrar</legend>
+        <legend className="mb-2 text-xs font-medium uppercase tracking-wide text-tinta-suave">Qué mostrar</legend>
         <div className="flex flex-wrap gap-2">
           {CRITERIOS_DE_LIMPIEZA.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-pressed={criterio === c}
-              onClick={() => setCriterio(c)}
-              className="min-h-[44px] border border-[#cdd5dd] bg-white px-3.5 py-2 text-sm font-medium aria-pressed:border-[#1b2735] aria-pressed:bg-[#1b2735] aria-pressed:font-semibold aria-pressed:text-white dark:border-neutral-600 dark:bg-neutral-900 dark:aria-pressed:border-neutral-200 dark:aria-pressed:bg-neutral-200 dark:aria-pressed:text-neutral-900"
-            >
+            <Boton key={c} variante="seleccion" tamano="tactil" aria-pressed={criterio === c} onClick={() => setCriterio(c)}>
               {ETIQUETA[c]}
-            </button>
+            </Boton>
           ))}
         </div>
       </fieldset>
 
       {totalCandidatos === 0 ? (
-        <p role="status" className="border-l-4 border-[#1f6b49] bg-[#e4f2ea] px-3 py-2.5 text-sm text-neutral-900 dark:border-emerald-500 dark:bg-emerald-950 dark:text-neutral-100">
+        <Aviso variante="exito">
           No hay nada {MOTIVO[criterio]}: no hay nada que limpiar con este criterio.
-        </p>
+        </Aviso>
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <p className="text-sm text-tinta-suave">
               {totalCandidatos === 1 ? "1 elemento" : `${totalCandidatos} elementos`} {MOTIVO[criterio]}.
             </p>
-            <button type="button" onClick={() => elegirTodo(total < totalCandidatos)} className="min-h-[44px] px-1 text-sm font-medium underline">
+            <Boton variante="enlace" tamano="tactil" onClick={() => elegirTodo(total < totalCandidatos)}>
               {total < totalCandidatos ? "Elegir todos" : "No elegir ninguno"}
-            </button>
+            </Boton>
           </div>
 
           {candidatos.grupos.length > 0 && (
@@ -123,15 +119,20 @@ export function LimpiarOpciones({
               <ul className="flex flex-col gap-2">
                 {candidatos.grupos.map((g) => (
                   <li key={g.id}>
-                    <label className={tarjeta} data-candidato-grupo={g.nombre}>
-                      <input type="checkbox" className={casilla} checked={grupoIds.has(g.id)} onChange={() => setGrupoIds((s) => alternar(s, g.id))} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium [overflow-wrap:anywhere]">{g.nombre}</span>
-                        <span className="block text-xs text-neutral-600 dark:text-neutral-400">
-                          {nombreDelTipoDeGrupo(g.tipo)} · {g.opciones.length === 1 ? "1 opción" : `${g.opciones.length} opciones`} · {quienes(g.productoIds.length, "lo", "usa")}
-                        </span>
-                      </span>
-                    </label>
+                    <div className={tarjeta} data-candidato-grupo={g.nombre}>
+                      <Casilla
+                        checked={grupoIds.has(g.id)}
+                        onChange={() => setGrupoIds((s) => alternar(s, g.id))}
+                        etiqueta={
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-medium [overflow-wrap:anywhere]">{g.nombre}</span>
+                            <span className="block text-xs text-tinta-suave">
+                              {nombreDelTipoDeGrupo(g.tipo)} · {g.opciones.length === 1 ? "1 opción" : `${g.opciones.length} opciones`} · {quienes(g.productoIds.length, "lo", "usa")}
+                            </span>
+                          </span>
+                        }
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -146,15 +147,20 @@ export function LimpiarOpciones({
               <ul className="flex flex-col gap-2">
                 {candidatos.opciones.map(({ grupo, opcion }) => (
                   <li key={opcion.id}>
-                    <label className={tarjeta} data-candidata-opcion={opcion.nombre}>
-                      <input type="checkbox" className={casilla} checked={opcionIds.has(opcion.id)} onChange={() => setOpcionIds((s) => alternar(s, opcion.id))} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium [overflow-wrap:anywhere]">{opcion.nombre}</span>
-                        <span className="block text-xs text-neutral-600 dark:text-neutral-400">
-                          De «{grupo.nombre}» · {quienes(opcion.productoIds.length, "la", "admite")}
-                        </span>
-                      </span>
-                    </label>
+                    <div className={tarjeta} data-candidata-opcion={opcion.nombre}>
+                      <Casilla
+                        checked={opcionIds.has(opcion.id)}
+                        onChange={() => setOpcionIds((s) => alternar(s, opcion.id))}
+                        etiqueta={
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-medium [overflow-wrap:anywhere]">{opcion.nombre}</span>
+                            <span className="block text-xs text-tinta-suave">
+                              De «{grupo.nombre}» · {quienes(opcion.productoIds.length, "la", "admite")}
+                            </span>
+                          </span>
+                        }
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -164,22 +170,17 @@ export function LimpiarOpciones({
       )}
 
       {total > 0 && (
-        <div data-barra-limpiar="" className="sticky bottom-0 z-10 -mx-1 flex flex-col gap-2 border-t border-[#cdd5dd] bg-white px-1 pb-3 pt-2 dark:border-neutral-700 dark:bg-neutral-950">
+        <div data-barra-limpiar="" className="sticky bottom-0 z-10 -mx-1 flex flex-col gap-2 border-t border-borde-control bg-superficie px-1 pb-3 pt-2">
           <p className="text-sm" data-vista-previa="">
             <b>{total === 1 ? "1 elegido" : `${total} elegidos`}</b> ·{" "}
             {afectados.length === 0
               ? "no afecta a ningún producto."
               : `afecta a ${productos(afectados.length)}: ${nombres.slice(0, 3).join(", ")}${nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""} (deja de ofrecerse ahí).`}
           </p>
-          <button
-            type="button"
-            onClick={archivar}
-            aria-disabled={ocupado || undefined}
-            className="min-h-[48px] w-full border border-[#1b2735] bg-[#1b2735] px-4 py-2 font-semibold text-white aria-disabled:cursor-progress aria-disabled:opacity-60 sm:w-auto sm:self-start dark:border-neutral-200 dark:bg-neutral-200 dark:text-neutral-900"
-          >
+          <Boton tamano="tactil" onClick={archivar} cargando={ocupado} className="w-full sm:w-auto sm:self-start">
             Archivar {total === 1 ? "1 elemento" : `${total} elementos`}
-          </button>
-          <p className="text-xs text-neutral-600 dark:text-neutral-400">Se archivan todos juntos o ninguno. «Deshacer» los restaura; lo ya vendido queda como se vendió.</p>
+          </Boton>
+          <p className="text-xs text-tinta-suave">Se archivan todos juntos o ninguno. «Deshacer» los restaura; lo ya vendido queda como se vendió.</p>
         </div>
       )}
     </div>

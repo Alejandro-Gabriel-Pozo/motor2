@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { Boton } from "@/ui/primitivas/boton";
 
 /**
  * Pantalla de error del salón (módulo POS, clon de `(app)/error.tsx`: dentro del encabezado del salón, solo se cae el contenido). Sin esto, un
@@ -19,14 +20,12 @@ export default function ErrorDelSalon({ error, retry }: { error: Error & { diges
   return (
     <div role="alert" className="max-w-md space-y-3">
       <h1 className="text-xl font-semibold">Algo falló al abrir esta pantalla</h1>
-      <p className="text-sm text-[var(--ink-soft)]">
+      <p className="text-sm text-tinta-suave">
         No se perdió nada de lo que ya estaba guardado. Puede ser un corte momentáneo de la conexión: probá de nuevo. Si vuelve a pasar, avisale a
         un admin{error.digest ? ` y pasale este código: ${error.digest}` : ""}.
       </p>
       <div className="flex items-center gap-3">
-        <button type="button" onClick={() => retry()} className="rounded bg-[var(--ink)] px-4 py-2 text-white">
-          Reintentar
-        </button>
+        <Boton onClick={() => retry()}>Reintentar</Boton>
         <Link href="/" className="text-sm underline">
           Ir al inicio
         </Link>

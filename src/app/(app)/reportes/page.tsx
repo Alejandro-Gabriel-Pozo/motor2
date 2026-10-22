@@ -17,14 +17,14 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_resumen", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   // S-28 (I-3): el Resumen operativo corre `obtenerReportePorPeriodo` sobre un rango del usuario de hasta 366 días, la MISMA consulta pesada que Período: cuenta en el cupo de "periodo"
   // (uno solo para las dos pantallas: alternarlas no duplica el presupuesto), antes de consultar nada.
-  if (reportePesadoSinCupo(ctx.usuarioId, "periodo", new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (reportePesadoSinCupo(ctx.usuarioId, "periodo", new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
@@ -37,7 +37,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Resumen operativo</h1>
-        <p className="mb-2 text-sm text-neutral-500">
+        <p className="mb-2 text-sm text-tinta-tenue">
           Financiero de {diaDeCalendario(r.financiero.desde, ctx.empresaZonaHoraria)} a {diaDeCalendario(r.financiero.hasta, ctx.empresaZonaHoraria)}.
         </p>
         <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
@@ -45,27 +45,27 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded border p-4">
-          <p className="flex items-center text-xs text-neutral-500">
+          <p className="flex items-center text-xs text-tinta-tenue">
             Ventas
             <AyudaIcono texto={r.financiero.avisoVentas} />
           </p>
           <p className="text-lg font-semibold">${r.financiero.ventasTotal.toLocaleString("es-AR")}</p>
           <EnDolares pesos={r.financiero.ventasTotal} cotizacion={cotizacion} />
-          {r.financiero.hayEstimados && <p className="text-xs text-amber-700 dark:text-amber-600">incluye estimados</p>}
+          {r.financiero.hayEstimados && <p className="text-xs text-aviso-tinta">incluye estimados</p>}
         </div>
         {/* Mismo tratamiento que /reportes/periodo (§2): una cifra principal (el margen Real, acá "Ganancia de lo vendido"), definiciones visibles en vez de tooltip, nominal e IPC plegados. */}
         <div className="rounded border p-4">
           <dl>
-            <dt className="text-xs text-neutral-500">Ganancia de lo vendido</dt>
+            <dt className="text-xs text-tinta-tenue">Ganancia de lo vendido</dt>
             <dd className="text-lg font-semibold">
               {r.financiero.margenRealTotal !== null
                 ? `$${r.financiero.margenRealTotal.toLocaleString("es-AR")} (${r.financiero.margenRealPct}%)${r.financiero.margenRealReconstruido ? " · reconstruido" : ""}`
                 : "sin datos todavía"}
             </dd>
-            <dd className="text-xs text-neutral-500">{r.financiero.avisoMargenReal}</dd>
+            <dd className="text-xs text-tinta-tenue">{r.financiero.avisoMargenReal}</dd>
           </dl>
           {r.financiero.hayCostoIncompleto && (
-            <p className="mt-1 text-xs text-amber-700 dark:text-amber-600">
+            <p className="mt-1 text-xs text-aviso-tinta">
               Costo incompleto en algún producto —{" "}
               <EnlaceInterno href="/reportes/costos" className="underline">
                 ver Costos y márgenes
@@ -73,29 +73,29 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
             </p>
           )}
           <details className="mt-3 text-xs">
-            <summary className="cursor-pointer text-neutral-500">Otras formas de ver el margen (con qué costo se calculan)</summary>
+            <summary className="cursor-pointer text-tinta-tenue">Otras formas de ver el margen (con qué costo se calculan)</summary>
             <dl className="mt-2 flex flex-col gap-3">
               <div>
-                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Si repusieras hoy</dt>
+                <dt className="font-medium text-tinta-suave">Si repusieras hoy</dt>
                 <dd>
                   ${r.financiero.margenTotal.toLocaleString("es-AR")} {r.financiero.margenPct !== null && `(${r.financiero.margenPct}%)`}
                 </dd>
-                <dd className="text-neutral-500">{r.financiero.avisoMargen}</dd>
+                <dd className="text-tinta-tenue">{r.financiero.avisoMargen}</dd>
               </div>
               <div>
-                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Ajustada por inflación (IPC)</dt>
+                <dt className="font-medium text-tinta-suave">Ajustada por inflación (IPC)</dt>
                 <dd>
                   {r.financiero.margenIPCTotal !== null
                     ? `$${r.financiero.margenIPCTotal.toLocaleString("es-AR")} (${r.financiero.margenIPCPct}%)${r.financiero.ipcVencido ? " · IPC desactualizado" : r.financiero.margenIPCProvisorio ? " · provisorio" : ""}`
                     : "sin datos todavía"}
                 </dd>
-                <dd className="text-neutral-500">{r.financiero.avisoMargenIPC}</dd>
+                <dd className="text-tinta-tenue">{r.financiero.avisoMargenIPC}</dd>
               </div>
             </dl>
           </details>
         </div>
         <div className="rounded border p-4">
-          <p className="flex items-center text-xs text-neutral-500">
+          <p className="flex items-center text-xs text-tinta-tenue">
             Gastado en compras
             <AyudaIcono texto={r.financiero.avisoCompras} />
           </p>
@@ -103,7 +103,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
           <EnDolares pesos={r.financiero.gastadoTotal} cotizacion={cotizacion} />
         </div>
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Alertas de stock</p>
+          <p className="text-xs text-tinta-tenue">Alertas de stock</p>
           <p className="text-lg font-semibold">
             {r.alertas.criticos} crítica(s), {r.alertas.bajos} baja(s)
           </p>
@@ -126,7 +126,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
         <TablaStockBajo filas={r.topStockBajo} />
       </div>
 
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-tinta-tenue">
         Stock: {r.stock.totalItems} combinaciones producto+sección con movimientos, {r.stock.negativos} en negativo. Movimientos totales: {r.movimientos.total}.
       </p>
     </div>

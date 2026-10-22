@@ -69,13 +69,15 @@ describe("leerCantidadTecleada — lo que entendió el sistema", () => {
     ["0,3", "= 300 g"],
     ["0,07", "= 70 g"], // sin el ruido de 0.07 * 1000 en binario
     ["0,125", "= 125 g"],
+    ["0,1255", "= 125,5 g"],
+    ["0.125", "= 125 g"], // el entero en 0: un solo punto es decimal
     [",5", "= 500 g"],
     ["1,5", "= 1,5 kg"],
     ["1", "= 1 kg"],
     ["12", "= 12 kg"],
+    ["1,205", "= 1,205 kg"],
     ["1.000.000", "= 1000000 kg"], // miles bien agrupados: sin separador de miles en la lectura
     ["1.234,56", "= 1234,56 kg"],
-    ["1,234.56", "= 1234,56 kg"],
     ["0", "= 0 kg"],
     ["-3", "= -3 kg"],
     ["-0,5", "= -0,5 kg"], // un negativo no se pasa a la unidad menor (lo rechaza el servidor igual)
@@ -88,19 +90,15 @@ describe("leerCantidadTecleada — lo que entendió el sistema", () => {
     expect(valor("2", LITRO).lectura).toBe("= 2 l");
   });
 
-  it("una unidad sin menor se muestra tal cual, también por debajo de 1", () => {
+  it("una unidad sin menor se muestra tal cual", () => {
     expect(valor("3", UNIDADES.unidad).lectura).toBe("= 3 unidad");
-    expect(valor("0,5", UNIDADES.g).lectura).toBe("= 0,5 g");
   });
 
   it("sin unidad conocida (todavía no se eligió la materia prima), solo el número", () => {
     expect(valor("0,30", null).lectura).toBe("= 0,3");
   });
 
-  it("devuelve el valor que interpretó `interpretarNumero`, sin reinterpretarlo", () => {
-    expect(valor("3.000").valor).toBe(3);
-    expect(valor("1.500").valor).toBe(1.5);
-    expect(valor("12.345").valor).toBe(12.345);
+  it("devuelve el valor que interpretó el parser, sin reinterpretarlo", () => {
     expect(valor("1.000.000").valor).toBe(1_000_000);
     expect(valor("0,300").valor).toBe(0.3);
     expect(valor("0.300").valor).toBe(0.3);
@@ -112,60 +110,26 @@ describe("leerCantidadTecleada — lo que entendió el sistema", () => {
     expect(leer("   ")).toEqual({ tipo: "vacio" });
   });
 
-  it.each(["abc", "1e3", "5-3", "1,2,3", "1.23,4", "$100", "1 000"])("%j no es un número → inválido, con el mensaje del parser", (texto) => {
+  it.each(["abc", "1e3", "5-3", "1,2,3", "1.23,4", "$100", "1 000", "1,234.56"])("%j no es un número → inválido, con el mensaje del parser", (texto) => {
     expect(leer(texto)).toEqual({ tipo: "invalido", mensaje: "No es un número válido." });
   });
 });
 
-describe("leerCantidadTecleada — advertencia cuando coma o punto pueden confundir", () => {
-  it("«3.000» se lee 3 kg y avisa cómo escribir tres mil", () => {
-    expect(valor("3.000")).toEqual({
-      tipo: "valor",
-      valor: 3,
-      lectura: "= 3 kg",
-      advertencia: "Se leyó como 3 kg. Si quisiste decir 3000 kg, escribilo sin punto: 3000.",
-    });
+describe("leerCantidadTecleada — lo ambiguo no se adivina (2c)", () => {
+  it("«3.000» es inválido en kilos: ¿3,000 o 3000?", () => {
+    expect(leer("3.000")).toEqual({ tipo: "invalido", mensaje: "¿3,000 o 3000? Escribí 3000 o 3,000." });
+    expect(leer("1.205", LITRO)).toEqual({ tipo: "invalido", mensaje: "¿1,205 o 1205? Escribí 1205 o 1,205." });
   });
 
-  it("con coma dice «sin coma»", () => {
-    expect(valor("1,500").advertencia).toBe("Se leyó como 1,5 kg. Si quisiste decir 1500 kg, escribilo sin coma: 1500.");
-    expect(valor("3,000").advertencia).toBe("Se leyó como 3 kg. Si quisiste decir 3000 kg, escribilo sin coma: 3000.");
+  it("sin unidad conocida, tampoco se adivina", () => {
+    expect(leer("3.000", null)).toEqual({ tipo: "invalido", mensaje: "¿3,000 o 3000? Escribí 3000 o 3,000." });
   });
 
-  it("la advertencia usa la lectura convertida («0.300» → 300 g)", () => {
-    expect(valor("0.300")).toMatchObject({ lectura: "= 300 g", advertencia: "Se leyó como 300 g. Si quisiste decir 300 kg, escribilo sin punto: 300." });
+  it("la unidad no cambia cómo se lee: el campo de cantidad de la receta no la conoce, así que ni siquiera en una unidad «entera» se adivina «3.000»", () => {
+    expect(leer("3.000", UNIDADES.unidad)).toEqual({ tipo: "invalido", mensaje: "¿3,000 o 3000? Escribí 3000 o 3,000." });
   });
 
-  it("«12.345» (dos dígitos antes) y un negativo también avisan", () => {
-    expect(valor("12.345").advertencia).toBe("Se leyó como 12,345 kg. Si quisiste decir 12345 kg, escribilo sin punto: 12345.");
-    expect(valor("-1.500").advertencia).toBe("Se leyó como -1,5 kg. Si quisiste decir -1500 kg, escribilo sin punto: -1500.");
-  });
-
-  it("sin unidad conocida, la advertencia no inventa una", () => {
-    expect(valor("3.000", null).advertencia).toBe("Se leyó como 3. Si quisiste decir 3000, escribilo sin punto: 3000.");
-  });
-
-  it("recorta espacios igual que el parser", () => {
-    expect(valor("  3.000  ").advertencia).not.toBeNull();
-  });
-
-  it.each([
-    "3", // sin separador
-    "3000",
-    "0,30", // dos decimales: no puede ser miles
-    "1,5",
-    "1.5",
-    "0,3",
-    "1,2345", // cuatro decimales
-    "1.000.000", // miles bien agrupados: no es falsa alarma
-    "1,000,000",
-    "1.234,56", // los dos separadores
-    "1.234.567,5",
-    "1234.567", // cuatro dígitos antes: no puede ser un grupo de miles
-    ",500", // sin dígitos antes: claramente decimal
-    "0",
-    "0.000", // se lee 0 de las dos maneras: no hay nada que aclarar
-  ])("%j no avisa", (texto) => {
-    expect(valor(texto).advertencia).toBeNull();
+  it("más decimales que los de las columnas (4): error de decimales, con cuántos admite", () => {
+    expect(leer("0,12345")).toEqual({ tipo: "invalido", mensaje: "Admite como máximo 4 decimales." });
   });
 });

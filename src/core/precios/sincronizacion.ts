@@ -3,7 +3,7 @@ import type { Resultado } from "@/core/carta/public";
 /**
  * Sincronización de precio local entre sucursales de una misma empresa (Fase A de multi-tenancy, `Downloads/Motor 2/plan-panel-
  * gerenciamiento-empresa-sucursal-2026-09-27.md`, sección 2.5): peer-to-peer, sin cabecera, por producto (no por sucursal
- * entera) — no confundir con `sincronizarPrecioLocalGrupoCarta` (`src/server/actions/movimientos/precio-local.ts`), que iguala
+ * entera) — no confundir con `sincronizarPrecioLocalGrupoCarta` (`src/server/actions/catalogo/precio-local.ts`), que iguala
  * precios entre PRODUCTOS HERMANOS de un ítem agrupado DENTRO de una sola sucursal; son dos ejes distintos (P12 del catálogo de
  * flujos). PURO — sin Prisma: `GrupoSincroPrecio`/`GrupoSincroPrecioSucursal`/`PrecioLocalProducto.sincronizado` TODAVÍA NO
  * EXISTEN en `prisma/schema.prisma` real, solo en el schema experimental (`prisma/fase-a/schema.prisma`, ver ADR-004). El único

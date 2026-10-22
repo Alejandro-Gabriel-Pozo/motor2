@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actorDePrueba } from "../setup/opciones-de-venta";
 import type { AjusteDePrecio } from "../../src/core/carta/ajuste-de-precios";
 import { MENSAJE_SUCURSAL_CAMBIADA } from "../../src/core/features/catalogo/opciones-por-sucursal.guard";
-import { ajustarPreciosDeLaCartaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/ajustar-precios-de-la-carta";
+import { ajustarPreciosDeLaCartaCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-carta";
 import { ajustarPreciosDeLaEmpresaCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-empresa";
 import { ajustarPreciosDeLaCarta, ajustarPreciosDeLaEmpresa } from "../../src/server/actions/carta/precios";
 import { avisoDelPrecioDeLaEmpresa } from "../../src/server/lecturas/carta/aviso-de-precio-de-empresa";

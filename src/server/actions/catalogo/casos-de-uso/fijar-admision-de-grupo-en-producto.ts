@@ -3,14 +3,25 @@ import type { Prisma } from "@prisma/client";
 import { ALCANCE_CENTRAL } from "@/core/catalogo/public";
 import { MENSAJE_GRUPO_NO_ENCONTRADO } from "@/core/features/catalogo/opciones-de-venta.guard";
 import type { ComandoFijarAdmisionDeGrupo, ResultadoFijarAdmisionDeGrupo } from "@/core/features/catalogo/opciones-de-venta.schema";
-import { cambiosPorColumna, controlarPrecioDeLista, validarAdmisionDeGrupo, type AdmisionDeOpcion, type DiferenciaDePrecio } from "@/core/opciones/public";
+import {
+  cambiosPorColumna,
+  controlarPrecioDeLista,
+  esBaseConfigurable,
+  precioDeReferenciaDeAdmisiones,
+  rechazoDeAdmisionesDeBase,
+  validarAdmisionDeGrupo,
+  type AdmisionDeOpcion,
+  type AdmisionParaSerBase,
+  type DiferenciaDePrecio,
+} from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { actualizarAdmisionDeGrupo, actualizarAdmisionDeOpcion, crearAdmisionDeGrupo, crearAdmisionDeOpcion } from "@/server/persistencia/catalogo/opciones-de-venta";
-import { cargarGrupoEnTx, versionVigenteEnTx } from "./opciones-de-venta-en-tx";
+import { tomarFilaDeProducto } from "@/server/persistencia/catalogo/productos";
+import { admisionesParaSerBase, cargarGrupoEnTx, versionVigenteEnTx } from "./opciones-de-venta-en-tx";
 
 const desactualizada = (producto: string, grupo: string) =>
   fracaso("VERSION_DESACTUALIZADA", `Lo que admite «${producto}» de «${grupo}» cambió mientras lo editabas. Recargá la pantalla y volvé a hacer el cambio.`);
@@ -39,9 +50,13 @@ function diferenciaDeLaFila(f: { tipoDeDiferencia: string | null; diferenciaPrec
  *  2. el grupo existe; cada versión esperada coincide con la de la base (si no, `VERSION_DESACTUALIZADA` y no se escribe nada);
  *  3. las reglas puras de la admisión sobre el estado RESULTANTE (`validarAdmisionDeGrupo`: cantidades efectivas, modo de precio, precio absoluto, mínimo alcanzable);
  *  4. al admitir (o reactivar) el grupo o una opción, tienen que estar activos para la empresa (`GRUPO_INACTIVO`, `OPCION_INACTIVA`);
- *  5. el control de precio de lista (`controlarPrecioDeLista`, la misma cuenta que la venta) opción por opción sobre el precio de venta del producto, si lo tiene (un producto en 0
- *     se cobra con el precio de cada sucursal; la venta igual falla cerrado si allá no da);
- *  6. aviso, sin bloqueo: un REEMPLAZA de una opción cuyo insumo no está en la receta central vigente del producto (S3: no reemplaza nada); sin receta central todavía, no se avisa.
+ *  5. Fase 4 de la ola «precio y carta» (ADR-035): si el producto se vende por opción, el estado RESULTANTE de todo lo que admite tiene que seguir cumpliendo la regla de la base
+ *     (`rechazoDeAdmisionesDeBase`: un grupo de medida en ABSOLUTO con el precio final de cada opción ofrecida, sin porcentajes): no se apaga la admisión del grupo de precio, no se pasa a
+ *     DIFERENCIA, no se deja una opción ofrecida sin precio ni se carga un porcentaje (`CONFIGURACION_INVALIDA`). La fila del producto se toma PRIMERO (`tomarFilaDeProducto`, `FOR UPDATE`),
+ *     como en la edición que lo pasa a base;
+ *  6. el control de precio de lista (`controlarPrecioDeLista`, la misma cuenta que la venta) opción por opción sobre el precio de venta del producto, si lo tiene (un producto en 0
+ *     se cobra con el precio de cada sucursal; la venta igual falla cerrado si allá no da). En una base, sobre su precio de referencia (su precio final más barato), nunca sobre el guardado;
+ *  7. aviso, sin bloqueo: un REEMPLAZA de una opción cuyo insumo no está en la receta central vigente del producto (S3: no reemplaza nada); sin receta central todavía, no se avisa.
  * Una admisión simultánea del mismo par compite por las mismas filas (una gana, la otra `VERSION_DESACTUALIZADA` o 23505 y reintento); bajar el máximo del grupo a la vez que acá se fija
  * un mínimo incompatible es un cruce de lectura y escritura entre las dos transacciones (cada una lee lo que la otra escribe): SERIALIZABLE aborta a una (40001) y su reintento rechaza.
  *
@@ -67,7 +82,9 @@ export async function fijarAdmisionDeGrupoEnTx(
   actor: Pick<ContextoDeAccion, "usuarioId" | "ahora">,
   comando: ComandoFijarAdmisionDeGrupo
 ): Promise<ResultadoFijarAdmisionDeGrupo> {
-  const producto = await tx.producto.findFirst({ where: { id: comando.productoId }, select: { id: true, nombre: true, tipo: true, precioVenta: true } });
+  // Fase 4: la fila del producto, antes de leer nada (la edición que lo pasa a base la toma igual).
+  await tomarFilaDeProducto(tx, comando.productoId);
+  const producto = await tx.producto.findFirst({ where: { id: comando.productoId }, select: { id: true, nombre: true, tipo: true, precioVenta: true, modoDeVenta: true } });
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
   if (producto.tipo !== "PV") return fracaso("PRODUCTO_NO_ELEGIBLE", `«${producto.nombre}» no es un producto de venta: solo un producto de venta admite opciones.`);
   if (await tx.opcionDeGrupo.findFirst({ where: { productoId: producto.id }, select: { id: true } })) {
@@ -159,8 +176,24 @@ export async function fijarAdmisionDeGrupoEnTx(
   // Control de precio de lista, con la diferencia de cada opción resuelta (la del producto si la sobrescribe, si no la de su versión vigente).
   const activasAdmitidas = comando.activo ? [...resultantes.values()].filter((r) => r.activo && delGrupo.get(r.opcionId)!.activa) : [];
   const vigentes = new Map(await Promise.all(activasAdmitidas.map(async (r) => [r.opcionId, await versionVigenteEnTx(tx, r.opcionId)] as const)));
-  const precioDeVenta = Number(producto.precioVenta);
-  if (precioDeVenta > 0) {
+  let precioDeVenta = Number(producto.precioVenta);
+  const esBase = esBaseConfigurable(producto.modoDeVenta);
+  if (esBase) {
+    const resultante: AdmisionParaSerBase = {
+      grupo: { nombre: grupo.nombre, tipo: grupo.tipo, activo: grupo.activo },
+      activa: comando.activo,
+      modoPrecio: comando.modoPrecio,
+      opciones: opcionesDelGrupo.map((o) => {
+        const r = resultantes.get(o.id);
+        return { nombre: o.nombre, activa: o.activa, admitida: r?.activo ?? false, esNinguna: o.esNinguna, precioAbsoluto: r?.precioAbsoluto ?? null, diferencia: r?.diferencia ?? vigentes.get(o.id)?.diferencia ?? null };
+      }),
+    };
+    const admisiones = [...(await admisionesParaSerBase(tx, producto.id, { exceptoGrupoId: grupo.id })), resultante];
+    const rechazo = rechazoDeAdmisionesDeBase(admisiones);
+    if (rechazo) return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}» se vende por opción. ${rechazo}`);
+    precioDeVenta = precioDeReferenciaDeAdmisiones(admisiones) ?? 0;
+  }
+  if (esBase || precioDeVenta > 0) {
     const control = controlarPrecioDeLista(
       grupo.tipo,
       comando.modoPrecio,

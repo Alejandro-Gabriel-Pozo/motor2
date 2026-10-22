@@ -7,6 +7,9 @@ import { hrefActivoDelMenu, type GrupoNav } from "@/core/navegacion/estructura";
 import { buscarPantallaEnMenu } from "@/core/navegacion/buscar-pantalla";
 import { IconoDeControl, IconoDeModulo } from "@/components/iconos";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 
 /** Desde este ancho (el `md:` de Tailwind) el menú es el lateral de siempre (`SidebarColapsable`) y esto no existe. */
 const CONSULTA_ESCRITORIO = "(min-width: 768px)";
@@ -67,16 +70,9 @@ export function MenuCelular({ grupos, hrefsDelMenu }: { grupos: GrupoNav[]; href
 
   return (
     <>
-      <button
-        type="button"
-        onClick={abrir}
-        aria-label="Abrir menú"
-        aria-haspopup="dialog"
-        aria-expanded={abierto}
-        className="mr-auto inline-flex h-11 w-11 shrink-0 items-center justify-center rounded border border-neutral-300 text-neutral-700 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 md:hidden dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:focus-visible:outline-neutral-100"
-      >
+      <Boton variante="secundario" tamano="tactil" onClick={abrir} aria-label="Abrir menú" aria-haspopup="dialog" aria-expanded={abierto} className="mr-auto min-w-11 shrink-0 md:hidden">
         <IconoDeControl id="menu" />
-      </button>
+      </Boton>
       <dialog
         ref={dialogo}
         aria-label="Menú"
@@ -85,43 +81,41 @@ export function MenuCelular({ grupos, hrefsDelMenu }: { grupos: GrupoNav[]; href
           // El cajón ocupa el 86 % del ancho y no tiene relleno: un clic cuyo destino es el `<dialog>` mismo es un clic en el fondo oscurecido.
           if (e.target === e.currentTarget) cerrar();
         }}
-        className="menu-celular m-0 h-dvh max-h-none w-[86%] max-w-sm overflow-hidden bg-white p-0 text-neutral-900 shadow-xl backdrop:bg-black/45 md:hidden dark:bg-neutral-900 dark:text-neutral-100"
+        className="menu-celular m-0 h-dvh max-h-none w-[86%] max-w-sm overflow-hidden bg-superficie p-0 text-tinta shadow-xl shadow-sombra backdrop:bg-velo md:hidden"
       >
         {abierto ? (
           <div className="flex h-full flex-col">
-            <div className="flex shrink-0 items-center gap-1.5 border-b border-neutral-200 p-2.5 dark:border-neutral-800">
-              <input
-                ref={buscador}
-                type="search"
-                value={consulta}
-                onChange={(e) => setConsulta(e.target.value)}
-                aria-label="Buscar pantalla"
-                placeholder="Buscar pantalla…"
-                autoComplete="off"
-                className="h-11 min-w-0 flex-1 rounded-[10px] border border-neutral-300 bg-white px-3 text-base text-neutral-900 dark:border-neutral-600 dark:bg-neutral-950 dark:text-neutral-100"
-              />
-              <button
-                type="button"
-                onClick={cerrar}
-                aria-label="Cerrar menú"
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] text-neutral-700 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:focus-visible:outline-neutral-100"
-              >
+            <div className="flex shrink-0 items-center gap-1.5 border-b border-borde p-2.5">
+              <div className="min-w-0 flex-1">
+                <Campo
+                  ref={buscador}
+                  type="search"
+                  value={consulta}
+                  onChange={(e) => setConsulta(e.target.value)}
+                  aria-label="Buscar pantalla"
+                  placeholder="Buscar pantalla…"
+                  autoComplete="off"
+                />
+              </div>
+              <Boton variante="enlace" tamano="tactil" onClick={cerrar} aria-label="Cerrar menú" className="min-w-11 shrink-0">
                 <IconoDeControl id="cerrar" />
-              </button>
+              </Boton>
             </div>
             <nav aria-label="Pantallas" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {buscando ? (
                 encontradas.length === 0 ? (
-                  <p role="status" className="px-4 py-3 text-base text-neutral-600 dark:text-neutral-400">
-                    Sin resultados
-                  </p>
+                  <div className="px-4 py-3">
+                    <Aviso variante="informacion" forma="en-linea">
+                      Sin resultados
+                    </Aviso>
+                  </div>
                 ) : (
                   <ul>
                     {encontradas.map((p) => (
                       <li key={p.href}>
                         <Link href={p.href} onClick={cerrar} aria-current={p.href === hrefActivo ? "page" : undefined} className={filaDeItem(p.href === hrefActivo, "px-4")}>
                           <span className="min-w-0 flex-1">{p.label}</span>
-                          <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{p.grupoLabel}</span>
+                          <span className="shrink-0 text-xs text-tinta-suave">{p.grupoLabel}</span>
                           <IndicadorDeEnlace />
                         </Link>
                       </li>
@@ -133,23 +127,23 @@ export function MenuCelular({ grupos, hrefsDelMenu }: { grupos: GrupoNav[]; href
                   const abiertoElGrupo = grupoAbierto === g.id;
                   const idPanel = `${idBase}-${g.id}`;
                   return (
-                    <div key={g.id} className="border-b border-neutral-200 dark:border-neutral-800">
+                    <div key={g.id} className="border-b border-borde">
                       <button
                         type="button"
                         aria-expanded={abiertoElGrupo}
                         aria-controls={idPanel}
                         onClick={() => setGrupoAbierto(abiertoElGrupo ? null : g.id)}
-                        className="flex min-h-12 w-full items-center justify-between gap-2 px-4 text-left text-base font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                        className="flex min-h-12 w-full items-center justify-between gap-2 px-4 text-left text-base font-semibold hover:bg-superficie-suave"
                       >
                         <span className="flex items-center gap-2">
                           <IconoDeModulo id={g.id} />
                           {g.label}
                         </span>
-                        <span aria-hidden="true" className="text-neutral-600 dark:text-neutral-400">
+                        <span aria-hidden="true" className="text-tinta-suave">
                           {abiertoElGrupo ? "▴" : "▾"}
                         </span>
                       </button>
-                      <ul id={idPanel} hidden={!abiertoElGrupo} className="bg-neutral-50 dark:bg-neutral-950">
+                      <ul id={idPanel} hidden={!abiertoElGrupo} className="bg-papel">
                         {g.items.map((i) => (
                           <li key={i.href}>
                             <Link href={i.href} onClick={cerrar} aria-current={i.href === hrefActivo ? "page" : undefined} className={filaDeItem(i.href === hrefActivo, "pl-7 pr-4")}>
@@ -173,7 +167,7 @@ export function MenuCelular({ grupos, hrefsDelMenu }: { grupos: GrupoNav[]; href
 
 /** Una fila de pantalla del cajón: 46 px de alto como mínimo; la activa, resaltada igual que en el menú lateral. */
 function filaDeItem(activo: boolean, relleno: string): string {
-  return `flex min-h-[46px] items-center gap-2 border-t border-neutral-200 text-[15.5px] dark:border-neutral-800 ${relleno} ${
-    activo ? "bg-neutral-900 font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900" : "text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+  return `flex min-h-[46px] items-center gap-2 border-t border-borde text-[15.5px] ${relleno} ${
+    activo ? "bg-tinta font-semibold text-superficie" : "text-tinta hover:bg-superficie-suave"
   }`;
 }

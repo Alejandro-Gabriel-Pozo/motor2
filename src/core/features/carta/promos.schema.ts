@@ -38,14 +38,20 @@ export interface ComandoGuardarPrecioLocalPromoCarta {
   promoCartaId: string;
   /** `precioLocal: null` = vuelve al precio de la empresa (el cliente mandó `null` o vacío). */
   precio: ResultadoDato<{ precioLocal: number | null }>;
+  /**
+   * El precio de esta sucursal que MOSTRABA la pantalla (ola «precio y carta», Fase 2, paso A6), ya pasado por `guardPrecioVistoDePromo`: `null` = «no tenía precio propio» (también si la pantalla no
+   * lo mandó: falla cerrado). Como el precio, su rechazo lo aplica el caso de uso después de leer la promo.
+   */
+  precioVisto: ResultadoDato<number | null>;
 }
 
 /**
  *  - `PROMO_NO_ENCONTRADA`: la promo no existe;
- *  - `PRECIO_INVALIDO`: el precio no es un precio de carta válido;
- *  - `BAJO_EL_PISO`: el precio no alcanza el piso de $0,01 por unidad de los cupos de la promo (en el peor caso).
+ *  - `PRECIO_INVALIDO`: el precio (o el precio que mostraba la pantalla) no es un precio de carta válido;
+ *  - `BAJO_EL_PISO`: el precio no alcanza el piso de $0,01 por unidad de los cupos de la promo (en el peor caso);
+ *  - `PRECIO_DESACTUALIZADO`: el precio de la promo en esta sucursal cambió desde que se cargó la pantalla (otra persona lo guardó): no se escribe nada.
  */
-export type ResultadoGuardarPrecioLocalPromoCarta = ResultadoCaso<null, "PROMO_NO_ENCONTRADA" | "PRECIO_INVALIDO" | "BAJO_EL_PISO">;
+export type ResultadoGuardarPrecioLocalPromoCarta = ResultadoCaso<null, "PROMO_NO_ENCONTRADA" | "PRECIO_INVALIDO" | "BAJO_EL_PISO" | "PRECIO_DESACTUALIZADO">;
 
 /**
  * Comando «prender o apagar una promo» (H4C-3): el apagado GENERAL de la empresa (`actualizarActivaPromoCartaCasoDeUso`) y el de la sucursal activa

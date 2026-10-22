@@ -37,10 +37,13 @@ describe("Consignación: un pago del día D entra en el período D..D", () => {
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     proveedorId = (await prisma.proveedor.create({ data: { codigo: "PRV_PERIODO", nombre: "Consignante del período" } })).id;
+    // Desde la Fase 2 de la ola «precio y carta» (B2) solo se le paga a quien es consignante de algún producto.
+    const unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
+    await prisma.producto.create({ data: { codigo: "MP_CONSIGNADO", nombre: "Vino consignado", tipo: "MP", unidadStockId: unidadId, esConsignacion: true, proveedorConsignacionId: proveedorId, precioConsignacion: 20 } });
   });
 
   it("el pago de mediodía del día D se guarda tal cual y aparece en D..D, no en el día anterior ni en el siguiente", async () => {
-    const resultado = await registrarPagoConsignante(proveedorId, 40, mediodiaDelDia(dia, ZONA_ARGENTINA));
+    const resultado = await registrarPagoConsignante(proveedorId, 40, mediodiaDelDia(dia, ZONA_ARGENTINA), undefined, crypto.randomUUID());
     expect(resultado.ok, resultado.mensaje).toBe(true);
     const pago = await prisma.pagoConsignante.findFirstOrThrow({ where: { proveedorId } });
     expect(pago.fecha.toISOString()).toBe(mediodiaDelDia(dia, ZONA_ARGENTINA).toISOString());
@@ -52,7 +55,7 @@ describe("Consignación: un pago del día D entra en el período D..D", () => {
   });
 
   it("solo «desde» = D o solo «hasta» = D (el filtro admite un extremo solo) también lo incluyen", async () => {
-    await registrarPagoConsignante(proveedorId, 40, mediodiaDelDia(dia, ZONA_ARGENTINA));
+    await registrarPagoConsignante(proveedorId, 40, mediodiaDelDia(dia, ZONA_ARGENTINA), undefined, crypto.randomUUID());
     expect(await pagadoEn({ desde: periodoDeLaPagina(dia, dia).desde })).toBe(40);
     expect(await pagadoEn({ hasta: periodoDeLaPagina(dia, dia).hasta })).toBe(40);
     expect(await pagadoEn({ desde: periodoDeLaPagina(sumarDias(dia, 1), sumarDias(dia, 1)).desde })).toBe(0);
@@ -71,14 +74,14 @@ describe("Consignación: un pago del día D entra en el período D..D", () => {
   });
 
   it("lo que dejaba el formulario antes (new Date(\"AAAA-MM-DD\"), 00:00 UTC) cae en el día argentino ANTERIOR: sale en D-1..D-1 y no en D..D", async () => {
-    const antes = await registrarPagoConsignante(proveedorId, 40, new Date(dia));
+    const antes = await registrarPagoConsignante(proveedorId, 40, new Date(dia), undefined, crypto.randomUUID());
     expect(antes.ok, antes.mensaje).toBe(true);
     expect(await pagadoEn(periodoDeLaPagina(dia, dia))).toBe(0);
     expect(await pagadoEn(periodoDeLaPagina(sumarDias(dia, -1), sumarDias(dia, -1)))).toBe(40);
   });
 
   it("control: el período «crudo» (00:00 UTC de D en los dos extremos, como se pasaba antes de cerrar el día) NO contiene al pago de mediodía de D", async () => {
-    await registrarPagoConsignante(proveedorId, 40, mediodiaDelDia(dia, ZONA_ARGENTINA));
+    await registrarPagoConsignante(proveedorId, 40, mediodiaDelDia(dia, ZONA_ARGENTINA), undefined, crypto.randomUUID());
     expect(await pagadoEn({ desde: new Date(dia), hasta: new Date(dia) })).toBe(0);
   });
 });

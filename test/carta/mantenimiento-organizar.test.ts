@@ -128,8 +128,8 @@ describe("vistaPreviaDeOpciones («Va a mostrar: …» de «Agregar a la carta»
     expect(
       vistaPreviaDeOpciones(true, {
         grupos: [
-          { nombre: "Tamaño", opciones: [{ nombre: "Chica", precio: 9000 }, { nombre: "Grande", precio: 10500 }] },
-          { nombre: "Extras", opciones: [{ nombre: "Huevo", recargo: 800 }, { nombre: "Sin pan", recargo: -300 }] },
+          { nombre: "Tamaño", opciones: [{ nombre: "Chica", tipo: "final", precio: 9000 }, { nombre: "Grande", tipo: "final", precio: 10500 }] },
+          { nombre: "Extras", opciones: [{ nombre: "Huevo", tipo: "recargo", recargo: 800 }, { nombre: "Sin pan", tipo: "recargo", recargo: -300 }] },
         ],
         sinCosto: [{ grupo: "Guarnición", opciones: ["Papas fritas", "Puré"] }],
       })

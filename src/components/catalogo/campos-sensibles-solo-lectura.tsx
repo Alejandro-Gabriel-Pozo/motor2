@@ -17,7 +17,7 @@ const PERMISO = "«campos sensibles del producto» (producto_campos_sensibles, e
 export function ValorSoloLectura({ campo, etiqueta, children }: { campo: string; etiqueta: string; children: React.ReactNode }) {
   return (
     <dl className="m-0 flex flex-1 flex-col gap-0.5" data-solo-lectura={campo}>
-      <dt className="text-xs text-neutral-500 dark:text-neutral-400">{etiqueta}</dt>
+      <dt className="text-xs text-tinta-tenue">{etiqueta}</dt>
       <dd className="m-0 px-1 py-2 text-sm font-medium">{children}</dd>
     </dl>
   );
@@ -26,7 +26,7 @@ export function ValorSoloLectura({ campo, etiqueta, children }: { campo: string;
 /** La línea que explica por qué esos campos están en solo lectura y qué permiso hace falta. `children` dice qué pasa en esa pantalla (por ejemplo, con qué valores se crea el producto). */
 export function AvisoCamposSensibles({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs text-neutral-500 dark:text-neutral-400" data-aviso-campos-sensibles>
+    <p className="text-xs text-tinta-tenue" data-aviso-campos-sensibles>
       Solo lectura: para cambiar el precio de venta, el factor de conversión y las unidades hace falta el permiso {PERMISO}. {children}
     </p>
   );
@@ -42,7 +42,7 @@ export function AvisoAltaSinPrecio() {
     <p
       role="note"
       data-aviso-alta-sin-precio
-      className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+      className="rounded border border-aviso bg-aviso-tinte px-3 py-2 text-sm text-aviso-tinta"
     >
       <strong>No se va a poder vender todavía.</strong> Sin el permiso {PERMISO} el producto se crea con precio $0 y queda no disponible en ninguna sucursal, hasta que alguien con ese permiso le cargue el precio y lo active.
     </p>
@@ -52,7 +52,7 @@ export function AvisoAltaSinPrecio() {
 /** Lo mismo para la gestión de presentaciones de compra, que vive dentro del formulario de edición (que ya tiene su aviso): una línea corta, sin repetir la explicación. */
 export function AvisoPresentacionesSinPermiso() {
   return (
-    <p className="text-xs text-neutral-500 dark:text-neutral-400" data-aviso-presentaciones-sin-permiso>
+    <p className="text-xs text-tinta-tenue" data-aviso-presentaciones-sin-permiso>
       Agregar una presentación nueva (con su factor de conversión) necesita el permiso {PERMISO}. Las que ya están se pueden activar o desactivar.
     </p>
   );

@@ -1,6 +1,11 @@
 "use server";
 
-import { guardComandoGuardarCuposPromoCarta, guardComandoGuardarPrecioLocalPromoCarta, guardComandoGuardarPromoCarta } from "@/core/features/carta/promos.guard";
+import {
+  guardComandoGuardarCuposPromoCarta,
+  guardComandoGuardarPrecioLocalPromoCarta,
+  guardComandoGuardarPromoCarta,
+  guardPrecioVistoDePromo,
+} from "@/core/features/carta/promos.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
@@ -86,12 +91,15 @@ export async function actualizarActivaPromoCartaEnSucursal(promoCartaId: string,
  * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-2) es un adaptador fino: permiso (`conPermiso("carta_promo_precio_local")`) → caso de uso
  * (`casos-de-uso/guardar-precio-local-promo-carta.ts`: la promo, el precio y su piso, el precio anterior, la escritura en server/persistencia/carta/promos.ts y
  * su auditoría) → revalidar la carta pública si salió bien → `aResultadoAccion`. El guard (`guardComandoGuardarPrecioLocalPromoCarta`, S-52) se calcula acá y el caso de uso aplica su rechazo DESPUÉS de leer la promo.
+ *
+ * `precioVisto` (ola «precio y carta», Fase 2, paso A6): el precio de esta sucursal que mostraba la pantalla (`null`/ausente = no tenía). Si cambió desde entonces, no se escribe nada y el mensaje pide
+ * recargar (`PRECIO_DESACTUALIZADO`); el mismo pedido repetido no vuelve a escribir.
  */
-export async function guardarPrecioLocalPromoCarta(promoCartaId: string, precioLocal: number | string | null): Promise<ResultadoAccion> {
+export async function guardarPrecioLocalPromoCarta(promoCartaId: string, precioLocal: number | string | null, precioVisto?: number | null): Promise<ResultadoAccion> {
   return conPermiso("carta_promo_precio_local", async (ctx) => {
     // S-52: el guard se CALCULA acá (formato y rango del precio) pero su rechazo lo aplica el caso de uso después de leer la promo: una promo inexistente gana sobre un precio inválido.
     const precio = guardComandoGuardarPrecioLocalPromoCarta({ precioLocal });
-    const resultado = await guardarPrecioLocalPromoCartaCasoDeUso(ctx, { promoCartaId, precio });
+    const resultado = await guardarPrecioLocalPromoCartaCasoDeUso(ctx, { promoCartaId, precio, precioVisto: guardPrecioVistoDePromo(precioVisto) });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });

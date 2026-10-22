@@ -2,6 +2,7 @@ import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { ACCIONES } from "../../src/core/permisos/acciones";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join, relative, sep } from "node:path";
 import { descubrirCasosDeUsoReales } from "./guardas/casos-de-uso";
 import { tieneUseServer } from "./guardas/analizador";
@@ -22,11 +23,15 @@ import { analizarFuente, delegadosDeModelos } from "../../scripts/arquitectura/a
  *    envoltorios lo vigila `sincronizaciones-solo-desde-crons-y-shell.test.ts`. `SIN_PERMISO` si lo envuelve un ENDPOINT (`"use server"`) que no usa ningún `conPermiso*` porque todavía no
  *    hay sesión ni membresía (aceptar una invitación: la autoridad es el token del enlace, no un permiso). Es un agujero deliberado en la matriz de permisos: por eso hay una LISTA CERRADA
  *    (`CASOS_SIN_PERMISO`, abajo) con el motivo de cada uno, revisada en las dos direcciones (D-7 del plan de la Fase 4).
+ *    Una acción de EMPRESA con DOS claves (un comando compuesto: Fase 6, 6.14) declara `permiso=a+b`, las dos ordenadas alfabéticamente: la primera la pide el envoltorio (`conPermisoDeEmpresa("a", …)`) y la
+ *    segunda, `exigirTambienPermisoDeEmpresa(ctx, "b")` escrita DENTRO de ese envoltorio (`src/server/actions/con-permiso.ts`). Si la llamada se borra, o su clave no es una literal, la ficha miente y este test se pone rojo.
+ *    El `|` sigue siendo «alguna de varias Server Actions protege al caso de uso con esta otra clave».
  *  - `transaccion`: `SERIALIZABLE` si llama a `conTransaccionSerializable` (o a `conGobierno`, mientras `con-gobierno.ts` la llame: se deriva del código); `SIMPLE` si abre
  *    una transacción común; `NINGUNA` si no abre ninguna.
  *  - `idempotencia`: `I3` si y solo si llama a `chequearIdempotencia` (clave + hash del payload); `POR_ESTADO` (el estado del documento arbitra el reintento),
  *    `OPTIMISTA` (versión esperada) y `NO_APLICA` no pueden llamarla.
- *  - `auditoria`: `REGISTRO_AUDITORIA` si llama a `registrarCambioAuditado` (él o un paso compartido que importa de su misma carpeta `casos-de-uso/`, `./<archivo>`);
+ *  - `auditoria`: `REGISTRO_AUDITORIA` si llama a `registrarCambioAuditado` (él o un paso compartido que importa de su misma carpeta `casos-de-uso/`, `./<archivo>`, o
+ *    un comando de OTRO dominio declarado en `COMANDOS_PUBLICOS` de `.dependency-cruiser-excepciones.cjs` que importa por `@/…`; Fase 2b, D2);
  *    `DOCUMENTO_PROPIO` si no (el documento que escribe lleva su usuario y su fecha).
  *  - `periodo` (decisión del dueño, 2026-10-08): `VERIFICA_CIERRE` si el caso de uso llama a `verificarPeriodoAbierto` (la verificación del cierre de períodos que va a traer la Etapa A en
  *    `core/periodos`: sin esto el cierre no tiene forma mecánica de alcanzar TODAS las escrituras con fecha de imputación); `NO_APLICA` si no la llama. HOY ningún caso de uso la llama porque la
@@ -93,21 +98,43 @@ function serializablesDelRepositorio(fuenteDeConGobierno: string): ReadonlySet<s
 const SERIALIZABLES = serializablesDelRepositorio(readFileSync(join(__dirname, "../../src/server/actions/con-gobierno.ts"), "utf8"));
 
 /**
+ * Un comando público de OTRO dominio que un caso de uso importa por `@/…` (Fase 2b, D2: `registrar-movimiento.ts` → el vínculo proveedor↔producto de Catálogo): su fuente
+ * y el lector de SUS hermanos, o `null` si el especificador no es uno de los declarados en `COMANDOS_PUBLICOS`. Solo los declarados: un import cualquiera de otro dominio
+ * no cuenta (y la regla R3 de dependency-cruiser ya lo prohíbe).
+ */
+type LeerComando = (especificador: string) => { fuente: string; leer: (nombre: string) => string | null } | null;
+
+/**
  * Los PASOS COMPARTIDOS que un caso de uso importa de su misma carpeta `casos-de-uso/` (`import … from "./<archivo>"`), recorridos de forma transitiva: la
  * auditoría de un caso de uso puede vivir en un paso compartido (Fase I del Hito 3: la gerencia, las invitaciones de usuario), y sin seguirlo la ficha tendría que
- * mentir `DOCUMENTO_PROPIO`. `leer(nombre)` devuelve la fuente del hermano `nombre` (sin extensión), o `null` si no existe.
+ * mentir `DOCUMENTO_PROPIO`. `leer(nombre)` devuelve la fuente del hermano `nombre` (sin extensión), o `null` si no existe. También sigue los comandos públicos
+ * declarados de otro dominio (`leerComando`), con los pasos de SU carpeta.
  */
-function pasosCompartidos(codigo: string, leer: (nombre: string) => string | null, vistos: Set<string> = new Set()): string[] {
+function pasosCompartidos(
+  codigo: string,
+  leer: (nombre: string) => string | null,
+  vistos: Set<string> = new Set(),
+  leerComando: LeerComando = () => null,
+  comandosVistos: Set<string> = new Set()
+): string[] {
   const fuente = ts.createSourceFile("caso.ts", codigo, ts.ScriptTarget.Latest, true);
   const pasos: string[] = [];
   for (const stmt of fuente.statements) {
     if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
     const m = /^\.\/([^/]+?)(?:\.tsx?)?$/.exec(stmt.moduleSpecifier.text);
-    if (!m || vistos.has(m[1])) continue;
+    if (!m) {
+      const especificador = stmt.moduleSpecifier.text;
+      const comando = comandosVistos.has(especificador) ? null : leerComando(especificador);
+      if (comando === null) continue;
+      comandosVistos.add(especificador);
+      pasos.push(comando.fuente, ...pasosCompartidos(comando.fuente, comando.leer, new Set(), leerComando, comandosVistos));
+      continue;
+    }
+    if (vistos.has(m[1])) continue;
     vistos.add(m[1]);
     const hermano = leer(m[1]);
     if (hermano === null) continue;
-    pasos.push(hermano, ...pasosCompartidos(hermano, leer, vistos));
+    pasos.push(hermano, ...pasosCompartidos(hermano, leer, vistos, leerComando, comandosVistos));
   }
   return pasos;
 }
@@ -121,6 +148,24 @@ const leerHermanoDe =
       if (existsSync(ruta)) return readFileSync(ruta, "utf8");
     }
     return null;
+  };
+
+/** Los comandos públicos declarados (`COMANDOS_PUBLICOS`, `.dependency-cruiser-excepciones.cjs`), por su ruta desde la raíz del repo. */
+const RAIZ_DEL_REPO = join(__dirname, "..", "..");
+const COMANDOS_PUBLICOS: ReadonlySet<string> = new Set(
+  (createRequire(__filename)(join(RAIZ_DEL_REPO, ".dependency-cruiser-excepciones.cjs")) as { COMANDOS_PUBLICOS: { ruta: string }[] }).COMANDOS_PUBLICOS.map((e) => e.ruta)
+);
+
+/** `LeerComando` del repositorio: un `@/…` que resuelve a un comando público declarado. */
+const leerComandoPublico =
+  (declarados: ReadonlySet<string>): LeerComando =>
+  (especificador) => {
+    if (!especificador.startsWith("@/")) return null;
+    const base = `src/${especificador.slice(2)}`;
+    const ruta = [base, `${base}.ts`, `${base}.tsx`].find((r) => declarados.has(r) && existsSync(join(RAIZ_DEL_REPO, r)));
+    if (!ruta) return null;
+    const absoluta = join(RAIZ_DEL_REPO, ruta);
+    return { fuente: readFileSync(absoluta, "utf8"), leer: leerHermanoDe(dirname(absoluta)) };
   };
 
 /** Lo que el código del caso de uso HACE (AST, fuera de los comentarios). La auditoría también cuenta si la hace un paso compartido (`pasos`). */
@@ -143,7 +188,41 @@ function observar(codigo: string, opciones: { serializables?: ReadonlySet<string
  */
 const ES_ENVOLTORIO_DE_PERMISO = /^(?:conPermiso\w*|conEdicionDePermisos)$/;
 
-/** Los permisos con los que la Server Action que envuelve al caso de uso lo protege (`conPermiso*("clave", …)` alrededor de la llamada); `POR_PROCESO` si ninguno es literal. */
+/** El envoltorio que suma una SEGUNDA clave de empresa (`exigirTambienPermisoDeEmpresa(ctx, "clave")`, `src/server/actions/con-permiso.ts`): su clave es el segundo argumento. */
+const LLAMADA_DE_SEGUNDA_CLAVE = "exigirTambienPermisoDeEmpresa";
+
+/**
+ * Las segundas claves que exige lo que está DENTRO de un envoltorio `conPermiso*` (las literales de `exigirTambienPermisoDeEmpresa(ctx, "clave")`). Una que no es literal no se puede verificar: se
+ * devuelve como `?`, que ninguna ficha declara, así que la ficha sale como mentira en vez de dejar pasar una clave que nadie lee.
+ */
+function segundasClavesDentroDe(envoltorio: ts.CallExpression): string[] {
+  const claves: string[] = [];
+  const buscar = (n: ts.Node): void => {
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === LLAMADA_DE_SEGUNDA_CLAVE) {
+      const clave = n.arguments[1];
+      claves.push(clave && ts.isStringLiteralLike(clave) ? clave.text : "?");
+    }
+    ts.forEachChild(n, buscar);
+  };
+  ts.forEachChild(envoltorio, buscar);
+  return claves;
+}
+
+/** Las claves que declara el campo `permiso` de una ficha: separa las alternativas (`|`) y las claves que se exigen juntas (`+`). `POR_PROCESO`, `SISTEMA` y `SIN_PERMISO` no son claves (ver `clavesDesconocidasDeLaFicha`). */
+function clavesDeLaFicha(permiso: string): string[] {
+  return permiso.split(/[|+]/);
+}
+
+/** Las claves del `permiso` de una ficha que NO son una acción de `ACCIONES` (cada una de las alternativas y cada una de las claves exigidas juntas); los valores especiales no son claves. */
+function clavesDesconocidasDeLaFicha(permiso: string, acciones: ReadonlySet<string>): string[] {
+  if (permiso === "POR_PROCESO" || permiso === "SISTEMA" || permiso === "SIN_PERMISO") return [];
+  return clavesDeLaFicha(permiso).filter((clave) => !acciones.has(clave));
+}
+
+/**
+ * Los permisos con los que la Server Action que envuelve al caso de uso lo protege (`conPermiso*("clave", …)` alrededor de la llamada); `POR_PROCESO` si ninguno es literal. Si dentro del envoltorio hay
+ * `exigirTambienPermisoDeEmpresa(ctx, "otra")`, el permiso de ese envoltorio es `clave+otra` (todas ordenadas: `a+b`); varias Server Actions distintas se juntan con `|`.
+ */
 function permisosObservados(fuenteDelCaso: string, envolventes: string[]): string {
   const funciones = [...fuenteDelCaso.matchAll(/export\s+(?:async\s+)?function\s+(\w+)/g)].map((m) => m[1]);
   const permisos = new Set<string>();
@@ -159,7 +238,7 @@ function permisosObservados(fuenteDelCaso: string, envolventes: string[]): strin
         for (let p: ts.Node | undefined = n.parent; p; p = p.parent) {
           if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && ES_ENVOLTORIO_DE_PERMISO.test(p.expression.text)) {
             protegida = true;
-            if (p.arguments[0] && ts.isStringLiteralLike(p.arguments[0])) permisos.add(p.arguments[0].text);
+            if (p.arguments[0] && ts.isStringLiteralLike(p.arguments[0])) permisos.add([p.arguments[0].text, ...segundasClavesDentroDe(p)].sort().join("+"));
             else conConPermisoVariable = true;
             break;
           }
@@ -239,6 +318,26 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     expect(pasosCompartidos(caso("@/server/auditoria/registrar-cambio-auditado"), leer)).toEqual([]);
   });
 
+  it("auditoría: cuenta si la hace un comando público DECLARADO de otro dominio (y sus pasos); uno sin declarar no (Fase 2b, D2)", () => {
+    const deCatalogo: Record<string, string> = {
+      "paso-del-comando": "export async function p(tx: any) { await registrarCambioAuditado(tx, {}); }",
+    };
+    const comandos: Record<string, string> = {
+      "@/server/actions/catalogo/casos-de-uso/comando-que-audita": "export async function c(tx: any) { await registrarCambioAuditado(tx, {}); }",
+      "@/server/actions/catalogo/casos-de-uso/comando-con-paso": 'import { p } from "./paso-del-comando";\nexport async function c(tx: any) { await p(tx); }',
+    };
+    const leerComando: LeerComando = (e) => (e in comandos ? { fuente: comandos[e], leer: (n) => deCatalogo[n] ?? null } : null);
+    const caso = (desde: string) => `import { x } from "${desde}";\nexport async function f(tx: any) { await x(tx); }`;
+    const auditoria = (desde: string, lector: LeerComando) => observar(caso(desde), { pasos: pasosCompartidos(caso(desde), () => null, new Set(), lector) }).auditoria;
+    expect(auditoria("@/server/actions/catalogo/casos-de-uso/comando-que-audita", leerComando)).toBe("REGISTRO_AUDITORIA");
+    expect(auditoria("@/server/actions/catalogo/casos-de-uso/comando-con-paso", leerComando)).toBe("REGISTRO_AUDITORIA");
+    // Sin declarar (el lector no lo reconoce): no cuenta.
+    expect(auditoria("@/server/actions/catalogo/casos-de-uso/comando-que-audita", () => null)).toBe("DOCUMENTO_PROPIO");
+    // El lector real solo reconoce lo que está en COMANDOS_PUBLICOS.
+    expect(leerComandoPublico(new Set())("@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx")).toBeNull();
+    expect(leerComandoPublico(COMANDOS_PUBLICOS)("@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx")?.fuente).toContain("registrarCambioAuditado(");
+  });
+
   it("idempotencia I3 solo si llama a chequearIdempotencia; auditoría solo si llama a registrarCambioAuditado", () => {
     expect(observar("export async function f(tx: any) { await chequearIdempotencia(tx, 'k'); }").llamaAChequearIdempotencia).toBe(true);
     expect(observar("export async function f(tx: any) { await otraCosa(tx); }").llamaAChequearIdempotencia).toBe(false);
@@ -275,6 +374,54 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     expect(permisosObservados(caso, ['"use server";\nexport async function a(db: unknown) { return conPermiso("x_y", async () => anular(db)); }\nexport async function b(db: unknown) { return anular(db); }'])).toBe("x_y");
   });
 
+  it("permiso con dos claves (a+b): la del envoltorio más las de exigirTambienPermisoDeEmpresa de adentro, ordenadas", () => {
+    const caso = "export async function crear(ctx: any) { return 1; }";
+    const conDos = [
+      '"use server";\nexport async function a(e: unknown) { return conPermisoDeEmpresa("producto_opciones_admitidas", async (ctx) => {\n const tambien = await exigirTambienPermisoDeEmpresa(ctx, "opciones_definir");\n if (!tambien.ok) return error(tambien.mensaje);\n return crear(ctx); }); }',
+    ];
+    expect(permisosObservados(caso, conDos)).toBe("opciones_definir+producto_opciones_admitidas");
+    // Tres claves: todas, en orden alfabético, sin importar en qué orden se escribieron.
+    const conTres = ['"use server";\nexport async function a() { return conPermisoDeEmpresa("z_clave", async (ctx) => {\n await exigirTambienPermisoDeEmpresa(ctx, "m_clave");\n await exigirTambienPermisoDeEmpresa(ctx, "a_clave");\n return crear(ctx); }); }'];
+    expect(permisosObservados(caso, conTres)).toBe("a_clave+m_clave+z_clave");
+    // Una Server Action con dos claves y otra con una sola (otra pantalla): las dos formas se juntan con `|`.
+    const mixto = [
+      '"use server";\nexport async function a() { return conPermisoDeEmpresa("b", async (ctx) => { await exigirTambienPermisoDeEmpresa(ctx, "a"); return crear(ctx); }); }\nexport async function c() { return conPermisoDeEmpresa("d", async (ctx) => crear(ctx)); }',
+    ];
+    expect(permisosObservados(caso, mixto)).toBe("a+b|d");
+  });
+
+  it("permiso con dos claves: sin la llamada la Server Action protege solo con la primera (la ficha a+b mentiría), y lo que está FUERA del envoltorio o no es literal no se acepta", () => {
+    const caso = "export async function crear(ctx: any) { return 1; }";
+    // Mutación sintética de la propia regla: borrar la segunda clave del código deja la clave sola, distinta de la ficha «a+b».
+    const sinLaSegunda = ['"use server";\nexport async function a() { return conPermisoDeEmpresa("b", async (ctx) => crear(ctx)); }'];
+    expect(permisosObservados(caso, sinLaSegunda)).toBe("b");
+    expect(permisosObservados(caso, sinLaSegunda)).not.toBe("a+b");
+    // Una llamada a exigirTambienPermisoDeEmpresa FUERA del envoltorio no suma nada.
+    const afuera = ['"use server";\nexport async function a(ctx: any) { await exigirTambienPermisoDeEmpresa(ctx, "a"); return conPermisoDeEmpresa("b", async (ctx2) => crear(ctx2)); }'];
+    expect(permisosObservados(caso, afuera)).toBe("b");
+    // Una segunda clave que no es literal no se puede verificar: queda como «?» y ninguna ficha la declara.
+    const variable = ['"use server";\nexport async function a(clave: any) { return conPermisoDeEmpresa("b", async (ctx) => { await exigirTambienPermisoDeEmpresa(ctx, clave); return crear(ctx); }); }'];
+    expect(permisosObservados(caso, variable)).toBe("?+b");
+    // Un conPermiso de sucursal con una segunda clave también se lee (la regla no distingue el envoltorio).
+    expect(permisosObservados(caso, ['"use server";\nexport async function a() { return conPermiso("b", async (ctx) => { await exigirTambienPermisoDeEmpresa(ctx, "a"); return crear(ctx); }); }'])).toBe("a+b");
+  });
+
+  it("clavesDeLaFicha: separa las alternativas (|) y las claves exigidas juntas (+); el control contra ACCIONES las mira todas", () => {
+    expect(clavesDeLaFicha("a")).toEqual(["a"]);
+    expect(clavesDeLaFicha("a|b")).toEqual(["a", "b"]);
+    expect(clavesDeLaFicha("a+b")).toEqual(["a", "b"]);
+    expect(clavesDeLaFicha("a+b|c")).toEqual(["a", "b", "c"]);
+    // El control contra ACCIONES (el mismo que corre sobre las fichas reales): una clave inventada en la segunda posición se detecta igual que en la primera.
+    const conocidas = new Set(["producto_opciones_admitidas", "opciones_definir"]);
+    expect(clavesDesconocidasDeLaFicha("opciones_definir+producto_opciones_admitidas", conocidas)).toEqual([]);
+    expect(clavesDesconocidasDeLaFicha("opciones_definir+clave_que_no_existe", conocidas)).toEqual(["clave_que_no_existe"]);
+    expect(clavesDesconocidasDeLaFicha("clave_que_no_existe+opciones_definir|otra_inventada", conocidas)).toEqual(["clave_que_no_existe", "otra_inventada"]);
+    expect(clavesDesconocidasDeLaFicha("POR_PROCESO", conocidas)).toEqual([]);
+    expect(clavesDesconocidasDeLaFicha("SISTEMA", conocidas)).toEqual([]);
+    expect(clavesDesconocidasDeLaFicha("SIN_PERMISO", conocidas)).toEqual([]);
+    expect(clavesDesconocidasDeLaFicha("inventada", conocidas)).toEqual(["inventada"]);
+  });
+
   it("problemasDeSinPermiso: la lista cerrada se revisa en las dos direcciones", () => {
     expect(problemasDeSinPermiso([], {})).toEqual([]);
     expect(problemasDeSinPermiso(["a.ts"], { "a.ts": "motivo" })).toEqual([]);
@@ -289,6 +436,11 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
       idempotencia: "I3",
       auditoria: "DOCUMENTO_PROPIO",
       reloj: "INYECTADO",
+    });
+    // Dos claves exigidas juntas: el valor es «a+b» tal cual (el par se parte en el primer «=»).
+    expect(leerFicha("/**\n * @ficha permiso=opciones_definir+producto_opciones_admitidas transaccion=SERIALIZABLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA\n */")).toMatchObject({
+      permiso: "opciones_definir+producto_opciones_admitidas",
+      idempotencia: "POR_ESTADO",
     });
     expect(leerFicha("/** sin ficha */")).toBeNull();
     expect(leerFicha("/**\n * @ficha permiso=a\n * @ficha permiso=b\n */")).toBeNull();
@@ -341,8 +493,8 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
       for (const [campo, valores] of Object.entries(VOCABULARIO)) {
         if (ficha[campo] && !(valores as readonly string[]).includes(ficha[campo])) problemas.push(`${c.ruta}: ${campo}=${ficha[campo]} no es uno de ${valores.join(", ")}`);
       }
-      if (ficha.permiso && ficha.permiso !== "POR_PROCESO" && ficha.permiso !== "SISTEMA" && ficha.permiso !== "SIN_PERMISO") {
-        for (const p of ficha.permiso.split("|")) if (!acciones.has(p)) problemas.push(`${c.ruta}: permiso=${p} no es una acción de ACCIONES`);
+      if (ficha.permiso) {
+        for (const p of clavesDesconocidasDeLaFicha(ficha.permiso, acciones)) problemas.push(`${c.ruta}: permiso=${p} no es una acción de ACCIONES`);
       }
     }
     expect(problemas, `Cada caso de uso lleva su línea @ficha (ver el docstring de este test):\n${problemas.join("\n")}`).toEqual([]);
@@ -353,7 +505,7 @@ describe("ficha de caso de uso: los casos de uso del repositorio", () => {
     for (const c of casos) {
       const ficha = leerFicha(c.fuente);
       if (!ficha) continue;
-      const visto = observar(c.fuente, { pasos: pasosCompartidos(c.fuente, leerHermanoDe(dirname(c.absoluta))) });
+      const visto = observar(c.fuente, { pasos: pasosCompartidos(c.fuente, leerHermanoDe(dirname(c.absoluta)), new Set(), leerComandoPublico(COMANDOS_PUBLICOS)) });
       if (ficha.transaccion !== visto.transaccion) mentiras.push(`${c.ruta}: la ficha dice transaccion=${ficha.transaccion} y el código hace ${visto.transaccion}`);
       if (ficha.auditoria !== visto.auditoria) mentiras.push(`${c.ruta}: la ficha dice auditoria=${ficha.auditoria} y el código hace ${visto.auditoria}`);
       if (ficha.periodo !== visto.periodo) mentiras.push(`${c.ruta}: la ficha dice periodo=${ficha.periodo} y el código hace ${visto.periodo}`);

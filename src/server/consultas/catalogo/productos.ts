@@ -62,6 +62,19 @@ export async function obtenerProductoPorId(id: string, db: Db, opciones: Opcione
 }
 
 /**
+ * Fase 4 de la ola «precio y carta» (ADR-035): el nombre del GRUPO DE PRECIO FINAL del producto (la primera admisión activa de un grupo de medida activo en precio propio), o `null`. Lo usa el formulario
+ * de edición para explicar «¿Cómo se vende?» y apagar «Por opción» cuando no hay dónde está el precio final. Es una ayuda de la pantalla: la regla completa la decide el servidor al guardar.
+ */
+export async function grupoConElPrecioFinal(id: string, db: Db): Promise<string | null> {
+  const admision = await db.productoAdmiteGrupo.findFirst({
+    where: { productoId: id, activo: true, modoPrecio: "ABSOLUTO", grupo: { tipo: "MEDIDA", activo: true } },
+    orderBy: [{ orden: "asc" }, { id: "asc" }],
+    select: { grupo: { select: { nombre: true } } },
+  });
+  return admision?.grupo.nombre ?? null;
+}
+
+/**
  * Las unidades que un producto usa hoy (de stock y de compra), SOLO `{ id, nombre, decimales }` cada una (más el `id` y el `nombre` del producto), estén activas o no (M.2-A4, D): el formulario de edición las suma a sus opciones aunque se hayan desactivado
  * (`conLasUnidadesDelProducto`), así no muestra «sin unidad de compra» ni borra la unidad al guardar. `null` si el producto no existe.
  */

@@ -6,7 +6,6 @@ import { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicad
 import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
-import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
@@ -20,7 +19,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import type { DatosMovimientoInput, ProcesoGenerico, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
 import { cargarComprasParaAvisoDeDuplicado, cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
-import { upsertProveedorPorProducto } from "@/server/persistencia/catalogo/upsert-proveedor-por-producto";
+import { registrarVinculoDeCompraEnTx } from "@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
 
 /** Los únicos procesos que admiten una sección dada de baja como ORIGEN (P17): los que solo sacan mercadería. Como destino (Transferencia) nunca se admite. */
@@ -47,7 +46,7 @@ const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<ProcesoGeneric
  *     parcial, ver el catch de más abajo;
  *  5. `conTransaccionSerializable`, con `.catch(esChoqueDeFacturaUnica)` tal cual: I3, P17 (una sección dada de baja solo admite sacar: Consumo, Merma y Transferencia como origen; como destino no; código `SECCION_INACTIVA`; DESPUÉS de I3 a propósito), armado de cada línea
  *     (`armarLineaMovimiento`), validación de stock agregada, escritura de `Operacion` + `MovimientoStock[]` y, en una Compra, un
- *     `upsertProveedorPorProducto` por línea con unidad de compra conocida — TODO dentro de la misma transacción (decisión del dueño, 2026-10-06:
+ *     vínculo proveedor↔producto por línea con unidad de compra conocida (el comando de Catálogo `registrarVinculoDeCompraEnTx`) — TODO dentro de la misma transacción (decisión del dueño, 2026-10-06:
  *     si falla el vínculo falla la compra entera y se reintenta con la misma clave I3, así nunca queda una compra a medias).
  *
  * M13b ya extrajo a `server/persistencia/movimientos/escribir-movimiento-de-stock.ts` las dos escrituras Prisma de la Operacion y sus
@@ -58,7 +57,7 @@ const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<ProcesoGeneric
  * @contract Registra un movimiento de Kardex para cualquiera de los 9 procesos genéricos, con validación de stock agregada por producto+sección ANTES de escribir nada.
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento), con `.catch(esChoqueDeFacturaUnica)` para la factura duplicada.
- * @sideEffects upsertProveedorPorProducto (Compra, DENTRO de la transacción) — un vínculo proveedor↔producto por línea con unidad de compra (la de compra o, si no tiene, la de stock); si falla, falla la compra. registrarCambioAuditado del precio del vínculo cuando cambia.
+ * @sideEffects registrarVinculoDeCompraEnTx (comando de Catálogo, Compra, DENTRO de la transacción) — un vínculo proveedor↔producto por línea con unidad de compra (la de compra o, si no tiene, la de stock) y la auditoría de su precio cuando cambia; si falla, falla la compra.
  * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function registrarMovimientoCasoDeUso(
@@ -247,7 +246,8 @@ export async function registrarMovimientoCasoDeUso(
     if (datos.proceso === "COMPRA" && datos.proveedorId) {
       for (const l of lineas) {
         if (!l.unidadCompraId) continue;
-        const vinculo = await upsertProveedorPorProducto(tx, {
+        // El vínculo y su auditoría son de Catálogo (DEC-36, Fase 2b D2): su comando, con el cliente de ESTA transacción.
+        await registrarVinculoDeCompraEnTx(tx, actor, {
           productoId: l.productoId,
           proveedorId: datos.proveedorId,
           unidadCompraId: l.unidadCompraId,
@@ -255,18 +255,6 @@ export async function registrarMovimientoCasoDeUso(
           precioPorUnidadStock: l.precioPorUnidadStock,
           fechaCompra: datos.fecha,
           referenciaProveedor: l.referenciaProveedor,
-        });
-        // Auditoría (decisión del dueño, 2026-10-08): el precio del vínculo proveedor↔producto es plata que cambia con cada compra; si cambió (o el par es nuevo), deja su fila. Una compra
-        // con fecha atrasada no cambia el precio (el SQL no lo pisa) y por lo tanto no deja fila.
-        await registrarCambioAuditado(tx, {
-          entidad: "ProveedorPorProducto",
-          entidadId: `${l.productoId}:${datos.proveedorId}:${l.unidadCompraId}`,
-          campo: "precioPorUnidadStock",
-          descripcion: `Precio de "${vinculo.productoNombre}" con el proveedor "${vinculo.proveedorNombre}" (compra)`,
-          valorAnterior: vinculo.precioAnterior,
-          valorNuevo: vinculo.precioNuevo,
-          actorId: actor.usuarioId,
-          sucursalId: actor.sucursalId,
         });
       }
     }
@@ -283,7 +271,7 @@ export async function registrarMovimientoCasoDeUso(
     }
 
     return exito(mensaje, { operacionId: operacion.id, movimientos: filas.length, repetida: false });
-  }, 5, {}, true).catch((e) => {
+  }, undefined, undefined, true).catch((e) => {
     // La transacción ya hizo rollback para cuando este catch la recibe — nunca se intenta seguir operando
     // sobre ella. Choque de la carrera de factura duplicada (dos requests simultáneos, ver el comentario del
     // chequeo previo más arriba): mismo mensaje de negocio, no un error 500. Cualquier otro P2002 (ej. la

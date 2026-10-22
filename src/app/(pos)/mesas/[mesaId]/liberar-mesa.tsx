@@ -1,7 +1,8 @@
 "use client";
 
 import { liberarMesa } from "@/server/actions/pos/cuenta-apertura";
-import { BOTON_SECUNDARIO } from "./estilos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 import { useAccionMesa } from "./usar-accion";
 
 /**
@@ -12,19 +13,18 @@ export function LiberarMesa({ cuentaId, puede }: { cuentaId: string; puede: bool
   const { ejecutar, pending, error } = useAccionMesa();
   return (
     <div className="flex flex-col items-start gap-2">
-      <button
-        type="button"
-        className={BOTON_SECUNDARIO}
+      <Boton
+        variante="secundario"
         disabled={!puede || pending}
         title={puede ? undefined : "Tu rol puede ver la mesa pero no liberarla."}
         onClick={() => ejecutar(() => liberarMesa(cuentaId))}
       >
         {pending ? "Liberando…" : "Liberar mesa"}
-      </button>
+      </Boton>
       {error && (
-        <p role="alert" className="text-[13px] text-red-700">
+        <Aviso variante="error" forma="en-linea">
           {error}
-        </p>
+        </Aviso>
       )}
     </div>
   );

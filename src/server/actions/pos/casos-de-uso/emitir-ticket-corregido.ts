@@ -82,5 +82,5 @@ export async function emitirTicketCorregidoCasoDeUso(
     return exito(`Ticket N.º ${emitido} emitida: reemplaza a N.º ${reemplazado}.`, { ...nuevo, ejemplarId, corrigeAId: original.id });
     // `true`: dos emisiones simultáneas leen el mismo último ejemplar; la que pierde recibe el choque del ejemplar duplicado y, al repetir, ve el ticket ya
     // vigente y responde `TICKET_VIGENTE` en vez de escapar como error de base.
-  }, 5, {}, true);
+  }, undefined, undefined, true);
 }

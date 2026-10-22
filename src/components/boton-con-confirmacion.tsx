@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 
 /**
  * Un botón que, antes de hacer algo que no se puede deshacer, pide confirmación EN EL MISMO LUGAR: «Cancelar solicitud» →
@@ -37,7 +39,7 @@ export function BotonConConfirmacion({
   alSalirBien,
   hecho = false,
   deshabilitado = false,
-  claseDisparador = "self-start text-sm text-red-600 underline",
+  claseDisparador = "self-start",
 }: {
   /** El texto del botón que abre la confirmación: «Cancelar solicitud». */
   etiqueta: string;
@@ -58,7 +60,11 @@ export function BotonConConfirmacion({
   hecho?: boolean;
   /** Otra acción de la misma fila está en curso: el disparador (y la confirmación) quedan deshabilitados. */
   deshabilitado?: boolean;
-  /** Para conservar el estilo del disparador de cada pantalla. */
+  /**
+   * Clases que se SUMAN al disparador (por defecto, su ubicación en la columna). El aspecto lo da `Boton` (`enlace-peligro`); lo que una pantalla agrega acá
+   * se apila encima: las que hoy pasan colores propios (la bandeja de traspasos, «Copiar la carta», la tabla de usuarios) conservan su color, borde y relleno
+   * hasta que migren.
+   */
   claseDisparador?: string;
 }) {
   const router = useRouter();
@@ -67,19 +73,20 @@ export function BotonConConfirmacion({
   const [resultado, setResultado] = useState<ResultadoAccion | null>(null);
   const [pending, startTransition] = useTransition();
   const idAviso = useId();
-  const botonDisparador = useRef<HTMLButtonElement>(null);
-  const botonVolver = useRef<HTMLButtonElement>(null);
-  const avisoDeExito = useRef<HTMLParagraphElement>(null);
+  // `Boton` no recibe `ref` (su tipo es el de los atributos del <button>): el foco se maneja por `id`.
+  const idDisparador = `${idAviso}-disparador`;
+  const idVolver = `${idAviso}-volver`;
+  const avisoDeExito = useRef<HTMLDivElement>(null);
   const volverAlBoton = useRef(false);
 
   useEffect(() => {
     if (confirmando) {
-      botonVolver.current?.focus();
+      document.getElementById(idVolver)?.focus();
     } else if (volverAlBoton.current) {
       volverAlBoton.current = false;
-      botonDisparador.current?.focus();
+      document.getElementById(idDisparador)?.focus();
     }
-  }, [confirmando]);
+  }, [confirmando, idVolver, idDisparador]);
 
   // Ya aplicada, el botón desaparece: el foco se lleva al aviso de éxito para que no caiga al <body>.
   useEffect(() => {
@@ -111,14 +118,9 @@ export function BotonConConfirmacion({
   }
 
   const avisoResultado = resultado && (
-    <p
-      ref={resultado.ok ? avisoDeExito : undefined}
-      tabIndex={resultado.ok ? -1 : undefined}
-      role={resultado.ok ? "status" : "alert"}
-      className={`text-sm ${resultado.ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-    >
+    <Aviso ref={resultado.ok ? avisoDeExito : undefined} tabIndex={resultado.ok ? -1 : undefined} variante={resultado.ok ? "exito" : "error"} forma="en-linea">
       {resultado.mensaje}
-    </p>
+    </Aviso>
   );
 
   if (hecho) return avisoResultado || null;
@@ -131,22 +133,16 @@ export function BotonConConfirmacion({
           if (evento.key === "Escape") cancelar();
         }}
       >
-        <p id={idAviso} role="alert" className="text-sm text-red-600">
+        <Aviso id={idAviso} variante="error" forma="en-linea">
           {aviso}
-        </p>
+        </Aviso>
         <div className="flex flex-wrap gap-x-3 gap-y-1">
-          <button
-            type="button"
-            aria-describedby={idAviso}
-            disabled={pending || deshabilitado}
-            onClick={confirmar}
-            className="text-sm font-medium text-red-600 underline disabled:opacity-50"
-          >
+          <Boton variante="enlace-peligro" tamano="en-fila" aria-describedby={idAviso} disabled={pending || deshabilitado} onClick={confirmar}>
             {pending ? etiquetaEnCurso : etiquetaConfirmar}
-          </button>
-          <button ref={botonVolver} type="button" aria-describedby={idAviso} disabled={pending} onClick={cancelar} className="text-sm underline">
+          </Boton>
+          <Boton id={idVolver} variante="enlace" tamano="en-fila" aria-describedby={idAviso} disabled={pending} onClick={cancelar}>
             {etiquetaVolver}
-          </button>
+          </Boton>
         </div>
       </div>
     );
@@ -154,9 +150,9 @@ export function BotonConConfirmacion({
 
   return (
     <div className="flex flex-col gap-1">
-      <button ref={botonDisparador} type="button" aria-label={etiquetaAccesible} disabled={deshabilitado} onClick={abrirConfirmacion} className={claseDisparador}>
+      <Boton id={idDisparador} variante="enlace-peligro" tamano="en-fila" aria-label={etiquetaAccesible} disabled={deshabilitado} onClick={abrirConfirmacion} className={claseDisparador}>
         {etiqueta}
-      </button>
+      </Boton>
       {avisoResultado}
     </div>
   );

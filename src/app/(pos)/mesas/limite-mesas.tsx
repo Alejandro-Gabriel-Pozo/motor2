@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { actualizarMaxMesasAbiertas } from "@/server/actions/pos/mesas";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 
 /**
  * Límite de mesas ABIERTAS a la vez en la sucursal (`Sucursal.maxMesasAbiertas`, docs/plan-comensales-y-limite-mesas-2026-09-26.md):
@@ -49,12 +52,12 @@ export function LimiteMesasAbiertas({ abiertas, limite, puedeEditar }: { abierta
 
   if (!editando) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[12.5px] text-[var(--ink-faint)]">
+      <span className="inline-flex flex-wrap items-center gap-x-1.5 text-sm text-tinta-tenue">
         {texto}
         {puedeEditar && (
-          <button type="button" onClick={abrir} className="font-semibold underline hover:text-[var(--ink)]">
+          <Boton variante="enlace" tamano="en-fila" onClick={abrir}>
             Editar límite
-          </button>
+          </Boton>
         )}
       </span>
     );
@@ -62,32 +65,34 @@ export function LimiteMesasAbiertas({ abiertas, limite, puedeEditar }: { abierta
 
   return (
     <form onSubmit={guardar} className="inline-flex flex-wrap items-center gap-1.5">
-      <label htmlFor={`${base}-limite`} className="text-[12.5px] font-semibold text-[var(--ink-faint)]">
+      <label htmlFor={`${base}-limite`} className="text-xs font-semibold text-tinta-tenue">
         Máx. mesas abiertas
       </label>
-      <input
-        id={`${base}-limite`}
-        inputMode="numeric"
-        autoComplete="off"
-        autoFocus
-        placeholder="Sin límite"
-        value={valor}
-        onChange={(e) => setValor(e.target.value)}
-        onFocus={(e) => e.target.select()}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${base}-error` : undefined}
-        className="w-24 rounded-lg border border-[var(--border)] px-2 py-1 text-[13px] tabular-nums outline-none focus:border-[var(--ink-soft)]"
-      />
-      <button type="submit" disabled={pending} className="rounded-md border border-[var(--border)] bg-white px-2.5 py-1 text-[12.5px] font-semibold enabled:hover:bg-[#F1EFEA] disabled:opacity-50">
+      <div className="w-24">
+        <Campo
+          id={`${base}-limite`}
+          nombradoPorFuera
+          tamano="compacto"
+          inputMode="numeric"
+          autoComplete="off"
+          autoFocus
+          placeholder="Sin límite"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          onFocus={(e) => e.target.select()}
+          invalido={Boolean(error)}
+        />
+      </div>
+      <Boton type="submit" variante="secundario" tamano="compacto" disabled={pending}>
         {pending ? "Guardando…" : "Guardar"}
-      </button>
-      <button type="button" onClick={cancelar} className="text-[12.5px] font-semibold text-[var(--ink-soft)] underline">
+      </Boton>
+      <Boton variante="enlace" tamano="en-fila" onClick={cancelar}>
         Cancelar
-      </button>
+      </Boton>
       {error && (
-        <p id={`${base}-error`} role="alert" className="w-full text-[12.5px] text-red-700">
+        <Aviso id={`${base}-error`} variante="error" forma="en-linea" className="w-full">
           {error}
-        </p>
+        </Aviso>
       )}
     </form>
   );

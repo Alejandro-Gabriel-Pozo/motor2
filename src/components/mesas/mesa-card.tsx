@@ -1,5 +1,5 @@
 // Tarjeta de mesa para el mapa de salón. Tres estados: libre / en_pedido / ocupada.
-// Requiere las variables CSS del bloque `.pos-shell` de src/app/globals.css (las aplica PosShell, nunca `:root`).
+// Colores: los tokens del sistema visual (`var(--color-*)` en los `style`, src/app/globals.css); desde 6.30 no lee los alias del salón (`.pos-shell`).
 //
 // Insumo de diseño provisto (mesa-card.tsx + mesas-tokens.css), con los ajustes del plan
 // docs/plan-mapa-de-mesas-2026-09-24.md §A.4: colores de texto con el contraste aprobado por el dueño (§A.3) y `EstadoMesa`
@@ -8,6 +8,7 @@
 // El total se formatea con `formatearMonto` (el mismo del ticket y de la pantalla de la mesa, centavos incluidos; P19, decisión del dueño 2026-10-11).
 
 import Link from "next/link";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import type { ReactNode } from "react";
 import { formatearMonto, type EstadoMesa } from "@/core/pos/public";
@@ -40,9 +41,9 @@ export interface MesaCardProps {
  * el texto de «Continuar pedido» va en `--ink` sobre el ámbar (5,29:1; en blanco daba 3,25:1).
  */
 const ESTADO_CONFIG: Record<EstadoMesa, { label: string; varColor: string; varTint: string; varTexto: string; varTextoBoton: string }> = {
-  libre: { label: "Libre", varColor: "var(--mesa-libre)", varTint: "var(--mesa-libre-tint)", varTexto: "var(--mesa-libre-ink)", varTextoBoton: "#fff" },
-  en_pedido: { label: "En pedido", varColor: "var(--mesa-draft)", varTint: "var(--mesa-draft-tint)", varTexto: "var(--mesa-draft-ink)", varTextoBoton: "var(--ink)" },
-  ocupada: { label: "Ocupada", varColor: "var(--mesa-ocupada)", varTint: "var(--mesa-ocupada-tint)", varTexto: "var(--mesa-ocupada)", varTextoBoton: "#fff" },
+  libre: { label: "Libre", varColor: "var(--color-ok)", varTint: "var(--color-ok-tinte)", varTexto: "var(--color-ok-tinta)", varTextoBoton: "var(--color-superficie)" },
+  en_pedido: { label: "En pedido", varColor: "var(--color-aviso)", varTint: "var(--color-aviso-tinte)", varTexto: "var(--color-aviso-tinta)", varTextoBoton: "var(--color-tinta)" },
+  ocupada: { label: "Ocupada", varColor: "var(--color-error)", varTint: "var(--color-error-tinte)", varTexto: "var(--color-error)", varTextoBoton: "var(--color-superficie)" },
 };
 
 export function MesaCard(props: MesaCardProps) {
@@ -50,56 +51,50 @@ export function MesaCard(props: MesaCardProps) {
   const cfg = ESTADO_CONFIG[estado];
 
   return (
-    <div className="relative overflow-hidden rounded-[10px] border border-[var(--border)] bg-white p-4 transition-colors hover:border-[var(--ink-faint)]">
+    <div className="relative overflow-hidden rounded-[10px] border border-borde bg-superficie p-4 transition-colors hover:border-tinta-tenue">
       <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: cfg.varColor }} aria-hidden />
 
       <div className="mb-3 flex items-start justify-between">
         <div>
-          <div className="text-[10.5px] font-semibold tracking-wide text-[var(--ink-faint)]">MESA</div>
+          <div className="text-xs font-semibold tracking-wide text-tinta-tenue">MESA</div>
           <div className="text-xl font-extrabold leading-none tabular-nums">{numero}</div>
         </div>
 
         {estado === "ocupada" ? (
-          <button
-            type="button"
-            disabled
-            aria-label="Opciones de mesa"
-            title="Mover o unir mesas todavía no está disponible."
-            className="-mr-1 rounded-md p-1 text-[var(--ink-faint)] enabled:hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <BotonDeServidor variante="enlace" tamano="compacto" disabled aria-label="Opciones de mesa" title="Mover o unir mesas todavía no está disponible." className="-mr-1">
             <IconDots />
-          </button>
+          </BotonDeServidor>
         ) : (
-          <span className="rounded-md px-2 py-1 text-[11px] font-semibold" style={{ color: cfg.varTexto, background: cfg.varTint }}>
+          <span className="rounded-md px-2 py-1 text-xs font-semibold" style={{ color: cfg.varTexto, background: cfg.varTint }}>
             {cfg.label}
           </span>
         )}
       </div>
 
-      {estado === "libre" && <p className="mb-4 text-[13px] text-[var(--ink-soft)]">Disponible para comensales</p>}
+      {estado === "libre" && <p className="mb-4 text-sm text-tinta-suave">Disponible para comensales</p>}
 
       {estado === "en_pedido" && (
         <>
-          <p className="mb-1 text-[13px] text-[var(--ink-soft)]">
+          <p className="mb-1 text-[13px] text-tinta-suave">
             {productosSinEnviar ?? 0} producto{productosSinEnviar === 1 ? "" : "s"} sin enviar
           </p>
-          <p className="mb-4 text-[15px] font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
+          <p className="mb-4 text-base font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
         </>
       )}
 
       {estado === "ocupada" && (
         <>
-          <div className="mb-1 flex items-center gap-1.5 text-[12.5px] text-[var(--ink-soft)]">
+          <div className="mb-1 flex items-center gap-1.5 text-sm text-tinta-suave">
             <IconUser />
             <span>
               {mesero ?? "Mesero asignado"}
               {tiempoAbierta ? ` · ${tiempoAbierta}` : ""}
             </span>
           </div>
-          <p className="mb-3 text-[12.5px] text-[var(--ink-soft)]">
+          <p className="mb-3 text-sm text-tinta-suave">
             {pedidosEnviados ?? 0} pedido{pedidosEnviados === 1 ? "" : "s"} enviado{pedidosEnviados === 1 ? "" : "s"}
           </p>
-          <p className="mb-3 text-[15px] font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
+          <p className="mb-3 text-base font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
         </>
       )}
 
@@ -116,23 +111,26 @@ export function MesaCard(props: MesaCardProps) {
       )}
 
       {estado === "ocupada" && (
-        <div className="flex gap-2">
-          {hrefVerPedidos ? (
-            <Link
-              href={hrefVerPedidos}
-              className="flex w-full items-center justify-center rounded-lg border border-[var(--border)] py-[9px] text-[13px] font-semibold hover:bg-black/[0.03]"
-            >
-              Ver pedidos
-              <IndicadorDeEnlace />
-            </Link>
-          ) : (
-            <button type="button" disabled className="w-full rounded-lg border border-[var(--border)] py-[9px] text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50">
-              Ver pedidos
-            </button>
-          )}
-          <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefFacturar}>
-            Facturar
-          </ActionButton>
+        // Contenedor propio: en la tarjeta angosta (2 columnas en celular) los dos botones no entran lado a lado sin cortar «Facturar»; se apilan y, con lugar, van en fila.
+        <div className="@container">
+          <div className="flex flex-col gap-2 @[14rem]:flex-row">
+            {hrefVerPedidos ? (
+              <Link
+                href={hrefVerPedidos}
+                className="flex w-full min-w-0 items-center justify-center rounded-lg border border-borde py-[9px] text-sm font-semibold hover:bg-black/[0.03] max-md:min-h-11"
+              >
+                Ver pedidos
+                <IndicadorDeEnlace />
+              </Link>
+            ) : (
+              <BotonDeServidor variante="secundario" disabled className="w-full">
+                Ver pedidos
+              </BotonDeServidor>
+            )}
+            <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefFacturar} grande>
+              Facturar
+            </ActionButton>
+          </div>
         </div>
       )}
     </div>
@@ -140,12 +138,12 @@ export function MesaCard(props: MesaCardProps) {
 }
 
 /** Con `href`, un enlace con aspecto de botón; sin él, un botón deshabilitado (la acción no está disponible). */
-function ActionButton({ color, textColor, href, icon, children }: { color: string; textColor: string; href?: string; icon?: ReactNode; children: ReactNode }) {
+function ActionButton({ color, textColor, href, icon, grande = false, children }: { color: string; textColor: string; href?: string; icon?: ReactNode; grande?: boolean; children: ReactNode }) {
   if (href) {
     return (
       <Link
         href={href}
-        className="flex w-full items-center justify-center gap-1.5 rounded-lg py-[9px] text-[13px] font-semibold transition-opacity hover:opacity-90"
+        className={`flex w-full min-w-0 items-center justify-center gap-1.5 rounded-lg py-[9px] ${grande ? "text-sm" : "text-[13px]"} font-semibold transition-opacity hover:opacity-90 max-md:min-h-11`}
         style={{ background: color, color: textColor }}
       >
         {icon}
@@ -155,15 +153,11 @@ function ActionButton({ color, textColor, href, icon, children }: { color: strin
     );
   }
   return (
-    <button
-      type="button"
-      disabled
-      className="flex w-full items-center justify-center gap-1.5 rounded-lg py-[9px] text-[13px] font-semibold transition-opacity enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-      style={{ background: color, color: textColor }}
-    >
+    // El color es el del ESTADO de la mesa (dato: libre, en pedido, ocupada), no una variante del botón: va en `style`, que le gana a la variante.
+    <BotonDeServidor disabled className="w-full" style={{ background: color, color: textColor }}>
       {icon}
       {children}
-    </button>
+    </BotonDeServidor>
   );
 }
 

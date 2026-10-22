@@ -72,5 +72,5 @@ export async function confirmarReingresoDeTraspasoCasoDeUso(
     return exito(mensaje, { traspasoId: traspaso.id, operacionId, repetida: false });
     // `true`: dos reingresos simultáneos del mismo traspaso leen el mismo estado; el que pierde la carrera recibe el choque del paso único
     // (`MovimientoStock_traspaso_paso_unico_key`) y, al repetir, ve el traspaso ya CERRADO y responde el error de estado.
-  }, 5, {}, true);
+  }, undefined, undefined, true);
 }

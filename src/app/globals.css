@@ -1,25 +1,63 @@
 @import "tailwindcss";
 
-/* `light dark`: el navegador dibuja sus propios controles (lista desplegada de un <select>, scrollbars, autocompletado) en el esquema del sistema, en
-   sintonía con los colores de más abajo. Sin esto, en modo oscuro salen claros con el texto claro heredado. */
+/* DEC-04: la aplicación NO tiene modo oscuro; es siempre clara, aun con el sistema operativo en oscuro. La variante `dark:` de Tailwind deja de
+   depender de `prefers-color-scheme`: solo se activaría bajo la clase `.modo-oscuro-retirado`, que nadie usa (lo vigila
+   `test/arquitectura/sin-modo-oscuro.test.ts`). Las clases `dark:` que quedan en los componentes son CSS muerto que no se activa; se retiran por lotes. */
+@custom-variant dark (&:where(.modo-oscuro-retirado, .modo-oscuro-retirado *));
+
+/* `color-scheme: light` (DEC-04): el navegador dibuja claros sus propios controles (lista desplegada de un <select>, scrollbars, autocompletado)
+   aunque el sistema esté en oscuro, en sintonía con los colores de más abajo. */
 :root {
-  color-scheme: light dark;
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Fase 6 (6.1): los TOKENS del sistema visual. Nombres solo `--color-*`; con `@theme static` Tailwind los publica en `:root` aunque ninguna utilidad los use todavía, y de
+   ellos salen las utilidades (`bg-papel`, `text-tinta-suave`, `border-borde`…). Es la FUENTE del contrato `tokens-visuales` (`test/arquitectura/contratos/contratos/tokens-visuales.ts`):
+   un token se define solo acá, lo que use un nombre que no esté acá falla, y un token que nadie usa también. Solo nacen los que ya usan los alias de `.pos-shell` y la carta del panel
+   (6.4); los demás nacen en el paso que los usa por primera vez. Los pares de texto sobre fondo y los gráficos están medidos en `test/arquitectura/tokens-del-sistema-visual.test.ts`
+   (texto >= 4,5:1; `ok`, `aviso` y `error` como color de gráfico >= 3:1 sobre papel). La aplicación no tiene modo oscuro (DEC-04): un solo valor por token. */
+/* @contrato tokens-visuales */
+@theme static {
+  --color-papel: #FAFAF8;
+  --color-superficie: #FFFFFF;
+  --color-superficie-suave: #F1EFEA;
+  --color-tinta: #1C1B19;
+  --color-tinta-suave: #6B6862;
+  --color-tinta-tenue: #76726A;
+  --color-borde: #E8E5DF;
+  /* Borde de CONTROLES (inputs, botones, recuadros de datos): gris medio, 3,67:1 sobre blanco y 3,51:1 sobre papel (WCAG 1.4.11, 3:1 para el contorno de un componente). `borde` (claro) es solo
+     decorativo (separadores); un control con ese borde perdería contraste de objeto. */
+  --color-borde-control: #8A857C;
+  --color-marca: #A8431F;
+  --color-marca-hover: #8A3618;
+  /* Fondo tenue de la marca (6.6g, la insignia de tono `marca`): texto `marca` sobre él 5,34:1 (medido en `tokens-del-sistema-visual.test.ts`). */
+  --color-marca-tinte: #FBEFEA;
+
+  --color-ok: #3F7A5C;
+  --color-ok-tinte: #EBF3EE;
+  --color-ok-tinta: #356A4F;
+
+  --color-aviso: #B8860B;
+  --color-aviso-tinte: #FBF3DE;
+  --color-aviso-tinta: #7A5A07;
+
+  --color-error: #A63D3D;
+  --color-error-tinte: #FAEBEB;
+
+  --color-foco: var(--color-tinta);
+  /* Contorno de foco sobre los fondos OSCUROS del sistema (`tinta` y `error`: el aviso flotante con «Deshacer»): el blanco da 17,2:1 sobre `tinta` y 6,26:1 sobre `error`; `foco` (la tinta)
+     no se ve sobre `tinta` (1:1) y da ~2,75:1 sobre `error`. Medido en `tokens-del-sistema-visual.test.ts` (>= 3:1). */
+  --color-foco-sobre-tinta: var(--color-superficie);
+
+  /* Con transparencia (velo de una hoja modal, sombra de un aviso, borde de un botón sobre `tinta`): no se miden en `tokens-del-sistema-visual.test.ts` (su contraste depende de lo que hay detrás). */
+  --color-velo: rgb(28 27 25 / 0.55);
+  --color-sombra: rgb(0 0 0 / 0.35);
+  --color-borde-sobre-tinta: rgb(255 255 255 / 0.5);
 }
 
 /* Un <th> con texto solo para lectores de pantalla (<span class="sr-only">Acciones</span>, en las columnas de botones) es position:absolute. Sin
@@ -67,42 +105,75 @@ form[aria-busy="true"] [type="submit"] {
 }
 
 /* Salón (módulo POS, route group `(pos)`): tokens de color del mapa de mesas, aplicados por `PosShell` en `.pos-shell` y NUNCA en
-   `:root`. Dos razones: (1) `:root` declara `color-scheme: light dark` y en modo oscuro pinta texto casi blanco (#ededed), pero las
-   tarjetas del salón son blancas fijas: el número de mesa y los totales quedarían ilegibles; (2) nombres genéricos como `--border` o
-   `--ink-soft` ensuciarían el namespace de toda la administración. El salón no tiene modo oscuro todavía: `color-scheme: light` hace
-   que el navegador dibuje claros también sus controles (el <select> de sucursal, los scrollbars).
+   `:root`: nombres genéricos como `--border` o `--ink-soft` ensuciarían el namespace de toda la administración. La aplicación no tiene
+   modo oscuro (DEC-04): el `:root` ya declara `color-scheme: light` y aquí se repite para que el salón siga claro (el <select> de
+   sucursal, los scrollbars) si alguien cambiara el del `:root`.
    Contraste (plan §A.3, ajuste aprobado por el dueño): `--ink-faint` pasó de #A8A49C (2,48:1) a #76726A (4,79:1 sobre blanco,
    4,58:1 sobre papel), y los textos de estado usan `--mesa-libre-ink`/`--mesa-draft-ink` en vez del color de estado. Barras, puntos
-   y fondos de estado quedan exactamente como en el diseño. */
+   y fondos de estado quedan exactamente como en el diseño.
+   Fase 6 (6.1): los 15 alias de abajo son ahora `var()` de los tokens `--color-*` de `@theme static` (mismo valor resultante). Siguen existiendo solo porque el
+   salón los usa; son deuda del contrato `tokens-visuales` (desde 6.30 ningún archivo los lee: la regla `sin-alias-de-color-del-salon` lo vigila; se borran con la última deuda). */
 .pos-shell {
   color-scheme: light;
-  --paper: #FAFAF8;
-  --ink: #1C1B19;
-  --brand: #A8431F;
-  --brand-hover: #8A3618;
-  --border: #E8E5DF;
-  --ink-soft: #6B6862;
-  --ink-faint: #76726A;
+  --paper: var(--color-papel);
+  --ink: var(--color-tinta);
+  --brand: var(--color-marca);
+  --brand-hover: var(--color-marca-hover);
+  --border: var(--color-borde);
+  --ink-soft: var(--color-tinta-suave);
+  --ink-faint: var(--color-tinta-tenue);
 
-  --mesa-libre: #3F7A5C;
-  --mesa-libre-tint: #EBF3EE;
-  --mesa-libre-ink: #356A4F;
+  --mesa-libre: var(--color-ok);
+  --mesa-libre-tint: var(--color-ok-tinte);
+  --mesa-libre-ink: var(--color-ok-tinta);
 
-  --mesa-draft: #B8860B;
-  --mesa-draft-tint: #FBF3DE;
-  --mesa-draft-ink: #7A5A07;
+  --mesa-draft: var(--color-aviso);
+  --mesa-draft-tint: var(--color-aviso-tinte);
+  --mesa-draft-ink: var(--color-aviso-tinta);
 
-  --mesa-ocupada: #A63D3D;
-  --mesa-ocupada-tint: #FAEBEB;
+  --mesa-ocupada: var(--color-error);
+  --mesa-ocupada-tint: var(--color-error-tinte);
 
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--color-papel);
+  color: var(--color-tinta);
 }
 
+/* Fase 6 (6.5): el fondo de la aplicación es la SUPERFICIE blanca (la carta pública y el login quedan sobre blanco). Toda la administración —lo que dibuja `AppShell`, su
+   `<main data-panel>`— va sobre el PAPEL cálido del salón, con tarjetas blancas encima: una sola regla `:has`, sin tocar ningún componente. `--background`/`--foreground` de
+   `:root` ya no los lee el `body`: quedan para los gráficos (deuda del contrato `tokens-visuales`, 6.27). */
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-superficie);
+  color: var(--color-tinta);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+body:has(main[data-panel]) {
+  background: var(--color-papel);
+}
+
+/* Foco de teclado ÚNICO (6.5): un contorno de 2 px del color `foco` (la tinta: 16,5:1 sobre papel y 17,2:1 sobre blanco, >= 3:1 de WCAG 1.4.11) para todo lo que se enfoca con el
+   teclado. Va en `@layer base`: lo que ya trae su propio foco (las utilidades `focus-visible:` de Tailwind, de `@layer utilities`) y las reglas sin capa (`.raiz :focus-visible` de
+   `carta-mant.module.css`, `.carta-shell .portal-card:focus-visible`) le ganan siempre. La carta pública (`.carta-shell`) conserva su foco temático. */
+@layer base {
+  :focus-visible:not(.carta-shell *) {
+    outline: 2px solid var(--color-foco);
+    outline-offset: 2px;
+  }
+}
+
+/* Borde por defecto de TODA la aplicación (Fase 6): el preflight de Tailwind resetea cada borde con `border: 0 solid` y un borde sin color declarado cae a `currentColor`, el color del
+   TEXTO (negro): los recuadros y las tablas de la administración con `border` a secas salían con un contorno negro. Fallo cerrado visual: un borde sin color NUNCA cae al color del texto;
+   el default es el borde de CONTROLES (`--color-borde-control`: gris medio, 3,67:1 sobre blanco y 3,51:1 sobre papel) y no el decorativo claro, porque un <input> con solo `border` perdería el
+   contraste de objeto (WCAG 1.4.11). Lo decorativo (separadores, tarjetas) usa `border-borde` explícito. Va en `@layer base`, después del preflight (que también es `base`: gana por orden), así
+   que las utilidades (`border-red-500`, `border-borde`, de `@layer utilities`) y las reglas sin capa le ganan; la carta pública tiene la suya, más específica (`.carta-shell *`, más abajo).
+   Lo vigila `test/arquitectura/borde-por-defecto-de-la-aplicacion.test.ts`. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-borde-control);
+  }
 }
 
 /* Carta pública (módulo interno, ADR-006, route group `(carta-publica)`): mismo criterio que `.pos-shell` — tokens propios,
@@ -124,10 +195,119 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Defensa por defecto del COLOR de todo borde de la carta: el preflight de Tailwind resetea cada borde con `border: 0 solid`, y un borde sin color declarado cae a
+   `currentColor`, el color del TEXTO (negro en la carta clara): el bug de los separadores negros de C12. Acá todo lo que está dentro de `.carta-shell` (y sus
+   `::before`/`::after`) arranca con el color de borde de la carta, así un borde olvidado nunca sale negro. Va en `@layer base`: las utilidades de Tailwind
+   (`@layer utilities`: `border-red-500`, `border-transparent`…) y las reglas centrales sin capa de más abajo (`carta-divisor`, `carta-borde`, el portal) la pisan siempre. Es
+   solo la red de seguridad; el contrato sigue siendo declarar `carta-divisor` / `carta-borde` (ver abajo). */
+@layer base {
+  .carta-shell,
+  .carta-shell *,
+  .carta-shell ::before,
+  .carta-shell ::after {
+    border-color: var(--carta-border);
+  }
+}
+
 /* Títulos, nombres de ítem y precios: la familia de `carta_fuente_familia` (`--carta-fuente-familia`, la pone `resolverEstiloCarta`); donde no
    hay tema (el portal de la empresa) cae a Playfair, la de siempre. */
 .carta-shell .carta-titulo {
   font-family: var(--carta-fuente-familia, var(--font-carta-serif, ui-serif, serif), serif);
+}
+
+/* Fase 5 (DEC-35, ADR-035): la ESCALA DE LETRA ÚNICA de la carta. Cada texto tiene un ROL y cada rol un solo tamaño y un solo peso, el mismo para todo ítem (con o sin
+   opciones, plato o promo). Los tamaños son las variables `--carta-fs-<rol>` que arma `src/core/carta/escala.ts` (con el piso de cada rol y el tema de la sucursal mandando
+   solo hacia arriba) y pone `resolverEstiloCarta` en la raíz de la carta (el portal, en la suya): ningún componente de la carta escribe un tamaño (lo vigila el cerco
+   `carta-publica-tipografia`). */
+.carta-shell .carta-rol-producto {
+  font-size: var(--carta-fs-producto);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.carta-shell .carta-rol-precio {
+  font-size: var(--carta-fs-precio);
+  font-weight: 600;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.carta-shell .carta-rol-opcion {
+  font-size: var(--carta-fs-opcion);
+  font-weight: 400;
+  line-height: 1.375;
+}
+.carta-shell .carta-rol-opcion-precio {
+  font-size: var(--carta-fs-opcion);
+  font-weight: 600;
+  line-height: 1.375;
+  font-variant-numeric: tabular-nums;
+}
+.carta-shell .carta-rol-aclaracion {
+  font-size: var(--carta-fs-aclaracion);
+  font-weight: 400;
+  line-height: 1.375;
+  color: var(--carta-ink-soft);
+}
+.carta-shell .carta-rol-aclaracion-rotulo {
+  font-size: var(--carta-fs-aclaracion);
+  font-weight: 600;
+  line-height: 1.375;
+}
+.carta-shell .carta-rol-etiqueta {
+  font-size: var(--carta-fs-etiqueta);
+  font-weight: 400;
+}
+.carta-shell .carta-rol-titulo {
+  font-size: var(--carta-fs-titulo);
+  font-weight: 500;
+}
+.carta-shell .carta-rol-rotulo {
+  font-size: var(--carta-fs-rotulo);
+  font-weight: 600;
+  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--carta-ink);
+}
+.carta-shell .carta-rol-columna {
+  font-size: var(--carta-fs-columna);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--carta-ink);
+}
+.carta-shell .carta-rol-tamano {
+  font-size: var(--carta-fs-tamano);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--carta-ink);
+}
+.carta-shell .carta-rol-eleccion {
+  font-size: var(--carta-fs-eleccion);
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--carta-ink);
+}
+/* La línea fina que separa filas o bloques de la carta (un trazo del color de la tinta, atenuado hacia el fondo). */
+.carta-shell .carta-linea-fina {
+  border-bottom: 1px solid color-mix(in oklch, var(--carta-ink) 28%, var(--carta-bg));
+}
+
+/* El COLOR de todo separador de la carta, declarado UNA sola vez. Lo vigila el motor común de contratos (`test/arquitectura/contratos/`, contratos
+   `separador-de-lista-de-carta` y `borde-propio-de-carta`: dos contratos con la misma fuente, esta sección, y una marca cada uno).
+   - `carta-divisor`: va en la lista que usa `divide-y`/`divide-x`; el borde que pinta `divide-y` toma el color DEL HIJO (no del padre), así que se declara en los hijos.
+   - `carta-borde`: va en el elemento que dibuja su PROPIO borde con una clase de ancho (`border-t`, `border-b`, `border`).
+   Sin una de las dos, el borde cae al color del texto (negro). La forma de un producto nunca decide el color del separador. */
+/* @contrato separador-de-lista-de-carta */
+.carta-shell .carta-divisor > * {
+  border-color: var(--carta-border);
+}
+/* @contrato borde-propio-de-carta */
+.carta-shell .carta-borde {
+  border-color: var(--carta-border);
+}
+
+/* Lo que solo sale en PAPEL (el pie de la carta impresa): en pantalla no se ve. */
+.carta-shell .carta-solo-papel {
+  display: none;
 }
 
 /* Portal de sucursales (`PortalVista`): colores y tamaños llegan como `--portal-*` desde `resolverEstiloPortal` (config de
@@ -335,6 +515,65 @@ html:has([data-carta-libro]) body {
   /* Los colores del tema van inline (texto claro sobre fondo oscuro): sin esto, imprimir sobre papel blanco dejaría texto blanco. */
   .carta-shell [data-carta-libro] * {
     color: #000 !important;
+  }
+  /* Fase 5, paso 10 (DEC-20): la carta sale COMPLETA. Las listas con scroll de cada página se liberan (si no, el papel corta lo que no entraba en la pantalla); un plato o una tabla no se
+     parten entre dos hojas y los rótulos de una tabla se repiten en cada hoja. */
+  .carta-shell .carta-pagina {
+    overflow: visible !important;
+  }
+  .carta-shell [data-carta-scroll] {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: none !important;
+  }
+  .carta-shell [data-carta-scroll] > li,
+  .carta-shell [data-carta-scroll] table {
+    break-inside: avoid;
+  }
+  .carta-shell thead {
+    display: table-header-group;
+  }
+  /* La escala de letra en papel (puntos, `ESCALA_IMPRESA` de src/core/carta/escala.ts): el tema no cuenta en papel, igual que sus colores. */
+  .carta-shell .carta-rol-producto,
+  .carta-shell .carta-rol-precio {
+    font-size: var(--carta-fs-producto-impresa) !important;
+  }
+  .carta-shell .carta-rol-opcion,
+  .carta-shell .carta-rol-opcion-precio {
+    font-size: var(--carta-fs-opcion-impresa) !important;
+  }
+  .carta-shell .carta-rol-aclaracion,
+  .carta-shell .carta-rol-aclaracion-rotulo {
+    font-size: var(--carta-fs-aclaracion-impresa) !important;
+  }
+  .carta-shell .carta-rol-etiqueta {
+    font-size: var(--carta-fs-etiqueta-impresa) !important;
+  }
+  .carta-shell .carta-rol-rotulo {
+    font-size: var(--carta-fs-rotulo-impresa) !important;
+  }
+  .carta-shell .carta-rol-columna {
+    font-size: var(--carta-fs-columna-impresa) !important;
+  }
+  .carta-shell .carta-rol-tamano {
+    font-size: var(--carta-fs-tamano-impresa) !important;
+  }
+  .carta-shell .carta-rol-eleccion {
+    font-size: var(--carta-fs-eleccion-impresa) !important;
+  }
+  /* El pie (fecha de los precios y dirección pública) va al final, sin una hoja en blanco antes. */
+  .carta-shell .carta-solo-papel {
+    display: block !important;
+  }
+  .carta-shell .carta-pagina:has(+ [data-carta-pie-impreso]),
+  .carta-shell [data-carta-impresa] > .carta-pagina:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+  /* Paso 10b: si hoy hay algo agotado, el papel lleva la carta COMPLETA (`[data-carta-impresa]`) en lugar de las páginas de la pantalla. */
+  .carta-shell .carta-solo-pantalla {
+    display: none !important;
   }
 }
 

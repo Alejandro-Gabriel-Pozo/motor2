@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { BotonActivarDesactivar } from "@/components/boton-activar-desactivar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
 
 /**
  * «Activar» / «Desactivar» para una fila de una página de servidor (sucursales): junta
@@ -42,9 +43,9 @@ export function ActivarDesactivarFila({
     <div className="flex flex-col gap-1">
       <BotonActivarDesactivar activo={activo} ocupado={pending} aviso={aviso} onCambiar={cambiar} />
       {resultado && (
-        <p role={resultado.ok ? "status" : "alert"} className={`text-sm ${resultado.ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+        <Aviso variante={resultado.ok ? "exito" : "error"} forma="en-linea">
           {resultado.mensaje}
-        </p>
+        </Aviso>
       )}
     </div>
   );

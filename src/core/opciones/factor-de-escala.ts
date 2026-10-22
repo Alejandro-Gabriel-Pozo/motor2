@@ -42,7 +42,7 @@ function multiplo(entero: number): string {
 }
 
 /**
- * Lee el factor que se está tipeando. `valor` es el número ya interpretado del campo (`interpretarNumero`): `null` si está vacío y `NaN` si el texto no es un número. Nunca tira.
+ * Lee el factor que se está tipeando. `valor` es el número ya interpretado del campo (`leerNumeroCanonico`): `null` si está vacío y `NaN` si el texto no es un número. Nunca tira.
  */
 export function leerFactorDeEscala(valor: number | null): LecturaDelFactor {
   if (valor === null) return { valido: false, mensaje: "Escribí el factor: 1 = lleva lo mismo que el tamaño base." };

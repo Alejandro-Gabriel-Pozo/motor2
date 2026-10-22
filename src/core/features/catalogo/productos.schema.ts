@@ -1,4 +1,5 @@
 import type { ResultadoDato } from "@/core/datos/resultado";
+import type { ModoDeVenta } from "@/core/opciones/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -40,7 +41,19 @@ export type CampoSensibleDelProducto = "unidadCompraId" | "unidadStockId" | "fac
  * `producto_campos_sensibles` no los manda (un input deshabilitado no viaja), y si mientras edita le dan la clave el servidor, con la clave, los completa igual con lo guardado. Distinto de `null` en
  * la unidad de compra, que es «sin unidad de compra» a propósito. El alta NO los acepta ausentes (`EntradaProducto`).
  */
-export type EntradaEdicionProducto = Omit<EntradaProducto, CampoSensibleDelProducto> & Partial<Pick<EntradaProducto, CampoSensibleDelProducto>>;
+export type EntradaEdicionProducto = Omit<EntradaProducto, CampoSensibleDelProducto> &
+  Partial<Pick<EntradaProducto, CampoSensibleDelProducto>> & {
+    /**
+     * El precio de venta que mostraba el formulario al abrirse (ola «precio y carta», Fase 2, paso A4). Si el precio que se guardaría es distinto del guardado, este tiene que ser el
+     * guardado: si no, `PRECIO_DESACTUALIZADO` y no se guarda nada (también si no viene: falla cerrado). Si el precio no cambia, no se mira.
+     */
+    precioVentaVisto?: number;
+    /**
+     * Fase 4 de la ola «precio y carta» (ADR-035): «¿Cómo se vende?». No viene = queda como estaba. Cambiarlo es de quien tiene `producto_campos_sensibles` (como el precio de venta). Pasar a
+     * BASE_CONFIGURABLE exige la regla de la base (`rechazoDeBaseConfigurable`); volver a DIRECTO se puede siempre.
+     */
+    modoDeVenta?: ModoDeVenta;
+  };
 
 /**
  * El resultado de `guardComandoDatosDeProducto` (S-52), POR ETAPA: lo que decide el formato y el rango de los datos de un producto sin mirar la base. `validarDatosDeProducto` aplica
@@ -115,11 +128,25 @@ export interface DatosActualizarProducto {
  *  - `CONSIGNANTE_CON_HISTORIA`: el formulario cambia el consignante (o el «es consignación») de un producto que ya tiene liquidaciones (S-05);
  *  - `SIN_PERMISO_COSTO`: el formulario cambia el costo de consignación (es consignación, proveedor o precio) y quien lo pide no tiene `pagar_consignante` (S-12, D8);
  *  - `SIN_PERMISO_CAMPOS_SENSIBLES`: el formulario cambia el precio de venta, el factor de conversión o una unidad (de stock o de compra) y quien lo pide no tiene `producto_campos_sensibles` (M.2); va ANTES de `UNIDAD_CON_HISTORIA` y `CONSIGNANTE_CON_HISTORIA`;
- *  - `REFERENCIA_NO_ENCONTRADA`: un id del formulario (categoría, insumo, unidad, proveedor de consignación) no es de esta empresa o no existe: la clave foránea compuesta de la base rechazó el `update` y se traduce a «No se encontró …» fuera de la transacción abortada (O.175).
+ *  - `REFERENCIA_NO_ENCONTRADA`: un id del formulario (categoría, insumo, unidad, proveedor de consignación) no es de esta empresa o no existe: la clave foránea compuesta de la base rechazó el `update` y se traduce a «No se encontró …» fuera de la transacción abortada (O.175);
+ *  - `PRECIO_DESACTUALIZADO`: el formulario cambia el precio de venta y el que mostraba (`precioVentaVisto`) ya no es el guardado (otra persona lo cambió mientras editaba, o no vino): no se guarda nada;
+ *  - `BASE_INVALIDA` (Fase 4, ADR-035): el producto queda «se vende por opción» sin cumplir la regla de la base (pasar a base sin grupo de precio final, con porcentajes, de consignación, en un ítem
+ *    agrupado…; o, siendo base, tildar «se produce» o «es consignación»), o el modo pedido no es uno de la lista;
+ *  - `PRECIO_BLOQUEADO_EN_BASE` (Fase 4): el producto se vende por opción y el formulario trae otro precio de venta: el precio guardado se conserva y no se cambia (volviendo a directo en el mismo envío, sí).
  */
 export type ResultadoActualizarProducto = ResultadoCaso<
   DatosActualizarProducto,
-  "PRODUCTO_NO_ENCONTRADO" | "TIPO_DISTINTO" | "DATOS_INVALIDOS" | "UNIDAD_CON_HISTORIA" | "CONSIGNANTE_CON_HISTORIA" | "SIN_PERMISO_COSTO" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "REFERENCIA_NO_ENCONTRADA"
+  | "PRODUCTO_NO_ENCONTRADO"
+  | "TIPO_DISTINTO"
+  | "DATOS_INVALIDOS"
+  | "UNIDAD_CON_HISTORIA"
+  | "CONSIGNANTE_CON_HISTORIA"
+  | "SIN_PERMISO_COSTO"
+  | "SIN_PERMISO_CAMPOS_SENSIBLES"
+  | "REFERENCIA_NO_ENCONTRADA"
+  | "PRECIO_DESACTUALIZADO"
+  | "BASE_INVALIDA"
+  | "PRECIO_BLOQUEADO_EN_BASE"
 >;
 
 /**
@@ -129,6 +156,11 @@ export type ResultadoActualizarProducto = ResultadoCaso<
 export interface ComandoSincronizarPrecioGrupoCarta {
   productoIds: string[];
   precio: number;
+  /**
+   * El precio de venta que la pantalla mostró de cada producto al ofrecer igualarlo (el `precioActual` del `sincronizable`), por id (ola «precio y carta», Fase 2, paso A5). Un producto sin precio
+   * visto que haya que cambiar se rechaza (`PRECIO_DESACTUALIZADO`).
+   */
+  preciosVistos: Readonly<Record<string, number>>;
 }
 
 /**
@@ -141,9 +173,11 @@ export interface PedidoSincronizarPrecioGrupoCarta extends ComandoSincronizarPre
 
 /**
  *  - `NO_MISMO_ITEM`: los productos no son todos del mismo ítem agrupado de la carta (en la sucursal activa);
- *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (M.2, D-3): quien lo pide no tiene `producto_campos_sensibles`; se decide antes de leer el ítem agrupado.
+ *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (M.2, D-3): quien lo pide no tiene `producto_campos_sensibles`; se decide antes de leer el ítem agrupado;
+ *  - `PRECIO_DESACTUALIZADO`: el precio de venta de alguno cambió desde que se ofreció igualarlo (o la pantalla no lo mandó): no se cambia ninguno;
+ *  - `ES_BASE_CONFIGURABLE` (Fase 4, ADR-035; defensa: una base no puede estar en un ítem agrupado): alguno se vende por opción y su precio guardado no se toca.
  */
-export type ResultadoSincronizarPrecioGrupoCarta = ResultadoCaso<null, "NO_MISMO_ITEM" | "SIN_PERMISO_CAMPOS_SENSIBLES">;
+export type ResultadoSincronizarPrecioGrupoCarta = ResultadoCaso<null, "NO_MISMO_ITEM" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "PRECIO_DESACTUALIZADO" | "ES_BASE_CONFIGURABLE">;
 
 /** Comando «asignar un insumo a una materia prima existente» (la mitad retroactiva del asistente de hermanar): los dos ids, sin validar (sin guard). */
 export interface ComandoAsignarInsumoAProducto {
@@ -212,6 +246,7 @@ export interface ComandoActualizarDisponibilidadProducto {
 /**
  *  - `PRODUCTO_NO_ENCONTRADO`: el id no es de un producto;
  *  - `TIENE_DEPENDENCIAS`: al desactivar, algo depende de él en esta sucursal (la receta vigente de un plato disponible acá, o saldo en una sección de acá);
- *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (D4): al activar, es un producto de venta con precio de venta 0 («sin precio definido») y quien lo pide no tiene `producto_campos_sensibles`. Apagar nunca lo devuelve.
+ *  - `SIN_PERMISO_CAMPOS_SENSIBLES` (D4): al activar, es un producto de venta DIRECTO con precio de venta 0 («sin precio definido») y quien lo pide no tiene `producto_campos_sensibles`. Apagar nunca lo devuelve;
+ *  - `BASE_INVALIDA` (Fase 4, ADR-035): al activar, el producto se vende por opción y no cumple la regla de la base (sin grupo de precio final, por ejemplo). Apagar nunca lo devuelve.
  */
-export type ResultadoActualizarDisponibilidadProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "ES_ANCLA_DE_ADICIONAL">;
+export type ResultadoActualizarDisponibilidadProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "TIENE_DEPENDENCIAS" | "SIN_PERMISO_CAMPOS_SENSIBLES" | "ES_ANCLA_DE_ADICIONAL" | "BASE_INVALIDA">;

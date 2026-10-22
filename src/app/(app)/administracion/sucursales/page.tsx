@@ -6,15 +6,17 @@ import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/s
 import { crearSucursalConAdmin, actualizarActivoSucursal, renombrarSucursal, listarSucursales } from "@/server/actions/auth/sucursales";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { Campo } from "@/ui/primitivas/campo";
 
 export default async function SucursalesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_sucursal", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   // La pantalla se abre con `alta_sucursal`; cada control pide la clave de SU acción (una clave por acción): sin ella se ve la lista y no el botón.
   const [alta, activar, renombrar, sucursales] = await Promise.all([
@@ -30,7 +32,7 @@ export default async function SucursalesPage() {
 
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-neutral-500">
+          <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Nombre</th>
             <th>Activo</th>
             <th><span className="sr-only">Acciones</span></th>
@@ -46,13 +48,15 @@ export default async function SucursalesPage() {
                       "use server";
                       return renombrarSucursal(s.id, String(formData.get("nombre") ?? ""));
                     }}
-                    className="flex gap-1"
+                    className="flex items-center gap-1"
                   >
-                    <input name="nombre" aria-label={`Nombre de la sucursal "${s.nombre}"`} defaultValue={s.nombre} className="w-40 rounded border px-2 py-1" />
-                    <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                    <div className="w-40">
+                      <Campo name="nombre" aria-label={`Nombre de la sucursal "${s.nombre}"`} defaultValue={s.nombre} tamano="compacto" />
+                    </div>
+                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                       <IconoDeAccion id="editar" />
                       Renombrar
-                    </button>
+                    </BotonDeServidor>
                   </FormConResultado>
                 ) : (
                   s.nombre
@@ -88,17 +92,11 @@ export default async function SucursalesPage() {
         className="flex max-w-md flex-col gap-2"
       >
         <h2 className="font-medium">Nueva sucursal</h2>
-        <input name="nombre" placeholder="Nombre de la sucursal" required className="rounded border px-3 py-2" />
-        <input
-          name="emailPrimerAdmin"
-          type="email"
-          placeholder="Email del primer admin"
-          required
-          className="rounded border px-3 py-2"
-        />
-        <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
+        <Campo name="nombre" placeholder="Nombre de la sucursal" aria-label="Nombre de la sucursal" required />
+        <Campo name="emailPrimerAdmin" type="email" placeholder="Email del primer admin" aria-label="Email del primer admin" required />
+        <BotonDeServidor type="submit">
           Crear
-        </button>
+        </BotonDeServidor>
       </FormConResultado>
       )}
     </div>

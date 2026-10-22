@@ -68,7 +68,7 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
     // 3. Una promo de la sucursal en esa sección: Parametrización › Promociones.
     await page.goto("/carta/parametrizacion/promociones");
     const nuevaPromo = page.locator("form", { has: page.getByRole("heading", { name: "Nueva promo" }) });
-    await nuevaPromo.getByLabel("Título", { exact: true }).fill(nombrePromo);
+    await nuevaPromo.getByRole("textbox", { name: "Título", exact: true }).fill(nombrePromo);
     await nuevaPromo.getByLabel("Sección de carta").selectOption({ label: nombreSeccion });
     await nuevaPromo.getByLabel("Precio").fill("25000");
     await nuevaPromo.getByRole("button", { name: "Crear promo" }).click();

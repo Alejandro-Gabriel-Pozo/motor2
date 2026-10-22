@@ -1,3 +1,4 @@
+import { redondearMoneda } from "@/core/moneda";
 import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal } from "@/core/tiempo/zona-horaria";
 
 /**
@@ -164,9 +165,10 @@ export function codigosDeErroresDeSincronizacion(errores: readonly string[]): Co
   return codigos;
 }
 
-/** Pesos → dólares, con 2 decimales, a la cotización dada (se usa la de VENTA: lo que costaría comprar esos dólares). */
+/** Pesos → dólares, con 2 decimales, a la cotización dada (se usa la de VENTA: lo que costaría comprar esos dólares). Redondea con `redondearMoneda` (src/core/moneda.ts):
+ *  el empate de medio centavo se aleja del cero, como en el resto del dinero (`Math.round(x * 100) / 100` perdía `1.005` → 1,00). */
 export function pesosADolares(pesos: number, cotizacionVenta: number): number {
-  return Math.round((pesos / cotizacionVenta) * 100) / 100;
+  return redondearMoneda(pesos / cotizacionVenta);
 }
 
 /**

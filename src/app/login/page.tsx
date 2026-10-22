@@ -6,6 +6,8 @@ import { rutaInternaSegura } from "@/core/navegacion/volver";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { cambiarEmpresaActiva } from "@/server/actions/auth/empresa-activa";
 import { emailDeContactoDePlataforma } from "@/core/auth/contacto-plataforma";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { Aviso } from "@/ui/primitivas/aviso";
 
 function CerrarSesion() {
   return (
@@ -15,9 +17,9 @@ function CerrarSesion() {
         await signOut();
       }}
     >
-      <button type="submit" className="text-sm text-neutral-500 underline hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100">
+      <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
         Cerrar sesión
-      </button>
+      </BotonDeServidor>
     </form>
   );
 }
@@ -48,14 +50,14 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       return (
         <Pantalla>
           <h1 className="text-2xl font-semibold">¿A qué empresa querés entrar?</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Iniciaste sesión como {situacion.email}. Podés cambiar de empresa más tarde desde el encabezado.</p>
+          <p className="text-sm text-tinta-tenue">Iniciaste sesión como {situacion.email}. Podés cambiar de empresa más tarde desde el encabezado.</p>
           <ul className="space-y-2">
             {situacion.empresas.map((e) => (
               <li key={e.empresaId}>
                 <form action={cambiarEmpresaActiva.bind(null, e.empresaId, volver)}>
-                  <button type="submit" className="w-full rounded-md bg-neutral-900 px-4 py-2 text-white hover:bg-neutral-800">
+                  <BotonDeServidor type="submit" className="w-full">
                     Entrar a {e.empresaNombre}
-                  </button>
+                  </BotonDeServidor>
                 </form>
               </li>
             ))}
@@ -68,7 +70,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       return (
         <Pantalla>
           <h1 className="text-2xl font-semibold">Motor2</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-tinta-tenue">
             {situacion.nombres.length === 1
               ? `La empresa «${situacion.nombres[0]}» está suspendida.`
               : `Las empresas ${situacion.nombres.map((n) => `«${n}»`).join(", ")} están suspendidas.`}{" "}
@@ -92,7 +94,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       return (
         <Pantalla>
           <h1 className="text-2xl font-semibold">Motor2</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-tinta-tenue">
             {situacion.nombres.length === 1 ? `La empresa «${situacion.nombres[0]}» está en alta.` : `Las empresas ${situacion.nombres.map((n) => `«${n}»`).join(", ")} están en alta.`}{" "}
             La plataforma está verificando sus datos y te avisa por mail cuando esté lista para usar.
           </p>
@@ -104,7 +106,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       return (
         <Pantalla>
           <h1 className="text-2xl font-semibold">Motor2</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="text-sm text-tinta-tenue">
             Iniciaste sesión como {situacion.email}, pero todavía no tenés acceso a ninguna
             sucursal. Pedile a un admin que te dé de alta.
           </p>
@@ -117,11 +119,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <main className="flex flex-1 items-center justify-center p-8">
           <div className="w-full max-w-sm space-y-6 text-center">
             <h1 className="text-2xl font-semibold">Motor2</h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Ingresá con tu cuenta de Google del negocio.</p>
+            <p className="text-sm text-tinta-tenue">Ingresá con tu cuenta de Google del negocio.</p>
             {aviso && (
-              <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-left text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
-                {aviso}
-              </p>
+              // `Aviso` de error: es el único con role="alert" (los avisos de vinculación se anuncian al instante y el spec de invitación los busca así).
+              <div className="text-left">
+                <Aviso variante="error">{aviso}</Aviso>
+              </div>
             )}
             <form
               action={async () => {
@@ -129,12 +132,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 await signIn("google", { redirectTo: volver ?? "/" });
               }}
             >
-              <button
-                type="submit"
-                className="w-full rounded-md bg-neutral-900 px-4 py-2 text-white hover:bg-neutral-800"
-              >
+              <BotonDeServidor type="submit" className="w-full">
                 Ingresar con Google
-              </button>
+              </BotonDeServidor>
             </form>
           </div>
         </main>

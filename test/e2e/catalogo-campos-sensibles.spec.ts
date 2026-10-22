@@ -87,13 +87,13 @@ const sinPoderVender = (page: Page) => page.locator("[data-aviso-alta-sin-precio
 test("el administrador (con la clave) ve los campos editables y sin avisos, y cambia el factor y agrega una presentación", async ({ paginaAutenticada: page, sucursalId }) => {
   const { mp, pv, ml, limpiar } = await sembrarProductos(sucursalId);
   try {
-    await page.goto(`/catalogo/productos/${mp.id}/editar`);
+    await page.goto(`/catalogo/productos/${mp.id}/datos`);
     await expect(page.locator('input[name="nombre"]')).toHaveValue(mp.nombre);
     await expect(page.locator("[data-solo-lectura]")).toHaveCount(0);
     await expect(aviso(page)).toHaveCount(0);
     await expect(page.locator("[data-aviso-presentaciones-sin-permiso]")).toHaveCount(0);
     await expect(page.getByLabel("Unidad de stock")).toBeEnabled();
-    await expect(page.getByLabel("Unidad de compra", { exact: true })).toBeEnabled();
+    await expect(page.locator('select[name="unidadCompraId"]')).toBeEnabled();
 
     await escribirNumero(page, "Factor de conversión (unidades de stock por unidad de compra)", "30");
     await page.getByRole("button", { name: "Guardar cambios" }).click();
@@ -101,8 +101,9 @@ test("el administrador (con la clave) ve los campos editables y sin avisos, y ca
     expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: mp.id } })).factorConversion)).toBe(30);
 
     // Una presentación nueva en «ml» (la «g» es la unidad de compra por defecto y la «l» ya es una presentación).
-    await page.goto(`/catalogo/productos/${mp.id}/editar`);
-    await page.locator("label", { hasText: "Unidad de compra" }).locator("select").selectOption({ label: "ml" });
+    await page.goto(`/catalogo/productos/${mp.id}/datos`);
+    // El selector de la unidad de compra de la presentación (el del bloque «Presentaciones de compra alternativas»; el de arriba es el de la unidad por defecto del producto).
+    await page.locator("div", { has: page.getByText("Presentaciones de compra alternativas", { exact: true }) }).last().getByLabel("Unidad de compra").selectOption({ label: "ml" });
     const factorPresentacion = page.locator("label", { hasText: "Factor de conversión" }).locator("input[type=text]");
     await factorPresentacion.focus();
     await factorPresentacion.fill("50");
@@ -111,7 +112,7 @@ test("el administrador (con la clave) ve los campos editables y sin avisos, y ca
     expect(Number((await prisma.presentacion.findFirstOrThrow({ where: { productoId: mp.id, unidadCompraId: ml.id } })).factorConversion)).toBe(50);
 
     // Un producto de venta: el precio editable.
-    await page.goto(`/catalogo/productos/${pv.id}/editar`);
+    await page.goto(`/catalogo/productos/${pv.id}/datos`);
     await expect(page.getByLabel("Precio de venta", { exact: true })).toBeVisible();
     await expect(soloLectura(page, "precioVenta")).toHaveCount(0);
   } finally {
@@ -123,7 +124,7 @@ test("sin la clave, la edición de una materia prima muestra factor y unidades g
   const { mp, kg, g, limpiar: limpiarProductos } = await sembrarProductos(sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { conClaveFina: false });
   try {
-    await page.goto(`/catalogo/productos/${mp.id}/editar`);
+    await page.goto(`/catalogo/productos/${mp.id}/datos`);
     await expect(page.locator('input[name="nombre"]')).toHaveValue(mp.nombre);
     await expect(soloLectura(page, "unidadStockId")).toContainText("kg");
     await expect(soloLectura(page, "unidadCompraId")).toContainText("g");
@@ -153,7 +154,7 @@ test("sin la clave, el precio de un producto de venta es solo lectura y un cambi
   const { pv, limpiar: limpiarProductos } = await sembrarProductos(sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { conClaveFina: false });
   try {
-    await page.goto(`/catalogo/productos/${pv.id}/editar`);
+    await page.goto(`/catalogo/productos/${pv.id}/datos`);
     await expect(page.locator('input[name="nombre"]')).toHaveValue(pv.nombre);
     await expect(soloLectura(page, "precioVenta")).toContainText("$100");
     await expect(page.getByLabel("Precio de venta", { exact: true })).toHaveCount(0);
@@ -223,13 +224,13 @@ test("un formulario de edición abierto ANTES de que le quiten la clave: el rech
   const { pv, limpiar: limpiarProductos } = await sembrarProductos(sucursalId);
   const { page, quitarLaClaveFina, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { conClaveFina: true });
   try {
-    await page.goto(`/catalogo/productos/${pv.id}/editar`);
+    await page.goto(`/catalogo/productos/${pv.id}/datos`);
     await expect(page.getByLabel("Precio de venta", { exact: true })).toBeVisible(); // con la clave, editable
     await quitarLaClaveFina();
     await escribirNumero(page, "Precio de venta", "999");
     await page.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(page.getByText(MENSAJE_SIN_PERMISO)).toBeVisible();
-    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${pv.id}/editar$`));
+    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${pv.id}/datos$`));
     expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: pv.id } })).precioVenta)).toBe(100);
   } finally {
     await limpiar();
@@ -241,10 +242,10 @@ test("un formulario abierto ANTES de que le quiten la clave: «Agregar» una pre
   const { mp, ml, limpiar: limpiarProductos } = await sembrarProductos(sucursalId);
   const { page, quitarLaClaveFina, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { conClaveFina: true });
   try {
-    await page.goto(`/catalogo/productos/${mp.id}/editar`);
+    await page.goto(`/catalogo/productos/${mp.id}/datos`);
     await expect(page.getByRole("button", { name: "Agregar", exact: true })).toBeVisible();
     await quitarLaClaveFina();
-    await page.locator("label", { hasText: "Unidad de compra" }).locator("select").selectOption({ label: "ml" });
+    await page.locator("div", { has: page.getByText("Presentaciones de compra alternativas", { exact: true }) }).last().getByLabel("Unidad de compra").selectOption({ label: "ml" });
     const factorPresentacion = page.locator("label", { hasText: "Factor de conversión" }).locator("input[type=text]");
     await factorPresentacion.focus();
     await factorPresentacion.fill("50");
@@ -263,9 +264,9 @@ test("el caso inverso: un formulario de edición abierto SIN la clave y, mientra
   try {
     // Dos formularios abiertos sin la clave (una materia prima y un producto de venta): no mandan factor, unidades ni precio.
     const paginaPv = await page.context().newPage();
-    await page.goto(`/catalogo/productos/${mp.id}/editar`);
+    await page.goto(`/catalogo/productos/${mp.id}/datos`);
     await expect(soloLectura(page, "factorConversion")).toBeVisible();
-    await paginaPv.goto(`/catalogo/productos/${pv.id}/editar`);
+    await paginaPv.goto(`/catalogo/productos/${pv.id}/datos`);
     await expect(soloLectura(paginaPv, "precioVenta")).toBeVisible();
 
     await darLaClaveFina();
@@ -334,11 +335,11 @@ test("accesibilidad (axe) sin la clave: la edición de una materia prima y de un
     await page.emulateMedia({ colorScheme: "light" });
   };
   try {
-    await page.goto(`/catalogo/productos/${mp.id}/editar`);
+    await page.goto(`/catalogo/productos/${mp.id}/datos`);
     await expect(soloLectura(page, "factorConversion")).toBeVisible();
     await sinViolaciones("edición de materia prima en solo lectura");
 
-    await page.goto(`/catalogo/productos/${pv.id}/editar`);
+    await page.goto(`/catalogo/productos/${pv.id}/datos`);
     await expect(soloLectura(page, "precioVenta")).toBeVisible();
     await sinViolaciones("edición de producto de venta en solo lectura");
 

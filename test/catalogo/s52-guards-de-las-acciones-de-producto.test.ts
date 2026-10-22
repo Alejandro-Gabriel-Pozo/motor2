@@ -117,7 +117,7 @@ describe("S-52: los guards de la puerta de las acciones de producto y de present
       const pizza = await sinTipos(darDeAltaProducto)(datos({ nombre: "Pizza", tipo: "PV", precioVenta: 100, pasoVenta: 0.25 }));
       expect(pizza.ok, pizza.mensaje).toBe(true);
       const id = (await prisma.producto.findFirstOrThrow({ where: { nombre: "Queso" } })).id;
-      const edicion = await sinTipos(actualizarProducto)(id, datos({ factorConversion: 3, precioVenta: 120 }));
+      const edicion = await sinTipos(actualizarProducto)(id, { ...datos({ factorConversion: 3, precioVenta: 120 }), precioVentaVisto: 100 });
       expect(edicion.ok, edicion.mensaje).toBe(true);
       expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id } })).factorConversion)).toBe(3);
     });

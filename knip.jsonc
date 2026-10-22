@@ -1,5 +1,5 @@
 // knip (Task #41, Fase K1): informe de código/dependencias sin uso. Se corre con `npm run analizar:muerto` (`knip`).
-// Desde la Fase K3 (2026-09-27, noche) es uno de los 7 comandos OBLIGATORIOS del gate de verificación (AGENTS.md), CON
+// Desde la Fase K3 (2026-09-27, noche) es uno de los 8 comandos OBLIGATORIOS del gate de verificación (AGENTS.md), CON
 // código de salida — 0 hallazgos es la única corrida en verde; ya no es informativo. El informe clasificado de cada
 // hallazgo (histórico, previo a K2/K3) vive en docs/informe-knip-2026-09-27.md.
 //

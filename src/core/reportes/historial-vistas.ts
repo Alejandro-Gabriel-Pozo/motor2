@@ -1,7 +1,7 @@
 import type { Proceso } from "@/core/datos/enumerados-del-esquema";
 import { redondearMoneda } from "@/core/moneda";
 import { mediana } from "@/core/estadistica/mediana";
-import { ZONA_ARGENTINA, ZONA_UTC, diaDeCalendario, inicioDelDia, sumarDias } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, ZONA_UTC, diaDeCalendario, inicioDelDia, sumarDias, esDiaISOReal, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 
 // A propósito NO importa `redondearCantidad` de `./comun`: ese módulo importa
 // `@/lib/db` a nivel de archivo, así que cualquier import de VALOR (no de
@@ -260,7 +260,7 @@ export interface RangoHistorialResuelto {
  */
 export function resolverRangoHistorial(sp: { desde?: string; hasta?: string; rango?: string }, ahora: Date, zona: string = ZONA_ARGENTINA): RangoHistorialResuelto {
   if (sp.desde || sp.hasta || sp.rango === "personalizado") {
-    return { rango: "personalizado", desde: sp.desde ? new Date(sp.desde) : undefined, hasta: sp.hasta ? new Date(sp.hasta) : undefined };
+    return { rango: "personalizado", desde: esDiaISOReal(sp.desde) ? fechaDeColumnaDate(sp.desde) : undefined, hasta: esDiaISOReal(sp.hasta) ? fechaDeColumnaDate(sp.hasta) : undefined };
   }
   if (sp.rango === "todo") return { rango: "todo", desde: undefined, hasta: undefined };
 

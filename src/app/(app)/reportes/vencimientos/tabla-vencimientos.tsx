@@ -28,7 +28,7 @@ const COLUMNAS_LOTES: ColumnaReporte<FilaLote>[] = [
     etiqueta: "Días",
     alinear: "derecha",
     valor: (l) => l.diasParaVencer,
-    render: (l) => <span className={l.diasParaVencer < 0 ? "text-red-600" : ""}>{l.diasParaVencer}</span>,
+    render: (l) => <span className={l.diasParaVencer < 0 ? "text-error" : ""}>{l.diasParaVencer}</span>,
   },
   { clave: "saldo", etiqueta: "Saldo", alinear: "derecha", valor: (l) => l.saldo, render: (l) => `${l.saldo} ${l.unidadStockNombre}` },
 ];
@@ -50,7 +50,7 @@ const COLUMNAS_CONCILIACION: ColumnaReporte<FilaConciliacion>[] = [
     etiqueta: "Estado",
     ayuda: AYUDA_ESTADO_CONCILIACION,
     valor: (c) => c.estado,
-    render: (c) => <span className={c.estado === "revisar" ? "font-medium text-red-600" : "text-neutral-500"}>{c.estado}</span>,
+    render: (c) => <span className={c.estado === "revisar" ? "font-medium text-error" : "text-tinta-tenue"}>{c.estado}</span>,
   },
 ];
 

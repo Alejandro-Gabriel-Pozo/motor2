@@ -1,3 +1,4 @@
+import { esImporteDeColumna, esPorcentajeDeDiferencia } from "@/core/datos/importe";
 import { componerPrecioDeLinea, type OpcionParaPrecio } from "./componer-precio-de-linea";
 import {
   CANTIDAD_MAXIMA_DE_OPCION,
@@ -56,8 +57,6 @@ export const MAXIMO_CONSUMOS_POR_VERSION = 50;
 export const MERMA_MAXIMA_DE_CONSUMO = 100;
 /** Tope de una cantidad de consumo (`DECIMAL(14,4)`: 10 dígitos enteros). */
 const CANTIDAD_MAXIMA_DE_CONSUMO = 1e10;
-/** Tope de un importe (`DECIMAL(14,2)`: 12 dígitos enteros). */
-const IMPORTE_MAXIMO = 1e12;
 
 const OK: ResultadoDeConfiguracion = { ok: true };
 
@@ -75,15 +74,12 @@ function esEnteroEntre(n: number, minimo: number, maximo: number): boolean {
   return Number.isInteger(n) && n >= minimo && n <= maximo;
 }
 
-/** Un monto de `DECIMAL(14,2)`: finito, con hasta 2 decimales y por debajo de 10^12 en valor absoluto. */
-export function esMontoValido(m: number): boolean {
-  return Number.isFinite(m) && Math.abs(m) < IMPORTE_MAXIMO && conDecimales(m, 2);
-}
-
-/** Un porcentaje de `DECIMAL(7,4)`: finito, mayor que -100, hasta 999,9999 y con hasta 4 decimales (`VersionDeOpcion_porcentaje_chk`). */
-export function esPorcentajeValido(p: number): boolean {
-  return Number.isFinite(p) && p > -100 && p <= 999.9999 && conDecimales(p, 4);
-}
+/**
+ * Un monto de `DECIMAL(14,2)` (finito, con hasta 2 decimales y por debajo de 10^12 en valor absoluto; admite negativos) y un porcentaje de `DECIMAL(7,4)` (finito, mayor que
+ * -100, hasta 999,9999 y con hasta 4 decimales, `VersionDeOpcion_porcentaje_chk`): son el núcleo de `core/datos/importe.ts` TAL CUAL, sin regla propia (Fase 2, C2; la
+ * equivalencia con los de antes la fija `test/core/datos-importe-nucleo.propiedades.test.ts`). Se reexportan con su nombre de siempre para los tests de esta configuración.
+ */
+export { esImporteDeColumna as esMontoValido, esPorcentajeDeDiferencia as esPorcentajeValido } from "@/core/datos/importe";
 
 /** Un factor de escala de `DECIMAL(8,4)`: mayor que 0, hasta 10 y con hasta 4 decimales (`VersionDeOpcion_factor_chk`). */
 export function esFactorValido(f: number): boolean {
@@ -92,7 +88,7 @@ export function esFactorValido(f: number): boolean {
 
 function esDiferenciaBienFormada(d: DiferenciaDePrecio): boolean {
   if (!(TIPOS_DE_DIFERENCIA as readonly string[]).includes(d.tipo)) return false;
-  return d.tipo === "MONTO" ? esMontoValido(d.monto) : esPorcentajeValido(d.porcentaje);
+  return d.tipo === "MONTO" ? esImporteDeColumna(d.monto) : esPorcentajeDeDiferencia(d.porcentaje);
 }
 
 function cuantas(n: number): string {
@@ -340,7 +336,7 @@ export function validarAdmisionDeGrupo(e: EntradaDeAdmision): ResultadoDeConfigu
     if (absoluta) {
       if (o.diferencia !== null) return falla("PRECIO_DE_OPCION_INVALIDO", `«${opcion.nombre}» tiene precio propio: no lleva diferencia.`, o.opcionId);
       const precio = o.precioAbsoluto;
-      const valido = precio !== null && esMontoValido(precio) && precio >= IMPORTE_MINIMO;
+      const valido = precio !== null && esImporteDeColumna(precio) && precio >= IMPORTE_MINIMO;
       if (!valido && (o.activo || precio !== null)) {
         return falla("PRECIO_DE_OPCION_INVALIDO", `«${opcion.nombre}» necesita un precio propio de 0,01 o más, con hasta 2 decimales.`, o.opcionId);
       }

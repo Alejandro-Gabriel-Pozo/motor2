@@ -379,6 +379,11 @@ model Producto {
   /// Con IVA incluido (D-IVA): lo que paga el cliente. El neto sin IVA se deduce con la alícuota, no se guarda.
   precioVenta Decimal @default(0) @db.Decimal(14, 2)
 
+  /// Fase 4 de la ola «precio y carta» (ADR-035): cómo se vende. `DIRECTO` (default): tiene su precio (`precioVenta`). `BASE_CONFIGURABLE`: se vende por opción, el precio final está en cada
+  /// opción de su grupo de medida en ABSOLUTO y `precioVenta` se CONSERVA pero queda bloqueado (no se cobra ni se edita). Lista cerrada (`MODOS_DE_VENTA` en src/core/opciones/tipos.ts) con los
+  /// CHECK "Producto_modoDeVenta_check" y "Producto_modoDeVenta_base_check" (solo un PV que no se produce) que agrega la migración a mano (Prisma no declara CHECK).
+  modoDeVenta String @default("DIRECTO")
+
   /// M0-IVA: alícuota de IVA con la que se VENDE este producto y la que trae la factura de proveedor cuando se COMPRA. Código semántico de lista cerrada
   /// (`ALICUOTAS_IVA` en src/core/fiscal/iva.ts), con los CHECK "Producto_alicuotaIvaVenta_check" y "Producto_alicuotaIvaCompra_check" que agrega la
   /// migración a mano (Prisma no declara CHECK). NULL = «sin declarar» (ninguna fila existente recibe un valor deducido). Que la de venta solo tenga
@@ -1859,6 +1864,10 @@ model ContenidoCartaProducto {
   especial       Boolean       @default(false)
   /// Orden dentro de su sección de carta (misma escala que ItemAgrupadoCarta.orden).
   orden          Int           @default(0)
+  /// Fase 5 de la ola «precio y carta» (DEC-11): en un producto BASE con un solo eje en la carta, `true` = el nombre del producto va arriba como encabezado y las opciones debajo; `false` (default) = la
+  /// base sale OCULTA (cada opción, una fila con su nombre completo). En un producto directo o en una base de dos ejes (que sale siempre como tabla) no decide nada. Lo escribe solo
+  /// `guardarContenidoCartaProducto` (auditado por columna) y lo copia «copiar carta».
+  mostrarNombreArriba Boolean @default(false)
   /// Carpeta VISUAL de género del POS (docs/plan-genero-carta-2026-09-26.md, G1/G2), opcional. No implica precio ni
   /// sustituibilidad (eso es ItemAgrupadoCarta) ni tiene nada que ver con Grupo (Insumo/stock) ni con CategoriaProducto (que no
   /// ubica nada en la carta): solo visual, solo del POS por ahora (G4, la carta pública `CartaV1` no lo usa).
@@ -3367,6 +3376,10 @@ model GrupoDeOpciones {
   version        Int      @default(1)
   creadoEn       DateTime @default(now())
   actualizadoEn  DateTime @default(now())
+  /// Fase 4 de la ola «precio y carta» (ADR-035, DEC-34): «se lee en la carta como», el prefijo OPCIONAL con que la carta lee cada opción («De» → «De carne»). NULL = sin prefijo. Solo VARIANTE y MEDIDA
+  /// (lo aplica el caso de uso); solo lo lee la carta (ni el precio, ni la foto de la venta, ni el POS, ni el ticket). CHECK "GrupoDeOpciones_prefijo_en_carta_chk": visible, sin espacios a los costados,
+  /// hasta 20 caracteres. Tiene su propio GRANT de UPDATE por columna para `motor2_app` (la tabla tiene privilegios por columna).
+  prefijoEnCarta String?
 
   opciones          OpcionDeGrupo[]
   productosQueLoAdmiten ProductoAdmiteGrupo[]
@@ -3492,9 +3505,8 @@ model ProductoAdmiteGrupo {
   version        Int             @default(1)
   creadoEn       DateTime        @default(now())
   actualizadoEn  DateTime        @default(now())
-  /// GO-3 (ADR-032): 1 o 2 (CHECK) si este grupo es un EJE de las combinaciones del producto (a lo sumo uno por número: índice único parcial que solo vive en la migración); NULL = no es eje. Un eje es MEDIDA o VARIANTE con
-  /// mínimo = máximo = 1, a lo sumo una MEDIDA, y no cambia mientras exista una combinación del producto (lo controla la aplicación, `validarEjesDeCombinacion`).
-  ejeDeCombinacion Int?          @db.SmallInt
+  // (GO-3a declaraba acá `ejeDeCombinacion`, el eje de las combinaciones del producto: se retiró del modelo en la Fase 3 de la ola «precio y carta», paso 3.5. La columna —nulable, NULL en
+  // todas las filas— sigue en la base hasta la migración de retiro, con su CHECK y su índice único parcial; Prisma no la ve ni la pide.)
 
   @@unique([productoId, grupoId])
   @@unique([empresaId, id])

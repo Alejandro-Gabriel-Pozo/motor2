@@ -17,7 +17,7 @@ import { listarGrupos, previsualizarFusionInsumo } from "../../src/server/action
 import { listarUnidadesParaPanel } from "../../src/server/actions/catalogo/unidades";
 import { listarProveedores } from "../../src/server/actions/catalogo/proveedores";
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
-import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
+import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/catalogo/precio-local";
 import { listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
 import { listarMotivosMermaParaPanel, listarDestinosConsumoParaPanel, listarMotivosMermaActivos, listarDestinosConsumoActivos } from "../../src/server/actions/movimientos/motivos";
 import { obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/stock/lecturas-reclasificacion";
@@ -55,8 +55,8 @@ const LECTURAS: Fila[] = [
   { nombre: "listarMatrizPermisos", clave: "gestion_permisos", pagina: "administracion/permisos/page.tsx", archivo: "permisos/permisos.ts", llamar: () => listarMatrizPermisos() },
   { nombre: "listarRoles", clave: "gestion_roles", pagina: "administracion/roles/page.tsx", archivo: "permisos/roles.ts", llamar: () => listarRoles() },
   { nombre: "listarCapacidades", clave: "capacidades_sucursal", pagina: "administracion/capacidades-sucursal/page.tsx", archivo: "permisos/capacidades-sucursal.ts", llamar: () => listarCapacidades() },
-  { nombre: "listarPreciosLocales", clave: "precio_local", pagina: "movimientos/precio-local/page.tsx", archivo: "movimientos/precio-local.ts", llamar: (s) => listarPreciosLocales(s) },
-  { nombre: "obtenerPrecioLocalProducto", clave: "precio_local", pagina: "movimientos/precio-local/page.tsx", archivo: "movimientos/precio-local.ts", llamar: (s) => obtenerPrecioLocalProducto(s, "x") },
+  { nombre: "listarPreciosLocales", clave: "precio_local", pagina: "movimientos/precio-local/page.tsx", archivo: "catalogo/precio-local.ts", llamar: (s) => listarPreciosLocales(s) },
+  { nombre: "obtenerPrecioLocalProducto", clave: "precio_local", pagina: "movimientos/precio-local/page.tsx", archivo: "catalogo/precio-local.ts", llamar: (s) => obtenerPrecioLocalProducto(s, "x") },
   { nombre: "listarSeccionesParaPanel", clave: "secciones", pagina: "movimientos/secciones/page.tsx", archivo: "movimientos/secciones.ts", llamar: (s) => listarSeccionesParaPanel(s) },
   { nombre: "listarMotivosMermaParaPanel", clave: "motivos_merma", pagina: "movimientos/motivos-merma/page.tsx", archivo: "movimientos/motivos.ts", llamar: () => listarMotivosMermaParaPanel() },
   { nombre: "listarDestinosConsumoParaPanel", clave: "motivos_destino_consumo", pagina: "movimientos/destinos-consumo/page.tsx", archivo: "movimientos/motivos.ts", llamar: () => listarDestinosConsumoParaPanel() },

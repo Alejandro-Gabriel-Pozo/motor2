@@ -127,7 +127,8 @@ describe("S-52: los guards de la puerta de las acciones de la carta", () => {
     it("control: un precio válido, y null o vacío (vuelve al precio de la empresa), se guardan", async () => {
       expect((await fijar(promoId, "7500")).ok).toBe(true);
       expect(Number((await prisma.promoCartaSucursal.findFirstOrThrow({ where: { promoCartaId: promoId } })).precioLocal)).toBe(7500);
-      expect((await fijar(promoId, "")).ok).toBe(true);
+      // Volver al de la empresa pisa el 7500 que la pantalla mostraba: va con ese precio visto (ola «precio y carta», Fase 2, A6).
+      expect((await sinTipos(guardarPrecioLocalPromoCarta)(promoId, "", 7500)).ok).toBe(true);
       expect((await prisma.promoCartaSucursal.findFirstOrThrow({ where: { promoCartaId: promoId } })).precioLocal).toBeNull();
     });
   });

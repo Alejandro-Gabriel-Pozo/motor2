@@ -43,3 +43,16 @@ export async function resolverGrupoDeProducto(productoId: string, sucursalId: st
       }),
   };
 }
+
+/**
+ * Fase 4 de la ola «precio y carta» (ADR-035): el nombre de un ítem agrupado de la carta, en ALGUNA de las sucursales dadas, en que está el producto (o `null`). Un producto que se vende por opción no puede
+ * estar en ninguno (el renglón agrupado muestra su precio guardado, que no se cobra): lo mira la edición del producto al pasarlo a base, con todas las sucursales de la empresa y la fila del producto tomada.
+ */
+export async function itemAgrupadoDelProductoEn(productoId: string, sucursalIds: readonly string[], db: Db): Promise<string | null> {
+  if (sucursalIds.length === 0) return null;
+  const fila = await db.opcionItemAgrupadoCarta.findFirst({
+    where: { productoId, OR: sucursalIds.map((sucursalId) => whereCartaDeSucursal(sucursalId)) },
+    select: { itemAgrupadoCarta: { select: { nombre: true } } },
+  });
+  return fila?.itemAgrupadoCarta.nombre ?? null;
+}

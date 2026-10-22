@@ -6,6 +6,10 @@ import { crearEnvioDirectoTransferencia } from "@/server/actions/traspasos/trasp
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
 
 interface Opcion {
   id: string;
@@ -57,17 +61,14 @@ export function EnviarForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1 text-sm">
-        Sucursal a la que se lo mandás
-        <select value={destinoSucursalId} onChange={(e) => setDestinoSucursalId(e.target.value)} required className="rounded border px-3 py-2">
-          <option value="">Elegí una sucursal</option>
-          {sucursales.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Selector etiqueta="Sucursal a la que se lo mandás" value={destinoSucursalId} onChange={(e) => setDestinoSucursalId(e.target.value)} required>
+        <option value="">Elegí una sucursal</option>
+        {sucursales.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nombre}
+          </option>
+        ))}
+      </Selector>
 
       <label className="flex flex-col gap-1 text-sm">
         Producto
@@ -76,36 +77,34 @@ export function EnviarForm({
 
       <label className="flex flex-col gap-1 text-sm">
         Cantidad
-        <CampoNumero value={cantidad} onChange={setCantidad} required />
+        <CampoNumero tipo="cantidad" value={cantidad} onChange={setCantidad} required />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Sección propia de la que sale (se descuenta YA, al enviar)
-        <select value={seccionOrigenId} onChange={(e) => setSeccionOrigenId(e.target.value)} required className="rounded border px-3 py-2">
-          <option value="">Elegí una sección</option>
-          {secciones.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-            </option>
-          ))}
-          {seccionesDesactivadas.map((s) => (
-            <option key={s.id} value={s.id}>
-              {`${s.nombre} (desactivada)`}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Selector etiqueta="Sección propia de la que sale (se descuenta YA, al enviar)" value={seccionOrigenId} onChange={(e) => setSeccionOrigenId(e.target.value)} required>
+        <option value="">Elegí una sección</option>
+        {secciones.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nombre}
+          </option>
+        ))}
+        {seccionesDesactivadas.map((s) => (
+          <option key={s.id} value={s.id}>
+            {`${s.nombre} (desactivada)`}
+          </option>
+        ))}
+      </Selector>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Detalle (opcional)
-        <input value={detalle} onChange={(e) => setDetalle(e.target.value)} className="rounded border px-3 py-2" />
-      </label>
+      <Campo etiqueta="Detalle (opcional)" value={detalle} onChange={(e) => setDetalle(e.target.value)} />
 
-      {mensaje && <p className={`text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+      {mensaje && (
+        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
+      )}
 
-      <button type="submit" disabled={pending} className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+      <Boton type="submit" disabled={pending} className="self-start">
         {pending ? "Enviando..." : "Enviar"}
-      </button>
+      </Boton>
     </form>
   );
 }

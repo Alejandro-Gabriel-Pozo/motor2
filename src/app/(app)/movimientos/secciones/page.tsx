@@ -5,15 +5,17 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { crearSeccion, actualizarActivaSeccion, actualizarRespaldoSeccion, renombrarSeccion, listarSeccionesParaPanel } from "@/server/actions/movimientos/secciones";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { Campo } from "@/ui/primitivas/campo";
 
 export default async function SeccionesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "secciones", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const secciones = await listarSeccionesParaPanel(ctx.sucursalId);
 
@@ -21,71 +23,75 @@ export default async function SeccionesPage() {
     <div className="space-y-8">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold">Secciones (depósitos/ubicaciones de esta sucursal)</h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-tinta-suave">
           Si una sección no sirve de respaldo, las ventas del salón solo la usan cuando es la sección habitual de un producto.
         </p>
       </div>
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-neutral-500">
-            <th className="py-2">Nombre</th>
-            <th>Activa</th>
-            <th>Respaldo automático en ventas</th>
-            <th><span className="sr-only">Acciones</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {secciones.map((s) => (
-            <tr key={s.id} className="border-b align-top">
-              <td className="py-2">
-                <FormConResultado
-                  accion={async (formData: FormData) => {
-                    "use server";
-                    return renombrarSeccion(s.id, String(formData.get("nombre") ?? ""));
-                  }}
-                  className="flex gap-1"
-                >
-                  <input name="nombre" defaultValue={s.nombre} className="w-40 rounded border px-2 py-1" />
-                  <button type="submit" className="text-sm underline inline-flex items-center gap-1">
-                    <IconoDeAccion id="editar" />
-                    Renombrar
-                  </button>
-                </FormConResultado>
-              </td>
-              <td>{s.activa ? "Sí" : "No"}</td>
-              <td>
-                {/* Sí/No y su botón en la MISMA celda (el flex va en el form, no en el <td>): la celda «Activa» sigue siendo la única que dice solo «Sí»/«No». */}
-                <FormConResultado
-                  accion={async () => {
-                    "use server";
-                    return actualizarRespaldoSeccion(s.id, !s.sirveDeRespaldoEnVentas);
-                  }}
-                  className="flex items-baseline gap-2"
-                >
-                  <span>{s.sirveDeRespaldoEnVentas ? "Sí" : "No"}</span>
-                  <button type="submit" className="text-sm underline">
-                    {s.sirveDeRespaldoEnVentas ? "Quitar del respaldo" : "Usar de respaldo"}
-                  </button>
-                </FormConResultado>
-              </td>
-              <td>
-                <FormConResultado
-                  accion={async () => {
-                    "use server";
-                    return actualizarActivaSeccion(s.id, !s.activa);
-                  }}
-                >
-                  <button type="submit" className="text-sm underline inline-flex items-center gap-1">
-                    <IconoDeAccion id="activar" />
-                    {s.activa ? "Desactivar" : "Activar"}
-                  </button>
-                </FormConResultado>
-              </td>
+      <div role="region" aria-label="Secciones de esta sucursal" tabIndex={0} className="relative overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-tinta-tenue">
+              <th className="py-2">Nombre</th>
+              <th>Activa</th>
+              <th>Respaldo automático en ventas</th>
+              <th><span className="sr-only">Acciones</span></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {secciones.map((s) => (
+              <tr key={s.id} className="border-b align-top">
+                <td className="py-2">
+                  <FormConResultado
+                    accion={async (formData: FormData) => {
+                      "use server";
+                      return renombrarSeccion(s.id, String(formData.get("nombre") ?? ""));
+                    }}
+                    className="flex gap-1"
+                  >
+                    <div className="w-40">
+                      <Campo name="nombre" aria-label={`Nombre de la sección "${s.nombre}"`} defaultValue={s.nombre} tamano="compacto" />
+                    </div>
+                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                      <IconoDeAccion id="editar" />
+                      Renombrar
+                    </BotonDeServidor>
+                  </FormConResultado>
+                </td>
+                <td>{s.activa ? "Sí" : "No"}</td>
+                <td>
+                  {/* Sí/No y su botón en la MISMA celda (el flex va en el form, no en el <td>): la celda «Activa» sigue siendo la única que dice solo «Sí»/«No». */}
+                  <FormConResultado
+                    accion={async () => {
+                      "use server";
+                      return actualizarRespaldoSeccion(s.id, !s.sirveDeRespaldoEnVentas);
+                    }}
+                    className="flex items-baseline gap-2"
+                  >
+                    <span>{s.sirveDeRespaldoEnVentas ? "Sí" : "No"}</span>
+                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                      {s.sirveDeRespaldoEnVentas ? "Quitar del respaldo" : "Usar de respaldo"}
+                    </BotonDeServidor>
+                  </FormConResultado>
+                </td>
+                <td>
+                  <FormConResultado
+                    accion={async () => {
+                      "use server";
+                      return actualizarActivaSeccion(s.id, !s.activa);
+                    }}
+                  >
+                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                      <IconoDeAccion id="activar" />
+                      {s.activa ? "Desactivar" : "Activar"}
+                    </BotonDeServidor>
+                  </FormConResultado>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <FormConResultado
         accion={async (formData: FormData) => {
@@ -94,10 +100,10 @@ export default async function SeccionesPage() {
         }}
         className="flex max-w-md gap-2"
       >
-        <input name="nombre" placeholder="nombre de la sección" required className="flex-1 rounded border px-3 py-2" />
-        <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-          Crear
-        </button>
+        <div className="flex-1">
+          <Campo name="nombre" aria-label="Nombre de la sección" placeholder="nombre de la sección" required />
+        </div>
+        <BotonDeServidor type="submit">Crear</BotonDeServidor>
       </FormConResultado>
     </div>
   );

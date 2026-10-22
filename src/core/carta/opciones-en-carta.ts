@@ -32,12 +32,11 @@ export interface ResumenDePreciosParaCarta {
   vendible: boolean;
 }
 
-/** Una opción en la carta: un tamaño con su `precio` final, o algo con su `recargo` (suma o resta; nunca 0). */
-export interface OpcionDeGrupoCartaV1 {
-  nombre: string;
-  precio?: number;
-  recargo?: number;
-}
+/**
+ * Una opción en la carta (Fase 5, «carta pareja»: unión DISCRIMINADA por `tipo`, antes dos claves opcionales que nada impedía llenar juntas o dejar vacías): un tamaño con su precio FINAL
+ * (`tipo: "final"`), o algo que suma o resta sobre lo que el precio ya incluye (`tipo: "recargo"`; nunca 0). El JSON suma solo la clave `tipo`: `precio` y `recargo` siguen igual.
+ */
+export type OpcionDeGrupoCartaV1 = { nombre: string } & ({ tipo: "final"; precio: number } | { tipo: "recargo"; recargo: number });
 
 /** Un grupo de opciones en la carta que cambia el precio: los tamaños («Tamaño») o los recargos («Preparación», «Extras»). */
 export interface GrupoCartaV1 {
@@ -53,8 +52,8 @@ export interface OpcionesSinCostoCartaV1 {
 
 /** Un grupo de tamaños: solo si los precios finales NO son todos iguales (si lo fueran, el precio del producto ya lo dice todo y el tamaño lo elige el mozo). */
 function grupoDeTamanos(g: ResumenDePreciosParaCarta["grupos"][number]): GrupoCartaV1 | null {
-  const opciones = g.opciones.flatMap((o): OpcionDeGrupoCartaV1[] => (o.precioFinal === null ? [] : [{ nombre: o.nombre, precio: redondearMoneda(o.precioFinal) }]));
-  const preciosDistintos = new Set(opciones.map((o) => o.precio));
+  const opciones = g.opciones.flatMap((o): OpcionDeGrupoCartaV1[] => (o.precioFinal === null ? [] : [{ nombre: o.nombre, tipo: "final", precio: redondearMoneda(o.precioFinal) }]));
+  const preciosDistintos = new Set(opciones.map((o) => (o.tipo === "final" ? o.precio : null)));
   return preciosDistintos.size > 1 ? { nombre: g.nombre, opciones } : null;
 }
 
@@ -68,7 +67,7 @@ function recargosDelGrupo(g: ResumenDePreciosParaCarta["grupos"][number]): { nom
 
 /** Un grupo de recargos: solo las opciones que suman o restan algo. */
 function grupoDeRecargos(g: ResumenDePreciosParaCarta["grupos"][number]): GrupoCartaV1 | null {
-  const opciones = recargosDelGrupo(g).flatMap((o): OpcionDeGrupoCartaV1[] => (o.recargo === 0 ? [] : [{ nombre: o.nombre, recargo: o.recargo }]));
+  const opciones = recargosDelGrupo(g).flatMap((o): OpcionDeGrupoCartaV1[] => (o.recargo === 0 ? [] : [{ nombre: o.nombre, tipo: "recargo", recargo: o.recargo }]));
   return opciones.length > 0 ? { nombre: g.nombre, opciones } : null;
 }
 

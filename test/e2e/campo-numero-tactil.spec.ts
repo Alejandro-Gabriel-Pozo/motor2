@@ -26,7 +26,7 @@ async function sembrar(sucursalId: string) {
     grupos: [{ grupo: tamano, modoPrecio: "ABSOLUTO", preciosAbsolutos: { Chico: 2500, Grande: 3100 } }],
   });
   const opcionId = tamano.opciones["Grande"]!.opcionId;
-  // Un precio decimal ya cargado: el campo lo muestra «0,02» y, con el foco, «0.02».
+  // Un precio decimal ya cargado: el campo lo muestra «0,02» y, con el foco, «0,02» sin formato (2c: con coma, la notación argentina; antes «0.02», que ahora se leería ambiguo con tres cifras).
   await prisma.precioLocalDeOpcion.create({ data: { sucursalId, productoId, opcionId, precio: "0.02", habilitado: true } });
   return { etiqueta: `${nombre} · Grande`, productoId, opcionId };
 }
@@ -65,7 +65,7 @@ test.describe("celular (375 px, táctil)", () => {
 
     await d.campo.tap();
     // El primer toque (el que da el foco) deja el número crudo seleccionado entero.
-    await expect.poll(() => seleccion(d.campo), { message: "todo el valor seleccionado tras el toque" }).toEqual({ valor: "0.02", inicio: 0, fin: 4 });
+    await expect.poll(() => seleccion(d.campo), { message: "todo el valor seleccionado tras el toque" }).toEqual({ valor: "0,02", inicio: 0, fin: 4 });
     await page.keyboard.type("1,5");
     await expect(d.campo, "lo tipeado reemplaza al valor anterior (antes quedaba «0.021,5» o «1,50.02»)").toHaveValue("1,5");
     await capturar(page, "campo-numero-tactil-tipeado");
@@ -88,7 +88,7 @@ test.describe("escritorio (clic y teclado)", () => {
     const d = await abrir(page, sucursalId);
 
     await d.campo.click();
-    await expect.poll(() => seleccion(d.campo), { message: "todo el valor seleccionado tras el clic" }).toEqual({ valor: "0.02", inicio: 0, fin: 4 });
+    await expect.poll(() => seleccion(d.campo), { message: "todo el valor seleccionado tras el clic" }).toEqual({ valor: "0,02", inicio: 0, fin: 4 });
     await page.keyboard.type("1,5");
     await expect(d.campo, "lo tipeado reemplaza al valor anterior").toHaveValue("1,5");
 
@@ -101,7 +101,7 @@ test.describe("escritorio (clic y teclado)", () => {
     const d = await abrir(page, sucursalId);
 
     await d.campo.focus();
-    await expect.poll(() => seleccion(d.campo), { message: "todo el valor seleccionado al tomar el foco" }).toEqual({ valor: "0.02", inicio: 0, fin: 4 });
+    await expect.poll(() => seleccion(d.campo), { message: "todo el valor seleccionado al tomar el foco" }).toEqual({ valor: "0,02", inicio: 0, fin: 4 });
     await page.keyboard.type("1,5");
     await expect(d.campo).toHaveValue("1,5");
 

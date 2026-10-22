@@ -1,4 +1,4 @@
-import type { ConsumoDeConfiguracion, DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import type { ComoCambiaElPrecio, ConsumoDeConfiguracion, DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -28,10 +28,12 @@ export interface ComandoCrearGrupoDeOpciones {
   tipo: TipoDeGrupoDeOpciones;
   cantidadMinima: number;
   cantidadMaxima: number;
+  /** Fase 4 (ADR-035): «se lee en la carta como» (`null` o ausente = sin prefijo). Solo VARIANTE y MEDIDA. */
+  prefijoEnCarta?: string | null;
 }
 
 /**
- * `yaExistia`: había un grupo con ese nombre (sin distinguir mayúsculas), el mismo tipo y las mismas cantidades — repetir el alta (un doble clic, un reintento) devuelve el existente
+ * `yaExistia`: había un grupo con ese nombre (sin distinguir mayúsculas), el mismo tipo, las mismas cantidades y el mismo «se lee en la carta como» — repetir el alta (un doble clic, un reintento) devuelve el existente
  * en vez de crear otro. Con el nombre de otro grupo distinto, `NOMBRE_REPETIDO`.
  */
 export type ResultadoCrearGrupoDeOpciones = ResultadoCaso<{ grupoId: string; yaExistia: boolean }, "NOMBRE_REPETIDO" | ConfiguracionInvalida>;
@@ -43,6 +45,11 @@ export interface ComandoEditarGrupoDeOpciones {
   cantidadMinima: number;
   cantidadMaxima: number;
   activo: boolean;
+  /**
+   * Fase 4 (ADR-035): «se lee en la carta como» (`null` = sin prefijo; solo VARIANTE y MEDIDA). `undefined` = queda como estaba (un pedido que no lo manda). Como el resto de la fila, entra en la
+   * comparación de la versión: un formulario viejo que cambia otra cosa arrastra el prefijo viejo y se rechaza con `VERSION_DESACTUALIZADA`.
+   */
+  prefijoEnCarta?: string | null;
 }
 
 /** `productosAfectados` (D-4): cuántos productos que admiten el grupo quedan sin poder venderse con este cambio (un grupo obligatorio apagado). Se avisa, no se bloquea. */
@@ -189,8 +196,81 @@ export interface ComandoVincularGrupoEnProducto {
   vinculado: boolean;
 }
 
-/** `NO_VINCULADO`: el producto nunca tuvo ese grupo (no hay nada que quitar ni que volver a vincular: se agrega desde «Agregar grupo»). */
+/**
+ * `NO_VINCULADO`: el producto nunca tuvo ese grupo (no hay nada que quitar ni que volver a vincular: se agrega desde «Agregar grupo»). `BASE_SIN_PRECIO_FINAL` (Fase 4, ADR-035): el producto se vende
+ * por opción y quitar ese grupo lo deja sin grupo de precio final (se vendería suelto a su precio guardado): primero se cambia «¿Cómo se vende?» a Directo.
+ */
 export type ResultadoVincularGrupoEnProducto = ResultadoCaso<
   { huboCambio: boolean },
-  "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_ELEGIBLE" | "GRUPO_NO_ENCONTRADO" | "NO_VINCULADO" | "VERSION_DESACTUALIZADA" | "GRUPO_INACTIVO" | "OPCION_INACTIVA" | ConfiguracionInvalida
+  "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_ELEGIBLE" | "GRUPO_NO_ENCONTRADO" | "NO_VINCULADO" | "VERSION_DESACTUALIZADA" | "GRUPO_INACTIVO" | "OPCION_INACTIVA" | "BASE_SIN_PRECIO_FINAL" | ConfiguracionInvalida
+>;
+
+// ───────────────────────────── Fase 6 (el espacio del producto): crear un grupo sin salir del producto ─────────────────────────────
+
+/**
+ * Una opción del grupo que se crea desde el producto. `importe`, según lo que responde «¿Cambia el precio?»: PRECIO_FINAL, el precio final de esa opción (mayor que 0); SUMA, lo que suma sobre el precio
+ * del producto (0 o más); INCLUIDO, `null` (una opción incluida no lleva importe). Siempre en pesos, con a lo sumo 2 decimales.
+ */
+export interface OpcionNuevaEnElProducto {
+  nombre: string;
+  importe: number | null;
+}
+
+/**
+ * El comando compuesto «crear un grupo de opciones y agregarlo a este producto», TODO O NADA (ADR-030, «El comando compuesto»): el grupo, sus opciones con su versión 1 y lo que el producto admite de
+ * ellas, en UNA transacción. La forma del grupo (tipo y cantidades) sale de `respuesta` (`formaDelGrupoPorRespuesta`): no se elige aparte. Nunca modifica un grupo que ya está en la biblioteca.
+ */
+export interface ComandoCrearGrupoEnElProducto {
+  productoId: string;
+  nombre: string;
+  respuesta: ComoCambiaElPrecio;
+  /** «Se lee en la carta como» (`null` = sin prefijo). Solo SUMA y PRECIO_FINAL (el grupo es VARIANTE o MEDIDA). */
+  prefijoEnCarta: string | null;
+  /** De 1 a `MAX_OPCIONES_EN_UN_ALTA`, con nombres que no se repiten sin distinguir mayúsculas. */
+  opciones: OpcionNuevaEnElProducto[];
+}
+
+/**
+ * `yaExistia`: el grupo ya estaba en la biblioteca con ESAS mismas opciones (mismo conjunto de nombres activos y mismo precio de cada una) y se adoptó tal cual, o ya estaba en el producto exactamente
+ * como se pedía (un doble clic, un reintento): no se creó otro. Un grupo de la biblioteca que se llama igual pero es otro se rechaza con `NOMBRE_REPETIDO` y no se toca. `GRUPO_INACTIVO`: el grupo
+ * que se adoptaría está archivado.
+ */
+export type ResultadoCrearGrupoEnElProducto = ResultadoCaso<
+  { grupoId: string; admisionId: string; yaExistia: boolean },
+  "PRODUCTO_NO_ENCONTRADO" | "PRODUCTO_NO_ELEGIBLE" | "NOMBRE_REPETIDO" | "VERSION_DESACTUALIZADA" | "CONFIGURACION_INVALIDA" | "GRUPO_INACTIVO" | "REFERENCIA_NO_ENCONTRADA"
+>;
+
+/**
+ * El comando compuesto «+ Opción» / «+ Extra» (ADR-030, «El comando compuesto»): AGREGAR UNA OPCIÓN a un grupo que el producto ya usa y admitirla, todo o nada, en UNA transacción. «+ Opción» es el de un grupo
+ * de variantes, de medidas o de incluidas; «+ Extra», el de un grupo de adicionales (la opción lleva su producto de respaldo, que crea el sistema). El grupo es de la biblioteca: la opción nueva queda en él, pero
+ * solo ESTE producto la admite. `versionEsperada` es la `version` de lo que el producto admite del grupo que vio la pantalla (control optimista). `importe` según el grupo, que lee el caso de uso: el precio final de la
+ * opción en una medida en ABSOLUTO (mayor que 0), lo que suma en una variante, una medida en DIFERENCIA o un adicional (0 o más), `null` en un grupo incluido. `unidadStockId`: solo y siempre en un adicional.
+ */
+export interface ComandoCrearOpcionEnElProducto {
+  productoId: string;
+  grupoId: string;
+  versionEsperada: number;
+  nombre: string;
+  importe: number | null;
+  unidadStockId: string | null;
+}
+
+/**
+ * `yaExistia`: la opción ya estaba en el grupo, igual a la pedida, y el producto ya la admitía con ese importe (un doble clic, un reintento): no se hizo nada más. `GRUPO_NO_ADMITIDO`: el producto no usa el grupo (o
+ * lo quitó). `NOMBRE_REPETIDO`: el grupo ya tiene una opción con ese nombre pero distinta, o el producto ya la admite con otro importe: no se pisa. `NOMBRE_DE_ANCLA_REPETIDO`: ya hay un producto con el nombre del
+ * extra (el respaldo lleva su mismo nombre).
+ */
+export type ResultadoCrearOpcionEnElProducto = ResultadoCaso<
+  { opcionId: string; admisionId: string; yaExistia: boolean },
+  | "PRODUCTO_NO_ENCONTRADO"
+  | "PRODUCTO_NO_ELEGIBLE"
+  | "GRUPO_NO_ENCONTRADO"
+  | "GRUPO_INACTIVO"
+  | "GRUPO_NO_ADMITIDO"
+  | "NOMBRE_REPETIDO"
+  | "NOMBRE_DE_ANCLA_REPETIDO"
+  | "VERSION_DESACTUALIZADA"
+  | "CONFIGURACION_INVALIDA"
+  | "REFERENCIA_NO_ENCONTRADA"
+  | "OPCION_INACTIVA"
 >;

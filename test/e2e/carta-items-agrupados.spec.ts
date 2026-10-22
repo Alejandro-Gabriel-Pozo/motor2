@@ -36,7 +36,7 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
 
     // 1. Nuevo ítem agrupado, con descripción y ★.
     const nuevo = page.locator("form", { has: page.getByRole("heading", { name: "Nuevo ítem agrupado" }) });
-    await nuevo.getByLabel("Nombre", { exact: true }).fill(nombreItem);
+    await nuevo.getByRole("textbox", { name: "Nombre", exact: true }).fill(nombreItem);
     await nuevo.getByLabel(/^Sección de carta/).selectOption({ label: seccion.nombre });
     await expect(nuevo.getByLabel(/^Imagen/)).toHaveCount(0);
     await nuevo.getByLabel("Descripción (opcional)").fill("Bien fría");
@@ -123,7 +123,7 @@ test("crear un ítem agrupado eligiendo sus productos en el alta: entran los del
   try {
     await page.goto("/carta/agrupados");
     const nuevo = page.locator("form", { has: page.getByRole("heading", { name: "Nuevo ítem agrupado" }) });
-    await nuevo.getByLabel("Nombre", { exact: true }).fill(nombreItem);
+    await nuevo.getByRole("textbox", { name: "Nombre", exact: true }).fill(nombreItem);
     await nuevo.getByLabel(/^Sección de carta/).selectOption({ label: seccion.nombre });
     await nuevo.getByLabel(/^Productos del ítem/).selectOption([coca.id, fanta.id, sprite.id, tonica.id]);
     await nuevo.getByRole("button", { name: "Crear ítem agrupado" }).click();

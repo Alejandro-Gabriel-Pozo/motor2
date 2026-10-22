@@ -31,12 +31,7 @@ export { componerPrecioDeLinea } from "./componer-precio-de-linea";
 export type { CodigoDeErrorDePrecio, OpcionParaPrecio } from "./componer-precio-de-linea";
 export { versionVigente } from "./version-vigente";
 export type { TipoDeDiferencia } from "./tipos";
-// GO-3b (ADR-032, frente A): el precio por combinación. Los ejes los valida la administración (`fijar-ejes-de-combinacion.ts`).
-export { validarEjesDeCombinacion } from "./combinaciones";
-export type { GrupoParaEjes } from "./combinaciones";
-// GO-3b (F5, I1): la venta de una línea con combinación (`core/pos/linea-configurada.ts`).
-export { claveDeCombinacion, entradaConPrecioDeCombinacion, identidadDeCombinacion, resolverPrecioDeCombinacion } from "./combinaciones";
-export type { CombinacionParaPrecio, PrecioDeCombinacion } from "./combinaciones";
+// (GO-3b exportaba acá el precio por combinación, `combinaciones.ts`: se retiró con GO-3a en la Fase 3 de la ola «precio y carta».)
 
 // GO-2d (las pantallas de opciones de venta, ADR-030 «Pantallas»): los textos puros que comparten la administración, el selector del POS y la carta pública.
 export { ayudaDelTipoDeGrupo, espejoDeDiferencia, nombreDelTipoDeGrupo, resumenDeConsumos, textoDeDiferencia, textoDeLimites, textoDePorcentaje } from "./presentacion";
@@ -47,3 +42,20 @@ export type { CriterioDeLimpieza, GrupoParaLimpiar, OpcionParaLimpiar, VentasRec
 
 // OPCIONES-FACTOR: el factor de un tamaño en palabras («Factor 1,3 = lleva 30% más que el tamaño base»), para el campo «El factor» de `/catalogo/opciones/[grupoId]`.
 export { leerFactorDeEscala } from "./factor-de-escala";
+
+// Fase 4 de la ola «precio y carta» (ADR-035): el modo de venta del producto (directo o «se vende por opción»).
+export { MENSAJE_FALTA_PRECIO_FINAL, esBaseConfigurable, precioDeReferenciaDeAdmisiones, rechazoDeAdmisionesDeBase, rechazoDeBaseConfigurable, rechazoDelProductoComoBase } from "./modo-de-venta";
+export type { AdmisionParaSerBase, ProductoParaSerBase } from "./modo-de-venta";
+export { MODOS_DE_VENTA } from "./tipos";
+export type { ModoDeVenta } from "./tipos";
+export { LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA, MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA, admitePrefijoEnCarta, leerOpcionEnCarta } from "./lectura-en-carta";
+// Fase 5 («carta pareja»): el papel de cada grupo en la carta y el orden en que se leen y se eligen (lo comparten la carta y el diálogo del POS), y los textos de las aclaraciones.
+export { ejesDeLaCarta, opcionesDelEje, ordenarPorRol, primeraEnMinuscula, rolDelGrupo, unirConO } from "./lectura-en-carta";
+export type { EjesDeLaCarta, GrupoParaRol, RolDelGrupoEnCarta } from "./lectura-en-carta";
+// Fase 6 («el espacio del producto», 6.9a): la lectura del precio de una opción mientras se teclea y la forma de un grupo según «¿Cambia el precio?». La frase recibe el formateador de dinero
+// por parámetro (`core/pos` ya importa `core/opciones`: importarlo desde acá armaría un ciclo).
+export { fraseDeLecturaDePrecio, formaDelGrupoPorRespuesta, leerPrecioDeOpcion, respuestaDelGrupo } from "./lectura-de-precio";
+export type { ComoCambiaElPrecio, FormaDelGrupo, LecturaDePrecio } from "./lectura-de-precio";
+// Fase 6 (6.15a): la lectura del precio dentro de «Opciones de venta» de un producto (qué filas se leen y contra qué referencia).
+export { leerPrecioDeFilaDeAdmision, referenciaDePrecioDeAdmisiones } from "./lectura-de-precio-en-admision";
+export type { AdmisionParaLaReferencia, FilaDeAdmisionParaLeer, ReferenciaDePrecio } from "./lectura-de-precio-en-admision";

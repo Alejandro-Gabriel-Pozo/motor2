@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import type { ResultadoAccion, SincronizablePrecioGrupo } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 
 const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -17,8 +19,11 @@ export function SincronizarPrecioGrupo({
   alTerminar,
 }: {
   sincronizable: SincronizablePrecioGrupo;
-  /** Llama a la acción de sincronizar (sincronizarPrecioGrupoCarta / sincronizarPrecioLocalGrupoCarta) con los hermanos y el precio. */
-  aplicar: (productoIds: string[], precio: number) => Promise<ResultadoAccion>;
+  /**
+   * Llama a la acción de sincronizar (sincronizarPrecioGrupoCarta / sincronizarPrecioLocalGrupoCarta) con los hermanos y el precio. Cada hermano va con el
+   * `precioActual` que esta pantalla le mostró (el valor visto): la acción lo vuelve a comparar con la base antes de escribir.
+   */
+  aplicar: (hermanos: { productoId: string; precioActual: number }[], precio: number) => Promise<ResultadoAccion>;
   /** Cuando se aplicó bien o se eligió dejarlo como está. */
   alTerminar: (aplicado: boolean) => void;
 }) {
@@ -27,21 +32,20 @@ export function SincronizarPrecioGrupo({
   const cantidad = s.hermanos.length;
 
   return (
-    <div className="flex flex-col gap-2 rounded border border-amber-300 p-3 text-sm dark:border-amber-700" data-sincronizar-precio-grupo={s.nombreItem}>
-      <p className="text-amber-700 dark:text-amber-600">
+    <div className="flex flex-col gap-2 rounded border border-aviso p-3 text-sm" data-sincronizar-precio-grupo={s.nombreItem}>
+      <p className="text-aviso-tinta">
         «{s.nombreItem}» tiene {cantidad} {cantidad === 1 ? "opción más" : "opciones más"} a otro precio:{" "}
         {s.hermanos.map((h) => `${h.nombre} (${pesos(h.precioActual)})`).join(", ")}. ¿Aplicar {pesos(s.precioNuevo)} también?
       </p>
-      <p className="text-neutral-500 dark:text-neutral-400">Si no, la carta muestra el mayor de los precios hasta que se igualen.</p>
+      <p className="text-tinta-tenue">Si no, la carta muestra el mayor de los precios hasta que se igualen.</p>
       <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
+        <Boton
+          tamano="compacto"
           disabled={pending}
-          className="rounded bg-neutral-900 px-3 py-1.5 text-white max-md:min-h-11 disabled:opacity-50"
           onClick={() =>
             startTransition(async () => {
               const r = await aplicar(
-                s.hermanos.map((h) => h.productoId),
+                s.hermanos.map((h) => ({ productoId: h.productoId, precioActual: h.precioActual })),
                 s.precioNuevo
               );
               setResultado(r);
@@ -50,15 +54,15 @@ export function SincronizarPrecioGrupo({
           }
         >
           {pending ? "Aplicando..." : `Aplicar ${pesos(s.precioNuevo)} también`}
-        </button>
-        <button type="button" disabled={pending} className="underline disabled:opacity-50" onClick={() => alTerminar(false)}>
+        </Boton>
+        <Boton variante="enlace" tamano="en-fila" disabled={pending} onClick={() => alTerminar(false)}>
           Dejar como está
-        </button>
+        </Boton>
       </div>
       {resultado && (
-        <p role={resultado.ok ? "status" : "alert"} className={resultado.ok ? "text-green-700" : "text-red-600"}>
+        <Aviso variante={resultado.ok ? "exito" : "error"} forma="en-linea">
           {resultado.mensaje}
-        </p>
+        </Aviso>
       )}
     </div>
   );

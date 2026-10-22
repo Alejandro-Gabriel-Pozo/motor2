@@ -104,8 +104,7 @@ const ACCIONES_DE_EMPRESA_DE_D15: readonly AccionClave[] = [
   // GO-2a: el catálogo de opciones de venta y lo que admite cada producto. De empresa, piso administrador, semilla solo `admin` (clase A).
   "opciones_definir",
   "producto_opciones_admitidas",
-  // GO-3b: las tarifas compartidas de las combinaciones. De empresa, piso administrador, semilla solo `admin` (clase A).
-  "grupos_de_precio_definir",
+  // (GO-3b sumó `grupos_de_precio_definir`, las tarifas de las combinaciones; la Fase 3 de la ola «precio y carta» la retiró con GO-3a.)
 ];
 
 const conPiso = (piso: NivelDeAccion) => ACCIONES.filter((a) => (a.nivelMinimo as NivelDeAccion) === piso).map((a) => a.clave as AccionClave);
@@ -146,8 +145,8 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     expect(nivelMinimoDeAccion("ver_auditoria")).toBe("administrador_sistema");
   });
 
-  it("(vii) D15: las 20 acciones de empresa de piso administrador (eran 19 antes de S-10/D1; 16 hasta M3a, que suma `compra_repartir`; 17 hasta GO-2a, que suma `opciones_definir` y `producto_opciones_admitidas`; 19 hasta GO-3b, que suma `grupos_de_precio_definir`), congeladas (blanco de F3); el rango 2 las alcanzaría por piso, pero ninguna se le da por defecto", () => {
-    expect(ACCIONES_DE_EMPRESA_DE_D15).toHaveLength(20);
+  it("(vii) D15: las 19 acciones de empresa de piso administrador (eran 19 antes de S-10/D1; 16 hasta M3a, que suma `compra_repartir`; 17 hasta GO-2a, que suma `opciones_definir` y `producto_opciones_admitidas`; 19 hasta GO-3b, que suma `grupos_de_precio_definir`; 20 hasta la Fase 3 de la ola «precio y carta», que la retira), congeladas (blanco de F3); el rango 2 las alcanzaría por piso, pero ninguna se le da por defecto", () => {
+    expect(ACCIONES_DE_EMPRESA_DE_D15).toHaveLength(19);
     const deEmpresaDePisoAdministrador = ACCIONES.filter((a) => a.contexto === "empresa" && (a.nivelMinimo as NivelDeAccion) === "administrador").map((a) => a.clave);
     expect(ordenadas(deEmpresaDePisoAdministrador)).toEqual(ordenadas(ACCIONES_DE_EMPRESA_DE_D15));
     for (const clave of ACCIONES_DE_EMPRESA_DE_D15) expect(nivelAlcanzaElPiso("administrador", nivelMinimoDeAccion(clave)), clave).toBe(true);
@@ -155,7 +154,8 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     for (const a of ACCIONES.filter((x) => (ACCIONES_DE_EMPRESA_DE_D15 as readonly string[]).includes(x.clave))) expect([...a.rolesEditarSemilla], a.clave).toEqual(["admin"]);
   });
 
-  it("el conteo del catálogo: 55 operario, 63 administrador, 12 administrador de sistema, 2 gerente", () => {
+  it("el conteo del catálogo: 55 operario, 62 administrador, 12 administrador de sistema, 2 gerente", () => {
+    // 63 → 62 administrador: la Fase 3 de la ola «precio y carta» retira `grupos_de_precio_definir` (GO-3a).
     // 54 → 55 operario: GO-3b suma `promo_menu_del_dia` (clase O).
     // 62 → 63 administrador: GO-3b suma `grupos_de_precio_definir` (clase A).
     // 53 → 54 operario: GO-2a suma `opcion_apagar_en_sucursal` (clase O).
@@ -163,6 +163,6 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     // 52 → 53 operario: Paquete 3 M3a suma `compra_recibir` (clase O).
     // 59 → 60 administrador: Paquete 3 M3a suma `compra_repartir` (clase A).
     // 51 → 52: M.2 P1 suma `producto_campos_sensibles` (piso operario, clase O); los otros pisos no se mueven.
-    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([55, 63, 12, 2]);
+    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([55, 62, 12, 2]);
   });
 });

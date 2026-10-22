@@ -43,7 +43,7 @@ const DATOS_SENSIBLES: Record<string, DatoSensible> = {
 
 /** `archivo|opción` de cada lugar donde una página pide el dato. Lista cerrada. */
 const CONSUMIDORES = [
-  "src/app/(app)/catalogo/productos/[id]/editar/page.tsx|conCostoDeConsignacion",
+  "src/app/(app)/catalogo/productos/datos-de-edicion.ts|conCostoDeConsignacion",
   "src/app/(app)/catalogo/productos/[id]/page.tsx|conCostoDeConsignacion",
   "src/app/(app)/reportes/trazabilidad/page.tsx|conDatosComerciales",
   "src/app/(app)/stock/conteo-frecuencia/page.tsx|conImportes",

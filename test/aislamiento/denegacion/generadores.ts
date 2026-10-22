@@ -15,6 +15,11 @@ import { sumarDias } from "../../../src/core/tiempo/zona-horaria";
 const conIdsAjenos = (c: Pick<ContextoDeArgumentos, "escenario">) => c.escenario === "ajenaEmpresa" || c.escenario === "ajenaSucursal" || c.escenario === "consultaConSucursalAjena";
 const lista = (...v: Array<unknown[] | false>): unknown[][] => v.filter((x): x is unknown[] => x !== false);
 const hoy = () => new Date();
+/**
+ * El CONTEXTO propio de u1 (`{ usuarioId, empresaId, sucursalId, db }`) para las puertas que lo reciben ENTERO en un parámetro `ctx`: el `db` (un cliente de Prisma, un `Proxy` enorme) no se puede recorrer, y la matriz solo lo reconoce
+ * por el NOMBRE de su parámetro; adentro de un objeto plano lo recorrería hasta el fondo y colgaría el proceso. Un objeto SIN prototipo no es plano para el recorrido (ni lo muestra el informe), y para la puerta es el mismo contexto.
+ */
+const contextoPropio = (c: ContextoDeArgumentos) => Object.assign(Object.create(null) as Record<string, unknown>, { usuarioId: c.mundo.u1.id, empresaId: c.propio.empresaId, sucursalId: c.propio.sucursalId, db: c.db });
 const ingrediente = (k: Kit, insumoProductoId: string = k.productoId) => ({ insumoProductoId, cantidad: 1, unidadId: k.unidadId });
 const conVariantes = (...v: Array<unknown[] | false>) => variantes(...lista(...v));
 /** Los datos de un producto con TODAS sus referencias propias (la base de las variantes que cambian una sola por una ajena). */
@@ -156,27 +161,6 @@ const completos: Record<string, Valor> = {
       intento(c, ["platoDelDiaId"], [{ sucursalId: c.propio.sucursalId, platoId: k.platoDelDiaId }]),
     ),
   "accion|actions/carta/menu-del-dia.ts|copiarMenuDelDiaAnterior": (k) => [{ sucursalId: k.sucursalId, fecha: sumarDias(DIA_DEL_PLATO_DEL_MUNDO, 1) }],
-  // GO-3b (frente A): los ejes (ya son esos: por estado), la combinación «Grande» (versión 1, la sembrada), las tarifas y el precio local de la tarifa en la sucursal (el sembrado: 1650 en S1).
-  "accion|actions/catalogo/combinaciones.ts|fijarEjesDeCombinacion": (k) => [{ productoId: k.productoConOpcionesId, eje1GrupoId: k.grupoMedidaId, eje2GrupoId: null }],
-  "accion|actions/catalogo/combinaciones.ts|guardarCombinacionDeProducto": (k, c) =>
-    conVariantes(
-      intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, opcionEje1Id: k.opcionMedidaId, versionEsperada: 1, activa: false, grupoDePrecioId: k.grupoDePrecioId }]),
-      intento(c, ["grupoDePrecioId"], [{ productoId: c.propio.productoConOpcionesId, opcionEje1Id: c.propio.opcionMedidaId, versionEsperada: 1, activa: true, grupoDePrecioId: k.grupoDePrecioId }]),
-    ),
-  "accion|actions/catalogo/combinaciones.ts|crearGrupoDePrecio": () => [{ nombre: "Tarifa nueva", precio: 100 }],
-  "accion|actions/catalogo/combinaciones.ts|editarGrupoDePrecio": (k) => [{ grupoDePrecioId: k.grupoDePrecioId, versionEsperada: 1, nombre: "Tarifa cambiada", precio: 200, activo: true }],
-  "accion|actions/catalogo/combinaciones.ts|fijarPrecioLocalDeCombinacion": (k, c) =>
-    conVariantes(
-      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, grupoDePrecioId: c.propio.grupoDePrecioId, esperado: { precio: 1650, habilitado: true }, precio: 1700 }]),
-      intento(c, ["grupoDePrecioId"], [{ sucursalId: c.propio.sucursalId, grupoDePrecioId: k.grupoDePrecioId, esperado: { precio: 1650, habilitado: true }, precio: 1700 }]),
-      intento(c, ["combinacionId"], [{ sucursalId: c.propio.sucursalId, combinacionId: k.combinacionId, esperado: null, precio: 1700 }]),
-    ),
-  // GO-3b (frente B): una versión nueva de la receta propia de la combinación (la vigente es la 1, sembrada), con la MP del kit.
-  "accion|actions/catalogo/combinaciones.ts|guardarRecetaDeCombinacion": (k, c) =>
-    conVariantes(
-      intento(c, ["combinacionId"], [{ combinacionId: k.combinacionId, numeroEsperado: 1, ingredientes: [{ insumoProductoId: c.propio.productoId, cantidad: 2 }] }]),
-      intento(c, ["productoId"], [{ combinacionId: c.propio.combinacionId, numeroEsperado: 1, ingredientes: [{ insumoProductoId: k.productoId, cantidad: 2 }] }]),
-    ),
   "accion|actions/carta/registro-publico.ts|guardarSucursalPublica": (k) => [k.sucursalId, { slug: "slug-nuevo", publicada: true }],
   "accion|actions/carta/secciones.ts|guardarSeccionCarta": (k) => [{ id: k.seccionCartaId, nombre: "Nombre nuevo" }],
   // CARTA-MANT F3: la empresa del mundo tiene UNA sección de carta (orden 0): el control positivo la deja en su lugar (éxito sin cambio); con la de otra empresa, «No se encontró…».
@@ -243,6 +227,18 @@ const completos: Record<string, Valor> = {
       intento(c, ["productoConOpcionesId"], [admisionDe(k.productoConOpcionesId, c.propio.grupoDeOpcionesId, c.propio.opcionDeGrupoId)]),
       intento(c, ["grupoDeOpcionesId"], [admisionDe(c.propio.productoConOpcionesId, k.grupoDeOpcionesId, k.opcionDeGrupoId)]),
       intento(c, ["opcionDeGrupoId"], [admisionDe(c.propio.productoConOpcionesId, c.propio.grupoDeOpcionesId, k.opcionDeGrupoId)]),
+    ),
+  // Fase 6 (6.14c): crear un grupo sin salir del producto. El único id que llega del cliente es el del producto (el grupo y sus opciones se crean adentro): una sola variante, con el producto base ajeno.
+  "accion|actions/catalogo/opciones-de-venta.ts|crearGrupoEnElProducto": (k, c) =>
+    conVariantes(
+      intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, nombre: "Presentación ZZ", respuesta: "PRECIO_FINAL", prefijoEnCarta: null, opciones: [{ nombre: "Simple", importe: 1500 }] }]),
+    ),
+  // «+ Opción» / «+ Extra»: agregar una opción a un grupo que el producto ya usa. Llegan dos ids del cliente (el producto y el grupo; la opción y el respaldo se crean adentro): una variante por cada uno ajeno. El control
+  // positivo agrega una opción a la MEDIDA en precio propio que el PV del mundo ya usa (su fila de lo que admite está en la versión 1).
+  "accion|actions/catalogo/opciones-de-venta.ts|crearOpcionEnElProducto": (k, c) =>
+    conVariantes(
+      intento(c, ["productoConOpcionesId"], [{ productoId: k.productoConOpcionesId, grupoId: c.propio.grupoMedidaId, versionEsperada: 1, nombre: "Opción ZZ", importe: 1800, unidadStockId: null }]),
+      intento(c, ["grupoMedidaId"], [{ productoId: c.propio.productoConOpcionesId, grupoId: k.grupoMedidaId, versionEsperada: 1, nombre: "Opción ZZ", importe: 1800, unidadStockId: null }]),
     ),
   // La sucursal que vio la pantalla (tiene que ser la activa: el eco) y, desde la propia, una opción o un producto ajenos.
   "accion|actions/catalogo/opciones-por-sucursal.ts|apagarOpcionEnSucursal": (k, c) =>
@@ -325,6 +321,24 @@ const completos: Record<string, Valor> = {
   // --- consultas de las páginas y lecturas (el contexto —sucursal activa, empresa, usuario, hora, db— es el propio; los ids del cliente, los ajenos) ---
   // Las candidatas son las sucursales con carta propia; la consulta tiene que dejar afuera las que u1 no ve (S2, S3, las de otra empresa).
   "consulta|consultas/carta/admin.ts|origenesDeCopiaVisibles": (k, c) => [c.mundo.u1.id, [{ id: k.sucursalId, nombre: "Sucursal candidata", cantidadProductos: 1 }, { id: k.vecinaId, nombre: "Sucursal vecina", cantidadProductos: 1 }], c.db],
+  // Fase 6 (6.12): los hechos de UN producto para el marco del espacio. El producto llega ya leído por la página (acá, armado a mano con el id del kit): con el id de OTRA empresa o sucursal no trae nada.
+  "consulta|consultas/catalogo/espacio-del-producto.ts|hechosDelProducto": (k, c) => [
+    c.db,
+    { id: k.productoPvId, nombre: "Producto ZZ", codigo: "ZZ", tipo: "PV", modoDeVenta: "DIRECTO", precioVenta: 1000, seProduce: false, esAnclaDeAdicional: false },
+    k.sucursalId,
+    { opciones: true, receta: true, carta: true },
+  ],
+  // Fase 6, bloque 3 (6.18): la vista previa de UN producto en la carta de la sucursal activa. El producto llega ya leído por la página (acá armado a mano con el id del kit): con el id de OTRA empresa o sucursal no trae nada.
+  "consulta|consultas/carta/vista-previa-de-un-producto.ts|cargarVistaPreviaDeLaCarta": (k, c) => [c.db, c.propio.sucursalId, { id: k.productoConOpcionesId, precioVenta: 1000, esBase: false }, false],
+  // Fase 6, bloque 3 (3b): qué «le falta algo» ofrece la lista de Productos a quien mira (por permisos y módulos del usuario y la empresa del contexto).
+  "consulta|consultas/catalogo/filtros-de-productos.ts|faltasQueSePuedenFiltrarEnLaLista": (_k, c) => [contextoPropio(c)],
+  "lectura|lecturas/catalogo/filtros-de-productos.ts|faltasQueSePuedenFiltrar": (_k, c) => [contextoPropio(c)],
+  // El `where` de la lista de Productos con «sin receta» (el filtro que además lee la receta vigente de la sucursal): el contexto y la base son los propios.
+  "lectura|lecturas/catalogo/filtros-de-productos.ts|whereDeLosProductos": (_k, c) => [
+    contextoPropio(c),
+    c.db,
+    { q: "", tipo: null, modo: null, disponible: null, falta: "sin-receta" },
+  ],
   "consulta|consultas/catalogo/grupos.ts|cadenasDeGrupos": (k, c) => [[k.grupoId], c.db],
   "consulta|consultas/catalogo/recetas.ts|listarCalibracionesDeIngredientes": (k, c) => [[k.recetaIngredienteId, k.recetaIngredientePropioId], c.mundo.u1.id, [c.propio.sucursalId], c.db],
   "consulta|consultas/catalogo/recetas.ts|listarOpcionesDeSustituto": (k, c) => [{ insumoIdExcluido: k.insumoId, unidadId: k.unidadId }, c.db],
@@ -339,11 +353,12 @@ const completos: Record<string, Valor> = {
   "lectura|lecturas/movimientos/receta-para-vender.ts|cargarOrigenDeStockParaVender": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, productoIds: [k.productoPvId] }],
   "lectura|lecturas/permisos/gobierno.ts|invarianteRolSinUsuariosActivos": (k, c) => [c.db, { id: k.rolId, nombre: "Rol de prueba" }],
 
-  // El ítem agrupado se resuelve desde el primer producto en la sucursal activa: el ajeno y el propio no se mezclan; la sucursal que llega tiene que ser la activa.
-  "accion|actions/movimientos/precio-local.ts|sincronizarPrecioLocalGrupoCarta": (k, c) =>
+  // El ítem agrupado se resuelve desde el primer producto en la sucursal activa: el ajeno y el propio no se mezclan; la sucursal que llega tiene que ser la activa. El último argumento es el precio que
+  // «vio» la pantalla de cada producto (ola «precio y carta», Fase 2, A3): el del mundo en la sucursal propia (precio local de 1234, habilitado).
+  "accion|actions/catalogo/precio-local.ts|sincronizarPrecioLocalGrupoCarta": (k, c) =>
     conVariantes(
-      intento(c, ["sucursalId"], [k.sucursalId, [c.propio.productoPvId], 1, false]),
-      intento(c, ["productoPvId"], [c.propio.sucursalId, [k.productoPvId], 1, false]),
+      intento(c, ["sucursalId"], [k.sucursalId, [c.propio.productoPvId], 1, false, { [c.propio.productoPvId]: 1234 }]),
+      intento(c, ["productoPvId"], [c.propio.sucursalId, [k.productoPvId], 1, false, { [k.productoPvId]: 1234 }]),
     ),
 
   // --- POS ---
@@ -386,7 +401,12 @@ const parametros: Record<string, Record<string, Valor>> = {
   // Activar un producto ya activo es idempotente; desactivar `mp` se rechaza (está en la receta vigente y tiene saldo).
   "accion|actions/catalogo/productos.ts|actualizarDisponibilidadProducto": { disponible: (_k, c) => c.escenario === "controlMutacion" },
   // Los hermanos de UN ítem agrupado de la carta: el PV (en el mundo, la única opción del ítem).
-  "accion|actions/catalogo/productos.ts|sincronizarPrecioGrupoCarta": { productoIds: (k) => [k.productoPvId] },
+  // `preciosVistos` (ola «precio y carta», Fase 2, A5): el precio de venta que «vio» la pantalla, el del PV del mundo (1000).
+  "accion|actions/catalogo/productos.ts|sincronizarPrecioGrupoCarta": { productoIds: (k) => [k.productoPvId], preciosVistos: (k) => ({ [k.productoPvId]: 1000 }) },
+  // El precio de la promo en esta sucursal que «vio» la pantalla (ola «precio y carta», Fase 2, A6): el del mundo en la sucursal propia (4000). No lleva ids.
+  "accion|actions/carta/promos.ts|guardarPrecioLocalPromoCarta": { precioVisto: () => 4000 },
+  // El precio local que «vio» la pantalla (ola «precio y carta», Fase 2, A2): el del mundo en la sucursal propia (1234, habilitado). No lleva ids.
+  "accion|actions/catalogo/precio-local.ts|setPrecioLocalProducto": { esperado: () => ({ precio: 1234, habilitado: true }) },
   "accion|actions/catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": { sucursalOrigenId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
   "accion|actions/carta/registro-publico.ts|agregarSucursalAlPortal": { sucursalId: (k, c) => (c.escenario === "controlMutacion" ? c.mundo.s4Id : k.sucursalId) },
   "accion|actions/pos/cuenta-anulacion.ts|anularItemEnviado": { cuentaItemId: (k) => k.cuentaItemEnviadoId, restanteVisto: () => 2 },
@@ -432,13 +452,7 @@ const parametros: Record<string, Record<string, Valor>> = {
     lugares: (k) => ({ seccionCartaIds: [k.seccionCartaId], cupoListaIds: [k.cupoListaId], cupoDelDiaIds: [k.cupoDelDiaId] }),
     args: (_k, c) => ({ desdeDia: "2000-01-01", sucursalIds: [c.propio.sucursalId] }),
   },
-  // GO-3b (frente A): la combinación por su clave y el precio local de la tarifa en la sucursal.
-  "lectura|lecturas/catalogo/recetas-de-combinacion.ts|cargarRecetasVigentesDeCombinaciones": { combinacionIds: (k) => [k.combinacionId] },
-  "lectura|lecturas/catalogo/combinaciones.ts|cargarCombinacionEnTx": { clave: (k) => ({ productoId: k.productoConOpcionesId, opcionEje1Id: k.opcionMedidaId, opcionEje2Id: null }) },
-  "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|preciosLocalesDeCombinacionVigentes": { ids: (k) => ({ combinacionIds: [k.combinacionId], grupoDePrecioIds: [k.grupoDePrecioId] }), precioLocalActivo: () => true },
-  // GO-3b (F5): las combinaciones del PV con opciones para venderlo (I1), los cupos de entradas del combo de la empresa tal como se venden el día del plato del mundo (I2) y ese día para la
-  // promo a agregar (vigencia y platos del día).
-  "lectura|lecturas/catalogo/combinaciones.ts|cargarCombinacionesParaVender": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoConOpcionesId] }) },
+  // GO-3b (F5): los cupos de entradas del combo de la empresa tal como se venden el día del plato del mundo (I2) y ese día para la promo a agregar (vigencia y platos del día).
   "lectura|lecturas/pos/entradas-de-promo-para-vender.ts|cargarEntradasDePromoParaVender": {
     args: (k) => ({
       sucursalId: k.sucursalId,
@@ -453,17 +467,15 @@ const parametros: Record<string, Record<string, Valor>> = {
   "lectura|lecturas/pos/promo-para-agregar.ts|cargarPromoCartaParaAgregar": { dia: () => DIA_DEL_PLATO_DEL_MUNDO },
   // GO-3b (U5): el selector de la mesa con el día (o la zona) ofrece también los combos con cupos de entradas.
   "lectura|lecturas/pos/selector-carta.ts|cargarSelectorCartaPos": { dia: () => DIA_DEL_PLATO_DEL_MUNDO },
-  // GO-3b (F6): la pantalla «Menú del día» (el día del plato del mundo) y las filas del precio local de la combinación y la tarifa del mundo en la sucursal.
+  // GO-3b (F6): la pantalla «Menú del día» (el día del plato del mundo).
   "consulta|consultas/carta/menu-del-dia.ts|cargarMenuDelDia": { args: (k) => ({ sucursalId: k.sucursalId, ahora: new Date(), zonaHoraria: "America/Argentina/Buenos_Aires", fecha: DIA_DEL_PLATO_DEL_MUNDO }) },
-  "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|filasDePrecioLocalDeCombinacionesEnSucursal": {
-    args: (k, c) => ({ sucursalId: c.propio.sucursalId, combinacionIds: [k.combinacionId], grupoDePrecioIds: [k.grupoDePrecioId] }),
-  },
   "consulta|consultas/pos/selector-carta.ts|cargarSelectorCartaDeLaMesa": { zonaHoraria: () => "America/Argentina/Buenos_Aires" },
-  "lectura|lecturas/catalogo/precio-local-de-combinaciones.ts|filaDePrecioLocalDeCombinacion": { clave: (k, c) => ({ sucursalId: c.propio.sucursalId, objetivo: { grupoDePrecioId: k.grupoDePrecioId } }) },
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoPorId": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerUnidadesDelProducto": { id: (k) => k.productoId },
+  // Fase 4 (C9): el grupo de precio final del producto. El PV con opciones es el que admite la MEDIDA en precio propio (su nombre lleva el marcador: el control positivo lo encuentra).
+  "consulta|consultas/catalogo/productos.ts|grupoConElPrecioFinal": { id: (k) => k.productoConOpcionesId },
   "consulta|consultas/catalogo/proveedores.ts|obtenerFichaProveedor": { id: (k) => k.proveedorId },
   "consulta|consultas/catalogo/proveedores.ts|obtenerProveedorPorId": { id: (k) => k.proveedorId },
   // Estos ayudantes de gobierno reciben el usuario OBJETIVO (el que el cliente eligió), no el actor: en la matriz es el de otra empresa.
@@ -495,13 +507,13 @@ const porArchivo: Record<string, Record<string, Valor>> = {
   "actions/carta/contenido-producto.ts": { productoId: (k) => k.productoPvId },
   // El descuento no se puede poner a una opción de un ítem agrupado: el PV que está en el ítem (`pv`) no sirve, el otro (`pv2`) sí.
   "actions/carta/descuento-producto.ts": { productoId: (k) => k.productoPv2Id },
-  "actions/movimientos/precio-local.ts": { productoId: (k) => k.productoPvId },
+  "actions/catalogo/precio-local.ts": { productoId: (k) => k.productoPvId },
   // GO-2a: en las lecturas del catálogo de opciones, `grupoId` es un grupo de OPCIONES (no el de insumos) y `productoId` el PV que las admite.
   "lecturas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId },
-  // GO-3b: en las lecturas de las combinaciones, `productoId` es el PV con opciones (el que tiene ejes y combinación).
-  "lecturas/catalogo/combinaciones.ts": { productoId: (k) => k.productoConOpcionesId },
   // GO-2d: lo mismo en las consultas de las pantallas de opciones de venta.
   "consultas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId, productoIds: (k) => [k.productoConOpcionesId] },
+  // Fase 6 (6.17b): el estado de UN producto en la carta es el de un PV.
+  "consultas/carta/admin.ts": { productoId: (k) => k.productoPvId },
   // GO-2d: los avisos de stock de la carta son de platos (PV con receta).
   "consultas/carta/avisos-de-stock.ts": { productoIds: (k) => [k.productoPvId, k.productoPv2Id] },
 };

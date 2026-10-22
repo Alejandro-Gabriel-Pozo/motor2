@@ -72,7 +72,11 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
     const de = (tabla: string) => columnas.filter((c) => c.tabla === tabla);
     const forma = (tabla: string) => de(tabla).map((c) => `${c.columna}:${c.tipo}:${c.es_nulable}`);
     const T = "timestamp without time zone";
-    expect(forma("GrupoDeOpciones")).toEqual(["id:text:NO", "empresaId:text:NO", "nombre:text:NO", "tipo:text:NO", "cantidadMinima:integer:NO", "cantidadMaxima:integer:NO", "activo:boolean:NO", "version:integer:NO", `creadoEn:${T}:NO`, `actualizadoEn:${T}:NO`]);
+    expect(forma("GrupoDeOpciones")).toEqual([
+      "id:text:NO", "empresaId:text:NO", "nombre:text:NO", "tipo:text:NO", "cantidadMinima:integer:NO", "cantidadMaxima:integer:NO", "activo:boolean:NO", "version:integer:NO", `creadoEn:${T}:NO`, `actualizadoEn:${T}:NO`,
+      // Fase 4 de la ola «precio y carta» (ADR-035): «se lee en la carta como», nulable.
+      "prefijoEnCarta:text:YES",
+    ]);
     expect(forma("OpcionDeGrupo")).toEqual([
       "id:text:NO", "empresaId:text:NO", "grupoId:text:NO", "nombre:text:NO", "orden:integer:NO", "activa:boolean:NO", "esNinguna:boolean:NO", "productoId:text:YES", "version:integer:NO", `creadoEn:${T}:NO`, `actualizadoEn:${T}:NO`,
     ]);
@@ -169,7 +173,7 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
     expect(checks.every((c) => c.validada)).toBe(true);
     expect(checks.map((c) => c.nombre)).toEqual([
       "ConsumoDeOpcion_cantidad_chk", "ConsumoDeOpcion_efecto_chk", "ConsumoDeOpcion_merma_chk", "ConsumoDeOpcion_orden_chk", "ConsumoDeOpcion_reemplazo_chk",
-      "GrupoDeOpciones_cantidades_chk", "GrupoDeOpciones_incluida_chk", "GrupoDeOpciones_medida_chk", "GrupoDeOpciones_nombre_chk", "GrupoDeOpciones_tipo_chk", "GrupoDeOpciones_version_chk",
+      "GrupoDeOpciones_cantidades_chk", "GrupoDeOpciones_incluida_chk", "GrupoDeOpciones_medida_chk", "GrupoDeOpciones_nombre_chk", "GrupoDeOpciones_prefijo_en_carta_chk" /* Fase 4 */, "GrupoDeOpciones_tipo_chk", "GrupoDeOpciones_version_chk",
       "OpcionDeGrupo_nombre_chk", "OpcionDeGrupo_ninguna_sin_producto_chk", "OpcionDeGrupo_orden_chk", "OpcionDeGrupo_version_chk",
       "ProductoAdmiteGrupo_cantidades_chk", "ProductoAdmiteGrupo_eje_de_combinacion_chk" /* GO-3a */, "ProductoAdmiteGrupo_modo_precio_chk", "ProductoAdmiteGrupo_orden_chk", "ProductoAdmiteGrupo_version_chk",
       "ProductoAdmiteOpcion_absoluto_o_diferencia_chk", "ProductoAdmiteOpcion_cantidad_maxima_chk", "ProductoAdmiteOpcion_diferencia_chk", "ProductoAdmiteOpcion_porcentaje_chk", "ProductoAdmiteOpcion_precio_absoluto_chk", "ProductoAdmiteOpcion_tipo_de_diferencia_chk", "ProductoAdmiteOpcion_version_chk",
@@ -198,7 +202,8 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
       (await prismaAdmin.$queryRawUnsafe<Array<{ columna: string }>>(
         `SELECT a.attname::text AS columna FROM pg_attribute a WHERE a.attrelid = '"${tabla}"'::regclass AND a.attnum > 0 AND NOT a.attisdropped AND has_column_privilege('motor2_app', a.attrelid, a.attnum, 'UPDATE') ORDER BY 1`,
       )).map((c) => c.columna);
-    expect(await actualizables("GrupoDeOpciones")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "nombre", "version"]);
+    // La Fase 4 de la ola «precio y carta» (ADR-035) suma `prefijoEnCarta` («se lee en la carta como», editable).
+    expect(await actualizables("GrupoDeOpciones")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "nombre", "prefijoEnCarta", "version"]);
     expect(await actualizables("OpcionDeGrupo")).toEqual(["activa", "actualizadoEn", "nombre", "orden", "version"]);
     // GO-3a (ADR-032) suma `ejeDeCombinacion` (el eje de las combinaciones, editable).
     expect(await actualizables("ProductoAdmiteGrupo")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "ejeDeCombinacion", "modoPrecio", "orden", "version"]);

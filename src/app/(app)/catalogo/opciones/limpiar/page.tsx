@@ -24,12 +24,12 @@ export default async function LimpiarOpcionesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   const gateEditar = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db);
-  if (!gateEditar.ok) return <p className="text-red-600">{gateEditar.mensaje}</p>;
+  if (!gateEditar.ok) return <p className="text-error">{gateEditar.mensaje}</p>;
 
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);
   const datos = await listarCandidatosALimpiar(verificacion.db, new Date());
@@ -42,7 +42,7 @@ export default async function LimpiarOpcionesPage() {
             ← Opciones de venta
           </Link>
           <h1 className="mt-2 text-xl font-semibold">Limpiar opciones</h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm text-tinta-suave">
             Lo que no se usa, archivado de una vez: deja de ofrecerse en la venta y en la carta, se restaura cuando quieras y lo ya vendido queda como se vendió. Nada se borra.
           </p>
         </div>

@@ -8,16 +8,18 @@ import { listarStockMinimo } from "@/server/actions/stock/stock-minimo";
 import { StockMinimoForm } from "./stock-minimo-form";
 import { BotonEliminarStockMinimo } from "./boton-eliminar";
 import { IconoDeAccion } from "@/components/iconos";
+import { claseDeBoton } from "@/ui/primitivas/boton";
+import { Enlace } from "@/ui/primitivas/enlace";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 export default async function StockMinimoPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"editar">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "stock_minimo", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { editar } = unicosDeUrl(await searchParams);
   const [filas, secciones] = await Promise.all([listarStockMinimo(ctx.sucursalId), listarSeccionesActivas(ctx.sucursalId)]);
@@ -29,7 +31,7 @@ export default async function StockMinimoPage({ searchParams }: { searchParams: 
         <h1 className="mb-4 text-xl font-semibold">Stock mínimo</h1>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-neutral-500">
+            <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Producto</th>
               <th>Sección</th>
               <th>Mínimo</th>
@@ -45,7 +47,7 @@ export default async function StockMinimoPage({ searchParams }: { searchParams: 
                 <td>
                   {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    <Link href={`/stock/minimo?editar=${f.id}`} className="text-sm underline inline-flex items-center gap-1">
+                    <Link href={`/stock/minimo?editar=${f.id}`} className={claseDeBoton("enlace", "en-fila")}>
                       <IconoDeAccion id="editar" />
                       Editar
                     </Link>
@@ -60,9 +62,9 @@ export default async function StockMinimoPage({ searchParams }: { searchParams: 
 
       <div>
         {filaEnEdicion && (
-          <Link href="/stock/minimo" className="mb-2 inline-block text-sm underline">
-            ← Cancelar edición
-          </Link>
+          <p className="mb-2 text-sm">
+            <Enlace href="/stock/minimo">← Cancelar edición</Enlace>
+          </p>
         )}
         <StockMinimoForm
           key={filaEnEdicion?.id ?? "nuevo"}

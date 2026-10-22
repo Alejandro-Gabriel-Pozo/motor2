@@ -1,3 +1,5 @@
+import { MENU_DEL_DIA_VISIBLE } from "../../src/core/carta/menu-del-dia";
+
 /**
  * Todas las pantallas de la aplicación que abren SIN parámetros de ruta ni de query obligatorios — lista compartida entre
  * `maquetacion-general.spec.ts` (E2E normal, datos mínimos) y `test/e2e-demo/todas-las-pantallas.spec.ts` (proyecto de la
@@ -32,11 +34,11 @@ export const RUTAS_SIN_PARAMETROS = [
   "/catalogo/proveedores",
   "/catalogo/proveedores/comparativa",
   "/catalogo/recetas",
-  "/catalogo/tarifas",
   "/catalogo/unidades",
   "/mesas",
   "/movimientos/conteo-fisico",
-  "/movimientos/menu-del-dia",
+  // El menú del día solo mientras su interruptor esté encendido (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20): apagado, la pantalla responde «no existe».
+  ...(MENU_DEL_DIA_VISIBLE ? ["/movimientos/menu-del-dia"] : []),
   "/movimientos/opciones-agotadas",
   "/movimientos/precio-local",
   "/movimientos/secciones",

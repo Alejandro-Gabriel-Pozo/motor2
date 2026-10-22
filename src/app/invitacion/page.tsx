@@ -10,6 +10,7 @@ import { esTokenConFormaValida } from "@/core/features/empresa/invitacion";
 import { AbrirInvitacion } from "./abrir-invitacion";
 import { AceptarDeUsuario } from "./aceptar-de-usuario";
 import { FormularioDeAceptacion } from "./formulario-de-aceptacion";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 
 /**
  * Aceptar una invitación (E5 la del primer gerente, ADR-020; E8 la de usuario y la de vinculación, ADR-024). Pública a propósito: quien llega todavía no tiene sesión ni empresa. El
@@ -29,8 +30,7 @@ function Pantalla({ children }: { children: React.ReactNode }) {
   );
 }
 
-const TEXTO_SUAVE = "text-sm text-neutral-500 dark:text-neutral-400";
-const BOTON = "w-full rounded-md bg-neutral-900 px-4 py-2 text-white hover:bg-neutral-800";
+const TEXTO_SUAVE = "text-sm text-tinta-tenue";
 
 export default async function InvitacionPage() {
   const cookieStore = await cookies();
@@ -101,9 +101,9 @@ export default async function InvitacionPage() {
             await signIn("google", { redirectTo: clase === "vinculacion" ? "/" : "/invitacion" }, { login_hint: vista.email });
           }}
         >
-          <button type="submit" className={BOTON}>
+          <BotonDeServidor type="submit" className="w-full">
             Ingresar con Google
-          </button>
+          </BotonDeServidor>
         </form>
       </Pantalla>
     );
@@ -122,9 +122,9 @@ export default async function InvitacionPage() {
             await signOut({ redirectTo: "/invitacion" });
           }}
         >
-          <button type="submit" className={BOTON}>
+          <BotonDeServidor type="submit" className="w-full">
             Cerrar sesión
-          </button>
+          </BotonDeServidor>
         </form>
       </Pantalla>
     );
@@ -141,7 +141,7 @@ export default async function InvitacionPage() {
         <p className={TEXTO_SUAVE}>{quePasaAlEntrar} Vas a tener acceso a:</p>
         <ul className="space-y-1 text-left text-sm">
           {accesos.map((a) => (
-            <li key={a.sucursal} className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-600">
+            <li key={a.sucursal} className="rounded-md border border-borde px-3 py-2">
               <strong>{a.sucursal}</strong> — {a.rol}
             </li>
           ))}

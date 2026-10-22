@@ -5,11 +5,12 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { cargarAdminCarta } from "@/server/consultas/carta/admin";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "@/server/actions/carta/generos";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
-import { CLASE_BOTON, CLASE_ENLACE_DE_ACCION, CamposGenero } from "../formularios";
+import { CamposGenero } from "../formularios";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 
@@ -28,10 +29,10 @@ export default async function GenerosDeCartaPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   const nivelGeneros = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_generos", ctx.db);
   const puedeEditarGeneros = nivelGeneros.editar;
   const datos = await cargarAdminCarta(ctx.sucursalId, ctx.db, new Date());
@@ -51,7 +52,7 @@ export default async function GenerosDeCartaPage() {
         <h2 id="titulo-generos" className="text-lg font-medium">
           Géneros de carta
         </h2>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Carpetas del selector del POS (ej. «Cerveza»): agrupan, dentro de una sección, tanto productos sueltos como ítems agrupados que comparten género. No
           implican mismo precio ni sustituibilidad (eso lo maneja «Ítems agrupados de la carta»); no cambian la carta pública que ve el cliente. Un producto sin
           género (o con uno apagado) sigue apareciendo suelto.
@@ -76,9 +77,9 @@ export default async function GenerosDeCartaPage() {
                     >
                       <CamposGenero valores={g} />
                       <div className="sm:col-span-2">
-                        <button type="submit" className={CLASE_BOTON}>
+                        <BotonDeServidor type="submit" tamano="compacto">
                           Guardar género
-                        </button>
+                        </BotonDeServidor>
                       </div>
                     </FormConResultado>
                   ) : (
@@ -96,15 +97,15 @@ export default async function GenerosDeCartaPage() {
                     }}
                     className="mt-2"
                   >
-                    <button type="submit" className={CLASE_ENLACE_DE_ACCION}>
+                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                       {g.activo ? `Apagar «${g.nombre}»` : `Prender «${g.nombre}»`}
-                    </button>
+                    </BotonDeServidor>
                   </FormConResultado>
                 )}
               </li>
             );
           })}
-          {!datos.generos.length && <li className="text-sm text-neutral-500">Todavía no hay géneros.</li>}
+          {!datos.generos.length && <li className="text-sm text-tinta-tenue">Todavía no hay géneros.</li>}
         </ul>
 
         {puedeEditarGeneros && (
@@ -118,9 +119,9 @@ export default async function GenerosDeCartaPage() {
             <h3 className="text-sm font-medium sm:col-span-2">Nuevo género</h3>
             <CamposGenero ordenSugerido={datos.generos.length} />
             <div className="sm:col-span-2">
-              <button type="submit" className={CLASE_BOTON}>
+              <BotonDeServidor type="submit" tamano="compacto">
                 Crear género
-              </button>
+              </BotonDeServidor>
             </div>
           </FormConResultado>
         )}

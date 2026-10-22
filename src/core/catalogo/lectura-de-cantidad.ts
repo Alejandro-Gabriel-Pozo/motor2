@@ -1,13 +1,11 @@
-import { interpretarNumero } from "@/core/datos/numero-tecleado";
+import { CONTEXTO_CANTIDAD_SIN_UNIDAD, interpretarNumeroTecleado } from "@/core/datos/numero-tecleado";
 
 /**
  * Lectura en vivo de la cantidad de un ingrediente de receta (pedido del dueño, 2026-10-14): mientras el operario tipea, la pantalla le dice
- * qué entendió el sistema («= 3 kg», «= 300 g») y le avisa cuando lo tecleado puede leerse de dos maneras. Es SOLO información: no cambia lo
- * que se guarda ni bloquea nada (el número lo sigue interpretando `interpretarNumero`, el mismo parser que usa CampoNumero, y lo valida el
- * servidor como siempre). Puro: sin base, sin reloj, sin React.
- *
- * Por qué hace falta: `interpretarNumero` lee un separador solo como DECIMAL, sea coma o punto («3.000» = 3, «1.500» = 1,5; tabla en
- * docs/plan-validacion-de-datos-2026-09-25.md). Quien escribe «3.000» pensando en tres mil carga 3, y nada se lo marcaba.
+ * qué entendió el sistema («= 3 kg», «= 300 g») o, si lo tecleado no se puede leer, por qué (micro-paso 2c: «1.205» en kilos es ambiguo y no se adivina). Es SOLO información: no cambia lo
+ * que se guarda ni bloquea nada (el número lo interpreta `interpretarNumeroTecleado` con el MISMO contexto que el campo de cantidad de la receta, que no conoce la unidad: los 4 decimales de las columnas; así la lectura y el campo
+ * nunca se contradicen, y lo valida el servidor como siempre).
+ * Puro: sin base, sin reloj, sin React.
  */
 
 /**
@@ -30,7 +28,7 @@ export interface UnidadDeLectura {
 type Lectura =
   | { tipo: "vacio" }
   | { tipo: "invalido"; mensaje: string }
-  | { tipo: "valor"; valor: number; lectura: string; advertencia: string | null };
+  | { tipo: "valor"; valor: number; lectura: string };
 
 const clave = (nombre: string) => nombre.trim().toLowerCase();
 
@@ -57,25 +55,10 @@ function conUnidad(n: number, unidad: UnidadDeLectura | null): string {
   return `${formatear(n)} ${unidad.nombre}`;
 }
 
-/**
- * Un solo separador (punto o coma) con 1 a 3 dígitos antes y EXACTAMENTE 3 después: «3.000», «1,500», «0.300». Es la única forma en que lo
- * tecleado también podría ser un número con separador de miles. «1.000.000» (miles bien agrupados), «1.234,5» (los dos separadores),
- * «1,5» o «12345.678» no lo son.
- */
-const AMBIGUO = /^-?\d{1,3}([.,])\d{3}$/;
-
 /** Qué entendió el sistema de lo tecleado en el campo de cantidad, en la unidad de stock de la materia prima (`null` si todavía no se sabe cuál). */
 export function leerCantidadTecleada(texto: string, unidad: UnidadDeLectura | null): Lectura {
-  const r = interpretarNumero(texto);
+  const r = interpretarNumeroTecleado(texto, CONTEXTO_CANTIDAD_SIN_UNIDAD);
   if (!r.ok) return { tipo: "invalido", mensaje: r.mensaje };
   if (r.valor === null) return { tipo: "vacio" };
-  const leido = conUnidad(r.valor, unidad);
-  const ambiguo = AMBIGUO.exec(texto.trim());
-  // La otra lectura posible: el mismo texto sin el separador (si da lo mismo, como «0.000», no hay nada que aclarar).
-  const alternativa = ambiguo ? Number(texto.trim().replace(ambiguo[1], "")) : null;
-  if (!ambiguo || alternativa === null || alternativa === r.valor) return { tipo: "valor", valor: r.valor, lectura: `= ${leido}`, advertencia: null };
-  const sinSeparador = formatear(alternativa);
-  const enLaUnidad = unidad ? `${sinSeparador} ${unidad.nombre}` : sinSeparador;
-  const advertencia = `Se leyó como ${leido}. Si quisiste decir ${enLaUnidad}, escribilo sin ${ambiguo[1] === "." ? "punto" : "coma"}: ${sinSeparador}.`;
-  return { tipo: "valor", valor: r.valor, lectura: `= ${leido}`, advertencia };
+  return { tipo: "valor", valor: r.valor, lectura: `= ${conUnidad(r.valor, unidad)}` };
 }

@@ -2,10 +2,12 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { crearMembresia } from "../setup/membresia";
+import { sembrarGrupo } from "./fixtures/opciones";
+import { expectObjetivosTactiles, expectSinDesborde } from "./fixtures/movil";
 
 /**
  * Productos con rutas separadas: la lista (`/catalogo/productos`), el alta (`/nuevo`), la ficha de solo lectura (`/[id]`) y la edición
- * (`/[id]/editar`). Al guardar se vuelve a la ficha, que muestra el aviso (antes se volvía a la lista y el aviso se perdía).
+ * (`/[id]/datos`, el paso 1 del espacio del producto; la ruta vieja `/[id]/editar` redirige ahí, para todos los tipos). Al guardar se vuelve a la ficha, que muestra el aviso (antes se volvía a la lista y el aviso se perdía).
  */
 async function crearProducto(sufijo: number) {
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
@@ -40,7 +42,70 @@ test("la lista lleva a la ficha, que muestra los datos y los enlaces a los repor
   await expect(page.locator("main form")).toHaveCount(0);
   await expect(page.locator(`a[href="/reportes/historial?productoId=${producto.id}"]`)).toHaveCount(1);
   await expect(page.locator('a[href="/reportes/costos"]').first()).toBeVisible();
+  // La receta es un paso del espacio (una pestaña del marco): el enlace es UNO, no dos.
   await expect(page.locator(`a[href="/catalogo/recetas/${producto.id}"]`)).toHaveCount(1);
+});
+
+test("la ficha de un producto de venta es la portada del espacio: el nombre es el h1 y los cuatro pasos son enlaces, con «Resumen» como pantalla actual", async ({ paginaAutenticada: page }) => {
+  const producto = await crearProducto(Date.now());
+  await page.goto(`/catalogo/productos/${producto.id}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(producto.nombre);
+  const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
+  await expect(pasos.getByRole("link", { name: "Resumen" })).toHaveAttribute("aria-current", "page");
+  await expect(pasos.getByRole("link", { name: /^Qué se vende/ })).toHaveAttribute("href", `/catalogo/productos/${producto.id}/datos`);
+  await expect(pasos.getByRole("link", { name: /^Opciones y precio/ })).toHaveAttribute("href", `/catalogo/productos/${producto.id}/opciones`);
+  await expect(pasos.getByRole("link", { name: /^Receta/ })).toHaveAttribute("href", `/catalogo/recetas/${producto.id}`);
+  await expect(pasos.getByRole("link", { name: /^En la carta/ })).toHaveAttribute("href", `/catalogo/productos/${producto.id}/en-la-carta`);
+  // Sin receta no se vende: la portada lo dice en «Qué falta» y la pestaña lo marca.
+  await expect(page.getByRole("heading", { name: "Qué falta" })).toBeVisible();
+  await expect(pasos.getByRole("link", { name: /^Receta/ })).toContainText("Pendiente");
+  await expect(page.getByText(/no tiene receta: armala en Catálogo/)).toBeVisible();
+  // Contraespejo: el paso 1 está completo (tiene precio): no es un pendiente.
+  await expect(pasos.getByRole("link", { name: /^Qué se vende/ })).not.toContainText("Pendiente");
+  // La pestaña lleva al paso: el formulario del paso 1 con el nombre cargado.
+  await pasos.getByRole("link", { name: /^Qué se vende/ }).click();
+  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
+  await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
+  await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ })).toHaveAttribute("aria-current", "page");
+});
+
+test("a 375 px la portada del espacio no se sale por la derecha y los pasos se tocan con el dedo (la tira se desplaza, la página no)", async ({ paginaAutenticada: page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  const producto = await crearProducto(Date.now());
+  await page.goto(`/catalogo/productos/${producto.id}`);
+  const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
+  await expect(pasos).toBeVisible();
+  await expectSinDesborde(page, "portada del producto a 375 px");
+  await expectObjetivosTactiles(pasos.getByRole("link"), "pasos de la portada a 375 px", { alto: 44 });
+});
+
+test("una materia prima tiene el mismo espacio con menos pasos: Datos (y Receta solo si se produce), sin Opciones ni En la carta", async ({ paginaAutenticada: page }) => {
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const marca = Date.now();
+  const harina = await prisma.producto.create({ data: { codigo: `E2E-FI-H-${marca}`, nombre: `E2E Harina ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+  const masa = await prisma.producto.create({ data: { codigo: `E2E-FI-M-${marca}`, nombre: `E2E Masa ${marca}`, tipo: "MP", unidadStockId: kg.id, seProduce: true } });
+  await page.goto(`/catalogo/productos/${harina.id}`);
+  const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(harina.nombre);
+  await expect(pasos.getByRole("link")).toHaveText(["Resumen", "Datos"]);
+  await expect(pasos.getByRole("link", { name: "Datos" })).toHaveAttribute("href", `/catalogo/productos/${harina.id}/datos`);
+  await page.goto(`/catalogo/productos/${masa.id}`);
+  await expect(pasos.getByRole("link")).toHaveText(["Resumen", "Datos", /^Receta/]);
+  await expect(pasos.getByRole("link", { name: /^Receta/ })).toHaveAttribute("href", `/catalogo/recetas/${masa.id}`);
+  // La materia prima que se produce y no tiene receta lo dice (pendiente); la que no se produce no tiene paso de receta.
+  await expect(pasos.getByRole("link", { name: /^Receta/ })).toContainText("Pendiente");
+  await expect(page.getByText(/se produce y todavía no tiene receta/)).toBeVisible();
+});
+
+test("el producto de respaldo de un adicional se muestra sin el marco de venta: ni pestañas ni «Qué falta», con su «Editar» al paso 1", async ({ paginaAutenticada: page }) => {
+  const marca = Date.now();
+  const grupo = await sembrarGrupo({ nombre: `E2E Extras ficha ${marca}`, tipo: "ADICIONAL", cantidadMinima: 0, cantidadMaxima: 2, marca: String(marca), opciones: [{ nombre: "Huevo frito", monto: 600, conAncla: true }] });
+  const ancla = grupo.opciones["Huevo frito"].anclaId!;
+  await page.goto(`/catalogo/productos/${ancla}`);
+  await expect(page.getByText(/producto interno que respalda el stock de un adicional/)).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Pasos del producto" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Qué falta" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Editar", exact: true })).toHaveAttribute("href", `/catalogo/productos/${ancla}/datos`);
 });
 
 test("editar y guardar vuelve a la ficha con el aviso, y la ficha muestra lo nuevo", async ({ paginaAutenticada: page }) => {
@@ -48,8 +113,9 @@ test("editar y guardar vuelve a la ficha con el aviso, y la ficha muestra lo nue
   const producto = await crearProducto(sufijo);
 
   await page.goto(`/catalogo/productos/${producto.id}`);
-  await page.getByRole("link", { name: "Editar", exact: true }).click();
-  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/editar$`));
+  // El enlace al editor es el paso 1 del marco («Qué se vende» en un producto de venta).
+  await page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ }).click();
+  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
 
   const nuevoNombre = `E2E Ficha Editado ${sufijo}`;
   await page.locator('input[name="nombre"]').fill(nuevoNombre);
@@ -76,10 +142,10 @@ test("crear un producto lleva a su ficha con el aviso de que se creó", async ({
   await expect(page.getByRole("heading", { name: nombre })).toBeVisible();
 });
 
-test("los enlaces viejos `?id=` siguen funcionando: llevan a la edición", async ({ paginaAutenticada: page }) => {
+test("los enlaces viejos `?id=` siguen funcionando: llevan a la edición (el paso 1)", async ({ paginaAutenticada: page }) => {
   const producto = await crearProducto(Date.now());
   await page.goto(`/catalogo/productos?id=${producto.id}`);
-  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/editar$`));
+  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
   await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
 });
 
@@ -88,6 +154,27 @@ test("un producto que no existe da «no encontrado», no un error", async ({ pag
   expect(respuesta?.status()).toBe(404);
   const otra = await page.goto("/catalogo/productos/no-existe-este-id/editar");
   expect(otra?.status()).toBe(404);
+  // La ruta vieja redirige al paso 1 sin leer el producto: el 404 lo da `/datos`.
+  expect(page.url()).toMatch(/\/catalogo\/productos\/no-existe-este-id\/datos$/);
+  const datos = await page.goto("/catalogo/productos/no-existe-este-id/datos");
+  expect(datos?.status()).toBe(404);
+});
+
+test("la ruta vieja `/editar` redirige (307) al paso 1 `/datos`, en un producto de venta y en una materia prima", async ({ paginaAutenticada: page }) => {
+  const pv = await crearProducto(Date.now());
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const mp = await prisma.producto.create({ data: { codigo: `E2E-FI-MP-${Date.now()}`, nombre: `E2E Ficha MP ${Date.now()}`, tipo: "MP", unidadStockId: kg.id } });
+  for (const { id, tipo } of [{ id: pv.id, tipo: "PV" }, { id: mp.id, tipo: "MP" }]) {
+    const respuesta = await page.request.get(`/catalogo/productos/${id}/editar`, { maxRedirects: 0, failOnStatusCode: false });
+    expect(respuesta.status(), `/editar de ${tipo}`).toBe(307);
+    expect(respuesta.headers()["location"], `/editar de ${tipo}`).toMatch(new RegExp(`/catalogo/productos/${id}/datos$`));
+    // Contraespejo: el destino NO redirige (es la pantalla, 200), así que no hay un bucle ni un segundo salto.
+    expect((await page.request.get(`/catalogo/productos/${id}/datos`, { maxRedirects: 0, failOnStatusCode: false })).status(), `/datos de ${tipo}`).toBe(200);
+    // Y en el navegador la pantalla es la misma: el formulario con el nombre cargado.
+    await page.goto(`/catalogo/productos/${id}/editar`);
+    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${id}/datos$`));
+    await expect(page.locator('input[name="nombre"]')).toHaveValue(tipo === "PV" ? pv.nombre : mp.nombre);
+  }
 });
 
 test("un rol sin «Ver» de productos no abre la ficha, la edición ni el alta", async ({ browser, baseURL, sucursalId }) => {
@@ -101,7 +188,7 @@ test("un rol sin «Ver» de productos no abre la ficha, la edición ni el alta",
   await contexto.addCookies([{ name: "authjs.session-token", value: sessionToken, domain: new URL(baseURL ?? "http://localhost:3000").hostname, path: "/", httpOnly: true, sameSite: "Lax" }]);
   const page = await contexto.newPage();
 
-  for (const ruta of [`/catalogo/productos/${producto.id}`, `/catalogo/productos/${producto.id}/editar`, "/catalogo/productos/nuevo"]) {
+  for (const ruta of [`/catalogo/productos/${producto.id}`, `/catalogo/productos/${producto.id}/editar`, `/catalogo/productos/${producto.id}/datos`, "/catalogo/productos/nuevo"]) {
     await page.goto(ruta);
     await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
   }

@@ -19,10 +19,10 @@ test.beforeEach(async ({ paginaAutenticada: page }) => {
 
 test("el formulario de venta propone el día de hoy argentino a las 22:00, no mañana", async ({ paginaAutenticada: page }) => {
   await page.goto("/movimientos/venta");
-  await expect(page.getByLabel("Fecha", { exact: true })).toHaveValue(DIA_ARGENTINO);
+  await expect(page.getByLabel(/^Fecha(?: \*)?$/)).toHaveValue(DIA_ARGENTINO);
 });
 
 test("el formulario de movimiento (merma) propone el día de hoy argentino a las 22:00, no mañana", async ({ paginaAutenticada: page }) => {
   await page.goto("/movimientos/merma");
-  await expect(page.getByLabel("Fecha", { exact: true })).toHaveValue(DIA_ARGENTINO);
+  await expect(page.getByLabel(/^Fecha(?: \*)?$/)).toHaveValue(DIA_ARGENTINO);
 });

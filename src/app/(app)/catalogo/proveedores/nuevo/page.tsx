@@ -10,13 +10,13 @@ export default async function NuevoProveedorPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   // Además de Ver, EDITAR: `altaProveedor` exige `proveedor_alta`. Quien solo ve proveedores no recibe el formulario para descubrir recién al guardar que no puede.
   const gateAlta = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedor_alta", ctx.db);
-  if (!gateAlta.ok) return <p className="text-red-600">{gateAlta.mensaje}</p>;
+  if (!gateAlta.ok) return <p className="text-error">{gateAlta.mensaje}</p>;
 
   return (
     <div className="max-w-md">

@@ -12,7 +12,7 @@ import type { ContenidoCartaValidado } from "./contenido-producto.schema";
 export function guardComandoGuardarContenidoCartaProducto(entrada: { datos: unknown }): ResultadoDato<ContenidoCartaValidado> {
   const { datos } = entrada;
   if (typeof datos !== "object" || datos === null || Array.isArray(datos)) return rechazar("formato", "Los datos del contenido de la carta no son válidos.");
-  const d = datos as { descripcion?: unknown; tags?: unknown; orden?: unknown; seccionCartaId?: unknown; generoCartaId?: unknown };
+  const d = datos as { descripcion?: unknown; tags?: unknown; orden?: unknown; seccionCartaId?: unknown; generoCartaId?: unknown; mostrarNombreArriba?: unknown };
 
   const descripcion = validarTextoLibreCarta(d.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
   if (!descripcion.ok) return rechazar("largo", descripcion.mensaje);
@@ -24,5 +24,7 @@ export function guardComandoGuardarContenidoCartaProducto(entrada: { datos: unkn
   for (const [valor, mensaje] of [[d.seccionCartaId, "La sección de carta no es válida."], [d.generoCartaId, "El género no es válido."]] as const) {
     if (valor !== undefined && valor !== null && typeof valor !== "string") return rechazar("formato", mensaje);
   }
+  // Fase 5 (DEC-11): «Mostrar el nombre arriba», si viene, es un sí o un no (un texto «false» sería verdadero en JS).
+  if (d.mostrarNombreArriba !== undefined && typeof d.mostrarNombreArriba !== "boolean") return rechazar("formato", "«Mostrar el nombre del producto arriba» no es válido.");
   return aceptar({ descripcion: descripcion.valor, tags: tags.valor, orden: orden.valor });
 }

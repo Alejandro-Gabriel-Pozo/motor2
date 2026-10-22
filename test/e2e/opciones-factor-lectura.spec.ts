@@ -70,7 +70,7 @@ for (const pantalla of PANTALLAS) {
     await expect(harina.locator("strong")).toHaveText("0,325 kg");
     await expect(queso).toContainText("0,1 kg");
     await expect(queso.locator("strong")).toHaveText("0,13 kg");
-    await expect(receta).toContainText("no se escala");
+    await expect(receta).toContainText("se multiplica por el factor solo si marcás");
     await expectSinDesborde(page, `${pantalla.nombre}: factor 1,3`);
     expect((await new AxeBuilder({ page }).analyze()).violations, "factor 1,3").toEqual([]);
     await capturar(page, `opciones-factor-${pantalla.nombre}-1-3`);

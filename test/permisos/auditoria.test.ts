@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarCambioAuditado } from "../../src/server/auditoria/registrar-cambio-auditado";
 import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
 import { actualizarProducto } from "../../src/server/actions/catalogo/productos";
-import { setPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
+import { setPrecioLocalProducto } from "../../src/server/actions/catalogo/precio-local";
 import { guardarPermisos } from "../../src/server/actions/permisos/permisos";
 import { actualizarCapacidad } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { crearRol, actualizarActivoRol } from "../../src/server/actions/permisos/roles";
@@ -68,7 +68,7 @@ describe("Auditoría administrativa (A3, Pivote 6)", () => {
       data: { codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 },
     });
 
-    await actualizarProducto(producto.id, { nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: 150 });
+    await actualizarProducto(producto.id, { nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, factorConversion: 1, precioVenta: 150, precioVentaVisto: 100 });
 
     const { items } = await listarRegistrosAuditoria({ entidad: "Producto", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
     const registro = items.find((r) => r.campo === "precioVenta")!;

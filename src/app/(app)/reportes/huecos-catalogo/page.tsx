@@ -8,10 +8,10 @@ export default async function HuecosCatalogoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "reporte_huecos_catalogo", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const rep = await generarReporteHuecosCatalogo(ctx.sucursalId, ctx.db);
   const problemasUnidadMezclada = await obtenerProblemasUnidadMezclada(ctx.db);
@@ -20,7 +20,7 @@ export default async function HuecosCatalogoPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Huecos de catálogo</h1>
-        <p className="text-sm text-neutral-500">Tres tipos de &quot;producto incompleto&quot; que ningún otro reporte marca.</p>
+        <p className="text-sm text-tinta-tenue">Tres tipos de &quot;producto incompleto&quot; que ningún otro reporte marca.</p>
       </div>
 
       <div>
@@ -29,7 +29,7 @@ export default async function HuecosCatalogoPage() {
           {rep.pvSinVentaNunca.map((p) => (
             <li key={p.productoId}>{p.codigo} — {p.producto}</li>
           ))}
-          {!rep.pvSinVentaNunca.length && <li className="list-none text-neutral-500">Todos los PV disponibles acá ya se vendieron alguna vez.</li>}
+          {!rep.pvSinVentaNunca.length && <li className="list-none text-tinta-tenue">Todos los PV disponibles acá ya se vendieron alguna vez.</li>}
         </ul>
       </div>
 
@@ -39,7 +39,7 @@ export default async function HuecosCatalogoPage() {
           {rep.insumosConRecetaSinProveedor.map((p) => (
             <li key={p.productoId}>{p.codigo} — {p.producto}</li>
           ))}
-          {!rep.insumosConRecetaSinProveedor.length && <li className="list-none text-neutral-500">Todas las MP de receta tienen al menos un proveedor.</li>}
+          {!rep.insumosConRecetaSinProveedor.length && <li className="list-none text-tinta-tenue">Todas las MP de receta tienen al menos un proveedor.</li>}
         </ul>
       </div>
 
@@ -51,7 +51,7 @@ export default async function HuecosCatalogoPage() {
               {p.insumo}: {p.unidades.join(", ")} — {p.productos.map((prod) => `${prod.nombre} (${prod.unidad})`).join(", ")}
             </li>
           ))}
-          {!problemasUnidadMezclada.length && <li className="list-none text-neutral-500">Sin insumos con unidad mezclada.</li>}
+          {!problemasUnidadMezclada.length && <li className="list-none text-tinta-tenue">Sin insumos con unidad mezclada.</li>}
         </ul>
       </div>
     </div>

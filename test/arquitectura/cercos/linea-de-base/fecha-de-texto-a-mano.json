@@ -1,0 +1,29 @@
+{
+  "regla": "fecha-de-texto-a-mano",
+  "meta": "0 (lote 6.33: todo día tecleado o de la URL se lee con core/tiempo: esDiaISOReal, inicioDelDia, rangoDeDias)",
+  "total": 8,
+  "entradas": 6,
+  "porTipo": {
+    "fecha-de-texto": 8
+  },
+  "cuentas": {
+    "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
+      "fecha-de-texto": 1
+    },
+    "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": {
+      "fecha-de-texto": 1
+    },
+    "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": {
+      "fecha-de-texto": 3
+    },
+    "src/core/excel.ts": {
+      "fecha-de-texto": 1
+    },
+    "src/server/actions/reportes/casos-de-uso/sincronizar-dolar.ts": {
+      "fecha-de-texto": 1
+    },
+    "src/server/persistencia/reportes/cotizacion-dolar.ts": {
+      "fecha-de-texto": 1
+    }
+  }
+}

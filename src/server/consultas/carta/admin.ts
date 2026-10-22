@@ -1,10 +1,12 @@
 import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { whereDisponibleEn } from "@/core/catalogo/public";
+import { whereDisponibleEn, type EstadoEnLaCarta } from "@/core/catalogo/public";
 import { WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos, esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, type SeccionCartaAdmin, type ProductoCartaAdmin, type GeneroCartaAdmin, type SucursalConCartaPropia, type DatosAdminCarta, type OpcionItemAgrupadoAdmin, type DatosAdminItemsAgrupados, type SucursalPortalAdmin, type TemaAdmin, type PortalEmpresaAdmin } from "@/core/carta/public";
 import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCartaConDiagnostico } from "@/server/lecturas/carta/menu";
+import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
+import { tablaDePreciosParaLaCarta } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 import type { PrismaClient } from "@prisma/client";
 import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
@@ -71,16 +73,46 @@ export async function origenesDeCopiaVisibles(usuarioId: string, origenes: reado
 }
 
 /**
+ * Fase 5 de la ola «precio y carta» (DEC-11): los productos que se venden por opción (BASE) con UN SOLO eje en la carta de esta sucursal —los únicos en que «Mostrar el nombre arriba» decide algo:
+ * una base de dos ejes sale siempre en tabla con el nombre arriba, y un producto directo no es una base—, con el valor guardado en su contenido (`false` si no tiene fila). El eje sale de la MISMA
+ * cuenta que la carta (`tablaDePreciosParaLaCarta` con las opciones que hoy se pueden elegir; una base se compone sobre su precio de referencia, así que no lee el precio guardado). Lo usa el formulario
+ * del contenido de cada producto (`carta/parametrizacion/secciones`) para mostrar el interruptor solo donde aplica. Lee de ESTA sucursal.
+ */
+export async function basesDeUnEjeEnLaCarta(sucursalId: string, db: Db): Promise<Map<string, boolean>> {
+  const bases = await db.producto.findMany({
+    where: { tipo: "PV", modoDeVenta: "BASE_CONFIGURABLE", ...whereDisponibleEn(sucursalId) },
+    select: { id: true, contenidosCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { mostrarNombreArriba: true } } },
+  });
+  if (bases.length === 0) return new Map();
+  const grupos = await opcionesDeLosProductosDeLaCarta(db, sucursalId, bases.map((b) => b.id));
+  const salida = new Map<string, boolean>();
+  for (const b of bases) {
+    const tabla = tablaDePreciosParaLaCarta({ grupos: grupos.get(b.id) ?? [], precioBase: 0, descuentoDeProducto: null, esBase: true });
+    if (tabla && tabla.ejes.columnas !== null && tabla.ejes.filas === null && tabla.ejes.sinLugar.length === 0) salida.set(b.id, b.contenidosCarta[0]?.mostrarNombreArriba ?? false);
+  }
+  return salida;
+}
+
+/**
+ * Las opciones de `cargarAdminCarta`. `soloProductoId` (Fase 6, 6.17b: el paso «En la carta» del espacio del producto lee UNO): `productos` trae a lo sumo ese producto —la MISMA fila que trae
+ * el lote completo, con el contenido y el descuento de ESTA sucursal— o ninguna si no es un PV disponible acá; lo demás (secciones, géneros, promos, estado de la carta, `precioLocalActivo`) es lo de
+ * siempre. `sinContenido` se calcula sobre lo que trae.
+ */
+interface OpcionesDeLaAdminCarta {
+  soloProductoId?: string;
+}
+
+/**
  * La pantalla de administración de la carta. `ahora` obligatorio (O.22-c): lo fija la página; solo llega al `generadoEn` del menú armado, que acá se descarta.
  * M.3-A5: lo único que lee de OTRAS sucursales es `estadoCartaPropia` (de dónde se puede copiar); todo lo demás se lee de `sucursalId`. Por eso, a quien puede copiar la carta, la página le pasa como
  * `db` la base del contexto ampliado por `lecturaEnSucursalesVisibles(ctx, "carta_ver")` (lo exige `test/arquitectura/lectores-de-varias-sucursales.test.ts`); al resto, la de la sucursal activa.
  */
-export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date): Promise<DatosAdminCarta> {
+export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date, opciones?: OpcionesDeLaAdminCarta): Promise<DatosAdminCarta> {
   const [secciones, generos, productos, promos, armado, precioLocalActivo, estado] = await Promise.all([
     seccionesConCantidad(sucursalId, db),
     generosOrdenados(sucursalId, db),
     db.producto.findMany({
-      where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
+      where: { tipo: "PV", ...whereDisponibleEn(sucursalId), ...(opciones?.soloProductoId !== undefined ? { id: opciones.soloProductoId } : {}) },
       select: {
         id: true,
         nombre: true,
@@ -330,4 +362,32 @@ export async function cargarPortalEmpresaAdmin(db: Db): Promise<PortalEmpresaAdm
     if (esClavePortal(clave) && typeof v === "string") valores[clave] = v;
   }
   return { valores, actualizadoEn: fila?.actualizadoEn ?? null };
+}
+
+/**
+ * Cómo está UN producto en la carta de esta sucursal (Fase 6, 6.17b; el «pendiente» del paso «En la carta» del espacio del producto). Lee solo ese producto y solo la carta PROPIA de `sucursalId`
+ * (`whereCartaDeSucursal`: lo de otra sucursal no entra). Es la misma cuenta que la carta pública (`resolverMenuCartaConDiagnostico`) y la ficha de Secciones, en este orden:
+ *  - `no-disponible`: no es un PV disponible acá (o no existe: quien llama no distingue, la carta tampoco);
+ *  - `agrupado`: es opción de un ítem agrupado prendido y con sección activa (sale SOLO ahí: D3); con el ítem apagado queda `oculto`, y con la sección del ítem apagada, `sin-seccion`;
+ *  - `fuera`: no tiene contenido de carta en esta sucursal (D3: sin fila no se muestra);
+ *  - `oculto`: tiene contenido pero con «Se muestra en la carta» apagado;
+ *  - `sin-seccion`: prendido pero sin una sección de carta activa (el «visible sin sección» del diagnóstico: no sale);
+ *  - `visible`: sale.
+ * No mira las opciones de venta: una base sin nada que elegir hoy no sale aunque aparezca `visible` (eso lo dice el paso «Opciones y precio»).
+ */
+export async function estadoDelProductoEnLaCarta(db: Db, sucursalId: string, productoId: string): Promise<EstadoEnLaCarta> {
+  const p = await db.producto.findFirst({
+    where: { id: productoId, tipo: "PV", ...whereDisponibleEn(sucursalId) },
+    select: {
+      contenidosCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { visibleEnCarta: true, seccionCarta: { select: { activa: true } } } },
+      opcionesItemAgrupadoCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { itemAgrupadoCarta: { select: { activo: true, seccionCarta: { select: { activa: true } } } } } },
+    },
+  });
+  if (!p) return "no-disponible";
+  const agrupado = p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta;
+  if (agrupado) return !agrupado.activo ? "oculto" : agrupado.seccionCarta.activa ? "agrupado" : "sin-seccion";
+  const contenido = p.contenidosCarta[0];
+  if (!contenido) return "fuera";
+  if (!contenido.visibleEnCarta) return "oculto";
+  return contenido.seccionCarta?.activa ? "visible" : "sin-seccion";
 }

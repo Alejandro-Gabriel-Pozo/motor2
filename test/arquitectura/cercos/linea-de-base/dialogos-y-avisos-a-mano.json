@@ -1,0 +1,73 @@
+{
+  "regla": "dialogos-y-avisos-a-mano",
+  "meta": "bajar hacia 0 en la Fase 6: diálogos y avisos salen de las primitivas de src/ui (Dialogo, Aviso)",
+  "total": 33,
+  "entradas": 17,
+  "porTipo": {
+    "role-alert": 14,
+    "role-dialog": 3,
+    "role-status": 16
+  },
+  "cuentas": {
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/botones.tsx": {
+      "role-alert": 2,
+      "role-status": 2
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/confirmacion.tsx": {
+      "role-alert": 1
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/modulos/botones.tsx": {
+      "role-alert": 1,
+      "role-status": 1
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/modulos/page.tsx": {
+      "role-status": 1
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/page.tsx": {
+      "role-alert": 1,
+      "role-status": 2
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/nueva/formulario.tsx": {
+      "role-alert": 1,
+      "role-status": 1
+    },
+    "plataforma/src/app/instalaciones/[instalacion]/error.tsx": {
+      "role-alert": 1
+    },
+    "plataforma/src/app/login/formulario.tsx": {
+      "role-alert": 1
+    },
+    "plataforma/src/app/page.tsx": {
+      "role-alert": 1,
+      "role-status": 2
+    },
+    "src/app/(app)/administracion/permisos/permisos-matriz.tsx": {
+      "role-dialog": 1
+    },
+    "src/app/(app)/carta/mantenimiento-de-carta.tsx": {
+      "role-alert": 2,
+      "role-dialog": 1,
+      "role-status": 2
+    },
+    "src/app/(app)/carta/page.tsx": {
+      "role-status": 1
+    },
+    "src/app/(app)/carta/parametrizacion/secciones/ordenar-secciones.tsx": {
+      "role-alert": 1,
+      "role-dialog": 1,
+      "role-status": 2
+    },
+    "src/app/(app)/error.tsx": {
+      "role-alert": 1
+    },
+    "src/app/(pos)/error.tsx": {
+      "role-alert": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/aviso-mesa.tsx": {
+      "role-status": 1
+    },
+    "src/components/carta/editor-portal.tsx": {
+      "role-status": 1
+    }
+  }
+}

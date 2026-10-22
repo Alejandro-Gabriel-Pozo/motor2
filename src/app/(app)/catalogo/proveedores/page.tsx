@@ -6,9 +6,11 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { actualizarActivaProveedor, listarProveedores } from "@/server/actions/catalogo/proveedores";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { IconoDeAccion } from "@/components/iconos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { claseDeBoton } from "@/ui/primitivas/boton";
 
 /**
  * Lista de proveedores. Ya no comparte pantalla con el formulario: el alta
@@ -20,10 +22,10 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { editar } = unicosDeUrl(await searchParams);
   // Los enlaces y favoritos viejos apuntaban a `/catalogo/proveedores?editar=…` (la edición estaba en esta misma pantalla).
@@ -42,7 +44,7 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
             Comparativa de precios →
           </EnlaceInterno>
           {puedeDarDeAlta && (
-            <Link href="/catalogo/proveedores/nuevo" className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
+            <Link href="/catalogo/proveedores/nuevo" className={claseDeBoton()}>
               + Nuevo proveedor
             </Link>
           )}
@@ -51,7 +53,7 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
 
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-neutral-500">
+          <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Código</th>
             <th>Nombre</th>
             <th>Contacto</th>
@@ -82,10 +84,10 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
                       return actualizarActivaProveedor(p.id, !p.activo);
                     }}
                   >
-                    <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                       <IconoDeAccion id="activar" />
                       {p.activo ? "Desactivar" : "Activar"}
-                    </button>
+                    </BotonDeServidor>
                   </FormConResultado>
                 </div>
               </td>
@@ -93,7 +95,7 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
           ))}
           {!proveedores.length && (
             <tr>
-              <td className="py-2 text-neutral-500" colSpan={5}>
+              <td className="py-2 text-tinta-tenue" colSpan={5}>
                 Sin proveedores.
               </td>
             </tr>

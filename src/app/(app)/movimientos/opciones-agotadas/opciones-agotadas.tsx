@@ -5,6 +5,9 @@ import { useRef, useState, useTransition } from "react";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { formatearCantidad } from "@/core/pos/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 
 export interface OpcionParaAgotar {
   opcionId: string;
@@ -67,17 +70,18 @@ export function OpcionesAgotadas({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="buscar-opcion" className="text-sm font-medium">
-          Buscar opción
-        </label>
-        <input id="buscar-opcion" type="search" value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Ej.: papas" className="max-w-sm rounded border px-3 py-2" />
+      <div className="max-w-sm">
+        <Campo id="buscar-opcion" etiqueta="Buscar opción" type="search" value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Ej.: papas" />
       </div>
-      {visibles.length === 0 && <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">No hay opciones que coincidan.</p>}
+      {visibles.length === 0 && (
+        <Aviso variante="informacion" forma="en-linea">
+          No hay opciones que coincidan.
+        </Aviso>
+      )}
       {visibles.map((g) => (
         <section key={g.grupoId} aria-labelledby={`grupo-${g.grupoId}`} className="flex flex-col gap-2 rounded border p-3">
           <h2 id={`grupo-${g.grupoId}`} className="font-medium">
-            {g.nombre} <span className="text-sm font-normal text-neutral-600 dark:text-neutral-400">· {g.opciones.filter((o) => !o.agotada).length} de {g.opciones.length} disponibles</span>
+            {g.nombre} <span className="text-sm font-normal text-tinta-suave">· {g.opciones.filter((o) => !o.agotada).length} de {g.opciones.length} disponibles</span>
           </h2>
           <ul className="flex flex-col divide-y">
             {g.opciones.map((o) => (
@@ -85,22 +89,23 @@ export function OpcionesAgotadas({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-sm">
                     {o.nombre}
-                    {o.esNinguna && <span className="text-neutral-600 dark:text-neutral-400"> (ninguna)</span>}
+                    {o.esNinguna && <span className="text-tinta-suave"> (ninguna)</span>}
                   </span>
-                  <button
-                    type="button"
+                  <Boton
+                    variante="interruptor"
+                    tamano="tactil"
                     aria-pressed={!o.agotada}
                     disabled={!puedeCambiar}
                     title={puedeCambiar ? undefined : "Tu rol puede ver esta pantalla pero no cambiar el estado de las opciones."}
                     onClick={() => cambiar(o.opcionId, o.nombre, !o.agotada, true)}
-                    className="min-h-[44px] min-w-[8.5rem] rounded-full border px-4 py-1.5 text-sm font-medium aria-pressed:border-green-700 aria-pressed:text-green-800 dark:aria-pressed:border-green-500 dark:aria-pressed:text-green-400 [&:not([aria-pressed=true])]:border-red-700 [&:not([aria-pressed=true])]:bg-red-50 [&:not([aria-pressed=true])]:text-red-800 dark:[&:not([aria-pressed=true])]:bg-red-950 dark:[&:not([aria-pressed=true])]:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
+                    className="min-w-34"
                   >
                     <span className="sr-only">{o.nombre}: </span>
                     {o.agotada ? "Agotada" : "Disponible"}
-                  </button>
+                  </Boton>
                 </div>
                 {o.sinStockEnElSistema.map((i) => (
-                  <p key={i.productoId} className="text-xs text-amber-700 dark:text-amber-600" data-aviso-stock={i.nombre}>
+                  <p key={i.productoId} className="text-xs text-aviso-tinta" data-aviso-stock={i.nombre}>
                     {i.nombre}: el sistema dice {formatearCantidad(i.saldo)} {i.unidadNombre}. Si hay en el depósito,{" "}
                     <EnlaceInterno href="/movimientos/conteo-fisico" className="underline">
                       hacé un conteo físico
@@ -116,17 +121,17 @@ export function OpcionesAgotadas({
       {/* MOVIL (O.462): el resultado y «Deshacer» van PEGADOS AL BORDE DE ABAJO de la pantalla (`sticky bottom-3`), no arriba de la lista: quien toca una opción lejos, en una lista larga en el
           celular, los tenía fuera de la vista y no se enteraba de que se agotó ni podía deshacer. Sigue siendo `status` (o `alert` si falló), con el mismo texto. */}
       {ultimo && (
-        <div
-          role={ultimo.resultado.ok ? "status" : "alert"}
-          data-resultado-pegado
-          className={`sticky bottom-3 z-10 flex flex-wrap items-center gap-3 rounded border bg-white p-3 text-sm shadow-lg dark:bg-neutral-900 ${ultimo.resultado.ok ? "border-green-700 text-green-700 dark:border-green-500 dark:text-green-400" : "border-red-600 text-red-600 dark:border-red-400 dark:text-red-400"}`}
-        >
-          <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{ultimo.resultado.mensaje}</span>
-          {ultimo.deshacible && (
-            <button type="button" disabled={pendiente} onClick={() => cambiar(ultimo.opcionId, ultimo.nombre, !ultimo.apagada, false)} className="min-h-[44px] min-w-[44px] rounded border border-current px-3 py-1 font-medium">
-              Deshacer
-            </button>
-          )}
+        <div className="sticky bottom-3 z-10 rounded shadow-lg shadow-sombra">
+          <Aviso variante={ultimo.resultado.ok ? "exito" : "error"} data-resultado-pegado>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{ultimo.resultado.mensaje}</span>
+              {ultimo.deshacible && (
+                <Boton variante="secundario" tamano="tactil" disabled={pendiente} onClick={() => cambiar(ultimo.opcionId, ultimo.nombre, !ultimo.apagada, false)} className="min-w-11">
+                  Deshacer
+                </Boton>
+              )}
+            </div>
+          </Aviso>
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
 import { leerCantidadTecleada, unidadesDeLectura } from "@/core/catalogo/public";
-import { interpretarNumero } from "@/core/datos/numero-tecleado";
+import { CONTEXTO_CANTIDAD_SIN_UNIDAD, interpretarNumeroTecleado } from "@/core/datos/numero-tecleado";
 
 /**
  * Propiedades de la lectura en vivo de una cantidad (src/core/catalogo/lectura-de-cantidad.ts). Los textos se arman VÁLIDOS por construcción
@@ -12,6 +12,7 @@ const KG = unidadesDeLectura([
   { id: "kg", nombre: "kg", magnitud: "PESO" },
   { id: "g", nombre: "g", magnitud: "PESO" },
 ]).kg;
+const CONTEXTO_KG = CONTEXTO_CANTIDAD_SIN_UNIDAD;
 
 const separador = fc.constantFrom(".", ",");
 const tresDigitos = fc.integer({ min: 0, max: 999 }).map((n) => String(n).padStart(3, "0"));
@@ -23,15 +24,15 @@ function lecturaDe(texto: string) {
 }
 
 describe("lectura de cantidad (propiedades)", () => {
-  it("el valor es SIEMPRE el de interpretarNumero (la lectura no reinterpreta)", () => {
+  it("el valor es SIEMPRE el del parser con los decimales de la unidad (la lectura no reinterpreta)", () => {
     const texto = fc.oneof(
       fc.integer({ min: 0, max: 99_999 }).map(String),
-      fc.tuple(fc.integer({ min: 0, max: 9999 }), separador, fc.integer({ min: 0, max: 9999 })).map(([e, s, d]) => `${e}${s}${d}`),
-      fc.tuple(fc.integer({ min: 1, max: 999 }), separador, tresDigitos, tresDigitos).map(([a, s, b, c]) => `${a}${s}${b}${s}${c}`)
+      fc.tuple(fc.integer({ min: 0, max: 9999 }), fc.integer({ min: 0, max: 99 })).map(([e, d]) => `${e},${d}`),
+      fc.tuple(fc.integer({ min: 1, max: 999 }), tresDigitos, tresDigitos).map(([a, b, c]) => `${a}.${b}.${c}`)
     );
     fc.assert(
       fc.property(texto, (t) => {
-        const parser = interpretarNumero(t);
+        const parser = interpretarNumeroTecleado(t, CONTEXTO_KG);
         expect(parser.ok).toBe(true);
         expect(lecturaDe(t).valor).toBe(parser.ok ? parser.valor : NaN);
       }),
@@ -39,28 +40,25 @@ describe("lectura de cantidad (propiedades)", () => {
     );
   });
 
-  it("un separador con 1 a 3 dígitos antes y exactamente 3 después siempre avisa, y la alternativa es el número sin el separador", () => {
+  it("un punto con 1 a 3 dígitos antes y exactamente 3 después NUNCA se adivina en kilos: es inválido y dice las dos lecturas", () => {
     fc.assert(
-      fc.property(fc.integer({ min: 0, max: 999 }), separador, tresDigitos, (entero, sep, decimales) => {
-        fc.pre(entero !== 0 || decimales !== "000"); // «0.000» se lee 0 de las dos maneras: no hay nada que aclarar (caso puntual en el test de casos)
-        const texto = `${entero}${sep}${decimales}`;
-        const sinSeparador = String(Number(`${entero}${decimales}`));
-        expect(lecturaDe(texto).advertencia).toContain(`escribilo sin ${sep === "." ? "punto" : "coma"}: ${sinSeparador}.`);
+      fc.property(fc.integer({ min: 1, max: 999 }), tresDigitos, (entero, decimales) => {
+        const r = leerCantidadTecleada(`${entero}.${decimales}`, KG);
+        expect(r).toEqual({ tipo: "invalido", mensaje: `¿${entero},${decimales} o ${entero}${decimales}? Escribí ${entero}${decimales} o ${entero},${decimales}.` });
       }),
       RUNS
     );
   });
 
-  it("sin separador, con 1, 2 o 4+ decimales, o con miles bien agrupados, nunca avisa", () => {
+  it("con coma, o con miles bien agrupados, o sin separador, siempre se entiende", () => {
     const sinAmbiguedad = fc.oneof(
       fc.integer({ min: 0, max: 10_000_000 }).map(String),
-      fc.tuple(fc.integer({ min: 0, max: 9999 }), separador, fc.integer({ min: 0, max: 99 })).map(([e, s, d]) => `${e}${s}${d}`),
-      fc.tuple(fc.integer({ min: 0, max: 999 }), separador, fc.integer({ min: 0, max: 9999 })).map(([e, s, d]) => `${e}${s}${String(d).padStart(4, "0")}`),
-      fc.tuple(fc.integer({ min: 1, max: 999 }), separador, tresDigitos, tresDigitos).map(([a, s, b, c]) => `${a}${s}${b}${s}${c}`)
+      fc.tuple(fc.integer({ min: 0, max: 9999 }), fc.integer({ min: 0, max: 999 })).map(([e, d]) => `${e},${String(d).padStart(3, "0")}`),
+      fc.tuple(fc.integer({ min: 1, max: 999 }), separador.filter((s) => s === "."), tresDigitos, tresDigitos).map(([a, s, b, c]) => `${a}${s}${b}${s}${c}`)
     );
     fc.assert(
       fc.property(sinAmbiguedad, (t) => {
-        expect(lecturaDe(t).advertencia).toBeNull();
+        expect(leerCantidadTecleada(t, KG).tipo).toBe("valor");
       }),
       RUNS
     );
@@ -70,7 +68,7 @@ describe("lectura de cantidad (propiedades)", () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 99_999 }), (milesimos) => {
         const n = milesimos / 1000;
-        const { lectura } = lecturaDe(String(n));
+        const { lectura } = lecturaDe(String(n).replace(".", ","));
         if (n > 0 && n < 1) {
           expect(lectura).toMatch(/^= \d+ g$/);
           expect(Number(lectura.slice(2, -2)) / 1000).toBeCloseTo(n, 9);

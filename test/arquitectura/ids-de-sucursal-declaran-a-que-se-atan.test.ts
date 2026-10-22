@@ -104,11 +104,6 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     ata: "SUCURSAL_ACTIVA",
     motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; la grilla se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
   },
-  // GO-3b (ADR-032, frente A): el precio local de una combinación o de una tarifa, con el mismo eco que la grilla de las opciones.
-  "catalogo/combinaciones.ts|fijarPrecioLocalDeCombinacion": {
-    ata: "SUCURSAL_ACTIVA",
-    motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; el precio local se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
-  },
   // GO-3b (ADR-032, D5): el menú del día de la sucursal, con el mismo eco que las opciones por sucursal.
   "carta/menu-del-dia.ts|agregarPlatoDelDia": {
     ata: "SUCURSAL_ACTIVA",
@@ -148,9 +143,9 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     motivo: "S-07 (O.56): el origen se lee con membresía vigente y «Ver» de la copia ALLÍ (`leerOrigenDeCopia` en la propia acción); recién después se ensancha la LECTURA a esa sucursal (`conAlcanceEnSucursal`, M.3-A5), nunca la escritura",
   },
   "movimientos/lecturas-conteo-fisico.ts|obtenerHistorialConteosFisicos": { ata: "SUCURSAL_CON_GATE", motivo: "`reporte_conteos` EN la sucursal pedida" },
-  "movimientos/precio-local.ts|obtenerPrecioLocalProducto": { ata: "SUCURSAL_CON_GATE", motivo: "`precio_local` EN la sucursal pedida" },
-  "movimientos/precio-local.ts|listarPreciosLocales": { ata: "SUCURSAL_CON_GATE", motivo: "`precio_local` EN la sucursal pedida" },
-  "movimientos/precio-local.ts|sincronizarPrecioLocalGrupoCarta": { ata: "SUCURSAL_ACTIVA", motivo: "`precio_local` en la sucursal activa; el guard exige que el id sea la activa" },
+  "catalogo/precio-local.ts|obtenerPrecioLocalProducto": { ata: "SUCURSAL_CON_GATE", motivo: "`precio_local` EN la sucursal pedida" },
+  "catalogo/precio-local.ts|listarPreciosLocales": { ata: "SUCURSAL_CON_GATE", motivo: "`precio_local` EN la sucursal pedida" },
+  "catalogo/precio-local.ts|sincronizarPrecioLocalGrupoCarta": { ata: "SUCURSAL_ACTIVA", motivo: "`precio_local` en la sucursal activa; el guard exige que el id sea la activa" },
   "movimientos/secciones.ts|listarSeccionesActivas": { ata: "SUCURSAL_CON_GATE", motivo: "alguna de las pantallas que usan secciones, EN la sucursal pedida" },
   "movimientos/secciones.ts|listarSeccionesParaPanel": { ata: "SUCURSAL_CON_GATE", motivo: "`secciones` EN la sucursal pedida" },
   "permisos/capacidades-sucursal.ts|actualizarCapacidad": { ata: "EMPRESA_RLS", motivo: "`capacidades_sucursal` es una clave de empresa y el caso de uso la limita al gerente (O.41); el id (o `null` = la fila por defecto) solo alcanza sucursales de la empresa" },

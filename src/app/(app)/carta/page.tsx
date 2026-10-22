@@ -16,6 +16,7 @@ import { actualizarVisibleEnCarta } from "@/server/actions/carta/contenido-produ
 import { actualizarActivaSeccionCarta } from "@/server/actions/carta/secciones";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { PRECIOS_EDITABLES } from "@/core/carta/public";
 import { formatearCantidad } from "@/core/pos/public";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
@@ -41,21 +42,16 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 };
 
 const PESTANAS: readonly PestanaDeMantenimiento[] = ["hoy", "precios", "visibilidad"];
-/**
- * F4 «Precios» (ADR-034): el interruptor para apagarlo sin tocar nada más. En `false` la pestaña queda de solo lectura («próximamente») y la pantalla no ofrece ajustar; las acciones
- * (`src/server/actions/carta/precios.ts`) siguen exigiendo sus permisos de siempre.
- */
-const PRECIOS_EDITABLES = true;
 const pesos = (n: number) => `$ ${n.toLocaleString("es-AR")}`;
 
 export default async function CartaPage({ searchParams }: { searchParams: Promise<{ [clave: string]: string | string[] | undefined }> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   const [nivelHoy, nivelContenido, nivelSecciones, nivelCopiar, nivelPrecioLocal, nivelProductoEditar, camposSensibles] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_contenido_producto", ctx.db),
@@ -164,7 +160,8 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
               productos: x.productos.map((p) => ({
                 id: p.id,
                 nombre: p.nombre,
-                precio: pesos(p.precioAca),
+                // Fase 4 (ADR-035): de una base no se muestra su precio guardado (no se cobra).
+                precio: p.seVendePorOpcion ? "Por opción" : pesos(p.precioAca),
                 disponible: p.disponibleAca,
                 visible: p.contenido?.visibleEnCarta === true,
                 precioVisto: p.precioAca.toFixed(2),
@@ -173,7 +170,7 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
               })),
             }))}
             ocultosSinSeccion={carta.sinSeccion.map((p) => ({ id: p.id, nombre: p.nombre }))}
-            fueraDeCarta={carta.fueraDeCarta.map((p) => ({ id: p.id, nombre: p.nombre, precio: pesos(p.precioAca), vistaPrevia: p.vistaPrevia ?? "Sin opciones." }))}
+            fueraDeCarta={carta.fueraDeCarta.map((p) => ({ id: p.id, nombre: p.nombre, precio: p.seVendePorOpcion ? "Por opción" : pesos(p.precioAca), vistaPrevia: p.vistaPrevia ?? "Sin opciones." }))}
             puede={puede}
             acciones={{
               fijarHoy: async (cambios: { productoId: string; disponible: boolean }[]) => {

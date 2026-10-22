@@ -1,7 +1,7 @@
 "use client";
 
 import { type TicketDeCuenta, formatearNumeroTicket, formatearMonto } from "@/core/pos/public";
-import { BOTON_CHICO } from "./estilos";
+import { Boton } from "@/ui/primitivas/boton";
 import { formatearHora } from "@/core/tiempo/zona-horaria";
 import { useImpresion } from "./imprimir";
 import { EmitirTicketCorregido } from "./emitir-ticket-corregido";
@@ -22,11 +22,11 @@ export function CuentasCerradas({ tickets, puede, puedeCorregir, zonaHoraria }: 
   if (!tickets.length) return null;
 
   return (
-    <section aria-labelledby="cuentas-cerradas-titulo" className="mt-6 rounded-[14px] border border-[var(--border)] bg-white p-4">
-      <h2 id="cuentas-cerradas-titulo" className="mb-3 text-[15px] font-bold">
+    <section aria-labelledby="cuentas-cerradas-titulo" className="mt-6 rounded-[14px] border border-borde bg-superficie p-4">
+      <h2 id="cuentas-cerradas-titulo" className="mb-3 text-base font-bold">
         Cuentas cerradas
       </h2>
-      <ul className="divide-y divide-[var(--border)]">
+      <ul className="divide-y divide-borde">
         {tickets.map((b) => {
           const hora = formatearHora(b.cerradaEn, zonaHoraria);
           const motivo =
@@ -38,23 +38,24 @@ export function CuentasCerradas({ tickets, puede, puedeCorregir, zonaHoraria }: 
                   ? undefined
                   : "Reimprimir el ticket requiere el permiso de cerrar cuentas, que tu rol no tiene.";
           return (
-            <li key={b.cuentaId} data-cuenta-cerrada={hora} className="flex flex-wrap items-center justify-between gap-3 py-2 text-[14px]">
+            <li key={b.cuentaId} data-cuenta-cerrada={hora} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
               <span>
                 {b.numero && `N.º ${formatearNumeroTicket(b.numero)} · `}Cerrada {hora} · Atendió {b.mesero} · <span className="tabular-nums">{formatearMonto(b.total)}</span>
               </span>
               <span className="flex items-center gap-3">
-                {b.estado === "anulada" && <span className="text-[12.5px] font-semibold text-[var(--mesa-ocupada)]">Venta anulada</span>}
+                {b.estado === "anulada" && <span className="text-sm font-semibold text-error">Venta anulada</span>}
                 <EmitirTicketCorregido ticket={b} hora={hora} puede={puedeCorregir} />
-                <button
-                  type="button"
-                  className={BOTON_CHICO}
+                <Boton
+                  variante="secundario"
+                  tamano="compacto"
+                  className="min-w-11"
                   disabled={!puede || b.estado !== "vigente"}
                   title={motivo}
                   aria-label={`Reimprimir el ticket de la cuenta cerrada a las ${hora}`}
                   onClick={() => reimprimirTicket(b.cuentaId)}
                 >
                   Reimprimir ticket
-                </button>
+                </Boton>
               </span>
             </li>
           );

@@ -21,6 +21,8 @@ export { aplicarSecuencia, esPermutacionExacta, insertarEnPosicion, secuenciaMov
 export { leerCantidadTecleada, unidadesDeLectura } from "./lectura-de-cantidad";
 export type { UnidadDeLectura } from "./lectura-de-cantidad";
 export { filtrarPreciosLocalesVigentes } from "./precio-local";
+export { cambioDePrecio } from "./cambio-de-precio";
+export type { CambioDePrecio } from "./cambio-de-precio";
 export type { PrecioLocalVigente } from "./precio-local";
 export { productosUniversales } from "./disponibilidad-producto";
 export type { FilaDisponibilidadEnSucursal } from "./disponibilidad-producto";
@@ -49,5 +51,23 @@ export type { AlcanceCentral, AlcanceDeReceta } from "./recetas-vigentes";
 // Hito 4, paso A5 (O.8a): el armado puro de la comparativa de precios por insumo (lo usa el lector de la comparativa, server/lecturas/catalogo/ofertas-de-proveedor.ts).
 export { armarComparativaDePrecios } from "./comparativa-de-precios";
 export type { FilaComparativaPrecios } from "./comparativa-de-precios";
-// GO-3b (U3/U4): lo que muestran las pantallas de combinaciones y tarifas.
-export type { CeldaDeCombinacion, CombinacionesDelProductoAdmin, TarifaAdmin } from "./combinaciones-admin";
+// Fase 6 («el espacio del producto», 6.9b): los pasos del espacio de un producto según su tipo, sus rutas, sus pendientes y qué pasos abre cada usuario (puro; lo dibuja el marco del espacio).
+export { PASOS_DEL_ESPACIO, pasosDelEspacio, pendientesDelProducto, rutaDelPaso } from "./espacio-del-producto";
+export type { AccesoAlEspacio, EstadoDelPaso, EstadoEnLaCarta, FormaDelProducto, HechosDelProducto, PasoDeLaPortada, PasoDelEspacio } from "./espacio-del-producto";
+// Fase 6, bloque 3 (3b): los filtros de la lista de Productos (palabras de listas cerradas en la URL, su validación y su re-escritura; puro).
+export {
+  DISPONIBILIDADES_FILTRABLES,
+  ETIQUETA_DE_LA_DISPONIBILIDAD,
+  ETIQUETA_DE_LA_FALTA,
+  ETIQUETA_DEL_MODO,
+  ETIQUETA_DEL_TIPO,
+  FALTAS_FILTRABLES,
+  MODOS_FILTRABLES,
+  SIN_FILTROS,
+  TIPOS_FILTRABLES,
+  consultaDeLosFiltros,
+  hayFiltrosDeProductos,
+  leerFiltrosDeProductos,
+  necesitaLaEmpresaEntera,
+} from "./filtros-de-productos";
+export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos } from "./filtros-de-productos";

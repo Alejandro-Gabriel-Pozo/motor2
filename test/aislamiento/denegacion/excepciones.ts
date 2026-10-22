@@ -153,7 +153,7 @@ export const RECHAZOS_DE_ESTADO_ADMITIDOS: Readonly<Record<string, RechazoAdmiti
     mensaje: /no tiene receta central de la que partir/,
     motivo: "la receta central del producto de otra empresa no se ve: «no tiene receta central»; con el PV propio sin receta propia el control positivo termina en ok: true",
   },
-  "accion|actions/movimientos/precio-local.ts|sincronizarPrecioLocalGrupoCarta|ajenaEmpresa": {
+  "accion|actions/catalogo/precio-local.ts|sincronizarPrecioLocalGrupoCarta|ajenaEmpresa": {
     mensaje: /no están todos en el mismo ítem agrupado/,
     motivo: "ídem `sincronizarPrecioGrupoCarta` (ítem agrupado de la sucursal activa resuelto desde el primer producto)",
   },
@@ -193,7 +193,11 @@ export const SIN_MARCA_PROPIA: Readonly<Record<string, string>> = {
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaSolicitar": "lista las OTRAS sucursales de la empresa (id y nombre) para elegir contraparte: por diseño no llevan el marcador de la sucursal propia",
   // Consultas de las páginas.
   "consulta|consultas/carta/admin.ts|cargarPortalEmpresaAdmin": "devuelve solo los valores de una lista cerrada de claves del portal (colores, tipografías…), sin texto libre donde ponerle el marcador",
+  "consulta|consultas/carta/admin.ts|estadoDelProductoEnLaCarta": "devuelve solo un estado de una lista cerrada («visible», «oculto», «fuera»…), sin ninguna fila identificable; con un producto de otra empresa o sucursal responde «no-disponible», igual que ante un id inexistente",
   "consulta|consultas/carta/admin.ts|origenesDeCopiaVisibles": "devuelve las sucursales candidatas que se le pasan, filtradas por la membresía y el «Ver» de la carta (S-07); con la propia devuelve la que recibió (no es una fila con marcador propio). Los escenarios ajenos le pasan sucursales a las que u1 no pertenece y exigen que no vuelva ninguna",
+  "consulta|consultas/catalogo/espacio-del-producto.ts|hechosDelProducto": "devuelve solo banderas y estados de una lista cerrada («vendible acá», el mensaje de la regla «sin receta no se vende», el estado en la carta), sin ninguna fila identificable; con un producto de otra empresa o sucursal no lee nada",
+  "consulta|consultas/carta/vista-previa-de-un-producto.ts|cargarVistaPreviaDeLaCarta": "devuelve una forma cerrada («sin-opciones», «no-se-puede-pedir», o la presentación y los rótulos de precios ya calculados): el producto del mundo con opciones es un tamaño de precio absoluto sin precio de la sucursal, que la carta lee como «no se puede pedir», y esa respuesta no lleva texto libre donde ponerle el marcador",
+  "consulta|consultas/catalogo/filtros-de-productos.ts|faltasQueSePuedenFiltrarEnLaLista": "devuelve solo claves de una lista cerrada («sin-precio», «sin-receta», «fuera-de-la-carta»…) según los permisos y módulos de quien mira, sin ninguna fila identificable",
   "consulta|consultas/catalogo/productos.ts|contarSucursales": "devuelve solo un número",
   "consulta|consultas/catalogo/recetas.ts|listarOpcionesDeSustituto": "opciones de MP con otro insumo y la misma unidad: el mundo tiene un solo insumo con producto, así que no hay opciones",
   "consulta|consultas/reportes/costo-historico.ts|reconstruirCostosDeVenta": "devuelve el costo reconstruido por producto y día, y repite los ids que se le pasan (que no cuentan como propios)",

@@ -21,6 +21,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Next 16.4 no tolera `revalidateTag`/`refresh` fuera de una petición: ver test/setup/next-cache.ts.
+    setupFiles: ["test/setup/next-cache.ts"],
     // Estos tests pegan contra Postgres real (Neon branch efímero o local)
     // — no son unit tests con mocks (mismo espíritu que Tests.js contra un
     // Catálogo Central de prueba real, ver plan). Se corren secuenciales

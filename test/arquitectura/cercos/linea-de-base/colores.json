@@ -1,0 +1,14 @@
+{
+  "regla": "colores",
+  "meta": "0 en la Fase 6 (DEC-03: los colores salen de los tokens de globals.css)",
+  "total": 1,
+  "entradas": 1,
+  "porTipo": {
+    "hex": 1
+  },
+  "cuentas": {
+    "src/components/carta/campo-color.tsx": {
+      "hex": 1
+    }
+  }
+}

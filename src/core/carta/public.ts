@@ -10,8 +10,9 @@
  */
 export type { CartaV1 } from "./armar-menu";
 // S-25: lo único que la carta pública entrega a un anónimo (la carta armada SIN los ids internos) y la proyección que la arma; ver `carta-publica.ts`.
-export type { CartaPublicaV1, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "./carta-publica";
-export { etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-publica";
+export type { AclaracionCartaPublica, CartaPublicaV1, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica, TandaCartaPublica } from "./carta-publica";
+export { partirLaAclaracion, pieDeLaCartaImpresa, recargoEnPesos, textoDeLaAclaracion } from "./texto-de-la-carta";
+export { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-publica";
 export { precioDeCarta } from "./armar-menu";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
 // GO-3 (ADR-032): los tipos de cupo y la lectura tolerante del primer despliegue (solo los cupos de sección activos; una promo con un cupo activo de tipo nuevo no se ofrece).
@@ -33,6 +34,7 @@ export { formatearPrecioCarta } from "./precio-carta";
 export { whereCartaDeSucursal } from "./carta-de-sucursal";
 export type { EstiloCarta } from "./estilo";
 export { resolverEstiloCarta } from "./estilo";
+export { variablesDeLaEscala } from "./escala";
 export type { EstiloPortal } from "./portal";
 export { decidirLayoutPortal, resolverEstiloPortal } from "./portal";
 export type { ItemAgrupadoAdmin } from "./admin-tipos";
@@ -81,13 +83,17 @@ export type { EntradaPortalCarta } from "./portal";
 export { TODOS_LOS_DIAS, mascaraDeDias, promoVigenteEl, validarVigenciaDePromo } from "./vigencia-de-promo";
 export type { VigenciaDePromo } from "./vigencia-de-promo";
 // GO-3b (ADR-032, D-1): la fecha del menú del día (de hoy a hoy + 13, en la zona de la empresa).
-export { DIAS_DE_ANTICIPACION_DEL_MENU, validarFechaDeMenuDelDia } from "./menu-del-dia";
+export { DIAS_DE_ANTICIPACION_DEL_MENU, MENSAJE_MENU_DEL_DIA_APAGADO, MENU_DEL_DIA_VISIBLE, lugarDelDiaApagado, validarFechaDeMenuDelDia } from "./menu-del-dia";
 export type { CandidatoAPlato, MenuDelDiaDeLaSucursal } from "./menu-del-dia";
 // CARTA-MANT (mantenimiento de la carta): en qué lista va cada producto de la pantalla de la carta («Fuera de carta» es el POS y el menú del día, no un faltante).
-export { coincideConLaBusqueda, lugaresParaPoner, ordenAlFinalDeLaSeccion, organizarCartaParaMantener, ponerEnElLugar, vistaPreviaDeOpciones } from "./mantenimiento";
+export { coincideConLaBusqueda, lugaresParaPoner, ordenAlFinalDeLaSeccion, organizarCartaParaMantener, ponerEnElLugar, vistaPreviaDeLaForma, vistaPreviaDeOpciones } from "./mantenimiento";
+export { presentacionDeUnProductoSolo } from "./presentacion-en-carta";
+export type { AclaracionCartaV1, PresentacionCartaV1 } from "./presentacion-en-carta";
 export type { CartaParaMantener, ProductoParaMantener } from "./mantenimiento";
 // CARTA-MANT: la vista previa de «Agregar a la carta» usa la MISMA presentación de opciones que la carta pública.
 export { opcionesParaLaCarta } from "./opciones-en-carta";
 // CARTA-MANT F4: el ajuste de precios de una sección, en decimal exacto (centavos); sin redondeo en la pantalla (decisión del dueño, 2026-10-14).
-export { aCentavos, deCentavos, precioAjustado, validarAjusteDePrecio, REDONDEO_POR_DEFECTO } from "./ajuste-de-precios";
+export { aCentavos, deCentavos, precioAjustado, validarAjusteDePrecio, PRECIOS_EDITABLES, REDONDEO_POR_DEFECTO } from "./ajuste-de-precios";
 export type { AjusteDePrecio } from "./ajuste-de-precios";
+// Fase 6, bloque 3 (6.18): lo que la vista previa de un producto en la carta recibe ya calculado (tipo; la calcula `server/consultas/carta/vista-previa-de-un-producto.ts`).
+export type { VistaPreviaDeLaCarta } from "./vista-previa-del-producto";

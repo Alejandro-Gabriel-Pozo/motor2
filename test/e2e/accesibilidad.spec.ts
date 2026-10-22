@@ -4,6 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test as testAutenticado } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
+import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 import { crearMembresias, crearMembresia } from "../setup/membresia";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { activarEmpresaB, crearUsuarioEn, paginaConSesion, suspenderEmpresaB, type EmpresasDeLaPrueba } from "./fixtures/multiempresa";
@@ -32,8 +33,8 @@ testAutenticado("inicio: el panel con las tarjetas de módulos (iconos decorativ
 });
 
 testAutenticado("reportes/costos: sin violaciones de accesibilidad detectables por axe, contraste incluido", async ({ paginaAutenticada: page }) => {
-  // Un producto de venta con receta cuyo insumo NO tiene ninguna compra: su costo queda incompleto y la tabla lo marca en ámbar (text-amber-700 / dark:
-  // text-amber-600). Sin este dato la pantalla no dibuja ningún texto ámbar y el chequeo de contraste no auditaría nada.
+  // Un producto de venta con receta cuyo insumo NO tiene ninguna compra: su costo queda incompleto y la tabla lo marca en ámbar (text-aviso-tinta, el token del
+  // aviso). Sin este dato la pantalla no dibuja ningún texto ámbar y el chequeo de contraste no auditaría nada.
   const marca = Date.now();
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CMP-${marca}`, nombre: `E2E Insumo Sin Compra ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
@@ -42,8 +43,8 @@ testAutenticado("reportes/costos: sin violaciones de accesibilidad detectables p
   try {
     await page.goto("/reportes/costos");
     await expect(page.getByRole("heading", { name: "Costos y márgenes" })).toBeVisible();
-    await expect(page.locator("tr", { hasText: pv.nombre }).locator("[class*=\"text-amber-\"]").first(), "el caso sembrado tiene que dibujar texto ámbar").toBeVisible();
-    // Scan completo, SIN desactivar reglas: antes `color-contrast` iba afuera porque text-amber-600 no llegaba al mínimo AA.
+    await expect(page.locator("tr", { hasText: pv.nombre }).locator("[class*=\"text-aviso-tinta\"]").first(), "el caso sembrado tiene que dibujar texto ámbar").toBeVisible();
+    // Scan completo, SIN desactivar reglas: antes `color-contrast` iba afuera porque el ámbar de entonces (text-amber-600) no llegaba al mínimo AA.
     const resultados = await new AxeBuilder({ page }).analyze();
     expect(resultados.violations).toEqual([]);
   } finally {
@@ -274,14 +275,41 @@ testAutenticado("movimientos/precio-local: el selector de producto abierto (con 
   }
 });
 
-testAutenticado("modo oscuro: la página declara color-scheme, para que los controles nativos (lista de un <select>, scrollbars) se dibujen oscuros", async ({ paginaAutenticada: page }) => {
-  // Los inputs de la app tienen fondo transparente (preflight de Tailwind), así que el fondo de un <input> no dice nada; lo que sí se ve mal sin
-  // `color-scheme` son los controles que dibuja el navegador: la lista desplegada de un <select> sale blanca con el texto claro heredado, y las
-  // barras de scroll salen claras. Se verifica la declaración (no se puede fotografiar un popup nativo en headless).
+testAutenticado("con el sistema en oscuro, la app declara color-scheme: light (DEC-04) y la administración va sobre el papel (6.5)", async ({ paginaAutenticada: page }) => {
+  // La app no tiene modo oscuro (DEC-04): aun con el sistema en oscuro, la raíz declara `color-scheme: light` (los controles que dibuja el navegador —la
+  // lista desplegada de un <select>, las barras de scroll— salen claros) y el fondo del <body> sigue claro. Se verifica la declaración y el fondo (no se
+  // puede fotografiar un popup nativo en headless). Fase 6 (6.5): /catalogo/unidades es una pantalla de administración (`AppShell`, `main[data-panel]`),
+  // que va sobre el papel cálido (#FAFAF8) con tarjetas blancas; el login y la carta pública siguen sobre blanco (el caso de abajo).
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/catalogo/unidades");
   await conTitulo(page, "Unidades de medida");
-  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "color-scheme de la raíz en modo oscuro").toContain("dark");
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "color-scheme de la raíz con el sistema en oscuro").toBe("light");
+  expect(await page.locator("main[data-panel]").count(), "la pantalla de administración dibuja main[data-panel]").toBe(1);
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "fondo del body de la administración con el sistema en oscuro").toBe("rgb(250, 250, 248)");
+});
+
+base("el login, que no es administración, queda sobre blanco aun con el sistema en oscuro (6.5)", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/login");
+  expect(await page.locator("main[data-panel]").count(), "el login no dibuja main[data-panel]").toBe(0);
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), "color-scheme de la raíz").toBe("light");
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "fondo del body del login").toBe("rgb(255, 255, 255)");
+});
+
+testAutenticado("foco de teclado único (6.5): con Tab sobre un botón de la administración se ve un contorno de la tinta, de 2 px", async ({ paginaAutenticada: page }) => {
+  await page.goto("/catalogo/unidades");
+  await conTitulo(page, "Unidades de medida");
+  // Tab hasta el primer botón del contenido de la pantalla (antes hay enlaces del menú). `:focus-visible` solo aparece con el teclado.
+  const enBotonDelPanel = () => page.evaluate(() => document.activeElement?.tagName === "BUTTON" && document.activeElement.closest("main[data-panel]") !== null);
+  for (let i = 0; i < 60 && !(await enBotonDelPanel()); i++) await page.keyboard.press("Tab");
+  expect(await enBotonDelPanel(), "se llegó con Tab a un botón dentro de main[data-panel]").toBe(true);
+  const contorno = await page.evaluate(() => {
+    const e = getComputedStyle(document.activeElement as Element);
+    return { estilo: e.outlineStyle, color: e.outlineColor, ancho: e.outlineWidth };
+  });
+  expect(contorno.estilo, "outlineStyle del botón enfocado").not.toBe("none");
+  expect(contorno.color, "outlineColor del botón enfocado: la tinta (--color-foco)").toBe("rgb(28, 27, 25)");
+  expect(contorno.ancho, "outlineWidth").toBe("2px");
 });
 
 testAutenticado("catalogo/productos: la lista, con la confirmación de «Desactivar» abierta y con el bloqueo mostrado, sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
@@ -367,16 +395,150 @@ testAutenticado("catalogo/productos/nuevo: el formulario de alta (materia prima,
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta de producto de venta").toEqual([]);
 });
 
-testAutenticado("catalogo/productos/[id]/editar: el formulario de edición sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+testAutenticado("catalogo/productos/[id]: la portada del espacio (el marco con su tira de pasos, «Qué falta» y las insignias) de un producto de venta y de una materia prima, sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  const marca = Date.now();
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PORTADA-PV-${marca}`, nombre: `E2E A11y Portada PV ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 3200 } });
+  const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-PORTADA-MP-${marca}`, nombre: `E2E A11y Portada MP ${marca}`, tipo: "MP", unidadStockId: kg.id, seProduce: true } });
+  try {
+    for (const [producto, donde] of [[pv, "producto de venta (sin receta: con «Qué falta»)"], [mp, "materia prima que se produce"]] as const) {
+      await page.goto(`/catalogo/productos/${producto.id}`);
+      await conTitulo(page, producto.nombre);
+      await expect(page.getByRole("navigation", { name: "Pasos del producto" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Qué falta" })).toBeVisible();
+      expect((await new AxeBuilder({ page }).analyze()).violations, `portada de un ${donde}`).toEqual([]);
+    }
+    // El paso 1 dentro del marco (la tira con «Qué se vende» como pantalla actual y el formulario debajo).
+    await page.goto(`/catalogo/productos/${pv.id}/datos`);
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ })).toHaveAttribute("aria-current", "page");
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 1 dentro del marco").toEqual([]);
+  } finally {
+    await prisma.producto.deleteMany({ where: { id: { in: [pv.id, mp.id] } } });
+  }
+});
+
+testAutenticado("catalogo/productos/[id]/datos: el formulario de edición sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   const marca = Date.now();
   const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ED-${marca}`, nombre: `E2E A11y Editar ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   try {
-    await page.goto(`/catalogo/productos/${producto.id}/editar`);
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
     await conTitulo(page, /Editar/);
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
     expect((await new AxeBuilder({ page }).analyze()).violations, "edición de materia prima").toEqual([]);
   } finally {
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
+
+testAutenticado("catalogo/productos/[id]/datos de un producto de venta (y la ruta vieja /editar que redirige ahí): sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+  const marca = Date.now();
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-DPV-${marca}`, nombre: `E2E A11y Datos PV ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 3200 } });
+  try {
+    await page.goto(`/catalogo/productos/${producto.id}/editar`);
+    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
+    await conTitulo(page, /Editar/);
+    await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "datos de un producto de venta").toEqual([]);
+  } finally {
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
+
+testAutenticado(
+  "catalogo/productos/[id]/opciones: el paso «Opciones y precio» del espacio (con un grupo en uso, uno quitado y la ventana «Agregar un grupo existente» abierta) sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    const m = String(Date.now());
+    const tamanos = await sembrarGrupo({ nombre: `E2E A11y Tamaño ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico" }, { nombre: "Grande" }] });
+    const leche = await sembrarGrupo({ nombre: `E2E A11y Leche ${m}`, tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "De vaca" }, { nombre: "Almendras", monto: 300 }] });
+    await sembrarGrupo({ nombre: `E2E A11y Extras ${m}`, tipo: "ADICIONAL", cantidadMinima: 0, cantidadMaxima: 2, marca: m, opciones: [{ nombre: "Huevo frito", monto: 600, conAncla: true }] });
+    const { productoId } = await sembrarProductoConOpciones({
+      nombre: `E2E A11y Opciones ${m}`,
+      codigo: `E2E-A11Y-OP-${m}`,
+      precioVenta: 2500,
+      sucursalId,
+      grupos: [{ grupo: tamanos, modoPrecio: "ABSOLUTO", preciosAbsolutos: { Chico: 2500, Grande: 3100 } }, { grupo: leche }],
+    });
+    // Un grupo quitado del producto (la sección «Quitados de este producto»).
+    await prisma.productoAdmiteGrupo.updateMany({ where: { productoId, grupoId: leche.grupoId }, data: { activo: false } });
+
+    await page.goto(`/catalogo/productos/${productoId}/opciones`);
+    await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Opciones y precio/ })).toHaveAttribute("aria-current", "page");
+    await expect(page.locator("[data-grupo-quitado]")).toHaveCount(1);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 en reposo").toEqual([]);
+
+    await page.getByRole("button", { name: "Agregar un grupo existente", exact: true }).click();
+    const ventana = page.getByRole("dialog", { name: "Agregar un grupo existente" });
+    await expect(ventana.getByLabel(/^Grupo/)).toBeFocused();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 con la ventana «Agregar un grupo existente» abierta").toEqual([]);
+
+    // La ventana «+ Nuevo grupo» (6.15c): vacía, y con un grupo de suma y su lectura («Se lee en la carta como» y la lectura del precio de cada opción).
+    await page.keyboard.press("Escape");
+    await expect(ventana).toBeHidden();
+    await page.getByRole("button", { name: "+ Nuevo grupo", exact: true }).click();
+    const nueva = page.getByRole("dialog", { name: /^Nuevo grupo para/ });
+    await expect(nueva.getByLabel(/^Nombre del grupo/)).toBeFocused();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 con la ventana «+ Nuevo grupo» abierta (vacía)").toEqual([]);
+    await nueva.getByLabel(/^Nombre del grupo/).fill(`E2E A11y Suma ${m}`);
+    await nueva.getByText("Solo algunas opciones suman un importe", { exact: true }).click();
+    await nueva.getByLabel(/^Se lee en la carta como/).fill("Con");
+    await nueva.getByLabel("Nombre de la opción 1").fill("Queso");
+    await nueva.getByLabel("Importe que suma la opción 1").fill("500");
+    await expect(nueva).toContainText(/Chico con Queso = \$\s*2\.500 \+ \$\s*500 = \$\s*3\.000/);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 con la ventana «+ Nuevo grupo» abierta (un grupo que suma, con sus lecturas)").toEqual([]);
+  },
+);
+
+testAutenticado("catalogo/productos/[id]/datos de un producto que se vende por opción y catalogo/productos/[id]/en-la-carta (con y sin contenido de carta): sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
+  const m = String(Date.now());
+  const grupo = await sembrarGrupo({ nombre: `E2E A11y Base Tamaño ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico" }, { nombre: "Grande" }] });
+  const { productoId } = await sembrarProductoConOpciones({ nombre: `E2E A11y Base ${m}`, codigo: `E2E-A11Y-BASE-${m}`, precioVenta: 2500, sucursalId, grupos: [{ grupo, modoPrecio: "ABSOLUTO", preciosAbsolutos: { Chico: 2500, Grande: 3100 } }] });
+  await prisma.producto.update({ where: { id: productoId }, data: { modoDeVenta: "BASE_CONFIGURABLE" } });
+  const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Sección ${m}`, orden: 902 } });
+  try {
+    // El paso 1 de una base: «Por opción» marcado y el precio guardado bloqueado.
+    await page.goto(`/catalogo/productos/${productoId}/datos`);
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ })).toBeChecked();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 1 de una base").toEqual([]);
+
+    // El paso 4 sin contenido de carta (todavía no está en la carta) y con él ya publicado.
+    await page.goto(`/catalogo/productos/${productoId}/en-la-carta`);
+    await expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 4 sin contenido de carta").toEqual([]);
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId, visibleEnCarta: true, seccionCartaId: seccion.id, descripcion: "Con queso", tags: ["Sin TACC"], orden: 1 } });
+    await page.goto(`/catalogo/productos/${productoId}/en-la-carta`);
+    await expect(page.locator(`[data-contenido-carta]`).getByLabel(/^Sección de carta/)).toHaveValue(seccion.id);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 4 con el producto publicado").toEqual([]);
+  } finally {
+    await prisma.contenidoCartaProducto.deleteMany({ where: { productoId } });
+    await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+  }
+});
+
+testAutenticado("foco visible en el espacio del producto: con Tab sobre «+ Nuevo grupo» (un Boton del paso 2) se ve el contorno de la tinta, de 2 px", async ({ paginaAutenticada: page, sucursalId }) => {
+  const m = String(Date.now());
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-FOCO-${m}`, nombre: `E2E A11y Foco ${m}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 2500 } });
+  await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+  try {
+    await page.goto(`/catalogo/productos/${producto.id}/opciones`);
+    await expect(page.getByRole("button", { name: "+ Nuevo grupo", exact: true })).toBeVisible();
+    // Tab hasta el botón (`:focus-visible` solo aparece con el teclado; antes hay enlaces del menú y de la tira).
+    const enElBoton = () => page.evaluate(() => document.activeElement?.tagName === "BUTTON" && (document.activeElement.textContent ?? "").trim() === "+ Nuevo grupo");
+    for (let i = 0; i < 80 && !(await enElBoton()); i++) await page.keyboard.press("Tab");
+    expect(await enElBoton(), "se llegó con Tab a «+ Nuevo grupo»").toBe(true);
+    const contorno = await page.evaluate(() => {
+      const e = getComputedStyle(document.activeElement as Element);
+      return { estilo: e.outlineStyle, color: e.outlineColor, ancho: e.outlineWidth };
+    });
+    expect(contorno.estilo, "outlineStyle del botón enfocado").not.toBe("none");
+    expect(contorno.color, "outlineColor: la tinta (--color-foco)").toBe("rgb(28, 27, 25)");
+    expect(contorno.ancho, "outlineWidth").toBe("2px");
+  } finally {
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });

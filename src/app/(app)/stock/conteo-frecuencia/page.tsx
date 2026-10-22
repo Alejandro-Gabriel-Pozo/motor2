@@ -10,6 +10,8 @@ import { resolverRangoPorDefecto } from "@/core/reportes/public";
 import { ConteoFrecuenciaForm } from "./conteo-frecuencia-form";
 import { BotonEliminarFrecuenciaConteo } from "./boton-eliminar";
 import { IconoDeAccion } from "@/components/iconos";
+import { claseDeBoton } from "@/ui/primitivas/boton";
+import { Enlace } from "@/ui/primitivas/enlace";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { rangoDeDias } from "@/core/tiempo/zona-horaria";
 
@@ -25,10 +27,10 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "conteo_frecuencia", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { editar, sugerido, sugeridoNombre } = unicosDeUrl(await searchParams);
   // S-13: el gasto en compras por insumo es de `reporte_compras` (piso administrador), no de quien cuenta (`conteo_frecuencia`, piso operario). La consulta lo niega por defecto.
@@ -52,7 +54,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Frecuencia de conteo</h1>
-        <p className="mb-4 text-sm text-neutral-500">
+        <p className="mb-4 text-sm text-tinta-tenue">
           Cada cuánto conviene volver a contar físicamente cada producto en esta sucursal. Sin fila = sin agenda: no se sugiere
           como pendiente en{" "}
           <EnlaceInterno href="/reportes/diferencias" className="underline">
@@ -62,19 +64,17 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
         </p>
 
         {sugerenciasSinAgenda.length > 0 && (
-          <div className="mb-6 rounded border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950">
-            <p className="mb-2 font-medium text-amber-800 dark:text-amber-500">
+          <div className="mb-6 rounded border border-aviso bg-aviso-tinte p-3 text-sm">
+            <p className="mb-2 font-medium text-aviso-tinta">
               Estos insumos concentran el 80% de lo comprado en los últimos 30 días y todavía no tienen agenda de conteo:
             </p>
             <ul className="flex flex-col gap-1">
               {sugerenciasSinAgenda.map((s) => (
                 <li key={s.productoId} className="flex items-center justify-between gap-2">
                   <span>
-                    {s.nombre} {s.importe !== undefined && <span className="text-neutral-500">(${s.importe.toLocaleString("es-AR")})</span>}
+                    {s.nombre} {s.importe !== undefined && <span className="text-tinta-tenue">(${s.importe.toLocaleString("es-AR")})</span>}
                   </span>
-                  <Link href={`/stock/conteo-frecuencia?sugerido=${s.productoId}`} className="text-sm underline">
-                    Agendar semanal
-                  </Link>
+                  <Enlace href={`/stock/conteo-frecuencia?sugerido=${s.productoId}`}>Agendar semanal</Enlace>
                 </li>
               ))}
             </ul>
@@ -83,7 +83,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
 
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-neutral-500">
+            <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Producto</th>
               <th>Cada cuántos días</th>
               <th><span className="sr-only">Acciones</span></th>
@@ -97,7 +97,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
                 <td>
                   {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    <Link href={`/stock/conteo-frecuencia?editar=${f.id}`} className="text-sm underline inline-flex items-center gap-1">
+                    <Link href={`/stock/conteo-frecuencia?editar=${f.id}`} className={claseDeBoton("enlace", "en-fila")}>
                       <IconoDeAccion id="editar" />
                       Editar
                     </Link>
@@ -112,9 +112,9 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
 
       <div>
         {filaEnEdicion && (
-          <Link href="/stock/conteo-frecuencia" className="mb-2 inline-block text-sm underline">
-            ← Cancelar edición
-          </Link>
+          <p className="mb-2 text-sm">
+            <Enlace href="/stock/conteo-frecuencia">← Cancelar edición</Enlace>
+          </p>
         )}
         <ConteoFrecuenciaForm
           key={filaEnEdicion?.id ?? sugeridoElegido?.productoId ?? "nuevo"}

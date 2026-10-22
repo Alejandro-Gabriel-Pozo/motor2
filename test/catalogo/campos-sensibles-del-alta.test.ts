@@ -206,7 +206,7 @@ describe("M.2-A4: un producto de venta dado de alta SIN la clave nace no disponi
     await darDeAltaProducto(pv());
     const id = await idDe("Milanesa");
     await como(adminId, "admin@test.com");
-    const e = await actualizarProducto(id, pv({ precioVenta: 4500 }));
+    const e = await actualizarProducto(id, { ...pv({ precioVenta: 4500 }), precioVentaVisto: 0 });
     expect(e.ok, e.mensaje).toBe(true);
     expect(await loOfreceElPos(id), "cargar el precio NO lo activa solo: la disponibilidad es una decisión aparte").toBe(false);
     const a = await actualizarDisponibilidadProducto(id, true);

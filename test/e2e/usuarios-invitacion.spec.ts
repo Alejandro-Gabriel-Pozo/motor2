@@ -138,6 +138,11 @@ test("con la sesión de la persona invitada: ve a qué sucursales entra, acepta 
   expect((await prismaAdmin.invitacion.findUniqueOrThrow({ where: { id: inv.id } })).estado).toBe("ACEPTADA");
   expect(await prismaAdmin.usuarioEmpresa.count({ where: { usuarioId: invitado.usuarioId, empresaId: e.b.empresaId, activo: true } })).toBe(1);
 
+  // La acción guarda la membresía, borra la cookie y recién ahí redirige (`/login` → `/inicio`). Hay que esperar ESA navegación antes de reabrir el enlace: un `goto` que sale mientras
+  // la redirección sigue en vuelo compite con ella y a veces termina en el inicio en vez de en «Este enlace ya no sirve» (rojo intermitente, igual en origin/main; no es del producto).
+  await page.waitForURL(/\/inicio/);
+  expect((await page.context().cookies()).find((c) => c.name === "motor2.invitacion")).toBeUndefined();
+
   // El enlace ya no sirve.
   await page.goto(`/invitacion#t=${inv.token}`);
   await expect(page.getByText(/Este enlace ya no sirve/)).toBeVisible();

@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
+import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
+import { Boton } from "@/ui/primitivas/boton";
+import { Selector } from "@/ui/primitivas/selector";
 import type { QueMostrar, RangoHistorial } from "@/core/reportes/public";
 
 interface Props {
@@ -68,58 +71,41 @@ export function HistorialFiltros({
 
   return (
     <form onSubmit={submit} className="flex flex-wrap items-end gap-3 text-sm">
-      <label className="flex flex-col gap-1">
+      {/* El selector de producto es un combobox que no lleva su propia etiqueta: lo nombra este <label> de afuera. */}
+      <label className="flex flex-col gap-1 font-medium">
         Producto
         <SelectorProducto value={productoId} onChange={setProductoId} etiquetaInicial={productoEtiqueta} required className="w-56" />
       </label>
-      <label className="flex flex-col gap-1">
-        Sección (opcional)
-        <select value={seccionId} onChange={(e) => setSeccionId(e.target.value)} className="rounded border px-3 py-2">
-          <option value="">Todas</option>
-          {secciones.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="flex flex-col gap-1">
-        {/* label AL LADO del <select>, no envolviéndolo — mismo motivo que "Qué mostrar" más abajo. */}
-        <label htmlFor="rango-historial">Rango</label>
-        <select id="rango-historial" value={rango} onChange={(e) => setRango(e.target.value as RangoHistorial)} className="rounded border px-3 py-2">
-          {OPCIONES_RANGO.map((o) => (
-            <option key={o.valor} value={o.valor}>
-              {o.etiqueta}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Selector etiqueta="Sección (opcional)" value={seccionId} onChange={(e) => setSeccionId(e.target.value)}>
+        <option value="">Todas</option>
+        {secciones.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nombre}
+          </option>
+        ))}
+      </Selector>
+      {/* La etiqueta de Selector va AL LADO del <select> (htmlFor), no envolviéndolo: una que lo envuelve suma el texto de la opción vigente a su nombre accesible (ver selector-rango.tsx). */}
+      <Selector id="rango-historial" etiqueta="Rango" value={rango} onChange={(e) => setRango(e.target.value as RangoHistorial)}>
+        {OPCIONES_RANGO.map((o) => (
+          <option key={o.valor} value={o.valor}>
+            {o.etiqueta}
+          </option>
+        ))}
+      </Selector>
       {rango === "personalizado" && (
         <>
-          <label className="flex flex-col gap-1">
-            Desde
-            <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded border px-3 py-2" />
-          </label>
-          <label className="flex flex-col gap-1">
-            Hasta
-            <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded border px-3 py-2" />
-          </label>
+          <CampoFecha etiqueta="Desde" value={desde} onChange={(e) => setDesde(e.target.value)} />
+          <CampoFecha etiqueta="Hasta" value={hasta} onChange={(e) => setHasta(e.target.value)} />
         </>
       )}
-      <div className="flex flex-col gap-1">
-        {/* label AL LADO del <select>, no envolviéndolo — uno que lo envuelve suma el texto de la opción vigente a su nombre accesible (ver selector-rango.tsx). */}
-        <label htmlFor="que-mostrar">Qué mostrar</label>
-        <select id="que-mostrar" value={queMostrar} onChange={(e) => setQueMostrar(e.target.value as QueMostrar)} className="rounded border px-3 py-2">
-          {OPCIONES_QUE_MOSTRAR.map((o) => (
-            <option key={o.valor} value={o.valor}>
-              {o.etiqueta}
-            </option>
-          ))}
-        </select>
-      </div>
-      <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-        Ver historial
-      </button>
+      <Selector id="que-mostrar" etiqueta="Qué mostrar" value={queMostrar} onChange={(e) => setQueMostrar(e.target.value as QueMostrar)}>
+        {OPCIONES_QUE_MOSTRAR.map((o) => (
+          <option key={o.valor} value={o.valor}>
+            {o.etiqueta}
+          </option>
+        ))}
+      </Selector>
+      <Boton type="submit">Ver historial</Boton>
     </form>
   );
 }
