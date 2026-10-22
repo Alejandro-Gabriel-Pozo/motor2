@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { Boton } from "@/ui/primitivas/boton";
 
 /**
  * Pantalla de error del salón (módulo POS, clon de `(app)/error.tsx`: dentro del encabezado del salón, solo se cae el contenido). Sin esto, un
@@ -24,9 +25,7 @@ export default function ErrorDelSalon({ error, retry }: { error: Error & { diges
         un admin{error.digest ? ` y pasale este código: ${error.digest}` : ""}.
       </p>
       <div className="flex items-center gap-3">
-        <button type="button" onClick={() => retry()} className="rounded bg-tinta px-4 py-2 text-superficie">
-          Reintentar
-        </button>
+        <Boton onClick={() => retry()}>Reintentar</Boton>
         <Link href="/" className="text-sm underline">
           Ir al inicio
         </Link>

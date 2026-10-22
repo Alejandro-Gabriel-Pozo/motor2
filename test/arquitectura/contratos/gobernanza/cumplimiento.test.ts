@@ -118,15 +118,21 @@ const CI_VALIDO = [
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - run: npm run test:e2e",
+  "  conteo-e2e:",
+  "    needs: [e2e]",
+  "    if: always()",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - run: echo conteo-e2e",
   "  gate:",
   "    name: Gate (requerido)",
   "    if: always()",
-  "    needs: [estatico, build, integracion, conteo, e2e]",
+  "    needs: [estatico, build, integracion, conteo, e2e, conteo-e2e]",
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - name: Todos los jobs terminaron en verde",
   "        run: |",
-  '          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.build.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.conteo.result }}" = "success" -a "${{ needs.e2e.result }}" = "success"',
+  '          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.build.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.conteo.result }}" = "success" -a "${{ needs.e2e.result }}" = "success" -a "${{ needs.conteo-e2e.result }}" = "success"',
   "",
 ].join("\n");
 
@@ -148,7 +154,9 @@ describe("evaluarWorkflow (ci.yml)", () => {
     { titulo: "un `if` permitido pero con otra condición", de: "        if: failure()\n", a: "        if: success()\n", tipo: "ci-condicion-no-permitida", donde: "if: success()" },
     { titulo: "el paso de `npm test` cambia de carpeta", de: "        run: npm test -- --shard=1/4\n", a: "        working-directory: otra\n        run: npm test -- --shard=1/4\n", tipo: "ci-paso-alterado", donde: "working-directory: otra" },
     { titulo: "el paso de `npm test` cambia de intérprete", de: "        run: npm test -- --shard=1/4\n", a: "        shell: bash {0}\n        run: npm test -- --shard=1/4\n", tipo: "ci-paso-alterado", donde: "shell: bash" },
-    { titulo: "el gate deja de esperar a `e2e`", de: "needs: [estatico, build, integracion, conteo, e2e]", a: "needs: [estatico, build, integracion, conteo]", tipo: "ci-gate-sin-needs", donde: "needs: [estatico, build, integracion, conteo]" },
+    { titulo: "el gate deja de esperar a `e2e`", de: "needs: [estatico, build, integracion, conteo, e2e, conteo-e2e]", a: "needs: [estatico, build, integracion, conteo, conteo-e2e]", tipo: "ci-gate-sin-needs", donde: "needs: [estatico, build, integracion, conteo, conteo-e2e]" },
+    { titulo: "el gate deja de esperar a `conteo-e2e`", de: "needs: [estatico, build, integracion, conteo, e2e, conteo-e2e]", a: "needs: [estatico, build, integracion, conteo, e2e]", tipo: "ci-gate-sin-needs", donde: "needs: [estatico, build, integracion, conteo, e2e]" },
+    { titulo: "la expresión del gate deja de nombrar a `conteo-e2e`", de: ' -a "${{ needs.conteo-e2e.result }}" = "success"', a: "", tipo: "ci-gate-expresion", donde: "- name: Todos los jobs" },
     { titulo: "la expresión del gate deja de nombrar a `conteo`", de: ' -a "${{ needs.conteo.result }}" = "success"', a: "", tipo: "ci-gate-expresion", donde: "- name: Todos los jobs" },
     { titulo: "el gate cambia de nombre", de: "name: Gate (requerido)", a: "name: Gate", tipo: "ci-gate-renombrado", donde: "name: Gate" },
     { titulo: "`paths` en el disparador", de: "    branches: [main]\n  pull_request:", a: "    branches: [main]\n    paths: ['src/**']\n  pull_request:", tipo: "ci-filtro-de-rutas", donde: "paths: ['src" },
@@ -158,7 +166,7 @@ describe("evaluarWorkflow (ci.yml)", () => {
     { titulo: "una variable que regenera un golden", de: "          X: y\n", a: "          X: y\n          REGENERAR_HUELLA_DE_LOGIN: '1'\n", tipo: "ci-variable-prohibida", donde: "REGENERAR_HUELLA" },
     { titulo: "otra variable `CONTRATOS_*` (solo `CONTRATOS_EVIDENCIA` está permitida)", de: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n", a: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n          CONTRATOS_REGENERAR: '1'\n", tipo: "ci-variable-prohibida", donde: "CONTRATOS_REGENERAR" },
     { titulo: "una variable que empieza como la permitida (`CONTRATOS_EVIDENCIAS`) no está permitida", de: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n", a: "          CONTRATOS_EVIDENCIA: resultado-contratos.json\n          CONTRATOS_EVIDENCIAS: '1'\n", tipo: "ci-variable-prohibida", donde: "CONTRATOS_EVIDENCIAS" },
-    { titulo: "el gate deja de esperar a `estatico` (el job que corre la evidencia)", de: "needs: [estatico, build, integracion, conteo, e2e]", a: "needs: [build, integracion, conteo, e2e]", tipo: "ci-gate-sin-needs", donde: "needs: [build, integracion, conteo, e2e]" },
+    { titulo: "el gate deja de esperar a `estatico` (el job que corre la evidencia)", de: "needs: [estatico, build, integracion, conteo, e2e, conteo-e2e]", a: "needs: [build, integracion, conteo, e2e, conteo-e2e]", tipo: "ci-gate-sin-needs", donde: "needs: [build, integracion, conteo, e2e, conteo-e2e]" },
     { titulo: "la expresión del gate deja de nombrar a `estatico`", de: '"${{ needs.estatico.result }}" = "success" -a ', a: "", tipo: "ci-gate-expresion", donde: "- name: Todos los jobs" },
     { titulo: "evidencia: el paso de `npm run arquitectura` pierde `CONTRATOS_EVIDENCIA` (el ejecutor no deja su JSON)", de: "        env:\n          CONTRATOS_EVIDENCIA: resultado-contratos.json\n", a: "", tipo: "ci-sin-evidencia", donde: "- run: npm run arquitectura" },
     { titulo: "evidencia: `CONTRATOS_EVIDENCIA` apunta a otro archivo que el que se sube", de: "CONTRATOS_EVIDENCIA: resultado-contratos.json", a: "CONTRATOS_EVIDENCIA: otro.json", tipo: "ci-sin-evidencia", donde: "CONTRATOS_EVIDENCIA: otro.json" },
@@ -607,7 +615,7 @@ describe("mutaciones sobre una copia exacta del repo (el repo real no se toca)",
     expect(r.map((h) => h.tipo)).toEqual(["ci-sin-evidencia"]);
     expect(r[0].archivo).toBe(".github/workflows/ci.yml");
     expect(r[0].que).toContain("resultado-contratos.json");
-    const g = mutar(".github/workflows/ci.yml", "needs: [estatico, build, integracion, conteo, e2e]", "needs: [build, integracion, conteo, e2e]", "el gate sin estatico en needs");
+    const g = mutar(".github/workflows/ci.yml", "needs: [estatico, build, integracion, conteo, e2e, conteo-e2e]", "needs: [build, integracion, conteo, e2e, conteo-e2e]", "el gate sin estatico en needs");
     expect(g.map((h) => h.tipo)).toEqual(["ci-gate-sin-needs"]);
   });
 

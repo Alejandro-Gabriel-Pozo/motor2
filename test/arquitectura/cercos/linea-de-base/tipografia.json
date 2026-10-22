@@ -1,10 +1,10 @@
 {
   "regla": "tipografia",
   "meta": "bajar hacia 0 a medida que la escala tipográfica pase a tokens (auditoría §19.4); la carta pública tiene su propia línea de base",
-  "total": 192,
-  "entradas": 27,
+  "total": 56,
+  "entradas": 7,
   "porTipo": {
-    "clase-arbitraria": 143,
+    "clase-arbitraria": 7,
     "font-size-literal": 49
   },
   "cuentas": {
@@ -14,71 +14,11 @@
     "src/app/(app)/carta/carta-mant.module.css": {
       "font-size-literal": 30
     },
-    "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
-      "clase-arbitraria": 5
-    },
-    "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
-      "clase-arbitraria": 15
-    },
-    "src/app/(pos)/mesas/[mesaId]/anular-item.tsx": {
-      "clase-arbitraria": 6
-    },
-    "src/app/(pos)/mesas/[mesaId]/anular-promo.tsx": {
-      "clase-arbitraria": 4
-    },
-    "src/app/(pos)/mesas/[mesaId]/armar-promo.tsx": {
-      "clase-arbitraria": 7
-    },
-    "src/app/(pos)/mesas/[mesaId]/aviso-mesa.tsx": {
+    "src/app/(pos)/mesas/[mesaId]/page.tsx": {
       "clase-arbitraria": 2
     },
-    "src/app/(pos)/mesas/[mesaId]/cerrar-cuenta.tsx": {
-      "clase-arbitraria": 6
-    },
-    "src/app/(pos)/mesas/[mesaId]/cliente-cuenta.tsx": {
-      "clase-arbitraria": 4
-    },
-    "src/app/(pos)/mesas/[mesaId]/comensales-cuenta.tsx": {
-      "clase-arbitraria": 4
-    },
-    "src/app/(pos)/mesas/[mesaId]/cuentas-cerradas.tsx": {
-      "clase-arbitraria": 3
-    },
-    "src/app/(pos)/mesas/[mesaId]/elegir-opciones.tsx": {
-      "clase-arbitraria": 10
-    },
-    "src/app/(pos)/mesas/[mesaId]/emitir-ticket-corregido.tsx": {
-      "clase-arbitraria": 4
-    },
-    "src/app/(pos)/mesas/[mesaId]/estilos.ts": {
-      "clase-arbitraria": 4
-    },
-    "src/app/(pos)/mesas/[mesaId]/liberar-mesa.tsx": {
-      "clase-arbitraria": 1
-    },
-    "src/app/(pos)/mesas/[mesaId]/loading.tsx": {
-      "clase-arbitraria": 1
-    },
-    "src/app/(pos)/mesas/[mesaId]/otro-igual.tsx": {
-      "clase-arbitraria": 1
-    },
-    "src/app/(pos)/mesas/[mesaId]/page.tsx": {
-      "clase-arbitraria": 17
-    },
-    "src/app/(pos)/mesas/[mesaId]/selector-carta.tsx": {
-      "clase-arbitraria": 7
-    },
-    "src/app/(pos)/mesas/[mesaId]/sin-enviar.tsx": {
-      "clase-arbitraria": 9
-    },
-    "src/app/(pos)/mesas/limite-mesas.tsx": {
-      "clase-arbitraria": 6
-    },
-    "src/app/(pos)/mesas/nueva-mesa.tsx": {
-      "clase-arbitraria": 6
-    },
     "src/app/(pos)/mesas/page.tsx": {
-      "clase-arbitraria": 8
+      "clase-arbitraria": 2
     },
     "src/app/globals.css": {
       "font-size-literal": 11
@@ -87,7 +27,7 @@
       "clase-arbitraria": 1
     },
     "src/components/mesas/mesa-card.tsx": {
-      "clase-arbitraria": 12
+      "clase-arbitraria": 2
     }
   }
 }
