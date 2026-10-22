@@ -627,6 +627,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 6, paso 6.17c (CAMBIA UN TEXTO de administración, no la carta pública; ADITIVO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_cb_e2e local, con el visto del dueño para regenerar solo las secciones de ADMINISTRACIÓN). La pantalla «Carta › Parametrización › Secciones» (a 1280 y a 375 px) suma el enlace `[enlace: Abrir en el producto]` dentro de la ficha de cada producto de la carta (hacia el paso «En la carta» del espacio del producto): 14 líneas nuevas en total, 7 por ancho (una por cada ficha abierta del volcado). Revisado con `git diff -U0`: son solo líneas agregadas, todas dentro de las dos secciones de Secciones; la carta pública, las opciones de Pizzas y «Tipos de Pizza» quedan idénticos byte a byte.",
       },
+      {
+        blob: "3859e3a3a80b0d30f425517fc84c4b0fd95780cc",
+        // El commit PADRE de este (be697319) es el último antes de la regeneración; el texto lo cambió el paso 6.18 (carril B): el paso 2 del producto suma «Cómo se va a ver en la carta».
+        commit: "be697319",
+        motivo:
+          "Ola «precio y carta», Fase 6, paso 6.18 (CAMBIA UN TEXTO de administración, no la carta pública; ADITIVO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_cb_e2e local, con el visto del dueño para regenerar solo las secciones de ADMINISTRACIÓN). La pantalla de opciones de Pizzas (a 1280 y a 375 px) suma, antes de «Así se cobra», la sección «Cómo se va a ver en la carta» (la forma que le da la carta pública: las pizzas como platos sueltos con su precio de lista). Son 26 líneas agregadas (13 por ancho) y ninguna borrada; las secciones de la carta pública, la tipografía y el resto de la administración quedan idénticos (lo verifica el diff del golden: solo líneas agregadas dentro de las dos secciones «Opciones de venta del producto «Pizzas»»).",
+      },
     ],
   },
 };

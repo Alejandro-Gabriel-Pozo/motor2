@@ -3,7 +3,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { capturar, expectObjetivosTactiles, expectSinDesborde } from "./fixtures/movil";
 import { abrirComoRol } from "./fixtures/rol-pos";
-import { sembrarGrupo } from "./fixtures/opciones";
+import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
 
 /**
@@ -533,3 +533,58 @@ test("paso 3 «Receta»: quien ve las recetas pero NO el catálogo la abre sin e
     await admin.restaurar();
   }
 });
+
+test("la biblioteca: «Productos que lo usan» lleva al paso 2 del producto a quien puede editar sus opciones, y a la portada a quien no", async ({ paginaAutenticada: page, sucursalId }) => {
+  const m = marca();
+  const grupo = await sembrarGrupo({ nombre: `E2E Biblioteca ${m}`, tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Con queso", monto: 500 }] });
+  const { productoId } = await sembrarProductoConOpciones({ nombre: `E2E Usa el grupo ${m}`, codigo: `E2E-BIB-${m}`, precioVenta: 1000, sucursalId, grupos: [{ grupo }] });
+  const enlace = page.getByRole("region", { name: "Productos que lo usan" }).getByRole("link", { name: `E2E Usa el grupo ${m}` });
+  let admin: Awaited<ReturnType<typeof ajustarCeldasDelAdmin>> | null = null;
+  try {
+    await page.goto(`/catalogo/opciones/${grupo.grupoId}`);
+    await expect(enlace).toHaveAttribute("href", `/catalogo/productos/${productoId}/opciones`);
+    await enlace.click();
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Opciones y precio/ })).toHaveAttribute("aria-current", "page");
+
+    // Contraespejo: quien ve el grupo pero no edita las opciones del producto (el administrador al que se le quita ese Editar) va a la portada, no a una pantalla que le diría «No tenés permiso».
+    admin = await ajustarCeldasDelAdmin({ producto_opciones_admitidas: { puedeVer: true, puedeEditar: false } });
+    await page.goto(`/catalogo/opciones/${grupo.grupoId}`);
+    await expect(enlace).toHaveAttribute("href", `/catalogo/productos/${productoId}`);
+  } finally {
+    // Lo sembrado de opciones no se borra (ver `fixtures/opciones.ts`): nombres con marca propia; la base E2E se vacía al empezar cada corrida.
+    await admin?.restaurar();
+  }
+});
+
+for (const { ancho, alto } of [
+  { ancho: 375, alto: 800 },
+  { ancho: 1280, alto: 800 },
+]) {
+  test(`vista previa de la carta (6.18) en los pasos 2 y 4 a ${ancho} px: la forma que le da la carta, sin desborde y sin violaciones de axe`, async ({ paginaAutenticada: page, sucursalId }) => {
+    await page.setViewportSize({ width: ancho, height: alto });
+    const m = marca();
+    const tamano = await sembrarGrupo({ nombre: `E2E Tamaño preview ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico" }, { nombre: "Grande", monto: 300 }] });
+    const { productoId } = await sembrarProductoConOpciones({ nombre: `E2E Café preview ${m}`, codigo: `E2E-PREV-${m}`, precioVenta: 4000, sucursalId, grupos: [{ grupo: tamano }] });
+    const sinOpciones = await productoDirecto(m, sucursalId);
+    try {
+      for (const ruta of ["opciones", "en-la-carta"]) {
+        await page.goto(`/catalogo/productos/${productoId}/${ruta}`);
+        const vista = page.getByRole("region", { name: "Cómo se va a ver en la carta" });
+        await expect(vista, ruta).toBeVisible();
+        // Café con dos tamaños: la carta lo lee en columnas, con el precio de lista de la sucursal (4.000 y 4.000 + 300).
+        await expect(vista.getByRole("columnheader")).toHaveText(["Chico", "Grande"]);
+        await expect(vista.getByRole("cell")).toHaveText(["$4.000", "$4.300"]);
+        await expect(vista).toContainText("sin descuentos");
+        await expectSinDesborde(page, `${ancho} px: ${ruta} con la vista previa`);
+        if (ancho === 375) await capturar(page, `vista-previa-de-la-carta-${ruta}-${ancho}`);
+        expect((await new AxeBuilder({ page }).analyze()).violations, `${ruta}: axe con la vista previa`).toEqual([]);
+      }
+      // Un producto sin grupos: sale con su nombre y su precio.
+      await page.goto(`/catalogo/productos/${sinOpciones.id}/opciones`);
+      await expect(page.getByRole("region", { name: "Cómo se va a ver en la carta" })).toContainText("sin opciones: sale con su nombre y su precio");
+    } finally {
+      await prisma.disponibilidadProducto.deleteMany({ where: { productoId: sinOpciones.id } });
+      await prisma.producto.deleteMany({ where: { id: sinOpciones.id } });
+    }
+  });
+}

@@ -61,8 +61,10 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { grupoId } = await params;
-  const [{ editar: puedeEditar }, { ver: puedeVerRecetas }, sinRecetas] = await Promise.all([
+  const [{ editar: puedeEditar }, { editar: puedeEditarOpcionesDelProducto }, { ver: puedeVerRecetas }, sinRecetas] = await Promise.all([
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db),
+    // Cortesía de la interfaz (no barrera: el paso 2 vuelve a exigirlo): a quien puede editar lo que un producto admite, «Productos que lo usan» lo lleva directo a ese paso; a los demás, a la portada del producto.
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_opciones_admitidas", ctx.db),
     // OPCIONES-FACTOR: la receta de referencia del factor de un tamaño solo se lee y se muestra a quien ve las recetas (el «Ver» de `guardar_receta`).
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db),
     // D-3 (GO-2a): los consumos de una opción exigen el módulo Recetas; sin él, la opción se guarda sin consumos y la pantalla no ofrece el editor.
@@ -377,7 +379,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
             <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
               {productos.map((p) => (
                 <li key={p.id}>
-                  <EnlaceInterno href={`/catalogo/productos/${p.id}`} className="underline">
+                  <EnlaceInterno href={`/catalogo/productos/${p.id}${puedeEditarOpcionesDelProducto ? "/opciones" : ""}`} className="underline">
                     {p.nombre}
                   </EnlaceInterno>
                 </li>
