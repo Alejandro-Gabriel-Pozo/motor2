@@ -6,10 +6,10 @@
 export default function CargandoMesa() {
   return (
     <div aria-busy="true" className="animate-pulse space-y-3">
-      <div className="h-5 w-24 rounded bg-[var(--border)]" />
-      <div className="h-8 w-64 max-w-full rounded bg-[var(--border)]" />
-      <div className="h-48 w-full rounded bg-[var(--border)]" />
-      <p className="text-[13px] text-[var(--ink-soft)]">Cargando…</p>
+      <div className="h-5 w-24 rounded bg-borde" />
+      <div className="h-8 w-64 max-w-full rounded bg-borde" />
+      <div className="h-48 w-full rounded bg-borde" />
+      <p className="text-[13px] text-tinta-suave">Cargando…</p>
     </div>
   );
 }
