@@ -6,7 +6,7 @@ import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate"
 import { generarReporteConsignacion } from "@/server/consultas/reportes/consignacion";
 import { TablaDebidoConsignante, TablaStockSinVenderConsignacion } from "./tabla-consignacion";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
-import { rangoDeDias } from "@/core/tiempo/zona-horaria";
+import { esDiaISOReal, finDelDia, inicioDelDia } from "@/core/tiempo/zona-horaria";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 import { Enlace } from "@/ui/primitivas/enlace";
 
@@ -22,17 +22,20 @@ export default async function ConsignacionPage({ searchParams }: { searchParams:
   // pantalla: la acción (`registrarPagoConsignante`) vuelve a exigir «Editar» en el servidor.
   const { editar: puedePagar } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pagar_consignante", ctx.db);
 
-  const { desde, hasta } = unicosDeUrl(await searchParams);
+  const crudos = unicosDeUrl(await searchParams);
+  // Un día de la URL que no existe («2026-02-30») o no es «AAAA-MM-DD» se ignora (sin filtro), no se corre al día siguiente.
+  const desde = esDiaISOReal(crudos.desde) ? crudos.desde : undefined;
+  const hasta = esDiaISOReal(crudos.hasta) ? crudos.hasta : undefined;
   // Sin filtro por defecto: "Debido por consignante" es un saldo acumulado
   // desde siempre, no una ventana — filtrar por período acá sería mostrar
   // solo el movimiento de ese lapso, no cuánto se le debe HOY. El filtro es
   // opcional, para reconciliar un período puntual con el consignante.
-  // Cada extremo es un día "de solo día" (`new Date("AAAA-MM-DD")`, 00:00 UTC): se expande al inicio / fin de ESE día en la zona de la empresa (P1), así lo cargado el último día entra.
+  // Cada extremo es un día "de solo día" (`AAAA-MM-DD`): se expande al inicio / fin de ESE día en la zona de la empresa (P1), así lo cargado el último día entra.
   const periodo =
     desde || hasta
       ? {
-          desde: desde ? rangoDeDias(new Date(desde), new Date(desde), ctx.empresaZonaHoraria).desde : undefined,
-          hasta: hasta ? rangoDeDias(new Date(hasta), new Date(hasta), ctx.empresaZonaHoraria).hasta : undefined,
+          desde: desde ? inicioDelDia(desde, ctx.empresaZonaHoraria) : undefined,
+          hasta: hasta ? finDelDia(hasta, ctx.empresaZonaHoraria) : undefined,
         }
       : undefined;
 

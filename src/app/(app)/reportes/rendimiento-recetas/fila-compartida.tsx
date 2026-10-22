@@ -11,6 +11,7 @@ import { fijarRendimientoLocal, volverAlRendimientoCentral } from "@/server/acti
 import { ETIQUETA_ROTULO, desvioEsNotable, type RotuloLinea, type MetodoRendimiento } from "@/core/reportes/public";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 // rendimiento-conciliado.ts es puro (sin @/lib/db) — importable desde un componente cliente sin arrastrar Prisma al bundle. Ver el docstring de este mapa en fila-simple.tsx.
 
 const ETIQUETA_METODO: Record<MetodoRendimiento, string> = {
@@ -122,8 +123,8 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
         <td colSpan={7} className="px-2 py-2" onKeyDown={(e) => e.key === "Escape" && cancelar()}>
           <FormConResultado
             accion={async (formData) => {
-              const cantidad = Number(formData.get("cantidad"));
-              const mermaPorcentaje = Number(formData.get("mermaPorcentaje") || 0);
+              const cantidad = numeroDelCampo(String(formData.get("cantidad") ?? "")) ?? Number.NaN;
+              const mermaPorcentaje = numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0;
               const r = await fijarRendimientoLocal(recetaIngredienteId, { cantidad, mermaPorcentaje }, {
                 tipo: "sugerencia_pool",
                 sucursalCalculoId: sucursalId,
@@ -159,11 +160,11 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
             <div className="flex flex-wrap items-end gap-2">
               <label className="flex flex-col gap-1 text-xs">
                 Cantidad
-                <CampoNumero name="cantidad" defaultValue={String(cantidadEstimada)} required className="w-28" />
+                <CampoNumero tipo="cantidad" name="cantidad" defaultValue={String(cantidadEstimada)} required className="w-28" />
               </label>
               <label className="flex flex-col gap-1 text-xs">
                 Merma %
-                <CampoNumero name="mermaPorcentaje" defaultValue={String(mermaActual)} className="w-24" />
+                <CampoNumero tipo="porcentaje" name="mermaPorcentaje" defaultValue={String(mermaActual)} className="w-24" />
               </label>
               <Boton type="submit" tamano="compacto">
                 Guardar como rendimiento de «{sucursalNombre}»

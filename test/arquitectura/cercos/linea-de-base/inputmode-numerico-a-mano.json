@@ -1,0 +1,47 @@
+{
+  "regla": "inputmode-numerico-a-mano",
+  "meta": "0 (lote 6.33: un número es un CampoNumero con su tipo; un código de dígitos, un tipo de código declarado)",
+  "total": 20,
+  "entradas": 12,
+  "porTipo": {
+    "inputmode-numerico": 20
+  },
+  "cuentas": {
+    "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/botones.tsx": {
+      "inputmode-numerico": 2
+    },
+    "plataforma/src/app/login/formulario.tsx": {
+      "inputmode-numerico": 1
+    },
+    "src/app/(app)/carta/mantenimiento-de-carta.tsx": {
+      "inputmode-numerico": 1
+    },
+    "src/app/(app)/catalogo/margen-objetivo/page.tsx": {
+      "inputmode-numerico": 2
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": {
+      "inputmode-numerico": 2
+    },
+    "src/app/(app)/catalogo/opciones/alta-de-grupo.tsx": {
+      "inputmode-numerico": 2
+    },
+    "src/app/(app)/catalogo/productos/[id]/opciones/admision-de-grupo.tsx": {
+      "inputmode-numerico": 4
+    },
+    "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
+      "inputmode-numerico": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
+      "inputmode-numerico": 2
+    },
+    "src/app/(pos)/mesas/[mesaId]/comensales-cuenta.tsx": {
+      "inputmode-numerico": 1
+    },
+    "src/app/(pos)/mesas/limite-mesas.tsx": {
+      "inputmode-numerico": 1
+    },
+    "src/app/invitacion/formulario-de-aceptacion.tsx": {
+      "inputmode-numerico": 1
+    }
+  }
+}

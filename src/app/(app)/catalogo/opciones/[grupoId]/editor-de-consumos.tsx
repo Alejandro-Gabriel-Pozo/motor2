@@ -98,7 +98,7 @@ export function EditorDeConsumos({ tipo, insumos, inicial }: { tipo: TipoDeGrupo
                   <label htmlFor={`${base}-merma`} className="text-xs font-medium">
                     Merma %
                   </label>
-                  <CampoNumero id={`${base}-merma`} value={l.mermaPorcentaje} onChange={(v) => cambiar(i, { mermaPorcentaje: v })} etiqueta="La merma" tamano="compacto" className="w-24" />
+                  <CampoNumero tipo="porcentaje" id={`${base}-merma`} value={l.mermaPorcentaje} onChange={(v) => cambiar(i, { mermaPorcentaje: v })} etiqueta="La merma" tamano="compacto" className="w-24" />
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-4">

@@ -68,7 +68,7 @@ export function SolicitarForm({ sucursales, secciones }: { sucursales: Opcion[];
 
       <label className="flex flex-col gap-1 text-sm">
         Cantidad
-        <CampoNumero value={cantidad} onChange={setCantidad} required />
+        <CampoNumero tipo="cantidad" value={cantidad} onChange={setCantidad} required />
       </label>
 
       <Selector etiqueta="Sección propia a la que tiene que entrar (cuando lo acepten)" value={seccionDestinoId} onChange={(e) => setSeccionDestinoId(e.target.value)} required>

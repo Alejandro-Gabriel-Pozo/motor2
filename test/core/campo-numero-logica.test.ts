@@ -16,7 +16,10 @@ describe("contextoDelCampo", () => {
     expect(contextoDelCampo("cantidad", 3)).toEqual({ tipo: "cantidad", decimales: 3 });
     expect(contextoDelCampo("cantidad", 0)).toEqual({ tipo: "cantidad", decimales: 0 });
     expect(contextoDelCampo("cantidad", undefined)).toEqual(CONTEXTO_CANTIDAD_SIN_UNIDAD);
-    expect(contextoDelCampo(undefined, undefined)).toEqual(CONTEXTO_CANTIDAD_SIN_UNIDAD);
+    expect(contextoDelCampo("entero", undefined)).toEqual({ tipo: "cantidad", decimales: 0 });
+    expect(contextoDelCampo("entero", 3)).toEqual({ tipo: "cantidad", decimales: 0 }); // un entero nunca tiene decimales
+    expect(contextoDelCampo("porcentaje", undefined)).toEqual(CONTEXTO_CANTIDAD_SIN_UNIDAD);
+    expect(contextoDelCampo("porcentaje", 2)).toEqual({ tipo: "cantidad", decimales: 2 });
   });
 });
 
@@ -115,13 +118,14 @@ describe("textoParaVer y textoParaEditar", () => {
 });
 
 describe("errorDelCampo — por qué el valor no sirve", () => {
-  it("lo que se tecleó y no se entiende dice cómo escribirlo, y es del origen «tecleado» (se muestra junto al campo)", () => {
-    expect(errorDelCampo(`1.205${MARCA_DE_NO_CANONICO}`, KG, {})).toEqual({ origen: "tecleado", mensaje: "¿1,205 o 1205? Escribí 1205 o 1,205." });
-    expect(errorDelCampo("abc", CONTEXTO_IMPORTE, {})).toEqual({ origen: "tecleado", mensaje: "No es un número válido." });
-    expect(errorDelCampo("1,5", ENTERA, {})).toEqual({ origen: "tecleado", mensaje: "Tiene que ser un número entero." });
+  it("lo que se tecleó y no se entiende dice cómo escribirlo, con el sujeto del tipo, y es del origen «tecleado» (se muestra junto al campo)", () => {
+    expect(errorDelCampo(`1.205${MARCA_DE_NO_CANONICO}`, KG, { tipo: "cantidad" })).toEqual({ origen: "tecleado", mensaje: "La cantidad: ¿1,205 o 1205? Escribí 1205 o 1,205." });
+    expect(errorDelCampo("abc", CONTEXTO_IMPORTE, { tipo: "importe" })).toEqual({ origen: "tecleado", mensaje: "El importe no es un número válido." });
+    expect(errorDelCampo("1,5", ENTERA, { tipo: "entero" })).toEqual({ origen: "tecleado", mensaje: "El valor tiene que ser un número entero." });
+    expect(errorDelCampo("abc", KG, { tipo: "porcentaje" })).toEqual({ origen: "tecleado", mensaje: "El porcentaje no es un número válido." });
   });
 
-  it("con tipo (o etiqueta), el mensaje lleva el sujeto del campo, como el de la Server Action", () => {
+  it("con etiqueta, el mensaje lleva el sujeto del campo, como el de la Server Action", () => {
     expect(errorDelCampo(`1.205${MARCA_DE_NO_CANONICO}`, KG, { tipo: "cantidad", etiqueta: "El factor" })).toEqual({ origen: "tecleado", mensaje: "El factor: ¿1,205 o 1205? Escribí 1205 o 1,205." });
     expect(errorDelCampo("21,000", CONTEXTO_IMPORTE, { tipo: "importe", etiqueta: "El precio de venta" })).toEqual({
       origen: "tecleado",
@@ -136,11 +140,15 @@ describe("errorDelCampo — por qué el valor no sirve", () => {
     expect(errorDelCampo("1.5", ENTERA, { tipo: "cantidad", etiqueta: "La cantidad" })?.origen).toBe("regla");
   });
 
-  it("válido, vacío o sin tipo (solo formato): sin error", () => {
+  it("válido o vacío: sin error; un negativo solo con permitirNegativo; entero y porcentaje se validan como una cantidad de su contexto", () => {
     expect(errorDelCampo("1234.5", CONTEXTO_IMPORTE, { tipo: "importe" })).toBeNull();
     expect(errorDelCampo("", CONTEXTO_IMPORTE, { tipo: "importe" })).toBeNull();
-    expect(errorDelCampo("-3", KG, {})).toBeNull();
     expect(errorDelCampo("3", KG, { tipo: "cantidad" })).toBeNull();
+    expect(errorDelCampo("-3", KG, { tipo: "cantidad" })?.origen).toBe("regla");
+    expect(errorDelCampo("-3", KG, { tipo: "cantidad", permitirNegativo: true })).toBeNull();
+    expect(errorDelCampo("-3", KG, { tipo: "porcentaje", permitirNegativo: true })).toBeNull();
+    expect(errorDelCampo("15", ENTERA, { tipo: "entero" })).toBeNull();
+    expect(errorDelCampo("1.5", ENTERA, { tipo: "entero" })?.origen).toBe("regla");
   });
 
   it("propiedad: lo que emite el campo da error SI Y SOLO SI el parser no lo entiende; y lo que sí entiende, se lee como el mismo número", () => {
@@ -149,7 +157,7 @@ describe("errorDelCampo — por qué el valor no sirve", () => {
       fc.property(fc.oneof(fc.string({ maxLength: 15 }), fc.stringMatching(/^-?\d{1,4}([.,]\d{1,5})?$/), fc.stringMatching(/^\d{1,3}(\.\d{3}){1,2}(,\d{1,3})?$/)), contextos, (texto, contexto) => {
         const parseado = interpretarNumeroTecleado(texto, contexto);
         const emitido = valorAEmitir(texto, contexto);
-        const error = errorDelCampo(emitido, contexto, {});
+        const error = errorDelCampo(emitido, contexto, { tipo: "cantidad", permitirNegativo: true });
         if (parseado.ok) {
           expect(error, JSON.stringify(texto)).toBeNull();
           expect(leerNumeroCanonico(emitido)).toEqual({ ok: true, valor: parseado.valor });

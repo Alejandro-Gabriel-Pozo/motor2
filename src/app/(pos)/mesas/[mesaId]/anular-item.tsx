@@ -84,7 +84,7 @@ export function AnularItem({ item, puede, conAdicionales = false }: { item: { id
           <label htmlFor={`${base}-cantidad`} className="text-sm font-medium">
             Cantidad a anular
           </label>
-          <CampoNumero id={`${base}-cantidad`} value={cantidad} onChange={setCantidad} />
+          <CampoNumero tipo="cantidad" id={`${base}-cantidad`} value={cantidad} onChange={setCantidad} />
           <AreaDeTexto etiqueta="Motivo (obligatorio)" data-foco-inicial="" maxLength={200} aria-required="true" value={motivo} onChange={(e) => setMotivo(e.target.value)} error={error} />
           <div className="mt-1 flex justify-end gap-2">
             <Boton variante="secundario" onClick={cerrar}>

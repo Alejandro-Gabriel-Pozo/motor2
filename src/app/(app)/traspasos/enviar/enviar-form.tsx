@@ -77,7 +77,7 @@ export function EnviarForm({
 
       <label className="flex flex-col gap-1 text-sm">
         Cantidad
-        <CampoNumero value={cantidad} onChange={setCantidad} required />
+        <CampoNumero tipo="cantidad" value={cantidad} onChange={setCantidad} required />
       </label>
 
       <Selector etiqueta="Sección propia de la que sale (se descuenta YA, al enviar)" value={seccionOrigenId} onChange={(e) => setSeccionOrigenId(e.target.value)} required>

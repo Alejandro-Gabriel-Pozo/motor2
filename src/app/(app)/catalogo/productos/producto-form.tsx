@@ -419,6 +419,7 @@ export function ProductoForm({
       {tipo === "PV" && (
         <div className="flex flex-col gap-1">
           <CampoNumero
+            tipo="cantidad"
             name="pasoVenta"
             placeholder="Paso de venta (opcional)"
             ariaLabel="Paso de venta"

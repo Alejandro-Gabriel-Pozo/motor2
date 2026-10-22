@@ -266,7 +266,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
                   </td>
                   <td className="px-2 text-right">{f.saldoSistema}</td>
                   <td className="w-28 px-2">
-                    <CampoNumero value={estado.conteoReal} onChange={(v) => actualizarEstado(f.key, { conteoReal: v })} ariaLabel={`Contado de ${f.etiqueta}`} tamano="compacto" />
+                    <CampoNumero tipo="cantidad" value={estado.conteoReal} onChange={(v) => actualizarEstado(f.key, { conteoReal: v })} ariaLabel={`Contado de ${f.etiqueta}`} tamano="compacto" />
                   </td>
                   <td className={`px-2 text-right ${diferencia ? "font-medium" : ""}`}>{diferencia === null ? "—" : diferencia > 0 ? `+${diferencia}` : diferencia}</td>
                   <td className="px-2">

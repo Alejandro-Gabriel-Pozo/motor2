@@ -9,13 +9,12 @@ import { obtenerProductoOpcion } from "@/server/actions/catalogo/productos";
 import { TablaHistorialConteos, type FilaConteo } from "./tabla-conteos";
 import { FiltrosConteos } from "./filtros-conteos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
-import { ZONA_UTC, diaDeCalendario, finDelDia, inicioDelDia } from "@/core/tiempo/zona-horaria";
+import { ZONA_UTC, diaDeCalendario, finDelDia, inicioDelDia, esDiaISOReal, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 
 /** Una fecha de la URL que no se puede leer se ignora (sin filtro), no rompe la pantalla con una excepción de Prisma. */
 function fechaDeUrl(valor: string | undefined): Date | undefined {
   if (!valor) return undefined;
-  const fecha = new Date(valor);
-  return Number.isNaN(fecha.getTime()) ? undefined : fecha;
+  return esDiaISOReal(valor) ? fechaDeColumnaDate(valor) : undefined;
 }
 
 export default async function ConteosPage({
