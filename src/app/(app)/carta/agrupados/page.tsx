@@ -3,6 +3,7 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import type { ItemAgrupadoAdmin } from "@/core/carta/public";
+import { rutaDelPaso } from "@/core/catalogo/public";
 import { cargarAdminItemsAgrupados } from "@/server/consultas/carta/admin";
 import {
   actualizarActivoItemAgrupadoCarta,
@@ -205,7 +206,7 @@ function ItemAgrupado({
                 <li key={o.id} className="flex flex-col gap-1 rounded border p-2 text-sm" data-opcion-agrupada={o.nombre}>
                   <div className="flex flex-wrap items-end gap-2">
                     <span className="min-w-40 py-1">
-                      <EnlaceInterno href={`/catalogo/productos/${o.productoId}/editar`} className="font-medium underline">
+                      <EnlaceInterno href={rutaDelPaso(o.productoId, "datos")} className="font-medium underline">
                         {o.nombre}
                       </EnlaceInterno>{" "}
                       · {o.disponibleAca ? `${pesos(o.precioAca)} acá` : "no disponible en esta sucursal"}
@@ -283,7 +284,7 @@ function ItemAgrupado({
               .filter((o) => o.disponibleAca)
               .map((o) => (
                 <li key={o.id}>
-                  <EnlaceInterno href={`/catalogo/productos/${o.productoId}/editar`} className="underline">
+                  <EnlaceInterno href={rutaDelPaso(o.productoId, "datos")} className="underline">
                     {o.nombre}
                   </EnlaceInterno>
                   : {pesos(o.precioAca)}

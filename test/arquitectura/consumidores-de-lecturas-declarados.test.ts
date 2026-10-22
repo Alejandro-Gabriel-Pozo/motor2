@@ -73,7 +73,7 @@ const PROCESOS_DE_LA_PAGINA_GENERICA: readonly AccionClave[] = [
   "proceso_devolucion_proveedor",
 ];
 
-const FORMULARIO_DE_PRODUCTO = "el formulario de producto: alta (`catalogo/productos/nuevo`, alta_producto) y edición (`catalogo/productos/[id]/editar`, producto_ver_catalogo)";
+const FORMULARIO_DE_PRODUCTO = "el formulario de producto: alta (`catalogo/productos/nuevo`, alta_producto) y edición (`catalogo/productos/[id]/datos`, el paso 1 del espacio del producto; `[id]/editar` redirige ahí; producto_ver_catalogo)";
 
 const LECTURAS: Readonly<Record<string, LecturaDeclarada>> = {
   buscarProductosSelector: {
@@ -109,12 +109,12 @@ const LECTURAS: Readonly<Record<string, LecturaDeclarada>> = {
     modulo: "server/actions/catalogo/productos",
     consumidores: {
       "app/(app)/catalogo/productos/[id]/page.tsx": { claves: ["producto_ver_catalogo"] },
-      "app/(app)/catalogo/productos/[id]/editar/page.tsx": { claves: ["producto_ver_catalogo"] },
+      "app/(app)/catalogo/productos/datos-de-edicion.ts": { claves: ["producto_ver_catalogo"], porque: "la edición de un producto (`catalogo/productos/[id]/datos`, producto_ver_catalogo y producto_editar): lee las presentaciones de una MP" },
       "app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": {
         claves: ["proceso_compra", "proceso_devolucion_proveedor"],
         porque: "el formulario de `movimientos/[proceso]` las pide solo en los procesos tipo compra (`esCompraLike`: compra y devolución a proveedor)",
       },
-      "components/catalogo/gestion-presentaciones.tsx": { claves: ["producto_ver_catalogo"], porque: "el formulario de producto solo al EDITAR una MP (`catalogo/productos/[id]/editar`, producto_ver_catalogo)" },
+      "components/catalogo/gestion-presentaciones.tsx": { claves: ["producto_ver_catalogo"], porque: "el formulario de producto solo al EDITAR una MP (`catalogo/productos/[id]/datos`, producto_ver_catalogo)" },
     },
   },
   listarInsumos: {

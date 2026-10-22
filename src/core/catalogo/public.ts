@@ -51,4 +51,4 @@ export { armarComparativaDePrecios } from "./comparativa-de-precios";
 export type { FilaComparativaPrecios } from "./comparativa-de-precios";
 // Fase 6 («el espacio del producto», 6.9b): los pasos del espacio de un producto según su tipo, sus rutas, sus pendientes y qué pasos abre cada usuario (puro; lo dibuja el marco del espacio).
 export { PASOS_DEL_ESPACIO, pasosDelEspacio, pendientesDelProducto, rutaDelPaso } from "./espacio-del-producto";
-export type { AccesoAlEspacio, EstadoDelPaso, FormaDelProducto, HechosDelProducto, PasoDelEspacio } from "./espacio-del-producto";
+export type { AccesoAlEspacio, EstadoDelPaso, EstadoEnLaCarta, FormaDelProducto, HechosDelProducto, PasoDeLaPortada, PasoDelEspacio } from "./espacio-del-producto";

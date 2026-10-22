@@ -11,23 +11,34 @@ import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { cargarOpcionesDelProducto } from "@/server/consultas/catalogo/opciones-de-venta";
+import type { ProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
 import { ResumenDeOpciones } from "@/components/catalogo/resumen-de-opciones";
+import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
+import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
+import { TablaDeDatos } from "@/ui/componentes/datos/tabla-de-datos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { claseDeBoton } from "@/ui/primitivas/boton";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
 function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-xs text-neutral-500">{etiqueta}</dt>
+      <dt className="text-xs text-tinta-suave">{etiqueta}</dt>
       <dd className="text-sm">{children}</dd>
     </div>
   );
 }
 
+const SinValor = ({ children }: { children: React.ReactNode }) => <span className="text-tinta-suave">{children}</span>;
+
 /**
- * Ficha de un producto: solo lectura. Reúne sus datos y lleva a los reportes que ya existen (historial de movimientos, costos, receta).
- * Stock, precios por sucursal, proveedores y auditoría quedan para una fase siguiente (F3 de docs/grounding-lista-ver-editar-2026-09-18.md).
- * Al guardar un alta o una edición se vuelve acá, con el aviso de que se guardó.
+ * La PORTADA del producto en el espacio del producto (Fase 6, 6.12; DEC-12): el resumen de un producto, de cualquier tipo, dentro del marco con su tira de pasos. Es de solo lectura: reúne sus datos y lleva a
+ * los reportes que ya existen; los formularios están en cada paso (Qué se vende o Datos, Opciones y precio, Receta y En la carta), a los que se llega por las pestañas del marco. Al guardar un alta o una
+ * edición se vuelve acá, con el aviso de que se guardó.
+ *
+ * Los pasos dependen del tipo (`pasosDelEspacio`): un producto de venta tiene los cuatro; una materia prima, Datos y —si se produce— Receta. El producto interno que respalda un adicional NO se maneja con el
+ * espacio de venta: se muestra como siempre, sin marco, con su botón «Editar». Stock, precios por sucursal, proveedores y auditoría quedan para una fase siguiente (F3 de docs/grounding-lista-ver-editar-2026-09-18.md).
  */
 export default async function FichaProductoPage({
   params,
@@ -39,12 +50,12 @@ export default async function FichaProductoPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <Aviso variante="error" forma="en-linea">{MENSAJE_DEMASIADAS_LECTURAS}</Aviso>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `producto_editar` en la ruta /editar y en la acción. Es un permiso de EDITAR, así que no
-  // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
+  if (!gate.ok) return <Aviso variante="error" forma="en-linea">{gate.mensaje}</Aviso>;
+  // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `producto_editar` en la ruta /datos y en la acción. Es un permiso de EDITAR, así que no
+  // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla). Lo usa el botón «Editar» del producto de respaldo (sin marco); en el marco, el enlace es el paso 1.
   const { editar: puedeEditarProducto } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db);
   const { editar: puedeCambiarDisponibilidad } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db);
   // S-12 (D8 del dueño): el costo de consignación (lo que se le paga al proveedor por unidad vendida, y quién es) es de quien tiene `pagar_consignante` en alguna de sus sucursales de la empresa (P20, D23: «Ver incluye Editar», y la edición se evalúa igual) — la
@@ -70,56 +81,60 @@ export default async function FichaProductoPage({
     p.tipo === "PV" ? cargarOpcionesDelProducto(ctx.db, p.id, ctx.sucursalId) : Promise.resolve(null),
     p.tipo === "PV" ? obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_opciones_admitidas", ctx.db) : Promise.resolve({ ver: false, editar: false }),
   ]);
-  const tieneReceta = p.tipo === "PV" || p.seProduce;
   const disponibleAca = disponibilidadPorSucursal.find((d) => d.sucursalId === ctx.sucursalId)?.disponible ?? false;
+  const esDeRespaldo = opcionesDeVenta?.producto.esAnclaDeAdicional ?? false;
 
-  return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div>
-        <Link href="/catalogo/productos" className="mb-3 inline-block text-sm underline">
-          ← Productos
-        </Link>
-        {guardado && (
-          <p role="status" className="mb-3 rounded border border-green-700 px-3 py-2 text-sm text-green-700">
-            {guardado === "alta" ? "Producto creado." : "Cambios guardados."}
-          </p>
-        )}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold">{p.nombre}</h1>
-            <p className="text-sm text-neutral-500">
-              {p.codigo} · {p.tipo === "MP" ? "Materia prima (MP)" : "Producto de venta (PV)"} ·{" "}
-              {disponibleAca ? `Disponible en «${ctx.sucursalNombre}»` : `No disponible en «${ctx.sucursalNombre}»`}
-            </p>
-          </div>
-          {puedeEditarProducto && (
-            <div className="flex items-start gap-4">
-              <Link href={`/catalogo/productos/${p.id}/editar`} className="rounded bg-neutral-900 px-4 py-2 text-sm text-white">
-                Editar
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
+  const productoDelEspacio: ProductoDelEspacio = {
+    id: p.id,
+    nombre: p.nombre,
+    codigo: p.codigo,
+    tipo: p.tipo,
+    modoDeVenta: p.modoDeVenta === "BASE_CONFIGURABLE" ? "BASE_CONFIGURABLE" : "DIRECTO",
+    precioVenta: Number(p.precioVenta),
+    seProduce: p.seProduce,
+    esAnclaDeAdicional: esDeRespaldo,
+  };
+  // El marco (los pasos con su enlace y su estado) solo para lo que se maneja con el espacio; el producto de respaldo se muestra como siempre. Las opciones y la disponibilidad ya están leídas: no se vuelven a leer.
+  const marco = esDeRespaldo ? null : await cargarMarcoDelEspacio(ctx, productoDelEspacio, { opciones: p.tipo === "PV" ? opcionesDeVenta : undefined, disponibleAca });
+  const pendientes = marco?.pasos.filter((paso) => paso.estado.tipo === "pendiente") ?? [];
+
+  const cuerpo = (
+    <>
+      {guardado && <Aviso variante="exito">{guardado === "alta" ? "Producto creado." : "Cambios guardados."}</Aviso>}
+
+      {pendientes.length > 0 && (
+        <section aria-labelledby="titulo-pendientes">
+          <h2 id="titulo-pendientes" className="mb-2 text-sm font-medium">
+            Qué falta
+          </h2>
+          <ul className="flex flex-col gap-1 rounded border border-aviso bg-aviso-tinte px-4 py-3 text-sm text-aviso-tinta">
+            {pendientes.map((paso) => (
+              <li key={paso.paso}>
+                <span className="font-medium">{paso.titulo}:</span> {paso.estado.tipo === "pendiente" ? paso.estado.texto : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-2 text-sm font-medium">Datos</h2>
-        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded border p-4 sm:grid-cols-2">
-          <Dato etiqueta="Categoría">{p.categoria?.nombre ?? <span className="text-neutral-500 dark:text-neutral-400">Sin categoría</span>}</Dato>
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded border border-borde p-4 sm:grid-cols-2">
+          <Dato etiqueta="Categoría">{p.categoria?.nombre ?? <SinValor>Sin categoría</SinValor>}</Dato>
           {p.tipo === "MP" && (
             <Dato etiqueta="Insumo (grupo)">
               {p.insumo ? (
                 <>
                   {p.insumo.nombre}
-                  {p.insumo.grupo ? <span className="text-neutral-500"> ({p.insumo.grupo.nombre})</span> : <span className="text-neutral-500 dark:text-neutral-400"> (sin grupo)</span>}
+                  {p.insumo.grupo ? <SinValor> ({p.insumo.grupo.nombre})</SinValor> : <SinValor> (sin grupo)</SinValor>}
                 </>
               ) : (
-                <span className="text-neutral-500 dark:text-neutral-400">Sin insumo asignado</span>
+                <SinValor>Sin insumo asignado</SinValor>
               )}
             </Dato>
           )}
           <Dato etiqueta="Unidad de stock">{p.unidadStock.nombre}</Dato>
-          <Dato etiqueta="Unidad de compra">{p.unidadCompra?.nombre ?? <span className="text-neutral-500 dark:text-neutral-400">—</span>}</Dato>
+          <Dato etiqueta="Unidad de compra">{p.unidadCompra?.nombre ?? <SinValor>—</SinValor>}</Dato>
           <Dato etiqueta="Factor de conversión">
             {Number(p.factorConversion).toLocaleString("es-AR")} {p.unidadStock.nombre} por {p.unidadCompra?.nombre ?? "unidad de compra"}
           </Dato>
@@ -134,16 +149,12 @@ export default async function FichaProductoPage({
             ))}
           {p.tipo === "PV" && (
             <Dato etiqueta="Venta fraccionada">
-              {p.pasoVenta !== null ? (
-                `Se vende de a ${Number(p.pasoVenta).toLocaleString("es-AR")}`
-              ) : (
-                <span className="text-neutral-500 dark:text-neutral-400">No — se vende de a una unidad entera</span>
-              )}
+              {p.pasoVenta !== null ? `Se vende de a ${Number(p.pasoVenta).toLocaleString("es-AR")}` : <SinValor>No — se vende de a una unidad entera</SinValor>}
             </Dato>
           )}
           {p.tipo === "PV" && (
             <Dato etiqueta={`Sección habitual en «${ctx.sucursalNombre}»`}>
-              {seccionHabitual ? seccionHabitual.seccion.nombre : <span className="text-neutral-500 dark:text-neutral-400">Sin sección habitual (sale de donde haya stock)</span>}
+              {seccionHabitual ? seccionHabitual.seccion.nombre : <SinValor>Sin sección habitual (sale de donde haya stock)</SinValor>}
             </Dato>
           )}
           <Dato etiqueta="Se produce (tiene receta propia)">{p.seProduce ? "Sí" : "No"}</Dato>
@@ -165,7 +176,7 @@ export default async function FichaProductoPage({
         </dl>
       </section>
 
-      {opcionesDeVenta && !opcionesDeVenta.producto.esAnclaDeAdicional && (
+      {opcionesDeVenta && !esDeRespaldo && (
         <section aria-labelledby="titulo-opciones-de-venta">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="titulo-opciones-de-venta" className="text-sm font-medium">
@@ -177,57 +188,50 @@ export default async function FichaProductoPage({
               </Link>
             )}
           </div>
-          <div className="rounded border p-4">
+          <div className="rounded border border-borde p-4">
             <ResumenDeOpciones resumen={opcionesDeVenta.vistaPrevia} sucursalNombre={ctx.sucursalNombre} />
           </div>
         </section>
       )}
-      {opcionesDeVenta?.producto.esAnclaDeAdicional && (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">Este es el producto interno que respalda el stock de un adicional: lo maneja el sistema y se vende solo como adicional.</p>
-      )}
+      {esDeRespaldo && <p className="text-sm text-tinta-suave">Este es el producto interno que respalda el stock de un adicional: lo maneja el sistema y se vende solo como adicional.</p>}
 
       <section>
         <h2 className="mb-2 text-sm font-medium">Disponibilidad por sucursal</h2>
-        <div className="overflow-x-auto rounded border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-neutral-500">
-                <th className="py-2 pl-4">Sucursal</th>
-                <th>Disponible</th>
-                <th><span className="sr-only">Acciones</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {disponibilidadPorSucursal.map((d) => (
-                <tr key={d.sucursalId} className="border-b last:border-0">
-                  <td className="py-2 pl-4">{d.sucursalNombre}</td>
-                  <td>{d.disponible ? "Sí" : "No"}</td>
-                  <td className="py-2">
-                    {/* Solo la sucursal ACTIVA tiene botón — actualizarDisponibilidadProducto evalúa el gate contra ctx.sucursalId, nunca contra un id que viaje del cliente. */}
-                    {puedeCambiarDisponibilidad && d.sucursalId === ctx.sucursalId && (
-                      <ActivarDesactivarFila
-                        activo={d.disponible}
-                        aviso="Desactivar lo saca de los selectores, del stock consolidado y de la valuación de esta sucursal; en las demás no cambia nada. El historial se conserva. Si algo todavía depende de él acá (recetas vigentes, saldo), no se deja desactivar."
-                        accion={async () => {
-                          "use server";
-                          return actualizarDisponibilidadProducto(productoId, !d.disponible);
-                        }}
-                      />
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <TablaDeDatos
+          titulo="Disponibilidad por sucursal"
+          presentacionCelular="tabla-con-scroll"
+          filas={disponibilidadPorSucursal}
+          claveDeFila={(d) => d.sucursalId}
+          vacio="El producto no está disponible en ninguna sucursal."
+          columnas={[
+            { id: "sucursal", encabezado: "Sucursal", titulo: true, celda: (d) => d.sucursalNombre },
+            { id: "disponible", encabezado: "Disponible", celda: (d) => (d.disponible ? "Sí" : "No") },
+            {
+              id: "acciones",
+              encabezado: "Acciones",
+              celda: (d) =>
+                // Solo la sucursal ACTIVA tiene botón — actualizarDisponibilidadProducto evalúa el gate contra ctx.sucursalId, nunca contra un id que viaje del cliente.
+                puedeCambiarDisponibilidad && d.sucursalId === ctx.sucursalId ? (
+                  <ActivarDesactivarFila
+                    activo={d.disponible}
+                    aviso="Desactivar lo saca de los selectores, del stock consolidado y de la valuación de esta sucursal; en las demás no cambia nada. El historial se conserva. Si algo todavía depende de él acá (recetas vigentes, saldo), no se deja desactivar."
+                    accion={async () => {
+                      "use server";
+                      return actualizarDisponibilidadProducto(productoId, !d.disponible);
+                    }}
+                  />
+                ) : null,
+            },
+          ]}
+        />
       </section>
 
       {presentaciones.length > 0 && (
         <section>
           <h2 className="mb-2 text-sm font-medium">Presentaciones de compra</h2>
-          <ul className="rounded border p-4 text-sm">
+          <ul className="rounded border border-borde p-4 text-sm">
             {presentaciones.map((pr) => (
-              <li key={pr.id} className={pr.activa ? "" : "text-neutral-500 dark:text-neutral-400"}>
+              <li key={pr.id} className={pr.activa ? "" : "text-tinta-suave"}>
                 {pr.unidadCompraNombre} — {pr.factorConversion.toLocaleString("es-AR")} {p.unidadStock.nombre} cada una{pr.activa ? "" : " (inactiva)"}
               </li>
             ))}
@@ -250,7 +254,8 @@ export default async function FichaProductoPage({
               </EnlaceInterno>
             </li>
           )}
-          {tieneReceta && (
+          {/* La receta es un paso del espacio (una pestaña del marco). El producto de respaldo no tiene marco y conserva su enlace de siempre. */}
+          {esDeRespaldo && (
             <li>
               <EnlaceInterno href={`/catalogo/recetas/${p.id}`} className="underline">
                 Receta
@@ -266,6 +271,45 @@ export default async function FichaProductoPage({
           )}
         </ul>
       </section>
+    </>
+  );
+
+  if (marco) {
+    return (
+      <MarcoDelEspacio
+        producto={{ id: p.id, nombre: p.nombre, codigo: p.codigo, tipo: p.tipo, modoDeVenta: productoDelEspacio.modoDeVenta, disponibleAca, sucursalNombre: ctx.sucursalNombre }}
+        pasos={marco.pasos}
+        actual="portada"
+      >
+        {cuerpo}
+      </MarcoDelEspacio>
+    );
+  }
+
+  // El producto de respaldo de un adicional: sin marco ni pasos de venta, como siempre.
+  return (
+    <div className="flex max-w-3xl flex-col gap-6">
+      <div>
+        <Link href="/catalogo/productos" className="mb-3 inline-block text-sm underline">
+          ← Productos
+        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold">{p.nombre}</h1>
+            <p className="text-sm text-tinta-suave">
+              {p.codigo} · Producto de venta (PV) · {disponibleAca ? `Disponible en «${ctx.sucursalNombre}»` : `No disponible en «${ctx.sucursalNombre}»`}
+            </p>
+          </div>
+          {puedeEditarProducto && (
+            <div className="flex items-start gap-4">
+              <Link href={`/catalogo/productos/${p.id}/datos`} className={claseDeBoton()}>
+                Editar
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+      {cuerpo}
     </div>
   );
 }

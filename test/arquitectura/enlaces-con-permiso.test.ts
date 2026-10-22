@@ -58,6 +58,7 @@ describe("accionDeRuta", () => {
     expect(accionDeRuta("/catalogo/productos/nuevo")).toBe("alta_producto");
     expect(accionDeRuta("/catalogo/productos/p1")).toBe("producto_ver_catalogo");
     expect(accionDeRuta("/catalogo/productos/p1/editar")).toBe("producto_ver_catalogo");
+    expect(accionDeRuta("/catalogo/productos/p1/datos")).toBe("producto_ver_catalogo");
   });
 
   it("la comparativa de precios (fuera del menú) tiene su propia acción, distinta de la de Proveedores", () => {

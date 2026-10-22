@@ -317,7 +317,8 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
 
     // 5) Pasarlo a «Por opción».
     await m.clic(page.getByRole("link", { name: `← ${producto}` }), "volver a la ficha del producto");
-    await m.clic(page.getByRole("link", { name: "Editar", exact: true }), "tocar «Editar»");
+    // Desde la Fase 6 (6.12) el enlace al editor es el paso 1 de la tira del marco («Qué se vende»); antes era el botón «Editar» de la ficha. Es el mismo clic al mismo destino (`/datos`): la medición no cambia.
+    await m.clic(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ }), "tocar «Qué se vende» (el paso 1, antes el botón «Editar»)");
     await m.ver("se abre la edición", () => expect(page.getByText(`Editar "${producto}"`)).toBeVisible());
     await m.marcar(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ }), "elegir «Por opción»");
     await m.clic(page.getByRole("button", { name: "Guardar cambios" }), "tocar «Guardar cambios»");

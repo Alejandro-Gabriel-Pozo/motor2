@@ -309,6 +309,13 @@ const completos: Record<string, Valor> = {
   // --- consultas de las páginas y lecturas (el contexto —sucursal activa, empresa, usuario, hora, db— es el propio; los ids del cliente, los ajenos) ---
   // Las candidatas son las sucursales con carta propia; la consulta tiene que dejar afuera las que u1 no ve (S2, S3, las de otra empresa).
   "consulta|consultas/carta/admin.ts|origenesDeCopiaVisibles": (k, c) => [c.mundo.u1.id, [{ id: k.sucursalId, nombre: "Sucursal candidata", cantidadProductos: 1 }, { id: k.vecinaId, nombre: "Sucursal vecina", cantidadProductos: 1 }], c.db],
+  // Fase 6 (6.12): los hechos de UN producto para el marco del espacio. El producto llega ya leído por la página (acá, armado a mano con el id del kit): con el id de OTRA empresa o sucursal no trae nada.
+  "consulta|consultas/catalogo/espacio-del-producto.ts|hechosDelProducto": (k, c) => [
+    c.db,
+    { id: k.productoPvId, nombre: "Producto ZZ", codigo: "ZZ", tipo: "PV", modoDeVenta: "DIRECTO", precioVenta: 1000, seProduce: false, esAnclaDeAdicional: false },
+    k.sucursalId,
+    { opciones: true, receta: true, carta: true },
+  ],
   "consulta|consultas/catalogo/grupos.ts|cadenasDeGrupos": (k, c) => [[k.grupoId], c.db],
   "consulta|consultas/catalogo/recetas.ts|listarCalibracionesDeIngredientes": (k, c) => [[k.recetaIngredienteId, k.recetaIngredientePropioId], c.mundo.u1.id, [c.propio.sucursalId], c.db],
   "consulta|consultas/catalogo/recetas.ts|listarOpcionesDeSustituto": (k, c) => [{ insumoIdExcluido: k.insumoId, unidadId: k.unidadId }, c.db],
@@ -482,6 +489,8 @@ const porArchivo: Record<string, Record<string, Valor>> = {
   "lecturas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId },
   // GO-2d: lo mismo en las consultas de las pantallas de opciones de venta.
   "consultas/catalogo/opciones-de-venta.ts": { grupoId: (k) => k.grupoDeOpcionesId, productoId: (k) => k.productoConOpcionesId, productoIds: (k) => [k.productoConOpcionesId] },
+  // Fase 6 (6.17b): el estado de UN producto en la carta es el de un PV.
+  "consultas/carta/admin.ts": { productoId: (k) => k.productoPvId },
   // GO-2d: los avisos de stock de la carta son de platos (PV con receta).
   "consultas/carta/avisos-de-stock.ts": { productoIds: (k) => [k.productoPvId, k.productoPv2Id] },
 };

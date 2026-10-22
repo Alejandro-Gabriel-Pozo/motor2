@@ -9,11 +9,12 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { actualizarDisponibilidadProducto, listarProductosPagina } from "@/server/actions/catalogo/productos";
 import { IconoDeAccion } from "@/components/iconos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { rutaDelPaso } from "@/core/catalogo/public";
 import { gruposDeOpcionesPorProducto } from "@/server/consultas/catalogo/opciones-de-venta";
 
 /**
  * Lista de productos. Ya no comparte pantalla con el formulario: el alta está en `/nuevo`, la ficha (solo lectura) en `/[id]` y la edición en
- * `/[id]/editar` (docs/grounding-lista-ver-editar-2026-09-18.md, decisiones 1 a 3).
+ * `/[id]/datos` (el paso 1 del espacio del producto; `/[id]/editar` redirige ahí) (docs/grounding-lista-ver-editar-2026-09-18.md, decisiones 1 a 3).
  */
 export default async function ProductosPage({
   searchParams,
@@ -27,7 +28,7 @@ export default async function ProductosPage({
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_ver_catalogo", ctx.db);
   if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
-  // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `producto_editar` en la ruta /editar y en la acción. Es un permiso de EDITAR, así que no
+  // Cortesía de la interfaz, no barrera: el servidor sigue exigiendo `producto_editar` en la ruta /datos y en la acción. Es un permiso de EDITAR, así que no
   // sirve el contexto de EnlaceInterno (solo lleva el nivel Ver de cada pantalla).
   const { editar: puedeEditarProducto } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db);
   // Cortesía de la interfaz: `actualizarDisponibilidadProducto` exige `producto_disponibilidad` (clave propia, antes compartía la clave de editar).
@@ -36,7 +37,7 @@ export default async function ProductosPage({
 
   const { id, q, cursor } = unicosDeUrl(await searchParams);
   // Los enlaces y favoritos viejos apuntaban a `/catalogo/productos?id=…` (la edición estaba en esta misma pantalla).
-  if (id) redirect(`/catalogo/productos/${encodeURIComponent(id)}/editar`);
+  if (id) redirect(rutaDelPaso(id, "datos"));
 
   const pagina = await listarProductosPagina(cursor, q);
   // GO-2d: la etiqueta «Opciones: Tamaño, Leche» de cada producto de la página (una sola lectura).
@@ -96,7 +97,7 @@ export default async function ProductosPage({
                   {(puedeEditarProducto || puedeCambiarDisponibilidad) && (
                     <div className="flex items-start gap-3">
                       {puedeEditarProducto && (
-                        <Link href={`/catalogo/productos/${p.id}/editar`} className="text-sm underline inline-flex items-center gap-1">
+                        <Link href={`/catalogo/productos/${p.id}/datos`} className="text-sm underline inline-flex items-center gap-1">
                           <IconoDeAccion id="editar" />
                           Editar
                         </Link>

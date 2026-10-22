@@ -49,8 +49,11 @@ export interface FormaDelProducto {
   esAnclaDeAdicional: boolean;
 }
 
-/** Cómo está el producto en la carta de la sucursal activa (lo que lee la administración de la carta). */
-export type EstadoEnLaCarta = "visible" | "oculto" | "fuera" | "agrupado" | "no-disponible";
+/**
+ * Cómo está el producto en la carta de la sucursal activa (lo que lee la administración de la carta). `sin-seccion`: tiene contenido prendido pero ninguna sección de carta activa (la carta pública
+ * no lo muestra: es el «visible sin sección» del diagnóstico de la carta).
+ */
+export type EstadoEnLaCarta = "visible" | "oculto" | "fuera" | "agrupado" | "no-disponible" | "sin-seccion";
 
 /**
  * Los hechos que hacen falta para calcular los pendientes, ya leídos por quien llama. `null` en `opciones`, `receta` o `carta` = «ese dato no se leyó»: el usuario no ve esa pantalla (la
@@ -111,6 +114,8 @@ function estadoEnLaCarta(h: HechosDelProducto): EstadoDelPaso {
       return { tipo: "pendiente", texto: "Todavía no está en la carta" };
     case "no-disponible":
       return { tipo: "pendiente", texto: "No está disponible en esta sucursal" };
+    case "sin-seccion":
+      return { tipo: "pendiente", texto: "Está en la carta pero le falta una sección" };
   }
 }
 
@@ -120,7 +125,7 @@ function estadoEnLaCarta(h: HechosDelProducto): EstadoDelPaso {
  * - datos: un producto de venta directo sin precio queda pendiente; uno que se vende por opción, una materia prima y el de respaldo están listos.
  * - opciones: pendiente si el resumen dice que hoy no se puede vender en la sucursal.
  * - receta: pendiente con el mensaje de «sin receta no se vende».
- * - en-la-carta: pendiente si no se ve (oculto, fuera o no disponible).
+ * - en-la-carta: pendiente si no se ve (oculto, fuera, sin sección o no disponible).
  */
 export function pendientesDelProducto(h: HechosDelProducto): Record<PasoDelEspacio, EstadoDelPaso> {
   return {

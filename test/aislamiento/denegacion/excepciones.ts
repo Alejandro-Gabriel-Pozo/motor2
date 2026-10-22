@@ -193,7 +193,9 @@ export const SIN_MARCA_PROPIA: Readonly<Record<string, string>> = {
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaSolicitar": "lista las OTRAS sucursales de la empresa (id y nombre) para elegir contraparte: por diseño no llevan el marcador de la sucursal propia",
   // Consultas de las páginas.
   "consulta|consultas/carta/admin.ts|cargarPortalEmpresaAdmin": "devuelve solo los valores de una lista cerrada de claves del portal (colores, tipografías…), sin texto libre donde ponerle el marcador",
+  "consulta|consultas/carta/admin.ts|estadoDelProductoEnLaCarta": "devuelve solo un estado de una lista cerrada («visible», «oculto», «fuera»…), sin ninguna fila identificable; con un producto de otra empresa o sucursal responde «no-disponible», igual que ante un id inexistente",
   "consulta|consultas/carta/admin.ts|origenesDeCopiaVisibles": "devuelve las sucursales candidatas que se le pasan, filtradas por la membresía y el «Ver» de la carta (S-07); con la propia devuelve la que recibió (no es una fila con marcador propio). Los escenarios ajenos le pasan sucursales a las que u1 no pertenece y exigen que no vuelva ninguna",
+  "consulta|consultas/catalogo/espacio-del-producto.ts|hechosDelProducto": "devuelve solo banderas y estados de una lista cerrada («vendible acá», el mensaje de la regla «sin receta no se vende», el estado en la carta), sin ninguna fila identificable; con un producto de otra empresa o sucursal no lee nada",
   "consulta|consultas/catalogo/productos.ts|contarSucursales": "devuelve solo un número",
   "consulta|consultas/catalogo/recetas.ts|listarOpcionesDeSustituto": "opciones de MP con otro insumo y la misma unidad: el mundo tiene un solo insumo con producto, así que no hay opciones",
   "consulta|consultas/reportes/costo-historico.ts|reconstruirCostosDeVenta": "devuelve el costo reconstruido por producto y día, y repite los ids que se le pasan (que no cuentan como propios)",
