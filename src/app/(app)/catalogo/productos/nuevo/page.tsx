@@ -13,14 +13,14 @@ export default async function NuevoProductoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   // Además de Ver, EDITAR: `darDeAltaProducto` exige Editar de `alta_producto`. Quien solo ve productos no tiene por qué recibir el formulario completo
   // para descubrir recién al guardar que no puede (mismo criterio que la ruta /editar).
   const gateAlta = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
-  if (!gateAlta.ok) return <p className="text-red-600">{gateAlta.mensaje}</p>;
+  if (!gateAlta.ok) return <p className="text-error">{gateAlta.mensaje}</p>;
 
   const [{ unidades, insumos, categorias, proveedores, puedeCrear }, cantidadSucursales] = await Promise.all([cargarOpcionesFormularioProducto(ctx), contarSucursales(ctx.db)]);
   // S-12 (D8 del dueño): crear un producto en consignación es fijar su costo (proveedor y precio): solo con `pagar_consignante` EDITAR en alguna de sus sucursales de la empresa (P20, D23: no importa cuál esté activa). Sin la clave el formulario no

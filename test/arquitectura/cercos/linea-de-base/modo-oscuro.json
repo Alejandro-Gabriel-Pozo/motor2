@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 122,
-  "entradas": 24,
+  "total": 119,
+  "entradas": 21,
   "porTipo": {
-    "dark:": 122
+    "dark:": 119
   },
   "cuentas": {
     "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
@@ -34,9 +34,6 @@
     "src/app/(app)/catalogo/opciones/limpiar/limpiar-opciones.tsx": {
       "dark:": 21
     },
-    "src/app/(app)/catalogo/opciones/limpiar/page.tsx": {
-      "dark:": 1
-    },
     "src/app/(app)/catalogo/opciones/page.tsx": {
       "dark:": 9
     },
@@ -46,17 +43,11 @@
     "src/app/(app)/catalogo/proveedores/[id]/page.tsx": {
       "dark:": 6
     },
-    "src/app/(app)/catalogo/recetas/[productoId]/historial/page.tsx": {
-      "dark:": 1
-    },
     "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
       "dark:": 5
     },
     "src/app/(app)/catalogo/recetas/[productoId]/receta-de-la-sucursal.tsx": {
       "dark:": 4
-    },
-    "src/app/(app)/catalogo/recetas/nueva-receta.tsx": {
-      "dark:": 1
     },
     "src/app/(app)/catalogo/unidades/page.tsx": {
       "dark:": 1
