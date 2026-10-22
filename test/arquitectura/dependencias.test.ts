@@ -245,6 +245,26 @@ describe("core-sin-prisma (Fase 6, tramo 6b): el núcleo no depende de Prisma ni
   });
 });
 
+describe("vista-previa-sin-calculo-de-precio (Fase 6, bloque 3, 6.18): la vista previa solo dibuja lo que el servidor calculó, sin excepciones", () => {
+  const MIRA = /^src\/components\/catalogo\/espacio-del-producto\/vista-previa/;
+  const NO_PUEDE = /^src\/(core\/pos\/|core\/moneda\.ts$|server\/|lib\/)/;
+
+  it("la regla está en la config, como error, sobre los archivos vista-previa* del espacio del producto y sin pathNot", () => {
+    const regla = CONFIG.forbidden.find((r) => r.name === "vista-previa-sin-calculo-de-precio") as (ReglaConfig & { from: { path: string; pathNot?: unknown }; to: { path: string[] } }) | undefined;
+    expect(regla?.severity).toBe("error");
+    expect(regla?.from.path).toBe("^src/components/catalogo/espacio-del-producto/vista-previa");
+    expect(regla?.from.pathNot).toBeUndefined();
+    expect(regla?.to.path).toEqual(["^src/core/pos/", "^src/core/moneda[.]ts$", "^src/server/", "^src/lib/"]);
+  });
+
+  it("alcance: hay archivos que la regla mira (si no, no vigila nada) y ninguno importa lo que no puede", () => {
+    const vigilados = modulos.filter((m) => MIRA.test(m.source));
+    expect(vigilados.map((m) => m.source), "tiene que existir al menos un vista-previa* en el espacio del producto").not.toEqual([]);
+    const infractores = vigilados.filter((m) => m.dependencies.some((d) => NO_PUEDE.test(d.resolved))).map((m) => m.source);
+    expect(infractores, "la vista previa no puede componer, redondear ni descontar un precio: pedíselo ya calculado al servidor").toEqual([]);
+  });
+});
+
 describe("core-sin-react-next: las excepciones, en las dos direcciones", () => {
   it("el conjunto de archivos de core/ que importan react/react-dom/next es exactamente el de la lista", () => {
     const reales = modulosCon(RE_CORE, (d) => RE_REACT_NEXT.test(d.resolved));

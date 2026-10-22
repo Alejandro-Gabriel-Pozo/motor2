@@ -5,8 +5,10 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
 import { basesDeUnEjeEnLaCarta, cargarAdminCarta } from "@/server/consultas/carta/admin";
+import { cargarVistaPreviaDeLaCarta } from "@/server/consultas/carta/vista-previa-de-un-producto";
 import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
 import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
+import { VistaPreviaDeLaCarta } from "@/components/catalogo/espacio-del-producto/vista-previa-de-la-carta";
 import { ContenidoDelProducto, type UbicacionEnCarta } from "@/components/carta/contenido-del-producto";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -51,6 +53,8 @@ export default async function EnLaCartaDelProductoPage({ params }: { params: Pro
     ? await Promise.all([cargarAdminCarta(ctx.sucursalId, ctx.db, new Date(), { soloProductoId: producto.id }), basesDeUnEjeEnLaCarta(ctx.sucursalId, ctx.db)])
     : [null, null];
   const admin = datos?.productos[0] ?? null;
+  // 6.18: cómo lo va a leer la carta pública, con el «nombre arriba» que tiene guardado (esta pantalla ya exige `carta_ver`).
+  const vistaPrevia = admin ? await cargarVistaPreviaDeLaCarta(ctx.db, ctx.sucursalId, { id: producto.id, precioVenta: producto.precioVenta, esBase: producto.modoDeVenta === "BASE_CONFIGURABLE" }, basesDeUnEje?.get(producto.id) ?? false) : null;
   const ubicacion: UbicacionEnCarta | null = datos && {
     secciones: datos.secciones.map((x) => ({ id: x.id, nombre: x.nombre, activa: x.activa })),
     cantidadPorSeccion: Object.fromEntries(datos.secciones.map((x) => [x.id, x.cantidadItems])),
@@ -106,6 +110,7 @@ export default async function EnLaCartaDelProductoPage({ params }: { params: Pro
                 abierto
               />
             </ul>
+            {vistaPrevia && <VistaPreviaDeLaCarta nombre={producto.nombre} sucursalNombre={ctx.sucursalNombre} vista={vistaPrevia} />}
           </>
         )}
       </section>

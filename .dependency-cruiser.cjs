@@ -223,6 +223,14 @@ module.exports = {
       to: { path: ["^src/lib/db\\.ts$", "^node_modules/(@prisma/client|\\.prisma/client)/"], dependencyTypesNot: ["type-only"] },
     },
     {
+      name: "vista-previa-sin-calculo-de-precio",
+      comment:
+        "La vista previa del espacio del producto (components/catalogo/espacio-del-producto/vista-previa*) SOLO DIBUJA lo que el servidor ya calculó con la regla de la venta: no importa core/pos (donde viven componerPrecioDeLinea, resumenDePrecios y aplicarDescuentoDeProducto), ni core/moneda, ni el servidor. Así no puede componer, redondear ni descontar un precio por su cuenta. Sin excepciones.",
+      severity: "error",
+      from: { path: "^src/components/catalogo/espacio-del-producto/vista-previa" },
+      to: { path: ["^src/core/pos/", "^src/core/moneda[.]ts$", "^src/server/", "^src/lib/"] },
+    },
+    {
       name: "db-solo-desde-auth-y-carta-publica",
       comment:
         "Solo core/auth, lib/auth.ts y la resolución pública de la carta importan src/lib/db.ts (ADR-007 N2): el resto recibe la base del contexto (ctx.db / ctx.transaccion) o por parámetro (db: Db). Lista con motivo: .dependency-cruiser-excepciones.cjs.",

@@ -88,9 +88,12 @@ export type { CandidatoAPlato, MenuDelDiaDeLaSucursal } from "./menu-del-dia";
 // CARTA-MANT (mantenimiento de la carta): en qué lista va cada producto de la pantalla de la carta («Fuera de carta» es el POS y el menú del día, no un faltante).
 export { coincideConLaBusqueda, lugaresParaPoner, ordenAlFinalDeLaSeccion, organizarCartaParaMantener, ponerEnElLugar, vistaPreviaDeLaForma, vistaPreviaDeOpciones } from "./mantenimiento";
 export { presentacionDeUnProductoSolo } from "./presentacion-en-carta";
+export type { AclaracionCartaV1, PresentacionCartaV1 } from "./presentacion-en-carta";
 export type { CartaParaMantener, ProductoParaMantener } from "./mantenimiento";
 // CARTA-MANT: la vista previa de «Agregar a la carta» usa la MISMA presentación de opciones que la carta pública.
 export { opcionesParaLaCarta } from "./opciones-en-carta";
 // CARTA-MANT F4: el ajuste de precios de una sección, en decimal exacto (centavos); sin redondeo en la pantalla (decisión del dueño, 2026-10-14).
 export { aCentavos, deCentavos, precioAjustado, validarAjusteDePrecio, PRECIOS_EDITABLES, REDONDEO_POR_DEFECTO } from "./ajuste-de-precios";
 export type { AjusteDePrecio } from "./ajuste-de-precios";
+// Fase 6, bloque 3 (6.18): lo que la vista previa de un producto en la carta recibe ya calculado (tipo; la calcula `server/consultas/carta/vista-previa-de-un-producto.ts`).
+export type { VistaPreviaDeLaCarta } from "./vista-previa-del-producto";

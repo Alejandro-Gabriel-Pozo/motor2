@@ -4,6 +4,8 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { fijarAdmisionDeGrupoEnProducto, vincularGrupoEnProducto } from "@/server/actions/catalogo/opciones-de-venta";
+import { basesDeUnEjeEnLaCarta } from "@/server/consultas/carta/admin";
+import { cargarVistaPreviaDeLaCarta } from "@/server/consultas/carta/vista-previa-de-un-producto";
 import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
 import { cargarOpcionesDelProducto } from "@/server/consultas/catalogo/opciones-de-venta";
 import { nombreDelTipoDeGrupo, referenciaDePrecioDeAdmisiones } from "@/core/opciones/public";
@@ -15,6 +17,7 @@ import { NuevoGrupoEnElProducto } from "@/components/catalogo/nuevo-grupo-en-el-
 import { ResumenDeOpciones } from "@/components/catalogo/resumen-de-opciones";
 import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
 import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
+import { VistaPreviaDeLaCarta } from "@/components/catalogo/espacio-del-producto/vista-previa-de-la-carta";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Enlace } from "@/ui/primitivas/enlace";
@@ -74,6 +77,10 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db).then((nivel) => nivel.editar),
   ]);
   const puedeEditarDatos = marco.pasos.some((p) => p.paso === "datos" && p.href !== null);
+  // La vista previa de la carta (6.18): el «nombre arriba» es del contenido de carta del producto, así que solo se lee si quien mira puede abrir el paso «En la carta»; si no, se dibuja con el valor por defecto.
+  const puedeVerLaCarta = marco.pasos.some((p) => p.paso === "en-la-carta" && p.href !== null);
+  const mostrarNombreArriba = puedeVerLaCarta ? ((await basesDeUnEjeEnLaCarta(ctx.sucursalId, ctx.db)).get(productoId) ?? false) : false;
+  const vistaPreviaDeLaCarta = await cargarVistaPreviaDeLaCarta(ctx.db, ctx.sucursalId, { id: productoId, precioVenta: productoDelEspacio.precioVenta, esBase: producto.esBase }, mostrarNombreArriba);
   const enUso = admitidos.filter((g) => g.fila.activo);
   const quitados = admitidos.filter((g) => !g.fila.activo);
   // 6.15a: contra qué precio se lee lo que suma una opción (la lectura debajo de cada importe): lo más barato GUARDADO del grupo que fija el precio (una medida en ABSOLUTO reemplaza al precio base, en un
@@ -228,6 +235,8 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
               </ul>
             </section>
           )}
+
+          <VistaPreviaDeLaCarta nombre={producto.nombre} sucursalNombre={ctx.sucursalNombre} vista={vistaPreviaDeLaCarta} />
 
           <section aria-labelledby="titulo-asi-se-cobra" className="flex flex-col gap-2 rounded border border-borde p-4">
             <h3 id="titulo-asi-se-cobra" className="sr-only">
