@@ -13,6 +13,8 @@ import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
  *  - DOBLE CLIC en «Crear grupo»: un solo envío al servidor y UN grupo en la base;
  *  - quién ve el botón: solo quien además de las opciones del producto puede Editar `opciones_definir`; quien no, ve la frase «Los grupos nuevos los crea quien arma las opciones».
  *
+ * El paso 3, «Receta» (bloque 3, 3a): la pantalla de la receta de siempre, dentro del marco del espacio, para un producto de venta y para una materia prima que se produce; una que no se produce no tiene receta ni espacio.
+ *
  * 6.20, lo que cruza los pasos: la base de punta a punta sin escribir una URL (alta, paso 2 con «+ Nuevo grupo» dos veces, paso 1 «Por opción», y el paso 2 sin pendientes); un grupo que suma con «Se lee en la carta como»
  * vacío; quien solo ve (la portada sin formularios y los pasos como texto; por URL, «No tenés permiso»); y la pestaña vieja (`/editar` termina en `/datos`).
  *
@@ -458,5 +460,76 @@ test("a 375 px la tira de pasos deja a la vista la pestaña actual en cada paso,
     }
   } finally {
     await carta.limpiar();
+  }
+});
+
+for (const { ancho, alto } of [
+  { ancho: 375, alto: 800 },
+  { ancho: 1280, alto: 800 },
+]) {
+  test(`paso 3 «Receta» a ${ancho} px: un producto de venta abre su receta DENTRO del espacio (con la tira de pasos) y sigue en él`, async ({ paginaAutenticada: page, sucursalId }) => {
+    await page.setViewportSize({ width: ancho, height: alto });
+    const m = marca();
+    const producto = await productoDirecto(m, sucursalId);
+    await page.goto(`/catalogo/productos/${producto.id}`);
+    const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
+    await pasos.getByRole("link", { name: /^Receta/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/catalogo/recetas/${producto.id}$`));
+    // El marco: el `h1` es el producto (no el título de la receta), la tira sigue y «Receta» es la actual.
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(producto.nombre);
+    await expect(page.getByRole("heading", { level: 2, name: `${producto.nombre} — versión vigente: sin receta todavía` })).toBeVisible();
+    await expect(pasos.getByRole("link", { name: /^Receta/ })).toHaveAttribute("aria-current", "page");
+    await expect(pasos.getByRole("link", { name: /^Qué se vende/ })).toBeVisible();
+    await expectSinDesborde(page, `${ancho} px: la receta dentro del espacio`);
+    expect((await new AxeBuilder({ page }).analyze()).violations, `${ancho} px: la receta dentro del espacio`).toEqual([]);
+    // Desde la receta se vuelve a los otros pasos por la tira, sin pasar por el menú.
+    await pasos.getByRole("link", { name: /^Qué se vende/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
+  });
+}
+
+test("paso 3 «Receta»: una materia prima que se produce lo tiene (Datos y Receta); una que no se produce no tiene receta ni espacio de venta", async ({ paginaAutenticada: page }) => {
+  const m = marca();
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const seProduce = await prisma.producto.create({ data: { codigo: `E2E-EP-MPP-${m}`, nombre: `E2E Espacio Salsa ${m}`, tipo: "MP", unidadStockId: kg.id, seProduce: true } });
+  const comun = await prisma.producto.create({ data: { codigo: `E2E-EP-MPC-${m}`, nombre: `E2E Espacio Harina ${m}`, tipo: "MP", unidadStockId: kg.id } });
+  try {
+    await page.goto(`/catalogo/productos/${seProduce.id}`);
+    const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
+    await expect(pasos).toContainText("Datos");
+    await expect(pasos).toContainText("Receta");
+    await expect(pasos).not.toContainText("Opciones y precio");
+    await expect(pasos).not.toContainText("En la carta");
+    await pasos.getByRole("link", { name: /^Receta/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/catalogo/recetas/${seProduce.id}$`));
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(seProduce.nombre);
+    await expect(pasos.getByRole("link", { name: /^Receta/ })).toHaveAttribute("aria-current", "page");
+    expect((await new AxeBuilder({ page }).analyze()).violations, "receta de una materia prima que se produce, dentro del espacio").toEqual([]);
+
+    // Una materia prima que NO se produce: sin paso «Receta» y, por URL, la pantalla dice que no puede tener receta (sin marco).
+    await page.goto(`/catalogo/productos/${comun.id}`);
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" })).not.toContainText("Receta");
+    await page.goto(`/catalogo/recetas/${comun.id}`);
+    await expect(page.getByText(/no puede tener receta/)).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" })).toHaveCount(0);
+  } finally {
+    await prisma.producto.deleteMany({ where: { id: { in: [seProduce.id, comun.id] } } });
+  }
+});
+
+test("paso 3 «Receta»: quien ve las recetas pero NO el catálogo la abre sin el código, el tipo ni cómo se vende, y sin enlaces a Resumen ni a Productos", async ({ paginaAutenticada: page, sucursalId }) => {
+  const m = marca();
+  const producto = await productoDirecto(m, sucursalId);
+  const admin = await ajustarCeldasDelAdmin({ producto_ver_catalogo: { puedeVer: false, puedeEditar: false } });
+  try {
+    await page.goto(`/catalogo/recetas/${producto.id}`);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(producto.nombre);
+    const main = page.locator("main");
+    await expect(main).not.toContainText(`E2E-EP-${m}`);
+    await expect(main).not.toContainText("Producto de venta (PV)");
+    await expect(main.getByRole("link", { name: "← Productos" })).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: "Resumen" })).toHaveCount(0);
+  } finally {
+    await admin.restaurar();
   }
 });
