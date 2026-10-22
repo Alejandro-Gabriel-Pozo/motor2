@@ -7,8 +7,8 @@ import { probarCerco } from "./cercos/probar-cerco";
  * Cerco «teclado numérico a mano» (lote 6.33, «tipos de dato declarados y bloqueantes»): pedir el teclado de números con `inputMode="numeric"` o `inputMode="decimal"` en un `<input>` o un `<Campo>` es declarar «acá va un
  * número» sin que nada lo lea ni lo valide: el campo acepta cualquier texto, el parser argentino no interviene y el servidor recibe lo que sea. Un número se declara con `CampoNumero` y su `tipo` (importe, cantidad, entero,
  * porcentaje), que ya trae el teclado decimal, la lectura de «1.234,56» y la validación bloqueante. Cuenta, por archivo, los `<input>` y `<Campo>` con `inputMode` numérico escritos FUERA de `src/ui/` (en `src/` y en la
- * consola, `plataforma/src/`); `CampoNumero` mismo (`src/components/campo-numero.tsx`) es el único que lo pone por derecho. Mira el AST: un comentario o un string no cuentan.
- * Meta: 0. Los códigos de dígitos (el PIN de una invitación, el CUIT, el código de ingreso) NO son un número: piden un tipo propio de código (pendiente), y hasta entonces son deuda declarada, con su motivo por archivo.
+ * consola, `plataforma/src/`); `CampoNumero` (`src/components/campo-numero.tsx`, un número) y `CampoCodigo` (`src/components/campo-codigo.tsx`, un código de dígitos) son los únicos que lo ponen por derecho. Mira el AST: un comentario o un string no cuentan.
+ * Meta: 0. Un código de dígitos (el CUIT, el código de ingreso) NO es un número: es un `CampoCodigo` (con su longitud y su `autoComplete` declarados); los de la consola (`plataforma/`, que no puede importar de `src/components`) siguen como deuda declarada, con su motivo por archivo.
  *
  * Mecanismo, regeneración (`BAJAR_CERCOS=1`) y excepciones: `test/arquitectura/cercos/trinquete.ts`.
  */
@@ -34,7 +34,7 @@ function contarTecladosNumericos(fuente: string, ruta: string): Record<string, n
 }
 
 const NUMERO = (donde: string, tipo: string) => `${donde}: un número con \`inputMode\` numérico a mano; pasa a \`CampoNumero tipo="${tipo}"\`.`;
-const CODIGO = (donde: string) => `${donde}: un código de dígitos (no un número que se opere); pasa a un tipo de código declarado cuando exista (hoy solo tiene el teclado numérico).`;
+const CODIGO = (donde: string) => `${donde}: un código de dígitos (no un número que se opere); la consola es otra app y no puede importar \`CampoCodigo\` de \`src/components\`: necesita su propio campo de código (pendiente con el lote de estilos de la consola).`;
 
 const CERCO_INPUTMODE_NUMERICO: Cerco = {
   regla: "inputmode-numerico-a-mano",
@@ -42,7 +42,7 @@ const CERCO_INPUTMODE_NUMERICO: Cerco = {
   medir: medirPorArchivo({
     raices: ["src", "plataforma/src"],
     extensiones: [".tsx", ".jsx"],
-    incluir: (ruta) => !ruta.startsWith("src/ui/") && ruta !== "src/components/campo-numero.tsx",
+    incluir: (ruta) => !ruta.startsWith("src/ui/") && ruta !== "src/components/campo-numero.tsx" && ruta !== "src/components/campo-codigo.tsx",
     contar: contarTecladosNumericos,
   }),
   motivos: {
@@ -57,7 +57,6 @@ const CERCO_INPUTMODE_NUMERICO: Cerco = {
     "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": NUMERO("La cantidad y el precio de un ítem del POS", "cantidad"),
     "src/app/(pos)/mesas/[mesaId]/comensales-cuenta.tsx": NUMERO("Los comensales de una cuenta (POS)", "entero"),
     "src/app/(pos)/mesas/limite-mesas.tsx": NUMERO("El límite de mesas (POS)", "entero"),
-    "src/app/invitacion/formulario-de-aceptacion.tsx": CODIGO("El código de una invitación"),
   },
 };
 
