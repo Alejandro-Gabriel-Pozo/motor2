@@ -23,7 +23,7 @@ import {
   rutaDelPaso,
 } from "@/core/catalogo/public";
 import { FiltrosDeLista } from "@/components/filtros-de-lista";
-import { faltasQueSePuedenFiltrar } from "@/server/consultas/catalogo/filtros-de-productos";
+import { faltasQueSePuedenFiltrarEnLaLista } from "@/server/consultas/catalogo/filtros-de-productos";
 import { gruposDeOpcionesPorProducto } from "@/server/consultas/catalogo/opciones-de-venta";
 
 /**
@@ -54,7 +54,7 @@ export default async function ProductosPage({
   if (id) redirect(rutaDelPaso(id, "datos"));
 
   // Los filtros de la URL, validados contra sus listas cerradas (lo que no es de la lista se ignora); el servidor los vuelve a validar y es quien filtra (`listarProductosPagina`).
-  const faltas = await faltasQueSePuedenFiltrar(ctx);
+  const faltas = await faltasQueSePuedenFiltrarEnLaLista(ctx);
   const leidos = leerFiltrosDeProductos(enLaUrl);
   const filtros = { ...leidos, falta: leidos.falta && faltas.includes(leidos.falta) ? leidos.falta : null };
   const pagina = await listarProductosPagina(cursor, filtros.q, filtros);

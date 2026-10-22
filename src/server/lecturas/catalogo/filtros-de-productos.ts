@@ -36,11 +36,6 @@ export async function faltasQueSePuedenFiltrar(ctx: ContextoDeLosFiltros): Promi
   return FALTAS_FILTRABLES.filter((f) => f === "sin-precio" || (f === "sin-receta" && receta.ver && !sinRecetas) || (f === "fuera-de-la-carta" && carta.ver && !sinCarta));
 }
 
-/** ¿La consulta tiene que correr con la lectura de la EMPRESA entera? Sí cuando pregunta por «alguna/ninguna sucursal»: la RLS por sucursal le escondería las filas de las demás. */
-export function necesitaLaEmpresaEntera(f: FiltrosDeProductos): boolean {
-  return f.disponible === "en-alguna" || f.disponible === "en-ninguna";
-}
-
 /** Los criterios que no dependen de ningún permiso ni de la receta: la búsqueda, el tipo, el modo, la disponibilidad y los dos «le falta» que son una condición de tabla. */
 function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, faltasPermitidas: readonly FaltaFiltrable[]): Prisma.ProductoWhereInput[] {
   const y: Prisma.ProductoWhereInput[] = [];

@@ -66,5 +66,6 @@ export {
   consultaDeLosFiltros,
   hayFiltrosDeProductos,
   leerFiltrosDeProductos,
+  necesitaLaEmpresaEntera,
 } from "./filtros-de-productos";
 export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos } from "./filtros-de-productos";

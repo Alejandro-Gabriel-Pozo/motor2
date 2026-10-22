@@ -6,9 +6,9 @@ import { obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal }
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
-import { necesitaLaEmpresaEntera, whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
+import { whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { leerFiltrosDeProductos, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
+import { leerFiltrosDeProductos, necesitaLaEmpresaEntera, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
