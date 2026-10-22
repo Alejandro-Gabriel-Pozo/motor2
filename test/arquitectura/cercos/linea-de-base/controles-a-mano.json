@@ -1,13 +1,13 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 299,
-  "entradas": 69,
+  "total": 286,
+  "entradas": 67,
   "porTipo": {
-    "button": 181,
-    "input": 69,
+    "button": 173,
+    "input": 66,
     "input-hidden": 16,
-    "select": 22,
+    "select": 20,
     "textarea": 11
   },
   "cuentas": {
@@ -48,11 +48,6 @@
     },
     "src/app/(app)/carta/parametrizacion/secciones/ordenar-secciones.tsx": {
       "button": 11
-    },
-    "src/app/(app)/catalogo/insumos-grupos/page.tsx": {
-      "button": 5,
-      "input": 2,
-      "select": 2
     },
     "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
       "button": 1,
@@ -224,10 +219,6 @@
     },
     "src/components/catalogo/asistente-hermanar.tsx": {
       "button": 4,
-      "input": 1
-    },
-    "src/components/catalogo/form-renombrar-insumo.tsx": {
-      "button": 3,
       "input": 1
     },
     "src/components/catalogo/gestion-presentaciones.tsx": {

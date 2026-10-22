@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 118,
-  "entradas": 20,
+  "total": 117,
+  "entradas": 19,
   "porTipo": {
-    "dark:": 118
+    "dark:": 117
   },
   "cuentas": {
     "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
@@ -57,9 +57,6 @@
     },
     "src/components/catalogo/campos-sensibles-solo-lectura.tsx": {
       "dark:": 6
-    },
-    "src/components/catalogo/form-renombrar-insumo.tsx": {
-      "dark:": 1
     },
     "src/components/catalogo/resumen-de-opciones.tsx": {
       "dark:": 4

@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { previsualizarFusionInsumo, renombrarOFusionarInsumo } from "@/server/actions/catalogo/insumos";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 
 /**
  * Reemplaza el <form action={server action}> crudo que había en
@@ -53,17 +56,17 @@ export function FormRenombrarInsumo({ insumoId, nombreActual }: { insumoId: stri
   if (fusionaCon) {
     return (
       <div className="flex flex-col gap-1 text-sm">
-        <p className="text-amber-700 dark:text-amber-600">
+        <p className="text-aviso-tinta">
           Ya existe &quot;{fusionaCon}&quot; — esto va a fusionar &quot;{nombreActual}&quot; ahí adentro (sus productos pasan a &quot;{fusionaCon}
           &quot; y &quot;{nombreActual}&quot; se borra). ¿Confirmás?
         </p>
         <div className="flex gap-3">
-          <button type="button" disabled={pending} className="text-red-600 underline" onClick={confirmarFusion}>
+          <Boton variante="enlace-peligro" tamano="en-fila" disabled={pending} onClick={confirmarFusion}>
             {pending ? "Fusionando…" : "Sí, fusionar"}
-          </button>
-          <button type="button" className="underline" onClick={() => setFusionaCon(null)}>
+          </Boton>
+          <Boton variante="enlace" tamano="en-fila" onClick={() => setFusionaCon(null)}>
             Cancelar
-          </button>
+          </Boton>
         </div>
       </div>
     );
@@ -72,12 +75,18 @@ export function FormRenombrarInsumo({ insumoId, nombreActual }: { insumoId: stri
   return (
     <div className="flex flex-col gap-1">
       <div className="flex gap-1">
-        <input value={nombre} onChange={(e) => setNombre(e.target.value)} aria-label={`Nombre de ${nombreActual}`} className="w-32 rounded border px-2 py-1" />
-        <button type="button" disabled={pending} className="text-sm underline" onClick={intentarGuardar}>
+        <div className="w-32">
+          <Campo value={nombre} onChange={(e) => setNombre(e.target.value)} aria-label={`Nombre de ${nombreActual}`} />
+        </div>
+        <Boton variante="enlace" tamano="en-fila" disabled={pending} onClick={intentarGuardar}>
           {pending ? "Guardando…" : "Renombrar/fusionar"}
-        </button>
+        </Boton>
       </div>
-      {resultado && <p className={`text-xs ${resultado.ok ? "text-green-700" : "text-red-600"}`}>{resultado.texto}</p>}
+      {resultado && (
+        <Aviso variante={resultado.ok ? "exito" : "error"} forma="en-linea">
+          {resultado.texto}
+        </Aviso>
+      )}
     </div>
   );
 }
