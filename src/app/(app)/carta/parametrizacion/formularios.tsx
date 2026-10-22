@@ -1,25 +1,24 @@
 import { MENU_DEL_DIA_VISIBLE, type LugarDeCombo, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
+import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
+import { Campo } from "@/ui/primitivas/campo";
+import { Casilla } from "@/ui/primitivas/casilla";
+import { Selector } from "@/ui/primitivas/selector";
+import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 
 /**
  * CARTA-MANT (prototipo aprobado): los formularios de PARAMETRIZACIÓN de la carta —lo que se cambia pocas veces— que antes iban apilados en `/carta` y ahora viven detrás de cada tarjeta del hub
  * (`/carta/parametrizacion/{secciones,generos,promociones}`). Son los MISMOS formularios, con las mismas Server Actions y los mismos permisos (movidos tal cual). La ficha de cada producto (descripción, tags, ★, género, sección y orden,
  * descuento y «Quitar de la carta») ya no vive acá: es `ContenidoDelProducto` (`src/components/carta/contenido-del-producto.tsx`), que comparte con el espacio del producto (Fase 6, 6.17a).
  */
-// MOVIL (O.461): en celular (< 768 px) los campos y botones miden 44 px de alto como mínimo (se tocan con el dedo) y el texto de los campos 16 px (iOS hace zoom con menos); en escritorio, igual que siempre.
-export const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
-export const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11";
-/** Un número corto (mín./máx., orden…): a todo el ancho de su columna en celular, de 4 rem desde `sm`. */
-const CLASE_NUMERO = `${CLASE_INPUT} w-full sm:w-16`;
-/** Un botón con aspecto de enlace («Apagar «X» en esta sucursal»): en celular, una fila de 44 px de alto. */
-export const CLASE_ENLACE_DE_ACCION = "text-sm underline max-md:inline-flex max-md:min-h-11 max-md:items-center";
-/** Una casilla con su texto: en celular, la fila entera (la etiqueta es el objetivo táctil) mide 44 px de alto. */
-const CLASE_CASILLA = "max-md:min-h-11";
+// MOVIL (O.461): los campos y los botones salen de las primitivas del sistema (`Campo`, `Selector`, `Boton`…): 44 px de alto como mínimo en celular y el texto de los campos a 16 px (iOS hace zoom con menos).
+/** Un número corto (mín./máx.…): a todo el ancho de su columna en celular, de 5 rem desde `sm`. */
+const CLASE_NUMERO = "w-full sm:w-20";
 /**
  * Una fila del bloque «Cupos» (una sección o un lugar de entradas). En celular es una tarjetita: el nombre con su casilla arriba, a todo el ancho, y «mín.» y «máx.» abajo, lado a lado
  * (antes los cinco campos se rompían de a uno por renglón y no se sabía de quién era cada uno); desde `sm`, la fila de siempre.
  */
 const CLASE_FILA_DE_CUPO = "grid grid-cols-2 gap-2 rounded border p-2 text-sm sm:flex sm:flex-wrap sm:items-center sm:rounded-none sm:border-0 sm:p-0";
-const CLASE_NOMBRE_DE_CUPO = `col-span-2 flex items-center gap-2 sm:min-w-[10rem] ${CLASE_CASILLA} [overflow-wrap:anywhere]`;
+const CLASE_NOMBRE_DE_CUPO = "col-span-2 sm:min-w-[10rem] [overflow-wrap:anywhere]";
 const CLASE_CANTIDAD_DE_CUPO = "flex flex-col gap-1 sm:flex-row sm:items-center";
 
 /**
@@ -44,7 +43,7 @@ export function GrupoDeLaCarta({
     <details className="rounded border" data-grupo-de-la-carta={nombre}>
       <summary className="flex min-h-11 cursor-pointer flex-wrap items-baseline gap-x-2 px-3 py-2">
         <span className="font-medium [overflow-wrap:anywhere]">{nombre}</span>
-        <span className="text-sm text-neutral-600 dark:text-neutral-400">
+        <span className="text-sm text-tinta-suave">
           {productos.length} producto{productos.length === 1 ? "" : "s"}
           {ocultos ? ` · ${ocultos} oculto${ocultos === 1 ? "" : "s"}` : ""}
           {detalle ? ` · ${detalle}` : ""}
@@ -52,7 +51,7 @@ export function GrupoDeLaCarta({
       </summary>
       <ul className="flex flex-col gap-2 border-t p-3">
         {productos.map(fila)}
-        {!productos.length && vacio && <li className="text-sm text-neutral-500">{vacio}</li>}
+        {!productos.length && vacio && <li className="text-sm text-tinta-tenue">{vacio}</li>}
       </ul>
     </details>
   );
@@ -68,26 +67,17 @@ export function CamposSeccion({
 }) {
   return (
     <>
-      <label className="flex flex-col gap-1 text-sm">
-        Nombre
-        <input name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Platos Principales" className={CLASE_INPUT} />
+      {/* El «Nombre» de la sección lleva su rótulo atado por afuera (y no el `etiqueta` de Campo): con `required` Campo le suma un asterisco al texto y esta pantalla la fotografía la línea de base de navegador (el golden no cambia). */}
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Nombre</span>
+        <Campo nombradoPorFuera name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Platos Principales" />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Título (opcional, si no se usa el nombre)
-        <input name="titulo" defaultValue={valores?.titulo ?? ""} placeholder="Del fuego" className={CLASE_INPUT} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-        Descripción (opcional)
-        <textarea name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} className={CLASE_INPUT} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Imagen (URL https, opcional)
-        <input name="imagenUrl" type="url" defaultValue={valores?.imagenUrl ?? ""} placeholder="https://…" className={CLASE_INPUT} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Orden
-        <input name="orden" type="number" step={1} defaultValue={valores?.orden ?? ordenSugerido} className={CLASE_INPUT} />
-      </label>
+      <Campo etiqueta="Título (opcional, si no se usa el nombre)" name="titulo" defaultValue={valores?.titulo ?? ""} placeholder="Del fuego" />
+      <div className="sm:col-span-2">
+        <AreaDeTexto etiqueta="Descripción (opcional)" name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} />
+      </div>
+      <Campo etiqueta="Imagen (URL https, opcional)" name="imagenUrl" type="url" defaultValue={valores?.imagenUrl ?? ""} placeholder="https://…" />
+      <Campo etiqueta="Orden" name="orden" type="number" step={1} defaultValue={valores?.orden ?? ordenSugerido} />
     </>
   );
 }
@@ -102,14 +92,8 @@ export function CamposGenero({
 }) {
   return (
     <>
-      <label className="flex flex-col gap-1 text-sm">
-        Nombre
-        <input name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Cerveza" className={CLASE_INPUT} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Orden
-        <input name="orden" type="number" step={1} defaultValue={valores?.orden ?? ordenSugerido} className={CLASE_INPUT} />
-      </label>
+      <Campo etiqueta="Nombre" name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Cerveza" />
+      <Campo etiqueta="Orden" name="orden" type="number" step={1} defaultValue={valores?.orden ?? ordenSugerido} />
     </>
   );
 }
@@ -123,34 +107,21 @@ export function CamposPromo({
 }) {
   return (
     <>
-      <label className="flex flex-col gap-1 text-sm">
-        Título
-        <input name="titulo" required defaultValue={valores?.titulo ?? ""} placeholder="1 pizza + coca 1,5 L" className={CLASE_INPUT} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Sección de carta
-        <select name="seccionCartaId" required defaultValue={valores?.seccionCartaId ?? ""} className={CLASE_INPUT}>
-          {!valores && <option value="">— elegí una —</option>}
-          {secciones.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-              {s.activa ? "" : " (apagada)"}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-        Descripción (opcional)
-        <textarea name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} className={CLASE_INPUT} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Precio
-        <input name="precio" type="number" min={0} step="0.01" required defaultValue={valores?.precio ?? ""} className={CLASE_INPUT} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Orden
-        <input name="orden" type="number" step={1} defaultValue={valores?.orden ?? 0} className={CLASE_INPUT} />
-      </label>
+      <Campo etiqueta="Título" name="titulo" required defaultValue={valores?.titulo ?? ""} placeholder="1 pizza + coca 1,5 L" />
+      <Selector etiqueta="Sección de carta" name="seccionCartaId" required defaultValue={valores?.seccionCartaId ?? ""}>
+        {!valores && <option value="">— elegí una —</option>}
+        {secciones.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nombre}
+            {s.activa ? "" : " (apagada)"}
+          </option>
+        ))}
+      </Selector>
+      <div className="sm:col-span-2">
+        <AreaDeTexto etiqueta="Descripción (opcional)" name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} />
+      </div>
+      <Campo etiqueta="Precio" name="precio" type="number" min={0} step="0.01" required defaultValue={valores?.precio ?? ""} />
+      <Campo etiqueta="Orden" name="orden" type="number" step={1} defaultValue={valores?.orden ?? 0} />
     </>
   );
 }
@@ -183,25 +154,16 @@ export function CamposVigencia({ vigencia }: { vigencia: VigenciaDePromoAdmin })
   return (
     <div className="flex flex-col gap-2 text-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-        <label className="flex flex-col gap-1">
-          Desde (opcional)
-          <input type="date" name="vigenteDesde" defaultValue={vigencia.vigenteDesde ?? ""} className={CLASE_INPUT} />
-        </label>
-        <label className="flex flex-col gap-1">
-          Hasta (opcional)
-          <input type="date" name="vigenteHasta" defaultValue={vigencia.vigenteHasta ?? ""} className={CLASE_INPUT} />
-        </label>
+        <CampoFecha etiqueta="Desde (opcional)" name="vigenteDesde" defaultValue={vigencia.vigenteDesde ?? ""} />
+        <CampoFecha etiqueta="Hasta (opcional)" name="vigenteHasta" defaultValue={vigencia.vigenteHasta ?? ""} />
       </div>
       <fieldset className="flex flex-wrap gap-3">
         <legend className="mb-1">Días en que vale</legend>
         {NOMBRES_DE_DIAS.map((d, i) => (
-          <label key={d} className={`flex items-center gap-1 ${CLASE_CASILLA}`}>
-            <input type="checkbox" name={`dia_${i}`} defaultChecked={vigencia.diasDeSemana === null || (vigencia.diasDeSemana & (1 << i)) !== 0} />
-            {d}
-          </label>
+          <Casilla key={d} etiqueta={d} name={`dia_${i}`} defaultChecked={vigencia.diasDeSemana === null || (vigencia.diasDeSemana & (1 << i)) !== 0} />
         ))}
       </fieldset>
-      <p className="text-xs text-neutral-500">{textoDeVigencia(vigencia)} Se mira al agregar la promo a una mesa: lo que ya está en una mesa no cambia.</p>
+      <p className="text-xs text-tinta-tenue">{textoDeVigencia(vigencia)} Se mira al agregar la promo a una mesa: lo que ya está en una mesa no cambia.</p>
     </div>
   );
 }
@@ -219,41 +181,32 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           <input type="hidden" name="lugar_id" value={l.id} />
           <input type="hidden" name={`lugar_tipo_${l.id}`} value={l.tipo} />
           <input type="hidden" name={`lugar_nombre_${l.id}`} value={l.nombre} />
-          <label className={CLASE_NOMBRE_DE_CUPO}>
-            <input type="checkbox" name={`lugar_incluir_${l.id}`} defaultChecked />
-            {l.nombre} ({l.tipo === "DEL_DIA" ? "del día" : "lista"})
-          </label>
+          <div className={CLASE_NOMBRE_DE_CUPO}>
+            <Casilla etiqueta={`${l.nombre} (${l.tipo === "DEL_DIA" ? "del día" : "lista"})`} name={`lugar_incluir_${l.id}`} defaultChecked />
+          </div>
           <label className={CLASE_CANTIDAD_DE_CUPO}>
             mín.
-            <input type="number" name={`lugar_min_${l.id}`} min={0} step={1} defaultValue={l.cantidadMinima} className={CLASE_NUMERO} />
+            <Campo nombradoPorFuera type="number" name={`lugar_min_${l.id}`} min={0} step={1} defaultValue={l.cantidadMinima} className={CLASE_NUMERO} />
           </label>
           <label className={CLASE_CANTIDAD_DE_CUPO}>
             máx.
-            <input type="number" name={`lugar_max_${l.id}`} min={1} step={1} defaultValue={l.cantidadMaxima} className={CLASE_NUMERO} />
+            <Campo nombradoPorFuera type="number" name={`lugar_max_${l.id}`} min={1} step={1} defaultValue={l.cantidadMaxima} className={CLASE_NUMERO} />
           </label>
         </div>
       ))}
       <fieldset className="mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end">
         <legend className="mb-1 text-sm">Sumar un lugar (opcional)</legend>
-        <label className="col-span-2 flex flex-col gap-1">
-          Tipo
-          <select name="nuevo_lugar_tipo" defaultValue="LISTA" className={CLASE_INPUT}>
+        <div className="col-span-2">
+          <Selector etiqueta="Tipo" name="nuevo_lugar_tipo" defaultValue="LISTA">
             <option value="LISTA">Lista de productos</option>
             {MENU_DEL_DIA_VISIBLE ? <option value="DEL_DIA">Plato del día</option> : null}
-          </select>
-        </label>
-        <label className="col-span-2 flex flex-col gap-1">
-          Nombre
-          <input name="nuevo_lugar_nombre" maxLength={80} placeholder="Ej.: Bebida" className={CLASE_INPUT} />
-        </label>
-        <label className="flex flex-col gap-1">
-          mín.
-          <input type="number" name="nuevo_lugar_min" min={0} step={1} defaultValue={1} className={CLASE_NUMERO} />
-        </label>
-        <label className="flex flex-col gap-1">
-          máx.
-          <input type="number" name="nuevo_lugar_max" min={1} step={1} defaultValue={1} className={CLASE_NUMERO} />
-        </label>
+          </Selector>
+        </div>
+        <div className="col-span-2">
+          <Campo etiqueta="Nombre" name="nuevo_lugar_nombre" maxLength={80} placeholder="Ej.: Bebida" />
+        </div>
+        <Campo etiqueta="mín." type="number" name="nuevo_lugar_min" min={0} step={1} defaultValue={1} className={CLASE_NUMERO} />
+        <Campo etiqueta="máx." type="number" name="nuevo_lugar_max" min={1} step={1} defaultValue={1} className={CLASE_NUMERO} />
       </fieldset>
     </div>
   );
@@ -273,18 +226,16 @@ export function CamposCupos({
         const g = porSeccion.get(s.id);
         return (
           <div key={s.id} data-cupo-seccion={s.nombre} className={CLASE_FILA_DE_CUPO}>
-            <label className={CLASE_NOMBRE_DE_CUPO}>
-              <input type="checkbox" name={`incluir_${s.id}`} defaultChecked={!!g} />
-              {s.nombre}
-              {s.activa ? "" : " (apagada)"}
-            </label>
+            <div className={CLASE_NOMBRE_DE_CUPO}>
+              <Casilla etiqueta={`${s.nombre}${s.activa ? "" : " (apagada)"}`} name={`incluir_${s.id}`} defaultChecked={!!g} />
+            </div>
             <label className={CLASE_CANTIDAD_DE_CUPO}>
               mín.
-              <input type="number" name={`min_${s.id}`} min={0} step={1} defaultValue={g?.cantidadMinima ?? 0} className={CLASE_NUMERO} />
+              <Campo nombradoPorFuera type="number" name={`min_${s.id}`} min={0} step={1} defaultValue={g?.cantidadMinima ?? 0} className={CLASE_NUMERO} />
             </label>
             <label className={CLASE_CANTIDAD_DE_CUPO}>
               máx.
-              <input type="number" name={`max_${s.id}`} min={1} step={1} defaultValue={g?.cantidadMaxima ?? 1} className={CLASE_NUMERO} />
+              <Campo nombradoPorFuera type="number" name={`max_${s.id}`} min={1} step={1} defaultValue={g?.cantidadMaxima ?? 1} className={CLASE_NUMERO} />
             </label>
           </div>
         );

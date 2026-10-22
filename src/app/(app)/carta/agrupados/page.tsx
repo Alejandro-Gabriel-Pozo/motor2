@@ -14,10 +14,15 @@ import {
 } from "@/server/actions/carta/items-agrupados";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
+import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
+import { Campo } from "@/ui/primitivas/campo";
+import { Casilla } from "@/ui/primitivas/casilla";
+import { Selector } from "@/ui/primitivas/selector";
 
 /**
  * Ítems agrupados de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M7): un renglón visible ("Gaseosa 500 CC") que
@@ -40,9 +45,7 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 };
 const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
-const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
-const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11";
-const CLASE_AVISO = "rounded border border-amber-300 p-3 text-sm dark:border-amber-700";
+const CLASE_AVISO = "rounded border border-aviso p-3 text-sm";
 
 type ProductoSinGrupo = { id: string; nombre: string; precioAca: number };
 type OpcionGenero = { id: string; nombre: string; activo: boolean };
@@ -53,11 +56,11 @@ export default async function ItemsAgrupadosPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   // S-10/D1 (O.59): los ítems agrupados son de la carta PROPIA de la sucursal activa → clave de contexto SUCURSAL, evaluada en ella.
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_items_agrupados", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   const { editar: puedeEditarCarta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_items_agrupados", ctx.db);
 
   // La hora se fija acá, en el borde (O.22-c).
@@ -72,7 +75,7 @@ export default async function ItemsAgrupadosPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Ítems agrupados de la carta</h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Un ítem agrupado es un solo renglón de la carta («Gaseosa 500 CC») que agrupa varios productos de venta reales («Coca-Cola 500cc», «Sprite
           500cc»…), con su propia descripción, tags y ★. Se ubica directo en su sección de carta, igual que un producto suelto. Un producto agrupado sale solo
           dentro de su ítem, nunca suelto. Lo que se ve de cada opción (si está disponible y su precio) es de esta sucursal, {ctx.sucursalNombre}. Volver a{" "}
@@ -81,7 +84,7 @@ export default async function ItemsAgrupadosPage() {
           </EnlaceInterno>
           .
         </p>
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-sm text-tinta-tenue">
           Solo se pueden agrupar productos del mismo precio (acá). Si el precio de uno cambia después en Catálogo, la carta lo va a mostrar por el mayor, con
           aviso, hasta que se corrija.
         </p>
@@ -92,7 +95,7 @@ export default async function ItemsAgrupadosPage() {
         {datos.items.map((it) => (
           <ItemAgrupado key={it.id} item={it} ubicacion={ubicacion} productosSinGrupo={datos.productosSinGrupo} puedeEditar={puedeEditarCarta} />
         ))}
-        {!datos.items.length && <li className="text-sm text-neutral-500">Todavía no hay ítems agrupados.</li>}
+        {!datos.items.length && <li className="text-sm text-tinta-tenue">Todavía no hay ítems agrupados.</li>}
       </ul>
 
       {!puedeEditarCarta ? null : datos.secciones.length > 0 ? (
@@ -107,26 +110,30 @@ export default async function ItemsAgrupadosPage() {
           <h2 className="text-sm font-medium sm:col-span-2">Nuevo ítem agrupado</h2>
           <CamposItem ubicacion={ubicacion} />
           {datos.productosSinGrupo.length > 0 && (
-            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-              Productos del ítem (opcional; Ctrl o ⌘ + clic para elegir varios)
-              <select name="productoIds" multiple size={Math.min(8, datos.productosSinGrupo.length)} className={CLASE_INPUT}>
+            <div className="sm:col-span-2">
+              <Selector
+                etiqueta="Productos del ítem (opcional; Ctrl o ⌘ + clic para elegir varios)"
+                name="productoIds"
+                multiple
+                size={Math.min(8, datos.productosSinGrupo.length)}
+                ayuda="Solo entran los del mismo precio; después se pueden sumar más con «Agregar producto»."
+              >
                 {datos.productosSinGrupo.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.nombre} ({pesos(p.precioAca)} acá)
                   </option>
                 ))}
-              </select>
-              <span className="text-neutral-500">Solo entran los del mismo precio; después se pueden sumar más con «Agregar producto».</span>
-            </label>
+              </Selector>
+            </div>
           )}
           <div className="sm:col-span-2">
-            <button type="submit" className={CLASE_BOTON}>
+            <BotonDeServidor type="submit" tamano="compacto">
               Crear ítem agrupado
-            </button>
+            </BotonDeServidor>
           </div>
         </FormConResultado>
       ) : (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Para crear un ítem agrupado hace falta al menos una sección de carta (
           <EnlaceInterno href="/carta" className="underline">
             Carta pública
@@ -192,9 +199,9 @@ function ItemAgrupado({
           >
             <CamposItem ubicacion={ubicacion} valores={it} />
             <div className="sm:col-span-2">
-              <button type="submit" className={CLASE_BOTON}>
+              <BotonDeServidor type="submit" tamano="compacto">
                 Guardar «{it.nombre}»
-              </button>
+              </BotonDeServidor>
             </div>
           </FormConResultado>
 
@@ -218,13 +225,10 @@ function ItemAgrupado({
                       }}
                       className="flex items-end gap-2"
                     >
-                      <label className="flex flex-col gap-1">
-                        Orden de «{o.nombre}»
-                        <input name="orden" type="number" step={1} defaultValue={o.orden} className={`${CLASE_INPUT} w-20`} />
-                      </label>
-                      <button type="submit" className={CLASE_BOTON}>
+                      <Campo etiqueta={`Orden de «${o.nombre}»`} name="orden" type="number" step={1} defaultValue={o.orden} className="max-w-20" />
+                      <BotonDeServidor type="submit" tamano="compacto">
                         Guardar orden
-                      </button>
+                      </BotonDeServidor>
                     </FormConResultado>
                     <FormConResultado
                       accion={async () => {
@@ -232,15 +236,15 @@ function ItemAgrupado({
                         return refrescarSiOk(await quitarOpcionItemAgrupadoCarta(opcionId));
                       }}
                     >
-                      <button type="submit" className="py-1 underline max-md:inline-flex max-md:min-h-11 max-md:items-center">
+                      <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                         Quitar «{o.nombre}»
-                      </button>
+                      </BotonDeServidor>
                     </FormConResultado>
                   </div>
                 </li>
               );
             })}
-            {!it.opciones.length && <li className="text-sm text-neutral-500">Todavía no tiene opciones.</li>}
+            {!it.opciones.length && <li className="text-sm text-tinta-tenue">Todavía no tiene opciones.</li>}
           </ul>
 
           {productosSinGrupo.length > 0 ? (
@@ -251,23 +255,20 @@ function ItemAgrupado({
               }}
               className="mt-3 flex flex-wrap items-end gap-2 text-sm"
             >
-              <label className="flex flex-col gap-1">
-                Agregar producto a «{it.nombre}»
-                <select name="productoId" required defaultValue="" className={CLASE_INPUT}>
-                  <option value="">— elegí un producto —</option>
-                  {productosSinGrupo.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre} ({pesos(p.precioAca)} acá)
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button type="submit" className={CLASE_BOTON}>
+              <Selector etiqueta={`Agregar producto a «${it.nombre}»`} name="productoId" required defaultValue="">
+                <option value="">— elegí un producto —</option>
+                {productosSinGrupo.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre} ({pesos(p.precioAca)} acá)
+                  </option>
+                ))}
+              </Selector>
+              <BotonDeServidor type="submit" tamano="compacto">
                 Agregar
-              </button>
+              </BotonDeServidor>
             </FormConResultado>
           ) : (
-            <p className="mt-3 text-sm text-neutral-500">No quedan productos de venta disponibles acá fuera de un ítem agrupado.</p>
+            <p className="mt-3 text-sm text-tinta-tenue">No quedan productos de venta disponibles acá fuera de un ítem agrupado.</p>
           )}
           </>
         )}
@@ -275,7 +276,7 @@ function ItemAgrupado({
 
       {preciosDistintos && (
         <div className={`mt-2 ${CLASE_AVISO}`}>
-          <p className="font-medium text-amber-700 dark:text-amber-600">
+          <p className="font-medium text-aviso-tinta">
             En esta sucursal las opciones no cuestan lo mismo ({pesos(preciosDistintos.minimo)} a {pesos(preciosDistintos.maximo)}): la carta muestra{" "}
             {pesos(preciosDistintos.mostrado)}. Igualalas en Catálogo o en el precio local.
           </p>
@@ -295,12 +296,12 @@ function ItemAgrupado({
       )}
       {it.avisos.sinOpcionesAca && (
         <div className={`mt-2 ${CLASE_AVISO}`}>
-          <p className="text-amber-700 dark:text-amber-600">Sin opciones disponibles acá: «{it.nombre}» no sale en la carta de esta sucursal.</p>
+          <p className="text-aviso-tinta">Sin opciones disponibles acá: «{it.nombre}» no sale en la carta de esta sucursal.</p>
         </div>
       )}
       {it.avisos.sinSeccion && (
         <div className={`mt-2 ${CLASE_AVISO}`}>
-          <p className="text-amber-700 dark:text-amber-600">
+          <p className="text-aviso-tinta">
             Su sección de carta está apagada, así que «{it.nombre}» no sale en la carta.
           </p>
         </div>
@@ -314,9 +315,9 @@ function ItemAgrupado({
           }}
           className="mt-2"
         >
-          <button type="submit" className="text-sm underline max-md:inline-flex max-md:min-h-11 max-md:items-center">
+          <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
             {it.activo ? `Apagar «${it.nombre}»` : `Prender «${it.nombre}»`}
-          </button>
+          </BotonDeServidor>
         </FormConResultado>
       )}
     </li>
@@ -354,7 +355,7 @@ function ItemSoloLectura({ item: it, ubicacion }: { item: ItemAgrupadoAdmin; ubi
             · {o.disponibleAca ? `${pesos(o.precioAca)} acá` : "no disponible en esta sucursal"} · orden {o.orden}
           </li>
         ))}
-        {!it.opciones.length && <li className="text-sm text-neutral-500">Todavía no tiene opciones.</li>}
+        {!it.opciones.length && <li className="text-sm text-tinta-tenue">Todavía no tiene opciones.</li>}
       </ul>
     </>
   );
@@ -369,10 +370,7 @@ function CamposItem({
 }) {
   return (
     <>
-      <label className="flex flex-col gap-1 text-sm">
-        Nombre
-        <input name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Gaseosa 500 CC" className={CLASE_INPUT} />
-      </label>
+      <Campo etiqueta="Nombre" name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Gaseosa 500 CC" />
       <SeccionYOrden
         secciones={ubicacion.secciones}
         cantidadPorSeccion={ubicacion.cantidadPorSeccion}
@@ -381,29 +379,20 @@ function CamposItem({
         requerida
         conOpcionVacia={!valores}
       />
-      <label className="flex flex-col gap-1 text-sm">
-        Género (opcional)
-        <select name="generoCartaId" defaultValue={valores?.generoCartaId ?? ""} className={CLASE_INPUT}>
-          <option value="">— sin género (sale suelto) —</option>
-          {ubicacion.generos.map((g) => (
-            <option key={g.id} value={g.id} disabled={!g.activo}>
-              {g.nombre}
-              {g.activo ? "" : " (apagado)"}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Tags (separados por coma)
-        <input name="tags" defaultValue={valores?.tags.join(", ") ?? ""} placeholder="Sin alcohol" className={CLASE_INPUT} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-        Descripción (opcional)
-        <textarea name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} className={CLASE_INPUT} />
-      </label>
-      <label className="flex items-center gap-2 text-sm">
-        <input name="especial" type="checkbox" defaultChecked={valores?.especial ?? false} /> Especial (★)
-      </label>
+      <Selector etiqueta="Género (opcional)" name="generoCartaId" defaultValue={valores?.generoCartaId ?? ""}>
+        <option value="">— sin género (sale suelto) —</option>
+        {ubicacion.generos.map((g) => (
+          <option key={g.id} value={g.id} disabled={!g.activo}>
+            {g.nombre}
+            {g.activo ? "" : " (apagado)"}
+          </option>
+        ))}
+      </Selector>
+      <Campo etiqueta="Tags (separados por coma)" name="tags" defaultValue={valores?.tags.join(", ") ?? ""} placeholder="Sin alcohol" />
+      <div className="sm:col-span-2">
+        <AreaDeTexto etiqueta="Descripción (opcional)" name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} />
+      </div>
+      <Casilla etiqueta="Especial (★)" name="especial" defaultChecked={valores?.especial ?? false} />
     </>
   );
 }

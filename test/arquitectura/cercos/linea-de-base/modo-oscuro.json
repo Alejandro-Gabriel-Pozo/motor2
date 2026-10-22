@@ -1,21 +1,12 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 134,
-  "entradas": 30,
+  "total": 122,
+  "entradas": 24,
   "porTipo": {
-    "dark:": 134
+    "dark:": 122
   },
   "cuentas": {
-    "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
-      "dark:": 2
-    },
-    "src/app/(app)/carta/agrupados/page.tsx": {
-      "dark:": 4
-    },
-    "src/app/(app)/carta/parametrizacion/formularios.tsx": {
-      "dark:": 1
-    },
     "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
       "dark:": 1
     },
@@ -72,15 +63,6 @@
     },
     "src/components/agregar-colapsable.tsx": {
       "dark:": 1
-    },
-    "src/components/carta/datos-solo-lectura.tsx": {
-      "dark:": 1
-    },
-    "src/components/carta/editor-portal.tsx": {
-      "dark:": 1
-    },
-    "src/components/carta/sincronizar-precio-grupo.tsx": {
-      "dark:": 3
     },
     "src/components/catalogo/asistente-hermanar.tsx": {
       "dark:": 2
