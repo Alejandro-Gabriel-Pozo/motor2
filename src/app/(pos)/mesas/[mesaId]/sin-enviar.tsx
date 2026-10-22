@@ -2,6 +2,7 @@
 
 import { enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar } from "@/server/actions/pos/cuenta-pedido";
 import { useState } from "react";
+import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { agruparConAdicionales, elegidasDeLaLinea, formatearCantidad, formatearMonto } from "@/core/pos/public";
 import { useImpresion } from "./imprimir";
@@ -168,9 +169,9 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
         </ul>
       )}
       {error && (
-        <p role="alert" className="mt-2 text-sm text-error">
+        <Aviso variante="error" forma="en-linea" className="mt-2">
           {error}
-        </p>
+        </Aviso>
       )}
     </section>
   );

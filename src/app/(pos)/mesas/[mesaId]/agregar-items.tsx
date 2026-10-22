@@ -5,6 +5,7 @@ import { useEffect, useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
 import { agregarItems } from "@/server/actions/pos/cuenta-pedido";
 import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos, estadoInicialSelectorCarta, reducirSelectorCarta, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar, type EleccionParaAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearCantidad, formatearMonto, avisoEnPromo, claveDeConfiguracion, resumenDeConfiguracion, vistaPreviaDeConfiguracion, type ConfiguracionDelSelector } from "@/core/pos/public";
+import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { SelectorCarta } from "./selector-carta";
 import { ArmarPromo } from "./armar-promo";
@@ -235,9 +236,11 @@ export function AgregarItems({
           </p>
         ))}
         {(error || !vista.ok) && (
-          <p id={idError} role="alert" className="px-2 text-sm text-error">
-            {error ?? (vista.ok ? "" : `${vista.mensaje} Quitala y volvé a elegir.`)}
-          </p>
+          <div className="px-2">
+            <Aviso id={idError} variante="error" forma="en-linea">
+              {error ?? (vista.ok ? "" : `${vista.mensaje} Quitala y volvé a elegir.`)}
+            </Aviso>
+          </div>
         )}
       </li>
     );
@@ -342,9 +345,11 @@ export function AgregarItems({
                       </div>
                     </div>
                     {l.error ? (
-                      <p id={idError} role="alert" className="px-2 text-sm text-error">
-                        {l.error}
-                      </p>
+                      <div className="px-2">
+                        <Aviso id={idError} variante="error" forma="en-linea">
+                          {l.error}
+                        </Aviso>
+                      </div>
                     ) : (
                       p.pasoVenta && (
                         <p id={`${idError}-ayuda`} className="px-2 text-sm text-tinta-suave">
@@ -363,9 +368,9 @@ export function AgregarItems({
         </div>
       </fieldset>
       {error && (
-        <p role="alert" className="text-sm text-error">
+        <Aviso variante="error" forma="en-linea">
           {error}
-        </p>
+        </Aviso>
       )}
       {promoAbierta && <ArmarPromo entrada={promoAbierta} onCerrar={() => setPromoAbierta(null)} onConfirmar={confirmarPromo} noSeArman={noSeArmanEnPromo} />}
       {opcionesAbiertas && productoAbierto && configuracionAbierta && (

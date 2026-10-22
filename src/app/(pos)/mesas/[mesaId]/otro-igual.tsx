@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 
 /** Lo que «Otro igual» le pide a «Agregar al pedido»: el producto y lo elegido en la línea de la cuenta. */
@@ -50,9 +51,9 @@ export function OtroIgual({ pedido, titulo, puede }: { pedido: PedidoOtroIgual; 
         Otro igual
       </Boton>
       {error && (
-        <span role="alert" className="text-sm text-error">
+        <Aviso variante="error" forma="en-linea">
           {error}
-        </span>
+        </Aviso>
       )}
     </>
   );
