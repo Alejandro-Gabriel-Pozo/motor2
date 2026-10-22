@@ -55,10 +55,10 @@ export function ClienteCuenta({
 
   if (!editando) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[13.5px] text-[var(--ink-soft)]">
+      <span className="inline-flex items-center gap-1.5 text-[13.5px] text-tinta-suave">
         {clienteNombre ? `Cliente: ${clienteNombre} (−${descuentoPorcentaje}%)` : "Sin cliente"}
         {puede && (
-          <button type="button" onClick={abrir} className="text-[12.5px] font-semibold underline hover:text-[var(--ink)]">
+          <button type="button" onClick={abrir} className="text-[12.5px] font-semibold underline hover:text-tinta">
             {clienteNombre ? "Cambiar" : "Asignar cliente"}
           </button>
         )}
@@ -86,7 +86,7 @@ export function ClienteCuenta({
         Cancelar
       </button>
       {error && (
-        <p role="alert" className="text-[13px] text-red-700">
+        <p role="alert" className="text-[13px] text-error">
           {error}
         </p>
       )}

@@ -1,12 +1,12 @@
 {
   "regla": "colores",
   "meta": "0 en la Fase 6 (DEC-03: los colores salen de los tokens de globals.css)",
-  "total": 53,
-  "entradas": 21,
+  "total": 33,
+  "entradas": 12,
   "porTipo": {
-    "clase-arbitraria": 35,
+    "clase-arbitraria": 17,
     "funcion-de-color": 9,
-    "hex": 9
+    "hex": 7
   },
   "cuentas": {
     "src/app/(app)/catalogo/opciones/[grupoId]/lectura-del-factor.tsx": {
@@ -23,30 +23,6 @@
     },
     "src/app/(carta-publica)/error.tsx": {
       "hex": 2
-    },
-    "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
-      "clase-arbitraria": 1
-    },
-    "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
-      "clase-arbitraria": 2
-    },
-    "src/app/(pos)/mesas/[mesaId]/elegir-opciones.tsx": {
-      "clase-arbitraria": 1
-    },
-    "src/app/(pos)/mesas/[mesaId]/estilos.ts": {
-      "clase-arbitraria": 2
-    },
-    "src/app/(pos)/mesas/[mesaId]/selector-carta.tsx": {
-      "clase-arbitraria": 9
-    },
-    "src/app/(pos)/mesas/limite-mesas.tsx": {
-      "clase-arbitraria": 1
-    },
-    "src/app/(pos)/mesas/nueva-mesa.tsx": {
-      "clase-arbitraria": 1
-    },
-    "src/app/(pos)/mesas/page.tsx": {
-      "clase-arbitraria": 1
     },
     "src/app/global-error.tsx": {
       "hex": 3
@@ -69,9 +45,6 @@
     },
     "src/components/carta/campo-color.tsx": {
       "hex": 1
-    },
-    "src/components/mesas/mesa-card.tsx": {
-      "hex": 2
     }
   }
 }

@@ -1,5 +1,5 @@
 // Tarjeta de mesa para el mapa de salón. Tres estados: libre / en_pedido / ocupada.
-// Requiere las variables CSS del bloque `.pos-shell` de src/app/globals.css (las aplica PosShell, nunca `:root`).
+// Colores: los tokens del sistema visual (`var(--color-*)` en los `style`, src/app/globals.css); desde 6.30 no lee los alias del salón (`.pos-shell`).
 //
 // Insumo de diseño provisto (mesa-card.tsx + mesas-tokens.css), con los ajustes del plan
 // docs/plan-mapa-de-mesas-2026-09-24.md §A.4: colores de texto con el contraste aprobado por el dueño (§A.3) y `EstadoMesa`
@@ -40,9 +40,9 @@ export interface MesaCardProps {
  * el texto de «Continuar pedido» va en `--ink` sobre el ámbar (5,29:1; en blanco daba 3,25:1).
  */
 const ESTADO_CONFIG: Record<EstadoMesa, { label: string; varColor: string; varTint: string; varTexto: string; varTextoBoton: string }> = {
-  libre: { label: "Libre", varColor: "var(--mesa-libre)", varTint: "var(--mesa-libre-tint)", varTexto: "var(--mesa-libre-ink)", varTextoBoton: "#fff" },
-  en_pedido: { label: "En pedido", varColor: "var(--mesa-draft)", varTint: "var(--mesa-draft-tint)", varTexto: "var(--mesa-draft-ink)", varTextoBoton: "var(--ink)" },
-  ocupada: { label: "Ocupada", varColor: "var(--mesa-ocupada)", varTint: "var(--mesa-ocupada-tint)", varTexto: "var(--mesa-ocupada)", varTextoBoton: "#fff" },
+  libre: { label: "Libre", varColor: "var(--color-ok)", varTint: "var(--color-ok-tinte)", varTexto: "var(--color-ok-tinta)", varTextoBoton: "var(--color-superficie)" },
+  en_pedido: { label: "En pedido", varColor: "var(--color-aviso)", varTint: "var(--color-aviso-tinte)", varTexto: "var(--color-aviso-tinta)", varTextoBoton: "var(--color-tinta)" },
+  ocupada: { label: "Ocupada", varColor: "var(--color-error)", varTint: "var(--color-error-tinte)", varTexto: "var(--color-error)", varTextoBoton: "var(--color-superficie)" },
 };
 
 export function MesaCard(props: MesaCardProps) {
@@ -50,12 +50,12 @@ export function MesaCard(props: MesaCardProps) {
   const cfg = ESTADO_CONFIG[estado];
 
   return (
-    <div className="relative overflow-hidden rounded-[10px] border border-[var(--border)] bg-white p-4 transition-colors hover:border-[var(--ink-faint)]">
+    <div className="relative overflow-hidden rounded-[10px] border border-borde bg-superficie p-4 transition-colors hover:border-tinta-tenue">
       <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: cfg.varColor }} aria-hidden />
 
       <div className="mb-3 flex items-start justify-between">
         <div>
-          <div className="text-[10.5px] font-semibold tracking-wide text-[var(--ink-faint)]">MESA</div>
+          <div className="text-[10.5px] font-semibold tracking-wide text-tinta-tenue">MESA</div>
           <div className="text-xl font-extrabold leading-none tabular-nums">{numero}</div>
         </div>
 
@@ -65,7 +65,7 @@ export function MesaCard(props: MesaCardProps) {
             disabled
             aria-label="Opciones de mesa"
             title="Mover o unir mesas todavía no está disponible."
-            className="-mr-1 rounded-md p-1 text-[var(--ink-faint)] enabled:hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50"
+            className="-mr-1 rounded-md p-1 text-tinta-tenue enabled:hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <IconDots />
           </button>
@@ -76,11 +76,11 @@ export function MesaCard(props: MesaCardProps) {
         )}
       </div>
 
-      {estado === "libre" && <p className="mb-4 text-[13px] text-[var(--ink-soft)]">Disponible para comensales</p>}
+      {estado === "libre" && <p className="mb-4 text-[13px] text-tinta-suave">Disponible para comensales</p>}
 
       {estado === "en_pedido" && (
         <>
-          <p className="mb-1 text-[13px] text-[var(--ink-soft)]">
+          <p className="mb-1 text-[13px] text-tinta-suave">
             {productosSinEnviar ?? 0} producto{productosSinEnviar === 1 ? "" : "s"} sin enviar
           </p>
           <p className="mb-4 text-[15px] font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
@@ -89,14 +89,14 @@ export function MesaCard(props: MesaCardProps) {
 
       {estado === "ocupada" && (
         <>
-          <div className="mb-1 flex items-center gap-1.5 text-[12.5px] text-[var(--ink-soft)]">
+          <div className="mb-1 flex items-center gap-1.5 text-[12.5px] text-tinta-suave">
             <IconUser />
             <span>
               {mesero ?? "Mesero asignado"}
               {tiempoAbierta ? ` · ${tiempoAbierta}` : ""}
             </span>
           </div>
-          <p className="mb-3 text-[12.5px] text-[var(--ink-soft)]">
+          <p className="mb-3 text-[12.5px] text-tinta-suave">
             {pedidosEnviados ?? 0} pedido{pedidosEnviados === 1 ? "" : "s"} enviado{pedidosEnviados === 1 ? "" : "s"}
           </p>
           <p className="mb-3 text-[15px] font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
@@ -120,13 +120,13 @@ export function MesaCard(props: MesaCardProps) {
           {hrefVerPedidos ? (
             <Link
               href={hrefVerPedidos}
-              className="flex w-full items-center justify-center rounded-lg border border-[var(--border)] py-[9px] text-[13px] font-semibold hover:bg-black/[0.03]"
+              className="flex w-full items-center justify-center rounded-lg border border-borde py-[9px] text-[13px] font-semibold hover:bg-black/[0.03]"
             >
               Ver pedidos
               <IndicadorDeEnlace />
             </Link>
           ) : (
-            <button type="button" disabled className="w-full rounded-lg border border-[var(--border)] py-[9px] text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" disabled className="w-full rounded-lg border border-borde py-[9px] text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50">
               Ver pedidos
             </button>
           )}

@@ -49,7 +49,7 @@ export const AREAS: DeclaracionDeAreas = {
   "app/(app)/stock": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-selector", "tokens-visuales"],
   "app/(app)/traspasos": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-selector", "tokens-visuales"],
   "app/(carta-publica)": [],
-  "app/(pos)": [],
+  "app/(pos)": ["tokens-visuales"],
   "app/api": [],
   "app/invitacion": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-casilla", "tokens-visuales"],
   "app/login": ["primitiva-aviso", "tokens-visuales"],
@@ -57,7 +57,7 @@ export const AREAS: DeclaracionDeAreas = {
   "components/carta": ["primitiva-area-de-texto", "primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-casilla", "primitiva-selector", "tokens-visuales"],
   "components/carta-publica": CARTA,
   "components/catalogo": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-insignia", "primitiva-selector", "tokens-visuales"],
-  "components/mesas": [],
+  "components/mesas": ["tokens-visuales"],
   "components/receta": [],
   "ui": ["tokens-visuales"],
   // --- trabajo-programado: los crons de vercel.json.

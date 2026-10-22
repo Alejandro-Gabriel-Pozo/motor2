@@ -195,7 +195,7 @@ export function AgregarItems({
     const vista = vistaPreviaDeConfiguracion({ grupos: conf.grupos, elegidas: opciones, precioBase: conf.precioBase, descuentoDeProducto: conf.descuentoDeProducto, cantidad });
     const idError = `error-linea-${clave}`;
     return (
-      <li key={clave} data-linea-por-agregar={titulo} className="flex flex-col gap-1 bg-white py-2 first:rounded-t-lg last:rounded-b-lg">
+      <li key={clave} data-linea-por-agregar={titulo} className="flex flex-col gap-1 bg-superficie py-2 first:rounded-t-lg last:rounded-b-lg">
         <div className="flex flex-wrap items-center justify-between gap-2 px-2">
           <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{titulo}</span>
           <div className="flex flex-wrap items-center gap-1.5">
@@ -227,12 +227,12 @@ export function AgregarItems({
           </div>
         </div>
         {adicionales.map((a) => (
-          <p key={a} className="pl-6 pr-2 text-[12.5px] text-[var(--ink-soft)]">
+          <p key={a} className="pl-6 pr-2 text-[12.5px] text-tinta-suave">
             {a}
           </p>
         ))}
         {(error || !vista.ok) && (
-          <p id={idError} role="alert" className="px-2 text-[12.5px] text-red-700">
+          <p id={idError} role="alert" className="px-2 text-[12.5px] text-error">
             {error ?? (vista.ok ? "" : `${vista.mensaje} Quitala y volvé a elegir.`)}
           </p>
         )}
@@ -266,14 +266,14 @@ export function AgregarItems({
           </div>
         </div>
         {hayCarta && <SelectorCarta selector={selectorCarta} estado={estado} lista={lista} despachar={despachar} sumar={sumar} abrirPromo={setPromoAbierta} configuraciones={configuraciones} />}
-        {llena && <p className="text-[13px] text-[var(--ink-soft)]">Llegaste al máximo de {MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.</p>}
+        {llena && <p className="text-[13px] text-tinta-suave">Llegaste al máximo de {MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.</p>}
 
-        <div className="flex flex-col gap-2 rounded-[14px] border border-[var(--border)] bg-[#F1EFEA] p-3">
+        <div className="flex flex-col gap-2 rounded-[14px] border border-borde bg-superficie-suave p-3">
           <h2 className="text-[14px] font-bold">Por agregar · {lista.lineas.length + promosPorAgregar.length}</h2>
           {promosPorAgregar.length > 0 && (
-            <ul className="flex flex-col divide-y divide-[var(--border)]">
+            <ul className="flex flex-col divide-y divide-borde">
               {promosPorAgregar.map((p) => (
-                <li key={p.id} data-promo-por-agregar={p.titulo} className="flex items-center justify-between gap-2 bg-[#FFF7E6] px-2 py-2 first:rounded-t-lg">
+                <li key={p.id} data-promo-por-agregar={p.titulo} className="flex items-center justify-between gap-2 bg-aviso-tinte px-2 py-2 first:rounded-t-lg">
                   <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{p.titulo}</span>
                   <span className="text-[13.5px] tabular-nums">{formatearMonto(p.precio)}</span>
                   <button
@@ -289,9 +289,9 @@ export function AgregarItems({
             </ul>
           )}
           {lista.lineas.length === 0 && promosPorAgregar.length === 0 ? (
-            <p className="text-[13px] text-[var(--ink-soft)]">Ningún producto elegido todavía: tocá uno de la carta o buscalo por nombre o código.</p>
+            <p className="text-[13px] text-tinta-suave">Ningún producto elegido todavía: tocá uno de la carta o buscalo por nombre o código.</p>
           ) : lista.lineas.length === 0 ? null : (
-            <ul className="flex flex-col divide-y divide-[var(--border)]">
+            <ul className="flex flex-col divide-y divide-borde">
               {lista.lineas.flatMap((l) => {
                 const p = pediblePorId.get(l.productoId);
                 if (!p) return []; // defensivo: nunca debería faltar (todo pedible sale del mismo selector)
@@ -299,7 +299,7 @@ export function AgregarItems({
                 if (l.clave && l.opciones && conf) return [lineaConOpciones(l.clave, l.opciones, l.cantidad, l.cantidadTexto, l.error, p, conf)];
                 const idError = `error-linea-${l.productoId}`;
                 return [
-                  <li key={l.productoId} data-linea-por-agregar={p.nombre} className="flex flex-col gap-1 bg-white py-2 first:rounded-t-lg last:rounded-b-lg">
+                  <li key={l.productoId} data-linea-por-agregar={p.nombre} className="flex flex-col gap-1 bg-superficie py-2 first:rounded-t-lg last:rounded-b-lg">
                     <div className="flex flex-wrap items-center justify-between gap-2 px-2">
                       <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{p.nombre}</span>
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -341,12 +341,12 @@ export function AgregarItems({
                       </div>
                     </div>
                     {l.error ? (
-                      <p id={idError} role="alert" className="px-2 text-[12.5px] text-red-700">
+                      <p id={idError} role="alert" className="px-2 text-[12.5px] text-error">
                         {l.error}
                       </p>
                     ) : (
                       p.pasoVenta && (
-                        <p id={`${idError}-ayuda`} className="px-2 text-[12.5px] text-[var(--ink-soft)]">
+                        <p id={`${idError}-ayuda`} className="px-2 text-[12.5px] text-tinta-suave">
                           Se vende de a {formatearCantidad(p.pasoVenta)}.
                         </p>
                       )
@@ -362,7 +362,7 @@ export function AgregarItems({
         </div>
       </fieldset>
       {error && (
-        <p role="alert" className="text-[13px] text-red-700">
+        <p role="alert" className="text-[13px] text-error">
           {error}
         </p>
       )}

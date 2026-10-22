@@ -13,7 +13,7 @@ import type { Contrato } from "../tipos";
  *
  * DEUDA INICIAL (DEC-03, inventario inicial de la Fase 6: PENDIENTE de ratificación del dueño antes del pull request). Lo que no se pudo resolver en 6.1 está escrito
  * uso por uso en `deuda`, con su motivo y el paso que lo paga: los 15 alias de `.pos-shell` (6.30, lote POS)
- * y los dos colores sueltos de `:root` (6.27). Todas vencen a los 60 días de su creación. (La paleta propia de la carta del panel, ADR-034, se pagó en 6.4: `carta-mant.module.css` ya consume los tokens;
+ * (y los dos colores sueltos de `:root`, `--background` y `--foreground`, que se pagaron en 6.30 al pasar los tooltips de los gráficos a `var(--color-*)`). Todas vencen a los 60 días de su creación. (La paleta propia de la carta del panel, ADR-034, se pagó en 6.4: `carta-mant.module.css` ya consume los tokens;
  * el alias `--color-background` de `@theme inline` se pagó en 6.8.2: `avisos-de-accion.tsx` usa `bg-superficie` y nadie más lo leía.)
  */
 const RE_UTILIDAD_DE_TOKEN = new RegExp(
@@ -21,7 +21,7 @@ const RE_UTILIDAD_DE_TOKEN = new RegExp(
     "(?<nombre>(?:papel|superficie|tinta|borde|marca|ok|aviso|error|foco|velo|sombra)[\\w-]*)(?:\\/[\\w.%[\\]]+)?$"
 );
 
-const MOTIVO_ALIAS_DEL_SALON = "alias de color del salón (`.pos-shell`) que el POS lee con var(); vale lo mismo que su token y se retira cuando el lote POS use los tokens";
+const MOTIVO_ALIAS_DEL_SALON = "alias de color del salón (`.pos-shell`) que el POS lee con var(); vale lo mismo que su token y ya nadie los lee (6.30, la regla `sin-alias-de-color-del-salon`); se borran junto con la última deuda";
 
 const DEUDA_COMUN = {
   responsable: "dueño",
@@ -72,20 +72,5 @@ export const TOKENS_VISUALES: Contrato = {
     { archivo: "src/app/globals.css", fragmento: "--mesa-draft-ink: var(--color-aviso-tinta)", motivo: MOTIVO_ALIAS_DEL_SALON, resuelveEn: "6.30 (lote POS, después del bloque 2)", ...DEUDA_COMUN },
     { archivo: "src/app/globals.css", fragmento: "--mesa-ocupada: var(--color-error)", motivo: MOTIVO_ALIAS_DEL_SALON, resuelveEn: "6.30 (lote POS, después del bloque 2)", ...DEUDA_COMUN },
     { archivo: "src/app/globals.css", fragmento: "--mesa-ocupada-tint: var(--color-error-tinte)", motivo: MOTIVO_ALIAS_DEL_SALON, resuelveEn: "6.30 (lote POS, después del bloque 2)", ...DEUDA_COMUN },
-    // 2) Los dos colores sueltos de `:root`: los usan `grafico-saldo.tsx` y `grafico-gasto-grupo.tsx` (más el `body`); nacen como tokens cuando se migren los gráficos.
-    {
-      archivo: "src/app/globals.css",
-      fragmento: "--background: #ffffff",
-      motivo: "fondo suelto de `:root` que leen el `body` y los gráficos (grafico-saldo.tsx, grafico-gasto-grupo.tsx); se reemplaza por tokens al migrar los gráficos",
-      resuelveEn: "6.27",
-      ...DEUDA_COMUN,
-    },
-    {
-      archivo: "src/app/globals.css",
-      fragmento: "--foreground: #171717",
-      motivo: "texto suelto de `:root` que leen el `body` y los gráficos (grafico-saldo.tsx, grafico-gasto-grupo.tsx); se reemplaza por tokens al migrar los gráficos",
-      resuelveEn: "6.27",
-      ...DEUDA_COMUN,
-    },
   ],
 };

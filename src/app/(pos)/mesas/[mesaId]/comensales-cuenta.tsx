@@ -39,10 +39,10 @@ export function ComensalesCuenta({ cuentaId, comensales, puede }: { cuentaId: st
 
   if (!editando) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[13.5px] text-[var(--ink-soft)]">
+      <span className="inline-flex items-center gap-1.5 text-[13.5px] text-tinta-suave">
         {comensales !== null ? `${comensales} comensal${comensales === 1 ? "" : "es"}` : "Comensales: sin datos"}
         {puede && (
-          <button type="button" onClick={abrir} className="text-[12.5px] font-semibold underline hover:text-[var(--ink)]">
+          <button type="button" onClick={abrir} className="text-[12.5px] font-semibold underline hover:text-tinta">
             Editar
           </button>
         )}
@@ -76,7 +76,7 @@ export function ComensalesCuenta({ cuentaId, comensales, puede }: { cuentaId: st
         Cancelar
       </button>
       {error && (
-        <p id={`${base}-error`} role="alert" className="text-[13px] text-red-700">
+        <p id={`${base}-error`} role="alert" className="text-[13px] text-error">
           {error}
         </p>
       )}

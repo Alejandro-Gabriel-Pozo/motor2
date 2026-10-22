@@ -60,7 +60,7 @@ export function AbrirCuenta({ mesaId, puede }: { mesaId: string; puede: boolean 
         Abrir cuenta
       </button>
       {error && !abierto && (
-        <p role="alert" className="text-[13px] text-red-700">
+        <p role="alert" className="text-[13px] text-error">
           {error}
         </p>
       )}
@@ -71,7 +71,7 @@ export function AbrirCuenta({ mesaId, puede }: { mesaId: string; puede: boolean 
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${base}-titulo`}
-            className="w-full max-w-sm rounded-[14px] bg-white p-5 text-left shadow-lg"
+            className="w-full max-w-sm rounded-[14px] bg-superficie p-5 text-left shadow-lg"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") cerrarDialogo();
@@ -80,7 +80,7 @@ export function AbrirCuenta({ mesaId, puede }: { mesaId: string; puede: boolean 
             <h2 id={`${base}-titulo`} className="mb-1 text-lg font-extrabold tracking-tight">
               ¿Cuántos comensales?
             </h2>
-            <p className="mb-4 text-[13px] text-[var(--ink-soft)]">Es solo para medir la rotación de la mesa: no divide la cuenta por persona.</p>
+            <p className="mb-4 text-[13px] text-tinta-suave">Es solo para medir la rotación de la mesa: no divide la cuenta por persona.</p>
             <form onSubmit={confirmar} className="flex flex-col gap-3">
               <div role="group" aria-label="Comensales" className="flex flex-wrap gap-1.5">
                 {RAPIDOS.map((n) => (
@@ -90,7 +90,7 @@ export function AbrirCuenta({ mesaId, puede }: { mesaId: string; puede: boolean 
                     aria-pressed={comensales === n}
                     onClick={() => elegirRapido(n)}
                     className={`size-9 rounded-lg border text-[14px] font-semibold tabular-nums transition-colors ${
-                      comensales === n ? "border-[var(--brand)] bg-[var(--brand)] text-white" : "border-[var(--border)] bg-white hover:bg-[#F1EFEA]"
+                      comensales === n ? "border-marca bg-marca text-superficie" : "border-borde bg-superficie hover:bg-superficie-suave"
                     }`}
                   >
                     {n}
@@ -115,7 +115,7 @@ export function AbrirCuenta({ mesaId, puede }: { mesaId: string; puede: boolean 
                 className={`${CAMPO} tabular-nums`}
               />
               {error && (
-                <p id={`${base}-error`} role="alert" className="text-[13px] text-red-700">
+                <p id={`${base}-error`} role="alert" className="text-[13px] text-error">
                   {error}
                 </p>
               )}

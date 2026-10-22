@@ -9,8 +9,6 @@
    aunque el sistema esté en oscuro, en sintonía con los colores de más abajo. */
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #171717;
 }
 
 @theme inline {
@@ -114,7 +112,7 @@ form[aria-busy="true"] [type="submit"] {
    4,58:1 sobre papel), y los textos de estado usan `--mesa-libre-ink`/`--mesa-draft-ink` en vez del color de estado. Barras, puntos
    y fondos de estado quedan exactamente como en el diseño.
    Fase 6 (6.1): los 15 alias de abajo son ahora `var()` de los tokens `--color-*` de `@theme static` (mismo valor resultante). Siguen existiendo solo porque el
-   salón los usa; son deuda del contrato `tokens-visuales` (se retiran con el lote POS, 6.30). */
+   salón los usa; son deuda del contrato `tokens-visuales` (desde 6.30 ningún archivo los lee: la regla `sin-alias-de-color-del-salon` lo vigila; se borran con la última deuda). */
 .pos-shell {
   color-scheme: light;
   --paper: var(--color-papel);
@@ -136,8 +134,8 @@ form[aria-busy="true"] [type="submit"] {
   --mesa-ocupada: var(--color-error);
   --mesa-ocupada-tint: var(--color-error-tinte);
 
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--color-papel);
+  color: var(--color-tinta);
 }
 
 /* Fase 6 (6.5): el fondo de la aplicación es la SUPERFICIE blanca (la carta pública y el login quedan sobre blanco). Toda la administración —lo que dibuja `AppShell`, su

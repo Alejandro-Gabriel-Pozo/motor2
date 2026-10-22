@@ -16,9 +16,9 @@ import { obtenerLimiteMesasAbiertas } from "@/server/consultas/pos/mesas";
 /** Pestañas de filtro: `null` = todas. El punto de color usa el color de estado (no es texto); el texto va en la tinta del filtro. */
 const FILTROS: { estado: EstadoMesa | null; label: string; punto?: string }[] = [
   { estado: null, label: "Todas" },
-  { estado: "libre", label: "Libres", punto: "var(--mesa-libre)" },
-  { estado: "en_pedido", label: "En pedido", punto: "var(--mesa-draft)" },
-  { estado: "ocupada", label: "Ocupadas", punto: "var(--mesa-ocupada)" },
+  { estado: "libre", label: "Libres", punto: "var(--color-ok)" },
+  { estado: "en_pedido", label: "En pedido", punto: "var(--color-aviso)" },
+  { estado: "ocupada", label: "Ocupadas", punto: "var(--color-error)" },
 ];
 
 function primero(valor: string | string[] | undefined): string | undefined {
@@ -48,10 +48,10 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pos_mesas", ctx.db);
-  if (!gate.ok) return <p className="text-red-700">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const params = await searchParams;
   const estadoPedido = primero(params.estado);
@@ -75,7 +75,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
       <header className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">Mapa de mesas</h1>
-          <p className="text-[13.5px] text-[var(--ink-soft)]">
+          <p className="text-[13.5px] text-tinta-suave">
             {ctx.sucursalNombre} · actualizado a las {formatearHora(ahora, ctx.empresaZonaHoraria)}
           </p>
           <p className="mt-1">
@@ -87,9 +87,9 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
 
       <section aria-label="Resumen de mesas" className="mb-6 grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
         <Metrica label="Total de mesas" valor={metricas.total} />
-        <Metrica label="Libres" valor={metricas.libres} color="var(--mesa-libre)" />
-        <Metrica label="En pedido" valor={metricas.enPedido} color="var(--mesa-draft)" />
-        <Metrica label="Ocupadas" valor={metricas.ocupadas} color="var(--mesa-ocupada)" />
+        <Metrica label="Libres" valor={metricas.libres} color="var(--color-ok)" />
+        <Metrica label="En pedido" valor={metricas.enPedido} color="var(--color-aviso)" />
+        <Metrica label="Ocupadas" valor={metricas.ocupadas} color="var(--color-error)" />
       </section>
 
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -103,7 +103,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
                     href={hrefMapa(f.estado, q)}
                     aria-current={activo ? "true" : undefined}
                     className={`flex items-center gap-[7px] whitespace-nowrap rounded-full border border-transparent px-[13px] py-[7px] text-[13px] font-semibold transition-colors ${
-                      activo ? "bg-[var(--ink)] text-white" : "text-[var(--ink-soft)] hover:bg-[#F1EFEA]"
+                      activo ? "bg-tinta text-superficie" : "text-tinta-suave hover:bg-superficie-suave"
                     }`}
                   >
                     {f.punto && <span className="size-1.5 flex-none rounded-full" style={{ background: f.punto }} aria-hidden />}
@@ -116,7 +116,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
           </ul>
         </nav>
 
-        <form method="get" action="/mesas" role="search" className="flex items-center gap-2 self-start rounded-full border border-[var(--border)] bg-white px-3.5 py-2 md:self-auto">
+        <form method="get" action="/mesas" role="search" className="flex items-center gap-2 self-start rounded-full border border-borde bg-superficie px-3.5 py-2 md:self-auto">
           {estado && <input type="hidden" name="estado" value={estado} />}
           <label htmlFor="buscar-mesa" className="sr-only">
             Buscar mesa
@@ -127,9 +127,9 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
             type="search"
             defaultValue={q}
             placeholder="Buscar mesa"
-            className="w-32 bg-transparent text-[13px] text-[var(--ink)] outline-none placeholder:text-[var(--ink-faint)]"
+            className="w-32 bg-transparent text-[13px] text-tinta outline-none placeholder:text-tinta-tenue"
           />
-          <button type="submit" aria-label="Buscar" className="rounded-full text-[var(--ink-soft)] hover:text-[var(--ink)]">
+          <button type="submit" aria-label="Buscar" className="rounded-full text-tinta-suave hover:text-tinta">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" aria-hidden>
               <circle cx="11" cy="11" r="7" />
               <path d="m21 21-4.3-4.3" />
@@ -139,16 +139,16 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
       </div>
 
       {mapa.mesas.length === 0 ? (
-        <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-10 text-center">
+        <div className="rounded-[14px] border border-dashed border-borde bg-superficie px-6 py-10 text-center">
           <p className="font-semibold">Todavía no hay mesas en esta sucursal.</p>
-          <p className="mt-1 text-[13px] text-[var(--ink-soft)]">
+          <p className="mt-1 text-[13px] text-tinta-suave">
             {altaMesa.editar ? "Cargá la primera con «Nueva mesa»." : "Pedile a un admin que las cargue."}
           </p>
         </div>
       ) : visibles.length === 0 ? (
-        <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-10 text-center">
+        <div className="rounded-[14px] border border-dashed border-borde bg-superficie px-6 py-10 text-center">
           <p className="font-semibold">Ninguna mesa coincide con el filtro.</p>
-          <Link href="/mesas" className="mt-1 inline-block text-[13px] text-[var(--ink-soft)] underline hover:text-[var(--ink)]">
+          <Link href="/mesas" className="mt-1 inline-block text-[13px] text-tinta-suave underline hover:text-tinta">
             Ver todas las mesas
           </Link>
         </div>
@@ -179,10 +179,10 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
 
 function Metrica({ label, valor, color }: { label: string; valor: number; color?: string }) {
   return (
-    <div data-metrica={label} className="rounded-[14px] border border-[var(--border)] bg-white px-4 py-3.5">
+    <div data-metrica={label} className="rounded-[14px] border border-borde bg-superficie px-4 py-3.5">
       <div className="mb-1 flex items-center gap-1.5">
         {color && <span className="size-1.5 flex-none rounded-full" style={{ background: color }} aria-hidden />}
-        <span className="text-[11px] font-medium text-[var(--ink-faint)]">{label}</span>
+        <span className="text-[11px] font-medium text-tinta-tenue">{label}</span>
       </div>
       <div className="text-2xl font-extrabold tabular-nums" style={color ? { color } : undefined}>
         {valor}

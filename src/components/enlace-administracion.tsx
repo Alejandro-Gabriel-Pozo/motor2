@@ -24,7 +24,7 @@ export function EnlaceAdministracion({ inicio, sucursalId, acciones }: { inicio:
   const almacenado = useSyncExternalStore(sinSuscripcion, leerAlmacenado, delServidor);
   const href = useMemo(() => pantallaDeRegreso(leerPantallaGuardada(almacenado), sucursalId, new Set(acciones), inicio), [almacenado, sucursalId, acciones, inicio]);
   return (
-    <Link href={href} className="underline hover:text-[var(--ink)]">
+    <Link href={href} className="underline hover:text-tinta">
       Administración
       <IndicadorDeEnlace />
     </Link>

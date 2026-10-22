@@ -9,7 +9,7 @@ import { Dialogo } from "../../src/ui/componentes/superposiciones/dialogo";
  * Contrato de las piezas de `src/ui` que se puede comprobar sin navegador (el comportamiento del `<dialog>` nativo —foco atrapado, Escape, hoja inferior— se prueba en un
  * navegador real: test/e2e/ui-dialogo.spec.ts). Entorno de Vitest = Node, así que se mira el HTML que dibuja el servidor y el elemento que devuelve el componente.
  */
-const VARIANTES_DE_BOTON: readonly VarianteDeBoton[] = ["primario", "acento", "secundario", "peligro", "enlace", "enlace-peligro", "sobre-tinta"];
+const VARIANTES_DE_BOTON: readonly VarianteDeBoton[] = ["primario", "acento", "secundario", "peligro", "enlace", "enlace-peligro", "sobre-tinta", "interruptor"];
 const TAMANOS_DE_BOTON: readonly TamanoDeBoton[] = ["normal", "compacto", "chico", "tactil", "en-fila"];
 
 function propsDe(elemento: ReactElement): Record<string, unknown> {

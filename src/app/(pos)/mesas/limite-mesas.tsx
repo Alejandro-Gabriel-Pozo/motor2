@@ -49,10 +49,10 @@ export function LimiteMesasAbiertas({ abiertas, limite, puedeEditar }: { abierta
 
   if (!editando) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[12.5px] text-[var(--ink-faint)]">
+      <span className="inline-flex items-center gap-1.5 text-[12.5px] text-tinta-tenue">
         {texto}
         {puedeEditar && (
-          <button type="button" onClick={abrir} className="font-semibold underline hover:text-[var(--ink)]">
+          <button type="button" onClick={abrir} className="font-semibold underline hover:text-tinta">
             Editar límite
           </button>
         )}
@@ -62,7 +62,7 @@ export function LimiteMesasAbiertas({ abiertas, limite, puedeEditar }: { abierta
 
   return (
     <form onSubmit={guardar} className="inline-flex flex-wrap items-center gap-1.5">
-      <label htmlFor={`${base}-limite`} className="text-[12.5px] font-semibold text-[var(--ink-faint)]">
+      <label htmlFor={`${base}-limite`} className="text-[12.5px] font-semibold text-tinta-tenue">
         Máx. mesas abiertas
       </label>
       <input
@@ -76,16 +76,16 @@ export function LimiteMesasAbiertas({ abiertas, limite, puedeEditar }: { abierta
         onFocus={(e) => e.target.select()}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${base}-error` : undefined}
-        className="w-24 rounded-lg border border-[var(--border)] px-2 py-1 text-[13px] tabular-nums outline-none focus:border-[var(--ink-soft)]"
+        className="w-24 rounded-lg border border-borde px-2 py-1 text-[13px] tabular-nums outline-none focus:border-tinta-suave"
       />
-      <button type="submit" disabled={pending} className="rounded-md border border-[var(--border)] bg-white px-2.5 py-1 text-[12.5px] font-semibold enabled:hover:bg-[#F1EFEA] disabled:opacity-50">
+      <button type="submit" disabled={pending} className="rounded-md border border-borde bg-superficie px-2.5 py-1 text-[12.5px] font-semibold enabled:hover:bg-superficie-suave disabled:opacity-50">
         {pending ? "Guardando…" : "Guardar"}
       </button>
-      <button type="button" onClick={cancelar} className="text-[12.5px] font-semibold text-[var(--ink-soft)] underline">
+      <button type="button" onClick={cancelar} className="text-[12.5px] font-semibold text-tinta-suave underline">
         Cancelar
       </button>
       {error && (
-        <p id={`${base}-error`} role="alert" className="w-full text-[12.5px] text-red-700">
+        <p id={`${base}-error`} role="alert" className="w-full text-[12.5px] text-error">
           {error}
         </p>
       )}

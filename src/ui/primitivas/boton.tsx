@@ -11,14 +11,17 @@ import type { ButtonHTMLAttributes, MouseEvent } from "react";
  * - Foco visible siempre, del color del token `foco` (el mismo contorno de 2 px que dibuja la regla global de `globals.css`: acá se repite con las MISMAS propiedades para que el
  *   botón no dependa de la capa base y, al ser una utilidad, no se suma un segundo anillo). La variante `sobre-tinta` (para fondos oscuros) usa `foco-sobre-tinta`.
  * - `tamano="tactil"`: 44 px de alto en cualquier ancho (los demás bajan a la compacta desde `md:`).
+ * - `variante="interruptor"`: el botón de DOS estados que dice en cuál está con `aria-pressed` (una píldora «Disponible»/«Agotada»): píldora (`rounded-full`) con el contorno y el texto del tono del estado — `ok` si está
+ *   marcado (`aria-pressed="true"`), `error` con fondo tintado si no — en lugar del relleno de las demás variantes. El estado lo dice el TEXTO que pone quien lo usa; el tono lo refuerza. Va con `tamano="tactil"`
+ *   (44 px en cualquier ancho) y, si hace falta un ancho mínimo para que los dos textos midan lo mismo, `min-w-*` en `className`. Deshabilitado (el rol solo mira): `cursor-not-allowed` y 70 % de opacidad.
  * - `tamano="en-fila"`: la acción de texto de una fila de lista o tabla («Desactivar», «Sí, desactivar», «Cancelar»…) y la de la cabecera («Salir»). 44 px de alto en celular y, desde `md:`, la
  *   altura del texto (sin mínimo y sin relleno horizontal): así la fila de escritorio mide lo que medía cuando eran enlaces de texto y el relleno de la celda no se suma a uno de 32 px.
  */
-export type VarianteDeBoton = "primario" | "acento" | "secundario" | "peligro" | "enlace" | "enlace-peligro" | "sobre-tinta";
+export type VarianteDeBoton = "primario" | "acento" | "secundario" | "peligro" | "enlace" | "enlace-peligro" | "sobre-tinta" | "interruptor";
 export type TamanoDeBoton = "normal" | "compacto" | "chico" | "tactil" | "en-fila";
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded font-medium focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 aria-busy:cursor-progress aria-busy:opacity-70";
+  "inline-flex items-center justify-center gap-2 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 aria-busy:cursor-progress aria-busy:opacity-70";
 
 /** El color del contorno del foco va POR VARIANTE: `foco` (la tinta) no se ve sobre un fondo oscuro; `sobre-tinta` usa `foco-sobre-tinta` (blanco). */
 const FOCO_DE_LA_VARIANTE: Record<VarianteDeBoton, string> = {
@@ -29,6 +32,7 @@ const FOCO_DE_LA_VARIANTE: Record<VarianteDeBoton, string> = {
   enlace: "focus-visible:outline-foco",
   "enlace-peligro": "focus-visible:outline-foco",
   "sobre-tinta": "focus-visible:outline-foco-sobre-tinta",
+  interruptor: "focus-visible:outline-foco",
 };
 
 const VARIANTES: Record<VarianteDeBoton, string> = {
@@ -40,6 +44,32 @@ const VARIANTES: Record<VarianteDeBoton, string> = {
   "enlace-peligro": "text-error underline hover:decoration-2",
   // Para un botón sobre un fondo oscuro del sistema (`tinta`, `error`): contorno translúcido, texto blanco y un velo blanco al pasar el mouse.
   "sobre-tinta": "border border-borde-sobre-tinta text-superficie hover:bg-superficie/10",
+  // Dos estados por `aria-pressed`: marcado, contorno y texto `ok`; sin marcar, contorno y texto `error` sobre su tinte.
+  interruptor: "border aria-pressed:border-ok aria-pressed:text-ok-tinta not-aria-pressed:border-error not-aria-pressed:bg-error-tinte not-aria-pressed:text-error",
+};
+
+/** La forma del botón (el radio del borde): `rounded` para todos, píldora para el interruptor. Va por variante para que no se pisen dos radios en la misma clase. */
+const FORMA: Record<VarianteDeBoton, string> = {
+  primario: "rounded",
+  acento: "rounded",
+  secundario: "rounded",
+  peligro: "rounded",
+  enlace: "rounded",
+  "enlace-peligro": "rounded",
+  "sobre-tinta": "rounded",
+  interruptor: "rounded-full",
+};
+
+/** Cómo se ve deshabilitado: atenuado (50 %) para todos; el interruptor, que el rol de solo lectura ve sin poder tocarlo, al 70 % y con el cursor de «no permitido». */
+const DESHABILITADO: Record<VarianteDeBoton, string> = {
+  primario: "disabled:opacity-50",
+  acento: "disabled:opacity-50",
+  secundario: "disabled:opacity-50",
+  peligro: "disabled:opacity-50",
+  enlace: "disabled:opacity-50",
+  "enlace-peligro": "disabled:opacity-50",
+  "sobre-tinta": "disabled:opacity-50",
+  interruptor: "disabled:cursor-not-allowed disabled:opacity-70",
 };
 
 const TAMANOS: Record<TamanoDeBoton, string> = {
@@ -53,7 +83,7 @@ const TAMANOS: Record<TamanoDeBoton, string> = {
 };
 
 export function claseDeBoton(variante: VarianteDeBoton = "primario", tamano: TamanoDeBoton = "normal"): string {
-  return `${BASE} ${FOCO_DE_LA_VARIANTE[variante]} ${VARIANTES[variante]} ${TAMANOS[tamano]}`;
+  return `${BASE} ${FORMA[variante]} ${DESHABILITADO[variante]} ${FOCO_DE_LA_VARIANTE[variante]} ${VARIANTES[variante]} ${TAMANOS[tamano]}`;
 }
 
 export interface PropsDeBoton extends ButtonHTMLAttributes<HTMLButtonElement> {

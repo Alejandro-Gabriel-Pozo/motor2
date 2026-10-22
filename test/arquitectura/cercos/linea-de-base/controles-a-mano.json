@@ -1,10 +1,10 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 319,
-  "entradas": 73,
+  "total": 318,
+  "entradas": 72,
   "porTipo": {
-    "button": 191,
+    "button": 190,
     "input": 78,
     "input-hidden": 16,
     "select": 23,
@@ -136,9 +136,6 @@
       "select": 1
     },
     "src/app/(app)/error.tsx": {
-      "button": 1
-    },
-    "src/app/(app)/movimientos/opciones-agotadas/opciones-agotadas.tsx": {
       "button": 1
     },
     "src/app/(app)/reportes/tickets/page.tsx": {

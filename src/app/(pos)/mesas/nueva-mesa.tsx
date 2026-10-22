@@ -57,7 +57,7 @@ export function NuevaMesa({ siguienteNumero, puedeCrear }: { siguienteNumero: nu
         onClick={abrir}
         disabled={!puedeCrear}
         title={puedeCrear ? undefined : "Tu rol puede ver el mapa pero no dar de alta mesas."}
-        className="flex items-center justify-center gap-1.5 rounded-lg bg-[var(--brand)] px-4 py-[9px] text-[13px] font-semibold text-white transition-colors enabled:hover:bg-[var(--brand-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex items-center justify-center gap-1.5 rounded-lg bg-marca px-4 py-[9px] text-[13px] font-semibold text-superficie transition-colors enabled:hover:bg-marca-hover disabled:cursor-not-allowed disabled:opacity-50"
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
           <path d="M12 5v14M5 12h14" />
@@ -65,7 +65,7 @@ export function NuevaMesa({ siguienteNumero, puedeCrear }: { siguienteNumero: nu
         Nueva mesa
       </button>
       {aviso && (
-        <p role="status" className="text-[12.5px] text-[var(--mesa-libre-ink)]">
+        <p role="status" className="text-[12.5px] text-ok-tinta">
           {aviso}
         </p>
       )}
@@ -76,7 +76,7 @@ export function NuevaMesa({ siguienteNumero, puedeCrear }: { siguienteNumero: nu
             role="dialog"
             aria-modal="true"
             aria-labelledby="nueva-mesa-titulo"
-            className="w-full max-w-sm rounded-[14px] bg-white p-5 text-left shadow-lg"
+            className="w-full max-w-sm rounded-[14px] bg-superficie p-5 text-left shadow-lg"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") cerrar();
@@ -91,18 +91,18 @@ export function NuevaMesa({ siguienteNumero, puedeCrear }: { siguienteNumero: nu
               </label>
               <CampoNumero id="nueva-mesa-numero" value={numero} onChange={setNumero} required autoFocus />
               {error && (
-                <p id="nueva-mesa-error" role="alert" className="text-[13px] text-red-700">
+                <p id="nueva-mesa-error" role="alert" className="text-[13px] text-error">
                   {error}
                 </p>
               )}
               <div className="mt-1 flex justify-end gap-2">
-                <button type="button" onClick={cerrar} className="rounded-lg border border-[var(--border)] px-4 py-[9px] text-[13px] font-semibold hover:bg-[#F1EFEA]">
+                <button type="button" onClick={cerrar} className="rounded-lg border border-borde px-4 py-[9px] text-[13px] font-semibold hover:bg-superficie-suave">
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={pending}
-                  className="rounded-lg bg-[var(--brand)] px-4 py-[9px] text-[13px] font-semibold text-white enabled:hover:bg-[var(--brand-hover)] disabled:opacity-50"
+                  className="rounded-lg bg-marca px-4 py-[9px] text-[13px] font-semibold text-superficie enabled:hover:bg-marca-hover disabled:opacity-50"
                 >
                   {pending ? "Creando…" : "Crear mesa"}
                 </button>

@@ -57,13 +57,13 @@ export function ArmarPromo({
         aria-modal="true"
         aria-labelledby={`${base}-titulo`}
         data-armar-promo={entrada.promoCartaId}
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-[14px] bg-white p-5 text-left shadow-lg"
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-y-auto rounded-[14px] bg-superficie p-5 text-left shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id={`${base}-titulo`} className="mb-1 text-lg font-extrabold tracking-tight">
           Armar «{entrada.titulo}»
         </h2>
-        <p className="mb-4 text-[13px] text-[var(--ink-soft)]">{formatearMonto(entrada.precio)} en total, sea cual sea lo que elijas en cada cupo.</p>
+        <p className="mb-4 text-[13px] text-tinta-suave">{formatearMonto(entrada.precio)} en total, sea cual sea lo que elijas en cada cupo.</p>
 
         <div className="flex flex-col gap-4">
           {estado.cupos.map((cupo) => {
@@ -76,7 +76,7 @@ export function ArmarPromo({
                 ? cupo.entradas.map((e) => ({ clave: e.entradaId, nombre: e.nombre, noSeArma: undefined as string | undefined }))
                 : cupo.elegibles.map((p) => ({ clave: p.productoId, nombre: p.nombre, noSeArma: noSeArman?.get(p.productoId) }));
             return (
-              <fieldset key={clave} data-cupo-armar-promo={clave} className="flex flex-col gap-2 rounded-[12px] border border-[var(--border)] p-3">
+              <fieldset key={clave} data-cupo-armar-promo={clave} className="flex flex-col gap-2 rounded-[12px] border border-borde p-3">
                 <legend className="px-1 text-[13px] font-semibold">
                   {nombreDelCupo} · {total}/{cupo.cantidadMaximaCupo}
                   {cupo.cantidadMinima > 0 ? ` (mínimo ${cupo.cantidadMinima})` : " (opcional)"}
@@ -87,9 +87,9 @@ export function ArmarPromo({
                     {cupo.entradas[0].nombre}
                   </p>
                 ) : elegibles.length === 0 ? (
-                  <p className="text-[13px] text-[var(--ink-soft)]">{"cupoId" in cupo && cupo.tipo === "DEL_DIA" ? "Todavía no se cargó el plato de hoy." : "Nada disponible para elegir acá ahora."}</p>
+                  <p className="text-[13px] text-tinta-suave">{"cupoId" in cupo && cupo.tipo === "DEL_DIA" ? "Todavía no se cargó el plato de hoy." : "Nada disponible para elegir acá ahora."}</p>
                 ) : (
-                  <ul className="flex flex-col divide-y divide-[var(--border)]">
+                  <ul className="flex flex-col divide-y divide-borde">
                     {elegibles.map((p) => {
                       const cantidad = cantidadElegida(estado, clave, p.clave);
                       const noSeArma = p.noSeArma;
@@ -98,7 +98,7 @@ export function ArmarPromo({
                           <span className="min-w-0 flex-1 text-[13.5px]">
                             {p.nombre}
                             {noSeArma && (
-                              <span data-no-se-arma className="block text-[12.5px] text-[var(--ink-soft)]">
+                              <span data-no-se-arma className="block text-[12.5px] text-tinta-suave">
                                 {noSeArma}
                               </span>
                             )}
