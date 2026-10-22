@@ -225,92 +225,94 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
         <CampoFecha etiqueta="Fecha del conteo" value={fechaConteo} onChange={(e) => setFechaConteo(e.target.value)} />
       </div>
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-tinta-tenue">
-            <th className="py-1 pr-2">Producto</th>
-            <th className="px-2">Lote</th>
-            <th className="px-2 text-right">Sistema</th>
-            <th className="px-2 text-right">Contado</th>
-            <th className="px-2 text-right">Diferencia</th>
-            <th className="px-2">
-              Acción
-              <AyudaIcono
-                texto={`${puedeAjustar ? "Ajustar: escribe el movimiento de corrección ahora, el stock queda en lo contado. " : "Ajustar el stock exige el permiso de Ajuste: si hay diferencia, registrala como «Falta movimiento» y la resuelve un administrador. "}Falta movimiento: deja el conteo pendiente SIN tocar stock — usalo si lo que falta es cargar una compra/venta real, para no contar dos veces. Descartar: no ajusta y no cuenta como conteo válido.`}
-              />
-            </th>
-            <th className="px-2">Detalle</th>
-            <th><span className="sr-only">Acciones</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {filas.map((f) => {
-            const estado = estadoDe(f.key);
-            const esManual = f.key.startsWith("manual-");
-            const diferencia = estado.conteoReal.trim() !== "" ? (numeroDelCampo(estado.conteoReal) ?? NaN) - f.saldoSistema : null;
-            return (
-              <tr key={f.key} className="border-b">
-                <td className="py-1 pr-2">{f.etiqueta}</td>
-                <td className="px-2">
-                  {esManual ? (
-                    <CampoFecha
-                      aria-label={`Lote de ${f.etiqueta}`}
+      <div role="region" aria-label="Grilla de conteo" tabIndex={0} className="relative overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-tinta-tenue">
+              <th className="py-1 pr-2">Producto</th>
+              <th className="px-2">Lote</th>
+              <th className="px-2 text-right">Sistema</th>
+              <th className="px-2 text-right">Contado</th>
+              <th className="px-2 text-right">Diferencia</th>
+              <th className="px-2">
+                Acción
+                <AyudaIcono
+                  texto={`${puedeAjustar ? "Ajustar: escribe el movimiento de corrección ahora, el stock queda en lo contado. " : "Ajustar el stock exige el permiso de Ajuste: si hay diferencia, registrala como «Falta movimiento» y la resuelve un administrador. "}Falta movimiento: deja el conteo pendiente SIN tocar stock — usalo si lo que falta es cargar una compra/venta real, para no contar dos veces. Descartar: no ajusta y no cuenta como conteo válido.`}
+                />
+              </th>
+              <th className="px-2">Detalle</th>
+              <th><span className="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((f) => {
+              const estado = estadoDe(f.key);
+              const esManual = f.key.startsWith("manual-");
+              const diferencia = estado.conteoReal.trim() !== "" ? (numeroDelCampo(estado.conteoReal) ?? NaN) - f.saldoSistema : null;
+              return (
+                <tr key={f.key} className="border-b">
+                  <td className="py-1 pr-2">{f.etiqueta}</td>
+                  <td className="px-2">
+                    {esManual ? (
+                      <CampoFecha
+                        aria-label={`Lote de ${f.etiqueta}`}
+                        tamano="compacto"
+                        value={f.loteVencimiento ?? ""}
+                        onChange={(e) => setFilasManuales((prev) => prev.map((m) => (m.key === f.key ? { ...m, loteVencimiento: e.target.value } : m)))}
+                      />
+                    ) : (
+                      (f.loteVencimiento ?? (f.esTotalDeLotes ? "Todos los lotes (total)" : "—"))
+                    )}
+                  </td>
+                  <td className="px-2 text-right">{f.saldoSistema}</td>
+                  <td className="w-28 px-2">
+                    <CampoNumero value={estado.conteoReal} onChange={(v) => actualizarEstado(f.key, { conteoReal: v })} ariaLabel={`Contado de ${f.etiqueta}`} tamano="compacto" />
+                  </td>
+                  <td className={`px-2 text-right ${diferencia ? "font-medium" : ""}`}>{diferencia === null ? "—" : diferencia > 0 ? `+${diferencia}` : diferencia}</td>
+                  <td className="px-2">
+                    <Selector
+                      etiqueta={`Acción de ${f.etiqueta}`}
+                      etiquetaOculta
                       tamano="compacto"
-                      value={f.loteVencimiento ?? ""}
-                      onChange={(e) => setFilasManuales((prev) => prev.map((m) => (m.key === f.key ? { ...m, loteVencimiento: e.target.value } : m)))}
+                      value={estado.accion}
+                      onChange={(e) => actualizarEstado(f.key, { accion: e.target.value as AccionConteo })}
+                    >
+                      {accionesOfrecidas.map((a) => (
+                        <option key={a.value} value={a.value} title={a.titulo}>
+                          {a.label}
+                        </option>
+                      ))}
+                    </Selector>
+                  </td>
+                  <td className="px-2">
+                    <Campo
+                      aria-label={`Detalle de ${f.etiqueta}`}
+                      tamano="compacto"
+                      value={estado.detalle}
+                      onChange={(e) => actualizarEstado(f.key, { detalle: e.target.value })}
+                      placeholder="opcional"
                     />
-                  ) : (
-                    (f.loteVencimiento ?? (f.esTotalDeLotes ? "Todos los lotes (total)" : "—"))
-                  )}
-                </td>
-                <td className="px-2 text-right">{f.saldoSistema}</td>
-                <td className="w-28 px-2">
-                  <CampoNumero value={estado.conteoReal} onChange={(v) => actualizarEstado(f.key, { conteoReal: v })} ariaLabel={`Contado de ${f.etiqueta}`} tamano="compacto" />
-                </td>
-                <td className={`px-2 text-right ${diferencia ? "font-medium" : ""}`}>{diferencia === null ? "—" : diferencia > 0 ? `+${diferencia}` : diferencia}</td>
-                <td className="px-2">
-                  <Selector
-                    etiqueta={`Acción de ${f.etiqueta}`}
-                    etiquetaOculta
-                    tamano="compacto"
-                    value={estado.accion}
-                    onChange={(e) => actualizarEstado(f.key, { accion: e.target.value as AccionConteo })}
-                  >
-                    {accionesOfrecidas.map((a) => (
-                      <option key={a.value} value={a.value} title={a.titulo}>
-                        {a.label}
-                      </option>
-                    ))}
-                  </Selector>
-                </td>
-                <td className="px-2">
-                  <Campo
-                    aria-label={`Detalle de ${f.etiqueta}`}
-                    tamano="compacto"
-                    value={estado.detalle}
-                    onChange={(e) => actualizarEstado(f.key, { detalle: e.target.value })}
-                    placeholder="opcional"
-                  />
-                </td>
-                <td className="px-2">
-                  {esManual && (
-                    <Boton variante="enlace" tamano="en-fila" onClick={() => quitarManual(f.key)}>
-                      quitar
-                    </Boton>
-                  )}
+                  </td>
+                  <td className="px-2">
+                    {esManual && (
+                      <Boton variante="enlace" tamano="en-fila" onClick={() => quitarManual(f.key)}>
+                        quitar
+                      </Boton>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {!filas.length && (
+              <tr>
+                <td className="py-2 text-tinta-tenue" colSpan={8}>
+                  Sin productos con stock registrado en esta sección todavía — agregá uno abajo si hay algo que nunca se contó.
                 </td>
               </tr>
-            );
-          })}
-          {!filas.length && (
-            <tr>
-              <td className="py-2 text-tinta-tenue" colSpan={8}>
-                Sin productos con stock registrado en esta sección todavía — agregá uno abajo si hay algo que nunca se contó.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <div className="flex items-end gap-2">
         <label className="flex flex-1 flex-col gap-1 text-sm">

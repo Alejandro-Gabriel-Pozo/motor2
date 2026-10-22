@@ -16,7 +16,7 @@ export const ESCALA_DE_LA_CARTA = {
   producto: "1.1875rem",
   /** Una fila de opción (un tamaño de una lista, una fila o una celda de una tabla): 16 px; el rótulo en 400 y el precio en 600. */
   opcion: "1rem",
-  /** Lo que se lee debajo del plato (descripción, «Guarnición: …», «Extras: …», el descuento) y los rótulos de las columnas: 14 px. */
+  /** Lo que se lee debajo del plato (descripción, «Guarnición: …», «Extras: …», el descuento) y el rótulo en negrita de cada aclaración («Guarnición:»): 14 px. Los encabezados de las columnas son `columna`. */
   aclaracion: "0.875rem",
   /** Los tags y los textos chicos de navegación (contadores, separadores, la etiqueta del portal): 12 px. */
   etiqueta: "0.75rem",
@@ -32,7 +32,7 @@ export const ESCALA_DE_LA_CARTA = {
   eleccion: "0.9375rem",
 } as const;
 
-/** Los mismos roles en papel (Producto 12 pt, Opción 11 pt, Aclaración 10 pt, Etiqueta 9 pt; el título 16 pt). */
+/** Los mismos roles en papel: Producto 12 pt, Opción 11 pt, Aclaración 10 pt, Etiqueta 9 pt, Título 16 pt, Rótulo 9,5 pt, Columna 11 pt, Tamaño 10,5 pt y Elección 10,5 pt. */
 export const ESCALA_IMPRESA = {
   producto: "12pt",
   opcion: "11pt",
