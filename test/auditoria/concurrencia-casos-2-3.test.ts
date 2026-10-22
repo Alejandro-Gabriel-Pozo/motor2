@@ -91,7 +91,8 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
         expect(settled.every((s) => s.status === "fulfilled" && s.value.ok), `intento ${intento}: ambas ventas deben tener éxito`).toBe(true);
         expect(await calcularSaldoTotal(mpInsumo.id, seccionId, prisma)).toBe(8); // 20 - 6 - 6, siempre
       }
-    });
+      // 15 pares de ventas simultáneas con sembrado: en una máquina cargada pasan de los 5 s por defecto, y un corte por tiempo deja una venta en vuelo que rompe la limpieza del test siguiente (FK de MovimientoStock).
+    }, 30_000);
   });
 
   describe("Caso 3: CONSUMO simultáneo con MERMA / TRANSFERENCIA sobre el mismo producto+sección", () => {

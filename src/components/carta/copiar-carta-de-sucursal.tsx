@@ -1,8 +1,9 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import { BotonConConfirmacion } from "@/components/boton-con-confirmacion";
 import { copiarCartaDeSucursal } from "@/server/actions/carta/copiar-carta";
+import { Selector } from "@/ui/primitivas/selector";
 
 export interface OrigenCopiable {
   id: string;
@@ -15,23 +16,19 @@ export interface OrigenCopiable {
  * (`BotonConConfirmacion`: foco, Escape, role="alert"/"status"). La acción vuelve a comprobar todo en el servidor; esto es cortesía de la interfaz.
  */
 export function CopiarCartaDeSucursal({ origenes }: { origenes: OrigenCopiable[] }) {
-  const idSelect = useId();
   const [origenId, setOrigenId] = useState(origenes[0]?.id ?? "");
   const origen = origenes.find((o) => o.id === origenId);
-  if (!origenes.length) return <p className="text-sm text-neutral-500">Ninguna otra sucursal tiene carta propia para copiar todavía.</p>;
+  if (!origenes.length) return <p className="text-sm text-tinta-tenue">Ninguna otra sucursal tiene carta propia para copiar todavía.</p>;
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={idSelect} className="text-sm font-medium">
-        Copiar de otra sucursal
-      </label>
-      <select id={idSelect} value={origenId} onChange={(e) => setOrigenId(e.target.value)} className="max-w-xs rounded border px-2 py-1 max-md:min-h-11 max-md:text-base">
+      <Selector etiqueta="Copiar de otra sucursal" value={origenId} onChange={(e) => setOrigenId(e.target.value)} className="max-w-xs">
         {origenes.map((o) => (
           <option key={o.id} value={o.id}>
             {o.nombre} ({o.cantidadProductos} producto(s))
           </option>
         ))}
-      </select>
+      </Selector>
       <BotonConConfirmacion
         key={origenId}
         etiqueta="Copiar la carta"
@@ -39,7 +36,7 @@ export function CopiarCartaDeSucursal({ origenes }: { origenes: OrigenCopiable[]
         etiquetaConfirmar="Sí, copiar la carta"
         etiquetaEnCurso="Copiando…"
         etiquetaVolver="Volver"
-        claseDisparador="self-start rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11"
+        claseDisparador="self-start rounded bg-tinta px-3 py-1.5 text-sm text-superficie max-md:min-h-11"
         accion={() => copiarCartaDeSucursal(origenId, true)}
       />
     </div>

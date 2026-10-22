@@ -50,6 +50,11 @@ import type { Transaccion } from "@/lib/db-tipos";
  * contendientes. Peor caso acumulado de espera con 8 intentos: 25 + 50 + 100 + 200 + 3 × 250 =
  * 1125 ms (esperado ~560 ms), muy por debajo del `timeout` de 15 s de cada transacción.
  * El único llamador que pasa un `maxIntentos` propio (la receta, que usa `conReintento` directo) no cambia.
+ *
+ * NINGÚN LLAMADOR FIJA SU PROPIO TOPE (2026-10-22). Seis casos de uso (registrar movimiento y venta, reclasificar stock, aceptar y reingresar un traspaso, el ticket corregido) llamaban con
+ * `, 5, {}, true` para llegar por posición a `tambienChoqueDeUnico` cuando 5 era el default, y se quedaron con 5 al subirlo a 8: la REGRESIÓN C2 (dos ventas simultáneas) volvió a agotar los
+ * reintentos (P2034, 40001, en `tx.operacion.create` de la venta). Para llegar a los argumentos de después se pasa `undefined`; lo vigila
+ * `test/arquitectura/transaccion-serializable-sin-tope-propio.test.ts`.
  */
 export async function conTransaccionSerializable<T>(
   transaccion: Transaccion,

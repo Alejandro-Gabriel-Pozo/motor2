@@ -7,12 +7,13 @@ import type { ProductoParaMantener } from "@/core/carta/public";
 import { basesDeUnEjeEnLaCarta, cargarAdminCarta } from "@/server/consultas/carta/admin";
 import { cargarCartaParaMantener } from "@/server/consultas/carta/mantenimiento";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta, ordenarSeccionesCarta } from "@/server/actions/carta/secciones";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { ContenidoDelProducto, type UbicacionEnCarta } from "@/components/carta/contenido-del-producto";
-import { CLASE_BOTON, CLASE_ENLACE_DE_ACCION, CamposSeccion, GrupoDeLaCarta } from "../formularios";
+import { CamposSeccion, GrupoDeLaCarta } from "../formularios";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { OrdenarSecciones } from "./ordenar-secciones";
@@ -35,10 +36,10 @@ export default async function SeccionesDeCartaPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   const [nivelSecciones, nivelContenido, nivelDescuento] = await Promise.all([
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_secciones", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_contenido_producto", ctx.db),
@@ -70,6 +71,7 @@ export default async function SeccionesDeCartaPage() {
           precioLocalActivo={datos.precioLocalActivo}
           sucursalId={sucursalId}
           mostrarNombreArriba={basesDeUnEje.get(p.id)}
+          abrirEnElProducto
         />
       );
     return (
@@ -132,9 +134,9 @@ export default async function SeccionesDeCartaPage() {
                     >
                       <CamposSeccion valores={s} />
                       <div className="sm:col-span-2">
-                        <button type="submit" className={CLASE_BOTON}>
+                        <BotonDeServidor type="submit" tamano="compacto">
                           Guardar sección
-                        </button>
+                        </BotonDeServidor>
                       </div>
                     </FormConResultado>
                   ) : (
@@ -157,15 +159,15 @@ export default async function SeccionesDeCartaPage() {
                     }}
                     className="mt-2"
                   >
-                    <button type="submit" className={CLASE_ENLACE_DE_ACCION}>
+                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                       {s.activa ? `Apagar «${s.nombre}»` : `Prender «${s.nombre}»`}
-                    </button>
+                    </BotonDeServidor>
                   </FormConResultado>
                 )}
               </li>
             );
           })}
-          {!datos.secciones.length && <li className="text-sm text-neutral-500">Todavía no hay secciones de carta.</li>}
+          {!datos.secciones.length && <li className="text-sm text-tinta-tenue">Todavía no hay secciones de carta.</li>}
         </ul>
 
         {puedeEditarSecciones && (
@@ -182,9 +184,9 @@ export default async function SeccionesDeCartaPage() {
             {/* DA5: una sección nueva cae al final por defecto (orden = cuántas hay). */}
             <CamposSeccion ordenSugerido={datos.secciones.length} />
             <div className="sm:col-span-2">
-              <button type="submit" className={CLASE_BOTON}>
+              <BotonDeServidor type="submit" tamano="compacto">
                 Crear sección
-              </button>
+              </BotonDeServidor>
             </div>
           </FormConResultado>
         )}
@@ -196,7 +198,7 @@ export default async function SeccionesDeCartaPage() {
               <h2 id="titulo-contenido" className="text-lg font-medium">
                 Productos de cada sección
               </h2>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-tinta-tenue">
                 La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en
                 Mantenimiento › Visibilidad › «Fuera de carta».
               </p>

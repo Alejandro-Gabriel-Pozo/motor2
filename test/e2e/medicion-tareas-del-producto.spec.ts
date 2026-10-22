@@ -6,9 +6,9 @@ import { prisma } from "./fixtures/db";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 
 /**
- * MEDICIÓN «ANTES» de cuatro tareas del producto con las pantallas de HOY (Fase 6, paso 6.0.2; ver docs/medicion-espacio-del-producto-2026-10-21.md). No mide tiempo ni rendimiento: mide
- * cuánto camino pide cada tarea, para que el bloque 2 (el espacio del producto) demuestre que no empeora (umbral del dueño: «no peor que hoy» en pantallas y clics, y 0 salidas del espacio en
- * las tareas de opciones y de publicar). Por ahora SOLO AFIRMA que cada tarea terminó bien; los umbrales se afirman en 6.21, cuando esta spec se reescriba con los recorridos nuevos.
+ * MEDICIÓN de cuatro tareas del producto (Fase 6; ver docs/medicion-espacio-del-producto-2026-10-21.md). Nació como la medición «antes» (6.0.2, con las pantallas de entonces) y desde 6.21 recorre el ESPACIO
+ * DEL PRODUCTO y AFIRMA el umbral de DEC-12 (del dueño): en las cuatro tareas, pantallas y clics «no peor que antes» (`ANTES`, la tabla «antes» del documento) y 0 salidas del espacio en las tareas de
+ * opciones, de cambiar un precio y de publicar (b, c y d). No mide tiempo ni rendimiento: mide cuánto camino pide cada tarea.
  *
  * LAS CUATRO TAREAS (cada una arranca en una pantalla de partida y se recorre solo con clics y campos, sin escribir una URL a mitad de camino)
  *  a) Crear un producto DIRECTO hasta que quede vendible. Parte de la lista de productos. Hoy «directo o base» es «¿Cómo se vende?», que existe SOLO al editar (el alta nace directa): elegir
@@ -17,7 +17,8 @@ import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
  *     «Por opción» en «¿Cómo se vende?» (con la clave `producto_campos_sensibles`). «Antes» (Fase 6, 6.0.2) parte de «Opciones de venta» y recorre la biblioteca de grupos; desde 6.15c parte de la lista de
  *     productos y los grupos se crean desde el paso 2 del producto con «+ Nuevo grupo» (el recorrido del espacio, DEC-12): la tabla «antes» del documento sigue siendo la del recorrido viejo.
  *  c) Cambiar el precio final de una opción de una base ya armada. Parte de la ficha del producto (sembrado).
- *  d) Publicar el producto en la carta («Fuera de carta» → «Agregar a la carta» → sección). Parte de la ficha del producto (sembrado).
+ *  d) Publicar el producto en la carta. «Antes»: la carta era otro módulo («Fuera de carta» → «Agregar a la carta» → sección). Desde 6.17c es el paso «En la carta» del producto: «En la carta» → sección →
+ *     «Guardar contenido». Parte de la ficha del producto (sembrado).
  *
  * QUÉ SE CUENTA (el medidor `Medidor`, abajo; todo a 1280 px de ancho, el menú lateral a la vista)
  *  - PANTALLAS: rutas distintas visitadas. Un `framenavigated` del marco principal cuenta cuando CAMBIA el path; el mismo path con otra query (`?nivel=…`, `?guardado=…`) o un refresco no cuentan.
@@ -40,11 +41,11 @@ import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
  * DATOS: todo lleva una marca única en el nombre (la base e2e es compartida y se vacía entera al empezar cada corrida). Las tablas de opciones solo se agregan (ver `fixtures/opciones.ts`): lo que
  * sembramos o creamos de opciones no se borra al terminar. La tarea d borra lo que ella misma crea de la carta (el contenido y la sección propia) para no tocar a las otras specs de la carta.
  *
- * MUTACIONES A SOBREVIVIR A MANO (no corren en CI, esta spec no se corre sola en el gate; se hacen una vez al correrla por primera vez y se deshacen):
- *  1) Cambiar el selector de un paso (p. ej. en la tarea c, el rótulo `Precio de Napolitana en este producto` por `Precio de Napolitano en este producto`) → esa tarea tiene que FALLAR con el
- *     mensaje «[medición c-cambiar-precio-final] no se pudo «…»: …» que nombra el paso, y no escribir ningún JSON.
- *  2) Sacar un clic de una tarea (p. ej. quitar el `clic` de «+ Agregar opción» en la tarea b, o el de «Visibilidad» en la d, dejando el paso que sigue sin su pantalla) → o falla con el mismo
- *     mensaje, o, si el flujo sigue siendo válido, el número `clics` del JSON baja exactamente en uno.
+ * MUTACIONES DEMOSTRADAS (se hacen a mano, una vez, y se deshacen; esta spec no corre sola en el gate):
+ *  1) Cambiar el selector de un paso (p. ej. en la tarea c, el rótulo `Precio de Napolitana en este producto` por `Precio de Napolitano en este producto`) → esa tarea FALLA con el mensaje
+ *     «[medición c-cambiar-precio-final] no se pudo «…»: …» que nombra el paso, y no escribe ningún JSON.
+ *  2) 6.21, en la tarea c, ir por la biblioteca (`/catalogo/opciones/[id]`) en vez del paso 2 → `salidasDelEspacio` = 1 → el umbral da rojo («salidas del espacio»).
+ *  3) 6.21, agregar un clic de más en la tarea c → 3 clics contra los 2 de antes → el umbral da rojo.
  */
 
 type Tarea = "a-producto-directo" | "b-base-configurable" | "c-cambiar-precio-final" | "d-publicar-en-la-carta";
@@ -79,6 +80,25 @@ interface DestinoDelMenu {
   panel: "empresa" | "sucursal" | "ambos";
   /** El rótulo del grupo del menú que lo contiene. */
   grupo: string;
+}
+
+/**
+ * Lo que pedía cada tarea ANTES del espacio (tabla «antes» de docs/medicion-espacio-del-producto-2026-10-21.md §5, primera corrida, commit c17c3c52): el umbral de DEC-12 es no pasarse de esto. Si se
+ * sube un número para que la spec pase, se está aflojando el umbral del dueño: no se hace.
+ */
+const ANTES = {
+  "a-producto-directo": { pantallas: 3, clics: 3 },
+  "b-base-configurable": { pantallas: 7, clics: 28 },
+  "c-cambiar-precio-final": { pantallas: 2, clics: 2 },
+  "d-publicar-en-la-carta": { pantallas: 2, clics: 6 },
+} as const satisfies Record<Tarea, { pantallas: number; clics: number }>;
+
+/** El umbral de DEC-12 sobre una medición: no peor que antes en pantallas y clics y, donde aplica (b, c y d), 0 salidas del espacio. */
+function afirmarElUmbral(medicion: Medicion): void {
+  const antes = ANTES[medicion.tarea];
+  expect(medicion.pantallas, `${medicion.tarea}: pantallas (antes ${antes.pantallas})`).toBeLessThanOrEqual(antes.pantallas);
+  expect(medicion.clics, `${medicion.tarea}: clics (antes ${antes.clics})`).toBeLessThanOrEqual(antes.clics);
+  if (medicion.salidasDelEspacio !== null) expect(medicion.salidasDelEspacio, `${medicion.tarea}: salidas del espacio (${medicion.secuencia.join(" → ")})`).toBe(0);
 }
 
 /** Las pantallas del espacio del producto (rutas normalizadas): el alta, la portada y sus pasos. Ir a cualquier otra es una salida del espacio. */
@@ -207,7 +227,6 @@ function guardarMedicion(medicion: Medicion): void {
 
 const marca = () => `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
 
-const MENU_CARTA: DestinoDelMenu = { href: "/carta", panel: "sucursal", grupo: "Carta" };
 
 /** Una base ya armada para las tareas c y d: un producto «Por opción» con un grupo «Tamaño» de 3 opciones, cada una con su precio final. */
 async function sembrarBase(sucursalId: string, m: string) {
@@ -232,7 +251,7 @@ async function sembrarBase(sucursalId: string, m: string) {
   return { productoId, nombre, nombreGrupo, grupo };
 }
 
-test.describe("medición «antes» de las tareas del producto (pantallas de hoy)", () => {
+test.describe("medición de las tareas del producto (el espacio) contra el umbral de DEC-12", () => {
   test.beforeEach(async ({ paginaAutenticada: page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
   });
@@ -258,6 +277,7 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
     expect({ tipo: producto.tipo, modoDeVenta: producto.modoDeVenta, precioVenta: Number(producto.precioVenta) }).toEqual({ tipo: "PV", modoDeVenta: "DIRECTO", precioVenta: 4500 });
     const disponibilidad = await prisma.disponibilidadProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: producto.id } } });
     expect(disponibilidad.disponible, "el producto quedó disponible en la sucursal").toBe(true);
+    afirmarElUmbral(medicion);
     guardarMedicion(medicion);
   });
 
@@ -332,6 +352,7 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
     expect(precios.map((p) => [p.opcion.nombre, Number(p.precioAbsoluto)]).sort()).toEqual(tamanos.map(([nombre, precio]) => [nombre, Number(precio)]).sort());
     const incluidas = await prisma.productoAdmiteOpcion.count({ where: { productoId: guardado.id, activo: true, opcion: { grupo: { nombre: grupoIncluida } } } });
     expect(incluidas, "la opción incluida quedó admitida").toBe(1);
+    afirmarElUmbral(medicion);
     guardarMedicion(medicion);
   });
 
@@ -355,6 +376,7 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
     expect(Number(fila.precioAbsoluto), "el precio final nuevo quedó guardado").toBe(23500);
     const otras = await prisma.productoAdmiteOpcion.findMany({ where: { productoId: base.productoId, NOT: { opcionId } }, select: { precioAbsoluto: true } });
     expect(otras.map((o) => Number(o.precioAbsoluto)).sort(), "las otras opciones siguen igual").toEqual([18000, 25000]);
+    afirmarElUmbral(medicion);
     guardarMedicion(medicion);
   });
 
@@ -366,21 +388,18 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
     try {
       await m.ir(`/catalogo/productos/${base.productoId}`, "abrir la ficha del producto");
       await m.ver("la ficha es la del producto", () => expect(page.getByRole("heading", { name: base.nombre, level: 1 })).toBeVisible());
-      await m.irPorElMenu(MENU_CARTA);
-      await m.ver("se abre la carta", () => expect(page.getByRole("heading", { name: "Carta", level: 1 })).toBeVisible());
-      await m.clic(page.getByRole("button", { name: "Visibilidad", exact: true }), "tocar «Visibilidad»");
-      await m.ver("se abre «Visibilidad»", () => expect(page).toHaveURL(/nivel=visibilidad/));
-      const fuera = page.locator("[data-fuera-de-carta]");
-      await m.clic(fuera.locator("> summary"), "abrir «Fuera de carta»");
-      await m.llenar(fuera.getByRole("searchbox", { name: "Buscar en «Fuera de carta»" }), base.nombre, "buscar el producto en «Fuera de carta»");
-      const producto = fuera.locator(`[data-fuera-de-carta-producto="${base.nombre}"]`);
-      await m.clic(producto.getByRole("button", { name: `${base.nombre}: Agregar a la carta` }), "tocar «Agregar a la carta»");
-      await m.clic(producto.getByRole("button", { name: seccion.nombre, exact: true }), "elegir la sección de la carta");
-      await m.ver("el aviso dice que ya sale en la carta", () => expect(page.locator("[data-aviso-carta]").locator("> span")).toHaveText(`«${base.nombre}» ya sale en la carta, al final de «${seccion.nombre}».`));
+      // Desde la Fase 6 (6.17c) la carta es un paso del espacio del producto: «En la carta» está en la tira de pasos y su ficha de carta del producto (la de Secciones) se guarda sin salir de él.
+      await m.clic(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^En la carta/ }), "tocar «En la carta» (el paso 4)");
+      await m.ver("se abre el paso «En la carta»", () => expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible());
+      const ficha = page.locator(`[data-contenido-carta="${base.nombre}"]`);
+      await m.elegir(ficha.getByLabel(/^Sección de carta/), seccion.nombre, "elegir la sección de la carta");
+      await m.clic(ficha.getByRole("button", { name: `Guardar contenido de «${base.nombre}»` }), "tocar «Guardar contenido»");
+      await m.ver("el aviso dice que se muestra en la carta", () => expect(ficha.getByRole("status")).toHaveText(`Carta: "${base.nombre}" se muestra.`));
 
       const medicion = m.resultado(true);
       const contenido = await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: base.productoId } } });
       expect({ visibleEnCarta: contenido.visibleEnCarta, seccionCartaId: contenido.seccionCartaId }).toEqual({ visibleEnCarta: true, seccionCartaId: seccion.id });
+      afirmarElUmbral(medicion);
       guardarMedicion(medicion);
     } finally {
       // Lo de la carta se limpia (como hacen las otras specs de la carta); el producto y sus opciones se quedan, como en las demás specs de opciones.

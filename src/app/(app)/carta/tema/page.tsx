@@ -8,6 +8,7 @@ import { cargarTemaAdmin } from "@/server/consultas/carta/admin";
 import { cambiarAplicacionTema, guardarTemaCarta } from "@/server/actions/carta/tema";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { EditorTema } from "@/components/carta/editor-tema";
 
@@ -37,13 +38,13 @@ export default async function TemaCartaPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_tema", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const datos = await cargarTemaAdmin(ctx.sucursalId, ctx.db);
-  if (!datos) return <p className="text-red-600">No se encontró la sucursal activa.</p>;
+  if (!datos) return <p className="text-error">No se encontró la sucursal activa.</p>;
   const sucursalId = datos.sucursalId;
   const aplicado = datos.tema?.aplicarEnCarta ?? false;
 
@@ -51,7 +52,7 @@ export default async function TemaCartaPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">Tema de la carta</h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Colores, textos, tipografía y layout de la carta pública de «{datos.nombre}». Mientras el tema no esté
           aplicado es un borrador y la carta usa el estilo por defecto; aplicado, la carta lo toma en hasta 5 minutos. Vacío = default de la carta.
         </p>
@@ -59,7 +60,7 @@ export default async function TemaCartaPage() {
           {estadoDelTema(datos)}
         </p>
         {!datos.publica && (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-tinta-tenue">
             Se puede preparar igual; no tiene efecto hasta agregar la sucursal en el{" "}
             <EnlaceInterno href="/carta/portal" className="underline">
               Portal de sucursales
@@ -67,7 +68,7 @@ export default async function TemaCartaPage() {
             .
           </p>
         )}
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Los precios usan la convención del sistema: es-AR, con el símbolo $ a la izquierda (ej. $12.500). No se editan acá.
         </p>
       </div>
@@ -100,14 +101,14 @@ export default async function TemaCartaPage() {
                 }
           }
         >
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-tinta-tenue">
             {aplicado
               ? "Desaplicarlo es la vuelta atrás: la carta vuelve al estilo por defecto y los valores se conservan."
               : "Aplica lo GUARDADO (guardá antes los cambios). No se puede aplicar un tema vacío."}
           </p>
-          <button type="submit" className="mt-2 rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11">
+          <BotonDeServidor type="submit" tamano="compacto" className="mt-2">
             {aplicado ? "Desaplicar el tema" : "Aplicar el tema"}
-          </button>
+          </BotonDeServidor>
         </FormConResultado>
       </section>
     </div>

@@ -1,14 +1,14 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 399,
-  "entradas": 78,
+  "total": 312,
+  "entradas": 66,
   "porTipo": {
-    "button": 213,
-    "input": 123,
+    "button": 184,
+    "input": 78,
     "input-hidden": 16,
-    "select": 33,
-    "textarea": 14
+    "select": 23,
+    "textarea": 11
   },
   "cuentas": {
     "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/botones.tsx": {
@@ -39,45 +39,15 @@
     "src/app/(app)/administracion/permisos/permisos-matriz.tsx": {
       "button": 1
     },
-    "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
-      "button": 1,
-      "select": 2
-    },
-    "src/app/(app)/carta/agrupados/page.tsx": {
-      "button": 6,
-      "input": 4,
-      "select": 3,
-      "textarea": 1
-    },
     "src/app/(app)/carta/mantenimiento-de-carta.tsx": {
       "button": 23,
       "input": 4
     },
     "src/app/(app)/carta/parametrizacion/formularios.tsx": {
-      "input": 21,
-      "input-hidden": 3,
-      "select": 2,
-      "textarea": 2
-    },
-    "src/app/(app)/carta/parametrizacion/generos/page.tsx": {
-      "button": 3
-    },
-    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": {
-      "button": 8,
-      "input": 1
+      "input-hidden": 3
     },
     "src/app/(app)/carta/parametrizacion/secciones/ordenar-secciones.tsx": {
       "button": 11
-    },
-    "src/app/(app)/carta/parametrizacion/secciones/page.tsx": {
-      "button": 3
-    },
-    "src/app/(app)/carta/portal/page.tsx": {
-      "button": 3,
-      "input": 6
-    },
-    "src/app/(app)/carta/tema/page.tsx": {
-      "button": 1
     },
     "src/app/(app)/catalogo/categorias/page.tsx": {
       "button": 2,
@@ -249,26 +219,7 @@
       "button": 4
     },
     "src/components/carta/campo-color.tsx": {
-      "input": 2
-    },
-    "src/components/carta/copiar-carta-de-sucursal.tsx": {
-      "select": 1
-    },
-    "src/components/carta/editor-portal.tsx": {
-      "button": 1,
-      "input": 5
-    },
-    "src/components/carta/editor-tema.tsx": {
-      "button": 1,
-      "input": 6,
-      "select": 1
-    },
-    "src/components/carta/seccion-y-orden.tsx": {
-      "input": 1,
-      "select": 1
-    },
-    "src/components/carta/sincronizar-precio-grupo.tsx": {
-      "button": 2
+      "input": 1
     },
     "src/components/catalogo/asistente-hermanar.tsx": {
       "button": 4,

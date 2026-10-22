@@ -21,6 +21,11 @@ export interface ProductoDelMarco {
   modoDeVenta: "DIRECTO" | "BASE_CONFIGURABLE";
   disponibleAca: boolean;
   sucursalNombre: string;
+  /**
+   * Si el usuario puede ver la FICHA del producto (`producto_ver_catalogo`). Por defecto sí: casi todas las pantallas del espacio lo exigen. El paso «En la carta» pide solo `carta_ver`: quien lo abre sin ver
+   * el catálogo no recibe el código, el tipo ni cómo se vende (lo que es del catálogo), ni un «Resumen» ni un «← Productos» que llevan a una pantalla que no puede abrir.
+   */
+  fichaVisible?: boolean;
 }
 
 export interface PropsDelMarco {
@@ -41,20 +46,25 @@ function pestanaDelPaso(paso: PasoDeLaPortada, actual: PropsDelMarco["actual"]):
 }
 
 export function MarcoDelEspacio({ producto, pasos, actual, children }: PropsDelMarco) {
-  const pestanas: PestanaDeRuta[] = [{ href: rutaDelPaso(producto.id, "portada"), texto: "Resumen", actual: actual === "portada" }, ...pasos.map((p) => pestanaDelPaso(p, actual))];
+  const fichaVisible = producto.fichaVisible ?? true;
+  const pestanas: PestanaDeRuta[] = [{ href: fichaVisible ? rutaDelPaso(producto.id, "portada") : null, texto: "Resumen", actual: actual === "portada" }, ...pasos.map((p) => pestanaDelPaso(p, actual))];
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <header className="flex flex-col gap-3">
-        <p className="text-sm">
-          <Enlace href="/catalogo/productos">← Productos</Enlace>
-        </p>
+        {fichaVisible && (
+          <p className="text-sm">
+            <Enlace href="/catalogo/productos">← Productos</Enlace>
+          </p>
+        )}
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold">{producto.nombre}</h1>
           <p className="flex flex-wrap items-center gap-2 text-sm text-tinta-suave">
-            <span>
-              {producto.codigo} · {producto.tipo === "MP" ? "Materia prima (MP)" : "Producto de venta (PV)"}
-            </span>
-            {producto.tipo === "PV" && <Insignia tono="neutro">{producto.modoDeVenta === "BASE_CONFIGURABLE" ? "Por opción" : "Directo"}</Insignia>}
+            {fichaVisible && (
+              <span>
+                {producto.codigo} · {producto.tipo === "MP" ? "Materia prima (MP)" : "Producto de venta (PV)"}
+              </span>
+            )}
+            {fichaVisible && producto.tipo === "PV" && <Insignia tono="neutro">{producto.modoDeVenta === "BASE_CONFIGURABLE" ? "Por opción" : "Directo"}</Insignia>}
             <Insignia tono={producto.disponibleAca ? "ok" : "aviso"}>{producto.disponibleAca ? `Disponible en «${producto.sucursalNombre}»` : `No disponible en «${producto.sucursalNombre}»`}</Insignia>
           </p>
         </div>

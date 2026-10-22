@@ -44,6 +44,19 @@ describe("MarcoDelEspacio", () => {
     expect(porOpcion).not.toContain(">Directo<");
   });
 
+  it("quien no puede ver la FICHA del producto (solo la carta) no recibe el código, el tipo ni cómo se vende, ni un enlace al Resumen o a la lista de productos", () => {
+    const producto: ProductoDelMarco = { ...PRODUCTO, fichaVisible: false };
+    const html = dibujar({ datos: false, opciones: false, receta: "sin-permiso", carta: "si" }, "en-la-carta", producto);
+    expect(html).toMatch(/<h1[^>]*>Milanesas<\/h1>/);
+    expect(html).toContain("Disponible en «Centro»");
+    expect(html).not.toContain("PV_MILA");
+    expect(html).not.toContain("Producto de venta (PV)");
+    expect(html).not.toContain("Directo");
+    expect(html).not.toContain("Por opción");
+    expect(html).toContain("Resumen");
+    expect(enlaces(html)).toEqual(["/catalogo/productos/pv1/en-la-carta"]);
+  });
+
   it("la pestaña actual lleva aria-current y las demás no", () => {
     const html = dibujar(ACCESO_TOTAL, "opciones");
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);

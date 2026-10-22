@@ -1,51 +1,13 @@
 {
   "regla": "colores-de-escala",
   "meta": "0 en la Fase 6 (DEC-03: las clases de color de Tailwind pasan a los tokens del salón)",
-  "total": 390,
-  "entradas": 64,
+  "total": 291,
+  "entradas": 47,
   "porTipo": {
-    "blanco-negro": 55,
-    "escala": 335
+    "blanco-negro": 46,
+    "escala": 245
   },
   "cuentas": {
-    "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
-      "blanco-negro": 1,
-      "escala": 4
-    },
-    "src/app/(app)/carta/agrupados/page.tsx": {
-      "blanco-negro": 1,
-      "escala": 15
-    },
-    "src/app/(app)/carta/page.tsx": {
-      "escala": 2
-    },
-    "src/app/(app)/carta/parametrizacion/apariencia/page.tsx": {
-      "escala": 2
-    },
-    "src/app/(app)/carta/parametrizacion/formularios.tsx": {
-      "blanco-negro": 1,
-      "escala": 4
-    },
-    "src/app/(app)/carta/parametrizacion/generos/page.tsx": {
-      "escala": 4
-    },
-    "src/app/(app)/carta/parametrizacion/page.tsx": {
-      "escala": 2
-    },
-    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": {
-      "escala": 11
-    },
-    "src/app/(app)/carta/parametrizacion/secciones/page.tsx": {
-      "escala": 4
-    },
-    "src/app/(app)/carta/portal/page.tsx": {
-      "blanco-negro": 1,
-      "escala": 11
-    },
-    "src/app/(app)/carta/tema/page.tsx": {
-      "blanco-negro": 1,
-      "escala": 8
-    },
     "src/app/(app)/catalogo/categorias/page.tsx": {
       "blanco-negro": 1,
       "escala": 4
@@ -186,28 +148,6 @@
     },
     "src/components/agregar-colapsable.tsx": {
       "escala": 1
-    },
-    "src/components/carta/campo-color.tsx": {
-      "escala": 1
-    },
-    "src/components/carta/copiar-carta-de-sucursal.tsx": {
-      "blanco-negro": 1,
-      "escala": 2
-    },
-    "src/components/carta/datos-solo-lectura.tsx": {
-      "escala": 2
-    },
-    "src/components/carta/editor-portal.tsx": {
-      "blanco-negro": 1,
-      "escala": 7
-    },
-    "src/components/carta/editor-tema.tsx": {
-      "blanco-negro": 1,
-      "escala": 5
-    },
-    "src/components/carta/sincronizar-precio-grupo.tsx": {
-      "blanco-negro": 1,
-      "escala": 6
     },
     "src/components/catalogo/asistente-hermanar.tsx": {
       "blanco-negro": 2,
