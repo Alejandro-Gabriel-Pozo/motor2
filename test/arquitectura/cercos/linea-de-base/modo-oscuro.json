@@ -1,10 +1,10 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 277,
-  "entradas": 70,
+  "total": 269,
+  "entradas": 69,
   "porTipo": {
-    "dark:": 277
+    "dark:": 269
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -48,9 +48,6 @@
     },
     "src/app/(app)/catalogo/opciones/page.tsx": {
       "dark:": 9
-    },
-    "src/app/(app)/catalogo/productos/[id]/opciones/page.tsx": {
-      "dark:": 8
     },
     "src/app/(app)/catalogo/productos/page.tsx": {
       "dark:": 2

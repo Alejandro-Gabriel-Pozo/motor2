@@ -4,6 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test as testAutenticado } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
+import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 import { crearMembresias, crearMembresia } from "../setup/membresia";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { activarEmpresaB, crearUsuarioEn, paginaConSesion, suspenderEmpresaB, type EmpresasDeLaPrueba } from "./fixtures/multiempresa";
@@ -444,6 +445,36 @@ testAutenticado("catalogo/productos/[id]/datos de un producto de venta (y la rut
     await prisma.producto.deleteMany({ where: { id: producto.id } });
   }
 });
+
+testAutenticado(
+  "catalogo/productos/[id]/opciones: el paso «Opciones y precio» del espacio (con un grupo en uso, uno quitado y la ventana «Agregar un grupo existente» abierta) sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId }) => {
+    const m = String(Date.now());
+    const tamanos = await sembrarGrupo({ nombre: `E2E A11y Tamaño ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico" }, { nombre: "Grande" }] });
+    const leche = await sembrarGrupo({ nombre: `E2E A11y Leche ${m}`, tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "De vaca" }, { nombre: "Almendras", monto: 300 }] });
+    await sembrarGrupo({ nombre: `E2E A11y Extras ${m}`, tipo: "ADICIONAL", cantidadMinima: 0, cantidadMaxima: 2, marca: m, opciones: [{ nombre: "Huevo frito", monto: 600, conAncla: true }] });
+    const { productoId } = await sembrarProductoConOpciones({
+      nombre: `E2E A11y Opciones ${m}`,
+      codigo: `E2E-A11Y-OP-${m}`,
+      precioVenta: 2500,
+      sucursalId,
+      grupos: [{ grupo: tamanos, modoPrecio: "ABSOLUTO", preciosAbsolutos: { Chico: 2500, Grande: 3100 } }, { grupo: leche }],
+    });
+    // Un grupo quitado del producto (la sección «Quitados de este producto»).
+    await prisma.productoAdmiteGrupo.updateMany({ where: { productoId, grupoId: leche.grupoId }, data: { activo: false } });
+
+    await page.goto(`/catalogo/productos/${productoId}/opciones`);
+    await expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Opciones y precio/ })).toHaveAttribute("aria-current", "page");
+    await expect(page.locator("[data-grupo-quitado]")).toHaveCount(1);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 en reposo").toEqual([]);
+
+    await page.getByRole("button", { name: "Agregar un grupo existente", exact: true }).click();
+    const ventana = page.getByRole("dialog", { name: "Agregar un grupo existente" });
+    await expect(ventana.getByLabel(/^Grupo/)).toBeFocused();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 con la ventana «Agregar un grupo existente» abierta").toEqual([]);
+  },
+);
 
 testAutenticado(
   "reportes/compras: la anulación de una compra (en reposo, con la confirmación abierta, con el rechazo por stock y ya anulada) sin violaciones de axe",

@@ -299,10 +299,13 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
 
     // 4) Los grupos en el producto: el de tamaños con el precio final de cada opción, y el de lo incluido.
     await m.clic(page.getByRole("link", { name: "Editar opciones" }), "tocar «Editar opciones»");
-    await m.ver("se abren las opciones de venta del producto", () => expect(page.getByRole("heading", { level: 1 })).toContainText("Opciones de venta de"));
-    const selectorDeGrupo = page.getByLabel("Grupo", { exact: true });
+    await m.ver("se abren las opciones de venta del producto (el paso «Opciones y precio»)", () => expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible());
+    // Desde la Fase 6 (6.15b) un grupo de la biblioteca se suma desde una ventana: «Agregar un grupo existente» la abre (un clic más por cada grupo) y «Agregar» la cierra.
+    const ventanaDeGrupo = page.getByRole("dialog", { name: "Agregar un grupo existente" });
+    const selectorDeGrupo = ventanaDeGrupo.getByLabel(/^Grupo/);
+    await m.clic(page.getByRole("button", { name: "Agregar un grupo existente", exact: true }), "tocar «Agregar un grupo existente» (tamaños)");
     await m.elegir(selectorDeGrupo, `${grupoTamano} (Tamaño)`, "elegir el grupo de tamaños");
-    await m.clic(page.getByRole("button", { name: "Agregar", exact: true }), "tocar «Agregar» (tamaños)");
+    await m.clic(ventanaDeGrupo.getByRole("button", { name: "Agregar", exact: true }), "tocar «Agregar» (tamaños)");
     const tarjetaTamanos = page.locator(`[data-admision-grupo='${grupoTamano}']`);
     await m.ver("el grupo de tamaños queda en el producto", () => expect(tarjetaTamanos).toBeVisible());
     await m.marcar(tarjetaTamanos.getByRole("radio", { name: "Precio propio por tamaño" }), "elegir «Precio propio por tamaño»");
@@ -311,14 +314,13 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
     }
     await m.clic(tarjetaTamanos.getByRole("button", { name: `Guardar «${grupoTamano}»` }), "tocar «Guardar» del grupo de tamaños");
     await m.ver("se guardó el grupo de tamaños", () => expect(tarjetaTamanos.getByRole("status").filter({ hasText: "como pediste" })).toBeVisible());
+    await m.clic(page.getByRole("button", { name: "Agregar un grupo existente", exact: true }), "tocar «Agregar un grupo existente» (incluida)");
     await m.elegir(selectorDeGrupo, `${grupoIncluida} (Incluida sin costo)`, "elegir el grupo de lo incluido");
-    await m.clic(page.getByRole("button", { name: "Agregar", exact: true }), "tocar «Agregar» (incluida)");
+    await m.clic(ventanaDeGrupo.getByRole("button", { name: "Agregar", exact: true }), "tocar «Agregar» (incluida)");
     await m.ver("el grupo de lo incluido queda en el producto", () => expect(page.locator(`[data-admision-grupo='${grupoIncluida}']`)).toBeVisible());
 
-    // 5) Pasarlo a «Por opción».
-    await m.clic(page.getByRole("link", { name: `← ${producto}` }), "volver a la ficha del producto");
-    // Desde la Fase 6 (6.12) el enlace al editor es el paso 1 de la tira del marco («Qué se vende»); antes era el botón «Editar» de la ficha. Es el mismo clic al mismo destino (`/datos`): la medición no cambia.
-    await m.clic(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ }), "tocar «Qué se vende» (el paso 1, antes el botón «Editar»)");
+    // 5) Pasarlo a «Por opción». Desde la Fase 6 (6.12 y 6.15b) el paso 1 es una pestaña de la tira del marco («Qué se vende») y está a un clic desde el paso 2: ya no hace falta volver a la ficha (antes: «← producto» y el botón «Editar»).
+    await m.clic(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ }), "tocar «Qué se vende» (el paso 1, antes: volver a la ficha y «Editar»)");
     await m.ver("se abre la edición", () => expect(page.getByText(`Editar "${producto}"`)).toBeVisible());
     await m.marcar(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ }), "elegir «Por opción»");
     await m.clic(page.getByRole("button", { name: "Guardar cambios" }), "tocar «Guardar cambios»");
@@ -350,7 +352,7 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
     await m.ir(`/catalogo/productos/${base.productoId}`, "abrir la ficha del producto");
     await m.ver("la ficha es la del producto", () => expect(page.getByRole("heading", { name: base.nombre, level: 1 })).toBeVisible());
     await m.clic(page.getByRole("link", { name: "Editar opciones" }), "tocar «Editar opciones»");
-    await m.ver("se abren las opciones de venta del producto", () => expect(page.getByRole("heading", { level: 1 })).toContainText("Opciones de venta de"));
+    await m.ver("se abren las opciones de venta del producto (el paso «Opciones y precio»)", () => expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible());
     const tarjeta = page.locator(`[data-admision-grupo='${base.nombreGrupo}']`);
     await m.llenar(tarjeta.getByLabel("Precio de Napolitana en este producto"), "23500", "escribir el precio nuevo de «Napolitana»");
     await m.clic(tarjeta.getByRole("button", { name: `Guardar «${base.nombreGrupo}»` }), "tocar «Guardar» del grupo");
