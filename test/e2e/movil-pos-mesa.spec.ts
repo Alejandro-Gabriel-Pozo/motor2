@@ -149,3 +149,41 @@ test("mesa del salón en celular (375 px): sin scroll horizontal en ninguna etap
     await d.limpiar();
   }
 });
+
+test("mapa del salón en celular (375 px): «Facturar» y «Ver pedidos» quedan dentro de la tarjeta angosta; a 1280 px van en fila", async ({ paginaAutenticada: page, sucursalId }) => {
+  const numero = 7600 + Math.floor(Math.random() * 300);
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-MV-TAC-${Date.now()}`, nombre: `E2E Táctil ${Date.now()}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 4500 } });
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero } });
+  await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id, items: { create: [{ productoId: producto.id, cantidad: 1, precioUnitario: 4500, numeroEnvio: 1, creadoPorId: admin.id }] } } });
+  const tarjeta = page.locator(`li[data-mesa="${numero}"]`);
+  try {
+    await fijarCelular(page);
+    await page.goto("/mesas");
+    await expect(tarjeta).toBeVisible();
+    await capturar(page, "pos-mapa-facturar");
+    await expectSinDesborde(page, "mapa de mesas");
+    // «Facturar» y «Ver pedidos» quedan DENTRO de la tarjeta (antes «Facturar» se cortaba por la derecha).
+    const caja = (await tarjeta.boundingBox())!;
+    for (const nombre of ["Ver pedidos", "Facturar"]) {
+      const b = (await tarjeta.getByRole("link", { name: nombre }).boundingBox())!;
+      expect.soft(b.x, `«${nombre}» no se sale por la izquierda de la tarjeta`).toBeGreaterThanOrEqual(caja.x - 0.5);
+      expect.soft(b.x + b.width, `«${nombre}» no se sale por la derecha de la tarjeta`).toBeLessThanOrEqual(caja.x + caja.width + 0.5);
+    }
+
+    // En pantalla ancha los dos botones siguen lado a lado.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/mesas");
+    const verPedidos = (await tarjeta.getByRole("link", { name: "Ver pedidos" }).boundingBox())!;
+    const facturar = (await tarjeta.getByRole("link", { name: "Facturar" }).boundingBox())!;
+    expect(Math.abs(verPedidos.y - facturar.y), "a 1280 px «Ver pedidos» y «Facturar» van en la misma fila").toBeLessThanOrEqual(2);
+    expect(verPedidos.x + verPedidos.width, "y no se pisan").toBeLessThanOrEqual(facturar.x);
+  } finally {
+    const cuentaIds = (await prisma.cuenta.findMany({ where: { mesaId: mesa.id }, select: { id: true } })).map((c) => c.id);
+    await prisma.cuentaItem.deleteMany({ where: { cuentaId: { in: cuentaIds } } });
+    await prisma.cuenta.deleteMany({ where: { id: { in: cuentaIds } } });
+    await prisma.mesa.deleteMany({ where: { id: mesa.id } });
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});

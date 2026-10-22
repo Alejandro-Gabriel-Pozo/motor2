@@ -111,23 +111,26 @@ export function MesaCard(props: MesaCardProps) {
       )}
 
       {estado === "ocupada" && (
-        <div className="flex gap-2">
-          {hrefVerPedidos ? (
-            <Link
-              href={hrefVerPedidos}
-              className="flex w-full items-center justify-center rounded-lg border border-borde py-[9px] text-[13px] font-semibold hover:bg-black/[0.03]"
-            >
-              Ver pedidos
-              <IndicadorDeEnlace />
-            </Link>
-          ) : (
-            <BotonDeServidor variante="secundario" disabled className="w-full">
-              Ver pedidos
-            </BotonDeServidor>
-          )}
-          <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefFacturar}>
-            Facturar
-          </ActionButton>
+        // Contenedor propio: en la tarjeta angosta (2 columnas en celular) los dos botones no entran lado a lado sin cortar «Facturar»; se apilan y, con lugar, van en fila.
+        <div className="@container">
+          <div className="flex flex-col gap-2 @[14rem]:flex-row">
+            {hrefVerPedidos ? (
+              <Link
+                href={hrefVerPedidos}
+                className="flex w-full min-w-0 items-center justify-center rounded-lg border border-borde py-[9px] text-[13px] font-semibold hover:bg-black/[0.03]"
+              >
+                Ver pedidos
+                <IndicadorDeEnlace />
+              </Link>
+            ) : (
+              <BotonDeServidor variante="secundario" disabled className="w-full">
+                Ver pedidos
+              </BotonDeServidor>
+            )}
+            <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefFacturar}>
+              Facturar
+            </ActionButton>
+          </div>
         </div>
       )}
     </div>
@@ -140,7 +143,7 @@ function ActionButton({ color, textColor, href, icon, children }: { color: strin
     return (
       <Link
         href={href}
-        className="flex w-full items-center justify-center gap-1.5 rounded-lg py-[9px] text-[13px] font-semibold transition-opacity hover:opacity-90"
+        className="flex w-full min-w-0 items-center justify-center gap-1.5 rounded-lg py-[9px] text-[13px] font-semibold transition-opacity hover:opacity-90"
         style={{ background: color, color: textColor }}
       >
         {icon}
