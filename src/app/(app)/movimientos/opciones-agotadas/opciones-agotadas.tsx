@@ -91,17 +91,18 @@ export function OpcionesAgotadas({
                     {o.nombre}
                     {o.esNinguna && <span className="text-tinta-suave"> (ninguna)</span>}
                   </span>
-                  <button
-                    type="button"
+                  <Boton
+                    variante="interruptor"
+                    tamano="tactil"
                     aria-pressed={!o.agotada}
                     disabled={!puedeCambiar}
                     title={puedeCambiar ? undefined : "Tu rol puede ver esta pantalla pero no cambiar el estado de las opciones."}
                     onClick={() => cambiar(o.opcionId, o.nombre, !o.agotada, true)}
-                    className="min-h-[44px] min-w-[8.5rem] rounded-full border px-4 py-1.5 text-sm font-medium aria-pressed:border-ok aria-pressed:text-ok-tinta [&:not([aria-pressed=true])]:border-error [&:not([aria-pressed=true])]:bg-error-tinte [&:not([aria-pressed=true])]:text-error disabled:cursor-not-allowed disabled:opacity-70"
+                    className="min-w-34"
                   >
                     <span className="sr-only">{o.nombre}: </span>
                     {o.agotada ? "Agotada" : "Disponible"}
-                  </button>
+                  </Boton>
                 </div>
                 {o.sinStockEnElSistema.map((i) => (
                   <p key={i.productoId} className="text-xs text-aviso-tinta" data-aviso-stock={i.nombre}>

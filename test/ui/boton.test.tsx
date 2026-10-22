@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Boton, claseDeBoton, type TamanoDeBoton, type VarianteDeBoton } from "../../src/ui/primitivas/boton";
 
 /**
- * Contrato de `Boton` (src/ui/primitivas/boton.tsx, contrato `primitiva-boton`): las 35 combinaciones de variante y tamaño, solo con tokens del sistema visual, sin modo oscuro, con el
+ * Contrato de `Boton` (src/ui/primitivas/boton.tsx, contrato `primitiva-boton`): las 40 combinaciones de variante y tamaño, solo con tokens del sistema visual, sin modo oscuro, con el
  * punto de corte `md:` y la zona táctil de 44 px en celular. El comportamiento de `cargando` también se prueba en `primitivas-y-dialogo.test.tsx` (la prueba de la capa entera); acá se
  * prueba la estructura que dibuja cada combinación. Entorno de Vitest = Node: se mira el HTML del servidor y las props del elemento.
  */
@@ -16,6 +16,18 @@ const VARIANTES: Readonly<Record<VarianteDeBoton, string>> = {
   enlace: "text-tinta-suave underline hover:text-tinta",
   "enlace-peligro": "text-error underline hover:decoration-2",
   "sobre-tinta": "border border-borde-sobre-tinta text-superficie hover:bg-superficie/10",
+  interruptor: "border aria-pressed:border-ok aria-pressed:text-ok-tinta not-aria-pressed:border-error not-aria-pressed:bg-error-tinte not-aria-pressed:text-error",
+};
+/** La forma: `rounded` para todos y píldora (`rounded-full`) para el interruptor; nunca los dos radios a la vez. */
+const FORMA: Readonly<Record<VarianteDeBoton, string>> = {
+  primario: "rounded",
+  acento: "rounded",
+  secundario: "rounded",
+  peligro: "rounded",
+  enlace: "rounded",
+  "enlace-peligro": "rounded",
+  "sobre-tinta": "rounded",
+  interruptor: "rounded-full",
 };
 /** El contorno del foco va por variante: `foco` (la tinta) salvo sobre un fondo oscuro, donde se ve `foco-sobre-tinta` (blanco). */
 const FOCO: Readonly<Record<VarianteDeBoton, string>> = {
@@ -26,6 +38,7 @@ const FOCO: Readonly<Record<VarianteDeBoton, string>> = {
   enlace: "focus-visible:outline-foco",
   "enlace-peligro": "focus-visible:outline-foco",
   "sobre-tinta": "focus-visible:outline-foco-sobre-tinta",
+  interruptor: "focus-visible:outline-foco",
 };
 const TAMANOS: Readonly<Record<TamanoDeBoton, string>> = {
   normal: "min-h-11 px-4 text-sm md:min-h-9 md:px-3",
@@ -52,9 +65,10 @@ describe("Boton: variantes y tamaños", () => {
         const dibujadas = clases(html);
         for (const clase of [...esperadas.split(" "), ...esperadosDelTamano.split(" ")]) expect(dibujadas, `${variante}/${tamano} sin «${clase}»`).toContain(clase);
         // Foco con el token de SU variante y forma del sistema.
-        for (const clase of ["rounded", "font-medium", "focus-visible:outline-2", "focus-visible:outline-offset-2", FOCO[variante]]) expect(dibujadas, `${variante}/${tamano} sin «${clase}»`).toContain(clase);
+        for (const clase of [FORMA[variante], "font-medium", "focus-visible:outline-2", "focus-visible:outline-offset-2", FOCO[variante]]) expect(dibujadas, `${variante}/${tamano} sin «${clase}»`).toContain(clase);
         // Un solo color de contorno: el de la variante, nunca los dos.
         expect(dibujadas.filter((c) => /^focus-visible:outline-(?!2$|offset)/.test(c)), `${variante}/${tamano}`).toEqual([FOCO[variante]]);
+        expect(dibujadas.filter((c) => /^rounded/.test(c)), `${variante}/${tamano}: un solo radio`).toEqual([FORMA[variante]]);
         expect(html).toContain('type="button"');
         expect(html).toContain(">Guardar</button>");
       });
@@ -111,6 +125,17 @@ describe("Boton: variantes y tamaños", () => {
     const dibujadas = clases(renderToStaticMarkup(<Boton variante="sobre-tinta">Deshacer</Boton>));
     expect(dibujadas).toContain("focus-visible:outline-foco-sobre-tinta");
     expect(dibujadas).not.toContain("focus-visible:outline-foco");
+  });
+
+  it("interruptor: píldora de dos estados por aria-pressed (ok marcado, error con su tinte sin marcar), 44 px siempre con tactil y deshabilitado al 70 % con cursor de «no permitido»", () => {
+    const dibujadas = clases(renderToStaticMarkup(<Boton variante="interruptor" tamano="tactil" aria-pressed={false}>Agotada</Boton>));
+    for (const clase of ["rounded-full", "border", "aria-pressed:border-ok", "aria-pressed:text-ok-tinta", "not-aria-pressed:border-error", "not-aria-pressed:bg-error-tinte", "not-aria-pressed:text-error", "disabled:cursor-not-allowed", "disabled:opacity-70", "min-h-11"]) {
+      expect(dibujadas, clase).toContain(clase);
+    }
+    expect(dibujadas).not.toContain("disabled:opacity-50");
+    expect(renderToStaticMarkup(<Boton variante="interruptor" aria-pressed={true}>Disponible</Boton>)).toMatch(/<button[^>]*\saria-pressed="true"/);
+    // Las demás variantes siguen al 50 % y con el radio común.
+    expect(clases(renderToStaticMarkup(<Boton>x</Boton>))).toContain("disabled:opacity-50");
   });
 
   it("className se suma al final sin quitar las clases del sistema", () => {
