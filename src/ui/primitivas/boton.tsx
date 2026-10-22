@@ -14,10 +14,12 @@ import type { ButtonHTMLAttributes, MouseEvent } from "react";
  * - `variante="interruptor"`: el botón de DOS estados que dice en cuál está con `aria-pressed` (una píldora «Disponible»/«Agotada»): píldora (`rounded-full`) con el contorno y el texto del tono del estado — `ok` si está
  *   marcado (`aria-pressed="true"`), `error` con fondo tintado si no — en lugar del relleno de las demás variantes. El estado lo dice el TEXTO que pone quien lo usa; el tono lo refuerza. Va con `tamano="tactil"`
  *   (44 px en cualquier ancho) y, si hace falta un ancho mínimo para que los dos textos midan lo mismo, `min-w-*` en `className`. Deshabilitado (el rol solo mira): `cursor-not-allowed` y 70 % de opacidad.
+ * - `variante="seleccion"`: el botón que ELIGE entre varios y dice cuál está elegido con `aria-pressed` (una fila de una lista que se reordena, el criterio de una limpieza). Sin elegir se ve como el secundario; elegido, fondo `tinta`, texto `superficie` y letra
+ *   seminegrita. A diferencia del interruptor no es de dos estados «buenos/malos»: la opción sin elegir no es un error, así que no lleva el tono `error`. Va con `tamano="tactil"`; si el contenido es una fila (número, nombre, marca), se arma dentro de un `<span className="flex w-full …">`.
  * - `tamano="en-fila"`: la acción de texto de una fila de lista o tabla («Desactivar», «Sí, desactivar», «Cancelar»…) y la de la cabecera («Salir»). 44 px de alto en celular y, desde `md:`, la
  *   altura del texto (sin mínimo y sin relleno horizontal): así la fila de escritorio mide lo que medía cuando eran enlaces de texto y el relleno de la celda no se suma a uno de 32 px.
  */
-export type VarianteDeBoton = "primario" | "acento" | "secundario" | "peligro" | "enlace" | "enlace-peligro" | "sobre-tinta" | "interruptor";
+export type VarianteDeBoton = "primario" | "acento" | "secundario" | "peligro" | "enlace" | "enlace-peligro" | "sobre-tinta" | "interruptor" | "seleccion";
 export type TamanoDeBoton = "normal" | "compacto" | "chico" | "tactil" | "en-fila";
 
 const BASE =
@@ -33,6 +35,7 @@ const FOCO_DE_LA_VARIANTE: Record<VarianteDeBoton, string> = {
   "enlace-peligro": "focus-visible:outline-foco",
   "sobre-tinta": "focus-visible:outline-foco-sobre-tinta",
   interruptor: "focus-visible:outline-foco",
+  seleccion: "focus-visible:outline-foco",
 };
 
 const VARIANTES: Record<VarianteDeBoton, string> = {
@@ -46,6 +49,9 @@ const VARIANTES: Record<VarianteDeBoton, string> = {
   "sobre-tinta": "border border-borde-sobre-tinta text-superficie hover:bg-superficie/10",
   // Dos estados por `aria-pressed`: marcado, contorno y texto `ok`; sin marcar, contorno y texto `error` sobre su tinte.
   interruptor: "border aria-pressed:border-ok aria-pressed:text-ok-tinta not-aria-pressed:border-error not-aria-pressed:bg-error-tinte not-aria-pressed:text-error",
+  // Elegir UNA opción entre varias por `aria-pressed` (la fila de una lista que se reordena, el criterio de una limpieza): sin marcar es el secundario; marcada, fondo `tinta` con texto
+  // `superficie` y letra seminegrita. Sin marcar NO es un error (a diferencia del interruptor): no se pinta de rojo. El hover solo aplica a la que no está marcada.
+  seleccion: "border border-borde-control bg-superficie text-tinta not-aria-pressed:hover:bg-superficie-suave aria-pressed:border-tinta aria-pressed:bg-tinta aria-pressed:font-semibold aria-pressed:text-superficie",
 };
 
 /** La forma del botón (el radio del borde): `rounded` para todos, píldora para el interruptor. Va por variante para que no se pisen dos radios en la misma clase. */
@@ -58,6 +64,7 @@ const FORMA: Record<VarianteDeBoton, string> = {
   "enlace-peligro": "rounded",
   "sobre-tinta": "rounded",
   interruptor: "rounded-full",
+  seleccion: "rounded",
 };
 
 /** Cómo se ve deshabilitado: atenuado (50 %) para todos; el interruptor, que el rol de solo lectura ve sin poder tocarlo, al 70 % y con el cursor de «no permitido». */
@@ -70,6 +77,7 @@ const DESHABILITADO: Record<VarianteDeBoton, string> = {
   "enlace-peligro": "disabled:opacity-50",
   "sobre-tinta": "disabled:opacity-50",
   interruptor: "disabled:cursor-not-allowed disabled:opacity-70",
+  seleccion: "disabled:opacity-50",
 };
 
 const TAMANOS: Record<TamanoDeBoton, string> = {

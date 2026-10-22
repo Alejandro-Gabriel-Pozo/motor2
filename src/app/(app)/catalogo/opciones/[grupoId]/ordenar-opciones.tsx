@@ -108,18 +108,15 @@ export function OrdenarOpciones({ opciones, accion }: { opciones: OpcionParaOrde
         {lista.flatMap((o, i) => [
           lugar(i),
           <li key={o.id}>
-            <button
-              type="button"
-              aria-pressed={elegida === o.id}
-              onClick={() => setElegida(elegida === o.id ? null : o.id)}
-              className="flex min-h-[44px] w-full items-center gap-2 rounded border px-3 py-2 text-left text-sm aria-pressed:border-tinta aria-pressed:font-semibold"
-            >
-              <span className="tabular-nums text-tinta-suave">{i + 1}.</span>
-              <span>{o.nombre}</span>
-              {o.esNinguna && <span className="text-xs text-tinta-suave">(ninguna)</span>}
-              {!o.activa && <span className="text-xs text-tinta-suave">(archivada)</span>}
-              {elegida === o.id && <span className="ml-auto text-xs">Elegida</span>}
-            </button>
+            <Boton variante="seleccion" tamano="tactil" aria-pressed={elegida === o.id} onClick={() => setElegida(elegida === o.id ? null : o.id)} className="w-full">
+              <span className="flex w-full items-center gap-2 text-left">
+                <span className="tabular-nums opacity-70">{i + 1}.</span>
+                <span>{o.nombre}</span>
+                {o.esNinguna && <span className="text-xs opacity-70">(ninguna)</span>}
+                {!o.activa && <span className="text-xs opacity-70">(archivada)</span>}
+                {elegida === o.id && <span className="ml-auto text-xs">Elegida</span>}
+              </span>
+            </Boton>
           </li>,
         ])}
         {lugar(lista.length)}
