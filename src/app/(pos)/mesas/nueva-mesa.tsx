@@ -5,9 +5,12 @@ import { useState, useTransition } from "react";
 import { crearMesa } from "@/server/actions/pos/mesas";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
+import { Dialogo } from "@/ui/componentes/superposiciones/dialogo";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 
 /**
- * «Nueva mesa»: la única pieza de cliente del mapa. Abre un diálogo propio (con `role="dialog"`, título y cierre con Escape) con el
+ * «Nueva mesa»: la única pieza de cliente del mapa. Abre el `Dialogo` del sistema (modal nativo: rol, título, foco atrapado y devuelto al botón, cierre con Escape; mientras se crea no se cierra) con el
  * número sugerido precargado (el mayor + 1) y llama a `crearMesa`; si sale bien, cierra el diálogo, avisa y pide `router.refresh()`
  * (la acción no refresca sola: ver su docstring). Sin permiso de Editar en `pos_mesas` el botón queda deshabilitado; igual la acción
  * vuelve a verificarlo en el servidor.
@@ -52,65 +55,42 @@ export function NuevaMesa({ siguienteNumero, puedeCrear }: { siguienteNumero: nu
 
   return (
     <div className="flex flex-col items-start gap-1.5 md:items-end">
-      <button
-        type="button"
-        onClick={abrir}
-        disabled={!puedeCrear}
-        title={puedeCrear ? undefined : "Tu rol puede ver el mapa pero no dar de alta mesas."}
-        className="flex items-center justify-center gap-1.5 rounded-lg bg-marca px-4 py-[9px] text-[13px] font-semibold text-superficie transition-colors enabled:hover:bg-marca-hover disabled:cursor-not-allowed disabled:opacity-50"
-      >
+      <Boton variante="acento" onClick={abrir} disabled={!puedeCrear} title={puedeCrear ? undefined : "Tu rol puede ver el mapa pero no dar de alta mesas."}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
           <path d="M12 5v14M5 12h14" />
         </svg>
         Nueva mesa
-      </button>
+      </Boton>
       {aviso && (
-        <p role="status" className="text-[12.5px] text-ok-tinta">
+        <Aviso variante="exito" forma="en-linea">
           {aviso}
-        </p>
+        </Aviso>
       )}
 
-      {abierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={cerrar}>
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="nueva-mesa-titulo"
-            className="w-full max-w-sm rounded-[14px] bg-superficie p-5 text-left shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") cerrar();
-            }}
-          >
-            <h2 id="nueva-mesa-titulo" className="mb-4 text-lg font-extrabold tracking-tight">
-              Nueva mesa
-            </h2>
-            <form onSubmit={enviar} className="flex flex-col gap-3">
-              <label htmlFor="nueva-mesa-numero" className="text-[13px] font-semibold">
-                Número de mesa
-              </label>
-              <CampoNumero id="nueva-mesa-numero" value={numero} onChange={setNumero} decimales={0} required autoFocus />
-              {error && (
-                <p id="nueva-mesa-error" role="alert" className="text-[13px] text-error">
-                  {error}
-                </p>
-              )}
-              <div className="mt-1 flex justify-end gap-2">
-                <button type="button" onClick={cerrar} className="rounded-lg border border-borde px-4 py-[9px] text-[13px] font-semibold hover:bg-superficie-suave">
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={pending}
-                  className="rounded-lg bg-marca px-4 py-[9px] text-[13px] font-semibold text-superficie enabled:hover:bg-marca-hover disabled:opacity-50"
-                >
-                  {pending ? "Creando…" : "Crear mesa"}
-                </button>
-              </div>
-            </form>
+      <Dialogo abierto={abierto} titulo="Nueva mesa" onCerrar={cerrar} cerrable={!pending}>
+        <form onSubmit={enviar} className="flex flex-col gap-3">
+          <label htmlFor="nueva-mesa-numero" className="text-sm font-medium">
+            Número de mesa
+          </label>
+          {/* El foco inicial va al número (lo marca `data-foco-inicial`; un autoFocus de React no enfoca dentro de un <dialog> todavía cerrado). */}
+          <div data-foco-inicial="">
+            <CampoNumero id="nueva-mesa-numero" value={numero} onChange={setNumero} decimales={0} required />
           </div>
-        </div>
-      )}
+          {error && (
+            <Aviso id="nueva-mesa-error" variante="error" forma="en-linea">
+              {error}
+            </Aviso>
+          )}
+          <div className="mt-1 flex justify-end gap-2">
+            <Boton variante="secundario" onClick={cerrar}>
+              Cancelar
+            </Boton>
+            <Boton type="submit" variante="acento" disabled={pending}>
+              {pending ? "Creando…" : "Crear mesa"}
+            </Boton>
+          </div>
+        </form>
+      </Dialogo>
     </div>
   );
 }

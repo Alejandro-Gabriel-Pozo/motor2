@@ -13,7 +13,7 @@ import { APROBACIONES, idsDeContratosAprobados, type Aprobacion } from "./aproba
  * dueño: fail-closed. Lo que el evaluador no puede analizar es un hallazgo, no un «todo bien».
  *
  *  (a) `.github/workflows/ci.yml`: el job `estatico` corre `npm run arquitectura` y el job `integracion` corre `npm test`, sin `if`, sin `continue-on-error` ni cambio de carpeta; el job `gate`
- *      necesita los cinco jobs, su expresión los nombra y se llama «Gate (requerido)»; ningún `continue-on-error` en todo el workflow; ningún `if` fuera de la lista declarada
+ *      necesita los seis jobs, su expresión los nombra y se llama «Gate (requerido)»; ningún `continue-on-error` en todo el workflow; ningún `if` fuera de la lista declarada
  *      (`CONDICIONES_PERMITIDAS`); sin `paths` ni `paths-ignore` en `on:`; ninguna variable que cambie el comportamiento de los guardianes (`CREAR_CERCOS`, `BAJAR_CERCOS`, `REGENERAR_*`…).
  *      Y la evidencia por corrida (paso G7): el paso `npm run arquitectura` define `CONTRATOS_EVIDENCIA: resultado-contratos.json` y un paso POSTERIOR de `estatico` sube ese archivo con `actions/upload-artifact`
  *      y `if-no-files-found: error` (`ci-sin-evidencia`). `CONTRATOS_EVIDENCIA` es la única variable `CONTRATOS_*` permitida: solo dice adónde se escribe lo ya calculado y no cambia ningún guardián.
@@ -204,7 +204,7 @@ function pasosDe(job: NodoYaml): PasoDeJob[] {
 }
 
 /** Los jobs que el gate exige (en el orden en que figuran en `needs`), el gate y los dos pasos que corren a los guardianes. Derivado del workflow real de `ci.yml`. */
-const JOBS_QUE_EXIGE_EL_GATE = ["estatico", "build", "integracion", "conteo", "e2e"] as const;
+const JOBS_QUE_EXIGE_EL_GATE = ["estatico", "build", "integracion", "conteo", "e2e", "conteo-e2e"] as const;
 const NOMBRE_DEL_GATE = "Gate (requerido)";
 const PASOS_DE_LOS_GUARDIANES: readonly { job: string; descripcion: string; corre: (run: string) => boolean }[] = [
   { job: "estatico", descripcion: "npm run arquitectura", corre: (run) => run === "npm run arquitectura" },
@@ -220,7 +220,7 @@ const CONDICIONES_PERMITIDAS: readonly { job: string; paso: string | null; condi
   { job: "gate", paso: null, condicion: "always()", motivo: "el gate corre siempre y falla él si algún job no terminó en verde (un job omitido también lo hace fallar)" },
   { job: "integracion", paso: "Tests que fallaron (resumen al final del log)", condicion: "failure()", motivo: "resumen de lo que falló, solo si npm test falló" },
   { job: "integracion", paso: "Resultado de Vitest de esta parte (artefacto)", condicion: "always()", motivo: "sube el resultado de la parte aunque falle, para que el conteo la vea" },
-  { job: "e2e", paso: "Conteo (línea de base)", condicion: "always()", motivo: "informa el conteo de Playwright aunque falle" },
+  { job: "conteo-e2e", paso: null, condicion: "always()", motivo: "el conteo del E2E corre aunque alguna parte de Playwright haya fallado, para informar qué se perdió" },
   { job: "e2e", paso: "Resultado de Playwright (artefacto)", condicion: "always()", motivo: "sube el resultado aunque falle" },
   { job: "e2e", paso: "Trazas de los specs que fallaron", condicion: "failure()", motivo: "sube las trazas solo si Playwright falló" },
 ];
@@ -257,7 +257,7 @@ function workflowSinMemoria(texto: string, archivo: string): HallazgoDeCumplimie
 
   // Los jobs exigidos existen.
   for (const nombre of [...JOBS_QUE_EXIGE_EL_GATE, "gate"]) {
-    if (!jobs.has(nombre)) agregar("ci-job-ausente", jobsNodo.linea, `falta el job \`${nombre}\``, `restaurá el job \`${nombre}\`: el gate exige estatico, build, integracion, conteo y e2e`);
+    if (!jobs.has(nombre)) agregar("ci-job-ausente", jobsNodo.linea, `falta el job \`${nombre}\``, `restaurá el job \`${nombre}\`: el gate exige estatico, build, integracion, conteo, e2e y conteo-e2e`);
   }
 
   // Los pasos de los guardianes.

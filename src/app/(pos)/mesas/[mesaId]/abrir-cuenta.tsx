@@ -1,8 +1,11 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import { abrirCuenta } from "@/server/actions/pos/cuenta-apertura";
-import { BOTON_PRIMARIO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
+import { Dialogo } from "@/ui/componentes/superposiciones/dialogo";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 import { useAccionMesa } from "./usar-accion";
 
 /** Botones rápidos del diálogo de comensales: 1 a 6, el rango más común (docs/plan-comensales-y-limite-mesas-2026-09-26.md). */
@@ -20,7 +23,6 @@ export function AbrirCuenta({ mesaId, puede }: { mesaId: string; puede: boolean 
   const [abierto, setAbierto] = useState(false);
   const [comensales, setComensales] = useState<number | null>(null);
   const [otro, setOtro] = useState("");
-  const base = useId();
 
   const abrirDialogo = () => {
     setComensales(null);
@@ -56,81 +58,47 @@ export function AbrirCuenta({ mesaId, puede }: { mesaId: string; puede: boolean 
 
   return (
     <div className="flex flex-col items-start gap-2">
-      <button type="button" className={BOTON_PRIMARIO} disabled={!puede} title={puede ? undefined : "Tu rol puede ver la mesa pero no abrir cuentas."} onClick={abrirDialogo}>
+      <Boton variante="acento" disabled={!puede} title={puede ? undefined : "Tu rol puede ver la mesa pero no abrir cuentas."} onClick={abrirDialogo}>
         Abrir cuenta
-      </button>
+      </Boton>
       {error && !abierto && (
-        <p role="alert" className="text-[13px] text-error">
+        <Aviso variante="error" forma="en-linea">
           {error}
-        </p>
+        </Aviso>
       )}
 
-      {abierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={cerrarDialogo}>
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`${base}-titulo`}
-            className="w-full max-w-sm rounded-[14px] bg-superficie p-5 text-left shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") cerrarDialogo();
-            }}
-          >
-            <h2 id={`${base}-titulo`} className="mb-1 text-lg font-extrabold tracking-tight">
-              ¿Cuántos comensales?
-            </h2>
-            <p className="mb-4 text-[13px] text-tinta-suave">Es solo para medir la rotación de la mesa: no divide la cuenta por persona.</p>
-            <form onSubmit={confirmar} className="flex flex-col gap-3">
-              <div role="group" aria-label="Comensales" className="flex flex-wrap gap-1.5">
-                {RAPIDOS.map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    aria-pressed={comensales === n}
-                    onClick={() => elegirRapido(n)}
-                    className={`size-9 rounded-lg border text-[14px] font-semibold tabular-nums transition-colors ${
-                      comensales === n ? "border-marca bg-marca text-superficie" : "border-borde bg-superficie hover:bg-superficie-suave"
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-              <label htmlFor={`${base}-otro`} className="text-[13px] font-semibold">
-                Otro
-              </label>
-              <input
-                id={`${base}-otro`}
-                inputMode="numeric"
-                autoComplete="off"
-                min={1}
-                max={99}
-                value={otro}
-                onChange={(e) => elegirOtro(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                placeholder="Cantidad"
-                aria-invalid={error ? true : undefined}
-                aria-describedby={error ? `${base}-error` : undefined}
-                className={`${CAMPO} tabular-nums`}
-              />
-              {error && (
-                <p id={`${base}-error`} role="alert" className="text-[13px] text-error">
-                  {error}
-                </p>
-              )}
-              <div className="mt-1 flex justify-end gap-2">
-                <button type="button" onClick={cerrarDialogo} className={BOTON_SECUNDARIO}>
-                  Cancelar
-                </button>
-                <button type="submit" disabled={pending} className={BOTON_PRIMARIO}>
-                  {pending ? "Abriendo…" : "Confirmar apertura"}
-                </button>
-              </div>
-            </form>
+      <Dialogo abierto={abierto} titulo="¿Cuántos comensales?" onCerrar={cerrarDialogo} cerrable={!pending}>
+        <p className="mb-4 text-sm text-tinta-suave">Es solo para medir la rotación de la mesa: no divide la cuenta por persona.</p>
+        <form onSubmit={confirmar} className="flex flex-col gap-3">
+          <div role="group" aria-label="Comensales" className="flex flex-wrap gap-1.5">
+            {RAPIDOS.map((n) => (
+              <Boton key={n} variante={comensales === n ? "acento" : "secundario"} tamano="tactil" className="min-w-11" aria-pressed={comensales === n} onClick={() => elegirRapido(n)}>
+                {n}
+              </Boton>
+            ))}
           </div>
-        </div>
-      )}
+          <Campo
+            etiqueta="Otro"
+            inputMode="numeric"
+            autoComplete="off"
+            min={1}
+            max={99}
+            value={otro}
+            onChange={(e) => elegirOtro(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            placeholder="Cantidad"
+            error={error}
+          />
+          <div className="mt-1 flex justify-end gap-2">
+            <Boton variante="secundario" onClick={cerrarDialogo}>
+              Cancelar
+            </Boton>
+            <Boton type="submit" variante="acento" disabled={pending}>
+              {pending ? "Abriendo…" : "Confirmar apertura"}
+            </Boton>
+          </div>
+        </form>
+      </Dialogo>
     </div>
   );
 }

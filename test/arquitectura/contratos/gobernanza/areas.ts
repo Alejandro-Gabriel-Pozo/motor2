@@ -39,7 +39,7 @@ const CARTA: readonly IdDeContrato[] = ["borde-propio-de-carta", "separador-de-l
 export const AREAS: DeclaracionDeAreas = {
   // --- frontend: src/app (las secciones de `(app)`, los grupos de rutas, la API, las pantallas sueltas y la raíz), src/components y src/ui.
   "app": [],
-  "app/(app)": [],
+  "app/(app)": ["primitiva-boton", "primitiva-enlace", "tokens-visuales"],
   "app/(app)/administracion": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-selector", "tokens-visuales"],
   "app/(app)/carta": ["primitiva-area-de-texto", "primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-casilla", "primitiva-selector", "tokens-visuales"],
   "app/(app)/catalogo": ["primitiva-area-de-texto", "primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-casilla", "primitiva-enlace", "primitiva-insignia", "primitiva-selector", "tokens-visuales"],
@@ -49,7 +49,7 @@ export const AREAS: DeclaracionDeAreas = {
   "app/(app)/stock": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-selector", "tokens-visuales"],
   "app/(app)/traspasos": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-selector", "tokens-visuales"],
   "app/(carta-publica)": [],
-  "app/(pos)": ["tokens-visuales"],
+  "app/(pos)": ["primitiva-area-de-texto", "primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-selector", "tokens-visuales"],
   "app/api": [],
   "app/invitacion": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-casilla", "tokens-visuales"],
   "app/login": ["primitiva-aviso", "tokens-visuales"],
@@ -58,7 +58,7 @@ export const AREAS: DeclaracionDeAreas = {
   "components/carta-publica": CARTA,
   "components/catalogo": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-insignia", "primitiva-selector", "tokens-visuales"],
   "components/mesas": ["tokens-visuales"],
-  "components/receta": [],
+  "components/receta": ["tokens-visuales"],
   "ui": ["tokens-visuales"],
   // --- trabajo-programado: los crons de vercel.json.
   "app/api/cron": [],

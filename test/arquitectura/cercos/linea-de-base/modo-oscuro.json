@@ -1,20 +1,8 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 4,
-  "entradas": 3,
-  "porTipo": {
-    "dark:": 4
-  },
-  "cuentas": {
-    "src/app/(app)/catalogo/productos/page.tsx": {
-      "dark:": 2
-    },
-    "src/components/agregar-colapsable.tsx": {
-      "dark:": 1
-    },
-    "src/components/receta/lectura-de-cantidad.tsx": {
-      "dark:": 1
-    }
-  }
+  "total": 0,
+  "entradas": 0,
+  "porTipo": {},
+  "cuentas": {}
 }

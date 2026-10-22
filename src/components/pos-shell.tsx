@@ -1,3 +1,4 @@
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { EnlaceAdministracion } from "@/components/enlace-administracion";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { navegacionDelUsuario } from "@/server/acceso/menu";
@@ -39,9 +40,9 @@ export async function PosShell({ ctx, children }: { ctx: ContextoUsuario; childr
                 await signOut();
               }}
             >
-              <button type="submit" className="underline hover:text-tinta">
+              <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                 Salir
-              </button>
+              </BotonDeServidor>
             </form>
           </div>
         </div>

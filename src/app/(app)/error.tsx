@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect } from "react";
+import { Boton } from "@/ui/primitivas/boton";
+import { Enlace } from "@/ui/primitivas/enlace";
 
 /**
  * Pantalla de error de cualquier sección de la aplicación (dentro del menú y la barra: solo se cae el contenido). Sin esto, un
@@ -19,17 +20,13 @@ export default function ErrorDeLaAplicacion({ error, retry }: { error: Error & {
   return (
     <div role="alert" className="max-w-md space-y-3">
       <h1 className="text-xl font-semibold">Algo falló al abrir esta pantalla</h1>
-      <p className="text-sm text-neutral-500">
+      <p className="text-sm text-tinta-suave">
         No se perdió nada de lo que ya estaba guardado. Puede ser un corte momentáneo de la conexión: probá de nuevo. Si vuelve a pasar, avisale a
         un admin{error.digest ? ` y pasale este código: ${error.digest}` : ""}.
       </p>
       <div className="flex items-center gap-3">
-        <button type="button" onClick={() => retry()} className="rounded bg-neutral-900 px-4 py-2 text-white">
-          Reintentar
-        </button>
-        <Link href="/" className="text-sm underline">
-          Ir al inicio
-        </Link>
+        <Boton onClick={() => retry()}>Reintentar</Boton>
+        <Enlace href="/">Ir al inicio</Enlace>
       </div>
     </div>
   );

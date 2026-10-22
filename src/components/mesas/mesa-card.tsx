@@ -8,6 +8,7 @@
 // El total se formatea con `formatearMonto` (el mismo del ticket y de la pantalla de la mesa, centavos incluidos; P19, decisión del dueño 2026-10-11).
 
 import Link from "next/link";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import type { ReactNode } from "react";
 import { formatearMonto, type EstadoMesa } from "@/core/pos/public";
@@ -55,51 +56,45 @@ export function MesaCard(props: MesaCardProps) {
 
       <div className="mb-3 flex items-start justify-between">
         <div>
-          <div className="text-[10.5px] font-semibold tracking-wide text-tinta-tenue">MESA</div>
+          <div className="text-xs font-semibold tracking-wide text-tinta-tenue">MESA</div>
           <div className="text-xl font-extrabold leading-none tabular-nums">{numero}</div>
         </div>
 
         {estado === "ocupada" ? (
-          <button
-            type="button"
-            disabled
-            aria-label="Opciones de mesa"
-            title="Mover o unir mesas todavía no está disponible."
-            className="-mr-1 rounded-md p-1 text-tinta-tenue enabled:hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <BotonDeServidor variante="enlace" tamano="compacto" disabled aria-label="Opciones de mesa" title="Mover o unir mesas todavía no está disponible." className="-mr-1">
             <IconDots />
-          </button>
+          </BotonDeServidor>
         ) : (
-          <span className="rounded-md px-2 py-1 text-[11px] font-semibold" style={{ color: cfg.varTexto, background: cfg.varTint }}>
+          <span className="rounded-md px-2 py-1 text-xs font-semibold" style={{ color: cfg.varTexto, background: cfg.varTint }}>
             {cfg.label}
           </span>
         )}
       </div>
 
-      {estado === "libre" && <p className="mb-4 text-[13px] text-tinta-suave">Disponible para comensales</p>}
+      {estado === "libre" && <p className="mb-4 text-sm text-tinta-suave">Disponible para comensales</p>}
 
       {estado === "en_pedido" && (
         <>
           <p className="mb-1 text-[13px] text-tinta-suave">
             {productosSinEnviar ?? 0} producto{productosSinEnviar === 1 ? "" : "s"} sin enviar
           </p>
-          <p className="mb-4 text-[15px] font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
+          <p className="mb-4 text-base font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
         </>
       )}
 
       {estado === "ocupada" && (
         <>
-          <div className="mb-1 flex items-center gap-1.5 text-[12.5px] text-tinta-suave">
+          <div className="mb-1 flex items-center gap-1.5 text-sm text-tinta-suave">
             <IconUser />
             <span>
               {mesero ?? "Mesero asignado"}
               {tiempoAbierta ? ` · ${tiempoAbierta}` : ""}
             </span>
           </div>
-          <p className="mb-3 text-[12.5px] text-tinta-suave">
+          <p className="mb-3 text-sm text-tinta-suave">
             {pedidosEnviados ?? 0} pedido{pedidosEnviados === 1 ? "" : "s"} enviado{pedidosEnviados === 1 ? "" : "s"}
           </p>
-          <p className="mb-3 text-[15px] font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
+          <p className="mb-3 text-base font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
         </>
       )}
 
@@ -126,9 +121,9 @@ export function MesaCard(props: MesaCardProps) {
               <IndicadorDeEnlace />
             </Link>
           ) : (
-            <button type="button" disabled className="w-full rounded-lg border border-borde py-[9px] text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+            <BotonDeServidor variante="secundario" disabled className="w-full">
               Ver pedidos
-            </button>
+            </BotonDeServidor>
           )}
           <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefFacturar}>
             Facturar
@@ -155,15 +150,11 @@ function ActionButton({ color, textColor, href, icon, children }: { color: strin
     );
   }
   return (
-    <button
-      type="button"
-      disabled
-      className="flex w-full items-center justify-center gap-1.5 rounded-lg py-[9px] text-[13px] font-semibold transition-opacity enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-      style={{ background: color, color: textColor }}
-    >
+    // El color es el del ESTADO de la mesa (dato: libre, en pedido, ocupada), no una variante del botón: va en `style`, que le gana a la variante.
+    <BotonDeServidor disabled className="w-full" style={{ background: color, color: textColor }}>
       {icon}
       {children}
-    </button>
+    </BotonDeServidor>
   );
 }
 

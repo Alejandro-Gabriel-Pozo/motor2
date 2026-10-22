@@ -57,7 +57,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     return (
       <div className="space-y-3">
         <p className="font-semibold">No se encontró esa mesa en esta sucursal.</p>
-        <Link href="/mesas" className="text-[13px] text-tinta-suave underline hover:text-tinta">
+        <Link href="/mesas" className="text-sm text-tinta-suave underline hover:text-tinta">
           Volver al mapa
         </Link>
       </div>
@@ -98,7 +98,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
 
   return (
     <div>
-      <Link href="/mesas" className="mb-4 inline-flex items-center gap-1 text-[13px] text-tinta-suave hover:text-tinta">
+      <Link href="/mesas" className="mb-4 inline-flex items-center gap-1 text-sm text-tinta-suave hover:text-tinta">
         <span aria-hidden>←</span> Volver al mapa
       </Link>
 
@@ -108,7 +108,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
         <header className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">{titulo}</h1>
-            <p className="text-[13.5px] text-tinta-suave">
+            <p className="text-sm text-tinta-suave">
               {cuenta ? `Atiende ${cuenta.mesero} · abierta ${cuenta.tiempoAbierta}` : "Libre · sin cuenta abierta"}
             </p>
             {cuenta && (
@@ -127,7 +127,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
           </div>
           {cuenta && (
             <div className="text-left md:text-right">
-              <div className="text-[11px] font-medium text-tinta-tenue">Total</div>
+              <div className="text-xs font-medium text-tinta-tenue">Total</div>
               <div data-total-cuenta className="text-2xl font-extrabold tabular-nums">
                 {formatearMonto(cuenta.total)}
               </div>
@@ -145,7 +145,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
           ) : (
             <div className="flex flex-col gap-5">
               <section aria-labelledby="agregar-titulo" className="rounded-[14px] border border-borde bg-superficie p-4">
-                <h2 id="agregar-titulo" className="mb-3 text-[15px] font-bold">
+                <h2 id="agregar-titulo" className="mb-3 text-base font-bold">
                   Agregar al pedido
                 </h2>
                 <AgregarItems cuentaId={cuenta.id} puede={tomarPedido.editar} selectorCarta={selectorCarta} configuraciones={configuraciones} puedeAgotar={agotar.editar} />
@@ -174,7 +174,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
               {cuenta.envios.map((envio) => (
                 <section key={envio.numero} aria-labelledby={`envio-${envio.numero}`} data-envio={envio.numero} className="rounded-[14px] border border-borde bg-superficie p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <h2 id={`envio-${envio.numero}`} className="text-[15px] font-bold">
+                    <h2 id={`envio-${envio.numero}`} className="text-base font-bold">
                       Envío {envio.numero} · en cocina
                     </h2>
                     <ReimprimirEnvio numero={envio.numero} puede={tomarPedido.editar} />
@@ -206,7 +206,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
           )}
           <CuentasCerradas tickets={tickets} puede={cerrarCuenta.editar} puedeCorregir={emitirCorregida.editar} zonaHoraria={ctx.empresaZonaHoraria} />
           {verReportesDinero.ver && (
-            <p className="mt-3 text-[13px]">
+            <p className="mt-3 text-sm">
               <Link href={`/reportes/tickets?mesaId=${mesa.id}`} className="text-tinta-suave underline hover:text-tinta">
                 Ver todos los tickets de esta mesa →
               </Link>
@@ -227,13 +227,13 @@ function ItemEnviado({ item, adicionales, puedeAnular, puedePedir }: { item: Ite
   const anuladoEntero = item.restante <= 0;
   const elegidas = elegidasDeLaLinea({ item, adicionales });
   return (
-    <li data-item-enviado={item.productoNombre} className="py-2 text-[14px]">
+    <li data-item-enviado={item.productoNombre} className="py-2 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className={`min-w-0 [overflow-wrap:anywhere]${anuladoEntero ? " text-tinta-suave line-through" : ""}`}>
           <span className="font-semibold tabular-nums">{formatearCantidad(anuladoEntero ? item.cantidad : item.restante)} ×</span> {item.productoNombre}
-          {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-[12.5px] text-tinta-suave"> (pedido {formatearCantidad(item.cantidad)})</span>}
+          {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-sm text-tinta-suave"> (pedido {formatearCantidad(item.cantidad)})</span>}
           {item.opciones && (
-            <span data-opciones-de-linea className="block text-[12.5px] text-tinta-suave">
+            <span data-opciones-de-linea className="block text-sm text-tinta-suave">
               {item.opciones.join(" · ")}
             </span>
           )}
@@ -248,7 +248,7 @@ function ItemEnviado({ item, adicionales, puedeAnular, puedePedir }: { item: Ite
         </span>
       </div>
       {adicionales.length > 0 && (
-        <ul aria-label={`Adicionales de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[13px]">
+        <ul aria-label={`Adicionales de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-sm">
           {adicionales.map((a) => (
             <li key={a.id} data-adicional-enviado={a.productoNombre} className={`flex items-center justify-between gap-3${a.restante <= 0 ? " text-tinta-suave line-through" : ""}`}>
               <span className="min-w-0 [overflow-wrap:anywhere]">
@@ -260,7 +260,7 @@ function ItemEnviado({ item, adicionales, puedeAnular, puedePedir }: { item: Ite
         </ul>
       )}
       {item.anulaciones.length > 0 && (
-        <ul aria-label={`Anulaciones de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[12.5px] text-tinta-suave">
+        <ul aria-label={`Anulaciones de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-sm text-tinta-suave">
           {item.anulaciones.map((a) => (
             <li key={a.id} data-anulacion className="line-through">
               {formatearCantidad(a.cantidad).replace("-", "−")} · {a.motivoAnulacion} · por {a.creadoPor ?? "—"}
@@ -305,7 +305,7 @@ function agruparEnvioPorPromo(items: ItemEnEnvio<ItemDeCuenta>[]): FilaEnvio[] {
 function PromoEnviada({ promoCuentaId, titulo, items, puedeAnular }: { promoCuentaId: string; titulo: string; items: ItemEnEnvio<ItemDeCuenta>[]; puedeAnular: boolean }) {
   const quedaAlgo = items.some((i) => i.restante > 0);
   return (
-    <li data-promo-enviada={titulo} className="py-2 text-[14px]">
+    <li data-promo-enviada={titulo} className="py-2 text-sm">
       <div className="mb-1 flex items-center justify-between gap-3">
         <span className="font-semibold">{titulo}</span>
         {quedaAlgo && <AnularPromo promoCuentaId={promoCuentaId} titulo={titulo} puede={puedeAnular} />}
@@ -318,12 +318,12 @@ function PromoEnviada({ promoCuentaId, titulo, items, puedeAnular }: { promoCuen
               <div className="flex items-center justify-between gap-3">
                 <span className={anuladoEntero ? "text-tinta-suave line-through" : undefined}>
                   <span className="font-semibold tabular-nums">{formatearCantidad(anuladoEntero ? item.cantidad : item.restante)} ×</span> {item.productoNombre}
-                  {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-[12.5px] text-tinta-suave"> (pedido {formatearCantidad(item.cantidad)})</span>}
+                  {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-sm text-tinta-suave"> (pedido {formatearCantidad(item.cantidad)})</span>}
                 </span>
                 <span className="tabular-nums">{anuladoEntero ? "Anulado" : formatearMonto(item.restante * item.precioUnitario)}</span>
               </div>
               {item.anulaciones.length > 0 && (
-                <ul aria-label={`Anulaciones de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[12.5px] text-tinta-suave">
+                <ul aria-label={`Anulaciones de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-sm text-tinta-suave">
                   {item.anulaciones.map((a) => (
                     <li key={a.id} data-anulacion className="line-through">
                       {formatearCantidad(a.cantidad).replace("-", "−")} · {a.motivoAnulacion} · por {a.creadoPor ?? "—"}

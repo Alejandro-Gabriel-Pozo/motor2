@@ -5,12 +5,16 @@ import { useEffect, useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
 import { agregarItems } from "@/server/actions/pos/cuenta-pedido";
 import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos, estadoInicialSelectorCarta, reducirSelectorCarta, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar, type EleccionParaAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearCantidad, formatearMonto, avisoEnPromo, claveDeConfiguracion, resumenDeConfiguracion, vistaPreviaDeConfiguracion, type ConfiguracionDelSelector } from "@/core/pos/public";
-import { BOTON_CHICO, BOTON_PRIMARIO, CAMPO } from "./estilos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 import { SelectorCarta } from "./selector-carta";
 import { ArmarPromo } from "./armar-promo";
 import { ElegirOpciones } from "./elegir-opciones";
 import { useAccionMesa } from "./usar-accion";
 import { useRegistrarOtroIgual } from "./otro-igual";
+
+/** La cantidad de una línea de «Por agregar»: un campo angosto y centrado, con su nombre por `aria-label` (el de la fila). Va a mano a propósito: `Campo` dibuja el error DENTRO de su envoltura, y acá el error vive bajo toda la fila. */
+const CAMPO_CANTIDAD = "w-16 rounded-lg border border-borde bg-superficie px-3 py-2 text-center text-sm tabular-nums outline-none focus:border-tinta-suave max-md:min-h-11";
 
 /** Una promo ya armada, esperando en «Por agregar» junto con los sueltos (Task #16) — cada instancia es una línea propia, sin
  *  acumularse (dos menús pueden llevar elecciones distintas): `id` interno del cliente, nunca viaja al servidor. */
@@ -197,11 +201,11 @@ export function AgregarItems({
     return (
       <li key={clave} data-linea-por-agregar={titulo} className="flex flex-col gap-1 bg-superficie py-2 first:rounded-t-lg last:rounded-b-lg">
         <div className="flex flex-wrap items-center justify-between gap-2 px-2">
-          <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{titulo}</span>
+          <span className="min-w-0 flex-1 text-sm font-semibold [overflow-wrap:anywhere]">{titulo}</span>
           <div className="flex flex-wrap items-center gap-1.5">
-            <button type="button" className={BOTON_CHICO} aria-label={`Restar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: p.productoId, clave })}>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Restar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: p.productoId, clave })}>
               −
-            </button>
+            </Boton>
             <input
               aria-label={`Cantidad de ${titulo}`}
               inputMode="numeric"
@@ -212,29 +216,31 @@ export function AgregarItems({
               onBlur={() => despacharLista({ tipo: "normalizarCantidad", productoId: p.productoId, clave, decimales: 0 })}
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? idError : undefined}
-              className={`${CAMPO} w-16 text-center tabular-nums max-md:min-h-11`}
+              className={CAMPO_CANTIDAD}
             />
-            <button type="button" className={BOTON_CHICO} aria-label={`Sumar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: p.productoId, clave })}>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Sumar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: p.productoId, clave })}>
               +
-            </button>
-            <span className="w-24 text-right text-[13.5px] tabular-nums">{vista.ok ? formatearMonto(vista.total) : "—"}</span>
-            <button type="button" className={BOTON_CHICO} aria-label={`Otro igual a ${titulo}, para cambiarle algo`} onClick={() => setOpcionesAbiertas({ productoId: p.productoId, inicial: opciones })}>
+            </Boton>
+            <span className="w-24 text-right text-sm tabular-nums">{vista.ok ? formatearMonto(vista.total) : "—"}</span>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Otro igual a ${titulo}, para cambiarle algo`} onClick={() => setOpcionesAbiertas({ productoId: p.productoId, inicial: opciones })}>
               Otro igual
-            </button>
-            <button type="button" className={BOTON_CHICO} aria-label={`Quitar ${titulo} de la lista`} onClick={() => despacharLista({ tipo: "quitarLinea", productoId: p.productoId, clave })}>
+            </Boton>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Quitar ${titulo} de la lista`} onClick={() => despacharLista({ tipo: "quitarLinea", productoId: p.productoId, clave })}>
               Quitar
-            </button>
+            </Boton>
           </div>
         </div>
         {adicionales.map((a) => (
-          <p key={a} className="pl-6 pr-2 text-[12.5px] text-tinta-suave">
+          <p key={a} className="pl-6 pr-2 text-sm text-tinta-suave">
             {a}
           </p>
         ))}
         {(error || !vista.ok) && (
-          <p id={idError} role="alert" className="px-2 text-[12.5px] text-error">
-            {error ?? (vista.ok ? "" : `${vista.mensaje} Quitala y volvé a elegir.`)}
-          </p>
+          <div className="px-2">
+            <Aviso id={idError} variante="error" forma="en-linea">
+              {error ?? (vista.ok ? "" : `${vista.mensaje} Quitala y volvé a elegir.`)}
+            </Aviso>
+          </div>
         )}
       </li>
     );
@@ -250,7 +256,7 @@ export function AgregarItems({
       <fieldset disabled={!puede} title={puede ? undefined : "Tu rol puede ver la mesa pero no tomar pedidos."} className="flex min-w-0 flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="agregar-producto" className="text-[12.5px] font-semibold">
+            <label htmlFor="agregar-producto" className="text-sm font-semibold">
               Producto
             </label>
             <SelectorProducto
@@ -266,30 +272,29 @@ export function AgregarItems({
           </div>
         </div>
         {hayCarta && <SelectorCarta selector={selectorCarta} estado={estado} lista={lista} despachar={despachar} sumar={sumar} abrirPromo={setPromoAbierta} configuraciones={configuraciones} />}
-        {llena && <p className="text-[13px] text-tinta-suave">Llegaste al máximo de {MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.</p>}
+        {llena && <p className="text-sm text-tinta-suave">Llegaste al máximo de {MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.</p>}
 
         <div className="flex flex-col gap-2 rounded-[14px] border border-borde bg-superficie-suave p-3">
-          <h2 className="text-[14px] font-bold">Por agregar · {lista.lineas.length + promosPorAgregar.length}</h2>
+          <h2 className="text-sm font-bold">Por agregar · {lista.lineas.length + promosPorAgregar.length}</h2>
           {promosPorAgregar.length > 0 && (
             <ul className="flex flex-col divide-y divide-borde">
               {promosPorAgregar.map((p) => (
                 <li key={p.id} data-promo-por-agregar={p.titulo} className="flex items-center justify-between gap-2 bg-aviso-tinte px-2 py-2 first:rounded-t-lg">
-                  <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{p.titulo}</span>
-                  <span className="text-[13.5px] tabular-nums">{formatearMonto(p.precio)}</span>
-                  <button
-                    type="button"
-                    className={BOTON_CHICO}
+                  <span className="min-w-0 flex-1 text-sm font-semibold [overflow-wrap:anywhere]">{p.titulo}</span>
+                  <span className="text-sm tabular-nums">{formatearMonto(p.precio)}</span>
+                  <Boton
+                    variante="secundario" tamano="compacto" className="min-w-11"
                     aria-label={`Quitar ${p.titulo} de la lista`}
                     onClick={() => setPromosPorAgregar((antes) => antes.filter((x) => x.id !== p.id))}
                   >
                     Quitar
-                  </button>
+                  </Boton>
                 </li>
               ))}
             </ul>
           )}
           {lista.lineas.length === 0 && promosPorAgregar.length === 0 ? (
-            <p className="text-[13px] text-tinta-suave">Ningún producto elegido todavía: tocá uno de la carta o buscalo por nombre o código.</p>
+            <p className="text-sm text-tinta-suave">Ningún producto elegido todavía: tocá uno de la carta o buscalo por nombre o código.</p>
           ) : lista.lineas.length === 0 ? null : (
             <ul className="flex flex-col divide-y divide-borde">
               {lista.lineas.flatMap((l) => {
@@ -301,11 +306,11 @@ export function AgregarItems({
                 return [
                   <li key={l.productoId} data-linea-por-agregar={p.nombre} className="flex flex-col gap-1 bg-superficie py-2 first:rounded-t-lg last:rounded-b-lg">
                     <div className="flex flex-wrap items-center justify-between gap-2 px-2">
-                      <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{p.nombre}</span>
+                      <span className="min-w-0 flex-1 text-sm font-semibold [overflow-wrap:anywhere]">{p.nombre}</span>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <button type="button" className={BOTON_CHICO} aria-label={`Restar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: l.productoId })}>
+                        <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Restar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: l.productoId })}>
                           −
-                        </button>
+                        </Boton>
                         <input
                           aria-label={`Cantidad de ${p.nombre}`}
                           inputMode="decimal"
@@ -324,29 +329,30 @@ export function AgregarItems({
                           }
                           aria-invalid={l.error ? true : undefined}
                           aria-describedby={l.error ? idError : p.pasoVenta ? `${idError}-ayuda` : undefined}
-                          className={`${CAMPO} w-16 text-center tabular-nums max-md:min-h-11`}
+                          className={CAMPO_CANTIDAD}
                         />
-                        <button type="button" className={BOTON_CHICO} aria-label={`Sumar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: l.productoId })}>
+                        <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Sumar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: l.productoId })}>
                           +
-                        </button>
-                        <span className="w-24 text-right text-[13.5px] tabular-nums">{formatearMonto(l.cantidad * p.precio)}</span>
-                        <button
-                          type="button"
-                          className={BOTON_CHICO}
+                        </Boton>
+                        <span className="w-24 text-right text-sm tabular-nums">{formatearMonto(l.cantidad * p.precio)}</span>
+                        <Boton
+                          variante="secundario" tamano="compacto" className="min-w-11"
                           aria-label={`Quitar ${p.nombre} de la lista`}
                           onClick={() => despacharLista({ tipo: "quitarLinea", productoId: l.productoId })}
                         >
                           Quitar
-                        </button>
+                        </Boton>
                       </div>
                     </div>
                     {l.error ? (
-                      <p id={idError} role="alert" className="px-2 text-[12.5px] text-error">
-                        {l.error}
-                      </p>
+                      <div className="px-2">
+                        <Aviso id={idError} variante="error" forma="en-linea">
+                          {l.error}
+                        </Aviso>
+                      </div>
                     ) : (
                       p.pasoVenta && (
-                        <p id={`${idError}-ayuda`} className="px-2 text-[12.5px] text-tinta-suave">
+                        <p id={`${idError}-ayuda`} className="px-2 text-sm text-tinta-suave">
                           Se vende de a {formatearCantidad(p.pasoVenta)}.
                         </p>
                       )
@@ -356,15 +362,15 @@ export function AgregarItems({
               })}
             </ul>
           )}
-          <button type="button" className={BOTON_PRIMARIO} disabled={pending || !puedeConfirmar} onClick={confirmar}>
+          <Boton variante="acento" disabled={pending || !puedeConfirmar} onClick={confirmar}>
             {pending ? "Agregando…" : `Agregar ${lista.lineas.length + promosPorAgregar.length} al pedido`}
-          </button>
+          </Boton>
         </div>
       </fieldset>
       {error && (
-        <p role="alert" className="text-[13px] text-error">
+        <Aviso variante="error" forma="en-linea">
           {error}
-        </p>
+        </Aviso>
       )}
       {promoAbierta && <ArmarPromo entrada={promoAbierta} onCerrar={() => setPromoAbierta(null)} onConfirmar={confirmarPromo} noSeArman={noSeArmanEnPromo} />}
       {opcionesAbiertas && productoAbierto && configuracionAbierta && (

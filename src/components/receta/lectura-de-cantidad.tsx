@@ -85,7 +85,7 @@ export function LecturaDeCantidad({
       {children}
       <div aria-live="polite" data-lectura-de={campoId} className="w-full text-sm">
         {lectura.tipo === "valor" && (
-          <p className="text-neutral-700 dark:text-neutral-300">
+          <p className="text-tinta-suave">
             <span className="sr-only">El sistema lee: </span>
             <span className="font-medium">{lectura.lectura}</span>
           </p>

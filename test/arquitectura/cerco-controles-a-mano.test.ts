@@ -42,6 +42,12 @@ const CERCO_CONTROLES: Cerco = {
   regla: "controles-a-mano",
   meta: "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src"], extensiones: [".tsx", ".jsx"], incluir: (ruta) => !ruta.startsWith("src/ui/"), contar: contarControles }),
+  excepciones: [
+    { ruta: "src/app/global-error.tsx", motivo: "Último recurso: reemplaza al layout raíz y no carga `globals.css`, así que una primitiva (que se viste con clases de tokens) saldría sin estilo; su botón lleva estilos en línea." },
+    { ruta: "src/app/(carta-publica)/error.tsx", motivo: "Pantalla de error de la carta del cliente: el botón se pinta con la tinta del TEMA del cliente (`--carta-ink`), que ninguna variante de `Boton` (tokens de la interfaz) sabe usar." },
+    { ruta: "src/components/carta-publica/carta-vista.tsx", motivo: "Carta del cliente: la fila del índice es un botón cuya tipografía, colores y bordes vienen del tema (`--carta-*` y `estilo.valores`), no de los tokens de la interfaz." },
+    { ruta: "src/components/carta-publica/navegacion-carta.tsx", motivo: "Carta del cliente: las flechas, la píldora «Índice» y el ícono de imprimir se pintan con las variables del tema (`--carta-primary`, `--carta-flechas`), no con los tokens de la interfaz." },
+  ],
 };
 
 describe("cerco «controles a mano»: el detector", () => {
