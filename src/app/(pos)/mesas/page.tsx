@@ -104,7 +104,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
                   <Link
                     href={hrefMapa(f.estado, q)}
                     aria-current={activo ? "true" : undefined}
-                    className={`flex items-center gap-[7px] whitespace-nowrap rounded-full border border-transparent px-[13px] py-[7px] text-sm font-semibold transition-colors ${
+                    className={`flex min-h-11 items-center gap-[7px] whitespace-nowrap rounded-full border border-transparent px-[13px] py-[7px] text-sm font-semibold transition-colors md:min-h-0 ${
                       activo ? "bg-tinta text-superficie" : "text-tinta-suave hover:bg-superficie-suave"
                     }`}
                   >

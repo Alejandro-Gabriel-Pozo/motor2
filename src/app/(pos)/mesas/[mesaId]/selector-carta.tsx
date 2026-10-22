@@ -29,7 +29,7 @@ import { type EntradaCarpetaSelectorCarta, type EntradaPromoSelectorCarta, type 
  */
 
 const BOTON_SECCION =
-  "rounded-full border border-borde bg-superficie px-3.5 py-1.5 text-sm font-semibold enabled:hover:bg-superficie-suave aria-pressed:border-marca aria-pressed:bg-marca aria-pressed:text-superficie aria-pressed:enabled:hover:bg-marca-hover disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-full border border-borde bg-superficie px-3.5 py-1.5 text-sm font-semibold max-md:min-h-11 enabled:hover:bg-superficie-suave aria-pressed:border-marca aria-pressed:bg-marca aria-pressed:text-superficie aria-pressed:enabled:hover:bg-marca-hover disabled:cursor-not-allowed disabled:opacity-50";
 const BOTON_PRODUCTO =
   "group flex min-h-[48px] w-full flex-col items-start justify-center gap-0.5 rounded-lg border border-borde bg-superficie px-3 py-2 text-left text-sm font-semibold enabled:hover:bg-superficie-suave aria-pressed:border-marca aria-pressed:bg-marca aria-pressed:text-superficie aria-pressed:enabled:hover:bg-marca-hover disabled:cursor-not-allowed disabled:opacity-50";
 const BOTON_AGRUPADO =

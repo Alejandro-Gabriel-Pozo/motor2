@@ -98,7 +98,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
 
   return (
     <div>
-      <Link href="/mesas" className="mb-4 inline-flex items-center gap-1 text-sm text-tinta-suave hover:text-tinta">
+      <Link href="/mesas" className="mb-4 inline-flex min-h-11 items-center gap-1 text-sm text-tinta-suave hover:text-tinta max-md:mb-1 md:min-h-0">
         <span aria-hidden>←</span> Volver al mapa
       </Link>
 
@@ -207,7 +207,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
           <CuentasCerradas tickets={tickets} puede={cerrarCuenta.editar} puedeCorregir={emitirCorregida.editar} zonaHoraria={ctx.empresaZonaHoraria} />
           {verReportesDinero.ver && (
             <p className="mt-3 text-sm">
-              <Link href={`/reportes/tickets?mesaId=${mesa.id}`} className="text-tinta-suave underline hover:text-tinta">
+              <Link href={`/reportes/tickets?mesaId=${mesa.id}`} className="inline-flex min-h-11 items-center text-tinta-suave underline hover:text-tinta md:min-h-0">
                 Ver todos los tickets de esta mesa →
               </Link>
             </p>
