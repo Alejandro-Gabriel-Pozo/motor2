@@ -3,7 +3,7 @@
 // Stryker hace eso mismo para cada línea de los archivos acotados de abajo y reporta las mutaciones "sobrevivientes": código que
 // se ejecutó (coverage lo vería en verde) pero que ningún test detectaría si se rompiera de verdad.
 //
-// NO forma parte del gate de 7 comandos: la suite corre contra Postgres real, sin mocks, `fileParallelism: false` — una corrida
+// NO forma parte del gate de 8 comandos: la suite corre contra Postgres real, sin mocks, `fileParallelism: false` — una corrida
 // completa ya tarda ~300s, y Stryker repite esa corrida (acotada a los tests relevantes) por cada mutante. Es una auditoría
 // PERIÓDICA/MANUAL (`npm run mutacion`), acotada a propósito a `casos-de-uso/` y `persistencia/` (server/), que es donde vive la
 // lógica de negocio con ramas de error/reintento/idempotencia — ni la UI ni core puro entran acá.
