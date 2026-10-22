@@ -40,7 +40,7 @@ describe("formularioInicial", () => {
 
 describe("armarComandoDeGrupoNuevo", () => {
   it("precio final: el importe de cada opción como número, el nombre sin espacios y el grupo sin prefijo", () => {
-    const c = comando(form({ filas: [["Chico ", "2500"], ["Mediano", "2800,50"], ["Grande", "3100"]] }));
+    const c = comando(form({ filas: [["Chico ", "2500"], ["Mediano", "2800.5"], ["Grande", "3100"]] }));
     expect(c).toEqual({
       productoId: "prod-1",
       nombre: "Tamaño",

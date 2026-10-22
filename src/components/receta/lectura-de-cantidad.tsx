@@ -2,13 +2,20 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { leerCantidadTecleada, type UnidadDeLectura } from "@/core/catalogo/public";
+import { leerNumeroCanonico, textoParaEscribir } from "@/core/datos/numero-tecleado";
+
+/** Lo que ya estaba guardado (canónico, con punto decimal) como se escribe: con la coma, para leerlo con la misma regla que lo tecleado. Lo que no es canónico queda como está. */
+function textoParaEscribirDeLoGuardado(valor: string): string {
+  const r = leerNumeroCanonico(valor);
+  return r.ok && r.valor !== null ? textoParaEscribir(r.valor) : valor;
+}
 
 /** El `<select>` de la materia prima en los formularios de alta de un ingrediente (receta central y receta propia). */
 const SELECTOR_DE_MATERIA_PRIMA = "insumoProductoId";
 
 /**
  * Lectura en vivo de la cantidad de un ingrediente (pedido del dueño, 2026-10-14): debajo del campo dice qué entendió el sistema de lo que se
- * tipeó («= 3 kg», «= 300 g») y avisa cuando coma o punto pueden confundir («3.000» se lee 3). Solo PRESENTA lo que arma
+ * tipeó («= 3 kg», «= 300 g»). Lo que no se puede leer («3.000» es ambiguo: ¿3,000 o 3000?) lo dice el propio campo, junto a él, con el mismo parser: acá no se repite. Solo PRESENTA lo que arma
  * `leerCantidadTecleada` (core/catalogo): no cambia lo que se guarda ni bloquea el envío.
  *
  * Envuelve los campos tal como están (el CampoNumero de la cantidad, con su `id` = `campoId`, sin tocarlo) con una caja `display: contents`
@@ -35,7 +42,7 @@ export function LecturaDeCantidad({
   unidades?: Record<string, UnidadDeLectura>;
   children: ReactNode;
 }) {
-  // null = la persona todavía no tipeó (se lee `valorInicial`, sin advertencia).
+  // null = la persona todavía no tipeó (se lee `valorInicial`, el valor guardado: dígitos y punto decimal).
   const [tecleado, setTecleado] = useState<string | null>(null);
   const [materiaPrimaId, setMateriaPrimaId] = useState("");
   const caja = useRef<HTMLDivElement>(null);
@@ -62,8 +69,8 @@ export function LecturaDeCantidad({
   }, [campoId]);
 
   const unidadDeLaLectura = unidadDeStockPorMp && unidades ? (unidades[unidadDeStockPorMp[materiaPrimaId] ?? ""] ?? null) : unidad;
-  const lectura = leerCantidadTecleada(tecleado ?? valorInicial, unidadDeLaLectura);
-  const advertencia = tecleado !== null && lectura.tipo === "valor" ? lectura.advertencia : null;
+  // Lo guardado llega como canónico («1.205» = 1,205); lo tecleado, tal cual se escribió. Se lee cada uno con su regla.
+  const lectura = leerCantidadTecleada(tecleado ?? textoParaEscribirDeLoGuardado(valorInicial), unidadDeLaLectura);
 
   return (
     <div
@@ -81,15 +88,6 @@ export function LecturaDeCantidad({
           <p className="text-tinta-suave">
             <span className="sr-only">El sistema lee: </span>
             <span className="font-medium">{lectura.lectura}</span>
-          </p>
-        )}
-        {lectura.tipo === "invalido" && <p className="text-error">{lectura.mensaje}</p>}
-        {advertencia && (
-          <p className="mt-1 flex items-start gap-1 rounded border border-aviso px-2 py-1 text-aviso-tinta">
-            <span aria-hidden="true">⚠</span>
-            <span>
-              <strong>Atención:</strong> {advertencia}
-            </span>
           </p>
         )}
       </div>

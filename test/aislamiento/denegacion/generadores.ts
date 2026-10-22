@@ -15,6 +15,11 @@ import { sumarDias } from "../../../src/core/tiempo/zona-horaria";
 const conIdsAjenos = (c: Pick<ContextoDeArgumentos, "escenario">) => c.escenario === "ajenaEmpresa" || c.escenario === "ajenaSucursal" || c.escenario === "consultaConSucursalAjena";
 const lista = (...v: Array<unknown[] | false>): unknown[][] => v.filter((x): x is unknown[] => x !== false);
 const hoy = () => new Date();
+/**
+ * El CONTEXTO propio de u1 (`{ usuarioId, empresaId, sucursalId, db }`) para las puertas que lo reciben ENTERO en un parámetro `ctx`: el `db` (un cliente de Prisma, un `Proxy` enorme) no se puede recorrer, y la matriz solo lo reconoce
+ * por el NOMBRE de su parámetro; adentro de un objeto plano lo recorrería hasta el fondo y colgaría el proceso. Un objeto SIN prototipo no es plano para el recorrido (ni lo muestra el informe), y para la puerta es el mismo contexto.
+ */
+const contextoPropio = (c: ContextoDeArgumentos) => Object.assign(Object.create(null) as Record<string, unknown>, { usuarioId: c.mundo.u1.id, empresaId: c.propio.empresaId, sucursalId: c.propio.sucursalId, db: c.db });
 const ingrediente = (k: Kit, insumoProductoId: string = k.productoId) => ({ insumoProductoId, cantidad: 1, unidadId: k.unidadId });
 const conVariantes = (...v: Array<unknown[] | false>) => variantes(...lista(...v));
 /** Los datos de un producto con TODAS sus referencias propias (la base de las variantes que cambian una sola por una ajena). */
@@ -315,6 +320,17 @@ const completos: Record<string, Valor> = {
     { id: k.productoPvId, nombre: "Producto ZZ", codigo: "ZZ", tipo: "PV", modoDeVenta: "DIRECTO", precioVenta: 1000, seProduce: false, esAnclaDeAdicional: false },
     k.sucursalId,
     { opciones: true, receta: true, carta: true },
+  ],
+  // Fase 6, bloque 3 (6.18): la vista previa de UN producto en la carta de la sucursal activa. El producto llega ya leído por la página (acá armado a mano con el id del kit): con el id de OTRA empresa o sucursal no trae nada.
+  "consulta|consultas/carta/vista-previa-de-un-producto.ts|cargarVistaPreviaDeLaCarta": (k, c) => [c.db, c.propio.sucursalId, { id: k.productoConOpcionesId, precioVenta: 1000, esBase: false }, false],
+  // Fase 6, bloque 3 (3b): qué «le falta algo» ofrece la lista de Productos a quien mira (por permisos y módulos del usuario y la empresa del contexto).
+  "consulta|consultas/catalogo/filtros-de-productos.ts|faltasQueSePuedenFiltrarEnLaLista": (_k, c) => [contextoPropio(c)],
+  "lectura|lecturas/catalogo/filtros-de-productos.ts|faltasQueSePuedenFiltrar": (_k, c) => [contextoPropio(c)],
+  // El `where` de la lista de Productos con «sin receta» (el filtro que además lee la receta vigente de la sucursal): el contexto y la base son los propios.
+  "lectura|lecturas/catalogo/filtros-de-productos.ts|whereDeLosProductos": (_k, c) => [
+    contextoPropio(c),
+    c.db,
+    { q: "", tipo: null, modo: null, disponible: null, falta: "sin-receta" },
   ],
   "consulta|consultas/catalogo/grupos.ts|cadenasDeGrupos": (k, c) => [[k.grupoId], c.db],
   "consulta|consultas/catalogo/recetas.ts|listarCalibracionesDeIngredientes": (k, c) => [[k.recetaIngredienteId, k.recetaIngredientePropioId], c.mundo.u1.id, [c.propio.sucursalId], c.db],

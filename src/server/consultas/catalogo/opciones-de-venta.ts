@@ -3,7 +3,7 @@ import { esBaseConfigurable, type DiferenciaDePrecio, type ModoDePrecioDeMedida,
 import type { IngredienteDeBase } from "@/core/movimientos/public";
 import { resumenDePrecios, type ResumenDePrecios } from "@/core/pos/public";
 import { cargarAdmisionDeProducto, cargarGrupoDeOpciones, listarGruposDeOpciones } from "@/server/lecturas/catalogo/opciones-de-venta";
-import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
+import { precioLocalGuardadoDe, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { cargarRecetaVigenteParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { cargarOpcionesParaVender, completarPreciosDeSucursal } from "@/server/lecturas/opciones/opciones-para-vender";
 import type { Db } from "@/lib/db-tipos";
@@ -239,6 +239,10 @@ export interface OpcionesDelProductoDelPanel {
   vistaPrevia: ResumenDePrecios;
   /** El precio base del producto en la sucursal activa (precio local vigente o el de venta). */
   precioBase: number;
+  /** El precio GLOBAL (`Producto.precioVenta`), el que rige donde no hay precio local habilitado. */
+  precioGlobal: number;
+  /** El precio local del producto en la sucursal activa tal como está guardado (habilitado o no) y si la sucursal usa precio propio: lo que vio quien lo edita. Solo lo dibuja quien tiene `precio_local`. */
+  precioLocal: { guardado: { precio: number; habilitado: boolean } | null; capacidadActiva: boolean };
 }
 
 const diferenciaDeFila = (tipo: string | null, monto: number | null, porcentaje: number | null): DiferenciaDePrecio | null =>
@@ -253,11 +257,12 @@ const diferenciaDeFila = (tipo: string | null, monto: number | null, porcentaje:
 export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucursalId: string): Promise<OpcionesDelProductoDelPanel | null> {
   const producto = await db.producto.findFirst({ where: { id: productoId }, select: { id: true, nombre: true, tipo: true, precioVenta: true, modoDeVenta: true, opcionQueRespalda: { select: { id: true } } } });
   if (!producto) return null;
-  const [filas, catalogo, paraVender, locales] = await Promise.all([
+  const [filas, catalogo, paraVender, locales, precioLocal] = await Promise.all([
     cargarAdmisionDeProducto(db, productoId),
     listarGruposDeOpciones(db, { incluirInactivos: true }),
     cargarOpcionesParaVender(db, { sucursalId, productoIds: [productoId] }),
     preciosLocalesVigentes(sucursalId, db, [productoId]),
+    precioLocalGuardadoDe(sucursalId, db, productoId),
   ]);
   const precioBase = locales.get(productoId)?.precio ?? Number(producto.precioVenta);
   // La grilla de la sucursal, para TODAS las medidas en precio propio del producto (la vista previa muestra cada tamaño).
@@ -303,6 +308,8 @@ export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucu
       .map((g) => ({ grupoId: g.id, nombre: g.nombre, tipo: g.tipo as TipoDeGrupoDeOpciones, cantidadMaxima: g.cantidadMaxima, opcionIds: g.opciones.filter((o) => o.activa && o.vigente).map((o) => o.id) })),
     vistaPrevia,
     precioBase,
+    precioGlobal: Number(producto.precioVenta),
+    precioLocal,
   };
 }
 

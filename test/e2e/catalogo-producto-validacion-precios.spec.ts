@@ -22,7 +22,7 @@ test("un precio de venta con 3 decimales queda inválido en el campo y no se cre
   await page.getByRole("button", { name: "Crear producto" }).click();
 
   expect(await precio.evaluate((e: HTMLInputElement) => e.validity.customError), "el precio tiene que quedar inválido").toBe(true);
-  expect(await precio.evaluate((e: HTMLInputElement) => e.validationMessage)).toBe("El precio de venta admite como máximo 2 decimales.");
+  expect(await precio.evaluate((e: HTMLInputElement) => e.validationMessage)).toMatch(/^El precio de venta admite como máximo 2 decimales\./);
   await page.waitForTimeout(500); // margen para que un envío que no debió salir llegue a la base
   expect(await prisma.producto.count({ where: { nombre: nombreProducto } }), "no tenía que crearse ningún producto").toBe(0);
 });

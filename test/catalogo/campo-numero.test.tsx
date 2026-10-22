@@ -1,10 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { MARCA_DE_NO_CANONICO } from "../../src/core/datos/numero-tecleado";
 import { CampoNumero } from "../../src/components/campo-numero";
 
 /**
  * `CampoNumero` (src/components/campo-numero.tsx) dibuja la primitiva `Campo` (6.8.7c). Lo que se prueba acá es lo que el componente le pide a la primitiva y lo que sale al HTML: el nombre accesible
- * (`ariaLabel` o el `<label>` de afuera, nunca uno propio), el campo marcado como inválido SIN mensaje, el `<input type="hidden">` del modo no controlado ANTES del visible, el prefijo, la alineación
+ * (`ariaLabel` o el `<label>` de afuera, nunca uno propio), el campo marcado como inválido con el mensaje de lo que no se entiende debajo, el `<input type="hidden">` del modo no controlado ANTES del visible, el prefijo, la alineación
  * a la derecha y que `etiqueta` (el sujeto del mensaje de error) no se dibuja como rótulo. La lógica del número (interpretar, formatear, validar, seleccionar al enfocar) se prueba en
  * `test/core/datos` y en el navegador (test/e2e/campo-numero-tactil.spec.ts). Entorno de Vitest = Node: se mira el HTML del servidor.
  */
@@ -12,14 +13,33 @@ const entradaVisible = (html: string): string => /<input[^>]*type="text"[^>]*>/.
 const clasesDe = (etiqueta: string): string[] => (/class="([^"]*)"/.exec(etiqueta)?.[1] ?? "").split(/\s+/).filter(Boolean);
 
 describe("CampoNumero dibuja la primitiva Campo", () => {
-  it("un valor inválido deja el campo aria-invalid y con borde de error, SIN role=alert ni mensaje en pantalla ni aria-describedby", () => {
+  it("un texto que no es un número deja el campo aria-invalid y con borde de error, y DICE por qué debajo (role=alert, atado con aria-describedby)", () => {
     const html = renderToStaticMarkup(<CampoNumero value="12abc" tipo="importe" etiqueta="El precio" ariaLabel="Precio" />);
     const entrada = entradaVisible(html);
     expect(entrada).toContain('aria-invalid="true"');
     expect(clasesDe(entrada)).toContain("border-error");
+    expect(html.match(/role="alert"/g)).toHaveLength(1);
+    expect(html).toContain("El precio no es un número válido.");
+    expect(entrada).toContain("aria-describedby=");
+  });
+
+  it("2c: «1.205» en un campo de kilos (marcado como lo deja el campo al tipearlo) es ambiguo y lo dice con las dos lecturas; en una unidad entera no", () => {
+    const ambiguo = renderToStaticMarkup(<CampoNumero value={`1.205${MARCA_DE_NO_CANONICO}`} tipo="cantidad" decimales={3} ariaLabel="Kilos" />);
+    expect(ambiguo).toContain("La cantidad: ¿1,205 o 1205? Escribí 1205 o 1,205.");
+    expect(entradaVisible(ambiguo)).toContain('aria-invalid="true"');
+    // La marca no se ve en el campo.
+    expect(entradaVisible(ambiguo)).not.toContain(MARCA_DE_NO_CANONICO);
+  });
+
+  it("2c: «21,000» en un importe dice que admite 2 decimales y cómo escribir veintiún mil", () => {
+    const html = renderToStaticMarkup(<CampoNumero value="21,000" tipo="importe" etiqueta="El precio" ariaLabel="Precio" />);
+    expect(html).toContain("El precio admite como máximo 2 decimales. Para 21000 escribí 21000 o 21.000,00.");
+  });
+
+  it("un valor del canal que no cumple la regla (negativo en un importe) marca el campo pero no dibuja mensaje: lo frena la validez nativa y lo dice el servidor", () => {
+    const html = renderToStaticMarkup(<CampoNumero value="-5" tipo="importe" etiqueta="El precio" ariaLabel="Precio" />);
+    expect(entradaVisible(html)).toContain('aria-invalid="true"');
     expect(html).not.toContain('role="alert"');
-    expect(html).not.toContain("aria-describedby");
-    expect(html).not.toContain("<p");
   });
 
   it("un valor válido o vacío no lo marca", () => {
@@ -60,9 +80,10 @@ describe("CampoNumero dibuja la primitiva Campo", () => {
     expect(renderToStaticMarkup(<CampoNumero value="2" />)).not.toContain("aria-label");
   });
 
-  it("`etiqueta` es el sujeto del mensaje de error, NO el rótulo: no aparece en el HTML", () => {
+  it("`etiqueta` es el sujeto del mensaje de error, NO el rótulo: con un valor válido no aparece en el HTML, y con uno inválido solo dentro del mensaje", () => {
+    expect(renderToStaticMarkup(<CampoNumero value="10" tipo="importe" etiqueta="El precio" ariaLabel="Precio" />)).not.toContain("El precio");
     const html = renderToStaticMarkup(<CampoNumero value="abc" tipo="importe" etiqueta="El precio" ariaLabel="Precio" />);
-    expect(html).not.toContain("El precio");
+    expect(html.replace(/<p [^>]*role="alert"[^>]*>[^<]*<\/p>/, "")).not.toContain("El precio");
     expect(html).not.toContain("<label");
   });
 

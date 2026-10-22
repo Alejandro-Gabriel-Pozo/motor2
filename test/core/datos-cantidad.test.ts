@@ -70,7 +70,9 @@ describe("validarCantidad", () => {
 
   it("texto tecleado en es-AR", () => {
     expect(validarCantidad("1,25", kg, cantidad)).toEqual({ ok: true, valor: 1.25 });
-    expect(validarCantidad("1.000", un, cantidad)).toEqual({ ok: true, valor: 1 }); // un solo separador = decimal: 1,000
+    expect(validarCantidad("1.000", un, cantidad)).toEqual({ ok: true, valor: 1000 }); // 2c: en una unidad entera, un punto con tres cifras es de miles
+    expect(validarCantidad("1.000", { nombre: "kg", decimales: 3 }, cantidad)).toMatchObject({ ok: false, codigo: "ambiguo" }); // con 3 decimales no se adivina
+    expect(validarCantidad("1,5", un, cantidad)).toMatchObject({ ok: false, codigo: "decimales" });
     expect(validarCantidad("1.5", un, cantidad)).toMatchObject({ ok: false, codigo: "decimales" });
     expect(validarCantidad("1.000.000", un, cantidad)).toEqual({ ok: true, valor: 1_000_000 });
   });

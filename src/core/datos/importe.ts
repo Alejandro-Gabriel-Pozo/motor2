@@ -1,5 +1,5 @@
 import { redondearMoneda } from "@/core/moneda";
-import { numeroDeEntrada, tieneALoSumoDecimales } from "./numero-tecleado";
+import { CONTEXTO_IMPORTE, numeroDeEntrada, rechazoDeNumeroDeEntrada, tieneALoSumoDecimales } from "./numero-tecleado";
 import { aceptar, enMinuscula, rechazar, type ResultadoDato } from "./resultado";
 
 /**
@@ -48,8 +48,8 @@ export interface OpcionesImporte {
 
 export function validarImporte(valor: unknown, opciones: OpcionesImporte): ResultadoDato<number | null> {
   const { etiqueta, obligatorio = false, permitirNegativo = false, permitirCero = true } = opciones;
-  const numero = numeroDeEntrada(valor);
-  if (!numero.ok) return rechazar("formato", `${etiqueta} no es un número válido.`);
+  const numero = numeroDeEntrada(valor, CONTEXTO_IMPORTE);
+  if (!numero.ok) return rechazoDeNumeroDeEntrada(numero, etiqueta, `${etiqueta} admite como máximo ${DECIMALES_IMPORTE} decimales.`, valor);
   const n = numero.valor;
   if (n === null) return obligatorio ? rechazar("vacio", `Falta ${enMinuscula(etiqueta)}.`) : aceptar(null);
   if (n < 0 && !permitirNegativo) return rechazar("negativo", `${etiqueta} no puede ser negativo.`);

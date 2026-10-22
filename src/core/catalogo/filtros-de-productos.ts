@@ -101,3 +101,9 @@ export function consultaDeLosFiltros(f: FiltrosDeProductos, cursor?: string): st
   if (cursor) partes.push(`cursor=${encodeURIComponent(cursor)}`);
   return partes.join("&");
 }
+
+/** ¿La consulta tiene que correr con la lectura de la EMPRESA entera? Sí cuando pregunta por «alguna/ninguna sucursal»: la RLS por sucursal le escondería las filas de las demás. */
+export function necesitaLaEmpresaEntera(f: FiltrosDeProductos): boolean {
+  return f.disponible === "en-alguna" || f.disponible === "en-ninguna";
+}
+

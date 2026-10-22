@@ -1,4 +1,4 @@
-import { numeroDeEntrada, tieneALoSumoDecimales } from "./numero-tecleado";
+import { contextoDeCantidad, numeroDeEntrada, rechazoDeNumeroDeEntrada, tieneALoSumoDecimales } from "./numero-tecleado";
 import { aceptar, enMinuscula, rechazar, type ResultadoDato } from "./resultado";
 
 /**
@@ -26,8 +26,8 @@ export interface OpcionesDeNumeroAcotado {
 /** -100 < p ≤ 999,9999, hasta 4 decimales. */
 export function validarPorcentajeDeDiferencia(valor: unknown, opciones: OpcionesDeNumeroAcotado): ResultadoDato<number | null> {
   const { etiqueta, obligatorio = true } = opciones;
-  const numero = numeroDeEntrada(valor);
-  if (!numero.ok) return rechazar("formato", `${etiqueta} no es un número válido.`);
+  const numero = numeroDeEntrada(valor, contextoDeCantidad(DECIMALES_PORCENTAJE_DE_DIFERENCIA));
+  if (!numero.ok) return rechazoDeNumeroDeEntrada(numero, etiqueta, `${etiqueta} admite como máximo ${DECIMALES_PORCENTAJE_DE_DIFERENCIA} decimales.`, valor);
   const n = numero.valor;
   if (n === null) return obligatorio ? rechazar("vacio", `Falta ${enMinuscula(etiqueta)}.`) : aceptar(null);
   if (n <= PORCENTAJE_DE_DIFERENCIA_MINIMO_EXCLUIDO || n > PORCENTAJE_DE_DIFERENCIA_MAXIMO) {
@@ -40,8 +40,8 @@ export function validarPorcentajeDeDiferencia(valor: unknown, opciones: Opciones
 /** 0 < f ≤ 10, hasta 4 decimales. */
 export function validarFactorDeEscala(valor: unknown, opciones: OpcionesDeNumeroAcotado): ResultadoDato<number | null> {
   const { etiqueta, obligatorio = true } = opciones;
-  const numero = numeroDeEntrada(valor);
-  if (!numero.ok) return rechazar("formato", `${etiqueta} no es un número válido.`);
+  const numero = numeroDeEntrada(valor, contextoDeCantidad(DECIMALES_FACTOR_DE_ESCALA));
+  if (!numero.ok) return rechazoDeNumeroDeEntrada(numero, etiqueta, `${etiqueta} admite como máximo ${DECIMALES_FACTOR_DE_ESCALA} decimales.`, valor);
   const n = numero.valor;
   if (n === null) return obligatorio ? rechazar("vacio", `Falta ${enMinuscula(etiqueta)}.`) : aceptar(null);
   if (n <= 0) return rechazar(n === 0 ? "cero" : "negativo", `${etiqueta} tiene que ser mayor que cero.`);

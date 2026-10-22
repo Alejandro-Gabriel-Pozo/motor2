@@ -21,6 +21,8 @@ export { aplicarSecuencia, esPermutacionExacta, insertarEnPosicion, secuenciaMov
 export { leerCantidadTecleada, unidadesDeLectura } from "./lectura-de-cantidad";
 export type { UnidadDeLectura } from "./lectura-de-cantidad";
 export { filtrarPreciosLocalesVigentes } from "./precio-local";
+export { cambioDePrecio } from "./cambio-de-precio";
+export type { CambioDePrecio } from "./cambio-de-precio";
 export type { PrecioLocalVigente } from "./precio-local";
 export { productosUniversales } from "./disponibilidad-producto";
 export type { FilaDisponibilidadEnSucursal } from "./disponibilidad-producto";
@@ -66,5 +68,6 @@ export {
   consultaDeLosFiltros,
   hayFiltrosDeProductos,
   leerFiltrosDeProductos,
+  necesitaLaEmpresaEntera,
 } from "./filtros-de-productos";
 export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos } from "./filtros-de-productos";
