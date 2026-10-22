@@ -1,11 +1,11 @@
 {
   "regla": "colores-de-escala",
   "meta": "0 en la Fase 6 (DEC-03: las clases de color de Tailwind pasan a los tokens del salón)",
-  "total": 417,
-  "entradas": 70,
+  "total": 390,
+  "entradas": 64,
   "porTipo": {
-    "blanco-negro": 76,
-    "escala": 341
+    "blanco-negro": 55,
+    "escala": 335
   },
   "cuentas": {
     "src/app/(app)/carta/agregar-entrada-de-lugar.tsx": {
@@ -163,10 +163,6 @@
     "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
       "blanco-negro": 1
     },
-    "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
-      "blanco-negro": 2,
-      "escala": 3
-    },
     "src/app/(pos)/mesas/[mesaId]/anular-item.tsx": {
       "blanco-negro": 1
     },
@@ -179,25 +175,8 @@
     "src/app/(pos)/mesas/[mesaId]/cerrar-cuenta.tsx": {
       "blanco-negro": 1
     },
-    "src/app/(pos)/mesas/[mesaId]/elegir-opciones.tsx": {
-      "blanco-negro": 3
-    },
     "src/app/(pos)/mesas/[mesaId]/emitir-ticket-corregido.tsx": {
       "blanco-negro": 1
-    },
-    "src/app/(pos)/mesas/[mesaId]/estilos.ts": {
-      "blanco-negro": 4
-    },
-    "src/app/(pos)/mesas/[mesaId]/page.tsx": {
-      "blanco-negro": 3,
-      "escala": 2
-    },
-    "src/app/(pos)/mesas/[mesaId]/selector-carta.tsx": {
-      "blanco-negro": 8
-    },
-    "src/app/(pos)/mesas/[mesaId]/sin-enviar.tsx": {
-      "blanco-negro": 1,
-      "escala": 1
     },
     "src/app/(pos)/mesas/nueva-mesa.tsx": {
       "blanco-negro": 1

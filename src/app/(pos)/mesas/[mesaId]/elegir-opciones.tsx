@@ -27,7 +27,7 @@ export interface EleccionPrecargada {
 }
 
 const OPCION_RADIO =
-  "flex min-h-[48px] w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[14px] font-semibold has-[:checked]:border-[var(--brand)] has-[:checked]:bg-[#F1EFEA] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--brand)] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60";
+  "flex min-h-[48px] w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-borde bg-superficie px-3 py-2 text-[14px] font-semibold has-[:checked]:border-marca has-[:checked]:bg-superficie-suave has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-marca has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60";
 
 /**
  * «Elegir opciones» de un producto en el POS (GO-2d; ADR-030): el diálogo que se abre al tocar un producto que admite opciones (uno sin opciones se sigue agregando con un toque). Es
@@ -113,7 +113,7 @@ export function ElegirOpciones({
       <div className="flex flex-col gap-4" data-elegir-opciones={nombre}>
         {precargas.length > 0 && (
           <div role="group" aria-label="Lo más pedido acá" className="flex flex-col gap-1.5">
-            <p className="text-[12.5px] font-semibold text-[var(--ink-soft)]">Lo más pedido acá</p>
+            <p className="text-[12.5px] font-semibold text-tinta-suave">Lo más pedido acá</p>
             <div className="flex flex-wrap gap-2">
               {precargas.map((p) => (
                 <button key={p.etiqueta} type="button" className={BOTON_CHICO} onClick={() => despachar({ tipo: "precargar", grupos, elegidas: p.elegidas })}>
@@ -144,7 +144,7 @@ export function ElegirOpciones({
                 const noDisponible = "Agotada hoy";
                 const precio = textoDePrecio(g.tipo, g.grupoId, o.opcionId);
                 const enCero = sinStock[o.opcionId];
-                const marca = enCero?.length ? <span className="block text-[11.5px] font-normal text-[var(--ink-soft)]">Sistema: stock 0 de {enCero.join(", ")}</span> : null;
+                const marca = enCero?.length ? <span className="block text-[11.5px] font-normal text-tinta-suave">Sistema: stock 0 de {enCero.join(", ")}</span> : null;
                 if (unaSola) {
                   return (
                     <label key={o.opcionId} className={OPCION_RADIO}>
@@ -172,10 +172,10 @@ export function ElegirOpciones({
                 }
                 const cuantas = estado.elegidas[o.opcionId] ?? 0;
                 return (
-                  <div key={o.opcionId} className="flex min-h-[48px] items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-white px-3 py-2">
+                  <div key={o.opcionId} className="flex min-h-[48px] items-center justify-between gap-2 rounded-lg border border-borde bg-superficie px-3 py-2">
                     <span className="text-[14px] font-semibold">
                       {o.nombre}
-                      <span className="block text-[12.5px] font-normal text-[var(--ink-soft)]">
+                      <span className="block text-[12.5px] font-normal text-tinta-suave">
                         {disponible ? `${precio ? `${precio} · ` : ""}hasta ${o.cantidadMaxima}` : noDisponible}
                       </span>
                       {marca}
@@ -214,7 +214,7 @@ export function ElegirOpciones({
           </Link>
         )}
 
-        <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-col gap-2 border-t border-[var(--border)] bg-white p-4">
+        <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-col gap-2 border-t border-borde bg-superficie p-4">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[13px] font-semibold">Cantidad</span>
             <span className="flex items-center gap-1.5">
@@ -229,7 +229,7 @@ export function ElegirOpciones({
               </button>
             </span>
           </div>
-          <p aria-live="polite" className="text-[13px] text-[var(--ink-soft)]" data-total-opciones>
+          <p aria-live="polite" className="text-[13px] text-tinta-suave" data-total-opciones>
             {faltan.length > 0 ? `Falta elegir: ${faltan.map((g) => g.nombre).join(", ")}` : vista.ok ? desglose : vista.mensaje}
           </p>
           <button

@@ -29,22 +29,22 @@ import { type EntradaCarpetaSelectorCarta, type EntradaPromoSelectorCarta, type 
  */
 
 const BOTON_SECCION =
-  "rounded-full border border-[var(--border)] bg-white px-3.5 py-1.5 text-[13px] font-semibold enabled:hover:bg-[#F1EFEA] aria-pressed:border-[var(--brand)] aria-pressed:bg-[var(--brand)] aria-pressed:text-white aria-pressed:enabled:hover:bg-[var(--brand-hover)] disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-full border border-borde bg-superficie px-3.5 py-1.5 text-[13px] font-semibold enabled:hover:bg-superficie-suave aria-pressed:border-marca aria-pressed:bg-marca aria-pressed:text-superficie aria-pressed:enabled:hover:bg-marca-hover disabled:cursor-not-allowed disabled:opacity-50";
 const BOTON_PRODUCTO =
-  "group flex min-h-[48px] w-full flex-col items-start justify-center gap-0.5 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-left text-[13.5px] font-semibold enabled:hover:bg-[#F1EFEA] aria-pressed:border-[var(--brand)] aria-pressed:bg-[var(--brand)] aria-pressed:text-white aria-pressed:enabled:hover:bg-[var(--brand-hover)] disabled:cursor-not-allowed disabled:opacity-50";
+  "group flex min-h-[48px] w-full flex-col items-start justify-center gap-0.5 rounded-lg border border-borde bg-superficie px-3 py-2 text-left text-[13.5px] font-semibold enabled:hover:bg-superficie-suave aria-pressed:border-marca aria-pressed:bg-marca aria-pressed:text-superficie aria-pressed:enabled:hover:bg-marca-hover disabled:cursor-not-allowed disabled:opacity-50";
 const BOTON_AGRUPADO =
-  "flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-dashed border-[var(--ink-soft)] bg-white px-3 py-2 text-left text-[13.5px] font-semibold enabled:hover:bg-[#F1EFEA] aria-expanded:border-solid aria-expanded:bg-[#F1EFEA] disabled:cursor-not-allowed disabled:opacity-50";
+  "flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-dashed border-tinta-suave bg-superficie px-3 py-2 text-left text-[13.5px] font-semibold enabled:hover:bg-superficie-suave aria-expanded:border-solid aria-expanded:bg-superficie-suave disabled:cursor-not-allowed disabled:opacity-50";
 // El último `aria-expanded:enabled:hover:` (mismo patrón que BOTON_SECCION/BOTON_PRODUCTO) es necesario, no cosmético: sin él,
 // justo después del click que abre la carpeta el mouse queda posicionado ahí, `:hover` queda activo de verdad, y
-// `enabled:hover:bg-[#F1EFEA]` (más específico que `aria-expanded:bg-[...]`, que es un solo selector de atributo) le gana al
+// `enabled:hover:bg-superficie-suave` (más específico que `aria-expanded:bg-[...]`, que es un solo selector de atributo) le gana al
 // fondo abierto — texto blanco sobre #F1EFEA no pasa el contraste WCAG AA (hallazgo real de axe en
 // test/e2e/pos-carta-secciones.spec.ts, «accesibilidad: con la carpeta de género abierta»).
 const BOTON_CARPETA =
-  "col-span-full flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-[var(--brand)] bg-white px-3 py-2 text-left text-[13.5px] font-semibold enabled:hover:bg-[#F1EFEA] aria-expanded:bg-[var(--brand)] aria-expanded:text-white aria-expanded:enabled:hover:bg-[var(--brand-hover)] disabled:cursor-not-allowed disabled:opacity-50";
+  "col-span-full flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border border-marca bg-superficie px-3 py-2 text-left text-[13.5px] font-semibold enabled:hover:bg-superficie-suave aria-expanded:bg-marca aria-expanded:text-superficie aria-expanded:enabled:hover:bg-marca-hover disabled:cursor-not-allowed disabled:opacity-50";
 /** Task #16 (promo-combo): una promo armable, destacada — fondo distinto para que no se confunda con un producto suelto. */
 const BOTON_PROMO =
-  "col-span-full flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border-2 border-[var(--brand)] bg-[#FFF7E6] px-3 py-2 text-left text-[13.5px] font-semibold enabled:hover:bg-[#FCEFC7] disabled:cursor-not-allowed disabled:opacity-50";
-const PRECIO = "text-[12.5px] font-normal tabular-nums text-[var(--ink-soft)] group-aria-pressed:text-white";
+  "col-span-full flex min-h-[48px] w-full items-center justify-between gap-2 rounded-lg border-2 border-marca bg-aviso-tinte px-3 py-2 text-left text-[13.5px] font-semibold enabled:hover:bg-aviso/20 disabled:cursor-not-allowed disabled:opacity-50";
+const PRECIO = "text-[12.5px] font-normal tabular-nums text-tinta-suave group-aria-pressed:text-superficie";
 
 /** «$ 5.000», o «$ 5.000 a $ 5.500» si las opciones de un agrupado no cuestan lo mismo. */
 function precioDeAgrupado(minimo: number, maximo: number): string {
@@ -148,7 +148,7 @@ export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrir
               {e.opciones.length === 1 ? "1 opción" : `${e.opciones.length} opciones`} · {precioDeAgrupado(e.precioMinimo, e.precioMaximo)}
             </span>
           </span>
-          <span aria-hidden className="text-[var(--ink-soft)]">
+          <span aria-hidden className="text-tinta-suave">
             {abierto ? "▴" : "▾"}
           </span>
         </button>
@@ -158,7 +158,7 @@ export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrir
     return [
       boton,
       <li key={`${e.itemAgrupadoCartaId}-opciones`} className="col-span-full">
-        <ul id={idOpciones} aria-label={`Opciones de ${e.nombre}`} className="grid grid-cols-2 gap-2 rounded-lg border border-[var(--border)] bg-[#F1EFEA] p-2 sm:grid-cols-3 lg:grid-cols-4">
+        <ul id={idOpciones} aria-label={`Opciones de ${e.nombre}`} className="grid grid-cols-2 gap-2 rounded-lg border border-borde bg-superficie-suave p-2 sm:grid-cols-3 lg:grid-cols-4">
           {e.opciones.map((o) => (
             <li key={o.productoId}>{botonProducto(o)}</li>
           ))}
@@ -234,7 +234,7 @@ export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrir
                 <ul
                   id={idContenido}
                   aria-label={`Productos de ${e.nombre}`}
-                  className="grid grid-cols-2 gap-2 rounded-lg border border-[var(--border)] bg-[#F1EFEA] p-2 sm:grid-cols-3 lg:grid-cols-4"
+                  className="grid grid-cols-2 gap-2 rounded-lg border border-borde bg-superficie-suave p-2 sm:grid-cols-3 lg:grid-cols-4"
                 >
                   {e.entradas.flatMap(entradaDeCarpeta)}
                 </ul>

@@ -79,7 +79,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
     );
 
   return (
-    <section aria-labelledby="sin-enviar-titulo" className="rounded-[14px] border border-[var(--border)] bg-white p-4">
+    <section aria-labelledby="sin-enviar-titulo" className="rounded-[14px] border border-borde bg-superficie p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 id="sin-enviar-titulo" className="text-[15px] font-bold">
           Sin enviar · {items.filter((i) => !i.lineaPadreId).length}
@@ -91,9 +91,9 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
         )}
       </div>
       {items.length === 0 ? (
-        <p className="text-[13px] text-[var(--ink-soft)]">No hay nada pendiente de enviar.</p>
+        <p className="text-[13px] text-tinta-suave">No hay nada pendiente de enviar.</p>
       ) : (
-        <ul className="divide-y divide-[var(--border)]">
+        <ul className="divide-y divide-borde">
           {filas.map((fila) =>
             fila.tipo === "suelto" ? (
               <li key={fila.item.id} data-item-sin-enviar={fila.item.productoNombre} className="py-2 text-[14px]">
@@ -101,14 +101,14 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
                   <span className="min-w-0 [overflow-wrap:anywhere]">
                     <span className="font-semibold tabular-nums">{formatearCantidad(fila.item.cantidad)} ×</span> {fila.item.productoNombre}
                     {fila.item.opciones && (
-                      <span data-opciones-de-linea className="block text-[12.5px] text-[var(--ink-soft)]">
+                      <span data-opciones-de-linea className="block text-[12.5px] text-tinta-suave">
                         {fila.item.opciones.join(" · ")}
                       </span>
                     )}
                   </span>
                   <span className="flex flex-wrap items-center gap-3">
                     <span className="tabular-nums">
-                      {fila.item.precioListaUnitario !== null && <s data-precio-lista className="mr-1 text-[var(--ink-soft)]">{formatearMonto(fila.item.cantidad * fila.item.precioListaUnitario)}</s>}
+                      {fila.item.precioListaUnitario !== null && <s data-precio-lista className="mr-1 text-tinta-suave">{formatearMonto(fila.item.cantidad * fila.item.precioListaUnitario)}</s>}
                       {formatearMonto(fila.item.cantidad * fila.item.precioUnitario)}
                     </span>
                     {fila.item.productoId && elegidasDeLaLinea(fila).length > 0 && (
@@ -154,7 +154,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
                     </button>
                   </span>
                 </div>
-                <ul className="mt-1 space-y-0.5 pl-4 text-[12.5px] text-[var(--ink-soft)]">
+                <ul className="mt-1 space-y-0.5 pl-4 text-[12.5px] text-tinta-suave">
                   {fila.items.map((i) => (
                     <li key={i.id} data-item-sin-enviar={i.productoNombre}>
                       <span className="tabular-nums">{formatearCantidad(i.cantidad)} ×</span> {i.productoNombre}
@@ -167,7 +167,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
         </ul>
       )}
       {error && (
-        <p role="alert" className="mt-2 text-[13px] text-red-700">
+        <p role="alert" className="mt-2 text-[13px] text-error">
           {error}
         </p>
       )}
@@ -184,7 +184,7 @@ function QuitarLinea({ nombre, conAdicionales, deshabilitado, title, quitar }: {
   if (confirmando) {
     return (
       <span role="group" aria-label={`Quitar ${nombre} con sus adicionales`} className="flex flex-wrap items-center gap-2">
-        <span className="text-[12.5px] text-[var(--ink-soft)]">Se quitan también sus adicionales.</span>
+        <span className="text-[12.5px] text-tinta-suave">Se quitan también sus adicionales.</span>
         <button
           type="button"
           className={BOTON_CHICO}
