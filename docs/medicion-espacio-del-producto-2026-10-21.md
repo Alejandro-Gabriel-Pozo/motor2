@@ -119,4 +119,30 @@ Lectura: crear una base configurable (b) es la tarea más pesada de hoy, con 7 p
 
 ## 6. Después (6.21)
 
-En 6.21 la spec se reescribe con los recorridos del espacio y afirma: **0 salidas** en b, c y d, y pantallas y clics **no peores** que esta tabla (más el umbral que fije el dueño, DEC-12). La columna «después» y las capturas a 375 y 1280 px se agregan acá, junto a la tabla «antes».
+La spec se reescribió con los recorridos del espacio y **afirma el umbral de DEC-12**: en las cuatro tareas, pantallas y clics **no peores** que la tabla «antes» (constantes `ANTES`, citadas del §5) y **0 salidas del espacio** en b, c y d (`salidasDelEspacio`: las visitas, después de la pantalla de partida, a una pantalla que no es del espacio del producto: el alta, la portada y sus pasos). La definición vieja de salidas (pantallas distintas menos 1) sigue en el JSON como `salidas`, para comparar con el «antes».
+
+Corrida: 2026-10-22 · Código medido: rama `alegp/carril-b` con 6.15b, 6.15c y 6.17c (último commit de código, `6666dd43`) · Servidor: build de producción (`next start`) a 1280 px · 83 pruebas pasaron en 7,4 min (las cuatro tareas, el espacio, la línea de base y accesibilidad).
+
+| Tarea | Pantallas | Clics | Campos | Salidas del espacio | Visitas |
+|---|---|---|---|---|---|
+| a) Producto directo vendible | 3 → **3** | 3 → **3** | 4 → **4** | no aplica | 3 → **3** |
+| b) Base configurable (3 opciones + 1 incluida) | 7 → **5** | 28 → **13** | 22 → **16** | 6 → **0** | 11 → **6** |
+| c) Cambiar el precio final de una opción | 2 → **2** | 2 → **2** | 1 → **1** | 1 → **0** | 2 → **2** |
+| d) Publicar en la carta | 2 → **2** | 6 → **2** | 1 → **1** | 1 → **0** | 2 → **2** |
+
+(«antes» → **después**.) Ninguna tarea empeora y b, c y d quedan en 0 salidas del espacio.
+
+Recorridos nuevos (`rutas` del JSON; los ids se normalizan a `[id]`):
+
+- **a)** `/catalogo/productos` → `/catalogo/productos/nuevo` → `/catalogo/productos/[id]`. Igual que antes: el alta ya no necesitaba más.
+- **b)** `/catalogo/productos` → `/catalogo/productos/nuevo` → `/catalogo/productos/[id]` → `/catalogo/productos/[id]/opciones` → `/catalogo/productos/[id]/datos` → `/catalogo/productos/[id]` (6 visitas). Los dos grupos se crean en la ventana «+ Nuevo grupo» del paso 2 (el grupo, sus opciones y lo que el producto admite de ellas, en una sola operación), sin pasar por la biblioteca de «Opciones de venta»; «Por opción» se marca en el paso 1, a un clic desde el paso 2. Parte de la lista de productos (antes partía de «Opciones de venta»: ya no hace falta ir a otro lado a crear los grupos).
+- **c)** `/catalogo/productos/[id]` → `/catalogo/productos/[id]/opciones`. Igual: el paso «Opciones y precio» es el mismo lugar que antes, dentro del marco.
+- **d)** `/catalogo/productos/[id]` → `/catalogo/productos/[id]/en-la-carta`. Antes había que ir por el menú a la carta, abrir «Visibilidad» y «Fuera de carta», buscar el producto y agregarlo; ahora es el paso «En la carta» del producto: «En la carta» → elegir la sección → «Guardar contenido».
+
+Lectura: la tarea más pesada de hoy (b) pasó de 7 pantallas, 28 clics y 6 salidas a 5 pantallas, 13 clics y 0 salidas; publicar en la carta (d) pasó de 6 clics y una salida a 2 clics y ninguna.
+
+Las mutaciones que demuestran que el umbral muerde están en el encabezado de la spec: en (c), ir por la biblioteca (`/catalogo/opciones/[id]`) da `salidasDelEspacio` = 1 y falla; un clic de más en (c) da 3 clics contra 2 y falla.
+
+Las dos mutaciones se corrieron (2026-10-22) y las dos dieron rojo: ir por la biblioteca en (c) (`c-cambiar-precio-final: pantallas (antes 2)`, además de 1 salida del espacio) y el clic de más (`c-cambiar-precio-final: clics (antes 2)`). Se deshicieron.
+
+Capturas a 375 y a 1280 px (la portada recién creada, el paso 2 con la ventana «+ Nuevo grupo», el paso 2 al final de la base y el paso 4): las saca la spec del espacio con `MOTOR2_CAPTURAS_MOVIL=<carpeta> MOTOR2_E2E_SERVIDOR=start node scripts/operaciones/con-env.mjs <env-e2e> -- npx playwright test espacio-del-producto.spec`.

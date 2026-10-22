@@ -82,6 +82,25 @@ interface DestinoDelMenu {
   grupo: string;
 }
 
+/**
+ * Lo que pedía cada tarea ANTES del espacio (tabla «antes» de docs/medicion-espacio-del-producto-2026-10-21.md §5, primera corrida, commit c17c3c52): el umbral de DEC-12 es no pasarse de esto. Si se
+ * sube un número para que la spec pase, se está aflojando el umbral del dueño: no se hace.
+ */
+const ANTES = {
+  "a-producto-directo": { pantallas: 3, clics: 3 },
+  "b-base-configurable": { pantallas: 7, clics: 28 },
+  "c-cambiar-precio-final": { pantallas: 2, clics: 2 },
+  "d-publicar-en-la-carta": { pantallas: 2, clics: 6 },
+} as const satisfies Record<Tarea, { pantallas: number; clics: number }>;
+
+/** El umbral de DEC-12 sobre una medición: no peor que antes en pantallas y clics y, donde aplica (b, c y d), 0 salidas del espacio. */
+function afirmarElUmbral(medicion: Medicion): void {
+  const antes = ANTES[medicion.tarea];
+  expect(medicion.pantallas, `${medicion.tarea}: pantallas (antes ${antes.pantallas})`).toBeLessThanOrEqual(antes.pantallas);
+  expect(medicion.clics, `${medicion.tarea}: clics (antes ${antes.clics})`).toBeLessThanOrEqual(antes.clics);
+  if (medicion.salidasDelEspacio !== null) expect(medicion.salidasDelEspacio, `${medicion.tarea}: salidas del espacio (${medicion.secuencia.join(" → ")})`).toBe(0);
+}
+
 /** Las pantallas del espacio del producto (rutas normalizadas): el alta, la portada y sus pasos. Ir a cualquier otra es una salida del espacio. */
 const ESPACIO = new Set(["/catalogo/productos/nuevo", "/catalogo/productos/[id]", "/catalogo/productos/[id]/datos", "/catalogo/productos/[id]/opciones", "/catalogo/productos/[id]/receta", "/catalogo/productos/[id]/en-la-carta"]);
 
@@ -258,6 +277,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     expect({ tipo: producto.tipo, modoDeVenta: producto.modoDeVenta, precioVenta: Number(producto.precioVenta) }).toEqual({ tipo: "PV", modoDeVenta: "DIRECTO", precioVenta: 4500 });
     const disponibilidad = await prisma.disponibilidadProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: producto.id } } });
     expect(disponibilidad.disponible, "el producto quedó disponible en la sucursal").toBe(true);
+    afirmarElUmbral(medicion);
     guardarMedicion(medicion);
   });
 
@@ -332,6 +352,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     expect(precios.map((p) => [p.opcion.nombre, Number(p.precioAbsoluto)]).sort()).toEqual(tamanos.map(([nombre, precio]) => [nombre, Number(precio)]).sort());
     const incluidas = await prisma.productoAdmiteOpcion.count({ where: { productoId: guardado.id, activo: true, opcion: { grupo: { nombre: grupoIncluida } } } });
     expect(incluidas, "la opción incluida quedó admitida").toBe(1);
+    afirmarElUmbral(medicion);
     guardarMedicion(medicion);
   });
 
@@ -355,6 +376,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     expect(Number(fila.precioAbsoluto), "el precio final nuevo quedó guardado").toBe(23500);
     const otras = await prisma.productoAdmiteOpcion.findMany({ where: { productoId: base.productoId, NOT: { opcionId } }, select: { precioAbsoluto: true } });
     expect(otras.map((o) => Number(o.precioAbsoluto)).sort(), "las otras opciones siguen igual").toEqual([18000, 25000]);
+    afirmarElUmbral(medicion);
     guardarMedicion(medicion);
   });
 
@@ -377,7 +399,8 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
       const medicion = m.resultado(true);
       const contenido = await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: base.productoId } } });
       expect({ visibleEnCarta: contenido.visibleEnCarta, seccionCartaId: contenido.seccionCartaId }).toEqual({ visibleEnCarta: true, seccionCartaId: seccion.id });
-        guardarMedicion(medicion);
+      afirmarElUmbral(medicion);
+      guardarMedicion(medicion);
     } finally {
       // Lo de la carta se limpia (como hacen las otras specs de la carta); el producto y sus opciones se quedan, como en las demás specs de opciones.
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: base.productoId } });

@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
-import { expectObjetivosTactiles, expectSinDesborde } from "./fixtures/movil";
+import { capturar, expectObjetivosTactiles, expectSinDesborde } from "./fixtures/movil";
 import { abrirComoRol } from "./fixtures/rol-pos";
 import { sembrarGrupo } from "./fixtures/opciones";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
@@ -66,6 +66,7 @@ for (const { ancho, alto } of [
       }
       await expect(ventana).toContainText(/Napolitana = \$\s*22\.000/);
       await expectSinDesborde(page, `${ancho} px: la ventana «+ Nuevo grupo» llena`);
+      await capturar(page, `espacio-paso2-ventana-nuevo-grupo-${ancho}`);
       if (ancho < 768) {
         await expectObjetivosTactiles(ventana.getByRole("button"), `${ancho} px: los botones de la ventana`);
         await expectObjetivosTactiles(ventana.getByRole("textbox"), `${ancho} px: los campos de la ventana`);
@@ -201,6 +202,7 @@ for (const { ancho, alto } of [
       const ficha = page.locator(`[data-contenido-carta="${carta.producto.nombre}"]`);
       await expect(ficha.getByLabel(/^Sección de carta/)).toBeVisible();
       await expectSinDesborde(page, `${ancho} px: el paso «En la carta»`);
+      await capturar(page, `espacio-paso4-en-la-carta-${ancho}`);
       expect((await new AxeBuilder({ page }).analyze()).violations, `${ancho} px: el paso «En la carta»`).toEqual([]);
       await ficha.getByLabel(/^Sección de carta/).selectOption({ label: carta.seccion.nombre });
       await ficha.getByRole("button", { name: `Guardar contenido de «${carta.producto.nombre}»` }).click();
@@ -332,6 +334,7 @@ for (const { ancho, alto } of [
     await expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(nombre);
     await expectSinDesborde(page, `${ancho} px: la portada recién creada`);
+    await capturar(page, `espacio-portada-${ancho}`);
     if (tactil) await expectObjetivosTactiles(pasos.getByRole("link"), `${ancho} px: la tira de pasos`);
 
     // 2) El paso 2: un grupo de precio final con 3 opciones y uno incluido.
@@ -372,6 +375,7 @@ for (const { ancho, alto } of [
     await expect(page.locator("[data-falta-por-opcion]")).toHaveCount(0);
     await expect(page.locator("[data-precio-de-la-sucursal]")).toContainText("Se vende por opción");
     await expectSinDesborde(page, `${ancho} px: el paso 2 al final`);
+    await capturar(page, `espacio-paso2-al-final-${ancho}`);
     expect((await new AxeBuilder({ page }).analyze()).violations, `${ancho} px: el paso 2 al final`).toEqual([]);
 
     const guardado = await prisma.producto.findFirstOrThrow({ where: { nombre }, select: { id: true, modoDeVenta: true } });
