@@ -1,80 +1,17 @@
 {
   "regla": "modo-oscuro",
   "meta": "0 en la Fase 6 (DEC-04: sin modo oscuro en ninguna parte; la raíz declara color-scheme: light)",
-  "total": 122,
-  "entradas": 24,
+  "total": 6,
+  "entradas": 3,
   "porTipo": {
-    "dark:": 122
+    "dark:": 6
   },
   "cuentas": {
-    "src/app/(app)/catalogo/opciones/[grupoId]/alta-de-opcion.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/cambiar-precio.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/campos-de-version.tsx": {
-      "dark:": 7
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/editor-de-consumos.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/lectura-del-factor.tsx": {
-      "dark:": 10
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/ordenar-opciones.tsx": {
-      "dark:": 7
-    },
-    "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": {
-      "dark:": 22
-    },
-    "src/app/(app)/catalogo/opciones/alta-de-grupo.tsx": {
-      "dark:": 5
-    },
-    "src/app/(app)/catalogo/opciones/limpiar/limpiar-opciones.tsx": {
-      "dark:": 21
-    },
-    "src/app/(app)/catalogo/opciones/limpiar/page.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/catalogo/opciones/page.tsx": {
-      "dark:": 9
-    },
     "src/app/(app)/catalogo/productos/page.tsx": {
       "dark:": 2
     },
-    "src/app/(app)/catalogo/proveedores/[id]/page.tsx": {
-      "dark:": 6
-    },
-    "src/app/(app)/catalogo/recetas/[productoId]/historial/page.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
-      "dark:": 5
-    },
-    "src/app/(app)/catalogo/recetas/[productoId]/receta-de-la-sucursal.tsx": {
-      "dark:": 4
-    },
-    "src/app/(app)/catalogo/recetas/nueva-receta.tsx": {
-      "dark:": 1
-    },
-    "src/app/(app)/catalogo/unidades/page.tsx": {
-      "dark:": 1
-    },
     "src/components/agregar-colapsable.tsx": {
       "dark:": 1
-    },
-    "src/components/catalogo/asistente-hermanar.tsx": {
-      "dark:": 2
-    },
-    "src/components/catalogo/campos-sensibles-solo-lectura.tsx": {
-      "dark:": 6
-    },
-    "src/components/catalogo/form-renombrar-insumo.tsx": {
-      "dark:": 1
-    },
-    "src/components/catalogo/resumen-de-opciones.tsx": {
-      "dark:": 4
     },
     "src/components/receta/lectura-de-cantidad.tsx": {
       "dark:": 3

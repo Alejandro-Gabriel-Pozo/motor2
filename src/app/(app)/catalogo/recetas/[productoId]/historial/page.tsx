@@ -18,10 +18,10 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { productoId } = await params;
 
@@ -33,7 +33,7 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
   if (!producto) {
     return (
       <div className="flex flex-col gap-2">
-        <p className="text-red-600">No se encontró ese producto.</p>
+        <p className="text-error">No se encontró ese producto.</p>
         <Link href="/catalogo/recetas" className="text-sm underline">
           ← Volver a Recetas
         </Link>
@@ -53,15 +53,15 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
       </div>
 
       {versiones.length === 0 ? (
-        <p className="text-sm text-neutral-500">Todavía no hay ninguna versión guardada.</p>
+        <p className="text-sm text-tinta-tenue">Todavía no hay ninguna versión guardada.</p>
       ) : (
         <div className="flex flex-col gap-6">
           {versiones.map((v) => (
             <div key={v.id} className="rounded border p-3">
               <h2 className="mb-2 text-sm font-medium">
                 Versión {v.version}
-                {v.version === versionVigente && <span className="ml-2 text-xs text-neutral-500">(vigente)</span>}
-                <span className="ml-2 text-xs font-normal text-neutral-500">
+                {v.version === versionVigente && <span className="ml-2 text-xs text-tinta-tenue">(vigente)</span>}
+                <span className="ml-2 text-xs font-normal text-tinta-tenue">
                   — {formatearFechaHora(v.creadoEn, ctx.empresaZonaHoraria)}
                 </span>
               </h2>
@@ -72,13 +72,13 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
                 if (v.racionTamano != null) detalles.push(`Tamaño de ración: ${Number(v.racionTamano)} ${v.racionUnidad?.nombre ?? ""}`.trim());
                 if (v.tiempoPreparacionMinutos != null) detalles.push(`Prep.: ${v.tiempoPreparacionMinutos} min`);
                 if (v.tiempoCoccionMinutos != null) detalles.push(`Cocción: ${v.tiempoCoccionMinutos} min`);
-                return detalles.length > 0 ? <p className="mb-2 text-xs text-neutral-500">{detalles.join(" — ")}</p> : null;
+                return detalles.length > 0 ? <p className="mb-2 text-xs text-tinta-tenue">{detalles.join(" — ")}</p> : null;
               })()}
-              {v.comentarios && <p className="mb-2 text-xs text-neutral-500">Comentarios: {v.comentarios}</p>}
+              {v.comentarios && <p className="mb-2 text-xs text-tinta-tenue">Comentarios: {v.comentarios}</p>}
 
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-neutral-500">
+                  <tr className="border-b text-left text-tinta-tenue">
                     <th className="py-1">Ingrediente</th>
                     <th>Cantidad</th>
                     <th>Unidad</th>
@@ -91,7 +91,7 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
                       <td className="py-1">
                         {ing.insumoProducto.nombre}
                         {ing.sustitutos.length > 0 && (
-                          <p className="text-xs text-neutral-500">Sustitutos: {ing.sustitutos.map((s) => s.insumoSustituto.nombre).join(" → ")}</p>
+                          <p className="text-xs text-tinta-tenue">Sustitutos: {ing.sustitutos.map((s) => s.insumoSustituto.nombre).join(" → ")}</p>
                         )}
                       </td>
                       <td>{Number(ing.cantidad)}</td>
@@ -104,17 +104,17 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
 
               {v.pasos.length > 0 && (
                 <div className="mt-3">
-                  <h3 className="mb-1 text-xs font-medium text-neutral-500">Método de preparación</h3>
+                  <h3 className="mb-1 text-xs font-medium text-tinta-tenue">Método de preparación</h3>
                   <ol className="flex flex-col gap-1 text-sm">
                     {v.pasos.map((paso) => (
                       <li key={paso.id}>
                         <span className="font-medium">
                           {paso.orden}. {paso.nombre || "Paso"}
                         </span>
-                        {paso.minutos != null && <span className="text-xs text-neutral-500"> ({paso.minutos} min)</span>}
-                        <p className="text-neutral-700 dark:text-neutral-300">{paso.instruccion}</p>
+                        {paso.minutos != null && <span className="text-xs text-tinta-tenue"> ({paso.minutos} min)</span>}
+                        <p className="text-tinta-suave">{paso.instruccion}</p>
                         {paso.ingredientes.length > 0 && (
-                          <p className="text-xs text-neutral-500">
+                          <p className="text-xs text-tinta-tenue">
                             Ingredientes: {paso.ingredientes.map((pi) => pi.recetaIngrediente.insumoProducto.nombre).join(", ")}
                           </p>
                         )}

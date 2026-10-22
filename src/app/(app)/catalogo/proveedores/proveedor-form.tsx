@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { altaProveedor, actualizarProveedor, type DatosProveedor } from "@/server/actions/catalogo/proveedores";
+import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 
 export interface ProveedorExistente extends DatosProveedor {
   id: string;
@@ -52,26 +56,25 @@ export function ProveedorForm({ proveedorExistente }: { proveedorExistente?: Pro
           <AyudaCampo>El nombre no se edita acá — es el identificador del proveedor, igual que en Productos e Insumos.</AyudaCampo>
         </div>
       ) : (
-        <input name="nombre" placeholder="Nombre" required className="rounded border px-3 py-2" />
+        <Campo aria-label="Nombre" name="nombre" placeholder="Nombre" required />
       )}
 
-      <input name="contacto" placeholder="Contacto" defaultValue={proveedorExistente?.contacto ?? ""} className="rounded border px-3 py-2" />
-      <input name="telefono" placeholder="Teléfono" defaultValue={proveedorExistente?.telefono ?? ""} className="rounded border px-3 py-2" />
-      <input name="email" type="email" placeholder="Email" defaultValue={proveedorExistente?.email ?? ""} className="rounded border px-3 py-2" />
-      <input name="cuit" placeholder="CUIT" defaultValue={proveedorExistente?.cuit ?? ""} className="rounded border px-3 py-2" />
-      <input
-        name="condicionesPago"
-        placeholder="Condiciones de pago"
-        defaultValue={proveedorExistente?.condicionesPago ?? ""}
-        className="rounded border px-3 py-2"
-      />
-      <textarea name="notas" placeholder="Notas" defaultValue={proveedorExistente?.notas ?? ""} className="rounded border px-3 py-2" />
+      <Campo aria-label="Contacto" name="contacto" placeholder="Contacto" defaultValue={proveedorExistente?.contacto ?? ""} />
+      <Campo aria-label="Teléfono" name="telefono" placeholder="Teléfono" defaultValue={proveedorExistente?.telefono ?? ""} />
+      <Campo aria-label="Email" name="email" type="email" placeholder="Email" defaultValue={proveedorExistente?.email ?? ""} />
+      <Campo aria-label="CUIT" name="cuit" placeholder="CUIT" defaultValue={proveedorExistente?.cuit ?? ""} />
+      <Campo aria-label="Condiciones de pago" name="condicionesPago" placeholder="Condiciones de pago" defaultValue={proveedorExistente?.condicionesPago ?? ""} />
+      <AreaDeTexto etiqueta="Notas" etiquetaOculta name="notas" placeholder="Notas" defaultValue={proveedorExistente?.notas ?? ""} />
 
-      {mensaje && <p className={`text-sm ${mensaje.startsWith("Proveedor") ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+      {mensaje && (
+        <Aviso variante={mensaje.startsWith("Proveedor") ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
+      )}
 
-      <button type="submit" disabled={pending} className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+      <Boton type="submit" disabled={pending} className="self-start">
         {pending ? "Guardando..." : editando ? "Guardar cambios" : "Crear proveedor"}
-      </button>
+      </Boton>
     </form>
   );
 }

@@ -13,13 +13,13 @@ export default async function EditarProveedorPage({ params }: { params: Promise<
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   // Además de Ver, EDITAR: `actualizarProveedor` exige Editar de `proveedores`. Quien solo ve proveedores no recibe el formulario para descubrirlo al guardar.
   const gateEditar = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
-  if (!gateEditar.ok) return <p className="text-red-600">{gateEditar.mensaje}</p>;
+  if (!gateEditar.ok) return <p className="text-error">{gateEditar.mensaje}</p>;
 
   const { id } = await params;
   const p = await obtenerProveedorPorId(id, ctx.db);
