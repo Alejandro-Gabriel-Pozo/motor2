@@ -67,7 +67,11 @@ export function CamposSeccion({
 }) {
   return (
     <>
-      <Campo etiqueta="Nombre" name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Platos Principales" />
+      {/* El «Nombre» de la sección lleva su rótulo atado por afuera (y no el `etiqueta` de Campo): con `required` Campo le suma un asterisco al texto y esta pantalla la fotografía la línea de base de navegador (el golden no cambia). */}
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Nombre</span>
+        <Campo nombradoPorFuera name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Platos Principales" />
+      </label>
       <Campo etiqueta="Título (opcional, si no se usa el nombre)" name="titulo" defaultValue={valores?.titulo ?? ""} placeholder="Del fuego" />
       <div className="sm:col-span-2">
         <AreaDeTexto etiqueta="Descripción (opcional)" name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} />

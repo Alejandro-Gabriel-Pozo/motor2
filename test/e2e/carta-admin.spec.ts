@@ -33,7 +33,7 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
     // 1. Sección de carta nueva: Parametrización › Secciones (los formularios de siempre).
     await page.goto("/carta/parametrizacion/secciones");
     const nuevaSeccion = page.locator("form", { has: page.getByRole("heading", { name: "Nueva sección de carta" }) });
-    await nuevaSeccion.getByRole("textbox", { name: "Nombre", exact: true }).fill(nombreSeccion);
+    await nuevaSeccion.getByLabel("Nombre", { exact: true }).fill(nombreSeccion);
     await nuevaSeccion.getByLabel(/^Título/).fill("Del fuego");
     await nuevaSeccion.getByLabel("Orden").fill("1");
     await nuevaSeccion.getByRole("button", { name: "Crear sección" }).click();
