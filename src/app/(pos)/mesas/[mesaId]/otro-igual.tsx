@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { BOTON_CHICO } from "./estilos";
+import { Boton } from "@/ui/primitivas/boton";
 
 /** Lo que «Otro igual» le pide a «Agregar al pedido»: el producto y lo elegido en la línea de la cuenta. */
 export interface PedidoOtroIgual {
@@ -38,16 +38,17 @@ export function OtroIgual({ pedido, titulo, puede }: { pedido: PedidoOtroIgual; 
   const [error, setError] = useState<string | null>(null);
   return (
     <>
-      <button
-        type="button"
-        className={BOTON_CHICO}
+      <Boton
+        variante="secundario"
+        tamano="chico"
+        className="min-w-11"
         disabled={!puede}
         title={puede ? undefined : "Tu rol puede ver la mesa pero no tomar pedidos."}
         aria-label={`Otro igual a ${titulo}`}
         onClick={() => setError(pedir(pedido) ? null : `«${titulo}» hoy no se puede pedir con opciones desde la carta.`)}
       >
         Otro igual
-      </button>
+      </Boton>
       {error && (
         <span role="alert" className="text-[12.5px] text-error">
           {error}

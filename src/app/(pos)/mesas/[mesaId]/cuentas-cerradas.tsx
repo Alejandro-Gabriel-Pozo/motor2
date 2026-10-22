@@ -1,7 +1,7 @@
 "use client";
 
 import { type TicketDeCuenta, formatearNumeroTicket, formatearMonto } from "@/core/pos/public";
-import { BOTON_CHICO } from "./estilos";
+import { Boton } from "@/ui/primitivas/boton";
 import { formatearHora } from "@/core/tiempo/zona-horaria";
 import { useImpresion } from "./imprimir";
 import { EmitirTicketCorregido } from "./emitir-ticket-corregido";
@@ -45,16 +45,17 @@ export function CuentasCerradas({ tickets, puede, puedeCorregir, zonaHoraria }: 
               <span className="flex items-center gap-3">
                 {b.estado === "anulada" && <span className="text-[12.5px] font-semibold text-error">Venta anulada</span>}
                 <EmitirTicketCorregido ticket={b} hora={hora} puede={puedeCorregir} />
-                <button
-                  type="button"
-                  className={BOTON_CHICO}
+                <Boton
+                  variante="secundario"
+                  tamano="chico"
+                  className="min-w-11"
                   disabled={!puede || b.estado !== "vigente"}
                   title={motivo}
                   aria-label={`Reimprimir el ticket de la cuenta cerrada a las ${hora}`}
                   onClick={() => reimprimirTicket(b.cuentaId)}
                 >
                   Reimprimir ticket
-                </button>
+                </Boton>
               </span>
             </li>
           );

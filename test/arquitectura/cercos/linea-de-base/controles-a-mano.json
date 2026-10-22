@@ -1,10 +1,10 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 405,
-  "entradas": 84,
+  "total": 399,
+  "entradas": 78,
   "porTipo": {
-    "button": 219,
+    "button": 213,
     "input": 123,
     "input-hidden": 16,
     "select": 33,
@@ -174,9 +174,6 @@
     "src/app/(carta-publica)/error.tsx": {
       "button": 1
     },
-    "src/app/(pos)/error.tsx": {
-      "button": 1
-    },
     "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
       "button": 4,
       "input": 1
@@ -207,9 +204,6 @@
       "button": 3,
       "input": 1
     },
-    "src/app/(pos)/mesas/[mesaId]/cuentas-cerradas.tsx": {
-      "button": 1
-    },
     "src/app/(pos)/mesas/[mesaId]/elegir-opciones.tsx": {
       "button": 6,
       "input": 1
@@ -217,15 +211,6 @@
     "src/app/(pos)/mesas/[mesaId]/emitir-ticket-corregido.tsx": {
       "button": 3,
       "textarea": 1
-    },
-    "src/app/(pos)/mesas/[mesaId]/imprimir.tsx": {
-      "button": 1
-    },
-    "src/app/(pos)/mesas/[mesaId]/liberar-mesa.tsx": {
-      "button": 1
-    },
-    "src/app/(pos)/mesas/[mesaId]/otro-igual.tsx": {
-      "button": 1
     },
     "src/app/(pos)/mesas/[mesaId]/selector-carta.tsx": {
       "button": 6
@@ -302,9 +287,6 @@
     },
     "src/components/mesas/mesa-card.tsx": {
       "button": 3
-    },
-    "src/components/pos-shell.tsx": {
-      "button": 1
     },
     "src/components/selector-empresa.tsx": {
       "select": 1

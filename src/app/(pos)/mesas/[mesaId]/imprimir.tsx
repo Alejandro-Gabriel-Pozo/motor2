@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { type TicketDeCuenta, documentoDeReimpresion, type ComandaDeEnvio, resolverImpresion, type DocumentoImprimible, type PedidoImpresion } from "@/core/pos/public";
 import { TicketCuenta } from "./ticket-cuenta";
-import { BOTON_CHICO } from "./estilos";
+import { Boton } from "@/ui/primitivas/boton";
 import { TicketCocina } from "./ticket-cocina";
 
 /**
@@ -123,15 +123,16 @@ export function ImpresionProvider({
 export function ReimprimirEnvio({ numero, puede }: { numero: number; puede: boolean }) {
   const { reimprimirEnvio } = useImpresion();
   return (
-    <button
-      type="button"
-      className={BOTON_CHICO}
+    <Boton
+      variante="secundario"
+      tamano="chico"
+      className="min-w-11"
       disabled={!puede}
       title={puede ? undefined : "Reimprimir la comanda requiere el permiso de tomar pedidos, que tu rol no tiene."}
       aria-label={`Reimprimir la comanda del envío ${numero}`}
       onClick={() => reimprimirEnvio(numero)}
     >
       Reimprimir
-    </button>
+    </Boton>
   );
 }
