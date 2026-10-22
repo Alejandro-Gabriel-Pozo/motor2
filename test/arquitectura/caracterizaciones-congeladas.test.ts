@@ -620,6 +620,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 6, paso 6.15c (CAMBIA UN TEXTO de administración, no la carta pública; ADITIVO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_cb_e2e local). La pantalla de opciones de Pizzas (a 1280 y a 375 px) suma el botón «+ Nuevo grupo», que se dibuja porque el usuario de la foto es el administrador y tiene el «Editar» de `opciones_definir`. Revisado con `git diff`: cambian SOLO 2 líneas, `[botón: + Nuevo grupo]`, una en la sección de 1280 px y otra en la de 375 px, justo antes de `[botón: Agregar un grupo existente]`; la carta pública, «Tipos de Pizza» y Secciones quedan idénticos byte a byte.",
       },
+      {
+        blob: "0ebe73390313f56e4f2fd0af62c988bfddd0da2b",
+        // El commit PADRE de este (6666dd43) es el último antes de la regeneración; el texto lo cambió el paso 6.17c (carril B): cada producto de Secciones suma «Abrir en el producto».
+        commit: "6666dd43",
+        motivo:
+          "Ola «precio y carta», Fase 6, paso 6.17c (CAMBIA UN TEXTO de administración, no la carta pública; ADITIVO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_cb_e2e local, con el visto del dueño para regenerar solo las secciones de ADMINISTRACIÓN). La pantalla «Carta › Parametrización › Secciones» (a 1280 y a 375 px) suma el enlace `[enlace: Abrir en el producto]` dentro de la ficha de cada producto de la carta (hacia el paso «En la carta» del espacio del producto): 14 líneas nuevas en total, 7 por ancho (una por cada ficha abierta del volcado). Revisado con `git diff -U0`: son solo líneas agregadas, todas dentro de las dos secciones de Secciones; la carta pública, las opciones de Pizzas y «Tipos de Pizza» quedan idénticos byte a byte.",
+      },
     ],
   },
 };

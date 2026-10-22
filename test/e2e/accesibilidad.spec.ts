@@ -491,6 +491,58 @@ testAutenticado(
   },
 );
 
+testAutenticado("catalogo/productos/[id]/datos de un producto que se vende por opción y catalogo/productos/[id]/en-la-carta (con y sin contenido de carta): sin violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
+  const m = String(Date.now());
+  const grupo = await sembrarGrupo({ nombre: `E2E A11y Base Tamaño ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico" }, { nombre: "Grande" }] });
+  const { productoId } = await sembrarProductoConOpciones({ nombre: `E2E A11y Base ${m}`, codigo: `E2E-A11Y-BASE-${m}`, precioVenta: 2500, sucursalId, grupos: [{ grupo, modoPrecio: "ABSOLUTO", preciosAbsolutos: { Chico: 2500, Grande: 3100 } }] });
+  await prisma.producto.update({ where: { id: productoId }, data: { modoDeVenta: "BASE_CONFIGURABLE" } });
+  const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E A11y Sección ${m}`, orden: 902 } });
+  try {
+    // El paso 1 de una base: «Por opción» marcado y el precio guardado bloqueado.
+    await page.goto(`/catalogo/productos/${productoId}/datos`);
+    await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ })).toBeChecked();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 1 de una base").toEqual([]);
+
+    // El paso 4 sin contenido de carta (todavía no está en la carta) y con él ya publicado.
+    await page.goto(`/catalogo/productos/${productoId}/en-la-carta`);
+    await expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 4 sin contenido de carta").toEqual([]);
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId, visibleEnCarta: true, seccionCartaId: seccion.id, descripcion: "Con queso", tags: ["Sin TACC"], orden: 1 } });
+    await page.goto(`/catalogo/productos/${productoId}/en-la-carta`);
+    await expect(page.locator(`[data-contenido-carta]`).getByLabel(/^Sección de carta/)).toHaveValue(seccion.id);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 4 con el producto publicado").toEqual([]);
+  } finally {
+    await prisma.contenidoCartaProducto.deleteMany({ where: { productoId } });
+    await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+  }
+});
+
+testAutenticado("foco visible en el espacio del producto: con Tab sobre «+ Nuevo grupo» (un Boton del paso 2) se ve el contorno de la tinta, de 2 px", async ({ paginaAutenticada: page, sucursalId }) => {
+  const m = String(Date.now());
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-FOCO-${m}`, nombre: `E2E A11y Foco ${m}`, tipo: "PV", unidadStockId: unidad.id, precioVenta: 2500 } });
+  await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+  try {
+    await page.goto(`/catalogo/productos/${producto.id}/opciones`);
+    await expect(page.getByRole("button", { name: "+ Nuevo grupo", exact: true })).toBeVisible();
+    // Tab hasta el botón (`:focus-visible` solo aparece con el teclado; antes hay enlaces del menú y de la tira).
+    const enElBoton = () => page.evaluate(() => document.activeElement?.tagName === "BUTTON" && (document.activeElement.textContent ?? "").trim() === "+ Nuevo grupo");
+    for (let i = 0; i < 80 && !(await enElBoton()); i++) await page.keyboard.press("Tab");
+    expect(await enElBoton(), "se llegó con Tab a «+ Nuevo grupo»").toBe(true);
+    const contorno = await page.evaluate(() => {
+      const e = getComputedStyle(document.activeElement as Element);
+      return { estilo: e.outlineStyle, color: e.outlineColor, ancho: e.outlineWidth };
+    });
+    expect(contorno.estilo, "outlineStyle del botón enfocado").not.toBe("none");
+    expect(contorno.color, "outlineColor: la tinta (--color-foco)").toBe("rgb(28, 27, 25)");
+    expect(contorno.ancho, "outlineWidth").toBe("2px");
+  } finally {
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
+    await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
+
 testAutenticado(
   "reportes/compras: la anulación de una compra (en reposo, con la confirmación abierta, con el rechazo por stock y ya anulada) sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId, seccionId }) => {

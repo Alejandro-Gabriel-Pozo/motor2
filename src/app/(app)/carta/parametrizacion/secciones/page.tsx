@@ -71,6 +71,7 @@ export default async function SeccionesDeCartaPage() {
           precioLocalActivo={datos.precioLocalActivo}
           sucursalId={sucursalId}
           mostrarNombreArriba={basesDeUnEje.get(p.id)}
+          abrirEnElProducto
         />
       );
     return (

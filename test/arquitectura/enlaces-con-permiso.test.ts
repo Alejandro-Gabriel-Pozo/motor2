@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
-import { RUTAS_FUERA_DEL_MENU, accionDeRuta, accionesDeNavegacion } from "../../src/core/navegacion/estructura";
+import { RUTAS_FUERA_DEL_MENU, RUTAS_HIJAS_CON_ACCION_PROPIA, accionDeRuta, accionesDeNavegacion } from "../../src/core/navegacion/estructura";
 import { ACCION_POR_PROCESO } from "../../src/core/movimientos/transiciones";
 import { obtenerConfigProceso } from "../../src/core/movimientos/ui-config";
 
@@ -68,6 +68,26 @@ describe("accionDeRuta", () => {
     expect(accionDeRuta("/catalogo/proveedores/p1")).toBe("proveedores");
     expect(accionDeRuta("/catalogo/proveedores/p1/editar")).toBe("proveedores");
     expect(accionDeRuta("/catalogo/proveedores/comparativa")).toBe("comparar_precios");
+  });
+
+  it("las rutas hijas con acción propia (el paso «En la carta» del producto) mandan sobre el prefijo del menú, con consulta y ancla", () => {
+    expect(accionDeRuta("/catalogo/productos/p1/en-la-carta")).toBe("carta_ver");
+    expect(accionDeRuta("/catalogo/productos/p1/en-la-carta?guardado=cambios")).toBe("carta_ver");
+    expect(accionDeRuta("/catalogo/productos/p1/en-la-carta#contenido")).toBe("carta_ver");
+    expect(accionDeRuta("/catalogo/productos/p1/en-la-carta/")).toBe("carta_ver");
+    // El patrón es exacto: no arrastra a las demás rutas del producto ni a una ruta más profunda.
+    expect(accionDeRuta("/catalogo/productos/p1")).toBe("producto_ver_catalogo");
+    expect(accionDeRuta("/catalogo/productos/p1/opciones")).toBe("producto_ver_catalogo");
+    expect(accionDeRuta("/catalogo/productos/p1/en-la-carta/otra")).toBe("producto_ver_catalogo");
+    expect(accionDeRuta("/catalogo/productos/en-la-carta")).toBe("producto_ver_catalogo");
+  });
+
+  it("la página de cada ruta hija con acción propia pide esa acción, y se consulta al armar el conjunto de acciones visibles", () => {
+    for (const ruta of RUTAS_HIJAS_CON_ACCION_PROPIA) {
+      const fuente = readFileSync(join(RAIZ, ...ruta.pagina.split("/")), "utf8");
+      expect(fuente.match(/requierePermisoVer(?:DeEmpresa)?\(\s*[^,]+,\s*[^,]+,\s*"(\w+)"/)?.[1], ruta.pagina).toBe(ruta.accion);
+      expect(accionesDeNavegacion()).toContain(ruta.accion);
+    }
   });
 
   it("una ruta desconocida o la raíz no tienen acción", () => {
