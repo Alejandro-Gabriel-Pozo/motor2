@@ -61,7 +61,7 @@ export function CerrarCuenta({
         Cerrar cuenta
       </button>
       {bloqueo && (
-        <p id={`${base}-bloqueo`} className="text-[12.5px] text-[var(--ink-soft)]">
+        <p id={`${base}-bloqueo`} className="text-[12.5px] text-tinta-suave">
           {bloqueo}
         </p>
       )}
@@ -72,7 +72,7 @@ export function CerrarCuenta({
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${base}-titulo`}
-            className="w-full max-w-md rounded-[14px] bg-white p-5 text-left shadow-lg"
+            className="w-full max-w-md rounded-[14px] bg-superficie p-5 text-left shadow-lg"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") cerrar();
@@ -81,7 +81,7 @@ export function CerrarCuenta({
             <h2 id={`${base}-titulo`} className="mb-1 text-lg font-extrabold tracking-tight">
               Cerrar cuenta · {titulo}
             </h2>
-            <p className="mb-4 text-[13px] text-[var(--ink-soft)]">Se registra la venta y la mesa queda libre.</p>
+            <p className="mb-4 text-[13px] text-tinta-suave">Se registra la venta y la mesa queda libre.</p>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -95,21 +95,21 @@ export function CerrarCuenta({
               }}
               className="flex flex-col gap-3"
             >
-              <div className="flex items-baseline justify-between rounded-lg bg-[var(--paper)] px-3 py-2">
+              <div className="flex items-baseline justify-between rounded-lg bg-papel px-3 py-2">
                 <span className="text-[13px] font-semibold">Total</span>
                 <span data-total-cierre className="text-xl font-extrabold tabular-nums">
                   {formatearMonto(total)}
                 </span>
               </div>
               {haySecciones ? (
-                <p className="text-[13px] text-[var(--ink-soft)]">Cada producto se descuenta de su sección habitual; si ahí no alcanza, de otra sección con stock.</p>
+                <p className="text-[13px] text-tinta-suave">Cada producto se descuenta de su sección habitual; si ahí no alcanza, de otra sección con stock.</p>
               ) : (
-                <p className="text-[13px] text-red-700">
+                <p className="text-[13px] text-error">
                   Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.
                 </p>
               )}
               {error && (
-                <p role="alert" className="text-[13px] text-red-700">
+                <p role="alert" className="text-[13px] text-error">
                   {error}
                 </p>
               )}

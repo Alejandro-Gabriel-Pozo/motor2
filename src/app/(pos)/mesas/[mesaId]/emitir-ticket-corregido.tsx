@@ -63,7 +63,7 @@ export function EmitirTicketCorregido({ ticket, hora, puede }: { ticket: TicketD
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${base}-titulo`}
-            className="w-full max-w-md rounded-[14px] bg-white p-5 text-left shadow-lg"
+            className="w-full max-w-md rounded-[14px] bg-superficie p-5 text-left shadow-lg"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") cerrar();
@@ -72,7 +72,7 @@ export function EmitirTicketCorregido({ ticket, hora, puede }: { ticket: TicketD
             <h2 id={`${base}-titulo`} className="mb-1 text-lg font-extrabold tracking-tight">
               Emitir ticket corregido · N.º {numero}
             </h2>
-            <p className="mb-4 text-[13px] text-[var(--ink-soft)]">
+            <p className="mb-4 text-[13px] text-tinta-suave">
               Después de imprimir el ticket se anuló parte de la venta. La corregida sale con el mismo número y la letra siguiente, solo con lo
               que sigue vendido.
             </p>
@@ -89,7 +89,7 @@ export function EmitirTicketCorregido({ ticket, hora, puede }: { ticket: TicketD
               }}
               className="flex flex-col gap-3"
             >
-              <div className="flex items-baseline justify-between rounded-lg bg-[var(--paper)] px-3 py-2">
+              <div className="flex items-baseline justify-between rounded-lg bg-papel px-3 py-2">
                 <span className="text-[13px] font-semibold">Total corregido</span>
                 <span className="text-xl font-extrabold tabular-nums">{formatearMonto(ticket.total)}</span>
               </div>
@@ -109,7 +109,7 @@ export function EmitirTicketCorregido({ ticket, hora, puede }: { ticket: TicketD
                 className={CAMPO}
               />
               {error && (
-                <p id={`${base}-error`} role="alert" className="text-[13px] text-red-700">
+                <p id={`${base}-error`} role="alert" className="text-[13px] text-error">
                   {error}
                 </p>
               )}

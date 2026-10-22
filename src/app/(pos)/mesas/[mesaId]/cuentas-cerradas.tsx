@@ -22,11 +22,11 @@ export function CuentasCerradas({ tickets, puede, puedeCorregir, zonaHoraria }: 
   if (!tickets.length) return null;
 
   return (
-    <section aria-labelledby="cuentas-cerradas-titulo" className="mt-6 rounded-[14px] border border-[var(--border)] bg-white p-4">
+    <section aria-labelledby="cuentas-cerradas-titulo" className="mt-6 rounded-[14px] border border-borde bg-superficie p-4">
       <h2 id="cuentas-cerradas-titulo" className="mb-3 text-[15px] font-bold">
         Cuentas cerradas
       </h2>
-      <ul className="divide-y divide-[var(--border)]">
+      <ul className="divide-y divide-borde">
         {tickets.map((b) => {
           const hora = formatearHora(b.cerradaEn, zonaHoraria);
           const motivo =
@@ -43,7 +43,7 @@ export function CuentasCerradas({ tickets, puede, puedeCorregir, zonaHoraria }: 
                 {b.numero && `N.º ${formatearNumeroTicket(b.numero)} · `}Cerrada {hora} · Atendió {b.mesero} · <span className="tabular-nums">{formatearMonto(b.total)}</span>
               </span>
               <span className="flex items-center gap-3">
-                {b.estado === "anulada" && <span className="text-[12.5px] font-semibold text-[var(--mesa-ocupada)]">Venta anulada</span>}
+                {b.estado === "anulada" && <span className="text-[12.5px] font-semibold text-error">Venta anulada</span>}
                 <EmitirTicketCorregido ticket={b} hora={hora} puede={puedeCorregir} />
                 <button
                   type="button"
