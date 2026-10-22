@@ -634,7 +634,7 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
         texto("evasion", { ruta: "package.json", de: '"test": "vitest run",', a: '"test": "vitest run --passWithNoTests",', donde: '"test": "vitest run --pass' }, elPaquete, esp("cumplimiento", "script-distinto", "package.json", "calculada", "vitest run --passWithNoTests"), [regPaquete]),
         // G7: sin `forbidOnly` un `test.only` en un spec de Playwright pasa en el CI sin avisar; y un gate que no espera a `estatico` deja pasar la corrida aunque el guardián (y su evidencia) falle.
         texto("evasion", { ruta: "playwright.config.ts", de: "  forbidOnly: !!process.env.CI,\n", a: "", donde: "export default defineConfig({" }, elPlaywright, esp("cumplimiento", "playwright-sin-forbidonly", "playwright.config.ts", "calculada", "forbidOnly"), [regPlaywright]),
-        texto("evasion", { ruta: ci, de: "needs: [estatico, build, integracion, conteo, e2e]", a: "needs: [build, integracion, conteo, e2e]", donde: "needs: [build, integracion, conteo, e2e]" }, elCi, esp("cumplimiento", "ci-gate-sin-needs", ci, "calculada", "el gate no espera al job `estatico`"), [regCi]),
+        texto("evasion", { ruta: ci, de: "needs: [estatico, build, integracion, conteo, e2e, conteo-e2e]", a: "needs: [build, integracion, conteo, e2e, conteo-e2e]", donde: "needs: [build, integracion, conteo, e2e, conteo-e2e]" }, elCi, esp("cumplimiento", "ci-gate-sin-needs", ci, "calculada", "el gate no espera al job `estatico`"), [regCi]),
       ],
       noAplica: [{ clase: "duplicacion", motivo: "duplicar el guardián no lo neutraliza: dos copias del test hacen lo mismo y nada se evade" }],
     });
