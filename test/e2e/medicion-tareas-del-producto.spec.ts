@@ -14,7 +14,8 @@ import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
  *  a) Crear un producto DIRECTO hasta que quede vendible. Parte de la lista de productos. Hoy «directo o base» es «¿Cómo se vende?», que existe SOLO al editar (el alta nace directa): elegir
  *     «directo» no cuesta nada.
  *  b) Crear una base configurable: un grupo «Tamaño» con precio final en cada una de 3 opciones, un grupo «Incluida sin costo» con una opción, un producto nuevo que los admite y pasarlo a
- *     «Por opción» en «¿Cómo se vende?» (con la clave `producto_campos_sensibles`). Parte de «Opciones de venta».
+ *     «Por opción» en «¿Cómo se vende?» (con la clave `producto_campos_sensibles`). «Antes» (Fase 6, 6.0.2) parte de «Opciones de venta» y recorre la biblioteca de grupos; desde 6.15c parte de la lista de
+ *     productos y los grupos se crean desde el paso 2 del producto con «+ Nuevo grupo» (el recorrido del espacio, DEC-12): la tabla «antes» del documento sigue siendo la del recorrido viejo.
  *  c) Cambiar el precio final de una opción de una base ya armada. Parte de la ficha del producto (sembrado).
  *  d) Publicar el producto en la carta («Fuera de carta» → «Agregar a la carta» → sección). Parte de la ficha del producto (sembrado).
  *
@@ -25,6 +26,8 @@ import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
  *  - CLICS: solo los que da el ayudante `clic` (envuelve `locator.click`) y `marcar` (un radio o una casilla, que es un clic). Llegar a la pantalla de partida con `ir` NO es un clic. Para llegar
  *    por el menú (`irPorElMenu`) se cuentan TODOS los clics que hagan falta (el panel Empresa/Sucursal y el grupo del menú, si están cerrados, y el enlace).
  *  - CAMPOS TOCADOS: los que tocan `llenar` (escribir) y `elegir` (un `<select>`), y `marcar` (un radio o una casilla cuenta como clic Y como campo). Los campos que quedan como vienen no cuentan.
+ *  - `salidasDelEspacio` (6.15c; tareas b, c y d): las visitas, después de la pantalla de partida, a una pantalla que NO es del espacio del producto (`ESPACIO`: el alta, la portada y sus pasos); es lo que mide el
+ *    umbral de DEC-12 (0 en b, c y d). `salidas` (la de abajo) queda con su definición de la medición «antes».
  *  - SALIDAS DEL ESPACIO (tareas b, c y d; en la a es null): cuántas veces hay que dejar la pantalla de la tarea para ir a otra pantalla DISTINTA de administración. Hoy se cuenta como las pantallas
  *    distintas menos 1 (la de partida no es una salida). En el espacio del producto (bloque 2), todo lo del producto pasa a ser un paso del mismo espacio y el número tiene que ser 0.
  *
@@ -52,8 +55,10 @@ interface Medicion {
   rutas: string[];
   clics: number;
   campos: number;
-  /** null en la tarea a (no aplica). */
+  /** null en la tarea a (no aplica). Las pantallas distintas menos 1 (la definición de la medición «antes»). */
   salidas: number | null;
+  /** null en la tarea a. Las visitas, después de la pantalla de partida, a una pantalla que NO es del espacio del producto (`ESPACIO`): lo que mide el umbral de DEC-12 (0 en b, c y d). */
+  salidasDelEspacio: number | null;
   visitas: number;
   secuencia: string[];
 }
@@ -75,6 +80,9 @@ interface DestinoDelMenu {
   /** El rótulo del grupo del menú que lo contiene. */
   grupo: string;
 }
+
+/** Las pantallas del espacio del producto (rutas normalizadas): el alta, la portada y sus pasos. Ir a cualquier otra es una salida del espacio. */
+const ESPACIO = new Set(["/catalogo/productos/nuevo", "/catalogo/productos/[id]", "/catalogo/productos/[id]/datos", "/catalogo/productos/[id]/opciones", "/catalogo/productos/[id]/receta", "/catalogo/productos/[id]/en-la-carta"]);
 
 class Medidor {
   clics = 0;
@@ -134,6 +142,13 @@ class Medidor {
     this.campos++;
   }
 
+  /** Una opción en TARJETA (`OpcionesExcluyentes presentacion="tarjetas"`): la etiqueta cubre toda la tarjeta, así que se toca el texto. Cuenta como `marcar`: un clic y un campo tocado. */
+  async marcarTarjeta(locator: Locator, descripcion: string): Promise<void> {
+    await this.paso(descripcion, () => locator.click());
+    this.clics++;
+    this.campos++;
+  }
+
   /** Una espera sobre lo que tiene que verse (no cuenta nada): el paso queda nombrado si no se cumple. */
   async ver(descripcion: string, comprobar: () => Promise<void>): Promise<void> {
     await this.paso(descripcion, comprobar);
@@ -162,6 +177,7 @@ class Medidor {
       clics: this.clics,
       campos: this.campos,
       salidas: conSalidas ? rutas.length - 1 : null,
+      salidasDelEspacio: conSalidas ? this.secuencia.slice(1).filter((ruta) => !ESPACIO.has(ruta)).length : null,
       visitas: this.secuencia.length,
       secuencia: [...this.secuencia],
     };
@@ -191,7 +207,6 @@ function guardarMedicion(medicion: Medicion): void {
 
 const marca = () => `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
 
-const MENU_PRODUCTOS: DestinoDelMenu = { href: "/catalogo/productos", panel: "ambos", grupo: "Catálogo" };
 const MENU_CARTA: DestinoDelMenu = { href: "/carta", panel: "sucursal", grupo: "Carta" };
 
 /** Una base ya armada para las tareas c y d: un producto «Por opción» con un grupo «Tamaño» de 3 opciones, cada una con su precio final. */
@@ -258,37 +273,19 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
       ["Napolitana", "22000"],
       ["Especial", "25000"],
     ];
-    const grupoNuevo = async (nombre: string, tipo: RegExp) => {
-      await m.clic(page.getByRole("button", { name: "+ Nuevo grupo", exact: true }), "tocar «+ Nuevo grupo»");
-      await m.llenar(page.getByLabel("Nombre del grupo"), nombre, `escribir el nombre del grupo «${nombre}»`);
-      await m.marcar(page.getByRole("radio", { name: tipo }), `elegir el tipo del grupo «${nombre}»`);
-      await m.clic(page.getByRole("button", { name: "Crear grupo", exact: true }), "tocar «Crear grupo»");
-      await m.ver(`el grupo «${nombre}» aparece en la lista`, () => expect(page.getByRole("link", { name: nombre, exact: true }).first()).toBeVisible());
-      await m.clic(page.getByRole("link", { name: nombre, exact: true }).first(), `abrir el grupo «${nombre}»`);
-      await m.ver("se abre el grupo", () => expect(page.getByRole("heading", { name: nombre, level: 1 })).toBeVisible());
-      await m.clic(page.getByRole("button", { name: "+ Agregar opción", exact: true }), "tocar «+ Agregar opción»");
+    const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
+    // Desde la Fase 6 (6.15c) los grupos se crean desde el paso 2 del producto, en la ventana «+ Nuevo grupo» (crea el grupo, sus opciones y lo que el producto admite de ellas, todo junto).
+    const grupoNuevo = async (nombre: string, respuesta: string) => {
+      await m.clic(page.getByRole("button", { name: "+ Nuevo grupo", exact: true }), `tocar «+ Nuevo grupo» (${nombre})`);
+      const ventana = page.getByRole("dialog", { name: /^Nuevo grupo para/ });
+      await m.llenar(ventana.getByLabel(/^Nombre del grupo/), nombre, `escribir el nombre del grupo «${nombre}»`);
+      // «¿Cambia el precio?» son tarjetas: se toca el texto (un `check()` sobre el radio choca con la tarjeta entera, que es la etiqueta). Cuenta como clic y como campo, igual que `marcar`.
+      await m.marcarTarjeta(ventana.getByText(respuesta, { exact: true }), `elegir «${respuesta}» para «${nombre}»`);
+      return ventana;
     };
 
-    // 1) El grupo de tamaños, con sus 3 opciones (el precio final de cada una se carga después, en el producto).
-    await m.ir("/catalogo/opciones", "abrir «Opciones de venta»");
-    await grupoNuevo(grupoTamano, /^Tamaño/);
-    for (const [nombre] of tamanos) {
-      await m.llenar(page.getByLabel("Nombre de la opción"), nombre, `escribir la opción «${nombre}»`);
-      await m.llenar(page.getByLabel("Diferencia en pesos"), "0", `escribir la diferencia de «${nombre}»`);
-      await m.clic(page.getByRole("button", { name: "Agregar opción", exact: true }), `tocar «Agregar opción» (${nombre})`);
-      await m.ver(`«${nombre}» queda en el grupo`, () => expect(page.locator(`[data-opcion='${nombre}']`)).toBeVisible());
-    }
-
-    // 2) El grupo de lo incluido, con su única opción.
-    await m.clic(page.getByRole("link", { name: "← Opciones de venta" }), "volver a «Opciones de venta»");
-    await m.ver("se vuelve a la lista de grupos", () => expect(page).toHaveURL(/\/catalogo\/opciones$/));
-    await grupoNuevo(grupoIncluida, /^Incluida sin costo/);
-    await m.llenar(page.getByLabel("Nombre de la opción"), "Con papas fritas", "escribir la opción incluida");
-    await m.clic(page.getByRole("button", { name: "Agregar opción", exact: true }), "tocar «Agregar opción» (incluida)");
-    await m.ver("la opción incluida queda en el grupo", () => expect(page.locator("[data-opcion='Con papas fritas']")).toBeVisible());
-
-    // 3) El producto.
-    await m.irPorElMenu(MENU_PRODUCTOS);
+    // 1) El producto: partimos de la lista de productos.
+    await m.ir("/catalogo/productos", "abrir la lista de productos");
     await m.clic(page.getByRole("link", { name: "+ Nuevo producto" }), "tocar «+ Nuevo producto»");
     await m.marcar(page.getByRole("radio", { name: "Producto de venta (PV)" }), "elegir «Producto de venta (PV)»");
     await m.llenar(page.locator('input[name="nombre"]'), producto, "escribir el nombre del producto");
@@ -297,30 +294,24 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
     await m.clic(page.getByRole("button", { name: "Crear producto" }), "tocar «Crear producto»");
     await m.ver("se llega a la ficha del producto", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
 
-    // 4) Los grupos en el producto: el de tamaños con el precio final de cada opción, y el de lo incluido.
-    await m.clic(page.getByRole("link", { name: "Editar opciones" }), "tocar «Editar opciones»");
-    await m.ver("se abren las opciones de venta del producto (el paso «Opciones y precio»)", () => expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible());
-    // Desde la Fase 6 (6.15b) un grupo de la biblioteca se suma desde una ventana: «Agregar un grupo existente» la abre (un clic más por cada grupo) y «Agregar» la cierra.
-    const ventanaDeGrupo = page.getByRole("dialog", { name: "Agregar un grupo existente" });
-    const selectorDeGrupo = ventanaDeGrupo.getByLabel(/^Grupo/);
-    await m.clic(page.getByRole("button", { name: "Agregar un grupo existente", exact: true }), "tocar «Agregar un grupo existente» (tamaños)");
-    await m.elegir(selectorDeGrupo, `${grupoTamano} (Tamaño)`, "elegir el grupo de tamaños");
-    await m.clic(ventanaDeGrupo.getByRole("button", { name: "Agregar", exact: true }), "tocar «Agregar» (tamaños)");
-    const tarjetaTamanos = page.locator(`[data-admision-grupo='${grupoTamano}']`);
-    await m.ver("el grupo de tamaños queda en el producto", () => expect(tarjetaTamanos).toBeVisible());
-    await m.marcar(tarjetaTamanos.getByRole("radio", { name: "Precio propio por tamaño" }), "elegir «Precio propio por tamaño»");
-    for (const [nombre, precio] of tamanos) {
-      await m.llenar(tarjetaTamanos.getByLabel(`Precio de ${nombre} en este producto`), precio, `escribir el precio final de «${nombre}»`);
+    // 2) Los grupos, desde el paso 2: el de tamaños con el precio final de cada opción, y el de lo incluido.
+    await m.clic(pasos.getByRole("link", { name: /^Opciones y precio/ }), "tocar «Opciones y precio» (el paso 2)");
+    await m.ver("se abre el paso «Opciones y precio»", () => expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible());
+    const ventanaTamanos = await grupoNuevo(grupoTamano, "Cada opción define el precio final");
+    for (const [i, [nombre, precio]] of tamanos.entries()) {
+      await m.llenar(ventanaTamanos.getByLabel(`Nombre de la opción ${i + 1}`), nombre, `escribir la opción «${nombre}»`);
+      await m.llenar(ventanaTamanos.getByLabel(`Precio final de la opción ${i + 1}`), precio, `escribir el precio final de «${nombre}»`);
     }
-    await m.clic(tarjetaTamanos.getByRole("button", { name: `Guardar «${grupoTamano}»` }), "tocar «Guardar» del grupo de tamaños");
-    await m.ver("se guardó el grupo de tamaños", () => expect(tarjetaTamanos.getByRole("status").filter({ hasText: "como pediste" })).toBeVisible());
-    await m.clic(page.getByRole("button", { name: "Agregar un grupo existente", exact: true }), "tocar «Agregar un grupo existente» (incluida)");
-    await m.elegir(selectorDeGrupo, `${grupoIncluida} (Incluida sin costo)`, "elegir el grupo de lo incluido");
-    await m.clic(ventanaDeGrupo.getByRole("button", { name: "Agregar", exact: true }), "tocar «Agregar» (incluida)");
+    await m.clic(ventanaTamanos.getByRole("button", { name: "Crear grupo", exact: true }), "tocar «Crear grupo» (tamaños)");
+    await m.ver("el grupo de tamaños queda en el producto", () => expect(page.locator(`[data-admision-grupo='${grupoTamano}']`)).toBeVisible());
+
+    const ventanaIncluida = await grupoNuevo(grupoIncluida, "No, va incluido");
+    await m.llenar(ventanaIncluida.getByLabel("Nombre de la opción 1"), "Con papas fritas", "escribir la opción incluida");
+    await m.clic(ventanaIncluida.getByRole("button", { name: "Crear grupo", exact: true }), "tocar «Crear grupo» (incluida)");
     await m.ver("el grupo de lo incluido queda en el producto", () => expect(page.locator(`[data-admision-grupo='${grupoIncluida}']`)).toBeVisible());
 
-    // 5) Pasarlo a «Por opción». Desde la Fase 6 (6.12 y 6.15b) el paso 1 es una pestaña de la tira del marco («Qué se vende») y está a un clic desde el paso 2: ya no hace falta volver a la ficha (antes: «← producto» y el botón «Editar»).
-    await m.clic(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ }), "tocar «Qué se vende» (el paso 1, antes: volver a la ficha y «Editar»)");
+    // 3) Pasarlo a «Por opción»: el paso 1 está en la tira.
+    await m.clic(pasos.getByRole("link", { name: /^Qué se vende/ }), "tocar «Qué se vende» (el paso 1)");
     await m.ver("se abre la edición", () => expect(page.getByText(`Editar "${producto}"`)).toBeVisible());
     await m.marcar(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ }), "elegir «Por opción»");
     await m.clic(page.getByRole("button", { name: "Guardar cambios" }), "tocar «Guardar cambios»");

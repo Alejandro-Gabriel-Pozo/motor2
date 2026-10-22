@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { fijarAdmisionDeGrupoEnProducto, vincularGrupoEnProducto } from "@/server/actions/catalogo/opciones-de-venta";
 import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
 import { cargarOpcionesDelProducto } from "@/server/consultas/catalogo/opciones-de-venta";
@@ -11,6 +11,7 @@ import { formatearMonto } from "@/core/pos/public";
 import { AvisoConDeshacer, BotonConDeshacer } from "@/components/aviso-con-deshacer";
 import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
 import { AgregarGrupoExistente } from "@/components/catalogo/agregar-grupo-existente";
+import { NuevoGrupoEnElProducto } from "@/components/catalogo/nuevo-grupo-en-el-producto";
 import { ResumenDeOpciones } from "@/components/catalogo/resumen-de-opciones";
 import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
 import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
@@ -24,12 +25,14 @@ import { admisionDelFormulario } from "./admision-del-formulario";
 const PASO_DE_ORDEN = 10;
 
 /**
- * Paso 2 del espacio del producto, «Opciones y precio» (GO-2d; ADR-030; Fase 6, 6.15b; DEC-12): qué grupos admite el producto, con qué límites propios, cómo se cobra cada tamaño y qué opciones de cada
+ * Paso 2 del espacio del producto, «Opciones y precio» (GO-2d; ADR-030; Fase 6, 6.15b y 6.15c; DEC-12): qué grupos admite el producto, con qué límites propios, cómo se cobra cada tamaño y qué opciones de cada
  * grupo. Está DENTRO del marco del espacio (`MarcoDelEspacio`: el `h1` es el producto y la tira de pasos), con una tarjeta por grupo. Es una página de EDICIÓN: la familia es la de la ficha
  * (`producto_ver_catalogo`, el primer gate), y además exige el permiso de Editar de `producto_opciones_admitidas` en el servidor (el guardián `paginas-con-guarda-de-editar` lo fija): quien solo ve el
  * producto no llega a ver el formulario. Al pie, «Así se cobra en la sucursal», calculado por el servidor con la misma regla que la venta; se refresca al guardar.
  *
- * Cómo se suma un grupo, sin salir del producto: «Agregar un grupo existente» (una ventana con el selector de la biblioteca; la acción es el cierre de esta página).
+ * Cómo se suma un grupo, sin salir del producto: «Agregar un grupo existente» (una ventana con el selector de la biblioteca; la acción es el cierre de esta página) y «+ Nuevo grupo» (una ventana que
+ * crea el grupo, sus opciones y lo que el producto admite de ellas, todo o nada, con `crearGrupoEnElProducto`). El segundo pide además Editar de `opciones_definir`: se calcula ACÁ, en el servidor, y sin
+ * esa clave no se dibuja el botón (la acción vuelve a exigir las dos claves; esto es cortesía de la interfaz).
  *
  * Cada grupo es un formulario aparte (`GrupoDeFormularios`: mientras uno guarda, los demás esperan) con la versión de sus filas que vio la pantalla. Los closures "use server"
  * capturan solo textos, números y listas de ids.
@@ -65,8 +68,11 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
       </div>
     );
   }
-  // El marco (la tira de pasos con su enlace y su estado). Las opciones ya están leídas: no se vuelven a leer.
-  const marco = await cargarMarcoDelEspacio(ctx, productoDelEspacio, { opciones: datos });
+  // El marco (la tira de pasos con su enlace y su estado). Las opciones ya están leídas: no se vuelven a leer. Y si el usuario además puede CREAR grupos (Editar de `opciones_definir`), se dibuja «+ Nuevo grupo».
+  const [marco, puedeCrearGrupos] = await Promise.all([
+    cargarMarcoDelEspacio(ctx, productoDelEspacio, { opciones: datos }),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db).then((nivel) => nivel.editar),
+  ]);
   const puedeEditarDatos = marco.pasos.some((p) => p.paso === "datos" && p.href !== null);
   const enUso = admitidos.filter((g) => g.fila.activo);
   const quitados = admitidos.filter((g) => !g.fila.activo);
@@ -123,6 +129,7 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
           ) : null}
 
           <div className="flex flex-wrap items-start gap-3">
+            {puedeCrearGrupos ? <NuevoGrupoEnElProducto productoId={productoId} productoNombre={producto.nombre} referencia={referencia} precioDeLista={precioDeLista} /> : null}
             {paraAgregar.length > 0 ? (
               <AgregarGrupoExistente
                 grupos={paraAgregar.map((g) => ({ grupoId: g.grupoId, etiqueta: `${g.nombre} (${nombreDelTipoDeGrupo(g.tipo)})` }))}
@@ -148,6 +155,7 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
               <p className="self-center text-sm text-tinta-suave">Este producto ya tiene todos los grupos prendidos de la empresa.</p>
             )}
           </div>
+          {puedeCrearGrupos ? null : <p className="text-xs text-tinta-suave">Los grupos nuevos los crea quien arma las opciones.</p>}
           {hayGrupoIncluido ? <p className="text-xs text-tinta-suave">{'Para cobrar distinto una opción de un grupo "incluido", se archiva el grupo y se crea uno nuevo.'}</p> : null}
 
           {enUso.length === 0 ? (

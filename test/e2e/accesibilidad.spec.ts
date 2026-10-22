@@ -473,6 +473,21 @@ testAutenticado(
     const ventana = page.getByRole("dialog", { name: "Agregar un grupo existente" });
     await expect(ventana.getByLabel(/^Grupo/)).toBeFocused();
     expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 con la ventana «Agregar un grupo existente» abierta").toEqual([]);
+
+    // La ventana «+ Nuevo grupo» (6.15c): vacía, y con un grupo de suma y su lectura («Se lee en la carta como» y la lectura del precio de cada opción).
+    await page.keyboard.press("Escape");
+    await expect(ventana).toBeHidden();
+    await page.getByRole("button", { name: "+ Nuevo grupo", exact: true }).click();
+    const nueva = page.getByRole("dialog", { name: /^Nuevo grupo para/ });
+    await expect(nueva.getByLabel(/^Nombre del grupo/)).toBeFocused();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 con la ventana «+ Nuevo grupo» abierta (vacía)").toEqual([]);
+    await nueva.getByLabel(/^Nombre del grupo/).fill(`E2E A11y Suma ${m}`);
+    await nueva.getByText("Solo algunas opciones suman un importe", { exact: true }).click();
+    await nueva.getByLabel(/^Se lee en la carta como/).fill("Con");
+    await nueva.getByLabel("Nombre de la opción 1").fill("Queso");
+    await nueva.getByLabel("Importe que suma la opción 1").fill("500");
+    await expect(nueva).toContainText(/Chico con Queso = \$\s*2\.500 \+ \$\s*500 = \$\s*3\.000/);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 con la ventana «+ Nuevo grupo» abierta (un grupo que suma, con sus lecturas)").toEqual([]);
   },
 );
 
