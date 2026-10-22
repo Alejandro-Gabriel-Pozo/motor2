@@ -1,10 +1,10 @@
 {
   "regla": "tipografia",
   "meta": "bajar hacia 0 a medida que la escala tipográfica pase a tokens (auditoría §19.4); la carta pública tiene su propia línea de base",
-  "total": 169,
-  "entradas": 26,
+  "total": 155,
+  "entradas": 23,
   "porTipo": {
-    "clase-arbitraria": 118,
+    "clase-arbitraria": 104,
     "font-size-literal": 49,
     "fontSize-literal": 2
   },
@@ -17,12 +17,6 @@
     },
     "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
       "clase-arbitraria": 15
-    },
-    "src/app/(pos)/mesas/[mesaId]/anular-item.tsx": {
-      "clase-arbitraria": 6
-    },
-    "src/app/(pos)/mesas/[mesaId]/anular-promo.tsx": {
-      "clase-arbitraria": 4
     },
     "src/app/(pos)/mesas/[mesaId]/armar-promo.tsx": {
       "clase-arbitraria": 7
@@ -44,9 +38,6 @@
     },
     "src/app/(pos)/mesas/[mesaId]/elegir-opciones.tsx": {
       "clase-arbitraria": 10
-    },
-    "src/app/(pos)/mesas/[mesaId]/emitir-ticket-corregido.tsx": {
-      "clase-arbitraria": 4
     },
     "src/app/(pos)/mesas/[mesaId]/estilos.ts": {
       "clase-arbitraria": 4

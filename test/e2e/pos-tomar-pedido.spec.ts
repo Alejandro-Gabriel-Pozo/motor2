@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
+import { cierraConEscapeYConElFondo, noSeCierraEnCurso, retenerAcciones } from "./fixtures/dialogos";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
@@ -450,6 +451,47 @@ test("anular un ítem enviado imprime el aviso para cocina: ANULACIÓN · NO PRE
   }
 });
 
+test("«Anular» un ítem enviado: el foco va al motivo, Escape y el fondo cierran, y mientras se anula no se cierra y un doble clic anula UNA vez", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 972 } });
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const cuenta = await prisma.cuenta.create({
+    data: { mesaId: mesa.id, abiertaPorId: admin.id, items: { create: [{ productoId: cat.milanesa.id, cantidad: 3, precioUnitario: 9000, numeroEnvio: 1, creadoPorId: admin.id }] } },
+  });
+  try {
+    await interceptarImpresion(page);
+    await page.goto(`/mesas/${mesa.id}`);
+    const disparador = page.getByRole("button", { name: `Anular ${cat.milanesa.nombre}` });
+    const dialogo = page.getByRole("dialog", { name: `Anular «${cat.milanesa.nombre}»` });
+    await cierraConEscapeYConElFondo(page, () => disparador.click(), dialogo, disparador);
+
+    await disparador.click();
+    await expect(dialogo.getByLabel("Motivo (obligatorio)"), "el foco inicial es el motivo").toBeFocused();
+    await expect(dialogo.getByLabel("Cantidad a anular")).toHaveValue("3");
+    await dialogo.getByLabel("Cantidad a anular").fill("1");
+    // Sin motivo el servidor rechaza, el diálogo lo dice y no se anula nada.
+    await dialogo.getByRole("button", { name: "Anular", exact: true }).click();
+    await expect(dialogo.getByRole("alert")).toHaveText("Escribí el motivo de la anulación.");
+    expect(await prisma.cuentaItem.count({ where: { cuentaId: cuenta.id, anulaAItemId: { not: null } } })).toBe(0);
+
+    await dialogo.getByLabel("Motivo (obligatorio)").fill("Se cayó al piso");
+    const { vistas, liberar } = await retenerAcciones(page);
+    await dialogo.getByRole("button", { name: "Anular", exact: true }).dblclick();
+    await expect.poll(() => vistas.length).toBe(1);
+    await expect(dialogo.getByRole("button", { name: "Anulando…" })).toBeDisabled();
+    await noSeCierraEnCurso(page, dialogo);
+
+    liberar();
+    await expect(dialogo).toBeHidden();
+    await expect(aviso(page)).toHaveText(`Se anuló 1 × «${cat.milanesa.nombre}» de la mesa 972.`);
+    expect(vistas, "un doble clic manda UNA sola acción").toHaveLength(1);
+    expect(await prisma.cuentaItem.count({ where: { cuentaId: cuenta.id, anulaAItemId: { not: null } } }), "una sola anulación").toBe(1);
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["anulacion"]);
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
 const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const HORA_AR = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
 
@@ -570,15 +612,16 @@ test("guardas de la reimpresión del ticket: sin pos_cerrar_cuenta queda deshabi
   }
 });
 
-test("ticket corregido: anulada una línea después de imprimir, se emite el ejemplar B (mismo número, solo lo vigente, «Reemplaza a» el A) y después se reimprime el B", async ({ paginaAutenticada: page, sucursalId }) => {
-  // docs/plan-numeracion-ticket-2026-09-25.md, Fase 2. La mesa comió 2 milanesas y 1 flan (una Operacion VENTA por línea, ticket A
-  // impresa al cerrar); después se anuló SOLO la venta del flan (Trazabilidad): el ticket A quedó desactualizada.
-  const cat = await sembrarCatalogo(sucursalId);
-  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 976 } });
+/**
+ * Una cuenta cerrada con su ticket A impreso y DESACTUALIZADO (docs/plan-numeracion-ticket-2026-09-25.md, Fase 2): la mesa comió 2 milanesas y 1 flan (una Operacion VENTA por línea) y después se anuló SOLO la venta del flan (Trazabilidad),
+ * así que el ejemplar A ya no refleja lo vendido y corresponde emitir el B. El A lleva el número que le toca a la sucursal en este momento (otros specs de la corrida también cierran cuentas en «Central»).
+ */
+async function sembrarTicketCorregible(sucursalId: string, cat: Awaited<ReturnType<typeof sembrarCatalogo>>, numeroDeMesa: number) {
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: numeroDeMesa } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
   const cerradaEn = new Date(Date.now() - 30 * 60_000);
   const [ventaMilanesa, ventaFlan] = await Promise.all(
-    [null, new Date()].map((anuladaEn) => prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: cerradaEn, usuarioId: admin.id, detalleLibre: "Mesa 976", anuladaEn } }))
+    [null, new Date()].map((anuladaEn) => prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: cerradaEn, usuarioId: admin.id, detalleLibre: `Mesa ${numeroDeMesa}`, anuladaEn } }))
   );
   const cuenta = await prisma.cuenta.create({
     data: {
@@ -594,10 +637,15 @@ test("ticket corregido: anulada una línea después de imprimir, se emite el eje
       },
     },
   });
-  // El A, con el número que le toca a la sucursal en este momento (otros specs de la corrida también cierran cuentas en «Central»).
   const { _max } = await prisma.ejemplarTicket.aggregate({ where: { sucursalId }, _max: { numero: true } });
   const n = (_max.numero ?? 0) + 1;
   const ejemplarA = await prisma.ejemplarTicket.create({ data: { sucursalId, cuentaId: cuenta.id, numero: n, emitidoEn: cerradaEn, emitidoPorId: admin.id } });
+  return { mesa, cuenta, ejemplarA, n, cerradaEn };
+}
+
+test("ticket corregido: anulada una línea después de imprimir, se emite el ejemplar B (mismo número, solo lo vigente, «Reemplaza a» el A) y después se reimprime el B", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const { mesa, cuenta, ejemplarA, n, cerradaEn } = await sembrarTicketCorregible(sucursalId, cat, 976);
   const hora = HORA_AR.format(cerradaEn);
   const fila = page.locator(`[data-cuenta-cerrada="${hora}"]`);
   const reimprimir = page.getByRole("button", { name: `Reimprimir el ticket de la cuenta cerrada a las ${hora}` });
@@ -650,6 +698,42 @@ test("ticket corregido: anulada una línea después de imprimir, se emite el eje
     await page.setViewportSize({ width: 220, height: 800 });
     const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(desborde).toBeLessThanOrEqual(0);
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
+test("«Emitir ticket corregido»: el foco va al motivo, Escape y el fondo cierran, y mientras se emite no se cierra y un doble clic emite UN solo ejemplar B", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarCatalogo(sucursalId);
+  const { mesa, cuenta, n, cerradaEn } = await sembrarTicketCorregible(sucursalId, cat, 977);
+  const hora = HORA_AR.format(cerradaEn);
+  try {
+    await interceptarImpresion(page);
+    await page.goto(`/mesas/${mesa.id}`);
+    const disparador = page.getByRole("button", { name: `Emitir el ticket corregido de la cuenta cerrada a las ${hora}` });
+    const dialogo = page.getByRole("dialog", { name: `Emitir ticket corregido · N.º ${n}-A` });
+    await cierraConEscapeYConElFondo(page, () => disparador.click(), dialogo, disparador);
+
+    await disparador.click();
+    await expect(dialogo.getByLabel("Motivo (obligatorio)"), "el foco inicial es el motivo").toBeFocused();
+    // Sin motivo el servidor rechaza, el diálogo lo dice y no se emite nada.
+    await dialogo.getByRole("button", { name: "Emitir e imprimir" }).click();
+    await expect(dialogo.getByRole("alert")).toHaveText("Escribí el motivo de la anulación.");
+    expect(await prisma.ejemplarTicket.count({ where: { cuentaId: cuenta.id } })).toBe(1);
+
+    await dialogo.getByLabel("Motivo (obligatorio)").fill("No quiso el flan");
+    const { vistas, liberar } = await retenerAcciones(page);
+    await dialogo.getByRole("button", { name: "Emitir e imprimir" }).dblclick();
+    await expect.poll(() => vistas.length).toBe(1);
+    await expect(dialogo.getByRole("button", { name: "Emitiendo…" })).toBeDisabled();
+    await noSeCierraEnCurso(page, dialogo);
+
+    liberar();
+    await expect(dialogo).toBeHidden();
+    await expect(aviso(page)).toHaveText(`Ticket N.º ${n}-B emitida: reemplaza a N.º ${n}-A.`);
+    expect(vistas, "un doble clic manda UNA sola acción").toHaveLength(1);
+    expect(await prisma.ejemplarTicket.count({ where: { cuentaId: cuenta.id } }), "A y un solo B").toBe(2);
+    await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["ticket-correccion"]);
   } finally {
     await cat.limpiar([mesa.id]);
   }

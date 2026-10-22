@@ -1,7 +1,7 @@
-import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import { cierraConEscapeYConElFondo, noSeCierraEnCurso, retenerAcciones } from "./fixtures/dialogos";
 
 /**
  * Los diálogos del salón sobre el `Dialogo` del sistema (`src/ui/componentes/superposiciones/dialogo.tsx`, `<dialog>` nativo con `showModal()`): lo que cada uno promete y que el paso de «overlay a mano» a
@@ -12,53 +12,6 @@ import { prismaAdmin } from "../setup/cliente-duenio";
  *    el efecto una sola vez.
  * Las Server Actions son POST con la cabecera `next-action`: `retenerAcciones` las frena hasta `liberar()`, que es lo que deja «en curso» el diálogo el tiempo que haga falta para medirlo.
  */
-
-/** Frena las Server Actions de la página hasta `liberar()`; `vistas` cuenta las que salieron. */
-async function retenerAcciones(page: Page) {
-  let liberar!: () => void;
-  const pausa = new Promise<void>((resolver) => (liberar = resolver));
-  const vistas: string[] = [];
-  await page.route(
-    () => true,
-    async (ruta) => {
-      const pedido = ruta.request();
-      if (pedido.method() === "POST" && pedido.headers()["next-action"]) {
-        vistas.push(pedido.headers()["next-action"]);
-        await pausa;
-      }
-      await ruta.continue();
-    },
-  );
-  return { vistas, liberar };
-}
-
-/** El foco está dentro del diálogo abierto. */
-const focoEnElDialogo = (page: Page) => page.evaluate(() => !!document.activeElement?.closest("dialog[open]"));
-
-/** Escape y el fondo cierran, y el foco vuelve al disparador. Deja el diálogo cerrado. */
-async function cierraConEscapeYConElFondo(page: Page, abrir: () => Promise<void>, dialogo: ReturnType<Page["getByRole"]>, disparador: ReturnType<Page["getByRole"]>) {
-  await abrir();
-  await expect(dialogo).toBeVisible();
-  expect(await focoEnElDialogo(page), "el foco queda adentro del diálogo").toBe(true);
-  await page.keyboard.press("Escape");
-  await expect(dialogo).toBeHidden();
-  await expect(disparador, "Escape devuelve el foco al botón que abrió el diálogo").toBeFocused();
-  await abrir();
-  await expect(dialogo).toBeVisible();
-  await page.mouse.click(4, 4); // esquina de la pantalla: el fondo
-  await expect(dialogo).toBeHidden();
-}
-
-/** Con la acción en curso el diálogo no se cierra por ningún camino. */
-async function noSeCierraEnCurso(page: Page, dialogo: ReturnType<Page["getByRole"]>) {
-  await page.keyboard.press("Escape");
-  await expect(dialogo, "Escape no lo cierra con la acción en curso").toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(dialogo, "un segundo Escape seguido tampoco").toBeVisible();
-  await page.mouse.click(4, 4);
-  await expect(dialogo, "el clic en el fondo no lo cierra con la acción en curso").toBeVisible();
-  await expect(dialogo.getByRole("button", { name: "Cerrar" }), "la ✕ queda deshabilitada").toBeDisabled();
-}
 
 async function limpiarMesas(mesaIds: string[]) {
   const cuentaIds = (await prisma.cuenta.findMany({ where: { mesaId: { in: mesaIds } }, select: { id: true } })).map((c) => c.id);

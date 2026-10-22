@@ -1,8 +1,8 @@
 "use client";
 
 import { enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar } from "@/server/actions/pos/cuenta-pedido";
-import { BOTON_CHICO, BOTON_PRIMARIO } from "./estilos";
 import { useState } from "react";
+import { Boton } from "@/ui/primitivas/boton";
 import { agruparConAdicionales, elegidasDeLaLinea, formatearCantidad, formatearMonto } from "@/core/pos/public";
 import { useImpresion } from "./imprimir";
 import { OtroIgual } from "./otro-igual";
@@ -85,9 +85,9 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
           Sin enviar · {items.filter((i) => !i.lineaPadreId).length}
         </h2>
         {items.length > 0 && (
-          <button type="button" className={BOTON_PRIMARIO} disabled={!puedeEnviar || pending} title={sinPermisoEnviar} onClick={enviar}>
+          <Boton variante="acento" disabled={!puedeEnviar || pending} title={sinPermisoEnviar} onClick={enviar}>
             {pending ? "Enviando…" : "Enviar a cocina"}
-          </button>
+          </Boton>
         )}
       </div>
       {items.length === 0 ? (
@@ -142,16 +142,17 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
                   <span className="min-w-0 font-semibold [overflow-wrap:anywhere]">{fila.titulo}</span>
                   <span className="flex items-center gap-3">
                     <span className="tabular-nums">{formatearMonto(fila.items.reduce((suma, i) => suma + i.cantidad * i.precioUnitario, 0))}</span>
-                    <button
-                      type="button"
-                      className={BOTON_CHICO}
+                    <Boton
+                      variante="secundario"
+                      tamano="chico"
+                      className="min-w-11"
                       disabled={!puede || pending}
                       title={sinPermiso}
                       aria-label={`Quitar promo ${fila.titulo}`}
                       onClick={() => ejecutar(() => quitarPromoSinEnviar(fila.promoCuentaId))}
                     >
                       Quitar promo
-                    </button>
+                    </Boton>
                   </span>
                 </div>
                 <ul className="mt-1 space-y-0.5 pl-4 text-[12.5px] text-tinta-suave">
@@ -185,9 +186,10 @@ function QuitarLinea({ nombre, conAdicionales, deshabilitado, title, quitar }: {
     return (
       <span role="group" aria-label={`Quitar ${nombre} con sus adicionales`} className="flex flex-wrap items-center gap-2">
         <span className="text-[12.5px] text-tinta-suave">Se quitan también sus adicionales.</span>
-        <button
-          type="button"
-          className={BOTON_CHICO}
+        <Boton
+          variante="secundario"
+          tamano="chico"
+          className="min-w-11"
           disabled={deshabilitado}
           onClick={() => {
             setConfirmando(false);
@@ -195,23 +197,24 @@ function QuitarLinea({ nombre, conAdicionales, deshabilitado, title, quitar }: {
           }}
         >
           Sí, quitar
-        </button>
-        <button type="button" className={BOTON_CHICO} onClick={() => setConfirmando(false)}>
+        </Boton>
+        <Boton variante="secundario" tamano="chico" className="min-w-11" onClick={() => setConfirmando(false)}>
           No
-        </button>
+        </Boton>
       </span>
     );
   }
   return (
-    <button
-      type="button"
-      className={BOTON_CHICO}
+    <Boton
+      variante="secundario"
+      tamano="chico"
+      className="min-w-11"
       disabled={deshabilitado}
       title={title}
       aria-label={`Quitar ${nombre}`}
       onClick={() => (conAdicionales ? setConfirmando(true) : quitar())}
     >
       Quitar
-    </button>
+    </Boton>
   );
 }

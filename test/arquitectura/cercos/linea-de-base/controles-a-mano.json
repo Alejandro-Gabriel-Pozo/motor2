@@ -1,14 +1,14 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 287,
-  "entradas": 60,
+  "total": 270,
+  "entradas": 56,
   "porTipo": {
-    "button": 164,
+    "button": 150,
     "input": 74,
     "input-hidden": 16,
     "select": 22,
-    "textarea": 11
+    "textarea": 8
   },
   "cuentas": {
     "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/botones.tsx": {
@@ -148,14 +148,6 @@
       "button": 9,
       "input": 2
     },
-    "src/app/(pos)/mesas/[mesaId]/anular-item.tsx": {
-      "button": 3,
-      "textarea": 1
-    },
-    "src/app/(pos)/mesas/[mesaId]/anular-promo.tsx": {
-      "button": 3,
-      "textarea": 1
-    },
     "src/app/(pos)/mesas/[mesaId]/armar-promo.tsx": {
       "button": 4
     },
@@ -166,15 +158,8 @@
       "button": 6,
       "input": 1
     },
-    "src/app/(pos)/mesas/[mesaId]/emitir-ticket-corregido.tsx": {
-      "button": 3,
-      "textarea": 1
-    },
     "src/app/(pos)/mesas/[mesaId]/selector-carta.tsx": {
       "button": 6
-    },
-    "src/app/(pos)/mesas/[mesaId]/sin-enviar.tsx": {
-      "button": 5
     },
     "src/app/(pos)/mesas/page.tsx": {
       "input-hidden": 1

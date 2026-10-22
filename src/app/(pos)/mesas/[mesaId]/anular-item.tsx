@@ -4,7 +4,9 @@ import { useId, useState } from "react";
 import { anularItemEnviado } from "@/server/actions/pos/cuenta-anulacion";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
-import { BOTON_CHICO, BOTON_SECUNDARIO, CAMPO } from "./estilos";
+import { Dialogo } from "@/ui/componentes/superposiciones/dialogo";
+import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
+import { Boton } from "@/ui/primitivas/boton";
 import { formatearCantidad } from "@/core/pos/public";
 import { useImpresion } from "./imprimir";
 import { useAccionMesa } from "./usar-accion";
@@ -61,76 +63,39 @@ export function AnularItem({ item, puede, conAdicionales = false }: { item: { id
 
   return (
     <>
-      <button
-        type="button"
-        className={BOTON_CHICO}
+      <Boton
+        variante="secundario"
+        tamano="chico"
+        className="min-w-11"
         disabled={!puede}
         title={puede ? undefined : "Anular algo que ya salió a cocina requiere un permiso que tu rol no tiene."}
         aria-label={`Anular ${item.productoNombre}`}
         onClick={abrir}
       >
         Anular
-      </button>
+      </Boton>
 
-      {abierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={cerrar}>
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`${base}-titulo`}
-            className="w-full max-w-md rounded-[14px] bg-superficie p-5 text-left shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") cerrar();
-            }}
-          >
-            <h2 id={`${base}-titulo`} className="mb-1 text-lg font-extrabold tracking-tight">
-              Anular «{item.productoNombre}»
-            </h2>
-            <p className="mb-4 text-[13px] text-tinta-suave">Ya salió a cocina: queda registrado quién lo anuló y por qué. Quedan {formatearCantidad(item.restante)}.</p>
-            {/* GO-2d: un producto con adicionales los arrastra (el servidor los anula en la misma proporción). */}
-            {conAdicionales && <p className="-mt-2 mb-4 text-[13px] font-semibold">Se anulan también sus adicionales, en la misma proporción.</p>}
-            <form onSubmit={enviar} className="flex flex-col gap-3">
-              <label htmlFor={`${base}-cantidad`} className="text-[13px] font-semibold">
-                Cantidad a anular
-              </label>
-              <CampoNumero id={`${base}-cantidad`} value={cantidad} onChange={setCantidad} />
-              <label htmlFor={`${base}-motivo`} className="text-[13px] font-semibold">
-                Motivo (obligatorio)
-              </label>
-              <textarea
-                id={`${base}-motivo`}
-                autoFocus
-                rows={3}
-                maxLength={200}
-                aria-required="true"
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-                aria-invalid={error ? true : undefined}
-                aria-describedby={error ? `${base}-error` : undefined}
-                className={CAMPO}
-              />
-              {error && (
-                <p id={`${base}-error`} role="alert" className="text-[13px] text-error">
-                  {error}
-                </p>
-              )}
-              <div className="mt-1 flex justify-end gap-2">
-                <button type="button" onClick={cerrar} className={BOTON_SECUNDARIO}>
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={pending}
-                  className="rounded-lg bg-error px-4 py-[9px] text-[13px] font-semibold text-superficie enabled:hover:opacity-90 disabled:opacity-50"
-                >
-                  {pending ? "Anulando…" : "Anular"}
-                </button>
-              </div>
-            </form>
+      <Dialogo abierto={abierto} titulo={`Anular «${item.productoNombre}»`} onCerrar={cerrar} cerrable={!pending}>
+        <p className="mb-4 text-sm text-tinta-suave">Ya salió a cocina: queda registrado quién lo anuló y por qué. Quedan {formatearCantidad(item.restante)}.</p>
+        {/* GO-2d: un producto con adicionales los arrastra (el servidor los anula en la misma proporción). */}
+        {conAdicionales && <p className="-mt-2 mb-4 text-sm font-medium">Se anulan también sus adicionales, en la misma proporción.</p>}
+        <form onSubmit={enviar} className="flex flex-col gap-3">
+          {/* CampoNumero no lleva su propia etiqueta: la pone este <label> de afuera. */}
+          <label htmlFor={`${base}-cantidad`} className="text-sm font-medium">
+            Cantidad a anular
+          </label>
+          <CampoNumero id={`${base}-cantidad`} value={cantidad} onChange={setCantidad} />
+          <AreaDeTexto etiqueta="Motivo (obligatorio)" data-foco-inicial="" maxLength={200} aria-required="true" value={motivo} onChange={(e) => setMotivo(e.target.value)} error={error} />
+          <div className="mt-1 flex justify-end gap-2">
+            <Boton variante="secundario" onClick={cerrar}>
+              Cancelar
+            </Boton>
+            <Boton type="submit" variante="peligro" disabled={pending}>
+              {pending ? "Anulando…" : "Anular"}
+            </Boton>
           </div>
-        </div>
-      )}
+        </form>
+      </Dialogo>
     </>
   );
 }

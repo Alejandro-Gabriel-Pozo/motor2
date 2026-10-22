@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { cierraConEscapeYConElFondo, noSeCierraEnCurso, retenerAcciones } from "./fixtures/dialogos";
 import { interceptarImpresion } from "./fixtures/impresion";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
@@ -278,6 +279,43 @@ test("«Anular promo» ya enviada anula TODOS sus componentes juntos con un solo
     const espejos = await prisma.cuentaItem.findMany({ where: { promoCuentaId: promoCuenta.id, anulaAItemId: { not: null } } });
     expect(espejos).toHaveLength(2);
     expect(espejos.every((e) => e.motivoAnulacion === "Se equivocó de mesa")).toBe(true);
+  } finally {
+    await cat.limpiar([mesa.id]);
+  }
+});
+
+test("«Anular promo»: el foco va al motivo, Escape y el fondo cierran, y mientras se anula no se cierra y un doble clic anula la promo UNA vez", async ({ paginaAutenticada: page, sucursalId }) => {
+  const cat = await sembrarPromoCombo(sucursalId);
+  const { mesa, cuenta } = await mesaConCuenta(sucursalId, 996);
+  try {
+    await interceptarImpresion(page);
+    await page.goto(`/mesas/${mesa.id}`);
+    const armar = await abrirArmarPromo(page, cat);
+    await armar.getByRole("button", { name: `Sumar ${cat.empanada.nombre} a ${cat.entradas.nombre}` }).click();
+    await armar.getByRole("button", { name: `Sumar ${cat.agua.nombre} a ${cat.bebidas.nombre}` }).click();
+    await armar.getByRole("button", { name: "Agregar promo" }).click();
+    await page.getByRole("button", { name: "Agregar 1 al pedido", exact: true }).click();
+    await page.getByRole("button", { name: "Enviar a cocina" }).click();
+    await expect(page.locator(`[data-promo-enviada="${cat.titulo}"]`)).toBeVisible();
+
+    const disparador = page.getByRole("button", { name: `Anular promo ${cat.titulo}` });
+    const dialogo = page.getByRole("dialog", { name: `Anular promo «${cat.titulo}»` });
+    await cierraConEscapeYConElFondo(page, () => disparador.click(), dialogo, disparador);
+
+    await disparador.click();
+    await expect(dialogo.getByLabel("Motivo (obligatorio)"), "el foco inicial es el motivo").toBeFocused();
+    await dialogo.getByLabel("Motivo (obligatorio)").fill("Se equivocó de mesa");
+    const { vistas, liberar } = await retenerAcciones(page);
+    await dialogo.getByRole("button", { name: "Anular promo", exact: true }).dblclick();
+    await expect.poll(() => vistas.length).toBe(1);
+    await expect(dialogo.getByRole("button", { name: "Anulando…" })).toBeDisabled();
+    await noSeCierraEnCurso(page, dialogo);
+
+    liberar();
+    await expect(dialogo).toBeHidden();
+    await expect(aviso(page)).toHaveText(`Se anuló la promo «${cat.titulo}» de la mesa 996 (2 componentes).`);
+    expect(vistas, "un doble clic manda UNA sola acción").toHaveLength(1);
+    expect(await prisma.cuentaItem.count({ where: { cuentaId: cuenta.id, anulaAItemId: { not: null } } }), "uno por componente, una sola vez").toBe(2);
   } finally {
     await cat.limpiar([mesa.id]);
   }
