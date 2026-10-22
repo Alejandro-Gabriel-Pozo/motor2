@@ -44,7 +44,7 @@ for (const { ancho, alto } of [
       const m = marca();
       const { pizza, sinPrecio, harina, limpiar } = await sembrar(m, sucursalId);
       try {
-        await page.goto(`/catalogo/productos?q=${encodeURIComponent(`E2E Filtros`)}+${m}`);
+        await page.goto(`/catalogo/productos?q=${m}`);
         const filas = page.locator("tbody tr");
         await expect(filas).toHaveCount(3);
         const formulario = page.getByRole("search", { name: "Buscar y filtrar" });
@@ -58,7 +58,7 @@ for (const { ancho, alto } of [
         await expect(filas.first()).toContainText(harina.nombre);
         // La selección y la búsqueda siguen puestas en los controles después de filtrar.
         await expect(formulario.getByLabel("Tipo")).toHaveValue("materia-prima");
-        await expect(formulario.getByLabel("Buscar por nombre o código")).toHaveValue(`E2E Filtros ${m}`);
+        await expect(formulario.getByLabel("Buscar por nombre o código")).toHaveValue(m);
 
         await formulario.getByLabel("Tipo").selectOption("");
         await formulario.getByLabel("Le falta algo").selectOption("sin-precio");
@@ -87,7 +87,7 @@ test("Enter en la búsqueda filtra, y un valor raro en la URL no rompe: la lista
   const m = marca();
   const { pizza, sinPrecio, harina, limpiar } = await sembrar(m, sucursalId);
   try {
-    await page.goto(`/catalogo/productos?q=${encodeURIComponent(`E2E Filtros`)}+${m}&tipo=%27%3B+DROP+TABLE&modo=x&disponible=todos&falta=mucho`);
+    await page.goto(`/catalogo/productos?q=${m}&tipo=%27%3B+DROP+TABLE&modo=x&disponible=todos&falta=mucho`);
     await expect(page.locator("tbody tr")).toHaveCount(3);
     for (const nombre of ["Tipo", "Cómo se vende", "Disponibilidad", "Le falta algo"]) await expect(page.getByLabel(nombre)).toHaveValue("");
     const busqueda = page.getByLabel("Buscar por nombre o código");
@@ -108,7 +108,7 @@ test("la página siguiente conserva los filtros", async ({ paginaAutenticada: pa
   const { limpiar } = await sembrar(m, sucursalId);
   try {
     await prisma.producto.createMany({ data: Array.from({ length: 51 }, (_, i) => ({ codigo: `E2E-FI-MP${String(i).padStart(2, "0")}-${m}`, nombre: `E2E Filtros Bulto ${String(i).padStart(2, "0")} ${m}`, tipo: "MP" as const, unidadStockId: unidad.id })) });
-    await page.goto(`/catalogo/productos?q=${encodeURIComponent(`E2E Filtros`)}+${m}&tipo=materia-prima`);
+    await page.goto(`/catalogo/productos?q=${m}&tipo=materia-prima`);
     // 51 bultos + la harina = 52 materias primas: 50 en la primera página y 2 en la segunda; ningún producto de venta.
     await expect(page.locator("tbody tr")).toHaveCount(50);
     const siguiente = page.getByRole("link", { name: /Página siguiente/ });
@@ -128,7 +128,7 @@ test("PRIVACIDAD: quien no ve recetas ni carta no tiene esos «le falta» y por 
   const { limpiar } = await sembrar(m, sucursalId);
   const { page: paginaDelRol, limpiar: limpiarRol } = await abrirComoRol(browser, baseURL, sucursalId, { producto_ver_catalogo: "ver", alta_producto: "ver" });
   try {
-    const consulta = encodeURIComponent(`E2E Filtros`) + `+${m}`;
+    const consulta = m;
     await paginaDelRol.goto(`/catalogo/productos?q=${consulta}&falta=sin-receta`);
     await expect(paginaDelRol.getByLabel("Le falta algo").locator("option")).toHaveText(["Todos", "Sin precio de venta"]);
     // El filtro por receta no se aplicó (no revela qué productos no tienen receta): están los tres productos, y «Le falta algo» quedó en «Todos».
