@@ -68,7 +68,8 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
 
       expect(await calcularSaldoTotal(mp.id, seccionId, prisma), `iteración ${i}: el saldo refleja UNA sola compra, no dos`).toBe(10);
     }
-  });
+    // 10 pares de compras simultáneas con sembrado: en un runner o una máquina cargados pasan de los 5 s por defecto (en CI cortó a los 5000 ms con la parte 3 de 4 de Integración).
+  }, 30_000);
 
   /** Marca una compra ya cargada como anulada, directo en la base (la acción de anular se prueba aparte; acá solo importa el estado). */
   async function anular(operacionId: string) {
