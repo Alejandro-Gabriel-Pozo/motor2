@@ -110,7 +110,7 @@ export function FormularioCorregirCompra({
           Corregir proveedor y factura
         </Boton>
         {exito && (
-          <Aviso ref={avisoDeExito} tabIndex={-1} variante="exito" forma="en-linea">
+          <Aviso ref={avisoDeExito} tabIndex={-1} variante="exito">
             {exito}
           </Aviso>
         )}
@@ -144,7 +144,7 @@ export function FormularioCorregirCompra({
       <Campo id={`${idBase}-factura`} etiqueta="N.º de factura" value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} maxLength={LARGO_MAXIMO_NRO_FACTURA} />
       <Campo id={`${idBase}-detalle`} etiqueta="Detalle" value={detalleLibre} onChange={(e) => setDetalleLibre(e.target.value)} maxLength={200} />
       {error && (
-        <Aviso variante="error" forma="en-linea">
+        <Aviso variante="error">
           {error}
         </Aviso>
       )}
