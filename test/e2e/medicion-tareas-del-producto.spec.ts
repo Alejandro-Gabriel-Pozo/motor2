@@ -265,7 +265,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.ver("se abre el alta", () => expect(page.getByRole("heading", { name: "Nuevo producto", level: 1 })).toBeVisible());
     await m.marcar(page.getByRole("radio", { name: "Producto de venta (PV)" }), "elegir «Producto de venta (PV)»");
     await m.llenar(page.locator('input[name="nombre"]'), nombre, "escribir el nombre");
-    await m.elegir(page.getByLabel("Unidad de stock", { exact: true }), "unidad", "elegir la unidad de stock");
+    await m.elegir(page.getByLabel("Unidad de stock"), "unidad", "elegir la unidad de stock");
     await m.llenar(page.getByRole("textbox", { name: "Precio de venta" }), "4500", "escribir el precio de venta");
     await m.clic(page.getByRole("button", { name: "Crear producto" }), "tocar «Crear producto»");
     await m.ver("se llega a la ficha del producto creado", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
@@ -309,7 +309,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.clic(page.getByRole("link", { name: "+ Nuevo producto" }), "tocar «+ Nuevo producto»");
     await m.marcar(page.getByRole("radio", { name: "Producto de venta (PV)" }), "elegir «Producto de venta (PV)»");
     await m.llenar(page.locator('input[name="nombre"]'), producto, "escribir el nombre del producto");
-    await m.elegir(page.getByLabel("Unidad de stock", { exact: true }), "unidad", "elegir la unidad de stock");
+    await m.elegir(page.getByLabel("Unidad de stock"), "unidad", "elegir la unidad de stock");
     await m.llenar(page.getByRole("textbox", { name: "Precio de venta" }), "18000", "escribir el precio de venta");
     await m.clic(page.getByRole("button", { name: "Crear producto" }), "tocar «Crear producto»");
     await m.ver("se llega a la ficha del producto", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
