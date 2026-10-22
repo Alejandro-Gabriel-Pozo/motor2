@@ -16,7 +16,7 @@ import { useAccionMesa } from "./usar-accion";
  * (`role="alert"`). Sin `pos_anular_item`, el botón queda deshabilitado.
  *
  * La cantidad usa `CampoNumero` (nunca `Number(...)` a secas): antes un `<input>` crudo aceptaba notación científica en silencio
- * ("1e3" → 1000) sin marcar el campo como inválido. `CampoNumero` interpreta con `interpretarNumero`/`numeroDelCampo`
+ * ("1e3" → 1000) sin marcar el campo como inválido. `CampoNumero` interpreta con `interpretarNumeroTecleado` y lo lee con `numeroDelCampo`
  * (src/core/datos/numero-tecleado.ts) y deja el campo `aria-invalid` con el mensaje nativo del navegador ante un formato que no
  * es un número — el servidor (`validarCantidadPedido`) sigue siendo quien valida decimales/paso de venta/rango.
  *

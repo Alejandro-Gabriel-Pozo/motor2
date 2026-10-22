@@ -13,7 +13,7 @@ import { numeroDelCampo } from "@/core/datos/numero-tecleado";
  * vuelve a verificarlo en el servidor.
  *
  * El número usa `CampoNumero` (nunca `Number(...)` a secas): antes un `<input>` crudo aceptaba notación científica en silencio
- * ("1e3" → 1000). `CampoNumero` interpreta con `interpretarNumero`/`numeroDelCampo` (src/core/datos/numero-tecleado.ts) y deja el
+ * ("1e3" → 1000). `CampoNumero` interpreta con `interpretarNumeroTecleado` y lo lee con `numeroDelCampo` (src/core/datos/numero-tecleado.ts) y deja el
  * campo `aria-invalid` con el mensaje nativo del navegador ante un formato que no es un número — `crearMesa` sigue siendo quien
  * valida que sea un entero dentro del rango permitido.
  */
@@ -89,7 +89,7 @@ export function NuevaMesa({ siguienteNumero, puedeCrear }: { siguienteNumero: nu
               <label htmlFor="nueva-mesa-numero" className="text-[13px] font-semibold">
                 Número de mesa
               </label>
-              <CampoNumero id="nueva-mesa-numero" value={numero} onChange={setNumero} required autoFocus />
+              <CampoNumero id="nueva-mesa-numero" value={numero} onChange={setNumero} decimales={0} required autoFocus />
               {error && (
                 <p id="nueva-mesa-error" role="alert" className="text-[13px] text-error">
                   {error}

@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { CampoNumero } from "@/components/campo-numero";
-import { interpretarNumero } from "@/core/datos/numero-tecleado";
+import { leerNumeroCanonico } from "@/core/datos/numero-tecleado";
 import type { TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import { Boton } from "@/ui/primitivas/boton";
 import { Casilla } from "@/ui/primitivas/casilla";
@@ -39,7 +39,7 @@ export function EditorDeConsumos({ tipo, insumos, inicial }: { tipo: TipoDeGrupo
 
   const cambiar = (i: number, parcial: Partial<ConsumoEnEdicion>) => setLineas((ls) => ls.map((l, j) => (j === i ? { ...l, ...parcial } : l)));
   const numero = (t: string) => {
-    const r = interpretarNumero(t);
+    const r = leerNumeroCanonico(t);
     return r.ok ? r.valor : Number.NaN;
   };
   // Lo que viaja: los números ya interpretados (un texto mal escrito va como NaN y el servidor lo rechaza con su mensaje).

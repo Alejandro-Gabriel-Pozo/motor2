@@ -31,7 +31,7 @@ interface PromoPorAgregar {
  *
  * Tocar un producto —en la grilla de carta (`SelectorCarta`) o elegirlo en el buscador (`SelectorProducto`)— lo suma con cantidad
  * 1; tocarlo de nuevo (o volver a elegirlo) ACUMULA en la MISMA línea, nunca abre una segunda. La cantidad de cada línea se edita
- * con los botones −/+ o tecleando (parser `interpretarNumero`, nunca `Number(...)` a secas); al salir del campo se normaliza con
+ * con los botones −/+ o tecleando (parser `interpretarNumeroTecleado`, nunca `Number(...)` a secas); al salir del campo se normaliza con
  * `validarCantidadPedido` — la MISMA función que usará el servidor al confirmar — así lo que se ve es lo que se va a guardar (una
  * cantidad que redondea, ej. "1,4" en una unidad entera, queda mostrada en "1", nunca oculta).
  *

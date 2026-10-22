@@ -592,7 +592,7 @@ export default async function RecetaEditorPage({
                       >
                         <Campo aria-label="Nombre corto" name="nombre" defaultValue={paso.nombre ?? ""} placeholder="Nombre corto (opcional)" />
                         <AreaDeTexto etiqueta="Instrucción" etiquetaOculta name="instruccion" defaultValue={paso.instruccion} required rows={2} />
-                        <CampoNumero name="minutos" defaultValue={paso.minutos ? String(paso.minutos) : ""} placeholder="Minutos (opcional)" ariaLabel="Minutos del paso" className="w-32" tamano="compacto" />
+                        <CampoNumero name="minutos" decimales={0} defaultValue={paso.minutos ? String(paso.minutos) : ""} placeholder="Minutos (opcional)" ariaLabel="Minutos del paso" className="w-32" tamano="compacto" />
                         {vigente.ingredientes.length > 0 && (
                           <fieldset className="flex flex-col gap-1">
                             <span className="text-xs text-tinta-tenue">¿Este paso usa solo algunos ingredientes en particular? (opcional)</span>
@@ -707,7 +707,7 @@ export default async function RecetaEditorPage({
               )}
               <Campo aria-label="Nombre corto" name="nombre" placeholder="Nombre corto (opcional)" />
               <AreaDeTexto etiqueta="Instrucción" etiquetaOculta name="instruccion" placeholder="Instrucción" required rows={2} />
-              <CampoNumero name="minutos" placeholder="Minutos (opcional)" ariaLabel="Minutos del paso" className="w-32" />
+              <CampoNumero name="minutos" decimales={0} placeholder="Minutos (opcional)" ariaLabel="Minutos del paso" className="w-32" />
               {vigente.ingredientes.length > 0 && (
                 <fieldset className="flex flex-col gap-1">
                   <span className="text-xs text-tinta-tenue">¿Este paso usa solo algunos ingredientes en particular? (opcional)</span>

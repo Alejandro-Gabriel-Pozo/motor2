@@ -228,18 +228,17 @@ describe("textoCanonico — dígitos, un solo punto decimal, sin notación expon
   );
 });
 
-describe("numeroDelCampo — lo que un formulario manda a la Server Action", () => {
+describe("numeroDelCampo — lo que un formulario manda a la Server Action (lee el canal de valor, no lo tecleado)", () => {
   it("vacío → undefined", () => {
     expect(numeroDelCampo("")).toBeUndefined();
-    expect(numeroDelCampo("  ")).toBeUndefined();
   });
-  it("válido → el número", () => {
+  it("canónico → el número (el punto es SIEMPRE el decimal: «1.205» es 1,205)", () => {
     expect(numeroDelCampo("1234.56")).toBe(1234.56);
-    expect(numeroDelCampo("1.000.000")).toBe(1_000_000);
+    expect(numeroDelCampo("1.205")).toBe(1.205);
+    expect(numeroDelCampo("-3")).toBe(-3);
   });
-  it("inválido → NaN, nunca 0", () => {
-    expect(numeroDelCampo("abc")).toBeNaN();
-    expect(numeroDelCampo("...,.,.,...")).toBeNaN();
+  it("inválido, o escrito en notación tecleada, → NaN, nunca 0 ni un número adivinado", () => {
+    for (const t of ["abc", "...,.,.,...", "1.000.000", "21,5", "  ", "1.205\u200B"]) expect(numeroDelCampo(t), JSON.stringify(t)).toBeNaN();
   });
 });
 

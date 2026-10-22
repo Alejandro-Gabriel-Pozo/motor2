@@ -4,7 +4,7 @@ import { useState } from "react";
 import { LecturaDePrecio } from "@/components/catalogo/lectura-de-precio";
 import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
-import { interpretarNumero } from "@/core/datos/numero-tecleado";
+import { leerNumeroCanonico } from "@/core/datos/numero-tecleado";
 import {
   leerPrecioDeFilaDeAdmision,
   nombreDelTipoDeGrupo,
@@ -96,7 +96,7 @@ export function AdmisionDeGrupo({
   );
   const cambiar = (opcionId: string, parcial: Partial<Fila>) => setFilas((fs) => fs.map((f) => (f.opcionId === opcionId ? { ...f, ...parcial } : f)));
   const numero = (t: string) => {
-    const r = interpretarNumero(t);
+    const r = leerNumeroCanonico(t);
     return r.ok ? r.valor : Number.NaN;
   };
   const absoluto = esTamano && modo === "ABSOLUTO";

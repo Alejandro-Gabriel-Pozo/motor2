@@ -1,4 +1,4 @@
-import { interpretarNumero } from "@/core/datos/numero-tecleado";
+import { leerNumeroCanonico } from "@/core/datos/numero-tecleado";
 import { leerPrecioDeOpcion, type LecturaDePrecio } from "./lectura-de-precio";
 import { IMPORTE_MINIMO, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type TipoDeGrupoDeOpciones } from "./tipos";
 
@@ -61,7 +61,7 @@ export interface FilaDeAdmisionParaLeer {
 
 /** Lo tecleado como lo entiende `leerPrecioDeOpcion`: el número, `null` si está vacío o `"invalido"` si no se entendió. */
 function tecleado(texto: string): number | null | "invalido" {
-  const r = interpretarNumero(texto);
+  const r = leerNumeroCanonico(texto);
   return r.ok ? r.valor : "invalido";
 }
 

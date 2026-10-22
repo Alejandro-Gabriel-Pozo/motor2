@@ -82,11 +82,12 @@ export function textoCanonico(n: number): string {
 }
 
 /**
- * Lo que un formulario le manda a la Server Action a partir del texto de un CampoNumero: vacío → `undefined`, válido → el número,
- * inválido → `NaN`. Nunca 0 por un texto que no es número (lo que hacía `Number("")`), así el servidor lo rechaza.
+ * Lo que un formulario le manda a la Server Action a partir del valor que EMITIÓ un CampoNumero (el «canal de valor», `leerNumeroCanonico`): vacío → `undefined`, válido → el número,
+ * inválido (o tecleado y marcado como no canónico) → `NaN`. Nunca 0 por un texto que no es número (lo que hacía `Number("")`), así el servidor lo rechaza. NO lee lo que la persona
+ * tipea: eso es `interpretarNumeroTecleado`, con el contexto del campo.
  */
 export function numeroDelCampo(texto: string): number | undefined {
-  const r = interpretarNumero(texto);
+  const r = leerNumeroCanonico(texto);
   if (!r.ok) return Number.NaN;
   return r.valor ?? undefined;
 }
@@ -254,4 +255,23 @@ export function marcarNoCanonico(texto: string): string {
 /** Lo que se ve de un texto del canal: sin la marca (no se ve, pero tampoco tiene que viajar al lector). */
 export function sinMarcaDeNoCanonico(texto: string): string {
   return texto.endsWith(MARCA_DE_NO_CANONICO) ? texto.slice(0, -MARCA_DE_NO_CANONICO.length) : texto;
+}
+
+/**
+ * Un número como se le muestra a quien lo va a EDITAR: el texto canónico con la COMA como decimal y sin separador de miles («1,205», «21000»). Con la regla de la notación argentina se lee
+ * siempre como el mismo número (el canónico con punto, «1.205», se leería como ambiguo en un campo de kilos).
+ */
+export function textoParaEscribir(n: number): string {
+  return textoCanonico(n).replace(".", ",");
+}
+
+/**
+ * El mensaje de un número tecleado que no se pudo leer, con el sujeto del campo cuando se lo conoce («El precio de venta admite como máximo 2 decimales. Para 100123 escribí 100123 o 100.123,00.»,
+ * «El factor: ¿1,205 o 1205? Escribí 1205 o 1,205.», «La cantidad no es un número válido.»). Sin sujeto, el mensaje del parser tal cual. Lo usan el campo en pantalla y la validación del servidor.
+ */
+export function mensajeDeNumeroRechazado(rechazo: { codigo: string; mensaje: string }, sujeto?: string): string {
+  if (!sujeto) return rechazo.mensaje;
+  if (rechazo.codigo === "formato") return `${sujeto} no es un número válido.`;
+  if (rechazo.codigo === "ambiguo") return `${sujeto}: ${rechazo.mensaje}`;
+  return `${sujeto} ${rechazo.mensaje.charAt(0).toLowerCase()}${rechazo.mensaje.slice(1)}`;
 }

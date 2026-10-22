@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { CampoNumero } from "@/components/campo-numero";
-import { interpretarNumero } from "@/core/datos/numero-tecleado";
+import { leerNumeroCanonico } from "@/core/datos/numero-tecleado";
 import { espejoDeDiferencia, textoDePorcentaje, type DiferenciaDePrecio, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import { formatearMonto } from "@/core/pos/public";
 import { Insignia } from "@/ui/primitivas/insignia";
@@ -75,12 +75,12 @@ export function CamposDeVersion({
   }
 
   const texto = modo === "MONTO" ? monto : porcentaje;
-  const numero = interpretarNumero(texto);
+  const numero = leerNumeroCanonico(texto);
   const diferencia: DiferenciaDePrecio | null = numero.ok && numero.valor !== null ? (modo === "MONTO" ? { tipo: "MONTO", monto: numero.valor } : { tipo: "PORCENTAJE", porcentaje: numero.valor }) : null;
   const espejo = diferencia && referencia ? espejoDeDiferencia(diferencia, referencia.precio) : null;
   const idEspejo = `${id}-espejo`;
   // El factor tal cual lo interpreta el campo (vacío → null; un texto que no es número → NaN), para leerlo en vivo.
-  const factorLeido = interpretarNumero(factor);
+  const factorLeido = leerNumeroCanonico(factor);
   const valorDelFactor = factorLeido.ok ? factorLeido.valor : Number.NaN;
 
   return (
