@@ -58,8 +58,8 @@ test("renombrar un insumo avisa si falla la comprobación previa, sin romper la 
   });
 
   // Sin editar el nombre: alcanza con tocar «Renombrar/fusionar», que empieza por la lectura de comprobación (que falla).
-  const entrada = page.locator(`input[value="${insumo.nombre}"]`);
-  await entrada.locator("xpath=following-sibling::button").click();
+  const fila = page.locator("tr", { has: page.locator(`input[value="${insumo.nombre}"]`) });
+  await fila.getByRole("button", { name: "Renombrar/fusionar" }).click();
 
   await expect(page.getByText(/No se pudo comprobar si ya existe un insumo con ese nombre/).first()).toBeVisible();
   // El insumo no cambió de nombre: nada se escribió.
