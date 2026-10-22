@@ -49,7 +49,7 @@ export function OtroIgual({ pedido, titulo, puede }: { pedido: PedidoOtroIgual; 
         Otro igual
       </button>
       {error && (
-        <span role="alert" className="text-[12.5px] text-red-700">
+        <span role="alert" className="text-[12.5px] text-error">
           {error}
         </span>
       )}

@@ -1,10 +1,10 @@
 {
   "regla": "colores",
   "meta": "0 en la Fase 6 (DEC-03: los colores salen de los tokens de globals.css)",
-  "total": 53,
-  "entradas": 21,
+  "total": 52,
+  "entradas": 20,
   "porTipo": {
-    "clase-arbitraria": 35,
+    "clase-arbitraria": 34,
     "funcion-de-color": 9,
     "hex": 9
   },
@@ -23,9 +23,6 @@
     },
     "src/app/(carta-publica)/error.tsx": {
       "hex": 2
-    },
-    "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
-      "clase-arbitraria": 1
     },
     "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": {
       "clase-arbitraria": 2

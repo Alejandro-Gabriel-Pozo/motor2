@@ -54,7 +54,7 @@ export function AnularPromo({ promoCuentaId, titulo, puede }: { promoCuentaId: s
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${base}-titulo`}
-            className="w-full max-w-md rounded-[14px] bg-white p-5 text-left shadow-lg"
+            className="w-full max-w-md rounded-[14px] bg-superficie p-5 text-left shadow-lg"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") cerrar();
@@ -63,7 +63,7 @@ export function AnularPromo({ promoCuentaId, titulo, puede }: { promoCuentaId: s
             <h2 id={`${base}-titulo`} className="mb-1 text-lg font-extrabold tracking-tight">
               Anular promo «{titulo}»
             </h2>
-            <p className="mb-4 text-[13px] text-[var(--ink-soft)]">
+            <p className="mb-4 text-[13px] text-tinta-suave">
               Ya salió a cocina: se anulan TODOS sus componentes juntos, nunca uno solo. Queda registrado quién lo anuló y por qué.
             </p>
             <form onSubmit={enviar} className="flex flex-col gap-3">
@@ -83,7 +83,7 @@ export function AnularPromo({ promoCuentaId, titulo, puede }: { promoCuentaId: s
                 className={CAMPO}
               />
               {error && (
-                <p id={`${base}-error`} role="alert" className="text-[13px] text-red-700">
+                <p id={`${base}-error`} role="alert" className="text-[13px] text-error">
                   {error}
                 </p>
               )}
@@ -94,7 +94,7 @@ export function AnularPromo({ promoCuentaId, titulo, puede }: { promoCuentaId: s
                 <button
                   type="submit"
                   disabled={pending}
-                  className="rounded-lg bg-[var(--mesa-ocupada)] px-4 py-[9px] text-[13px] font-semibold text-white enabled:hover:opacity-90 disabled:opacity-50"
+                  className="rounded-lg bg-error px-4 py-[9px] text-[13px] font-semibold text-superficie enabled:hover:opacity-90 disabled:opacity-50"
                 >
                   {pending ? "Anulando…" : "Anular promo"}
                 </button>
