@@ -25,8 +25,8 @@ export function AvisoMesaProvider({ children }: { children: React.ReactNode }) {
           !aviso
             ? "sr-only"
             : aviso.includes("⚠")
-              ? "mb-5 rounded-[10px] border border-aviso bg-aviso-tinte px-4 py-3 text-[13.5px] font-medium text-aviso-tinta"
-              : "mb-5 rounded-[10px] border border-borde bg-superficie px-4 py-3 text-[13.5px]"
+              ? "mb-5 rounded-[10px] border border-aviso bg-aviso-tinte px-4 py-3 text-sm font-medium text-aviso-tinta"
+              : "mb-5 rounded-[10px] border border-borde bg-superficie px-4 py-3 text-sm"
         }
       >
         {aviso}

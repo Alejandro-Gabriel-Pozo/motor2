@@ -21,7 +21,7 @@ export function LiberarMesa({ cuentaId, puede }: { cuentaId: string; puede: bool
         {pending ? "Liberando…" : "Liberar mesa"}
       </Boton>
       {error && (
-        <p role="alert" className="text-[13px] text-error">
+        <p role="alert" className="text-sm text-error">
           {error}
         </p>
       )}

@@ -77,7 +77,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
       <header className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">Mapa de mesas</h1>
-          <p className="text-[13.5px] text-tinta-suave">
+          <p className="text-sm text-tinta-suave">
             {ctx.sucursalNombre} · actualizado a las {formatearHora(ahora, ctx.empresaZonaHoraria)}
           </p>
           <p className="mt-1">
@@ -104,7 +104,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
                   <Link
                     href={hrefMapa(f.estado, q)}
                     aria-current={activo ? "true" : undefined}
-                    className={`flex items-center gap-[7px] whitespace-nowrap rounded-full border border-transparent px-[13px] py-[7px] text-[13px] font-semibold transition-colors ${
+                    className={`flex items-center gap-[7px] whitespace-nowrap rounded-full border border-transparent px-[13px] py-[7px] text-sm font-semibold transition-colors ${
                       activo ? "bg-tinta text-superficie" : "text-tinta-suave hover:bg-superficie-suave"
                     }`}
                   >
@@ -135,14 +135,14 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
       {mapa.mesas.length === 0 ? (
         <div className="rounded-[14px] border border-dashed border-borde bg-superficie px-6 py-10 text-center">
           <p className="font-semibold">Todavía no hay mesas en esta sucursal.</p>
-          <p className="mt-1 text-[13px] text-tinta-suave">
+          <p className="mt-1 text-sm text-tinta-suave">
             {altaMesa.editar ? "Cargá la primera con «Nueva mesa»." : "Pedile a un admin que las cargue."}
           </p>
         </div>
       ) : visibles.length === 0 ? (
         <div className="rounded-[14px] border border-dashed border-borde bg-superficie px-6 py-10 text-center">
           <p className="font-semibold">Ninguna mesa coincide con el filtro.</p>
-          <Link href="/mesas" className="mt-1 inline-block text-[13px] text-tinta-suave underline hover:text-tinta">
+          <Link href="/mesas" className="mt-1 inline-block text-sm text-tinta-suave underline hover:text-tinta">
             Ver todas las mesas
           </Link>
         </div>
@@ -176,7 +176,7 @@ function Metrica({ label, valor, color }: { label: string; valor: number; color?
     <div data-metrica={label} className="rounded-[14px] border border-borde bg-superficie px-4 py-3.5">
       <div className="mb-1 flex items-center gap-1.5">
         {color && <span className="size-1.5 flex-none rounded-full" style={{ background: color }} aria-hidden />}
-        <span className="text-[11px] font-medium text-tinta-tenue">{label}</span>
+        <span className="text-xs font-medium text-tinta-tenue">{label}</span>
       </div>
       <div className="text-2xl font-extrabold tabular-nums" style={color ? { color } : undefined}>
         {valor}

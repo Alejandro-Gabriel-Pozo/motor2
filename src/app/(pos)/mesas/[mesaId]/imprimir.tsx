@@ -125,7 +125,7 @@ export function ReimprimirEnvio({ numero, puede }: { numero: number; puede: bool
   return (
     <Boton
       variante="secundario"
-      tamano="chico"
+      tamano="compacto"
       className="min-w-11"
       disabled={!puede}
       title={puede ? undefined : "Reimprimir la comanda requiere el permiso de tomar pedidos, que tu rol no tiene."}

@@ -57,7 +57,7 @@ export function ClienteCuenta({
 
   if (!editando) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[13.5px] text-tinta-suave">
+      <span className="inline-flex items-center gap-1.5 text-sm text-tinta-suave">
         {clienteNombre ? `Cliente: ${clienteNombre} (−${descuentoPorcentaje}%)` : "Sin cliente"}
         {puede && (
           <Boton variante="enlace" tamano="en-fila" onClick={abrir}>

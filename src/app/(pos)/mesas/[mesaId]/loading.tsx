@@ -9,7 +9,7 @@ export default function CargandoMesa() {
       <div className="h-5 w-24 rounded bg-borde" />
       <div className="h-8 w-64 max-w-full rounded bg-borde" />
       <div className="h-48 w-full rounded bg-borde" />
-      <p className="text-[13px] text-tinta-suave">Cargando…</p>
+      <p className="text-sm text-tinta-suave">Cargando…</p>
     </div>
   );
 }

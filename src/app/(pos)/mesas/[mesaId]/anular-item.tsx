@@ -65,7 +65,7 @@ export function AnularItem({ item, puede, conAdicionales = false }: { item: { id
     <>
       <Boton
         variante="secundario"
-        tamano="chico"
+        tamano="compacto"
         className="min-w-11"
         disabled={!puede}
         title={puede ? undefined : "Anular algo que ya salió a cocina requiere un permiso que tu rol no tiene."}

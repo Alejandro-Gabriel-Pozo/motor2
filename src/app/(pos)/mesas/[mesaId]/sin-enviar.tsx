@@ -81,7 +81,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
   return (
     <section aria-labelledby="sin-enviar-titulo" className="rounded-[14px] border border-borde bg-superficie p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 id="sin-enviar-titulo" className="text-[15px] font-bold">
+        <h2 id="sin-enviar-titulo" className="text-base font-bold">
           Sin enviar · {items.filter((i) => !i.lineaPadreId).length}
         </h2>
         {items.length > 0 && (
@@ -91,17 +91,17 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
         )}
       </div>
       {items.length === 0 ? (
-        <p className="text-[13px] text-tinta-suave">No hay nada pendiente de enviar.</p>
+        <p className="text-sm text-tinta-suave">No hay nada pendiente de enviar.</p>
       ) : (
         <ul className="divide-y divide-borde">
           {filas.map((fila) =>
             fila.tipo === "suelto" ? (
-              <li key={fila.item.id} data-item-sin-enviar={fila.item.productoNombre} className="py-2 text-[14px]">
+              <li key={fila.item.id} data-item-sin-enviar={fila.item.productoNombre} className="py-2 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="min-w-0 [overflow-wrap:anywhere]">
                     <span className="font-semibold tabular-nums">{formatearCantidad(fila.item.cantidad)} ×</span> {fila.item.productoNombre}
                     {fila.item.opciones && (
-                      <span data-opciones-de-linea className="block text-[12.5px] text-tinta-suave">
+                      <span data-opciones-de-linea className="block text-sm text-tinta-suave">
                         {fila.item.opciones.join(" · ")}
                       </span>
                     )}
@@ -124,7 +124,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
                   </span>
                 </div>
                 {fila.adicionales.length > 0 && (
-                  <ul aria-label={`Adicionales de ${fila.item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[13px]">
+                  <ul aria-label={`Adicionales de ${fila.item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-sm">
                     {fila.adicionales.map((a) => (
                       <li key={a.id} data-adicional-sin-enviar={a.productoNombre} className="flex items-center justify-between gap-3">
                         <span className="min-w-0 [overflow-wrap:anywhere]">
@@ -137,14 +137,14 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
                 )}
               </li>
             ) : (
-              <li key={fila.promoCuentaId} data-promo-sin-enviar={fila.titulo} className="py-2 text-[14px]">
+              <li key={fila.promoCuentaId} data-promo-sin-enviar={fila.titulo} className="py-2 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="min-w-0 font-semibold [overflow-wrap:anywhere]">{fila.titulo}</span>
                   <span className="flex items-center gap-3">
                     <span className="tabular-nums">{formatearMonto(fila.items.reduce((suma, i) => suma + i.cantidad * i.precioUnitario, 0))}</span>
                     <Boton
                       variante="secundario"
-                      tamano="chico"
+                      tamano="compacto"
                       className="min-w-11"
                       disabled={!puede || pending}
                       title={sinPermiso}
@@ -155,7 +155,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
                     </Boton>
                   </span>
                 </div>
-                <ul className="mt-1 space-y-0.5 pl-4 text-[12.5px] text-tinta-suave">
+                <ul className="mt-1 space-y-0.5 pl-4 text-sm text-tinta-suave">
                   {fila.items.map((i) => (
                     <li key={i.id} data-item-sin-enviar={i.productoNombre}>
                       <span className="tabular-nums">{formatearCantidad(i.cantidad)} ×</span> {i.productoNombre}
@@ -168,7 +168,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
         </ul>
       )}
       {error && (
-        <p role="alert" className="mt-2 text-[13px] text-error">
+        <p role="alert" className="mt-2 text-sm text-error">
           {error}
         </p>
       )}
@@ -185,10 +185,10 @@ function QuitarLinea({ nombre, conAdicionales, deshabilitado, title, quitar }: {
   if (confirmando) {
     return (
       <span role="group" aria-label={`Quitar ${nombre} con sus adicionales`} className="flex flex-wrap items-center gap-2">
-        <span className="text-[12.5px] text-tinta-suave">Se quitan también sus adicionales.</span>
+        <span className="text-sm text-tinta-suave">Se quitan también sus adicionales.</span>
         <Boton
           variante="secundario"
-          tamano="chico"
+          tamano="compacto"
           className="min-w-11"
           disabled={deshabilitado}
           onClick={() => {
@@ -198,7 +198,7 @@ function QuitarLinea({ nombre, conAdicionales, deshabilitado, title, quitar }: {
         >
           Sí, quitar
         </Boton>
-        <Boton variante="secundario" tamano="chico" className="min-w-11" onClick={() => setConfirmando(false)}>
+        <Boton variante="secundario" tamano="compacto" className="min-w-11" onClick={() => setConfirmando(false)}>
           No
         </Boton>
       </span>
@@ -207,7 +207,7 @@ function QuitarLinea({ nombre, conAdicionales, deshabilitado, title, quitar }: {
   return (
     <Boton
       variante="secundario"
-      tamano="chico"
+      tamano="compacto"
       className="min-w-11"
       disabled={deshabilitado}
       title={title}

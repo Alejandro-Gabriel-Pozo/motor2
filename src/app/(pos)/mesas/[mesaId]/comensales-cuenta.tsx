@@ -41,7 +41,7 @@ export function ComensalesCuenta({ cuentaId, comensales, puede }: { cuentaId: st
 
   if (!editando) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[13.5px] text-tinta-suave">
+      <span className="inline-flex items-center gap-1.5 text-sm text-tinta-suave">
         {comensales !== null ? `${comensales} comensal${comensales === 1 ? "" : "es"}` : "Comensales: sin datos"}
         {puede && (
           <Boton variante="enlace" tamano="en-fila" onClick={abrir}>

@@ -40,7 +40,7 @@ export function OtroIgual({ pedido, titulo, puede }: { pedido: PedidoOtroIgual; 
     <>
       <Boton
         variante="secundario"
-        tamano="chico"
+        tamano="compacto"
         className="min-w-11"
         disabled={!puede}
         title={puede ? undefined : "Tu rol puede ver la mesa pero no tomar pedidos."}
@@ -50,7 +50,7 @@ export function OtroIgual({ pedido, titulo, puede }: { pedido: PedidoOtroIgual; 
         Otro igual
       </Boton>
       {error && (
-        <span role="alert" className="text-[12.5px] text-error">
+        <span role="alert" className="text-sm text-error">
           {error}
         </span>
       )}

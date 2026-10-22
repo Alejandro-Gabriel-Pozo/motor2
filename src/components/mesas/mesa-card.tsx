@@ -56,45 +56,45 @@ export function MesaCard(props: MesaCardProps) {
 
       <div className="mb-3 flex items-start justify-between">
         <div>
-          <div className="text-[10.5px] font-semibold tracking-wide text-tinta-tenue">MESA</div>
+          <div className="text-xs font-semibold tracking-wide text-tinta-tenue">MESA</div>
           <div className="text-xl font-extrabold leading-none tabular-nums">{numero}</div>
         </div>
 
         {estado === "ocupada" ? (
-          <BotonDeServidor variante="enlace" tamano="chico" disabled aria-label="Opciones de mesa" title="Mover o unir mesas todavía no está disponible." className="-mr-1">
+          <BotonDeServidor variante="enlace" tamano="compacto" disabled aria-label="Opciones de mesa" title="Mover o unir mesas todavía no está disponible." className="-mr-1">
             <IconDots />
           </BotonDeServidor>
         ) : (
-          <span className="rounded-md px-2 py-1 text-[11px] font-semibold" style={{ color: cfg.varTexto, background: cfg.varTint }}>
+          <span className="rounded-md px-2 py-1 text-xs font-semibold" style={{ color: cfg.varTexto, background: cfg.varTint }}>
             {cfg.label}
           </span>
         )}
       </div>
 
-      {estado === "libre" && <p className="mb-4 text-[13px] text-tinta-suave">Disponible para comensales</p>}
+      {estado === "libre" && <p className="mb-4 text-sm text-tinta-suave">Disponible para comensales</p>}
 
       {estado === "en_pedido" && (
         <>
           <p className="mb-1 text-[13px] text-tinta-suave">
             {productosSinEnviar ?? 0} producto{productosSinEnviar === 1 ? "" : "s"} sin enviar
           </p>
-          <p className="mb-4 text-[15px] font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
+          <p className="mb-4 text-base font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
         </>
       )}
 
       {estado === "ocupada" && (
         <>
-          <div className="mb-1 flex items-center gap-1.5 text-[12.5px] text-tinta-suave">
+          <div className="mb-1 flex items-center gap-1.5 text-sm text-tinta-suave">
             <IconUser />
             <span>
               {mesero ?? "Mesero asignado"}
               {tiempoAbierta ? ` · ${tiempoAbierta}` : ""}
             </span>
           </div>
-          <p className="mb-3 text-[12.5px] text-tinta-suave">
+          <p className="mb-3 text-sm text-tinta-suave">
             {pedidosEnviados ?? 0} pedido{pedidosEnviados === 1 ? "" : "s"} enviado{pedidosEnviados === 1 ? "" : "s"}
           </p>
-          <p className="mb-3 text-[15px] font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
+          <p className="mb-3 text-base font-bold tabular-nums">{total == null ? "—" : formatearMonto(total)}</p>
         </>
       )}
 

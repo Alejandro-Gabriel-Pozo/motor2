@@ -200,9 +200,9 @@ export function AgregarItems({
     return (
       <li key={clave} data-linea-por-agregar={titulo} className="flex flex-col gap-1 bg-superficie py-2 first:rounded-t-lg last:rounded-b-lg">
         <div className="flex flex-wrap items-center justify-between gap-2 px-2">
-          <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{titulo}</span>
+          <span className="min-w-0 flex-1 text-sm font-semibold [overflow-wrap:anywhere]">{titulo}</span>
           <div className="flex flex-wrap items-center gap-1.5">
-            <Boton variante="secundario" tamano="chico" className="min-w-11" aria-label={`Restar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: p.productoId, clave })}>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Restar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: p.productoId, clave })}>
               −
             </Boton>
             <input
@@ -217,25 +217,25 @@ export function AgregarItems({
               aria-describedby={error ? idError : undefined}
               className={CAMPO_CANTIDAD}
             />
-            <Boton variante="secundario" tamano="chico" className="min-w-11" aria-label={`Sumar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: p.productoId, clave })}>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Sumar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: p.productoId, clave })}>
               +
             </Boton>
-            <span className="w-24 text-right text-[13.5px] tabular-nums">{vista.ok ? formatearMonto(vista.total) : "—"}</span>
-            <Boton variante="secundario" tamano="chico" className="min-w-11" aria-label={`Otro igual a ${titulo}, para cambiarle algo`} onClick={() => setOpcionesAbiertas({ productoId: p.productoId, inicial: opciones })}>
+            <span className="w-24 text-right text-sm tabular-nums">{vista.ok ? formatearMonto(vista.total) : "—"}</span>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Otro igual a ${titulo}, para cambiarle algo`} onClick={() => setOpcionesAbiertas({ productoId: p.productoId, inicial: opciones })}>
               Otro igual
             </Boton>
-            <Boton variante="secundario" tamano="chico" className="min-w-11" aria-label={`Quitar ${titulo} de la lista`} onClick={() => despacharLista({ tipo: "quitarLinea", productoId: p.productoId, clave })}>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Quitar ${titulo} de la lista`} onClick={() => despacharLista({ tipo: "quitarLinea", productoId: p.productoId, clave })}>
               Quitar
             </Boton>
           </div>
         </div>
         {adicionales.map((a) => (
-          <p key={a} className="pl-6 pr-2 text-[12.5px] text-tinta-suave">
+          <p key={a} className="pl-6 pr-2 text-sm text-tinta-suave">
             {a}
           </p>
         ))}
         {(error || !vista.ok) && (
-          <p id={idError} role="alert" className="px-2 text-[12.5px] text-error">
+          <p id={idError} role="alert" className="px-2 text-sm text-error">
             {error ?? (vista.ok ? "" : `${vista.mensaje} Quitala y volvé a elegir.`)}
           </p>
         )}
@@ -253,7 +253,7 @@ export function AgregarItems({
       <fieldset disabled={!puede} title={puede ? undefined : "Tu rol puede ver la mesa pero no tomar pedidos."} className="flex min-w-0 flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="agregar-producto" className="text-[12.5px] font-semibold">
+            <label htmlFor="agregar-producto" className="text-sm font-semibold">
               Producto
             </label>
             <SelectorProducto
@@ -269,18 +269,18 @@ export function AgregarItems({
           </div>
         </div>
         {hayCarta && <SelectorCarta selector={selectorCarta} estado={estado} lista={lista} despachar={despachar} sumar={sumar} abrirPromo={setPromoAbierta} configuraciones={configuraciones} />}
-        {llena && <p className="text-[13px] text-tinta-suave">Llegaste al máximo de {MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.</p>}
+        {llena && <p className="text-sm text-tinta-suave">Llegaste al máximo de {MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.</p>}
 
         <div className="flex flex-col gap-2 rounded-[14px] border border-borde bg-superficie-suave p-3">
-          <h2 className="text-[14px] font-bold">Por agregar · {lista.lineas.length + promosPorAgregar.length}</h2>
+          <h2 className="text-sm font-bold">Por agregar · {lista.lineas.length + promosPorAgregar.length}</h2>
           {promosPorAgregar.length > 0 && (
             <ul className="flex flex-col divide-y divide-borde">
               {promosPorAgregar.map((p) => (
                 <li key={p.id} data-promo-por-agregar={p.titulo} className="flex items-center justify-between gap-2 bg-aviso-tinte px-2 py-2 first:rounded-t-lg">
-                  <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{p.titulo}</span>
-                  <span className="text-[13.5px] tabular-nums">{formatearMonto(p.precio)}</span>
+                  <span className="min-w-0 flex-1 text-sm font-semibold [overflow-wrap:anywhere]">{p.titulo}</span>
+                  <span className="text-sm tabular-nums">{formatearMonto(p.precio)}</span>
                   <Boton
-                    variante="secundario" tamano="chico" className="min-w-11"
+                    variante="secundario" tamano="compacto" className="min-w-11"
                     aria-label={`Quitar ${p.titulo} de la lista`}
                     onClick={() => setPromosPorAgregar((antes) => antes.filter((x) => x.id !== p.id))}
                   >
@@ -291,7 +291,7 @@ export function AgregarItems({
             </ul>
           )}
           {lista.lineas.length === 0 && promosPorAgregar.length === 0 ? (
-            <p className="text-[13px] text-tinta-suave">Ningún producto elegido todavía: tocá uno de la carta o buscalo por nombre o código.</p>
+            <p className="text-sm text-tinta-suave">Ningún producto elegido todavía: tocá uno de la carta o buscalo por nombre o código.</p>
           ) : lista.lineas.length === 0 ? null : (
             <ul className="flex flex-col divide-y divide-borde">
               {lista.lineas.flatMap((l) => {
@@ -303,9 +303,9 @@ export function AgregarItems({
                 return [
                   <li key={l.productoId} data-linea-por-agregar={p.nombre} className="flex flex-col gap-1 bg-superficie py-2 first:rounded-t-lg last:rounded-b-lg">
                     <div className="flex flex-wrap items-center justify-between gap-2 px-2">
-                      <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{p.nombre}</span>
+                      <span className="min-w-0 flex-1 text-sm font-semibold [overflow-wrap:anywhere]">{p.nombre}</span>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <Boton variante="secundario" tamano="chico" className="min-w-11" aria-label={`Restar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: l.productoId })}>
+                        <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Restar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: l.productoId })}>
                           −
                         </Boton>
                         <input
@@ -328,12 +328,12 @@ export function AgregarItems({
                           aria-describedby={l.error ? idError : p.pasoVenta ? `${idError}-ayuda` : undefined}
                           className={CAMPO_CANTIDAD}
                         />
-                        <Boton variante="secundario" tamano="chico" className="min-w-11" aria-label={`Sumar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: l.productoId })}>
+                        <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Sumar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: l.productoId })}>
                           +
                         </Boton>
-                        <span className="w-24 text-right text-[13.5px] tabular-nums">{formatearMonto(l.cantidad * p.precio)}</span>
+                        <span className="w-24 text-right text-sm tabular-nums">{formatearMonto(l.cantidad * p.precio)}</span>
                         <Boton
-                          variante="secundario" tamano="chico" className="min-w-11"
+                          variante="secundario" tamano="compacto" className="min-w-11"
                           aria-label={`Quitar ${p.nombre} de la lista`}
                           onClick={() => despacharLista({ tipo: "quitarLinea", productoId: l.productoId })}
                         >
@@ -342,12 +342,12 @@ export function AgregarItems({
                       </div>
                     </div>
                     {l.error ? (
-                      <p id={idError} role="alert" className="px-2 text-[12.5px] text-error">
+                      <p id={idError} role="alert" className="px-2 text-sm text-error">
                         {l.error}
                       </p>
                     ) : (
                       p.pasoVenta && (
-                        <p id={`${idError}-ayuda`} className="px-2 text-[12.5px] text-tinta-suave">
+                        <p id={`${idError}-ayuda`} className="px-2 text-sm text-tinta-suave">
                           Se vende de a {formatearCantidad(p.pasoVenta)}.
                         </p>
                       )
@@ -363,7 +363,7 @@ export function AgregarItems({
         </div>
       </fieldset>
       {error && (
-        <p role="alert" className="text-[13px] text-error">
+        <p role="alert" className="text-sm text-error">
           {error}
         </p>
       )}

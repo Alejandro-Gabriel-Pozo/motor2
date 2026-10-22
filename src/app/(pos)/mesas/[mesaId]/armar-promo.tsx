@@ -57,17 +57,17 @@ export function ArmarPromo({
                 : cupo.elegibles.map((p) => ({ clave: p.productoId, nombre: p.nombre, noSeArma: noSeArman?.get(p.productoId) }));
             return (
               <fieldset key={clave} data-cupo-armar-promo={clave} className="flex flex-col gap-2 rounded-[12px] border border-borde p-3">
-                <legend className="px-1 text-[13px] font-semibold">
+                <legend className="px-1 text-sm font-semibold">
                   {nombreDelCupo} · {total}/{cupo.cantidadMaximaCupo}
                   {cupo.cantidadMinima > 0 ? ` (mínimo ${cupo.cantidadMinima})` : " (opcional)"}
                 </legend>
                 {"cupoId" in cupo && cupo.fijo && cupo.entradas[0] ? (
-                  <p data-cupo-fijo className="text-[13.5px]">
+                  <p data-cupo-fijo className="text-sm">
                     Viene con: {cupo.cantidadMinima > 1 ? `${cupo.cantidadMinima} × ` : ""}
                     {cupo.entradas[0].nombre}
                   </p>
                 ) : elegibles.length === 0 ? (
-                  <p className="text-[13px] text-tinta-suave">{"cupoId" in cupo && cupo.tipo === "DEL_DIA" ? "Todavía no se cargó el plato de hoy." : "Nada disponible para elegir acá ahora."}</p>
+                  <p className="text-sm text-tinta-suave">{"cupoId" in cupo && cupo.tipo === "DEL_DIA" ? "Todavía no se cargó el plato de hoy." : "Nada disponible para elegir acá ahora."}</p>
                 ) : (
                   <ul className="flex flex-col divide-y divide-borde">
                     {elegibles.map((p) => {
@@ -75,28 +75,28 @@ export function ArmarPromo({
                       const noSeArma = p.noSeArma;
                       return (
                         <li key={p.clave} data-producto-armar-promo={p.clave} className="flex items-center justify-between gap-2 py-1.5">
-                          <span className="min-w-0 flex-1 text-[13.5px]">
+                          <span className="min-w-0 flex-1 text-sm">
                             {p.nombre}
                             {noSeArma && (
-                              <span data-no-se-arma className="block text-[12.5px] text-tinta-suave">
+                              <span data-no-se-arma className="block text-sm text-tinta-suave">
                                 {noSeArma}
                               </span>
                             )}
                           </span>
                           <div className="flex items-center gap-1.5">
                             <Boton
-                              variante="secundario" tamano="chico" className="min-w-11"
+                              variante="secundario" tamano="compacto" className="min-w-11"
                               aria-label={`Restar ${p.nombre} de ${nombreDelCupo}`}
                               disabled={cantidad === 0}
                               onClick={() => despachar({ tipo: "decrementar", seccionCartaId: clave, productoId: p.clave })}
                             >
                               −
                             </Boton>
-                            <span aria-live="polite" className="w-5 text-center text-[13.5px] tabular-nums">
+                            <span aria-live="polite" className="w-5 text-center text-sm tabular-nums">
                               {cantidad}
                             </span>
                             <Boton
-                              variante="secundario" tamano="chico" className="min-w-11"
+                              variante="secundario" tamano="compacto" className="min-w-11"
                               aria-label={`Sumar ${p.nombre} a ${nombreDelCupo}`}
                               disabled={llegoAlMaximo || noSeArma !== undefined}
                               title={noSeArma ?? (llegoAlMaximo ? `Ya elegiste el máximo de ${nombreDelCupo} (${cupo.cantidadMaximaCupo}).` : undefined)}

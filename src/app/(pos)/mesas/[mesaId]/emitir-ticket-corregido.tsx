@@ -49,7 +49,7 @@ export function EmitirTicketCorregido({ ticket, hora, puede }: { ticket: TicketD
     <>
       <Boton
         variante="secundario"
-        tamano="chico"
+        tamano="compacto"
         disabled={bloqueo !== null}
         title={bloqueo ?? undefined}
         aria-label={`Emitir el ticket corregido de la cuenta cerrada a las ${hora}`}

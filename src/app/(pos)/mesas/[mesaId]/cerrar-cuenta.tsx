@@ -62,7 +62,7 @@ export function CerrarCuenta({
         Cerrar cuenta
       </Boton>
       {bloqueo && (
-        <p id={`${base}-bloqueo`} className="text-[12.5px] text-tinta-suave">
+        <p id={`${base}-bloqueo`} className="text-sm text-tinta-suave">
           {bloqueo}
         </p>
       )}
