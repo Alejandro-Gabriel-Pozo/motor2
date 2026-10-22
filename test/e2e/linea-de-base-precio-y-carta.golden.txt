@@ -614,6 +614,7 @@
     Pizzas
     1 producto
     ▾ Pizzas · Pizzas · $18.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -643,6 +644,7 @@
     Platos
     3 productos
     ▾ Milanesas · Platos · $20.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -663,6 +665,7 @@
     [botón: Guardar descuento de «Milanesas»]
     [botón: Quitar «Milanesas» de la carta (vuelve a «Fuera de carta»)]
     ▾ Bife a la criolla · Platos · $20.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -683,6 +686,7 @@
     [botón: Guardar descuento de «Bife a la criolla»]
     [botón: Quitar «Bife a la criolla» de la carta (vuelve a «Fuera de carta»)]
     ▾ Wok de verduras · Platos · $19.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -707,6 +711,7 @@
     Cafetería
     2 productos
     ▾ Café · Cafetería · $4.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -727,6 +732,7 @@
     [botón: Guardar descuento de «Café»]
     [botón: Quitar «Café» de la carta (vuelve a «Fuera de carta»)]
     ▾ Café de especialidad · Cafetería · $4.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -751,6 +757,7 @@
     Bebidas
     1 producto
     ▾ Gaseosa 500 cc · Bebidas · $4.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -890,6 +897,7 @@
     Pizzas
     1 producto
     ▾ Pizzas · Pizzas · $18.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -919,6 +927,7 @@
     Platos
     3 productos
     ▾ Milanesas · Platos · $20.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -939,6 +948,7 @@
     [botón: Guardar descuento de «Milanesas»]
     [botón: Quitar «Milanesas» de la carta (vuelve a «Fuera de carta»)]
     ▾ Bife a la criolla · Platos · $20.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -959,6 +969,7 @@
     [botón: Guardar descuento de «Bife a la criolla»]
     [botón: Quitar «Bife a la criolla» de la carta (vuelve a «Fuera de carta»)]
     ▾ Wok de verduras · Platos · $19.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -983,6 +994,7 @@
     Cafetería
     2 productos
     ▾ Café · Cafetería · $4.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -1003,6 +1015,7 @@
     [botón: Guardar descuento de «Café»]
     [botón: Quitar «Café» de la carta (vuelve a «Fuera de carta»)]
     ▾ Café de especialidad · Cafetería · $4.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]
@@ -1027,6 +1040,7 @@
     Bebidas
     1 producto
     ▾ Gaseosa 500 cc · Bebidas · $4.000 · se muestra
+    [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
     [ ]

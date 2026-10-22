@@ -6,9 +6,9 @@ import { prisma } from "./fixtures/db";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 
 /**
- * MEDICIÓN «ANTES» de cuatro tareas del producto con las pantallas de HOY (Fase 6, paso 6.0.2; ver docs/medicion-espacio-del-producto-2026-10-21.md). No mide tiempo ni rendimiento: mide
- * cuánto camino pide cada tarea, para que el bloque 2 (el espacio del producto) demuestre que no empeora (umbral del dueño: «no peor que hoy» en pantallas y clics, y 0 salidas del espacio en
- * las tareas de opciones y de publicar). Por ahora SOLO AFIRMA que cada tarea terminó bien; los umbrales se afirman en 6.21, cuando esta spec se reescriba con los recorridos nuevos.
+ * MEDICIÓN de cuatro tareas del producto (Fase 6; ver docs/medicion-espacio-del-producto-2026-10-21.md). Nació como la medición «antes» (6.0.2, con las pantallas de entonces) y desde 6.21 recorre el ESPACIO
+ * DEL PRODUCTO y AFIRMA el umbral de DEC-12 (del dueño): en las cuatro tareas, pantallas y clics «no peor que antes» (`ANTES`, la tabla «antes» del documento) y 0 salidas del espacio en las tareas de
+ * opciones, de cambiar un precio y de publicar (b, c y d). No mide tiempo ni rendimiento: mide cuánto camino pide cada tarea.
  *
  * LAS CUATRO TAREAS (cada una arranca en una pantalla de partida y se recorre solo con clics y campos, sin escribir una URL a mitad de camino)
  *  a) Crear un producto DIRECTO hasta que quede vendible. Parte de la lista de productos. Hoy «directo o base» es «¿Cómo se vende?», que existe SOLO al editar (el alta nace directa): elegir
@@ -17,7 +17,8 @@ import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
  *     «Por opción» en «¿Cómo se vende?» (con la clave `producto_campos_sensibles`). «Antes» (Fase 6, 6.0.2) parte de «Opciones de venta» y recorre la biblioteca de grupos; desde 6.15c parte de la lista de
  *     productos y los grupos se crean desde el paso 2 del producto con «+ Nuevo grupo» (el recorrido del espacio, DEC-12): la tabla «antes» del documento sigue siendo la del recorrido viejo.
  *  c) Cambiar el precio final de una opción de una base ya armada. Parte de la ficha del producto (sembrado).
- *  d) Publicar el producto en la carta («Fuera de carta» → «Agregar a la carta» → sección). Parte de la ficha del producto (sembrado).
+ *  d) Publicar el producto en la carta. «Antes»: la carta era otro módulo («Fuera de carta» → «Agregar a la carta» → sección). Desde 6.17c es el paso «En la carta» del producto: «En la carta» → sección →
+ *     «Guardar contenido». Parte de la ficha del producto (sembrado).
  *
  * QUÉ SE CUENTA (el medidor `Medidor`, abajo; todo a 1280 px de ancho, el menú lateral a la vista)
  *  - PANTALLAS: rutas distintas visitadas. Un `framenavigated` del marco principal cuenta cuando CAMBIA el path; el mismo path con otra query (`?nivel=…`, `?guardado=…`) o un refresco no cuentan.
@@ -40,11 +41,11 @@ import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
  * DATOS: todo lleva una marca única en el nombre (la base e2e es compartida y se vacía entera al empezar cada corrida). Las tablas de opciones solo se agregan (ver `fixtures/opciones.ts`): lo que
  * sembramos o creamos de opciones no se borra al terminar. La tarea d borra lo que ella misma crea de la carta (el contenido y la sección propia) para no tocar a las otras specs de la carta.
  *
- * MUTACIONES A SOBREVIVIR A MANO (no corren en CI, esta spec no se corre sola en el gate; se hacen una vez al correrla por primera vez y se deshacen):
- *  1) Cambiar el selector de un paso (p. ej. en la tarea c, el rótulo `Precio de Napolitana en este producto` por `Precio de Napolitano en este producto`) → esa tarea tiene que FALLAR con el
- *     mensaje «[medición c-cambiar-precio-final] no se pudo «…»: …» que nombra el paso, y no escribir ningún JSON.
- *  2) Sacar un clic de una tarea (p. ej. quitar el `clic` de «+ Agregar opción» en la tarea b, o el de «Visibilidad» en la d, dejando el paso que sigue sin su pantalla) → o falla con el mismo
- *     mensaje, o, si el flujo sigue siendo válido, el número `clics` del JSON baja exactamente en uno.
+ * MUTACIONES DEMOSTRADAS (se hacen a mano, una vez, y se deshacen; esta spec no corre sola en el gate):
+ *  1) Cambiar el selector de un paso (p. ej. en la tarea c, el rótulo `Precio de Napolitana en este producto` por `Precio de Napolitano en este producto`) → esa tarea FALLA con el mensaje
+ *     «[medición c-cambiar-precio-final] no se pudo «…»: …» que nombra el paso, y no escribe ningún JSON.
+ *  2) 6.21, en la tarea c, ir por la biblioteca (`/catalogo/opciones/[id]`) en vez del paso 2 → `salidasDelEspacio` = 1 → el umbral da rojo («salidas del espacio»).
+ *  3) 6.21, agregar un clic de más en la tarea c → 3 clics contra los 2 de antes → el umbral da rojo.
  */
 
 type Tarea = "a-producto-directo" | "b-base-configurable" | "c-cambiar-precio-final" | "d-publicar-en-la-carta";
@@ -231,7 +232,7 @@ async function sembrarBase(sucursalId: string, m: string) {
   return { productoId, nombre, nombreGrupo, grupo };
 }
 
-test.describe("medición «antes» de las tareas del producto (pantallas de hoy)", () => {
+test.describe("medición de las tareas del producto (el espacio) contra el umbral de DEC-12", () => {
   test.beforeEach(async ({ paginaAutenticada: page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
   });
@@ -371,12 +372,12 @@ test.describe("medición «antes» de las tareas del producto (pantallas de hoy)
       const ficha = page.locator(`[data-contenido-carta="${base.nombre}"]`);
       await m.elegir(ficha.getByLabel(/^Sección de carta/), seccion.nombre, "elegir la sección de la carta");
       await m.clic(ficha.getByRole("button", { name: `Guardar contenido de «${base.nombre}»` }), "tocar «Guardar contenido»");
-      await m.ver("el aviso dice que se guardó", () => expect(ficha.getByRole("status").filter({ hasText: /guardad/i }).first()).toBeVisible());
+      await m.ver("el aviso dice que se muestra en la carta", () => expect(ficha.getByRole("status")).toHaveText(`Carta: "${base.nombre}" se muestra.`));
 
       const medicion = m.resultado(true);
       const contenido = await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: base.productoId } } });
       expect({ visibleEnCarta: contenido.visibleEnCarta, seccionCartaId: contenido.seccionCartaId }).toEqual({ visibleEnCarta: true, seccionCartaId: seccion.id });
-      guardarMedicion(medicion);
+        guardarMedicion(medicion);
     } finally {
       // Lo de la carta se limpia (como hacen las otras specs de la carta); el producto y sus opciones se quedan, como en las demás specs de opciones.
       await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: base.productoId } });

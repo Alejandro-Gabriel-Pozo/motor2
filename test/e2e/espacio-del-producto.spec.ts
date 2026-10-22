@@ -12,6 +12,7 @@ import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
  *  - DOBLE CLIC en «Crear grupo»: un solo envío al servidor y UN grupo en la base;
  *  - quién ve el botón: solo quien además de las opciones del producto puede Editar `opciones_definir`; quien no, ve la frase «Los grupos nuevos los crea quien arma las opciones».
  *
+ *
  * El paso 4, «En la carta» (6.17c): publicar el producto en la carta de la sucursal sin salir del espacio; quién lo abre y qué ve (las celdas del rol «admin» se ajustan y se devuelven, como en `carta-solo-ver.spec.ts`).
  * Lo sembrado de opciones no se borra (ver `fixtures/opciones.ts`): nombres con marca propia.
  */
@@ -200,7 +201,7 @@ for (const { ancho, alto } of [
       expect((await new AxeBuilder({ page }).analyze()).violations, `${ancho} px: el paso «En la carta»`).toEqual([]);
       await ficha.getByLabel(/^Sección de carta/).selectOption({ label: carta.seccion.nombre });
       await ficha.getByRole("button", { name: `Guardar contenido de «${carta.producto.nombre}»` }).click();
-      await expect(ficha.getByRole("status").filter({ hasText: /guardad/i }).first()).toBeVisible();
+      await expect(ficha.getByRole("status")).toHaveText(`Carta: "${carta.producto.nombre}" se muestra.`);
 
       const contenido = await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: carta.producto.id } } });
       expect({ visibleEnCarta: contenido.visibleEnCarta, seccionCartaId: contenido.seccionCartaId }).toEqual({ visibleEnCarta: true, seccionCartaId: carta.seccion.id });
@@ -251,9 +252,10 @@ test("paso 4 «En la carta»: sin el Ver de la carta no se abre por URL y la tir
     // En la portada el paso se ve, SIN enlace (ni un camino a «No tenés permiso»), y sin su pendiente (no se leyó la carta).
     await page.goto(`/catalogo/productos/${carta.producto.id}`);
     const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
-    await expect(pasos).toContainText("En la carta");
-    await expect(pasos.getByRole("link", { name: NOMBRE_DEL_PASO })).toHaveCount(0);
-    await expect(pasos).not.toContainText("Pendiente");
+    const paso = pasos.locator("li", { hasText: "En la carta" });
+    await expect(paso).toBeVisible();
+    await expect(paso.getByRole("link")).toHaveCount(0);
+    await expect(paso, "sin el Ver de la carta no se lee la carta: sin su pendiente").not.toContainText("Pendiente");
   } finally {
     await admin.restaurar();
     await carta.limpiar();
