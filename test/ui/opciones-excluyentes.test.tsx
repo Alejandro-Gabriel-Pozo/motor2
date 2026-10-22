@@ -68,14 +68,16 @@ describe("OpcionesExcluyentes: la presentación", () => {
     expect(html).not.toContain("tinta-tenue");
   });
 
-  it("la fila pone las opciones una al lado de la otra (y bajan de renglón si no entran), cada una de 44 px y tocable entera, con el mismo radio group", () => {
+  it("la fila pone las opciones una al lado de la otra (y bajan de renglón si no entran), con la etiqueta de 44 px y sin capa sobre el radio, con el mismo radio group", () => {
     const html = dibujar({ presentacion: "fila" });
     expect(clasesDe(html, "fieldset")).toEqual(expect.arrayContaining(["flex", "flex-wrap", "gap-4"]));
     expect(clasesDe(html, "fieldset")).not.toContain("flex-col");
-    const opcion = (/<div class="(relative [^"]*)"/.exec(html)?.[1] ?? "").split(/\s+/);
-    for (const clase of ["relative", "flex", "min-h-11", "items-center", "gap-2"]) expect(opcion, clase).toContain(clase);
+    const opcion = (/<div class="(flex items-center[^"]*)"/.exec(html)?.[1] ?? "").split(/\s+/);
+    for (const clase of ["flex", "items-center", "gap-2"]) expect(opcion, clase).toContain(clase);
     expect(opcion).not.toContain("border-borde-control");
-    expect(clasesDe(html, "label")).toContain("after:inset-0");
+    // La etiqueta mide 44 px; NO se superpone (`after:inset-0`): taparía al radio y no se podría tocar ni marcar con `check()`.
+    for (const clase of ["min-h-11", "items-center"]) expect(clasesDe(html, "label"), clase).toContain(clase);
+    expect(clasesDe(html, "label")).not.toContain("after:inset-0");
     expect(html).not.toMatch(/<input[^>]*class="[^"]*\bmt-1\b/);
     // Mismo grupo que la lista: un solo `name`, una sola leyenda, las mismas etiquetas.
     expect([...html.matchAll(/<input[^>]*name="venta"/g)]).toHaveLength(3);
