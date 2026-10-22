@@ -21,10 +21,10 @@ export default async function MargenPromocionesPage({ searchParams }: { searchPa
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_margen_promociones", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
   const rango = resolverRangoDeReporte(sp, new Date(), ctx.empresaZonaHoraria);
@@ -36,7 +36,7 @@ export default async function MargenPromocionesPage({ searchParams }: { searchPa
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Margen de promociones</h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Cuánto entró de verdad por cada promo ARMABLE (Catálogo › Carta, cupos) contra lo que hubiera entrado vendiendo cada
           componente suelto a precio de carta — y si el precio de la promo deja un margen sano. Una promo sin ninguna venta en
           el rango no aparece.
@@ -49,7 +49,7 @@ export default async function MargenPromocionesPage({ searchParams }: { searchPa
         {rep.cantidadInstancias.toLocaleString("es-AR")} promos vendidas — ${rep.ingresoALista.toLocaleString("es-AR")} de carta → $
         {rep.ingresoCobrado.toLocaleString("es-AR")} cobrados (${rep.ahorroCliente.toLocaleString("es-AR")} de ahorro para el cliente)
       </h2>
-      <p className="mb-2 text-xs text-neutral-500">{rep.aviso}</p>
+      <p className="mb-2 text-xs text-tinta-tenue">{rep.aviso}</p>
 
       <TablaMargenPromociones filas={rep.promos} />
     </div>

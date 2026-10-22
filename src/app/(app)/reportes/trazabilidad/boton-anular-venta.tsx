@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { IconoDeAccion } from "@/components/iconos";
 import { anularVenta } from "@/server/actions/movimientos/venta";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 
 /**
  * Antes era un `<form action={...}>` crudo que descartaba el resultado
@@ -32,27 +34,35 @@ export function BotonAnularVenta({ idOperacion }: { idOperacion: string }) {
   if (confirmando) {
     return (
       <div className="mb-2 flex flex-col gap-1">
-        <p className="text-xs text-amber-700 dark:text-amber-600">¿Anular esta venta? Revierte el stock consumido — no se puede deshacer.</p>
+        <p className="text-xs text-aviso-tinta">¿Anular esta venta? Revierte el stock consumido — no se puede deshacer.</p>
         <div className="flex gap-2">
-          <button type="button" disabled={pending} onClick={anular} className="text-sm text-red-600 underline">
+          <Boton variante="enlace-peligro" tamano="en-fila" disabled={pending} onClick={anular}>
             {pending ? "Anulando…" : "Sí, anular"}
-          </button>
-          <button type="button" onClick={() => setConfirmando(false)} className="text-sm underline">
+          </Boton>
+          <Boton variante="enlace" tamano="en-fila" onClick={() => setConfirmando(false)}>
             Volver
-          </button>
+          </Boton>
         </div>
-        {mensaje && <p className={`text-xs ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+        {mensaje && (
+          <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+            {mensaje}
+          </Aviso>
+        )}
       </div>
     );
   }
 
   return (
     <div className="mb-2 flex flex-col gap-1">
-      <button type="button" onClick={() => setConfirmando(true)} className="inline-flex items-center gap-1 text-sm text-red-600 underline">
+      <Boton variante="enlace-peligro" tamano="en-fila" onClick={() => setConfirmando(true)}>
         <IconoDeAccion id="anular" />
         Anular venta
-      </button>
-      {mensaje && <p className={`text-xs ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+      </Boton>
+      {mensaje && (
+        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
+      )}
     </div>
   );
 }

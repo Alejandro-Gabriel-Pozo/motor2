@@ -19,14 +19,14 @@ const AYUDA_PROXIMO_CONTEO =
 function celdaProximoConteo(f: FilaDiferenciaAjuste) {
   if (f.conteoVencido) {
     return (
-      <span className="font-medium text-red-600">
+      <span className="font-medium text-error">
         {f.proximaFechaConteo ? `Vencido desde ${dia(f.proximaFechaConteo)}` : "Nunca se contó (con agenda activa)"}
       </span>
     );
   }
   if (f.proximaFechaConteo) return <span>{dia(f.proximaFechaConteo)}</span>;
   return (
-    <EnlaceInterno href={`/stock/conteo-frecuencia?sugerido=${f.productoId}&sugeridoNombre=${encodeURIComponent(f.producto)}`} className="text-xs text-neutral-500 underline">
+    <EnlaceInterno href={`/stock/conteo-frecuencia?sugerido=${f.productoId}&sugeridoNombre=${encodeURIComponent(f.producto)}`} className="text-xs text-tinta-tenue underline">
       Sin agenda — configurar
     </EnlaceInterno>
   );
@@ -71,7 +71,7 @@ const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
     clave: "estado",
     etiqueta: "Estado",
     valor: (f) => LABEL_ESTADO[f.estado],
-    render: (f) => <span className={f.estado === "REVISAR" ? "font-medium text-red-600" : f.estado === "ESPERADO" ? "text-amber-700 dark:text-amber-600" : ""}>{LABEL_ESTADO[f.estado]}</span>,
+    render: (f) => <span className={f.estado === "REVISAR" ? "font-medium text-error" : f.estado === "ESPERADO" ? "text-aviso-tinta" : ""}>{LABEL_ESTADO[f.estado]}</span>,
   },
   {
     clave: "recetas",
@@ -93,7 +93,7 @@ const COLUMNAS: ColumnaReporte<FilaDiferenciaAjuste>[] = [
             </span>
           ))}
           {f.sugerenciaMerma && (
-            <span className={f.sugerenciaMerma === "aumentar" ? "text-xs font-medium text-red-600" : "text-xs font-medium text-amber-700 dark:text-amber-600"}>
+            <span className={f.sugerenciaMerma === "aumentar" ? "text-xs font-medium text-error" : "text-xs font-medium text-aviso-tinta"}>
               Sugerencia: {f.sugerenciaMerma === "aumentar" ? "subir" : "bajar"} la merma %
             </span>
           )}

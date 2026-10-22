@@ -51,15 +51,15 @@ export default async function RendimientoRecetasPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rendimiento_recetas", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
   const ahora = new Date();
   // S-28: reporte pesado (compras, producción, ventas y conteos del rango): cupo por usuario antes de consultar nada (best effort, en memoria).
-  if (reportePesadoSinCupo(ctx.usuarioId, "rendimiento-recetas", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (reportePesadoSinCupo(ctx.usuarioId, "rendimiento-recetas", ahora.getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
   const rango = resolverRangoDeReporte(sp, ahora, ctx.empresaZonaHoraria);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
@@ -100,7 +100,7 @@ export default async function RendimientoRecetasPage({
             Ver todos los platos
           </Link>
         )}
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           <strong>¿La receta cargada refleja lo que realmente se usa?</strong> Compara la receta contra lo que las compras, la
           producción y las ventas de esta sucursal sugieren que se consume.
         </p>
@@ -109,7 +109,7 @@ export default async function RendimientoRecetasPage({
             Comparar el rendimiento calibrado entre sucursales
           </EnlaceInterno>
         </p>
-        <p className="mb-4 text-sm text-neutral-500">
+        <p className="mb-4 text-sm text-tinta-tenue">
           Esto no mide si te falta stock. Para eso están{" "}
           <EnlaceInterno href="/reportes/diferencias" className="underline">
             Diferencias de ajuste
@@ -132,7 +132,7 @@ export default async function RendimientoRecetasPage({
             <EnlaceInterno href={hrefUltimas8Semanas} className="underline">
               Ver las últimas 8 semanas
             </EnlaceInterno>{" "}
-            <span className="text-neutral-500">— con más semanas de datos la confianza puede subir.</span>
+            <span className="text-tinta-tenue">— con más semanas de datos la confianza puede subir.</span>
           </p>
         )}
       </div>
@@ -140,12 +140,12 @@ export default async function RendimientoRecetasPage({
       <div>
         <h2 className="mb-2 text-sm font-medium">Un solo plato por insumo</h2>
         {filasSimples.length === 0 ? (
-          <p className="text-sm text-neutral-500">Nada para comparar todavía en este caso.</p>
+          <p className="text-sm text-tinta-tenue">Nada para comparar todavía en este caso.</p>
         ) : (
           <div className="max-w-6xl overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-neutral-500">
+                <tr className="border-b text-left text-tinta-tenue">
                   <th className="px-2 py-2 first:pl-0">Plato</th>
                   <th className="px-2">Insumo</th>
                   <th className="px-2">Receta actual</th>
@@ -217,7 +217,7 @@ export default async function RendimientoRecetasPage({
       <div>
         <h2 className="mb-2 text-sm font-medium">Insumo compartido entre varios platos</h2>
         {poolsCompartidos.size === 0 ? (
-          <p className="text-sm text-neutral-500">Nada para comparar todavía en este caso.</p>
+          <p className="text-sm text-tinta-tenue">Nada para comparar todavía en este caso.</p>
         ) : (
           <div className="flex flex-col gap-6">
             {Array.from(poolsCompartidos.entries()).map(([poolClave, filas]) => (
@@ -229,7 +229,7 @@ export default async function RendimientoRecetasPage({
                   {" — "}
                   {filas[0].metodo === "CONTEO" ? "medido (Conteo Físico)" : "estimado (compras)"}
                 </p>
-                <p className="mb-2 text-xs text-neutral-500">
+                <p className="mb-2 text-xs text-tinta-tenue">
                   Del pool entero: comprado/producido {filas[0].totalEntradasPool} ·{" "}
                   <span title={`Antes de este rango: ${filas[0].stockApertura} — después: ${filas[0].stockCierre}`}>
                     Δ stock {filas[0].stockCierre - filas[0].stockApertura > 0 ? "+" : ""}
@@ -246,11 +246,11 @@ export default async function RendimientoRecetasPage({
                   )}
                   .
                 </p>
-                {!filas[0].resoluble && <p className="mb-2 text-sm text-amber-700 dark:text-amber-600">No se pudo estimar: {filas[0].motivoNoResoluble}</p>}
+                {!filas[0].resoluble && <p className="mb-2 text-sm text-aviso-tinta">No se pudo estimar: {filas[0].motivoNoResoluble}</p>}
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b text-left text-neutral-500">
+                      <tr className="border-b text-left text-tinta-tenue">
                         <th className="px-2 py-2 first:pl-0">Plato</th>
                         <th className="px-2">Receta actual</th>
                         <th className="px-2">

@@ -1,12 +1,12 @@
 {
   "regla": "tipografia",
   "meta": "bajar hacia 0 a medida que la escala tipográfica pase a tokens (auditoría §19.4); la carta pública tiene su propia línea de base",
-  "total": 200,
-  "entradas": 30,
+  "total": 194,
+  "entradas": 28,
   "porTipo": {
     "clase-arbitraria": 143,
     "font-size-literal": 49,
-    "fontSize-literal": 8
+    "fontSize-literal": 2
   },
   "cuentas": {
     "plataforma/src/app/globals.css": {
@@ -14,12 +14,6 @@
     },
     "src/app/(app)/carta/carta-mant.module.css": {
       "font-size-literal": 30
-    },
-    "src/app/(app)/reportes/historial/grafico-saldo.tsx": {
-      "fontSize-literal": 3
-    },
-    "src/app/(app)/reportes/periodo/grafico-gasto-grupo.tsx": {
-      "fontSize-literal": 3
     },
     "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": {
       "clase-arbitraria": 5

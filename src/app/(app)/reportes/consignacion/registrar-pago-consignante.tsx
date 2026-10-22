@@ -7,6 +7,10 @@ import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 import { registrarPagoConsignante } from "@/server/actions/reportes/consignacion";
+import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 
 // El día de hoy en Argentina (no en UTC: desde las 21:00 locales UTC ya es mañana). Esta pantalla no recibe la zona de la empresa, así que usa la constante.
 function hoyISO() {
@@ -50,22 +54,21 @@ export function RegistrarPagoConsignante({ proveedorId, proveedorNombre, saldoAc
           }}
           className="flex flex-col gap-2"
         >
-          <label className="text-sm">
+          {/* CampoNumero no lleva su propia etiqueta: lo nombra este <label> de afuera. */}
+          <label className="text-sm font-medium">
             Importe
             <CampoNumero value={importe} onChange={setImporte} prefijo="$" required tipo="importe" etiqueta="El importe" />
           </label>
-          <label className="text-sm">
-            Fecha
-            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="mt-1 w-full rounded border px-3 py-2" />
-          </label>
-          <label className="text-sm">
-            Notas (opcional)
-            <input value={notas} onChange={(e) => setNotas(e.target.value)} className="mt-1 w-full rounded border px-3 py-2" />
-          </label>
-          {mensaje && <p className="text-sm text-red-600">{mensaje}</p>}
-          <button type="submit" disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+          <CampoFecha etiqueta="Fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
+          <Campo etiqueta="Notas (opcional)" value={notas} onChange={(e) => setNotas(e.target.value)} />
+          {mensaje && (
+            <Aviso variante="error" forma="en-linea">
+              {mensaje}
+            </Aviso>
+          )}
+          <Boton type="submit" cargando={pending}>
             {pending ? "Guardando..." : "Registrar pago"}
-          </button>
+          </Boton>
         </form>
       )}
     </Modal>

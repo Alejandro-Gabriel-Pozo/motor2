@@ -77,12 +77,12 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
       const accion = resolverAccionFaltante(p);
       if (accion) {
         return (
-          <EnlaceInterno href={accion.href} className="text-amber-700 dark:text-amber-600 underline">
+          <EnlaceInterno href={accion.href} className="text-aviso-tinta underline">
             {accion.etiqueta}
           </EnlaceInterno>
         );
       }
-      return <span className={p.estado === "OK" || p.estado === "POR_OPCION" ? "" : "text-amber-700 dark:text-amber-600"}>{LABEL_ESTADO[p.estado]}</span>;
+      return <span className={p.estado === "OK" || p.estado === "POR_OPCION" ? "" : "text-aviso-tinta"}>{LABEL_ESTADO[p.estado]}</span>;
     },
   },
 ];

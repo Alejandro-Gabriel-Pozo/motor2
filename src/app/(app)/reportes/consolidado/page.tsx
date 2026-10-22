@@ -11,10 +11,10 @@ export default async function ConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_consolidado", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   // El gate de arriba es de la sucursal activa: las otras se suman solo si allí el rol también puede ver el dinero.
   const sucursales = await sucursalesVisiblesPara(ctx, "reporte_consolidado");
@@ -23,7 +23,7 @@ export default async function ConsolidadoPage() {
     return (
       <div>
         <h1 className="mb-1 text-xl font-semibold">Resumen consolidado</h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Solo podés ver el dinero de una sucursal ({ctx.sucursalNombre}) — no hay nada que consolidar todavía. Mirá{" "}
           <EnlaceInterno href="/reportes" className="underline">
             Resumen
@@ -36,7 +36,7 @@ export default async function ConsolidadoPage() {
 
   // S-28: reporte pesado (el período de TODAS las sucursales visibles): cupo por usuario antes de consultar nada (best effort, en memoria).
   const ahora = new Date();
-  if (reportePesadoSinCupo(ctx.usuarioId, "resumen-consolidado", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (reportePesadoSinCupo(ctx.usuarioId, "resumen-consolidado", ahora.getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
   // M.3-A5: esas mismas sucursales se LEEN con la lectura ensanchada (solo la lectura; esta pantalla no escribe) a las sucursales donde el rol ve `reporte_consolidado`.
   const lectura = await lecturaEnSucursalesVisibles(ctx, "reporte_consolidado");
   const filas = await obtenerResumenConsolidado(sucursales, lectura.db, ahora, ctx.empresaZonaHoraria);
@@ -53,20 +53,20 @@ export default async function ConsolidadoPage() {
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Resumen consolidado</h1>
-        <p className="text-sm text-neutral-500">Financiero del mes actual, una fila por cada sucursal donde tu rol puede ver el dinero.</p>
+        <p className="text-sm text-tinta-tenue">Financiero del mes actual, una fila por cada sucursal donde tu rol puede ver el dinero.</p>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Ventas del mes (las {filas.length} sucursales)</p>
+          <p className="text-xs text-tinta-tenue">Ventas del mes (las {filas.length} sucursales)</p>
           <p className="text-lg font-semibold">${totales.ventasTotal.toLocaleString("es-AR")}</p>
         </div>
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Margen del mes (las {filas.length} sucursales)</p>
+          <p className="text-xs text-tinta-tenue">Margen del mes (las {filas.length} sucursales)</p>
           <p className="text-lg font-semibold">${totales.margenTotal.toLocaleString("es-AR")}</p>
         </div>
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Gastado en compras (las {filas.length} sucursales)</p>
+          <p className="text-xs text-tinta-tenue">Gastado en compras (las {filas.length} sucursales)</p>
           <p className="text-lg font-semibold">${totales.gastadoTotal.toLocaleString("es-AR")}</p>
         </div>
       </div>

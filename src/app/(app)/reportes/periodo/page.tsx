@@ -18,16 +18,16 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_periodo", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
   // La hora se fija acá, en el borde (D.3b): el rango por defecto y la antigüedad del IPC del reporte se miden contra la misma.
   const ahora = new Date();
   // S-28: reporte pesado (recorre el Kardex del rango): cupo por usuario antes de consultar nada (best effort, en memoria).
-  if (reportePesadoSinCupo(ctx.usuarioId, "periodo", ahora.getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (reportePesadoSinCupo(ctx.usuarioId, "periodo", ahora.getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
   const rango = resolverRangoDeReporte(sp, ahora, ctx.empresaZonaHoraria);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
@@ -48,7 +48,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <div className="rounded border p-4">
-          <p className="flex items-center text-xs text-neutral-500">
+          <p className="flex items-center text-xs text-tinta-tenue">
             Ventas
             <AyudaIcono texto={rep.ventas.aviso} />
           </p>
@@ -65,24 +65,24 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
         */}
         <div className="rounded border p-4">
           <dl>
-            <dt className="text-xs text-neutral-500">Ganancia de lo vendido</dt>
+            <dt className="text-xs text-tinta-tenue">Ganancia de lo vendido</dt>
             <dd className="text-lg font-semibold">
               {rep.margen.margenRealTotal !== null
                 ? `$${rep.margen.margenRealTotal.toLocaleString("es-AR")} (${rep.margen.margenRealPctTotal}%)${rep.margen.ingresoRealReconstruido > 0 ? " · reconstruido" : ""}`
                 : "sin datos todavía"}
             </dd>
-            <dd className="text-xs text-neutral-500">{rep.margen.avisoReal}</dd>
+            <dd className="text-xs text-tinta-tenue">{rep.margen.avisoReal}</dd>
           </dl>
           {/* Consumo (lo que costó lo que SE VENDIÓ) — el otro lado de la resta de arriba: costoDeLoVendidoTotal ≈ ingresoConCostoReal − margenRealTotal. */}
           <dl data-costo-de-lo-vendido className="mt-3">
-            <dt className="text-xs text-neutral-500">Costo de lo vendido (consumo):</dt>
+            <dt className="text-xs text-tinta-tenue">Costo de lo vendido (consumo):</dt>
             <dd className="flex flex-wrap items-center text-sm">
               {rep.margen.costoDeLoVendidoTotal !== null ? (
                 <>
                   ${rep.margen.costoDeLoVendidoTotal.toLocaleString("es-AR")} ({rep.margen.costoDeLoVendidoPctTotal}%)
                   {rep.margen.ingresoRealReconstruido > 0 && " · reconstruido"}
                   {rep.margen.coberturaCostoRealPct !== null && rep.margen.coberturaCostoRealPct < 100 && (
-                    <span className="ml-1 text-amber-700 dark:text-amber-600">· parcial (cubre {rep.margen.coberturaCostoRealPct}% de lo vendido)</span>
+                    <span className="ml-1 text-aviso-tinta">· parcial (cubre {rep.margen.coberturaCostoRealPct}% de lo vendido)</span>
                   )}
                 </>
               ) : (
@@ -92,35 +92,35 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             </dd>
           </dl>
           <details className="mt-3 text-xs">
-            <summary className="cursor-pointer text-neutral-500">Otras formas de ver el margen (con qué costo se calculan)</summary>
+            <summary className="cursor-pointer text-tinta-tenue">Otras formas de ver el margen (con qué costo se calculan)</summary>
             <dl className="mt-2 flex flex-col gap-3">
               <div>
-                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Si repusieras hoy</dt>
+                <dt className="font-medium text-tinta-suave">Si repusieras hoy</dt>
                 <dd>
                   ${rep.margen.margenTotal.toLocaleString("es-AR")} {rep.margen.margenPctTotal !== null && `(${rep.margen.margenPctTotal}%)`}
                 </dd>
-                <dd className="text-neutral-500">{rep.margen.aviso}</dd>
+                <dd className="text-tinta-tenue">{rep.margen.aviso}</dd>
               </div>
               <div>
-                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Ajustada por inflación (IPC)</dt>
+                <dt className="font-medium text-tinta-suave">Ajustada por inflación (IPC)</dt>
                 <dd>
                   {rep.margen.margenIPCTotal !== null
                     ? `$${rep.margen.margenIPCTotal.toLocaleString("es-AR")} (${rep.margen.margenIPCPctTotal}%)${rep.margen.antiguedadIPC.estado === "vencida" ? " · IPC desactualizado" : rep.margen.ingresoProvisorioIPC > 0 ? " · provisorio" : ""}`
                     : "sin datos todavía"}
                 </dd>
-                <dd className="text-neutral-500">{rep.margen.avisoIPC}</dd>
+                <dd className="text-tinta-tenue">{rep.margen.avisoIPC}</dd>
               </div>
             </dl>
           </details>
         </div>
         <div className="rounded border p-4">
-          <p className="flex items-center text-xs text-neutral-500">
+          <p className="flex items-center text-xs text-tinta-tenue">
             Compras
             <AyudaIcono texto={rep.compras.aviso} />
           </p>
           <p className="text-lg font-semibold">${rep.compras.totalGastado.toLocaleString("es-AR")}</p>
           <EnDolares pesos={rep.compras.totalGastado} cotizacion={cotizacion} />
-          <p className="mt-1 flex items-center text-xs text-neutral-500">
+          <p className="mt-1 flex items-center text-xs text-tinta-tenue">
             Compras / Ventas (desembolso): {rep.ratioGastoVentas.porcentaje !== null ? `${rep.ratioGastoVentas.porcentaje}% de lo vendido${rep.ratioGastoVentas.excluyeNoComestibles ? " (comida y bebida)" : ""}` : "sin ventas en el período"}
             {rep.ratioGastoVentas.porcentaje !== null && rep.ratioGastoVentas.porcentajePeriodoAnterior !== null && (
               <span className="ml-1">
@@ -131,13 +131,13 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             <AyudaIcono texto={rep.ratioGastoVentas.aviso} />
           </p>
           {rep.ratioGastoVentas.excluyeNoComestibles && rep.ratioGastoVentas.gastoNoComestibles > 0 && (
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="mt-1 text-xs text-tinta-tenue">
               No comestibles (packaging, limpieza): ${rep.ratioGastoVentas.gastoNoComestibles.toLocaleString("es-AR")}, fuera de ese porcentaje
             </p>
           )}
         </div>
         <div className="rounded border p-4">
-          <p className="text-xs text-neutral-500">Movimientos</p>
+          <p className="text-xs text-tinta-tenue">Movimientos</p>
           <p className="text-lg font-semibold">{rep.total}</p>
         </div>
       </div>
@@ -159,7 +159,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
         </h2>
         <GraficoGastoPorGrupo filas={rep.gastoPorInsumo.porGrupo} />
         <div className="mt-3">
-          <p className="mb-2 text-xs text-neutral-500">
+          <p className="mb-2 text-xs text-tinta-tenue">
             Las filas resaltadas son los insumos que, de mayor a menor gasto, concentran el 80 % de lo que compraste (regla 80/20): ahí conviene mirar primero.
           </p>
           <TablaGastoPorInsumo filas={rep.gastoPorInsumo.porInsumo} />

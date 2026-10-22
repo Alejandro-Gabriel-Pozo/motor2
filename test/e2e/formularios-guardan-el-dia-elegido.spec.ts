@@ -102,7 +102,8 @@ test.describe(`con el navegador en ${zona}`, () => {
       await page.getByRole("row", { name: new RegExp(consignante.nombre) }).getByRole("button", { name: "Registrar pago", exact: true }).click();
       const dialogo = page.getByRole("dialog");
       await dialogo.getByLabel(/^Importe/).fill("137");
-      await dialogo.getByLabel("Fecha", { exact: true }).fill(DIA);
+      // CampoFecha `required` suma un « *» decorativo al rótulo: «Fecha» a secas o con el asterisco, nada más.
+      await dialogo.getByLabel(/^Fecha( \*)?$/).fill(DIA);
       await dialogo.getByRole("button", { name: "Registrar pago", exact: true }).click();
       await expect(dialogo).toBeHidden();
 

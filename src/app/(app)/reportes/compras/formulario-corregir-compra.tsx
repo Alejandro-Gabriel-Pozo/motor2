@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { corregirCompra, type CabeceraVista } from "@/server/actions/movimientos/compras";
 import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
 
 interface OpcionProveedor {
   id: string;
@@ -16,9 +20,10 @@ interface OpcionProveedor {
  * (precios y cantidades) no se tocan, y un precio mal cargado se arregla anulando la compra y cargándola de nuevo. El formulario lo dice para que nadie lo
  * busque acá.
  *
- * Teclado y lector de pantalla: al abrir, el foco va al primer campo; Escape cancela y el foco vuelve al botón que lo abrió; cada campo lleva su
- * `<label>`; un rechazo del servidor (factura repetida, la compra cambió mientras se editaba, etc.) queda a la vista con `role="alert"`; y al guardarse el
- * aviso de éxito (`role="status"`) recibe el foco, porque el formulario desaparece.
+ * Teclado y lector de pantalla: al abrir, el foco va al primer campo; Escape cancela y el foco vuelve al botón que lo abrió (`Boton` no recibe `ref`: se busca
+ * por `id`); cada campo lleva su `<label>` (`Selector` y `Campo` lo atan con `htmlFor`, AL LADO del control: uno que lo envuelve suma el valor actual a su nombre
+ * accesible); un rechazo del servidor (factura repetida, la compra cambió mientras se editaba, etc.) queda a la vista con `role="alert"` (`Aviso` de error); y al
+ * guardarse el aviso de éxito (`role="status"`, `Aviso` de éxito) recibe el foco, porque el formulario desaparece.
  *
  * Guarda optimista: al abrir se guarda lo que la persona VE (`esperado`) y se envía con la corrección; si otra persona la corrigió mientras tanto, el
  * servidor no la pisa en silencio y lo avisa. Este componente sigue montado después de guardar (recibe la compra ya refrescada) para dejar el aviso de éxito.
@@ -45,9 +50,9 @@ export function FormularioCorregirCompra({
   const [exito, setExito] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const idBase = useId();
-  const botonAbrir = useRef<HTMLButtonElement>(null);
+  const idBotonAbrir = `${idBase}-abrir`;
   const primerCampo = useRef<HTMLSelectElement>(null);
-  const avisoDeExito = useRef<HTMLParagraphElement>(null);
+  const avisoDeExito = useRef<HTMLDivElement>(null);
   const volverAlBoton = useRef(false);
 
   useEffect(() => {
@@ -55,9 +60,9 @@ export function FormularioCorregirCompra({
       primerCampo.current?.focus();
     } else if (volverAlBoton.current) {
       volverAlBoton.current = false;
-      botonAbrir.current?.focus();
+      document.getElementById(idBotonAbrir)?.focus();
     }
-  }, [abierto]);
+  }, [abierto, idBotonAbrir]);
 
   useEffect(() => {
     if (exito) avisoDeExito.current?.focus();
@@ -101,13 +106,13 @@ export function FormularioCorregirCompra({
   if (!abierto) {
     return (
       <div className="flex flex-col gap-1">
-        <button ref={botonAbrir} type="button" aria-label={`Corregir proveedor y factura ${resumen}`} onClick={abrir} className="self-start text-sm underline">
+        <Boton id={idBotonAbrir} variante="enlace" tamano="en-fila" aria-label={`Corregir proveedor y factura ${resumen}`} onClick={abrir} className="self-start">
           Corregir proveedor y factura
-        </button>
+        </Boton>
         {exito && (
-          <p ref={avisoDeExito} tabIndex={-1} role="status" className="text-sm text-green-700">
+          <Aviso ref={avisoDeExito} tabIndex={-1} variante="exito">
             {exito}
-          </p>
+          </Aviso>
         )}
       </div>
     );
@@ -124,43 +129,32 @@ export function FormularioCorregirCompra({
       }}
       className="flex max-w-md flex-col gap-2 rounded border p-3"
     >
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-tinta-tenue">
         Se corrige solo la cabecera de la compra. Para cambiar precios o cantidades, anulá la compra y cargala de nuevo.
       </p>
-      {/* El <label> va AL LADO del control, no envolviéndolo: un label que envuelve un <select> o un <input> suma a su nombre accesible el valor
-          actual del control («Proveedor Sin proveedor»), y el nombre deja de ser el rótulo. */}
-      <div className="flex flex-col gap-1 text-sm">
-        <label htmlFor={`${idBase}-proveedor`}>Proveedor</label>
-        <select id={`${idBase}-proveedor`} ref={primerCampo} value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} className="rounded border px-2 py-1.5">
-          <option value="">Sin proveedor</option>
-          {opciones.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nombre}
-              {p.activo ? "" : " (inactivo)"}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-1 text-sm">
-        <label htmlFor={`${idBase}-factura`}>N.º de factura</label>
-        <input id={`${idBase}-factura`} value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} maxLength={LARGO_MAXIMO_NRO_FACTURA} className="rounded border px-2 py-1.5" />
-      </div>
-      <div className="flex flex-col gap-1 text-sm">
-        <label htmlFor={`${idBase}-detalle`}>Detalle</label>
-        <input id={`${idBase}-detalle`} value={detalleLibre} onChange={(e) => setDetalleLibre(e.target.value)} maxLength={200} className="rounded border px-2 py-1.5" />
-      </div>
+      <Selector id={`${idBase}-proveedor`} ref={primerCampo} etiqueta="Proveedor" value={proveedorId} onChange={(e) => setProveedorId(e.target.value)}>
+        <option value="">Sin proveedor</option>
+        {opciones.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.nombre}
+            {p.activo ? "" : " (inactivo)"}
+          </option>
+        ))}
+      </Selector>
+      <Campo id={`${idBase}-factura`} etiqueta="N.º de factura" value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} maxLength={LARGO_MAXIMO_NRO_FACTURA} />
+      <Campo id={`${idBase}-detalle`} etiqueta="Detalle" value={detalleLibre} onChange={(e) => setDetalleLibre(e.target.value)} maxLength={200} />
       {error && (
-        <p role="alert" className="text-sm text-red-600">
+        <Aviso variante="error">
           {error}
-        </p>
+        </Aviso>
       )}
-      <div className="flex gap-3">
-        <button type="submit" disabled={pending || !hayCambios} className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+      <div className="flex items-center gap-3">
+        <Boton type="submit" tamano="compacto" disabled={pending || !hayCambios}>
           {pending ? "Guardando…" : "Guardar corrección"}
-        </button>
-        <button type="button" disabled={pending} onClick={cancelar} className="text-sm underline">
+        </Boton>
+        <Boton variante="enlace" tamano="en-fila" disabled={pending} onClick={cancelar}>
           Cancelar
-        </button>
+        </Boton>
       </div>
     </form>
   );

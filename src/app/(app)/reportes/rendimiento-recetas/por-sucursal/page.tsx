@@ -20,10 +20,10 @@ export default async function RendimientoPorSucursalPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_rendimiento_sucursal", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
   // El gate de arriba es de la sucursal activa: las otras se comparan solo si allí el rol también puede ver el dinero.
@@ -53,14 +53,14 @@ export default async function RendimientoPorSucursalPage({
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Rendimiento por sucursal</h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           El rendimiento CALIBRADO de cada línea de receta (bruto: cantidad × (1 + merma %)), lado a lado entre las sucursales donde
           tu rol puede ver el dinero. La receta central es una sola; lo que varía es la calibración de cada sucursal.
         </p>
       </div>
 
       {sucursales.length < 2 && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Solo podés ver el dinero de una sucursal ({ctx.sucursalNombre}) — igual se muestra su calibración contra la receta central.
         </p>
       )}

@@ -7,12 +7,12 @@ const AYUDA_MARGEN =
   'Costo congelado al momento de cada venta, o reconstruido con el historial de compras cuando no se guardó (mismo criterio que Período/Descuentos por cliente). "parcial" si algún componente de esa promo no se pudo costear así.';
 
 function celdaMargen(valor: number | null, pct: number | null, reconstruido: boolean, completo: boolean) {
-  if (valor === null) return <span className="text-neutral-500 dark:text-neutral-400">—</span>;
+  if (valor === null) return <span className="text-tinta-tenue">—</span>;
   return (
     <>
       ${valor.toLocaleString("es-AR")} ({pct}%)
       {reconstruido ? " · reconstruido" : ""}
-      {!completo && <span className="text-amber-700 dark:text-amber-600"> · parcial</span>}
+      {!completo && <span className="text-aviso-tinta"> · parcial</span>}
     </>
   );
 }
@@ -25,7 +25,7 @@ const COLUMNAS: ColumnaReporte<FilaMargenPromocion>[] = [
     render: (f) => (
       <>
         {f.titulo}
-        {!f.activa && <span className="text-neutral-500 dark:text-neutral-400"> · dada de baja</span>}
+        {!f.activa && <span className="text-tinta-tenue"> · dada de baja</span>}
       </>
     ),
   },

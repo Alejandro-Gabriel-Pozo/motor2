@@ -3,6 +3,7 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { SIN_PROVEEDOR } from "@/core/reportes/public";
 import { listarComprasRegistradas } from "@/server/consultas/reportes/compras-registradas";
@@ -13,6 +14,10 @@ import { formatearNumeroComprobante, leerNumeroComprobante } from "@/core/datos/
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { ZONA_UTC, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { redondearMoneda } from "@/core/moneda";
+import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
+import { Campo } from "@/ui/primitivas/campo";
+import { Enlace } from "@/ui/primitivas/enlace";
+import { Selector } from "@/ui/primitivas/selector";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -30,10 +35,10 @@ export default async function ComprasRegistradasPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const [{ editar: puedeAnular }, { editar: puedeCorregir }] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_compra", ctx.db),
@@ -72,50 +77,36 @@ export default async function ComprasRegistradasPage({
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Compras registradas</h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Una fila por factura, con lo que se compró en cada una. Más recientes primero. Una compra mal cargada se puede anular (mientras lo comprado siga en stock) y volver a cargar; su proveedor, N.º de factura y detalle se pueden corregir sin anularla.
         </p>
       </div>
 
       <form method="get" className="flex flex-wrap items-end gap-3 text-sm">
-        <label className="flex flex-col gap-1">
-          Desde
-          <input type="date" name="desde" defaultValue={desde} className="rounded border px-2 py-1.5" />
-        </label>
-        <label className="flex flex-col gap-1">
-          Hasta
-          <input type="date" name="hasta" defaultValue={hasta} className="rounded border px-2 py-1.5" />
-        </label>
-        <label className="flex flex-col gap-1">
-          Proveedor
-          <select name="proveedorId" defaultValue={sp.proveedorId ?? ""} className="rounded border px-2 py-1.5">
-            <option value="">Todos</option>
-            <option value={SIN_PROVEEDOR}>Sin proveedor</option>
-            {proveedores.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-                {p.activo ? "" : " (inactivo)"}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          N.º de factura
-          <input name="factura" defaultValue={sp.factura ?? ""} placeholder="contiene…" className="rounded border px-2 py-1.5" />
-        </label>
-        <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-          Filtrar
-        </button>
-        <Link href="/reportes/compras" className="self-center text-sm underline">
+        <CampoFecha etiqueta="Desde" name="desde" defaultValue={desde} />
+        <CampoFecha etiqueta="Hasta" name="hasta" defaultValue={hasta} />
+        <Selector etiqueta="Proveedor" name="proveedorId" defaultValue={sp.proveedorId ?? ""}>
+          <option value="">Todos</option>
+          <option value={SIN_PROVEEDOR}>Sin proveedor</option>
+          {proveedores.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nombre}
+              {p.activo ? "" : " (inactivo)"}
+            </option>
+          ))}
+        </Selector>
+        <Campo etiqueta="N.º de factura" name="factura" defaultValue={sp.factura ?? ""} placeholder="contiene…" />
+        <BotonDeServidor type="submit">Filtrar</BotonDeServidor>
+        <Enlace href="/reportes/compras" className="self-center">
           Limpiar
-        </Link>
+        </Enlace>
       </form>
 
       {items.length === 0 ? (
-        <p className="text-sm text-neutral-500">No hay compras registradas con estos filtros.</p>
+        <p className="text-sm text-tinta-tenue">No hay compras registradas con estos filtros.</p>
       ) : (
         <>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-tinta-tenue">
             {items.length} compra(s) en esta página · suman {plata(redondearMoneda(totalPagina))}
             {cantidadAnuladas > 0 && ` (sin contar ${cantidadAnuladas} anulada(s))`}
           </p>
@@ -127,17 +118,17 @@ export default async function ComprasRegistradasPage({
                   {c.proveedorNombre ? (
                     <span className="font-medium">{c.proveedorNombre}</span>
                   ) : (
-                    <span className="font-medium text-amber-700 dark:text-amber-600" title="Esta compra se cargó sin proveedor">
+                    <span className="font-medium text-aviso-tinta" title="Esta compra se cargó sin proveedor">
                       Sin proveedor
                     </span>
                   )}
-                  <span className="text-neutral-500">{c.nroFactura ? `Factura ${formatearNumeroComprobante(leerNumeroComprobante(c.nroFactura))}` : "sin N.º de factura"}</span>
-                  <span className="text-neutral-500" title="Productos DISTINTOS de esta factura — dos renglones del mismo producto cuentan una sola vez.">
+                  <span className="text-tinta-tenue">{c.nroFactura ? `Factura ${formatearNumeroComprobante(leerNumeroComprobante(c.nroFactura))}` : "sin N.º de factura"}</span>
+                  <span className="text-tinta-tenue" title="Productos DISTINTOS de esta factura — dos renglones del mismo producto cuentan una sola vez.">
                     {c.cantidadProductos} producto(s)
                   </span>
                   {c.anuladaEn && (
                     <span
-                      className="rounded border border-red-600 px-1.5 text-xs text-red-600"
+                      className="rounded border border-error px-1.5 text-xs text-error"
                       title={`Anulada el ${fechaCorta(c.anuladaEn)}${c.anuladaPorEmail ? ` por ${c.anuladaPorEmail}` : ""}: no cuenta en el gasto`}
                     >
                       Anulada
@@ -146,7 +137,7 @@ export default async function ComprasRegistradasPage({
                   <span className={`ml-auto font-semibold tabular-nums ${c.anuladaEn ? "line-through" : ""}`}>
                     {plata(c.total)}
                     {c.haySinPrecio && (
-                      <span className="ml-1 text-xs font-normal text-amber-700 dark:text-amber-600" title="Algún producto se cargó sin precio: el total no es el de la factura">
+                      <span className="ml-1 text-xs font-normal text-aviso-tinta" title="Algún producto se cargó sin precio: el total no es el de la factura">
                         · hay productos sin precio
                       </span>
                     )}
@@ -155,7 +146,7 @@ export default async function ComprasRegistradasPage({
                 <div className="border-t px-3 py-2">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b text-left text-neutral-500">
+                      <tr className="border-b text-left text-tinta-tenue">
                         <th className="px-2 py-1 font-normal">Producto</th>
                         <th className="px-2 py-1 text-right font-normal">Cantidad</th>
                         <th className="px-2 py-1 font-normal">Lote (vence)</th>
@@ -174,14 +165,14 @@ export default async function ComprasRegistradasPage({
                             {l.cantidad.toLocaleString("es-AR")} {l.unidad}
                           </td>
                           <td className="px-2 py-1">{l.loteVencimiento ? fechaDeLote(l.loteVencimiento) : "—"}</td>
-                          <td className="px-2 py-1 text-right tabular-nums">{l.precioTotal > 0 ? plata(l.precioTotal) : <span className="text-amber-700 dark:text-amber-600">sin precio</span>}</td>
+                          <td className="px-2 py-1 text-right tabular-nums">{l.precioTotal > 0 ? plata(l.precioTotal) : <span className="text-aviso-tinta">sin precio</span>}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{l.precioPorUnidadStock > 0 ? plata(l.precioPorUnidadStock) : "—"}</td>
                           <td className="px-2 py-1">{l.seccionNombre}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  <p className="mt-2 text-xs text-neutral-500">
+                  <p className="mt-2 text-xs text-tinta-tenue">
                     Cargada por {c.cargadaPor}
                     {c.detalle ? ` · ${c.detalle}` : ""} ·{" "}
                     <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(c.idOperacion)}`} className="underline">

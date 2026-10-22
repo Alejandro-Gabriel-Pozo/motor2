@@ -36,7 +36,7 @@ const COLUMNAS_STOCK: ColumnaReporte<FilaStockSinVenderConsignacion>[] = [
     etiqueta: "Stock actual",
     alinear: "derecha",
     valor: (s) => s.stockActual,
-    render: (s) => <span className={s.stockActual <= 0 ? "text-red-600" : ""}>{s.stockActual}</span>,
+    render: (s) => <span className={s.stockActual <= 0 ? "text-error" : ""}>{s.stockActual}</span>,
   },
 ];
 

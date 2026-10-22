@@ -1,13 +1,13 @@
 {
   "regla": "controles-a-mano",
   "meta": "bajar hacia 0 en la Fase 6: botones, campos, selectores y áreas de texto salen de las primitivas de src/ui",
-  "total": 464,
-  "entradas": 100,
+  "total": 408,
+  "entradas": 86,
   "porTipo": {
-    "button": 251,
-    "input": 143,
+    "button": 221,
+    "input": 123,
     "input-hidden": 16,
-    "select": 40,
+    "select": 34,
     "textarea": 14
   },
   "cuentas": {
@@ -175,63 +175,8 @@
     "src/app/(app)/movimientos/opciones-agotadas/opciones-agotadas.tsx": {
       "button": 1
     },
-    "src/app/(app)/reportes/compras/formulario-corregir-compra.tsx": {
-      "button": 3,
-      "input": 2,
-      "select": 1
-    },
-    "src/app/(app)/reportes/compras/page.tsx": {
-      "button": 1,
-      "input": 3,
-      "select": 1
-    },
-    "src/app/(app)/reportes/consignacion/page.tsx": {
-      "button": 1,
-      "input": 2
-    },
-    "src/app/(app)/reportes/consignacion/registrar-pago-consignante.tsx": {
-      "button": 1,
-      "input": 2
-    },
-    "src/app/(app)/reportes/conteos/filtros-conteos.tsx": {
-      "button": 2,
-      "input": 2,
-      "select": 1
-    },
-    "src/app/(app)/reportes/devoluciones/page.tsx": {
-      "button": 1,
-      "input": 1
-    },
-    "src/app/(app)/reportes/historial/historial-filtros.tsx": {
-      "button": 1,
-      "input": 2,
-      "select": 3
-    },
-    "src/app/(app)/reportes/perdidas/page.tsx": {
-      "button": 1,
-      "input": 1
-    },
-    "src/app/(app)/reportes/rendimiento-recetas/fila-compartida.tsx": {
-      "button": 6
-    },
-    "src/app/(app)/reportes/rendimiento-recetas/fila-simple.tsx": {
-      "button": 6
-    },
     "src/app/(app)/reportes/tickets/page.tsx": {
-      "button": 1,
-      "input": 2,
       "input-hidden": 1
-    },
-    "src/app/(app)/reportes/trazabilidad/boton-anular-venta.tsx": {
-      "button": 3
-    },
-    "src/app/(app)/reportes/trazabilidad/page.tsx": {
-      "button": 1,
-      "input": 2
-    },
-    "src/app/(app)/reportes/vencimientos/page.tsx": {
-      "button": 1,
-      "input": 1
     },
     "src/app/(carta-publica)/error.tsx": {
       "button": 1
@@ -385,9 +330,6 @@
     },
     "src/components/sidebar-nav.tsx": {
       "button": 2
-    },
-    "src/components/tabla-reporte.tsx": {
-      "button": 1
     }
   }
 }
