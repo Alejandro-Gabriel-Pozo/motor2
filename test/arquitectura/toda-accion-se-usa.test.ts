@@ -47,6 +47,8 @@ const RESERVADAS_SIN_USO_TODAVIA: Readonly<Record<string, string>> = {
 const GUARDAS_CON_CLAVE_DINAMICA: Readonly<Record<string, string>> = {
   "server/acceso/gate.ts|accionClave": "Implementación de `sucursalesDondeElUsuarioPuedeVer` y de `obtenerMiNivelPermisoEnAlgunaSucursal` (P20): reenvían a `obtenerMiNivelPermiso` la clave que recibieron; cada llamada a las primeras se inventaría.",
   "server/acceso/gate.ts|deSucursal": "Implementación de `accionesDelMenuQueElUsuarioPuedeVer`: reenvía a `accionesQueElUsuarioPuedeVer` las claves de sucursal que recibió; cada llamada al helper se inventaría.",
+  "server/acceso/gate.ts|claves": "Implementación de `requierePermisoVerDeAlguna`: reenvía a `accionesQueElUsuarioPuedeVer` la lista que recibió; cada llamada a `requierePermisoVerDeAlguna` lleva su lista literal y se inventaría.",
+  "server/acceso/gate.ts|claves[0]": "Implementación de `requierePermisoVerDeAlguna`: pide a `requierePermisoVer` el motivo del rechazo de la primera clave de la lista que recibió (se inventaría en cada llamada).",
   "server/acceso/origen-de-copia.ts|clave": "Implementación de `leerOrigenDeCopia`: reenvía a `sucursalesDondeElUsuarioPuedeVer` la clave que recibió; cada llamada lleva su clave literal (`carta_ver`, `receta_sucursal_copiar`).",
   "server/actions/con-permiso.ts|accionClave": "Implementación de `conPermiso`: reenvía la clave que recibió; cada llamada a `conPermiso` se inventaría.",
   "server/actions/con-sesion.ts|accion": "Implementación de `requerirVer*`: reenvía la clave que recibió; cada llamada a `requerirVer*` se inventaría.",

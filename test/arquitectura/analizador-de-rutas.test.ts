@@ -28,6 +28,30 @@ describe("analizarPagina", () => {
     expect(estadoPagina(fuente)).toBe("ok");
   });
 
+  it("la guarda de «alguna de» las claves (la entrada de varias pantallas) también es una guarda de página", () => {
+    const imports = `
+      import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+      import { requierePermisoVerDeAlguna } from "@/server/acceso/gate";
+      import { leerCosas } from "@/core/cosas/leer";
+    `;
+    const conGuarda = `${imports}
+      export default async function P() {
+        const ctx = await obtenerContextoUsuario();
+        if (!ctx) return null;
+        const gate = await requierePermisoVerDeAlguna(ctx.usuarioId, ctx.sucursalId, ["proceso_ajuste", "proceso_consumo"], ctx.db);
+        if (!gate.ok) return <p>{gate.mensaje}</p>;
+        const datos = await leerCosas(ctx.db);
+        return <div>{datos}</div>;
+      }`;
+    expect(estadoPagina(conGuarda)).toBe("ok");
+    // Sin cortar si no está ok, o leyendo antes, o descartando el resultado, sigue siendo un defecto como con las demás guardas.
+    expect(estadoPagina(conGuarda.replace("if (!gate.ok) return <p>{gate.mensaje}</p>;", ""))).toBe("guarda-sin-corte");
+    expect(estadoPagina(conGuarda.replace("const ctx = await obtenerContextoUsuario();", "const ctx = await obtenerContextoUsuario();\n        await leerCosas(ctx);"))).toBe("guarda-tardia");
+    expect(estadoPagina(conGuarda.replace("const gate = await", "await"))).toBe("guarda-descartada");
+    // Importada de otro módulo no cuenta.
+    expect(estadoPagina(conGuarda.replace('"@/server/acceso/gate"', '"@/otro/lugar"'))).toBe("sin-guarda");
+  });
+
   it("esperar params/searchParams antes de la guarda no cuenta como lectura", () => {
     const fuente = `${IMPORTS_PAGINA}
       export default async function P({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ a?: string }> }) {

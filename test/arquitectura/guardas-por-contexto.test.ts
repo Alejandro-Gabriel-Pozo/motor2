@@ -38,6 +38,23 @@ describe("las guardas coinciden con el contexto de la clave", () => {
     expect(usosFueraDeContexto(mal.usos)).toEqual(['requierePermiso("alta_producto") es una acción de empresa', 'conPermisoDeEmpresa("ver_stock") es una acción de sucursal']);
   });
 
+  it("la guarda de «alguna de» (`requierePermisoVerDeAlguna`) es de sucursal: el inventario la lee como lista y una clave de empresa en ella queda fuera de contexto", () => {
+    const fuente = inventariarFuente(
+      "f.ts",
+      [
+        'await requierePermisoVerDeAlguna(ctx.usuarioId, ctx.sucursalId, ["proceso_ajuste", "proceso_consumo"], ctx.db);',
+        'await requierePermisoVerDeAlguna(ctx.usuarioId, ctx.sucursalId, ["proveedores"], ctx.db);',
+      ].join("\n")
+    );
+    expect(fuente.usos.map((u) => [u.funcion, u.clave])).toEqual([
+      ["requierePermisoVerDeAlguna", "proceso_ajuste"],
+      ["requierePermisoVerDeAlguna", "proceso_consumo"],
+      ["requierePermisoVerDeAlguna", "proveedores"],
+    ]);
+    expect(contextoDe.get("proceso_ajuste")).toBe("sucursal");
+    expect(usosFueraDeContexto(fuente.usos)).toEqual(['requierePermisoVerDeAlguna("proveedores") es una acción de empresa']);
+  });
+
   it("cada acción de empresa del catálogo se guarda al menos una vez con una guarda de empresa (y las de sucursal, nunca con una de empresa)", () => {
     const { usos } = inventariarDirectorio(SRC);
     const porClave = new Map<string, Set<string>>();
