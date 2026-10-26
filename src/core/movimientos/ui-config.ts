@@ -1,6 +1,6 @@
 import type { Proceso } from "@/core/datos/enumerados-del-esquema";
-import { TRANSICIONES } from "./transiciones";
-import type { AccionClave } from "@/core/permisos/acciones";
+import { ACCION_POR_PROCESO, TRANSICIONES } from "./transiciones";
+import type { AccionClave, AccionDeSucursal } from "@/core/permisos/acciones";
 import type { FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { PanelNav } from "@/core/navegacion/panel";
 import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
@@ -100,6 +100,48 @@ export const NAV_MOVIMIENTOS: { href: string; label: string; accion: AccionClave
   ...(MENU_DEL_DIA_VISIBLE ? [{ href: "/movimientos/menu-del-dia", label: "Menú del día", accion: "promo_menu_del_dia" as const, panel: "sucursal" as const }] : []),
   { href: "/movimientos/motivos-merma", label: "Motivos de Merma", accion: "motivos_merma", panel: "empresa" },
   { href: "/movimientos/destinos-consumo", label: "Destinos de Consumo", accion: "motivos_destino_consumo", panel: "empresa" },
+];
+
+/**
+ * Los procesos con acceso DIRECTO desde el menú de Movimientos (decisión DEC-25 del dueño, Fase 7): Merma y Compra. Se abren por su propia ruta del panel genérico y NO están en el selector. Venta
+ * (`/movimientos/venta`) y Conteo físico (`/movimientos/conteo-fisico`) también tienen acceso propio, pero ruta propia y no están en `PROCESOS_UI`.
+ */
+export const PROCESOS_DIRECTOS = ["merma", "compra"] as const;
+
+/** Un proceso del selector «Registrar movimiento»: la ruta de su pantalla, cómo se nombra en el selector y la acción de «Ver» que la protege (la que pide su página). */
+export interface ProcesoDelSelector {
+  href: string;
+  etiquetaCorta: string;
+  accion: AccionDeSucursal;
+}
+
+/** Cómo se nombra en el selector cada proceso del panel genérico que no es directo. Si un proceso nuevo entra a `PROCESOS_UI` sin nombre acá, falla al importar (abajo). */
+const ETIQUETA_CORTA_DEL_SELECTOR: Readonly<Record<string, string>> = {
+  produccion: "Producción",
+  consumo: "Consumo",
+  ajuste: "Ajuste",
+  transferencia: "Traslado entre depósitos",
+  "devolucion-consignacion": "Devolución al consignante",
+  "devolucion-cliente": "Devolución de cliente",
+  "devolucion-proveedor": "Devolución a proveedor",
+};
+
+/**
+ * Los procesos que ofrece el selector «Registrar movimiento»: los de `PROCESOS_UI` que no son directos (7), cada uno con su acción de `ACCION_POR_PROCESO` (la misma que pide su página), más Reclasificar,
+ * que no es un proceso del panel genérico sino su propia pantalla de Stock. Hoy NADA lo consume: el menú sigue saliendo de `NAV_MOVIMIENTOS`; la entrada del menú (P5a) y su página la usan.
+ * Un guardián (test/movimientos/selector-de-procesos.test.ts) exige que todo slug esté en exactamente un lugar (directos, selector o aparte).
+ */
+export const PROCESOS_DEL_SELECTOR: readonly ProcesoDelSelector[] = [
+  ...Object.entries(PROCESOS_UI)
+    .filter(([slug]) => !(PROCESOS_DIRECTOS as readonly string[]).includes(slug))
+    .map(([slug, cfg]): ProcesoDelSelector => {
+      const etiquetaCorta = Object.hasOwn(ETIQUETA_CORTA_DEL_SELECTOR, slug) ? ETIQUETA_CORTA_DEL_SELECTOR[slug] : undefined;
+      const accion = ACCION_POR_PROCESO[cfg.proceso];
+      if (etiquetaCorta === undefined) throw new Error(`PROCESOS_DEL_SELECTOR: "${slug}" no tiene etiqueta corta (agregala en ETIQUETA_CORTA_DEL_SELECTOR, o declaralo directo en PROCESOS_DIRECTOS).`);
+      if (accion === undefined) throw new Error(`PROCESOS_DEL_SELECTOR: "${cfg.proceso}" no tiene acción en ACCION_POR_PROCESO.`);
+      return { href: `/movimientos/${slug}`, etiquetaCorta, accion };
+    }),
+  { href: "/stock/reclasificar", etiquetaCorta: "Reclasificar", accion: "stock_reclasificar" },
 ];
 
 // Verificación en tiempo de import: todo slug de PROCESOS_UI tiene que
