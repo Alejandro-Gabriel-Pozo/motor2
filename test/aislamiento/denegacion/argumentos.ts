@@ -167,6 +167,8 @@ const VALORES: Readonly<Record<string, Valor>> = {
   rango: () => ({ desde: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), hasta: new Date() }),
   antesDe: () => new Date(),
   conPromos: () => true,
+  // La audiencia de las promos de la carta: la pública (la más cerrada; el POS pide "salon" por su cuenta).
+  promos: () => "publico",
   // GO-2d: la carta con las opciones de venta (pide más datos: se ejerce con ellas).
   conOpciones: () => true,
   opciones: () => ({ conCostoDeConsignacion: true, conDatosComerciales: true, conImportes: true }),

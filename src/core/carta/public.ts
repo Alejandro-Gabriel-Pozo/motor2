@@ -14,7 +14,7 @@ export type { AclaracionCartaPublica, CartaPublicaV1, ItemCartaPublico, PromoCar
 export { partirLaAclaracion, pieDeLaCartaImpresa, recargoEnPesos, textoDeLaAclaracion } from "./texto-de-la-carta";
 export { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-publica";
 export { precioDeCarta } from "./armar-menu";
-export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn } from "./promo-sucursal";
+export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, type AudienciaDePromo } from "./promo-sucursal";
 // GO-3 (ADR-032): los tipos de cupo y la lectura tolerante del primer despliegue (solo los cupos de sección activos; una promo con un cupo activo de tipo nuevo no se ofrece).
 export { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos } from "./cupos-de-promo";
 export type { TipoDeCupo } from "./cupos-de-promo";

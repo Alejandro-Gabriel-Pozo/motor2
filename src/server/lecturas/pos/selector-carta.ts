@@ -69,7 +69,7 @@ export async function cargarSelectorCartaPos(
   const conCarta = modulos.carta;
   const conPromos = conCarta && modulos.promociones;
   const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
-    conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido) : Promise.resolve(null),
+    conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido, "salon") : Promise.resolve(null),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
@@ -87,8 +87,8 @@ export async function cargarSelectorCartaPos(
           // GO-3 (primer despliegue): solo las promos con algún cupo de SECCIÓN activo y NINGÚN cupo activo de un tipo nuevo. GO-3b: con el día, las que tienen algún cupo activo de cualquier tipo.
           where:
             dia === undefined
-              ? { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: WHERE_CUPO_DE_SECCION_ACTIVO, none: WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO } }
-              : { ...wherePromoOfrecidaEn(sucursalId), cupos: { some: { activo: true } } },
+              ? { ...wherePromoOfrecidaEn(sucursalId, "salon"), cupos: { some: WHERE_CUPO_DE_SECCION_ACTIVO, none: WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO } }
+              : { ...wherePromoOfrecidaEn(sucursalId, "salon"), cupos: { some: { activo: true } } },
           select: {
             id: true,
             seccionCartaId: true,

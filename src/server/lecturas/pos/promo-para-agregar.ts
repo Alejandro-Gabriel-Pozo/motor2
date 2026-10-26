@@ -56,7 +56,7 @@ export async function cargarPromoCartaParaAgregar(
   const promo =
     typeof promoCartaId === "string"
       ? await db.promoCarta.findFirst({
-          where: { id: promoCartaId, ...wherePromoOfrecidaEn(sucursalId) },
+          where: { id: promoCartaId, ...wherePromoOfrecidaEn(sucursalId, "salon") },
           include: { sucursales: seleccionDeSucursalDePromo(sucursalId), cupos: { where: { activo: true }, include: { seccionCarta: { select: { nombre: true } } }, orderBy: { orden: "asc" } } },
         })
       : null;
