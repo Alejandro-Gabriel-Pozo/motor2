@@ -141,7 +141,7 @@ test("si falla la carga de productos del proveedor, se avisa, se vacían las fil
   await expect(productoDeLaFila).toHaveValue(""); // ya no queda el producto del proveedor A
   await expect(selectorProveedor).toHaveValue("");
   await expect(page.getByRole("button", { name: "+ Nuevo producto", exact: true }).first()).toBeEnabled();
-  await expect(page.getByRole("button", { name: /\+ Agregar producto/ })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /\+ Agregar insumo/ })).toBeEnabled();
 
   // Vuelve la conexión: se elige de nuevo el mismo proveedor B y ahora carga.
   await page.unroute(rutaCompra);

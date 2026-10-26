@@ -37,7 +37,7 @@ test("el operador de fábrica abre las pantallas que consumen las lecturas de H8
 
     // Compra: secciones, proveedores para elegir (sin la ficha) y el buscador de productos.
     await abreSinError(page, "/movimientos/compra", "Compra");
-    await expect(page.getByLabel("Sección").locator("option", { hasText: "Depósito E2E" })).toHaveCount(1);
+    await expect(page.getByLabel("Depósito").locator("option", { hasText: "Depósito E2E" })).toHaveCount(1);
     await expect(page.getByLabel("Proveedor").locator("option", { hasText: proveedor.nombre })).toHaveCount(1);
     await page.locator('input[role="combobox"]').first().fill(producto.codigo);
     await expect(page.getByRole("option", { name: new RegExp(producto.codigo) })).toBeVisible();
@@ -46,7 +46,7 @@ test("el operador de fábrica abre las pantallas que consumen las lecturas de H8
     await abreSinError(page, "/movimientos/merma", "Merma");
     await expect(page.getByLabel("Motivo").locator("option")).not.toHaveCount(1);
     await abreSinError(page, "/movimientos/consumo", "Consumo");
-    await expect(page.getByLabel("Sección").locator("option", { hasText: "Depósito E2E" })).toHaveCount(1);
+    await expect(page.getByLabel("Depósito").locator("option", { hasText: "Depósito E2E" })).toHaveCount(1);
 
     // Catálogo: la tabla de productos y el alta (unidades, insumos, categorías, proveedores y la cuenta de sucursales).
     await abreSinError(page, "/catalogo/productos", "Productos");

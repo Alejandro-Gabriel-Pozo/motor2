@@ -33,7 +33,7 @@ describe("cerrarCuenta: secciones que no sirven de respaldo automático", () => 
   const filas = async () =>
     (await prisma.movimientoStock.findMany({ where: { operacion: { proceso: "VENTA", detalleLibre: "Mesa 4" } }, orderBy: { creadoEn: "asc" } })).map((m) => [m.proceso, m.seccionId, Number(m.cantidad)]);
   const mensajeSinRespaldo = (producto: string) =>
-    `Ninguna sección de «Central» sirve de respaldo automático en ventas y «${producto}» no tiene sección habitual: configurá su sección habitual (Stock → Sección habitual) o marcá una sección como respaldo (Movimientos → Secciones).`;
+    `Ninguna sección de «Central» sirve de respaldo automático en ventas y «${producto}» no tiene sección habitual: configurá su sección habitual (Stock → Sección habitual) o marcá una sección como respaldo (Stock → Depósitos).`;
 
   it("una sección excluida nunca se usa como respaldo, aunque tenga el lote que vence antes", async () => {
     const cocina = await sembrarSeccion(s.sucursalId, "Cocina");

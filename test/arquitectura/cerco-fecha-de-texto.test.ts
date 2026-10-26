@@ -44,7 +44,6 @@ const CERCO_FECHA_DE_TEXTO: Cerco = {
   meta: "0 (lote 6.33: todo día tecleado o de la URL se lee con core/tiempo: esDiaISOReal, inicioDelDia, rangoDeDias)",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src"], extensiones: [".ts", ".tsx"], incluir: (ruta) => !ruta.startsWith("src/core/tiempo/"), contar: contarFechasDeTexto }),
   motivos: {
-    "src/app/(app)/movimientos/[proceso]/panel-movimiento-form.tsx": VENCIMIENTO,
     "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": VENCIMIENTO,
     "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": VENCIMIENTO,
     "src/core/excel.ts": "Fecha de una celda de una planilla importada: se lee con su propio chequeo del formato (`AAAA-MM-DD` o un instante). Pasa a `esDiaISOReal` / `fechaDeColumnaDate` cuando se unifique la lectura de fechas de las planillas.",

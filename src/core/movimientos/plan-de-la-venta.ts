@@ -55,7 +55,7 @@ export function rechazoSinRespaldo(lineas: readonly LineaArmada[], origenDatos: 
   if (!sinHabitual) return null;
   return (
     `Ninguna sección de «${sucursalNombre}» sirve de respaldo automático en ventas y «${sinHabitual.nombre}» no tiene sección habitual: ` +
-    "configurá su sección habitual (Stock → Sección habitual) o marcá una sección como respaldo (Movimientos → Secciones)."
+    "configurá su sección habitual (Stock → Sección habitual) o marcá una sección como respaldo (Stock → Depósitos)."
   );
 }
 

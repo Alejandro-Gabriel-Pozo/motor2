@@ -4,4 +4,4 @@
  * `proceso_ajuste`) y para qué lado va el signo: lo que el operario necesita para resolverlo sin preguntar.
  */
 export const GUIA_PARA_CORREGIR_CON_UN_AJUSTE =
-  "Para corregirlo, cargá un Ajuste de stock (Movimientos → Ajuste) por la diferencia: suma si en el sistema falta mercadería y resta si sobra. Si no ves esa opción, pedile a un administrador que lo cargue.";
+  "Para corregirlo, cargá un Ajuste de stock (Movimientos → Registrar movimiento → Ajuste) por la diferencia: suma si en el sistema falta mercadería y resta si sobra. Si no ves esa opción, pedile a un administrador que lo cargue.";
