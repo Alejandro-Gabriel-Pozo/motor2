@@ -7,6 +7,7 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { validarComensales } from "@/core/pos/cuenta";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { abrirCuentaDeMesa } from "@/server/persistencia/pos/cuenta";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «abrir la cuenta de una mesa» (Hito 4 de la pureza, bloque 4.1, paso 8 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que antes vivía en línea
@@ -48,7 +49,7 @@ export async function abrirCuentaCasoDeUso(
       if (!mesa) return fracaso("MESA_NO_ENCONTRADA", MENSAJE_MESA_NO_ENCONTRADA);
       numeroDeMesa = mesa.numero;
       const yaAbierta = await tx.cuenta.findFirst({ where: { mesaId: mesa.id, cerradaEn: null }, select: { id: true } });
-      if (yaAbierta) return exito(`La mesa ${mesa.numero} ya tenía una cuenta abierta.`, null);
+      if (yaAbierta) return exito(`${frasesDePuesto(mesa.numero).El} ya tenía una cuenta abierta.`, null);
 
       // P15: una sucursal apagada no abre mesas. `activo` se lee ACÁ, con el `tx` de esta transacción SERIALIZABLE (no con la sesión, que se resolvió antes): contra un apagado simultáneo (que lee las cuentas
       // abiertas y escribe `Sucursal.activo`) Postgres ve el ciclo de lecturas y escrituras y aborta una de las dos; el reintento de la perdedora da el rechazo de negocio. Va DESPUÉS de «ya tenía cuenta abierta»:
@@ -66,10 +67,10 @@ export async function abrirCuentaCasoDeUso(
       }
 
       await abrirCuentaDeMesa(tx, { mesaId: mesa.id, abiertaPorId: actor.usuarioId, comensales: val.comensales });
-      return exito(`Cuenta de la mesa ${mesa.numero} abierta.`, null);
+      return exito(`Cuenta ${frasesDePuesto(mesa.numero).del} abierta.`, null);
     });
   } catch (e) {
-    if (esChoqueDeIndiceUnico(e) && numeroDeMesa !== null) return exito(`La mesa ${numeroDeMesa} ya tenía una cuenta abierta.`, null);
+    if (esChoqueDeIndiceUnico(e) && numeroDeMesa !== null) return exito(`${frasesDePuesto(numeroDeMesa).El} ya tenía una cuenta abierta.`, null);
     throw e;
   }
 }

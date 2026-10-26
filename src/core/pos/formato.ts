@@ -13,8 +13,3 @@ export function formatearMonto(n: number): string {
 export function formatearCantidad(n: number): string {
   return CANTIDAD.format(n);
 }
-
-/** «Mesa 04»: mismo formato de número que la tarjeta del mapa. */
-export function nombreDeMesa(numero: number): string {
-  return `Mesa ${String(numero).padStart(2, "0")}`;
-}

@@ -6,6 +6,7 @@ import { validarComensales } from "@/core/pos/cuenta";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cambiarComensalesDeCuenta } from "@/server/persistencia/pos/cuenta";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «corregir los comensales de una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 6 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que
@@ -37,6 +38,6 @@ export async function corregirComensalesCasoDeUso(
     if (!val.ok) return fracaso("COMENSALES_INVALIDOS", val.mensaje);
 
     await cambiarComensalesDeCuenta(tx, { cuentaId: abierta.cuenta.id, comensales: val.comensales });
-    return exito(`Comensales de la mesa ${abierta.cuenta.mesa.numero} actualizados a ${val.comensales}.`, null);
+    return exito(`Comensales ${frasesDePuesto(abierta.cuenta.mesa.numero).del} actualizados a ${val.comensales}.`, null);
   });
 }

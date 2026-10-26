@@ -10,6 +10,7 @@ import { formatearNumeroTicket } from "@/core/pos/numeracion-ticket";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarCuentaParaCorregirTicket } from "@/server/persistencia/pos/cargar-cuenta-para-corregir-ticket";
 import { escribirEjemplarCorregido } from "@/server/persistencia/pos/escribir-ejemplar-corregido";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «emitir ticket corregido» (Task #41, Fase M12b — ver docs/arquitectura-casos-de-uso-2026-09-27.md). Es la orquestación que
@@ -43,12 +44,12 @@ export async function emitirTicketCorregidoCasoDeUso(
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoEmitirTicketCorregido> => {
     const cuenta = await cargarCuentaParaCorregirTicket(tx, { cuentaId: comando.cuentaId, sucursalId: actor.sucursalId });
     if (!cuenta) return fracaso("NO_ENCONTRADA", MENSAJE_CUENTA_NO_ENCONTRADA);
-    const mesa = cuenta.mesaNumero;
-    if (!cuenta.cerradaEn) return fracaso("CUENTA_ABIERTA", `La cuenta de la mesa ${mesa} todavía está abierta: no tiene ticket que corregir.`);
+    const puesto = frasesDePuesto(cuenta.mesaNumero);
+    if (!cuenta.cerradaEn) return fracaso("CUENTA_ABIERTA", `La cuenta ${puesto.del} todavía está abierta: no tiene ticket que corregir.`);
     const [ultimo] = cuenta.ejemplares;
     const original = cuenta.ejemplares.find((e) => e.ejemplar === 1);
     if (!ultimo || !original) {
-      return fracaso("SIN_NUMERACION", `La cuenta de la mesa ${mesa} se cerró antes de la numeración de tickets: no tiene ticket que corregir.`);
+      return fracaso("SIN_NUMERACION", `La cuenta ${puesto.del} se cerró antes de la numeración de tickets: no tiene ticket que corregir.`);
     }
 
     const estado = estadoDeTicket(cuenta.items, ultimo.emitidoEn);
@@ -72,7 +73,7 @@ export async function emitirTicketCorregidoCasoDeUso(
     await registrarCambioAuditado(tx, {
       entidad: "Cuenta",
       entidadId: cuenta.id,
-      descripcion: `Mesa ${mesa}: ticket corregido N.º ${emitido} (reemplaza a N.º ${reemplazado}). Motivo: ${motivoValidado.motivo}`,
+      descripcion: `${puesto.detalle}: ticket corregido N.º ${emitido} (reemplaza a N.º ${reemplazado}). Motivo: ${motivoValidado.motivo}`,
       campo: "ejemplarTicket",
       valorAnterior: anterior,
       valorNuevo: emitido,

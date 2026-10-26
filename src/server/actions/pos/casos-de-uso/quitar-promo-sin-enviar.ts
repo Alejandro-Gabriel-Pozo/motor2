@@ -5,6 +5,7 @@ import type { ComandoQuitarPromoSinEnviar, ResultadoQuitarPromoSinEnviar } from 
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { borrarPromoSinEnviar } from "@/server/persistencia/pos/pedido";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «quitar una promo entera que todavía no salió a cocina» (Hito 4 de la pureza, bloque 4.1, paso 10 — `docs/plan-hito-4-pureza.md` §5). Es el
@@ -35,11 +36,11 @@ export async function quitarPromoSinEnviarCasoDeUso(
       include: { cuenta: { include: { mesa: { select: { numero: true } } } }, items: true },
     });
     if (!promoCuenta) return fracaso("NO_ENCONTRADA", MENSAJE_PROMO_NO_ENCONTRADA);
-    if (promoCuenta.cuenta.cerradaEn) return fracaso("CUENTA_CERRADA", `La cuenta de la mesa ${promoCuenta.cuenta.mesa.numero} ya está cerrada.`);
+    if (promoCuenta.cuenta.cerradaEn) return fracaso("CUENTA_CERRADA", `La cuenta ${frasesDePuesto(promoCuenta.cuenta.mesa.numero).del} ya está cerrada.`);
     if (promoCuenta.items.some((i) => i.numeroEnvio !== null || i.anulaAItemId !== null)) {
       return fracaso("YA_ENVIADA", "Esa promo ya salió a cocina: anulala con motivo.");
     }
     await borrarPromoSinEnviar(tx, { promoCuentaId: promoCuenta.id });
-    return exito(`Se quitó «${promoCuenta.titulo}» de la mesa ${promoCuenta.cuenta.mesa.numero}.`, null);
+    return exito(`Se quitó «${promoCuenta.titulo}» ${frasesDePuesto(promoCuenta.cuenta.mesa.numero).del}.`, null);
   });
 }

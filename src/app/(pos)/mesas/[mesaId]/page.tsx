@@ -3,7 +3,7 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
-import { type ItemDeCuenta, type ItemEnEnvio, agruparConAdicionales, armarComandas, elegidasDeLaLinea, formatearCantidad, formatearMonto, nombreDeMesa } from "@/core/pos/public";
+import { type ItemDeCuenta, type ItemEnEnvio, agruparConAdicionales, armarComandas, elegidasDeLaLinea, formatearCantidad, formatearMonto, rotuloDePuesto } from "@/core/pos/public";
 import { obtenerDetalleDeMesa } from "@/server/consultas/pos/detalle-de-mesa";
 import { obtenerTicketsRecientes } from "@/server/consultas/pos/tickets";
 import { cargarSelectorCartaDeLaMesa } from "@/server/consultas/pos/selector-carta";
@@ -93,7 +93,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   // `selectorCarta`. `descuentoPorcentaje` se convierte a `number` acá (server): un `Decimal` de Prisma no se puede pasar tal cual
   // a un Client Component (`ClienteCuenta`).
   const clientesActivos = cuenta && asignarCliente.editar ? await listarClientesParaCuenta() : [];
-  const titulo = nombreDeMesa(mesa.numero);
+  const titulo = rotuloDePuesto(mesa.numero);
   const comandas = cuenta ? armarComandas(cuenta.envios, cuenta.mesero) : [];
 
   return (
