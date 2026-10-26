@@ -23,8 +23,8 @@ export {
   tieneStockReal,
 } from "./transiciones";
 export { DESTINOS_CONSUMO_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "./motivos-semilla";
-export { NAV_MOVIMIENTOS, obtenerConfigProceso } from "./ui-config";
-export type { ProcesoUiConfig } from "./ui-config";
+export { NAV_MOVIMIENTOS, PROCESOS_DEL_SELECTOR, obtenerConfigProceso } from "./ui-config";
+export type { ProcesoDelSelector, ProcesoUiConfig } from "./ui-config";
 export {
   OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION,
   detalleReversionDeCompra,

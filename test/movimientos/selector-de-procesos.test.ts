@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PROCESOS_DEL_SELECTOR, PROCESOS_DIRECTOS, PROCESOS_UI, type ProcesoDelSelector } from "../../src/core/movimientos/ui-config";
 import { ACCION_POR_PROCESO } from "../../src/core/movimientos/transiciones";
@@ -83,6 +85,28 @@ describe("PROCESOS_DIRECTOS y PROCESOS_DEL_SELECTOR", () => {
 
   it("las claves de `algunaDe` de la entrada «/movimientos» (cuando exista en el menú) son exactamente las del selector", () => {
     expect(entradasConOtrasClaves(GRUPOS_NAV.flatMap((g) => g.items), "/movimientos", PROCESOS_DEL_SELECTOR)).toEqual([]);
+  });
+});
+
+/** Las claves literales con las que una página llama a `requierePermisoVerDeAlguna(usuarioId, sucursalId, [claves…], db)`; `undefined` si no la llama. */
+function clavesDeLaGuardaDeAlguna(fuente: string): string[] | undefined {
+  const lista = fuente.match(/requierePermisoVerDeAlguna\(\s*[^,]+,\s*[^,]+,\s*\[([^\]]*)\]/)?.[1];
+  return lista === undefined ? undefined : [...lista.matchAll(/"(\w+)"/g)].map((m) => m[1]);
+}
+
+const PAGINA_REGISTRAR = join(__dirname, "../../src/app/(app)/movimientos/page.tsx");
+
+describe("la página «Registrar movimiento» (/movimientos)", () => {
+  it("se protege con la guarda de «alguna de» y con EXACTAMENTE las claves del selector", () => {
+    const claves = clavesDeLaGuardaDeAlguna(readFileSync(PAGINA_REGISTRAR, "utf8"));
+    expect(claves, "la página tiene que llamar a requierePermisoVerDeAlguna con una lista literal").toBeDefined();
+    expect([...(claves ?? [])].sort()).toEqual(PROCESOS_DEL_SELECTOR.map((p) => p.accion).sort());
+  });
+
+  it("la lectura de las claves agarra una clave de menos, de más o cambiada", () => {
+    const llamada = (lista: string) => `await requierePermisoVerDeAlguna(ctx.usuarioId, ctx.sucursalId, [${lista}], ctx.db);`;
+    expect(clavesDeLaGuardaDeAlguna(llamada('"proceso_ajuste", "proceso_consumo"'))).toEqual(["proceso_ajuste", "proceso_consumo"]);
+    expect(clavesDeLaGuardaDeAlguna("await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, \"proceso_ajuste\", ctx.db);")).toBeUndefined();
   });
 });
 

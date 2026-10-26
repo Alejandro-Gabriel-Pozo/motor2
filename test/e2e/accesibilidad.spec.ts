@@ -155,6 +155,19 @@ testAutenticado("catalogo/insumos-grupos: sin violaciones de axe", async ({ pagi
   }
 });
 
+testAutenticado("movimientos: «Registrar movimiento» (la fila de pestañas con la actual marcada) sin violaciones de axe, en modo claro y oscuro", async ({ paginaAutenticada: page }) => {
+  await page.goto("/movimientos");
+  await conTitulo(page, "Registrar movimiento");
+  await expect(page.getByRole("navigation", { name: "Qué movimiento registrar" }).getByRole("link")).toHaveCount(8);
+  expect((await new AxeBuilder({ page }).analyze()).violations, "modo claro").toEqual([]);
+  await page.goto("/movimientos/ajuste");
+  await conTitulo(page, "Registrar movimiento · Ajuste");
+  await expect(page.getByRole("navigation", { name: "Qué movimiento registrar" }).locator('[aria-current="page"]')).toHaveText("Ajuste");
+  expect((await new AxeBuilder({ page }).analyze()).violations, "con una pestaña marcada").toEqual([]);
+  await page.emulateMedia({ colorScheme: "dark" });
+  expect((await new AxeBuilder({ page }).include("main").analyze()).violations, "modo oscuro emulado (contenido de la pantalla)").toEqual([]);
+});
+
 testAutenticado("movimientos/motivos-merma: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   // Sin fixture: la migración expand del catálogo (plan "motivos de Consumo/Merma como catálogo administrable", P3) ya
   // sembró 6 Motivo de Merma + 5 Destino de Consumo en cualquier base migrada — las dos tablas nunca están vacías acá.

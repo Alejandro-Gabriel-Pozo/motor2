@@ -54,7 +54,7 @@ test("el operador de fábrica abre las pantallas que consumen las lecturas de H8
 
     // Stock, traspasos y el reporte de conteos: todas piden las secciones activas de la sucursal.
     await abreSinError(page, "/movimientos/conteo-fisico", "Conteo físico");
-    await abreSinError(page, "/stock/reclasificar", "Reclasificar stock");
+    await abreSinError(page, "/stock/reclasificar", "Registrar movimiento · Reclasificar");
     await abreSinError(page, "/traspasos", "Traspasos entre sucursales");
     await abreSinError(page, "/reportes/conteos", "Historial de conteos físicos");
   } finally {
