@@ -48,7 +48,7 @@
     "@prisma/adapter-neon": "^7.10.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "7.10.0",
-    "@sentry/nextjs": "^10.76.2",
+    "@sentry/nextjs": "^11.9.0",
     "decimal.js": "10.5.0",
     "lucide-react": "^1.49.0",
     "next": "16.4.2",
