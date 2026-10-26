@@ -80,7 +80,7 @@ export function obtenerConfigProceso(slug: string): ProcesoUiConfig | null {
  * Fuente del grupo Movimientos del menú lateral (`estructura.ts` la filtra) — incluye Venta/Conteo Físico, que tienen ruta propia.
  * `accion` es la acción de «Ver» que protege la página: el menú solo muestra el ítem a quien puede verla.
  */
-export const NAV_MOVIMIENTOS: { href: string; label: string; accion?: AccionClave; panel: PanelNav }[] = [
+export const NAV_MOVIMIENTOS: { href: string; label: string; accion: AccionClave; panel: PanelNav }[] = [
   { href: "/movimientos/compra", label: "Compra", accion: "proceso_compra", panel: "sucursal" },
   { href: "/movimientos/produccion", label: "Producción", accion: "proceso_produccion", panel: "sucursal" },
   { href: "/movimientos/venta", label: "Venta", accion: "proceso_venta", panel: "sucursal" },

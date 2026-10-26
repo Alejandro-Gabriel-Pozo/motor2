@@ -2,13 +2,28 @@ import { NAV_MOVIMIENTOS } from "@/core/movimientos/public";
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { PanelActivo, PanelNav } from "./panel";
 
-export interface ItemNav {
+interface ItemNavBase {
   href: string;
   label: string;
-  /** El ítem solo se muestra a quien puede VER esa acción (la misma que protege la página; un test lo comprueba para todos los ítems). */
-  accion?: AccionClave;
   /** En qué panel del menú aparece (ADR-010). Se declara en CADA ítem a propósito: un ítem nuevo sin panel no compila. */
   panel: PanelNav;
+}
+
+/**
+ * Un ítem del menú. Lleva SIEMPRE una clave de permiso, de una de dos formas (unión discriminada: un ítem sin ninguna no compila, y en tiempo de ejecución `filtrarMenuPorPermiso` lo
+ * esconde: falla cerrado, ya no hay ítems «para todos»):
+ *  - `accion`: el ítem solo se muestra a quien puede VER esa acción (la misma que protege la página; un test lo comprueba para todos los ítems).
+ *  - `algunaDe`: el ítem se muestra a quien puede VER ALGUNA de esas acciones (una entrada que reúne varias pantallas; la página usa `requierePermisoVerDeAlguna` con las mismas claves). La lista no puede estar vacía.
+ */
+export type ItemNav = ItemNavBase &
+  (
+    | { accion: AccionClave; algunaDe?: never }
+    | { algunaDe: readonly [AccionClave, ...AccionClave[]]; accion?: never }
+  );
+
+/** Las acciones con las que se decide si el rol ve el ítem: la suya, o la lista de la que alcanza con una. Un ítem sin ninguna (solo posible esquivando los tipos) devuelve vacío: no lo ve nadie. */
+function accionesDelItem(item: Pick<ItemNav, "accion" | "algunaDe">): readonly AccionClave[] {
+  return item.algunaDe ?? (item.accion ? [item.accion] : []);
 }
 
 export interface GrupoNav {
@@ -155,6 +170,26 @@ export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [
 ];
 
 /**
+ * Rutas de proceso que se abren desde UNA entrada del menú (el selector «Registrar movimiento»: Ajuste, Consumo, Producción…) en vez de tener cada una su ítem. Cada ruta lleva la acción de «Ver» que
+ * protege su página (la misma que pide; un test lo comprueba), su panel y la `entrada`: el `href` del ítem del menú que se resalta cuando esa ruta está abierta. Se leen igual que `RUTAS_FUERA_DEL_MENU`
+ * (`itemDeRuta`, `accionDeRuta`, `panelDeRuta`, `accionesDeNavegacion`, `pantallaTrasCambiarSucursal`), más: `hrefActivoDelMenu` las traduce a su entrada y el buscador del cajón de celular (`buscarPantallaEnMenu`)
+ * las encuentra, para que «ajuste» siga apareciendo aunque ya no sea un ítem. Hoy está vacía a propósito: se puebla junto con la entrada del menú (poblarla antes cambiaría el ítem resaltado).
+ */
+export interface RutaDeUnaEntrada {
+  /** La ruta de la pantalla (`/movimientos/ajuste`). */
+  href: string;
+  /** Cómo se nombra en el buscador. */
+  label: string;
+  /** La acción de «Ver» que protege la pantalla. */
+  accion: AccionClave;
+  panel: PanelNav;
+  /** El `href` del ítem del menú que se resalta con esta ruta abierta (`/movimientos`); tiene que ser un ítem del menú. */
+  entrada: string;
+}
+
+export const RUTAS_DE_UNA_ENTRADA: readonly RutaDeUnaEntrada[] = [];
+
+/**
  * Rutas HIJAS con acción propia (Fase 6, 6.17c; el espacio del producto): una pantalla cuya ruta cuelga de un ítem del menú pero que se protege con OTRA acción. `accionDeRuta` resuelve por prefijo del menú, así que
  * `/catalogo/productos/[id]/en-la-carta` (el paso «En la carta» del producto) daría la acción de Productos (`producto_ver_catalogo`) y `EnlaceInterno` mentiría: le mostraría el enlace a quien ve productos y no
  * la carta (y se lo escondería a quien ve la carta y no los productos). Acá se declara la excepción, por patrón (el id del producto es un segmento dinámico) y con la página que la cumple: un test comprueba que esa
@@ -179,22 +214,31 @@ const limpiarRuta = (href: string) => href.split(/[?#]/)[0].replace(/\/+$/, "");
  * desconocida). Se resuelve por el ítem del menú (o de `RUTAS_FUERA_DEL_MENU`) cuya ruta es la más larga que es prefijo de la del
  * enlace: la consulta (`?…`) y el ancla (`#…`) se ignoran. Es lo que permite mostrar un enlace solo a quien puede abrir su destino.
  */
-export function accionDeRuta(href: string, grupos: GrupoNav[] = GRUPOS_NAV): AccionClave | null {
+export function accionDeRuta(href: string, grupos: GrupoNav[] = GRUPOS_NAV, rutas: readonly RutaDeUnaEntrada[] = RUTAS_DE_UNA_ENTRADA): AccionClave | null {
   const ruta = limpiarRuta(href);
   // Las rutas hijas con acción propia mandan sobre el prefijo del menú (ver `RUTAS_HIJAS_CON_ACCION_PROPIA`).
   const propia = RUTAS_HIJAS_CON_ACCION_PROPIA.find((r) => r.patron.test(ruta));
   if (propia) return propia.accion;
-  return itemDeRuta(href, grupos)?.accion ?? null;
+  // Un ítem `algunaDe` no tiene UNA acción: acá da `null` (el enlace se muestra; la página igual se protege con su guarda).
+  return itemDeRuta(href, grupos, rutas)?.accion ?? null;
 }
 
-/** El ítem (con acción) del que cuelga la ruta: el de la ruta más larga que es prefijo de la de `href`. Ver `accionDeRuta`. */
-export function itemDeRuta(href: string, grupos: GrupoNav[] = GRUPOS_NAV): (ItemNav & { accion: AccionClave }) | null {
+/**
+ * El ítem del que cuelga la ruta: el de la ruta más larga que es prefijo de la de `href`, entre los del menú, las pantallas fuera del menú y las rutas de una entrada. Ver `accionDeRuta`.
+ * Un ítem sin ninguna clave (solo posible esquivando los tipos) no es candidato.
+ */
+export function itemDeRuta(href: string, grupos: GrupoNav[] = GRUPOS_NAV, rutas: readonly RutaDeUnaEntrada[] = RUTAS_DE_UNA_ENTRADA): ItemNav | null {
   const ruta = href.split(/[?#]/)[0].replace(/\/+$/, "");
-  const candidatos = [...grupos.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU].filter(
-    (i): i is ItemNav & { accion: AccionClave } => !!i.accion && (ruta === i.href || ruta.startsWith(`${i.href}/`))
+  const candidatos: ItemNav[] = [...grupos.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU, ...rutas].filter(
+    (i) => accionesDelItem(i).length > 0 && (ruta === i.href || ruta.startsWith(`${i.href}/`))
   );
   candidatos.sort((a, b) => b.href.length - a.href.length);
   return candidatos[0] ?? null;
+}
+
+/** Si el rol ve el ítem: puede VER su `accion`, o alguna de las de `algunaDe`. Un ítem sin ninguna clave no lo ve nadie (falla cerrado). */
+export function puedeVerItem(item: Pick<ItemNav, "accion" | "algunaDe">, puedeVer: ReadonlySet<AccionClave>): boolean {
+  return accionesDelItem(item).some((a) => puedeVer.has(a));
 }
 
 /** Las rutas de todos los ítems del menú completo, sin filtrar por permiso (no son datos sensibles: son las rutas de la aplicación). */
@@ -207,26 +251,34 @@ export function hrefsDelMenu(grupos: GrupoNav[] = GRUPOS_NAV): string[] {
  * `/carta/tema` es «Tema de la carta» y no también «Carta pública», y una pantalla hija como `/catalogo/recetas/[id]/historial`
  * resalta «Recetas»). Se busca entre los ítems del menú COMPLETO y recién después se mira si el usuario lo ve: si gana uno que no ve,
  * no se resalta ninguno (en vez de resaltar un ítem más corto que no es esta pantalla). La consulta (`?…`) y el ancla (`#…`) se ignoran.
+ * Las rutas de una entrada (`RUTAS_DE_UNA_ENTRADA`) compiten por el prefijo más largo igual que los ítems, pero resaltan su `entrada` (el ítem que las reúne), no a sí mismas; con la misma ruta, gana el ítem del menú.
  */
-export function hrefActivoDelMenu(pathname: string, hrefsDelMenuCompleto: readonly string[], hrefsVisibles: ReadonlySet<string>): string | null {
+export function hrefActivoDelMenu(
+  pathname: string,
+  hrefsDelMenuCompleto: readonly string[],
+  hrefsVisibles: ReadonlySet<string>,
+  rutas: readonly RutaDeUnaEntrada[] = RUTAS_DE_UNA_ENTRADA
+): string | null {
   const ruta = pathname.split(/[?#]/)[0].replace(/\/+$/, "");
-  let mejor: string | null = null;
-  for (const href of hrefsDelMenuCompleto) {
-    if ((ruta === href || ruta.startsWith(`${href}/`)) && (mejor === null || href.length > mejor.length)) mejor = href;
+  const candidatos = [...hrefsDelMenuCompleto.map((href) => ({ href, resalta: href })), ...rutas.map((r) => ({ href: r.href, resalta: r.entrada }))];
+  let mejor: { href: string; resalta: string } | null = null;
+  for (const c of candidatos) {
+    if ((ruta === c.href || ruta.startsWith(`${c.href}/`)) && (mejor === null || c.href.length > mejor.href.length)) mejor = c;
   }
-  return mejor !== null && hrefsVisibles.has(mejor) ? mejor : null;
+  return mejor !== null && hrefsVisibles.has(mejor.resalta) ? mejor.resalta : null;
 }
 
 /**
  * El panel al que pertenece la pantalla abierta, o `null` si no se puede decir (es una pantalla de ambos paneles —`/catalogo/productos`—,
  * el inicio, o una ruta que no es del menú): en ese caso el menú se queda en el último panel que eligió la persona. Usa la MISMA
  * coincidencia que el ítem activo (`hrefActivoDelMenu`: la ruta más larga que es prefijo), sobre el menú completo y las pantallas fuera
- * del menú (`/catalogo/proveedores/comparativa` es de Empresa como Proveedores), sin mirar permisos.
+ * del menú (`/catalogo/proveedores/comparativa` es de Empresa como Proveedores) y las rutas de una entrada, sin mirar permisos.
  */
-export function panelDeRuta(pathname: string, grupos: GrupoNav[] = GRUPOS_NAV): PanelActivo | null {
-  const items = [...grupos.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU];
+export function panelDeRuta(pathname: string, grupos: GrupoNav[] = GRUPOS_NAV, rutas: readonly RutaDeUnaEntrada[] = RUTAS_DE_UNA_ENTRADA): PanelActivo | null {
+  const items = [...grupos.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU, ...rutas];
   const hrefs = items.map((i) => i.href);
-  const href = hrefActivoDelMenu(pathname, hrefs, new Set(hrefs));
+  // Sin traducir a la entrada (`[]`): las rutas de una entrada entran acá como pantallas con su propio panel.
+  const href = hrefActivoDelMenu(pathname, hrefs, new Set(hrefs), []);
   const panel = items.find((i) => i.href === href)?.panel;
   return panel === "empresa" || panel === "sucursal" ? panel : null;
 }
@@ -247,20 +299,27 @@ export function mostrarSelectorDePaneles(grupos: GrupoNav[]): boolean {
   return grupos.some((g) => g.items.some((i) => i.panel === "empresa")) && particionarMenu(grupos).sucursal.length > 0;
 }
 
-/** Las acciones del menú más las de las pantallas fuera del menú y las de las rutas hijas con acción propia: todo lo que hay que consultar para decidir qué enlaces mostrar. */
-export function accionesDeNavegacion(grupos: GrupoNav[] = GRUPOS_NAV): AccionClave[] {
-  return [...new Set([...accionesDelMenu(grupos), ...RUTAS_FUERA_DEL_MENU.flatMap((i) => (i.accion ? [i.accion] : [])), ...RUTAS_HIJAS_CON_ACCION_PROPIA.map((r) => r.accion)])];
+/** Las acciones del menú más las de las pantallas fuera del menú, las de las rutas de una entrada y las de las rutas hijas con acción propia: todo lo que hay que consultar para decidir qué enlaces mostrar. */
+export function accionesDeNavegacion(grupos: GrupoNav[] = GRUPOS_NAV, rutas: readonly RutaDeUnaEntrada[] = RUTAS_DE_UNA_ENTRADA): AccionClave[] {
+  return [
+    ...new Set([
+      ...accionesDelMenu(grupos),
+      ...RUTAS_FUERA_DEL_MENU.flatMap(accionesDelItem),
+      ...rutas.map((r) => r.accion),
+      ...RUTAS_HIJAS_CON_ACCION_PROPIA.map((r) => r.accion),
+    ]),
+  ];
 }
 
-/** Todas las acciones que aparecen en algún ítem del menú: lo que hay que consultar para saber qué se muestra. */
+/** Todas las acciones que aparecen en algún ítem del menú (la `accion` o las de `algunaDe`): lo que hay que consultar para saber qué se muestra. */
 export function accionesDelMenu(grupos: GrupoNav[] = GRUPOS_NAV): AccionClave[] {
-  return [...new Set(grupos.flatMap((g) => g.items.flatMap((i) => (i.accion ? [i.accion] : []))))];
+  return [...new Set(grupos.flatMap((g) => g.items.flatMap(accionesDelItem)))];
 }
 
-/** Deja solo los ítems que el usuario puede ver; un grupo que se queda sin ítems desaparece. */
+/** Deja solo los ítems que el usuario puede ver (su `accion`, o alguna de `algunaDe`); un ítem sin ninguna clave no lo ve nadie, y un grupo que se queda sin ítems desaparece. */
 export function filtrarMenuPorPermiso(grupos: GrupoNav[], puedeVer: ReadonlySet<AccionClave>): GrupoNav[] {
   return grupos
-    .map((g) => ({ ...g, items: g.items.filter((i) => !i.accion || puedeVer.has(i.accion)) }))
+    .map((g) => ({ ...g, items: g.items.filter((i) => puedeVerItem(i, puedeVer)) }))
     .filter((g) => g.items.length > 0);
 }
 
