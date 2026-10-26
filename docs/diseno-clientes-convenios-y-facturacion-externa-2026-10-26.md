@@ -416,19 +416,21 @@ Clave: `clientes_agentes` (empresa, piso administrador, semilla `admin`): alta, 
 
 ## H. Preguntas para el dueño (ordenadas por impacto en modelo, dinero y permisos)
 
-1. **¿Una oferta incluida en un convenio queda reservada a ese convenio (no la ve la carta pública ni otra mesa)?** Recomiendo: no por defecto; «solo salón» como opción explícita de la promo, que llega con el rediseño de promociones (pendientes 2026-10-22, 14.ª parte).
-2. **¿Una persona puede ser agente de varias empresas a la vez?** Recomiendo: sí (N:M), con un solo vínculo vigente por par; en el POS se elige la empresa.
-3. **¿El precio pactado (N2) alcanza con una oferta propia del convenio, o hace falta un % del convenio sobre productos de la carta?** Recomiendo: oferta propia; el % sobre la carta queda diferido hasta que haya un caso.
-4. **¿Confirmás un solo beneficio por ticket, y que el descuento de producto siga «rige el mayor» solo frente al % de cliente o categoría (nunca dentro de una oferta de convenio)?** Recomiendo: sí, las dos cosas.
-5. **Lo no pactado que pide el agente en la misma mesa (por ejemplo, un vino que paga él): ¿se rechaza y se vende por mostrador?** Recomiendo: sí en N1; dividir la cuenta es otra etapa (hoy hay una sola cuenta abierta por mesa).
-6. **Pisos: ¿alta y vínculo de agentes (también el atajo del POS) solo administrador, y el descuento de residente con permiso propio no sembrado a los mozos?** Recomiendo: sí a las dos; el dato mínimo del residente se decide después.
+**Respuestas del dueño (2026-10-26):**
+
+1. **CONFIRMADA (lo recomendado) y ampliada.** Una oferta NO queda reservada por defecto. Pero el hallazgo se arregla YA: la promo gana un interruptor **«solo salón»** (no aparece en la carta pública; se vende en el POS). Es independiente del convenio y se implementa primero (plan aparte). La reserva de una promo a un convenio/cliente es la etapa N1 de este diseño.
+2. **CONFIRMADA (lo recomendado).** Una persona puede ser agente de varias empresas (N:M), con un solo vínculo vigente por par; en el POS se elige la empresa.
+3. **CONFIRMADA, aclarando el término.** «Precio pactado» no es un concepto aparte: es el precio de una **promoción propia del convenio**, que aparece solo en salón y solo para ese cliente o esos clientes. Entonces: sin tabla de precios; se resuelve con la promo + los interruptores «solo salón» y «reservada a convenio». El % del convenio sobre productos de la carta queda diferido hasta que haya un caso.
+4. **CONFIRMADA.** Un solo beneficio por ticket; el descuento de producto «rige el mayor» solo frente al % de cliente o categoría (nunca dentro de una oferta de convenio).
+5. **CONFIRMADA, con una ampliación grande.** Lo no pactado en la misma mesa se rechaza y se vende por mostrador (dividir la cuenta es otra etapa). Además el dueño dice que el «mostrador» de hoy (`registrarVenta`, sin cuenta, sin ticket y sin cliente) está MAL LLAMADO: el mostrador debe operar COMO UNA MESA (con ticket, cliente, descuentos y convenios): una mesa fija «Mostrador» o un apartado del salón con las mismas pantallas. Se diseña aparte: `docs/diseno-ventas-salon-y-mostrador-2026-10-26.md`.
+6. **PENDIENTE** (sin responder): pisos de alta y vínculo de agentes (también el atajo del POS) y permiso propio para el descuento de residente. Se mantiene la recomendación: administrador, y el descuento de residente con permiso propio que no se siembra a los mozos.
 
 ---
 
 ## I. Plan de etapas
 
 **Fase 4: diseño de tablas (sin aplicar a ninguna base)**
-1. El dueño contesta H1 a H6; se actualizan los estados de este documento.
+1. El dueño ya contestó H1 a H5 (ver arriba); queda H6. Se actualizan los estados de este documento.
 2. Línea de base, en el commit de partida: `prisma/schema.prisma` con 107 modelos; `ACCIONES` con 131 claves (55 operario, 62 administrador, 12 administrador de sistema, 2 gerente); 144 carpetas en `prisma/migrations`; más los conteos que da la suite (tests y goldens). Se anotan en el ADR.
 3. ADR nuevo (número a asignar) «Convenios y beneficio de la cuenta», con las decisiones de B y E.
 4. Migraciones de N1 escritas (esquema con RLS y privilegios; datos con las dos claves) con `down.sql` y la prueba de subir, bajar y subir; clasificación de tablas y guardianes al día. **No se aplican** sin autorización expresa.
