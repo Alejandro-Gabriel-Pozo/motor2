@@ -349,6 +349,15 @@ Código de M2: `abrirCuentaDeMostrador` (SERIALIZABLE, I3 con la clave de apertu
 
 ## H. Preguntas para el dueño (con recomendación)
 
+**Respuestas del dueño (2026-10-26): las cinco CONFIRMADAS con lo recomendado.**
+1. Varias cuentas de mostrador abiertas a la vez, sin tope propio, con un solo puesto «Mostrador» por sucursal (variante 3; etapas M1 y M2). CONFIRMADA.
+2. Cada cuenta abierta se reconoce por la hora, quién la abrió y una etiqueta opcional; el número de llamador queda diferido. CONFIRMADA.
+3. El mostrador hereda las cuatro reglas de la mesa: enviar antes de cerrar, el stock insuficiente no frena (queda auditado), el stock sale de la sección habitual y no cuenta para el límite de mesas. CONFIRMADA («sí a todo»).
+4. La entrada «Venta» de Movimientos pasa a llamarse «Carga de ventas sin ticket» (cargas atrasadas y ventas fuera del POS), sale de los frecuentes de DEC-25 y en su lugar va un acceso a Salón › Mostrador. CONFIRMADA. Esto modifica DEC-25 por palabra del dueño.
+5. Sin claves de permiso nuevas: el mostrador lo opera quien tiene los permisos del salón. CONFIRMADA.
+
+Texto original de las preguntas (para referencia):
+
 1. **¿Puede haber varias cuentas de mostrador abiertas a la vez (varios clientes esperando, varios cajeros)?** Recomiendo: **sí, sin tope propio**, con un solo puesto «Mostrador» por sucursal (variante 3). Si preferís una cuenta por caja, hacemos «Mostrador 1, 2…» (3b); si alcanza con una a la vez, solo la etapa M1.
 2. **¿Cómo se reconoce cada cuenta abierta del mostrador?** Recomiendo: por la hora, quién la abrió y una **etiqueta opcional** («Juan»); el número de llamador lo dejamos para cuando lo pidas.
 3. **El mostrador hereda las reglas de la mesa: hay que «enviar» antes de cerrar, el stock insuficiente no frena la venta (queda auditado), el stock sale de la sección habitual de cada producto, y no cuenta para el límite de mesas abiertas. ¿De acuerdo?** Recomiendo: **sí a todo**; si «enviar» molesta en el mostrador, un botón «Enviar y cerrar» en la pantalla (sin cambiar la regla).
