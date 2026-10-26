@@ -34,6 +34,17 @@ en `knip.jsonc`), `npm test`, `npm run build`, `npm run plataforma:build` (la
 consola, otra app Next: un fallo de dependencias solo aparece al construirla) y
 `npm run test:e2e`.
 
+## Diseño de módulos y features nuevos (regla del dueño, 2026-10-26)
+
+Todo módulo o feature nuevo (compras, reservas, ventas, caja, clientes, lo que venga) y todo arreglo sustancial de uno existente se diseña ANTES de tocar tablas o pantallas, con la escalera de diseño de 10 niveles: 1 propósito y alcance, 2 actores y contexto, 3 casos de uso, 4 conceptos y ciclo de vida, 5 invariantes y políticas, 6 historia y persistencia, 7 atomicidad y concurrencia, 8 acceso e interfaces, 9 consultas y experiencia, 10 pruebas, migración y operación.
+
+- Compuerta: no se diseñan ni migran tablas (nivel 6) sin tener confirmados los niveles 1 a 5. Cada decisión lleva su estado: CONFIRMADA (dicha por el dueño), PROPUESTA, PENDIENTE o NO VERIFICADA. Para cada comando, la tabla «¿qué pasa si…?»: repetición, concurrencia, tiempo, incertidumbre, reintento, error parcial, datos faltantes, cambio de permisos.
+- Escalera de producto N0 a N5 por módulo (lo que ve el cliente): peldaños acumulativos que no rompen lo cargado; formalidad y detalle son ejes separados; lo que falta se muestra como «pendiente de completar», nunca se inventa. Es una escalera distinta de la de diseño: se cruzan en el nivel 5.
+- Se diseña el modelo completo y escalable en papel, pero SOLO se migran las tablas de la etapa que se implementa, con puntos de extensión previstos (relaciones opcionales, estados con CHECK, historial que solo agrega) y migraciones aditivas y reversibles. Nada de tablas «a ciegas» que nadie escribe.
+- Antes de crear un modelo, inventariar lo que ya existe con otro nombre (validar contra el código real, no contra documentos). Reutilizar módulos, planes, permisos y centros de costos existentes antes de inventar tablas de niveles o reglas.
+- Los arreglos sobre lo ya construido siguen el mismo método: auditar el módulo contra la escalera (invariantes, concurrencia, niveles) y corregir en pasos chicos, sin refactorizar lo que no se pidió.
+- El documento de diseño vive en `docs/diseno-<modulo>-AAAA-MM-DD.md` (ver el piloto de clientes, convenios y facturación externa).
+
 ## Exploración con Explore
 
 Antes de tocar código en una tarea que obliga a ubicar algo en más de ~10 archivos
