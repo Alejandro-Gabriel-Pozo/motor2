@@ -30,6 +30,8 @@ import { frasesDePuesto } from "@/core/pos/puesto";
  *     `UniqueConstraintViolation`, la forma en que puede llegar con el adaptador `pg`); antes era `esErrorDeUnicidad`, solo `P2002`
  *     (`test/pos/choque-de-unicidad-del-driver.test.ts`).
  *
+ * ADR-039: solo abre mesas de SALÓN (`tipo: "SALON"`; el puesto mostrador se abre con `abrirCuentaDeMostrador` y aquí responde `MESA_NO_ENCONTRADA`) y el límite cuenta solo cuentas de salón (`tipoMesa: "SALON"`: el mostrador no cuenta).
+ *
  * @contract Deja la mesa de la sucursal con su cuenta abierta (a nombre de quien la abre y con sus comensales), salvo que la sucursal esté desactivada o se haya alcanzado el límite de mesas abiertas.
  * @idempotency Por estado — si la mesa ya tenía su cuenta abierta responde ok sin escribir (la transacción serializable y el índice único parcial arbitran la carrera).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento): la mesa, la sucursal (activa y con su límite), las cuentas abiertas y la cuenta nueva, todo dentro (M1, P15).
@@ -45,7 +47,7 @@ export async function abrirCuentaCasoDeUso(
   let numeroDeMesa: number | null = null;
   try {
     return await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAbrirCuenta> => {
-      const mesa = await tx.mesa.findFirst({ where: { id: comando.mesaId, sucursalId: actor.sucursalId }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true, activo: true } } } });
+      const mesa = await tx.mesa.findFirst({ where: { id: comando.mesaId, sucursalId: actor.sucursalId, tipo: "SALON" }, include: { sucursal: { select: { nombre: true, maxMesasAbiertas: true, activo: true } } } });
       if (!mesa) return fracaso("MESA_NO_ENCONTRADA", MENSAJE_MESA_NO_ENCONTRADA);
       numeroDeMesa = mesa.numero;
       const yaAbierta = await tx.cuenta.findFirst({ where: { mesaId: mesa.id, cerradaEn: null }, select: { id: true } });
@@ -60,7 +62,7 @@ export async function abrirCuentaCasoDeUso(
       if (!val.ok) return fracaso("COMENSALES_INVALIDOS", val.mensaje);
 
       if (mesa.sucursal.maxMesasAbiertas !== null) {
-        const abiertas = await tx.cuenta.count({ where: { cerradaEn: null, mesa: { sucursalId: actor.sucursalId } } });
+        const abiertas = await tx.cuenta.count({ where: { cerradaEn: null, tipoMesa: "SALON", mesa: { sucursalId: actor.sucursalId } } });
         if (abiertas >= mesa.sucursal.maxMesasAbiertas) {
           return fracaso("LIMITE_DE_MESAS", `Se alcanzó el máximo de ${mesa.sucursal.maxMesasAbiertas} mesas abiertas en «${mesa.sucursal.nombre}». Cerrá o liberá una antes de abrir otra.`);
         }

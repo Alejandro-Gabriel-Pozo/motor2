@@ -47,7 +47,7 @@ export interface ComandoCorregirComensales {
 
 /**
  * - `CUENTA_NO_ABIERTA`: no es una cuenta de una mesa de esta sucursal, o ya está cerrada (gana sobre un valor inválido de comensales);
- * - `COMENSALES_INVALIDOS`: no es un entero entre 1 y 99 (`validarComensales`).
+ * - `COMENSALES_INVALIDOS`: no es un entero entre 1 y 99 (`validarComensales`), o la cuenta es del mostrador, que no lleva comensales (ADR-039).
  */
 export type ResultadoCorregirComensales = ResultadoCaso<null, "CUENTA_NO_ABIERTA" | "COMENSALES_INVALIDOS">;
 

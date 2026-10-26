@@ -9,7 +9,7 @@ import type { Db } from "@/lib/db-tipos";
  */
 export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, db: Db, ahora: Date): Promise<DetalleDeMesa | null> {
   const mesa = await db.mesa.findFirst({
-    where: { id: mesaId, sucursalId },
+    where: { id: mesaId, sucursalId, tipo: "SALON" }, // ADR-039: el puesto mostrador no se abre como una mesa
     include: {
       cuentas: {
         where: { cerradaEn: null },

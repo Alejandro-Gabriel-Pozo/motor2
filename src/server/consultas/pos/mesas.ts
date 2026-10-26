@@ -27,7 +27,7 @@ export async function obtenerLimiteMesasAbiertas(sucursalId: string, db: Db) {
  */
 export async function obtenerMapaDeMesas(sucursalId: string, db: Db, ahora: Date): Promise<MapaDeMesas> {
   const filas = await db.mesa.findMany({
-    where: { sucursalId },
+    where: { sucursalId, tipo: "SALON" }, // ADR-039: el puesto mostrador no es una mesa del mapa, ni cuenta en sus métricas ni en el «siguiente número»
     orderBy: { numero: "asc" },
     include: {
       cuentas: {
