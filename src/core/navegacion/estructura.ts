@@ -1,4 +1,5 @@
-import { NAV_MOVIMIENTOS } from "@/core/movimientos/public";
+import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
+import { NAV_MOVIMIENTOS, PROCESOS_DEL_SELECTOR } from "@/core/movimientos/public";
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { PanelActivo, PanelNav } from "./panel";
 
@@ -62,6 +63,8 @@ export const GRUPOS_NAV: GrupoNav[] = [
     label: "Catálogo",
     items: [
       { href: "/catalogo/productos", label: "Productos", accion: "producto_ver_catalogo", panel: "ambos" },
+      // Antes en Movimientos (solo se muda la entrada del menú: la URL es la misma). El precio de venta propio de la sucursal activa; delegable al encargado.
+      { href: "/movimientos/precio-local", label: "Precio local", accion: "precio_local", panel: "sucursal" },
       { href: "/catalogo/proveedores", label: "Proveedores", accion: "proveedores", panel: "empresa" },
       { href: "/catalogo/clientes", label: "Clientes con descuento", accion: "clientes", panel: "empresa" },
       { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta", panel: "empresa" },
@@ -84,6 +87,10 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/carta/agrupados", label: "Ítems agrupados de la carta", accion: "carta_items_agrupados", panel: "sucursal" },
       { href: "/carta/portal", label: "Portal de sucursales", accion: "carta_portal", panel: "empresa" },
       { href: "/carta/tema", label: "Tema de la carta", accion: "carta_tema", panel: "sucursal" },
+      // Antes en Movimientos (solo se muda la entrada del menú: las URL son las mismas). GO-2d (ADR-030 §5): lo que se acabó hoy en la sucursal (tamaños, guarniciones, adicionales); delegable al encargado del turno.
+      { href: "/movimientos/opciones-agotadas", label: "Opciones agotadas", accion: "opcion_apagar_en_sucursal", panel: "sucursal" },
+      // GO-3b (ADR-032): qué plato va cada día en los lugares «del día» de las promos de la sucursal; delegable al encargado. Oculto mientras `MENU_DEL_DIA_VISIBLE` (core/carta) esté apagado.
+      ...(MENU_DEL_DIA_VISIBLE ? [{ href: "/movimientos/menu-del-dia", label: "Menú del día", accion: "promo_menu_del_dia" as const, panel: "sucursal" as const }] : []),
     ],
   },
   {
@@ -100,8 +107,11 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/stock/alertas", label: "Alertas", accion: "ver_stock", panel: "sucursal" },
       { href: "/stock/minimo", label: "Stock mínimo", accion: "stock_minimo", panel: "sucursal" },
       { href: "/stock/seccion-habitual", label: "Sección habitual", accion: "stock_seccion_habitual", panel: "sucursal" },
-      { href: "/stock/reclasificar", label: "Reclasificar", accion: "stock_reclasificar", panel: "sucursal" },
       { href: "/stock/conteo-frecuencia", label: "Frecuencia de conteo", accion: "conteo_frecuencia", panel: "sucursal" },
+      // Antes en Movimientos (solo se mudan las entradas del menú: las URL son las mismas). Reclasificar ya no tiene ítem: se abre desde «Registrar movimiento» (RUTAS_DE_UNA_ENTRADA).
+      { href: "/movimientos/secciones", label: "Depósitos", accion: "secciones", panel: "sucursal" },
+      { href: "/movimientos/motivos-merma", label: "Motivos de Merma", accion: "motivos_merma", panel: "empresa" },
+      { href: "/movimientos/destinos-consumo", label: "Destinos de Consumo", accion: "motivos_destino_consumo", panel: "empresa" },
     ],
   },
   {
@@ -173,7 +183,7 @@ export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [
  * Rutas de proceso que se abren desde UNA entrada del menú (el selector «Registrar movimiento»: Ajuste, Consumo, Producción…) en vez de tener cada una su ítem. Cada ruta lleva la acción de «Ver» que
  * protege su página (la misma que pide; un test lo comprueba), su panel y la `entrada`: el `href` del ítem del menú que se resalta cuando esa ruta está abierta. Se leen igual que `RUTAS_FUERA_DEL_MENU`
  * (`itemDeRuta`, `accionDeRuta`, `panelDeRuta`, `accionesDeNavegacion`, `pantallaTrasCambiarSucursal`), más: `hrefActivoDelMenu` las traduce a su entrada y el buscador del cajón de celular (`buscarPantallaEnMenu`)
- * las encuentra, para que «ajuste» siga apareciendo aunque ya no sea un ítem. Hoy está vacía a propósito: se puebla junto con la entrada del menú (poblarla antes cambiaría el ítem resaltado).
+ * las encuentra, para que «ajuste» siga apareciendo aunque ya no sea un ítem. Se arma desde `PROCESOS_DEL_SELECTOR` (una sola fuente con la entrada del menú y la página `/movimientos`).
  */
 export interface RutaDeUnaEntrada {
   /** La ruta de la pantalla (`/movimientos/ajuste`). */
@@ -187,7 +197,17 @@ export interface RutaDeUnaEntrada {
   entrada: string;
 }
 
-export const RUTAS_DE_UNA_ENTRADA: readonly RutaDeUnaEntrada[] = [];
+/** La entrada del menú («Registrar movimiento») a la que se abren los procesos del selector y Reclasificar. */
+const ENTRADA_REGISTRAR_MOVIMIENTO = "/movimientos";
+
+export const RUTAS_DE_UNA_ENTRADA: readonly RutaDeUnaEntrada[] = PROCESOS_DEL_SELECTOR.map(
+  (p): RutaDeUnaEntrada => ({ href: p.href, label: p.etiquetaCorta, accion: p.accion, panel: "sucursal", entrada: ENTRADA_REGISTRAR_MOVIMIENTO }),
+);
+
+/** De las rutas de una entrada, las que el rol puede ver (su `accion`): lo que se le ofrece al buscador del cajón de celular, que no decide permisos. Se calcula en el servidor. */
+export function rutasDeUnaEntradaVisibles(puedeVer: ReadonlySet<AccionClave>, rutas: readonly RutaDeUnaEntrada[] = RUTAS_DE_UNA_ENTRADA): RutaDeUnaEntrada[] {
+  return rutas.filter((r) => puedeVer.has(r.accion));
+}
 
 /**
  * Rutas HIJAS con acción propia (Fase 6, 6.17c; el espacio del producto): una pantalla cuya ruta cuelga de un ítem del menú pero que se protege con OTRA acción. `accionDeRuta` resuelve por prefijo del menú, así que

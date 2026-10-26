@@ -120,6 +120,22 @@ test("celular: el cajón ofrece solo lo que el servidor le ofrece al rol (sin pe
   }
 });
 
+test("celular: el buscador del cajón sigue encontrando «Consumo» (ya no es un ítem: cuelga de «Registrar movimiento») solo si el rol puede verlo", async ({ browser, baseURL, sucursalId }) => {
+  const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { proceso_consumo: "ver", proceso_merma: "ver" });
+  try {
+    await fijarCelular(page);
+    await page.goto("/movimientos/merma");
+    await page.getByRole("button", { name: "Abrir menú" }).click();
+    const cajon = page.getByRole("dialog", { name: "Menú" });
+    await cajon.getByRole("searchbox").fill("consumo");
+    await expect(cajon.getByRole("link", { name: /^Consumo/ })).toHaveAttribute("href", "/movimientos/consumo");
+    await cajon.getByRole("searchbox").fill("ajuste");
+    await expect(cajon.getByRole("status")).toHaveText("Sin resultados");
+  } finally {
+    await limpiar();
+  }
+});
+
 test("escritorio (1280 px): el menú lateral sigue fijo, sin ☰, y «Ocultar menú» sigue andando", async ({ paginaAutenticada: page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/catalogo/opciones");

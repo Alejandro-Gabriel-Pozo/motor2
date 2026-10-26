@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { hrefActivoDelMenu, type GrupoNav } from "@/core/navegacion/estructura";
+import { hrefActivoDelMenu, type GrupoNav, type RutaDeUnaEntrada } from "@/core/navegacion/estructura";
 import { buscarPantallaEnMenu } from "@/core/navegacion/buscar-pantalla";
 import { IconoDeControl, IconoDeModulo } from "@/components/iconos";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
@@ -26,9 +26,9 @@ const CONSULTA_ESCRITORIO = "(min-width: 768px)";
  * «reducir movimiento» (`globals.css`).
  *
  * QUÉ se ofrece lo decide el SERVIDOR: recibe los MISMOS `grupos`, ya filtrados por permiso (`filtrarMenuPorPermiso`), que recibe el menú lateral; no se manda nada más al cliente ni se
- * cambia ninguna ruta. Acá no hay selector de Empresa/Sucursal: con 70 pantallas el buscador es el camino corto, y los grupos muestran todo lo que la persona puede ver.
+ * cambia ninguna ruta; `rutasDeUnaEntrada` son las pantallas de proceso que se abren desde una entrada del menú («Registrar movimiento») y el rol puede ver, para que el buscador las encuentre. Acá no hay selector de Empresa/Sucursal: con 70 pantallas el buscador es el camino corto, y los grupos muestran todo lo que la persona puede ver.
  */
-export function MenuCelular({ grupos, hrefsDelMenu }: { grupos: GrupoNav[]; hrefsDelMenu: readonly string[] }) {
+export function MenuCelular({ grupos, hrefsDelMenu, rutasDeUnaEntrada }: { grupos: GrupoNav[]; hrefsDelMenu: readonly string[]; rutasDeUnaEntrada: readonly RutaDeUnaEntrada[] }) {
   const pathname = usePathname();
   const [abierto, setAbierto] = useState(false);
   const [consulta, setConsulta] = useState("");
@@ -38,7 +38,7 @@ export function MenuCelular({ grupos, hrefsDelMenu }: { grupos: GrupoNav[]; href
   const idBase = useId();
 
   const hrefActivo = useMemo(() => hrefActivoDelMenu(pathname, hrefsDelMenu, new Set(grupos.flatMap((g) => g.items.map((i) => i.href)))), [pathname, hrefsDelMenu, grupos]);
-  const encontradas = useMemo(() => buscarPantallaEnMenu(grupos, consulta), [grupos, consulta]);
+  const encontradas = useMemo(() => buscarPantallaEnMenu(grupos, consulta, rutasDeUnaEntrada), [grupos, consulta, rutasDeUnaEntrada]);
   const buscando = consulta.trim() !== "";
 
   const abrir = () => {

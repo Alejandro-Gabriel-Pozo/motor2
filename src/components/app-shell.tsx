@@ -1,6 +1,6 @@
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { signOut } from "@/lib/auth";
-import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso, hrefsDelMenu } from "@/core/navegacion/estructura";
+import { GRUPOS_NAV, accionesDeNavegacion, filtrarMenuPorPermiso, hrefsDelMenu, rutasDeUnaEntradaVisibles } from "@/core/navegacion/estructura";
 import { accionesDelMenuQueElUsuarioPuedeVer } from "@/server/acceso/gate";
 import { situacionDelRegistroDeModulos } from "@/server/acceso/modulos-de-empresa";
 import { politicaDeEmpresa } from "@/server/acceso/politica-de-empresa";
@@ -61,7 +61,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
           columna se queda del ancho que sobra junto al menú y el scroll es el de la tabla. */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-borde bg-superficie px-6 py-3 text-sm text-tinta-suave">
-          <MenuCelular grupos={grupos} hrefsDelMenu={hrefsDelMenu()} />
+          <MenuCelular grupos={grupos} hrefsDelMenu={hrefsDelMenu()} rutasDeUnaEntrada={rutasDeUnaEntradaVisibles(puedeVer)} />
           <CotizacionEncabezado cotizacion={cotizacion} />
           <span className="flex items-center gap-1">
             {ctx.empresas.length > 1 && (

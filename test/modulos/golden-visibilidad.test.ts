@@ -25,7 +25,7 @@ import { modulosEfectivos } from "../../src/core/modulos/clausura";
 const RUTA_JSON = resolve(__dirname, "__golden__", "empresa-principal.json");
 
 const TODOS_LOS_ITEMS = [...GRUPOS_NAV.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU];
-const ADMIN = new Set<AccionClave>(TODOS_LOS_ITEMS.flatMap((i) => (i.accion ? [i.accion] : [])));
+const ADMIN = new Set<AccionClave>(TODOS_LOS_ITEMS.flatMap((i) => (i.algunaDe ? [...i.algunaDe] : i.accion ? [i.accion] : [])));
 const OPERADOR = new Set<AccionClave>(
   ACCIONES.filter((a) => (a.rolesEditarSemilla as readonly string[]).includes("operador")).map((a) => a.clave as AccionClave),
 );
