@@ -9,6 +9,13 @@ Una persona física consume esta vez como agente de una empresa: consume la pers
 - Enganche sin tocar el cierre: campos nuevos opcionales en `Cuenta` y una acción hermana de `asignarClienteACuenta`, siempre antes de cerrar (asignar dentro de `cerrarCuenta` rompería la idempotencia: el reintento devuelve «ya cerrada» y ignora el cambio).
 - Riesgos: autorización del agente (un operario no debería imputar a una empresa ajena: clave propia de piso administrador); tope de crédito (advertir, no bloquear: hoy «la mesa ya comió»); aislamiento entre empresas clientes (no hay RLS: solo filtros de la aplicación); `Cliente.nombre` es único por empresa.
 
+### Aclaración del dueño (2026-10-26, segunda): F17 es un CONVENIO, no solo una imputación
+- Lo que quiere el dueño: que a un agente/empresa **solo se le pueda generar ticket de lo pactado**, por ejemplo el menú ejecutivo. Es una restricción de qué se puede vender en el POS a ese cliente, no solo a quién se imputa.
+- Peldaños propuestos (escalera de producto, acumulativos; a validar): **N0** cliente con % de descuento (ya existe: es lo más básico); **N1** convenio con lista de ofertas permitidas (solo menú ejecutivo); **N2** precio pactado propio del convenio; **N3** persona–empresa como agente (consume uno, se imputa a la otra); **N4** tope de crédito y cuenta corriente.
+- El cierre de cuenta no recibe cliente: el cliente se asigna a la cuenta abierta antes de cerrar (hoy solo con % de descuento). El convenio se aplicaría en ese mismo momento, al asignar el cliente, antes de cargar ítems.
+- Preguntas de producto (una por vez, con recomendación): ¿el convenio es exclusivo (solo puede pedir eso) o es un descuento sobre cualquier cosa?; ¿precio pactado o % de descuento?; ¿límite de un menú por agente por día?; ¿quién autoriza que alguien sea agente de la empresa?
+- Base existente para el menú ejecutivo: promociones/combos de la carta (`PromoCarta`, ADR-032 y el rediseño del menú del día, GO-3d, pendiente en `docs/pendientes-sesion-2026-10-22.md`).
+
 ## Hallazgos transversales
 1. «Ticket» = `Cuenta` cerrada con venta. Los ejemplares (`EjemplarTicket`) son el papel impreso: «566-A» y «566-B» son dos ejemplares del mismo número. El importe no se guarda: se deriva de las líneas no anuladas.
 2. `cerrarCuenta` NO cobra (decisión B5, `docs/plan-tomar-pedido-2026-09-25.md`): no hay caja, pago ni medio de pago. «Ticket no cobrado» es vacío hoy.
