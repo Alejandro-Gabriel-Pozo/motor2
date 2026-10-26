@@ -39,6 +39,7 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
     actualizarActivaPromoCartaEnSucursal: SUC("carta_promo_activar"),
     guardarPrecioLocalPromoCarta: SUC("carta_promo_precio_local"),
     guardarCuposPromoCarta: EMP("carta_promo_definir"),
+    guardarSoloSalonPromoCarta: EMP("carta_promo_definir"),
   },
   "catalogo/precio-local.ts": {
     setPrecioLocalProducto: SUC("precio_local"),
@@ -238,9 +239,10 @@ describe("tramo C (carta, catálogo y stock): cada Server Action entra por su en
     ).toEqual(esperadas);
   });
 
-  it("son las 51 mutaciones de la pieza en 17 archivos, más guardarReceta (y las 5 de la receta propia que comparten archivo), más las 20 de configuración de la carta en 8 archivos", () => {
+  it("son las 51 mutaciones de la pieza en 17 archivos, más guardarReceta (y las 5 de la receta propia que comparten archivo), más las 20 de configuración de la carta en 8 archivos, más `guardarSoloSalonPromoCarta` (interruptor «solo salón»)", () => {
     const total = Object.values(DECLARADAS).reduce((n, fs) => n + Object.keys(fs).length, 0);
-    expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 20);
+    // + 1: `guardarSoloSalonPromoCarta` (docs/diseno-promo-solo-salon-2026-10-26.md), en `carta/promos.ts` (que ya estaba entre los 17 archivos).
+    expect(total).toBe(51 + 1 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 20);
     expect(Object.keys(DECLARADAS).filter((a) => a !== "catalogo/recetas.ts")).toHaveLength(17 + 8);
     for (const f of RECETA_PROPIA_YA_MIGRADAS) expect(DECLARADAS["catalogo/receta-sucursal.ts"][f], f).toBeDefined();
     // Bloque D: de las 20, 8 son de empresa (secciones —con «Ordenar» de CARTA-MANT F3—, portal y registro público) y 12 de sucursal: copiar la carta y las dos del tema, y desde S-10/D1 (O.59) las 9 de géneros, contenido e ítems agrupados.

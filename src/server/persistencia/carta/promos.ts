@@ -106,3 +106,15 @@ export async function fijarPrecioLocalDePromo(db: Prisma.TransactionClient, args
     update: { precioLocal: args.precioLocal },
   });
 }
+
+/**
+ * El interruptor «solo salón» de la promo con su control OPTIMISTA: escribe solo si la versión sigue siendo la que vio la pantalla, y la incrementa (la misma `version` que la vigencia). Devuelve cuántas filas cambió (0 = alguien la cambió entre medio:
+ * `VERSION_DESACTUALIZADA`).
+ */
+export async function cambiarSoloSalonDePromo(db: Prisma.TransactionClient, args: { id: string; versionEsperada: number; soloSalon: boolean }): Promise<number> {
+  const { count } = await db.promoCarta.updateMany({
+    where: { id: args.id, version: args.versionEsperada },
+    data: { soloSalon: args.soloSalon, version: { increment: 1 } },
+  });
+  return count;
+}

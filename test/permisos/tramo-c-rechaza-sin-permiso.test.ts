@@ -15,6 +15,7 @@ import {
   actualizarActivaPromoCartaEnSucursal,
   guardarCuposPromoCarta,
   guardarPrecioLocalPromoCarta,
+  guardarSoloSalonPromoCarta,
   guardarPromoCarta,
 } from "../../src/server/actions/carta/promos";
 import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/catalogo/precio-local";
@@ -79,7 +80,7 @@ import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-car
  * Antes de este test, ~38 de las 52 no tenían ningún test de rechazo (entre ellas las 5 de promos y `setPrecioLocalProducto`, que son dinero).
  *
  * Hito 5, bloque D (`docs/plan-hito-5-pureza.md` §6.1): se suman las 19 funciones de las 8 acciones de configuración de la carta (`secciones`, `generos`,
- * `contenido-producto`, `items-agrupados`, `portal-empresa`, `registro-publico`, `tema`, `copiar-carta`), con su red ANTES de mudarlas: 71 en total. 16 son de
+ * `contenido-producto`, `items-agrupados`, `portal-empresa`, `registro-publico`, `tema`, `copiar-carta`), con su red ANTES de mudarlas: 71 en total (72 con `guardarSoloSalonPromoCarta`, el interruptor «solo salón»). 16 son de
  * contexto empresa y 3 de sucursal (`copiarCartaDeSucursal`, `guardarTemaCarta`, `cambiarAplicacionTema`). La foto suma las 8 tablas de la carta que escriben
  * (`seccionCarta`, `generoCarta`, `contenidoCartaProducto`, `itemAgrupadoCarta`, `opcionItemAgrupadoCarta`, `portalCartaEmpresa`, `sucursalPublica`,
  * `temaCartaSucursal`). `copiarCartaDeSucursal` tiene un `preparar`: solo escribe sobre una carta VACÍA, así que antes de la foto se vacía la carta de Central y se
@@ -153,6 +154,7 @@ const MUTACIONES: Mutacion[] = [
     contexto: "empresa",
     llamar: (e) => guardarCuposPromoCarta(e.promoId, [{ seccionCartaId: e.seccionCartaId, cantidadMaxima: 1 }]),
   },
+  { nombre: "guardarSoloSalonPromoCarta", clave: "carta_promo_definir", contexto: "empresa", llamar: (e) => guardarSoloSalonPromoCarta({ promoCartaId: e.promoId, versionEsperada: 1, soloSalon: true }) },
   { nombre: "setPrecioLocalProducto", clave: "precio_local", contexto: "sucursal", llamar: (e) => setPrecioLocalProducto(e.pizzaId, 13000, true) },
   {
     nombre: "sincronizarPrecioLocalGrupoCarta",
@@ -460,12 +462,13 @@ async function rechazaSinTocarNada(actor: { id: string; email: string }, m: Muta
 const BAJO_EL_PISO = MUTACIONES.filter((m) => PISO.get(m.clave) === "administrador");
 const DE_SUCURSAL = MUTACIONES.filter((m) => m.contexto === "sucursal");
 
-describe("tramo C (carta, catálogo y stock): las 71 mutaciones rechazan sin el permiso y no cambian ninguna tabla", () => {
-  it("la lista son las 71 (las 51 de la pieza, guardarReceta y las 19 de configuración de la carta), con el contexto del catálogo y los pisos esperados", () => {
-    expect(MUTACIONES).toHaveLength(71);
-    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(71);
+describe("tramo C (carta, catálogo y stock): las 72 mutaciones rechazan sin el permiso y no cambian ninguna tabla", () => {
+  it("la lista son las 72 (las 51 de la pieza, guardarReceta, las 19 de configuración de la carta y guardarSoloSalonPromoCarta), con el contexto del catálogo y los pisos esperados", () => {
+    expect(MUTACIONES).toHaveLength(72);
+    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(72);
     for (const m of MUTACIONES) expect(m.contexto, `${m.nombre}: el contexto declarado no es el del catálogo`).toBe(CONTEXTO.get(m.clave));
-    expect(BAJO_EL_PISO.length).toBe(39 + 19);
+    // +1: guardarSoloSalonPromoCarta (carta_promo_definir, piso administrador).
+    expect(BAJO_EL_PISO.length).toBe(40 + 19);
     // 19 de la pieza original + 3 del bloque D (copiar la carta y el tema) + 9 que pasaron a contexto sucursal con S-10/D1 (géneros, contenido e ítems agrupados, O.59).
     expect(DE_SUCURSAL.length).toBe(19 + 3 + 9);
   });

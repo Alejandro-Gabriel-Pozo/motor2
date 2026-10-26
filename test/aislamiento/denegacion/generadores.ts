@@ -147,6 +147,8 @@ const completos: Record<string, Valor> = {
       intento(c, ["productoPv2Id"], [{ cupoId: c.propio.cupoListaId, productoId: k.productoPv2Id }]),
     ),
   "accion|actions/carta/combos.ts|actualizarActivaEntradaDeCupo": (k) => [{ entradaId: k.entradaDeCupoId, activa: false }],
+  // Interruptor «solo salón» (docs/diseno-promo-solo-salon-2026-10-26.md): la promo AJENA (la del otro mundo), con la versión sembrada (1): no se encuentra, no se toca.
+  "accion|actions/carta/promos.ts|guardarSoloSalonPromoCarta": (k) => [{ promoCartaId: k.promoComboId, versionEsperada: 1, soloSalon: true }],
   "accion|actions/carta/combos.ts|guardarVigenciaPromoCarta": (k) => [{ promoCartaId: k.promoComboId, versionEsperada: 1, vigenteDesde: "2026-01-01", diasDeSemana: [0, 1, 2, 3, 4] }],
   // GO-3b: el menú del día de la sucursal (eco de la sucursal primero). Cargar el `pv2` (con receta, disponible) el día del plato del mundo; quitar el plato del mundo; copiarlo al día siguiente.
   "accion|actions/carta/menu-del-dia.ts|agregarPlatoDelDia": (k, c) =>

@@ -30,6 +30,23 @@ export interface ComandoGuardarPromoCarta {
 export type ResultadoGuardarPromoCarta = ResultadoCaso<null, "SECCION_NO_ENCONTRADA" | "PROMO_NO_ENCONTRADA" | "BAJO_EL_PISO">;
 
 /**
+ * Comando «dónde se ve una promo» (interruptor «solo salón», docs/diseno-promo-solo-salon-2026-10-26.md): lo que recibe `guardarSoloSalonPromoCartaCasoDeUso`, ya validado por `guardComandoGuardarSoloSalonPromoCarta`. Lleva la versión que vio la
+ * pantalla (control optimista: `PromoCarta.version`, la misma de la vigencia).
+ */
+export interface ComandoGuardarSoloSalonPromoCarta {
+  promoCartaId: string;
+  versionEsperada: number;
+  soloSalon: boolean;
+}
+
+/**
+ *  - `PROMO_NO_ENCONTRADA`: la promo no existe (o es de otra empresa: RLS);
+ *  - `VERSION_DESACTUALIZADA`: otra persona cambió la promo (el interruptor o la vigencia) desde que se cargó la pantalla: no se escribe nada.
+ * Pedir el valor que la promo ya tiene es éxito con `huboCambio: false`.
+ */
+export type ResultadoGuardarSoloSalonPromoCarta = ResultadoCaso<{ huboCambio: boolean }, "PROMO_NO_ENCONTRADA" | "VERSION_DESACTUALIZADA">;
+
+/**
  * Comando «fijar el precio de una promo en la sucursal activa»: lo que recibe `guardarPrecioLocalPromoCartaCasoDeUso`. El `precio` es el RESULTADO de
  * `guardComandoGuardarPrecioLocalPromoCarta` (S-52: el formato y el rango del precio, que la acción calcula con lo que mandó el cliente); el caso de uso aplica su rechazo
  * DESPUÉS de leer la promo (una promo inexistente gana sobre un precio inválido: fijado por tests), nunca antes.

@@ -4,6 +4,7 @@ import {
   guardComandoGuardarCuposPromoCarta,
   guardComandoGuardarPrecioLocalPromoCarta,
   guardComandoGuardarPromoCarta,
+  guardComandoGuardarSoloSalonPromoCarta,
   guardPrecioVistoDePromo,
 } from "@/core/features/carta/promos.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
@@ -14,6 +15,7 @@ import { actualizarActivaPromoCartaEnSucursalCasoDeUso } from "./casos-de-uso/ac
 import { guardarCuposPromoCartaCasoDeUso } from "./casos-de-uso/guardar-cupos-promo-carta";
 import { guardarPrecioLocalPromoCartaCasoDeUso } from "./casos-de-uso/guardar-precio-local-promo-carta";
 import { guardarPromoCartaCasoDeUso } from "./casos-de-uso/guardar-promo-carta";
+import { guardarSoloSalonPromoCartaCasoDeUso } from "./casos-de-uso/guardar-solo-salon-promo-carta";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
@@ -55,6 +57,22 @@ export async function guardarPromoCarta(datos: DatosPromoCarta): Promise<Resulta
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await guardarPromoCartaCasoDeUso(ctx, comando.valor);
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
+  });
+}
+
+/**
+ * «Dónde se ve» una promo: el interruptor «solo salón» (docs/diseno-promo-solo-salon-2026-10-26.md). Prendido, la promo se vende desde el POS pero NO aparece en la carta pública (web, QR ni impresa). Es de la EMPRESA, como definir la promo
+ * (`carta_promo_definir`, la PRIMERA línea del envoltorio). Adaptador fino: permiso → formato del comando (`guardComandoGuardarSoloSalonPromoCarta`, DENTRO del envoltorio: el rechazo por permiso llega antes que el de formato) → caso de uso
+ * (`casos-de-uso/guardar-solo-salon-promo-carta.ts`: control optimista con la `version` que vio la pantalla, SERIALIZABLE, auditoría) → revalidar la carta pública SOLO si hubo cambio (un pedido repetido no invalida el caché) y después de
+ * confirmar → `aResultadoAccion`. Aparte de `guardarPromoCarta` a propósito: esa edición no lleva versión y una pantalla vieja apagaría en silencio el «solo salón» que otra persona acaba de prender.
+ */
+export async function guardarSoloSalonPromoCarta(entrada: { promoCartaId: unknown; versionEsperada: unknown; soloSalon: unknown }): Promise<ResultadoAccion> {
+  return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
+    const comando = guardComandoGuardarSoloSalonPromoCarta(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await guardarSoloSalonPromoCartaCasoDeUso(ctx, comando.valor);
+    if (resultado.ok && resultado.datos.huboCambio) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

@@ -47,6 +47,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   { archivo: "src/server/actions/carta/casos-de-uso/agregar-producto-a-la-carta.ts", entidad: "ContenidoCartaProducto", campos: ["visibleEnCarta"] },
   // Fase 5 de la ola «precio y carta» (DEC-11): «Mostrar el nombre arriba» de un producto base con un solo eje (cómo se LEE en la carta pública). El resto del contenido sigue sin auditoría.
   { archivo: "src/server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts", entidad: "ContenidoCartaProducto", campos: ["mostrarNombreArriba"] },
+  // Interruptor «solo salón» de las promos (docs/diseno-promo-solo-salon-2026-10-26.md): lo que decide si una promo con su precio se publica en la carta pública; cada cambio queda con quién, cuándo y de qué a qué.
+  { archivo: "src/server/actions/carta/casos-de-uso/guardar-solo-salon-promo-carta.ts", entidad: "PromoCarta", campos: ["soloSalon"] },
   // CARTA-MANT F3: «Ordenar» las secciones de la empresa, una fila por sección que cambió de lugar.
   { archivo: "src/server/actions/carta/casos-de-uso/ordenar-secciones-carta.ts", entidad: "SeccionCarta", campos: ["orden"] },
 ];
