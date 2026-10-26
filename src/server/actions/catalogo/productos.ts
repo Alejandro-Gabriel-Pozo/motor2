@@ -6,9 +6,11 @@ import { obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal }
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
+import { whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
+import { leerFiltrosDeProductos, necesitaLaEmpresaEntera, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
+import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
@@ -197,14 +199,23 @@ export interface PaginaProductos {
 
 const TAMANO_PAGINA_CATALOGO = 50;
 
-/** Tabla de administración de catálogo (`/catalogo/productos`) — paginado por cursor, con búsqueda opcional. Exige el «Ver» de `producto_ver_catalogo`, la clave de esa página (H8). */
-export async function listarProductosPagina(cursor?: string, termino?: string): Promise<PaginaProductos> {
+/**
+ * Tabla de administración de catálogo (`/catalogo/productos`) — paginado por cursor, con búsqueda y filtros opcionales. Exige el «Ver» de `producto_ver_catalogo`, la clave de esa página (H8).
+ * `filtros` viene del cliente (es un endpoint): se valida contra las listas cerradas de `core/catalogo/filtros-de-productos.ts` (lo que no es de la lista se ignora) y se traduce a un `where` en el servidor,
+ * siempre dentro de la empresa y la sucursal activa (`server/lecturas/catalogo/filtros-de-productos.ts`).
+ */
+export async function listarProductosPagina(cursor?: string, termino?: string, filtros?: EntradaDeFiltrosDeProductos): Promise<PaginaProductos> {
   const ctx = await requerirVerDeEmpresa("producto_ver_catalogo");
-  const t = textoDeBusqueda(termino);
+  // Aunque el tipo diga texto, es un endpoint: `leerFiltrosDeProductos` acepta cualquier cosa y deja solo lo que está en sus listas cerradas.
+  const f = leerFiltrosDeProductos({ ...(typeof filtros === "object" && filtros !== null ? filtros : {}), q: termino });
   // El cursor es un identificador que puede venir del cliente: sin NUL ni sustitutos sueltos (Postgres no los recibe), y vacío = primera página.
   const cursorLimpio = cursor ? textoDeBusqueda(cursor) : "";
-  const items = await ctx.db.producto.findMany({
-    where: t ? { OR: [{ nombre: { contains: escaparComodinesLike(t), mode: "insensitive" } }, { codigo: { contains: escaparComodinesLike(t), mode: "insensitive" } }] } : {},
+  // P2 (RLS por sucursal): la N de «Sucursales N de M» cuenta las sucursales donde el producto está disponible (en toda la empresa) y la M son las de la empresa (`Sucursal`, que la RLS por sucursal no toca): el conteo corre con
+  // la base de VERIFICACIÓN (lectura en toda la empresa; es un número, la disponibilidad ya es pública por la carta). Sin eso la N se achicaría a la sucursal activa y la M no. Con ella corre también la lista cuando el
+  // filtro pregunta por «alguna/ninguna sucursal»: devuelve filas de `Producto` (tabla de la empresa), nunca la disponibilidad de otra sucursal.
+  const lista = necesitaLaEmpresaEntera(f) ? await lecturaDeVerificacionEnLaEmpresa(ctx) : ctx;
+  const items = await lista.db.producto.findMany({
+    where: await whereDeLosProductos(ctx, lista.db, f),
     select: { id: true, codigo: true, nombre: true, tipo: true },
     orderBy: [{ nombre: "asc" }, { id: "asc" }],
     take: TAMANO_PAGINA_CATALOGO + 1,
@@ -217,8 +228,6 @@ export async function listarProductosPagina(cursor?: string, termino?: string): 
 
   // Batch, sin N+1 (una página entera de 50 filas): disponibilidad EN ESTA sucursal + cuántas sucursales en total la
   // tienen, para "Disponible acá" y "Sucursales" (§10/P10, ver disponibilidad-producto-consulta.ts).
-  // P2 (RLS por sucursal), E3: la N de «Sucursales N de M» cuenta las sucursales donde el producto está disponible (en toda la empresa) y la M son las de la empresa (`Sucursal`, que la RLS por sucursal no toca): el conteo corre con
-  // la base de VERIFICACIÓN (lectura en toda la empresa; es un número, la disponibilidad ya es pública por la carta). Sin eso la N se achicaría a la sucursal activa y la M no.
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);
   const [disponibleAcaPorProducto, conteos, totalSucursales] = await Promise.all([
     disponibilidadDeProductos(ctx.sucursalId, ids, ctx.db),
@@ -276,7 +285,19 @@ export interface DatosProducto {
  * `producto_campos_sensibles` quien edita—: el formulario abierto sin la clave no los manda, y la clave puede llegar mientras edita. `null` en la unidad de compra sigue siendo «sin unidad de compra». El alta
  * (`darDeAltaProducto`) los sigue pidiendo.
  */
-export type DatosProductoEdicion = Omit<DatosProducto, CampoSensibleDelProducto> & Partial<Pick<DatosProducto, CampoSensibleDelProducto>>;
+export type DatosProductoEdicion = Omit<DatosProducto, CampoSensibleDelProducto> &
+  Partial<Pick<DatosProducto, CampoSensibleDelProducto>> & {
+    /**
+     * El precio de venta que mostraba el formulario al abrirse (ola «precio y carta», Fase 2, paso A4): si el precio cambia y este ya no es el guardado (otra persona lo cambió mientras se editaba), no
+     * se guarda nada y el mensaje pide recargar. Si no viene y el precio cambia, también (falla cerrado).
+     */
+    precioVentaVisto?: number;
+    /**
+     * Fase 4 de la ola «precio y carta» (ADR-035): «¿Cómo se vende?» (`DIRECTO` / `BASE_CONFIGURABLE`). No viene = queda como estaba. Cambiarlo exige `producto_campos_sensibles` y pasar a
+     * «por opción» exige la regla de la base; lo decide el caso de uso.
+     */
+    modoDeVenta?: ModoDeVenta;
+  };
 
 /**
  * Alta rápida inline de una MP nueva, sin salir del wizard de Compra por
@@ -373,15 +394,17 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
  * Aplica el mismo precio de venta GLOBAL a varios productos de UN mismo ítem agrupado de la carta (el paso que ofrece
  * `actualizarProducto` con `sincronizable`; docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8). Misma auditoría que editar el precio de cada uno a mano,
  * y desde M.2 (D-3) los mismos permisos que cambiar un precio: `producto_sincronizar_precio_carta` más `producto_campos_sensibles`. Solo toca los `productoIds` pasados, y solo si son todos del mismo ítem agrupado.
+ * `preciosVistos` (ola «precio y carta», Fase 2, paso A5): el precio de venta que la pantalla mostró de cada producto al ofrecer igualarlo; si alguno cambió desde entonces, no se cambia ninguno y el
+ * mensaje pide recargar (`PRECIO_DESACTUALIZADO`).
  *
  * Desde el Hito 4 (H4C-13): permiso (`conPermisoDeEmpresa("producto_sincronizar_precio_carta")`) → formato del precio y de la lista
  * (`guardComandoSincronizarPrecioGrupoCarta`, core/features/catalogo/productos.guard.ts, DENTRO del envoltorio) → caso de uso
  * (`casos-de-uso/sincronizar-precio-grupo-carta.ts`: el ítem agrupado, y los precios con su auditoría en UNA transacción) → revalidar la carta pública si salió
  * bien → `aResultadoAccion`.
  */
-export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio: number): Promise<ResultadoAccion> {
+export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio: number, preciosVistos?: Readonly<Record<string, number>>): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("producto_sincronizar_precio_carta", async (ctx) => {
-    const comando = guardComandoSincronizarPrecioGrupoCarta({ productoIds, precio });
+    const comando = guardComandoSincronizarPrecioGrupoCarta({ productoIds, precio, preciosVistos });
     if (!comando.ok) return error(comando.mensaje);
     // M.2 (D-3): sincronizar es cambiar el precio de venta de varios productos: además de la clave de sincronizar pide `producto_campos_sensibles` (el caso de uso lo rechaza antes de leer nada).
     const resultado = await sincronizarPrecioGrupoCartaCasoDeUso(ctx, { ...comando.valor, puedeEditarCamposSensibles: await puedeEditarCamposSensiblesDelProducto(ctx) });

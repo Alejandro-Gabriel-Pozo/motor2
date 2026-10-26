@@ -8,6 +8,7 @@ import { ENTIDADES_AUDITABLES, descripcionParaMostrar, type CambioAuditable } fr
 import { listarRegistrosAuditoria, sucursalesVisiblesDeAuditoria } from "@/server/consultas/permisos/auditoria";
 import { TablaAuditoria, type FilaAuditoria } from "./tabla-auditoria";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { Enlace } from "@/ui/primitivas/enlace";
 
 export default async function AuditoriaPage({
   searchParams,
@@ -17,10 +18,10 @@ export default async function AuditoriaPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "ver_auditoria", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
   const entidad = (ENTIDADES_AUDITABLES as readonly string[]).includes(sp.entidad as string) ? (sp.entidad as CambioAuditable["entidad"]) : undefined;
@@ -53,25 +54,25 @@ export default async function AuditoriaPage({
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Auditoría administrativa</h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Cambios de precios, permisos, conteos físicos y traspasos, con quién y cuándo — catálogo/precios/permisos no pasan por el Kardex, así que este es su propio rastro (hallazgo de auditoría, Pivote 6).
         </p>
       </div>
       <div className="flex flex-wrap gap-2 text-sm">
-        <Link href="/administracion/auditoria" className={!entidad ? "font-semibold underline" : "text-neutral-500 hover:underline"}>
+        <Link href="/administracion/auditoria" className={!entidad ? "font-semibold underline" : "text-tinta-tenue hover:underline"}>
           Todas
         </Link>
         {ENTIDADES_AUDITABLES.map((e) => (
-          <Link key={e} href={`/administracion/auditoria?entidad=${e}`} className={entidad === e ? "font-semibold underline" : "text-neutral-500 hover:underline"}>
+          <Link key={e} href={`/administracion/auditoria?entidad=${e}`} className={entidad === e ? "font-semibold underline" : "text-tinta-tenue hover:underline"}>
             {e}
           </Link>
         ))}
       </div>
       <TablaAuditoria filas={filas} />
       {nextCursor && (
-        <Link href={`/administracion/auditoria?${paramsPaginaSiguiente.toString()}`} className="text-sm underline">
-          Página siguiente →
-        </Link>
+        <p className="text-sm">
+          <Enlace href={`/administracion/auditoria?${paramsPaginaSiguiente.toString()}`}>Página siguiente →</Enlace>
+        </p>
       )}
     </div>
   );

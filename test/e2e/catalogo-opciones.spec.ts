@@ -15,7 +15,9 @@ test("alta de un grupo: tamaño con 1 y 1 fijos, aparece en la lista y queda una
   await expect(page.getByRole("heading", { level: 1, name: "Opciones de venta" })).toBeVisible();
   await page.getByRole("button", { name: "+ Nuevo grupo" }).click();
   await page.getByLabel("Nombre del grupo").fill(nombre);
-  await page.getByRole("radio", { name: /^Tamaño/ }).check();
+  // Los tipos son tarjetas: la etiqueta cubre toda la tarjeta, así que se toca el texto (un `check()` sobre el radio choca con esa cobertura).
+  await page.getByRole("group", { name: /^Tipo/ }).getByText("Tamaño", { exact: true }).click();
+  await expect(page.getByRole("radio", { name: /^Tamaño/ })).toBeChecked();
   // Un tamaño se elige siempre una vez: los dos campos quedan fijos en 1.
   await expect(page.getByLabel("Mínimo a elegir")).toHaveValue("1");
   await expect(page.getByLabel("Máximo a elegir")).toHaveValue("1");
@@ -34,7 +36,8 @@ test("alta con un nombre que ya existe: el mensaje del servidor queda a la vista
   await page.goto("/catalogo/opciones");
   await page.getByRole("button", { name: "+ Nuevo grupo" }).click();
   await page.getByLabel("Nombre del grupo").fill(nombre);
-  await page.getByRole("radio", { name: /^Variante/ }).check();
+  await page.getByRole("group", { name: /^Tipo/ }).getByText("Variante", { exact: true }).click();
+  await expect(page.getByRole("radio", { name: /^Variante/ })).toBeChecked();
   await page.getByRole("button", { name: "Crear grupo" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Ya hay un grupo" })).toContainText(`Ya hay un grupo llamado «${nombre}»`);
   // Lo tipeado no se pierde con el error: se corrige y se vuelve a intentar.

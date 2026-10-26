@@ -22,7 +22,7 @@ import {
   guardarPrecioLocalPromoCarta,
   guardarPromoCarta,
 } from "../../../src/server/actions/carta/promos";
-import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../../src/server/actions/movimientos/precio-local";
+import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../../src/server/actions/catalogo/precio-local";
 import { fijarRendimientoLocal, volverAlRendimientoCentral } from "../../../src/server/actions/catalogo/rendimiento-local";
 import { volverALaRecetaCentral } from "../../../src/server/actions/catalogo/receta-sucursal";
 import { actualizarActivaPresentacion, actualizarProducto, agregarPresentacionAlternativa, darDeAltaProducto, sincronizarPrecioGrupoCarta } from "../../../src/server/actions/catalogo/productos";
@@ -301,7 +301,7 @@ describe("Huella de dinero del tramo C", () => {
     enCentral();
     await paso("promo: precio local del Menú en Central", await guardarPrecioLocalPromoCarta(menu.id, 9000));
     await paso("promo: el mismo precio local (sin auditoría)", await guardarPrecioLocalPromoCarta(menu.id, "9000"));
-    await paso("promo: precio local vacío vuelve al de la empresa", await guardarPrecioLocalPromoCarta(menu.id, ""));
+    await paso("promo: precio local vacío vuelve al de la empresa", await guardarPrecioLocalPromoCarta(menu.id, "", 9000));
     await paso("promo: precio local de una inexistente", await guardarPrecioLocalPromoCarta("no-existe", 100));
     await paso("promo: precio local inválido", await guardarPrecioLocalPromoCarta(menu.id, "-3"));
     await paso(
@@ -330,12 +330,12 @@ describe("Huella de dinero del tramo C", () => {
     // ── C. Precio local (Central; la Pizza y la Fainá en el mismo ítem agrupado) ─────────────────────────────────────────────────────────────────────────
     await paso("precio local: alta de la Pizza en $13000 (ofrece sincronizar)", await setPrecioLocalProducto(pizza.id, 13000, true));
     await paso("precio local: el mismo valor otra vez", await setPrecioLocalProducto(pizza.id, 13000, true));
-    await paso("precio local: deshabilitado", await setPrecioLocalProducto(pizza.id, 13000, false));
+    await paso("precio local: deshabilitado", await setPrecioLocalProducto(pizza.id, 13000, false, { precio: 13000, habilitado: true }));
     await paso("precio local: Flan (sin ítem agrupado)", await setPrecioLocalProducto(flan.id, 3500.5, true));
     await paso("precio local: negativo", await setPrecioLocalProducto(flan.id, -1, true));
     await paso("precio local: tres decimales", await setPrecioLocalProducto(flan.id, 1.234, true));
     await paso("precio local: producto inexistente", await setPrecioLocalProducto("no-existe", 100, true));
-    await paso("sincronizar precio local: Pizza y Fainá a $13000", await sincronizarPrecioLocalGrupoCarta(central, [pizza.id, faina.id, pizza.id], 13000, true));
+    await paso("sincronizar precio local: Pizza y Fainá a $13000", await sincronizarPrecioLocalGrupoCarta(central, [pizza.id, faina.id, pizza.id], 13000, true, { [pizza.id]: 12000, [faina.id]: 5000 }));
     await paso("sincronizar precio local: la pantalla era de otra sucursal", await sincronizarPrecioLocalGrupoCarta(norte, [pizza.id, faina.id], 13000, true));
     await paso("sincronizar precio local: no son del mismo ítem", await sincronizarPrecioLocalGrupoCarta(central, [pizza.id, flan.id], 13000, true));
     await paso("sincronizar precio local: lista vacía", await sincronizarPrecioLocalGrupoCarta(central, [], 13000, true));
@@ -376,11 +376,11 @@ describe("Huella de dinero del tramo C", () => {
     await paso("producto: alta con nombre repetido", await darDeAltaProducto({ codigo: "PV_X", nombre: "tarta", tipo: "PV", unidadStockId: u.id, factorConversion: 1 }));
     await paso(
       "producto: la Fainá pasa a $5200 (ofrece sincronizar)",
-      await actualizarProducto(faina.id, { nombre: "Fainá", tipo: "PV", unidadStockId: u.id, factorConversion: 1, precioVenta: 5200, precioConsignacion: 0 }),
+      await actualizarProducto(faina.id, { nombre: "Fainá", tipo: "PV", unidadStockId: u.id, factorConversion: 1, precioVenta: 5200, precioConsignacion: 0, precioVentaVisto: 5000 }),
     );
     await paso("producto: la Fainá sin cambios de precio", await actualizarProducto(faina.id, { nombre: "Fainá", tipo: "PV", unidadStockId: u.id, factorConversion: 1, precioVenta: 5200 }));
     await paso("producto: cambiar el tipo", await actualizarProducto(faina.id, { nombre: "Fainá", tipo: "MP", unidadStockId: u.id, factorConversion: 1 }));
-    await paso("sincronizar precio global: Pizza y Fainá a $11000", await sincronizarPrecioGrupoCarta([pizza.id, faina.id], 11000));
+    await paso("sincronizar precio global: Pizza y Fainá a $11000", await sincronizarPrecioGrupoCarta([pizza.id, faina.id], 11000, { [pizza.id]: 12000, [faina.id]: 5200 }));
     await paso("sincronizar precio global: negativo", await sincronizarPrecioGrupoCarta([pizza.id, faina.id], -5));
     await paso("sincronizar precio global: no son del mismo ítem", await sincronizarPrecioGrupoCarta([pizza.id, flan.id], 100));
     await paso("presentación: alta de la caja de 25 kg", await agregarPresentacionAlternativa(harina.id, caja.id, 25));

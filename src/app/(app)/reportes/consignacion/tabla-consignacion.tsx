@@ -10,13 +10,14 @@ const COLUMNAS_DEBIDO: ColumnaReporte<FilaDebidoConsignante>[] = [
   { clave: "liquidado", etiqueta: "Liquidado", alinear: "derecha", valor: (d) => d.liquidado, render: (d) => `$${d.liquidado.toLocaleString("es-AR")}` },
   { clave: "pagado", etiqueta: "Pagado", alinear: "derecha", valor: (d) => d.pagado, render: (d) => `$${d.pagado.toLocaleString("es-AR")}` },
   { clave: "importe", etiqueta: "Saldo debido", alinear: "derecha", valor: (d) => d.importe, render: (d) => `$${d.importe.toLocaleString("es-AR")}` },
-  {
-    clave: "accion",
-    etiqueta: "",
-    render: (d) =>
-      d.proveedorId ? <RegistrarPagoConsignante proveedorId={d.proveedorId} proveedorNombre={d.proveedor} saldoActual={d.importe} /> : null,
-  },
 ];
+
+/** «Registrar pago»: solo para quien tiene «Editar» de `pagar_consignante` (Fase 2b, D3; la acción lo vuelve a exigir en el servidor). */
+const COLUMNA_PAGAR: ColumnaReporte<FilaDebidoConsignante> = {
+  clave: "accion",
+  etiqueta: "",
+  render: (d) => (d.proveedorId ? <RegistrarPagoConsignante proveedorId={d.proveedorId} proveedorNombre={d.proveedor} saldoActual={d.importe} /> : null),
+};
 
 const COLUMNAS_STOCK: ColumnaReporte<FilaStockSinVenderConsignacion>[] = [
   {
@@ -35,14 +36,14 @@ const COLUMNAS_STOCK: ColumnaReporte<FilaStockSinVenderConsignacion>[] = [
     etiqueta: "Stock actual",
     alinear: "derecha",
     valor: (s) => s.stockActual,
-    render: (s) => <span className={s.stockActual <= 0 ? "text-red-600" : ""}>{s.stockActual}</span>,
+    render: (s) => <span className={s.stockActual <= 0 ? "text-error" : ""}>{s.stockActual}</span>,
   },
 ];
 
-export function TablaDebidoConsignante({ filas }: { filas: FilaDebidoConsignante[] }) {
+export function TablaDebidoConsignante({ filas, puedePagar }: { filas: FilaDebidoConsignante[]; puedePagar: boolean }) {
   return (
     <TablaReporte
-      columnas={COLUMNAS_DEBIDO}
+      columnas={puedePagar ? [...COLUMNAS_DEBIDO, COLUMNA_PAGAR] : COLUMNAS_DEBIDO}
       filas={filas}
       claveFila={(d, i) => `${d.proveedor}-${i}`}
       sinFilasTexto="Sin liquidaciones de consignación registradas."

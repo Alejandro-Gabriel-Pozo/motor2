@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Este archivo caracteriza los lugares del día con el menú del día ENCENDIDO (lo de antes del interruptor `MENU_DEL_DIA_VISIBLE`, apagado por decisión del dueño 2026-10-20): así sigue
+// probando que encenderlo restituye todo. El estado apagado lo prueba `menu-del-dia-interruptor.test.tsx`.
+vi.mock("../../src/core/carta/menu-del-dia", async (original) => ({ ...(await original<typeof import("../../src/core/carta/menu-del-dia")>()), MENU_DEL_DIA_VISIBLE: true }));
 import { guardarCuposPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta";
 import { guardComandoGuardarCuposPromoCarta } from "../../src/core/features/carta/promos.guard";
 import { diferenciaDeCupos } from "../../src/core/carta/public";

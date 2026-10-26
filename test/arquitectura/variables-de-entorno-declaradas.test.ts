@@ -139,6 +139,7 @@ const VARIABLES_DE_SCRIPTS: Record<string, string> = {
   VERCEL: "la fija Vercel; `construir.ts` decide por el entorno y las guardas de los seeds se niegan en Vercel",
   VERCEL_ENV: "la fija Vercel; `construir.ts` (S-31) y las guardas de los seeds",
   MOTOR2_MIGRAR_EN_BUILD: "`construir.ts`: aprobación explícita de migrar en el build (S-31: solo local y Producción de Vercel)",
+  GITHUB_STEP_SUMMARY: "la fija GitHub Actions en cada paso; `conteo-e2e.ts` le agrega el conteo del E2E para que se vea en el resumen de la corrida (opcional: sin ella solo imprime)",
   npm_execpath: "la fija npm al correr un script; `auditar-dependencias.ts` la usa para invocar el mismo npm",
   DIRECT_URL: "conexión del DUEÑO de las tablas: `medir-cuit.ts` y `verificar-registro-de-modulos.ts` (solo lectura); fuera del schema de runtime (S-32)",
   DATABASE_URL: "`benchmark-reportes.ts` la lee solo para comprobar que la base de benchmark NO es la principal",

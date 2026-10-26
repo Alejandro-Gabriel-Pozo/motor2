@@ -1,0 +1,47 @@
+{
+  "regla": "campo-type-number",
+  "meta": "0 (lote 6.33: todo número tecleado es un CampoNumero con su tipo declarado)",
+  "total": 24,
+  "entradas": 12,
+  "porTipo": {
+    "type-number": 24
+  },
+  "cuentas": {
+    "src/app/(app)/carta/agrupados/page.tsx": {
+      "type-number": 1
+    },
+    "src/app/(app)/carta/parametrizacion/formularios.tsx": {
+      "type-number": 10
+    },
+    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": {
+      "type-number": 1
+    },
+    "src/app/(app)/carta/portal/page.tsx": {
+      "type-number": 2
+    },
+    "src/app/(app)/catalogo/unidades/page.tsx": {
+      "type-number": 1
+    },
+    "src/app/(app)/reportes/devoluciones/page.tsx": {
+      "type-number": 1
+    },
+    "src/app/(app)/reportes/perdidas/page.tsx": {
+      "type-number": 1
+    },
+    "src/app/(app)/reportes/vencimientos/page.tsx": {
+      "type-number": 1
+    },
+    "src/components/carta/contenido-del-producto.tsx": {
+      "type-number": 1
+    },
+    "src/components/carta/editor-portal.tsx": {
+      "type-number": 2
+    },
+    "src/components/carta/editor-tema.tsx": {
+      "type-number": 2
+    },
+    "src/components/carta/seccion-y-orden.tsx": {
+      "type-number": 1
+    }
+  }
+}

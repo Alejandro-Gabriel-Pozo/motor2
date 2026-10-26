@@ -15,16 +15,19 @@ import {
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import { cadenasDeGrupos } from "@/server/consultas/catalogo/grupos";
 import { FormRenombrarInsumo } from "@/components/catalogo/form-renombrar-insumo";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
 
 export default async function InsumosGruposPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "grupos_familia", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const [insumos, grupos] = await Promise.all([listarInsumos(), listarGrupos()]);
   // El árbol se lee UNA vez (antes: una lectura por nivel y por grupo).
@@ -40,7 +43,7 @@ export default async function InsumosGruposPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-neutral-500">
+              <tr className="border-b text-left text-tinta-tenue">
                 <th className="px-2 py-2 first:pl-0">Nombre</th>
                 <th className="px-2">Grupo</th>
                 <th className="px-2">Activo</th>
@@ -63,17 +66,19 @@ export default async function InsumosGruposPage() {
                       className="space-y-1"
                     >
                       <div className="flex gap-1">
-                        <select name="grupoId" aria-label={`Grupo de ${i.nombre}`} defaultValue={i.grupoId ?? ""} className="rounded border px-2 py-1">
-                          <option value="">Sin grupo</option>
-                          {grupos.map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {g.nombre}
-                            </option>
-                          ))}
-                        </select>
-                        <button type="submit" className="text-sm underline">
+                        <div className="min-w-0">
+                          <Selector etiqueta={`Grupo de ${i.nombre}`} etiquetaOculta name="grupoId" defaultValue={i.grupoId ?? ""}>
+                            <option value="">Sin grupo</option>
+                            {grupos.map((g) => (
+                              <option key={g.id} value={g.id}>
+                                {g.nombre}
+                              </option>
+                            ))}
+                          </Selector>
+                        </div>
+                        <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                           Guardar
-                        </button>
+                        </BotonDeServidor>
                       </div>
                     </FormConResultado>
                   </td>
@@ -85,10 +90,10 @@ export default async function InsumosGruposPage() {
                         return actualizarActivoInsumo(i.id, !i.activo);
                       }}
                     >
-                      <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                      <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                         <IconoDeAccion id="activar" />
                         {i.activo ? "Desactivar" : "Activar"}
-                      </button>
+                      </BotonDeServidor>
                     </FormConResultado>
                   </td>
                 </tr>
@@ -109,10 +114,10 @@ export default async function InsumosGruposPage() {
           className="max-w-md space-y-1"
         >
           <div className="flex gap-2">
-            <input name="nombre" placeholder="nombre del insumo" required className="flex-1 rounded border px-3 py-2" />
-            <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-              Crear
-            </button>
+            <div className="flex-1">
+              <Campo aria-label="Nombre del insumo" name="nombre" placeholder="nombre del insumo" required />
+            </div>
+            <BotonDeServidor type="submit">Crear</BotonDeServidor>
           </div>
         </FormConResultado>
       </section>
@@ -122,7 +127,7 @@ export default async function InsumosGruposPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-neutral-500">
+              <tr className="border-b text-left text-tinta-tenue">
                 <th className="px-2 py-2 first:pl-0">Cadena</th>
                 <th className="px-2">Activo</th>
                 <th className="px-2"><span className="sr-only">Acciones</span></th>
@@ -140,10 +145,10 @@ export default async function InsumosGruposPage() {
                         return actualizarActivoGrupo(g.id, !g.activo);
                       }}
                     >
-                      <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                      <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                         <IconoDeAccion id="activar" />
                         {g.activo ? "Desactivar" : "Activar"}
-                      </button>
+                      </BotonDeServidor>
                     </FormConResultado>
                   </td>
                 </tr>
@@ -161,18 +166,16 @@ export default async function InsumosGruposPage() {
           className="flex max-w-md flex-col gap-2"
         >
           <h2 className="font-medium">Nuevo grupo / actualizar padre</h2>
-          <input name="nombre" placeholder="nombre del grupo (nuevo o existente)" required className="rounded border px-3 py-2" />
-          <select name="grupoPadreId" aria-label="Grupo padre" className="rounded border px-3 py-2">
+          <Campo aria-label="Nombre del grupo" name="nombre" placeholder="nombre del grupo (nuevo o existente)" required />
+          <Selector etiqueta="Grupo padre" etiquetaOculta name="grupoPadreId">
             <option value="">Sin padre (raíz)</option>
             {grupos.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.nombre}
               </option>
             ))}
-          </select>
-          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-            Guardar
-          </button>
+          </Selector>
+          <BotonDeServidor type="submit">Guardar</BotonDeServidor>
         </FormConResultado>
       </section>
     </div>

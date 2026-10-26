@@ -150,7 +150,8 @@ describe("la venta exige las opciones obligatorias en toda vía", () => {
     expect(creacion).toBeGreaterThan(-1);
     expect(creacion).toBeLessThan(bucle);
     expect(nucleo).toMatch(/armarLinea\(item, [^)]*gruposAdmitidosDe\)/);
-    expect(cuerpoDe(nucleo, "armarLinea")).toMatch(/rechazoPorOpcionesObligatorias\(producto\.nombre, await gruposAdmitidosDe\(producto\.id\)\)/);
+    // Fase 4 (ADR-035): el lector devuelve también si el producto se vende por opción (`esBase`): una base no se cobra suelta.
+    expect(cuerpoDe(nucleo, "armarLinea")).toMatch(/const admite = await gruposAdmitidosDe\(producto\.id\);\s*const sinOpciones = rechazoPorOpcionesObligatorias\(producto\.nombre, admite\.grupos, admite\.esBase\)/);
   });
 
   it("(5) la regla pura no se reimplementa: llama a `validarOpcionesElegidas` con cero opciones, la misma validación del POS", () => {

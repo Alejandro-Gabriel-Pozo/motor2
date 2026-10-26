@@ -29,6 +29,12 @@ interface ExcepcionDeArchivo {
   ruta: string;
   motivo: string;
 }
+/** R2/R3/R4 (ola «precio y carta», Fase 1): excepción por PAR de archivos. */
+interface ExcepcionDePar {
+  desde: string;
+  hacia: string;
+  motivo: string;
+}
 interface ExcepcionDeCiclo {
   ciclo: string[];
   motivo: string;
@@ -44,6 +50,10 @@ interface Excepciones {
   "paginas-solo-consultas": ExcepcionDeArchivo[];
   PENDIENTES_DE_MIGRAR: ExcepcionDeArchivo[];
   ACCIONES_CON_CASO_DE_USO: ExcepcionDeArchivo[];
+  "persistencia-de-otro-dominio": ExcepcionDePar[];
+  "casos-de-uso-sin-comandos-de-otro-dominio": ExcepcionDePar[];
+  "casos-de-uso-solo-desde-acciones": ExcepcionDePar[];
+  COMANDOS_PUBLICOS: ExcepcionDeArchivo[];
 }
 interface ReglaConfig {
   name: string;
@@ -232,6 +242,26 @@ describe("core-sin-prisma (Fase 6, tramo 6b): el núcleo no depende de Prisma ni
     expect(regla?.severity).toBe("error");
     expect(regla?.from).toEqual({ path: "^src/core/" });
     expect(regla?.to).toEqual({ path: ["^src/lib/", "^node_modules/(@prisma|\\.prisma)/"] });
+  });
+});
+
+describe("vista-previa-sin-calculo-de-precio (Fase 6, bloque 3, 6.18): la vista previa solo dibuja lo que el servidor calculó, sin excepciones", () => {
+  const MIRA = /^src\/components\/catalogo\/espacio-del-producto\/vista-previa/;
+  const NO_PUEDE = /^src\/(core\/pos\/|core\/moneda\.ts$|server\/|lib\/)/;
+
+  it("la regla está en la config, como error, sobre los archivos vista-previa* del espacio del producto y sin pathNot", () => {
+    const regla = CONFIG.forbidden.find((r) => r.name === "vista-previa-sin-calculo-de-precio") as (ReglaConfig & { from: { path: string; pathNot?: unknown }; to: { path: string[] } }) | undefined;
+    expect(regla?.severity).toBe("error");
+    expect(regla?.from.path).toBe("^src/components/catalogo/espacio-del-producto/vista-previa");
+    expect(regla?.from.pathNot).toBeUndefined();
+    expect(regla?.to.path).toEqual(["^src/core/pos/", "^src/core/moneda[.]ts$", "^src/server/", "^src/lib/"]);
+  });
+
+  it("alcance: hay archivos que la regla mira (si no, no vigila nada) y ninguno importa lo que no puede", () => {
+    const vigilados = modulos.filter((m) => MIRA.test(m.source));
+    expect(vigilados.map((m) => m.source), "tiene que existir al menos un vista-previa* en el espacio del producto").not.toEqual([]);
+    const infractores = vigilados.filter((m) => m.dependencies.some((d) => NO_PUEDE.test(d.resolved))).map((m) => m.source);
+    expect(infractores, "la vista previa no puede componer, redondear ni descontar un precio: pedíselo ya calculado al servidor").toEqual([]);
   });
 });
 
@@ -499,5 +529,77 @@ describe("carta-publica-alcance: ALCANCE_CARTA_PUBLICA es exactamente lo que la 
     it("una entrada que no cubre nada alcanzado se marca", () => {
       expect(revisarAlcance(grafo, desde, zona, [/^src\/server\/(a|b)\.ts$/, /^src\/server\/c\.ts$/]).entradasSinUso).toEqual(["^src\\/server\\/c\\.ts$"]);
     });
+  });
+});
+
+/**
+ * R2, R3 y R4 (ola «precio y carta», Fase 1 «Cercos»: el dueño del dato). Las excepciones son por PAR (`desde` → `hacia`) y van en las dos
+ * direcciones: el conjunto de cruces REALES del grafo (calculado acá, sin mirar las excepciones) tiene que ser exactamente el de la lista —
+ * un cruce nuevo falla, y uno que ya no existe pide sacar su excepción—, cada excepción lleva motivo y nombra archivos que existen.
+ * Así la lista solo se achica, como un trinquete.
+ */
+describe("R2/R3/R4 (dueño del dato): las excepciones por par, en las dos direcciones", () => {
+  type Regla = "persistencia-de-otro-dominio" | "casos-de-uso-sin-comandos-de-otro-dominio" | "casos-de-uso-solo-desde-acciones";
+  const RE_SERVER_CON_DOMINIO = /^src\/server\/(?:actions|lecturas|consultas)\/([^/]+)\//;
+  const RE_PERSISTENCIA = /^src\/server\/persistencia\/([^/]+)\//;
+  const RE_CASO_DE_USO = /^src\/server\/actions\/([^/]+)\/casos-de-uso\//;
+  const RE_ACCION_DE_DOMINIO = /^src\/server\/actions\/([^/]+)\//;
+  const comandosPublicos = new Set(EXCEPCIONES.COMANDOS_PUBLICOS.map((e) => e.ruta));
+
+  /** Los pares `desde → hacia` del grafo que cumplen `cruza`. */
+  function pares(cruza: (desde: string, hacia: string) => boolean): string[] {
+    const salida = new Set<string>();
+    for (const m of modulos) for (const d of m.dependencies) if (cruza(m.source, d.resolved)) salida.add(`${m.source} → ${d.resolved}`);
+    return [...salida].sort();
+  }
+
+  const reales: Record<Regla, () => string[]> = {
+    "persistencia-de-otro-dominio": () =>
+      pares((desde, hacia) => {
+        const origen = RE_SERVER_CON_DOMINIO.exec(desde)?.[1];
+        const destino = RE_PERSISTENCIA.exec(hacia)?.[1];
+        return origen !== undefined && destino !== undefined && origen !== destino;
+      }),
+    "casos-de-uso-sin-comandos-de-otro-dominio": () =>
+      pares((desde, hacia) => {
+        const origen = RE_CASO_DE_USO.exec(desde)?.[1];
+        const destino = RE_ACCION_DE_DOMINIO.exec(hacia)?.[1];
+        return origen !== undefined && destino !== undefined && origen !== destino && !comandosPublicos.has(hacia);
+      }),
+    "casos-de-uso-solo-desde-acciones": () => pares((desde, hacia) => /^(src|plataforma)\//.test(desde) && !desde.startsWith("src/server/actions/") && RE_CASO_DE_USO.test(hacia)),
+  };
+
+  for (const regla of Object.keys(reales) as Regla[]) {
+    it(`${regla}: la regla está en la config (general + una entrada por origen exceptuado) y su lista es exactamente la de los cruces reales`, () => {
+      const lista = EXCEPCIONES[regla];
+      const origenes = new Set(lista.map((e) => e.desde));
+      expect(CONFIG.forbidden.filter((r) => r.name === regla)).toHaveLength(1 + origenes.size);
+      const listados = lista.map((e) => `${e.desde} → ${e.hacia}`).sort();
+      expect(new Set(listados).size, `${regla}: hay pares repetidos`).toBe(listados.length);
+      const cruces = reales[regla]();
+      expect(diferencia(cruces, listados), `${regla}: estos cruces no están exceptuados (pasalos por un comando del dueño del dato o declaralos con motivo en .dependency-cruiser-excepciones.cjs):`).toEqual([]);
+      expect(diferencia(listados, cruces), `${regla}: estos cruces ya no existen: sacalos de .dependency-cruiser-excepciones.cjs:`).toEqual([]);
+      const malas = lista.filter((e) => !e.motivo?.trim() || e.motivo.length < 20 || !existsSync(join(RAIZ, e.desde)) || !existsSync(join(RAIZ, e.hacia)));
+      expect(malas, `${regla}: excepciones sin motivo o con archivos que no existen`).toEqual([]);
+    });
+  }
+
+  it("R2 y R3 ven cruces de verdad (el cálculo no pasa en vacío)", () => {
+    expect(reales["persistencia-de-otro-dominio"]().length).toBeGreaterThan(0);
+    expect(reales["casos-de-uso-sin-comandos-de-otro-dominio"]().length).toBeGreaterThan(0);
+  });
+
+  it("COMANDOS_PUBLICOS: cada uno existe, lleva motivo y lo usa al menos un caso de uso de otro dominio", () => {
+    const problemas = EXCEPCIONES.COMANDOS_PUBLICOS.flatMap(({ ruta, motivo }) => {
+      if (!motivo?.trim()) return [`${ruta}: sin motivo`];
+      if (!existsSync(join(RAIZ, ruta))) return [`${ruta}: no existe`];
+      const dominio = RE_ACCION_DE_DOMINIO.exec(ruta)?.[1];
+      const usado = modulos.some((m) => {
+        const origen = RE_CASO_DE_USO.exec(m.source)?.[1];
+        return origen !== undefined && origen !== dominio && m.dependencies.some((d) => d.resolved === ruta);
+      });
+      return usado ? [] : [`${ruta}: ningún caso de uso de otro dominio lo importa (sobra)`];
+    });
+    expect(problemas).toEqual([]);
   });
 });

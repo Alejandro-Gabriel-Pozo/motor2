@@ -10,10 +10,10 @@ export default async function SolicitarTraspasoPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "traspaso_solicitar", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const [sucursales, secciones] = await Promise.all([
     listarSucursalesParaSolicitar(ctx.sucursalId),
@@ -23,7 +23,7 @@ export default async function SolicitarTraspasoPage() {
   return (
     <div className="max-w-xl">
       <h1 className="mb-1 text-xl font-semibold">Solicitar una transferencia</h1>
-      <p className="mb-4 text-sm text-neutral-500">
+      <p className="mb-4 text-sm text-tinta-tenue">
         Le pedís stock a otra sucursal (PULL) — no toca ningún stock todavía: queda &quot;Solicitada&quot; hasta que la sucursal origen la
         apruebe y la envíe.
       </p>

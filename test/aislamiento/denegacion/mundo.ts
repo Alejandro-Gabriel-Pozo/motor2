@@ -66,9 +66,11 @@ export interface KitDeEmpresa {
   cupoListaId: string;
   entradaDeCupoId: string;
   cupoDelDiaId: string;
-  /** GO-3b (frente A): la medida del PV con opciones es el EJE 1 de sus combinaciones; su combinación «Grande» usa la tarifa `grupoDePrecioId`. */
-  grupoDePrecioId: string;
-  combinacionId: string;
+  /**
+   * Fase 5 (DEC-11): un PRODUCTO BASE (`BASE_CONFIGURABLE`) disponible en las sucursales del kit, con un solo eje en la carta (su propia MEDIDA en precio propio, con una opción): el control positivo de
+   * `basesDeUnEjeEnLaCarta`. Grupo y opción propios a propósito: así ningún control positivo de los escritores de opciones (que no dejan a una base sin su precio final) se cruza con él.
+   */
+  productoBaseId: string;
 }
 
 export interface KitDeSucursal {
@@ -225,6 +227,8 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   const pv2 = await producto("pv2", "PV", { seProduce: true, precioVenta: 1234 });
   const proveedor = await db.proveedor.create({ data: { id: id("proveedor"), empresaId, codigo: id("PRV"), nombre: `Proveedor ${marca}`, contacto: `contacto ${marca}`, email: `${marca.toLowerCase()}-prov@ajeno.test`, cuit: null } });
   await db.proveedorPorProducto.create({ data: { id: id("ppp"), empresaId, productoId: mp.id, proveedorId: proveedor.id, unidadCompraId: kg.id, precioUnitario: 100, precioPorUnidadStock: 100, referenciaProveedor: `ref ${marca}` } });
+  // Ola «precio y carta», Fase 2, B2: el pago a un consignante exige que el proveedor lo sea de algún producto. El mundo ya le registra un pago (`pagoConsignante`, abajo), así que lo es de uno.
+  await producto("consignado", "MP", { esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 10 });
   const presentacion = await db.presentacion.create({ data: { id: id("presentacion"), empresaId, productoId: mp.id, unidadCompraId: g.id, factorConversion: 1000 } });
   const cliente = await db.cliente.create({ data: { id: id("cliente"), empresaId, nombre: `Cliente ${marca}`, descuentoPorcentaje: 10 } });
   const rol = await db.rol.create({ data: { id: id("rol"), empresaId, nombre: `Rol ${marca}`, clave: null } });
@@ -252,20 +256,20 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
   for (const o of [opcionDeGrupo, opcionMedida]) {
     await db.versionDeOpcion.create({ data: { id: `${o.id}-v1`, empresaId, opcionId: o.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: 0, creadoPorId: usuarioId } });
   }
-  await db.productoAdmiteGrupo.create({ data: { id: id("admite-medida"), empresaId, productoId: pvOpciones.id, grupoId: grupoMedida.id, orden: 0, modoPrecio: "ABSOLUTO", ejeDeCombinacion: 1 } });
+  await db.productoAdmiteGrupo.create({ data: { id: id("admite-medida"), empresaId, productoId: pvOpciones.id, grupoId: grupoMedida.id, orden: 0, modoPrecio: "ABSOLUTO" } });
   await db.productoAdmiteOpcion.create({ data: { id: id("admite-grande"), empresaId, productoId: pvOpciones.id, opcionId: opcionMedida.id, precioAbsoluto: 1500 } });
   // GO-3b (ADR-032): el combo con su lista (una opción: el `pv`) y su lugar del plato del día.
   const promoCombo = await db.promoCarta.create({ data: { id: id("promo-combo"), empresaId, seccionCartaId: seccionCarta.id, titulo: `Combo ${marca}`, precio: 6000 } });
   const cupoLista = await db.promoCartaCupo.create({ data: { id: id("cupo-lista"), empresaId, promoCartaId: promoCombo.id, tipo: "LISTA", nombre: `Entrada ${marca}`, cantidadMinima: 1, cantidadMaxima: 1, orden: 1 } });
   const cupoDelDia = await db.promoCartaCupo.create({ data: { id: id("cupo-del-dia"), empresaId, promoCartaId: promoCombo.id, tipo: "DEL_DIA", nombre: `Plato ${marca}`, cantidadMinima: 1, cantidadMaxima: 1, orden: 2 } });
+  // Fase 5 (DEC-11): el producto base de un eje (ver `productoBaseId`).
+  const pvBase = await producto("pv-base", "PV", { modoDeVenta: "BASE_CONFIGURABLE" });
+  const grupoMedidaBase = await db.grupoDeOpciones.create({ data: { id: id("grupo-medida-base"), empresaId, nombre: `Porción ${marca}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1 } });
+  const opcionMedidaBase = await db.opcionDeGrupo.create({ data: { id: id("opcion-medida-base"), empresaId, grupoId: grupoMedidaBase.id, nombre: `Entera ${marca}`, orden: 1 } });
+  await db.versionDeOpcion.create({ data: { id: `${opcionMedidaBase.id}-v1`, empresaId, opcionId: opcionMedidaBase.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: 0, creadoPorId: usuarioId } });
+  await db.productoAdmiteGrupo.create({ data: { id: id("admite-medida-base"), empresaId, productoId: pvBase.id, grupoId: grupoMedidaBase.id, orden: 0, modoPrecio: "ABSOLUTO" } });
+  await db.productoAdmiteOpcion.create({ data: { id: id("admite-entera"), empresaId, productoId: pvBase.id, opcionId: opcionMedidaBase.id, precioAbsoluto: 2500 } });
   const entradaDeCupo = await db.entradaDeCupo.create({ data: { id: id("entrada-de-cupo"), empresaId, cupoId: cupoLista.id, productoId: pv.id } });
-  // GO-3b (frente A): la tarifa compartida y la combinación «Grande» del PV con opciones (la medida es su eje 1), con esa tarifa.
-  const grupoDePrecio = await db.grupoDePrecio.create({ data: { id: id("grupo-de-precio"), empresaId, nombre: `Tarifa ${marca}`, precio: 3300 } });
-  const combinacion = await db.combinacionDeProducto.create({ data: { id: id("combinacion"), empresaId, productoId: pvOpciones.id, opcionEje1Id: opcionMedida.id, grupoDePrecioId: grupoDePrecio.id } });
-  // GO-3b (frente B): su receta propia, versión 1, con la MP del kit.
-  await db.recetaDeCombinacionVersion.create({
-    data: { id: id("receta-combinacion"), empresaId, combinacionId: combinacion.id, numero: 1, creadoPorId: usuarioId, ingredientes: { create: [{ id: id("ingrediente-combinacion"), insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } },
-  });
   await db.registroAuditoria.create({ data: { id: id("auditoria-empresa"), empresaId, entidad: "Producto", entidadId: mp.id, descripcion: `Auditoría de empresa ${marca}`, campo: "nombre", valorAnterior: "a", valorNuevo: "b", actorId: usuarioId } });
   return {
     marca,
@@ -301,8 +305,7 @@ async function sembrarEmpresaDeKit(marca: string, empresaId: string, usuarioId: 
     cupoListaId: cupoLista.id,
     entradaDeCupoId: entradaDeCupo.id,
     cupoDelDiaId: cupoDelDia.id,
-    grupoDePrecioId: grupoDePrecio.id,
-    combinacionId: combinacion.id,
+    productoBaseId: pvBase.id,
   };
 }
 
@@ -317,7 +320,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   // Una sección dada de baja de la sucursal propia: la lectura `seccionesDesactivadas` (P17) devuelve solo estas, y la matriz de
   // denegación exige que la lectura PROPIA devuelva algo con la marca propia.
   await db.seccion.create({ data: { id: id("seccion-baja"), empresaId, sucursalId, nombre: `Sección dada de baja ${marca}`, activa: false } });
-  for (const productoId of [k.productoId, k.productoPvId, k.productoMp2Id, k.productoMp3Id, k.productoPv2Id]) {
+  for (const productoId of [k.productoId, k.productoPvId, k.productoMp2Id, k.productoMp3Id, k.productoPv2Id, k.productoBaseId]) {
     await db.disponibilidadProducto.create({ data: { empresaId, sucursalId, productoId, disponible: true } });
   }
   const membresia = await db.usuarioSucursal.create({ data: { id: id("membresia"), empresaId, usuarioId: miembro.id, sucursalId, rolId: miembro.rolId, notas: `Notas ${marca}` } });
@@ -438,8 +441,6 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   // Opciones de venta en la sucursal (GO-2a): la medida con precio propio en la grilla (la huella numérica en S2 y E2) y apagada (quien la apagó es el miembro: su id lleva el marcador).
   await db.precioLocalDeOpcion.create({ data: { id: id("precio-local-opcion"), empresaId, sucursalId, productoId: k.productoConOpcionesId, opcionId: k.opcionMedidaId, precio: huella > 0 ? huella : 1600 } });
   await db.opcionApagadaEnSucursal.create({ data: { id: id("opcion-apagada"), empresaId, sucursalId, opcionId: k.opcionMedidaId, apagada: true, actualizadoPorId: miembro.id } });
-  // GO-3b (frente A): el precio de la tarifa en esta sucursal (la huella numérica en S2 y E2).
-  await db.precioLocalDeCombinacion.create({ data: { id: id("precio-local-tarifa"), empresaId, sucursalId, grupoDePrecioId: k.grupoDePrecioId, precio: huella > 0 ? huella : 1650 } });
   // GO-3b: el plato del día de mañana del combo de la empresa, en esta sucursal (quien lo cargó es el miembro: su id lleva el marcador).
   const platoDelDia = await db.entradaDelDiaDeCupo.create({
     data: { id: id("plato-del-dia"), empresaId, cupoId: k.cupoDelDiaId, sucursalId, fecha: fechaDeColumnaDate(DIA_DEL_PLATO_DEL_MUNDO), productoId: k.productoPvId, actualizadoPorId: miembro.id },

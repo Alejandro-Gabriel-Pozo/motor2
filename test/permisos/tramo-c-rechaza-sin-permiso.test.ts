@@ -17,7 +17,7 @@ import {
   guardarPrecioLocalPromoCarta,
   guardarPromoCarta,
 } from "../../src/server/actions/carta/promos";
-import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/movimientos/precio-local";
+import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/catalogo/precio-local";
 import { fijarRendimientoLocal, volverAlRendimientoCentral } from "../../src/server/actions/catalogo/rendimiento-local";
 import { volverALaRecetaCentral } from "../../src/server/actions/catalogo/receta-sucursal";
 import { actualizarActivaCategoriaProducto, crearCategoriaProducto } from "../../src/server/actions/catalogo/categorias-producto";

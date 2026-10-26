@@ -10,7 +10,7 @@ import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimie
 import { listarFrecuenciasConteo } from "../../src/server/actions/stock/frecuencia-conteo";
 import { listarStockMinimo } from "../../src/server/actions/stock/stock-minimo";
 import { listarSeccionesHabituales } from "../../src/server/actions/stock/seccion-habitual";
-import { listarPreciosLocales } from "../../src/server/actions/movimientos/precio-local";
+import { listarPreciosLocales } from "../../src/server/actions/catalogo/precio-local";
 import { listarSucursales } from "../../src/server/actions/auth/sucursales";
 import { listarProveedores } from "../../src/server/actions/catalogo/proveedores";
 

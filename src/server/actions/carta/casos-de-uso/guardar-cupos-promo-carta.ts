@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { mensajePisoDePromo, mensajePisoLocalDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
-import { claveNaturalDeCupo, diferenciaDeCupos, type CupoExistente, type CupoPedido, type TipoDeCupo } from "@/core/carta/public";
+import { claveNaturalDeCupo, diferenciaDeCupos, MENU_DEL_DIA_VISIBLE, lugarDelDiaApagado, type CupoExistente, type CupoPedido, type TipoDeCupo } from "@/core/carta/public";
 import type { ComandoGuardarCuposPromoCarta, ResultadoGuardarCuposPromoCarta } from "@/core/features/carta/promos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -99,6 +99,9 @@ export async function guardarCuposPromoCartaCasoDeUso(
 
       const diferencia = diferenciaDeCupos(existentes, cuposValidados);
       if (!diferencia.ok) return fracaso("CUPO_INVALIDO", diferencia.mensaje);
+      // Interruptor del menú del día (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20): apagado, no se suma un lugar del día (nuevo o reactivado), aunque el pedido venga armado a mano.
+      const menuDelDiaApagado = lugarDelDiaApagado(diferencia.diferencia, MENU_DEL_DIA_VISIBLE);
+      if (menuDelDiaApagado) return fracaso("CUPO_INVALIDO", menuDelDiaApagado);
       const { crear, cambiar, darDeBaja } = diferencia.diferencia;
 
       // GO-3b (D-2): todos los componentes POSIBLES del combo con los lugares pedidos (los productos de sus secciones, las opciones activas de sus listas y los platos del día de hoy en adelante)

@@ -10,6 +10,7 @@ const LABEL_ESTADO: Record<string, string> = {
   COSTO_INCOMPLETO: "Costo incompleto",
   SIN_PRECIO_VENTA: "Sin precio de venta",
   SIN_RECETA: "Sin receta",
+  POR_OPCION: "Por opción",
   OK: "OK",
 };
 
@@ -17,7 +18,7 @@ const AYUDA_MARGEN = "Margen $ = Precio venta − Costo. Margen % = Margen $ / P
 const AYUDA_FOOD_COST =
   "Food cost % = (Costo de comida y bebida) / Precio venta × 100 — qué porción del precio de venta se va en insumos. NO incluye el packaging ni la limpieza de la receta (los insumos del grupo «No comestibles»): esos cuentan en el Costo y en el Margen, pero no en el food cost.";
 const AYUDA_ESTADO =
-  "Margen negativo: el costo supera el precio de venta. Food cost alto: el costo de comida y bebida (sin el packaging ni la limpieza del grupo «No comestibles») supera el food cost objetivo del producto (columna «Food cost objetivo»). Costo incompleto: algún insumo de la receta no tiene compra registrada. Sin receta / Sin precio de venta: falta ese dato para poder calcular.";
+  "Margen negativo: el costo supera el precio de venta. Food cost alto: el costo de comida y bebida (sin el packaging ni la limpieza del grupo «No comestibles») supera el food cost objetivo del producto (columna «Food cost objetivo»). Costo incompleto: algún insumo de la receta no tiene compra registrada. Sin receta / Sin precio de venta: falta ese dato para poder calcular. Por opción: el producto se vende por opción (el precio final está en cada una), así que no tiene un margen único.";
 const AYUDA_OBJETIVO = `El food cost que se quiere como máximo para este producto: el de su categoría si la categoría tiene uno; si no, el de la empresa; y si la empresa no cargó ninguno, ${FOOD_COST_OBJETIVO_PCT}%. Lo fija administración en Catálogo → Margen objetivo.`;
 const AYUDA_PRECIO_SUGERIDO =
   "Precio de venta MÍNIMO con el que el food cost (comida y bebida, sin el packaging ni la limpieza) no pasa del objetivo del producto: costo de comida y bebida / objetivo × 100, redondeado al centavo hacia arriba. Es un precio con IVA incluido, igual que el precio de venta de la tabla. Se muestra «—» si falta algún costo de la receta o el producto no tiene receta.";
@@ -33,7 +34,7 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
       </EnlaceInterno>
     ),
   },
-  { clave: "precioVenta", etiqueta: "Precio venta", alinear: "derecha", valor: (p) => p.precioVenta, render: (p) => `$${p.precioVenta.toLocaleString("es-AR")}` },
+  { clave: "precioVenta", etiqueta: "Precio venta", alinear: "derecha", valor: (p) => p.precioVenta, render: (p) => (p.estado === "POR_OPCION" ? "Por opción" : `$${p.precioVenta.toLocaleString("es-AR")}`) },
   { clave: "costo", etiqueta: "Costo", alinear: "derecha", valor: (p) => p.costo, render: (p) => (p.costo === null ? "—" : `$${p.costo.toLocaleString("es-AR")}`) },
   {
     clave: "margen",
@@ -76,12 +77,12 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
       const accion = resolverAccionFaltante(p);
       if (accion) {
         return (
-          <EnlaceInterno href={accion.href} className="text-amber-700 dark:text-amber-600 underline">
+          <EnlaceInterno href={accion.href} className="text-aviso-tinta underline">
             {accion.etiqueta}
           </EnlaceInterno>
         );
       }
-      return <span className={p.estado === "OK" ? "" : "text-amber-700 dark:text-amber-600"}>{LABEL_ESTADO[p.estado]}</span>;
+      return <span className={p.estado === "OK" || p.estado === "POR_OPCION" ? "" : "text-aviso-tinta"}>{LABEL_ESTADO[p.estado]}</span>;
     },
   },
 ];

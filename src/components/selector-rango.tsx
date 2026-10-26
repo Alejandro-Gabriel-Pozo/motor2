@@ -1,4 +1,8 @@
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { MAXIMO_DE_DIAS_DE_UN_RANGO, type OpcionRango } from "@/core/reportes/public";
+import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Selector } from "@/ui/primitivas/selector";
 
 /**
  * Selector de rango de fechas de los reportes — reemplaza el `<form>` con dos `<input type="date">` que había, copiado y pegado
@@ -33,9 +37,11 @@ export function SelectorRango({
     <>
       {recortadoDesde && (
         // Mismo estilo que el aviso de la rotación de mesas cuando trunca (`data-aviso-truncado`): el reporte NO es el pedido, y la pantalla lo dice.
-        <p data-aviso-rango-recortado role="status" className="mb-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
-          Pediste desde el {recortadoDesde}, pero un reporte abarca como mucho {MAXIMO_DE_DIAS_DE_UN_RANGO} días: se muestra del {desdeISO} al {hastaISO}. Pedí el resto por tramos.
-        </p>
+        <div className="mb-2">
+          <Aviso variante="advertencia" data-aviso-rango-recortado="">
+            Pediste desde el {recortadoDesde}, pero un reporte abarca como mucho {MAXIMO_DE_DIAS_DE_UN_RANGO} días: se muestra del {desdeISO} al {hastaISO}. Pedí el resto por tramos.
+          </Aviso>
+        </div>
       )}
       <FormularioDeRango opcion={opcion} desdeISO={desdeISO} hastaISO={hastaISO} camposOcultos={camposOcultos} />
     </>
@@ -47,33 +53,22 @@ function FormularioDeRango({ opcion, desdeISO, hastaISO, camposOcultos }: { opci
     <form className="flex flex-wrap items-end gap-3 text-sm">
       {camposOcultos &&
         Object.entries(camposOcultos).map(([nombre, valor]) => <input key={nombre} type="hidden" name={nombre} value={valor} />)}
-      <div className="flex flex-col gap-1">
-        <label htmlFor="rango">Rango</label>
-        <select id="rango" name="rango" defaultValue={opcion} className="rounded border px-3 py-2">
-          <option value="30d">Últimos 30 días</option>
-          <option value="mes">Mes en curso</option>
-          <option value="personalizado">Fechas personalizadas</option>
-        </select>
-      </div>
+      <Selector id="rango" name="rango" etiqueta="Rango" defaultValue={opcion}>
+        <option value="30d">Últimos 30 días</option>
+        <option value="mes">Mes en curso</option>
+        <option value="personalizado">Fechas personalizadas</option>
+      </Selector>
       {opcion === "personalizado" ? (
         <>
-          <label className="flex flex-col gap-1">
-            Desde
-            <input type="date" name="desde" defaultValue={desdeISO} className="rounded border px-3 py-2" />
-          </label>
-          <label className="flex flex-col gap-1">
-            Hasta
-            <input type="date" name="hasta" defaultValue={hastaISO} className="rounded border px-3 py-2" />
-          </label>
+          <CampoFecha etiqueta="Desde" name="desde" defaultValue={desdeISO} />
+          <CampoFecha etiqueta="Hasta" name="hasta" defaultValue={hastaISO} />
         </>
       ) : (
-        <p className="pb-2 text-xs text-neutral-500">
+        <p className="pb-2 text-xs text-tinta-suave">
           Del {desdeISO} al {hastaISO}
         </p>
       )}
-      <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-        Actualizar
-      </button>
+      <BotonDeServidor type="submit">Actualizar</BotonDeServidor>
     </form>
   );
 }

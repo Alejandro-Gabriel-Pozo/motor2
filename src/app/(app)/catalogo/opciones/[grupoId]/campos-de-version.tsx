@@ -2,9 +2,11 @@
 
 import { useId, useState } from "react";
 import { CampoNumero } from "@/components/campo-numero";
-import { interpretarNumero } from "@/core/datos/numero-tecleado";
+import { leerNumeroCanonico } from "@/core/datos/numero-tecleado";
 import { espejoDeDiferencia, textoDePorcentaje, type DiferenciaDePrecio, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import { formatearMonto } from "@/core/pos/public";
+import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
+import { Insignia } from "@/ui/primitivas/insignia";
 import { EditorDeConsumos, type ConsumoEnEdicion, type InsumoParaConsumo } from "./editor-de-consumos";
 import { LecturaDelFactor, type RecetaDeReferencia } from "./lectura-del-factor";
 
@@ -59,7 +61,7 @@ export function CamposDeVersion({
   const editorDeConsumos = sinPrecio ? null : consumos ? (
     <EditorDeConsumos tipo={tipo} insumos={consumos.insumos} inicial={consumos.inicial} />
   ) : (
-    <p className="text-xs text-neutral-600 dark:text-neutral-400">Lo que consume una opción usa el módulo Recetas, que tu empresa no tiene activo: se guarda sin consumos.</p>
+    <p className="text-xs text-tinta-suave">Lo que consume una opción usa el módulo Recetas, que tu empresa no tiene activo: se guarda sin consumos.</p>
   );
 
   if (sinPrecio || tipo === "INCLUIDA") {
@@ -67,19 +69,19 @@ export function CamposDeVersion({
       <div className="flex flex-col gap-3">
         <input type="hidden" name="tipoDiferencia" value="MONTO" />
         <input type="hidden" name="valorDiferencia" value="0" />
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">{sinPrecio ? "La opción «ninguna» no lleva precio ni consumo." : "Va incluida en el precio del producto: no lleva recargo."}</p>
+        <p className="text-sm text-tinta-suave">{sinPrecio ? "La opción «ninguna» no lleva precio ni consumo." : "Va incluida en el precio del producto: no lleva recargo."}</p>
         {editorDeConsumos}
       </div>
     );
   }
 
   const texto = modo === "MONTO" ? monto : porcentaje;
-  const numero = interpretarNumero(texto);
+  const numero = leerNumeroCanonico(texto);
   const diferencia: DiferenciaDePrecio | null = numero.ok && numero.valor !== null ? (modo === "MONTO" ? { tipo: "MONTO", monto: numero.valor } : { tipo: "PORCENTAJE", porcentaje: numero.valor }) : null;
   const espejo = diferencia && referencia ? espejoDeDiferencia(diferencia, referencia.precio) : null;
   const idEspejo = `${id}-espejo`;
   // El factor tal cual lo interpreta el campo (vacío → null; un texto que no es número → NaN), para leerlo en vivo.
-  const factorLeido = interpretarNumero(factor);
+  const factorLeido = leerNumeroCanonico(factor);
   const valorDelFactor = factorLeido.ok ? factorLeido.valor : Number.NaN;
 
   return (
@@ -93,18 +95,18 @@ export function CamposDeVersion({
           <CampoNumero id={`${id}-valor`} name="valorDiferencia" value={monto} onChange={setMonto} prefijo="$" tipo="importe" etiqueta="El recargo" required className="w-40" />
         </div>
       ) : (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium">{tipo === "MEDIDA" ? "Diferencia sobre el precio base" : "Cuánto cambia el precio"}</legend>
-          <div className="flex flex-wrap gap-4">
-            <label className="flex min-h-[44px] items-center gap-2 text-sm">
-              <input type="radio" name={`${id}-modo`} checked={modo === "MONTO"} onChange={() => setModo("MONTO")} />
-              Monto en pesos
-            </label>
-            <label className="flex min-h-[44px] items-center gap-2 text-sm">
-              <input type="radio" name={`${id}-modo`} checked={modo === "PORCENTAJE"} onChange={() => setModo("PORCENTAJE")} />
-              Porcentaje
-            </label>
-          </div>
+        <div className="flex flex-col gap-2">
+          <OpcionesExcluyentes
+            presentacion="fila"
+            leyenda={tipo === "MEDIDA" ? "Diferencia sobre el precio base" : "Cuánto cambia el precio"}
+            nombre={`${id}-modo`}
+            valorInicial={modo}
+            alCambiar={(valor) => setModo(valor === "PORCENTAJE" ? "PORCENTAJE" : "MONTO")}
+            opciones={[
+              { valor: "MONTO", etiqueta: "Monto en pesos" },
+              { valor: "PORCENTAJE", etiqueta: "Porcentaje" },
+            ]}
+          />
           <div className="flex flex-wrap items-center gap-3">
             <label htmlFor={`${id}-valor`} className="sr-only">
               {modo === "MONTO" ? "Diferencia en pesos" : "Diferencia en porcentaje"}
@@ -112,21 +114,21 @@ export function CamposDeVersion({
             {modo === "MONTO" ? (
               <CampoNumero key="monto" id={`${id}-valor`} name="valorDiferencia" value={monto} onChange={setMonto} prefijo="$" tipo="importe" permitirNegativo etiqueta="La diferencia" required className="w-40" />
             ) : (
-              <CampoNumero key="porcentaje" id={`${id}-valor`} name="valorDiferencia" value={porcentaje} onChange={setPorcentaje} etiqueta="El porcentaje" required className="w-28" />
+              <CampoNumero tipo="porcentaje" key="porcentaje" id={`${id}-valor`} name="valorDiferencia" value={porcentaje} onChange={setPorcentaje} permitirNegativo etiqueta="El porcentaje" required className="w-28" />
             )}
             {modo === "PORCENTAJE" && <span className="text-sm">%</span>}
           </div>
-          <p className="text-xs text-neutral-600 dark:text-neutral-400">En negativo, resta (por ejemplo, un tamaño más chico). Con 0 no cambia el precio.</p>
-        </fieldset>
+          <p className="text-xs text-tinta-suave">En negativo, resta (por ejemplo, un tamaño más chico). Con 0 no cambia el precio.</p>
+        </div>
       )}
       {referencia && !soloMonto && (
-        <p id={idEspejo} aria-live="polite" className="text-sm text-neutral-700 dark:text-neutral-300" data-espejo>
+        <p id={idEspejo} aria-live="polite" className="text-sm text-tinta-suave" data-espejo>
           {espejo
             ? espejo.tipo === "PORCENTAJE"
               ? `≈ ${espejo.porcentaje >= 0 ? "" : "−"}${textoDePorcentaje(Math.abs(espejo.porcentaje))} % del precio base de «${referencia.productoNombre}» en «${referencia.sucursalNombre}» (${formatearMonto(referencia.precio)})`
               : `≈ ${espejo.monto >= 0 ? "+" : "−"} ${formatearMonto(Math.abs(espejo.monto))} sobre el precio base de «${referencia.productoNombre}» en «${referencia.sucursalNombre}» (${formatearMonto(referencia.precio)})`
             : `Precio base de «${referencia.productoNombre}» en «${referencia.sucursalNombre}»: ${formatearMonto(referencia.precio)}`}{" "}
-          <span className="rounded bg-neutral-100 px-1 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">referencia</span>
+          <Insignia>referencia</Insignia>
         </p>
       )}
       {tipo === "MEDIDA" && (
@@ -134,8 +136,8 @@ export function CamposDeVersion({
           <label htmlFor={`${id}-factor`} className="text-sm font-medium">
             Cuánto consume respecto del tamaño base
           </label>
-          <CampoNumero id={`${id}-factor`} name="factorEscala" value={factor} onChange={setFactor} etiqueta="El factor" required className="w-28" />
-          <p className="text-xs text-neutral-600 dark:text-neutral-400">Cuánto consume este tamaño respecto del base: 1 = igual, 1,5 = 50% más, 0,7 = 30% menos (máximo 10).</p>
+          <CampoNumero tipo="cantidad" id={`${id}-factor`} name="factorEscala" value={factor} onChange={setFactor} etiqueta="El factor" required className="w-28" />
+          <p className="text-xs text-tinta-suave">Cuánto consume este tamaño respecto del base: 1 = igual, 1,5 = 50% más, 0,7 = 30% menos (máximo 10).</p>
           <LecturaDelFactor valor={valorDelFactor} receta={receta} />
         </div>
       )}

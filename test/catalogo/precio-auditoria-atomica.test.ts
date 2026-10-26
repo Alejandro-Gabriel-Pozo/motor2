@@ -26,7 +26,7 @@ vi.mock("../../src/server/auditoria/registrar-cambio-auditado", async (importOri
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProductoDisponible, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto } from "../../src/server/actions/catalogo/productos";
-import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/movimientos/precio-local";
+import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/catalogo/precio-local";
 
 /**
  * Cambio de precio + su auditoría, atómicos (Task #41, Fase M10). Antes, las cuatro acciones que cambian un precio hacían el
@@ -72,21 +72,21 @@ describe("cambio de precio y su auditoría son atómicos", () => {
   describe("actualizarProducto (precio de venta global)", () => {
     it("falla la auditoría del precio de venta → el precio NO cambia", async () => {
       interruptor.fallarEnLlamada = 1;
-      await expect(actualizarProducto(ids.coca, datosPV("Coca-Cola 500cc", 5500))).rejects.toThrow("auditoría caída");
+      await expect(actualizarProducto(ids.coca, { ...datosPV("Coca-Cola 500cc", 5500), precioVentaVisto: 5000 })).rejects.toThrow("auditoría caída");
       expect(await precioVenta(ids.coca)).toBe(5000);
       expect(await prisma.registroAuditoria.count()).toBe(0);
     });
 
     it("falla la ÚLTIMA auditoría (paso de venta) → ni el precio ni las auditorías ya escritas quedan", async () => {
       interruptor.fallarEnLlamada = 3;
-      await expect(actualizarProducto(ids.coca, datosPV("Coca-Cola 500cc", 5500, { precioConsignacion: 10, pasoVenta: 1 }))).rejects.toThrow("auditoría caída");
+      await expect(actualizarProducto(ids.coca, { ...datosPV("Coca-Cola 500cc", 5500, { precioConsignacion: 10, pasoVenta: 1 }), precioVentaVisto: 5000 })).rejects.toThrow("auditoría caída");
       expect(await precioVenta(ids.coca)).toBe(5000);
       expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: ids.coca } })).precioConsignacion)).toBe(0);
       expect(await prisma.registroAuditoria.count()).toBe(0);
     });
 
     it("sin falla → precio y auditoría quedan (control)", async () => {
-      expect((await actualizarProducto(ids.coca, datosPV("Coca-Cola 500cc", 5500))).ok).toBe(true);
+      expect((await actualizarProducto(ids.coca, { ...datosPV("Coca-Cola 500cc", 5500), precioVentaVisto: 5000 })).ok).toBe(true);
       expect(await precioVenta(ids.coca)).toBe(5500);
       expect(await prisma.registroAuditoria.count({ where: { entidadId: ids.coca, campo: "precioVenta" } })).toBe(1);
     });
@@ -95,7 +95,7 @@ describe("cambio de precio y su auditoría son atómicos", () => {
   describe("sincronizarPrecioGrupoCarta", () => {
     it("falla la auditoría del SEGUNDO producto → ninguno de los dos cambia de precio, sin auditoría", async () => {
       interruptor.fallarEnLlamada = 2;
-      await expect(sincronizarPrecioGrupoCarta([ids.coca, ids.sprite], 5500)).rejects.toThrow("auditoría caída");
+      await expect(sincronizarPrecioGrupoCarta([ids.coca, ids.sprite], 5500, { [ids.coca]: 5000, [ids.sprite]: 5000 })).rejects.toThrow("auditoría caída");
       expect(await precioVenta(ids.coca)).toBe(5000);
       expect(await precioVenta(ids.sprite)).toBe(5000);
       expect(await prisma.registroAuditoria.count()).toBe(0);
@@ -106,7 +106,7 @@ describe("cambio de precio y su auditoría son atómicos", () => {
     it("falla la auditoría del precio → el precio local existente NO cambia", async () => {
       await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: ids.coca, precio: 6000, habilitado: true } });
       interruptor.fallarEnLlamada = 1;
-      await expect(setPrecioLocalProducto(ids.coca, 7000, true)).rejects.toThrow("auditoría caída");
+      await expect(setPrecioLocalProducto(ids.coca, 7000, true, { precio: 6000, habilitado: true })).rejects.toThrow("auditoría caída");
       expect(Number((await precioLocal(ids.coca))!.precio)).toBe(6000);
       expect(await prisma.registroAuditoria.count()).toBe(0);
     });
@@ -122,7 +122,7 @@ describe("cambio de precio y su auditoría son atómicos", () => {
   describe("sincronizarPrecioLocalGrupoCarta", () => {
     it("falla una auditoría del SEGUNDO producto → no queda ningún precio local ni auditoría", async () => {
       interruptor.fallarEnLlamada = 3; // 1-2: precio/habilitado del primero; 3: precio del segundo
-      await expect(sincronizarPrecioLocalGrupoCarta(sucursalId, [ids.coca, ids.sprite], 5500, true)).rejects.toThrow("auditoría caída");
+      await expect(sincronizarPrecioLocalGrupoCarta(sucursalId, [ids.coca, ids.sprite], 5500, true, { [ids.coca]: 5000, [ids.sprite]: 5000 })).rejects.toThrow("auditoría caída");
       expect(await prisma.precioLocalProducto.count()).toBe(0);
       expect(await prisma.registroAuditoria.count()).toBe(0);
     });

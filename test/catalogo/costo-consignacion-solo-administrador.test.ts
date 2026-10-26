@@ -11,7 +11,7 @@ import { __limpiarCookiesDeTest, __setCookieDeTestParaEmpresa, __setCookieDeTest
 import { modulosQueIncluyen } from "../../src/core/modulos/clausura";
 import { actualizarProducto, darDeAltaProducto, type DatosProducto } from "../../src/server/actions/catalogo/productos";
 import FichaProductoPage from "../../src/app/(app)/catalogo/productos/[id]/page";
-import EditarProductoPage from "../../src/app/(app)/catalogo/productos/[id]/editar/page";
+import DatosDelProductoPage from "../../src/app/(app)/catalogo/productos/[id]/datos/page";
 import NuevoProductoPage from "../../src/app/(app)/catalogo/productos/nuevo/page";
 import { ProductoForm } from "../../src/app/(app)/catalogo/productos/producto-form";
 
@@ -136,7 +136,7 @@ describe("S-12: el costo de consignación es de quien tiene pagar_consignante", 
   });
 
   describe("el formulario de edición (los props viajan al navegador)", () => {
-    const edicion = async () => propsDe(await EditarProductoPage({ params: Promise.resolve({ id: quesoId }) }), ProductoForm)[0]!;
+    const edicion = async () => propsDe(await DatosDelProductoPage({ params: Promise.resolve({ id: quesoId }) }), ProductoForm)[0]!;
 
     it("EL ATAQUE: sin pagar_consignante el formulario no recibe el precio ni el consignante (antes: ambos como prop del componente de cliente)", async () => {
       const props = await edicion();
@@ -254,7 +254,7 @@ describe("S-12: el costo de consignación es de quien tiene pagar_consignante", 
     const parado = (id: string | undefined) => __setCookieDeTestParaSucursal(id);
 
     const ficha = () => FichaProductoPage({ params: Promise.resolve({ id: quesoId }), searchParams: Promise.resolve({}) });
-    const edicion = async () => propsDe(await EditarProductoPage({ params: Promise.resolve({ id: quesoId }) }), ProductoForm)[0]!;
+    const edicion = async () => propsDe(await DatosDelProductoPage({ params: Promise.resolve({ id: quesoId }) }), ProductoForm)[0]!;
 
     beforeEach(async () => {
       __limpiarCookiesDeTest();

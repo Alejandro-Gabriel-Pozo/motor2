@@ -241,9 +241,9 @@ const ACCIONES_CON_CASO_DE_USO = [
       "Hito 4, bloque 4.2, H4C-2 y H4C-3: guardarPromoCarta → carta/casos-de-uso/guardar-promo-carta.ts (con guardComandoGuardarPromoCarta), guardarPrecioLocalPromoCarta → guardar-precio-local-promo-carta.ts, actualizarActivaPromoCarta → actualizar-activa-promo-carta.ts, actualizarActivaPromoCartaEnSucursal → actualizar-activa-promo-carta-en-sucursal.ts y guardarCuposPromoCarta → guardar-cupos-promo-carta.ts (las lecturas, la validación que va después de leer la promo, el piso de core/carta/piso-de-promo.ts, las escrituras en server/persistencia/carta/promos.ts y la auditoría del precio viven en el caso de uso). La acción revalida la carta pública si sale bien, salvo la de los cupos (como antes). El archivo no tiene ninguna otra función.",
   },
   {
-    ruta: "src/server/actions/movimientos/precio-local.ts",
+    ruta: "src/server/actions/catalogo/precio-local.ts",
     motivo:
-      "Hito 4, bloque 4.2, H4C-4: setPrecioLocalProducto → movimientos/casos-de-uso/set-precio-local-producto.ts y sincronizarPrecioLocalGrupoCarta → sincronizar-precio-local-grupo-carta.ts, con el paso compartido guardar-precio-local-en-tx.ts (escritura en server/persistencia/movimientos/precio-local.ts y sus dos filas de auditoría en la misma transacción); el formato lo validan sus guardComando* (core/features/movimientos/precio-local.guard.ts) dentro de conPermiso. La acción revalida la carta pública y, después, calcula el sincronizable con el ítem agrupado (como antes). obtenerPrecioLocalProducto y listarPreciosLocales son lecturas.",
+      "Hito 4, bloque 4.2, H4C-4: setPrecioLocalProducto → catalogo/casos-de-uso/set-precio-local-producto.ts y sincronizarPrecioLocalGrupoCarta → sincronizar-precio-local-grupo-carta.ts, con el paso compartido guardar-precio-local-en-tx.ts (escritura en server/persistencia/catalogo/precio-local.ts y sus dos filas de auditoría en la misma transacción); el formato lo validan sus guardComando* (core/features/catalogo/precio-local.guard.ts) dentro de conPermiso. La acción revalida la carta pública y, después, calcula el sincronizable con el ítem agrupado (como antes). obtenerPrecioLocalProducto y listarPreciosLocales son lecturas.",
   },
   {
     ruta: "src/server/actions/catalogo/rendimiento-local.ts",
@@ -353,18 +353,12 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/catalogo/opciones-de-venta.ts",
     motivo:
-      "GO-2a (ADR-030): crearGrupoDeOpciones, editarGrupoDeOpciones, crearOpcionDeGrupo, editarOpcionDeGrupo y agregarVersionDeOpcion (opciones_definir) y fijarAdmisionDeGrupoEnProducto (producto_opciones_admitidas) → catalogo/casos-de-uso/{crear-grupo-de-opciones,editar-grupo-de-opciones,crear-opcion-de-grupo,editar-opcion-de-grupo,agregar-version-de-opcion,fijar-admision-de-grupo-en-producto}.ts, cada una con su guardComando… (core/features/catalogo/opciones-de-venta.guard.ts) dentro de conPermisoDeEmpresa. Escrituras en server/persistencia/catalogo/opciones-de-venta.ts (y el ancla del adicional en productos.ts); transacción SERIALIZABLE, versión optimista y auditoría en el caso de uso. GO-2d sumó reordenarOpcionesDeGrupo y OPCIONES-LIMPIEZA archivarOpciones (opciones_definir) y vincularGrupoEnProducto (producto_opciones_admitidas) → catalogo/casos-de-uso/{reordenar-opciones-de-grupo,archivar-opciones,vincular-grupo-en-producto}.ts, igual que las demás. El archivo nace migrado: no tiene ninguna otra mutación.",
+      "GO-2a (ADR-030): crearGrupoDeOpciones, editarGrupoDeOpciones, crearOpcionDeGrupo, editarOpcionDeGrupo y agregarVersionDeOpcion (opciones_definir) y fijarAdmisionDeGrupoEnProducto (producto_opciones_admitidas) → catalogo/casos-de-uso/{crear-grupo-de-opciones,editar-grupo-de-opciones,crear-opcion-de-grupo,editar-opcion-de-grupo,agregar-version-de-opcion,fijar-admision-de-grupo-en-producto}.ts, cada una con su guardComando… (core/features/catalogo/opciones-de-venta.guard.ts) dentro de conPermisoDeEmpresa. Escrituras en server/persistencia/catalogo/opciones-de-venta.ts (y el ancla del adicional en productos.ts); transacción SERIALIZABLE, versión optimista y auditoría en el caso de uso. GO-2d sumó reordenarOpcionesDeGrupo y OPCIONES-LIMPIEZA archivarOpciones (opciones_definir) y vincularGrupoEnProducto (producto_opciones_admitidas) → catalogo/casos-de-uso/{reordenar-opciones-de-grupo,archivar-opciones,vincular-grupo-en-producto}.ts, igual que las demás. Fase 6 (6.14c) sumó crearGrupoEnElProducto (producto_opciones_admitidas + opciones_definir, esta última con exigirTambienPermisoDeEmpresa) → catalogo/casos-de-uso/crear-grupo-en-el-producto.ts, que encadena crearGrupoDeOpcionesEnTx, crearOpcionDeGrupoEnTx y fijarAdmisionDeGrupoEnTx en UNA transacción SERIALIZABLE (todo rechazo lanza para deshacer). El archivo nace migrado: no tiene ninguna otra mutación.",
   },
   {
     ruta: "src/server/actions/catalogo/opciones-por-sucursal.ts",
     motivo:
       "GO-2a (ADR-030 §5): apagarOpcionEnSucursal (opcion_apagar_en_sucursal) y fijarPrecioLocalDeOpcion (precio_local) → catalogo/casos-de-uso/{apagar-opcion-en-sucursal,fijar-precio-local-de-opcion}.ts, con su guardComando… (eco de la sucursal activa, core/features/catalogo/opciones-por-sucursal.guard.ts) dentro de conPermiso. Escrituras en server/persistencia/catalogo/opciones-por-sucursal.ts, SOLO en la sucursal activa; transacción SERIALIZABLE y auditoría con la sucursal en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
-  },
-  // GO-3b (ADR-032): el precio por combinación nace migrado.
-  {
-    ruta: "src/server/actions/catalogo/combinaciones.ts",
-    motivo:
-      "GO-3b (ADR-032, frente A, AB4): fijarEjesDeCombinacion y guardarCombinacionDeProducto (producto_opciones_admitidas), crearGrupoDePrecio y editarGrupoDePrecio (grupos_de_precio_definir) fijarPrecioLocalDeCombinacion (precio_local, con el eco de la sucursal activa) y, en AB5, guardarRecetaDeCombinacion (guardar_receta) → catalogo/casos-de-uso/{fijar-ejes-de-combinacion,guardar-combinacion-de-producto,crear-grupo-de-precio,editar-grupo-de-precio,fijar-precio-local-de-combinacion,guardar-receta-de-combinacion}.ts, con su guardComando… (core/features/catalogo/combinaciones.guard.ts) dentro de la guarda. Lecturas en server/lecturas/catalogo/{combinaciones,precio-local-de-combinaciones}.ts, escrituras en server/persistencia/catalogo/combinaciones.ts; transacción SERIALIZABLE, versión optimista y auditoría en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
   },
   // GO-3b (ADR-032): los combos y el menú del día nacen migrados.
   {
@@ -386,7 +380,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/carta/precios.ts",
     motivo:
-      "CARTA-MANT F4 (ADR-034; decisión del dueño 2026-10-14): ajustarPreciosDeLaCarta (precio_local, sucursal) → movimientos/casos-de-uso/ajustar-precios-de-la-carta.ts (reusa el paso compartido guardar-precio-local-en-tx.ts), con su guardComando… (eco de la sucursal activa y el ajuste, core/features/carta/mantenimiento.guard.ts) dentro de conPermiso; escrituras en server/persistencia/movimientos/precio-local.ts, SOLO en la sucursal activa. ajustarPreciosDeLaEmpresa (producto_editar de empresa + producto_campos_sensibles por su fuente única) → catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts, con su guardComando… (confirmado === true) dentro de conPermisoDeEmpresa; escribe el precio de lista con server/persistencia/catalogo/productos.ts. Las dos: transacción SERIALIZABLE, precio visto y auditoría en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
+      "CARTA-MANT F4 (ADR-034; decisión del dueño 2026-10-14): ajustarPreciosDeLaCarta (precio_local, sucursal) → catalogo/casos-de-uso/ajustar-precios-de-la-carta.ts (reusa el paso compartido guardar-precio-local-en-tx.ts), con su guardComando… (eco de la sucursal activa y el ajuste, core/features/carta/mantenimiento.guard.ts) dentro de conPermiso; escrituras en server/persistencia/catalogo/precio-local.ts, SOLO en la sucursal activa. ajustarPreciosDeLaEmpresa (producto_editar de empresa + producto_campos_sensibles por su fuente única) → catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts, con su guardComando… (confirmado === true) dentro de conPermisoDeEmpresa; escribe el precio de lista con server/persistencia/catalogo/productos.ts. Las dos: transacción SERIALIZABLE, precio visto y auditoría en el caso de uso. El archivo nace migrado: no tiene ninguna otra mutación.",
   },
   {
     ruta: "src/server/actions/carta/copiar-carta.ts",
@@ -395,7 +389,72 @@ const ACCIONES_CON_CASO_DE_USO = [
   },
 ];
 
+/*
+ * R2, R3 y R4 (ola «precio y carta», Fase 1 «Cercos»: el dueño del dato). Excepciones por PAR (`desde` → `hacia`), no por archivo: un
+ * origen exceptuado por un cruce conocido no queda libre de sumar otro (ver `reglaConExcepcionesPorPar` en `.dependency-cruiser.cjs`).
+ * Son TODAS las violaciones que había al crear las reglas (2026-10-20); la lista solo se achica, y `test/arquitectura/dependencias.test.ts`
+ * exige que sea exactamente la de los cruces reales.
+ */
+const DEUDA = "Deuda de la ola precio y carta:";
+const MOTIVO_MEMBRESIAS = `${DEUDA} las membresías (UsuarioEmpresa/UsuarioSucursal) se persisten en persistencia/permisos y las escriben casos de uso de auth; la carpeta de la acción y la de la persistencia no coinciden. Decidir el dueño (alinear las carpetas o exponer un comando de permisos).`;
+const MOTIVO_INVITACIONES = `${DEUDA} la invitación tiene su persistencia en persistencia/invitaciones y sus casos de uso en actions/auth: dos nombres para un mismo dominio (también la registra el cerco dueno-unico-por-modelo, Invitacion).`;
+const MOTIVO_COMPRAS = `${DEUDA} anular y corregir una compra son casos de uso de actions/movimientos (la Server Action es movimientos/compras.ts) con la persistencia de persistencia/compras: dos nombres para un mismo dominio.`;
+const MOTIVO_IDEMPOTENCIA = `${DEUDA} la idempotencia I3 (registrarResultadoIdempotente) vive en persistencia/movimientos y la reusan Stock y Traspasos sin un comando público; mudarla a una pieza común o declararla.`;
+const MOTIVO_STOCK = `${DEUDA} reclasificar stock escribe movimientos de stock con la persistencia de Movimientos (dueño de MovimientoStock) en vez de un comando suyo.`;
+
+/** `persistencia-de-otro-dominio` (R2). */
+const PERSISTENCIA_DE_OTRO_DOMINIO = [
+  { desde: "src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-gerente.ts", hacia: "src/server/persistencia/invitaciones/marcar-invitacion-aceptada.ts", motivo: MOTIVO_INVITACIONES },
+  { desde: "src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-usuario.ts", hacia: "src/server/persistencia/invitaciones/marcar-invitacion-aceptada.ts", motivo: MOTIVO_INVITACIONES },
+  { desde: "src/server/actions/auth/casos-de-uso/aceptar-invitacion-de-usuario.ts", hacia: "src/server/persistencia/permisos/membresias.ts", motivo: MOTIVO_MEMBRESIAS },
+  { desde: "src/server/actions/auth/casos-de-uso/actualizar-activo-membresia.ts", hacia: "src/server/persistencia/permisos/membresias.ts", motivo: MOTIVO_MEMBRESIAS },
+  { desde: "src/server/actions/auth/casos-de-uso/actualizar-activo-usuario-en-empresa.ts", hacia: "src/server/persistencia/permisos/membresias.ts", motivo: MOTIVO_MEMBRESIAS },
+  { desde: "src/server/actions/auth/casos-de-uso/actualizar-notas-membresia.ts", hacia: "src/server/persistencia/permisos/membresias.ts", motivo: MOTIVO_MEMBRESIAS },
+  { desde: "src/server/actions/auth/casos-de-uso/agregar-o-actualizar-usuario.ts", hacia: "src/server/persistencia/permisos/membresias.ts", motivo: MOTIVO_MEMBRESIAS },
+  { desde: "src/server/actions/auth/casos-de-uso/crear-sucursal-con-admin.ts", hacia: "src/server/persistencia/permisos/membresias.ts", motivo: MOTIVO_MEMBRESIAS },
+  { desde: "src/server/actions/auth/casos-de-uso/enviar-invitacion-y-anotar.ts", hacia: "src/server/persistencia/invitaciones/anotar-invitacion-enviada.ts", motivo: MOTIVO_INVITACIONES },
+  { desde: "src/server/actions/auth/casos-de-uso/invitaciones-de-usuario-en-tx.ts", hacia: "src/server/persistencia/invitaciones/anotar-invitacion-enviada.ts", motivo: MOTIVO_INVITACIONES },
+  { desde: "src/server/actions/movimientos/casos-de-uso/anular-compra.ts", hacia: "src/server/persistencia/compras/cargar-compra-para-anular.ts", motivo: MOTIVO_COMPRAS },
+  { desde: "src/server/actions/movimientos/casos-de-uso/anular-compra.ts", hacia: "src/server/persistencia/compras/escribir-anulacion-de-compra.ts", motivo: MOTIVO_COMPRAS },
+  { desde: "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts", hacia: "src/server/persistencia/compras/cargar-compra-para-corregir.ts", motivo: MOTIVO_COMPRAS },
+  { desde: "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts", hacia: "src/server/persistencia/compras/escribir-correccion-de-compra.ts", motivo: MOTIVO_COMPRAS },
+  { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock.ts", motivo: MOTIVO_STOCK },
+  { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/escribir-movimiento-de-stock.ts", motivo: MOTIVO_STOCK },
+  { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/idempotencia.ts", motivo: MOTIVO_IDEMPOTENCIA },
+  { desde: "src/server/actions/traspasos/casos-de-uso/aceptar-traspaso.ts", hacia: "src/server/persistencia/movimientos/idempotencia.ts", motivo: MOTIVO_IDEMPOTENCIA },
+  { desde: "src/server/actions/traspasos/casos-de-uso/confirmar-reingreso-de-traspaso.ts", hacia: "src/server/persistencia/movimientos/idempotencia.ts", motivo: MOTIVO_IDEMPOTENCIA },
+];
+
+/** `casos-de-uso-sin-comandos-de-otro-dominio` (R3). */
+const CASOS_DE_USO_CON_COMANDOS_DE_OTRO_DOMINIO = [
+  {
+    desde: "src/server/actions/pos/casos-de-uso/cerrar-cuenta.ts",
+    hacia: "src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx.ts",
+    motivo: `${DEUDA} cerrar la cuenta del POS registra la venta con el paso de Movimientos (registrarVentaEnTx) dentro de su propia transacción. Es el candidato natural a comando público declarado (COMANDOS_PUBLICOS): queda como excepción hasta que se decida.`,
+  },
+];
+
+/** `casos-de-uso-solo-desde-acciones` (R4): vacía, ningún archivo fuera de server/actions importa un caso de uso. */
+const CASOS_DE_USO_IMPORTADOS_FUERA_DE_ACCIONES = [];
+
+/**
+ * Comandos públicos (R3): casos de uso o pasos de un dominio que los casos de uso de OTRO dominio pueden importar, cada uno con su motivo.
+ * Declarar uno es una decisión de diseño (qué expone el dueño del dato), no un trámite para que la regla pase. La ficha de un caso de uso que
+ * importa uno (`@/…`) sigue su auditoría como la de un paso compartido (`test/arquitectura/ficha-de-caso-de-uso.test.ts`).
+ */
+const COMANDOS_PUBLICOS = [
+  {
+    ruta: "src/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx.ts",
+    motivo:
+      "Decisión del dueño (Fase 2b, D2; DEC-36): el vínculo proveedor↔producto (ProveedorPorProducto) es de Catálogo y lo registra, con la auditoría de su precio, este comando de Catálogo; el registro de una Compra de Movimientos (registrar-movimiento.ts) lo invoca dentro de su propia transacción en vez de llamar a la persistencia de Catálogo.",
+  },
+];
+
 module.exports = {
+  "persistencia-de-otro-dominio": PERSISTENCIA_DE_OTRO_DOMINIO,
+  "casos-de-uso-sin-comandos-de-otro-dominio": CASOS_DE_USO_CON_COMANDOS_DE_OTRO_DOMINIO,
+  "casos-de-uso-solo-desde-acciones": CASOS_DE_USO_IMPORTADOS_FUERA_DE_ACCIONES,
+  COMANDOS_PUBLICOS,
   "core-sin-react-next": CORE_CON_REACT_NEXT,
   "sesion-capa": SESION_CON_NEXT,
   "ui-sin-prisma": PENDIENTES_DE_MIGRAR,

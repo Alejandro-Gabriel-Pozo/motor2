@@ -44,10 +44,10 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "pos_mesas", ctx.db);
-  if (!gate.ok) return <p className="text-red-700">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { mesaId } = await params;
   // El reloj se lee UNA vez, acá en el borde (O.22-a, Hito 4): el detalle (tiempos de la cuenta) y los tickets recientes usan la misma hora.
@@ -57,7 +57,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     return (
       <div className="space-y-3">
         <p className="font-semibold">No se encontró esa mesa en esta sucursal.</p>
-        <Link href="/mesas" className="text-[13px] text-[var(--ink-soft)] underline hover:text-[var(--ink)]">
+        <Link href="/mesas" className="text-sm text-tinta-suave underline hover:text-tinta">
           Volver al mapa
         </Link>
       </div>
@@ -98,7 +98,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
 
   return (
     <div>
-      <Link href="/mesas" className="mb-4 inline-flex items-center gap-1 text-[13px] text-[var(--ink-soft)] hover:text-[var(--ink)]">
+      <Link href="/mesas" className="mb-4 inline-flex min-h-11 items-center gap-1 text-sm text-tinta-suave hover:text-tinta max-md:mb-1 md:min-h-0">
         <span aria-hidden>←</span> Volver al mapa
       </Link>
 
@@ -108,7 +108,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
         <header className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">{titulo}</h1>
-            <p className="text-[13.5px] text-[var(--ink-soft)]">
+            <p className="text-sm text-tinta-suave">
               {cuenta ? `Atiende ${cuenta.mesero} · abierta ${cuenta.tiempoAbierta}` : "Libre · sin cuenta abierta"}
             </p>
             {cuenta && (
@@ -127,7 +127,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
           </div>
           {cuenta && (
             <div className="text-left md:text-right">
-              <div className="text-[11px] font-medium text-[var(--ink-faint)]">Total</div>
+              <div className="text-xs font-medium text-tinta-tenue">Total</div>
               <div data-total-cuenta className="text-2xl font-extrabold tabular-nums">
                 {formatearMonto(cuenta.total)}
               </div>
@@ -138,14 +138,14 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
         <ImpresionProvider mesa={titulo} sucursal={ctx.sucursalNombre} zonaHoraria={ctx.empresaZonaHoraria} comandas={comandas} tickets={tickets}>
         <OtroIgualProvider>
           {!cuenta ? (
-            <div className="rounded-[14px] border border-dashed border-[var(--border)] bg-white px-6 py-8">
+            <div className="rounded-[14px] border border-dashed border-borde bg-superficie px-6 py-8">
               <p className="mb-4 font-semibold">La mesa está libre.</p>
               <AbrirCuenta mesaId={mesa.id} puede={abrirCuenta.editar} />
             </div>
           ) : (
             <div className="flex flex-col gap-5">
-              <section aria-labelledby="agregar-titulo" className="rounded-[14px] border border-[var(--border)] bg-white p-4">
-                <h2 id="agregar-titulo" className="mb-3 text-[15px] font-bold">
+              <section aria-labelledby="agregar-titulo" className="rounded-[14px] border border-borde bg-superficie p-4">
+                <h2 id="agregar-titulo" className="mb-3 text-base font-bold">
                   Agregar al pedido
                 </h2>
                 <AgregarItems cuentaId={cuenta.id} puede={tomarPedido.editar} selectorCarta={selectorCarta} configuraciones={configuraciones} puedeAgotar={agotar.editar} />
@@ -172,14 +172,14 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
               />
 
               {cuenta.envios.map((envio) => (
-                <section key={envio.numero} aria-labelledby={`envio-${envio.numero}`} data-envio={envio.numero} className="rounded-[14px] border border-[var(--border)] bg-white p-4">
+                <section key={envio.numero} aria-labelledby={`envio-${envio.numero}`} data-envio={envio.numero} className="rounded-[14px] border border-borde bg-superficie p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <h2 id={`envio-${envio.numero}`} className="text-[15px] font-bold">
+                    <h2 id={`envio-${envio.numero}`} className="text-base font-bold">
                       Envío {envio.numero} · en cocina
                     </h2>
                     <ReimprimirEnvio numero={envio.numero} puede={tomarPedido.editar} />
                   </div>
-                  <ul className="divide-y divide-[var(--border)]">
+                  <ul className="divide-y divide-borde">
                     {agruparEnvioPorPromo(envio.items).map((fila) =>
                       fila.tipo === "suelto" ? (
                         <ItemEnviado key={fila.item.id} item={fila.item} adicionales={fila.adicionales} puedeAnular={anularItem.editar} puedePedir={tomarPedido.editar} />
@@ -191,7 +191,7 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
                 </section>
               ))}
 
-              <div className="flex flex-wrap items-start gap-4 border-t border-[var(--border)] pt-5">
+              <div className="flex flex-wrap items-start gap-4 border-t border-borde pt-5">
                 <CerrarCuenta
                   cuentaId={cuenta.id}
                   titulo={titulo}
@@ -206,8 +206,8 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
           )}
           <CuentasCerradas tickets={tickets} puede={cerrarCuenta.editar} puedeCorregir={emitirCorregida.editar} zonaHoraria={ctx.empresaZonaHoraria} />
           {verReportesDinero.ver && (
-            <p className="mt-3 text-[13px]">
-              <Link href={`/reportes/tickets?mesaId=${mesa.id}`} className="text-[var(--ink-soft)] underline hover:text-[var(--ink)]">
+            <p className="mt-3 text-sm">
+              <Link href={`/reportes/tickets?mesaId=${mesa.id}`} className="inline-flex min-h-11 items-center text-tinta-suave underline hover:text-tinta md:min-h-0">
                 Ver todos los tickets de esta mesa →
               </Link>
             </p>
@@ -227,20 +227,20 @@ function ItemEnviado({ item, adicionales, puedeAnular, puedePedir }: { item: Ite
   const anuladoEntero = item.restante <= 0;
   const elegidas = elegidasDeLaLinea({ item, adicionales });
   return (
-    <li data-item-enviado={item.productoNombre} className="py-2 text-[14px]">
+    <li data-item-enviado={item.productoNombre} className="py-2 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className={`min-w-0 [overflow-wrap:anywhere]${anuladoEntero ? " text-[var(--ink-soft)] line-through" : ""}`}>
+        <span className={`min-w-0 [overflow-wrap:anywhere]${anuladoEntero ? " text-tinta-suave line-through" : ""}`}>
           <span className="font-semibold tabular-nums">{formatearCantidad(anuladoEntero ? item.cantidad : item.restante)} ×</span> {item.productoNombre}
-          {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-[12.5px] text-[var(--ink-soft)]"> (pedido {formatearCantidad(item.cantidad)})</span>}
+          {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-sm text-tinta-suave"> (pedido {formatearCantidad(item.cantidad)})</span>}
           {item.opciones && (
-            <span data-opciones-de-linea className="block text-[12.5px] text-[var(--ink-soft)]">
+            <span data-opciones-de-linea className="block text-sm text-tinta-suave">
               {item.opciones.join(" · ")}
             </span>
           )}
         </span>
         <span className="flex flex-wrap items-center gap-3">
           <span className="tabular-nums">
-            {!anuladoEntero && item.precioListaUnitario !== null && <s data-precio-lista className="mr-1 text-[var(--ink-soft)]">{formatearMonto(item.restante * item.precioListaUnitario)}</s>}
+            {!anuladoEntero && item.precioListaUnitario !== null && <s data-precio-lista className="mr-1 text-tinta-suave">{formatearMonto(item.restante * item.precioListaUnitario)}</s>}
             {anuladoEntero ? "Anulado" : formatearMonto(item.restante * item.precioUnitario)}
           </span>
           {elegidas.length > 0 && <OtroIgual pedido={{ productoId: item.productoId, elegidas }} titulo={item.productoNombre} puede={puedePedir} />}
@@ -248,9 +248,9 @@ function ItemEnviado({ item, adicionales, puedeAnular, puedePedir }: { item: Ite
         </span>
       </div>
       {adicionales.length > 0 && (
-        <ul aria-label={`Adicionales de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[13px]">
+        <ul aria-label={`Adicionales de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-sm">
           {adicionales.map((a) => (
-            <li key={a.id} data-adicional-enviado={a.productoNombre} className={`flex items-center justify-between gap-3${a.restante <= 0 ? " text-[var(--ink-soft)] line-through" : ""}`}>
+            <li key={a.id} data-adicional-enviado={a.productoNombre} className={`flex items-center justify-between gap-3${a.restante <= 0 ? " text-tinta-suave line-through" : ""}`}>
               <span className="min-w-0 [overflow-wrap:anywhere]">
                 + <span className="tabular-nums">{formatearCantidad(a.restante <= 0 ? a.cantidad : a.restante)} ×</span> {a.productoNombre}
               </span>
@@ -260,7 +260,7 @@ function ItemEnviado({ item, adicionales, puedeAnular, puedePedir }: { item: Ite
         </ul>
       )}
       {item.anulaciones.length > 0 && (
-        <ul aria-label={`Anulaciones de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[12.5px] text-[var(--ink-soft)]">
+        <ul aria-label={`Anulaciones de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-sm text-tinta-suave">
           {item.anulaciones.map((a) => (
             <li key={a.id} data-anulacion className="line-through">
               {formatearCantidad(a.cantidad).replace("-", "−")} · {a.motivoAnulacion} · por {a.creadoPor ?? "—"}
@@ -305,7 +305,7 @@ function agruparEnvioPorPromo(items: ItemEnEnvio<ItemDeCuenta>[]): FilaEnvio[] {
 function PromoEnviada({ promoCuentaId, titulo, items, puedeAnular }: { promoCuentaId: string; titulo: string; items: ItemEnEnvio<ItemDeCuenta>[]; puedeAnular: boolean }) {
   const quedaAlgo = items.some((i) => i.restante > 0);
   return (
-    <li data-promo-enviada={titulo} className="py-2 text-[14px]">
+    <li data-promo-enviada={titulo} className="py-2 text-sm">
       <div className="mb-1 flex items-center justify-between gap-3">
         <span className="font-semibold">{titulo}</span>
         {quedaAlgo && <AnularPromo promoCuentaId={promoCuentaId} titulo={titulo} puede={puedeAnular} />}
@@ -316,14 +316,14 @@ function PromoEnviada({ promoCuentaId, titulo, items, puedeAnular }: { promoCuen
           return (
             <li key={item.id} data-item-enviado={item.productoNombre}>
               <div className="flex items-center justify-between gap-3">
-                <span className={anuladoEntero ? "text-[var(--ink-soft)] line-through" : undefined}>
+                <span className={anuladoEntero ? "text-tinta-suave line-through" : undefined}>
                   <span className="font-semibold tabular-nums">{formatearCantidad(anuladoEntero ? item.cantidad : item.restante)} ×</span> {item.productoNombre}
-                  {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-[12.5px] text-[var(--ink-soft)]"> (pedido {formatearCantidad(item.cantidad)})</span>}
+                  {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-sm text-tinta-suave"> (pedido {formatearCantidad(item.cantidad)})</span>}
                 </span>
                 <span className="tabular-nums">{anuladoEntero ? "Anulado" : formatearMonto(item.restante * item.precioUnitario)}</span>
               </div>
               {item.anulaciones.length > 0 && (
-                <ul aria-label={`Anulaciones de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-[12.5px] text-[var(--ink-soft)]">
+                <ul aria-label={`Anulaciones de ${item.productoNombre}`} className="mt-1 space-y-0.5 pl-4 text-sm text-tinta-suave">
                   {item.anulaciones.map((a) => (
                     <li key={a.id} data-anulacion className="line-through">
                       {formatearCantidad(a.cantidad).replace("-", "−")} · {a.motivoAnulacion} · por {a.creadoPor ?? "—"}

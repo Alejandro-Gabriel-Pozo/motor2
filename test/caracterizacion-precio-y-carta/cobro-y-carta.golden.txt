@@ -1,0 +1,166 @@
+# Caracterización integrada (Fase 0): lo que cobra el POS y lo que muestra la carta pública, contra Postgres. Foto de hoy, no aprobación.
+
+## CARTA PÚBLICA (cartaPublica → CartaPublicaV1, lo que recibe el navegador)
+carta: version=1 generadoEn=<fecha> sucursal={"nombre":"Central"} secciones=4
+SECCION «Pizzas» descripcion=null imagenUrl=null orden=1 titulo=null items=1 promos=0
+  ITEM «Pizzas» categoria="Pizzas" descripcion=null especial=false imagenUrl=null precio=18000 tags=[]
+    lista «Tipos de Pizza»: Pizza muzzarella precio=18000 | Pizza de verduras asadas precio=20000 | Pizza fugazzeta precio=22000 | Pizza napolitana precio=22000 | Pizza con papas fritas precio=25000 | Pizza bomba precio=25000
+    presentacion {"forma":"lista","encabezado":true,"protagonista":"nombre","filas":[{"rotulo":"Pizza muzzarella","precio":18000},{"rotulo":"Pizza de verduras asadas","precio":20000},{"rotulo":"Pizza fugazzeta","precio":22000},{"rotulo":"Pizza napolitana","precio":22000},{"rotulo":"Pizza con papas fritas","precio":25000},{"rotulo":"Pizza bomba","precio":25000}],"aclaraciones":[]}
+SECCION «Platos» descripcion=null imagenUrl=null orden=2 titulo=null items=3 promos=0
+  tandas [{"primero":0,"ultimo":0,"rotulos":["Simple","Napolitana"]}]
+  ITEM «Milanesas» categoria="Platos" descripcion=null especial=false imagenUrl=null precio=20000 tags=[]
+    lista «Tipo de Milanesa»: Simple precio=20000 | Napolitana precio=25000
+    pastillas «Milanesas de»: Carne | Pollo
+    presentacion {"forma":"columnas","celdas":[20000,25000],"aclaraciones":[{"tipo":"eleccion","rotulo":"Milanesas de","opciones":["carne","pollo"]}]}
+  ITEM «Bife a la criolla» categoria="Platos" descripcion=null especial=false imagenUrl=null precio=20000 tags=[]
+    lista «Extras»: Extra de papas recargo=+2000 | Huevo frito recargo=+1500
+    pastillas «Guarnicion»: Ensalada | Papas fritas | Puré
+    presentacion {"forma":"simple","aclaraciones":[{"tipo":"eleccion","rotulo":"Guarnicion","opciones":["ensalada","papas fritas","puré"]},{"tipo":"extras","rotulo":"Extras","opciones":[{"nombre":"extra de papas","recargo":2000},{"nombre":"huevo frito","recargo":1500}]}]}
+  ITEM «Wok de verduras» categoria="Platos" descripcion=null especial=false imagenUrl=null precio=19000 tags=[]
+SECCION «Cafetería» descripcion=null imagenUrl=null orden=3 titulo=null items=1 promos=0
+  tandas [{"primero":0,"ultimo":0,"rotulos":["Chico","Mediano","Grande"]}]
+  ITEM «Café» categoria="Cafetería" descripcion=null especial=false imagenUrl=null precio=4000 tags=[]
+    lista «Tamaño del Café»: Chico precio=4000 | Mediano precio=4100 | Grande precio=4300
+    lista «Preparación del café»: Lágrima recargo=+200 | Con leche recargo=+300
+    pastillas «Preparación del café»: Solo | Cortado
+    presentacion {"forma":"columnas","celdas":[4000,4100,4300],"aclaraciones":[{"tipo":"extras","rotulo":"Preparación del café","opciones":[{"nombre":"solo","recargo":0},{"nombre":"cortado","recargo":0},{"nombre":"lágrima","recargo":200},{"nombre":"con leche","recargo":300}]}]}
+SECCION «Bebidas» descripcion=null imagenUrl=null orden=4 titulo=null items=1 promos=0
+  ITEM «Gaseosa 500 cc» categoria="Bebidas" descripcion=null especial=false imagenUrl=null precio=4000 tags=[]
+
+## COBRO (agregarItems, la acción real del POS)
+
+### Pizza muzzarella
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Pizzas» producto=pizzas cantidad=1 precioUnitario=18000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tipos de Pizza» Pizza muzzarella grupo=grupo«tiposDePizza» opcion=pizzaMuzzarella version=pizzaMuzzarella.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=18000.00 precioDeSucursal=false factor=-
+
+### Pizza de verduras asadas
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Pizzas» producto=pizzas cantidad=1 precioUnitario=20000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tipos de Pizza» Pizza de verduras asadas grupo=grupo«tiposDePizza» opcion=pizzaVerduras version=pizzaVerduras.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=20000.00 precioDeSucursal=false factor=-
+
+### Pizza fugazzeta
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Pizzas» producto=pizzas cantidad=1 precioUnitario=22000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tipos de Pizza» Pizza fugazzeta grupo=grupo«tiposDePizza» opcion=pizzaFugazzeta version=pizzaFugazzeta.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=22000.00 precioDeSucursal=false factor=-
+
+### Pizza napolitana
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Pizzas» producto=pizzas cantidad=1 precioUnitario=22000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tipos de Pizza» Pizza napolitana grupo=grupo«tiposDePizza» opcion=pizzaNapolitana version=pizzaNapolitana.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=22000.00 precioDeSucursal=false factor=-
+
+### Pizza con papas fritas
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Pizzas» producto=pizzas cantidad=1 precioUnitario=25000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tipos de Pizza» Pizza con papas fritas grupo=grupo«tiposDePizza» opcion=pizzaPapas version=pizzaPapas.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=25000.00 precioDeSucursal=false factor=-
+
+### Pizza bomba, 2 unidades
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Pizzas» producto=pizzas cantidad=2 precioUnitario=25000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tipos de Pizza» Pizza bomba grupo=grupo«tiposDePizza» opcion=pizzaBomba version=pizzaBomba.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=25000.00 precioDeSucursal=false factor=-
+
+### Milanesa simple de carne
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Milanesas» producto=milanesas cantidad=1 precioUnitario=20000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tipo de Milanesa» Simple grupo=grupo«tipoDeMilanesa» opcion=simple version=simple.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=20000.00 precioDeSucursal=false factor=-
+      FOTO VARIANTE «Milanesas de» Carne grupo=grupo«milanesasDe» opcion=carne version=carne.v1 x1 orden=1 modo=- dif=MONTO porcentaje=- importe=0.00 precioDeSucursal=false factor=-
+
+### Milanesa napolitana de pollo
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Milanesas» producto=milanesas cantidad=1 precioUnitario=25000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tipo de Milanesa» Napolitana grupo=grupo«tipoDeMilanesa» opcion=napolitana version=napolitana.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=25000.00 precioDeSucursal=false factor=-
+      FOTO VARIANTE «Milanesas de» Pollo grupo=grupo«milanesasDe» opcion=pollo version=pollo.v1 x1 orden=1 modo=- dif=MONTO porcentaje=- importe=0.00 precioDeSucursal=false factor=-
+
+### Café chico solo
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Café» producto=cafe cantidad=1 precioUnitario=4000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tamaño del Café» Chico grupo=grupo«tamanoDelCafe» opcion=chico version=chico.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=4000.00 precioDeSucursal=false factor=-
+      FOTO VARIANTE «Preparación del café» Solo grupo=grupo«preparacion» opcion=solo version=solo.v1 x1 orden=1 modo=- dif=MONTO porcentaje=- importe=0.00 precioDeSucursal=false factor=-
+
+### Café grande con leche
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Café» producto=cafe cantidad=1 precioUnitario=4600.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tamaño del Café» Grande grupo=grupo«tamanoDelCafe» opcion=grande version=grande.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=4300.00 precioDeSucursal=false factor=-
+      FOTO VARIANTE «Preparación del café» Con leche grupo=grupo«preparacion» opcion=conLeche version=conLeche.v1 x1 orden=1 modo=- dif=MONTO porcentaje=- importe=300.00 precioDeSucursal=false factor=-
+
+### Café mediano sin preparación (la variante es opcional)
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Café» producto=cafe cantidad=1 precioUnitario=4100.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tamaño del Café» Mediano grupo=grupo«tamanoDelCafe» opcion=mediano version=mediano.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=4100.00 precioDeSucursal=false factor=-
+
+### Bife a la criolla con puré y un extra de papas
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Bife a la criolla» producto=bife cantidad=1 precioUnitario=20000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO INCLUIDA «Guarnicion» Puré grupo=grupo«guarnicion» opcion=pure version=pure.v1 x1 orden=0 modo=- dif=- porcentaje=- importe=0.00 precioDeSucursal=false factor=-
+    ADICIONAL «Extra de papas» producto=extraPapasAncla cantidad=1 precioUnitario=2000.00 precioCartaUnitario=- huella=- envio=- promo=-
+      FOTO ADICIONAL «Extras» Extra de papas grupo=grupo«extras» opcion=extraPapas version=extraPapas.v1 x1 orden=1 modo=- dif=MONTO porcentaje=- importe=2000.00 precioDeSucursal=false factor=-
+
+### Bife a la criolla con ensalada, extra de papas y dos huevos fritos, 2 unidades
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Bife a la criolla» producto=bife cantidad=2 precioUnitario=20000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO INCLUIDA «Guarnicion» Ensalada grupo=grupo«guarnicion» opcion=ensalada version=ensalada.v1 x1 orden=0 modo=- dif=- porcentaje=- importe=0.00 precioDeSucursal=false factor=-
+    ADICIONAL «Extra de papas» producto=extraPapasAncla cantidad=2 precioUnitario=2000.00 precioCartaUnitario=- huella=- envio=- promo=-
+      FOTO ADICIONAL «Extras» Extra de papas grupo=grupo«extras» opcion=extraPapas version=extraPapas.v1 x1 orden=1 modo=- dif=MONTO porcentaje=- importe=2000.00 precioDeSucursal=false factor=-
+    ADICIONAL «Huevo frito» producto=huevoAncla cantidad=4 precioUnitario=1500.00 precioCartaUnitario=- huella=- envio=- promo=-
+      FOTO ADICIONAL «Extras» Huevo frito grupo=grupo«extras» opcion=huevo version=huevo.v1 x2 orden=2 modo=- dif=MONTO porcentaje=- importe=1500.00 precioDeSucursal=false factor=-
+
+### Gaseosa 500 cc
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Gaseosa 500 cc» producto=gaseosa cantidad=1 precioUnitario=4000.00 precioCartaUnitario=- huella=- envio=- promo=-
+
+### Gaseosa 500 cc, 3 unidades
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Gaseosa 500 cc» producto=gaseosa cantidad=3 precioUnitario=4000.00 precioCartaUnitario=- huella=- envio=- promo=-
+
+### Wok de verduras
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Wok de verduras» producto=wok cantidad=1 precioUnitario=19000.00 precioCartaUnitario=- huella=- envio=- promo=-
+
+## COBRO: el precio de lista que vio el mozo (precioDeListaEsperado)
+
+### Pizza muzzarella vista a 18.000 (el precio de hoy): se agrega
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Pizzas» producto=pizzas cantidad=1 precioUnitario=18000.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tipos de Pizza» Pizza muzzarella grupo=grupo«tiposDePizza» opcion=pizzaMuzzarella version=pizzaMuzzarella.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=18000.00 precioDeSucursal=false factor=-
+
+### RECHAZO (PRECIO_CAMBIO): pizza muzzarella vista a 17.000
+  resultado: ok=false mensaje="«Pizzas»: el precio cambió desde que lo elegiste. Volvé a mirarlo y agregalo de nuevo."
+  (no se escribió ninguna línea)
+
+### RECHAZO (PRECIO_CAMBIO): café grande con leche visto a 4.300 (sin la preparación)
+  resultado: ok=false mensaje="«Café»: el precio cambió desde que lo elegiste. Volvé a mirarlo y agregalo de nuevo."
+  (no se escribió ninguna línea)
+
+### RECHAZO (PRECIO_CAMBIO): gaseosa (sin opciones) vista a 3.500
+  resultado: ok=false mensaje="«Gaseosa 500 cc»: el precio cambió desde que lo elegiste. Volvé a mirarlo y agregalo de nuevo."
+  (no se escribió ninguna línea)
+
+## COBRO: grupo obligatorio faltante
+
+### RECHAZO: bife a la criolla sin guarnición (INCLUIDA obligatoria)
+  resultado: ok=false mensaje="«Bife a la criolla»: Elegí al menos 1 opción de «Guarnicion»."
+  (no se escribió ninguna línea)
+
+### RECHAZO: pizzas sin tipo (MEDIDA obligatoria)
+  resultado: ok=false mensaje="«Pizzas»: Elegí al menos 1 opción de «Tipos de Pizza»."
+  (no se escribió ninguna línea)
+
+### RECHAZO: milanesa simple sin «Milanesas de» (VARIANTE obligatoria)
+  resultado: ok=false mensaje="«Milanesas»: Elegí al menos 1 opción de «Milanesas de»."
+  (no se escribió ninguna línea)
+
+## PRECIO DE SUCURSAL: café mediano a 4.200 en la grilla de la sucursal (PrecioLocalDeOpcion)
+
+### Café mediano con lágrima (grilla de sucursal)
+  resultado: ok=true mensaje="Se agregó 1 ítem a la mesa 4."
+  LINEA «Café» producto=cafe cantidad=1 precioUnitario=4400.00 precioCartaUnitario=- huella=sí envio=- promo=-
+      FOTO MEDIDA «Tamaño del Café» Mediano grupo=grupo«tamanoDelCafe» opcion=mediano version=mediano.v1 x1 orden=0 modo=ABSOLUTO dif=- porcentaje=- importe=4200.00 precioDeSucursal=true factor=-
+      FOTO VARIANTE «Preparación del café» Lágrima grupo=grupo«preparacion» opcion=lagrima version=lagrima.v1 x1 orden=1 modo=- dif=MONTO porcentaje=- importe=200.00 precioDeSucursal=false factor=-
+
+### La carta pública del café con la grilla
+  ITEM «Café» categoria="Cafetería" descripcion=null especial=false imagenUrl=null precio=4000 tags=[]
+    lista «Tamaño del Café»: Chico precio=4000 | Mediano precio=4200 | Grande precio=4300
+    lista «Preparación del café»: Lágrima recargo=+200 | Con leche recargo=+300
+    pastillas «Preparación del café»: Solo | Cortado
+    presentacion {"forma":"columnas","celdas":[4000,4200,4300],"aclaraciones":[{"tipo":"extras","rotulo":"Preparación del café","opciones":[{"nombre":"solo","recargo":0},{"nombre":"cortado","recargo":0},{"nombre":"lágrima","recargo":200},{"nombre":"con leche","recargo":300}]}]}
+

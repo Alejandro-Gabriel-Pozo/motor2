@@ -1,6 +1,5 @@
-import { Fragment } from "react";
-import type { EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
-import { formatearPrecioCarta } from "@/core/carta/public";
+import type { AclaracionCartaPublica, EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica, TandaCartaPublica } from "@/core/carta/public";
+import { formatearPrecioCarta, partirLaAclaracion, recargoEnPesos, textoDeLaAclaracion } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
 
 /**
@@ -10,15 +9,28 @@ import { TagIcon } from "./iconos";
  * responsive. La imagen de sección es siempre el fondo de la banda: un `<img>` de fondo con `object-fit`, sin la lógica de
  * posicionamiento fino del original (nivel (a) del diagnóstico: correcto y accesible, no pixel-a-pixel idéntico).
  */
-export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCartaPublica; indice: number; total: number; estilo: EstiloCarta }) {
+export function Seccion({
+  seccion,
+  indice,
+  total,
+  estilo,
+  soloPantalla = false,
+}: {
+  seccion: SeccionCartaPublica;
+  indice: number;
+  total: number;
+  estilo: EstiloCarta;
+  /** Fase 5, paso 10b: la página es solo de pantalla (hoy hay algo agotado y el papel lleva la carta completa, `seccionesImpresas`). */
+  soloPantalla?: boolean;
+}) {
   const img = estilo.imagenSeccion;
   const c = estilo.colores;
   return (
-    <div className="carta-pagina flex flex-col">
+    <div className={`carta-pagina flex flex-col${soloPantalla ? " carta-solo-pantalla" : ""}`}>
       <div
         data-carta-banda
-        className="relative h-[var(--banda-alto-m)] shrink-0 overflow-hidden border-b sm:h-[var(--banda-alto-d)]"
-        style={{ "--banda-alto-m": estilo.banda.altoMobile, "--banda-alto-d": estilo.banda.altoDesktop, borderColor: "var(--carta-border)" } as React.CSSProperties}
+        className="carta-borde relative h-[var(--banda-alto-m)] shrink-0 overflow-hidden border-b sm:h-[var(--banda-alto-d)]"
+        style={{ "--banda-alto-m": estilo.banda.altoMobile, "--banda-alto-d": estilo.banda.altoDesktop } as React.CSSProperties}
       >
         {seccion.imagenUrl && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -36,136 +48,307 @@ export function Seccion({ seccion, indice, total, estilo }: { seccion: SeccionCa
           >
             {seccion.titulo ?? seccion.nombre}
           </h2>
+          {/* Piso de 14 px (decisión del dueño): la descripción de la banda sigue al tema SOLO hacia arriba, como todo texto de la carta (`--carta-fs-aclaracion`: el piso del rol Aclaración). */}
           {seccion.descripcion && (
-            <p className={`line-clamp-1 font-light leading-snug${c.bandaDescripcion ? "" : " opacity-70"}`} style={{ fontSize: estilo.valores.carta_fuente_banda_descripcion, color: c.bandaDescripcion ?? undefined }}>
+            <p className={`line-clamp-1 font-light leading-snug${c.bandaDescripcion ? "" : " opacity-70"}`} style={{ fontSize: `max(var(--carta-fs-aclaracion), ${estilo.valores.carta_fuente_banda_descripcion})`, color: c.bandaDescripcion ?? undefined }}>
               {seccion.descripcion}
             </p>
           )}
         </div>
       </div>
 
-      <ul data-carta-scroll className="min-h-0 flex-1 divide-y overflow-y-auto px-6 sm:px-10" style={{ borderColor: "var(--carta-border)" }}>
+      <ul data-carta-scroll className="carta-divisor min-h-0 flex-1 divide-y overflow-y-auto px-6 sm:px-10">
         {/* S-25: las `key` son la posición, no el id de la fila: React serializa la `key` de cada elemento en el payload RSC que baja al navegador. */}
-        {seccion.items.map((item, i) => (
-          <ItemFila key={`item-${i}`} item={item} estilo={estilo} />
-        ))}
+        {seccion.items.map((item, i) => {
+          // Fase 5: una TANDA (productos consecutivos que comparten columnas, Chico | Mediano | Grande) se dibuja UNA vez, en su primer ítem, como una tabla; los demás de la tanda van adentro.
+          const tanda = seccion.tandas?.find((t) => i >= t.primero && i <= t.ultimo);
+          if (tanda) return i === tanda.primero ? <TandaFila key={`item-${i}`} tanda={tanda} items={seccion.items.slice(tanda.primero, tanda.ultimo + 1)} estilo={estilo} /> : null;
+          return <ItemFila key={`item-${i}`} item={item} estilo={estilo} />;
+        })}
         {seccion.promos.map((promo, i) => (
-          <PromoFila key={`promo-${i}`} promo={promo} estilo={estilo} />
+          <PromoFila key={`promo-${i}`} promo={promo} />
         ))}
       </ul>
     </div>
   );
 }
 
-/** CARTA-B: los pisos de legibilidad de un ítem con opciones (nombre y precio 19 px, aclaraciones 14 px). El tema manda si pide más; nunca baja de ahí. */
-const PISO_NOMBRE_Y_PRECIO = "1.1875rem";
-const PISO_ACLARACION = "0.875rem";
-const conPiso = (valor: string, piso: string, aplica: boolean) => (aplica ? `max(${piso}, ${valor})` : valor);
+/** Los colores del tema para un ítem (los de siempre; el especial, con los suyos). */
+function coloresDelItem(especial: boolean, v: EstiloCarta["valores"]) {
+  return {
+    nombre: especial ? (v.color_especial_item_nombre || "var(--carta-primary)") : v.color_item_nombre || undefined,
+    precio: especial ? (v.color_especial_item_precio || "var(--carta-primary)") : v.color_item_precio || "var(--carta-primary)",
+    descripcion: especial ? v.color_especial_item_descripcion || undefined : v.color_item_descripcion || undefined,
+    tags: especial ? (v.color_especial_item_tags || "var(--carta-primary)") : v.color_item_tags || "var(--carta-primary)",
+    estrella: v.color_especial_item_nombre || "var(--carta-primary)",
+  };
+}
+type ColoresDelItem = ReturnType<typeof coloresDelItem>;
 
-function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
-  const v = estilo.valores;
-  const esp = item.especial;
-  const colorNombre = esp ? (v.color_especial_item_nombre || "var(--carta-primary)") : v.color_item_nombre || undefined;
-  const colorPrecio = esp ? (v.color_especial_item_precio || "var(--carta-primary)") : v.color_item_precio || "var(--carta-primary)";
-  const colorDesc = esp ? v.color_especial_item_descripcion || undefined : v.color_item_descripcion || undefined;
-  const colorTags = esp ? (v.color_especial_item_tags || "var(--carta-primary)") : v.color_item_tags || "var(--carta-primary)";
-  // CARTA-B: lo que llega en `grupos` ya es SOLO lo que cambia el precio (lo decide el servidor): los tamaños con su precio final y lo que suma o resta una variante o un adicional.
-  const tamanos = (item.grupos ?? []).map((g) => ({ nombre: g.nombre, filas: g.opciones.flatMap((o) => (o.precio === undefined ? [] : [{ nombre: o.nombre, precio: o.precio }])) })).filter((g) => g.filas.length > 0);
-  const recargos = (item.grupos ?? []).flatMap((g) => g.opciones.flatMap((o) => (o.recargo === undefined ? [] : [{ nombre: o.nombre, recargo: o.recargo }])));
-  // CARTA-C: lo que NO cambia el precio (preparación, guarnición, punto de cocción) también llega, aparte y solo con nombres, para dibujarlo como pastillas bajo el nombre de su grupo.
-  const sinCosto = (item.opcionesSinCosto ?? []).filter((g) => g.opciones.length > 0);
-  const conOpciones = tamanos.length > 0 || recargos.length > 0 || sinCosto.length > 0;
-  // Con una lista de tamaños el renglón del nombre va SIN precio (cada tamaño lo dice); sin ella, el precio base queda a la derecha como siempre.
-  const tamanosEnLista = tamanos.length > 0;
-  const fuenteNombre = conPiso(v.carta_fuente_item_nombre, PISO_NOMBRE_Y_PRECIO, conOpciones);
-  const fuentePrecio = conPiso(v.carta_fuente_item_precio, PISO_NOMBRE_Y_PRECIO, conOpciones);
-  const fuenteDescripcion = conPiso(v.carta_fuente_item_descripcion, PISO_ACLARACION, conOpciones);
-
+/** La ★ de un plato especial (un glifo: no depende solo del color). */
+function Estrella({ color }: { color: string }) {
   return (
-    <li className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="min-w-0 flex-1 carta-titulo font-semibold leading-tight" style={{ fontSize: fuenteNombre, color: colorNombre, overflowWrap: "anywhere" }}>
-          {item.nombre}
-          {esp && (
-            <span className="ml-1 text-xs" style={{ color: v.color_especial_item_nombre || "var(--carta-primary)" }} aria-label="Especial">
-              {" ★"}
-            </span>
-          )}
-        </h3>
-        {tamanosEnLista ? (
-          item.descuentoPorcentaje !== undefined && (
-            // Los tamaños ya traen el descuento en su precio: acá solo se avisa el porcentaje.
-            <span className="shrink-0 carta-titulo font-semibold" style={{ fontSize: PISO_ACLARACION, color: colorPrecio }} data-descuento-producto>
-              <span className="sr-only">{`${item.descuentoPorcentaje} por ciento de descuento en todos los tamaños`}</span>
-              <span aria-hidden="true">{`−${item.descuentoPorcentaje} %`}</span>
-            </span>
-          )
-        ) : item.precioLista !== undefined ? (
-          <span className="shrink-0 flex flex-col items-end carta-titulo font-semibold" style={{ fontSize: fuentePrecio, color: colorPrecio }} data-descuento-producto>
-            <span className="sr-only">{`Antes ${formatearPrecioCarta(item.precioLista)}, ahora ${formatearPrecioCarta(item.precio)}, ${item.descuentoPorcentaje} por ciento de descuento`}</span>
-            <s aria-hidden="true" className="text-xs font-light opacity-75">
-              {formatearPrecioCarta(item.precioLista)}
-            </s>
-            <span aria-hidden="true">
-              {formatearPrecioCarta(item.precio)}
-              <span className="ml-1 text-xs font-light">{`−${item.descuentoPorcentaje} %`}</span>
-            </span>
-          </span>
-        ) : (
-          <span className="shrink-0 carta-titulo font-semibold" style={{ fontSize: fuentePrecio, color: colorPrecio }}>
-            {formatearPrecioCarta(item.precio)}
-          </span>
-        )}
-      </div>
+    <span className="ml-1" style={{ color }} aria-label="Especial">
+      {" ★"}
+    </span>
+  );
+}
+
+/** El nombre de un plato, en el rol Producto (un `h3`: la carta se recorre por sus títulos). */
+function NombreDelItem({ item, colores }: { item: ItemCartaPublico; colores: ColoresDelItem }) {
+  return (
+    <h3 data-rol="producto" className="carta-rol-producto min-w-0 flex-1 carta-titulo" style={{ color: colores.nombre, overflowWrap: "anywhere" }}>
+      {item.nombre}
+      {item.especial && <Estrella color={colores.estrella} />}
+    </h3>
+  );
+}
+
+/**
+ * El nombre «paraguas» de un producto (Milanesas, Pizzas) cuando son sus OPCIONES las que protagonizan: un RÓTULO (rol Rótulo: sans, mayúsculas espaciadas, tinta) con una línea fina de ancho completo
+ * debajo y, a la derecha, el aviso del descuento si lo hay. Es un `h3`: la carta se recorre por sus títulos (la tabla de abajo no lleva ningún título dentro).
+ */
+function RotuloDelItem({ item, colores }: { item: ItemCartaPublico; colores: ColoresDelItem }) {
+  return (
+    <div className="carta-linea-fina flex items-baseline justify-between gap-3 pb-1.5">
+      <h3 data-rol="rotulo" className="carta-rol-rotulo min-w-0 flex-1" style={{ overflowWrap: "anywhere" }}>
+        {item.nombre}
+        {item.especial && <Estrella color={colores.estrella} />}
+      </h3>
+      {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
+    </div>
+  );
+}
+
+/** El precio a la derecha del nombre (rol Precio). Con descuento de producto: el de lista tachado, el que se cobra y «−x %» (en texto: no depende del color). */
+function PrecioDelRenglon({ item, color }: { item: ItemCartaPublico; color: string }) {
+  if (item.precioLista === undefined) {
+    return (
+      <span data-rol="precio" className="carta-rol-precio shrink-0 carta-titulo" style={{ color }}>
+        {formatearPrecioCarta(item.precio)}
+      </span>
+    );
+  }
+  return (
+    <span data-rol="precio" className="carta-rol-precio shrink-0 flex flex-col items-end carta-titulo" style={{ color }} data-descuento-producto>
+      <span className="sr-only">{`Antes ${formatearPrecioCarta(item.precioLista)}, ahora ${formatearPrecioCarta(item.precio)}, ${item.descuentoPorcentaje} por ciento de descuento`}</span>
+      <s aria-hidden="true" data-rol="aclaracion" className="carta-rol-aclaracion">
+        {formatearPrecioCarta(item.precioLista)}
+      </s>
+      <span aria-hidden="true">
+        {formatearPrecioCarta(item.precio)}
+        <span data-rol="aclaracion" className="carta-rol-aclaracion ml-1">{`−${item.descuentoPorcentaje} %`}</span>
+      </span>
+    </span>
+  );
+}
+
+/** El aviso del descuento de un producto cuyos precios (varios: una lista, una tabla) ya lo traen: «−10 %», sin tachar celda por celda (decisión del dueño). */
+function AvisoDeDescuento({ porcentaje, color }: { porcentaje: number; color: string }) {
+  return (
+    <span data-rol="aclaracion" className="carta-rol-aclaracion shrink-0" style={{ color }} data-descuento-producto>
+      <span className="sr-only">{`${porcentaje} por ciento de descuento en todos los precios`}</span>
+      <span aria-hidden="true">{`−${porcentaje} %`}</span>
+    </span>
+  );
+}
+
+/** La descripción (rol Aclaración) y los tags (rol Etiqueta, con su ícono). */
+function DescripcionYTags({ item, colores }: { item: ItemCartaPublico; colores: ColoresDelItem }) {
+  return (
+    <>
       {item.descripcion && (
-        <p className="mt-0.5 font-light leading-snug opacity-75" style={{ fontSize: fuenteDescripcion, color: colorDesc }}>
+        <p data-rol="aclaracion" className="carta-rol-aclaracion mt-0.5" style={{ color: colores.descripcion }}>
           {item.descripcion}
         </p>
       )}
       {item.tags.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1.5">
           {item.tags.map((tag) => (
-            <span key={tag} className="inline-flex items-center gap-0.5 font-light uppercase tracking-wider" style={{ fontSize: v.carta_fuente_item_tags, color: colorTags }}>
+            <span key={tag} data-rol="etiqueta" className="carta-rol-etiqueta inline-flex items-center gap-0.5 uppercase tracking-wider" style={{ color: colores.tags }}>
               <TagIcon tag={tag} />
               {tag}
             </span>
           ))}
         </div>
       )}
-      {item.opciones && item.opciones.length > 0 && (
-        <p className="mt-0.5 text-xs opacity-60">{item.opciones.map((o) => o.nombre).join(" · ")}</p>
-      )}
-      {tamanos.map((g, i) => (
-        <TamanosDelItem key={`tamanos-${i}`} nombre={g.nombre} filas={g.filas} colorNombre={colorDesc} colorPrecio={colorPrecio} />
-      ))}
-      {sinCosto.map((g, i) => (
-        <OpcionesSinCostoDelItem key={`sin-costo-${i}`} grupo={g.grupo} opciones={g.opciones} />
-      ))}
-      {recargos.length > 0 && <RecargosDelItem recargos={recargos} color={colorDesc} />}
-    </li>
+    </>
   );
 }
 
-/** «+$400» o «−$300»: lo que una opción suma o resta al precio que se ve. */
-function recargoEnPesos(recargo: number): string {
-  return `${recargo < 0 ? "−" : "+"}${formatearPrecioCarta(Math.abs(recargo))}`;
+/**
+ * Lo que se lee DEBAJO del plato (DEC-07), un GRUPO por aclaración en el orden del producto, en «P1»: la etiqueta del grupo (rol Aclaración 600, sin dos puntos); lo que NO cuesta en UNA línea
+ * («ensalada · papas fritas · puré» si todo es gratis; «Sin cargo: solo · cortado» cuando el grupo mezcla gratis y con recargo; rol Elección); y cada opción que SÍ suma o resta en su PROPIA fila, con el recargo
+ * a la derecha («+$200»; rol Opción). La partición es la de `partirLaAclaracion`, la misma que usa la vista previa de la administración.
+ */
+function GruposDeOpciones({ aclaraciones, colores }: { aclaraciones: readonly AclaracionCartaPublica[]; colores: ColoresDelItem }) {
+  return aclaraciones.map((a, i) => {
+    const { libres, conRecargo } = partirLaAclaracion(a);
+    return (
+      <div key={`aclaracion-${i}`} data-aclaracion={a.rotulo} className="mt-3">
+        <p data-rol="aclaracion-rotulo" className="carta-rol-aclaracion-rotulo" style={{ color: "var(--carta-ink)", overflowWrap: "anywhere" }}>
+          {a.rotulo}
+        </p>
+        {libres && (
+          <p data-rol="eleccion" className="carta-rol-eleccion mt-0.5" style={{ color: colores.descripcion, overflowWrap: "anywhere" }}>
+            {libres}
+          </p>
+        )}
+        {conRecargo.length > 0 && (
+          <ul aria-label={a.rotulo} data-recargos-carta className="carta-divisor mt-0.5 flex flex-col divide-y">
+            {conRecargo.map((r, k) => (
+              <li key={`recargo-${k}`} className="flex items-baseline justify-between gap-3 py-1.5">
+                <span data-rol="opcion" className="carta-rol-opcion min-w-0" style={{ overflowWrap: "anywhere" }}>
+                  {r.nombre}
+                </span>
+                <span data-rol="opcion-precio" className="carta-rol-opcion-precio shrink-0 carta-titulo" style={{ color: colores.precio }}>
+                  {recargoEnPesos(r.recargo)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  });
 }
 
 /**
- * CARTA-B (decisión del dueño, variante B «lista clásica»): los tamaños de un producto como un renglón por tamaño, «Chico ........ $2.500», SIEMPRE a la vista (sin desplegable ni botón),
- * con el precio FINAL de cada uno. Es una lista (`ul`) con el nombre del grupo como etiqueta para el lector de pantalla; los puntitos son decoración (`aria-hidden`) y usan el color de
- * borde del tema. Solo presentación: los precios vienen calculados del servidor. Letra de 17 px, por encima del piso de 16 px de las opciones.
+ * La línea ÚNICA de siempre, «Guarnición: ensalada, papas fritas o puré»: el rótulo en Aclaración 600 y el resto en Aclaración (`textoDeLaAclaracion`). Queda SOLO en `ItemComoAntes`: lo que la
+ * carta no puede leer exacto sale como antes (no se le arma la jerarquía de grupos y filas).
  */
-function TamanosDelItem({ nombre, filas, colorNombre, colorPrecio }: { nombre: string; filas: { nombre: string; precio: number }[]; colorNombre: string | undefined; colorPrecio: string }) {
+function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly AclaracionCartaPublica[]; color: string | undefined }) {
+  return aclaraciones.map((a, i) => (
+    <p key={`aclaracion-${i}`} data-aclaracion={a.rotulo} data-rol="aclaracion" className="carta-rol-aclaracion mt-0.5" style={{ color, overflowWrap: "anywhere" }}>
+      <span data-rol="aclaracion-rotulo" className="carta-rol-aclaracion-rotulo" style={{ color: "var(--carta-ink)" }}>{`${a.rotulo}:`}</span> {textoDeLaAclaracion(a)}
+    </p>
+  ));
+}
+
+/**
+ * Un ítem de la sección. Fase 5 (DEC-35): cada texto con su ROL de la escala única (`carta-rol-*`, `src/core/carta/escala.ts`): el nombre y el precio en Producto, la descripción y lo que se lee
+ * debajo en Aclaración, los tags en Etiqueta. El mismo tamaño para todo ítem, con o sin opciones; el tema solo puede pedir más. `data-rol` marca el rol en el HTML (lo miden los tests: un solo
+ * tamaño y un solo peso por rol).
+ *
+ * Con opciones, el ítem se DIBUJA SEGÚN SU FORMA (`presentacion`, que resuelve el servidor: `core/carta/presentacion-en-carta.ts`; ADR-035): `simple` (el nombre y su precio, con las aclaraciones
+ * debajo); `tabla` (dos ejes: el nombre como RÓTULO con su línea fina y una tabla real); `lista` (un eje en filas: con el nombre arriba, o la base OCULTA, cada opción como un plato); `columnas` va dentro de
+ * su tanda (`TandaFila`: una tabla por producto). Sin `presentacion` (un producto sin opciones, o uno cuya forma la carta no puede leer exacta) va `ItemComoAntes`.
+ *
+ * JERARQUÍA («BC2»): si la opción define QUÉ PLATO es (De carne / De pollo; cada pizza; una combinación) → las OPCIONES protagonizan (letra de plato, rol Producto, y su precio en rol Precio) y el nombre del
+ * producto es un RÓTULO (rol Rótulo, con una línea fina debajo). Si la opción es CÓMO lo querés (el tamaño) → el NOMBRE protagoniza (`protagonista: "nombre"`) y las filas son tamaños chicos (rol Opción). La tanda sigue la misma regla: sus columnas son tamaños → protagoniza el nombre.
+ */
+function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
+  const colores = coloresDelItem(item.especial, estilo.valores);
+  const p = item.presentacion;
+  if (p?.forma === "simple") {
+    return (
+      <li data-forma="simple" className="py-2.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <NombreDelItem item={item} colores={colores} />
+          <PrecioDelRenglon item={item} color={colores.precio} />
+        </div>
+        <DescripcionYTags item={item} colores={colores} />
+        <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
+      </li>
+    );
+  }
+  if (p?.forma === "tabla") {
+    // Dos ejes (la milanesa: Simple | Napolitana × De carne / De pollo; DEC-06, DEC-10, DEC-11): el nombre es un RÓTULO con su línea fina (un h3 FUERA de la tabla: el HTML no admite títulos dentro de un
+    // th), los rótulos de las columnas como encabezados de columna y una fila por opción del otro eje (nunca se juntan aunque cuesten igual), cada una como un plato con su precio.
+    return (
+      <li data-forma="tabla" className="pb-2.5 pt-3.5">
+        <RotuloDelItem item={item} colores={colores} />
+        <table data-tabla-carta className="mb-0.5 w-full border-collapse">
+          <thead>
+            <tr>
+              <td />
+              {p.columnas.map((r, i) => (
+                <th key={`col-${i}`} scope="col" data-rol="columna" className="carta-rol-columna pb-1 pl-3 pt-1 text-right align-bottom">
+                  {r}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {p.filas.map((f, i) => (
+              <tr key={`fila-${i}`} className={i > 0 ? "carta-borde border-t" : undefined}>
+                <th scope="row" className="py-1.5 pr-1 text-left align-baseline font-normal">
+                  <span data-rol="producto" className="carta-rol-producto carta-titulo" style={{ color: colores.nombre, overflowWrap: "anywhere" }}>
+                    {f.rotulo}
+                  </span>
+                </th>
+                {f.celdas.map((precio, c) => (
+                  <td key={`celda-${c}`} className="whitespace-nowrap py-1.5 pl-3 text-right align-baseline">
+                    <CeldaDePrecio precio={precio} color={colores.precio} papel="precio" />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <DescripcionYTags item={item} colores={colores} />
+        <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
+      </li>
+    );
+  }
+  if (p?.forma === "lista" && p.encabezado && p.protagonista === "nombre") {
+    // Las filas son TAMAÑOS (cómo lo querés; la caída de una tanda de más de 3): protagoniza el NOMBRE, con su línea fina, y las filas con puntitos van debajo en rol Opción.
+    return (
+      <li data-forma="lista" data-protagonista="nombre" className="py-2.5">
+        <div className="carta-linea-fina flex items-baseline justify-between gap-3 pb-1.5">
+          <NombreDelItem item={item} colores={colores} />
+          {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
+        </div>
+        <DescripcionYTags item={item} colores={colores} />
+        <FilasDeOpcion nombre={item.nombre} filas={p.filas} colorPrecio={colores.precio} />
+        <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
+      </li>
+    );
+  }
+  if (p?.forma === "lista" && p.encabezado) {
+    // Un eje en filas con el nombre arriba (un producto directo con filas, o una base con «Mostrar el nombre arriba»; DEC-11): las OPCIONES protagonizan (cada fila es un plato con su precio) y el
+    // nombre es un rótulo con su línea fina.
+    return (
+      <li data-forma="lista" className="pt-3.5">
+        <RotuloDelItem item={item} colores={colores} />
+        <DescripcionYTags item={item} colores={colores} />
+        <FilasComoPlatos nombre={item.nombre} filas={p.filas} colores={colores} />
+        {p.aclaraciones.length > 0 && (
+          <div className="pb-2.5">
+            <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
+          </div>
+        )}
+      </li>
+    );
+  }
+  if (p?.forma === "lista") {
+    // Una BASE de un eje, OCULTA (DEC-11, el default: las pizzas): cada opción se lee como un plato, con su nombre completo (h3, rol Producto) y su precio (rol Precio): «Pizza muzzarella $18.000».
+    // El producto base no se nombra (su descripción, sus tags y su ★ no salen: lo avisa el diagnóstico interno); la lista lleva su nombre para el lector de pantalla.
+    return (
+      <li data-forma="lista-sin-encabezado">
+        <FilasComoPlatos nombre={item.nombre} filas={p.filas} colores={colores} />
+        {(item.descuentoPorcentaje !== undefined || p.aclaraciones.length > 0) && (
+          <div className="pb-2.5">
+            {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
+            <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
+          </div>
+        )}
+      </li>
+    );
+  }
+  return <ItemComoAntes item={item} colores={colores} />;
+}
+
+/** Las filas de un eje como PLATOS (rol Producto en un h3, precio en rol Precio): «Pizza muzzarella $18.000». Una lista (`ul`) con el nombre del producto base para el lector de pantalla. */
+function FilasComoPlatos({ nombre, filas, colores }: { nombre: string; filas: readonly { rotulo: string; precio: number }[]; colores: ColoresDelItem }) {
   return (
-    <ul aria-label={nombre} data-tamanos-carta={nombre} className="mt-1.5 flex flex-col">
+    <ul aria-label={nombre} data-filas-carta className="carta-divisor flex flex-col divide-y">
       {filas.map((f, i) => (
-        <li key={`tamano-${i}`} className="flex items-baseline gap-1.5 py-0.5 leading-snug" style={{ fontSize: "1.0625rem", color: colorNombre }}>
-          <span className="min-w-0" style={{ overflowWrap: "anywhere" }}>
-            {f.nombre}
-          </span>
-          <span aria-hidden="true" className="min-w-3 flex-1 -translate-y-1 border-b-[1.5px] border-dotted" style={{ borderColor: "color-mix(in oklch, var(--carta-ink-soft) 55%, transparent)" }} />
-          <span className="shrink-0 carta-titulo font-bold" style={{ color: colorPrecio }}>
+        <li key={`fila-${i}`} className="flex items-baseline justify-between gap-3 py-2.5">
+          <h3 data-rol="producto" className="carta-rol-producto min-w-0 flex-1 carta-titulo" style={{ color: colores.nombre, overflowWrap: "anywhere" }}>
+            {f.rotulo}
+          </h3>
+          <span data-rol="precio" className="carta-rol-precio shrink-0 carta-titulo" style={{ color: colores.precio }}>
             {formatearPrecioCarta(f.precio)}
           </span>
         </li>
@@ -175,73 +358,176 @@ function TamanosDelItem({ nombre, filas, colorNombre, colorPrecio }: { nombre: s
 }
 
 /**
- * CARTA-C (decisión del dueño, variante B «pastillas»): las opciones que NO cambian el precio (preparación «Solo» · «Flat white» · «Cortado», guarnición, punto de cocción), siempre a la vista, bajo el
- * nombre de su grupo: una etiqueta en negrita y cada opción en una cajita redondeada. NO son botones (no se eligen acá: las elige el mozo en el POS), así que no llevan `role` ni `tabindex`. Es una lista
- * (`ul`) con el nombre del grupo como etiqueta para el lector de pantalla (la etiqueta visible se oculta del lector para que no lo lea dos veces); las pastillas pasan a la línea siguiente si no entran
- * (sin desborde horizontal). Los nombres son texto del negocio y se escapan como cualquier otro texto de React. Colores del tema de la sucursal (borde y fondo derivados de `--carta-ink-soft`).
- * Letra de 14,5 px la etiqueta y 15 px las pastillas (los pisos de legibilidad).
+ * Las filas de un eje bajo el nombre del plato (rol Opción): «Chico ........ $2.500», siempre a la vista (sin desplegable), con el precio FINAL de cada una. Una lista (`ul`) con el nombre del plato
+ * para el lector de pantalla; los puntitos son decoración (`aria-hidden`).
  */
-function OpcionesSinCostoDelItem({ grupo, opciones }: { grupo: string; opciones: string[] }) {
+function FilasDeOpcion({ nombre, filas, colorPrecio }: { nombre: string; filas: readonly { rotulo: string; precio: number }[]; colorPrecio: string }) {
   return (
-    <div data-opciones-sin-costo={grupo} className="mt-2.5">
-      <p aria-hidden="true" className="font-semibold leading-snug" style={{ fontSize: "0.90625rem", color: "var(--carta-ink)", overflowWrap: "anywhere" }}>
-        {grupo}
-      </p>
-      <ul aria-label={grupo} className="flex flex-wrap gap-x-1.5">
-        {opciones.map((nombre, i) => (
-          <li
-            key={`pastilla-${i}`}
-            className="mt-1 max-w-full rounded-full border px-3 py-[3px] leading-snug"
-            style={{
-              fontSize: "0.9375rem",
-              color: "var(--carta-ink)",
-              overflowWrap: "anywhere",
-              borderColor: "color-mix(in oklch, var(--carta-ink-soft) 40%, transparent)",
-              background: "color-mix(in oklch, var(--carta-ink-soft) 7%, transparent)",
-            }}
-          >
-            {nombre}
-          </li>
-        ))}
-      </ul>
+    <ul aria-label={nombre} data-filas-carta className="mt-1.5 flex flex-col">
+      {filas.map((f, i) => (
+        <li key={`fila-${i}`} className="flex items-baseline gap-1.5 py-0.5">
+          <span data-rol="opcion" className="carta-rol-opcion min-w-0" style={{ overflowWrap: "anywhere" }}>
+            {f.rotulo}
+          </span>
+          <span aria-hidden="true" className="min-w-3 flex-1 -translate-y-1 border-b-[1.5px] border-dotted" style={{ borderColor: "color-mix(in oklch, var(--carta-ink-soft) 55%, transparent)" }} />
+          <span data-rol="opcion-precio" className="carta-rol-opcion-precio shrink-0 carta-titulo" style={{ color: colorPrecio }}>
+            {formatearPrecioCarta(f.precio)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Una celda de precio de una tabla, o «–» donde el producto no ofrece esa opción (con «no se ofrece» para el lector de pantalla: no depende de ver la raya). `papel`: `"precio"` en la tabla de dos
+ * ejes (las opciones son platos: rol Precio) y `"opcion-precio"` en la tanda (rol Opción, 600). Las clases van escritas enteras: el cerco de tipografía y Tailwind las necesitan visibles.
+ */
+function CeldaDePrecio({ precio, color, papel }: { precio: number | null; color: string; papel: "precio" | "opcion-precio" }) {
+  if (precio === null) {
+    return (
+      <>
+        {papel === "precio" ? (
+          <span aria-hidden="true" data-rol="precio" className="carta-rol-precio carta-titulo" style={{ color: "var(--carta-ink-soft)" }}>
+            –
+          </span>
+        ) : (
+          <span aria-hidden="true" data-rol="opcion" className="carta-rol-opcion" style={{ color: "var(--carta-ink-soft)" }}>
+            –
+          </span>
+        )}
+        <span className="sr-only">no se ofrece</span>
+      </>
+    );
+  }
+  if (papel === "precio") {
+    return (
+      <span data-rol="precio" className="carta-rol-precio carta-titulo" style={{ color }}>
+        {formatearPrecioCarta(precio)}
+      </span>
+    );
+  }
+  return (
+    <span data-rol="opcion-precio" className="carta-rol-opcion-precio carta-titulo" style={{ color }}>
+      {formatearPrecioCarta(precio)}
+    </span>
+  );
+}
+
+/**
+ * Una TANDA (DEC-06, forma `columnas`): los productos consecutivos de la sección que comparten el grupo que define el precio (el café y el cortado: Chico | Mediano | Grande). Una tabla por
+ * producto, columnas iguales y compartidas por la tanda (`table-fixed`); el nombre es el protagonista (un `h3`, rol Producto, con su línea fina debajo y el aviso del descuento a la derecha),
+ * los tamaños se REPITEN como encabezados de columna (rol Tamaño) bajo el nombre de cada producto y cada celda dice su precio (rol Opción precio), con «–» donde el producto no ofrece ese
+ * tamaño. Debajo de la tabla de cada producto, su descripción, sus tags y sus aclaraciones. Sin «desde».
+ */
+function TandaFila({ tanda, items, estilo }: { tanda: TandaCartaPublica; items: readonly ItemCartaPublico[]; estilo: EstiloCarta }) {
+  return (
+    <li data-tanda className="py-2.5">
+      {items.map((item, k) => (
+        <ProductoDeTanda key={`producto-${k}`} item={item} rotulos={tanda.rotulos} primero={k === 0} estilo={estilo} />
+      ))}
+    </li>
+  );
+}
+
+function ProductoDeTanda({ item, rotulos, primero, estilo }: { item: ItemCartaPublico; rotulos: readonly string[]; primero: boolean; estilo: EstiloCarta }) {
+  const colores = coloresDelItem(item.especial, estilo.valores);
+  const celdas = item.presentacion?.forma === "columnas" ? item.presentacion.celdas : rotulos.map(() => null);
+  const aclaraciones = item.presentacion?.aclaraciones ?? [];
+  return (
+    <div data-producto-de-tanda className={primero ? undefined : "carta-borde mt-2.5 border-t pt-2.5"}>
+      <div className="carta-linea-fina flex items-baseline justify-between gap-3 pb-1.5">
+        <NombreDelItem item={item} colores={colores} />
+        {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
+      </div>
+      <table data-tabla-carta aria-label={item.nombre} className="w-full table-fixed border-collapse">
+        <thead>
+          <tr>
+            {rotulos.map((r, i) => (
+              <th key={`tam-${i}`} scope="col" data-rol="tamano" className="carta-rol-tamano pb-1 pt-1 text-left align-bottom">
+                {r}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            {celdas.map((precio, i) => (
+              <td key={`cel-${i}`} className="whitespace-nowrap py-1.5 text-left align-baseline">
+                <CeldaDePrecio precio={precio} color={colores.precio} papel="opcion-precio" />
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+      <DescripcionYTags item={item} colores={colores} />
+      <GruposDeOpciones aclaraciones={aclaraciones} colores={colores} />
     </div>
   );
 }
 
 /**
- * CARTA-B: lo que suma (o resta) una variante o un adicional, en UNA línea: «Adicionales: Con leche +$400 · Medialuna +$600 · Shot +$500», siempre visible. Cada opción es un bloque en línea para
- * que su nombre y su monto no queden en renglones distintos. Letra de 16 px (el piso de las opciones).
+ * Un ítem SIN FORMA: sin opciones (el renglón de siempre), o con opciones que la carta no puede leer con el precio exacto (un tercer grupo que cambia el precio; un recargo dentro del precio con
+ * descuento de producto: los avisa el diagnóstico interno) o de una carta guardada por el código anterior. Paso 9 (retiro de lo viejo): ya no hay listas, pastillas ni línea propias; lo que llega
+ * en `grupos` y `opcionesSinCosto` se dibuja con las MISMAS piezas que las formas: los tamaños con su precio final como filas de opción y lo demás como aclaraciones debajo del plato.
  */
-function RecargosDelItem({ recargos, color }: { recargos: { nombre: string; recargo: number }[]; color: string | undefined }) {
+function ItemComoAntes({ item, colores }: { item: ItemCartaPublico; colores: ColoresDelItem }) {
+  const respaldo = respaldoDeLasOpciones(item);
   return (
-    <p data-suma-carta className="mt-1.5 leading-snug" style={{ fontSize: "1rem", color: color ?? "var(--carta-ink-soft)" }}>
-      <strong className="font-semibold" style={{ color: "var(--carta-ink)" }}>
-        Adicionales:
-      </strong>{" "}
-      {recargos.map((r, i) => (
-        <Fragment key={`suma-${i}`}>
-          {i > 0 && " · "}
-          <span className="inline-block max-w-full" style={{ overflowWrap: "anywhere" }}>{`${r.nombre} ${recargoEnPesos(r.recargo)}`}</span>
-        </Fragment>
+    <li className="py-2.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <NombreDelItem item={item} colores={colores} />
+        {respaldo.filas.length > 0 ? (
+          item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />
+        ) : (
+          <PrecioDelRenglon item={item} color={colores.precio} />
+        )}
+      </div>
+      <DescripcionYTags item={item} colores={colores} />
+      {item.opciones && item.opciones.length > 0 && (
+        <p data-rol="aclaracion" className="carta-rol-aclaracion mt-0.5">
+          {item.opciones.map((o) => o.nombre).join(" · ")}
+        </p>
+      )}
+      {respaldo.filas.map((g, i) => (
+        <FilasDeOpcion key={`filas-${i}`} nombre={g.nombre} filas={g.filas} colorPrecio={colores.precio} />
       ))}
-    </p>
+      <Aclaraciones aclaraciones={respaldo.aclaraciones} color={colores.descripcion} />
+    </li>
   );
 }
 
-function PromoFila({ promo, estilo }: { promo: PromoCartaPublica; estilo: EstiloCarta }) {
-  const v = estilo.valores;
+/**
+ * Lo que llega en `grupos` y `opcionesSinCosto` (sin forma) llevado a las piezas de las formas: cada grupo con precios FINALES (un tamaño), sus filas; lo que suma o resta, una aclaración
+ * «Adicionales: con leche +$400, medialuna +$600»; lo que no cambia nada, una aclaración por grupo con sus opciones («Guarnición: papas fritas o puré»). Solo presentación: los precios vienen del
+ * servidor.
+ */
+function respaldoDeLasOpciones(item: ItemCartaPublico): { filas: { nombre: string; filas: { rotulo: string; precio: number }[] }[]; aclaraciones: AclaracionCartaPublica[] } {
+  const filas = (item.grupos ?? [])
+    .map((g) => ({ nombre: g.nombre, filas: g.opciones.flatMap((o) => (o.tipo === "final" ? [{ rotulo: o.nombre, precio: o.precio }] : [])) }))
+    .filter((g) => g.filas.length > 0);
+  const recargos = (item.grupos ?? []).flatMap((g) => g.opciones.flatMap((o) => (o.tipo === "recargo" ? [{ nombre: o.nombre, recargo: o.recargo }] : [])));
+  const aclaraciones: AclaracionCartaPublica[] = [
+    ...(item.opcionesSinCosto ?? []).filter((g) => g.opciones.length > 0).map((g): AclaracionCartaPublica => ({ tipo: "eleccion", rotulo: g.grupo, opciones: g.opciones })),
+    ...(recargos.length > 0 ? [{ tipo: "extras" as const, rotulo: "Adicionales", opciones: recargos }] : []),
+  ];
+  return { filas, aclaraciones };
+}
+
+/** Una promo: con los mismos roles que un plato (DEC-35: antes no tenía piso). */
+function PromoFila({ promo }: { promo: PromoCartaPublica }) {
   return (
-    <li className="py-2.5" style={{ borderColor: "var(--carta-border)" }}>
+    <li className="py-2.5">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="min-w-0 flex-1 carta-titulo font-semibold leading-tight" style={{ fontSize: v.carta_fuente_item_nombre }}>
+        <h3 data-rol="producto" className="carta-rol-producto min-w-0 flex-1 carta-titulo">
           {promo.titulo}
         </h3>
-        <span className="shrink-0 carta-titulo font-semibold" style={{ fontSize: v.carta_fuente_item_precio, color: "var(--carta-primary)" }}>
+        <span data-rol="precio" className="carta-rol-precio shrink-0 carta-titulo" style={{ color: "var(--carta-primary)" }}>
           {formatearPrecioCarta(promo.precio)}
         </span>
       </div>
       {promo.descripcion && (
-        <p className="mt-0.5 font-light leading-snug opacity-75" style={{ fontSize: v.carta_fuente_item_descripcion }}>
+        <p data-rol="aclaracion" className="carta-rol-aclaracion mt-0.5">
           {promo.descripcion}
         </p>
       )}

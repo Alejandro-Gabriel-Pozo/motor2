@@ -15,18 +15,25 @@ function main(): number {
   }
 
   // Bajo `npm run`, npm_execpath es el npm-cli.js: se lo corre con node, sin shell (en Windows `npm` es un .cmd).
+  // La auditoría consulta el registro de npm por red: en el runner de CI se cuelga a veces y `npm audit` espera 5 minutos sin decir nada. Cada intento tiene tope de tiempo y se repite hasta 3 veces; si ninguno responde, falla (nunca pasa en silencio).
   const npmCli = process.env.npm_execpath;
-  const opciones = { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 } as const;
-  const corrida = npmCli ? spawnSync(process.execPath, [npmCli, "audit", "--omit=dev", "--json"], opciones) : spawnSync("npm", ["audit", "--omit=dev", "--json"], { ...opciones, shell: true });
+  const opciones = { encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 90_000 } as const;
+  const INTENTOS = 3;
   let salida;
-  try {
-    salida = JSON.parse(corrida.stdout);
-  } catch {
-    console.error(`No se pudo leer la salida de \`npm audit\` (¿sin red?).\n${corrida.stderr || corrida.stdout}`);
-    return 1;
+  let motivo = "";
+  for (let intento = 1; intento <= INTENTOS && !salida; intento++) {
+    const corrida = npmCli ? spawnSync(process.execPath, [npmCli, "audit", "--omit=dev", "--json"], opciones) : spawnSync("npm", ["audit", "--omit=dev", "--json"], { ...opciones, shell: true });
+    try {
+      const leida = JSON.parse(corrida.stdout);
+      if (leida.error) motivo = `\`npm audit\` falló: ${leida.error.summary ?? JSON.stringify(leida.error)}`;
+      else salida = leida;
+    } catch {
+      motivo = corrida.error ? `\`npm audit\` no terminó a tiempo o no arrancó: ${corrida.error.message}` : `No se pudo leer la salida de \`npm audit\` (¿sin red?).\n${corrida.stderr || corrida.stdout}`;
+    }
+    if (!salida && intento < INTENTOS) console.warn(`Intento ${intento} de ${INTENTOS} sin resultado (${motivo.split("\n")[0]}); reintento.`);
   }
-  if (salida.error) {
-    console.error(`\`npm audit\` falló: ${salida.error.summary ?? JSON.stringify(salida.error)}`);
+  if (!salida) {
+    console.error(motivo);
     return 1;
   }
 

@@ -9,13 +9,12 @@ import { obtenerProductoOpcion } from "@/server/actions/catalogo/productos";
 import { TablaHistorialConteos, type FilaConteo } from "./tabla-conteos";
 import { FiltrosConteos } from "./filtros-conteos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
-import { ZONA_UTC, diaDeCalendario, finDelDia, inicioDelDia } from "@/core/tiempo/zona-horaria";
+import { ZONA_UTC, diaDeCalendario, finDelDia, inicioDelDia, esDiaISOReal, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 
 /** Una fecha de la URL que no se puede leer se ignora (sin filtro), no rompe la pantalla con una excepción de Prisma. */
 function fechaDeUrl(valor: string | undefined): Date | undefined {
   if (!valor) return undefined;
-  const fecha = new Date(valor);
-  return Number.isNaN(fecha.getTime()) ? undefined : fecha;
+  return esDiaISOReal(valor) ? fechaDeColumnaDate(valor) : undefined;
 }
 
 export default async function ConteosPage({
@@ -26,10 +25,10 @@ export default async function ConteosPage({
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_conteos", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const sp = unicosDeUrl(await searchParams);
   const [secciones, productoElegido] = await Promise.all([
@@ -72,7 +71,7 @@ export default async function ConteosPage({
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Historial de conteos físicos</h1>
-        <p className="text-sm text-neutral-500">Más recientes primero. El orden y el export a Excel son de esta página — para exportar todo, avanzá página por página.</p>
+        <p className="text-sm text-tinta-tenue">Más recientes primero. El orden y el export a Excel son de esta página — para exportar todo, avanzá página por página.</p>
       </div>
       <FiltrosConteos
         secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}

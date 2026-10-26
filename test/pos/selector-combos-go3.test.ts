@@ -3,7 +3,6 @@ import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { sembrarCafeDelSalon, type CafeDelSalon } from "../setup/opciones";
 import { sembrarSalon } from "./salon-fixture";
 import { cargarSelectorCartaDeLaMesa } from "../../src/server/consultas/pos/selector-carta";
-import { cargarOpcionesDelSelector } from "../../src/server/consultas/pos/opciones-del-selector";
 import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo-para-agregar";
 import type { CupoDeEntradasSelectorCarta, EntradaPromoSelectorCarta, SelectorCartaPos } from "../../src/core/pos/public";
 import type { CupoDeEntradasDefinicion } from "../../src/core/pos/promo-combo";
@@ -11,12 +10,11 @@ import { claveDeConfiguracion } from "../../src/core/pos/promo-combo";
 import { diaDeCalendario, fechaDeColumnaDate, sumarDias, ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
 
 /**
- * GO-3b (ADR-032, F6 paso U5), contra Postgres real: lo que el SELECTOR del POS ofrece de los combos con cupos de entradas (la pantalla de la mesa, con la zona de la empresa) y las combinaciones
- * que llegan al diálogo de opciones. Fija:
+ * GO-3b (ADR-032, F6 paso U5), contra Postgres real: lo que el SELECTOR del POS ofrece de los combos con cupos de entradas (la pantalla de la mesa, con la zona de la empresa). Fija:
  *  - el menú del día se ofrece con su plato de HOY, el postre FIJO y el café con su configuración por nombre y precio de lista; sin la zona (lo de siempre) no aparece;
  *  - PARIDAD con la venta: las entradas que el selector ofrece en cada cupo son EXACTAMENTE las elegibles con que `cargarPromoCartaParaAgregar` valida (la misma lectura);
- *  - la vigencia: una promo que no vale hoy no se ofrece;
- *  - las combinaciones del café con ejes llegan al diálogo en su forma serializable y el «desde» las respeta.
+ *  - la vigencia: una promo que no vale hoy no se ofrece.
+ * (El caso de las combinaciones del café con ejes se retiró con GO-3a en la Fase 3 de la ola «precio y carta».)
  *
  * Mutación demostrada (roja y revertida): no filtrar por la vigencia en el selector (rojo: «vigencia»).
  */
@@ -87,22 +85,5 @@ describe("el selector del POS con combos de entradas (GO-3b, U5)", () => {
     expect(promoDe(await cargarSelectorCartaDeLaMesa(s.sucursalId, prisma, ahora(), ZONA_ARGENTINA), m.promoCartaId)).toBeNull();
     await prismaAdmin.promoCarta.update({ where: { id: m.promoCartaId }, data: { vigenteHasta: null, vigenteDesde: fechaDeColumnaDate(hoy) } });
     expect(promoDe(await cargarSelectorCartaDeLaMesa(s.sucursalId, prisma, ahora(), ZONA_ARGENTINA), m.promoCartaId)).not.toBeNull();
-  });
-
-  it("las combinaciones del café con ejes llegan al diálogo y el «desde» las respeta", async () => {
-    await prisma.productoAdmiteGrupo.update({ where: { productoId_grupoId: { productoId: c.cafeId, grupoId: c.grupoMedidaId } }, data: { ejeDeCombinacion: 1 } });
-    const chico = await prisma.combinacionDeProducto.create({ data: { productoId: c.cafeId, opcionEje1Id: c.chicoId, activa: false } });
-    await prisma.combinacionDeProducto.create({ data: { productoId: c.cafeId, opcionEje1Id: c.medianoId, precio: "980.00" } });
-    const selector = await cargarSelectorCartaDeLaMesa(s.sucursalId, prisma, ahora(), ZONA_ARGENTINA);
-    const conf = (await cargarOpcionesDelSelector(s.sucursalId, prisma, selector))[c.cafeId]!;
-    const filas = [...(conf.combinaciones?.filas ?? [])].sort((a, b) => Number(a.activa) - Number(b.activa));
-    expect(filas.map((f) => [f.activa ? "mediano" : f.combinacionId, f.activa, f.precio])).toEqual([
-      [chico.id, false, null],
-      ["mediano", true, 980],
-    ]);
-    // Chico apagado: el más barato que se puede pedir es el mediano a 980 (el aditivo sería chico a 950).
-    expect(conf.desde).toBe(980);
-    // Un producto sin ejes no lleva combinaciones.
-    expect(Object.values(await cargarOpcionesDelSelector(s.sucursalId, prisma, selector)).filter((x) => x.combinaciones).length).toBe(1);
   });
 });

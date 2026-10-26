@@ -210,8 +210,8 @@ describe("Server Actions de la carta", () => {
       const promo = await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId } }, seccionCartaId, titulo: "Local auditada", precio: 1000 } });
       expect((await guardarPrecioLocalPromoCarta(promo.id, "1100")).ok).toBe(true);
       expect((await guardarPrecioLocalPromoCarta(promo.id, "1100")).ok).toBe(true); // sin cambio: sin fila
-      expect((await guardarPrecioLocalPromoCarta(promo.id, "900")).ok).toBe(true);
-      expect((await guardarPrecioLocalPromoCarta(promo.id, null)).ok).toBe(true);
+      expect((await guardarPrecioLocalPromoCarta(promo.id, "900", 1100)).ok).toBe(true);
+      expect((await guardarPrecioLocalPromoCarta(promo.id, null, 900)).ok).toBe(true);
 
       const registros = await prisma.registroAuditoria.findMany({ where: { entidad: "PromoCartaSucursal", entidadId: `${promo.id}:${sucursalId}` }, orderBy: { creadoEn: "asc" } });
       expect(registros.map((r) => [r.campo, r.valorAnterior, r.valorNuevo])).toEqual([
@@ -278,7 +278,7 @@ describe("Server Actions de la carta", () => {
       expect(await precioEn(sucursalId)).toBe(1200);
       expect(await precioEn(otraSucursalId)).toBe(1500);
 
-      expect((await guardarPrecioLocalPromoCarta(promo.id, null)).ok).toBe(true);
+      expect((await guardarPrecioLocalPromoCarta(promo.id, null, 1200)).ok).toBe(true);
       expect(await precioEn(sucursalId)).toBe(1500);
 
       expect((await guardarPrecioLocalPromoCarta(promo.id, "-1")).ok).toBe(false);

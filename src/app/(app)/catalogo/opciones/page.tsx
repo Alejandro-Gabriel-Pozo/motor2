@@ -26,10 +26,10 @@ export default async function OpcionesDeVentaPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   const [{ editar: puedeEditar }, grupos] = await Promise.all([obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db), listarGruposDelPanel(ctx.db)]);
 
   const columnas: ColumnaDeTabla<GrupoDelPanel>[] = [
@@ -56,7 +56,7 @@ export default async function OpcionesDeVentaPage() {
       <div className="flex max-w-4xl flex-col gap-6 pb-24">
         <div>
           <h1 className="text-xl font-semibold">Opciones de venta</h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm text-tinta-suave">
             Los tamaños, las variantes, lo que viene incluido y los adicionales que se pueden elegir al vender un producto. Acá se arman los grupos; qué grupos usa cada producto
             se elige en su ficha.
           </p>
@@ -66,13 +66,13 @@ export default async function OpcionesDeVentaPage() {
           <Link
             href="/catalogo/opciones/limpiar"
             data-enlace-limpiar=""
-            className="flex min-h-[64px] items-center gap-3 border border-[#cdd5dd] bg-white px-3 py-3 no-underline dark:border-neutral-700 dark:bg-neutral-900"
+            className="flex min-h-[64px] items-center gap-3 border border-borde-control bg-superficie px-3 py-3 no-underline"
           >
             <span className="min-w-0 flex-1">
               <span className="block font-semibold">Limpiar opciones</span>
-              <span className="block text-sm text-neutral-600 dark:text-neutral-400">Archivá de una vez los grupos y opciones sin productos o sin ventas.</span>
+              <span className="block text-sm text-tinta-suave">Archivá de una vez los grupos y opciones sin productos o sin ventas.</span>
             </span>
-            <span aria-hidden="true" className="text-xl text-neutral-500 dark:text-neutral-400">
+            <span aria-hidden="true" className="text-xl text-tinta-tenue">
               ›
             </span>
           </Link>
@@ -97,17 +97,17 @@ export default async function OpcionesDeVentaPage() {
             <h2 id="titulo-archivados" className="font-medium">
               Archivados ({archivados.length})
             </h2>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">No se ofrecen en ningún producto ni en la carta. Lo ya vendido queda como se vendió. Restaurar los vuelve a ofrecer donde estaban.</p>
+            <p className="text-sm text-tinta-suave">No se ofrecen en ningún producto ni en la carta. Lo ya vendido queda como se vendió. Restaurar los vuelve a ofrecer donde estaban.</p>
             <ul aria-label="Grupos archivados" className="flex flex-col gap-2">
               {archivados.map((g) => {
                 const grupoId = g.id;
                 return (
-                  <li key={g.id} data-grupo-archivado={g.nombre} className="flex flex-wrap items-center gap-3 border border-[#cdd5dd] bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900">
+                  <li key={g.id} data-grupo-archivado={g.nombre} className="flex flex-wrap items-center gap-3 border border-borde-control bg-superficie px-3 py-2">
                     <div className="min-w-0 flex-1">
                       <Link href={`/catalogo/opciones/${g.id}`} className="font-medium underline [overflow-wrap:anywhere]">
                         {g.nombre}
                       </Link>
-                      <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                      <p className="text-xs text-tinta-suave">
                         {nombreDelTipoDeGrupo(g.tipo)} · {g.opcionesActivas === 1 ? "1 opción" : `${g.opcionesActivas} opciones`}
                       </p>
                     </div>

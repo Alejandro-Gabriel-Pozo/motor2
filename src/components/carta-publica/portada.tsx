@@ -40,13 +40,13 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
         // eslint-disable-next-line @next/next/no-img-element
         <img src={logoUrl} alt={restauranteNombre} className="h-16 w-16 object-contain" />
       ) : restauranteNombre ? (
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl text-xl font-bold" style={{ backgroundColor: "var(--carta-ink)", color: "var(--carta-bg)" }}>
+        <div className="carta-rol-titulo flex h-14 w-14 items-center justify-center rounded-2xl" style={{ backgroundColor: "var(--carta-ink)", color: "var(--carta-bg)" }}>
           {restauranteNombre.charAt(0)}
         </div>
       ) : null}
 
       {v.hero_etiqueta_superior && (
-        <p className="text-xs font-light uppercase tracking-[0.5em] opacity-70" style={{ fontSize: v.carta_fuente_portada_etiqueta }}>
+        <p className="font-light uppercase tracking-[0.5em] opacity-70" style={{ fontSize: v.carta_fuente_portada_etiqueta }}>
           {v.hero_etiqueta_superior}
         </p>
       )}
@@ -58,7 +58,7 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
       )}
 
       {v.restaurante_subtitulo && (
-        <p className="text-xs font-light uppercase tracking-[0.3em] opacity-60" style={{ fontSize: v.carta_fuente_portada_subtitulo }}>
+        <p className="font-light uppercase tracking-[0.3em] opacity-60" style={{ fontSize: v.carta_fuente_portada_subtitulo }}>
           {v.restaurante_subtitulo}
         </p>
       )}
@@ -72,7 +72,7 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
       {v.carta_texto_portada_separador && (
         <div className="flex items-center gap-3">
           <span className="block h-px w-10 opacity-30" style={{ backgroundColor: "currentColor" }} />
-          <span className="text-[11px] opacity-40">{v.carta_texto_portada_separador}</span>
+          <span className="carta-rol-etiqueta opacity-40">{v.carta_texto_portada_separador}</span>
           <span className="block h-px w-10 opacity-30" style={{ backgroundColor: "currentColor" }} />
         </div>
       )}

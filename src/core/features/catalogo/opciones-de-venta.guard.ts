@@ -2,16 +2,22 @@ import { esIdentificador } from "@/core/datos/identificador";
 import { validarImporte } from "@/core/datos/importe";
 import { ENTERO_MAXIMO_RAZONABLE, validarTopeDeLista } from "@/core/datos/limites";
 import { validarNombreCatalogo } from "@/core/datos/nombre-catalogo";
-import { numeroDeEntrada, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
+import { contextoDeCantidad, numeroDeEntrada, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 import { validarFactorDeEscala, validarPorcentajeDeDiferencia } from "@/core/datos/porcentaje-y-factor";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import { validarTextoCatalogo } from "@/core/texto";
 import {
   CANTIDAD_MAXIMA_DE_OPCION,
+  LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA,
+  MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA,
+  admitePrefijoEnCarta,
+  formaDelGrupoPorRespuesta,
   EFECTOS_DE_CONSUMO_DE_OPCION,
   MAXIMO_CONSUMOS_POR_VERSION,
   MERMA_MAXIMA_DE_CONSUMO,
   MODOS_DE_PRECIO_DE_MEDIDA,
   TIPOS_DE_GRUPO_DE_OPCIONES,
+  type ComoCambiaElPrecio,
   type ConsumoDeConfiguracion,
   type DiferenciaDePrecio,
   type EfectoDeConsumoDeOpcion,
@@ -22,7 +28,9 @@ import type {
   ComandoAgregarVersionDeOpcion,
   ComandoArchivarOpciones,
   ComandoCrearGrupoDeOpciones,
+  ComandoCrearGrupoEnElProducto,
   ComandoCrearOpcionDeGrupo,
+  ComandoCrearOpcionEnElProducto,
   ComandoEditarGrupoDeOpciones,
   ComandoEditarOpcionDeGrupo,
   ComandoFijarAdmisionDeGrupo,
@@ -30,6 +38,7 @@ import type {
   ComandoVincularGrupoEnProducto,
   DatosDeVersionDeOpcion,
   OpcionAdmitidaEnComando,
+  OpcionNuevaEnElProducto,
 } from "./opciones-de-venta.schema";
 
 /**
@@ -44,6 +53,12 @@ import type {
 
 /** Tope de opciones de un grupo que la pantalla manda de una vez al fijar lo que admite un producto. */
 const MAXIMO_OPCIONES_POR_ADMISION = 100;
+/**
+ * Tope de opciones que el comando «crear un grupo sin salir del producto» crea de una vez. Cada opción cuesta, dentro de UNA transacción SERIALIZABLE de 15 s, unas diez escrituras con su auditoría por
+ * columna más su fila de lo que admite el producto: con 20 la transacción queda muy lejos del tiempo máximo y cubre de sobra un grupo de tamaños, sabores o puntos de cocción. Un grupo más largo se arma
+ * en la biblioteca (`/catalogo/opciones`), opción por opción.
+ */
+export const MAX_OPCIONES_EN_UN_ALTA = 20;
 /** Tope de un id que llega del cliente (un cuid tiene 25). */
 const LARGO_MAXIMO_DE_ID = 64;
 /** Tope de una cantidad de consumo (`DECIMAL(14,4)`). */
@@ -66,7 +81,7 @@ function booleano(valor: unknown, etiqueta: string): ResultadoDato<boolean> {
 }
 
 function entero(valor: unknown, etiqueta: string, minimo: number, maximo: number): ResultadoDato<number> {
-  const numero = numeroDeEntrada(valor);
+  const numero = numeroDeEntrada(valor, contextoDeCantidad(0));
   if (!numero.ok || numero.valor === null) return rechazar("formato", `${etiqueta} no es un número válido.`);
   const n = numero.valor;
   if (!Number.isInteger(n) || n < minimo || n > maximo) return rechazar("rango", `${etiqueta} tiene que ser un número entero entre ${minimo} y ${maximo}.`);
@@ -123,11 +138,11 @@ function consumo(valor: unknown, linea: number): ResultadoDato<ConsumoDeConfigur
   if (!insumo.ok) return insumo;
   const reemplazado = idONulo(c.reemplazaAProductoId, `${etiqueta} no tiene un insumo reemplazado válido.`);
   if (!reemplazado.ok) return reemplazado;
-  const cantidad = numeroDeEntrada(c.cantidad);
+  const cantidad = numeroDeEntrada(c.cantidad, contextoDeCantidad(4));
   if (!cantidad.ok || cantidad.valor === null || !(cantidad.valor > 0) || cantidad.valor >= CANTIDAD_DE_CONSUMO_MAXIMA || !tieneALoSumoDecimales(cantidad.valor, 4)) {
     return rechazar("rango", `${etiqueta}: la cantidad tiene que ser mayor que 0, con hasta 4 decimales.`);
   }
-  const merma = numeroDeEntrada(c.mermaPorcentaje ?? 0);
+  const merma = numeroDeEntrada(c.mermaPorcentaje ?? 0, contextoDeCantidad(2));
   if (!merma.ok || merma.valor === null || merma.valor < 0 || merma.valor > MERMA_MAXIMA_DE_CONSUMO || !tieneALoSumoDecimales(merma.valor, 2)) {
     return rechazar("rango", `${etiqueta}: la merma tiene que estar entre 0 y ${MERMA_MAXIMA_DE_CONSUMO}, con hasta 2 decimales.`);
   }
@@ -165,7 +180,24 @@ function datosDeVersion(valor: unknown): ResultadoDato<DatosDeVersionDeOpcion> {
 
 // ───────────────────────────── Grupos ─────────────────────────────
 
-export function guardComandoCrearGrupoDeOpciones(entrada: { nombre: unknown; tipo: unknown; cantidadMinima: unknown; cantidadMaxima: unknown }): ResultadoDato<ComandoCrearGrupoDeOpciones> {
+/**
+ * Fase 4 (ADR-035): «se lee en la carta como». Ausente (`undefined`) queda ausente; `null`, vacío o solo espacios es «sin prefijo» (`null`); si no, un texto sin espacios a los costados (no se recorta: se
+ * avisa), de hasta 20 caracteres y con el juego de caracteres del catálogo. El CHECK `GrupoDeOpciones_prefijo_en_carta_chk` de la base repite el tope y los costados.
+ */
+function prefijoEnCarta(valor: unknown): ResultadoDato<string | null | undefined> {
+  if (valor === undefined) return aceptar(undefined);
+  if (valor === null) return aceptar(null);
+  const etiqueta = "«Se lee en la carta como»";
+  if (typeof valor !== "string") return rechazar("formato", `${etiqueta} no es un texto válido.`);
+  if (valor.trim() === "") return aceptar(null);
+  if (valor !== valor.trim()) return rechazar("formato", `${etiqueta} no puede empezar ni terminar con espacios: borralos y volvé a guardar.`);
+  if (Array.from(valor).length > LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA) return rechazar("largo", `${etiqueta} tiene hasta ${LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA} caracteres: acortalo (por ejemplo «De» o «Con»).`);
+  const invalido = validarTextoCatalogo(valor, etiqueta);
+  if (invalido) return rechazar("formato", invalido);
+  return aceptar(valor);
+}
+
+export function guardComandoCrearGrupoDeOpciones(entrada: { nombre: unknown; tipo: unknown; cantidadMinima: unknown; cantidadMaxima: unknown; prefijoEnCarta?: unknown }): ResultadoDato<ComandoCrearGrupoDeOpciones> {
   const n = nombre(entrada.nombre, "El nombre del grupo");
   if (!n.ok) return n;
   const tipo = deLista<TipoDeGrupoDeOpciones>(entrada.tipo, TIPOS_DE_GRUPO_DE_OPCIONES, "El tipo de grupo no es válido.");
@@ -174,7 +206,9 @@ export function guardComandoCrearGrupoDeOpciones(entrada: { nombre: unknown; tip
   if (!minimo.ok) return minimo;
   const maximo = entero(entrada.cantidadMaxima, "El máximo de opciones", 1, CANTIDAD_MAXIMA_DE_OPCION);
   if (!maximo.ok) return maximo;
-  return aceptar({ nombre: n.valor, tipo: tipo.valor, cantidadMinima: minimo.valor, cantidadMaxima: maximo.valor });
+  const prefijo = prefijoEnCarta(entrada.prefijoEnCarta);
+  if (!prefijo.ok) return prefijo;
+  return aceptar({ nombre: n.valor, tipo: tipo.valor, cantidadMinima: minimo.valor, cantidadMaxima: maximo.valor, prefijoEnCarta: prefijo.valor ?? null });
 }
 
 export function guardComandoEditarGrupoDeOpciones(entrada: {
@@ -184,6 +218,7 @@ export function guardComandoEditarGrupoDeOpciones(entrada: {
   cantidadMinima: unknown;
   cantidadMaxima: unknown;
   activo: unknown;
+  prefijoEnCarta?: unknown;
 }): ResultadoDato<ComandoEditarGrupoDeOpciones> {
   const grupoId = id(entrada.grupoId, MENSAJE_GRUPO_NO_ENCONTRADO);
   if (!grupoId.ok) return grupoId;
@@ -197,7 +232,17 @@ export function guardComandoEditarGrupoDeOpciones(entrada: {
   if (!maximo.ok) return maximo;
   const activo = booleano(entrada.activo, "«Activo»");
   if (!activo.ok) return activo;
-  return aceptar({ grupoId: grupoId.valor, versionEsperada: version.valor, nombre: n.valor, cantidadMinima: minimo.valor, cantidadMaxima: maximo.valor, activo: activo.valor });
+  const prefijo = prefijoEnCarta(entrada.prefijoEnCarta);
+  if (!prefijo.ok) return prefijo;
+  return aceptar({
+    grupoId: grupoId.valor,
+    versionEsperada: version.valor,
+    nombre: n.valor,
+    cantidadMinima: minimo.valor,
+    cantidadMaxima: maximo.valor,
+    activo: activo.valor,
+    ...(prefijo.valor === undefined ? {} : { prefijoEnCarta: prefijo.valor }),
+  });
 }
 
 // ───────────────────────────── Opciones y versiones ─────────────────────────────
@@ -401,4 +446,95 @@ export function guardComandoVincularGrupoEnProducto(entrada: { productoId: unkno
   const vinculado = booleano(entrada.vinculado, "«Vinculado»");
   if (!vinculado.ok) return vinculado;
   return aceptar({ productoId: productoId.valor, grupoId: grupoId.valor, vinculado: vinculado.valor });
+}
+
+// ───────────────────────────── Fase 6: crear un grupo sin salir del producto ─────────────────────────────
+
+const RESPUESTAS_AL_PRECIO = ["INCLUIDO", "SUMA", "PRECIO_FINAL"] as const satisfies readonly ComoCambiaElPrecio[];
+
+/**
+ * El importe de UNA opción del alta compuesta, según lo que responde «¿Cambia el precio?»: PRECIO_FINAL, el precio final (mayor que 0); SUMA, lo que suma (0 o más, nunca negativo: bajar el precio no es
+ * «sumar»); INCLUIDO, ninguno (`null` o ausente: una opción incluida va dentro del precio). Con `validarImporte`, el mismo de `CampoNumero tipo="importe"`: a lo sumo 2 decimales, se rechaza lo que trae más.
+ */
+function importeDeOpcionNueva(valor: unknown, respuesta: ComoCambiaElPrecio, etiqueta: string): ResultadoDato<number | null> {
+  if (respuesta === "INCLUIDO") {
+    return valor === null || valor === undefined ? aceptar(null) : rechazar("formato", `${etiqueta} no lleva importe: una opción incluida va dentro del precio.`);
+  }
+  const importe = validarImporte(valor, { etiqueta: `El importe de ${etiqueta.toLowerCase()}`, obligatorio: true, permitirCero: respuesta === "SUMA" });
+  return importe.ok ? aceptar(importe.valor) : rechazar(importe.codigo, importe.mensaje);
+}
+
+function opcionNueva(valor: unknown, posicion: number, respuesta: ComoCambiaElPrecio): ResultadoDato<OpcionNuevaEnElProducto> {
+  const etiqueta = `La opción ${posicion}`;
+  if (typeof valor !== "object" || valor === null) return rechazar("formato", `${etiqueta} no es válida.`);
+  const o = valor as { nombre?: unknown; importe?: unknown };
+  const n = nombre(o.nombre, `El nombre de ${etiqueta.toLowerCase()}`);
+  if (!n.ok) return n;
+  const importe = importeDeOpcionNueva(o.importe, respuesta, etiqueta);
+  if (!importe.ok) return importe;
+  return aceptar({ nombre: n.valor, importe: importe.valor });
+}
+
+/**
+ * Formato y rango de «crear un grupo sin salir del producto» (`crearGrupoEnElProducto`): el producto, el nombre del grupo y el prefijo (las mismas reglas que `guardComandoCrearGrupoDeOpciones`, con la
+ * forma del grupo que sale de `respuesta`), y de 1 a `MAX_OPCIONES_EN_UN_ALTA` opciones con su nombre (que no se repite sin distinguir mayúsculas: la base tiene el único `(grupo, lower(nombre))`) y su
+ * importe en dinero. Que el producto exista, sea de venta y que el grupo no pise a uno de la biblioteca lo decide el caso de uso, que lo lee.
+ */
+export function guardComandoCrearGrupoEnElProducto(entrada: { productoId: unknown; nombre: unknown; respuesta: unknown; prefijoEnCarta?: unknown; opciones: unknown }): ResultadoDato<ComandoCrearGrupoEnElProducto> {
+  const productoId = id(entrada.productoId, "No se encontró el producto.");
+  if (!productoId.ok) return productoId;
+  const respuesta = deLista<ComoCambiaElPrecio>(entrada.respuesta, RESPUESTAS_AL_PRECIO, "Elegí si el grupo cambia el precio.");
+  if (!respuesta.ok) return respuesta;
+  const forma = formaDelGrupoPorRespuesta(respuesta.valor);
+  const grupo = guardComandoCrearGrupoDeOpciones({ nombre: entrada.nombre, tipo: forma.tipo, cantidadMinima: forma.cantidadMinima, cantidadMaxima: forma.cantidadMaxima, prefijoEnCarta: entrada.prefijoEnCarta });
+  if (!grupo.ok) return grupo;
+  const prefijo = grupo.valor.prefijoEnCarta ?? null;
+  if (prefijo !== null && !admitePrefijoEnCarta(forma.tipo)) return rechazar("formato", MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA);
+
+  if (!Array.isArray(entrada.opciones) || entrada.opciones.length === 0) return rechazar("formato", "Agregá al menos una opción al grupo.");
+  const tope = validarTopeDeLista(entrada.opciones, "Las opciones", MAX_OPCIONES_EN_UN_ALTA);
+  if (tope) return rechazar("rango", tope);
+  const opciones: OpcionNuevaEnElProducto[] = [];
+  const vistas = new Set<string>();
+  for (const [i, o] of entrada.opciones.entries()) {
+    const r = opcionNueva(o, i + 1, respuesta.valor);
+    if (!r.ok) return r;
+    const clave = r.valor.nombre.toLowerCase();
+    if (vistas.has(clave)) return rechazar("formato", `Hay dos opciones llamadas «${r.valor.nombre}»: cada nombre va una sola vez en el grupo.`);
+    vistas.add(clave);
+    opciones.push(r.valor);
+  }
+  return aceptar({ productoId: productoId.valor, nombre: grupo.valor.nombre, respuesta: respuesta.valor, prefijoEnCarta: prefijo, opciones });
+}
+
+/**
+ * Formato y rango de «+ Opción» / «+ Extra» (`crearOpcionEnElProducto`): el producto, el grupo, la versión de lo que el producto admite del grupo que vio la pantalla, el nombre de la opción, su importe (con
+ * `validarImporte`, el de `CampoNumero tipo="importe"`: a lo sumo 2 decimales, 0 o más, `null` si no lleva) y la unidad del producto de respaldo (solo un adicional). Qué lleva cada grupo (un precio final, una suma o
+ * nada; el respaldo solo y siempre en un adicional) lo decide el caso de uso, que lee el tipo del grupo: el cliente no lo dice.
+ */
+export function guardComandoCrearOpcionEnElProducto(entrada: {
+  productoId: unknown;
+  grupoId: unknown;
+  versionEsperada: unknown;
+  nombre: unknown;
+  importe?: unknown;
+  unidadStockId?: unknown;
+}): ResultadoDato<ComandoCrearOpcionEnElProducto> {
+  const productoId = id(entrada.productoId, "No se encontró el producto.");
+  if (!productoId.ok) return productoId;
+  const grupoId = id(entrada.grupoId, MENSAJE_GRUPO_NO_ENCONTRADO);
+  if (!grupoId.ok) return grupoId;
+  const version = versionEsperada(entrada.versionEsperada, 1);
+  if (!version.ok) return version;
+  const n = nombre(entrada.nombre, "El nombre de la opción");
+  if (!n.ok) return n;
+  let importe: number | null = null;
+  if (entrada.importe !== null && entrada.importe !== undefined && entrada.importe !== "") {
+    const i = validarImporte(entrada.importe, { etiqueta: "El importe de la opción", obligatorio: true, permitirCero: true });
+    if (!i.ok) return rechazar(i.codigo, i.mensaje);
+    importe = i.valor;
+  }
+  const unidadStockId = idONulo(entrada.unidadStockId, "Elegí la unidad del producto de respaldo.");
+  if (!unidadStockId.ok) return unidadStockId;
+  return aceptar({ productoId: productoId.valor, grupoId: grupoId.valor, versionEsperada: version.valor, nombre: n.valor, importe, unidadStockId: unidadStockId.valor });
 }

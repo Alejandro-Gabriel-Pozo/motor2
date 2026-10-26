@@ -12,10 +12,15 @@ import { formatearCantidad, formatearMonto } from "@/core/pos/public";
 import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
 import { AvisoConDeshacer, BotonConDeshacer } from "@/components/aviso-con-deshacer";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Campo } from "@/ui/primitivas/campo";
+import { Insignia } from "@/ui/primitivas/insignia";
 import { AltaDeOpcion } from "./alta-de-opcion";
+import { CampoSeLeeEnLaCarta } from "./campo-se-lee-en-la-carta";
 import { CambiarPrecio } from "./cambiar-precio";
 import { OrdenarOpciones } from "./ordenar-opciones";
 import { versionDelFormulario } from "./version-del-formulario";
@@ -50,14 +55,16 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { grupoId } = await params;
-  const [{ editar: puedeEditar }, { ver: puedeVerRecetas }, sinRecetas] = await Promise.all([
+  const [{ editar: puedeEditar }, { editar: puedeEditarOpcionesDelProducto }, { ver: puedeVerRecetas }, sinRecetas] = await Promise.all([
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db),
+    // Cortesía de la interfaz (no barrera: el paso 2 vuelve a exigirlo): a quien puede editar lo que un producto admite, «Productos que lo usan» lo lleva directo a ese paso; a los demás, a la portada del producto.
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_opciones_admitidas", ctx.db),
     // OPCIONES-FACTOR: la receta de referencia del factor de un tamaño solo se lee y se muestra a quien ve las recetas (el «Ver» de `guardar_receta`).
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db),
     // D-3 (GO-2a): los consumos de una opción exigen el módulo Recetas; sin él, la opción se guarda sin consumos y la pantalla no ofrece el editor.
@@ -68,7 +75,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
   if (!datos) {
     return (
       <div className="flex flex-col gap-2">
-        <p className="text-red-600">No se encontró ese grupo de opciones.</p>
+        <p className="text-error">No se encontró ese grupo de opciones.</p>
         <Link href="/catalogo/opciones" className="text-sm underline">
           ← Volver a Opciones de venta
         </Link>
@@ -85,6 +92,8 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
   const maximo = grupo.cantidadMaxima;
   const activo = grupo.activo;
   const esTamano = tipo === "MEDIDA";
+  // Fase 4 (ADR-035): «se lee en la carta como», solo en variantes y tamaños.
+  const conPrefijo = tipo === "VARIANTE" || tipo === "MEDIDA";
   const admiteNinguna = (tipo === "VARIANTE" || tipo === "INCLUIDA") && !opciones.some((o) => o.esNinguna);
   const siguienteOrden = (opciones.reduce((max, o) => Math.max(max, o.orden), 0) || 0) + PASO_DE_ORDEN;
   const referencia = datos.referencia ? { ...datos.referencia, sucursalNombre: ctx.sucursalNombre } : null;
@@ -106,13 +115,13 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
             ← Opciones de venta
           </Link>
           <h1 className="mt-2 text-xl font-semibold">{nombreGrupo}</h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm text-tinta-suave">
             {nombreDelTipoDeGrupo(tipo)} (el tipo no se puede cambiar) · {textoDeLimites(minimo, maximo)} · {activo ? "En uso" : "Archivado"}
           </p>
         </div>
 
         {!activo && (
-          <div role="note" data-grupo-archivado-aviso="" className="flex flex-wrap items-center gap-3 border-l-4 border-[#8a5a00] bg-[#fbf0d6] px-3 py-2.5 text-sm text-neutral-900 dark:border-amber-500 dark:bg-amber-950 dark:text-neutral-100">
+          <div role="note" data-grupo-archivado-aviso="" className="flex flex-wrap items-center gap-3 border-l-4 border-aviso-tinta bg-aviso-tinte px-3 py-2.5 text-sm text-tinta">
             <p className="min-w-0 flex-1">
               Este grupo está archivado: no se ofrece en ningún producto ni en la carta. Lo ya vendido queda como se vendió.
             </p>
@@ -141,50 +150,44 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                     cantidadMinima: numeroDelCampo(String(formData.get("cantidadMinima") ?? "")),
                     cantidadMaxima: numeroDelCampo(String(formData.get("cantidadMaxima") ?? "")),
                     activo,
+                    // Fase 4: va siempre (vacío = sin prefijo), así entra en la comparación de la versión; en los demás tipos no se manda.
+                    ...(conPrefijo ? { prefijoEnCarta: String(formData.get("prefijoEnCarta") ?? "") } : {}),
                   });
                 }}
                 className="flex max-w-xl flex-col gap-3"
               >
+                {/* El «Nombre» lleva su rótulo atado por afuera (y no el `etiqueta` de Campo): con `required` Campo le suma un asterisco al texto, y esta pantalla la fotografía la línea de base de navegador. */}
                 <div className="flex flex-col gap-1">
                   <label htmlFor="grupo-nombre" className="text-sm font-medium">
                     Nombre
                   </label>
-                  <input id="grupo-nombre" name="nombre" required maxLength={120} defaultValue={nombreGrupo} className="rounded border px-3 py-2" />
+                  <Campo nombradoPorFuera id="grupo-nombre" name="nombre" required maxLength={120} defaultValue={nombreGrupo} />
                 </div>
                 <div className="flex flex-wrap gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="grupo-minimo" className="text-sm font-medium">
-                      Mínimo a elegir
-                    </label>
-                    <input id="grupo-minimo" name="cantidadMinima" inputMode="numeric" defaultValue={minimo} readOnly={esTamano} className="w-24 rounded border px-3 py-2 read-only:bg-neutral-100 dark:read-only:bg-neutral-800" />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor="grupo-maximo" className="text-sm font-medium">
-                      Máximo a elegir
-                    </label>
-                    <input id="grupo-maximo" name="cantidadMaxima" inputMode="numeric" defaultValue={maximo} readOnly={esTamano} className="w-24 rounded border px-3 py-2 read-only:bg-neutral-100 dark:read-only:bg-neutral-800" />
-                  </div>
+                  <Campo etiqueta="Mínimo a elegir" id="grupo-minimo" name="cantidadMinima" inputMode="numeric" defaultValue={minimo} readOnly={esTamano} className="max-w-24" />
+                  <Campo etiqueta="Máximo a elegir" id="grupo-maximo" name="cantidadMaxima" inputMode="numeric" defaultValue={maximo} readOnly={esTamano} className="max-w-24" />
                 </div>
-                <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                <p className="text-xs text-tinta-suave">
                   {esTamano ? "Un tamaño se elige siempre una vez: mínimo 1 y máximo 1." : tipo === "INCLUIDA" ? "Lo incluido es obligatorio: el mínimo es 1 o más." : "Con mínimo 0 el grupo es opcional."}
                 </p>
-                <button type="submit" className="self-start rounded bg-neutral-900 px-4 py-2 text-white">
+                {conPrefijo && <CampoSeLeeEnLaCarta prefijoInicial={grupo.prefijoEnCarta} opciones={enUso.map((o) => ({ nombre: o.nombre, esNinguna: o.esNinguna }))} />}
+                <BotonDeServidor type="submit" className="self-start">
                   Guardar
-                </button>
+                </BotonDeServidor>
               </FormConResultado>
               {activo && (
                 <div className="flex flex-col gap-1 sm:items-start">
                   <BotonConDeshacer valor={true} etiquetaAccesible={`Archivar el grupo ${nombreGrupo}`} accion={archivarElGrupo}>
                     Archivar grupo
                   </BotonConDeshacer>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                  <p className="text-xs text-tinta-suave">
                     {usanElGrupo}: archivado, no se ofrece en ninguno{minimo > 0 ? " y, como es obligatorio, esos productos no se van a poder vender" : ""}. Se restaura con un toque desde «Archivados».
                   </p>
                 </div>
               )}
             </>
           ) : (
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">Tu rol puede ver este grupo pero no cambiarlo.</p>
+            <p className="text-sm text-tinta-suave">Tu rol puede ver este grupo pero no cambiarlo.</p>
           )}
         </section>
 
@@ -193,11 +196,11 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
             Opciones
           </h2>
           {enUso.length === 0 ? (
-            <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+            <Aviso variante="informacion" forma="en-linea">
               {opciones.length > 0
                 ? "No hay opciones en uso: están todas archivadas (abajo)."
                 : `Este grupo todavía no tiene opciones${puedeEditar ? ": agregá la primera con «Agregar opción»." : "."}`}
-            </p>
+            </Aviso>
           ) : (
             <ul aria-label={`Opciones de ${nombreGrupo}`} className="flex flex-col divide-y rounded border">
               {enUso.map((o) => {
@@ -212,12 +215,12 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                   <li key={o.id} data-opcion={o.nombre} className="flex flex-col gap-2 p-3">
                     <div className="flex flex-wrap items-baseline gap-x-2">
                       <span className="font-medium">{o.nombre}</span>
-                      {o.esNinguna && <span className="rounded bg-neutral-100 px-1.5 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">ninguna</span>}
-                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{precioDeLaOpcion(tipo, o)}</span>
+                      {o.esNinguna && <Insignia>ninguna</Insignia>}
+                      <span className="text-sm text-tinta-suave">{precioDeLaOpcion(tipo, o)}</span>
                     </div>
-                    {rige && !o.esNinguna && <p className="text-sm text-neutral-700 dark:text-neutral-300">Consumo: {resumenDeConsumos(rige.consumos, formatearCantidad)}</p>}
+                    {rige && !o.esNinguna && <p className="text-sm text-tinta-suave">Consumo: {resumenDeConsumos(rige.consumos, formatearCantidad)}</p>}
                     {rige && (
-                      <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                      <p className="text-xs text-tinta-suave">
                         Rige desde {formatearFechaHora(rige.creadoEn, ctx.empresaZonaHoraria)} · cargó {rige.creadoPor}
                       </p>
                     )}
@@ -226,7 +229,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                         <summary className="min-h-[44px] cursor-pointer py-2 underline">Cambios de precio anteriores ({o.cambios.length - 1})</summary>
                         <ol className="flex flex-col gap-1 pl-4">
                           {o.cambios.slice(1).map((c) => (
-                            <li key={c.numero} className="text-xs text-neutral-700 dark:text-neutral-300">
+                            <li key={c.numero} className="text-xs text-tinta-suave">
                               Desde {formatearFechaHora(c.creadoEn, ctx.empresaZonaHoraria)} · cargó {c.creadoPor}: {precioDeLaOpcion(tipo, o, c)}
                               {!o.esNinguna && ` · ${resumenDeConsumos(c.consumos, formatearCantidad)}`}
                             </li>
@@ -234,7 +237,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                         </ol>
                       </details>
                     )}
-                    {o.anclaNombre && <p className="text-xs text-neutral-600 dark:text-neutral-400">Stock en el producto interno «{o.anclaNombre}» (lo maneja el sistema).</p>}
+                    {o.anclaNombre && <p className="text-xs text-tinta-suave">Stock en el producto interno «{o.anclaNombre}» (lo maneja el sistema).</p>}
                     {puedeEditar && (
                       <div className="flex flex-wrap items-start gap-4">
                         <FormConResultado
@@ -249,10 +252,12 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                             <label htmlFor={`opcion-nombre-${o.id}`} className="sr-only">
                               Nombre de {o.nombre}
                             </label>
-                            <input id={`opcion-nombre-${o.id}`} name="nombre" required maxLength={120} defaultValue={nombre} className="w-48 rounded border px-2 py-1 text-sm" />
-                            <button type="submit" className="min-h-[44px] text-sm underline" aria-label={`Renombrar ${nombre}`}>
+                            <div className="w-48">
+                              <Campo nombradoPorFuera id={`opcion-nombre-${o.id}`} name="nombre" required maxLength={120} defaultValue={nombre} tamano="compacto" />
+                            </div>
+                            <BotonDeServidor variante="enlace" tamano="tactil" type="submit" aria-label={`Renombrar ${nombre}`}>
                               Renombrar
-                            </button>
+                            </BotonDeServidor>
                           </div>
                         </FormConResultado>
                         {rige && (
@@ -301,15 +306,15 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
           {archivadas.length > 0 && (
             <div className="flex flex-col gap-2">
               <h3 className="font-medium">Opciones archivadas ({archivadas.length})</h3>
-              <p className="text-sm text-neutral-600 dark:text-neutral-400">No se ofrecen en ningún producto ni en la carta. Restaurarlas las vuelve a ofrecer donde estaban.</p>
+              <p className="text-sm text-tinta-suave">No se ofrecen en ningún producto ni en la carta. Restaurarlas las vuelve a ofrecer donde estaban.</p>
               <ul aria-label={`Opciones archivadas de ${nombreGrupo}`} className="flex flex-col gap-2">
                 {archivadas.map((o) => {
                   const opcionId = o.id;
                   return (
-                    <li key={o.id} data-opcion-archivada={o.nombre} className="flex flex-wrap items-center gap-3 border border-[#cdd5dd] bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900">
+                    <li key={o.id} data-opcion-archivada={o.nombre} className="flex flex-wrap items-center gap-3 border border-borde-control bg-superficie px-3 py-2">
                       <div className="min-w-0 flex-1">
                         <span className="font-medium [overflow-wrap:anywhere]">{o.nombre}</span>
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400">{precioDeLaOpcion(tipo, o)}</p>
+                        <p className="text-xs text-tinta-suave">{precioDeLaOpcion(tipo, o)}</p>
                       </div>
                       {puedeEditar && (
                         <BotonConDeshacer
@@ -369,12 +374,12 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
             Productos que lo usan
           </h2>
           {productos.length === 0 ? (
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">Ningún producto lo usa todavía. Qué grupos usa cada producto se elige en su ficha.</p>
+            <p className="text-sm text-tinta-suave">Ningún producto lo usa todavía. Qué grupos usa cada producto se elige en su ficha.</p>
           ) : (
             <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
               {productos.map((p) => (
                 <li key={p.id}>
-                  <EnlaceInterno href={`/catalogo/productos/${p.id}`} className="underline">
+                  <EnlaceInterno href={`/catalogo/productos/${p.id}${puedeEditarOpcionesDelProducto ? "/opciones" : ""}`} className="underline">
                     {p.nombre}
                   </EnlaceInterno>
                 </li>

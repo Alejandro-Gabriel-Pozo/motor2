@@ -1,0 +1,410 @@
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import type { Locator, Page } from "@playwright/test";
+import { test, expect } from "./fixtures/auth";
+import { prisma } from "./fixtures/db";
+import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
+
+/**
+ * MEDICIÓN de cuatro tareas del producto (Fase 6; ver docs/medicion-espacio-del-producto-2026-10-21.md). Nació como la medición «antes» (6.0.2, con las pantallas de entonces) y desde 6.21 recorre el ESPACIO
+ * DEL PRODUCTO y AFIRMA el umbral de DEC-12 (del dueño): en las cuatro tareas, pantallas y clics «no peor que antes» (`ANTES`, la tabla «antes» del documento) y 0 salidas del espacio en las tareas de
+ * opciones, de cambiar un precio y de publicar (b, c y d). No mide tiempo ni rendimiento: mide cuánto camino pide cada tarea.
+ *
+ * LAS CUATRO TAREAS (cada una arranca en una pantalla de partida y se recorre solo con clics y campos, sin escribir una URL a mitad de camino)
+ *  a) Crear un producto DIRECTO hasta que quede vendible. Parte de la lista de productos. Hoy «directo o base» es «¿Cómo se vende?», que existe SOLO al editar (el alta nace directa): elegir
+ *     «directo» no cuesta nada.
+ *  b) Crear una base configurable: un grupo «Tamaño» con precio final en cada una de 3 opciones, un grupo «Incluida sin costo» con una opción, un producto nuevo que los admite y pasarlo a
+ *     «Por opción» en «¿Cómo se vende?» (con la clave `producto_campos_sensibles`). «Antes» (Fase 6, 6.0.2) parte de «Opciones de venta» y recorre la biblioteca de grupos; desde 6.15c parte de la lista de
+ *     productos y los grupos se crean desde el paso 2 del producto con «+ Nuevo grupo» (el recorrido del espacio, DEC-12): la tabla «antes» del documento sigue siendo la del recorrido viejo.
+ *  c) Cambiar el precio final de una opción de una base ya armada. Parte de la ficha del producto (sembrado).
+ *  d) Publicar el producto en la carta. «Antes»: la carta era otro módulo («Fuera de carta» → «Agregar a la carta» → sección). Desde 6.17c es el paso «En la carta» del producto: «En la carta» → sección →
+ *     «Guardar contenido». Parte de la ficha del producto (sembrado).
+ *
+ * QUÉ SE CUENTA (el medidor `Medidor`, abajo; todo a 1280 px de ancho, el menú lateral a la vista)
+ *  - PANTALLAS: rutas distintas visitadas. Un `framenavigated` del marco principal cuenta cuando CAMBIA el path; el mismo path con otra query (`?nivel=…`, `?guardado=…`) o un refresco no cuentan.
+ *    El id de un grupo, un producto o un usuario se normaliza a `[id]`: «/catalogo/opciones/<id>» es una sola pantalla aunque se abran dos grupos. `visitas` cuenta los cambios de path tal cual
+ *    (con repetidas) y `secuencia` las lista. La pantalla de partida cuenta.
+ *  - CLICS: solo los que da el ayudante `clic` (envuelve `locator.click`) y `marcar` (un radio o una casilla, que es un clic). Llegar a la pantalla de partida con `ir` NO es un clic. Para llegar
+ *    por el menú (`irPorElMenu`) se cuentan TODOS los clics que hagan falta (el panel Empresa/Sucursal y el grupo del menú, si están cerrados, y el enlace).
+ *  - CAMPOS TOCADOS: los que tocan `llenar` (escribir) y `elegir` (un `<select>`), y `marcar` (un radio o una casilla cuenta como clic Y como campo). Los campos que quedan como vienen no cuentan.
+ *  - `salidasDelEspacio` (6.15c; tareas b, c y d): las visitas, después de la pantalla de partida, a una pantalla que NO es del espacio del producto (`ESPACIO`: el alta, la portada y sus pasos); es lo que mide el
+ *    umbral de DEC-12 (0 en b, c y d). `salidas` (la de abajo) queda con su definición de la medición «antes».
+ *  - SALIDAS DEL ESPACIO (tareas b, c y d; en la a es null): cuántas veces hay que dejar la pantalla de la tarea para ir a otra pantalla DISTINTA de administración. Hoy se cuenta como las pantallas
+ *    distintas menos 1 (la de partida no es una salida). En el espacio del producto (bloque 2), todo lo del producto pasa a ser un paso del mismo espacio y el número tiene que ser 0.
+ *
+ * JSON DE LA MEDICIÓN: se escribe SOLO si existe la variable de entorno `MOTOR2_MEDICIONES`, y solo después de que la tarea terminó bien (una corrida rota no deja cifras).
+ *  - Si el valor termina en `.json`, es UN archivo con el arreglo de las cuatro mediciones (se crea si no existe; cada tarea reemplaza su entrada por `tarea`).
+ *  - Si no, es una CARPETA (se crea si no existe) y cada tarea escribe su archivo `<tarea>.json`.
+ *  Cada medición es `{ tarea, pantallas, rutas, clics, campos, salidas, visitas, secuencia }`. Sin la variable, la spec solo afirma y no escribe nada.
+ *  Ejemplo: MOTOR2_MEDICIONES=$S/mediciones/antes.json node scripts/operaciones/con-env.mjs $S/env-lb-e2e -- npx playwright test medicion-tareas-del-producto
+ *
+ * DATOS: todo lleva una marca única en el nombre (la base e2e es compartida y se vacía entera al empezar cada corrida). Las tablas de opciones solo se agregan (ver `fixtures/opciones.ts`): lo que
+ * sembramos o creamos de opciones no se borra al terminar. La tarea d borra lo que ella misma crea de la carta (el contenido y la sección propia) para no tocar a las otras specs de la carta.
+ *
+ * MUTACIONES DEMOSTRADAS (se hacen a mano, una vez, y se deshacen; esta spec no corre sola en el gate):
+ *  1) Cambiar el selector de un paso (p. ej. en la tarea c, el rótulo `Precio de Napolitana en este producto` por `Precio de Napolitano en este producto`) → esa tarea FALLA con el mensaje
+ *     «[medición c-cambiar-precio-final] no se pudo «…»: …» que nombra el paso, y no escribe ningún JSON.
+ *  2) 6.21, en la tarea c, ir por la biblioteca (`/catalogo/opciones/[id]`) en vez del paso 2 → `salidasDelEspacio` = 1 → el umbral da rojo («salidas del espacio»).
+ *  3) 6.21, agregar un clic de más en la tarea c → 3 clics contra los 2 de antes → el umbral da rojo.
+ */
+
+type Tarea = "a-producto-directo" | "b-base-configurable" | "c-cambiar-precio-final" | "d-publicar-en-la-carta";
+
+interface Medicion {
+  tarea: Tarea;
+  pantallas: number;
+  rutas: string[];
+  clics: number;
+  campos: number;
+  /** null en la tarea a (no aplica). Las pantallas distintas menos 1 (la definición de la medición «antes»). */
+  salidas: number | null;
+  /** null en la tarea a. Las visitas, después de la pantalla de partida, a una pantalla que NO es del espacio del producto (`ESPACIO`): lo que mide el umbral de DEC-12 (0 en b, c y d). */
+  salidasDelEspacio: number | null;
+  visitas: number;
+  secuencia: string[];
+}
+
+/** El id de un grupo, un producto o un usuario (cuid, UUID o similar: 20 caracteres o más con algún dígito) pasa a `[id]`, para contar pantallas y no registros. */
+function normalizarRuta(path: string): string {
+  const segmentos = path
+    .split("/")
+    .filter((s) => s !== "")
+    .map((s) => (/^[a-z0-9_-]{20,}$/i.test(s) && /\d/.test(s) ? "[id]" : s));
+  return `/${segmentos.join("/")}`;
+}
+
+/** Dónde queda un enlace del menú lateral, para abrir lo que haga falta (y contar esos clics) cuando no está a la vista. */
+interface DestinoDelMenu {
+  href: string;
+  /** El panel del menú donde vive; `ambos` si está en los dos. */
+  panel: "empresa" | "sucursal" | "ambos";
+  /** El rótulo del grupo del menú que lo contiene. */
+  grupo: string;
+}
+
+/**
+ * Lo que pedía cada tarea ANTES del espacio (tabla «antes» de docs/medicion-espacio-del-producto-2026-10-21.md §5, primera corrida, commit c17c3c52): el umbral de DEC-12 es no pasarse de esto. Si se
+ * sube un número para que la spec pase, se está aflojando el umbral del dueño: no se hace.
+ */
+const ANTES = {
+  "a-producto-directo": { pantallas: 3, clics: 3 },
+  "b-base-configurable": { pantallas: 7, clics: 28 },
+  "c-cambiar-precio-final": { pantallas: 2, clics: 2 },
+  "d-publicar-en-la-carta": { pantallas: 2, clics: 6 },
+} as const satisfies Record<Tarea, { pantallas: number; clics: number }>;
+
+/** El umbral de DEC-12 sobre una medición: no peor que antes en pantallas y clics y, donde aplica (b, c y d), 0 salidas del espacio. */
+function afirmarElUmbral(medicion: Medicion): void {
+  const antes = ANTES[medicion.tarea];
+  expect(medicion.pantallas, `${medicion.tarea}: pantallas (antes ${antes.pantallas})`).toBeLessThanOrEqual(antes.pantallas);
+  expect(medicion.clics, `${medicion.tarea}: clics (antes ${antes.clics})`).toBeLessThanOrEqual(antes.clics);
+  if (medicion.salidasDelEspacio !== null) expect(medicion.salidasDelEspacio, `${medicion.tarea}: salidas del espacio (${medicion.secuencia.join(" → ")})`).toBe(0);
+}
+
+/** Las pantallas del espacio del producto (rutas normalizadas): el alta, la portada y sus pasos. Ir a cualquier otra es una salida del espacio. */
+const ESPACIO = new Set(["/catalogo/productos/nuevo", "/catalogo/productos/[id]", "/catalogo/productos/[id]/datos", "/catalogo/productos/[id]/opciones", "/catalogo/productos/[id]/receta", "/catalogo/productos/[id]/en-la-carta"]);
+
+class Medidor {
+  clics = 0;
+  campos = 0;
+  private readonly secuencia: string[] = [];
+  private ultimoPath: string | null = null;
+
+  constructor(
+    readonly page: Page,
+    readonly tarea: Tarea,
+  ) {
+    page.on("framenavigated", (marco) => {
+      if (marco !== page.mainFrame()) return;
+      const url = new URL(marco.url());
+      if (url.protocol !== "http:" && url.protocol !== "https:") return;
+      // El mismo path con otra query (o un refresco) no es otra pantalla.
+      if (url.pathname === this.ultimoPath) return;
+      this.ultimoPath = url.pathname;
+      this.secuencia.push(normalizarRuta(url.pathname));
+    });
+  }
+
+  /** Cada paso con su nombre: si falla, el mensaje dice qué paso de qué tarea (y por qué) en vez de un selector suelto. */
+  async paso<T>(descripcion: string, hacer: () => Promise<T>): Promise<T> {
+    try {
+      return await hacer();
+    } catch (error) {
+      const motivo = error instanceof Error ? (error.message.split("\n")[0] ?? error.message) : String(error);
+      throw new Error(`[medición ${this.tarea}] no se pudo «${descripcion}»: ${motivo}`, { cause: error });
+    }
+  }
+
+  /** Llega a la pantalla de partida: cuenta como pantalla, no como clic. */
+  async ir(url: string, descripcion: string): Promise<void> {
+    await this.paso(descripcion, () => this.page.goto(url).then(() => undefined));
+  }
+
+  async clic(locator: Locator, descripcion: string): Promise<void> {
+    await this.paso(descripcion, () => locator.click());
+    this.clics++;
+  }
+
+  async llenar(locator: Locator, valor: string, descripcion: string): Promise<void> {
+    await this.paso(descripcion, () => locator.fill(valor));
+    this.campos++;
+  }
+
+  async elegir(locator: Locator, opcion: string, descripcion: string): Promise<void> {
+    await this.paso(descripcion, () => locator.selectOption({ label: opcion }).then(() => undefined));
+    this.campos++;
+  }
+
+  /** Un radio o una casilla: es un clic y es un campo tocado. */
+  async marcar(locator: Locator, descripcion: string): Promise<void> {
+    await this.paso(descripcion, () => locator.check());
+    this.clics++;
+    this.campos++;
+  }
+
+  /** Una opción en TARJETA (`OpcionesExcluyentes presentacion="tarjetas"`): la etiqueta cubre toda la tarjeta, así que se toca el texto. Cuenta como `marcar`: un clic y un campo tocado. */
+  async marcarTarjeta(locator: Locator, descripcion: string): Promise<void> {
+    await this.paso(descripcion, () => locator.click());
+    this.clics++;
+    this.campos++;
+  }
+
+  /** Una espera sobre lo que tiene que verse (no cuenta nada): el paso queda nombrado si no se cumple. */
+  async ver(descripcion: string, comprobar: () => Promise<void>): Promise<void> {
+    await this.paso(descripcion, comprobar);
+  }
+
+  /** Va a una pantalla por el menú lateral. Si el enlace no está a la vista abre el panel y el grupo que falten, y todos esos clics cuentan. */
+  async irPorElMenu(destino: DestinoDelMenu): Promise<void> {
+    const { page } = this;
+    const enlace = page.locator(`nav a[href="${destino.href}"]:visible`).first();
+    if ((await enlace.count()) === 0 && destino.panel !== "ambos") {
+      const boton = page.getByRole("group", { name: "Panel del menú" }).getByRole("button", { name: destino.panel === "empresa" ? "Empresa" : "Sucursal", exact: true });
+      if ((await boton.count()) > 0 && (await boton.getAttribute("aria-pressed")) !== "true") await this.clic(boton, `abrir el panel «${destino.panel}» del menú`);
+    }
+    if ((await enlace.count()) === 0) {
+      await this.clic(page.locator("nav button", { hasText: destino.grupo }).first(), `abrir el grupo «${destino.grupo}» del menú`);
+    }
+    await this.clic(enlace, `ir por el menú a ${destino.href}`);
+  }
+
+  resultado(conSalidas: boolean): Medicion {
+    const rutas = [...new Set(this.secuencia)];
+    return {
+      tarea: this.tarea,
+      pantallas: rutas.length,
+      rutas,
+      clics: this.clics,
+      campos: this.campos,
+      salidas: conSalidas ? rutas.length - 1 : null,
+      salidasDelEspacio: conSalidas ? this.secuencia.slice(1).filter((ruta) => !ESPACIO.has(ruta)).length : null,
+      visitas: this.secuencia.length,
+      secuencia: [...this.secuencia],
+    };
+  }
+}
+
+/** Escribe la medición en `MOTOR2_MEDICIONES` (archivo `.json` con el arreglo de las cuatro, o carpeta con un archivo por tarea); sin la variable no hace nada. */
+function guardarMedicion(medicion: Medicion): void {
+  const destino = process.env.MOTOR2_MEDICIONES;
+  if (!destino) return;
+  if (destino.endsWith(".json")) {
+    mkdirSync(dirname(destino), { recursive: true });
+    let previas: Medicion[] = [];
+    try {
+      previas = JSON.parse(readFileSync(destino, "utf8")) as Medicion[];
+    } catch (error) {
+      // Sin archivo todavía (primera tarea de la corrida): se empieza uno nuevo. Cualquier otra falla (un JSON roto) se dice, no se pisa en silencio.
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    const resto = previas.filter((p) => p.tarea !== medicion.tarea);
+    writeFileSync(destino, `${JSON.stringify([...resto, medicion].sort((x, y) => x.tarea.localeCompare(y.tarea)), null, 2)}\n`);
+    return;
+  }
+  mkdirSync(destino, { recursive: true });
+  writeFileSync(join(destino, `${medicion.tarea}.json`), `${JSON.stringify(medicion, null, 2)}\n`);
+}
+
+const marca = () => `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+
+
+/** Una base ya armada para las tareas c y d: un producto «Por opción» con un grupo «Tamaño» de 3 opciones, cada una con su precio final. */
+async function sembrarBase(sucursalId: string, m: string) {
+  const nombreGrupo = `Medición Tipos ${m}`;
+  const grupo = await sembrarGrupo({
+    nombre: nombreGrupo,
+    tipo: "MEDIDA",
+    cantidadMinima: 1,
+    cantidadMaxima: 1,
+    marca: m,
+    opciones: [{ nombre: "Simple" }, { nombre: "Napolitana" }, { nombre: "Especial" }],
+  });
+  const nombre = `Medición Milanesas ${m}`;
+  const { productoId } = await sembrarProductoConOpciones({
+    nombre,
+    codigo: `E2E-MED-${m}`,
+    precioVenta: 18000,
+    sucursalId,
+    grupos: [{ grupo, modoPrecio: "ABSOLUTO", preciosAbsolutos: { Simple: 18000, Napolitana: 22000, Especial: 25000 } }],
+  });
+  await prisma.producto.update({ where: { id: productoId }, data: { modoDeVenta: "BASE_CONFIGURABLE" } });
+  return { productoId, nombre, nombreGrupo, grupo };
+}
+
+test.describe("medición de las tareas del producto (el espacio) contra el umbral de DEC-12", () => {
+  test.beforeEach(async ({ paginaAutenticada: page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+  });
+
+  test("a) crear un producto directo hasta que quede vendible", async ({ paginaAutenticada: page, sucursalId }) => {
+    const m = new Medidor(page, "a-producto-directo");
+    const nombre = `Medición Directo ${marca()}`;
+
+    await m.ir("/catalogo/productos", "abrir la lista de productos");
+    await m.clic(page.getByRole("link", { name: "+ Nuevo producto" }), "tocar «+ Nuevo producto»");
+    await m.ver("se abre el alta", () => expect(page.getByRole("heading", { name: "Nuevo producto", level: 1 })).toBeVisible());
+    await m.marcar(page.getByRole("radio", { name: "Producto de venta (PV)" }), "elegir «Producto de venta (PV)»");
+    await m.llenar(page.locator('input[name="nombre"]'), nombre, "escribir el nombre");
+    await m.elegir(page.getByLabel("Unidad de stock"), "unidad", "elegir la unidad de stock");
+    await m.llenar(page.getByRole("textbox", { name: "Precio de venta" }), "4500", "escribir el precio de venta");
+    await m.clic(page.getByRole("button", { name: "Crear producto" }), "tocar «Crear producto»");
+    await m.ver("se llega a la ficha del producto creado", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
+    await m.ver("la ficha dice que está disponible en la sucursal", () => expect(page.getByText(/Disponible en «/)).toBeVisible());
+
+    const medicion = m.resultado(false);
+    // Vendible = producto de venta, directo, con precio y disponible en la sucursal activa.
+    const producto = await prisma.producto.findFirstOrThrow({ where: { nombre }, select: { id: true, tipo: true, modoDeVenta: true, precioVenta: true } });
+    expect({ tipo: producto.tipo, modoDeVenta: producto.modoDeVenta, precioVenta: Number(producto.precioVenta) }).toEqual({ tipo: "PV", modoDeVenta: "DIRECTO", precioVenta: 4500 });
+    const disponibilidad = await prisma.disponibilidadProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: producto.id } } });
+    expect(disponibilidad.disponible, "el producto quedó disponible en la sucursal").toBe(true);
+    afirmarElUmbral(medicion);
+    guardarMedicion(medicion);
+  });
+
+  test("b) crear una base configurable con un grupo de precio final de 3 opciones y una opción incluida", async ({ paginaAutenticada: page }) => {
+    test.setTimeout(180_000);
+    const m = new Medidor(page, "b-base-configurable");
+    const marcaUnica = marca();
+    const grupoTamano = `Medición Tipos ${marcaUnica}`;
+    const grupoIncluida = `Medición Incluida ${marcaUnica}`;
+    const producto = `Medición Base ${marcaUnica}`;
+    const tamanos: [string, string][] = [
+      ["Simple", "18000"],
+      ["Napolitana", "22000"],
+      ["Especial", "25000"],
+    ];
+    const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
+    // Desde la Fase 6 (6.15c) los grupos se crean desde el paso 2 del producto, en la ventana «+ Nuevo grupo» (crea el grupo, sus opciones y lo que el producto admite de ellas, todo junto).
+    const grupoNuevo = async (nombre: string, respuesta: string) => {
+      await m.clic(page.getByRole("button", { name: "+ Nuevo grupo", exact: true }), `tocar «+ Nuevo grupo» (${nombre})`);
+      const ventana = page.getByRole("dialog", { name: /^Nuevo grupo para/ });
+      await m.llenar(ventana.getByLabel(/^Nombre del grupo/), nombre, `escribir el nombre del grupo «${nombre}»`);
+      // «¿Cambia el precio?» son tarjetas: se toca el texto (un `check()` sobre el radio choca con la tarjeta entera, que es la etiqueta). Cuenta como clic y como campo, igual que `marcar`.
+      await m.marcarTarjeta(ventana.getByText(respuesta, { exact: true }), `elegir «${respuesta}» para «${nombre}»`);
+      return ventana;
+    };
+
+    // 1) El producto: partimos de la lista de productos.
+    await m.ir("/catalogo/productos", "abrir la lista de productos");
+    await m.clic(page.getByRole("link", { name: "+ Nuevo producto" }), "tocar «+ Nuevo producto»");
+    await m.marcar(page.getByRole("radio", { name: "Producto de venta (PV)" }), "elegir «Producto de venta (PV)»");
+    await m.llenar(page.locator('input[name="nombre"]'), producto, "escribir el nombre del producto");
+    await m.elegir(page.getByLabel("Unidad de stock"), "unidad", "elegir la unidad de stock");
+    await m.llenar(page.getByRole("textbox", { name: "Precio de venta" }), "18000", "escribir el precio de venta");
+    await m.clic(page.getByRole("button", { name: "Crear producto" }), "tocar «Crear producto»");
+    await m.ver("se llega a la ficha del producto", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=alta/));
+
+    // 2) Los grupos, desde el paso 2: el de tamaños con el precio final de cada opción, y el de lo incluido.
+    await m.clic(pasos.getByRole("link", { name: /^Opciones y precio/ }), "tocar «Opciones y precio» (el paso 2)");
+    await m.ver("se abre el paso «Opciones y precio»", () => expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible());
+    const ventanaTamanos = await grupoNuevo(grupoTamano, "Cada opción define el precio final");
+    for (const [i, [nombre, precio]] of tamanos.entries()) {
+      await m.llenar(ventanaTamanos.getByLabel(`Nombre de la opción ${i + 1}`), nombre, `escribir la opción «${nombre}»`);
+      await m.llenar(ventanaTamanos.getByLabel(`Precio final de la opción ${i + 1}`), precio, `escribir el precio final de «${nombre}»`);
+    }
+    await m.clic(ventanaTamanos.getByRole("button", { name: "Crear grupo", exact: true }), "tocar «Crear grupo» (tamaños)");
+    await m.ver("el grupo de tamaños queda en el producto", () => expect(page.locator(`[data-admision-grupo='${grupoTamano}']`)).toBeVisible());
+
+    const ventanaIncluida = await grupoNuevo(grupoIncluida, "No, va incluido");
+    await m.llenar(ventanaIncluida.getByLabel("Nombre de la opción 1"), "Con papas fritas", "escribir la opción incluida");
+    await m.clic(ventanaIncluida.getByRole("button", { name: "Crear grupo", exact: true }), "tocar «Crear grupo» (incluida)");
+    await m.ver("el grupo de lo incluido queda en el producto", () => expect(page.locator(`[data-admision-grupo='${grupoIncluida}']`)).toBeVisible());
+
+    // 3) Pasarlo a «Por opción»: el paso 1 está en la tira.
+    await m.clic(pasos.getByRole("link", { name: /^Qué se vende/ }), "tocar «Qué se vende» (el paso 1)");
+    await m.ver("se abre la edición", () => expect(page.getByText(`Editar "${producto}"`)).toBeVisible());
+    await m.marcar(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ }), "elegir «Por opción»");
+    await m.clic(page.getByRole("button", { name: "Guardar cambios" }), "tocar «Guardar cambios»");
+    await m.ver("se llega a la ficha ya como base", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=cambios/));
+    await m.ver("la ficha dice «Se vende por opción»", () => expect(page.locator("[data-se-vende-por-opcion]")).toBeVisible());
+
+    const medicion = m.resultado(true);
+    const guardado = await prisma.producto.findFirstOrThrow({ where: { nombre: producto }, select: { id: true, modoDeVenta: true } });
+    expect(guardado.modoDeVenta).toBe("BASE_CONFIGURABLE");
+    const grupos = await prisma.productoAdmiteGrupo.findMany({ where: { productoId: guardado.id, activo: true }, select: { modoPrecio: true, grupo: { select: { nombre: true, tipo: true } } } });
+    expect(grupos.map((g) => [g.grupo.nombre, g.grupo.tipo, g.modoPrecio]).sort()).toEqual(
+      [
+        [grupoIncluida, "INCLUIDA", null],
+        [grupoTamano, "MEDIDA", "ABSOLUTO"],
+      ].sort(),
+    );
+    const precios = await prisma.productoAdmiteOpcion.findMany({ where: { productoId: guardado.id, activo: true, opcion: { grupo: { nombre: grupoTamano } } }, select: { precioAbsoluto: true, opcion: { select: { nombre: true } } } });
+    expect(precios.map((p) => [p.opcion.nombre, Number(p.precioAbsoluto)]).sort()).toEqual(tamanos.map(([nombre, precio]) => [nombre, Number(precio)]).sort());
+    const incluidas = await prisma.productoAdmiteOpcion.count({ where: { productoId: guardado.id, activo: true, opcion: { grupo: { nombre: grupoIncluida } } } });
+    expect(incluidas, "la opción incluida quedó admitida").toBe(1);
+    afirmarElUmbral(medicion);
+    guardarMedicion(medicion);
+  });
+
+  test("c) cambiar el precio final de una opción", async ({ paginaAutenticada: page, sucursalId }) => {
+    const m = new Medidor(page, "c-cambiar-precio-final");
+    const base = await sembrarBase(sucursalId, marca());
+    const opcionId = base.grupo.opciones["Napolitana"]!.opcionId;
+
+    await m.ir(`/catalogo/productos/${base.productoId}`, "abrir la ficha del producto");
+    await m.ver("la ficha es la del producto", () => expect(page.getByRole("heading", { name: base.nombre, level: 1 })).toBeVisible());
+    await m.clic(page.getByRole("link", { name: "Editar opciones" }), "tocar «Editar opciones»");
+    await m.ver("se abren las opciones de venta del producto (el paso «Opciones y precio»)", () => expect(page.getByRole("heading", { level: 2, name: "Opciones y precio" })).toBeVisible());
+    const tarjeta = page.locator(`[data-admision-grupo='${base.nombreGrupo}']`);
+    await m.llenar(tarjeta.getByLabel("Precio de Napolitana en este producto"), "23500", "escribir el precio nuevo de «Napolitana»");
+    await m.clic(tarjeta.getByRole("button", { name: `Guardar «${base.nombreGrupo}»` }), "tocar «Guardar» del grupo");
+    await m.ver("se guardó el grupo", () => expect(tarjeta.getByRole("status").filter({ hasText: "como pediste" })).toBeVisible());
+    await m.ver("el precio nuevo se ve en «Así se cobra»", () => expect(page.locator("[data-resumen-de-opciones]")).toContainText("Napolitana $ 23.500"));
+
+    const medicion = m.resultado(true);
+    const fila = await prisma.productoAdmiteOpcion.findUniqueOrThrow({ where: { productoId_opcionId: { productoId: base.productoId, opcionId } } });
+    expect(Number(fila.precioAbsoluto), "el precio final nuevo quedó guardado").toBe(23500);
+    const otras = await prisma.productoAdmiteOpcion.findMany({ where: { productoId: base.productoId, NOT: { opcionId } }, select: { precioAbsoluto: true } });
+    expect(otras.map((o) => Number(o.precioAbsoluto)).sort(), "las otras opciones siguen igual").toEqual([18000, 25000]);
+    afirmarElUmbral(medicion);
+    guardarMedicion(medicion);
+  });
+
+  test("d) publicar el producto en la carta", async ({ paginaAutenticada: page, sucursalId }) => {
+    const m = new Medidor(page, "d-publicar-en-la-carta");
+    const marcaUnica = marca();
+    const base = await sembrarBase(sucursalId, marcaUnica);
+    const seccion = await prisma.seccionCarta.create({ data: { nombre: `Medición Sección ${marcaUnica}`, orden: 900 } });
+    try {
+      await m.ir(`/catalogo/productos/${base.productoId}`, "abrir la ficha del producto");
+      await m.ver("la ficha es la del producto", () => expect(page.getByRole("heading", { name: base.nombre, level: 1 })).toBeVisible());
+      // Desde la Fase 6 (6.17c) la carta es un paso del espacio del producto: «En la carta» está en la tira de pasos y su ficha de carta del producto (la de Secciones) se guarda sin salir de él.
+      await m.clic(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^En la carta/ }), "tocar «En la carta» (el paso 4)");
+      await m.ver("se abre el paso «En la carta»", () => expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible());
+      const ficha = page.locator(`[data-contenido-carta="${base.nombre}"]`);
+      await m.elegir(ficha.getByLabel(/^Sección de carta/), seccion.nombre, "elegir la sección de la carta");
+      await m.clic(ficha.getByRole("button", { name: `Guardar contenido de «${base.nombre}»` }), "tocar «Guardar contenido»");
+      await m.ver("el aviso dice que se muestra en la carta", () => expect(ficha.getByRole("status")).toHaveText(`Carta: "${base.nombre}" se muestra.`));
+
+      const medicion = m.resultado(true);
+      const contenido = await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: { sucursalId_productoId: { sucursalId, productoId: base.productoId } } });
+      expect({ visibleEnCarta: contenido.visibleEnCarta, seccionCartaId: contenido.seccionCartaId }).toEqual({ visibleEnCarta: true, seccionCartaId: seccion.id });
+      afirmarElUmbral(medicion);
+      guardarMedicion(medicion);
+    } finally {
+      // Lo de la carta se limpia (como hacen las otras specs de la carta); el producto y sus opciones se quedan, como en las demás specs de opciones.
+      await prisma.contenidoCartaProducto.deleteMany({ where: { productoId: base.productoId } });
+      await prisma.seccionCarta.deleteMany({ where: { id: seccion.id } });
+    }
+  });
+});

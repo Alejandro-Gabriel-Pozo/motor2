@@ -13,6 +13,7 @@ vi.mock("@/server/lecturas/carta/publica", () => ({ resolverCartaPublica: vi.fn(
 vi.mock("@/server/lecturas/carta/empresa", () => ({ resolverEmpresaCarta: vi.fn() }));
 
 import { cartaPublica } from "@/server/carta-publica/sin-sesion";
+import { VERSION_DE_LA_CARTA_EN_CACHE } from "@/core/carta/public";
 import { revalidarCartasPublicas } from "@/server/actions/carta/revalidar";
 
 /**
@@ -37,6 +38,12 @@ describe("la carta de cada empresa lleva la etiqueta de su empresa", () => {
     expect(llamadaB[1]).toContain(B.id);
     expect(llamadaA[1]).toContain("central");
     expect(llamadaA[1]).not.toEqual(llamadaB[1]);
+  });
+
+  it("Fase 5: la clave lleva la versión de la forma de la carta (un despliegue que cambia lo que arma el servidor no sirve la carta guardada por el código anterior)", async () => {
+    await cartaPublica(A, "central", new Date());
+    expect(unstableCache.mock.calls[0][1]).toEqual(["carta-publica", VERSION_DE_LA_CARTA_EN_CACHE, A.id, "central", "con-promos"]);
+    expect(VERSION_DE_LA_CARTA_EN_CACHE).toBe("carta-pareja-3");
   });
 
   it("el caché de la carta dura lo mismo que el ISR de la página (60 s): Next toma el menor de los dos, uno más corto acortaría la página", async () => {

@@ -6,6 +6,8 @@ import { SelectorProducto } from "@/components/selector-producto";
 import { obtenerInsumoDeProducto, asignarInsumoAProducto, type InsumoDeProducto } from "@/server/actions/catalogo/productos";
 import { crearInsumo } from "@/server/actions/catalogo/insumos";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
 
 /**
  * Asistente guiado para "hermanar" una MP nueva con una que ya existe
@@ -68,7 +70,7 @@ export function AsistenteHermanar({
         <div className="flex flex-col gap-3">
           {paso === "buscar" && (
             <>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-tinta-tenue">
                 Buscá la materia prima que ya tenés cargada para esto mismo — aunque se la compres con otro nombre o código a otro proveedor.
               </p>
               <SelectorProducto
@@ -88,17 +90,15 @@ export function AsistenteHermanar({
                 </strong>{" "}
                 ya está agrupada bajo el insumo <strong>&quot;{info.insumoNombre}&quot;</strong>.
               </p>
-              <p className="text-sm text-neutral-500">¿Sumamos este producto nuevo al mismo grupo? Van a compartir stock para lo que se venda por receta.</p>
+              <p className="text-sm text-tinta-tenue">¿Sumamos este producto nuevo al mismo grupo? Van a compartir stock para lo que se venda por receta.</p>
               {chocaUnidad && (
-                <p className="text-sm text-amber-700 dark:text-amber-600">
+                <p className="text-sm text-aviso-tinta">
                   Ojo: esa MP usa unidad de stock &quot;{info.unidadStockNombre}&quot;, distinta a la que elegiste acá — el sistema no va a dejar guardar
                   así, revisá la unidad antes de confirmar.
                 </p>
               )}
               <div className="flex gap-3">
-                <button
-                  type="button"
-                  className="rounded bg-neutral-900 px-4 py-2 text-sm text-white"
+                <Boton
                   onClick={() => {
                     onResuelto(info.insumoId!, info.insumoNombre!);
                     reset();
@@ -106,10 +106,10 @@ export function AsistenteHermanar({
                   }}
                 >
                   Confirmar, mismo grupo
-                </button>
-                <button type="button" className="text-sm underline" onClick={() => setPaso("buscar")}>
+                </Boton>
+                <Boton variante="enlace" tamano="en-fila" onClick={() => setPaso("buscar")}>
                   Elegir otro
-                </button>
+                </Boton>
               </div>
             </>
           )}
@@ -123,19 +123,16 @@ export function AsistenteHermanar({
                 todavía no tiene un grupo (Insumo). Le creamos uno y agrupamos ahí a las dos.
               </p>
               {chocaUnidad && (
-                <p className="text-sm text-amber-700 dark:text-amber-600">
+                <p className="text-sm text-aviso-tinta">
                   Ojo: esa MP usa unidad de stock &quot;{info.unidadStockNombre}&quot;, distinta a la que elegiste acá — el sistema no va a dejar guardar
                   así, revisá la unidad antes de confirmar.
                 </p>
               )}
-              <label className="text-sm">Nombre del grupo</label>
-              <input value={nombreGrupo} onChange={(e) => setNombreGrupo(e.target.value)} className="rounded border px-3 py-2" autoFocus />
-              {mensaje && <p className="text-sm text-red-600">{mensaje}</p>}
+              <Campo etiqueta="Nombre del grupo" value={nombreGrupo} onChange={(e) => setNombreGrupo(e.target.value)} autoFocus />
+              {mensaje && <p className="text-sm text-error">{mensaje}</p>}
               <div className="flex gap-3">
-                <button
-                  type="button"
+                <Boton
                   disabled={pending || !nombreGrupo.trim()}
-                  className="rounded bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-50"
                   onClick={() => {
                     startTransition(async () => {
                       const creado = await crearInsumo(nombreGrupo);
@@ -155,10 +152,10 @@ export function AsistenteHermanar({
                   }}
                 >
                   {pending ? "Agrupando…" : "Crear grupo y agrupar"}
-                </button>
-                <button type="button" className="text-sm underline" onClick={() => setPaso("buscar")}>
+                </Boton>
+                <Boton variante="enlace" tamano="en-fila" onClick={() => setPaso("buscar")}>
                   Elegir otro
-                </button>
+                </Boton>
               </div>
             </>
           )}

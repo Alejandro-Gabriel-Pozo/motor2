@@ -9,26 +9,26 @@ export default async function ComparativaPreciosPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "comparar_precios", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const comparativa = await obtenerComparativaPreciosPorInsumo();
 
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Comparativa de precios por insumo</h1>
-      {comparativa.length === 0 && <p className="text-sm text-neutral-500">Todavía no hay compras cargadas.</p>}
+      {comparativa.length === 0 && <p className="text-sm text-tinta-tenue">Todavía no hay compras cargadas.</p>}
       {comparativa.map((fila) => (
         <div key={fila.insumo} className="rounded border p-3">
           <div className="mb-2 flex items-baseline justify-between">
             <h2 className="font-medium">{fila.insumo}</h2>
-            {fila.grupo && <span className="text-xs text-neutral-500">{fila.grupo}</span>}
+            {fila.grupo && <span className="text-xs text-tinta-tenue">{fila.grupo}</span>}
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-neutral-500">
+              <tr className="text-left text-tinta-tenue">
                 <th>Proveedor</th>
                 <th>Precio / unidad de stock</th>
                 <th>Unidad de compra</th>
@@ -37,7 +37,7 @@ export default async function ComparativaPreciosPage() {
             </thead>
             <tbody>
               {fila.todas.map((oferta, i) => (
-                <tr key={i} className={oferta === fila.masBarato ? "font-medium text-green-700" : ""}>
+                <tr key={i} className={oferta === fila.masBarato ? "font-medium text-ok-tinta" : ""}>
                   <td>{oferta.proveedorNombre}</td>
                   <td>{oferta.precioPorUnidadStock > 0 ? oferta.precioPorUnidadStock.toFixed(2) : "sin precio"}</td>
                   <td>{oferta.unidadCompraNombre}</td>

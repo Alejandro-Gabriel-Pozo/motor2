@@ -61,5 +61,12 @@ export default async function CartaPage({ params }: { params: Promise<{ empresa:
   const resuelta = await resolver(empresa, sucursal);
   if (!resuelta) notFound();
 
-  return <CartaVista carta={resuelta.carta} estilo={resuelta.estilo} hrefVolver={hrefDeCartaPublica(resuelta.empresa.slug)} />;
+  return (
+    <CartaVista
+      carta={resuelta.carta}
+      estilo={resuelta.estilo}
+      hrefVolver={hrefDeCartaPublica(resuelta.empresa.slug)}
+      direccionPublica={direccionPublicaDeCarta(resuelta.empresa.slug, sucursal).url}
+    />
+  );
 }

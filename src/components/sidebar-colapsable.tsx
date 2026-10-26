@@ -65,11 +65,11 @@ export function SidebarColapsable({
   return (
     <>
       <aside
-        className={`flex flex-shrink-0 flex-col overflow-hidden border-neutral-200 transition-[width] duration-150 max-md:hidden dark:border-neutral-800 ${
+        className={`flex flex-shrink-0 flex-col overflow-hidden border-borde bg-superficie transition-[width] duration-150 max-md:hidden ${
           colapsado ? "w-0" : "w-56 border-r"
         }`}
       >
-        <div className="flex w-56 items-center border-b border-neutral-200 px-4 py-3 font-semibold dark:border-neutral-800">
+        <div className="flex w-56 items-center border-b border-borde px-4 py-3 font-semibold">
           <Link href={RUTA_INICIO} className="hover:underline">
             Motor2
           </Link>
@@ -83,7 +83,7 @@ export function SidebarColapsable({
         onClick={alternar}
         aria-label={colapsado ? "Mostrar menú" : "Ocultar menú"}
         title={colapsado ? "Mostrar menú" : "Ocultar menú"}
-        className="flex w-5 flex-shrink-0 items-center justify-center max-md:hidden border-r border-neutral-200 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+        className="flex w-5 flex-shrink-0 items-center justify-center max-md:hidden border-r border-borde bg-superficie text-tinta-suave hover:bg-superficie-suave hover:text-tinta"
       >
         {colapsado ? "›" : "‹"}
       </button>

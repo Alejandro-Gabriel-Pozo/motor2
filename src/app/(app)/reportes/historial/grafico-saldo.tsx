@@ -21,21 +21,21 @@ export function GraficoSaldoCorriente({ eventos, unidadStockNombre, zona = ZONA_
   const serie = armarSerie(eventos, zona);
 
   if (serie.length < 2) {
-    return <p className="text-sm text-neutral-500">Sin suficientes movimientos en el rango para graficar la evolución del saldo.</p>;
+    return <p className="text-sm text-tinta-tenue">Sin suficientes movimientos en el rango para graficar la evolución del saldo.</p>;
   }
 
   return (
-    <div className="h-64 w-full max-w-4xl text-neutral-500 dark:text-neutral-400">
+    <div className="h-64 w-full max-w-4xl text-xs text-tinta-tenue">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={serie} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.2} />
-          <XAxis dataKey="fecha" stroke="currentColor" tick={{ fill: "currentColor", fontSize: 12 }} />
-          <YAxis stroke="currentColor" tick={{ fill: "currentColor", fontSize: 12 }} width={60} />
+          <XAxis dataKey="fecha" stroke="currentColor" tick={{ fill: "currentColor" }} />
+          <YAxis stroke="currentColor" tick={{ fill: "currentColor" }} width={60} />
           <Tooltip
             formatter={(value) => [`${value} ${unidadStockNombre}`, "Saldo"]}
-            contentStyle={{ background: "var(--background)", color: "var(--foreground)", border: "1px solid currentColor", fontSize: 12 }}
+            contentStyle={{ background: "var(--color-superficie)", color: "var(--color-tinta)", border: "1px solid currentColor" }}
           />
-          <Line type="stepAfter" dataKey="saldo" stroke="#3b82f6" strokeWidth={2} dot={false} />
+          <Line type="stepAfter" dataKey="saldo" stroke="var(--color-marca)" strokeWidth={2} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>

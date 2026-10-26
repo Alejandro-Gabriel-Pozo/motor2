@@ -104,15 +104,15 @@ export function SidebarNav({
               }}
               className={`flex-1 rounded border px-2 py-1 font-medium ${
                 panel === p.id
-                  ? "border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
-                  : "border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                  ? "border-tinta bg-tinta text-superficie"
+                  : "border-borde-control text-tinta-suave hover:bg-superficie-suave"
               }`}
             >
               {p.label}
             </button>
           ))}
         </div>
-        <p data-sucursal-activa className="mb-2 truncate px-1 text-xs text-neutral-500 dark:text-neutral-400" title={sucursalNombre}>
+        <p data-sucursal-activa className="mb-2 truncate px-1 text-xs text-tinta-suave" title={sucursalNombre}>
           Sucursal: {sucursalNombre}
         </p>
         </>
@@ -124,16 +124,16 @@ export function SidebarNav({
             <button
               type="button"
               onClick={() => setExpandido((prev) => ({ ...prev, [grupo.id]: !abierto }))}
-              className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left font-medium text-tinta hover:bg-superficie-suave"
             >
               <span className="flex items-center gap-2">
                 <IconoDeModulo id={grupo.id} />
                 {grupo.label}
               </span>
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">{abierto ? "▾" : "▸"}</span>
+              <span className="text-xs text-tinta-suave">{abierto ? "▾" : "▸"}</span>
             </button>
             {abierto && (
-              <div className="ml-2 flex flex-col gap-0.5 border-l border-neutral-200 pl-2 dark:border-neutral-800">
+              <div className="ml-2 flex flex-col gap-0.5 border-l border-borde pl-2">
                 {grupo.items.map((item) => {
                   const activo = item.href === hrefActivo;
                   return (
@@ -143,8 +143,8 @@ export function SidebarNav({
                       aria-current={activo ? "page" : undefined}
                       className={`rounded px-2 py-1 ${
                         activo
-                          ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-                          : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+                          ? "bg-tinta text-superficie"
+                          : "text-tinta-suave hover:bg-superficie-suave hover:text-tinta"
                       }`}
                     >
                       {item.label}

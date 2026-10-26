@@ -188,8 +188,7 @@ const A = [
   // GO-2a: definir el catálogo de opciones de venta y elegir qué admite cada producto (de empresa, piso administrador).
   "opciones_definir",
   "producto_opciones_admitidas",
-  // GO-3b: las tarifas compartidas (grupos de precio) de las combinaciones (de empresa, piso administrador).
-  "grupos_de_precio_definir",
+  // (GO-3b sumó `grupos_de_precio_definir`, las tarifas de las combinaciones; la Fase 3 de la ola «precio y carta» la retiró con GO-3a.)
 ] as const satisfies readonly AccionClave[];
 
 const DECLARADAS: Readonly<Record<Clase, readonly string[]>> = { G, O, L, A };
@@ -212,7 +211,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     const todas = [...G, ...O, ...L, ...A];
     expect(new Set(todas).size, "una clave declarada en dos clases").toBe(todas.length);
     expect(todas.length).toBe(ACCIONES.length);
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 33, 63]);
+    // A: 63 → 62 en la Fase 3 de la ola «precio y carta» (sale `grupos_de_precio_definir` con GO-3a).
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 33, 62]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

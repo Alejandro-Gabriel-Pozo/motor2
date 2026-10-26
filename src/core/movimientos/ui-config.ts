@@ -3,6 +3,7 @@ import { TRANSICIONES } from "./transiciones";
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { PanelNav } from "@/core/navegacion/panel";
+import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
 
 /**
  * Config de UI para los 9 procesos que comparten el panel genérico
@@ -95,8 +96,8 @@ export const NAV_MOVIMIENTOS: { href: string; label: string; accion?: AccionClav
   { href: "/movimientos/precio-local", label: "Precio local", accion: "precio_local", panel: "sucursal" },
   // GO-2d (ADR-030 §5): lo que se acabó hoy en la sucursal (tamaños, guarniciones, adicionales); delegable al encargado del turno.
   { href: "/movimientos/opciones-agotadas", label: "Opciones agotadas", accion: "opcion_apagar_en_sucursal", panel: "sucursal" },
-  // GO-3b (ADR-032): qué plato va cada día en los lugares «del día» de las promos de la sucursal; delegable al encargado.
-  { href: "/movimientos/menu-del-dia", label: "Menú del día", accion: "promo_menu_del_dia", panel: "sucursal" },
+  // GO-3b (ADR-032): qué plato va cada día en los lugares «del día» de las promos de la sucursal; delegable al encargado. Oculto mientras `MENU_DEL_DIA_VISIBLE` (core/carta) esté apagado.
+  ...(MENU_DEL_DIA_VISIBLE ? [{ href: "/movimientos/menu-del-dia", label: "Menú del día", accion: "promo_menu_del_dia" as const, panel: "sucursal" as const }] : []),
   { href: "/movimientos/motivos-merma", label: "Motivos de Merma", accion: "motivos_merma", panel: "empresa" },
   { href: "/movimientos/destinos-consumo", label: "Destinos de Consumo", accion: "motivos_destino_consumo", panel: "empresa" },
 ];

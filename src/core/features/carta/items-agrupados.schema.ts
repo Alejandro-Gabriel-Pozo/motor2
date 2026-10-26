@@ -72,11 +72,12 @@ export interface ComandoAgregarOpcionItemAgrupadoCarta {
  *  - `CON_DESCUENTO`: el producto tiene descuento en ESTA sucursal (P2.1; el renglón agrupado muestra un solo precio);
  *  - `YA_AGRUPADO`: el producto ya está en un ítem agrupado de esta sucursal, el mismo u otro (D2), también si lo ganó otro pedido a la vez (la carrera del índice único);
  *  - `ORDEN_INVALIDO`: el orden no es un entero;
- *  - `PRECIO_DISTINTO`: el precio del producto en la sucursal activa (`precioDeCarta`) no coincide con el de todas las opciones del ítem (D5).
+ *  - `PRECIO_DISTINTO`: el precio del producto en la sucursal activa (`precioDeCarta`) no coincide con el de todas las opciones del ítem (D5);
+ *  - `ES_BASE_CONFIGURABLE` (Fase 4, ADR-035): el producto se vende por opción; el renglón agrupado muestra el precio guardado de cada producto, que una base no cobra.
  */
 export type ResultadoAgregarOpcionItemAgrupadoCarta = ResultadoCaso<
   null,
-  "ITEM_NO_ENCONTRADO" | "FALTA_PRODUCTO" | "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "CON_DESCUENTO" | "YA_AGRUPADO" | "ORDEN_INVALIDO" | "PRECIO_DISTINTO"
+  "ITEM_NO_ENCONTRADO" | "FALTA_PRODUCTO" | "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "CON_DESCUENTO" | "YA_AGRUPADO" | "ORDEN_INVALIDO" | "PRECIO_DISTINTO" | "ES_BASE_CONFIGURABLE"
 >;
 
 /** Comando «apagar o prender un ítem agrupado»: solo un id y un booleano, que nunca se validaron en la acción (el id lo resuelve el caso de uso). */

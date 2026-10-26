@@ -52,7 +52,7 @@ export interface AvisoDeEmpresa {
   otras: number;
 }
 
-interface Aviso {
+interface AvisoDeCarta {
   id: number;
   mensaje: string;
   ok: boolean;
@@ -115,7 +115,7 @@ export function MantenimientoDeCarta({
   const [abiertas, setAbiertas] = useState<Record<string, boolean>>({});
   const [soloSinStock, setSoloSinStock] = useState(false);
   const [buscar, setBuscar] = useState("");
-  const [aviso, setAviso] = useState<Aviso | null>(null);
+  const [aviso, setAviso] = useState<AvisoDeCarta | null>(null);
   const [pendiente, startTransition] = useTransition();
 
   // El aviso se va solo a los 7 segundos (como en el prototipo); uno nuevo reemplaza al anterior.

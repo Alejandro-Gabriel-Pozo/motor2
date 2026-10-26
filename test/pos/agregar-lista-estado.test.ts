@@ -94,7 +94,7 @@ describe("normalizarCantidad (misma función que el servidor, validarCantidadPed
 
   it("una unidad con decimales (ej. kg, 2 decimales) normaliza a esos decimales", () => {
     const e = aplicar(estadoInicialListaPorAgregar(), sumar("p-x"), { tipo: "cambiarCantidadTexto", productoId: "p-x", texto: "1,256" }, { tipo: "normalizarCantidad", productoId: "p-x", decimales: 2 });
-    expect(e.lineas[0]).toMatchObject({ cantidad: 1.26, cantidadTexto: "1.26" });
+    expect(e.lineas[0]).toMatchObject({ cantidad: 1.26, cantidadTexto: "1,26" });
   });
 
   it("una cantidad inválida (cero, negativa, formato roto o mayor que el tope) queda con el mensaje del servidor, sin confirmar", () => {

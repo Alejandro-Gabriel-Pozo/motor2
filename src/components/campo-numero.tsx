@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { interpretarNumero, textoCanonico } from "@/core/datos/numero-tecleado";
-import { validarImporte } from "@/core/datos/importe";
-import { validarCantidad } from "@/core/datos/cantidad";
+import { contextoDelCampo, errorDelCampo, textoParaEditar, textoParaVer, valorAEmitir, type TipoDeCampoNumerico } from "@/core/datos/campo-numero-logica";
+import { Campo } from "@/ui/primitivas/campo";
 
 interface Props {
   id?: string;
@@ -22,18 +21,18 @@ interface Props {
   ariaLabel?: string;
   /** Ej. "$" — se muestra al costado del campo, nunca dentro del valor editable (mismo criterio que ERPNext/Dolibarr: el símbolo no es parte de lo que se tipea). */
   prefijo?: string;
-  /** "normal" (px-3 py-2, campo de formulario apilado) o "compacto" (px-2 py-1.5 text-sm, campo dentro de una fila). */
+  /** El tamaño de `Campo`: "normal" (campo de formulario apilado) o "compacto" (campo dentro de una fila); los dos, de 44 px en celular. */
   tamano?: "normal" | "compacto";
   className?: string;
   /**
-   * Opcionales y serializables (un Server Component puede pasarlas). Sin `tipo`, el campo solo valida el formato del número. Con
-   * `tipo="importe"` valida con `validarImporte` (2 decimales, no negativo salvo `permitirNegativo`); con `tipo="cantidad"` con
-   * `validarCantidad` (hasta `decimales` decimales). El servidor vuelve a validar todo con las mismas funciones.
+   * El TIPO de dato que recibe el campo: OBLIGATORIO (lo bloquea el compilador; cercos de `type="number"` y de `Number(formData.get(…))`). `importe` (plata: 2 decimales, no negativo salvo `permitirNegativo`,
+   * validado con `validarImporte`), `cantidad` (hasta `decimales` decimales, los de su unidad; validado con `validarCantidad`), `entero` (sin decimales: minutos, días) y `porcentaje` (una merma, una
+   * diferencia: los 4 decimales de su columna salvo que se diga otra cosa). El servidor vuelve a validar todo con las mismas funciones. Serializable (un Server Component puede pasarlo).
    */
-  tipo?: "importe" | "cantidad";
+  tipo: TipoDeCampoNumerico;
   /** Sujeto del mensaje de error ("El precio total" → "El precio total no es un número válido."). */
   etiqueta?: string;
-  /** Solo `tipo="cantidad"`: decimales que admite la unidad. */
+  /** Solo `tipo="cantidad"` y `tipo="porcentaje"`: decimales que admite la unidad o la columna (sin ellos, los 4 de las columnas `Decimal(14,4)`). */
   decimales?: number;
   permitirNegativo?: boolean;
 }
@@ -67,53 +66,22 @@ interface Props {
  *    ese primer toque y solo si no se arrastró una selección propia: con el
  *    campo ya enfocado, tocar de nuevo ubica el cursor como siempre.
  *
- * Lo tecleado se interpreta con el parser central `interpretarNumero`
- * (src/core/datos/numero-tecleado.ts, docs/plan-validacion-de-datos-2026-09-25.md):
- * coma o punto como decimal, miles bien agrupados ("1.000.000"), y nada de
- * borrar caracteres en silencio. Lo que el campo EMITE (`onChange` / el
- * `<input type="hidden">`):
+ * Lo tecleado se interpreta con el parser central `interpretarNumeroTecleado` (src/core/datos/numero-tecleado.ts, micro-paso 2c) y el CONTEXTO del campo: un importe admite 2 decimales, una
+ * cantidad los de su unidad (`decimales`) y, sin `tipo`, los 4 de las columnas `Decimal(14,4)`. Notación argentina: la coma es el decimal; el punto agrupa miles bien formados («1.000.000») y
+ * un solo punto con tres cifras («21.000») es miles en un importe y en una cantidad sin decimales (g, ml, unidad) y AMBIGUO (error, no se adivina) en una cantidad con decimales, también en los kg y l del sembrado («1.205» kg: ¿1,205 o
+ * 1205?). Lo que no se entiende se dice junto al campo, con cómo escribirlo; nada se borra en silencio.
+ *
+ * Lo que el campo EMITE (`onChange` / el `<input type="hidden">`) es el «canal de valor» (`leerNumeroCanonico`):
  *  - vacío → "";
- *  - un número válido → su texto canónico ("1234.56": dígitos y un solo punto);
- *  - un texto que no es número → el texto TAL CUAL (nunca "" ni "0"), así un
- *    `required` o un `!== ""` lo cuentan como cargado y no se manda un 0 falso.
- * Con un texto inválido el campo queda `aria-invalid` y con
- * `setCustomValidity(mensaje)`: el navegador frena el envío del formulario
- * (validación nativa, antes del evento `submit`). La validez se calcula desde
- * el valor EMITIDO, no desde el texto formateado que se ve.
+ *  - un número válido → su texto canónico ("1234.56": dígitos y un solo punto, que ACÁ es siempre el decimal);
+ *  - un texto que no es número → el texto TAL CUAL (nunca "" ni "0"), y si ese texto PARECE canónico («1.205» ambiguo) con una marca que lo vuelve ilegible como canónico
+ *    (`marcarNoCanonico`), así nadie lo lee como 1,205 en silencio. Un `required` o un `!== ""` lo cuentan como cargado.
+ * Con un texto inválido el campo queda `invalido` (`aria-invalid` y borde de error), dice el error debajo y usa `setCustomValidity(mensaje)`: el navegador frena el envío del formulario
+ * (validación nativa, antes del evento `submit`). La validez se calcula desde el valor EMITIDO, no desde el texto formateado que se ve.
  */
-function valorAEmitir(texto: string): string {
-  const r = interpretarNumero(texto);
-  if (!r.ok) return texto;
-  return r.valor === null ? "" : textoCanonico(r.valor);
-}
-
-function formatear(valor: string): string {
-  const r = interpretarNumero(valor);
-  if (!r.ok || r.valor === null) return r.ok ? "" : valor;
-  return r.valor.toLocaleString("es-AR", { maximumFractionDigits: 4 });
-}
-
 /** `setSelectionRange` y no `select()`: en Safari de iOS `select()` no siempre selecciona el texto de un campo; `setSelectionRange` sí. */
 function seleccionarTodo(el: HTMLInputElement) {
   el.setSelectionRange(0, el.value.length);
-}
-
-/** Sin `decimales` explícitos, una cantidad admite los 4 de las columnas Decimal(14,4). */
-const DECIMALES_CANTIDAD_SIN_UNIDAD = 4;
-
-/** Mensaje de error del valor emitido, o null si es válido. Con `tipo` usa la MISMA función que la Server Action. */
-function mensajeDeError(valor: string, { tipo, etiqueta, decimales, permitirNegativo }: Pick<Props, "tipo" | "etiqueta" | "decimales" | "permitirNegativo">): string | null {
-  if (tipo === "importe") {
-    const r = validarImporte(valor, { etiqueta: etiqueta ?? "El importe", permitirNegativo });
-    return r.ok ? null : r.mensaje;
-  }
-  if (tipo === "cantidad") {
-    // El cero lo decide cada proceso en el servidor (Ajuste lo admite): acá solo formato, signo, tope y decimales.
-    const r = validarCantidad(valor, { nombre: "", decimales: decimales ?? DECIMALES_CANTIDAD_SIN_UNIDAD }, { etiqueta: etiqueta ?? "La cantidad", permitirNegativo, permitirCero: true });
-    return r.ok ? null : r.mensaje;
-  }
-  const r = interpretarNumero(valor);
-  return r.ok ? null : r.mensaje;
 }
 
 export function CampoNumero({
@@ -138,7 +106,7 @@ export function CampoNumero({
   const [interno, setInterno] = useState(defaultValue ?? "");
   const valorReal = controlado ? (value ?? "") : interno;
 
-  const [texto, setTexto] = useState(() => formatear(valorReal));
+  const [texto, setTexto] = useState(() => textoParaVer(valorReal));
   const [enFoco, setEnFoco] = useState(false);
   // Reformatea cuando `valorReal` cambia desde AFUERA (ej. reset tras
   // submit) mientras el campo no tiene foco — ajustar estado durante el
@@ -149,11 +117,15 @@ export function CampoNumero({
   const [valorRealSincronizado, setValorRealSincronizado] = useState(valorReal);
   if (!enFoco && valorReal !== valorRealSincronizado) {
     setValorRealSincronizado(valorReal);
-    setTexto(formatear(valorReal));
+    setTexto(textoParaVer(valorReal));
   }
 
   // Validez nativa: se sincroniza el DOM (setCustomValidity no es estado de React) desde el valor emitido.
-  const error = mensajeDeError(valorReal, { tipo, etiqueta, decimales, permitirNegativo });
+  const contexto = contextoDelCampo(tipo, decimales);
+  const falla = errorDelCampo(valorReal, contexto, { tipo, etiqueta, permitirNegativo });
+  const error = falla?.mensaje ?? null;
+  // Lo que se tecleó y no es un número en este contexto se explica junto al campo (el resto de los errores, el signo o el tope, los frena la validez nativa y los dice el servidor).
+  const errorTecleado = falla?.origen === "tecleado" ? falla.mensaje : undefined;
   const entrada = useRef<HTMLInputElement>(null);
   // true entre el mousedown que da el foco y su mouseup. Solo se lee y se escribe en manejadores de eventos (nunca en el render).
   const punteroDaElFoco = useRef(false);
@@ -168,10 +140,13 @@ export function CampoNumero({
   }, [enFoco]);
 
   return (
-    <div className={`relative ${className ?? ""}`}>
+    <div className={className}>
       {name && <input type="hidden" name={name} value={valorReal} onChange={() => {}} />}
-      {prefijo && <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-neutral-400">{prefijo}</span>}
-      <input
+      {/* `Campo` dibuja el <input> (aspecto, foco, 44 px en celular). No dibuja `<label>`: el nombre lo pone `ariaLabel` o la etiqueta de afuera que envuelve al campo o se ata por `htmlFor`
+          (la regla `campos-con-nombre` lo verifica en cada uso). `etiqueta` NO se le pasa: es el sujeto del mensaje de error, no un rótulo. Lo que se tecleó y no es un número en el
+          contexto del campo se dice debajo (`error`, con `role="alert"`); el campo queda `invalido` (`aria-invalid` y borde) y `setCustomValidity` frena el envío. */}
+      <Campo
+        {...(ariaLabel ? { "aria-label": ariaLabel } : { nombradoPorFuera: true as const })}
         ref={entrada}
         id={id}
         type="text"
@@ -179,13 +154,16 @@ export function CampoNumero({
         autoComplete="off"
         value={texto}
         placeholder={placeholder}
-        aria-label={ariaLabel}
         required={required}
         autoFocus={autoFocus}
-        aria-invalid={error ? true : undefined}
+        invalido={error !== null}
+        error={errorTecleado}
+        tamano={tamano}
+        alinear="fin"
+        prefijo={prefijo}
         onFocus={() => {
           setEnFoco(true);
-          setTexto(valorReal);
+          setTexto(textoParaEditar(valorReal));
         }}
         onMouseDown={(e) => {
           punteroDaElFoco.current = document.activeElement !== e.currentTarget;
@@ -201,16 +179,15 @@ export function CampoNumero({
         }}
         onChange={(e) => {
           setTexto(e.target.value);
-          const emitido = valorAEmitir(e.target.value);
+          const emitido = valorAEmitir(e.target.value, contexto);
           if (controlado) onChange?.(emitido);
           else setInterno(emitido);
         }}
         onBlur={() => {
           punteroDaElFoco.current = false;
           setEnFoco(false);
-          setTexto(formatear(valorReal));
+          setTexto(textoParaVer(valorReal));
         }}
-        className={`w-full rounded border text-right text-sm max-md:min-h-11 max-md:text-base ${tamano === "compacto" ? "px-2 py-1.5" : "px-3 py-2"} ${prefijo ? "pl-5" : ""}`}
       />
     </div>
   );

@@ -42,7 +42,8 @@ const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   promoCartaCupo: "*",
   // S-05 (GT-5, T14, M-3 de la auditoría intermedia): las columnas que cambian el SIGNIFICADO de las cantidades y de la deuda de un producto (el factor y las unidades con que se cuenta, si se
   // produce, y el consignante). No son `Decimal` salvo el factor: la regla de dinero no veía las demás. Toda escritura de una de ellas tiene que tener su cadena de auditoría.
-  producto: ["factorConversion", "unidadStockId", "unidadCompraId", "esConsignacion", "proveedorConsignacionId", "seProduce"],
+  // Fase 4 de la ola «precio y carta» (ADR-035): `modoDeVenta` decide si se cobra el precio guardado o el de cada opción (no es `Decimal`).
+  producto: ["factorConversion", "unidadStockId", "unidadCompraId", "esConsignacion", "proveedorConsignacionId", "seProduce", "modoDeVenta"],
   // GO-2a (ADR-030): lo que cambia qué se puede elegir y qué se cobra en una venta con opciones sin ser un `Decimal`. Lo que admite un producto y el apagado por sucursal, en cualquier escritura; del
   // grupo, las cantidades y si está activo; de la opción, si está activa. `versionDeOpcion` y `consumoDeOpcion` NO son «su propia historia»: tienen `Decimal` y su cadena audita (como `RecetaVersion`).
   productoAdmiteGrupo: "*",
@@ -54,10 +55,10 @@ const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   opcionDeEntradaDeCupo: "*",
   entradaDelDiaDeCupo: "*",
   promoCarta: ["vigenteDesde", "vigenteHasta", "diasDeSemana"],
-  // GO-3b (frente A): si una combinación se vende y con qué tarifa, si una tarifa está activa y el precio local de una combinación o de una tarifa (habilitado o no).
-  combinacionDeProducto: ["activa", "grupoDePrecioId"],
-  grupoDePrecio: ["activo"],
-  precioLocalDeCombinacion: "*",
+  // Fase 5 de la ola «precio y carta» (DEC-11): «Mostrar el nombre arriba» decide cómo se LEE en la carta pública un producto base (encabezado u oculto): toda escritura tiene su cadena de auditoría
+  // (guardar el contenido audita la columna; «copiar carta» audita la copia entera).
+  contenidoCartaProducto: ["mostrarNombreArriba"],
+  // (GO-3b sumaba acá la administración de las combinaciones —`combinacionDeProducto`, `grupoDePrecio`, `precioLocalDeCombinacion`—: se retiró con GO-3a en la Fase 3 de la ola «precio y carta».)
 };
 
 /** Modelos cuya fila ES el rastro (un documento propio o un dato de fuente externa): no hay un valor anterior que se pierda al escribirlos. */
@@ -67,8 +68,6 @@ const MODELOS_QUE_SON_SU_PROPIA_HISTORIA: Record<string, string> = {
   promoCuenta: "Promo cobrada en una cuenta (documento del POS): copia el precio congelado de la carta, no es una configuración editable.",
   opcionElegidaEnLinea:
     "GO-2b: la FOTO de las opciones elegidas en una línea de la cuenta (documento del POS, ADR-030): solo se agrega (la app no tiene UPDATE ni DELETE; se va solo con el borrador de su línea, ON DELETE CASCADE) y congela el importe de cada opción al pedir.",
-  combinacionEnLinea:
-    "GO-3b (ADR-032): la FOTO de la combinación vendida en una línea de la cuenta (documento del POS): solo se agrega, 1 a 1 con su línea (se va solo con el borrador, ON DELETE CASCADE), y congela el origen del precio, la tarifa y la versión de la receta propia al pedir.",
   cotizacionDolar: "Dato de una fuente externa sincronizado por un cron, una fila por día: no lo edita nadie a mano.",
   indicePrecio: "Dato de una fuente externa (IPC) sincronizado por un cron: no lo edita nadie a mano.",
 };

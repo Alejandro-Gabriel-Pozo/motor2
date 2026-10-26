@@ -4,7 +4,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, sembrarProductoDisponible, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/movimientos/precio-local";
+import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "../../src/server/actions/catalogo/precio-local";
 
 /**
  * Precio local (docs/plan-validacion-de-datos-2026-09-25.md, Paso D): las dos acciones validan el precio con `validarImporte`, la misma
@@ -57,7 +57,7 @@ describe("precio local: validación del precio (src/core/datos)", () => {
       const r = await setPrecioLocalProducto(productoId, 1234.56, true);
       expect(r).toEqual({ ok: true, mensaje: 'Precio local de "Coca-Cola 500cc" fijado en 1234.56.' });
       expect(Number((await prisma.precioLocalProducto.findFirstOrThrow({ where: { productoId } })).precio)).toBe(1234.56);
-      expect((await setPrecioLocalProducto(productoId, 0, true)).ok).toBe(true);
+      expect((await setPrecioLocalProducto(productoId, 0, true, { precio: 1234.56, habilitado: true })).ok).toBe(true);
     });
   });
 

@@ -1,5 +1,5 @@
 import { type EstadoDeTicket, type LineaDeTicket, type NumeroDeTicket } from "@/core/pos/public";
-import { diaDeCalendario, finDelDia, inicioDelDia } from "@/core/tiempo/zona-horaria";
+import { diaDeCalendario, finDelDia, inicioDelDia, esDiaISOReal } from "@/core/tiempo/zona-horaria";
 
 /**
  * Reporte de tickets emitidos (Task #17 del backlog): el hallazgo que lo motiva es que `TICKETS_RECIENTES_POR_MESA` (ticket.ts) ya
@@ -78,7 +78,7 @@ export interface FiltroTicketsLeido {
 }
 
 function fechaValida(valor: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(valor) && !Number.isNaN(new Date(valor).getTime());
+  return esDiaISOReal(valor);
 }
 
 /**

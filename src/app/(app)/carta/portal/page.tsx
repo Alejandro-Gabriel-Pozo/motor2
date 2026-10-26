@@ -9,8 +9,11 @@ import { guardarPortalEmpresa } from "@/server/actions/carta/portal-empresa";
 import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal } from "@/server/actions/carta/registro-publico";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { EditorPortal } from "@/components/carta/editor-portal";
+import { Campo } from "@/ui/primitivas/campo";
+import { Casilla } from "@/ui/primitivas/casilla";
 
 /**
  * Portal de sucursales (docs/plan-registro-tenants-2026-09-24.md, M7): el registro que arma el portal de la carta pública
@@ -30,17 +33,17 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 
 const valoresDelFormulario = (fd: FormData) => Object.fromEntries(CLAVES_PORTAL_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
 
-const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
-const CLASE_BOTON = "rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11";
+/** El enlace a la carta pública (otro sitio, en otra pestaña): el aspecto de `Enlace` (`ui/primitivas/enlace.tsx`), que no se usa acá porque el destino es una URL absoluta y no una pantalla de la aplicación. */
+const CLASE_ENLACE_EXTERNO = "text-tinta-suave underline hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco";
 
 export default async function PortalSucursalesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_portal", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const [sucursales, apariencia] = await Promise.all([cargarAdminPortal(ctx.db), cargarPortalEmpresaAdmin(ctx.db)]);
 
@@ -48,12 +51,12 @@ export default async function PortalSucursalesPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-1 text-xl font-semibold">Portal de sucursales</h1>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Qué sucursales muestra la carta pública en su portal y con qué dirección (/carta/&lt;slug&gt;). «Quitar del portal» la apaga, no la borra: la dirección queda reservada para esa sucursal. Solo sale en el portal si está publicada y la sucursal está
           activa. La carta toma los cambios en hasta 5 minutos.
         </p>
         <div className="mt-1 flex flex-wrap gap-x-4 text-sm">
-          <a href={urlCartaPublicaConEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA_COMPILADO, ctx.empresaSlug)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+          <a href={urlCartaPublicaConEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA_COMPILADO, ctx.empresaSlug)} target="_blank" rel="noopener noreferrer" className={CLASE_ENLACE_EXTERNO}>
             Ver el portal de motor2 →
           </a>
         </div>
@@ -63,7 +66,7 @@ export default async function PortalSucursalesPage() {
         <h2 id="titulo-apariencia-portal" className="text-lg font-medium">
           Apariencia del portal
         </h2>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Título, colores, logo, imagen del mapa y tamaños de las tarjetas. Con imagen del mapa y al menos una sucursal con posición (más abajo), el portal
           muestra las tarjetas sobre la imagen; sin eso, es una lista. Vacío = el default. El portal toma los cambios al recargarlo.
         </p>
@@ -88,7 +91,7 @@ export default async function PortalSucursalesPage() {
         {sucursales.map((s) => (
           <SucursalEnPortal key={s.id} sucursal={s} empresaSlug={ctx.empresaSlug} />
         ))}
-        {!sucursales.length && <li className="text-sm text-neutral-500">No hay sucursales.</li>}
+        {!sucursales.length && <li className="text-sm text-tinta-tenue">No hay sucursales.</li>}
       </ul>
     </div>
   );
@@ -112,11 +115,11 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
     <li className="rounded border p-3" data-sucursal-portal={s.nombre}>
       <p className="text-sm">
         <span className="font-medium">{s.nombre}</span>
-        {!s.activo && <span className="text-neutral-500"> (inactiva)</span>} · {estadoEnPortal(s)}
+        {!s.activo && <span className="text-tinta-tenue"> (inactiva)</span>} · {estadoEnPortal(s)}
         {p && seVeEnVivo(s) && (
           <>
             {" · "}
-            <a href={urlCartaPublicaConEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA_COMPILADO, empresaSlug, p.slug)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+            <a href={urlCartaPublicaConEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA_COMPILADO, empresaSlug, p.slug)} target="_blank" rel="noopener noreferrer" className={CLASE_ENLACE_EXTERNO}>
               Ver la carta de motor2 →
             </a>
           </>
@@ -124,7 +127,7 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
       </p>
       {p && (
         // Solo lectura (docs/plan-tema-carta-2026-09-24.md, M6): de dónde saca la carta los colores y textos de esta sucursal.
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tinta-tenue">
           Tema: {s.temaDesdeMotor2 ? "aplicado (Tema de la carta)" : "estilo por defecto"}
         </p>
       )}
@@ -137,9 +140,9 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
           }}
           className="mt-2"
         >
-          <button type="submit" className={CLASE_BOTON}>
+          <BotonDeServidor type="submit" tamano="compacto">
             Agregar «{s.nombre}» al portal
-          </button>
+          </BotonDeServidor>
         </FormConResultado>
       ) : (
         <details className="mt-2">
@@ -163,22 +166,12 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
             }}
             className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
           >
-            <label className="flex flex-col gap-1 text-sm">
-              Slug (dirección /carta/&lt;slug&gt;)
-              <input name="slug" required defaultValue={p.slug} pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={60} className={CLASE_INPUT} />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              Etiqueta (opcional, si no se usa el nombre)
-              <input name="etiqueta" defaultValue={p.etiqueta ?? ""} placeholder={s.nombre} maxLength={80} className={CLASE_INPUT} />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              Orden en el portal
-              <input name="orden" type="number" step={1} defaultValue={p.orden} className={CLASE_INPUT} />
-            </label>
-            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-              Subtítulo en el portal (público, opcional)
-              <input name="subtituloPortal" defaultValue={p.subtituloPortal ?? ""} placeholder="Frente al lago" maxLength={200} className={CLASE_INPUT} />
-            </label>
+            <Campo etiqueta="Slug (dirección /carta/<slug>)" name="slug" required defaultValue={p.slug} pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={60} />
+            <Campo etiqueta="Etiqueta (opcional, si no se usa el nombre)" name="etiqueta" defaultValue={p.etiqueta ?? ""} placeholder={s.nombre} maxLength={80} />
+            <Campo etiqueta="Orden en el portal" name="orden" type="number" step={1} defaultValue={p.orden} />
+            <div className="sm:col-span-2">
+              <Campo etiqueta="Subtítulo en el portal (público, opcional)" name="subtituloPortal" defaultValue={p.subtituloPortal ?? ""} placeholder="Frente al lago" maxLength={200} />
+            </div>
 
             <fieldset className="flex flex-wrap gap-3 rounded border p-2 sm:col-span-2">
               <legend className="px-1 text-sm">Posición en el mapa del portal (% del mapa, 0 a 100; x, y y ancho juntos)</legend>
@@ -188,14 +181,12 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
               <CampoPosicion nombre="posH" etiqueta="Alto (opcional)" valor={p.posH} />
             </fieldset>
 
-            <label className="flex items-center gap-2 text-sm">
-              <input name="publicada" type="checkbox" defaultChecked={p.publicada} /> Publicada en el portal
-            </label>
+            <Casilla etiqueta="Publicada en el portal" name="publicada" defaultChecked={p.publicada} />
 
             <div className="sm:col-span-2">
-              <button type="submit" className={CLASE_BOTON}>
+              <BotonDeServidor type="submit" tamano="compacto">
                 Guardar «{s.nombre}»
-              </button>
+              </BotonDeServidor>
             </div>
           </FormConResultado>
 
@@ -206,10 +197,10 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
             }}
             className="mt-3 border-t pt-3"
           >
-            <p className="text-sm text-neutral-500">Quitarla la saca del portal y de su dirección pública, pero conserva estos datos: el slug queda reservado para esta sucursal. Para volver a mostrarla, marcá «Publicada en el portal» y guardá.</p>
-            <button type="submit" className="text-sm underline max-md:inline-flex max-md:min-h-11 max-md:items-center">
+            <p className="text-sm text-tinta-tenue">Quitarla la saca del portal y de su dirección pública, pero conserva estos datos: el slug queda reservado para esta sucursal. Para volver a mostrarla, marcá «Publicada en el portal» y guardá.</p>
+            <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
               Quitar «{s.nombre}» del portal
-            </button>
+            </BotonDeServidor>
           </FormConResultado>
         </details>
       )}
@@ -218,10 +209,5 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
 }
 
 function CampoPosicion({ nombre, etiqueta, valor }: { nombre: string; etiqueta: string; valor: number | null }) {
-  return (
-    <label className="flex flex-col gap-1 text-sm">
-      {etiqueta}
-      <input name={nombre} type="number" min={0} max={100} step="0.01" defaultValue={valor ?? ""} className={`${CLASE_INPUT} w-24`} />
-    </label>
-  );
+  return <Campo etiqueta={etiqueta} name={nombre} type="number" min={0} max={100} step="0.01" defaultValue={valor ?? ""} className="max-w-24" />;
 }

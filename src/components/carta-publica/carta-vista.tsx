@@ -1,4 +1,4 @@
-import type { CartaPublicaV1, EstiloCarta } from "@/core/carta/public";
+import { pieDeLaCartaImpresa, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
 import { NavegacionCarta, type PaginaCarta, type RedSocial } from "./navegacion-carta";
 import { Portada } from "./portada";
 import { Seccion } from "./seccion";
@@ -8,7 +8,20 @@ import { Seccion } from "./seccion";
  * (`restaurant-menu-design/components/carta-view.tsx`). Las páginas del slider (`paginas`) se calculan acá, en el
  * servidor, a partir de `carta.secciones` — nunca descubiertas del DOM (ver `navegacion-carta.tsx`).
  */
-export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: CartaPublicaV1; estilo: EstiloCarta; hrefVolver?: string; embebida?: boolean }) {
+export function CartaVista({
+  carta,
+  estilo,
+  hrefVolver,
+  embebida,
+  direccionPublica = null,
+}: {
+  carta: CartaPublicaV1;
+  estilo: EstiloCarta;
+  hrefVolver?: string;
+  embebida?: boolean;
+  /** La dirección pública de esta carta (`direccionPublicaDeCarta(...).url`), para el pie impreso; `null` sin dominio de cartas. */
+  direccionPublica?: string | null;
+}) {
   const restauranteNombre = estilo.valores.restaurante_nombre || carta.sucursal.nombre;
   // S-25: el id de una página del slider es su POSICIÓN (`seccion-0`, `seccion-1`…), nunca el id de la fila: acá se arma el `data-ir-a` del HTML y las `paginas` que viajan al
   // componente de cliente, y los dos salen al navegador. `CartaPublicaV1` ni siquiera trae el id de la sección.
@@ -46,7 +59,7 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
 
       <div className="carta-pagina flex flex-col px-6 sm:px-10">
         {estilo.valores.carta_texto_indice_etiqueta && (
-          <p className="mb-0.5 mt-4 text-xs font-light uppercase tracking-[0.5em]" style={{ fontSize: estilo.valores.carta_fuente_indice_etiqueta, color: "var(--carta-primary)" }}>
+          <p className="mb-0.5 mt-4 font-light uppercase tracking-[0.5em]" style={{ fontSize: estilo.valores.carta_fuente_indice_etiqueta, color: "var(--carta-primary)" }}>
             {estilo.valores.carta_texto_indice_etiqueta}
           </p>
         )}
@@ -55,7 +68,7 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
         </h1>
         <ol data-carta-indice-lista data-carta-scroll className="mt-4 grid min-h-0 flex-1 grid-cols-1 content-start gap-x-12 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
           {carta.secciones.map((seccion, i) => (
-            <li key={paginaDeSeccion(i)} className="border-b border-dotted" style={{ borderColor: "var(--carta-border)" }}>
+            <li key={paginaDeSeccion(i)} className="carta-borde border-b border-dotted">
               <button
                 type="button"
                 data-ir-a={paginaDeSeccion(i)}
@@ -77,8 +90,22 @@ export function CartaVista({ carta, estilo, hrefVolver, embebida }: { carta: Car
       </div>
 
       {carta.secciones.map((seccion, i) => (
-        <Seccion key={paginaDeSeccion(i)} seccion={seccion} indice={i} total={carta.secciones.length} estilo={estilo} />
+        <Seccion key={paginaDeSeccion(i)} seccion={seccion} indice={i} total={carta.secciones.length} estilo={estilo} soloPantalla={carta.seccionesImpresas !== undefined} />
       ))}
+
+      {/* DEC-20 (Fase 5, paso 10b): si hoy hay algo agotado, el papel sale con la carta COMPLETA (sin lo «agotado hoy»), que el servidor arma aparte; en pantalla no se ve. */}
+      {carta.seccionesImpresas && (
+        <div data-carta-impresa className="carta-solo-papel">
+          {carta.seccionesImpresas.map((seccion, i) => (
+            <Seccion key={`impresa-${i}`} seccion={seccion} indice={i} total={carta.seccionesImpresas!.length} estilo={estilo} />
+          ))}
+        </div>
+      )}
+
+      {/* DEC-20 (Fase 5, paso 10): el pie de la carta IMPRESA, con la fecha de los precios y la dirección pública en texto (sin QR, decisión del dueño). En pantalla no se ve. */}
+      <p data-carta-pie-impreso className="carta-solo-papel carta-rol-aclaracion px-6 pt-4 sm:px-10">
+        {pieDeLaCartaImpresa(carta.generadoEn, direccionPublica)}
+      </p>
     </NavegacionCarta>
   );
 }

@@ -10,6 +10,14 @@ import { AyudaCampo } from "@/components/ayuda-campo";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
+import { EnlaceInterno } from "@/components/enlace-interno";
+import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
+import { Casilla } from "@/ui/primitivas/casilla";
+import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
+import { Selector } from "@/ui/primitivas/selector";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import { darDeAltaProducto, actualizarProducto, sincronizarPrecioGrupoCarta, type DatosProducto, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
 import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
@@ -55,6 +63,7 @@ export function ProductoForm({
   presentacionesIniciales,
   cantidadSucursales,
   nombreSucursalActual,
+  venta,
 }: {
   unidades: OpcionUnidad[];
   insumosIniciales: Opcion[];
@@ -79,6 +88,12 @@ export function ProductoForm({
   /** Solo para el alta (§4.1, docs/plan-disponibilidad-por-sucursal-2026-09-23.md) — sin esto el tilde no dice nada concreto. */
   cantidadSucursales?: number;
   nombreSucursalActual?: string;
+  /**
+   * Fase 4 de la ola «precio y carta» (ADR-035): «¿Cómo se vende?», solo en la edición de un PV. `modo`: el guardado; `grupoConPrecioFinal`: el grupo de medida con el precio final de cada opción, si lo
+   * tiene (sin él, «Por opción» se ve apagado con el motivo). Cambiarlo es de quien tiene `producto_campos_sensibles` (sin ella, solo lectura). Siendo base, el precio guardado se muestra en solo
+   * lectura y el formulario NO lo manda (el servidor lo conserva y rechaza otro). La regla completa la decide el servidor al guardar.
+   */
+  venta?: { modo: "DIRECTO" | "BASE_CONFIGURABLE"; grupoConPrecioFinal: string | null };
 }) {
   const router = useRouter();
   const [insumos, setInsumos] = useState(insumosIniciales);
@@ -93,6 +108,9 @@ export function ProductoForm({
   const [proveedorConsignacionId, setProveedorConsignacionId] = useState(productoExistente?.proveedorConsignacionId ?? "");
   // Default tildado (decisión 2 del dueño): lo común (insumos/platos compartidos) tiene cero fricción.
   const [activoEnTodas, setActivoEnTodas] = useState(true);
+  // Fase 4: el modo elegido en el formulario (decide si se muestra el precio editable o el guardado en solo lectura).
+  const [modoDeVenta, setModoDeVenta] = useState<"DIRECTO" | "BASE_CONFIGURABLE">(venta?.modo ?? "DIRECTO");
+  const esBase = venta !== undefined && modoDeVenta === "BASE_CONFIGURABLE";
 
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -126,7 +144,10 @@ export function ProductoForm({
           precioVenta: numeroDelCampo(String(form.get("precioVenta") ?? "")) ?? 0,
         };
         const sensiblesDelAlta: DatosSensibles = puedeEditarCamposSensibles ? delFormulario : { unidadCompraId: null, unidadStockId, factorConversion: 1, precioVenta: 0 };
-        const sensiblesDeLaEdicion: Partial<DatosSensibles> = puedeEditarCamposSensibles ? delFormulario : {};
+        // Fase 4: siendo (o pasando a ser) base, el precio de venta NO se manda: el servidor conserva el guardado.
+        const { precioVenta: _precioDelFormulario, ...delFormularioSinPrecio } = delFormulario;
+        void _precioDelFormulario;
+        const sensiblesDeLaEdicion: Partial<DatosSensibles> = puedeEditarCamposSensibles ? (esBase ? delFormularioSinPrecio : delFormulario) : {};
         const datos: Omit<DatosProducto, CampoSensibleDelProducto> = {
           codigo: editando ? undefined : texto(form.get("codigo")) || undefined,
           nombre: texto(form.get("nombre")),
@@ -148,7 +169,14 @@ export function ProductoForm({
 
         startTransition(async () => {
           const resultado = editando
-            ? await actualizarProducto(productoExistente!.id, { ...datos, ...sensiblesDeLaEdicion })
+            ? // El precio que mostraba el formulario (control del valor visto): si otra persona lo cambió mientras se editaba, el servidor no pisa su cambio y pide recargar.
+              await actualizarProducto(productoExistente!.id, {
+                ...datos,
+                ...sensiblesDeLaEdicion,
+                precioVentaVisto: productoExistente!.precioVenta,
+                // Fase 4: el modo solo lo manda quien puede cambiarlo (sin la clave, «no viene» es «queda como estaba»).
+                ...(venta && puedeEditarCamposSensibles ? { modoDeVenta } : {}),
+              })
             : await darDeAltaProducto({ ...datos, ...sensiblesDelAlta });
           setMensaje(resultado.mensaje);
           setSincronizable(null);
@@ -176,28 +204,33 @@ export function ProductoForm({
           </AyudaCampo>
         </div>
       ) : (
-        <div className="flex gap-4">
-          <label className="flex items-center gap-1 text-sm">
-            <input type="radio" name="tipoRadio" checked={tipo === "MP"} onChange={() => setTipo("MP")} /> Materia prima (MP)
-          </label>
-          <label className="flex items-center gap-1 text-sm">
-            <input type="radio" name="tipoRadio" checked={tipo === "PV"} onChange={() => setTipo("PV")} /> Producto de venta (PV)
-          </label>
-        </div>
+        <OpcionesExcluyentes
+          presentacion="fila"
+          leyenda={<span className="sr-only">Tipo de producto</span>}
+          nombre="tipoRadio"
+          valorInicial={tipo}
+          alCambiar={(valor) => setTipo(valor === "PV" ? "PV" : "MP")}
+          opciones={[
+            { valor: "MP", etiqueta: "Materia prima (MP)" },
+            { valor: "PV", etiqueta: "Producto de venta (PV)" },
+          ]}
+        />
       )}
 
-      {!editando && <input name="codigo" placeholder="Código (opcional, se autogenera)" aria-label="Código (opcional, se autogenera)" className="rounded border px-3 py-2" />}
-      <input name="nombre" placeholder="Nombre" aria-label="Nombre" defaultValue={productoExistente?.nombre} required className="rounded border px-3 py-2" />
+      {!editando && <Campo name="codigo" placeholder="Código (opcional, se autogenera)" aria-label="Código (opcional, se autogenera)" />}
+      <Campo name="nombre" placeholder="Nombre" aria-label="Nombre" defaultValue={productoExistente?.nombre} required />
 
       <div className="flex items-center gap-2">
-        <select aria-label="Categoría" value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="flex-1 rounded border px-3 py-2">
-          <option value="">Sin categoría</option>
-          {categorias.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre}
-            </option>
-          ))}
-        </select>
+        <div className="flex-1">
+          <Selector etiqueta="Categoría" etiquetaOculta value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)}>
+            <option value="">Sin categoría</option>
+            {categorias.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </Selector>
+        </div>
         {puedeCrear.categoria && (
           <QuickCrear
             triggerLabel="+ Nueva categoría"
@@ -215,14 +248,16 @@ export function ProductoForm({
       {tipo === "MP" && (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <select aria-label="Insumo" value={insumoId} onChange={(e) => setInsumoId(e.target.value)} className="flex-1 rounded border px-3 py-2">
-              <option value="">Sin insumo</option>
-              {insumos.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.nombre}
-                </option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <Selector etiqueta="Insumo" etiquetaOculta value={insumoId} onChange={(e) => setInsumoId(e.target.value)}>
+                <option value="">Sin insumo</option>
+                {insumos.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.nombre}
+                  </option>
+                ))}
+              </Selector>
+            </div>
             {puedeCrear.insumo && (
               <QuickCrear
                 triggerLabel="+ Nuevo insumo"
@@ -253,14 +288,16 @@ export function ProductoForm({
       <div className="flex flex-col gap-1">
         <div className="flex gap-2">
           {unidadDeStockEditable ? (
-            <select aria-label="Unidad de stock" value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required className="flex-1 rounded border px-3 py-2">
-              <option value="">Unidad de stock</option>
-              {unidades.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {etiquetaDeUnidad(u)}
-                </option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <Selector etiqueta="Unidad de stock" etiquetaOculta value={unidadStockId} onChange={(e) => setUnidadStockId(e.target.value)} required>
+                <option value="">Unidad de stock</option>
+                {unidades.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {etiquetaDeUnidad(u)}
+                  </option>
+                ))}
+              </Selector>
+            </div>
           ) : (
             <ValorSoloLectura campo="unidadStockId" etiqueta="Unidad de stock">
               {nombreDeUnidad(unidadStockId) ?? "—"}
@@ -268,14 +305,16 @@ export function ProductoForm({
           )}
           {tipo === "MP" &&
             (puedeEditarCamposSensibles ? (
-              <select aria-label="Unidad de compra" name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""} className="flex-1 rounded border px-3 py-2">
-                <option value="">Unidad de compra (default)</option>
-                {unidades.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {etiquetaDeUnidad(u)}
-                  </option>
-                ))}
-              </select>
+              <div className="flex-1">
+                <Selector etiqueta="Unidad de compra" etiquetaOculta name="unidadCompraId" defaultValue={productoExistente?.unidadCompraId ?? ""}>
+                  <option value="">Unidad de compra (default)</option>
+                  {unidades.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {etiquetaDeUnidad(u)}
+                    </option>
+                  ))}
+                </Selector>
+              </div>
             ) : (
               <ValorSoloLectura campo="unidadCompraId" etiqueta="Unidad de compra">
                 {nombreDeUnidad(productoExistente?.unidadCompraId) ?? "Sin unidad de compra"}
@@ -312,7 +351,49 @@ export function ProductoForm({
         </AyudaCampo>
       </div>
 
+      {tipo === "PV" && venta && (
+        <div className="flex flex-col gap-1" data-modo-de-venta={modoDeVenta}>
+          {puedeEditarCamposSensibles ? (
+            <OpcionesExcluyentes
+              leyenda="¿Cómo se vende?"
+              nombre="modoDeVenta"
+              valorInicial={venta.modo}
+              alCambiar={(valor) => setModoDeVenta(valor === "BASE_CONFIGURABLE" ? "BASE_CONFIGURABLE" : "DIRECTO")}
+              opciones={[
+                { valor: "DIRECTO", etiqueta: "Directo: tiene su precio" },
+                {
+                  valor: "BASE_CONFIGURABLE",
+                  etiqueta: "Por opción: el precio final está en cada opción",
+                  ayuda: venta.grupoConPrecioFinal ? `El precio final de cada opción está en «${venta.grupoConPrecioFinal}».` : undefined,
+                  deshabilitada: venta.modo !== "BASE_CONFIGURABLE" && venta.grupoConPrecioFinal === null,
+                  motivo: "Para venderlo por opción, primero asignale un grupo de tamaños con el precio final de cada opción (en «Opciones de venta» del producto).",
+                },
+              ]}
+            />
+          ) : (
+            <ValorSoloLectura campo="modoDeVenta" etiqueta="¿Cómo se vende?">
+              {venta.modo === "BASE_CONFIGURABLE" ? "Por opción: el precio final está en cada opción" : "Directo: tiene su precio"}
+            </ValorSoloLectura>
+          )}
+        </div>
+      )}
+
+      {tipo === "PV" && esBase && (
+        <div className="flex flex-col gap-1">
+          <ValorSoloLectura campo="precioVenta" etiqueta="Precio guardado (no se cobra)">
+            {pesos(productoExistente?.precioVenta ?? 0)}
+          </ValorSoloLectura>
+          <AyudaCampo>
+            {venta?.grupoConPrecioFinal ? `El precio final de cada opción está en «${venta.grupoConPrecioFinal}». ` : "El precio final de cada opción está en su grupo de tamaños. "}
+            <EnlaceInterno href={`/catalogo/productos/${productoExistente!.id}/opciones`} className="underline">
+              Ver las opciones de venta del producto
+            </EnlaceInterno>
+          </AyudaCampo>
+        </div>
+      )}
+
       {tipo === "PV" &&
+        !esBase &&
         (puedeEditarCamposSensibles ? (
           <CampoNumero
             name="precioVenta"
@@ -338,6 +419,7 @@ export function ProductoForm({
       {tipo === "PV" && (
         <div className="flex flex-col gap-1">
           <CampoNumero
+            tipo="cantidad"
             name="pasoVenta"
             placeholder="Paso de venta (opcional)"
             ariaLabel="Paso de venta"
@@ -361,16 +443,12 @@ export function ProductoForm({
       )}
 
       {tipo === "MP" && (
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="seProduce" defaultChecked={productoExistente?.seProduce} /> Se produce (tiene receta propia, se fabrica por lote)
-        </label>
+        <Casilla name="seProduce" defaultChecked={productoExistente?.seProduce} etiqueta="Se produce (tiene receta propia, se fabrica por lote)" />
       )}
 
       {!editando && (
         <div className="flex flex-col gap-1">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={activoEnTodas && !naceSinPoderVenderse} disabled={naceSinPoderVenderse} onChange={(e) => setActivoEnTodas(e.target.checked)} /> Activo en todas las sucursales
-          </label>
+          <Casilla checked={activoEnTodas && !naceSinPoderVenderse} disabled={naceSinPoderVenderse} onChange={(e) => setActivoEnTodas(e.target.checked)} etiqueta="Activo en todas las sucursales" />
           {naceSinPoderVenderse ? (
             <AvisoAltaSinPrecio />
           ) : (
@@ -385,9 +463,7 @@ export function ProductoForm({
 
       {puedeGestionarConsignacion ? (
         <div className="flex flex-col gap-1">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={esConsignacion} onChange={(e) => setEsConsignacion(e.target.checked)} /> Es consignación
-          </label>
+          <Casilla checked={esConsignacion} onChange={(e) => setEsConsignacion(e.target.checked)} etiqueta="Es consignación" />
           <AyudaCampo>
             El producto queda en tu depósito pero sigue siendo propiedad del proveedor hasta que se vende — recién ahí se liquida (se le paga por
             lo vendido, no por lo entregado).
@@ -405,19 +481,16 @@ export function ProductoForm({
       {puedeGestionarConsignacion && esConsignacion && (
         <>
           <div className="flex items-center gap-2">
-            <select
-              aria-label="Proveedor de consignación"
-              value={proveedorConsignacionId}
-              onChange={(e) => setProveedorConsignacionId(e.target.value)}
-              className="flex-1 rounded border px-3 py-2"
-            >
-              <option value="">Proveedor de consignación</option>
-              {proveedores.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}
-                </option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <Selector etiqueta="Proveedor de consignación" etiquetaOculta value={proveedorConsignacionId} onChange={(e) => setProveedorConsignacionId(e.target.value)}>
+                <option value="">Proveedor de consignación</option>
+                {proveedores.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </Selector>
+            </div>
             {puedeCrear.proveedor && (
               <QuickCrear
                 triggerLabel="+ Nuevo proveedor"
@@ -446,17 +519,27 @@ export function ProductoForm({
         </>
       )}
 
-      <textarea name="observaciones" placeholder="Observaciones" aria-label="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} className="rounded border px-3 py-2" />
+      <AreaDeTexto etiqueta="Observaciones" etiquetaOculta name="observaciones" placeholder="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} />
 
-      {mensaje && <p className={mensaje.startsWith("Producto") ? "text-sm text-green-700" : "text-sm text-red-600"}>{mensaje}</p>}
-
-      {sincronizable && productoExistente && (
-        <SincronizarPrecioGrupo sincronizable={sincronizable} aplicar={sincronizarPrecioGrupoCarta} alTerminar={() => irALaFicha(productoExistente.id)} />
+      {mensaje && (
+        <Aviso variante={mensaje.startsWith("Producto") ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
       )}
 
-      <button type="submit" disabled={pending} className="rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+      {sincronizable && productoExistente && (
+        <SincronizarPrecioGrupo sincronizable={sincronizable} aplicar={(hermanos, precio) =>
+            sincronizarPrecioGrupoCarta(
+              hermanos.map((h) => h.productoId),
+              precio,
+              Object.fromEntries(hermanos.map((h) => [h.productoId, h.precioActual]))
+            )
+          } alTerminar={() => irALaFicha(productoExistente.id)} />
+      )}
+
+      <Boton type="submit" disabled={pending}>
         {pending ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}
-      </button>
+      </Boton>
     </form>
   );
 }

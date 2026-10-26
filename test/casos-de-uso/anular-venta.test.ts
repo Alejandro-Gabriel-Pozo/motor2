@@ -348,7 +348,7 @@ describe("anularVentaCasoDeUso", () => {
     it("ataque 2: venta que consumió una MP en consignación, pago al consignante posterior, y anular → PAGO_CONSIGNANTE_POSTERIOR sin escribir nada", async () => {
       const { venta, consignante } = await ventaConConsignacion();
       await pausa();
-      const pago = await registrarPagoConsignanteCasoDeUso(comoA(), { proveedorId: consignante.id, importe: 30, fecha: new Date() });
+      const pago = await registrarPagoConsignanteCasoDeUso(comoA(), { proveedorId: consignante.id, importe: 30, fecha: new Date(), claveIdempotencia: crypto.randomUUID() });
       expect(pago.ok).toBe(true);
 
       const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });

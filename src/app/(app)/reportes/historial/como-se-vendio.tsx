@@ -27,7 +27,7 @@ export function ComoSeVendio({ filas, mostrarDinero }: { filas: FilaVentaPorDia[
   return (
     <div className="mb-4">
       <h3 className="mb-2 text-sm font-medium">Cómo se vendió</h3>
-      {recortadas.length < filas.length && <p className="mb-2 text-xs text-neutral-500">Se muestran los últimos {TOPE_DIAS} días con ventas.</p>}
+      {recortadas.length < filas.length && <p className="mb-2 text-xs text-tinta-tenue">Se muestran los últimos {TOPE_DIAS} días con ventas.</p>}
       <TablaReporte columnas={columnas(mostrarDinero)} filas={recortadas} claveFila={(f) => f.dia} sinFilasTexto="Sin ventas en el rango elegido." nombreExport="como-se-vendio" />
     </div>
   );

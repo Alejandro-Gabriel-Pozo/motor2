@@ -55,14 +55,14 @@ describe("S-41: la semilla del precio global es solo del administrador (clase O)
 
   it("control: el administrador sí", async () => {
     await como(adminId, "admin@test.com");
-    expect((await sincronizarPrecioGrupoCarta([productoId, hermanoId], 1200)).ok).toBe(true);
+    expect((await sincronizarPrecioGrupoCarta([productoId, hermanoId], 1200, { [productoId]: 1000, [hermanoId]: 1000 })).ok).toBe(true);
     expect(await precios()).toEqual([1200, 1200]);
   });
 
   it("es delegable por configuración: un rol propio con la fila de la clave la ejerce (el piso sigue siendo «operario»)", async () => {
     const usuario = await crearUsuarioConMembresia({ email: "precios@test.com", sucursalId, rolId: rolPreciosId });
     await como(usuario.id, "precios@test.com");
-    expect((await sincronizarPrecioGrupoCarta([productoId, hermanoId], 1300)).ok).toBe(true);
+    expect((await sincronizarPrecioGrupoCarta([productoId, hermanoId], 1300, { [productoId]: 1000, [hermanoId]: 1000 })).ok).toBe(true);
     expect(await precios()).toEqual([1300, 1300]);
   });
 

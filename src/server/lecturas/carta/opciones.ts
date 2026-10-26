@@ -14,6 +14,8 @@ import type { Db } from "@/lib/db-tipos";
  * apagado en ESTA sucursal se lee con su `sucursalId` en el `where` (además de la base de solo lectura de esa sucursal). La grilla de la sucursal la pone quien llama, con su
  * lector único (`precio-local-de-opciones.ts`).
  *
+ * Fase 5 de la ola «precio y carta» («carta pareja»): + `prefijoEnCarta` del grupo («se lee en la carta como», Fase 4, en `PUBLICACION_CARTA`), para el papel del grupo y el rótulo de cada fila.
+ *
  * SIN `import "server-only"` a propósito, como las demás lecturas de la carta (`menu.ts`, `descuentos.ts`): las alcanza la carta pública y los tests la llaman directo.
  */
 
@@ -23,7 +25,10 @@ function diferencia(tipo: string | null, monto: { toNumber(): number } | null, p
   return null;
 }
 
-export async function opcionesDeLosProductosDeLaCarta(db: Db, sucursalId: string, productoIds: readonly string[]): Promise<Map<string, GrupoParaVender[]>> {
+/** Un grupo para la carta: el de la venta más su «se lee en la carta como» (Fase 4; lo lee SOLO la carta, Fase 5: no entra al precio). */
+export type GrupoParaLaCarta = GrupoParaVender & { prefijoEnCarta: string | null };
+
+export async function opcionesDeLosProductosDeLaCarta(db: Db, sucursalId: string, productoIds: readonly string[]): Promise<Map<string, GrupoParaLaCarta[]>> {
   const ids = [...new Set(productoIds)];
   if (ids.length === 0) return new Map();
   const productos = await db.producto.findMany({
@@ -44,6 +49,7 @@ export async function opcionesDeLosProductosDeLaCarta(db: Db, sucursalId: string
               id: true,
               nombre: true,
               tipo: true,
+              prefijoEnCarta: true,
               cantidadMinima: true,
               cantidadMaxima: true,
               activo: true,
@@ -66,7 +72,7 @@ export async function opcionesDeLosProductosDeLaCarta(db: Db, sucursalId: string
     },
   });
 
-  const salida = new Map<string, GrupoParaVender[]>();
+  const salida = new Map<string, GrupoParaLaCarta[]>();
   for (const p of productos) {
     const admite = new Map(p.opcionesAdmitidas.map((a) => [a.opcionId, a]));
     salida.set(
@@ -75,6 +81,7 @@ export async function opcionesDeLosProductosDeLaCarta(db: Db, sucursalId: string
         grupoId: pg.grupo.id,
         nombre: pg.grupo.nombre,
         tipo: pg.grupo.tipo as TipoDeGrupoDeOpciones,
+        prefijoEnCarta: pg.grupo.prefijoEnCarta,
         activo: pg.grupo.activo,
         admitido: pg.activo,
         cantidadMinima: pg.cantidadMinima ?? pg.grupo.cantidadMinima,

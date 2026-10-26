@@ -1,4 +1,4 @@
-import { interpretarNumero, textoCanonico } from "@/core/datos/numero-tecleado";
+import { CONTEXTO_CANTIDAD_SIN_UNIDAD, interpretarNumeroTecleado, textoParaEscribir } from "@/core/datos/numero-tecleado";
 import { CANTIDAD_MAXIMA_POR_ITEM, validarCantidadPedido } from "./cantidad-pedido";
 
 /**
@@ -10,7 +10,7 @@ import { CANTIDAD_MAXIMA_POR_ITEM, validarCantidadPedido } from "./cantidad-pedi
  *
  * Cada línea guarda el texto crudo que se ve en el campo (`cantidadTexto`, tal cual se tipea) y la cantidad vigente para el
  * subtotal (`cantidad`, la última interpretación válida). Al SALIR del campo (`normalizarCantidad`) se vuelve a interpretar con el
- * MISMO parser que usa el resto del proyecto (`interpretarNumero`, nunca `Number(...)` a secas) y se normaliza con la MISMA función
+ * MISMO parser que usa el resto del proyecto (`interpretarNumeroTecleado`, nunca `Number(...)` a secas) y se normaliza con la MISMA función
  * que usará el servidor al confirmar (`validarCantidadPedido`, de `cantidad-pedido.ts`): así lo que se ve en el campo después de
  * salir es EXACTAMENTE lo que se va a guardar (ej.: "1,4" en una unidad entera queda en "1", mostrado, no oculto) — o, si no es una
  * cantidad válida, el mensaje que lo explica (bloquea confirmar hasta corregirlo, `puedeConfirmarListaPorAgregar`).
@@ -18,7 +18,7 @@ import { CANTIDAD_MAXIMA_POR_ITEM, validarCantidadPedido } from "./cantidad-pedi
 
 export interface LineaPorAgregar {
   productoId: string;
-  /** Lo que se ve en el campo: crudo mientras se tipea, canónico (`textoCanonico`) después de normalizar. */
+  /** Lo que se ve en el campo: crudo mientras se tipea, con la coma como decimal (`textoParaEscribir`) después de normalizar. */
   cantidadTexto: string;
   /** La cantidad vigente para el subtotal en pantalla: la última interpretación positiva de `cantidadTexto` (puede no ser todavía
    *  la normalizada del servidor — eso pasa en `normalizarCantidad`, al salir del campo). */
@@ -52,6 +52,12 @@ export type AccionListaPorAgregar =
   | { tipo: "sumarConfiguracion"; productoId: string; clave: string; opciones: { opcionId: string; cantidad: number; versionDeOpcionId: string }[]; cantidad: number; tope: number }
   | { tipo: "quitarLinea"; productoId: string; clave?: string }
   | { tipo: "vaciar" };
+
+/**
+ * El contexto de lo que el mozo teclea: el máximo de decimales (4), no los de la unidad. Así «2.000» no se adivina (ambiguo: error) y «1,4» en una unidad entera sigue llegando a
+ * `validarCantidadPedido`, que lo MUESTRA redondeado a 1 (el comportamiento de siempre: nunca un redondeo oculto) en vez de rechazarlo.
+ */
+const CONTEXTO_POS = CONTEXTO_CANTIDAD_SIN_UNIDAD;
 
 export function estadoInicialListaPorAgregar(): EstadoListaPorAgregar {
   return { lineas: [] };
@@ -88,7 +94,7 @@ function esLaLinea(l: LineaPorAgregar, accion: { productoId: string; clave?: str
 
 function conCantidad(linea: LineaPorAgregar, cantidad: number): LineaPorAgregar {
   const redondeada = Math.round(cantidad * 10_000) / 10_000; // mismo ruido de coma flotante que `redondearCantidad` en core/pos/cuenta.ts
-  return { ...linea, cantidad: redondeada, cantidadTexto: textoCanonico(redondeada), error: null };
+  return { ...linea, cantidad: redondeada, cantidadTexto: textoParaEscribir(redondeada), error: null };
 }
 
 export function reducirListaPorAgregar(estado: EstadoListaPorAgregar, accion: AccionListaPorAgregar): EstadoListaPorAgregar {
@@ -118,7 +124,7 @@ export function reducirListaPorAgregar(estado: EstadoListaPorAgregar, accion: Ac
           if (!esLaLinea(l, accion)) return l;
           // Mientras se tipea no se marca error (un "," o un campo vacío a medio tipear no tienen por qué romper nada): el
           // subtotal sigue con la última cantidad válida hasta que el mozo termine de escribir (`normalizarCantidad`, al blur).
-          const r = interpretarNumero(accion.texto);
+          const r = interpretarNumeroTecleado(accion.texto, CONTEXTO_POS);
           const candidata = r.ok && r.valor !== null && r.valor > 0 ? r.valor : l.cantidad;
           return { ...l, cantidadTexto: accion.texto, cantidad: candidata };
         }),
@@ -127,7 +133,7 @@ export function reducirListaPorAgregar(estado: EstadoListaPorAgregar, accion: Ac
       return {
         lineas: estado.lineas.map((l) => {
           if (!esLaLinea(l, accion)) return l;
-          const r = interpretarNumero(l.cantidadTexto);
+          const r = interpretarNumeroTecleado(l.cantidadTexto, CONTEXTO_POS);
           if (!r.ok) return { ...l, error: r.mensaje };
           if (r.valor === null) return { ...l, error: "La cantidad tiene que ser un número mayor que cero." };
           const paso = accion.pasoVenta != null ? { pasoVenta: accion.pasoVenta, tieneStockReal: Boolean(accion.tieneStockReal) } : null;
@@ -135,7 +141,7 @@ export function reducirListaPorAgregar(estado: EstadoListaPorAgregar, accion: Ac
           if (!v.ok) return { ...l, error: v.mensaje };
           // Se ve EXACTAMENTE lo que se va a guardar (ej. "1,4" en una unidad entera queda mostrado como "1"): nunca un redondeo
           // silencioso, ver docstring del módulo.
-          return { ...l, cantidad: v.cantidad, cantidadTexto: textoCanonico(v.cantidad), error: null };
+          return { ...l, cantidad: v.cantidad, cantidadTexto: textoParaEscribir(v.cantidad), error: null };
         }),
       };
     case "quitarLinea":
@@ -145,7 +151,7 @@ export function reducirListaPorAgregar(estado: EstadoListaPorAgregar, accion: Ac
       if (existente) return { lineas: estado.lineas.map((l) => (l.clave === accion.clave ? conCantidad(l, Math.min(l.cantidad + accion.cantidad, CANTIDAD_MAXIMA_POR_ITEM)) : l)) };
       if (estado.lineas.length >= accion.tope) return estado; // defensivo: la UI ya deshabilita sumar una línea NUEVA en el tope
       const cantidad = Math.min(accion.cantidad, CANTIDAD_MAXIMA_POR_ITEM);
-      return { lineas: [...estado.lineas, { productoId: accion.productoId, cantidad, cantidadTexto: textoCanonico(cantidad), error: null, clave: accion.clave, opciones: accion.opciones.map((o) => ({ ...o })) }] };
+      return { lineas: [...estado.lineas, { productoId: accion.productoId, cantidad, cantidadTexto: textoParaEscribir(cantidad), error: null, clave: accion.clave, opciones: accion.opciones.map((o) => ({ ...o })) }] };
     }
     case "vaciar":
       return { lineas: [] };

@@ -19,10 +19,10 @@ export default async function RecetasPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   // P2 (RLS por sucursal): la lista son los productos disponibles en ALGUNA sucursal con receta central: se lee con la base de VERIFICACIÓN (lectura en toda la empresa). Son filas de `Producto` (id, nombre, tipo, versión vigente), nada de otra sucursal.
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);
@@ -36,7 +36,7 @@ export default async function RecetasPage() {
       </div>
 
       {conReceta.length === 0 ? (
-        <div className="flex flex-col gap-2 text-sm text-neutral-500">
+        <div className="flex flex-col gap-2 text-sm text-tinta-tenue">
           <p>Todavía no armaste ninguna receta.</p>
           <p>
             Una receta es para un <strong>Producto de venta (PV)</strong> — lo que vendés — o una{" "}
@@ -47,7 +47,7 @@ export default async function RecetasPage() {
       ) : (
         <table className="w-full max-w-2xl text-sm">
           <thead>
-            <tr className="border-b text-left text-neutral-500">
+            <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Producto</th>
               <th>Tipo</th>
               <th>Versión vigente</th>

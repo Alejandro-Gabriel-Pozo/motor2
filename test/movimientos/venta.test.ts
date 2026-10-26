@@ -7,7 +7,7 @@ import { darRecetaDeReventa } from "../setup/receta-de-venta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
-import { setPrecioLocalProducto } from "../../src/server/actions/movimientos/precio-local";
+import { setPrecioLocalProducto } from "../../src/server/actions/catalogo/precio-local";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 describe("registrarVenta", () => {
@@ -137,7 +137,7 @@ describe("registrarVenta", () => {
     let venta = await prisma.movimientoStock.findFirst({ where: { productoId: pv.id, proceso: "VENTA" }, orderBy: { creadoEn: "desc" } });
     expect(Number(venta!.precioTotal)).toBe(120);
 
-    await setPrecioLocalProducto(pv.id, 120, false);
+    await setPrecioLocalProducto(pv.id, 120, false, { precio: 120, habilitado: true });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
     venta = await prisma.movimientoStock.findFirst({ where: { productoId: pv.id, proceso: "VENTA" }, orderBy: { creadoEn: "desc" } });
     expect(Number(venta!.precioTotal)).toBe(100);

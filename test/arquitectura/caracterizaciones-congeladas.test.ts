@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
  *
  * Cómo se regenera a propósito: se suma una entrada a `regeneraciones` de la ruta con el blob NUEVO, el commit que la regenera y por
  * qué. El esperado es el blob de la última regeneración (o el de `blob` si no hubo ninguna). Nunca se edita `blob` ni se borra una
- * regeneración: es el registro.
+ * regeneración: es el registro. Un golden que se BORRA (su prueba se retira) pasa de `CONGELADAS` a `RETIRADAS`, con su último blob.
  */
 const RAIZ = join(__dirname, "../..");
 
@@ -88,6 +88,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "562e914",
         motivo:
           "GO-3b D6 (ADITIVO; las claves ya estaban en la base desde las migraciones GO-3d y GO-3a, ahora entran a ACCIONES): `promo_menu_del_dia` (sucursal, piso operario, semilla admin) y `grupos_de_precio_definir` (empresa, piso administrador) aparecen en las listas de claves de cada bloque y registro. Revisado con `git diff --word-diff` (contando las líneas que cambian): solo se suman las dos claves a las listas; lo único que no es una suma son los mensajes de denegación del rol «especial» y de «operador + especial», que nombran la ÚLTIMA clave del catálogo que no tienen (ahora `promo_menu_del_dia`/`grupos_de_precio_definir` donde decía `opcion_apagar_en_sucursal`/`producto_opciones_admitidas`): el mismo artefacto del generador que en M.2 y GO-2a. Ninguna respuesta de otra clave cambia.",
+      },
+      {
+        blob: "0008bd2b00a7ac268897930ff324f069f4d9ee7f",
+        // El commit PADRE de este (0c12131, Fase 3 paso 3.0b) es el último antes del cambio; la matriz se regenera en el commit siguiente (paso 3.1).
+        commit: "0c12131",
+        motivo:
+          "Ola «precio y carta», Fase 3, paso 3.1 (retiro de GO-3a; SACA una clave, no cambia ninguna otra): `grupos_de_precio_definir` (las tarifas compartidas de las combinaciones) sale de ACCIONES y desaparece de las listas de claves de cada bloque y registro. Revisado con `git diff --word-diff=porcelain … | grep '^[-+][^-+]' | sort | uniq -c`: 120 líneas pierden `, grupos_de_precio_definir` (108 donde la lista terminaba en `producto_opciones_admitidas, grupos_de_precio_definir` y 12 en el medio de una lista) y lo único que no es una resta son los 2 mensajes de denegación de «operador + especial», que nombran la ÚLTIMA clave del catálogo que no tienen: vuelven a nombrar `producto_opciones_admitidas` (como antes de GO-3b), el mismo artefacto del generador que en M.2, GO-2a y GO-3b. Ninguna respuesta de otra clave cambia.",
       },
     ],
   },
@@ -167,6 +174,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "562e914",
         motivo:
           "GO-3b D6 (ADITIVO): `ACCIONES 130 a 132` por las dos claves de GO-3 que entran a ACCIONES (`promo_menu_del_dia` y `grupos_de_precio_definir`: las recibe el rol admin de cada empresa; el operador las tiene sin Ver ni Editar). Revisado con `git diff --word-diff`: solo se suman esas filas PERMISO y el conteo.",
+      },
+      {
+        blob: "a8154f10e6a90daa5806b46bee128fca2b1a6adb",
+        // El commit PADRE de este (0c12131, Fase 3 paso 3.0b) es el último antes del cambio; la huella se regenera en el commit siguiente (paso 3.1).
+        commit: "0c12131",
+        motivo:
+          "Ola «precio y carta», Fase 3, paso 3.1 (retiro de GO-3a; SACA una clave): `ACCIONES 132 a 131` y desaparecen las 2 filas PERMISO de `grupos_de_precio_definir` (admin con Ver y Editar, operador sin) de cada una de las 2 empresas sembradas: 4 líneas menos y los 2 conteos (diff revisado línea a línea). Ningún resultado, mensaje ni otra fila cambia.",
       },
     ],
   },
@@ -381,6 +395,20 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "M0-IVA (O.266; ADITIVO, no cambia comportamiento): `Producto.alicuotaIvaVenta` y `Producto.alicuotaIvaCompra` (migración 20261015100000) aparecen en una sola entrada de la lectura, en null («sin declarar»). Revisado con `git diff --word-diff`: solo se suman esas dos claves.",
       },
+      {
+        blob: "ff1ea4de397303f109ddafa1fc27a1a035fbba2c",
+        // El commit PADRE de este (8ff510de) es el último antes del cambio; el golden se regenera en el commit siguiente (Fase 4, C1).
+        commit: "8ff510de",
+        motivo:
+          "Ola «precio y carta», Fase 4, C1 (ADITIVO, no cambia comportamiento): `Producto.modoDeVenta` (migración 20261021130000) aparece en la única entrada de la lectura que trae la fila del producto, en «DIRECTO» (el default: lo que ya hacía). Revisado con `git diff`: una sola línea agregada, `\"modoDeVenta\": \"DIRECTO\"`.",
+      },
+      {
+        blob: "1c5bde01c794b7fafd6432a6b1790978ab267f63",
+        // El commit PADRE de este (2f39a774) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "2f39a774",
+        motivo:
+          "Ola «precio y carta», Fase 5 (CAMBIA COMPORTAMIENTO a propósito, decisión del dueño: escala de letra de la carta con mínimo de 14 px para el texto de decisión): en las dos lecturas de `carta.resolverCartaPublica` los tamaños por defecto del tema suben (`carta_fuente_item_nombre` y `_precio` de 0.88rem a 1.1875rem, `_descripcion` de 0.6875rem a 0.875rem y `_tags` de 0.6875rem a 0.75rem, y sus variables `--carta-fuente-item-*`) y se suman las variables `--carta-fs-*` (producto, precio, opción, aclaración, etiqueta, título, rótulo, columna, tamaño y elección, con su versión impresa). Revisado con `git diff`: cambian solo esos valores y se suman esas claves; ningún precio, nombre, orden ni conteo de consultas se movió. Quedó rojo en la CI (parte 4 de Integración) desde la Fase 5 porque nadie regeneró este golden.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -492,7 +520,151 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "GO-3b D3 (CAMBIA COMPORTAMIENTO, decidido en el diseño de GO-3, ADR-032: guardar los cupos ya no borra): en el paso «promo: sin cupos vuelve a informativa» los dos cupos que antes se BORRABAN ahora quedan dados de baja (`activo=false`): la huella muestra la fila vieja y la nueva (2 líneas `+ PROMO_CUPO … activo=false`). Revisado con `git diff --word-diff`: el resultado, los efectos y las 4 líneas de auditoría son idénticos; ningún importe cambia.",
       },
+      {
+        blob: "09fcd693f4fe1145296fe7a9dbe7c33d12360ffc",
+        // El commit PADRE de este (8ff510de) es el último antes del cambio; el golden se regenera en el commit siguiente (Fase 4, C1).
+        commit: "8ff510de",
+        motivo:
+          "Ola «precio y carta», Fase 4, C1 (ADITIVO, no cambia comportamiento): las 13 filas PRODUCTO de la huella suman `modoDeVenta=DIRECTO` (migración 20261021130000; el default, lo que ya hacía). Revisado con `git diff`: quitando ese campo, cada línea es idéntica a la anterior; ningún importe ni regla de dinero cambia.",
+      },
     ],
+  },
+  "test/caracterizacion-precio-y-carta/precios.golden.txt": {
+    blob: "4e643fae598c8916f23e2155158ef2dd0ef28bf8",
+    desde: "31354ad",
+    motivo:
+      "Ola «precio y carta», Fase 0: foto de lo que HOY se cobra y se muestra (venta, vista previa del POS, resumen del POS y de la carta pública) sobre el catálogo de referencia que reproduce producción y los casos CU-01 a CU-12. NO es una aprobación: incluye la trampa de la milanesa M2 con base cargada por error ($38.000). Las fases siguientes la regeneran declarándolo acá; el retiro de GO-3a (Fase 3) NO debe moverla.",
+    regeneraciones: [],
+  },
+  "test/caracterizacion-precio-y-carta/cobro-y-carta.golden.txt": {
+    blob: "c565330202519909cf9f0f931b6e737b2cede797",
+    desde: "9c88d3d",
+    motivo:
+      "Ola «precio y carta», Fase 0: foto de lo que HOY cobra la acción real del POS (agregarItems) y de la carta pública que recibe el navegador (CartaPublicaV1) sobre el catálogo de referencia sembrado en Postgres. NO es una aprobación. Las fases siguientes la regeneran declarándolo acá; el retiro de GO-3a (Fase 3) NO debe moverla.",
+    regeneraciones: [
+      {
+        blob: "ca337d00ddf8fe04d116c635eddb3327febfd9a6",
+        // El commit PADRE de este (274a43c5, Fase 5 paso 6) es el último antes del cambio; el golden se regenera en el commit siguiente (paso 7).
+        commit: "274a43c5",
+        motivo:
+          "Ola «precio y carta», Fase 5 («carta pareja»), paso 7 (ADITIVO; SOLO la parte de CARTA, el COBRO idéntico): la carta pública suma, por PV con opciones, la forma ya resuelta en el servidor (`presentacion`) y, por sección, sus `tandas` de columnas compartidas. El test las vuelca en su PROPIA línea (`presentacion {…}` y `tandas […]`, JSON tal como viaja) y las saca de la línea ITEM/SECCION (que quedan idénticas). Cambian SOLO 7 líneas, todas agregadas: 5 `presentacion` (Pizzas, Milanesas, Bife a la criolla, Café, y el Café de la carta con la grilla de la sucursal, con Mediano 4200) y 2 `tandas` (Platos y Cafetería; la carta del café con la grilla solo vuelca su ítem). Revisado con `git diff -U0`: ninguna línea quitada ni cambiada; de `## COBRO` en adelante la ÚNICA diferencia es la línea `presentacion` del café con la grilla (que es carta). Pizzas y Milanesas salen como productos DIRECTOS (la semilla no los marca como base): Pizzas cae a lista con el nombre arriba (6 columnas > 3) y Milanesas en columnas con «Milanesas de» como aclaración (sin prefijo cargado). Ningún texto visible cambia en esta tanda: el dibujo nuevo es de la tanda B.",
+      },
+      {
+        blob: "b087742c0b75fb85ef52b2e10b2851df843dc0c4",
+        // El commit PADRE de este (9c8f7b88) es el último antes del cambio; el golden se regenera en el commit siguiente (Fase 5, tanda C2).
+        commit: "9c8f7b88",
+        motivo:
+          "Ola «precio y carta», Fase 5 tanda C (jerarquía; ADITIVO, solo CARTA, el COBRO idéntico): la lista que cae de una tanda de más de 3 tamaños lleva protagonista: \"nombre\". Revisado con `git diff -U0`: cambia SOLO la línea `presentacion` de Pizzas (producto directo con 6 tamaños), que suma `\"protagonista\":\"nombre\"` después de `\"encabezado\":true`; de `## COBRO` en adelante nada cambia.",
+      },
+    ],
+  },
+  "test/e2e/linea-de-base-precio-y-carta.golden.txt": {
+    blob: "11a7b90078489a6eb2cc26e499b2aa363c5a3ead",
+    desde: "30a9994",
+    motivo:
+      "Ola «precio y carta», Fase 0: foto en navegador (375 y 1280 px) del texto visible de la carta pública, con su tipografía computada de hoy (ítems sin opciones a 14,08 px frente a 19 px con opciones), y de las pantallas de opciones de Pizzas, del grupo «Tipos de Pizza» y de la parametrización de secciones. NO es una aprobación. Las Fases 5 (escala de letra única, carta pareja) y 6 (interfaz del producto) la regeneran declarándolo acá.",
+    regeneraciones: [
+      {
+        blob: "c79b78a136676d86c10b2bb4ce64a9501b813b75",
+        // El commit PADRE de este (9750d6b, Fase 3 paso 3.3) es el último antes de la corrección; el texto lo cambió el paso 3.2 (ed9ff97), que borró el enlace y no regeneró este golden.
+        commit: "9750d6b",
+        motivo:
+          "Ola «precio y carta», Fase 3, paso 3.2 (retiro de GO-3a; CAMBIA UN TEXTO de administración, no la carta): la pantalla de opciones del producto deja de enlazar a «Combinaciones» (la pantalla se borró). Cambian SOLO 2 líneas (la de Pizzas a 1280 px y la de 375 px): «… se arman en [enlace: Opciones de venta]. Las combinaciones (un precio o una receta propia para «grande con almendras») se arman en [enlace: Combinaciones].» pasa a «… se arman en [enlace: Opciones de venta].». Regenerado A MANO (el e2e no se corre en esta tanda; el texto sale del JSX: `en{\" \"}<EnlaceInterno>…</EnlaceInterno>` seguido de `.`): a confirmar con `npm run test:e2e` en el gate final. Ni una línea de la carta pública ni de la tipografía cambia.",
+      },
+      {
+        blob: "4d8ffc781df0d2bb3a792eada0831bcb93b489c7",
+        // El commit PADRE de este (25d9243e, Fase 5 paso 12) es el último antes de la regeneración; los cambios visuales son de los pasos 3, 4, 8, 9 y 10 (tanda B).
+        commit: "25d9243e",
+        motivo:
+          "Ola «precio y carta», Fase 5 tanda B (CAMBIO VISUAL DELIBERADO, «carta pareja»; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en la corrida de capturas del paso 13, contra motor2_e2e local). (1) DATOS de la siembra e2e: Pizzas y Milanesas como producto BASE, «Milanesas de» con «De» y «Pizza bomba» agotada hoy (lo que el dueño va a cargar a mano), así salen las cuatro formas; cambian por eso las pantallas de administración de Pizzas. (2) El volcado lee la FORMA de cada ítem (lista sin encabezado para las pizzas, tabla para las milanesas, simple para el bife, tanda para el café) en lugar de las listas de tamaños, pastillas y «Adicionales:» retiradas. (3) La tipografía: todo plato a 19 px (antes 14,08 px sin opciones), filas de opción 16 px, aclaraciones 14 px, con UN par tamaño/peso por rol a 375 y 1280 px (se agrega la sección «Escala única»). (4) Se agrega «Impresión»: 0 listas cortadas, el pie con la fecha enmascarada y la dirección, la carta completa con lo agotado hoy y la escala en puntos. El precio cobrado no se toca (precios.golden.txt y cobro-y-carta.golden.txt sin cambios).",
+      },
+      {
+        blob: "709df8a9dbe7444475baa38b22fd5d461164331e",
+        // El commit PADRE de este (b74d4423, Fase 5 tanda C paso 7) es el último antes de la regeneración; los cambios visuales son de los pasos C1 a C6.
+        commit: "b74d4423",
+        motivo:
+          "Ola «precio y carta», Fase 5 tanda C (CAMBIO VISUAL DELIBERADO, jerarquía de la carta aprobada por el dueño con maquetas; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en la corrida de capturas «despues2», contra motor2_e2e local). (1) Milanesas (tabla de dos ejes): el nombre pasa a ser un RÓTULO en mayúsculas de 13 px (el innerText lo vuelve «MILANESAS»; antes 19 px), con línea fina; las filas y los precios quedan como platos. (2) Aclaraciones y adicionales en P1: el bife lee «Guarnicion Elegí: …» (una línea) y cada extra en su propia fila con el recargo a la derecha; el café lee «Preparación del café Incluidas: solo, cortado» y lágrima y con leche cada una en su fila con su recargo. (3) La tanda del café: una tabla por producto con el nombre arriba (sin la celda del nombre en la tabla). (4) Escala única: sumas de los roles columna 16 px / 600, eleccion 15 px / 400, rotulo 13 px / 600 y tamano 15 px / 600 (en papel, 14,67 / 14 / 12,67 / 14 px); el rol aclaracion deja de aparecer porque la carta de esta siembra ya no dibuja aclaraciones en una línea. Las pantallas de administración y las Pizzas no cambian; el precio cobrado no se toca.",
+      },
+      {
+        blob: "fe0a9dff7e5c66ad312760ded4fdcde40cc92b18",
+        // El commit PADRE de este (c29a0a8b, Fase 5 tanda C paso 10) es el último antes de la regeneración; los cambios son de los pasos C9 (textos neutros) y C10 (café de especialidad).
+        commit: "c29a0a8b",
+        motivo:
+          "Ola «precio y carta», Fase 5 tanda C, segunda regeneración (CAMBIO VISUAL DELIBERADO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en la corrida de capturas «despues3», contra motor2_e2e local). (1) Textos neutros de las aclaraciones (C9, decisión del dueño): el grupo donde todo es gratis se lee «Guarnicion ensalada · papas fritas · puré» (sin «Elegí:» ni «o») y el grupo que mezcla se lee «Sin cargo: solo · cortado» (antes «Incluidas:») con cada recargo en su fila. (2) Datos de la siembra e2e (C10): se suma «Café de especialidad» (tamaño Chico/Mediano/Grande más preparación obligatoria Solo/Cortado/Lágrima +$200/Con leche +$300) a la sección Cafetería, que sale como TABLA DE DOBLE ENTRADA con precios finales; por eso cambian las pantallas de administración que listan los productos de la carta (Cafetería: 2 productos; el nuevo producto en la parametrización). La carta y la tipografía del resto no cambian; el precio cobrado no se toca.",
+      },
+      {
+        blob: "65ce97796ee07f83128c4b26aee2367bf8f7d1ab",
+        // El commit PADRE de este (1f8d2c5c, Fase 5 tanda C paso 13) es el último antes de la regeneración; el cambio es del paso C13.
+        commit: "1f8d2c5c",
+        motivo:
+          "Ola «precio y carta», Fase 5 tanda C, tercera regeneración (ADITIVO: el volcado suma la sección «Separadores entre productos», a 375 y a 1280 px; el resto del texto y la tipografía no cambian; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). Mide con getComputedStyle el borderBottomColor de cada ítem de la lista de cada sección y el spec afirma que todos son el mismo color claro (rgb(231, 229, 228)) y que ninguno es el color del texto (rgb(28, 27, 25)): fija en navegador real el bug de los separadores negros que arreglaron C12 y C13.",
+      },
+      {
+        blob: "a4c8fcd74fbaf86955c37681b2c13dd321a5c810",
+        // El commit PADRE de este (fa3028e4) es el último antes de la regeneración; el texto lo cambió el paso 6.15a (carril A), que agregó la lectura del precio a la pantalla de opciones del producto.
+        commit: "fa3028e4",
+        motivo:
+          "Ola «precio y carta», Fase 6, paso 6.15a (CAMBIA UN TEXTO de administración, no la carta pública; decisión del ingeniero con el visto del dueño para regenerar solo las secciones de ADMINISTRACIÓN): la pantalla de opciones del producto «Pizzas» (y su par a 1280 px) muestra bajo cada importe la lectura del precio de la opción («Pizza muzzarella = $ 18.000», y las otras cinco de «Tipos de Pizza»). Cambian SOLO 12 líneas, todas agregadas (6 por ancho) dentro de la sección de ADMINISTRACIÓN; revisado con `git diff`: la carta pública y el resto del texto quedaron idénticos byte a byte.",
+      },
+      {
+        blob: "a41765be9e598bead836060c092370fcde07dc16",
+        // El commit PADRE de este (ec86a946) es el último antes de la regeneración; el texto lo cambió el paso 6.15b (carril B): la pantalla de opciones del producto pasó a ser el paso 2 del espacio del producto.
+        commit: "ec86a946",
+        motivo:
+          "Ola «precio y carta», Fase 6, paso 6.15b (CAMBIA UN TEXTO de administración, no la carta pública; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_cb_e2e local, con el visto del dueño para regenerar solo las secciones de ADMINISTRACIÓN). La pantalla de opciones de Pizzas (a 1280 y a 375 px) queda dentro del marco del espacio del producto: el título pasa de «Opciones de venta de «Pizzas»» a «Pizzas» con el código, «Por opción», «Disponible en «…»» y la tira de pasos (Resumen, Qué se vende, Opciones y precio, Receta, En la carta), y el paso se titula «Opciones y precio»; «Agregar grupo» (el selector y su botón) pasa a ser el botón «Agregar un grupo existente» que abre una ventana; suma la línea del precio por sucursal con el enlace «Precio local»; y los títulos de los grupos y de «Así se cobra» bajan de nivel (## a ###). Revisado con `git diff`: cambian SOLO las dos secciones «## ADMINISTRACIÓN … Opciones de venta del producto «Pizzas»» (a 1280 y a 375 px); la carta pública (todo lo anterior a la primera sección de ADMINISTRACIÓN), «Grupo de opciones «Tipos de Pizza»» y «Carta › Parametrización › Secciones» quedan idénticos byte a byte.",
+      },
+      {
+        blob: "fb96a2af391557ade14cfefe3cc8b7532e11305a",
+        // El commit PADRE de este (401bfba2) es el último antes de la regeneración; el texto lo cambió el paso 6.15c (carril B): el paso 2 del producto suma el botón «+ Nuevo grupo».
+        commit: "401bfba2",
+        motivo:
+          "Ola «precio y carta», Fase 6, paso 6.15c (CAMBIA UN TEXTO de administración, no la carta pública; ADITIVO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_cb_e2e local). La pantalla de opciones de Pizzas (a 1280 y a 375 px) suma el botón «+ Nuevo grupo», que se dibuja porque el usuario de la foto es el administrador y tiene el «Editar» de `opciones_definir`. Revisado con `git diff`: cambian SOLO 2 líneas, `[botón: + Nuevo grupo]`, una en la sección de 1280 px y otra en la de 375 px, justo antes de `[botón: Agregar un grupo existente]`; la carta pública, «Tipos de Pizza» y Secciones quedan idénticos byte a byte.",
+      },
+      {
+        blob: "0ebe73390313f56e4f2fd0af62c988bfddd0da2b",
+        // El commit PADRE de este (6666dd43) es el último antes de la regeneración; el texto lo cambió el paso 6.17c (carril B): cada producto de Secciones suma «Abrir en el producto».
+        commit: "6666dd43",
+        motivo:
+          "Ola «precio y carta», Fase 6, paso 6.17c (CAMBIA UN TEXTO de administración, no la carta pública; ADITIVO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_cb_e2e local, con el visto del dueño para regenerar solo las secciones de ADMINISTRACIÓN). La pantalla «Carta › Parametrización › Secciones» (a 1280 y a 375 px) suma el enlace `[enlace: Abrir en el producto]` dentro de la ficha de cada producto de la carta (hacia el paso «En la carta» del espacio del producto): 14 líneas nuevas en total, 7 por ancho (una por cada ficha abierta del volcado). Revisado con `git diff -U0`: son solo líneas agregadas, todas dentro de las dos secciones de Secciones; la carta pública, las opciones de Pizzas y «Tipos de Pizza» quedan idénticos byte a byte.",
+      },
+      {
+        blob: "3859e3a3a80b0d30f425517fc84c4b0fd95780cc",
+        // El commit PADRE de este (be697319) es el último antes de la regeneración; el texto lo cambió el paso 6.18 (carril B): el paso 2 del producto suma «Cómo se va a ver en la carta».
+        commit: "be697319",
+        motivo:
+          "Ola «precio y carta», Fase 6, paso 6.18 (CAMBIA UN TEXTO de administración, no la carta pública; ADITIVO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_cb_e2e local, con el visto del dueño para regenerar solo las secciones de ADMINISTRACIÓN). La pantalla de opciones de Pizzas (a 1280 y a 375 px) suma, antes de «Así se cobra», la sección «Cómo se va a ver en la carta» (la forma que le da la carta pública: las pizzas como platos sueltos con su precio de lista). Son 26 líneas agregadas (13 por ancho) y ninguna borrada; las secciones de la carta pública, la tipografía y el resto de la administración quedan idénticos (lo verifica el diff del golden: solo líneas agregadas dentro de las dos secciones «Opciones de venta del producto «Pizzas»»).",
+      },
+      {
+        blob: "1a24a6420e673f56a84dd5a26c270bc25281fab0",
+        // El commit PADRE de este (7e676180) es el último antes de la regeneración; el texto lo cambia «+ Opción» / «+ Extra» (bloque 3 de la Fase 6).
+        commit: "7e676180",
+        motivo:
+          "Fase 6, bloque 3 («+ Opción» y «+ Extra»; ADITIVO, solo ADMINISTRACIÓN, la carta pública y el cobro idénticos; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): la tarjeta de cada grupo del paso 2 «Opciones y precio» suma el botón «+ Opción» (con el nombre accesible «+ Opción en <grupo>») antes de «Quitar de este producto», para quien puede Editar `opciones_definir`. Revisado con `git diff -U0`: cambian SOLO 2 líneas, las dos de la tarjeta de «Tipos de Pizza» (1280 y 375 px), que suman `[botón: + Opción (lector: «+ Opción en Tipos de Pizza»)]`; las secciones de la carta pública no cambian.",
+      },
+    ],
+  },
+};
+
+interface Retirada {
+  /** Blob de git del ÚLTIMO contenido que tuvo el golden (el congelado o su última regeneración), para cruzarlo contra la historia. */
+  blob: string;
+  /** Commit que lo retira (como en las regeneraciones, el PADRE: un commit no puede llevar su propio hash). */
+  commit: string;
+  motivo: string;
+}
+
+/**
+ * Goldens RETIRADOS (Fase 3 de la ola «precio y carta»: el retiro de GO-3a borra el golden de las combinaciones junto con su prueba). Un golden no se borra de `CONGELADAS` en silencio: pasa
+ * acá con su último blob, el commit y el motivo, y se revisan las dos direcciones: el archivo ya NO existe (si alguien lo vuelve a crear, rojo: o se congela de nuevo o no vuelve) y la ruta ya NO
+ * está en `CONGELADAS` (una ruta no puede estar congelada y retirada a la vez). Nunca se borra una entrada: es el registro.
+ */
+const RETIRADAS: Record<string, Retirada> = {
+  "test/caracterizacion-precio-y-carta/combinaciones.golden.txt": {
+    blob: "551283ff305dcfff5d8341fa2d50cdd18a1a744c",
+    // El commit PADRE de este (ed9ff97, Fase 3 paso 3.2) es el último que lo tiene; se borra en el commit siguiente (paso 3.3).
+    commit: "ed9ff97",
+    motivo:
+      "Ola «precio y carta», Fase 3, paso 3.3 (retiro de GO-3a, DEC-02 y DEC-16; en producción GO-3a no tiene filas ni ventas): la venta y la vista previa ya no leen combinaciones, así que la foto de las combinaciones (CU-07 y CU-11) se borra junto con su prueba (`combinaciones.test.ts`) y su catálogo (`test/setup/referencia-combinaciones.ts`). Congelada en 31354ad con este blob y nunca regenerada. Los goldens de los demás productos (`precios.golden.txt`) y el integrado (`cobro-y-carta.golden.txt`) NO se mueven: esa es la prueba de que el retiro no cambió el precio de nadie.",
   },
 };
 
@@ -530,6 +702,19 @@ describe("caracterizaciones congeladas: un golden solo cambia con una regeneraci
         expect(r.commit, ruta).toMatch(/^[0-9a-f]{7,40}$/);
         expect(r.motivo.trim(), ruta).not.toBe("");
       }
+    }
+  });
+
+  it.each(Object.entries(RETIRADAS))("%s está retirada: el archivo ya no existe y no figura en CONGELADAS", (ruta) => {
+    expect(existsSync(join(RAIZ, ruta)), `${ruta} está RETIRADA y volvió a existir: o se congela de nuevo (sacala de RETIRADAS y sumala a CONGELADAS) o se borra`).toBe(false);
+    expect(Object.hasOwn(CONGELADAS, ruta), `${ruta} no puede estar congelada y retirada a la vez`).toBe(false);
+  });
+
+  it("cada retirada está completa (último blob y commit con forma de hash, motivo escrito)", () => {
+    for (const [ruta, r] of Object.entries(RETIRADAS)) {
+      expect(r.blob, ruta).toMatch(/^[0-9a-f]{40}$/);
+      expect(r.commit, ruta).toMatch(/^[0-9a-f]{7,40}$/);
+      expect(r.motivo.trim(), ruta).not.toBe("");
     }
   });
 

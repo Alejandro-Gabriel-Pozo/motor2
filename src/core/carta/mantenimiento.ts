@@ -17,6 +17,8 @@
 
 import type { GrupoCartaV1, OpcionesSinCostoCartaV1 } from "./opciones-en-carta";
 import { formatearPrecioCarta } from "./precio-carta";
+import type { PresentacionCartaV1 } from "./presentacion-en-carta";
+import { textoDeLaAclaracion } from "./texto-de-la-carta";
 
 export interface SeccionParaMantener {
   id: string;
@@ -35,6 +37,8 @@ export interface ProductoParaMantener {
   precioDeLista: number;
   /** ¿Rige en esta sucursal un precio local propio (capacidad prendida y precio local habilitado)? */
   conPrecioLocal: boolean;
+  /** Fase 4 (ADR-035): se vende por opción; `precioAca` y `precioDeLista` son el guardado, que no se cobra (la pantalla dice «Por opción»). Opcional: ausente = directo. */
+  seVendePorOpcion?: boolean;
   disponibleAca: boolean;
   esAnclaDeAdicional: boolean;
   /** El nombre del ítem agrupado de esta sucursal que lo contiene, si hay. */
@@ -119,10 +123,31 @@ export function vistaPreviaDeOpciones(tieneGrupos: boolean, enCarta: { grupos: r
   if (enCarta === null) return "Ojo: hoy no se puede pedir, le falta una opción obligatoria disponible o configurada. Se puede agregar igual; no sale en la carta hasta que la tenga.";
   const recargo = (r: number) => `${r > 0 ? "+" : "−"}${formatearPrecioCarta(Math.abs(r))}`;
   const partes = [
-    ...enCarta.grupos.map((g) => `${g.nombre}: ${g.opciones.map((o) => (o.precio !== undefined ? `${o.nombre} ${formatearPrecioCarta(o.precio)}` : `${o.nombre} ${recargo(o.recargo ?? 0)}`)).join(", ")}`),
+    ...enCarta.grupos.map((g) => `${g.nombre}: ${g.opciones.map((o) => (o.tipo === "final" ? `${o.nombre} ${formatearPrecioCarta(o.precio)}` : `${o.nombre} ${recargo(o.recargo)}`)).join(", ")}`),
     ...enCarta.sinCosto.map((g) => `${g.grupo}: ${g.opciones.join(", ")}`),
   ];
   return partes.length ? `Va a mostrar: ${partes.join(" · ")}.` : "Sin opciones para elegir (las que tiene no cambian nada en la carta).";
+}
+
+/**
+ * Fase 5, paso 9 («carta pareja», ADR-035): la línea «Va a mostrar: …» con la FORMA que la carta pública le va a dar al producto (la misma proyección del servidor: `presentacionDeUnProductoSolo`),
+ * en vez de las listas de antes: la tabla, las columnas, las filas (con el nombre arriba o cada opción como un plato) y lo que se lee debajo, con sus precios. `rotulos`: los de las columnas.
+ */
+export function vistaPreviaDeLaForma(nombre: string, forma: { presentacion: PresentacionCartaV1; rotulos: readonly string[] }): string {
+  const precio = (x: number | null) => (x === null ? "–" : formatearPrecioCarta(x));
+  const p = forma.presentacion;
+  const cuerpo =
+    p.forma === "simple"
+      ? `«${nombre}» con su precio`
+      : p.forma === "columnas"
+        ? `«${nombre}» en columnas: ${forma.rotulos.map((r, i) => `${r} ${precio(p.celdas[i] ?? null)}`).join(", ")}`
+        : p.forma === "tabla"
+          ? `una tabla «${nombre}» (${p.columnas.join(" / ")}): ${p.filas.map((f) => `${f.rotulo} ${f.celdas.map(precio).join(" / ")}`).join("; ")}`
+          : p.encabezado
+            ? `«${nombre}» y debajo: ${p.filas.map((f) => `${f.rotulo} ${precio(f.precio)}`).join(", ")}`
+            : `cada opción como un plato: ${p.filas.map((f) => `${f.rotulo} ${precio(f.precio)}`).join(", ")}`;
+  const debajo = p.aclaraciones.map((a) => `${a.rotulo}: ${textoDeLaAclaracion(a)}`);
+  return `Va a mostrar ${[cuerpo, ...debajo].join(" · ")}.`;
 }
 
 /**

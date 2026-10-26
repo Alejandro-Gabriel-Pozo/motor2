@@ -15,18 +15,18 @@ export function ComparativaPrecios({ datos }: { datos: ComparativaPreciosDelPeri
   return (
     <div className="grid grid-cols-1 gap-4 rounded border p-4 sm:grid-cols-3">
       <div>
-        <p className="text-xs text-neutral-500">Tus insumos</p>
+        <p className="text-xs text-tinta-tenue">Tus insumos</p>
         <p className="text-lg font-semibold">{formatoPct(datos.variacionInsumosPct)}</p>
       </div>
       <div>
-        <p className="flex items-center text-xs text-neutral-500">
+        <p className="flex items-center text-xs text-tinta-tenue">
           Tu carta
           <AyudaIcono texto={datos.avisoCarta} />
         </p>
         <p className="text-lg font-semibold">{formatoPct(datos.variacionCartaPropiaPct)}</p>
       </div>
       <div>
-        <p className="flex items-center text-xs text-neutral-500">
+        <p className="flex items-center text-xs text-tinta-tenue">
           Inflación general (IPC)
           <AyudaIcono texto={datos.avisoIPC} />
         </p>

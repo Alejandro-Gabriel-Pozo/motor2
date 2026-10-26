@@ -5,12 +5,16 @@ import { useEffect, useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
 import { agregarItems } from "@/server/actions/pos/cuenta-pedido";
 import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos, estadoInicialSelectorCarta, reducirSelectorCarta, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar, type EleccionParaAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearCantidad, formatearMonto, avisoEnPromo, claveDeConfiguracion, resumenDeConfiguracion, vistaPreviaDeConfiguracion, type ConfiguracionDelSelector } from "@/core/pos/public";
-import { BOTON_CHICO, BOTON_PRIMARIO, CAMPO } from "./estilos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 import { SelectorCarta } from "./selector-carta";
 import { ArmarPromo } from "./armar-promo";
 import { ElegirOpciones } from "./elegir-opciones";
 import { useAccionMesa } from "./usar-accion";
 import { useRegistrarOtroIgual } from "./otro-igual";
+
+/** La cantidad de una línea de «Por agregar»: un campo angosto y centrado, con su nombre por `aria-label` (el de la fila). Va a mano a propósito: `Campo` dibuja el error DENTRO de su envoltura, y acá el error vive bajo toda la fila. */
+const CAMPO_CANTIDAD = "w-16 rounded-lg border border-borde bg-superficie px-3 py-2 text-center text-sm tabular-nums outline-none focus:border-tinta-suave max-md:min-h-11";
 
 /** Una promo ya armada, esperando en «Por agregar» junto con los sueltos (Task #16) — cada instancia es una línea propia, sin
  *  acumularse (dos menús pueden llevar elecciones distintas): `id` interno del cliente, nunca viaja al servidor. */
@@ -31,7 +35,7 @@ interface PromoPorAgregar {
  *
  * Tocar un producto —en la grilla de carta (`SelectorCarta`) o elegirlo en el buscador (`SelectorProducto`)— lo suma con cantidad
  * 1; tocarlo de nuevo (o volver a elegirlo) ACUMULA en la MISMA línea, nunca abre una segunda. La cantidad de cada línea se edita
- * con los botones −/+ o tecleando (parser `interpretarNumero`, nunca `Number(...)` a secas); al salir del campo se normaliza con
+ * con los botones −/+ o tecleando (parser `interpretarNumeroTecleado`, nunca `Number(...)` a secas); al salir del campo se normaliza con
  * `validarCantidadPedido` — la MISMA función que usará el servidor al confirmar — así lo que se ve es lo que se va a guardar (una
  * cantidad que redondea, ej. "1,4" en una unidad entera, queda mostrada en "1", nunca oculta).
  *
@@ -144,13 +148,13 @@ export function AgregarItems({
   };
 
   /**
-   * GO-3b (ADR-032): el precio de LISTA que el mozo está viendo de cada ítem (el de la vista previa con su configuración y su combinación, o el del pedible), para que el servidor no cobre otro en
+   * GO-3b (ADR-032): el precio de LISTA que el mozo está viendo de cada ítem (el de la vista previa con su configuración, o el del pedible), para que el servidor no cobre otro en
    * silencio si cambió entre medio (`PRECIO_CAMBIO`). Uno que no se puede calcular acá no se manda (el servidor cobra el de hoy, como siempre).
    */
   const precioQueSeVe = (item: ReturnType<typeof itemsDeListaPorAgregar>[number]): number | null => {
     const conf = configuraciones[item.productoId];
     if (item.opciones && conf) {
-      const vista = vistaPreviaDeConfiguracion({ grupos: conf.grupos, elegidas: item.opciones, precioBase: conf.precioBase, descuentoDeProducto: conf.descuentoDeProducto, cantidad: 1, ...(conf.combinaciones ? { combinaciones: conf.combinaciones } : {}) });
+      const vista = vistaPreviaDeConfiguracion({ grupos: conf.grupos, elegidas: item.opciones, precioBase: conf.precioBase, descuentoDeProducto: conf.descuentoDeProducto, cantidad: 1 });
       return vista.ok ? (vista.precioLista ?? vista.precioUnitario) : null;
     }
     const p = pediblePorId.get(item.productoId);
@@ -192,16 +196,16 @@ export function AgregarItems({
    */
   const lineaConOpciones = (clave: string, opciones: { opcionId: string; cantidad: number; versionDeOpcionId: string }[], cantidad: number, cantidadTexto: string, error: string | null, p: ProductoPedible, conf: ConfiguracionDelSelector) => {
     const { titulo, adicionales } = resumenDeConfiguracion(p.nombre, conf.grupos, opciones);
-    const vista = vistaPreviaDeConfiguracion({ grupos: conf.grupos, elegidas: opciones, precioBase: conf.precioBase, descuentoDeProducto: conf.descuentoDeProducto, cantidad, ...(conf.combinaciones ? { combinaciones: conf.combinaciones } : {}) });
+    const vista = vistaPreviaDeConfiguracion({ grupos: conf.grupos, elegidas: opciones, precioBase: conf.precioBase, descuentoDeProducto: conf.descuentoDeProducto, cantidad });
     const idError = `error-linea-${clave}`;
     return (
-      <li key={clave} data-linea-por-agregar={titulo} className="flex flex-col gap-1 bg-white py-2 first:rounded-t-lg last:rounded-b-lg">
+      <li key={clave} data-linea-por-agregar={titulo} className="flex flex-col gap-1 bg-superficie py-2 first:rounded-t-lg last:rounded-b-lg">
         <div className="flex flex-wrap items-center justify-between gap-2 px-2">
-          <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{titulo}</span>
+          <span className="min-w-0 flex-1 text-sm font-semibold [overflow-wrap:anywhere]">{titulo}</span>
           <div className="flex flex-wrap items-center gap-1.5">
-            <button type="button" className={BOTON_CHICO} aria-label={`Restar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: p.productoId, clave })}>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Restar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: p.productoId, clave })}>
               −
-            </button>
+            </Boton>
             <input
               aria-label={`Cantidad de ${titulo}`}
               inputMode="numeric"
@@ -212,29 +216,31 @@ export function AgregarItems({
               onBlur={() => despacharLista({ tipo: "normalizarCantidad", productoId: p.productoId, clave, decimales: 0 })}
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? idError : undefined}
-              className={`${CAMPO} w-16 text-center tabular-nums max-md:min-h-11`}
+              className={CAMPO_CANTIDAD}
             />
-            <button type="button" className={BOTON_CHICO} aria-label={`Sumar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: p.productoId, clave })}>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Sumar uno a ${titulo}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: p.productoId, clave })}>
               +
-            </button>
-            <span className="w-24 text-right text-[13.5px] tabular-nums">{vista.ok ? formatearMonto(vista.total) : "—"}</span>
-            <button type="button" className={BOTON_CHICO} aria-label={`Otro igual a ${titulo}, para cambiarle algo`} onClick={() => setOpcionesAbiertas({ productoId: p.productoId, inicial: opciones })}>
+            </Boton>
+            <span className="w-24 text-right text-sm tabular-nums">{vista.ok ? formatearMonto(vista.total) : "—"}</span>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Otro igual a ${titulo}, para cambiarle algo`} onClick={() => setOpcionesAbiertas({ productoId: p.productoId, inicial: opciones })}>
               Otro igual
-            </button>
-            <button type="button" className={BOTON_CHICO} aria-label={`Quitar ${titulo} de la lista`} onClick={() => despacharLista({ tipo: "quitarLinea", productoId: p.productoId, clave })}>
+            </Boton>
+            <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Quitar ${titulo} de la lista`} onClick={() => despacharLista({ tipo: "quitarLinea", productoId: p.productoId, clave })}>
               Quitar
-            </button>
+            </Boton>
           </div>
         </div>
         {adicionales.map((a) => (
-          <p key={a} className="pl-6 pr-2 text-[12.5px] text-[var(--ink-soft)]">
+          <p key={a} className="pl-6 pr-2 text-sm text-tinta-suave">
             {a}
           </p>
         ))}
         {(error || !vista.ok) && (
-          <p id={idError} role="alert" className="px-2 text-[12.5px] text-red-700">
-            {error ?? (vista.ok ? "" : `${vista.mensaje} Quitala y volvé a elegir.`)}
-          </p>
+          <div className="px-2">
+            <Aviso id={idError} variante="error" forma="en-linea">
+              {error ?? (vista.ok ? "" : `${vista.mensaje} Quitala y volvé a elegir.`)}
+            </Aviso>
+          </div>
         )}
       </li>
     );
@@ -250,7 +256,7 @@ export function AgregarItems({
       <fieldset disabled={!puede} title={puede ? undefined : "Tu rol puede ver la mesa pero no tomar pedidos."} className="flex min-w-0 flex-col gap-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <label htmlFor="agregar-producto" className="text-[12.5px] font-semibold">
+            <label htmlFor="agregar-producto" className="text-sm font-semibold">
               Producto
             </label>
             <SelectorProducto
@@ -262,37 +268,35 @@ export function AgregarItems({
               filtro={{ tipo: "PV", soloDisponibles: true }}
               placeholder="Buscar por nombre o código…"
               limpiarSenal={estado.limpiarBuscador}
-              siempreClaro
             />
           </div>
         </div>
         {hayCarta && <SelectorCarta selector={selectorCarta} estado={estado} lista={lista} despachar={despachar} sumar={sumar} abrirPromo={setPromoAbierta} configuraciones={configuraciones} />}
-        {llena && <p className="text-[13px] text-[var(--ink-soft)]">Llegaste al máximo de {MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.</p>}
+        {llena && <p className="text-sm text-tinta-suave">Llegaste al máximo de {MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.</p>}
 
-        <div className="flex flex-col gap-2 rounded-[14px] border border-[var(--border)] bg-[#F1EFEA] p-3">
-          <h2 className="text-[14px] font-bold">Por agregar · {lista.lineas.length + promosPorAgregar.length}</h2>
+        <div className="flex flex-col gap-2 rounded-[14px] border border-borde bg-superficie-suave p-3">
+          <h2 className="text-sm font-bold">Por agregar · {lista.lineas.length + promosPorAgregar.length}</h2>
           {promosPorAgregar.length > 0 && (
-            <ul className="flex flex-col divide-y divide-[var(--border)]">
+            <ul className="flex flex-col divide-y divide-borde">
               {promosPorAgregar.map((p) => (
-                <li key={p.id} data-promo-por-agregar={p.titulo} className="flex items-center justify-between gap-2 bg-[#FFF7E6] px-2 py-2 first:rounded-t-lg">
-                  <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{p.titulo}</span>
-                  <span className="text-[13.5px] tabular-nums">{formatearMonto(p.precio)}</span>
-                  <button
-                    type="button"
-                    className={BOTON_CHICO}
+                <li key={p.id} data-promo-por-agregar={p.titulo} className="flex items-center justify-between gap-2 bg-aviso-tinte px-2 py-2 first:rounded-t-lg">
+                  <span className="min-w-0 flex-1 text-sm font-semibold [overflow-wrap:anywhere]">{p.titulo}</span>
+                  <span className="text-sm tabular-nums">{formatearMonto(p.precio)}</span>
+                  <Boton
+                    variante="secundario" tamano="compacto" className="min-w-11"
                     aria-label={`Quitar ${p.titulo} de la lista`}
                     onClick={() => setPromosPorAgregar((antes) => antes.filter((x) => x.id !== p.id))}
                   >
                     Quitar
-                  </button>
+                  </Boton>
                 </li>
               ))}
             </ul>
           )}
           {lista.lineas.length === 0 && promosPorAgregar.length === 0 ? (
-            <p className="text-[13px] text-[var(--ink-soft)]">Ningún producto elegido todavía: tocá uno de la carta o buscalo por nombre o código.</p>
+            <p className="text-sm text-tinta-suave">Ningún producto elegido todavía: tocá uno de la carta o buscalo por nombre o código.</p>
           ) : lista.lineas.length === 0 ? null : (
-            <ul className="flex flex-col divide-y divide-[var(--border)]">
+            <ul className="flex flex-col divide-y divide-borde">
               {lista.lineas.flatMap((l) => {
                 const p = pediblePorId.get(l.productoId);
                 if (!p) return []; // defensivo: nunca debería faltar (todo pedible sale del mismo selector)
@@ -300,13 +304,13 @@ export function AgregarItems({
                 if (l.clave && l.opciones && conf) return [lineaConOpciones(l.clave, l.opciones, l.cantidad, l.cantidadTexto, l.error, p, conf)];
                 const idError = `error-linea-${l.productoId}`;
                 return [
-                  <li key={l.productoId} data-linea-por-agregar={p.nombre} className="flex flex-col gap-1 bg-white py-2 first:rounded-t-lg last:rounded-b-lg">
+                  <li key={l.productoId} data-linea-por-agregar={p.nombre} className="flex flex-col gap-1 bg-superficie py-2 first:rounded-t-lg last:rounded-b-lg">
                     <div className="flex flex-wrap items-center justify-between gap-2 px-2">
-                      <span className="min-w-0 flex-1 text-[14px] font-semibold [overflow-wrap:anywhere]">{p.nombre}</span>
+                      <span className="min-w-0 flex-1 text-sm font-semibold [overflow-wrap:anywhere]">{p.nombre}</span>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <button type="button" className={BOTON_CHICO} aria-label={`Restar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: l.productoId })}>
+                        <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Restar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "decrementar", productoId: l.productoId })}>
                           −
-                        </button>
+                        </Boton>
                         <input
                           aria-label={`Cantidad de ${p.nombre}`}
                           inputMode="decimal"
@@ -325,29 +329,30 @@ export function AgregarItems({
                           }
                           aria-invalid={l.error ? true : undefined}
                           aria-describedby={l.error ? idError : p.pasoVenta ? `${idError}-ayuda` : undefined}
-                          className={`${CAMPO} w-16 text-center tabular-nums max-md:min-h-11`}
+                          className={CAMPO_CANTIDAD}
                         />
-                        <button type="button" className={BOTON_CHICO} aria-label={`Sumar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: l.productoId })}>
+                        <Boton variante="secundario" tamano="compacto" className="min-w-11" aria-label={`Sumar uno a ${p.nombre}`} onClick={() => despacharLista({ tipo: "incrementar", productoId: l.productoId })}>
                           +
-                        </button>
-                        <span className="w-24 text-right text-[13.5px] tabular-nums">{formatearMonto(l.cantidad * p.precio)}</span>
-                        <button
-                          type="button"
-                          className={BOTON_CHICO}
+                        </Boton>
+                        <span className="w-24 text-right text-sm tabular-nums">{formatearMonto(l.cantidad * p.precio)}</span>
+                        <Boton
+                          variante="secundario" tamano="compacto" className="min-w-11"
                           aria-label={`Quitar ${p.nombre} de la lista`}
                           onClick={() => despacharLista({ tipo: "quitarLinea", productoId: l.productoId })}
                         >
                           Quitar
-                        </button>
+                        </Boton>
                       </div>
                     </div>
                     {l.error ? (
-                      <p id={idError} role="alert" className="px-2 text-[12.5px] text-red-700">
-                        {l.error}
-                      </p>
+                      <div className="px-2">
+                        <Aviso id={idError} variante="error" forma="en-linea">
+                          {l.error}
+                        </Aviso>
+                      </div>
                     ) : (
                       p.pasoVenta && (
-                        <p id={`${idError}-ayuda`} className="px-2 text-[12.5px] text-[var(--ink-soft)]">
+                        <p id={`${idError}-ayuda`} className="px-2 text-sm text-tinta-suave">
                           Se vende de a {formatearCantidad(p.pasoVenta)}.
                         </p>
                       )
@@ -357,15 +362,15 @@ export function AgregarItems({
               })}
             </ul>
           )}
-          <button type="button" className={BOTON_PRIMARIO} disabled={pending || !puedeConfirmar} onClick={confirmar}>
+          <Boton variante="acento" disabled={pending || !puedeConfirmar} onClick={confirmar}>
             {pending ? "Agregando…" : `Agregar ${lista.lineas.length + promosPorAgregar.length} al pedido`}
-          </button>
+          </Boton>
         </div>
       </fieldset>
       {error && (
-        <p role="alert" className="text-[13px] text-red-700">
+        <Aviso variante="error" forma="en-linea">
           {error}
-        </p>
+        </Aviso>
       )}
       {promoAbierta && <ArmarPromo entrada={promoAbierta} onCerrar={() => setPromoAbierta(null)} onConfirmar={confirmarPromo} noSeArman={noSeArmanEnPromo} />}
       {opcionesAbiertas && productoAbierto && configuracionAbierta && (

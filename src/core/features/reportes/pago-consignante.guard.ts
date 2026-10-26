@@ -12,7 +12,8 @@ import type { ComandoRegistrarPagoConsignante } from "./pago-consignante.schema"
  * Puro: sin Prisma ni permisos.
  *
  * Las validaciones (proveedor en blanco, importe con `validarImporte`, formato de la clave I3) son las MISMAS que antes corrían en
- * línea en `registrarPagoConsignante` (`src/server/actions/reportes/consignacion.ts`), con los MISMOS textos.
+ * línea en `registrarPagoConsignante` (`src/server/actions/reportes/consignacion.ts`), con los MISMOS textos. Desde la Fase 2 de la ola «precio y carta» (B1) la
+ * clave es obligatoria: «Falta la clave de reintento: recargá la pantalla.».
  *
  * A diferencia de otros guards de esta fase (que devuelven `entrada` tal cual, sin transformar), ACÁ el `importe` SÍ sale
  * normalizado al valor que devolvió `validarImporte` — el hash I3 (`calcularPayloadHash`, en el caso de uso) se calcula sobre el
@@ -38,15 +39,16 @@ export function guardComandoRegistrarPagoConsignante(entrada: unknown, ahora: Da
   const notasValidas = validarTextoLibre(notas, "Las notas", LARGO_MAXIMO_NOTAS);
   if (!notasValidas.ok) return rechazar(notasValidas.codigo, notasValidas.mensaje);
 
-  if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
-    return rechazar("formato", "Clave de reintento inválida.");
-  }
+  // Ola «precio y carta», Fase 2, paso B1: la clave de reintento es OBLIGATORIA (es dinero: sin ella, un doble envío pagaría dos veces). La pantalla la genera al abrirse;
+  // si no viene es una pantalla vieja o una llamada a mano: se rechaza sin escribir.
+  if (claveIdempotencia === undefined || claveIdempotencia === null || claveIdempotencia === "") return rechazar("vacio", "Falta la clave de reintento: recargá la pantalla.");
+  if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", "Clave de reintento inválida.");
 
   return aceptar({
     proveedorId: proveedorId as string,
     importe: validado.valor!, // obligatorio: nunca null
     fecha: fechaValida.valor,
     notas: notas as string | undefined,
-    claveIdempotencia: claveIdempotencia as string | undefined,
+    claveIdempotencia,
   });
 }

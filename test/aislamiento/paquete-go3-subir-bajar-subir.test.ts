@@ -236,8 +236,8 @@ describe("GO-3a: subir, bajar y subir (combinaciones, con su migración de polí
     for (const t of TABLAS) expect(f.rls.find((r) => r.tabla === t), `${etiqueta}: ${t} con RLS`).toEqual({ tabla: t, rls: true, forzado: false });
     for (const t of ["PrecioLocalDeCombinacion", "CombinacionEnLinea"]) expect(f.politicas.filter((p) => p.tabla === t).length, `${etiqueta}: ${t} con 5 políticas`).toBe(5);
     expect(await q(`SELECT "ejeDeCombinacion" FROM "ProductoAdmiteGrupo" WHERE "id" = 'pag_go3'`), `${etiqueta}: el grupo admitido de antes quedó sin eje`).toEqual([{ ejeDeCombinacion: null }]);
-    // GO-3b: la clave ya está en ACCIONES (con la descripción de la migración); dejó de estar reservada en la base.
-    expect(ACCIONES.find((a) => a.clave === "grupos_de_precio_definir"), "la clave de GO-3a").toMatchObject({ descripcion: "Definir las tarifas compartidas (grupos de precio) de las combinaciones", contexto: "empresa", nivelMinimo: "administrador" });
+    // GO-3b la sumó a ACCIONES; la Fase 3 de la ola «precio y carta» la RETIRÓ del código con GO-3a (la base la conserva hasta la migración de retiro): ni en ACCIONES ni reservada.
+    expect(ACCIONES.find((a) => (a.clave as string) === "grupos_de_precio_definir"), "la clave de GO-3a").toBeUndefined();
     expect("grupos_de_precio_definir" in RESERVADAS_EN_BASE).toBe(false);
     expect(await q(`SELECT "rolId" FROM "PermisoRol" WHERE "accionClave" = 'grupos_de_precio_definir'`), `${etiqueta}: solo el admin`).toEqual([{ rolId: "rol_admin_go3" }]);
     await comoApp({ lectura: "suc_a", escritura: "suc_a" }, async (c) => {

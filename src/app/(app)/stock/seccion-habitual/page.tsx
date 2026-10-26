@@ -8,6 +8,8 @@ import { listarSeccionesHabituales } from "@/server/actions/stock/seccion-habitu
 import { SeccionHabitualForm } from "./seccion-habitual-form";
 import { BotonQuitarSeccionHabitual } from "./boton-quitar";
 import { IconoDeAccion } from "@/components/iconos";
+import { claseDeBoton } from "@/ui/primitivas/boton";
+import { Enlace } from "@/ui/primitivas/enlace";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
 /**
@@ -19,10 +21,10 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "stock_seccion_habitual", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { editar } = unicosDeUrl(await searchParams);
   const [filas, secciones] = await Promise.all([listarSeccionesHabituales(ctx.sucursalId), listarSeccionesActivas(ctx.sucursalId)]);
@@ -32,13 +34,13 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
       <div>
         <h1 className="mb-2 text-xl font-semibold">Sección habitual</h1>
-        <p className="mb-4 max-w-prose text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="mb-4 max-w-prose text-sm text-tinta-suave">
           Al cerrar una cuenta del salón, cada producto se descuenta primero de su sección habitual; si ahí no alcanza, de otra sección con stock
           (la que vence antes). Un producto sin sección habitual sale directamente de donde haya stock.
         </p>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b text-left text-neutral-500 dark:text-neutral-400">
+            <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Producto</th>
               <th>Sección habitual</th>
               <th><span className="sr-only">Acciones</span></th>
@@ -52,7 +54,7 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
                 <td>
                   {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    <Link href={`/stock/seccion-habitual?editar=${f.id}`} className="text-sm underline inline-flex items-center gap-1">
+                    <Link href={`/stock/seccion-habitual?editar=${f.id}`} className={claseDeBoton("enlace", "en-fila")}>
                       <IconoDeAccion id="editar" />
                       Editar
                     </Link>
@@ -63,14 +65,14 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
             ))}
           </tbody>
         </table>
-        {!filas.length && <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">Ningún producto tiene sección habitual en «{ctx.sucursalNombre}».</p>}
+        {!filas.length && <p className="mt-3 text-sm text-tinta-suave">Ningún producto tiene sección habitual en «{ctx.sucursalNombre}».</p>}
       </div>
 
       <div>
         {filaEnEdicion && (
-          <Link href="/stock/seccion-habitual" className="mb-2 inline-block text-sm underline">
-            ← Cancelar edición
-          </Link>
+          <p className="mb-2 text-sm">
+            <Enlace href="/stock/seccion-habitual">← Cancelar edición</Enlace>
+          </p>
         )}
         <SeccionHabitualForm
           key={filaEnEdicion?.id ?? "nuevo"}

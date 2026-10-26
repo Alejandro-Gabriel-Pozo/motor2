@@ -5,6 +5,9 @@ import { useState, useTransition } from "react";
 import { setStockMinimoProducto } from "@/server/actions/stock/stock-minimo";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
+import { Selector } from "@/ui/primitivas/selector";
 
 export interface FilaStockMinimoEnEdicion {
   productoId: string;
@@ -67,28 +70,29 @@ export function StockMinimoForm({
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Sección (opcional — vacío = mínimo global de toda la sucursal)
-        <select value={seccionId} onChange={(e) => setSeccionId(e.target.value)} className="rounded border px-3 py-2">
-          <option value="">Global</option>
-          {secciones.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Selector etiqueta="Sección (opcional — vacío = mínimo global de toda la sucursal)" value={seccionId} onChange={(e) => setSeccionId(e.target.value)}>
+        <option value="">Global</option>
+        {secciones.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nombre}
+          </option>
+        ))}
+      </Selector>
 
       <label className="flex flex-col gap-1 text-sm">
         Mínimo
-        <CampoNumero value={minimo} onChange={setMinimo} required />
+        <CampoNumero tipo="cantidad" value={minimo} onChange={setMinimo} required />
       </label>
 
-      {mensaje && <p className={`text-sm ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+      {mensaje && (
+        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
+      )}
 
-      <button type="submit" disabled={pending} className="self-start rounded bg-neutral-900 px-4 py-2 text-white disabled:opacity-50">
+      <Boton type="submit" disabled={pending} className="self-start">
         {pending ? "Guardando..." : "Guardar"}
-      </button>
+      </Boton>
     </form>
   );
 }

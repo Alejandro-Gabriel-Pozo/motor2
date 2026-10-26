@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useAvisoConDeshacer } from "@/components/aviso-con-deshacer";
 import type { MenuDelDiaDeLaSucursal } from "@/core/carta/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Boton } from "@/ui/primitivas/boton";
+import { Selector } from "@/ui/primitivas/selector";
 
 const DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 /** «hoy», «mañana» o «jueves 16/10». */
@@ -51,7 +53,7 @@ export function MenuDelDia({
             key={d}
             href={`/movimientos/menu-del-dia?fecha=${d}`}
             aria-current={d === datos.fecha ? "date" : undefined}
-            className="min-h-[44px] rounded-full border px-3 py-2 text-sm aria-[current=date]:border-[var(--brand,#1f2937)] aria-[current=date]:font-semibold"
+            className="min-h-[44px] rounded-full border px-3 py-2 text-sm aria-[current=date]:border-marca aria-[current=date]:font-semibold"
           >
             {nombreDelDia(d, datos.hoy)}
           </Link>
@@ -60,15 +62,15 @@ export function MenuDelDia({
 
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-lg font-medium">Platos de {nombreDelDia(datos.fecha, datos.hoy)}</h2>
-        <button
-          type="button"
+        <Boton
+          variante="secundario"
+          tamano="tactil"
           disabled={!puedeCambiar || pendiente || !datos.hayDiaAnterior}
           title={sinPermiso ?? (datos.hayDiaAnterior ? undefined : "El día anterior no tiene platos cargados.")}
           onClick={() => ejecutar(() => copiar(datos.fecha), null)}
-          className="min-h-[44px] rounded border px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
         >
           Copiar el día anterior
-        </button>
+        </Boton>
       </div>
 
       {datos.lugares.map((l) => {
@@ -76,42 +78,40 @@ export function MenuDelDia({
         return (
           <section key={l.cupoId} aria-labelledby={`lugar-${l.cupoId}`} className="flex flex-col gap-3 rounded border p-3" data-lugar-del-dia={l.nombre}>
             <h3 id={`lugar-${l.cupoId}`} className="font-medium">
-              {l.nombre} <span className="text-sm font-normal text-neutral-600 dark:text-neutral-400">· {l.promoTitulo}</span>
+              {l.nombre} <span className="text-sm font-normal text-tinta-suave">· {l.promoTitulo}</span>
             </h3>
-            {!l.ofrecidaAca && <p className="text-xs text-amber-700 dark:text-amber-600">Esta promo no está prendida en esta sucursal: el plato queda cargado, pero el salón no la ofrece hasta que la prendan.</p>}
+            {!l.ofrecidaAca && <p className="text-xs text-aviso-tinta">Esta promo no está prendida en esta sucursal: el plato queda cargado, pero el salón no la ofrece hasta que la prendan.</p>}
             {l.platos.length === 0 ? (
-              <p className="text-sm text-neutral-600 dark:text-neutral-400">Sin plato cargado: ese día no se puede vender este menú.</p>
+              <p className="text-sm text-tinta-suave">Sin plato cargado: ese día no se puede vender este menú.</p>
             ) : (
               <ul className="flex flex-col divide-y">
                 {l.platos.map((p) => (
                   <li key={p.platoId} className="flex items-center justify-between gap-2 py-2" data-plato-del-dia={p.nombre}>
                     <span className="text-sm">{p.nombre}</span>
-                    <button
-                      type="button"
+                    <Boton
+                      variante="secundario"
+                      tamano="tactil"
                       disabled={!puedeCambiar || pendiente}
                       title={sinPermiso}
                       onClick={() => ejecutar(() => quitar(p.platoId), () => agregar(l.cupoId, p.productoId, datos.fecha))}
                       aria-label={`Quitar ${p.nombre} de ${l.nombre}`}
-                      className="min-h-[44px] rounded border px-3 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Quitar
-                    </button>
+                    </Boton>
                   </li>
                 ))}
               </ul>
             )}
             <div className="flex flex-wrap items-end gap-2">
               {/* MOVIL: con el nombre de un plato largo el <select> (hasta 20 rem) se salía de la tarjeta a 375 px: en el celular ocupa el ancho de la tarjeta y no más. */}
-              <div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto">
-                <label htmlFor={idSelect} className="text-sm font-medium">
-                  Agregar un plato
-                </label>
-                <select
+              <div className="w-full min-w-0 sm:w-auto">
+                <Selector
                   id={idSelect}
+                  etiqueta="Agregar un plato"
                   value={elegidos[l.cupoId] ?? ""}
                   onChange={(e) => setElegidos((antes) => ({ ...antes, [l.cupoId]: e.target.value }))}
                   disabled={!puedeCambiar}
-                  className="min-h-[44px] w-full min-w-0 max-w-xs rounded border px-3 py-2"
+                  className="min-w-0 max-w-xs"
                 >
                   <option value="">Elegí un producto…</option>
                   {disponibles.map((c) => (
@@ -128,17 +128,16 @@ export function MenuDelDia({
                       ))}
                     </optgroup>
                   )}
-                </select>
+                </Selector>
               </div>
-              <button
-                type="button"
+              <Boton
+                tamano="tactil"
                 disabled={!puedeCambiar || pendiente || !elegidos[l.cupoId]}
                 title={sinPermiso}
                 onClick={() => ejecutar(() => agregar(l.cupoId, elegidos[l.cupoId]!, datos.fecha), null)}
-                className="min-h-[44px] rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900"
               >
                 Agregar
-              </button>
+              </Boton>
             </div>
           </section>
         );

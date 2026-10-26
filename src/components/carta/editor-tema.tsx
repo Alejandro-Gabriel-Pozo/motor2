@@ -6,6 +6,9 @@ import { clasesFuentesCarta } from "@/components/carta-publica/fuente-carta";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { resolverEstiloCarta, CLAVES_TEMA_V1, validarValorTema, ZONAS_TEMA, type DefinicionClaveTema } from "@/core/carta/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Boton } from "@/ui/primitivas/boton";
+import { Campo } from "@/ui/primitivas/campo";
+import { Selector } from "@/ui/primitivas/selector";
 import { CampoColor } from "./campo-color";
 import { CARTA_EJEMPLO } from "./carta-ejemplo";
 
@@ -24,15 +27,13 @@ export function EditorTema({ valoresIniciales, version, accion }: { valoresInici
     <FormConResultado accion={accion} className="flex flex-col gap-4">
       <CuerpoEditor key={version} valoresIniciales={valoresIniciales} />
       <div>
-        <button type="submit" className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white max-md:min-h-11">
+        <Boton type="submit" tamano="compacto">
           Guardar tema
-        </button>
+        </Boton>
       </div>
     </FormConResultado>
   );
 }
-
-const CLASE_INPUT = "rounded border px-2 py-1 max-md:min-h-11 max-md:text-base";
 
 function leerValores(form: HTMLFormElement): Record<string, string> {
   const fd = new FormData(form);
@@ -58,11 +59,11 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
             return (
               <details key={zona} open={i === 0} className="rounded border p-3" data-zona-tema={zona}>
                 <summary className="cursor-pointer text-sm font-medium">
-                  {zona} <span className="font-normal text-neutral-500">({cargados} de {campos.length} cargados)</span>
+                  {zona} <span className="font-normal text-tinta-tenue">({cargados} de {campos.length} cargados)</span>
                 </summary>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {campos.map((d) => (
-                    <Campo key={d.clave} d={d as DefinicionClaveTema} inicial={valoresIniciales[d.clave] ?? ""} actual={valores[d.clave] ?? ""} />
+                    <CampoDeClave key={d.clave} d={d as DefinicionClaveTema} inicial={valoresIniciales[d.clave] ?? ""} actual={valores[d.clave] ?? ""} />
                   ))}
                 </div>
               </details>
@@ -77,7 +78,7 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
           <div className={`carta-shell ${clasesFuentesCarta} overflow-hidden rounded border`} data-vista-previa-tema>
             <CartaVista carta={CARTA_EJEMPLO} estilo={estilo} embebida />
           </div>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-tinta-tenue">
             Es la carta real con datos de ejemplo (portada, índice y dos secciones): se recorre con las flechas o tocando el índice. La altura de la banda de cada sección
             (medida en <code>vh</code>) se calcula con la ventana del navegador, no con el alto de este recuadro.
           </p>
@@ -112,69 +113,54 @@ const AYUDA: Partial<Record<DefinicionClaveTema["tipo"], string>> = {
   telefono: "Con código de país: +54 9 294 123-4567.",
 };
 
-function Campo({ d, inicial, actual }: { d: DefinicionClaveTema; inicial: string; actual: string }) {
+function CampoDeClave({ d, inicial, actual }: { d: DefinicionClaveTema; inicial: string; actual: string }) {
   const id = `tema-${d.clave}`;
   const r = actual.trim() ? validarValorTema(d.clave, actual) : null;
-  const error = r && !r.ok ? r.mensaje : null;
+  const error = r && !r.ok ? `No es válido: ${r.mensaje}.` : undefined;
   const ayuda = AYUDA[d.tipo];
-  const describedBy = [ayuda ? `${id}-ayuda` : null, error ? `${id}-error` : null].filter(Boolean).join(" ") || undefined;
   const placeholder = d.defaultCarta || "default de la carta";
-  const comun = { id, name: d.clave, defaultValue: inicial, "aria-invalid": error ? true : undefined, "aria-describedby": describedBy } as const;
+  // Lo que cada control lleva igual: el rótulo, la ayuda y el error los dibuja la primitiva (atados con `aria-describedby`).
+  const comun = { id, name: d.clave, defaultValue: inicial, etiqueta: d.etiqueta, ayuda, error } as const;
 
   let control: React.ReactNode;
   switch (d.tipo) {
     case "color":
     case "colorHeroInk":
     case "colorHex":
-      control = <CampoColor comun={comun} etiqueta={d.etiqueta} inicial={inicial} placeholder={placeholder} />;
+      control = <CampoColor id={id} name={d.clave} inicial={inicial} etiqueta={d.etiqueta} placeholder={placeholder} ayuda={ayuda} error={error} />;
       break;
     case "enum":
       control = (
-        <select {...comun} className={CLASE_INPUT}>
+        <Selector {...comun}>
           <option value="">(default de la carta: {ETIQUETAS_OPCION[d.defaultCarta] ?? d.defaultCarta})</option>
           {d.opciones.map((o) => (
             <option key={o} value={o}>
               {ETIQUETAS_OPCION[o] ?? o}
             </option>
           ))}
-        </select>
+        </Selector>
       );
       break;
     case "porcentaje":
-      control = <input {...comun} type="number" min={0} max={100} step="0.01" placeholder={placeholder} className={CLASE_INPUT} />;
+      control = <Campo {...comun} type="number" min={0} max={100} step="0.01" placeholder={placeholder} />;
       break;
     case "opacidad":
-      control = <input {...comun} type="number" min={1} max={100} step={1} placeholder={placeholder} className={CLASE_INPUT} />;
+      control = <Campo {...comun} type="number" min={1} max={100} step={1} placeholder={placeholder} />;
       break;
     case "texto":
-      control = <input {...comun} type="text" maxLength={d.maximo} placeholder={placeholder} className={CLASE_INPUT} />;
+      control = <Campo {...comun} type="text" maxLength={d.maximo} placeholder={placeholder} />;
       break;
     case "urlHttps":
     case "imagen":
       // Texto con teclado de URL (y no type="url"): la validación nativa trabaría el envío por un campo escondido en un <details> cerrado.
-      control = <input {...comun} type="text" inputMode="url" placeholder="https://…" className={CLASE_INPUT} />;
+      control = <Campo {...comun} type="text" inputMode="url" placeholder="https://…" />;
       break;
     case "telefono":
-      control = <input {...comun} type="tel" placeholder={placeholder} className={CLASE_INPUT} />;
+      control = <Campo {...comun} type="tel" placeholder={placeholder} />;
       break;
     default:
-      control = <input {...comun} type="text" placeholder={placeholder} className={`${CLASE_INPUT} font-mono text-sm`} />;
+      control = <Campo {...comun} type="text" placeholder={placeholder} />;
   }
 
-  return (
-    <div className="flex flex-col gap-1 text-sm" data-campo-tema={d.clave}>
-      <label htmlFor={id}>{d.etiqueta}</label>
-      {control}
-      {ayuda && (
-        <p id={`${id}-ayuda`} className="text-xs text-neutral-500">
-          {ayuda}
-        </p>
-      )}
-      {error && (
-        <p id={`${id}-error`} className="text-xs text-red-600">
-          No es válido: {error}.
-        </p>
-      )}
-    </div>
-  );
+  return <div data-campo-tema={d.clave}>{control}</div>;
 }

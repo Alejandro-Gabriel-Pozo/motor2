@@ -50,7 +50,7 @@ export async function cargarProductosComoComponentes(
   const opciones = await cargarOpcionesParaVender(tx, { sucursalId: args.sucursalId, productoIds: ids });
   return new Map(
     productos.map((p) => {
-      const admite = opciones.get(p.id) ?? { grupos: [], anclaDeOpcionId: null };
+      const admite = opciones.get(p.id) ?? { grupos: [], anclaDeOpcionId: null, esBase: false };
       return [
         p.id,
         {

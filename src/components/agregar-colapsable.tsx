@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Boton } from "@/ui/primitivas/boton";
 
 /**
  * Antes los formularios "Agregar X" quedaban siempre abiertos, cortando
@@ -17,18 +18,18 @@ export function AgregarColapsable({ etiqueta, children }: { etiqueta: string; ch
 
   if (!abierto) {
     return (
-      <button type="button" onClick={() => setAbierto(true)} className="self-start text-sm underline">
+      <Boton variante="enlace" tamano="en-fila" onClick={() => setAbierto(true)} className="self-start">
         + {etiqueta}
-      </button>
+      </Boton>
     );
   }
 
   return (
     <div className="flex flex-col gap-2">
       {children}
-      <button type="button" onClick={() => setAbierto(false)} className="self-start text-xs text-neutral-500 underline dark:text-neutral-400">
+      <Boton variante="enlace" tamano="en-fila" onClick={() => setAbierto(false)} className="self-start">
         Cerrar
-      </button>
+      </Boton>
     </div>
   );
 }

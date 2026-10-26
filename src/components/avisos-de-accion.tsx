@@ -2,6 +2,8 @@
 
 import { createContext, use, useRef, useState, useTransition, type ReactNode } from "react";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 
 type Publicar = (resultado: ResultadoAccion | null) => void;
 
@@ -13,8 +15,8 @@ const ContextoDeAvisos = createContext<Publicar | null>(null);
  * un `<form action>` crudo descartaba.
  *
  * El aviso va FIJO en la pantalla (no en el flujo): así no empuja la tabla justo bajo el cursor al aparecer y se ve aunque la celda tocada esté
- * lejos del tope. Se cierra a mano y se reemplaza con la acción siguiente. Lleva role="alert" (error) o "status" (ok) para que un lector de
- * pantalla lo anuncie.
+ * lejos del tope. Se cierra a mano y se reemplaza con la acción siguiente. El mensaje es un `Aviso` (role="alert" si es un error, "status" si salió bien: sale de su variante) para que un lector de
+ * pantalla lo anuncie; «Cerrar» queda afuera del aviso, así no se anuncia con él.
  *
  * `className` va al contenedor de la pantalla (que así no necesita un `<div>` extra). El aviso se renderiza ANTES que el contenido a propósito:
  * si el contenedor usa `space-y-*`, un hijo fijo al FINAL le daría margen inferior al contenido y lo movería al aparecer.
@@ -26,13 +28,13 @@ export function AvisosDeAccion({ children, className }: { children: ReactNode; c
     <ContextoDeAvisos.Provider value={setResultado}>
       <div className={className}>
         {resultado && (
-          <div className="fixed bottom-4 left-1/2 z-50 flex max-w-md -translate-x-1/2 items-start gap-3 rounded border bg-background px-4 py-3 text-sm shadow-lg">
-            <p role={resultado.ok ? "status" : "alert"} className={resultado.ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+          <div className="fixed bottom-4 left-1/2 z-50 flex max-w-md -translate-x-1/2 items-start gap-2 rounded border border-borde bg-superficie p-2 shadow-lg shadow-sombra">
+            <Aviso variante={resultado.ok ? "exito" : "error"} forma="caja" className="flex-1">
               {resultado.mensaje}
-            </p>
-            <button type="button" onClick={() => setResultado(null)} className="underline">
+            </Aviso>
+            <Boton variante="enlace" tamano="chico" onClick={() => setResultado(null)}>
               Cerrar
-            </button>
+            </Boton>
           </div>
         )}
         {children}

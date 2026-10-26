@@ -9,7 +9,7 @@ import { IconoAyuda } from "@/components/iconos";
  * campo. Ver docs/comparativa-ux-erpnext-dolibarr.md §6.
  */
 export function AyudaCampo({ children }: { children: React.ReactNode }) {
-  return <p className="-mt-1 text-xs text-neutral-500">{children}</p>;
+  return <p className="-mt-1 text-xs text-tinta-tenue">{children}</p>;
 }
 
 /**
@@ -22,7 +22,7 @@ export function AyudaCampo({ children }: { children: React.ReactNode }) {
  */
 export function AyudaIcono({ texto }: { texto: string }) {
   return (
-    <span tabIndex={0} role="img" title={texto} className="ml-1 inline-flex h-4 w-4 cursor-help items-center justify-center text-neutral-500">
+    <span tabIndex={0} role="img" title={texto} className="ml-1 inline-flex h-4 w-4 cursor-help items-center justify-center text-tinta-tenue">
       <IconoAyuda />
     </span>
   );

@@ -1,9 +1,10 @@
 # Gate de verificación en CI: los mismos 8 comandos que AGENTS.md exige correr limpios en la misma corrida, más la auditoría de dependencias (GT-23).
-#   estático    → tsc, lint, arquitectura (dependency-cruiser), código muerto (knip), auditar:dependencias
+#   estático    → tsc, lint, arquitectura (dependency-cruiser + evidencia de los contratos, que sube como artefacto), código muerto (knip), auditar:dependencias
 #   build       → npm run build + npm run plataforma:build (con su propia base migrada)
 #   integración → npm test (Vitest contra Postgres real), repartido en PARTES_VITEST jobs con `--shard`
 #   conteo      → comprueba que las partes juntas corrieron todos los archivos de test una sola vez y suma los conteos
-#   e2e         → npm run test:e2e (Playwright, servidor de producción)
+#   e2e         → npm run test:e2e (Playwright, servidor de producción), repartido en PARTES_E2E jobs con `--shard`
+#   conteo-e2e  → comprueba que las partes del E2E juntas corrieron todos los specs una sola vez y suma los conteos
 # El job `gate` es el ÚNICO que hay que marcar como requerido en la protección de rama / Vercel Deployment Checks: falla si cualquiera
 # de los otros no terminó en verde (un job omitido o cancelado también lo hace fallar).
 # No usa secretos: las bases son un Postgres descartable del propio runner y las claves de abajo son de ese contenedor, no de ningún entorno real.
@@ -40,7 +41,11 @@ env:
   AUTH_GOOGLE_SECRET: ci-google-secret
   # En cuántas partes se reparte Vitest (tiene que coincidir con la lista de `matrix.parte` del job `integracion`: un paso de control lo comprueba contra `strategy.job-total`, y el job `conteo`
   # exige exactamente esta cantidad de resultados).
-  PARTES_VITEST: "4"
+  PARTES_VITEST: "8"
+  # En cuántas partes se reparte Playwright (tiene que coincidir con la lista de `matrix.parte` del job `e2e`: un paso de control lo comprueba contra `strategy.job-total`, y el job `conteo-e2e` exige
+  # exactamente esta cantidad de resultados). Playwright reparte por ARCHIVO de spec (con `fullyParallel` falso un archivo nunca se parte) y en bloques contiguos por cantidad de pruebas;
+  # un spec enorme (`maquetacion-general`, 138 pruebas baratas) no se parte, así que con más de 7 partes alguna queda vacía. Cambiar la cantidad es esta variable y la lista de la matriz del job `e2e` (el resto se deriva).
+  PARTES_E2E: "7"
 
 jobs:
   estatico:
@@ -68,7 +73,20 @@ jobs:
       - run: npm run lint
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+      # `npm run arquitectura` = dependency-cruiser + el EJECUTOR DE EVIDENCIA de los contratos (`test/arquitectura/contratos/ejecutar.ts`, con tsx y sin Vitest: el camino B del guardián). Escribe en
+      # `CONTRATOS_EVIDENCIA` el JSON de lo que corrió y cubrió, y el resumen en el `GITHUB_STEP_SUMMARY` de la corrida; falla si el guardián pasó en vacío (ver `test/arquitectura/contratos/LEEME.md`).
+      # `CONTRATOS_EVIDENCIA` no cambia lo que hace ningún guardián: solo dice adónde se escribe lo ya calculado.
       - run: npm run arquitectura
+        env:
+          CONTRATOS_EVIDENCIA: resultado-contratos.json
+      # La evidencia queda como artefacto de la corrida. Sin `if` ni `continue-on-error`, y con `if-no-files-found: error`: si el ejecutor no la dejó, este paso falla (y `cumplimiento.ts` exige que el paso exista).
+      - name: Evidencia de contratos (artefacto)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: resultado-contratos
+          path: resultado-contratos.json
+          if-no-files-found: error
+          retention-days: 7
       - run: npm run analizar:muerto
       # Cadena de suministro (GT-23, E.7): falla ante un aviso alto o crítico de las dependencias de producción que no tenga una excepción vigente en
       # `scripts/auditoria-dependencias-excepciones.ts`. Consulta el registro de npm: depende de la red y de avisos nuevos, a propósito (un aviso nuevo pone rojo el Gate).
@@ -138,7 +156,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        parte: [1, 2, 3, 4]
+        parte: [1, 2, 3, 4, 5, 6, 7, 8]
     services:
       postgres:
         image: postgres:17
@@ -294,10 +312,16 @@ jobs:
           if (errores.length) process.exit(1);
           EOF
 
+  # Playwright repartido en partes (`--shard=i/n`), igual que Vitest: cada parte es un job con SU Postgres, SU base migrada y SU build de la app (por eso los puertos y las bases del config no chocan entre partes). El job
+  # `conteo-e2e` comprueba después que las partes juntas corrieron todos los specs una sola vez. Cada parte sigue con 1 worker (`playwright.config.ts`): el reparto es entre jobs, no dentro de uno.
   e2e:
-    name: E2E (Playwright)
+    name: E2E (Playwright, parte ${{ matrix.parte }} de ${{ strategy.job-total }})
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        parte: [1, 2, 3, 4, 5, 6, 7]
     services:
       postgres:
         image: postgres:17
@@ -327,6 +351,9 @@ jobs:
       MOTOR2_E2E_B_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_b_e2e
       MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_b_e2e
     steps:
+      # Control: la lista de `matrix.parte` y PARTES_E2E dicen lo mismo. Si no, `--shard=i/n` repartiría en otra cantidad de partes que las que `conteo-e2e` espera y habría specs sin correr. Va primero: falla en segundos.
+      - name: Control de la cantidad de partes
+        run: test "${{ strategy.job-total }}" = "$PARTES_E2E"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -353,32 +380,15 @@ jobs:
       - name: Rol de pruebas (privilegios al día tras migrar)
         run: psql -d postgres -v ON_ERROR_STOP=1 -v solo_pruebas=1 -v clave_pruebas="$CLAVE_PRUEBAS" -f scripts/operaciones/crear-rol-motor2-app.sql
       - run: npx playwright install --with-deps chromium
+      # `--shard=i/n` reparte los archivos de spec entre las partes. El JSON de Playwright (`resultado-playwright.json`, reporter agregado en playwright.config.ts) lo junta `conteo-e2e`.
       - name: npm run test:e2e
-        run: npm run test:e2e
-      # Línea de base del reparto del CI: el JSON de Playwright (`resultado-playwright.json`, reporter agregado en playwright.config.ts) trae las cuatro cuentas en `stats`.
-      - name: Conteo (línea de base)
-        if: always()
-        run: |
-          node - <<'EOF'
-          const fs = require("node:fs");
-          if (!fs.existsSync("resultado-playwright.json")) { console.log("No hay resultado-playwright.json: la corrida de Playwright no llegó a escribirlo."); process.exit(0); }
-          const s = JSON.parse(fs.readFileSync("resultado-playwright.json", "utf8")).stats ?? {};
-          const texto = [
-            "## Conteo de Playwright (línea de base, un solo runner)",
-            "- total: " + (s.expected + s.unexpected + s.flaky + s.skipped),
-            "- pasados: " + s.expected,
-            "- salteados: " + s.skipped,
-            "- flaky (pasaron en el reintento): " + s.flaky,
-            "- fallados: " + s.unexpected,
-          ].join("\n");
-          console.log(texto);
-          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, texto + "\n");
-          EOF
+        run: npm run test:e2e -- --shard=${{ matrix.parte }}/${{ strategy.job-total }}
+      # El resultado de ESTA parte, para que `conteo-e2e` junte todas. `if-no-files-found: ignore`: si la parte no llegó a escribirlo, `conteo-e2e` falla por la cantidad de resultados (y lo dice).
       - name: Resultado de Playwright (artefacto)
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: resultado-playwright
+          name: resultado-playwright-${{ matrix.parte }}
           path: resultado-playwright.json
           if-no-files-found: ignore
           retention-days: 7
@@ -386,18 +396,53 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: playwright-test-results
+          name: playwright-test-results-${{ matrix.parte }}
           path: test-results/
           if-no-files-found: ignore
           retention-days: 7
 
+  # Comprueba que el reparto no perdió ni duplicó nada (lógica y chequeos en `scripts/conteo-e2e-reparto.ts`, con sus pruebas): exactamente PARTES_E2E resultados, ningún spec en dos partes, ninguno de `playwright test --list`
+  # sin correr, las mismas pruebas que la lista entera, nada fallado; suma las cuatro cuentas de siempre (pasados, salteados, flaky, fallados) y calcula la huella. `--list` no corre nada ni toca la base: solo carga la config y
+  # los specs, por eso lleva las mismas URLs de relleno que el job `e2e` (la config valida su forma al cargarse; no hay base en este job).
+  conteo-e2e:
+    name: Conteo de E2E (todas las partes)
+    needs: [e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MOTOR2_E2E_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_PRUEBAS_DATABASE_URL: postgresql://motor2_app_pruebas:ci-pruebas-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_e2e
+      MOTOR2_E2E_B_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_b_e2e
+      MOTOR2_E2E_B_PLATAFORMA_DATABASE_URL: postgresql://motor2_plataforma:ci-plataforma-descartable@localhost:5432/motor2_b_e2e
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: resultado-playwright-*
+          path: partes-e2e
+          merge-multiple: false
+      - name: Lista de specs de la suite entera (sin correr nada)
+        run: npx playwright test --list --reporter=json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: lista-playwright.json
+      - name: Conteo y chequeos del reparto
+        run: npx tsx scripts/conteo-e2e.ts partes-e2e lista-playwright.json "$PARTES_E2E"
+
   gate:
     name: Gate (requerido)
     if: always()
-    needs: [estatico, build, integracion, conteo, e2e]
+    needs: [estatico, build, integracion, conteo, e2e, conteo-e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Todos los jobs terminaron en verde
         run: |
-          echo "estatico=${{ needs.estatico.result }} build=${{ needs.build.result }} integracion=${{ needs.integracion.result }} conteo=${{ needs.conteo.result }} e2e=${{ needs.e2e.result }}"
-          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.build.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.conteo.result }}" = "success" -a "${{ needs.e2e.result }}" = "success"
+          echo "estatico=${{ needs.estatico.result }} build=${{ needs.build.result }} integracion=${{ needs.integracion.result }} conteo=${{ needs.conteo.result }} e2e=${{ needs.e2e.result }} conteo-e2e=${{ needs.conteo-e2e.result }}"
+          test "${{ needs.estatico.result }}" = "success" -a "${{ needs.build.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.conteo.result }}" = "success" -a "${{ needs.e2e.result }}" = "success" -a "${{ needs.conteo-e2e.result }}" = "success"

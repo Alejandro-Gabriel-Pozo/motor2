@@ -31,7 +31,7 @@ const COLUMNAS_STOCK_BAJO: ColumnaReporte<FilaStockBajo>[] = [
     etiqueta: "Saldo",
     alinear: "derecha",
     valor: (s) => s.saldo,
-    render: (s) => <span className={s.saldo < 0 ? "text-red-600" : ""}>{s.saldo}</span>,
+    render: (s) => <span className={s.saldo < 0 ? "text-error" : ""}>{s.saldo}</span>,
   },
 ];
 

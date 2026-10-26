@@ -108,7 +108,7 @@ describe("guards: topes de texto y de listas", () => {
   });
 
   it("pago a consignante: tope de notas", () => {
-    const base = { proveedorId: "p", importe: 10, fecha: new Date() };
+    const base = { proveedorId: "p", importe: 10, fecha: new Date(), claveIdempotencia: "11111111-1111-4111-8111-111111111111" };
     expect(guardComandoRegistrarPagoConsignante({ ...base, notas: largo(LARGO_MAXIMO_NOTAS) }, AHORA_DE_LA_CORRIDA).ok).toBe(true);
     expect(guardComandoRegistrarPagoConsignante({ ...base, notas: largo(LARGO_MAXIMO_NOTAS + 1) }, AHORA_DE_LA_CORRIDA)).toMatchObject({ ok: false, codigo: "largo" });
   });

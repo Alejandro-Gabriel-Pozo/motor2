@@ -24,6 +24,7 @@
 
 import { aplicarDescuentoDeProducto } from "./descuento-producto";
 import { opcionesParaLaCarta, type GrupoCartaV1, type OpcionesSinCostoCartaV1, type ResumenDePreciosParaCarta } from "./opciones-en-carta";
+import { FILAS_SUGERIDAS_EN_CARTA, presentacionDelProducto, resolverTandas, type PendienteDeTanda, type PresentacionCartaV1, type TablaDePreciosParaCarta, type TandaCartaV1 } from "./presentacion-en-carta";
 
 export interface ItemCartaV1 {
   productoId: string;
@@ -74,6 +75,12 @@ export interface ItemCartaV1 {
    * «ninguna» y lo agotado no salen. Un ítem sin ninguna no lleva esta clave: su JSON queda igual que antes. Campo aditivo de la v1: `version` no cambia.
    */
   opcionesSinCosto?: OpcionesSinCostoCartaV1[];
+  /**
+   * Fase 5 («carta pareja», `presentacion-en-carta.ts`): SOLO en un PV con opciones que hoy se puede pedir y cuya forma la carta puede leer con el precio exacto: cómo se lee (simple, una fila de una
+   * tanda de columnas, tabla de dos ejes o lista), con el precio de cada celda ya resuelto por la regla de la venta y las aclaraciones debajo del plato. Un ítem sin opciones no lleva esta clave (su JSON
+   * queda igual que antes). Mientras conviva con `grupos`/`opcionesSinCosto`, quien dibuja cae a esos si falta. Campo aditivo de la v1: `version` no cambia. `precio` sigue siendo el «desde».
+   */
+  presentacion?: PresentacionCartaV1;
 }
 
 /** Una opción (un PV real) dentro de un ítem agrupado de la carta. */
@@ -103,6 +110,8 @@ export interface SeccionCartaV1 {
   orden: number;
   items: ItemCartaV1[];
   promos: PromoCartaV1[];
+  /** Fase 5: SOLO si hay alguna: los ítems consecutivos (por índice en `items`) que comparten columnas (Chico | Mediano | Grande). Una sección sin tandas no lleva la clave. */
+  tandas?: TandaCartaV1[];
 }
 
 export interface CartaV1 {
@@ -111,6 +120,11 @@ export interface CartaV1 {
   generadoEn: string;
   sucursal: { id: string; nombre: string };
   secciones: SeccionCartaV1[];
+  /**
+   * Fase 5, paso 10b (DEC-20): SOLO si hoy hay algo agotado que cambia lo que se ve: la carta COMPLETA, como si nada estuviera agotado hoy (la que sale en papel). La arma la lectura de la carta
+   * pública (`server/lecturas/carta/menu.ts`) con este mismo `armarMenuCarta`; sin nada agotado, no lleva la clave.
+   */
+  seccionesImpresas?: SeccionCartaV1[];
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -131,6 +145,8 @@ export interface ContenidoCartaEntrada {
   tags: readonly string[];
   especial: boolean;
   orden: number;
+  /** Fase 5 (DEC-11): «Mostrar el nombre arriba» de un producto base con un solo eje (`ContenidoCartaProducto.mostrarNombreArriba`). Sin la clave: apagado (la base sale oculta). */
+  mostrarNombreArriba?: boolean;
 }
 
 export interface ProductoCartaEntrada {
@@ -186,6 +202,13 @@ export interface OpcionesDeProductoEntrada {
   productoId: string;
   conDescuento: ResumenDePreciosParaCarta;
   sinDescuento: ResumenDePreciosParaCarta;
+  /**
+   * Fase 5 («carta pareja»): la tabla de precios de la carta del producto (`tablaDePreciosParaLaCarta`, la regla de la venta: cada celda con el descuento de producto), o `null` si hoy no se puede
+   * pedir. Opcional: sin ella, el producto sale como antes (sin `presentacion`).
+   */
+  tabla?: TablaDePreciosParaCarta | null;
+  /** Fase 4/5: el producto se vende por opción (`modoDeVenta = BASE_CONFIGURABLE`): decide si la carta lo lee como «base» (oculta, con el nombre arriba o en tabla). */
+  esBase?: boolean;
 }
 
 export interface OpcionAgrupadoEntrada {
@@ -238,6 +261,15 @@ export interface MenuArmado {
      * pasa (agregar una opción de otro precio se bloquea); es la red de seguridad para un cambio de precio posterior en Catálogo.
      */
     agrupadosConPreciosDistintos: AgrupadoConPreciosDistintos[];
+    // Fase 5 («carta pareja»): cada una SOLO si hay algo (así una carta sin opciones, la del POS y la de la administración, arma el mismo diagnóstico de siempre).
+    /** PV con opciones que NO toman forma nueva (salen como antes) y por qué: un tercer grupo que cambia el precio, o un recargo dentro del precio con descuento. */
+    productosSinPresentacion?: { productoId: string; nombre: string; motivo: string }[];
+    /** PV con más de `FILAS_SUGERIDAS_EN_CARTA` filas: se dibujan todas; la administración sugiere dividirlo. */
+    productosConMuchasFilas?: { productoId: string; nombre: string; filas: number }[];
+    /** PV cuya tanda o tabla tenía más de 3 columnas: cayó a una lista. */
+    productosConMuchasColumnas?: { productoId: string; nombre: string; columnas: number }[];
+    /** Bases de un eje que salen OCULTAS (cada opción sola, sin el nombre del producto), con los rótulos tal como se leen: si alguno no se entiende solo, cargá «se lee en la carta como» o prendé «Mostrar el nombre arriba». */
+    basesOcultas?: { productoId: string; nombre: string; filas: string[] }[];
   };
 }
 
@@ -301,13 +333,15 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
   // Solo llegan las secciones ACTIVAS: un seccionCartaId que no está acá es de una sección apagada (o no tiene).
   const nombreDeSeccion = new Map(entrada.secciones.map((s) => [s.id, s.nombre]));
 
-  type ItemConOrden = { item: ItemCartaV1; orden: number };
+  type ItemConOrden = { item: ItemCartaV1; orden: number; pendiente?: PendienteDeTanda };
   const itemsPorSeccion = new Map<string, ItemConOrden[]>();
-  const ubicar = (seccionId: string, item: ItemCartaV1, orden: number) => {
+  const ubicar = (seccionId: string, item: ItemCartaV1, orden: number, pendiente?: PendienteDeTanda) => {
     const lista = itemsPorSeccion.get(seccionId) ?? [];
-    lista.push({ item, orden });
+    lista.push({ item, orden, ...(pendiente ? { pendiente } : {}) });
     itemsPorSeccion.set(seccionId, lista);
   };
+  const productosSinPresentacion: NonNullable<MenuArmado["diagnostico"]["productosSinPresentacion"]> = [];
+  const productosConMuchasColumnas: NonNullable<MenuArmado["diagnostico"]["productosConMuchasColumnas"]> = [];
   const visiblesSinSeccion: ProductoSinSeccion[] = [];
   const agrupados = entrada.agrupados ?? [];
 
@@ -334,6 +368,13 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
       enCarta && conOpciones
         ? { precio: enCarta.desde, ...(listaConOpciones !== null && listaConOpciones !== enCarta.desde && conDescuento.porcentaje !== null ? { precioLista: listaConOpciones, descuentoPorcentaje: conDescuento.porcentaje } : {}) }
         : { precio: conDescuento.precio, ...(conDescuento.precioLista !== null ? { precioLista: conDescuento.precioLista, descuentoPorcentaje: conDescuento.porcentaje! } : {}) };
+    // Fase 5 («carta pareja»): la forma con que la carta lee el producto, desde su tabla de precios (la regla de la venta, con el mismo descuento). Las columnas de un directo esperan a su tanda.
+    const forma =
+      enCarta && conOpciones?.tabla
+        ? presentacionDelProducto({ tabla: conOpciones.tabla, esBase: conOpciones.esBase === true, mostrarNombreArriba: p.contenido.mostrarNombreArriba === true, conDescuento: (descuentoPorProducto.get(p.id) ?? 0) > 0 })
+        : undefined;
+    if (forma?.tipo === "sin-forma") productosSinPresentacion.push({ productoId: p.id, nombre: p.nombre, motivo: forma.motivo });
+    if (forma?.tipo === "lista" && forma.columnasDeMas !== undefined) productosConMuchasColumnas.push({ productoId: p.id, nombre: p.nombre, columnas: forma.columnasDeMas });
     ubicar(
       p.seccionCartaId,
       {
@@ -347,8 +388,10 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
         imagenUrl: null,
         ...(enCarta && enCarta.grupos.length > 0 ? { grupos: enCarta.grupos } : {}),
         ...(enCarta && enCarta.sinCosto.length > 0 ? { opcionesSinCosto: enCarta.sinCosto } : {}),
+        ...(forma?.tipo === "lista" ? { presentacion: forma.presentacion } : {}),
       },
-      p.contenido.orden
+      p.contenido.orden,
+      forma?.tipo === "columnas" ? { grupoId: forma.grupoId, columnas: forma.columnas, aclaraciones: forma.aclaraciones } : undefined
     );
   }
 
@@ -404,7 +447,11 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
     .sort((a, b) => a.orden - b.orden || comparar(a.nombre, b.nombre))
     .map((s) => {
       // Sueltos y agrupados comparten la misma escala de orden dentro de la sección: `orden` → nombre.
-      const items = (itemsPorSeccion.get(s.id) ?? []).sort((a, b) => a.orden - b.orden || comparar(a.item.nombre, b.item.nombre)).map((x) => x.item);
+      const ordenados = (itemsPorSeccion.get(s.id) ?? []).sort((a, b) => a.orden - b.orden || comparar(a.item.nombre, b.item.nombre));
+      // Fase 5: las tandas se arman con la sección YA ordenada (los vecinos que comparten el grupo de sus columnas).
+      const { porItem, tandas, caidasALista } = resolverTandas(ordenados.map((x) => x.pendiente ?? null));
+      for (const c of caidasALista) productosConMuchasColumnas.push({ productoId: ordenados[c.indice]!.item.productoId, nombre: ordenados[c.indice]!.item.nombre, columnas: c.columnas });
+      const items = ordenados.map((x, i) => (porItem.has(i) ? { ...x.item, presentacion: porItem.get(i)! } : x.item));
       const promos = (promosPorSeccion.get(s.id) ?? []).sort((a, b) => a.orden - b.orden || comparar(a.titulo, b.titulo));
       return {
         id: s.id,
@@ -415,9 +462,19 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
         orden: s.orden,
         items,
         promos,
+        ...(tandas.length > 0 ? { tandas } : {}),
       };
     })
     .filter((s) => s.items.length > 0 || s.promos.length > 0);
+
+  // Fase 5: lo que la administración tiene que ver de las formas (interno: nunca sale al público).
+  const conForma = secciones.flatMap((s) => s.items.flatMap((i) => (i.presentacion ? [{ item: i, presentacion: i.presentacion }] : [])));
+  const filasDe = (pr: PresentacionCartaV1) => (pr.forma === "tabla" || pr.forma === "lista" ? pr.filas.length : 0);
+  const productosConMuchasFilas = conForma.filter((x) => filasDe(x.presentacion) > FILAS_SUGERIDAS_EN_CARTA).map((x) => ({ productoId: x.item.productoId, nombre: x.item.nombre, filas: filasDe(x.presentacion) }));
+  const basesOcultas = conForma.flatMap((x) =>
+    x.presentacion.forma === "lista" && !x.presentacion.encabezado ? [{ productoId: x.item.productoId, nombre: x.item.nombre, filas: x.presentacion.filas.map((f) => f.rotulo) }] : []
+  );
+  const porNombre = <T extends { nombre: string }>(xs: T[]) => xs.sort((a, b) => comparar(a.nombre, b.nombre));
 
   return {
     carta: {
@@ -431,6 +488,10 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
       agrupadosSinSeccion: agrupadosSinSeccion.sort((a, b) => comparar(a.nombre, b.nombre)),
       agrupadosSinOpciones: agrupadosSinOpciones.sort((a, b) => comparar(a.nombre, b.nombre)),
       agrupadosConPreciosDistintos: agrupadosConPreciosDistintos.sort((a, b) => comparar(a.nombre, b.nombre)),
+      ...(productosSinPresentacion.length > 0 ? { productosSinPresentacion: porNombre(productosSinPresentacion) } : {}),
+      ...(productosConMuchasFilas.length > 0 ? { productosConMuchasFilas: porNombre(productosConMuchasFilas) } : {}),
+      ...(productosConMuchasColumnas.length > 0 ? { productosConMuchasColumnas: porNombre(productosConMuchasColumnas) } : {}),
+      ...(basesOcultas.length > 0 ? { basesOcultas: porNombre(basesOcultas) } : {}),
     },
   };
 }

@@ -113,6 +113,7 @@ const CLAVES_SITE_CONFIG = [
  * DIVERGENCIA INTENCIONAL (ADR-006, Fase 3, `docs/adr/ADR-006-carta-como-modulo-interno.md`): 10 tamaños de fuente que
  * quedaban por debajo del piso de legibilidad de 11px (`0.6875rem`) se subieron a ese piso — ya no son "tal cual" el
  * original. Quedan marcados con el comentario `// piso 11px` al lado; el resto de la tabla sigue siendo paridad real.
+ * Fase 5 (DEC-35, escala de letra única): los cuatro tamaños de los ítems pasan a los pisos de la escala (`src/core/carta/escala.ts`), marcados `// piso DEC-35`.
  */
 const DEFAULTS_CARTA_NO_VACIOS: Record<string, string> = {
   carta_fuente_familia: "playfair", // propia de motor2: sin equivalente en `SiteConfig` (el default es la Playfair Display de siempre)
@@ -129,10 +130,10 @@ const DEFAULTS_CARTA_NO_VACIOS: Record<string, string> = {
   carta_fuente_banda_etiqueta: "0.6875rem", // piso 11px (original: 0.55rem)
   carta_fuente_banda_titulo: "0.95rem",
   carta_fuente_banda_descripcion: "0.6875rem", // piso 11px (original: 0.6rem)
-  carta_fuente_item_nombre: "0.88rem",
-  carta_fuente_item_precio: "0.88rem",
-  carta_fuente_item_descripcion: "0.6875rem", // piso 11px (original: 0.68rem)
-  carta_fuente_item_tags: "0.6875rem", // piso 11px (original: 0.6rem)
+  carta_fuente_item_nombre: "1.1875rem", // piso DEC-35 (original: 0.88rem)
+  carta_fuente_item_precio: "1.1875rem", // piso DEC-35 (original: 0.88rem)
+  carta_fuente_item_descripcion: "0.875rem", // piso DEC-35 (original: 0.68rem)
+  carta_fuente_item_tags: "0.75rem", // piso DEC-35 (original: 0.6rem)
   carta_fuente_portada_etiqueta: "0.6875rem", // piso 11px (original: 0.58rem)
   carta_fuente_portada_nombre: "clamp(1.7rem, 7vw, 2.1rem)",
   carta_fuente_portada_subtitulo: "0.6875rem", // piso 11px (original: 0.6rem)

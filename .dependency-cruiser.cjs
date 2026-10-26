@@ -122,6 +122,72 @@ const reglaPaginasSoloConsultas = {
  */
 const ARCHIVOS_EN_CICLOS_CONOCIDOS = (EXCEPCIONES["sin-ciclos"] ?? []).flatMap((e) => e.ciclo.map(rutaExacta)).join("|");
 
+/**
+ * R2, R3 y R4 (ola «precio y carta», Fase 1 «Cercos»: el dueño del dato). Sus excepciones no son por ARCHIVO de origen sino por PAR
+ * (`desde` → `hacia`, cada una con su motivo, en `.dependency-cruiser-excepciones.cjs`): un archivo exceptuado por un cruce conocido no
+ * queda libre de sumar otro. Cada regla se arma como UNA entrada general (que no mira los archivos `desde` exceptuados) más UNA entrada por
+ * cada `desde` exceptuado, que le prohíbe lo mismo salvo exactamente sus `hacia` declarados. `$1` es el dominio del origen (grupo de
+ * `from.path`; dependency-cruiser lo reemplaza en `to.path`/`to.pathNot`). `test/arquitectura/dependencias.test.ts` revisa cada lista en
+ * las dos direcciones.
+ */
+const DOMINIO_EN_SERVER = /^src\/server\/(?:actions|lecturas|consultas)\/([^/]+)\//;
+
+function reglaConExcepcionesPorPar({ name, comment, from, to, destinoDelOrigen }) {
+  const excepciones = EXCEPCIONES[name] ?? [];
+  const origenes = [...new Set(excepciones.map((e) => e.desde))].sort();
+  const general = { name, comment, severity: "error", from: { ...from, pathNot: [...(from.pathNot ?? []), ...origenes.map(rutaExacta)] }, to };
+  const porOrigen = origenes.map((desde) => ({
+    name,
+    comment: `${comment} (Entrada de las excepciones de ${desde}: solo sus destinos declarados.)`,
+    severity: "error",
+    from: { path: rutaExacta(desde) },
+    to: {
+      ...to,
+      pathNot: [
+        ...destinoDelOrigen(desde),
+        ...excepciones.filter((e) => e.desde === desde).map((e) => rutaExacta(e.hacia)),
+      ],
+    },
+  }));
+  return [general, ...porOrigen];
+}
+
+/** El dominio (`server/<capa>/<dominio>/…`) de un archivo de origen exceptuado, para armar su entrada propia sin grupos. */
+function dominioDe(ruta) {
+  const m = DOMINIO_EN_SERVER.exec(ruta);
+  if (!m) throw new Error(`.dependency-cruiser.cjs: ${ruta} no está en server/actions|lecturas|consultas/<dominio>/`);
+  return m[1];
+}
+
+const COMANDOS_PUBLICOS = (EXCEPCIONES.COMANDOS_PUBLICOS ?? []).map((e) => rutaExacta(e.ruta));
+
+const reglasDelDuenoDelDato = [
+  ...reglaConExcepcionesPorPar({
+    name: "persistencia-de-otro-dominio",
+    comment:
+      "R2: la persistencia de un dominio (server/persistencia/<A>/) la usan los casos de uso de ESE dominio; ni server/actions/<B>/ (sus casos de uso) ni server/lecturas|consultas/<B>/ importan la persistencia de otro dominio. Un atajo desde otra pantalla pasa por un comando del dueño del dato. Excepciones por par, con motivo: .dependency-cruiser-excepciones.cjs.",
+    from: { path: "^src/server/(?:actions|lecturas|consultas)/([^/]+)/" },
+    to: { path: "^src/server/persistencia/", pathNot: ["^src/server/persistencia/$1/"] },
+    destinoDelOrigen: (desde) => [`^src/server/persistencia/${dominioDe(desde)}/`],
+  }),
+  ...reglaConExcepcionesPorPar({
+    name: "casos-de-uso-sin-comandos-de-otro-dominio",
+    comment:
+      "R3: un caso de uso (server/actions/<A>/casos-de-uso/) no importa casos de uso ni Server Actions de OTRO dominio (server/actions/<B>/…), salvo los comandos públicos declarados (COMANDOS_PUBLICOS). La infraestructura común de server/actions/*.ts (con-permiso, con-gobierno, tipos…) no es de ningún dominio y no cuenta. Excepciones por par, con motivo: .dependency-cruiser-excepciones.cjs.",
+    from: { path: "^src/server/actions/([^/]+)/casos-de-uso/" },
+    to: { path: "^src/server/actions/[^/]+/", pathNot: ["^src/server/actions/$1/", ...COMANDOS_PUBLICOS] },
+    destinoDelOrigen: (desde) => [`^src/server/actions/${dominioDe(desde)}/`, ...COMANDOS_PUBLICOS],
+  }),
+  ...reglaConExcepcionesPorPar({
+    name: "casos-de-uso-solo-desde-acciones",
+    comment:
+      "R4: un caso de uso (server/actions/<dominio>/casos-de-uso/) solo lo importan las Server Actions y los otros casos de uso (server/actions/**) — y los tests, scripts y seeds, que viven fuera de src/ y esta regla no recorre. Ni una página, ni un componente, ni core/, ni lecturas, consultas o persistencia, ni la consola de plataforma. Excepciones por par, con motivo: .dependency-cruiser-excepciones.cjs.",
+    from: { path: "^(?:src|plataforma)/", pathNot: ["^src/server/actions/"] },
+    to: { path: "^src/server/actions/[^/]+/casos-de-uso/" },
+    destinoDelOrigen: () => [],
+  }),
+];
+
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
@@ -155,6 +221,14 @@ module.exports = {
       severity: "error",
       from: { path: "^src/(app|components)/", pathNot: excepcionesDe("ui-sin-prisma") },
       to: { path: ["^src/lib/db\\.ts$", "^node_modules/(@prisma/client|\\.prisma/client)/"], dependencyTypesNot: ["type-only"] },
+    },
+    {
+      name: "vista-previa-sin-calculo-de-precio",
+      comment:
+        "La vista previa del espacio del producto (components/catalogo/espacio-del-producto/vista-previa*) SOLO DIBUJA lo que el servidor ya calculó con la regla de la venta: no importa core/pos (donde viven componerPrecioDeLinea, resumenDePrecios y aplicarDescuentoDeProducto), ni core/moneda, ni el servidor. Así no puede componer, redondear ni descontar un precio por su cuenta. Sin excepciones.",
+      severity: "error",
+      from: { path: "^src/components/catalogo/espacio-del-producto/vista-previa" },
+      to: { path: ["^src/core/pos/", "^src/core/moneda[.]ts$", "^src/server/", "^src/lib/"] },
     },
     {
       name: "db-solo-desde-auth-y-carta-publica",
@@ -313,6 +387,7 @@ module.exports = {
     },
     ...reglasSinInternalsDeOtroDominio,
     reglaUiSinInternalsDeDominio,
+    ...reglasDelDuenoDelDato,
     {
       name: "publico-puro",
       comment: "La fachada pública de un dominio (core/X/public.ts) no puede alcanzar src/lib/db.ts, ni directa ni transitivamente.",

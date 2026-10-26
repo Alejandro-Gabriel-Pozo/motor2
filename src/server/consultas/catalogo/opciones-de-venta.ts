@@ -1,9 +1,9 @@
 import "server-only";
-import type { DiferenciaDePrecio, ModoDePrecioDeMedida, TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import { esBaseConfigurable, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { IngredienteDeBase } from "@/core/movimientos/public";
 import { resumenDePrecios, type ResumenDePrecios } from "@/core/pos/public";
 import { cargarAdmisionDeProducto, cargarGrupoDeOpciones, listarGruposDeOpciones } from "@/server/lecturas/catalogo/opciones-de-venta";
-import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
+import { precioLocalGuardadoDe, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { cargarRecetaVigenteParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { cargarOpcionesParaVender, completarPreciosDeSucursal } from "@/server/lecturas/opciones/opciones-para-vender";
 import type { Db } from "@/lib/db-tipos";
@@ -80,7 +80,8 @@ export interface OpcionDelPanel {
 }
 
 export interface GrupoDetalleDelPanel {
-  grupo: { id: string; nombre: string; tipo: TipoDeGrupoDeOpciones; cantidadMinima: number; cantidadMaxima: number; activo: boolean; version: number };
+  /** `prefijoEnCarta` (Fase 4, ADR-035): «se lee en la carta como» (`null` = sin prefijo). */
+  grupo: { id: string; nombre: string; tipo: TipoDeGrupoDeOpciones; cantidadMinima: number; cantidadMaxima: number; activo: boolean; version: number; prefijoEnCarta: string | null };
   opciones: OpcionDelPanel[];
   /** Los productos que lo admiten (filas activas), por nombre. */
   productos: { id: string; nombre: string }[];
@@ -158,7 +159,7 @@ export async function cargarGrupoDelPanel(db: Db, grupoId: string, sucursalId: s
   }
 
   return {
-    grupo: { id: g.id, nombre: g.nombre, tipo: g.tipo as TipoDeGrupoDeOpciones, cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima, activo: g.activo, version: g.version },
+    grupo: { id: g.id, nombre: g.nombre, tipo: g.tipo as TipoDeGrupoDeOpciones, cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima, activo: g.activo, version: g.version, prefijoEnCarta: g.prefijoEnCarta },
     opciones: g.opciones.map((o) => ({
       id: o.id,
       nombre: o.nombre,
@@ -228,7 +229,8 @@ export interface GrupoAdmitidoDelPanel {
 }
 
 export interface OpcionesDelProductoDelPanel {
-  producto: { id: string; nombre: string; tipo: "MP" | "PV"; esAnclaDeAdicional: boolean };
+  /** `esBase`: se vende por opción (`modoDeVenta = BASE_CONFIGURABLE`): su precio guardado no se cobra, rige el precio final de sus opciones. */
+  producto: { id: string; nombre: string; tipo: "MP" | "PV"; esAnclaDeAdicional: boolean; esBase: boolean };
   /** Los grupos que el producto tiene asignados (activos o no en el producto), en su orden. */
   admitidos: GrupoAdmitidoDelPanel[];
   /** Los grupos prendidos de la empresa que el producto todavía no tiene: los que ofrece «Agregar grupo», con sus opciones prendidas y el máximo del grupo. */
@@ -237,6 +239,12 @@ export interface OpcionesDelProductoDelPanel {
   vistaPrevia: ResumenDePrecios;
   /** El precio base del producto en la sucursal activa (precio local vigente o el de venta). */
   precioBase: number;
+  /** El precio GLOBAL (`Producto.precioVenta`), el que rige donde no hay precio local habilitado. */
+  precioGlobal: number;
+  /** Las unidades activas, para el producto de respaldo de un extra nuevo («+ Extra» en un grupo de adicionales). */
+  unidades: { id: string; nombre: string }[];
+  /** El precio local del producto en la sucursal activa tal como está guardado (habilitado o no) y si la sucursal usa precio propio: lo que vio quien lo edita. Solo lo dibuja quien tiene `precio_local`. */
+  precioLocal: { guardado: { precio: number; habilitado: boolean } | null; capacidadActiva: boolean };
 }
 
 const diferenciaDeFila = (tipo: string | null, monto: number | null, porcentaje: number | null): DiferenciaDePrecio | null =>
@@ -249,20 +257,22 @@ const diferenciaDeFila = (tipo: string | null, monto: number | null, porcentaje:
  * otra empresa (la RLS no lo deja ver).
  */
 export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucursalId: string): Promise<OpcionesDelProductoDelPanel | null> {
-  const producto = await db.producto.findFirst({ where: { id: productoId }, select: { id: true, nombre: true, tipo: true, precioVenta: true, opcionQueRespalda: { select: { id: true } } } });
+  const producto = await db.producto.findFirst({ where: { id: productoId }, select: { id: true, nombre: true, tipo: true, precioVenta: true, modoDeVenta: true, opcionQueRespalda: { select: { id: true } } } });
   if (!producto) return null;
-  const [filas, catalogo, paraVender, locales] = await Promise.all([
+  const [filas, catalogo, paraVender, locales, precioLocal, unidades] = await Promise.all([
     cargarAdmisionDeProducto(db, productoId),
     listarGruposDeOpciones(db, { incluirInactivos: true }),
     cargarOpcionesParaVender(db, { sucursalId, productoIds: [productoId] }),
     preciosLocalesVigentes(sucursalId, db, [productoId]),
+    precioLocalGuardadoDe(sucursalId, db, productoId),
+    db.unidad.findMany({ where: { activa: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
   ]);
   const precioBase = locales.get(productoId)?.precio ?? Number(producto.precioVenta);
   // La grilla de la sucursal, para TODAS las medidas en precio propio del producto (la vista previa muestra cada tamaño).
   const delProducto = paraVender.get(productoId);
   const medidas = (delProducto?.grupos ?? []).filter((g) => g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO").flatMap((g) => g.opciones.map((o) => o.opcionId));
   const conGrilla = delProducto && medidas.length ? await completarPreciosDeSucursal(db, sucursalId, paraVender, [{ productoId, opcionIds: medidas }]) : paraVender;
-  const vistaPrevia = resumenDePrecios({ grupos: conGrilla.get(productoId)?.grupos ?? [], precioBase, descuentoDeProducto: null });
+  const vistaPrevia = resumenDePrecios({ grupos: conGrilla.get(productoId)?.grupos ?? [], precioBase, descuentoDeProducto: null, esBase: delProducto?.esBase ?? false });
 
   const porGrupo = new Map(catalogo.map((g) => [g.id, g]));
   const admitidos: GrupoAdmitidoDelPanel[] = filas.flatMap((f) => {
@@ -294,13 +304,16 @@ export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucu
   });
   const yaAsignados = new Set(filas.map((f) => f.grupoId));
   return {
-    producto: { id: producto.id, nombre: producto.nombre, tipo: producto.tipo, esAnclaDeAdicional: producto.opcionQueRespalda !== null },
+    producto: { id: producto.id, nombre: producto.nombre, tipo: producto.tipo, esAnclaDeAdicional: producto.opcionQueRespalda !== null, esBase: esBaseConfigurable(producto.modoDeVenta) },
     admitidos,
     paraAgregar: catalogo
       .filter((g) => g.activo && !yaAsignados.has(g.id))
       .map((g) => ({ grupoId: g.id, nombre: g.nombre, tipo: g.tipo as TipoDeGrupoDeOpciones, cantidadMaxima: g.cantidadMaxima, opcionIds: g.opciones.filter((o) => o.activa && o.vigente).map((o) => o.id) })),
     vistaPrevia,
     precioBase,
+    precioGlobal: Number(producto.precioVenta),
+    unidades,
+    precioLocal,
   };
 }
 

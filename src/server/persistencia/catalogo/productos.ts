@@ -29,6 +29,8 @@ interface CamposDeProducto {
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;
   observaciones?: string;
+  /** Fase 4 (ADR-035): «¿Cómo se vende?» (`DIRECTO` / `BASE_CONFIGURABLE`, CHECK de la base). Solo la escribe la edición, con la clave fina; el alta nace DIRECTO (el default). */
+  modoDeVenta?: string;
 }
 
 /**

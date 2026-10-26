@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
-import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia } from "../setup/test-db";
+import { limpiarBaseDeTest, prisma, sembrarBase, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { getUsuarioActual } from "../../src/server/sesion/session";
-import { conEdicionDePermisos, conPermiso, conPermisoDeEmpresa } from "../../src/server/actions/con-permiso";
+import { conEdicionDePermisos, conPermiso, conPermisoDeEmpresa, exigirTambienPermisoDeEmpresa } from "../../src/server/actions/con-permiso";
 import { limitadorMutaciones } from "../../src/server/actions/limitador-de-mutaciones";
-import { ok, type ContextoDeAccion } from "../../src/server/actions/tipos";
+import { error, ok, type ContextoDeAccion } from "../../src/server/actions/tipos";
 
 /**
  * Los TRES envoltorios de mutación pasan por el limitador (O.33, paso L.1 del Hito 3): antes solo se probaba `conPermiso`, y `conPermisoDeEmpresa` y
@@ -121,6 +121,63 @@ describe("conPermiso — sin sesión", () => {
 
     const resultado = await conPermiso("gestion_usuarios", fn);
     expect(resultado.ok).toBe(false);
+    expect(fn).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Fase 6, paso 6.14b: `exigirTambienPermisoDeEmpresa` es la SEGUNDA clave de una acción de empresa con dos claves (un comando compuesto): la primera la pide el envoltorio y esta, como primera línea de la
+ * función. Pide lo mismo que `conPermisoDeEmpresa` (mismo gate y mismo mensaje) y no deja pasar a quien tiene una sola de las dos. La ficha que la declara con `+` se verifica en
+ * `test/arquitectura/ficha-de-caso-de-uso.test.ts`.
+ */
+describe("exigirTambienPermisoDeEmpresa — la segunda clave de una acción de empresa", () => {
+  /** La acción con dos claves, como la arma una Server Action: `alta_sucursal` en el envoltorio y `gestion_roles` adentro (las dos son de empresa y solo del admin en la semilla). */
+  const conDosClaves = (fn: () => Promise<ReturnType<typeof ok>>) =>
+    conPermisoDeEmpresa("alta_sucursal", async (ctx) => {
+      const tambien = await exigirTambienPermisoDeEmpresa(ctx, "gestion_roles");
+      if (!tambien.ok) return error(tambien.mensaje);
+      return fn();
+    });
+  let base: Awaited<ReturnType<typeof sembrarBase>>;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    base = await sembrarBase();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const entrarComo = async (email: string, rolId: string) => {
+    const u = await crearUsuarioConMembresia({ email, sucursalId: base.sucursal.id, rolId });
+    await mockearUsuarioActual({ id: u.id, email: u.email, nombre: null });
+  };
+
+  it("con las dos claves la acción corre", async () => {
+    await entrarComo("admin@test.com", base.admin.id);
+    const fn = vi.fn(async () => ok("listo"));
+    expect((await conDosClaves(fn)).ok).toBe(true);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it("sin la segunda clave la acción NO corre y el mensaje es el de la denegación de siempre (aunque tenga la primera)", async () => {
+    await prisma.permisoRol.updateMany({ where: { rolId: base.admin.id, accionClave: "gestion_roles" }, data: { puedeEditar: false, puedeVer: false } });
+    await entrarComo("admin@test.com", base.admin.id);
+    const fn = vi.fn(async () => ok("no debería llegar acá"));
+    const solo = await conPermisoDeEmpresa("alta_sucursal", async () => ok("la primera sola alcanza para esta"));
+    expect(solo.ok).toBe(true);
+    const resultado = await conDosClaves(fn);
+    expect(resultado.ok).toBe(false);
+    expect(fn).not.toHaveBeenCalled();
+    // El mismo mensaje que da el envoltorio para esa clave: no hay un texto nuevo ni se revela cuál de las dos faltó de otra manera.
+    const directo = await conPermisoDeEmpresa("gestion_roles", async () => ok("no debería llegar acá"));
+    expect(resultado).toEqual(directo);
+  });
+
+  it("sin la primera clave el envoltorio corta antes de mirar la segunda", async () => {
+    await entrarComo("operador@test.com", base.operador.id);
+    const fn = vi.fn(async () => ok("no debería llegar acá"));
+    expect((await conDosClaves(fn)).ok).toBe(false);
     expect(fn).not.toHaveBeenCalled();
   });
 });

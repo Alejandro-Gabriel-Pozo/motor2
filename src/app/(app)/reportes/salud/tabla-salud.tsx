@@ -30,7 +30,7 @@ const COLUMNAS: ColumnaReporte<FilaSaludProducto>[] = [
     clave: "resumen",
     etiqueta: "Resumen",
     valor: (f) => f.resumen,
-    render: (f) => <span className={f.resumen === "Atención" ? "font-medium text-red-600" : "text-neutral-500"}>{f.resumen}</span>,
+    render: (f) => <span className={f.resumen === "Atención" ? "font-medium text-error" : "text-tinta-tenue"}>{f.resumen}</span>,
   },
 ];
 

@@ -4,6 +4,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { buscarProductosSelector, type ProductoOpcion } from "@/server/actions/catalogo/productos";
 import type { FiltroSelectorProducto } from "@/core/catalogo/public";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Campo } from "@/ui/primitivas/campo";
 
 interface Props {
   id?: string;
@@ -18,11 +20,10 @@ interface Props {
   limpiarSenal?: unknown;
   className?: string;
   /**
-   * Sin las variantes `dark:` de la lista desplegable: para pantallas que no tienen modo oscuro y quedan claras aunque el sistema
-   * esté en oscuro (el salón, `.pos-shell`). Sin esto, con el sistema en oscuro la lista se pintaba de fondo oscuro con la tinta
-   * oscura del salón encima.
+   * El nombre del campo para un lector de pantalla, si la pantalla no lo nombra con un `<label>` (que lo envuelva o con `htmlFor` al `id`). Sin él, el nombre lo pone esa etiqueta de afuera
+   * (`nombradoPorFuera` de `Campo`): así lo usan hoy todas las pantallas.
    */
-  siempreClaro?: boolean;
+  "aria-label"?: string;
 }
 
 /**
@@ -35,7 +36,7 @@ interface Props {
  * `required` siga bloqueando el submit nativo como con el `<select>`
  * anterior — el `<input>` visible es solo el término de búsqueda.
  */
-export function SelectorProducto({ id, value, onChange, filtro, placeholder = "Código o nombre…", required, etiquetaInicial, limpiarSenal, className, siempreClaro }: Props) {
+export function SelectorProducto({ id, value, onChange, filtro, placeholder = "Código o nombre…", required, etiquetaInicial, limpiarSenal, className, "aria-label": ariaLabel }: Props) {
   const [query, setQuery] = useState(etiquetaInicial ?? "");
   const [opciones, setOpciones] = useState<ProductoOpcion[]>([]);
   const [abierto, setAbierto] = useState(false);
@@ -109,12 +110,17 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
   // «Buscando…», el error y «Sin resultados.» son avisos aparte (role="status"/"alert") y no `<li>` sueltos adentro del listbox.
   const hayLista = !cargando && opciones.length > 0;
   const idOpcion = (i: number) => `${listboxId}-op-${i}`;
+  // Con `aria-label` el campo se nombra solo; sin él lo nombra el `<label>` de la pantalla. (La regla `campos-con-nombre` mira un solo archivo: no ve el `<label>` de afuera, y por eso el nombre va en un
+  // spread, que es el límite que ella misma documenta.)
+  const nombre = ariaLabel ? { "aria-label": ariaLabel } : { nombradoPorFuera: true as const };
 
   return (
     <div ref={contenedorRef} className={`relative ${className ?? ""}`}>
       <input type="hidden" required={required} value={value} onChange={() => {}} />
-      <input
+      <Campo
+        {...nombre}
         id={id}
+        tamano="compacto"
         type="text"
         value={query}
         onFocus={() => {
@@ -135,24 +141,29 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
         aria-autocomplete="list"
         aria-controls={abierto && hayLista ? listboxId : undefined}
         aria-activedescendant={abierto && hayLista && resaltado < opciones.length ? idOpcion(resaltado) : undefined}
-        className="w-full rounded border px-2 py-1.5 text-sm max-md:min-h-11 max-md:text-base"
       />
       {abierto && (
-        <div className={`absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow-lg ${siempreClaro ? "" : "dark:border-neutral-700 dark:bg-neutral-900"}`}>
+        <div className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded border border-borde-control bg-superficie text-sm shadow-lg shadow-sombra">
           {cargando && (
-            <p role="status" className="px-2 py-1.5 text-neutral-500">
-              Buscando…
-            </p>
+            <div className="px-2 py-1.5">
+              <Aviso variante="informacion" forma="en-linea">
+                Buscando…
+              </Aviso>
+            </div>
           )}
           {!cargando && errorBusqueda && (
-            <p role="alert" className="px-2 py-1.5 text-red-600">
-              No se pudo buscar. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.
-            </p>
+            <div className="px-2 py-1.5">
+              <Aviso variante="error" forma="en-linea">
+                No se pudo buscar. Revisá tu conexión; si venís trabajando hace rato, tu sesión pudo haber vencido: recargá la página.
+              </Aviso>
+            </div>
           )}
           {!cargando && !errorBusqueda && !opciones.length && (
-            <p role="status" className="px-2 py-1.5 text-neutral-500">
-              Sin resultados.
-            </p>
+            <div className="px-2 py-1.5">
+              <Aviso variante="informacion" forma="en-linea">
+                Sin resultados.
+              </Aviso>
+            </div>
           )}
           {hayLista && (
             <ul id={listboxId} role="listbox">
@@ -167,7 +178,7 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
                     elegir(op);
                   }}
                   onMouseEnter={() => setResaltado(i)}
-                  className={`cursor-pointer px-2 py-1.5 max-md:py-3 ${i === resaltado ? `bg-neutral-100 ${siempreClaro ? "" : "dark:bg-neutral-800"}` : ""}`}
+                  className={`cursor-pointer px-2 py-1.5 max-md:py-3 ${i === resaltado ? "bg-superficie-suave" : ""}`}
                 >
                   {op.codigo} — {op.nombre}
                 </li>

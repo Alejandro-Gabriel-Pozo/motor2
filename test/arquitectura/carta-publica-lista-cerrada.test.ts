@@ -36,7 +36,9 @@ import { accesosA, accesosDeTexto, alcanzables, consultasCrudas, RAIZ, relativa 
 const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   CapacidadSucursal: ["accionClave", "habilitado", "sucursalId"],
   CategoriaProducto: ["nombre"],
-  ContenidoCartaProducto: ["descripcion", "especial", "orden", "seccionCartaId", "tags"],
+  // Fase 5 de la ola «precio y carta» (DEC-11; decisión técnica aprobada por el dueño: «modo, prefijo y mostrarNombreArriba entran a la lista cerrada»): + `mostrarNombreArriba`, el interruptor de un
+  // producto base con un solo eje (encabezado u oculto). Se LEE en el servidor para decidir la forma; no sale como campo propio (sale la forma ya resuelta, `presentacion`).
+  ContenidoCartaProducto: ["descripcion", "especial", "mostrarNombreArriba", "orden", "seccionCartaId", "tags"],
   DescuentoProductoSucursal: ["porcentaje", "productoId"],
   Empresa: ["id", "nombre", "slug"],
   ItemAgrupadoCarta: ["descripcion", "especial", "id", "nombre", "opciones", "orden", "seccionCartaId", "tags"],
@@ -45,7 +47,9 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   PortalCartaEmpresa: ["valores"],
   PrecioLocalProducto: ["habilitado", "precio", "productoId"],
   // GO-2d: + `gruposAdmitidos` y `opcionesAdmitidas` (las opciones de venta que la carta muestra, decisión del dueño 2026-10-13; abajo, sus modelos).
-  Producto: ["categoria", "contenidosCarta", "gruposAdmitidos", "id", "nombre", "opcionesAdmitidas", "precioVenta"],
+  // Fase 4 de la ola «precio y carta» (ADR-035; decisión técnica del dueño: «modo y prefijo entran a la lista cerrada»): + `modoDeVenta`, para que la carta componga una base sobre su precio de
+  // referencia y no muestre su precio guardado. Se LEE en el servidor; no viaja a `CartaV1` (la proyección no cambia en esta fase).
+  Producto: ["categoria", "contenidosCarta", "gruposAdmitidos", "id", "modoDeVenta", "nombre", "opcionesAdmitidas", "precioVenta"],
   PromoCarta: ["descripcion", "id", "orden", "precio", "seccionCartaId", "sucursales", "titulo"],
   PromoCartaSucursal: ["activa", "precioLocal"],
   SeccionCarta: ["descripcion", "id", "imagenUrl", "nombre", "orden", "titulo"],
@@ -60,7 +64,9 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   // del aviso «admite algún grupo» de `menu.ts` (así una carta sin opciones hace las mismas consultas que antes: lo fija `lecturas-tramo-a.golden.json`).
   // CARTA-C (pastillas, 2026-10-14): NO suma ninguna lectura. Las opciones sin costo salen del MISMO resumen de precios que ya se lee (`nombre`, `esNinguna`, `diferenciaPrecio`); lo que cambia es la SALIDA (un campo por ítem, solo textos),
   // que cierra `CLAVES_DE_LA_CARTA` en `test/carta/salida-publica-inventariada.test.ts`. Por eso esta lista y la cantidad de consultas (`lecturas-tramo-a.golden.json`) quedan exactamente igual.
-  GrupoDeOpciones: ["activo", "cantidadMaxima", "cantidadMinima", "id", "nombre", "opciones", "tipo"],
+  // Fase 5 de la ola «precio y carta» (misma decisión técnica): + `prefijoEnCarta` («se lee en la carta como», Fase 4), para el papel del grupo (DEC-10: con prefijo, filas) y el rótulo de cada fila
+  // («De carne»). Se LEE en el servidor; lo que sale es el rótulo ya armado.
+  GrupoDeOpciones: ["activo", "cantidadMaxima", "cantidadMinima", "id", "nombre", "opciones", "prefijoEnCarta", "tipo"],
   OpcionApagadaEnSucursal: ["apagada"],
   OpcionDeGrupo: ["activa", "apagadasEnSucursal", "esNinguna", "grupo", "grupoId", "id", "nombre", "orden", "productosQueLaAdmiten", "versiones"],
   PrecioLocalDeOpcion: ["habilitado", "opcion", "opcionId", "precio", "productoId"],

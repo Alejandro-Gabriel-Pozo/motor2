@@ -19,7 +19,16 @@ export function mensajeProductoRequiereOpciones(nombre: string): string {
   return `«${nombre}» se vende con opciones obligatorias (ej. tamaño): cobralo desde las mesas/POS, donde se eligen.`;
 }
 
-/** Por qué una línea SIN configurar de este producto NO se puede vender (el mensaje), o `null` si no tiene ningún grupo obligatorio. `grupos`: lo que el producto admite en la sucursal que vende. */
-export function rechazoPorOpcionesObligatorias(nombre: string, grupos: readonly GrupoPermitido[]): string | null {
+/** Fase 4 de la ola «precio y carta» (ADR-035): el rechazo de una línea suelta de un producto que se vende por opción (no tiene precio propio que cobrar). */
+export function mensajeBaseSinOpcion(nombre: string): string {
+  return `«${nombre}» se vende por opción: no tiene un precio propio que cobrar suelto. Cobralo desde las mesas/POS, eligiendo su opción.`;
+}
+
+/**
+ * Por qué una línea SIN configurar de este producto NO se puede vender (el mensaje), o `null` si no tiene ningún grupo obligatorio. `grupos`: lo que el producto admite en la sucursal que vende.
+ * `esBase` (Fase 4, ADR-035): el producto se vende por opción; una línea suelta se rechaza SIEMPRE, aunque no le quede ningún grupo (defensa: su precio guardado no se cobra nunca).
+ */
+export function rechazoPorOpcionesObligatorias(nombre: string, grupos: readonly GrupoPermitido[], esBase = false): string | null {
+  if (esBase) return mensajeBaseSinOpcion(nombre);
   return validarOpcionesElegidas(grupos, []).ok ? null : mensajeProductoRequiereOpciones(nombre);
 }

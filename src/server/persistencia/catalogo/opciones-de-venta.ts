@@ -23,10 +23,10 @@ function columnasDeDiferencia(d: DiferenciaDePrecio | null) {
 
 export async function crearGrupoDeOpciones(
   tx: Tx,
-  args: { nombre: string; tipo: TipoDeGrupoDeOpciones; cantidadMinima: number; cantidadMaxima: number; ahora: Date }
+  args: { nombre: string; tipo: TipoDeGrupoDeOpciones; cantidadMinima: number; cantidadMaxima: number; prefijoEnCarta: string | null; ahora: Date }
 ): Promise<{ id: string }> {
   return tx.grupoDeOpciones.create({
-    data: { nombre: args.nombre, tipo: args.tipo, cantidadMinima: args.cantidadMinima, cantidadMaxima: args.cantidadMaxima, creadoEn: args.ahora, actualizadoEn: args.ahora },
+    data: { nombre: args.nombre, tipo: args.tipo, cantidadMinima: args.cantidadMinima, cantidadMaxima: args.cantidadMaxima, prefijoEnCarta: args.prefijoEnCarta, creadoEn: args.ahora, actualizadoEn: args.ahora },
     select: { id: true },
   });
 }
@@ -34,11 +34,11 @@ export async function crearGrupoDeOpciones(
 /** Devuelve cuántas filas tocó: 0 si la versión ya no es la esperada. */
 export async function actualizarGrupoDeOpciones(
   tx: Tx,
-  args: { id: string; versionEsperada: number; nombre: string; cantidadMinima: number; cantidadMaxima: number; activo: boolean; ahora: Date }
+  args: { id: string; versionEsperada: number; nombre: string; cantidadMinima: number; cantidadMaxima: number; activo: boolean; prefijoEnCarta: string | null; ahora: Date }
 ): Promise<number> {
   const { count } = await tx.grupoDeOpciones.updateMany({
     where: { id: args.id, version: args.versionEsperada },
-    data: { nombre: args.nombre, cantidadMinima: args.cantidadMinima, cantidadMaxima: args.cantidadMaxima, activo: args.activo, version: { increment: 1 }, actualizadoEn: args.ahora },
+    data: { nombre: args.nombre, cantidadMinima: args.cantidadMinima, cantidadMaxima: args.cantidadMaxima, activo: args.activo, prefijoEnCarta: args.prefijoEnCarta, version: { increment: 1 }, actualizadoEn: args.ahora },
   });
   return count;
 }

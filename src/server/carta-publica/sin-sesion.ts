@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { dbDeEmpresa, verificarRolDeEjecucionDelProceso } from "@/server/sesion/base";
 import { unstable_cache } from "next/cache";
-import { etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica, resolverEstiloPortal, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
+import { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica, resolverEstiloPortal, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
 import { modulosEfectivosDeEmpresa } from "@/server/acceso/modulos-de-empresa";
 import type { Db } from "@/lib/db-tipos";
 import { resolverEmpresaCarta, type EmpresaCarta } from "@/server/lecturas/carta/empresa";
@@ -88,8 +88,8 @@ export const cartaPublica = (empresa: EmpresaCarta, slug: string, ahora: Date) =
     const bases = { deLaEmpresa: db, deLaSucursal: (sucursalId: string) => lecturaDeUnaSolaSucursal(empresa.id, sucursalId) };
     // S-26: la carta lleva la etiqueta de caché DE SU EMPRESA. Next engancha esa etiqueta a la página que la usó (el ISR de `[sucursal]/page.tsx`), así que
     // `revalidarCartasPublicas(empresaSlug)` invalida las cartas de esa empresa y de ninguna otra. `revalidate` igual al de la página: no la acorta ni la alarga.
-    // La clave del caché (empresa, slug, promos) es TODO lo que usa la función de adentro (la sucursal sale del slug, dentro de ella): dos sucursales —de la misma empresa o de otra— nunca comparten entrada.
-    const resuelta = await unstable_cache(() => resolverCartaPublica(empresa, slug, bases, ahora, modulos.promociones), ["carta-publica", empresa.id, slug, modulos.promociones ? "con-promos" : "sin-promos"], {
+    // La clave del caché (la versión de la forma, empresa, slug, promos) es TODO lo que usa la función de adentro (la sucursal sale del slug, dentro de ella): dos sucursales —de la misma empresa o de otra— nunca comparten entrada.
+    const resuelta = await unstable_cache(() => resolverCartaPublica(empresa, slug, bases, ahora, modulos.promociones), ["carta-publica", VERSION_DE_LA_CARTA_EN_CACHE, empresa.id, slug, modulos.promociones ? "con-promos" : "sin-promos"], {
       tags: [etiquetaDeCacheDeCartasPublicas(empresa.slug)],
       revalidate: SEGUNDOS_DE_CACHE_DE_LA_CARTA,
     })();

@@ -1,7 +1,7 @@
 import "server-only";
 import { MENSAJE_GRUPO_NO_ENCONTRADO } from "@/core/features/catalogo/opciones-de-venta.guard";
 import type { ComandoEditarGrupoDeOpciones, ResultadoEditarGrupoDeOpciones } from "@/core/features/catalogo/opciones-de-venta.schema";
-import { cambiosPorColumna, validarGrupo } from "@/core/opciones/public";
+import { MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA, admitePrefijoEnCarta, cambiosPorColumna, validarGrupo } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
@@ -18,7 +18,8 @@ import {
 } from "./opciones-de-venta-en-tx";
 
 /**
- * Caso de uso «editar un grupo de opciones de venta» (GO-2a): el nombre, las cantidades y si está activo, con la VERSIÓN que vio la pantalla. El tipo no se edita nunca.
+ * Caso de uso «editar un grupo de opciones de venta» (GO-2a): el nombre, las cantidades, si está activo y (Fase 4, ADR-035) «se lee en la carta como» —solo en VARIANTE y MEDIDA; no entra al
+ * precio ni a la foto de la venta—, con la VERSIÓN que vio la pantalla. El tipo no se edita nunca.
  *
  * Todo dentro de UNA transacción SERIALIZABLE: relee el grupo (no está → `GRUPO_NO_ENCONTRADO`; otra versión → `VERSION_DESACTUALIZADA`), valida las cantidades según el tipo
  * (`validarGrupo`) y contra las que cada PRODUCTO puso sobre el grupo (las admisiones activas, leídas acá: un producto con mínimo propio 2 no puede quedar con un máximo efectivo de 1),
@@ -43,12 +44,16 @@ export async function editarGrupoDeOpcionesCasoDeUso(
       if (!grupo) return fracaso("GRUPO_NO_ENCONTRADO", MENSAJE_GRUPO_NO_ENCONTRADO);
       const regla = validarGrupo({ tipo: grupo.tipo, cantidadMinima: comando.cantidadMinima, cantidadMaxima: comando.cantidadMaxima });
       if (!regla.ok) return fracaso("CONFIGURACION_INVALIDA", regla.mensaje);
+      // Fase 4 (ADR-035): «se lee en la carta como»; no viene = queda como estaba. Solo VARIANTE y MEDIDA (el tipo es inmutable).
+      const prefijoEnCarta = comando.prefijoEnCarta === undefined ? grupo.prefijoEnCarta : comando.prefijoEnCarta;
+      if (prefijoEnCarta !== null && prefijoEnCarta !== grupo.prefijoEnCarta && !admitePrefijoEnCarta(grupo.tipo)) return fracaso("CONFIGURACION_INVALIDA", MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA);
 
       const cambios = cambiosPorColumna([
         { campo: "nombre", antes: grupo.nombre, despues: comando.nombre },
         { campo: "cantidadMinima", antes: grupo.cantidadMinima, despues: comando.cantidadMinima },
         { campo: "cantidadMaxima", antes: grupo.cantidadMaxima, despues: comando.cantidadMaxima },
         { campo: "activo", antes: grupo.activo, despues: comando.activo },
+        { campo: "prefijoEnCarta", antes: grupo.prefijoEnCarta, despues: prefijoEnCarta },
       ]);
       if (cambios.length === 0) return exito(`El grupo «${grupo.nombre}» no tenía cambios.`, { version: grupo.version, huboCambio: false, productosAfectados: 0 });
       if (grupo.version !== comando.versionEsperada) {
@@ -66,7 +71,7 @@ export async function editarGrupoDeOpcionesCasoDeUso(
         return fracaso("CONFIGURACION_INVALIDA", `Con estas cantidades, «${incoherente.nombre}» (que pone su propio mínimo o máximo para este grupo) quedaría mal configurado: ${incoherente.mensaje}`);
       }
 
-      const tocadas = await actualizarGrupoDeOpciones(tx, { ...comando, id: grupo.id, ahora: actor.ahora });
+      const tocadas = await actualizarGrupoDeOpciones(tx, { ...comando, prefijoEnCarta, id: grupo.id, ahora: actor.ahora });
       if (tocadas === 0) return fracaso("VERSION_DESACTUALIZADA", `El grupo «${grupo.nombre}» cambió mientras lo editabas. Recargá la pantalla y volvé a hacer el cambio.`);
 
       const descripcion = `Grupo de opciones «${comando.nombre}»: edición.`;

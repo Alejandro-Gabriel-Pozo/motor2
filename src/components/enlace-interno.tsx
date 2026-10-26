@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import type Link from "next/link";
 import { createContext, useContext, useMemo } from "react";
 import { accionDeRuta } from "@/core/navegacion/estructura";
 import type { AccionClave } from "@/core/permisos/acciones";
+import { Enlace } from "@/ui/primitivas/enlace";
 
 const AccionesVisiblesContext = createContext<ReadonlySet<AccionClave> | null>(null);
 
@@ -21,7 +22,7 @@ export function AccionesVisiblesProvider({ acciones, children }: { acciones: Acc
  * Si el rol del usuario no puede ver la pantalla de destino, no se muestra un enlace que termina en «no tenés permiso»: queda el
  * texto, sin enlace. La pantalla de destino igual se protege por su cuenta; esto es solo para no mostrar caminos que no llevan a
  * ningún lado. La acción de cada destino sale de `accionDeRuta` (el menú). Los enlaces dentro de la misma pantalla o familia de
- * pantallas usan `Link` a secas: un test (test/arquitectura/enlaces-con-permiso.test.ts) obliga a usar este para el resto.
+ * pantallas usan `Link` o `Enlace` a secas: un test (test/arquitectura/enlaces-con-permiso.test.ts) obliga a usar este para el resto.
  */
 export function EnlaceInterno({ href, children, className, ...resto }: React.ComponentProps<typeof Link> & { href: string }) {
   const visibles = useContext(AccionesVisiblesContext);
@@ -34,8 +35,8 @@ export function EnlaceInterno({ href, children, className, ...resto }: React.Com
     );
   }
   return (
-    <Link href={href} className={className} {...resto}>
+    <Enlace variante="sin-estilo" href={href} className={className} {...resto}>
       {children}
-    </Link>
+    </Enlace>
   );
 }

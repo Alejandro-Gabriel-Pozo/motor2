@@ -9,7 +9,7 @@ import { consumoDeLineaConfigurada, type IngredienteDeBase } from "./consumo-de-
  * Así lo que el operario lee es exactamente lo que la venta pide descontar por unidad (antes del redondeo con arrastre de cada unidad de stock al escribir el Kardex).
  *
  * Lo que esta vista NO muestra a propósito (lo dice la pantalla): lo que la propia opción suma o reemplaza (se multiplica por el factor solo si «escala con el tamaño»), lo que suman
- * otras opciones o los adicionales (no los escala el tamaño), y la receta propia de una combinación cuyo eje es el tamaño (ya es la receta de ese tamaño: no se escala, ADR-032).
+ * otras opciones o los adicionales (no los escala el tamaño). (La receta propia de una combinación, ADR-032, se retiró con GO-3a en la Fase 3 de la ola «precio y carta».)
  */
 
 export interface LineaDeLaBaseConFactor {

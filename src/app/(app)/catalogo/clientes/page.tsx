@@ -5,7 +5,9 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { altaCliente, actualizarActivoCliente, actualizarCliente, listarClientes } from "@/server/actions/clientes/cliente";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { Campo } from "@/ui/primitivas/campo";
 
 /**
  * Catálogo de Clientes con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md): un único % fijo por cliente (D1, no
@@ -18,10 +20,10 @@ export default async function ClientesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "clientes", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const clientes = await listarClientes();
 
@@ -29,12 +31,12 @@ export default async function ClientesPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold">Clientes con descuento</h1>
-        <p className="text-sm text-neutral-500">Un % fijo de descuento por cliente, que un mozo asigna a la cuenta de una mesa desde el salón.</p>
+        <p className="text-sm text-tinta-tenue">Un % fijo de descuento por cliente, que un mozo asigna a la cuenta de una mesa desde el salón.</p>
       </div>
 
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b text-left text-neutral-500">
+          <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Nombre</th>
             <th className="text-right">Descuento</th>
             <th>Activo</th>
@@ -62,17 +64,11 @@ export default async function ClientesPage() {
                       }}
                       className="mt-2 flex flex-col gap-2 rounded border p-2"
                     >
-                      <label className="flex flex-col gap-1 text-xs">
-                        Nombre
-                        <input name="nombre" defaultValue={c.nombre} required className="rounded border px-2 py-1" />
-                      </label>
-                      <label className="flex flex-col gap-1 text-xs">
-                        % de descuento
-                        <input name="descuentoPorcentaje" defaultValue={Number(c.descuentoPorcentaje).toString()} required className="rounded border px-2 py-1" />
-                      </label>
-                      <button type="submit" className="self-start rounded bg-neutral-900 px-3 py-1.5 text-xs text-white">
+                      <Campo etiqueta="Nombre" name="nombre" defaultValue={c.nombre} required />
+                      <Campo etiqueta="% de descuento" name="descuentoPorcentaje" defaultValue={Number(c.descuentoPorcentaje).toString()} required />
+                      <BotonDeServidor type="submit" tamano="chico" className="self-start">
                         Guardar
-                      </button>
+                      </BotonDeServidor>
                     </FormConResultado>
                   </details>
                   <FormConResultado
@@ -81,10 +77,10 @@ export default async function ClientesPage() {
                       return actualizarActivoCliente(c.id, !c.activo);
                     }}
                   >
-                    <button type="submit" className="text-sm underline inline-flex items-center gap-1">
+                    <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                       <IconoDeAccion id="activar" />
                       {c.activo ? "Desactivar" : "Activar"}
-                    </button>
+                    </BotonDeServidor>
                   </FormConResultado>
                 </div>
               </td>
@@ -92,7 +88,7 @@ export default async function ClientesPage() {
           ))}
           {!clientes.length && (
             <tr>
-              <td className="py-2 text-neutral-500" colSpan={4}>
+              <td className="py-2 text-tinta-tenue" colSpan={4}>
                 Sin clientes.
               </td>
             </tr>
@@ -110,11 +106,13 @@ export default async function ClientesPage() {
         className="max-w-md space-y-1"
       >
         <div className="flex gap-2">
-          <input name="nombre" placeholder="nombre del cliente" required className="flex-1 rounded border px-3 py-2" />
-          <input name="descuentoPorcentaje" placeholder="% descuento" required className="w-32 rounded border px-3 py-2" />
-          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-            Crear
-          </button>
+          <div className="flex-1">
+            <Campo aria-label="Nombre del cliente" name="nombre" placeholder="nombre del cliente" required />
+          </div>
+          <div className="w-32">
+            <Campo aria-label="% de descuento" name="descuentoPorcentaje" placeholder="% descuento" required />
+          </div>
+          <BotonDeServidor type="submit">Crear</BotonDeServidor>
         </div>
       </FormConResultado>
     </div>

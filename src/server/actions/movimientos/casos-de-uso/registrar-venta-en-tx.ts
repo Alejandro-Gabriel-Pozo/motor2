@@ -36,8 +36,8 @@ import { escribirOperacionDeVenta } from "@/server/persistencia/movimientos/escr
 import type { ActorVenta, AvisoStockNegativo, DatosVentaEnTx, LineaVentaEnTx, OpcionesVentaEnTx, ResultadoVentaEnTx } from "@/core/movimientos/registrar-venta";
 
 type Obtener = ReturnType<typeof crearCacheProducto>;
-/** Lo que admite un producto de opciones en la sucursal que vende (ver `crearLectorDeGruposAdmitidos`). */
-type GruposAdmitidosDe = (productoId: string) => Promise<readonly GrupoPermitido[]>;
+/** Lo que admite un producto de opciones en la sucursal que vende, y si se vende por opción (Fase 4; ver `crearLectorDeGruposAdmitidos`). */
+type GruposAdmitidosDe = (productoId: string) => Promise<{ grupos: readonly GrupoPermitido[]; esBase: boolean }>;
 
 /**
  * OPCIONES OBLIGATORIAS (fila O.430): lo que admite cada producto de las líneas SIN configurar del lote, con el lector de las opciones de venta que usa el POS (`cargarOpcionesParaVender`) y el `tx` de
@@ -48,7 +48,8 @@ function crearLectorDeGruposAdmitidos(tx: Prisma.TransactionClient, sucursalId: 
   let leidos: ReturnType<typeof cargarOpcionesParaVender> | null = null;
   return async (productoId) => {
     leidos ??= cargarOpcionesParaVender(tx, { sucursalId, productoIds: lineas.filter((l) => l.configurada === undefined).map((l) => l.productoId) });
-    return (await leidos).get(productoId)?.grupos ?? [];
+    const admite = (await leidos).get(productoId);
+    return { grupos: admite?.grupos ?? [], esBase: admite?.esBase ?? false };
   };
 }
 
@@ -128,8 +129,10 @@ async function armarLinea(
   // admite un grupo obligatorio (activo para la empresa, o apagado: falla cerrado) no se cobra al precio base: con la MISMA lectura de los grupos que el POS (`cargarOpcionesParaVender`, una vez por lote:
   // `crearLectorDeGruposAdmitidos`) y la MISMA regla (`validarOpcionesElegidas` con cero opciones), antes de leer la receta y de escribir nada. Una línea configurada (o un adicional) ya trae lo
   // elegido y su precio de la foto de la cuenta: no pasa por acá.
+  // Fase 4 (ADR-035): un producto que se vende por opción tampoco se cobra suelto, aunque no le quede ningún grupo (su precio guardado no se cobra nunca).
   if (configurada === undefined) {
-    const sinOpciones = rechazoPorOpcionesObligatorias(producto.nombre, await gruposAdmitidosDe(producto.id));
+    const admite = await gruposAdmitidosDe(producto.id);
+    const sinOpciones = rechazoPorOpcionesObligatorias(producto.nombre, admite.grupos, admite.esBase);
     if (sinOpciones !== null) return { ok: false, codigo: CODIGO_PRODUCTO_REQUIERE_OPCIONES, mensaje: sinOpciones };
   }
 
@@ -159,18 +162,9 @@ async function armarLinea(
       const consumosDeOpciones = configurada.tipo === "PRODUCTO" ? configurada.opciones.flatMap((o) => o.consumos) : configurada.consumos;
       const insumosMal = await revisarInsumosDeOpciones(consumosDeOpciones, producto.nombre, sucursalId, sucursalNombre, tx, obtenerProducto);
       if (insumosMal) return insumosMal;
-      // GO-3b: los insumos de la receta propia congelada de la combinación (si la tiene): materias primas disponibles en la sucursal y en la unidad de su stock, como los de una opción.
-      const excepcion = configurada.tipo === "PRODUCTO" ? configurada.excepcion : undefined;
-      for (const i of excepcion?.ingredientes ?? []) {
-        const revisada = revisarMateriaPrima(await obtenerProducto(i.insumoProductoId), producto.nombre);
-        if (!revisada.ok) return { ok: false, mensaje: revisada.mensaje };
-        const mp = revisada.materiaPrima;
-        if (!(await productoDisponibleEn(sucursalId, mp.id, tx))) return { ok: false, mensaje: mensajeMateriaPrimaNoDisponible(producto.nombre, mp.nombre, sucursalNombre) };
-        if (mp.unidadStockId !== i.unidadStockId) return { ok: false, mensaje: `La receta propia de «${producto.nombre}» usa «${mp.nombre}» en otra unidad que la de su stock: revisala.` };
-      }
       const consumo = consumoDeLineaConfigurada(
         configurada.tipo === "PRODUCTO"
-          ? { cantidad, sucursalId, base, opciones: configurada.opciones, adicionales: [], ...(excepcion ? { excepcion } : {}) }
+          ? { cantidad, sucursalId, base, opciones: configurada.opciones, adicionales: [] }
           : { cantidad, sucursalId, base: [], opciones: [], adicionales: [{ opcionId: configurada.opcionId, nombre: producto.nombre, cantidadPorUnidad: 1, consumos: configurada.consumos }] }
       );
       if (!consumo.ok) return { ok: false, mensaje: `«${producto.nombre}»: ${consumo.mensaje}` };

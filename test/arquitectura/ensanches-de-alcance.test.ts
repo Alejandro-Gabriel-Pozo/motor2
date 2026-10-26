@@ -132,7 +132,8 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
   "src/server/actions/catalogo/casos-de-uso/actualizar-producto.ts": {
     lectores: {},
     directos: [],
-    transaccion: true,
+    // Desde la ola «precio y carta» (Fase 2, A4) la transacción de verificación se abre SERIALIZABLE (control del precio de venta visto).
+    transaccionA: { conTransaccionSerializable: 0 },
     devuelve: "MENSAJE",
     motivo: "edición: la transacción corre con la lectura en toda la empresa para el nombre repetido, la unidad del insumo y CAT-1 (`productoTieneHistoria`, `productoTieneLiquidaciones`: historia en cualquier sucursal); la escritura NO se ensancha. Sale un mensaje de rechazo",
   },
@@ -155,10 +156,10 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
     motivo: "guardar la receta: ¿cada ingrediente está disponible en alguna sucursal? y la unidad de los sustitutos; devuelve productos, insumos y unidades de la empresa y mensajes. Va ANTES del ensanche de escritura (`conEscrituraEnLaEmpresa`)",
   },
   "src/server/actions/catalogo/productos.ts": {
-    lectores: {},
+    lectores: { whereDeLosProductos: 1 },
     directos: ["db.producto.findMany", "db.disponibilidadProducto.groupBy"],
     devuelve: "CONTEO",
-    motivo: "el selector de producto con `soloDisponiblesEnAlguna` (filas de `Producto`: id, código y nombre) y el contador «Sucursales N de M» del listado (E3: una cuenta por producto; la disponibilidad ya es pública por la carta)",
+    motivo: "el selector de producto con `soloDisponiblesEnAlguna` (filas de `Producto`: id, código y nombre), el listado de Productos cuando el filtro de disponibilidad pregunta por «alguna/ninguna sucursal» (filas de `Producto` de la empresa, y los ids de «sin receta» que calcula `whereDeLosProductos`) y el contador «Sucursales N de M» del listado (E3: una cuenta por producto; la disponibilidad ya es pública por la carta)",
   },
   "src/server/actions/catalogo/unidades.ts": {
     lectores: {},

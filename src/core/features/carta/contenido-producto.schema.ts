@@ -23,6 +23,11 @@ export interface EntradaContenidoCartaProducto {
   orden?: number | string | null;
   /** Carpeta de género del POS, OPCIONAL: vacío/null = sin género (sale suelto). */
   generoCartaId?: string | null;
+  /**
+   * Fase 5 (DEC-11): «Mostrar el nombre del producto arriba» de un producto BASE con un solo eje en la carta (apagado = la base sale oculta). OPCIONAL: sin la clave (un formulario que no lo muestra,
+   * porque el producto no es una base de un eje) queda como estaba; con ella se escribe y, si cambió, se audita por columna.
+   */
+  mostrarNombreArriba?: boolean;
 }
 
 /** Lo que `guardComandoGuardarContenidoCartaProducto` valida y normaliza del contenido: la descripción (recortada, `null` si queda vacía), los tags y el orden. */

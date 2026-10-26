@@ -18,7 +18,8 @@ import { cargarOpcionEnTx, columnasDeVersion, describirConsumos, insumosDeLosCon
  * Dentro de UNA transacción SERIALIZABLE: relee la opción y su versión vigente. Si la vigente ya es la esperada + 1, la cargó la misma persona y tiene el MISMO contenido, es el
  * mismo pedido repetido (un doble clic que llegó después de que el primero confirmó): éxito sin agregar otra. Si la vigente no es la esperada, `VERSION_DESACTUALIZADA` (otra
  * persona agregó una en el medio). Si el contenido es igual al de la vigente, no se agrega una versión vacía. Después, las reglas del tipo (`validarVersion`, `validarConsumos`), los
- * insumos (materias primas de la empresa, en su unidad de stock) y el módulo Recetas para los consumos (D-3). Dos versiones simultáneas con el mismo número chocan con el único
+ * insumos (materias primas de la empresa, en su unidad de stock) y el módulo Recetas para los consumos (D-3). Fase 4 (ADR-035): una versión en PORCENTAJE no se carga si un producto que se vende
+ * por opción ofrece la opción sin su propia diferencia (`CONFIGURACION_INVALIDA`). Dos versiones simultáneas con el mismo número chocan con el único
  * `(opcionId, numero)`: gana una, la otra recibe 23505 o 40001, se reintenta y su relectura la rechaza.
  *
  * @contract Agrega la versión `numeroEsperado + 1` de la opción con su diferencia, su factor y sus consumos, o devuelve la que ya era esa.
@@ -60,6 +61,25 @@ export async function agregarVersionDeOpcionCasoDeUso(
 
         for (const regla of [validarVersion(opcion.grupo.tipo, opcion.esNinguna, comando.version), validarConsumos(opcion.grupo.tipo, opcion.esNinguna, comando.version.consumos)]) {
           if (!regla.ok) return fracaso("CONFIGURACION_INVALIDA", regla.mensaje);
+        }
+        // Fase 4 (ADR-035): un porcentaje se calcula sobre el precio guardado del producto, que una base no usa. Una versión en PORCENTAJE no se carga si alguna base ofrece la opción sin su propia
+        // diferencia (salvo que sea su grupo de precio: ahí la diferencia no se usa).
+        if (comando.version.diferencia.tipo === "PORCENTAJE") {
+          const base = await tx.productoAdmiteOpcion.findFirst({
+            where: {
+              opcionId: opcion.id,
+              activo: true,
+              tipoDeDiferencia: null,
+              producto: { modoDeVenta: "BASE_CONFIGURABLE", gruposAdmitidos: { some: { grupoId: opcion.grupoId, activo: true, OR: [{ modoPrecio: null }, { modoPrecio: { not: "ABSOLUTO" } }] } } },
+            },
+            select: { producto: { select: { nombre: true } } },
+          });
+          if (base) {
+            return fracaso(
+              "CONFIGURACION_INVALIDA",
+              `«${opcion.nombre}» la ofrece «${base.producto.nombre}», que se vende por opción: ahí un porcentaje se calcularía sobre un precio que no se cobra. Usá un monto fijo, o cargale a «${base.producto.nombre}» su propia diferencia en monto.`,
+            );
+          }
         }
         const insumos = await insumosDeLosConsumos(tx, comando.version.consumos);
         if (!insumos.ok) return fracaso("REFERENCIA_NO_ENCONTRADA", insumos.mensaje);

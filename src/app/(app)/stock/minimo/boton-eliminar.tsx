@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { eliminarStockMinimo } from "@/server/actions/stock/stock-minimo";
 import { IconoDeAccion } from "@/components/iconos";
+import { Aviso } from "@/ui/primitivas/aviso";
+import { Boton } from "@/ui/primitivas/boton";
 
 /**
  * "Eliminar" acá es la única acción de borrado duro de toda la app (no es
@@ -31,27 +33,35 @@ export function BotonEliminarStockMinimo({ id, etiqueta }: { id: string; etiquet
   if (confirmando) {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-amber-700 dark:text-amber-600">¿Eliminar el mínimo de {etiqueta}? Deja de alertar sobre este producto/sección.</p>
+        <p className="text-xs text-aviso-tinta">¿Eliminar el mínimo de {etiqueta}? Deja de alertar sobre este producto/sección.</p>
         <div className="flex gap-2">
-          <button type="button" disabled={pending} onClick={eliminar} className="text-sm text-red-600 underline">
+          <Boton variante="enlace-peligro" tamano="en-fila" disabled={pending} onClick={eliminar}>
             {pending ? "Eliminando…" : "Sí, eliminar"}
-          </button>
-          <button type="button" onClick={() => setConfirmando(false)} className="text-sm underline">
+          </Boton>
+          <Boton variante="enlace" tamano="en-fila" onClick={() => setConfirmando(false)}>
             Volver
-          </button>
+          </Boton>
         </div>
-        {mensaje && <p className={`text-xs ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+        {mensaje && (
+          <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+            {mensaje}
+          </Aviso>
+        )}
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-1">
-      <button type="button" onClick={() => setConfirmando(true)} className="text-sm underline inline-flex items-center gap-1">
+      <Boton variante="enlace" tamano="en-fila" onClick={() => setConfirmando(true)}>
         <IconoDeAccion id="eliminar" />
         Eliminar
-      </button>
-      {mensaje && <p className={`text-xs ${ok ? "text-green-700" : "text-red-600"}`}>{mensaje}</p>}
+      </Boton>
+      {mensaje && (
+        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+          {mensaje}
+        </Aviso>
+      )}
     </div>
   );
 }

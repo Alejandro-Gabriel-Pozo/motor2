@@ -1,6 +1,6 @@
 import { validarPasoVenta } from "@/core/catalogo/public";
 import { validarCantidad } from "@/core/datos/cantidad";
-import { validarImporte } from "@/core/datos/importe";
+import { validarImporte, validarImportesVistosPorId } from "@/core/datos/importe";
 import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { esNumeroEstricto } from "@/core/numero";
@@ -46,13 +46,16 @@ export function guardComandoDarDeAltaProductoRapido(entrada: { nombre: unknown; 
  * `sincronizarPrecioGrupoCarta`, antes de leer el ítem agrupado, con los MISMOS textos y en el MISMO orden: el precio (un número estricto, no negativo) y la lista
  * sin repetidos y no vacía. Que sean todos del mismo ítem agrupado lo resuelve el caso de uso.
  */
-export function guardComandoSincronizarPrecioGrupoCarta(entrada: { productoIds: string[]; precio: number }): ResultadoDato<ComandoSincronizarPrecioGrupoCarta> {
+export function guardComandoSincronizarPrecioGrupoCarta(entrada: { productoIds: string[]; precio: number; preciosVistos?: unknown }): ResultadoDato<ComandoSincronizarPrecioGrupoCarta> {
   const { precio } = entrada;
   if (!esNumeroEstricto(precio)) return rechazar("formato", "El precio de venta no es un número válido.");
   if (!(precio >= 0)) return rechazar("negativo", "El precio de venta no puede ser negativo.");
   const ids = [...new Set(entrada.productoIds)];
   if (!ids.length) return rechazar("vacio", "No hay productos para actualizar.");
-  return aceptar({ productoIds: ids, precio });
+  // Al final (los mensajes de siempre van primero): el precio que la pantalla mostró de cada producto al ofrecer igualarlo (ola «precio y carta», Fase 2, paso A5).
+  const preciosVistos = validarImportesVistosPorId(entrada.preciosVistos, "Los precios que mostraba la pantalla no son válidos: recargala.");
+  if (!preciosVistos.ok) return rechazar(preciosVistos.codigo, preciosVistos.mensaje);
+  return aceptar({ productoIds: ids, precio, preciosVistos: preciosVistos.valor });
 }
 
 /** Los decimales máximos de una unidad (`Unidad.decimales`, 0 a 6): el guard no conoce la unidad del producto, así que mide el factor y el paso con el máximo y deja los decimales reales al paso que la lee. */

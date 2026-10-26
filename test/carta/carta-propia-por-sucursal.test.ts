@@ -65,7 +65,8 @@ describe("carta propia por sucursal — acciones", () => {
     const genero = await prisma.generoCarta.create({ data: { sucursalId: sucursalA, nombre: "Cervezas", orden: 2 } });
     await prisma.contenidoCartaProducto.createMany({
       data: [
-        { sucursalId: sucursalA, productoId: ids.pizza, visibleEnCarta: true, seccionCartaId: seccionId, orden: 1, descripcion: "Muzza", tags: ["Veggie"], especial: true },
+        // Fase 5 (DEC-11): con «Mostrar el nombre arriba» prendido, que la copia tiene que llevar.
+        { sucursalId: sucursalA, productoId: ids.pizza, visibleEnCarta: true, seccionCartaId: seccionId, orden: 1, descripcion: "Muzza", tags: ["Veggie"], especial: true, mostrarNombreArriba: true },
         { sucursalId: sucursalA, productoId: ids.birra, visibleEnCarta: false, seccionCartaId: seccionId, orden: 5, generoCartaId: genero.id },
       ],
     });
@@ -174,9 +175,9 @@ describe("carta propia por sucursal — acciones", () => {
       expect(generoB.id).not.toBe(generoId);
 
       const contenidos = await prisma.contenidoCartaProducto.findMany({ where: { sucursalId: sucursalB }, orderBy: { orden: "asc" } });
-      expect(contenidos.map((c) => ({ p: c.productoId, v: c.visibleEnCarta, s: c.seccionCartaId, o: c.orden, d: c.descripcion, t: c.tags, e: c.especial, g: c.generoCartaId }))).toEqual([
-        { p: ids.pizza, v: true, s: seccionId, o: 1, d: "Muzza", t: ["Veggie"], e: true, g: null },
-        { p: ids.birra, v: false, s: seccionId, o: 5, d: null, t: [], e: false, g: generoB.id },
+      expect(contenidos.map((c) => ({ p: c.productoId, v: c.visibleEnCarta, s: c.seccionCartaId, o: c.orden, d: c.descripcion, t: c.tags, e: c.especial, g: c.generoCartaId, n: c.mostrarNombreArriba }))).toEqual([
+        { p: ids.pizza, v: true, s: seccionId, o: 1, d: "Muzza", t: ["Veggie"], e: true, g: null, n: true },
+        { p: ids.birra, v: false, s: seccionId, o: 5, d: null, t: [], e: false, g: generoB.id, n: false },
       ]);
 
       const itemB = await prisma.itemAgrupadoCarta.findFirstOrThrow({ where: { sucursalId: sucursalB }, include: { opciones: { orderBy: { orden: "asc" } } } });

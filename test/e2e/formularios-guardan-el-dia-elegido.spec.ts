@@ -51,7 +51,7 @@ test.describe(`con el navegador en ${zona}`, () => {
       await page.goto("/movimientos/merma");
       expect(await navegadorEstaEnLaZona(page, zona), "el navegador tiene que estar en la zona del caso").toBe(true);
 
-      await page.getByLabel("Fecha", { exact: true }).fill(DIA);
+      await page.getByLabel(/^Fecha(?: \*)?$/).fill(DIA);
       await page.getByRole("combobox", { name: "Sección", exact: true }).selectOption({ label: seccion.nombre });
       await page.locator('input[placeholder="Código o nombre…"]').first().fill(producto.nombre);
       await page.getByRole("option", { name: new RegExp(producto.nombre) }).click();
@@ -71,7 +71,7 @@ test.describe(`con el navegador en ${zona}`, () => {
       await page.goto("/movimientos/compra");
       expect(await navegadorEstaEnLaZona(page, zona), "el navegador tiene que estar en la zona del caso").toBe(true);
 
-      await page.getByLabel("Fecha", { exact: true }).fill(DIA);
+      await page.getByLabel(/^Fecha(?: \*)?$/).fill(DIA);
       await page.getByRole("combobox", { name: "Sección", exact: true }).selectOption({ label: seccion.nombre });
       await page.locator('input[placeholder="Código o nombre…"]').first().fill(producto.nombre);
       await page.getByRole("option", { name: new RegExp(producto.nombre) }).click();
@@ -88,6 +88,11 @@ test.describe(`con el navegador en ${zona}`, () => {
       const marca = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
       const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
       const consignante = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_FDE_${marca}`, nombre: `E2E Consignante Día ${marca}` } });
+      // Desde B2 (ola «precio y carta», Fase 2) solo se le registra un pago a quien es consignante de algún producto: sin esto el servidor lo rechaza («no es el proveedor de consignación de ningún producto»).
+      const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+      await prisma.producto.create({
+        data: { codigo: `E2E-FDE-CONS-${marca}`, nombre: `E2E Consignado Día ${marca}`, tipo: "MP", unidadStockId: kg.id, esConsignacion: true, proveedorConsignacionId: consignante.id, precioConsignacion: 1234 },
+      });
       // Un pago viejo (fuera del día de la prueba) para que el consignante aparezca en la tabla y tenga su botón «Registrar pago».
       await prisma.pagoConsignante.create({ data: { sucursalId, proveedorId: consignante.id, importe: 1, fecha: new Date(Date.now() - 30 * DIA_MS), usuarioId: admin.id } });
 
@@ -97,7 +102,8 @@ test.describe(`con el navegador en ${zona}`, () => {
       await page.getByRole("row", { name: new RegExp(consignante.nombre) }).getByRole("button", { name: "Registrar pago", exact: true }).click();
       const dialogo = page.getByRole("dialog");
       await dialogo.getByLabel(/^Importe/).fill("137");
-      await dialogo.getByLabel("Fecha", { exact: true }).fill(DIA);
+      // CampoFecha `required` suma un « *» decorativo al rótulo: «Fecha» a secas o con el asterisco, nada más.
+      await dialogo.getByLabel(/^Fecha( \*)?$/).fill(DIA);
       await dialogo.getByRole("button", { name: "Registrar pago", exact: true }).click();
       await expect(dialogo).toBeHidden();
 

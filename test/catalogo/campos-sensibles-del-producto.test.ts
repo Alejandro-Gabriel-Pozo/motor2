@@ -34,10 +34,14 @@ describe("M.2: precio, factor y unidades de un producto son de quien tiene produ
   const comoOperador = () => como(operadorId, "operador@test.com");
   const comoSoloEditar = () => como(soloEditarId, "editor@test.com");
 
-  /** Los datos que el formulario manda para dejar el producto TAL COMO ESTÁ, con los cambios pedidos encima. */
-  async function datos(cambios: Partial<DatosProducto> = {}): Promise<DatosProducto> {
+  /**
+   * Los datos que el formulario manda para dejar el producto TAL COMO ESTÁ, con los cambios pedidos encima. Como el formulario real, lleva el precio de venta que mostraba al abrirse (`precioVentaVisto`,
+   * control del valor visto de la ola «precio y carta», Fase 2, A4).
+   */
+  async function datos(cambios: Partial<DatosProducto> = {}): Promise<DatosProducto & { precioVentaVisto: number }> {
     const p = await prisma.producto.findUniqueOrThrow({ where: { id: quesoId } });
     return {
+      precioVentaVisto: Number(p.precioVenta),
       nombre: p.nombre,
       tipo: p.tipo,
       unidadStockId: p.unidadStockId,

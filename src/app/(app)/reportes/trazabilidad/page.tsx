@@ -1,3 +1,4 @@
+import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -7,15 +8,16 @@ import { TablaOperacionesEncontradas, TablaItemsOperacion } from "./tabla-trazab
 import { BotonAnularVenta } from "./boton-anular-venta";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { Campo } from "@/ui/primitivas/campo";
 
 export default async function TrazabilidadPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"producto" | "idOperacion">> }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
-  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-red-600">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
+  if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_trazabilidad", ctx.db);
-  if (!gate.ok) return <p className="text-red-600">{gate.mensaje}</p>;
+  if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   // Ver la trazabilidad no autoriza a anular: el botón solo aparece con `anular_venta` (la acción lo vuelve a exigir en el servidor).
   const { editar: puedeAnularVenta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_venta", ctx.db);
@@ -30,17 +32,9 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
       <div>
         <h1 className="mb-1 text-xl font-semibold">Trazabilidad por ID Operación</h1>
         <form className="flex flex-wrap items-end gap-3 text-sm">
-          <label className="flex flex-col gap-1">
-            Buscar por producto
-            <input type="text" name="producto" defaultValue={sp.producto ?? ""} placeholder="nombre o código" className="rounded border px-3 py-2" />
-          </label>
-          <label className="flex flex-col gap-1">
-            o por ID Operación exacto
-            <input type="text" name="idOperacion" defaultValue={sp.idOperacion ?? ""} className="rounded border px-3 py-2" />
-          </label>
-          <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-white">
-            Buscar
-          </button>
+          <Campo etiqueta="Buscar por producto" type="text" name="producto" defaultValue={sp.producto ?? ""} placeholder="nombre o código" />
+          <Campo etiqueta="o por ID Operación exacto" type="text" name="idOperacion" defaultValue={sp.idOperacion ?? ""} />
+          <BotonDeServidor type="submit">Buscar</BotonDeServidor>
         </form>
       </div>
 
@@ -50,9 +44,9 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
           <TablaOperacionesEncontradas filas={encontradas} />
         </div>
       )}
-      {sp.producto && !encontradas.length && !sp.idOperacion && <p className="text-sm text-neutral-500">Sin operaciones para ese producto.</p>}
+      {sp.producto && !encontradas.length && !sp.idOperacion && <p className="text-sm text-tinta-tenue">Sin operaciones para ese producto.</p>}
 
-      {sp.idOperacion && !operacion && <p className="text-sm text-red-600">No se encontró la operación &quot;{sp.idOperacion}&quot; en esta sucursal.</p>}
+      {sp.idOperacion && !operacion && <p className="text-sm text-error">No se encontró la operación &quot;{sp.idOperacion}&quot; en esta sucursal.</p>}
 
       {operacion && (
         <div>
@@ -60,14 +54,14 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
             Operación {operacion.idOperacion} — {diaDeCalendario(operacion.fecha, ctx.empresaZonaHoraria)} — {operacion.total} movimiento(s)
           </h2>
           {(operacion.proveedorNombre || operacion.nroFactura) && (
-            <p className="mb-2 text-xs text-neutral-500">
+            <p className="mb-2 text-xs text-tinta-tenue">
               {operacion.proveedorNombre && `Proveedor: ${operacion.proveedorNombre}. `}
               {operacion.nroFactura && `Factura: ${operacion.nroFactura}.`}
             </p>
           )}
           {/* El cartel de «Anulada» vale para cualquier proceso; el botón para anular, solo para una venta vigente. */}
           {operacion.anuladaEn ? (
-            <p className="mb-2 text-xs text-red-600">
+            <p className="mb-2 text-xs text-error">
               {/* `anuladaEn` y `operacion.fecha` son INSTANTES: el día se lee en la zona de la empresa (P1), igual que arriba. */}
               Anulada el {diaDeCalendario(operacion.anuladaEn, ctx.empresaZonaHoraria)}
               {operacion.anuladaPorEmail && ` por ${operacion.anuladaPorEmail}`}.

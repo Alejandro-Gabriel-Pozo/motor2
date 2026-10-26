@@ -1,10 +1,9 @@
 import { aplicarDescuentoDeProducto } from "@/core/carta/public";
 import { consumoDeLineaConfigurada, type ConsumoDeOpcionParaVender, type CodigoDeErrorDeConsumo, type OpcionConConsumo } from "@/core/movimientos/public";
 import { huellaDeOpciones } from "@/core/opciones/public-servidor";
-import { combinacionElegida, type CombinacionesDelProducto, type PrecioDeCombinacionVendible } from "./combinacion-elegida";
+import { opcionParaPrecio } from "./opcion-para-precio";
 import {
   componerPrecioDeLinea,
-  entradaConPrecioDeCombinacion,
   validarOpcionesElegidas,
   type CodigoDeErrorDeOpciones,
   type CodigoDeErrorDePrecio,
@@ -12,7 +11,6 @@ import {
   type GrupoPermitido,
   type ModoDePrecioDeMedida,
   type OpcionElegida,
-  type OpcionParaPrecio,
   type OpcionPermitida,
   type TipoDeDiferencia,
   type TipoDeGrupoDeOpciones,
@@ -61,8 +59,6 @@ export interface OpcionParaVender extends OpcionPermitida {
 export interface GrupoParaVender extends Omit<GrupoPermitido, "opciones"> {
   orden: number;
   modoPrecio: ModoDePrecioDeMedida | null;
-  /** GO-3b: 1 o 2 si el grupo es un EJE de las combinaciones del producto (`ProductoAdmiteGrupo.ejeDeCombinacion`); ausente = no es eje (lo de siempre). */
-  ejeDeCombinacion?: number;
   opciones: readonly OpcionParaVender[];
 }
 
@@ -96,22 +92,6 @@ export interface AdicionalArmado {
   foto: FotoDeOpcion;
 }
 
-/** GO-3b (ADR-032, frente A): las COMBINACIONES de un producto con ejes, para venderlo (definidas junto a `combinacionElegida`, que las usa también para mostrar). */
-export type { CombinacionesDelProducto } from "./combinacion-elegida";
-
-/** GO-3b: la FOTO de la combinación vendida (las columnas de `CombinacionEnLinea`, sin la línea) y las opciones de sus ejes (para la receta propia al cerrar). */
-export interface FotoDeCombinacion {
-  combinacionId: string;
-  origenPrecio: "ADITIVO" | "PROPIO" | "GRUPO";
-  precioDeSucursal: boolean;
-  grupoDePrecioId: string | null;
-  nombreGrupoDePrecio: string | null;
-  /** El precio usado (PROPIO o GRUPO); `null` con ADITIVO. */
-  precio: number | null;
-  /** La versión VIGENTE de la receta propia al agregar el ítem (se congela: el cierre consume esa), o `null`. */
-  recetaDeCombinacionVersionId: string | null;
-}
-
 export interface LineaConfigurada {
   /** Precio por unidad de la línea del producto: la lista compuesta, con el descuento de producto ya aplicado si rige. */
   precioUnitario: number;
@@ -122,11 +102,9 @@ export interface LineaConfigurada {
   /** Las fotos de la línea del producto (MEDIDA, VARIANTE e INCLUIDA). */
   fotos: FotoDeOpcion[];
   adicionales: AdicionalArmado[];
-  /** GO-3b: SOLO si la línea cae en una combinación que existe (una fila de `CombinacionDeProducto`): su foto. Ausente = sin combinación (lo de siempre). */
-  combinacion?: FotoDeCombinacion;
 }
 
-export type CodigoDeLineaConfigurada = CodigoDeErrorDeOpciones | CodigoDeErrorDePrecio | CodigoDeErrorDeConsumo | "CONFIGURACION_INVALIDA" | "COMBINACION_NO_DISPONIBLE" | "PRECIO_DE_COMBINACION_INVALIDO";
+export type CodigoDeLineaConfigurada = CodigoDeErrorDeOpciones | CodigoDeErrorDePrecio | CodigoDeErrorDeConsumo | "CONFIGURACION_INVALIDA";
 
 export type ResultadoLineaConfigurada = { ok: true; linea: LineaConfigurada | null } | { ok: false; codigo: CodigoDeLineaConfigurada; mensaje: string };
 
@@ -139,26 +117,6 @@ export interface EntradaLineaConfigurada {
   /** El % de descuento de producto que rige en la sucursal (`null` = ninguno). */
   descuentoDeProducto: number | null;
   cantidad: number;
-  /**
-   * GO-3b: las combinaciones del producto (OBLIGATORIAS si algún grupo es eje: sin ellas la línea falla cerrado, nunca se cobra el aditivo de una combinación que podría estar apagada). Sin ejes no
-   * hace falta y la línea es exactamente la de siempre.
-   */
-  combinaciones?: CombinacionesDelProducto;
-}
-
-/** El precio de una opción por prioridad (ver el docstring del módulo), en la forma que pide `componerPrecioDeLinea`. */
-function opcionParaPrecio(grupo: GrupoParaVender, opcion: OpcionParaVender, cantidad: number): OpcionParaPrecio {
-  const base = { opcionId: opcion.opcionId, versionDeOpcionId: opcion.versionVigenteId, nombre: opcion.nombre, tipo: grupo.tipo, cantidad };
-  if (grupo.tipo === "MEDIDA") {
-    if (grupo.modoPrecio === "ABSOLUTO") {
-      const precioDeSucursal = opcion.precioDeSucursal !== null;
-      return { ...base, factorEscala: opcion.factorEscala, modoPrecio: "ABSOLUTO", precioAbsoluto: precioDeSucursal ? opcion.precioDeSucursal : opcion.precioAbsoluto, precioDeSucursal, diferencia: null };
-    }
-    return { ...base, factorEscala: opcion.factorEscala, modoPrecio: grupo.modoPrecio, precioAbsoluto: null, diferencia: opcion.diferenciaDelProducto ?? opcion.diferenciaDeLaVersion };
-  }
-  // «Ninguna» en VARIANTE o INCLUIDA: importe 0, sin diferencia. Un precio absoluto en algo que no es MEDIDA es una configuración inválida: se pasa para que la
-  // composición lo rechace (`PRECIO_DE_OPCION_INVALIDO`), nunca se ignora en silencio. El factor de una versión que no es MEDIDA, ídem.
-  return { ...base, factorEscala: opcion.factorEscala, modoPrecio: null, precioAbsoluto: opcion.precioAbsoluto, diferencia: opcion.esNinguna ? null : (opcion.diferenciaDelProducto ?? opcion.diferenciaDeLaVersion) };
 }
 
 export function armarLineaConfigurada(entrada: EntradaLineaConfigurada): ResultadoLineaConfigurada {
@@ -183,12 +141,7 @@ export function armarLineaConfigurada(entrada: EntradaLineaConfigurada): Resulta
   const queCuentan = elegidasParaVender.filter((e) => !(e.opcion.esNinguna && e.grupo.tipo === "ADICIONAL"));
   if (queCuentan.length === 0) return { ok: true, linea: null };
 
-  // GO-3b (ADR-032, frente A): si el producto tiene EJES, la combinación elegida decide (inactiva: no se vende; precio local, propio o de la tarifa: ese precio; sin fila o sin precio: el aditivo de
-  // siempre). `componerPrecioDeLinea` no cambia: recibe la entrada transformada (`entradaConPrecioDeCombinacion`). Sin ejes, nada de esto corre.
-  const combinada = combinacionDeLaLinea(entrada, queCuentan);
-  if (!combinada.ok) return combinada;
-  const entradaDePrecio = { precioBase, cantidad, opciones: queCuentan.map((e) => opcionParaPrecio(e.grupo, e.opcion, e.cantidad)) };
-  const precio = componerPrecioDeLinea(combinada.precio === null ? entradaDePrecio : entradaConPrecioDeCombinacion(entradaDePrecio, combinada.precio, combinada.opcionesDeEjes));
+  const precio = componerPrecioDeLinea({ precioBase, cantidad, opciones: queCuentan.map((e) => opcionParaPrecio(e.grupo, e.opcion, e.cantidad)) });
   if (!precio.ok) return { ok: false, codigo: precio.codigo, mensaje: precio.mensaje };
 
   const consumo = consumoDeLineaConfigurada({
@@ -243,33 +196,6 @@ export function armarLineaConfigurada(entrada: EntradaLineaConfigurada): Resulta
       huellaOpciones: huellaDeOpciones(fotos.map((f) => ({ opcionId: f.opcionId, versionDeOpcionId: f.versionDeOpcionId, cantidad: f.cantidad, importeUnitario: f.importeUnitario, factorEscala: f.factorEscala }))),
       fotos,
       adicionales,
-      ...(combinada.foto !== null ? { combinacion: combinada.foto } : {}),
     },
   };
-}
-
-/** GO-3b: la combinación de la línea (`combinacionElegida`, compartida con los precios para mostrar) y su FOTO (solo si cae en una fila que existe). */
-function combinacionDeLaLinea(
-  entrada: EntradaLineaConfigurada,
-  queCuentan: readonly { grupo: GrupoParaVender; opcion: OpcionParaVender }[],
-): { ok: true; precio: PrecioDeCombinacionVendible | null; opcionesDeEjes: string[]; foto: FotoDeCombinacion | null } | { ok: false; codigo: CodigoDeLineaConfigurada; mensaje: string } {
-  const elegida = combinacionElegida(entrada.grupos, queCuentan, entrada.combinaciones);
-  if (!elegida.ok) return elegida;
-  const { precio, opcionesDeEjes, fila } = elegida;
-  if (precio === null || precio.origen === "SIN_COMBINACION" || fila === null) return { ok: true, precio, opcionesDeEjes, foto: null };
-  const foto: FotoDeCombinacion =
-    precio.origen === "ADITIVO"
-      ? { combinacionId: fila.combinacionId, origenPrecio: "ADITIVO", precioDeSucursal: false, grupoDePrecioId: null, nombreGrupoDePrecio: null, precio: null, recetaDeCombinacionVersionId: fila.recetaDeCombinacionVersionId }
-      : precio.origen === "PROPIO"
-        ? { combinacionId: fila.combinacionId, origenPrecio: "PROPIO", precioDeSucursal: precio.precioDeSucursal, grupoDePrecioId: null, nombreGrupoDePrecio: null, precio: precio.precio, recetaDeCombinacionVersionId: fila.recetaDeCombinacionVersionId }
-        : {
-            combinacionId: fila.combinacionId,
-            origenPrecio: "GRUPO",
-            precioDeSucursal: precio.precioDeSucursal,
-            grupoDePrecioId: precio.grupoDePrecioId,
-            nombreGrupoDePrecio: precio.nombreGrupoDePrecio,
-            precio: precio.precio,
-            recetaDeCombinacionVersionId: fila.recetaDeCombinacionVersionId,
-          };
-  return { ok: true, precio, opcionesDeEjes, foto };
 }
