@@ -16,6 +16,13 @@ Una persona física consume esta vez como agente de una empresa: consume la pers
 - Preguntas de producto (una por vez, con recomendación): ¿el convenio es exclusivo (solo puede pedir eso) o es un descuento sobre cualquier cosa?; ¿precio pactado o % de descuento?; ¿límite de un menú por agente por día?; ¿quién autoriza que alguien sea agente de la empresa?
 - Base existente para el menú ejecutivo: promociones/combos de la carta (`PromoCarta`, ADR-032 y el rediseño del menú del día, GO-3d, pendiente en `docs/pendientes-sesion-2026-10-22.md`).
 
+### Aclaración del dueño (2026-10-26, tercera): precio, descuento y agentes son configuraciones separadas
+- **Precio del convenio.** Hay dos formas, independientes: (a) el convenio da acceso a una OFERTA armada (p. ej. menú ejecutivo) y el precio es el de esa oferta, y fin; (b) el convenio da acceso a PRODUCTOS elegidos de la carta, a su precio de carta. Un descuento sobre (b) es OTRA configuración, aparte.
+- **Descuento sin identificar vs identificado.** «Consumidor final con 15 % por residente» es un descuento por CATEGORÍA, sin nombre ni documento (no se identifica a la persona). «Descuento a empleados» es un descuento IDENTIFICADO, con nombre. Son dos tipos de descuento distintos; hoy solo existe el segundo (`Cliente.descuentoPorcentaje`, con nombre).
+- **Agentes en la configuración de la empresa.** Los agentes se administran desde la ficha de la empresa cliente. Atajo desde esa ficha (y desde el POS): crear el agente si no existe, o VINCULAR a un agente existente si ya estaba cargado como consumidor final identificado.
+- Supuestos mientras no se confirmen: (1) un ticket lleva UN solo beneficio (convenio o descuento), sin acumular; (2) todo descuento aplicado deja registrado su concepto (residente, empleado, convenio de X) aunque la persona no se identifique, para reportes y control; (3) aplicar un descuento por categoría sin identificar exige un permiso propio, porque es la vía más fácil de abusar (decirlo y que se aplique).
+- Preguntas que quedan abiertas (cuando se llegue a ese módulo): ¿se pueden acumular beneficios?; ¿quién puede aplicar el descuento de residente sin identificar?; ¿se pide algún dato mínimo (tipo de documento) para el residente?
+
 ## Hallazgos transversales
 1. «Ticket» = `Cuenta` cerrada con venta. Los ejemplares (`EjemplarTicket`) son el papel impreso: «566-A» y «566-B» son dos ejemplares del mismo número. El importe no se guarda: se deriva de las líneas no anuladas.
 2. `cerrarCuenta` NO cobra (decisión B5, `docs/plan-tomar-pedido-2026-09-25.md`): no hay caja, pago ni medio de pago. «Ticket no cobrado» es vacío hoy.
