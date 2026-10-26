@@ -129,7 +129,7 @@ model Sucursal {
 
   /// Cupo de mesas ABIERTAS a la vez en esta sucursal (módulo POS, docs/plan-comensales-y-limite-mesas-2026-09-26.md). `null` (default) =
   /// sin límite. Se cuenta como "abierta" toda `Cuenta` con `cerradaEn IS NULL` de una mesa de esta sucursal — no la cantidad de `Mesa`
-  /// dadas de alta. Se edita con el mismo permiso que da de alta mesas (`pos_mesas`, Editar — src/server/actions/pos/mesas.ts). Bajarlo
+  /// dadas de alta. El puesto mostrador (`Mesa.tipo = MOSTRADOR`, ADR-039) NO cuenta: solo las cuentas de mesas de SALÓN. Se edita con su propia clave (`pos_limite_mesas_abiertas`, Editar — src/server/actions/pos/mesas.ts). Bajarlo
   /// por debajo de las mesas ya abiertas NO cierra ninguna: solo bloquea aperturas nuevas hasta que se libere o cierre alguna
   /// (`abrirCuenta`, chequeo dentro de la misma transacción serializable que crea la `Cuenta`).
   maxMesasAbiertas Int?
@@ -2249,7 +2249,10 @@ model PortalCartaEmpresa {
 // Grounding: docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§3/§6.
 // ===================================================================
 
-/// Mesa física del salón. El estado (libre/en_pedido/ocupada) NO se persiste: se deriva de su Cuenta abierta (src/core/pos/mesas.ts).
+/// Puesto de venta del salón. El estado (libre/en_pedido/ocupada) NO se persiste: se deriva de su Cuenta abierta (src/core/pos/mesas.ts).
+/// ADR-039: `tipo` SALON (la mesa numerada de siempre) o MOSTRADOR (UN puesto por sucursal, número 0, que atiende en el momento con ticket, cliente y descuentos como una
+/// mesa). TEXT + CHECK `Mesa_tipo_chk` (espejo de `TIPOS_DE_PUESTO`, src/core/pos/puesto.ts) y `Mesa_numero_segun_tipo_chk`: `(tipo = 'MOSTRADOR') = (numero = 0)`. Un solo
+/// mostrador por sucursal lo garantizan `@@unique([sucursalId, numero])` y ese CHECK. El tipo no cambia nunca: la FK compuesta de `Cuenta.mesa` (RESTRICT) lo impide con cuentas.
 model Mesa {
   id         String   @id @default(cuid())
   empresaId  String   @default(dbgenerated("app_empresa_actual()"))
@@ -2257,11 +2260,14 @@ model Mesa {
   sucursalId String
   sucursal   Sucursal @relation(fields: [empresaId, sucursalId], references: [empresaId, id])
   numero     Int
+  tipo       String   @default("SALON")
   creadoEn   DateTime @default(now())
   cuentas    Cuenta[]
 
   @@unique([sucursalId, numero])
   @@unique([empresaId, id])
+  /// Destino de la FK con discriminador de `Cuenta` (ADR-039).
+  @@unique([empresaId, id, tipo])
 }
 
 /// La CUENTA abierta de una mesa (no la comanda/KOT: ver docs/grounding-pos-mesas-comandas-2026-09-24.md §1/§6).
@@ -2273,7 +2279,10 @@ model Cuenta {
   empresaId        String             @default(dbgenerated("app_empresa_actual()"))
   empresa          Empresa            @relation(fields: [empresaId], references: [id])
   mesaId           String
-  mesa             Mesa               @relation(fields: [empresaId, mesaId], references: [empresaId, id])
+  /// ADR-039: el tipo de su puesto (SALON | MOSTRADOR), que la base mantiene igual al de su mesa con esta FK compuesta con discriminador (RESTRICT en ambos sentidos: una cuenta
+  /// no cambia de puesto de tipo, ni un puesto con cuentas de tipo). `Cuenta_comensales_segun_tipo_chk`: el mostrador no lleva comensales.
+  tipoMesa         String             @default("SALON")
+  mesa             Mesa               @relation(fields: [empresaId, mesaId, tipoMesa], references: [empresaId, id, tipo], onDelete: Restrict, onUpdate: Restrict)
   abiertaPorId     String
   abiertaPor       User               @relation("CuentaAbiertaPor", fields: [abiertaPorId], references: [id])
   abiertaEn        DateTime           @default(now())

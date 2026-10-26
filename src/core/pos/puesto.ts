@@ -9,6 +9,12 @@
  * casos de uso del POS, la persistencia del POS ni las pantallas del POS; todos salen de acá. Para una mesa de salón cada frase es BYTE A BYTE la de siempre.
  */
 
+/**
+ * Los tipos de puesto que acepta la base (`Mesa.tipo`, CHECK `Mesa_tipo_chk`; la cuenta lleva el de su puesto en `Cuenta.tipoMesa`, CHECK `Cuenta_tipoMesa_chk`). Ampliar la lista (por
+ * ejemplo «para llevar») es ampliar los dos CHECK con otra migración: lo vigila `test/persistencia/migracion-puesto-mostrador.test.ts`.
+ */
+export const TIPOS_DE_PUESTO = ["SALON", "MOSTRADOR"] as const;
+
 /** El número que ocupa el puesto mostrador en `Mesa.numero`. */
 const NUMERO_DEL_MOSTRADOR = 0;
 

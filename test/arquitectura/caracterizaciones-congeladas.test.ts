@@ -296,6 +296,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "MOSTRADOR (O.430; CAMBIA LAS CONSULTAS, no la salida): igual que la matriz de venta. La barrera de las opciones obligatorias lee UNA vez por lote lo que admite cada producto de las líneas sin configurar (`producto.findMany`), la primera vez que una línea llega a ella. Cambia SOLO la línea `lecturas (N)` de 19 escenas (las que pasan la barrera: ventas de mostrador, cierres del POS y sus rechazos posteriores a ella): N suma 1 y `producto.findMany` suma 1; los rechazos anteriores a la barrera (producto inexistente, no disponible, cantidad inválida) no cambian. Ninguna fila OPERACION, KARDEX ni resultado cambia. Verificado con `git diff --word-diff` y por programa: cada línea cambiada, sin N y sin `producto.findMany×k`, es idéntica a la anterior.",
       },
+      {
+        blob: "ed630085f5c0e1625ac0eb615d1baf82eaf5eb62",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a878640a` («M1.1 mostrador: núcleo puro del puesto del salón (rótulo y frases) y guardián G1 de textos»).
+        commit: "a878640a",
+        motivo:
+          "M1 del mostrador (ADR-039, migración 20261027100000_m1_puesto_mostrador; ADITIVO, no cambia comportamiento): las 21 líneas CUENTA suman `tipoMesa=SALON` (la columna nueva `Cuenta.tipoMesa`, default SALON). Verificado con `git diff --word-diff` y por programa: sin esa columna el contenido es IDÉNTICO al blob anterior, byte a byte; ninguna fila, importe ni traza de consultas cambió.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -423,6 +430,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "c980e5fb",
         motivo:
           "GO-1d (O.324; ADITIVO, no cambia comportamiento; primera regeneración de este golden): las líneas ITEM suman `huellaOpciones=null` y `lineaPadreId=null` y las OPERACION suman `operacionPadreId=null`. Verificado con diff: sin esas columnas en null, idéntico al anterior.",
+      },
+      {
+        blob: "4ef38a43f32e26e8f78ab57bdb6cfc7bc4867af3",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a878640a` («M1.1 mostrador: núcleo puro del puesto del salón (rótulo y frases) y guardián G1 de textos»).
+        commit: "a878640a",
+        motivo:
+          "M1 del mostrador (ADR-039, migración 20261027100000_m1_puesto_mostrador; ADITIVO, no cambia comportamiento): las 207 líneas MESA suman `tipo=SALON` y las 174 CUENTA suman `tipoMesa=SALON` (las columnas nuevas `Mesa.tipo` y `Cuenta.tipoMesa`, default SALON). Verificado con `git diff --word-diff` y por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior (e6f590094e95), byte a byte; ningún mensaje, número ni orden cambió (los textos de las mesas pasaron por core/pos/puesto.ts en M1.1 y esta huella pasó verde sin regenerar).",
       },
     ],
   },
