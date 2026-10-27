@@ -31,7 +31,7 @@ import { cambiarDatosDePromo, crearPromoEnSucursal } from "@/server/persistencia
  * @contract Deja la promo (nueva, con su fila en la sucursal activa prendida solo si quien la crea puede prenderla allí, o la existente con sus datos nuevos, con el precio en o sobre el piso de sus cupos) con el registro de auditoría de su precio si cambió: los dos o ninguno.
  * @idempotency No aplica — un alta repetida crea otra promo (no se deduplica por título, como antes); repetir una edición vuelve a escribir los mismos datos (sin fila de auditoría nueva).
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento; M14 / S-51): las lecturas (sección, promo con sus cupos), el piso, la escritura y su auditoría, todo junto. La clave de prender (un gate) se lee con `actor.db` (M19).
- * @sideEffects registrarCambioAuditado (PromoCarta.precio, del anterior —o `null` en el alta— al nuevo), en la misma transacción. La revalidación de la carta
+ * @sideEffects registrarCambioAuditado (PromoCarta.precio, del anterior —o `null` en el alta— al nuevo; y, si la promo nace en «solo salón», PromoCarta.soloSalon de `null` a `true`), en la misma transacción. La revalidación de la carta
  *   pública la hace la Server Action cuando sale bien.
  * @ficha permiso=carta_promo_definir transaccion=SERIALIZABLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
@@ -64,14 +64,30 @@ export async function guardarPromoCartaCasoDeUso(
     // (`carta_promo_activar`). La sucursal desde la que se crea la ofrece desde el primer momento SOLO si quien la crea puede prenderla allí; si no, la fila de esa sucursal nace
     // APAGADA (la promo existe y la prende quien pueda). Las demás la prenden cuando quieran (opt-in, sin fila = no la ofrecen). La clave es un permiso (el gate de `server/acceso` solo habla con la
     // base del contexto, no con un `tx`): se lee con `actor.db`, como todo gate, y es del conjunto declarado de M19 (los gates se leen fuera de la transacción de escritura), no del piso de la promo.
-    const creada = await crearPromoEnSucursal(tx, { ...datos, sucursalId: actor.sucursalId, prendida });
+    const soloSalon = comando.soloSalon === true;
+    const creada = await crearPromoEnSucursal(tx, { ...datos, sucursalId: actor.sucursalId, prendida, soloSalon });
     await auditarPrecioDePromo(tx, actor.usuarioId, creada.id, comando.titulo, null, comando.precio);
+    // Nacer en «solo salón» queda registrado (de `null` a `true`); nacer pública es lo de siempre y no deja fila.
+    if (soloSalon) await auditarSoloSalonDePromo(tx, actor.usuarioId, creada.id, comando.titulo);
     return exito(
       prendida
         ? `Promo "${comando.titulo}" creada en "${seccion.nombre}" y prendida en esta sucursal.`
         : `Promo "${comando.titulo}" creada en "${seccion.nombre}". Queda apagada en esta sucursal: la prende quien tenga el permiso de prender promos.`,
       null,
     );
+  });
+}
+
+/** Deja en la auditoría quién creó la promo ya en «solo salón» y cuándo (de `null` a `true`); va dentro de la transacción del alta. */
+async function auditarSoloSalonDePromo(tx: Parameters<typeof registrarCambioAuditado>[0], actorId: string, promoCartaId: string, titulo: string) {
+  await registrarCambioAuditado(tx, {
+    entidad: "PromoCarta",
+    entidadId: promoCartaId,
+    campo: "soloSalon",
+    descripcion: `Promo "${titulo}": solo salón (no se muestra en la carta pública)`,
+    valorAnterior: null,
+    valorNuevo: true,
+    actorId,
   });
 }
 

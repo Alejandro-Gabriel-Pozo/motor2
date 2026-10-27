@@ -21,6 +21,8 @@ interface EntradaPromoCarta {
   descripcion?: unknown;
   precio: unknown;
   orden?: unknown;
+  /** Solo en el alta: que la promo nazca en «solo salón». */
+  soloSalon?: unknown;
 }
 
 /**
@@ -38,8 +40,12 @@ export function guardComandoGuardarPromoCarta(datos: EntradaPromoCarta): Resulta
   if (!precio.ok) return rechazar("formato", precio.mensaje);
   const orden = validarOrdenCarta(datos.orden);
   if (!orden.ok) return rechazar("formato", orden.mensaje);
+  // «Solo salón» al crear: exactamente un booleano. En una edición no se acepta (se cambia aparte, con la versión que vio la pantalla): un pedido que lo trae se rechaza en vez de ignorarse en silencio.
+  if (datos.soloSalon !== undefined && typeof datos.soloSalon !== "boolean") return rechazar("formato", "Elegí si la promo es solo para el salón o también se ve en la carta pública.");
+  if (datos.id && datos.soloSalon !== undefined) return rechazar("formato", "«Solo salón» de una promo que ya existe se cambia desde «Dónde se ve».");
   return aceptar({
     ...(datos.id ? { id: datos.id } : {}),
+    ...(datos.soloSalon === true ? { soloSalon: true as const } : {}),
     seccionCartaId: datos.seccionCartaId,
     titulo: titulo.valor,
     descripcion: descripcion.valor,

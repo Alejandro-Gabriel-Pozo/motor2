@@ -30,7 +30,7 @@ export async function cambiarDatosDePromo(db: Prisma.TransactionClient, args: Da
  * puede prender promos ALLÍ, `carta_promo_activar`) y APAGADA si no (S-10/D1, fila O.59: definir la promo es de la empresa, prenderla es de la sucursal). Las demás
  * sucursales la prenden cuando quieran. Devuelve el id, para la auditoría.
  */
-export async function crearPromoEnSucursal(db: Prisma.TransactionClient, args: DatosDePromo & { sucursalId: string; prendida: boolean }): Promise<{ id: string }> {
+export async function crearPromoEnSucursal(db: Prisma.TransactionClient, args: DatosDePromo & { sucursalId: string; prendida: boolean; soloSalon: boolean }): Promise<{ id: string }> {
   const creada = await db.promoCarta.create({
     data: {
       seccionCartaId: args.seccionCartaId,
@@ -38,6 +38,7 @@ export async function crearPromoEnSucursal(db: Prisma.TransactionClient, args: D
       descripcion: args.descripcion,
       precio: args.precio,
       orden: args.orden,
+      soloSalon: args.soloSalon,
       sucursales: { create: { sucursalId: args.sucursalId, activa: args.prendida } },
     },
   });
