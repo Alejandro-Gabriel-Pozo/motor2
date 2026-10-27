@@ -16,7 +16,7 @@
 export const TIPOS_DE_PUESTO = ["SALON", "MOSTRADOR"] as const;
 
 /** El número que ocupa el puesto mostrador en `Mesa.numero`. */
-const NUMERO_DEL_MOSTRADOR = 0;
+export const NUMERO_DEL_MOSTRADOR = 0;
 
 /** ¿Es el puesto mostrador? (por su número; el CHECK de la base garantiza que solo él lleva el 0). */
 export function esMostrador(numero: number): boolean {

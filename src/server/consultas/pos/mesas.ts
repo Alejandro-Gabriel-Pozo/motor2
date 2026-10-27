@@ -53,3 +53,15 @@ export async function obtenerMapaDeMesas(sucursalId: string, db: Db, ahora: Date
     ahora,
   );
 }
+
+/**
+ * El puesto mostrador de la sucursal (ADR-039) y cuántas cuentas abiertas tiene, o `null` si todavía no se habilitó. Para la tarjeta «Mostrador» del mapa y la pantalla `/mesas/mostrador`; sin guarda
+ * de permiso adentro (la página la pone antes). Aislada por sucursal: el mostrador de otra no se ve.
+ */
+export async function obtenerPuestoMostrador(sucursalId: string, db: Db): Promise<{ id: string; cuentasAbiertas: number } | null> {
+  const puesto = await db.mesa.findFirst({
+    where: { sucursalId, tipo: "MOSTRADOR" },
+    select: { id: true, _count: { select: { cuentas: { where: { cerradaEn: null } } } } },
+  });
+  return puesto && { id: puesto.id, cuentasAbiertas: puesto._count.cuentas };
+}

@@ -18,7 +18,7 @@ export { armarDetalleDeMesa, claveDeLineaDeVenta, lineasDeVenta } from "./cuenta
 export type { DetalleDeMesa, ItemDeCuenta, ItemEnEnvio } from "./cuenta";
 export { formatearCantidad, formatearMonto } from "./formato";
 // ADR-039: el puesto de venta del salón (mesa o mostrador) y sus rótulos.
-export { esMostrador, frasesDePuesto, rotuloDePuesto } from "./puesto";
+export { NUMERO_DEL_MOSTRADOR, esMostrador, frasesDePuesto, rotuloDePuesto } from "./puesto";
 export { documentoDeReimpresion, resolverImpresion } from "./impresion";
 export type { DocumentoImprimible, PedidoImpresion } from "./impresion";
 export { armarMapaDeMesas, esEstadoMesa, filtrarMesas, nombreDelMesero, validarMaxMesasAbiertas } from "./mesas";

@@ -352,6 +352,9 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const promoCuentaEnviada = await db.promoCuenta.create({ data: { id: id("promocuenta-enviada"), empresaId, cuentaId: cuentaEnviada.id, promoCartaId: k.promoCartaId, precio: 5000, titulo: `Promo enviada ${marca}`, creadoPorId: miembro.id } });
   await db.cuentaItem.create({ data: { id: id("item-de-cuenta-enviada"), empresaId, cuentaId: cuentaEnviada.id, productoId: k.productoPvId, cantidad: 1, precioUnitario: 1000, numeroEnvio: 1, creadoPorId: miembro.id } });
   await db.cuentaItem.create({ data: { id: id("item-promo-enviada"), empresaId, cuentaId: cuentaEnviada.id, productoId: k.productoPvId, cantidad: 1, precioUnitario: 0, numeroEnvio: 1, promoCuentaId: promoCuentaEnviada.id, creadoPorId: miembro.id } });
+  // ADR-039: el puesto mostrador de la sucursal (la mesa 0, tipo MOSTRADOR) con una cuenta abierta suya: lo que lee `obtenerPuestoMostrador` y lo que `habilitarMostrador` encuentra ya habilitado.
+  const mostrador = await db.mesa.create({ data: { id: id("mostrador"), empresaId, sucursalId, numero: 0, tipo: "MOSTRADOR" } });
+  await db.cuenta.create({ data: { id: id("cuenta-mostrador"), empresaId, mesaId: mostrador.id, tipoMesa: "MOSTRADOR", abiertaPorId: miembro.id } });
 
   // Kardex: una compra con lote (stock +10), una venta (−1) y un conteo pendiente.
   const compra = await db.operacion.create({

@@ -1,10 +1,10 @@
 {
   "regla": "tipografia",
   "meta": "bajar hacia 0 a medida que la escala tipográfica pase a tokens (auditoría §19.4); la carta pública tiene su propia línea de base",
-  "total": 54,
-  "entradas": 6,
+  "total": 52,
+  "entradas": 5,
   "porTipo": {
-    "clase-arbitraria": 5,
+    "clase-arbitraria": 3,
     "font-size-literal": 49
   },
   "cuentas": {
@@ -13,9 +13,6 @@
     },
     "src/app/(app)/carta/carta-mant.module.css": {
       "font-size-literal": 30
-    },
-    "src/app/(pos)/mesas/page.tsx": {
-      "clase-arbitraria": 2
     },
     "src/app/globals.css": {
       "font-size-literal": 11

@@ -7,7 +7,7 @@ import { crearUsuarioConRol, entrarComo, sembrarCuenta, sembrarSalon } from "./s
 import { textoDeDenegacion } from "../../src/core/permisos/motivos";
 import type { AccionClave } from "../../src/core/permisos/acciones";
 import type { ResultadoAccion } from "../../src/server/actions/tipos";
-import { actualizarMaxMesasAbiertas, crearMesa } from "../../src/server/actions/pos/mesas";
+import { actualizarMaxMesasAbiertas, crearMesa, habilitarMostrador } from "../../src/server/actions/pos/mesas";
 import { abrirCuenta, asignarClienteACuenta, corregirComensales, liberarMesa } from "../../src/server/actions/pos/cuenta-apertura";
 import { agregarItems, enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar } from "../../src/server/actions/pos/cuenta-pedido";
 import { anularItemEnviado, anularPromoEnviada } from "../../src/server/actions/pos/cuenta-anulacion";
@@ -15,7 +15,7 @@ import { cerrarCuenta, emitirTicketCorregido } from "../../src/server/actions/po
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 
 /**
- * Red del Hito 4 (paso 0.2 de `docs/plan-hito-4-pureza.md` §5), ANTES de mover las acciones del POS a casos de uso: cada una de las 14 mutaciones del POS
+ * Red del Hito 4 (paso 0.2 de `docs/plan-hito-4-pureza.md` §5), ANTES de mover las acciones del POS a casos de uso: cada una de las 15 mutaciones del POS
  * (las 10 sin caso de uso y las 4 ya migradas) rechaza a un rol que tiene TODAS las claves del circuito del salón MENOS la suya, con el texto exacto del guard
  * (`core/permisos/motivos.ts`), y al rechazar no cambia NINGUNA tabla del salón ni de la venta. Antes de este test, `corregirComensales` y
  * `quitarPromoSinEnviar` no tenían ningún test de rechazo, y `liberarMesa`, `agregarItems`, `quitarItemSinEnviar` y `enviarACocina` solo uno con
@@ -64,6 +64,7 @@ interface Mutacion {
 
 const MUTACIONES: Mutacion[] = [
   { nombre: "crearMesa", clave: "pos_alta_mesa", llamar: () => crearMesa(50) },
+  { nombre: "habilitarMostrador", clave: "pos_alta_mesa", llamar: () => habilitarMostrador() },
   { nombre: "actualizarMaxMesasAbiertas", clave: "pos_limite_mesas_abiertas", llamar: () => actualizarMaxMesasAbiertas(5) },
   { nombre: "abrirCuenta", clave: "pos_abrir_cuenta", llamar: (e) => abrirCuenta(e.mesaLibre, 2) },
   { nombre: "corregirComensales", clave: "pos_abrir_cuenta", llamar: (e) => corregirComensales(e.cuentaAbierta, 3) },
@@ -152,10 +153,10 @@ beforeEach(async () => {
   };
 });
 
-describe("las 14 mutaciones del POS rechazan sin su clave y no cambian ninguna tabla", () => {
-  it("la lista son las 14 (una por mutación del POS) y cubre todas las claves del circuito salvo la de ver el mapa", () => {
-    expect(MUTACIONES).toHaveLength(14);
-    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(14);
+describe("las 15 mutaciones del POS rechazan sin su clave y no cambian ninguna tabla", () => {
+  it("la lista son las 15 (una por mutación del POS) y cubre todas las claves del circuito salvo la de ver el mapa", () => {
+    expect(MUTACIONES).toHaveLength(15);
+    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(15);
     expect(new Set(MUTACIONES.map((m) => m.clave))).toEqual(new Set(CLAVES_DEL_SALON.filter((c) => c !== "pos_mesas")));
   });
 

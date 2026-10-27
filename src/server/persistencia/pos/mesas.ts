@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { NUMERO_DEL_MOSTRADOR } from "@/core/pos/public";
 
 /**
  * Escrituras de las MESAS del salón y de su límite por sucursal (Hito 4 de la pureza, bloque 4.1 — `docs/plan-hito-4-pureza.md` §5; mismo contrato que el resto
@@ -15,6 +16,15 @@ import type { Prisma } from "@prisma/client";
  */
 export async function escribirMesaNueva(db: Prisma.TransactionClient, args: { sucursalId: string; numero: number }): Promise<void> {
   await db.mesa.create({ data: { sucursalId: args.sucursalId, numero: args.numero } });
+}
+
+/**
+ * Da de alta el puesto MOSTRADOR de la sucursal (ADR-039): la mesa de número 0 y tipo `MOSTRADOR`. A lo sumo uno por sucursal: lo imponen `@@unique([sucursalId, numero])` y `Mesa_numero_segun_tipo_chk`
+ * (un segundo choca con P2002). Devuelve el id del puesto creado. La auditoría la escribe el caso de uso.
+ */
+export async function escribirMostradorNuevo(db: Prisma.TransactionClient, args: { sucursalId: string }): Promise<string> {
+  const creada = await db.mesa.create({ data: { sucursalId: args.sucursalId, numero: NUMERO_DEL_MOSTRADOR, tipo: "MOSTRADOR" }, select: { id: true } });
+  return creada.id;
 }
 
 /** Fija el cupo de mesas ABIERTAS a la vez de la sucursal (`Sucursal.maxMesasAbiertas`; `null` = sin límite). La auditoría la escribe el caso de uso. */
