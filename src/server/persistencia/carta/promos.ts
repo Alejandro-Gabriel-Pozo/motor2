@@ -30,7 +30,7 @@ export async function cambiarDatosDePromo(db: Prisma.TransactionClient, args: Da
  * puede prender promos ALLÍ, `carta_promo_activar`) y APAGADA si no (S-10/D1, fila O.59: definir la promo es de la empresa, prenderla es de la sucursal). Las demás
  * sucursales la prenden cuando quieran. Devuelve el id, para la auditoría.
  */
-export async function crearPromoEnSucursal(db: Prisma.TransactionClient, args: DatosDePromo & { sucursalId: string; prendida: boolean }): Promise<{ id: string }> {
+export async function crearPromoEnSucursal(db: Prisma.TransactionClient, args: DatosDePromo & { sucursalId: string; prendida: boolean; soloSalon: boolean }): Promise<{ id: string }> {
   const creada = await db.promoCarta.create({
     data: {
       seccionCartaId: args.seccionCartaId,
@@ -38,6 +38,7 @@ export async function crearPromoEnSucursal(db: Prisma.TransactionClient, args: D
       descripcion: args.descripcion,
       precio: args.precio,
       orden: args.orden,
+      soloSalon: args.soloSalon,
       sucursales: { create: { sucursalId: args.sucursalId, activa: args.prendida } },
     },
   });
@@ -105,4 +106,16 @@ export async function fijarPrecioLocalDePromo(db: Prisma.TransactionClient, args
     create: { promoCartaId: args.promoCartaId, sucursalId: args.sucursalId, activa: false, precioLocal: args.precioLocal },
     update: { precioLocal: args.precioLocal },
   });
+}
+
+/**
+ * El interruptor «solo salón» de la promo con su control OPTIMISTA: escribe solo si la versión sigue siendo la que vio la pantalla, y la incrementa (la misma `version` que la vigencia). Devuelve cuántas filas cambió (0 = alguien la cambió entre medio:
+ * `VERSION_DESACTUALIZADA`).
+ */
+export async function cambiarSoloSalonDePromo(db: Prisma.TransactionClient, args: { id: string; versionEsperada: number; soloSalon: boolean }): Promise<number> {
+  const { count } = await db.promoCarta.updateMany({
+    where: { id: args.id, version: args.versionEsperada },
+    data: { soloSalon: args.soloSalon, version: { increment: 1 } },
+  });
+  return count;
 }

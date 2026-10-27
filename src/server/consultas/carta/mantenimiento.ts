@@ -116,7 +116,7 @@ export async function resumirParametrizacionDeCarta(db: Db, sucursalId: string):
     db.seccionCarta.findMany({ select: { nombre: true, activa: true }, orderBy: [{ orden: "asc" }, { nombre: "asc" }] }),
     db.generoCarta.count({ where: { ...whereCartaDeSucursal(sucursalId), activo: true } }),
     db.itemAgrupadoCarta.count({ where: { ...whereCartaDeSucursal(sucursalId), activo: true } }),
-    db.promoCarta.count({ where: wherePromoOfrecidaEn(sucursalId) }),
+    db.promoCarta.count({ where: wherePromoOfrecidaEn(sucursalId, "salon") }),
     db.sucursal.findUnique({ where: { id: sucursalId }, select: { publica: { select: { publicada: true } } } }),
   ]);
   return { secciones, generos, agrupados, promosActivas, publicada: sucursal?.publica ? sucursal.publica.publicada : null };

@@ -59,10 +59,21 @@ export function entrarComo(usuario: { id: string; email: string }) {
 }
 
 /** Una cuenta abierta en la mesa dada con ítems sembrados directo (sin pasar por las acciones). */
-export async function sembrarCuenta(mesaId: string, abiertaPorId: string, items: { productoId: string; cantidad: number; precioUnitario: number; numeroEnvio?: number | null }[] = []) {
-  const cuenta = await prisma.cuenta.create({ data: { mesaId, abiertaPorId } });
+export async function sembrarCuenta(
+  mesaId: string,
+  abiertaPorId: string,
+  items: { productoId: string; cantidad: number; precioUnitario: number; numeroEnvio?: number | null }[] = [],
+  /** El tipo del puesto de la mesa (ADR-039): `MOSTRADOR` para la cuenta de un puesto mostrador (la FK con discriminador lo exige). */
+  tipoMesa: "SALON" | "MOSTRADOR" = "SALON",
+) {
+  const cuenta = await prisma.cuenta.create({ data: { mesaId, abiertaPorId, tipoMesa } });
   const creados = [];
   // Uno por uno, a propósito: el arreglo devuelto respeta el orden pedido (un create anidado no lo garantiza).
   for (const i of items) creados.push(await prisma.cuentaItem.create({ data: { ...i, cuentaId: cuenta.id, numeroEnvio: i.numeroEnvio ?? null, creadoPorId: abiertaPorId } }));
   return { ...cuenta, items: creados };
+}
+
+/** El puesto mostrador de la sucursal (ADR-039): la mesa de número 0 y tipo MOSTRADOR, sembrada directo (sin pasar por `habilitarMostrador`). */
+export function sembrarMostrador(sucursalId: string) {
+  return prisma.mesa.create({ data: { sucursalId, numero: 0, tipo: "MOSTRADOR" } });
 }

@@ -170,7 +170,7 @@ const LECTURAS: Readonly<Record<string, LecturaDeclarada>> = {
       "app/(app)/traspasos/page.tsx": { claves: ["traspaso_ver_bandeja"] },
       "app/(app)/traspasos/solicitar/page.tsx": { claves: ["traspaso_solicitar"] },
       "app/(app)/traspasos/enviar/page.tsx": { claves: ["traspaso_enviar_directo"] },
-      "app/(pos)/mesas/[mesaId]/page.tsx": { claves: ["pos_mesas"] },
+      "app/(pos)/mesas/[mesaId]/pantalla-del-puesto.tsx": { claves: ["pos_mesas"] },
     },
   },
   // D-4: la ficha completa (contacto, CUIT, email, condiciones, notas) solo para la pantalla de Proveedores; los demás eligen con el selector.

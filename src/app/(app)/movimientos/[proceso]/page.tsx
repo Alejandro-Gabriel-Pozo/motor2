@@ -3,13 +3,14 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
-import { ACCION_POR_PROCESO, obtenerConfigProceso } from "@/core/movimientos/public";
+import { ACCION_POR_PROCESO, PROCESOS_DEL_SELECTOR, obtenerConfigProceso } from "@/core/movimientos/public";
 import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
 import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarMotivosMermaActivos, listarDestinosConsumoActivos } from "@/server/actions/movimientos/motivos";
 import { obtenerProductoOpcion } from "@/server/consultas/catalogo/productos";
 import { seccionesDesactivadas } from "@/server/consultas/movimientos/secciones-desactivadas";
+import { FilaDeMovimientos } from "@/components/fila-de-movimientos";
 import { PanelMovimientoForm } from "./panel-movimiento-form";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
@@ -56,19 +57,25 @@ export default async function MovimientoPage({
     productoId ? obtenerProductoOpcion(productoId, ctx.db) : Promise.resolve(null),
   ]);
 
+  // Un proceso del selector lleva el título «Registrar movimiento · {etiqueta}» y la fila para pasar a otro; Merma y Compra (directos) no: su título es el del proceso y no hay fila.
+  const delSelector = PROCESOS_DEL_SELECTOR.find((p) => p.href === `/movimientos/${slug}`);
+
   return (
-    <div className="max-w-2xl">
-      <h1 className="mb-4 text-xl font-semibold">{config.titulo}</h1>
-      <PanelMovimientoForm
-        config={config}
-        secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
-        seccionesDesactivadas={desactivadas}
-        proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
-        unidades={unidades.map((u) => ({ id: u.id, nombre: u.nombre }))}
-        motivos={motivos.map((m) => ({ id: m.id, nombre: m.nombre }))}
-        destinos={destinos.map((d) => ({ id: d.id, nombre: d.nombre }))}
-        productoInicial={productoInicial ? { id: productoInicial.id, etiqueta: `${productoInicial.codigo} — ${productoInicial.nombre}` } : undefined}
-      />
+    <div className="flex max-w-4xl flex-col gap-4">
+      <h1 className="text-xl font-semibold">{delSelector ? `Registrar movimiento · ${delSelector.etiquetaCorta}` : config.titulo}</h1>
+      {delSelector && <FilaDeMovimientos ctx={ctx} actual={delSelector.href} />}
+      <div className="max-w-2xl">
+        <PanelMovimientoForm
+          config={config}
+          secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+          seccionesDesactivadas={desactivadas}
+          proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
+          unidades={unidades.map((u) => ({ id: u.id, nombre: u.nombre }))}
+          motivos={motivos.map((m) => ({ id: m.id, nombre: m.nombre }))}
+          destinos={destinos.map((d) => ({ id: d.id, nombre: d.nombre }))}
+          productoInicial={productoInicial ? { id: productoInicial.id, etiqueta: `${productoInicial.codigo} — ${productoInicial.nombre}` } : undefined}
+        />
+      </div>
     </div>
   );
 }

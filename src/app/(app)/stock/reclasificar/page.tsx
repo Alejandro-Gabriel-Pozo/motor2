@@ -3,6 +3,7 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
+import { FilaDeMovimientos } from "@/components/fila-de-movimientos";
 import { ReclasificarForm } from "./reclasificar-form";
 
 export default async function ReclasificarPage() {
@@ -18,12 +19,15 @@ export default async function ReclasificarPage() {
   const secciones = await listarSeccionesActivas(ctx.sucursalId);
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="mb-1 text-xl font-semibold">Reclasificar stock</h1>
-      <p className="mb-4 text-sm text-tinta-tenue">
-        Repartí TODO el saldo disponible de un producto (en una sección/lote puntual) entre uno o más destinos — la suma de los destinos tiene que coincidir exacto con lo disponible.
-      </p>
-      <ReclasificarForm secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />
+    <div className="flex max-w-4xl flex-col gap-4">
+      <h1 className="text-xl font-semibold">Registrar movimiento · Reclasificar</h1>
+      <FilaDeMovimientos ctx={ctx} actual="/stock/reclasificar" />
+      <div className="max-w-2xl">
+        <p className="mb-4 text-sm text-tinta-tenue">
+          Repartí TODO el saldo disponible de un producto (en un depósito/lote puntual) entre uno o más destinos — la suma de los destinos tiene que coincidir exacto con lo disponible.
+        </p>
+        <ReclasificarForm secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GRUPOS_NAV, RUTAS_FUERA_DEL_MENU, accionDeRuta, accionesDeNavegacion, hrefsDelMenu, itemDeRuta } from "../../src/core/navegacion/estructura";
+import { GRUPOS_NAV, RUTAS_DE_UNA_ENTRADA, RUTAS_FUERA_DEL_MENU, accionDeRuta, accionesDeNavegacion, hrefsDelMenu, itemDeRuta } from "../../src/core/navegacion/estructura";
 import { leerPantallaGuardada, pantallaDeRegreso, pantallaTrasCambiarSucursal } from "../../src/core/navegacion/pantalla-tras-cambio";
 import type { AccionClave } from "../../src/core/permisos/acciones";
 
@@ -63,7 +63,7 @@ describe("pantallaTrasCambiarSucursal: la misma pantalla, solo si existe y el ro
   });
 
   it("propiedad: el resultado siempre es el href de un ítem conocido del menú (o fuera del menú) o null, sea cual sea la entrada", () => {
-    const conocidos = new Set([...hrefsDelMenu(), ...RUTAS_FUERA_DEL_MENU.map((i) => i.href)]);
+    const conocidos = new Set([...hrefsDelMenu(), ...RUTAS_FUERA_DEL_MENU.map((i) => i.href), ...RUTAS_DE_UNA_ENTRADA.map((i) => i.href)]);
     const sufijos = ["", "/", "/abc", "/abc/historial", "?x=1", "#a", "/abc?mesaId=1#f", "/../login", "//x", "/%2F%2Fsitio", "?volver=//sitio"];
     const entradas = [...conocidos, "/", "/inicio", "/zzz", ...MALICIOSAS].flatMap((base) => sufijos.map((s) => base + s));
     expect(entradas.length).toBeGreaterThan(500);

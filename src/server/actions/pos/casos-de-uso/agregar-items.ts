@@ -25,6 +25,7 @@ import { cargarOrigenDeStockParaVender } from "@/server/lecturas/movimientos/rec
 import { cargarAlicuotasDeProductos } from "@/server/lecturas/carta/componentes-de-promo";
 import { revisarAlicuotasDeCombo } from "@/core/pos/public";
 import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «agregar ítems y promos sin enviar a una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 12a — `docs/plan-hito-4-pureza.md` §5). Es el
@@ -315,7 +316,7 @@ export async function agregarItemsCasoDeUso(
     }
     // El mensaje cuenta los ítems PEDIDOS: los adicionales van con su producto, no suman.
     const pedidos = filas.length + configuradas.length + componentesConfigurados.length;
-    const mensaje = `${pedidos === 1 ? "Se agregó 1 ítem" : `Se agregaron ${pedidos} ítems`} a la mesa ${abierta.cuenta.mesa.numero}.`;
+    const mensaje = `${pedidos === 1 ? "Se agregó 1 ítem" : `Se agregaron ${pedidos} ítems`} ${frasesDePuesto(abierta.cuenta.mesa.numero).al}.`;
     const nombresPromos = promosValidadas.map((p) => `«${p.titulo}»`);
     const mensajeFinal = nombresPromos.length ? `${mensaje} Incluye ${nombresPromos.join(", ")}.` : mensaje;
     // P3 (I3): el comprobante, en la MISMA transacción y lo último: si la clave ya la usó otro (carrera, o una clave ajena), se deshace TODO — los ítems también.

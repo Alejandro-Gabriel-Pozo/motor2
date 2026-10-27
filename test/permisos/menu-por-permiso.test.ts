@@ -60,11 +60,11 @@ describe("accionesQueElUsuarioPuedeVer", () => {
 });
 
 describe("filtrarMenuPorPermiso", () => {
-  it("oculta los reportes que no se pueden ver, conserva los ítems sin acción y no deja grupos vacíos", () => {
+  it("oculta los reportes que no se pueden ver y no deja grupos vacíos", () => {
     const grupos = filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>(["reporte_trazabilidad", "reporte_vencimientos"]));
     const reportes = grupos.find((g) => g.id === "reportes");
     expect(reportes?.items.map((i) => i.href).sort()).toEqual(["/reportes/trazabilidad", "/reportes/vencimientos"]);
-    // Todo el menú lleva `accion`: los grupos sin ningún ítem visible desaparecen, no solo Reportes.
+    // Todo el menú lleva una clave (`accion` o `algunaDe`; sin clave no lo ve nadie): los grupos sin ningún ítem visible desaparecen, no solo Reportes.
     expect(grupos.map((g) => g.id)).toEqual(["reportes"]);
 
     const sinNada = filtrarMenuPorPermiso(GRUPOS_NAV, new Set<AccionClave>());

@@ -2,149 +2,149 @@
   resultado: {"ok":true,"mensaje":"Mesa 5 creada."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
 ### A2. Alta de la mesa 5 otra vez (número repetido)
   resultado: {"ok":false,"mensaje":"Ya existe la mesa 5 en esta sucursal."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
 ### A3. Números inválidos: 0, 1,5, 10000, NaN y un texto
   resultado: [{"ok":false,"mensaje":"El número de mesa tiene que ser un entero entre 1 y 9999."},{"ok":false,"mensaje":"El número de mesa tiene que ser un entero entre 1 y 9999."},{"ok":false,"mensaje":"El número de mesa tiene que ser un entero entre 1 y 9999."},{"ok":false,"mensaje":"El número de mesa tiene que ser un entero entre 1 y 9999."},{"ok":false,"mensaje":"El número de mesa tiene que ser un entero entre 1 y 9999."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
 ### A4. Límite de mesas abiertas en 3
   resultado: {"ok":true,"mensaje":"Máximo de mesas abiertas en «Central»: 3."}
   SUCURSAL id=central maxMesasAbiertas=3 nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
 ### A5. El mismo límite otra vez (sin auditoría nueva)
   resultado: {"ok":true,"mensaje":"Máximo de mesas abiertas en «Central»: 3."}
   SUCURSAL id=central maxMesasAbiertas=3 nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
 ### A6. Límites inválidos: 0, 2,5, 10000 y un texto
   resultado: [{"ok":false,"mensaje":"El límite tiene que ser un número entero entre 1 y 9999, o vacío para no tener límite."},{"ok":false,"mensaje":"El límite tiene que ser un número entero entre 1 y 9999, o vacío para no tener límite."},{"ok":false,"mensaje":"El límite tiene que ser un número entero entre 1 y 9999, o vacío para no tener límite."},{"ok":false,"mensaje":"El límite tiene que ser un número entero entre 1 y 9999, o vacío para no tener límite."}]
   SUCURSAL id=central maxMesasAbiertas=3 nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
 ### A7. Sin límite (null)
   resultado: {"ok":true,"mensaje":"Sin límite de mesas abiertas en «Central»."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
 ### B1. Abrir la mesa 4 con 2 comensales
   resultado: {"ok":true,"mensaje":"Cuenta de la mesa 4 abierta."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
 ### B2. Reabrir la mesa 4 con 5 (conserva los 2)
   resultado: {"ok":true,"mensaje":"La mesa 4 ya tenía una cuenta abierta."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
 ### B3. DOS FALLAS: mesa ya abierta + comensales inválidos (0)
   resultado: {"ok":true,"mensaje":"La mesa 4 ya tenía una cuenta abierta."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
 ### B4. Una mesa de otra sucursal
   resultado: {"ok":false,"mensaje":"No se encontró esa mesa en esta sucursal."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
 ### B5. DOS FALLAS: id de mesa que no es texto + comensales inválidos
   resultado: {"ok":false,"mensaje":"No se encontró esa mesa en esta sucursal."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
 ### B6. Una mesa que no existe
   resultado: {"ok":false,"mensaje":"No se encontró esa mesa en esta sucursal."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
 ### B7. Comensales inválidos en una mesa libre: 0, 1,5, 100 y un texto
   resultado: [{"ok":false,"mensaje":"La cantidad de comensales tiene que ser un número entero entre 1 y 99."},{"ok":false,"mensaje":"La cantidad de comensales tiene que ser un número entero entre 1 y 99."},{"ok":false,"mensaje":"La cantidad de comensales tiene que ser un número entero entre 1 y 99."},{"ok":false,"mensaje":"La cantidad de comensales tiene que ser un número entero entre 1 y 99."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
 ### B8. Con el límite en 1 (ya hay una abierta), abrir la mesa 5
   resultado: {"ok":false,"mensaje":"Se alcanzó el máximo de 1 mesas abiertas en «Central». Cerrá o liberá una antes de abrir otra."}
   SUCURSAL id=central maxMesasAbiertas=1 nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -152,11 +152,11 @@
   resultado: {"ok":false,"mensaje":"La cantidad de comensales tiene que ser un número entero entre 1 y 99."}
   SUCURSAL id=central maxMesasAbiertas=1 nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -164,11 +164,11 @@
   resultado: {"ok":true,"mensaje":"La mesa 4 ya tenía una cuenta abierta."}
   SUCURSAL id=central maxMesasAbiertas=1 nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -176,11 +176,11 @@
   resultado: {"ok":true,"mensaje":"Comensales de la mesa 4 actualizados a 4."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -189,11 +189,11 @@
   resultado: [{"ok":false,"mensaje":"La cantidad de comensales tiene que ser un número entero entre 1 y 99."},{"ok":false,"mensaje":"La cantidad de comensales tiene que ser un número entero entre 1 y 99."},{"ok":false,"mensaje":"La cantidad de comensales tiene que ser un número entero entre 1 y 99."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -202,11 +202,11 @@
   resultado: {"ok":false,"mensaje":"No se encontró esa cuenta en esta sucursal."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -215,11 +215,11 @@
   resultado: {"ok":false,"mensaje":"No se encontró esa cuenta en esta sucursal."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -228,11 +228,11 @@
   resultado: {"ok":true,"mensaje":"«Fulano» asignado a la mesa 4, con 15% de descuento."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=15 empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=15 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -243,11 +243,11 @@
   resultado: "ver CUENTA"
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=15 empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=15 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -258,11 +258,11 @@
   resultado: {"ok":false,"mensaje":"No se encontró ese cliente."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=15 empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=15 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -273,11 +273,11 @@
   resultado: {"ok":false,"mensaje":"«Mengano» está desactivado: no se puede asignar a una cuenta."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=15 empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=15 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -288,11 +288,11 @@
   resultado: {"ok":false,"mensaje":"No se encontró ese cliente."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=15 empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=15 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -303,11 +303,11 @@
   resultado: {"ok":true,"mensaje":"«Fulano» asignado a la mesa 4, con 20% de descuento."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -319,11 +319,11 @@
   resultado: {"ok":true,"mensaje":"Se quitó el cliente de la mesa 4."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -337,11 +337,11 @@
   resultado: {"ok":true,"mensaje":"Se quitó el cliente de la mesa 4."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -355,11 +355,11 @@
   resultado: {"ok":false,"mensaje":"No se encontró esa cuenta en esta sucursal."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=4 descuentoPorcentaje=null empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -373,11 +373,11 @@
   resultado: {"ok":true,"mensaje":"«Fulano» asignado a la mesa 4, con 20% de descuento."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -393,12 +393,12 @@
   resultado: {"ok":true,"mensaje":"Cuenta de la mesa 5 abierta."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -414,12 +414,12 @@
   resultado: {"ok":true,"mensaje":"Mesa 5 liberada."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -435,12 +435,12 @@
   resultado: {"ok":false,"mensaje":"La cuenta de la mesa 5 ya está cerrada."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -456,12 +456,12 @@
   resultado: {"ok":false,"mensaje":"La cuenta de la mesa 5 ya está cerrada."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -477,12 +477,12 @@
   resultado: {"ok":false,"mensaje":"La cuenta de la mesa 5 ya está cerrada."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -498,12 +498,12 @@
   resultado: [{"ok":false,"mensaje":"No se encontró esa cuenta en esta sucursal."},{"ok":false,"mensaje":"No se encontró esa cuenta en esta sucursal."},{"ok":false,"mensaje":"No se encontró esa cuenta en esta sucursal."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria2 sucursalId=central valorAnterior=3 valorNuevo=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria3 sucursalId=central valorAnterior=null valorNuevo=1
@@ -519,12 +519,12 @@
   resultado: {"ok":true,"mensaje":"Se agregaron 2 ítems a la mesa 4."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
@@ -542,12 +542,12 @@
   resultado: {"ok":true,"mensaje":"Se agregaron 2 ítems a la mesa 4. Incluye «Menú del día»."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -568,12 +568,12 @@
   resultado: {"ok":false,"mensaje":"«Muzzarella» no se puede pedir: solo se piden productos de venta (PV)."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -594,12 +594,12 @@
   resultado: [{"ok":false,"mensaje":"El producto no existe."},{"ok":false,"mensaje":"El producto no existe."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -620,12 +620,12 @@
   resultado: [{"ok":false,"mensaje":"«Flan»: La cantidad tiene que ser un número mayor que cero."},{"ok":true,"mensaje":"Se agregó 1 ítem a la mesa 4."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -647,12 +647,12 @@
   resultado: {"ok":false,"mensaje":"«Muzzarella» no se puede pedir: solo se piden productos de venta (PV)."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -674,12 +674,12 @@
   resultado: {"ok":false,"mensaje":"No se pueden agregar más de 50 ítems de una vez."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -701,12 +701,12 @@
   resultado: {"ok":false,"mensaje":"Elegí al menos un producto."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -728,12 +728,12 @@
   resultado: {"ok":false,"mensaje":"Elegí al menos un producto."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -755,12 +755,12 @@
   resultado: {"ok":false,"mensaje":"Elegí al menos un producto."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -782,12 +782,12 @@
   resultado: [{"ok":false,"mensaje":"La cuenta de la mesa 5 ya está cerrada."},{"ok":false,"mensaje":"No se encontró esa cuenta en esta sucursal."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -809,12 +809,12 @@
   resultado: [{"ok":false,"mensaje":"No se encontró esa promo, o ya no está disponible."},{"ok":false,"mensaje":"«Menú del día»: Elegí al menos 1 opción(es) de \"Postres\"."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -836,12 +836,12 @@
   resultado: {"ok":false,"mensaje":"La cuenta de la mesa 4 tiene ítems cargados: cerrá la cuenta en vez de liberar la mesa."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -863,12 +863,12 @@
   resultado: {"ok":false,"mensaje":"«Flan» es parte de la promo «Menú del día»: quitá la promo entera."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item2 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -890,12 +890,12 @@
   resultado: {"ok":true,"mensaje":"Se quitó «Flan» de la mesa 4."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item3 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=9000 precioUnitario=7500 productoId=milanesa promoCuentaId=promoCuenta1
@@ -916,12 +916,12 @@
   resultado: [{"ok":false,"mensaje":"No se encontró ese ítem en esta sucursal."},{"ok":false,"mensaje":"No se encontró ese ítem en esta sucursal."},{"ok":false,"mensaje":"No se encontró ese ítem en esta sucursal."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta1 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=1 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item3 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=9000 precioUnitario=7500 productoId=milanesa promoCuentaId=promoCuenta1
@@ -942,12 +942,12 @@
   resultado: {"ok":true,"mensaje":"Se quitó «Menú del día» de la mesa 4."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
@@ -965,12 +965,12 @@
   resultado: [{"ok":false,"mensaje":"No se encontró esa promo en esta sucursal."},{"ok":false,"mensaje":"No se encontró esa promo en esta sucursal."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
   AUDITORIA actorId=admin campo=maxMesasAbiertas creadoEn=<fecha> descripcion=Sucursal "Central": límite de mesas abiertas empresaId=empresa entidad=Sucursal entidadId=central id=auditoria1 sucursalId=central valorAnterior=null valorNuevo=3
@@ -988,12 +988,12 @@
   resultado: {"ok":true,"mensaje":"Se agregaron 2 ítems a la mesa 4. Incluye «Menú del día»."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1014,12 +1014,12 @@
   resultado: {"ok":true,"mensaje":"Envío 1 a cocina: 1 ítem de la mesa 4.","numeroEnvio":1,"envioNuevo":true}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1040,12 +1040,12 @@
   resultado: {"ok":true,"mensaje":"Esos ítems ya estaban enviados.","numeroEnvio":1,"envioNuevo":false}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1066,12 +1066,12 @@
   resultado: {"ok":false,"mensaje":"Ese ítem ya salió a cocina: anulalo con motivo."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1092,12 +1092,12 @@
   resultado: {"ok":true,"mensaje":"Envío 2 a cocina: 2 ítems de la mesa 4.","numeroEnvio":2,"envioNuevo":true}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1118,12 +1118,12 @@
   resultado: {"ok":false,"mensaje":"Esa promo ya salió a cocina: anulala con motivo."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1144,12 +1144,12 @@
   resultado: [{"ok":false,"mensaje":"No hay ítems para enviar."},{"ok":false,"mensaje":"No hay ítems para enviar."},{"ok":false,"mensaje":"No se pueden enviar más de 200 ítems de una vez."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1170,12 +1170,12 @@
   resultado: {"ok":false,"mensaje":"No hay ítems para enviar."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1196,12 +1196,12 @@
   resultado: [{"ok":false,"mensaje":"No se encontró esa cuenta en esta sucursal."},{"ok":false,"mensaje":"La cuenta de la mesa 5 ya está cerrada."},{"ok":false,"mensaje":"No se encontró esa cuenta en esta sucursal."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1222,13 +1222,13 @@
   resultado: {"ok":true,"mensaje":"Cuenta de la mesa 5 abierta."}
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
-  CUENTA abiertaEn=<fecha> abiertaPorId=mozo cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta3 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=mozo cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuenta3 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1249,13 +1249,13 @@
   resultado: [{"ok":true,"mensaje":"Comensales de la mesa 5 actualizados a 3."},{"ok":true,"mensaje":"«Fulano» asignado a la mesa 5, con 20% de descuento."},{"ok":true,"mensaje":"Se agregó 1 ítem a la mesa 5."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
-  CUENTA abiertaEn=<fecha> abiertaPorId=mozo cerradaEn=null cerradaPorId=null clienteId=fulano comensales=3 descuentoPorcentaje=20 empresaId=empresa id=cuenta3 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=mozo cerradaEn=null cerradaPorId=null clienteId=fulano comensales=3 descuentoPorcentaje=20 empresaId=empresa id=cuenta3 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1279,13 +1279,13 @@
   resultado: [{"ok":true,"mensaje":"Envío 1 a cocina: 1 ítem de la mesa 5.","numeroEnvio":1,"envioNuevo":true},{"ok":false,"mensaje":"La cuenta de la mesa 5 tiene ítems cargados: cerrá la cuenta en vez de liberar la mesa."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
-  CUENTA abiertaEn=<fecha> abiertaPorId=mozo cerradaEn=null cerradaPorId=null clienteId=fulano comensales=3 descuentoPorcentaje=20 empresaId=empresa id=cuenta3 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=mozo cerradaEn=null cerradaPorId=null clienteId=fulano comensales=3 descuentoPorcentaje=20 empresaId=empresa id=cuenta3 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1309,13 +1309,13 @@
   resultado: [{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"mozo\") no tiene \"pos_alta_mesa\" habilitado. Pedile a un admin que te lo habilite."},{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"mozo\") no tiene \"pos_limite_mesas_abiertas\" habilitado. Pedile a un admin que te lo habilite."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
-  CUENTA abiertaEn=<fecha> abiertaPorId=mozo cerradaEn=null cerradaPorId=null clienteId=fulano comensales=3 descuentoPorcentaje=20 empresaId=empresa id=cuenta3 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=mozo cerradaEn=null cerradaPorId=null clienteId=fulano comensales=3 descuentoPorcentaje=20 empresaId=empresa id=cuenta3 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null
@@ -1339,13 +1339,13 @@
   resultado: [{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"operador\") no tiene \"pos_alta_mesa\" habilitado. Pedile a un admin que te lo habilite."},{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"operador\") no tiene \"pos_limite_mesas_abiertas\" habilitado. Pedile a un admin que te lo habilite."},{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"operador\") no tiene \"pos_abrir_cuenta\" habilitado. Pedile a un admin que te lo habilite."},{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"operador\") no tiene \"pos_abrir_cuenta\" habilitado. Pedile a un admin que te lo habilite."},{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"operador\") no tiene \"pos_asignar_cliente\" habilitado. Pedile a un admin que te lo habilite."},{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"operador\") no tiene \"pos_liberar_mesa\" habilitado. Pedile a un admin que te lo habilite."},{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"operador\") no tiene \"pos_tomar_pedido\" habilitado. Pedile a un admin que te lo habilite."},{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"operador\") no tiene \"pos_tomar_pedido\" habilitado. Pedile a un admin que te lo habilite."},{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"operador\") no tiene \"pos_tomar_pedido\" habilitado. Pedile a un admin que te lo habilite."},{"ok":false,"mensaje":"No tenés permiso para esta acción. Tu rol (\"operador\") no tiene \"pos_enviar_a_cocina\" habilitado. Pedile a un admin que te lo habilite."}]
   SUCURSAL id=central maxMesasAbiertas=null nombre=Central
   SUCURSAL id=norte maxMesasAbiertas=null nombre=Norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central
-  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte
-  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4
-  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5
-  CUENTA abiertaEn=<fecha> abiertaPorId=mozo cerradaEn=null cerradaPorId=null clienteId=fulano comensales=3 descuentoPorcentaje=20 empresaId=empresa id=cuenta3 mesaId=mesa5
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa4 numero=4 sucursalId=central tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesaNorte9 numero=9 sucursalId=norte tipo=SALON
+  MESA creadoEn=<fecha> empresaId=empresa id=mesa5 numero=5 sucursalId=central tipo=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=null comensales=2 descuentoPorcentaje=null empresaId=empresa id=cuentaNorte mesaId=mesaNorte9 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=null cerradaPorId=null clienteId=fulano comensales=4 descuentoPorcentaje=20 empresaId=empresa id=cuenta1 mesaId=mesa4 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=admin cerradaEn=<fecha> cerradaPorId=admin clienteId=null comensales=3 descuentoPorcentaje=null empresaId=empresa id=cuenta2 mesaId=mesa5 tipoMesa=SALON
+  CUENTA abiertaEn=<fecha> abiertaPorId=mozo cerradaEn=null cerradaPorId=null clienteId=fulano comensales=3 descuentoPorcentaje=20 empresaId=empresa id=cuenta3 mesaId=mesa5 tipoMesa=SALON
   PROMO_CUENTA creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa id=promoCuenta2 precio=10000 promoCartaId=promoMenu titulo=Menú del día
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item1 lineaPadreId=null motivoAnulacion=null numeroEnvio=1 operacionId=null precioCartaUnitario=null precioUnitario=9000 productoId=milanesa promoCuentaId=null
   ITEM anulaAItemId=null cantidad=2 creadoEn=<fecha> creadoPorId=admin cuentaId=cuenta1 empresaId=empresa huellaOpciones=null id=item5 lineaPadreId=null motivoAnulacion=null numeroEnvio=null operacionId=null precioCartaUnitario=null precioUnitario=3000 productoId=flan promoCuentaId=null

@@ -1,6 +1,6 @@
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { whereDisponibleEn } from "@/core/catalogo/public";
-import { armarMenuCarta, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, wherePromoOfrecidaEn, type CartaV1, type MenuArmado } from "@/core/carta/public";
+import { armarMenuCarta, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, wherePromoOfrecidaEn, type AudienciaDePromo, type CartaV1, type MenuArmado } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { opcionesDeLosProductosDeLaCarta, type GrupoParaLaCarta } from "@/server/lecturas/carta/opciones";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
@@ -38,8 +38,12 @@ export async function resolverMenuCartaConDiagnostico(
   ahora: Date,
   /** La capacidad `precio_local` de ESTA sucursal ya leída (o la promesa de esa lectura), para no volver a leerla (el selector del POS la comparte, O.39). */
   precioLocalActivoCargado?: boolean | Promise<boolean>,
-  /** `false` = no leer ni armar las promos (la carta pública de una empresa sin el módulo Promociones, S-23). Por defecto sí: el POS y el admin deciden por su cuenta. */
-  conPromos = true,
+  /**
+   * Qué promos leer y armar, y PARA QUIÉN (docs/diseno-promo-solo-salon-2026-10-26.md): `"ninguna"` = ninguna (la carta pública de una empresa sin el módulo Promociones, S-23); `"publico"` = las que se ven en la carta pública
+   * (sin las de «solo salón»); `"salon"` = todas las ofrecidas en la sucursal (el POS ubica sus promos dentro de la carta armada y no puede perder la sección que solo tiene promos de «solo salón»). FALLA CERRADO: el valor por
+   * defecto es el público, así que quien olvide pasarlo ve MENOS promos, nunca una de «solo salón» en la carta pública. El único que pide `"salon"` es el POS (`lecturas/pos/selector-carta.ts`).
+   */
+  promos: AudienciaDePromo | "ninguna" = "publico",
   /**
    * GO-2d (ADR-030): `true` = leer las opciones de venta de los PV y mostrarlas (la carta pública: tamaños, variantes, guarniciones y adicionales, con los precios de la regla de la
    * venta; lo agotado no sale, y un PV que hoy no se puede pedir tampoco). Por defecto no: el POS arma su propio diálogo y el admin ve la carta como siempre.
@@ -51,7 +55,7 @@ export async function resolverMenuCartaConDiagnostico(
   // Filtro explícito por la empresa de la sucursal, además del RLS: con un rol que lo salta, secciones/promos/agrupados no se mezclan entre empresas.
   const { empresaId } = sucursal;
 
-  const [productos, secciones, promos, agrupados] = await Promise.all([
+  const [productos, secciones, promosLeidas, agrupados] = await Promise.all([
     db.producto.findMany({
       where: { empresaId, tipo: "PV", ...whereDisponibleEn(sucursalId), contenidosCarta: { some: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true } }, opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } },
       select: {
@@ -76,9 +80,9 @@ export async function resolverMenuCartaConDiagnostico(
         orden: true,
       },
     }),
-    conPromos
+    promos !== "ninguna"
       ? db.promoCarta.findMany({
-          where: { empresaId, ...wherePromoOfrecidaEn(sucursalId) },
+          where: { empresaId, ...wherePromoOfrecidaEn(sucursalId, promos) },
           select: { id: true, seccionCartaId: true, titulo: true, descripcion: true, precio: true, orden: true, sucursales: seleccionDeSucursalDePromo(sucursalId) },
         })
       : Promise.resolve([]),
@@ -170,7 +174,7 @@ export async function resolverMenuCartaConDiagnostico(
     ),
     preciosLocales: [...preciosLocales].map(([productoId, pl]) => ({ productoId, precio: pl.precio, habilitado: pl.habilitado })),
     descuentos: [...descuentos].map(([productoId, porcentaje]) => ({ productoId, porcentaje })),
-    promos: promos.map(({ sucursales, ...pr }) => ({ ...pr, precio: precioDePromo(pr.precio, sucursales[0], precioLocalActivo) })),
+    promos: promosLeidas.map(({ sucursales, ...pr }) => ({ ...pr, precio: precioDePromo(pr.precio, sucursales[0], precioLocalActivo) })),
     agrupados: agrupados.map((ag) => ({
       id: ag.id,
       nombre: ag.nombre,
@@ -197,10 +201,10 @@ export async function resolverMenuCarta(
   db: Db,
   ahora: Date,
   precioLocalActivoCargado?: boolean | Promise<boolean>,
-  conPromos = true,
+  promos: AudienciaDePromo | "ninguna" = "publico",
   /** GO-2d: ver `resolverMenuCartaConDiagnostico` (solo la carta pública lo pide). */
   conOpciones = false
 ): Promise<CartaV1 | null> {
-  const armado = await resolverMenuCartaConDiagnostico(sucursalId, db, ahora, precioLocalActivoCargado, conPromos, conOpciones);
+  const armado = await resolverMenuCartaConDiagnostico(sucursalId, db, ahora, precioLocalActivoCargado, promos, conOpciones);
   return armado ? armado.carta : null;
 }

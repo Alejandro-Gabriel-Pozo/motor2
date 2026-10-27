@@ -1,5 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
+import { esMostrador } from "@/core/pos/public";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { gerentesQueQuedaranSinSucursalActiva } from "@/server/lecturas/permisos/gerencia";
@@ -61,7 +62,11 @@ async function describirPendientesDeSucursal(tx: Db, sucursalId: string): Promis
     select: { mesa: { select: { numero: true } } },
     orderBy: { mesa: { numero: "asc" } },
   });
-  if (cuentas.length) partes.push(`cerrá o liberá ${cuentas.length === 1 ? "la mesa" : "las mesas"} ${enumerar(cuentas.map((c) => String(c.mesa.numero)))}`);
+  // ADR-039: las cuentas abiertas del puesto mostrador también impiden apagar la sucursal, pero no son «la mesa 0»: se nombran aparte.
+  const deMesas = cuentas.filter((c) => !esMostrador(c.mesa.numero));
+  const delMostrador = cuentas.length - deMesas.length;
+  if (deMesas.length) partes.push(`cerrá o liberá ${deMesas.length === 1 ? "la mesa" : "las mesas"} ${enumerar(deMesas.map((c) => String(c.mesa.numero)))}`);
+  if (delMostrador) partes.push(`cerrá o descartá ${delMostrador === 1 ? "la cuenta abierta" : "las cuentas abiertas"} del mostrador`);
   return partes;
 }
 

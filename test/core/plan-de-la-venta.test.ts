@@ -54,7 +54,7 @@ describe("rechazoSinRespaldo", () => {
   it("sin ninguna sección de respaldo y un PV sin habitual: el texto exacto, con el nombre de la sucursal y del PV", () => {
     expect(rechazoSinRespaldo([linea("PIZZA")], sinRespaldos, "Central")).toBe(
       "Ninguna sección de «Central» sirve de respaldo automático en ventas y «PIZZA» no tiene sección habitual: " +
-        "configurá su sección habitual (Stock → Sección habitual) o marcá una sección como respaldo (Movimientos → Secciones)."
+        "configurá su sección habitual (Stock → Sección habitual) o marcá una sección como respaldo (Stock → Depósitos)."
     );
   });
 

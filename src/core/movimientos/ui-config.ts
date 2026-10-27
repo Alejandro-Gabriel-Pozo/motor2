@@ -1,9 +1,8 @@
 import type { Proceso } from "@/core/datos/enumerados-del-esquema";
-import { TRANSICIONES } from "./transiciones";
-import type { AccionClave } from "@/core/permisos/acciones";
+import { ACCION_POR_PROCESO, TRANSICIONES } from "./transiciones";
+import type { AccionClave, AccionDeSucursal } from "@/core/permisos/acciones";
 import type { FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { PanelNav } from "@/core/navegacion/panel";
-import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
 
 /**
  * Config de UI para los 9 procesos que comparten el panel genérico
@@ -58,7 +57,7 @@ const PROCESOS_UI_SIN_DERIVADOS: Record<string, Omit<ProcesoUiConfig, "exigeSecc
   produccion: { proceso: "PRODUCCION", titulo: "Producción", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
   consumo: { proceso: "CONSUMO", titulo: "Consumo", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: true, cantidadConSigno: false },
   ajuste: { proceso: "AJUSTE", titulo: "Ajuste de stock", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: true },
-  transferencia: { proceso: "TRANSFERENCIA", titulo: "Transferencia entre secciones", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
+  transferencia: { proceso: "TRANSFERENCIA", titulo: "Traslado entre depósitos", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
   merma: { proceso: "MERMA", titulo: "Merma", requiereProveedor: false, esCompraLike: false, pideMotivo: true, pideDestino: false, cantidadConSigno: false },
   "devolucion-consignacion": { proceso: "DEVOLUCION_CONSIGNACION", titulo: "Devolución al consignante", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
   "devolucion-cliente": { proceso: "DEVOLUCION_CLIENTE", titulo: "Devolución de cliente (revendible)", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
@@ -77,29 +76,68 @@ export function obtenerConfigProceso(slug: string): ProcesoUiConfig | null {
 }
 
 /**
- * Fuente del grupo Movimientos del menú lateral (`estructura.ts` la filtra) — incluye Venta/Conteo Físico, que tienen ruta propia.
- * `accion` es la acción de «Ver» que protege la página: el menú solo muestra el ítem a quien puede verla.
+ * Los procesos con acceso DIRECTO desde el menú de Movimientos (decisión DEC-25 del dueño, Fase 7): Merma y Compra. Se abren por su propia ruta del panel genérico y NO están en el selector. Venta
+ * (`/movimientos/venta`) y Conteo físico (`/movimientos/conteo-fisico`) también tienen acceso propio, pero ruta propia y no están en `PROCESOS_UI`.
  */
-export const NAV_MOVIMIENTOS: { href: string; label: string; accion?: AccionClave; panel: PanelNav }[] = [
-  { href: "/movimientos/compra", label: "Compra", accion: "proceso_compra", panel: "sucursal" },
-  { href: "/movimientos/produccion", label: "Producción", accion: "proceso_produccion", panel: "sucursal" },
-  { href: "/movimientos/venta", label: "Venta", accion: "proceso_venta", panel: "sucursal" },
-  { href: "/movimientos/consumo", label: "Consumo", accion: "proceso_consumo", panel: "sucursal" },
+export const PROCESOS_DIRECTOS = ["merma", "compra"] as const;
+
+/** Un proceso del selector «Registrar movimiento»: la ruta de su pantalla, cómo se nombra en el selector y la acción de «Ver» que la protege (la que pide su página). */
+export interface ProcesoDelSelector {
+  href: string;
+  etiquetaCorta: string;
+  accion: AccionDeSucursal;
+}
+
+/** Cómo se nombra en el selector cada proceso del panel genérico que no es directo. Si un proceso nuevo entra a `PROCESOS_UI` sin nombre acá, falla al importar (abajo). */
+const ETIQUETA_CORTA_DEL_SELECTOR: Readonly<Record<string, string>> = {
+  produccion: "Producción",
+  consumo: "Consumo",
+  ajuste: "Ajuste",
+  transferencia: "Traslado entre depósitos",
+  "devolucion-consignacion": "Devolución al consignante",
+  "devolucion-cliente": "Devolución de cliente",
+  "devolucion-proveedor": "Devolución a proveedor",
+};
+
+/**
+ * Los procesos que ofrece el selector «Registrar movimiento»: los de `PROCESOS_UI` que no son directos (7), cada uno con su acción de `ACCION_POR_PROCESO` (la misma que pide su página), más Reclasificar,
+ * que no es un proceso del panel genérico sino su propia pantalla de Stock. Hoy NADA lo consume: el menú sigue saliendo de `NAV_MOVIMIENTOS`; la entrada del menú (P5a) y su página la usan.
+ * Un guardián (test/movimientos/selector-de-procesos.test.ts) exige que todo slug esté en exactamente un lugar (directos, selector o aparte).
+ */
+export const PROCESOS_DEL_SELECTOR: readonly ProcesoDelSelector[] = [
+  ...Object.entries(PROCESOS_UI)
+    .filter(([slug]) => !(PROCESOS_DIRECTOS as readonly string[]).includes(slug))
+    .map(([slug, cfg]): ProcesoDelSelector => {
+      const etiquetaCorta = Object.hasOwn(ETIQUETA_CORTA_DEL_SELECTOR, slug) ? ETIQUETA_CORTA_DEL_SELECTOR[slug] : undefined;
+      const accion = ACCION_POR_PROCESO[cfg.proceso];
+      if (etiquetaCorta === undefined) throw new Error(`PROCESOS_DEL_SELECTOR: "${slug}" no tiene etiqueta corta (agregala en ETIQUETA_CORTA_DEL_SELECTOR, o declaralo directo en PROCESOS_DIRECTOS).`);
+      if (accion === undefined) throw new Error(`PROCESOS_DEL_SELECTOR: "${cfg.proceso}" no tiene acción en ACCION_POR_PROCESO.`);
+      return { href: `/movimientos/${slug}`, etiquetaCorta, accion };
+    }),
+  { href: "/stock/reclasificar", etiquetaCorta: "Reclasificar", accion: "stock_reclasificar" },
+];
+
+/** Un ítem del grupo Movimientos del menú: lleva SIEMPRE una clave de «Ver», una sola (`accion`) o una lista de la que alcanza con una (`algunaDe`). Mismo molde que `ItemNav` de `core/navegacion/estructura.ts`. */
+export type ItemNavDeMovimientos = { href: string; label: string; panel: PanelNav } & (
+  | { accion: AccionClave; algunaDe?: never }
+  | { algunaDe: readonly [AccionClave, ...AccionClave[]]; accion?: never }
+);
+
+/** Las claves de «Ver» de todo el selector, como lista no vacía: el `algunaDe` de la entrada «Registrar movimiento» (la página usa las mismas, un test lo comprueba). */
+const CLAVES_DEL_SELECTOR = PROCESOS_DEL_SELECTOR.map((p) => p.accion) as [AccionDeSucursal, ...AccionDeSucursal[]];
+
+/**
+ * Fuente del grupo Movimientos del menú lateral (`estructura.ts` lo recorre) — DEC-25 del dueño (Fase 7): los procesos DIRECTOS (Merma y Compra), UNA entrada «Registrar movimiento» (`/movimientos`: el selector con el
+ * resto de los procesos y Reclasificar, visible si el rol puede ver alguno), la carga de ventas sin ticket (ruta propia) y el Conteo físico (ruta propia, aparte). Las demás entradas que vivían acá se mudaron a su
+ * módulo (Catálogo, Carta, Stock); las URL no cambiaron. `accion`/`algunaDe` son las claves de «Ver» que protegen la página: el menú solo muestra el ítem a quien puede verla.
+ */
+export const NAV_MOVIMIENTOS: ItemNavDeMovimientos[] = [
   { href: "/movimientos/merma", label: "Merma", accion: "proceso_merma", panel: "sucursal" },
-  { href: "/movimientos/ajuste", label: "Ajuste", accion: "proceso_ajuste", panel: "sucursal" },
-  { href: "/movimientos/transferencia", label: "Transferencia", accion: "proceso_transferencia", panel: "sucursal" },
-  { href: "/movimientos/devolucion-consignacion", label: "Dev. consignación", accion: "proceso_devolucion_consignacion", panel: "sucursal" },
-  { href: "/movimientos/devolucion-cliente", label: "Dev. cliente", accion: "proceso_devolucion_cliente", panel: "sucursal" },
-  { href: "/movimientos/devolucion-proveedor", label: "Dev. proveedor", accion: "proceso_devolucion_proveedor", panel: "sucursal" },
+  { href: "/movimientos/compra", label: "Compra", accion: "proceso_compra", panel: "sucursal" },
+  { href: "/movimientos", label: "Registrar movimiento", algunaDe: CLAVES_DEL_SELECTOR, panel: "sucursal" },
+  // Antes «Venta». Carga ventas que no tienen ticket (el mostrador real llegará como Salón › Mostrador); misma ruta, misma clave.
+  { href: "/movimientos/venta", label: "Carga de ventas sin ticket", accion: "proceso_venta", panel: "sucursal" },
   { href: "/movimientos/conteo-fisico", label: "Conteo físico", accion: "proceso_control", panel: "sucursal" },
-  { href: "/movimientos/secciones", label: "Secciones", accion: "secciones", panel: "sucursal" },
-  { href: "/movimientos/precio-local", label: "Precio local", accion: "precio_local", panel: "sucursal" },
-  // GO-2d (ADR-030 §5): lo que se acabó hoy en la sucursal (tamaños, guarniciones, adicionales); delegable al encargado del turno.
-  { href: "/movimientos/opciones-agotadas", label: "Opciones agotadas", accion: "opcion_apagar_en_sucursal", panel: "sucursal" },
-  // GO-3b (ADR-032): qué plato va cada día en los lugares «del día» de las promos de la sucursal; delegable al encargado. Oculto mientras `MENU_DEL_DIA_VISIBLE` (core/carta) esté apagado.
-  ...(MENU_DEL_DIA_VISIBLE ? [{ href: "/movimientos/menu-del-dia", label: "Menú del día", accion: "promo_menu_del_dia" as const, panel: "sucursal" as const }] : []),
-  { href: "/movimientos/motivos-merma", label: "Motivos de Merma", accion: "motivos_merma", panel: "empresa" },
-  { href: "/movimientos/destinos-consumo", label: "Destinos de Consumo", accion: "motivos_destino_consumo", panel: "empresa" },
 ];
 
 // Verificación en tiempo de import: todo slug de PROCESOS_UI tiene que

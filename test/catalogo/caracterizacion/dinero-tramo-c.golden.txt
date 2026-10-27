@@ -14,7 +14,7 @@
   PRODUCTO flan alicuotaIvaCompra=null alicuotaIvaVenta=null categoriaId=null codigo=PV_FLAN creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null modoDeVenta=DIRECTO nombre=Flan observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=3000 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
   PRODUCTO harina alicuotaIvaCompra=null alicuotaIvaVenta=null categoriaId=null codigo=MP_H000 creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=insumoHarina modoDeVenta=DIRECTO nombre=Harina 000 observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=0 proveedorConsignacionId=null seProduce=false tipo=MP unidadCompraId=null unidadStockId=kg
   PRODUCTO pizza alicuotaIvaCompra=null alicuotaIvaVenta=null categoriaId=null codigo=PV_PIZZA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null modoDeVenta=DIRECTO nombre=Pizza observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=12000 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
-  PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos titulo=Menú del día
+  PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos soloSalon=false titulo=Menú del día
   PROMO_SUCURSAL promoSucursal1 activa=true empresaId=empresa precioLocal=null promoCartaId=menu sucursalId=central
   RECETA_SUCURSAL recetaSucursal1 empresaId=empresa habilitada=true productoId=empanada sucursalId=central
   RECETA_VERSION recetaVersion1 basadaEnVersionId=null comentarios=null creadoEn=<fecha> empresaId=empresa equipamientoNecesario=null notasAdicionales=null presentacionEmplatado=null productoId=empanada racionTamano=null racionUnidadId=null racionesCantidad=null rendimientoCantidad=null rendimientoUnidadId=null sucursalId=central tiempoCoccionMinutos=null tiempoPreparacionMinutos=null version=1
@@ -72,20 +72,20 @@
 ### promo: alta del «Combo» a $8000
   resultado: {"ok":true,"mensaje":"Promo \"Combo\" creada en \"Platos\" y prendida en esta sucursal."}
   efectos: revalidarCartasPublicas=1 refrescar=0
-  + PROMO promo1 activa=true creadoEn=<fecha> descripcion=Para dos empresaId=empresa orden=2 precio=8000 seccionCartaId=platos titulo=Combo
+  + PROMO promo1 activa=true creadoEn=<fecha> descripcion=Para dos empresaId=empresa orden=2 precio=8000 seccionCartaId=platos soloSalon=false titulo=Combo
   + PROMO_SUCURSAL promoSucursal2 activa=true empresaId=empresa precioLocal=null promoCartaId=promo1 sucursalId=central
   AUDITORIA actorId=admin campo=precio descripcion=Promo "Combo": precio empresaId=empresa entidad=PromoCarta entidadId=promo1 sucursalId=null valorAnterior=null valorNuevo=8000
 ### promo: el Combo pasa a $8500
   resultado: {"ok":true,"mensaje":"Promo \"Combo\" guardada."}
   efectos: revalidarCartasPublicas=1 refrescar=0
-  - PROMO promo1 activa=true creadoEn=<fecha> descripcion=Para dos empresaId=empresa orden=2 precio=8000 seccionCartaId=platos titulo=Combo
-  + PROMO promo1 activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=8500 seccionCartaId=platos titulo=Combo
+  - PROMO promo1 activa=true creadoEn=<fecha> descripcion=Para dos empresaId=empresa orden=2 precio=8000 seccionCartaId=platos soloSalon=false titulo=Combo
+  + PROMO promo1 activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=8500 seccionCartaId=platos soloSalon=false titulo=Combo
   AUDITORIA actorId=admin campo=precio descripcion=Promo "Combo": precio empresaId=empresa entidad=PromoCarta entidadId=promo1 sucursalId=null valorAnterior=8000 valorNuevo=8500
 ### promo: solo el título (precio igual, sin auditoría)
   resultado: {"ok":true,"mensaje":"Promo \"Combo grande\" guardada."}
   efectos: revalidarCartasPublicas=1 refrescar=0
-  - PROMO promo1 activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=8500 seccionCartaId=platos titulo=Combo
-  + PROMO promo1 activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=8500 seccionCartaId=postres titulo=Combo grande
+  - PROMO promo1 activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=8500 seccionCartaId=platos soloSalon=false titulo=Combo
+  + PROMO promo1 activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=8500 seccionCartaId=postres soloSalon=false titulo=Combo grande
 ### promo: id inexistente
   resultado: {"ok":false,"mensaje":"No se encontró la promo."}
   efectos: revalidarCartasPublicas=0 refrescar=0
@@ -104,13 +104,13 @@
 ### promo: apagado general del Menú
   resultado: {"ok":true,"mensaje":"Promo \"Menú del día\" desactivada en toda la empresa."}
   efectos: revalidarCartasPublicas=1 refrescar=0
-  - PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos titulo=Menú del día
-  + PROMO menu activa=false creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos titulo=Menú del día
+  - PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos soloSalon=false titulo=Menú del día
+  + PROMO menu activa=false creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos soloSalon=false titulo=Menú del día
 ### promo: prendido general del Menú
   resultado: {"ok":true,"mensaje":"Promo \"Menú del día\" activada en toda la empresa."}
   efectos: revalidarCartasPublicas=1 refrescar=0
-  - PROMO menu activa=false creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos titulo=Menú del día
-  + PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos titulo=Menú del día
+  - PROMO menu activa=false creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos soloSalon=false titulo=Menú del día
+  + PROMO menu activa=true creadoEn=<fecha> descripcion=null empresaId=empresa orden=0 precio=10000 seccionCartaId=platos soloSalon=false titulo=Menú del día
 ### promo: apagado general de una inexistente
   resultado: {"ok":false,"mensaje":"No se encontró la promo."}
   efectos: revalidarCartasPublicas=0 refrescar=0

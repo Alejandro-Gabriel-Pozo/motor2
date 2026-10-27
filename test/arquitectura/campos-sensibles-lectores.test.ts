@@ -133,6 +133,7 @@ const EXCEPCIONES_DE_PAGINA: Readonly<Record<string, string>> = {
   "src/app/(app)/traspasos/solicitar/page.tsx|User.email": TRASPASOS("«Solicitar»"),
   "src/server/actions/traspasos/lecturas.ts|User.email": TRASPASOS("la Server Action `obtenerBandejaTransferencias` (`traspaso_ver_bandeja`, operario)"),
   "src/app/(pos)/mesas/[mesaId]/page.tsx|User.email": S_44("La mesa"),
+  "src/app/(pos)/mesas/mostrador/page.tsx|User.email": S_44("El mostrador (ADR-039: la misma pantalla de la mesa)"),
   "src/app/(pos)/mesas/page.tsx|User.email": S_44("El mapa de mesas"),
 };
 

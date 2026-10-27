@@ -3,10 +3,10 @@ import type { GrupoNav } from "./estructura";
 /** Una línea por módulo para la tarjeta de `/inicio`. Un test comprueba que todo grupo de `GRUPOS_NAV` tiene la suya. */
 export const DESCRIPCION_DE_MODULO: Record<string, string> = {
   administracion: "El perfil de la empresa, usuarios, roles, permisos, sucursales y auditoría.",
-  catalogo: "Productos, proveedores, clientes, recetas, categorías y unidades.",
-  carta: "La carta pública, los ítems agrupados, el portal y el tema.",
-  movimientos: "Compras, producción, ventas, mermas, ajustes y conteos físicos.",
-  stock: "Stock consolidado, alertas, mínimos y reclasificación.",
+  catalogo: "Productos, precio local, proveedores, clientes, recetas, categorías y unidades.",
+  carta: "La carta pública, los ítems agrupados, el portal, el tema y las opciones agotadas.",
+  movimientos: "Mermas, compras, el resto de los movimientos, la carga de ventas sin ticket y los conteos físicos.",
+  stock: "Stock consolidado, alertas, mínimos, depósitos y los motivos de merma y destinos de consumo.",
   reportes: "Ventas, costos, márgenes, pérdidas y control del negocio.",
   traspasos: "Pedir y enviar mercadería entre sucursales.",
   pos: "El mapa de mesas del salón.",

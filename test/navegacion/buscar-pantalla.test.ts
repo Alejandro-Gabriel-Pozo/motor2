@@ -11,17 +11,17 @@ const MENU: GrupoNav[] = [
     id: "catalogo",
     label: "Catálogo",
     items: [
-      { href: "/catalogo/recetas", label: "Recetas", panel: "ambos" },
-      { href: "/catalogo/opciones", label: "Opciones de venta", panel: "ambos" },
-      { href: "/catalogo/categorias", label: "Categorías", panel: "ambos" },
+      { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta", panel: "ambos" },
+      { href: "/catalogo/opciones", label: "Opciones de venta", accion: "opciones_definir", panel: "ambos" },
+      { href: "/catalogo/categorias", label: "Categorías", accion: "categorias", panel: "ambos" },
     ],
   },
   {
     id: "reportes",
     label: "Reportes",
     items: [
-      { href: "/reportes/costos", label: "Costos y márgenes", panel: "ambos" },
-      { href: "/reportes/rotacion", label: "Rotación de mesas", panel: "ambos" },
+      { href: "/reportes/costos", label: "Costos y márgenes", accion: "reporte_costos", panel: "ambos" },
+      { href: "/reportes/rotacion", label: "Rotación de mesas", accion: "reporte_rotacion_mesas", panel: "ambos" },
     ],
   },
 ];

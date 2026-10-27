@@ -54,7 +54,8 @@ const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   entradaDeCupo: "*",
   opcionDeEntradaDeCupo: "*",
   entradaDelDiaDeCupo: "*",
-  promoCarta: ["vigenteDesde", "vigenteHasta", "diasDeSemana"],
+  // Interruptor «solo salón» (docs/diseno-promo-solo-salon-2026-10-26.md): decide si la promo (con su precio) se publica en la carta pública; no es `Decimal`.
+  promoCarta: ["vigenteDesde", "vigenteHasta", "diasDeSemana", "soloSalon"],
   // Fase 5 de la ola «precio y carta» (DEC-11): «Mostrar el nombre arriba» decide cómo se LEE en la carta pública un producto base (encabezado u oculto): toda escritura tiene su cadena de auditoría
   // (guardar el contenido audita la columna; «copiar carta» audita la copia entera).
   contenidoCartaProducto: ["mostrarNombreArriba"],

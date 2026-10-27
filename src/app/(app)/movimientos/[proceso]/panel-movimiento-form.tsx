@@ -11,7 +11,7 @@ import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
-import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal, fechaDeColumnaDate, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { QuickCrearProducto } from "@/components/catalogo/quick-crear-producto";
 import { Aviso } from "@/ui/primitivas/aviso";
@@ -102,7 +102,11 @@ export function PanelMovimientoForm({
   /** Presentaciones de compra activas del producto de cada fila, por índice — se completa al elegir un producto (ver cambiarProducto). Solo tiene entradas cuando hay alguna presentación alternativa cargada para ese producto (agregarPresentacionAlternativa, en /catalogo/productos). */
   const [presentacionesPorFila, setPresentacionesPorFila] = useState<Record<number, PresentacionOpcion[]>>({});
   const [mensaje, setMensaje] = useState<string | null>(null);
+  // Q3 (Fase 7): en los formularios de proceso lo que se mueve es un «Insumo»; solo Producción conserva «Producto» (lo que se produce).
+  const palabras = config.proceso === "PRODUCCION" ? { singular: "Producto", plural: "Productos", singularMinuscula: "producto" } : { singular: "Insumo", plural: "Insumos", singularMinuscula: "insumo" };
   const [ok, setOk] = useState(false);
+  /** Índice de la fila cuyo vencimiento del lote no es un día real (se avisa junto al campo, antes de enviar). */
+  const [filaConVencimientoInvalido, setFilaConVencimientoInvalido] = useState<number | null>(null);
   const leer = useLeerServidor();
   const [pending, startTransition] = useTransition();
   const [cargandoProveedor, setCargandoProveedor] = useState(false);
@@ -242,13 +246,22 @@ export function PanelMovimientoForm({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // El día del vencimiento sale de un <input type="date">, pero se comprueba acá: un día que no existe (30 de febrero) no se corre al 2 de marzo, se avisa junto al campo.
+    const filaInvalida = items.findIndex((f) => f.productoId && f.cantidad !== "" && f.loteVencimiento !== "" && !esDiaISOReal(f.loteVencimiento));
+    if (filaInvalida !== -1) {
+      setFilaConVencimientoInvalido(filaInvalida);
+      setMensaje(null);
+      return;
+    }
+    setFilaConVencimientoInvalido(null);
+
     const itemsValidos: ItemMovimientoInput[] = items
       .filter((f) => f.productoId && f.cantidad !== "")
       .map((f) => ({
         productoId: f.productoId,
         // numeroDelCampo: vacío → undefined, texto inválido → NaN (el servidor lo rechaza); nunca el 0 que daba convertir un texto vacío.
         cantidad: numeroDelCampo(f.cantidad) ?? Number.NaN,
-        loteVencimiento: f.loteVencimiento ? new Date(f.loteVencimiento) : null,
+        loteVencimiento: f.loteVencimiento ? fechaDeColumnaDate(f.loteVencimiento) : null,
         precioTotal: numeroDelCampo(f.precioTotal),
         pesoReal: numeroDelCampo(f.pesoReal) ?? null,
         unidadCompraId: config.esCompraLike && f.unidadCompraId ? f.unidadCompraId : undefined,
@@ -256,7 +269,7 @@ export function PanelMovimientoForm({
       }));
 
     if (!itemsValidos.length) {
-      setMensaje("Cargá al menos un producto con cantidad.");
+      setMensaje(`Cargá al menos un ${palabras.singularMinuscula} con cantidad.`);
       setOk(false);
       return;
     }
@@ -292,16 +305,16 @@ export function PanelMovimientoForm({
     <form onSubmit={submit} className="flex flex-col gap-4">
       {productoInicial && (
         <Aviso variante="advertencia">
-          Viniste desde un reporte para cargar precio de <strong>{productoInicial.etiqueta}</strong> — completá sección, cantidad y precio para resolverlo.
+          Viniste desde un reporte para cargar precio de <strong>{productoInicial.etiqueta}</strong> — completá depósito, cantidad y precio para resolverlo.
         </Aviso>
       )}
       <div className="flex flex-wrap gap-3">
         <div className="min-w-36 flex-1">
           <CampoFecha etiqueta="Fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
         </div>
-        <div className="min-w-36 flex-1">
-          <Selector etiqueta={config.proceso === "TRANSFERENCIA" ? "Sección origen" : "Sección"} value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required>
-            <option value="">Elegí una sección</option>
+        <div className="min-w-52 flex-1">
+          <Selector etiqueta={config.proceso === "TRANSFERENCIA" ? "Depósito de origen" : "Depósito"} value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required>
+            <option value="">Elegí un depósito</option>
             {secciones.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.nombre}
@@ -315,9 +328,9 @@ export function PanelMovimientoForm({
           </Selector>
         </div>
         {config.proceso === "TRANSFERENCIA" && (
-          <div className="min-w-36 flex-1">
-            <Selector etiqueta="Sección destino" value={seccionDestinoId} onChange={(e) => setSeccionDestinoId(e.target.value)} required>
-              <option value="">Elegí una sección</option>
+          <div className="min-w-52 flex-1">
+            <Selector etiqueta="Depósito de destino" value={seccionDestinoId} onChange={(e) => setSeccionDestinoId(e.target.value)} required>
+              <option value="">Elegí un depósito</option>
               {secciones.filter((s) => s.id !== seccionId).map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nombre}
@@ -369,12 +382,12 @@ export function PanelMovimientoForm({
       )}
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium">Productos</span>
+        <span className="text-sm font-medium">{palabras.plural}</span>
         {precargaPorProveedor && infoProveedor && <p className="text-xs text-tinta-tenue">{infoProveedor}</p>}
         {items.map((fila, idx) => (
           <div key={`${versionItems}-${idx}`} className="flex flex-wrap items-end gap-2 rounded border p-2">
             <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm">
-              <span className="font-medium">Producto</span>
+              <span className="font-medium">{palabras.singular}</span>
               <SelectorProducto
                 value={fila.productoId}
                 onChange={(id) => cambiarProducto(idx, id)}
@@ -412,7 +425,13 @@ export function PanelMovimientoForm({
               />
             </label>
             <div className="w-44">
-              <CampoFecha etiqueta="Lote (Fecha VTO.)" tamano="compacto" value={fila.loteVencimiento} onChange={(e) => actualizarFila(idx, { loteVencimiento: e.target.value })} />
+              <CampoFecha
+                etiqueta="Lote (Fecha VTO.)"
+                tamano="compacto"
+                value={fila.loteVencimiento}
+                onChange={(e) => actualizarFila(idx, { loteVencimiento: e.target.value })}
+                error={filaConVencimientoInvalido === idx ? "Ese día no existe: elegí un vencimiento real (día/mes/año)." : undefined}
+              />
             </div>
             {config.esCompraLike && (
               <>
@@ -462,7 +481,7 @@ export function PanelMovimientoForm({
           </div>
         ))}
         <Boton variante="enlace" tamano="en-fila" onClick={agregarFila} disabled={cargandoProveedor} className="self-start">
-          + Agregar producto{precargaPorProveedor && proveedorId ? " (que no está en la lista de este proveedor)" : ""}
+          + Agregar {palabras.singularMinuscula}{precargaPorProveedor && proveedorId ? " (que no está en la lista de este proveedor)" : ""}
         </Boton>
       </div>
 

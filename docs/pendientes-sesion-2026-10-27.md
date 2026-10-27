@@ -1,0 +1,44 @@
+# Pendientes al 2026-10-27 (tras fusionar la ola «precio y carta» y arrancar la Fase 7)
+
+Estado: PR #130 fusionado en `main` (merge commit `8d9d4930`); las 3 migraciones de esa ola están aplicadas en la base de producción de `stockhneuquen` (Neon `inventario-api`, rama `main`; respaldo `respaldo-pre-fase-4-20261026`). El código nuevo NO está desplegado en `stockhneuquen`. Rama de trabajo: `alegp/stoic-davinci-185dm4`. Documentos de diseño de la sesión: `docs/validacion-features-faltantes-2026-10-26.md`, `docs/diseno-clientes-convenios-y-facturacion-externa-2026-10-26.md`, `docs/diseno-promo-solo-salon-2026-10-26.md`, `docs/diseno-ventas-salon-y-mostrador-2026-10-26.md`.
+
+## 1. En construcción (agentes, ramas `alegp/carril-*`, respaldadas en GitHub y en `respaldo/*-en-curso`)
+- **Movimientos (Fase 7, módulo 1)** — `alegp/carril-m`: hechos P1 a P6 (menú, página «Registrar movimiento» con fila de pestañas, entradas mudadas, vocabulario). Falta el cierre (tipos, lint, arquitectura, código muerto, zona de pruebas), P8 (formulario deshabilitado con aviso para quien solo puede ver) y P9 (ADR de decisiones).
+- **Interruptor «solo salón»** — `alegp/carril-s`: TERMINADO e integrado en la rama de trabajo (migración `20261026120000_promo_carta_solo_salon` sin aplicar a ninguna base real).
+- **Mostrador como puesto del salón, etapa M1** — `alegp/carril-k`: hechos documentos (ADR-039), núcleo del puesto, migración M1 (sin aplicar), exclusiones del límite de mesas, `PantallaDelPuesto` y habilitar el puesto. Faltan M1.4c (abrir cuenta de mostrador y variante de pantalla), M1.5 (spec e2e), M1.6 (enlace desde Movimientos, depende de la Fase 7) y el cierre.
+
+## 2. Mío, a continuación
+1. Juntar las ramas en la de trabajo, resolver cruces, subir y correr la batería completa en GitHub (~18 min); arreglar lo que falle.
+2. Capturas antes/después de Movimientos (375 y 1280 px) para tu aprobación.
+3. Pedirte permiso antes de abrir el pedido de fusión (PR).
+4. Etapa M2 del mostrador (varias cuentas abiertas a la vez; 2 migraciones más) y medición de cierres simultáneos.
+
+## 3. Tuyo (decisiones y autorizaciones)
+- Autorizar, base por base y con respaldo + ensayo, las migraciones nuevas: `20261026120000_promo_carta_solo_salon` y la de M1 del mostrador (la migración va ANTES del código).
+- Decir «desplegá» para llevar el código de PR #130 (y lo que venga) a `stockhneuquen`; después marcar a mano Pizzas y Milanesas como «Por opción» (mirar antes que no haya cuentas abiertas con línea suelta de esos productos).
+- Aprobar las capturas visuales de Movimientos y de la ola anterior (checklist del dueño).
+- H6 del piloto de convenios: pisos de alta/vínculo de agentes y permiso propio del descuento de residente (recomendación: administrador, permiso propio no sembrado a los mozos).
+- Confirmar los supuestos menores del mostrador (J.9): botón de habilitar por sucursal, rol «cajero» armado desde la matriz (sin tocar la semilla), etiqueta impresa en el ticket.
+- Abiertas de antes: kg/l con 3 decimales; aviso «Se entendió» (recomendado en Fase 7); foco inicial «Cerrar cuenta»; prefijos «De»/«Con».
+- Borrar (con tu OK) la rama de Neon `ensayo-fase-4-20261026`; limpiar ramas `ci/carril-a|b|c`, `ci/e2e-en-partes-medicion`, worktrees `/home/user/lanes/*` y las `respaldo/*-en-curso` cuando todo esté fusionado.
+- GitHub: configuración de Actions y regla de rama «Gate (requerido)»; descartar en la pestaña de seguridad las 13 alertas de CodeQL (12 en archivos de pruebas, 1 falso positivo).
+- Migración de retiro de GO-3a (PR 2, rama `alegp/fase-3-migracion-retiro`): sigue sin autorización ni ensayo.
+
+## 4. Fase 7: módulos que faltan (DEC ratificadas el 2026-10-20)
+Catálogo (DEC-13, 5 entradas; Precio local ya mudado como entrada), Carta (DEC-24: pestañas Hoy · Secciones y géneros · Ítems agrupados; Promociones con el menú del día; Apariencia y publicación), Stock (DEC-27: Existencias y Configuración con Depósitos), Administración (DEC-28), Traspasos (DEC-29), Reportes (DEC-32), y la regla de niveles ver ≠ escribir (DEC-33). Glosario: Depósito, Traslado, Traspaso, Cambio de gerencia. Cada módulo se diseña con la escalera (AGENTS.md).
+
+## 4b. PRIORIDAD (pedido del dueño, 2026-10-27): cerrar el circuito de abastecimiento
+Ver `docs/auditoria-circuito-de-abastecimiento-2026-10-27.md`: la compra simple (N1) anda; faltan costo en el traspaso, idempotencia obligatoria en compras, factura repartida, gastos sin stock y pago al proveedor. Pasa al frente de los módulos restantes de la Fase 7.
+
+## 5. Diseño pendiente (con la regla del 2026-10-26: niveles 1 a 5 antes de tablas)
+- Piloto clientes/convenios/facturación externa: primera etapa N1 (dos tablas, una columna en `Cuenta`, módulo `convenios`, dos claves); N1b descuento por categoría sin identificar (residente); N3 agente–empresa; N4 tope y cuenta corriente; facturación externa, caja diaria (pendiente #37, revierte la decisión B5), medios de pago.
+- Compras con reparto por sucursal (ADR-029, Etapa C) y sus niveles N0 a N4; reservas (referencia externa mínima); cabecera `Venta` (diferida).
+- Auditoría de los módulos existentes contra la escalera (compras, ventas, stock, catálogo, carta, traspasos): lista de brechas y arreglos en pasos chicos, dinero/stock/permisos primero.
+- Rediseño del Menú del día / plato del día (GO-3d); carta pública debe respetar la vigencia de las promos (días y fechas); carta en inglés, pop-up de promociones, imágenes de platos; «forzar forma» de la carta y diccionario de palabras fijas.
+
+## 6. Deuda técnica y vencimientos
+- Cercos que solo bajan: 23 `type="number"`, 8 fechas de texto, 19 teclados numéricos a mano. Consola de plataforma sin el sistema visual; pantalla de receta sin migrar del todo; 15 alias `.pos-shell`.
+- Dinero: decisión abierta de pasar a enteros/`Decimal` de punta a punta (ADR-038).
+- Descripciones de `ACCIONES` (viven en la base) con el vocabulario viejo («Sección»); encabezados de ADR-028/029 desactualizados («no aplicada»); un comentario del código cita `docs/plan-numeracion-ticket-2026-09-25.md` (no existe; el real es `...boleta...`); comentario de `Sucursal.maxMesasAbiertas` con la clave equivocada.
+- Vencimientos: excepciones de la auditoría de Prisma hasta 2026-12-01; deuda de tokens y exclusión `prisma/fase-a` hasta 2026-12-20.
+- Infraestructura: el contenedor se reinició 3 veces el 26-27/10 y cortó pruebas largas; máquina de 4 CPU compartida por los agentes (cola `flock /tmp/pesado.lock`).

@@ -577,6 +577,29 @@ Son ANTERIORES por nombre a la migración de retiro de GO-3a (`20261022100000…
 
 **Vuelta atrás:** volver primero el código (un despliegue anterior funciona con la columna puesta: no la lee). Si además hay que sacarla: apagar cada interruptor desde la pantalla (queda auditado; el `down.sql` ABORTA si queda alguno), `psql -1 -v ON_ERROR_STOP=1 -f prisma/migrations/20261021140000_contenido_carta_mostrar_nombre_arriba/down.sql` como dueño y marcarla revertida a mano en `_prisma_migrations` (`prisma migrate resolve --rolled-back` solo acepta migraciones FALLIDAS: P3012).
 
+## M1 del mostrador: el puesto «Mostrador» del salón (`Mesa.tipo`, `Cuenta.tipoMesa`), 1 migración aditiva, un solo OK
+
+> **PENDIENTE DE AUTORIZACIÓN. NO APLICADA en ninguna base real** (ni Neon ni producción): se probó solo contra las bases locales descartables (subir, bajar, bajar dos veces y subir). **REQUIERE AUTORIZACIÓN EXPRESA PARA APLICARSE, base por base**, con respaldo y ensayo. Modelo y decisiones: `docs/adr/ADR-039-el-mostrador-es-un-puesto-del-salon.md` y el apartado J del diseño `docs/diseno-ventas-salon-y-mostrador-2026-10-26.md`. Pruebas de la migración: `test/persistencia/migracion-puesto-mostrador.test.ts` y `test/aislamiento/m1-mostrador-subir-bajar-subir.test.ts`.
+
+**Qué se aplica:** una carpeta, posterior por nombre a todas las demás (`20261027100000_m1_puesto_mostrador`):
+
+- Una guarda `DO` que ABORTA si existe alguna `Mesa` con `numero <= 0` (el CHECK nuevo no validaría; antes de aplicar, contarlas en solo lectura).
+- `Mesa.tipo` TEXT NOT NULL DEFAULT 'SALON' con `Mesa_tipo_chk` (`SALON`, `MOSTRADOR`) y `Mesa_numero_segun_tipo_chk` (`(tipo = 'MOSTRADOR') = (numero = 0)`), y el único `Mesa_empresaId_id_tipo_key (empresaId, id, tipo)`, destino de la FK.
+- `Cuenta.tipoMesa` TEXT NOT NULL DEFAULT 'SALON' con su CHECK; se quita `Cuenta_empresaId_mesaId_fkey` y se agrega `Cuenta_empresaId_mesaId_tipoMesa_fkey (empresaId, mesaId, tipoMesa) → Mesa(empresaId, id, tipo)` con RESTRICT en ambos sentidos; `Cuenta_comensales_segun_tipo_chk` (`tipoMesa = 'SALON' OR comensales IS NULL`).
+- Sin UPDATE de filas (los defaults constantes solo tocan el catálogo; todas las mesas y cuentas existentes quedan `SALON`, que es lo que son), sin políticas de RLS, GRANT ni clasificación nuevos. NO crea ningún puesto «Mostrador»: lo crea el administrador con el botón «Habilitar el mostrador» de cada sucursal (`pos_alta_mesa`), cuando quiera.
+
+**Costo y bloqueos:** `Cuenta` es tabla caliente. Agregar las columnas es instantáneo; quitar y agregar la FK compuesta valida contra `Mesa` (poco volumen) y toma un bloqueo corto sobre las dos tablas. Aplicar fuera de horario con `SET lock_timeout = '5s'` (nunca `CONCURRENTLY`: Prisma corre cada `migration.sql` en una transacción). Guarda de volumen: si `Cuenta` pasa de 500.000 filas, no se aplica y se replantea con la FK `NOT VALID` y su validación aparte.
+
+**Orden con el código:** la base va PRIMERO. Es aditiva: el código anterior no lee las columnas, sus INSERT toman el default `SALON` y la FK con discriminador se cumple con él, así que aplicarla con el código viejo publicado no cambia nada. El código de esta rama SÍ las lee y escribe (`tipoMesa` en el conteo del límite, el mapa, la rotación; `tipo` al habilitar): desplegarlo sin ella falla, y el build en modo `verificar` lo frena por la migración pendiente.
+
+**Respaldo y ensayo:** rama de Neon `respaldo-pre-m1-mostrador-AAAAMMDD` desde `main` (el proyecto está en el tope de ramas: el dueño decide antes cuál se libera; no se borra nada sin su OK); ensayo en una rama descartable: `migrate deploy`, el `down.sql` y otra vez `migrate deploy`, con la huella del catálogo (columnas, restricciones, índices, políticas) idéntica antes y después del ciclo.
+
+**Chequeos antes (solo lectura):** `SELECT count(*) FROM "Mesa" WHERE "numero" <= 0` = 0; y, como línea de base de lo que queda «sin ticket», `SELECT o."sucursalId", count(*) FROM "Operacion" o WHERE o."tipo" = 'VENTA' AND NOT EXISTS (SELECT 1 FROM "CuentaItem" ci WHERE ci."operacionId" = o."id") GROUP BY 1` (se anota, no se actúa sobre el resultado). **Chequeos después (solo lectura):** `migrate status` sin pendientes; `SELECT count(*) FROM "Mesa" WHERE "tipo" <> 'SALON'` = 0; `SELECT count(*) FROM "Cuenta" WHERE "tipoMesa" <> 'SALON'` = 0.
+
+**Vuelta atrás:** volver primero el código (un despliegue anterior funciona con las columnas puestas, mientras no exista ningún puesto «Mostrador»). Si además hay que sacar las columnas: el `down.sql` ABORTA si existe alguna `Mesa` o `Cuenta` de tipo MOSTRADOR (sus cuentas apuntan al puesto con RESTRICT); si no, `psql -1 -v ON_ERROR_STOP=1 -f prisma/migrations/20261027100000_m1_puesto_mostrador/down.sql` como dueño (recrea la FK original `Cuenta_empresaId_mesaId_fkey`) y marcarla revertida a mano en `_prisma_migrations` (`prisma migrate resolve --rolled-back` solo acepta migraciones FALLIDAS: P3012). La vuelta total es restaurar desde `respaldo-pre-m1-mostrador-…`.
+
+**M2 (varias cuentas abiertas a la vez): NO implementada, sin migraciones todavía.** Cuando se haga serán dos carpetas más (`claveApertura` y `etiqueta` con sus CHECK; el índice único parcial por mesa de salón y el retiro del viejo en la misma transacción), cada una con su propio OK.
+
 ## Server Actions: clave de cifrado de los closures y versiones entre deploys
 
 > O.3 de la lista de control (`docs/pureza-integracion.md`; Hito 4, bloque D, paso G1 de `docs/plan-hito-4-pureza.md` §4). Solo documentación: no se tocó

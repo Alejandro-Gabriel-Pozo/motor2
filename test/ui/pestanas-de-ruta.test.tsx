@@ -65,4 +65,15 @@ describe("PestanasDeRuta", () => {
     expect(h).not.toMatch(/(^|[\s":])dark:/);
     expect(h).not.toMatch(/(^|[\s":-])(?:neutral|gray|slate|zinc|stone|red|green|amber|yellow|blue|white|black)-\d/);
   });
+
+  it("por defecto la tira se desplaza de costado; con disposicion=envuelta pasa a otro renglón (todas completas) y el resto no cambia", () => {
+    const porDefecto = html();
+    expect(porDefecto).toContain("overflow-x-auto");
+    expect(porDefecto).not.toContain("flex-wrap");
+    const envuelta = renderToStaticMarkup(<PestanasDeRuta etiqueta="Pasos del producto" pestanas={PASOS} disposicion="envuelta" />);
+    expect(envuelta).toContain("flex-wrap");
+    expect(envuelta).not.toContain("overflow-x-auto");
+    expect(envuelta.match(/<li /g)).toHaveLength(4);
+    expect(envuelta.match(/aria-current="page"/g)).toHaveLength(1);
+  });
 });

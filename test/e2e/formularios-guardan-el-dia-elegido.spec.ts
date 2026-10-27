@@ -52,7 +52,7 @@ test.describe(`con el navegador en ${zona}`, () => {
       expect(await navegadorEstaEnLaZona(page, zona), "el navegador tiene que estar en la zona del caso").toBe(true);
 
       await page.getByLabel(/^Fecha(?: \*)?$/).fill(DIA);
-      await page.getByRole("combobox", { name: "Sección", exact: true }).selectOption({ label: seccion.nombre });
+      await page.getByRole("combobox", { name: "Depósito", exact: true }).selectOption({ label: seccion.nombre });
       await page.locator('input[placeholder="Código o nombre…"]').first().fill(producto.nombre);
       await page.getByRole("option", { name: new RegExp(producto.nombre) }).click();
       await page.getByLabel("Cantidad").fill("1");
@@ -72,7 +72,7 @@ test.describe(`con el navegador en ${zona}`, () => {
       expect(await navegadorEstaEnLaZona(page, zona), "el navegador tiene que estar en la zona del caso").toBe(true);
 
       await page.getByLabel(/^Fecha(?: \*)?$/).fill(DIA);
-      await page.getByRole("combobox", { name: "Sección", exact: true }).selectOption({ label: seccion.nombre });
+      await page.getByRole("combobox", { name: "Depósito", exact: true }).selectOption({ label: seccion.nombre });
       await page.locator('input[placeholder="Código o nombre…"]').first().fill(producto.nombre);
       await page.getByRole("option", { name: new RegExp(producto.nombre) }).click();
       await page.locator("label:has-text('Cantidad') input").first().fill("10");

@@ -1,7 +1,8 @@
+import { esIdentificador } from "@/core/datos/identificador";
 import { MAXIMO_CUPOS_POR_PROMO, validarTopeDeLista } from "@/core/datos/limites";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_NOMBRE_DE_CUPO, LARGO_MAXIMO_TITULO_CARTA, TIPOS_DE_CUPO, validarCantidadCupoPromo, validarOrdenCarta, validarPrecioCarta, validarTextoLibreCarta, type TipoDeCupo } from "@/core/carta/public";
-import type { ComandoGuardarPromoCarta, CupoValidadoPromoCarta } from "./promos.schema";
+import type { ComandoGuardarPromoCarta, ComandoGuardarSoloSalonPromoCarta, CupoValidadoPromoCarta } from "./promos.schema";
 
 /**
  * Guard de la feature «promos de la carta» (convención «guard por feature», 2026-09-25; Hito 4, bloque 4.2, paso H4C-2). Formato del comando, ANTES de tocar la
@@ -20,6 +21,8 @@ interface EntradaPromoCarta {
   descripcion?: unknown;
   precio: unknown;
   orden?: unknown;
+  /** Solo en el alta: que la promo nazca en «solo salón». */
+  soloSalon?: unknown;
 }
 
 /**
@@ -37,14 +40,33 @@ export function guardComandoGuardarPromoCarta(datos: EntradaPromoCarta): Resulta
   if (!precio.ok) return rechazar("formato", precio.mensaje);
   const orden = validarOrdenCarta(datos.orden);
   if (!orden.ok) return rechazar("formato", orden.mensaje);
+  // «Solo salón» al crear: exactamente un booleano. En una edición no se acepta (se cambia aparte, con la versión que vio la pantalla): un pedido que lo trae se rechaza en vez de ignorarse en silencio.
+  if (datos.soloSalon !== undefined && typeof datos.soloSalon !== "boolean") return rechazar("formato", "Elegí si la promo es solo para el salón o también se ve en la carta pública.");
+  if (datos.id && datos.soloSalon !== undefined) return rechazar("formato", "«Solo salón» de una promo que ya existe se cambia desde «Dónde se ve».");
   return aceptar({
     ...(datos.id ? { id: datos.id } : {}),
+    ...(datos.soloSalon === true ? { soloSalon: true as const } : {}),
     seccionCartaId: datos.seccionCartaId,
     titulo: titulo.valor,
     descripcion: descripcion.valor,
     precio: precio.valor,
     orden: orden.valor,
   });
+}
+
+/** El largo más alto que acepta un id de promo (los ids son `cuid`: de sobra). */
+const LARGO_MAXIMO_DE_ID = 64;
+
+/**
+ * Guard del comando «dónde se ve una promo» (interruptor «solo salón»): el id de la promo (texto no vacío y acotado), la versión que vio la pantalla (entero >= 1) y el interruptor, que tiene que ser EXACTAMENTE un booleano (un `"true"`, un `1` o su
+ * ausencia se rechazan: un interruptor que se prende por un valor ambiguo es una promo pública o escondida por error). Lo llama la Server Action DENTRO de su envoltorio, así el rechazo por permiso llega antes que el de formato.
+ */
+export function guardComandoGuardarSoloSalonPromoCarta(entrada: { promoCartaId: unknown; versionEsperada: unknown; soloSalon: unknown }): ResultadoDato<ComandoGuardarSoloSalonPromoCarta> {
+  const { promoCartaId, versionEsperada, soloSalon } = entrada;
+  if (!esIdentificador(promoCartaId) || promoCartaId.length > LARGO_MAXIMO_DE_ID) return rechazar("formato", "No se encontró la promo.");
+  if (typeof versionEsperada !== "number" || !Number.isInteger(versionEsperada) || versionEsperada < 1) return rechazar("formato", "La versión de la promo que mostraba la pantalla no es válida: recargala.");
+  if (typeof soloSalon !== "boolean") return rechazar("formato", "Elegí si la promo es solo para el salón o también se ve en la carta pública.");
+  return aceptar({ promoCartaId, versionEsperada, soloSalon });
 }
 
 /**

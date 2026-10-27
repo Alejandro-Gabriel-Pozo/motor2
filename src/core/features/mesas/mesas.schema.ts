@@ -27,3 +27,10 @@ export interface ComandoActualizarMaxMesasAbiertas {
 
 /** El caso de uso no rechaza nada propio: el formato lo rechaza antes el guard y la sucursal es la activa (si no existiera, lanza, como antes). */
 export type ResultadoActualizarMaxMesasAbiertas = ResultadoCaso<null, never>;
+
+/**
+ * Lo que produce «habilitar el mostrador» (ADR-039): `creado` es `true` si ESTA llamada creó el puesto y `false` si ya estaba habilitado (idempotente por estado: el único `(sucursalId, numero)` y el CHECK de la
+ * base dejan a lo sumo un mostrador por sucursal). `mesaId` es el del puesto en ambos casos.
+ *  - `SUCURSAL_INACTIVA`: la sucursal está desactivada (no se habilita nada en una sucursal apagada).
+ */
+export type ResultadoHabilitarMostrador = ResultadoCaso<{ creado: boolean; mesaId: string }, "SUCURSAL_INACTIVA">;

@@ -1,5 +1,5 @@
 import type { AccionClave } from "@/core/permisos/acciones";
-import { accionDeRuta, itemDeRuta } from "./estructura";
+import { GRUPOS_NAV, RUTAS_DE_UNA_ENTRADA, accionDeRuta, itemDeRuta, puedeVerItem, type GrupoNav, type RutaDeUnaEntrada } from "./estructura";
 import { rutaInternaSegura } from "./volver";
 
 /**
@@ -9,11 +9,16 @@ import { rutaInternaSegura } from "./volver";
  * consulta y el ancla (pueden traer ids de la sucursal anterior) y los ids de la ruta (`/mesas/abc` → `/mesas`, `/catalogo/recetas/x` → la lista).
  * `puedeVer` son las acciones que el rol puede ver EN LA SUCURSAL NUEVA (no en la de la cookie).
  */
-export function pantallaTrasCambiarSucursal(actual: string | null | undefined, puedeVer: ReadonlySet<AccionClave>): string | null {
+export function pantallaTrasCambiarSucursal(
+  actual: string | null | undefined,
+  puedeVer: ReadonlySet<AccionClave>,
+  grupos: GrupoNav[] = GRUPOS_NAV,
+  rutas: readonly RutaDeUnaEntrada[] = RUTAS_DE_UNA_ENTRADA
+): string | null {
   const segura = rutaInternaSegura(actual);
   if (segura === null) return null;
-  const item = itemDeRuta(segura);
-  if (item === null || !puedeVer.has(item.accion)) return null;
+  const item = itemDeRuta(segura, grupos, rutas);
+  if (item === null || !puedeVerItem(item, puedeVer)) return null;
   return item.href;
 }
 

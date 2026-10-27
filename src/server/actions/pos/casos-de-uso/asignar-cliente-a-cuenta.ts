@@ -6,6 +6,7 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import { exito, fracaso } from "@/core/resultado-caso";
 import { fijarClienteDeCuenta } from "@/server/persistencia/pos/cuenta";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «asignar (o quitar) el cliente con descuento de una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 7 — `docs/plan-hito-4-pureza.md` §5).
@@ -45,12 +46,12 @@ export async function asignarClienteACuentaCasoDeUso(
     const anterior = abierta.cuenta.clienteId ? await tx.cliente.findUnique({ where: { id: abierta.cuenta.clienteId }, select: { nombre: true } }) : null;
     const auditar = async (nuevo: { nombre: string; porcentaje: number } | null) => {
       const base = { entidad: "Cuenta", entidadId: abierta.cuenta.id, actorId: actor.usuarioId, sucursalId: actor.sucursalId } as const;
-      const mesa = abierta.cuenta.mesa.numero;
-      await registrarCambioAuditado(tx, { ...base, campo: "cliente", descripcion: `Mesa ${mesa}: cliente de la cuenta`, valorAnterior: anterior?.nombre ?? null, valorNuevo: nuevo?.nombre ?? null });
+      const mesa = frasesDePuesto(abierta.cuenta.mesa.numero).detalle;
+      await registrarCambioAuditado(tx, { ...base, campo: "cliente", descripcion: `${mesa}: cliente de la cuenta`, valorAnterior: anterior?.nombre ?? null, valorNuevo: nuevo?.nombre ?? null });
       await registrarCambioAuditado(tx, {
         ...base,
         campo: "descuentoPorcentaje",
-        descripcion: `Mesa ${mesa}: % de descuento de la cuenta`,
+        descripcion: `${mesa}: % de descuento de la cuenta`,
         valorAnterior: abierta.cuenta.descuentoPorcentaje === null ? null : Number(abierta.cuenta.descuentoPorcentaje),
         valorNuevo: nuevo?.porcentaje ?? null,
       });
@@ -59,7 +60,7 @@ export async function asignarClienteACuentaCasoDeUso(
     if (clienteId === null) {
       await fijarClienteDeCuenta(tx, { cuentaId: abierta.cuenta.id, clienteId: null, descuentoPorcentaje: null });
       await auditar(null);
-      return exito(`Se quitó el cliente de la mesa ${abierta.cuenta.mesa.numero}.`, null);
+      return exito(`Se quitó el cliente ${frasesDePuesto(abierta.cuenta.mesa.numero).del}.`, null);
     }
 
     const cliente = typeof clienteId === "string" ? await tx.cliente.findUnique({ where: { id: clienteId } }) : null;
@@ -68,6 +69,6 @@ export async function asignarClienteACuentaCasoDeUso(
 
     await fijarClienteDeCuenta(tx, { cuentaId: abierta.cuenta.id, clienteId: cliente.id, descuentoPorcentaje: cliente.descuentoPorcentaje });
     await auditar({ nombre: cliente.nombre, porcentaje: Number(cliente.descuentoPorcentaje) });
-    return exito(`«${cliente.nombre}» asignado a la mesa ${abierta.cuenta.mesa.numero}, con ${cliente.descuentoPorcentaje}% de descuento.`, null);
+    return exito(`«${cliente.nombre}» asignado ${frasesDePuesto(abierta.cuenta.mesa.numero).al}, con ${cliente.descuentoPorcentaje}% de descuento.`, null);
   });
 }

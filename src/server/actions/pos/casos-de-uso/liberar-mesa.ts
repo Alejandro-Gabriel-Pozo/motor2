@@ -5,6 +5,7 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { marcarCuentaCerrada } from "@/server/persistencia/pos/cerrar-cuenta";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
+import { esMostrador, frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «liberar una mesa sin venta» (Hito 4 de la pureza, bloque 4.1, paso 5 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que antes vivía en línea
@@ -34,9 +35,11 @@ export async function liberarMesaCasoDeUso(
     const abierta = await cuentaAbiertaDeSucursal(tx, comando.cuentaId, actor.sucursalId);
     if (!abierta.ok) return fracaso("CUENTA_NO_ABIERTA", abierta.mensaje);
     if ((await tx.cuentaItem.count({ where: { cuentaId: abierta.cuenta.id } })) > 0) {
-      return fracaso("CON_ITEMS", `La cuenta de la mesa ${abierta.cuenta.mesa.numero} tiene ítems cargados: cerrá la cuenta en vez de liberar la mesa.`);
+      const puesto = frasesDePuesto(abierta.cuenta.mesa.numero);
+      return fracaso("CON_ITEMS", `La cuenta ${puesto.del} tiene ítems cargados: cerrá la cuenta en vez de ${esMostrador(abierta.cuenta.mesa.numero) ? "descartarla" : "liberar la mesa"}.`);
     }
     await marcarCuentaCerrada(tx, { cuentaId: abierta.cuenta.id, cerradaEn: actor.ahora, cerradaPorId: actor.usuarioId });
-    return exito(`Mesa ${abierta.cuenta.mesa.numero} liberada.`, null);
+    const numero = abierta.cuenta.mesa.numero;
+    return exito(esMostrador(numero) ? "Cuenta del mostrador descartada." : `${frasesDePuesto(numero).detalle} liberada.`, null);
   });
 }

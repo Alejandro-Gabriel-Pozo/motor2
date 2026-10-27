@@ -296,6 +296,27 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "MOSTRADOR (O.430; CAMBIA LAS CONSULTAS, no la salida): igual que la matriz de venta. La barrera de las opciones obligatorias lee UNA vez por lote lo que admite cada producto de las líneas sin configurar (`producto.findMany`), la primera vez que una línea llega a ella. Cambia SOLO la línea `lecturas (N)` de 19 escenas (las que pasan la barrera: ventas de mostrador, cierres del POS y sus rechazos posteriores a ella): N suma 1 y `producto.findMany` suma 1; los rechazos anteriores a la barrera (producto inexistente, no disponible, cantidad inválida) no cambian. Ninguna fila OPERACION, KARDEX ni resultado cambia. Verificado con `git diff --word-diff` y por programa: cada línea cambiada, sin N y sin `producto.findMany×k`, es idéntica a la anterior.",
       },
+      {
+        blob: "496f44c738f2be69865addc2b4f97c4f5005b84c",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `1be5631e` («Menú de Movimientos: Registrar movimiento como entrada única y mudanza de las demás entradas»).
+        commit: "1be5631e",
+        motivo:
+          "Fase 7, P6 (vocabulario; CAMBIA SOLO UN TEXTO): el rechazo de la venta sin respaldo (`rechazoSinRespaldo`, plan-de-la-venta.ts) nombraba el camino «Movimientos → Secciones»; Secciones se mudó al grupo Stock y se llama «Depósitos», así que el texto dice «Stock → Depósitos». Cambia SOLO esa frase dentro de la única línea `resultado: rechazo «Ninguna sección de …»` (1 línea); el resto de la matriz es idéntico. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1.",
+      },
+      {
+        blob: "ed630085f5c0e1625ac0eb615d1baf82eaf5eb62",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a878640a` («M1.1 mostrador: núcleo puro del puesto del salón (rótulo y frases) y guardián G1 de textos»).
+        commit: "a878640a",
+        motivo:
+          "M1 del mostrador (ADR-039, migración 20261027100000_m1_puesto_mostrador; ADITIVO, no cambia comportamiento): las 21 líneas CUENTA suman `tipoMesa=SALON` (la columna nueva `Cuenta.tipoMesa`, default SALON). Verificado con `git diff --word-diff` y por programa: sin esa columna el contenido es IDÉNTICO al blob anterior, byte a byte; ninguna fila, importe ni traza de consultas cambió.",
+      },
+      {
+        blob: "5c931eee70360d97aa6dd2c926d761c98e1f0829",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de la fusión de las ramas de la Fase 7 (Movimientos) y del mostrador (M1), `ff51d59f` («Merge branch 'alegp/carril-m' …»).
+        commit: "ff51d59f",
+        motivo:
+          "Fusión de dos regeneraciones hechas en paralelo sobre el mismo golden: la de Fase 7 P6 (un texto: el camino del menú «Stock → Depósitos» en el rechazo sin respaldo) y la de M1 del mostrador (las 21 líneas CUENTA suman `tipoMesa=SALON`, aditivo). La fusión automática de git dio el contenido de las dos juntas (comprobado: 21 líneas con `tipoMesa=SALON`, el texto nuevo del camino del menú y ningún marcador de conflicto); ningún otro número cambia.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -424,6 +445,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "GO-1d (O.324; ADITIVO, no cambia comportamiento; primera regeneración de este golden): las líneas ITEM suman `huellaOpciones=null` y `lineaPadreId=null` y las OPERACION suman `operacionPadreId=null`. Verificado con diff: sin esas columnas en null, idéntico al anterior.",
       },
+      {
+        blob: "4ef38a43f32e26e8f78ab57bdb6cfc7bc4867af3",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a878640a` («M1.1 mostrador: núcleo puro del puesto del salón (rótulo y frases) y guardián G1 de textos»).
+        commit: "a878640a",
+        motivo:
+          "M1 del mostrador (ADR-039, migración 20261027100000_m1_puesto_mostrador; ADITIVO, no cambia comportamiento): las 207 líneas MESA suman `tipo=SALON` y las 174 CUENTA suman `tipoMesa=SALON` (las columnas nuevas `Mesa.tipo` y `Cuenta.tipoMesa`, default SALON). Verificado con `git diff --word-diff` y por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior (e6f590094e95), byte a byte; ningún mensaje, número ni orden cambió (los textos de las mesas pasaron por core/pos/puesto.ts en M1.1 y esta huella pasó verde sin regenerar).",
+      },
     ],
   },
   "test/pos/caracterizacion/venta-con-opciones.golden.txt": {
@@ -526,6 +554,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "8ff510de",
         motivo:
           "Ola «precio y carta», Fase 4, C1 (ADITIVO, no cambia comportamiento): las 13 filas PRODUCTO de la huella suman `modoDeVenta=DIRECTO` (migración 20261021130000; el default, lo que ya hacía). Revisado con `git diff`: quitando ese campo, cada línea es idéntica a la anterior; ningún importe ni regla de dinero cambia.",
+      },
+      {
+        blob: "aa6fb4fcf045c561d799a33c34d414ca4827f872",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a2068019` («Fusión del carril del mostrador (M1) con Movimientos y solo salón…»).
+        commit: "a2068019",
+        motivo:
+          "Interruptor «solo salón» de las promos (migración 20261026120000_promo_carta_solo_salon; ADITIVO, no cambia comportamiento): la huella vuelca las filas de PromoCarta con todas sus columnas, y la columna nueva `PromoCarta.soloSalon` (default false) aparece como ` soloSalon=false` en cada fila PROMO (10 líneas). Verificado: quitando ` soloSalon=false` de cada línea, el contenido es IDÉNTICO al anterior (blob previo en el historial de esta entrada); ninguna otra línea, resultado ni conteo cambia. Se regeneró con `REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1`.",
       },
     ],
   },

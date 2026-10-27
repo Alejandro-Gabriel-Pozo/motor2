@@ -11,6 +11,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarItemParaAnular } from "@/server/persistencia/pos/cargar-item-para-anular";
 import { escribirEspejoDeItem } from "@/server/persistencia/pos/escribir-espejo-de-item";
 import { formatearCantidad } from "../cuenta-comun";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «anular un ítem ya enviado a cocina» (Task #41, Fase M12c — ver docs/arquitectura-casos-de-uso-2026-09-27.md). Es la
@@ -47,9 +48,9 @@ export async function anularItemEnviadoCasoDeUso(
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAnularItemEnviado> => {
     const item = await cargarItemParaAnular(tx, { cuentaItemId: comando.cuentaItemId, sucursalId: actor.sucursalId });
     if (!item) return fracaso("NO_ENCONTRADO", MENSAJE_ITEM_NO_ENCONTRADO);
-    const mesa = item.mesaNumero;
+    const puesto = frasesDePuesto(item.mesaNumero);
     if (item.anulaAItemId !== null) return fracaso("ES_ANULACION", "Eso ya es una anulación: no se puede anular.");
-    if (item.cuentaCerradaEn) return fracaso("CUENTA_CERRADA", `La cuenta de la mesa ${mesa} ya se cerró: anulá la venta (Reportes › Trazabilidad).`);
+    if (item.cuentaCerradaEn) return fracaso("CUENTA_CERRADA", `La cuenta ${puesto.del} ya se cerró: anulá la venta (Reportes › Trazabilidad).`);
     const numeroEnvio = item.numeroEnvio;
     if (numeroEnvio === null) return fracaso("SIN_ENVIAR", "Ese ítem todavía no salió a cocina: usá «Quitar».");
     // Task #16 (D4, "una promo se anula entera"): un componente no se anula suelto — usá anularPromoEnviada con la promo.
@@ -102,7 +103,7 @@ export async function anularItemEnviadoCasoDeUso(
     await registrarCambioAuditado(tx, {
       entidad: "CuentaItem",
       entidadId: item.id,
-      descripcion: `Mesa ${mesa}, envío ${numeroEnvio}: anulación de ${formatearCantidad(aAnular.cantidad)} × "${producto.nombre}" ya enviado a cocina. Motivo: ${motivoValidado.motivo}`,
+      descripcion: `${puesto.detalle}, envío ${numeroEnvio}: anulación de ${formatearCantidad(aAnular.cantidad)} × "${producto.nombre}" ya enviado a cocina. Motivo: ${motivoValidado.motivo}`,
       campo: "cantidadVigente",
       valorAnterior: restante,
       valorNuevo: quedan,
@@ -119,7 +120,7 @@ export async function anularItemEnviadoCasoDeUso(
       await registrarCambioAuditado(tx, {
         entidad: "CuentaItem",
         entidadId: adicional.id,
-        descripcion: `Mesa ${mesa}, envío ${adicional.numeroEnvio}: anulación de ${formatearCantidad(cantidad)} × "${adicional.productoNombre}", adicional de "${producto.nombre}" (se anula con su producto). Motivo: ${motivoValidado.motivo}`,
+        descripcion: `${puesto.detalle}, envío ${adicional.numeroEnvio}: anulación de ${formatearCantidad(cantidad)} × "${adicional.productoNombre}", adicional de "${producto.nombre}" (se anula con su producto). Motivo: ${motivoValidado.motivo}`,
         campo: "cantidadVigente",
         valorAnterior: antes,
         valorNuevo: restanteDe({ cantidad: antes }, [{ cantidad: -cantidad }]),
@@ -127,7 +128,7 @@ export async function anularItemEnviadoCasoDeUso(
         sucursalId: actor.sucursalId,
       });
     }
-    return exito(`Se anuló ${formatearCantidad(aAnular.cantidad)} × «${producto.nombre}»${cascada.length ? " (con sus adicionales)" : ""} de la mesa ${mesa}.`, {
+    return exito(`Se anuló ${formatearCantidad(aAnular.cantidad)} × «${producto.nombre}»${cascada.length ? " (con sus adicionales)" : ""} ${puesto.del}.`, {
       espejoId,
       cantidadAnulada: aAnular.cantidad,
       restanteAntes: restante,

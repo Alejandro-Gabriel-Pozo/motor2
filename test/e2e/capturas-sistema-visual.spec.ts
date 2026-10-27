@@ -39,6 +39,7 @@ const PANTALLAS_CON_SESION: readonly Pantalla[] = [
   { nombre: "catalogo-productos-ficha", ruta: (d) => `/catalogo/productos/${d.productoId.pizzas}` },
   { nombre: "catalogo-opciones", ruta: "/catalogo/opciones" },
   { nombre: "catalogo-unidades", ruta: "/catalogo/unidades" },
+  { nombre: "movimientos", ruta: "/movimientos" },
   { nombre: "movimientos-merma", ruta: "/movimientos/merma" },
   { nombre: "reportes-costos", ruta: "/reportes/costos" },
   { nombre: "administracion-usuarios", ruta: "/administracion/usuarios" },

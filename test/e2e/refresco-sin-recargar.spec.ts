@@ -26,11 +26,11 @@ test("secciones: crear, quitar del respaldo automático, desactivar y renombrar 
   const filaDe = (n: string) => page.locator(`tr:has(input[value="${n}"])`);
 
   await page.goto("/movimientos/secciones");
-  await expect(page.getByRole("heading", { name: /Secciones/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Depósitos", exact: true })).toBeVisible();
   await ponerMarca(page);
 
   // Crear: la sección nueva aparece en la tabla.
-  await page.getByPlaceholder("nombre de la sección").fill(nombre);
+  await page.getByPlaceholder("nombre del depósito").fill(nombre);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await expect(filaDe(nombre)).toHaveCount(1);
   await expect(filaDe(nombre).getByRole("cell", { name: "Sí", exact: true })).toBeVisible();

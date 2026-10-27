@@ -22,7 +22,7 @@ describe("promo por sucursal: sin fila = no se ofrece; precioLocal null = precio
   const promo = (titulo: string, sucursales: { sucursalId: string; activa?: boolean; precioLocal?: number }[], activa = true) =>
     prisma.promoCarta.create({ data: { seccionCartaId: seccionId, titulo, precio: 25000, activa, sucursales: { create: sucursales } } });
   const titulosOfrecidos = async (sucursalId: string) =>
-    (await prisma.promoCarta.findMany({ where: wherePromoOfrecidaEn(sucursalId), orderBy: { titulo: "asc" } })).map((p) => p.titulo);
+    (await prisma.promoCarta.findMany({ where: wherePromoOfrecidaEn(sucursalId, "salon"), orderBy: { titulo: "asc" } })).map((p) => p.titulo);
 
   it("una promo sin ninguna fila de sucursal no se ofrece en ninguna", async () => {
     await promo("Sin filas", []);

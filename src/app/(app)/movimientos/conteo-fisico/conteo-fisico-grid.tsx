@@ -10,7 +10,7 @@ import { SelectorProducto } from "@/components/selector-producto";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaIcono } from "@/components/ayuda-campo";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
-import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal, fechaDeColumnaDate, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 import { Boton } from "@/ui/primitivas/boton";
 import { Campo } from "@/ui/primitivas/campo";
 import { Selector } from "@/ui/primitivas/selector";
@@ -79,6 +79,8 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
   const [pending, startTransition] = useTransition();
   const [progreso, setProgreso] = useState<string | null>(null);
   const [limpiarSelector, setLimpiarSelector] = useState(0);
+  /** Filas (por `key`) cuyo lote no es un día real: se avisa junto al campo y no se envía. */
+  const [filasConLoteInvalido, setFilasConLoteInvalido] = useState<string[]>([]);
   // I3: una clave de reintento POR FILA, atada a lo tipeado (la "firma"). Si la llamada se corta y se vuelve a apretar "Registrar conteo"
   // con lo mismo, la fila lleva la misma clave y el servidor no la duplica; si se cambió algo de la fila, la firma cambia y nace una
   // clave nueva (con la vieja el servidor lo rechazaría como "mismos datos distintos").
@@ -143,6 +145,14 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
       return;
     }
 
+    // El lote de una fila manual sale de un <input type="date">, pero se comprueba: un día que no existe (30 de febrero) no se corre al 2 de marzo, se avisa junto al campo.
+    const invalidas = aEnviar.filter(({ f }) => f.loteVencimiento && !esDiaISOReal(f.loteVencimiento)).map(({ f }) => f.key);
+    setFilasConLoteInvalido(invalidas);
+    if (invalidas.length) {
+      setResumen({ ok: false, texto: "Hay un lote con un día que no existe: corregilo antes de guardar.", errores: [] });
+      return;
+    }
+
     // El campo de fecha no es `required`: un día borrado no se convierte (mediodiaDelDia lanzaría), se avisa igual que lo hace el servidor con una fecha inválida.
     if (!fechaConteo) {
       setResumen({ ok: false, texto: "La fecha no es válida.", errores: [] });
@@ -165,7 +175,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
             tanda.map(({ f, estado }) => ({
               productoId: f.productoId,
               seccionId,
-              loteVencimiento: f.loteVencimiento ? new Date(f.loteVencimiento) : null,
+              loteVencimiento: f.loteVencimiento ? fechaDeColumnaDate(f.loteVencimiento) : null,
               conteoReal: numeroDelCampo(estado.conteoReal) ?? NaN,
               fechaConteo: mediodiaDelDia(fechaConteo, ZONA_ARGENTINA),
               accion: estado.accion,
@@ -259,6 +269,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
                         tamano="compacto"
                         value={f.loteVencimiento ?? ""}
                         onChange={(e) => setFilasManuales((prev) => prev.map((m) => (m.key === f.key ? { ...m, loteVencimiento: e.target.value } : m)))}
+                        error={filasConLoteInvalido.includes(f.key) ? "Ese día no existe: elegí un vencimiento real." : undefined}
                       />
                     ) : (
                       (f.loteVencimiento ?? (f.esTotalDeLotes ? "Todos los lotes (total)" : "—"))
@@ -306,7 +317,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
             {!filas.length && (
               <tr>
                 <td className="py-2 text-tinta-tenue" colSpan={8}>
-                  Sin productos con stock registrado en esta sección todavía — agregá uno abajo si hay algo que nunca se contó.
+                  Sin productos con stock registrado en este depósito todavía — agregá uno abajo si hay algo que nunca se contó.
                 </td>
               </tr>
             )}
@@ -316,7 +327,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
 
       <div className="flex items-end gap-2">
         <label className="flex flex-1 flex-col gap-1 text-sm">
-          <span className="font-medium">+ Agregar producto (nunca contado en esta sección, sin factura, etc.)</span>
+          <span className="font-medium">+ Agregar producto (nunca contado en este depósito, sin factura, etc.)</span>
           <SelectorProducto
             value={nuevoProductoId}
             onChange={setNuevoProductoId}

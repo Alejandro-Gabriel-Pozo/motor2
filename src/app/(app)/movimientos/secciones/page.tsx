@@ -22,7 +22,7 @@ export default async function SeccionesPage() {
   return (
     <div className="space-y-8">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold">Secciones (depósitos/ubicaciones de esta sucursal)</h1>
+        <h1 className="text-xl font-semibold">Depósitos</h1>
         <p className="text-sm text-tinta-suave">
           Si una sección no sirve de respaldo, las ventas del salón solo la usan cuando es la sección habitual de un producto.
         </p>
@@ -101,7 +101,7 @@ export default async function SeccionesPage() {
         className="flex max-w-md gap-2"
       >
         <div className="flex-1">
-          <Campo name="nombre" aria-label="Nombre de la sección" placeholder="nombre de la sección" required />
+          <Campo name="nombre" aria-label="Nombre de la sección" placeholder="nombre del depósito" required />
         </div>
         <BotonDeServidor type="submit">Crear</BotonDeServidor>
       </FormConResultado>

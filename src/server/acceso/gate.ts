@@ -8,6 +8,7 @@ import {
   algunaAccionEsDePisoGerente,
   decidirEnEmpresa,
   decidirEnSucursal,
+  denegado,
   membresiaVigente,
   nivelEnSucursal,
   nivelesEnLaEmpresa,
@@ -86,6 +87,29 @@ export async function accionesQueElUsuarioPuedeVer(usuarioId: string, sucursalId
 
   const efectivos = algunaAccionNecesitaElRegistro(unicas) ? await modulosEfectivosDeEmpresa(membresia.empresaId, db) : null;
   return accionesVisiblesEnSucursal({ rol: membresia.rol, clavesConVerEnElRol: membresia.rol.permisos.map((p) => p.accionClave), habilitadas, efectivos });
+}
+
+/** Lo que se devuelve si la lectura única no ve ninguna clave pero el gate de la primera dice que sí (no debería pasar: los dos salen de la misma decisión pura). */
+const SIN_NINGUNA_CLAVE_VISIBLE = "No tenés permiso para ver esta sección.";
+
+/**
+ * Gate de VER de una página que es la entrada de VARIAS pantallas (Fase 7, «Registrar movimiento»): pasa si el rol puede VER ALGUNA de las claves (`algunaDe` del ítem del menú, las mismas) en esta
+ * sucursal, y devuelve además cuáles ve (`visibles`: la página arma con ellas lo que ofrece; vacío si se niega). Lo mismo que `requierePermisoVer` por cada clave (membresía vigente, módulo de la empresa, capacidad de la
+ * sucursal y «Ver» del rol), pero con la lectura única de `accionesQueElUsuarioPuedeVer`: 2 consultas (más el registro de módulos si alguna clave lo necesita) en vez de una tanda por clave. Falla cerrado: si no ve
+ * ninguna, el porqué es el del gate de la PRIMERA clave (el mismo texto que mostraría su página); si ese gate dijera que sí, se rechaza igual. Las claves son de sucursal (una de empresa no compila) y van como
+ * arreglo LITERAL en cada llamada, para que el inventario por AST las vea.
+ */
+export async function requierePermisoVerDeAlguna(
+  usuarioId: string,
+  sucursalId: string,
+  claves: readonly [AccionDeSucursal, ...AccionDeSucursal[]],
+  db: PrismaClient,
+): Promise<ResultadoGate & { visibles: ReadonlySet<AccionDeSucursal> }> {
+  const visibles = await accionesQueElUsuarioPuedeVer(usuarioId, sucursalId, claves, db);
+  if (claves.some((clave) => visibles.has(clave))) return { ok: true, visibles };
+  const primera = await requierePermisoVer(usuarioId, sucursalId, claves[0], db);
+  const denegacion = primera.ok ? { ...denegado({ motivo: "SIN_PERMISO", caso: "SIN_ACCESO_A_SUCURSAL" }), mensaje: SIN_NINGUNA_CLAVE_VISIBLE } : primera;
+  return { ...denegacion, visibles: new Set() };
 }
 
 /**
