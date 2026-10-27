@@ -6,6 +6,7 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { borrarItemSinEnviar, borrarItemSinEnviarConAdicionales } from "@/server/persistencia/pos/pedido";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «quitar un ítem que todavía no salió a cocina» (Hito 4 de la pureza, bloque 4.1, paso 9 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que
@@ -45,6 +46,6 @@ export async function quitarItemSinEnviarCasoDeUso(
     // GO-2b: una línea con adicionales se quita con ellos (y con su foto, por cascada); sin adicionales, el borrado de siempre. Un adicional suelto sin enviar se quita como cualquier ítem.
     const borrados = item._count.adicionales > 0 ? await borrarItemSinEnviarConAdicionales(tx, { cuentaItemId: item.id }) : await borrarItemSinEnviar(tx, { cuentaItemId: item.id });
     if (borrados === 0) return fracaso("YA_ENVIADO", "Ese ítem ya salió a cocina: anulalo con motivo.");
-    return exito(`Se quitó «${item.producto.nombre}» de la mesa ${abierta.cuenta.mesa.numero}.`, null);
+    return exito(`Se quitó «${item.producto.nombre}» ${frasesDePuesto(abierta.cuenta.mesa.numero).del}.`, null);
   });
 }

@@ -42,6 +42,8 @@ const FK_CON_DISCRIMINADOR: Readonly<Record<string, string>> = {
     "Paquete 5, M7.2: (empresaId, versión, planDeCostosId) → DistribucionCostoVersion(empresaId, id, planDeCostosId): la línea es del plan de su versión (el discriminador es el plan).",
   DistribucionCostoLinea_empresaId_planDeCostosId_centroDeCo_fkey:
     "Paquete 5, M7.2: (empresaId, planDeCostosId, centro) → CentroDeCostos(empresaId, planDeCostosId, id): el centro de una línea es del plan de la versión (no se puede repartir a un centro de otro plan).",
+  Cuenta_empresaId_mesaId_tipoMesa_fkey:
+    "M1 del mostrador (ADR-039): (empresaId, mesaId, tipoMesa) → Mesa(empresaId, id, tipo): la cuenta lleva el tipo de su puesto (SALON | MOSTRADOR) y la base impide una cuenta con un tipo distinto del de su mesa y cambiar el tipo de un puesto con cuentas (RESTRICT en ambos sentidos).",
 };
 
 function codigoDeError(e: unknown): string | undefined {

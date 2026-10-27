@@ -38,6 +38,12 @@ export type ResultadoEnvioACocina = { ok: true; mensaje: string; numeroEnvio: nu
  */
 export type ResultadoTicketCorregido = { ok: true; mensaje: string; numero: number; ejemplar: number } | { ok: false; mensaje: string };
 
+/**
+ * Resultado de `abrirCuentaDeMostrador` (src/server/actions/pos/cuenta-apertura.ts): como ResultadoAccion y, al salir bien, el id de la cuenta abierta del mostrador (la creada o la que ya estaba:
+ * el doble clic y dos cajeros reciben la MISMA), para que la pantalla y las pruebas sepan cuál es sin adivinarla (ADR-039).
+ */
+export type ResultadoAbrirCuentaDeMostrador = { ok: true; mensaje: string; cuentaId: string } | { ok: false; mensaje: string };
+
 export function ok(mensaje: string): ResultadoAccion {
   return { ok: true, mensaje };
 }

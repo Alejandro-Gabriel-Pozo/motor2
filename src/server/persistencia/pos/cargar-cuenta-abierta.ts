@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { frasesDePuesto } from "@/core/pos/public";
 
 /**
  * La CUENTA ABIERTA de una mesa de la sucursal (Hito 4 de la pureza, bloque 4.1, paso 13 — `docs/plan-hito-4-pureza.md` §5). Vivía en
@@ -15,6 +16,6 @@ export type CuentaAbierta = { id: string; clienteId: string | null; descuentoPor
 export async function cuentaAbiertaDeSucursal(tx: Prisma.TransactionClient, cuentaId: string, sucursalId: string): Promise<{ ok: true; cuenta: CuentaAbierta } | { ok: false; mensaje: string }> {
   const cuenta = typeof cuentaId === "string" ? await tx.cuenta.findFirst({ where: { id: cuentaId, mesa: { sucursalId } }, include: { mesa: { select: { id: true, numero: true } } } }) : null;
   if (!cuenta) return { ok: false, mensaje: "No se encontró esa cuenta en esta sucursal." };
-  if (cuenta.cerradaEn) return { ok: false, mensaje: `La cuenta de la mesa ${cuenta.mesa.numero} ya está cerrada.` };
+  if (cuenta.cerradaEn) return { ok: false, mensaje: `La cuenta ${frasesDePuesto(cuenta.mesa.numero).del} ya está cerrada.` };
   return { ok: true, cuenta };
 }

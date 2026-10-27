@@ -14,7 +14,7 @@ import { envoltoriosDe, exportadasSinEnvoltorio, problemasSinEnvoltorio, type En
  * le abre la acción a quien solo toma pedidos; y un guard de formato puesto ANTES del envoltorio le contestaría a quien no tiene permiso. Por cada archivo de
  * Server Actions del POS se exige: que las funciones exportadas que llaman a un envoltorio de mutación sean EXACTAMENTE las declaradas (lista cerrada: una
  * mutación nueva se declara acá), que su PRIMERA sentencia sea `return <envoltorio>("<clave>", …)` y que envoltorio y clave sean los declarados. Incluye las
- * 4 ya migradas (anular y cerrar): son las 14 de `test/pos/pos-rechaza-sin-permiso.test.ts`.
+ * 4 ya migradas (anular y cerrar): son las 16 de `test/pos/pos-rechaza-sin-permiso.test.ts`.
  */
 const RAIZ = join(__dirname, "../../src/server/actions/pos");
 
@@ -23,9 +23,11 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
   "mesas.ts": {
     crearMesa: { envoltorio: "conPermiso", clave: "pos_alta_mesa" },
     actualizarMaxMesasAbiertas: { envoltorio: "conPermiso", clave: "pos_limite_mesas_abiertas" },
+    habilitarMostrador: { envoltorio: "conPermiso", clave: "pos_alta_mesa" },
   },
   "cuenta-apertura.ts": {
     abrirCuenta: { envoltorio: "conPermiso", clave: "pos_abrir_cuenta" },
+    abrirCuentaDeMostrador: { envoltorio: "conPermiso", clave: "pos_abrir_cuenta" },
     corregirComensales: { envoltorio: "conPermiso", clave: "pos_abrir_cuenta" },
     asignarClienteACuenta: { envoltorio: "conPermiso", clave: "pos_asignar_cliente" },
     liberarMesa: { envoltorio: "conPermiso", clave: "pos_liberar_mesa" },
@@ -64,15 +66,15 @@ describe("POS: cada Server Action entra por su envoltorio y su clave", () => {
     expect(problemas, `pos/${archivo}:\n${problemas.join("\n")}`).toEqual([]);
   });
 
-  // GT-12 / M-26 de la auditoría intermedia: `test/pos/modulos-apagados-en-el-pos.test.ts` fija «Salón apagado ⇒ ninguna puerta del POS responde» con una lista de 17 llamadas escrita A MANO; una
+  // GT-12 / M-26 de la auditoría intermedia: `test/pos/modulos-apagados-en-el-pos.test.ts` fija «Salón apagado ⇒ ninguna puerta del POS responde» con una lista de 19 llamadas escrita A MANO; una
   // acción nueva del POS no ponía nada en rojo. Estas dos comprobaciones atan esa lista a la lista cerrada de acá (sin base).
   it("toda clave con que entra una acción del POS es del módulo Salón (con Salón apagado el gate la rechaza)", () => {
     const claves = Object.values(DECLARADAS).flatMap((fs) => Object.values(fs).map((d) => d.clave));
-    expect(claves.length).toBe(14);
+    expect(claves.length).toBe(16);
     for (const clave of claves) expect(moduloDeAccion(clave as AccionClave), clave).toBe("salon");
   });
 
-  it("el test de «Salón apagado» llama a CADA mutación del POS (una acción nueva del POS tiene que sumarse a sus 17 puertas)", () => {
+  it("el test de «Salón apagado» llama a CADA mutación del POS (una acción nueva del POS tiene que sumarse a sus 19 puertas)", () => {
     const fuente = readFileSync(join(__dirname, "../pos/modulos-apagados-en-el-pos.test.ts"), "utf8");
     const sinLlamar = Object.values(DECLARADAS)
       .flatMap((fs) => Object.keys(fs))
@@ -80,8 +82,8 @@ describe("POS: cada Server Action entra por su envoltorio y su clave", () => {
     expect(sinLlamar, "una mutación del POS que el test de «Salón apagado» no llama queda sin su caso").toEqual([]);
   });
 
-  it("son las 14 mutaciones del POS", () => {
-    expect(Object.values(DECLARADAS).reduce((n, fs) => n + Object.keys(fs).length, 0)).toBe(14);
+  it("son las 16 mutaciones del POS", () => {
+    expect(Object.values(DECLARADAS).reduce((n, fs) => n + Object.keys(fs).length, 0)).toBe(16);
   });
 
   it('los archivos "use server" de src/server/actions/pos son exactamente los declarados (una acción nueva del POS no queda afuera)', () => {

@@ -6,7 +6,7 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import type { EstadoMesa } from "@/core/pos/public";
 import { esEstadoMesa, filtrarMesas } from "@/core/pos/public";
-import { obtenerMapaDeMesas } from "@/server/consultas/pos/mesas";
+import { obtenerMapaDeMesas, obtenerPuestoMostrador } from "@/server/consultas/pos/mesas";
 import { MesaCard } from "@/components/mesas/mesa-card";
 import { NuevaMesa } from "./nueva-mesa";
 import { LimiteMesasAbiertas } from "./limite-mesas";
@@ -62,11 +62,12 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
   // El reloj se lee UNA vez, acá en el borde (O.22-a, Hito 4): el mapa (tiempo abierta de cada mesa) y el «actualizado a las» usan la misma hora.
   const ahora = new Date();
 
-  const [altaMesa, limiteMesas, mapa, sucursal] = await Promise.all([
+  const [altaMesa, limiteMesas, mapa, sucursal, mostrador] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_alta_mesa", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_limite_mesas_abiertas", ctx.db),
     obtenerMapaDeMesas(ctx.sucursalId, ctx.db, ahora),
     obtenerLimiteMesasAbiertas(ctx.sucursalId, ctx.db),
+    obtenerPuestoMostrador(ctx.sucursalId, ctx.db),
   ]);
   const { metricas } = mapa;
   const visibles = filtrarMesas(mapa.mesas, { estado: estado ?? undefined, q });
@@ -76,7 +77,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
     <div>
       <header className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="mb-1.5 text-[26px] font-extrabold leading-none tracking-tight md:text-[28px]">Mapa de mesas</h1>
+          <h1 className="mb-1.5 text-2xl font-extrabold leading-none tracking-tight md:text-3xl">Mapa de mesas</h1>
           <p className="text-sm text-tinta-suave">
             {ctx.sucursalNombre} · actualizado a las {formatearHora(ahora, ctx.empresaZonaHoraria)}
           </p>
@@ -86,6 +87,24 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
         </div>
         <NuevaMesa siguienteNumero={mapa.siguienteNumero} puedeCrear={altaMesa.editar} />
       </header>
+
+      {/* ADR-039: el mostrador es un puesto aparte del mapa (no es una mesa: no cuenta en las métricas ni en los filtros). */}
+      <section aria-label="Mostrador" className="mb-6">
+        <Link
+          href="/mesas/mostrador"
+          data-mostrador={mostrador ? "habilitado" : "sin-habilitar"}
+          className="flex min-h-11 items-center justify-between gap-3 rounded-[10px] border border-borde bg-superficie px-4 py-3 transition-colors hover:border-tinta-tenue"
+        >
+          <span>
+            <span className="block text-xs font-semibold tracking-wide text-tinta-tenue">MOSTRADOR</span>
+            <span className="block text-sm text-tinta-suave">
+              {!mostrador ? "Todavía no está habilitado" : mostrador.cuentasAbiertas === 0 ? "Sin cuentas abiertas" : `${mostrador.cuentasAbiertas} ${mostrador.cuentasAbiertas === 1 ? "cuenta abierta" : "cuentas abiertas"}`}
+            </span>
+          </span>
+          <span className="text-sm font-semibold">{mostrador ? "Atender" : altaMesa.editar ? "Habilitar" : "Ver"}</span>
+          <IndicadorDeEnlace />
+        </Link>
+      </section>
 
       <section aria-label="Resumen de mesas" className="mb-6 grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
         <Metrica label="Total de mesas" valor={metricas.total} />

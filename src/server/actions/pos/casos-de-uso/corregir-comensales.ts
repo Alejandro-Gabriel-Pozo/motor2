@@ -6,6 +6,7 @@ import { validarComensales } from "@/core/pos/cuenta";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cambiarComensalesDeCuenta } from "@/server/persistencia/pos/cuenta";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
+import { esMostrador, frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «corregir los comensales de una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 6 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que
@@ -33,10 +34,13 @@ export async function corregirComensalesCasoDeUso(
     const abierta = await cuentaAbiertaDeSucursal(tx, comando.cuentaId, actor.sucursalId);
     if (!abierta.ok) return fracaso("CUENTA_NO_ABIERTA", abierta.mensaje);
 
+    // ADR-039: el mostrador no lleva comensales (`Cuenta_comensales_segun_tipo_chk` lo impone también en la base).
+    if (esMostrador(abierta.cuenta.mesa.numero)) return fracaso("COMENSALES_INVALIDOS", "El mostrador no lleva comensales.");
+
     const val = validarComensales(comando.comensales);
     if (!val.ok) return fracaso("COMENSALES_INVALIDOS", val.mensaje);
 
     await cambiarComensalesDeCuenta(tx, { cuentaId: abierta.cuenta.id, comensales: val.comensales });
-    return exito(`Comensales de la mesa ${abierta.cuenta.mesa.numero} actualizados a ${val.comensales}.`, null);
+    return exito(`Comensales ${frasesDePuesto(abierta.cuenta.mesa.numero).del} actualizados a ${val.comensales}.`, null);
   });
 }

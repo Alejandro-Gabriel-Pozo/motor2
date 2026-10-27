@@ -38,6 +38,10 @@ const llamaAUnGuard = (a: Accion) => a.llamadas.some((l) => /^guardComando[A-Z]/
 
 /** Acciones que llaman a un caso de uso SIN guard de comando, cada una con el motivo. */
 const SIN_GUARD: Record<string, string> = {
+  "src/server/actions/pos/cuenta-apertura.ts#abrirCuentaDeMostrador":
+    "Abrir la cuenta del mostrador (ADR-039, M1.4c): la acción no recibe ningún dato del navegador (la sucursal es la del contexto y el puesto es el de la sucursal), así que no hay nada que validar; el caso de uso lee todo dentro de su transacción serializable.",
+  "src/server/actions/pos/mesas.ts#habilitarMostrador":
+    "Habilitar el mostrador de la sucursal (ADR-039, M1.4b): la acción no recibe ningún dato del navegador (la sucursal es la del contexto), así que no hay nada que validar; el caso de uso lee todo dentro de su transacción serializable.",
   "src/server/actions/auth/invitacion.ts#aceptarMiInvitacion":
     "Aceptar la invitación del primer gerente (B3-5): el token NO viene del formulario sino de la cookie httpOnly que puso abrirInvitacion (que ya validó su forma), y lo vuelve a validar el caso de uso contra la base (invitacionConSuBase: forma, hash, PENDIENTE). El CUIT lo valida el caso de uso con validarCuit, porque su rechazo es parte del orden de chequeos que fija la huella de aceptación (después del email y del estado de la empresa).",
   "src/server/actions/auth/invitacion.ts#aceptarMiInvitacionDeUsuario":

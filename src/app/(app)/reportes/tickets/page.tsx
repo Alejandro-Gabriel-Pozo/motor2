@@ -7,7 +7,7 @@ import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { leerFiltroTickets, serializarFiltroTickets } from "@/core/reportes/public";
 import { listarTicketsEmitidos, obtenerNumeroDeMesa } from "@/server/consultas/reportes/tickets-emitidos";
-import { formatearMonto, nombreDeMesa, formatearNumeroTicket } from "@/core/pos/public";
+import { formatearMonto, rotuloDePuesto, formatearNumeroTicket } from "@/core/pos/public";
 import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
@@ -75,7 +75,7 @@ export default async function TicketsEmitidosPage({
 
       {mesaId && (
         <p className="text-xs text-tinta-tenue">
-          Filtrando por {mesaNumero !== null ? nombreDeMesa(mesaNumero) : "una mesa"} ·{" "}
+          Filtrando por {mesaNumero !== null ? rotuloDePuesto(mesaNumero) : "una mesa"} ·{" "}
           <Link href={`/reportes/tickets?${paramsSinMesa.toString()}`} className="underline">
             Quitar filtro de mesa
           </Link>
@@ -108,7 +108,7 @@ function FilaTicket({ ticket: b, zonaHoraria }: { ticket: Awaited<ReturnType<typ
       <summary className="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-sm">
         <span className="font-medium">N.º {numero}</span>
         <span className="w-36 tabular-nums text-tinta-tenue">{formatearFechaHora(b.emitidoEn, zonaHoraria)}</span>
-        <span className="text-tinta-tenue">{nombreDeMesa(b.mesaNumero)}</span>
+        <span className="text-tinta-tenue">{rotuloDePuesto(b.mesaNumero)}</span>
         <span className="text-tinta-tenue">Emitió {b.emitidoPor}</span>
         {b.correccionDe && <Marca texto={`Corrección de N.º ${formatearNumeroTicket(b.correccionDe)}`} tono="neutral" />}
         {b.reemplazadaPor && <Marca texto={`Reemplazada por N.º ${formatearNumeroTicket(b.reemplazadaPor)}`} tono="neutral" />}

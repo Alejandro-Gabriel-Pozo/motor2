@@ -5,6 +5,7 @@ import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { enviarItemsACocina } from "@/server/persistencia/pos/pedido";
 import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta-abierta";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «enviar a cocina» (Hito 4 de la pureza, bloque 4.1, paso 11 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que antes vivía en línea en la
@@ -70,7 +71,7 @@ export async function enviarACocinaCasoDeUso(
       });
       return exito("Esos ítems ya estaban enviados.", { numeroEnvio: previo._max.numeroEnvio, envioNuevo: false });
     }
-    return exito(`Envío ${numeroEnvio} a cocina: ${enviados === 1 ? "1 ítem" : `${enviados} ítems`} de la mesa ${abierta.cuenta.mesa.numero}.`, {
+    return exito(`Envío ${numeroEnvio} a cocina: ${enviados === 1 ? "1 ítem" : `${enviados} ítems`} ${frasesDePuesto(abierta.cuenta.mesa.numero).del}.`, {
       numeroEnvio,
       envioNuevo: true,
     });

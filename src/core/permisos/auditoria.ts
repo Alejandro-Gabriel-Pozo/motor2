@@ -99,6 +99,8 @@ export const ENTIDADES_AUDITABLES = [
   "ContenidoCartaProducto",
   // "SeccionCarta" (CARTA-MANT F3): el orden de las secciones de la empresa («Ordenar») — `entidadId` es el id de la sección, `campo: "orden"`, `sucursalId` null (es de la empresa).
   "SeccionCarta",
+  // "Mesa" (ADR-039): se habilitó el puesto mostrador de una sucursal — `entidadId` es el id de la mesa creada (número 0, tipo MOSTRADOR), `campo: "tipo"`, `valorAnterior: null`, con `sucursalId`.
+  "Mesa",
 ] as const;
 
 /**

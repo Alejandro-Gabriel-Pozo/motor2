@@ -165,7 +165,11 @@ export const GRUPOS_NAV: GrupoNav[] = [
     // pantalla de inicio lo manda directo a /mesas (`elegirPantallaDeInicio`); el resto lo ve como una tarjeta más de `/inicio`.
     id: "pos",
     label: "Salón",
-    items: [{ href: "/mesas", label: "Mapa de mesas", accion: "pos_mesas", panel: "sucursal" }],
+    items: [
+      { href: "/mesas", label: "Mapa de mesas", accion: "pos_mesas", panel: "sucursal" },
+      // ADR-039: el mostrador es un puesto del salón (sus propias cuentas, con ticket y cliente); mismo permiso de ver que el mapa.
+      { href: "/mesas/mostrador", label: "Mostrador", accion: "pos_mesas", panel: "sucursal" },
+    ],
   },
 ];
 

@@ -9,6 +9,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarPromoParaAnular } from "@/server/persistencia/pos/cargar-promo-para-anular";
 import { escribirEspejoDeItem } from "@/server/persistencia/pos/escribir-espejo-de-item";
 import { formatearCantidad } from "../cuenta-comun";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «anular una promo ya enviada a cocina» (Task #41, Fase M12d — ver docs/arquitectura-casos-de-uso-2026-09-27.md). Es la
@@ -43,8 +44,8 @@ export async function anularPromoEnviadaCasoDeUso(
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAnularPromoEnviada> => {
     const promo = await cargarPromoParaAnular(tx, { promoCuentaId: comando.promoCuentaId, sucursalId: actor.sucursalId });
     if (!promo) return fracaso("NO_ENCONTRADA", MENSAJE_PROMO_NO_ENCONTRADA);
-    const mesa = promo.mesaNumero;
-    if (promo.cuentaCerradaEn) return fracaso("CUENTA_CERRADA", `La cuenta de la mesa ${mesa} ya se cerró: anulá la venta (Reportes › Trazabilidad).`);
+    const puesto = frasesDePuesto(promo.mesaNumero);
+    if (promo.cuentaCerradaEn) return fracaso("CUENTA_CERRADA", `La cuenta ${puesto.del} ya se cerró: anulá la venta (Reportes › Trazabilidad).`);
 
     const originales = promo.items.filter((i) => i.anulaAItemId === null);
     if (originales.length === 0) return fracaso("SIN_COMPONENTES", "Esa promo no tiene ningún componente.");
@@ -70,7 +71,7 @@ export async function anularPromoEnviadaCasoDeUso(
       await registrarCambioAuditado(tx, {
         entidad: "CuentaItem",
         entidadId: item.id,
-        descripcion: `Mesa ${mesa}, envío ${item.numeroEnvio}: anulación de la promo «${promo.titulo}» ya enviada a cocina — ${formatearCantidad(restante)} × "${item.producto.nombre}". Motivo: ${motivoValidado.motivo}`,
+        descripcion: `${puesto.detalle}, envío ${item.numeroEnvio}: anulación de la promo «${promo.titulo}» ya enviada a cocina — ${formatearCantidad(restante)} × "${item.producto.nombre}". Motivo: ${motivoValidado.motivo}`,
         campo: "cantidadVigente",
         valorAnterior: restante,
         valorNuevo: 0,
@@ -79,6 +80,6 @@ export async function anularPromoEnviadaCasoDeUso(
       });
       componentes.push({ cuentaItemId: item.id, espejoId, cantidadAnulada: restante });
     }
-    return exito(`Se anuló la promo «${promo.titulo}» de la mesa ${mesa} (${aAnular.length} componente${aAnular.length === 1 ? "" : "s"}).`, { componentes });
+    return exito(`Se anuló la promo «${promo.titulo}» ${puesto.del} (${aAnular.length} componente${aAnular.length === 1 ? "" : "s"}).`, { componentes });
   });
 }

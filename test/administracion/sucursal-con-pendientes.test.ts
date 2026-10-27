@@ -110,6 +110,19 @@ describe("actualizarActivoSucursal: no se apaga una sucursal con traspasos en ca
       await expectRechazo(rechazo("cerrá o liberá las mesas 1 y 3"));
     });
 
+    it("una cuenta abierta del mostrador (ADR-039) también bloquea, y se nombra como el mostrador, no como «la mesa 0»", async () => {
+      const mostrador = await prisma.mesa.create({ data: { sucursalId: norteId, numero: 0, tipo: "MOSTRADOR" } });
+      await prisma.cuenta.create({ data: { mesaId: mostrador.id, abiertaPorId: adminId, tipoMesa: "MOSTRADOR" } });
+      await expectRechazo(rechazo("cerrá o descartá la cuenta abierta del mostrador"));
+    });
+
+    it("mesas y mostrador juntos: las mesas con su número y el mostrador aparte, al final", async () => {
+      await mesaConCuenta(norteId, 5);
+      const mostrador = await prisma.mesa.create({ data: { sucursalId: norteId, numero: 0, tipo: "MOSTRADOR" } });
+      await prisma.cuenta.create({ data: { mesaId: mostrador.id, abiertaPorId: adminId, tipoMesa: "MOSTRADOR" } });
+      await expectRechazo(rechazo("cerrá o liberá la mesa 5; cerrá o descartá la cuenta abierta del mostrador"));
+    });
+
     it("traspasos y mesas juntos: los traspasos primero (por antigüedad), las mesas al final", async () => {
       await traspaso("ENVIADA", norteId, surId);
       await traspaso("ENVIADA", surId, norteId, 1);

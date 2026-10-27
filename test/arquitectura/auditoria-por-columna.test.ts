@@ -26,6 +26,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
     // Fase 4 de la ola «precio y carta» (ADR-035): `modoDeVenta` («¿Cómo se vende?»: directo o por opción).
     campos: ["precioVenta", "precioConsignacion", "pasoVenta", "modoDeVenta", "factorConversion", "unidadStockId", "unidadCompraId", "seProduce", "esConsignacion", "proveedorConsignacionId"],
   },
+  // ADR-039: habilitar el mostrador de una sucursal deja su fila (la mesa creada, `Mesa.tipo`).
+  { archivo: "src/server/actions/pos/casos-de-uso/habilitar-mostrador.ts", entidad: "Mesa", campos: ["tipo"] },
   {
     archivo: "src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts",
     entidad: "PromoCartaCupo",

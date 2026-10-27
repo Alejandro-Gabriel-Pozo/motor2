@@ -4,6 +4,7 @@ import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import type { ComandoCrearMesa, ResultadoCrearMesa } from "@/core/features/mesas/mesas.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { escribirMesaNueva } from "@/server/persistencia/pos/mesas";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «dar de alta una mesa del salón» (Hito 4 de la pureza, bloque 4.1, paso 3 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que antes vivía en
@@ -29,8 +30,8 @@ export async function crearMesaCasoDeUso(actor: Pick<ContextoUsuario, "sucursalI
   try {
     await escribirMesaNueva(actor.db, { sucursalId: actor.sucursalId, numero });
   } catch (e) {
-    if (esChoqueDeIndiceUnico(e)) return fracaso("NUMERO_REPETIDO", `Ya existe la mesa ${numero} en esta sucursal.`);
+    if (esChoqueDeIndiceUnico(e)) return fracaso("NUMERO_REPETIDO", `Ya existe ${frasesDePuesto(numero).el} en esta sucursal.`);
     throw e;
   }
-  return exito(`Mesa ${numero} creada.`, null);
+  return exito(`${frasesDePuesto(numero).detalle} creada.`, null);
 }

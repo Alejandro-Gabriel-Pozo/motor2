@@ -36,6 +36,7 @@ export const RUTAS_SIN_PARAMETROS = [
   "/catalogo/recetas",
   "/catalogo/unidades",
   "/mesas",
+  "/mesas/mostrador",
   "/movimientos",
   "/movimientos/conteo-fisico",
   // El menú del día solo mientras su interruptor esté encendido (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20): apagado, la pantalla responde «no existe».

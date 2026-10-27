@@ -8,8 +8,9 @@ import {
 } from "@/core/features/cuentas/cuenta-apertura.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
-import { error, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAbrirCuentaDeMostrador, type ResultadoAccion } from "../tipos";
 import { abrirCuentaCasoDeUso } from "./casos-de-uso/abrir-cuenta";
+import { abrirCuentaDeMostradorCasoDeUso } from "./casos-de-uso/abrir-cuenta-de-mostrador";
 import { asignarClienteACuentaCasoDeUso } from "./casos-de-uso/asignar-cliente-a-cuenta";
 import { corregirComensalesCasoDeUso } from "./casos-de-uso/corregir-comensales";
 import { liberarMesaCasoDeUso } from "./casos-de-uso/liberar-mesa";
@@ -47,6 +48,19 @@ export async function abrirCuenta(mesaId: string, comensales: number): Promise<R
     const comando = guardComandoAbrirCuenta({ mesaId, comensales });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await abrirCuentaCasoDeUso(ctx, comando.valor));
+  });
+}
+
+/**
+ * Abre la cuenta del MOSTRADOR de la sucursal activa (ADR-039, M1.4c): sin comensales y sin elegir puesto (es el de la sucursal). Idempotente por estado: el doble clic, o dos cajeros a la vez, reciben la
+ * MISMA cuenta (`cuentaId`), nunca dos. Misma clave que abrir la cuenta de una mesa (`pos_abrir_cuenta`; sin claves nuevas). No recibe nada del navegador, así que no hay formato que validar.
+ *
+ * Adaptador fino: permiso (`conPermiso("pos_abrir_cuenta")`) → caso de uso (`casos-de-uso/abrir-cuenta-de-mostrador.ts`) → el mensaje y el id de la cuenta (el único dato que sale).
+ */
+export async function abrirCuentaDeMostrador(): Promise<ResultadoAbrirCuentaDeMostrador> {
+  return conPermiso("pos_abrir_cuenta", async (ctx) => {
+    const r = await abrirCuentaDeMostradorCasoDeUso(ctx);
+    return r.ok ? { ok: true, mensaje: r.mensaje, cuentaId: r.datos.cuentaId } : error(r.mensaje);
   });
 }
 

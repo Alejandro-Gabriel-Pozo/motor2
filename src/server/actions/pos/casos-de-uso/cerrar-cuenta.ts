@@ -16,6 +16,7 @@ import type { EfectoDeConsumoDeOpcion } from "@/core/opciones/public";
 import { enlazarItemsConOperaciones, escribirEjemplarOriginalDeTicket, marcarCuentaCerrada } from "@/server/persistencia/pos/cerrar-cuenta";
 import { formatearMonto } from "@/core/pos/public";
 import { describirAviso, formatearCantidad } from "../cuenta-comun";
+import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
  * Caso de uso «cerrar la cuenta de una mesa» (Task #41, Fase M12a — ver docs/arquitectura-casos-de-uso-2026-09-27.md). Es la
@@ -59,8 +60,8 @@ export async function cerrarCuentaCasoDeUso(
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoCerrarCuenta> => {
     const cuenta = await cargarCuentaParaCerrar(tx, { cuentaId: comando.cuentaId, sucursalId: actor.sucursalId });
     if (!cuenta) return fracaso("NO_ENCONTRADA", MENSAJE_CUENTA_NO_ENCONTRADA);
-    const mesa = cuenta.mesaNumero;
-    if (cuenta.cerradaEn) return exito(`La cuenta de la mesa ${mesa} ya estaba cerrada.`, { desenlace: "YA_CERRADA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 });
+    const puesto = frasesDePuesto(cuenta.mesaNumero);
+    if (cuenta.cerradaEn) return exito(`La cuenta ${puesto.del} ya estaba cerrada.`, { desenlace: "YA_CERRADA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 });
 
     const sinEnviar = cuenta.items.filter((i) => i.numeroEnvio === null).length;
     if (sinEnviar > 0) {
@@ -76,7 +77,7 @@ export async function cerrarCuentaCasoDeUso(
     const lineas = lineasDeVenta(cuenta.items.map((i) => ({ ...i, versionDeAdicional: i.fotos?.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null })));
     if (!lineas.length) {
       await cerrar();
-      return exito(`Cuenta de la mesa ${mesa} cerrada sin venta: no quedó nada por cobrar.`, { desenlace: "SIN_VENTA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 });
+      return exito(`Cuenta ${puesto.del} cerrada sin venta: no quedó nada por cobrar.`, { desenlace: "SIN_VENTA", operacionIds: [], numeroTicket: null, insumosEnNegativo: 0 });
     }
 
     // Cliente con descuento (Task #14, D7): `descuentoPorcentaje` es el SNAPSHOT congelado al asignarlo, nunca el % actual de `Cliente`.
@@ -111,7 +112,7 @@ export async function cerrarCuentaCasoDeUso(
         origen: { tipo: "automatico" },
         proveedorId: null,
         clienteId: cuenta.clienteId,
-        detalle: `Mesa ${mesa}`,
+        detalle: puesto.detalle,
         lineas: lineasVenta,
       },
       { permitirStockNegativo: true }
@@ -147,7 +148,7 @@ export async function cerrarCuentaCasoDeUso(
     // aplicado si hay cliente), no la suma cruda re-redondeada: el total del mensaje coincide centavo a centavo con lo registrado.
     const total = redondearMoneda(lineasVenta.reduce((suma, l) => suma + importeDeLinea(l.cantidadVendida, l.precioUnitario), 0));
     const conCliente = cuenta.clienteNombre !== null ? ` (con ${descuento}% de descuento a «${cuenta.clienteNombre}»)` : "";
-    const mensaje = `Cuenta de la mesa ${mesa} cerrada: se registró la venta por ${formatearMonto(total)}${conCliente}.`;
+    const mensaje = `Cuenta ${puesto.del} cerrada: se registró la venta por ${formatearMonto(total)}${conCliente}.`;
     if (!venta.avisosStockNegativo.length) return exito(mensaje, datos);
 
     // STOCK INSUFICIENTE NO BLOQUEA (B6bis): cada insumo que quedó en negativo deja una fila de auditoría enlazada a la venta que lo
@@ -158,7 +159,7 @@ export async function cerrarCuentaCasoDeUso(
         entidad: "Operacion",
         entidadId: operacionDelConsumo ?? venta.operacionIds[0],
         descripcion:
-          `Mesa ${mesa}: al cerrar la cuenta (${actor.email}) el stock de "${aviso.nombre}" en «${aviso.seccionNombre}» quedó en negativo — ` +
+          `${puesto.detalle}: al cerrar la cuenta (${actor.email}) el stock de "${aviso.nombre}" en «${aviso.seccionNombre}» quedó en negativo — ` +
           `tenía ${formatearCantidad(aviso.actual)}, la venta consumió ${formatearCantidad(aviso.requerido)}, faltaron ${formatearCantidad(aviso.requerido - Math.max(aviso.actual, 0))}. ` +
           "La venta se registró igual; corregí el saldo con un Conteo Físico o un Ajuste.",
         campo: "saldoStock",

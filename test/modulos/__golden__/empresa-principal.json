@@ -145,7 +145,8 @@
         "traspasos|/traspasos",
         "traspasos|/traspasos/solicitar",
         "traspasos|/traspasos/enviar",
-        "pos|/mesas"
+        "pos|/mesas",
+        "pos|/mesas/mostrador"
       ],
       "panelEmpresa": [
         "administracion|/administracion/roles",
@@ -218,7 +219,8 @@
         "traspasos|/traspasos",
         "traspasos|/traspasos/solicitar",
         "traspasos|/traspasos/enviar",
-        "pos|/mesas"
+        "pos|/mesas",
+        "pos|/mesas/mostrador"
       ],
       "selectorDePaneles": true
     },
@@ -300,11 +302,13 @@
         "pos_mesas"
       ],
       "menu": [
-        "pos|/mesas"
+        "pos|/mesas",
+        "pos|/mesas/mostrador"
       ],
       "panelEmpresa": [],
       "panelSucursal": [
-        "pos|/mesas"
+        "pos|/mesas",
+        "pos|/mesas/mostrador"
       ],
       "selectorDePaneles": false
     }
@@ -377,7 +381,8 @@
     "/traspasos",
     "/traspasos/solicitar",
     "/traspasos/enviar",
-    "/mesas"
+    "/mesas",
+    "/mesas/mostrador"
   ],
   "rutasFueraDelMenu": [
     "/catalogo/proveedores/comparativa",

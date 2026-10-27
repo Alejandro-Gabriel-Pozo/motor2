@@ -6,6 +6,7 @@ import { conPermiso } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
 import { actualizarMaxMesasAbiertasCasoDeUso } from "./casos-de-uso/actualizar-max-mesas-abiertas";
 import { crearMesaCasoDeUso } from "./casos-de-uso/crear-mesa";
+import { habilitarMostradorCasoDeUso } from "./casos-de-uso/habilitar-mostrador";
 
 /**
  * Alta de una mesa del salón en la sucursal activa (módulo POS, docs/plan-mapa-de-mesas-2026-09-24.md, paso 3). Sin baja ni
@@ -51,4 +52,15 @@ export async function actualizarMaxMesasAbiertas(limite: number | null): Promise
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await actualizarMaxMesasAbiertasCasoDeUso(ctx, comando.valor));
   });
+}
+
+/**
+ * Habilita el puesto «Mostrador» de la sucursal activa (ADR-039, M1.4b): el administrador lo crea una vez, con el botón de `/mesas/mostrador`, como da de alta una mesa (misma clave,
+ * `pos_alta_mesa`; sin claves nuevas). No recibe nada: la sucursal es la del contexto. Idempotente por estado (el segundo «Habilitar», o un doble clic, responde «ya estaba habilitado») y auditado.
+ *
+ * Adaptador fino: permiso (`conPermiso("pos_alta_mesa")`) → caso de uso (`casos-de-uso/habilitar-mostrador.ts`: transacción serializable, alta y auditoría) → `aResultadoAccion`. No refresca la
+ * vista: su único llamador (`HabilitarMostrador`, de cliente) hace `router.refresh()`.
+ */
+export async function habilitarMostrador(): Promise<ResultadoAccion> {
+  return conPermiso("pos_alta_mesa", async (ctx) => aResultadoAccion(await habilitarMostradorCasoDeUso(ctx)));
 }
