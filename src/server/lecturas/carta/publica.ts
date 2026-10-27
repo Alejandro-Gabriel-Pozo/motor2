@@ -97,7 +97,7 @@ export async function resolverCartaPublica(
   const db = bases.deLaSucursal(sucursalId);
   const [carta, conTema] = await Promise.all([
     // GO-2d: la carta pública muestra las opciones de venta (tamaños, variantes, guarniciones, adicionales).
-    resolverMenuCarta(sucursalId, db, ahora, undefined, conPromos, true),
+    resolverMenuCarta(sucursalId, db, ahora, undefined, conPromos ? "publico" : "ninguna", true),
     db.sucursal.findUnique({ where: { id: sucursalId }, select: { temaCarta: { select: { valores: true, aplicarEnCarta: true } } } }),
   ]);
   if (!carta) return null;

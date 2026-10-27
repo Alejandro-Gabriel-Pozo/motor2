@@ -2002,6 +2002,9 @@ model PromoCarta {
   diasDeSemana   Int?                 @db.SmallInt
   /// GO-3 (ADR-032): control OPTIMISTA de la edición de la promo (`UPDATE … WHERE version = esperada`; 0 filas = VERSION_DESACTUALIZADA). >= 1 (CHECK); lo incrementa la aplicación.
   version        Int                  @default(1)
+  /// «Solo salón» (docs/diseno-promo-solo-salon-2026-10-26.md): la promo se vende desde el POS pero NO aparece en la carta pública (web, QR ni impresa). Es de la EMPRESA (como la promo) y
+  /// se cambia con su caso de uso (`guardarSoloSalonPromoCarta`: control optimista con `version`, auditado). El único lector es `wherePromoOfrecidaEn(sucursalId, audiencia)` (`core/carta/promo-sucursal.ts`).
+  soloSalon      Boolean              @default(false)
   cupos          PromoCartaCupo[]
   instancias     PromoCuenta[]
   sucursales     PromoCartaSucursal[]

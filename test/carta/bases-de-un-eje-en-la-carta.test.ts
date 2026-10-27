@@ -28,7 +28,7 @@ beforeEach(async () => {
 });
 
 const presentacionDe = async (nombre: string) => {
-  const armado = await resolverMenuCartaConDiagnostico(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA, undefined, true, true);
+  const armado = await resolverMenuCartaConDiagnostico(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA, undefined, "publico", true);
   return armado!.carta.secciones.flatMap((x) => x.items).find((i) => i.nombre === nombre)!.presentacion;
 };
 

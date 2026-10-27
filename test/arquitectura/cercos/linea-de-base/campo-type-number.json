@@ -1,10 +1,10 @@
 {
   "regla": "campo-type-number",
   "meta": "0 (lote 6.33: todo número tecleado es un CampoNumero con su tipo declarado)",
-  "total": 24,
-  "entradas": 12,
+  "total": 23,
+  "entradas": 11,
   "porTipo": {
-    "type-number": 24
+    "type-number": 23
   },
   "cuentas": {
     "src/app/(app)/carta/agrupados/page.tsx": {
@@ -12,9 +12,6 @@
     },
     "src/app/(app)/carta/parametrizacion/formularios.tsx": {
       "type-number": 10
-    },
-    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": {
-      "type-number": 1
     },
     "src/app/(app)/carta/portal/page.tsx": {
       "type-number": 2
