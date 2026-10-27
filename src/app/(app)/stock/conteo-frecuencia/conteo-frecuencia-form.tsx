@@ -19,11 +19,14 @@ export function ConteoFrecuenciaForm({
   filaEnEdicion,
   productoIdSugerido,
   productoEtiquetaSugerida,
+  soloLectura = false,
 }: {
   filaEnEdicion?: FilaFrecuenciaConteoEnEdicion;
   /** Prellenado al hacer clic en "Agendar semanal" de una sugerencia de clase A (S4) — nunca se aplica solo, siempre pasa por este mismo formulario. */
   productoIdSugerido?: string;
   productoEtiquetaSugerida?: string;
+  /** DEC-33: el rol puede VER pero no EDITAR: el formulario se dibuja deshabilitado (el aviso lo pone la página; el servidor rechaza igual). */
+  soloLectura?: boolean;
 }) {
   const router = useRouter();
   const editando = Boolean(filaEnEdicion);
@@ -56,34 +59,36 @@ export function ConteoFrecuenciaForm({
       }}
       className="flex flex-col gap-3"
     >
-      <h2 className="font-medium">{editando ? "Editar frecuencia de conteo" : "Agendar un conteo periódico"}</h2>
+      <fieldset disabled={soloLectura} className="flex min-w-0 flex-col gap-3">
+        <h2 className="font-medium">{editando ? "Editar frecuencia de conteo" : "Agendar un conteo periódico"}</h2>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Producto
-        <SelectorProducto
-          value={productoId}
-          onChange={setProductoId}
-          filtro={{ soloDisponibles: true }}
-          etiquetaInicial={filaEnEdicion?.productoEtiqueta ?? productoEtiquetaSugerida}
-          limpiarSenal={resetCount}
-          required
-        />
-      </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Producto
+          <SelectorProducto
+            value={productoId}
+            onChange={setProductoId}
+            filtro={{ soloDisponibles: true }}
+            etiquetaInicial={filaEnEdicion?.productoEtiqueta ?? productoEtiquetaSugerida}
+            limpiarSenal={resetCount}
+            required
+          />
+        </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Cada cuántos días (0 = desactivada)
-        <CampoNumero tipo="entero" value={frecuenciaDias} onChange={setFrecuenciaDias} required />
-      </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Cada cuántos días (0 = desactivada)
+          <CampoNumero tipo="entero" value={frecuenciaDias} onChange={setFrecuenciaDias} required />
+        </label>
 
-      {mensaje && (
-        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
-          {mensaje}
-        </Aviso>
-      )}
+        {mensaje && (
+          <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+            {mensaje}
+          </Aviso>
+        )}
 
-      <Boton type="submit" disabled={pending} className="self-start">
-        {pending ? "Guardando..." : "Guardar"}
-      </Boton>
+        <Boton type="submit" disabled={pending || soloLectura} className="self-start">
+          {pending ? "Guardando..." : "Guardar"}
+        </Boton>
+      </fieldset>
     </form>
   );
 }

@@ -6,6 +6,7 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
+import { AvisoSoloLecturaDeStock } from "@/components/stock/aviso-solo-lectura";
 import { listarFrecuenciasConteo } from "@/server/actions/stock/frecuencia-conteo";
 import { sugerirInsumosClaseA } from "@/server/consultas/stock/sugerencia-clase-a";
 import { resolverRangoPorDefecto } from "@/core/reportes/public";
@@ -36,7 +37,10 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
 
   const { editar, sugerido, sugeridoNombre } = unicosDeUrl(await searchParams);
   // S-13: el gasto en compras por insumo es de `reporte_compras` (piso administrador), no de quien cuenta (`conteo_frecuencia`, piso operario). La consulta lo niega por defecto.
-  const { ver: veImportes } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db);
+  const [{ ver: veImportes }, { editar: puedeEditar }] = await Promise.all([
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "conteo_frecuencia", ctx.db),
+  ]);
   const rango = resolverRangoPorDefecto(undefined, new Date(), ctx.empresaZonaHoraria);
   // Los dos extremos se cortan en la zona de la empresa (P1): el primer día desde las 00:00 y el último hasta las 23:59:59.999; las compras del formulario (mediodía argentino) tienen que entrar.
   const ventana = rangoDeDias(new Date(rango.desdeISO), new Date(rango.hastaISO), ctx.empresaZonaHoraria);
@@ -44,7 +48,8 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
     listarFrecuenciasConteo(ctx.sucursalId),
     sugerirInsumosClaseA(ctx.sucursalId, ventana.desde, ventana.hasta, ctx.db, { conImportes: veImportes }),
   ]);
-  const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
+  // DEC-33: con «Ver» solo no se abre ninguna fila en edición (ni con un `?editar=` a mano) ni se ofrece «Agendar semanal».
+  const filaEnEdicion = editar && puedeEditar ? filas.find((f) => f.id === editar) : undefined;
   const idsConAgenda = new Set(filas.filter((f) => f.frecuenciaDias > 0).map((f) => f.productoId));
   const sugerenciasSinAgenda = sugerencias.filter((s) => !idsConAgenda.has(s.productoId));
   // El link puede venir de la lista de sugerencias de acá abajo, o de "Configurar agenda" en /reportes/diferencias (S6) —
@@ -56,6 +61,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">Configuración · Frecuencia de conteo</h1>
       <FilaDeStock ctx={ctx} etiqueta="Qué configurar" pestanas={PESTANAS_DE_CONFIGURACION} ruta="/stock/conteo-frecuencia" />
+      {!puedeEditar && <AvisoSoloLecturaDeStock que="la frecuencia de conteo" />}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
         <div>
           <p className="mb-4 text-sm text-tinta-tenue">
@@ -67,7 +73,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
             .
           </p>
 
-          {sugerenciasSinAgenda.length > 0 && (
+          {puedeEditar && sugerenciasSinAgenda.length > 0 && (
             <div className="mb-6 rounded border border-aviso bg-aviso-tinte p-3 text-sm">
               <p className="mb-2 font-medium text-aviso-tinta">
                 Estos insumos concentran el 80% de lo comprado en los últimos 30 días y todavía no tienen agenda de conteo:
@@ -100,13 +106,15 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
                   <td>{f.frecuenciaDias === 0 ? "Desactivada" : `${f.frecuenciaDias} día(s)`}</td>
                   <td>
                     {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
-                    <div className="flex flex-wrap gap-x-3 gap-y-1">
-                      <Link href={`/stock/conteo-frecuencia?editar=${f.id}`} className={claseDeBoton("enlace", "en-fila")}>
-                        <IconoDeAccion id="editar" />
-                        Editar
-                      </Link>
-                      <BotonEliminarFrecuenciaConteo id={f.id} etiqueta={`"${f.producto.nombre}"`} />
-                    </div>
+                    {puedeEditar && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                        <Link href={`/stock/conteo-frecuencia?editar=${f.id}`} className={claseDeBoton("enlace", "en-fila")}>
+                          <IconoDeAccion id="editar" />
+                          Editar
+                        </Link>
+                        <BotonEliminarFrecuenciaConteo id={f.id} etiqueta={`"${f.producto.nombre}"`} />
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -122,6 +130,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
           )}
           <ConteoFrecuenciaForm
             key={filaEnEdicion?.id ?? sugeridoElegido?.productoId ?? "nuevo"}
+            soloLectura={!puedeEditar}
             filaEnEdicion={filaEnEdicion ? { productoId: filaEnEdicion.productoId, productoEtiqueta: `${filaEnEdicion.producto.codigo} — ${filaEnEdicion.producto.nombre}`, frecuenciaDias: String(filaEnEdicion.frecuenciaDias) } : undefined}
             productoIdSugerido={!filaEnEdicion ? sugeridoElegido?.productoId : undefined}
             productoEtiquetaSugerida={!filaEnEdicion ? sugeridoElegido?.nombre : undefined}

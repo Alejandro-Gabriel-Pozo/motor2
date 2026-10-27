@@ -1,5 +1,6 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { FilaDeStock } from "@/components/fila-de-stock";
+import { AvisoSoloLecturaDeStock } from "@/components/stock/aviso-solo-lectura";
 import { PESTANAS_DE_CONFIGURACION } from "@/core/stock/public";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
@@ -33,6 +34,7 @@ export default async function MotivosMermaPage() {
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Configuración · Motivos de merma</h1>
       <FilaDeStock ctx={ctx} etiqueta="Qué configurar" pestanas={PESTANAS_DE_CONFIGURACION} ruta="/movimientos/motivos-merma" />
+      {!puedeEditar && <AvisoSoloLecturaDeStock que="los motivos de merma" />}
 
       <section className="space-y-4">
         <table className="w-full text-sm">

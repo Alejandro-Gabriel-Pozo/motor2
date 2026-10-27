@@ -4,7 +4,8 @@ import { PESTANAS_DE_CONFIGURACION } from "@/core/stock/public";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { requierePermisoVer } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
+import { AvisoSoloLecturaDeStock } from "@/components/stock/aviso-solo-lectura";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarSeccionesHabituales } from "@/server/actions/stock/seccion-habitual";
 import { SeccionHabitualForm } from "./seccion-habitual-form";
@@ -29,13 +30,19 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { editar } = unicosDeUrl(await searchParams);
-  const [filas, secciones] = await Promise.all([listarSeccionesHabituales(ctx.sucursalId), listarSeccionesActivas(ctx.sucursalId)]);
-  const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
+  const [filas, secciones, { editar: puedeEditar }] = await Promise.all([
+    listarSeccionesHabituales(ctx.sucursalId),
+    listarSeccionesActivas(ctx.sucursalId),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "stock_seccion_habitual", ctx.db),
+  ]);
+  // DEC-33: con «Ver» solo no se abre ninguna fila en edición (ni con un `?editar=` a mano).
+  const filaEnEdicion = editar && puedeEditar ? filas.find((f) => f.id === editar) : undefined;
 
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">Configuración · Depósito habitual</h1>
       <FilaDeStock ctx={ctx} etiqueta="Qué configurar" pestanas={PESTANAS_DE_CONFIGURACION} ruta="/stock/seccion-habitual" />
+      {!puedeEditar && <AvisoSoloLecturaDeStock que="el depósito habitual de cada producto" />}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
         <div>
           <p className="mb-4 max-w-prose text-sm text-tinta-suave">
@@ -57,13 +64,15 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
                   <td>{f.seccion.nombre}</td>
                   <td>
                     {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
-                    <div className="flex flex-wrap gap-x-3 gap-y-1">
-                      <Link href={`/stock/seccion-habitual?editar=${f.id}`} className={claseDeBoton("enlace", "en-fila")}>
-                        <IconoDeAccion id="editar" />
-                        Editar
-                      </Link>
-                      <BotonQuitarSeccionHabitual id={f.id} producto={f.producto.nombre} />
-                    </div>
+                    {puedeEditar && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                        <Link href={`/stock/seccion-habitual?editar=${f.id}`} className={claseDeBoton("enlace", "en-fila")}>
+                          <IconoDeAccion id="editar" />
+                          Editar
+                        </Link>
+                        <BotonQuitarSeccionHabitual id={f.id} producto={f.producto.nombre} />
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -80,6 +89,7 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
           )}
           <SeccionHabitualForm
             key={filaEnEdicion?.id ?? "nuevo"}
+            soloLectura={!puedeEditar}
             secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
             filaEnEdicion={
               filaEnEdicion
