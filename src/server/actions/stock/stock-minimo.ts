@@ -31,12 +31,14 @@ export async function listarStockMinimo(sucursalId: string) {
  * null/omitido = fija el mínimo GLOBAL de esta sucursal (aplica salvo que
  * haya una fila más específica para una sección puntual).
  *
+ * Fase 7 (DEC-27, «Cambiar mínimo»): `minimoVisto` es el mínimo que la persona vio al abrir el editor de una fila existente; con él solo se guarda si sigue igual (ver el caso de uso).
+ *
  * Desde el Hito 4 (H4C-21): permiso → formato del mínimo (`guardComandoSetStockMinimo`, core/features/stock/stock-minimo.guard.ts, DENTRO del envoltorio) → caso de
  * uso (`casos-de-uso/set-stock-minimo-producto.ts`: el producto, la sección y el alta o cambio de la fila) → `aResultadoAccion`.
  */
-export async function setStockMinimoProducto(productoId: string, minimo: number, seccionId?: string | null): Promise<ResultadoAccion> {
+export async function setStockMinimoProducto(productoId: string, minimo: number, seccionId?: string | null, minimoVisto?: number): Promise<ResultadoAccion> {
   return conPermiso("stock_minimo", async (ctx) => {
-    const comando = guardComandoSetStockMinimo({ productoId, minimo, seccionId });
+    const comando = guardComandoSetStockMinimo({ productoId, minimo, seccionId, minimoVisto });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await setStockMinimoProductoCasoDeUso(ctx, comando.valor));
   });

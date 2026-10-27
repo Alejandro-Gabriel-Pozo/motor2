@@ -15,13 +15,19 @@ export interface ComandoSetStockMinimo {
   productoId: string;
   minimo: number;
   seccionId?: string | null;
+  /**
+   * Fase 7 (DEC-27, «Cambiar mínimo»; I8 del diseño del módulo Stock): el mínimo que la persona VIO al abrir el editor de una fila que ya existe. Si llega, solo se guarda si la fila sigue teniendo ese
+   * valor (si otra persona lo cambió, `MINIMO_CAMBIO`); si no llega, es el alta/cambio de siempre (upsert).
+   */
+  minimoVisto?: number;
 }
 
 /**
  *  - `PRODUCTO_NO_ENCONTRADO`: no hay un producto con ese id;
- *  - `SECCION_NO_ENCONTRADA`: no hay una sección con ese id en esta sucursal.
+ *  - `SECCION_NO_ENCONTRADA`: no hay una sección con ese id en esta sucursal;
+ *  - `MINIMO_CAMBIO`: con `minimoVisto`, la fila ya no tiene ese valor (otra persona lo cambió o lo borró): no se guardó nada.
  */
-export type ResultadoSetStockMinimo = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "SECCION_NO_ENCONTRADA">;
+export type ResultadoSetStockMinimo = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "SECCION_NO_ENCONTRADA" | "MINIMO_CAMBIO">;
 
 /** Comando «borrar una fila de stock mínimo»: el id de la fila, que nunca se validó en la acción. */
 export interface ComandoEliminarStockMinimo {
