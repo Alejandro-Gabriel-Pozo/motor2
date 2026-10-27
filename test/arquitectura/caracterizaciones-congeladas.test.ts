@@ -233,8 +233,8 @@ const CONGELADAS: Record<string, Congelada> = {
       },
       {
         blob: "ec9e989d6aad8573fcd14893f02cbfc6176c0cff",
-        // El commit PADRE de este (3fce698a) es el último antes del cambio; el golden se regenera en el commit siguiente.
-        commit: "3fce698a",
+        // El commit PADRE de la regeneración (0a2991dc, el codemod mecánico de E1) es el último antes del cambio; el golden se regenera en el commit siguiente (6a6cd258).
+        commit: "0a2991dc",
         motivo:
           "E1 del circuito de abastecimiento (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md; CAMBIA SOLO LA PREPARACIÓN): `registrarMovimiento` exige la clave de reintento, así que las compras y producciones de PREPARACIÓN de la matriz la mandan (claves fijas `00000000-0000-4000-8000-00000000000N`, en orden). Cambian SOLO 41 líneas OPERACION de esas preparaciones: `claveIdempotencia` null → la clave fija, `payloadHash` null → <enmascarado> y `resultadoMensaje` null → «Se guardaron N movimiento(s).». Verificado con un script sobre el diff: normalizando esas tres columnas, cada línea es idéntica a la anterior; ninguna venta, KARDEX, lectura, escritura ni resultado cambia. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA=1.",
       },
@@ -326,8 +326,8 @@ const CONGELADAS: Record<string, Congelada> = {
       },
       {
         blob: "89d1302bc565636221295743642c13ebe39d44c7",
-        // El commit PADRE de este (3fce698a) es el último antes del cambio; el golden se regenera en el commit siguiente.
-        commit: "3fce698a",
+        // El commit PADRE de la regeneración (0a2991dc, el codemod mecánico de E1) es el último antes del cambio; el golden se regenera en el commit siguiente (6a6cd258).
+        commit: "0a2991dc",
         motivo:
           "E1 del circuito de abastecimiento (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md; CAMBIA SOLO LA PREPARACIÓN): `registrarMovimiento` exige la clave de reintento, así que las compras y producciones de PREPARACIÓN de la matriz la mandan (claves fijas `00000000-0000-4000-8000-00000000000N`, en orden). Cambian SOLO 127 líneas OPERACION de esas preparaciones: `claveIdempotencia` null → la clave fija, `payloadHash` null → <enmascarado> y `resultadoMensaje` null → «Se guardaron N movimiento(s).». Verificado con un script sobre el diff: normalizando esas tres columnas, cada línea es idéntica a la anterior; ninguna venta, KARDEX, lectura, escritura ni resultado cambia. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1.",
       },

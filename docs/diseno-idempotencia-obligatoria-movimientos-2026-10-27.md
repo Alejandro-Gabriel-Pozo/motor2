@@ -1,6 +1,6 @@
 # Diseño: clave de reintento obligatoria en `registrarMovimiento` (etapa E1 del circuito de abastecimiento)
 
-Fecha: 2026-10-27. Estado: **PROPUESTA implementada** (los niveles 1 a 5 se apoyan en decisiones CONFIRMADAS del dueño: E1 de `docs/diseno-circuito-de-abastecimiento-2026-10-27.md` §4 y «usar de molde el pago al consignante»). Sin migración.
+Fecha: 2026-10-27. Estado: **PROPUESTA implementada** (commits `450326a7` producción, `3fce698a` seeds, `0a2991dc` codemod de tests, `6a6cd258` reescrituras y goldens) (los niveles 1 a 5 se apoyan en decisiones CONFIRMADAS del dueño: E1 de `docs/diseno-circuito-de-abastecimiento-2026-10-27.md` §4 y «usar de molde el pago al consignante»). Sin migración.
 
 ## 1. Propósito y alcance
 
@@ -90,4 +90,14 @@ La pantalla no cambia: ya genera, reenvía y renueva la clave, y el botón «Con
 
 ## 11. Evidencia de mutaciones
 
-Se completa al cerrar la etapa (ver commits).
+Corridas sobre `test/movimientos/registrar-movimiento-clave-obligatoria.test.ts` (10 casos): mutar → rojo → revertir → verde (10/10).
+
+| Mutación | Dónde | Casos en rojo |
+|---|---|---|
+| M1: el guard vuelve a `claveIdempotencia !== undefined && …` (clave opcional) | `movimiento.guard.ts` | 2: el guard puro (ausente/nula/vacía) y «sin clave ⇒ cero filas» con base |
+| M2: la `Operacion` se escribe con `claveIdempotencia: null` | caso de uso | 7: los 4 de «8 envíos simultáneos» (compra sin proveedor, consumo, merma, ajuste), conflicto, otra empresa, reintento tras éxito |
+| M3: la huella ignora el contenido (`calcularPayloadHash(…, {})`) | caso de uso | 1: misma clave con contenido distinto |
+| M4: se saca la traducción del choque de la clave (`esChoqueDeClaveIdempotenciaDeOperacion`) | caso de uso | 1: clave de otra empresa (sale un P2002 crudo) |
+| M5: no se guarda el mensaje del resultado (`registrarResultadoIdempotente`) | caso de uso | 5: los 4 simultáneos y el reintento tras éxito (sin mensaje guardado, el reenvío es conflicto) |
+
+Hallazgo de la mutación: sacar SOLO el chequeo previo (`chequearIdempotencia`) no pone nada en rojo, porque el índice único + el reintento `tambienChoqueDeUnico` + la relectura del `.catch` igual llegan al resultado correcto (más lento). El chequeo previo queda como camino rápido, no como única barrera.
