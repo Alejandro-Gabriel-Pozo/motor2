@@ -111,6 +111,15 @@ test("el mostrador: habilitar, abrir sin comensales, pedir, cliente con %, envia
     await expect(page.getByText(/comensal/i)).toHaveCount(0);
     await expect(page.getByText("Sin cuenta abierta")).toHaveCount(0);
 
+    // El límite de mesas abiertas no cuenta el mostrador: con límite 1 y la cuenta del mostrador abierta, el mapa dice 0 de 1. (Se mira ANTES de pedir: `page.goto` recarga la página y
+    // borra las impresiones que `interceptarImpresion` fue registrando; de acá en más la pantalla del mostrador no se recarga.)
+    await prisma.sucursal.update({ where: { id: sucursalId }, data: { maxMesasAbiertas: 1 } });
+    await page.goto("/mesas");
+    await expect(page.locator('[data-mostrador="habilitado"]')).toContainText("1 cuenta abierta");
+    await expect(page.getByText("Máx. 1 mesas abiertas (0/1)")).toBeVisible();
+    await page.goto("/mesas/mostrador");
+    await expect(page.getByRole("combobox", { name: "Producto" })).toBeVisible();
+
     await agregar(page, cat.milanesa.nombre, "2");
     await expect(aviso(page)).toHaveText("Se agregó 1 ítem al mostrador.");
     await agregar(page, cat.flan.nombre, "1");
@@ -125,12 +134,7 @@ test("el mostrador: habilitar, abrir sin comensales, pedir, cliente con %, envia
     await page.getByRole("button", { name: "Enviar a cocina" }).click();
     await expect(aviso(page)).toHaveText("Envío 1 a cocina: 2 ítems del mostrador.");
 
-    // El límite de mesas abiertas no cuenta el mostrador: con límite 1 y la cuenta del mostrador abierta, el mapa dice 0 de 1.
-    await prisma.sucursal.update({ where: { id: sucursalId }, data: { maxMesasAbiertas: 1 } });
-    await page.goto("/mesas");
-    await expect(page.locator('[data-mostrador="habilitado"]')).toContainText("1 cuenta abierta");
-    await expect(page.getByText("Máx. 1 mesas abiertas (0/1)")).toBeVisible();
-    await page.goto("/mesas/mostrador");
+    await expect(page.getByRole("heading", { name: "Sin enviar · 0" })).toBeVisible();
 
     await page.getByRole("button", { name: "Cerrar cuenta" }).click();
     const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mostrador" });
@@ -239,9 +243,13 @@ test("el mostrador vende lo mismo que el salón: un café con opciones y una pro
     await expect(page.locator(`[data-promo-por-agregar="${tituloPromo}"]`)).toContainText(MONEDA.format(4000));
     await page.getByRole("button", { name: "Agregar 1 al pedido", exact: true }).click();
     await expect(aviso(page)).toContainText(`Incluye «${tituloPromo}».`);
+    // El aviso sale antes de que la pantalla se refresque: se espera a ver las DOS cosas en «Sin enviar» para enviarlas juntas en un solo envío.
+    await expect(page.locator(`[data-promo-sin-enviar="${tituloPromo}"]`)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sin enviar · 2" })).toBeVisible();
 
     await page.getByRole("button", { name: "Enviar a cocina" }).click();
     await expect(page.getByRole("heading", { name: "Envío 1 · en cocina" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sin enviar · 0" })).toBeVisible();
 
     await page.getByRole("button", { name: "Cerrar cuenta" }).click();
     const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mostrador" });
