@@ -70,6 +70,8 @@ const IDS: Readonly<Record<string, (k: Kit) => unknown>> = {
   invitacionId: (k) => k.invitacionId,
   productoId: (k) => k.productoId,
   productoIds: (k) => [k.productoId, k.productoMp2Id],
+  // E2 (ADR-040): el filtro opcional por productos del costo de reposición (`obtenerCostoActualPorMPDeSucursales`), mismo molde que `productoIds`: ids del cliente.
+  soloProductos: (k) => [k.productoId, k.productoMp2Id],
   insumoProductoId: (k) => k.productoId,
   insumoId: (k) => k.insumoId,
   grupoId: (k) => k.grupoId,
