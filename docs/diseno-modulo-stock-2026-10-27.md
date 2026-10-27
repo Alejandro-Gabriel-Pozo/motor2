@@ -175,3 +175,9 @@ Lo que falta en un nivel se muestra «Sin cargar» / «pendiente de completar»,
 8. Arreglos a 375 px (tablas, «Insumo», grilla del conteo).
 9. e2e del flujo principal, accesibilidad y capturas.
 10. Cierre: los 8 comandos del gate.
+
+## 15. Estado de la implementación (2026-10-27, carril `alegp/carril-t`)
+
+- Hechos, sin migración: pasos 1 a 7 de la sección 14 (diseño; menú de dos entradas con pestañas y la guarda `requierePermisoVerDeAlgunaDelMenu`; «Parámetros por insumo»; «Cambiar mínimo» con control de concurrencia por valor visto; ver ≠ escribir; vocabulario «Depósito»), más los guardianes de arquitectura extendidos a la guarda nueva.
+- Decisión de ingeniería tomada al implementar (PROPUESTA): el editor de una fila de mínimo deja el insumo y el depósito FIJOS (antes se podían cambiar y eso escribía OTRA fila); para otro depósito se fija un mínimo nuevo.
+- Las URL no cambiaron; los specs e2e que nombraban títulos o el resaltado viejo se ajustaron en el mismo cambio.
