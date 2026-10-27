@@ -555,6 +555,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 4, C1 (ADITIVO, no cambia comportamiento): las 13 filas PRODUCTO de la huella suman `modoDeVenta=DIRECTO` (migración 20261021130000; el default, lo que ya hacía). Revisado con `git diff`: quitando ese campo, cada línea es idéntica a la anterior; ningún importe ni regla de dinero cambia.",
       },
+      {
+        blob: "aa6fb4fcf045c561d799a33c34d414ca4827f872",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `a2068019` («Fusión del carril del mostrador (M1) con Movimientos y solo salón…»).
+        commit: "a2068019",
+        motivo:
+          "Interruptor «solo salón» de las promos (migración 20261026120000_promo_carta_solo_salon; ADITIVO, no cambia comportamiento): la huella vuelca las filas de PromoCarta con todas sus columnas, y la columna nueva `PromoCarta.soloSalon` (default false) aparece como ` soloSalon=false` en cada fila PROMO (10 líneas). Verificado: quitando ` soloSalon=false` de cada línea, el contenido es IDÉNTICO al anterior (blob previo en el historial de esta entrada); ninguna otra línea, resultado ni conteo cambia. Se regeneró con `REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1`.",
+      },
     ],
   },
   "test/caracterizacion-precio-y-carta/precios.golden.txt": {
