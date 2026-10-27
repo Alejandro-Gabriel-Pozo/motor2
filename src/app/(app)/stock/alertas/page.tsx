@@ -78,7 +78,11 @@ export default async function AlertasStockPage() {
                 {cambiaMinimo && (
                   <td className="whitespace-nowrap">
                     {fila && (
-                      <EnlaceInterno href={`/stock/minimo?editar=${fila.id}`} aria-label={`Cambiar mínimo de ${a.productoNombre} en ${a.seccionNombre}`}>
+                      <EnlaceInterno
+                        href={`/stock/minimo?editar=${fila.id}`}
+                        aria-label={`Cambiar mínimo de ${a.productoNombre} en ${a.seccionNombre}`}
+                        className="text-tinta-suave underline hover:text-tinta"
+                      >
                         Cambiar mínimo
                       </EnlaceInterno>
                     )}

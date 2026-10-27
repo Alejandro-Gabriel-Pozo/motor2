@@ -10,6 +10,9 @@ import { EDITORES_DE_PARAMETROS, PESTANAS_DE_CONFIGURACION, RUTA_CONFIGURACION, 
 import { FilaDeStock } from "@/components/fila-de-stock";
 import { EnlaceInterno } from "@/components/enlace-interno";
 
+/** El aspecto de un enlace de texto (el de la primitiva `Enlace`): `EnlaceInterno` no agrega estilo propio. */
+const CLASE_DE_ENLACE = "text-tinta-suave underline hover:text-tinta";
+
 /**
  * Stock › Configuración (Fase 7, DEC-27; diseño en `docs/diseno-modulo-stock-2026-10-27.md`): la entrada del menú y su primera pestaña, «Parámetros por insumo». La entrada reúne pantallas de los dos
  * contextos (parámetros y depósitos de la sucursal; motivos y destinos de la empresa), así que la guarda es la de «alguna de» con el cálculo del menú (cada clave en su contexto); las claves son las del
@@ -67,13 +70,17 @@ export default async function ConfiguracionDeStockPage() {
             Una fila por insumo con algo configurado en «{ctx.sucursalNombre}». Cada dato se cambia en su editor, con su propio permiso.
           </p>
           {editores.length > 0 && (
-            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-              {editores.map((e) => (
-                <li key={e.href}>
-                  <EnlaceInterno href={e.href}>{e.texto}</EnlaceInterno>
-                </li>
+            <p className="text-sm text-tinta-suave">
+              Editar uno por uno:{" "}
+              {editores.map((e, n) => (
+                <span key={e.href}>
+                  {n > 0 && " · "}
+                  <EnlaceInterno href={e.href} className={CLASE_DE_ENLACE}>
+                    {e.texto}
+                  </EnlaceInterno>
+                </span>
               ))}
-            </ul>
+            </p>
           )}
           {filas.length === 0 ? (
             <p className="text-sm text-tinta-suave">Ningún insumo tiene parámetros cargados en «{ctx.sucursalNombre}» todavía.</p>
@@ -108,7 +115,7 @@ const SIN_CARGAR = <span className="text-tinta-tenue">Sin cargar</span>;
 /** Un enlace «Cambiar» al editor, con el nombre del dato y del insumo para el lector de pantalla; solo para quien puede editarlo. */
 function Cambiar({ href, dato, insumo }: { href: string; dato: string; insumo: string }) {
   return (
-    <EnlaceInterno href={href} aria-label={`Cambiar ${dato} de ${insumo}`} className="ml-2">
+    <EnlaceInterno href={href} aria-label={`Cambiar ${dato} de ${insumo}`} className={`ml-2 ${CLASE_DE_ENLACE}`}>
       Cambiar
     </EnlaceInterno>
   );

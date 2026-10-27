@@ -25,5 +25,6 @@ export async function FilaDeStock({
   const ofrecidas = await pestanasVisiblesDeStock(ctx, pestanas, visibles);
   if (ofrecidas.length === 0) return null;
   const actual = pestanaActualDeStock(ofrecidas, ruta);
-  return <PestanasDeRuta etiqueta={etiqueta} pestanas={ofrecidas.map((p) => ({ href: p.href, texto: p.texto, actual: p.href === actual }))} />;
+  // «Envuelta» (como la fila de Movimientos): en 375 px las cuatro pestañas de Configuración pasan a otro renglón y se leen completas, en vez de quedar cortadas de costado.
+  return <PestanasDeRuta etiqueta={etiqueta} disposicion="envuelta" pestanas={ofrecidas.map((p) => ({ href: p.href, texto: p.texto, actual: p.href === actual }))} />;
 }

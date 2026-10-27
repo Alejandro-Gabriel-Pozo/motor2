@@ -235,11 +235,13 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
         <CampoFecha etiqueta="Fecha del conteo" value={fechaConteo} onChange={(e) => setFechaConteo(e.target.value)} />
       </div>
 
+      {/* En el celular la grilla se desliza de costado (8 columnas no entran en 375 px): el insumo queda fijo a la izquierda para no perder de vista qué fila se está contando, y una línea avisa que hay más columnas. */}
+      <p className="text-xs text-tinta-tenue sm:hidden">Deslizá la grilla de costado para ver la acción y el detalle de cada fila.</p>
       <div role="region" aria-label="Grilla de conteo" tabIndex={0} className="relative overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
-              <th className="py-1 pr-2">Producto</th>
+              <th className="sticky left-0 z-10 min-w-36 bg-papel py-1 pr-2">Producto</th>
               <th className="px-2">Lote</th>
               <th className="px-2 text-right">Sistema</th>
               <th className="px-2 text-right">Contado</th>
@@ -261,7 +263,7 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
               const diferencia = estado.conteoReal.trim() !== "" ? (numeroDelCampo(estado.conteoReal) ?? NaN) - f.saldoSistema : null;
               return (
                 <tr key={f.key} className="border-b">
-                  <td className="py-1 pr-2">{f.etiqueta}</td>
+                  <td className="sticky left-0 z-10 min-w-36 bg-papel py-1 pr-2">{f.etiqueta}</td>
                   <td className="px-2">
                     {esManual ? (
                       <CampoFecha
