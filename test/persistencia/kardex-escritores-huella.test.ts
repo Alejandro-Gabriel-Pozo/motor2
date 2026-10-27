@@ -216,6 +216,7 @@ const CASOS: Array<{ nombre: string; correr: (g: Grabadora, m: Mundo, cliente: C
           detalle: 'Transferencia a sucursal "Destino".',
           estadoNuevo: "ENVIADA",
           ahora: AHORA,
+          costoUnitarioOrigen: null,
         })
       );
     },
@@ -234,6 +235,7 @@ const CASOS: Array<{ nombre: string; correr: (g: Grabadora, m: Mundo, cliente: C
           seccionOrigenId: m.seccionOrigenId,
           detalleSalida: 'Transferencia a sucursal "Destino".',
           ahora: AHORA,
+          costoUnitarioOrigen: null,
         })
       );
     },
@@ -254,6 +256,7 @@ const CASOS: Array<{ nombre: string; correr: (g: Grabadora, m: Mundo, cliente: C
           estadoNuevo: "ACEPTADA",
           ahora: AHORA,
           idempotencia: { claveIdempotencia: CLAVE_I3, payloadHash: "hash-de-la-aceptacion" },
+          costoUnitarioOrigen: null,
         });
         await registrarResultadoIdempotente(comoTx(tx), operacionId, "Traspaso aceptado.");
       });
@@ -275,6 +278,7 @@ const CASOS: Array<{ nombre: string; correr: (g: Grabadora, m: Mundo, cliente: C
           estadoNuevo: "ACEPTADA",
           ahora: AHORA,
           idempotencia: null,
+          costoUnitarioOrigen: null,
         })
       );
     },
@@ -295,6 +299,76 @@ const CASOS: Array<{ nombre: string; correr: (g: Grabadora, m: Mundo, cliente: C
           estadoNuevo: "CERRADA",
           ahora: AHORA,
           idempotencia: null,
+          costoUnitarioOrigen: null,
+        })
+      );
+    },
+  },
+  // E2 (ADR-040, «el costo viaja con el traspaso»): los tres pasos valorizados con la COPIA del costo del origen. Importes con un solo redondeo a centavos:
+  // 2,5 × 100,04 = 250,10; 3 × 100,04 = 300,12; 3 × 0,3333 = 0,9999 → 1,00.
+  {
+    nombre: "envío directo con el costo del origen (E2)",
+    async correr(_g, m, cliente) {
+      await cliente.$transaction((tx) =>
+        escribirEnvioDirectoDeTraspaso(comoTx(tx), {
+          origenSucursalId: m.origenId,
+          destinoSucursalId: m.destinoId,
+          productoId: m.harinaId,
+          cantidad: 2.5,
+          usuarioId: m.usuarioId,
+          detalle: "envío con costo",
+          seccionOrigenId: m.seccionOrigenId,
+          detalleSalida: 'Transferencia a sucursal "Destino".',
+          ahora: AHORA,
+          costoUnitarioOrigen: 100.04,
+        })
+      );
+    },
+  },
+  {
+    nombre: "aceptación con el costo copiado al enviar (E2)",
+    async correr(g, m, cliente) {
+      const t = await traspasoSembrado(g, m, { estado: "ENVIADA", seccionOrigenId: m.seccionOrigenId, seccionDestinoId: m.seccionDestinoId, costoUnitarioOrigen: 100.04 });
+      await cliente.$transaction((tx) =>
+        escribirAceptacionDeTraspaso(comoTx(tx), {
+          traspasoId: t.id,
+          productoId: m.harinaId,
+          sucursalId: m.destinoId,
+          usuarioId: m.usuarioId,
+          seccionId: m.seccionDestinoId,
+          cantidad: 3,
+          detalle: 'Transferencia desde sucursal "Central".',
+          estadoNuevo: "ACEPTADA",
+          ahora: AHORA,
+          idempotencia: null,
+          costoUnitarioOrigen: 100.04,
+        })
+      );
+    },
+  },
+  {
+    nombre: "reingreso con el costo copiado al enviar (E2)",
+    async correr(g, m, cliente) {
+      const t = await traspasoSembrado(g, m, {
+        estado: "RECHAZADA_DESTINO",
+        seccionOrigenId: m.seccionOrigenId,
+        seccionDestinoId: m.seccionDestinoId,
+        motivoRechazoDestino: "no lo necesitamos",
+        costoUnitarioOrigen: 0.3333,
+      });
+      await cliente.$transaction((tx) =>
+        escribirReingresoDeTraspaso(comoTx(tx), {
+          traspasoId: t.id,
+          productoId: m.harinaId,
+          sucursalId: m.origenId,
+          usuarioId: m.usuarioId,
+          seccionId: m.seccionOrigenId,
+          cantidad: 3,
+          detalle: "Reingreso por rechazo de Destino.",
+          estadoNuevo: "CERRADA",
+          ahora: AHORA,
+          idempotencia: null,
+          costoUnitarioOrigen: 0.3333,
         })
       );
     },

@@ -17,7 +17,7 @@ import { calcularValuacionInventario } from "../../src/server/consultas/reportes
  * valuación de las dos sucursales. Lo que dice cada prueba:
  *  1. Datos viejos: después de E2 los cuatro números dan EXACTAMENTE lo mismo (el traspaso viejo sigue sin costo: el filtro `> 0` lo excluye).
  *  2. Un traspaso NUEVO, por las acciones reales: el gasto y el ratio de las dos sucursales NO se mueven (el traspaso no es gasto); el costo y la valuación del
- *     destino son lo único que cambia (antes de E2, «sin costo»; después, el costo del origen).
+ *     destino son lo único que cambia (antes de E2, «sin costo»; después, el costo del origen). El commit de E2 cambia SOLO esas aserciones del destino.
  */
 describe("E2: reportes sobre datos existentes y con un traspaso nuevo", () => {
   let sucursalAId: string;
@@ -139,9 +139,12 @@ describe("E2: reportes sobre datos existentes y con un traspaso nuevo", () => {
     // El origen: mismo costo, menos stock.
     expect(despues.A.costoHarina).toBe(120);
     expect(despues.A.harina).toMatchObject({ saldo: 8.5, costoUnitario: 120, valor: 1020 });
-    // El destino (LÍNEA DE BASE, antes de E2): la harina recibida sigue sin costo.
-    expect(despues.B.costoHarina).toBeNull();
-    expect(despues.B.harina).toMatchObject({ saldo: 5.5, costoUnitario: null, valor: null, sinCosto: true });
-    expect(despues.B.valuacionTotal).toBe(250);
+    // El destino. LÍNEA DE BASE (antes de E2): la harina recibida seguía sin costo (`costoHarina` null, `sinCosto` true, valuación 250).
+    // Con E2 (V-T1): el traspaso nuevo trae la copia del costo del origen (120) y valoriza TODO el saldo de harina del destino (5,5 kg = 660), también los 3 kg que
+    // llegaron con el traspaso viejo sin costo (la valuación es saldo × costo de reposición). Lo único que cambió en toda la foto.
+    expect(despues.B.costoHarina).toBe(120);
+    expect(despues.B.harina).toMatchObject({ saldo: 5.5, costoUnitario: 120, valor: 660, sinCosto: false });
+    expect(despues.B.valuacionTotal).toBe(250 + 660);
+    expect(despues.B.sinCosto).toBe(antes.B.sinCosto - 1);
   });
 });

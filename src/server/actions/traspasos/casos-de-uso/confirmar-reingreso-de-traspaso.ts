@@ -24,7 +24,8 @@ import { escribirReingresoDeTraspaso } from "@/server/persistencia/traspasos/esc
  *  2. carga del traspaso (persistencia), guard de transición `confirmar_reingreso` (lado Origen, desde RECHAZADA_DESTINO) y la sección
  *     de origen registrada (sin ella no hay dónde reingresar);
  *  3. la sucursal destino (para el detalle) y la sección de origen (para el mensaje);
- *  4. escritura del REINGRESO y del traspaso CERRADO (persistencia);
+ *  4. escritura del REINGRESO y del traspaso CERRADO (persistencia), valorizado con la misma copia del costo del origen con la que salió (E2, ADR-040; el reingreso
+ *     no fija el costo de reposición: V-T1 lo excluye);
  *  5. el resultado para la idempotencia (`registrarResultadoIdempotente`, solo si hay clave) y el mensaje de éxito.
  *
  * @contract Origen confirma el reingreso de un traspaso RECHAZADA_DESTINO, devolviendo el stock a la sección de la que salió.
@@ -65,6 +66,7 @@ export async function confirmarReingresoDeTraspasoCasoDeUso(
       estadoNuevo: transicion.estadoNuevo,
       ahora: actor.ahora,
       idempotencia: claveIdempotencia ? { claveIdempotencia, payloadHash } : null,
+      costoUnitarioOrigen: traspaso.costoUnitarioOrigen,
     });
 
     const mensaje = `Reingreso confirmado: se sumó de nuevo ${cantidad} de "${traspaso.productoNombre}" en "${seccionOrigen.nombre}".`;

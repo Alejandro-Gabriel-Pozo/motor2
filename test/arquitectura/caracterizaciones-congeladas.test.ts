@@ -511,6 +511,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "GO-1d (O.324; ADITIVO, no cambia comportamiento): la huella de escritores del Kardex suma `operacionPadreId` en null en cada `Operacion`. Verificado con diff: sin esa clave en null, idéntico al anterior.",
       },
+      {
+        blob: "d302c5d5b7d4f7f7c4c367f153d7648591989671",
+        // El commit PADRE de este (79927ec9, regla V-T1 en las lecturas) es el último antes del cambio; el golden se regenera en el commit siguiente (escritura del costo en el traspaso).
+        commit: "79927ec9",
+        motivo:
+          "E2 «el costo viaja con el traspaso» (ADR-040; CAMBIA COMPORTAMIENTO por decisión del dueño del 2026-10-27, columna `TraspasoSucursal.costoUnitarioOrigen` autorizada). Regenerado con `REGENERAR_HUELLA_KARDEX=1`. Los 8 casos de antes pasan `costoUnitarioOrigen: null` (sin costo conocido): sus escrituras y filas solo SUMAN la clave `costoUnitarioOrigen` en null (en el `data` del alta o del `update` del traspaso y en cada fila volcada de `TraspasoSucursal`); verificado por programa (quitando esa clave en null, cada caso es IDÉNTICO al blob anterior, con el mismo orden de casos; precios de las líneas en 0 como antes). Se suman 3 casos nuevos al final de los traspasos: envío directo con costo 100,04 (salida -2,5 por $250,10), aceptación con la copia 100,04 (entrada 3 por $300,12) y reingreso con la copia 0,3333 (3 por $1,00: 0,9999 redondeado una sola vez); en los tres el traspaso queda con su copia.",
+      },
     ],
   },
   "test/catalogo/caracterizacion/dinero-tramo-c.golden.txt": {

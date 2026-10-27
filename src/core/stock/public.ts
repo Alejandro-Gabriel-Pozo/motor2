@@ -14,6 +14,7 @@ export type { FilaAlertaStock, ResumenAlertasStock } from "./alertas";
 export { armarStockConsolidado, movimientosPorLeer } from "./consolidado";
 export type { FilaStockConsolidado, MovimientoPosteriorAlConteo } from "./consolidado";
 export { armarStockEnTransito } from "./en-transito";
+export { valorizarLineaDeTraspaso } from "./costo-del-traspaso";
 export type { FilaStockEnTransito } from "./en-transito";
 export { seleccionarClaseA } from "./sugerencia-clase-a";
 export type { InsumoClaseA } from "./sugerencia-clase-a";
