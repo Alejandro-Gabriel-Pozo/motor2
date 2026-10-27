@@ -231,6 +231,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "MOSTRADOR (O.430; CAMBIA LAS CONSULTAS, no la salida): la barrera de las opciones obligatorias de la venta (`armarLinea`) lee UNA vez por lote lo que admite cada producto de las líneas sin configurar (`cargarOpcionesParaVender`, un `producto.findMany`), la primera vez que una línea llega a ella. Cambia SOLO la línea `lecturas (N)` de 5 escenas (la que ya pasaba la barrera): N suma 1 y `producto.findMany` suma 1; ninguna fila OPERACION, KARDEX ni resultado cambia. Verificado con `git diff --word-diff`: cada línea cambiada, sin el número N y sin `producto.findMany×k`, es idéntica a la anterior.",
       },
+      {
+        blob: "ec9e989d6aad8573fcd14893f02cbfc6176c0cff",
+        // El commit PADRE de este (3fce698a) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "3fce698a",
+        motivo:
+          "E1 del circuito de abastecimiento (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md; CAMBIA SOLO LA PREPARACIÓN): `registrarMovimiento` exige la clave de reintento, así que las compras y producciones de PREPARACIÓN de la matriz la mandan (claves fijas `00000000-0000-4000-8000-00000000000N`, en orden). Cambian SOLO 41 líneas OPERACION de esas preparaciones: `claveIdempotencia` null → la clave fija, `payloadHash` null → <enmascarado> y `resultadoMensaje` null → «Se guardaron N movimiento(s).». Verificado con un script sobre el diff: normalizando esas tres columnas, cada línea es idéntica a la anterior; ninguna venta, KARDEX, lectura, escritura ni resultado cambia. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA=1.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -316,6 +323,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "ff51d59f",
         motivo:
           "Fusión de dos regeneraciones hechas en paralelo sobre el mismo golden: la de Fase 7 P6 (un texto: el camino del menú «Stock → Depósitos» en el rechazo sin respaldo) y la de M1 del mostrador (las 21 líneas CUENTA suman `tipoMesa=SALON`, aditivo). La fusión automática de git dio el contenido de las dos juntas (comprobado: 21 líneas con `tipoMesa=SALON`, el texto nuevo del camino del menú y ningún marcador de conflicto); ningún otro número cambia.",
+      },
+      {
+        blob: "89d1302bc565636221295743642c13ebe39d44c7",
+        // El commit PADRE de este (3fce698a) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "3fce698a",
+        motivo:
+          "E1 del circuito de abastecimiento (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md; CAMBIA SOLO LA PREPARACIÓN): `registrarMovimiento` exige la clave de reintento, así que las compras y producciones de PREPARACIÓN de la matriz la mandan (claves fijas `00000000-0000-4000-8000-00000000000N`, en orden). Cambian SOLO 127 líneas OPERACION de esas preparaciones: `claveIdempotencia` null → la clave fija, `payloadHash` null → <enmascarado> y `resultadoMensaje` null → «Se guardaron N movimiento(s).». Verificado con un script sobre el diff: normalizando esas tres columnas, cada línea es idéntica a la anterior; ninguna venta, KARDEX, lectura, escritura ni resultado cambia. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1.",
       },
     ],
   },

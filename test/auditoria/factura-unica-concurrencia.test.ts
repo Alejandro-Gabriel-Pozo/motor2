@@ -39,7 +39,7 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  it("dos compras simultáneas con la MISMA factura+proveedor y SIN clave de idempotencia (o con claves distintas) — exactamente una tiene éxito, la otra recibe el mensaje de negocio, ninguna rechaza", async () => {
+  it("dos compras simultáneas con la MISMA factura+proveedor y claves de idempotencia distintas (desde E1 la clave es obligatoria) — exactamente una tiene éxito, la otra recibe el mensaje de negocio, ninguna rechaza", async () => {
     for (let i = 0; i < 10; i++) {
       const mp = await sembrarProductoDisponible(
         { codigo: `MP_FACTURA_${i}`, nombre: `Harina Factura ${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId },
@@ -50,7 +50,7 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
       const payloadA = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "A-0001", items: [{ productoId: mp.id, cantidad: 10 }] };
       const payloadB = { ...payloadA, items: [{ productoId: mp.id, cantidad: 10 }] };
 
-      const settled = await Promise.allSettled([registrarMovimiento(payloadA), registrarMovimiento(payloadB)]);
+      const settled = await Promise.allSettled([registrarMovimiento({ ...payloadA, claveIdempotencia: crypto.randomUUID() }), registrarMovimiento({ ...payloadB, claveIdempotencia: crypto.randomUUID() })]);
 
       expect(settled.every((s) => s.status === "fulfilled"), `iteración ${i}: ninguna llamada debe rechazar: ${JSON.stringify(settled)}`).toBe(true);
       const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
@@ -82,20 +82,20 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_RECARGA", nombre: "Proveedor Recarga" } });
     const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "R-0001", items: [{ productoId: mp.id, cantidad: 10 }] };
 
-    const primera = await registrarMovimiento(payload);
+    const primera = await registrarMovimiento({ ...payload, claveIdempotencia: crypto.randomUUID() });
     expect(primera.ok).toBe(true);
     // Vigente: el número está ocupado.
-    const repetida = await registrarMovimiento(payload);
+    const repetida = await registrarMovimiento({ ...payload, claveIdempotencia: crypto.randomUUID() });
     expect(repetida.ok).toBe(false);
     expect(repetida.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
 
     // Anulada: el número queda libre, tanto para el chequeo rápido de la aplicación como para el índice único de la base.
     await anular((await prisma.operacion.findFirstOrThrow({ where: { proveedorId: proveedor.id, nroFactura: "R-0001" } })).id);
-    const recarga = await registrarMovimiento(payload);
+    const recarga = await registrarMovimiento({ ...payload, claveIdempotencia: crypto.randomUUID() });
     expect(recarga.ok, recarga.mensaje).toBe(true);
 
     // Y la recarga, ahora vigente, vuelve a ocupar el número.
-    const otraVez = await registrarMovimiento(payload);
+    const otraVez = await registrarMovimiento({ ...payload, claveIdempotencia: crypto.randomUUID() });
     expect(otraVez.ok).toBe(false);
     expect(otraVez.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
 
@@ -109,10 +109,10 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
       const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_RECARGA_C${i}`, nombre: `Proveedor Recarga Carrera ${i}` } });
       const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "R-0002", items: [{ productoId: mp.id, cantidad: 10 }] };
 
-      expect((await registrarMovimiento(payload)).ok).toBe(true);
+      expect((await registrarMovimiento({ ...payload, claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
       await anular((await prisma.operacion.findFirstOrThrow({ where: { proveedorId: proveedor.id, nroFactura: "R-0002" } })).id);
 
-      const settled = await Promise.allSettled([registrarMovimiento(payload), registrarMovimiento({ ...payload })]);
+      const settled = await Promise.allSettled([registrarMovimiento({ ...payload, claveIdempotencia: crypto.randomUUID() }), registrarMovimiento({ ...payload, claveIdempotencia: crypto.randomUUID() })]);
       expect(settled.every((s) => s.status === "fulfilled"), `iteración ${i}: ninguna llamada debe rechazar`).toBe(true);
       const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false as const, mensaje: "rejected" }));
       expect(resultados.filter((r) => r.ok).length, `iteración ${i}: exactamente una recarga exitosa`).toBe(1);

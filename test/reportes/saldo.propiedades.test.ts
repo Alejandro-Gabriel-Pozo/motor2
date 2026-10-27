@@ -87,7 +87,7 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
       const delta = deltaConSigno(paso);
       const debeAceptarse = delta > 0 || saldoModelo >= -delta;
       // U11: la Merma exige un motivo en el servidor.
-      const r = await registrarMovimiento({ proceso: paso.proceso, fecha: fechaDe(i), seccionId, ...(paso.proceso === "MERMA" && { motivoId }), items: [{ productoId, cantidad: paso.centesimas / 100 }] });
+      const r = await registrarMovimiento({ proceso: paso.proceso, fecha: fechaDe(i), seccionId, ...(paso.proceso === "MERMA" && { motivoId }), items: [{ productoId, cantidad: paso.centesimas / 100 }], claveIdempotencia: crypto.randomUUID() });
       expect(r.ok, `${paso.proceso} ${paso.centesimas / 100} con saldo ${saldoModelo / 100}: ${r.mensaje}`).toBe(debeAceptarse);
       if (r.ok) {
         saldoModelo += delta;

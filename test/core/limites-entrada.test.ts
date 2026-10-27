@@ -63,7 +63,7 @@ describe("limites.ts (S-22/S-23)", () => {
 
 describe("guards: topes de texto y de listas", () => {
   const item = { productoId: "p", cantidad: 1 };
-  const movimientoBase = { proceso: "COMPRA", items: [item], seccionId: "s", fecha: new Date() };
+  const movimientoBase = { proceso: "COMPRA", items: [item], seccionId: "s", fecha: new Date(), claveIdempotencia: crypto.randomUUID() };
 
   it("registrar movimiento: 'constructor' / '__proto__' / 'toString' no son procesos (Object.hasOwn)", () => {
     for (const proceso of ["constructor", "__proto__", "toString", "hasOwnProperty"]) {

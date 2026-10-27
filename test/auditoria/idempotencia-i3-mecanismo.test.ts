@@ -17,9 +17,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * `rechazarTransferencia` no usa este mecanismo (§6.2) — su regresión
  * propia vive en traspasos-en-transito.test.ts.
  *
- * `test/auditoria/idempotencia-resto-de-procesos.test.ts` queda intacto:
- * sigue documentando correctamente el comportamiento SIN clave (rollout
- * gradual, §9.3) — no cambia con esta implementación.
+ * Desde E1 (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md) la
+ * clave es OBLIGATORIA en `registrarMovimiento`: el «rollout gradual» (§9.3)
+ * terminó para este motor y sin clave se rechaza (caso «sin clave» de abajo).
  */
 
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
@@ -153,15 +153,15 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
       }
     });
 
-    it("sin clave (compatibilidad, rollout gradual): comportamiento sin cambios — un reenvío sin clave sigue duplicando, mismo criterio que idempotencia-resto-de-procesos.test.ts", async () => {
+    it("sin clave (E1: la clave es obligatoria): se rechaza sin escribir — antes, el rollout gradual dejaba pasar y un reenvío duplicaba", async () => {
       const mp = await crearMP("HarinaSinClave");
-      const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] };
+      const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] } as unknown as Parameters<typeof registrarMovimiento>[0];
       const r1 = await registrarMovimiento(payload);
       const r2 = await registrarMovimiento(payload);
-      expect(r1.ok, r1.mensaje).toBe(true);
-      expect(r2.ok, r2.mensaje).toBe(true);
+      expect(r1).toEqual({ ok: false, mensaje: "Falta la clave de reintento: recargá la pantalla." });
+      expect(r2).toEqual(r1);
       const operaciones = await prisma.operacion.count({ where: { sucursalId, proceso: "COMPRA" } });
-      expect(operaciones).toBe(2); // sin clave, el mecanismo queda deshabilitado — comportamiento previo intacto
+      expect(operaciones).toBe(0);
     });
   });
 
@@ -171,7 +171,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
       const pv = await prisma.producto.create({ data: { codigo: `PV_V${sufijo}`, nombre: `PanV${sufijo}`, tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
       await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: pv.id, disponible: true } });
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } } });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
       return pv;
     }
 
@@ -225,7 +225,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
   describe("reclasificarStock", () => {
     it("misma clave + mismo payload: 1 sola ejecución, mismo mensaje persistido", async () => {
       const mp = await crearMP("Sal1");
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       const clave = crypto.randomUUID();
       const payload = { productoId: mp.id, seccionOrigenId: seccionId, fecha: new Date(), destinos: [{ seccionId: seccionDestinoId, cantidad: 10 }], claveIdempotencia: clave };
 
@@ -240,7 +240,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
 
     it("misma clave + payload distinto: conflicto", async () => {
       const mp = await crearMP("Sal2");
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       const clave = crypto.randomUUID();
       const r1 = await reclasificarStock({ productoId: mp.id, seccionOrigenId: seccionId, fecha: new Date(), destinos: [{ seccionId: seccionDestinoId, cantidad: 10 }], claveIdempotencia: clave });
       expect(r1.ok, r1.mensaje).toBe(true);
@@ -277,7 +277,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
     it("aceptarTransferencia: misma clave + mismo payload (secuencial) → 1 sola aceptación, mismo mensaje", async () => {
       const mp = await crearMP("HarinaT1", [sucursalId, sucursalBId]);
       await comoA();
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
       expect(envio.ok, envio.mensaje).toBe(true);
 
@@ -296,7 +296,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
       const mp = await crearMP("HarinaT2", [sucursalId, sucursalBId]);
       const seccionB2 = await sembrarSeccion(sucursalBId, "Depósito B2");
       await comoA();
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
 
       await comoB();
@@ -312,7 +312,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
     it("confirmarReingresoTransferencia: misma clave + mismo payload (secuencial) → 1 sola confirmación, mismo mensaje", async () => {
       const mp = await crearMP("HarinaT3", [sucursalId, sucursalBId]);
       await comoA();
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
 
       await comoB();
@@ -339,7 +339,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
       for (let i = 0; i < 12; i++) {
         const mp = await crearMP(`HarinaConc${i}`, [sucursalId, sucursalBId]);
         await comoA();
-        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
         const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
         expect(envio.ok, envio.mensaje).toBe(true);
 
@@ -364,7 +364,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
       for (let i = 0; i < 12; i++) {
         const mp = await crearMP(`HarinaConcReingreso${i}`, [sucursalId, sucursalBId]);
         await comoA();
-        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
         const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
         expect(envio.ok, envio.mensaje).toBe(true);
 
@@ -392,7 +392,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
     it("aceptarTransferencia: el primer intento recibe 23505 → repite, termina ok y deja UNA aceptación", async () => {
       const mp = await crearMP("HarinaT9", [sucursalId, sucursalBId]);
       await comoA();
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionId });
       expect(envio.ok, envio.mensaje).toBe(true);
 
@@ -425,7 +425,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
       const pv = await prisma.producto.create({ data: { codigo: "PV_C2", nombre: "PanC2", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 } });
       await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: pv.id, disponible: true } });
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } } });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
       choque.pendientes = 1;
       const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }], claveIdempotencia: crypto.randomUUID() });
       expect(r.ok, r.mensaje).toBe(true);
@@ -435,7 +435,7 @@ describe("Plan I3 — mecanismo de idempotencia", () => {
 
     it("reclasificarStock: repite, termina ok y deja UNA reclasificación (salida + entrada)", async () => {
       const mp = await crearMP("SalC3");
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       choque.pendientes = 1;
       const r = await reclasificarStock({ productoId: mp.id, seccionOrigenId: seccionId, fecha: new Date(), destinos: [{ seccionId: seccionDestinoId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       expect(r.ok, r.mensaje).toBe(true);
