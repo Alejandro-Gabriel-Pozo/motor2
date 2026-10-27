@@ -37,7 +37,7 @@ test("un producto, dos proveedores con su nombre de factura: se guarda al compra
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
   const nombreEnLaFacturaA = "Ojo de bife rioplatense";
   const nombreEnLaFacturaB = "Ojo de bife a secas";
-  const referencia = page.locator("label:has-text('Código/nombre del proveedor') input").first();
+  const referencia = page.getByRole("textbox", { name: "Código/nombre del proveedor" }).first();
   const productoDeLaFila = page.locator('input[placeholder="Código o nombre…"]').first();
 
   async function primeraCompra(proveedorNombre: string, nombreEnLaFactura: string, kilos: string, precioTotal: string) {
