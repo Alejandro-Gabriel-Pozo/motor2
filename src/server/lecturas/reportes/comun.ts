@@ -4,7 +4,7 @@ import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local"
 import { alcanceDeSucursal } from "@/core/catalogo/public";
 import { cargarRecetasVigentes } from "@/server/lecturas/catalogo/recetas-vigentes";
 import { disponibilidadDeProductos, disponibilidadEnAlgunaSucursal } from "@/server/lecturas/catalogo/disponibilidad";
-import { armarIndiceRecetas, armarMapaProductos, type CostoMP, type IndiceRecetas, type InfoProductoReporte } from "@/core/reportes/public";
+import { armarIndiceRecetas, armarMapaProductos, PROCESOS_QUE_FIJAN_EL_COSTO, type CostoMP, type IndiceRecetas, type InfoProductoReporte } from "@/core/reportes/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -113,8 +113,11 @@ export async function construirIndiceRecetas(db: Db, sucursalId?: string): Promi
 
 /**
  * Port de obtenerCostoActualPorMP_ (Reportes.js:1665-1698) — costo de
- * reposición = precio por unidad de stock de la COMPRA MÁS RECIENTE que
- * ESTA sucursal registró. A diferencia del bug ya documentado en Apps
+ * reposición = precio por unidad de stock de la ENTRADA VALORIZADA MÁS
+ * RECIENTE que ESTA sucursal registró: una COMPRA o, desde E2 (regla V-T1,
+ * ADR-040), un traspaso RECIBIDO, que trae la copia del costo del origen
+ * (`PROCESOS_QUE_FIJAN_EL_COSTO`; el reingreso queda afuera). Una entrada
+ * sin precio (0: «pendiente de completar») no cuenta y deja el costo anterior. A diferencia del bug ya documentado en Apps
  * Script (leía `ProveedoresPorProducto`, Catálogo Central compartido por
  * las 5 hosterías), acá no hay bug posible: `MovimientoStock` es LOCAL por
  * construcción (llega a través de `Seccion.sucursalId`), nunca hace falta
@@ -134,16 +137,30 @@ export async function obtenerCostoActualPorMP(sucursalId: string, db: Db, antesD
 }
 
 /**
- * `obtenerCostoActualPorMP` de VARIAS sucursales en UNA consulta (O.38b, D2 de docs/plan-hito-4-pureza.md §4): la compra más reciente de cada producto
+ * El costo de reposición de HOY de UN producto en UNA sucursal (`undefined` si no tiene ninguna entrada valorizada): la misma consulta, acotada al producto. La usa el envío
+ * de un traspaso (E2, ADR-040) para copiar el costo del origen DENTRO de su transacción SERIALIZABLE, sin leer el costo de todo el catálogo de la sucursal.
+ */
+export async function obtenerCostoActualDeProducto(sucursalId: string, productoId: string, db: Db): Promise<CostoMP | undefined> {
+  return (await obtenerCostoActualPorMPDeSucursales([sucursalId], db, undefined, [productoId])).get(sucursalId)!.get(productoId);
+}
+
+/**
+ * `obtenerCostoActualPorMP` de VARIAS sucursales en UNA consulta (O.38b, D2 de docs/plan-hito-4-pureza.md §4): la entrada valorizada más reciente (compra o traspaso recibido) de cada producto
  * EN CADA sucursal (`DISTINCT ON (sucursal, producto)`), repartida por sucursal. Cada sucursal sale en el resultado aunque no tenga compras (mapa vacío).
  * Con un solo elemento lee lo mismo que antes (`IN ($1)` es `= $1` para Postgres, y la sucursal constante no cambia ni el orden ni el desempate). El
  * Consolidado la llama con todas sus sucursales.
  */
-export async function obtenerCostoActualPorMPDeSucursales(sucursalIds: readonly string[], db: Db, antesDe?: Date): Promise<Map<string, Map<string, CostoMP>>> {
+export async function obtenerCostoActualPorMPDeSucursales(
+  sucursalIds: readonly string[],
+  db: Db,
+  antesDe?: Date,
+  /** Solo estos productos (el envío de un traspaso pide uno): sin la lista, todos. */
+  soloProductos?: readonly string[]
+): Promise<Map<string, Map<string, CostoMP>>> {
   const porSucursal = new Map(sucursalIds.map((id) => [id, new Map<string, CostoMP>()]));
-  // `Prisma.join` de una lista vacía no es SQL válido: sin sucursales no hay nada que leer.
-  if (sucursalIds.length === 0) return porSucursal;
-  // 1 fila por (sucursal, producto) (la compra más reciente), no una por compra: traer toda la historia de la sucursal con `include`
+  // `Prisma.join` de una lista vacía no es SQL válido: sin sucursales (o con la lista de productos vacía) no hay nada que leer.
+  if (sucursalIds.length === 0 || soloProductos?.length === 0) return porSucursal;
+  // 1 fila por (sucursal, producto) (la entrada valorizada más reciente: compra o traspaso recibido, V-T1), no una por compra: traer toda la historia de la sucursal con `include`
   // superaba el límite de parámetros de Prisma 7 con ~55k compras. Empate de fecha: gana el `m."id"` mayor (determinista).
   // La sucursal fija la empresa (`Seccion` y `Operacion` la comparten por FK compuesta); el aislamiento entre empresas lo
   // sigue haciendo el `db` recibido (RLS, A6).
@@ -153,10 +170,11 @@ export async function obtenerCostoActualPorMPDeSucursales(sucursalIds: readonly 
     JOIN "Operacion" o ON o."id" = m."operacionId"
     JOIN "Seccion" s ON s."id" = m."seccionId"
     LEFT JOIN "Proveedor" p ON p."id" = o."proveedorId"
-    WHERE m."proceso" = 'COMPRA' AND s."sucursalId" IN (${Prisma.join(sucursalIds)})
+    WHERE m."proceso" = ANY(${[...PROCESOS_QUE_FIJAN_EL_COSTO]}::"Proceso"[]) AND s."sucursalId" IN (${Prisma.join(sucursalIds)})
       AND m."precioPorUnidadStock" > 0
       AND o."anuladaEn" IS NULL
       ${antesDe ? Prisma.sql`AND o."fecha" < ${antesDe}` : Prisma.empty}
+      ${soloProductos ? Prisma.sql`AND m."productoId" IN (${Prisma.join(soloProductos)})` : Prisma.empty}
     ORDER BY s."sucursalId", m."productoId", o."fecha" DESC, m."id" DESC
   `;
 

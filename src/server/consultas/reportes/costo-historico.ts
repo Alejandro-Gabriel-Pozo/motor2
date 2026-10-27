@@ -4,11 +4,11 @@ import { resolverCostoRecetaCompleta } from "@/core/reportes/public";
 import { asegurarIndiceRecetasDeLaSucursal } from "@/core/reportes/public";
 import { construirIndiceRecetas, construirMapaProductos } from "@/server/lecturas/reportes/comun";
 import type { Db } from "@/lib/db-tipos";
-import { diaUtc, costosDeInsumosPorDia, claveCostoHistorico, claveCostoDeLineaConfigurada, costoDeLineaConfiguradaDesdeConsumos, costoUnitarioDeInsumoDesde } from "@/core/reportes/public";
+import { diaUtc, costosDeInsumosPorDia, claveCostoHistorico, claveCostoDeLineaConfigurada, costoDeLineaConfiguradaDesdeConsumos, costoUnitarioDeInsumoDesde, PROCESOS_QUE_FIJAN_EL_COSTO } from "@/core/reportes/public";
 
 /**
- * Costo unitario reconstruido de cada (plato, día) pedido. `null` = no se pudo costear (algún insumo sin compras hasta ese día, o
- * el plato sin receta). La clave es `${productoId}|${YYYY-MM-DD}` (ver `claveCostoHistorico`).
+ * Costo unitario reconstruido de cada (plato, día) pedido. `null` = no se pudo costear (algún insumo sin entrada valorizada —compra o
+ * traspaso recibido, V-T1— hasta ese día, o el plato sin receta). La clave es `${productoId}|${YYYY-MM-DD}` (ver `claveCostoHistorico`).
  */
 export async function reconstruirCostosDeVenta(
   sucursalId: string,
@@ -38,9 +38,10 @@ export async function reconstruirCostosDeVenta(
     // la semilla (la compra más reciente de cada insumo antes de `primerDia`) siempre domina en fecha a cualquier
     // compra pre-ventana que no sea ella misma, así que el resultado es idéntico a traer toda la historia — ver
     // el test "guardián de semántica" en costo-historico.test.ts, que fija esta equivalencia.
+    // V-T1 (E2, ADR-040): las entradas valorizadas, compras o traspasos recibidos (`PROCESOS_QUE_FIJAN_EL_COSTO`), igual que el costo de reposición de hoy.
     db.movimientoStock.findMany({
       where: {
-        proceso: "COMPRA",
+        proceso: { in: [...PROCESOS_QUE_FIJAN_EL_COSTO] },
         seccion: { sucursalId },
         precioPorUnidadStock: { gt: 0 },
         // Una compra anulada no cuenta para reconstruir el costo de un día (ni acá ni en la semilla de abajo).
@@ -56,7 +57,7 @@ export async function reconstruirCostosDeVenta(
       FROM "MovimientoStock" m
       JOIN "Operacion" o ON o."id" = m."operacionId"
       JOIN "Seccion" s ON s."id" = m."seccionId"
-      WHERE m."proceso" = 'COMPRA' AND s."sucursalId" = ${sucursalId}
+      WHERE m."proceso" = ANY(${[...PROCESOS_QUE_FIJAN_EL_COSTO]}::"Proceso"[]) AND s."sucursalId" = ${sucursalId}
         AND m."precioPorUnidadStock" > 0 AND o."fecha" < ${primerDiaFecha} AND o."anuladaEn" IS NULL
       ORDER BY m."productoId", o."fecha" DESC, m."id" DESC
     `,
