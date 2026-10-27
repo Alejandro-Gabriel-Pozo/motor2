@@ -25,7 +25,6 @@ export { whereSeccionHabitualVigente } from "./seccion-habitual";
 export { ESTADO_STOCK_CONSOLIDADO_LABEL } from "./estado-consolidado-ui";
 export { ESTADO_STOCK_CONSOLIDADO_COLOR } from "./estado-consolidado-ui";
 export {
-  CLAVES_DE_PARAMETROS,
   EDITORES_DE_PARAMETROS,
   NAV_STOCK,
   PESTANAS_DE_CONFIGURACION,

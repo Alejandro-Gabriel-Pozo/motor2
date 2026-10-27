@@ -17,7 +17,7 @@ export type PantallaDeStock = { href: string; texto: string; panel: PanelNav } &
 /** Las claves de los tres parámetros por insumo de la sucursal: la pestaña «Parámetros por insumo» se ve con el «Ver» de alguna (cada columna, con el suyo). */
 export const CLAVES_DE_PARAMETROS = ["stock_minimo", "stock_seccion_habitual", "conteo_frecuencia"] as const satisfies readonly AccionClave[];
 
-export const RUTA_EXISTENCIAS = "/stock/consolidado";
+const RUTA_EXISTENCIAS = "/stock/consolidado";
 export const RUTA_CONFIGURACION = "/stock/configuracion";
 
 /** Las pestañas de «Existencias»: las tres se ven con `ver_stock`. La primera es la entrada del menú. */
