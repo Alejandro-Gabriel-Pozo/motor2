@@ -46,3 +46,6 @@ Doble clic: el segundo pedido encuentra el valor puesto y devuelve éxito sin au
 
 ## 7. Verificación final
 Los 8 comandos (`npx tsc --noEmit`, `npm run lint`, `npm run arquitectura`, `npm run analizar:muerto`, `npm test`, `npm run build`, `npm run plataforma:build`, `npm run test:e2e`) en la misma corrida, limpios, con conteos iguales a la línea de base más los tests nuevos y ningún golden regenerado.
+
+## 8. Estado de la implementación (2026-10-27)
+Pasos 1 a 8 hechos en la rama del carril (un commit por paso): caracterización, esquema y migración, filtro por audiencia con su guardián, caso de uso y acción, pantalla «Dónde se ve», alta ya «solo salón», e2e `carta-promo-solo-salon.spec.ts` y esta documentación. Detalles que el plan no fijaba: el mensaje de versión desactualizada termina en «Recargá la pantalla…» para que el formulario ofrezca «Recargar»; la casilla del alta vive en el formulario de la página y no en `CamposPromo` (compartido con la edición); el guard rechaza (no ignora) `soloSalon` en una edición; el precio local de la promo pasó a `CampoNumero` (deuda del cerco `campo-type-number`). La migración NO se aplicó a ninguna base real: requiere autorización expresa, base por base, con respaldo y ensayo.
