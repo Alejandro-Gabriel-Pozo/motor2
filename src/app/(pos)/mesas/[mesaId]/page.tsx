@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
 import { obtenerDetalleDeMesa } from "@/server/consultas/pos/detalle-de-mesa";
+import { obtenerPuestoMostrador } from "@/server/consultas/pos/mesas";
 import { PantallaDelPuesto } from "./pantalla-del-puesto";
 
 /**
@@ -36,6 +38,8 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   const ahora = new Date();
   const detalle = await obtenerDetalleDeMesa(ctx.sucursalId, mesaId, ctx.db, ahora);
   if (!detalle) {
+    // ADR-039: el puesto mostrador no es una mesa; su pantalla es `/mesas/mostrador` (un enlace viejo o un id pegado a mano llega ahí).
+    if ((await obtenerPuestoMostrador(ctx.sucursalId, ctx.db))?.id === mesaId) redirect("/mesas/mostrador");
     return (
       <div className="space-y-3">
         <p className="font-semibold">No se encontró esa mesa en esta sucursal.</p>
@@ -46,5 +50,5 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
     );
   }
 
-  return <PantallaDelPuesto ctx={ctx} detalle={detalle} ahora={ahora} />;
+  return <PantallaDelPuesto ctx={ctx} detalle={detalle} ahora={ahora} variante="mesa" />;
 }
