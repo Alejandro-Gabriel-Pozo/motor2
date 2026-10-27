@@ -19,6 +19,8 @@ export interface ComandoGuardarPromoCarta {
   descripcion: string | null;
   precio: number;
   orden: number;
+  /** SOLO en el alta: la promo nace en «solo salón» (el precio pactado nunca queda publicado). Ausente = `false`. En una edición no existe: el interruptor se cambia con `guardarSoloSalonPromoCarta` (con versión). */
+  soloSalon?: true;
 }
 
 /**

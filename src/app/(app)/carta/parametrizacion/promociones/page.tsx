@@ -29,6 +29,7 @@ import { CamposCupos, CamposLugares, CamposPromo, CamposVigencia, esFijo, textoD
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoNumero } from "@/components/campo-numero";
+import { Casilla } from "@/ui/primitivas/casilla";
 
 /** Ayudantes puros de los closures "use server" de esta página (locales a propósito: `use-server-solo-donde-corresponde` solo los acepta definidos en el mismo archivo). */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
@@ -362,13 +363,27 @@ export default async function PromocionesDeCartaPage() {
             accion={async (fd: FormData) => {
               "use server";
               return refrescarSiOk(
-                await guardarPromoCarta({ seccionCartaId: campo(fd, "seccionCartaId"), titulo: campo(fd, "titulo"), descripcion: campo(fd, "descripcion"), precio: campo(fd, "precio"), orden: campo(fd, "orden") })
+                await guardarPromoCarta({
+                  seccionCartaId: campo(fd, "seccionCartaId"),
+                  titulo: campo(fd, "titulo"),
+                  descripcion: campo(fd, "descripcion"),
+                  precio: campo(fd, "precio"),
+                  orden: campo(fd, "orden"),
+                  ...(fd.get("soloSalon") !== null ? { soloSalon: true } : {}),
+                })
               );
             }}
             className="grid max-w-2xl grid-cols-1 gap-2 rounded border border-dashed p-3 sm:grid-cols-2"
           >
             <h3 className="text-sm font-medium sm:col-span-2">Nueva promo (queda prendida en esta sucursal)</h3>
             <CamposPromo secciones={seccionesActivas} />
+            <div className="sm:col-span-2">
+              <Casilla
+                name="soloSalon"
+                etiqueta="Solo salón: se vende desde el POS, pero no aparece en la carta pública (web, QR ni impresa)"
+                ayuda="Útil para un menú pactado con una empresa: el precio no queda publicado."
+              />
+            </div>
             <div className="sm:col-span-2">
               <BotonDeServidor type="submit" tamano="compacto">
                 Crear promo

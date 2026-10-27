@@ -43,6 +43,8 @@ export interface DatosPromoCarta {
   descripcion?: string | null;
   precio: number | string;
   orden?: number | string | null;
+  /** Solo en el alta: que la promo nazca en «solo salón» (no se muestra en la carta pública). */
+  soloSalon?: boolean;
 }
 
 /**
