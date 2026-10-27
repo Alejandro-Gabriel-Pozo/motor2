@@ -31,7 +31,8 @@ test("admin: ve el selector de paneles, arranca en Sucursal y cada panel muestra
   await expect(page.locator("nav").getByRole("button", { name: "Traspasos" })).toBeVisible();
 
   await elegirPanel(page, "Empresa");
-  await expect(page.locator("nav").getByRole("button", { name: "Stock" })).toHaveCount(0);
+  // Stock ya aparece también en Empresa (Fase 7: Motivos de Merma y Destinos de Consumo, que son de la empresa, se mudaron ahí); Traspasos sigue siendo solo de Sucursal.
+  await expect(page.locator("nav").getByRole("button", { name: "Stock" })).toBeVisible();
   await expect(page.locator("nav").getByRole("button", { name: "Traspasos" })).toHaveCount(0);
   await expect(page.locator("nav [data-sucursal-activa]")).toBeVisible();
   await expect(page.locator("nav").getByRole("button", { name: "Administración" })).toBeVisible();
@@ -46,7 +47,7 @@ test("entrar a una pantalla de Empresa activa ese panel y su ítem queda marcado
   await expect(boton(page, "Sucursal")).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("nav a[aria-current=page]")).toHaveCount(1);
   await expect(enlace(page, "Categorías")).toHaveAttribute("aria-current", "page");
-  await expect(page.locator("nav").getByRole("button", { name: "Stock" })).toHaveCount(0);
+  await expect(page.locator("nav").getByRole("button", { name: "Traspasos" })).toHaveCount(0);
 
   await page.goto("/reportes/costos");
   await expect(boton(page, "Sucursal")).toHaveAttribute("aria-pressed", "true");

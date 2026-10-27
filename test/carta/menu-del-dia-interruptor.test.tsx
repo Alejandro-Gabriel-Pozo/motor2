@@ -17,7 +17,7 @@ import { actorDePrueba } from "../setup/opciones-de-venta";
 /**
  * Interruptor del MENÚ DEL DÍA (`MENU_DEL_DIA_VISIBLE`, `src/core/carta/menu-del-dia.ts`; decisión del dueño 2026-10-20: hasta que se rediseñe, no se ve; no se borra nada ni se toca la base).
  * Fija los DOS estados:
- *  - APAGADO (el valor de hoy): Movimientos no tiene la entrada «Menú del día»; su pantalla responde «no existe» (el 404 de Next, no un error); el formulario de la promo no ofrece «Plato del día»;
+ *  - APAGADO (el valor de hoy): Carta (adonde se mudó la entrada, Fase 7) no tiene la entrada «Menú del día»; su pantalla responde «no existe» (el 404 de Next, no un error); el formulario de la promo no ofrece «Plato del día»;
  *    y el servidor rechaza sumar un lugar del día (nuevo o reactivado) y cargar o copiar platos, aunque el pedido se arme a mano. Lo que ya existía se puede seguir cambiando o quitar.
  *  - ENCENDIDO (reversibilidad: cargando los módulos con el interruptor en `true`): vuelve todo lo de antes, en el mismo lugar.
  *
@@ -27,7 +27,7 @@ import { actorDePrueba } from "../setup/opciones-de-venta";
 
 const cupo = (tipo: CupoPedido["tipo"], nombre: string): CupoPedido => ({ tipo, seccionCartaId: null, nombre, cantidadMinima: 1, cantidadMaxima: 1, orden: 1 });
 const existente = (tipo: CupoPedido["tipo"], nombre: string, activo: boolean): CupoExistente => ({ ...cupo(tipo, nombre), id: `c-${nombre}`, activo });
-const hrefsDeMovimientos = (grupos: typeof GRUPOS_NAV) => grupos.find((g) => g.id === "movimientos")!.items.map((i) => i.href);
+const hrefsDe = (grupos: typeof GRUPOS_NAV, id: string) => grupos.find((g) => g.id === id)!.items.map((i) => i.href);
 
 /** Lo que dibuja la fila «Sumar un lugar» del formulario de cupos, con un lugar del día que ya existía. */
 const formularioDeLugares = (Campos: typeof CamposLugares) =>
@@ -41,10 +41,11 @@ describe("menú del día APAGADO (decisión del dueño 2026-10-20)", () => {
     expect(MENU_DEL_DIA_VISIBLE).toBe(false);
   });
 
-  it("Movimientos no muestra «Menú del día» (y lo demás queda igual, en el mismo orden)", () => {
-    const hrefs = hrefsDeMovimientos(GRUPOS_NAV);
+  it("Carta no muestra «Menú del día» (y lo demás queda igual, en el mismo orden), ni ningún otro grupo", () => {
+    const hrefs = hrefsDe(GRUPOS_NAV, "carta");
     expect(hrefs).not.toContain("/movimientos/menu-del-dia");
-    expect(hrefs.slice(hrefs.indexOf("/movimientos/opciones-agotadas"))).toEqual(["/movimientos/opciones-agotadas", "/movimientos/motivos-merma", "/movimientos/destinos-consumo"]);
+    expect(hrefs.slice(hrefs.indexOf("/carta/tema"))).toEqual(["/carta/tema", "/movimientos/opciones-agotadas"]);
+    expect(GRUPOS_NAV.flatMap((g) => g.items.map((i) => i.href))).not.toContain("/movimientos/menu-del-dia");
   });
 
   it("la pantalla /movimientos/menu-del-dia responde «no existe» (404), antes de leer la sesión", async () => {
@@ -147,15 +148,10 @@ describe("menú del día ENCENDIDO (reversibilidad: con el interruptor en true v
     vi.resetModules();
   });
 
-  it("Movimientos vuelve a tener «Menú del día» en su lugar (después de «Opciones agotadas»), con su permiso de siempre", async () => {
+  it("Carta vuelve a tener «Menú del día» en su lugar (después de «Opciones agotadas»), con su permiso de siempre", async () => {
     const { nav } = await conInterruptorEncendido();
-    const items = nav.find((g) => g.id === "movimientos")!.items;
-    expect(items.map((i) => i.href).slice(items.findIndex((i) => i.href === "/movimientos/opciones-agotadas"))).toEqual([
-      "/movimientos/opciones-agotadas",
-      "/movimientos/menu-del-dia",
-      "/movimientos/motivos-merma",
-      "/movimientos/destinos-consumo",
-    ]);
+    const items = nav.find((g) => g.id === "carta")!.items;
+    expect(items.map((i) => i.href).slice(items.findIndex((i) => i.href === "/movimientos/opciones-agotadas"))).toEqual(["/movimientos/opciones-agotadas", "/movimientos/menu-del-dia"]);
     expect(items.find((i) => i.href === "/movimientos/menu-del-dia")).toEqual({ href: "/movimientos/menu-del-dia", label: "Menú del día", accion: "promo_menu_del_dia", panel: "sucursal" });
   });
 

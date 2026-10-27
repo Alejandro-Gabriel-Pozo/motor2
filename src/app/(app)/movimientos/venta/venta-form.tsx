@@ -94,8 +94,8 @@ export function VentaForm({ secciones }: { secciones: { id: string; nombre: stri
           <CampoFecha etiqueta="Fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
         </div>
         <div className="min-w-36 flex-1">
-          <Selector etiqueta="Sección" value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required>
-            <option value="">Elegí una sección</option>
+          <Selector etiqueta="Depósito" value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required>
+            <option value="">Elegí un depósito</option>
             {secciones.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.nombre}

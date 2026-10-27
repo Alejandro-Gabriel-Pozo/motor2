@@ -14,7 +14,7 @@ import { ACCIONES, contextoDeAccion, type AccionClave } from "../../src/core/per
 const TODOS_LOS_ITEMS = [...GRUPOS_NAV.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU];
 
 /** Las acciones que ve cada perfil de prueba: el admin ve todo el menú, el operador las que el seed le deja editar, el mozo solo el salón. */
-const ADMIN = new Set(TODOS_LOS_ITEMS.flatMap((i) => (i.accion ? [i.accion] : [])));
+const ADMIN = new Set<AccionClave>(TODOS_LOS_ITEMS.flatMap((i) => (i.algunaDe ? [...i.algunaDe] : i.accion ? [i.accion] : [])));
 const OPERADOR = new Set<AccionClave>(ACCIONES.filter((a) => (a.rolesEditarSemilla as readonly string[]).includes("operador")).map((a) => a.clave as AccionClave));
 const SOLO_SALON = new Set<AccionClave>(["pos_mesas"]);
 const menuDe = (acciones: ReadonlySet<AccionClave>) => filtrarMenuPorPermiso(GRUPOS_NAV, acciones);
@@ -109,7 +109,8 @@ describe("particionarMenu", () => {
   it("un grupo que se queda sin ítems en un panel no aparece en él, y el resto conserva su orden", () => {
     const { empresa, sucursal } = particionarMenu(GRUPOS_NAV);
     expect(sucursal.map((g) => g.id)).toEqual(["administracion", "catalogo", "carta", "movimientos", "stock", "reportes", "traspasos", "pos"]);
-    expect(empresa.map((g) => g.id)).toEqual(["administracion", "catalogo", "carta", "movimientos", "reportes"]);
+    // Movimientos ya no tiene ninguna pantalla de Empresa (Motivos y Destinos se mudaron a Stock, Fase 7).
+    expect(empresa.map((g) => g.id)).toEqual(["administracion", "catalogo", "carta", "stock", "reportes"]);
     expect(hrefs(sucursal).filter((h) => h.startsWith("/catalogo"))).toEqual(["/catalogo/productos"]);
   });
 

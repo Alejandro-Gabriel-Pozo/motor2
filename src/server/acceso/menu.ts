@@ -2,6 +2,7 @@ import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { accionesDelMenuQueElUsuarioPuedeVer } from "@/server/acceso/gate";
 import type { AccionClave } from "@/core/permisos/acciones";
+import { PROCESOS_DEL_SELECTOR, type ProcesoDelSelector } from "@/core/movimientos/public";
 import { GRUPOS_NAV, accionesDeNavegacion, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso, type GrupoNav } from "@/core/navegacion/estructura";
 import { tarjetasDeInicio, type TarjetaInicio } from "@/core/navegacion/tarjetas-inicio";
 
@@ -27,4 +28,13 @@ export async function navegacionDelUsuario(ctx: ContextoUsuario): Promise<{ inic
 /** Las tarjetas de `/inicio`: un módulo por cada uno que el rol puede abrir en la sucursal activa. */
 export async function tarjetasDelUsuario(ctx: ContextoUsuario): Promise<TarjetaInicio[]> {
   return tarjetasDeInicio(await menuVisibleDe(ctx));
+}
+
+/**
+ * Los procesos del selector «Registrar movimiento» que el rol puede VER en la sucursal activa, en el orden del selector: lo que dibuja la fila «Qué movimiento registrar». Se filtra acá, en el servidor, y al
+ * navegador solo llega lo que se ofrece. `visibles` es el conjunto que la página ya calculó con su guarda (`requierePermisoVerDeAlguna`): si falta, se lee con el mismo cálculo del menú.
+ */
+export async function procesosVisiblesDelSelector(ctx: ContextoUsuario, visibles?: ReadonlySet<AccionClave>): Promise<ProcesoDelSelector[]> {
+  const puedeVer = visibles ?? (await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, PROCESOS_DEL_SELECTOR.map((p) => p.accion), ctx.db));
+  return PROCESOS_DEL_SELECTOR.filter((p) => puedeVer.has(p.accion));
 }

@@ -18,7 +18,7 @@ export default async function VentaPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="mb-4 text-xl font-semibold">Venta</h1>
+      <h1 className="mb-4 text-xl font-semibold">Carga de ventas sin ticket</h1>
       <VentaForm secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />
     </div>
   );

@@ -10,7 +10,8 @@ import ts from "typescript";
  * cron tiene que rechazar el pedido sin el secreto antes de tocar la base.
  */
 
-const GUARDAS_DE_PAGINA = ["requierePermiso", "requierePermisoVer", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa"];
+// `requierePermisoVerDeAlguna`: la página que es la entrada de varias pantallas (pasa si el rol ve ALGUNA de las claves); devuelve el mismo `{ ok, mensaje }` y se corta igual con `if (!gate.ok)`.
+const GUARDAS_DE_PAGINA = ["requierePermiso", "requierePermisoVer", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa", "requierePermisoVerDeAlguna"];
 const MODULO_GATE = "server/acceso/gate";
 const MODULO_SECRETO_CRON = "core/auth/secreto-cron";
 const MODULO_CONTEXTO = "server/sesion/contexto";

@@ -63,12 +63,12 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
       <div>
         <h1 className="mb-1 text-xl font-semibold">Conteo físico</h1>
         <p className="mb-4 text-sm text-tinta-tenue">
-          La grilla trae precargado todo lo que ya tiene stock en la sección elegida — tipeá solo lo que difiere, dejá vacío lo que coincide.
+          La grilla trae precargado todo lo que ya tiene stock en el depósito elegido — tipeá solo lo que difiere, dejá vacío lo que coincide.
         </p>
         <form className="mb-4 flex items-end gap-3 text-sm">
           <div className="min-w-0">
-            <Selector etiqueta="Sección a contar" name="seccionId" defaultValue={seccionElegida}>
-              <option value="">Elegí una sección</option>
+            <Selector etiqueta="Depósito a contar" name="seccionId" defaultValue={seccionElegida}>
+              <option value="">Elegí un depósito</option>
               {secciones.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nombre}
@@ -82,7 +82,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
         {seccionElegida ? (
           <ConteoFisicoGrid seccionId={seccionElegida} filasBase={filasBase} puedeAjustar={puedeAjustar} />
         ) : (
-          <p className="text-sm text-tinta-tenue">Elegí una sección para ver su grilla de conteo.</p>
+          <p className="text-sm text-tinta-tenue">Elegí un depósito para ver su grilla de conteo.</p>
         )}
       </div>
 
@@ -94,7 +94,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2 pr-2">Fecha</th>
                 <th className="px-2">Producto</th>
-                <th className="px-2">Sección</th>
+                <th className="px-2">Depósito</th>
                 <th className="px-2">Sistema</th>
                 <th className="px-2">Contado</th>
                 <th className="px-2">Diferencia</th>

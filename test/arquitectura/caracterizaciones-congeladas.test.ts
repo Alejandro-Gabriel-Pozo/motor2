@@ -296,6 +296,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "MOSTRADOR (O.430; CAMBIA LAS CONSULTAS, no la salida): igual que la matriz de venta. La barrera de las opciones obligatorias lee UNA vez por lote lo que admite cada producto de las líneas sin configurar (`producto.findMany`), la primera vez que una línea llega a ella. Cambia SOLO la línea `lecturas (N)` de 19 escenas (las que pasan la barrera: ventas de mostrador, cierres del POS y sus rechazos posteriores a ella): N suma 1 y `producto.findMany` suma 1; los rechazos anteriores a la barrera (producto inexistente, no disponible, cantidad inválida) no cambian. Ninguna fila OPERACION, KARDEX ni resultado cambia. Verificado con `git diff --word-diff` y por programa: cada línea cambiada, sin N y sin `producto.findMany×k`, es idéntica a la anterior.",
       },
+      {
+        blob: "496f44c738f2be69865addc2b4f97c4f5005b84c",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `1be5631e` («Menú de Movimientos: Registrar movimiento como entrada única y mudanza de las demás entradas»).
+        commit: "1be5631e",
+        motivo:
+          "Fase 7, P6 (vocabulario; CAMBIA SOLO UN TEXTO): el rechazo de la venta sin respaldo (`rechazoSinRespaldo`, plan-de-la-venta.ts) nombraba el camino «Movimientos → Secciones»; Secciones se mudó al grupo Stock y se llama «Depósitos», así que el texto dice «Stock → Depósitos». Cambia SOLO esa frase dentro de la única línea `resultado: rechazo «Ninguna sección de …»` (1 línea); el resto de la matriz es idéntico. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
