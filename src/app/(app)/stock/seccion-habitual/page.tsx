@@ -1,3 +1,4 @@
+import { TablaDeStock } from "@/components/stock/tabla-de-stock";
 import Link from "next/link";
 import { FilaDeStock } from "@/components/fila-de-stock";
 import { PESTANAS_DE_CONFIGURACION } from "@/core/stock/public";
@@ -49,7 +50,7 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
             Al cerrar una cuenta del salón, cada producto se descuenta primero de su depósito habitual; si ahí no alcanza, de otro depósito con stock
             (el que vence antes). Un producto sin depósito habitual sale directamente de donde haya stock.
           </p>
-          <table className="w-full text-sm">
+          <TablaDeStock etiqueta="Depósitos habituales cargados">
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Producto</th>
@@ -77,7 +78,7 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
                 </tr>
               ))}
             </tbody>
-          </table>
+          </TablaDeStock>
           {!filas.length && <p className="mt-3 text-sm text-tinta-suave">Ningún producto tiene depósito habitual en «{ctx.sucursalNombre}».</p>}
         </div>
 

@@ -1,3 +1,4 @@
+import { TablaDeStock } from "@/components/stock/tabla-de-stock";
 import Link from "next/link";
 import { FilaDeStock } from "@/components/fila-de-stock";
 import { PESTANAS_DE_CONFIGURACION } from "@/core/stock/public";
@@ -91,7 +92,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
             </div>
           )}
 
-          <table className="w-full text-sm">
+          <TablaDeStock etiqueta="Frecuencias de conteo cargadas">
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Producto</th>
@@ -119,7 +120,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
                 </tr>
               ))}
             </tbody>
-          </table>
+          </TablaDeStock>
         </div>
 
         <div>

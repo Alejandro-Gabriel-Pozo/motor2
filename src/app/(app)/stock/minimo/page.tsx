@@ -1,3 +1,4 @@
+import { TablaDeStock } from "@/components/stock/tabla-de-stock";
 import Link from "next/link";
 import { FilaDeStock } from "@/components/fila-de-stock";
 import { PESTANAS_DE_CONFIGURACION } from "@/core/stock/public";
@@ -41,7 +42,7 @@ export default async function StockMinimoPage({ searchParams }: { searchParams: 
       {!puedeEditar && <AvisoSoloLecturaDeStock que="el stock mínimo" />}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
         <div>
-          <table className="w-full text-sm">
+          <TablaDeStock etiqueta="Stock mínimo cargado">
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Insumo</th>
@@ -71,7 +72,7 @@ export default async function StockMinimoPage({ searchParams }: { searchParams: 
                 </tr>
               ))}
             </tbody>
-          </table>
+          </TablaDeStock>
         </div>
 
         <div>

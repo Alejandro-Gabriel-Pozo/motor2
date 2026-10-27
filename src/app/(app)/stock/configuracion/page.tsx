@@ -1,3 +1,4 @@
+import { TablaDeStock } from "@/components/stock/tabla-de-stock";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -61,7 +62,7 @@ export default async function ConfiguracionDeStockPage() {
       {!veAlguno ? (
         <p className="text-sm text-tinta-suave">Tu rol no ve los parámetros por insumo de esta sucursal. Elegí arriba qué configurar.</p>
       ) : (
-        <section aria-label="Parámetros por insumo" className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
           <p className="max-w-prose text-sm text-tinta-suave">
             Una fila por insumo con algo configurado en «{ctx.sucursalNombre}». Cada dato se cambia en su editor, con su propio permiso.
           </p>
@@ -77,28 +78,26 @@ export default async function ConfiguracionDeStockPage() {
           {filas.length === 0 ? (
             <p className="text-sm text-tinta-suave">Ningún insumo tiene parámetros cargados en «{ctx.sucursalNombre}» todavía.</p>
           ) : (
-            <div role="region" aria-label="Parámetros por insumo" tabIndex={0} className="relative overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-tinta-tenue">
-                    <th scope="col" className="py-2">
-                      Insumo
-                    </th>
-                    {ve.minimo && <th scope="col">Stock mínimo</th>}
-                    {ve.minimo && <th scope="col">Mínimo por depósito</th>}
-                    {ve.habitual && <th scope="col">Depósito habitual</th>}
-                    {ve.frecuencia && <th scope="col">Frecuencia de conteo</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filas.map((f) => (
-                    <FilaDeParametros key={f.productoId} fila={f} ve={ve} edita={edita} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <TablaDeStock etiqueta="Parámetros por insumo">
+              <thead>
+                <tr className="border-b text-left text-tinta-tenue">
+                  <th scope="col" className="py-2">
+                    Insumo
+                  </th>
+                  {ve.minimo && <th scope="col">Stock mínimo</th>}
+                  {ve.minimo && <th scope="col">Mínimo por depósito</th>}
+                  {ve.habitual && <th scope="col">Depósito habitual</th>}
+                  {ve.frecuencia && <th scope="col">Frecuencia de conteo</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {filas.map((f) => (
+                  <FilaDeParametros key={f.productoId} fila={f} ve={ve} edita={edita} />
+                ))}
+              </tbody>
+            </TablaDeStock>
           )}
-        </section>
+        </div>
       )}
     </div>
   );

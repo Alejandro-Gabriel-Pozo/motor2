@@ -1,3 +1,4 @@
+import { TablaDeStock } from "@/components/stock/tabla-de-stock";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -40,7 +41,7 @@ export default async function StockConsolidadoPage() {
           <p className="mb-2">
             Esta mercadería ya salió de una sucursal y todavía no entró en otra: no suma en el &quot;Teórico&quot; de ninguna, pero no se perdió.
           </p>
-          <table className="w-full">
+          <TablaDeStock etiqueta="Detalle del stock en tránsito">
             <thead>
               <tr className="border-b border-aviso text-left">
                 <th className="py-1">Producto</th>
@@ -61,10 +62,10 @@ export default async function StockConsolidadoPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </TablaDeStock>
         </section>
       )}
-      <table className="w-full text-sm">
+      <TablaDeStock etiqueta="Existencias por insumo y depósito">
         <thead>
           <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Producto</th>
@@ -98,7 +99,7 @@ export default async function StockConsolidadoPage() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </TablaDeStock>
       {!filas.length && <p className="text-sm text-tinta-tenue">No hay productos elegibles (MP, o PV &quot;Se produce&quot;) todavía.</p>}
     </div>
   );

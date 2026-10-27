@@ -1,3 +1,4 @@
+import { TablaDeStock } from "@/components/stock/tabla-de-stock";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -43,53 +44,51 @@ export default async function AlertasStockPage() {
       {alertas.length > 0 && !cambiaMinimo && (
         <p className="mb-3 text-sm text-tinta-suave">Cambiar un mínimo pide el permiso de edición de «Stock mínimo»: tu rol solo puede ver las alertas.</p>
       )}
-      <div role="region" aria-label="Alertas de stock" tabIndex={0} className="relative overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-tinta-tenue">
-              <th className="py-2">Insumo</th>
-              <th>Depósito</th>
-              <th>Saldo actual</th>
-              <th>Mínimo</th>
-              <th>Diferencia</th>
-              <th>Estado</th>
-              <th>Último movimiento</th>
-              {cambiaMinimo && (
-                <th>
-                  <span className="sr-only">Acción</span>
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {alertas.map((a) => {
-              const fila = cambiaMinimo ? filaDeMinimoQueRige(minimos, a.productoId, a.seccionId) : null;
-              return (
-                <tr key={`${a.productoId}-${a.seccionId}`} className="border-b">
-                  <td className="py-2">
-                    {a.productoCodigo} — {a.productoNombre}
+      <TablaDeStock etiqueta="Alertas de stock">
+        <thead>
+          <tr className="border-b text-left text-tinta-tenue">
+            <th className="py-2">Insumo</th>
+            <th>Depósito</th>
+            <th>Saldo actual</th>
+            <th>Mínimo</th>
+            <th>Diferencia</th>
+            <th>Estado</th>
+            <th>Último movimiento</th>
+            {cambiaMinimo && (
+              <th>
+                <span className="sr-only">Acción</span>
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {alertas.map((a) => {
+            const fila = cambiaMinimo ? filaDeMinimoQueRige(minimos, a.productoId, a.seccionId) : null;
+            return (
+              <tr key={`${a.productoId}-${a.seccionId}`} className="border-b">
+                <td className="py-2">
+                  {a.productoCodigo} — {a.productoNombre}
+                </td>
+                <td>{a.seccionNombre}</td>
+                <td>{a.saldoActual}</td>
+                <td>{a.stockMinimo}</td>
+                <td>{a.diferencia}</td>
+                <td className={a.estado === "CRITICO" ? "text-error font-medium" : "text-aviso-tinta"}>{a.estado === "CRITICO" ? "Crítico" : "Bajo"}</td>
+                <td className="text-tinta-tenue">{a.ultimaFecha ? diaDeCalendario(a.ultimaFecha, ctx.empresaZonaHoraria) : "—"}</td>
+                {cambiaMinimo && (
+                  <td className="whitespace-nowrap">
+                    {fila && (
+                      <EnlaceInterno href={`/stock/minimo?editar=${fila.id}`} aria-label={`Cambiar mínimo de ${a.productoNombre} en ${a.seccionNombre}`}>
+                        Cambiar mínimo
+                      </EnlaceInterno>
+                    )}
                   </td>
-                  <td>{a.seccionNombre}</td>
-                  <td>{a.saldoActual}</td>
-                  <td>{a.stockMinimo}</td>
-                  <td>{a.diferencia}</td>
-                  <td className={a.estado === "CRITICO" ? "text-error font-medium" : "text-aviso-tinta"}>{a.estado === "CRITICO" ? "Crítico" : "Bajo"}</td>
-                  <td className="text-tinta-tenue">{a.ultimaFecha ? diaDeCalendario(a.ultimaFecha, ctx.empresaZonaHoraria) : "—"}</td>
-                  {cambiaMinimo && (
-                    <td className="whitespace-nowrap">
-                      {fila && (
-                        <EnlaceInterno href={`/stock/minimo?editar=${fila.id}`} aria-label={`Cambiar mínimo de ${a.productoNombre} en ${a.seccionNombre}`}>
-                          Cambiar mínimo
-                        </EnlaceInterno>
-                      )}
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </TablaDeStock>
     </div>
   );
 }

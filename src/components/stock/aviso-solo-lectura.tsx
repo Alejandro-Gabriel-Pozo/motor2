@@ -7,7 +7,7 @@ import { Aviso } from "@/ui/primitivas/aviso";
 export function AvisoSoloLecturaDeStock({ que }: { que: string }) {
   return (
     <Aviso variante="informacion" data-aviso-solo-lectura="">
-      Solo lectura: tu rol puede ver {que}, pero no cambiarlo. Si necesitás cambiarlo, pedíselo a quien administra la sucursal.
+      Solo lectura: tu rol puede ver {que}, pero no hacer cambios. Si hace falta un cambio, pedíselo a quien administra la sucursal.
     </Aviso>
   );
 }

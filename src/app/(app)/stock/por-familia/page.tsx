@@ -1,3 +1,4 @@
+import { TablaDeStock } from "@/components/stock/tabla-de-stock";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -30,7 +31,7 @@ export default async function StockPorFamiliaPage() {
       <p className="mb-4 text-sm text-tinta-tenue">
         Agrupa el stock de todos los productos (distintos proveedores/presentaciones) que comparten el mismo Insumo — solo MP con Insumo asignado.
       </p>
-      <table className="w-full text-sm">
+      <TablaDeStock etiqueta="Existencias por familia">
         <thead>
           <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Grupo</th>
@@ -59,7 +60,7 @@ export default async function StockPorFamiliaPage() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </TablaDeStock>
       {!filas.length && <p className="text-sm text-tinta-tenue">Ningún producto con movimientos tiene un Insumo asignado todavía.</p>}
     </div>
   );

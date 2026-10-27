@@ -38,6 +38,6 @@ describe("formularios de Configuración de Stock con «Ver» solo", () => {
   it("el aviso dice qué se ve y por qué no se puede cambiar, como estado (no interrumpe)", () => {
     const html = renderToStaticMarkup(<AvisoSoloLecturaDeStock que="el stock mínimo" />);
     expect(html).toContain('role="status"');
-    expect(html).toContain("Solo lectura: tu rol puede ver el stock mínimo, pero no cambiarlo.");
+    expect(html).toContain("Solo lectura: tu rol puede ver el stock mínimo, pero no hacer cambios.");
   });
 });
