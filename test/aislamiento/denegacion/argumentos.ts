@@ -135,6 +135,8 @@ const VALORES: Readonly<Record<string, Valor>> = {
   precio: () => 1,
   precioLocal: () => 1,
   minimo: () => 1,
+  // DEC-27 («Cambiar mínimo»): el mínimo que la persona vio; con ids ajenos el pedido tiene que rechazarse igual (producto o depósito de otra empresa).
+  minimoVisto: () => 1,
   numero: () => 99,
   comensales: () => 2,
   orden: () => 1,
