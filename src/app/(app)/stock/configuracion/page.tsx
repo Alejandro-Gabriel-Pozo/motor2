@@ -7,7 +7,7 @@ import { listarSeccionesHabituales } from "@/server/actions/stock/seccion-habitu
 import { listarFrecuenciasConteo } from "@/server/actions/stock/frecuencia-conteo";
 import { EDITORES_DE_PARAMETROS, PESTANAS_DE_CONFIGURACION, RUTA_CONFIGURACION, armarParametrosPorInsumo, type ParametrosDeUnInsumo } from "@/core/stock/public";
 import { FilaDeStock } from "@/components/fila-de-stock";
-import { Enlace } from "@/ui/primitivas/enlace";
+import { EnlaceInterno } from "@/components/enlace-interno";
 
 /**
  * Stock › Configuración (Fase 7, DEC-27; diseño en `docs/diseno-modulo-stock-2026-10-27.md`): la entrada del menú y su primera pestaña, «Parámetros por insumo». La entrada reúne pantallas de los dos
@@ -69,7 +69,7 @@ export default async function ConfiguracionDeStockPage() {
             <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
               {editores.map((e) => (
                 <li key={e.href}>
-                  <Enlace href={e.href}>{e.texto}</Enlace>
+                  <EnlaceInterno href={e.href}>{e.texto}</EnlaceInterno>
                 </li>
               ))}
             </ul>
@@ -109,9 +109,9 @@ const SIN_CARGAR = <span className="text-tinta-tenue">Sin cargar</span>;
 /** Un enlace «Cambiar» al editor, con el nombre del dato y del insumo para el lector de pantalla; solo para quien puede editarlo. */
 function Cambiar({ href, dato, insumo }: { href: string; dato: string; insumo: string }) {
   return (
-    <Enlace href={href} aria-label={`Cambiar ${dato} de ${insumo}`} className="ml-2">
+    <EnlaceInterno href={href} aria-label={`Cambiar ${dato} de ${insumo}`} className="ml-2">
       Cambiar
-    </Enlace>
+    </EnlaceInterno>
   );
 }
 

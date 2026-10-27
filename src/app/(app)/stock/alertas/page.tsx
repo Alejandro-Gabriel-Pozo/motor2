@@ -3,7 +3,7 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
 import { listarStockMinimo } from "@/server/actions/stock/stock-minimo";
-import { Enlace } from "@/ui/primitivas/enlace";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { FilaDeStock } from "@/components/fila-de-stock";
 import { PESTANAS_DE_EXISTENCIAS, filaDeMinimoQueRige } from "@/core/stock/public";
 import type { AccionClave } from "@/core/permisos/acciones";
@@ -78,9 +78,9 @@ export default async function AlertasStockPage() {
                   {cambiaMinimo && (
                     <td className="whitespace-nowrap">
                       {fila && (
-                        <Enlace href={`/stock/minimo?editar=${fila.id}`} aria-label={`Cambiar mínimo de ${a.productoNombre} en ${a.seccionNombre}`}>
+                        <EnlaceInterno href={`/stock/minimo?editar=${fila.id}`} aria-label={`Cambiar mínimo de ${a.productoNombre} en ${a.seccionNombre}`}>
                           Cambiar mínimo
-                        </Enlace>
+                        </EnlaceInterno>
                       )}
                     </td>
                   )}
