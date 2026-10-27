@@ -98,6 +98,17 @@ form[aria-busy="true"] [type="submit"] {
     animation: indicador-enlace-giro 0.8s linear infinite;
   }
 }
+/* En el menú lateral el indicador NO ocupa lugar en el renglón: con un rótulo largo («Carga de ventas sin ticket») el indicador invisible bajaba a otra línea y dejaba un hueco en blanco. Va fijo a la
+   derecha del ítem, centrado en alto. */
+aside nav a {
+  position: relative;
+}
+aside nav a > .indicador-enlace {
+  position: absolute;
+  top: calc(50% - 0.375em);
+  right: 0.5rem;
+  margin-left: 0;
+}
 @keyframes indicador-enlace-giro {
   to {
     transform: rotate(360deg);
