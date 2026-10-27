@@ -299,6 +299,7 @@ export interface ProductoParaEntrada {
 }
 
 export interface CombosDeLaCarta {
-  porPromo: Record<string, { lugares: LugarDeCombo[]; vigencia: VigenciaDePromoAdmin }>;
+  /** `soloSalon`: la promo se vende desde el POS pero no aparece en la carta pública (docs/diseno-promo-solo-salon-2026-10-26.md); su versión de control es la de la vigencia. */
+  porPromo: Record<string, { lugares: LugarDeCombo[]; vigencia: VigenciaDePromoAdmin; soloSalon: boolean }>;
   productos: ProductoParaEntrada[];
 }

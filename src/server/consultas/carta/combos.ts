@@ -16,6 +16,7 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
       select: {
         id: true,
         version: true,
+        soloSalon: true,
         vigenteDesde: true,
         vigenteHasta: true,
         diasDeSemana: true,
@@ -66,6 +67,7 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
       })),
     }));
     porPromo[pr.id] = {
+      soloSalon: pr.soloSalon,
       lugares,
       vigencia: {
         version: pr.version,

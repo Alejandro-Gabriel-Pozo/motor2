@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { guardarSoloSalonPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-solo-salon-promo-carta";
 import { guardarVigenciaPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-vigencia-promo-carta";
 import { guardComandoGuardarSoloSalonPromoCarta } from "../../src/core/features/carta/promos.guard";

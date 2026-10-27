@@ -34,7 +34,6 @@ function contarTypeNumber(fuente: string, ruta: string): Record<string, number> 
 
 const A_ENTERO = (donde: string) => `${donde}: un número entero escrito con \`type="number"\`; pasa a \`CampoNumero tipo="entero"\` (el parser argentino y la validación del tipo, no la notación del navegador).`;
 const A_PORCENTAJE = (donde: string) => `${donde}: un porcentaje escrito con \`type="number"\`; pasa a \`CampoNumero tipo="porcentaje"\`.`;
-const A_IMPORTE = (donde: string) => `${donde}: un importe escrito con \`type="number"\`; pasa a \`CampoNumero tipo="importe"\` (coma decimal, «21.000» son veintiún mil, 2 decimales).`;
 
 const CERCO_TYPE_NUMBER: Cerco = {
   regla: "campo-type-number",
@@ -43,7 +42,6 @@ const CERCO_TYPE_NUMBER: Cerco = {
   motivos: {
     "src/app/(app)/carta/agrupados/page.tsx": A_ENTERO("El orden de un agrupado de la carta"),
     "src/app/(app)/carta/parametrizacion/formularios.tsx": A_ENTERO("Orden, mínimos y máximos de los lugares de la carta") + " Incluye el precio de un ítem (importe).",
-    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": A_IMPORTE("El precio de una promoción en esta sucursal"),
     "src/app/(app)/carta/portal/page.tsx": A_ENTERO("El orden en el portal") + " Incluye los porcentajes del portal (porcentaje).",
     "src/app/(app)/catalogo/unidades/page.tsx": A_ENTERO("Los decimales de una unidad (0 a 6)"),
     "src/app/(app)/reportes/devoluciones/page.tsx": A_ENTERO("«Días atrás» del reporte"),

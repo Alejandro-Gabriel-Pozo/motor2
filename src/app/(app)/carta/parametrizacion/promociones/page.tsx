@@ -12,6 +12,7 @@ import {
   guardarCuposPromoCarta,
   guardarPrecioLocalPromoCarta,
   guardarPromoCarta,
+  guardarSoloSalonPromoCarta,
 } from "@/server/actions/carta/promos";
 import { actualizarActivaEntradaDeCupo, agregarEntradaDeCupo, guardarVigenciaPromoCarta } from "@/server/actions/carta/combos";
 import { precioMinimoPromo } from "@/core/pos/public";
@@ -20,13 +21,14 @@ import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { AgregarEntradaDeLugar } from "../../agregar-entrada-de-lugar";
+import { DondeSeVe } from "./donde-se-ve";
 import { lugaresDelFormulario } from "./lugares-del-formulario";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { CamposCupos, CamposLugares, CamposPromo, CamposVigencia, esFijo, textoDeVigencia } from "../formularios";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
-import { Campo } from "@/ui/primitivas/campo";
+import { CampoNumero } from "@/components/campo-numero";
 
 /** Ayudantes puros de los closures "use server" de esta página (locales a propósito: `use-server-solo-donde-corresponde` solo los acepta definidos en el mismo archivo). */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
@@ -86,7 +88,7 @@ export default async function PromocionesDeCartaPage() {
             const precioLocalVisto = pr.precioLocal;
             const activa = pr.activa;
             const prendidaAca = pr.prendidaAca;
-            const combo = combos.porPromo[pr.id] ?? { lugares: [], vigencia: { version: 1, vigenteDesde: null, vigenteHasta: null, diasDeSemana: null } };
+            const combo = combos.porPromo[pr.id] ?? { lugares: [], vigencia: { version: 1, vigenteDesde: null, vigenteHasta: null, diasDeSemana: null }, soloSalon: false };
             const lugares = combo.lugares;
             const versionDeLaPromo = combo.vigencia.version;
             return (
@@ -96,6 +98,7 @@ export default async function PromocionesDeCartaPage() {
                     <span className="font-medium">{pr.titulo}</span> · ${pr.precioAca.toLocaleString("es-AR")}
                     {pr.precioLocal !== null ? (datos.precioLocalActivo ? " (precio de esta sucursal)" : " (no rige: precio local apagado)") : ""} · {pr.seccionCarta} ·{" "}
                     {!pr.activa ? "apagada en toda la empresa" : pr.prendidaAca ? "prendida acá" : "apagada acá"} ·{" "}
+                    {combo.soloSalon ? "solo salón · " : ""}
                     {pr.cupos.length + lugares.length ? (
                       <>
                         Armable — {pr.cupos.length + lugares.length} cupo{pr.cupos.length + lugares.length === 1 ? "" : "s"}
@@ -143,7 +146,12 @@ export default async function PromocionesDeCartaPage() {
                       }}
                       className="mt-3 flex flex-wrap items-end gap-2"
                     >
-                      <Campo etiqueta="Precio en esta sucursal (vacío = el de la empresa)" name="precioLocal" type="number" min={0} step="0.01" defaultValue={pr.precioLocal ?? ""} />
+                      <div className="flex flex-col gap-1">
+                        <label htmlFor={`precio-local-${id}`} className="text-sm font-medium">
+                          Precio en esta sucursal (vacío = el de la empresa)
+                        </label>
+                        <CampoNumero id={`precio-local-${id}`} name="precioLocal" tipo="importe" etiqueta="El precio en esta sucursal" prefijo="$" defaultValue={pr.precioLocal === null ? "" : String(pr.precioLocal)} />
+                      </div>
                       <BotonDeServidor type="submit" tamano="compacto">
                         Guardar precio de esta sucursal
                       </BotonDeServidor>
@@ -155,6 +163,18 @@ export default async function PromocionesDeCartaPage() {
                       </Dato>
                     </DatosSoloLectura>
                   )}
+
+                  {/* Interruptor «solo salón» (docs/diseno-promo-solo-salon-2026-10-26.md): de la empresa, con la versión que vio la pantalla (la misma de la vigencia). */}
+                  <DondeSeVe
+                    titulo={pr.titulo}
+                    soloSalon={combo.soloSalon}
+                    tieneCupos={pr.cupos.length + lugares.length > 0}
+                    puedeDefinir={puedeDefinirPromos}
+                    guardar={async (fd: FormData) => {
+                      "use server";
+                      return refrescarSiOk(await guardarSoloSalonPromoCarta({ promoCartaId: id, versionEsperada: versionDeLaPromo, soloSalon: fd.get("soloSalon") !== null }));
+                    }}
+                  />
 
                   {/* Cupos (Task #16, docs/plan-promo-combo-2026-09-26.md, D1): con uno o más, la promo pasa a ser ARMABLE en el POS. */}
                   <h3 className="mt-3 text-sm font-medium">Cupos</h3>
