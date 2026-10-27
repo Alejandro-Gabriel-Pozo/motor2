@@ -27,6 +27,9 @@ Estado: PR #130 fusionado en `main` (merge commit `8d9d4930`); las 3 migraciones
 ## 4. Fase 7: módulos que faltan (DEC ratificadas el 2026-10-20)
 Catálogo (DEC-13, 5 entradas; Precio local ya mudado como entrada), Carta (DEC-24: pestañas Hoy · Secciones y géneros · Ítems agrupados; Promociones con el menú del día; Apariencia y publicación), Stock (DEC-27: Existencias y Configuración con Depósitos), Administración (DEC-28), Traspasos (DEC-29), Reportes (DEC-32), y la regla de niveles ver ≠ escribir (DEC-33). Glosario: Depósito, Traslado, Traspaso, Cambio de gerencia. Cada módulo se diseña con la escalera (AGENTS.md).
 
+## 4b. PRIORIDAD (pedido del dueño, 2026-10-27): cerrar el circuito de abastecimiento
+Ver `docs/auditoria-circuito-de-abastecimiento-2026-10-27.md`: la compra simple (N1) anda; faltan costo en el traspaso, idempotencia obligatoria en compras, factura repartida, gastos sin stock y pago al proveedor. Pasa al frente de los módulos restantes de la Fase 7.
+
 ## 5. Diseño pendiente (con la regla del 2026-10-26: niveles 1 a 5 antes de tablas)
 - Piloto clientes/convenios/facturación externa: primera etapa N1 (dos tablas, una columna en `Cuenta`, módulo `convenios`, dos claves); N1b descuento por categoría sin identificar (residente); N3 agente–empresa; N4 tope y cuenta corriente; facturación externa, caja diaria (pendiente #37, revierte la decisión B5), medios de pago.
 - Compras con reparto por sucursal (ADR-029, Etapa C) y sus niveles N0 a N4; reservas (referencia externa mínima); cabecera `Venta` (diferida).
