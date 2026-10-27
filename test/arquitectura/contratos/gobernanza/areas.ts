@@ -59,6 +59,7 @@ export const AREAS: DeclaracionDeAreas = {
   "components/catalogo": ["primitiva-aviso", "primitiva-boton", "primitiva-campo", "primitiva-enlace", "primitiva-insignia", "primitiva-selector", "tokens-visuales"],
   "components/mesas": ["tokens-visuales"],
   "components/receta": ["tokens-visuales"],
+  "components/stock": ["primitiva-aviso"],
   "ui": ["tokens-visuales"],
   // --- trabajo-programado: los crons de vercel.json.
   "app/api/cron": [],
