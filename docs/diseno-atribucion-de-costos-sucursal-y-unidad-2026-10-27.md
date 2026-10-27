@@ -16,8 +16,8 @@ Estado: **PROPUESTA** salvo lo marcado CONFIRMADA. Pedido del dueño (2026-10-27
 - Fuera de alcance: ingresos/ventas por unidad de negocio, sub-centros (jerarquía de centros), prorrateo automático por métrica, cierre de períodos.
 
 ## 2. Actores y contexto
-- **Operador de central** (empresa): carga la factura y la reparte entre sucursales (piso `operador`, decisión del dueño del 2026-10-27).
-- **Operador / encargado de sucursal:** distribuye la parte de SU sucursal entre sus unidades (PROPUESTA: piso `operador`, auditado).
+- **Personal de central** (nivel operador, con membresía en la «Administración central» y en las sucursales destino): carga la factura y la reparte entre sucursales. **Corrección del dueño (2026-10-27): el operario común NO tiene acceso a la central, solo a su sucursal** (ADR-028: el alcance es una lista cerrada de sucursales). El piso `operador` es del permiso; el alcance lo limita: repartir entre varias sucursales exige escritura en todas las destino, validada en el servidor.
+- **Operario de sucursal** (alcance: solo su sucursal): confirma la recepción de su parte, carga sus compras propias (100 % en su sucursal) y distribuye la parte de SU sucursal entre sus unidades (PROPUESTA: piso `operador`, auditado). No ve ni toca partes de otras sucursales ni la bandeja de central.
 - **Administrador:** corrige reparto y distribución ya hechos (siempre como versión nueva con motivo) y configura planes y unidades.
 - **Dueño/gerencia:** lee costos por sucursal y por unidad; ve cuánto está «sin distribuir».
 - Contexto: Argentina (UTC-3). La distribución rige desde `creadoEn` y vale para el período de `FacturaProveedor.fecha` (ADR-031). Las sucursales no ven las partes de otras (RLS por sucursal ya existente).
@@ -90,6 +90,7 @@ Estado: **PROPUESTA** salvo lo marcado CONFIRMADA. Pedido del dueño (2026-10-27
 | **Anular la factura** | Anulación entera y atómica; bloqueada si lo recibido ya se consumió | Las distribuciones quedan como historia y las lecturas las excluyen por estado de la factura |
 | **Nota de crédito sobre gasto distribuido** | Se reparte con su propio importe por sucursal | PROPUESTA: la parte de cada sucursal se acredita en la **misma proporción de la distribución vigente**; si no hay distribución, queda pendiente. Se decide en la etapa de notas de crédito |
 | **Plan desactivado/no aplica a la sucursal** | — | El estado es «no aplica» (no «pendiente»); no aparece en la bandeja |
+| **Operario de una sola sucursal intenta repartir a otra** | Rechazo en el servidor (falta alcance de escritura en la destino); cero filas; no hay forma de «ensanchar» desde la pantalla | — |
 | **Sucursal cerrada o sin operador** | Central puede repartir igual; el costo ya queda imputado | Queda pendiente; central ve el aviso «sucursal con X pendientes»; el administrador puede distribuir |
 
 ## 11. Una pregunta clave para el dueño (cambia el modelo)
