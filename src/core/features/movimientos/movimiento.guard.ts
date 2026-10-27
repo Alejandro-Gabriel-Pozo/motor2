@@ -12,7 +12,8 @@ import type { DatosMovimientoInput, ProcesoGenerico } from "./movimiento.schema"
  * comando, ANTES de abrir la transacción y ANTES de `conPermiso`. Puro: sin Prisma ni permisos.
  *
  * Las 4 validaciones de entrada (items, sección, clave I3, transferencia) son EXACTAMENTE las que antes corrían en línea dentro de
- * `conPermiso` en `src/server/actions/movimientos/movimientos.ts`, en el MISMO orden y con los MISMOS textos. `guardNroFacturaCompra`
+ * `conPermiso` en `src/server/actions/movimientos/movimientos.ts`, en el MISMO orden y con los MISMOS textos (desde E1 la clave I3, además,
+ * es obligatoria: «Falta la clave de reintento: recargá la pantalla.»). `guardNroFacturaCompra`
  * NO va acá: se queda en el caso de uso (`casos-de-uso/registrar-movimiento.ts`), a propósito, por el orden de mensajes (corre DESPUÉS
  * de sección/motivo/destino).
  *
@@ -52,9 +53,11 @@ export function guardComandoRegistrarMovimiento(entrada: unknown, ahora: Date): 
   if (!texto(seccionId)) return rechazar("vacio", "Elegí una sección.");
   const fechaValida = validarFechaOperacion(fecha, ahora);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
-  if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
-    return rechazar("formato", "Clave de reintento inválida.");
-  }
+  // E1 del circuito de abastecimiento (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md): la clave de reintento es OBLIGATORIA, con
+  // los mismos textos que el pago al consignante. Sin ella, un doble clic o un reintento duplicaría stock y dinero; la pantalla la genera al abrirse,
+  // así que si no viene es una llamada a mano o un script: se rechaza sin escribir.
+  if (claveIdempotencia === undefined || claveIdempotencia === null || claveIdempotencia === "") return rechazar("vacio", "Falta la clave de reintento: recargá la pantalla.");
+  if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", "Clave de reintento inválida.");
 
   if (proceso === "TRANSFERENCIA") {
     if (!seccionDestinoId) return rechazar("vacio", "La sección destino no puede estar vacía.");

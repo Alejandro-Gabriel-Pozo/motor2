@@ -23,11 +23,18 @@ export async function chequearIdempotencia(
 ): Promise<ResultadoChequeoIdempotencia> {
   if (!claveIdempotencia) return { estado: "nueva" };
 
-  const existente = await tx.operacion.findUnique({
-    where: { claveIdempotencia },
-    select: { payloadHash: true, resultadoMensaje: true },
-  });
-  return decidirIdempotencia(existente, payloadHash);
+  return decidirIdempotencia(await cargarOperacionPorClaveIdempotencia(tx, claveIdempotencia), payloadHash);
+}
+
+/**
+ * La huella y el mensaje guardados de la `Operacion` que lleva esa clave, o `null` si no hay ninguna VISIBLE para quien lee (la RLS oculta las de otra empresa y el
+ * alcance las de otra sucursal). La usan `chequearIdempotencia` (dentro de la transacción) y el `.catch` de `registrarMovimiento` (fuera de ella, E1).
+ */
+export async function cargarOperacionPorClaveIdempotencia(
+  db: Prisma.TransactionClient,
+  claveIdempotencia: string
+): Promise<{ payloadHash: string | null; resultadoMensaje: string | null } | null> {
+  return db.operacion.findUnique({ where: { claveIdempotencia }, select: { payloadHash: true, resultadoMensaje: true } });
 }
 
 /**
