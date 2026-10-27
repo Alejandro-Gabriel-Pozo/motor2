@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -38,8 +37,17 @@ export default async function MesaPage({ params }: { params: Promise<{ mesaId: s
   const ahora = new Date();
   const detalle = await obtenerDetalleDeMesa(ctx.sucursalId, mesaId, ctx.db, ahora);
   if (!detalle) {
-    // ADR-039: el puesto mostrador no es una mesa; su pantalla es `/mesas/mostrador` (un enlace viejo o un id pegado a mano llega ahí).
-    if ((await obtenerPuestoMostrador(ctx.sucursalId, ctx.db))?.id === mesaId) redirect("/mesas/mostrador");
+    // ADR-039: el puesto mostrador no es una mesa; su pantalla es `/mesas/mostrador`. Un id pegado a mano o un enlace viejo lo dice y lleva ahí (sin `redirect`: bajo un `loading.tsx` cambiaría el 404 y los `role=status`).
+    if ((await obtenerPuestoMostrador(ctx.sucursalId, ctx.db))?.id === mesaId) {
+      return (
+        <div className="space-y-3">
+          <p className="font-semibold">Ese es el mostrador, que tiene su propia pantalla.</p>
+          <Link href="/mesas/mostrador" className="text-sm text-tinta-suave underline hover:text-tinta">
+            Ir al mostrador
+          </Link>
+        </div>
+      );
+    }
     return (
       <div className="space-y-3">
         <p className="font-semibold">No se encontró esa mesa en esta sucursal.</p>

@@ -159,9 +159,11 @@ test("el mostrador: habilitar, abrir sin comensales, pedir, cliente con %, envia
     await expect(page.getByText("No hay una cuenta abierta en el mostrador.")).toBeVisible();
     expect(await prisma.ejemplarTicket.count({ where: { cuenta: { mesa: { sucursalId, tipo: "MOSTRADOR" } } } })).toBe(1);
 
-    // La ruta del puesto por su id redirige a /mesas/mostrador.
+    // La ruta de una mesa con el id del puesto no lo abre como mesa: dice que es el mostrador y lleva a su pantalla.
     const puesto = await prisma.mesa.findFirstOrThrow({ where: { sucursalId, tipo: "MOSTRADOR" } });
     await page.goto(`/mesas/${puesto.id}`);
+    await expect(page.getByText("Ese es el mostrador, que tiene su propia pantalla.")).toBeVisible();
+    await page.getByRole("link", { name: "Ir al mostrador" }).click();
     await page.waitForURL("/mesas/mostrador");
   } finally {
     await prisma.sucursal.update({ where: { id: sucursalId }, data: { maxMesasAbiertas: limiteAntes } });

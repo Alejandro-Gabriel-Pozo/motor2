@@ -11,7 +11,7 @@ import { HabilitarMostrador } from "./habilitar-mostrador";
  * El mostrador del salón (ADR-039, M1): el puesto de venta que atiende en el momento, con ticket, cliente y descuentos como una mesa. Ruta ESTÁTICA (`/mesas/mostrador`): gana frente a la
  * dinámica `/mesas/[mesaId]` (un `mesaId` nunca es la palabra «mostrador»: son `cuid`). Server Component: después de la guarda de Ver de `pos_mesas` y del cupo de lecturas, lee el puesto de la
  * sucursal activa con su cuenta abierta (`obtenerDetalleDelMostrador`) y dibuja la pantalla del puesto (la de la mesa, variante mostrador). Sin puesto habilitado: «Habilitá el mostrador», con el
- * botón solo para quien puede dar de alta mesas (`pos_alta_mesa`, Editar). `/mesas/<id del puesto>` redirige acá.
+ * botón solo para quien puede dar de alta mesas (`pos_alta_mesa`, Editar). `/mesas/<id del puesto>` no lo abre como mesa y lleva acá.
  */
 export default async function MostradorPage() {
   const ctx = await obtenerContextoUsuario();
