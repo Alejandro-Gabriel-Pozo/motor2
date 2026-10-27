@@ -459,11 +459,11 @@ describe("seed demo pizzería La Cuadra", () => {
           (SECCION_DE[codigo] === seccionBarra ? itemsBarra : itemsCocina).push(item);
         }
         if (itemsCocina.length) {
-          const r = await registrarMovimiento({ proceso: "COMPRA", fecha: fechaInicial, seccionId: seccionCocina, nroFactura: "STOCK-INICIAL-COCINA", items: itemsCocina });
+          const r = await registrarMovimiento({ proceso: "COMPRA", fecha: fechaInicial, seccionId: seccionCocina, nroFactura: "STOCK-INICIAL-COCINA", items: itemsCocina, claveIdempotencia: crypto.randomUUID() });
           anotarSiFalla("COMPRA stock inicial cocina", r);
         }
         if (itemsBarra.length) {
-          const r = await registrarMovimiento({ proceso: "COMPRA", fecha: fechaInicial, seccionId: seccionBarra, nroFactura: "STOCK-INICIAL-BARRA", items: itemsBarra });
+          const r = await registrarMovimiento({ proceso: "COMPRA", fecha: fechaInicial, seccionId: seccionBarra, nroFactura: "STOCK-INICIAL-BARRA", items: itemsBarra, claveIdempotencia: crypto.randomUUID() });
           anotarSiFalla("COMPRA stock inicial barra", r);
         }
         // Y una primera tanda de prepizza ya lista para el día 1.
@@ -472,6 +472,7 @@ describe("seed demo pizzería La Cuadra", () => {
           const r = await registrarMovimiento({
             proceso: "PRODUCCION", fecha: new Date(fechaInicial.getTime() + 60 * 60 * 1000), seccionId: seccionCocina,
             items: [{ productoId: idProd(clave), cantidad }],
+            claveIdempotencia: crypto.randomUUID(),
           });
           anotarSiFalla(`PRODUCCION inicial ${clave}`, r);
         }
@@ -517,6 +518,7 @@ describe("seed demo pizzería La Cuadra", () => {
             proveedorId: proveedorPorCodigoSheet.get(proveedorCodigoOperacion),
             nroFactura: `${proveedorCodigoOperacion}-${fecha.toISOString().slice(0, 10)}`,
             items,
+            claveIdempotencia: crypto.randomUUID(),
           });
           anotarSiFalla(`COMPRA ${proveedorCodigoOperacion} ${fecha.toISOString().slice(0, 10)}`, r);
         }
@@ -536,6 +538,7 @@ describe("seed demo pizzería La Cuadra", () => {
             fecha,
             seccionId: seccionCocina,
             items: [{ productoId: idProd("MP011B"), cantidad: cantidadB, precioTotal: Math.round(cantidadB * 2450) }],
+            claveIdempotencia: crypto.randomUUID(),
           });
           anotarSiFalla(`COMPRA MP011B feria ${fecha.toISOString().slice(0, 10)}`, rB);
         }
@@ -552,6 +555,7 @@ describe("seed demo pizzería La Cuadra", () => {
           const r = await registrarMovimiento({
             proceso: "COMPRA", fecha, seccionId: seccionCocina, proveedorId: proveedorPorCodigoSheet.get("PRV_DESCARTABLES"),
             nroFactura: `PRV_DESCARTABLES-${fecha.toISOString().slice(0, 10)}`, items,
+            claveIdempotencia: crypto.randomUUID(),
           });
           anotarSiFalla(`COMPRA descartables ${fecha.toISOString().slice(0, 10)}`, r);
         }
@@ -568,6 +572,7 @@ describe("seed demo pizzería La Cuadra", () => {
           const r = await registrarMovimiento({
             proceso: "COMPRA", fecha, seccionId: seccionBarra, proveedorId: proveedorPorCodigoSheet.get("PRV_BEBIDAS"),
             nroFactura: `PRV_BEBIDAS-${fecha.toISOString().slice(0, 10)}`, items,
+            claveIdempotencia: crypto.randomUUID(),
           });
           anotarSiFalla(`COMPRA bebidas ${fecha.toISOString().slice(0, 10)}`, r);
         }
@@ -587,6 +592,7 @@ describe("seed demo pizzería La Cuadra", () => {
               fecha: new Date(fecha.getTime() - 2 * 60 * 60 * 1000), // se amasa temprano, antes de que abra la cocina de venta
               seccionId: seccionCocina,
               items: [{ productoId: idProd(clave), cantidad }],
+              claveIdempotencia: crypto.randomUUID(),
             });
             anotarSiFalla(`PRODUCCION ${clave} ${fecha.toISOString().slice(0, 10)}`, r);
           }
@@ -645,6 +651,7 @@ describe("seed demo pizzería La Cuadra", () => {
         motivoId: motivoRoto.id,
         detalleLibre: "Se cayó un six-pack al acomodar la heladera.",
         items: [{ productoId: idProd("MX003"), cantidad: 6 }],
+        claveIdempotencia: crypto.randomUUID(),
       });
       anotarSiFalla("MERMA MX003", rMerma);
 
