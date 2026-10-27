@@ -37,15 +37,11 @@ function contarFechasDeTexto(fuente: string, ruta: string): Record<string, numbe
   return cuenta;
 }
 
-const VENCIMIENTO = "El vencimiento de un lote que sale de un `<input type=\"date\">` (`AAAA-MM-DD`): pasa a `fechaDeColumnaDate` / `esDiaISOReal` (el navegador manda un día real, pero el servidor tiene que poder decirlo).";
-
 const CERCO_FECHA_DE_TEXTO: Cerco = {
   regla: "fecha-de-texto-a-mano",
   meta: "0 (lote 6.33: todo día tecleado o de la URL se lee con core/tiempo: esDiaISOReal, inicioDelDia, rangoDeDias)",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src"], extensiones: [".ts", ".tsx"], incluir: (ruta) => !ruta.startsWith("src/core/tiempo/"), contar: contarFechasDeTexto }),
   motivos: {
-    "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": VENCIMIENTO,
-    "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": VENCIMIENTO,
     "src/core/excel.ts": "Fecha de una celda de una planilla importada: se lee con su propio chequeo del formato (`AAAA-MM-DD` o un instante). Pasa a `esDiaISOReal` / `fechaDeColumnaDate` cuando se unifique la lectura de fechas de las planillas.",
     "src/server/actions/reportes/casos-de-uso/sincronizar-dolar.ts": "El día de una cotización que viene de la API de dólar (`dia.fecha`, `AAAA-MM-DD`), no de una persona: pasa a `fechaDeColumnaDate` (medianoche UTC del día) cuando se unifique con la persistencia.",
     "src/server/persistencia/reportes/cotizacion-dolar.ts": "El día de una cotización (`dia.fecha` y `fechaISO`, `AAAA-MM-DD`) como medianoche UTC: pasa a `fechaDeColumnaDate`.",

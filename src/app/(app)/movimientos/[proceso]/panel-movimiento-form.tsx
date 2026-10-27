@@ -312,7 +312,7 @@ export function PanelMovimientoForm({
         <div className="min-w-36 flex-1">
           <CampoFecha etiqueta="Fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
         </div>
-        <div className="min-w-36 flex-1">
+        <div className="min-w-52 flex-1">
           <Selector etiqueta={config.proceso === "TRANSFERENCIA" ? "Depósito de origen" : "Depósito"} value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required>
             <option value="">Elegí un depósito</option>
             {secciones.map((s) => (
@@ -328,7 +328,7 @@ export function PanelMovimientoForm({
           </Selector>
         </div>
         {config.proceso === "TRANSFERENCIA" && (
-          <div className="min-w-36 flex-1">
+          <div className="min-w-52 flex-1">
             <Selector etiqueta="Depósito de destino" value={seccionDestinoId} onChange={(e) => setSeccionDestinoId(e.target.value)} required>
               <option value="">Elegí un depósito</option>
               {secciones.filter((s) => s.id !== seccionId).map((s) => (

@@ -24,7 +24,7 @@ export default async function ReclasificarPage() {
       <FilaDeMovimientos ctx={ctx} actual="/stock/reclasificar" />
       <div className="max-w-2xl">
         <p className="mb-4 text-sm text-tinta-tenue">
-          Repartí TODO el saldo disponible de un producto (en una sección/lote puntual) entre uno o más destinos — la suma de los destinos tiene que coincidir exacto con lo disponible.
+          Repartí TODO el saldo disponible de un producto (en un depósito/lote puntual) entre uno o más destinos — la suma de los destinos tiene que coincidir exacto con lo disponible.
         </p>
         <ReclasificarForm secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))} />
       </div>

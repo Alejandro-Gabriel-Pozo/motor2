@@ -26,8 +26,8 @@ test("rechaza un destino con más decimales de los que admite la unidad y no toc
     const comboProducto = page.getByRole("combobox", { name: "Producto" });
     await comboProducto.fill(producto.nombre);
     await page.getByRole("option", { name: new RegExp(producto.nombre) }).click();
-    await page.getByRole("combobox", { name: "Sección origen" }).selectOption({ label: "Depósito E2E" });
-    await page.getByRole("combobox", { name: "Sección", exact: true }).selectOption({ label: destino.nombre });
+    await page.getByRole("combobox", { name: "Depósito de origen" }).selectOption({ label: "Depósito E2E" });
+    await page.getByRole("combobox", { name: "Depósito", exact: true }).selectOption({ label: destino.nombre });
     await page.locator("label:has-text('Cantidad') input").first().fill("9,996");
     await page.getByRole("button", { name: "Reclasificar", exact: true }).click();
 

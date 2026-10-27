@@ -13,7 +13,7 @@ import { Boton } from "@/ui/primitivas/boton";
 import { Campo } from "@/ui/primitivas/campo";
 import { Selector } from "@/ui/primitivas/selector";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
-import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal, fechaDeColumnaDate, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
 
 interface FilaDestino {
   seccionId: string;
@@ -22,6 +22,12 @@ interface FilaDestino {
 }
 
 const DESTINO_VACIO: FilaDestino = { seccionId: "", loteVencimiento: "", cantidad: "" };
+
+/** El lote («AAAA-MM-DD», de un <input type="date">) como el `Date` de una columna DATE; vacío = sin lote puntual (`null`); un día que no existe = `undefined` (no se corre al día siguiente: se avisa). */
+function loteComoFecha(texto: string): Date | null | undefined {
+  if (texto === "") return null;
+  return esDiaISOReal(texto) ? fechaDeColumnaDate(texto) : undefined;
+}
 
 // El día de hoy en Argentina (no en UTC: desde las 21:00 locales UTC ya es mañana). Esta pantalla no recibe la zona de la empresa, así que usa la constante.
 function hoyISO() {
@@ -37,6 +43,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
   const [loteOrigen, setLoteOrigen] = useState("");
   const [detalle, setDetalle] = useState("");
   const [destinos, setDestinos] = useState<FilaDestino[]>([{ ...DESTINO_VACIO }]);
+  const [lotesInvalidos, setLotesInvalidos] = useState<{ origen: boolean; destinos: number[] }>({ origen: false, destinos: [] });
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -54,11 +61,13 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
   // origen/lote origen.
   useEffect(() => {
     let cancelado = false;
-    // Sin producto/sección origen todavía, la propia acción devuelve null. Si la lectura FALLA (sesión vencida, sin conexión),
+    const lote = loteComoFecha(loteOrigen);
+    // Sin producto/depósito origen todavía, la propia acción devuelve null. Si la lectura FALLA (sesión vencida, sin conexión),
     // `leerServidor` devuelve `undefined` (un saldo nunca lo es): se avisa, y si fue por la sesión el refresco manda al login.
     // Nunca rechaza: fire-and-forget explícito, no una promesa sin manejar.
     void leerServidor(
-      () => obtenerSaldoDisponibleParaReclasificar(productoId, seccionOrigenId, loteOrigen ? new Date(loteOrigen) : null),
+      // Un lote con un día que no existe no se consulta (se avisa al reclasificar): el saldo queda sin mostrar.
+      () => (lote === undefined ? Promise.resolve(null) : obtenerSaldoDisponibleParaReclasificar(productoId, seccionOrigenId, lote)),
       () => {
         if (cancelado) return;
         setDisponible(null);
@@ -95,9 +104,18 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Un día de lote que no existe (30 de febrero) no se corre al 2 de marzo: se avisa junto al campo y no se envía.
+    const origenInvalido = loteComoFecha(loteOrigen) === undefined;
+    const destinosInvalidos = destinos.flatMap((d, i) => (d.seccionId && d.cantidad !== "" && loteComoFecha(d.loteVencimiento) === undefined ? [i] : []));
+    setLotesInvalidos({ origen: origenInvalido, destinos: destinosInvalidos });
+    if (origenInvalido || destinosInvalidos.length) {
+      setMensaje(null);
+      return;
+    }
+
     const destinosValidos: DestinoReclasificacion[] = destinos
       .filter((d) => d.seccionId && d.cantidad !== "")
-      .map((d) => ({ seccionId: d.seccionId, loteVencimiento: d.loteVencimiento ? new Date(d.loteVencimiento) : null, cantidad: numeroDelCampo(d.cantidad) ?? NaN }));
+      .map((d) => ({ seccionId: d.seccionId, loteVencimiento: loteComoFecha(d.loteVencimiento) ?? null, cantidad: numeroDelCampo(d.cantidad) ?? NaN }));
 
     if (!destinosValidos.length) {
       setMensaje("Agregá al menos un destino.");
@@ -109,7 +127,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
       const resultado = await reclasificarStock({
         productoId,
         seccionOrigenId,
-        loteOrigen: loteOrigen ? new Date(loteOrigen) : null,
+        loteOrigen: loteComoFecha(loteOrigen) ?? null,
         destinos: destinosValidos,
         fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
         detalle: detalle || undefined,
@@ -137,10 +155,10 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
         </label>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="min-w-0 flex-1">
-          <Selector etiqueta="Sección origen" value={seccionOrigenId} onChange={(e) => setSeccionOrigenId(e.target.value)} required>
-            <option value="">Elegí una sección</option>
+          <Selector etiqueta="Depósito de origen" value={seccionOrigenId} onChange={(e) => setSeccionOrigenId(e.target.value)} required>
+            <option value="">Elegí un depósito</option>
             {secciones.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.nombre}
@@ -149,7 +167,12 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
           </Selector>
         </div>
         <div className="min-w-0 flex-1">
-          <CampoFecha etiqueta="Lote origen (opcional — vacío = total sin lote puntual)" value={loteOrigen} onChange={(e) => cambiarLoteOrigen(e.target.value)} />
+          <CampoFecha
+            etiqueta="Lote origen (opcional — vacío = total sin lote puntual)"
+            value={loteOrigen}
+            onChange={(e) => cambiarLoteOrigen(e.target.value)}
+            error={lotesInvalidos.origen ? "Ese día no existe: elegí un vencimiento real (día/mes/año)." : undefined}
+          />
         </div>
       </div>
 
@@ -172,9 +195,9 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
         </span>
         {destinos.map((d, idx) => (
           <div key={idx} className="flex flex-wrap items-end gap-2 rounded border p-2">
-            <div className="min-w-40 flex-1">
-              <Selector etiqueta="Sección" tamano="compacto" value={d.seccionId} onChange={(e) => actualizarDestino(idx, { seccionId: e.target.value })} required>
-                <option value="">Elegí una sección</option>
+            <div className="min-w-52 flex-1">
+              <Selector etiqueta="Depósito" tamano="compacto" value={d.seccionId} onChange={(e) => actualizarDestino(idx, { seccionId: e.target.value })} required>
+                <option value="">Elegí un depósito</option>
                 {secciones.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.nombre}
@@ -183,7 +206,13 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
               </Selector>
             </div>
             <div className="w-44">
-              <CampoFecha etiqueta="Lote destino (opcional)" tamano="compacto" value={d.loteVencimiento} onChange={(e) => actualizarDestino(idx, { loteVencimiento: e.target.value })} />
+              <CampoFecha
+                etiqueta="Lote destino (opcional)"
+                tamano="compacto"
+                value={d.loteVencimiento}
+                onChange={(e) => actualizarDestino(idx, { loteVencimiento: e.target.value })}
+                error={lotesInvalidos.destinos.includes(idx) ? "Ese día no existe: elegí un vencimiento real (día/mes/año)." : undefined}
+              />
             </div>
             <label className="flex w-28 flex-col gap-1 text-sm">
               Cantidad

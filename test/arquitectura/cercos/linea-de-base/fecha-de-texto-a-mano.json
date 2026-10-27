@@ -1,18 +1,12 @@
 {
   "regla": "fecha-de-texto-a-mano",
   "meta": "0 (lote 6.33: todo día tecleado o de la URL se lee con core/tiempo: esDiaISOReal, inicioDelDia, rangoDeDias)",
-  "total": 7,
-  "entradas": 5,
+  "total": 3,
+  "entradas": 3,
   "porTipo": {
-    "fecha-de-texto": 7
+    "fecha-de-texto": 3
   },
   "cuentas": {
-    "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": {
-      "fecha-de-texto": 1
-    },
-    "src/app/(app)/stock/reclasificar/reclasificar-form.tsx": {
-      "fecha-de-texto": 3
-    },
     "src/core/excel.ts": {
       "fecha-de-texto": 1
     },
