@@ -35,7 +35,7 @@ export default async function StockPorFamiliaPage() {
           <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Grupo</th>
             <th>Insumo</th>
-            <th>Sección</th>
+            <th>Depósito</th>
             <th>Saldo</th>
             <th>Productos incluidos</th>
           </tr>

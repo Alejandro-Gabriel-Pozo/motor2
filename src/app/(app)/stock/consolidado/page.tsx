@@ -69,7 +69,7 @@ export default async function StockConsolidadoPage() {
           <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Producto</th>
             <th>Insumo</th>
-            <th>Sección</th>
+            <th>Depósito</th>
             <th>Lote</th>
             <th>Teórico</th>
             <th>Último físico</th>

@@ -43,7 +43,7 @@ export async function setStockMinimoProductoCasoDeUso(
 
   if (seccionId) {
     const seccion = await actor.db.seccion.findUnique({ where: { id: seccionId } });
-    if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
+    if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró el depósito.");
     if (comando.minimoVisto !== undefined) {
       return cambiarConElValorVisto(actor, { productoId, seccionId, minimo, visto: comando.minimoVisto }, `Stock mínimo de "${producto.nombre}" en "${seccion.nombre}"`);
     }

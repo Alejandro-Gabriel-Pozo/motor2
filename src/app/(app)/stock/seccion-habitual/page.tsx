@@ -46,14 +46,14 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
         <div>
           <p className="mb-4 max-w-prose text-sm text-tinta-suave">
-            Al cerrar una cuenta del salón, cada producto se descuenta primero de su sección habitual; si ahí no alcanza, de otra sección con stock
-            (la que vence antes). Un producto sin sección habitual sale directamente de donde haya stock.
+            Al cerrar una cuenta del salón, cada producto se descuenta primero de su depósito habitual; si ahí no alcanza, de otro depósito con stock
+            (el que vence antes). Un producto sin depósito habitual sale directamente de donde haya stock.
           </p>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Producto</th>
-                <th>Sección habitual</th>
+                <th>Depósito habitual</th>
                 <th><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
@@ -78,7 +78,7 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
               ))}
             </tbody>
           </table>
-          {!filas.length && <p className="mt-3 text-sm text-tinta-suave">Ningún producto tiene sección habitual en «{ctx.sucursalNombre}».</p>}
+          {!filas.length && <p className="mt-3 text-sm text-tinta-suave">Ningún producto tiene depósito habitual en «{ctx.sucursalNombre}».</p>}
         </div>
 
         <div>

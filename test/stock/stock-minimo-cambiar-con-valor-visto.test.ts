@@ -88,7 +88,7 @@ describe("cambiar el stock mínimo con el valor visto", () => {
     const otra = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const depositoAjeno = await sembrarSeccion(otra.id, "Barra Norte");
     await prisma.stockMinimoProducto.create({ data: { sucursalId: otra.id, productoId: mpId, seccionId: depositoAjeno.id, minimo: 3 } });
-    expect(await setStockMinimoProducto(mpId, 8, depositoAjeno.id, 3)).toMatchObject({ ok: false, mensaje: "No se encontró la sección." });
+    expect(await setStockMinimoProducto(mpId, 8, depositoAjeno.id, 3)).toMatchObject({ ok: false, mensaje: "No se encontró el depósito." });
     expect(Number((await prismaAdmin.stockMinimoProducto.findFirstOrThrow({ where: { seccionId: depositoAjeno.id } })).minimo)).toBe(3);
   });
 

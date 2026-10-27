@@ -57,7 +57,7 @@ export function SeccionHabitualForm({
       className="flex flex-col gap-3"
     >
       <fieldset disabled={soloLectura} className="flex min-w-0 flex-col gap-3">
-        <h2 className="font-medium">{editando ? "Editar sección habitual" : "Fijar sección habitual"}</h2>
+        <h2 className="font-medium">{editando ? "Editar depósito habitual" : "Fijar depósito habitual"}</h2>
 
         <label className="flex flex-col gap-1 text-sm">
           Producto
@@ -71,8 +71,8 @@ export function SeccionHabitualForm({
           />
         </label>
 
-        <Selector etiqueta="Sección habitual" value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required>
-          <option value="">Elegí una sección</option>
+        <Selector etiqueta="Depósito habitual" value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required>
+          <option value="">Elegí un depósito</option>
           {secciones.map((s) => (
             <option key={s.id} value={s.id}>
               {s.nombre}

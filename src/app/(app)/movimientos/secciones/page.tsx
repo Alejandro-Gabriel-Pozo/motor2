@@ -33,16 +33,16 @@ export default async function SeccionesPage() {
         {/* DEC-33: con «Ver» solo, la tabla sin formularios ni botones (el servidor rechaza igual cualquier cambio). */}
         {!puedeEditar && <AvisoSoloLecturaDeStock que="los depósitos" />}
         <p className="text-sm text-tinta-suave">
-          Si una sección no sirve de respaldo, las ventas del salón solo la usan cuando es la sección habitual de un producto.
+          Si un depósito no sirve de respaldo, las ventas del salón solo lo usan cuando es el depósito habitual de un producto.
         </p>
       </div>
 
-      <div role="region" aria-label="Secciones de esta sucursal" tabIndex={0} className="relative overflow-x-auto">
+      <div role="region" aria-label="Depósitos de esta sucursal" tabIndex={0} className="relative overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Nombre</th>
-              <th>Activa</th>
+              <th>Activo</th>
               <th>Respaldo automático en ventas</th>
               <th><span className="sr-only">Acciones</span></th>
             </tr>
@@ -60,7 +60,7 @@ export default async function SeccionesPage() {
                       className="flex gap-1"
                     >
                       <div className="w-40">
-                        <Campo name="nombre" aria-label={`Nombre de la sección "${s.nombre}"`} defaultValue={s.nombre} tamano="compacto" />
+                        <Campo name="nombre" aria-label={`Nombre del depósito "${s.nombre}"`} defaultValue={s.nombre} tamano="compacto" />
                       </div>
                       <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                         <IconoDeAccion id="editar" />
@@ -121,7 +121,7 @@ export default async function SeccionesPage() {
           className="flex max-w-md gap-2"
         >
           <div className="flex-1">
-            <Campo name="nombre" aria-label="Nombre de la sección" placeholder="nombre del depósito" required />
+            <Campo name="nombre" aria-label="Nombre del depósito" placeholder="nombre del depósito" required />
           </div>
           <BotonDeServidor type="submit">Crear</BotonDeServidor>
         </FormConResultado>

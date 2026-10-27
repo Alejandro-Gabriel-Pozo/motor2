@@ -33,10 +33,10 @@ describe("secciones: mensajes, orden de los chequeos y refresco", () => {
   };
 
   it("alta: vacío; repetido (con el nombre tipeado); éxito con id y nombre; refresca solo el éxito", async () => {
-    expect(await crearSeccion("  ")).toEqual({ ok: false, mensaje: "El nombre de la sección no puede estar vacío." });
-    expect(await crearSeccion(" Barra ")).toMatchObject({ ok: true, mensaje: 'Sección "Barra" creada.', nombre: "Barra" });
+    expect(await crearSeccion("  ")).toEqual({ ok: false, mensaje: "El nombre del depósito no puede estar vacío." });
+    expect(await crearSeccion(" Barra ")).toMatchObject({ ok: true, mensaje: 'Depósito "Barra" creado.', nombre: "Barra" });
     expect(refrescos()).toBe(1);
-    expect(await crearSeccion("BARRA")).toEqual({ ok: false, mensaje: 'Ya existe una sección "BARRA" en esta sucursal (las secciones no distinguen mayúsculas/espacios).' });
+    expect(await crearSeccion("BARRA")).toEqual({ ok: false, mensaje: 'Ya existe un depósito "BARRA" en esta sucursal (los nombres no distinguen mayúsculas/espacios).' });
     expect(refrescos()).toBe(0);
   });
 
@@ -46,11 +46,11 @@ describe("secciones: mensajes, orden de los chequeos y refresco", () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const ajena = await prisma.seccion.create({ data: { sucursalId: norte.id, nombre: "Barra Norte" } });
     expect(await renombrarSeccion("cnoexiste000000000000000", " ")).toEqual({ ok: false, mensaje: "El nombre no puede estar vacío." });
-    expect(await renombrarSeccion("cnoexiste000000000000000", "Depósito")).toEqual({ ok: false, mensaje: "No se encontró la sección." });
-    expect(await renombrarSeccion(ajena.id, "Depósito")).toEqual({ ok: false, mensaje: "No se encontró la sección." });
-    expect(await renombrarSeccion(barra.id, "cocina")).toEqual({ ok: false, mensaje: 'Ya existe una sección "Cocina" en esta sucursal.' });
+    expect(await renombrarSeccion("cnoexiste000000000000000", "Depósito")).toEqual({ ok: false, mensaje: "No se encontró el depósito." });
+    expect(await renombrarSeccion(ajena.id, "Depósito")).toEqual({ ok: false, mensaje: "No se encontró el depósito." });
+    expect(await renombrarSeccion(barra.id, "cocina")).toEqual({ ok: false, mensaje: 'Ya existe un depósito "Cocina" en esta sucursal.' });
     expect(refrescos()).toBe(0);
-    expect(await renombrarSeccion(barra.id, "  Barra principal ")).toEqual({ ok: true, mensaje: 'Sección renombrada a "Barra principal".' });
+    expect(await renombrarSeccion(barra.id, "  Barra principal ")).toEqual({ ok: true, mensaje: 'Depósito renombrado a "Barra principal".' });
     expect(refrescos()).toBe(1);
   });
 
@@ -58,18 +58,18 @@ describe("secciones: mensajes, orden de los chequeos y refresco", () => {
     const barra = await prisma.seccion.create({ data: { sucursalId, nombre: "Barra" } });
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const ajena = await prisma.seccion.create({ data: { sucursalId: norte.id, nombre: "Barra Norte" } });
-    expect(await actualizarActivaSeccion(ajena.id, false)).toEqual({ ok: false, mensaje: "No se encontró la sección." });
+    expect(await actualizarActivaSeccion(ajena.id, false)).toEqual({ ok: false, mensaje: "No se encontró el depósito." });
     expect(refrescos()).toBe(0);
-    expect(await actualizarActivaSeccion(barra.id, false)).toEqual({ ok: true, mensaje: 'Sección "Barra" desactivada.' });
+    expect(await actualizarActivaSeccion(barra.id, false)).toEqual({ ok: true, mensaje: 'Depósito "Barra" desactivado.' });
     expect(refrescos()).toBe(1);
   });
 
   it("respaldo: el valor que no es booleano gana sobre el id roto; un id que no es texto es «no encontrada»; refresca solo el éxito", async () => {
     const barra = await prisma.seccion.create({ data: { sucursalId, nombre: "Barra" } });
     expect(await actualizarRespaldoSeccion(42 as unknown as string, "no" as unknown as boolean)).toEqual({ ok: false, mensaje: "Valor inválido." });
-    expect(await actualizarRespaldoSeccion(42 as unknown as string, false)).toEqual({ ok: false, mensaje: "No se encontró la sección." });
+    expect(await actualizarRespaldoSeccion(42 as unknown as string, false)).toEqual({ ok: false, mensaje: "No se encontró el depósito." });
     expect(refrescos()).toBe(0);
-    expect(await actualizarRespaldoSeccion(barra.id, false)).toEqual({ ok: true, mensaje: 'Sección "Barra" ya no sirve de respaldo automático en ventas.' });
+    expect(await actualizarRespaldoSeccion(barra.id, false)).toEqual({ ok: true, mensaje: 'Depósito "Barra" ya no sirve de respaldo automático en ventas.' });
     expect(refrescos()).toBe(1);
   });
 });

@@ -172,14 +172,14 @@ testAutenticado("movimientos/motivos-merma: sin violaciones de axe", async ({ pa
   // Sin fixture: la migración expand del catálogo (plan "motivos de Consumo/Merma como catálogo administrable", P3) ya
   // sembró 6 Motivo de Merma + 5 Destino de Consumo en cualquier base migrada — las dos tablas nunca están vacías acá.
   await page.goto("/movimientos/motivos-merma");
-  await conTitulo(page, /Motivos de Merma/);
+  await conTitulo(page, /Motivos de merma/);
   await expect(page.getByText("Vencido")).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
 testAutenticado("movimientos/destinos-consumo: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   await page.goto("/movimientos/destinos-consumo");
-  await conTitulo(page, /Destinos de Consumo/);
+  await conTitulo(page, /Destinos de consumo/);
   await expect(page.getByText("Personal")).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
@@ -216,18 +216,18 @@ testAutenticado("stock/seccion-habitual: la tabla con una fila, con «Quitar» a
   await prisma.seccionHabitualProducto.create({ data: { sucursalId, productoId: producto.id, seccionId: seccion.id } });
   try {
     await page.goto("/stock/seccion-habitual");
-    await conTitulo(page, "Sección habitual");
+    await conTitulo(page, "Depósito habitual");
     const fila = page.locator("tr", { hasText: producto.nombre });
     await expect(fila).toContainText(seccion.nombre);
     expect((await new AxeBuilder({ page }).analyze()).violations, "modo claro").toEqual([]);
 
-    await fila.getByRole("button", { name: `Quitar la sección habitual de ${producto.nombre}` }).click();
+    await fila.getByRole("button", { name: `Quitar el depósito habitual de ${producto.nombre}` }).click();
     await expect(fila.getByRole("button", { name: "Sí, quitar" })).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations, "«Quitar» a confirmar").toEqual([]);
 
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/stock/seccion-habitual");
-    await conTitulo(page, "Sección habitual");
+    await conTitulo(page, "Depósito habitual");
     await expect(page.locator("tr", { hasText: producto.nombre })).toBeVisible();
     // En oscuro se audita el contenido de la pantalla (`main`), no el marco de la app: el menú y el encabezado (text-neutral-500 sobre
     // #0a0a0a, 4,17:1) ya fallaban el contraste en modo oscuro antes de esta pantalla — hallazgo aparte, fuera de este cambio.
@@ -1594,7 +1594,7 @@ testAutenticado(
 
     try {
       await page.goto("/stock/consolidado");
-      await conTitulo(page, "Stock consolidado");
+      await conTitulo(page, "Existencias · Consolidado");
       const aviso = page.getByRole("region", { name: "Stock en tránsito entre sucursales" });
       await expect(aviso).toBeVisible();
       const fila = aviso.getByRole("row", { name: new RegExp(mp.codigo) });

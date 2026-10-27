@@ -17,7 +17,7 @@ describe("guardComandoSeccionHabitual", () => {
 
   it("sin sección (vacía, espacios o no string)", () => {
     for (const seccionId of ["", "   ", null, 42 as unknown]) {
-      expect(guardComandoSeccionHabitual({ productoId: "p1", seccionId })).toMatchObject({ ok: false, codigo: "vacio", mensaje: "Elegí la sección habitual." });
+      expect(guardComandoSeccionHabitual({ productoId: "p1", seccionId })).toMatchObject({ ok: false, codigo: "vacio", mensaje: "Elegí el depósito habitual." });
     }
   });
 });
@@ -29,7 +29,7 @@ describe("guardComandoEliminarSeccionHabitual", () => {
 
   it("un id que no es texto es «no encontrada» (sin leer la base)", () => {
     for (const id of [undefined, null, 42, {}]) {
-      expect(guardComandoEliminarSeccionHabitual({ id })).toEqual({ ok: false, codigo: "formato", mensaje: "No se encontró esa sección habitual." });
+      expect(guardComandoEliminarSeccionHabitual({ id })).toEqual({ ok: false, codigo: "formato", mensaje: "No se encontró ese depósito habitual." });
     }
   });
 });
