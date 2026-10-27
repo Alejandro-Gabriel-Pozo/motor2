@@ -11,5 +11,5 @@ import { PestanasDeRuta } from "@/ui/componentes/navegacion/pestanas-de-ruta";
 export async function FilaDeMovimientos({ ctx, actual, visibles }: { ctx: ContextoUsuario; actual: string | null; visibles?: ReadonlySet<AccionClave> }) {
   const procesos = await procesosVisiblesDelSelector(ctx, visibles);
   if (procesos.length === 0) return null;
-  return <PestanasDeRuta etiqueta="Qué movimiento registrar" pestanas={procesos.map((p) => ({ href: p.href, texto: p.etiquetaCorta, actual: p.href === actual }))} />;
+  return <PestanasDeRuta etiqueta="Qué movimiento registrar" disposicion="envuelta" pestanas={procesos.map((p) => ({ href: p.href, texto: p.etiquetaCorta, actual: p.href === actual }))} />;
 }
