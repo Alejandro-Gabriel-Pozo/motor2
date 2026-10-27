@@ -1,4 +1,6 @@
 import { IconoDeAccion } from "@/components/iconos";
+import { FilaDeStock } from "@/components/fila-de-stock";
+import { PESTANAS_DE_CONFIGURACION } from "@/core/stock/public";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -21,8 +23,9 @@ export default async function SeccionesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold">Depósitos</h1>
+      <div className="space-y-3">
+        <h1 className="text-xl font-semibold">Configuración · Depósitos</h1>
+        <FilaDeStock ctx={ctx} etiqueta="Qué configurar" pestanas={PESTANAS_DE_CONFIGURACION} ruta="/movimientos/secciones" />
         <p className="text-sm text-tinta-suave">
           Si una sección no sirve de respaldo, las ventas del salón solo la usan cuando es la sección habitual de un producto.
         </p>

@@ -30,7 +30,9 @@ describe("hrefActivoDelMenu: un solo ítem resaltado, el de la ruta más larga",
   it("ignora la barra final, la consulta y el ancla", () => {
     expect(activo("/reportes/costos/")).toBe("/reportes/costos");
     expect(activo("/reportes/costos?desde=2026-01-01")).toBe("/reportes/costos");
-    expect(activo("/stock/minimo#fila-3")).toBe("/stock/minimo");
+    expect(activo("/carta/tema#fila-3")).toBe("/carta/tema");
+    // DEC-27: el editor del mínimo cuelga de «Configuración» de Stock (ruta de una entrada): resalta la entrada, también con ancla.
+    expect(activo("/stock/minimo#fila-3")).toBe("/stock/configuracion");
   });
 
   it("exige la barra: un prefijo de texto que no es una ruta hija no cuenta", () => {

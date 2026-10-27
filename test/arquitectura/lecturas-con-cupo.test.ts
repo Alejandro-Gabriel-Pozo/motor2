@@ -157,7 +157,7 @@ describe("S-28 (I-3, B31) — toda página de servidor cuenta su pedido en el cu
       if (cupos[0]!.arguments[0]?.getText(fuente) !== "ctx.usuarioId") problemas.push(`${ruta}: lecturaSinCupo cuenta por ctx.usuarioId`);
       if (cupos[0]!.pos < contexto[0]!.pos) problemas.push(`${ruta}: el cupo va DESPUÉS de resolver al usuario`);
       // Antes de cualquier otra llamada que lea la base: los gates (`requierePermiso*`, `sucursalesVisiblesPara`, `obtenerMiNivelPermiso`) y las consultas.
-      const lecturas = ["requierePermisoVer", "requierePermisoVerDeEmpresa", "requierePermisoVerDeAlguna", "sucursalesVisiblesPara", "obtenerMiNivelPermiso", "obtenerMiNivelPermisoDeEmpresa", "obtenerMiNivelPermisoEnAlgunaSucursal", "pantallaDeInicio", "tarjetasDelUsuario"].flatMap((nombre) =>
+      const lecturas = ["requierePermisoVer", "requierePermisoVerDeEmpresa", "requierePermisoVerDeAlguna", "requierePermisoVerDeAlgunaDelMenu", "sucursalesVisiblesPara", "obtenerMiNivelPermiso", "obtenerMiNivelPermisoDeEmpresa", "obtenerMiNivelPermisoEnAlgunaSucursal", "pantallaDeInicio", "tarjetasDelUsuario"].flatMap((nombre) =>
         llamadas(fuente, fuente, nombre),
       );
       for (const lectura of lecturas) if (lectura.pos < cupos[0]!.pos) problemas.push(`${ruta}: el cupo va ANTES de ${lectura.expression.getText(fuente)} (que lee la base)`);

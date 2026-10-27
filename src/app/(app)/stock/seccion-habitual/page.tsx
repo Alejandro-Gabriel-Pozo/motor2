@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { FilaDeStock } from "@/components/fila-de-stock";
+import { PESTANAS_DE_CONFIGURACION } from "@/core/stock/public";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -31,58 +33,61 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
   const filaEnEdicion = editar ? filas.find((f) => f.id === editar) : undefined;
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
-      <div>
-        <h1 className="mb-2 text-xl font-semibold">Sección habitual</h1>
-        <p className="mb-4 max-w-prose text-sm text-tinta-suave">
-          Al cerrar una cuenta del salón, cada producto se descuenta primero de su sección habitual; si ahí no alcanza, de otra sección con stock
-          (la que vence antes). Un producto sin sección habitual sale directamente de donde haya stock.
-        </p>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-tinta-tenue">
-              <th className="py-2">Producto</th>
-              <th>Sección habitual</th>
-              <th><span className="sr-only">Acciones</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((f) => (
-              <tr key={f.id} className="border-b">
-                <td className="py-2">{f.producto.nombre}</td>
-                <td>{f.seccion.nombre}</td>
-                <td>
-                  {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
-                  <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    <Link href={`/stock/seccion-habitual?editar=${f.id}`} className={claseDeBoton("enlace", "en-fila")}>
-                      <IconoDeAccion id="editar" />
-                      Editar
-                    </Link>
-                    <BotonQuitarSeccionHabitual id={f.id} producto={f.producto.nombre} />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!filas.length && <p className="mt-3 text-sm text-tinta-suave">Ningún producto tiene sección habitual en «{ctx.sucursalNombre}».</p>}
-      </div>
-
-      <div>
-        {filaEnEdicion && (
-          <p className="mb-2 text-sm">
-            <Enlace href="/stock/seccion-habitual">← Cancelar edición</Enlace>
+    <div className="flex flex-col gap-4">
+      <h1 className="text-xl font-semibold">Configuración · Depósito habitual</h1>
+      <FilaDeStock ctx={ctx} etiqueta="Qué configurar" pestanas={PESTANAS_DE_CONFIGURACION} ruta="/stock/seccion-habitual" />
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
+        <div>
+          <p className="mb-4 max-w-prose text-sm text-tinta-suave">
+            Al cerrar una cuenta del salón, cada producto se descuenta primero de su sección habitual; si ahí no alcanza, de otra sección con stock
+            (la que vence antes). Un producto sin sección habitual sale directamente de donde haya stock.
           </p>
-        )}
-        <SeccionHabitualForm
-          key={filaEnEdicion?.id ?? "nuevo"}
-          secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
-          filaEnEdicion={
-            filaEnEdicion
-              ? { productoId: filaEnEdicion.productoId, productoEtiqueta: `${filaEnEdicion.producto.codigo} — ${filaEnEdicion.producto.nombre}`, seccionId: filaEnEdicion.seccionId }
-              : undefined
-          }
-        />
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-tinta-tenue">
+                <th className="py-2">Producto</th>
+                <th>Sección habitual</th>
+                <th><span className="sr-only">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((f) => (
+                <tr key={f.id} className="border-b">
+                  <td className="py-2">{f.producto.nombre}</td>
+                  <td>{f.seccion.nombre}</td>
+                  <td>
+                    {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      <Link href={`/stock/seccion-habitual?editar=${f.id}`} className={claseDeBoton("enlace", "en-fila")}>
+                        <IconoDeAccion id="editar" />
+                        Editar
+                      </Link>
+                      <BotonQuitarSeccionHabitual id={f.id} producto={f.producto.nombre} />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!filas.length && <p className="mt-3 text-sm text-tinta-suave">Ningún producto tiene sección habitual en «{ctx.sucursalNombre}».</p>}
+        </div>
+
+        <div>
+          {filaEnEdicion && (
+            <p className="mb-2 text-sm">
+              <Enlace href="/stock/seccion-habitual">← Cancelar edición</Enlace>
+            </p>
+          )}
+          <SeccionHabitualForm
+            key={filaEnEdicion?.id ?? "nuevo"}
+            secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+            filaEnEdicion={
+              filaEnEdicion
+                ? { productoId: filaEnEdicion.productoId, productoEtiqueta: `${filaEnEdicion.producto.codigo} — ${filaEnEdicion.producto.nombre}`, seccionId: filaEnEdicion.seccionId }
+                : undefined
+            }
+          />
+        </div>
       </div>
     </div>
   );

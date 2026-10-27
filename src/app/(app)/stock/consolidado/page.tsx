@@ -2,9 +2,14 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
+import { FilaDeStock } from "@/components/fila-de-stock";
+import { PESTANAS_DE_EXISTENCIAS } from "@/core/stock/public";
+import type { AccionClave } from "@/core/permisos/acciones";
 import { ESTADO_STOCK_CONSOLIDADO_LABEL as ESTADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR as ESTADO_COLOR } from "@/core/stock/public";
 import { calcularStockConsolidado } from "@/server/consultas/stock/consolidado";
 import { calcularStockEnTransito } from "@/server/consultas/stock/en-transito";
+
+const VER_STOCK: ReadonlySet<AccionClave> = new Set<AccionClave>(["ver_stock"]);
 
 export default async function StockConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();
@@ -19,7 +24,11 @@ export default async function StockConsolidadoPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-xl font-semibold">Stock consolidado</h1>
+      <h1 className="mb-3 text-xl font-semibold">Existencias · Consolidado</h1>
+      {/* DEC-27: las tres pestañas de Existencias se ven con ver_stock, que la guarda de arriba ya aprobó. */}
+      <div className="mb-4">
+        <FilaDeStock ctx={ctx} etiqueta="Qué existencias ver" pestanas={PESTANAS_DE_EXISTENCIAS} ruta="/stock/consolidado" visibles={VER_STOCK} />
+      </div>
       <p className="mb-4 text-sm text-tinta-tenue">
         Teórico (libro mayor) vs. último conteo físico. &quot;Diferencia&quot; es la del último conteo — se congela ahí, no se recalcula contra el teórico de hoy.
       </p>

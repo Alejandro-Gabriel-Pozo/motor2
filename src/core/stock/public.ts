@@ -24,3 +24,16 @@ export { resolverProximoConteo } from "./frecuencia-conteo";
 export { whereSeccionHabitualVigente } from "./seccion-habitual";
 export { ESTADO_STOCK_CONSOLIDADO_LABEL } from "./estado-consolidado-ui";
 export { ESTADO_STOCK_CONSOLIDADO_COLOR } from "./estado-consolidado-ui";
+export {
+  CLAVES_DE_PARAMETROS,
+  EDITORES_DE_PARAMETROS,
+  NAV_STOCK,
+  PESTANAS_DE_CONFIGURACION,
+  PESTANAS_DE_EXISTENCIAS,
+  RUTA_CONFIGURACION,
+  RUTAS_DE_LAS_ENTRADAS_DE_STOCK,
+  pestanaActualDeStock,
+} from "./ui-config";
+export type { PantallaDeStock } from "./ui-config";
+export { armarParametrosPorInsumo, filaDeMinimoQueRige } from "./parametros-por-insumo";
+export type { ParametrosDeUnInsumo } from "./parametros-por-insumo";

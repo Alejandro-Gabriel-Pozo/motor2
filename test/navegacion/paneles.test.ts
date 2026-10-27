@@ -44,8 +44,9 @@ describe("cada pantalla del menú declara su panel", () => {
     const panel = (href: string) => TODOS_LOS_ITEMS.find((i) => i.href === href)?.panel;
     expect(panel("/mesas")).toBe("sucursal");
     expect(panel("/movimientos/compra")).toBe("sucursal");
-    expect(panel("/movimientos/motivos-merma")).toBe("empresa");
-    expect(panel("/movimientos/destinos-consumo")).toBe("empresa");
+    // DEC-27: Motivos y Destinos ya no son ítems sino pestañas de «Configuración» de Stock (rutas de una entrada); siguen siendo del panel Empresa.
+    expect(panelDeRuta("/movimientos/motivos-merma")).toBe("empresa");
+    expect(panelDeRuta("/movimientos/destinos-consumo")).toBe("empresa");
   });
 });
 
