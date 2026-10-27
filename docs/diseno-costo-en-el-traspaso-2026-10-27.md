@@ -111,4 +111,35 @@ N0 traspaso sin costo (hasta hoy) · **N1 (esta etapa)**: el traspaso lleva el c
 
 ## 14. Evidencia (línea de base, pruebas y mutaciones)
 
-Se completa al cerrar la etapa (ver abajo, «Cierre de E2»).
+**Línea de base (antes de tocar el código, commit `2da593d9`)**: 1102 archivos `*.test.ts`, 157 specs e2e + 1 de e2e-demo, 146 migraciones, 107 modelos. `test/reportes/costo-en-el-traspaso-reportes.test.ts` se escribió y pasó contra el código SIN E2 y fija, sobre datos sembrados directo en el Kardex como los dejaban las versiones anteriores (compras y ventas en dos sucursales y un traspaso VIEJO a precio 0):
+
+| Sucursal | `totalGastado` | Facturado | Ratio compras/ventas | Costo harina | Valuación total | Sin costo |
+|---|---|---|---|---|---|---|
+| A (origen) | 1480 | 1500 | 98,7 % | 120 | 1320 | 0 |
+| B (destino) | 250 | 1000 | 25 % | sin costo | 250 | 1 |
+
+Después de E2 la primera prueba (datos viejos) pasa **sin tocar una sola aserción**: gasto, ratio, costo y valuación dan exactamente lo mismo. La segunda (un traspaso nuevo de 2,5 kg por las acciones reales) también deja gasto, facturado, ratio y el costo de lo que no viajó idénticos en las dos sucursales; lo único que el commit de E2 cambió son las aserciones del destino: costo de la harina de «sin costo» a 120, valuación de 250 a 910 (5,5 kg × 120 + 250) y un producto menos «sin costo».
+
+**Pruebas nuevas** (todas verdes): `test/traspasos/costo-en-el-traspaso.test.ts` (12), `test/reportes/costo-en-el-traspaso-reportes.test.ts` (2), `test/persistencia/migracion-traspaso-costo-unitario-origen.test.ts` (6) y 3 casos nuevos en la huella `test/persistencia/kardex-escritores-huella.test.ts`.
+
+**Mutaciones** (mutar → rojo → revertir → verde; guion en el scratchpad de la sesión, `src/` limpio al final; con todo revertido, 14 de 14 verdes):
+
+| Mutación | Pruebas en rojo |
+|---|---|
+| M1 líneas del traspaso a precio 0 (`escribirMovimientoDeTraspaso`) | 9 (envío, PULL, compra posterior, reingreso, 8 simultáneas, doble envío, redondeo, venta, traspaso nuevo de la línea de base) |
+| M2 la aprobación no pasa la copia | 2 (PULL, doble envío) |
+| M3 la aceptación usa el costo del origen de AHORA (variante «leer del origen») | 8: con la RLS por sucursal el destino NO ve las compras del origen y la entrada queda en 0 — la misma barrera que descarta la variante A |
+| M4 sin costo se escribe 0 en vez de NULL | 1 (sin costo en el origen) |
+| M5 V-T1 sin el filtro `> 0` | 3 (incluida la de DATOS VIEJOS: el filtro es lo que deja afuera los traspasos viejos a 0) |
+| M6 V-T1 con el reingreso | 1 (el reingreso no pisa la reposición) |
+| M7 la aceptación sin idempotencia I3 | 1 (8 aceptaciones simultáneas) |
+| M8 la aprobación sin guard de transición | 1 (aprobar dos veces) |
+| M9 la aceptación sin guard de transición | 2 (aceptar dos veces; el origen aceptando su propio envío). La sucursal ajena C sigue frenada por la RLS (barrera independiente) |
+| M10 importe en float (`Math.round(c × p × 100) / 100`) | 2 (redondeo: 0,3 × 1234,55 da 370,36 en vez de 370,37; núcleo puro) |
+| M11 V-T1 solo COMPRA | 5 (envío, PULL, compra posterior, venta, traspaso nuevo) |
+
+Migración (`migracion-traspaso-costo-unitario-origen.test.ts`): sin el CHECK → rojo (b); con `DEFAULT 0` → rojo (a), (d), (e); sin la guarda del `down.sql` → rojo (d). Además, ensayada en la base local del carril (`motor2_cx`, 127.0.0.1:5433): subir con `prisma migrate deploy`, bajar con `psql -1 -f down.sql` + marca `rolled_back_at`, subir otra vez; `prisma migrate status` al día.
+
+**Golden regenerado** (`test/persistencia/__golden__/kardex-escritores.golden.json`, declarado en `test/arquitectura/caracterizaciones-congeladas.test.ts`): verificado por programa que los 8 casos anteriores solo suman `costoUnitarioOrigen: null` (sin esa clave, idénticos y en el mismo orden) y que se agregan 3 casos E2 (250,10; 300,12; 1,00). Ningún otro golden ni caracterización cambió.
+
+**Guardianes tocados**: `campos-sensibles.ts` (el campo nuevo, piso administrador), `sin-filas-enteras.test.ts` (`TraspasoSucursal` pasa a modelo sensible; su prueba sintética se actualizó), `escrituras-auditadas.test.ts` (excepción declarada para la copia al aprobar, ADR-040 punto 8), `m1-mostrador-subir-bajar-subir.test.ts` (ya no es la última migración).

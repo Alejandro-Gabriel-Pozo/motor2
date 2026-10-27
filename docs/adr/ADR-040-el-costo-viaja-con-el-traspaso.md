@@ -1,6 +1,6 @@
 # ADR-040: El costo viaja con el traspaso
 
-> Redactado el 2026-10-27 (rama `alegp/carril-x`, etapa E2 del diseño `docs/diseno-circuito-de-abastecimiento-2026-10-27.md`; diseño propio en `docs/diseno-costo-en-el-traspaso-2026-10-27.md`). **Estado: decidido por el dueño el 2026-10-27 (compra mixta; costo = la entrada más reciente, V-T1; columna `TraspasoSucursal.costoUnitarioOrigen` autorizada; el traspaso no mueve el gasto). Implementación en curso en esta rama. La migración es aditiva y REQUIERE AUTORIZACIÓN EXPRESA para aplicarse en una base real: no está aplicada en ninguna (solo en las bases locales de prueba).**
+> Redactado el 2026-10-27 (rama `alegp/carril-x`, etapa E2 del diseño `docs/diseno-circuito-de-abastecimiento-2026-10-27.md`; diseño propio en `docs/diseno-costo-en-el-traspaso-2026-10-27.md`). **Estado: decidido por el dueño el 2026-10-27 (compra mixta; costo = la entrada más reciente, V-T1; columna `TraspasoSucursal.costoUnitarioOrigen` autorizada; el traspaso no mueve el gasto). Implementado en el código de esta rama (evidencia en el §14 del diseño). La migración es aditiva y REQUIERE AUTORIZACIÓN EXPRESA para aplicarse en una base real: no está aplicada en ninguna (solo en las bases locales de prueba).**
 
 ## Contexto
 
