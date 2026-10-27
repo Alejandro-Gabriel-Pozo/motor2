@@ -91,8 +91,8 @@ describe("No comestibles en los reportes", () => {
   }
 
   async function comprarYVender(mes: string) {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d(`${mes}-05`), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }] }); // $50 de comida
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d(`${mes}-05`), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 100 }] }); // $100 de packaging
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d(`${mes}-05`), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() }); // $50 de comida
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d(`${mes}-05`), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }); // $100 de packaging
     const v = await registrarVenta({ fecha: d(`${mes}-06`), seccionId, ventas: [{ productoId: panId, cantidadVendida: 1 }] });
     expect(v.ok, v.mensaje).toBe(true);
   }
@@ -163,8 +163,8 @@ describe("No comestibles en los reportes", () => {
   it("Impacto en recetas: si sube solo el packaging, el costo sube pero el food cost % no se mueve; sin clasificar, sí", async () => {
     await marcarCajaNoComestible();
     // La caja cuesta $10 el 1/8 y $20 el 10/8; la harina, $5 siempre.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }, { productoId: cajaId, cantidad: 10, precioTotal: 100 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-10"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 200 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }, { productoId: cajaId, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-10"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 200 }], claveIdempotencia: crypto.randomUUID() });
 
     const [fila] = await calcularImpactoRecetasPorPeriodo(sucursalId, d("2026-08-05"), prisma);
     expect([fila.costoAntes, fila.costoActual, fila.deltaCosto]).toEqual([20, 30, 10]); // costo total: harina $10 + caja $10 → caja $20

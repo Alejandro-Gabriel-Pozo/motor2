@@ -36,8 +36,8 @@ describe("obtenerReportePorPeriodo — una sola operación sobre recetaVersion",
     const pan = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: kg.id, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pan.id, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 2, unidadId: kg.id }] } } });
     await prisma.recetaVersion.create({ data: { productoId: pan.id, version: 2, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 3, unidadId: kg.id }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 50 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-03"), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 80 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-03"), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 80 }], claveIdempotencia: crypto.randomUUID() });
     for (const dia of ["2026-08-04", "2026-08-05"]) {
       const r = await registrarVenta({ fecha: d(dia), seccionId, ventas: [{ productoId: pan.id, cantidadVendida: 1 }] });
       expect(r.ok, r.mensaje).toBe(true);

@@ -48,7 +48,7 @@ describe("S-09 (D3, defecto): aplicar la diferencia de un conteo al stock exige 
     productos = [];
     for (const codigo of ["MP_A", "MP_B", "MP_C"]) {
       const mp = await sembrarProductoDisponible({ codigo, nombre: `Insumo ${codigo}`, tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       productos.push(mp.id);
     }
   });

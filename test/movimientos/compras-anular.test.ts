@@ -35,6 +35,7 @@ describe("anularCompra", () => {
       proveedorId,
       nroFactura: opciones.nroFactura,
       items: [{ productoId: opciones.productoId ?? harinaId, cantidad: opciones.cantidad ?? 10, precioTotal: opciones.precioTotal ?? 1000, loteVencimiento: opciones.lote }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(r.ok, r.mensaje).toBe(true);
     // La operación de compra más reciente de esa factura.
@@ -313,7 +314,7 @@ describe("anularCompra", () => {
       expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(10);
 
       // Y la recarga, ya vigente, vuelve a ocupar el número.
-      const repetida = await registrarMovimiento({ proceso: "COMPRA", fecha: hoy(), seccionId, proveedorId, nroFactura: "F-9", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10 }] });
+      const repetida = await registrarMovimiento({ proceso: "COMPRA", fecha: hoy(), seccionId, proveedorId, nroFactura: "F-9", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() });
       expect(repetida.ok).toBe(false);
       expect(repetida.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
     });

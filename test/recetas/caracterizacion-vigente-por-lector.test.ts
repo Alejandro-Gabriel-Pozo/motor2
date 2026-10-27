@@ -92,7 +92,7 @@ describe("Caracterización: qué versión de receta usa cada lector (vigente = m
     await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: lineaAzucar(torta5), sucursalId: s2, cantidad: 2.5, mermaPorcentaje: null } });
 
     for (const [p, cantidad, precioTotal] of [[harina.id, 100, 500], [sal.id, 50, 250], [azucar.id, 80, 400]] as const) {
-      const r = await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, items: [{ productoId: p, cantidad, precioTotal }] });
+      const r = await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, items: [{ productoId: p, cantidad, precioTotal }], claveIdempotencia: crypto.randomUUID() });
       expect(r.ok, r.mensaje).toBe(true);
     }
   });
@@ -332,7 +332,7 @@ describe("Caracterización: qué versión de receta usa cada lector (vigente = m
 
   // RECETA (ADR-033, sin receta no se vende): la vigente del Flan (v6) no tiene ingredientes, así que el Flan ya no se vende (antes salía sin consumo).
   it("producción y venta: consumen los ingredientes de la versión vigente (Pan v4, Torta v5); el Flan, con la v6 vacía, no se vende", async () => {
-    const produccion = await registrarMovimiento({ proceso: "PRODUCCION", fecha, seccionId, items: [{ productoId: ids.pan, cantidad: 3 }] });
+    const produccion = await registrarMovimiento({ proceso: "PRODUCCION", fecha, seccionId, items: [{ productoId: ids.pan, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
     expect({ ok: produccion.ok, mensaje: produccion.mensaje }).toMatchInlineSnapshot(`
       {
         "mensaje": "Se guardaron 3 movimiento(s).",

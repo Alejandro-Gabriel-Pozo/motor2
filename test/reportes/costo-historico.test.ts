@@ -66,8 +66,8 @@ describe("Margen real reconstruido en el reporte por período", () => {
     pvId = pan.id;
     harinaId = harina.id;
     // 10 kg a $5 el kilo el 1/8, y 10 kg a $8 el kilo el 3/8.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-03"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 80 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-03"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 80 }], claveIdempotencia: crypto.randomUUID() });
   });
 
   async function vender(dia: string) {
@@ -96,7 +96,7 @@ describe("Margen real reconstruido en el reporte por período", () => {
     const huevo = await sembrarProductoDisponible({ codigo: "MP_HUEVO", nombre: "Huevo", tipo: "MP", unidadStockId: kgTorta.id }, sucursalId);
     const torta = await sembrarProductoDisponible({ codigo: "PV_TORTA", nombre: "Torta", tipo: "PV", unidadStockId: kgTorta.id, precioVenta: 200 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: torta.id, version: 1, ingredientes: { create: [{ insumoProductoId: huevo.id, cantidad: 1, unidadId: kgTorta.id }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: huevo.id, cantidad: 10, precioTotal: 60 }] }); // $6/kg
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: huevo.id, cantidad: 10, precioTotal: 60 }], claveIdempotencia: crypto.randomUUID() }); // $6/kg
 
     // Pan: se vende y se le borra el costo guardado, para que se reconstruya con el historial de compras (harina $8/kg el 3/8).
     await vender("2026-08-04");
@@ -136,7 +136,7 @@ describe("Margen real reconstruido en el reporte por período", () => {
 
   it("guardián de semántica: una compra ANTERIOR al primer día del rango pedido igual costea la venta (no hay que perderla si se acota la consulta por fecha)", async () => {
     // Compra más vieja todavía, para confirmar que gana la MÁS RECIENTE anterior al rango, no cualquiera.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-07-15"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 30 }] }); // $3/kg
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-07-15"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 30 }], claveIdempotencia: crypto.randomUUID() }); // $3/kg
 
     // El rango pedido empieza el 2/8 — la compra del beforeEach (1/8, $5/kg) es ANTERIOR a ese primer día.
     await vender("2026-08-02");

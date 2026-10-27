@@ -57,8 +57,8 @@ describe("Mover un insumo a «No comestibles» cambia el ratio de un período pa
     await prisma.producto.update({ where: { id: cajaId }, data: { insumoId: insumoCajasId } });
 
     // Agosto, por los casos de uso: $50 de harina, $100 de cajas, y un pan vendido a $100.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-05"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-05"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 100 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-05"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-05"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
     const v = await registrarVenta({ fecha: d("2026-08-06"), seccionId, ventas: [{ productoId: panId, cantidadVendida: 1 }] });
     expect(v.ok, v.mensaje).toBe(true);
   });

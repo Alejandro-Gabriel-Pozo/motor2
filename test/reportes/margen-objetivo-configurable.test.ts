@@ -50,7 +50,7 @@ describe("margen objetivo configurable", () => {
     pizzaId = await plato("PV_PIZZA", categoriaPizzaId);
     bebidaId = await plato("PV_BEBIDA", categoriaBebidaId);
     sinCategoriaId = await plato("PV_SIN_CAT", null);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 4000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 4000 }], claveIdempotencia: crypto.randomUUID() });
   });
 
   async function filas() {

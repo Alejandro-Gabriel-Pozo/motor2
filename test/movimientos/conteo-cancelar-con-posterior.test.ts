@@ -43,7 +43,7 @@ describe("M-2: cancelar un conteo con otro posterior se rechaza (CONTEO_POSTERIO
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
     mpId = (await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Yerba", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId)).id;
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
   });
 
   it("el escenario de la auditoría: conteo 1 ajusta -5, conteo 2 confirma 5; cancelar el 1 se rechaza y el saldo sigue en 5 (antes volvía a 10 contra 5 físicos)", async () => {
@@ -122,7 +122,7 @@ describe("M-2: cancelar un conteo con otro posterior se rechaza (CONTEO_POSTERIO
     const [conteo] = await conteos();
     const otroId = (await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId)).id;
     await registrarConteoFisico({ productoId: otroId, seccionId, conteoReal: 1, fechaConteo: new Date(), accion: "AJUSTAR" });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 2 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
 
     const r = await cancelarConteoFisico(conteo.id);
 

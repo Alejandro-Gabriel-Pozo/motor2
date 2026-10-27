@@ -79,7 +79,7 @@ describe("registrarVenta", () => {
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.2, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 3 }] });
     expect(resultado.ok).toBe(true);
@@ -95,8 +95,8 @@ describe("registrarVenta", () => {
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20 }] });
-    const produccion = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 5 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
+    const produccion = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
     expect(produccion.ok).toBe(true);
 
     const saldoMpTrasProducir = await calcularSaldoTotal(mp.id, seccionId, prisma);
@@ -118,7 +118,7 @@ describe("registrarVenta", () => {
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.15, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
     expect(resultado.ok).toBe(true);
@@ -222,7 +222,7 @@ describe("anularVenta", () => {
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.2, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 3 }] });
     const saldoMpTrasVender = await calcularSaldoTotal(mp.id, seccionId, prisma);
     expect(saldoMpTrasVender).toBeCloseTo(10 - 3 * 0.2);
@@ -248,7 +248,7 @@ describe("anularVenta", () => {
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.15, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
 
     const operacionVenta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", sucursalId } });
@@ -267,7 +267,7 @@ describe("anularVenta", () => {
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.2, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
     const operacionVenta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", sucursalId } });
 
@@ -278,7 +278,7 @@ describe("anularVenta", () => {
 
   it("rechaza anular una Operacion que no es Venta", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     const operacionCompra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId } });
 
     const resultado = await anularVenta(operacionCompra.id);

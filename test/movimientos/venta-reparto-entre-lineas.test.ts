@@ -58,6 +58,7 @@ describe("H9: reparto por familia entre líneas de la misma venta", () => {
         { productoId: muzzaA, cantidad: 0.3, loteVencimiento: new Date("2026-10-01") },
         { productoId: muzzaB, cantidad: 0.3, loteVencimiento: new Date("2026-11-01") },
       ],
+      claveIdempotencia: crypto.randomUUID(),
     });
   });
 

@@ -43,7 +43,7 @@ describe("generarReporteVentasSinReceta", () => {
     const sinReceta = await sembrarProductoDisponible({ codigo: "PV_SIN", nombre: "Sin receta", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: conReceta.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: conReceta.id, cantidadVendida: 1 }] }); // sí genera consumo: no debe aparecer
     // RECETA (ADR-033): una venta NUEVA sin receta ya no se registra — con datos nuevos, el reporte (una verificación) da vacío.
     const nueva = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: sinReceta.id, cantidadVendida: 1 }] });
