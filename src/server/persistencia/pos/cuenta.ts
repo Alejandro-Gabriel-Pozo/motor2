@@ -16,6 +16,15 @@ export async function abrirCuentaDeMesa(tx: Prisma.TransactionClient, args: { me
   await tx.cuenta.create({ data: { mesaId: args.mesaId, abiertaPorId: args.abiertaPorId, comensales: args.comensales } });
 }
 
+/**
+ * Abre la cuenta del puesto mostrador (ADR-039): tipo `MOSTRADOR` (la FK con discriminador lo exige) y SIN comensales (el CHECK `Cuenta_comensales_segun_tipo_chk`). A lo sumo una abierta por
+ * puesto en M1 (`Cuenta_una_abierta_por_mesa_key`): el choque lo traduce el caso de uso. Devuelve el id de la cuenta creada.
+ */
+export async function abrirCuentaDeMostrador(tx: Prisma.TransactionClient, args: { mesaId: string; abiertaPorId: string }): Promise<string> {
+  const creada = await tx.cuenta.create({ data: { mesaId: args.mesaId, abiertaPorId: args.abiertaPorId, tipoMesa: "MOSTRADOR" }, select: { id: true } });
+  return creada.id;
+}
+
 /** Cambia los comensales de la cuenta (la cuenta sigue abierta: lo chequea el caso de uso). */
 export async function cambiarComensalesDeCuenta(tx: Prisma.TransactionClient, args: { cuentaId: string; comensales: number }): Promise<void> {
   await tx.cuenta.update({ where: { id: args.cuentaId }, data: { comensales: args.comensales } });

@@ -8,8 +8,20 @@ import type { Db } from "@/lib/db-tipos";
  * después de su propia guarda de Ver de `pos_mesas`: sin guarda de permiso adentro. `ahora` es OBLIGATORIO (O.22-a, Hito 4): lo fija la pantalla en el borde.
  */
 export async function obtenerDetalleDeMesa(sucursalId: string, mesaId: string, db: Db, ahora: Date): Promise<DetalleDeMesa | null> {
+  return leerDetalle(db, { id: mesaId, sucursalId, tipo: "SALON" }, ahora); // ADR-039: el puesto mostrador no se abre como una mesa
+}
+
+/**
+ * El puesto mostrador de la sucursal con su cuenta abierta (si tiene) — el mismo detalle que el de una mesa (`mesa.numero` es 0: el rótulo sale de `rotuloDePuesto`). `null` si la sucursal todavía no habilitó su
+ * mostrador. Aislado por sucursal. En M1 hay a lo sumo una cuenta abierta (M2 la reemplaza por la lista de cuentas). Sin guarda de permiso adentro: la pantalla la pone antes.
+ */
+export async function obtenerDetalleDelMostrador(sucursalId: string, db: Db, ahora: Date): Promise<DetalleDeMesa | null> {
+  return leerDetalle(db, { sucursalId, tipo: "MOSTRADOR" }, ahora);
+}
+
+async function leerDetalle(db: Db, donde: { id?: string; sucursalId: string; tipo: "SALON" | "MOSTRADOR" }, ahora: Date): Promise<DetalleDeMesa | null> {
   const mesa = await db.mesa.findFirst({
-    where: { id: mesaId, sucursalId, tipo: "SALON" }, // ADR-039: el puesto mostrador no se abre como una mesa
+    where: donde,
     include: {
       cuentas: {
         where: { cerradaEn: null },

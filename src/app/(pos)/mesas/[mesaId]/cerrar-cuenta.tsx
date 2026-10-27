@@ -27,6 +27,7 @@ export function CerrarCuenta({
   sinEnviar,
   haySecciones,
   puede,
+  delMostrador,
 }: {
   cuentaId: string;
   titulo: string;
@@ -35,6 +36,8 @@ export function CerrarCuenta({
   /** ¿La sucursal tiene alguna sección activa? Sin ninguna, no hay de dónde descontar la mercadería. */
   haySecciones: boolean;
   puede: boolean;
+  /** ADR-039: el cierre del mostrador no «libera la mesa»: la cuenta queda cerrada y se puede abrir otra. */
+  delMostrador: boolean;
 }) {
   const { ejecutar, pending, error, setError } = useAccionMesa();
   const { pedir } = useImpresion();
@@ -68,7 +71,7 @@ export function CerrarCuenta({
       )}
 
       <Dialogo abierto={abierto} titulo={`Cerrar cuenta · ${titulo}`} onCerrar={cerrar} cerrable={!pending}>
-        <p className="mb-4 text-sm text-tinta-suave">Se registra la venta y la mesa queda libre.</p>
+        <p className="mb-4 text-sm text-tinta-suave">{delMostrador ? "Se registra la venta y la cuenta queda cerrada." : "Se registra la venta y la mesa queda libre."}</p>
         <form
           onSubmit={(e) => {
             e.preventDefault();

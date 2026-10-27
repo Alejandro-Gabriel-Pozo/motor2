@@ -11,6 +11,7 @@ import { AvisoMesaProvider } from "./aviso-mesa";
 import { ImpresionProvider, ReimprimirEnvio } from "./imprimir";
 import { CuentasCerradas } from "./cuentas-cerradas";
 import { AbrirCuenta } from "./abrir-cuenta";
+import { AbrirCuentaDeMostrador } from "./abrir-cuenta-de-mostrador";
 import { ComensalesCuenta } from "./comensales-cuenta";
 import { ClienteCuenta } from "./cliente-cuenta";
 import { AgregarItems } from "./agregar-items";
@@ -26,8 +27,12 @@ import { OtroIgual, OtroIgualProvider } from "./otro-igual";
  * (`/mesas/[mesaId]`) y, después, la del mostrador (`/mesas/mostrador`) sean la MISMA. La página hace lo que es de la ruta (sesión, cupo de lecturas, guarda de Ver de
  * `pos_mesas`, buscar el detalle y el «no se encontró») y le pasa acá el detalle ya leído. Server Component asíncrono: lee los permisos de cada botón, los tickets
  * recientes y, con cuenta abierta, el selector de la carta y los clientes; cada acción vuelve a verificar su permiso en el servidor.
+ *
+ * `variante` (M1.4c): la mesa de siempre, o el MOSTRADOR (título «Mostrador» por el número 0 del puesto, sin comensales, «Nueva cuenta» en lugar de pedir comensales, y los textos del cierre y de
+ * descartar adaptados). Lo demás —pedido, opciones, promos, cliente con %, enviar, anular, cerrar, ticket— es lo mismo, con los mismos permisos.
  */
-export async function PantallaDelPuesto({ ctx, detalle, ahora }: { ctx: ContextoUsuario; detalle: DetalleDeMesa; ahora: Date }) {
+export async function PantallaDelPuesto({ ctx, detalle, ahora, variante }: { ctx: ContextoUsuario; detalle: DetalleDeMesa; ahora: Date; variante: "mesa" | "mostrador" }) {
+  const delMostrador = variante === "mostrador";
   const [tomarPedido, abrirCuenta, enviarACocina, liberarMesa, asignarCliente, anularItem, cerrarCuenta, emitirCorregida, verReportesDinero, secciones, tickets] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_tomar_pedido", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_abrir_cuenta", ctx.db),
@@ -73,11 +78,11 @@ export async function PantallaDelPuesto({ ctx, detalle, ahora }: { ctx: Contexto
           <div>
             <h1 className="mb-1.5 text-2xl font-extrabold leading-none tracking-tight md:text-3xl">{titulo}</h1>
             <p className="text-sm text-tinta-suave">
-              {cuenta ? `Atiende ${cuenta.mesero} · abierta ${cuenta.tiempoAbierta}` : "Libre · sin cuenta abierta"}
+              {cuenta ? `Atiende ${cuenta.mesero} · abierta ${cuenta.tiempoAbierta}` : delMostrador ? "Sin cuenta abierta" : "Libre · sin cuenta abierta"}
             </p>
             {cuenta && (
               <div className="mt-1 flex flex-col gap-1">
-                <ComensalesCuenta cuentaId={cuenta.id} comensales={cuenta.comensales} puede={abrirCuenta.editar} />
+                {!delMostrador && <ComensalesCuenta cuentaId={cuenta.id} comensales={cuenta.comensales} puede={abrirCuenta.editar} />}
                 <ClienteCuenta
                   cuentaId={cuenta.id}
                   clienteId={cuenta.clienteId}
@@ -103,8 +108,8 @@ export async function PantallaDelPuesto({ ctx, detalle, ahora }: { ctx: Contexto
         <OtroIgualProvider>
           {!cuenta ? (
             <div className="rounded-[14px] border border-dashed border-borde bg-superficie px-6 py-8">
-              <p className="mb-4 font-semibold">La mesa está libre.</p>
-              <AbrirCuenta mesaId={mesa.id} puede={abrirCuenta.editar} />
+              <p className="mb-4 font-semibold">{delMostrador ? "No hay una cuenta abierta en el mostrador." : "La mesa está libre."}</p>
+              {delMostrador ? <AbrirCuentaDeMostrador puede={abrirCuenta.editar} /> : <AbrirCuenta mesaId={mesa.id} puede={abrirCuenta.editar} />}
             </div>
           ) : (
             <div className="flex flex-col gap-5">
@@ -163,8 +168,9 @@ export async function PantallaDelPuesto({ ctx, detalle, ahora }: { ctx: Contexto
                   sinEnviar={cuenta.sinEnviar.length}
                   haySecciones={secciones.length > 0}
                   puede={cerrarCuenta.editar}
+                  delMostrador={delMostrador}
                 />
-                {cuenta.itemsTotales === 0 && <LiberarMesa cuentaId={cuenta.id} puede={liberarMesa.editar} />}
+                {cuenta.itemsTotales === 0 && <LiberarMesa cuentaId={cuenta.id} puede={liberarMesa.editar} delMostrador={delMostrador} />}
               </div>
             </div>
           )}
@@ -172,7 +178,7 @@ export async function PantallaDelPuesto({ ctx, detalle, ahora }: { ctx: Contexto
           {verReportesDinero.ver && (
             <p className="mt-3 text-sm">
               <Link href={`/reportes/tickets?mesaId=${mesa.id}`} className="inline-flex min-h-11 items-center text-tinta-suave underline hover:text-tinta md:min-h-0">
-                Ver todos los tickets de esta mesa →
+                Ver todos los tickets {delMostrador ? "del mostrador" : "de esta mesa"} →
               </Link>
             </p>
           )}

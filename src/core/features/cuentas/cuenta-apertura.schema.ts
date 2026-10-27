@@ -66,3 +66,11 @@ export interface ComandoAsignarClienteACuenta {
  * - `CLIENTE_DESACTIVADO`: el cliente existe pero está desactivado (quitarlo de una cuenta que ya lo tenía sí se puede).
  */
 export type ResultadoAsignarClienteACuenta = ResultadoCaso<null, "CUENTA_NO_ABIERTA" | "CLIENTE_NO_ENCONTRADO" | "CLIENTE_DESACTIVADO">;
+
+/**
+ * Lo que produce «abrir la cuenta del mostrador» (ADR-039, M1): `cuentaId` es la cuenta abierta del puesto (la que acaba de crear o la que ya estaba: en M1 hay una por vez) y `creada` dice si ESTA
+ * llamada la creó. Códigos:
+ *  - `MOSTRADOR_NO_HABILITADO`: la sucursal todavía no tiene su puesto mostrador (lo habilita el administrador con `habilitarMostrador`).
+ *  - `SUCURSAL_INACTIVA`: la sucursal está desactivada y no había una cuenta abierta que devolver.
+ */
+export type ResultadoAbrirCuentaDeMostrador = ResultadoCaso<{ cuentaId: string; creada: boolean }, "MOSTRADOR_NO_HABILITADO" | "SUCURSAL_INACTIVA">;
