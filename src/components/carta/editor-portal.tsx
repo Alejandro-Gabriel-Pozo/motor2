@@ -41,9 +41,7 @@ interface Props {
 export function EditorPortal({ valoresIniciales, version, accion, empresaNombre, sucursales, urlsPorSlug, mover, soloLectura = false }: Props) {
   return (
     <FormConResultado accion={accion} className="flex flex-col gap-4">
-      <fieldset disabled={soloLectura} className="min-w-0" data-solo-lectura={soloLectura ? "" : undefined}>
-        <CuerpoEditor key={version} valoresIniciales={valoresIniciales} empresaNombre={empresaNombre} sucursales={sucursales} urlsPorSlug={urlsPorSlug} mover={mover} soloLectura={soloLectura} />
-      </fieldset>
+      <CuerpoEditor key={version} valoresIniciales={valoresIniciales} empresaNombre={empresaNombre} sucursales={sucursales} urlsPorSlug={urlsPorSlug} mover={mover} soloLectura={soloLectura} />
       {!soloLectura && (
         <div>
           <Boton type="submit" tamano="compacto">
@@ -158,7 +156,8 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
 
   return (
     <div onInput={releer} onChange={releer} className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_26rem]">
-      <div className="flex min-w-0 flex-col gap-2">
+      {/* Solo los CAMPOS se deshabilitan (DEC-33): la vista previa queda fuera, para que se siga recorriendo con el teclado (arrastrar se corta en `alPresionar`). */}
+      <fieldset disabled={soloLectura} className="flex min-w-0 flex-col gap-2" data-solo-lectura={soloLectura ? "" : undefined}>
       {ZONAS_PORTAL.map((zona, i) => {
         const campos = CLAVES_PORTAL_V1.filter((d) => d.zona === zona);
         const cargados = campos.filter((d) => valores[d.clave]?.trim()).length;
@@ -175,7 +174,7 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
           </details>
         );
       })}
-      </div>
+      </fieldset>
 
       <section aria-labelledby="titulo-vista-previa-portal" className="flex min-w-0 flex-col gap-2 lg:sticky lg:top-4 lg:self-start">
         <h2 id="titulo-vista-previa-portal" className="text-sm font-medium">

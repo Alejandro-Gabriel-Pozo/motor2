@@ -36,9 +36,7 @@ export function EditorTema({
 }) {
   return (
     <FormConResultado accion={accion} className="flex flex-col gap-4">
-      <fieldset disabled={soloLectura} className="min-w-0" data-solo-lectura={soloLectura ? "" : undefined}>
-        <CuerpoEditor key={version} valoresIniciales={valoresIniciales} />
-      </fieldset>
+      <CuerpoEditor key={version} valoresIniciales={valoresIniciales} soloLectura={soloLectura} />
       {!soloLectura && (
         <div>
           <Boton type="submit" tamano="compacto">
@@ -55,7 +53,7 @@ function leerValores(form: HTMLFormElement): Record<string, string> {
   return Object.fromEntries(CLAVES_TEMA_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
 }
 
-function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<string, string>> }) {
+function CuerpoEditor({ valoresIniciales, soloLectura }: { valoresIniciales: Readonly<Record<string, string>>; soloLectura: boolean }) {
   const [valores, setValores] = useState<Record<string, string>>(() => Object.fromEntries(CLAVES_TEMA_V1.map((d) => [d.clave, valoresIniciales[d.clave] ?? ""])));
   const estilo = useMemo(() => resolverEstiloCarta(valores), [valores]);
 
@@ -67,7 +65,8 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
   return (
     <div onInput={releer} onChange={releer} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="flex min-w-0 flex-col gap-2">
+        {/* Solo los CAMPOS se deshabilitan (DEC-33): la vista previa queda fuera, para que se siga recorriendo con el teclado. */}
+        <fieldset disabled={soloLectura} className="flex min-w-0 flex-col gap-2" data-solo-lectura={soloLectura ? "" : undefined}>
           {ZONAS_TEMA.map((zona, i) => {
             const campos = CLAVES_TEMA_V1.filter((d) => d.zona === zona);
             const cargados = campos.filter((d) => valores[d.clave]?.trim()).length;
@@ -84,7 +83,7 @@ function CuerpoEditor({ valoresIniciales }: { valoresIniciales: Readonly<Record<
               </details>
             );
           })}
-        </div>
+        </fieldset>
 
         <section aria-labelledby="titulo-vista-previa" className="flex min-w-0 flex-col gap-2 lg:sticky lg:top-4 lg:self-start">
           <h2 id="titulo-vista-previa" className="text-sm font-medium">
