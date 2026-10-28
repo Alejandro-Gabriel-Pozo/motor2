@@ -704,6 +704,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Fase 6, bloque 3 («+ Opción» y «+ Extra»; ADITIVO, solo ADMINISTRACIÓN, la carta pública y el cobro idénticos; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): la tarjeta de cada grupo del paso 2 «Opciones y precio» suma el botón «+ Opción» (con el nombre accesible «+ Opción en <grupo>») antes de «Quitar de este producto», para quien puede Editar `opciones_definir`. Revisado con `git diff -U0`: cambian SOLO 2 líneas, las dos de la tarjeta de «Tipos de Pizza» (1280 y 375 px), que suman `[botón: + Opción (lector: «+ Opción en Tipos de Pizza»)]`; las secciones de la carta pública no cambian.",
       },
+      {
+        blob: "9e3d47d002fd77c703dd6794a86bd7bb4c251708",
+        // El commit PADRE de este (e06b41de) es el último antes de la regeneración; el texto lo cambió la Fase 7, módulo Carta (DEC-24, carril car): las pestañas de la entrada «Carta» reemplazan las dos puertas.
+        commit: "e06b41de",
+        motivo:
+          "Fase 7, módulo Carta (DEC-24: tres entradas de menú con pestañas; CAMBIA TEXTO de administración, no la carta pública; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_ccar_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px): salen las dos «puertas» `[enlace: Mantenimiento]` / `[enlace: Parametrización]` y `[enlace: ← Volver]`, el subtítulo pasa de «Parametrización · Secciones» a «Secciones» y entra la fila de pestañas `[enlace: Hoy]` `[enlace: Secciones y géneros]` `[enlace: Ítems agrupados]`; la ayuda de «Productos de cada sección» dice «Carta › Hoy › Visibilidad» en lugar de «Mantenimiento › Visibilidad». Revisado con `git diff`: 10 líneas por lado, todas dentro de las dos secciones de Secciones; la carta pública, la tipografía, las opciones de Pizzas y «Tipos de Pizza» quedan idénticas byte a byte.",
+      },
     ],
   },
 };

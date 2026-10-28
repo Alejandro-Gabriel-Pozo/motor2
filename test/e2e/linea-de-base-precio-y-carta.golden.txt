@@ -524,12 +524,12 @@
   [enlace: Pizzas]
 
 ## ADMINISTRACIÓN a 1280 px: Carta › Parametrización › Secciones (/carta/parametrizacion/secciones)
-  [enlace: Mantenimiento]
-  [enlace: Parametrización]
   # Carta
-  Parametrización · Secciones
+  Secciones
   LB Precio y carta
-  [enlace: ← Volver]
+  [enlace: Hoy]
+  [enlace: Secciones y géneros]
+  [enlace: Ítems agrupados]
   ## Secciones de la carta
   [botón: Ordenar]
   El orden se ve en todas las sucursales y en la carta pública (las secciones son de la empresa). Con «⋯» podés ocultar o mostrar una sección, moverla o cambiar sus datos.
@@ -568,7 +568,7 @@
   [campo: (depende de la base)]
   [botón: Crear sección]
   ## Productos de cada sección
-  La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en Mantenimiento › Visibilidad › «Fuera de carta».
+  La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en Carta › Hoy › Visibilidad › «Fuera de carta».
   ▸
   Pizzas
   1 producto
@@ -807,12 +807,12 @@
     [botón: Quitar «Gaseosa 500 cc» de la carta (vuelve a «Fuera de carta»)]
 
 ## ADMINISTRACIÓN a 375 px: Carta › Parametrización › Secciones (/carta/parametrizacion/secciones)
-  [enlace: Mantenimiento]
-  [enlace: Parametrización]
   # Carta
-  Parametrización · Secciones
+  Secciones
   LB Precio y carta
-  [enlace: ← Volver]
+  [enlace: Hoy]
+  [enlace: Secciones y géneros]
+  [enlace: Ítems agrupados]
   ## Secciones de la carta
   [botón: Ordenar]
   El orden se ve en todas las sucursales y en la carta pública (las secciones son de la empresa). Con «⋯» podés ocultar o mostrar una sección, moverla o cambiar sus datos.
@@ -851,7 +851,7 @@
   [campo: (depende de la base)]
   [botón: Crear sección]
   ## Productos de cada sección
-  La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en Mantenimiento › Visibilidad › «Fuera de carta».
+  La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en Carta › Hoy › Visibilidad › «Fuera de carta».
   ▸
   Pizzas
   1 producto
