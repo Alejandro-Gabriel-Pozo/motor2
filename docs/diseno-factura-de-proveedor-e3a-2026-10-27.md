@@ -331,8 +331,18 @@ Criterio de éxito: los 8 con salida 0 en la misma corrida y sobre el mismo comm
 
 | Paso | Estado | Commit |
 |---|---|---|
-| 0 Línea de base | tsc, lint, arquitectura y knip verdes sobre `42c5060c` (con el cliente de Prisma regenerado: estaba viejo, sin la columna de E2); vitest, build, plataforma y e2e corriendo en una copia de trabajo descartable | — |
+| 0 Línea de base | sobre `42c5060c` (cliente de Prisma regenerado: estaba viejo, sin la columna de E2): tsc, lint, arquitectura y knip verdes; vitest 1147 archivos / 15111 pruebas con 3 rojas que son del montaje de la copia de trabajo descartable (sus `node_modules` son un enlace: `dependencias.test.ts` y `plataforma-declara-sus-dependencias.test.ts` no ven los paquetes), no del código; build, plataforma y e2e de la línea de base NO se corrieron (se cortaron para liberar la máquina compartida) | — |
 | 1 Funciones puras del reparto y del número | hecho, 5 mutaciones rojas | `1ce2f9d6` |
 | 2 Contratos y guards | hecho, 4 mutaciones rojas | `06e596b6` |
-| 6 Compra de una parte no se anula ni corrige suelta | código hecho; prueba contra la base pendiente de correr | — |
-| 3 a 5, 7 a 11 | pendientes | — |
+| 6 Compra de una parte no se anula ni corrige suelta | hecho, 3 pruebas contra la base, 3 mutaciones rojas | `37818c13` |
+| 3 Migración E3a-M (forma final, §7) + ADR-041 | hecho; subir/bajar/subir ensayado SOLO en bases locales; 4 pruebas, 3 mutaciones rojas (política sin el origen, grant de UPDATE de más, CHECK de aceptación quitado) | `a3c6d7cc` |
+| 4, 5, 7 y 8 Persistencia + los tres casos de uso + Server Actions + lecturas | hecho en UN commit (desvío del plan: los cuatro pasos comparten la persistencia y los guardianes, y por separado no compilaban los guardianes de ficha y de idempotencia); 21 pruebas contra la base, 5 mutaciones rojas (sin `compra_repartir`, sin chequeo de destino, sin chequeo de anulada, anular sin evaluar, y la triple barrera de la aceptación) | `c9adcf30` |
+| 9 y 10 Pantallas (opción barata) + spec e2e | hecho: interruptor «Repartir entre sucursales» en la Compra, bandeja «Para aceptar (N)» (solo productos y cantidades), «Partes propuestas a otras sucursales», «Anular factura entera» con motivo en Compras registradas; `test/e2e/factura-repartida.spec.ts` (2 mutaciones rojas); el spec de `alegp/carril-z` sigue verde | `f4dd8628` |
+| 11 Documentación y gate final | ADR-029 (notas en §5, §5b, §6 y §9), circuito de abastecimiento (cómo quedó E3a), pendientes; resultado del gate en el informe final | ver `git log` |
+
+**Desvíos y hallazgos de la implementación (NO VERIFICADO = no se pudo comprobar en esta corrida):**
+- **La aceptación tiene TRES barreras** contra la doble entrada (estado leído bajo el `FOR UPDATE` de la cabecera, `UPDATE … WHERE estado = 'PENDIENTE'` y el único (factura, sucursal) de la parte; más el único del número de factura en la compra de la sucursal). La mutación «sin `WHERE PENDIENTE`» sola NO pone rojo ningún test (las otras barreras la tapan); se la vio roja recién quitando las tres en una base de trabajo descartable (`motor2_cy_trabajo`), y los índices se restauraron.
+- **El producto tiene que estar habilitado en la sucursal que carga** (se reutiliza `armarLineaMovimiento`), aunque toda la cantidad vaya a otra; la destino se verifica recién al aceptar (§7).
+- **Sin aviso C25** (precio fuera de lo habitual) en la carga de una factura: la compra simple lo sigue dando.
+- **GT-4** (`ids-de-sucursal-declaran-a-que-se-atan`) no mira ids anidadas en listas (`reparto.partes[].sucursalId`): se declaró igual el ensanche por dato de la base, pero el guardián no lo habría exigido.
+- **Corregir una factura** = anularla entera y volver a cargarla (no hay clave de corrección de reparto).

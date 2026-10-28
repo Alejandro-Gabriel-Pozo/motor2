@@ -43,6 +43,8 @@ La clave normalizada (qué hace igual «1-1234» y «0001-00001234») la calcula
 
 `PENDIENTE_DE_REPARTO`: cargada y con su número reservado, la ven y anulan solo quienes tienen `compra_repartir`, **su mercadería NO entra al stock hasta repartirse** (no se puede vender ni consumir antes) y la fecha del stock es la que eligió quien la cargó. `CONFIRMADA`: repartida (o cargada ya al 100 % en una sucursal). CHECK: la confirmación (cuándo y quién) existe si y solo si el estado es `CONFIRMADA`, y lo migrado (`origen = MIGRACION`) nace confirmado. **Limitación declarada:** la base no impide con un CHECK volver de `CONFIRMADA` a `PENDIENTE_DE_REPARTO` (no se usa un trigger); el caso de uso lo hace con un UPDATE condicionado al estado (`WHERE estado = 'PENDIENTE_DE_REPARTO'`), y la lista de escritores se cierra en la Etapa C.
 
+> **Nota E3a (2026-10-28, ADR-041):** la factura de MERCADERÍA repartida no usa `PENDIENTE_DE_REPARTO`: la cabecera nace `CONFIRMADA` (el reparto queda declarado completo al cargar) y lo pendiente es la ACEPTACIÓN de cada sucursal destino, en la tabla nueva `FacturaProveedorPropuesta`. `PENDIENTE_DE_REPARTO` queda para cuando se cargue una factura sin repartir (Ola PM). Ningún UPDATE de E3a cambia el estado de la cabecera.
+
 ### 5b. La recepción de la mercadería por sucursal (cambio del dueño, 2026-10-12)
 
 **Regla de negocio:** el stock de una factura entra recién cuando la factura está REPARTIDA (cabecera `CONFIRMADA`, no `PENDIENTE_DE_REPARTO`) **y** la parte de esa sucursal está RECIBIDA. Al cargar la factura el usuario elige, para cada sucursal, «recibida» (entra al stock con la fecha de recepción elegida) o «pendiente» (se confirma después desde la bandeja «mercadería por recibir», que es de la Etapa C). Las partes sin mercadería con stock (solo gastos, M4) las crea la aplicación directamente RECIBIDA.
@@ -51,11 +53,15 @@ Migración `prisma/migrations/20261016101500_factura_proveedor_recepcion/migrati
 
 **Concurrencia e idempotencia** (`test/persistencia/factura-proveedor-recepcion.test.ts`, transacciones reales como `motor2_app`): la guarda es `UPDATE ... WHERE "estadoRecepcion" = 'PENDIENTE'` más la unicidad de `operacionId`. Dos confirmaciones a la vez de la misma parte: la segunda espera a la primera, re-evalúa la fila al confirmar la primera y toca 0 filas; el caso de uso escribe el stock **solo si el UPDATE tocó una fila**, así que dejan UNA recepción y UNA línea de stock (probado con 2 y con 8 a la vez, y repitiendo). Lo que la base no mira —que la cabecera esté confirmada al recibir— lo valida el caso de uso.
 
+> **Nota E3a (2026-10-28, ADR-041):** E3a no usa la transición PENDIENTE → RECIBIDA de la parte ni su disparador: toda parte de E3a se INSERTA ya `RECIBIDA` y con su compra (la de la sucursal que carga, al cargar; la de cada destino, al aceptar, por esa misma sucursal). Lo «por recibir» de otra sucursal vive como propuesta, porque la parte es `PROPIA` y la sucursal que carga no puede insertar una parte ajena (la política exacta del generador no se tocó).
+
 ### 6. Los permisos `compra_repartir` (D3) y `compra_recibir`
 
 Migración de datos `prisma/migrations/20261016100000_permiso_compra_repartir/migration.sql` (M3a): clave de empresa, piso administrador, semilla solo `admin`; se da al rol de clave `admin` de cada empresa (con el `empresaId` de la fila del rol), con el molde de la migración M.2. Es la clave de la clase A en `test/arquitectura/clases-de-claves.test.ts` y queda reservada en `test/arquitectura/toda-accion-se-usa.test.ts` hasta que la primera guarda la use. Cada sucursal destino además exige `proceso_compra` en ella: lo valida el caso de uso.
 
 **`compra_recibir`** (misma migración): clave de **sucursal** (quien recibe es la sucursal), módulo `compras`, piso operario y semilla solo `admin` (clase O, delegable al encargado de la sucursal por configuración); se siembra igual que la anterior (al rol `admin` de cada empresa, nadie más) y también queda reservada hasta la Etapa C.
+
+> **Nota E3a (2026-10-28, decisión del dueño P3, ADR-041):** `compra_repartir` pasa a piso **operario** (sin migración de datos: la semilla sigue siendo solo `admin`; el gerente la asigna en la matriz a quien reparte) y la usa la primera guarda: «cargar factura» con alguna parte de otra sucursal (`src/server/actions/movimientos/facturas-proveedor.ts`). Ya no está reservada y es de clase O en `clases-de-claves`. Aceptar la parte pide `proceso_compra` en la sucursal destino (P2); anular la factura pide `anular_compra` en cada sucursal donde ya entró una parte (P4). `compra_recibir` sigue reservada.
 
 ### 7. IVA, tributos y la perilla (M3d, D1)
 
@@ -75,6 +81,8 @@ Migración `prisma/migrations/20261016103000_factura_proveedor_iva/migration.sql
 ### 9. Qué NO hace este ADR (Etapa C, a construir después)
 
 Ningún caso de uso, pantalla ni Server Action escribe estas tablas. La Etapa C trae: el reparto exacto por renglón (cantidad y dinero), la clave de unicidad del comprobante, `registrarFacturaRepartida` y la carga/reparto de pendientes con su bandeja, la anulación entera y atómica de una factura repartida (una compra sola anula también su cabecera, si no el número queda reservado), la sincronización de la cabecera en la corrección de una compra, el aviso de duplicado también contra cabeceras, **la exigencia de IVA según la perilla y la letra**, los guardianes de escritura (la lista cerrada de UPDATE de la cabecera, la auditoría de `FacturaProveedor` y la cobertura de idempotencia concurrente) y las pruebas de concurrencia de los casos de uso.
+
+> **Nota E3a (2026-10-28, ADR-041 y `docs/diseno-factura-de-proveedor-e3a-2026-10-27.md` §14):** ya están construidos, solo para la factura de MERCADERÍA: el reparto exacto por renglón (`src/core/compras/reparto-de-factura.ts`), la clave normalizada del comprobante, cargar la factura repartida (casos de uso `registrar-factura-proveedor`, `aceptar-propuesta-de-factura` y `anular-factura-proveedor`, con su bandeja «Para aceptar»), la anulación entera y atómica de la factura (con su registro `AnulacionDeFacturaProveedor`), el rechazo de anular o corregir SUELTA la compra de una parte, la auditoría de `FacturaProveedor` y la cobertura de idempotencia concurrente. Siguen pendientes: gastos y renglones sin stock en la factura, la carga sin repartir (`PENDIENTE_DE_REPARTO`), `compra_recibir`, la exigencia de IVA según la perilla y la letra, el aviso de duplicado contra cabeceras desde la compra simple (E3b) y la corrección de una factura.
 
 ### 10. Los gastos (M4, 2026-10-12): renglón sin stock, conceptos de gasto, imputación por sucursal y permisos `gasto_*`
 
