@@ -48,7 +48,6 @@ const CERCO_INPUTMODE_NUMERICO: Cerco = {
   motivos: {
     "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/botones.tsx": CODIGO("El CUIT de la consola (confirmar y corregir)"),
     "plataforma/src/app/login/formulario.tsx": CODIGO("El código de ingreso de la consola"),
-    "src/app/(app)/carta/mantenimiento-de-carta.tsx": NUMERO("El valor de la hoja de precios de la carta (prototipo aprobado, decisión de producto)", "importe"),
     "src/app/(app)/catalogo/margen-objetivo/page.tsx": NUMERO("El margen objetivo de la empresa y de las categorías", "porcentaje"),
     "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": NUMERO("Mínimo y máximo a elegir de un grupo de opciones", "entero"),
     "src/app/(app)/catalogo/opciones/alta-de-grupo.tsx": NUMERO("Mínimo y máximo a elegir del alta de un grupo de opciones", "entero"),

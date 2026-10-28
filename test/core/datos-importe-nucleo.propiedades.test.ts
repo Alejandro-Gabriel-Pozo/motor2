@@ -106,7 +106,7 @@ const NUMEROS: fc.Arbitrary<number> = fc.oneof(
 const CORRIDAS = { numRuns: 20_000 };
 
 describe("núcleo de importe: las constantes", () => {
-  it("el tope en centavos es exactamente 99999999999999 (el de ajuste-de-precios)", () => {
+  it("el tope en centavos es exactamente 99999999999999 (el que usaba el ajuste masivo de precios de la carta, borrado el 2026-10-28)", () => {
     expect(CENTAVOS_MAXIMOS).toBe(BigInt("99999999999999"));
     expect(IMPORTE_MAXIMO).toBe(1e12);
   });

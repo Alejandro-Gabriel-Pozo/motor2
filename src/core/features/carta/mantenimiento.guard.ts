@@ -1,13 +1,9 @@
 import { esIdentificador } from "@/core/datos/identificador";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { MENSAJE_SUCURSAL_CAMBIADA } from "@/core/features/catalogo/opciones-por-sucursal.guard";
-import { aCentavos, deCentavos, validarAjusteDePrecio } from "@/core/carta/public";
 import {
   MAXIMO_DE_CAMBIOS_DE_HOY,
-  MAXIMO_DE_PRECIOS_POR_AJUSTE,
   type ComandoAgregarProductoALaCarta,
-  type ComandoAjustarPreciosDeLaCarta,
-  type ComandoAjustarPreciosDeLaEmpresa,
   type ComandoFijarDisponibilidadDeHoy,
   type ComandoQuitarProductoDeLaCarta,
 } from "./mantenimiento.schema";
@@ -66,54 +62,4 @@ export function guardComandoQuitarProductoDeLaCarta(entrada: { sucursalId: unkno
   const productoId = id(entrada.productoId, "No se encontró el producto.");
   if (!productoId.ok) return productoId;
   return aceptar({ productoId: productoId.valor, confirmado: entrada.confirmado === true });
-}
-
-/** El ajuste (`validarAjusteDePrecio`, la misma regla que la vista previa) y la lista (de 1 al tope, sin repetidos, cada precio visto con hasta dos decimales). */
-function ajusteYProductos(entrada: { ajuste: unknown; items: unknown }): ResultadoDato<ComandoAjustarPreciosDeLaCarta> {
-  const a = typeof entrada.ajuste === "object" && entrada.ajuste !== null ? (entrada.ajuste as Record<string, unknown>) : {};
-  const ajuste = validarAjusteDePrecio({ direccion: a.direccion, modo: a.modo, valor: a.valor, redondeo: a.redondeo });
-  if (!ajuste.ok) return rechazar("formato", ajuste.mensaje);
-  if (!Array.isArray(entrada.items) || entrada.items.length === 0) return rechazar("formato", "No hay ningún producto para cambiar de precio.");
-  if (entrada.items.length > MAXIMO_DE_PRECIOS_POR_AJUSTE) return rechazar("formato", `Son demasiados productos de una vez (el máximo es ${MAXIMO_DE_PRECIOS_POR_AJUSTE}).`);
-  const items: ComandoAjustarPreciosDeLaCarta["items"] = [];
-  const vistos = new Set<string>();
-  for (const x of entrada.items as unknown[]) {
-    const fila = typeof x === "object" && x !== null ? (x as { productoId?: unknown; precioVisto?: unknown }) : {};
-    const productoId = id(fila.productoId, "No se encontró el producto.");
-    if (!productoId.ok) return productoId;
-    const precio = typeof fila.precioVisto === "string" ? aCentavos(fila.precioVisto) : null;
-    if (precio === null) return rechazar("formato", "El precio que se vio no es válido: recargá la pantalla.");
-    if (vistos.has(productoId.valor)) return rechazar("formato", "Un producto figura dos veces en el mismo ajuste.");
-    vistos.add(productoId.valor);
-    items.push({ productoId: productoId.valor, precioVisto: deCentavos(precio) });
-  }
-  return aceptar({ ajuste: ajuste.valor, items });
-}
-
-/** F4 «Precios», en esta sucursal: el eco, después el ajuste y la lista. */
-export function guardComandoAjustarPreciosDeLaCarta(entrada: { sucursalId: unknown; sucursalActivaId: string; ajuste: unknown; items: unknown }): ResultadoDato<ComandoAjustarPreciosDeLaCarta> {
-  const enLaActiva = eco(entrada.sucursalId, entrada.sucursalActivaId);
-  if (!enLaActiva.ok) return enLaActiva;
-  return ajusteYProductos(entrada);
-}
-
-/** F4 «Precios», en toda la empresa: el ajuste, la lista y la confirmación (solo `true` confirma). */
-export function guardComandoAjustarPreciosDeLaEmpresa(entrada: { ajuste: unknown; items: unknown; confirmado: unknown }): ResultadoDato<Omit<ComandoAjustarPreciosDeLaEmpresa, "puedeEditarCamposSensibles">> {
-  const base = ajusteYProductos(entrada);
-  if (!base.ok) return base;
-  return aceptar({ ...base.valor, confirmado: entrada.confirmado === true });
-}
-
-/** F4 «Precios», el aviso de «En toda la empresa» (solo lectura): de 1 al tope de productos de un ajuste, sin repetidos. */
-export function guardComandoAvisoDePrecioDeEmpresa(entrada: { productoIds: unknown }): ResultadoDato<{ productoIds: string[] }> {
-  if (!Array.isArray(entrada.productoIds) || entrada.productoIds.length === 0) return rechazar("formato", "No hay ningún producto para cambiar de precio.");
-  if (entrada.productoIds.length > MAXIMO_DE_PRECIOS_POR_AJUSTE) return rechazar("formato", `Son demasiados productos de una vez (el máximo es ${MAXIMO_DE_PRECIOS_POR_AJUSTE}).`);
-  const productoIds: string[] = [];
-  for (const x of entrada.productoIds as unknown[]) {
-    const productoId = id(x, "No se encontró el producto.");
-    if (!productoId.ok) return productoId;
-    if (productoIds.includes(productoId.valor)) return rechazar("formato", "Un producto figura dos veces en el mismo ajuste.");
-    productoIds.push(productoId.valor);
-  }
-  return aceptar({ productoIds });
 }

@@ -27,9 +27,7 @@ const MOTIVO_ATAJO = (dominio: string, accion: string) =>
   `Atajo de Carta (regla 7: un comando del dueño del dato): caso de uso de ${dominio} que solo invoca la Server Action ${accion}. El descubrimiento de los guardianes busca la acción en su propio dominio y no lo ve: sus tags de contrato y su ficha quedan sin revisar.`;
 
 const MOTIVOS: Readonly<Record<string, string>> = {
-  "src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts": MOTIVO_ATAJO("Catálogo", "carta/precios.ts (ajustarPreciosDeLaEmpresa)"),
   "src/server/actions/catalogo/casos-de-uso/fijar-disponibilidad-de-hoy.ts": MOTIVO_ATAJO("Catálogo", "carta/mantenimiento.ts (fijarDisponibilidadDeHoy)"),
-  "src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-carta.ts": MOTIVO_ATAJO("Catálogo", "carta/precios.ts (ajustarPreciosDeLaCarta)"),
 };
 
 /** El archivo de `src/` al que apunta un especificador de import (`@/…` o relativo), si es uno de `candidatos`. */
@@ -72,7 +70,7 @@ describe("cerco «casos de uso en los guardianes»: el cálculo", () => {
   it("encuentra las Server Actions que importan casos de uso, también de otro dominio (no pasa en vacío)", () => {
     const importadores = importadoresDeCasosDeUso(RAIZ_DEL_REPO);
     expect(importadores.size).toBeGreaterThan(100);
-    expect(importadores.get("src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts")).toEqual(["src/server/actions/carta/precios.ts"]);
+    expect(importadores.get("src/server/actions/catalogo/casos-de-uso/fijar-disponibilidad-de-hoy.ts")).toEqual(["src/server/actions/carta/mantenimiento.ts"]);
   });
 
   it("todo caso de uso que descubren los guardianes lo importa alguna Server Action (los dos cálculos hablan de lo mismo)", () => {

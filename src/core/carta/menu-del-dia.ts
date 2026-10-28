@@ -2,7 +2,7 @@ import { esDiaISOReal, sumarDias } from "@/core/tiempo/zona-horaria";
 import type { DiferenciaDeCupos } from "./cupos-de-promo";
 
 /**
- * INTERRUPTOR del «Menú del día» (decisión del dueño, 2026-10-20): hasta que se rediseñe, NO SE VE. Mismo patrón que `PRECIOS_EDITABLES` (`src/core/carta/ajuste-de-precios.ts`): una sola constante.
+ * INTERRUPTOR del «Menú del día» (decisión del dueño, 2026-10-20): hasta que se rediseñe, NO SE VE. Una sola constante (el mismo patrón que `SUMAR_LUGAR_DE_LISTA_VISIBLE` y `VIGENCIA_DE_PROMO_VISIBLE`).
  * Con `false`:
  *  - Movimientos no muestra la entrada «Menú del día» (`core/movimientos/ui-config.ts`) y su pantalla, `/movimientos/menu-del-dia`, responde «no existe» (404, no un error);
  *  - al armar una promo no se ofrece el lugar «Plato del día» (DEL_DIA) ni el enlace a esa pantalla (Carta → Promociones);

@@ -32,10 +32,6 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
     carta_portal: celda,
     // CARTA-MANT: «Hoy» de la carta es la disponibilidad por producto y sucursal de siempre.
     producto_disponibilidad: celda,
-    // CARTA-MANT F4: «Precios» edita el precio local (`precio_local`) o el de lista (`producto_editar` + `producto_campos_sensibles`); un rol que SOLO VE no tiene ninguna de las tres.
-    precio_local: celda,
-    producto_editar: celda,
-    producto_campos_sensibles: celda,
   });
   const rol = { id: admin.rolId };
   const usuario = await prisma.user.create({ data: { email: `e2e-carta-${marca}@local.test`, activoGlobal: true } });
