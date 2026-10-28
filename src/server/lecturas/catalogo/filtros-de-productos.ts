@@ -1,9 +1,8 @@
 import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { whereCartaDeSucursal } from "@/core/carta/public";
-import { escaparComodinesLike } from "@/core/texto";
-import { FALTAS_FILTRABLES, whereDisponibleEn, whereDisponibleEnAlguna, type FaltaFiltrable, type FiltrosDeProductos } from "@/core/catalogo/public";
-import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
+import { FALTAS_FILTRABLES, whereBusquedaDeProducto, whereDisponibleEn, whereDisponibleEnAlguna, type FaltaFiltrable, type FiltrosDeProductos } from "@/core/catalogo/public";
+import { accionesDelMenuQueElUsuarioPuedeVer, obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
 import { denegacionDeModuloDeAccion } from "@/server/acceso/modulos-de-empresa";
 import { cargarOrigenDeStockParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 
@@ -36,12 +35,19 @@ export async function faltasQueSePuedenFiltrar(ctx: ContextoDeLosFiltros): Promi
   return FALTAS_FILTRABLES.filter((f) => f === "sin-precio" || (f === "sin-receta" && receta.ver && !sinRecetas) || (f === "fuera-de-la-carta" && carta.ver && !sinCarta));
 }
 
-/** Los criterios que no dependen de ningún permiso ni de la receta: la búsqueda, el tipo, el modo, la disponibilidad y los dos «le falta» que son una condición de tabla. */
-function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, faltasPermitidas: readonly FaltaFiltrable[]): Prisma.ProductoWhereInput[] {
+/**
+ * Fase 7, Catálogo, M2 (diseño `docs/diseno-modulo-catalogo-2026-10-28.md` I9): ¿puede quien busca encontrar un producto por cómo lo llama un proveedor (`ProveedorPorProducto.referenciaProveedor`)? Solo
+ * quien ya ve ese dato en otra pantalla: el «Ver» de `proveedores` (la ficha del proveedor, «En su factura dice») o de `proceso_compra` en la sucursal activa (la compra lo precarga). Cada clave en su contexto,
+ * con el mismo cálculo del menú. Sin ninguna de las dos, la búsqueda es por nombre y código, como siempre.
+ */
+export async function puedeBuscarPorReferenciaDelProveedor(ctx: ContextoDeLosFiltros): Promise<boolean> {
+  return (await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, ["proveedores", "proceso_compra"], ctx.db)).size > 0;
+}
+
+/** Los criterios que no dependen de la receta: la búsqueda (por referencia del proveedor solo si `porReferencia`), el tipo, el modo, la disponibilidad y los dos «le falta» que son una condición de tabla. */
+function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, faltasPermitidas: readonly FaltaFiltrable[], porReferencia: boolean): Prisma.ProductoWhereInput[] {
   const y: Prisma.ProductoWhereInput[] = [];
-  if (f.q !== "") {
-    y.push({ OR: [{ nombre: { contains: escaparComodinesLike(f.q), mode: "insensitive" } }, { codigo: { contains: escaparComodinesLike(f.q), mode: "insensitive" } }] });
-  }
+  if (f.q !== "") y.push(whereBusquedaDeProducto(f.q, porReferencia));
   switch (f.tipo) {
     case "venta":
       y.push({ tipo: "PV", opcionQueRespalda: { is: null } });
@@ -106,8 +112,8 @@ async function idsSinReceta(db: PrismaClient, sucursalId: string, y: Prisma.Prod
  * ids de «sin receta». Un filtro de «le falta» que el usuario no puede ver (`faltasQueSePuedenFiltrar`) no suma ningún criterio.
  */
 export async function whereDeLosProductos(ctx: ContextoDeLosFiltros, db: PrismaClient, f: FiltrosDeProductos): Promise<Prisma.ProductoWhereInput> {
-  const permitidas = await faltasQueSePuedenFiltrar(ctx);
-  const y = criteriosDeTabla(ctx, f, permitidas);
+  const [permitidas, porReferencia] = await Promise.all([faltasQueSePuedenFiltrar(ctx), f.q !== "" ? puedeBuscarPorReferenciaDelProveedor(ctx) : false]);
+  const y = criteriosDeTabla(ctx, f, permitidas, porReferencia);
   if (f.falta === "sin-receta" && permitidas.includes("sin-receta")) y.push({ id: { in: await idsSinReceta(db, ctx.sucursalId, y) } });
   return y.length ? { AND: y } : {};
 }

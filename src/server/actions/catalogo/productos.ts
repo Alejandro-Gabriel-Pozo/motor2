@@ -5,10 +5,10 @@ import { azarDelProceso } from "@/lib/azar";
 import { obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal } from "@/server/acceso/gate";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
-import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
-import { whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
+import { textoDeBusqueda } from "@/core/texto";
+import { puedeBuscarPorReferenciaDelProveedor, whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { leerFiltrosDeProductos, necesitaLaEmpresaEntera, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
+import { leerFiltrosDeProductos, necesitaLaEmpresaEntera, type EntradaDeFiltrosDeProductos, whereBusquedaDeProducto, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
@@ -59,7 +59,8 @@ const LIMITE_SELECTOR = 20;
  * (`listarProductos()` sin límite — hallazgo de la diligencia de motor2:
  * "catálogo sin límite"). Sin término de búsqueda devuelve las primeras
  * `LIMITE_SELECTOR` en orden alfabético (para que el combobox no arranque
- * vacío); con término, filtra por nombre o código.
+ * vacío); con término, filtra por nombre o código (y, desde la Fase 7, por
+ * cómo lo llama un proveedor, para quien ve ese dato: M2 del diseño de Catálogo).
  */
 export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto): Promise<ProductoOpcion[]> {
   // H8 (D-2): el «O» de las claves de las 24 pantallas que muestran el selector (test/arquitectura/consumidores-de-lecturas-declarados.test.ts).
@@ -98,7 +99,8 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
     ...(filtro?.soloSeProduce ? [{ seProduce: true }] : []),
     ...(filtro?.elegibleParaReceta ? [{ OR: [{ tipo: "PV" as const }, { tipo: "MP" as const, seProduce: true }] }] : []),
     ...(filtro?.esConsignacion !== undefined ? [{ esConsignacion: filtro.esConsignacion }] : []),
-    ...(t ? [{ OR: [{ nombre: { contains: escaparComodinesLike(t), mode: "insensitive" as const } }, { codigo: { contains: escaparComodinesLike(t), mode: "insensitive" as const } }] }] : []),
+    // Fase 7, M2: con término, por nombre o código y, para quien ve el dato (`puedeBuscarPorReferenciaDelProveedor`), por cómo lo llama un proveedor en su factura.
+    ...(t ? [whereBusquedaDeProducto(t, await puedeBuscarPorReferenciaDelProveedor(ctx))] : []),
   ];
   // P2 (RLS por sucursal): `soloDisponiblesEnAlguna` pregunta «¿está disponible en ALGUNA sucursal?» (`disponibilidades: { some }`): con ese filtro la lectura corre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como
   // estaba); sin él, con la base de siempre. Devuelve filas de `Producto` (id, código, nombre: tabla de la empresa), nunca la disponibilidad de otra sucursal.

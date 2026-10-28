@@ -27,7 +27,7 @@ import {
 import { FiltrosDeLista } from "@/components/filtros-de-lista";
 import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
 import { PESTANAS_DE_PRODUCTOS } from "@/core/catalogo/public";
-import { faltasQueSePuedenFiltrarEnLaLista } from "@/server/consultas/catalogo/filtros-de-productos";
+import { buscaPorReferenciaDelProveedorEnLaLista, faltasQueSePuedenFiltrarEnLaLista } from "@/server/consultas/catalogo/filtros-de-productos";
 import { gruposDeOpcionesPorProducto } from "@/server/consultas/catalogo/opciones-de-venta";
 
 /**
@@ -58,7 +58,7 @@ export default async function ProductosPage({
   if (id) redirect(rutaDelPaso(id, "datos"));
 
   // Los filtros de la URL, validados contra sus listas cerradas (lo que no es de la lista se ignora); el servidor los vuelve a validar y es quien filtra (`listarProductosPagina`).
-  const faltas = await faltasQueSePuedenFiltrarEnLaLista(ctx);
+  const [faltas, porReferencia] = await Promise.all([faltasQueSePuedenFiltrarEnLaLista(ctx), buscaPorReferenciaDelProveedorEnLaLista(ctx)]);
   const leidos = leerFiltrosDeProductos(enLaUrl);
   const filtros = { ...leidos, falta: leidos.falta && faltas.includes(leidos.falta) ? leidos.falta : null };
   const pagina = await listarProductosPagina(cursor, filtros.q, filtros);
@@ -80,8 +80,8 @@ export default async function ProductosPage({
       </div>
       <FiltrosDeLista
         accion="/catalogo/productos"
-        etiquetaDeLaBusqueda="Buscar por nombre o código"
-        marcadorDeLaBusqueda="Buscar por código o nombre…"
+        etiquetaDeLaBusqueda={porReferencia ? "Buscar por nombre, código o cómo lo llama el proveedor" : "Buscar por nombre o código"}
+        marcadorDeLaBusqueda={porReferencia ? "Nombre, código o lo que dice la factura…" : "Buscar por código o nombre…"}
         busqueda={filtros.q}
         hayFiltros={hayFiltrosDeProductos(filtros)}
         filtros={[
