@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   GRUPOS_NAV,
+  RUTAS_DE_UNA_ENTRADA,
   RUTAS_FUERA_DEL_MENU,
   filtrarMenuPorPermiso,
   hrefsDelMenu,
@@ -24,7 +25,8 @@ import { modulosEfectivos } from "../../src/core/modulos/clausura";
  */
 const RUTA_JSON = resolve(__dirname, "__golden__", "empresa-principal.json");
 
-const TODOS_LOS_ITEMS = [...GRUPOS_NAV.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU];
+// Las pestañas y pantallas que cuelgan de una entrada (Precio local, Recetas, Maestros, Carta…) ya no son ítems del menú: también las ve el admin.
+const TODOS_LOS_ITEMS: ReadonlyArray<{ accion?: AccionClave; algunaDe?: readonly AccionClave[] }> = [...GRUPOS_NAV.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU, ...RUTAS_DE_UNA_ENTRADA];
 const ADMIN = new Set<AccionClave>(TODOS_LOS_ITEMS.flatMap((i) => (i.algunaDe ? [...i.algunaDe] : i.accion ? [i.accion] : [])));
 const OPERADOR = new Set<AccionClave>(
   ACCIONES.filter((a) => (a.rolesEditarSemilla as readonly string[]).includes("operador")).map((a) => a.clave as AccionClave),
@@ -50,6 +52,7 @@ function fotoActual() {
     perfiles: { admin: fotoDelPerfil(ADMIN), operador: fotoDelPerfil(OPERADOR), soloSalon: fotoDelPerfil(SOLO_SALON) },
     menuCompleto: hrefsDelMenu(),
     rutasFueraDelMenu: RUTAS_FUERA_DEL_MENU.map((i) => i.href),
+    rutasDeUnaEntrada: RUTAS_DE_UNA_ENTRADA.map((r) => `${r.entrada}|${r.href}`),
     catalogoDeAcciones: ACCIONES.map((a) => ({
       clave: a.clave,
       contexto: a.contexto,
