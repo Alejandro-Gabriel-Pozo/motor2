@@ -11,7 +11,7 @@ import { probarCerco } from "./cercos/probar-cerco";
  * Los guardianes de los casos de uso (`casos-de-uso-con-tags-de-contrato.test.ts` y `ficha-de-caso-de-uso.test.ts`) revisan lo que
  * `descubrirCasosDeUsoReales` (`guardas/casos-de-uso.ts`) descubre: un archivo de `server/actions/<d>/casos-de-uso/` que importa una Server
  * Action de SU MISMO dominio (`server/actions/<d>/*.ts`, un nivel arriba). Un caso de uso que solo invoca la Server Action de OTRO dominio —el
- * atajo, p. ej. `carta/precios.ts` → `catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts`— es un caso de uso real, pero el
+ * atajo, p. ej. `carta/mantenimiento.ts` → `catalogo/casos-de-uso/fijar-disponibilidad-de-hoy.ts`— es un caso de uso real, pero el
  * descubrimiento no lo ve y nadie le revisa los tags ni la ficha.
  *
  * Este cerco lista los casos de uso (de cualquier dominio) que alguna Server Action importa y que el descubrimiento NO devuelve, y congela la

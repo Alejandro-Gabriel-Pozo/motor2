@@ -4,7 +4,7 @@ import { prisma } from "./fixtures/db";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 
 /**
- * Fase 4 de la ola «precio y carta» (ADR-035): «¿Cómo se vende?» en la edición de un producto de venta (`/catalogo/productos/[id]/datos`, el paso 1 del espacio del producto; `/editar` redirige ahí). Marcar la base (con su grupo de medida en precio
+ * Fase 4 de la ola «precio y carta» (ADR-035): «¿Cómo se vende?» en la edición de un producto de venta (`/catalogo/productos/[id]/datos`, el paso 1 del espacio del producto; la antigua ruta `/editar` ya no existe). Marcar la base (con su grupo de medida en precio
  * propio), ver el precio guardado bloqueado («no se cobra») con el enlace a las opciones, el rechazo del servidor («… diferencia en porcentaje …» / «Falta el precio final de cada opción…»), «Por opción»
  * apagado con su motivo cuando no hay grupo de precio, volver a «Directo», y axe a 1280 y a 375 px. Lo sembrado no se borra (las tablas de opciones solo se agregan; ver `fixtures/opciones.ts`).
  */

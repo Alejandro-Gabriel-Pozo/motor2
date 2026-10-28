@@ -13,7 +13,7 @@ import { cargarEdicionDelProducto } from "../../datos-de-edicion";
 
 /**
  * Paso 1 del espacio del producto (Fase 6, 6.12 y 6.13; DEC-12): los datos del producto, para TODOS los tipos (ADDENDUM del 2026-10-21: un solo espacio y una sola URL; en un producto de venta el paso se llama
- * «Qué se vende» y en una materia prima «Datos»). Es el formulario de siempre (`ProductoForm`, el mismo que servía `/editar`, que ahora redirige acá), dentro del marco del espacio. Al guardar, vuelve a la
+ * «Qué se vende» y en una materia prima «Datos»). Es el formulario de siempre (`ProductoForm`, el mismo que servía la antigua ruta `/editar`, que ya no existe), dentro del marco del espacio. Al guardar, vuelve a la
  * ficha, que muestra el aviso de que se guardó. El producto de respaldo de un adicional no se maneja con el espacio de venta: se edita sin marco, con su vuelta a la ficha.
  */
 export default async function DatosDelProductoPage({ params }: { params: Promise<{ id: string }> }) {

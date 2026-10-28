@@ -18,7 +18,7 @@ export default async function NuevoProductoPage() {
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   // Además de Ver, EDITAR: `darDeAltaProducto` exige Editar de `alta_producto`. Quien solo ve productos no tiene por qué recibir el formulario completo
-  // para descubrir recién al guardar que no puede (mismo criterio que la ruta /editar).
+  // para descubrir recién al guardar que no puede (mismo criterio que el paso «Datos» del espacio del producto, `/catalogo/productos/[id]/datos`).
   const gateAlta = await requierePermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
   if (!gateAlta.ok) return <p className="text-error">{gateAlta.mensaje}</p>;
 
