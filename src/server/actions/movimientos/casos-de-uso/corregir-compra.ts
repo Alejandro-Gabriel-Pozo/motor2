@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
-import { cabeceraCoincide, clavesDeFactura, descripcionAuditoriaCorreccion, diferenciasDeCabecera, mensajeCompraCorregida, normalizarCorreccion, validarCorreccion } from "@/core/compras/public";
+import { cabeceraCoincide, clavesDeFactura, descripcionAuditoriaCorreccion, diferenciasDeCabecera, mensajeCompraCorregida, normalizarCorreccion, rechazoPorCompraDeFactura, validarCorreccion } from "@/core/compras/public";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoCorregirCompra, ResultadoCorregirCompra } from "@/core/features/compras/compra.schema";
 import { esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";
@@ -39,6 +39,9 @@ export async function corregirCompraCasoDeUso(
     if (!compra) return fracaso("NO_ENCONTRADA", MENSAJE_OPERACION_NO_ENCONTRADA);
     if (compra.proceso !== "COMPRA") return fracaso("NO_ES_COMPRA", `Esa operación no es una Compra — es "${compra.proceso}".`);
     if (compra.anuladaEn) return fracaso("YA_ANULADA", "Una compra anulada no se puede corregir.");
+    // E3a (D8): la compra de una PARTE de una factura de proveedor lleva el proveedor y el número de la factura: no se corrige suelta.
+    const deFactura = rechazoPorCompraDeFactura(compra.esDeFactura, "corregir");
+    if (deFactura) return fracaso(deFactura.motivo, deFactura.mensaje);
 
     const actual = compra.cabecera;
     const cambios = diferenciasDeCabecera(actual, pedida);

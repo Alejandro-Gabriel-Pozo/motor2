@@ -18,6 +18,8 @@ export interface CompraParaCorregir {
   cabecera: CabeceraCompra;
   /** Nombre del proveedor ACTUAL (para la auditoría, que guarda nombres y no ids); `null` si no tiene. */
   proveedorNombre: string | null;
+  /** E3a (D8): alguna de sus líneas sale de un renglón de factura de proveedor (es la compra de una PARTE de esa factura: no se corrige suelta). */
+  esDeFactura: boolean;
 }
 
 /** `null` si no hay ninguna operación con ese id en esta sucursal. */
@@ -27,7 +29,7 @@ export async function cargarCompraParaCorregir(
 ): Promise<CompraParaCorregir | null> {
   const operacion = await tx.operacion.findFirst({
     where: { id: args.operacionId, sucursalId: args.sucursalId },
-    include: { proveedor: { select: { nombre: true } } },
+    include: { proveedor: { select: { nombre: true } }, movimientos: { where: { facturaProveedorRenglonId: { not: null } }, select: { id: true }, take: 1 } },
   });
   if (!operacion) return null;
   return {
@@ -37,6 +39,7 @@ export async function cargarCompraParaCorregir(
     fecha: operacion.fecha,
     cabecera: { proveedorId: operacion.proveedorId, nroFactura: operacion.nroFactura, detalleLibre: operacion.detalleLibre },
     proveedorNombre: operacion.proveedor?.nombre ?? null,
+    esDeFactura: operacion.movimientos.length > 0,
   };
 }
 

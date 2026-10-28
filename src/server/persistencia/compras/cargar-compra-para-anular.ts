@@ -25,6 +25,8 @@ export interface CompraParaAnular {
   /** Cuándo se ESCRIBIÓ la compra (`Operacion.creadoEn`, el reloj de la base): desde cuándo un conteo o un ajuste es «posterior» a ella (M-3, D7). `fecha` la fija quien carga. */
   creadoEn: Date;
   nroFactura: string | null;
+  /** E3a (D8): alguna de sus líneas sale de un renglón de factura de proveedor, o sea que es la compra de una PARTE de esa factura (no se anula suelta). */
+  esDeFactura: boolean;
   /** `null` si la compra no tiene proveedor. */
   proveedorNombre: string | null;
   lineas: LineaComprada[];
@@ -78,6 +80,7 @@ export async function cargarCompraParaAnular(
     fecha: operacion.fecha,
     creadoEn: operacion.creadoEn,
     nroFactura: operacion.nroFactura,
+    esDeFactura: operacion.movimientos.some((m) => m.facturaProveedorRenglonId !== null),
     proveedorNombre: operacion.proveedor ? operacion.proveedor.nombre : null,
     lineas,
     saldos,
