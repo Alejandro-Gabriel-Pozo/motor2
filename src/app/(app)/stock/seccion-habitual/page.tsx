@@ -44,7 +44,7 @@ export default async function SeccionHabitualPage({ searchParams }: { searchPara
       <h1 className="text-xl font-semibold">Configuración · Depósito habitual</h1>
       <FilaDeStock ctx={ctx} etiqueta="Qué configurar" pestanas={PESTANAS_DE_CONFIGURACION} ruta="/stock/seccion-habitual" />
       {!puedeEditar && <AvisoSoloLecturaDeStock que="el depósito habitual de cada producto" />}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div>
           <p className="mb-4 max-w-prose text-sm text-tinta-suave">
             Al cerrar una cuenta del salón, cada producto se descuenta primero de su depósito habitual; si ahí no alcanza, de otro depósito con stock

@@ -40,7 +40,7 @@ export default async function StockMinimoPage({ searchParams }: { searchParams: 
       <h1 className="text-xl font-semibold">Configuración · Stock mínimo</h1>
       <FilaDeStock ctx={ctx} etiqueta="Qué configurar" pestanas={PESTANAS_DE_CONFIGURACION} ruta="/stock/minimo" />
       {!puedeEditar && <AvisoSoloLecturaDeStock que="el stock mínimo" />}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div>
           <TablaDeStock etiqueta="Stock mínimo cargado">
             <thead>

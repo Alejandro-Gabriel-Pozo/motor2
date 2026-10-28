@@ -63,7 +63,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
       <h1 className="text-xl font-semibold">Configuración · Frecuencia de conteo</h1>
       <FilaDeStock ctx={ctx} etiqueta="Qué configurar" pestanas={PESTANAS_DE_CONFIGURACION} ruta="/stock/conteo-frecuencia" />
       {!puedeEditar && <AvisoSoloLecturaDeStock que="la frecuencia de conteo" />}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div>
           <p className="mb-4 text-sm text-tinta-tenue">
             Cada cuánto conviene volver a contar físicamente cada producto en esta sucursal. Sin fila = sin agenda: no se sugiere
