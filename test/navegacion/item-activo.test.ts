@@ -22,7 +22,8 @@ describe("hrefActivoDelMenu: un solo ítem resaltado, el de la ruta más larga",
   });
 
   it("una pantalla hija resalta el ítem del que cuelga", () => {
-    expect(activo("/catalogo/recetas/abc123/historial")).toBe("/catalogo/recetas");
+    // DEC-13: Recetas es una pestaña de «Productos» (ruta de esa entrada): su editor y su historial resaltan «Productos».
+    expect(activo("/catalogo/recetas/abc123/historial")).toBe("/catalogo/productos");
     expect(activo("/catalogo/proveedores/comparativa")).toBe("/catalogo/proveedores");
     expect(activo("/catalogo/productos/nuevo")).toBe("/catalogo/productos");
   });

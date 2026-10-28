@@ -1,4 +1,5 @@
 import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
+import { NAV_CATALOGO, RUTAS_DE_LAS_ENTRADAS_DE_CATALOGO } from "@/core/catalogo/public";
 import { NAV_MOVIMIENTOS, PROCESOS_DEL_SELECTOR } from "@/core/movimientos/public";
 import { NAV_STOCK, RUTAS_DE_LAS_ENTRADAS_DE_STOCK } from "@/core/stock/public";
 import type { AccionClave } from "@/core/permisos/acciones";
@@ -60,22 +61,11 @@ export const GRUPOS_NAV: GrupoNav[] = [
     ],
   },
   {
+    // DEC-13 (Fase 7): cinco entradas, «Productos» (con Precio local y Recetas en pestañas) y «Maestros» (Insumos, Categorías, Unidades y Margen objetivo) con sus pestañas (fuente en
+    // core/catalogo/ui-config.ts). Las URL de las pantallas no cambiaron; las que no son la entrada cuelgan de ella en RUTAS_DE_UNA_ENTRADA.
     id: "catalogo",
     label: "Catálogo",
-    items: [
-      { href: "/catalogo/productos", label: "Productos", accion: "producto_ver_catalogo", panel: "ambos" },
-      // Antes en Movimientos (solo se muda la entrada del menú: la URL es la misma). El precio de venta propio de la sucursal activa; delegable al encargado.
-      { href: "/movimientos/precio-local", label: "Precio local", accion: "precio_local", panel: "sucursal" },
-      { href: "/catalogo/proveedores", label: "Proveedores", accion: "proveedores", panel: "empresa" },
-      { href: "/catalogo/clientes", label: "Clientes con descuento", accion: "clientes", panel: "empresa" },
-      { href: "/catalogo/recetas", label: "Recetas", accion: "guardar_receta", panel: "empresa" },
-      // GO-2d (ADR-030): los grupos de opciones de venta (tamaños, variantes, incluidas y adicionales) son del catálogo de la empresa.
-      { href: "/catalogo/opciones", label: "Opciones de venta", accion: "opciones_definir", panel: "empresa" },
-      { href: "/catalogo/insumos-grupos", label: "Insumos / Grupos", accion: "grupos_familia", panel: "empresa" },
-      { href: "/catalogo/categorias", label: "Categorías", accion: "categorias", panel: "empresa" },
-      { href: "/catalogo/unidades", label: "Unidades", accion: "unidades", panel: "empresa" },
-      { href: "/catalogo/margen-objetivo", label: "Margen objetivo", accion: "margen_objetivo_editar", panel: "empresa" },
-    ],
+    items: NAV_CATALOGO,
   },
   {
     // Módulo propio (ADR-006, docs/adr/ADR-006-carta-como-modulo-interno.md): antes anidado bajo Catálogo sin motivo claro,
@@ -201,6 +191,8 @@ export const RUTAS_DE_UNA_ENTRADA: readonly RutaDeUnaEntrada[] = [
   ...PROCESOS_DEL_SELECTOR.map((p): RutaDeUnaEntrada => ({ href: p.href, label: p.etiquetaCorta, accion: p.accion, panel: "sucursal", entrada: ENTRADA_REGISTRAR_MOVIMIENTO })),
   // DEC-27: las pestañas de «Existencias» y «Configuración» de Stock que no son la entrada, y los editores de parámetros (core/stock/ui-config.ts).
   ...RUTAS_DE_LAS_ENTRADAS_DE_STOCK.map((r): RutaDeUnaEntrada => ({ href: r.href, label: r.texto, accion: r.accion, panel: r.panel, entrada: r.entrada })),
+  // DEC-13: las pestañas de «Productos» (Precio local, Recetas) y de «Maestros» que no son la entrada (core/catalogo/ui-config.ts).
+  ...RUTAS_DE_LAS_ENTRADAS_DE_CATALOGO.map((r): RutaDeUnaEntrada => ({ href: r.href, label: r.texto, accion: r.accion, panel: r.panel, entrada: r.entrada })),
 ];
 
 /** De las rutas de una entrada, las que el rol puede ver (su `accion`): lo que se le ofrece al buscador del cajón de celular, que no decide permisos. Se calcula en el servidor. */

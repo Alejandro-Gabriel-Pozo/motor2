@@ -71,3 +71,6 @@ export {
   necesitaLaEmpresaEntera,
 } from "./filtros-de-productos";
 export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos } from "./filtros-de-productos";
+// Fase 7 (DEC-13): el grupo Catálogo del menú, sus filas de pestañas y las rutas que cuelgan de cada entrada (puro; lo arma `core/navegacion/estructura.ts` y lo dibuja `FilaDeCatalogo`).
+export { NAV_CATALOGO, PESTANAS_DE_MAESTROS, PESTANAS_DE_PRODUCTOS, RUTAS_DE_LAS_ENTRADAS_DE_CATALOGO } from "./ui-config";
+export type { PantallaDeCatalogo } from "./ui-config";

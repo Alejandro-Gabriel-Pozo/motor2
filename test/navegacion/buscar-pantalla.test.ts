@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GRUPOS_NAV, filtrarMenuPorPermiso, type GrupoNav } from "../../src/core/navegacion/estructura";
+import { GRUPOS_NAV, RUTAS_DE_UNA_ENTRADA, filtrarMenuPorPermiso, type GrupoNav } from "../../src/core/navegacion/estructura";
 import { buscarPantallaEnMenu, normalizarParaBuscar } from "../../src/core/navegacion/buscar-pantalla";
 
 /**
@@ -72,8 +72,8 @@ describe("buscarPantallaEnMenu", () => {
     expect(buscarPantallaEnMenu(filtrarMenuPorPermiso(GRUPOS_NAV, new Set()), "recet").every((p) => !p.href.startsWith("/catalogo/recetas"))).toBe(true);
   });
 
-  it("sobre el menú real, «recet» encuentra «Recetas» de Catálogo", () => {
-    const hallazgos = buscarPantallaEnMenu(GRUPOS_NAV, "recet");
+  it("sobre el menú real, «recet» encuentra «Recetas» de Catálogo (desde DEC-13, una pestaña de «Productos»)", () => {
+    const hallazgos = buscarPantallaEnMenu(GRUPOS_NAV, "recet", RUTAS_DE_UNA_ENTRADA);
     expect(hallazgos).toContainEqual(expect.objectContaining({ href: "/catalogo/recetas", label: "Recetas", grupoLabel: "Catálogo" }));
   });
 });
