@@ -16,6 +16,8 @@ vi.mock("../../../src/server/persistencia/carta/contenido-producto", async (impo
 import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../../setup/test-db";
 import { clienteConEmpresaDePrueba, EMPRESA_TESTIGO_ID } from "../../setup/empresa-de-prueba";
 import { urlDeSembradoDeVitest } from "../../setup/rol-de-pruebas";
+import { actorDePrueba } from "../../setup/opciones-de-venta";
+import { agregarProductoALaCartaCasoDeUso } from "../../../src/server/actions/carta/casos-de-uso/agregar-producto-a-la-carta";
 import { importarCatalogoCasoDeUso, type ModoDeImportacion, type ResultadoImportarCatalogo } from "../../../src/server/actions/catalogo/casos-de-uso/importar-catalogo";
 import { normalizarCatalogo } from "../../../src/core/features/catalogo/importacion/normalizar";
 import { LOCALES_DEL_IMPORTADOR, type CatalogoNormalizado } from "../../../src/core/features/catalogo/importacion/tipos";
@@ -224,5 +226,62 @@ describe("precio: un precio por empresa", () => {
       expect(enLaCarta.length, local).toBeGreaterThan(0);
       for (const p of enLaCarta) expect(p.precioAca, `${local} ${p.nombre}`).toBe(precioVenta.get(p.id));
     }
+  });
+});
+
+describe("concurrencia con «Agregar a la carta» (A.5, A.8)", () => {
+  const VUELTAS = 10;
+
+  it(`importar y «Agregar a la carta» del mismo producto y local a la vez (${VUELTAS} vueltas): queda UNA fila, no ganan las dos, y la importación nunca pisa lo que cargó «Agregar»`, async () => {
+    const huinganco = semilla.sucursales.Huinganco;
+    const { huellaVisible } = await vistaPrevia();
+    expect((await importar({ tipo: "CONFIRMAR", huella: huellaVisible })).ok).toBe(true);
+    expect(await conteos()).toEqual(TODO);
+
+    const producto = await prisma.producto.findFirstOrThrow({ where: { codigo: "CON-SECCION-1" }, select: { id: true } });
+    const clave = { sucursalId_productoId: { sucursalId: huinganco, productoId: producto.id } };
+    const entidadId = `${huinganco}:${producto.id}`;
+    const delImportador = await prisma.contenidoCartaProducto.findUniqueOrThrow({ where: clave });
+    // «Agregar» lo pone en OTRA sección: si la importación lo pisara, la sección volvería a la suya.
+    const otraSeccion = Object.values(semilla.secciones).find((id) => id !== delImportador.seccionCartaId)!;
+    const actorDeAgregar = { ...actorDePrueba(semilla.duena.id, huinganco), sucursalNombre: "Huinganco" };
+    const auditoriasDeLaFila = () => prisma.registroAuditoria.count({ where: { entidad: "ContenidoCartaProducto", entidadId } });
+
+    const ganadores = { importacion: 0, agregar: 0 };
+    for (let vuelta = 1; vuelta <= VUELTAS; vuelta++) {
+      // Rehacer el estado: ese producto vuelve a estar fuera de carta en Huinganco (las auditorías ya escritas quedan: solo se agrega).
+      await prisma.contenidoCartaProducto.delete({ where: clave });
+      const auditoriasAntes = await auditoriasDeLaFila();
+      const totalAntes = await prisma.registroAuditoria.count();
+      const previa = await vistaPrevia();
+      expect(previa.conteos.contenidos, `vuelta ${vuelta}`).toMatchObject({ CREAR: 1, SIN_CAMBIOS: 429, ERROR: 0 });
+
+      // «Agregar» entra con un retraso que crece por vuelta (0 a 180 ms): así se cruzan las dos transacciones en distintos momentos de la importación (antes de leer, entre leer y escribir, ya confirmada).
+      const retraso = (vuelta - 1) * 20;
+      const [importacion, agregar] = await Promise.all([
+        importar({ tipo: "CONFIRMAR", huella: previa.huellaVisible }),
+        new Promise((r) => setTimeout(r, retraso)).then(() => agregarProductoALaCartaCasoDeUso(actorDeAgregar, { productoId: producto.id, seccionCartaId: otraSeccion })),
+      ]);
+
+      const gano = { importacion: importacion.ok, agregar: agregar.ok && agregar.datos.huboCambio };
+      expect(gano.importacion !== gano.agregar, `vuelta ${vuelta}: gana exactamente una (importación ${JSON.stringify(importacion.ok)}, agregar ${JSON.stringify(agregar.ok)})`).toBe(true);
+      // Si «Agregar» ya había confirmado cuando la importación leyó, el plan ve el contenido distinto (NO_CONFIRMABLE); si confirmó entre su lectura y su escritura, cambia la huella o choca el único.
+      if (!importacion.ok) expect(["VERSION_DESACTUALIZADA", "CHOQUE_DE_UNICIDAD", "NO_CONFIRMABLE"], `vuelta ${vuelta}`).toContain(importacion.codigo);
+      if (!agregar.ok) expect(agregar.codigo, `vuelta ${vuelta}`).toBe("YA_TIENE_CONTENIDO");
+
+      const filas = await prisma.contenidoCartaProducto.findMany({ where: { sucursalId: huinganco, productoId: producto.id } });
+      expect(filas, `vuelta ${vuelta}`).toHaveLength(1);
+      if (gano.agregar) {
+        // La fila es la de «Agregar» (su sección, sin descripción): la importación no la pisó.
+        expect(filas[0], `vuelta ${vuelta}`).toMatchObject({ seccionCartaId: otraSeccion, visibleEnCarta: true, descripcion: null });
+        expect(importacion.ok, `vuelta ${vuelta}`).toBe(false);
+      } else {
+        expect(filas[0], `vuelta ${vuelta}`).toMatchObject({ seccionCartaId: delImportador.seccionCartaId, descripcion: delImportador.descripcion, orden: delImportador.orden });
+      }
+      expect(await auditoriasDeLaFila(), `vuelta ${vuelta}`).toBe(auditoriasAntes + 1);
+      expect(await prisma.registroAuditoria.count(), `vuelta ${vuelta}`).toBe(totalAntes + 1);
+      ganadores[gano.importacion ? "importacion" : "agregar"]++;
+    }
+    expect(ganadores.importacion + ganadores.agregar).toBe(VUELTAS);
   });
 });
