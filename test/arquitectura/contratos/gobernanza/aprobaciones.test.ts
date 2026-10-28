@@ -315,20 +315,32 @@ describe("cambiar el mecanismo pone el guardián en rojo hasta registrar la apro
     });
   });
 
-  it("cambiar una exclusión (otra ruta, otra cantidad, una nueva) → rojo; verde con la aprobación", () => {
-    const [primera] = EXCLUSIONES;
-    const casos: { titulo: string; exclusiones: readonly Exclusion[] }[] = [
-      { titulo: "una exclusión nueva", exclusiones: [...EXCLUSIONES, { ...primera, ruta: "src/ui/", archivos: 6 }] },
-      { titulo: "la cantidad de archivos", exclusiones: [{ ...primera, archivos: primera.archivos + 1 }] },
-      { titulo: "la ruta", exclusiones: [{ ...primera, ruta: "prisma/otra/" }] },
-      { titulo: "ninguna exclusión", exclusiones: [] },
+  it("cambiar una exclusión (una nueva, otra ruta, otra cantidad, sacarla) → rojo; verde con la aprobación", () => {
+    // El repo real no tiene ninguna exclusión: la partida es una de prueba, aprobada en el registro de este test.
+    const clave = `${CARPETA}/gobernanza/exclusiones.ts#exclusiones`;
+    const primera: Exclusion = {
+      ruta: "prisma/prototipo/",
+      motivo: "prototipo de prueba: carpeta de código experimental que se corre a mano y nadie importa",
+      responsable: "dueño",
+      aprobacion: { por: "dueño", referencia: "DEC-02" },
+      vence: "2026-12-20",
+      archivos: 5,
+    };
+    const conPrimera = [...APROBACIONES, aprobar(clave, { exclusiones: [primera] })];
+    expect(correr({ exclusiones: [primera], registro: conPrimera }), "la exclusión de prueba aprobada es la partida en verde").toEqual([]);
+    const casos: { titulo: string; exclusiones: readonly Exclusion[]; registro: readonly Aprobacion[] }[] = [
+      { titulo: "una exclusión nueva (la lista real está vacía)", exclusiones: [primera], registro: APROBACIONES },
+      { titulo: "otra exclusión además de la aprobada", exclusiones: [primera, { ...primera, ruta: "src/ui/", archivos: 6 }], registro: conPrimera },
+      { titulo: "la cantidad de archivos", exclusiones: [{ ...primera, archivos: primera.archivos + 1 }], registro: conPrimera },
+      { titulo: "la ruta", exclusiones: [{ ...primera, ruta: "prisma/otra/" }], registro: conPrimera },
+      { titulo: "ninguna exclusión", exclusiones: [], registro: conPrimera },
     ];
     for (const c of casos) {
-      const r = correr({ exclusiones: c.exclusiones });
+      const r = correr({ exclusiones: c.exclusiones, registro: c.registro });
       mostrar(`exclusiones: ${c.titulo}`, r);
-      expect(tipos(r), c.titulo).toEqual([`huella-distinta · ${CARPETA}/gobernanza/exclusiones.ts#exclusiones`]);
+      expect(tipos(r), c.titulo).toEqual([`huella-distinta · ${clave}`]);
       expect(r[0].archivo).toBe(`${CARPETA}/gobernanza/exclusiones.ts`);
-      expect(correr({ exclusiones: c.exclusiones, registro: [...APROBACIONES, aprobar(`${CARPETA}/gobernanza/exclusiones.ts#exclusiones`, { exclusiones: c.exclusiones })] }), c.titulo).toEqual([]);
+      expect(correr({ exclusiones: c.exclusiones, registro: [...c.registro, aprobar(clave, { exclusiones: c.exclusiones })] }), c.titulo).toEqual([]);
     }
   });
 

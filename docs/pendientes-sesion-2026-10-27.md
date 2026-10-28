@@ -40,7 +40,7 @@ Ver `docs/auditoria-circuito-de-abastecimiento-2026-10-27.md`: la compra simple 
 - Cercos que solo bajan: 23 `type="number"`, 8 fechas de texto, 19 teclados numéricos a mano. Consola de plataforma sin el sistema visual; pantalla de receta sin migrar del todo; 15 alias `.pos-shell`.
 - Dinero: decisión abierta de pasar a enteros/`Decimal` de punta a punta (ADR-038).
 - Descripciones de `ACCIONES` (viven en la base) con el vocabulario viejo («Sección»); encabezados de ADR-028/029 desactualizados («no aplicada»); un comentario del código cita `docs/plan-numeracion-ticket-2026-09-25.md` (no existe; el real es `...boleta...`); comentario de `Sucursal.maxMesasAbiertas` con la clave equivocada.
-- Vencimientos: excepciones de la auditoría de Prisma hasta 2026-12-01; deuda de tokens y exclusión `prisma/fase-a` hasta 2026-12-20.
+- Vencimientos: excepciones de la auditoría de Prisma hasta 2026-12-01; deuda de tokens hasta 2026-12-20. (La exclusión `prisma/fase-a` que vencía ese mismo día ya no existe: el código se retiró el 2026-10-28, ver ADR-004.)
 - Infraestructura: el contenedor se reinició 3 veces el 26-27/10 y cortó pruebas largas; máquina de 4 CPU compartida por los agentes (cola `flock /tmp/pesado.lock`).
 
 ## Actualización posterior a la fusión de la #131 (2026-10-27)

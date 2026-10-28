@@ -825,6 +825,13 @@ const exclusion: Operador = {
   aplicar(base, p) {
     const modo = parametro(p, "modo");
     const primera = base.exclusiones[0];
+    // Agregar una exclusión nueva (bien gobernada) no necesita una real: se arma entera, así que vale también con la lista vacía.
+    if (modo === "sobre-codigo") {
+      const carpeta = "src/ui/";
+      const n = base.archivos.filter((a) => a.startsWith(carpeta)).length;
+      const nueva: Exclusion = { ruta: carpeta, motivo: "exclusión de prueba del arnés: carpeta de código que se deja fuera a propósito", responsable: "dueño", aprobacion: { por: "dueño", referencia: "PR #12" }, vence: masDias(base.hoy, 59), archivos: n };
+      return mutacion(`una exclusión nueva (bien gobernada) sobre ${carpeta}`, () => lineaDeEntradaDeArea(base, p.area ?? "ui"), { exclusiones: [...base.exclusiones, nueva] });
+    }
     if (primera === undefined) return { noAplica: "no hay ninguna exclusión real" };
     // Cambiar el motivo, el responsable, la aprobación o el vencimiento de una exclusión cambia su huella en el registro de aprobaciones (las exclusiones se hashean enteras).
     const huellaDeExclusiones = [{ verifica: "aprobaciones", tipo: "huella-distinta" }] as const;
@@ -848,15 +855,12 @@ const exclusion: Operador = {
       if (uno === undefined) return fallo("la exclusión real no cubre ningún archivo");
       return mutacion("un archivo menos bajo la exclusión real", () => 1, { cambios: [{ op: "borrar", ruta: uno }] });
     }
-    const carpeta = "src/ui/";
-    const n = base.archivos.filter((a) => a.startsWith(carpeta)).length;
-    const nueva: Exclusion = { ...primera, ruta: carpeta, archivos: n, vence: masDias(base.hoy, 59) };
-    return mutacion(`una exclusión nueva (bien gobernada) sobre ${carpeta}`, () => lineaDeEntradaDeArea(base, p.area ?? "ui"), { exclusiones: [...base.exclusiones, nueva] });
+    return fallo(`el operador exclusion no tiene el modo «${modo}»`);
   },
 };
 
 /**
- * Correr el reloj un día después del vencimiento de la entrada mutada vence TAMBIÉN toda deuda, excepción y exclusión real que caduque ese mismo día (la de `prisma/fase-a/` también vence el 2026-12-20) (hoy + 59 días de la mutación cae, desde el 2026-10-22, en el 2026-12-20 de la deuda
+ * Correr el reloj un día después del vencimiento de la entrada mutada vence TAMBIÉN toda deuda, excepción y exclusión real que caduque ese mismo día (hoy + 59 días de la mutación cae, desde el 2026-10-22, en el 2026-12-20 de la deuda
  * inicial de los tokens): es lo que tiene que pasar, no un hueco. Es el mismo criterio de la mutación `vencida` de las exclusiones.
  */
 const VENCEN_CON_EL_RELOJ = [
