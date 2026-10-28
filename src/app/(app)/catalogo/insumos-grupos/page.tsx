@@ -2,7 +2,7 @@ import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeAlgunaDelMenu } from "@/server/acceso/gate";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeAlgunaDelMenu, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { AvisoSoloLecturaDeCatalogo } from "@/components/catalogo/aviso-solo-lectura";
 import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
 import { PESTANAS_DE_MAESTROS } from "@/core/catalogo/public";
@@ -25,8 +25,8 @@ import { Selector } from "@/ui/primitivas/selector";
 
 /**
  * Catálogo › Maestros (Fase 7, DEC-13; diseño en `docs/diseno-modulo-catalogo-2026-10-28.md` §8): la entrada del menú y su primera pestaña, «Insumos» (con el árbol de grupos). La entrada reúne las cuatro
- * tablas de base de la empresa, así que la guarda es la de «alguna de» con el cálculo del menú; las claves son las del `algunaDe` del ítem del menú (un test lo comprueba). La tabla de insumos se dibuja solo
- * con el «Ver» de `grupos_familia`; sin él, la fila de pestañas lleva a lo que el rol sí ve.
+ * tablas de base de la empresa, así que la guarda es la de «alguna de» con el cálculo del menú; las claves son las del `algunaDe` del ítem del menú (un test lo comprueba). La tabla de insumos tiene su
+ * propia guarda, la de siempre (`grupos_familia`); sin su «Ver», la fila de pestañas lleva a lo que el rol sí ve.
  *
  * Ver ≠ escribir (DEC-33): cada control se dibuja con el «Editar» de LA clave que exige su comando: el grupo de un insumo, «Activar/Desactivar» y el árbol de grupos con `grupos_familia`; el alta con
  * `insumo_alta`; renombrar (o fusionar) con `insumo_renombrar_fusionar`. Quien no puede ninguno lee las tablas con el aviso de solo lectura.
@@ -40,7 +40,9 @@ export default async function InsumosGruposPage() {
   const gate = await requierePermisoVerDeAlgunaDelMenu(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, ["grupos_familia", "categorias", "unidades", "margen_objetivo_editar"], ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   const fila = <FilaDeCatalogo ctx={ctx} etiqueta="Qué maestro" pestanas={PESTANAS_DE_MAESTROS} ruta="/catalogo/insumos-grupos" visibles={gate.visibles} />;
-  if (!gate.visibles.has("grupos_familia")) {
+  // La tabla de insumos (y sus lecturas, `listarInsumos` y `listarGrupos`) se protege con SU clave, como antes de ser la entrada de Maestros.
+  const gateInsumos = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "grupos_familia", ctx.db);
+  if (!gateInsumos.ok) {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="text-xl font-semibold">Maestros</h1>

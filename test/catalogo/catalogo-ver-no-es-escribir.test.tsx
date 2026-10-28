@@ -113,6 +113,17 @@ describe("Catálogo: ver una pantalla no es poder escribir en ella (DEC-33)", ()
     expect(cuantos(arbol, AvisoSoloLecturaDeCatalogo)).toBe(0);
   });
 
+  it("Maestros: quien ve otro maestro pero no los insumos entra a la entrada y lee «Elegí arriba» (ni la tabla ni sus lecturas)", async () => {
+    const { count } = await prisma.permisoRol.updateMany({ where: { rolId: rolAdminId, accionClave: "grupos_familia" }, data: { puedeVer: false, puedeEditar: false } });
+    expect(count).toBe(1);
+    const arbol = await InsumosGruposPage();
+    expect(tieneTexto(arbol, "Tu rol no ve los insumos")).toBe(true);
+    expect(cuantos(arbol, FormConResultado)).toBe(0);
+    // Sin ningún maestro, la guarda de la entrada niega.
+    await prisma.permisoRol.updateMany({ where: { rolId: rolAdminId, accionClave: { in: ["categorias", "unidades", "margen_objetivo_editar"] } }, data: { puedeVer: false, puedeEditar: false } });
+    expect(tieneTexto(await InsumosGruposPage(), "No tenés permiso")).toBe(true);
+  });
+
   it("Proveedores: «Editar» y «Desactivar» de la lista y «Editar» de la ficha solo con el «Editar» de `proveedores`", async () => {
     expect(tieneTexto(await ProveedoresPage({ searchParams: Promise.resolve({}) }), "Editar")).toBe(true);
     expect(tieneTexto(await FichaProveedorPage({ params: Promise.resolve({ id: proveedorId }), searchParams: Promise.resolve({}) }), "Editar")).toBe(true);
