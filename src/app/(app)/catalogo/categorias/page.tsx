@@ -3,6 +3,8 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
+import { PESTANAS_DE_MAESTROS } from "@/core/catalogo/public";
 import { crearCategoriaProducto, actualizarActivaCategoriaProducto, listarCategoriasProducto } from "@/server/actions/catalogo/categorias-producto";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
@@ -22,7 +24,8 @@ export default async function CategoriasPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-xl font-semibold">Categorías (rubro comercial — aplica a MP o PV)</h1>
+      <h1 className="text-xl font-semibold">Maestros · Categorías</h1>
+      <FilaDeCatalogo ctx={ctx} etiqueta="Qué maestro" pestanas={PESTANAS_DE_MAESTROS} ruta="/catalogo/categorias" />
 
       <table className="w-full text-sm">
         <thead>

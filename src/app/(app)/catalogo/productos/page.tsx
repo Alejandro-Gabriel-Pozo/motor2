@@ -25,6 +25,8 @@ import {
   rutaDelPaso,
 } from "@/core/catalogo/public";
 import { FiltrosDeLista } from "@/components/filtros-de-lista";
+import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
+import { PESTANAS_DE_PRODUCTOS } from "@/core/catalogo/public";
 import { faltasQueSePuedenFiltrarEnLaLista } from "@/server/consultas/catalogo/filtros-de-productos";
 import { gruposDeOpcionesPorProducto } from "@/server/consultas/catalogo/opciones-de-venta";
 
@@ -72,6 +74,9 @@ export default async function ProductosPage({
             + Nuevo producto
           </EnlaceInterno>
         )}
+      </div>
+      <div className="mb-4">
+        <FilaDeCatalogo ctx={ctx} etiqueta="Qué mirar de los productos" pestanas={PESTANAS_DE_PRODUCTOS} ruta="/catalogo/productos" />
       </div>
       <FiltrosDeLista
         accion="/catalogo/productos"

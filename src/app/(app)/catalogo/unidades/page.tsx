@@ -3,6 +3,8 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
+import { PESTANAS_DE_MAESTROS } from "@/core/catalogo/public";
 import {
   crearUnidad,
   actualizarActivaUnidad,
@@ -28,7 +30,8 @@ export default async function UnidadesPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-xl font-semibold">Unidades de medida</h1>
+      <h1 className="text-xl font-semibold">Maestros · Unidades de medida</h1>
+      <FilaDeCatalogo ctx={ctx} etiqueta="Qué maestro" pestanas={PESTANAS_DE_MAESTROS} ruta="/catalogo/unidades" />
 
       <table className="w-full text-sm">
         <thead>

@@ -14,6 +14,8 @@ import { formatearMonto } from "@/core/pos/public";
 import type { PrecioLocalDeProductoVisto } from "@/core/features/catalogo/precio-local.schema";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { Aviso } from "@/ui/primitivas/aviso";
+import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
+import { PESTANAS_DE_PRODUCTOS } from "@/core/catalogo/public";
 
 /**
  * MOVIL (O.463): las dos tablas de esta pantalla (4 y 5 columnas, con un campo y botones por fila) no entran en 375 px: se cortaban («Guardar» → «Guard», columnas «Habilitado» y «Volver…»
@@ -44,141 +46,55 @@ export default async function PrecioLocalPage() {
   return (
     // minmax(0,1fr) y no 1fr: un `1fr` pelado tiene mínimo automático (el ancho mínimo de la tabla) y, junto a los 380 px del formulario, empujaba la
     // PÁGINA a scroll horizontal a 1024 px. Con minmax(0,…) la tabla se achica a su columna y, si no entra, scrollea dentro de su contenedor.
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
-      <div>
-        <h1 className="mb-4 text-xl font-semibold">Precio local (override por sucursal del precio de venta)</h1>
-        <div className="overflow-x-auto">
-          <table role="table" className={TABLA}>
-            <thead role="rowgroup" className={ENCABEZADO}>
-              <tr role="row" className="border-b text-left text-tinta-tenue">
-                <th role="columnheader" className="py-2 pr-3">Producto</th>
-                <th role="columnheader" className="pr-3">Precio local</th>
-                <th role="columnheader" className="pr-3">Precio global</th>
-                <th role="columnheader" className="pr-3">Habilitado</th>
-                <th role="columnheader"><span className="sr-only">Acciones</span></th>
-              </tr>
-            </thead>
-            <tbody role="rowgroup" className={CUERPO}>
-              {precios.map((p) => {
-                // Primitivos fuera del closure: lo que captura un closure "use server" viaja al cliente, y un Decimal de Prisma no puede
-                // viajar ("Only plain objects can be passed to Client Components...", warning del servidor de desarrollo).
-                const { productoId, habilitado } = p;
-                const precio = Number(p.precio);
-                return (
-                  <tr key={p.id} role="row" className={FILA}>
-                    <td role="cell" className="py-2 pr-3 max-md:py-1 max-md:font-medium">{p.producto.nombre}</td>
-                    <td role="cell" data-label="Precio local" className={`pr-3 ${CELDA}`}>{precio}</td>
-                    <td role="cell" data-label="Precio global" className={`pr-3 ${CELDA}`}>{Number(p.producto.precioVenta)}</td>
-                    <td role="cell" data-label="Habilitado" className={`pr-3 ${CELDA}`}>{habilitado ? "Sí" : "No"}</td>
-                    <td role="cell" className="max-md:block">
-                      <FormConResultado
-                        accion={async () => {
-                          "use server";
-                          // Lo que mostraba la fila (precio y estado): si alguien lo cambió desde que se cargó la pantalla, la acción no escribe y pide recargar.
-                          const r = await setPrecioLocalProducto(productoId, precio, !habilitado, { precio, habilitado });
-                          // El refresco se pide ACÁ y no en la acción: la acción también la usa el formulario cliente de alta, que ya hace su propio
-                          // router.refresh() (ver refrescar.ts). Sin esto la columna «Habilitado» no cambiaba hasta recargar a mano.
-                          // Solo si salió bien: con un error no cambió nada.
-                          if (r.ok) refrescarVistaSiHaceFalta();
-                          return r;
-                        }}
-                      >
-                        <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
-                          {habilitado ? "Deshabilitar" : "Habilitar"}
-                        </BotonDeServidor>
-                      </FormConResultado>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
+        <div>
+          <h1 className="mb-1 text-xl font-semibold">Productos · Precio local en «{ctx.sucursalNombre}»</h1>
+          <p className="text-sm text-tinta-tenue">El precio de venta propio de esta sucursal. Un producto sin precio local se vende al precio de la empresa.</p>
         </div>
+        <FilaDeCatalogo ctx={ctx} etiqueta="Qué mirar de los productos" pestanas={PESTANAS_DE_PRODUCTOS} ruta="/movimientos/precio-local" />
       </div>
-
-      <div>
-        <PrecioLocalForm sucursalId={ctx.sucursalId} preciosLocales={preciosLocales} />
-      </div>
-
-      {/* GO-2d (ADR-030 §5): el precio de cada TAMAÑO que un producto cobra con precio propio, en esta sucursal. Vacío = rige el de la empresa. */}
-      <section aria-labelledby="titulo-precios-por-tamano" className="flex flex-col gap-3 lg:col-span-2">
-        <h2 id="titulo-precios-por-tamano" className="text-lg font-medium">
-          Precios por tamaño en esta sucursal
-        </h2>
-        <p className="text-sm text-tinta-suave">
-          Solo los tamaños que un producto cobra con precio propio. Si no cargás nada, en «{ctx.sucursalNombre}» rige el precio de la empresa.
-        </p>
-        {tamanos.length === 0 ? (
-          <Aviso variante="informacion" forma="en-linea">
-            Ningún producto disponible acá cobra sus tamaños con precio propio.
-          </Aviso>
-        ) : (
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div>
           <div className="overflow-x-auto">
             <table role="table" className={TABLA}>
-              <caption className="sr-only">Precios por tamaño en esta sucursal</caption>
               <thead role="rowgroup" className={ENCABEZADO}>
-                <tr role="row" className="border-b text-left text-tinta-suave">
-                  <th role="columnheader" scope="col" className="py-2 pr-2 font-medium">
-                    Producto y tamaño
-                  </th>
-                  <th role="columnheader" scope="col" className="pr-2 font-medium">
-                    Precio de la empresa
-                  </th>
-                  <th role="columnheader" scope="col" className="pr-2 font-medium">
-                    En esta sucursal
-                  </th>
-                  <th role="columnheader" scope="col" className="font-medium">
-                    Habilitado
-                  </th>
+                <tr role="row" className="border-b text-left text-tinta-tenue">
+                  <th role="columnheader" className="py-2 pr-3">Producto</th>
+                  <th role="columnheader" className="pr-3">Precio local</th>
+                  <th role="columnheader" className="pr-3">Precio global</th>
+                  <th role="columnheader" className="pr-3">Habilitado</th>
+                  <th role="columnheader"><span className="sr-only">Acciones</span></th>
                 </tr>
               </thead>
               <tbody role="rowgroup" className={CUERPO}>
-                {tamanos.map((t) => {
-                  const { productoId, opcionId } = t;
-                  const esperado = t.enLaSucursal ? { precio: t.enLaSucursal.precio, habilitado: t.enLaSucursal.habilitado } : null;
-                  const etiqueta = `${t.productoNombre} · ${t.opcionNombre}`;
+                {precios.map((p) => {
+                  // Primitivos fuera del closure: lo que captura un closure "use server" viaja al cliente, y un Decimal de Prisma no puede
+                  // viajar ("Only plain objects can be passed to Client Components...", warning del servidor de desarrollo).
+                  const { productoId, habilitado } = p;
+                  const precio = Number(p.precio);
                   return (
-                    <tr key={`${productoId}-${opcionId}`} role="row" className={FILA} data-tamano={etiqueta}>
-                      <td role="cell" className="py-2 pr-2 max-md:py-1">
-                        {t.productoNombre} · <span className="font-medium">{t.opcionNombre}</span> <span className="text-tinta-suave">({t.grupoNombre})</span>
-                      </td>
-                      <td role="cell" data-label="Precio de la empresa" className={`py-2 pr-2 tabular-nums ${CELDA}`}>{t.precioDeLaEmpresa === null ? "Sin precio" : formatearMonto(t.precioDeLaEmpresa)}</td>
-                      <td role="cell" data-label="En esta sucursal" className={`py-2 pr-2 ${CELDA}`}>
+                    <tr key={p.id} role="row" className={FILA}>
+                      <td role="cell" className="py-2 pr-3 max-md:py-1 max-md:font-medium">{p.producto.nombre}</td>
+                      <td role="cell" data-label="Precio local" className={`pr-3 ${CELDA}`}>{precio}</td>
+                      <td role="cell" data-label="Precio global" className={`pr-3 ${CELDA}`}>{Number(p.producto.precioVenta)}</td>
+                      <td role="cell" data-label="Habilitado" className={`pr-3 ${CELDA}`}>{habilitado ? "Sí" : "No"}</td>
+                      <td role="cell" className="max-md:block">
                         <FormConResultado
-                          ofrecerRecargar
-                          accion={async (formData: FormData) => {
-                            "use server";
-                            return fijarPrecioLocalDeOpcion({ sucursalId, productoId, opcionId, esperado, precio: numeroDelCampo(String(formData.get("precio") ?? "")) ?? Number.NaN });
-                          }}
-                          className="flex flex-col gap-1"
-                        >
-                          <div className="flex items-center gap-2">
-                            <label htmlFor={`tamano-${productoId}-${opcionId}`} className="sr-only">
-                              Precio de {etiqueta} en esta sucursal
-                            </label>
-                            <CampoNumero id={`tamano-${productoId}-${opcionId}`} name="precio" defaultValue={t.enLaSucursal?.habilitado ? String(t.enLaSucursal.precio) : ""} prefijo="$" tipo="importe" etiqueta="El precio" tamano="compacto" required className="w-32" />
-                            {/* Un botón por tamaño: el nombre accesible dice cuál (varios «Guardar» iguales en la misma pantalla no se distinguen con un lector de pantalla). */}
-                            <BotonDeServidor type="submit" variante="enlace" tamano="tactil" aria-label={`Guardar el precio de ${etiqueta}`} className="min-w-11">
-                              Guardar
-                            </BotonDeServidor>
-                          </div>
-                        </FormConResultado>
-                      </td>
-                      <td role="cell" data-label="Habilitado" className={`py-2 ${CELDA}`}>
-                        {/* El formulario se dibuja siempre (aunque no haya nada que dar de baja) para que su mensaje siga a la vista después de volver al precio de la empresa. */}
-                        <FormConResultado
-                          ofrecerRecargar
                           accion={async () => {
                             "use server";
-                            return fijarPrecioLocalDeOpcion({ sucursalId, productoId, opcionId, esperado, precio: null });
+                            // Lo que mostraba la fila (precio y estado): si alguien lo cambió desde que se cargó la pantalla, la acción no escribe y pide recargar.
+                            const r = await setPrecioLocalProducto(productoId, precio, !habilitado, { precio, habilitado });
+                            // El refresco se pide ACÁ y no en la acción: la acción también la usa el formulario cliente de alta, que ya hace su propio
+                            // router.refresh() (ver refrescar.ts). Sin esto la columna «Habilitado» no cambiaba hasta recargar a mano.
+                            // Solo si salió bien: con un error no cambió nada.
+                            if (r.ok) refrescarVistaSiHaceFalta();
+                            return r;
                           }}
                         >
-                          <span className="mr-2">{t.enLaSucursal?.habilitado ? "Sí" : "No"}</span>
-                          {t.enLaSucursal?.habilitado && (
-                            <BotonDeServidor type="submit" variante="enlace" tamano="tactil" aria-label={`Volver al de la empresa en ${etiqueta}`}>
-                              Volver al de la empresa
-                            </BotonDeServidor>
-                          )}
+                          <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                            {habilitado ? "Deshabilitar" : "Habilitar"}
+                          </BotonDeServidor>
                         </FormConResultado>
                       </td>
                     </tr>
@@ -187,8 +103,102 @@ export default async function PrecioLocalPage() {
               </tbody>
             </table>
           </div>
-        )}
-      </section>
+        </div>
+
+        <div>
+          <PrecioLocalForm sucursalId={ctx.sucursalId} preciosLocales={preciosLocales} />
+        </div>
+
+        {/* GO-2d (ADR-030 §5): el precio de cada TAMAÑO que un producto cobra con precio propio, en esta sucursal. Vacío = rige el de la empresa. */}
+        <section aria-labelledby="titulo-precios-por-tamano" className="flex flex-col gap-3 lg:col-span-2">
+          <h2 id="titulo-precios-por-tamano" className="text-lg font-medium">
+            Precios por tamaño en esta sucursal
+          </h2>
+          <p className="text-sm text-tinta-suave">
+            Solo los tamaños que un producto cobra con precio propio. Si no cargás nada, en «{ctx.sucursalNombre}» rige el precio de la empresa.
+          </p>
+          {tamanos.length === 0 ? (
+            <Aviso variante="informacion" forma="en-linea">
+              Ningún producto disponible acá cobra sus tamaños con precio propio.
+            </Aviso>
+          ) : (
+            <div className="overflow-x-auto">
+              <table role="table" className={TABLA}>
+                <caption className="sr-only">Precios por tamaño en esta sucursal</caption>
+                <thead role="rowgroup" className={ENCABEZADO}>
+                  <tr role="row" className="border-b text-left text-tinta-suave">
+                    <th role="columnheader" scope="col" className="py-2 pr-2 font-medium">
+                      Producto y tamaño
+                    </th>
+                    <th role="columnheader" scope="col" className="pr-2 font-medium">
+                      Precio de la empresa
+                    </th>
+                    <th role="columnheader" scope="col" className="pr-2 font-medium">
+                      En esta sucursal
+                    </th>
+                    <th role="columnheader" scope="col" className="font-medium">
+                      Habilitado
+                    </th>
+                  </tr>
+                </thead>
+                <tbody role="rowgroup" className={CUERPO}>
+                  {tamanos.map((t) => {
+                    const { productoId, opcionId } = t;
+                    const esperado = t.enLaSucursal ? { precio: t.enLaSucursal.precio, habilitado: t.enLaSucursal.habilitado } : null;
+                    const etiqueta = `${t.productoNombre} · ${t.opcionNombre}`;
+                    return (
+                      <tr key={`${productoId}-${opcionId}`} role="row" className={FILA} data-tamano={etiqueta}>
+                        <td role="cell" className="py-2 pr-2 max-md:py-1">
+                          {t.productoNombre} · <span className="font-medium">{t.opcionNombre}</span> <span className="text-tinta-suave">({t.grupoNombre})</span>
+                        </td>
+                        <td role="cell" data-label="Precio de la empresa" className={`py-2 pr-2 tabular-nums ${CELDA}`}>{t.precioDeLaEmpresa === null ? "Sin precio" : formatearMonto(t.precioDeLaEmpresa)}</td>
+                        <td role="cell" data-label="En esta sucursal" className={`py-2 pr-2 ${CELDA}`}>
+                          <FormConResultado
+                            ofrecerRecargar
+                            accion={async (formData: FormData) => {
+                              "use server";
+                              return fijarPrecioLocalDeOpcion({ sucursalId, productoId, opcionId, esperado, precio: numeroDelCampo(String(formData.get("precio") ?? "")) ?? Number.NaN });
+                            }}
+                            className="flex flex-col gap-1"
+                          >
+                            <div className="flex items-center gap-2">
+                              <label htmlFor={`tamano-${productoId}-${opcionId}`} className="sr-only">
+                                Precio de {etiqueta} en esta sucursal
+                              </label>
+                              <CampoNumero id={`tamano-${productoId}-${opcionId}`} name="precio" defaultValue={t.enLaSucursal?.habilitado ? String(t.enLaSucursal.precio) : ""} prefijo="$" tipo="importe" etiqueta="El precio" tamano="compacto" required className="w-32" />
+                              {/* Un botón por tamaño: el nombre accesible dice cuál (varios «Guardar» iguales en la misma pantalla no se distinguen con un lector de pantalla). */}
+                              <BotonDeServidor type="submit" variante="enlace" tamano="tactil" aria-label={`Guardar el precio de ${etiqueta}`} className="min-w-11">
+                                Guardar
+                              </BotonDeServidor>
+                            </div>
+                          </FormConResultado>
+                        </td>
+                        <td role="cell" data-label="Habilitado" className={`py-2 ${CELDA}`}>
+                          {/* El formulario se dibuja siempre (aunque no haya nada que dar de baja) para que su mensaje siga a la vista después de volver al precio de la empresa. */}
+                          <FormConResultado
+                            ofrecerRecargar
+                            accion={async () => {
+                              "use server";
+                              return fijarPrecioLocalDeOpcion({ sucursalId, productoId, opcionId, esperado, precio: null });
+                            }}
+                          >
+                            <span className="mr-2">{t.enLaSucursal?.habilitado ? "Sí" : "No"}</span>
+                            {t.enLaSucursal?.habilitado && (
+                              <BotonDeServidor type="submit" variante="enlace" tamano="tactil" aria-label={`Volver al de la empresa en ${etiqueta}`}>
+                                Volver al de la empresa
+                              </BotonDeServidor>
+                            )}
+                          </FormConResultado>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

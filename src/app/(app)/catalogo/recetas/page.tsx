@@ -6,6 +6,8 @@ import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { listarProductosConReceta } from "@/server/consultas/catalogo/recetas";
 import { NuevaReceta } from "./nueva-receta";
+import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
+import { PESTANAS_DE_PRODUCTOS } from "@/core/catalogo/public";
 
 /**
  * Lista de recetas YA armadas — antes esta pantalla mezclaba "elegir un
@@ -31,9 +33,10 @@ export default async function RecetasPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Recetas</h1>
+        <h1 className="text-xl font-semibold">Productos · Recetas</h1>
         {conReceta.length > 0 && <NuevaReceta />}
       </div>
+      <FilaDeCatalogo ctx={ctx} etiqueta="Qué mirar de los productos" pestanas={PESTANAS_DE_PRODUCTOS} ruta="/catalogo/recetas" />
 
       {conReceta.length === 0 ? (
         <div className="flex flex-col gap-2 text-sm text-tinta-tenue">

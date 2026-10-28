@@ -2,6 +2,8 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
+import { PESTANAS_DE_MAESTROS } from "@/core/catalogo/public";
 import { FOOD_COST_OBJETIVO_PCT, resolverObjetivoFoodCost } from "@/core/reportes/public";
 import { cargarObjetivosDeMargen } from "@/server/consultas/reportes/margen-objetivo-consulta";
 import { guardarMargenObjetivo } from "@/server/actions/reportes/margen-objetivo";
@@ -23,8 +25,9 @@ export default async function MargenObjetivoPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="mb-1 text-xl font-semibold">Margen objetivo (food cost)</h1>
+      <div className="flex flex-col gap-4">
+        <h1 className="text-xl font-semibold">Maestros · Margen objetivo (food cost)</h1>
+        <FilaDeCatalogo ctx={ctx} etiqueta="Qué maestro" pestanas={PESTANAS_DE_MAESTROS} ruta="/catalogo/margen-objetivo" />
         <p className="max-w-2xl text-sm text-tinta-tenue">
           El food cost objetivo es el porcentaje del precio de venta (el de la carta, con IVA incluido) que puede irse en comida y bebida, sin contar el packaging ni la limpieza.
           Con él, el reporte de Costos marca «Food cost alto» y calcula el precio mínimo de cada plato. Rige el de la categoría del producto; si la categoría no
