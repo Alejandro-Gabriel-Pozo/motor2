@@ -1,4 +1,5 @@
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
@@ -77,52 +78,54 @@ export default async function MargenObjetivoPage() {
         {categorias.length === 0 ? (
           <p className="text-sm text-tinta-tenue">Todavía no hay categorías activas.</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-tinta-tenue">
-                <th className="py-2">Categoría</th>
-                <th>Rige</th>
-                <th>Objetivo propio (%)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categorias.map((c) => (
-                <tr key={c.id} className="border-b">
-                  <td className="py-2">{c.nombre}</td>
-                  <td>{resolverObjetivoFoodCost(objetivos, c.id)} %</td>
-                  <td>
-                    {puedeEditar ? (
-                      <FormConResultado
-                        accion={async (formData: FormData) => {
-                          "use server";
-                          return guardarMargenObjetivo(c.id, String(formData.get("porcentaje") ?? ""));
-                        }}
-                      >
-                        <div className="flex items-center gap-2 py-1">
-                          <div className="w-40">
-                            <Campo
-                              name="porcentaje"
-                              aria-label={`Food cost objetivo de ${c.nombre} (%)`}
-                              inputMode="decimal"
-                              defaultValue={objetivos.porCategoria.get(c.id) ?? ""}
-                              placeholder="el de la empresa"
-                            />
-                          </div>
-                          <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
-                            Guardar
-                          </BotonDeServidor>
-                        </div>
-                      </FormConResultado>
-                    ) : objetivos.porCategoria.has(c.id) ? (
-                      `${objetivos.porCategoria.get(c.id)?.toLocaleString("es-AR")} %`
-                    ) : (
-                      <span className="text-tinta-tenue">El de la empresa</span>
-                    )}
-                  </td>
+          <CajaDesplazable etiqueta="Tabla del margen objetivo por categoría">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-tinta-tenue">
+                  <th className="py-2">Categoría</th>
+                  <th>Rige</th>
+                  <th>Objetivo propio (%)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {categorias.map((c) => (
+                  <tr key={c.id} className="border-b">
+                    <td className="py-2">{c.nombre}</td>
+                    <td>{resolverObjetivoFoodCost(objetivos, c.id)} %</td>
+                    <td>
+                      {puedeEditar ? (
+                        <FormConResultado
+                          accion={async (formData: FormData) => {
+                            "use server";
+                            return guardarMargenObjetivo(c.id, String(formData.get("porcentaje") ?? ""));
+                          }}
+                        >
+                          <div className="flex items-center gap-2 py-1">
+                            <div className="w-40">
+                              <Campo
+                                name="porcentaje"
+                                aria-label={`Food cost objetivo de ${c.nombre} (%)`}
+                                inputMode="decimal"
+                                defaultValue={objetivos.porCategoria.get(c.id) ?? ""}
+                                placeholder="el de la empresa"
+                              />
+                            </div>
+                            <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                              Guardar
+                            </BotonDeServidor>
+                          </div>
+                        </FormConResultado>
+                      ) : objetivos.porCategoria.has(c.id) ? (
+                        `${objetivos.porCategoria.get(c.id)?.toLocaleString("es-AR")} %`
+                      ) : (
+                        <span className="text-tinta-tenue">El de la empresa</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CajaDesplazable>
         )}
       </section>
     </div>

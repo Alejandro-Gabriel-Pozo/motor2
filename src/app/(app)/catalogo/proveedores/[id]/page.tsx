@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVerDeEmpresa, accionesDelMenuQueElUsuarioPuedeVer, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
@@ -108,7 +109,7 @@ export default async function FichaProveedorPage({
         ) : (
           <>
             <p className="mb-2 text-sm text-tinta-tenue">Cómo llama este proveedor a cada producto en su factura, y a qué producto del sistema corresponde.</p>
-            <div className="overflow-x-auto">
+            <CajaDesplazable etiqueta="Tabla de lo que se le compra">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-tinta-tenue">
@@ -145,7 +146,7 @@ export default async function FichaProveedorPage({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </CajaDesplazable>
           </>
         )}
       </section>

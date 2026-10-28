@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
@@ -44,9 +45,9 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-xl font-semibold">Proveedores</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <EnlaceInterno href="/catalogo/proveedores/comparativa" className="text-sm underline">
             Comparativa de precios →
           </EnlaceInterno>
@@ -60,59 +61,61 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
 
       {!puedeEditar && !puedeDarDeAlta && <AvisoSoloLecturaDeCatalogo que="los proveedores" />}
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-tinta-tenue">
-            <th className="py-2">Código</th>
-            <th>Nombre</th>
-            <th>Contacto</th>
-            <th>Activo</th>
-            <th><span className="sr-only">Acciones</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          {proveedores.map((p) => (
-            <tr key={p.id} className="border-b">
-              <td className="py-2">{p.codigo}</td>
-              <td>
-                <Link href={`/catalogo/proveedores/${p.id}`} className="underline">
-                  {p.nombre}
-                </Link>
-              </td>
-              <td>{p.contacto ?? "—"}</td>
-              <td>{p.activo ? "Sí" : "No"}</td>
-              <td className="py-2">
-                {puedeEditar && (
-                  <div className="flex gap-3">
-                    <Link href={`/catalogo/proveedores/${p.id}/editar`} className="text-sm underline inline-flex items-center gap-1">
-                      <IconoDeAccion id="editar" />
-                      Editar
-                    </Link>
-                    <FormConResultado
-                      accion={async () => {
-                        "use server";
-                        return actualizarActivaProveedor(p.id, !p.activo);
-                      }}
-                    >
-                      <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
-                        <IconoDeAccion id="activar" />
-                        {p.activo ? "Desactivar" : "Activar"}
-                      </BotonDeServidor>
-                    </FormConResultado>
-                  </div>
-                )}
-              </td>
+      <CajaDesplazable etiqueta="Tabla de proveedores">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-tinta-tenue">
+              <th className="py-2">Código</th>
+              <th>Nombre</th>
+              <th>Contacto</th>
+              <th>Activo</th>
+              <th><span className="sr-only">Acciones</span></th>
             </tr>
-          ))}
-          {!proveedores.length && (
-            <tr>
-              <td className="py-2 text-tinta-tenue" colSpan={5}>
-                Sin proveedores.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {proveedores.map((p) => (
+              <tr key={p.id} className="border-b">
+                <td className="py-2">{p.codigo}</td>
+                <td>
+                  <Link href={`/catalogo/proveedores/${p.id}`} className="underline">
+                    {p.nombre}
+                  </Link>
+                </td>
+                <td>{p.contacto ?? "—"}</td>
+                <td>{p.activo ? "Sí" : "No"}</td>
+                <td className="py-2">
+                  {puedeEditar && (
+                    <div className="flex gap-3">
+                      <Link href={`/catalogo/proveedores/${p.id}/editar`} className="text-sm underline inline-flex items-center gap-1">
+                        <IconoDeAccion id="editar" />
+                        Editar
+                      </Link>
+                      <FormConResultado
+                        accion={async () => {
+                          "use server";
+                          return actualizarActivaProveedor(p.id, !p.activo);
+                        }}
+                      >
+                        <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                          <IconoDeAccion id="activar" />
+                          {p.activo ? "Desactivar" : "Activar"}
+                        </BotonDeServidor>
+                      </FormConResultado>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {!proveedores.length && (
+              <tr>
+                <td className="py-2 text-tinta-tenue" colSpan={5}>
+                  Sin proveedores.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </CajaDesplazable>
     </div>
   );
 }

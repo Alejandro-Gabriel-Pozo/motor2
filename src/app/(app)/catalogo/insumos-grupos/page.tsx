@@ -1,5 +1,6 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeAlgunaDelMenu, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
@@ -80,7 +81,7 @@ export default async function InsumosGruposPage() {
           {/* Cada tabla va en su propio contenedor con scroll: a 1280 px la de Insumos no entra en media pantalla y, sin esto, se salía de su
               sección y se pintaba ENCIMA de la de grupos (que viene después en el DOM), que se quedaba con los clics de «Desactivar». Mismo patrón que
               capacidades-sucursal y permisos-matriz. Lo cubre test/e2e/catalogo-insumos-grupos-maquetacion.spec.ts: sacar este contenedor reintroduce el bug. */}
-          <div className="overflow-x-auto">
+          <CajaDesplazable etiqueta="Tabla de insumos">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-tinta-tenue">
@@ -144,9 +145,16 @@ export default async function InsumosGruposPage() {
                     </td>
                   </tr>
                 ))}
+                {!insumos.length && (
+                  <tr>
+                    <td className="py-2 text-tinta-tenue" colSpan={4}>
+                      Todavía no hay insumos.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
-          </div>
+          </CajaDesplazable>
 
           {puedeDarDeAlta && (
             <FormConResultado
@@ -172,7 +180,7 @@ export default async function InsumosGruposPage() {
 
         <section className="space-y-6">
           <h2 className="text-lg font-semibold">Árbol de grupos</h2>
-          <div className="overflow-x-auto">
+          <CajaDesplazable etiqueta="Tabla del árbol de grupos">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-tinta-tenue">
@@ -203,9 +211,16 @@ export default async function InsumosGruposPage() {
                     </td>
                   </tr>
                 ))}
+                {!grupos.length && (
+                  <tr>
+                    <td className="py-2 text-tinta-tenue" colSpan={3}>
+                      Todavía no hay grupos.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
-          </div>
+          </CajaDesplazable>
 
           {puedeEditarGrupos && (
             <FormConResultado

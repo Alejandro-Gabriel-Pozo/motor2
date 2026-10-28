@@ -1,5 +1,6 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
@@ -38,69 +39,71 @@ export default async function ClientesPage() {
       </div>
       {!puedeEditar && <AvisoSoloLecturaDeCatalogo que="los clientes con descuento" />}
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-tinta-tenue">
-            <th className="py-2">Nombre</th>
-            <th className="text-right">Descuento</th>
-            <th>Activo</th>
-            <th>
-              <span className="sr-only">Acciones</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {clientes.map((c) => (
-            <tr key={c.id} className="border-b align-top">
-              <td className="py-2">{c.nombre}</td>
-              <td className="text-right tabular-nums">{Number(c.descuentoPorcentaje).toLocaleString("es-AR")}%</td>
-              <td>{c.activo ? "Sí" : "No"}</td>
-              <td className="py-2">
-                {puedeEditar && (
-                  <div className="flex flex-col gap-1">
-                    <details>
-                      <summary className="inline-flex cursor-pointer items-center gap-1 text-sm underline"><IconoDeAccion id="editar" />Editar</summary>
+      <CajaDesplazable etiqueta="Tabla de clientes con descuento">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-tinta-tenue">
+              <th className="py-2">Nombre</th>
+              <th className="text-right">Descuento</th>
+              <th>Activo</th>
+              <th>
+                <span className="sr-only">Acciones</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {clientes.map((c) => (
+              <tr key={c.id} className="border-b align-top">
+                <td className="py-2">{c.nombre}</td>
+                <td className="text-right tabular-nums">{Number(c.descuentoPorcentaje).toLocaleString("es-AR")}%</td>
+                <td>{c.activo ? "Sí" : "No"}</td>
+                <td className="py-2">
+                  {puedeEditar && (
+                    <div className="flex flex-col gap-1">
+                      <details>
+                        <summary className="inline-flex cursor-pointer items-center gap-1 text-sm underline"><IconoDeAccion id="editar" />Editar</summary>
+                        <FormConResultado
+                          accion={async (formData: FormData) => {
+                            "use server";
+                            const r = await actualizarCliente(c.id, String(formData.get("nombre") ?? ""), formData.get("descuentoPorcentaje"));
+                            if (r.ok) refrescarVistaSiHaceFalta();
+                            return r;
+                          }}
+                          className="mt-2 flex flex-col gap-2 rounded border p-2"
+                        >
+                          <Campo etiqueta="Nombre" name="nombre" defaultValue={c.nombre} required />
+                          <Campo etiqueta="% de descuento" name="descuentoPorcentaje" defaultValue={Number(c.descuentoPorcentaje).toString()} required />
+                          <BotonDeServidor type="submit" tamano="chico" className="self-start">
+                            Guardar
+                          </BotonDeServidor>
+                        </FormConResultado>
+                      </details>
                       <FormConResultado
-                        accion={async (formData: FormData) => {
+                        accion={async () => {
                           "use server";
-                          const r = await actualizarCliente(c.id, String(formData.get("nombre") ?? ""), formData.get("descuentoPorcentaje"));
-                          if (r.ok) refrescarVistaSiHaceFalta();
-                          return r;
+                          return actualizarActivoCliente(c.id, !c.activo);
                         }}
-                        className="mt-2 flex flex-col gap-2 rounded border p-2"
                       >
-                        <Campo etiqueta="Nombre" name="nombre" defaultValue={c.nombre} required />
-                        <Campo etiqueta="% de descuento" name="descuentoPorcentaje" defaultValue={Number(c.descuentoPorcentaje).toString()} required />
-                        <BotonDeServidor type="submit" tamano="chico" className="self-start">
-                          Guardar
+                        <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                          <IconoDeAccion id="activar" />
+                          {c.activo ? "Desactivar" : "Activar"}
                         </BotonDeServidor>
                       </FormConResultado>
-                    </details>
-                    <FormConResultado
-                      accion={async () => {
-                        "use server";
-                        return actualizarActivoCliente(c.id, !c.activo);
-                      }}
-                    >
-                      <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
-                        <IconoDeAccion id="activar" />
-                        {c.activo ? "Desactivar" : "Activar"}
-                      </BotonDeServidor>
-                    </FormConResultado>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-          {!clientes.length && (
-            <tr>
-              <td className="py-2 text-tinta-tenue" colSpan={4}>
-                Sin clientes.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {!clientes.length && (
+              <tr>
+                <td className="py-2 text-tinta-tenue" colSpan={4}>
+                  Sin clientes.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </CajaDesplazable>
 
       {puedeEditar && (
         <FormConResultado

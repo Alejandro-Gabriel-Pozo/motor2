@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
@@ -37,7 +38,7 @@ export default async function RecetasPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Productos · Recetas</h1>
         {puedeEditar && conReceta.length > 0 && <NuevaReceta />}
       </div>
@@ -54,33 +55,35 @@ export default async function RecetasPage() {
           {puedeEditar && <NuevaReceta triggerLabel="Crear la primera →" />}
         </div>
       ) : (
-        <table className="w-full max-w-2xl text-sm">
-          <thead>
-            <tr className="border-b text-left text-tinta-tenue">
-              <th className="py-2">Producto</th>
-              <th>Tipo</th>
-              <th>Versión vigente</th>
-              <th>Ingredientes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {conReceta.map((p) => {
-              const vigente = p.recetaVersiones[0];
-              return (
-                <tr key={p.id} className="border-b">
-                  <td className="py-2">
-                    <Link href={`/catalogo/recetas/${p.id}`} className="underline">
-                      {p.nombre}
-                    </Link>
-                  </td>
-                  <td>{p.tipo === "PV" ? "De venta" : "Materia prima"}</td>
-                  <td>v{vigente.version}</td>
-                  <td>{vigente._count.ingredientes}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <CajaDesplazable etiqueta="Tabla de recetas">
+          <table className="w-full max-w-2xl text-sm">
+            <thead>
+              <tr className="border-b text-left text-tinta-tenue">
+                <th className="py-2">Producto</th>
+                <th>Tipo</th>
+                <th>Versión vigente</th>
+                <th>Ingredientes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {conReceta.map((p) => {
+                const vigente = p.recetaVersiones[0];
+                return (
+                  <tr key={p.id} className="border-b">
+                    <td className="py-2">
+                      <Link href={`/catalogo/recetas/${p.id}`} className="underline">
+                        {p.nombre}
+                      </Link>
+                    </td>
+                    <td>{p.tipo === "PV" ? "De venta" : "Materia prima"}</td>
+                    <td>v{vigente.version}</td>
+                    <td>{vigente._count.ingredientes}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </CajaDesplazable>
       )}
     </div>
   );

@@ -67,7 +67,7 @@ export default async function ProductosPage({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-xl font-semibold">Productos</h1>
         {puedeDarDeAlta && (
           <EnlaceInterno href="/catalogo/productos/nuevo" className={claseDeBoton()}>

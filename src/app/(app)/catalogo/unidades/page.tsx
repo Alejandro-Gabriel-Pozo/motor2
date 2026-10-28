@@ -1,5 +1,6 @@
 import { IconoDeAccion } from "@/components/iconos";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
@@ -48,7 +49,7 @@ export default async function UnidadesPage() {
         {!puedeEditar && <AvisoSoloLecturaDeCatalogo que="las unidades de medida" />}
       </div>
 
-      <div className="overflow-x-auto">
+      <CajaDesplazable etiqueta="Tabla de unidades de medida">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
@@ -108,7 +109,7 @@ export default async function UnidadesPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </CajaDesplazable>
 
       {puedeEditar && (
         <FormConResultado
