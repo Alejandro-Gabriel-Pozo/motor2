@@ -14,8 +14,8 @@ type ClavesDeVer = { accion: AccionClave; algunaDe?: never } | { algunaDe: reado
 /** Una pantalla del módulo: su ruta, cómo se nombra (pestaña o buscador), su panel y la clave de «Ver» que la protege. */
 export type PantallaDeCatalogo = { href: string; texto: string; panel: PanelNav } & ClavesDeVer;
 
-export const RUTA_PRODUCTOS = "/catalogo/productos";
-export const RUTA_MAESTROS = "/catalogo/insumos-grupos";
+const RUTA_PRODUCTOS = "/catalogo/productos";
+const RUTA_MAESTROS = "/catalogo/insumos-grupos";
 
 /**
  * Las pestañas de «Productos». La primera es la entrada del menú (la lista, con la clave de siempre: los enlaces al espacio de cada producto conservan su clave exacta, P-1 del diseño). «Precio local» es el
