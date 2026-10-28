@@ -169,6 +169,10 @@ export const SUCURSALES_LISTADAS_POR_DISENO: Readonly<Record<string, string>> = 
   "consulta|consultas/catalogo/disponibilidad.ts|disponibilidadPorSucursalDeProducto": "la disponibilidad de un producto se muestra por CADA sucursal de la empresa (tabla de la ficha): los nombres de S2 y S3 salen por diseño",
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaEnviar": "lista las OTRAS sucursales activas de la empresa (id y nombre) para elegir a quién enviar: S2 y S3 son sucursales de E1 y sus nombres salen por diseño",
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaSolicitar": "lista las OTRAS sucursales activas de la empresa (id y nombre) para elegir a quién pedirle: S2 y S3 son sucursales de E1 y sus nombres salen por diseño",
+  // E3a (ADR-041): la factura de proveedor repartida.
+  "consulta|consultas/movimientos/facturas-proveedor.ts|listarOtrasSucursalesParaReparto": "lista las OTRAS sucursales activas de la empresa (id y nombre) para elegir entre cuáles repartir la factura: S2 y S3 son sucursales de E1 y sus nombres salen por diseño",
+  "consulta|consultas/movimientos/facturas-proveedor.ts|listarPropuestasParaAceptar": "cada parte para aceptar dice qué sucursal la compró (el nombre de la contraparte, S3, sale por diseño); nada más de la otra sucursal",
+  "consulta|consultas/movimientos/facturas-proveedor.ts|listarPropuestasEnviadas": "cada parte propuesta dice a qué sucursal se le propuso (el nombre de la contraparte, S3, sale por diseño); nada más de la otra sucursal",
   // Paquete 1 (P2.2, ADR-028): las tres lecturas de gobierno que, con la sucursal de contexto de OTRA, devuelven solo el nombre y el slug público de esa sucursal (`secciones: []`, `tema: null`): `Sucursal` y `SucursalPublica`
   // son de GOBIERNO (D3), fuera de la RLS por sucursal por diseño, así que las políticas no las cierran y no son una fuga. Antes estaban en `PENDIENTES_DE_SUCURSAL`.
   "consulta|consultas/carta/admin.ts|cargarTemaAdmin": "devuelve el nombre y el slug público de la sucursal que se le pide (`Sucursal`, `SucursalPublica`: GOBIERNO) con `tema: null` si no tiene filas visibles: con la sucursal de contexto de OTRA, el nombre de S2 sale por diseño",
@@ -191,6 +195,7 @@ export const SIN_MARCA_PROPIA: Readonly<Record<string, string>> = {
   "accion|actions/stock/lecturas-reclasificacion.ts|obtenerSaldoDisponibleParaReclasificar": "devuelve solo un saldo (un número), sin ninguna fila identificable",
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaEnviar": "lista las OTRAS sucursales de la empresa (id y nombre) para elegir contraparte: por diseño no llevan el marcador de la sucursal propia",
   "accion|actions/traspasos/lecturas.ts|listarSucursalesParaSolicitar": "lista las OTRAS sucursales de la empresa (id y nombre) para elegir contraparte: por diseño no llevan el marcador de la sucursal propia",
+  "consulta|consultas/movimientos/facturas-proveedor.ts|listarOtrasSucursalesParaReparto": "lista las OTRAS sucursales activas de la empresa (id y nombre) para repartir la factura: por diseño no llevan el marcador de la sucursal propia",
   // Consultas de las páginas.
   "consulta|consultas/carta/admin.ts|cargarPortalEmpresaAdmin": "devuelve solo los valores de una lista cerrada de claves del portal (colores, tipografías…), sin texto libre donde ponerle el marcador",
   "consulta|consultas/carta/admin.ts|estadoDelProductoEnLaCarta": "devuelve solo un estado de una lista cerrada («visible», «oculto», «fuera»…), sin ninguna fila identificable; con un producto de otra empresa o sucursal responde «no-disponible», igual que ante un id inexistente",
