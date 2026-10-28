@@ -28,9 +28,9 @@ export interface PestanaDeCarta {
 const RUTA_CARTA = "/carta";
 const RUTA_PROMOCIONES = "/carta/parametrizacion/promociones";
 /** La entrada «Apariencia y publicación»: una página que redirige a la primera pestaña que el rol puede abrir. */
-export const RUTA_APARIENCIA = "/carta/parametrizacion/apariencia";
+const RUTA_APARIENCIA = "/carta/parametrizacion/apariencia";
 /** El viejo tablero de «Parametrización» (CARTA-MANT): redirige a «Secciones y géneros». Cuelga de la entrada «Carta». */
-export const RUTA_TABLERO_VIEJO = "/carta/parametrizacion";
+const RUTA_TABLERO_VIEJO = "/carta/parametrizacion";
 /** La pestaña «Secciones y géneros» (a donde redirige el tablero viejo). */
 export const RUTA_SECCIONES = "/carta/parametrizacion/secciones";
 
