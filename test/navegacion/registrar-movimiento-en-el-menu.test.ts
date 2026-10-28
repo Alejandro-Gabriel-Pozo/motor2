@@ -54,10 +54,10 @@ describe("el grupo Movimientos del menú real", () => {
   });
 
   it("las entradas mudadas están en su módulo, con su clave de siempre, y ya no en Movimientos", () => {
-    const de = (id: string, href: string) => grupo(id).items.find((i) => i.href === href);
     // DEC-13: Precio local es una pestaña de «Productos» de Catálogo (ruta de esa entrada), con su clave de siempre.
     expect(RUTAS_DE_UNA_ENTRADA.find((r) => r.href === "/movimientos/precio-local")).toMatchObject({ label: "Precio local", accion: "precio_local", panel: "sucursal", entrada: "/catalogo/productos" });
-    expect(de("carta", "/movimientos/opciones-agotadas")).toMatchObject({ label: "Opciones agotadas", accion: "opcion_apagar_en_sucursal", panel: "sucursal" });
+    // DEC-24: Opciones agotadas es parte de la pestaña «Hoy» de la entrada «Carta» (ruta de esa entrada), con su clave de siempre.
+    expect(RUTAS_DE_UNA_ENTRADA.find((r) => r.href === "/movimientos/opciones-agotadas")).toMatchObject({ label: "Opciones agotadas", accion: "opcion_apagar_en_sucursal", panel: "sucursal", entrada: "/carta" });
     // DEC-27: Depósitos, Motivos y Destinos son pestañas de «Configuración» de Stock (rutas de esa entrada), con su clave de siempre.
     const deStock = (href: string) => RUTAS_DE_UNA_ENTRADA.find((r) => r.href === href);
     expect(deStock("/movimientos/secciones")).toMatchObject({ label: "Depósitos", accion: "secciones", panel: "sucursal", entrada: "/stock/configuracion" });

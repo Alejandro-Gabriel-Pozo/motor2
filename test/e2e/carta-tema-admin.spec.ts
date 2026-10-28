@@ -1,5 +1,17 @@
+import type { Locator } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+
+/**
+ * Espera a que React haya hidratado el elemento. El HTML del servidor ya trae todo, así que «visible» no prueba que haya manejadores: un clic anterior a la hidratación React lo
+ * reencola y lo repite después, y un `d.open = true` anterior lo marca React como desajuste («A tree hydrated but some attributes…», `<details open={false}>` vs `open=""`, el aviso
+ * que salía en `next dev` en las 14 zonas). Con la CPU cargada la hidratación de `next dev` tarda más que los 5 s de `expect`. Mismo criterio que campo-numero-tactil.spec.ts.
+ */
+async function esperarHidratado(el: Locator) {
+  await expect
+    .poll(() => el.evaluate((nodo) => Object.keys(nodo).some((k) => k.startsWith("__reactProps"))), { message: "elemento hidratado", timeout: 30_000 })
+    .toBe(true);
+}
 
 /**
  * Tema de la carta (/carta/tema, docs/plan-tema-carta-2026-09-24.md, M9) de punta a punta: cargar campos del formulario (la vista previa
@@ -13,7 +25,8 @@ test("cargar el formulario, guardar, aplicar y desaplicar el tema de la carta", 
     await page.goto("/carta/tema");
     await expect(page.getByRole("heading", { name: "Tema de la carta", level: 1 })).toBeVisible();
     await expect(page.locator("[data-estado-tema]")).toContainText("Tema: sin tema");
-    // Las zonas son <details> (solo la primera abierta): se abren todas para poder llenar cualquier campo.
+    // Las zonas son <details> (solo la primera abierta): se abren todas para poder llenar cualquier campo (con la página ya hidratada: si no, React ve «open» donde esperaba cerrado).
+    await esperarHidratado(page.locator("[data-zona-tema]").first());
     await page.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true)));
 
     // 1. Cargar el formulario (sin guardar).
@@ -120,6 +133,12 @@ test("la vista previa del tema es la carta real: se recorre de a una página (po
   const fuego = vista.getByRole("heading", { name: "Del fuego", level: 2 });
 
   // Arranca en la portada: se ve el nombre del restaurante y NO el índice; no se puede ir hacia atrás.
+  await esperarHidratado(siguiente);
+  // El marco de la vista previa no se puede desplazar (`overflow-clip`, no `overflow-hidden`): en `next dev` el clic sobre › mientras corre su empujoncito (~5 s) lo corría 290 × 361 px
+  // (scrollIntoView del navegador) y el slider quedaba fuera del marco, con la vista previa en blanco («viewport ratio 0» en el Índice). Aquí se intenta correrlo a mano: debe quedar en 0.
+  const marco = vista.locator(":scope > div").first();
+  await marco.evaluate((el) => el.scrollTo(290, 361));
+  expect(await marco.evaluate((el) => [el.scrollLeft, el.scrollTop]), "el marco de la vista previa no es un contenedor de scroll").toEqual([0, 0]);
   await expect(portada).toBeInViewport();
   await expect(indice).not.toBeInViewport();
   await expect(anterior).toBeDisabled();

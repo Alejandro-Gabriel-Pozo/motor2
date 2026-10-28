@@ -38,10 +38,17 @@
 }
 
 /* Las dos pestañas de arriba (Mantenimiento | Parametrización). */
+/* La fila de pestañas de la entrada (DEC-24, `FilaDeCarta`) bajo la barra azul; si el rol no tiene entre qué elegir, la fila no se dibuja y la franja tampoco. */
 .pestanas {
   background: var(--color-superficie);
-  border-bottom: 1px solid var(--color-borde-control);
-  padding: 8px 16px;
+  padding: 4px 16px 0;
+}
+.pestanas:empty {
+  display: none;
+}
+.pestanas > nav {
+  max-width: 430px;
+  margin: 0 auto;
 }
 .seg {
   display: flex;
@@ -70,10 +77,6 @@
   background: var(--color-tinta);
   color: var(--color-superficie);
   font-weight: 600;
-}
-.pestanas .seg {
-  max-width: 430px;
-  margin: 0 auto;
 }
 
 /* La barra azul noche: «Carta · Mantenimiento · Sucursal». */
@@ -582,7 +585,8 @@
 }
 
 @media (min-width: 960px) {
-  .contenido {
+  .contenido,
+  .pestanas > nav {
     max-width: 1040px;
   }
   .secciones {

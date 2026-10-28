@@ -27,12 +27,11 @@ async function abrirComoRol(browser: Browser, baseURL: string | undefined, sucur
     carta_promo_activar: celda,
     carta_promo_precio_local: celda,
     carta_items_agrupados: celda,
+    // DEC-24/DEC-33: «Apariencia y publicación» (Tema de la sucursal y Portal de la empresa) con los mismos niveles.
+    carta_tema: celda,
+    carta_portal: celda,
     // CARTA-MANT: «Hoy» de la carta es la disponibilidad por producto y sucursal de siempre.
     producto_disponibilidad: celda,
-    // CARTA-MANT F4: «Precios» edita el precio local (`precio_local`) o el de lista (`producto_editar` + `producto_campos_sensibles`); un rol que SOLO VE no tiene ninguna de las tres.
-    precio_local: celda,
-    producto_editar: celda,
-    producto_campos_sensibles: celda,
   });
   const rol = { id: admin.rolId };
   const usuario = await prisma.user.create({ data: { email: `e2e-carta-${marca}@local.test`, activoGlobal: true } });
@@ -209,5 +208,48 @@ test("un rol CON editar de la carta ve los formularios y las altas en las dos pa
   } finally {
     await limpiar();
     await carta.limpiar();
+  }
+});
+
+test("Apariencia y publicación: quien solo VE el tema y el portal recibe los campos deshabilitados con el aviso, sin guardar, aplicar ni agregar; con editar, los formularios", async ({ browser, baseURL, sucursalId }) => {
+  const soloVe = await abrirComoRol(browser, baseURL, sucursalId, false);
+  try {
+    const { page } = soloVe;
+    const main = page.locator("main");
+    // La entrada del menú lleva a su primera pestaña (Tema).
+    await page.goto("/carta/parametrizacion/apariencia");
+    await expect(page).toHaveURL(/\/carta\/tema$/);
+    await expect(main.getByRole("navigation", { name: "Apariencia y publicación" }).getByRole("link", { name: "Portal" })).toBeVisible();
+    await expect(main.locator("[data-aviso-solo-lectura]")).toBeVisible();
+    await expect(main.locator("fieldset[data-solo-lectura]")).toHaveAttribute("disabled", "");
+    await expect(main.locator("fieldset[data-solo-lectura] input").first()).toBeDisabled();
+    await expect(main.getByRole("button", { name: /Guardar tema|Aplicar el tema|Desaplicar el tema/ })).toHaveCount(0);
+    // Como en accesibilidad.spec.ts («carta/tema»): la vista previa dibuja la carta pública con sus propios colores y su deslizador; se audita aparte.
+    const axeTema = await new AxeBuilder({ page }).include("main").exclude("[data-vista-previa-tema]").analyze();
+    expect(axeTema.violations.map((v) => v.id)).toEqual([]);
+
+    await page.goto("/carta/portal");
+    await expect(main.locator("[data-aviso-solo-lectura]")).toBeVisible();
+    await expect(main.locator("fieldset[data-solo-lectura]")).toHaveAttribute("disabled", "");
+    await expect(main.locator("fieldset[data-solo-lectura] input").first()).toBeDisabled();
+    await expect(main.getByRole("button", { name: /Guardar apariencia|al portal|Guardar «/ })).toHaveCount(0);
+    await expect(main.getByText(/Editar «.*» en el portal/)).toHaveCount(0);
+  } finally {
+    await soloVe.limpiar();
+  }
+
+  // Contraespejo: con «Editar», los formularios siguen ahí.
+  const edita = await abrirComoRol(browser, baseURL, sucursalId, true);
+  try {
+    const { page } = edita;
+    const main = page.locator("main");
+    await page.goto("/carta/tema");
+    await expect(main.locator("[data-aviso-solo-lectura]")).toHaveCount(0);
+    await expect(main.getByRole("button", { name: "Guardar tema" })).toBeVisible();
+    await page.goto("/carta/portal");
+    await expect(main.locator("[data-aviso-solo-lectura]")).toHaveCount(0);
+    await expect(main.getByRole("button", { name: "Guardar apariencia" })).toBeVisible();
+  } finally {
+    await edita.limpiar();
   }
 });

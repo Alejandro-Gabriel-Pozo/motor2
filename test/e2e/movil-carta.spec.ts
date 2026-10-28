@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { SUMAR_LUGAR_DE_LISTA_VISIBLE } from "../../src/core/carta/cupos-de-promo";
+import { MENU_DEL_DIA_VISIBLE } from "../../src/core/carta/menu-del-dia";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
 import { abrirTodosLosDetails, capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular } from "./fixtures/movil";
@@ -93,9 +95,14 @@ test("administración de la carta en celular (375 px): formularios de promo sin 
     }
     await capturar(page, "carta-cupos");
     const sumar = promo.locator("fieldset", { hasText: "Sumar un lugar" });
-    const [tipo, nombre, min, max] = await Promise.all(["nuevo_lugar_tipo", "nuevo_lugar_nombre", "nuevo_lugar_min", "nuevo_lugar_max"].map(async (n) => (await sumar.locator(`[name="${n}"]`).boundingBox())!));
-    expect.soft(nombre.y, "«Nombre» del lugar nuevo debajo de «Tipo»").toBeGreaterThan(tipo.y + tipo.height - 1);
-    expect.soft(Math.abs(min.y - max.y), "mín. y máx. del lugar nuevo, en el mismo renglón").toBeLessThan(2);
+    if (SUMAR_LUGAR_DE_LISTA_VISIBLE || MENU_DEL_DIA_VISIBLE) {
+      const [tipo, nombre, min, max] = await Promise.all(["nuevo_lugar_tipo", "nuevo_lugar_nombre", "nuevo_lugar_min", "nuevo_lugar_max"].map(async (n) => (await sumar.locator(`[name="${n}"]`).boundingBox())!));
+      expect.soft(nombre.y, "«Nombre» del lugar nuevo debajo de «Tipo»").toBeGreaterThan(tipo.y + tipo.height - 1);
+      expect.soft(Math.abs(min.y - max.y), "mín. y máx. del lugar nuevo, en el mismo renglón").toBeLessThan(2);
+    } else {
+      // Decisión del dueño (2026-10-28): «Sumar un lugar» oculto; los lugares que ya existían siguen arriba, con sus cantidades.
+      await expect(sumar).toHaveCount(0);
+    }
 
     // Objetivos táctiles: cada campo, botón y resumen desplegable de la pantalla mide >= 44 px de alto; las casillas, su fila.
     const controles = page.locator("main").locator("button, select, textarea, summary, input:not([type=checkbox]):not([type=hidden])");

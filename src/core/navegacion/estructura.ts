@@ -1,4 +1,4 @@
-import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
+import { NAV_CARTA, RUTAS_DE_LAS_ENTRADAS_DE_CARTA } from "@/core/carta/public";
 import { NAV_CATALOGO, RUTAS_DE_LAS_ENTRADAS_DE_CATALOGO } from "@/core/catalogo/public";
 import { NAV_MOVIMIENTOS, PROCESOS_DEL_SELECTOR } from "@/core/movimientos/public";
 import { NAV_STOCK, RUTAS_DE_LAS_ENTRADAS_DE_STOCK } from "@/core/stock/public";
@@ -68,21 +68,11 @@ export const GRUPOS_NAV: GrupoNav[] = [
     items: NAV_CATALOGO,
   },
   {
-    // Módulo propio (ADR-006, docs/adr/ADR-006-carta-como-modulo-interno.md): antes anidado bajo Catálogo sin motivo claro,
-    // aunque ya tenía su propio permiso (`carta_*`, distinto del de catálogo).
+    // Módulo propio (ADR-006, docs/adr/ADR-006-carta-como-modulo-interno.md). DEC-24 (Fase 7): tres entradas, «Carta» (Hoy · Secciones y géneros · Ítems agrupados), «Promociones» y «Apariencia y
+    // publicación», con sus pestañas (fuente en core/carta/ui-config.ts). Las URL de las pantallas no cambiaron; las que no son la entrada cuelgan de ella en RUTAS_DE_UNA_ENTRADA.
     id: "carta",
     label: "Carta",
-    items: [
-      { href: "/carta", label: "Carta pública", accion: "carta_ver", panel: "sucursal" },
-      // S-10/D1 (O.59): los ítems agrupados son de la carta PROPIA de la sucursal activa (clave de contexto sucursal): viven en el panel de la sucursal, junto a «Carta pública».
-      { href: "/carta/agrupados", label: "Ítems agrupados de la carta", accion: "carta_items_agrupados", panel: "sucursal" },
-      { href: "/carta/portal", label: "Portal de sucursales", accion: "carta_portal", panel: "empresa" },
-      { href: "/carta/tema", label: "Tema de la carta", accion: "carta_tema", panel: "sucursal" },
-      // Antes en Movimientos (solo se muda la entrada del menú: las URL son las mismas). GO-2d (ADR-030 §5): lo que se acabó hoy en la sucursal (tamaños, guarniciones, adicionales); delegable al encargado del turno.
-      { href: "/movimientos/opciones-agotadas", label: "Opciones agotadas", accion: "opcion_apagar_en_sucursal", panel: "sucursal" },
-      // GO-3b (ADR-032): qué plato va cada día en los lugares «del día» de las promos de la sucursal; delegable al encargado. Oculto mientras `MENU_DEL_DIA_VISIBLE` (core/carta) esté apagado.
-      ...(MENU_DEL_DIA_VISIBLE ? [{ href: "/movimientos/menu-del-dia", label: "Menú del día", accion: "promo_menu_del_dia" as const, panel: "sucursal" as const }] : []),
-    ],
+    items: NAV_CARTA,
   },
   {
     id: "movimientos",
@@ -170,7 +160,7 @@ export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [
  * protege su página (la misma que pide; un test lo comprueba), su panel y la `entrada`: el `href` del ítem del menú que se resalta cuando esa ruta está abierta. Se leen igual que `RUTAS_FUERA_DEL_MENU`
  * (`itemDeRuta`, `accionDeRuta`, `panelDeRuta`, `accionesDeNavegacion`, `pantallaTrasCambiarSucursal`), más: `hrefActivoDelMenu` las traduce a su entrada y el buscador del cajón de celular (`buscarPantallaEnMenu`)
  * las encuentra, para que «ajuste» siga apareciendo aunque ya no sea un ítem. Se arma desde `PROCESOS_DEL_SELECTOR` (una sola fuente con la entrada del menú y la página `/movimientos`) y, desde DEC-27, desde
- * `RUTAS_DE_LAS_ENTRADAS_DE_STOCK` (las pestañas y los editores de «Existencias» y «Configuración» de Stock).
+ * `RUTAS_DE_LAS_ENTRADAS_DE_STOCK` (las pestañas y los editores de «Existencias» y «Configuración» de Stock) y, desde DEC-24, desde `RUTAS_DE_LAS_ENTRADAS_DE_CARTA` (las de Carta).
  */
 export interface RutaDeUnaEntrada {
   /** La ruta de la pantalla (`/movimientos/ajuste`). */
@@ -193,6 +183,8 @@ export const RUTAS_DE_UNA_ENTRADA: readonly RutaDeUnaEntrada[] = [
   ...RUTAS_DE_LAS_ENTRADAS_DE_STOCK.map((r): RutaDeUnaEntrada => ({ href: r.href, label: r.texto, accion: r.accion, panel: r.panel, entrada: r.entrada })),
   // DEC-13: las pestañas de «Productos» (Precio local, Recetas) y de «Maestros» que no son la entrada (core/catalogo/ui-config.ts).
   ...RUTAS_DE_LAS_ENTRADAS_DE_CATALOGO.map((r): RutaDeUnaEntrada => ({ href: r.href, label: r.texto, accion: r.accion, panel: r.panel, entrada: r.entrada })),
+  // DEC-24: las pestañas y pantallas de las tres entradas de Carta que no son la entrada (core/carta/ui-config.ts).
+  ...RUTAS_DE_LAS_ENTRADAS_DE_CARTA.map((r): RutaDeUnaEntrada => ({ href: r.href, label: r.texto, accion: r.accion, panel: r.panel, entrada: r.entrada })),
 ];
 
 /** De las rutas de una entrada, las que el rol puede ver (su `accion`): lo que se le ofrece al buscador del cajón de celular, que no decide permisos. Se calcula en el servidor. */
@@ -259,7 +251,7 @@ export function hrefsDelMenu(grupos: GrupoNav[] = GRUPOS_NAV): string[] {
 
 /**
  * El ítem del menú que corresponde a la pantalla abierta: UNO solo, el de la ruta más larga que es prefijo de `pathname` (así
- * `/carta/tema` es «Tema de la carta» y no también «Carta pública», y una pantalla hija como `/catalogo/recetas/[id]/historial`
+ * `/carta/portal` es «Apariencia y publicación» y no también «Carta», y una pantalla hija como `/catalogo/recetas/[id]/historial`
  * resalta «Recetas»). Se busca entre los ítems del menú COMPLETO y recién después se mira si el usuario lo ve: si gana uno que no ve,
  * no se resalta ninguno (en vez de resaltar un ítem más corto que no es esta pantalla). La consulta (`?…`) y el ancla (`#…`) se ignoran.
  * Las rutas de una entrada (`RUTAS_DE_UNA_ENTRADA`) compiten por el prefijo más largo igual que los ítems, pero resaltan su `entrada` (el ítem que las reúne), no a sí mismas; con la misma ruta, gana el ítem del menú.

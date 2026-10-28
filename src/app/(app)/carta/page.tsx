@@ -1,33 +1,32 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
-import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeAlguna } from "@/server/acceso/gate";
 import { cargarAdminCarta, origenesDeCopiaVisibles } from "@/server/consultas/carta/admin";
 import { cargarCartaParaMantener } from "@/server/consultas/carta/mantenimiento";
 import { saldosDeLosIngredientesDeLosPlatos } from "@/server/consultas/carta/avisos-de-stock";
 import { agregarProductoALaCarta, fijarDisponibilidadDeHoy, quitarProductoDeLaCarta } from "@/server/actions/carta/mantenimiento";
-import { ajustarPreciosDeLaCarta, ajustarPreciosDeLaEmpresa } from "@/server/actions/carta/precios";
-import { avisoDePrecioDeEmpresa } from "@/server/actions/carta/precios-en-sucursales";
-import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 import { actualizarVisibleEnCarta } from "@/server/actions/carta/contenido-producto";
 import { actualizarActivaSeccionCarta } from "@/server/actions/carta/secciones";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
-import { PRECIOS_EDITABLES } from "@/core/carta/public";
+import { PESTANAS_DE_CARTA, primeraPantallaVisible } from "@/core/carta/public";
 import { formatearCantidad } from "@/core/pos/public";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
+import { FilaDeCarta } from "@/components/fila-de-carta";
 import { EncabezadoDeCarta } from "./encabezado-de-carta";
 import { MantenimientoDeCarta, type PestanaDeMantenimiento } from "./mantenimiento-de-carta";
 import s from "./carta-mant.module.css";
 
 /**
- * La carta de la sucursal, puerta «Mantenimiento» (CARTA-MANT, ADR-034; prototipo APROBADO «Mantenimiento / Parametrización»): lo de todos los días, en tres niveles —«Hoy» (lo que se acabó),
- * «Precios» y «Visibilidad» (qué se muestra de forma estable, y al final «Fuera de carta (POS y menú del día)»)—. Lo que se cambia pocas veces (secciones, géneros, agrupados, promociones, apariencia)
- * vive en la otra puerta, `/carta/parametrizacion`, con los mismos formularios de siempre.
+ * La carta de la sucursal, Carta › Hoy (CARTA-MANT, ADR-034; DEC-24): lo de todos los días, en dos niveles —«Hoy» (lo que se acabó) y «Visibilidad» (qué se muestra de forma estable, y al final
+ * «Fuera de carta (POS y menú del día)»)—. El ajuste masivo de precios («Precios», F4, apagado desde la Fase 5) se BORRÓ por decisión del dueño (2026-10-28): los precios se cambian en Catálogo.
+ * Lo que se cambia pocas veces vive en las otras pestañas y entradas de Carta (Secciones y géneros, Ítems agrupados, Promociones, Apariencia y publicación).
  *
  * Decisión del dueño (2026-10-14): un PV sin contenido de carta NO es un faltante —es el menú del día o algo que se vende solo en el POS, que nunca sale en la carta pública—: va a «Fuera de carta», un
  * contador informativo plegado con buscador, «Agregar a la carta» de un toque y su «Deshacer». El ancla de un adicional no figura en ninguna lista (`organizarCartaParaMantener`).
@@ -41,7 +40,7 @@ const refrescarSiOk = (r: ResultadoAccion) => {
   return r;
 };
 
-const PESTANAS: readonly PestanaDeMantenimiento[] = ["hoy", "precios", "visibilidad"];
+const PESTANAS: readonly PestanaDeMantenimiento[] = ["hoy", "visibilidad"];
 const pesos = (n: number) => `$ ${n.toLocaleString("es-AR")}`;
 
 export default async function CartaPage({ searchParams }: { searchParams: Promise<{ [clave: string]: string | string[] | undefined }> }) {
@@ -50,18 +49,22 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
   if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
+  // DEC-24: `/carta` es la entrada «Carta» del menú (pestañas Hoy · Secciones y géneros · Ítems agrupados): se abre con el «Ver» de ALGUNA de sus pestañas (las mismas claves del ítem del menú). Quien no ve
+  // la carta (`carta_ver`) pero sí otra pestaña —el encargado que solo agota opciones— va directo a la primera que puede abrir.
+  const gate = await requierePermisoVerDeAlguna(ctx.usuarioId, ctx.sucursalId, ["carta_ver", "opcion_apagar_en_sucursal", "carta_items_agrupados"], ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
-  const [nivelHoy, nivelContenido, nivelSecciones, nivelCopiar, nivelPrecioLocal, nivelProductoEditar, camposSensibles] = await Promise.all([
+  if (!gate.visibles.has("carta_ver")) {
+    const otra = primeraPantallaVisible(PESTANAS_DE_CARTA, gate.visibles);
+    if (otra && otra !== "/carta") redirect(otra);
+    return <p className="text-error">No tenés permiso para ver esta sección.</p>;
+  }
+  const [nivelHoy, nivelContenido, nivelSecciones, nivelCopiar] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_contenido_producto", ctx.db),
     obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_secciones", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_copiar_de_sucursal", ctx.db),
-    PRECIOS_EDITABLES ? obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "precio_local", ctx.db) : null,
-    PRECIOS_EDITABLES ? obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_editar", ctx.db) : null,
-    PRECIOS_EDITABLES ? puedeEditarCamposSensiblesDelProducto(ctx) : false,
   ]);
-  const puedeBase = { hoy: nivelHoy.editar, contenido: nivelContenido.editar, secciones: nivelSecciones.editar };
+  const puede = { hoy: nivelHoy.editar, contenido: nivelContenido.editar, secciones: nivelSecciones.editar };
   const puedeCopiarCarta = nivelCopiar.editar;
 
   const pedido = (await searchParams).nivel;
@@ -87,21 +90,15 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
     })
   );
   const sucursalId = ctx.sucursalId;
-  // F4 «Precios»: en esta sucursal, su precio local (`precio_local` y la capacidad prendida, la misma lectura de la carta); en toda la empresa, el precio de lista (las dos claves de Catálogo).
-  const puede = {
-    ...puedeBase,
-    preciosLocal: nivelPrecioLocal?.editar === true && datos.precioLocalActivo,
-    preciosEmpresa: nivelProductoEditar?.editar === true && camposSensibles,
-  };
-  type AjusteDeLaPantalla = { direccion: "subir" | "bajar"; modo: "porcentaje" | "monto" | "precio"; valor: string; redondeo: number };
-  type Vistos = { productoId: string; precioVisto: string }[];
 
   return (
     <div className={s.raiz}>
-      <EncabezadoDeCarta puerta="mantenimiento" subtitulo="Mantenimiento" sucursal={ctx.sucursalNombre} />
+      <EncabezadoDeCarta entrada="Carta" pestana="Hoy" sucursal={ctx.sucursalNombre}>
+        <FilaDeCarta ctx={ctx} etiqueta="Carta" pestanas={PESTANAS_DE_CARTA} ruta="/carta" visibles={gate.visibles} />
+      </EncabezadoDeCarta>
       <div className={s.contenido}>
         <div className={s.pad}>
-          {!(puede.hoy || puede.contenido || puede.secciones || puede.preciosLocal || puede.preciosEmpresa) && <AvisoSoloLectura />}
+          {!(puede.hoy || puede.contenido || puede.secciones) && <AvisoSoloLectura />}
 
           {/* Carta PROPIA de cada sucursal (ADR-009, C3/C4): una sucursal sin carta propia no muestra nada hasta que la arma o la copia de otra. */}
           {datos.cartaVacia && (
@@ -164,9 +161,6 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
                 precio: p.seVendePorOpcion ? "Por opción" : pesos(p.precioAca),
                 disponible: p.disponibleAca,
                 visible: p.contenido?.visibleEnCarta === true,
-                precioVisto: p.precioAca.toFixed(2),
-                precioDeListaVisto: p.precioDeLista.toFixed(2),
-                conPrecioLocal: p.conPrecioLocal,
               })),
             }))}
             ocultosSinSeccion={carta.sinSeccion.map((p) => ({ id: p.id, nombre: p.nombre }))}
@@ -192,18 +186,6 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
               quitar: async (productoId: string) => {
                 "use server";
                 return refrescarSiOk(await quitarProductoDeLaCarta({ sucursalId, productoId, confirmado: false }));
-              },
-              ajustarLocal: async (ajuste: AjusteDeLaPantalla, items: Vistos) => {
-                "use server";
-                return refrescarSiOk(await ajustarPreciosDeLaCarta({ sucursalId, ajuste, items }));
-              },
-              ajustarEmpresa: async (ajuste: AjusteDeLaPantalla, items: Vistos, confirmado: boolean) => {
-                "use server";
-                return refrescarSiOk(await ajustarPreciosDeLaEmpresa({ ajuste, items, confirmado }));
-              },
-              leerAvisoDeEmpresa: async (productoIds: string[]) => {
-                "use server";
-                return avisoDePrecioDeEmpresa(productoIds);
               },
             }}
           />

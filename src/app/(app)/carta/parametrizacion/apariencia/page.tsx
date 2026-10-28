@@ -1,15 +1,13 @@
-import Link from "next/link";
-import { EnlaceInterno } from "@/components/enlace-interno";
+import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { requierePermisoVer } from "@/server/acceso/gate";
-import { EncabezadoDeCarta } from "../../encabezado-de-carta";
-import s from "../../carta-mant.module.css";
+import { requierePermisoVerDeAlgunaDelMenu } from "@/server/acceso/gate";
+import { PESTANAS_DE_APARIENCIA, primeraPantallaVisible } from "@/core/carta/public";
 
 /**
- * CARTA-MANT: Parametrización › Apariencia y publicación (prototipo aprobado). Las dos pantallas que ya existían, sin cambios: el tema de la carta de la sucursal (`/carta/tema`, colores y logo) y el
- * portal de sucursales (`/carta/portal`, dónde y si se publica). Cada una se protege con su propia clave; los enlaces se dibujan como texto si el rol no puede abrirlas (`EnlaceInterno`).
+ * DEC-24 (Fase 7): la entrada «Apariencia y publicación» del menú. Antes era un tablero con dos enlaces (Tema y Portal); ahora esas dos pantallas son las pestañas de la entrada, así que esta página solo
+ * decide a cuál mandar: la primera que el rol puede abrir (el tema es de la sucursal, el portal de la empresa: la guarda evalúa cada clave en su contexto, con el mismo cálculo del ítem del menú).
  */
 export default async function AparienciaDeCartaPage() {
   const ctx = await obtenerContextoUsuario();
@@ -17,39 +15,9 @@ export default async function AparienciaDeCartaPage() {
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
   if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
+  const gate = await requierePermisoVerDeAlgunaDelMenu(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, ["carta_tema", "carta_portal"], ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
-  return (
-    <div className={s.raiz}>
-      <EncabezadoDeCarta puerta="parametrizacion" subtitulo="Parametrización · Apariencia y publicación" sucursal={ctx.sucursalNombre} />
-      <div className={s.contenido}>
-        <div className={s.pad}>
-          <Link href="/carta/parametrizacion" className={`${s.boton} ${s.botonSuave} ${s.volver}`}>
-            ← Volver
-          </Link>
-          <h2 className={s.h2}>Apariencia y publicación</h2>
-          <nav className={s.hub} aria-label="Apariencia y publicación">
-            <EnlaceInterno href="/carta/tema" className={s.hubFila}>
-              <div>
-                <b>Tema de la carta</b>
-                <span>Colores, logo y tipografía de la carta pública de esta sucursal</span>
-              </div>
-              <i className={s.flecha} aria-hidden="true">
-                ›
-              </i>
-            </EnlaceInterno>
-            <EnlaceInterno href="/carta/portal" className={s.hubFila}>
-              <div>
-                <b>Portal de sucursales</b>
-                <span>Si la carta de cada sucursal se publica y dónde aparece en el portal</span>
-              </div>
-              <i className={s.flecha} aria-hidden="true">
-                ›
-              </i>
-            </EnlaceInterno>
-          </nav>
-        </div>
-      </div>
-    </div>
-  );
+  const destino = primeraPantallaVisible(PESTANAS_DE_APARIENCIA, gate.visibles);
+  if (destino) redirect(destino);
+  return <p className="text-error">No tenés permiso para ver esta sección.</p>;
 }

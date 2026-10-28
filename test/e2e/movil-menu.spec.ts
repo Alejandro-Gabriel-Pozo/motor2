@@ -113,7 +113,8 @@ test("celular: el cajón ofrece solo lo que el servidor le ofrece al rol (sin pe
     await page.goto("/movimientos/opciones-agotadas");
     await page.getByRole("button", { name: "Abrir menú" }).click();
     const cajon = page.getByRole("dialog", { name: "Menú" });
-    await expect(cajon.getByRole("link", { name: /^Opciones agotadas/ })).toHaveAttribute("aria-current", "page");
+    // DEC-24: Opciones agotadas es parte de la pestaña «Hoy» de la entrada «Carta», que es la que se marca (y la que ve quien solo agota opciones).
+    await expect(cajon.getByRole("link", { name: /^Carta$/ })).toHaveAttribute("aria-current", "page");
     await cajon.getByRole("searchbox").fill("recet");
     await expect(cajon.getByRole("status")).toHaveText("Sin resultados");
     await cajon.getByRole("searchbox").fill("usuarios");

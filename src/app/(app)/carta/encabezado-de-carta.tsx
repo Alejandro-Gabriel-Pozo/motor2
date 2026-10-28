@@ -1,28 +1,19 @@
-import Link from "next/link";
+import type { ReactNode } from "react";
 import s from "./carta-mant.module.css";
 
 /**
- * CARTA-MANT (prototipo aprobado): arriba de toda la carta, las dos puertas —«Mantenimiento» (lo de todos los días: se acabó algo, un precio, qué se muestra) y «Parametrización» (lo que se
- * cambia pocas veces: secciones, géneros, agrupados, promociones, apariencia)— y la barra azul noche con «Carta · <dónde estás>» y la sucursal activa. Sin estado: dos enlaces.
+ * Arriba de las pantallas de la carta con la cara del prototipo CARTA-MANT: la barra azul noche con «<entrada> · <pestaña>» y la sucursal activa y, debajo, la fila de pestañas de la entrada (DEC-24,
+ * `FilaDeCarta`, que llega como `children`). Antes había acá dos «puertas» (Mantenimiento / Parametrización); desde la Fase 7 las reemplazan las tres entradas del menú y sus pestañas. Sin estado.
  */
-export function EncabezadoDeCarta({ puerta, subtitulo, sucursal }: { puerta: "mantenimiento" | "parametrizacion"; subtitulo: string; sucursal: string }) {
+export function EncabezadoDeCarta({ entrada, pestana, sucursal, children }: { entrada: string; pestana: string; sucursal: string; children?: ReactNode }) {
   return (
     <>
-      <nav className={s.pestanas} aria-label="Carta">
-        <div className={s.seg}>
-          <Link href="/carta" aria-current={puerta === "mantenimiento" ? "page" : undefined}>
-            Mantenimiento
-          </Link>
-          <Link href="/carta/parametrizacion" aria-current={puerta === "parametrizacion" ? "page" : undefined}>
-            Parametrización
-          </Link>
-        </div>
-      </nav>
       <div className={s.appbar}>
-        <h1>Carta</h1>
-        <span>{subtitulo}</span>
+        <h1>{entrada}</h1>
+        <span>{pestana}</span>
         <span className={s.suc}>{sucursal}</span>
       </div>
+      {children && <div className={s.pestanas}>{children}</div>}
     </>
   );
 }

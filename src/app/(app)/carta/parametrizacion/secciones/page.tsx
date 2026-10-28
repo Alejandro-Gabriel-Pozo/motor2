@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -10,6 +9,9 @@ import { actualizarActivaSeccionCarta, guardarSeccionCarta, ordenarSeccionesCart
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
+import { FilaDeCarta } from "@/components/fila-de-carta";
+import { EnlaceInterno } from "@/components/enlace-interno";
+import { PESTANAS_DE_CARTA } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { ContenidoDelProducto, type UbicacionEnCarta } from "@/components/carta/contenido-del-producto";
@@ -83,12 +85,15 @@ export default async function SeccionesDeCartaPage() {
 
   return (
     <div className={estilos.raiz}>
-      <EncabezadoDeCarta puerta="parametrizacion" subtitulo="Parametrización · Secciones" sucursal={ctx.sucursalNombre} />
+      <EncabezadoDeCarta entrada="Carta" pestana="Secciones" sucursal={ctx.sucursalNombre}>
+        <FilaDeCarta ctx={ctx} etiqueta="Carta" pestanas={PESTANAS_DE_CARTA} ruta="/carta/parametrizacion/secciones" />
+      </EncabezadoDeCarta>
       <div className={estilos.contenido}>
         <div className={estilos.pad}>
-          <Link href="/carta/parametrizacion" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
-            ← Volver
-          </Link>
+          {/* DEC-24: la pestaña «Secciones y géneros» reúne dos pantallas; esta lleva a la otra. */}
+          <EnlaceInterno href="/carta/parametrizacion/generos" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
+            Géneros (carpetas del selector del POS) ›
+          </EnlaceInterno>
           {!(puedeEditarSecciones || puedeEditarContenido || puedeDescuento) && <AvisoSoloLectura />}
           <OrdenarSecciones
             secciones={datos.secciones.map((x) => ({ id: x.id, nombre: x.nombre, activa: x.activa, orden: x.orden }))}
@@ -200,7 +205,7 @@ export default async function SeccionesDeCartaPage() {
               </h2>
               <p className="text-sm text-tinta-tenue">
                 La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en
-                Mantenimiento › Visibilidad › «Fuera de carta».
+                Carta › Hoy › Visibilidad › «Fuera de carta».
               </p>
               {carta.secciones.map((x) => (
                 <GrupoDeLaCarta key={x.id} nombre={x.nombre} detalle={x.activa ? null : "sección apagada: no sale en la carta"} productos={x.productos} vacio="Todavía no tiene productos en esta sucursal." fila={filaDeProducto} />

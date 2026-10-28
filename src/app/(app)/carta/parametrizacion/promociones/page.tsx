@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -23,9 +22,11 @@ import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/dat
 import { AgregarEntradaDeLugar } from "../../agregar-entrada-de-lugar";
 import { DondeSeVe } from "./donde-se-ve";
 import { lugaresDelFormulario } from "./lugares-del-formulario";
+import { FilaDeCarta } from "@/components/fila-de-carta";
+import { PESTANAS_DE_PROMOCIONES } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
-import { CamposCupos, CamposLugares, CamposPromo, CamposVigencia, esFijo, textoDeVigencia } from "../formularios";
+import { BloqueDeVigencia, CamposCupos, CamposLugares, CamposPromo, CamposVigencia, esFijo } from "../formularios";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoNumero } from "@/components/campo-numero";
@@ -66,12 +67,11 @@ export default async function PromocionesDeCartaPage() {
 
   return (
     <div className={estilos.raiz}>
-      <EncabezadoDeCarta puerta="parametrizacion" subtitulo="Parametrización · Promociones" sucursal={ctx.sucursalNombre} />
+      <EncabezadoDeCarta entrada="Promociones" pestana="Combos y cupos" sucursal={ctx.sucursalNombre}>
+        <FilaDeCarta ctx={ctx} etiqueta="Promociones" pestanas={PESTANAS_DE_PROMOCIONES} ruta="/carta/parametrizacion/promociones" />
+      </EncabezadoDeCarta>
       <div className={estilos.contenido}>
         <div className={estilos.pad}>
-          <Link href="/carta/parametrizacion" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
-            ← Volver
-          </Link>
           <div className={`${estilos.formulario} flex flex-col gap-10`}>
             {!(puedeDefinirPromos || puedeActivarPromos || puedePrecioLocalPromos) && <AvisoSoloLectura />}
       {/* 4. Promos (de la empresa; cada sucursal las prende y, si quiere, les pone su precio) */}
@@ -80,7 +80,8 @@ export default async function PromocionesDeCartaPage() {
           Promos
         </h2>
         <p className="text-sm text-tinta-tenue">
-          Una promo se define una sola vez para toda la empresa. Cada sucursal decide si la prende (apagada no sale en la carta ni en el POS) y, si quiere, le pone su propio precio.
+          Una promo se define una sola vez para toda la empresa. Cada sucursal decide si la prende (apagada no sale en la carta ni en el POS) y, si quiere, le pone su propio precio. No tiene fechas:
+          se maneja con activar y desactivar (mientras está prendida se vende; cuando termina, se apaga).
         </p>
         <ul className="flex flex-col gap-2">
           {datos.promos.map((pr) => {
@@ -193,7 +194,10 @@ export default async function PromocionesDeCartaPage() {
                       }}
                       className="mt-1 flex flex-col gap-2"
                     >
-                      <p className="text-sm text-tinta-tenue">Tildá de qué secciones se arma esta promo, con cuántas unidades mínimas y máximas de cada una (D1).</p>
+                      <p className="text-sm text-tinta-tenue">
+                        Las partes de la promo se arman tildando secciones de la carta: de cada sección tildada el mozo elige entre «mín.» y «máx.» productos (para que elija más, subí el «máx.»). Para un
+                        grupo propio, como «Bebida», creá la sección en Carta › Secciones y géneros y tildala acá.
+                      </p>
                       {/* Paso 13 (opcional, no bloqueante): con los cupos YA guardados, cuánta holgura hay hoy antes de tocar el piso de
                           $0,01 por unidad en el peor caso (D3) — guardarCuposPromoCarta rechaza de una si un cambio lo cruza; esto avisa
                           ANTES de intentarlo, con lo que hay guardado ahora mismo (no recalcula en vivo lo que se está tipeando). */}
@@ -300,9 +304,8 @@ export default async function PromocionesDeCartaPage() {
                     );
                   })}
 
-                  {/* GO-3b (D-7): la vigencia de la promo (fechas y días de la semana); sin nada = vale siempre. Se evalúa al agregarla a una mesa. */}
-                  <h3 className="mt-3 text-sm font-medium">Vigencia</h3>
-                  {puedeDefinirPromos ? (
+                  {/* GO-3b (D-7): la vigencia de la promo. Oculta por decisión del dueño (`VIGENCIA_DE_PROMO_VISIBLE`): la promo se maneja con activar/desactivar. */}
+                  <BloqueDeVigencia vigencia={combo.vigencia} puedeEditar={puedeDefinirPromos}>
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
@@ -322,9 +325,7 @@ export default async function PromocionesDeCartaPage() {
                         </BotonDeServidor>
                       </div>
                     </FormConResultado>
-                  ) : (
-                    <p className="mt-1 text-sm">{textoDeVigencia(combo.vigencia)}</p>
-                  )}
+                  </BloqueDeVigencia>
                 </details>
                 {puedeActivarPromos && (
                   <FormConResultado

@@ -40,6 +40,13 @@ const RUTAS_HISTORICAS: Record<string, string> = {
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|server/lecturas/catalogo/precio-local-de-combinaciones.ts": "el embudo del precio local de las combinaciones, borrado en la Fase 3 (paso 3.3): la venta ya no lee combinaciones",
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/pos/cerrar-combinacion-go3.test.ts": "el cierre con la receta propia congelada, borrado en la Fase 3 (paso 3.4); los combos configurados viven en cerrar-combo-configurado-go3.test.ts",
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/core/opciones/consumo-con-excepcion.test.ts": "renombrado en la Fase 3 (paso 3.4) a consumo-paridad-con-el-anterior.test.ts, sin los casos de la receta propia",
+  // Fase 7 (módulo Carta, 2026-10-28): el ajuste masivo de precios se borró; el ADR-034 conserva su historia.
+  "ADR-034-mantenimiento-de-la-carta.md|src/server/actions/carta/precios.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
+  "ADR-034-mantenimiento-de-la-carta.md|src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-carta.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
+  "ADR-034-mantenimiento-de-la-carta.md|src/core/carta/ajuste-de-precios.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
+  "ADR-034-mantenimiento-de-la-carta.md|src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
+  "ADR-034-mantenimiento-de-la-carta.md|src/server/actions/carta/precios-en-sucursales.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
+  "ADR-034-mantenimiento-de-la-carta.md|src/server/lecturas/carta/aviso-de-precio-de-empresa.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
 };
 
 /** `adr|clave` → clave o guarda retirada que el ADR nombra a propósito, como historia. */

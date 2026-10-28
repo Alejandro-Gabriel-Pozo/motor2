@@ -16,7 +16,7 @@ export { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyecta
 export { precioDeCarta } from "./armar-menu";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, type AudienciaDePromo } from "./promo-sucursal";
 // GO-3 (ADR-032): los tipos de cupo y la lectura tolerante del primer despliegue (solo los cupos de sección activos; una promo con un cupo activo de tipo nuevo no se ofrece).
-export { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos } from "./cupos-de-promo";
+export { SUMAR_LUGAR_DE_LISTA_VISIBLE, WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos } from "./cupos-de-promo";
 export type { TipoDeCupo } from "./cupos-de-promo";
 // GO-3b (D3): la administración de los cupos sin borrar (la clave natural de cada cupo y la diferencia contra lo que hay) y los tipos de cupo para el guard.
 export { LARGO_MAXIMO_NOMBRE_DE_CUPO, TIPOS_DE_CUPO, claveNaturalDeCupo, diferenciaDeCupos } from "./cupos-de-promo";
@@ -80,10 +80,22 @@ export { estiloCartaPorDefecto } from "./estilo";
 export { posicionCompleta } from "./portal";
 export type { EntradaPortalCarta } from "./portal";
 // GO-3b (ADR-032, D-7): la vigencia de una promo (el guard de la administración la valida; la venta la evalúa al agregar).
-export { TODOS_LOS_DIAS, mascaraDeDias, promoVigenteEl, validarVigenciaDePromo } from "./vigencia-de-promo";
+export { TODOS_LOS_DIAS, VIGENCIA_DE_PROMO_VISIBLE, mascaraDeDias, promoVigenteEl, validarVigenciaDePromo } from "./vigencia-de-promo";
 export type { VigenciaDePromo } from "./vigencia-de-promo";
 // GO-3b (ADR-032, D-1): la fecha del menú del día (de hoy a hoy + 13, en la zona de la empresa).
 export { DIAS_DE_ANTICIPACION_DEL_MENU, MENSAJE_MENU_DEL_DIA_APAGADO, MENU_DEL_DIA_VISIBLE, lugarDelDiaApagado, validarFechaDeMenuDelDia } from "./menu-del-dia";
+// Fase 7, DEC-24: el grupo Carta del menú (tres entradas), sus filas de pestañas y las rutas que cuelgan de cada entrada.
+export {
+  NAV_CARTA,
+  PESTANAS_DE_APARIENCIA,
+  PESTANAS_DE_CARTA,
+  PESTANAS_DE_PROMOCIONES,
+  RUTA_SECCIONES,
+  RUTAS_DE_LAS_ENTRADAS_DE_CARTA,
+  armarPestanasDeCarta,
+  primeraPantallaVisible,
+} from "./ui-config";
+export type { PestanaDeCarta } from "./ui-config";
 export type { CandidatoAPlato, MenuDelDiaDeLaSucursal } from "./menu-del-dia";
 // CARTA-MANT (mantenimiento de la carta): en qué lista va cada producto de la pantalla de la carta («Fuera de carta» es el POS y el menú del día, no un faltante).
 export { coincideConLaBusqueda, lugaresParaPoner, ordenAlFinalDeLaSeccion, organizarCartaParaMantener, ponerEnElLugar, vistaPreviaDeLaForma, vistaPreviaDeOpciones } from "./mantenimiento";
@@ -92,8 +104,5 @@ export type { AclaracionCartaV1, PresentacionCartaV1 } from "./presentacion-en-c
 export type { CartaParaMantener, ProductoParaMantener } from "./mantenimiento";
 // CARTA-MANT: la vista previa de «Agregar a la carta» usa la MISMA presentación de opciones que la carta pública.
 export { opcionesParaLaCarta } from "./opciones-en-carta";
-// CARTA-MANT F4: el ajuste de precios de una sección, en decimal exacto (centavos); sin redondeo en la pantalla (decisión del dueño, 2026-10-14).
-export { aCentavos, deCentavos, precioAjustado, validarAjusteDePrecio, PRECIOS_EDITABLES, REDONDEO_POR_DEFECTO } from "./ajuste-de-precios";
-export type { AjusteDePrecio } from "./ajuste-de-precios";
 // Fase 6, bloque 3 (6.18): lo que la vista previa de un producto en la carta recibe ya calculado (tipo; la calcula `server/consultas/carta/vista-previa-de-un-producto.ts`).
 export type { VistaPreviaDeLaCarta } from "./vista-previa-del-producto";
