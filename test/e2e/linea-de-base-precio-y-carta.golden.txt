@@ -530,6 +530,7 @@
   [enlace: Hoy]
   [enlace: Secciones y géneros]
   [enlace: Ítems agrupados]
+  [enlace: Géneros (carpetas del selector del POS) ›]
   ## Secciones de la carta
   [botón: Ordenar]
   El orden se ve en todas las sucursales y en la carta pública (las secciones son de la empresa). Con «⋯» podés ocultar o mostrar una sección, moverla o cambiar sus datos.
@@ -813,6 +814,7 @@
   [enlace: Hoy]
   [enlace: Secciones y géneros]
   [enlace: Ítems agrupados]
+  [enlace: Géneros (carpetas del selector del POS) ›]
   ## Secciones de la carta
   [botón: Ordenar]
   El orden se ve en todas las sucursales y en la carta pública (las secciones son de la empresa). Con «⋯» podés ocultar o mostrar una sección, moverla o cambiar sus datos.

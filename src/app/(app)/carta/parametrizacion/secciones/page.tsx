@@ -10,6 +10,7 @@ import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { FilaDeCarta } from "@/components/fila-de-carta";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { PESTANAS_DE_CARTA } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
@@ -89,6 +90,10 @@ export default async function SeccionesDeCartaPage() {
       </EncabezadoDeCarta>
       <div className={estilos.contenido}>
         <div className={estilos.pad}>
+          {/* DEC-24: la pestaña «Secciones y géneros» reúne dos pantallas; esta lleva a la otra. */}
+          <EnlaceInterno href="/carta/parametrizacion/generos" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
+            Géneros (carpetas del selector del POS) ›
+          </EnlaceInterno>
           {!(puedeEditarSecciones || puedeEditarContenido || puedeDescuento) && <AvisoSoloLectura />}
           <OrdenarSecciones
             secciones={datos.secciones.map((x) => ({ id: x.id, nombre: x.nombre, activa: x.activa, orden: x.orden }))}

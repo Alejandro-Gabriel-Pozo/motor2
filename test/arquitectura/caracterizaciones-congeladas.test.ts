@@ -711,6 +711,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Fase 7, módulo Carta (DEC-24: tres entradas de menú con pestañas; CAMBIA TEXTO de administración, no la carta pública; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_ccar_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px): salen las dos «puertas» `[enlace: Mantenimiento]` / `[enlace: Parametrización]` y `[enlace: ← Volver]`, el subtítulo pasa de «Parametrización · Secciones» a «Secciones» y entra la fila de pestañas `[enlace: Hoy]` `[enlace: Secciones y géneros]` `[enlace: Ítems agrupados]`; la ayuda de «Productos de cada sección» dice «Carta › Hoy › Visibilidad» en lugar de «Mantenimiento › Visibilidad». Revisado con `git diff`: 10 líneas por lado, todas dentro de las dos secciones de Secciones; la carta pública, la tipografía, las opciones de Pizzas y «Tipos de Pizza» quedan idénticas byte a byte.",
       },
+      {
+        blob: "c65d1e080bd711d9d75aa55faad0220657ec7193",
+        // El commit PADRE de este (75502ca0) es el último antes de la regeneración; el texto lo cambió el enlace a Géneros dentro de la pestaña «Secciones y géneros» (Fase 7, módulo Carta).
+        commit: "75502ca0",
+        motivo:
+          "Fase 7, módulo Carta (DEC-24; ADITIVO, solo ADMINISTRACIÓN; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_ccar_e2e local): la pestaña «Secciones y géneros» reúne dos pantallas, así que «Secciones» suma el enlace `[enlace: Géneros (carpetas del selector del POS) ›]` (a 1280 y a 375 px). Revisado con `git diff`: 2 líneas agregadas, ninguna borrada; la carta pública y el resto quedan idénticos.",
+      },
     ],
   },
 };

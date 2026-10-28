@@ -8,6 +8,7 @@ import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { FilaDeCarta } from "@/components/fila-de-carta";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { PESTANAS_DE_CARTA } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
@@ -46,6 +47,10 @@ export default async function GenerosDeCartaPage() {
       <div className={estilos.contenido}>
         <div className={estilos.pad}>
           <div className={`${estilos.formulario} flex flex-col gap-10`}>
+            {/* DEC-24: la pestaña «Secciones y géneros» reúne dos pantallas; esta lleva a la otra. */}
+            <EnlaceInterno href="/carta/parametrizacion/secciones" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
+              ‹ Secciones de la carta
+            </EnlaceInterno>
             {!puedeEditarGeneros && <AvisoSoloLectura />}
       {/* 2. Géneros de carta (docs/plan-genero-carta-2026-09-26.md): carpetas VISUALES del POS, globales como las secciones. */}
       <section aria-labelledby="titulo-generos" className="flex flex-col gap-3">
