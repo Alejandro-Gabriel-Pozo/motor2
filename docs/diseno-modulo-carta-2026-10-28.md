@@ -208,3 +208,9 @@ Lo que falta se muestra «pendiente de completar» / «Sin cargar», nunca inven
 7b. Bloque «Vigencia» oculto con un interruptor reversible (decisión del dueño del 2026-10-20) y la ayuda de la promo dice que se maneja con activar/desactivar.
 8. e2e: navegación, solo lectura, menú del día sin rediseño (con mutación); accesibilidad; capturas.
 9. Cierre: los 8 comandos del gate.
+
+## 16. Estado de la implementación (2026-10-28, carril `alegp/carril-car`)
+
+- Hecho, sin migración: menú de tres entradas con pestañas (las URL no cambiaron; `/carta/parametrizacion` y `/carta/parametrizacion/apariencia` redirigen), pestaña «Hoy» que reúne `/carta` y Opciones agotadas, «Secciones y géneros» con enlaces entre sus dos pantallas, ver ≠ escribir en Tema y Portal (solo los campos se deshabilitan; la vista previa queda fuera), vocabulario, «Sumar un lugar» y «Vigencia» ocultos con interruptores reversibles, ajuste masivo de precios BORRADO, matriz de visibilidad de las promos, pruebas de ausencia de lo retirado, e2e del menú del día sin rediseño.
+- No hecho, por decisión del dueño o por ser pregunta abierta: arreglo de la vigencia en la carta pública (P-6), cambio de quién agota platos (P-1), mudar Visibilidad (P-2), mudar URL (P-3), auditoría de configuración (P-4), descripciones de `ACCIONES` (P-5), plato del día dentro de un menú (P-7), retiro de columnas (P-9).
+- Pasos de uso para el dueño, menú del día sin rediseño: (1) Catálogo › Productos › Nuevo: el plato del día con su receta y su precio, disponible en la sucursal, sin cargarlo en la carta; (2) el mozo lo vende desde la mesa, pestaña «Fuera de carta»; (3) cuando se termina, Catálogo › Productos › el plato › «Desactivar» (otro día, «Activar»); (4) el menú ejecutivo: Carta › Promociones › Nueva promo con su precio, tildando las secciones de las que se elige (Cupos) y «Solo salón»; se activa y se desactiva a mano.
