@@ -74,24 +74,27 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
     // Compras — fijan el costo de reposición de cada MP comprada.
     await registrarMovimiento({
       proceso: "COMPRA", fecha, seccionId,
-      items: [{ productoId: tomate.id, cantidad: 100, precioTotal: 500 }], // $5/kg
+      items: [{ productoId: tomate.id, cantidad: 100, precioTotal: 500 }],
+      claveIdempotencia: crypto.randomUUID(), // $5/kg
     });
     // Dos lotes de la MISMA familia (Carne), vencimientos distintos — CarneB vence antes: FEFO la consume primero.
     await registrarMovimiento({
       proceso: "COMPRA", fecha, seccionId,
-      items: [{ productoId: carneB.id, cantidad: 0.6, precioTotal: 30, loteVencimiento: new Date("2026-03-15T00:00:00Z") }], // $50/kg
+      items: [{ productoId: carneB.id, cantidad: 0.6, precioTotal: 30, loteVencimiento: new Date("2026-03-15T00:00:00Z") }],
+      claveIdempotencia: crypto.randomUUID(), // $50/kg
     });
     await registrarMovimiento({
       proceso: "COMPRA", fecha, seccionId,
-      items: [{ productoId: carneA.id, cantidad: 5, precioTotal: 250, loteVencimiento: new Date("2026-04-01T00:00:00Z") }], // $50/kg
+      items: [{ productoId: carneA.id, cantidad: 5, precioTotal: 250, loteVencimiento: new Date("2026-04-01T00:00:00Z") }],
+      claveIdempotencia: crypto.randomUUID(), // $50/kg
     });
 
     // Subreceta producida: 2 kg de SalsaBase consumen Tomate según su propia receta.
-    const produccionSalsa = await registrarMovimiento({ proceso: "PRODUCCION", fecha, seccionId, items: [{ productoId: salsaBase.id, cantidad: 2 }] });
+    const produccionSalsa = await registrarMovimiento({ proceso: "PRODUCCION", fecha, seccionId, items: [{ productoId: salsaBase.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
     expect(produccionSalsa.ok, produccionSalsa.mensaje).toBe(true);
 
     // Pizza (PV `seProduce`) también se produce ANTES de venderse: consume SalsaBase acá, no al venderse.
-    const produccionPizza = await registrarMovimiento({ proceso: "PRODUCCION", fecha, seccionId, items: [{ productoId: pizza.id, cantidad: 3 }] });
+    const produccionPizza = await registrarMovimiento({ proceso: "PRODUCCION", fecha, seccionId, items: [{ productoId: pizza.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
     expect(produccionPizza.ok, produccionPizza.mensaje).toBe(true);
 
     // Ventas: Milanesa consume CarneA (ancla) con reparto de familia (H9) — parte de CarneB (vence antes, se agota) + parte de

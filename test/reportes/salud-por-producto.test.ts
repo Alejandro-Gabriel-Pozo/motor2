@@ -29,7 +29,7 @@ describe("generarReporteSaludPorProducto", () => {
 
   it("una MP con movimientos pero sin receta vinculada dispara Atención aunque los otros 3 ejes estén bien", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Sin receta", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const filas = await generarReporteSaludPorProducto(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     const fila = filas.find((f) => f.productoId === mp.id)!;
@@ -42,7 +42,7 @@ describe("generarReporteSaludPorProducto", () => {
     const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" }); // diferencia 0 -> CONCILIADO
 
     const filas = await generarReporteSaludPorProducto(sucursalId, prisma, AHORA_DE_LA_CORRIDA);

@@ -66,7 +66,7 @@ async function sembrar(n: number) {
     await prisma.recetaVersion.create({ data: { productoId: botella.id, version: 1, ingredientes: { create: [{ insumoProductoId: caja.id, cantidad: 1, unidadId: kg.id }] } } });
     await conteo(caja.id, 0, dia("2026-01-02", i));
     // Con precio (O.30): así el costo de reposición entra al resultado (`impactoPesos`, `sinCosto`) y la comparación de la combinada lo ve.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-10"), seccionId, items: [{ productoId: caja.id, cantidad: 10, precioTotal: 50 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-10"), seccionId, items: [{ productoId: caja.id, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: mediodia("2026-01-15"), seccionId, ventas: [{ productoId: botella.id, cantidadVendida: 6 }] });
     await conteo(caja.id, 4, dia("2026-01-25", i));
   }
@@ -79,7 +79,7 @@ async function sembrar(n: number) {
     const bife = await producto(`PV_BIFE_${j}`, "PV");
     await prisma.recetaVersion.create({ data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: nalga.id, cantidad: 0.1, unidadId: kg.id }] } } });
     await prisma.recetaVersion.create({ data: { productoId: bife.id, version: 1, ingredientes: { create: [{ insumoProductoId: lomo.id, cantidad: 0.1, unidadId: kg.id }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2025-12-01"), seccionId, items: [{ productoId: nalga.id, cantidad: 1000, precioTotal: 5000 }, { productoId: lomo.id, cantidad: 1000, precioTotal: 8000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2025-12-01"), seccionId, items: [{ productoId: nalga.id, cantidad: 1000, precioTotal: 5000 }, { productoId: lomo.id, cantidad: 1000, precioTotal: 8000 }], claveIdempotencia: crypto.randomUUID() });
     await conteo(nalga.id, 1000, dia("2026-01-02", j));
     await conteo(lomo.id, 1000, dia("2026-01-02", j));
     // Mismos pares (m, b) que el test de CONTEO de `rendimiento-recetas.test.ts`: la mezcla varía y la regresión resuelve.

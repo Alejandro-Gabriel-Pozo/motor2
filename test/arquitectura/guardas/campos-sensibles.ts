@@ -23,6 +23,7 @@ export const CAMPOS: Readonly<Record<string, CampoSensible>> = {
   "MovimientoStock.precioPorUnidadStock": { piso: "administrador", dato: "el costo por unidad de una línea del Kardex" },
   "MovimientoStock.costoUnitarioVenta": { piso: "administrador", dato: "el costo congelado de lo vendido" },
   "MovimientoStock.precioListaUnitario": { piso: "administrador", dato: "el precio de lista congelado de lo vendido" },
+  "TraspasoSucursal.costoUnitarioOrigen": { piso: "administrador", dato: "la copia del costo del origen que viaja con un traspaso (E2, ADR-040; como `MovimientoStock.precioPorUnidadStock`)" },
   "Operacion.nroFactura": { piso: "administrador", dato: "el N.º de factura de una compra (`reporte_historial_importes`, S-14)" },
   "Operacion.proveedorId": { piso: "administrador", dato: "el proveedor de una operación (`reporte_historial_importes`, S-14)" },
   "Operacion.proveedor": { piso: "administrador", dato: "el proveedor de una operación, como relación (el nombre; `reporte_historial_importes`, S-14)" },

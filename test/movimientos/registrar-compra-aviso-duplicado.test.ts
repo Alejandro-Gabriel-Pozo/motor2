@@ -45,7 +45,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       seccionId: seccionCentral,
       proveedorId: extra.proveedor ?? proveedorId,
       nroFactura: extra.nroFactura,
-      claveIdempotencia: extra.claveIdempotencia,
+      claveIdempotencia: extra.claveIdempotencia ?? crypto.randomUUID(),
       items: [{ productoId, cantidad: 10, ...(precioTotal === undefined ? {} : { precioTotal }) }],
     });
 
@@ -56,7 +56,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       seccionId: seccionNorte,
       proveedorId: extra.proveedor ?? proveedorId,
       nroFactura: extra.nroFactura,
-      claveIdempotencia: extra.claveIdempotencia,
+      claveIdempotencia: extra.claveIdempotencia ?? crypto.randomUUID(),
       items: [{ productoId, cantidad: 10, ...(precioTotal === undefined ? {} : { precioTotal }) }],
     });
 
@@ -69,6 +69,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       proveedorId,
       nroFactura: extra.nroFactura,
       items: [{ productoId, cantidad: 10, precioTotal }],
+      claveIdempotencia: crypto.randomUUID(),
     });
 
   beforeEach(async () => {
@@ -173,6 +174,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       seccionId: seccionCentral,
       proveedorId,
       items: [{ productoId, cantidad: 10, precioTotal: 1500 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(primera.ok).toBe(true);
 
@@ -278,7 +280,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     try {
       const r = await registrarMovimientoCasoDeUso(
         { usuarioId: usuarioNorte, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalNorte, sucursalNombre: "Norte", ...baseDeTest(alcance) },
-        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-13", ZONA_ARGENTINA), seccionId: seccionNorte, proveedorId, nroFactura: "9-77", items: [{ productoId, cantidad: 10, precioTotal: 1500 }] },
+        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-13", ZONA_ARGENTINA), seccionId: seccionNorte, proveedorId, nroFactura: "9-77", items: [{ productoId, cantidad: 10, precioTotal: 1500 }], claveIdempotencia: crypto.randomUUID() },
       );
       expect(r.ok, r.mensaje).toBe(true);
       expect(r.mensaje).toContain("en la sucursal Central. Revisá");
@@ -314,7 +316,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     try {
       const r = await registrarMovimientoCasoDeUso(
         { usuarioId: usuarioCentral, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalCentral, sucursalNombre: "Central", ...baseDeTest(alcance) },
-        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-12", ZONA_ARGENTINA), seccionId: seccionCentral, proveedorId, nroFactura: "1-1234", items: [{ productoId, cantidad: 10, precioTotal: 1500 }] },
+        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-12", ZONA_ARGENTINA), seccionId: seccionCentral, proveedorId, nroFactura: "1-1234", items: [{ productoId, cantidad: 10, precioTotal: 1500 }], claveIdempotencia: crypto.randomUUID() },
       );
       expect(r.ok, r.mensaje).toBe(true);
       expect(r.mensaje).not.toContain(AVISO);

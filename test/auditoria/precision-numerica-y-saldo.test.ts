@@ -40,8 +40,8 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
 
   it("0.1 + 0.2 vía dos COMPRAs separadas: el saldo agregado en Postgres da EXACTO 0.3 (a diferencia de la aritmética float pura de JS, que da 0.30000000000000004)", async () => {
     const mp = await crearMP("Test01");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.1 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.2 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.1 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.2 }], claveIdempotencia: crypto.randomUUID() });
 
     const saldo = await calcularSaldoTotal(mp.id, seccionId, prisma);
     expect(saldo).toBe(0.3);
@@ -55,7 +55,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
 
   it("cantidades con 4 decimales sobreviven el roundtrip completo (COMPRA → Kardex → saldo) sin pérdida", async () => {
     const mp = await crearMP("Test4dec", 4);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1.2345 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1.2345 }], claveIdempotencia: crypto.randomUUID() });
     const saldo = await calcularSaldoTotal(mp.id, seccionId, prisma);
     expect(saldo).toBe(1.2345);
   });
@@ -66,7 +66,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
 
     expect(7 * 0.1).not.toBe(0.7); // referencia: 0.7000000000000001 en JS puro, el bug clásico existe acá
 
-    const resultado = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 7 }] });
+    const resultado = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 7 }], claveIdempotencia: crypto.randomUUID() });
     expect(resultado.ok, resultado.mensaje).toBe(true);
     const saldo = await calcularSaldoTotal(mp.id, seccionId, prisma);
 
@@ -82,7 +82,7 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
   it("sumas repetidas (50 compras de 0.07) reconstruyen el total exacto (3.50), sin arrastre de error", async () => {
     const mp = await crearMP("TestRepetido", 2);
     for (let i = 0; i < 50; i++) {
-      const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.07 }] });
+      const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.07 }], claveIdempotencia: crypto.randomUUID() });
       expect(r.ok, r.mensaje).toBe(true);
     }
     const saldo = await calcularSaldoTotal(mp.id, seccionId, prisma);
@@ -95,12 +95,12 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.1, unidadId: unidadKgId, mermaPorcentaje: 12.5 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     // Producir 7 unidades de pan: consumo esperado = 7 × 0.1 × 1.125 = 0.7875,
     // redondeado a los 3 decimales de la unidad del insumo (Plan N3,
     // docs/auditoria-motor2-pivotes-2026-09-16.md §11) → 0.788 exacto.
-    const resultado = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 7 }] });
+    const resultado = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 7 }], claveIdempotencia: crypto.randomUUID() });
     expect(resultado.ok, resultado.mensaje).toBe(true);
 
     const saldoInsumo = await calcularSaldoTotal(mpInsumo.id, seccionId, prisma);
@@ -109,11 +109,11 @@ describe("Auditoría — Fase 5: precisión numérica (Decimal → number) y rec
 
   it("reconstrucción del saldo: para un producto con historial mixto (compra, consumo, merma, ajuste), la suma manual de MovimientoStock.cantidad (leída como Decimal string) coincide EXACTO con calcularSaldoTotal", async () => {
     const mp = await crearMP("HistorialMixto", 2);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 15.5 }] });
-    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3.25 }] });
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.5 }], motivoId: motivoVencidoId });
-    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -1.75 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 2.1 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 15.5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3.25 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 0.5 }], motivoId: motivoVencidoId, claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -1.75 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 2.1 }], claveIdempotencia: crypto.randomUUID() });
 
     // Suma "manual" leyendo cada fila cruda de la DB con Prisma.Decimal
     // (no vía el helper de producción calcularSaldoTotal) — reconstrucción

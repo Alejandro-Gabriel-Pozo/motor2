@@ -73,6 +73,13 @@ function resumenDeTraza(traza: readonly string[]): string[] {
   ];
 }
 
+/**
+ * E1 (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md): `registrarMovimiento` exige la clave de reintento. Las cargas de preparación
+ * usan claves FIJAS y en orden (UUID v4 válidos) para que el golden no cambie entre corridas: la matriz las muestra en la columna `claveIdempotencia`.
+ */
+let numeroDeClave = 0;
+const claveDePreparacion = () => `00000000-0000-4000-8000-${String(++numeroDeClave).padStart(12, "0")}`;
+
 describe("Caracterización de la venta: una secuencia completa con filas y traza de consultas", () => {
   let sucursalId: string;
   let seccionId: string;
@@ -82,6 +89,7 @@ describe("Caracterización de la venta: una secuencia completa con filas y traza
   let ids: Record<string, string>;
 
   beforeEach(async () => {
+    numeroDeClave = 0;
     nombres.clear();
     desconocidos.clear();
     await limpiarBaseDeTest();
@@ -125,11 +133,11 @@ describe("Caracterización de la venta: una secuencia completa con filas y traza
     for (const [nombre, id] of Object.entries(ids)) nombres.set(id, nombre);
 
     // Costos de reposición determinísticos: MuzzaA y MuzzaB con costos DISTINTOS (1000 y 1200/kg); el costo de Pizza queda anclado a MuzzaA.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaA, cantidad: 0.3, precioTotal: 300 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaB, cantidad: 0.3, precioTotal: 360 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: vino, cantidad: 2, precioTotal: 200 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: bollo, cantidad: 3, precioTotal: 90 }] });
-    await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: torta, cantidad: 2, loteVencimiento: new Date("2026-10-01") }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaA, cantidad: 0.3, precioTotal: 300 }], claveIdempotencia: claveDePreparacion() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaB, cantidad: 0.3, precioTotal: 360 }], claveIdempotencia: claveDePreparacion() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: vino, cantidad: 2, precioTotal: 200 }], claveIdempotencia: claveDePreparacion() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: bollo, cantidad: 3, precioTotal: 90 }], claveIdempotencia: claveDePreparacion() });
+    await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: torta, cantidad: 2, loteVencimiento: new Date("2026-10-01") }], claveIdempotencia: claveDePreparacion() });
   });
 
   const simbolo = (valor: string): string => {
@@ -205,7 +213,7 @@ describe("Caracterización de la venta: una secuencia completa con filas y traza
     expect(s1.ok).toBe(true);
 
     // 2. Reposición de MuzzaA y mostrador con clave I3 (queda en la PRIMERA Operación del lote).
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-27"), seccionId, items: [{ productoId: ids.muzzaA, cantidad: 2, precioTotal: 2000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-27"), seccionId, items: [{ productoId: ids.muzzaA, cantidad: 2, precioTotal: 2000 }], claveIdempotencia: claveDePreparacion() });
     const s2 = await paso(
       "2. Mostrador: Pizza ×2 con clave de idempotencia, N.º de factura y detalle",
       { fecha: new Date("2026-09-27"), origen: { tipo: "seccion", seccionId }, nroFactura: "A-0001", detalle: "mesa 4", lineas: [{ productoId: ids.pizza, cantidadVendida: 2 }] },

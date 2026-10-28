@@ -94,6 +94,9 @@ const FUNCIONES_EXCEPTUADAS: Record<string, string> = {
   "src/server/persistencia/catalogo/productos.ts|sembrarDisponibilidadDeProductoNuevo":
     "La disponibilidad inicial de un producto recién dado de alta (una fila por sucursal): misma razón que `crearProductoNuevo` (va después de la creación, sin transacción por el reintento del código), y no hay valor anterior. Cada cambio posterior lo audita `actualizarDisponibilidadProducto`.",
   // Hito 4, H4C-8: la escritura del alta pasó de `actions/catalogo/unidades.ts|crearUnidad` a la persistencia (la llama solo `casos-de-uso/crear-unidad.ts`).
+  // E2 (ADR-040, punto 8): decisión de diseño, no deuda.
+  "src/server/persistencia/traspasos/escribir-aprobacion-de-traspaso.ts|escribirAprobacionDeTraspaso":
+    "La COPIA del costo del origen (`TraspasoSucursal.costoUnitarioOrigen`) al aprobar y enviar una solicitud: la escribe el sistema UNA vez (de NULL a la copia, en el paso SOLICITADA → ENVIADA que el guard de transición deja dar una sola vez), nadie la edita a mano y no hay valor anterior que se pierda. Su rastro es la salida del Kardex escrita en la misma transacción con el MISMO precio por unidad (quién, cuándo, cuánto). El envío directo la escribe al crear el traspaso y su caso de uso ya audita el alta.",
   "src/server/persistencia/catalogo/unidades.ts|crearUnidadNueva":
     "Alta de una unidad nueva: todavía nada la usa, así que no hay un valor anterior ni cantidades cuyo significado cambie. Cada cambio posterior de sus decimales lo audita `actualizarDecimalesUnidad`.",
 };

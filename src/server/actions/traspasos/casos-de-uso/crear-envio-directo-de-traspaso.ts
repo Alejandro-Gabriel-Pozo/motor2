@@ -7,6 +7,7 @@ import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
+import { obtenerCostoActualDeProducto } from "@/server/lecturas/reportes/comun";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarSucursalParaTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";
 import { escribirEnvioDirectoDeTraspaso } from "@/server/persistencia/traspasos/escribir-creacion-de-traspaso";
@@ -39,7 +40,9 @@ import { verificarProductoTransferible } from "./producto-transferible";
  *  5. la cantidad, contra los decimales de la unidad de stock, ANTES del stock (así el error nombra la cantidad tecleada, no un «stock
  *     insuficiente» contra un valor que se iba a redondear);
  *  6. el stock disponible en la sección de origen;
- *  7. escritura del traspaso ENVIADO y de su SALIDA (persistencia) y el mensaje de éxito.
+ *  7. E2 (ADR-040): el costo de reposición de ESTA sucursal para el producto (`obtenerCostoActualDeProducto`, filtrado por la sucursal del actor), leído dentro de la
+ *     transacción: se copia en el traspaso y valoriza la salida; sin costo conocido, `null` («pendiente de completar») y el envío sigue igual;
+ *  8. escritura del traspaso ENVIADO y de su SALIDA con esa copia (persistencia) y el mensaje de éxito.
  *
  * @contract Origen envía directo (PUSH) a otra sucursal activa, desde una sucursal activa, escribiendo la SALIDA y el traspaso ENVIADO juntos en un solo paso.
  * @idempotency No aplica, decisión explícita (M11c) — fuera del alcance de I3 desde la auditoría original; un duplicado nunca deja el stock inconsistente (se deshace con el ciclo normal de rechazo+reingreso).
@@ -86,6 +89,7 @@ export async function crearEnvioDirectoDeTraspasoCasoDeUso(
       );
     }
 
+    const costoDelOrigen = await obtenerCostoActualDeProducto(actor.sucursalId, producto.id, tx);
     const { traspasoId, operacionId } = await escribirEnvioDirectoDeTraspaso(tx, {
       origenSucursalId: actor.sucursalId,
       destinoSucursalId: destino.id,
@@ -96,6 +100,7 @@ export async function crearEnvioDirectoDeTraspasoCasoDeUso(
       detalle: comando.detalle,
       detalleSalida: `Transferencia a sucursal "${destino.nombre}".`,
       ahora: actor.ahora,
+      costoUnitarioOrigen: costoDelOrigen?.precioPorUnidadStock ?? null,
     });
 
     // Auditoría (decisión del dueño, 2026-10-07): el alta del envío directo (la cantidad enviada) deja su fila, en la sucursal de origen, que es quien lo manda.

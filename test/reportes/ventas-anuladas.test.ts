@@ -38,7 +38,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
   const agosto = () => obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
   async function comprarHarina(fecha: string) {
-    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: d(fecha), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }] });
+    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: d(fecha), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
     expect(r.ok, r.mensaje).toBe(true);
   }
 
@@ -117,7 +117,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
 
     it("el ratio Compras/Ventas del período ANTERIOR tampoco cuenta la venta anulada (y compara lo mismo que el actual)", async () => {
       // Julio: compras vigentes por $25 y dos ventas: una de $200 vigente y una de $300 anulada. Con la anulada, el ratio sería 25/500 = 5 %, no 12,5 %.
-      await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-07-10"), seccionId, items: [{ productoId: harinaId, cantidad: 5, precioTotal: 25 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-07-10"), seccionId, items: [{ productoId: harinaId, cantidad: 5, precioTotal: 25 }], claveIdempotencia: crypto.randomUUID() });
       const venta = async (importe: number, anulada: boolean) => {
         const op = await prisma.operacion.create({
           data: { sucursalId, proceso: "VENTA", fecha: d("2026-07-15"), usuarioId: adminId, ...(anulada ? { anuladaEn: new Date(), anuladaPorId: adminId } : {}) },
@@ -165,7 +165,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
     });
 
     it("Pérdidas y consumo: el consumo automático por receta de una venta anulada no es consumo", async () => {
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
       const registrada = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: panId, cantidadVendida: 1 }] });
       expect(registrada.ok, registrada.mensaje).toBe(true);
       const antes = await generarReportePerdidas(sucursalId, 30, prisma, AHORA_DE_LA_CORRIDA);
@@ -204,9 +204,9 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
 
     it("un ajuste MANUAL sigue contando, con y sin detalle (el filtro no pierde las operaciones sin detalleLibre)", async () => {
       await comprarHarina("2026-08-05");
-      const sinDetalle = await registrarMovimiento({ proceso: "AJUSTE", fecha: d("2026-08-06"), seccionId, items: [{ productoId: harinaId, cantidad: -1 }] });
+      const sinDetalle = await registrarMovimiento({ proceso: "AJUSTE", fecha: d("2026-08-06"), seccionId, items: [{ productoId: harinaId, cantidad: -1 }], claveIdempotencia: crypto.randomUUID() });
       expect(sinDetalle.ok, sinDetalle.mensaje).toBe(true);
-      const conDetalle = await registrarMovimiento({ proceso: "AJUSTE", fecha: d("2026-08-07"), seccionId, detalleLibre: "Se derramó un poco", items: [{ productoId: harinaId, cantidad: -0.5 }] });
+      const conDetalle = await registrarMovimiento({ proceso: "AJUSTE", fecha: d("2026-08-07"), seccionId, detalleLibre: "Se derramó un poco", items: [{ productoId: harinaId, cantidad: -0.5 }], claveIdempotencia: crypto.randomUUID() });
       expect(conDetalle.ok, conDetalle.mensaje).toBe(true);
 
       expect((await ajusteDeHarina()).suma).toBe(-1.5);
@@ -214,7 +214,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
 
     it("un ajuste manual cuyo detalle es otro texto que menciona «anulación» sigue contando (solo los prefijos exactos son reversiones)", async () => {
       await comprarHarina("2026-08-05");
-      const r = await registrarMovimiento({ proceso: "AJUSTE", fecha: d("2026-08-06"), seccionId, detalleLibre: "Por la anulación de un pedido de la semana pasada", items: [{ productoId: harinaId, cantidad: -2 }] });
+      const r = await registrarMovimiento({ proceso: "AJUSTE", fecha: d("2026-08-06"), seccionId, detalleLibre: "Por la anulación de un pedido de la semana pasada", items: [{ productoId: harinaId, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
       expect(r.ok, r.mensaje).toBe(true);
       expect((await ajusteDeHarina()).suma).toBe(-2);
     });

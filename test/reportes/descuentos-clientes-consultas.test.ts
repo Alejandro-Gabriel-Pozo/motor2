@@ -38,7 +38,7 @@ describe("obtenerReporteDescuentosClientes: el costo reconstruido se calcula una
 
   async function montar() {
     // Muzzarella comprada a $400/kg: cada pizza (0,25 kg) cuesta $100. Las ventas se cierran y se les BORRA el costo guardado para forzar la reconstrucción.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 40, precioTotal: 16000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 40, precioTotal: 16000 }], claveIdempotencia: crypto.randomUUID() });
     const ids = [await clienteConVenta("Ana", 10, 2), await clienteConVenta("Beto", 20, 3), await clienteConVenta("Carla", 0, 1)];
     await prisma.movimientoStock.updateMany({ where: { proceso: "VENTA" }, data: { costoUnitarioVenta: null } });
     return ids;

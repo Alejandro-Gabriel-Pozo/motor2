@@ -61,7 +61,7 @@ async function sembrar(n: number) {
     await prisma.recetaVersion.create({ data: { productoId: pan.id, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 0.5, unidadId: kg.id }] } } });
     await prisma.stockMinimoProducto.create({ data: { sucursalId: s.id, productoId: harina.id, minimo: 50 } });
     __setCookieDeTestParaSucursal(s.id);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccion.id, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 200 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccion.id, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 200 }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date(), seccionId: seccion.id, ventas: [{ productoId: pan.id, cantidadVendida: 2 + i }] });
   }
   __setCookieDeTestParaSucursal(undefined);

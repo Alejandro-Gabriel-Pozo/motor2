@@ -66,8 +66,8 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
 
       // Compra con precioTotal fraccionario → precioPorUnidadStock también
       // fraccionario (no un número "redondo" a propósito).
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: harina.id, cantidad: 3, precioTotal: 10.01 }] }); // 3.336666... /kg
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: manteca.id, cantidad: 7, precioTotal: 23.33 }] }); // 3.332857... /kg
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: harina.id, cantidad: 3, precioTotal: 10.01 }], claveIdempotencia: crypto.randomUUID() }); // 3.336666... /kg
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: manteca.id, cantidad: 7, precioTotal: 23.33 }], claveIdempotencia: crypto.randomUUID() }); // 3.332857... /kg
 
       await prisma.recetaVersion.create({
         data: {
@@ -107,9 +107,9 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       const p1 = await sembrarProductoDisponible({ codigo: "MP_V1", nombre: "Aceite", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       const p2 = await sembrarProductoDisponible({ codigo: "MP_V2", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
 
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p1.id, cantidad: 6, precioTotal: 19.17 }] }); // 3.195/kg
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p2.id, cantidad: 11, precioTotal: 40.37 }] }); // 3.670909.../kg
-      await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: p1.id, cantidad: 1.5 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p1.id, cantidad: 6, precioTotal: 19.17 }], claveIdempotencia: crypto.randomUUID() }); // 3.195/kg
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p2.id, cantidad: 11, precioTotal: 40.37 }], claveIdempotencia: crypto.randomUUID() }); // 3.670909.../kg
+      await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: p1.id, cantidad: 1.5 }], claveIdempotencia: crypto.randomUUID() });
 
       const reporte = await calcularValuacionInventario(sucursalId, prisma);
       const fila1 = reporte.filas.find((f) => f.productoId === p1.id)!;
@@ -137,7 +137,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       // redondeo: 2.5 × 4.05 = 10.125 (mitad exacta entre 10.12 y 10.13).
       const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 4.05 }, sucursalId);
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.2, unidadId: unidadKgId }] } } });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
       const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2.5 }] });
       expect(resultado.ok, resultado.mensaje).toBe(true);
@@ -157,7 +157,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_AC", nombre: "Harina Acum", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       const pv = await sembrarProductoDisponible({ codigo: "PV_AC", nombre: "Facturas", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 4.37 }, sucursalId);
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.05, unidadId: unidadKgId }] } } });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
       let sumaEsperadaCentavos = BigInt(0);
       for (let i = 1; i <= 8; i++) {
@@ -179,7 +179,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_REV", nombre: "Harina Reversion", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       const pv = await sembrarProductoDisponible({ codigo: "PV_REV", nombre: "Medialuna", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 3.15 }, sucursalId);
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.045, unidadId: unidadKgId, mermaPorcentaje: 7 }] } } });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
       const saldoInsumoPreVenta = await calcularSaldoTotal(mpInsumo.id, seccionId, prisma);
 
@@ -216,7 +216,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       // entero (decimales:0) antes de persistir, un caso ya identificado
       // como de riesgo (redondearACantidadDeUnidad con pocos decimales).
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.3, unidadId: unidadSinDecimales.id, mermaPorcentaje: 5 }] } } });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 100 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 100 }], claveIdempotencia: crypto.randomUUID() });
 
       const saldoPre = await calcularSaldoTotal(mpInsumo.id, seccionId, prisma);
       const venta = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 7 }] });

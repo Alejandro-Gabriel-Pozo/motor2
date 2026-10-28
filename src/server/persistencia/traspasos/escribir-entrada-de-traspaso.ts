@@ -8,7 +8,7 @@ import { escribirMovimientoDeTraspaso } from "./escribir-movimiento-de-traspaso"
  * Son EXACTAMENTE lo que antes escribían en línea `aceptarTransferencia` y `confirmarReingresoTransferencia`
  * (src/server/actions/traspasos/traspasos.ts, vía su helper `escribirMovimientoTraspaso`), en el mismo orden:
  *  1. la `Operacion` de ESTA sucursal, con la clave I3 y su hash si vino clave (`null` si no);
- *  2. su única línea de Kardex: la cantidad en POSITIVO en la sección dada, a precio 0, atada al traspaso;
+ *  2. su única línea de Kardex: la cantidad en POSITIVO en la sección dada, valorizada con la copia del costo del origen (E2), atada al traspaso;
  *  3. el traspaso: estado nuevo y los campos propios de cada paso.
  * El `resultadoMensaje` de la clave I3 lo escribe después el caso de uso (`registrarResultadoIdempotente`), igual que antes.
  * Desde la pieza 5.4 (A4) los pasos 1 y 2 los hace `escribirMovimientoDeTraspaso` (`escribir-movimiento-de-traspaso.ts`), compartido con la salida.
@@ -29,6 +29,8 @@ export interface EntradaDeStockAEscribir {
   ahora: Date;
   /** I3: clave y hash del payload, o `null` si no vino clave. */
   idempotencia: { claveIdempotencia: string; payloadHash: string } | null;
+  /** E2 (ADR-040): la copia del costo del origen guardada en el traspaso al enviarse (`TraspasoSucursal.costoUnitarioOrigen`); `null` = sin costo conocido. */
+  costoUnitarioOrigen: number | null;
 }
 
 async function escribirOperacionDeEntrada(
@@ -47,6 +49,7 @@ async function escribirOperacionDeEntrada(
     cantidadConSigno: e.cantidad,
     detalle: e.detalle,
     traspasoId: e.traspasoId,
+    costoUnitarioOrigen: e.costoUnitarioOrigen,
   });
   return operacionId;
 }

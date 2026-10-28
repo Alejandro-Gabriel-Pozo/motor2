@@ -33,7 +33,7 @@ describe("Margen real: el costo congelado al vender", () => {
     await prisma.recetaVersion.create({ data: { productoId: pan.id, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 2, unidadId: kg.id }] } } });
     pvId = pan.id;
     // Se compran 10 kg por $50: $5 el kilo; el pan lleva 2 kg → cuesta $10.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 50 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
   });
 
   it("una venta registrada desde la aplicación guarda el costo de la receta en ese momento", async () => {

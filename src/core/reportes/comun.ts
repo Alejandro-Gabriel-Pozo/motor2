@@ -208,6 +208,14 @@ export function asegurarIndiceRecetasDeLaSucursal(indiceRecetas: IndiceRecetas, 
   }
 }
 
+/**
+ * Regla V-T1 (E2, ADR-040; decisión del dueño del 2026-10-27): los procesos cuya línea VALORIZADA (`precioPorUnidadStock > 0`) fija el costo de reposición de una sucursal. El
+ * costo es el de la más reciente de ellas, sea una compra local o un traspaso recibido (que trae la copia del costo del origen). El REINGRESO de un traspaso rechazado queda
+ * afuera a propósito: devolver al origen lo que salió no es una reposición nueva. La salida tampoco (es del origen y resta). Lo usan `obtenerCostoActualPorMPDeSucursales`
+ * y el costo reconstruido por día (`reconstruirCostosDeVenta`): una sola lista para las dos. Las operaciones anuladas las deja afuera cada consulta (`anuladaEn IS NULL`).
+ */
+export const PROCESOS_QUE_FIJAN_EL_COSTO = ["COMPRA", "TRANSFERENCIA_ENTRADA_SUCURSAL"] as const;
+
 export interface CostoMP {
   precioPorUnidadStock: number;
   proveedorNombre: string | null;

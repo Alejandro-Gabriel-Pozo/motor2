@@ -231,6 +231,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "MOSTRADOR (O.430; CAMBIA LAS CONSULTAS, no la salida): la barrera de las opciones obligatorias de la venta (`armarLinea`) lee UNA vez por lote lo que admite cada producto de las líneas sin configurar (`cargarOpcionesParaVender`, un `producto.findMany`), la primera vez que una línea llega a ella. Cambia SOLO la línea `lecturas (N)` de 5 escenas (la que ya pasaba la barrera): N suma 1 y `producto.findMany` suma 1; ninguna fila OPERACION, KARDEX ni resultado cambia. Verificado con `git diff --word-diff`: cada línea cambiada, sin el número N y sin `producto.findMany×k`, es idéntica a la anterior.",
       },
+      {
+        blob: "ec9e989d6aad8573fcd14893f02cbfc6176c0cff",
+        // El commit PADRE de la regeneración (0a2991dc, el codemod mecánico de E1) es el último antes del cambio; el golden se regenera en el commit siguiente (6a6cd258).
+        commit: "0a2991dc",
+        motivo:
+          "E1 del circuito de abastecimiento (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md; CAMBIA SOLO LA PREPARACIÓN): `registrarMovimiento` exige la clave de reintento, así que las compras y producciones de PREPARACIÓN de la matriz la mandan (claves fijas `00000000-0000-4000-8000-00000000000N`, en orden). Cambian SOLO 41 líneas OPERACION de esas preparaciones: `claveIdempotencia` null → la clave fija, `payloadHash` null → <enmascarado> y `resultadoMensaje` null → «Se guardaron N movimiento(s).». Verificado con un script sobre el diff: normalizando esas tres columnas, cada línea es idéntica a la anterior; ninguna venta, KARDEX, lectura, escritura ni resultado cambia. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA=1.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -316,6 +323,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "ff51d59f",
         motivo:
           "Fusión de dos regeneraciones hechas en paralelo sobre el mismo golden: la de Fase 7 P6 (un texto: el camino del menú «Stock → Depósitos» en el rechazo sin respaldo) y la de M1 del mostrador (las 21 líneas CUENTA suman `tipoMesa=SALON`, aditivo). La fusión automática de git dio el contenido de las dos juntas (comprobado: 21 líneas con `tipoMesa=SALON`, el texto nuevo del camino del menú y ningún marcador de conflicto); ningún otro número cambia.",
+      },
+      {
+        blob: "89d1302bc565636221295743642c13ebe39d44c7",
+        // El commit PADRE de la regeneración (0a2991dc, el codemod mecánico de E1) es el último antes del cambio; el golden se regenera en el commit siguiente (6a6cd258).
+        commit: "0a2991dc",
+        motivo:
+          "E1 del circuito de abastecimiento (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md; CAMBIA SOLO LA PREPARACIÓN): `registrarMovimiento` exige la clave de reintento, así que las compras y producciones de PREPARACIÓN de la matriz la mandan (claves fijas `00000000-0000-4000-8000-00000000000N`, en orden). Cambian SOLO 127 líneas OPERACION de esas preparaciones: `claveIdempotencia` null → la clave fija, `payloadHash` null → <enmascarado> y `resultadoMensaje` null → «Se guardaron N movimiento(s).». Verificado con un script sobre el diff: normalizando esas tres columnas, cada línea es idéntica a la anterior; ninguna venta, KARDEX, lectura, escritura ni resultado cambia. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1.",
       },
     ],
   },
@@ -496,6 +510,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "c980e5fb",
         motivo:
           "GO-1d (O.324; ADITIVO, no cambia comportamiento): la huella de escritores del Kardex suma `operacionPadreId` en null en cada `Operacion`. Verificado con diff: sin esa clave en null, idéntico al anterior.",
+      },
+      {
+        blob: "d302c5d5b7d4f7f7c4c367f153d7648591989671",
+        // El commit PADRE de este (79927ec9, regla V-T1 en las lecturas) es el último antes del cambio; el golden se regenera en el commit siguiente (escritura del costo en el traspaso).
+        commit: "79927ec9",
+        motivo:
+          "E2 «el costo viaja con el traspaso» (ADR-040; CAMBIA COMPORTAMIENTO por decisión del dueño del 2026-10-27, columna `TraspasoSucursal.costoUnitarioOrigen` autorizada). Regenerado con `REGENERAR_HUELLA_KARDEX=1`. Los 8 casos de antes pasan `costoUnitarioOrigen: null` (sin costo conocido): sus escrituras y filas solo SUMAN la clave `costoUnitarioOrigen` en null (en el `data` del alta o del `update` del traspaso y en cada fila volcada de `TraspasoSucursal`); verificado por programa (quitando esa clave en null, cada caso es IDÉNTICO al blob anterior, con el mismo orden de casos; precios de las líneas en 0 como antes). Se suman 3 casos nuevos al final de los traspasos: envío directo con costo 100,04 (salida -2,5 por $250,10), aceptación con la copia 100,04 (entrada 3 por $300,12) y reingreso con la copia 0,3333 (3 por $1,00: 0,9999 redondeado una sola vez); en los tres el traspaso queda con su copia.",
       },
     ],
   },

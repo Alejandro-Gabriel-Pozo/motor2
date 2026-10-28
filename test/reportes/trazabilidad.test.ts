@@ -28,7 +28,7 @@ describe("Trazabilidad", () => {
 
   it("obtenerOperacionPorId trae los movimientos de la operación, y nunca la de otra sucursal", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    const resultado = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] });
+    const resultado = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
     expect(resultado.ok).toBe(true);
     const operacion = await prisma.operacion.findFirstOrThrow({ where: { sucursalId } });
 
@@ -49,7 +49,7 @@ describe("Trazabilidad", () => {
     await prisma.recetaVersion.create({
       data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: bife.id, cantidad: 0.3, unidadId: unidadKgId, sustitutos: { create: [{ insumoSustitutoId: insumoOjo.id, orden: 1 }] } }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: ojo.id, cantidad: 1 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: ojo.id, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
 
     const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: 1 }] });
     expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
@@ -65,7 +65,7 @@ describe("Trazabilidad", () => {
 
   it("buscarOperacionesPorProducto encuentra por nombre o código, sin duplicar operación", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_ESPECIAL", nombre: "Harina 000", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
 
     const porNombre = await buscarOperacionesPorProducto(sucursalId, "harina 000", prisma);
     expect(porNombre.length).toBe(1);
@@ -79,7 +79,7 @@ describe("Trazabilidad", () => {
     const salsa = await sembrarProductoDisponible({ codigo: "MP_SALSA", nombre: "Salsa 100% tomate", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const pan = await sembrarProductoDisponible({ codigo: "MP_PAN", nombre: "Pan_integral", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const panBlanco = await sembrarProductoDisponible({ codigo: "MP_PANB", nombre: "Pan integral", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    for (const p of [salsa, pan, panBlanco]) await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad: 5 }] });
+    for (const p of [salsa, pan, panBlanco]) await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
     const cuantas = async (q: string) => (await buscarOperacionesPorProducto(sucursalId, q, prisma)).length;
 
     expect(await cuantas("%")).toBe(1); // antes: las 3

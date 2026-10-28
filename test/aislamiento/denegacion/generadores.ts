@@ -276,16 +276,17 @@ const completos: Record<string, Valor> = {
     ),
   "accion|actions/movimientos/movimientos.ts|registrarMovimiento": (k, c) =>
     conVariantes(
+      // E1 (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md): la clave de reintento es obligatoria; cada intento manda una nueva para llegar a la lógica.
       // Compra con la sección ajena, y (de otra empresa) con el proveedor o el producto ajenos.
-      intento(c, ["seccionId", "proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: k.seccionId, proveedorId: k.proveedorId, items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100 }] }]),
-      intento(c, ["proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, proveedorId: k.proveedorId, items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100 }] }]),
-      intento(c, ["productoId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, items: [{ productoId: k.productoId, cantidad: 1, precioTotal: 100 }] }]),
+      intento(c, ["seccionId", "proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: k.seccionId, proveedorId: k.proveedorId, items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }]),
+      intento(c, ["proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, proveedorId: k.proveedorId, items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }]),
+      intento(c, ["productoId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, items: [{ productoId: k.productoId, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }]),
       // Merma con el motivo ajeno; consumo con el destino ajeno (son de la empresa).
-      intento(c, ["motivoId"], [{ proceso: "MERMA", fecha: hoy(), seccionId: c.propio.seccionId, motivoId: k.motivoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }] }]),
-      intento(c, ["destinoId"], [{ proceso: "CONSUMO", fecha: hoy(), seccionId: c.propio.seccionId, destinoId: k.destinoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }] }]),
+      intento(c, ["motivoId"], [{ proceso: "MERMA", fecha: hoy(), seccionId: c.propio.seccionId, motivoId: k.motivoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() }]),
+      intento(c, ["destinoId"], [{ proceso: "CONSUMO", fecha: hoy(), seccionId: c.propio.seccionId, destinoId: k.destinoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() }]),
       // Transferencia hacia una sección ajena; ajuste desde una sección ajena.
-      intento(c, ["seccionId"], [{ proceso: "TRANSFERENCIA", fecha: hoy(), seccionId: c.propio.seccionId, seccionDestinoId: c.escenario === "controlMutacion" ? c.propio.seccion2Id : k.seccionId, items: [{ productoId: c.propio.productoId, cantidad: 1 }] }]),
-      intento(c, ["seccionId"], [{ proceso: "AJUSTE", fecha: hoy(), seccionId: k.seccionId, items: [{ productoId: c.propio.productoId, cantidad: -1 }] }]),
+      intento(c, ["seccionId"], [{ proceso: "TRANSFERENCIA", fecha: hoy(), seccionId: c.propio.seccionId, seccionDestinoId: c.escenario === "controlMutacion" ? c.propio.seccion2Id : k.seccionId, items: [{ productoId: c.propio.productoId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() }]),
+      intento(c, ["seccionId"], [{ proceso: "AJUSTE", fecha: hoy(), seccionId: k.seccionId, items: [{ productoId: c.propio.productoId, cantidad: -1 }], claveIdempotencia: crypto.randomUUID() }]),
     ),
   "accion|actions/movimientos/venta.ts|registrarVenta": (k, c) =>
     conVariantes(

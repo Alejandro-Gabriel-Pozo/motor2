@@ -29,8 +29,8 @@ describe("calcularValuacionInventario", () => {
 
   it("valoriza el saldo actual al costo de reposición (última compra local)", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] }); // $10/kg, saldo 10
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-06-01"), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 100 }] }); // $20/kg, más reciente; saldo 15
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }); // $10/kg, saldo 10
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-06-01"), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }); // $20/kg, más reciente; saldo 15
 
     const rep = await calcularValuacionInventario(sucursalId, prisma);
     const fila = rep.filas.find((f) => f.productoId === mp.id)!;
@@ -44,7 +44,7 @@ describe("calcularValuacionInventario", () => {
   it("no inventa un valor para stock sin ninguna compra registrada", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     // Entra stock por AJUSTE, nunca por COMPRA: no hay costo de reposición conocido.
-    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 8 }] });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 8 }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await calcularValuacionInventario(sucursalId, prisma);
     const fila = rep.filas.find((f) => f.productoId === mp.id)!;
@@ -57,8 +57,8 @@ describe("calcularValuacionInventario", () => {
 
   it("excluye productos sin stock (saldo <= 0)", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] });
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await calcularValuacionInventario(sucursalId, prisma);
     expect(rep.filas.find((f) => f.productoId === mp.id)).toBeUndefined();
@@ -76,7 +76,7 @@ describe("calcularValuacionInventario", () => {
         movimientos: { create: [{ productoId: mp.id, seccionId: otraSeccion.id, proceso: "COMPRA", cantidad: 10, detalle: "Compra otra sucursal.", precioTotal: 1000, precioPorUnidadStock: 100 }] },
       },
     });
-    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3 }] });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await calcularValuacionInventario(sucursalId, prisma);
     const fila = rep.filas.find((f) => f.productoId === mp.id)!;

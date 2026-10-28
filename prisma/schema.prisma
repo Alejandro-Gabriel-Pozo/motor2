@@ -1744,6 +1744,13 @@ model TraspasoSucursal {
   cerradoPorId String?
   cerradoPor   User?     @relation("TraspasoCerradoPor", fields: [cerradoPorId], references: [id])
 
+  /// E2 (ADR-040, «el costo viaja con el traspaso»): COPIA del costo de reposición del origen, por unidad de stock, en el instante
+  /// del envío (aprobación o envío directo, misma transacción SERIALIZABLE que la salida). La salida, la entrada del destino y el
+  /// reingreso se valorizan con ESTA copia (`valorizarLineaDeTraspaso`), nunca con el costo del origen de ese momento. `null` = el
+  /// origen no tenía costo conocido («pendiente de completar»; nunca se inventa 0), o el traspaso es anterior a la columna (sin
+  /// relleno). CHECK `TraspasoSucursal_costo_unitario_origen_no_negativo_chk`: nunca negativa. Dinero: campo sensible (piso administrador).
+  costoUnitarioOrigen Decimal? @db.Decimal(14, 4)
+
   movimientos MovimientoStock[]
 
   @@unique([empresaId, id])

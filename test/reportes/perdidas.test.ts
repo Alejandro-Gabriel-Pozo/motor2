@@ -38,9 +38,9 @@ describe("generarReportePerdidas", () => {
 
   it("una fila por evento (no agrupado), con fecha y producto, valorizada con el costo de reposición", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }] }); // $10/kg
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mp.id, cantidad: 2 }] });
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoRotoId, items: [{ productoId: mp.id, cantidad: 1 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }); // $10/kg
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mp.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoRotoId, items: [{ productoId: mp.id, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await generarReportePerdidas(sucursalId, 30, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.mermas).toHaveLength(2);
@@ -56,8 +56,8 @@ describe("generarReportePerdidas", () => {
 
   it("no inventa el costo cuando no hay compra registrada: marca sinPrecio y no suma al total", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Sin compra", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] }); // stock sin costo de compra
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoOtroId, items: [{ productoId: mp.id, cantidad: 2 }] });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() }); // stock sin costo de compra
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivoOtroId, items: [{ productoId: mp.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await generarReportePerdidas(sucursalId, 30, prisma, AHORA_DE_LA_CORRIDA);
     const fila = rep.mermas.find((m) => m.motivo === "Otro")!;
@@ -70,9 +70,9 @@ describe("generarReportePerdidas", () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20, precioTotal: 200 }] }); // $10/kg
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20, precioTotal: 200 }], claveIdempotencia: crypto.randomUUID() }); // $10/kg
 
-    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, destinoId: destinoDegustacionId, items: [{ productoId: mp.id, cantidad: 3 }] });
+    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, destinoId: destinoDegustacionId, items: [{ productoId: mp.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] }); // genera Consumo automático de la receta
 
     const rep = await generarReportePerdidas(sucursalId, 30, prisma, AHORA_DE_LA_CORRIDA);

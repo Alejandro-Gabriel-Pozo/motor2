@@ -19,7 +19,7 @@ describe("la compra audita el cambio de precio del vínculo proveedor↔producto
   let adminId: string;
 
   const comprar = (fecha: string, precioTotal: number, cantidad = 10) =>
-    registrarMovimiento({ proceso: "COMPRA", fecha: new Date(fecha), seccionId, proveedorId, items: [{ productoId, cantidad, precioTotal }] });
+    registrarMovimiento({ proceso: "COMPRA", fecha: new Date(fecha), seccionId, proveedorId, items: [{ productoId, cantidad, precioTotal }], claveIdempotencia: crypto.randomUUID() });
   const filas = () => prisma.registroAuditoria.findMany({ where: { entidad: "ProveedorPorProducto" }, orderBy: { creadoEn: "asc" } });
 
   beforeEach(async () => {
@@ -68,7 +68,7 @@ describe("la compra audita el cambio de precio del vínculo proveedor↔producto
   });
 
   it("una compra rechazada (stock o validación) no deja fila: la auditoría va en la misma transacción", async () => {
-    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-10"), seccionId, proveedorId: "no-existe", items: [{ productoId, cantidad: 10, precioTotal: 1000 }] });
+    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-10"), seccionId, proveedorId: "no-existe", items: [{ productoId, cantidad: 10, precioTotal: 1000 }], claveIdempotencia: crypto.randomUUID() });
     expect(r.ok).toBe(false);
     expect(await filas()).toHaveLength(0);
   });

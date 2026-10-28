@@ -64,7 +64,7 @@ describe("Consignación: ver el reporte no es poder pagar", () => {
     );
     const pv = await sembrarProductoDisponible({ codigo: "PV_COPA", nombre: "Copa de vino", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 50 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: catalogo.kg.id }] } } });
-    expect((await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: consignanteId, items: [{ productoId: mp.id, cantidad: 10 }] })).ok).toBe(true);
+    expect((await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: consignanteId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
     expect((await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 3 }] })).ok).toBe(true);
   });
 

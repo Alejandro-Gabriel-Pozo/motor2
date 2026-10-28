@@ -30,7 +30,7 @@ describe("calcularStockPorFamilia: la cadena de grupos sale de una sola lectura"
   async function insumoConStock(nombre: string, grupoId: string | null, codigo: string) {
     const insumo = await prisma.insumo.create({ data: { nombre, grupoId } });
     const p = await sembrarProductoDisponible({ codigo, nombre: `${nombre} (MP)`, tipo: "MP", unidadStockId: unidadKgId, insumoId: insumo.id }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad: 3 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
     return insumo;
   }
 

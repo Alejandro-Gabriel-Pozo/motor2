@@ -30,7 +30,8 @@ import { verificarProductoTransferible } from "./producto-transferible";
  *        (`SECCION_INACTIVA`: no recibe mercadería nueva; el envío sigue ENVIADO y se acepta eligiendo otra);
  *     c. re-chequeo de que el producto siga siendo transferible en ESTA sucursal (el stock entra recién ahora: pudo cambiar desde el
  *        envío) — el paso compartido `producto-transferible.ts`;
- *     d. la sucursal de origen (para el detalle y el mensaje), y la escritura de la ENTRADA y del traspaso ACEPTADO (persistencia);
+ *     d. la sucursal de origen (para el detalle y el mensaje), y la escritura de la ENTRADA y del traspaso ACEPTADO (persistencia), valorizada con la COPIA del costo
+ *        del origen que el traspaso guardó al enviarse (E2, ADR-040), nunca con el costo del origen de ahora;
  *     e. el resultado para la idempotencia (`registrarResultadoIdempotente`, solo si hay clave) y el mensaje de éxito.
  *
  * @contract Destino acepta un envío ENVIADO, re-chequea que el producto siga siendo transferible y escribe la entrada de stock.
@@ -76,6 +77,7 @@ export async function aceptarTraspasoCasoDeUso(
       estadoNuevo: transicion.estadoNuevo,
       ahora: actor.ahora,
       idempotencia: claveIdempotencia ? { claveIdempotencia, payloadHash } : null,
+      costoUnitarioOrigen: traspaso.costoUnitarioOrigen,
     });
 
     const mensaje = `Recibido de "${origen.nombre}".`;

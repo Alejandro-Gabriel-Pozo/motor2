@@ -295,6 +295,7 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
             proveedorId: ev.proveedorCodigo ? proveedorIdPorCodigo.get(ev.proveedorCodigo) : undefined,
             nroFactura: ev.nroFactura,
             items,
+            claveIdempotencia: crypto.randomUUID(),
           });
           anotarSiFalla(`COMPRA ${ev.ref}`, r);
           if (r.ok) {
@@ -307,10 +308,10 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
           const r = await registrarVenta({ fecha, seccionId: idSeccion(ev.seccion), detalle: "Venta de mostrador", ventas });
           anotarSiFalla(`VENTA ${ev.ref}`, r);
         } else if (ev.tipo === "PRODUCCION") {
-          const r = await registrarMovimiento({ proceso: "PRODUCCION", fecha, seccionId: idSeccion(ev.seccion), items: [{ productoId: idProd(ev.productoCodigo), cantidad: ev.cantidad }] });
+          const r = await registrarMovimiento({ proceso: "PRODUCCION", fecha, seccionId: idSeccion(ev.seccion), items: [{ productoId: idProd(ev.productoCodigo), cantidad: ev.cantidad }], claveIdempotencia: crypto.randomUUID() });
           anotarSiFalla(`PRODUCCION ${ev.ref}`, r);
         } else if (ev.tipo === "MERMA") {
-          const r = await registrarMovimiento({ proceso: "MERMA", fecha, seccionId: idSeccion(ev.seccion), motivoId: idMotivo(ev.motivo), detalleLibre: ev.detalleLibre, items: [{ productoId: idProd(ev.productoCodigo), cantidad: ev.cantidad }] });
+          const r = await registrarMovimiento({ proceso: "MERMA", fecha, seccionId: idSeccion(ev.seccion), motivoId: idMotivo(ev.motivo), detalleLibre: ev.detalleLibre, items: [{ productoId: idProd(ev.productoCodigo), cantidad: ev.cantidad }], claveIdempotencia: crypto.randomUUID() });
           anotarSiFalla(`MERMA ${ev.ref}`, r);
         } else if (ev.tipo === "CONTEO_FISICO") {
           const productoId = idProd(ev.productoCodigo);
