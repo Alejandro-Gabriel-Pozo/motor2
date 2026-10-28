@@ -142,7 +142,9 @@ const VARIABLES_DE_SCRIPTS: Record<string, string> = {
   GITHUB_STEP_SUMMARY: "la fija GitHub Actions en cada paso; `conteo-e2e.ts` le agrega el conteo del E2E para que se vea en el resumen de la corrida (opcional: sin ella solo imprime)",
   npm_execpath: "la fija npm al correr un script; `auditar-dependencias.ts` la usa para invocar el mismo npm",
   DIRECT_URL: "conexión del DUEÑO de las tablas: `medir-cuit.ts` y `verificar-registro-de-modulos.ts` (solo lectura); fuera del schema de runtime (S-32)",
-  DATABASE_URL: "`benchmark-reportes.ts` la lee solo para comprobar que la base de benchmark NO es la principal",
+  DATABASE_URL:
+    "`benchmark-reportes.ts` la lee solo para comprobar que la base de benchmark NO es la principal; `importacion/destino.ts` (importador del catálogo) la lee para mostrar el host y la base de destino y decidir si es local",
+  MOTOR2_IMPORTAR_CONFIRMAR: "`importacion/destino.ts`: confirmación explícita, en la línea de comandos, para CONFIRMAR el importador del catálogo contra una base que no es local",
   PLATAFORMA_DATABASE_URL: "los scripts de plataforma (`cliente-plataforma.ts`, `conexion-de-plataforma.ts`): el rol `motor2_plataforma`; esquema en `plataforma/src/entorno.ts`",
   PLATAFORMA_INSTALACIONES_ADICIONALES: "`conexion-de-plataforma.ts`: pide elegir instalación; esquema en `plataforma/src/entorno.ts`",
   EMPRESA_ID: "los seeds y el benchmark indican la empresa en la que siembran (ADR-022); por defecto `empresa_principal`",

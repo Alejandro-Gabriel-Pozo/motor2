@@ -54,6 +54,10 @@ const IMPORTADORES_DE_DB = [
     motivo: "Resolución de acceso del usuario de sesión (login/jerarquía de roles): corre antes del contexto, así que lee `user`/`session` con el `prisma` global (la sesión abierta de otra cuenta) y el resto con `dbDeEmpresa`/`dbDeUsuario`.",
   },
   {
+    ruta: "src/server/sesion/contexto-de-comando.ts",
+    motivo: "Contexto de actor SIN sesión del comando de un solo uso del importador del catálogo: corre antes de tener contexto, así que busca al usuario por su correo y a la empresa por su slug con el `prisma` global (`User` y `Empresa` no tienen RLS de empresa), como `acceso.ts`; el resto con `dbDeUsuario`/`dbDeEmpresa`.",
+  },
+  {
     ruta: "src/lib/auth.ts",
     motivo: "Auth.js: `PrismaAdapter(prisma)` — el adaptador de sesiones necesita el cliente global; no hay contexto de usuario durante el login.",
   },
@@ -72,6 +76,11 @@ const IMPORTADORES_DE_BASE = [
   { ruta: "src/server/sesion/contexto.ts", motivo: "Arma el `ContextoUsuario` de cada pedido: es quien le da `ctx.db` al resto." },
   { ruta: "src/server/acceso/alcance.ts", motivo: "Ensanches del alcance por sucursal (M.3): rearma la base del contexto con una lista de sucursales más larga (`baseDeEmpresa`) y suma la sucursal recién creada a la transacción; solo lo llaman las puertas que ya pasaron el gate (lo verifica `ensanches-de-alcance.test.ts`)." },
   { ruta: "src/server/sesion/acceso.ts", motivo: "Resolución de acceso previa al contexto (login, jerarquía de roles): lee con la empresa/el usuario fijados." },
+  {
+    ruta: "src/server/sesion/contexto-de-comando.ts",
+    motivo:
+      "Contexto de actor SIN sesión del comando de un solo uso del importador del catálogo (docs/diseno-importador-de-catalogo-2026-10-28.md §8): arma el `ContextoUsuario` del `--actor` con las mismas reglas que `contexto.ts` (pertenencias propias con `dbDeUsuario`, membresías bajo su empresa con `dbDeEmpresa`, la base del pedido con `baseDeEmpresa` y alcance SOLO en la primera sucursal). Lo importa solo `scripts/importar-catalogo.ts` (guardián contexto-de-comando-solo-desde-el-importador).",
+  },
   { ruta: "src/server/sesion/invitacion.ts", motivo: "Lectura de la invitación por el hash de su token (`dbDeInvitacion`) y de sus sucursales bajo su empresa: ocurre antes de que el invitado tenga empresa ni sesión (Hito 3, B3-3: antes en core/auth/invitacion.ts)." },
   { ruta: "src/server/carta-publica/sin-sesion.ts", motivo: "Carta pública: sin sesión no hay contexto; fija la empresa de la URL con `dbDeEmpresa` y, para leer una sucursal, abre una base de SOLO LECTURA en la que resolvió el slug (M.3-A7)." },
   { ruta: "src/server/actions/auth/empresa-activa.ts", motivo: "Cambio de empresa activa: valida las pertenencias del usuario con `baseDeEmpresa` antes de escribir la cookie." },

@@ -56,6 +56,14 @@ const LECTURAS: Readonly<Record<string, { lecturas: number; clase: Clase; motivo
   "server/operaciones-de-plataforma/cambiar-politica-de-empresa.ts|cambiarPoliticaDeEmpresa|empresa": { lecturas: 1, clase: "PLATAFORMA", motivo: "el operador de la consola elige la empresa por su slug; no es un usuario de empresa" },
   "server/sesion/acceso.ts|emailPuedeIniciarSesion|user": { lecturas: 1, clase: "PREVIA_AL_CONTEXTO", motivo: "el gate de login: el kill-switch de la cuenta de quien llega con ese email de Google; contesta solo sí/no a su dueño" },
   "server/sesion/acceso.ts|decidirInicioDeSesion|user": { lecturas: 2, clase: "PREVIA_AL_CONTEXTO", motivo: "el login: «cuenta desactivada» y la cuenta de Google a vincular; quien llega probó que controla ese email con Google, y se le contesta sobre SU cuenta" },
+  "server/sesion/contexto-de-comando.ts|contextoDeActorParaComando|user": {
+    lecturas: 1, clase: "PREVIA_AL_CONTEXTO",
+    motivo: "el actor del comando de un solo uso del importador del catálogo: el correo lo pasa el ingeniero en la terminal con acceso a la base (no un cliente); sin él no hay contexto",
+  },
+  "server/sesion/contexto-de-comando.ts|contextoDeActorParaComando|empresa": {
+    lecturas: 1, clase: "PREVIA_AL_CONTEXTO",
+    motivo: "la empresa del comando del importador por su slug o su id (`--empresa`, la pasa el ingeniero en la terminal); después se exige que el actor pertenezca a ella",
+  },
   "server/sesion/invitacion.ts|invitacionDelToken|empresa": { lecturas: 1, clase: "PROPIA", motivo: "la empresa de la invitación leída por el hash del token (256 bits)" },
   // GO-2d: el nombre de quien cargó cada cambio de precio de las opciones de un grupo («cargó X»).
   "server/consultas/catalogo/opciones-de-venta.ts|cargarGrupoDelPanel|user": { lecturas: 1, clase: "PROPIA", motivo: "quienes cargaron los cambios de precio de las opciones del grupo, por el `creadoPorId` de filas de la empresa (nunca por un valor del cliente)" },

@@ -95,7 +95,7 @@ export const REGLAS_DE_RUTA: readonly ReglaDeRuta[] = [
   { tipo: "esquema", prefijo: "", profundidad: "directa", extensiones: [".ts"], nombres: ["prisma.config.ts"], motivo: "la configuración de Prisma, en la raíz" },
   { tipo: "migraciones", prefijo: "prisma/migrations/", profundidad: "recursiva", extensiones: [".sql", ".toml"], nombres: ["migration.sql", "down.sql", "verificacion-previa.sql", "migration_lock.toml"], motivo: "migraciones, su reversa, la verificación previa a las que la piden y el candado del proveedor" },
   // --- Herramientas, pruebas y CI.
-  { tipo: "scripts", prefijo: "scripts/", profundidad: "recursiva", extensiones: [".ts", ".mjs", ".sh", ".sql", ".md"], nombres: [], motivo: "scripts de operación, de arquitectura, de la demo y de la consola, con sus runbooks" },
+  { tipo: "scripts", prefijo: "scripts/", profundidad: "recursiva", extensiones: [".ts", ".mjs", ".sh", ".sql", ".md", ".json"], nombres: [], motivo: "scripts de operación, de arquitectura, de la demo y de la consola, con sus runbooks y sus datos de ejemplo (el `correcciones.ejemplo.json` del importador del catálogo)" },
   { tipo: "pruebas", prefijo: "test/", profundidad: "recursiva", extensiones: [".ts", ".tsx", ".json", ".txt", ".md"], nombres: [], motivo: "pruebas, sus utilidades y sus datos congelados (golden)" },
   { tipo: "ci", prefijo: ".github/", profundidad: "recursiva", extensiones: [".yml"], nombres: [], motivo: "workflows de GitHub Actions y Dependabot" },
   // --- Raíz: listas cerradas de archivos.

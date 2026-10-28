@@ -89,12 +89,28 @@ function largo(valor: CeldaExcel): number {
  * `tiposFecha[i]` marca la columna i como fecha (ver `TipoFecha`): su texto ISO se exporta como fecha real de Excel.
  */
 export async function generarExcel(nombreHoja: string, etiquetas: string[], filas: CeldaExcel[][], tiposFecha: (TipoFecha | undefined)[] = []): Promise<Blob> {
+  const { data, columns } = hoja(etiquetas, filas, tiposFecha);
+  return writeExcelFile(data, { sheet: nombreDeHoja(nombreHoja), columns }).toBlob();
+}
+
+/** Los datos (encabezado + filas) y el ancho de las columnas de una hoja: lo que comparten `generarExcel` y `generarExcelDeVariasHojas`. */
+function hoja(etiquetas: string[], filas: CeldaExcel[][], tiposFecha: (TipoFecha | undefined)[] = []) {
   const cabecera = etiquetas.map((etiqueta) => ({ value: etiqueta, type: String, fontWeight: "bold" as const }));
-  const columnas = etiquetas.map((etiqueta, i) => {
+  const columns = etiquetas.map((etiqueta, i) => {
     if (tiposFecha[i]) return { width: Math.max(ANCHO_MINIMO, largo(etiqueta) + 2, tiposFecha[i] === "dia" ? ANCHO_DIA : ANCHO_FECHA_HORA) };
     const mayor = Math.max(largo(etiqueta), ...filas.map((fila) => largo(fila[i])));
     return { width: Math.min(ANCHO_MAXIMO, Math.max(ANCHO_MINIMO, mayor + 2)) };
   });
   const cuerpo = filas.map((fila) => fila.map((valor, i) => celda(valor, tiposFecha[i])));
-  return writeExcelFile([cabecera, ...cuerpo], { sheet: nombreDeHoja(nombreHoja), columns: columnas }).toBlob();
+  return { data: [cabecera, ...cuerpo], columns };
+}
+
+/**
+ * Un .xlsx de VARIAS hojas (la vista previa del importador del catálogo: 12 hojas), con las mismas reglas que `generarExcel` en cada una (encabezado en negrita, número como número, todo
+ * lo demás como texto: nunca una fórmula). Los nombres de hoja pasan por `nombreDeHoja` y tienen que quedar distintos (Excel no admite dos hojas con el mismo nombre).
+ */
+export async function generarExcelDeVariasHojas(hojas: readonly { nombre: string; etiquetas: string[]; filas: CeldaExcel[][] }[]): Promise<Blob> {
+  const nombres = hojas.map((h) => nombreDeHoja(h.nombre));
+  if (new Set(nombres).size !== nombres.length) throw new Error("Dos hojas del Excel quedarían con el mismo nombre.");
+  return writeExcelFile(hojas.map((h, i) => ({ ...hoja(h.etiquetas, h.filas), sheet: nombres[i] }))).toBlob();
 }

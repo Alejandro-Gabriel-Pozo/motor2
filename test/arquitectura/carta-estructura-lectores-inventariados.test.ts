@@ -18,6 +18,9 @@ import { describe, expect, it } from "vitest";
  */
 const RAIZ = join(__dirname, "../../src");
 const ARCHIVOS_PERMITIDOS = [
+  // Importador del catálogo (docs/diseno-importador-de-catalogo-2026-10-28.md, A.2 y A.5): dentro de su transacción lee, para la huella y el plan de la carta mínima, las secciones del mapeo
+  // por nombre exacto, el contenido de carta existente de los productos del archivo en las 5 sucursales y su pertenencia a ítems agrupados (I10). Comando de un solo uso, sin pantalla.
+  "server/actions/catalogo/casos-de-uso/importar-catalogo.ts",
   "server/lecturas/carta/menu.ts",
   "server/consultas/carta/admin.ts",
   "server/lecturas/carta/grupo-de-producto.ts",

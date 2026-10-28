@@ -24,7 +24,12 @@ const CARPETA = join(RAIZ, "src/server/sesion");
  * `base-solo-desde-lista`, `lib-auth-solo-desde-sus-puntos` y el analizador de guardas.
  */
 const MUDADOS_DE_CORE_AUTH = ["base.ts", "contexto.ts", "ir-al-login.ts", "rol-de-ejecucion.ts", "session.ts"];
-const PERMITIDOS = ["acceso.ts", "invitacion.ts", "vincular-cuenta.ts", ...MUDADOS_DE_CORE_AUTH];
+/**
+ * Importador del catálogo (docs/diseno-importador-de-catalogo-2026-10-28.md §8, «punto delicado»): `contexto-de-comando.ts` arma el contexto del `--actor` del comando de un solo uso, SIN sesión.
+ * Es una decisión de seguridad declarada: quién la importa (solo `scripts/importar-catalogo.ts` y su prueba) lo fija `contexto-de-comando-solo-desde-el-importador.test.ts`.
+ */
+const PARA_COMANDOS = ["contexto-de-comando.ts"];
+const PERMITIDOS = ["acceso.ts", "invitacion.ts", "vincular-cuenta.ts", ...MUDADOS_DE_CORE_AUTH, ...PARA_COMANDOS];
 
 /** Los que NO abren con `import "server-only"` (vinieron de `core/auth` sin la marca y se mudaron sin tocar su código), con su motivo. Revisada en las dos direcciones. */
 const SIN_SERVER_ONLY: Record<string, string> = {
@@ -87,12 +92,13 @@ const PUERTAS_A_LA_BASE: Record<string, Record<string, string[]>> = {
   dbDeInvitacion: { "invitacion.ts": ["invitacionDelToken"] },
   // Fase 6, tramo 6a: `base.ts` arma `baseDeEmpresa` y `transaccionDeLaEmpresa` con sus propias fábricas; `contexto.ts` (obtenerSituacionDeAcceso) lee las pertenencias
   // PROPIAS del usuario (dbDeUsuario), las sucursales de cada empresa bajo su contexto (dbDeEmpresa) y arma la base del pedido (baseDeEmpresa): es quien da `ctx.db`.
-  dbDeEmpresa: { "invitacion.ts": ["invitacionConSuBase"], "acceso.ts": ["tieneSucursalActiva"], "base.ts": ["baseDeEmpresa"], "contexto.ts": ["obtenerSituacionDeAcceso"] },
+  // `contexto-de-comando.ts` (importador del catálogo): las membresías del actor bajo su empresa, las pertenencias PROPIAS del actor y la base del comando, como `obtenerSituacionDeAcceso`.
+  dbDeEmpresa: { "invitacion.ts": ["invitacionConSuBase"], "acceso.ts": ["tieneSucursalActiva"], "base.ts": ["baseDeEmpresa"], "contexto.ts": ["obtenerSituacionDeAcceso"], "contexto-de-comando.ts": ["contextoDeActorParaComando"] },
   transaccionDeLaEmpresa: { "invitacion.ts": ["invitacionConSuBase"], "base.ts": ["baseDeEmpresa"] },
   // `sesionSigueVigente` (M-20): cuenta las pertenencias PROPIAS del usuario de la sesión para no expulsar al invitado que todavía no aceptó (nunca tuvo una).
-  dbDeUsuario: { "acceso.ts": ["tieneSucursalActiva", "sesionSigueVigente"], "contexto.ts": ["obtenerSituacionDeAcceso"] },
+  dbDeUsuario: { "acceso.ts": ["tieneSucursalActiva", "sesionSigueVigente"], "contexto.ts": ["obtenerSituacionDeAcceso"], "contexto-de-comando.ts": ["contextoDeActorParaComando"] },
   transaccionDeEmpresa: { "base.ts": ["transaccionDeLaEmpresa"] },
-  baseDeEmpresa: { "contexto.ts": ["obtenerSituacionDeAcceso"] },
+  baseDeEmpresa: { "contexto.ts": ["obtenerSituacionDeAcceso"], "contexto-de-comando.ts": ["contextoDeActorParaComando"] },
   baseDelContexto: {},
 };
 

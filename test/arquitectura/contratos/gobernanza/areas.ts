@@ -108,6 +108,7 @@ export const AREAS: DeclaracionDeAreas = {
   "scripts": [],
   "scripts/arquitectura": [],
   "scripts/demo-seed": [],
+  "scripts/importacion": [],
   "scripts/operaciones": [],
   "scripts/plataforma": [],
 };

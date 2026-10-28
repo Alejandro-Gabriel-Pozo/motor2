@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { whereCartaDeSucursal } from "@/core/carta/public";
 import { esChoqueDeIndiceUnico } from "@/core/datos/errores-de-base";
 import type { EstadoDeLaBase, PermisosDelActor, ProductoExistente, SucursalDelImportador } from "@/core/features/catalogo/importacion/estado";
 import { coincideLaHuella, huellaDeLaImportacion, LARGO_DE_LA_HUELLA_VISIBLE } from "@/core/features/catalogo/importacion/huella";
@@ -116,16 +117,25 @@ async function leerElEstado(tx: Prisma.TransactionClient, empresaId: string, cat
   const relevantes = todos.filter((p) => codigos.has(p.codigo) || nombres.has(p.nombre.toLowerCase()));
   const productoIds = relevantes.map((p) => p.id);
   const enLasCinco = { productoId: { in: productoIds }, sucursalId: { in: ids } };
-  const [disponibles, locales, contenidos, agrupados, anclas] = await Promise.all([
-    tx.disponibilidadProducto.findMany({ where: enLasCinco, select: { productoId: true, sucursalId: true, disponible: true } }),
-    tx.precioLocalProducto.findMany({ where: enLasCinco, select: { productoId: true, sucursalId: true, precio: true } }),
-    tx.contenidoCartaProducto.findMany({
-      where: enLasCinco,
-      select: { productoId: true, sucursalId: true, visibleEnCarta: true, seccionCartaId: true, descripcion: true, orden: true, especial: true, tags: true, generoCartaId: true, mostrarNombreArriba: true },
-    }),
-    tx.opcionItemAgrupadoCarta.findMany({ where: enLasCinco, select: { productoId: true, sucursalId: true } }),
-    tx.opcionDeGrupo.findMany({ where: { productoId: { in: productoIds } }, select: { productoId: true } }),
+  // Sin productos del archivo en la base (la primera carga), no hay nada más que leer.
+  const hayExistentes = productoIds.length > 0;
+  const [disponibles, locales, anclas, deLaCarta] = await Promise.all([
+    hayExistentes ? tx.disponibilidadProducto.findMany({ where: enLasCinco, select: { productoId: true, sucursalId: true, disponible: true } }) : [],
+    hayExistentes ? tx.precioLocalProducto.findMany({ where: enLasCinco, select: { productoId: true, sucursalId: true, precio: true } }) : [],
+    hayExistentes ? tx.opcionDeGrupo.findMany({ where: { productoId: { in: productoIds } }, select: { productoId: true } }) : [],
+    // La carta es propia de cada sucursal (C3): se lee sucursal por sucursal, con su filtro.
+    Promise.all(
+      (hayExistentes ? ids : []).map(async (sucursalId) => ({
+        contenidos: await tx.contenidoCartaProducto.findMany({
+          where: { ...whereCartaDeSucursal(sucursalId), productoId: { in: productoIds } },
+          select: { productoId: true, sucursalId: true, visibleEnCarta: true, seccionCartaId: true, descripcion: true, orden: true, especial: true, tags: true, generoCartaId: true, mostrarNombreArriba: true },
+        }),
+        agrupados: await tx.opcionItemAgrupadoCarta.findMany({ where: { ...whereCartaDeSucursal(sucursalId), productoId: { in: productoIds } }, select: { productoId: true, sucursalId: true } }),
+      })),
+    ),
   ]);
+  const contenidos = deLaCarta.flatMap((c) => c.contenidos);
+  const agrupados = deLaCarta.flatMap((c) => c.agrupados);
   const productos = relevantes.map(
     (p): ProductoExistente => ({
       id: p.id,

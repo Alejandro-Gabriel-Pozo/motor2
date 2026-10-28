@@ -25,6 +25,9 @@ const ARCHIVOS_PERMITIDOS = [
   "server/actions/catalogo/precio-local.ts",
   "server/persistencia/catalogo/precio-local.ts",
   "server/consultas/reportes/periodo-precios.ts",
+  // Importador del catálogo (ADENDA A.1 del diseño: un precio por empresa): NO decide ningún precio; lee si los productos del archivo tienen ALGUNA fila local en las 5 sucursales (habilitada
+  // o no, con la capacidad prendida o apagada) para que eso sea un error y entre en la huella. Lo que rige lo sigue diciendo solo `preciosLocalesVigentes`.
+  "server/actions/catalogo/casos-de-uso/importar-catalogo.ts",
 ];
 
 function archivos(dir: string): string[] {

@@ -101,6 +101,7 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   ),
   "src/server/persistencia/movimientos/cargar-venta-para-anular.ts": I("Carga lo que `anularVenta` necesita (el consignante de lo vendido, para el rechazo D7): la acción devuelve un ResultadoAccion.", "Producto.proveedorConsignacionId"),
   "src/server/sesion/acceso.ts": I("El gate de login compara el correo de la cuenta con la membresía: lo resuelve el servidor y no lo devuelve.", "User.email"),
+  "src/server/sesion/contexto-de-comando.ts": I("El contexto del actor del comando del importador del catálogo: busca al usuario por el correo que pasa el ingeniero (`--actor`) y lo deja en `ctx.email`; no hay pantalla.", "User.email"),
   "plataforma/src/servidor/ciclo-de-vida.ts": I("La consola busca la cuenta del gerente de una empresa por su correo; es la consola (otra app, rol de plataforma).", "User.email"),
   "plataforma/src/servidor/ingreso.ts": S("El ingreso a la consola verifica el código del mail y el segundo factor: lee el HMAC del código y el secreto TOTP cifrado para compararlos en el servidor y no los devuelve.", "CodigoDeIngresoPlataforma.hashCodigo", "AdminPlataforma.secretoTotp"),
   "scripts/plataforma/probar-actor-de-plataforma.ts": S("La prueba del actor de un script de plataforma (M-32) descifra el secreto TOTP del administrador para verificar su código, bajo el cerrojo de su fila, y no lo devuelve ni lo escribe.", "AdminPlataforma.secretoTotp"),
