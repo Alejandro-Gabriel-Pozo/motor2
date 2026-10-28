@@ -585,7 +585,8 @@
 }
 
 @media (min-width: 960px) {
-  .contenido {
+  .contenido,
+  .pestanas > nav {
     max-width: 1040px;
   }
   .secciones {
