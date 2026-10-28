@@ -28,6 +28,7 @@ const RUTAS_HISTORICAS: Record<string, string> = {
   "ADR-007-instalacion-multiempresa-activada-con-una.md|scripts/crear-empresa.ts": "script retirado en E5 (2026-10-04): el alta pasó a la consola de plataforma, ver ADR-020",
   "ADR-007-instalacion-multiempresa-activada-con-una.md|src/core/features/empresa/crear-empresa.ts": "mudada a test/setup/crear-empresa.ts en E8 (2026-10-05): es una fixture de pruebas, ver ADR-024",
   "ADR-019-consola-de-plataforma-ingreso-y-sesion.md|scripts/crear-empresa.ts": "script retirado en E5 (2026-10-04): el alta pasó a la consola de plataforma, ver ADR-020",
+  "ADR-037-espacio-del-producto.md|src/app/(app)/catalogo/productos/[id]/editar/page.tsx": "la ruta vieja que redirigía a `/datos`, borrada el 2026-10-28 por decisión del dueño (poda de rutas de transición; prueba de ausencia en test/arquitectura/rutas-retiradas.test.ts); el ADR lo dice en su «Actualización»",
   // Fase 3 de la ola «precio y carta» (retiro de GO-3a, DEC-02 y DEC-16): el ADR-032 conserva su historia (frentes A y B) y las rutas que se borraron con el retiro.
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|src/core/opciones/combinaciones.ts": "el precio puro por combinación, borrado en la Fase 3 (paso 3.3) con el retiro de GO-3a",
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/core/opciones/combinaciones.test.ts": "su prueba, borrada con él en la Fase 3 (paso 3.3)",
