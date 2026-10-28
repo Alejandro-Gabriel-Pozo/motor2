@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "reglaDePrecioUnico": {
+    "regla": "MAS_FRECUENTE_Y_SI_EMPATAN_EL_MAYOR",
+    "fecha": "2026-10-28",
+    "motivo": "Decisión del dueño: un precio por empresa; para los SKU con precios distintos entre locales, el más frecuente y, si empatan, el mayor"
+  },
+  "correcciones": [
+    {
+      "tipo": "precioUnico",
+      "sku": "ADICIONAL-PAPAS-FRITAS-Y-HUEVO-FRITO-PARA-PIZZA",
+      "preciosEnElExcel": { "Huinganco": 3000, "Los Miches": 25000 },
+      "valorACargar": 3000,
+      "fecha": "2026-10-28",
+      "motivo": "Decisión del dueño: dejar el 3000"
+    },
+    {
+      "tipo": "nombre",
+      "sku": "PAPAS-LOS-MICHES-CON-HUEVO-REVUELTO",
+      "valorEnElExcel": "Papas \"Los Miches\" Con huevo revuelto",
+      "valorACargar": "Papas Los Miches (con huevo revuelto)",
+      "fecha": "2026-10-28",
+      "motivo": "Supuesto declarado (S1): el nombre de catálogo no admite comillas dobles; el dueño puede cambiarlo"
+    }
+  ],
+  "mapeoDeSecciones": {
+    "Entradas": "Entrada",
+    "Platos Principales": "Platos principales",
+    "Clásicos": "Clásicos",
+    "Pastas Caseras": "Pastas caseras",
+    "Pizzas": "Pizzas",
+    "Postres": "Postres",
+    "Bebidas sin alcohol": "Bebidas",
+    "Bebidas con alcohol": "Bebidas",
+    "Vinos Neuquinos": "Bebidas",
+    "Tragos": "Bebidas",
+    "Jugos y Licuados": "Bebidas",
+    "Minutas": null,
+    "Menú Infantil": null,
+    "Viandas": null,
+    "Confitería": null
+  }
+}
