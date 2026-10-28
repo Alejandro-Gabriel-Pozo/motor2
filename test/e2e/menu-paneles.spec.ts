@@ -10,7 +10,8 @@ import { abrirComoRol } from "./fixtures/rol-pos";
  */
 const selector = (page: Page) => page.getByRole("group", { name: "Panel del menú" });
 const boton = (page: Page, nombre: "Empresa" | "Sucursal") => selector(page).getByRole("button", { name: nombre });
-const enlace = (page: Page, nombre: string) => page.locator("nav").getByRole("link", { name: nombre, exact: true });
+// Solo el menú lateral (`aside`): las filas de pestañas de las pantallas (Stock, Catálogo; Fase 7) son otras `nav` que también marcan su pestaña actual.
+const enlace = (page: Page, nombre: string) => page.locator("aside nav").getByRole("link", { name: nombre, exact: true });
 
 /** El clic en el selector se hace con la página ya hidratada: se reintenta hasta que el botón queda presionado. */
 async function elegirPanel(page: Page, nombre: "Empresa" | "Sucursal") {
@@ -45,13 +46,14 @@ test("entrar a una pantalla de Empresa activa ese panel y su ítem queda marcado
   await page.goto("/catalogo/categorias");
   await expect(boton(page, "Empresa")).toHaveAttribute("aria-pressed", "true");
   await expect(boton(page, "Sucursal")).toHaveAttribute("aria-pressed", "false");
-  await expect(page.locator("nav a[aria-current=page]")).toHaveCount(1);
-  await expect(enlace(page, "Categorías")).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("aside nav a[aria-current=page]")).toHaveCount(1);
+  // DEC-13: Categorías es una pestaña de «Maestros» de Catálogo; el menú marca la entrada.
+  await expect(enlace(page, "Maestros")).toHaveAttribute("aria-current", "page");
   await expect(page.locator("nav").getByRole("button", { name: "Traspasos" })).toHaveCount(0);
 
   await page.goto("/reportes/costos");
   await expect(boton(page, "Sucursal")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("nav a[aria-current=page]")).toHaveCount(1);
+  await expect(page.locator("aside nav a[aria-current=page]")).toHaveCount(1);
   await expect(page.locator("nav").getByRole("button", { name: "Stock" })).toBeVisible();
   await expect(page.locator("nav").getByRole("button", { name: "Traspasos" })).toBeVisible();
 });
@@ -60,15 +62,15 @@ test("una pantalla de ambos paneles (Productos) conserva el último panel elegid
   await page.goto("/catalogo/categorias");
   await expect(boton(page, "Empresa")).toHaveAttribute("aria-pressed", "true");
   // Navegación del menú (cliente, sin recargar): Productos es de ambos paneles y el panel Empresa sigue activo.
-  await page.locator("nav").getByRole("link", { name: "Productos", exact: true }).click();
+  await page.locator("aside nav").getByRole("link", { name: "Productos", exact: true }).click();
   await page.waitForURL(/\/catalogo\/productos$/);
   await expect(boton(page, "Empresa")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("nav a[aria-current=page]")).toHaveCount(1);
+  await expect(page.locator("aside nav a[aria-current=page]")).toHaveCount(1);
 
   // Con Sucursal elegido, la misma pantalla se ve en ese panel.
   await elegirPanel(page, "Sucursal");
-  await expect(page.locator("nav a[aria-current=page]")).toHaveCount(1);
-  await expect(page.locator("nav a[aria-current=page]")).toHaveText(/Productos/);
+  await expect(page.locator("aside nav a[aria-current=page]")).toHaveCount(1);
+  await expect(page.locator("aside nav a[aria-current=page]")).toHaveText(/Productos/);
 
   // Y tras recargar en esa pantalla de ambos paneles, vuelve el último elegido (guardado en el navegador).
   await page.reload();
