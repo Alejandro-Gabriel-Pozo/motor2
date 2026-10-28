@@ -12,4 +12,4 @@ Productos 52; disponibilidad de productos 312; grupos de opciones 11, opciones 3
 4. Vuelta atrás: restaurar desde la rama de respaldo (los datos borrados solo se recuperan de ahí).
 
 ## Estado
-Ensayo hecho; producción NO tocada a la fecha de este documento (espera la autorización expresa del dueño).
+**APLICADA en producción el 2026-10-28** (OK del dueño: «Autorizo, aplicalo en producción»), en una transacción. Antes: 52 productos, 11 grupos de opciones, 2 promos, 3 cuentas (ninguna abierta), 0 movimientos. Después (lectura): productos 0, grupos de opciones 0, opciones 0, promos 0, cuentas 0; secciones 8, géneros 2, unidades 5, categorías 2, mesas 2 (1 mostrador), sucursales 6, auditoría 522, permisos 226, migraciones 149. El respaldo `respaldo-pre-limpieza-catalogo-20261028` se conserva (restauración = única vuelta atrás).
