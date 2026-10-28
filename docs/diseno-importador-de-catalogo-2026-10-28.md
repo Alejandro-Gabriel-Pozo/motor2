@@ -160,3 +160,88 @@ Por base: crear el producto base (código `BASE-<NOMBRE>`), grupos (clave: nombr
 ## 13. Verificación final (en la misma corrida, con línea de base previa)
 
 `npx tsc --noEmit`, `npm run lint`, `npm run arquitectura`, `npm run analizar:muerto` (0 hallazgos), `npm test`, `npm run build`, `npm run plataforma:build`, `npm run test:e2e`; pesados con `flock /tmp/pesado.lock` (e2e además `flock /tmp/e2e.lock`) y `NODE_OPTIONS=--max-old-space-size=6144`. Criterio: los 8 con código 0; tests y e2e en cantidad igual o mayor a la línea de base; ningún guardián con excepción nueva sin motivo. Mutaciones (rojo → revertir → verde): no aplicar la corrección; escribir un precio local igual al de lista; saltear la comparación de huella; quitar el gate de `precio_local`; escribir fuera de la transacción; sacar el control «existe idéntico».
+
+---
+
+# ADENDA v2 (2026-10-28): carta mínima en la primera carga y precio único por empresa
+
+**Esta adenda REEMPLAZA** lo que contradiga en las secciones 0, 0.1 (puntos 7 y 11), 1, 3, 4.1, 4.3, 5 (I4, I6, I7, I9), 6, 7, 8, 9, 10 y 12 de arriba. Todo lo verificado contra el código y el Excel por el agente de diseño.
+
+## A.0 Decisiones del dueño (CONFIRMADAS, 2026-10-28)
+- **D1** La carga es ÚNICA. La hace el ingeniero con un comando; no hay pantalla ni «actualizar desde archivo».
+- **D2** La carta mínima, por secciones, entra en la primera carga: misma transacción, misma huella, misma vista previa.
+- **D3** Hay **un precio por empresa**: las 5 sucursales tienen apagado el precio local (`precio_local`). El importador **no escribe `PrecioLocalProducto`**.
+- **D4** El adicional de pizza se carga a $3.000 («dejar el 3000»), como corrección nominal `precioUnico`.
+
+**Pregunta clave (dinero, PENDIENTE):** para los 13 productos que en el Excel tienen precios distintos según el local, ¿qué precio único se carga? Propuesta: el más frecuente y, si empatan, el mayor, con vista previa (hoja «Precio único») para corregir caso por caso con correcciones nominales. La vista previa sale «NO CONFIRMABLE» hasta que el dueño acepte la regla o corrija cada caso. Ya no es cierto que «no cambia lo que se cobra»: con la regla propuesta, 13 celdas SKU × local cobran más que su precio del Excel y 5 cobran menos (extremos: Sorrentinos de trucha en Manzano Amargo +43,5 %; Saurus Estate Malbec en Manzano Amargo −28,6 %).
+
+Otras abiertas: **P2** (Café, Milanesa, Pizza y demás bases elegibles como producto con opciones; se decide antes de cargar recetas; no cambia la Etapa 1). **S1** nombre de las papas: «Papas Los Miches (con huevo revuelto)» (PROPUESTA, el dueño evalúa; bloquea la importación hasta confirmarse).
+
+Supuestos: correspondencia de secciones de A.2; los 50 SKU sin sección quedan fuera de carta (en el POS salen en «Fuera de carta»); los 12 sin stock llevan contenido visible; Ventus no lleva contenido; el orden en la carta es el número de fila del SKU en la hoja «Catálogo»; el nombre de carta por local no se carga; precios con IVA incluido en ARS; Oficinas NQNTUR no recibe filas.
+
+## A.1 Precio (reemplaza 0.1 punto 7 y 11, 4.3 «Precio por local», I6)
+- Con la capacidad `precio_local` apagada, `filtrarPreciosLocalesVigentes` (`src/core/catalogo/precio-local.ts`) devuelve vacío y `precioDeCarta` (`src/core/carta/armar-menu.ts`) cae a `Producto.precioVenta`; igual en la carta pública, el selector del POS y el cobro. Que las 5 tengan la capacidad apagada lo dijo el dueño (CONFIRMADA); el estado en la base está NO VERIFICADO (se lee, solo lectura, antes de cargar).
+- Solo se carga `Producto.precioVenta`: entero > 0 (`validarImporte`), Decimal(14,2) desde texto, IVA incluido, ARS. **0 filas** de `PrecioLocalProducto`; un producto existente con alguna fila local en las 5 da error. No se exige la clave `precio_local`.
+- Precio único por SKU: si los 5 coinciden, ese; si no, el de una corrección `precioUnico` o el de la regla (PENDIENTE). La diferencia por local se informa siempre.
+- **Correcciones nominales** (`correcciones.json`, hasheado en la huella y copiado en la vista previa): `precioUnico {sku, preciosEnElExcel{local:precio}, valorACargar, fecha, motivo}` (adicional: `{Huinganco:3000, "Los Miches":25000}` → 3000, motivo «Decisión del dueño: dejar el 3000») y `nombre` (para S1). El mismo archivo trae `mapeoDeSecciones` (categoría → nombre de `SeccionCarta` o `null`). Si el Excel ya no trae los valores registrados, es error (nunca se aplica en silencio); una corrección sin usar es aviso.
+
+## A.2 Carta mínima (sección 4.4 nueva)
+**Qué se escribe:** un `ContenidoCartaProducto` por cada (SKU, local) con fila en «Precios por local» tal que: la categoría del SKU en la hoja «Catálogo» tiene sección, la fila tiene precio, el producto es PV, no es ancla de adicional y no está en un ítem agrupado de ese local. Valores: `visibleEnCarta = true`, `seccionCartaId`, `descripcion` = «Descripción en la carta» de esa fila o null, `orden` = número de fila del SKU en «Catálogo», `especial = false`, `tags = []`, `generoCartaId = null`, `mostrarNombreArriba = false`. No se crean secciones: se resuelven por nombre exacto (único por empresa) y deben estar **activas**; si no, error bloqueante.
+
+| Categoría del Excel | Sección de carta |
+|---|---|
+| Entradas | Entrada |
+| Platos Principales | Platos principales |
+| Clásicos | Clásicos |
+| Pastas Caseras | Pastas caseras |
+| Pizzas | Pizzas |
+| Postres | Postres |
+| Bebidas sin alcohol, Bebidas con alcohol, Vinos Neuquinos, Tragos, Jugos y Licuados | Bebidas |
+| Minutas, Menú Infantil, Viandas, Confitería | **Sin sección** (PENDIENTE de decidir) |
+
+«Promociones» no se usa. **Conteos medidos:** 430 contenidos (Huinganco 75, Los Miches 92, Varvarco 77, Manzano Amargo 89, Las Ovejas 97); por sección: Entrada 8, Platos principales 30, Clásicos 30, Pastas caseras 25, Pizzas 35, Postres 35, Bebidas 267; 212 con descripción. **Sin sección: 50 SKU / 179 filas** (Minutas 10, Menú Infantil 3, Viandas 2, Confitería 35; las 110 descripciones de esas filas no se cargan). **Confitería incluye todos los cafés: la carta no va a tener cafés ni meriendas** hasta que el dueño decida su sección. Adicional: 3 SKU a Pizzas; `ADICIONAL-HUEVO-FRITO-PARA-PLATOS` es Minutas en la hoja Catálogo (queda sin sección; se reporta la inconsistencia con la hoja Productos).
+
+**No disponibles:** de los 12 de Huinganco, los 7 con sección llevan contenido visible y los 5 sin sección no. La carta pública y el POS filtran con `whereDisponibleEn`: un visible no disponible **no se ve** (no hay «agotado» a nivel plato, límite declarado en ADR-035); vuelve solo cuando alguien lo marca disponible (función «Hoy»). Ventus White Blend: producto a $0 no disponible, **sin contenido de carta** (activarlo lo mostraría a $0); queda pendiente.
+
+**La carta no filtra por receta:** los 430 se ven pero no se pueden pedir hasta tener receta (ADR-033); aviso en la vista previa. **Opt-in (ADR-009/D3):** se cumple: marca el importador por pedido expreso del dueño (D2), con el gate de `carta_contenido_producto` en cada local y una fila de auditoría por contenido.
+
+**Para que se vea en la web (pendiente, no se agrega):** por sucursal, una fila `SucursalPublica` publicada con su slug, el módulo Carta activo y el portal de la empresa (NO VERIFICADO en producción). Dentro de la app, el dueño ve la carta de cada local en `/carta` (permiso `carta_ver`), cambiando de sucursal activa. La carta pública tiene caché de 60 s (`revalidate = 60`).
+
+## A.3 Invariantes (reemplaza I4, I7, I9; agrega I10 a I12)
+- **I4** Producto idéntico → `SIN_CAMBIOS`; distinto → `ERROR EXISTE_DISTINTO`. Contenido de carta idéntico → `SIN_CAMBIOS`; distinto → `ERROR CONTENIDO_DISTINTO`. No hay camino de actualización.
+- **I7** Una sección del mapeo inexistente o apagada es error, además de lo anterior.
+- **I10** Solo se crea contenido para lo que define A.2; nunca una sección; nunca contenido en un ancla de adicional ni en un miembro de ítem agrupado.
+- **I11 (descripción)** Se valida con el **mismo** validador que usa la carta: `validarTextoLibreCarta(valor, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA)` (`src/core/carta/validaciones.ts`; hasta 500, sin charset propio) y `validarOrdenCarta`, reutilizados desde `@/core/carta/public`, sin copiarlos; más sacar NUL y sustitutos sueltos (`quitarCaracteresInadmisibles`; verificar si `texto()` ya lo cubre). Descripción inválida = error bloqueante de la fila. Medido: máximo 220 caracteres, sin saltos de línea ni caracteres inválidos.
+- **I12** Una corrección que no coincide con el Excel es error; una sin usar es aviso.
+
+## A.4 Persistencia (reemplaza la sección 6)
+Cero tablas, cero migraciones. Se escriben: `Producto` 207; `DisponibilidadProducto` 610; `ContenidoCartaProducto` 430; `PrecioLocalProducto` 0; `RegistroAuditoria` **637** (207 de `Producto.precioVenta`, de null al precio, con la huella y el origen del precio único; 430 de `ContenidoCartaProducto.visibleEnCarta`, de null a true, con `entidadId = sucursal:producto`, la misma auditoría que deja «Agregar a la carta»). Todo en lotes: `createManyAndReturn` de productos, `createMany` de disponibilidad, `createMany` de contenido (función nueva en `src/server/persistencia/carta/contenido-producto.ts`; create y no upsert, como `crearContenidoVisibleDeProducto`, para no pisar nada) y un solo `createMany` de auditoría con el escritor por lotes de `registrar-cambio-auditado.ts`.
+
+## A.5 Atomicidad y concurrencia (agrega a la sección 7)
+Todo en la **misma** transacción SERIALIZABLE. La huella suma: el mapeo de secciones, las secciones (id, nombre, activa), los contenidos existentes de esos productos en las 5 y la membresía en ítems agrupados; **sale** la capacidad `precio_local`. Clave natural del contenido: `@@unique([sucursalId, productoId])`.
+
+| Caso (C2) | Resultado |
+|---|---|
+| Repetición | Los 430 contenidos dan `SIN_CAMBIOS` |
+| Concurrencia | «Agregar a la carta» del mismo producto a la vez choca con el índice único (P2002): se rechaza todo y se pide una vista previa nueva; un cambio de sección o de contenido en paralelo cambia la huella: `VERSION_DESACTUALIZADA` |
+| Error parcial | Rollback de productos, disponibilidad, carta y auditoría juntos |
+| Datos faltantes | Sección inexistente/apagada o descripción inválida: error bloqueante |
+| Cambio de permisos | Se revalida `carta_contenido_producto` en cada local |
+
+Agrega unos 4 viajes; meta: menos de 20 viajes y menos de 5 s, medido en el ensayo.
+
+## A.6 Permisos (reemplaza «Permisos» de la sección 8)
+Sin clave nueva. El comando exige `alta_producto` y `producto_campos_sensibles` (empresa) y, en **cada una** de las 5 sucursales, `producto_disponibilidad` y `carta_contenido_producto` (nivel administrador, módulo `carta`, contexto sucursal; la que usan `guardarContenidoCartaProducto` y `agregarProductoALaCarta`). **Se quita `precio_local`.** El alcance se ensancha sucursal por sucursal solo después de que el gate aprobó todas las claves en esa sucursal (`permisoYAlcanceEnSucursal`, forma `GATE_EN_ESA_SUCURSAL`); nunca `conEscrituraEnLaEmpresa`. Falla cerrado: si falta una clave en una sola sucursal, se rechaza todo. Guardianes: los mismos más `carta-solo-lectura` y `escrituras-solo-en-persistencia`; `cerco-escritores-de-precio-con-visto` deja de aplicar (solo hay un alta de `precioVenta`); se mantiene `VERSION_DESACTUALIZADA` por la huella.
+
+## A.7 Vista previa (reemplaza la lista de hojas de la sección 9; 12 hojas)
+1 Resumen (430 contenidos, 0 precios locales, «CONFIRMABLE» solo si la regla del precio único está aceptada o cada caso corregido). 2 Productos (+ «origen del precio»: único en el Excel, corrección o regla propuesta). 3 **Precio único**: por cada SKU con precios distintos, los 5 del Excel, el propuesto, si hubo empate y por local la diferencia en $ y % con «cobrará MÁS/MENOS» (con la regla propuesta: 13 celdas cobran más y 5 menos; p. ej. Milanesa napolitana $25.000 → Varvarco +$5.000 (+25 %), Manzano Amargo y Las Ovejas +$3.000 (+13,6 %); Sorrentinos de trucha $33.000 → Manzano Amargo +$10.000 (+43,5 %), Huinganco +$3.000 (+10 %); Saurus Estate Malbec $20.000 → Manzano Amargo −$8.000 (−28,6 %); Gaseosa 1500 $9.000 → Manzano Amargo −$1.000 (−10 %)). 4 Disponibilidad por local. 5 **Carta** (430 filas: SKU, local, sección, descripción, orden, visible, disponible, acción). 6 **Sin sección** (los 50 SKU por categoría, con las 110 descripciones que no se cargan). 7 **Nombre de carta distinto entre locales** (50 SKU: 37 con sección y 13 sin; no se carga). 8 Correcciones del dueño (incluye el precio único del adicional). 9 Avisos (los anteriores + adicional en dos categorías, la carta muestra productos sin receta, la carta pública exige sucursal publicada y tiene caché de 60 s). 10 No se importa. 11 Errores. 12 Pendiente de completar (receta 207, alícuota 207, categoría, carta de los 50 sin sección, Ventus en carta, nombre por local, publicación en el portal por sucursal).
+
+## A.8 Pruebas (reemplaza «Combinaciones» de la sección 10)
+- **Oráculo de producto** (pierde precio local y capacidad): SKU {no existe, existe igual, existe distinto} × precios del Excel {únicos, distintos con corrección, distintos con regla aceptada, distintos sin regla} × disponible {TRUE, FALSE, sin fila} × alcance del actor {sí, no} = **72 combinaciones**, todas recorridas.
+- **Oráculo de carta** (`test/catalogo/importacion/oraculo-carta.ts`): acción del producto {CREAR, SIN_CAMBIOS, ERROR} × categoría {con sección, sin sección} × sección {activa, apagada, no existe} × disponible {TRUE, FALSE} × precio {sí, no} × descripción {válida, ausente, inválida} × contenido existente {no, igual, distinto} × `carta_contenido_producto` en el local {sí, no} = **1.296 combinaciones**, sobre el planificador puro.
+- Guardián `DIMENSIONES_DEL_IMPORTADOR`: suma «Descripción en la carta» (afecta: sí), «Nombre en la carta» (afecta: no, se reporta) y los campos escritos de `ContenidoCartaProducto`, cada uno con su motivo.
+- **Integración (Postgres real):** idempotencia (dos confirmaciones dejan 430 contenidos y 430 auditorías, no 860); concurrencia (importar y «Agregar a la carta» del mismo producto/local a la vez dejan una sola fila); atomicidad (si falla el `createMany` de contenido, quedan 0 productos); aislamiento (sección de otra empresa con el mismo nombre no coincide; sin `carta_contenido_producto` en un local no se escribe nada); precio (con la capacidad prendida y apagada, la carta de cada sucursal muestra `precioVenta`, 0 filas locales).
+- **Mutaciones (rojo → revertir → verde):** (1) tomar el precio de Huinganco en vez del único; (2) ignorar la corrección `precioUnico` (se cargaría $25.000); (3) crear contenido para «sin sección»; (4) no validar la descripción; (5) quitar el gate de carta en un local; (6) usar upsert en vez de create; (7) escribir una fila de `PrecioLocalProducto`.
+
+## A.9 Plan de etapas (reemplaza la sección 12; cero migraciones en todas)
+E1.0 este documento. E1.1 lector. E1.2 normalizador, correcciones (`precioUnico`, `nombre`) y mapeo de secciones. E1.3 planificador de producto (precio único, disponibilidad), oráculo de 72 y guardián. E1.3b planificador de carta (A.2, I10 a I12) y oráculo de 1.296. E1.4 escrituras en lote (productos, disponibilidad, contenido, auditoría). E1.5 caso de uso C1/C2 con el gate de 4 claves por sucursal e integración. E1.6 comando y reporte .xlsx (12 hojas). **E1.7 ensayo y producción: REQUIERE AUTORIZACIÓN EXPRESA y que la regla del precio único y S1 estén resueltas.** Etapas con nombre: E2 opciones para las bases elegibles (P2); E2b adicionales de pizza como ADICIONAL; E3 «Carta: lo que falta» (dónde van Minutas, Menú Infantil, Viandas y Confitería; nombre por local; ítems agrupados del mismo precio; Ventus; publicación en el portal). **Se borran** la pantalla de importación y «Actualizar desde archivo» (D1). Verificación final: los mismos 8 comandos con `flock` y criterios, más las 7 mutaciones de A.8.
