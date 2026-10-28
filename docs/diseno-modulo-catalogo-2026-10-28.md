@@ -46,6 +46,7 @@ Escrito contra el código real del carril (`alegp/carril-cat`, base `2b994fb6`, 
 - Administrador (rol `admin`): ve y edita todo el catálogo. — CONFIRMADA (pisos).
 - Operador: ve productos, da de alta productos, insumos, categorías y proveedores (`*_alta`), no administra Maestros ni Biblioteca. — CONFIRMADA.
 - Encargado de la sucursal con `precio_local` delegado. — CONFIRMADA (ACCIONES).
+- Roles que existen hoy en producción — VERIFICADO el 2026-10-28 contra producción (lectura): `admin` (ve el catálogo y tiene `precio_local` y `guardar_receta`), `operador` (ve el catálogo) y `mozo` (sin ninguna de las tres). NO existe hoy un rol con `precio_local` o `guardar_receta` sin `producto_ver_catalogo`, así que la pérdida de la entrada «Productos» para ese caso (P-1) es un límite conocido sin efecto actual.
 - Un rol puede tener «Ver» sin «Editar» de una clave (DEC-33). — CONFIRMADA.
 - Contexto: todo el catálogo es de la EMPRESA, salvo el precio local (de la sucursal ACTIVA). Aislamiento por RLS (`ctx.db` con la empresa y el alcance). — CONFIRMADA (código).
 
@@ -112,8 +113,8 @@ Esta ola no agrega escrituras. Las existentes conservan su control (tabla de la 
 
 - **Vocabulario:** «Insumos» (no «Insumos / Grupos»); «Biblioteca de opciones» (antes «Opciones de venta»); títulos sin siglas ni anglicismos: «Categorías» (con una línea que dice que es el rubro comercial de cada producto, de compra o de venta), «Precio local en «{sucursal}»» (no «override»), Recetas sin «(PV)». Las claves, las tablas y las descripciones de `ACCIONES` (viven en la base) no cambian.
 - **Mejoras chicas elegidas (regla «primero lo más barato»):**
-  - **M1 — «Cómo lo llama» más destacado** en la ficha del proveedor: la columna pasa a ser la primera de «Lo que se le compra», con el título «En su factura dice», y lo que no está cargado dice «Sin cargar» (se completa en la próxima compra). Solo pantalla. — PROPUESTA.
-  - **M2 — Buscar el producto por cómo lo llama un proveedor**, en la lista de Productos y en el buscador de producto de la compra (y de toda pantalla que usa el selector), con la regla I9. Solo lectura. — PROPUESTA.
+  - **M1 — «Cómo lo llama» más destacado** en la ficha del proveedor: la columna pasa a ser la primera de «Lo que se le compra», con el título «En su factura dice», y lo que no está cargado dice «Sin cargar» (se completa en la próxima compra). Solo pantalla. — CONFIRMADA (el dueño las ratificó el 2026-10-28: «M1 y M2 son chicos»).
+  - **M2 — Buscar el producto por cómo lo llama un proveedor**, en la lista de Productos y en el buscador de producto de la compra (y de toda pantalla que usa el selector), con la regla I9. Solo lectura. — CONFIRMADA (el dueño las ratificó el 2026-10-28: «M1 y M2 son chicos»).
   - M3 (alta del vínculo sin compra) y M4 (asignar productos a un Insumo desde Insumos): PENDIENTES (P-4, P-5).
 - **375 px:** las tablas anchas (insumos, unidades, proveedores, clientes, margen) se desplazan dentro de su caja; la fila de pestañas se envuelve completa; nada empuja la página a scroll lateral.
 
