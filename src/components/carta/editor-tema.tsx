@@ -22,15 +22,30 @@ import { CARTA_EJEMPLO } from "./carta-ejemplo";
  * CUERPO se vuelve a montar con `key={version}` (el `actualizadoEn` del tema), así los campos y la vista previa arrancan de lo
  * guardado; el formulario (y su mensaje de resultado) no se desmonta.
  */
-export function EditorTema({ valoresIniciales, version, accion }: { valoresIniciales: Readonly<Record<string, string>>; version: string; accion: (formData: FormData) => Promise<ResultadoAccion> }) {
+export function EditorTema({
+  valoresIniciales,
+  version,
+  accion,
+  soloLectura = false,
+}: {
+  valoresIniciales: Readonly<Record<string, string>>;
+  version: string;
+  accion: (formData: FormData) => Promise<ResultadoAccion>;
+  /** DEC-33 (ver ≠ escribir): quien solo VE el tema recibe los mismos campos deshabilitados, sin «Guardar» (el servidor igual rechaza, `conPermiso("carta_tema")`). */
+  soloLectura?: boolean;
+}) {
   return (
     <FormConResultado accion={accion} className="flex flex-col gap-4">
-      <CuerpoEditor key={version} valoresIniciales={valoresIniciales} />
-      <div>
-        <Boton type="submit" tamano="compacto">
-          Guardar tema
-        </Boton>
-      </div>
+      <fieldset disabled={soloLectura} className="min-w-0" data-solo-lectura={soloLectura ? "" : undefined}>
+        <CuerpoEditor key={version} valoresIniciales={valoresIniciales} />
+      </fieldset>
+      {!soloLectura && (
+        <div>
+          <Boton type="submit" tamano="compacto">
+            Guardar tema
+          </Boton>
+        </div>
+      )}
     </FormConResultado>
   );
 }

@@ -34,17 +34,23 @@ interface Props {
   urlsPorSlug: Readonly<Record<string, string>>;
   /** Guarda la posición (centro, % del mapa) de una sucursal ya ubicada. */
   mover: (sucursalId: string, x: number, y: number) => Promise<ResultadoAccion>;
+  /** DEC-33 (ver ≠ escribir): quien solo VE el portal recibe los campos deshabilitados, sin «Guardar» y sin arrastrar tarjetas (el servidor igual rechaza, `conPermisoDeEmpresa("carta_portal")`). */
+  soloLectura?: boolean;
 }
 
-export function EditorPortal({ valoresIniciales, version, accion, empresaNombre, sucursales, urlsPorSlug, mover }: Props) {
+export function EditorPortal({ valoresIniciales, version, accion, empresaNombre, sucursales, urlsPorSlug, mover, soloLectura = false }: Props) {
   return (
     <FormConResultado accion={accion} className="flex flex-col gap-4">
-      <CuerpoEditor key={version} valoresIniciales={valoresIniciales} empresaNombre={empresaNombre} sucursales={sucursales} urlsPorSlug={urlsPorSlug} mover={mover} />
-      <div>
-        <Boton type="submit" tamano="compacto">
-          Guardar apariencia
-        </Boton>
-      </div>
+      <fieldset disabled={soloLectura} className="min-w-0" data-solo-lectura={soloLectura ? "" : undefined}>
+        <CuerpoEditor key={version} valoresIniciales={valoresIniciales} empresaNombre={empresaNombre} sucursales={sucursales} urlsPorSlug={urlsPorSlug} mover={mover} soloLectura={soloLectura} />
+      </fieldset>
+      {!soloLectura && (
+        <div>
+          <Boton type="submit" tamano="compacto">
+            Guardar apariencia
+          </Boton>
+        </div>
+      )}
     </FormConResultado>
   );
 }
@@ -69,7 +75,7 @@ interface Arrastre {
   movio: boolean;
 }
 
-function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, urlsPorSlug, mover }: Omit<Props, "version" | "accion">) {
+function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, urlsPorSlug, mover, soloLectura = false }: Omit<Props, "version" | "accion">) {
   const [valores, setValores] = useState<Record<string, string>>(() => Object.fromEntries(CLAVES_PORTAL_V1.map((d) => [d.clave, valoresIniciales[d.clave] ?? ""])));
   // Posiciones arrastradas que todavía no volvieron del servidor; se descartan cuando llegan las guardadas (o si falla el guardado).
   const [movidas, setMovidas] = useState<Record<string, { x: number; y: number }>>({});
@@ -97,7 +103,7 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
 
   const alPresionar = (e: PointerEventReact<HTMLDivElement>) => {
     // Solo mouse y lápiz: con el dedo, tocar una tarjeta mientras se scrollea la página no debe moverla (para eso están los números).
-    if (e.button !== 0 || e.pointerType === "touch" || activo.current) return;
+    if (soloLectura || e.button !== 0 || e.pointerType === "touch" || activo.current) return;
     if (!(e.target instanceof Element)) return;
     const li = e.target.closest<HTMLElement>("[data-portal-slug]");
     const mapa = li?.closest<HTMLElement>(".portal-mapa");
@@ -181,7 +187,7 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
         <p className="text-xs text-tinta-tenue" data-modo-portal={layout.modo}>
           {textoDelModo(layout.modo, layout.enMapa.length, layout.enGrilla.length, Boolean(estilo.imagenFondo), sucursales.length)}
         </p>
-        {layout.modo === "mapa" && (
+        {layout.modo === "mapa" && !soloLectura && (
           <p className="text-xs text-tinta-tenue">
             Arrastrá una tarjeta con el mouse para moverla (se guarda al soltar). Sin mouse, cargá los números en «Posición en el mapa del portal» de cada sucursal.
           </p>

@@ -2,7 +2,8 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { FilaDeCarta } from "@/components/fila-de-carta";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CLAVES_PORTAL_V1, PESTANAS_DE_APARIENCIA, urlCartaPublicaConEmpresaUnica, type SucursalPortalAdmin } from "@/core/carta/public";
 import { cargarAdminPortal, cargarPortalEmpresaAdmin } from "@/server/consultas/carta/admin";
 import { entradasVistaPreviaPortal } from "@/core/carta/public";
@@ -46,7 +47,9 @@ export default async function PortalSucursalesPage() {
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_portal", ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
-  const [sucursales, apariencia] = await Promise.all([cargarAdminPortal(ctx.db), cargarPortalEmpresaAdmin(ctx.db)]);
+  // DEC-33 (ver ≠ escribir): con «Ver» y sin «Editar» de `carta_portal`, el editor sale deshabilitado y cada sucursal como texto, sin agregar, editar ni quitar; las acciones igual lo exigen.
+  const [sucursales, apariencia, nivel] = await Promise.all([cargarAdminPortal(ctx.db), cargarPortalEmpresaAdmin(ctx.db), obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_portal", ctx.db)]);
+  const puedeEditar = nivel.editar;
 
   return (
     <div className="flex flex-col gap-6">
@@ -62,6 +65,7 @@ export default async function PortalSucursalesPage() {
             Ver el portal de motor2 →
           </a>
         </div>
+        {!puedeEditar && <AvisoSoloLectura />}
       </div>
 
       <section aria-labelledby="titulo-apariencia-portal" className="flex flex-col gap-2">
@@ -77,6 +81,7 @@ export default async function PortalSucursalesPage() {
           version={apariencia.actualizadoEn?.toISOString() ?? "sin-apariencia"}
           empresaNombre={ctx.empresaNombre}
           sucursales={entradasVistaPreviaPortal(sucursales)}
+          soloLectura={!puedeEditar}
           urlsPorSlug={Object.fromEntries(sucursales.flatMap((s) => (s.publica ? [[s.publica.slug, urlCartaPublicaConEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA_COMPILADO, ctx.empresaSlug, s.publica.slug)]] : [])))}
           accion={async (fd: FormData) => {
             "use server";
@@ -91,7 +96,7 @@ export default async function PortalSucursalesPage() {
 
       <ul className="flex flex-col gap-3">
         {sucursales.map((s) => (
-          <SucursalEnPortal key={s.id} sucursal={s} empresaSlug={ctx.empresaSlug} />
+          <SucursalEnPortal key={s.id} sucursal={s} empresaSlug={ctx.empresaSlug} puedeEditar={puedeEditar} />
         ))}
         {!sucursales.length && <li className="text-sm text-tinta-tenue">No hay sucursales.</li>}
       </ul>
@@ -110,7 +115,7 @@ function seVeEnVivo(s: SucursalPortalAdmin): boolean {
   return Boolean(s.publica?.publicada) && s.activo;
 }
 
-function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPortalAdmin; empresaSlug: string }) {
+function SucursalEnPortal({ sucursal: s, empresaSlug, puedeEditar }: { sucursal: SucursalPortalAdmin; empresaSlug: string; puedeEditar: boolean }) {
   const sucursalId = s.id;
   const p = s.publica;
   return (
@@ -134,7 +139,7 @@ function SucursalEnPortal({ sucursal: s, empresaSlug }: { sucursal: SucursalPort
         </p>
       )}
 
-      {!p ? (
+      {!puedeEditar ? null : !p ? (
         <FormConResultado
           accion={async () => {
             "use server";

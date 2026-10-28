@@ -3,7 +3,8 @@ import { FilaDeCarta } from "@/components/fila-de-carta";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { requierePermisoVer } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
+import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CLAVES_TEMA_V1, PESTANAS_DE_APARIENCIA, type TemaAdmin } from "@/core/carta/public";
 import { cargarTemaAdmin } from "@/server/consultas/carta/admin";
 import { cambiarAplicacionTema, guardarTemaCarta } from "@/server/actions/carta/tema";
@@ -44,7 +45,8 @@ export default async function TemaCartaPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_tema", ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
-  const datos = await cargarTemaAdmin(ctx.sucursalId, ctx.db);
+  // DEC-33 (ver ≠ escribir): con «Ver» y sin «Editar» de `carta_tema`, el editor sale deshabilitado y sin «Guardar» ni «Aplicar»; las acciones igual lo exigen (`conPermiso`).
+  const [{ editar: puedeEditar }, datos] = await Promise.all([obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_tema", ctx.db), cargarTemaAdmin(ctx.sucursalId, ctx.db)]);
   if (!datos) return <p className="text-error">No se encontró la sucursal activa.</p>;
   const sucursalId = datos.sucursalId;
   const aplicado = datos.tema?.aplicarEnCarta ?? false;
@@ -73,17 +75,20 @@ export default async function TemaCartaPage() {
         <p className="text-sm text-tinta-tenue">
           Los precios usan la convención del sistema: es-AR, con el símbolo $ a la izquierda (ej. $12.500). No se editan acá.
         </p>
+        {!puedeEditar && <AvisoSoloLectura />}
       </div>
 
       <EditorTema
         valoresIniciales={datos.tema?.valores ?? {}}
         version={datos.tema?.actualizadoEn.toISOString() ?? "sin-tema"}
+        soloLectura={!puedeEditar}
         accion={async (fd: FormData) => {
           "use server";
           return refrescarSiOk(await guardarTemaCarta(sucursalId, valoresDelFormulario(fd)));
         }}
       />
 
+      {puedeEditar && (
       <section aria-labelledby="titulo-aplicar-tema" className="flex flex-col gap-2 border-t pt-4">
         <h2 id="titulo-aplicar-tema" className="text-lg font-medium">
           {aplicado ? "Tema aplicado en la carta" : "Aplicar en la carta"}
@@ -113,6 +118,7 @@ export default async function TemaCartaPage() {
           </BotonDeServidor>
         </FormConResultado>
       </section>
+      )}
     </div>
   );
 }
