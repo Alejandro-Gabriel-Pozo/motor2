@@ -162,6 +162,8 @@ describe("persistencia de compras", () => {
         fecha: op.fecha,
         cabecera: { proveedorId, nroFactura: "A-0001", detalleLibre: "semanal" },
         proveedorNombre: "Molino SA",
+        // E3a (paso 6): una compra suelta no es la parte de una factura de proveedor (esa no se corrige sola).
+        esDeFactura: false,
       });
       expect(await prisma.$transaction((tx) => cargarCompraParaCorregir(tx, { operacionId: op.id, sucursalId: otraSucursalId }))).toBeNull();
     });

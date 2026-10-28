@@ -387,6 +387,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "P1, unión de las regeneraciones de los pasos 3 (Período y su familia), 4 (Rendimiento de recetas) y 5 (Pérdidas y Devoluciones) hechas por tres constructores en paralelo (O.251, O.252 y O.253). CAMBIA COMPORTAMIENTO a propósito (el día en hora argentina): se mueven SOLO líneas `Date(...)` de `desde`/`hasta` y de `anclaDesde`/`anclaHasta` (+3 h, T00:00:00.000Z → T03:00:00.000Z, el mismo día calendario). La fusión automática de git dio el mismo contenido que regenerar con `REGENERAR_CARACTERIZACION_DE_REPORTES=1` sobre el código fusionado (comparado archivo contra archivo). Ningún número, método ni conteo de consultas cambió.",
       },
+      {
+        blob: "17ef82c5692c3fc31f4d9e0199b57cb7b490b274",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `22136732` («Matriz de denegación (E3a): siembra una factura repartida…»), en `alegp/carril-y`.
+        commit: "22136732",
+        motivo:
+          "E3a (ADR-041, pasos 9 y 10; agrega un dato, no cambia ninguno): «Compras registradas» devuelve en cada compra `facturaProveedorId` (la factura de proveedor de la que es parte, o null), para mostrar «Anular factura entera» en lugar de corregir o anular la compra suelta. Cambian SOLO 12 líneas, todas `facturaProveedorId: null` agregadas (ninguna compra del golden es parte de una factura); mismo número de consultas, ningún otro valor cambia.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {

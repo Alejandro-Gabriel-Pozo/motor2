@@ -35,6 +35,7 @@ function compra(idOperacion: string, total: number, anulada = false): CompraRegi
     anuladaEn: anulada ? new Date("2026-09-30T13:00:00Z") : null,
     anuladaPorEmail: null,
     cantidadProductos: 1,
+    facturaProveedorId: null,
     renglones: [],
   };
 }

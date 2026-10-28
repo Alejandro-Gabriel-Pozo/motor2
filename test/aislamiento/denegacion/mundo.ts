@@ -109,6 +109,10 @@ export interface KitDeSucursal {
   traspasoRechazadoId: string;
   /** Una solicitud pedida POR esta sucursal (destino) a la vecina (la sucursal que pidió la puede cancelar). */
   traspasoPedidoId: string;
+  /** E3a: la factura de proveedor que ESTA sucursal cargó y propuso a la vecina (la anula quien tiene `anular_compra` en esta sucursal). */
+  facturaEnviadaId: string;
+  /** E3a: la propuesta PENDIENTE que la vecina le hizo a ESTA sucursal (la acepta esta sucursal). */
+  propuestaParaAceptarId: string;
   pagoConsignanteId: string;
   precioLocalId: string;
   frecuenciaId: string;
@@ -158,6 +162,8 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   traspasoEntranteId: true,
   traspasoRechazadoId: true,
   traspasoPedidoId: true,
+  facturaEnviadaId: true,
+  propuestaParaAceptarId: true,
   pagoConsignanteId: true,
   precioLocalId: true,
   frecuenciaId: true,
@@ -416,6 +422,27 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const traspasoRechazado = await db.traspasoSucursal.create({
     data: { id: id("traspaso-rechazado"), empresaId, origenSucursalId: sucursalId, destinoSucursalId: vecinaId, productoId: k.productoId, cantidad: 1, seccionOrigenId: seccion.id, iniciadoPor: "ORIGEN", estado: "RECHAZADA_DESTINO", creadoPorId: miembro.id, detalle: `Traspaso rechazado ${marca}` },
   });
+  // E3a (ADR-041): una factura de proveedor repartida con la vecina en cada sentido, con su propuesta PENDIENTE: la que ESTA sucursal le propuso a la vecina («Partes propuestas a otras sucursales») y la que la
+  // vecina le propuso a ESTA («Para aceptar»). El número de la factura lleva la marca de esta sucursal.
+  const facturasE3a: Record<string, { facturaId: string; propuestaId: string }> = {};
+  for (const [sufijo, origenSucursalId, destinoSucursalId] of [
+    ["factura-enviada", sucursalId, vecinaId],
+    ["factura-para-aceptar", vecinaId, sucursalId],
+  ] as const) {
+    const factura = await db.facturaProveedor.create({
+      data: { id: id(sufijo), empresaId, proveedorId: k.proveedorId, nroFactura: `Factura ${marca} ${sufijo}`, nroFacturaNormalizado: id(sufijo), fecha: enElPasado(DIA_MS), importeTotal: 100, estado: "CONFIRMADA", confirmadaEn: enElPasado(DIA_MS), confirmadaPorId: miembro.id, creadoPorId: miembro.id },
+    });
+    const renglon = await db.facturaProveedorRenglon.create({
+      data: { id: id(`${sufijo}-renglon`), empresaId, facturaProveedorId: factura.id, orden: 1, naturaleza: "MERCADERIA", productoId: k.productoId, cantidadStock: 2, precioPorUnidadStock: 50, detalle: "Compra", precioTotal: 100 },
+    });
+    const propuesta = await db.facturaProveedorPropuesta.create({
+      data: { id: id(`${sufijo}-propuesta`), empresaId, facturaProveedorId: factura.id, origenSucursalId, destinoSucursalId, porcentajeDeclaradoBp: 10000, creadoPorId: miembro.id },
+    });
+    await db.facturaProveedorPropuestaRenglon.create({
+      data: { id: id(`${sufijo}-propuesta-renglon`), empresaId, facturaProveedorId: factura.id, propuestaId: propuesta.id, origenSucursalId, destinoSucursalId, facturaProveedorRenglonId: renglon.id, cantidadStock: 2, precioTotal: 100 },
+    });
+    facturasE3a[sufijo] = { facturaId: factura.id, propuestaId: propuesta.id };
+  }
   const pago = await db.pagoConsignante.create({ data: { id: id("pago"), empresaId, sucursalId, proveedorId: k.proveedorId, importe: 500, fecha: enElPasado(DIA_MS), notas: `Pago ${marca}`, usuarioId: miembro.id } });
 
   // Configuración por sucursal.
@@ -483,6 +510,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     traspasoEntranteId: traspasoEntrante.id,
     traspasoRechazadoId: traspasoRechazado.id,
     traspasoPedidoId: traspasoPedido.id,
+    facturaEnviadaId: facturasE3a["factura-enviada"].facturaId,
+    propuestaParaAceptarId: facturasE3a["factura-para-aceptar"].propuestaId,
     pagoConsignanteId: pago.id,
     precioLocalId: precioLocal.id,
     frecuenciaId: frecuencia.id,

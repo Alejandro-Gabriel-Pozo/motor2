@@ -49,6 +49,8 @@ export interface CompraRegistrada {
   anuladaPorEmail: string | null;
   /** Productos DISTINTOS de esta factura — dos renglones del mismo producto cuentan una sola vez (antes "líneas", un conteo de renglones que los confundía; §4, docs/planes-demo-y-claridad-reportes-2026-09-21.md, coordinado con el mismo vocabulario de §2 en /reportes/periodo). */
   cantidadProductos: number;
+  /** E3a (ADR-041): la factura de proveedor de la que esta compra es una PARTE (sus líneas salen de sus renglones), o `null` si es una compra suelta. Una parte no se anula ni se corrige sola: se anula la factura entera. */
+  facturaProveedorId: string | null;
   renglones: RenglonCompra[];
 }
 

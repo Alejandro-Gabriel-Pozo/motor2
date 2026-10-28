@@ -31,6 +31,7 @@ export const CAMPOS: Readonly<Record<string, CampoSensible>> = {
   "PagoConsignante.importe": { piso: "administrador", dato: "lo pagado a un consignante" },
   "FacturaProveedor.importeTotal": { piso: "administrador", dato: "el total de una factura de proveedor (Paquete 3, M3b; copia con IVA incluido, como `MovimientoStock.precioTotal`)" },
   "FacturaProveedorRenglon.precioTotal": { piso: "administrador", dato: "el importe de un renglón de factura de proveedor (Paquete 3, M3b)" },
+  "FacturaProveedorPropuestaRenglon.precioTotal": { piso: "administrador", dato: "los pesos de un renglón que le tocan a una sucursal destino en una factura repartida (E3a, ADR-041): el operario de la destino ve solo productos y cantidades (decisión del dueño, 2026-10-28)" },
   "FacturaProveedorRenglon.precioPorUnidadStock": { piso: "administrador", dato: "el costo por unidad de un renglón de factura de proveedor (Paquete 3, M3b)" },
   "FacturaProveedor.importeNeto": { piso: "administrador", dato: "el neto del comprobante de una factura de proveedor (Paquete 3, M3d)" },
   "FacturaProveedor.importeIva": { piso: "administrador", dato: "el IVA del comprobante de una factura de proveedor (Paquete 3, M3d)" },
