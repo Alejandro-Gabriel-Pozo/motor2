@@ -37,7 +37,8 @@ Ya se construyó buena parte de la gestión de la carta (CARTA-MANT, ADR-034, pe
 ## 1. Propósito y alcance
 
 - **Propósito:** que el encargado y el administrador encuentren todo lo de la carta en TRES lugares con nombre de tarea: lo de todos los días y su estructura («Carta»), las promociones («Promociones») y cómo se ve y se publica («Apariencia y publicación»). — CONFIRMADA (DEC-24).
-- **Dentro:** menú de 3 entradas con sus pestañas de ruta (las URL no cambian); reemplazar las dos «puertas» de CARTA-MANT por esas pestañas; ver ≠ escribir en Tema y Portal; vocabulario; arreglos a 375 y 1280 px; arreglo de la vigencia en la carta pública (lectura). — CONFIRMADA (pedido de la ola).
+- **Dentro:** menú de 3 entradas con sus pestañas de ruta (las URL no cambian); reemplazar las dos «puertas» de CARTA-MANT por esas pestañas; ver ≠ escribir en Tema y Portal; vocabulario; arreglos a 375 y 1280 px; ocultar «Sumar un lugar» en el formulario de cupos y aclarar la ayuda de «Cupos»; matriz de visibilidad de las promos. — CONFIRMADA (pedido de la ola y del dueño, 2026-10-28).
+- **En pausa por el dueño (2026-10-28):** el arreglo de la vigencia en la carta pública, los textos de ayuda de «Vigencia» y el campo de fecha. El dueño pregunta si sobran las fechas «Desde/Hasta» (los cupos se resuelven subiendo el cupo original y la disponibilidad apagando los días que no valen). Regla del dueño para el resto: hacer solo lo pedido; lo ambiguo se anota como pregunta y no se hace. — CONFIRMADA (pausa).
 - **Fuera:** rediseño del Menú del día (GO-3d; ver sección 12); carta en inglés, pop-up de promociones, imágenes de platos, «forzar forma», diccionario de palabras fijas (ideas, sin decisión); cambiar quién puede agotar platos (ver P-1); mudar URL. — CONFIRMADA (pedido de la ola) / PROPUESTA (URL).
 
 ## 2. Actores y contexto
@@ -79,7 +80,8 @@ Ya se construyó buena parte de la gestión de la carta (CARTA-MANT, ADR-034, pe
 | I1 | Menú = página: una entrada se muestra solo a quien puede abrir su página (misma clave o misma lista `algunaDe`, mismo cálculo). | CONFIRMADA (test `menu-con-permiso`) |
 | I2 | Ver ≠ escribir con niveles de la MISMA clave: quien solo ve recibe la pantalla sin poder cambiar (formulario deshabilitado o datos como texto) con aviso, y el servidor rechaza igual. Sin claves nuevas. | CONFIRMADA (DEC-33) |
 | I3 | Las URL no cambian; una pantalla que queda sin uso (tableros) redirige a la que la reemplaza. | PROPUESTA (como Fase 6 y Stock) |
-| I4 | La carta pública muestra una promo solo si está ofrecida en la sucursal (activa y prendida), no es «solo salón» y VALE HOY (vigencia, con el día de calendario de la zona de la empresa). Mismo criterio que el POS: `promoVigenteEl`, función única. Falla cerrado: vigencia inválida = no se muestra. | PROPUESTA (arregla el hallazgo; criterio ya CONFIRMADO para el POS en ADR-032) |
+| I4 | La carta pública muestra una promo solo si está ofrecida en la sucursal (activa y prendida) y no es «solo salón» (CONFIRMADA y cubierta por la matriz de visibilidad). Que además VALGA HOY (vigencia, como el POS) queda PENDIENTE: el dueño pausó el arreglo hasta decidir si sobran las fechas. | CONFIRMADA (sin vigencia) / PENDIENTE (vigencia) |
+| I8 | El formulario de cupos de una promo NO ofrece «Sumar un lugar» (las partes se arman tildando secciones de la carta; un grupo propio se crea como sección). Interruptor reversible `SUMAR_LUGAR_DE_LISTA_VISIBLE`; el servidor y lo guardado no cambian; los lugares que ya existieran se siguen viendo y editando. | CONFIRMADA (dueño, 2026-10-28: «es algo obsoleto»; en producción 0 lugares de lista y 0 del día) |
 | I5 | Ninguna lectura de la carta escribe (guardián `carta-solo-lectura`). | CONFIRMADA |
 | I6 | Todo se lee y escribe en la sucursal activa o la empresa activa; otra empresa no ve ni escribe (RLS + eco de sucursal). | CONFIRMADA |
 | I7 | Lo que falta se muestra «pendiente de completar» / «Sin cargar», nunca inventado (el tablero NO dibuja «cambios sin publicar» porque no existe un borrador de la carta). | CONFIRMADA |
@@ -91,7 +93,7 @@ Ya se construyó buena parte de la gestión de la carta (CARTA-MANT, ADR-034, pe
 ## 7. Atomicidad y concurrencia
 
 - Esta ola NO agrega comandos de escritura. Las escrituras existentes se documentan como están (sección 10).
-- Vigencia en la carta pública: el día se calcula UNA vez por pedido, en el borde (`cartaPublica`, con el `ahora` de la página y la zona de la empresa) y entra en la CLAVE del caché de la carta (`unstable_cache`): al cambiar el día cambia la entrada, así que la carta de ayer no se sirve hoy desde ese caché. El ISR de la página (`revalidate = 60`) puede servir la página de ayer hasta 60 s después de la medianoche: es la misma ventana que cualquier cambio que no pasa por una acción. — PROPUESTA.
+- Vigencia en la carta pública (EN PAUSA; diseño listo para cuando el dueño decida): el «hoy» se calcula con el `ahora` que ya recibe la lectura de la carta y la zona de la empresa (sin consulta extra: viaja con la sucursal), con `promoVigenteEl` (la misma regla del POS), y el día entra en la CLAVE del caché de la carta pública (`unstable_cache`), para que la carta de ayer no se sirva hoy. El ISR de la página (`revalidate = 60`) puede servir la de ayer hasta 60 s después de la medianoche. Pruebas de borde: 23:59:59 y 00:00:00 de Argentina, primer y último día del rango, día de la semana. — PENDIENTE.
 
 ## 8. Acceso e interfaces
 
@@ -141,7 +143,9 @@ Ya se construyó buena parte de la gestión de la carta (CARTA-MANT, ADR-034, pe
 - **P-3 (URL):** mudar `/movimientos/opciones-agotadas` y `/movimientos/menu-del-dia` a `/carta/…`. Recomendación: no por ahora (igual que Stock). PROPUESTA.
 - **P-4 (trazabilidad):** secciones, géneros, agrupados, tema y portal no dejan quién cambió qué. Recomendación: auditarlos (`registrarCambioAuditado`, sin migración) en un paso aparte. PENDIENTE.
 - **P-5 (datos):** las descripciones de `ACCIONES` («Entrar a la pantalla Carta…») viven en la base; cambiarlas es una actualización de datos. Recomendación: con la próxima migración autorizada. PENDIENTE.
-- **P-6 (vista previa del administrador):** la vista previa interna de la carta (`cargarAdminCarta`) muestra todas las promos prendidas sin mirar la vigencia (es la administración, no el cliente). Recomendación: dejarla. PROPUESTA.
+- **P-6 (vigencia en la carta pública, HALLAZGO):** una promo fuera de su vigencia (fechas o días) SALE en la carta pública mientras el POS no la vende. Evidencia: `test/carta/visibilidad-de-promos-matriz.test.ts` («HALLAZGO documentado»: una promo vencida el 2020-01-01 aparece en la carta pública y el selector del POS y «agregar a la cuenta» la rechazan). Preguntas: ¿sobran las fechas «Desde/Hasta» de la vigencia? Si quedan (o quedan los días), ¿la carta pública debe esconder la promo el día que no vale? Recomendación: sí, esconderla (filtro en la lectura con el día de Argentina, sin migración; diseño en §7). PENDIENTE (pausado por el dueño).
+- **P-7 (menú ejecutivo con el plato del día):** con «Sumar un lugar» oculto (I8), una promo se arma SOLO con secciones de la carta, y un cupo de sección toma únicamente productos visibles en la carta de esa sección. Un plato del día «fuera de carta» (sección 12, a) NO puede ser parte de un menú armado: se vende suelto. Pregunta: ¿el menú ejecutivo tiene que incluir el plato del día? Si sí, la forma más barata es volver a prender `SUMAR_LUGAR_DE_LISTA_VISIBLE` (un lugar de lista acepta productos fuera de carta). PENDIENTE.
+- **P-8 (vista previa del administrador):** la vista previa interna de la carta (`cargarAdminCarta`) muestra todas las promos prendidas sin mirar la vigencia. Recomendación: decidirlo junto con P-6. PENDIENTE.
 
 ## 12. Menú del día: lo que ya se puede hacer sin rediseño (instrucción del dueño del 2026-10-28)
 
@@ -154,25 +158,28 @@ Ya se construyó buena parte de la gestión de la carta (CARTA-MANT, ADR-034, pe
 - «Solo hoy»: al terminar el día se lo marca «no disponible» (Catálogo › Productos, botón de disponibilidad de la sucursal, `producto_disponibilidad`). OJO: la disponibilidad NO vence sola; si nadie lo apaga, al día siguiente el mozo lo sigue viendo. Y un producto fuera de carta APAGADO desaparece de las listas de Carta › Hoy (la base no distingue «sin stock hoy» de «no se vende acá»): para volver a ofrecerlo se lo prende desde Catálogo › Productos.
 
 **(b) Menú ejecutivo = una promo armada, «solo salón».**
-- Promociones › nueva promo con su precio FIJO (el que el dueño pidió), lugares de SECCIÓN («elegí una de Bebidas») y/o de LISTA (productos sueltos, ESTÉN O NO en la carta, incluso el plato del día de (a); con una configuración fija si hace falta), y la casilla «Solo salón» (no sale en la carta pública, sí en el POS).
-- La LISTA respeta la disponibilidad: un plato apagado hoy no se ofrece dentro del menú. Así funciona el «pozo de opciones» del dueño: se agregan entradas una vez y cada día se apaga lo que no hay (no hay que cargar nada nuevo cada día).
-- Vigencia opcional: días de la semana (por ejemplo, lunes a viernes) y rango de fechas; el POS no la ofrece fuera de su vigencia (y desde esta ola, la carta pública tampoco, aunque una «solo salón» nunca sale ahí).
+- Promociones › nueva promo con su precio FIJO (el que el dueño pidió), cupos de SECCIÓN («elegí 1 de Bebidas»; para que elija más, se sube el «máx.») y la casilla «Solo salón» (no sale en la carta pública, sí en el POS). Un grupo propio («Bebida») se arma creando la sección en la carta y tildándola.
+- Un cupo de sección respeta la disponibilidad: un producto apagado hoy no se ofrece dentro del menú. Así funciona el «pozo de opciones» del dueño: la sección se arma una vez y cada día se apaga lo que no hay.
+- Los días en que vale (por ejemplo, lunes a viernes): el POS no la ofrece los otros días (la carta pública no la muestra nunca, por ser «solo salón»).
+- (Los lugares de LISTA, que aceptaban productos fuera de carta, quedaron ocultos por decisión del dueño, I8; ver P-7.)
 
 **Lo que de verdad NO se puede hoy (lo que queda como feature):**
-1. Que el mozo elija la VARIANTE dentro del menú: un lugar de LISTA lleva una configuración FIJA por entrada (para «milanesa de carne o de pollo» hay que cargar dos entradas); un producto con grupo obligatorio sin configuración no entra.
-2. Quitar productos puntuales de un lugar de SECCIÓN (toma toda la sección visible): el rodeo es una LISTA armada a mano.
+1. Que el mozo elija la VARIANTE dentro del menú (no verificado para cupos de sección con productos «Por opción»; en los lugares de LISTA, hoy ocultos, la configuración era fija por entrada).
+2. Quitar productos puntuales de un cupo de SECCIÓN (toma toda la sección visible): el rodeo es una sección propia para el menú (que también sale en la carta pública si está activa).
 3. Que «hoy» venza solo a la medianoche (la disponibilidad se apaga a mano).
 4. Mostrar el plato del día en la carta pública (pregunta abierta del dueño: hoy NUNCA se muestra; si se quiere mostrar, se le da contenido de carta en una sección «Del día» y se apaga/prende).
 
-**Recomendación:** MANTENER APAGADO el interruptor y NO hacer el rediseño GO-3d ahora: (a) + (b) cubren el planteo del 2026-10-22 salvo las variantes elegidas por el mozo (1). Si el dueño lo necesita, el cambio más chico que lo habilita es permitir, en un lugar de LISTA, una entrada SIN configuración fija cuyo producto tenga opciones, y que el POS pida la opción al agregar (reutiliza el diálogo de opciones de una línea suelta; sin migración, porque la configuración ya es opcional en `EntradaDeCupo`); se diseña aparte, con su tabla «¿qué pasa si…?», cuando aparezca un caso real. El vencimiento a medianoche (3) sería un dato nuevo (migración): solo si el uso lo pide.
+5. Incluir el plato del día «fuera de carta» dentro de un menú armado (P-7).
+
+**Recomendación:** MANTENER APAGADO el interruptor y NO hacer el rediseño GO-3d ahora: (a) + (b) cubren el planteo del 2026-10-22 salvo las variantes elegidas por el mozo (1) y el plato del día dentro del menú (5). Si el dueño lo necesita, lo más barato es volver a prender `SUMAR_LUGAR_DE_LISTA_VISIBLE` (5) y, para (1), permitir en un lugar de LISTA una entrada SIN configuración fija cuyo producto tenga opciones y que el POS pida la opción al agregar (sin migración: la configuración ya es opcional en `EntradaDeCupo`); se diseña aparte, con su tabla «¿qué pasa si…?», cuando aparezca un caso real. El vencimiento a medianoche (3) sería un dato nuevo (migración): solo si el uso lo pide.
 
 ## 13. Escalera de producto (lo que ve el cliente y el encargado), N0 a N5
 
 | Nivel | Carta (Hoy, Secciones, Agrupados) | Promociones | Apariencia y publicación |
 |---|---|---|---|
 | N0 | Pantallas sueltas detrás de dos «puertas» (hoy) | Tablero › Promociones (hoy) | Tema y Portal sueltos (hoy) |
-| N1 (esta ola) | Una entrada con pestañas; Opciones agotadas dentro de Hoy | Una entrada; la carta pública respeta la vigencia | Una entrada con pestañas; quien solo ve no puede tocar |
-| N2 | Agotar platos con la clave de la carta (P-1); Visibilidad junto a Secciones (P-2) | Variante elegida por el mozo dentro de un menú (sección 12) | Auditoría de tema y portal (P-4) |
+| N1 (esta ola) | Una entrada con pestañas; Opciones agotadas dentro de Hoy | Una entrada; cupos solo por secciones («Sumar un lugar» oculto); matriz de visibilidad | Una entrada con pestañas; quien solo ve no puede tocar |
+| N2 | Agotar platos con la clave de la carta (P-1); Visibilidad junto a Secciones (P-2) | Vigencia respetada en la carta pública (P-6); variante elegida por el mozo y plato del día dentro de un menú (sección 12, P-7) | Auditoría de tema y portal (P-4) |
 | N3 | Plato del día visible en la carta pública como sección «Del día» | Lugar de sección con exclusiones | Vista previa de la carta pública desde la pantalla |
 | N4 | Carta en inglés (idea) | Pop-up de promociones (idea) | Imágenes de platos (idea) |
 | N5 | «Forzar forma», diccionario de palabras fijas (ideas) | Precio por opción del menú (descartado por ahora: precio fijo) | — |
@@ -182,7 +189,7 @@ Lo que falta se muestra «pendiente de completar» / «Sin cargar», nunca inven
 ## 14. Pruebas, migración y operación
 
 - **Migración:** ninguna. Despliegue: solo código; reversible con `git revert`.
-- **Unitarias/integración:** configuración del menú de Carta (tres entradas, pestañas, rutas de cada entrada, resaltado, panel, buscador, cambio de sucursal); pestaña con dos pantallas (Hoy); la vigencia en la carta pública con la hora de Argentina y bordes de medianoche (23:59:59 y 00:00:00 ART, primer y último día del rango, día de la semana), con mutación (mutar ⇒ rojo ⇒ revertir ⇒ verde); la promo «solo salón» sigue fuera.
+- **Unitarias/integración:** configuración del menú de Carta (tres entradas, pestañas, rutas de cada entrada, resaltado, panel, buscador, cambio de sucursal); pestaña con dos pantallas (Hoy); interruptor de «Sumar un lugar» (los dos estados); MATRIZ DE VISIBILIDAD DE LAS PROMOS (`test/carta/visibilidad-de-promos-matriz.test.ts`): reglas declaradas como oráculo (módulo, activa, fila de la sucursal, «solo salón», cupos) contra las 96 combinaciones generadas y los lectores reales (carta pública, selector del POS, agregar a la cuenta), más un guardián que exige declarar cada columna de `PromoCarta` y `PromoCartaSucursal` (vigencia y días: PENDIENTES); todo con mutación (mutar ⇒ rojo ⇒ revertir ⇒ verde).
 - **Arquitectura:** `menu-con-permiso` (entradas `algunaDe` con su guarda); golden de visibilidad del menú (`test/modulos/__golden__/empresa-principal.json`) regenerado con `GOLDEN_ACTUALIZAR=1`; línea de base de precio y carta (`REGENERAR_LB_PRECIO_Y_CARTA=1`) y caracterización del tramo A, si cambian, con regeneración declarada en `caracterizaciones-congeladas.test.ts`.
 - **e2e (Playwright):** navegación de las tres entradas y sus pestañas; Tema/Portal en solo lectura; el recorrido del menú del día sin rediseño (sección 12) con su mutación; accesibilidad (axe) en las pantallas tocadas; 375 px sin desborde.
 - **Capturas** a 375 y 1280 px para la aprobación del dueño (fuera del repositorio).
@@ -194,6 +201,7 @@ Lo que falta se muestra «pendiente de completar» / «Sin cargar», nunca inven
 3. Fila de pestañas (`FilaDeCarta`) en lugar de las dos puertas; tableros reemplazados por redirecciones; enlaces Hoy ↔ Opciones agotadas.
 4. Ver ≠ escribir en Tema y Portal.
 5. Vocabulario («Carta › Hoy», «Secciones y géneros»).
-6. Vigencia de las promos en la carta pública (lectura, día de la zona de la empresa, clave de caché) con pruebas de borde y mutación.
-7. e2e: navegación, solo lectura, menú del día sin rediseño (con mutación); accesibilidad; capturas.
-8. Cierre: los 8 comandos del gate.
+6. «Sumar un lugar» oculto (interruptor reversible) y ayuda de «Cupos» (pedido del dueño, 2026-10-28).
+7. Matriz de visibilidad de las promos con su guardián y el hallazgo de la vigencia documentado (el arreglo, EN PAUSA: P-6).
+8. e2e: navegación, solo lectura, menú del día sin rediseño (con mutación); accesibilidad; capturas.
+9. Cierre: los 8 comandos del gate.
