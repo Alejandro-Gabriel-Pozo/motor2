@@ -292,13 +292,47 @@ function problemasDelEnsanche(p: Puerta, d: Declaracion, texto: string, id: stri
  * sucursal donde ya entró una parte (la lista sale de una lectura de VERIFICACIÓN de `ensanches-de-alcance.test.ts`, que devuelve solo los ids) y recién entonces ensancha a ella. Evidencia por texto: el archivo
  * llama a `permisoYAlcanceEnSucursal(<ctx>, <id>, "<clave>")` solo con esa clave literal y lee las sucursales con `sucursalesConParteDeFactura`.
  */
-const ENSANCHES_POR_DATO_DE_LA_BASE: Readonly<Record<string, { clave: string; lector: string; motivo: string }>> = {
+const ENSANCHES_POR_DATO_DE_LA_BASE: Readonly<Record<string, { forma: "PERMISO_Y_ALCANCE" | "GATE_Y_ALCANCE"; claves: readonly string[]; lector: string; motivo: string }>> = {
   "src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor.ts": {
-    clave: "anular_compra",
+    forma: "PERMISO_Y_ALCANCE",
+    claves: ["anular_compra"],
     lector: "sucursalesConParteDeFactura",
     motivo: "anular una factura entera revierte la compra de cada parte en SU sucursal: la clave de anular se pide en cada una, después de leer en cuáles hay parte",
   },
+  // Importador del catálogo (E1.5; diseño A.6): las 5 sucursales salen de la base por su nombre EXACTO (lista cerrada, nunca «todas»); en CADA una se piden las DOS claves de sucursal con
+  // `requierePermiso` y recién DESPUÉS se ensancha (`conAlcanceEnSucursal`, lectura y escritura). Forma `GATE_Y_ALCANCE`: el comando corre con tsx, sin Next, y `permisoYAlcanceEnSucursal`
+  // (con-permiso.ts) arrastra la sesión del pedido.
+  "src/server/actions/catalogo/casos-de-uso/importar-catalogo.ts": {
+    forma: "GATE_Y_ALCANCE",
+    claves: ["producto_disponibilidad", "carta_contenido_producto"],
+    lector: "leerLasSucursalesDelImportador",
+    motivo: "la carga única del catálogo (D1) escribe disponibilidad y carta en las 5 sucursales del Excel: cada una se resuelve por nombre exacto y se gatea con sus dos claves antes de entrar al alcance",
+  },
 };
+
+/**
+ * La evidencia de un ensanche por dato de la base: `PERMISO_Y_ALCANCE` llama a `permisoYAlcanceEnSucursal(<ctx>, <id>, "<clave>")` solo con sus claves; `GATE_Y_ALCANCE` pide cada clave con
+ * `requierePermiso(…, <id>, "<clave>", …)` (y solo esas) y llama a `conAlcanceEnSucursal(<ctx>, <id>, "LECTURA_Y_ESCRITURA")` DESPUÉS del último gate (sin gate previo no hay ensanche), sin
+ * `permisoYAlcanceEnSucursal`. Las dos leen las sucursales con su lector.
+ */
+function problemasDelEnsanchePorDato(codigo: string, d: (typeof ENSANCHES_POR_DATO_DE_LA_BASE)[string]): string[] {
+  const problemas: string[] = [];
+  const conPermiso = [...codigo.matchAll(/permisoYAlcanceEnSucursal\(\s*[\w.]+\s*,\s*[\w.]+\s*,\s*"(\w+)"\s*\)/g)];
+  if (d.forma === "PERMISO_Y_ALCANCE") {
+    if (conPermiso.length === 0) problemas.push("no llama a permisoYAlcanceEnSucursal");
+    if ([...new Set(conPermiso.map((m) => m[1]))].sort().join() !== [...d.claves].sort().join()) problemas.push(`permisoYAlcanceEnSucursal no se llama solo con ${d.claves.join(", ")}`);
+  } else {
+    const gates = [...codigo.matchAll(/requierePermiso\(\s*[\w.]+\s*,\s*[\w.]+\s*,\s*"(\w+)"\s*,/g)];
+    const ensanches = [...codigo.matchAll(/conAlcanceEnSucursal\(\s*[\w.]+\s*,\s*[\w.]+\s*,\s*"LECTURA_Y_ESCRITURA"\s*\)/g)];
+    if ([...new Set(gates.map((m) => m[1]))].sort().join() !== [...d.claves].sort().join()) problemas.push(`requierePermiso no se pide justo con ${d.claves.join(", ")}`);
+    if (ensanches.length === 0) problemas.push("no ensancha con conAlcanceEnSucursal(…, \"LECTURA_Y_ESCRITURA\")");
+    const ultimoGate = Math.max(-1, ...gates.map((m) => m.index!));
+    if (ensanches.some((m) => m.index! < ultimoGate)) problemas.push("ensancha ANTES de pedir todas las claves");
+    if (conPermiso.length > 0) problemas.push("mezcla permisoYAlcanceEnSucursal con la forma GATE_Y_ALCANCE");
+  }
+  if (!codigo.includes(`${d.lector}(`)) problemas.push(`no lee las sucursales con ${d.lector}`);
+  return problemas;
+}
 
 function ensanchesSinDeclarar(fuentes: ReadonlyMap<string, string>, declaradas: Readonly<Record<string, Declaracion>>): string[] {
   const INFRAESTRUCTURA = new Set(["src/server/acceso/alcance.ts", "src/server/actions/con-sesion.ts", "src/server/actions/con-permiso.ts"]);
@@ -422,14 +456,22 @@ describe("GT-4 (primera mitad): toda Server Action con un id de sucursal declara
     }
   });
 
-  it("E3a: cada ensanche por dato de la base usa solo su clave literal y su lector de verificación (y existe)", () => {
+  it("E3a: cada ensanche por dato de la base usa solo sus claves literales y su lector (y existe)", () => {
     for (const [ruta, d] of Object.entries(ENSANCHES_POR_DATO_DE_LA_BASE)) {
       const codigo = leerDelDisco(ruta);
-      const llamadas = [...codigo.matchAll(/permisoYAlcanceEnSucursal\(\s*\w+\s*,\s*\w+\s*,\s*"(\w+)"\s*\)/g)].map((m) => m[1]);
-      expect(llamadas.length, `${ruta}: llama a permisoYAlcanceEnSucursal`).toBeGreaterThan(0);
-      expect(new Set(llamadas), `${ruta}: solo con la clave ${d.clave}`).toEqual(new Set([d.clave]));
+      expect(problemasDelEnsanchePorDato(codigo, d), ruta).toEqual([]);
       expect(codigo, `${ruta}: lee las sucursales con ${d.lector}`).toContain(`${d.lector}(`);
     }
+  });
+
+  it("GATE_Y_ALCANCE (importador): las dos claves pedidas con requierePermiso y el ensanche después; sin una clave, o ensanchando antes, falla", () => {
+    const d = { forma: "GATE_Y_ALCANCE" as const, claves: ["a_clave", "b_clave"], lector: "leer", motivo: "x" };
+    const bueno = 'const s = await leer(db); const x = await requierePermiso(u, s.id, "a_clave", db); const y = await requierePermiso(u, s.id, "b_clave", db); if (x.ok && y.ok) ctx = conAlcanceEnSucursal(ctx, s.id, "LECTURA_Y_ESCRITURA");';
+    expect(problemasDelEnsanchePorDato(bueno, d)).toEqual([]);
+    expect(problemasDelEnsanchePorDato(bueno.replace(' const y = await requierePermiso(u, s.id, "b_clave", db);', ""), d).length).toBeGreaterThan(0);
+    const antes = 'const s = await leer(db); ctx = conAlcanceEnSucursal(ctx, s.id, "LECTURA_Y_ESCRITURA"); await requierePermiso(u, s.id, "a_clave", db); await requierePermiso(u, s.id, "b_clave", db);';
+    expect(problemasDelEnsanchePorDato(antes, d)).toEqual(["ensancha ANTES de pedir todas las claves"]);
+    expect(problemasDelEnsanchePorDato(bueno.replace("conAlcanceEnSucursal(ctx, s.id, \"LECTURA_Y_ESCRITURA\")", "conAlcanceEnSucursal(ctx, s.id, \"LECTURA\")"), d)).toEqual(['no ensancha con conAlcanceEnSucursal(…, "LECTURA_Y_ESCRITURA")']);
   });
 
   it("encuentra las puertas de la copia entre sucursales (la zona de S-07)", () => {
