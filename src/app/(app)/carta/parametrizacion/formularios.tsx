@@ -1,4 +1,4 @@
-import { MENU_DEL_DIA_VISIBLE, type LugarDeCombo, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
+import { MENU_DEL_DIA_VISIBLE, SUMAR_LUGAR_DE_LISTA_VISIBLE, type LugarDeCombo, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
@@ -194,20 +194,23 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           </label>
         </div>
       ))}
-      <fieldset className="mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end">
-        <legend className="mb-1 text-sm">Sumar un lugar (opcional)</legend>
-        <div className="col-span-2">
-          <Selector etiqueta="Tipo" name="nuevo_lugar_tipo" defaultValue="LISTA">
-            <option value="LISTA">Lista de productos</option>
-            {MENU_DEL_DIA_VISIBLE ? <option value="DEL_DIA">Plato del día</option> : null}
-          </Selector>
-        </div>
-        <div className="col-span-2">
-          <Campo etiqueta="Nombre" name="nuevo_lugar_nombre" maxLength={80} placeholder="Ej.: Bebida" />
-        </div>
-        <Campo etiqueta="mín." type="number" name="nuevo_lugar_min" min={0} step={1} defaultValue={1} className={CLASE_NUMERO} />
-        <Campo etiqueta="máx." type="number" name="nuevo_lugar_max" min={1} step={1} defaultValue={1} className={CLASE_NUMERO} />
-      </fieldset>
+      {/* Decisión del dueño (2026-10-28): «Sumar un lugar» queda oculto (`SUMAR_LUGAR_DE_LISTA_VISIBLE`); aparece solo si algún interruptor ofrece un tipo de lugar. */}
+      {(SUMAR_LUGAR_DE_LISTA_VISIBLE || MENU_DEL_DIA_VISIBLE) && (
+        <fieldset className="mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end">
+          <legend className="mb-1 text-sm">Sumar un lugar (opcional)</legend>
+          <div className="col-span-2">
+            <Selector etiqueta="Tipo" name="nuevo_lugar_tipo" defaultValue={SUMAR_LUGAR_DE_LISTA_VISIBLE ? "LISTA" : "DEL_DIA"}>
+              {SUMAR_LUGAR_DE_LISTA_VISIBLE ? <option value="LISTA">Lista de productos</option> : null}
+              {MENU_DEL_DIA_VISIBLE ? <option value="DEL_DIA">Plato del día</option> : null}
+            </Selector>
+          </div>
+          <div className="col-span-2">
+            <Campo etiqueta="Nombre" name="nuevo_lugar_nombre" maxLength={80} placeholder="Ej.: Bebida" />
+          </div>
+          <Campo etiqueta="mín." type="number" name="nuevo_lugar_min" min={0} step={1} defaultValue={1} className={CLASE_NUMERO} />
+          <Campo etiqueta="máx." type="number" name="nuevo_lugar_max" min={1} step={1} defaultValue={1} className={CLASE_NUMERO} />
+        </fieldset>
+      )}
     </div>
   );
 }

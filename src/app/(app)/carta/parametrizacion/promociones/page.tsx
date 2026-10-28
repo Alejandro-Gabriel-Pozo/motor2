@@ -193,7 +193,10 @@ export default async function PromocionesDeCartaPage() {
                       }}
                       className="mt-1 flex flex-col gap-2"
                     >
-                      <p className="text-sm text-tinta-tenue">Tildá de qué secciones se arma esta promo, con cuántas unidades mínimas y máximas de cada una (D1).</p>
+                      <p className="text-sm text-tinta-tenue">
+                        Las partes de la promo se arman tildando secciones de la carta: de cada sección tildada el mozo elige entre «mín.» y «máx.» productos (para que elija más, subí el «máx.»). Para un
+                        grupo propio, como «Bebida», creá la sección en Carta › Secciones y géneros y tildala acá.
+                      </p>
                       {/* Paso 13 (opcional, no bloqueante): con los cupos YA guardados, cuánta holgura hay hoy antes de tocar el piso de
                           $0,01 por unidad en el peor caso (D3) — guardarCuposPromoCarta rechaza de una si un cambio lo cruza; esto avisa
                           ANTES de intentarlo, con lo que hay guardado ahora mismo (no recalcula en vivo lo que se está tipeando). */}
