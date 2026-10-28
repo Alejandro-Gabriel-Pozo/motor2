@@ -44,7 +44,6 @@ const PANTALLAS_CON_SESION: readonly Pantalla[] = [
   { nombre: "reportes-costos", ruta: "/reportes/costos" },
   { nombre: "administracion-usuarios", ruta: "/administracion/usuarios" },
   { nombre: "carta", ruta: "/carta", oscuro: true },
-  { nombre: "carta-parametrizacion", ruta: "/carta/parametrizacion" },
   { nombre: "carta-parametrizacion-secciones", ruta: "/carta/parametrizacion/secciones" },
   { nombre: "carta-parametrizacion-generos", ruta: "/carta/parametrizacion/generos" },
   { nombre: "mesas", ruta: "/mesas" },
