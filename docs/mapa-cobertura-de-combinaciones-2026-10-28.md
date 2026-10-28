@@ -2,6 +2,8 @@
 
 Lectura estática del código (no se corrió ningún test), pedida por el dueño: cada módulo debe declarar las dimensiones cuyas combinaciones cambian dinero, permisos, visibilidad o stock, con una tabla de reglas esperada aparte del código (oráculo), un test que recorra todas las combinaciones y un guardián que falle ante una dimensión nueva sin declarar (regla en `AGENTS.md`). Este mapa dice qué hay y qué falta. **Ninguna de las matrices propuestas necesita migración.**
 
+> **Corrección (2026-10-28, tras la auditoría de poda):** el «hueco» de que la carta pública no respeta la vigencia de las promos NO se arregla. El dueño decidió el 2026-10-20 (`docs/pendientes-sesion-2026-10-22.md`, 9.ª a 12.ª parte) que la promoción NO tiene vigencia desde/hasta ni días ni carga por fecha: se activa y se desactiva a mano. Lo correcto es retirar la vigencia (ocultarla y después borrar `vigenteDesde`, `vigenteHasta`, `diasDeSemana` con migración autorizada), no construir su respeto. Este mapa lo había listado como riesgo «alto» por no haber cruzado la decisión del dueño.
+
 ## Hallazgos principales
 - **Existen pocas matrices exhaustivas con oráculo aparte, y son sólidas:** `test/core/features/traspasos/traspaso-guard.test.ts` (6 operaciones × 7 estados × 3 lados contra `ESPERADO`; es el modelo a copiar), la matriz de fábrica de permisos (`test/permisos/matriz-esperada.ts`) y proceso × sección dada de baja (`test/movimientos/seccion-desactivada.test.ts`).
 - **Propiedades (fast-check) contra un oráculo:** promos y cupos, precio de línea con opciones, filas de Kardex, reparto de facturas, decisión de acceso.
