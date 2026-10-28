@@ -117,11 +117,14 @@ export async function cargarPartesDeFactura(tx: Db, facturaProveedorId: string):
 }
 
 /**
- * VERIFICACIÓN (`lecturaDeVerificacionEnLaEmpresa`, lista cerrada en `test/arquitectura/ensanches-de-alcance.test.ts`): en qué sucursales de la empresa tiene una parte (ya recibida) la factura. Se usa SOLO para decidir
- * en cuáles hay que pedir el permiso de anular antes de abrir la transacción; no se muestra nada de otra sucursal.
+ * VERIFICACIÓN (`lecturaDeVerificacionEnLaEmpresa`, lista cerrada en `test/arquitectura/ensanches-de-alcance.test.ts`): en qué sucursales de la empresa tiene una parte (ya recibida) la factura (`conParte`) y qué
+ * sucursal la cargó (`queLaCargaron`: el origen de sus propuestas; vacío si no repartió a otras). Se usa SOLO para decidir en cuáles hay que pedir el permiso de anular antes de abrir la transacción; no se muestra
+ * nada de otra sucursal.
  */
-export async function sucursalesConParteDeFactura(db: Db, facturaProveedorId: string): Promise<string[]> {
-  return (await db.facturaProveedorSucursal.findMany({ where: { facturaProveedorId }, select: { sucursalId: true }, orderBy: { sucursalId: "asc" } })).map((p) => p.sucursalId);
+export async function sucursalesConParteDeFactura(db: Db, facturaProveedorId: string): Promise<{ conParte: string[]; queLaCargaron: string[] }> {
+  const partes = await db.facturaProveedorSucursal.findMany({ where: { facturaProveedorId }, select: { sucursalId: true }, orderBy: { sucursalId: "asc" } });
+  const propuestas = await db.facturaProveedorPropuesta.findMany({ where: { facturaProveedorId }, select: { origenSucursalId: true }, distinct: ["origenSucursalId"], orderBy: { origenSucursalId: "asc" } });
+  return { conParte: partes.map((p) => p.sucursalId), queLaCargaron: propuestas.map((p) => p.origenSucursalId) };
 }
 
 /** ¿La factura tiene notas de crédito vigentes? (C29: anular una factura con notas vigentes se rechaza.) */

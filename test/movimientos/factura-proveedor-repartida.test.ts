@@ -328,6 +328,20 @@ describe("anular la factura", () => {
     expect((await prisma.facturaProveedor.findFirstOrThrow()).anuladaEn).toBeNull();
   });
 
+  it("la factura que la 3 cargó solo para otras no la anula un administrador de la 6 sin permiso en la 3 (hallazgo de la matriz de denegación)", async () => {
+    await comoOp3();
+    const r = await registrarFacturaProveedor(factura({ nroFactura: "0001-00000600", seccionId: undefined, reparto: { modo: "IMPORTE", partes: [{ sucursalId: s4, valor: 2_000_000 }, { sucursalId: s6, valor: 1_000_000 }] } }));
+    expect(r.ok, r.mensaje).toBe(true);
+    const admin6 = await crearUsuarioConMembresia({ email: "admin6@test.com", sucursalId: s6, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id });
+    await como(admin6.id, "admin6@test.com", s6);
+    const id = (await prisma.facturaProveedor.findFirstOrThrow({ where: { nroFactura: "0001-00000600" } })).id;
+    const a = await anularFacturaProveedor(id, "no es mía", randomUUID());
+    expect(a.ok).toBe(false);
+    expect(a.mensaje).toContain("la cargó otra sucursal donde no tenés permiso");
+    expect((await prisma.facturaProveedor.findUniqueOrThrow({ where: { id } })).anuladaEn).toBeNull();
+    expect(await prismaAdmin.anulacionDeFacturaProveedor.count({ where: { facturaProveedorId: id } })).toBe(0);
+  });
+
   it("misma clave dos veces: «repetida» con el mismo mensaje; dos administradores a la vez con claves distintas: una sola anulación", async () => {
     await comoAdminEn(s3);
     const id = await facturaId();

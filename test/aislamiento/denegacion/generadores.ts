@@ -320,6 +320,33 @@ const completos: Record<string, Valor> = {
   "accion|actions/traspasos/traspasos.ts|aceptarTransferencia": (k, c) =>
     // Aceptar lo hace el DESTINO: el envío «entrante» (de la vecina hacia esta sucursal).
     conVariantes(intento(c, ["traspasoEntranteId"], [k.traspasoEntranteId, c.propio.seccionId]), intento(c, ["seccionId"], [c.propio.traspasoEntranteId, k.seccionId])),
+  // E3a (ADR-041): la factura de proveedor repartida. Cargar: con la sección, el proveedor o el producto ajenos, y una parte en una sucursal de OTRA empresa (proponerle a otra sucursal de la MISMA empresa es el
+  // propósito: solo es ajena si es de otra empresa). Cada intento con su número y su clave, para llegar a la lógica.
+  "accion|actions/movimientos/facturas-proveedor.ts|registrarFacturaProveedor": (k, c) => {
+    const datos = (o: { seccionId?: string; proveedorId?: string; productoId?: string; partes?: { sucursalId: string; valor: number }[] }) => ({
+      fecha: hoy(),
+      proveedorId: o.proveedorId ?? c.propio.proveedorId,
+      nroFactura: `F-${crypto.randomUUID().slice(0, 8)}`,
+      seccionId: o.seccionId ?? c.propio.seccionId,
+      items: [{ productoId: o.productoId ?? c.propio.productoId, cantidad: 2, precioTotal: 100 }],
+      reparto: { modo: "IMPORTE", partes: o.partes ?? [{ sucursalId: c.propio.sucursalId, valor: 100 }] },
+      claveIdempotencia: crypto.randomUUID(),
+    });
+    return conVariantes(
+      intento(c, ["seccionId"], [datos({ seccionId: k.seccionId })]),
+      intento(c, ["proveedorId"], [datos({ proveedorId: k.proveedorId })]),
+      intento(c, ["productoId"], [datos({ productoId: k.productoId })]),
+      c.escenario === "ajenaEmpresa" ? [datos({ partes: [{ sucursalId: c.propio.sucursalId, valor: 50 }, { sucursalId: k.sucursalId, valor: 50 }] })] : false,
+    );
+  },
+  // Aceptar lo hace el DESTINO: la propuesta que la vecina le hizo a esta sucursal, en una sección propia.
+  "accion|actions/movimientos/facturas-proveedor.ts|aceptarPropuestaDeFactura": (k, c) =>
+    conVariantes(
+      intento(c, ["propuestaParaAceptarId"], [k.propuestaParaAceptarId, c.propio.seccionId, hoy(), crypto.randomUUID()]),
+      intento(c, ["seccionId"], [c.propio.propuestaParaAceptarId, k.seccionId, hoy(), crypto.randomUUID()]),
+    ),
+  // Anular: la factura que cargó la sucursal ajena (la cabecera es de la empresa: la defensa es pedir `anular_compra` en la sucursal que la cargó y en cada una con parte).
+  "accion|actions/movimientos/facturas-proveedor.ts|anularFacturaProveedor": (k, c) => intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, "motivo de prueba", crypto.randomUUID()]),
 
   // --- consultas de las páginas y lecturas (el contexto —sucursal activa, empresa, usuario, hora, db— es el propio; los ids del cliente, los ajenos) ---
   // Las candidatas son las sucursales con carta propia; la consulta tiene que dejar afuera las que u1 no ve (S2, S3, las de otra empresa).

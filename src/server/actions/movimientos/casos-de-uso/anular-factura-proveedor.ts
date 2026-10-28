@@ -31,7 +31,7 @@ const MENSAJE_NO_ENCONTRADA = "No se encontró esa factura de proveedor.";
  * `import "server-only"` y SIN `"use server"`: la Server Action pidió `anular_compra` en la sucursal activa y validó el formato (`guardComandoAnularFacturaProveedor`).
  *
  * Pasos:
- *  1. (fuera de la transacción) en qué sucursales de la empresa ya entró una parte: una lectura de VERIFICACIÓN que devuelve solo sus ids, para pedir `anular_compra` EN CADA UNA (`permisoYAlcanceEnSucursal`: la
+ *  1. (fuera de la transacción) en qué sucursales de la empresa ya entró una parte, y cuál la cargó: una lectura de VERIFICACIÓN que devuelve solo sus ids, para pedir `anular_compra` EN CADA UNA (`permisoYAlcanceEnSucursal`: la
  *     clave allí y, solo si está, el alcance de escritura en esa sucursal). Si falta en una, se rechaza nombrándola. Nadie ensancha sin su gate;
  *  2. dentro de UNA transacción SERIALIZABLE: I3 (la clave y la huella van en el registro de anulación); `SELECT … FOR UPDATE` de la cabecera (serializa contra la aceptación de una propuesta); anulada → «ya
  *     está anulada»; las partes que se ven tienen que ser las mismas del paso 1 (si una destino aceptó en el medio, se pide repetir); notas de crédito vigentes → rechazo (C29);
@@ -50,12 +50,16 @@ export async function anularFacturaProveedorCasoDeUso(actor: ContextoDeAccion, c
 
   // 1. Las sucursales donde ya entró una parte (solo sus ids, para el gate) y la clave de anular EN CADA UNA, antes de ensanchar.
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
-  const sucursalesConParte = await sucursalesConParteDeFactura(verificacion.db, comando.facturaId);
+  const { conParte: sucursalesConParte, queLaCargaron } = await sucursalesConParteDeFactura(verificacion.db, comando.facturaId);
   let ctx: ContextoDeAccion = actor;
-  for (const sucursalId of sucursalesConParte) {
+  for (const sucursalId of [...new Set([...sucursalesConParte, ...queLaCargaron])].sort()) {
     if (sucursalId === actor.sucursalId) continue;
     const gate = await permisoYAlcanceEnSucursal(ctx, sucursalId, "anular_compra");
-    if (!gate.ok) return fracaso("SIN_PERMISO_EN_SUCURSAL", `No podés anular esta factura: una de sus partes ya entró al stock de otra sucursal donde no tenés permiso de anular compras. ${gate.mensaje}`);
+    if (!gate.ok) {
+      // También la sucursal que CARGÓ la factura (aunque no se haya quedado con parte): sin esto, quien tiene `anular_compra` en cualquier sucursal anulaba la factura que otra cargó solo para terceras.
+      const porque = sucursalesConParte.includes(sucursalId) ? "una de sus partes ya entró al stock de otra sucursal" : "la cargó otra sucursal";
+      return fracaso("SIN_PERMISO_EN_SUCURSAL", `No podés anular esta factura: ${porque} donde no tenés permiso de anular compras. ${gate.mensaje}`);
+    }
     ctx = gate.ctx;
   }
 
