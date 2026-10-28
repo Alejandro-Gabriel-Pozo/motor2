@@ -113,6 +113,31 @@ export async function requierePermisoVerDeAlguna(
 }
 
 /**
+ * Gate de VER de una página que es la entrada de VARIAS pantallas de los DOS contextos (Fase 7, DEC-27: «Configuración» de Stock junta pantallas de la sucursal —depósitos, parámetros— con catálogos
+ * de la empresa —motivos de merma, destinos de consumo—). Como `requierePermisoVerDeAlguna`, pero cada clave se evalúa en SU contexto con el MISMO cálculo del menú
+ * (`accionesDelMenuQueElUsuarioPuedeVer`): las de sucursal en la sucursal activa, las de empresa en la empresa activa. Así el ítem `algunaDe` del menú y la página dicen lo mismo. Falla cerrado: si no ve
+ * ninguna, el porqué es el del gate de la PRIMERA clave en su contexto (el texto que mostraría su página); si ese gate dijera que sí, se rechaza igual. Las claves van como arreglo LITERAL en cada llamada,
+ * para que el inventario por AST las vea.
+ */
+export async function requierePermisoVerDeAlgunaDelMenu(
+  usuarioId: string,
+  empresaId: string,
+  sucursalId: string,
+  claves: readonly [AccionClave, ...AccionClave[]],
+  db: PrismaClient,
+): Promise<ResultadoGate & { visibles: ReadonlySet<AccionClave> }> {
+  const visibles = await accionesDelMenuQueElUsuarioPuedeVer(usuarioId, empresaId, sucursalId, claves, db);
+  if (claves.some((clave) => visibles.has(clave))) return { ok: true, visibles };
+  const primera = claves[0];
+  const gate =
+    contextoDeAccion(primera) === "empresa"
+      ? await requierePermisoVerDeEmpresa(usuarioId, empresaId, primera as AccionDeEmpresa, db)
+      : await requierePermisoVer(usuarioId, sucursalId, primera as AccionDeSucursal, db);
+  const denegacion = gate.ok ? { ...denegado({ motivo: "SIN_PERMISO", caso: "SIN_ACCESO_A_SUCURSAL" }), mensaje: SIN_NINGUNA_CLAVE_VISIBLE } : gate;
+  return { ...denegacion, visibles: new Set() };
+}
+
+/**
  * De una lista de sucursales, en cuáles puede VER el usuario esta acción (capacidad de la sucursal + «Ver» del rol que tiene ALLÍ). El gate de una pantalla mira solo
  * la sucursal activa: una pantalla que junta datos de varias sucursales tiene que filtrarlas con esto, si no muestra las de una sucursal donde el rol no tiene el permiso.
  */

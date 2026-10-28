@@ -35,19 +35,19 @@ describe("sección habitual: orden de los rechazos", () => {
   });
 
   it("fijar: el formato gana sobre todo; el producto (y que sea PV) gana sobre la sección; la sección ajena gana sobre la inactiva", async () => {
-    expect(await setSeccionHabitual("cnoexiste000000000000000", "  ")).toEqual({ ok: false, mensaje: "Elegí la sección habitual." });
+    expect(await setSeccionHabitual("cnoexiste000000000000000", "  ")).toEqual({ ok: false, mensaje: "Elegí el depósito habitual." });
     expect(await setSeccionHabitual("cnoexiste000000000000000", ajenaId)).toEqual({ ok: false, mensaje: "No se encontró el producto." });
-    expect(await setSeccionHabitual(muzzaId, ajenaId)).toEqual({ ok: false, mensaje: "Solo un producto de venta (PV) tiene sección habitual: «Muzzarella» es una materia prima." });
+    expect(await setSeccionHabitual(muzzaId, ajenaId)).toEqual({ ok: false, mensaje: "Solo un producto de venta (PV) tiene depósito habitual: «Muzzarella» es una materia prima." });
     await prisma.seccion.update({ where: { id: ajenaId }, data: { activa: false } });
-    expect(await setSeccionHabitual(pizzaId, ajenaId)).toEqual({ ok: false, mensaje: "No se encontró la sección." });
-    expect(await setSeccionHabitual(` ${pizzaId} `, ` ${cocinaId}`)).toEqual({ ok: true, mensaje: "Sección habitual de «Pizza»: «Cocina»." });
+    expect(await setSeccionHabitual(pizzaId, ajenaId)).toEqual({ ok: false, mensaje: "No se encontró el depósito." });
+    expect(await setSeccionHabitual(` ${pizzaId} `, ` ${cocinaId}`)).toEqual({ ok: true, mensaje: "Depósito habitual de «Pizza»: «Cocina»." });
     expect(vi.mocked(refresh)).not.toHaveBeenCalled();
   });
 
   it("quitar: un id que no es texto es «no encontrada» y no borra nada; no refresca", async () => {
     await setSeccionHabitual(pizzaId, cocinaId);
-    expect(await eliminarSeccionHabitual(42 as unknown as string)).toEqual({ ok: false, mensaje: "No se encontró esa sección habitual." });
-    expect(await eliminarSeccionHabitual("cnoexiste000000000000000")).toEqual({ ok: false, mensaje: "No se encontró esa sección habitual." });
+    expect(await eliminarSeccionHabitual(42 as unknown as string)).toEqual({ ok: false, mensaje: "No se encontró ese depósito habitual." });
+    expect(await eliminarSeccionHabitual("cnoexiste000000000000000")).toEqual({ ok: false, mensaje: "No se encontró ese depósito habitual." });
     expect(await prisma.seccionHabitualProducto.count()).toBe(1);
     expect(vi.mocked(refresh)).not.toHaveBeenCalled();
   });

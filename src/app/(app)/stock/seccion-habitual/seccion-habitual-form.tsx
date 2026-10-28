@@ -15,7 +15,16 @@ export interface FilaSeccionHabitualEnEdicion {
 }
 
 /** Mismo molde que StockMinimoForm (stock/minimo/stock-minimo-form.tsx): alta, o edición de una fila existente sin rebuscar el producto. */
-export function SeccionHabitualForm({ secciones, filaEnEdicion }: { secciones: { id: string; nombre: string }[]; filaEnEdicion?: FilaSeccionHabitualEnEdicion }) {
+export function SeccionHabitualForm({
+  secciones,
+  filaEnEdicion,
+  soloLectura = false,
+}: {
+  secciones: { id: string; nombre: string }[];
+  filaEnEdicion?: FilaSeccionHabitualEnEdicion;
+  /** DEC-33: el rol puede VER pero no EDITAR: el formulario se dibuja deshabilitado (el aviso lo pone la página; el servidor rechaza igual). */
+  soloLectura?: boolean;
+}) {
   const router = useRouter();
   const editando = Boolean(filaEnEdicion);
   const [productoId, setProductoId] = useState(filaEnEdicion?.productoId ?? "");
@@ -47,38 +56,40 @@ export function SeccionHabitualForm({ secciones, filaEnEdicion }: { secciones: {
       }}
       className="flex flex-col gap-3"
     >
-      <h2 className="font-medium">{editando ? "Editar sección habitual" : "Fijar sección habitual"}</h2>
+      <fieldset disabled={soloLectura} className="flex min-w-0 flex-col gap-3">
+        <h2 className="font-medium">{editando ? "Editar depósito habitual" : "Fijar depósito habitual"}</h2>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Producto
-        <SelectorProducto
-          value={productoId}
-          onChange={setProductoId}
-          filtro={{ tipo: "PV", soloDisponibles: true }}
-          etiquetaInicial={filaEnEdicion?.productoEtiqueta}
-          limpiarSenal={resetCount}
-          required
-        />
-      </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Producto
+          <SelectorProducto
+            value={productoId}
+            onChange={setProductoId}
+            filtro={{ tipo: "PV", soloDisponibles: true }}
+            etiquetaInicial={filaEnEdicion?.productoEtiqueta}
+            limpiarSenal={resetCount}
+            required
+          />
+        </label>
 
-      <Selector etiqueta="Sección habitual" value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required>
-        <option value="">Elegí una sección</option>
-        {secciones.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.nombre}
-          </option>
-        ))}
-      </Selector>
+        <Selector etiqueta="Depósito habitual" value={seccionId} onChange={(e) => setSeccionId(e.target.value)} required>
+          <option value="">Elegí un depósito</option>
+          {secciones.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nombre}
+            </option>
+          ))}
+        </Selector>
 
-      {mensaje && (
-        <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
-          {mensaje}
-        </Aviso>
-      )}
+        {mensaje && (
+          <Aviso variante={ok ? "exito" : "error"} forma="en-linea">
+            {mensaje}
+          </Aviso>
+        )}
 
-      <Boton type="submit" disabled={pending} className="self-start">
-        {pending ? "Guardando..." : "Guardar"}
-      </Boton>
+        <Boton type="submit" disabled={pending || soloLectura} className="self-start">
+          {pending ? "Guardando..." : "Guardar"}
+        </Boton>
+      </fieldset>
     </form>
   );
 }

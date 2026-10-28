@@ -52,3 +52,21 @@ export async function guardarMinimoGlobal(db: Prisma.TransactionClient, args: { 
 export async function borrarStockMinimo(db: Prisma.TransactionClient, args: { id: string }): Promise<void> {
   await db.stockMinimoProducto.delete({ where: { id: args.id } });
 }
+
+/**
+ * Fase 7 («Cambiar mínimo», I8 del diseño del módulo Stock): la fila de mínimo de un producto en la sucursal, global (`seccionId` null) o de un depósito, con su valor; `null` si no hay. La lee el caso de uso
+ * DENTRO de su transacción, para decidir con `decidirCambioDeMinimo` (core/stock).
+ */
+export async function leerMinimo(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string; seccionId: string | null }): Promise<{ id: string; minimo: number } | null> {
+  const fila = await db.stockMinimoProducto.findFirst({ where: { sucursalId: args.sucursalId, productoId: args.productoId, seccionId: args.seccionId }, select: { id: true, minimo: true } });
+  return fila ? { id: fila.id, minimo: Number(fila.minimo) } : null;
+}
+
+/**
+ * Cambia el mínimo de la fila SOLO si todavía vale lo que se vio (`UPDATE … WHERE id AND minimo = visto`): devuelve cuántas filas cambió (0 = otra transacción la cambió o la borró entre la lectura y esta
+ * escritura). En READ COMMITTED el `UPDATE` espera a la transacción que tiene la fila y reevalúa la condición sobre su valor nuevo: de dos cambios simultáneos con el mismo valor visto, gana uno solo.
+ */
+export async function cambiarMinimoSiSigueComoSeVio(db: Prisma.TransactionClient, args: { id: string; visto: number; minimo: number }): Promise<number> {
+  const { count } = await db.stockMinimoProducto.updateMany({ where: { id: args.id, minimo: args.visto }, data: { minimo: args.minimo } });
+  return count;
+}

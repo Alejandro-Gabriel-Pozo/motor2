@@ -38,7 +38,8 @@ describe("S-13: el gasto en compras por insumo de Frecuencia de conteo es de qui
     }
     if (typeof nodo === "object") {
       const props = "props" in nodo ? (nodo as ReactElement<Record<string, unknown>>).props : (nodo as Record<string, unknown>);
-      for (const valor of Object.values(props)) textosDe(valor, salida);
+      // `ctx` (el contexto del usuario que la página le pasa a la fila de pestañas de Stock, un componente de servidor) no es texto que se dibuje ni viaja al navegador, y su cliente de base es circular.
+      for (const [clave, valor] of Object.entries(props)) if (clave !== "ctx") textosDe(valor, salida);
     }
     return salida;
   }

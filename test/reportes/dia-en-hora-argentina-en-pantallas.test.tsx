@@ -31,6 +31,8 @@ vi.mock("../../src/server/consultas/reportes/trazabilidad", () => ({
 }));
 vi.mock("../../src/server/actions/catalogo/proveedor-por-producto", () => ({ obtenerComparativaPreciosPorInsumo: vi.fn(async () => mocks.comparativa) }));
 vi.mock("../../src/server/consultas/stock/alertas", () => ({ calcularAlertasStock: vi.fn(async () => mocks.alertas) }));
+// La fila de pestañas de Existencias (DEC-27) es un componente de servidor asíncrono que `renderToStaticMarkup` no dibuja; acá se mira la tabla, no las pestañas (las prueba `stock-en-el-menu.test.ts`).
+vi.mock("../../src/components/fila-de-stock", () => ({ FilaDeStock: () => null }));
 vi.mock("../../src/server/actions/movimientos/secciones", () => ({ listarSeccionesActivas: vi.fn(async () => []) }));
 vi.mock("../../src/server/actions/movimientos/lecturas-conteo-fisico", () => ({ obtenerHistorialConteosFisicos: vi.fn(async () => ({ items: mocks.conteos, nextCursor: null })) }));
 vi.mock("../../src/server/consultas/movimientos/stock-para-conteo", () => ({ listarStockParaConteo: vi.fn(async () => []) }));

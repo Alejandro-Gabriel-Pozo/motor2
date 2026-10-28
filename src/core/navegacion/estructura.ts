@@ -1,5 +1,6 @@
 import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
 import { NAV_MOVIMIENTOS, PROCESOS_DEL_SELECTOR } from "@/core/movimientos/public";
+import { NAV_STOCK, RUTAS_DE_LAS_ENTRADAS_DE_STOCK } from "@/core/stock/public";
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { PanelActivo, PanelNav } from "./panel";
 
@@ -99,20 +100,11 @@ export const GRUPOS_NAV: GrupoNav[] = [
     items: NAV_MOVIMIENTOS,
   },
   {
+    // DEC-27 (Fase 7): dos entradas, «Existencias» y «Configuración», con sus pestañas (fuente en core/stock/ui-config.ts). Las URL de las pantallas no cambiaron; las que no son la entrada
+    // cuelgan de ella en RUTAS_DE_UNA_ENTRADA.
     id: "stock",
     label: "Stock",
-    items: [
-      { href: "/stock/consolidado", label: "Consolidado", accion: "ver_stock", panel: "sucursal" },
-      { href: "/stock/por-familia", label: "Por familia", accion: "ver_stock", panel: "sucursal" },
-      { href: "/stock/alertas", label: "Alertas", accion: "ver_stock", panel: "sucursal" },
-      { href: "/stock/minimo", label: "Stock mínimo", accion: "stock_minimo", panel: "sucursal" },
-      { href: "/stock/seccion-habitual", label: "Sección habitual", accion: "stock_seccion_habitual", panel: "sucursal" },
-      { href: "/stock/conteo-frecuencia", label: "Frecuencia de conteo", accion: "conteo_frecuencia", panel: "sucursal" },
-      // Antes en Movimientos (solo se mudan las entradas del menú: las URL son las mismas). Reclasificar ya no tiene ítem: se abre desde «Registrar movimiento» (RUTAS_DE_UNA_ENTRADA).
-      { href: "/movimientos/secciones", label: "Depósitos", accion: "secciones", panel: "sucursal" },
-      { href: "/movimientos/motivos-merma", label: "Motivos de Merma", accion: "motivos_merma", panel: "empresa" },
-      { href: "/movimientos/destinos-consumo", label: "Destinos de Consumo", accion: "motivos_destino_consumo", panel: "empresa" },
-    ],
+    items: NAV_STOCK,
   },
   {
     id: "reportes",
@@ -187,7 +179,8 @@ export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [
  * Rutas de proceso que se abren desde UNA entrada del menú (el selector «Registrar movimiento»: Ajuste, Consumo, Producción…) en vez de tener cada una su ítem. Cada ruta lleva la acción de «Ver» que
  * protege su página (la misma que pide; un test lo comprueba), su panel y la `entrada`: el `href` del ítem del menú que se resalta cuando esa ruta está abierta. Se leen igual que `RUTAS_FUERA_DEL_MENU`
  * (`itemDeRuta`, `accionDeRuta`, `panelDeRuta`, `accionesDeNavegacion`, `pantallaTrasCambiarSucursal`), más: `hrefActivoDelMenu` las traduce a su entrada y el buscador del cajón de celular (`buscarPantallaEnMenu`)
- * las encuentra, para que «ajuste» siga apareciendo aunque ya no sea un ítem. Se arma desde `PROCESOS_DEL_SELECTOR` (una sola fuente con la entrada del menú y la página `/movimientos`).
+ * las encuentra, para que «ajuste» siga apareciendo aunque ya no sea un ítem. Se arma desde `PROCESOS_DEL_SELECTOR` (una sola fuente con la entrada del menú y la página `/movimientos`) y, desde DEC-27, desde
+ * `RUTAS_DE_LAS_ENTRADAS_DE_STOCK` (las pestañas y los editores de «Existencias» y «Configuración» de Stock).
  */
 export interface RutaDeUnaEntrada {
   /** La ruta de la pantalla (`/movimientos/ajuste`). */
@@ -201,12 +194,14 @@ export interface RutaDeUnaEntrada {
   entrada: string;
 }
 
-/** La entrada del menú («Registrar movimiento») a la que se abren los procesos del selector y Reclasificar. */
+/** La entrada del menú («Registrar movimiento») a la que se abren los procesos del selector y Reclasificar. Las de Stock las declara `core/stock/ui-config.ts`. */
 const ENTRADA_REGISTRAR_MOVIMIENTO = "/movimientos";
 
-export const RUTAS_DE_UNA_ENTRADA: readonly RutaDeUnaEntrada[] = PROCESOS_DEL_SELECTOR.map(
-  (p): RutaDeUnaEntrada => ({ href: p.href, label: p.etiquetaCorta, accion: p.accion, panel: "sucursal", entrada: ENTRADA_REGISTRAR_MOVIMIENTO }),
-);
+export const RUTAS_DE_UNA_ENTRADA: readonly RutaDeUnaEntrada[] = [
+  ...PROCESOS_DEL_SELECTOR.map((p): RutaDeUnaEntrada => ({ href: p.href, label: p.etiquetaCorta, accion: p.accion, panel: "sucursal", entrada: ENTRADA_REGISTRAR_MOVIMIENTO })),
+  // DEC-27: las pestañas de «Existencias» y «Configuración» de Stock que no son la entrada, y los editores de parámetros (core/stock/ui-config.ts).
+  ...RUTAS_DE_LAS_ENTRADAS_DE_STOCK.map((r): RutaDeUnaEntrada => ({ href: r.href, label: r.texto, accion: r.accion, panel: r.panel, entrada: r.entrada })),
+];
 
 /** De las rutas de una entrada, las que el rol puede ver (su `accion`): lo que se le ofrece al buscador del cajón de celular, que no decide permisos. Se calcula en el servidor. */
 export function rutasDeUnaEntradaVisibles(puedeVer: ReadonlySet<AccionClave>, rutas: readonly RutaDeUnaEntrada[] = RUTAS_DE_UNA_ENTRADA): RutaDeUnaEntrada[] {

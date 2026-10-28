@@ -492,6 +492,9 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/stock/frecuencia-conteo.ts|eliminarFrecuenciaConteo": { id: (k) => k.frecuenciaId },
   "accion|actions/stock/seccion-habitual.ts|eliminarSeccionHabitual": { id: (k) => k.seccionHabitualId },
   "accion|actions/stock/stock-minimo.ts|eliminarStockMinimo": { id: (k) => k.stockMinimoId },
+  // DEC-27 («Cambiar mínimo»): el mínimo que la persona VIO es el que el mundo sembró en la fila del producto y el depósito (`minimo: 50`, mundo.ts): con los ids propios el control positivo
+  // cambia esa fila; con ids de otra empresa el pedido se rechaza igual (producto o depósito ajeno).
+  "accion|actions/stock/stock-minimo.ts|setStockMinimoProducto": { minimoVisto: () => 50 },
   // Cancelar la solicitud lo hace quien la pidió (el destino); rechazar un envío recibido, el destino.
   "accion|actions/traspasos/traspasos.ts|cancelarSolicitudTransferencia": { id: (k) => k.traspasoPedidoId },
   "accion|actions/traspasos/traspasos.ts|rechazarSolicitudTransferencia": { id: (k) => k.traspasoId },
