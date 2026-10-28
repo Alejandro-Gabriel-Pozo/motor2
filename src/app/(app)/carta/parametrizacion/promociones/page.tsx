@@ -26,7 +26,7 @@ import { FilaDeCarta } from "@/components/fila-de-carta";
 import { PESTANAS_DE_PROMOCIONES } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
-import { CamposCupos, CamposLugares, CamposPromo, CamposVigencia, esFijo, textoDeVigencia } from "../formularios";
+import { BloqueDeVigencia, CamposCupos, CamposLugares, CamposPromo, CamposVigencia, esFijo } from "../formularios";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoNumero } from "@/components/campo-numero";
@@ -67,7 +67,7 @@ export default async function PromocionesDeCartaPage() {
 
   return (
     <div className={estilos.raiz}>
-      <EncabezadoDeCarta entrada="Promociones" pestana="Combos, cupos y vigencia" sucursal={ctx.sucursalNombre}>
+      <EncabezadoDeCarta entrada="Promociones" pestana="Combos y cupos" sucursal={ctx.sucursalNombre}>
         <FilaDeCarta ctx={ctx} etiqueta="Promociones" pestanas={PESTANAS_DE_PROMOCIONES} ruta="/carta/parametrizacion/promociones" />
       </EncabezadoDeCarta>
       <div className={estilos.contenido}>
@@ -80,7 +80,8 @@ export default async function PromocionesDeCartaPage() {
           Promos
         </h2>
         <p className="text-sm text-tinta-tenue">
-          Una promo se define una sola vez para toda la empresa. Cada sucursal decide si la prende (apagada no sale en la carta ni en el POS) y, si quiere, le pone su propio precio.
+          Una promo se define una sola vez para toda la empresa. Cada sucursal decide si la prende (apagada no sale en la carta ni en el POS) y, si quiere, le pone su propio precio. No tiene fechas:
+          se maneja con activar y desactivar (mientras está prendida se vende; cuando termina, se apaga).
         </p>
         <ul className="flex flex-col gap-2">
           {datos.promos.map((pr) => {
@@ -303,9 +304,8 @@ export default async function PromocionesDeCartaPage() {
                     );
                   })}
 
-                  {/* GO-3b (D-7): la vigencia de la promo (fechas y días de la semana); sin nada = vale siempre. Se evalúa al agregarla a una mesa. */}
-                  <h3 className="mt-3 text-sm font-medium">Vigencia</h3>
-                  {puedeDefinirPromos ? (
+                  {/* GO-3b (D-7): la vigencia de la promo. Oculta por decisión del dueño (`VIGENCIA_DE_PROMO_VISIBLE`): la promo se maneja con activar/desactivar. */}
+                  <BloqueDeVigencia vigencia={combo.vigencia} puedeEditar={puedeDefinirPromos}>
                     <FormConResultado
                       accion={async (fd: FormData) => {
                         "use server";
@@ -325,9 +325,7 @@ export default async function PromocionesDeCartaPage() {
                         </BotonDeServidor>
                       </div>
                     </FormConResultado>
-                  ) : (
-                    <p className="mt-1 text-sm">{textoDeVigencia(combo.vigencia)}</p>
-                  )}
+                  </BloqueDeVigencia>
                 </details>
                 {puedeActivarPromos && (
                   <FormConResultado

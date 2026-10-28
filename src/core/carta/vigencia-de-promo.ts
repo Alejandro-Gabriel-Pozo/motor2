@@ -9,6 +9,14 @@ import { diaDeLaSemana, esDiaISOReal } from "@/core/tiempo/zona-horaria";
  * las zonas): lo que ya está en una mesa no cambia si la promo deja de valer. Función pura: sin reloj ni zona propios.
  */
 
+/**
+ * INTERRUPTOR de la VIGENCIA en la pantalla de las promos (decisión del dueño, 2026-10-20 noche, 10.ª y 11.ª parte de `docs/pendientes-sesion-2026-10-22.md`: «la promoción NO tiene vigencia desde/hasta,
+ * ni días, ni carga por fecha; se maneja con ACTIVAR/DESACTIVAR»; aplicada en la Fase 7, 2026-10-28). Mismo patrón que `MENU_DEL_DIA_VISIBLE`: una sola constante. Con `false`, la pantalla no ofrece
+ * «Desde», «Hasta» ni «Días en que vale». NO se toca el servidor, ni las columnas, ni el filtro del POS (con todo en NULL, `promoVigenteEl` vale siempre); retirar las columnas es una migración
+ * destructiva futura, con autorización expresa (docs/diseno-modulo-carta-2026-10-28.md). Lo comprueba `test/carta/vigencia-de-promo-interruptor.test.tsx` (los dos estados).
+ */
+export const VIGENCIA_DE_PROMO_VISIBLE: boolean = false;
+
 export interface VigenciaDePromo {
   /** «AAAA-MM-DD» o `null` (sin límite inferior). */
   vigenteDesde: string | null;

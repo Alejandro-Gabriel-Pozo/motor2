@@ -1,4 +1,4 @@
-import { MENU_DEL_DIA_VISIBLE, SUMAR_LUGAR_DE_LISTA_VISIBLE, type LugarDeCombo, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
+import { MENU_DEL_DIA_VISIBLE, SUMAR_LUGAR_DE_LISTA_VISIBLE, VIGENCIA_DE_PROMO_VISIBLE, type LugarDeCombo, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
@@ -165,6 +165,30 @@ export function CamposVigencia({ vigencia }: { vigencia: VigenciaDePromoAdmin })
       </fieldset>
       <p className="text-xs text-tinta-tenue">{textoDeVigencia(vigencia)} Se mira al agregar la promo a una mesa: lo que ya está en una mesa no cambia.</p>
     </div>
+  );
+}
+
+const sinVigencia = (v: VigenciaDePromoAdmin) => v.vigenteDesde === null && v.vigenteHasta === null && v.diasDeSemana === null;
+
+/**
+ * El bloque «Vigencia» de una promo. Con el interruptor apagado (`VIGENCIA_DE_PROMO_VISIBLE`, decisión del dueño: la promo se maneja con activar/desactivar) no se dibuja; solo si una promo trae una
+ * vigencia cargada de ANTES se la nombra, como texto, porque el POS la sigue respetando (no se esconde una regla que todavía decide qué se vende). Con el interruptor prendido: el título y, según el
+ * permiso, el formulario (`children`, armado por la página con su acción) o la vigencia como texto.
+ */
+export function BloqueDeVigencia({ vigencia, puedeEditar, children }: { vigencia: VigenciaDePromoAdmin; puedeEditar: boolean; children: React.ReactNode }) {
+  if (!VIGENCIA_DE_PROMO_VISIBLE) {
+    if (sinVigencia(vigencia)) return null;
+    return (
+      <p className="mt-3 text-sm text-tinta-tenue" data-vigencia-anterior>
+        Esta promo tiene una vigencia cargada de antes que el salón sigue respetando: {textoDeVigencia(vigencia)} Ya no se edita acá: la promo se maneja con activar y desactivar.
+      </p>
+    );
+  }
+  return (
+    <>
+      <h3 className="mt-3 text-sm font-medium">Vigencia</h3>
+      {puedeEditar ? children : <p className="mt-1 text-sm">{textoDeVigencia(vigencia)}</p>}
+    </>
   );
 }
 

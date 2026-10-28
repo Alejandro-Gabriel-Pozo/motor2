@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { SUMAR_LUGAR_DE_LISTA_VISIBLE } from "../../src/core/carta/cupos-de-promo";
+import { VIGENCIA_DE_PROMO_VISIBLE } from "../../src/core/carta/vigencia-de-promo";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
 
@@ -78,10 +79,15 @@ test("un lugar «lista» con su entrada (queda fijo); volver a guardar los cupos
     await expect(conEntrada.getByRole("status").first()).toBeVisible();
     expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: d.promo.id, tipo: "LISTA", activo: true } })).toBe(1);
 
-    // La vigencia: sin el domingo.
-    await conEntrada.locator('input[name="dia_6"]').uncheck();
-    await conEntrada.getByRole("button", { name: "Guardar vigencia" }).click();
-    await expect.poll(async () => (await prisma.promoCarta.findUniqueOrThrow({ where: { id: d.promo.id } })).diasDeSemana).toBe(63);
+    // La vigencia: sin el domingo (solo con su interruptor prendido; decisión del dueño del 2026-10-20: la promo no tiene vigencia, se maneja con activar/desactivar).
+    if (VIGENCIA_DE_PROMO_VISIBLE) {
+      await conEntrada.locator('input[name="dia_6"]').uncheck();
+      await conEntrada.getByRole("button", { name: "Guardar vigencia" }).click();
+      await expect.poll(async () => (await prisma.promoCarta.findUniqueOrThrow({ where: { id: d.promo.id } })).diasDeSemana).toBe(63);
+    } else {
+      await expect(conEntrada.getByRole("button", { name: "Guardar vigencia" })).toHaveCount(0);
+      await expect(conEntrada.locator('input[name="dia_6"]')).toHaveCount(0);
+    }
 
     // Destildarlo lo da de baja; la entrada queda guardada.
     await page.reload();

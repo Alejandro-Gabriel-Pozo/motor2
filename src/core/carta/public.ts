@@ -80,7 +80,7 @@ export { estiloCartaPorDefecto } from "./estilo";
 export { posicionCompleta } from "./portal";
 export type { EntradaPortalCarta } from "./portal";
 // GO-3b (ADR-032, D-7): la vigencia de una promo (el guard de la administración la valida; la venta la evalúa al agregar).
-export { TODOS_LOS_DIAS, mascaraDeDias, promoVigenteEl, validarVigenciaDePromo } from "./vigencia-de-promo";
+export { TODOS_LOS_DIAS, VIGENCIA_DE_PROMO_VISIBLE, mascaraDeDias, promoVigenteEl, validarVigenciaDePromo } from "./vigencia-de-promo";
 export type { VigenciaDePromo } from "./vigencia-de-promo";
 // GO-3b (ADR-032, D-1): la fecha del menú del día (de hoy a hoy + 13, en la zona de la empresa).
 export { DIAS_DE_ANTICIPACION_DEL_MENU, MENSAJE_MENU_DEL_DIA_APAGADO, MENU_DEL_DIA_VISIBLE, lugarDelDiaApagado, validarFechaDeMenuDelDia } from "./menu-del-dia";

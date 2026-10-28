@@ -18,8 +18,9 @@ import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
  *  - GUARDIÁN: cada columna de `PromoCarta` y de `PromoCartaSucursal` está declarada como dimensión de la matriz, como dimensión PENDIENTE o como «no afecta la visibilidad», con su motivo. Una
  *    columna nueva sin declarar pone este test en rojo: quien la agrega tiene que decir si cambia a quién se le ofrece la promo (y, si cambia, sumarla a la matriz).
  *
- * Fuera de la matriz, a pedido del dueño (2026-10-28), la VIGENCIA (fechas «desde»/«hasta») y los DÍAS de la semana: PENDIENTES de su decisión (pregunta abierta: si sobran las fechas). Todas las promos de
- * la matriz van sin vigencia. El hallazgo conocido (la carta pública ignora la vigencia) queda DOCUMENTADO abajo con su evidencia, sin arreglar.
+ * Fuera de la matriz, la VIGENCIA (fechas «desde»/«hasta») y los DÍAS de la semana: RETIRADOS por decisión del dueño (2026-10-20: la promo se maneja con activar/desactivar; la pantalla ya no los
+ * ofrece y las columnas se borrarán con una migración autorizada). Todas las promos de la matriz van sin vigencia. El hallazgo conocido (la carta pública ignora la vigencia que una promo traiga de antes) queda
+ * DOCUMENTADO abajo con su evidencia, sin arreglar (por decisión del dueño no se arregla: la vigencia se retira).
  */
 
 type Audiencia = "publico" | "salon";
@@ -50,10 +51,10 @@ const REGLAS: { id: string; regla: string; cumple: (c: Combinacion) => boolean }
 const seOfrece = (c: Combinacion) => REGLAS.every((r) => r.cumple(c));
 
 /**
- * Las columnas de las dos tablas que deciden la visibilidad, cada una declarada. `matriz`: es una dimensión de la matriz; `pendiente`: decide la visibilidad pero el dueño todavía no decidió la regla;
- * `no-afecta`: no cambia a quién se le ofrece la promo (con el motivo).
+ * Las columnas de las dos tablas que deciden la visibilidad, cada una declarada. `matriz`: es una dimensión de la matriz; `retirada`: la promo ya no la usa por decisión del dueño (sigue en la base hasta
+ * una migración destructiva autorizada; con NULL no decide nada); `no-afecta`: no cambia a quién se le ofrece la promo (con el motivo).
  */
-type Declaracion = { tipo: "matriz" | "pendiente" | "no-afecta"; motivo: string };
+type Declaracion = { tipo: "matriz" | "retirada" | "no-afecta"; motivo: string };
 const COLUMNAS: Record<"PromoCarta" | "PromoCartaSucursal", Record<string, Declaracion>> = {
   PromoCarta: {
     id: { tipo: "no-afecta", motivo: "identidad" },
@@ -67,9 +68,9 @@ const COLUMNAS: Record<"PromoCarta" | "PromoCartaSucursal", Record<string, Decla
     orden: { tipo: "no-afecta", motivo: "orden dentro de la sección" },
     activa: { tipo: "matriz", motivo: "R2" },
     creadoEn: { tipo: "no-afecta", motivo: "registro" },
-    vigenteDesde: { tipo: "pendiente", motivo: "vigencia por fechas: PENDIENTE de decisión del dueño (2026-10-28, ¿sobran las fechas?); ver el hallazgo documentado abajo" },
-    vigenteHasta: { tipo: "pendiente", motivo: "vigencia por fechas: PENDIENTE de decisión del dueño (2026-10-28, ¿sobran las fechas?); ver el hallazgo documentado abajo" },
-    diasDeSemana: { tipo: "pendiente", motivo: "días de la semana: PENDIENTE de decisión del dueño (2026-10-28)" },
+    vigenteDesde: { tipo: "retirada", motivo: "vigencia por fechas: retirada por decisión del dueño (2026-10-20: la promo se maneja con activar/desactivar); oculta en la pantalla; ver el hallazgo abajo" },
+    vigenteHasta: { tipo: "retirada", motivo: "vigencia por fechas: retirada por decisión del dueño (2026-10-20); oculta en la pantalla; ver el hallazgo abajo" },
+    diasDeSemana: { tipo: "retirada", motivo: "días de la semana: retirados por decisión del dueño (2026-10-20); ocultos en la pantalla" },
     version: { tipo: "no-afecta", motivo: "control optimista de la edición" },
     soloSalon: { tipo: "matriz", motivo: "R4" },
     cupos: { tipo: "matriz", motivo: "R5 (con o sin cupo de sección activo)" },
@@ -101,14 +102,14 @@ function camposDelModelo(modelo: string): string[] {
     .map((l) => l.split(/\s+/)[0]!);
 }
 
-describe("guardián: toda columna de las promos está declarada (dimensión, pendiente o «no afecta la visibilidad»)", () => {
+describe("guardián: toda columna de las promos está declarada (dimensión, retirada o «no afecta la visibilidad»)", () => {
   it.each(["PromoCarta", "PromoCartaSucursal"] as const)("%s", (modelo) => {
     expect(camposDelModelo(modelo).sort(), `Declará cada columna nueva de ${modelo} en COLUMNAS (¿cambia a quién se le ofrece la promo?)`).toEqual(Object.keys(COLUMNAS[modelo]).sort());
   });
 
-  it("lo pendiente es exactamente la vigencia y los días de la semana (fuera de la matriz hasta la decisión del dueño)", () => {
-    const pendientes = Object.entries(COLUMNAS.PromoCarta).filter(([, d]) => d.tipo === "pendiente").map(([c]) => c);
-    expect(pendientes.sort()).toEqual(["diasDeSemana", "vigenteDesde", "vigenteHasta"]);
+  it("lo retirado es exactamente la vigencia y los días de la semana (fuera de la matriz por decisión del dueño)", () => {
+    const retiradas = Object.entries(COLUMNAS.PromoCarta).filter(([, d]) => d.tipo === "retirada").map(([c]) => c);
+    expect(retiradas.sort()).toEqual(["diasDeSemana", "vigenteDesde", "vigenteHasta"]);
   });
 });
 
@@ -194,7 +195,7 @@ describe("matriz de visibilidad de las promos (contra Postgres real)", () => {
   });
 });
 
-describe("HALLAZGO documentado, SIN arreglar (pendiente de decisión del dueño, 2026-10-28): la carta pública ignora la vigencia de la promo", () => {
+describe("HALLAZGO documentado, SIN arreglar (decisión del dueño: la vigencia se retira, 2026-10-20): la carta pública ignora la vigencia que una promo traiga de antes", () => {
   const empresa = { id: EMPRESA_POR_DEFECTO_ID, slug: "principal", nombre: "Principal" };
   const bases = { deLaEmpresa: dbDeEmpresa(empresa.id), deLaSucursal: (sucursalId: string) => dbDeEmpresa(empresa.id, { lectura: [sucursalId], escritura: [] }) };
 

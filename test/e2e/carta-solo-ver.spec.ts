@@ -225,14 +225,16 @@ test("Apariencia y publicación: quien solo VE el tema y el portal recibe los ca
     await expect(page).toHaveURL(/\/carta\/tema$/);
     await expect(main.getByRole("navigation", { name: "Apariencia y publicación" }).getByRole("link", { name: "Portal" })).toBeVisible();
     await expect(main.locator("[data-aviso-solo-lectura]")).toBeVisible();
-    await expect(main.locator("fieldset[data-solo-lectura]")).toBeDisabled();
+    await expect(main.locator("fieldset[data-solo-lectura]")).toHaveAttribute("disabled", "");
+    await expect(main.locator("fieldset[data-solo-lectura] input").first()).toBeDisabled();
     await expect(main.getByRole("button", { name: /Guardar tema|Aplicar el tema|Desaplicar el tema/ })).toHaveCount(0);
     const axeTema = await new AxeBuilder({ page }).include("main").analyze();
     expect(axeTema.violations.map((v) => v.id)).toEqual([]);
 
     await page.goto("/carta/portal");
     await expect(main.locator("[data-aviso-solo-lectura]")).toBeVisible();
-    await expect(main.locator("fieldset[data-solo-lectura]")).toBeDisabled();
+    await expect(main.locator("fieldset[data-solo-lectura]")).toHaveAttribute("disabled", "");
+    await expect(main.locator("fieldset[data-solo-lectura] input").first()).toBeDisabled();
     await expect(main.getByRole("button", { name: /Guardar apariencia|al portal|Guardar «/ })).toHaveCount(0);
     await expect(main.getByText(/Editar «.*» en el portal/)).toHaveCount(0);
   } finally {

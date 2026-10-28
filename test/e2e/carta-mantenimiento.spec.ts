@@ -155,7 +155,8 @@ async function recorrer(page: Page, d: Awaited<ReturnType<typeof sembrar>>, anch
   await expect(pestanas.getByRole("link", { name: "Hoy" })).toHaveAttribute("aria-current", "page");
   if (celular) await expectObjetivosTactiles(pestanas.getByRole("link"), "pestañas de Carta");
   await pestanas.getByRole("link", { name: "Secciones y géneros" }).click();
-  await expect(page).toHaveURL(/\/carta\/parametrizacion\/secciones$/);
+  // Con `next dev` la primera visita compila la pantalla: se le da más margen que el de una aserción.
+  await expect(page).toHaveURL(/\/carta\/parametrizacion\/secciones$/, { timeout: 30_000 });
   await expect(page.getByRole("navigation", { name: "Carta", exact: true }).getByRole("link", { name: "Secciones y géneros" })).toHaveAttribute("aria-current", "page");
   await expectSinDesborde(page, `Secciones y géneros ${ancho} px`);
   await capturar(page, `carta-mant-secciones-${ancho}`);
