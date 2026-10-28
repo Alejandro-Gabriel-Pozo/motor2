@@ -97,35 +97,58 @@ export default async function FichaProveedorPage({
         </dl>
       </section>
 
-      {productosQueLeCompran.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-medium">Lo que se le compra</h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-tinta-tenue">
-                <th className="py-1">Producto</th>
-                <th>Unidad de compra</th>
-                <th>Cómo lo llama</th>
-                {puedeVerPrecios.has("comparar_precios") && <th className="text-right">Último precio</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {productosQueLeCompran.map((pp) => (
-                <tr key={pp.productoId} className="border-b last:border-0">
-                  <td className="py-1">
-                    {pp.producto.codigo} — {pp.producto.nombre}
-                  </td>
-                  <td>{pp.unidadCompraNombre}</td>
-                  <td>{pp.referenciaProveedor ?? <span className="text-tinta-tenue">—</span>}</td>
-                  {puedeVerPrecios.has("comparar_precios") && (
-                    <td className="text-right tabular-nums">{Number(pp.precioPorUnidadStock) > 0 ? plata(Number(pp.precioPorUnidadStock)) : "—"}</td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )}
+      {/* Fase 7, M1 (diseño de Catálogo §9): «cómo lo llama» va PRIMERO y destacado: es lo que el operario lee en la factura; el producto del sistema, al lado. Lo que falta dice «Sin cargar» (se completa con la
+          próxima compra), y sin compras la sección dice cómo se llena, en vez de no aparecer. */}
+      <section aria-labelledby="titulo-lo-que-se-le-compra">
+        <h2 id="titulo-lo-que-se-le-compra" className="mb-1 text-sm font-medium">
+          Lo que se le compra
+        </h2>
+        {productosQueLeCompran.length === 0 ? (
+          <p className="text-sm text-tinta-tenue">Todavía no se le compró nada. Lo que se le compra y cómo llama a cada producto en su factura se completan solos con la primera compra.</p>
+        ) : (
+          <>
+            <p className="mb-2 text-sm text-tinta-tenue">Cómo llama este proveedor a cada producto en su factura, y a qué producto del sistema corresponde.</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-tinta-tenue">
+                    <th scope="col" className="py-1 pr-3">
+                      Cómo lo llama (en su factura)
+                    </th>
+                    <th scope="col" className="pr-3">
+                      Producto del sistema
+                    </th>
+                    <th scope="col" className="pr-3">
+                      Unidad de compra
+                    </th>
+                    {puedeVerPrecios.has("comparar_precios") && (
+                      <th scope="col" className="text-right">
+                        Último precio
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {productosQueLeCompran.map((pp) => (
+                    <tr key={`${pp.productoId}-${pp.unidadCompraId}`} className="border-b last:border-0 align-top">
+                      <td className="py-1 pr-3 font-medium">
+                        {pp.referenciaProveedor ?? <span className="font-normal text-tinta-tenue">Sin cargar (se completa en la próxima compra)</span>}
+                      </td>
+                      <td className="py-1 pr-3">
+                        {pp.producto.nombre} <span className="text-tinta-tenue">({pp.producto.codigo})</span>
+                      </td>
+                      <td className="py-1 pr-3">{pp.unidadCompraNombre}</td>
+                      {puedeVerPrecios.has("comparar_precios") && (
+                        <td className="py-1 text-right tabular-nums">{Number(pp.precioPorUnidadStock) > 0 ? plata(Number(pp.precioPorUnidadStock)) : "—"}</td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </section>
 
       {p.productosConsignados.length > 0 && (
         <section>
