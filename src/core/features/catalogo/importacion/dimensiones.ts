@@ -84,6 +84,18 @@ export const DIMENSIONES_DEL_IMPORTADOR = {
       productoId: "El producto creado.",
       disponible: "«Disponible» de la fila.",
     },
+    ContenidoCartaProducto: {
+      sucursalId: "El local de la fila.",
+      productoId: "El producto.",
+      visibleEnCarta: "true (A.2: la carta mínima entra visible).",
+      seccionCartaId: "La sección del mapeo de la categoría (A.2).",
+      descripcion: "«Descripción en la carta» de la fila, o null.",
+      orden: "El número de fila del SKU en «Catálogo» (A.2).",
+      especial: "false (A.2).",
+      tags: "[] (A.2).",
+      generoCartaId: "null (A.2).",
+      mostrarNombreArriba: "false (A.2).",
+    },
     RegistroAuditoria: {
       entidad: "Producto o ContenidoCartaProducto.",
       entidadId: "El id del producto, o `sucursal:producto` del contenido (como «Agregar a la carta»).",

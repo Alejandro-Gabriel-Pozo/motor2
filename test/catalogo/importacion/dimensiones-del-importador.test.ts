@@ -16,7 +16,7 @@ import { ENCABEZADOS, HOJAS_QUE_NO_SE_LEEN } from "../../../src/core/features/ca
  * importador escribe y toda clave del archivo de correcciones está DECLARADA en `src/core/features/catalogo/importacion/dimensiones.ts`, con si afecta y por qué; en las dos direcciones
  * (una declaración que ya no se usa también falla). Así una dimensión nueva (una columna, un campo, una clave) no entra sin que alguien decida si cambia dinero, permisos, visibilidad o stock.
  *
- * Lo que se escribe se lee por AST de los TIPOS que lo fijan (no de un texto suelto): `ProductoAEscribir` y `DisponibilidadAEscribir` (`planificar-productos.ts`) y la fila de auditoría
+ * Lo que se escribe se lee por AST de los TIPOS que lo fijan (no de un texto suelto): `ProductoAEscribir` y `DisponibilidadAEscribir` (`planificar-productos.ts`), `ContenidoAEscribir` (`planificar-carta.ts`) y la fila de auditoría
  * (`FilaDeAuditoria`, `core/permisos/auditoria.ts`).
  */
 const RAIZ = join(__dirname, "../../..");
@@ -35,6 +35,7 @@ export function propiedadesDeInterfaz(fuente: string, interfaz: string): string[
 const FUENTES_DE_LO_QUE_SE_ESCRIBE: Record<string, { archivo: string; interfaz: string }[]> = {
   Producto: [{ archivo: "src/core/features/catalogo/importacion/planificar-productos.ts", interfaz: "ProductoAEscribir" }],
   DisponibilidadProducto: [{ archivo: "src/core/features/catalogo/importacion/planificar-productos.ts", interfaz: "DisponibilidadAEscribir" }],
+  ContenidoCartaProducto: [{ archivo: "src/core/features/catalogo/importacion/planificar-carta.ts", interfaz: "ContenidoAEscribir" }],
   RegistroAuditoria: [{ archivo: "src/core/permisos/auditoria.ts", interfaz: "FilaDeAuditoria" }],
 };
 
