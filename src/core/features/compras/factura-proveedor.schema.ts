@@ -49,7 +49,7 @@ export type ResultadoRegistrarFacturaProveedor = ResultadoCaso<DatosRegistrarFac
 
 /** «Aceptar mi parte»: desde la sucursal destino, con su sección y su fecha de stock (entre la fecha de la factura y hoy, en hora argentina). */
 export interface ComandoAceptarParteDeFactura {
-  parteId: string;
+  propuestaId: string;
   seccionId: string;
   /** El mediodía argentino del día de stock elegido. */
   fechaStock: Date;
@@ -86,7 +86,8 @@ export type CodigoAnularFacturaProveedor =
   | "STOCK_CONSUMIDO"
   | "CONTEO_POSTERIOR"
   | "NO_ES_COMPRA"
-  | "SIN_LINEAS";
+  | "SIN_LINEAS"
+  | "CON_NOTAS_DE_CREDITO";
 
 export type DatosAnularFacturaProveedor = { repetida: boolean; facturaId: string };
 

@@ -93,6 +93,7 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   "src/server/lecturas/reportes/comun.ts": P("MovimientoStock.precioPorUnidadStock", "Producto.proveedorConsignacion"),
   "src/server/persistencia/compras/cargar-compra-para-anular.ts": I("Carga la compra que `anularCompra` revierte (el nombre del proveedor para el mensaje): la acción devuelve un ResultadoAccion.", "Operacion.proveedor"),
   "src/server/persistencia/compras/cargar-compra-para-corregir.ts": I("Carga la compra que `corregirCompra` rehace (el proveedor, para repetirlo): la acción devuelve un ResultadoAccion.", "Operacion.proveedor"),
+  "src/server/persistencia/compras/cargar-factura-proveedor.ts": I("E3a: carga la propuesta que `aceptarPropuestaDeFactura` copia al Kardex (el precio por unidad del renglón va a cada línea): la acción devuelve un ResultadoAccion, nunca el dato.", "FacturaProveedorRenglon.precioPorUnidadStock"),
   "src/server/persistencia/movimientos/cargar-validaciones-de-movimiento.ts": I(
     "Carga las compras del proveedor (importe y proveedor) para el aviso C25 de posible factura repetida de `registrarMovimiento`: lee el importe y el proveedor de TODA la empresa (P2: lectura de verificación, antes de la transacción) para comparar; el mensaje nombra la sucursal y la fecha solo de las compras de sucursales que quien carga ve, y nunca el importe ni el número de factura. La acción devuelve un ResultadoAccion; el dato no va a una pantalla de lectura.",
     "MovimientoStock.precioTotal",

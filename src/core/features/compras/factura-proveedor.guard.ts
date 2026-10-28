@@ -75,7 +75,7 @@ export function guardComandoRegistrarFacturaProveedor(entrada: unknown, ahora: D
 /** «Aceptar mi parte»: la parte, la sección y la fecha de stock (el rango contra la fecha de la factura lo mira el caso de uso, que la conoce). */
 export function guardComandoAceptarParteDeFactura(entrada: unknown, ahora: Date): ResultadoDato<ComandoAceptarParteDeFactura> {
   const e = (entrada ?? {}) as Partial<Record<keyof ComandoAceptarParteDeFactura, unknown>>;
-  if (!texto(e.parteId)) return rechazar("vacio", "No se encontró la parte de la factura.");
+  if (!texto(e.propuestaId)) return rechazar("vacio", "No se encontró la parte de la factura.");
   if (!texto(e.seccionId)) return rechazar("vacio", "Elegí la sección donde entra la mercadería.");
   const fecha = validarFechaOperacion(e.fechaStock, ahora);
   if (!fecha.ok) return rechazar(fecha.codigo, fecha.mensaje);

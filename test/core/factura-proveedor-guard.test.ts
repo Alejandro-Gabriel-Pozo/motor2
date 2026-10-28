@@ -54,9 +54,9 @@ describe("guardComandoRegistrarFacturaProveedor", () => {
 
 describe("guardComandoAceptarParteDeFactura y guardComandoAnularFacturaProveedor", () => {
   it("aceptar exige parte, sección, fecha válida y clave", () => {
-    expect(guardComandoAceptarParteDeFactura({ parteId: "p", seccionId: "s", fechaStock: HOY, claveIdempotencia: CLAVE }, AHORA).ok).toBe(true);
-    expect(guardComandoAceptarParteDeFactura({ parteId: "p", seccionId: "", fechaStock: HOY, claveIdempotencia: CLAVE }, AHORA).ok).toBe(false);
-    expect(guardComandoAceptarParteDeFactura({ parteId: "p", seccionId: "s", fechaStock: HOY }, AHORA)).toMatchObject({ ok: false, mensaje: "Falta la clave de reintento: recargá la pantalla." });
+    expect(guardComandoAceptarParteDeFactura({ propuestaId: "p", seccionId: "s", fechaStock: HOY, claveIdempotencia: CLAVE }, AHORA).ok).toBe(true);
+    expect(guardComandoAceptarParteDeFactura({ propuestaId: "p", seccionId: "", fechaStock: HOY, claveIdempotencia: CLAVE }, AHORA).ok).toBe(false);
+    expect(guardComandoAceptarParteDeFactura({ propuestaId: "p", seccionId: "s", fechaStock: HOY }, AHORA)).toMatchObject({ ok: false, mensaje: "Falta la clave de reintento: recargá la pantalla." });
   });
   it("anular exige motivo (1 a 200) y clave", () => {
     expect(guardComandoAnularFacturaProveedor({ facturaId: "f", motivo: "  error de carga ", claveIdempotencia: CLAVE })).toEqual({ ok: true, valor: { facturaId: "f", motivo: "error de carga", claveIdempotencia: CLAVE } });
