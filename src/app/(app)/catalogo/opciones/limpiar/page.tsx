@@ -39,7 +39,7 @@ export default async function LimpiarOpcionesPage() {
       <div className="flex max-w-2xl flex-col gap-5 pb-24">
         <div className="flex flex-col gap-1">
           <Link href="/catalogo/opciones" className="text-sm underline">
-            ← Opciones de venta
+            ← Biblioteca de opciones
           </Link>
           <h1 className="mt-2 text-xl font-semibold">Limpiar opciones</h1>
           <p className="text-sm text-tinta-suave">

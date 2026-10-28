@@ -22,6 +22,9 @@ import { Selector } from "@/ui/primitivas/selector";
  * Catálogo › Maestros › Unidades (DEC-13). Ver ≠ escribir (DEC-33): los decimales, «Activar/Desactivar» y el alta se dibujan con el «Editar» de `unidades` (la clave de sus tres comandos); quien solo ve
  * lee la tabla (los decimales como texto) con el aviso de solo lectura.
  */
+/** Cómo se lee cada magnitud (la columna guarda la palabra en mayúsculas del esquema). */
+const NOMBRE_DE_LA_MAGNITUD: Record<string, string> = { PESO: "Peso", VOLUMEN: "Volumen", CANTIDAD: "Cantidad" };
+
 export default async function UnidadesPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
@@ -60,7 +63,7 @@ export default async function UnidadesPage() {
             {unidades.map((u) => (
               <tr key={u.id} className="border-b">
                 <td className="py-2">{u.nombre}</td>
-                <td>{u.magnitud}</td>
+                <td>{NOMBRE_DE_LA_MAGNITUD[u.magnitud]}</td>
                 <td>
                   {puedeEditar ? (
                     <FormConResultado

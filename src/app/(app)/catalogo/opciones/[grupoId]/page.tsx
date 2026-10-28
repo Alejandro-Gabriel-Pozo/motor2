@@ -77,7 +77,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
       <div className="flex flex-col gap-2">
         <p className="text-error">No se encontró ese grupo de opciones.</p>
         <Link href="/catalogo/opciones" className="text-sm underline">
-          ← Volver a Opciones de venta
+          ← Volver a la Biblioteca de opciones
         </Link>
       </div>
     );
@@ -112,7 +112,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
       <AvisoConDeshacer>
         <div className="flex flex-col gap-1">
           <Link href="/catalogo/opciones" className="text-sm underline">
-            ← Opciones de venta
+            ← Biblioteca de opciones
           </Link>
           <h1 className="mt-2 text-xl font-semibold">{nombreGrupo}</h1>
           <p className="text-sm text-tinta-suave">

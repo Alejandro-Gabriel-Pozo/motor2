@@ -45,7 +45,7 @@ test("celular (375 px): el menú no está fijo, el contenido usa todo el ancho y
   expect(await buscador.evaluate((el) => parseFloat(getComputedStyle(el).fontSize)), "buscador: 16 px (iOS no hace zoom)").toBeGreaterThanOrEqual(16);
   const grupoActivo = cajon.getByRole("button", { name: /Catálogo/ });
   await expect(grupoActivo).toHaveAttribute("aria-expanded", "true");
-  await expect(cajon.getByRole("link", { name: /^Opciones de venta/ })).toHaveAttribute("aria-current", "page");
+  await expect(cajon.getByRole("link", { name: /^Biblioteca de opciones/ })).toHaveAttribute("aria-current", "page");
   await capturar(page, "menu-abierto");
 
   // Un grupo abierto a la vez.
@@ -144,7 +144,7 @@ test("escritorio (1280 px): el menú lateral sigue fijo, sin ☰, y «Ocultar me
   const lateral = page.locator("aside");
   await expect(lateral).toBeVisible();
   expect((await lateral.boundingBox())!.width, "el menú lateral mide 224 px, como siempre").toBeCloseTo(224, 0);
-  await expect(lateral.getByRole("link", { name: /^Opciones de venta/ })).toBeVisible();
+  await expect(lateral.getByRole("link", { name: /^Biblioteca de opciones/ })).toBeVisible();
   await page.getByRole("button", { name: "Ocultar menú" }).click();
   await expect.poll(async () => (await lateral.boundingBox())?.width ?? 0).toBe(0);
   await page.getByRole("button", { name: "Mostrar menú" }).click();

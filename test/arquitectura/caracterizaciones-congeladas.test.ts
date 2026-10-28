@@ -704,6 +704,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Fase 6, bloque 3 («+ Opción» y «+ Extra»; ADITIVO, solo ADMINISTRACIÓN, la carta pública y el cobro idénticos; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): la tarjeta de cada grupo del paso 2 «Opciones y precio» suma el botón «+ Opción» (con el nombre accesible «+ Opción en <grupo>») antes de «Quitar de este producto», para quien puede Editar `opciones_definir`. Revisado con `git diff -U0`: cambian SOLO 2 líneas, las dos de la tarjeta de «Tipos de Pizza» (1280 y 375 px), que suman `[botón: + Opción (lector: «+ Opción en Tipos de Pizza»)]`; las secciones de la carta pública no cambian.",
       },
+      {
+        blob: "7ba3d5fe8f25ca519a9f7c375113cebf1932b504",
+        // El commit PADRE de este (9246bc04) es el último antes de la regeneración; el texto lo cambia el vocabulario de Catálogo de la Fase 7 (DEC-13).
+        commit: "9246bc04",
+        motivo:
+          "Fase 7, Catálogo (DEC-13; CAMBIA SOLO UN TEXTO de administración, regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_ccat_e2e local): la entrada del menú «Opciones de venta» se llama «Biblioteca de opciones», y los enlaces que llevan a esa pantalla la nombran igual. Revisado con `git diff -U0`: cambian SOLO 4 líneas, dos de «Opciones y precio» de Pizzas («se arman en la [enlace: Biblioteca de opciones]», 1280 y 375 px) y dos del grupo «Tipos de Pizza» («[enlace: ← Biblioteca de opciones]», 1280 y 375 px); la carta pública, la tipografía y el resto de la administración quedan idénticos byte a byte.",
+      },
     ],
   },
 };

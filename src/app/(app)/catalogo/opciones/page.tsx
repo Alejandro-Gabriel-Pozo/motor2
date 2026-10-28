@@ -13,7 +13,7 @@ import { TablaDeDatos, type ColumnaDeTabla } from "@/ui/componentes/datos/tabla-
 import { AltaDeGrupo } from "./alta-de-grupo";
 
 /**
- * «Opciones de venta» (GO-2d; ADR-030): los grupos de opciones de la empresa (tamaños, variantes, lo incluido sin costo y los adicionales con recargo). Entrar pide el «Ver»
+ * «Biblioteca de opciones» (antes «Opciones de venta»; nombre de DEC-13, Fase 7) (GO-2d; ADR-030): los grupos de opciones de la empresa (tamaños, variantes, lo incluido sin costo y los adicionales con recargo). Entrar pide el «Ver»
  * de `opciones_definir`; el alta se dibuja solo con «Editar» (cortesía de la interfaz: la acción vuelve a exigir el permiso). El detalle de cada grupo (sus opciones y sus
  * cambios de precio) está en `/catalogo/opciones/[grupoId]`, de la misma familia y con la misma clave.
  *
@@ -55,7 +55,7 @@ export default async function OpcionesDeVentaPage() {
     <AvisoConDeshacer>
       <div className="flex max-w-4xl flex-col gap-6 pb-24">
         <div>
-          <h1 className="text-xl font-semibold">Opciones de venta</h1>
+          <h1 className="text-xl font-semibold">Biblioteca de opciones</h1>
           <p className="text-sm text-tinta-suave">
             Los tamaños, las variantes, lo que viene incluido y los adicionales que se pueden elegir al vender un producto. Acá se arman los grupos; qué grupos usa cada producto
             se elige en su ficha.
