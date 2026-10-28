@@ -60,7 +60,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
 
   it("mostrador: dos ventas separadas de 0,5 (dos Operaciones) consumen 1 bollo en total, no 2 — filas [-1, 0], enteras", async () => {
     const { mp, pv } = await crearPizzaConBollo(0.5, "A");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const r1 = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
     expect(r1.ok, r1.mensaje).toBe(true);
@@ -79,7 +79,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
 
   it("POS: dos mesas distintas, cada una con 0,5, cerradas con cerrarCuenta en momentos DISTINTOS — total -1", async () => {
     const { mp, pv } = await crearPizzaConBollo(0.5, "B");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const mesa1 = await prisma.mesa.create({ data: { sucursalId, numero: 1 } });
     const mesa2 = await prisma.mesa.create({ data: { sucursalId, numero: 2 } });
@@ -114,7 +114,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
         data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadBolloId, mermaPorcentaje: 0 }] } },
       });
     }
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const r = await registrarVenta({
       fecha: new Date(),
@@ -136,7 +136,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
 
   it("paso 0,25 × 4: total -1 (no 0 — Math.round(0,25) redondea hacia abajo sin el arrastre)", async () => {
     const { mp, pv } = await crearPizzaConBollo(0.25, "D");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     for (let i = 0; i < 4; i++) {
       const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.25 }] });
@@ -151,7 +151,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
 
   it("anulación: vender 0,5, vender 0,5, anular la primera, vender 0,5 — saldo final 8 (2 medias vigentes = 1 bollo) y D vuelve a 0", async () => {
     const { mp, pv } = await crearPizzaConBollo(0.5, "E");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 9 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 9 }], claveIdempotencia: crypto.randomUUID() });
 
     const v1 = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });
     expect(v1.ok, v1.mensaje).toBe(true);
@@ -187,10 +187,10 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursal2.id, productoId: pv.id, disponible: true } });
     // La compra de la Sucursal 1 corre con `admin` (ya activo desde el beforeEach); la de la Sucursal 2 necesita a `admin2` — el
     // permiso de `registrarMovimiento` exige que la sección pedida sea de LA SUCURSAL del usuario logueado (Fase 6, seguridad).
-    const compra1 = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    const compra1 = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     expect(compra1.ok, compra1.mensaje).toBe(true);
     await mockearUsuarioActual({ id: admin2.id, email: admin2.email, nombre: null });
-    const compra2 = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccion2.id, items: [{ productoId: mp.id, cantidad: 10 }] });
+    const compra2 = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccion2.id, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     expect(compra2.ok, compra2.mensaje).toBe(true);
 
     // Sucursal 1: una sola venta de 0,5 — escribe -1 (deuda queda en -0,5, sin nadie que la retire en este test). Vuelve a `admin`.
@@ -219,7 +219,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.3, unidadId: unidadEntera.id, mermaPorcentaje: 7 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 1000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 1000 }], claveIdempotencia: crypto.randomUUID() });
 
     const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 7 }] });
     expect(resultado.ok, resultado.mensaje).toBe(true);

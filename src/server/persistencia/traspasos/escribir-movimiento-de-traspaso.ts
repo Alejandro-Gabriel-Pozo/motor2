@@ -1,11 +1,13 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { valorizarLineaDeTraspaso } from "@/core/stock/public";
 
 /**
  * EL escritor de las dos escrituras que hace cada paso de un traspaso en el Kardex (Hito 5, pieza 5.4, A4; O.13 de `docs/pureza-integracion.md`):
  *  1. la `Operacion` de ESTA sucursal, con la clave de idempotencia I3 y su hash si vinieron (`null` si no);
- *  2. su única línea de Kardex —`create` de UNA fila, no `createMany`—, a precio 0 y atada al traspaso, con la cantidad ya con signo
- *     (negativa en la salida de Origen, positiva en la entrada de Destino y en el reingreso a Origen).
+ *  2. su única línea de Kardex —`create` de UNA fila, no `createMany`—, atada al traspaso, con la cantidad ya con signo (negativa en la salida
+ *     de Origen, positiva en la entrada de Destino y en el reingreso a Origen) y valorizada con la COPIA del costo del origen que guardó el
+ *     traspaso al enviarse (E2, ADR-040: `valorizarLineaDeTraspaso`; sin copia, a precio 0 como antes: «pendiente de completar»).
  * Antes eran dos copias casi iguales: `escribirSalidaDeTraspaso` (`escribir-aprobacion-de-traspaso.ts`, sin clave de idempotencia: ni la aprobación
  * ni el envío directo tienen I3) y `escribirOperacionDeEntrada` (`escribir-entrada-de-traspaso.ts`, con la clave si vino). Las dos delegan acá y las
  * escrituras que llegan a la base son las mismas, en el mismo orden y con las mismas claves (las dos mandaban `claveIdempotencia` y `payloadHash`,
@@ -28,9 +30,12 @@ export interface MovimientoDeTraspasoAEscribir {
   cantidadConSigno: number;
   detalle: string;
   traspasoId: string;
+  /** E2 (ADR-040): la copia del costo del origen (`TraspasoSucursal.costoUnitarioOrigen`), la MISMA en los tres pasos; `null` = sin costo conocido. */
+  costoUnitarioOrigen: number | null;
 }
 
 export async function escribirMovimientoDeTraspaso(tx: Prisma.TransactionClient, m: MovimientoDeTraspasoAEscribir): Promise<{ operacionId: string }> {
+  const { precioTotal, precioPorUnidadStock } = valorizarLineaDeTraspaso(m.cantidadConSigno, m.costoUnitarioOrigen);
   const operacion = await tx.operacion.create({
     data: {
       sucursalId: m.sucursalId,
@@ -49,8 +54,8 @@ export async function escribirMovimientoDeTraspaso(tx: Prisma.TransactionClient,
       proceso: m.proceso,
       cantidad: m.cantidadConSigno,
       detalle: m.detalle,
-      precioTotal: 0,
-      precioPorUnidadStock: 0,
+      precioTotal,
+      precioPorUnidadStock,
       traspasoSucursalId: m.traspasoId,
     },
   });

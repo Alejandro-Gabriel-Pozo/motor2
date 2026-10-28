@@ -3,7 +3,8 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { accionesDelMenuQueElUsuarioPuedeVer } from "@/server/acceso/gate";
 import type { AccionClave } from "@/core/permisos/acciones";
 import { PROCESOS_DEL_SELECTOR, type ProcesoDelSelector } from "@/core/movimientos/public";
-import { GRUPOS_NAV, accionesDeNavegacion, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso, type GrupoNav } from "@/core/navegacion/estructura";
+import { GRUPOS_NAV, accionesDeNavegacion, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso, puedeVerItem, type GrupoNav } from "@/core/navegacion/estructura";
+import type { PantallaDeStock } from "@/core/stock/public";
 import { tarjetasDeInicio, type TarjetaInicio } from "@/core/navegacion/tarjetas-inicio";
 
 async function menuVisibleDe(ctx: ContextoUsuario): Promise<GrupoNav[]> {
@@ -37,4 +38,14 @@ export async function tarjetasDelUsuario(ctx: ContextoUsuario): Promise<TarjetaI
 export async function procesosVisiblesDelSelector(ctx: ContextoUsuario, visibles?: ReadonlySet<AccionClave>): Promise<ProcesoDelSelector[]> {
   const puedeVer = visibles ?? (await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, PROCESOS_DEL_SELECTOR.map((p) => p.accion), ctx.db));
   return PROCESOS_DEL_SELECTOR.filter((p) => puedeVer.has(p.accion));
+}
+
+/**
+ * De una fila de pestañas de Stock (DEC-27: `PESTANAS_DE_EXISTENCIAS` o `PESTANAS_DE_CONFIGURACION`), las que el rol puede VER: una pestaña con `accion` si ve esa clave, una con `algunaDe` si ve alguna.
+ * Cada clave se evalúa en su contexto (las de empresa en la empresa activa), con el mismo cálculo del menú. `visibles` es el conjunto que la página ya calculó con su guarda, si lo tiene.
+ */
+export async function pestanasVisiblesDeStock(ctx: ContextoUsuario, pestanas: readonly PantallaDeStock[], visibles?: ReadonlySet<AccionClave>): Promise<PantallaDeStock[]> {
+  const claves = [...new Set(pestanas.flatMap((p) => (p.algunaDe ? [...p.algunaDe] : [p.accion])))];
+  const puedeVer = visibles ?? (await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, claves, ctx.db));
+  return pestanas.filter((p) => puedeVerItem(p, puedeVer));
 }

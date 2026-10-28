@@ -16,13 +16,18 @@ const CASOS = [
   // Los directos y las entradas mudadas siguen resaltándose a sí mismas.
   { ruta: "/movimientos/merma", nombre: "Merma" },
   { ruta: "/movimientos/venta", nombre: "Carga de ventas sin ticket" },
-  { ruta: "/movimientos/secciones", nombre: "Depósitos" },
+  // DEC-27: Stock tiene dos entradas; sus pestañas y editores resaltan la entrada (Depósitos, aunque su URL empiece con /movimientos, resalta Configuración).
+  { ruta: "/stock/consolidado", nombre: "Existencias" },
+  { ruta: "/stock/alertas", nombre: "Existencias" },
+  { ruta: "/stock/configuracion", nombre: "Configuración" },
+  { ruta: "/stock/minimo", nombre: "Configuración" },
+  { ruta: "/movimientos/secciones", nombre: "Configuración" },
 ];
 
 for (const { ruta, nombre } of CASOS) {
   test(`menú: en ${ruta} hay un solo ítem activo y es «${nombre}»`, async ({ paginaAutenticada: page }) => {
     await page.goto(ruta);
-    // Solo el menú: la fila «Qué movimiento registrar» (otra `nav`, dentro de la pantalla) también marca su pestaña actual.
+    // Solo el menú: las filas de pestañas («Qué movimiento registrar», «Qué configurar»: otra `nav`, dentro de la pantalla) también marcan su pestaña actual.
     const activos = page.locator('aside nav a[aria-current="page"]');
     await expect(activos).toHaveCount(1);
     await expect(activos).toHaveText(nombre);

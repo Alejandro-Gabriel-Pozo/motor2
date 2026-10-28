@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
-import { descripcionAuditoriaAnulacion, evaluarAnulacion, evaluarPosterioresAAnularCompra, mensajeCompraAnulada } from "@/core/compras/public";
+import { descripcionAuditoriaAnulacion, evaluarAnulacion, evaluarPosterioresAAnularCompra, mensajeCompraAnulada, rechazoPorCompraDeFactura } from "@/core/compras/public";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoAnularCompra, ResultadoAnularCompra } from "@/core/features/compras/compra.schema";
 import { detalleReversionDeCompra } from "@/core/movimientos/public";
@@ -53,6 +53,10 @@ export async function anularCompraCasoDeUso(
 
     const compra = await cargarCompraParaAnular(tx, { operacionId, sucursalId: actor.sucursalId });
     if (!compra) return fracaso("NO_ENCONTRADA", MENSAJE_OPERACION_NO_ENCONTRADA);
+
+    // E3a (D8): la compra de una PARTE de una factura de proveedor no se anula suelta (la factura quedaría vigente con una parte sin stock): se anula la factura entera.
+    const deFactura = rechazoPorCompraDeFactura(compra.esDeFactura, "anular");
+    if (deFactura) return fracaso(deFactura.motivo, deFactura.mensaje);
 
     const evaluacion = evaluarAnulacion({ proceso: compra.proceso, anuladaEn: compra.anuladaEn, lineas: compra.lineas }, compra.saldos);
     if (!evaluacion.ok) return fracaso(evaluacion.motivo, evaluacion.mensaje);

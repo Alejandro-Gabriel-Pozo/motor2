@@ -44,6 +44,15 @@ const FK_CON_DISCRIMINADOR: Readonly<Record<string, string>> = {
     "Paquete 5, M7.2: (empresaId, planDeCostosId, centro) → CentroDeCostos(empresaId, planDeCostosId, id): el centro de una línea es del plan de la versión (no se puede repartir a un centro de otro plan).",
   Cuenta_empresaId_mesaId_tipoMesa_fkey:
     "M1 del mostrador (ADR-039): (empresaId, mesaId, tipoMesa) → Mesa(empresaId, id, tipo): la cuenta lleva el tipo de su puesto (SALON | MOSTRADOR) y la base impide una cuenta con un tipo distinto del de su mesa y cambiar el tipo de un puesto con cuentas (RESTRICT en ambos sentidos).",
+  FacturaProveedorPropuestaRenglon_renglon_fkey:
+    "E3a-M (ADR-041): (empresaId, facturaProveedorId, renglón) → FacturaProveedorRenglon(empresaId, facturaProveedorId, id): el renglón propuesto es de LA factura de su propuesta (no de otra).",
+  FacturaProveedorPropuestaRenglon_propuesta_fkey:
+    "E3a-M (ADR-041): (empresaId, facturaProveedorId, propuesta, origen, destino) → FacturaProveedorPropuesta(empresaId, facturaProveedorId, id, origenSucursalId, destinoSucursalId): el renglón es de la MISMA factura que su propuesta y repite sus dos puntas, que la política por sucursal (ENTRE_SUCURSALES) lee de la fila hija; ON UPDATE RESTRICT. Lleva CINCO columnas (ver COLUMNAS_DE_FK_MAS_ANCHAS).",
+};
+
+/** Las FK declaradas arriba que llevan MÁS de tres columnas (el resto lleva exactamente tres). Nombre → columnas. */
+const COLUMNAS_DE_FK_MAS_ANCHAS: Readonly<Record<string, number>> = {
+  FacturaProveedorPropuestaRenglon_propuesta_fkey: 5,
 };
 
 function codigoDeError(e: unknown): string | undefined {
@@ -110,7 +119,7 @@ describe("multiempresa: estructura de la base (ADR-007, A2)", () => {
       const clave = (f: { origen: string; destino: string; columnas: string[] }) => `${f.origen} -> ${f.destino} (${[...f.columnas].sort().join(", ")})`;
       expect(entreTablasPorEmpresa.map(clave).sort()).toEqual(fkEntreTablasPorEmpresaDelEsquema().map(clave).sort());
       for (const f of entreTablasPorEmpresa) {
-        expect(f.columnas, f.nombre).toHaveLength(f.nombre in FK_CON_DISCRIMINADOR ? 3 : 2);
+        expect(f.columnas, f.nombre).toHaveLength(f.nombre in FK_CON_DISCRIMINADOR ? (COLUMNAS_DE_FK_MAS_ANCHAS[f.nombre] ?? 3) : 2);
         expect(f.columnas, f.nombre).toContain("empresaId");
       }
       expect(Object.keys(FK_CON_DISCRIMINADOR).filter((n) => !entreTablasPorEmpresa.some((f) => f.nombre === n)), "FK con discriminador declaradas que la base no tiene").toEqual([]);

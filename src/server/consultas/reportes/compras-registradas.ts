@@ -33,7 +33,11 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
       anuladaPor: { select: { email: true } },
       movimientos: {
         where: { proceso: "COMPRA" },
-        include: { producto: { select: { codigo: true, nombre: true, unidadStock: { select: { nombre: true } } } }, seccion: { select: { nombre: true } } },
+        include: {
+          producto: { select: { codigo: true, nombre: true, unidadStock: { select: { nombre: true } } } },
+          seccion: { select: { nombre: true } },
+          facturaProveedorRenglon: { select: { facturaProveedorId: true } },
+        },
         orderBy: { creadoEn: "asc" },
       },
     },
@@ -71,6 +75,7 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
       anuladaPorEmail: o.anuladaPor?.email ?? null,
       // codigo es @unique (prisma/schema.prisma) — dedupe seguro, mismo criterio de "productos distintos" que §2 (tabla-periodo.tsx).
       cantidadProductos: new Set(renglones.map((l) => l.productoCodigo)).size,
+      facturaProveedorId: o.movimientos.find((m) => m.facturaProveedorRenglon)?.facturaProveedorRenglon?.facturaProveedorId ?? null,
       renglones,
     };
   });

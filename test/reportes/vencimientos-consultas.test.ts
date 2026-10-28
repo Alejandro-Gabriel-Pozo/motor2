@@ -38,10 +38,10 @@ describe("conciliación de vencimientos: las ventas y consumos del período sale
   async function loteQueDesaparece(codigo: string, nombre: string, contado: number, consumos: number[]) {
     const mp = await sembrarProductoDisponible({ codigo, nombre, tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const lote = new Date("2026-03-10");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: contado, loteVencimiento: lote }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: contado, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: contado, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
     for (const cantidad of consumos) {
-      await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destinoId, items: [{ productoId: mp.id, cantidad, loteVencimiento: lote }] });
+      await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destinoId, items: [{ productoId: mp.id, cantidad, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
     }
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
     return mp;

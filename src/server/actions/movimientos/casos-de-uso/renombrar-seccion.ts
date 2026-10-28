@@ -23,13 +23,13 @@ import { fijarNombreDeSeccion } from "@/server/persistencia/movimientos/seccione
 export async function renombrarSeccionCasoDeUso(actor: Pick<ContextoUsuario, "db" | "sucursalId">, comando: ComandoRenombrarSeccion): Promise<ResultadoRenombrarSeccion> {
   const { seccionId, nombre } = comando;
   const seccion = await actor.db.seccion.findUnique({ where: { id: seccionId } });
-  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró la sección.");
+  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró el depósito.");
 
   const existente = await actor.db.seccion.findFirst({
     where: { sucursalId: actor.sucursalId, nombre: { equals: nombre, mode: "insensitive" }, id: { not: seccionId } },
   });
-  if (existente) return fracaso("NOMBRE_REPETIDO", `Ya existe una sección "${existente.nombre}" en esta sucursal.`);
+  if (existente) return fracaso("NOMBRE_REPETIDO", `Ya existe un depósito "${existente.nombre}" en esta sucursal.`);
 
   await fijarNombreDeSeccion(actor.db, { id: seccionId, nombre });
-  return exito(`Sección renombrada a "${nombre}".`, null);
+  return exito(`Depósito renombrado a "${nombre}".`, null);
 }

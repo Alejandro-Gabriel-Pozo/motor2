@@ -29,10 +29,10 @@ describe("generarReporteDevoluciones", () => {
   it("agrupa devoluciones de clientes por producto y devoluciones a proveedores por proveedor", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Molino SA" } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20, precioTotal: 200 }] }); // $10/kg
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20, precioTotal: 200 }], claveIdempotencia: crypto.randomUUID() }); // $10/kg
 
-    await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 2 }] });
-    await registrarMovimiento({ proceso: "DEVOLUCION_PROVEEDOR", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 3, precioTotal: 30 }] });
+    await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "DEVOLUCION_PROVEEDOR", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 3, precioTotal: 30 }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await generarReporteDevoluciones(sucursalId, 30, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.clientes.find((c) => c.producto === "Harina")?.cantidad).toBe(2);
@@ -49,10 +49,10 @@ describe("generarReporteDevoluciones", () => {
       { codigo: "MP_2", nombre: "Prepizza masa", tipo: "MP", unidadStockId: unidadKgId, insumoId, seProduce: true },
       sucursalId
     );
-    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: comprado.id, cantidad: 5 }] });
-    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: producido.id, cantidad: 5 }] });
-    await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: comprado.id, cantidad: 1 }] });
-    await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: producido.id, cantidad: 1 }] });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: comprado.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: producido.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: comprado.id, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: producido.id, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await generarReporteDevoluciones(sucursalId, 30, prisma, AHORA_DE_LA_CORRIDA);
     const filaComprado = rep.clientes.find((c) => c.productoId === comprado.id)!;

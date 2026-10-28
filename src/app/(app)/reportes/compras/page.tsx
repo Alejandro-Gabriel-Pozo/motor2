@@ -9,6 +9,7 @@ import { SIN_PROVEEDOR } from "@/core/reportes/public";
 import { listarComprasRegistradas } from "@/server/consultas/reportes/compras-registradas";
 import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
 import { BotonAnularCompra } from "./boton-anular-compra";
+import { BotonAnularFactura } from "./boton-anular-factura";
 import { FormularioCorregirCompra } from "./formulario-corregir-compra";
 import { formatearNumeroComprobante, leerNumeroComprobante } from "@/core/datos/numero-comprobante";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -179,7 +180,19 @@ export default async function ComprasRegistradasPage({
                       ver la operación
                     </EnlaceInterno>
                   </p>
-                  {(puedeAnular || (puedeCorregir && !c.anuladaEn)) && (
+                  {c.facturaProveedorId && (
+                    <div className="mt-2 flex flex-col gap-2">
+                      <p className="text-xs text-tinta-tenue">Es la parte de esta sucursal en una factura de proveedor: no se corrige ni se anula sola, se anula la factura entera (con todas sus partes).</p>
+                      {puedeAnular && (
+                        <BotonAnularFactura
+                          facturaId={c.facturaProveedorId}
+                          anulada={Boolean(c.anuladaEn)}
+                          resumen={`del ${fechaCorta(c.fecha)}${c.proveedorNombre ? ` de ${c.proveedorNombre}` : ""}${c.nroFactura ? `, N° ${c.nroFactura}` : ""}`}
+                        />
+                      )}
+                    </div>
+                  )}
+                  {!c.facturaProveedorId && (puedeAnular || (puedeCorregir && !c.anuladaEn)) && (
                     <div className="mt-2 flex flex-col gap-2">
                       {puedeCorregir && !c.anuladaEn && (
                         <FormularioCorregirCompra

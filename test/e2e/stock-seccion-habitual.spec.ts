@@ -68,21 +68,21 @@ test("configurar, editar y quitar la sección habitual de un producto", async ({
   const s = await sembrar(sucursalId);
   try {
     await page.goto("/stock/seccion-habitual");
-    await expect(page.getByRole("heading", { name: "Sección habitual", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Configuración · Depósito habitual", exact: true })).toBeVisible();
 
     // Alta.
     await elegirProducto(page, s.pizza.nombre);
-    await page.getByRole("combobox", { name: "Sección habitual", exact: true }).selectOption({ label: s.cocina.nombre });
+    await page.getByRole("combobox", { name: "Depósito habitual", exact: true }).selectOption({ label: s.cocina.nombre });
     await page.getByRole("button", { name: "Guardar" }).click();
-    await expect(page.getByText(`Sección habitual de «${s.pizza.nombre}»: «${s.cocina.nombre}».`)).toBeVisible();
+    await expect(page.getByText(`Depósito habitual de «${s.pizza.nombre}»: «${s.cocina.nombre}».`)).toBeVisible();
     await expect(filaDe(page, s.pizza.nombre)).toContainText(s.cocina.nombre);
 
     // Editar: el producto viene cargado, se cambia la sección.
     await filaDe(page, s.pizza.nombre).getByRole("link", { name: "Editar" }).click();
-    await expect(page.getByRole("heading", { name: "Editar sección habitual" })).toBeVisible();
-    await page.getByRole("combobox", { name: "Sección habitual", exact: true }).selectOption({ label: s.deposito.nombre });
+    await expect(page.getByRole("heading", { name: "Editar depósito habitual" })).toBeVisible();
+    await page.getByRole("combobox", { name: "Depósito habitual", exact: true }).selectOption({ label: s.deposito.nombre });
     await page.getByRole("button", { name: "Guardar" }).click();
-    await expect(page.getByRole("heading", { name: "Fijar sección habitual" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Fijar depósito habitual" })).toBeVisible();
     await expect(filaDe(page, s.pizza.nombre)).toContainText(s.deposito.nombre);
     expect(await prisma.seccionHabitualProducto.count({ where: { productoId: s.pizza.id } })).toBe(1);
 
@@ -92,7 +92,7 @@ test("configurar, editar y quitar la sección habitual de un producto", async ({
 
     // Quitar (con confirmación).
     await page.goto("/stock/seccion-habitual");
-    await filaDe(page, s.pizza.nombre).getByRole("button", { name: `Quitar la sección habitual de ${s.pizza.nombre}` }).click();
+    await filaDe(page, s.pizza.nombre).getByRole("button", { name: `Quitar el depósito habitual de ${s.pizza.nombre}` }).click();
     await filaDe(page, s.pizza.nombre).getByRole("button", { name: "Sí, quitar" }).click();
     await expect(filaDe(page, s.pizza.nombre)).toHaveCount(0);
     expect(await prisma.seccionHabitualProducto.count({ where: { productoId: s.pizza.id } })).toBe(0);
@@ -118,7 +118,7 @@ test("cierre de cuenta con la habitual en una sección sin muzza y la muzza en o
     await page.goto(`/mesas/${mesa.id}`);
     await page.getByRole("button", { name: "Cerrar cuenta" }).click();
     const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 981" });
-    await expect(cierre.getByText("Cada producto se descuenta de su sección habitual; si ahí no alcanza, de otra sección con stock.")).toBeVisible();
+    await expect(cierre.getByText("Cada producto se descuenta de su depósito habitual; si ahí no alcanza, de otro depósito con stock.")).toBeVisible();
     await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
     const aviso = page.locator('[role="status"][aria-live="polite"]');
     await expect(aviso).toHaveText(/^Cuenta de la mesa 981 cerrada: se registró la venta por /);

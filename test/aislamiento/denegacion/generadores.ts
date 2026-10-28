@@ -276,16 +276,17 @@ const completos: Record<string, Valor> = {
     ),
   "accion|actions/movimientos/movimientos.ts|registrarMovimiento": (k, c) =>
     conVariantes(
+      // E1 (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md): la clave de reintento es obligatoria; cada intento manda una nueva para llegar a la lógica.
       // Compra con la sección ajena, y (de otra empresa) con el proveedor o el producto ajenos.
-      intento(c, ["seccionId", "proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: k.seccionId, proveedorId: k.proveedorId, items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100 }] }]),
-      intento(c, ["proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, proveedorId: k.proveedorId, items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100 }] }]),
-      intento(c, ["productoId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, items: [{ productoId: k.productoId, cantidad: 1, precioTotal: 100 }] }]),
+      intento(c, ["seccionId", "proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: k.seccionId, proveedorId: k.proveedorId, items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }]),
+      intento(c, ["proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, proveedorId: k.proveedorId, items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }]),
+      intento(c, ["productoId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, items: [{ productoId: k.productoId, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }]),
       // Merma con el motivo ajeno; consumo con el destino ajeno (son de la empresa).
-      intento(c, ["motivoId"], [{ proceso: "MERMA", fecha: hoy(), seccionId: c.propio.seccionId, motivoId: k.motivoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }] }]),
-      intento(c, ["destinoId"], [{ proceso: "CONSUMO", fecha: hoy(), seccionId: c.propio.seccionId, destinoId: k.destinoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }] }]),
+      intento(c, ["motivoId"], [{ proceso: "MERMA", fecha: hoy(), seccionId: c.propio.seccionId, motivoId: k.motivoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() }]),
+      intento(c, ["destinoId"], [{ proceso: "CONSUMO", fecha: hoy(), seccionId: c.propio.seccionId, destinoId: k.destinoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() }]),
       // Transferencia hacia una sección ajena; ajuste desde una sección ajena.
-      intento(c, ["seccionId"], [{ proceso: "TRANSFERENCIA", fecha: hoy(), seccionId: c.propio.seccionId, seccionDestinoId: c.escenario === "controlMutacion" ? c.propio.seccion2Id : k.seccionId, items: [{ productoId: c.propio.productoId, cantidad: 1 }] }]),
-      intento(c, ["seccionId"], [{ proceso: "AJUSTE", fecha: hoy(), seccionId: k.seccionId, items: [{ productoId: c.propio.productoId, cantidad: -1 }] }]),
+      intento(c, ["seccionId"], [{ proceso: "TRANSFERENCIA", fecha: hoy(), seccionId: c.propio.seccionId, seccionDestinoId: c.escenario === "controlMutacion" ? c.propio.seccion2Id : k.seccionId, items: [{ productoId: c.propio.productoId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() }]),
+      intento(c, ["seccionId"], [{ proceso: "AJUSTE", fecha: hoy(), seccionId: k.seccionId, items: [{ productoId: c.propio.productoId, cantidad: -1 }], claveIdempotencia: crypto.randomUUID() }]),
     ),
   "accion|actions/movimientos/venta.ts|registrarVenta": (k, c) =>
     conVariantes(
@@ -319,6 +320,33 @@ const completos: Record<string, Valor> = {
   "accion|actions/traspasos/traspasos.ts|aceptarTransferencia": (k, c) =>
     // Aceptar lo hace el DESTINO: el envío «entrante» (de la vecina hacia esta sucursal).
     conVariantes(intento(c, ["traspasoEntranteId"], [k.traspasoEntranteId, c.propio.seccionId]), intento(c, ["seccionId"], [c.propio.traspasoEntranteId, k.seccionId])),
+  // E3a (ADR-041): la factura de proveedor repartida. Cargar: con la sección, el proveedor o el producto ajenos, y una parte en una sucursal de OTRA empresa (proponerle a otra sucursal de la MISMA empresa es el
+  // propósito: solo es ajena si es de otra empresa). Cada intento con su número y su clave, para llegar a la lógica.
+  "accion|actions/movimientos/facturas-proveedor.ts|registrarFacturaProveedor": (k, c) => {
+    const datos = (o: { seccionId?: string; proveedorId?: string; productoId?: string; partes?: { sucursalId: string; valor: number }[] }) => ({
+      fecha: hoy(),
+      proveedorId: o.proveedorId ?? c.propio.proveedorId,
+      nroFactura: `F-${crypto.randomUUID().slice(0, 8)}`,
+      seccionId: o.seccionId ?? c.propio.seccionId,
+      items: [{ productoId: o.productoId ?? c.propio.productoId, cantidad: 2, precioTotal: 100 }],
+      reparto: { modo: "IMPORTE", partes: o.partes ?? [{ sucursalId: c.propio.sucursalId, valor: 100 }] },
+      claveIdempotencia: crypto.randomUUID(),
+    });
+    return conVariantes(
+      intento(c, ["seccionId"], [datos({ seccionId: k.seccionId })]),
+      intento(c, ["proveedorId"], [datos({ proveedorId: k.proveedorId })]),
+      intento(c, ["productoId"], [datos({ productoId: k.productoId })]),
+      c.escenario === "ajenaEmpresa" ? [datos({ partes: [{ sucursalId: c.propio.sucursalId, valor: 50 }, { sucursalId: k.sucursalId, valor: 50 }] })] : false,
+    );
+  },
+  // Aceptar lo hace el DESTINO: la propuesta que la vecina le hizo a esta sucursal, en una sección propia.
+  "accion|actions/movimientos/facturas-proveedor.ts|aceptarPropuestaDeFactura": (k, c) =>
+    conVariantes(
+      intento(c, ["propuestaParaAceptarId"], [k.propuestaParaAceptarId, c.propio.seccionId, hoy(), crypto.randomUUID()]),
+      intento(c, ["seccionId"], [c.propio.propuestaParaAceptarId, k.seccionId, hoy(), crypto.randomUUID()]),
+    ),
+  // Anular: la factura que cargó la sucursal ajena (la cabecera es de la empresa: la defensa es pedir `anular_compra` en la sucursal que la cargó y en cada una con parte).
+  "accion|actions/movimientos/facturas-proveedor.ts|anularFacturaProveedor": (k, c) => intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, "motivo de prueba", crypto.randomUUID()]),
 
   // --- consultas de las páginas y lecturas (el contexto —sucursal activa, empresa, usuario, hora, db— es el propio; los ids del cliente, los ajenos) ---
   // Las candidatas son las sucursales con carta propia; la consulta tiene que dejar afuera las que u1 no ve (S2, S3, las de otra empresa).
@@ -491,6 +519,9 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/stock/frecuencia-conteo.ts|eliminarFrecuenciaConteo": { id: (k) => k.frecuenciaId },
   "accion|actions/stock/seccion-habitual.ts|eliminarSeccionHabitual": { id: (k) => k.seccionHabitualId },
   "accion|actions/stock/stock-minimo.ts|eliminarStockMinimo": { id: (k) => k.stockMinimoId },
+  // DEC-27 («Cambiar mínimo»): el mínimo que la persona VIO es el que el mundo sembró en la fila del producto y el depósito (`minimo: 50`, mundo.ts): con los ids propios el control positivo
+  // cambia esa fila; con ids de otra empresa el pedido se rechaza igual (producto o depósito ajeno).
+  "accion|actions/stock/stock-minimo.ts|setStockMinimoProducto": { minimoVisto: () => 50 },
   // Cancelar la solicitud lo hace quien la pidió (el destino); rechazar un envío recibido, el destino.
   "accion|actions/traspasos/traspasos.ts|cancelarSolicitudTransferencia": { id: (k) => k.traspasoPedidoId },
   "accion|actions/traspasos/traspasos.ts|rechazarSolicitudTransferencia": { id: (k) => k.traspasoId },

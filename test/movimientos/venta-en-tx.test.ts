@@ -88,7 +88,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
   });
 
   it("con override de precio, cobra ese precio y devuelve una Operacion por línea, en el orden de las líneas", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     const r = await prisma.$transaction((tx) =>
       registrarVentaEnTx(tx, actor, {
         fecha: new Date(),
@@ -121,7 +121,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
 
   describe("permitirStockNegativo (B6bis)", () => {
     it("ausente o false: con stock insuficiente rechaza exactamente como antes y no escribe nada", async () => {
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 0.5 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 0.5 }], claveIdempotencia: crypto.randomUUID() });
       for (const opciones of [undefined, { permitirStockNegativo: false }]) {
         const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId }, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }] }, opciones));
         expect(r).toEqual({ ok: false, mensaje: 'Stock insuficiente para "Harina". Actual: 0.5, requerido: 1.5. Tiene stock en: Depósito.' });
@@ -134,7 +134,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
     });
 
     it("true: la venta se registra igual, el insumo queda en negativo y el aviso trae el detalle", async () => {
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 0.5 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 0.5 }], claveIdempotencia: crypto.randomUUID() });
       const r = await prisma.$transaction((tx) =>
         registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId }, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }, { productoId: pvGaseosaId, cantidadVendida: 1 }] }, { permitirStockNegativo: true })
       );
@@ -149,7 +149,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
     it("con hermanos que no alcanzan: toma lo de los hermanos y el rechazo/aviso nombra SOLO lo que le falta al producto de la receta", async () => {
       const catalogo = await prisma.producto.findUniqueOrThrow({ where: { id: mpHarinaId } });
       const hermana = await sembrarProductoDisponible({ codigo: "MP_HARINA_000", nombre: "Harina 000", tipo: "MP", unidadStockId: catalogo.unidadStockId, insumoId: catalogo.insumoId }, sucursalId);
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 0.5 }, { productoId: hermana.id, cantidad: 0.4 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 0.5 }, { productoId: hermana.id, cantidad: 0.4 }], claveIdempotencia: crypto.randomUUID() });
       const venta = { fecha: new Date(), origen: { tipo: "seccion" as const, seccionId }, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }] };
 
       // Se piden 1,5: 0,5 de Harina + 0,4 de su hermana, y a Harina le falta el resto (0,6): se le cargan 1,1 contra 0,5.
@@ -164,7 +164,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
     });
 
     it("true pero con stock suficiente: sin avisos", async () => {
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 5 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
       const r = await prisma.$transaction((tx) => registrarVentaEnTx(tx, actor, { fecha: new Date(), origen: { tipo: "seccion", seccionId }, lineas: [{ productoId: pvPanId, cantidadVendida: 3 }] }, { permitirStockNegativo: true }));
       expect(r).toMatchObject({ ok: true, avisosStockNegativo: [] });
       expect(await calcularSaldoTotal(mpHarinaId, seccionId, prisma)).toBe(3.5);
@@ -217,7 +217,7 @@ describe("registrarVentaEnTx y su frontera con registrarVenta", () => {
       // insumo consumen 1 en total, no 2 — con o sin promo de por medio.
       const catalogo = await prisma.producto.findUniqueOrThrow({ where: { id: mpHarinaId }, include: { unidadStock: true } });
       await prisma.unidad.update({ where: { id: catalogo.unidadStockId }, data: { decimales: 0 } });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpHarinaId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       const promoCuenta = await sembrarPromoCuenta();
 
       // Receta de pvPanId pide 0,5 de harina por unidad (ver beforeEach) — dos ventas de 1 unidad cada una, la primera con

@@ -32,7 +32,7 @@ describe("cerrarCuenta: la sección habitual del PV", () => {
   });
 
   const comprar = (seccionId: string, cantidad: number, loteVencimiento?: Date) =>
-    registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: s.muzzarella.id, cantidad, loteVencimiento }] });
+    registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: s.muzzarella.id, cantidad, loteVencimiento }], claveIdempotencia: crypto.randomUUID() });
   const habitual = (seccionId: string, productoId = s.pizza.id, sucursalId = s.sucursalId) => prisma.seccionHabitualProducto.create({ data: { sucursalId, productoId, seccionId } });
   const cerrarPizzas = async (cantidad: number) => cerrarCuenta((await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad, precioUnitario: 12000, numeroEnvio: 1 }])).id);
   const filas = async () =>

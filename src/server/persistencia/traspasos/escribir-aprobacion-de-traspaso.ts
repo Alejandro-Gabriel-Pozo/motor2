@@ -8,7 +8,8 @@ import { escribirMovimientoDeTraspaso } from "./escribir-movimiento-de-traspaso"
  * (src/server/actions/traspasos/traspasos.ts, vía su helper `escribirMovimientoTraspaso`), en el mismo orden:
  *  1-2. la SALIDA (`escribirSalidaDeTraspaso`): la `Operacion` TRANSFERENCIA_SALIDA_SUCURSAL de ESTA sucursal (sin clave de
  *       idempotencia: la aprobación nunca tuvo I3) y su única línea de Kardex, en NEGATIVO en la sección de origen;
- *  3. el traspaso: sección de origen, estado nuevo (ENVIADA), fecha y autor de la decisión de Origen.
+ *  3. el traspaso: sección de origen, estado nuevo (ENVIADA), fecha y autor de la decisión de Origen, y (E2, ADR-040) la COPIA del costo del
+ *     origen con la que se valorizó la salida (la usarán también la entrada de Destino y el reingreso).
  */
 export interface AprobacionDeTraspasoAEscribir {
   traspasoId: string;
@@ -24,12 +25,14 @@ export interface AprobacionDeTraspasoAEscribir {
   estadoNuevo: EstadoTraspaso;
   /** El mismo instante para la fecha de la Operación y la de la decisión de Origen. */
   ahora: Date;
+  /** E2 (ADR-040): el costo de reposición del origen leído DENTRO de la transacción del envío; `null` si no tiene («pendiente de completar»). */
+  costoUnitarioOrigen: number | null;
 }
 
 /**
  * La SALIDA de un traspaso en el Kardex de Origen: la `Operacion` TRANSFERENCIA_SALIDA_SUCURSAL (sin clave de idempotencia: ni la
- * aprobación ni el envío directo tienen I3) y su única línea, la cantidad en NEGATIVO en la sección de origen, a precio 0, atada al
- * traspaso. La comparten la aprobación (acá abajo) y el envío directo (`escribir-creacion-de-traspaso.ts`, Task #41, Fase M11c): es lo
+ * aprobación ni el envío directo tienen I3) y su única línea, la cantidad en NEGATIVO en la sección de origen, valorizada con la copia del
+ * costo del origen (E2), atada al traspaso. La comparten la aprobación (acá abajo) y el envío directo (`escribir-creacion-de-traspaso.ts`, Task #41, Fase M11c): es lo
  * que antes escribía el helper `escribirMovimientoTraspaso` de src/server/actions/traspasos/traspasos.ts, ya borrado. Desde la pieza 5.4 (A4) las dos
  * escrituras las hace `escribirMovimientoDeTraspaso` (`escribir-movimiento-de-traspaso.ts`), que comparte con la entrada de Destino y el reingreso.
  */
@@ -48,6 +51,7 @@ export async function escribirSalidaDeTraspaso(
     cantidadConSigno: -s.cantidad,
     detalle: s.detalle,
     traspasoId: s.traspasoId,
+    costoUnitarioOrigen: s.costoUnitarioOrigen,
   });
 }
 
@@ -56,7 +60,13 @@ export async function escribirAprobacionDeTraspaso(tx: Prisma.TransactionClient,
 
   await tx.traspasoSucursal.update({
     where: { id: a.traspasoId },
-    data: { seccionOrigenId: a.seccionOrigenId, estado: a.estadoNuevo, fechaDecisionOrigen: a.ahora, decididoPorOrigenId: a.usuarioId },
+    data: {
+      seccionOrigenId: a.seccionOrigenId,
+      estado: a.estadoNuevo,
+      fechaDecisionOrigen: a.ahora,
+      decididoPorOrigenId: a.usuarioId,
+      costoUnitarioOrigen: a.costoUnitarioOrigen,
+    },
   });
 
   return { operacionId };

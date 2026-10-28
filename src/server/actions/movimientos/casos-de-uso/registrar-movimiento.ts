@@ -10,11 +10,11 @@ import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { TRANSICIONES, armarFilasDeMovimiento, redondearACantidadDeUnidad } from "@/core/movimientos/public";
-import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA, esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";
+import { calcularPayloadHash, MENSAJE_CONFLICTO_IDEMPOTENCIA, esChoqueDeClaveIdempotenciaDeOperacion, esChoqueDeFacturaUnica, MENSAJE_FACTURA_DUPLICADA } from "@/core/movimientos/public-servidor";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { obtenerSeccionPropia, seccionesConStock, validarStockSuficiente } from "@/server/lecturas/movimientos/saldos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
-import { chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
+import { cargarOperacionPorClaveIdempotencia, chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { DatosMovimientoInput, ProcesoGenerico, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
 import { cargarComprasParaAvisoDeDuplicado, cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
@@ -127,11 +127,11 @@ export async function registrarMovimientoCasoDeUso(
     if (ajenas.length) sucursalesQueVeQuienCarga = new Set([actor.sucursalId, ...(await sucursalesDondeElUsuarioPuedeVer(actor.usuarioId, ajenas, "proceso_compra", actor.db))]);
   }
 
+  // La huella del pedido (I3), fuera de la transacción: no depende de nada que se lea adentro, y la usa también el `.catch` de abajo.
+  const payloadHash = calcularPayloadHash(datos.proceso, actor.sucursalId, { ...datos, claveIdempotencia: undefined });
+
   const resultado = await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRegistrarMovimiento> => {
-    // 0) I3 — idempotencia: chequeo antes de cualquier lógica de negocio.
-    const payloadHash = datos.claveIdempotencia
-      ? calcularPayloadHash(datos.proceso, actor.sucursalId, { ...datos, claveIdempotencia: undefined })
-      : "";
+    // 0) I3 — idempotencia: chequeo antes de cualquier lógica de negocio. La clave es obligatoria desde E1 (el guard la exige): no hay camino «sin clave».
     const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { operacionId: null, movimientos: null, repetida: true });
     if (chequeo.estado === "conflicto") return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
@@ -220,8 +220,8 @@ export async function registrarMovimientoCasoDeUso(
       destinoId: destinoId ?? null,
       detalleLibre: texto(datos.detalleLibre) || null,
       usuarioId: actor.usuarioId,
-      claveIdempotencia: datos.claveIdempotencia ?? null,
-      payloadHash: datos.claveIdempotencia ? payloadHash : null,
+      claveIdempotencia: datos.claveIdempotencia,
+      payloadHash,
     });
 
     // Armado de filas extraído a una función PURA (backlog post-cierre de Task #41, 2026-09-28,
@@ -266,17 +266,23 @@ export async function registrarMovimientoCasoDeUso(
 
     // I3 — Opción B (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md
     // §4.5): se persiste el mensaje ya formateado, no se reconstruye.
-    if (datos.claveIdempotencia) {
-      await registrarResultadoIdempotente(tx, operacion.id, mensaje);
-    }
+    await registrarResultadoIdempotente(tx, operacion.id, mensaje);
 
     return exito(mensaje, { operacionId: operacion.id, movimientos: filas.length, repetida: false });
-  }, undefined, undefined, true).catch((e) => {
+  }, undefined, undefined, true).catch(async (e): Promise<ResultadoRegistrarMovimiento> => {
     // La transacción ya hizo rollback para cuando este catch la recibe — nunca se intenta seguir operando
     // sobre ella. Choque de la carrera de factura duplicada (dos requests simultáneos, ver el comentario del
-    // chequeo previo más arriba): mismo mensaje de negocio, no un error 500. Cualquier otro P2002 (ej. la
-    // clave de idempotencia en carrera) NO lo reconoce esChoqueDeFacturaUnica — sigue de largo como error real.
+    // chequeo previo más arriba): mismo mensaje de negocio, no un error 500.
     if (esChoqueDeFacturaUnica(e)) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
+    // E1: la carrera con la MISMA clave ya la resuelven los reintentos (`tambienChoqueDeUnico`: al repetir, el chequeo ve al ganador). Si igual llega acá un choque de
+    // la clave es porque la tiene una operación que este pedido NO ve (otra empresa u otra sucursal: la clave es única global). Molde del pedido del salón
+    // (agregar-items.ts): se relee FUERA de la transacción; con la misma huella es un reenvío, si no — o si no se ve — es un conflicto, nunca el contenido de otro
+    // ni un error crudo. Cualquier otro choque (otro índice) sigue de largo como error real (falla cerrado).
+    if (esChoqueDeClaveIdempotenciaDeOperacion(e)) {
+      const ganador = await cargarOperacionPorClaveIdempotencia(actor.db, datos.claveIdempotencia);
+      if (ganador && ganador.payloadHash === payloadHash && ganador.resultadoMensaje !== null) return exito(ganador.resultadoMensaje, { operacionId: null, movimientos: null, repetida: true });
+      return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+    }
     throw e;
   });
 

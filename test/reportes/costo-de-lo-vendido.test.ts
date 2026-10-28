@@ -27,7 +27,7 @@ describe("costo de lo vendido (consumo) del período", () => {
   const agosto = () => obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
   async function comprarHarina(fecha: string, cantidad = 10, precioTotal = 50) {
-    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: d(fecha), seccionId, items: [{ productoId: harinaId, cantidad, precioTotal }] });
+    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: d(fecha), seccionId, items: [{ productoId: harinaId, cantidad, precioTotal }], claveIdempotencia: crypto.randomUUID() });
     expect(r.ok, r.mensaje).toBe(true);
   }
 
@@ -165,7 +165,7 @@ describe("costo de lo vendido (consumo) del período", () => {
       data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: harinaId, cantidad: 2, unidadId: kgId }, { insumoProductoId: cajaId, cantidad: 1, unidadId: kgId }] } },
     });
     await comprarHarina("2026-08-05"); // $50 de comida
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-05"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 100 }] }); // $100 de packaging
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-05"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }); // $100 de packaging
     const v = await registrarVenta({ fecha: d("2026-08-06"), seccionId, ventas: [{ productoId: pizza.id, cantidadVendida: 1 }] });
     expect(v.ok, v.mensaje).toBe(true);
 

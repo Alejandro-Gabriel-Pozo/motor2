@@ -84,16 +84,16 @@ describe("Secciones", () => {
     it("apaga y vuelve a prender el flag de una sección propia", async () => {
       await crearSeccion("Cocina");
       const cocina = await prisma.seccion.findFirstOrThrow({ where: { sucursalId, nombre: "Cocina" } });
-      expect(await actualizarRespaldoSeccion(cocina.id, false)).toEqual({ ok: true, mensaje: 'Sección "Cocina" ya no sirve de respaldo automático en ventas.' });
+      expect(await actualizarRespaldoSeccion(cocina.id, false)).toEqual({ ok: true, mensaje: 'Depósito "Cocina" ya no sirve de respaldo automático en ventas.' });
       expect((await prisma.seccion.findUniqueOrThrow({ where: { id: cocina.id } })).sirveDeRespaldoEnVentas).toBe(false);
-      expect(await actualizarRespaldoSeccion(cocina.id, true)).toEqual({ ok: true, mensaje: 'Sección "Cocina" ahora sirve de respaldo automático en ventas.' });
+      expect(await actualizarRespaldoSeccion(cocina.id, true)).toEqual({ ok: true, mensaje: 'Depósito "Cocina" ahora sirve de respaldo automático en ventas.' });
       expect((await prisma.seccion.findUniqueOrThrow({ where: { id: cocina.id } })).sirveDeRespaldoEnVentas).toBe(true);
     });
 
     it("rechaza una sección de otra sucursal sin tocarla", async () => {
       const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
       const ajena = await prisma.seccion.create({ data: { sucursalId: norte.id, nombre: "Barra Norte" } });
-      expect(await actualizarRespaldoSeccion(ajena.id, false)).toEqual({ ok: false, mensaje: "No se encontró la sección." });
+      expect(await actualizarRespaldoSeccion(ajena.id, false)).toEqual({ ok: false, mensaje: "No se encontró el depósito." });
       expect((await prisma.seccion.findUniqueOrThrow({ where: { id: ajena.id } })).sirveDeRespaldoEnVentas).toBe(true);
     });
 

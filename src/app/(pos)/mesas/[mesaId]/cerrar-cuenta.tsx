@@ -92,9 +92,9 @@ export function CerrarCuenta({
             </span>
           </div>
           {haySecciones ? (
-            <p className="text-sm text-tinta-suave">Cada producto se descuenta de su sección habitual; si ahí no alcanza, de otra sección con stock.</p>
+            <p className="text-sm text-tinta-suave">Cada producto se descuenta de su depósito habitual; si ahí no alcanza, de otro depósito con stock.</p>
           ) : (
-            <p className="text-sm text-error">Esta sucursal no tiene ninguna sección activa: pedile a un admin que cree una.</p>
+            <p className="text-sm text-error">Esta sucursal no tiene ningún depósito activo: pedile a un admin que cree uno.</p>
           )}
           {error && (
             <Aviso variante="error" forma="en-linea">

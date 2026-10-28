@@ -65,11 +65,11 @@ describe("Caracterización: consumo de una venta mixta (hermanos, seProduce, fal
 
     // Costo de reposición determinístico: MuzzaA y MuzzaB con costos DISTINTOS (1000 y 1200/kg) — el costo de Pizza queda anclado a
     // MuzzaA (el producto de la receta), sin importar cuál hermano consuma la venta (plan §0.5/D7).
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaA, cantidad: 0.3, precioTotal: 300 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaB, cantidad: 0.3, precioTotal: 360 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: vino, cantidad: 2, precioTotal: 200 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaA, cantidad: 0.3, precioTotal: 300 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaB, cantidad: 0.3, precioTotal: 360 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: vino, cantidad: 2, precioTotal: 200 }], claveIdempotencia: crypto.randomUUID() });
     // Jamón: sin ninguna compra — sin stock y sin costo de reposición.
-    await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: torta, cantidad: 2, loteVencimiento: OCT }] });
+    await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: torta, cantidad: 2, loteVencimiento: OCT }], claveIdempotencia: crypto.randomUUID() });
   });
 
   const filasDeLaVenta = (operacionIds: string[]) =>

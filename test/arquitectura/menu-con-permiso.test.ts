@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { GRUPOS_NAV } from "../../src/core/navegacion/estructura";
+import { GRUPOS_NAV, RUTAS_DE_UNA_ENTRADA } from "../../src/core/navegacion/estructura";
 import { obtenerConfigProceso } from "../../src/core/movimientos/ui-config";
 import { ACCION_POR_PROCESO } from "../../src/core/movimientos/transiciones";
 
@@ -19,7 +19,9 @@ const RAICES = ["(app)", "(pos)"].map((grupo) => join(__dirname, "../../src/app"
  * (Todavía ningún ítem del menú real es `algunaDe`: la comprobación contra la página real se completa cuando exista la entrada, P5a; acá se fija la lectura y se prueba con un texto sintético.)
  */
 function clavesDeLaGuardaDeAlguna(fuente: string): string[] | undefined {
-  const lista = fuente.match(/requierePermisoVerDeAlguna\(\s*[^,]+,\s*[^,]+,\s*\[([^\]]*)\]/)?.[1];
+  // `requierePermisoVerDeAlguna(usuario, sucursal, [claves…], db)` o, con claves de los dos contextos (DEC-27), `requierePermisoVerDeAlgunaDelMenu(usuario, empresa, sucursal, [claves…], db)`.
+  const lista =
+    fuente.match(/requierePermisoVerDeAlguna\(\s*[^,]+,\s*[^,]+,\s*\[([^\]]*)\]/)?.[1] ?? fuente.match(/requierePermisoVerDeAlgunaDelMenu\(\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*\[([^\]]*)\]/)?.[1];
   return lista === undefined ? undefined : [...lista.matchAll(/"(\w+)"/g)].map((m) => m[1]);
 }
 
@@ -62,11 +64,22 @@ describe("menú: cada ítem lleva la misma acción de Ver que su página", () =>
   });
 });
 
+describe("rutas de una entrada: cada una lleva la misma acción de Ver que su página", () => {
+  it.each(RUTAS_DE_UNA_ENTRADA.map((r) => [r.href, r] as const))("%s", (href, ruta) => {
+    expect(accionDeLaPagina(href), `La ruta ${href} (de la entrada ${ruta.entrada}) usa "${ruta.accion}", pero su página se protege con otra clave`).toBe(ruta.accion);
+  });
+});
+
 describe("clavesDeLaGuardaDeAlguna (la lectura de la guarda de «alguna de» en una página)", () => {
   it("lee la lista literal de claves de la llamada", () => {
     const fuente = 'const g = await requierePermisoVerDeAlguna(ctx.usuarioId, ctx.sucursalId, ["proceso_ajuste", "proceso_consumo"], ctx.db);';
     expect(clavesDeLaGuardaDeAlguna(fuente)).toEqual(["proceso_ajuste", "proceso_consumo"]);
     expect(clavesDeLaGuardaDeAlguna('await requierePermisoVerDeAlguna(\n  u,\n  s,\n  [\n "proceso_ajuste",\n ],\n db)')).toEqual(["proceso_ajuste"]);
+  });
+
+  it("lee también la guarda de los dos contextos (`requierePermisoVerDeAlgunaDelMenu`, con la empresa antes de la sucursal)", () => {
+    const fuente = 'await requierePermisoVerDeAlgunaDelMenu(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, ["secciones", "motivos_merma"], ctx.db);';
+    expect(clavesDeLaGuardaDeAlguna(fuente)).toEqual(["secciones", "motivos_merma"]);
   });
 
   it("si la página no la llama (o usa otra guarda), da undefined", () => {

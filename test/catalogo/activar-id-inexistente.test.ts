@@ -96,7 +96,7 @@ const CASOS: Caso[] = [
   { accion: "actualizarActivoCliente", llamar: (id) => actualizarActivoCliente(id, false), mensaje: "No se encontró ese cliente.", ajena: "cliente", arreglada: false },
   { accion: "actualizarActivoMotivoMerma", llamar: (id) => actualizarActivoMotivoMerma(id, false), mensaje: "No se encontró el motivo.", ajena: "motivo", arreglada: false },
   { accion: "actualizarActivoDestinoConsumo", llamar: (id) => actualizarActivoDestinoConsumo(id, false), mensaje: "No se encontró el destino.", ajena: "destino", arreglada: false },
-  { accion: "actualizarActivaSeccion", llamar: (id) => actualizarActivaSeccion(id, false), mensaje: "No se encontró la sección.", ajena: "seccion", arreglada: false },
+  { accion: "actualizarActivaSeccion", llamar: (id) => actualizarActivaSeccion(id, false), mensaje: "No se encontró el depósito.", ajena: "seccion", arreglada: false },
   { accion: "actualizarActivaPromoCarta", llamar: (id) => actualizarActivaPromoCarta(id, false), mensaje: "No se encontró la promo.", ajena: "promo", arreglada: false },
   { accion: "actualizarActivaPromoCartaEnSucursal", llamar: (id) => actualizarActivaPromoCartaEnSucursal(id, false), mensaje: "No se encontró la promo.", ajena: "promo", arreglada: false },
 ];

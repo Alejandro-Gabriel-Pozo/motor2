@@ -42,6 +42,7 @@ describe("vínculo proveedor↔producto: dos compras simultáneas de sucursales 
         seccionId,
         proveedorId: proveedor.id,
         items: [{ productoId: producto.id, cantidad: 10, precioTotal }],
+        claveIdempotencia: crypto.randomUUID(),
       });
 
       const resultados = await Promise.allSettled([

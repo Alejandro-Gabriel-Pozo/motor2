@@ -42,7 +42,7 @@ describe("stock mínimo: mensajes, orden de los chequeos y filas", () => {
     expect(await setStockMinimoProducto("cnoexiste000000000000000", 5, "cnoexiste000000000000000")).toEqual({ ok: false, mensaje: "No se encontró el producto." });
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const ajena = await sembrarSeccion(norte.id, "Barra Norte");
-    expect(await setStockMinimoProducto(mpId, 5, ajena.id)).toEqual({ ok: false, mensaje: "No se encontró la sección." });
+    expect(await setStockMinimoProducto(mpId, 5, ajena.id)).toEqual({ ok: false, mensaje: "No se encontró el depósito." });
     expect(await filas()).toEqual([]);
 
     expect(await setStockMinimoProducto(mpId, 5)).toEqual({ ok: true, mensaje: 'Stock mínimo (global) de "Sal" actualizado.' });

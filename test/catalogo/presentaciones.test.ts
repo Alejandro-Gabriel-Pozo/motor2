@@ -95,7 +95,7 @@ describe("Presentaciones de compra alternativas", () => {
     });
 
     const comprarEnLaPresentacion = async () => {
-      const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId, items: [{ productoId, cantidad: 2, unidadCompraId: unidadGId, precioTotal: 100 }] });
+      const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId, items: [{ productoId, cantidad: 2, unidadCompraId: unidadGId, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
       expect(r.ok, r.mensaje).toBe(true);
     };
     const factorGuardado = async () => Number((await prisma.presentacion.findFirstOrThrow({ where: { productoId, unidadCompraId: unidadGId } })).factorConversion);

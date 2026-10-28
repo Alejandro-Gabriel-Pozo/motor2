@@ -42,7 +42,7 @@ describe("registrarMovimiento (Compra): el vínculo proveedor↔producto es part
     proveedorId = (await prisma.proveedor.create({ data: { codigo: "PRV_HOOKUP", nombre: "Distribuidora Hookup" } })).id;
   });
 
-  const comprar = (claveIdempotencia?: string) =>
+  const comprar = (claveIdempotencia: string = randomUUID()) =>
     registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: seccionAId, proveedorId, claveIdempotencia, items: [{ productoId, cantidad: 10, precioTotal: 1000 }] });
 
   const estado = async () => ({

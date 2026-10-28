@@ -49,7 +49,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
     mpId = (await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Yerba", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId)).id;
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
   });
 
   it("un pendiente cerrado como «resuelto» nunca aplicó nada: cancelarlo NO escribe un ajuste fantasma (hoy escribía +3 de Control)", async () => {
@@ -102,7 +102,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
 
   it("la reversión conserva el lote del conteo", async () => {
     const lote = new Date(Date.now() + 30 * 24 * 3_600_000);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 4, loteVencimiento: lote }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 4, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
     await registrarConteoFisico({ productoId: mpId, seccionId, loteVencimiento: lote, conteoReal: 1, fechaConteo: new Date(), accion: "AJUSTAR" });
     const conteo = await conteoDe();
     expect(await saldo()).toBe(11); // 10 sin lote + 1 del lote

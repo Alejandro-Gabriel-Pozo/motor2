@@ -84,7 +84,8 @@ test("un rol sin pantallas de Empresa no ve el selector y conserva el menú úni
   const rol = await abrirComoRol(browser, baseURL, sucursalId, { ver_stock: "ver", proceso_venta: "editar" });
   try {
     await rol.page.goto("/stock/consolidado");
-    await expect(rol.page.locator("nav a[aria-current=page]")).toHaveCount(1);
+    // Solo el menú (`aside`): la fila de pestañas de Existencias (DEC-27, otra `nav` dentro de la pantalla) también marca su pestaña actual.
+    await expect(rol.page.locator("aside nav a[aria-current=page]")).toHaveCount(1);
     await expect(selector(rol.page)).toHaveCount(0);
     await expect(rol.page.locator("nav").getByRole("button", { name: "Stock" })).toBeVisible();
     await expect(rol.page.locator("nav").getByRole("button", { name: "Movimientos" })).toBeVisible();

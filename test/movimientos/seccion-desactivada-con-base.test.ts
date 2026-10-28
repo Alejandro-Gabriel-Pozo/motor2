@@ -39,31 +39,31 @@ describe("P17: sección dada de baja, contra la base", () => {
   const darDeBaja = () => prisma.seccion.update({ where: { id: seccionId }, data: { activa: false } });
 
   it("vaciar: la merma por el saldo EXACTO de la sección dada de baja da ok y deja saldo 0; una salida más da el «Stock insuficiente» de siempre", async () => {
-    expect((await registrarMovimiento({ proceso: "COMPRA", fecha: FECHA, seccionId, items: [{ productoId, cantidad: 10 }] })).ok).toBe(true);
+    expect((await registrarMovimiento({ proceso: "COMPRA", fecha: FECHA, seccionId, items: [{ productoId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
     await darDeBaja();
 
-    const vaciar = await registrarMovimiento({ proceso: "MERMA", fecha: FECHA, seccionId, motivoId, items: [{ productoId, cantidad: 10 }] });
+    const vaciar = await registrarMovimiento({ proceso: "MERMA", fecha: FECHA, seccionId, motivoId, items: [{ productoId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     expect(vaciar.ok, vaciar.mensaje).toBe(true);
     expect(await calcularSaldoTotal(productoId, seccionId, prisma)).toBe(0);
 
-    const deMas = await registrarMovimiento({ proceso: "MERMA", fecha: FECHA, seccionId, motivoId, items: [{ productoId, cantidad: 1 }] });
+    const deMas = await registrarMovimiento({ proceso: "MERMA", fecha: FECHA, seccionId, motivoId, items: [{ productoId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
     expect(deMas).toMatchObject({ ok: false });
     expect(deMas.mensaje).toContain('Stock insuficiente para "Harina". Actual: 0, requerido: 1.');
   });
 
   it("sacar por transferencia a una sección activa se permite; ingresar a la dada de baja (compra o transferencia) se rechaza con el texto único y no escribe nada", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: FECHA, seccionId, items: [{ productoId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: FECHA, seccionId, items: [{ productoId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await darDeBaja();
 
-    const sacar = await registrarMovimiento({ proceso: "TRANSFERENCIA", fecha: FECHA, seccionId, seccionDestinoId, items: [{ productoId, cantidad: 4 }] });
+    const sacar = await registrarMovimiento({ proceso: "TRANSFERENCIA", fecha: FECHA, seccionId, seccionDestinoId, items: [{ productoId, cantidad: 4 }], claveIdempotencia: crypto.randomUUID() });
     expect(sacar.ok, sacar.mensaje).toBe(true);
     expect(await calcularSaldoTotal(productoId, seccionId, prisma)).toBe(6);
     expect(await calcularSaldoTotal(productoId, seccionDestinoId, prisma)).toBe(4);
 
     const operaciones = await prisma.operacion.count();
-    const compra = await registrarMovimiento({ proceso: "COMPRA", fecha: FECHA, seccionId, items: [{ productoId, cantidad: 5 }] });
+    const compra = await registrarMovimiento({ proceso: "COMPRA", fecha: FECHA, seccionId, items: [{ productoId, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
     expect(compra).toEqual({ ok: false, mensaje: MENSAJE });
-    const devolver = await registrarMovimiento({ proceso: "TRANSFERENCIA", fecha: FECHA, seccionId: seccionDestinoId, seccionDestinoId: seccionId, items: [{ productoId, cantidad: 1 }] });
+    const devolver = await registrarMovimiento({ proceso: "TRANSFERENCIA", fecha: FECHA, seccionId: seccionDestinoId, seccionDestinoId: seccionId, items: [{ productoId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
     expect(devolver).toEqual({ ok: false, mensaje: MENSAJE });
     expect(await prisma.operacion.count()).toBe(operaciones);
     expect(await calcularSaldoTotal(productoId, seccionId, prisma)).toBe(6);

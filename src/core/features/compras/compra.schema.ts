@@ -34,7 +34,7 @@ export interface ComandoAnularCompra {
 /** Por qué `evaluarAnulacion` (src/core/compras/anulacion.ts) rechaza una anulación. Se declara ACÁ y `ResultadoAnulacion` la usa: así `core/compras` depende de su contrato (`features/compras`) y no al revés, sin ciclo. */
 export type MotivoAnulacionRechazada = "NO_ES_COMPRA" | "YA_ANULADA" | "SIN_LINEAS" | "STOCK_CONSUMIDO" | "CONTEO_POSTERIOR";
 
-export type CodigoAnularCompra = MotivoAnulacionRechazada | "NO_ENCONTRADA" | "CONFLICTO_IDEMPOTENCIA" | "ENTRADA_INVALIDA";
+export type CodigoAnularCompra = MotivoAnulacionRechazada | "NO_ENCONTRADA" | "CONFLICTO_IDEMPOTENCIA" | "ENTRADA_INVALIDA" | "COMPRA_DE_FACTURA";
 
 /**
  * `datos` de una anulación exitosa. Un reenvío con la misma clave (`repetida: true`) devuelve el mensaje ORIGINAL pero no vuelve a leer
@@ -79,7 +79,8 @@ export type CodigoCorregirCompra =
   | "ENTRADA_INVALIDA"
   | "PROVEEDOR_INEXISTENTE"
   | "PROVEEDOR_INACTIVO"
-  | "FACTURA_DUPLICADA";
+  | "FACTURA_DUPLICADA"
+  | "COMPRA_DE_FACTURA";
 
 /**
  * `datos` de una corrección exitosa: qué campos cambiaron, en el orden fijo de `diferenciasDeCabecera` (vacío si ya tenía esos datos).

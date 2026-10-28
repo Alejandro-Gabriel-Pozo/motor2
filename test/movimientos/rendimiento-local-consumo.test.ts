@@ -49,7 +49,7 @@ describe("Rendimiento local: consumo de venta/producción y costos usan el valor
     recetaIngredienteId = receta.ingredientes[0].id;
 
     // Stock amplio en las dos sucursales, para que ninguna venta rechace por falta de stock.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 1000, precioTotal: 10000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 1000, precioTotal: 10000 }], claveIdempotencia: crypto.randomUUID() });
   });
 
   async function comprarStockEnB() {
@@ -112,7 +112,7 @@ describe("Rendimiento local: consumo de venta/producción y costos usan el valor
     });
     await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: receta.ingredientes[0].id, sucursalId: sucursalAId, cantidad: 3, mermaPorcentaje: 0 } });
 
-    const produccion = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpProducida.id, cantidad: 2 }] });
+    const produccion = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpProducida.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
     expect(produccion.ok, produccion.mensaje).toBe(true);
 
     const consumo = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id, proceso: "CONSUMO", seccionId: seccionAId } });

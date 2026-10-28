@@ -39,7 +39,7 @@ describe("obtenerReporteDescuentosClientes", () => {
 
   it("una venta con descuento y costo conocido: ingresos, descuento y margen Real (cobrado vs. a lista) exactos", async () => {
     // Muzzarella comprada a $400/kg (10 kg × $400 = $4000 de precioTotal): cada pizza (0,25 kg) cuesta $100.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 10, precioTotal: 4000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 10, precioTotal: 4000 }], claveIdempotencia: crypto.randomUUID() });
     const clienteId = await crearCliente("Fulano", 20);
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 2, precioUnitario: 1000, numeroEnvio: 1 }]);
     await asignarClienteACuenta(cuenta.id, clienteId);

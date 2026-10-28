@@ -42,6 +42,7 @@
         "operacion": "update",
         "args": {
           "data": {
+            "costoUnitarioOrigen": null,
             "decididoPorOrigenId": "usuario",
             "estado": "ENVIADA",
             "fechaDecisionOrigen": {
@@ -120,6 +121,7 @@
             "$decimal": "3"
           },
           "cerradoPorId": null,
+          "costoUnitarioOrigen": null,
           "creadoPorId": "usuario",
           "decididoPorDestinoId": null,
           "decididoPorOrigenId": "usuario",
@@ -152,6 +154,7 @@
         "args": {
           "data": {
             "cantidad": 2.5,
+            "costoUnitarioOrigen": null,
             "creadoPorId": "usuario",
             "decididoPorOrigenId": "usuario",
             "destinoSucursalId": "sucursal-destino",
@@ -268,6 +271,7 @@
             "$decimal": "2.5"
           },
           "cerradoPorId": null,
+          "costoUnitarioOrigen": null,
           "creadoPorId": "usuario",
           "decididoPorDestinoId": null,
           "decididoPorOrigenId": "usuario",
@@ -425,6 +429,7 @@
             "$decimal": "3"
           },
           "cerradoPorId": null,
+          "costoUnitarioOrigen": null,
           "creadoPorId": "usuario",
           "decididoPorDestinoId": "usuario",
           "decididoPorOrigenId": null,
@@ -569,6 +574,7 @@
             "$decimal": "3"
           },
           "cerradoPorId": null,
+          "costoUnitarioOrigen": null,
           "creadoPorId": "usuario",
           "decididoPorDestinoId": "usuario",
           "decididoPorOrigenId": null,
@@ -712,6 +718,452 @@
             "$decimal": "3"
           },
           "cerradoPorId": "usuario",
+          "costoUnitarioOrigen": null,
+          "creadoPorId": "usuario",
+          "decididoPorDestinoId": null,
+          "decididoPorOrigenId": null,
+          "destinoSucursalId": "sucursal-destino",
+          "detalle": "pedido de prueba",
+          "estado": "CERRADA",
+          "fechaCierre": {
+            "$fecha": "2026-10-01T15:00:00.000Z"
+          },
+          "fechaDecisionDestino": null,
+          "fechaDecisionOrigen": null,
+          "id": "traspaso",
+          "iniciadoPor": "DESTINO",
+          "motivoRechazoDestino": "no lo necesitamos",
+          "motivoRechazoOrigen": null,
+          "origenSucursalId": "sucursal-origen",
+          "productoId": "producto-harina",
+          "seccionDestinoId": "seccion-destino",
+          "seccionOrigenId": "seccion-origen"
+        }
+      ]
+    }
+  },
+  "envío directo con el costo del origen (E2)": {
+    "escrituras": [
+      {
+        "n": 1,
+        "modelo": "TraspasoSucursal",
+        "operacion": "create",
+        "args": {
+          "data": {
+            "cantidad": 2.5,
+            "costoUnitarioOrigen": 100.04,
+            "creadoPorId": "usuario",
+            "decididoPorOrigenId": "usuario",
+            "destinoSucursalId": "sucursal-destino",
+            "detalle": "envío con costo",
+            "estado": "ENVIADA",
+            "fechaDecisionOrigen": {
+              "$fecha": "2026-10-01T15:00:00.000Z"
+            },
+            "iniciadoPor": "ORIGEN",
+            "origenSucursalId": "sucursal-origen",
+            "productoId": "producto-harina",
+            "seccionOrigenId": "seccion-origen"
+          }
+        }
+      },
+      {
+        "n": 2,
+        "modelo": "Operacion",
+        "operacion": "create",
+        "args": {
+          "data": {
+            "claveIdempotencia": null,
+            "fecha": {
+              "$fecha": "2026-10-01T15:00:00.000Z"
+            },
+            "payloadHash": null,
+            "proceso": "TRANSFERENCIA_SALIDA_SUCURSAL",
+            "sucursalId": "sucursal-origen",
+            "usuarioId": "usuario"
+          }
+        }
+      },
+      {
+        "n": 3,
+        "modelo": "MovimientoStock",
+        "operacion": "create",
+        "args": {
+          "data": {
+            "cantidad": -2.5,
+            "detalle": "Transferencia a sucursal \"Destino\".",
+            "operacionId": "<op#2>",
+            "precioPorUnidadStock": 100.04,
+            "precioTotal": 250.1,
+            "proceso": "TRANSFERENCIA_SALIDA_SUCURSAL",
+            "productoId": "producto-harina",
+            "seccionId": "seccion-origen",
+            "traspasoSucursalId": "<op#1>"
+          }
+        }
+      }
+    ],
+    "filas": {
+      "operaciones": [
+        {
+          "anuladaEn": null,
+          "anuladaPorId": null,
+          "claveIdempotencia": null,
+          "clienteId": null,
+          "destinoId": null,
+          "detalleLibre": null,
+          "fecha": {
+            "$fecha": "2026-10-01T15:00:00.000Z"
+          },
+          "id": "<op#2>",
+          "mermaPorAnulacionDeId": null,
+          "motivoAnulacion": null,
+          "motivoId": null,
+          "nroFactura": null,
+          "operacionPadreId": null,
+          "payloadHash": null,
+          "proceso": "TRANSFERENCIA_SALIDA_SUCURSAL",
+          "promoCuentaId": null,
+          "proveedorId": null,
+          "reemplazaAOperacionId": null,
+          "resultadoMensaje": null,
+          "revierteAOperacionId": null,
+          "seccionDestinoId": null,
+          "sucursalId": "sucursal-origen",
+          "usuarioId": "usuario",
+          "ventaId": null
+        }
+      ],
+      "movimientos": [
+        {
+          "cantidad": {
+            "$decimal": "-2.5"
+          },
+          "cantidadExacta": null,
+          "conteoFisicoId": null,
+          "costoUnitarioVenta": null,
+          "detalle": "Transferencia a sucursal \"Destino\".",
+          "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
+          "id": "<op#3>",
+          "loteVencimiento": null,
+          "operacionId": "<op#2>",
+          "precioListaUnitario": null,
+          "precioPorUnidadStock": {
+            "$decimal": "100.04"
+          },
+          "precioTotal": {
+            "$decimal": "250.1"
+          },
+          "proceso": "TRANSFERENCIA_SALIDA_SUCURSAL",
+          "productoId": "producto-harina",
+          "seccionId": "seccion-origen",
+          "sustituyeAProductoId": null,
+          "traspasoSucursalId": "<op#1>"
+        }
+      ],
+      "traspasos": [
+        {
+          "cantidad": {
+            "$decimal": "2.5"
+          },
+          "cerradoPorId": null,
+          "costoUnitarioOrigen": {
+            "$decimal": "100.04"
+          },
+          "creadoPorId": "usuario",
+          "decididoPorDestinoId": null,
+          "decididoPorOrigenId": "usuario",
+          "destinoSucursalId": "sucursal-destino",
+          "detalle": "envío con costo",
+          "estado": "ENVIADA",
+          "fechaCierre": null,
+          "fechaDecisionDestino": null,
+          "fechaDecisionOrigen": {
+            "$fecha": "2026-10-01T15:00:00.000Z"
+          },
+          "id": "<op#1>",
+          "iniciadoPor": "ORIGEN",
+          "motivoRechazoDestino": null,
+          "motivoRechazoOrigen": null,
+          "origenSucursalId": "sucursal-origen",
+          "productoId": "producto-harina",
+          "seccionDestinoId": null,
+          "seccionOrigenId": "seccion-origen"
+        }
+      ]
+    }
+  },
+  "aceptación con el costo copiado al enviar (E2)": {
+    "escrituras": [
+      {
+        "n": 1,
+        "modelo": "Operacion",
+        "operacion": "create",
+        "args": {
+          "data": {
+            "claveIdempotencia": null,
+            "fecha": {
+              "$fecha": "2026-10-01T15:00:00.000Z"
+            },
+            "payloadHash": null,
+            "proceso": "TRANSFERENCIA_ENTRADA_SUCURSAL",
+            "sucursalId": "sucursal-destino",
+            "usuarioId": "usuario"
+          }
+        }
+      },
+      {
+        "n": 2,
+        "modelo": "MovimientoStock",
+        "operacion": "create",
+        "args": {
+          "data": {
+            "cantidad": 3,
+            "detalle": "Transferencia desde sucursal \"Central\".",
+            "operacionId": "<op#1>",
+            "precioPorUnidadStock": 100.04,
+            "precioTotal": 300.12,
+            "proceso": "TRANSFERENCIA_ENTRADA_SUCURSAL",
+            "productoId": "producto-harina",
+            "seccionId": "seccion-destino",
+            "traspasoSucursalId": "traspaso"
+          }
+        }
+      },
+      {
+        "n": 3,
+        "modelo": "TraspasoSucursal",
+        "operacion": "update",
+        "args": {
+          "data": {
+            "decididoPorDestinoId": "usuario",
+            "estado": "ACEPTADA",
+            "fechaDecisionDestino": {
+              "$fecha": "2026-10-01T15:00:00.000Z"
+            },
+            "seccionDestinoId": "seccion-destino"
+          },
+          "where": {
+            "id": "traspaso"
+          }
+        }
+      }
+    ],
+    "filas": {
+      "operaciones": [
+        {
+          "anuladaEn": null,
+          "anuladaPorId": null,
+          "claveIdempotencia": null,
+          "clienteId": null,
+          "destinoId": null,
+          "detalleLibre": null,
+          "fecha": {
+            "$fecha": "2026-10-01T15:00:00.000Z"
+          },
+          "id": "<op#1>",
+          "mermaPorAnulacionDeId": null,
+          "motivoAnulacion": null,
+          "motivoId": null,
+          "nroFactura": null,
+          "operacionPadreId": null,
+          "payloadHash": null,
+          "proceso": "TRANSFERENCIA_ENTRADA_SUCURSAL",
+          "promoCuentaId": null,
+          "proveedorId": null,
+          "reemplazaAOperacionId": null,
+          "resultadoMensaje": null,
+          "revierteAOperacionId": null,
+          "seccionDestinoId": null,
+          "sucursalId": "sucursal-destino",
+          "usuarioId": "usuario",
+          "ventaId": null
+        }
+      ],
+      "movimientos": [
+        {
+          "cantidad": {
+            "$decimal": "3"
+          },
+          "cantidadExacta": null,
+          "conteoFisicoId": null,
+          "costoUnitarioVenta": null,
+          "detalle": "Transferencia desde sucursal \"Central\".",
+          "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
+          "id": "<op#2>",
+          "loteVencimiento": null,
+          "operacionId": "<op#1>",
+          "precioListaUnitario": null,
+          "precioPorUnidadStock": {
+            "$decimal": "100.04"
+          },
+          "precioTotal": {
+            "$decimal": "300.12"
+          },
+          "proceso": "TRANSFERENCIA_ENTRADA_SUCURSAL",
+          "productoId": "producto-harina",
+          "seccionId": "seccion-destino",
+          "sustituyeAProductoId": null,
+          "traspasoSucursalId": "traspaso"
+        }
+      ],
+      "traspasos": [
+        {
+          "cantidad": {
+            "$decimal": "3"
+          },
+          "cerradoPorId": null,
+          "costoUnitarioOrigen": {
+            "$decimal": "100.04"
+          },
+          "creadoPorId": "usuario",
+          "decididoPorDestinoId": "usuario",
+          "decididoPorOrigenId": null,
+          "destinoSucursalId": "sucursal-destino",
+          "detalle": "pedido de prueba",
+          "estado": "ACEPTADA",
+          "fechaCierre": null,
+          "fechaDecisionDestino": {
+            "$fecha": "2026-10-01T15:00:00.000Z"
+          },
+          "fechaDecisionOrigen": null,
+          "id": "traspaso",
+          "iniciadoPor": "DESTINO",
+          "motivoRechazoDestino": null,
+          "motivoRechazoOrigen": null,
+          "origenSucursalId": "sucursal-origen",
+          "productoId": "producto-harina",
+          "seccionDestinoId": "seccion-destino",
+          "seccionOrigenId": "seccion-origen"
+        }
+      ]
+    }
+  },
+  "reingreso con el costo copiado al enviar (E2)": {
+    "escrituras": [
+      {
+        "n": 1,
+        "modelo": "Operacion",
+        "operacion": "create",
+        "args": {
+          "data": {
+            "claveIdempotencia": null,
+            "fecha": {
+              "$fecha": "2026-10-01T15:00:00.000Z"
+            },
+            "payloadHash": null,
+            "proceso": "REINGRESO_TRANSFERENCIA_SUCURSAL",
+            "sucursalId": "sucursal-origen",
+            "usuarioId": "usuario"
+          }
+        }
+      },
+      {
+        "n": 2,
+        "modelo": "MovimientoStock",
+        "operacion": "create",
+        "args": {
+          "data": {
+            "cantidad": 3,
+            "detalle": "Reingreso por rechazo de Destino.",
+            "operacionId": "<op#1>",
+            "precioPorUnidadStock": 0.3333,
+            "precioTotal": 1,
+            "proceso": "REINGRESO_TRANSFERENCIA_SUCURSAL",
+            "productoId": "producto-harina",
+            "seccionId": "seccion-origen",
+            "traspasoSucursalId": "traspaso"
+          }
+        }
+      },
+      {
+        "n": 3,
+        "modelo": "TraspasoSucursal",
+        "operacion": "update",
+        "args": {
+          "data": {
+            "cerradoPorId": "usuario",
+            "estado": "CERRADA",
+            "fechaCierre": {
+              "$fecha": "2026-10-01T15:00:00.000Z"
+            }
+          },
+          "where": {
+            "id": "traspaso"
+          }
+        }
+      }
+    ],
+    "filas": {
+      "operaciones": [
+        {
+          "anuladaEn": null,
+          "anuladaPorId": null,
+          "claveIdempotencia": null,
+          "clienteId": null,
+          "destinoId": null,
+          "detalleLibre": null,
+          "fecha": {
+            "$fecha": "2026-10-01T15:00:00.000Z"
+          },
+          "id": "<op#1>",
+          "mermaPorAnulacionDeId": null,
+          "motivoAnulacion": null,
+          "motivoId": null,
+          "nroFactura": null,
+          "operacionPadreId": null,
+          "payloadHash": null,
+          "proceso": "REINGRESO_TRANSFERENCIA_SUCURSAL",
+          "promoCuentaId": null,
+          "proveedorId": null,
+          "reemplazaAOperacionId": null,
+          "resultadoMensaje": null,
+          "revierteAOperacionId": null,
+          "seccionDestinoId": null,
+          "sucursalId": "sucursal-origen",
+          "usuarioId": "usuario",
+          "ventaId": null
+        }
+      ],
+      "movimientos": [
+        {
+          "cantidad": {
+            "$decimal": "3"
+          },
+          "cantidadExacta": null,
+          "conteoFisicoId": null,
+          "costoUnitarioVenta": null,
+          "detalle": "Reingreso por rechazo de Destino.",
+          "devuelveAMovimientoId": null,
+          "facturaProveedorRenglonId": null,
+          "id": "<op#2>",
+          "loteVencimiento": null,
+          "operacionId": "<op#1>",
+          "precioListaUnitario": null,
+          "precioPorUnidadStock": {
+            "$decimal": "0.3333"
+          },
+          "precioTotal": {
+            "$decimal": "1"
+          },
+          "proceso": "REINGRESO_TRANSFERENCIA_SUCURSAL",
+          "productoId": "producto-harina",
+          "seccionId": "seccion-origen",
+          "sustituyeAProductoId": null,
+          "traspasoSucursalId": "traspaso"
+        }
+      ],
+      "traspasos": [
+        {
+          "cantidad": {
+            "$decimal": "3"
+          },
+          "cerradoPorId": "usuario",
+          "costoUnitarioOrigen": {
+            "$decimal": "0.3333"
+          },
           "creadoPorId": "usuario",
           "decididoPorDestinoId": null,
           "decididoPorOrigenId": null,

@@ -57,9 +57,11 @@ describe("el grupo Movimientos del menú real", () => {
     const de = (id: string, href: string) => grupo(id).items.find((i) => i.href === href);
     expect(de("catalogo", "/movimientos/precio-local")).toMatchObject({ label: "Precio local", accion: "precio_local", panel: "sucursal" });
     expect(de("carta", "/movimientos/opciones-agotadas")).toMatchObject({ label: "Opciones agotadas", accion: "opcion_apagar_en_sucursal", panel: "sucursal" });
-    expect(de("stock", "/movimientos/secciones")).toMatchObject({ label: "Depósitos", accion: "secciones", panel: "sucursal" });
-    expect(de("stock", "/movimientos/motivos-merma")).toMatchObject({ label: "Motivos de Merma", accion: "motivos_merma", panel: "empresa" });
-    expect(de("stock", "/movimientos/destinos-consumo")).toMatchObject({ label: "Destinos de Consumo", accion: "motivos_destino_consumo", panel: "empresa" });
+    // DEC-27: Depósitos, Motivos y Destinos son pestañas de «Configuración» de Stock (rutas de esa entrada), con su clave de siempre.
+    const deStock = (href: string) => RUTAS_DE_UNA_ENTRADA.find((r) => r.href === href);
+    expect(deStock("/movimientos/secciones")).toMatchObject({ label: "Depósitos", accion: "secciones", panel: "sucursal", entrada: "/stock/configuracion" });
+    expect(deStock("/movimientos/motivos-merma")).toMatchObject({ label: "Motivos de merma", accion: "motivos_merma", panel: "empresa", entrada: "/stock/configuracion" });
+    expect(deStock("/movimientos/destinos-consumo")).toMatchObject({ label: "Destinos de consumo", accion: "motivos_destino_consumo", panel: "empresa", entrada: "/stock/configuracion" });
     expect(grupo("stock").items.map((i) => i.href)).not.toContain("/stock/reclasificar");
     for (const href of ["/movimientos/precio-local", "/movimientos/opciones-agotadas", "/movimientos/secciones", "/movimientos/motivos-merma", "/movimientos/destinos-consumo"]) {
       expect(grupo("movimientos").items.map((i) => i.href), href).not.toContain(href);
@@ -76,9 +78,10 @@ describe("el grupo Movimientos del menú real", () => {
 
 describe("las rutas que cuelgan de «Registrar movimiento» (lista real)", () => {
   it("son los 7 procesos del selector y Reclasificar, todas de la entrada «/movimientos» y del panel Sucursal", () => {
-    expect(RUTAS_DE_UNA_ENTRADA.map((r) => [r.href, r.label, r.accion])).toEqual(PROCESOS_DEL_SELECTOR.map((p) => [p.href, p.etiquetaCorta, p.accion]));
-    expect(RUTAS_DE_UNA_ENTRADA).toHaveLength(8);
-    for (const r of RUTAS_DE_UNA_ENTRADA) expect([r.entrada, r.panel], r.href).toEqual(["/movimientos", "sucursal"]);
+    const deMovimientos = RUTAS_DE_UNA_ENTRADA.filter((r) => r.entrada === "/movimientos");
+    expect(deMovimientos.map((r) => [r.href, r.label, r.accion])).toEqual(PROCESOS_DEL_SELECTOR.map((p) => [p.href, p.etiquetaCorta, p.accion]));
+    expect(deMovimientos).toHaveLength(8);
+    for (const r of deMovimientos) expect(r.panel, r.href).toBe("sucursal");
   });
 
   it.each(PROCESOS_DEL_SELECTOR.map((p) => p.href))("%s resalta «Registrar movimiento», es del panel Sucursal y se resuelve por su propia acción", (href) => {
@@ -91,7 +94,7 @@ describe("las rutas que cuelgan de «Registrar movimiento» (lista real)", () =>
   });
 
   it("los directos y las pantallas que se quedaron en el menú se resaltan a sí mismas", () => {
-    for (const href of ["/movimientos/merma", "/movimientos/compra", "/movimientos/venta", "/movimientos/conteo-fisico", "/movimientos/precio-local", "/movimientos/secciones", "/movimientos/motivos-merma", "/stock/consolidado"]) {
+    for (const href of ["/movimientos/merma", "/movimientos/compra", "/movimientos/venta", "/movimientos/conteo-fisico", "/movimientos/precio-local", "/stock/consolidado"]) {
       expect(hrefActivoDelMenu(href, COMPLETO, TODOS), href).toBe(href);
     }
     expect(hrefActivoDelMenu("/movimientos", COMPLETO, TODOS)).toBe("/movimientos");

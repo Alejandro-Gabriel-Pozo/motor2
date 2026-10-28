@@ -1,4 +1,7 @@
 import { IconoDeAccion } from "@/components/iconos";
+import { FilaDeStock } from "@/components/fila-de-stock";
+import { AvisoSoloLecturaDeStock } from "@/components/stock/aviso-solo-lectura";
+import { PESTANAS_DE_CONFIGURACION } from "@/core/stock/public";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -29,7 +32,9 @@ export default async function DestinosConsumoPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Destinos de Consumo</h1>
+      <h1 className="text-xl font-semibold">Configuración · Destinos de consumo</h1>
+      <FilaDeStock ctx={ctx} etiqueta="Qué configurar" pestanas={PESTANAS_DE_CONFIGURACION} ruta="/movimientos/destinos-consumo" />
+      {!puedeEditar && <AvisoSoloLecturaDeStock que="los destinos de consumo" />}
 
       <section className="space-y-4">
         <table className="w-full text-sm">

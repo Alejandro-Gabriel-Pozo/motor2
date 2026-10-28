@@ -82,6 +82,8 @@ const O = [
   "pos_liberar_mesa",
   "producto_campos_sensibles",
   "compra_recibir",
+  // E3a (decisión del dueño, 2026-10-27): proponer el reparto de una factura entre sucursales (de empresa, piso operario, semilla solo admin; el gerente la asigna en la matriz a quien reparte).
+  "compra_repartir",
   // GO-2a: apagar una opción de venta en la sucursal (piso operario, semilla solo admin; delegable al encargado del turno).
   "opcion_apagar_en_sucursal",
   // GO-3b: cargar el plato del día de los menús en la sucursal (piso operario, semilla solo admin; delegable al encargado, D-5).
@@ -184,7 +186,6 @@ const A = [
   "clientes",
   "stock_seccion_habitual",
   "insumo_renombrar_fusionar",
-  "compra_repartir",
   // GO-2a: definir el catálogo de opciones de venta y elegir qué admite cada producto (de empresa, piso administrador).
   "opciones_definir",
   "producto_opciones_admitidas",
@@ -211,8 +212,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     const todas = [...G, ...O, ...L, ...A];
     expect(new Set(todas).size, "una clave declarada en dos clases").toBe(todas.length);
     expect(todas.length).toBe(ACCIONES.length);
-    // A: 63 → 62 en la Fase 3 de la ola «precio y carta» (sale `grupos_de_precio_definir` con GO-3a).
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 33, 62]);
+    // A: 63 → 62 en la Fase 3 de la ola «precio y carta» (sale `grupos_de_precio_definir` con GO-3a). E3a: `compra_repartir` pasa de A a O (piso operario, decisión del dueño 2026-10-27): O 22 → 23, A 62 → 61.
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 23, 33, 61]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

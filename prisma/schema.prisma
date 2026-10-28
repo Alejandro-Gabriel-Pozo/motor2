@@ -50,6 +50,9 @@ model User {
   notasDeCreditoCreadas      NotaCreditoProveedor[] @relation("NotaCreditoProveedorCreadaPor")
   notasDeCreditoAnuladas     NotaCreditoProveedor[] @relation("NotaCreditoProveedorAnuladaPor")
   partesRecibidas FacturaProveedorSucursal[] @relation("FacturaProveedorParteRecibidaPor")
+  propuestasDeFacturaCreadas  FacturaProveedorPropuesta[]   @relation("FacturaProveedorPropuestaCreadaPor")
+  propuestasDeFacturaAceptadas FacturaProveedorPropuesta[]  @relation("FacturaProveedorPropuestaAceptadaPor")
+  anulacionesDeFacturaProveedor AnulacionDeFacturaProveedor[] @relation("AnulacionDeFacturaProveedorCreadaPor")
   traspasosCreados           TraspasoSucursal[]   @relation("TraspasoCreadoPor")
   traspasosDecididosOrigen   TraspasoSucursal[]   @relation("TraspasoDecididoOrigen")
   traspasosDecididosDestino  TraspasoSucursal[]   @relation("TraspasoDecididoDestino")
@@ -163,6 +166,10 @@ model Sucursal {
   ejemplaresTicket         EjemplarTicket[]
   ventas                   Venta[]
   facturaProveedorPartes   FacturaProveedorSucursal[]
+  propuestasDeFacturaComoOrigen  FacturaProveedorPropuesta[]        @relation("PropuestaDeFacturaOrigen")
+  propuestasDeFacturaComoDestino FacturaProveedorPropuesta[]        @relation("PropuestaDeFacturaDestino")
+  renglonesDePropuestaComoOrigen  FacturaProveedorPropuestaRenglon[] @relation("RenglonDePropuestaOrigen")
+  renglonesDePropuestaComoDestino FacturaProveedorPropuestaRenglon[] @relation("RenglonDePropuestaDestino")
   imputacionesDeGasto      ImputacionDeGasto[]
   imputacionesDeNotaCredito NotaCreditoProveedorImputacion[]
   planesDeCostos           PlanDeCostosSucursal[]
@@ -1744,6 +1751,13 @@ model TraspasoSucursal {
   cerradoPorId String?
   cerradoPor   User?     @relation("TraspasoCerradoPor", fields: [cerradoPorId], references: [id])
 
+  /// E2 (ADR-040, «el costo viaja con el traspaso»): COPIA del costo de reposición del origen, por unidad de stock, en el instante
+  /// del envío (aprobación o envío directo, misma transacción SERIALIZABLE que la salida). La salida, la entrada del destino y el
+  /// reingreso se valorizan con ESTA copia (`valorizarLineaDeTraspaso`), nunca con el costo del origen de ese momento. `null` = el
+  /// origen no tenía costo conocido («pendiente de completar»; nunca se inventa 0), o el traspaso es anterior a la columna (sin
+  /// relleno). CHECK `TraspasoSucursal_costo_unitario_origen_no_negativo_chk`: nunca negativa. Dinero: campo sensible (piso administrador).
+  costoUnitarioOrigen Decimal? @db.Decimal(14, 4)
+
   movimientos MovimientoStock[]
 
   @@unique([empresaId, id])
@@ -2538,6 +2552,9 @@ model Empresa {
   facturaProveedorRel            FacturaProveedor[]
   facturaProveedorRenglonRel     FacturaProveedorRenglon[]
   facturaProveedorSucursalRel    FacturaProveedorSucursal[]
+  facturaProveedorPropuestaRel   FacturaProveedorPropuesta[]
+  facturaProveedorPropuestaRenglonRel FacturaProveedorPropuestaRenglon[]
+  anulacionDeFacturaProveedorRel AnulacionDeFacturaProveedor[]
   facturaProveedorTributoRel     FacturaProveedorTributo[]
   puntoDeVentaDeProveedorRel     PuntoDeVentaDeProveedor[]
   conceptoDeGastoRel             ConceptoDeGasto[]
@@ -2765,6 +2782,9 @@ model FacturaProveedor {
 
   renglones FacturaProveedorRenglon[]
   partes    FacturaProveedorSucursal[]
+  /// E3a (ADR-041): las propuestas de parte a otras sucursales y su anulación (registro nuevo, una por factura).
+  propuestas FacturaProveedorPropuesta[]
+  anulaciones AnulacionDeFacturaProveedor[]
   /// M3d: percepciones e impuestos que trae la factura además del IVA.
   tributos  FacturaProveedorTributo[]
   /// M6: las notas de crédito del proveedor que se cargaron sobre esta factura (vigentes y anuladas).
@@ -2820,6 +2840,8 @@ model FacturaProveedorRenglon {
   /// M6: las líneas de nota de crédito que acreditan este renglón (pertenencia a su factura y naturaleza).
   lineasDeNotaCredito NotaCreditoProveedorLinea[] @relation("LineaDeNotaDelRenglon")
   lineasDeNotaCreditoPorNaturaleza NotaCreditoProveedorLinea[] @relation("LineaDeNotaPorNaturaleza")
+  /// E3a (ADR-041): cuánto de este renglón le toca a cada sucursal destino de una propuesta.
+  enPropuestas FacturaProveedorPropuestaRenglon[]
 
   @@unique([empresaId, id])
   /// M6: el destino de la clave foránea de pertenencia de la línea de nota de crédito: la línea acredita un renglón de LA factura de su nota.
@@ -2849,12 +2871,96 @@ model FacturaProveedorSucursal {
   recibidaEn            DateTime?
   recibidaPorId         String?
   recibidaPor           User?            @relation("FacturaProveedorParteRecibidaPor", fields: [recibidaPorId], references: [id], onDelete: Restrict)
+  /// E3a (ADR-041): la propuesta que esta parte aceptó (si nació de una aceptación).
+  propuesta             FacturaProveedorPropuesta?
   creadoEn              DateTime         @default(now())
 
   @@unique([empresaId, id])
   @@unique([facturaProveedorId, sucursalId])
   @@unique([empresaId, operacionId])
   @@index([sucursalId])
+}
+
+/// E3a (ADR-041, migración 20261028100000): la PROPUESTA de la parte de una sucursal DESTINO en una factura repartida. La crea la sucursal que carga la factura (`origenSucursalId`) y la ACEPTA la destino
+/// (`destinoSucursalId`): recién al aceptar entran su stock, su costo y su gasto (la destino inserta su `FacturaProveedorSucursal` ya RECIBIDA y queda en `parteId`). `ENTRE_SUCURSALES`: la ven y la escriben las dos
+/// puntas. `porcentajeDeclaradoBp` es la intención (nunca atribuye dinero: el dinero está en sus renglones). `estado` `PENDIENTE` o `ACEPTADA` (CHECK; `RECHAZADA` con motivo, después); la aceptación (cuándo, quién y la
+/// parte) existe si y solo si está `ACEPTADA`. Con la factura anulada su estado efectivo es «anulada» (la marca la anulación de la factura). UPDATE solo de las cuatro columnas de la aceptación; nunca DELETE.
+model FacturaProveedorPropuesta {
+  id                    String                    @id @default(cuid())
+  empresaId             String                    @default(dbgenerated("app_empresa_actual()"))
+  empresa               Empresa                   @relation(fields: [empresaId], references: [id])
+  facturaProveedorId    String
+  facturaProveedor      FacturaProveedor          @relation(fields: [empresaId, facturaProveedorId], references: [empresaId, id], map: "FacturaProveedorPropuesta_factura_fkey")
+  origenSucursalId      String
+  origenSucursal        Sucursal                  @relation("PropuestaDeFacturaOrigen", fields: [empresaId, origenSucursalId], references: [empresaId, id], map: "FacturaProveedorPropuesta_origen_fkey")
+  destinoSucursalId     String
+  destinoSucursal       Sucursal                  @relation("PropuestaDeFacturaDestino", fields: [empresaId, destinoSucursalId], references: [empresaId, id], map: "FacturaProveedorPropuesta_destino_fkey")
+  porcentajeDeclaradoBp Int
+  estado                String                    @default("PENDIENTE")
+  aceptadaEn            DateTime?
+  aceptadaPorId         String?
+  aceptadaPor           User?                     @relation("FacturaProveedorPropuestaAceptadaPor", fields: [aceptadaPorId], references: [id], onDelete: Restrict, map: "FacturaProveedorPropuesta_aceptadaPor_fkey")
+  parteId               String?
+  parte                 FacturaProveedorSucursal? @relation(fields: [empresaId, parteId], references: [empresaId, id], onDelete: Restrict, map: "FacturaProveedorPropuesta_parte_fkey")
+  creadoPorId           String
+  creadoPor             User                      @relation("FacturaProveedorPropuestaCreadaPor", fields: [creadoPorId], references: [id], onDelete: Restrict, map: "FacturaProveedorPropuesta_creadoPor_fkey")
+  creadoEn              DateTime                  @default(now())
+
+  renglones FacturaProveedorPropuestaRenglon[]
+
+  @@unique([empresaId, id])
+  /// El destino de la clave foránea de sus renglones: cada renglón de propuesta es de ESTA propuesta, de su factura y de sus dos sucursales.
+  @@unique([empresaId, facturaProveedorId, id, origenSucursalId, destinoSucursalId], map: "FacturaProveedorPropuesta_destino_de_renglones_key")
+  /// Una sola propuesta por (factura, sucursal destino).
+  @@unique([facturaProveedorId, destinoSucursalId])
+  @@unique([empresaId, parteId])
+  @@index([destinoSucursalId, estado])
+  @@index([origenSucursalId])
+}
+
+/// E3a (ADR-041): cuánta cantidad (en unidad de stock) y cuántos pesos de UN renglón le tocan a la sucursal destino de una propuesta. Es lo que se acepta, tal cual (la destino no lo cambia). `ENTRE_SUCURSALES`
+/// con las dos sucursales de su propuesta (clave foránea de cinco columnas: propuesta, factura y sucursales coinciden). Solo se agrega (SELECT e INSERT).
+model FacturaProveedorPropuestaRenglon {
+  id                        String                    @id @default(cuid())
+  empresaId                 String                    @default(dbgenerated("app_empresa_actual()"))
+  empresa                   Empresa                   @relation(fields: [empresaId], references: [id])
+  facturaProveedorId        String
+  propuestaId               String
+  origenSucursalId          String
+  destinoSucursalId         String
+  propuesta                 FacturaProveedorPropuesta @relation(fields: [empresaId, facturaProveedorId, propuestaId, origenSucursalId, destinoSucursalId], references: [empresaId, facturaProveedorId, id, origenSucursalId, destinoSucursalId], onDelete: Restrict, onUpdate: Restrict, map: "FacturaProveedorPropuestaRenglon_propuesta_fkey")
+  origenSucursal            Sucursal                  @relation("RenglonDePropuestaOrigen", fields: [empresaId, origenSucursalId], references: [empresaId, id], map: "FacturaProveedorPropuestaRenglon_origen_fkey")
+  destinoSucursal           Sucursal                  @relation("RenglonDePropuestaDestino", fields: [empresaId, destinoSucursalId], references: [empresaId, id], map: "FacturaProveedorPropuestaRenglon_destino_fkey")
+  facturaProveedorRenglonId String
+  renglon                   FacturaProveedorRenglon   @relation(fields: [empresaId, facturaProveedorId, facturaProveedorRenglonId], references: [empresaId, facturaProveedorId, id], onDelete: Restrict, onUpdate: Restrict, map: "FacturaProveedorPropuestaRenglon_renglon_fkey")
+  cantidadStock             Decimal                   @db.Decimal(14, 4)
+  precioTotal               Decimal                   @db.Decimal(14, 2)
+  creadoEn                  DateTime                  @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([propuestaId, facturaProveedorRenglonId])
+  @@index([facturaProveedorRenglonId])
+  @@index([destinoSucursalId])
+}
+
+/// E3a (ADR-041): la ANULACIÓN de una factura de proveedor como registro nuevo (una por factura): motivo, clave de reintento (única global) y huella, y el mensaje devuelto (I3). La cabecera además queda con
+/// `anuladaEn`/`anuladaPorId` (libera el número). DE EMPRESA; solo se agrega (SELECT e INSERT).
+model AnulacionDeFacturaProveedor {
+  id                 String           @id @default(cuid())
+  empresaId          String           @default(dbgenerated("app_empresa_actual()"))
+  empresa            Empresa          @relation(fields: [empresaId], references: [id])
+  facturaProveedorId String
+  facturaProveedor   FacturaProveedor @relation(fields: [empresaId, facturaProveedorId], references: [empresaId, id], map: "AnulacionDeFacturaProveedor_factura_fkey")
+  motivo             String
+  claveIdempotencia  String           @unique
+  payloadHash        String
+  resultadoMensaje   String
+  creadoPorId        String
+  creadoPor          User             @relation("AnulacionDeFacturaProveedorCreadaPor", fields: [creadoPorId], references: [id], onDelete: Restrict, map: "AnulacionDeFacturaProveedor_creadoPor_fkey")
+  creadoEn           DateTime         @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([facturaProveedorId])
 }
 
 /// Paquete 3 (M3d): un tributo de la factura (percepción o impuesto que trae además del IVA). Cuelga de la cabecera, es DE EMPRESA y solo se agrega (la app tiene SELECT e INSERT). `tipo` es de lista cerrada y `importe` mayor

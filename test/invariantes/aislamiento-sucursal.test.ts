@@ -67,6 +67,7 @@ describe("aislamiento entre sucursales", () => {
       fecha: new Date(),
       seccionId: seccionB.id, // ajena a A: A solo pertenece a sucursalAId
       items: [{ productoId: mp.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
 
     expect(resultado.ok).toBe(false);

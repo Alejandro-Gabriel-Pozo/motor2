@@ -26,7 +26,7 @@ test("secciones: crear, quitar del respaldo automático, desactivar y renombrar 
   const filaDe = (n: string) => page.locator(`tr:has(input[value="${n}"])`);
 
   await page.goto("/movimientos/secciones");
-  await expect(page.getByRole("heading", { name: "Depósitos", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Configuración · Depósitos", exact: true })).toBeVisible();
   await ponerMarca(page);
 
   // Crear: la sección nueva aparece en la tabla.
@@ -39,7 +39,7 @@ test("secciones: crear, quitar del respaldo automático, desactivar y renombrar 
   await expect(filaDe(nombre).getByRole("button", { name: "Quitar del respaldo", exact: true })).toBeVisible();
   await filaDe(nombre).getByRole("button", { name: "Quitar del respaldo", exact: true }).click();
   await expect(filaDe(nombre).getByRole("button", { name: "Usar de respaldo", exact: true })).toBeVisible();
-  await expect(filaDe(nombre).getByText(`Sección "${nombre}" ya no sirve de respaldo automático en ventas.`)).toBeVisible();
+  await expect(filaDe(nombre).getByText(`Depósito "${nombre}" ya no sirve de respaldo automático en ventas.`)).toBeVisible();
 
   // Desactivar: la columna «Activa» pasa a «No» y el botón a «Activar».
   await filaDe(nombre).getByRole("button", { name: "Desactivar", exact: true }).click();

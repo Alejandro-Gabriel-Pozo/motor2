@@ -30,7 +30,7 @@ describe("cerrarCuenta (server action)", () => {
     await entrarComo(s.admin);
   });
 
-  const comprar = (productoId: string, cantidad: number) => registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId, cantidad }] });
+  const comprar = (productoId: string, cantidad: number) => registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId, cantidad }], claveIdempotencia: crypto.randomUUID() });
   const ventasDeLaMesa = () =>
     prisma.operacion.findMany({ where: { proceso: "VENTA", detalleLibre: "Mesa 4" }, include: { movimientos: { orderBy: { proceso: "asc" } } }, orderBy: { creadoEn: "asc" } });
 
@@ -238,7 +238,7 @@ describe("cerrarCuenta (server action)", () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 6, precioUnitario: 12000, numeroEnvio: 1 }]);
       await cerrarCuenta(cuenta.id);
 
-      const r = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 1.5 }] });
+      const r = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 1.5 }], claveIdempotencia: crypto.randomUUID() });
       expect(r.ok).toBe(true);
       expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id, prisma)).toBe(0.5);
     });

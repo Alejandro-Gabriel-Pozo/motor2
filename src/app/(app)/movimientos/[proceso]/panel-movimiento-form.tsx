@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
+import { registrarFacturaProveedor } from "@/server/actions/movimientos/facturas-proveedor";
+import { BloqueDeReparto, REPARTO_APAGADO, type EstadoDeReparto } from "./bloque-de-reparto";
 import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
@@ -67,6 +69,7 @@ export function PanelMovimientoForm({
   motivos,
   destinos,
   productoInicial,
+  reparto,
 }: {
   config: ProcesoUiConfig;
   secciones: Opcion[];
@@ -81,6 +84,8 @@ export function PanelMovimientoForm({
   destinos?: Opcion[];
   /** Deep-link accionable (ej. "Costo incompleto" en Reportes → Costos, "falta precio de este insumo") — precarga la primera fila con este producto en vez de arrancar vacía. */
   productoInicial?: { id: string; etiqueta: string };
+  /** E3a (ADR-041): solo en Compra y solo si quien carga puede repartir (`compra_repartir`) y hay otras sucursales activas: el interruptor «Repartir entre sucursales». */
+  reparto?: { sucursalActiva: Opcion; otras: Opcion[] };
 }) {
   const router = useRouter();
   const [fecha, setFecha] = useState(hoyISO());
@@ -96,6 +101,8 @@ export function PanelMovimientoForm({
   const [motivoId, setMotivoId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [detalleLibre, setDetalleLibre] = useState("");
+  const [estadoReparto, setEstadoReparto] = useState<EstadoDeReparto>(REPARTO_APAGADO);
+  const repartiendo = Boolean(reparto && estadoReparto.repartir);
   const [items, setItems] = useState<FilaItem[]>([
     productoInicial ? { ...FILA_VACIA, productoId: productoInicial.id, etiquetaInicial: productoInicial.etiqueta } : { ...FILA_VACIA },
   ]);
@@ -271,6 +278,35 @@ export function PanelMovimientoForm({
     if (!itemsValidos.length) {
       setMensaje(`Cargá al menos un ${palabras.singularMinuscula} con cantidad.`);
       setOk(false);
+      return;
+    }
+
+    if (repartiendo && reparto) {
+      const partes = estadoReparto.incluidas.map((sucursalId) => ({ sucursalId, valor: numeroDelCampo(estadoReparto.valores[sucursalId] ?? "") ?? Number.NaN }));
+      const conParteEnEsta = estadoReparto.incluidas.includes(reparto.sucursalActiva.id);
+      startTransition(async () => {
+        const resultado = await registrarFacturaProveedor({
+          fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
+          proveedorId,
+          nroFactura: nroFactura || undefined,
+          seccionId: conParteEnEsta ? seccionId : undefined,
+          detalleLibre: detalleLibre || undefined,
+          items: itemsValidos,
+          reparto: { modo: estadoReparto.modo, partes },
+          claveIdempotencia,
+        });
+        setMensaje(resultado.mensaje);
+        setOk(resultado.ok);
+        if (resultado.ok) {
+          setItems([{ ...FILA_VACIA }]);
+          setPresentacionesPorFila({});
+          setInfoProveedor("");
+          setVersionItems((n) => n + 1);
+          setEstadoReparto(REPARTO_APAGADO);
+          setClaveIdempotencia(crypto.randomUUID());
+          router.refresh();
+        }
+      });
       return;
     }
 
@@ -486,6 +522,16 @@ export function PanelMovimientoForm({
       </div>
 
       <Campo etiqueta="Detalle (opcional)" value={detalleLibre} onChange={(e) => setDetalleLibre(e.target.value)} />
+
+      {reparto && (
+        <BloqueDeReparto
+          estado={estadoReparto}
+          onCambio={setEstadoReparto}
+          sucursalActiva={reparto.sucursalActiva}
+          otras={reparto.otras}
+          totalDeLaFactura={items.reduce((s, f) => s + (numeroDelCampo(f.precioTotal) ?? 0), 0)}
+        />
+      )}
 
       {mensaje && (
         <Aviso variante={ok ? "exito" : "error"} forma="en-linea">

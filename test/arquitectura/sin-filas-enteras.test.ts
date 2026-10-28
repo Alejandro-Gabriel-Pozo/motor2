@@ -13,7 +13,8 @@ import { esArchivoUseServer } from "./guardas/analizador";
  * decide es el `select` de la consulta, y devuelve solo lo que la pantalla dibuja.
  *
  * Los modelos con campo sensible son los de GT-1 (`SENSIBLES`): `Producto` (costo de consignación y consignante), `Proveedor` (CUIT, correo, condiciones de pago), `User` (correo, foto,
- * cuenta), `Operacion` (factura, proveedor), `MovimientoStock` (importes), `PagoConsignante` (importe), `Invitacion`, `Account` y `Session` (tokens). Las relaciones que apuntan a
+ * cuenta), `Operacion` (factura, proveedor), `MovimientoStock` (importes), `PagoConsignante` (importe), `Invitacion`, `Account` y `Session` (tokens), y `TraspasoSucursal` (la copia del costo del
+ * origen, E2 / ADR-040). Las relaciones que apuntan a
  * ellos salen del `schema.prisma` (no se mantienen a mano).
  *
  * Qué se vigila, por AST (un comentario o un string no cuenta):
@@ -32,7 +33,7 @@ import { esArchivoUseServer } from "./guardas/analizador";
  * una consulta; una entrada de más en la lista.
  */
 const RAIZ = join(__dirname, "../..");
-const SENSIBLES = ["Producto", "Proveedor", "User", "Operacion", "MovimientoStock", "PagoConsignante", "Invitacion", "Account", "Session"];
+const SENSIBLES = ["Producto", "Proveedor", "User", "Operacion", "MovimientoStock", "PagoConsignante", "Invitacion", "Account", "Session", "TraspasoSucursal"];
 const LECTURAS = new Set(["findMany", "findFirst", "findUnique", "findFirstOrThrow", "findUniqueOrThrow"]);
 
 type Clase = "DTO" | "FICHA" | "INTERNO";
@@ -308,7 +309,11 @@ describe("GT-3a — nada de filas enteras de modelos con un campo sensible", () 
     const claves = (c: string) => filasEnteras(c, "x.ts", relaciones).map((h) => h.clave);
     expect(claves("export async function f(db) { return db.producto.findMany({ where: {} }); }")).toEqual(["x.ts|producto.findMany sin select|f"]);
     expect(claves("export async function f(db) { return db.producto.findMany({ where: {}, select: { id: true } }); }")).toEqual([]);
-    expect(claves("export async function g(db) { return db.traspasoSucursal.findMany({ include: { creadoPor: true } }); }")).toEqual(["x.ts|include: { creadoPor: true }|g"]);
+    // E2 (ADR-040): `TraspasoSucursal` tiene un campo sensible (la copia del costo del origen), así que su fila entera también se marca.
+    expect(claves("export async function g(db) { return db.traspasoSucursal.findMany({ include: { creadoPor: true } }); }")).toEqual([
+      "x.ts|traspasoSucursal.findMany sin select|g",
+      "x.ts|include: { creadoPor: true }|g",
+    ]);
     expect(claves("export async function g(db) { return db.traspasoSucursal.findMany({ select: { creadoPor: { select: { email: true } } } }); }")).toEqual([]);
     expect(claves("export async function h(db) { return db.sucursal.findMany({ include: { seccion: true } }); }")).toEqual([]);
     // la Bandeja de traspasos guardaba el pedido en una constante (`INCLUDE_BANDEJA`): también se mira

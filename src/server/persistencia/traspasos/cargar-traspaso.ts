@@ -19,6 +19,8 @@ export interface TraspasoCargado {
   productoNombre: string;
   cantidad: number;
   seccionOrigenId: string | null;
+  /** E2 (ADR-040): la copia del costo del origen, fijada al enviar; `null` si no hay (todavía no se envió, el origen no tenía costo, o es anterior a la columna). */
+  costoUnitarioOrigen: number | null;
 }
 
 /** `null` si no existe un traspaso con ese id (de ninguna sucursal: de qué lado está quien actúa lo decide `guardTransicionTraspaso`). */
@@ -34,6 +36,7 @@ export async function cargarTraspaso(tx: Prisma.TransactionClient, traspasoId: s
     productoNombre: t.producto.nombre,
     cantidad: Number(t.cantidad),
     seccionOrigenId: t.seccionOrigenId,
+    costoUnitarioOrigen: t.costoUnitarioOrigen === null ? null : Number(t.costoUnitarioOrigen),
   };
 }
 

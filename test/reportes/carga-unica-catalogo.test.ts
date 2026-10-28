@@ -37,8 +37,8 @@ describe("obtenerReportePorPeriodo — catálogo", () => {
     const pan = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: kg.id, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pan.id, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 2, unidadId: kg.id }] } } });
     // 10 kg a $5 el kilo el 1/8 (ANTES del período) y 10 kg a $8 el kilo el 3/8 (dentro).
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 50 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-03"), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 80 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-01"), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-03"), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 80 }], claveIdempotencia: crypto.randomUUID() });
     // Dos ventas del pan. La segunda se deja SIN costo guardado, para que el margen Real la reconstruya con el historial de compras.
     for (const dia of ["2026-08-04", "2026-08-05"]) {
       const r = await registrarVenta({ fecha: d(dia), seccionId, ventas: [{ productoId: pan.id, cantidadVendida: 1 }] });

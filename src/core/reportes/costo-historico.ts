@@ -3,9 +3,9 @@ import { type CostoMP } from "./comun";
 
 /**
  * «Margen real» para ventas que no guardaron su costo al venderse (por ejemplo, las que se cargaron sin ese dato): se RECONSTRUYE
- * el costo de cada plato al día de la venta con el historial de compras, con el mismo criterio del costo de reposición de
- * Costos y márgenes (`obtenerCostoActualPorMP`: el precio por unidad de la compra más reciente de cada insumo), pero «más reciente
- * hasta ese día» en vez de «más reciente hoy». Es una aproximación, y por eso el reporte la rotula «reconstruido»:
+ * el costo de cada plato al día de la venta con el historial de entradas valorizadas (compras y, desde E2, traspasos recibidos: V-T1), con
+ * el mismo criterio del costo de reposición de Costos y márgenes (`obtenerCostoActualPorMP`: el precio por unidad de la entrada más reciente
+ * de cada insumo), pero «más reciente hasta ese día» en vez de «más reciente hoy». Es una aproximación, y por eso el reporte la rotula «reconstruido»:
  * - usa la receta VIGENTE hoy (no la que regía ese día);
  * - si un insumo no tiene ninguna compra hasta ese día, el plato no se puede costear y la venta queda afuera (no se inventa un valor).
  */

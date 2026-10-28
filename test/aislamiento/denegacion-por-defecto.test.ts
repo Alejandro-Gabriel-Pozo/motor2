@@ -45,9 +45,11 @@ const MAXIMOS = {
   OPCIONALES_SIN_MAPEAR: 26,
   SIN_CONTROL_POSITIVO: 0,
   RECHAZOS_DE_ESTADO_ADMITIDOS: 9,
-  SUCURSALES_LISTADAS_POR_DISENO: 8,
+  // Sube a propósito de 8 a 11 con E3a (ADR-041): las dos lecturas de propuestas de factura nombran la sucursal contraparte (quién la compró, a quién se le propuso) y el selector de sucursales para repartir lista las otras.
+  SUCURSALES_LISTADAS_POR_DISENO: 11,
   CONTEXTO_DECLARADO: 1,
-  SIN_MARCA_PROPIA: 31,
+  // Sube a propósito de 31 a 32 con E3a: el selector de sucursales para repartir una factura, igual que los dos de traspasos.
+  SIN_MARCA_PROPIA: 32,
   OK_SIN_EFECTO_POR_DISENO: 2,
   EN_LA_SUCURSAL_VACIA: 1,
 } as const;

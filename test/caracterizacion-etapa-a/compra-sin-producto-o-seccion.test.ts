@@ -41,7 +41,7 @@ describe("COMPRA: productoValidoParaProceso (puro)", () => {
 });
 
 describe("COMPRA: guardComandoRegistrarMovimiento (puro)", () => {
-  const compra = (seccionId: unknown) => ({ proceso: "COMPRA", fecha: FECHA, seccionId, items: [{ productoId: "p-1", cantidad: 1 }] });
+  const compra = (seccionId: unknown) => ({ proceso: "COMPRA", fecha: FECHA, seccionId, items: [{ productoId: "p-1", cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
 
   it("sin sección (vacía, en blanco o ausente) devuelve «Elegí una sección.»", () => {
     for (const seccionId of ["", "   ", undefined]) {
@@ -88,6 +88,7 @@ describe("COMPRA rechazada por producto o sección: sin filas, y el rechazo se r
     fecha: FECHA,
     seccionId: seccion,
     items: [{ productoId, cantidad: 5, precioTotal: 100 }],
+    claveIdempotencia: crypto.randomUUID(),
     ...extra,
   });
   const filas = async () => ({
