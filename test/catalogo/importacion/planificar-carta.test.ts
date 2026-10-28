@@ -151,7 +151,9 @@ describe("propiedad: plan(aplicar(plan(x))) = todo SIN_CAMBIOS, también la cart
         const escritos = contenidosAEscribir(c1, ids);
         const aplicados = productosAplicados(p1, "unidad-1").map((p) => ({
           ...p,
-          contenidos: escritos.filter((c) => c.productoId === p.id).map(({ productoId: _productoId, ...resto }) => resto),
+          contenidos: escritos
+            .filter((c) => c.productoId === p.id)
+            .map((c) => ({ sucursalId: c.sucursalId, visibleEnCarta: c.visibleEnCarta, seccionCartaId: c.seccionCartaId, descripcion: c.descripcion, orden: c.orden, especial: c.especial, tags: c.tags, generoCartaId: c.generoCartaId, mostrarNombreArriba: c.mostrarNombreArriba })),
         }));
         const estado2 = estadoVacio({ productos: aplicados });
         const p2 = planificarProductos(catalogo, estado2, permisosCompletos());
