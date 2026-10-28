@@ -145,6 +145,8 @@ Esta ola no agrega escrituras. Las existentes conservan su control (tabla de la 
 - **P-6 (concurrencia):** crear insumo, categoría o unidad con el mismo nombre a la vez puede dejar dos filas (no hay índice único por nombre). Recomendación: índice único por (empresa, nombre normalizado) en la próxima migración autorizada, previo diagnóstico de duplicados. PENDIENTE (migración).
 - **P-7 (datos):** las descripciones de `ACCIONES` («Administrar los Grupos de insumos…», «Fijar Precio Local por sucursal») viven en la base: cambiarlas es una migración de datos. Recomendación: junto con la próxima migración autorizada. PENDIENTE.
 - **P-8 (URL):** mudar `/movimientos/precio-local` a `/catalogo/…` con 307. Recomendación: no por ahora (igual que Movimientos y Stock). PROPUESTA.
+- **P-9 (vocabulario de mensajes compartidos):** los rechazos del servidor «armala en Catálogo → Recetas…» (`core/movimientos/origen-de-stock.ts`, `core/pos/componente-de-combo.ts`, `server/consultas/catalogo/espacio-del-producto.ts`) siguen nombrando el camino viejo; desde DEC-13 es «Catálogo → Productos → Recetas» (la pestaña se sigue llamando «Recetas» y el buscador del menú la encuentra). Fijan caracterizaciones congeladas de la venta y del POS. Recomendación: pasarlos en un paso propio con su regeneración declarada, junto con P-2b de Stock. PROPUESTA.
+- **P-10 (rótulo del campo en la compra):** la compra (módulo Movimientos) rotula el dato «Código/nombre del proveedor» y la ficha del proveedor «Cómo lo llama (en su factura)». Recomendación: unificar a «Cómo lo llama (en su factura)» en el paso de Movimientos, y destacarlo al cargar la compra (la idea del dueño del 2026-10-27). PROPUESTA.
 
 ## 12. Escalera de producto (lo que ve el cliente), N0 a N5
 
@@ -179,3 +181,9 @@ Lo que falta en un nivel se muestra «Sin cargar» / «pendiente de completar»,
 8. M1: «En su factura dice» destacado en la ficha del proveedor.
 9. e2e del flujo principal, accesibilidad y capturas.
 10. Cierre: los 8 comandos del gate.
+
+## 15. Estado de la implementación (2026-10-28, carril `alegp/carril-cat`)
+
+- Hechos, sin migración: pasos 1 a 9 de la sección 14 (diseño; menú de cinco entradas con `core/catalogo/ui-config.ts`; pestañas de Productos y Maestros con `FilaDeCatalogo`; guarda «alguna de» en la entrada Maestros con la guarda propia de la tabla de insumos adentro; ver ≠ escribir en Maestros, Proveedores, Clientes, Precio local y Recetas; vocabulario; tablas en `CajaDesplazable` a 375 px; M2 búsqueda por cómo lo llama el proveedor; M1 «Cómo lo llama (en su factura)» destacado; e2e `catalogo-menu-y-pestanas.spec.ts`).
+- Regeneraciones declaradas: golden de visibilidad del menú (`GOLDEN_ACTUALIZAR=1`) y `linea-de-base-precio-y-carta.golden.txt` (4 líneas: «Biblioteca de opciones»), con su entrada en `caracterizaciones-congeladas.test.ts`.
+- Decisión de ingeniería tomada al implementar (PROPUESTA): una fila de pestañas con una sola pestaña visible, que es la pantalla abierta, no se dibuja.
