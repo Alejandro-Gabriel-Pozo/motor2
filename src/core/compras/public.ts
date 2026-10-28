@@ -21,7 +21,7 @@ export {
 export type { CabeceraCompra } from "./correccion";
 export { rechazoPorCompraDeFactura } from "./compra-de-factura";
 export { repartirFactura } from "./reparto-de-factura";
-export type { ModoDeReparto, RenglonARepartir, RepartoDeFactura } from "./reparto-de-factura";
+export type { RepartoDeFactura } from "./reparto-de-factura";
 export { normalizarNumeroDeComprobante } from "./numero-de-comprobante";
 export { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicados } from "./posible-duplicado";
 export type { CompraCandidata, CompraNueva } from "./posible-duplicado";

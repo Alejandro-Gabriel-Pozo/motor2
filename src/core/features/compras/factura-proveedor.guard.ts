@@ -13,10 +13,10 @@ import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, Datos
  */
 
 /** Cuántas sucursales puede tener un reparto: un tope de pedido, no una regla de negocio. */
-export const MAXIMO_SUCURSALES_EN_UN_REPARTO = 50;
+const MAXIMO_SUCURSALES_EN_UN_REPARTO = 50;
 
 /** El motivo de una anulación: 1 a 200 caracteres con al menos uno visible (el mismo largo que el motivo de anulación de la nota de crédito, ADR-029 §12). */
-export const LARGO_MAXIMO_MOTIVO_ANULACION = 200;
+const LARGO_MAXIMO_MOTIVO_ANULACION = 200;
 
 function claveObligatoria(clave: unknown): ResultadoDato<string> {
   if (clave === undefined || clave === null || clave === "") return rechazar("vacio", "Falta la clave de reintento: recargá la pantalla.");
