@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { requierePermisoVerDeEmpresa, accionesDelMenuQueElUsuarioPuedeVer } from "@/server/acceso/gate";
+import { requierePermisoVerDeEmpresa, accionesDelMenuQueElUsuarioPuedeVer, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarProductosQueLeCompran, obtenerFichaProveedor } from "@/server/consultas/catalogo/proveedores";
 import { formatearCuit } from "@/core/fiscal/public";
@@ -48,9 +48,11 @@ export default async function FichaProveedorPage({
   const p = await obtenerFichaProveedor(id, ctx.db);
   if (!p) notFound();
 
-  const [productosQueLeCompran, puedeVerPrecios] = await Promise.all([
+  const [productosQueLeCompran, puedeVerPrecios, { editar: puedeEditar }] = await Promise.all([
     listarProductosQueLeCompran(id, ctx.db),
     accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, ["comparar_precios"], ctx.db),
+    // Ver ≠ escribir (DEC-33): «Editar» solo para quien puede editar proveedores (la página de edición y `actualizarProveedor` lo exigen igual).
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db),
   ]);
 
   return (
@@ -71,9 +73,11 @@ export default async function FichaProveedorPage({
               {p.codigo} · {p.activo ? "Activo" : "Inactivo"}
             </p>
           </div>
-          <Link href={`/catalogo/proveedores/${p.id}/editar`} className={claseDeBoton()}>
-            Editar
-          </Link>
+          {puedeEditar && (
+            <Link href={`/catalogo/proveedores/${p.id}/editar`} className={claseDeBoton()}>
+              Editar
+            </Link>
+          )}
         </div>
       </div>
 

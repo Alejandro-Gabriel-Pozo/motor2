@@ -1,7 +1,8 @@
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { requierePermisoVer } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
+import { AvisoSoloLecturaDeCatalogo } from "@/components/catalogo/aviso-solo-lectura";
 import { listarPreciosLocales, setPrecioLocalProducto } from "@/server/actions/catalogo/precio-local";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -38,7 +39,13 @@ export default async function PrecioLocalPage() {
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "precio_local", ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
-  const [precios, tamanos] = await Promise.all([listarPreciosLocales(ctx.sucursalId), cargarGrillaDeTamanosDeLaSucursal(ctx.db, ctx.sucursalId)]);
+  // Ver ≠ escribir (DEC-33, Fase 7): habilitar, cargar y volver al precio de la empresa se dibujan con el «Editar» de `precio_local` en la sucursal activa (la clave de los dos comandos); quien solo ve
+  // lee los precios con el aviso de solo lectura.
+  const [precios, tamanos, { editar: puedeEditar }] = await Promise.all([
+    listarPreciosLocales(ctx.sucursalId),
+    cargarGrillaDeTamanosDeLaSucursal(ctx.db, ctx.sucursalId),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "precio_local", ctx.db),
+  ]);
   const sucursalId = ctx.sucursalId;
   // El precio local que esta pantalla muestra de cada producto (habilitado o no): lo que vio quien guarda (control del valor visto, ola «precio y carta», Fase 2).
   const preciosLocales: Record<string, PrecioLocalDeProductoVisto> = Object.fromEntries(precios.map((p) => [p.productoId, { precio: Number(p.precio), habilitado: p.habilitado }]));
@@ -53,6 +60,7 @@ export default async function PrecioLocalPage() {
           <p className="text-sm text-tinta-tenue">El precio de venta propio de esta sucursal. Un producto sin precio local se vende al precio de la empresa.</p>
         </div>
         <FilaDeCatalogo ctx={ctx} etiqueta="Qué mirar de los productos" pestanas={PESTANAS_DE_PRODUCTOS} ruta="/movimientos/precio-local" />
+        {!puedeEditar && <AvisoSoloLecturaDeCatalogo que="el precio local" quien="quien administra la sucursal" />}
       </div>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div>
@@ -80,22 +88,24 @@ export default async function PrecioLocalPage() {
                       <td role="cell" data-label="Precio global" className={`pr-3 ${CELDA}`}>{Number(p.producto.precioVenta)}</td>
                       <td role="cell" data-label="Habilitado" className={`pr-3 ${CELDA}`}>{habilitado ? "Sí" : "No"}</td>
                       <td role="cell" className="max-md:block">
-                        <FormConResultado
-                          accion={async () => {
-                            "use server";
-                            // Lo que mostraba la fila (precio y estado): si alguien lo cambió desde que se cargó la pantalla, la acción no escribe y pide recargar.
-                            const r = await setPrecioLocalProducto(productoId, precio, !habilitado, { precio, habilitado });
-                            // El refresco se pide ACÁ y no en la acción: la acción también la usa el formulario cliente de alta, que ya hace su propio
-                            // router.refresh() (ver refrescar.ts). Sin esto la columna «Habilitado» no cambiaba hasta recargar a mano.
-                            // Solo si salió bien: con un error no cambió nada.
-                            if (r.ok) refrescarVistaSiHaceFalta();
-                            return r;
-                          }}
-                        >
-                          <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
-                            {habilitado ? "Deshabilitar" : "Habilitar"}
-                          </BotonDeServidor>
-                        </FormConResultado>
+                        {puedeEditar && (
+                          <FormConResultado
+                            accion={async () => {
+                              "use server";
+                              // Lo que mostraba la fila (precio y estado): si alguien lo cambió desde que se cargó la pantalla, la acción no escribe y pide recargar.
+                              const r = await setPrecioLocalProducto(productoId, precio, !habilitado, { precio, habilitado });
+                              // El refresco se pide ACÁ y no en la acción: la acción también la usa el formulario cliente de alta, que ya hace su propio
+                              // router.refresh() (ver refrescar.ts). Sin esto la columna «Habilitado» no cambiaba hasta recargar a mano.
+                              // Solo si salió bien: con un error no cambió nada.
+                              if (r.ok) refrescarVistaSiHaceFalta();
+                              return r;
+                            }}
+                          >
+                            <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
+                              {habilitado ? "Deshabilitar" : "Habilitar"}
+                            </BotonDeServidor>
+                          </FormConResultado>
+                        )}
                       </td>
                     </tr>
                   );
@@ -106,7 +116,9 @@ export default async function PrecioLocalPage() {
         </div>
 
         <div>
-          <PrecioLocalForm sucursalId={ctx.sucursalId} preciosLocales={preciosLocales} />
+          {puedeEditar && (
+            <PrecioLocalForm sucursalId={ctx.sucursalId} preciosLocales={preciosLocales} />
+          )}
         </div>
 
         {/* GO-2d (ADR-030 §5): el precio de cada TAMAÑO que un producto cobra con precio propio, en esta sucursal. Vacío = rige el de la empresa. */}
@@ -153,42 +165,50 @@ export default async function PrecioLocalPage() {
                         </td>
                         <td role="cell" data-label="Precio de la empresa" className={`py-2 pr-2 tabular-nums ${CELDA}`}>{t.precioDeLaEmpresa === null ? "Sin precio" : formatearMonto(t.precioDeLaEmpresa)}</td>
                         <td role="cell" data-label="En esta sucursal" className={`py-2 pr-2 ${CELDA}`}>
-                          <FormConResultado
-                            ofrecerRecargar
-                            accion={async (formData: FormData) => {
-                              "use server";
-                              return fijarPrecioLocalDeOpcion({ sucursalId, productoId, opcionId, esperado, precio: numeroDelCampo(String(formData.get("precio") ?? "")) ?? Number.NaN });
-                            }}
-                            className="flex flex-col gap-1"
-                          >
-                            <div className="flex items-center gap-2">
-                              <label htmlFor={`tamano-${productoId}-${opcionId}`} className="sr-only">
-                                Precio de {etiqueta} en esta sucursal
-                              </label>
-                              <CampoNumero id={`tamano-${productoId}-${opcionId}`} name="precio" defaultValue={t.enLaSucursal?.habilitado ? String(t.enLaSucursal.precio) : ""} prefijo="$" tipo="importe" etiqueta="El precio" tamano="compacto" required className="w-32" />
-                              {/* Un botón por tamaño: el nombre accesible dice cuál (varios «Guardar» iguales en la misma pantalla no se distinguen con un lector de pantalla). */}
-                              <BotonDeServidor type="submit" variante="enlace" tamano="tactil" aria-label={`Guardar el precio de ${etiqueta}`} className="min-w-11">
-                                Guardar
-                              </BotonDeServidor>
-                            </div>
-                          </FormConResultado>
+                          {puedeEditar ? (
+                            <FormConResultado
+                              ofrecerRecargar
+                              accion={async (formData: FormData) => {
+                                "use server";
+                                return fijarPrecioLocalDeOpcion({ sucursalId, productoId, opcionId, esperado, precio: numeroDelCampo(String(formData.get("precio") ?? "")) ?? Number.NaN });
+                              }}
+                              className="flex flex-col gap-1"
+                            >
+                              <div className="flex items-center gap-2">
+                                <label htmlFor={`tamano-${productoId}-${opcionId}`} className="sr-only">
+                                  Precio de {etiqueta} en esta sucursal
+                                </label>
+                                <CampoNumero id={`tamano-${productoId}-${opcionId}`} name="precio" defaultValue={t.enLaSucursal?.habilitado ? String(t.enLaSucursal.precio) : ""} prefijo="$" tipo="importe" etiqueta="El precio" tamano="compacto" required className="w-32" />
+                                {/* Un botón por tamaño: el nombre accesible dice cuál (varios «Guardar» iguales en la misma pantalla no se distinguen con un lector de pantalla). */}
+                                <BotonDeServidor type="submit" variante="enlace" tamano="tactil" aria-label={`Guardar el precio de ${etiqueta}`} className="min-w-11">
+                                  Guardar
+                                </BotonDeServidor>
+                              </div>
+                            </FormConResultado>
+                          ) : (
+                            t.enLaSucursal?.habilitado ? formatearMonto(t.enLaSucursal.precio) : <span className="text-tinta-tenue">Rige el de la empresa</span>
+                          )}
                         </td>
                         <td role="cell" data-label="Habilitado" className={`py-2 ${CELDA}`}>
                           {/* El formulario se dibuja siempre (aunque no haya nada que dar de baja) para que su mensaje siga a la vista después de volver al precio de la empresa. */}
-                          <FormConResultado
-                            ofrecerRecargar
-                            accion={async () => {
-                              "use server";
-                              return fijarPrecioLocalDeOpcion({ sucursalId, productoId, opcionId, esperado, precio: null });
-                            }}
-                          >
-                            <span className="mr-2">{t.enLaSucursal?.habilitado ? "Sí" : "No"}</span>
-                            {t.enLaSucursal?.habilitado && (
-                              <BotonDeServidor type="submit" variante="enlace" tamano="tactil" aria-label={`Volver al de la empresa en ${etiqueta}`}>
-                                Volver al de la empresa
-                              </BotonDeServidor>
-                            )}
-                          </FormConResultado>
+                          {puedeEditar ? (
+                            <FormConResultado
+                              ofrecerRecargar
+                              accion={async () => {
+                                "use server";
+                                return fijarPrecioLocalDeOpcion({ sucursalId, productoId, opcionId, esperado, precio: null });
+                              }}
+                            >
+                              <span className="mr-2">{t.enLaSucursal?.habilitado ? "Sí" : "No"}</span>
+                              {t.enLaSucursal?.habilitado && (
+                                <BotonDeServidor type="submit" variante="enlace" tamano="tactil" aria-label={`Volver al de la empresa en ${etiqueta}`}>
+                                  Volver al de la empresa
+                                </BotonDeServidor>
+                              )}
+                            </FormConResultado>
+                          ) : (
+                            t.enLaSucursal?.habilitado ? "Sí" : "No"
+                          )}
                         </td>
                       </tr>
                     );
