@@ -1421,7 +1421,7 @@
     {
       "clave": "compra_repartir",
       "contexto": "empresa",
-      "nivelMinimo": "administrador",
+      "nivelMinimo": "operario",
       "rolesEditarSemilla": [
         "admin"
       ]
