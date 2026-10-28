@@ -31,6 +31,38 @@ export function propiedadesDeInterfaz(fuente: string, interfaz: string): string[
   return null;
 }
 
+/**
+ * Las propiedades de la fila que una función de la persistencia escribe: el objeto literal que devuelve el `map` de su `data: lista.map((x) => ({ … }))`. `null` si la función no está o no tiene
+ * esa forma (entonces el guardián falla: una escritura que no se puede leer no se da por buena).
+ */
+export function camposEscritosPor(fuente: string, funcion: string): string[] | null {
+  const archivo = ts.createSourceFile("x.ts", fuente, ts.ScriptTarget.Latest, true);
+  const declaracion = archivo.statements.find((s): s is ts.FunctionDeclaration => ts.isFunctionDeclaration(s) && s.name?.text === funcion);
+  if (!declaracion) return null;
+  let campos: string[] | null = null;
+  const visitar = (n: ts.Node): void => {
+    if (ts.isPropertyAssignment(n) && ts.isIdentifier(n.name) && n.name.text === "data" && ts.isCallExpression(n.initializer)) {
+      const [flecha] = n.initializer.arguments;
+      if (flecha && ts.isArrowFunction(flecha)) {
+        let cuerpo: ts.Node = flecha.body;
+        while (ts.isParenthesizedExpression(cuerpo)) cuerpo = cuerpo.expression;
+        if (ts.isObjectLiteralExpression(cuerpo))
+          campos = cuerpo.properties.flatMap((p) => ((ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) && ts.isIdentifier(p.name) ? [p.name.text] : ["(no legible)"]));
+      }
+    }
+    ts.forEachChild(n, visitar);
+  };
+  visitar(declaracion);
+  return campos;
+}
+
+/** Modelo → las funciones de la persistencia que lo escriben (archivo y función). */
+const ESCRITURAS_DE_LA_PERSISTENCIA: Record<string, { archivo: string; funcion: string }[]> = {
+  Producto: [{ archivo: "src/server/persistencia/catalogo/productos.ts", funcion: "crearProductosImportados" }],
+  DisponibilidadProducto: [{ archivo: "src/server/persistencia/catalogo/productos.ts", funcion: "sembrarDisponibilidadImportada" }],
+  ContenidoCartaProducto: [{ archivo: "src/server/persistencia/carta/contenido-producto.ts", funcion: "crearContenidosImportados" }],
+};
+
 /** Modelo → de dónde sale lo que se escribe (archivo e interfaz). */
 const FUENTES_DE_LO_QUE_SE_ESCRIBE: Record<string, { archivo: string; interfaz: string }[]> = {
   Producto: [{ archivo: "src/core/features/catalogo/importacion/planificar-productos.ts", interfaz: "ProductoAEscribir" }],
@@ -68,6 +100,16 @@ describe("guardián DIMENSIONES_DEL_IMPORTADOR", () => {
     }
   });
 
+  it("lo que la persistencia escribe de verdad (el objeto de cada fila del lote) es lo declarado", () => {
+    for (const [modelo, escrituras] of Object.entries(ESCRITURAS_DE_LA_PERSISTENCIA)) {
+      for (const { archivo, funcion } of escrituras) {
+        const campos = camposEscritosPor(leer(archivo), funcion);
+        expect(campos, `${archivo}: ${funcion} no escribe con la forma \`data: lista.map((x) => ({ … }))\``).not.toBeNull();
+        expect(ordenadas(campos!), `${modelo}: lo que escribe ${funcion} y lo declarado`).toEqual(ordenadas(Object.keys(DIMENSIONES_DEL_IMPORTADOR.escribe[modelo])));
+      }
+    }
+  });
+
   it("cada clave del archivo de correcciones está declarada, en las dos direcciones", () => {
     const c = DIMENSIONES_DEL_IMPORTADOR.correcciones;
     expect(ordenadas(Object.keys(c.archivo))).toEqual(ordenadas(CLAVES_DEL_ARCHIVO_DE_CORRECCIONES));
@@ -81,5 +123,9 @@ describe("guardián DIMENSIONES_DEL_IMPORTADOR", () => {
     expect(propiedadesDeInterfaz(fuente, "ProductoAEscribir")).toEqual(["codigo", "nombre"]);
     expect(propiedadesDeInterfaz(fuente.replace("nombre: string;", "nombre: string; alicuotaIvaVenta?: string;"), "ProductoAEscribir")).toEqual(["codigo", "nombre", "alicuotaIvaVenta"]);
     expect(propiedadesDeInterfaz(fuente, "Otra")).toBeNull();
+    const persistencia = "export async function f(db: any, xs: any[]) { await db.producto.createMany({ data: xs.map((x) => ({ codigo: x.codigo, nombre })) }); }";
+    expect(camposEscritosPor(persistencia, "f")).toEqual(["codigo", "nombre"]);
+    expect(camposEscritosPor(persistencia.replace("nombre }", "nombre, categoriaId: x.c }"), "f")).toEqual(["codigo", "nombre", "categoriaId"]);
+    expect(camposEscritosPor(persistencia.replace("({ codigo: x.codigo, nombre })", "x"), "f")).toBeNull();
   });
 });

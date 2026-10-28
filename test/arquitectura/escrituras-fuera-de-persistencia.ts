@@ -82,9 +82,9 @@ export const ESCRITURAS_FUERA_DE_PERSISTENCIA: Readonly<Record<string, Escritura
     motivo: "La siembra de una empresa nueva es de la plataforma (solo la plataforma da de alta una empresa): vive en la consola, que no puede importar src/server; el plan de lo que siembra es puro en core.",
   },
   "src/server/auditoria/registrar-cambio-auditado.ts": {
-    escrituras: ["registroAuditoria.create"],
+    escrituras: ["registroAuditoria.create", "registroAuditoria.createMany"],
     fase: "Permanente",
-    motivo: "Escritor único del registro de auditoría; lo llaman casos de uso, la sesión y las operaciones de plataforma (Hito 5, pieza 5.4, B3: salió de core/permisos/auditoria.ts; su capa y su lista cerrada de archivos las fija auditoria-capa y test/arquitectura/server-auditoria.test.ts).",
+    motivo: "Escritor único del registro de auditoría; lo llaman casos de uso, la sesión y las operaciones de plataforma (Hito 5, pieza 5.4, B3: salió de core/permisos/auditoria.ts; su capa y su lista cerrada de archivos las fija auditoria-capa y test/arquitectura/server-auditoria.test.ts). `createMany`: su modo por LOTES (el importador del catálogo, docs/diseno-importador-de-catalogo-2026-10-28.md A.4: una fila por cambio en una sola sentencia), que el diseño pone en este mismo archivo para que siga habiendo un solo escritor.",
   },
   "plataforma/src/servidor/alta-de-admin.ts": {
     escrituras: ["adminPlataforma.create", "codigoDeRecuperacionPlataforma.createMany"],

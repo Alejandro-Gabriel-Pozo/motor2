@@ -35,7 +35,7 @@ export function productosAplicados(plan: PlanDeProductos, unidadId: string): Pro
       seProduce: false,
       factorConversion: "1",
       unidadStockId: unidadId,
-      disponibilidades: p.disponibilidad.map((d) => ({ sucursalId: d.sucursalId!, disponible: d.disponible })),
+      filasDeDisponibilidad: p.disponibilidad.map((d) => ({ sucursalId: d.sucursalId!, disponible: d.disponible })),
       preciosLocales: [],
       contenidos: [],
       agrupadoEn: [],

@@ -46,7 +46,7 @@ function escenario(comb: CombinacionDeProducto) {
             seProduce: false,
             factorConversion: "1",
             unidadStockId: "unidad-1",
-            disponibilidades: Object.entries(esperado.disponibilidad).map(([local, disponible]) => ({ sucursalId: idDeSucursal(local as LocalDelImportador), disponible })),
+            filasDeDisponibilidad: Object.entries(esperado.disponibilidad).map(([local, disponible]) => ({ sucursalId: idDeSucursal(local as LocalDelImportador), disponible })),
             preciosLocales: [],
             contenidos: [],
             agrupadoEn: [],
@@ -162,7 +162,7 @@ describe("huella (I2, A.5)", () => {
     expect(huella(estadoVacio({ productos: aplicado }), "abc", correccionesDe({ reglaDePrecioUnico: null }))).not.toBe(h);
     expect(huella(estadoVacio({ productos: aplicado, secciones: [{ id: "s", nombre: "Pizzas", activa: false }] }))).not.toBe(h);
     expect(huella(estadoVacio({ productos: [{ ...aplicado[0], precioVenta: "1001.00" }] }))).not.toBe(h);
-    expect(huella(estadoVacio({ productos: [{ ...aplicado[0], disponibilidades: [] }] }))).not.toBe(h);
+    expect(huella(estadoVacio({ productos: [{ ...aplicado[0], filasDeDisponibilidad: [] }] }))).not.toBe(h);
   });
 
   it("se confirma con la huella completa o con sus 12 primeros caracteres (sin distinguir mayúsculas); nunca con menos ni con otra", () => {

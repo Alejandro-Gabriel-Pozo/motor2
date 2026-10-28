@@ -431,6 +431,12 @@ const PERSISTENCIA_DE_OTRO_DOMINIO = [
   { desde: "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts", hacia: "src/server/persistencia/compras/escribir-correccion-de-compra.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts", hacia: "src/server/persistencia/compras/cargar-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts", hacia: "src/server/persistencia/compras/escribir-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
+  {
+    desde: "src/server/actions/catalogo/casos-de-uso/escribir-importacion-de-catalogo-en-tx.ts",
+    hacia: "src/server/persistencia/carta/contenido-producto.ts",
+    motivo:
+      "Decisión del dueño (D2 de la ADENDA v2 de docs/diseno-importador-de-catalogo-2026-10-28.md, 2026-10-28): la carta mínima entra en la MISMA transacción, con la misma huella, que el alta de los productos del importador (todo o nada). La escritura en lote del contenido vive con las demás escrituras de ContenidoCartaProducto (persistencia de Carta, `crearContenidosImportados`, create y nunca upsert, como «Agregar a la carta»); el paso de escritura del importador (Catálogo) la llama dentro de su transacción. No es deuda: es un comando de una sola vez (D1) que escribe en los dos dominios a la vez a propósito.",
+  },
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock.ts", motivo: MOTIVO_STOCK },
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/escribir-movimiento-de-stock.ts", motivo: MOTIVO_STOCK },
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/idempotencia.ts", motivo: MOTIVO_IDEMPOTENCIA },

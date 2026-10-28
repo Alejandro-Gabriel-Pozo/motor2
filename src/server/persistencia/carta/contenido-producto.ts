@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import type { ContenidoAEscribir } from "@/core/features/catalogo/importacion/planificar-carta";
 
 /**
  * Escrituras del CONTENIDO de carta de un producto (`ContenidoCartaProducto`; Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1; mismo contrato que el resto de
@@ -59,4 +60,29 @@ export async function crearContenidoVisibleDeProducto(db: Prisma.TransactionClie
  */
 export async function borrarContenidoDeProducto(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string }): Promise<number> {
   return (await db.contenidoCartaProducto.deleteMany({ where: { sucursalId: args.sucursalId, productoId: args.productoId } })).count;
+}
+
+/**
+ * Importador del catálogo (E1.4; docs/diseno-importador-de-catalogo-2026-10-28.md, ADENDA A.2 y A.4): CREA en UN viaje el contenido de carta de la carga inicial (visible, en su sección,
+ * con la descripción de la fila y su orden). `createMany` y no `upsert`, como `crearContenidoVisibleDeProducto`: nunca pisa un contenido existente; si otro lo creó a la vez, el único
+ * `(sucursalId, productoId)` choca (P2002) y aborta la importación entera. Lo llama solo `actions/catalogo/casos-de-uso/importar-catalogo.ts`, dentro de su transacción y con la
+ * auditoría de cada contenido (`visibleEnCarta`, de null a true, con la sucursal: la misma que deja «Agregar a la carta») en el mismo `tx`.
+ */
+export async function crearContenidosImportados(db: Prisma.TransactionClient, contenidos: readonly ContenidoAEscribir[]): Promise<number> {
+  if (contenidos.length === 0) return 0;
+  const { count } = await db.contenidoCartaProducto.createMany({
+    data: contenidos.map((c) => ({
+      sucursalId: c.sucursalId,
+      productoId: c.productoId,
+      visibleEnCarta: c.visibleEnCarta,
+      seccionCartaId: c.seccionCartaId,
+      descripcion: c.descripcion,
+      orden: c.orden,
+      especial: c.especial,
+      tags: c.tags,
+      generoCartaId: c.generoCartaId,
+      mostrarNombreArriba: c.mostrarNombreArriba,
+    })),
+  });
+  return count;
 }

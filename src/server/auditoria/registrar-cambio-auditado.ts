@@ -19,12 +19,24 @@ type Db = PrismaClient | Prisma.TransactionClient;
  */
 
 /**
+ * Un cambio o un LOTE de cambios (`readonly CambioAuditable[]`: una fila por cambio, en un solo `createMany`).
  * No-op si el valor no cambió en absoluto (`filaDeAuditoria`, en `core/permisos/auditoria.ts`, devuelve `null`) — evita ensuciar el registro
  * con "cambios" de un `update`/`upsert` que en realidad reescribió el mismo valor (ej. guardar un formulario sin tocar ese campo puntual).
  */
-export async function registrarCambioAuditado(db: Db, cambio: CambioAuditable): Promise<void> {
+export async function registrarCambioAuditado(db: Db, cambio: CambioAuditable | readonly CambioAuditable[]): Promise<void> {
+  if (esUnLote(cambio)) {
+    // Por LOTES (importador del catálogo, docs/diseno-importador-de-catalogo-2026-10-28.md §6 y A.4): una sola sentencia para todas las filas, en la transacción del cambio que
+    // auditan. Mismo cálculo de cada fila (`filaDeAuditoria`) y el mismo «no cambió» (esa fila no se escribe); sin filas, no se escribe nada.
+    const filas = cambio.map(filaDeAuditoria).filter((f) => f !== null);
+    if (filas.length > 0) await db.registroAuditoria.createMany({ data: filas });
+    return;
+  }
   const fila = filaDeAuditoria(cambio);
   if (fila === null) return;
 
   await db.registroAuditoria.create({ data: fila });
+}
+
+function esUnLote(cambio: CambioAuditable | readonly CambioAuditable[]): cambio is readonly CambioAuditable[] {
+  return Array.isArray(cambio);
 }

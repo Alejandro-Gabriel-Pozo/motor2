@@ -41,7 +41,7 @@ export interface ProductoExistente {
   factorConversion: string;
   unidadStockId: string;
   /** Solo las de las 5 sucursales del importador. */
-  disponibilidades: readonly { sucursalId: string; disponible: boolean }[];
+  filasDeDisponibilidad: readonly { sucursalId: string; disponible: boolean }[];
   /** Solo las de las 5 sucursales del importador (con un precio por empresa, tiene que ser vacío: A.1). */
   preciosLocales: readonly { sucursalId: string; precio: string }[];
   /** Solo los de las 5 sucursales del importador. */

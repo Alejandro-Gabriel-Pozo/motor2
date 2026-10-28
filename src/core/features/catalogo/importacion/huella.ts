@@ -42,7 +42,7 @@ export function estadoCanonico(estado: EstadoDeLaBase): unknown {
       ...p,
       precioVenta: centavosDe(p.precioVenta),
       factorConversion: String(Number(p.factorConversion)),
-      disponibilidades: porClave(p.disponibilidades, (d) => d.sucursalId),
+      filasDeDisponibilidad: porClave(p.filasDeDisponibilidad, (d) => d.sucursalId),
       preciosLocales: porClave(p.preciosLocales, (d) => d.sucursalId).map((d) => ({ ...d, precio: centavosDe(d.precio) })),
       contenidos: porClave(p.contenidos, (c) => c.sucursalId),
       agrupadoEn: [...p.agrupadoEn].sort(),

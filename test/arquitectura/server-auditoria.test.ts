@@ -11,13 +11,15 @@ import { analizarFuente, delegadosDeModelos, llamadasALaBase, type SenalesDeFuen
  *     vía las operaciones de plataforma), donde ese paquete tira al importarse; ponerlo obligaría a correr esos scripts con `--conditions=react-server` y a editar `package.json`. El
  *     motivo vive en la cabecera del archivo (se exige que la mencione) y la decisión es «Permanente» en `escrituras-fuera-de-persistencia.ts`;
  *  3. no leen el reloj, el azar, el entorno, la red ni el disco: la fecha de una fila la pone la base (`creadoEn`), la hora que importa viaja en la descripción que arma el caso de uso;
- *  4. lo único que escriben en la base es `registroAuditoria.create` (una fila por cambio; la tabla solo agrega, ver `kardex-solo-agrega.test.ts`).
+ *  4. lo único que escriben en la base es `registroAuditoria.create` (una fila por cambio; la tabla solo agrega, ver `kardex-solo-agrega.test.ts`) y su lote, `registroAuditoria.createMany` (una fila por
+ *     cambio en una sola sentencia: el importador del catálogo).
  * Lo que la capa no puede importar y quién no puede importarla lo fija la regla `auditoria-capa` de `.dependency-cruiser.cjs` (dos entradas; `dependencias.test.ts` las exige).
  */
 const RAIZ = join(__dirname, "../..");
 const CARPETA = join(RAIZ, "src/server/auditoria");
 const PERMITIDOS = ["registrar-cambio-auditado.ts"];
-const ESCRITURAS_ESPERADAS = ["registroAuditoria.create"];
+// `createMany`: el modo por LOTES del mismo escritor (importador del catálogo, docs/diseno-importador-de-catalogo-2026-10-28.md A.4): una fila por cambio, en una sola sentencia.
+const ESCRITURAS_ESPERADAS = ["registroAuditoria.create", "registroAuditoria.createMany"];
 const IMPUREZAS: Array<keyof Pick<SenalesDeFuente, "reloj" | "azar" | "entorno" | "red" | "disco">> = ["reloj", "azar", "entorno", "red", "disco"];
 
 /** Las impurezas que el fuente tiene (el escritor de la auditoría no puede tener ninguna). */

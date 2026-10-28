@@ -171,3 +171,24 @@ export function contenidosAEscribir(plan: PlanDeCarta, idPorCodigo: ReadonlyMap<
       return { sucursalId: c.sucursalId, productoId, visibleEnCarta: true, seccionCartaId: c.seccionId, descripcion: c.descripcion, orden: c.orden, especial: false, tags: [], generoCartaId: null, mostrarNombreArriba: false };
     });
 }
+
+/**
+ * Comprobación INTERNA antes de escribir (I6 de la ADENDA, adaptada a un precio por empresa): el plan que se va a escribir es coherente consigo mismo. Lanza (es un defecto del programa, no
+ * un error del Excel) si un producto nuevo no tiene precio, si el precio que rige en algún local no es el único del producto, si una disponibilidad no tiene sucursal o si un contenido nuevo
+ * es de un producto con error o no tiene sección. No hay precios locales que comprobar: el plan no los tiene (A.1).
+ */
+export function comprobarPlanAntesDeEscribir(productos: PlanDeProductos, carta: PlanDeCarta): void {
+  const accionPorSku = new Map(productos.productos.map((p) => [p.sku, p.accion]));
+  for (const p of productos.productos) {
+    if (p.accion !== "CREAR") continue;
+    if (!p.precio) throw new Error(`Plan incoherente: ${p.sku} se crearía sin precio único.`);
+    for (const d of p.diferencias) if (d.precioUnico !== p.precio.centavos) throw new Error(`Plan incoherente: en ${d.local} ${p.sku} regiría otro precio que el único.`);
+    for (const d of p.disponibilidad) if (!d.sucursalId) throw new Error(`Plan incoherente: ${p.sku} tiene disponibilidad en «${d.local}» sin sucursal.`);
+  }
+  for (const c of carta.contenidos) {
+    if (c.accion !== "CREAR") continue;
+    const accion = accionPorSku.get(c.sku);
+    if (accion !== "CREAR" && accion !== "SIN_CAMBIOS") throw new Error(`Plan incoherente: contenido de carta de ${c.sku}, que no se crea ni existe.`);
+    if (!c.seccionId || !c.sucursalId) throw new Error(`Plan incoherente: contenido de ${c.sku} en «${c.local}» sin sección o sin sucursal.`);
+  }
+}

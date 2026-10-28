@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import type { DisponibilidadAEscribir, ProductoAEscribir } from "@/core/features/catalogo/importacion/planificar-productos";
 
 /**
  * Escrituras de los PRODUCTOS del catálogo (`Producto`, sus presentaciones de compra y su disponibilidad por sucursal; Hito 4 de la pureza, bloque 4.3, pasos
@@ -149,4 +150,36 @@ export async function crearProductoAnclaDeAdicional(
     data: { codigo: args.codigo, nombre: args.nombre, tipo: "PV", unidadStockId: args.unidadStockId, factorConversion: 1, creadoEn: args.ahora },
     select: { id: true, codigo: true, nombre: true },
   });
+}
+
+/**
+ * Importador del catálogo (E1.4; docs/diseno-importador-de-catalogo-2026-10-28.md, ADENDA A.4): crea en UN viaje los productos nuevos del plan (`createManyAndReturn`) y devuelve el id de cada
+ * código. Cada campo se escribe explícito (el guardián `DIMENSIONES_DEL_IMPORTADOR` compara lo que el plan escribe con lo declarado); el precio llega como TEXTO con dos decimales y Prisma lo
+ * guarda como `Decimal` sin pasar por `number`. Lo llama solo `casos-de-uso/importar-catalogo.ts`, DENTRO de su transacción SERIALIZABLE y con la auditoría de cada `precioVenta` (de null al
+ * precio) en el mismo `tx`. Un código o un nombre repetido lo rechaza el índice único (P2002) y aborta todo.
+ */
+export async function crearProductosImportados(db: Prisma.TransactionClient, productos: readonly ProductoAEscribir[]): Promise<{ id: string; codigo: string }[]> {
+  if (productos.length === 0) return [];
+  return db.producto.createManyAndReturn({
+    data: productos.map((p) => ({
+      codigo: p.codigo,
+      nombre: p.nombre,
+      tipo: p.tipo,
+      unidadStockId: p.unidadStockId,
+      factorConversion: p.factorConversion,
+      precioVenta: p.precioVenta,
+      modoDeVenta: p.modoDeVenta,
+      seProduce: p.seProduce,
+    })),
+    select: { id: true, codigo: true },
+  });
+}
+
+/**
+ * Importador del catálogo (E1.4): la disponibilidad de los productos recién importados, una fila por (sucursal, producto) con fila en el Excel, en UN viaje. Es parte del alta (no hay valor
+ * anterior), como `sembrarDisponibilidadDeProductoNuevo`, pero va en la MISMA transacción que la creación y su caso de uso audita el alta (el precio de cada producto) en ese `tx`.
+ */
+export async function sembrarDisponibilidadImportada(db: Prisma.TransactionClient, filas: readonly DisponibilidadAEscribir[]): Promise<number> {
+  if (filas.length === 0) return 0;
+  return (await db.disponibilidadProducto.createMany({ data: filas.map((f) => ({ sucursalId: f.sucursalId, productoId: f.productoId, disponible: f.disponible })) })).count;
 }

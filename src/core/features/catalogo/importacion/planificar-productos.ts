@@ -131,7 +131,7 @@ export function diferenciasConElExistente(
   if (esperado.unidadId !== null && existente.unidadStockId !== esperado.unidadId) d.push("unidad de stock: otra (el archivo: «unidad»)");
   if (existente.preciosLocales.length > 0) d.push(`tiene ${existente.preciosLocales.length} precio(s) local(es): con un precio por empresa no puede tener ninguno`);
   const clave = (x: { sucursalId: string | null; disponible: boolean }) => `${x.sucursalId}:${x.disponible}`;
-  const real = existente.disponibilidades.map(clave).sort();
+  const real = existente.filasDeDisponibilidad.map(clave).sort();
   const plan = esperado.disponibilidad.map(clave).sort();
   if (real.join("|") !== plan.join("|")) d.push(`disponibilidad por local distinta (base: ${real.length} fila(s), archivo: ${plan.length})`);
   return d;
