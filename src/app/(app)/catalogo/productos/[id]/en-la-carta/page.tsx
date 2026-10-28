@@ -94,7 +94,7 @@ export default async function EnLaCartaDelProductoPage({ params }: { params: Pro
             <p className="text-sm text-tinta-suave">
               La ficha de «{producto.nombre}» en la carta de esta sucursal: si se muestra, en qué sección y en qué orden, ★, género, descripción y tags. Lo que no sale en la carta (el POS y el menú del día) se ve en{" "}
               <EnlaceInterno href="/carta?nivel=visibilidad" className="underline">
-                Mantenimiento › Visibilidad
+                Carta › Hoy › Visibilidad
               </EnlaceInterno>
               .
             </p>

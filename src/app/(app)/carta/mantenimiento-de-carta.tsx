@@ -434,7 +434,7 @@ export function MantenimientoDeCarta({
           <div className={s.secCabeza}>
             <div className={s.secTitulo}>
               <b>Ocultos, sin sección</b>
-              <span>Para mostrarlos, elegí su sección en su ficha (Parametrización › Secciones).</span>
+              <span>Para mostrarlos, elegí su sección en su ficha (Carta › Secciones y géneros).</span>
             </div>
           </div>
           <div className={s.filas}>

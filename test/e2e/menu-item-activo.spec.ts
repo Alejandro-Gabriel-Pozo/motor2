@@ -5,7 +5,13 @@ import { test, expect } from "./fixtures/auth";
  * /carta/tema, /traspasos/enviar y /reportes/rendimiento-recetas/por-sucursal, y ninguno llevaba `aria-current`.
  */
 const CASOS = [
-  { ruta: "/carta/tema", nombre: "Tema de la carta" },
+  // DEC-24: Carta tiene tres entradas; sus pestañas resaltan la entrada (Opciones agotadas, aunque su URL empiece con /movimientos, resalta «Carta»).
+  { ruta: "/carta", nombre: "Carta" },
+  { ruta: "/carta/agrupados", nombre: "Carta" },
+  { ruta: "/movimientos/opciones-agotadas", nombre: "Carta" },
+  { ruta: "/carta/parametrizacion/promociones", nombre: "Promociones" },
+  { ruta: "/carta/tema", nombre: "Apariencia y publicación" },
+  { ruta: "/carta/portal", nombre: "Apariencia y publicación" },
   { ruta: "/traspasos/enviar", nombre: "Enviar directo" },
   { ruta: "/reportes/rendimiento-recetas/por-sucursal", nombre: "Rendimiento por sucursal" },
   // Fase 7: los procesos del selector y Reclasificar no tienen ítem propio; resaltan la entrada «Registrar movimiento».

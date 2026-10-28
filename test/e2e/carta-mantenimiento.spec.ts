@@ -11,7 +11,7 @@ import { capturar, expectObjetivosTactiles, expectSinDesborde, fijarCelular } fr
  *    stock hoy» filtra.
  *  - «Visibilidad»: el Sí/No de un producto y su «Deshacer»; al final, «Fuera de carta (POS y menú del día)» plegado, con buscador, sin el ancla del adicional (ni buscándola), con la vista previa
  *    de opciones y «Agregar a la carta», cuyo «Deshacer» lo devuelve a «Fuera de carta».
- *  - «Parametrización»: el hub con sus cinco tarjetas.
+ *  - las pestañas de la entrada «Carta» (DEC-24: Hoy · Secciones y géneros · Ítems agrupados), que reemplazan el hub de «Parametrización» (su URL redirige).
  * Sin desborde horizontal, objetivos de 44 px en celular y axe 0. Datos propios con una marca única (la base del CI es compartida: no se cuentan elementos globales).
  */
 async function sembrar(sucursalId: string) {
@@ -149,18 +149,23 @@ async function recorrer(page: Page, d: Awaited<ReturnType<typeof sembrar>>, anch
   await expect(guiso).toBeVisible();
   expect(await contenido(d.guiso.id)).toBeNull();
 
-  // ---------- Parametrización ----------
-  await page.getByRole("link", { name: "Ir a Parametrización de la carta" }).click();
-  await expect(page).toHaveURL(/\/carta\/parametrizacion$/);
-  const hub = page.getByRole("navigation", { name: "Parametrización de la carta" });
-  await expect(hub.getByRole("link")).toHaveText([/^Secciones/, /^Géneros/, /^Agrupados/, /^Promociones/, /^Apariencia y publicación/]);
-  if (celular) await expectObjetivosTactiles(page.locator("main a"), "enlaces de Parametrización");
-  await expectSinDesborde(page, `Parametrización ${ancho} px`);
-  await capturar(page, `carta-mant-parametrizacion-${ancho}`);
-  expect((await new AxeBuilder({ page }).analyze()).violations, `Parametrización a ${ancho} px`).toEqual([]);
+  // ---------- Pestañas de la entrada «Carta» (DEC-24: reemplazan las puertas Mantenimiento / Parametrización) ----------
+  const pestanas = page.getByRole("navigation", { name: "Carta", exact: true });
+  await expect(pestanas.getByRole("link")).toHaveText(["Hoy", "Secciones y géneros", "Ítems agrupados"]);
+  await expect(pestanas.getByRole("link", { name: "Hoy" })).toHaveAttribute("aria-current", "page");
+  if (celular) await expectObjetivosTactiles(pestanas.getByRole("link"), "pestañas de Carta");
+  await pestanas.getByRole("link", { name: "Secciones y géneros" }).click();
+  await expect(page).toHaveURL(/\/carta\/parametrizacion\/secciones$/);
+  await expect(page.getByRole("navigation", { name: "Carta", exact: true }).getByRole("link", { name: "Secciones y géneros" })).toHaveAttribute("aria-current", "page");
+  await expectSinDesborde(page, `Secciones y géneros ${ancho} px`);
+  await capturar(page, `carta-mant-secciones-${ancho}`);
+  expect((await new AxeBuilder({ page }).analyze()).violations, `Secciones y géneros a ${ancho} px`).toEqual([]);
+  // El tablero viejo de «Parametrización» ya no existe como pantalla: su URL manda a Secciones y géneros.
+  await page.goto("/carta/parametrizacion");
+  await expect(page).toHaveURL(/\/carta\/parametrizacion\/secciones$/);
 }
 
-test("carta en celular (375 px): Hoy, Visibilidad con «Fuera de carta» y Parametrización, con «Deshacer», sin desborde, 44 px y axe 0", async ({ paginaAutenticada: page, sucursalId }) => {
+test("carta en celular (375 px): Hoy, Visibilidad con «Fuera de carta» y las pestañas de Carta, con «Deshacer», sin desborde, 44 px y axe 0", async ({ paginaAutenticada: page, sucursalId }) => {
   test.setTimeout(120_000);
   const d = await sembrar(sucursalId);
   try {

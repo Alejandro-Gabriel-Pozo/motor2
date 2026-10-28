@@ -46,7 +46,7 @@ export default async function MenuDelDiaPage({ searchParams }: { searchParams: P
       </div>
       {datos.lugares.length === 0 ? (
         <Aviso variante="informacion" forma="en-linea">
-          Todavía no hay promos con un lugar «del día». Se arman en Carta → Promociones (un lugar de tipo «del día»).
+          Todavía no hay promos con un lugar «del día». Se arman en Carta › Promociones (un lugar de tipo «del día»).
         </Aviso>
       ) : (
         <AvisoConDeshacer>

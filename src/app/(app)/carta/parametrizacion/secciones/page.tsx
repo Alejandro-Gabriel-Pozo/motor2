@@ -200,7 +200,7 @@ export default async function SeccionesDeCartaPage() {
               </h2>
               <p className="text-sm text-tinta-tenue">
                 La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en
-                Mantenimiento › Visibilidad › «Fuera de carta».
+                Carta › Hoy › Visibilidad › «Fuera de carta».
               </p>
               {carta.secciones.map((x) => (
                 <GrupoDeLaCarta key={x.id} nombre={x.nombre} detalle={x.activa ? null : "sección apagada: no sale en la carta"} productos={x.productos} vacio="Todavía no tiene productos en esta sucursal." fila={filaDeProducto} />
