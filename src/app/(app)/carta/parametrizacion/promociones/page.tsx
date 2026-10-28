@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -23,6 +22,8 @@ import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/dat
 import { AgregarEntradaDeLugar } from "../../agregar-entrada-de-lugar";
 import { DondeSeVe } from "./donde-se-ve";
 import { lugaresDelFormulario } from "./lugares-del-formulario";
+import { FilaDeCarta } from "@/components/fila-de-carta";
+import { PESTANAS_DE_PROMOCIONES } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { CamposCupos, CamposLugares, CamposPromo, CamposVigencia, esFijo, textoDeVigencia } from "../formularios";
@@ -66,12 +67,11 @@ export default async function PromocionesDeCartaPage() {
 
   return (
     <div className={estilos.raiz}>
-      <EncabezadoDeCarta puerta="parametrizacion" subtitulo="Parametrización · Promociones" sucursal={ctx.sucursalNombre} />
+      <EncabezadoDeCarta entrada="Promociones" pestana="Combos, cupos y vigencia" sucursal={ctx.sucursalNombre}>
+        <FilaDeCarta ctx={ctx} etiqueta="Promociones" pestanas={PESTANAS_DE_PROMOCIONES} ruta="/carta/parametrizacion/promociones" />
+      </EncabezadoDeCarta>
       <div className={estilos.contenido}>
         <div className={estilos.pad}>
-          <Link href="/carta/parametrizacion" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
-            ← Volver
-          </Link>
           <div className={`${estilos.formulario} flex flex-col gap-10`}>
             {!(puedeDefinirPromos || puedeActivarPromos || puedePrecioLocalPromos) && <AvisoSoloLectura />}
       {/* 4. Promos (de la empresa; cada sucursal las prende y, si quiere, les pone su precio) */}

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { FilaDeCarta } from "@/components/fila-de-carta";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -6,7 +7,7 @@ import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate"
 import { agregarPlatoDelDia, copiarMenuDelDiaAnterior, quitarPlatoDelDia } from "@/server/actions/carta/menu-del-dia";
 import { cargarMenuDelDia } from "@/server/consultas/carta/menu-del-dia";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
-import { MENU_DEL_DIA_VISIBLE } from "@/core/carta/public";
+import { MENU_DEL_DIA_VISIBLE, PESTANAS_DE_PROMOCIONES } from "@/core/carta/public";
 import { AvisoConDeshacer } from "@/components/aviso-con-deshacer";
 import { MenuDelDia } from "./menu-del-dia";
 import { Aviso } from "@/ui/primitivas/aviso";
@@ -36,6 +37,7 @@ export default async function MenuDelDiaPage({ searchParams }: { searchParams: P
 
   return (
     <div className="flex max-w-3xl flex-col gap-6 pb-24">
+      <FilaDeCarta ctx={ctx} etiqueta="Promociones" pestanas={PESTANAS_DE_PROMOCIONES} ruta="/movimientos/menu-del-dia" />
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">Menú del día en «{ctx.sucursalNombre}»</h1>
         <p className="text-sm text-tinta-suave">

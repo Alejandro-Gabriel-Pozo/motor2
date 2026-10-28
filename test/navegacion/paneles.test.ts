@@ -24,6 +24,8 @@ const hrefs = (grupos: GrupoNav[]) => grupos.flatMap((g) => g.items.map((i) => i
 const EXCEPCIONES_DE_CONTEXTO: Record<string, string> = {
   "/catalogo/productos": "El catálogo de productos es de la empresa, pero cada sucursal lo mira y edita lo suyo (disponibilidad, precio local): aparece en los dos paneles.",
   "/catalogo/productos/nuevo": "Cuelga de Productos (ruta fuera del menú): hereda su panel.",
+  "/carta/parametrizacion/promociones":
+    "DEC-24 (emulación ratificada): las promos son de la EMPRESA (se definen con carta_promo_definir) y cada sucursal las prende y les pone su precio; la pantalla se abre con el «Ver» de la carta de la sucursal activa: aparece en los dos paneles.",
 };
 
 describe("cada pantalla del menú declara su panel", () => {

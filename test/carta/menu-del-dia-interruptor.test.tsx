@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 
 import { MENSAJE_MENU_DEL_DIA_APAGADO, MENU_DEL_DIA_VISIBLE, lugarDelDiaApagado, type CupoExistente, type CupoPedido } from "../../src/core/carta/public";
-import { GRUPOS_NAV } from "../../src/core/navegacion/estructura";
+import { GRUPOS_NAV, RUTAS_DE_UNA_ENTRADA } from "../../src/core/navegacion/estructura";
 import { guardComandoGuardarCuposPromoCarta } from "../../src/core/features/carta/promos.guard";
 import { guardarCuposPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta";
 import { agregarPlatoDelDia, copiarMenuDelDiaAnterior, quitarPlatoDelDia } from "../../src/server/actions/carta/menu-del-dia";
@@ -41,11 +41,12 @@ describe("menú del día APAGADO (decisión del dueño 2026-10-20)", () => {
     expect(MENU_DEL_DIA_VISIBLE).toBe(false);
   });
 
-  it("Carta no muestra «Menú del día» (y lo demás queda igual, en el mismo orden), ni ningún otro grupo", () => {
+  it("Carta no muestra «Menú del día» (ni como entrada ni como pestaña de Promociones, DEC-24), ni ningún otro grupo", () => {
     const hrefs = hrefsDe(GRUPOS_NAV, "carta");
     expect(hrefs).not.toContain("/movimientos/menu-del-dia");
-    expect(hrefs.slice(hrefs.indexOf("/carta/tema"))).toEqual(["/carta/tema", "/movimientos/opciones-agotadas"]);
+    expect(hrefs).toEqual(["/carta", "/carta/parametrizacion/promociones", "/carta/parametrizacion/apariencia"]);
     expect(GRUPOS_NAV.flatMap((g) => g.items.map((i) => i.href))).not.toContain("/movimientos/menu-del-dia");
+    expect(RUTAS_DE_UNA_ENTRADA.map((r) => r.href)).not.toContain("/movimientos/menu-del-dia");
   });
 
   it("la pantalla /movimientos/menu-del-dia responde «no existe» (404), antes de leer la sesión", async () => {
@@ -137,7 +138,7 @@ describe("menú del día ENCENDIDO (reversibilidad: con el interruptor en true v
     vi.resetModules();
     vi.doMock("../../src/core/carta/menu-del-dia", async (original) => ({ ...(await original<typeof import("../../src/core/carta/menu-del-dia")>()), MENU_DEL_DIA_VISIBLE: true }));
     return {
-      nav: (await import("../../src/core/navegacion/estructura")).GRUPOS_NAV,
+      rutas: (await import("../../src/core/navegacion/estructura")).RUTAS_DE_UNA_ENTRADA,
       pagina: (await import("../../src/app/(app)/movimientos/menu-del-dia/page")).default,
       formulario: (await import("../../src/app/(app)/carta/parametrizacion/formularios")).CamposLugares,
       sesion: await import("../../src/server/sesion/session"),
@@ -148,11 +149,9 @@ describe("menú del día ENCENDIDO (reversibilidad: con el interruptor en true v
     vi.resetModules();
   });
 
-  it("Carta vuelve a tener «Menú del día» en su lugar (después de «Opciones agotadas»), con su permiso de siempre", async () => {
-    const { nav } = await conInterruptorEncendido();
-    const items = nav.find((g) => g.id === "carta")!.items;
-    expect(items.map((i) => i.href).slice(items.findIndex((i) => i.href === "/movimientos/opciones-agotadas"))).toEqual(["/movimientos/opciones-agotadas", "/movimientos/menu-del-dia"]);
-    expect(items.find((i) => i.href === "/movimientos/menu-del-dia")).toEqual({ href: "/movimientos/menu-del-dia", label: "Menú del día", accion: "promo_menu_del_dia", panel: "sucursal" });
+  it("Promociones vuelve a tener la pestaña «Menú del día» (DEC-24: cuelga de esa entrada), con su permiso de siempre", async () => {
+    const { rutas } = await conInterruptorEncendido();
+    expect(rutas.find((r) => r.href === "/movimientos/menu-del-dia")).toEqual({ href: "/movimientos/menu-del-dia", label: "Menú del día", accion: "promo_menu_del_dia", panel: "sucursal", entrada: "/carta/parametrizacion/promociones" });
   });
 
   it("la pantalla deja de responder «no existe»: sin sesión manda al login, como cualquier pantalla", async () => {

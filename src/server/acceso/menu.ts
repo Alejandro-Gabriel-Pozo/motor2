@@ -5,6 +5,7 @@ import type { AccionClave } from "@/core/permisos/acciones";
 import { PROCESOS_DEL_SELECTOR, type ProcesoDelSelector } from "@/core/movimientos/public";
 import { GRUPOS_NAV, accionesDeNavegacion, accionesDelMenu, elegirPantallaDeInicio, filtrarMenuPorPermiso, puedeVerItem, type GrupoNav } from "@/core/navegacion/estructura";
 import type { PantallaDeStock } from "@/core/stock/public";
+import { armarPestanasDeCarta, type PestanaDeCarta } from "@/core/carta/public";
 import { tarjetasDeInicio, type TarjetaInicio } from "@/core/navegacion/tarjetas-inicio";
 
 async function menuVisibleDe(ctx: ContextoUsuario): Promise<GrupoNav[]> {
@@ -48,4 +49,14 @@ export async function pestanasVisiblesDeStock(ctx: ContextoUsuario, pestanas: re
   const claves = [...new Set(pestanas.flatMap((p) => (p.algunaDe ? [...p.algunaDe] : [p.accion])))];
   const puedeVer = visibles ?? (await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, claves, ctx.db));
   return pestanas.filter((p) => puedeVerItem(p, puedeVer));
+}
+
+/**
+ * De una fila de pestañas de Carta (DEC-24: `PESTANAS_DE_CARTA`, `PESTANAS_DE_PROMOCIONES` o `PESTANAS_DE_APARIENCIA`), las que el rol puede abrir, cada una con la primera de sus pantallas que ve y la de
+ * `ruta` marcada (`armarPestanasDeCarta`). Cada clave se evalúa en su contexto (el portal en la empresa activa), con el mismo cálculo del menú. `visibles` es lo que la página ya calculó con su guarda, si lo tiene.
+ */
+export async function pestanasVisiblesDeCarta(ctx: ContextoUsuario, pestanas: readonly PestanaDeCarta[], ruta: string, visibles?: ReadonlySet<AccionClave>) {
+  const claves = [...new Set(pestanas.flatMap((p) => p.pantallas.map((x) => x.accion)))];
+  const puedeVer = visibles ?? (await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, claves, ctx.db));
+  return armarPestanasDeCarta(pestanas, puedeVer, ruta);
 }

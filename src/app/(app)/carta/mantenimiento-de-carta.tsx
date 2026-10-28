@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -463,13 +462,6 @@ export function MantenimientoDeCarta({
         ))}
       </div>
       {pestana === "hoy" ? hoy() : pestana === "precios" ? precios() : visibilidad()}
-      <div className={`${s.tarjeta} ${s.irAParte}`}>
-        <b>¿Secciones, géneros, promociones o apariencia?</b>
-        <span className={s.ayuda}>Eso se cambia pocas veces y vive aparte.</span>
-        <Link href="/carta/parametrizacion" className={`${s.boton} ${s.botonSuave}`}>
-          Ir a Parametrización de la carta
-        </Link>
-      </div>
       {aviso && (
         <div className={`${s.aviso} ${aviso.ok ? "" : s.avisoMal}`} role={aviso.ok ? "status" : "alert"} data-aviso-carta>
           <span>{aviso.mensaje}</span>

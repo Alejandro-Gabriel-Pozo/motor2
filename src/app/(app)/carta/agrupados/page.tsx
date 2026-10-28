@@ -1,4 +1,6 @@
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { PESTANAS_DE_CARTA } from "@/core/carta/public";
+import { FilaDeCarta } from "@/components/fila-de-carta";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
@@ -73,6 +75,7 @@ export default async function ItemsAgrupadosPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <FilaDeCarta ctx={ctx} etiqueta="Carta" pestanas={PESTANAS_DE_CARTA} ruta="/carta/agrupados" />
       <div>
         <h1 className="mb-1 text-xl font-semibold">Ítems agrupados de la carta</h1>
         <p className="text-sm text-tinta-tenue">
@@ -80,7 +83,7 @@ export default async function ItemsAgrupadosPage() {
           500cc»…), con su propia descripción, tags y ★. Se ubica directo en su sección de carta, igual que un producto suelto. Un producto agrupado sale solo
           dentro de su ítem, nunca suelto. Lo que se ve de cada opción (si está disponible y su precio) es de esta sucursal, {ctx.sucursalNombre}. Volver a{" "}
           <EnlaceInterno href="/carta" className="underline">
-            Carta pública
+            Carta › Hoy
           </EnlaceInterno>
           .
         </p>
@@ -136,7 +139,7 @@ export default async function ItemsAgrupadosPage() {
         <p className="text-sm text-tinta-tenue">
           Para crear un ítem agrupado hace falta al menos una sección de carta (
           <EnlaceInterno href="/carta" className="underline">
-            Carta pública
+            Carta › Hoy
           </EnlaceInterno>
           ).
         </p>

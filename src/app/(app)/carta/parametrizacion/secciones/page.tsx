@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -10,6 +9,8 @@ import { actualizarActivaSeccionCarta, guardarSeccionCarta, ordenarSeccionesCart
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
+import { FilaDeCarta } from "@/components/fila-de-carta";
+import { PESTANAS_DE_CARTA } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { ContenidoDelProducto, type UbicacionEnCarta } from "@/components/carta/contenido-del-producto";
@@ -83,12 +84,11 @@ export default async function SeccionesDeCartaPage() {
 
   return (
     <div className={estilos.raiz}>
-      <EncabezadoDeCarta puerta="parametrizacion" subtitulo="Parametrización · Secciones" sucursal={ctx.sucursalNombre} />
+      <EncabezadoDeCarta entrada="Carta" pestana="Secciones" sucursal={ctx.sucursalNombre}>
+        <FilaDeCarta ctx={ctx} etiqueta="Carta" pestanas={PESTANAS_DE_CARTA} ruta="/carta/parametrizacion/secciones" />
+      </EncabezadoDeCarta>
       <div className={estilos.contenido}>
         <div className={estilos.pad}>
-          <Link href="/carta/parametrizacion" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
-            ← Volver
-          </Link>
           {!(puedeEditarSecciones || puedeEditarContenido || puedeDescuento) && <AvisoSoloLectura />}
           <OrdenarSecciones
             secciones={datos.secciones.map((x) => ({ id: x.id, nombre: x.nombre, activa: x.activa, orden: x.orden }))}

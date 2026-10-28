@@ -1,4 +1,7 @@
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { PESTANAS_DE_CARTA } from "@/core/carta/public";
+import { FilaDeCarta } from "@/components/fila-de-carta";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
@@ -30,10 +33,15 @@ export default async function OpcionesAgotadasPage() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
+      <FilaDeCarta ctx={ctx} etiqueta="Carta" pestanas={PESTANAS_DE_CARTA} ruta="/movimientos/opciones-agotadas" />
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">Opciones agotadas en «{ctx.sucursalNombre}»</h1>
         <p className="text-sm text-tinta-suave">
-          Lo que se acabó hoy: tocá una opción para marcarla agotada. No se ofrece en el salón ni en la carta de esta sucursal hasta que la vuelvas a prender (no se prende sola).
+          Lo que se acabó hoy: tocá una opción para marcarla agotada. No se ofrece en el salón ni en la carta de esta sucursal hasta que la vuelvas a prender (no se prende sola). Un plato entero se agota en{" "}
+          <EnlaceInterno href="/carta" className="underline">
+            Carta › Hoy
+          </EnlaceInterno>
+          .
         </p>
         <Aviso variante="informacion" forma="en-linea" data-agotadas-ahora>
           <span className="font-medium text-tinta">Agotadas ahora: {datos.agotadasAhora}</span>

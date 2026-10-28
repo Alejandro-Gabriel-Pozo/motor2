@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
-import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeAlguna } from "@/server/acceso/gate";
 import { cargarAdminCarta, origenesDeCopiaVisibles } from "@/server/consultas/carta/admin";
 import { cargarCartaParaMantener } from "@/server/consultas/carta/mantenimiento";
 import { saldosDeLosIngredientesDeLosPlatos } from "@/server/consultas/carta/avisos-de-stock";
@@ -16,10 +17,11 @@ import { actualizarVisibleEnCarta } from "@/server/actions/carta/contenido-produ
 import { actualizarActivaSeccionCarta } from "@/server/actions/carta/secciones";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
-import { PRECIOS_EDITABLES } from "@/core/carta/public";
+import { PESTANAS_DE_CARTA, PRECIOS_EDITABLES, primeraPantallaVisible } from "@/core/carta/public";
 import { formatearCantidad } from "@/core/pos/public";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
+import { FilaDeCarta } from "@/components/fila-de-carta";
 import { EncabezadoDeCarta } from "./encabezado-de-carta";
 import { MantenimientoDeCarta, type PestanaDeMantenimiento } from "./mantenimiento-de-carta";
 import s from "./carta-mant.module.css";
@@ -50,8 +52,15 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
   if (lecturaSinCupo(ctx.usuarioId, new Date().getTime())) return <p className="text-error">{MENSAJE_DEMASIADAS_LECTURAS}</p>;
 
-  const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "carta_ver", ctx.db);
+  // DEC-24: `/carta` es la entrada «Carta» del menú (pestañas Hoy · Secciones y géneros · Ítems agrupados): se abre con el «Ver» de ALGUNA de sus pestañas (las mismas claves del ítem del menú). Quien no ve
+  // la carta (`carta_ver`) pero sí otra pestaña —el encargado que solo agota opciones— va directo a la primera que puede abrir.
+  const gate = await requierePermisoVerDeAlguna(ctx.usuarioId, ctx.sucursalId, ["carta_ver", "opcion_apagar_en_sucursal", "carta_items_agrupados"], ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
+  if (!gate.visibles.has("carta_ver")) {
+    const otra = primeraPantallaVisible(PESTANAS_DE_CARTA, gate.visibles);
+    if (otra && otra !== "/carta") redirect(otra);
+    return <p className="text-error">No tenés permiso para ver esta sección.</p>;
+  }
   const [nivelHoy, nivelContenido, nivelSecciones, nivelCopiar, nivelPrecioLocal, nivelProductoEditar, camposSensibles] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "carta_contenido_producto", ctx.db),
@@ -98,7 +107,9 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className={s.raiz}>
-      <EncabezadoDeCarta puerta="mantenimiento" subtitulo="Mantenimiento" sucursal={ctx.sucursalNombre} />
+      <EncabezadoDeCarta entrada="Carta" pestana="Hoy" sucursal={ctx.sucursalNombre}>
+        <FilaDeCarta ctx={ctx} etiqueta="Carta" pestanas={PESTANAS_DE_CARTA} ruta="/carta" visibles={gate.visibles} />
+      </EncabezadoDeCarta>
       <div className={s.contenido}>
         <div className={s.pad}>
           {!(puede.hoy || puede.contenido || puede.secciones || puede.preciosLocal || puede.preciosEmpresa) && <AvisoSoloLectura />}

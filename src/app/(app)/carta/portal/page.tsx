@@ -1,8 +1,9 @@
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { FilaDeCarta } from "@/components/fila-de-carta";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
-import { type SucursalPortalAdmin, CLAVES_PORTAL_V1, urlCartaPublicaConEmpresaUnica } from "@/core/carta/public";
+import { CLAVES_PORTAL_V1, PESTANAS_DE_APARIENCIA, urlCartaPublicaConEmpresaUnica, type SucursalPortalAdmin } from "@/core/carta/public";
 import { cargarAdminPortal, cargarPortalEmpresaAdmin } from "@/server/consultas/carta/admin";
 import { entradasVistaPreviaPortal } from "@/core/carta/public";
 import { guardarPortalEmpresa } from "@/server/actions/carta/portal-empresa";
@@ -49,6 +50,7 @@ export default async function PortalSucursalesPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <FilaDeCarta ctx={ctx} etiqueta="Apariencia y publicación" pestanas={PESTANAS_DE_APARIENCIA} ruta="/carta/portal" />
       <div>
         <h1 className="mb-1 text-xl font-semibold">Portal de sucursales</h1>
         <p className="text-sm text-tinta-tenue">

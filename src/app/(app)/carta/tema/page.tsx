@@ -1,9 +1,10 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
+import { FilaDeCarta } from "@/components/fila-de-carta";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { requierePermisoVer } from "@/server/acceso/gate";
-import { type TemaAdmin, CLAVES_TEMA_V1 } from "@/core/carta/public";
+import { CLAVES_TEMA_V1, PESTANAS_DE_APARIENCIA, type TemaAdmin } from "@/core/carta/public";
 import { cargarTemaAdmin } from "@/server/consultas/carta/admin";
 import { cambiarAplicacionTema, guardarTemaCarta } from "@/server/actions/carta/tema";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
@@ -50,6 +51,7 @@ export default async function TemaCartaPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <FilaDeCarta ctx={ctx} etiqueta="Apariencia y publicación" pestanas={PESTANAS_DE_APARIENCIA} ruta="/carta/tema" />
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">Tema de la carta</h1>
         <p className="text-sm text-tinta-tenue">
