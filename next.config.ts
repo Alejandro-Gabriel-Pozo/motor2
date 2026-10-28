@@ -43,13 +43,8 @@ const nextConfig: NextConfig = {
         : []),
     ];
   },
-  // ADR-006: /catalogo/carta pasó a /carta (carta como módulo propio, ya
-  // no anidada bajo catálogo). No permanente a propósito: si el destino
-  // cambia de nuevo más adelante, un 308 cacheado por el navegador sería
-  // más difícil de corregir que un 307.
   async redirects() {
     return [
-      { source: "/catalogo/carta/:path*", destination: "/carta/:path*", permanent: false },
       // Add-on CARTA_EMPRESA_UNICA (apagado sin la variable): antes que las del núcleo, gana la primera que coincide.
       ...reglasRedirectEmpresaUnica(process.env.CARTA_DOMINIO_BASE, process.env.CARTA_EMPRESA_UNICA),
       // En el host de la carta, los links internos /carta-publica/... se llevan a la URL limpia (ver reglasRedirectCarta).

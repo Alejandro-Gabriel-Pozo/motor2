@@ -24,7 +24,7 @@ test("editar el precio de un producto agrupado ofrece aplicarlo a sus hermanos y
   await prisma.opcionItemAgrupadoCarta.createMany({ data: productoIds.map((productoId, orden) => ({ sucursalId, itemAgrupadoCartaId: item.id, productoId, orden })) });
 
   try {
-    await page.goto(`/catalogo/productos/${fanta.id}/editar`);
+    await page.goto(`/catalogo/productos/${fanta.id}/datos`);
     await expect(page.getByText(`Editar "${fanta.nombre}"`)).toBeVisible();
     // CampoNumero muestra el número formateado y pasa al crudo al tomar el foco: primero el foco, después se reemplaza el valor.
     const precio = page.getByLabel("Precio de venta", { exact: true });

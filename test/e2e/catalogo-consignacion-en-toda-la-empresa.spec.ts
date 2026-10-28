@@ -45,7 +45,7 @@ test("admin en Central y operador en la segunda: parado en la segunda ve el bloq
     await page.getByLabel("Sucursal activa").selectOption(segunda.id);
     await expect(page.getByLabel("Sucursal activa")).toHaveValue(segunda.id);
 
-    await page.goto(`/catalogo/productos/${producto.id}/editar`);
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
     await expect(page.getByLabel("Es consignación")).toBeChecked();
     await expect(page.getByLabel("Proveedor de consignación")).toBeVisible();
@@ -64,7 +64,7 @@ test("admin en Central y operador en la segunda: parado en la segunda ve el bloq
     // Al pasar a Central: lo mismo.
     await page.getByLabel("Sucursal activa").selectOption(sucursalId);
     await expect(page.getByLabel("Sucursal activa")).toHaveValue(sucursalId);
-    await page.goto(`/catalogo/productos/${producto.id}/editar`);
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
     await expect(page.getByLabel("Es consignación")).toBeChecked();
     await expect(page.getByLabel("Precio de consignación", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Proveedor de consignación")).toBeVisible();

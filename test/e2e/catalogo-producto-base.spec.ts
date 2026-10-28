@@ -68,9 +68,7 @@ test("el servidor rechaza pasar a base con un porcentaje (mensaje claro) y no gu
 test("sin grupo de precio, «Por opción» se ve apagado y dice por qué", async ({ paginaAutenticada: page, sucursalId }) => {
   const m = marca();
   const { productoId } = await sembrarProductoConOpciones({ nombre: `E2E Gaseosa ${m}`, codigo: `E2E-GAS-${m}`, precioVenta: 4000, sucursalId, grupos: [] });
-  // Entra por la ruta VIEJA (`/editar`) a propósito: el favorito de siempre termina en el mismo formulario del paso 1.
-  await page.goto(`/catalogo/productos/${productoId}/editar`);
-  await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${productoId}/datos$`));
+  await page.goto(`/catalogo/productos/${productoId}/datos`);
   const porOpcion = page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ });
   await expect(porOpcion).toBeDisabled();
   await expect(page.getByText(/Para venderlo por opción, primero asignale un grupo de tamaños/)).toBeVisible();

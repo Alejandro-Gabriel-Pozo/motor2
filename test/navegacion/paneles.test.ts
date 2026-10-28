@@ -126,10 +126,10 @@ describe("mostrarSelectorDePaneles: por perfil", () => {
     const menu = menuDe(ADMIN);
     expect(mostrarSelectorDePaneles(menu)).toBe(true);
     const { empresa, sucursal } = particionarMenu(menu);
-    expect(hrefs(empresa)).toContain("/catalogo/categorias");
+    expect(hrefs(empresa)).toContain("/catalogo/clientes");
     expect(hrefs(empresa)).not.toContain("/stock/consolidado");
     expect(hrefs(sucursal)).toContain("/stock/consolidado");
-    expect(hrefs(sucursal)).not.toContain("/catalogo/categorias");
+    expect(hrefs(sucursal)).not.toContain("/catalogo/clientes");
   });
 
   it("el operador no ve ninguna pantalla exclusiva de Empresa: menú único, sin selector", () => {

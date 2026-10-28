@@ -14,7 +14,7 @@ import {
  * `src/server/consultas/catalogo/productos.ts` (Task #41, Fase D1 — piloto de `server/consultas/`) contra Postgres real.
  *
  * Estas funciones reemplazan, SIN cambiar su forma, las consultas Prisma que hacían en línea la ficha
- * (`/catalogo/productos/[id]`) y la edición (`/catalogo/productos/[id]/editar`) de un producto: acá se fija la forma exacta
+ * (`/catalogo/productos/[id]`) y la edición (`/catalogo/productos/[id]/datos`) de un producto: acá se fija la forma exacta
  * de lo que devuelven (claves de primer nivel y de cada `include`/`select`), porque es lo que la página serializa al cliente.
  * `obtenerProductoOpcion` (Fase D6) reemplaza la del deep-link `/movimientos/[proceso]?productoId=`: solo `{ id, codigo, nombre }`.
  * Ninguna ordena: `findUnique` por id y `findFirst` sobre `@@unique([sucursalId, productoId])` traen a lo sumo UNA fila.

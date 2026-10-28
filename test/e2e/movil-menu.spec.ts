@@ -45,7 +45,7 @@ test("celular (375 px): el menú no está fijo, el contenido usa todo el ancho y
   expect(await buscador.evaluate((el) => parseFloat(getComputedStyle(el).fontSize)), "buscador: 16 px (iOS no hace zoom)").toBeGreaterThanOrEqual(16);
   const grupoActivo = cajon.getByRole("button", { name: /Catálogo/ });
   await expect(grupoActivo).toHaveAttribute("aria-expanded", "true");
-  await expect(cajon.getByRole("link", { name: /^Opciones de venta/ })).toHaveAttribute("aria-current", "page");
+  await expect(cajon.getByRole("link", { name: /^Biblioteca de opciones/ })).toHaveAttribute("aria-current", "page");
   await capturar(page, "menu-abierto");
 
   // Un grupo abierto a la vez.
@@ -62,8 +62,11 @@ test("celular (375 px): el menú no está fijo, el contenido usa todo el ancho y
   expect.soft((await cajon.getByRole("button", { name: "Cerrar menú" }).boundingBox())!.height, "✕: alto").toBeGreaterThanOrEqual(44);
   expect((await new AxeBuilder({ page }).analyze()).violations, "con el cajón abierto").toEqual([]);
 
-  // Foco atrapado: después de recorrer más controles que los del cajón, el foco sigue adentro.
-  for (let i = 0; i < 12; i++) await page.keyboard.press("Tab");
+  // Foco atrapado: recorriendo los controles del cajón con Tab, el foco sigue adentro. Desde la Fase 7 (DEC-13) Catálogo tiene 5 entradas y el cajón trae menos controles: se recorre desde el buscador
+  // (el primero) hasta 12 controles sin pasar del último (al salir del último control de un <dialog> modal nativo, Chromium manda el foco a la interfaz del navegador, fuera del documento).
+  const controlesDelCajon = await cajon.locator("a[href]:visible, button:visible, input:visible").count();
+  await buscador.focus();
+  for (let i = 0; i < Math.min(12, controlesDelCajon - 1); i++) await page.keyboard.press("Tab");
   expect(await page.evaluate(() => document.querySelector("dialog[open]")?.contains(document.activeElement) ?? false), "el foco no sale del cajón").toBe(true);
 
   // Búsqueda: «recet» (y con otra grafía) encuentra «Recetas» con su grupo al costado; sin coincidencias, «Sin resultados».
@@ -144,7 +147,7 @@ test("escritorio (1280 px): el menú lateral sigue fijo, sin ☰, y «Ocultar me
   const lateral = page.locator("aside");
   await expect(lateral).toBeVisible();
   expect((await lateral.boundingBox())!.width, "el menú lateral mide 224 px, como siempre").toBeCloseTo(224, 0);
-  await expect(lateral.getByRole("link", { name: /^Opciones de venta/ })).toBeVisible();
+  await expect(lateral.getByRole("link", { name: /^Biblioteca de opciones/ })).toBeVisible();
   await page.getByRole("button", { name: "Ocultar menú" }).click();
   await expect.poll(async () => (await lateral.boundingBox())?.width ?? 0).toBe(0);
   await page.getByRole("button", { name: "Mostrar menú" }).click();

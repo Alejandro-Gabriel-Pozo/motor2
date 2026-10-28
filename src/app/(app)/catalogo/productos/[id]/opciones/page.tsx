@@ -117,9 +117,9 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
           <div className="flex flex-col gap-1">
             <h2 className="text-lg font-medium">Opciones y precio</h2>
             <p className="text-sm text-tinta-suave">
-              Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en{" "}
+              Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en la{" "}
               <EnlaceInterno href="/catalogo/opciones" className="underline">
-                Opciones de venta
+                Biblioteca de opciones
               </EnlaceInterno>
               .
             </p>
@@ -247,7 +247,7 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
                         <span className="font-medium [overflow-wrap:anywhere]">{g.nombre}</span>
                         <p className="text-xs text-tinta-suave">
                           {nombreDelTipoDeGrupo(g.tipo)}
-                          {g.activoEnEmpresa ? "" : " · archivado: restauralo en Opciones de venta antes de volver a vincularlo"}
+                          {g.activoEnEmpresa ? "" : " · archivado: restauralo en la Biblioteca de opciones antes de volver a vincularlo"}
                         </p>
                       </div>
                       <BotonConDeshacer

@@ -4,7 +4,7 @@ import { prisma } from "./fixtures/db";
 import { abrirComoRol } from "./fixtures/rol-pos";
 
 /**
- * GO-2d, pantalla «Opciones de venta» (`/catalogo/opciones`, clave `opciones_definir`): la lista de grupos y el alta. Se siembra y se verifica directo en la base, como los otros
+ * GO-2d, pantalla «Biblioteca de opciones» (antes «Opciones de venta»; `/catalogo/opciones`, clave `opciones_definir`): la lista de grupos y el alta. Se siembra y se verifica directo en la base, como los otros
  * specs de catálogo. Cada grupo lleva una marca propia (el nombre es único por empresa). Lo sembrado de opciones NO se borra al terminar: esas tablas solo se agregan (ni el rol de la
  * app ni el de pruebas tienen DELETE, GO-1) y la base E2E se vacía entera al empezar cada corrida.
  */
@@ -12,7 +12,7 @@ import { abrirComoRol } from "./fixtures/rol-pos";
 test("alta de un grupo: tamaño con 1 y 1 fijos, aparece en la lista y queda una sola fila aunque se toque dos veces", async ({ paginaAutenticada: page }) => {
   const nombre = `E2E Tamaño ${Date.now()}`;
   await page.goto("/catalogo/opciones");
-  await expect(page.getByRole("heading", { level: 1, name: "Opciones de venta" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Biblioteca de opciones" })).toBeVisible();
   await page.getByRole("button", { name: "+ Nuevo grupo" }).click();
   await page.getByLabel("Nombre del grupo").fill(nombre);
   // Los tipos son tarjetas: la etiqueta cubre toda la tarjeta, así que se toca el texto (un `check()` sobre el radio choca con esa cobertura).
@@ -74,7 +74,7 @@ test("sin la clave `opciones_definir`: el menú no ofrece la pantalla y la URL d
   try {
     await page.goto("/catalogo/productos");
     await expect(page.getByRole("link", { name: "Productos" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Opciones de venta" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Biblioteca de opciones" })).toHaveCount(0);
     await page.goto("/catalogo/opciones");
     await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
     await expect(page.getByRole("region", { name: "Grupos de opciones" })).toHaveCount(0);

@@ -4,7 +4,7 @@
  * food cost ni en el ratio Compras/Ventas (decisión del usuario, 2026-09-18; docs/grounding-reportes-compras-2026-09-18.md §6).
  *
  * No hay un campo nuevo: un producto es no comestible si su Insumo pertenece al grupo llamado «No comestibles» o a cualquiera de sus
- * descendientes (ej. «Packaging» y «Limpieza» como hijos), en el árbol de Grupos de Catálogo → Insumos / Grupos. Si ese grupo no existe,
+ * descendientes (ej. «Packaging» y «Limpieza» como hijos), en el árbol de Grupos de Catálogo → Maestros → Insumos. Si ese grupo no existe,
  * nada se excluye y los reportes se comportan como siempre (y avisan cómo activarlo).
  *
  * Este módulo es puro (sin base de datos) para poder usarlo desde los reportes y probarlo aparte.

@@ -52,7 +52,7 @@ export async function obtenerSeccionHabitualEnSucursal(sucursalId: string, produ
 }
 
 /**
- * El producto solo, sin relaciones (formulario de edición, `/catalogo/productos/[id]/editar`, y las cabeceras de receta). `null` si no existe. El costo de consignación
+ * El producto solo, sin relaciones (formulario de edición, `/catalogo/productos/[id]/datos`, y las cabeceras de receta). `null` si no existe. El costo de consignación
  * solo con `conCostoDeConsignacion` (ver `OpcionesDeCostoDeConsignacion`): el formulario de edición lo manda como prop a un componente de cliente, y los props viajan al navegador.
  */
 export async function obtenerProductoPorId(id: string, db: Db, opciones: OpcionesDeCostoDeConsignacion = {}) {

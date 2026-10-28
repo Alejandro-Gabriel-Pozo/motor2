@@ -69,6 +69,6 @@ export async function calcularRatioGastoVentas(
       "Compras ÷ Ventas del período — mide desembolso, no consumo real: una compra grande para stockear sube este número sin que se haya consumido más. Sirve para ver la tendencia, no como food cost exacto." +
       (existeGrupo
         ? " Solo cuenta comida y bebida: el packaging y la limpieza (grupo «No comestibles») quedan fuera de este porcentaje, y de su comparación con el período anterior."
-        : " Todavía cuenta TODO lo que se compra, incluido el packaging y la limpieza: para separarlos, creá el grupo «No comestibles» (con «Packaging» y «Limpieza» adentro) en Catálogo → Insumos / Grupos y asigná esos insumos."),
+        : " Todavía cuenta TODO lo que se compra, incluido el packaging y la limpieza: para separarlos, creá el grupo «No comestibles» (con «Packaging» y «Limpieza» adentro) en Catálogo → Maestros → Insumos y asigná esos insumos."),
   };
 }

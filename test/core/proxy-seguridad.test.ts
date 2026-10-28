@@ -199,7 +199,7 @@ describe("proxy — paths que Next no sabe decodificar (antes: 500 «failed to d
     "/carta-publica/acme/%C0%AF", // secuencia sobrelarga
     "/carta-publica/acme/%ED%A0%80", // sustituto UTF-16 codificado en UTF-8
     "/carta-publica/acme/%00", // NUL
-    "/catalogo/productos/%zz/editar", // y en las rutas de la aplicación
+    "/catalogo/productos/%zz/datos", // y en las rutas de la aplicación
     "/mesas/%E0%A4%A",
     "/api/auth/%zz",
   ];
@@ -226,7 +226,7 @@ describe("proxy — paths que Next no sabe decodificar (antes: 500 «failed to d
       expect(r.status, path).toBe(200);
       expect(r.headers.get("x-middleware-next"), path).toBe("1");
     }
-    for (const path of ["/", "/login", "/catalogo/productos", "/catalogo/productos/abc123/editar", "/catalogo/productos/a%20b/editar", "/catalogo/productos/%25/editar", "/mesas/1?x=%25"]) {
+    for (const path of ["/", "/login", "/catalogo/productos", "/catalogo/productos/abc123/datos", "/catalogo/productos/a%20b/datos", "/catalogo/productos/%25/datos", "/mesas/1?x=%25"]) {
       const r = pedir("app.example.com", path);
       expect(r.status, path).toBe(200);
       expect(r.headers.get("x-middleware-next"), path).toBe("1");

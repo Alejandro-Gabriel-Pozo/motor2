@@ -77,13 +77,6 @@ test("crear un proveedor lleva a su ficha con el aviso de que se creó", async (
   await expect(page.getByRole("heading", { name: nombre })).toBeVisible();
 });
 
-test("los enlaces viejos `?editar=` siguen funcionando: llevan a la edición", async ({ paginaAutenticada: page }) => {
-  const proveedor = await crearProveedor(Date.now());
-  await page.goto(`/catalogo/proveedores?editar=${proveedor.id}`);
-  await page.waitForURL(new RegExp(`/catalogo/proveedores/${proveedor.id}/editar$`));
-  await expect(page.locator('input[name="contacto"]')).toHaveValue("Juan Pérez");
-});
-
 test("un proveedor que no existe da «no encontrado», no un error", async ({ paginaAutenticada: page }) => {
   const respuesta = await page.goto("/catalogo/proveedores/no-existe-este-id");
   expect(respuesta?.status()).toBe(404);

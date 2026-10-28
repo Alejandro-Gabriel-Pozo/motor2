@@ -444,13 +444,12 @@ testAutenticado("catalogo/productos/[id]/datos: el formulario de edición sin vi
   }
 });
 
-testAutenticado("catalogo/productos/[id]/datos de un producto de venta (y la ruta vieja /editar que redirige ahí): sin violaciones de axe", async ({ paginaAutenticada: page }) => {
+testAutenticado("catalogo/productos/[id]/datos de un producto de venta: sin violaciones de axe", async ({ paginaAutenticada: page }) => {
   const marca = Date.now();
   const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-DPV-${marca}`, nombre: `E2E A11y Datos PV ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 3200 } });
   try {
-    await page.goto(`/catalogo/productos/${producto.id}/editar`);
-    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
     await conTitulo(page, /Editar/);
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
     expect((await new AxeBuilder({ page }).analyze()).violations, "datos de un producto de venta").toEqual([]);

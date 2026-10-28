@@ -156,3 +156,7 @@ Las dos mutaciones del umbral se corrieron y dieron rojo: en (c), ir por la bibl
 - **Sin migraciones, sin claves nuevas y sin lógica de dinero nueva.** Los comandos compuestos reusan los cuerpos y las reglas que ya existían. El precio por sucursal usa el comando de siempre. La vista previa y la lectura del precio usan el compositor de la venta.
 - Quien solo ve recibe la portada: los pasos de editar aparecen sin enlace y sin dato, y por URL directa cada pantalla responde «No tenés permiso».
 - Los enlaces, los favoritos y las pestañas viejas a `/editar` siguen funcionando con la redirección. Un formulario enviado desde una pestaña vieja falla como después de cualquier despliegue (Next rota los ids de las acciones de página) y «Reintentar» lleva al paso nuevo.
+
+## Actualización (2026-10-28)
+
+- Por decisión del dueño (poda de las rutas de transición, Fase 7), se borró la ruta vieja `/catalogo/productos/[id]/editar` y su redirección: el paso 1 tiene una sola entrada, `/catalogo/productos/[id]/datos`. Lo dicho arriba sobre `/editar` queda como historia. La prueba de ausencia está en `test/arquitectura/rutas-retiradas.test.ts`.

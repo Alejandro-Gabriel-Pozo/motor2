@@ -32,6 +32,7 @@ const RUTAS_HISTORICAS: Record<string, string> = {
   "ADR-004-fase-a-schema-aislado.md|prisma/fase-a/migraciones-manuales/20260929b_carta_multisucursal_y_sincro_precios.sql": "carpeta `prisma/fase-a/` retirada el 2026-10-28; queda en el historial de git (ver la nota de estado del ADR)",
   "ADR-004-fase-a-schema-aislado.md|prisma/fase-a/prisma.config.ts": "carpeta `prisma/fase-a/` retirada el 2026-10-28; queda en el historial de git (ver la nota de estado del ADR)",
   "ADR-004-fase-a-schema-aislado.md|prisma/fase-a/smoke-test.ts": "carpeta `prisma/fase-a/` retirada el 2026-10-28; queda en el historial de git (ver la nota de estado del ADR)",
+  "ADR-037-espacio-del-producto.md|src/app/(app)/catalogo/productos/[id]/editar/page.tsx": "la ruta vieja que redirigía a `/datos`, borrada el 2026-10-28 por decisión del dueño (poda de rutas de transición; prueba de ausencia en test/arquitectura/rutas-retiradas.test.ts); el ADR lo dice en su «Actualización»",
   // Fase 3 de la ola «precio y carta» (retiro de GO-3a, DEC-02 y DEC-16): el ADR-032 conserva su historia (frentes A y B) y las rutas que se borraron con el retiro.
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|src/core/opciones/combinaciones.ts": "el precio puro por combinación, borrado en la Fase 3 (paso 3.3) con el retiro de GO-3a",
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/core/opciones/combinaciones.test.ts": "su prueba, borrada con él en la Fase 3 (paso 3.3)",
