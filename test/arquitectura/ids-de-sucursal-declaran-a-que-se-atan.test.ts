@@ -287,9 +287,22 @@ function problemasDelEnsanche(p: Puerta, d: Declaracion, texto: string, id: stri
  * La otra dirección: toda llamada a `conAlcanceEnSucursal`/`permisoYAlcanceEnSucursal` de `src/` fuera de la infraestructura (`alcance.ts`, `con-sesion.ts`, `con-permiso.ts`, que verifica
  * `ensanches-de-alcance.test.ts`) tiene que estar en la acción o en la evidencia de una declaración `CABLEADO`. Un ensanche que ninguna forma de GT-4 declara no existe.
  */
+/**
+ * E3a (ADR-041): los ensanches cuyo id de sucursal NO llega como parámetro sino de la base (lista CERRADA, con su clave y su motivo). Hoy uno: anular una factura de proveedor entera pide `anular_compra` EN CADA
+ * sucursal donde ya entró una parte (la lista sale de una lectura de VERIFICACIÓN de `ensanches-de-alcance.test.ts`, que devuelve solo los ids) y recién entonces ensancha a ella. Evidencia por texto: el archivo
+ * llama a `permisoYAlcanceEnSucursal(<ctx>, <id>, "<clave>")` solo con esa clave literal y lee las sucursales con `sucursalesConParteDeFactura`.
+ */
+const ENSANCHES_POR_DATO_DE_LA_BASE: Readonly<Record<string, { clave: string; lector: string; motivo: string }>> = {
+  "src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor.ts": {
+    clave: "anular_compra",
+    lector: "sucursalesConParteDeFactura",
+    motivo: "anular una factura entera revierte la compra de cada parte en SU sucursal: la clave de anular se pide en cada una, después de leer en cuáles hay parte",
+  },
+};
+
 function ensanchesSinDeclarar(fuentes: ReadonlyMap<string, string>, declaradas: Readonly<Record<string, Declaracion>>): string[] {
   const INFRAESTRUCTURA = new Set(["src/server/acceso/alcance.ts", "src/server/actions/con-sesion.ts", "src/server/actions/con-permiso.ts"]);
-  const permitidos = new Set<string>();
+  const permitidos = new Set<string>(Object.keys(ENSANCHES_POR_DATO_DE_LA_BASE));
   for (const [clave, d] of Object.entries(declaradas)) {
     if (d.ensanche !== "CABLEADO") continue;
     permitidos.add(`src/server/actions/${clave.split("|")[0]}`);
@@ -406,6 +419,16 @@ describe("GT-4 (primera mitad): toda Server Action con un id de sucursal declara
     for (const [k, d] of Object.entries(DECLARADAS)) {
       const lleva = d.ata === "GATE_EN_ESA_SUCURSAL" || d.ata === "MEMBRESIA_EN_ORIGEN";
       expect(d.ensanche !== undefined, `${k}: ${d.ata} ${lleva ? "debe" : "no debe"} declarar \`ensanche\``).toBe(lleva);
+    }
+  });
+
+  it("E3a: cada ensanche por dato de la base usa solo su clave literal y su lector de verificación (y existe)", () => {
+    for (const [ruta, d] of Object.entries(ENSANCHES_POR_DATO_DE_LA_BASE)) {
+      const codigo = leerDelDisco(ruta);
+      const llamadas = [...codigo.matchAll(/permisoYAlcanceEnSucursal\(\s*\w+\s*,\s*\w+\s*,\s*"(\w+)"\s*\)/g)].map((m) => m[1]);
+      expect(llamadas.length, `${ruta}: llama a permisoYAlcanceEnSucursal`).toBeGreaterThan(0);
+      expect(new Set(llamadas), `${ruta}: solo con la clave ${d.clave}`).toEqual(new Set([d.clave]));
+      expect(codigo, `${ruta}: lee las sucursales con ${d.lector}`).toContain(`${d.lector}(`);
     }
   });
 

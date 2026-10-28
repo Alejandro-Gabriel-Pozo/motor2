@@ -48,7 +48,7 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
         data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } },
       });
       // Stock para 1 venta de 6 unidades de pan (6kg de harina), no para 2.
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 6 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 6 }], claveIdempotencia: crypto.randomUUID() });
 
       const settled = await Promise.allSettled([
         registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 6 }] }),
@@ -80,7 +80,7 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
         await prisma.recetaVersion.create({
           data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } },
         });
-        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }] });
+        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
 
         const settled = await Promise.allSettled([
           registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 6 }] }),
@@ -98,11 +98,11 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
   describe("Caso 3: CONSUMO simultáneo con MERMA / TRANSFERENCIA sobre el mismo producto+sección", () => {
     it("CONSUMO + MERMA simultáneos, stock exacto para uno solo de los dos: el saldo final nunca queda negativo", async () => {
       const mp = await sembrarProductoDisponible({ codigo: "MP_TOMATE", nombre: "Tomate", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
       const settled = await Promise.allSettled([
-        registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
-        registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }], motivoId: motivoVencidoId }),
+        registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }], claveIdempotencia: crypto.randomUUID() }),
+        registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }], motivoId: motivoVencidoId, claveIdempotencia: crypto.randomUUID() }),
       ]);
       console.log("[auditoria] Caso 3a (consumo+merma):", resumen(settled as never));
 
@@ -114,11 +114,11 @@ describe("Auditoría — Pivote 1: concurrencia, casos 2 y 3", () => {
 
     it("CONSUMO + TRANSFERENCIA (salida) simultáneos, stock exacto para uno solo de los dos: el saldo final nunca queda negativo", async () => {
       const mp = await sembrarProductoDisponible({ codigo: "MP_QUESO", nombre: "Queso", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
       const settled = await Promise.allSettled([
-        registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }] }),
-        registrarMovimiento({ proceso: "TRANSFERENCIA", fecha: new Date(), seccionId, seccionDestinoId, items: [{ productoId: mp.id, cantidad: 6 }] }),
+        registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }], claveIdempotencia: crypto.randomUUID() }),
+        registrarMovimiento({ proceso: "TRANSFERENCIA", fecha: new Date(), seccionId, seccionDestinoId, items: [{ productoId: mp.id, cantidad: 6 }], claveIdempotencia: crypto.randomUUID() }),
       ]);
       console.log("[auditoria] Caso 3b (consumo+transferencia):", resumen(settled as never));
 

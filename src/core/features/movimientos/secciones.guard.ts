@@ -16,7 +16,7 @@ const nombreDeSeccion = (nombre: unknown, mensajeVacio: string): ResultadoDato<s
 
 /** Guard del alta de una sección: EXACTAMENTE lo que antes era lo primero de `crearSeccion`, con los MISMOS textos. Que el nombre esté libre lo resuelve el caso de uso. */
 export function guardComandoCrearSeccion(entrada: { nombre: unknown }): ResultadoDato<ComandoCrearSeccion> {
-  const nombre = nombreDeSeccion(entrada.nombre, "El nombre de la sección no puede estar vacío.");
+  const nombre = nombreDeSeccion(entrada.nombre, "El nombre del depósito no puede estar vacío.");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   return aceptar({ nombre: nombre.valor });
 }
@@ -33,12 +33,12 @@ export function guardComandoRenombrarSeccion(entrada: { seccionId: string; nombr
 
 /**
  * Guard del respaldo automático en ventas: EXACTAMENTE lo que antes era lo primero de `actualizarRespaldoSeccion`, en el MISMO orden: un valor que no es booleano →
- * «Valor inválido.», y después un id que no es texto → «No se encontró la sección.» (la acción no leía nada con un id así: devolvía el mismo «no encontrada»).
+ * «Valor inválido.», y después un id que no es texto → «No se encontró el depósito.» (la acción no leía nada con un id así: devolvía el mismo «no encontrada»).
  */
 export function guardComandoActualizarRespaldoSeccion(entrada: { seccionId: unknown; sirveDeRespaldoEnVentas: unknown }): ResultadoDato<ComandoActualizarRespaldoSeccion> {
   const { seccionId, sirveDeRespaldoEnVentas } = entrada;
   if (typeof sirveDeRespaldoEnVentas !== "boolean") return rechazar("formato", "Valor inválido.");
-  if (typeof seccionId !== "string") return rechazar("formato", "No se encontró la sección.");
+  if (typeof seccionId !== "string") return rechazar("formato", "No se encontró el depósito.");
   return aceptar({ seccionId, sirveDeRespaldoEnVentas });
 }
 

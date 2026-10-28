@@ -34,7 +34,7 @@ describe("reclasificarStock", () => {
 
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Arroz", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     mpId = mp.id;
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
   });
 
   it("reparte EXACTO el disponible entre 2 destinos, el origen queda en 0 y el total global no cambia", async () => {
@@ -103,7 +103,7 @@ describe("reclasificarStock", () => {
 
   it("reclasifica por lote puntual sin tocar otros lotes del mismo producto+sección", async () => {
     const lote1 = new Date("2027-01-01");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 5, loteVencimiento: lote1 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 5, loteVencimiento: lote1 }], claveIdempotencia: crypto.randomUUID() });
 
     const resultado = await reclasificarStock({
       productoId: mpId, seccionOrigenId: origenId, loteOrigen: lote1,
@@ -123,7 +123,7 @@ describe("reclasificarStock", () => {
 
     it("devuelve el saldo de un lote puntual, no el total del producto+sección", async () => {
       const lote1 = new Date("2027-01-01");
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 5, loteVencimiento: lote1 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 5, loteVencimiento: lote1 }], claveIdempotencia: crypto.randomUUID() });
 
       expect(await obtenerSaldoDisponibleParaReclasificar(mpId, origenId, lote1)).toBe(5);
       expect(await obtenerSaldoDisponibleParaReclasificar(mpId, origenId, null)).toBe(10);
@@ -146,7 +146,7 @@ describe("reclasificarStock", () => {
 
     it("rechaza un único destino con la misma sección y el mismo lote puntual que el origen", async () => {
       const lote1 = new Date("2027-01-01");
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 5, loteVencimiento: lote1 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 5, loteVencimiento: lote1 }], claveIdempotencia: crypto.randomUUID() });
 
       const resultado = await reclasificarStock({
         productoId: mpId, seccionOrigenId: origenId, loteOrigen: lote1,
@@ -219,7 +219,7 @@ describe("reclasificarStock", () => {
       for (let i = 0; i < 10; i++) {
         // Repone el saldo del origen para esta iteración: el `beforeEach` ya deja 10 antes de la primera vuelta, así que se lee
         // el disponible REAL en vez de asumir un número fijo (evita "la suma no coincide" por acumular de más).
-        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 10 }] });
+        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: origenId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
         const disponible = await calcularSaldoTotal(mpId, origenId, prisma);
         const claveIdempotencia = crypto.randomUUID();
         const payload = { productoId: mpId, seccionOrigenId: origenId, destinos: [{ seccionId: destinoAId, cantidad: disponible }], fecha: new Date(), claveIdempotencia };

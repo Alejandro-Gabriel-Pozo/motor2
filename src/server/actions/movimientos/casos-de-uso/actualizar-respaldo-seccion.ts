@@ -27,8 +27,8 @@ export async function actualizarRespaldoSeccionCasoDeUso(
 ): Promise<ResultadoActualizarRespaldoSeccion> {
   const { sirveDeRespaldoEnVentas } = comando;
   const seccion = await actor.db.seccion.findUnique({ where: { id: comando.seccionId } });
-  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró la sección.");
+  if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró el depósito.");
 
   await fijarRespaldoDeSeccion(actor.db, { id: seccion.id, sirveDeRespaldoEnVentas });
-  return exito(`Sección "${seccion.nombre}" ${sirveDeRespaldoEnVentas ? "ahora sirve" : "ya no sirve"} de respaldo automático en ventas.`, null);
+  return exito(`Depósito "${seccion.nombre}" ${sirveDeRespaldoEnVentas ? "ahora sirve" : "ya no sirve"} de respaldo automático en ventas.`, null);
 }

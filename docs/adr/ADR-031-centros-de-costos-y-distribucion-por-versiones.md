@@ -1,6 +1,6 @@
 # ADR-031: Centros de costos (unidades de negocio) y distribución de un gasto por versiones
 
-> Redactado el 2026-10-13 (Paquete 5, M7). **Estado: el MODELO está escrito en el repositorio (cuatro migraciones aditivas con su `down.sql` y sus pruebas, más el módulo `centros_de_costos` «en desarrollo»); NINGÚN caso de uso las escribe todavía (Etapa C) y NO están aplicadas a ninguna base real** (cada una REQUIERE AUTORIZACIÓN EXPRESA, base por base). No se toca el ADR-029: esto es otra decisión (una dimensión nueva, con módulo propio, aplicabilidad por sucursal y alcance heredado). El 030 es de otra tarea.
+> Redactado el 2026-10-13 (Paquete 5, M7). **Estado: el MODELO está escrito en el repositorio (cuatro migraciones aditivas con su `down.sql` y sus pruebas, más el módulo `centros_de_costos` «en desarrollo»); NINGÚN caso de uso las escribe todavía (Etapa C); están aplicadas a la base de stockhneuquen desde el 2026-10-13 (corregido el 2026-10-27: este encabezado decía que no estaban aplicadas)** (cada una REQUIERE AUTORIZACIÓN EXPRESA, base por base). No se toca el ADR-029: esto es otra decisión (una dimensión nueva, con módulo propio, aplicabilidad por sucursal y alcance heredado). El 030 es de otra tarea.
 
 ## Contexto
 

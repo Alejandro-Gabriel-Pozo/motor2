@@ -47,7 +47,7 @@ describe("P17: venta, conteo y reclasificación con una sección dada de baja", 
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.2, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
   });
 
   describe("venta de mostrador", () => {

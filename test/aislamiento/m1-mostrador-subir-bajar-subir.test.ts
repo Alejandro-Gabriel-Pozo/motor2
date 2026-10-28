@@ -70,7 +70,8 @@ afterAll(async () => {
 describe("M1 del mostrador: subir, bajar y subir sobre una base temporal con todo lo anterior aplicado", () => {
   it("0. la migración existe, es posterior a todas las demás, avisa que requiere autorización y tiene down.sql", () => {
     const carpetas = readdirSync(RAIZ, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
-    expect(carpetas.at(-1), "es la última por nombre (posterior a 20261021140000 y a la migración «solo salón» de otro carril)").toBe(M1);
+    // Posterior a todas las anteriores; después de ella solo vinieron la de E2 (ADR-040, costo del origen en el traspaso) y las dos de E3a-M (ADR-041, propuesta de parte de factura), de otras etapas.
+    expect(carpetas.filter((c) => c > M1), "es posterior a todas las anteriores (20261021140000, la migración «solo salón» de otro carril…)").toEqual(["20261027120000_traspaso_costo_unitario_origen", "20261028100000_factura_proveedor_propuesta", "20261028101000_rls_sucursal_factura_proveedor_propuesta"]);
     expect(M1 > "20261026120000_promo_carta_solo_salon").toBe(true);
     expect(sql("migration.sql").split("\n")[0]).toContain("REQUIERE AUTORIZACIÓN EXPRESA");
     expect(sql("down.sql").length).toBeGreaterThan(0);

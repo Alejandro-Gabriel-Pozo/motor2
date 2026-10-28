@@ -25,8 +25,8 @@ export default async function ValuacionPage() {
       <div>
         <h1 className="mb-1 text-xl font-semibold">Valuación de inventario</h1>
         <p className="text-sm text-tinta-tenue">
-          Stock actual de esta sucursal valorizado al costo de reposición (misma fuente que Costos y márgenes: la compra local más reciente de
-          cada producto).
+          Stock actual de esta sucursal valorizado al costo de reposición (misma fuente que Costos y márgenes: la entrada con costo más reciente de
+          cada producto, sea una compra local o un traspaso recibido de otra sucursal).
         </p>
       </div>
 
@@ -36,7 +36,7 @@ export default async function ValuacionPage() {
         <EnDolares pesos={rep.totalValorizado} cotizacion={cotizacion} className="text-sm text-tinta-tenue" />
         {rep.cantidadSinCosto > 0 && (
           <div className="mt-1 text-xs text-aviso-tinta">
-            {rep.cantidadSinCosto} producto{rep.cantidadSinCosto === 1 ? "" : "s"} con stock pero sin ninguna compra registrada — no incluido
+            {rep.cantidadSinCosto} producto{rep.cantidadSinCosto === 1 ? "" : "s"} con stock pero sin costo conocido (ni compra ni traspaso recibido con costo): pendiente de completar, no incluido
             {rep.cantidadSinCosto === 1 ? "" : "s"} en el total (ver abajo).
           </div>
         )}

@@ -16,7 +16,7 @@ export function guardComandoSeccionHabitual(datos: { productoId: unknown; seccio
   const productoId = id(datos.productoId);
   if (!productoId) return rechazar("vacio", "Elegí un producto.");
   const seccionId = id(datos.seccionId);
-  if (!seccionId) return rechazar("vacio", "Elegí la sección habitual.");
+  if (!seccionId) return rechazar("vacio", "Elegí el depósito habitual.");
   return aceptar({ productoId, seccionId });
 }
 
@@ -25,6 +25,6 @@ export function guardComandoSeccionHabitual(datos: { productoId: unknown; seccio
  * no se busca y responde el mismo «No se encontró esa sección habitual.» que una fila que no existe (sin recortar: el id se busca tal cual, como antes).
  */
 export function guardComandoEliminarSeccionHabitual(datos: { id: unknown }): ResultadoDato<ComandoEliminarSeccionHabitual> {
-  if (typeof datos.id !== "string") return rechazar("formato", "No se encontró esa sección habitual.");
+  if (typeof datos.id !== "string") return rechazar("formato", "No se encontró ese depósito habitual.");
   return aceptar({ id: datos.id });
 }

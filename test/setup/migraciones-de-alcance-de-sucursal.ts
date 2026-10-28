@@ -56,6 +56,8 @@ export const MIGRACIONES_DE_POLITICAS_POSTERIORES: readonly { readonly migracion
   { migracion: "20261021101000_go3d_rls_sucursal_menu_del_dia", tablas: ["EntradaDelDiaDeCupo"] },
   // GO-3 (ADR-032): el precio local de las combinaciones y de los grupos, y la foto de la combinación vendida (GO-3a-rls).
   { migracion: "20261021111000_go3a_rls_sucursal_combinaciones", tablas: ["CombinacionEnLinea", "PrecioLocalDeCombinacion"] },
+  // E3a-M (ADR-041): la propuesta de la parte de una sucursal destino y sus renglones (ENTRE_SUCURSALES).
+  { migracion: "20261028101000_rls_sucursal_factura_proveedor_propuesta", tablas: ["FacturaProveedorPropuesta", "FacturaProveedorPropuestaRenglon"] },
 ];
 
 /** Las migraciones previas que la prueba de subir/bajar/subir baja DESPUÉS de B1 (en este orden: P3 y después M.2). Ambas reversas son destructivas. */

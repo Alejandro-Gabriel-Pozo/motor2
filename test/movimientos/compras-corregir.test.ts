@@ -150,7 +150,7 @@ describe("corregirCompra", () => {
       const op = await compra({ proveedorId: molinoId });
       expect((await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "N-77", detalleLibre: "" }, vista(op))).ok).toBe(true);
 
-      const carga = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: molinoId, nroFactura: "N-77", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10 }] });
+      const carga = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: molinoId, nroFactura: "N-77", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() });
       expect(carga.ok).toBe(false);
       expect(carga.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
     });

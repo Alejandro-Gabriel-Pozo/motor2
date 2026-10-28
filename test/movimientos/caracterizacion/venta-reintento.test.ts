@@ -42,8 +42,8 @@ describe("venta: el reintento ante un conflicto de escritura repite todo y no de
     pizza = (await sembrarProductoDisponible({ codigo: "PV_PIZZA", nombre: "Pizza", tipo: "PV", unidadStockId: unidad.id, precioVenta: 12000 }, sucursalId)).id;
     await prisma.recetaVersion.create({ data: { productoId: pan, version: 1, ingredientes: { create: [{ insumoProductoId: bollo, cantidad: 1, unidadId: unidad.id, mermaPorcentaje: 0 }] } } });
     await prisma.recetaVersion.create({ data: { productoId: pizza, version: 1, ingredientes: { create: [{ insumoProductoId: muzza, cantidad: 0.25, unidadId: kg.id, mermaPorcentaje: 0 }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: bollo, cantidad: 3, precioTotal: 90 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzza, cantidad: 1, precioTotal: 400 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: bollo, cantidad: 3, precioTotal: 90 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzza, cantidad: 1, precioTotal: 400 }], claveIdempotencia: crypto.randomUUID() });
   });
 
   const conflicto = () => new Prisma.PrismaClientKnownRequestError("Transaction failed due to a write conflict", { code: "P2034", clientVersion: "test" });

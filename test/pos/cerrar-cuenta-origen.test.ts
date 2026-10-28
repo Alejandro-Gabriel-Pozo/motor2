@@ -29,7 +29,7 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
   });
 
   const comprar = (seccionId: string, productoId: string, cantidad: number, loteVencimiento?: Date) =>
-    registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId, cantidad, loteVencimiento }] });
+    registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId, cantidad, loteVencimiento }], claveIdempotencia: crypto.randomUUID() });
   const movimientosDeLaMesa = () => prisma.movimientoStock.findMany({ where: { operacion: { proceso: "VENTA", detalleLibre: "Mesa 4" } }, orderBy: { creadoEn: "asc" } });
   const resumen = (filas: { proceso: string; productoId: string; seccionId: string; cantidad: unknown; loteVencimiento: Date | null }[]) =>
     filas.map((m) => [m.proceso, m.productoId, m.seccionId, Number(m.cantidad), m.loteVencimiento?.toISOString().slice(0, 10) ?? null]);
@@ -46,7 +46,7 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
     await comprar(s.seccion.id, s.muzzarella.id, 0.5, OCT);
     await comprar(s.seccion.id, s.muzzarella.id, 0.1, NOV);
     await comprar(s.seccion.id, vino.id, 2);
-    await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId: torta.id, cantidad: 2, loteVencimiento: OCT }] });
+    await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId: torta.id, cantidad: 2, loteVencimiento: OCT }], claveIdempotencia: crypto.randomUUID() });
 
     const actor = { usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: "Central" };
     const datos = (origen: OrigenVenta) => ({
@@ -195,7 +195,7 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
     await sembrarSeccion(s.sucursalId, "Cocina");
     const deposito = await sembrarSeccion(s.sucursalId, "Depósito");
     const torta = await sembrarProductoDisponible({ codigo: "PV_TORTA", nombre: "Torta", tipo: "PV", unidadStockId: s.unidad.id, seProduce: true, precioVenta: 5000 }, s.sucursalId);
-    await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId: deposito.id, items: [{ productoId: torta.id, cantidad: 2 }] });
+    await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId: deposito.id, items: [{ productoId: torta.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
     const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: torta.id, cantidad: 5, precioUnitario: 5000, numeroEnvio: 1 }]);
 
     const r = await cerrarCuenta(cuenta.id);

@@ -95,9 +95,9 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
       const h2 = await sembrarProductoDisponible({ codigo: "MP_H2", nombre: "Hermano2", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoFamilia.id }, sucursalId);
       const h3 = await sembrarProductoDisponible({ codigo: "MP_H3", nombre: "Hermano3", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoFamilia.id }, sucursalId);
 
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: h1.id, cantidad: 3.37 }] });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-02"), seccionId, items: [{ productoId: h2.id, cantidad: 2.19 }] });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-03"), seccionId, items: [{ productoId: h3.id, cantidad: 1.81 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: h1.id, cantidad: 3.37 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-02"), seccionId, items: [{ productoId: h2.id, cantidad: 2.19 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-03"), seccionId, items: [{ productoId: h3.id, cantidad: 1.81 }], claveIdempotencia: crypto.randomUUID() });
 
       const totalDisponible = 3.37 + 2.19 + 1.81; // 7.37
       const partes = await resolverConsumoPorFamilia(h1.id, totalDisponible, seccionId, prisma);
@@ -127,7 +127,7 @@ describe("Auditoría — Pivote 4: round-trip de receta y reparto por familia (c
       const hermanos = [];
       for (let i = 0; i < saldos.length; i++) {
         const h = await sembrarProductoDisponible({ codigo: `MP_HH${i}`, nombre: `HermanoH${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoFamilia.id }, sucursalId);
-        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(`2026-01-0${i + 1}`), seccionId, items: [{ productoId: h.id, cantidad: saldos[i]! }] });
+        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(`2026-01-0${i + 1}`), seccionId, items: [{ productoId: h.id, cantidad: saldos[i]! }], claveIdempotencia: crypto.randomUUID() });
         hermanos.push(h);
       }
 

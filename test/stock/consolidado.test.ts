@@ -40,7 +40,7 @@ describe("calcularStockConsolidado", () => {
 
   it("con movimientos pero sin conteo físico todavía: SIN_CONTEO", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const filas = await calcularStockConsolidado(sucursalId, prisma);
     const fila = filas.find((f) => f.productoId === mp.id);
@@ -50,14 +50,14 @@ describe("calcularStockConsolidado", () => {
 
   it("conteo sin diferencia: CONCILIADO; con diferencia: CON_DESVIO", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_3", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" });
 
     let filas = await calcularStockConsolidado(sucursalId, prisma);
     expect(filas.find((f) => f.productoId === mp.id)?.estado).toBe("CONCILIADO");
 
     // Ahora se desvía: entra una compra nueva sin que se vuelva a contar.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
     await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 20, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
 
     filas = await calcularStockConsolidado(sucursalId, prisma);
@@ -69,7 +69,7 @@ describe("calcularStockConsolidado", () => {
   it("un PV \"Se produce\" vendido de más que lo producido queda NEGATIVO (Venta nunca valida el stock del propio PV, solo el de su receta)", async () => {
     const { registrarVenta } = await import("../../src/server/actions/movimientos/venta");
     const pv = await sembrarProductoDisponible({ codigo: "PV_3", nombre: "Torta", tipo: "PV", unidadStockId: unidadKgId, seProduce: true, precioVenta: 10 }, sucursalId);
-    await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 2 }] });
+    await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 5 }] });
 
     const filas = await calcularStockConsolidado(sucursalId, prisma);
@@ -80,7 +80,7 @@ describe("calcularStockConsolidado", () => {
 
   it("un conteo DESCARTADO no cuenta como último conteo válido", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_5", nombre: "Yerba", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
     await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 99, fechaConteo: new Date(), accion: "DESCARTAR" });
 
     const filas = await calcularStockConsolidado(sucursalId, prisma);
@@ -105,7 +105,7 @@ describe("calcularStockConsolidado", () => {
 
   it("no cruza sucursales: un movimiento y un conteo hechos en otra sucursal no aparecen en el consolidado de esta", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_X", nombre: "Cruce", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 4 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 4 }], claveIdempotencia: crypto.randomUUID() });
 
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const seccionNorte = await sembrarSeccion(norte.id, "Depósito Norte");
@@ -113,7 +113,7 @@ describe("calcularStockConsolidado", () => {
     const rolAdmin = await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } });
     const adminNorte = await crearUsuarioConMembresia({ email: "norte@test.com", sucursalId: norte.id, rolId: rolAdmin.id });
     await mockearUsuarioActual({ id: adminNorte.id, email: adminNorte.email, nombre: null });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionNorte.id, items: [{ productoId: mp.id, cantidad: 100 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionNorte.id, items: [{ productoId: mp.id, cantidad: 100 }], claveIdempotencia: crypto.randomUUID() });
     await registrarConteoFisico({ productoId: mp.id, seccionId: seccionNorte.id, conteoReal: 100, fechaConteo: new Date(), accion: "AJUSTAR" });
 
     const central = (await calcularStockConsolidado(sucursalId, prisma)).filter((f) => f.productoId === mp.id);

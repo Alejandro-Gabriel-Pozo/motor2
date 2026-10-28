@@ -28,7 +28,7 @@ export function BotonQuitarSeccionHabitual({ id, producto }: { id: string; produ
   if (confirmando) {
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-aviso-tinta">¿Quitar la sección habitual de «{producto}»? Va a salir de donde haya stock.</p>
+        <p className="text-xs text-aviso-tinta">¿Quitar el depósito habitual de «{producto}»? Va a salir de donde haya stock.</p>
         <div className="flex gap-2">
           <Boton variante="enlace-peligro" tamano="en-fila" disabled={pending} onClick={quitar}>
             {pending ? "Quitando…" : "Sí, quitar"}
@@ -48,7 +48,7 @@ export function BotonQuitarSeccionHabitual({ id, producto }: { id: string; produ
 
   return (
     <div className="flex flex-col gap-1">
-      <Boton variante="enlace" tamano="en-fila" onClick={() => setConfirmando(true)} aria-label={`Quitar la sección habitual de ${producto}`}>
+      <Boton variante="enlace" tamano="en-fila" onClick={() => setConfirmando(true)} aria-label={`Quitar el depósito habitual de ${producto}`}>
         <IconoDeAccion id="eliminar" />
         Quitar
       </Boton>

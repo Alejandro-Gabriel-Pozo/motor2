@@ -14,13 +14,26 @@ export type { FilaAlertaStock, ResumenAlertasStock } from "./alertas";
 export { armarStockConsolidado, movimientosPorLeer } from "./consolidado";
 export type { FilaStockConsolidado, MovimientoPosteriorAlConteo } from "./consolidado";
 export { armarStockEnTransito } from "./en-transito";
+export { valorizarLineaDeTraspaso } from "./costo-del-traspaso";
 export type { FilaStockEnTransito } from "./en-transito";
 export { seleccionarClaseA } from "./sugerencia-clase-a";
 export type { InsumoClaseA } from "./sugerencia-clase-a";
-export { elegirMinimo } from "./stock-minimo";
+export { decidirCambioDeMinimo, elegirMinimo } from "./stock-minimo";
 export { armarStockPorFamilia } from "./por-familia";
 export type { FilaStockPorFamilia } from "./por-familia";
 export { resolverProximoConteo } from "./frecuencia-conteo";
 export { whereSeccionHabitualVigente } from "./seccion-habitual";
 export { ESTADO_STOCK_CONSOLIDADO_LABEL } from "./estado-consolidado-ui";
 export { ESTADO_STOCK_CONSOLIDADO_COLOR } from "./estado-consolidado-ui";
+export {
+  EDITORES_DE_PARAMETROS,
+  NAV_STOCK,
+  PESTANAS_DE_CONFIGURACION,
+  PESTANAS_DE_EXISTENCIAS,
+  RUTA_CONFIGURACION,
+  RUTAS_DE_LAS_ENTRADAS_DE_STOCK,
+  pestanaActualDeStock,
+} from "./ui-config";
+export type { PantallaDeStock } from "./ui-config";
+export { armarParametrosPorInsumo, filaDeMinimoQueRige } from "./parametros-por-insumo";
+export type { ParametrosDeUnInsumo } from "./parametros-por-insumo";

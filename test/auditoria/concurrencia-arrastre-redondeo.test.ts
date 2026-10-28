@@ -46,7 +46,7 @@ describe("Auditoría — concurrencia del arrastre de redondeo (Task #27)", () =
       await prisma.recetaVersion.create({
         data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadBolloId, mermaPorcentaje: 0 }] } },
       });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
 
       const settled = await Promise.allSettled([
         registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] }),

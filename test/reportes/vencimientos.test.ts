@@ -39,9 +39,9 @@ describe("Reporte de vencimientos", () => {
     const enTreintaDias = new Date(hoy.getTime() + 30 * 86400000);
     const ayer = new Date(hoy.getTime() - 86400000);
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: enTresDias }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: enTreintaDias }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: ayer }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: enTresDias }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: enTreintaDias }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: ayer }], claveIdempotencia: crypto.randomUUID() });
 
     const filas = await generarReporteLotesProximosAVencer(sucursalId, 7, prisma, AHORA_DE_LA_CORRIDA);
     const lotes = filas.map((f) => f.loteVencimiento.toISOString().slice(0, 10));
@@ -55,10 +55,10 @@ describe("Reporte de vencimientos", () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const lote = new Date("2026-02-10");
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 10, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
 
-    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destinoId: destinoElaboracionId, items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }] });
+    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destinoId: destinoElaboracionId, items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
 
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
 
@@ -72,11 +72,11 @@ describe("Reporte de vencimientos", () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const lote = new Date("2026-02-10");
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 10, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
 
     // Solo se consumieron 3 de los 10 — el resto se "perdió" sin dejar rastro.
-    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destinoId: destinoElaboracionId, items: [{ productoId: mp.id, cantidad: 3, loteVencimiento: lote }] });
+    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destinoId: destinoElaboracionId, items: [{ productoId: mp.id, cantidad: 3, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
 
     await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
 

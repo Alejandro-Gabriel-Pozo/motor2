@@ -61,6 +61,7 @@ describe("registrarMovimiento", () => {
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId,
       items: [{ productoId: mp.id, cantidad: 10 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(true);
     expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
@@ -72,6 +73,7 @@ describe("registrarMovimiento", () => {
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId,
       items: [{ productoId: mp.id, cantidad: 10 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(false);
     expect(resultado.mensaje).toContain("no está disponible en");
@@ -89,6 +91,7 @@ describe("registrarMovimiento", () => {
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId,
       items: [{ productoId: mp.id, cantidad: 2, unidadCompraId: presentacion.unidadCompraId }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok, resultado.mensaje).toBe(true);
     // 2 cajas × 20kg/caja = 40kg de stock, no 2kg (que daría el factor default de 1).
@@ -99,7 +102,8 @@ describe("registrarMovimiento", () => {
     const mp = await crearMP("Harina simple");
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId,
-      items: [{ productoId: mp.id, cantidad: 5, unidadCompraId: unidadGId }], // no existe ninguna Presentacion para este producto
+      items: [{ productoId: mp.id, cantidad: 5, unidadCompraId: unidadGId }],
+      claveIdempotencia: crypto.randomUUID(), // no existe ninguna Presentacion para este producto
     });
     expect(resultado.ok, resultado.mensaje).toBe(true);
     expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(5);
@@ -107,11 +111,12 @@ describe("registrarMovimiento", () => {
 
   it("Merma resta stock (signoStock -1) — el bug de v2.1.0 (Merma sin signo) no puede repetirse: el signo sale de un solo lugar (TRANSICIONES), no de una lista aparte", async () => {
     const mp = await crearMP("Tomate");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const resultado = await registrarMovimiento({
       proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoVencidoId,
       items: [{ productoId: mp.id, cantidad: 4 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(true);
     expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
@@ -119,9 +124,9 @@ describe("registrarMovimiento", () => {
 
   it("U11: Merma sin motivo se rechaza en el servidor (no solo en la pantalla) y no mueve el saldo", async () => {
     const mp = await crearMP("Cebolla");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
-    const sinMotivo = await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 1 }] });
+    const sinMotivo = await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
     expect(sinMotivo.ok).toBe(false);
     expect(sinMotivo.mensaje).toContain("La merma necesita un motivo");
     expect(await prisma.operacion.count({ where: { proceso: "MERMA" } })).toBe(0);
@@ -130,11 +135,12 @@ describe("registrarMovimiento", () => {
 
   it("Merma rechaza un motivoId que no existe, y uno que existe pero está desactivado — el mensaje no revienta como error 500 crudo", async () => {
     const mp = await crearMP("Zanahoria");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const inexistente = await registrarMovimiento({
       proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: "no-existe",
       items: [{ productoId: mp.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(inexistente.ok).toBe(false);
     expect(inexistente.mensaje).toBe("El motivo elegido ya no está disponible.");
@@ -143,6 +149,7 @@ describe("registrarMovimiento", () => {
     const desactivado = await registrarMovimiento({
       proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoVencidoId,
       items: [{ productoId: mp.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(desactivado.ok).toBe(false);
     expect(desactivado.mensaje).toBe("El motivo elegido ya no está disponible.");
@@ -153,11 +160,12 @@ describe("registrarMovimiento", () => {
 
   it("Consumo rechaza un destinoId que no existe o que está desactivado, igual que Merma con motivoId", async () => {
     const mp = await crearMP("Apio");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const inexistente = await registrarMovimiento({
       proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, destinoId: "no-existe",
       items: [{ productoId: mp.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(inexistente.ok).toBe(false);
     expect(inexistente.mensaje).toBe("El destino elegido ya no está disponible.");
@@ -166,6 +174,7 @@ describe("registrarMovimiento", () => {
     const desactivado = await registrarMovimiento({
       proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, destinoId: destinoPersonalId,
       items: [{ productoId: mp.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(desactivado.ok).toBe(false);
     expect(desactivado.mensaje).toBe("El destino elegido ya no está disponible.");
@@ -175,15 +184,17 @@ describe("registrarMovimiento", () => {
 
   it("Tanda 6: un motivoId en un Consumo, o un destinoId en una Merma, se ignoran en vez de chocar con el CHECK de la base", async () => {
     const mp = await crearMP("Cebolla");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const consumo = await registrarMovimiento({
       proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, destinoId: destinoPersonalId, motivoId: motivoRotoId,
       items: [{ productoId: mp.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     const merma = await registrarMovimiento({
       proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoRotoId, destinoId: destinoPersonalId,
       items: [{ productoId: mp.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(consumo.ok).toBe(true);
     expect(merma.ok).toBe(true);
@@ -198,10 +209,11 @@ describe("registrarMovimiento", () => {
 
   it("Tanda 6: un motivoId inexistente en un Consumo se ignora (no aplica a ese proceso), no devuelve 'motivo no disponible'", async () => {
     const mp = await crearMP("Zanahoria");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     const r = await registrarMovimiento({
       proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, destinoId: destinoPersonalId, motivoId: "no-existe",
       items: [{ productoId: mp.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(r.ok).toBe(true);
   });
@@ -211,13 +223,13 @@ describe("registrarMovimiento", () => {
     // Ajuste, como Consumo/Merma, valida stock suficiente cuando el delta
     // es negativo (Movimientos.js:933-949: signo===0 && cantidad<0 también
     // acumula para validar) — hace falta stock previo para poder bajarlo.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 8 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 8 }], claveIdempotencia: crypto.randomUUID() });
 
-    const bajaAjuste = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: -3 }] });
+    const bajaAjuste = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: -3 }], claveIdempotencia: crypto.randomUUID() });
     expect(bajaAjuste.ok).toBe(true);
     expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(5);
 
-    const subeAjuste = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 5 }] });
+    const subeAjuste = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
     expect(subeAjuste.ok).toBe(true);
     expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
   });
@@ -227,24 +239,26 @@ describe("registrarMovimiento", () => {
     const resultado = await registrarMovimiento({
       proceso: "CONSUMO", fecha: new Date(), seccionId: "", destinoId: destinoPersonalId,
       items: [{ productoId: mp.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(false);
   });
 
   it("Compra con sección: se registra (exigeSeccion=false solo deja a la pantalla preseleccionarla)", async () => {
     const mp = await crearMP("Aceite");
-    const resultado = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 5 }] });
+    const resultado = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
     expect(resultado.ok).toBe(true);
   });
 
   it("bugfix C-1: dos líneas del mismo payload pidiendo más del mismo producto+sección se validan JUNTAS, no una por una", async () => {
     const mp = await crearMP("Papa");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     // Dos líneas de 6 c/u contra un stock de 10: cada una por separado pasaría (6<=10), juntas piden 12 y no alcanza.
     const resultado = await registrarMovimiento({
       proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoRotoId,
       items: [{ productoId: mp.id, cantidad: 6 }, { productoId: mp.id, cantidad: 6 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(false);
 
@@ -254,11 +268,11 @@ describe("registrarMovimiento", () => {
 
   it("dos requests CONCURRENTES (no el mismo payload) nunca sobre-venden: aislamiento Serializable + reintento, equivalente real a conLock_", async () => {
     const mp = await crearMP("Limón");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const [a, b] = await Promise.all([
-      registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoRotoId, items: [{ productoId: mp.id, cantidad: 6 }] }),
-      registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoRotoId, items: [{ productoId: mp.id, cantidad: 6 }] }),
+      registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoRotoId, items: [{ productoId: mp.id, cantidad: 6 }], claveIdempotencia: crypto.randomUUID() }),
+      registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoRotoId, items: [{ productoId: mp.id, cantidad: 6 }], claveIdempotencia: crypto.randomUUID() }),
     ]);
 
     // Juntas piden 12 sobre un stock de 10: como mucho una de las dos puede haber ganado la carrera.
@@ -269,11 +283,12 @@ describe("registrarMovimiento", () => {
 
   it("Transferencia mueve stock entre 2 secciones sin cambiar el total global", async () => {
     const mp = await crearMP("Fideos");
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const resultado = await registrarMovimiento({
       proceso: "TRANSFERENCIA", fecha: new Date(), seccionId: seccionAId, seccionDestinoId: seccionBId,
       items: [{ productoId: mp.id, cantidad: 4 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(true);
     expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(6);
@@ -285,6 +300,7 @@ describe("registrarMovimiento", () => {
     const resultado = await registrarMovimiento({
       proceso: "TRANSFERENCIA", fecha: new Date(), seccionId: seccionAId, seccionDestinoId: seccionAId,
       items: [{ productoId: mp.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(false);
   });
@@ -296,12 +312,14 @@ describe("registrarMovimiento", () => {
     const primera = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId: proveedor.id, nroFactura: "A-001",
       items: [{ productoId: mp.id, cantidad: 5 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(primera.ok).toBe(true);
 
     const segunda = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId: proveedor.id, nroFactura: "A-001",
       items: [{ productoId: mp.id, cantidad: 5 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(segunda.ok).toBe(false);
   });
@@ -314,6 +332,7 @@ describe("registrarMovimiento", () => {
       const resultado = await registrarMovimiento({
         proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId, nroFactura: "B-001",
         items: [{ productoId: mp.id, cantidad: 5 }],
+        claveIdempotencia: crypto.randomUUID(),
       });
       expect(resultado, `proveedorId=${proveedorId}`).toEqual({ ok: false, mensaje: "El proveedor elegido ya no está disponible." });
     }
@@ -327,6 +346,7 @@ describe("registrarMovimiento", () => {
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId: proveedor.id, nroFactura: "A".repeat(61),
       items: [{ productoId: mp.id, cantidad: 5 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(false);
     expect(await prisma.operacion.count({ where: { proveedorId: proveedor.id } })).toBe(0);
@@ -346,6 +366,7 @@ describe("registrarMovimiento", () => {
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId: proveedor.id,
       items: [{ productoId: mp.id, cantidad: 10, precioTotal: 1000, referenciaProveedor: "ACE-5L" }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(true);
 
@@ -364,7 +385,8 @@ describe("registrarMovimiento", () => {
     );
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId,
-      items: [{ productoId: mp.id, cantidad: 500 }], // 500 g de unidad de compra
+      items: [{ productoId: mp.id, cantidad: 500 }],
+      claveIdempotencia: crypto.randomUUID(), // 500 g de unidad de compra
     });
     expect(resultado.ok).toBe(true);
     expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBeCloseTo(0.5); // 500 * 0.001 kg
@@ -375,6 +397,7 @@ describe("registrarMovimiento", () => {
     const resultado = await registrarMovimiento({
       proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId,
       items: [{ productoId: harinaComprada.id, cantidad: 10 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(false);
     expect(await calcularSaldoTotal(harinaComprada.id, seccionAId, prisma)).toBe(0); // no se escribió nada
@@ -388,8 +411,8 @@ describe("registrarMovimiento", () => {
     // estén disponibles EN ESTA SUCURSAL para repartirles consumo — crearMP ya lo hace (sembrarProductoDisponible).
     const pv = await sembrarProductoDisponible({ codigo: "PV_EMPANADA", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpA.id, cantidad: 3 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpB.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpA.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpB.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpA.id, cantidad: 5, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
@@ -398,6 +421,7 @@ describe("registrarMovimiento", () => {
     const resultado = await registrarMovimiento({
       proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId,
       items: [{ productoId: pv.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(true);
 
@@ -426,6 +450,7 @@ describe("registrarMovimiento", () => {
     const resultado = await registrarMovimiento({
       proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId,
       items: [{ productoId: pv1.id, cantidad: 1 }, { productoId: pv2.id, cantidad: 1 }],
+      claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(true);
     expect(await calcularSaldoTotal(salPizca.id, seccionAId, prisma)).toBe(0);
@@ -436,12 +461,12 @@ describe("registrarMovimiento", () => {
     const mpConsignacion = await crearMP("Café en consignación", { esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 50 });
     const pv = await sembrarProductoDisponible({ codigo: "PV_CAFE", nombre: "Café con leche", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpConsignacion.id, cantidad: 20 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpConsignacion.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpConsignacion.id, cantidad: 2, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
 
-    const resultado = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: pv.id, cantidad: 1 }] });
+    const resultado = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: pv.id, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
     expect(resultado.ok).toBe(true);
 
     const liquidacion = await prisma.movimientoStock.findFirst({ where: { productoId: mpConsignacion.id, proceso: "LIQUIDACION_CONSIGNACION" } });
@@ -483,6 +508,7 @@ describe("registrarMovimiento", () => {
       const resultado = await registrarMovimiento({
         proceso: "COMPRA", fecha: new Date(), seccionId: seccionAjena.id,
         items: [{ productoId: mp.id, cantidad: 10 }],
+        claveIdempotencia: crypto.randomUUID(),
       });
 
       expect(resultado.ok).toBe(false);
@@ -493,11 +519,12 @@ describe("registrarMovimiento", () => {
       const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
       const seccionAjena = await sembrarSeccion(otraSucursal.id, "Depósito ajeno");
       const mp = await crearMP("Harina para transferir");
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
       const resultado = await registrarMovimiento({
         proceso: "TRANSFERENCIA", fecha: new Date(), seccionId: seccionAId, seccionDestinoId: seccionAjena.id,
         items: [{ productoId: mp.id, cantidad: 5 }],
+        claveIdempotencia: crypto.randomUUID(),
       });
 
       expect(resultado.ok).toBe(false);
@@ -510,7 +537,7 @@ describe("registrarMovimiento", () => {
   // sin aviso, una línea con cantidad basura (o 0) se descartaba en silencio y 2,5 en una unidad entera se redondeaba a 3.
   describe("Compra / Devolución a proveedor: validación de datos de entrada (src/core/datos)", () => {
     async function compra(items: Parameters<typeof registrarMovimiento>[0]["items"], extra?: { nroFactura?: string; proveedorId?: string }) {
-      return registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items, ...extra });
+      return registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items, ...extra, claveIdempotencia: crypto.randomUUID() });
     }
 
     it("precioTotal NaN → error, sin Operacion (antes se guardaba 0 sin aviso)", async () => {
@@ -632,6 +659,7 @@ describe("registrarMovimiento", () => {
       const resultado = await registrarMovimiento({
         proceso: "DEVOLUCION_PROVEEDOR", fecha: new Date(), seccionId: seccionAId,
         items: [{ productoId: mp.id, cantidad: 2, precioTotal: Number.NaN }],
+        claveIdempotencia: crypto.randomUUID(),
       });
       expect(resultado).toEqual({ ok: false, mensaje: 'El precio de "Harina" no es un número válido.' });
       expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(10);
@@ -644,6 +672,7 @@ describe("registrarMovimiento", () => {
       const resultado = await registrarMovimiento({
         proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoVencidoId,
         items: [{ productoId: harina.id, cantidad: 2 }, { productoId: azucar.id, cantidad: 0 }],
+        claveIdempotencia: crypto.randomUUID(),
       });
       expect(resultado.ok, resultado.mensaje).toBe(true);
       expect(await calcularSaldoTotal(harina.id, seccionAId, prisma)).toBe(8);
@@ -657,6 +686,7 @@ describe("registrarMovimiento", () => {
       const resultado = await registrarMovimiento({
         proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoVencidoId,
         items: [{ productoId: harina.id, cantidad: 2 }, { productoId: azucar.id, cantidad: cantidadInvalida as never }],
+        claveIdempotencia: crypto.randomUUID(),
       });
       expect(resultado.ok).toBe(false);
       expect(await calcularSaldoTotal(harina.id, seccionAId, prisma)).toBe(10);

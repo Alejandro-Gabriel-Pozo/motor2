@@ -35,7 +35,7 @@ describe("listarStockParaConteo", () => {
   });
 
   it("trae el producto con su saldo actual", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const filas = await listarStockParaConteo(seccionId, sucursalId, prisma);
     expect(filas).toHaveLength(1);
@@ -53,6 +53,7 @@ describe("listarStockParaConteo", () => {
         { productoId: mpId, cantidad: 4, loteVencimiento: lote1 },
         { productoId: mpId, cantidad: 6, loteVencimiento: lote2 },
       ],
+      claveIdempotencia: crypto.randomUUID(),
     });
 
     const filas = await listarStockParaConteo(seccionId, sucursalId, prisma);
@@ -61,10 +62,10 @@ describe("listarStockParaConteo", () => {
   });
 
   it("excluye combinaciones (producto, lote) en saldo 0 — nada que verificar ahí", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     // U11: la Merma exige un motivo en el servidor (antes este test la registraba sin motivo).
     const { motivos } = await sembrarMotivosYDestinos();
-    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivos.get("Vencido")!, items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivos.get("Vencido")!, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     expect(await listarStockParaConteo(seccionId, sucursalId, prisma)).toEqual([]);
   });
@@ -84,7 +85,7 @@ describe("listarStockParaConteo", () => {
   });
 
   it("no mezcla stock de otra sección", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     const otraSeccion = await sembrarSeccion(sucursalId, "Barra");
 
     expect(await listarStockParaConteo(otraSeccion.id, sucursalId, prisma)).toEqual([]);

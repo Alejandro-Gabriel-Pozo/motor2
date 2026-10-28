@@ -58,7 +58,7 @@ describe("sucursal sin ventas (proceso_venta apagado)", () => {
 
     // El gate de la compra no se ve afectado por apagar la venta.
     expect(await requierePermiso(s.admin.id, s.sucursalId, "proceso_compra", prisma)).toEqual({ ok: true });
-    const compra = await registrarMovimientoCasoDeUso(actor, { proceso: "COMPRA", fecha: d("2026-08-05"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 10, precioTotal: 500 }] });
+    const compra = await registrarMovimientoCasoDeUso(actor, { proceso: "COMPRA", fecha: d("2026-08-05"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 10, precioTotal: 500 }], claveIdempotencia: crypto.randomUUID() });
     expect(compra.ok, compra.mensaje).toBe(true);
 
     const rep = await obtenerReportePorPeriodo(s.sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma, AHORA);

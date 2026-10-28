@@ -51,17 +51,17 @@ describe("calcularStockConsolidado: entradas y salidas desde el conteo", () => {
       [harina, seccionBId, 4],
       [azucar, seccionAId, 7],
     ] as const) {
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad }], claveIdempotencia: crypto.randomUUID() });
       await registrarConteoFisico({ productoId: p.id, seccionId, conteoReal: cantidad, fechaConteo, accion: "AJUSTAR" });
     }
     // Sal tiene movimientos pero NINGÚN conteo.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: sal.id, cantidad: 9 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: sal.id, cantidad: 9 }], claveIdempotencia: crypto.randomUUID() });
 
     // Movimientos posteriores al conteo: entradas y salidas distintas por clave.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: harina.id, cantidad: 5 }] });
-    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: harina.id, cantidad: 2 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionBId, items: [{ productoId: harina.id, cantidad: 1 }] });
-    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: azucar.id, cantidad: 3 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: harina.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: harina.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionBId, items: [{ productoId: harina.id, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: azucar.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
 
     const filas = await calcularStockConsolidado(sucursalId, prisma);
     const clave = (productoId: string, seccionId: string) => filas.find((f) => f.productoId === productoId && f.seccionId === seccionId);
@@ -78,7 +78,7 @@ describe("calcularStockConsolidado: entradas y salidas desde el conteo", () => {
     const productos = [] as { id: string }[];
     for (let i = 0; i < 6; i++) productos.push(await producto(`MP_${i}`, `Insumo ${i}`));
     for (const p of productos) {
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: p.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: p.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       await registrarConteoFisico({ productoId: p.id, seccionId: seccionAId, conteoReal: 10, fechaConteo: enElPasado(DIA_MS), accion: "AJUSTAR" });
     }
 

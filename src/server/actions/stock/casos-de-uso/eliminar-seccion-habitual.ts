@@ -24,7 +24,7 @@ export async function eliminarSeccionHabitualCasoDeUso(
   comando: ComandoEliminarSeccionHabitual,
 ): Promise<ResultadoEliminarSeccionHabitual> {
   const fila = await actor.db.seccionHabitualProducto.findUnique({ where: { id: comando.id }, include: { producto: { select: { nombre: true } } } });
-  if (!fila || fila.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró esa sección habitual.");
+  if (!fila || fila.sucursalId !== actor.sucursalId) return fracaso("NO_ENCONTRADA", "No se encontró ese depósito habitual.");
   await borrarSeccionHabitual(actor.db, { id: fila.id });
-  return exito(`«${fila.producto.nombre}» ya no tiene sección habitual.`, null);
+  return exito(`«${fila.producto.nombre}» ya no tiene depósito habitual.`, null);
 }

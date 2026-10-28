@@ -44,7 +44,7 @@ describe("reportes con la serie del IPC vencida", () => {
     const harina = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kg.id }, sucursalId);
     const pan = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: kg.id, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pan.id, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 1, unidadId: kg.id }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: ahora, seccionId, items: [{ productoId: harina.id, cantidad: 100, precioTotal: 500 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: ahora, seccionId, items: [{ productoId: harina.id, cantidad: 100, precioTotal: 500 }], claveIdempotencia: crypto.randomUUID() });
     const r = await registrarVenta({ fecha: ahora, seccionId, ventas: [{ productoId: pan.id, cantidadVendida: 2 }] });
     expect(r.ok, r.mensaje).toBe(true);
   });

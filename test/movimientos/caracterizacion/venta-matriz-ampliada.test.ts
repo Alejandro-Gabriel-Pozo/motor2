@@ -95,6 +95,13 @@ function resumenDeTraza(traza: readonly string[]): string[] {
 /** Columnas que cambian por corrida aunque el reloj esté congelado (las horas de alta las pone el cliente con el reloj, pero se enmascaran igual que en la matriz vigente). */
 const ENMASCARADAS = new Set(["creadoEn", "abiertaEn", "payloadHash", "actualizadoEn"]);
 
+/**
+ * E1 (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md): `registrarMovimiento` exige la clave de reintento. Las cargas de preparación
+ * usan claves FIJAS y en orden (UUID v4 válidos) para que el golden no cambie entre corridas: la matriz las muestra en la columna `claveIdempotencia`.
+ */
+let numeroDeClave = 0;
+const claveDePreparacion = () => `00000000-0000-4000-8000-${String(++numeroDeClave).padStart(12, "0")}`;
+
 describe("Caracterización ampliada de la venta: cinco jornadas con filas y traza de consultas", () => {
   let reloj = RELOJ_INICIAL;
   const tic = () => {
@@ -314,13 +321,13 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
     // ── A. Mostrador ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     await abrirJornada("A. Mostrador: precio local, merma y rendimiento local, FEFO por lote, receta compartida, fraccionada, pista de stock y anulación");
     // HarinaA en DOS lotes (0,4 kg que vencen antes y 1 kg después), HarinaB (hermana del mismo Insumo), Aceite, Tapas y Bife SOLO en «Barra».
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.harinaA, cantidad: 0.4, precioTotal: 320, loteVencimiento: new Date("2026-10-02") }] });
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.harinaA, cantidad: 1, precioTotal: 900, loteVencimiento: new Date("2026-10-04") }] });
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.harinaB, cantidad: 0.5, precioTotal: 500 }] });
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.aceite, cantidad: 1, precioTotal: 5000 }] });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.harinaA, cantidad: 0.4, precioTotal: 320, loteVencimiento: new Date("2026-10-02") }], claveIdempotencia: claveDePreparacion() });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.harinaA, cantidad: 1, precioTotal: 900, loteVencimiento: new Date("2026-10-04") }], claveIdempotencia: claveDePreparacion() });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.harinaB, cantidad: 0.5, precioTotal: 500 }], claveIdempotencia: claveDePreparacion() });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.aceite, cantidad: 1, precioTotal: 5000 }], claveIdempotencia: claveDePreparacion() });
     // RECETA: el stock del Agua de reventa entra en la MISMA compra que las Tapas (sin una Operación más, para no correr la numeración del resto de la jornada).
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.tapa, cantidad: 10, precioTotal: 1000 }, { productoId: C.aguaReventa, cantidad: 10, precioTotal: 3000 }] });
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.barra, items: [{ productoId: C.bife, cantidad: 1, precioTotal: 10000 }] });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.tapa, cantidad: 10, precioTotal: 1000 }, { productoId: C.aguaReventa, cantidad: 10, precioTotal: 3000 }], claveIdempotencia: claveDePreparacion() });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.barra, items: [{ productoId: C.bife, cantidad: 1, precioTotal: 10000 }], claveIdempotencia: claveDePreparacion() });
     await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: C.agua, precio: 1200 } });
 
     await pasoEnTx("A1. Agua ×2 con Precio Local vigente (1200 en vez de 1000), PV de reventa (receta de 1 unidad)", mostrador(C.deposito, "2026-09-25", [{ productoId: C.agua, cantidadVendida: 2 }]));
@@ -340,11 +347,11 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
     await abrirJornada("B. POS automático (registrarVentaEnTx con origen automático): stock negativo, sustituto, consignación, reventa sin stock, sin respaldo");
     const cocina = (await sembrarSeccion(sucursalId, "Cocina")).id;
     nombres.set(cocina, "cocina");
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.barra, items: [{ productoId: C.harinaA, cantidad: 0.1, precioTotal: 100 }] });
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.bife, cantidad: 0.2, precioTotal: 2000 }] });
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: cocina, items: [{ productoId: C.ojo, cantidad: 1, precioTotal: 9000 }] });
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.vino, cantidad: 1, precioTotal: 3333 }] });
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.barra, items: [{ productoId: C.vino, cantidad: 2, precioTotal: 6666 }] });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.barra, items: [{ productoId: C.harinaA, cantidad: 0.1, precioTotal: 100 }], claveIdempotencia: claveDePreparacion() });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.bife, cantidad: 0.2, precioTotal: 2000 }], claveIdempotencia: claveDePreparacion() });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: cocina, items: [{ productoId: C.ojo, cantidad: 1, precioTotal: 9000 }], claveIdempotencia: claveDePreparacion() });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.vino, cantidad: 1, precioTotal: 3333 }], claveIdempotencia: claveDePreparacion() });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.barra, items: [{ productoId: C.vino, cantidad: 2, precioTotal: 6666 }], claveIdempotencia: claveDePreparacion() });
     await prisma.seccionHabitualProducto.create({ data: { sucursalId, productoId: C.copa, seccionId: C.barra } });
     const automatico = (fecha: string, ventas: DatosVentaEnTx["lineas"], extra: Partial<DatosVentaEnTx> = {}): DatosVentaEnTx => ({ fecha: new Date(fecha), origen: { tipo: "automatico" }, lineas: ventas, ...extra });
 
@@ -365,9 +372,9 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
 
     // ── C. I3 y lotes de un PV que se produce ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
     await abrirJornada("C. Caso de uso de mostrador con clave I3, PV que se produce con dos lotes, anulaciones");
-    await preparar({ proceso: "PRODUCCION", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.torta, cantidad: 2, loteVencimiento: new Date("2026-10-04") }] });
-    await preparar({ proceso: "PRODUCCION", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.torta, cantidad: 2, loteVencimiento: new Date("2026-10-02") }] });
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.tapa, cantidad: 5, precioTotal: 500 }] });
+    await preparar({ proceso: "PRODUCCION", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.torta, cantidad: 2, loteVencimiento: new Date("2026-10-04") }], claveIdempotencia: claveDePreparacion() });
+    await preparar({ proceso: "PRODUCCION", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.torta, cantidad: 2, loteVencimiento: new Date("2026-10-02") }], claveIdempotencia: claveDePreparacion() });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-21"), seccionId: C.deposito, items: [{ productoId: C.tapa, cantidad: 5, precioTotal: 500 }], claveIdempotencia: claveDePreparacion() });
 
     const conClave: DatosVentaInput = { fecha: new Date("2026-09-28"), seccionId: C.deposito, nroFactura: "B-0007", detalle: "retira", claveIdempotencia: "clave-C", ventas: [{ productoId: C.torta, cantidadVendida: 1 }, { productoId: C.empanada, cantidadVendida: 2 }] };
     const conI3 = await venderEnMostrador("C1. Torta ×1 + Empanada ×2 con clave I3 (la clave va solo en la PRIMERA Operación; la Torta sale del lote que vence antes)", conClave);
@@ -379,9 +386,9 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
 
     // ── D. Cierre real de cuentas del POS ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     await abrirJornada("D. Cierre REAL de cuentas del POS (cerrarCuentaCasoDeUso) y anulación de promo y de consignación");
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.harinaA, cantidad: 0.3, precioTotal: 300 }] });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.harinaA, cantidad: 0.3, precioTotal: 300 }], claveIdempotencia: claveDePreparacion() });
     // RECETA: el stock del Flan de reventa entra en la MISMA compra que el Vino, en «Barra», donde ya se vendía el Flan (sin una Operación más).
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.barra, items: [{ productoId: C.vino, cantidad: 1, precioTotal: 3333 }, { productoId: C.flanReventa, cantidad: 10, precioTotal: 10000 }] });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.barra, items: [{ productoId: C.vino, cantidad: 1, precioTotal: 3333 }, { productoId: C.flanReventa, cantidad: 10, precioTotal: 10000 }], claveIdempotencia: claveDePreparacion() });
     const mesa = async (numero: number) => {
       const m = await prisma.mesa.create({ data: { sucursalId, numero } });
       nombres.set(m.id, `mesa${numero}`);
@@ -438,7 +445,7 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
 
     // ── R. Rechazos de entrada ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     await abrirJornada("R. Rechazos de entrada del núcleo (mostrador): ninguno escribe");
-    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.tapa, cantidad: 2, precioTotal: 200 }] });
+    await preparar({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: C.deposito, items: [{ productoId: C.tapa, cantidad: 2, precioTotal: 200 }], claveIdempotencia: claveDePreparacion() });
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const seccionNorte = (await sembrarSeccion(norte.id, "Depósito Norte")).id;
     nombres.set(norte.id, "norte");

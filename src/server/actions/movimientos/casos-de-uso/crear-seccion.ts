@@ -25,9 +25,9 @@ export async function crearSeccionCasoDeUso(actor: Pick<ContextoUsuario, "db" | 
     where: { sucursalId: actor.sucursalId, nombre: { equals: nombreLimpio, mode: "insensitive" } },
   });
   if (existente) {
-    return fracaso("NOMBRE_REPETIDO", `Ya existe una sección "${nombreLimpio}" en esta sucursal (las secciones no distinguen mayúsculas/espacios).`);
+    return fracaso("NOMBRE_REPETIDO", `Ya existe un depósito "${nombreLimpio}" en esta sucursal (los nombres no distinguen mayúsculas/espacios).`);
   }
 
   const creada = await crearSeccionNueva(actor.db, { sucursalId: actor.sucursalId, nombre: nombreLimpio });
-  return exito(`Sección "${creada.nombre}" creada.`, { id: creada.id, nombre: creada.nombre });
+  return exito(`Depósito "${creada.nombre}" creado.`, { id: creada.id, nombre: creada.nombre });
 }

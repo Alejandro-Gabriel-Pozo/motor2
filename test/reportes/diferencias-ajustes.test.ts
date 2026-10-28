@@ -34,11 +34,11 @@ describe("generarReporteDiferenciasAjustes", () => {
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpConReceta.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
     // Stock previo: un Ajuste negativo valida que haya suficiente para restar.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSinReceta.id, cantidad: 10 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpConReceta.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSinReceta.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpConReceta.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
-    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mpSinReceta.id, cantidad: -2 }] });
-    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mpConReceta.id, cantidad: -2 }] });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mpSinReceta.id, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mpConReceta.id, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
 
     const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
     expect(filas.find((f) => f.productoId === mpSinReceta.id)).toMatchObject({ grupo: "a", estado: "REVISAR" });
@@ -48,8 +48,8 @@ describe("generarReporteDiferenciasAjustes", () => {
   it("separa la suma de Ajustes manuales de la de Conteos físicos (CONTROL), sin mezclarlas", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
-    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -1 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -1 }], claveIdempotencia: crypto.randomUUID() });
     await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 6, fechaConteo: new Date(), accion: "AJUSTAR" }); // saldoSistema=9, diferencia=-3
 
     const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
@@ -60,7 +60,7 @@ describe("generarReporteDiferenciasAjustes", () => {
 
   it("sin ninguna diferencia real, una MP sin receta queda OK", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
     expect(filas.find((f) => f.productoId === mp.id)).toMatchObject({ grupo: "a", estado: "OK" });
@@ -73,7 +73,7 @@ describe("generarReporteDiferenciasAjustes", () => {
       await prisma.recetaVersion.create({
         data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId, mermaPorcentaje }] } },
       });
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       return { mp, pv };
     }
 
@@ -87,7 +87,7 @@ describe("generarReporteDiferenciasAjustes", () => {
 
     it("un neto de Ajustes+Conteos negativo sugiere aumentar la merma", async () => {
       const { mp } = await armarMpConReceta(5);
-      await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -2 }] });
+      await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
 
       const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       expect(filas.find((f) => f.productoId === mp.id)?.sugerenciaMerma).toBe("aumentar");
@@ -95,7 +95,7 @@ describe("generarReporteDiferenciasAjustes", () => {
 
     it("un neto de Ajustes+Conteos positivo sugiere disminuir la merma", async () => {
       const { mp } = await armarMpConReceta(5);
-      await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 2 }] });
+      await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
 
       const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       expect(filas.find((f) => f.productoId === mp.id)?.sugerenciaMerma).toBe("disminuir");
@@ -110,8 +110,8 @@ describe("generarReporteDiferenciasAjustes", () => {
 
     it("una MP sin receta (grupo a) nunca trae recetasQueLoUsan ni sugerenciaMerma", async () => {
       const mp = await sembrarProductoDisponible({ codigo: "MP_SIN", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
-      await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -2 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
 
       const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       const fila = filas.find((f) => f.productoId === mp.id)!;
@@ -133,7 +133,7 @@ describe("generarReporteDiferenciasAjustes", () => {
       const mp = await sembrarProductoDisponible({ codigo: "MP_AGENDA_OK", nombre: "Agenda al día", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       await setFrecuenciaConteo(mp.id, 30);
       // conteoReal distinto del saldo del sistema (10), para que quede un movimiento CONTROL real — con diferencia 0 no se escribe nada.
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 8, fechaConteo: new Date(), accion: "AJUSTAR" });
 
       const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
@@ -156,7 +156,7 @@ describe("generarReporteDiferenciasAjustes", () => {
       const mp = await sembrarProductoDisponible({ codigo: "MP_AGENDA_VENCIDA", nombre: "Agenda vencida", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       await setFrecuenciaConteo(mp.id, 7);
       const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      await registrarMovimiento({ proceso: "COMPRA", fecha: hace30Dias, seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+      await registrarMovimiento({ proceso: "COMPRA", fecha: hace30Dias, seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 8, fechaConteo: hace30Dias, accion: "AJUSTAR" });
 
       const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());

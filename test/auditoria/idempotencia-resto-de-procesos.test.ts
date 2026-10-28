@@ -42,54 +42,60 @@ describe("Auditoría — Pivote 2: repetición secuencial en el resto de los pro
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   });
 
-  it("MERMA: un reenvío secuencial del mismo payload crea dos Operaciones y descuenta el doble — sin protección alguna", async () => {
+  it("MERMA: un reenvío secuencial del mismo payload (misma clave) ya no crea dos Operaciones — desde E1 la clave es obligatoria", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_M1", nombre: "Tomate", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
-    const payload = { proceso: "MERMA" as const, fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3 }], motivoId: motivoVencidoId };
+    const payload = { proceso: "MERMA" as const, fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3 }], motivoId: motivoVencidoId, claveIdempotencia: crypto.randomUUID() };
     const r1 = await registrarMovimiento(payload);
     const r2 = await registrarMovimiento(payload);
     expect(r1.ok, r1.mensaje).toBe(true);
     expect(r2.ok, r2.mensaje).toBe(true);
 
+    expect(r2.mensaje).toBe(r1.mensaje);
+
     const operaciones = await prisma.operacion.count({ where: { sucursalId, proceso: "MERMA" } });
-    expect(operaciones).toBe(2);
+    expect(operaciones).toBe(1); // E1 (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md): antes eran 2, sin protección alguna
   });
 
-  it("PRODUCCIÓN: un reenvío secuencial del mismo payload crea dos Operaciones (y consume el insumo el doble)", async () => {
+  it("PRODUCCIÓN: un reenvío secuencial del mismo payload (misma clave) ya no crea dos Operaciones ni consume el insumo el doble — desde E1", async () => {
     const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_P1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const pv = await sembrarProductoDisponible({ codigo: "PV_P1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100, seProduce: true }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
 
-    const payload = { proceso: "PRODUCCION" as const, fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 5 }] };
+    const payload = { proceso: "PRODUCCION" as const, fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() };
     const r1 = await registrarMovimiento(payload);
     const r2 = await registrarMovimiento(payload);
     expect(r1.ok, r1.mensaje).toBe(true);
     expect(r2.ok, r2.mensaje).toBe(true);
+
+    expect(r2.mensaje).toBe(r1.mensaje);
 
     const operaciones = await prisma.operacion.count({ where: { sucursalId, proceso: "PRODUCCION" } });
-    expect(operaciones).toBe(2);
+    expect(operaciones).toBe(1); // E1: antes eran 2
   });
 
-  it("DEVOLUCION_PROVEEDOR: un reenvío secuencial del mismo payload crea dos Operaciones — sin ningún guard, a diferencia de COMPRA que al menos lo intenta", async () => {
+  it("DEVOLUCION_PROVEEDOR: un reenvío secuencial del mismo payload (misma clave) ya no crea dos Operaciones — desde E1", async () => {
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_D1", nombre: "Proveedor D1" } });
     const mp = await sembrarProductoDisponible({ codigo: "MP_D1", nombre: "Queso", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
-    const payload = { proceso: "DEVOLUCION_PROVEEDOR" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 2 }] };
+    const payload = { proceso: "DEVOLUCION_PROVEEDOR" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() };
     const r1 = await registrarMovimiento(payload);
     const r2 = await registrarMovimiento(payload);
     expect(r1.ok, r1.mensaje).toBe(true);
     expect(r2.ok, r2.mensaje).toBe(true);
 
+    expect(r2.mensaje).toBe(r1.mensaje);
+
     const operaciones = await prisma.operacion.count({ where: { sucursalId, proceso: "DEVOLUCION_PROVEEDOR" } });
-    expect(operaciones).toBe(2); // ninguna referencia de factura se exige acá — ni siquiera el guard racy de COMPRA existe
+    expect(operaciones).toBe(1); // E1: antes eran 2 (ninguna referencia de factura se exige acá)
   });
 
   it("RECLASIFICACION: un reenvío secuencial del mismo payload ejecuta la reclasificación dos veces (mueve el doble de stock)", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_R1", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     // reclasificarStock exige que los destinos sumen EXACTO el disponible
     // en origen (reparte todo el saldo, no una porción) — 10 acá.
@@ -101,7 +107,7 @@ describe("Auditoría — Pivote 2: repetición secuencial en el resto de los pro
     // stock, sino que se puede observar si el propio proceso lo permite
     // repetir sin ningún guard de identidad).
     expect(r1.ok, r1.mensaje).toBe(true);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     const r2 = await reclasificarStock(payload);
     expect(r2.ok, r2.mensaje).toBe(true);
 
@@ -113,7 +119,7 @@ describe("Auditoría — Pivote 2: repetición secuencial en el resto de los pro
     const mpInsumo = await sembrarProductoDisponible({ codigo: "MP_V1", nombre: "Harina V", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const pv = await sembrarProductoDisponible({ codigo: "PV_V1", nombre: "Pan V", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 1, unidadId: unidadKgId }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
 
     const payload = { fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 4 }] };
     const r1 = await registrarVenta(payload);

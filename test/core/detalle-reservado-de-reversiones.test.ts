@@ -11,7 +11,7 @@ import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
  * El ataque (rojo contra el código anterior): `registrarMovimiento` de un AJUSTE con `detalleLibre: "Anulación de la venta <id> (2026-10-08)."` pasaba el guard.
  */
 const item = { productoId: "p", cantidad: 1 };
-const base = { proceso: "AJUSTE", items: [item], seccionId: "s", fecha: new Date() };
+const base = { proceso: "AJUSTE", items: [item], seccionId: "s", fecha: new Date(), claveIdempotencia: crypto.randomUUID() };
 const guard = (detalleLibre?: string) => guardComandoRegistrarMovimiento({ ...base, detalleLibre }, AHORA_DE_LA_CORRIDA);
 
 describe("el prefijo de las reversiones por anulación está reservado (M-1)", () => {

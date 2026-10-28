@@ -1,6 +1,6 @@
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
@@ -41,8 +41,9 @@ Todo módulo o feature nuevo (compras, reservas, ventas, caja, clientes, lo que 
 - Compuerta: no se diseñan ni migran tablas (nivel 6) sin tener confirmados los niveles 1 a 5. Cada decisión lleva su estado: CONFIRMADA (dicha por el dueño), PROPUESTA, PENDIENTE o NO VERIFICADA. Para cada comando, la tabla «¿qué pasa si…?»: repetición, concurrencia, tiempo, incertidumbre, reintento, error parcial, datos faltantes, cambio de permisos.
 - Escalera de producto N0 a N5 por módulo (lo que ve el cliente): peldaños acumulativos que no rompen lo cargado; formalidad y detalle son ejes separados; lo que falta se muestra como «pendiente de completar», nunca se inventa. Es una escalera distinta de la de diseño: se cruzan en el nivel 5.
 - Se diseña el modelo completo y escalable en papel, pero SOLO se migran las tablas de la etapa que se implementa, con puntos de extensión previstos (relaciones opcionales, estados con CHECK, historial que solo agrega) y migraciones aditivas y reversibles. Nada de tablas «a ciegas» que nadie escribe.
-- Antes de crear un modelo, inventariar lo que ya existe con otro nombre (validar contra el código real, no contra documentos). Reutilizar módulos, planes, permisos y centros de costos existentes antes de inventar tablas de niveles o reglas.
+- Antes de crear un modelo, inventariar lo que ya existe con otro nombre (validar contra el código real, no contra documentos). Antes de diseñar o auditar un módulo, revisar también el repositorio `motor2-docs` (`_planes/`, decisiones del dueño, ADR): puede haber un plan aprobado que el código todavía no tiene (la auditoría de abastecimiento del 2026-10-27 dijo «bienes de uso: no existe» por mirar solo `src/`). Reutilizar módulos, planes, permisos y centros de costos existentes antes de inventar tablas de niveles o reglas.
 - Los arreglos sobre lo ya construido siguen el mismo método: auditar el módulo contra la escalera (invariantes, concurrencia, niveles) y corregir en pasos chicos, sin refactorizar lo que no se pidió.
+- Primero la opción más barata (regla del dueño, 2026-10-27): ante una idea o un faltante, antes de proponer pantallas o tablas nuevas verificar si ya existe en el código y, si no, proponer la forma MÁS BARATA que permita empezar a usarlo (configuración, reutilizar lo existente, un cambio chico) y dejar lo grande como etapa posterior con nombre. «Si no, el sistema jamás está terminado y hay que empezar a usarlo.»
 - El documento de diseño vive en `docs/diseno-<modulo>-AAAA-MM-DD.md` (ver el piloto de clientes, convenios y facturación externa).
 
 ## Exploración con Explore

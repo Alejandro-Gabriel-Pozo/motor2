@@ -65,7 +65,7 @@ describe("obtenerReporteMargenPromociones", () => {
 
   it("una promo con un componente sin receta: ingreso a lista vs. cobrado, ahorro del cliente y margen Real PARCIAL (D3)", async () => {
     // Muzzarella comprada a $400/kg: la Pizza (0,25 kg) cuesta $100 de verdad; el Flan no tiene receta, sin costo real.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 10, precioTotal: 4000 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 10, precioTotal: 4000 }], claveIdempotencia: crypto.randomUUID() });
     const promo = await crearPromoCarta("Combo Test");
     // Precio de carta: Pizza $12.000 + Flan $3.000 = $15.000. La promo cobra $12.000, prorrateado 9.600/2.400 (D3).
     const cuenta = await sembrarCuentaConPromo(s.mesa.id, promo.id, "Combo Test", 12000, [

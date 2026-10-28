@@ -39,7 +39,7 @@ describe("listarComprasRegistradas", () => {
   });
 
   async function comprar(fecha: string, proveedorId: string | undefined, nroFactura: string | undefined, items: { productoId: string; cantidad: number; precioTotal?: number }[]) {
-    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: d(fecha), seccionId, proveedorId, nroFactura, items });
+    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: d(fecha), seccionId, proveedorId, nroFactura, items, claveIdempotencia: crypto.randomUUID() });
     expect(r.ok, r.mensaje).toBe(true);
   }
 
@@ -127,7 +127,7 @@ describe("listarComprasRegistradas", () => {
 
   it("solo lista COMPRAS de la sucursal pedida: ni otros procesos ni otras sucursales", async () => {
     await comprar("2026-08-01", provAId, "A-0001", [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }]);
-    await registrarMovimiento({ proceso: "CONSUMO", fecha: d("2026-08-02"), seccionId, items: [{ productoId: harinaId, cantidad: 1 }] });
+    await registrarMovimiento({ proceso: "CONSUMO", fecha: d("2026-08-02"), seccionId, items: [{ productoId: harinaId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
 
     const otra = await prisma.sucursal.create({ data: { nombre: "Otra" } });
     const seccionOtra = await sembrarSeccion(otra.id, "Depósito 2");
@@ -170,8 +170,8 @@ describe("Compras por proveedor (Período) lleva el id del proveedor para enlaza
     const harina = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kg.id }, sucursalId);
     const prov = await prisma.proveedor.create({ data: { codigo: "PRV_A", nombre: "Molino A" } });
     const fecha = new Date("2026-08-01T12:00:00Z");
-    await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, proveedorId: prov.id, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 5 }] });
-    await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 6 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, proveedorId: prov.id, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 6 }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-07-30"), new Date("2026-08-05"), undefined, prisma, AHORA_DE_LA_CORRIDA);
     const porNombre = new Map(rep.compras.porProveedor.map((p) => [p.proveedor, p.proveedorId]));

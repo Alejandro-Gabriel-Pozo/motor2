@@ -31,33 +31,33 @@ describe("Sección habitual (server actions)", () => {
   });
 
   it("alta, reemplazo (una sola fila por producto) y quitar", async () => {
-    expect(await setSeccionHabitual(pizzaId, cocinaId)).toEqual({ ok: true, mensaje: "Sección habitual de «Pizza»: «Cocina»." });
-    expect(await setSeccionHabitual(pizzaId, barraId)).toEqual({ ok: true, mensaje: "Sección habitual de «Pizza»: «Barra»." });
+    expect(await setSeccionHabitual(pizzaId, cocinaId)).toEqual({ ok: true, mensaje: "Depósito habitual de «Pizza»: «Cocina»." });
+    expect(await setSeccionHabitual(pizzaId, barraId)).toEqual({ ok: true, mensaje: "Depósito habitual de «Pizza»: «Barra»." });
     const filas = await listarSeccionesHabituales(sucursalId);
     expect(filas.map((f) => [f.producto.nombre, f.seccion.nombre])).toEqual([["Pizza", "Barra"]]);
 
-    expect(await eliminarSeccionHabitual(filas[0].id)).toEqual({ ok: true, mensaje: "«Pizza» ya no tiene sección habitual." });
+    expect(await eliminarSeccionHabitual(filas[0].id)).toEqual({ ok: true, mensaje: "«Pizza» ya no tiene depósito habitual." });
     expect(await listarSeccionesHabituales(sucursalId)).toEqual([]);
     expect(await prisma.seccionHabitualProducto.count()).toBe(0);
   });
 
   it("rechaza una MP, sin escribir nada", async () => {
-    expect(await setSeccionHabitual(muzzaId, cocinaId)).toEqual({ ok: false, mensaje: "Solo un producto de venta (PV) tiene sección habitual: «Muzzarella» es una materia prima." });
+    expect(await setSeccionHabitual(muzzaId, cocinaId)).toEqual({ ok: false, mensaje: "Solo un producto de venta (PV) tiene depósito habitual: «Muzzarella» es una materia prima." });
     expect(await prisma.seccionHabitualProducto.count()).toBe(0);
   });
 
   it("rechaza una sección de otra sucursal y una sección inactiva, sin escribir nada", async () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const ajena = await sembrarSeccion(norte.id, "Barra Norte");
-    expect(await setSeccionHabitual(pizzaId, ajena.id)).toEqual({ ok: false, mensaje: "No se encontró la sección." });
+    expect(await setSeccionHabitual(pizzaId, ajena.id)).toEqual({ ok: false, mensaje: "No se encontró el depósito." });
     await prisma.seccion.update({ where: { id: cocinaId }, data: { activa: false } });
-    expect(await setSeccionHabitual(pizzaId, cocinaId)).toEqual({ ok: false, mensaje: "La sección «Cocina» está desactivada: activala o elegí otra." });
+    expect(await setSeccionHabitual(pizzaId, cocinaId)).toEqual({ ok: false, mensaje: "El depósito «Cocina» está desactivado: activalo o elegí otro." });
     expect(await prisma.seccionHabitualProducto.count()).toBe(0);
   });
 
   it("rechaza el formato vacío (guard) y un producto inexistente", async () => {
     expect(await setSeccionHabitual("", cocinaId)).toEqual({ ok: false, mensaje: "Elegí un producto." });
-    expect(await setSeccionHabitual(pizzaId, "")).toEqual({ ok: false, mensaje: "Elegí la sección habitual." });
+    expect(await setSeccionHabitual(pizzaId, "")).toEqual({ ok: false, mensaje: "Elegí el depósito habitual." });
     expect(await setSeccionHabitual("no-existe", cocinaId)).toEqual({ ok: false, mensaje: "No se encontró el producto." });
   });
 
@@ -71,7 +71,7 @@ describe("Sección habitual (server actions)", () => {
     const norte = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const barraNorte = await sembrarSeccion(norte.id, "Barra Norte");
     const ajena = await prisma.seccionHabitualProducto.create({ data: { sucursalId: norte.id, productoId: pizzaId, seccionId: barraNorte.id } });
-    expect(await eliminarSeccionHabitual(ajena.id)).toEqual({ ok: false, mensaje: "No se encontró esa sección habitual." });
+    expect(await eliminarSeccionHabitual(ajena.id)).toEqual({ ok: false, mensaje: "No se encontró ese depósito habitual." });
     expect(await prisma.seccionHabitualProducto.count()).toBe(1);
   });
 

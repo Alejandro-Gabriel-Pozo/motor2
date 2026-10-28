@@ -94,8 +94,8 @@ describe("Topes de entrada de las Server Actions (S-22/S-23/S-29)", () => {
 
     it("registrarMovimiento: tope de líneas y de detalleLibre", async () => {
       const items = Array(MAXIMO_LINEAS_POR_OPERACION + 1).fill({ productoId: mpId, cantidad: 1 });
-      expect((await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items })).mensaje).toMatch(/no pueden ser más de/);
-      const r = await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, detalleLibre: largo(LARGO_MAXIMO_DETALLE + 1), items: [{ productoId: mpId, cantidad: 1 }] });
+      expect((await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items, claveIdempotencia: crypto.randomUUID() })).mensaje).toMatch(/no pueden ser más de/);
+      const r = await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, detalleLibre: largo(LARGO_MAXIMO_DETALLE + 1), items: [{ productoId: mpId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
       expect(r.mensaje).toMatch(/caracteres/);
       expect(await prisma.operacion.count()).toBe(0);
     });

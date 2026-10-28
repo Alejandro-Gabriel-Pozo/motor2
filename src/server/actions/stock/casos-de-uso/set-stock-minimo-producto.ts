@@ -3,7 +3,8 @@ import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoSetStockMinimo, ResultadoSetStockMinimo } from "@/core/features/stock/stock-minimo.schema";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { guardarMinimoDeSeccion, guardarMinimoGlobal } from "@/server/persistencia/stock/stock-minimo";
+import { cambiarMinimoSiSigueComoSeVio, guardarMinimoDeSeccion, guardarMinimoGlobal, leerMinimo } from "@/server/persistencia/stock/stock-minimo";
+import { decidirCambioDeMinimo } from "@/core/stock/public";
 
 /**
  * Caso de uso «fijar el stock mínimo de un producto en la sucursal activa, global o de una sección» (port de setStockMinimoProducto_, Catalogo.js:1982-2008; Hito 4
@@ -18,13 +19,19 @@ import { guardarMinimoDeSeccion, guardarMinimoGlobal } from "@/server/persistenc
  * descripción `Stock mínimo de "<producto>" (global)` o `… en "<sección>"`). Repetir el mismo valor no deja fila. Antes el mínimo no se auditaba (era la excepción
  * «stockMinimoProducto.minimo» de `escrituras-auditadas`, que se quitó).
  *
+ * Fase 7 (DEC-27, «Cambiar mínimo»; I8 de `docs/diseno-modulo-stock-2026-10-27.md`, CAMBIA COMPORTAMIENTO solo con `minimoVisto`): si el comando trae el mínimo que la persona VIO, el cambio no pisa en
+ * silencio el de otra persona. Dentro de la transacción se lee la fila de ese producto y depósito (`leerMinimo`) y decide `decidirCambioDeMinimo` (core/stock): ya tiene el valor pedido → éxito sin escribir
+ * ni auditar (doble clic); no tiene el valor visto (otra persona lo cambió o lo borró) → `MINIMO_CAMBIO` con el valor de hoy, sin escribir; sigue como se vio → `UPDATE … WHERE minimo = visto`
+ * (`cambiarMinimoSiSigueComoSeVio`) y, si no cambió ninguna fila (otro ganó entre la lectura y la escritura), se vuelve a leer y a decidir. La auditoría va en la misma transacción. Sin `minimoVisto`, el
+ * alta/cambio de siempre (upsert).
+ *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos ni el formato del mínimo (el guard).
  *
- * @contract Deja el stock mínimo del producto en la sucursal activa (global o de la sección) y el cambio en la auditoría, salvo que el producto o la sección no existan.
- * @idempotency No aplica — repetir el pedido vuelve a escribir el mismo mínimo (sin duplicar la fila ni dejar otra fila de auditoría: nada cambió).
+ * @contract Deja el stock mínimo del producto en la sucursal activa (global o de la sección) y el cambio en la auditoría, salvo que el producto o la sección no existan, o que (con el valor visto) otra persona lo haya cambiado.
+ * @idempotency Por estado — repetir el pedido encuentra el mínimo pedido y no escribe (sin duplicar la fila ni dejar otra fila de auditoría); con el valor visto, un cambio ajeno se rechaza (MINIMO_CAMBIO).
  * @transaction Transacción simple (`actor.transaccion`): la escritura y su auditoría juntas. Las lecturas del producto y la sección, antes, con `actor.db`.
  * @sideEffects registrarCambioAuditado (StockMinimoProducto.minimo, del anterior al nuevo).
- * @ficha permiso=stock_minimo transaccion=SIMPLE idempotencia=NO_APLICA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=stock_minimo transaccion=SIMPLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function setStockMinimoProductoCasoDeUso(
   actor: Pick<ContextoUsuario, "db" | "sucursalId" | "transaccion" | "usuarioId">,
@@ -36,7 +43,10 @@ export async function setStockMinimoProductoCasoDeUso(
 
   if (seccionId) {
     const seccion = await actor.db.seccion.findUnique({ where: { id: seccionId } });
-    if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
+    if (!seccion || seccion.sucursalId !== actor.sucursalId) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró el depósito.");
+    if (comando.minimoVisto !== undefined) {
+      return cambiarConElValorVisto(actor, { productoId, seccionId, minimo, visto: comando.minimoVisto }, `Stock mínimo de "${producto.nombre}" en "${seccion.nombre}"`);
+    }
 
     await actor.transaccion(async (tx) => {
       const escrito = await guardarMinimoDeSeccion(tx, { sucursalId: actor.sucursalId, productoId, seccionId, minimo });
@@ -54,6 +64,9 @@ export async function setStockMinimoProductoCasoDeUso(
     return exito(`Stock mínimo de "${producto.nombre}" en "${seccion.nombre}" actualizado.`, null);
   }
 
+  if (comando.minimoVisto !== undefined) {
+    return cambiarConElValorVisto(actor, { productoId, seccionId: null, minimo, visto: comando.minimoVisto }, `Stock mínimo de "${producto.nombre}" (global)`);
+  }
   await actor.transaccion(async (tx) => {
     const escrito = await guardarMinimoGlobal(tx, { sucursalId: actor.sucursalId, productoId, minimo });
     await registrarCambioAuditado(tx, {
@@ -68,4 +81,52 @@ export async function setStockMinimoProductoCasoDeUso(
     });
   });
   return exito(`Stock mínimo (global) de "${producto.nombre}" actualizado.`, null);
+}
+
+/** Cómo se lee un mínimo en un mensaje: «12» o «1,5» (es-AR), o «sin cargar» si la fila ya no existe. */
+const textoDelMinimo = (valor: number | null) => (valor === null ? "sin cargar" : valor.toLocaleString("es-AR", { maximumFractionDigits: 4 }));
+
+type ResultadoDelCambio = { tipo: "CAMBIADO" | "SIN_CAMBIO" } | { tipo: "CAMBIO_AJENO"; actual: number | null };
+
+/** «Cambiar mínimo» con el valor visto (ver el comentario de arriba): una transacción simple con la lectura, la decisión, el `UPDATE` condicionado y la auditoría. */
+async function cambiarConElValorVisto(
+  actor: Pick<ContextoUsuario, "sucursalId" | "transaccion" | "usuarioId">,
+  pedido: { productoId: string; seccionId: string | null; minimo: number; visto: number },
+  descripcion: string,
+): Promise<ResultadoSetStockMinimo> {
+  const resultado = await actor.transaccion(async (tx): Promise<ResultadoDelCambio> => {
+    const clave = { sucursalId: actor.sucursalId, productoId: pedido.productoId, seccionId: pedido.seccionId };
+    const decidir = async (): Promise<ResultadoDelCambio | { tipo: "CAMBIAR"; id: string; anterior: number }> => {
+      const fila = await leerMinimo(tx, clave);
+      const decision = decidirCambioDeMinimo({ actual: fila?.minimo ?? null, visto: pedido.visto, nuevo: pedido.minimo });
+      if (decision === "SIN_CAMBIO") return { tipo: "SIN_CAMBIO" };
+      if (decision === "CAMBIO_AJENO" || !fila) return { tipo: "CAMBIO_AJENO", actual: fila?.minimo ?? null };
+      return { tipo: "CAMBIAR", id: fila.id, anterior: fila.minimo };
+    };
+    const primera = await decidir();
+    if (primera.tipo !== "CAMBIAR") return primera;
+    // El UPDATE vuelve a exigir el valor visto: si otro ganó entre la lectura y la escritura, no cambia nada y se decide otra vez con lo que dejó el otro.
+    if ((await cambiarMinimoSiSigueComoSeVio(tx, { id: primera.id, visto: pedido.visto, minimo: pedido.minimo })) === 0) {
+      const segunda = await decidir();
+      return segunda.tipo === "CAMBIAR" ? { tipo: "CAMBIO_AJENO", actual: segunda.anterior } : segunda;
+    }
+    await registrarCambioAuditado(tx, {
+      entidad: "StockMinimoProducto",
+      entidadId: primera.id,
+      campo: "minimo",
+      descripcion,
+      valorAnterior: primera.anterior,
+      valorNuevo: pedido.minimo,
+      actorId: actor.usuarioId,
+      sucursalId: actor.sucursalId,
+    });
+    return { tipo: "CAMBIADO" };
+  });
+  if (resultado.tipo === "CAMBIO_AJENO") {
+    return fracaso(
+      "MINIMO_CAMBIO",
+      `${descripcion} cambió mientras lo editabas: ahora es ${textoDelMinimo(resultado.actual)}. No se guardó nada: revisalo y volvé a guardar.`,
+    );
+  }
+  return exito(`${descripcion} actualizado: ${textoDelMinimo(pedido.minimo)}.`, null);
 }

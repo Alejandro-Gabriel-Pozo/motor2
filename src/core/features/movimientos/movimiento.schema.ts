@@ -42,8 +42,8 @@ export interface DatosMovimientoInput {
   destinoId?: string;
   detalleLibre?: string;
   items: ItemMovimientoInput[];
-  /** I3 — UUID generado por el cliente al abrir el formulario, reenviado tal cual en reintentos. Opcional durante el rollout (docs/auditoria-motor2-plan-i3-idempotencia-2026-09-17.md §9.3). */
-  claveIdempotencia?: string;
+  /** I3 — UUID generado por el cliente al abrir el formulario, reenviado tal cual en reintentos. OBLIGATORIA desde E1 (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md): sin ella el guard rechaza sin escribir. */
+  claveIdempotencia: string;
 }
 
 export type CodigoRegistrarMovimiento =

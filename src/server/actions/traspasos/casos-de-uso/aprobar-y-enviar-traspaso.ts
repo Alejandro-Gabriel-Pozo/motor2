@@ -6,6 +6,7 @@ import type { ComandoAprobarYEnviarTraspaso, ResultadoAprobarYEnviarTraspaso } f
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { calcularSaldoTotal, obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
+import { obtenerCostoActualDeProducto } from "@/server/lecturas/reportes/comun";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarSucursalParaTraspaso, cargarTraspaso } from "@/server/persistencia/traspasos/cargar-traspaso";
 import { escribirAprobacionDeTraspaso } from "@/server/persistencia/traspasos/escribir-aprobacion-de-traspaso";
@@ -30,8 +31,10 @@ import { verificarProductoTransferible } from "./producto-transferible";
  *        producto siga siendo transferible en origen Y destino (pudo cambiar desde la solicitud: el stock sale recién ahora). Las dos lecturas pegan con el apagado simultáneo (lee los traspasos ENVIADA y escribe
  *        `Sucursal.activo`; esto lee `activo` y escribe un ENVIADA): Postgres ve el ciclo y aborta una; el reintento da el rechazo de negocio;
  *     c. el stock disponible en la sección de origen, leído DENTRO de la transacción;
- *     d. escritura de la SALIDA y del traspaso ENVIADO (persistencia);
- *     e. el mensaje de éxito.
+ *     d. E2 (ADR-040): el costo de reposición de ESTA sucursal para el producto (`obtenerCostoActualDeProducto`, filtrado por la sucursal del actor), leído DENTRO de la
+ *        transacción: se copia en el traspaso y valoriza la salida; sin costo conocido, `null` («pendiente de completar») y el envío sigue igual;
+ *     e. escritura de la SALIDA y del traspaso ENVIADO con esa copia (persistencia);
+ *     f. el mensaje de éxito.
  *
  * @contract Origen aprueba una solicitud SOLICITADA y envía, re-chequeando que las dos sucursales sigan activas, la transferibilidad y el stock disponible leído DENTRO de la transacción.
  * @idempotency No aplica (nunca la tuvo) — el aislamiento SERIALIZABLE arbitra el doble clic, el segundo intento ve el estado ya ENVIADA.
@@ -75,6 +78,7 @@ export async function aprobarYEnviarTraspasoCasoDeUso(
       );
     }
 
+    const costoDelOrigen = await obtenerCostoActualDeProducto(actor.sucursalId, traspaso.productoId, tx);
     const { operacionId } = await escribirAprobacionDeTraspaso(tx, {
       traspasoId: traspaso.id,
       productoId: traspaso.productoId,
@@ -85,6 +89,7 @@ export async function aprobarYEnviarTraspasoCasoDeUso(
       detalle: `Transferencia a sucursal "${destino.nombre}".`,
       estadoNuevo: transicion.estadoNuevo,
       ahora: actor.ahora,
+      costoUnitarioOrigen: costoDelOrigen?.precioPorUnidadStock ?? null,
     });
 
     return exito(`Aprobado y enviado a "${destino.nombre}".`, { traspasoId: traspaso.id, operacionId, seccionOrigenId: seccionOrigen.id, cantidad });

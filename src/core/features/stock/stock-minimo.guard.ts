@@ -10,11 +10,13 @@ import type { ComandoSetStockMinimo } from "./stock-minimo.schema";
  * producto y la sección no se validan acá (los resuelve el caso de uso). Lo llama la Server Action DENTRO de su `conPermiso(…)`. Puro: sin Prisma ni permisos.
  * `eliminarStockMinimo` no tiene guard (solo recibe un id).
  */
-export function guardComandoSetStockMinimo(entrada: { productoId: string; minimo: number; seccionId?: string | null }): ResultadoDato<ComandoSetStockMinimo> {
-  const { minimo } = entrada;
+export function guardComandoSetStockMinimo(entrada: { productoId: string; minimo: number; seccionId?: string | null; minimoVisto?: number }): ResultadoDato<ComandoSetStockMinimo> {
+  const { minimo, minimoVisto } = entrada;
   if (!(minimo >= 0)) return rechazar("negativo", "El mínimo no puede ser negativo.");
   if (!esNumeroEstricto(minimo)) return rechazar("formato", "El mínimo no es un número válido.");
   const alto = validarNumeroHasta(minimo, "El mínimo", STOCK_MINIMO_MAXIMO);
   if (alto) return rechazar("rango", alto);
-  return aceptar({ productoId: entrada.productoId, minimo, seccionId: entrada.seccionId });
+  // Fase 7 («Cambiar mínimo»): el valor visto llega del editor de una fila que existe; si llega, tiene que ser un mínimo posible (no negativo, número estricto). Ausente = el alta/cambio de siempre.
+  if (minimoVisto !== undefined && !(esNumeroEstricto(minimoVisto) && minimoVisto >= 0)) return rechazar("formato", "El mínimo que estabas viendo no es válido: volvé a abrir el editor.");
+  return aceptar({ productoId: entrada.productoId, minimo, seccionId: entrada.seccionId, ...(minimoVisto !== undefined ? { minimoVisto } : {}) });
 }

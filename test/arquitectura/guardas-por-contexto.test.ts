@@ -11,7 +11,8 @@ import { inventariarDirectorio, inventariarFuente } from "./guardas/inventario";
  */
 const GUARDAS_DE_EMPRESA = new Set(["conPermisoDeEmpresa", "conEdicionDePermisos", "requerirVerDeEmpresa", "requierePermisoDeEmpresa", "requierePermisoVerDeEmpresa", "obtenerMiNivelPermisoDeEmpresa"]);
 // `requerirVerAlguna*` (H8) también: el «O» de las claves de las pantallas que consumen una lectura, cada una evaluada en su contexto (por `accionesDelMenuQueElUsuarioPuedeVer`).
-const GUARDAS_MIXTAS = new Set(["accionesDelMenuQueElUsuarioPuedeVer", "requerirVerAlguna", "requerirVerAlgunaEnSucursal"]);
+// `requierePermisoVerDeAlgunaDelMenu` (DEC-27, la entrada «Configuración» de Stock): la guarda de página de «alguna de» con el mismo cálculo del menú, cada clave en su contexto.
+const GUARDAS_MIXTAS = new Set(["accionesDelMenuQueElUsuarioPuedeVer", "requerirVerAlguna", "requerirVerAlgunaEnSucursal", "requierePermisoVerDeAlgunaDelMenu"]);
 
 const SRC = join(__dirname, "../../src");
 const contextoDe = new Map<string, string>(ACCIONES.map((a) => [a.clave, contextoDeAccion(a.clave)]));

@@ -36,7 +36,6 @@ const SRC = join(__dirname, "../../src");
  */
 const RESERVADAS_SIN_USO_TODAVIA: Readonly<Record<string, string>> = {
   notificar_alertas: "Alertas de stock por mail: falta un proveedor de mail configurado (Resend/SendGrid). docs/plan-migracion.md:1099, docs/grounding-decisiones-abiertas-erpnext-dolibarr-2026-09-21.md:134.",
-  compra_repartir: "Paquete 3, M3a (D3 del dueño, 2026-10-12): la clave se da de alta con la migración 20261016100000 antes que su primer consumidor. La piden `registrarFacturaRepartida` y la bandeja de facturas pendientes de reparto, que son de la Etapa C de M3 (docs/adr/ADR-029-factura-de-proveedor-documento-de-empresa.md). Sale de esta lista en cuanto una guarda la use.",
   compra_recibir: "Paquete 3, M3a (cambio del dueño, 2026-10-12): igual que `compra_repartir`, se da de alta con la migración 20261016100000 antes que su primer consumidor: la bandeja «mercadería por recibir» y confirmar la recepción de la parte de una sucursal, que son de la Etapa C de M3 (docs/adr/ADR-029-factura-de-proveedor-documento-de-empresa.md). Sale de esta lista en cuanto una guarda la use.",
 };
 
@@ -48,6 +47,8 @@ const GUARDAS_CON_CLAVE_DINAMICA: Readonly<Record<string, string>> = {
   "server/acceso/gate.ts|accionClave": "Implementación de `sucursalesDondeElUsuarioPuedeVer` y de `obtenerMiNivelPermisoEnAlgunaSucursal` (P20): reenvían a `obtenerMiNivelPermiso` la clave que recibieron; cada llamada a las primeras se inventaría.",
   "server/acceso/gate.ts|deSucursal": "Implementación de `accionesDelMenuQueElUsuarioPuedeVer`: reenvía a `accionesQueElUsuarioPuedeVer` las claves de sucursal que recibió; cada llamada al helper se inventaría.",
   "server/acceso/gate.ts|claves": "Implementación de `requierePermisoVerDeAlguna`: reenvía a `accionesQueElUsuarioPuedeVer` la lista que recibió; cada llamada a `requierePermisoVerDeAlguna` lleva su lista literal y se inventaría.",
+  "server/acceso/gate.ts|primera": "Implementación de `requierePermisoVerDeAlgunaDelMenu` (DEC-27): pide al gate de su contexto el motivo del rechazo de la primera clave de la lista que recibió (cada llamada lleva su lista literal y se inventaría).",
+  "server/acceso/menu.ts|claves": "Implementación de `pestanasVisiblesDeStock` (DEC-27): las claves de las pestañas de Stock, que salen de `PESTANAS_DE_EXISTENCIAS`/`PESTANAS_DE_CONFIGURACION` (core/stock/ui-config.ts); `menu-con-permiso.test.ts` comprueba cada una contra la guarda de su página.",
   "server/acceso/gate.ts|claves[0]": "Implementación de `requierePermisoVerDeAlguna`: pide a `requierePermisoVer` el motivo del rechazo de la primera clave de la lista que recibió (se inventaría en cada llamada).",
   "server/acceso/origen-de-copia.ts|clave": "Implementación de `leerOrigenDeCopia`: reenvía a `sucursalesDondeElUsuarioPuedeVer` la clave que recibió; cada llamada lleva su clave literal (`carta_ver`, `receta_sucursal_copiar`).",
   "server/actions/con-permiso.ts|accionClave": "Implementación de `conPermiso`: reenvía la clave que recibió; cada llamada a `conPermiso` se inventaría.",

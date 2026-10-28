@@ -9,13 +9,13 @@ import type { FilaValuacionInventario, ReporteValuacionInventario } from "@/core
 /**
  * Nuevo reporte (no existe en Apps Script): cuánto vale hoy el stock de esta
  * sucursal, valorizado al mismo costo de reposición que ya usa Costos y
- * márgenes (`obtenerCostoActualPorMP` — precio de la compra local más
- * reciente). No es un método de costeo nuevo (PMP/FIFO): reutiliza la misma
+ * márgenes (`obtenerCostoActualPorMP` — precio de la entrada valorizada local
+ * más reciente: compra o traspaso recibido, V-T1 de ADR-040). No es un método de costeo nuevo (PMP/FIFO): reutiliza la misma
  * filosofía de negocio ya documentada, solo que agregada por producto en
  * vez de por receta.
  *
  * Mismo criterio que `calcularCostosYMargenes`: un producto con saldo > 0
- * pero sin ninguna compra registrada queda `sinCosto` y afuera del total —
+ * pero sin ninguna entrada valorizada (compra o traspaso con costo) queda `sinCosto` y afuera del total —
  * no se inventa un valor a partir de nada.
  */
 export async function calcularValuacionInventario(sucursalId: string, db: Db): Promise<ReporteValuacionInventario> {

@@ -91,9 +91,12 @@ describe("lecturaEnSucursalesVisibles: la clave va como texto literal", () => {
   });
 });
 
-/** Qué devuelve un lector de verificación: nunca datos de otra sucursal. */
-type Devuelve = "SI_NO" | "MENSAJE" | "CONTEO" | "FILAS_DE_EMPRESA";
-const DEVUELVE: readonly Devuelve[] = ["SI_NO", "MENSAJE", "CONTEO", "FILAS_DE_EMPRESA"];
+/**
+ * Qué devuelve un lector de verificación: nunca datos de otra sucursal. `SUCURSALES_PARA_EL_GATE` (E3a, ADR-041): solo los ids de las sucursales donde hay algo (no sus filas) para pedir una clave EN CADA UNA
+ * (`permisoYAlcanceEnSucursal`) antes de ensanchar el alcance; no se muestran.
+ */
+type Devuelve = "SI_NO" | "MENSAJE" | "CONTEO" | "FILAS_DE_EMPRESA" | "SUCURSALES_PARA_EL_GATE";
+const DEVUELVE: readonly Devuelve[] = ["SI_NO", "MENSAJE", "CONTEO", "FILAS_DE_EMPRESA", "SUCURSALES_PARA_EL_GATE"];
 
 interface UsoDeVerificacion {
   /** Los lectores a los que el archivo le pasa la base ampliada: nombre de la función → posición del argumento de base (desde 0). */
@@ -245,6 +248,12 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
     motivo: "prender una opción de un lugar LISTA (GO-3b, D-2): mismas alícuotas que el alta, en la carta de TODAS las sucursales; escribe solo la entrada y su auditoría (de empresa)",
   },
   // ── Compras: aviso C25 de posible factura repetida ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  "src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor.ts": {
+    lectores: { sucursalesConParteDeFactura: 0 },
+    directos: [],
+    devuelve: "SUCURSALES_PARA_EL_GATE",
+    motivo: "E3a (ADR-041): anular una factura de proveedor entera: en qué sucursales ya entró una parte (solo sus ids), para pedir `anular_compra` EN CADA UNA con `permisoYAlcanceEnSucursal` antes de escribir su reversión; si falta en una, se rechaza. No se muestra nada de otra sucursal",
+  },
   "src/server/actions/movimientos/casos-de-uso/registrar-movimiento.ts": {
     lectores: { cargarComprasParaAvisoDeDuplicado: 0 },
     directos: [],

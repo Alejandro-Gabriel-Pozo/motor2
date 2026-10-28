@@ -41,8 +41,8 @@ export async function escribirSolicitudDeTraspaso(
 }
 
 /**
- * PUSH: el traspaso ENVIADO (iniciado por Origen, ya decidido por Origen al crearse) y, a continuación, su SALIDA en el Kardex de Origen
- * (`escribirSalidaDeTraspaso`, la misma que escribe la aprobación de una solicitud).
+ * PUSH: el traspaso ENVIADO (iniciado por Origen, ya decidido por Origen al crearse, con la copia del costo del origen: E2) y, a continuación, su
+ * SALIDA en el Kardex de Origen (`escribirSalidaDeTraspaso`, la misma que escribe la aprobación de una solicitud).
  */
 export async function escribirEnvioDirectoDeTraspaso(
   tx: Prisma.TransactionClient,
@@ -52,6 +52,8 @@ export async function escribirEnvioDirectoDeTraspaso(
     detalleSalida: string;
     /** El mismo instante para la decisión de Origen y la fecha de la Operación. */
     ahora: Date;
+    /** E2 (ADR-040): el costo de reposición del origen leído DENTRO de la transacción del envío; `null` si no tiene («pendiente de completar»). */
+    costoUnitarioOrigen: number | null;
   }
 ): Promise<{ traspasoId: string; operacionId: string }> {
   const traspaso = await tx.traspasoSucursal.create({
@@ -67,6 +69,7 @@ export async function escribirEnvioDirectoDeTraspaso(
       detalle: t.detalle,
       fechaDecisionOrigen: t.ahora,
       decididoPorOrigenId: t.usuarioId,
+      costoUnitarioOrigen: t.costoUnitarioOrigen,
     },
   });
 
@@ -79,6 +82,7 @@ export async function escribirEnvioDirectoDeTraspaso(
     cantidad: t.cantidad,
     detalle: t.detalleSalida,
     ahora: t.ahora,
+    costoUnitarioOrigen: t.costoUnitarioOrigen,
   });
 
   return { traspasoId: traspaso.id, operacionId };

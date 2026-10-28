@@ -62,7 +62,7 @@ describe("Traspasos entre sucursales", () => {
       data: [sucursalAId, sucursalBId].map((sucursalId) => ({ sucursalId, productoId: mp.id, disponible: true })),
     });
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad }], claveIdempotencia: crypto.randomUUID() });
     return mp;
   }
 
@@ -71,7 +71,7 @@ describe("Traspasos entre sucursales", () => {
     const mp = await prisma.producto.create({ data: { codigo: "MP_SOLO_A", nombre: "Solo en A", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursalAId, productoId: mp.id, disponible: true } });
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     await comoB();
     const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 5, seccionDestinoId: seccionBId });
@@ -86,7 +86,7 @@ describe("Traspasos entre sucursales", () => {
     const mp = await prisma.producto.create({ data: { codigo: "MP_SOLO_A2", nombre: "Solo en A 2", tipo: "MP", unidadStockId: unidadKgId, insumoId } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId: sucursalAId, productoId: mp.id, disponible: true } });
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }] });
+    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 5, seccionOrigenId: seccionAId });
     expect(envio.ok).toBe(false);
