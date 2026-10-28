@@ -23,18 +23,12 @@ export interface Exclusion {
 /** El tope de archivos que puede cubrir UNA exclusión: más que esto no es una excepción acotada, es una carpeta que hay que clasificar. */
 const MAXIMO_DE_ARCHIVOS_POR_EXCLUSION = 50;
 
-export const EXCLUSIONES: readonly Exclusion[] = [
-  {
-    ruta: "prisma/fase-a/",
-    motivo: "prototipo de la Fase A de multi-tenancy (ADR-004): schema, config y smoke test experimentales, aislados de prisma/schema.prisma a propósito; se corren a mano y nadie los importa",
-    responsable: "dueño",
-    // DEC-02: la decisión del dueño que fija el tope de 60 días para toda excepción (G1b). La exclusión no tiene `creada` ni renovaciones: el plazo se cuenta desde HOY, así que
-    // al vencer se renueva escribiendo una nueva fecha de hasta 60 días desde ese día, con motivo y aprobación vigentes. Hoy es 2026-10-21: hoy + 60 días = 2026-12-20.
-    aprobacion: { por: "dueño", referencia: "DEC-02" },
-    vence: "2026-12-20",
-    archivos: 5,
-  },
-];
+/**
+ * VACÍA desde el 2026-10-28: la única exclusión que hubo (el prototipo de la Fase A de multi-tenancy, ADR-004) se retiró junto con su código. Con la lista vacía, TODO archivo versionado
+ * tiene que caer en una regla de `REGLAS_DE_RUTA`; agregar una exclusión es agregar una entrada acá (con motivo, responsable, aprobación, vencimiento y cantidad exacta) y asentar su huella
+ * en `APROBACIONES`. El mecanismo se prueba con exclusiones de prueba (`clasificacion.test.ts`, `aprobaciones.test.ts`), no con una real.
+ */
+export const EXCLUSIONES: readonly Exclusion[] = [];
 
 /** Los hallazgos de gobierno de una exclusión reusan los nombres del motor de contratos (`tipos.ts`): mismo problema, mismo nombre. */
 export type TipoDeProblemaDeExclusion = Extract<TipoDeHallazgo, "excepcion-sin-motivo" | "excepcion-sin-responsable" | "excepcion-sin-aprobacion" | "excepcion-vencida" | "horizonte-excedido">;
@@ -64,7 +58,7 @@ export function validarExclusiones(exclusiones: readonly Exclusion[]): void {
     const tramos = e.ruta.replace(/\/$/, "").split("/");
     if (e.ruta.startsWith("/") || e.ruta.includes("//") || tramos.includes("..") || tramos.includes(".")) problemas.push(`${en}: la ruta tiene que ser relativa a la raíz y con \`/\``);
     if (/[*?[\]{}]/.test(e.ruta)) problemas.push(`${en}: la ruta no admite comodines (es una carpeta con \`/\` final o un archivo)`);
-    if (tramos.length < 2) problemas.push(`${en}: la ruta es demasiado ancha (al menos dos tramos, como \`prisma/fase-a/\`)`);
+    if (tramos.length < 2) problemas.push(`${en}: la ruta es demasiado ancha (al menos dos tramos, como \`scripts/viejo/\`)`);
     if (!esFechaValida(e.vence)) problemas.push(`${en}: \`vence\` «${e.vence}» no es una fecha AAAA-MM-DD válida`);
     if (!Number.isInteger(e.archivos) || e.archivos < 0 || e.archivos > MAXIMO_DE_ARCHIVOS_POR_EXCLUSION) {
       problemas.push(`${en}: \`archivos\` tiene que ser un entero de 0 a ${MAXIMO_DE_ARCHIVOS_POR_EXCLUSION} (una exclusión acotada; más que eso se clasifica)`);

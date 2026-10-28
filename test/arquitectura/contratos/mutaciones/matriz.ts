@@ -148,6 +148,7 @@ export const EJEMPLOS_DE_CONTRATOS: Readonly<Record<string, EjemplosDeContrato>>
 };
 
 const ARCHIVO_DE_CUMPLIMIENTO_TEST = "test/arquitectura/contratos/gobernanza/cumplimiento.test.ts";
+const ARCHIVO_DE_CLASIFICACION_TEST = "test/arquitectura/contratos/gobernanza/clasificacion.test.ts";
 const TITULO_DE_COBERTURA_DE_CUMPLIMIENTO = "cada tipo de hallazgo de cumplimiento lo produce algún caso rojo de este archivo";
 
 /**
@@ -160,6 +161,15 @@ export const CUBIERTOS_EN_MOTOR_TEST: Readonly<Record<string, { archivo: string;
     archivo: "test/arquitectura/contratos/gobernanza/aprobaciones.test.ts",
     titulo: "una aprobación mal armada es un hallazgo: motivo de 19 caracteres, referencia inventada, huella que no es un hash",
   },
+  // Los tipos de gobierno y de cantidad de las EXCLUSIONES (`clasificacion/…`): el arnés los produce solo mientras haya una exclusión real (hoy no hay ninguna), así que los cubren estos tests, que prueban
+  // `clasificarRutas` con una exclusión de prueba.
+  "clasificacion/exclusion-ampliada": { archivo: ARCHIVO_DE_CLASIFICACION_TEST, titulo: "un archivo más bajo la exclusión → exclusion-ampliada" },
+  "clasificacion/exclusion-sin-uso": { archivo: ARCHIVO_DE_CLASIFICACION_TEST, titulo: "una exclusión sin archivos → exclusion-sin-uso" },
+  "clasificacion/excepcion-vencida": { archivo: ARCHIVO_DE_CLASIFICACION_TEST, titulo: "vencida ayer → excepcion-vencida; vence hoy → vigente, con aviso" },
+  "clasificacion/excepcion-sin-motivo": { archivo: ARCHIVO_DE_CLASIFICACION_TEST, titulo: "motivo de 19 caracteres → excepcion-sin-motivo; de 20, verde" },
+  "clasificacion/excepcion-sin-responsable": { archivo: ARCHIVO_DE_CLASIFICACION_TEST, titulo: "responsable fuera de la lista cerrada → excepcion-sin-responsable" },
+  "clasificacion/excepcion-sin-aprobacion": { archivo: ARCHIVO_DE_CLASIFICACION_TEST, titulo: "una aprobación sin referencia válida → excepcion-sin-aprobacion" },
+  "clasificacion/horizonte-excedido": { archivo: ARCHIVO_DE_CLASIFICACION_TEST, titulo: "vence a 59 y a 60 días → verde; a 61 → horizonte-excedido (tope de toda excepción, decisión del dueño)" },
   ...Object.fromEntries(TIPOS_DE_CUMPLIMIENTO.map((tipo) => [`cumplimiento/${tipo}`, { archivo: ARCHIVO_DE_CUMPLIMIENTO_TEST, titulo: TITULO_DE_COBERTURA_DE_CUMPLIMIENTO }])),
   // De la evidencia por corrida, la matriz produce los tres controles estructurales; `hallazgos` (cualquier hallazgo de cualquier mecanismo) y `matriz-con-huecos` (un hueco en esta misma matriz) los cubre el test de la evidencia.
   ...Object.fromEntries(["hallazgos", "matriz-con-huecos"].map((tipo) => [`evidencia/${tipo}`, { archivo: "test/arquitectura/contratos/gobernanza/evidencia.test.ts", titulo: "cada tipo de problema de evidencia que la matriz no produce lo cubre un caso rojo de este archivo" }])),
@@ -440,7 +450,9 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
   }
 
   // --- 3. Gobierno de excepciones, deuda, casos legítimos y exclusiones.
-  if (conUso !== undefined && exclusion !== undefined) {
+  // Las mutaciones de la deuda, las excepciones y los casos legítimos solo piden un contrato con un uso; las de las exclusiones, además, una exclusión REAL (hoy no hay ninguna: las cubren los tests de
+  // `clasificacion.test.ts`, ver `CUBIERTOS_EN_MOTOR_TEST`).
+  if (conUso !== undefined) {
     const inv = "guardian/gobierno-de-excepciones-deuda-y-exclusiones";
     const nueva = rutaNuevaEnElAlcance(base, conUso, "gobierno") ?? "";
     const P = { contrato: conUso.id };
@@ -463,25 +475,25 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
         g("eliminacion", "motivo-corto-caso", "el motivo de un caso legítimo", "caso-legitimo-sin-motivo", "no tiene motivo"),
         g("eliminacion", "responsable-ajeno", "el responsable de una excepción", "excepcion-sin-responsable", "responsable que no es de la lista cerrada"),
         g("eliminacion", "aprobacion-sin-referencia", "la aprobación de una excepción", "excepcion-sin-aprobacion", "no tiene aprobación válida"),
-        mut(inv, "eliminacion", "exclusion", { modo: "sin-motivo" }, el(EXCLUSIONES.ruta, `el motivo de la exclusión de ${exclusion.ruta}`), esp("clasificacion", "excepcion-sin-motivo", exclusion.ruta, "sin-posicion", "no tiene motivo")),
-        mut(inv, "eliminacion", "exclusion", { modo: "sin-responsable" }, el(EXCLUSIONES.ruta, `el responsable de la exclusión de ${exclusion.ruta}`), esp("clasificacion", "excepcion-sin-responsable", exclusion.ruta, "sin-posicion", "responsable que no es de la lista cerrada")),
-        mut(inv, "eliminacion", "exclusion", { modo: "sin-aprobacion" }, el(EXCLUSIONES.ruta, `la aprobación de la exclusión de ${exclusion.ruta}`), esp("clasificacion", "excepcion-sin-aprobacion", exclusion.ruta, "sin-posicion", "no tiene aprobación válida")),
+        ...(exclusion === undefined ? [] : [mut(inv, "eliminacion", "exclusion", { modo: "sin-motivo" }, el(EXCLUSIONES.ruta, `el motivo de la exclusión de ${exclusion.ruta}`), esp("clasificacion", "excepcion-sin-motivo", exclusion.ruta, "sin-posicion", "no tiene motivo"))]),
+        ...(exclusion === undefined ? [] : [mut(inv, "eliminacion", "exclusion", { modo: "sin-responsable" }, el(EXCLUSIONES.ruta, `el responsable de la exclusión de ${exclusion.ruta}`), esp("clasificacion", "excepcion-sin-responsable", exclusion.ruta, "sin-posicion", "responsable que no es de la lista cerrada"))]),
+        ...(exclusion === undefined ? [] : [mut(inv, "eliminacion", "exclusion", { modo: "sin-aprobacion" }, el(EXCLUSIONES.ruta, `la aprobación de la exclusión de ${exclusion.ruta}`), esp("clasificacion", "excepcion-sin-aprobacion", exclusion.ruta, "sin-posicion", "no tiene aprobación válida"))]),
         g("alteracion", "vencida-excepcion", "el vencimiento de una excepción", "excepcion-vencida", "venció el"),
         g("alteracion", "vencida-deuda", "el vencimiento de una deuda", "deuda-vencida", "venció el"),
         g("alteracion", "plazo-excedido-excepcion", "el plazo de una excepción", "horizonte-excedido", "más de 60 días"),
         g("alteracion", "plazo-excedido-deuda", "el plazo de una deuda", "horizonte-excedido", "más de 60 días"),
-        mut(inv, "alteracion", "exclusion", { modo: "vencida" }, el(EXCLUSIONES.ruta, `el vencimiento de la exclusión de ${exclusion.ruta}`), esp("clasificacion", "excepcion-vencida", exclusion.ruta, "sin-posicion", "venció el")),
+        ...(exclusion === undefined ? [] : [mut(inv, "alteracion", "exclusion", { modo: "vencida" }, el(EXCLUSIONES.ruta, `el vencimiento de la exclusión de ${exclusion.ruta}`), esp("clasificacion", "excepcion-vencida", exclusion.ruta, "sin-posicion", "venció el"))]),
         g("duplicacion", "excepcion-duplicada", "una excepción repetida", "excepcion-sobrante", "ya no corresponde a ningún uso"),
         g("duplicacion", "deuda-duplicada", "una deuda repetida", "deuda-sobrante", "ya no corresponde a ningún uso real"),
         g("duplicacion", "caso-duplicado", "un caso legítimo repetido", "caso-legitimo-sobrante", "ya no corresponde a ningún uso"),
         g("desconexion", "excepcion-de-otro-fragmento", "una excepción que ya no apunta al uso", "uso-sin-declarar", "sin declarar el contrato", "calculada"),
-        mut(inv, "exclusion-del-analisis", "exclusion", { modo: "ampliada" }, el(EXCLUSIONES.ruta, `la cantidad exacta de archivos de ${exclusion.ruta}`), esp("clasificacion", "exclusion-ampliada", exclusion.ruta, "sin-posicion", "excluir más pide una aprobación nueva")),
-        mut(inv, "exclusion-del-analisis", "exclusion", { modo: "sin-uso" }, el(EXCLUSIONES.ruta, `la cantidad exacta de archivos de ${exclusion.ruta}`), esp("clasificacion", "exclusion-sin-uso", exclusion.ruta, "sin-posicion", "bajá `archivos`")),
-        mut(inv, "evasion", "exclusion", { modo: "lejana" }, el(EXCLUSIONES.ruta, `el vencimiento de la exclusión de ${exclusion.ruta} (sin vencimiento real)`), esp("clasificacion", "horizonte-excedido", exclusion.ruta, "sin-posicion", "más de 60 días")),
+        ...(exclusion === undefined ? [] : [mut(inv, "exclusion-del-analisis", "exclusion", { modo: "ampliada" }, el(EXCLUSIONES.ruta, `la cantidad exacta de archivos de ${exclusion.ruta}`), esp("clasificacion", "exclusion-ampliada", exclusion.ruta, "sin-posicion", "excluir más pide una aprobación nueva"))]),
+        ...(exclusion === undefined ? [] : [mut(inv, "exclusion-del-analisis", "exclusion", { modo: "sin-uso" }, el(EXCLUSIONES.ruta, `la cantidad exacta de archivos de ${exclusion.ruta}`), esp("clasificacion", "exclusion-sin-uso", exclusion.ruta, "sin-posicion", "bajá `archivos`"))]),
+        ...(exclusion === undefined ? [] : [mut(inv, "evasion", "exclusion", { modo: "lejana" }, el(EXCLUSIONES.ruta, `el vencimiento de la exclusión de ${exclusion.ruta} (sin vencimiento real)`), esp("clasificacion", "horizonte-excedido", exclusion.ruta, "sin-posicion", "más de 60 días"))]),
         // Un caso legítimo nuevo SILENCIA el uso crudo (el motor ya no dice nada): lo que lo frena es la huella de la definición completa del contrato en el registro de aprobaciones.
         mut(inv, "evasion", "gobierno", { ...P, defecto: "caso-que-silencia" }, entrada("un caso legítimo agregado para tapar un uso crudo"), huella(`test/arquitectura/contratos/contratos/${conUso.id}.ts`, "definición completa")),
       ],
-      noAplica: [],
+      noAplica: exclusion === undefined ? [{ clase: "exclusion-del-analisis", motivo: "no hay ninguna exclusión real que alterar (EXCLUSIONES está vacía): la cantidad exacta de archivos y el gobierno de una exclusión los prueban los tests de clasificacion.test.ts con una exclusión de prueba" }] : [],
     });
   }
 

@@ -19,7 +19,7 @@ import {
   type ReglaDeRuta,
   type ResultadoDeClasificacion,
 } from "./clasificacion";
-import { EXCLUSIONES, type Exclusion } from "./exclusiones";
+import { type Exclusion } from "./exclusiones";
 
 /**
  * Guardián «clasificación de rutas» (G2): corre `clasificacion.ts` sobre el repo real (UNA prueba) y prueba el mecanismo con listas sintéticas y con un repo git
@@ -68,8 +68,8 @@ describe("clasificación de rutas (repo real)", () => {
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 const HOY = "2026-10-21";
-const FASE_A = ["prisma/fase-a/a.sql", "prisma/fase-a/b.sql", "prisma/fase-a/prisma.config.ts", "prisma/fase-a/schema.prisma", "prisma/fase-a/smoke-test.ts"];
-/** Un repo chico y válido: al menos un archivo de cada tipo y los 5 de la exclusión de `prisma/fase-a/`. */
+const PROTOTIPO = ["prisma/prototipo/a.sql", "prisma/prototipo/b.sql", "prisma/prototipo/prisma.config.ts", "prisma/prototipo/schema.prisma", "prisma/prototipo/smoke-test.ts"];
+/** Un repo chico y válido: al menos un archivo de cada tipo y los 5 de la exclusión de prueba `prisma/prototipo/`. */
 const BASE: readonly string[] = [
   "src/app/page.tsx",
   "src/app/globals.css",
@@ -102,11 +102,20 @@ const BASE: readonly string[] = [
   "README.md",
   "public/file.svg",
   ".zap/reglas.tsv",
-  ...FASE_A,
+  ...PROTOTIPO,
 ];
 const CRON = "/api/cron/sincronizar-ipc";
+/** La exclusión de prueba (el repo real no tiene ninguna): cubre exactamente los 5 archivos de `PROTOTIPO`. Vence a 60 días de HOY. */
+const EXCLUSION_DE_PRUEBA: Exclusion = {
+  ruta: "prisma/prototipo/",
+  motivo: "prototipo de prueba: carpeta de código experimental que se corre a mano y nadie importa",
+  responsable: "dueño",
+  aprobacion: { por: "dueño", referencia: "DEC-02" },
+  vence: "2026-12-20",
+  archivos: 5,
+};
 
-const entrada = (extra: Partial<EntradaDeClasificacion> = {}): EntradaDeClasificacion => ({ archivos: BASE, ignorados: [], crons: [CRON], reglas: REGLAS_DE_RUTA, exclusiones: EXCLUSIONES, hoy: HOY, ...extra });
+const entrada = (extra: Partial<EntradaDeClasificacion> = {}): EntradaDeClasificacion => ({ archivos: BASE, ignorados: [], crons: [CRON], reglas: REGLAS_DE_RUTA, exclusiones: [EXCLUSION_DE_PRUEBA], hoy: HOY, ...extra });
 const con = (...mas: string[]): EntradaDeClasificacion => entrada({ archivos: [...BASE, ...mas] });
 const vistos = (r: ResultadoDeClasificacion): [string, string][] => r.hallazgos.map((h) => [h.tipo, h.archivo]);
 
@@ -241,37 +250,37 @@ describe("el cron: la regla de trabajo-programado le gana a la del frontend", ()
 
 describe("exclusiones: cantidad exacta", () => {
   it("un archivo más bajo la exclusión → exclusion-ampliada", () => {
-    const r = clasificarRutas(con("prisma/fase-a/nuevo.ts"));
-    expect(vistos(r)).toEqual([["exclusion-ampliada", "prisma/fase-a/"]]);
+    const r = clasificarRutas(con("prisma/prototipo/nuevo.ts"));
+    expect(vistos(r)).toEqual([["exclusion-ampliada", "prisma/prototipo/"]]);
     expect(r.hallazgos[0].que).toContain("declara 5 archivos y hay 6 (");
-    expect(r.hallazgos[0].que).toContain("prisma/fase-a/nuevo.ts");
+    expect(r.hallazgos[0].que).toContain("prisma/prototipo/nuevo.ts");
   });
 
   it("código movido a una carpeta anidada de la exclusión también cuenta", () => {
-    expect(vistos(clasificarRutas(con("prisma/fase-a/escondido/src/x.ts")))).toEqual([["exclusion-ampliada", "prisma/fase-a/"]]);
+    expect(vistos(clasificarRutas(con("prisma/prototipo/escondido/src/x.ts")))).toEqual([["exclusion-ampliada", "prisma/prototipo/"]]);
   });
 
   it("una exclusión sin archivos → exclusion-sin-uso", () => {
-    const r = clasificarRutas(entrada({ archivos: BASE.filter((a) => !a.startsWith("prisma/fase-a/")) }));
-    expect(vistos(r)).toEqual([["exclusion-sin-uso", "prisma/fase-a/"]]);
+    const r = clasificarRutas(entrada({ archivos: BASE.filter((a) => !a.startsWith("prisma/prototipo/")) }));
+    expect(vistos(r)).toEqual([["exclusion-sin-uso", "prisma/prototipo/"]]);
     expect(r.hallazgos[0].que).toBe("la exclusión no cubre ningún archivo");
   });
 
   it("declarar 0 archivos tampoco la salva: sin archivos sigue siendo exclusion-sin-uso", () => {
-    const e: Exclusion = { ...EXCLUSIONES[0], ruta: "scripts/viejo/", archivos: 0 };
-    expect(vistos(clasificarRutas({ ...entrada(), exclusiones: [...EXCLUSIONES, e] }))).toEqual([["exclusion-sin-uso", "scripts/viejo/"]]);
+    const e: Exclusion = { ...EXCLUSION_DE_PRUEBA, ruta: "scripts/viejo/", archivos: 0 };
+    expect(vistos(clasificarRutas({ ...entrada(), exclusiones: [EXCLUSION_DE_PRUEBA, e] }))).toEqual([["exclusion-sin-uso", "scripts/viejo/"]]);
   });
 
   it("menos archivos que los declarados también falla (la cantidad es exacta)", () => {
-    const r = clasificarRutas(entrada({ archivos: BASE.filter((a) => a !== "prisma/fase-a/b.sql") }));
-    expect(vistos(r)).toEqual([["exclusion-sin-uso", "prisma/fase-a/"]]);
+    const r = clasificarRutas(entrada({ archivos: BASE.filter((a) => a !== "prisma/prototipo/b.sql") }));
+    expect(vistos(r)).toEqual([["exclusion-sin-uso", "prisma/prototipo/"]]);
     expect(r.hallazgos[0].que).toBe("la exclusión declara 5 archivos y hay 4");
   });
 
   it("una exclusión de un archivo suelto cubre solo ese archivo", () => {
-    const e: Exclusion = { ...EXCLUSIONES[0], ruta: "scripts/viejo.ts", archivos: 1 };
+    const e: Exclusion = { ...EXCLUSION_DE_PRUEBA, ruta: "scripts/viejo.ts", archivos: 1 };
     const r = clasificarRutas({ ...con("scripts/viejo.ts", "scripts/viejo.ts.bak"), exclusiones: [e] });
-    expect(vistos(r).sort()).toEqual([["ruta-sin-clasificar", "prisma/fase-a/a.sql"], ["ruta-sin-clasificar", "prisma/fase-a/b.sql"], ["ruta-sin-clasificar", "prisma/fase-a/prisma.config.ts"], ["ruta-sin-clasificar", "prisma/fase-a/schema.prisma"], ["ruta-sin-clasificar", "prisma/fase-a/smoke-test.ts"], ["ruta-sin-clasificar", "scripts/viejo.ts.bak"]].sort());
+    expect(vistos(r).sort()).toEqual([["ruta-sin-clasificar", "prisma/prototipo/a.sql"], ["ruta-sin-clasificar", "prisma/prototipo/b.sql"], ["ruta-sin-clasificar", "prisma/prototipo/prisma.config.ts"], ["ruta-sin-clasificar", "prisma/prototipo/schema.prisma"], ["ruta-sin-clasificar", "prisma/prototipo/smoke-test.ts"], ["ruta-sin-clasificar", "scripts/viejo.ts.bak"]].sort());
   });
 
   it("lo excluido no cuenta como clasificado: se informa aparte", () => {
@@ -284,7 +293,7 @@ describe("exclusiones: cantidad exacta", () => {
 describe("exclusiones: gobierno (literales)", () => {
   // Con LITERALES: 19 y 20 caracteres, el día del vencimiento y el siguiente, 59, 60 y 61 días desde HOY (2026-10-21).
   const E: Exclusion = {
-    ruta: "prisma/fase-a/",
+    ruta: "prisma/prototipo/",
     motivo: "un motivo escrito con más de veinte caracteres",
     responsable: "dueño",
     aprobacion: { por: "dueño", referencia: "PR #12" },
@@ -298,38 +307,42 @@ describe("exclusiones: gobierno (literales)", () => {
   });
 
   it("vencida ayer → excepcion-vencida; vence hoy → vigente, con aviso", () => {
-    expect(vistos(con1({ vence: "2026-10-20" }))).toEqual([["excepcion-vencida", "prisma/fase-a/"]]);
+    expect(vistos(con1({ vence: "2026-10-20" }))).toEqual([["excepcion-vencida", "prisma/prototipo/"]]);
     const hoy = con1({ vence: "2026-10-21" });
     expect(vistos(hoy)).toEqual([]);
-    expect(hoy.avisos).toEqual(["aviso: [clasificacion] la exclusión de «prisma/fase-a/» vence hoy"]);
+    expect(hoy.avisos).toEqual(["aviso: [clasificacion] la exclusión de «prisma/prototipo/» vence hoy"]);
   });
 
   it("vence en 14 días avisa; en 15, no", () => {
-    expect(con1({ vence: "2026-11-04" }).avisos).toEqual(["aviso: [clasificacion] la exclusión de «prisma/fase-a/» vence en 14 días (2026-11-04)"]);
+    expect(con1({ vence: "2026-11-04" }).avisos).toEqual(["aviso: [clasificacion] la exclusión de «prisma/prototipo/» vence en 14 días (2026-11-04)"]);
     expect(con1({ vence: "2026-11-05" }).avisos).toEqual([]);
   });
 
   it("la fecha es la inyectada: la misma exclusión vence si hoy avanza", () => {
     expect(vistos(clasificarRutas(entrada({ exclusiones: [E], hoy: "2026-12-19" })))).toEqual([]);
-    expect(vistos(clasificarRutas(entrada({ exclusiones: [E], hoy: "2026-12-20" })))).toEqual([["excepcion-vencida", "prisma/fase-a/"]]);
+    expect(vistos(clasificarRutas(entrada({ exclusiones: [E], hoy: "2026-12-20" })))).toEqual([["excepcion-vencida", "prisma/prototipo/"]]);
   });
 
   it("motivo de 19 caracteres → excepcion-sin-motivo; de 20, verde", () => {
-    expect(vistos(con1({ motivo: "1234567890123456789" }))).toEqual([["excepcion-sin-motivo", "prisma/fase-a/"]]);
+    expect(vistos(con1({ motivo: "1234567890123456789" }))).toEqual([["excepcion-sin-motivo", "prisma/prototipo/"]]);
     expect(vistos(con1({ motivo: "12345678901234567890" }))).toEqual([]);
-    expect(vistos(con1({ motivo: "                    " }))).toEqual([["excepcion-sin-motivo", "prisma/fase-a/"]]);
+    expect(vistos(con1({ motivo: "                    " }))).toEqual([["excepcion-sin-motivo", "prisma/prototipo/"]]);
   });
 
   it("vence a 59 y a 60 días → verde; a 61 → horizonte-excedido (tope de toda excepción, decisión del dueño)", () => {
     expect(vistos(con1({ vence: "2026-12-19" }))).toEqual([]);
     expect(vistos(con1({ vence: "2026-12-20" }))).toEqual([]);
-    expect(vistos(con1({ vence: "2026-12-21" }))).toEqual([["horizonte-excedido", "prisma/fase-a/"]]);
+    expect(vistos(con1({ vence: "2026-12-21" }))).toEqual([["horizonte-excedido", "prisma/prototipo/"]]);
     // Lo que antes era el tope (365 y 366 días) ya no pasa.
-    expect(vistos(con1({ vence: "2027-10-21" }))).toEqual([["horizonte-excedido", "prisma/fase-a/"]]);
+    expect(vistos(con1({ vence: "2027-10-21" }))).toEqual([["horizonte-excedido", "prisma/prototipo/"]]);
   });
 
   it("responsable fuera de la lista cerrada → excepcion-sin-responsable", () => {
-    expect(vistos(con1({ responsable: "gerente" as never }))).toEqual([["excepcion-sin-responsable", "prisma/fase-a/"]]);
+    expect(vistos(con1({ responsable: "gerente" as never }))).toEqual([["excepcion-sin-responsable", "prisma/prototipo/"]]);
+  });
+
+  it("una aprobación sin referencia válida → excepcion-sin-aprobacion", () => {
+    expect(vistos(con1({ aprobacion: { por: "dueño", referencia: "nada" } }))).toEqual([["excepcion-sin-aprobacion", "prisma/prototipo/"]]);
   });
 
   it.each([
@@ -338,7 +351,7 @@ describe("exclusiones: gobierno (literales)", () => {
     ["sha de 6 caracteres", { por: "dueño", referencia: "commit 2a3286" }],
     ["sin quién aprobó", { por: "  ", referencia: "PR #12" }],
   ])("aprobación inválida (%s) → excepcion-sin-aprobacion", (_caso, aprobacion) => {
-    expect(vistos(con1({ aprobacion }))).toEqual([["excepcion-sin-aprobacion", "prisma/fase-a/"]]);
+    expect(vistos(con1({ aprobacion }))).toEqual([["excepcion-sin-aprobacion", "prisma/prototipo/"]]);
   });
 
   it.each([
@@ -355,7 +368,7 @@ describe("exclusiones: gobierno (literales)", () => {
     ["la raíz de código entera", { ruta: "src/" }],
     ["un solo tramo", { ruta: "docs/" }],
     ["un comodín", { ruta: "prisma/*/" }],
-    ["una ruta absoluta", { ruta: "/prisma/fase-a/" }],
+    ["una ruta absoluta", { ruta: "/prisma/prototipo/" }],
     ["un tramo ..", { ruta: "prisma/../src/" }],
     ["una cantidad negativa", { archivos: -1 }],
     ["una cantidad fraccionaria", { archivos: 2.5 }],
@@ -370,11 +383,11 @@ describe("exclusiones: gobierno (literales)", () => {
 
   it("repetida o anidada lanza", () => {
     expect(() => clasificarRutas(entrada({ exclusiones: [E, E] }))).toThrow(/repetida/);
-    expect(() => clasificarRutas(entrada({ exclusiones: [E, { ...E, ruta: "prisma/fase-a/migraciones-manuales/", archivos: 2 }] }))).toThrow(/está dentro de/);
+    expect(() => clasificarRutas(entrada({ exclusiones: [E, { ...E, ruta: "prisma/prototipo/migraciones-manuales/", archivos: 2 }] }))).toThrow(/está dentro de/);
   });
 
-  it("los campos de gobierno de la exclusión REAL pasan la misma revisión con una fecha de hoy fija", () => {
-    // La exclusión real, con la fecha inyectada: no depende del reloj del día.
+  it("los campos de gobierno de la exclusión de prueba pasan la misma revisión con una fecha de hoy fija", () => {
+    // La exclusión de prueba, con la fecha inyectada: no depende del reloj del día.
     expect(vistos(clasificarRutas(entrada({ hoy: "2026-10-21" })))).toEqual([]);
   });
 });

@@ -64,10 +64,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      # `prisma/fase-a/smoke-test.ts` importa el cliente aislado de la Fase A (node_modules/.prisma/fase-a-client), que solo existe si se genera; sin él knip
-      # lo marca como import sin resolver. No necesita base ni variables: solo lee el schema.
-      - name: Cliente de Prisma de la Fase A (para que knip resuelva su smoke test)
-        run: npx prisma generate --config prisma/fase-a/prisma.config.ts
       - run: npx tsc --noEmit
       # ESLint llegó al tope de memoria por defecto de Node en el runner (OOM, código 134) cuando el repo creció con la consola de plataforma: se le da más.
       - run: npm run lint

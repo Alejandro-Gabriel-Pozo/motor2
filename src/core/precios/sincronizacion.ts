@@ -6,8 +6,9 @@ import type { Resultado } from "@/core/carta/public";
  * entera) — no confundir con `sincronizarPrecioLocalGrupoCarta` (`src/server/actions/catalogo/precio-local.ts`), que iguala
  * precios entre PRODUCTOS HERMANOS de un ítem agrupado DENTRO de una sola sucursal; son dos ejes distintos (P12 del catálogo de
  * flujos). PURO — sin Prisma: `GrupoSincroPrecio`/`GrupoSincroPrecioSucursal`/`PrecioLocalProducto.sincronizado` TODAVÍA NO
- * EXISTEN en `prisma/schema.prisma` real, solo en el schema experimental (`prisma/fase-a/schema.prisma`, ver ADR-004). El único
- * escritor real de `PrecioLocalProducto` hoy es `guardarPrecioLocal` (mismo archivo de arriba) — el día que se conecte esta
+ * EXISTEN en `prisma/schema.prisma` real; su borrador SQL (migración manual experimental de la Fase A, ADR-004) se retiró el
+ * 2026-10-28 y queda en el historial de git: `git show 99735374:prisma/fase-a/migraciones-manuales/20260929b_carta_multisucursal_y_sincro_precios.sql`.
+ * El único escritor real de `PrecioLocalProducto` hoy es `guardarPrecioLocal` (mismo archivo de arriba) — el día que se conecte esta
  * lógica, es ahí y en ningún otro lado.
  */
 
