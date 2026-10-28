@@ -636,3 +636,11 @@ completo en vez de fallar.
 no lo esté.
 
 - [ ] Skew Protection revisada en los 4 proyectos (anotar acá el estado de cada uno y la decisión).
+
+## E2 y E3a: tres migraciones aplicadas a producción el 2026-10-28 (OK del dueño: «Autorizo, hacelo»)
+- **Migraciones:** `20261027120000_traspaso_costo_unitario_origen` (columna `TraspasoSucursal.costoUnitarioOrigen` con CHECK ≥ 0), `20261028100000_factura_proveedor_propuesta` (tablas `FacturaProveedorPropuesta`, `FacturaProveedorPropuestaRenglon`, `AnulacionDeFacturaProveedor`, con RLS por empresa y privilegios de `motor2_app`) y `20261028101000_rls_sucursal_factura_proveedor_propuesta` (políticas por sucursal de las dos tablas de propuestas). Todas aditivas y con `down.sql`.
+- **Estado antes (lectura):** 146 migraciones vigentes, ninguna a medias; 0 traspasos, 0 facturas de proveedor, 0 movimientos de stock.
+- **Respaldo:** rama de Neon `respaldo-pre-e2-e3a-20261028` (`br-young-flower-aff395bc`). **Ensayo:** rama `ensayo-e2-e3a-20261028` (`br-bitter-cherry-afsdrf70`): subir, bajar y subir sin residuos (la bajada dejó 146 vigentes, sin columna ni tablas).
+- **Aplicación:** las tres en UNA transacción (`lock_timeout` 10 s) sobre la rama `main` de Neon, con las filas de `_prisma_migrations` (checksum = sha256 de cada `migration.sql`). **Estado después:** 149 vigentes, 0 a medias; columna presente; 11 políticas y 25 restricciones en las tablas nuevas (igual que la base local migrada por Prisma); `motor2_app` con SELECT e INSERT y sin DELETE; `motor2_plataforma` sin acceso.
+- **Fusión:** pedido #132 fusionado en `main` (`9973537`) con la CI en verde. El código NO está desplegado (despliegues automáticos de Vercel desactivados; despliegue manual con el «desplegá» expreso del dueño).
+- **Pendiente de limpieza (con OK del dueño):** ramas de Neon de ensayo (`ensayo-e2-e3a-20261028`, `ensayo-fase-4-20261026`, `ensayo-solo-salon-mostrador-20261027`); el respaldo se conserva.
