@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
@@ -10,7 +9,6 @@ import { actualizarActivaProveedor, listarProveedores } from "@/server/actions/c
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { IconoDeAccion } from "@/components/iconos";
-import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { claseDeBoton } from "@/ui/primitivas/boton";
 import { AvisoSoloLecturaDeCatalogo } from "@/components/catalogo/aviso-solo-lectura";
 
@@ -23,7 +21,7 @@ import { AvisoSoloLecturaDeCatalogo } from "@/components/catalogo/aviso-solo-lec
  * Ver ≠ escribir (DEC-33, Fase 7): «Editar» y «Activar/Desactivar» se dibujan con el «Editar» de `proveedores` (la clave de `actualizarProveedor` y `actualizarActivaProveedor`); el alta, con el de
  * `proveedor_alta`. Quien solo ve lee la lista con el aviso.
  */
-export default async function ProveedoresPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"editar">> }) {
+export default async function ProveedoresPage() {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.
@@ -32,9 +30,6 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "proveedores", ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
-  const { editar } = unicosDeUrl(await searchParams);
-  // Los enlaces y favoritos viejos apuntaban a `/catalogo/proveedores?editar=…` (la edición estaba en esta misma pantalla).
-  if (editar) redirect(`/catalogo/proveedores/${encodeURIComponent(editar)}/editar`);
 
   // `/nuevo` exige `proveedor_alta`: quien solo ve proveedores no recibe el botón para descubrirlo recién al entrar.
   const [{ editar: puedeDarDeAlta }, { editar: puedeEditar }, proveedores] = await Promise.all([

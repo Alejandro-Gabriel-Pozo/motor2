@@ -89,7 +89,7 @@ describe("Catálogo: ver una pantalla no es poder escribir en ella (DEC-33)", ()
     { pantalla: "Margen objetivo", pagina: () => MargenObjetivoPage(), claves: ["margen_objetivo_editar"], formularios: 2 },
     { pantalla: "Insumos", pagina: () => InsumosGruposPage(), claves: ["grupos_familia", "insumo_alta", "insumo_renombrar_fusionar"], formularios: 4 },
     { pantalla: "Clientes con descuento", pagina: () => ClientesPage(), claves: ["clientes"], formularios: 3 },
-    { pantalla: "Proveedores", pagina: () => ProveedoresPage({ searchParams: Promise.resolve({}) }), claves: ["proveedores", "proveedor_alta"], formularios: 1 },
+    { pantalla: "Proveedores", pagina: () => ProveedoresPage(), claves: ["proveedores", "proveedor_alta"], formularios: 1 },
   ];
 
   it.each(casos)("$pantalla: con «Editar» arma sus formularios y no muestra el aviso", async ({ pagina, formularios }) => {
@@ -125,10 +125,10 @@ describe("Catálogo: ver una pantalla no es poder escribir en ella (DEC-33)", ()
   });
 
   it("Proveedores: «Editar» y «Desactivar» de la lista y «Editar» de la ficha solo con el «Editar» de `proveedores`", async () => {
-    expect(tieneTexto(await ProveedoresPage({ searchParams: Promise.resolve({}) }), "Editar")).toBe(true);
+    expect(tieneTexto(await ProveedoresPage(), "Editar")).toBe(true);
     expect(tieneTexto(await FichaProveedorPage({ params: Promise.resolve({ id: proveedorId }), searchParams: Promise.resolve({}) }), "Editar")).toBe(true);
     await soloVer("proveedores");
-    expect(tieneTexto(await ProveedoresPage({ searchParams: Promise.resolve({}) }), "Editar")).toBe(false);
+    expect(tieneTexto(await ProveedoresPage(), "Editar")).toBe(false);
     expect(tieneTexto(await FichaProveedorPage({ params: Promise.resolve({ id: proveedorId }), searchParams: Promise.resolve({}) }), "Editar")).toBe(false);
   });
 

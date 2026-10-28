@@ -119,9 +119,3 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
   }
 });
 
-/** ADR-006: /catalogo/carta se movió a /carta — el redirect (next.config.ts) evita romper marcadores guardados. */
-test("un marcador viejo a /catalogo/carta/tema redirige a /carta/tema", async ({ paginaAutenticada: page }) => {
-  await page.goto("/catalogo/carta/tema");
-  await expect(page).toHaveURL(/\/carta\/tema$/);
-  await expect(page.getByRole("heading", { name: "Tema de la carta", level: 1 })).toBeVisible();
-});

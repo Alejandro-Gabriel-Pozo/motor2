@@ -1,7 +1,6 @@
 import { Insignia } from "@/ui/primitivas/insignia";
 import { claseDeBoton } from "@/ui/primitivas/boton";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -22,7 +21,6 @@ import {
   consultaDeLosFiltros,
   hayFiltrosDeProductos,
   leerFiltrosDeProductos,
-  rutaDelPaso,
 } from "@/core/catalogo/public";
 import { FiltrosDeLista } from "@/components/filtros-de-lista";
 import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
@@ -32,12 +30,12 @@ import { gruposDeOpcionesPorProducto } from "@/server/consultas/catalogo/opcione
 
 /**
  * Lista de productos. Ya no comparte pantalla con el formulario: el alta está en `/nuevo`, la ficha (solo lectura) en `/[id]` y la edición en
- * `/[id]/datos` (el paso 1 del espacio del producto; `/[id]/editar` redirige ahí) (docs/grounding-lista-ver-editar-2026-09-18.md, decisiones 1 a 3).
+ * `/[id]/datos` (el paso 1 del espacio del producto) (docs/grounding-lista-ver-editar-2026-09-18.md, decisiones 1 a 3).
  */
 export default async function ProductosPage({
   searchParams,
 }: {
-  searchParams: Promise<ParametrosDeUrl<"id" | "q" | "cursor" | "tipo" | "modo" | "disponible" | "falta">>;
+  searchParams: Promise<ParametrosDeUrl<"q" | "cursor" | "tipo" | "modo" | "disponible" | "falta">>;
 }) {
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
@@ -53,9 +51,7 @@ export default async function ProductosPage({
   const { editar: puedeCambiarDisponibilidad } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "producto_disponibilidad", ctx.db);
   const { editar: puedeDarDeAlta } = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
 
-  const { id, cursor, ...enLaUrl } = unicosDeUrl(await searchParams);
-  // Los enlaces y favoritos viejos apuntaban a `/catalogo/productos?id=…` (la edición estaba en esta misma pantalla).
-  if (id) redirect(rutaDelPaso(id, "datos"));
+  const { cursor, ...enLaUrl } = unicosDeUrl(await searchParams);
 
   // Los filtros de la URL, validados contra sus listas cerradas (lo que no es de la lista se ignora); el servidor los vuelve a validar y es quien filtra (`listarProductosPagina`).
   const [faltas, porReferencia] = await Promise.all([faltasQueSePuedenFiltrarEnLaLista(ctx), buscaPorReferenciaDelProveedorEnLaLista(ctx)]);
