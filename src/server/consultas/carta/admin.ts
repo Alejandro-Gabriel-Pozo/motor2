@@ -5,8 +5,9 @@ import { whereDisponibleEn, type EstadoEnLaCarta } from "@/core/catalogo/public"
 import { WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos, esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, type SeccionCartaAdmin, type ProductoCartaAdmin, type GeneroCartaAdmin, type SucursalConCartaPropia, type DatosAdminCarta, type OpcionItemAgrupadoAdmin, type DatosAdminItemsAgrupados, type SucursalPortalAdmin, type TemaAdmin, type PortalEmpresaAdmin } from "@/core/carta/public";
 import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCartaConDiagnostico } from "@/server/lecturas/carta/menu";
-import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
-import { tablaDePreciosParaLaCarta } from "@/core/pos/public";
+import { conGrillaDeLaSucursal, opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
+import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
+import { cartaDeUnProducto } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 import type { PrismaClient } from "@prisma/client";
 import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
@@ -84,10 +85,12 @@ export async function basesDeUnEjeEnLaCarta(sucursalId: string, db: Db): Promise
     select: { id: true, contenidosCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { mostrarNombreArriba: true } } },
   });
   if (bases.length === 0) return new Map();
-  const grupos = await opcionesDeLosProductosDeLaCarta(db, sucursalId, bases.map((b) => b.id));
+  const ids = bases.map((b) => b.id);
+  const [grupos, grilla] = await Promise.all([opcionesDeLosProductosDeLaCarta(db, sucursalId, ids), preciosLocalesDeOpcionVigentesEnProductos(sucursalId, db, ids)]);
   const salida = new Map<string, boolean>();
   for (const b of bases) {
-    const tabla = tablaDePreciosParaLaCarta({ grupos: grupos.get(b.id) ?? [], precioBase: 0, descuentoDeProducto: null, esBase: true });
+    // Con la grilla de tamaños de la sucursal, como la carta (antes la tabla se armaba sin ella).
+    const { tabla } = cartaDeUnProducto({ grupos: conGrillaDeLaSucursal(grupos.get(b.id) ?? [], grilla, b.id), precioBase: 0, descuentoDeProducto: null, esBase: true });
     if (tabla && tabla.ejes.columnas !== null && tabla.ejes.filas === null && tabla.ejes.sinLugar.length === 0) salida.set(b.id, b.contenidosCarta[0]?.mostrarNombreArriba ?? false);
   }
   return salida;

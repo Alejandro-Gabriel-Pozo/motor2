@@ -2,10 +2,10 @@ import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/c
 import { whereDisponibleEn } from "@/core/catalogo/public";
 import { armarMenuCarta, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, wherePromoOfrecidaEn, type AudienciaDePromo, type CartaV1, type MenuArmado } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
-import { opcionesDeLosProductosDeLaCarta, type GrupoParaLaCarta } from "@/server/lecturas/carta/opciones";
+import { conGrillaDeLaSucursal, opcionesDeLosProductosDeLaCarta, type GrupoParaLaCarta } from "@/server/lecturas/carta/opciones";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
 import { esBaseConfigurable } from "@/core/opciones/public";
-import { resumenDePrecios, tablaDePreciosParaLaCarta } from "@/core/pos/public";
+import { cartaDeUnProducto, resumenDePrecios } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -122,25 +122,17 @@ export async function resolverMenuCartaConDiagnostico(
     const opcionesDeProductos = [...opcionesLeidas].flatMap(([productoId, gruposLeidos]) => {
       const p = productoPorId.get(productoId);
       if (!p || !gruposLeidos.some((g) => g.admitido && g.activo)) return [];
-      const grupos = gruposLeidos
-        .map((g) => (sinAgotadoHoy ? { ...g, opciones: g.opciones.map((o) => ({ ...o, apagadaEnSucursal: false })) } : g))
-        .map((g) =>
-          g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO" ? { ...g, opciones: g.opciones.map((o) => ({ ...o, precioDeSucursal: grillaDeTamanos.get(`${productoId}|${o.opcionId}`) ?? null })) } : g
-        );
+      const grupos = conGrillaDeLaSucursal(
+        gruposLeidos.map((g) => (sinAgotadoHoy ? { ...g, opciones: g.opciones.map((o) => ({ ...o, apagadaEnSucursal: false })) } : g)),
+        grillaDeTamanos,
+        productoId
+      );
       const local = preciosLocales.get(productoId);
       const precioBase = precioDeCarta(Number(p.precioVenta), local ? { precio: local.precio, habilitado: local.habilitado } : null);
       const esBase = esBaseConfigurable(p.modoDeVenta);
       const descuentoDeProducto = descuentos.get(productoId) ?? null;
-      return [
-        {
-          productoId,
-          conDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto, esBase }),
-          sinDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto: null, esBase }),
-          // Fase 5 («carta pareja»): el precio de cada celda de la carta, con la misma regla (y el mismo descuento) que se cobra.
-          tabla: tablaDePreciosParaLaCarta({ grupos, precioBase, descuentoDeProducto, esBase }),
-          esBase,
-        },
-      ];
+      // El resumen con y sin descuento y, Fase 5 («carta pareja»), el precio de cada celda de la carta (la misma regla y el mismo descuento que se cobra): un solo cálculo por producto.
+      return [{ productoId, ...cartaDeUnProducto({ grupos, precioBase, descuentoDeProducto, esBase }), esBase }];
     });
     // Fase 4 (ADR-035): una base sin ningún grupo vigente (quitado o archivado) no sale en la carta con su precio guardado: falla cerrado, como un grupo obligatorio sin opciones.
     const conResumen = new Set(opcionesDeProductos.map((o) => o.productoId));

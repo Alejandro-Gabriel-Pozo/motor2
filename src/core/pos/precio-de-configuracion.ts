@@ -207,8 +207,10 @@ export function tablaDePreciosParaLaCarta(entrada: {
   precioBase: number;
   descuentoDeProducto: number | null;
   esBase?: boolean;
+  /** El resumen de precios de ESTA misma entrada, si quien llama ya lo calculó (`cartaDeUnProducto`): se reutiliza en vez de recalcularlo. */
+  resumen?: ResumenDePrecios;
 }): TablaDePreciosParaLaCarta | null {
-  const resumen = resumenDePrecios(entrada);
+  const resumen = entrada.resumen ?? resumenDePrecios(entrada);
   if (!resumen.vendible) return null;
   const vigentes = gruposVigentes(entrada.grupos);
   const { precioBase } = baseDeComposicion(vigentes, entrada);
@@ -245,6 +247,21 @@ export function tablaDePreciosParaLaCarta(entrada: {
     })
   );
   return { grupos, ejes, celdas };
+}
+
+/**
+ * TODO lo que la carta lee de un producto con opciones, calculado UNA vez (los cuatro lectores de la carta pasan por acá): el resumen de precios con el descuento de producto (`conDescuento`) y sin él
+ * (`sinDescuento`, el precio tachado; es el mismo objeto si no hay descuento) y la tabla de precios de cada celda, que reutiliza el resumen en vez de recalcularlo.
+ */
+export function cartaDeUnProducto(entrada: {
+  grupos: readonly (GrupoParaVender & { prefijoEnCarta?: string | null })[];
+  precioBase: number;
+  descuentoDeProducto: number | null;
+  esBase?: boolean;
+}): { conDescuento: ResumenDePrecios; sinDescuento: ResumenDePrecios; tabla: TablaDePreciosParaLaCarta | null } {
+  const conDescuento = resumenDePrecios(entrada);
+  const sinDescuento = entrada.descuentoDeProducto === null ? conDescuento : resumenDePrecios({ ...entrada, descuentoDeProducto: null });
+  return { conDescuento, sinDescuento, tabla: tablaDePreciosParaLaCarta({ ...entrada, resumen: conDescuento }) };
 }
 
 /** El total de una configuración elegida, para mostrarlo ANTES de confirmar. Los errores son los mismos códigos y mensajes de la validación y de la composición de la venta. */

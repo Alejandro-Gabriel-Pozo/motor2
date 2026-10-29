@@ -1,9 +1,9 @@
 import "server-only";
 import { opcionesParaLaCarta, presentacionDeUnProductoSolo, vistaPreviaDeOpciones, type VistaPreviaDeLaCarta } from "@/core/carta/public";
-import { resumenDePrecios, tablaDePreciosParaLaCarta } from "@/core/pos/public";
+import { cartaDeUnProducto } from "@/core/pos/public";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
-import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
+import { conGrillaDeLaSucursal, opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -28,12 +28,9 @@ export async function cargarVistaPreviaDeLaCarta(
     preciosLocalesDeOpcionVigentesEnProductos(sucursalId, db, [producto.id], precioLocalActivo),
   ]);
   const precioBase = locales.get(producto.id)?.precio ?? producto.precioVenta;
-  const conGrilla = grupos.map((g) =>
-    g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO" ? { ...g, opciones: g.opciones.map((o) => ({ ...o, precioDeSucursal: grilla.get(`${producto.id}|${o.opcionId}`) ?? null })) } : g
-  );
-  const enCarta = opcionesParaLaCarta(resumenDePrecios({ grupos: conGrilla, precioBase, descuentoDeProducto: null, esBase: producto.esBase }));
+  const { conDescuento: resumen, tabla } = cartaDeUnProducto({ grupos: conGrillaDeLaSucursal(grupos, grilla, producto.id), precioBase, descuentoDeProducto: null, esBase: producto.esBase });
+  const enCarta = opcionesParaLaCarta(resumen);
   if (enCarta === null) return { tipo: "no-se-puede-pedir" };
-  const tabla = tablaDePreciosParaLaCarta({ grupos: conGrilla, precioBase, descuentoDeProducto: null, esBase: producto.esBase });
   const forma = tabla ? presentacionDeUnProductoSolo({ tabla, esBase: producto.esBase, mostrarNombreArriba, conDescuento: false }) : null;
   return forma ? { tipo: "forma", presentacion: forma.presentacion, rotulos: forma.rotulos } : { tipo: "texto", texto: vistaPreviaDeOpciones(true, enCarta) };
 }
