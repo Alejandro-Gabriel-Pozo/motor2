@@ -111,8 +111,8 @@ export async function registrarConteosFisicos(filas: DatosConteoFisico[]): Promi
  *
  * Gate: Apps Script no gatea esta función explícitamente (accesible solo
  * desde el panel de Conteo Físico, ya gateado a nivel menú) — acá se gatea
- * igual que registrarConteosFisicos ('proceso_control'), mismo criterio que
- * "toda mutación pasa por conPermiso" (plan de migración, convenciones). S-09 (D3, defecto): la rama «ajustar» exige además `proceso_ajuste` (ver `puedeAjustar`).
+ * con su propia clave, 'conteo_resolver_pendiente' (antes compartía 'proceso_control' con registrarConteosFisicos; hoy ambas son de piso operario pero
+ * se delegan por separado), mismo criterio que "toda mutación pasa por conPermiso" (plan de migración, convenciones). S-09 (D3, defecto): la rama «ajustar» exige además `proceso_ajuste` (ver `puedeAjustar`).
  *
  * Desde la Task #41 (Fase M, M13e2 — docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
  * (`conPermiso("conteo_resolver_pendiente")`) → formato del comando (`guardComandoResolverConteo`) → caso de uso (`casos-de-uso/resolver-conteo-pendiente.ts`: carga del conteo, sección/estado,

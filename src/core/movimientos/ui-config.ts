@@ -101,7 +101,7 @@ const ETIQUETA_CORTA_DEL_SELECTOR: Readonly<Record<string, string>> = {
 
 /**
  * Los procesos que ofrece el selector «Registrar movimiento»: los de `PROCESOS_UI` que no son directos (7), cada uno con su acción de `ACCION_POR_PROCESO` (la misma que pide su página), más Reclasificar,
- * que no es un proceso del panel genérico sino su propia pantalla de Stock. Hoy NADA lo consume: el menú sigue saliendo de `NAV_MOVIMIENTOS`; la entrada del menú (P5a) y su página la usan.
+ * que no es un proceso del panel genérico sino su propia pantalla de Stock. Lo consumen la entrada «Registrar movimiento» del menú (`core/navegacion/estructura.ts`, `server/acceso/menu.ts`) y las páginas `/movimientos` y `/movimientos/[proceso]`; los procesos directos siguen saliendo de `NAV_MOVIMIENTOS`.
  * Un guardián (test/movimientos/selector-de-procesos.test.ts) exige que todo slug esté en exactamente un lugar (directos, selector o aparte).
  */
 export const PROCESOS_DEL_SELECTOR: readonly ProcesoDelSelector[] = [
