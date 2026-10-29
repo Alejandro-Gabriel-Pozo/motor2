@@ -1,5 +1,5 @@
 import "server-only";
-import { esBaseConfigurable, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
+import { esBaseConfigurable, opcionesQueCambianElPrecio, seOcultaEnLaCarta, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 import type { IngredienteDeBase } from "@/core/movimientos/public";
 import { resumenDePrecios, type ResumenDePrecios } from "@/core/pos/public";
 import { cargarAdmisionDeProducto, cargarGrupoDeOpciones, listarGruposDeOpciones } from "@/server/lecturas/catalogo/opciones-de-venta";
@@ -216,6 +216,12 @@ export interface OpcionAdmitidaDelPanel {
   fila: { version: number; cantidadMaxima: number; precioAbsoluto: number | null; diferencia: DiferenciaDePrecio | null; activo: boolean } | null;
 }
 
+/**
+ * «Mostrar este grupo en la carta» (2026-10-29) tal como lo ve la pantalla del producto: `se-muestra` (el interruptor está prendido); `no-se-muestra` (apagado y sin efecto en el precio: la carta lo oculta);
+ * `no-se-muestra-pero-cambia-el-precio` (apagado, pero hoy una opción ofrecida cambia el precio: la carta lo muestra igual y la pantalla avisa). Lo deriva `estadoEnLaCarta` con la MISMA regla de la carta.
+ */
+export type EnLaCartaDelGrupo = "se-muestra" | "no-se-muestra" | "no-se-muestra-pero-cambia-el-precio";
+
 export interface GrupoAdmitidoDelPanel {
   grupoId: string;
   nombre: string;
@@ -224,8 +230,28 @@ export interface GrupoAdmitidoDelPanel {
   cantidadMinimaDelGrupo: number;
   cantidadMaximaDelGrupo: number;
   /** La fila de `ProductoAdmiteGrupo` (con su `version`, la esperada de la próxima edición). */
-  fila: { version: number; orden: number; cantidadMinima: number | null; cantidadMaxima: number | null; modoPrecio: ModoDePrecioDeMedida | null; activo: boolean };
+  fila: { version: number; orden: number; cantidadMinima: number | null; cantidadMaxima: number | null; modoPrecio: ModoDePrecioDeMedida | null; activo: boolean; seMuestraEnCarta: boolean };
+  /** Cómo queda el grupo en la carta de este producto (ver `EnLaCartaDelGrupo`). */
+  enLaCarta: EnLaCartaDelGrupo;
+  /** Con `no-se-muestra-pero-cambia-el-precio`: las opciones ofrecidas que cambian el precio (vacío en los otros casos). */
+  queCambianElPrecio: string[];
   opciones: OpcionAdmitidaDelPanel[];
+}
+
+/** Cómo queda en la carta un grupo de un producto: con la regla pura de la carta (`seOcultaEnLaCarta`) sobre lo que la pantalla ya leyó (la diferencia del producto le gana a la de la versión de la opción). */
+function estadoEnLaCarta(g: { tipo: TipoDeGrupoDeOpciones; seMuestraEnCarta: boolean; opciones: OpcionAdmitidaDelPanel[] }): Pick<GrupoAdmitidoDelPanel, "enLaCarta" | "queCambianElPrecio"> {
+  if (g.seMuestraEnCarta) return { enLaCarta: "se-muestra", queCambianElPrecio: [] };
+  const paraOcultar = g.opciones.map((o) => ({
+    nombre: o.nombre,
+    esNinguna: o.esNinguna,
+    ofrecida: o.activaEnEmpresa && o.fila?.activo === true,
+    diferencia: o.fila?.diferencia ?? o.diferenciaDeLaOpcion,
+    precioAbsoluto: o.fila?.precioAbsoluto ?? null,
+  }));
+  if (seOcultaEnLaCarta({ tipo: g.tipo, seMuestraEnCarta: false, opciones: paraOcultar })) return { enLaCarta: "no-se-muestra", queCambianElPrecio: [] };
+  const cambian = opcionesQueCambianElPrecio(paraOcultar).map((o) => o.nombre);
+  // Un tipo que no se oculta (un tamaño, un adicional) nunca llega acá apagado (el comando lo rechaza); si llegara, la carta lo muestra y no hay nada que avisar.
+  return cambian.length === 0 ? { enLaCarta: "se-muestra", queCambianElPrecio: [] } : { enLaCarta: "no-se-muestra-pero-cambia-el-precio", queCambianElPrecio: cambian };
 }
 
 export interface OpcionesDelProductoDelPanel {
@@ -279,26 +305,29 @@ export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucu
     const g = porGrupo.get(f.grupoId);
     if (!g) return [];
     const filaDeOpcion = new Map(f.opciones.map((o) => [o.opcionId, o]));
+    const tipo = g.tipo as TipoDeGrupoDeOpciones;
+    const opciones = g.opciones.map((o) => {
+      const fo = filaDeOpcion.get(o.id);
+      return {
+        opcionId: o.id,
+        nombre: o.nombre,
+        activaEnEmpresa: o.activa,
+        esNinguna: o.esNinguna,
+        diferenciaDeLaOpcion: o.vigente ? diferenciaDeFila(o.vigente.tipoDeDiferencia, o.vigente.diferenciaPrecio, o.vigente.porcentaje) : null,
+        fila: fo ? { version: fo.version, cantidadMaxima: fo.cantidadMaxima, precioAbsoluto: fo.precioAbsoluto, diferencia: diferenciaDeFila(fo.tipoDeDiferencia, fo.diferenciaPrecio, fo.porcentaje), activo: fo.activo } : null,
+      };
+    });
     return [
       {
         grupoId: g.id,
         nombre: g.nombre,
-        tipo: g.tipo as TipoDeGrupoDeOpciones,
+        tipo,
         activoEnEmpresa: g.activo,
         cantidadMinimaDelGrupo: g.cantidadMinima,
         cantidadMaximaDelGrupo: g.cantidadMaxima,
-        fila: { version: f.version, orden: f.orden, cantidadMinima: f.cantidadMinima, cantidadMaxima: f.cantidadMaxima, modoPrecio: f.modoPrecio as ModoDePrecioDeMedida | null, activo: f.activo },
-        opciones: g.opciones.map((o) => {
-          const fo = filaDeOpcion.get(o.id);
-          return {
-            opcionId: o.id,
-            nombre: o.nombre,
-            activaEnEmpresa: o.activa,
-            esNinguna: o.esNinguna,
-            diferenciaDeLaOpcion: o.vigente ? diferenciaDeFila(o.vigente.tipoDeDiferencia, o.vigente.diferenciaPrecio, o.vigente.porcentaje) : null,
-            fila: fo ? { version: fo.version, cantidadMaxima: fo.cantidadMaxima, precioAbsoluto: fo.precioAbsoluto, diferencia: diferenciaDeFila(fo.tipoDeDiferencia, fo.diferenciaPrecio, fo.porcentaje), activo: fo.activo } : null,
-          };
-        }),
+        fila: { version: f.version, orden: f.orden, cantidadMinima: f.cantidadMinima, cantidadMaxima: f.cantidadMaxima, modoPrecio: f.modoPrecio as ModoDePrecioDeMedida | null, activo: f.activo, seMuestraEnCarta: f.seMuestraEnCarta },
+        ...estadoEnLaCarta({ tipo, seMuestraEnCarta: f.seMuestraEnCarta, opciones }),
+        opciones,
       },
     ];
   });

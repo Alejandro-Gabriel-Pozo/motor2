@@ -162,6 +162,7 @@ export async function cargarAdmisionDeProducto(db: Db, productoId: string) {
         cantidadMaxima: true,
         modoPrecio: true,
         activo: true,
+        seMuestraEnCarta: true,
         version: true,
         grupo: { select: { nombre: true, tipo: true, cantidadMinima: true, cantidadMaxima: true, activo: true } },
       },

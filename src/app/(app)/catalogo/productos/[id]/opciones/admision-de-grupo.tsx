@@ -17,6 +17,7 @@ import {
 } from "@/core/opciones/public";
 import { formatearMonto } from "@/core/pos/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
+import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
@@ -40,7 +41,11 @@ export interface GrupoDeLaAdmision {
   activoEnEmpresa: boolean;
   cantidadMinimaDelGrupo: number;
   cantidadMaximaDelGrupo: number;
-  fila: { version: number; orden: number; cantidadMinima: number | null; cantidadMaxima: number | null; modoPrecio: ModoDePrecioDeMedida | null; activo: boolean };
+  fila: { version: number; orden: number; cantidadMinima: number | null; cantidadMaxima: number | null; modoPrecio: ModoDePrecioDeMedida | null; activo: boolean; seMuestraEnCarta: boolean };
+  /** «Mostrar este grupo en la carta» tal como queda hoy (lo deriva el servidor con la regla de la carta): ver `EnLaCartaDelGrupo`. */
+  enLaCarta: "se-muestra" | "no-se-muestra" | "no-se-muestra-pero-cambia-el-precio";
+  /** Con `no-se-muestra-pero-cambia-el-precio`: las opciones ofrecidas que cambian el precio. */
+  queCambianElPrecio: string[];
   opciones: OpcionDeLaAdmision[];
 }
 
@@ -66,7 +71,8 @@ interface Fila {
  * Fase 6 (6.15a): con las primitivas del sistema (`OpcionesExcluyentes`, `Campo`, `Selector`, `Casilla`, `Boton`) y, debajo del importe de cada opción, la LECTURA del precio («Napolitana con Trucha =
  * $ 25.000 + $ 3.000 = $ 28.000»; `leerPrecioDeFilaDeAdmision`, que compone con el mismo compositor que la venta). `referencia` es lo más barato GUARDADO del grupo que fija el precio del producto y
  * `precioDeLista` el precio que se cobra si no hay referencia (`null`: un producto que se vende por opción y todavía no tiene precio final: ahí no se lee lo que suma). El formulario sigue mandando los
- * mismos campos que lee `admision-del-formulario.ts` (`orden`, `cantidadMinima`, `cantidadMaxima`, `modoPrecio`, `activo` y `opciones`); los dos últimos se agregan al enviar, sin `<input type="hidden">`.
+ * mismos campos que lee `admision-del-formulario.ts` (`orden`, `cantidadMinima`, `cantidadMaxima`, `modoPrecio`, `activo`, `seMuestraEnCarta` y `opciones`); los tres últimos se agregan al enviar, sin `<input type="hidden">`
+ * (`seMuestraEnCarta` solo en una variante o una incluida: la casilla «Mostrar este grupo en la carta», 2026-10-29; apagada y con una opción que cambia el precio, la carta lo muestra igual y la tarjeta avisa).
  */
 export function AdmisionDeGrupo({
   grupo,
@@ -82,6 +88,9 @@ export function AdmisionDeGrupo({
   const esTamano = grupo.tipo === "MEDIDA";
   const conDiferencia = grupo.tipo === "MEDIDA" || grupo.tipo === "VARIANTE" || grupo.tipo === "ADICIONAL";
   const conTope = grupo.tipo === "ADICIONAL" || (!esTamano && grupo.cantidadMaximaDelGrupo > 1);
+  // «Mostrar este grupo en la carta» (2026-10-29): solo una variante o una incluida se puede ocultar (un tamaño o un adicional cambian el precio): ahí está la casilla; en los demás no se manda el campo.
+  const sePuedeOcultar = grupo.tipo === "VARIANTE" || grupo.tipo === "INCLUIDA";
+  const [seMuestraEnCarta, setSeMuestraEnCarta] = useState(grupo.fila.seMuestraEnCarta);
   const [modo, setModo] = useState<ModoDePrecioDeMedida | "">(grupo.fila.modoPrecio ?? "");
   const [filas, setFilas] = useState<Fila[]>(() =>
     grupo.opciones.map((o) => ({
@@ -116,6 +125,7 @@ export function AdmisionDeGrupo({
   const enviar = (formData: FormData) => {
     formData.set("opciones", JSON.stringify(opciones));
     formData.set("activo", "on");
+    if (sePuedeOcultar) formData.set("seMuestraEnCarta", seMuestraEnCarta ? "si" : "no");
     return accion(formData);
   };
 
@@ -126,8 +136,15 @@ export function AdmisionDeGrupo({
         <span className="text-sm text-tinta-suave">
           {nombreDelTipoDeGrupo(grupo.tipo)} · del grupo: {textoDeLimites(grupo.cantidadMinimaDelGrupo, grupo.cantidadMaximaDelGrupo)}
           {grupo.activoEnEmpresa ? "" : " · archivado: no se ofrece"}
+          {grupo.enLaCarta === "no-se-muestra" ? " · no se muestra en la carta" : ""}
         </span>
       </div>
+      {grupo.enLaCarta === "no-se-muestra-pero-cambia-el-precio" ? (
+        <Aviso variante="advertencia" data-grupo-oculto-con-precio="">
+          «{grupo.nombre}» está marcado para no mostrarse en la carta, pero {grupo.queCambianElPrecio.map((n) => `«${n}»`).join(", ")} {grupo.queCambianElPrecio.length > 1 ? "cambian" : "cambia"} el precio: la carta lo muestra igual para no anunciar un precio que no es. Si
+          volvés a dejarlo sin recargo, se oculta solo.
+        </Aviso>
+      ) : null}
       <div className="flex flex-wrap gap-4">
         <div className="w-44">
           <Campo etiqueta="Orden en el producto" name="orden" inputMode="numeric" defaultValue={grupo.fila.orden} />
@@ -143,6 +160,14 @@ export function AdmisionDeGrupo({
           </>
         )}
       </div>
+      {sePuedeOcultar && (
+        <Casilla
+          checked={seMuestraEnCarta}
+          onChange={(e) => setSeMuestraEnCarta(e.target.checked)}
+          etiqueta="Mostrar este grupo en la carta"
+          ayuda="Si lo destildás, la carta (en pantalla y en papel) no lo muestra en este producto: el mozo lo sigue eligiendo al vender y los reportes lo siguen separando. Solo se puede mientras ninguna opción cambie el precio."
+        />
+      )}
       {esTamano && (
         <OpcionesExcluyentes
           leyenda="Cómo se cobra el tamaño en este producto"
