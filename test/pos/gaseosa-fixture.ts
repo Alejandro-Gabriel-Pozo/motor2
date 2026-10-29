@@ -34,21 +34,33 @@ export async function sembrarGaseosaPorOpcion(s: { sucursalId: string; unidad: {
   return { gaseosaId: gaseosa.id, botellaId: botella.id, grupoMarcaId, cocaId, fantaId, versionDe };
 }
 
-/** Una opción elegida tal como la manda la pantalla (la versión 1 que vio el mozo). */
-const marca = (g: Pick<GaseosaPorOpcion, "versionDe">, opcionId: string, cantidad = 1) => ({ opcionId, cantidad, versionDeOpcionId: g.versionDe[opcionId]! });
-
 /**
- * Siembra en la cuenta UNA línea de la gaseosa con la opción elegida, ya ENVIADA a cocina, escribiendo la foto con el mismo núcleo y la misma escritura que el POS (`armarLineaConfigurada` +
+ * Siembra en la cuenta UNA línea de un producto con la opción elegida, ya ENVIADA a cocina, escribiendo la foto con el mismo núcleo y la misma escritura que el POS (`armarLineaConfigurada` +
  * `escribirLineaConfigurada`) pero SIN el chequeo de receta de agregar ítems: lo que se prueba es el cobro (la barrera final).
  */
-export async function sembrarLineaDeGaseosa(s: { sucursalId: string; admin: { id: string } }, g: GaseosaPorOpcion, cuentaId: string, opcionId: string, cantidad = 1) {
+export async function sembrarLineaConOpcion(
+  s: { sucursalId: string; admin: { id: string } },
+  e: { productoId: string; cuentaId: string; opcionId: string; versionDeOpcionId: string; precioBase: number; cantidad?: number }
+) {
+  const cantidad = e.cantidad ?? 1;
   const linea = await prisma.$transaction(async (tx) => {
-    const opciones = await cargarOpcionesParaVender(tx, { sucursalId: s.sucursalId, productoIds: [g.gaseosaId] });
-    const r = armarLineaConfigurada({ grupos: opciones.get(g.gaseosaId)!.grupos, elegidas: [marca(g, opcionId)], precioBase: 2500, descuentoDeProducto: null, cantidad });
+    const opciones = await cargarOpcionesParaVender(tx, { sucursalId: s.sucursalId, productoIds: [e.productoId] });
+    const r = armarLineaConfigurada({
+      grupos: opciones.get(e.productoId)!.grupos,
+      elegidas: [{ opcionId: e.opcionId, cantidad: 1, versionDeOpcionId: e.versionDeOpcionId }],
+      precioBase: e.precioBase,
+      descuentoDeProducto: null,
+      cantidad,
+    });
     if (!r.ok || !r.linea) throw new Error(`debería armarse: ${JSON.stringify(r)}`);
-    await escribirLineaConfigurada(tx, { cuentaId, creadoPorId: s.admin.id, linea: { productoId: g.gaseosaId, cantidad, ...r.linea }, adicionales: [] });
+    await escribirLineaConfigurada(tx, { cuentaId: e.cuentaId, creadoPorId: s.admin.id, linea: { productoId: e.productoId, cantidad, ...r.linea }, adicionales: [] });
     return r.linea;
   });
-  await prisma.cuentaItem.updateMany({ where: { cuentaId, numeroEnvio: null }, data: { numeroEnvio: 1 } });
+  await prisma.cuentaItem.updateMany({ where: { cuentaId: e.cuentaId, numeroEnvio: null }, data: { numeroEnvio: 1 } });
   return linea;
+}
+
+/** Una línea de la gaseosa con la opción elegida (ver `sembrarLineaConOpcion`). */
+export function sembrarLineaDeGaseosa(s: { sucursalId: string; admin: { id: string } }, g: GaseosaPorOpcion, cuentaId: string, opcionId: string, cantidad = 1) {
+  return sembrarLineaConOpcion(s, { productoId: g.gaseosaId, cuentaId, opcionId, versionDeOpcionId: g.versionDe[opcionId]!, precioBase: 2500, cantidad });
 }
