@@ -6,6 +6,10 @@ vi.mock("../../src/server/lecturas/movimientos/receta-para-vender", async (origi
   const real = await original<typeof import("../../src/server/lecturas/movimientos/receta-para-vender")>();
   return { ...real, cargarOrigenDeStockParaVender: vi.fn(real.cargarOrigenDeStockParaVender) };
 });
+vi.mock("../../src/server/lecturas/opciones/opciones-para-vender", async (original) => {
+  const real = await original<typeof import("../../src/server/lecturas/opciones/opciones-para-vender")>();
+  return { ...real, cargarOpcionesParaVender: vi.fn(real.cargarOpcionesParaVender) };
+});
 vi.mock("../../src/server/consultas/carta/admin", async (original) => {
   const real = await original<typeof import("../../src/server/consultas/carta/admin")>();
   return { ...real, estadoDelProductoEnLaCarta: vi.fn(real.estadoDelProductoEnLaCarta) };
@@ -23,6 +27,7 @@ import { cargarMarcoDelEspacio } from "../../src/components/catalogo/espacio-del
 import { cargarOrigenDeStockParaVender } from "../../src/server/lecturas/movimientos/receta-para-vender";
 import { estadoDelProductoEnLaCarta } from "../../src/server/consultas/carta/admin";
 import { cargarOpcionesDelProducto } from "../../src/server/consultas/catalogo/opciones-de-venta";
+import { cargarOpcionesParaVender } from "../../src/server/lecturas/opciones/opciones-para-vender";
 
 /**
  * Fase 6, paso 6.12: las lecturas del espacio del producto (`hechosDelProducto`) y el marco que arma los pasos (`cargarMarcoDelEspacio`), contra Postgres real. Lo que se afirma:
@@ -76,6 +81,45 @@ describe("el espacio del producto: hechos y marco", () => {
       const h = await hechosDelProducto(prisma, sinReceta, sucursalId, TODO);
       expect(h.receta).toEqual({ rechazo: "«Milanesas» no tiene receta: armala en Catálogo → Recetas para poder venderla." });
       expect((await hechosDelProducto(prisma, conReceta, sucursalId, TODO)).receta).toEqual({ rechazo: null });
+    });
+
+    it("ventas con opciones (2026-10-29): un producto sin receta cuyas opciones ofrecidas suman un insumo no tiene el pendiente de receta; con opciones que no descuentan, el mensaje de catálogo; sin opciones, el de siempre", async () => {
+      const botella = await sembrarProductoDisponible({ codigo: "MP_COCA", nombre: "Coca botella", tipo: "MP", unidadStockId: (await prisma.producto.findUniqueOrThrow({ where: { id: ids.harina } })).unidadStockId }, sucursalId);
+      const grupo = await prisma.grupoDeOpciones.create({ data: { nombre: "Marca", tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1 } });
+      const unidadId = botella.unidadStockId;
+      const opcion = async (nombre: string, orden: number, conConsumo: boolean) => {
+        const o = await prisma.opcionDeGrupo.create({ data: { grupoId: grupo.id, nombre, orden } });
+        const v = await prisma.versionDeOpcion.create({ data: { opcionId: o.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "0.00", creadoPorId: usuarios.admin } });
+        if (conConsumo) await prisma.consumoDeOpcion.create({ data: { versionDeOpcionId: v.id, efecto: "SUMA", insumoProductoId: botella.id, cantidad: "1.0000", unidadId } });
+        await prisma.productoAdmiteOpcion.create({ data: { productoId: ids.milanesas, opcionId: o.id } });
+        return o.id;
+      };
+      // Sin opciones: el mensaje de siempre (y no se leen las opciones: el producto no las ofrece).
+      expect((await hechosDelProducto(prisma, sinReceta, sucursalId, TODO)).receta?.rechazo).toContain("no tiene receta: armala en Catálogo → Recetas");
+      await prisma.productoAdmiteGrupo.create({ data: { productoId: ids.milanesas, grupoId: grupo.id, orden: 0 } });
+      const fanta = await opcion("Fanta", 1, false);
+      expect((await hechosDelProducto(prisma, sinReceta, sucursalId, TODO)).receta).toEqual({ rechazo: "“Milanesas” no tiene receta ni opciones que descuenten insumos: armá la receta o cargale el consumo a sus opciones." });
+      await opcion("Coca", 2, true);
+      expect((await hechosDelProducto(prisma, sinReceta, sucursalId, TODO)).receta).toEqual({ rechazo: null });
+      // Una opción apagada para toda la empresa no cuenta; una apagada solo un rato en la sucursal, sí.
+      await prisma.opcionDeGrupo.updateMany({ where: { nombre: "Coca" }, data: { activa: false } });
+      expect((await hechosDelProducto(prisma, sinReceta, sucursalId, TODO)).receta?.rechazo).toContain("no tiene receta ni opciones");
+      await prisma.opcionDeGrupo.updateMany({ where: { nombre: "Coca" }, data: { activa: true } });
+      await prisma.opcionApagadaEnSucursal.create({ data: { sucursalId, opcionId: fanta, apagada: true, actualizadoPorId: usuarios.admin } });
+      expect((await hechosDelProducto(prisma, sinReceta, sucursalId, TODO)).receta).toEqual({ rechazo: null });
+    });
+
+    it("PRIVACIDAD de las opciones: sin permiso para el paso de la receta no se lee ni la receta ni las opciones que la reemplazan; con el permiso, sí", async () => {
+      await hechosDelProducto(prisma, sinReceta, sucursalId, { opciones: true, receta: false, carta: true });
+      expect(cargarOrigenDeStockParaVender).not.toHaveBeenCalled();
+      expect(cargarOpcionesParaVender).not.toHaveBeenCalled();
+      await hechosDelProducto(prisma, sinReceta, sucursalId, { opciones: false, receta: true, carta: false });
+      expect(cargarOrigenDeStockParaVender).toHaveBeenCalledTimes(1);
+      expect(cargarOpcionesParaVender).toHaveBeenCalledTimes(1);
+      // Un producto con receta no necesita mirar sus opciones.
+      vi.clearAllMocks();
+      await hechosDelProducto(prisma, conReceta, sucursalId, { opciones: false, receta: true, carta: false });
+      expect(cargarOpcionesParaVender).not.toHaveBeenCalled();
     });
 
     it("un directo con opciones al día es vendible acá, y la carta dice «fuera» mientras no tenga contenido", async () => {

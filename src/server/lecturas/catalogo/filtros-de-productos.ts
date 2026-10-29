@@ -4,7 +4,7 @@ import { whereCartaDeSucursal } from "@/core/carta/public";
 import { FALTAS_FILTRABLES, whereBusquedaDeProducto, whereDisponibleEn, whereDisponibleEnAlguna, type FaltaFiltrable, type FiltrosDeProductos } from "@/core/catalogo/public";
 import { accionesDelMenuQueElUsuarioPuedeVer, obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
 import { denegacionDeModuloDeAccion } from "@/server/acceso/modulos-de-empresa";
-import { cargarOrigenDeStockParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
+import { cargarOrigenDeStockDelCatalogo } from "@/server/lecturas/movimientos/origen-de-stock-del-catalogo";
 
 /**
  * Los filtros de la lista de Productos como `where` de Prisma (Fase 6, bloque 3, 3b). Todo se decide acá, en el servidor, sobre las tablas de la empresa del usuario (la RLS por empresa no se toca) y de
@@ -96,15 +96,16 @@ function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, falt
 /**
  * Los ids de los productos a los que les falta la receta, entre los que cumplen el resto de los criterios: un producto de venta que no se produce ni respalda un adicional y no tiene ingredientes en su
  * receta vigente de la sucursal (la regla «sin receta no se vende», `rechazoSinOrigenDeStock`), y una materia prima que se produce sin ingredientes. La receta vigente la resuelve el lector de la venta
- * (`cargarOrigenDeStockParaVender`: la propia de la sucursal si la habilitó, si no la central), no una consulta nueva.
+ * (`cargarOrigenDeStockDelCatalogo`, que envuelve `cargarOrigenDeStockParaVender`: la propia de la sucursal si la habilitó, si no la central), y sus opciones ofrecidas cuando no tiene ingredientes.
  */
 async function idsSinReceta(db: PrismaClient, sucursalId: string, y: Prisma.ProductoWhereInput[]): Promise<string[]> {
   const candidatos = await db.producto.findMany({
     where: { AND: [...y, { OR: [{ tipo: "PV", seProduce: false, opcionQueRespalda: { is: null } }, { tipo: "MP", seProduce: true }] }] },
     select: { id: true },
   });
-  const origen = await cargarOrigenDeStockParaVender(db, { sucursalId, productoIds: candidatos.map((c) => c.id) });
-  return candidatos.filter((c) => (origen.get(c.id)?.ingredientesDeLaRecetaVigente ?? 0) === 0).map((c) => c.id);
+  const origen = await cargarOrigenDeStockDelCatalogo(db, { sucursalId, productoIds: candidatos.map((c) => c.id) });
+  // Un producto de venta sin ingredientes tiene origen igual si alguna de sus opciones ofrecidas suma un insumo (ventas con opciones, 2026-10-29: la misma definición que el espacio del producto).
+  return candidatos.filter((c) => (origen.get(c.id)?.ingredientesDeLaRecetaVigente ?? 0) === 0 && (origen.get(c.id)?.opciones?.insumos ?? 0) === 0).map((c) => c.id);
 }
 
 /**

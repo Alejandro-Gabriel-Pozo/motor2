@@ -22,9 +22,10 @@ export interface OrigenDeStockDeUnPV {
   ingredientesDeLaRecetaVigente: number;
   /**
    * Solo en una LÍNEA con opciones elegidas dentro del precio: cuántos insumos pide ese consumo con la base vacía (`insumos`) y los nombres de las opciones elegidas (para el mensaje).
-   * Ausente = comportamiento idéntico al de antes (la regla mira solo la receta).
+   * En el CATÁLOGO (sin línea: el producto, no una venta) `ofrecidas` es `true`: `insumos` son los que podría sumar alguna opción que el producto ofrece (`insumosQuePuedeSumarAlgunaOpcion`) y
+   * el mensaje habla de las opciones en general. Ausente = comportamiento idéntico al de antes (la regla mira solo la receta).
    */
-  opciones?: { insumos: number; nombres: readonly string[] };
+  opciones?: { insumos: number; nombres: readonly string[]; ofrecidas?: boolean };
 }
 
 /** El mensaje del rechazo: nombra el producto y dice dónde se arregla. */
@@ -38,11 +39,17 @@ function mensajeLineaSinInsumos(nombre: string, nombresDeOpciones: readonly stri
   return `“${nombre}” con ${con} no descuenta ningún insumo: cargale el consumo a la opción en Catálogo → Biblioteca de opciones, o armá la receta de “${nombre}” en Catálogo → Recetas.`;
 }
 
+/** El mensaje de catálogo de un producto sin receta cuyas opciones ofrecidas tampoco descuentan ningún insumo (el espacio del producto y el filtro «le falta: receta»). */
+function mensajeSinRecetaNiOpciones(nombre: string): string {
+  return `“${nombre}” no tiene receta ni opciones que descuenten insumos: armá la receta o cargale el consumo a sus opciones.`;
+}
+
 /** Por qué el PV NO se puede vender (el mensaje), o `null` si tiene origen de stock. */
 export function rechazoSinOrigenDeStock(pv: OrigenDeStockDeUnPV): string | null {
   if (pv.seProduce || pv.esAnclaDeAdicional || pv.ingredientesDeLaRecetaVigente > 0) return null;
   if (pv.opciones !== undefined) {
     if (pv.opciones.insumos > 0) return null;
+    if (pv.opciones.ofrecidas) return mensajeSinRecetaNiOpciones(pv.nombre);
     if (pv.opciones.nombres.length > 0) return mensajeLineaSinInsumos(pv.nombre, pv.opciones.nombres);
   }
   return mensajeProductoSinReceta(pv.nombre);

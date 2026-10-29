@@ -150,6 +150,35 @@ describe("listarProductosPagina: filtros de la lista de Productos", () => {
       for (const conOrigen of ["Café", "Masa lista", "Harina", "Shot extra (ancla)"]) expect(sin).not.toContain(conOrigen);
     });
 
+    it("sin receta con opciones (ventas con opciones, 2026-10-29): el producto sin ingredientes cuyas opciones ofrecidas suman un insumo NO está; el que ofrece opciones sin consumo, o con el grupo apagado, SÍ; coincide con el espacio del producto", async () => {
+      const botella = await sembrarProductoDisponible({ codigo: "MP_COCA", nombre: "Coca botella", tipo: "MP", unidadStockId: unidadId }, sucursalId);
+      const gaseosa = async (codigo: string, nombre: string, conConsumo: boolean, grupoActivo = true) => {
+        const producto = await sembrarProductoDisponible({ codigo, nombre, tipo: "PV", precioVenta: 2500, unidadStockId: unidadId }, sucursalId);
+        const grupo = await prisma.grupoDeOpciones.create({ data: { nombre: `Marca ${nombre}`, tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1, activo: grupoActivo } });
+        const opcion = await prisma.opcionDeGrupo.create({ data: { grupoId: grupo.id, nombre: `Marca de ${nombre}`, orden: 1 } });
+        const version = await prisma.versionDeOpcion.create({ data: { opcionId: opcion.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "0.00", creadoPorId: adminId } });
+        if (conConsumo) await prisma.consumoDeOpcion.create({ data: { versionDeOpcionId: version.id, efecto: "SUMA", insumoProductoId: botella.id, cantidad: "1.0000", unidadId } });
+        await prisma.productoAdmiteGrupo.create({ data: { productoId: producto.id, grupoId: grupo.id, orden: 0 } });
+        await prisma.productoAdmiteOpcion.create({ data: { productoId: producto.id, opcionId: opcion.id } });
+        return producto;
+      };
+      await gaseosa("PV_G_CON", "Gaseosa con consumo", true);
+      await gaseosa("PV_G_SIN", "Gaseosa sin consumo", false);
+      await gaseosa("PV_G_OFF", "Gaseosa con grupo apagado", true, false);
+      const sin = await nombres({ falta: "sin-receta" });
+      expect(sin).not.toContain("Gaseosa con consumo");
+      expect(sin).toEqual(expect.arrayContaining(["Gaseosa sin consumo", "Gaseosa con grupo apagado"]));
+      // El espacio del producto dice lo mismo, con el mensaje de catálogo para el que ofrece opciones sin consumo.
+      const espacio = async (nombre: string) => {
+        const id = (await prisma.producto.findFirstOrThrow({ where: { nombre } })).id;
+        return (await hechosDelProducto(prisma, (await leerProductoDelEspacio(prisma, id))!, sucursalId, { opciones: false, receta: true, carta: false })).receta;
+      };
+      expect(await espacio("Gaseosa con consumo")).toEqual({ rechazo: null });
+      expect(await espacio("Gaseosa sin consumo")).toEqual({ rechazo: "“Gaseosa sin consumo” no tiene receta ni opciones que descuenten insumos: armá la receta o cargale el consumo a sus opciones." });
+      // El grupo apagado para toda la empresa no ofrece nada: es un producto sin receta y sin opciones (el mensaje de siempre).
+      expect((await espacio("Gaseosa con grupo apagado"))?.rechazo).toContain("no tiene receta: armala en Catálogo → Recetas");
+    });
+
     it("fuera de la carta: disponible acá y sin contenido ni grupo; no el oculto, no el agrupado, no el que ya está, no el apagado", async () => {
       const fuera = await nombres({ falta: "fuera-de-la-carta" });
       expect(fuera).toEqual(expect.arrayContaining(["Milanesas", "Sin precio"]));

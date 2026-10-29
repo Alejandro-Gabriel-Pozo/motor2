@@ -375,6 +375,8 @@ const completos: Record<string, Valor> = {
   "lectura|lecturas/movimientos/receta-para-vender.ts|cargarRecetaVigenteParaVender": (k, c) => [c.db, { productoId: k.productoPvId, sucursalId: c.propio.sucursalId }],
   // RECETA (ADR-033): el origen de stock de los productos de un pedido (nombre, si se produce, ingredientes de la receta vigente): con un PV ajeno no ve nada de él.
   "lectura|lecturas/movimientos/receta-para-vender.ts|cargarOrigenDeStockParaVender": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, productoIds: [k.productoPvId] }],
+  // Ventas con opciones (2026-10-29): el origen de stock para el catálogo, con las opciones ofrecidas de un producto sin receta: con un PV ajeno no ve nada de él.
+  "lectura|lecturas/movimientos/origen-de-stock-del-catalogo.ts|cargarOrigenDeStockDelCatalogo": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, productoIds: [k.productoPvId] }],
   "lectura|lecturas/permisos/gobierno.ts|invarianteRolSinUsuariosActivos": (k, c) => [c.db, { id: k.rolId, nombre: "Rol de prueba" }],
 
   // El ítem agrupado se resuelve desde el primer producto en la sucursal activa: el ajeno y el propio no se mezclan; la sucursal que llega tiene que ser la activa. El último argumento es el precio que

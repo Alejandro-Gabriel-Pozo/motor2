@@ -50,6 +50,12 @@ describe("rechazoSinOrigenDeStock", () => {
     expect(rechazoSinOrigenDeStock(pv({ nombre: "Gaseosa", opciones: { insumos: 0, nombres: ["Chica", "Fanta"] } }))).toContain("con “Chica” y “Fanta” no descuenta");
   });
 
+  it("en el CATÁLOGO (opciones ofrecidas): sin receta ni insumos que sumen, el mensaje de catálogo; si alguna opción suma, tiene origen", () => {
+    expect(rechazoSinOrigenDeStock(pv({ nombre: "Gaseosa", opciones: { insumos: 0, nombres: [], ofrecidas: true } }))).toBe("“Gaseosa” no tiene receta ni opciones que descuenten insumos: armá la receta o cargale el consumo a sus opciones.");
+    expect(rechazoSinOrigenDeStock(pv({ opciones: { insumos: 1, nombres: [], ofrecidas: true } }))).toBeNull();
+    expect(rechazoSinOrigenDeStock(pv({ ingredientesDeLaRecetaVigente: 1, opciones: { insumos: 0, nombres: [], ofrecidas: true } }))).toBeNull();
+  });
+
   it("el código tipado y el mensaje con otro nombre (comillas angulares, sin tocar el nombre)", () => {
     expect(CODIGO_PRODUCTO_SIN_RECETA).toBe("PRODUCTO_SIN_RECETA");
     expect(mensajeProductoSinReceta("Coca-Cola 500 ml")).toBe("«Coca-Cola 500 ml» no tiene receta: armala en Catálogo → Recetas para poder venderla.");
