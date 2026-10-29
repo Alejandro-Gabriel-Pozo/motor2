@@ -369,6 +369,8 @@ const completos: Record<string, Valor> = {
   "consulta|consultas/permisos/auditoria.ts|listarRegistrosAuditoria": (_k, c) => [{ sucursalIds: [c.propio.sucursalId], incluirFilasDeEmpresa: true }, c.db],
   "consulta|consultas/reportes/costo-historico.ts|reconstruirCostosDeVenta": (k, c) => [c.propio.sucursalId, [{ productoId: k.productoId, fecha: hoy() }], c.db],
   "consulta|consultas/reportes/costos.ts|cargarCostosYMargenes": (_k, c) => [c.propio.sucursalId, c.db, { empresaPct: null, porCategoria: new Map() }],
+  // Ventas con opciones (2026-10-29): «Ventas por opción» de Período, con el rango de un día y la zona de la empresa.
+  "consulta|consultas/reportes/ventas-por-opcion.ts|generarVentasPorOpcion": (_k, c) => [c.propio.sucursalId, hoy(), hoy(), c.db],
   "consulta|consultas/reportes/rendimiento-por-sucursal.ts|compararRendimientosDeSucursales": (k, c) => [[{ id: c.propio.sucursalId, nombre: "Central ZZ-A1" }], { productoId: k.productoPvId, todas: true }, c.db],
   "consulta|consultas/reportes/rendimiento-por-sucursal.ts|compararRendimientosPorSucursal": (k, c) => [[{ id: c.propio.sucursalId, nombre: "Central ZZ-A1" }], { productoId: k.productoPvId, todas: true }, c.db],
   "lectura|lecturas/auth/cupo-de-correo.ts|cupoDeCorreoDeEmpresa": (k, c) => [c.db, { empresaId: c.propio.empresaId, destinatario: `${k.marca.toLowerCase()}-invitado@ajeno.test`, ahora: hoy() }],
