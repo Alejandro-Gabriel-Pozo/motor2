@@ -51,7 +51,7 @@ describe("cambiarModulosDeEmpresa", () => {
   it("activar un módulo que requiere otros NO les crea fila: quedan incluidos por la clausura", async () => {
     const r = await cambiarModulosDeEmpresa(prismaAdmin, { slug: "norte", activar: ["salon"] }, AUTOR);
     expect(await registro()).toEqual({ salon: "ACTIVO" });
-    expect(r.efectivos).toEqual(expect.arrayContaining(["administracion", "salon", "stock", "clientes_basico", "catalogo_basico"]));
+    expect(r.efectivos).toEqual(expect.arrayContaining(["administracion", "salon", "stock", "clientes_basico", "catalogo_basico", "recetas"]));
   });
 
   it("desactivar deja la fila en INACTIVO (nunca se borra) y audita el cambio", async () => {

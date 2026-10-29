@@ -103,6 +103,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; SACA una clave, no cambia ninguna otra): `pos_limite_mesas_abiertas` sale de ACCIONES y desaparece de las listas de claves de cada bloque y registro. El resto del archivo no cambia.",
       },
+      {
+        blob: "3db4ca0c405259334e62cf5b1778b73187918dfc",
+        // El commit PADRE de este (5c218a6f) es el último antes del cambio; el golden se regenera en el commit siguiente (Salón exige Recetas, decisión del dueño 2026-10-29).
+        commit: "5c218a6f",
+        motivo:
+          "Salón exige Recetas (decisión del dueño 2026-10-29; CAMBIA COMPORTAMIENTO a propósito): `salon.requiere` suma `recetas`, así que en los registros de la matriz con Salón activo (y no solo con Recetas) el módulo Recetas queda efectivo («incluido por Salón») y sus acciones dejan de salir como `MODULO_NO_ACTIVO`/`SIN_CAPACIDAD` para esos registros. No cambia ninguna clave ni ningún piso.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -195,6 +202,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "4cbb8750",
         motivo:
           "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; SACA una clave, no cambia ninguna otra): `pos_limite_mesas_abiertas` sale de ACCIONES y la huella pierde sus 4 filas PERMISO (admin y operador, en cada registro) y baja el conteo de ACCIONES de 131 a 130. El resto del archivo no cambia.",
+      },
+      {
+        blob: "9be3e628269575aecb1391ed746651d65a0ec28b",
+        // El commit PADRE de este (5c218a6f) es el último antes del cambio; el golden se regenera en el commit siguiente (Salón exige Recetas, decisión del dueño 2026-10-29).
+        commit: "5c218a6f",
+        motivo:
+          "Salón exige Recetas (decisión del dueño 2026-10-29; CAMBIA COMPORTAMIENTO a propósito): al activar Salón desde la consola de plataforma (paso 8a), los módulos efectivos suman `recetas` (antes administracion, catalogo_basico, clientes_basico, salon, stock). Solo cambia esa línea.",
       },
     ],
   },
