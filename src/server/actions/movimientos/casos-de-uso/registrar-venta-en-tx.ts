@@ -143,8 +143,11 @@ async function armarLinea(
     const ingredientes = configurada?.tipo === "ADICIONAL" ? [] : await cargarRecetaVigenteParaVender(tx, { productoId: producto.id, sucursalId });
     // RECETA (ADR-033): la BARRERA FINAL — con la MISMA receta recién leída en esta transacción (sin otra lectura) y antes de escribir nada. Sin receta vigente acá (desactivada entre
     // el pedido y el cobro, o una venta de mostrador), no se vende; el ancla verificada de un adicional queda exceptuada (su consumo es el de su opción).
-    const sinReceta = rechazoSinOrigenDeStock({ nombre: producto.nombre, seProduce: producto.seProduce, esAnclaDeAdicional: esAnclaVerificada, ingredientesDeLaRecetaVigente: ingredientes.length });
-    if (sinReceta !== null) return { ok: false, codigo: CODIGO_PRODUCTO_SIN_RECETA, mensaje: sinReceta };
+    // Una línea con opciones (`PRODUCTO`) se decide más abajo, con los pedidos reales que van al libro (decisión del dueño 2026-10-29: una base sin receta se vende si lo elegido descuenta insumos).
+    if (configurada?.tipo !== "PRODUCTO") {
+      const sinReceta = rechazoSinOrigenDeStock({ nombre: producto.nombre, seProduce: producto.seProduce, esAnclaDeAdicional: esAnclaVerificada, ingredientesDeLaRecetaVigente: ingredientes.length });
+      if (sinReceta !== null) return { ok: false, codigo: CODIGO_PRODUCTO_SIN_RECETA, mensaje: sinReceta };
+    }
     const base: IngredienteDeBase[] = [];
     for (const ing of ingredientes) {
       const revisada = revisarMateriaPrima(await obtenerProducto(ing.insumoProductoId), producto.nombre);
@@ -169,6 +172,17 @@ async function armarLinea(
       );
       if (!consumo.ok) return { ok: false, mensaje: `«${producto.nombre}»: ${consumo.mensaje}` };
       pedidos = consolidarPedidosPorInsumo(configurada.tipo === "PRODUCTO" ? consumo.pedidos : consumo.pedidosDeAdicionales[0]!.pedidos);
+      if (configurada.tipo === "PRODUCTO") {
+        // La misma regla pura, alimentada con lo que la línea descuenta de verdad: decisión y Kardex salen de los mismos `pedidos`.
+        const sinReceta = rechazoSinOrigenDeStock({
+          nombre: producto.nombre,
+          seProduce: producto.seProduce,
+          esAnclaDeAdicional: false,
+          ingredientesDeLaRecetaVigente: ingredientes.length,
+          opciones: { insumos: pedidos.length, nombres: configurada.opciones.map((o) => o.nombre) },
+        });
+        if (sinReceta !== null) return { ok: false, codigo: CODIGO_PRODUCTO_SIN_RECETA, mensaje: sinReceta };
+      }
     }
   }
 

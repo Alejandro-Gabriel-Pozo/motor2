@@ -36,6 +36,20 @@ describe("rechazoSinOrigenDeStock", () => {
         }
   });
 
+  it("con opciones elegidas (ventas con opciones, 2026-10-29): la base sin receta se vende SOLO si las opciones suman algún insumo; con receta, se produce o ancla, ni se mira; sin `opciones` nada cambia", () => {
+    const fanta = { insumos: 0, nombres: ["Fanta"] };
+    for (const seProduce of [false, true])
+      for (const esAnclaDeAdicional of [false, true])
+        for (const ingredientesDeLaRecetaVigente of [0, 1])
+          for (const opciones of [undefined, fanta, { insumos: 2, nombres: ["Coca"] }]) {
+            const r = rechazoSinOrigenDeStock(pv({ seProduce, esAnclaDeAdicional, ingredientesDeLaRecetaVigente, opciones }));
+            const tieneOrigen = seProduce || esAnclaDeAdicional || ingredientesDeLaRecetaVigente > 0 || (opciones?.insumos ?? 0) > 0;
+            expect(r === null, JSON.stringify({ seProduce, esAnclaDeAdicional, ingredientesDeLaRecetaVigente, opciones })).toBe(tieneOrigen);
+          }
+    expect(rechazoSinOrigenDeStock(pv({ nombre: "Gaseosa", opciones: fanta }))).toBe("“Gaseosa” con “Fanta” no descuenta ningún insumo: cargale el consumo a la opción en Catálogo → Biblioteca de opciones, o armá la receta de “Gaseosa” en Catálogo → Recetas.");
+    expect(rechazoSinOrigenDeStock(pv({ nombre: "Gaseosa", opciones: { insumos: 0, nombres: ["Chica", "Fanta"] } }))).toContain("con “Chica” y “Fanta” no descuenta");
+  });
+
   it("el código tipado y el mensaje con otro nombre (comillas angulares, sin tocar el nombre)", () => {
     expect(CODIGO_PRODUCTO_SIN_RECETA).toBe("PRODUCTO_SIN_RECETA");
     expect(mensajeProductoSinReceta("Coca-Cola 500 ml")).toBe("«Coca-Cola 500 ml» no tiene receta: armala en Catálogo → Recetas para poder venderla.");
