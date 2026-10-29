@@ -26,7 +26,7 @@ export type DatosMovimientoInput = DatosMovimientoInputSchema;
  * Port de confirmarRegistrarMovimientos (Movimientos.js:876-1136) para los
  * 9 procesos que comparten este motor (Compra, Producción, Consumo,
  * Ajuste, Transferencia, Merma, Devolución×3) — Venta y Control (Conteo
- * Físico) tienen su propia acción, ver registrarVenta/registrarConteoFisico.
+ * Físico) tienen su propia acción, ver registrarVenta/registrarConteosFisicos.
  *
  * Desde la Task #41 (Fase M, M13a-c — docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: el
  * permiso a pedir sale de `ACCION_POR_PROCESO[datos.proceso]` (ANTES de `conPermiso`, tal cual siempre) → `conPermiso` → formato

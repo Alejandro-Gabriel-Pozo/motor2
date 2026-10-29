@@ -5,7 +5,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente, buscarProductoParaHistorial } from "../../src/server/consultas/reportes/historial-producto";
@@ -38,7 +38,7 @@ describe("obtenerHistorialProducto", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: mediodia("2026-01-02"), seccionId, items: [{ productoId: mpId, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
     // DESCARTAR con diferencia != 0: queda registrado como bitácora, sin generar ningún movimiento de Kardex.
-    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: mediodia("2026-01-03"), accion: "DESCARTAR" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: mediodia("2026-01-03"), accion: "DESCARTAR" });
     await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-04"), seccionId, items: [{ productoId: mpId, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
 
     const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);
@@ -67,7 +67,7 @@ describe("obtenerHistorialProducto", () => {
   it("REGRESIÓN (Plan R2): totalMovimientos/totalConteos siguen siendo el total DE SIEMPRE, incluso con un filtro `desde` que oculta movimientos anteriores", async () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: mediodia("2026-01-02"), seccionId, items: [{ productoId: mpId, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: mediodia("2026-01-03"), accion: "DESCARTAR" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: mediodia("2026-01-03"), accion: "DESCARTAR" });
     await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
 
     // Filtro que deja fuera del rango visible a los 2 primeros movimientos

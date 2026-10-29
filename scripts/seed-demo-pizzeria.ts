@@ -39,7 +39,7 @@ import { darDeAltaProducto, actualizarDisponibilidadProducto } from "../src/serv
 import { guardarRecetaACiegas as guardarReceta } from "../src/server/actions/catalogo/receta-a-ciegas";
 import { registrarMovimiento } from "../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../src/server/actions/movimientos/venta";
-import { registrarConteoFisico } from "../src/server/actions/movimientos/conteo-fisico";
+import { registrarConteosFisicos } from "../src/server/actions/movimientos/conteo-fisico";
 import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "../src/server/consultas/reportes/rendimiento-recetas";
 import { PROVEEDORES, PRODUCTOS, PRECIOS_REFERENCIA, RECETAS } from "./seed-demo-pizzeria-data";
 
@@ -630,15 +630,17 @@ describe("seed demo pizzería La Cuadra", () => {
         _sum: { cantidad: true },
       });
       const saldoActual = Number(saldoMuzzarella._sum.cantidad ?? 0);
-      const rConteo = await registrarConteoFisico({
-        productoId: idProd("MP006"),
-        seccionId: seccionCocina,
-        conteoReal: Math.max(0, Math.round((saldoActual - 1.4) * 10) / 10),
-        fechaConteo,
-        accion: "AJUSTAR",
-        detalle: "Conteo de rutina — faltante chico, probablemente mermas de fraccionamiento no registradas.",
-      });
-      anotarSiFalla("registrarConteoFisico MP006", rConteo);
+      const rConteos = await registrarConteosFisicos([
+        {
+          productoId: idProd("MP006"),
+          seccionId: seccionCocina,
+          conteoReal: Math.max(0, Math.round((saldoActual - 1.4) * 10) / 10),
+          fechaConteo,
+          accion: "AJUSTAR",
+          detalle: "Conteo de rutina — faltante chico, probablemente mermas de fraccionamiento no registradas.",
+        },
+      ]);
+      anotarSiFalla("registrarConteosFisicos MP006", rConteos.ok ? rConteos.resultados[0] : rConteos);
 
       const fechaMerma = fechaHace(5, 11);
       // La migración expand (plan "motivos de Consumo/Merma como catálogo administrable", P3) ya sembró el catálogo en

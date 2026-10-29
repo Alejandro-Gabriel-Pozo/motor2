@@ -5,7 +5,8 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico, resolverConteoPendiente, cancelarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { resolverConteoPendiente, cancelarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 /**
@@ -53,7 +54,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
   });
 
   it("un pendiente cerrado como «resuelto» nunca aplicó nada: cancelarlo NO escribe un ajuste fantasma (hoy escribía +3 de Control)", async () => {
-    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
     const conteo = await conteoDe("PENDIENTE");
     expect(Number(conteo.diferencia)).toBe(-3);
     expect((await resolverConteoPendiente(conteo.id, "resuelto")).ok).toBe(true);
@@ -70,7 +71,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
   });
 
   it("un pendiente cerrado con «ajustar» aplicó la diferencia contra el saldo de HOY (-1), no la del conteo (-3): cancelarlo revierte +1 (hoy revertía +3)", async () => {
-    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
     const conteo = await conteoDe("PENDIENTE");
     expect(Number(conteo.diferencia)).toBe(-3);
     await moverStock(-2); // entre medio salieron 2: el saldo de hoy es 8
@@ -88,7 +89,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
   });
 
   it("lo mismo con un sobrante: se contaron 5 de más, entró una compra de 3, «ajustar» aplicó +2; cancelar revierte -2 (hoy revertía -5)", async () => {
-    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
     const conteo = await conteoDe("PENDIENTE");
     await moverStock(3); // saldo de hoy: 13
     expect((await resolverConteoPendiente(conteo.id, "ajustar")).ok).toBe(true);
@@ -103,7 +104,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
   it("la reversión conserva el lote del conteo", async () => {
     const lote = new Date(Date.now() + 30 * 24 * 3_600_000);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 4, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mpId, seccionId, loteVencimiento: lote, conteoReal: 1, fechaConteo: new Date(), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, loteVencimiento: lote, conteoReal: 1, fechaConteo: new Date(), accion: "AJUSTAR" });
     const conteo = await conteoDe();
     expect(await saldo()).toBe(11); // 10 sin lote + 1 del lote
 
@@ -116,7 +117,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
   });
 
   it("control: un AJUSTAR común se revierte exacto, y una segunda cancelación falla sin escribir nada", async () => {
-    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR" });
     const conteo = await conteoDe();
     expect(await saldo()).toBe(7);
 
@@ -130,7 +131,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
   });
 
   it("control: un conteo sin diferencia (el stock ya coincidía) se cancela como siempre, sin tocar el stock", async () => {
-    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" });
     const conteo = await conteoDe();
     const movimientosAntes = await prisma.movimientoStock.count();
 
@@ -143,8 +144,8 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
   });
 
   it("un conteo PENDIENTE o DESCARTADO sigue sin poder cancelarse (nunca aplicó nada)", async () => {
-    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
-    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 2, fechaConteo: new Date(), accion: "DESCARTAR" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 2, fechaConteo: new Date(), accion: "DESCARTAR" });
     for (const c of await prisma.conteoFisico.findMany({ where: { productoId: mpId } })) {
       expect((await cancelarConteoFisico(c.id)).ok, c.estado).toBe(false);
     }
@@ -155,7 +156,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
     const filas = () => prisma.registroAuditoria.findMany({ where: { entidad: "ConteoFisico", campo: "estado" } });
 
     it("cancelar un AJUSTAR deja una fila RESUELTO → CANCELADO con el ajuste revertido, el actor y la sucursal", async () => {
-      await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR" });
+      await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR" });
       const conteo = await conteoDe();
       expect(await filas()).toHaveLength(0);
 
@@ -169,7 +170,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
     });
 
     it("cancelar un «resuelto» (que nunca aplicó nada) también deja su fila, y dice que no se tocó el stock", async () => {
-      await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
+      await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
       const conteo = await conteoDe("PENDIENTE");
       await resolverConteoPendiente(conteo.id, "resuelto");
 
@@ -181,7 +182,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
     });
 
     it("una cancelación rechazada no deja fila", async () => {
-      await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 2, fechaConteo: new Date(), accion: "DESCARTAR" });
+      await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 2, fechaConteo: new Date(), accion: "DESCARTAR" });
       expect((await cancelarConteoFisico((await conteoDe()).id)).ok).toBe(false);
       expect(await filas()).toHaveLength(0);
     });

@@ -64,7 +64,7 @@ export interface MovimientoParaConciliar {
  * un desvío de receta.
  *
  * CONTROL siempre cuenta — es la propia medición del Conteo Físico (el
- * ajuste que escribe `registrarConteoFisico`/`resolverConteoPendiente`/
+ * ajuste que escribe `registrarConteosFisicos`/`resolverConteoPendiente`/
  * `cancelarConteoFisico`, todos con `Operacion.proceso === "CONTROL"` sin
  * excepción, así que no hace falta mirar `procesoOperacion` para él).
  *

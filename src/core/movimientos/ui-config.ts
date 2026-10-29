@@ -9,7 +9,7 @@ import type { PanelNav } from "@/core/navegacion/panel";
  * (`/movimientos/[proceso]`) — equivalente a `mostrarPanelOperacion_`
  * parametrizado (Movimientos.js:1777-1825). Venta y Control (Conteo
  * Físico) tienen su propia página, no pasan por acá — mismo criterio que
- * ya separa `registrarVenta`/`registrarConteoFisico` de `registrarMovimiento`.
+ * ya separa `registrarVenta`/`registrarConteosFisicos` de `registrarMovimiento`.
  */
 export interface ProcesoUiConfig {
   proceso: Exclude<

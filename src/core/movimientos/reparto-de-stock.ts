@@ -72,7 +72,7 @@ export interface FilaStockParaConteo {
   loteVencimiento: Date | null;
   saldoSistema: number;
   /**
-   * La fila «sin lote» de un producto que TAMBIÉN tiene lotes con fecha: contar sin lote significa contar el TOTAL de todos los lotes (`registrarConteoFisico` compara contra `calcularSaldoTotal`),
+   * La fila «sin lote» de un producto que TAMBIÉN tiene lotes con fecha: contar sin lote significa contar el TOTAL de todos los lotes (`registrarConteoFisicoCasoDeUso` compara contra `calcularSaldoTotal`),
    * así que esa fila lleva el saldo TOTAL del producto y la grilla la rotula «Todos los lotes». Falso en las filas por lote y en el «sin lote» de un producto que no tiene lotes (ahí el grupo
    * sin lote ya es el total).
    */
@@ -92,7 +92,7 @@ export interface ProductoParaConteo {
 /**
  * Las filas de la grilla de Conteo Físico: una por (producto, lote) con saldo != 0 — la precarga (mismo criterio que «Fetch Items from Warehouse» de ERPNext,
  * `stock_reconciliation.py::get_items`: solo lo que ya tiene historial de stock ahí, no el catálogo entero). Excluye PV comunes (mismo filtro que
- * `registrarConteoFisico`, `tieneStockReal`), lo no disponible en la sucursal y el saldo 0 — nada que verificar ahí; si hay algo real que el sistema no sabe (nunca
+ * `registrarConteoFisicoCasoDeUso`, `tieneStockReal`), lo no disponible en la sucursal y el saldo 0 — nada que verificar ahí; si hay algo real que el sistema no sabe (nunca
  * contado, sin factura), se agrega a mano en la grilla, que sí admite contar sobre saldo 0. Ordenadas por nombre (en castellano) y, dentro del producto, por lote
  * (el «sin lote» primero).
  */

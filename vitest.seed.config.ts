@@ -7,7 +7,7 @@ import { resolverUrlDelSeed, verificarConfirmacionExplicita } from "./scripts/de
  * Config separada a propósito para scripts/seed-demo-pizzeria.ts: reusa el
  * mismo mecanismo de vitest.config.ts (mocks de next/headers y sesión, para
  * poder llamar a los server actions reales — registrarMovimiento/
- * registrarVenta/registrarConteoFisico — fuera de un request real de
+ * registrarVenta/registrarConteosFisicos — fuera de un request real de
  * Next.js), pero con su propio `include` para que NUNCA se cuele en
  * `npx vitest run`/`npm test` (que usa vitest.config.ts, sin este archivo).
  *

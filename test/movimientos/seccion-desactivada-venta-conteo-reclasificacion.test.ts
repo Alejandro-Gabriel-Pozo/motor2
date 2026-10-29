@@ -6,7 +6,8 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { registrarConteoFisico, resolverConteoPendiente } from "../../src/server/actions/movimientos/conteo-fisico";
+import { resolverConteoPendiente } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { reclasificarStock } from "../../src/server/actions/stock/reclasificacion";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
@@ -78,7 +79,7 @@ describe("P17: venta, conteo y reclasificación con una sección dada de baja", 
     it("se rechaza contar una sección dada de baja (con ajuste o sin él), con el texto único, y no escribe nada", async () => {
       await darDeBaja(seccionId);
       for (const accion of ["AJUSTAR", "FALTA_MOVIMIENTO", "DESCARTAR"] as const) {
-        const r = await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion });
+        const r = await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion });
         expect(r, accion).toEqual({ ok: false, mensaje: MENSAJE("Depósito A") });
       }
       expect(await prisma.conteoFisico.count()).toBe(0);
@@ -88,11 +89,11 @@ describe("P17: venta, conteo y reclasificación con una sección dada de baja", 
     it("I3: reintentar con la MISMA clave un conteo ya escrito después de la baja devuelve el mensaje original, sin un segundo conteo", async () => {
       const clave = crypto.randomUUID();
       const datos = { productoId: mpId, seccionId, conteoReal: 7, fechaConteo: new Date(), accion: "AJUSTAR" as const, claveIdempotencia: clave };
-      const original = await registrarConteoFisico(datos);
+      const original = await registrarUnConteoFisico(datos);
       expect(original.ok, original.mensaje).toBe(true);
       await darDeBaja(seccionId);
 
-      const reintento = await registrarConteoFisico(datos);
+      const reintento = await registrarUnConteoFisico(datos);
 
       expect(reintento).toEqual({ ok: true, mensaje: original.mensaje });
       expect(await prisma.conteoFisico.count()).toBe(1);
@@ -100,7 +101,7 @@ describe("P17: venta, conteo y reclasificación con una sección dada de baja", 
     });
 
     it("un conteo PENDIENTE de antes de la baja se puede resolver igual (sin cambio: resolver no ingresa mercadería)", async () => {
-      await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
+      await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 15, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
       const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
       await darDeBaja(seccionId);
 

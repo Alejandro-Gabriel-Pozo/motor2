@@ -5,7 +5,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { generarReporteDiferenciasAjustes } from "../../src/server/consultas/reportes/diferencias-ajustes";
 import { setFrecuenciaConteo } from "../../src/server/actions/stock/frecuencia-conteo";
 
@@ -50,7 +50,7 @@ describe("generarReporteDiferenciasAjustes", () => {
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: -1 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 6, fechaConteo: new Date(), accion: "AJUSTAR" }); // saldoSistema=9, diferencia=-3
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId, conteoReal: 6, fechaConteo: new Date(), accion: "AJUSTAR" }); // saldoSistema=9, diferencia=-3
 
     const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
     const fila = filas.find((f) => f.productoId === mp.id)!;
@@ -134,7 +134,7 @@ describe("generarReporteDiferenciasAjustes", () => {
       await setFrecuenciaConteo(mp.id, 30);
       // conteoReal distinto del saldo del sistema (10), para que quede un movimiento CONTROL real — con diferencia 0 no se escribe nada.
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
-      await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 8, fechaConteo: new Date(), accion: "AJUSTAR" });
+      await registrarUnConteoFisico({ productoId: mp.id, seccionId, conteoReal: 8, fechaConteo: new Date(), accion: "AJUSTAR" });
 
       const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       const fila = filas.find((f) => f.productoId === mp.id)!;
@@ -157,7 +157,7 @@ describe("generarReporteDiferenciasAjustes", () => {
       await setFrecuenciaConteo(mp.id, 7);
       const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       await registrarMovimiento({ proceso: "COMPRA", fecha: hace30Dias, seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
-      await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 8, fechaConteo: hace30Dias, accion: "AJUSTAR" });
+      await registrarUnConteoFisico({ productoId: mp.id, seccionId, conteoReal: 8, fechaConteo: hace30Dias, accion: "AJUSTAR" });
 
       const filas = await generarReporteDiferenciasAjustes(sucursalId, prisma, new Date());
       const fila = filas.find((f) => f.productoId === mp.id)!;

@@ -21,7 +21,7 @@ const TAMANO_PAGINA_CONTEOS = 50;
  * casi todos los demás reportes del módulo (hallazgo de la auditoría).
  *
  * LECTURA: se mudó TAL CUAL acá desde `conteo-fisico.ts` en la Task #41, Fase M13e2 (docs/arquitectura-casos-de-uso-2026-09-27.md,
- * mismo criterio que M13d con `lecturas-reclasificacion.ts`): con `registrarConteoFisico`/`registrarConteosFisicos` (M13e1) y
+ * mismo criterio que M13d con `lecturas-reclasificacion.ts`): con `registrarConteosFisicos` (M13e1) y
  * `resolverConteoPendiente`/`cancelarConteoFisico` (M13e2) ya migrados a caso de uso, `conteo-fisico.ts` entró en
  * `ACCIONES_CON_CASO_DE_USO`, y esa regla de dependency-cruiser (`accion-migrada-sin-orquestacion`) vale para el archivo ENTERO — no
  * admite `@/lib/db` en runtime. Esta lectura no es una mutación (no entra en la Fase M) y una Server Action no puede importar

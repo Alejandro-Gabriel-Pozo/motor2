@@ -5,7 +5,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { generarConciliacionVencimientos } from "../../src/server/consultas/reportes/vencimientos";
 import type { Db } from "../../src/lib/db-tipos";
 
@@ -39,11 +39,11 @@ describe("conciliación de vencimientos: las ventas y consumos del período sale
     const mp = await sembrarProductoDisponible({ codigo, nombre, tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const lote = new Date("2026-03-10");
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: contado, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: contado, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: contado, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
     for (const cantidad of consumos) {
       await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destinoId, items: [{ productoId: mp.id, cantidad, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
     }
-    await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
     return mp;
   }
 

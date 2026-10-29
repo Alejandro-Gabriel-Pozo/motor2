@@ -11,7 +11,7 @@ import type { Transaccion } from "@/lib/db-tipos";
 
 /**
  * Toda escritura de esta porción (registrarMovimiento/registrarVenta/
- * registrarConteoFisico/...) suma el Kardex para validar stock y recién
+ * registrarConteosFisicos/...) suma el Kardex para validar stock y recién
  * después escribe, DENTRO de la misma transacción — el equivalente real de
  * `conLock_`/`LockService` (Apps Script: un lock global de script que
  * serializaba TODA escritura, ver Movimientos.js). Acá no hay un lock de

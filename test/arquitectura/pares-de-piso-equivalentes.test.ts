@@ -53,7 +53,7 @@ const PARES: ParDePiso[] = [
     puertas: [
       {
         archivo: "src/server/actions/movimientos/conteo-fisico.ts",
-        funciones: ["registrarConteoFisico", "registrarConteosFisicos", "resolverConteoPendiente"],
+        funciones: ["registrarConteosFisicos", "resolverConteoPendiente"],
         ayudante: "puedeAjustar",
       },
     ],

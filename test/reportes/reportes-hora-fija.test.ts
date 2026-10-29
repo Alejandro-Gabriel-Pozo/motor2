@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { AHORA_DE_LA_CORRIDA, DIA_MS, enElFuturo, enElPasado } from "../setup/tiempo";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { setFrecuenciaConteo } from "../../src/server/actions/stock/frecuencia-conteo";
 import { generarReportePerdidas } from "../../src/server/consultas/reportes/perdidas";
 import { generarReporteDevoluciones } from "../../src/server/consultas/reportes/devoluciones";
@@ -89,7 +89,7 @@ describe("los reportes de la sucursal miden el tiempo contra el `ahora` que reci
     await setFrecuenciaConteo(mp.id, 7);
     const haceTresDias = enElPasado(3 * DIA_MS);
     await registrarMovimiento({ proceso: "COMPRA", fecha: haceTresDias, seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 8, fechaConteo: haceTresDias, accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId, conteoReal: 8, fechaConteo: haceTresDias, accion: "AJUSTAR" });
 
     const alDia = (await generarReporteDiferenciasAjustes(sucursalId, prisma, AHORA_DE_LA_CORRIDA)).find((f) => f.productoId === mp.id)!;
     expect(alDia.conteoVencido).toBe(false);

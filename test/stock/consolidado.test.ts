@@ -5,7 +5,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
 import { prisma } from "../setup/test-db";
 
@@ -51,14 +51,14 @@ describe("calcularStockConsolidado", () => {
   it("conteo sin diferencia: CONCILIADO; con diferencia: CON_DESVIO", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_3", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" });
 
     let filas = await calcularStockConsolidado(sucursalId, prisma);
     expect(filas.find((f) => f.productoId === mp.id)?.estado).toBe("CONCILIADO");
 
     // Ahora se desvía: entra una compra nueva sin que se vuelva a contar.
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 20, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId, conteoReal: 20, fechaConteo: new Date(), accion: "FALTA_MOVIMIENTO" });
 
     filas = await calcularStockConsolidado(sucursalId, prisma);
     const fila = filas.find((f) => f.productoId === mp.id);
@@ -81,7 +81,7 @@ describe("calcularStockConsolidado", () => {
   it("un conteo DESCARTADO no cuenta como último conteo válido", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_5", nombre: "Yerba", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mp.id, seccionId, conteoReal: 99, fechaConteo: new Date(), accion: "DESCARTAR" });
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId, conteoReal: 99, fechaConteo: new Date(), accion: "DESCARTAR" });
 
     const filas = await calcularStockConsolidado(sucursalId, prisma);
     const fila = filas.find((f) => f.productoId === mp.id);
@@ -114,7 +114,7 @@ describe("calcularStockConsolidado", () => {
     const adminNorte = await crearUsuarioConMembresia({ email: "norte@test.com", sucursalId: norte.id, rolId: rolAdmin.id });
     await mockearUsuarioActual({ id: adminNorte.id, email: adminNorte.email, nombre: null });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionNorte.id, items: [{ productoId: mp.id, cantidad: 100 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mp.id, seccionId: seccionNorte.id, conteoReal: 100, fechaConteo: new Date(), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId: seccionNorte.id, conteoReal: 100, fechaConteo: new Date(), accion: "AJUSTAR" });
 
     const central = (await calcularStockConsolidado(sucursalId, prisma)).filter((f) => f.productoId === mp.id);
     expect(central).toHaveLength(1);

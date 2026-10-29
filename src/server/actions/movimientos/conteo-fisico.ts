@@ -15,31 +15,8 @@ import { registrarConteoFisicoCasoDeUso } from "./casos-de-uso/registrar-conteo-
 import { resolverConteoPendienteCasoDeUso } from "./casos-de-uso/resolver-conteo-pendiente";
 import { cancelarConteoFisicoCasoDeUso } from "./casos-de-uso/cancelar-conteo-fisico";
 
-/** Lo que recibe `registrarConteoFisico`/`registrarConteosFisicos`. Vive en `conteo-fisico.schema.ts` (lo usa también el caso de uso). */
+/** Lo que recibe cada fila de `registrarConteosFisicos`. Vive en `conteo-fisico.schema.ts` (lo usa también el caso de uso). */
 export type DatosConteoFisico = ComandoConteoFisico;
-
-/**
- * Port de _registrarConteoFisicoSinRecalculo_ (Stock.js:1523-1649) — camino
- * PROPIO, no pasa por registrarMovimiento (Movimientos.js nunca lo hace
- * pasar por armarRegistroMovimiento_ tampoco). Mismo motivo que Apps
- * Script: Control es un proceso distinto de Ajuste (permite distinguir
- * "conteo físico formal" de "corrección manual suelta"), con su propia
- * bitácora (ConteoFisico) además del Kardex.
- *
- * Desde la Task #41 (Fase M, M13e1 — docs/arquitectura-casos-de-uso-2026-09-27.md; migración PARCIAL, como P1) esta Server Action es un
- * adaptador fino: permiso (`conPermiso("proceso_control")`) → formato del comando (`guardComandoConteoFisico`,
- * `core/features/movimientos/conteo-fisico.guard.ts`: sección en blanco) → caso de uso (`casos-de-uso/registrar-conteo-fisico.ts`:
- * sección propia, producto, disponibilidad, "tiene stock real", cantidad, transacción, persistencia) → `aResultadoAccion`.
- */
-export async function registrarConteoFisico(datos: DatosConteoFisico): Promise<ResultadoAccion> {
-  return conPermiso("proceso_control", async (ctx) => {
-    const comando = guardComandoConteoFisico(datos, ctx.ahora);
-    if (!comando.ok) return error(comando.mensaje);
-    // S-09 (D3, defecto): aplicar la diferencia al stock es un Ajuste → `proceso_ajuste`, además de `proceso_control`. El operario registra el conteo («Falta movimiento»).
-    if (comando.valor.accion === "AJUSTAR" && !(await puedeAjustar(ctx))) return error(MENSAJE_AJUSTAR_SIN_PERMISO);
-    return aResultadoAccion(await registrarConteoFisicoCasoDeUso(ctx, comando.valor));
-  });
-}
 
 /**
  * S-09 (plan de endurecimiento de seguridad, tanda T5; D3 del dueño sin respuesta: se ejecuta con el DEFECTO, revertible y pendiente de confirmar). Aplicar la diferencia de un conteo
@@ -68,7 +45,19 @@ export type ResultadoConteos = { ok: true; mensaje: string; resultados: Resultad
 const MAX_CONTEOS_POR_LLAMADA = 60;
 
 /**
- * Toda la grilla de Conteo Físico en UNA llamada. Antes la pantalla llamaba a `registrarConteoFisico` una vez por fila: si la
+ * Port de _registrarConteoFisicoSinRecalculo_ (Stock.js:1523-1649) — camino
+ * PROPIO, no pasa por registrarMovimiento (Movimientos.js nunca lo hace
+ * pasar por armarRegistroMovimiento_ tampoco). Mismo motivo que Apps
+ * Script: Control es un proceso distinto de Ajuste (permite distinguir
+ * "conteo físico formal" de "corrección manual suelta"), con su propia
+ * bitácora (ConteoFisico) además del Kardex.
+ *
+ * Desde la Task #41 (Fase M, M13e1 — docs/arquitectura-casos-de-uso-2026-09-27.md; migración PARCIAL, como P1) esta Server Action es un
+ * adaptador fino: permiso (`conPermiso("proceso_control")`) → formato del comando por fila (`guardComandoConteoFisico`,
+ * `core/features/movimientos/conteo-fisico.guard.ts`: sección en blanco) → caso de uso (`casos-de-uso/registrar-conteo-fisico.ts`:
+ * sección propia, producto, disponibilidad, "tiene stock real", cantidad, transacción, persistencia) → `aResultadoAccion`.
+ *
+ * Toda la grilla de Conteo Físico en UNA llamada. Antes la pantalla llamaba a una acción de un solo conteo (`registrarConteoFisico`, ya retirada) una vez por fila: si la
  * sesión vencía a mitad del recorrido, las filas ya escritas quedaban escritas y la persona no recibía el parcial (la
  * siguiente llamada la mandaba al login). Ahora la sesión y el permiso se comprueban UNA vez, al principio, y el recorrido
  * corre completo en el servidor. Se conserva la semántica por fila: cada conteo tiene su propia transacción y su propio
@@ -122,7 +111,7 @@ export async function registrarConteosFisicos(filas: DatosConteoFisico[]): Promi
  *
  * Gate: Apps Script no gatea esta función explícitamente (accesible solo
  * desde el panel de Conteo Físico, ya gateado a nivel menú) — acá se gatea
- * igual que registrarConteoFisico ('proceso_control'), mismo criterio que
+ * igual que registrarConteosFisicos ('proceso_control'), mismo criterio que
  * "toda mutación pasa por conPermiso" (plan de migración, convenciones). S-09 (D3, defecto): la rama «ajustar» exige además `proceso_ajuste` (ver `puedeAjustar`).
  *
  * Desde la Task #41 (Fase M, M13e2 — docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso

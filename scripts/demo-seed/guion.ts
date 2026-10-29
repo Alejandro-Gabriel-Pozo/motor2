@@ -73,7 +73,7 @@ export interface EventoConteoFisico {
    * Diferencia contra el saldo del sistema EN ESE MOMENTO (negativo = faltante, positivo = sobrante) — NO un valor absoluto: el
    * guion es puro y no simula el saldo acumulado del Kardex (eso lo hace de verdad Postgres, corriendo cada evento anterior). El
    * ejecutor lee el saldo real al llegar a este evento y calcula `conteoReal = saldoActual + ajusteRelativo` antes de llamar a
-   * `registrarConteoFisico` — mismo patrón que ya usaba el seed de 30 días (`saldoActual - 1.4`), generalizado acá.
+   * `registrarConteosFisicos` — mismo patrón que ya usaba el seed de 30 días (`saldoActual - 1.4`), generalizado acá.
    */
   ajusteRelativo: number;
   accion: "AJUSTAR" | "FALTA_MOVIMIENTO" | "DESCARTAR";
