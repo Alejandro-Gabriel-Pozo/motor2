@@ -14,7 +14,7 @@ import { anularVenta } from "../../src/server/actions/movimientos/venta";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { generarVentasPorOpcion } from "../../src/server/consultas/reportes/ventas-por-opcion";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
-import { ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, fechaDeColumnaDate } from "../../src/core/tiempo/zona-horaria";
 
 /**
  * «Ventas por opción» de Período (2026-10-29), contra Postgres real. Dos partes:
@@ -102,7 +102,7 @@ function esperado(specs: readonly Spec[]) {
 async function sembrarMundo(specs: readonly Spec[], o: { sucursalActiva: string; seccionActiva: string; sucursalOtra: string; seccionOtra: string }, ninguna: { grupoId: string; opcionId: string; versionId: string }, incluida: { grupoId: string; opcionId: string; versionId: string }) {
   let numeroDeMesa = 90;
   const mesa = async (sucursalId: string) => (await prisma.mesa.create({ data: { sucursalId, numero: numeroDeMesa++ } })).id;
-  const cuentaDe = async (sucursalId: string) => (await prisma.cuenta.create({ data: { mesaId: await mesa(sucursalId), abiertaPorId: s.admin.id, cerradaEn: new Date("2026-10-20T12:00:00Z") } })).id;
+  const cuentaDe = async (sucursalId: string) => (await prisma.cuenta.create({ data: { mesaId: await mesa(sucursalId), abiertaPorId: s.admin.id, cerradaEn: new Date("2026-10-20T12:00:00Z"), cerradaPorId: s.admin.id } })).id;
   const cuentas = { activa: await cuentaDe(o.sucursalActiva), otra: await cuentaDe(o.sucursalOtra) };
   const seccionDe = { activa: o.seccionActiva, otra: o.seccionOtra };
   const sucursalDe = { activa: o.sucursalActiva, otra: o.sucursalOtra };
@@ -207,7 +207,7 @@ describe("ventas por opción: el oráculo de combinaciones", () => {
     const otra = await prisma.sucursal.create({ data: { nombre: "Norte" } });
     const seccionOtra = await sembrarSeccion(otra.id, "Salón Norte");
     // Lo que el café del salón no trae: la INCLUIDA «Viene con» y la «ninguna» de «Leche».
-    const grupoIncluida = await prisma.grupoDeOpciones.create({ data: { nombre: "Viene con", tipo: "INCLUIDA", cantidadMinima: 0, cantidadMaxima: 1 } });
+    const grupoIncluida = await prisma.grupoDeOpciones.create({ data: { nombre: "Viene con", tipo: "INCLUIDA", cantidadMinima: 1, cantidadMaxima: 1 } });
     const azucar = await prisma.opcionDeGrupo.create({ data: { grupoId: grupoIncluida.id, nombre: "Azúcar", orden: 1 } });
     const vAzucar = await prisma.versionDeOpcion.create({ data: { opcionId: azucar.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "0.00", creadoPorId: s.admin.id } });
     const sinLeche = await prisma.opcionDeGrupo.create({ data: { grupoId: c.grupoLecheId, nombre: "Sin leche", orden: 3, esNinguna: true } });
@@ -241,7 +241,7 @@ describe("ventas por opción: el oráculo de combinaciones", () => {
     const opcionAjena = await testigo.opcionDeGrupo.create({ data: { grupoId: grupoAjeno.id, nombre: "Mediano", orden: 1 } });
     const versionAjena = await testigo.versionDeOpcion.create({ data: { opcionId: opcionAjena.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "0.00", factorEscala: "1.0000", creadoPorId: s.admin.id } });
     const mesaAjena = await testigo.mesa.create({ data: { sucursalId: sucursalAjena.id, numero: 1 } });
-    const cuentaAjena = await testigo.cuenta.create({ data: { mesaId: mesaAjena.id, abiertaPorId: s.admin.id, cerradaEn: new Date("2026-10-20T12:00:00Z") } });
+    const cuentaAjena = await testigo.cuenta.create({ data: { mesaId: mesaAjena.id, abiertaPorId: s.admin.id, cerradaEn: new Date("2026-10-20T12:00:00Z"), cerradaPorId: s.admin.id } });
     const operacionAjena = await testigo.operacion.create({ data: { sucursalId: sucursalAjena.id, proceso: "VENTA", fecha: new Date(INSTANTE.dentro), usuarioId: s.admin.id } });
     await testigo.movimientoStock.create({
       data: { operacionId: operacionAjena.id, productoId: productoAjeno.id, seccionId: seccionAjena.id, proceso: "VENTA", cantidad: -7, detalle: "Venta", precioTotal: "7000.00", precioPorUnidadStock: "1000.0000", costoUnitarioVenta: 1 },
@@ -266,7 +266,9 @@ describe("ventas por opción: el oráculo de combinaciones", () => {
     expect(filas.some((f) => f.unidades === 7)).toBe(false);
     // La otra sucursal de la empresa se ve con el alcance de ELLA, y solo con lo suyo (mismo oráculo cambiando la sucursal).
     const deLaOtra = await generarVentasPorOpcion(otra.id, DIA, DIA, baseDeTest({ lectura: [otra.id], escritura: [otra.id] }).db, ZONA_ARGENTINA);
-    expect(porClave(deLaOtra)).toEqual(esperado(specs.map((e) => ({ ...e, sucursal: e.sucursal === "activa" ? "otra" : "activa" }))).sort((a, b) => `${a.grupo}|${a.opcion}`.localeCompare(`${b.grupo}|${b.opcion}`)));
+    expect(porClave(deLaOtra)).toEqual(
+      esperado(specs.filter((e) => e.sucursal === "otra").map((e): Spec => ({ ...e, sucursal: "activa" }))).sort((a, b) => `${a.grupo}|${a.opcion}`.localeCompare(`${b.grupo}|${b.opcion}`))
+    );
   }, 120_000);
 
   it("los bordes del día argentino y un rango de varios días: 23:30 del último día entra, 00:30 del siguiente no; el día 16 completo trae lo suyo", async () => {
@@ -308,8 +310,8 @@ describe("ventas por opción: el flujo real de la caja", () => {
   }
 
   it("la suma de unidades del grupo MEDIDA es la del producto en «Ventas por producto»; los adicionales no suman; un ítem anulado antes de cobrar y una venta anulada después restan", async () => {
-    const hoy = new Date();
-    const dia = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate()));
+    // El día de HOY en Argentina (la zona con la que corta el reporte), como fecha «de solo día».
+    const dia = fechaDeColumnaDate(diaDeCalendario(new Date(), ZONA_ARGENTINA));
     // Café grande con almendras y un shot; dos chicos (uno se anula antes de cobrar); un mediano suelto.
     await cobrar([{ productoId: c.cafeId, cantidad: 1, opciones: [elegida(c, c.grandeId), elegida(c, c.almendrasId), elegida(c, c.shotId)] }]);
     await cobrar([{ productoId: c.cafeId, cantidad: 2, opciones: [elegida(c, c.chicoId)] }], async (cuentaId) => {
