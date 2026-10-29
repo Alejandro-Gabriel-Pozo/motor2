@@ -61,7 +61,7 @@ export type { FilaSaludProducto } from "./salud-por-producto";
 export type { FilaVentaSinReceta } from "./ventas-sin-receta";
 // Ventas con opciones (2026-10-29): las ventas por opción elegida, de una sección de Período.
 export { armarVentasPorOpcion } from "./ventas-por-opcion";
-export type { FilaVentaPorOpcion, VentaPorOpcionCruda } from "./ventas-por-opcion";
+export type { FilaVentaPorOpcion } from "./ventas-por-opcion";
 export type { OperacionEncontrada } from "./trazabilidad";
 export type { ItemOperacion } from "./trazabilidad";
 export type { FilaValuacionInventario } from "./valuacion";
