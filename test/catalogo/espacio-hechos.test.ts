@@ -110,7 +110,7 @@ describe("el espacio del producto: hechos y marco", () => {
     });
 
     it("PRIVACIDAD de las opciones: sin permiso para el paso de la receta no se lee ni la receta ni las opciones que la reemplazan; con el permiso, sí", async () => {
-      await hechosDelProducto(prisma, sinReceta, sucursalId, { opciones: true, receta: false, carta: true });
+      await hechosDelProducto(prisma, sinReceta, sucursalId, NADA);
       expect(cargarOrigenDeStockParaVender).not.toHaveBeenCalled();
       expect(cargarOpcionesParaVender).not.toHaveBeenCalled();
       await hechosDelProducto(prisma, sinReceta, sucursalId, { opciones: false, receta: true, carta: false });

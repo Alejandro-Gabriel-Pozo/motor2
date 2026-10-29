@@ -38,7 +38,7 @@ async function venderCafeConAdicional(opciones: ReturnType<typeof elegida>[]) {
 describe("«Ventas sin receta» y el adicional sin consumo (caracterización)", () => {
   it("un adicional SIN consumo (Crema) se vende, no descuenta nada y APARECE en «Ventas sin receta» con el nombre de su producto ancla; el café que lo lleva, no", async () => {
     const crema = await sembrarCremaDelCafe(s, c);
-    await venderCafeConAdicional([elegida(c, c.chicoId), elegida(c, crema.cremaId)]);
+    await venderCafeConAdicional([elegida(c, c.chicoId), { opcionId: crema.cremaId, cantidad: 1, versionDeOpcionId: crema.versionId }]);
 
     // La operación del adicional: una VENTA de su ancla, colgada de la del café, sin ninguna fila CONSUMO.
     const delAdicional = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", operacionPadreId: { not: null } }, include: { movimientos: true } });

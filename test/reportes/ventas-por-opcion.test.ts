@@ -100,7 +100,8 @@ function esperado(specs: readonly Spec[]) {
 
 /** Un mundo de ventas sembradas directo (sin RLS, como el dueño de pruebas): todas las combinaciones de `specs` sobre el café de la sucursal dada. */
 async function sembrarMundo(specs: readonly Spec[], o: { sucursalActiva: string; seccionActiva: string; sucursalOtra: string; seccionOtra: string }, ninguna: { grupoId: string; opcionId: string; versionId: string }, incluida: { grupoId: string; opcionId: string; versionId: string }) {
-  const mesa = async (sucursalId: string) => (await prisma.mesa.create({ data: { sucursalId, numero: 90 } })).id;
+  let numeroDeMesa = 90;
+  const mesa = async (sucursalId: string) => (await prisma.mesa.create({ data: { sucursalId, numero: numeroDeMesa++ } })).id;
   const cuentaDe = async (sucursalId: string) => (await prisma.cuenta.create({ data: { mesaId: await mesa(sucursalId), abiertaPorId: s.admin.id, cerradaEn: new Date("2026-10-20T12:00:00Z") } })).id;
   const cuentas = { activa: await cuentaDe(o.sucursalActiva), otra: await cuentaDe(o.sucursalOtra) };
   const seccionDe = { activa: o.seccionActiva, otra: o.seccionOtra };

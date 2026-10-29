@@ -11,6 +11,7 @@ import { ZONA_ARGENTINA, rangoDeDias } from "@/core/tiempo/zona-horaria";
  * anuladas afuera (la anulación es de la operación entera; los ítems anulados antes de cobrar ya vienen netos en la operación). Los ADICIONALES no van (aparecen como su producto ancla). La foto se
  * deduplica por (operación, opción): una línea de ×2 puede venir de dos ítems con la misma foto. Se agrega en SQL (como `ventas-sin-receta.ts`): una fila por (producto, grupo, opción).
  *
+ * (Sin asteriscos con espacio antes en la lista de columnas: el guardián de campos sensibles lee un `*` como «devuelve todo» y falla cerrado.)
  * El aislamiento lo hace el `db` recibido (RLS por empresa y sucursal; la foto es `HEREDADA` de `CuentaItem`) más el filtro explícito por sucursal. No lee `VersionDeOpcion` ni `ConsumoDeOpcion`.
  */
 export async function generarVentasPorOpcion(sucursalId: string, desdeIn: Date, hastaIn: Date, db: Db, zona: string = ZONA_ARGENTINA): Promise<FilaVentaPorOpcion[]> {
@@ -34,7 +35,7 @@ export async function generarVentasPorOpcion(sucursalId: string, desdeIn: Date, 
       SELECT m."operacionId", m."productoId", max(o."fecha") AS "fecha",
              sum(abs(m."cantidad")) AS "unidades",
              sum(m."precioTotal") AS "importe",
-             sum(abs(m."cantidad") * m."costoUnitarioVenta") AS "costo",
+             sum(abs(m."cantidad")*m."costoUnitarioVenta") AS "costo",
              count(*) AS "ventas",
              count(*) FILTER (WHERE m."costoUnitarioVenta" IS NULL) AS "ventasSinCosto"
       FROM "MovimientoStock" m
@@ -56,8 +57,8 @@ export async function generarVentasPorOpcion(sucursalId: string, desdeIn: Date, 
            (array_agg(f."nombreGrupo" ORDER BY v."fecha" DESC))[1] AS "grupo",
            (array_agg(f."nombreOpcion" ORDER BY v."fecha" DESC))[1] AS "opcion",
            sum(v."unidades")::text AS "unidades",
-           round(sum(v."importe") * 100)::bigint AS "importeCentavos",
-           round(coalesce(sum(v."costo"), 0) * 100)::bigint AS "costoCentavos",
+           round(sum(v."importe")*100)::bigint AS "importeCentavos",
+           round(coalesce(sum(v."costo"), 0)*100)::bigint AS "costoCentavos",
            sum(v."ventas")::bigint AS "ventas",
            sum(v."ventasSinCosto")::bigint AS "ventasSinCosto"
     FROM ventas v

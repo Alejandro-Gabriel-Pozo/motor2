@@ -223,6 +223,5 @@ export const SIN_MARCA_PROPIA: Readonly<Record<string, string>> = {
   "consulta|consultas/reportes/tickets-emitidos.ts|obtenerNumeroDeMesa": "devuelve solo el número de la mesa",
   "consulta|consultas/reportes/vencimientos.ts|generarConciliacionVencimientos": "concilia lotes vencidos o por vencer; el mundo no siembra un lote vencido, así que es vacío",
   "consulta|consultas/reportes/ventas-sin-receta.ts|generarReporteVentasSinReceta": "lista PV vendidos sin receta; el mundo vende una MP, así que es vacío",
-  "consulta|consultas/reportes/ventas-por-opcion.ts|generarVentasPorOpcion": "agrega ventas con opciones elegidas; el mundo no siembra ventas con la foto de lo elegido, así que es vacío (el aislamiento con datos lo prueba test/reportes/ventas-por-opcion.test.ts, con una empresa ajena)",
   "consulta|consultas/stock/stock-minimo.ts|resolverStockMinimo": "devuelve solo el mínimo (un número)",
 };

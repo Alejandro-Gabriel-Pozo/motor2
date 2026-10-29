@@ -87,6 +87,7 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   "src/server/consultas/reportes/periodo-ratio.ts": P("MovimientoStock.precioTotal"),
   "src/server/consultas/reportes/periodo.ts": P("MovimientoStock.precioTotal", "MovimientoStock.precioPorUnidadStock", "MovimientoStock.costoUnitarioVenta", "Operacion.nroFactura", "Operacion.proveedor", "Operacion.proveedorId"),
   "src/server/consultas/reportes/tickets-emitidos.ts": P("User.email"),
+  "src/server/consultas/reportes/ventas-por-opcion.ts": P("MovimientoStock.precioTotal", "MovimientoStock.costoUnitarioVenta"),
   "src/server/consultas/stock/sugerencia-clase-a.ts": P("MovimientoStock.precioTotal"),
   "src/server/lecturas/catalogo/ofertas-de-proveedor.ts": P("MovimientoStock.precioPorUnidadStock", "Operacion.proveedorId"),
   "src/server/lecturas/permisos/gerencia.ts": I("Lectura interna del caso de uso de la gerencia (quién la tiene hoy): no llega a ninguna pantalla.", "User.email"),
