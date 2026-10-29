@@ -3619,6 +3619,9 @@ model ProductoAdmiteGrupo {
   /// ABSOLUTO o DIFERENCIA (CHECK), el espejo de `MODOS_DE_PRECIO_DE_MEDIDA`; NULL = sin definir.
   modoPrecio     String?
   activo         Boolean         @default(true)
+  /// «Mostrar este grupo en la carta» (2026-10-29, decisión del dueño: plato por plato): `false` = el dueño pidió que la carta no lea este grupo en este producto. Es la DECISIÓN guardada; la carta solo la respeta si el grupo
+  /// además no cambia el precio en el producto (`seOcultaEnLaCarta`, `core/opciones/lectura-en-carta.ts`). No entra al POS, al ticket, al stock ni a los reportes.
+  seMuestraEnCarta Boolean       @default(true)
   /// Control optimista (>= 1, CHECK).
   version        Int             @default(1)
   creadoEn       DateTime        @default(now())

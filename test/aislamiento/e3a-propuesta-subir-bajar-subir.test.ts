@@ -74,7 +74,8 @@ const bajar = async () => {
 describe("E3a-M: subir, bajar y subir sobre una base temporal con todo lo anterior aplicado", () => {
   it("0. las dos migraciones existen, son las últimas, en orden, avisan la autorización y tienen down.sql", () => {
     const carpetas = readdirSync(RAIZ, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
-    expect(carpetas.slice(-2)).toEqual([TABLAS, POLITICAS]);
+    // Las últimas DE ESTA ETAPA: después vinieron migraciones de otras etapas (20261029120000, «Mostrar este grupo en la carta», decisión del dueño 2026-10-29), que no las desplazan de su lugar relativo.
+    expect(carpetas.filter((c) => c <= POLITICAS).slice(-2)).toEqual([TABLAS, POLITICAS]);
     for (const m of [TABLAS, POLITICAS]) {
       expect(sql(m, "migration.sql").split("\n")[0]).toContain("REQUIERE AUTORIZACIÓN EXPRESA");
       expect(sql(m, "down.sql").length).toBeGreaterThan(0);
