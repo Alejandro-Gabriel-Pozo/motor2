@@ -1,4 +1,4 @@
-import type { TipoDeGrupoDeOpciones } from "./tipos";
+import type { DiferenciaDePrecio, TipoDeGrupoDeOpciones } from "./tipos";
 
 /**
  * «Se lee en la carta como» (Fase 4 de la ola «precio y carta», ADR-035, DEC-34): cómo lee la CARTA una opción de un grupo que tiene prefijo (`GrupoDeOpciones.prefijoEnCarta`). Puro, sin Prisma.
@@ -130,3 +130,62 @@ export function admitePrefijoEnCarta(tipo: TipoDeGrupoDeOpciones): boolean {
 
 export const MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA =
   "«Se lee en la carta como» solo va en un grupo de variantes o de tamaños: en lo incluido y en los adicionales la carta usa el nombre del grupo como rótulo.";
+
+/**
+ * «Mostrar este grupo en la carta» (decisión del dueño, 2026-10-29; ADR-035, «Grupo que no se lee en la carta»): la carta deja de leer un grupo de opciones de UN producto cuando el dueño lo apagó
+ * (`ProductoAdmiteGrupo.seMuestraEnCarta = false`) Y el grupo no cambia el precio en ese producto. Puro, sin Prisma. Es el ÚNICO lugar que decide qué grupos lee la carta (pública, impresa, vista
+ * previa y «Va a mostrar»); el POS, el ticket, el stock y los reportes no lo consultan.
+ *
+ * La regla (I2: ante la duda, se muestra): solo se oculta una VARIANTE o una INCLUIDA, y solo si NINGUNA opción ofrecida (activa y admitida por el producto) suma, resta o fija un precio. Lo agotado
+ * hoy NO cuenta (para que la carta en pantalla y la impresa coincidan). Si después alguien le carga un recargo a una opción, la carta vuelve a mostrar el grupo sola, sin escribir nada.
+ */
+
+/** Lo que la regla lee de una opción de un grupo en un producto (estructural: la venta y el comando de admisión la arman desde lo que ya leyeron). */
+export interface OpcionParaOcultarEnCarta {
+  nombre: string;
+  esNinguna: boolean;
+  /** La opción se puede ofrecer en este producto: activa para la empresa y admitida (fila activa) por el producto. Lo agotado hoy en la sucursal no cuenta. */
+  ofrecida: boolean;
+  /** La diferencia que rige en este producto (la del producto si la sobrescribe, si no la de la versión vigente); `null` = ninguna. */
+  diferencia: DiferenciaDePrecio | null;
+  /** El precio propio de la opción en este producto (solo una medida lo tiene); en cualquier otro tipo de grupo cuenta como un cambio de precio (configuración inválida: nunca se oculta). */
+  precioAbsoluto: number | null;
+}
+
+/** Las opciones ofrecidas que cambian el precio del producto: una diferencia distinta de 0 (monto o porcentaje) o un precio propio. La «ninguna» nunca cuenta. */
+export function opcionesQueCambianElPrecio<O extends OpcionParaOcultarEnCarta>(opciones: readonly O[]): O[] {
+  return opciones.filter((o) => {
+    if (!o.ofrecida || o.esNinguna) return false;
+    if (o.precioAbsoluto !== null) return true;
+    if (o.diferencia === null) return false;
+    return (o.diferencia.tipo === "MONTO" ? o.diferencia.monto : o.diferencia.porcentaje) !== 0;
+  });
+}
+
+/** Solo un grupo de variantes o de incluidas puede ocultarse: un tamaño o un adicional cambian el precio. */
+const sePuedeOcultarElTipo = (tipo: TipoDeGrupoDeOpciones): boolean => tipo === "VARIANTE" || tipo === "INCLUIDA";
+
+/** Si la carta NO lee este grupo en este producto: interruptor apagado, tipo que se puede ocultar y ninguna opción ofrecida cambia el precio. `seMuestraEnCarta` ausente = se muestra. */
+export function seOcultaEnLaCarta(g: { tipo: TipoDeGrupoDeOpciones; seMuestraEnCarta?: boolean; opciones: readonly OpcionParaOcultarEnCarta[] }): boolean {
+  return g.seMuestraEnCarta === false && sePuedeOcultarElTipo(g.tipo) && opcionesQueCambianElPrecio(g.opciones).length === 0;
+}
+
+export const MENSAJE_OCULTAR_SOLO_VARIANTE_O_INCLUIDA = "Solo un grupo de variantes o de incluidas se puede ocultar en la carta: un tamaño o un adicional cambian el precio.";
+
+/** Los nombres entre comillas, unidos con «y» («Ojo de bife» y «Bife de chorizo»). */
+function nombresConY(nombres: readonly string[]): string {
+  const entre = nombres.map((n) => `«${n}»`);
+  return entre.length <= 1 ? (entre[0] ?? "") : `${entre.slice(0, -1).join(", ")} y ${entre[entre.length - 1]}`;
+}
+
+/**
+ * Por qué NO se puede dejar apagado «Mostrar este grupo en la carta» con el estado que quedaría (el mensaje, listo para el dueño), o `null` si se puede: el tipo no se oculta, o alguna opción
+ * ofrecida cambia el precio. Lo valida el comando de admisión sobre el estado RESULTANTE cada vez que el formulario manda el campo apagado.
+ */
+export function rechazoParaOcultarEnCarta(e: { tipo: TipoDeGrupoDeOpciones; grupo: string; producto: string; opciones: readonly OpcionParaOcultarEnCarta[] }): string | null {
+  if (!sePuedeOcultarElTipo(e.tipo)) return MENSAJE_OCULTAR_SOLO_VARIANTE_O_INCLUIDA;
+  const cambian = opcionesQueCambianElPrecio(e.opciones).map((o) => o.nombre);
+  if (cambian.length === 0) return null;
+  const varias = cambian.length > 1;
+  return `Para ocultar «${e.grupo}» en la carta de «${e.producto}», ninguna opción puede cambiar el precio: ${nombresConY(cambian)} ${varias ? "cambian" : "cambia"} el precio. Dejal${varias ? "as" : "a"} sin recargo o mostralo en la carta.`;
+}

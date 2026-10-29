@@ -13,7 +13,7 @@ import {
   type ProductoParaMantener,
 } from "@/core/carta/public";
 import { esBaseConfigurable } from "@/core/opciones/public";
-import { resumenDePrecios, tablaDePreciosParaLaCarta } from "@/core/pos/public";
+import { resumenDePreciosParaLaCarta, tablaDePreciosParaLaCarta } from "@/core/pos/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
@@ -87,7 +87,7 @@ export async function cargarCartaParaMantener(db: Db, sucursalId: string): Promi
       g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO" ? { ...g, opciones: g.opciones.map((o) => ({ ...o, precioDeSucursal: grilla.get(`${p.id}|${o.opcionId}`) ?? null })) } : g
     );
     const esBase = bases.has(p.id);
-    const enCarta = opcionesParaLaCarta(resumenDePrecios({ grupos, precioBase: p.precioAca, descuentoDeProducto: null, esBase }));
+    const enCarta = opcionesParaLaCarta(resumenDePreciosParaLaCarta({ grupos, precioBase: p.precioAca, descuentoDeProducto: null, esBase }));
     // Fase 5, paso 9: con la FORMA que le va a dar la carta (la misma proyección del servidor), si la carta lo puede leer exacto; si no (o si hoy no se puede pedir), como antes.
     const tabla = enCarta ? tablaDePreciosParaLaCarta({ grupos, precioBase: p.precioAca, descuentoDeProducto: null, esBase }) : null;
     const forma = tabla ? presentacionDeUnProductoSolo({ tabla, esBase, mostrarNombreArriba: false, conDescuento: false }) : null;

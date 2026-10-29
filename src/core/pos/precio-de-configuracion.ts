@@ -5,9 +5,11 @@ import {
   ejesDeLaCarta,
   opcionesDelEje,
   rolDelGrupo,
+  seOcultaEnLaCarta,
   validarOpcionesElegidas,
   type EjesDeLaCarta,
   type OpcionElegida,
+  type OpcionParaOcultarEnCarta,
   type OpcionParaPrecio,
   type RolDelGrupoEnCarta,
   type TipoDeGrupoDeOpciones,
@@ -166,6 +168,36 @@ export function resumenDePrecios(entrada: { grupos: readonly GrupoParaVender[]; 
   return { grupos, desde, hayVariacion, vendible };
 }
 
+/** Un grupo tal como lo lee la carta: lo de la venta más el interruptor «Mostrar este grupo en la carta» de `ProductoAdmiteGrupo` (ausente = se muestra). */
+type GrupoDeEntradaDeLaCarta = GrupoParaVender & { prefijoEnCarta?: string | null; seMuestraEnCarta?: boolean };
+
+/** Lo que la regla de «no se lee en la carta» necesita de las opciones de un grupo, desde lo que ya leyó la venta: lo ofrecido (activa y admitida; lo agotado hoy NO cuenta) y la diferencia que rige. */
+function opcionesParaOcultar(g: GrupoParaVender): OpcionParaOcultarEnCarta[] {
+  return g.opciones.map((o) => ({
+    nombre: o.nombre,
+    esNinguna: o.esNinguna,
+    ofrecida: o.activa && o.admitida,
+    diferencia: o.esNinguna ? null : (o.diferenciaDelProducto ?? o.diferenciaDeLaVersion),
+    precioAbsoluto: o.precioAbsoluto,
+  }));
+}
+
+/** Los grupos que la carta NO lee en este producto (`seOcultaEnLaCarta`, `core/opciones`): el único lugar donde la carta decide qué grupos lee. */
+function gruposOcultosEnLaCarta(grupos: readonly GrupoDeEntradaDeLaCarta[]): Set<string> {
+  return new Set(grupos.filter((g) => seOcultaEnLaCarta({ tipo: g.tipo, ...(g.seMuestraEnCarta === undefined ? {} : { seMuestraEnCarta: g.seMuestraEnCarta }), opciones: opcionesParaOcultar(g) })).map((g) => g.grupoId));
+}
+
+/**
+ * El resumen de precios PARA LA CARTA (`resumenDePrecios` con los grupos que la carta no oculta): el cálculo se hace con TODOS los grupos (el «desde», si hay variación y si se puede pedir no cambian
+ * nunca: un grupo oculto no cambia el precio, y uno obligatorio agotado sigue sacando al producto de la carta) y solo se filtra la SALIDA. Lo usan todos los lectores de la carta (pública, impresa,
+ * vista previa y «Va a mostrar»); el POS y el cobro usan `resumenDePrecios` tal cual (`test/arquitectura/grupos-de-la-carta-en-un-solo-lugar.test.ts`).
+ */
+export function resumenDePreciosParaLaCarta(entrada: { grupos: readonly GrupoDeEntradaDeLaCarta[]; precioBase: number; descuentoDeProducto: number | null; esBase?: boolean }): ResumenDePrecios {
+  const resumen = resumenDePrecios(entrada);
+  const ocultos = gruposOcultosEnLaCarta(entrada.grupos);
+  return ocultos.size === 0 ? resumen : { ...resumen, grupos: resumen.grupos.filter((g) => !ocultos.has(g.grupoId)) };
+}
+
 /** Un grupo vigente tal como lo lee la carta: su papel y lo que se puede elegir hoy, con el precio de la regla de la venta (el final de un tamaño, con el descuento; lo que suma o resta lo demás). */
 export interface GrupoDeLaTablaDeLaCarta {
   grupoId: string;
@@ -203,7 +235,7 @@ export interface TablaDePreciosParaLaCarta {
  * El papel de cada grupo y los ejes salen de `rolDelGrupo` y `ejesDeLaCarta` (`core/opciones`), con los precios del resumen y el prefijo de la carta (`prefijoEnCarta`, que solo la carta lee).
  */
 export function tablaDePreciosParaLaCarta(entrada: {
-  grupos: readonly (GrupoParaVender & { prefijoEnCarta?: string | null })[];
+  grupos: readonly GrupoDeEntradaDeLaCarta[];
   precioBase: number;
   descuentoDeProducto: number | null;
   esBase?: boolean;
@@ -213,7 +245,9 @@ export function tablaDePreciosParaLaCarta(entrada: {
   const vigentes = gruposVigentes(entrada.grupos);
   const { precioBase } = baseDeComposicion(vigentes, entrada);
   const porId = new Map(vigentes.map((g) => [g.grupoId, g]));
-  const grupos: GrupoDeLaTablaDeLaCarta[] = resumen.grupos.map((r) => {
+  // Los grupos que la carta no lee salen ANTES de los ejes y de las aclaraciones; el cálculo de «lo más barato de cada otro grupo» de abajo sigue con todos los vigentes (no cambian el precio).
+  const ocultos = gruposOcultosEnLaCarta(entrada.grupos);
+  const grupos: GrupoDeLaTablaDeLaCarta[] = resumen.grupos.filter((r) => !ocultos.has(r.grupoId)).map((r) => {
     const g = porId.get(r.grupoId)!;
     const conRol = { ...r, prefijoEnCarta: g.prefijoEnCarta ?? null };
     const orden = new Map(g.opciones.map((o) => [o.opcionId, o.orden]));

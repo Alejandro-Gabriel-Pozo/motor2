@@ -5,7 +5,7 @@ import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuent
 import { opcionesDeLosProductosDeLaCarta, type GrupoParaLaCarta } from "@/server/lecturas/carta/opciones";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
 import { esBaseConfigurable } from "@/core/opciones/public";
-import { resumenDePrecios, tablaDePreciosParaLaCarta } from "@/core/pos/public";
+import { resumenDePreciosParaLaCarta, tablaDePreciosParaLaCarta } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -134,8 +134,8 @@ export async function resolverMenuCartaConDiagnostico(
       return [
         {
           productoId,
-          conDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto, esBase }),
-          sinDescuento: resumenDePrecios({ grupos, precioBase, descuentoDeProducto: null, esBase }),
+          conDescuento: resumenDePreciosParaLaCarta({ grupos, precioBase, descuentoDeProducto, esBase }),
+          sinDescuento: resumenDePreciosParaLaCarta({ grupos, precioBase, descuentoDeProducto: null, esBase }),
           // Fase 5 («carta pareja»): el precio de cada celda de la carta, con la misma regla (y el mismo descuento) que se cobra.
           tabla: tablaDePreciosParaLaCarta({ grupos, precioBase, descuentoDeProducto, esBase }),
           esBase,
@@ -146,7 +146,7 @@ export async function resolverMenuCartaConDiagnostico(
     const conResumen = new Set(opcionesDeProductos.map((o) => o.productoId));
     for (const p of conOpciones ? productos : []) {
       if (!esBaseConfigurable(p.modoDeVenta) || conResumen.has(p.id)) continue;
-      const sinPrecio = resumenDePrecios({ grupos: [], precioBase: 0, descuentoDeProducto: null, esBase: true });
+      const sinPrecio = resumenDePreciosParaLaCarta({ grupos: [], precioBase: 0, descuentoDeProducto: null, esBase: true });
       opcionesDeProductos.push({ productoId: p.id, conDescuento: sinPrecio, sinDescuento: sinPrecio, tabla: null, esBase: true });
     }
     return opcionesDeProductos;

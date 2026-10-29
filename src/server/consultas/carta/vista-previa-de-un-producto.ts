@@ -1,6 +1,6 @@
 import "server-only";
 import { opcionesParaLaCarta, presentacionDeUnProductoSolo, vistaPreviaDeOpciones, type VistaPreviaDeLaCarta } from "@/core/carta/public";
-import { resumenDePrecios, tablaDePreciosParaLaCarta } from "@/core/pos/public";
+import { resumenDePreciosParaLaCarta, tablaDePreciosParaLaCarta } from "@/core/pos/public";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
 import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
@@ -31,7 +31,7 @@ export async function cargarVistaPreviaDeLaCarta(
   const conGrilla = grupos.map((g) =>
     g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO" ? { ...g, opciones: g.opciones.map((o) => ({ ...o, precioDeSucursal: grilla.get(`${producto.id}|${o.opcionId}`) ?? null })) } : g
   );
-  const enCarta = opcionesParaLaCarta(resumenDePrecios({ grupos: conGrilla, precioBase, descuentoDeProducto: null, esBase: producto.esBase }));
+  const enCarta = opcionesParaLaCarta(resumenDePreciosParaLaCarta({ grupos: conGrilla, precioBase, descuentoDeProducto: null, esBase: producto.esBase }));
   if (enCarta === null) return { tipo: "no-se-puede-pedir" };
   const tabla = tablaDePreciosParaLaCarta({ grupos: conGrilla, precioBase, descuentoDeProducto: null, esBase: producto.esBase });
   const forma = tabla ? presentacionDeUnProductoSolo({ tabla, esBase: producto.esBase, mostrarNombreArriba, conDescuento: false }) : null;

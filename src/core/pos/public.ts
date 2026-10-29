@@ -47,7 +47,7 @@ export { revisarAlicuotasDeCombo } from "./alicuotas-de-combo";
 export type { ComponenteConAlicuota } from "./alicuotas-de-combo";
 export { claveDeConfiguracion as claveDeConfiguracionFija } from "./promo-combo";
 // GO-2d (ADR-030 «Pantallas»): los precios PARA MOSTRAR de un producto con opciones (el «desde», cada tamaño, la vista previa del diálogo del POS), con la misma regla que la venta.
-export { opcionDisponible, resumenDePrecios, tablaDePreciosParaLaCarta, vistaPreviaDeConfiguracion } from "./precio-de-configuracion";
+export { opcionDisponible, resumenDePrecios, resumenDePreciosParaLaCarta, tablaDePreciosParaLaCarta, vistaPreviaDeConfiguracion } from "./precio-de-configuracion";
 export type { ResumenDePrecios } from "./precio-de-configuracion";
 export { avisoEnPromo, claveDeConfiguracion, elegidasParaPedir, esDeUnaSolaEleccion, estadoInicialElegirOpciones, grupoCompleto, gruposEnOrdenParaElegir, gruposQueFaltan, masPedidasParaElDialogo, reducirElegirOpciones, resumenDeConfiguracion } from "./elegir-opciones-estado";
 export type { ConfiguracionDelSelector } from "./elegir-opciones-estado";
