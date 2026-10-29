@@ -9,6 +9,7 @@ import {
   esBaseConfigurable,
   precioDeReferenciaDeAdmisiones,
   rechazoDeAdmisionesDeBase,
+  rechazoParaOcultarEnCarta,
   validarAdmisionDeGrupo,
   type AdmisionDeOpcion,
   type AdmisionParaSerBase,
@@ -56,6 +57,8 @@ function diferenciaDeLaFila(f: { tipoDeDiferencia: string | null; diferenciaPrec
  *     como en la edición que lo pasa a base;
  *  6. el control de precio de lista (`controlarPrecioDeLista`, la misma cuenta que la venta) opción por opción sobre el precio de venta del producto, si lo tiene (un producto en 0
  *     se cobra con el precio de cada sucursal; la venta igual falla cerrado si allá no da). En una base, sobre su precio de referencia (su precio final más barato), nunca sobre el guardado;
+ *  6b. «Mostrar este grupo en la carta» (2026-10-29, decisión del dueño: plato por plato): si el comando trae `seMuestraEnCarta: false`, `rechazoParaOcultarEnCarta` sobre el estado resultante (solo una variante o
+ *     una incluida; ninguna opción ofrecida cambia el precio): `CONFIGURACION_INVALIDA`. Sin el campo se conserva lo guardado y no se valida (I7);
  *  7. aviso, sin bloqueo: un REEMPLAZA de una opción cuyo insumo no está en la receta central vigente del producto (S3: no reemplaza nada); sin receta central todavía, no se avisa.
  * Una admisión simultánea del mismo par compite por las mismas filas (una gana, la otra `VERSION_DESACTUALIZADA` o 23505 y reintento); bajar el máximo del grupo a la vez que acá se fija
  * un mínimo incompatible es un cruce de lectura y escritura entre las dos transacciones (cada una lee lo que la otra escribe): SERIALIZABLE aborta a una (40001) y su reintento rechaza.
@@ -97,7 +100,7 @@ export async function fijarAdmisionDeGrupoEnTx(
   const delGrupo = new Map(opcionesDelGrupo.map((o) => [o.id, o]));
   const filaGrupo = await tx.productoAdmiteGrupo.findUnique({
     where: { productoId_grupoId: { productoId: producto.id, grupoId: grupo.id } },
-    select: { id: true, orden: true, cantidadMinima: true, cantidadMaxima: true, modoPrecio: true, activo: true, version: true },
+    select: { id: true, orden: true, cantidadMinima: true, cantidadMaxima: true, modoPrecio: true, activo: true, seMuestraEnCarta: true, version: true },
   });
   const filasOpciones = await tx.productoAdmiteOpcion.findMany({
     where: { productoId: producto.id, opcionId: { in: opcionesDelGrupo.map((o) => o.id) } },
@@ -107,13 +110,22 @@ export async function fijarAdmisionDeGrupoEnTx(
 
   // Lo que cambiaría, columna por columna (el antes y el después de la auditoría). Si NADA cambia, el estado ya es el pedido (un doble clic que llegó después de que el primero
   // confirmó): éxito sin escribir, aunque la versión que vio la pantalla ya no sea la de la base. Si algo cambia, cada versión esperada tiene que ser la de la base.
-  const fila = { orden: comando.orden, cantidadMinima: comando.cantidadMinima, cantidadMaxima: comando.cantidadMaxima, modoPrecio: comando.modoPrecio, activo: comando.activo };
+  // «Mostrar este grupo en la carta» (2026-10-29): solo entra a la fila y a la auditoría si el comando lo trae; sin el campo se conserva lo guardado (o `true` en una fila nueva).
+  const fila = {
+    orden: comando.orden,
+    cantidadMinima: comando.cantidadMinima,
+    cantidadMaxima: comando.cantidadMaxima,
+    modoPrecio: comando.modoPrecio,
+    activo: comando.activo,
+    ...(comando.seMuestraEnCarta === undefined ? {} : { seMuestraEnCarta: comando.seMuestraEnCarta }),
+  };
   const cambiosDelGrupo = cambiosPorColumna([
     { campo: "orden", antes: filaGrupo?.orden ?? null, despues: fila.orden },
     { campo: "cantidadMinima", antes: filaGrupo?.cantidadMinima ?? null, despues: fila.cantidadMinima },
     { campo: "cantidadMaxima", antes: filaGrupo?.cantidadMaxima ?? null, despues: fila.cantidadMaxima },
     { campo: "modoPrecio", antes: filaGrupo?.modoPrecio ?? null, despues: fila.modoPrecio },
     { campo: "activo", antes: filaGrupo?.activo ?? null, despues: fila.activo },
+    ...(comando.seMuestraEnCarta === undefined ? [] : [{ campo: "seMuestraEnCarta", antes: filaGrupo?.seMuestraEnCarta ?? null, despues: comando.seMuestraEnCarta }]),
   ]);
   const cambiosDeOpciones = comando.opciones.map((o) => {
     const anterior = filaDe.get(o.opcionId);
@@ -176,6 +188,22 @@ export async function fijarAdmisionDeGrupoEnTx(
   // Control de precio de lista, con la diferencia de cada opción resuelta (la del producto si la sobrescribe, si no la de su versión vigente).
   const activasAdmitidas = comando.activo ? [...resultantes.values()].filter((r) => r.activo && delGrupo.get(r.opcionId)!.activa) : [];
   const vigentes = new Map(await Promise.all(activasAdmitidas.map(async (r) => [r.opcionId, await versionVigenteEnTx(tx, r.opcionId)] as const)));
+  // «Mostrar este grupo en la carta» apagado (2026-10-29): se valida sobre el estado RESULTANTE (lo que quedaría guardado con este comando): solo una variante o una incluida, y ninguna opción ofrecida cambia el
+  // precio en este producto. Con la admisión o el grupo apagados no hay nada que ocultar: solo se controla el tipo, y el precio se valida cuando se vuelva a prender con el formulario.
+  if (comando.seMuestraEnCarta === false) {
+    const rechazoDeLaCarta = rechazoParaOcultarEnCarta({
+      tipo: grupo.tipo,
+      grupo: grupo.nombre,
+      producto: producto.nombre,
+      opciones: comando.activo && grupo.activo
+        ? opcionesDelGrupo.map((o) => {
+            const r = resultantes.get(o.id);
+            return { nombre: o.nombre, esNinguna: o.esNinguna, ofrecida: o.activa && (r?.activo ?? false), diferencia: r?.diferencia ?? vigentes.get(o.id)?.diferencia ?? null, precioAbsoluto: r?.precioAbsoluto ?? null };
+          })
+        : [],
+    });
+    if (rechazoDeLaCarta) return fracaso("CONFIGURACION_INVALIDA", rechazoDeLaCarta);
+  }
   let precioDeVenta = Number(producto.precioVenta);
   const esBase = esBaseConfigurable(producto.modoDeVenta);
   if (esBase) {

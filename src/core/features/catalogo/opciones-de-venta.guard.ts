@@ -329,6 +329,8 @@ export function guardComandoFijarAdmisionDeGrupo(entrada: {
   cantidadMaxima: unknown;
   modoPrecio: unknown;
   activo: unknown;
+  /** Opcional: ausente (o `undefined`) = no cambia lo guardado. */
+  seMuestraEnCarta?: unknown;
   opciones: unknown;
 }): ResultadoDato<ComandoFijarAdmisionDeGrupo> {
   const productoId = id(entrada.productoId, "No se encontró el producto.");
@@ -351,6 +353,12 @@ export function guardComandoFijarAdmisionDeGrupo(entrada: {
   }
   const activo = booleano(entrada.activo, "«Activo»");
   if (!activo.ok) return activo;
+  let seMuestraEnCarta: boolean | undefined;
+  if (entrada.seMuestraEnCarta !== undefined) {
+    const se = booleano(entrada.seMuestraEnCarta, "«Mostrar este grupo en la carta»");
+    if (!se.ok) return se;
+    seMuestraEnCarta = se.valor;
+  }
   if (!Array.isArray(entrada.opciones)) return rechazar("formato", "Las opciones no son una lista.");
   const tope = validarTopeDeLista(entrada.opciones, "Las opciones", MAXIMO_OPCIONES_POR_ADMISION);
   if (tope) return rechazar("rango", tope);
@@ -369,6 +377,7 @@ export function guardComandoFijarAdmisionDeGrupo(entrada: {
     cantidadMaxima: maximo.valor,
     modoPrecio,
     activo: activo.valor,
+    ...(seMuestraEnCarta === undefined ? {} : { seMuestraEnCarta }),
     opciones,
   });
 }

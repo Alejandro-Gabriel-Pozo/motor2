@@ -134,6 +134,11 @@ export interface ComandoFijarAdmisionDeGrupo {
   cantidadMaxima: number | null;
   modoPrecio: ModoDePrecioDeMedida | null;
   activo: boolean;
+  /**
+   * «Mostrar este grupo en la carta» (2026-10-29, decisión del dueño: plato por plato). OPCIONAL: sin el campo se CONSERVA el valor guardado (o «se muestra» en una fila nueva); lo manda solo el formulario
+   * de «Opciones de venta» de un producto. Apagado (`false`) se valida sobre el estado resultante: solo un grupo de variantes o de incluidas, y ninguna opción ofrecida puede cambiar el precio.
+   */
+  seMuestraEnCarta?: boolean;
   opciones: OpcionAdmitidaEnComando[];
 }
 

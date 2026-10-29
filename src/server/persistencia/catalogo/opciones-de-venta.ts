@@ -133,6 +133,8 @@ interface FilaDeAdmisionDeGrupo {
   cantidadMaxima: number | null;
   modoPrecio: ModoDePrecioDeMedida | null;
   activo: boolean;
+  /** «Mostrar este grupo en la carta»: `undefined` = no se escribe (Prisma lo ignora): una fila nueva queda en `true` y una existente conserva lo guardado. */
+  seMuestraEnCarta?: boolean;
 }
 
 interface FilaDeAdmisionDeOpcion {

@@ -172,6 +172,14 @@ describe("guardComandoFijarAdmisionDeGrupo", () => {
     });
   });
 
+  it("«Mostrar este grupo en la carta» (2026-10-29): sin el campo (o `undefined`) el comando no lo trae; con un booleano pasa tal cual; con otra cosa se rechaza", () => {
+    expect("seMuestraEnCarta" in (guardComandoFijarAdmisionDeGrupo(admision) as { valor: object }).valor).toBe(false);
+    expect("seMuestraEnCarta" in (guardComandoFijarAdmisionDeGrupo({ ...admision, seMuestraEnCarta: undefined }) as { valor: object }).valor).toBe(false);
+    expect(guardComandoFijarAdmisionDeGrupo({ ...admision, seMuestraEnCarta: false })).toEqual({ ok: true, valor: { ...admision, seMuestraEnCarta: false } });
+    expect(guardComandoFijarAdmisionDeGrupo({ ...admision, seMuestraEnCarta: true })).toEqual({ ok: true, valor: { ...admision, seMuestraEnCarta: true } });
+    for (const malo of ["no", "si", 0, 1, null, {}]) expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, seMuestraEnCarta: malo }))).toMatch(/Mostrar este grupo en la carta/);
+  });
+
   it("rechazos: ids, versión, cantidades, modo, «activo», la lista y cada opción", () => {
     expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, productoId: null }))).toMatch(/producto/);
     expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, grupoId: {} }))).toMatch(/grupo/);
