@@ -85,7 +85,7 @@
 
 ## E. Pregunta abierta y supuestos
 
-**Pregunta para el dueño — PENDIENTE (cambia el modelo de datos):** cuando marcás que «Corte» no salga en la carta, ¿lo decidís **plato por plato** (en «Bife» no sale; si otro plato usa «Corte» decide por su cuenta) o querés que se aplique a **todos los platos** que usan «Corte»? Propuesta: plato por plato (es el ejemplo y es más seguro con el precio); lo otro queda como valor por defecto en un paso posterior. El paso 1 no depende de esto; el paso 2 espera la respuesta.
+**Respuesta del dueño (2026-10-29): «PLATO POR PLATO» — CONFIRMADA** (columna en `ProductoAdmiteGrupo`; el valor por defecto a nivel del grupo de la Biblioteca queda como N3, sin construir). Aplicar la migración en cualquier base real sigue exigiendo su autorización expresa, base por base. Pregunta original: cuando marcás… (ver abajo). **Pregunta para el dueño (resuelta):** cuando marcás que «Corte» no salga en la carta, ¿lo decidís **plato por plato** (en «Bife» no sale; si otro plato usa «Corte» decide por su cuenta) o querés que se aplique a **todos los platos** que usan «Corte»? Propuesta: plato por plato (es el ejemplo y es más seguro con el precio); lo otro queda como valor por defecto en un paso posterior. El paso 1 no depende de esto; el paso 2 espera la respuesta.
 
 **Supuestos (PROPUESTA):** si después alguien le pone recargo desde la Biblioteca, la carta lo vuelve a mostrar sola y la pantalla avisa (no se bloquea); solo VARIANTE e INCLUIDA se pueden ocultar; la casilla está solo en la pantalla del producto; sin clave nueva; no se cambia la versión de la caché; quitar y re-vincular el grupo conserva el interruptor; la carta impresa sigue la misma regla.
 
