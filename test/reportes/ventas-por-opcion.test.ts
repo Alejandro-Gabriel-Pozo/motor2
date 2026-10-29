@@ -212,14 +212,17 @@ describe("ventas por opción: el oráculo de combinaciones", () => {
     const sinLeche = await prisma.opcionDeGrupo.create({ data: { grupoId: c.grupoLecheId, nombre: "Sin leche", orden: 3, esNinguna: true } });
     const vSinLeche = await prisma.versionDeOpcion.create({ data: { opcionId: sinLeche.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "0.00", creadoPorId: s.admin.id } });
 
+    // Todas las combinaciones de estado × tipo × costo × sucursal × fecha; el combo solo cambia si la venta cuenta, así que se cruza con las que cuentan (vigente, sucursal activa, dentro del día).
     const specs: Spec[] = [];
     for (const estado of ESTADOS)
       for (const tipo of TIPOS)
-        for (const enCombo of [false, true])
-          for (const conCosto of [true, false])
-            for (const sucursal of ["activa", "otra"] as const)
-              for (const fecha of FECHAS) specs.push({ estado, tipo, enCombo, conCosto, sucursal, fecha });
-    expect(specs).toHaveLength(400);
+        for (const conCosto of [true, false])
+          for (const sucursal of ["activa", "otra"] as const)
+            for (const fecha of FECHAS) {
+              specs.push({ estado, tipo, enCombo: false, conCosto, sucursal, fecha });
+              if (cuenta({ estado, tipo, enCombo: false, conCosto, sucursal, fecha })) specs.push({ estado, tipo, enCombo: true, conCosto, sucursal, fecha });
+            }
+    expect(specs).toHaveLength(200 + 5 * 2 * 3);
     await sembrarMundo(
       specs,
       { sucursalActiva: s.sucursalId, seccionActiva: s.seccion.id, sucursalOtra: otra.id, seccionOtra: seccionOtra.id },
