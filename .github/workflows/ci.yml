@@ -77,7 +77,7 @@ jobs:
           CONTRATOS_EVIDENCIA: resultado-contratos.json
       # La evidencia queda como artefacto de la corrida. Sin `if` ni `continue-on-error`, y con `if-no-files-found: error`: si el ejecutor no la dejó, este paso falla (y `cumplimiento.ts` exige que el paso exista).
       - name: Evidencia de contratos (artefacto)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: resultado-contratos
           path: resultado-contratos.json
@@ -222,7 +222,7 @@ jobs:
       # El resultado de ESTA parte, para que `conteo` junte las cuatro. `if-no-files-found: ignore`: si la parte no llegó a escribirlo, `conteo` falla por la cantidad de resultados (y lo dice).
       - name: Resultado de Vitest de esta parte (artefacto)
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: resultado-vitest-${{ matrix.parte }}
           path: resultado-vitest.json
@@ -382,7 +382,7 @@ jobs:
       # El resultado de ESTA parte, para que `conteo-e2e` junte todas. `if-no-files-found: ignore`: si la parte no llegó a escribirlo, `conteo-e2e` falla por la cantidad de resultados (y lo dice).
       - name: Resultado de Playwright (artefacto)
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: resultado-playwright-${{ matrix.parte }}
           path: resultado-playwright.json
@@ -390,7 +390,7 @@ jobs:
           retention-days: 7
       - name: Trazas de los specs que fallaron
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-test-results-${{ matrix.parte }}
           path: test-results/
