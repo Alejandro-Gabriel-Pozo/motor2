@@ -15,7 +15,7 @@ import { obtenerReporteDescuentosClientes } from "../../../src/server/consultas/
 import { obtenerReporteDescuentosProductos } from "../../../src/server/consultas/reportes/descuentos-productos";
 import { generarReporteDevoluciones } from "../../../src/server/consultas/reportes/devoluciones";
 import { generarReporteDiferenciasAjustes } from "../../../src/server/consultas/reportes/diferencias-ajustes";
-import { buscarProductoParaHistorial, obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "../../../src/server/consultas/reportes/historial-producto";
+import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "../../../src/server/consultas/reportes/historial-producto";
 import { generarReporteHuecosCatalogo, obtenerProblemasUnidadMezclada } from "../../../src/server/consultas/reportes/huecos-catalogo";
 import { generarReporteInsumosSinRecetaVinculada } from "../../../src/server/consultas/reportes/insumos-sin-receta";
 import { cargarObjetivosDeMargen } from "../../../src/server/consultas/reportes/margen-objetivo-consulta";
@@ -245,7 +245,6 @@ describe("Caracterización de los reportes (C0): resultado y conteo de consultas
     await reporte("diferencias-ajustes.generarReporteDiferenciasAjustes(Central, hoy = reloj)", (db) => generarReporteDiferenciasAjustes(S1, db, AHORA));
 
     // historial-producto.ts
-    await reporte("historial-producto.buscarProductoParaHistorial(Central, «pizza»)", (db) => buscarProductoParaHistorial(S1, "pizza", db));
     await reporte("historial-producto.obtenerHistorialProducto(Central, Harina 000, todas las secciones, período)", (db) => obtenerHistorialProducto(S1, E.HARINA, undefined, DESDE_DIA, HASTA_DIA, db));
     // El `include` de los ingredientes no tiene `orderBy`: se ordenan por nombre.
     const porNombre = (r: Array<{ nombre: string }>) => ordenar(r, (i) => i.nombre);

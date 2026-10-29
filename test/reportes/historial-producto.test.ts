@@ -8,7 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente, buscarProductoParaHistorial } from "../../src/server/consultas/reportes/historial-producto";
+import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "../../src/server/consultas/reportes/historial-producto";
 import { ZONA_ARGENTINA, mediodiaDelDia } from "../../src/core/tiempo/zona-horaria";
 
 /** El día que elige un formulario, como lo guarda (P1): las 12:00 argentinas. Los límites `desde`/`hasta` de la consulta, en cambio, son fechas «de solo día» (00:00 UTC) que la consulta expande en la zona. */
@@ -214,19 +214,5 @@ describe("obtenerIngredientesRecetaVigente", () => {
 
   it("producto sin ninguna receta: lista vacía, sin tirar error", async () => {
     expect(await obtenerIngredientesRecetaVigente(pvId, prisma)).toEqual([]);
-  });
-});
-
-describe("buscarProductoParaHistorial", () => {
-  it("incluye productos no disponibles en la sucursal a propósito", async () => {
-    await limpiarBaseDeTest();
-    const base = await sembrarBase();
-    const catalogo = await sembrarCatalogoBase();
-    // Sin fila DisponibilidadProducto para esta sucursal: "fila ausente = no disponible" (disponibilidad-producto.ts).
-    const noDisponible = await prisma.producto.create({ data: { codigo: "MP_VIEJA", nombre: "Descontinuada", tipo: "MP", unidadStockId: catalogo.kg.id } });
-
-    const filas = await buscarProductoParaHistorial(base.sucursal.id, "Descontinuada", prisma);
-    expect(filas.map((f) => f.productoId)).toContain(noDisponible.id);
-    expect(filas.find((f) => f.productoId === noDisponible.id)?.disponible).toBe(false);
   });
 });

@@ -1,12 +1,3 @@
-export interface FilaBusquedaProducto {
-  productoId: string;
-  codigo: string;
-  nombre: string;
-  tipo: "MP" | "PV";
-  /** Disponible EN `sucursalId` (docs/plan-disponibilidad-por-sucursal-2026-09-23.md) — ya no es `Producto.activo` global. */
-  disponible: boolean;
-}
-
 export interface EventoHistorialProducto {
   tipo: "movimiento" | "conteo";
   fecha: Date;

@@ -8,7 +8,7 @@ import { altaProveedor } from "../../src/server/actions/catalogo/proveedores";
 import { altaCliente } from "../../src/server/actions/clientes/cliente";
 import { buscarProductosSelector, darDeAltaProductoRapido, listarProductosPagina } from "../../src/server/actions/catalogo/productos";
 import { guardarContenidoCartaProducto } from "../../src/server/actions/carta/contenido-producto";
-import { buscarProductoParaHistorial, obtenerHistorialProducto } from "../../src/server/consultas/reportes/historial-producto";
+import { obtenerHistorialProducto } from "../../src/server/consultas/reportes/historial-producto";
 import { buscarOperacionesPorProducto } from "../../src/server/consultas/reportes/trazabilidad";
 import { listarComprasRegistradas } from "../../src/server/consultas/reportes/compras-registradas";
 import { GET as cronDolar } from "../../src/app/api/cron/sincronizar-dolar/route";
@@ -128,7 +128,7 @@ describe("seguridad de entradas: SQL injection y XSS contra las acciones reales"
       }
     });
 
-    it("búsquedas (selector, listado de catálogo, historial): no devuelven todo, no revientan y no filtran", async () => {
+    it("búsquedas (selector, listado de catálogo): no devuelven todo, no revientan y no filtran", async () => {
       const harina = await prismaAdmin.producto.create({ data: { codigo: "MP_SEC_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadId } });
       await prismaAdmin.producto.create({ data: { codigo: "MP_SEC_AZUCAR", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadId } });
       const antes = await fotoDeLaBase();
@@ -139,11 +139,9 @@ describe("seguridad de entradas: SQL injection y XSS contra las acciones reales"
       const esSoloBlancos = payload.trim() === "";
       const selector = await buscarProductosSelector(payload);
       const listado = await listarProductosPagina(undefined, payload);
-      const historial = await buscarProductoParaHistorial(sucursalId, payload, prisma);
       if (!esSoloBlancos) {
         expect(selector, "selector").toEqual([]);
         expect(listado.items, "listado de catálogo").toEqual([]);
-        expect(historial, "historial").toEqual([]);
       }
 
       // Y como identificadores de la consulta con SQL crudo del historial (el único lugar con `$queryRaw` alimentado por la URL): se pasan parametrizados.
@@ -303,9 +301,8 @@ describe("seguridad de entradas: SQL injection y XSS contra las acciones reales"
     const buscar = async (q: string) => ({
       selector: (await buscarProductosSelector(q)).map((p) => p.codigo).sort(),
       listado: (await listarProductosPagina(undefined, q)).items.map((p) => p.codigo).sort(),
-      historial: (await buscarProductoParaHistorial(sucursalId, q, prisma)).map((p) => p.codigo).sort(),
     });
-    const todas = (codigos: string[]) => ({ selector: codigos, listado: codigos, historial: codigos });
+    const todas = (codigos: string[]) => ({ selector: codigos, listado: codigos });
 
     it.each([
       ["%", ["MP_CMD_SALSA"]], // antes: los 5
@@ -340,9 +337,6 @@ describe("seguridad de entradas: SQL injection y XSS contra las acciones reales"
       await expect(listarProductosPagina(undefined, payload)).resolves.toMatchObject({ items: [] });
       await expect(listarProductosPagina(payload)).resolves.toBeDefined();
     });
-    it.each(INVALIDOS)("búsqueda del historial con %s", async (_n, payload) => {
-      await expect(buscarProductoParaHistorial(sucursalId, payload, prisma)).resolves.toEqual([]);
-    });
     it.each(INVALIDOS)("trazabilidad por producto con %s", async (_n, payload) => {
       await expect(buscarOperacionesPorProducto(sucursalId, payload, prisma)).resolves.toEqual([]);
     });
@@ -353,7 +347,6 @@ describe("seguridad de entradas: SQL injection y XSS contra las acciones reales"
       await prismaAdmin.producto.create({ data: { codigo: "MP_SEC_NINIO", nombre: "Ñandú café 😀", tipo: "MP", unidadStockId: unidadId } });
       for (const q of ["Ñandú café 😀", "ñandú", "café 😀", "😀"]) {
         expect((await buscarProductosSelector(q)).map((p) => p.codigo), q).toEqual(["MP_SEC_NINIO"]);
-        expect((await buscarProductoParaHistorial(sucursalId, q, prisma)).map((p) => p.codigo), q).toEqual(["MP_SEC_NINIO"]);
       }
       // Los inválidos mezclados con texto válido buscan lo válido: «ñand\0ú» encuentra «Ñandú».
       expect((await buscarProductosSelector("ñand\u0000ú\uD83D")).map((p) => p.codigo)).toEqual(["MP_SEC_NINIO"]);

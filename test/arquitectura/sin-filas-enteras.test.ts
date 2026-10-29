@@ -56,7 +56,6 @@ const FILAS_ENTERAS_EN_EL_SERVIDOR: Record<string, { clase: Clase; motivo: strin
   "src/server/consultas/reportes/compras-registradas.ts|operacion.findMany sin select|listarComprasRegistradas": DTO("PaginaCompras, para `reporte_compras`"),
   // M-24: las dos de abajo ya estaban a la vista pero el detector solo veía `rel: true`; ahora ve `rel: { include/where }` (la fila entera ANIDADA). Misma función, mismo DTO.
   "src/server/consultas/reportes/compras-registradas.ts|include: { movimientos: { sin select } }|listarComprasRegistradas": DTO("PaginaCompras, para `reporte_compras`: las líneas se mapean campo a campo"),
-  "src/server/consultas/reportes/historial-producto.ts|producto.findMany sin select|buscarProductoParaHistorial": DTO("FilaBusquedaProducto"),
   "src/server/consultas/reportes/historial-producto.ts|producto.findUnique sin select|obtenerHistorialProducto": DTO("HistorialProducto; el dinero se saca en la página con `reporte_historial_importes`"),
   "src/server/consultas/reportes/huecos-catalogo.ts|producto.findMany sin select|obtenerProblemasUnidadMezclada": DTO("ProblemaUnidadMezclada"),
   "src/server/consultas/reportes/rendimiento-recetas.ts|producto.findMany sin select|construirPools": DTO("Pool, interno del reporte de rendimiento"),
