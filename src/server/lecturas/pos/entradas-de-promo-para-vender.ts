@@ -103,8 +103,8 @@ export async function cargarEntradasDePromoParaVender(
       if (linea !== null) precioDeLista = linea.precioUnitario;
     }
     // Con configuración fija, lo que las opciones descuentan cuenta como origen de stock (ventas con opciones, 2026-10-29).
-    const opciones = linea !== null && linea.fotos.length > 0 ? { insumos: linea.insumosSinLaBase, nombres: linea.fotos.map((f) => f.nombreOpcion) } : undefined;
-    if (rechazoDeComponenteDeCombo({ ...producto, precioDeReferencia: precioDeLista, ...(opciones ? { opciones } : {}) }) !== null) continue;
+    const descuentan = linea !== null && linea.fotos.length > 0 ? { insumos: linea.insumosSinLaBase, nombres: linea.fotos.map((f) => f.nombreOpcion) } : undefined;
+    if (rechazoDeComponenteDeCombo({ ...producto, precioDeReferencia: precioDeLista, ...(descuentan ? { opcionesQueDescuentan: descuentan } : {}) }) !== null) continue;
     // Una entrada que lleva línea configurada nunca comparte la clave del producto pelado (la de un componente de sección): si no, el prorrateo la juntaría con él en una línea sin su foto.
     const claveComponente = linea === null ? producto.id : e.claveConfiguracion === "" ? `${producto.id}#` : claveDeComponenteConfigurado(producto.id, e.claveConfiguracion);
     elegiblesPorCupo.get(e.cupoId)?.set(e.id, { entradaId: e.id, productoId: producto.id, claveComponente });

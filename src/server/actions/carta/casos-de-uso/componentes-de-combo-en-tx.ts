@@ -36,7 +36,7 @@ export async function validarComponenteEnTx(
 ): Promise<{ ok: true; componente: ComponenteValidadoEnTx } | Fracaso<CodigoDeValidacion>> {
   const producto = (await cargarProductosComoComponentes(tx, { sucursalId: args.sucursalId, productoIds: [args.productoId] })).get(args.productoId);
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró ese producto.");
-  const comoComponente = (precioDeReferencia: number, opciones?: { insumos: number; nombres: readonly string[] }) => rechazoDeComponenteDeCombo({ ...producto, precioDeReferencia, ...(opciones ? { opciones } : {}) });
+  const comoComponente = (precioDeReferencia: number, opciones?: { insumos: number; nombres: readonly string[] }) => rechazoDeComponenteDeCombo({ ...producto, precioDeReferencia, ...(opciones ? { opcionesQueDescuentan: opciones } : {}) });
   // Lo que no es un PV vendible (o es el ancla de un adicional) se rechaza antes de mirar su configuración.
   const deTipo = producto.tipo !== "PV" || producto.esAnclaDeAdicional ? comoComponente(producto.precioVenta) : null;
   if (deTipo) return fracaso(deTipo.codigo, deTipo.mensaje);

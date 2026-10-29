@@ -31,7 +31,7 @@ export interface ProductoComoComponente {
    * Solo en una entrada con CONFIGURACIÓN FIJA («Gaseosa · Coca»): lo que esas opciones descuentan sin la receta de la base (`LineaConfigurada.insumosSinLaBase`) y sus nombres. Con la base sin receta,
    * el componente vale si las opciones suman algún insumo (ventas con opciones, 2026-10-29). Ausente = la regla de siempre.
    */
-  opciones?: { insumos: number; nombres: readonly string[] };
+  opcionesQueDescuentan?: { insumos: number; nombres: readonly string[] };
 }
 
 export type RechazoDeComponente = { codigo: CodigoDeComponenteDeCombo; mensaje: string };
@@ -56,9 +56,9 @@ export function rechazoDeComponenteDeCombo(p: ProductoComoComponente): RechazoDe
     seProduce: p.seProduce,
     esAnclaDeAdicional: false,
     ingredientesDeLaRecetaVigente: p.ingredientesDeLaRecetaVigente,
-    ...(p.opciones ? { opciones: p.opciones } : {}),
+    ...(p.opcionesQueDescuentan ? { opciones: p.opcionesQueDescuentan } : {}),
   });
   // Con opciones elegidas el mensaje de la regla ya nombra la opción que falta completar; sin ellas, el de siempre.
-  if (sinReceta !== null) return { codigo: "COMPONENTE_SIN_RECETA", mensaje: p.opciones && p.opciones.nombres.length > 0 ? sinReceta : mensajeComponenteSinReceta(p.nombre) };
+  if (sinReceta !== null) return { codigo: "COMPONENTE_SIN_RECETA", mensaje: p.opcionesQueDescuentan && p.opcionesQueDescuentan.nombres.length > 0 ? sinReceta : mensajeComponenteSinReceta(p.nombre) };
   return null;
 }
