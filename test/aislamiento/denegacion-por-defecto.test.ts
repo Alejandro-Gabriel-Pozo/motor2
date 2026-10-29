@@ -49,7 +49,8 @@ const MAXIMOS = {
   SUCURSALES_LISTADAS_POR_DISENO: 11,
   CONTEXTO_DECLARADO: 1,
   // Sube a propósito de 31 a 32 con E3a: el selector de sucursales para repartir una factura, igual que los dos de traspasos.
-  SIN_MARCA_PROPIA: 32,
+  // Sube a propósito de 32 a 33 con la integración de Catálogo: la búsqueda por la referencia del proveedor devuelve solo un booleano, igual que su par de las faltas filtrables.
+  SIN_MARCA_PROPIA: 33,
   OK_SIN_EFECTO_POR_DISENO: 2,
   EN_LA_SUCURSAL_VACIA: 1,
 } as const;

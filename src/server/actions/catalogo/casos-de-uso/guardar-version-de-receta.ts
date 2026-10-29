@@ -90,7 +90,7 @@ export async function guardarVersionDeRecetaCasoDeUso(
 
   // GO-2a (blindaje del ancla, D-1): el producto que respalda un adicional no lleva receta; lo que consume es el consumo de la opción (`ConsumoDeOpcion`).
   if (producto.esAnclaDeAdicional) {
-    return fracaso("ES_ANCLA_DE_ADICIONAL", `"${producto.nombre}" es el producto de respaldo de un adicional: no lleva receta. Lo que consume se define en la opción, en Opciones de venta.`);
+    return fracaso("ES_ANCLA_DE_ADICIONAL", `"${producto.nombre}" es el producto de respaldo de un adicional: no lleva receta. Lo que consume se define en la opción, en la Biblioteca de opciones.`);
   }
 
   const elegible = producto.tipo === "PV" || (producto.tipo === "MP" && producto.seProduce);

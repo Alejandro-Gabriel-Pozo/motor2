@@ -28,6 +28,11 @@ const RUTAS_HISTORICAS: Record<string, string> = {
   "ADR-007-instalacion-multiempresa-activada-con-una.md|scripts/crear-empresa.ts": "script retirado en E5 (2026-10-04): el alta pasó a la consola de plataforma, ver ADR-020",
   "ADR-007-instalacion-multiempresa-activada-con-una.md|src/core/features/empresa/crear-empresa.ts": "mudada a test/setup/crear-empresa.ts en E8 (2026-10-05): es una fixture de pruebas, ver ADR-024",
   "ADR-019-consola-de-plataforma-ingreso-y-sesion.md|scripts/crear-empresa.ts": "script retirado en E5 (2026-10-04): el alta pasó a la consola de plataforma, ver ADR-020",
+  // Poda de `prisma/fase-a/` (2026-10-28): el ADR-004 conserva la decisión histórica y las rutas del prototipo que se borró; su nota de estado dice cómo recuperarlas del historial de git.
+  "ADR-004-fase-a-schema-aislado.md|prisma/fase-a/migraciones-manuales/20260929b_carta_multisucursal_y_sincro_precios.sql": "carpeta `prisma/fase-a/` retirada el 2026-10-28; queda en el historial de git (ver la nota de estado del ADR)",
+  "ADR-004-fase-a-schema-aislado.md|prisma/fase-a/prisma.config.ts": "carpeta `prisma/fase-a/` retirada el 2026-10-28; queda en el historial de git (ver la nota de estado del ADR)",
+  "ADR-004-fase-a-schema-aislado.md|prisma/fase-a/smoke-test.ts": "carpeta `prisma/fase-a/` retirada el 2026-10-28; queda en el historial de git (ver la nota de estado del ADR)",
+  "ADR-037-espacio-del-producto.md|src/app/(app)/catalogo/productos/[id]/editar/page.tsx": "la ruta vieja que redirigía a `/datos`, borrada el 2026-10-28 por decisión del dueño (poda de rutas de transición; prueba de ausencia en test/arquitectura/rutas-retiradas.test.ts); el ADR lo dice en su «Actualización»",
   // Fase 3 de la ola «precio y carta» (retiro de GO-3a, DEC-02 y DEC-16): el ADR-032 conserva su historia (frentes A y B) y las rutas que se borraron con el retiro.
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|src/core/opciones/combinaciones.ts": "el precio puro por combinación, borrado en la Fase 3 (paso 3.3) con el retiro de GO-3a",
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/core/opciones/combinaciones.test.ts": "su prueba, borrada con él en la Fase 3 (paso 3.3)",
@@ -35,6 +40,13 @@ const RUTAS_HISTORICAS: Record<string, string> = {
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|server/lecturas/catalogo/precio-local-de-combinaciones.ts": "el embudo del precio local de las combinaciones, borrado en la Fase 3 (paso 3.3): la venta ya no lee combinaciones",
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/pos/cerrar-combinacion-go3.test.ts": "el cierre con la receta propia congelada, borrado en la Fase 3 (paso 3.4); los combos configurados viven en cerrar-combo-configurado-go3.test.ts",
   "ADR-032-combos-menu-del-dia-y-combinaciones.md|test/core/opciones/consumo-con-excepcion.test.ts": "renombrado en la Fase 3 (paso 3.4) a consumo-paridad-con-el-anterior.test.ts, sin los casos de la receta propia",
+  // Fase 7 (módulo Carta, 2026-10-28): el ajuste masivo de precios se borró; el ADR-034 conserva su historia.
+  "ADR-034-mantenimiento-de-la-carta.md|src/server/actions/carta/precios.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
+  "ADR-034-mantenimiento-de-la-carta.md|src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-carta.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
+  "ADR-034-mantenimiento-de-la-carta.md|src/core/carta/ajuste-de-precios.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
+  "ADR-034-mantenimiento-de-la-carta.md|src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
+  "ADR-034-mantenimiento-de-la-carta.md|src/server/actions/carta/precios-en-sucursales.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
+  "ADR-034-mantenimiento-de-la-carta.md|src/server/lecturas/carta/aviso-de-precio-de-empresa.ts": "el ajuste masivo de precios de la carta (CARTA-MANT F4, apagado desde la Fase 5), borrado en la Fase 7 por decisión del dueño (2026-10-28); el ADR-034 conserva su historia",
 };
 
 /** `adr|clave` → clave o guarda retirada que el ADR nombra a propósito, como historia. */

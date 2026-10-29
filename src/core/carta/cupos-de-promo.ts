@@ -11,6 +11,14 @@
 export const TIPOS_DE_CUPO = ["SECCION", "LISTA", "DEL_DIA"] as const;
 export type TipoDeCupo = (typeof TIPOS_DE_CUPO)[number];
 
+/**
+ * INTERRUPTOR de «Sumar un lugar» de lista en el formulario de cupos de una promo (decisión del dueño, 2026-10-28: «es algo obsoleto: es más fácil agregar la sección del otro lado y tildarla»; en
+ * producción hay 0 lugares de lista y 0 del día, solo cupos de sección). Mismo patrón que `MENU_DEL_DIA_VISIBLE` (`menu-del-dia.ts`): una sola constante. Con `false`, la pantalla no ofrece sumar
+ * un lugar de LISTA nuevo; los lugares que ya existieran se siguen mostrando y editando, y NO se toca el servidor ni se borra nada (el formulario de «Sumar un lugar» aparece solo si alguno de los
+ * dos interruptores ofrece un tipo). Para volver a encenderlo: poner `true`. Lo comprueba `test/carta/sumar-lugar-interruptor.test.tsx` (los dos estados).
+ */
+export const SUMAR_LUGAR_DE_LISTA_VISIBLE: boolean = false;
+
 /** El filtro de Prisma de los cupos que este despliegue sabe leer: de sección y activos. */
 export const WHERE_CUPO_DE_SECCION_ACTIVO = { tipo: "SECCION", activo: true } as const;
 

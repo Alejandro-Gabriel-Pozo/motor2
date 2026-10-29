@@ -5,7 +5,9 @@ import type { Resultado } from "./validaciones";
  * sección 2.4): `SeccionCarta`/`ItemAgrupadoCarta` pasan de ser 100% globales a poder acotarse a un subconjunto de sucursales de la
  * empresa. PURO — sin Prisma: los `sucursalIds` de acá son SIEMPRE resueltos por quien llama (leyendo la tabla puente
  * correspondiente, `SeccionCartaSucursal`/`ItemAgrupadoCartaSucursal`, que TODAVÍA NO EXISTEN en `prisma/schema.prisma` real —
- * solo en el schema experimental `prisma/fase-a/schema.prisma`, ver ADR-004). Este archivo no depende de que esas tablas existan:
+ * su borrador SQL (migración manual experimental de la Fase A, ADR-004) se retiró el 2026-10-28 y queda en el historial de git:
+ * `git show 99735374:prisma/fase-a/migraciones-manuales/20260929b_carta_multisucursal_y_sincro_precios.sql`). Este archivo no
+ * depende de que esas tablas existan:
  * documenta y prueba la REGLA, para que el día que se conecte al schema real sea "enchufar", no "diseñar de nuevo".
  */
 export type AlcanceCarta = "TODAS" | "SUCURSALES";

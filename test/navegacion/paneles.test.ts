@@ -24,6 +24,8 @@ const hrefs = (grupos: GrupoNav[]) => grupos.flatMap((g) => g.items.map((i) => i
 const EXCEPCIONES_DE_CONTEXTO: Record<string, string> = {
   "/catalogo/productos": "El catálogo de productos es de la empresa, pero cada sucursal lo mira y edita lo suyo (disponibilidad, precio local): aparece en los dos paneles.",
   "/catalogo/productos/nuevo": "Cuelga de Productos (ruta fuera del menú): hereda su panel.",
+  "/carta/parametrizacion/promociones":
+    "DEC-24 (emulación ratificada): las promos son de la EMPRESA (se definen con carta_promo_definir) y cada sucursal las prende y les pone su precio; la pantalla se abre con el «Ver» de la carta de la sucursal activa: aparece en los dos paneles.",
 };
 
 describe("cada pantalla del menú declara su panel", () => {
@@ -126,10 +128,10 @@ describe("mostrarSelectorDePaneles: por perfil", () => {
     const menu = menuDe(ADMIN);
     expect(mostrarSelectorDePaneles(menu)).toBe(true);
     const { empresa, sucursal } = particionarMenu(menu);
-    expect(hrefs(empresa)).toContain("/catalogo/categorias");
+    expect(hrefs(empresa)).toContain("/catalogo/clientes");
     expect(hrefs(empresa)).not.toContain("/stock/consolidado");
     expect(hrefs(sucursal)).toContain("/stock/consolidado");
-    expect(hrefs(sucursal)).not.toContain("/catalogo/categorias");
+    expect(hrefs(sucursal)).not.toContain("/catalogo/clientes");
   });
 
   it("el operador no ve ninguna pantalla exclusiva de Empresa: menú único, sin selector", () => {

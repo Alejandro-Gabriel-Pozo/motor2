@@ -17,7 +17,7 @@ import { agregarOpcionItemAgrupadoCartaCasoDeUso } from "../../src/server/action
  *  - igualar el precio de venta de un ítem agrupado (defensa: una base no puede estar en uno): `ES_BASE_CONFIGURABLE`;
  *  - poner a la venta en la sucursal: la regla D4 (un PV a $0 exige la clave fina) es solo para DIRECTO (una base en 0 se activa sin la clave); una base que no cumple el invariante (sin grupo de precio)
  *    no se activa: `BASE_INVALIDA` (apagarla, sí).
- * El ajuste masivo «Precios» de la carta está apagado (`PRECIOS_EDITABLES`) y no se tocó en esta fase.
+ * El ajuste masivo «Precios» de la carta (que estaba apagado) se borró el 2026-10-28 por decisión del dueño.
  */
 describe("C7a: las escrituras del precio propio rechazan una base", () => {
   let s: Awaited<ReturnType<typeof sembrarSalon>>;

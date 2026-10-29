@@ -101,7 +101,8 @@ test("«solo salón»: la carta pública deja de mostrar la promo y su sección,
     expect(filas.map((f) => [f.valorAnterior, f.valorNuevo])).toEqual([["false", "true"]]);
     expect((await prisma.promoCarta.findUniqueOrThrow({ where: { id: d.promo.id } })).version).toBe(2);
 
-    // Apagarlo devuelve la promo a la carta pública.
+    // Apagarlo devuelve la promo a la carta pública. Antes, que terminen los dos pedidos del doble clic y su refresco (si no, el segundo vuelve a tildar la casilla bajo el dedo).
+    await paginaAutenticada.waitForLoadState("networkidle");
     await otraVez.getByRole("checkbox", { name: /Solo salón: se vende desde el POS/ }).uncheck();
     await otraVez.getByRole("button", { name: "Guardar dónde se ve" }).click();
     await expect.poll(async () => (await prisma.promoCarta.findUniqueOrThrow({ where: { id: d.promo.id } })).soloSalon).toBe(false);

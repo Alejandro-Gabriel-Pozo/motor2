@@ -11,7 +11,7 @@ import { probarCerco } from "./cercos/probar-cerco";
  * trinquete: lista los casos de uso que ESCRIBEN un precio —`Producto.precioVenta`, `PrecioLocalProducto` o `PromoCartaSucursal.precioLocal`—
  * y que NO declaran control del valor visto. Meta: 0 en la Fase 2 (cada uno compara lo que vio la pantalla con la base dentro de la
  * transacción y, si cambió, responde `PRECIO_DESACTUALIZADO` o `VERSION_DESACTUALIZADA` sin escribir; el patrón de
- * `fijar-precio-local-de-opcion` y `ajustar-precios-de-la-empresa`).
+ * `fijar-precio-local-de-opcion`).
  *
  * Cómo se calcula:
  *  1. Escritores de precio en la persistencia: cada función exportada de `src/server/persistencia/**` que escribe
@@ -22,8 +22,8 @@ import { probarCerco } from "./cercos/probar-cerco";
  *     un valor de otro caso de uso que lo escribe (`set-precio-local-producto` → `guardar-precio-local-en-tx` → `escribirPrecioLocal`).
  *  3. Declara control del valor visto si su código (fuera de los comentarios) usa el código `"PRECIO_DESACTUALIZADO"` o `"VERSION_DESACTUALIZADA"`.
  *     Un PASO COMPARTIDO (un caso de uso que solo importan otros casos de uso, nunca una Server Action) lo HEREDA si TODOS sus llamadores lo controlan
- *     (Fase 2, paso A7: `guardar-precio-local-en-tx`, que llaman `set-precio-local-producto`, `sincronizar-precio-local-grupo-carta` y
- *     `ajustar-precios-de-la-carta`); con un solo llamador sin control, cuenta.
+ *     (Fase 2, paso A7: `guardar-precio-local-en-tx`, que llaman `set-precio-local-producto` y `sincronizar-precio-local-grupo-carta`; el ajuste
+ *     masivo de la carta, que también lo llamaba, se borró el 2026-10-28); con un solo llamador sin control, cuenta.
  * Una entrada por caso de uso, un tipo por precio que escribe; cada entrada con su motivo.
  *
  * Mecanismo, regeneración (`BAJAR_CERCOS=1`) y excepciones: `test/arquitectura/cercos/trinquete.ts`.
@@ -186,10 +186,8 @@ describe("cerco «escritores de precio con visto»: el cálculo", () => {
 
   it("ve los escritores CON control del valor visto (no pasa en vacío) y el paso compartido por transitividad", () => {
     const escritores = escritoresDePrecio(RAIZ_DEL_REPO);
-    expect(escritores.get("src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts")).toEqual({ precios: new Set(["Producto.precioVenta"]), conVisto: true, heredado: false });
-    expect(escritores.get("src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-carta.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: false });
     expect(escritores.get("src/server/actions/catalogo/casos-de-uso/set-precio-local-producto.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: false });
-    // El paso compartido lo hereda: sus tres llamadores controlan el valor visto.
+    // El paso compartido lo hereda: sus llamadores controlan el valor visto.
     expect(escritores.get("src/server/actions/catalogo/casos-de-uso/guardar-precio-local-en-tx.ts")).toEqual({ precios: new Set(["PrecioLocalProducto"]), conVisto: true, heredado: true });
   });
 

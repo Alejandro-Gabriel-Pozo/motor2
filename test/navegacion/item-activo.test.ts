@@ -8,9 +8,11 @@ const activo = (pathname: string, visibles: ReadonlySet<string> = TODOS) => href
 describe("hrefActivoDelMenu: un solo ítem resaltado, el de la ruta más larga", () => {
   it.each([
     ["/carta", "/carta"],
-    ["/carta/agrupados", "/carta/agrupados"],
-    ["/carta/portal", "/carta/portal"],
-    ["/carta/tema", "/carta/tema"],
+    // DEC-24: las pestañas de Carta cuelgan de su entrada (rutas de una entrada) y la resaltan a ella.
+    ["/carta/agrupados", "/carta"],
+    ["/carta/portal", "/carta/parametrizacion/apariencia"],
+    ["/carta/tema", "/carta/parametrizacion/apariencia"],
+    ["/carta/parametrizacion/promociones", "/carta/parametrizacion/promociones"],
     ["/traspasos", "/traspasos"],
     ["/traspasos/solicitar", "/traspasos/solicitar"],
     ["/traspasos/enviar", "/traspasos/enviar"],
@@ -22,7 +24,8 @@ describe("hrefActivoDelMenu: un solo ítem resaltado, el de la ruta más larga",
   });
 
   it("una pantalla hija resalta el ítem del que cuelga", () => {
-    expect(activo("/catalogo/recetas/abc123/historial")).toBe("/catalogo/recetas");
+    // DEC-13: Recetas es una pestaña de «Productos» (ruta de esa entrada): su editor y su historial resaltan «Productos».
+    expect(activo("/catalogo/recetas/abc123/historial")).toBe("/catalogo/productos");
     expect(activo("/catalogo/proveedores/comparativa")).toBe("/catalogo/proveedores");
     expect(activo("/catalogo/productos/nuevo")).toBe("/catalogo/productos");
   });
@@ -30,7 +33,7 @@ describe("hrefActivoDelMenu: un solo ítem resaltado, el de la ruta más larga",
   it("ignora la barra final, la consulta y el ancla", () => {
     expect(activo("/reportes/costos/")).toBe("/reportes/costos");
     expect(activo("/reportes/costos?desde=2026-01-01")).toBe("/reportes/costos");
-    expect(activo("/carta/tema#fila-3")).toBe("/carta/tema");
+    expect(activo("/carta/tema#fila-3")).toBe("/carta/parametrizacion/apariencia");
     // DEC-27: el editor del mínimo cuelga de «Configuración» de Stock (ruta de una entrada): resalta la entrada, también con ancla.
     expect(activo("/stock/minimo#fila-3")).toBe("/stock/configuracion");
   });

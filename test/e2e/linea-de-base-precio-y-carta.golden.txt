@@ -209,7 +209,7 @@
   [enlace: Receta]
   [enlace: En la carta]
   ## Opciones y precio
-  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en [enlace: Opciones de venta].
+  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en la [enlace: Biblioteca de opciones].
   Se vende por opción: el precio guardado ($ 18.000) no se cobra, rige el precio final de cada opción. El precio de cada sucursal se cambia en [enlace: Precio local].
   [botón: + Nuevo grupo]
   [botón: Agregar un grupo existente]
@@ -293,7 +293,7 @@
   [enlace: Receta]
   [enlace: En la carta]
   ## Opciones y precio
-  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en [enlace: Opciones de venta].
+  Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en la [enlace: Biblioteca de opciones].
   Se vende por opción: el precio guardado ($ 18.000) no se cobra, rige el precio final de cada opción. El precio de cada sucursal se cambia en [enlace: Precio local].
   [botón: + Nuevo grupo]
   [botón: Agregar un grupo existente]
@@ -366,7 +366,7 @@
   Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000 · Pizza de verduras asadas $ 20.000 · Pizza fugazzeta $ 22.000 · Pizza napolitana $ 22.000 · Pizza con papas fritas $ 25.000
 
 ## ADMINISTRACIÓN a 1280 px: Grupo de opciones «Tipos de Pizza» (/catalogo/opciones/<id de Tipos de Pizza>)
-  [enlace: ← Opciones de venta]
+  [enlace: ← Biblioteca de opciones]
   # Tipos de Pizza
   Tamaño (el tipo no se puede cambiar) · Elegí 1 · En uso
   ## Datos del grupo
@@ -445,7 +445,7 @@
   [enlace: Pizzas]
 
 ## ADMINISTRACIÓN a 375 px: Grupo de opciones «Tipos de Pizza» (/catalogo/opciones/<id de Tipos de Pizza>)
-  [enlace: ← Opciones de venta]
+  [enlace: ← Biblioteca de opciones]
   # Tipos de Pizza
   Tamaño (el tipo no se puede cambiar) · Elegí 1 · En uso
   ## Datos del grupo
@@ -524,12 +524,13 @@
   [enlace: Pizzas]
 
 ## ADMINISTRACIÓN a 1280 px: Carta › Parametrización › Secciones (/carta/parametrizacion/secciones)
-  [enlace: Mantenimiento]
-  [enlace: Parametrización]
   # Carta
-  Parametrización · Secciones
+  Secciones
   LB Precio y carta
-  [enlace: ← Volver]
+  [enlace: Hoy]
+  [enlace: Secciones y géneros]
+  [enlace: Ítems agrupados]
+  [enlace: Géneros (carpetas del selector del POS) ›]
   ## Secciones de la carta
   [botón: Ordenar]
   El orden se ve en todas las sucursales y en la carta pública (las secciones son de la empresa). Con «⋯» podés ocultar o mostrar una sección, moverla o cambiar sus datos.
@@ -568,7 +569,7 @@
   [campo: (depende de la base)]
   [botón: Crear sección]
   ## Productos de cada sección
-  La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en Mantenimiento › Visibilidad › «Fuera de carta».
+  La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en Carta › Hoy › Visibilidad › «Fuera de carta».
   ▸
   Pizzas
   1 producto
@@ -807,12 +808,13 @@
     [botón: Quitar «Gaseosa 500 cc» de la carta (vuelve a «Fuera de carta»)]
 
 ## ADMINISTRACIÓN a 375 px: Carta › Parametrización › Secciones (/carta/parametrizacion/secciones)
-  [enlace: Mantenimiento]
-  [enlace: Parametrización]
   # Carta
-  Parametrización · Secciones
+  Secciones
   LB Precio y carta
-  [enlace: ← Volver]
+  [enlace: Hoy]
+  [enlace: Secciones y géneros]
+  [enlace: Ítems agrupados]
+  [enlace: Géneros (carpetas del selector del POS) ›]
   ## Secciones de la carta
   [botón: Ordenar]
   El orden se ve en todas las sucursales y en la carta pública (las secciones son de la empresa). Con «⋯» podés ocultar o mostrar una sección, moverla o cambiar sus datos.
@@ -851,7 +853,7 @@
   [campo: (depende de la base)]
   [botón: Crear sección]
   ## Productos de cada sección
-  La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en Mantenimiento › Visibilidad › «Fuera de carta».
+  La ficha de cada producto que sale en la carta de esta sucursal: descripción, tags, ★, género, sección y orden. Lo que no sale en la carta (el POS y el menú del día) está en Carta › Hoy › Visibilidad › «Fuera de carta».
   ▸
   Pizzas
   1 producto

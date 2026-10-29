@@ -1,18 +1,12 @@
 {
   "regla": "casos-de-uso-en-guardianes",
   "meta": "0: todo caso de uso que invoca una Server Action, de su dominio o de otro, lo revisan los guardianes (tags de contrato y ficha)",
-  "total": 3,
-  "entradas": 3,
+  "total": 1,
+  "entradas": 1,
   "porTipo": {
-    "fuera-de-los-guardianes": 3
+    "fuera-de-los-guardianes": 1
   },
   "cuentas": {
-    "src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-carta.ts": {
-      "fuera-de-los-guardianes": 1
-    },
-    "src/server/actions/catalogo/casos-de-uso/ajustar-precios-de-la-empresa.ts": {
-      "fuera-de-los-guardianes": 1
-    },
     "src/server/actions/catalogo/casos-de-uso/fijar-disponibilidad-de-hoy.ts": {
       "fuera-de-los-guardianes": 1
     }

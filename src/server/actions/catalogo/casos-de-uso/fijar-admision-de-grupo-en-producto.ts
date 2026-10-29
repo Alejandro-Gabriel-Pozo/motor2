@@ -164,7 +164,7 @@ export async function fijarAdmisionDeGrupoEnTx(
   if (!regla.ok) return fracaso("CONFIGURACION_INVALIDA", regla.mensaje);
 
   if (comando.activo && !(filaGrupo?.activo ?? false) && !grupo.activo) {
-    return fracaso("GRUPO_INACTIVO", `«${grupo.nombre}» está archivado: restauralo (en Opciones de venta → Archivados) antes de que un producto lo use.`);
+    return fracaso("GRUPO_INACTIVO", `«${grupo.nombre}» está archivado: restauralo (en Biblioteca de opciones → Archivados) antes de que un producto lo use.`);
   }
   for (const o of comando.opciones) {
     const opcion = delGrupo.get(o.opcionId)!;

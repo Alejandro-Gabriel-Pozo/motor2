@@ -704,6 +704,34 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Fase 6, bloque 3 («+ Opción» y «+ Extra»; ADITIVO, solo ADMINISTRACIÓN, la carta pública y el cobro idénticos; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): la tarjeta de cada grupo del paso 2 «Opciones y precio» suma el botón «+ Opción» (con el nombre accesible «+ Opción en <grupo>») antes de «Quitar de este producto», para quien puede Editar `opciones_definir`. Revisado con `git diff -U0`: cambian SOLO 2 líneas, las dos de la tarjeta de «Tipos de Pizza» (1280 y 375 px), que suman `[botón: + Opción (lector: «+ Opción en Tipos de Pizza»)]`; las secciones de la carta pública no cambian.",
       },
+      {
+        blob: "7ba3d5fe8f25ca519a9f7c375113cebf1932b504",
+        // El commit PADRE de este (9246bc04) es el último antes de la regeneración; el texto lo cambia el vocabulario de Catálogo de la Fase 7 (DEC-13).
+        commit: "9246bc04",
+        motivo:
+          "Fase 7, Catálogo (DEC-13; CAMBIA SOLO UN TEXTO de administración, regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_ccat_e2e local): la entrada del menú «Opciones de venta» se llama «Biblioteca de opciones», y los enlaces que llevan a esa pantalla la nombran igual. Revisado con `git diff -U0`: cambian SOLO 4 líneas, dos de «Opciones y precio» de Pizzas («se arman en la [enlace: Biblioteca de opciones]», 1280 y 375 px) y dos del grupo «Tipos de Pizza» («[enlace: ← Biblioteca de opciones]», 1280 y 375 px); la carta pública, la tipografía y el resto de la administración quedan idénticos byte a byte.",
+      },
+      {
+        blob: "9e3d47d002fd77c703dd6794a86bd7bb4c251708",
+        // El commit PADRE de este (e06b41de) es el último antes de la regeneración; el texto lo cambió la Fase 7, módulo Carta (DEC-24, carril car): las pestañas de la entrada «Carta» reemplazan las dos puertas.
+        commit: "e06b41de",
+        motivo:
+          "Fase 7, módulo Carta (DEC-24: tres entradas de menú con pestañas; CAMBIA TEXTO de administración, no la carta pública; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_ccar_e2e local). En «Carta › Parametrización › Secciones» (a 1280 y a 375 px): salen las dos «puertas» `[enlace: Mantenimiento]` / `[enlace: Parametrización]` y `[enlace: ← Volver]`, el subtítulo pasa de «Parametrización · Secciones» a «Secciones» y entra la fila de pestañas `[enlace: Hoy]` `[enlace: Secciones y géneros]` `[enlace: Ítems agrupados]`; la ayuda de «Productos de cada sección» dice «Carta › Hoy › Visibilidad» en lugar de «Mantenimiento › Visibilidad». Revisado con `git diff`: 10 líneas por lado, todas dentro de las dos secciones de Secciones; la carta pública, la tipografía, las opciones de Pizzas y «Tipos de Pizza» quedan idénticas byte a byte.",
+      },
+      {
+        blob: "c65d1e080bd711d9d75aa55faad0220657ec7193",
+        // El commit PADRE de este (75502ca0) es el último antes de la regeneración; el texto lo cambió el enlace a Géneros dentro de la pestaña «Secciones y géneros» (Fase 7, módulo Carta).
+        commit: "75502ca0",
+        motivo:
+          "Fase 7, módulo Carta (DEC-24; ADITIVO, solo ADMINISTRACIÓN; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_ccar_e2e local): la pestaña «Secciones y géneros» reúne dos pantallas, así que «Secciones» suma el enlace `[enlace: Géneros (carpetas del selector del POS) ›]` (a 1280 y a 375 px). Revisado con `git diff`: 2 líneas agregadas, ninguna borrada; la carta pública y el resto quedan idénticos.",
+      },
+      {
+        blob: "57866a830a4774b274aa7d5dc7ad00d1314f3011",
+        // El commit PADRE de este (3055d2fb) es el último antes de la integración: la fusión de la rama del módulo Carta en `alegp/integracion-f7`, que ya traía la del módulo Catálogo.
+        commit: "3055d2fb",
+        motivo:
+          "Integración de Fase 7 (Catálogo y Carta; NO cambia contenido propio: es la SUMA de las dos regeneraciones anteriores). Las dos ramas regeneraron la línea de base desde el mismo ancestro (2b994fb6) y tocaron zonas distintas: Catálogo, 4 líneas de «Opciones y precio» de Pizzas y del grupo «Tipos de Pizza» (Biblioteca de opciones); Carta, las secciones de «Secciones» (pestañas, Géneros). La fusión de git dio el texto sin conflicto de líneas y este blob es el de ese texto fusionado, sin regenerar con Playwright en la integración; lo confirma el e2e de la CI (que compara la línea de base con la pantalla real) y, si difiriera, se regenera con REGENERAR_LB_PRECIO_Y_CARTA=1 y se declara acá.",
+      },
     ],
   },
 };

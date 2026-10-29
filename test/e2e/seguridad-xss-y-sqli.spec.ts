@@ -97,7 +97,7 @@ test.describe("XSS almacenado: la carta pública y la administración dibujan te
         dialogos.push(dialogo.message());
         await dialogo.dismiss();
       });
-      for (const ruta of ["/catalogo/proveedores", "/catalogo/productos", "/catalogo/clientes", `/catalogo/proveedores?editar=${encodeURIComponent(a)}`]) {
+      for (const ruta of ["/catalogo/proveedores", "/catalogo/productos", "/catalogo/clientes", `/catalogo/productos?q=${encodeURIComponent(a)}`]) {
         const r = await page.goto(ruta);
         expect(r?.status(), ruta).toBeLessThan(500);
         await page.waitForLoadState("networkidle");
@@ -163,7 +163,7 @@ test.describe("parámetros de la URL: sin XSS reflejado, sin redirecciones abier
       "/carta-publica/%25/x",
       "/carta-publica/%zz/x",
       "/carta-publica/%zz",
-      "/catalogo/productos/%zz/editar", // una ruta de la aplicación (autenticada): el segmento roto no llega ni al login
+      "/catalogo/productos/%zz/datos", // una ruta de la aplicación (autenticada): el segmento roto no llega ni al login
     ];
     for (const ruta of rutas) {
       const r = await request.get(ruta, { failOnStatusCode: false, maxRedirects: 0 });
@@ -176,7 +176,7 @@ test.describe("parámetros de la URL: sin XSS reflejado, sin redirecciones abier
     const sinSucursal = await request.get(`/carta-publica/${EMPRESA}/no-existe`, { failOnStatusCode: false });
     expect(sinSucursal.status()).toBe(404);
     // `%25` bien escapado en una ruta de la aplicación no es un error de decodificación: el comportamiento (sin sesión, al login) es el de siempre.
-    const autenticada = await request.get("/catalogo/productos/%25/editar", { failOnStatusCode: false, maxRedirects: 0 });
+    const autenticada = await request.get("/catalogo/productos/%25/datos", { failOnStatusCode: false, maxRedirects: 0 });
     expect([302, 303, 307, 308]).toContain(autenticada.status());
     expect(autenticada.headers()["location"] ?? "").toContain("/login");
   });

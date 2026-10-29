@@ -71,3 +71,8 @@ export {
   necesitaLaEmpresaEntera,
 } from "./filtros-de-productos";
 export type { EntradaDeFiltrosDeProductos, FaltaFiltrable, FiltrosDeProductos } from "./filtros-de-productos";
+// Fase 7 (DEC-13): el grupo Catálogo del menú, sus filas de pestañas y las rutas que cuelgan de cada entrada (puro; lo arma `core/navegacion/estructura.ts` y lo dibuja `FilaDeCatalogo`).
+export { NAV_CATALOGO, PESTANAS_DE_MAESTROS, PESTANAS_DE_PRODUCTOS, RUTAS_DE_LAS_ENTRADAS_DE_CATALOGO } from "./ui-config";
+export type { PantallaDeCatalogo } from "./ui-config";
+// Fase 7 (M2): la búsqueda de un producto por nombre, código y, para quien puede, por cómo lo llama un proveedor (puro; la usan la lista de Productos y el buscador de producto).
+export { whereBusquedaDeProducto } from "./busqueda-de-producto";

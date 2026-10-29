@@ -127,7 +127,10 @@ export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIc
     <div
       ref={raizRef}
       {...(embebida ? {} : { "data-carta-libro": "" })}
-      className={`relative w-full overflow-hidden ${embebida ? "h-[32rem]" : "h-dvh"}`}
+      // Embebida: `overflow-clip` y no `overflow-hidden`. Un contenedor `overflow-hidden` sigue siendo desplazable por el navegador (`scrollIntoView`, el foco, un clic de Playwright
+      // sobre la flecha mientras corre su empujoncito): se corría 290 × 361 px, el slider quedaba fuera del marco y la vista previa se veía en blanco. `overflow-clip` no crea
+      // contenedor de scroll, así que nada puede moverlo. La carta pública (`h-dvh`, sin página anfitriona) no lo necesita y conserva `overflow-hidden`.
+      className={`relative w-full ${embebida ? "h-[32rem] overflow-clip" : "h-dvh overflow-hidden"}`}
       // Los tokens del tema (`--carta-bg`, `--carta-ink`…) se pisan ACÁ, en un descendiente de `.carta-shell`: el fondo y el color
       // que `.carta-shell` pinta se resolvieron con SUS tokens, no con los del tema, así que la raíz los vuelve a pintar.
       style={{ ...variablesCss, backgroundColor: "var(--carta-bg)", color: "var(--carta-ink)" } as React.CSSProperties}

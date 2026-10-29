@@ -1,4 +1,4 @@
-import { MENU_DEL_DIA_VISIBLE, type LugarDeCombo, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
+import { MENU_DEL_DIA_VISIBLE, SUMAR_LUGAR_DE_LISTA_VISIBLE, VIGENCIA_DE_PROMO_VISIBLE, type LugarDeCombo, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
@@ -168,6 +168,30 @@ export function CamposVigencia({ vigencia }: { vigencia: VigenciaDePromoAdmin })
   );
 }
 
+const sinVigencia = (v: VigenciaDePromoAdmin) => v.vigenteDesde === null && v.vigenteHasta === null && v.diasDeSemana === null;
+
+/**
+ * El bloque «Vigencia» de una promo. Con el interruptor apagado (`VIGENCIA_DE_PROMO_VISIBLE`, decisión del dueño: la promo se maneja con activar/desactivar) no se dibuja; solo si una promo trae una
+ * vigencia cargada de ANTES se la nombra, como texto, porque el POS la sigue respetando (no se esconde una regla que todavía decide qué se vende). Con el interruptor prendido: el título y, según el
+ * permiso, el formulario (`children`, armado por la página con su acción) o la vigencia como texto.
+ */
+export function BloqueDeVigencia({ vigencia, puedeEditar, children }: { vigencia: VigenciaDePromoAdmin; puedeEditar: boolean; children: React.ReactNode }) {
+  if (!VIGENCIA_DE_PROMO_VISIBLE) {
+    if (sinVigencia(vigencia)) return null;
+    return (
+      <p className="mt-3 text-sm text-tinta-tenue" data-vigencia-anterior>
+        Esta promo tiene una vigencia cargada de antes que el salón sigue respetando: {textoDeVigencia(vigencia)} Ya no se edita acá: la promo se maneja con activar y desactivar.
+      </p>
+    );
+  }
+  return (
+    <>
+      <h3 className="mt-3 text-sm font-medium">Vigencia</h3>
+      {puedeEditar ? children : <p className="mt-1 text-sm">{textoDeVigencia(vigencia)}</p>}
+    </>
+  );
+}
+
 /**
  * GO-3b (U1): los lugares de ENTRADAS de la promo en el formulario de cupos: cada uno con «incluir» (destildado, se da de baja: sus entradas quedan guardadas por si vuelve) y su mínimo y máximo;
  * el nombre es su identidad (cambiarlo es otro lugar). Abajo, una fila para sumar un lugar nuevo: una LISTA («Bebida») o uno DEL DÍA («Plato del día»). Con el menú del día apagado
@@ -194,20 +218,23 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           </label>
         </div>
       ))}
-      <fieldset className="mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end">
-        <legend className="mb-1 text-sm">Sumar un lugar (opcional)</legend>
-        <div className="col-span-2">
-          <Selector etiqueta="Tipo" name="nuevo_lugar_tipo" defaultValue="LISTA">
-            <option value="LISTA">Lista de productos</option>
-            {MENU_DEL_DIA_VISIBLE ? <option value="DEL_DIA">Plato del día</option> : null}
-          </Selector>
-        </div>
-        <div className="col-span-2">
-          <Campo etiqueta="Nombre" name="nuevo_lugar_nombre" maxLength={80} placeholder="Ej.: Bebida" />
-        </div>
-        <Campo etiqueta="mín." type="number" name="nuevo_lugar_min" min={0} step={1} defaultValue={1} className={CLASE_NUMERO} />
-        <Campo etiqueta="máx." type="number" name="nuevo_lugar_max" min={1} step={1} defaultValue={1} className={CLASE_NUMERO} />
-      </fieldset>
+      {/* Decisión del dueño (2026-10-28): «Sumar un lugar» queda oculto (`SUMAR_LUGAR_DE_LISTA_VISIBLE`); aparece solo si algún interruptor ofrece un tipo de lugar. */}
+      {(SUMAR_LUGAR_DE_LISTA_VISIBLE || MENU_DEL_DIA_VISIBLE) && (
+        <fieldset className="mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end">
+          <legend className="mb-1 text-sm">Sumar un lugar (opcional)</legend>
+          <div className="col-span-2">
+            <Selector etiqueta="Tipo" name="nuevo_lugar_tipo" defaultValue={SUMAR_LUGAR_DE_LISTA_VISIBLE ? "LISTA" : "DEL_DIA"}>
+              {SUMAR_LUGAR_DE_LISTA_VISIBLE ? <option value="LISTA">Lista de productos</option> : null}
+              {MENU_DEL_DIA_VISIBLE ? <option value="DEL_DIA">Plato del día</option> : null}
+            </Selector>
+          </div>
+          <div className="col-span-2">
+            <Campo etiqueta="Nombre" name="nuevo_lugar_nombre" maxLength={80} placeholder="Ej.: Bebida" />
+          </div>
+          <Campo etiqueta="mín." type="number" name="nuevo_lugar_min" min={0} step={1} defaultValue={1} className={CLASE_NUMERO} />
+          <Campo etiqueta="máx." type="number" name="nuevo_lugar_max" min={1} step={1} defaultValue={1} className={CLASE_NUMERO} />
+        </fieldset>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { prisma } from "./fixtures/db";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 
 /**
- * Fase 4 de la ola «precio y carta» (ADR-035): «¿Cómo se vende?» en la edición de un producto de venta (`/catalogo/productos/[id]/datos`, el paso 1 del espacio del producto; `/editar` redirige ahí). Marcar la base (con su grupo de medida en precio
+ * Fase 4 de la ola «precio y carta» (ADR-035): «¿Cómo se vende?» en la edición de un producto de venta (`/catalogo/productos/[id]/datos`, el paso 1 del espacio del producto; la antigua ruta `/editar` ya no existe). Marcar la base (con su grupo de medida en precio
  * propio), ver el precio guardado bloqueado («no se cobra») con el enlace a las opciones, el rechazo del servidor («… diferencia en porcentaje …» / «Falta el precio final de cada opción…»), «Por opción»
  * apagado con su motivo cuando no hay grupo de precio, volver a «Directo», y axe a 1280 y a 375 px. Lo sembrado no se borra (las tablas de opciones solo se agregan; ver `fixtures/opciones.ts`).
  */
@@ -68,9 +68,7 @@ test("el servidor rechaza pasar a base con un porcentaje (mensaje claro) y no gu
 test("sin grupo de precio, «Por opción» se ve apagado y dice por qué", async ({ paginaAutenticada: page, sucursalId }) => {
   const m = marca();
   const { productoId } = await sembrarProductoConOpciones({ nombre: `E2E Gaseosa ${m}`, codigo: `E2E-GAS-${m}`, precioVenta: 4000, sucursalId, grupos: [] });
-  // Entra por la ruta VIEJA (`/editar`) a propósito: el favorito de siempre termina en el mismo formulario del paso 1.
-  await page.goto(`/catalogo/productos/${productoId}/editar`);
-  await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${productoId}/datos$`));
+  await page.goto(`/catalogo/productos/${productoId}/datos`);
   const porOpcion = page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ });
   await expect(porOpcion).toBeDisabled();
   await expect(page.getByText(/Para venderlo por opción, primero asignale un grupo de tamaños/)).toBeVisible();

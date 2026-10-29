@@ -7,6 +7,7 @@ import { ErrorDeSalida, ejecutar, prepararSalidas, VARIABLE_DE_EVIDENCIA, VARIAB
 import { MANIFIESTO } from "../manifiesto";
 import { PISO_DE_ARCHIVOS_LEIDOS, fechaUtcDeHoy } from "../politica";
 import { TIPOS_DE_PROBLEMA_DE_EVIDENCIA, armarEvidencia, archivosEnAlcance, markdownDeEvidencia, problemasEstructurales, textoDeEvidencia, type Evidencia, type EntradaEstructural, type ResumenDeMatriz } from "./evidencia";
+import { EXCLUSIONES } from "./exclusiones";
 
 /**
  * La EVIDENCIA POR CORRIDA (paso G5): «pasó» no es «no encontró nada». Casos sintéticos rojo y verde de los controles estructurales (conjunto de ids, alcance de 0 archivos, piso de archivos leídos), la
@@ -152,7 +153,7 @@ describe("armarEvidencia (repo real)", () => {
   it("excepciones, deuda y exclusiones con los días hasta vencer, de la que vence antes a la que vence después", () => {
     const dias = real.vencimientos.map((v) => v.dias);
     expect([...dias].sort((a, b) => a - b)).toEqual(dias);
-    expect(real.vencimientos.some((v) => v.clase === "exclusion")).toBe(true);
+    expect(real.vencimientos.filter((v) => v.clase === "exclusion").length, "una fila de vencimiento por cada exclusión real (hoy ninguna)").toBe(EXCLUSIONES.length);
     for (const v of real.vencimientos) expect(v.dias, `${v.clase} ${v.archivo} vencida`).toBeGreaterThanOrEqual(0);
     expect(real.vencimientos.filter((v) => v.clase === "deuda").length).toBe(MANIFIESTO.reduce((n, c) => n + c.deuda.length, 0));
   });

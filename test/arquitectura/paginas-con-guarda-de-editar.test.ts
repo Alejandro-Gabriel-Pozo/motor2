@@ -14,9 +14,8 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../../src/app/(app)");
 
 const PAGINAS_DE_EDICION = [
-  // Fase 6 (6.13): el paso 1 del espacio del producto (`/datos`) es el editor; `/editar` conserva su guarda hasta redirigir (quien no puede editar recibe ahí el mismo «No tenés permiso» y no se le revela nada).
+  // Fase 6 (6.13): el paso 1 del espacio del producto (`/datos`) es el editor (la ruta vieja `/editar` se borró el 2026-10-28, con el OK del dueño).
   { pagina: "catalogo/productos/[id]/datos/page.tsx", clave: "producto_editar" },
-  { pagina: "catalogo/productos/[id]/editar/page.tsx", clave: "producto_editar" },
   { pagina: "catalogo/productos/nuevo/page.tsx", clave: "alta_producto" },
   { pagina: "catalogo/proveedores/[id]/editar/page.tsx", clave: "proveedores" },
   { pagina: "catalogo/proveedores/nuevo/page.tsx", clave: "proveedor_alta" },

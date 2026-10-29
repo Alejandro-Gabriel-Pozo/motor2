@@ -16,7 +16,7 @@ import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
  * El paso 3, «Receta» (bloque 3, 3a): la pantalla de la receta de siempre, dentro del marco del espacio, para un producto de venta y para una materia prima que se produce; una que no se produce no tiene receta ni espacio.
  *
  * 6.20, lo que cruza los pasos: la base de punta a punta sin escribir una URL (alta, paso 2 con «+ Nuevo grupo» dos veces, paso 1 «Por opción», y el paso 2 sin pendientes); un grupo que suma con «Se lee en la carta como»
- * vacío; quien solo ve (la portada sin formularios y los pasos como texto; por URL, «No tenés permiso»); y la pestaña vieja (`/editar` termina en `/datos`).
+ * vacío; quien solo ve (la portada sin formularios y los pasos como texto; por URL, «No tenés permiso») (la pestaña vieja `/editar` se borró el 2026-10-28, con el OK del dueño).
  *
  * El paso 4, «En la carta» (6.17c): publicar el producto en la carta de la sucursal sin salir del espacio; quién lo abre y qué ve (las celdas del rol «admin» se ajustan y se devuelven, como en `carta-solo-ver.spec.ts`).
  * Lo sembrado de opciones no se borra (ver `fixtures/opciones.ts`): nombres con marca propia.
@@ -429,15 +429,6 @@ test("quien solo VE productos: la portada sin formularios y los pasos como texto
   } finally {
     await limpiar();
   }
-});
-
-test("la pestaña vieja: /editar de un producto de venta termina en /datos con el formulario cargado", async ({ paginaAutenticada: page, sucursalId }) => {
-  const m = marca();
-  const producto = await productoDirecto(m, sucursalId);
-  await page.goto(`/catalogo/productos/${producto.id}/editar`);
-  await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
-  await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
-  await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Qué se vende/ })).toHaveAttribute("aria-current", "page");
 });
 
 test("a 375 px la tira de pasos deja a la vista la pestaña actual en cada paso, y la página no se mueve", async ({ paginaAutenticada: page, sucursalId }) => {

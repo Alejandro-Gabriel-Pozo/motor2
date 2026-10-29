@@ -43,7 +43,7 @@ test("dosPaneles apagado: el menú es uno solo (sin selector), con todo junto, y
 
   await page.goto("/catalogo/categorias");
   await expect(selector(page)).toHaveCount(0);
-  await expect(page.locator("nav a[aria-current=page]")).toHaveCount(1);
+  await expect(page.locator("aside nav a[aria-current=page]")).toHaveCount(1);
   await expect(page.locator("nav").getByRole("button", { name: "Stock" })).toBeVisible();
 });
 

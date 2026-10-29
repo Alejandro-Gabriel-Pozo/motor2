@@ -58,7 +58,7 @@ for (const { ancho, alto } of [
         await expect(filas.first()).toContainText(harina.nombre);
         // La selección y la búsqueda siguen puestas en los controles después de filtrar.
         await expect(formulario.getByLabel("Tipo")).toHaveValue("materia-prima");
-        await expect(formulario.getByLabel("Buscar por nombre o código")).toHaveValue(m);
+        await expect(formulario.getByLabel(/^Buscar por nombre/)).toHaveValue(m);
 
         await formulario.getByLabel("Tipo").selectOption("");
         await formulario.getByLabel("Le falta algo").selectOption("sin-precio");
@@ -90,7 +90,7 @@ test("Enter en la búsqueda filtra, y un valor raro en la URL no rompe: la lista
     await page.goto(`/catalogo/productos?q=${m}&tipo=%27%3B+DROP+TABLE&modo=x&disponible=todos&falta=mucho`);
     await expect(page.locator("tbody tr")).toHaveCount(3);
     for (const nombre of ["Tipo", "Cómo se vende", "Disponibilidad", "Le falta algo"]) await expect(page.getByLabel(nombre)).toHaveValue("");
-    const busqueda = page.getByLabel("Buscar por nombre o código");
+    const busqueda = page.getByLabel(/^Buscar por nombre/);
     await busqueda.fill(`Pizza ${m}`);
     await busqueda.press("Enter");
     await expect(page.locator("tbody tr")).toHaveCount(1);

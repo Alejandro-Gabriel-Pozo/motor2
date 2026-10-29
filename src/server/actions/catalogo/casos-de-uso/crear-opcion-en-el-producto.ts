@@ -86,7 +86,7 @@ export async function crearOpcionEnElProductoCasoDeUso(
         // 2. El grupo.
         const grupo = await cargarGrupoEnTx(tx, comando.grupoId);
         if (!grupo) throw new PasoRechazado(fracaso("GRUPO_NO_ENCONTRADO", "No se encontró el grupo de opciones."));
-        if (!grupo.activo) throw new PasoRechazado(fracaso("GRUPO_INACTIVO", `«${grupo.nombre}» está archivado: restauralo (en Opciones de venta → Archivados) antes de agregarle opciones.`));
+        if (!grupo.activo) throw new PasoRechazado(fracaso("GRUPO_INACTIVO", `«${grupo.nombre}» está archivado: restauralo (en Biblioteca de opciones → Archivados) antes de agregarle opciones.`));
 
         // 3. Lo que el producto ya usa de él.
         const filaGrupo = await tx.productoAdmiteGrupo.findUnique({

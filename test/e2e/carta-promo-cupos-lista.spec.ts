@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { SUMAR_LUGAR_DE_LISTA_VISIBLE } from "../../src/core/carta/cupos-de-promo";
+import { VIGENCIA_DE_PROMO_VISIBLE } from "../../src/core/carta/vigencia-de-promo";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
 
@@ -46,8 +48,15 @@ test("un lugar «lista» con su entrada (queda fijo); volver a guardar los cupos
     await page.goto("/carta/parametrizacion/promociones");
     const promo = page.locator(`[data-promo-carta="${d.titulo}"]`);
     await promo.locator("summary").first().click();
-    await promo.locator('input[name="nuevo_lugar_nombre"]').fill("Bebida");
-    await promo.getByRole("button", { name: "Guardar cupos" }).dblclick();
+    if (SUMAR_LUGAR_DE_LISTA_VISIBLE) {
+      await promo.locator('input[name="nuevo_lugar_nombre"]').fill("Bebida");
+      await promo.getByRole("button", { name: "Guardar cupos" }).dblclick();
+    } else {
+      // Decisión del dueño (2026-10-28): «Sumar un lugar» está oculto en la pantalla (`SUMAR_LUGAR_DE_LISTA_VISIBLE`). El lugar se siembra como si ya existiera: lo que sigue (sumarle un producto,
+      // volver a guardar, destildarlo) es lo que la pantalla sigue permitiendo con los lugares que ya existían.
+      await expect(promo.locator('input[name="nuevo_lugar_nombre"]')).toHaveCount(0);
+      await prisma.promoCartaCupo.create({ data: { promoCartaId: d.promo.id, tipo: "LISTA", nombre: "Bebida", cantidadMinima: 1, cantidadMaxima: 1, orden: 1 } });
+    }
     await expect.poll(async () => prisma.promoCartaCupo.count({ where: { promoCartaId: d.promo.id, tipo: "LISTA", activo: true } })).toBe(1);
 
     await page.reload();
@@ -70,10 +79,15 @@ test("un lugar «lista» con su entrada (queda fijo); volver a guardar los cupos
     await expect(conEntrada.getByRole("status").first()).toBeVisible();
     expect(await prisma.promoCartaCupo.count({ where: { promoCartaId: d.promo.id, tipo: "LISTA", activo: true } })).toBe(1);
 
-    // La vigencia: sin el domingo.
-    await conEntrada.locator('input[name="dia_6"]').uncheck();
-    await conEntrada.getByRole("button", { name: "Guardar vigencia" }).click();
-    await expect.poll(async () => (await prisma.promoCarta.findUniqueOrThrow({ where: { id: d.promo.id } })).diasDeSemana).toBe(63);
+    // La vigencia: sin el domingo (solo con su interruptor prendido; decisión del dueño del 2026-10-20: la promo no tiene vigencia, se maneja con activar/desactivar).
+    if (VIGENCIA_DE_PROMO_VISIBLE) {
+      await conEntrada.locator('input[name="dia_6"]').uncheck();
+      await conEntrada.getByRole("button", { name: "Guardar vigencia" }).click();
+      await expect.poll(async () => (await prisma.promoCarta.findUniqueOrThrow({ where: { id: d.promo.id } })).diasDeSemana).toBe(63);
+    } else {
+      await expect(conEntrada.getByRole("button", { name: "Guardar vigencia" })).toHaveCount(0);
+      await expect(conEntrada.locator('input[name="dia_6"]')).toHaveCount(0);
+    }
 
     // Destildarlo lo da de baja; la entrada queda guardada.
     await page.reload();

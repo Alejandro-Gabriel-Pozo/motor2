@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { CajaDesplazable } from "@/components/catalogo/caja-desplazable";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { listarProductosConReceta } from "@/server/consultas/catalogo/recetas";
 import { NuevaReceta } from "./nueva-receta";
+import { AvisoSoloLecturaDeCatalogo } from "@/components/catalogo/aviso-solo-lectura";
+import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
+import { PESTANAS_DE_PRODUCTOS } from "@/core/catalogo/public";
 
 /**
  * Lista de recetas YA armadas — antes esta pantalla mezclaba "elegir un
@@ -26,52 +30,60 @@ export default async function RecetasPage() {
 
   // P2 (RLS por sucursal): la lista son los productos disponibles en ALGUNA sucursal con receta central: se lee con la base de VERIFICACIÓN (lectura en toda la empresa). Son filas de `Producto` (id, nombre, tipo, versión vigente), nada de otra sucursal.
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx);
-  const conReceta = await listarProductosConReceta(verificacion.db);
+  // Ver ≠ escribir (DEC-33, Fase 7): «Nueva receta» abre el editor para guardar: se ofrece solo con el «Editar» de `guardar_receta`.
+  const [conReceta, { editar: puedeEditar }] = await Promise.all([
+    listarProductosConReceta(verificacion.db),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Recetas</h1>
-        {conReceta.length > 0 && <NuevaReceta />}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">Productos · Recetas</h1>
+        {puedeEditar && conReceta.length > 0 && <NuevaReceta />}
       </div>
+      <FilaDeCatalogo ctx={ctx} etiqueta="Qué mirar de los productos" pestanas={PESTANAS_DE_PRODUCTOS} ruta="/catalogo/recetas" />
+      {!puedeEditar && <AvisoSoloLecturaDeCatalogo que="las recetas" />}
 
       {conReceta.length === 0 ? (
         <div className="flex flex-col gap-2 text-sm text-tinta-tenue">
           <p>Todavía no armaste ninguna receta.</p>
           <p>
-            Una receta es para un <strong>Producto de venta (PV)</strong> — lo que vendés — o una{" "}
-            <strong>Materia prima marcada &quot;Se produce&quot;</strong> — algo que fabricás vos mismo por lote (ej. una salsa base).
+            Una receta es para un <strong>producto de venta</strong> —lo que vendés— o para una <strong>materia prima que se produce</strong> —algo que fabricás vos mismo por
+            lote, como una salsa base—.
           </p>
-          <NuevaReceta triggerLabel="Crear la primera →" />
+          {puedeEditar && <NuevaReceta triggerLabel="Crear la primera →" />}
         </div>
       ) : (
-        <table className="w-full max-w-2xl text-sm">
-          <thead>
-            <tr className="border-b text-left text-tinta-tenue">
-              <th className="py-2">Producto</th>
-              <th>Tipo</th>
-              <th>Versión vigente</th>
-              <th>Ingredientes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {conReceta.map((p) => {
-              const vigente = p.recetaVersiones[0];
-              return (
-                <tr key={p.id} className="border-b">
-                  <td className="py-2">
-                    <Link href={`/catalogo/recetas/${p.id}`} className="underline">
-                      {p.nombre}
-                    </Link>
-                  </td>
-                  <td>{p.tipo}</td>
-                  <td>v{vigente.version}</td>
-                  <td>{vigente._count.ingredientes}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <CajaDesplazable etiqueta="Tabla de recetas">
+          <table className="w-full max-w-2xl text-sm">
+            <thead>
+              <tr className="border-b text-left text-tinta-tenue">
+                <th className="py-2">Producto</th>
+                <th>Tipo</th>
+                <th>Versión vigente</th>
+                <th>Ingredientes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {conReceta.map((p) => {
+                const vigente = p.recetaVersiones[0];
+                return (
+                  <tr key={p.id} className="border-b">
+                    <td className="py-2">
+                      <Link href={`/catalogo/recetas/${p.id}`} className="underline">
+                        {p.nombre}
+                      </Link>
+                    </td>
+                    <td>{p.tipo === "PV" ? "De venta" : "Materia prima"}</td>
+                    <td>v{vigente.version}</td>
+                    <td>{vigente._count.ingredientes}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </CajaDesplazable>
       )}
     </div>
   );

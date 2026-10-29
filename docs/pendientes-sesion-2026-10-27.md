@@ -40,7 +40,7 @@ Ver `docs/auditoria-circuito-de-abastecimiento-2026-10-27.md`: la compra simple 
 - Cercos que solo bajan: 23 `type="number"`, 8 fechas de texto, 19 teclados numéricos a mano. Consola de plataforma sin el sistema visual; pantalla de receta sin migrar del todo; 15 alias `.pos-shell`.
 - Dinero: decisión abierta de pasar a enteros/`Decimal` de punta a punta (ADR-038).
 - Descripciones de `ACCIONES` (viven en la base) con el vocabulario viejo («Sección»); encabezados de ADR-028/029 desactualizados («no aplicada»); un comentario del código cita `docs/plan-numeracion-ticket-2026-09-25.md` (no existe; el real es `...boleta...`); comentario de `Sucursal.maxMesasAbiertas` con la clave equivocada.
-- Vencimientos: excepciones de la auditoría de Prisma hasta 2026-12-01; deuda de tokens y exclusión `prisma/fase-a` hasta 2026-12-20.
+- Vencimientos: excepciones de la auditoría de Prisma hasta 2026-12-01; deuda de tokens hasta 2026-12-20. (La exclusión `prisma/fase-a` que vencía ese mismo día ya no existe: el código se retiró el 2026-10-28, ver ADR-004.)
 - Infraestructura: el contenedor se reinició 3 veces el 26-27/10 y cortó pruebas largas; máquina de 4 CPU compartida por los agentes (cola `flock /tmp/pesado.lock`).
 
 ## Actualización posterior a la fusión de la #131 (2026-10-27)
@@ -69,3 +69,6 @@ Ver `docs/auditoria-circuito-de-abastecimiento-2026-10-27.md`: la compra simple 
 ## E3a, factura de proveedor repartida (carril y, 2026-10-28)
 - Construida en `alegp/carril-y` (diseño y estado: `docs/diseno-factura-de-proveedor-e3a-2026-10-27.md` §14; ADR-041). **La migración E3a-M (`20261028100000_factura_proveedor_propuesta` y `20261028101000_rls_sucursal_factura_proveedor_propuesta`) está ensayada SOLO en bases locales: aplicarla a la base real se pide aparte, base por base, con respaldo y ensayo en una rama de Neon, ANTES de desplegar el código** (sin las tablas, cargar, aceptar y anular una factura fallan).
 - Pendientes que deja: «RECHAZADA con motivo» de una propuesta (P7, migración aparte); pantalla propia «Facturas de proveedor» y bandeja con aviso en el menú (E6); el producto tiene que estar habilitado en la sucursal que carga, aunque toda la cantidad vaya a otra; el aviso C25 (precio fuera de lo habitual) no se calcula en la factura; el guardián de ids de sucursal (GT-4) no mira ids anidadas en listas (`reparto.partes[].sucursalId`); E3b (cabecera en toda compra con proveedor).
+
+## Ratificaciones del guardián de gobernanza (2026-10-28)
+- El dueño RATIFICÓ el 2026-10-28 las 4 entradas DEC-03 de la poda de `prisma/fase-a/` (ADR-004) de `test/arquitectura/contratos/gobernanza/aprobaciones.ts`: `.github/workflows/ci.yml#sin-sha`, `exclusiones.ts#exclusiones`, `exclusiones.ts#logica` y `mutaciones/operadores.ts`. Es solo la constancia del visto bueno: el registro de `aprobaciones.ts` solo se agrega (no se edita ni se borra ninguna entrada, ni siquiera la que decía «a ratificar por el dueño»).

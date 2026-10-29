@@ -1,5 +1,17 @@
 # ADR-004: Schema de Fase A aislado de `prisma/schema.prisma`
 
+> **Estado (2026-10-28): código retirado el 2026-10-28; la decisión histórica se conserva.**
+> La carpeta `prisma/fase-a/` (schema, config, smoke test y migraciones manuales) se borró:
+> el modelo `Empresa` ya vive en `prisma/schema.prisma` real (ver ADR-007) y el prototipo
+> quedó superado. Con ella salieron su exclusión de la clasificación de rutas, las entradas de
+> `knip.jsonc`, el ignore de ESLint, el `exclude` de `tsconfig.json` y el paso del CI que
+> generaba el cliente aislado. Lo que se describe abajo es el diseño de aquel momento; el
+> código se recupera del historial de git (por ejemplo,
+> `git show 99735374:prisma/fase-a/schema.prisma`). Las tablas de carta multisucursal y de
+> sincronización de precios solo existían en
+> `prisma/fase-a/migraciones-manuales/20260929b_carta_multisucursal_y_sincro_precios.sql`
+> (no están en el schema real): si se retoma ese diseño, se parte de ese archivo del historial.
+
 > Redactado el 2026-09-29, al empezar a construir el modelo `Empresa`/
 > `UsuarioEmpresa`/`Sucursal.empresaId` de la Fase A del checklist de
 > multi-tenancy. Es una decisión técnica de implementación (mía, no del
