@@ -126,7 +126,6 @@
         "reportes|/reportes/rotacion-mesas",
         "reportes|/reportes/tickets",
         "reportes|/reportes/descuentos-clientes",
-        "reportes|/reportes/descuentos-productos",
         "reportes|/reportes/margen-promociones",
         "traspasos|/traspasos",
         "traspasos|/traspasos/solicitar",
@@ -189,7 +188,6 @@
         "reportes|/reportes/rotacion-mesas",
         "reportes|/reportes/tickets",
         "reportes|/reportes/descuentos-clientes",
-        "reportes|/reportes/descuentos-productos",
         "reportes|/reportes/margen-promociones",
         "traspasos|/traspasos",
         "traspasos|/traspasos/solicitar",
@@ -334,7 +332,6 @@
     "/reportes/rotacion-mesas",
     "/reportes/tickets",
     "/reportes/descuentos-clientes",
-    "/reportes/descuentos-productos",
     "/reportes/margen-promociones",
     "/traspasos",
     "/traspasos/solicitar",
@@ -344,7 +341,8 @@
   ],
   "rutasFueraDelMenu": [
     "/catalogo/proveedores/comparativa",
-    "/catalogo/productos/nuevo"
+    "/catalogo/productos/nuevo",
+    "/reportes/descuentos-productos"
   ],
   "rutasDeUnaEntrada": [
     "/movimientos|/movimientos/produccion",

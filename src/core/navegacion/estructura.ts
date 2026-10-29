@@ -1,4 +1,4 @@
-import { NAV_CARTA, RUTAS_DE_LAS_ENTRADAS_DE_CARTA } from "@/core/carta/public";
+import { DESCUENTO_POR_PRODUCTO_VISIBLE, NAV_CARTA, RUTAS_DE_LAS_ENTRADAS_DE_CARTA } from "@/core/carta/public";
 import { NAV_CATALOGO, RUTAS_DE_LAS_ENTRADAS_DE_CATALOGO } from "@/core/catalogo/public";
 import { NAV_MOVIMIENTOS, PROCESOS_DEL_SELECTOR } from "@/core/movimientos/public";
 import { NAV_STOCK, RUTAS_DE_LAS_ENTRADAS_DE_STOCK } from "@/core/stock/public";
@@ -34,6 +34,12 @@ export interface GrupoNav {
   label: string;
   items: ItemNav[];
 }
+
+/**
+ * El reporte «Descuentos de productos». Con el interruptor `DESCUENTO_POR_PRODUCTO_VISIBLE` apagado (decisión del dueño, 2026-10-29; `core/carta/descuento-producto.ts`) no es ítem del menú y pasa a
+ * `RUTAS_FUERA_DEL_MENU` (la pantalla sigue existiendo y protegida con la misma acción); prendido, vuelve a su lugar en Reportes.
+ */
+const ITEM_REPORTE_DESCUENTOS_PRODUCTOS: ItemNav = { href: "/reportes/descuentos-productos", label: "Descuentos de productos", accion: "reporte_descuentos_productos", panel: "sucursal" };
 
 /**
  * Fuente única del árbol de navegación — antes vivía duplicada, un array
@@ -118,7 +124,7 @@ export const GRUPOS_NAV: GrupoNav[] = [
       { href: "/reportes/rotacion-mesas", label: "Rotación de mesas", accion: "reporte_rotacion_mesas", panel: "sucursal" },
       { href: "/reportes/tickets", label: "Tickets emitidos", accion: "reporte_tickets", panel: "sucursal" },
       { href: "/reportes/descuentos-clientes", label: "Descuentos por cliente", accion: "reporte_descuentos_clientes", panel: "sucursal" },
-      { href: "/reportes/descuentos-productos", label: "Descuentos de productos", accion: "reporte_descuentos_productos", panel: "sucursal" },
+      ...(DESCUENTO_POR_PRODUCTO_VISIBLE ? [ITEM_REPORTE_DESCUENTOS_PRODUCTOS] : []),
       { href: "/reportes/margen-promociones", label: "Margen de promociones", accion: "reporte_margen_promociones", panel: "sucursal" },
     ],
   },
@@ -153,6 +159,8 @@ export const GRUPOS_NAV: GrupoNav[] = [
 export const RUTAS_FUERA_DEL_MENU: ItemNav[] = [
   { href: "/catalogo/proveedores/comparativa", label: "Comparativa de precios", accion: "comparar_precios", panel: "empresa" },
   { href: "/catalogo/productos/nuevo", label: "Nuevo producto", accion: "alta_producto", panel: "ambos" },
+  // Oculto del menú por el interruptor `DESCUENTO_POR_PRODUCTO_VISIBLE` (decisión del dueño, 2026-10-29): la pantalla sigue existiendo y se abre por su dirección.
+  ...(DESCUENTO_POR_PRODUCTO_VISIBLE ? [] : [ITEM_REPORTE_DESCUENTOS_PRODUCTOS]),
 ];
 
 /**

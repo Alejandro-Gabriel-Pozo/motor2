@@ -3,7 +3,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
 import { Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
-import type { ProductoCartaAdmin } from "@/core/carta/public";
+import { DESCUENTO_POR_PRODUCTO_VISIBLE, type ProductoCartaAdmin } from "@/core/carta/public";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
 import { guardarDescuentoProducto } from "@/server/actions/carta/descuento-producto";
 import { quitarProductoDeLaCarta } from "@/server/actions/carta/mantenimiento";
@@ -172,8 +172,10 @@ export function ContenidoDelProducto({
           </FormConResultado>
         )}
 
-        {/* Producto con descuento (% por sucursal; no es una promo). Un producto agrupado no lo admite: el renglón agrupado muestra un solo precio. */}
-        {!p.agrupadoEn &&
+        {/* Producto con descuento (% por sucursal; no es una promo). Un producto agrupado no lo admite: el renglón agrupado muestra un solo precio.
+            Interruptor `DESCUENTO_POR_PRODUCTO_VISIBLE` (decisión del dueño 2026-10-29): apagado, ni el campo ni el dato de solo lectura (ver `core/carta/descuento-producto.ts`). */}
+        {DESCUENTO_POR_PRODUCTO_VISIBLE &&
+          !p.agrupadoEn &&
           (puedeDescuento ? (
             <FormConResultado
               accion={async (fd: FormData) => {
