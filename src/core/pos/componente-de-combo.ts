@@ -6,7 +6,7 @@ import { rechazoSinOrigenDeStock } from "@/core/movimientos/public";
  *  - un producto de venta (PV), que no se vende solo como adicional de otro (el ancla de un adicional no entra a un combo: no tiene receta propia ni precio de lista);
  *  - con PRECIO DE REFERENCIA de $ 0,01 o más (D-8): el prorrateo reparte el precio del combo en proporción al precio de lista de cada unidad, así que sin precio no hay con qué repartir
  *    (`COMPONENTE_SIN_PRECIO_DE_REFERENCIA`), aunque el producto no se venda suelto;
- *  - con ORIGEN DE STOCK (D-9 y ADR-033): receta vigente en la sucursal con algún ingrediente, o stock propio (`seProduce`). Si no, `COMPONENTE_SIN_RECETA`, con un mensaje que nombra el producto
+ *  - con ORIGEN DE STOCK (D-9 y ADR-033): receta vigente en la sucursal con algún ingrediente, o stock propio (`seProduce`), o —con configuración fija— opciones que descuentan algún insumo. Si no, `COMPONENTE_SIN_RECETA`, con un mensaje que nombra el producto
  *    y manda a Catálogo → Recetas: para cocinar algo nuevo se da de alta el PV y se arma su receta.
  * El orden de los chequeos es ese (el primero que falla gana).
  */
@@ -27,6 +27,11 @@ export interface ProductoComoComponente {
   seProduce: boolean;
   /** Ingredientes de la receta vigente en la sucursal (0 = sin receta). */
   ingredientesDeLaRecetaVigente: number;
+  /**
+   * Solo en una entrada con CONFIGURACIÓN FIJA («Gaseosa · Coca»): lo que esas opciones descuentan sin la receta de la base (`LineaConfigurada.insumosSinLaBase`) y sus nombres. Con la base sin receta,
+   * el componente vale si las opciones suman algún insumo (ventas con opciones, 2026-10-29). Ausente = la regla de siempre.
+   */
+  opciones?: { insumos: number; nombres: readonly string[] };
 }
 
 export type RechazoDeComponente = { codigo: CodigoDeComponenteDeCombo; mensaje: string };
@@ -46,7 +51,14 @@ export function rechazoDeComponenteDeCombo(p: ProductoComoComponente): RechazoDe
       mensaje: `«${p.nombre}» no tiene precio de venta: cargale uno en Catálogo (aunque no se venda suelto), así el combo puede repartir su precio.`,
     };
   }
-  const sinReceta = rechazoSinOrigenDeStock({ nombre: p.nombre, seProduce: p.seProduce, esAnclaDeAdicional: false, ingredientesDeLaRecetaVigente: p.ingredientesDeLaRecetaVigente });
-  if (sinReceta !== null) return { codigo: "COMPONENTE_SIN_RECETA", mensaje: mensajeComponenteSinReceta(p.nombre) };
+  const sinReceta = rechazoSinOrigenDeStock({
+    nombre: p.nombre,
+    seProduce: p.seProduce,
+    esAnclaDeAdicional: false,
+    ingredientesDeLaRecetaVigente: p.ingredientesDeLaRecetaVigente,
+    ...(p.opciones ? { opciones: p.opciones } : {}),
+  });
+  // Con opciones elegidas el mensaje de la regla ya nombra la opción que falta completar; sin ellas, el de siempre.
+  if (sinReceta !== null) return { codigo: "COMPONENTE_SIN_RECETA", mensaje: p.opciones && p.opciones.nombres.length > 0 ? sinReceta : mensajeComponenteSinReceta(p.nombre) };
   return null;
 }

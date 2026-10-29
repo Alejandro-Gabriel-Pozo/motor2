@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { sembrarCafeDelSalon, type CafeDelSalon } from "../setup/opciones";
 import { sembrarCuenta, sembrarSalon } from "./salon-fixture";
+import { sembrarGaseosaPorOpcion } from "./gaseosa-fixture";
 import { agregarItemsCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/agregar-items";
 import { cerrarCuentaCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/cerrar-cuenta";
 import { anularPromoEnviadaCasoDeUso } from "../../src/server/actions/pos/casos-de-uso/anular-promo-enviada";
@@ -17,6 +18,9 @@ import { ZONA_ARGENTINA } from "../../src/core/tiempo/zona-horaria";
  *
  * Rescatado de `cerrar-combinacion-go3.test.ts` (Fase 3 de la ola «precio y carta»): estos dos comportamientos son de los COMBOS (GO-3d, que se conserva) y allá solo se probaban con la
  * receta propia de una combinación (GO-3a, que se retira). Acá, sin combinación ni receta propia: el consumo es el de la regla general.
+ *
+ * Ventas con opciones, paso 3 (diseño 2026-10-29): una entrada con configuración fija sobre una base SIN receta («Gaseosa · Coca», la opción suma una botella) se vende en el combo y descuenta esa
+ * botella; con una opción sin consumo («Gaseosa · Fanta») la entrada no se puede elegir (se descarta al leer las entradas de hoy) y el combo no se agrega.
  *
  * Mutaciones demostradas (rojas y revertidas): no copiar la huella al espejo en `anular-promo-enviada.ts` (rojo: «anular»); que el cierre no le pase al consumo las opciones del componente
  * configurado (rojo: «consume»).
@@ -118,5 +122,29 @@ describe("cerrar un combo con un componente configurado (GO-3d)", () => {
     const vendidos = await prisma.movimientoStock.findMany({ where: { proceso: "VENTA" } });
     expect(vendidos.map((v) => v.productoId)).toEqual([s.milanesa.id]);
     expect((await consumos()).filter(([id]) => [c.lecheId, vasoChicoId, vasoGrandeId].includes(id))).toEqual([]);
+  });
+
+  it("ventas con opciones: la entrada «Gaseosa · Coca» sobre una base SIN receta se vende en el combo y descuenta la botella de la opción; con «Gaseosa · Fanta» (sin consumo) el combo no se agrega", async () => {
+    const g = await sembrarGaseosaPorOpcion(s);
+    const seccion = await prisma.seccionCarta.create({ data: { nombre: "Combos de bebida" } });
+    const promoCartaId = (await prisma.promoCarta.create({ data: { sucursales: { create: { sucursalId: s.sucursalId } }, seccionCartaId: seccion.id, titulo: "Bebida del día", precio: "2000.00" } })).id;
+    const cupo = await prisma.promoCartaCupo.create({ data: { promoCartaId, tipo: "LISTA", nombre: "Bebida", cantidadMinima: 1, cantidadMaxima: 1, orden: 0 } });
+    const fanta = [{ opcionId: g.fantaId, cantidad: 1 }];
+    const entradaFanta = await prisma.entradaDeCupo.create({ data: { cupoId: cupo.id, productoId: g.gaseosaId, claveConfiguracion: claveDeConfiguracion(fanta)!, opciones: { create: fanta } } });
+    // Con la entrada «Gaseosa · Fanta» sola (la opción no descuenta nada y la base no tiene receta), el lugar queda sin nada que elegir: el combo no se agrega y no se escribe nada.
+    const sinNada = await agregarItemsCasoDeUso(actor(), { cuentaId, items: [], promos: [{ promoCartaId, elecciones: [] }] });
+    expect(sinNada.ok).toBe(false);
+    expect(await prisma.cuentaItem.count({ where: { cuentaId } })).toBe(0);
+    expect(await prisma.promoCuenta.count()).toBe(0);
+
+    // Se reemplaza por «Gaseosa · Coca» (suma una botella): se agrega, se cobra el precio de la promo y se descuenta la botella.
+    await prisma.entradaDeCupo.update({ where: { id: entradaFanta.id }, data: { activa: false } });
+    const coca = [{ opcionId: g.cocaId, cantidad: 1 }];
+    await prisma.entradaDeCupo.create({ data: { cupoId: cupo.id, productoId: g.gaseosaId, claveConfiguracion: claveDeConfiguracion(coca)!, opciones: { create: coca } } });
+    await pedirYEnviar([], [{ promoCartaId, elecciones: [] }]);
+    await cerrar();
+    expect(await consumos()).toEqual(esperados([[g.botellaId, 1]]));
+    const venta = await prisma.movimientoStock.findFirstOrThrow({ where: { proceso: "VENTA", productoId: g.gaseosaId } });
+    expect(Number(venta.precioTotal)).toBe(2000);
   });
 });

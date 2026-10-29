@@ -16,7 +16,7 @@ import { completarPreciosDeSucursal } from "@/server/lecturas/opciones/opciones-
  *
  * Una entrada es ELEGIBLE hoy si (lo que no cumple se deja afuera y, si el mozo la eligió, `ENTRADA_NO_DISPONIBLE`; un DEL_DIA sin ninguna, `MENU_DEL_DIA_SIN_CARGAR`):
  *  - LISTA: la `EntradaDeCupo` está activa; DEL_DIA: la `EntradaDelDiaDeCupo` está activa, es de ESTA sucursal y de la fecha `dia` (el día de calendario de la zona de la empresa);
- *  - su producto está DISPONIBLE en la sucursal y sigue pudiendo ser componente (`rechazoDeComponenteDeCombo`: PV, no ancla, precio de referencia, receta vigente en ESTA sucursal o stock propio);
+ *  - su producto está DISPONIBLE en la sucursal y sigue pudiendo ser componente (`rechazoDeComponenteDeCombo`: PV, no ancla, precio de referencia, receta vigente en ESTA sucursal, stock propio u opciones fijas que descuentan algún insumo);
  *  - su configuración fija (si la lleva; un DEL_DIA nunca) se arma hoy con `armarLineaConfigurada`, igual que una línea suelta: versión vigente de cada opción, apagado en ESTA sucursal y sin
  *    adicionales. Un producto con un grupo obligatorio y sin configuración tampoco se arma: afuera.
  * El precio de LISTA de cada entrada (la referencia del prorrateo, D-8) es el de la sucursal (precio local si rige) compuesto con su configuración, SIN el descuento de producto (dentro de una
@@ -102,7 +102,9 @@ export async function cargarEntradasDePromoParaVender(
       linea = armada.linea;
       if (linea !== null) precioDeLista = linea.precioUnitario;
     }
-    if (rechazoDeComponenteDeCombo({ ...producto, precioDeReferencia: precioDeLista }) !== null) continue;
+    // Con configuración fija, lo que las opciones descuentan cuenta como origen de stock (ventas con opciones, 2026-10-29).
+    const opciones = linea !== null && linea.fotos.length > 0 ? { insumos: linea.insumosSinLaBase, nombres: linea.fotos.map((f) => f.nombreOpcion) } : undefined;
+    if (rechazoDeComponenteDeCombo({ ...producto, precioDeReferencia: precioDeLista, ...(opciones ? { opciones } : {}) }) !== null) continue;
     // Una entrada que lleva línea configurada nunca comparte la clave del producto pelado (la de un componente de sección): si no, el prorrateo la juntaría con él en una línea sin su foto.
     const claveComponente = linea === null ? producto.id : e.claveConfiguracion === "" ? `${producto.id}#` : claveDeComponenteConfigurado(producto.id, e.claveConfiguracion);
     elegiblesPorCupo.get(e.cupoId)?.set(e.id, { entradaId: e.id, productoId: producto.id, claveComponente });

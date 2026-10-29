@@ -36,7 +36,7 @@ export async function validarComponenteEnTx(
 ): Promise<{ ok: true; componente: ComponenteValidadoEnTx } | Fracaso<CodigoDeValidacion>> {
   const producto = (await cargarProductosComoComponentes(tx, { sucursalId: args.sucursalId, productoIds: [args.productoId] })).get(args.productoId);
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró ese producto.");
-  const comoComponente = (precioDeReferencia: number) => rechazoDeComponenteDeCombo({ ...producto, precioDeReferencia });
+  const comoComponente = (precioDeReferencia: number, opciones?: { insumos: number; nombres: readonly string[] }) => rechazoDeComponenteDeCombo({ ...producto, precioDeReferencia, ...(opciones ? { opciones } : {}) });
   // Lo que no es un PV vendible (o es el ancla de un adicional) se rechaza antes de mirar su configuración.
   const deTipo = producto.tipo !== "PV" || producto.esAnclaDeAdicional ? comoComponente(producto.precioVenta) : null;
   if (deTipo) return fracaso(deTipo.codigo, deTipo.mensaje);
@@ -45,6 +45,8 @@ export async function validarComponenteEnTx(
   if (clave === null) return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}»: la configuración repite una opción o tiene una cantidad fuera de 1 a 10.`);
   const precioBase = args.precioDeLaSucursal ? redondearMoneda(await resolverPrecioVenta(args.sucursalId, producto.id, producto.precioVenta, tx)) : producto.precioVenta;
   let precioDeLista = precioBase;
+  // Lo que descuenta la configuración fija sin la base (ventas con opciones, 2026-10-29): sin ella, `undefined` y la regla de siempre.
+  let opcionesQueDescuentan: { insumos: number; nombres: readonly string[] } | undefined;
   const grupos = producto.opciones.grupos.map((g) => ({ ...g, opciones: g.opciones.map((o) => ({ ...o, apagadaEnSucursal: false })) }));
   if (grupos.length > 0 || args.opciones.length > 0) {
     const armada = armarLineaConfigurada({ grupos, elegidas: args.opciones, precioBase, descuentoDeProducto: null, cantidad: 1 });
@@ -52,9 +54,12 @@ export async function validarComponenteEnTx(
     if (armada.linea !== null && armada.linea.adicionales.length > 0) {
       return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}»: un combo no lleva adicionales (se cobran aparte); sacá el adicional de la configuración.`);
     }
-    if (armada.linea !== null) precioDeLista = armada.linea.precioUnitario;
+    if (armada.linea !== null) {
+      precioDeLista = armada.linea.precioUnitario;
+      if (armada.linea.fotos.length > 0) opcionesQueDescuentan = { insumos: armada.linea.insumosSinLaBase, nombres: armada.linea.fotos.map((f) => f.nombreOpcion) };
+    }
   }
-  const rechazo = comoComponente(precioDeLista);
+  const rechazo = comoComponente(precioDeLista, opcionesQueDescuentan);
   if (rechazo) return fracaso(rechazo.codigo, rechazo.mensaje);
   return { ok: true, componente: { producto, claveConfiguracion: clave, precioDeLista } };
 }
