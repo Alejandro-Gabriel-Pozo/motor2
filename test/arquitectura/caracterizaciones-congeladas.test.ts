@@ -96,6 +96,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 3, paso 3.1 (retiro de GO-3a; SACA una clave, no cambia ninguna otra): `grupos_de_precio_definir` (las tarifas compartidas de las combinaciones) sale de ACCIONES y desaparece de las listas de claves de cada bloque y registro. Revisado con `git diff --word-diff=porcelain … | grep '^[-+][^-+]' | sort | uniq -c`: 120 líneas pierden `, grupos_de_precio_definir` (108 donde la lista terminaba en `producto_opciones_admitidas, grupos_de_precio_definir` y 12 en el medio de una lista) y lo único que no es una resta son los 2 mensajes de denegación de «operador + especial», que nombran la ÚLTIMA clave del catálogo que no tienen: vuelven a nombrar `producto_opciones_admitidas` (como antes de GO-3b), el mismo artefacto del generador que en M.2, GO-2a y GO-3b. Ninguna respuesta de otra clave cambia.",
       },
+      {
+        blob: "94cae8694b139a497557b4bacd0dad25c8ef6845",
+        // El commit PADRE de este (4cbb8750) es el último antes del cambio; el golden se regenera en el commit siguiente (retiro del límite de mesas abiertas, decisión del dueño 2026-10-29).
+        commit: "4cbb8750",
+        motivo:
+          "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; SACA una clave, no cambia ninguna otra): `pos_limite_mesas_abiertas` sale de ACCIONES y desaparece de las listas de claves de cada bloque y registro. El resto del archivo no cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -181,6 +188,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "0c12131",
         motivo:
           "Ola «precio y carta», Fase 3, paso 3.1 (retiro de GO-3a; SACA una clave): `ACCIONES 132 a 131` y desaparecen las 2 filas PERMISO de `grupos_de_precio_definir` (admin con Ver y Editar, operador sin) de cada una de las 2 empresas sembradas: 4 líneas menos y los 2 conteos (diff revisado línea a línea). Ningún resultado, mensaje ni otra fila cambia.",
+      },
+      {
+        blob: "e6031b0a2aec3f9205a74fde6eb4ea70b4f668aa",
+        // El commit PADRE de este (4cbb8750) es el último antes del cambio; el golden se regenera en el commit siguiente (retiro del límite de mesas abiertas, decisión del dueño 2026-10-29).
+        commit: "4cbb8750",
+        motivo:
+          "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; SACA una clave, no cambia ninguna otra): `pos_limite_mesas_abiertas` sale de ACCIONES y la huella pierde sus 4 filas PERMISO (admin y operador, en cada registro) y baja el conteo de ACCIONES de 131 a 130. El resto del archivo no cambia.",
       },
     ],
   },
@@ -472,6 +486,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "a878640a",
         motivo:
           "M1 del mostrador (ADR-039, migración 20261027100000_m1_puesto_mostrador; ADITIVO, no cambia comportamiento): las 207 líneas MESA suman `tipo=SALON` y las 174 CUENTA suman `tipoMesa=SALON` (las columnas nuevas `Mesa.tipo` y `Cuenta.tipoMesa`, default SALON). Verificado con `git diff --word-diff` y por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior (e6f590094e95), byte a byte; ningún mensaje, número ni orden cambió (los textos de las mesas pasaron por core/pos/puesto.ts en M1.1 y esta huella pasó verde sin regenerar).",
+      },
+      {
+        blob: "6cc53d53e3c45ff4f5ac49bb8fc8bd01079637b7",
+        // El commit PADRE de este (4cbb8750) es el último antes del cambio; el golden se regenera en el commit siguiente (retiro del límite de mesas abiertas, decisión del dueño 2026-10-29).
+        commit: "4cbb8750",
+        motivo:
+          "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; CAMBIA COMPORTAMIENTO a propósito): se quita la acción `actualizarMaxMesasAbiertas` y el chequeo del límite dentro de `abrirCuenta`. El escenario ya no fija límites (salen los pasos A4 a A7 y B8 a B10; F4 y G1 sin esa acción) y las líneas SUCURSAL ya no vuelcan `maxMesasAbiertas`. Los resultados y las filas de las demás acciones (apertura, idempotencia de reabrir, comensales, cliente, pedido, mozo y operador) no cambian.",
       },
     ],
   },

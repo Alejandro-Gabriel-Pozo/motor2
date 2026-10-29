@@ -168,7 +168,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/pos/cuenta-apertura.ts",
     motivo:
-      "Hito 4, bloque 4.1 (pasos 5 a 8): liberarMesa → pos/casos-de-uso/liberar-mesa.ts, corregirComensales → corregir-comensales.ts, asignarClienteACuenta → asignar-cliente-a-cuenta.ts y abrirCuenta → abrir-cuenta.ts (transacción serializable, la cuenta o la mesa, la idempotencia y el límite de mesas, la persistencia en server/persistencia/pos/{cuenta,cerrar-cuenta}.ts y la auditoría del cliente viven en el caso de uso); el formato del id lo validan sus guardComando* (core/features/cuentas/cuenta-apertura.guard.ts) dentro de conPermiso. El archivo no tiene ninguna otra función.",
+      "Hito 4, bloque 4.1 (pasos 5 a 8): liberarMesa → pos/casos-de-uso/liberar-mesa.ts, corregirComensales → corregir-comensales.ts, asignarClienteACuenta → asignar-cliente-a-cuenta.ts y abrirCuenta → abrir-cuenta.ts (transacción serializable, la cuenta o la mesa, la idempotencia, la persistencia en server/persistencia/pos/{cuenta,cerrar-cuenta}.ts y la auditoría del cliente viven en el caso de uso); el formato del id lo validan sus guardComando* (core/features/cuentas/cuenta-apertura.guard.ts) dentro de conPermiso. El archivo no tiene ninguna otra función.",
   },
   {
     ruta: "src/server/actions/pos/cuenta-pedido.ts",
@@ -178,7 +178,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/pos/mesas.ts",
     motivo:
-      "Hito 4, bloque 4.1 (pasos 3 y 4): crearMesa → pos/casos-de-uso/crear-mesa.ts y actualizarMaxMesasAbiertas → pos/casos-de-uso/actualizar-max-mesas-abiertas.ts (la escritura en server/persistencia/pos/mesas.ts, la traducción del número repetido y la auditoría del límite viven en el caso de uso); el formato lo validan guardComandoCrearMesa y guardComandoActualizarMaxMesasAbiertas dentro de conPermiso. El archivo no tiene ninguna otra función.",
+      "Hito 4, bloque 4.1 (paso 3): crearMesa → pos/casos-de-uso/crear-mesa.ts (la escritura en server/persistencia/pos/mesas.ts y la traducción del número repetido viven en el caso de uso); el formato lo valida guardComandoCrearMesa dentro de conPermiso. (El paso 4, actualizarMaxMesasAbiertas, se retiró el 2026-10-29 con el límite de mesas abiertas, decisión del dueño.) El archivo no tiene ninguna otra función que no pase por un caso de uso.",
   },
   {
     ruta: "src/server/actions/pos/cuenta-anulacion.ts",

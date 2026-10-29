@@ -55,7 +55,6 @@ const CERCO_INPUTMODE_NUMERICO: Cerco = {
     "src/app/(pos)/mesas/[mesaId]/abrir-cuenta.tsx": NUMERO("Los comensales al abrir una cuenta (POS)", "entero"),
     "src/app/(pos)/mesas/[mesaId]/agregar-items.tsx": NUMERO("La cantidad y el precio de un ítem del POS", "cantidad"),
     "src/app/(pos)/mesas/[mesaId]/comensales-cuenta.tsx": NUMERO("Los comensales de una cuenta (POS)", "entero"),
-    "src/app/(pos)/mesas/limite-mesas.tsx": NUMERO("El límite de mesas (POS)", "entero"),
   },
 };
 

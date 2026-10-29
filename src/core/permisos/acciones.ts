@@ -178,8 +178,8 @@ export const ACCIONES = [
   { clave: "reporte_insumos_sin_receta", modulo: "recetas", descripcion: "Ver el reporte «Insumos sin receta»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "reporte_conteos", modulo: "stock", descripcion: "Ver el reporte «Conteos físicos»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "reporte_huecos_catalogo", modulo: "catalogo_basico", descripcion: "Ver el reporte «Huecos de catálogo»", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  // Módulo POS (docs/plan-mapa-de-mesas-2026-09-24.md): Ver = abrir el mapa de mesas y entrar a una mesa; dar de alta mesas y fijar el límite de
-  // mesas abiertas tienen su clave (`pos_alta_mesa`, `pos_limite_mesas_abiertas`). El operador de fábrica queda sin asignar, igual que
+  // Módulo POS (docs/plan-mapa-de-mesas-2026-09-24.md): Ver = abrir el mapa de mesas y entrar a una mesa; dar de alta mesas tiene su clave
+  // (`pos_alta_mesa`; la de fijar el límite de mesas abiertas, `pos_limite_mesas_abiertas`, se retiró el 2026-10-29: la base la conserva hasta una migración de retiro). El operador de fábrica queda sin asignar, igual que
   // `anular_compra`; el rol «mozo» NO se crea en código: se crea desde /administracion/roles y se le dan las acciones desde la matriz de permisos.
   { clave: "pos_mesas", modulo: "salon", descripcion: "Ver el mapa de mesas del salón y entrar a la mesa (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // «Tomar pedido» (docs/plan-tomar-pedido-2026-09-25.md, B4): claves separadas para poder armar un rol «mozo» que toma pedidos (con
@@ -227,7 +227,6 @@ export const ACCIONES = [
   { clave: "producto_sincronizar_precio_carta", modulo: "carta", descripcion: "Aplicar el mismo precio de venta a los productos de un ítem agrupado de la carta", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "producto_disponibilidad", modulo: "catalogo_basico", descripcion: "Marcar un producto como disponible o no disponible", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "pos_alta_mesa", modulo: "salon", descripcion: "Dar de alta mesas en el salón (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  { clave: "pos_limite_mesas_abiertas", modulo: "salon", descripcion: "Fijar el límite de mesas abiertas a la vez (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "pos_abrir_cuenta", modulo: "salon", descripcion: "Abrir la cuenta de una mesa y corregir sus comensales (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "pos_enviar_a_cocina", modulo: "salon", descripcion: "Enviar a cocina los ítems de una cuenta (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "pos_liberar_mesa", modulo: "salon", descripcion: "Liberar una mesa abierta que no tuvo consumo (POS)", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },

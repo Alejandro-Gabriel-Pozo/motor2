@@ -13,7 +13,6 @@ import { generarReporteRotacionMesas } from "../../src/server/consultas/reportes
 /**
  * M1.3 del mostrador (ADR-039): el puesto mostrador NO es una mesa para lo que mide mesas. Se prueba con un mostrador sembrado y una cuenta abierta suya:
  *  - `abrirCuenta` (con comensales) no lo abre: es de `abrirCuentaDeMostrador`; sin comensales, `corregirComensales` lo rechaza;
- *  - no cuenta para el límite de mesas abiertas (`Sucursal.maxMesasAbiertas`);
  *  - no aparece en el mapa de mesas, no cambia el «siguiente número» ni las métricas, y su detalle no se lee como el de una mesa;
  *  - la rotación de mesas (que mide comensales) no lo incluye;
  *  - las mesas siguen igual (las caracterizaciones congeladas lo prueban byte a byte; acá, los casos de contraste).
@@ -58,23 +57,6 @@ describe("el puesto mostrador queda fuera de lo que mide mesas", () => {
   it("liberar una cuenta del mostrador con ítems se rechaza y dice «descartarla»", async () => {
     const cuenta = await sembrarCuenta(mostradorId, s.admin.id, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000 }], "MOSTRADOR");
     expect(await liberarMesa(cuenta.id)).toEqual({ ok: false, mensaje: "La cuenta del mostrador tiene ítems cargados: cerrá la cuenta en vez de descartarla." });
-  });
-
-  describe("límite de mesas abiertas", () => {
-    it("con límite 1, una cuenta abierta en el mostrador NO impide abrir una mesa", async () => {
-      await prisma.sucursal.update({ where: { id: s.sucursalId }, data: { maxMesasAbiertas: 1 } });
-      await sembrarCuenta(mostradorId, s.admin.id, [], "MOSTRADOR");
-      expect(await abrirCuenta(s.mesa.id, 2)).toEqual({ ok: true, mensaje: "Cuenta de la mesa 4 abierta." });
-    });
-
-    it("con límite 1, la cuenta de una mesa sí bloquea la siguiente mesa (contraste), aunque el mostrador tenga las suyas", async () => {
-      await prisma.sucursal.update({ where: { id: s.sucursalId }, data: { maxMesasAbiertas: 1 } });
-      await sembrarCuenta(mostradorId, s.admin.id, [], "MOSTRADOR");
-      expect((await abrirCuenta(s.mesa.id, 2)).ok).toBe(true);
-      const otra = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 9 } });
-      const r = await abrirCuenta(otra.id, 2);
-      expect(r).toEqual({ ok: false, mensaje: "Se alcanzó el máximo de 1 mesas abiertas en «Central». Cerrá o liberá una antes de abrir otra." });
-    });
   });
 
   describe("mapa y detalle", () => {

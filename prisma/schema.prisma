@@ -130,11 +130,8 @@ model Sucursal {
   activo    Boolean  @default(true)
   creadoEn  DateTime @default(now())
 
-  /// Cupo de mesas ABIERTAS a la vez en esta sucursal (módulo POS, docs/plan-comensales-y-limite-mesas-2026-09-26.md). `null` (default) =
-  /// sin límite. Se cuenta como "abierta" toda `Cuenta` con `cerradaEn IS NULL` de una mesa de esta sucursal — no la cantidad de `Mesa`
-  /// dadas de alta. El puesto mostrador (`Mesa.tipo = MOSTRADOR`, ADR-039) NO cuenta: solo las cuentas de mesas de SALÓN. Se edita con su propia clave (`pos_limite_mesas_abiertas`, Editar — src/server/actions/pos/mesas.ts). Bajarlo
-  /// por debajo de las mesas ya abiertas NO cierra ninguna: solo bloquea aperturas nuevas hasta que se libere o cierre alguna
-  /// (`abrirCuenta`, chequeo dentro de la misma transacción serializable que crea la `Cuenta`).
+  /// Sin uso desde 2026-10-29 (decisión del dueño); el borrado de la columna es una migración destructiva pendiente de autorización expresa. Era el cupo de mesas ABIERTAS a la vez en esta sucursal
+  /// (docs/plan-comensales-y-limite-mesas-2026-09-26.md §2, retirado): el código ya no la lee ni la escribe y producción nunca la usó (`null` en todas las sucursales).
   maxMesasAbiertas Int?
 
   usuarios                 UsuarioSucursal[]

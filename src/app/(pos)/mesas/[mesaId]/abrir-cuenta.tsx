@@ -15,8 +15,8 @@ const RAPIDOS = [1, 2, 3, 4, 5, 6] as const;
  * «Abrir cuenta» de una mesa libre: pide primero la cantidad de comensales (obligatoria, SIN sugerir ningún valor — un default
  * sesgaría la métrica de rotación de mesas que existe para medir, ver el docstring de `Cuenta.comensales`). Botones rápidos 1-6 más
  * un campo "Otro" (1..99); la validación real es del servidor (`validarComensales`), este diálogo solo ordena el 1-99 en el campo
- * numérico. Si se llegó al límite de mesas abiertas de la sucursal, el servidor lo rechaza con el mensaje de negocio y el diálogo
- * queda abierto mostrándolo. Sin `pos_tomar_pedido` el botón queda deshabilitado (el servidor lo vuelve a verificar igual).
+ * numérico. Si el servidor rechaza la apertura, el diálogo
+ * queda abierto mostrando el mensaje de negocio. Sin `pos_tomar_pedido` el botón queda deshabilitado (el servidor lo vuelve a verificar igual).
  */
 export function AbrirCuenta({ mesaId, puede }: { mesaId: string; puede: boolean }) {
   const { ejecutar, pending, error, setError } = useAccionMesa();

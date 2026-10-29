@@ -56,8 +56,6 @@ const MOTIVOS: Readonly<Record<string, string>> = {
     "Deuda de la ola precio y carta: los movimientos de stock los escribe Movimientos y también Traspasos (escribir-movimiento-de-traspaso.ts), que arma los suyos por su cuenta.",
   Operacion:
     "Deuda de la ola precio y carta: la operación la escriben Movimientos, Compras (corrección de compra) y Traspasos; el asiento no tiene un único escritor.",
-  Sucursal:
-    "Deuda de la ola precio y carta: la sucursal la crea y edita auth (sucursales.ts) y el POS le fija el límite de mesas abiertas (pos/mesas.ts).",
   UsuarioEmpresa:
     "Deuda de la ola precio y carta: la pertenencia a la empresa la escriben permisos (membresias.ts) y auth (gerencia.ts, el traspaso de gerencia).",
   UsuarioSucursal:

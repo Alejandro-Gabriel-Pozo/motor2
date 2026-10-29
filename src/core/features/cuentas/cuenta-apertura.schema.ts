@@ -23,9 +23,8 @@ export interface ComandoAbrirCuenta {
  *  - `MESA_NO_ENCONTRADA`: no hay mesa con ese id en esta sucursal;
  *  - `COMENSALES_INVALIDOS`: no es un entero entre 1 y 99 (`validarComensales`);
  *  - `SUCURSAL_INACTIVA`: la sucursal de la mesa está desactivada (P15: no se abren mesas en una sucursal apagada; se chequea después de «ya tenía su cuenta abierta»);
- *  - `LIMITE_DE_MESAS`: la sucursal ya tiene `maxMesasAbiertas` cuentas abiertas.
  */
-export type ResultadoAbrirCuenta = ResultadoCaso<null, "MESA_NO_ENCONTRADA" | "COMENSALES_INVALIDOS" | "SUCURSAL_INACTIVA" | "LIMITE_DE_MESAS">;
+export type ResultadoAbrirCuenta = ResultadoCaso<null, "MESA_NO_ENCONTRADA" | "COMENSALES_INVALIDOS" | "SUCURSAL_INACTIVA">;
 
 /** Comando «liberar la mesa sin venta»: lo que recibe `liberarMesaCasoDeUso`. */
 export interface ComandoLiberarMesa {

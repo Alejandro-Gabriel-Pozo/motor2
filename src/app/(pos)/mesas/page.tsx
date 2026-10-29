@@ -9,9 +9,7 @@ import { esEstadoMesa, filtrarMesas } from "@/core/pos/public";
 import { obtenerMapaDeMesas, obtenerPuestoMostrador } from "@/server/consultas/pos/mesas";
 import { MesaCard } from "@/components/mesas/mesa-card";
 import { NuevaMesa } from "./nueva-mesa";
-import { LimiteMesasAbiertas } from "./limite-mesas";
 import { formatearHora } from "@/core/tiempo/zona-horaria";
-import { obtenerLimiteMesasAbiertas } from "@/server/consultas/pos/mesas";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { Campo } from "@/ui/primitivas/campo";
 
@@ -62,11 +60,9 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
   // El reloj se lee UNA vez, acá en el borde (O.22-a, Hito 4): el mapa (tiempo abierta de cada mesa) y el «actualizado a las» usan la misma hora.
   const ahora = new Date();
 
-  const [altaMesa, limiteMesas, mapa, sucursal, mostrador] = await Promise.all([
+  const [altaMesa, mapa, mostrador] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_alta_mesa", ctx.db),
-    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_limite_mesas_abiertas", ctx.db),
     obtenerMapaDeMesas(ctx.sucursalId, ctx.db, ahora),
-    obtenerLimiteMesasAbiertas(ctx.sucursalId, ctx.db),
     obtenerPuestoMostrador(ctx.sucursalId, ctx.db),
   ]);
   const { metricas } = mapa;
@@ -80,9 +76,6 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
           <h1 className="mb-1.5 text-2xl font-extrabold leading-none tracking-tight md:text-3xl">Mapa de mesas</h1>
           <p className="text-sm text-tinta-suave">
             {ctx.sucursalNombre} · actualizado a las {formatearHora(ahora, ctx.empresaZonaHoraria)}
-          </p>
-          <p className="mt-1">
-            <LimiteMesasAbiertas abiertas={metricas.enPedido + metricas.ocupadas} limite={sucursal.maxMesasAbiertas} puedeEditar={limiteMesas.editar} />
           </p>
         </div>
         <NuevaMesa siguienteNumero={mapa.siguienteNumero} puedeCrear={altaMesa.editar} />

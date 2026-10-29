@@ -1365,14 +1365,6 @@
       ]
     },
     {
-      "clave": "pos_limite_mesas_abiertas",
-      "contexto": "sucursal",
-      "nivelMinimo": "operario",
-      "rolesEditarSemilla": [
-        "admin"
-      ]
-    },
-    {
       "clave": "pos_abrir_cuenta",
       "contexto": "sucursal",
       "nivelMinimo": "operario",

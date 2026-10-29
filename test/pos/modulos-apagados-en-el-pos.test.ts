@@ -9,7 +9,7 @@ import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
 import { pediblesDeEntrada } from "../../src/core/pos/selector-carta";
 import { cargarSelectorCartaDeLaMesa } from "../../src/server/consultas/pos/selector-carta";
 import { cargarPromoCartaParaAgregar } from "../../src/server/lecturas/pos/promo-para-agregar";
-import { actualizarMaxMesasAbiertas, crearMesa, habilitarMostrador } from "../../src/server/actions/pos/mesas";
+import { crearMesa, habilitarMostrador } from "../../src/server/actions/pos/mesas";
 import { abrirCuenta, abrirCuentaDeMostrador, asignarClienteACuenta, corregirComensales, liberarMesa } from "../../src/server/actions/pos/cuenta-apertura";
 import { agregarItems, enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar } from "../../src/server/actions/pos/cuenta-pedido";
 import { anularItemEnviado, anularPromoEnviada } from "../../src/server/actions/pos/cuenta-anulacion";
@@ -272,7 +272,7 @@ describe("S-22 · Carta apagada: el POS vende solo con los ítems sueltos, sin c
 
 /**
  * La parte de D2 que YA se cumplía (todas las claves `pos_*` y `proceso_venta` son del módulo Salón y el guard rechaza por módulo): este bloque la FIJA, puerta por
- * puerta, para que ningún cambio (una clave de otro módulo, un envoltorio que se cae) la rompa sin que un test lo vea. Las 19 llamadas: las 16 mutaciones del POS
+ * puerta, para que ningún cambio (una clave de otro módulo, un envoltorio que se cae) la rompa sin que un test lo vea. Las 18 llamadas: las 15 mutaciones del POS
  * (`pos-rechaza-sin-permiso.test.ts`), `agregarItems` también con una promo, la venta de mostrador y su anulación; más la lectura del mapa de mesas (la pantalla del POS).
  */
 describe("S-22 · Salón apagado: ninguna puerta del POS responde (se fija lo que ya se cumplía)", () => {
@@ -311,11 +311,10 @@ describe("S-22 · Salón apagado: ninguna puerta del POS responde (se fija lo qu
     };
   }
 
-  /** Las 19 llamadas. `clave`: la acción que el guard evalúa. */
+  /** Las 18 llamadas. `clave`: la acción que el guard evalúa. */
   const PUERTAS: { nombre: string; clave: AccionClave; llamar: (e: Escenario) => Promise<unknown> }[] = [
     { nombre: "crearMesa", clave: "pos_alta_mesa", llamar: () => crearMesa(50) },
     { nombre: "habilitarMostrador", clave: "pos_alta_mesa", llamar: () => habilitarMostrador() },
-    { nombre: "actualizarMaxMesasAbiertas", clave: "pos_limite_mesas_abiertas", llamar: () => actualizarMaxMesasAbiertas(5) },
     { nombre: "abrirCuenta", clave: "pos_abrir_cuenta", llamar: (x) => abrirCuenta(x.mesaLibre, 2) },
     { nombre: "abrirCuentaDeMostrador", clave: "pos_abrir_cuenta", llamar: () => abrirCuentaDeMostrador() },
     { nombre: "corregirComensales", clave: "pos_abrir_cuenta", llamar: (x) => corregirComensales(x.cuentaAbierta, 3) },
@@ -387,15 +386,15 @@ describe("S-22 · Salón apagado: ninguna puerta del POS responde (se fija lo qu
     };
   });
 
-  it("son 19 puertas, sin repetir, y todas son del módulo Salón", () => {
-    expect(PUERTAS).toHaveLength(19);
-    expect(new Set(PUERTAS.map((p) => p.nombre)).size).toBe(19);
+  it("son 18 puertas, sin repetir, y todas son del módulo Salón", () => {
+    expect(PUERTAS).toHaveLength(18);
+    expect(new Set(PUERTAS.map((p) => p.nombre)).size).toBe(18);
     for (const p of PUERTAS) expect(moduloDeAccion(p.clave), p.nombre).toBe("salon");
   });
 
   it("toda clave `pos_*` del catálogo es del módulo Salón (una nueva de otro módulo dejaría una puerta del POS abierta con Salón apagado)", () => {
     const delPos = ACCIONES.filter((a) => a.clave.startsWith("pos_"));
-    expect(delPos.length).toBeGreaterThanOrEqual(11);
+    expect(delPos.length).toBeGreaterThanOrEqual(10); // 11 hasta que se retiró `pos_limite_mesas_abiertas` (2026-10-29)
     expect(delPos.filter((a) => a.modulo !== "salon").map((a) => a.clave)).toEqual([]);
   });
 

@@ -56,7 +56,6 @@
   PERMISO admin:pos_emitir_ticket_corregido ver=true editar=true
   PERMISO admin:pos_enviar_a_cocina ver=true editar=true
   PERMISO admin:pos_liberar_mesa ver=true editar=true
-  PERMISO admin:pos_limite_mesas_abiertas ver=true editar=true
   PERMISO admin:pos_mesas ver=true editar=true
   PERMISO admin:pos_tomar_pedido ver=true editar=true
   PERMISO admin:precio_local ver=true editar=true
@@ -187,7 +186,6 @@
   PERMISO operador:pos_emitir_ticket_corregido ver=false editar=false
   PERMISO operador:pos_enviar_a_cocina ver=false editar=false
   PERMISO operador:pos_liberar_mesa ver=false editar=false
-  PERMISO operador:pos_limite_mesas_abiertas ver=false editar=false
   PERMISO operador:pos_mesas ver=false editar=false
   PERMISO operador:pos_tomar_pedido ver=false editar=false
   PERMISO operador:precio_local ver=false editar=false
@@ -267,7 +265,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Central/true, Norte/true
-  ACCIONES 131
+  ACCIONES 130
 ### 0b. Primer gerente incorporado
   resultado: {"ok":true,"sucursalId":"sucursal1","sucursalNombre":"Central","membresiaId":"id#1"}
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
@@ -477,7 +475,6 @@
   PERMISO admin:pos_emitir_ticket_corregido ver=true editar=true
   PERMISO admin:pos_enviar_a_cocina ver=true editar=true
   PERMISO admin:pos_liberar_mesa ver=true editar=true
-  PERMISO admin:pos_limite_mesas_abiertas ver=true editar=true
   PERMISO admin:pos_mesas ver=true editar=true
   PERMISO admin:pos_tomar_pedido ver=true editar=true
   PERMISO admin:precio_local ver=true editar=true
@@ -608,7 +605,6 @@
   PERMISO operador:pos_emitir_ticket_corregido ver=false editar=false
   PERMISO operador:pos_enviar_a_cocina ver=false editar=false
   PERMISO operador:pos_liberar_mesa ver=false editar=false
-  PERMISO operador:pos_limite_mesas_abiertas ver=false editar=false
   PERMISO operador:pos_mesas ver=false editar=false
   PERMISO operador:pos_tomar_pedido ver=false editar=false
   PERMISO operador:precio_local ver=false editar=false
@@ -688,7 +684,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Casa central/true
-  ACCIONES 131
+  ACCIONES 130
 ### 7a. Aceptar con un CUIT inválido
   resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1."}
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires

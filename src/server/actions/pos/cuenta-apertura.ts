@@ -29,17 +29,13 @@ import { liberarMesaCasoDeUso } from "./casos-de-uso/liberar-mesa";
  * quien llega segundo — la mesa ya tiene su cuenta, que es lo que quería.
  *
  * Idempotencia PRIMERO, dentro de la misma transacción: si la mesa ya tenía una cuenta abierta se devuelve ok sin tocar nada — ni
- * valida `comensales` (conserva el de la primera apertura) ni chequea el límite de la sucursal (§ siguiente): reabrir la MISMA mesa
- * nunca puede fallar por el límite.
+ * valida `comensales` (conserva el de la primera apertura) reabrir la MISMA mesa nunca puede fallar.
  *
- * Límite de mesas abiertas (`Sucursal.maxMesasAbiertas`, D6 del plan: bloqueo en seco, sin excepción): se cuentan las `Cuenta` con
- * `cerradaEn IS NULL` de la sucursal DENTRO de esta misma transacción SERIALIZABLE que crea la nueva — dos aperturas a mesas
- * DISTINTAS que juntas superarían el límite chocan como cualquier otra escritura en conflicto (Postgres aborta una y se reintenta,
- * `conTransaccionSerializable`), nunca las dos pasan.
+ * Ya no hay límite de mesas abiertas por sucursal: se retiró el 2026-10-29 (decisión del dueño; `Sucursal.maxMesasAbiertas` quedó en el esquema sin uso).
  *
  * Desde el Hito 4 de la pureza (bloque 4.1, paso 8) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_abrir_cuenta")`) → formato del
  * `mesaId` (`guardComandoAbrirCuenta`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/abrir-cuenta.ts`: la mesa fuera de la transacción, la transacción
- * serializable con la idempotencia, los comensales y el límite, la escritura en server/persistencia/pos/cuenta.ts y el choque del índice único) →
+ * serializable con la idempotencia y los comensales, la escritura en server/persistencia/pos/cuenta.ts y el choque del índice único) →
  * `aResultadoAccion`. Con `corregirComensales`, `asignarClienteACuenta` y `liberarMesa` (pasos 5 a 7) también migradas, el archivo entero está en
  * `ACCIONES_CON_CASO_DE_USO`.
  */

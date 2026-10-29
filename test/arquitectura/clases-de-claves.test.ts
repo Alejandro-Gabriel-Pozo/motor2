@@ -76,7 +76,6 @@ const O = [
   "pos_emitir_ticket_corregido",
   "producto_sincronizar_precio_carta",
   "pos_alta_mesa",
-  "pos_limite_mesas_abiertas",
   "pos_abrir_cuenta",
   "pos_enviar_a_cocina",
   "pos_liberar_mesa",
@@ -213,7 +212,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     expect(new Set(todas).size, "una clave declarada en dos clases").toBe(todas.length);
     expect(todas.length).toBe(ACCIONES.length);
     // A: 63 → 62 en la Fase 3 de la ola «precio y carta» (sale `grupos_de_precio_definir` con GO-3a). E3a: `compra_repartir` pasa de A a O (piso operario, decisión del dueño 2026-10-27): O 22 → 23, A 62 → 61.
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 23, 33, 61]);
+    // O 23 → 22: se retira `pos_limite_mesas_abiertas` (el límite de mesas abiertas por sucursal, decisión del dueño 2026-10-29).
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 33, 61]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

@@ -12,8 +12,8 @@ import { abrirCuentaDeMostrador } from "@/server/persistencia/pos/cuenta";
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso("pos_abrir_cuenta")`) ni valida formato (no recibe nada del navegador).
  *
  * En UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con `tambienChoqueDeUnico`): 1. el puesto de ESTA sucursal (sin él, `MOSTRADOR_NO_HABILITADO`); 2. si ya tiene una cuenta abierta → ok con
- * ESA cuenta, sin escribir (doble clic y dos cajeros comparten la cuenta; ni mira el límite ni la sucursal activa: reabrir lo que ya está abierto nunca falla); 3. la sucursal tiene que estar activa
- * (`SUCURSAL_INACTIVA`); 4. la cuenta nueva. El mostrador NO cuenta para el límite de mesas abiertas. La carrera la arbitra la transacción SERIALIZABLE y, de respaldo, el índice único parcial
+ * ESA cuenta, sin escribir (doble clic y dos cajeros comparten la cuenta; ni mira la sucursal activa: reabrir lo que ya está abierto nunca falla); 3. la sucursal tiene que estar activa
+ * (`SUCURSAL_INACTIVA`); 4. la cuenta nueva. La carrera la arbitra la transacción SERIALIZABLE y, de respaldo, el índice único parcial
  * `Cuenta_una_abierta_por_mesa_key`: el que pierde repite, ve la cuenta del ganador y responde con ella.
  *
  * @contract Deja abierta la cuenta del mostrador de la sucursal activa y devuelve su id (la que ya estaba abierta, si la había); rechaza si el mostrador no está habilitado o la sucursal está desactivada.

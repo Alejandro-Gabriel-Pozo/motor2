@@ -3,14 +3,12 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 
 /**
- * Comensales al abrir mesa y límite de mesas abiertas por sucursal (docs/plan-comensales-y-limite-mesas-2026-09-26.md):
+ * Comensales al abrir mesa (docs/plan-comensales-y-limite-mesas-2026-09-26.md §1 y §3):
  * - el modal «¿Cuántos comensales?» al abrir cuenta (obligatorio, sin default; botones rápidos 1-6 + «Otro»);
  * - corregir los comensales mientras la cuenta sigue abierta;
- * - el límite de mesas abiertas por sucursal (bloqueo en seco, D6) y su control en el mapa de mesas;
  * - el reporte de rotación de mesas.
  *
- * Cada caso que toca `Sucursal.maxMesasAbiertas` lo restaura a `null` en `finally`: es un dato compartido de «Central», no algo
- * propio de la mesa que siembra el caso.
+ * El límite de mesas abiertas por sucursal (§2 del plan) se retiró el 2026-10-29 por decisión del dueño: este archivo se llamaba `pos-comensales-limite-mesas.spec.ts` y ya no lo prueba.
  */
 
 const aviso = (page: Page) => page.locator('[role="status"][aria-live="polite"]');
@@ -84,71 +82,6 @@ test("corregir comensales con la cuenta abierta: se puede editar, y la cuenta ya
   } finally {
     await prisma.cuenta.deleteMany({ where: { mesaId: mesa.id } });
     await prisma.mesa.deleteMany({ where: { id: mesa.id } });
-  }
-});
-
-test("límite de mesas abiertas: al llegar al máximo, bloquea en seco con el mensaje de negocio; liberar una mesa lo destraba", async ({ paginaAutenticada: page, sucursalId }) => {
-  const [mesaA, mesaB] = await Promise.all([
-    prisma.mesa.create({ data: { sucursalId, numero: 993 } }),
-    prisma.mesa.create({ data: { sucursalId, numero: 994 } }),
-  ]);
-  try {
-    await prisma.sucursal.update({ where: { id: sucursalId }, data: { maxMesasAbiertas: 1 } });
-
-    await page.goto(`/mesas/${mesaA.id}`);
-    await page.getByRole("button", { name: "Abrir cuenta" }).click();
-    let dialogo = page.getByRole("dialog", { name: "¿Cuántos comensales?" });
-    await dialogo.getByRole("button", { name: "2", exact: true }).click();
-    await dialogo.getByRole("button", { name: "Confirmar apertura" }).click();
-    await expect(aviso(page)).toHaveText("Cuenta de la mesa 993 abierta.");
-
-    await page.goto(`/mesas/${mesaB.id}`);
-    await page.getByRole("button", { name: "Abrir cuenta" }).click();
-    dialogo = page.getByRole("dialog", { name: "¿Cuántos comensales?" });
-    await dialogo.getByRole("button", { name: "2", exact: true }).click();
-    await dialogo.getByRole("button", { name: "Confirmar apertura" }).click();
-    await expect(dialogo.getByRole("alert")).toHaveText("Se alcanzó el máximo de 1 mesas abiertas en «Central». Cerrá o liberá una antes de abrir otra.");
-    expect(await prisma.cuenta.count({ where: { mesaId: mesaB.id } })).toBe(0);
-
-    // Liberar la mesa A (sin ítems, se puede liberar) destraba: la B abre.
-    await page.goto(`/mesas/${mesaA.id}`);
-    await page.getByRole("button", { name: "Liberar mesa" }).click();
-    await expect(aviso(page)).toHaveText("Mesa 993 liberada.");
-
-    await page.goto(`/mesas/${mesaB.id}`);
-    await page.getByRole("button", { name: "Abrir cuenta" }).click();
-    dialogo = page.getByRole("dialog", { name: "¿Cuántos comensales?" });
-    await dialogo.getByRole("button", { name: "2", exact: true }).click();
-    await dialogo.getByRole("button", { name: "Confirmar apertura" }).click();
-    await expect(aviso(page)).toHaveText("Cuenta de la mesa 994 abierta.");
-  } finally {
-    await prisma.cuenta.deleteMany({ where: { mesaId: { in: [mesaA.id, mesaB.id] } } });
-    await prisma.mesa.deleteMany({ where: { id: { in: [mesaA.id, mesaB.id] } } });
-    await prisma.sucursal.update({ where: { id: sucursalId }, data: { maxMesasAbiertas: null } });
-  }
-});
-
-test("mapa de mesas: el control de límite se ve y se edita con pos_mesas Editar; muestra abiertas/máximo", async ({ paginaAutenticada: page, sucursalId }) => {
-  try {
-    await page.goto("/mesas");
-    await expect(page.getByText("Sin límite de mesas abiertas")).toBeVisible();
-
-    await page.getByRole("button", { name: "Editar límite" }).click();
-    await page.getByLabel("Máx. mesas abiertas").fill("7");
-    await page.getByRole("button", { name: "Guardar" }).click();
-    await expect(page.getByText(/Máx\. 7 mesas abiertas/)).toBeVisible();
-    expect((await prisma.sucursal.findUniqueOrThrow({ where: { id: sucursalId } })).maxMesasAbiertas).toBe(7);
-
-    const auditoria = await prisma.registroAuditoria.findMany({ where: { entidad: "Sucursal", entidadId: sucursalId, campo: "maxMesasAbiertas" } });
-    expect(auditoria.length).toBeGreaterThan(0);
-
-    // Vaciar el campo vuelve a "sin límite".
-    await page.getByRole("button", { name: "Editar límite" }).click();
-    await page.getByLabel("Máx. mesas abiertas").fill("");
-    await page.getByRole("button", { name: "Guardar" }).click();
-    await expect(page.getByText("Sin límite de mesas abiertas")).toBeVisible();
-  } finally {
-    await prisma.sucursal.update({ where: { id: sucursalId }, data: { maxMesasAbiertas: null } });
   }
 });
 
