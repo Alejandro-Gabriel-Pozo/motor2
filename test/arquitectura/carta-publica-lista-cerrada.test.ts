@@ -70,7 +70,9 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   OpcionApagadaEnSucursal: ["apagada"],
   OpcionDeGrupo: ["activa", "apagadasEnSucursal", "esNinguna", "grupo", "grupoId", "id", "nombre", "orden", "productosQueLaAdmiten", "versiones"],
   PrecioLocalDeOpcion: ["habilitado", "opcion", "opcionId", "precio", "productoId"],
-  ProductoAdmiteGrupo: ["activo", "cantidadMaxima", "cantidadMinima", "grupo", "grupoId", "id", "modoPrecio", "orden", "productoId"],
+  // «Mostrar este grupo en la carta» (decisión del dueño, 2026-10-29: plato por plato): + `ProductoAdmiteGrupo.seMuestraEnCarta`, con el mismo criterio que `prefijoEnCarta` y `mostrarNombreArriba`: se LEE en el servidor y
+  // decide qué grupos lee la carta (`seOcultaEnLaCarta`); no sale a la salida (la salida solo pierde la línea del grupo: lo cierra `CLAVES_DE_LA_CARTA`, sin claves nuevas).
+  ProductoAdmiteGrupo: ["activo", "cantidadMaxima", "cantidadMinima", "grupo", "grupoId", "id", "modoPrecio", "orden", "productoId", "seMuestraEnCarta"],
   ProductoAdmiteOpcion: ["activo", "cantidadMaxima", "diferenciaPrecio", "id", "opcionId", "porcentaje", "precioAbsoluto", "productoId", "tipoDeDiferencia"],
   VersionDeOpcion: ["diferenciaPrecio", "numero", "porcentaje", "tipoDeDiferencia"],
 };

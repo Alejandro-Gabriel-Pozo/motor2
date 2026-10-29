@@ -16,6 +16,8 @@ import type { Db } from "@/lib/db-tipos";
  *
  * Fase 5 de la ola «precio y carta» («carta pareja»): + `prefijoEnCarta` del grupo («se lee en la carta como», Fase 4, en `PUBLICACION_CARTA`), para el papel del grupo y el rótulo de cada fila.
  *
+ * «Mostrar este grupo en la carta» (2026-10-29): + `ProductoAdmiteGrupo.seMuestraEnCarta` (en `PUBLICACION_CARTA`), que decide `resumenDePreciosParaLaCarta` / `tablaDePreciosParaLaCarta` (el único lugar que filtra grupos de la carta).
+ *
  * SIN `import "server-only"` a propósito, como las demás lecturas de la carta (`menu.ts`, `descuentos.ts`): las alcanza la carta pública y los tests la llaman directo.
  */
 
@@ -25,8 +27,11 @@ function diferencia(tipo: string | null, monto: { toNumber(): number } | null, p
   return null;
 }
 
-/** Un grupo para la carta: el de la venta más su «se lee en la carta como» (Fase 4; lo lee SOLO la carta, Fase 5: no entra al precio). */
-export type GrupoParaLaCarta = GrupoParaVender & { prefijoEnCarta: string | null };
+/**
+ * Un grupo para la carta: el de la venta más su «se lee en la carta como» (Fase 4; lo lee SOLO la carta, Fase 5: no entra al precio) y «Mostrar este grupo en la carta» de la admisión del producto
+ * (`ProductoAdmiteGrupo.seMuestraEnCarta`, 2026-10-29: la decisión guardada; la carta solo la respeta si el grupo no cambia el precio, `seOcultaEnLaCarta`). Tampoco entra al precio ni a la venta.
+ */
+export type GrupoParaLaCarta = GrupoParaVender & { prefijoEnCarta: string | null; seMuestraEnCarta: boolean };
 
 export async function opcionesDeLosProductosDeLaCarta(db: Db, sucursalId: string, productoIds: readonly string[]): Promise<Map<string, GrupoParaLaCarta[]>> {
   const ids = [...new Set(productoIds)];
@@ -44,6 +49,7 @@ export async function opcionesDeLosProductosDeLaCarta(db: Db, sucursalId: string
           cantidadMaxima: true,
           modoPrecio: true,
           activo: true,
+          seMuestraEnCarta: true,
           grupo: {
             select: {
               id: true,
@@ -82,6 +88,7 @@ export async function opcionesDeLosProductosDeLaCarta(db: Db, sucursalId: string
         nombre: pg.grupo.nombre,
         tipo: pg.grupo.tipo as TipoDeGrupoDeOpciones,
         prefijoEnCarta: pg.grupo.prefijoEnCarta,
+        seMuestraEnCarta: pg.seMuestraEnCarta,
         activo: pg.grupo.activo,
         admitido: pg.activo,
         cantidadMinima: pg.cantidadMinima ?? pg.grupo.cantidadMinima,
