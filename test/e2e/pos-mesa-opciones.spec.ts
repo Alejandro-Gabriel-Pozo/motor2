@@ -82,10 +82,10 @@ test("la mesa muestra las opciones y el adicional bajo su producto; la comanda l
     await interceptarImpresion(page);
     await pedirCafeGrandeConMedialuna(page, d);
 
-    // «Sin enviar»: una línea (el adicional no cuenta aparte), con «Grande» debajo y el adicional con sangría, su importe y sin botón propio.
+    // «Sin enviar»: una línea (el adicional no cuenta aparte), con el nombre compuesto («… grande») y el adicional con sangría, su importe y sin botón propio.
     await expect(page.getByRole("heading", { name: "Sin enviar · 1" })).toBeVisible();
     const linea = page.locator(`[data-item-sin-enviar="${d.nombreCafe}"]`);
-    await expect(linea.locator("[data-opciones-de-linea]")).toHaveText("Grande");
+    await expect(linea).toContainText(`1 × ${d.nombreCafe} grande`);
     const adicional = linea.locator(`[data-adicional-sin-enviar="${d.nombreAncla}"]`);
     await expect(adicional).toContainText(`+ 1 × ${d.nombreAncla}`);
     await expect(adicional).toContainText("$ 600");
@@ -97,12 +97,12 @@ test("la mesa muestra las opciones y el adicional bajo su producto; la comanda l
     await expect(page.getByRole("heading", { name: "Envío 1 · en cocina" })).toBeVisible();
     await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda"]);
     const [comanda] = await impresiones(page);
-    expect(comanda!.texto).toContain(`1 × ${d.nombreCafe}Grande`);
+    expect(comanda!.texto).toContain(`1 × ${d.nombreCafe} grande`);
     expect(comanda!.texto).toContain(`+ 1 × ${d.nombreAncla}`);
     expect(comanda!.texto).not.toContain("$");
 
     const enviado = page.locator(`[data-item-enviado="${d.nombreCafe}"]`);
-    await expect(enviado.locator("[data-opciones-de-linea]")).toHaveText("Grande");
+    await expect(enviado).toContainText(`1 × ${d.nombreCafe} grande`);
     await expect(enviado.locator(`[data-adicional-enviado="${d.nombreAncla}"]`)).toContainText("$ 600");
     await expect(enviado.locator(`[data-adicional-enviado="${d.nombreAncla}"]`).getByRole("button")).toHaveCount(0);
     expect((await new AxeBuilder({ page }).analyze()).violations, "envío con opciones").toEqual([]);
@@ -173,7 +173,7 @@ test("«Anular» un producto ya enviado avisa que arrastra sus adicionales y los
     await expect(adicional).toContainText("Anulado");
     await expect(page.locator("[data-total-cuenta]")).toContainText(/\$\s?0/);
     await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda", "anulacion"]);
-    expect((await impresiones(page))[1]!.texto).toContain("Grande");
+    expect((await impresiones(page))[1]!.texto).toContain(`1 × ${d.nombreCafe} grande`);
   } finally {
     await d.limpiar();
   }

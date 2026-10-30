@@ -5,15 +5,19 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { baseDeTest, limpiarBaseDeTest, prisma } from "../setup/test-db";
 import { elegida, sembrarCafeDelSalon, type CafeDelSalon } from "../setup/opciones";
 import { entrarComo, sembrarCuenta, sembrarSalon } from "./salon-fixture";
+import { AHORA_DE_LA_CORRIDA, MINUTO_MS, enElPasado } from "../setup/tiempo";
 import { armarTicket, configuracionDeItemLeido } from "../../src/core/pos/ticket";
+import { armarComandas } from "../../src/core/pos/comanda";
+import { armarDetalleDeMesa } from "../../src/core/pos/cuenta";
 import { agregarItems, enviarACocina } from "../../src/server/actions/pos/cuenta-pedido";
 import { cerrarCuenta, emitirTicketCorregido } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
+import { obtenerDetalleDeMesa } from "../../src/server/consultas/pos/detalle-de-mesa";
 import { listarTicketsEmitidos } from "../../src/server/consultas/reportes/tickets-emitidos";
 
 /**
- * El nombre de la línea con opciones en el ticket (decisión del dueño 2026-10-29, diseño «nombre de la línea configurada»).
+ * El nombre de la línea con opciones en el ticket, la comanda y la mesa (decisión del dueño 2026-10-29, diseño «nombre de la línea configurada»).
  * Puro: I1 (importes, cantidades y total no dependen del nombre), I2 (sin opciones, la salida es la de siempre) y la trampa del ticket (el nombre es POR LÍNEA NETA: dos cafés del
  * mismo precio con distinta configuración no se pisan). Contra Postgres: la foto manda (renombrar la opción o el grupo y reordenar los grupos no cambia lo ya vendido), número y total
  * no cambian al reimprimir ni al corregir, y la lectura repetida da lo mismo.
@@ -21,7 +25,7 @@ import { listarTicketsEmitidos } from "../../src/server/consultas/reportes/ticke
 const H1 = "a".repeat(64);
 const H2 = "b".repeat(64);
 
-describe("armarTicket con el nombre de la línea (puro)", () => {
+describe("armarTicket, armarComandas y armarDetalleDeMesa con el nombre de la línea (puro)", () => {
   const conNombres = [
     { id: "c1", productoId: "cafe", productoNombre: "Café", cantidad: 1, precioUnitario: 1100, huellaOpciones: H1, nombreDeLinea: "Café chico almendras" },
     { id: "c2", productoId: "cafe", productoNombre: "Café", cantidad: 2, precioUnitario: 1100, huellaOpciones: H2, nombreDeLinea: "Café grande de vaca", detalleDeLinea: "papas ×2" },
@@ -49,11 +53,50 @@ describe("armarTicket con el nombre de la línea (puro)", () => {
     }
   });
 
-  it("I2: sin opciones el ticket es el de siempre, sin campos nuevos", () => {
+  it("I2: sin opciones el ticket, la comanda y el detalle de la mesa son los de siempre, sin campos nuevos", () => {
     expect(armarTicket([{ id: "m", productoId: "mila", productoNombre: "Milanesa", cantidad: 2, precioUnitario: 9000 }])).toEqual({
       lineas: [{ producto: "Milanesa", cantidad: 2, precioUnitario: 9000, subtotal: 18000 }],
       total: 18000,
     });
+    const [comanda] = armarComandas([{ numero: 1, items: [{ id: "m", productoNombre: "Milanesa", restante: 2, creadoPor: "Ana", anulaciones: [] }] }], "Ana");
+    expect(comanda!.lineas).toEqual([{ itemId: "m", producto: "Milanesa", cantidad: 2 }]);
+    const detalle = armarDetalleDeMesa(
+      {
+        id: "mesa",
+        numero: 4,
+        cuentas: [
+          {
+            id: "cuenta",
+            abiertaEn: enElPasado(10 * MINUTO_MS),
+            comensales: null,
+            clienteId: null,
+            cliente: null,
+            descuentoPorcentaje: null,
+            abiertaPor: { name: "Ana", email: "ana@test.com" },
+            items: [
+              {
+                id: "m",
+                productoId: "mila",
+                producto: { nombre: "Milanesa", modoDeVenta: "DIRECTO", unidadStock: { decimales: 0 } },
+                cantidad: 2,
+                precioUnitario: 9000,
+                precioCartaUnitario: null,
+                numeroEnvio: null,
+                anulaAItemId: null,
+                motivoAnulacion: null,
+                creadoPor: null,
+                creadoEn: enElPasado(9 * MINUTO_MS),
+                promoCuenta: null,
+              },
+            ],
+          },
+        ],
+      },
+      AHORA_DE_LA_CORRIDA
+    );
+    const item = detalle!.cuenta!.sinEnviar[0]!;
+    expect(item).not.toHaveProperty("nombreDeLinea");
+    expect(item).not.toHaveProperty("detalleDeLinea");
   });
 
   it("configuracionDeItemLeido: una cuenta sin opciones devuelve {}; con opciones, el nombre compuesto sale de la foto (y un adicional solo no lleva nombre)", () => {
@@ -95,6 +138,14 @@ describe("el nombre de la línea contra Postgres: la foto manda", () => {
   });
 
   const NOMBRES = ["Café chico almendras", "Café grande de vaca"];
+
+  it("la mesa abierta y su comanda nombran cada línea, y el nombre del producto (lo que la identifica) sigue siendo «Café»", async () => {
+    const detalle = await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, db(), new Date());
+    const items = detalle!.cuenta!.envios[0]!.items;
+    expect(items.map((i) => [i.productoNombre, i.nombreDeLinea])).toEqual([["Café", NOMBRES[0]], ["Café", NOMBRES[1]]]);
+    const [comanda] = armarComandas(detalle!.cuenta!.envios, detalle!.cuenta!.mesero);
+    expect(comanda!.lineas.map((l) => l.producto)).toEqual(NOMBRES);
+  });
 
   it("al cerrar, reimprimir y corregir: renombrar la opción y el grupo y reordenar los grupos no cambia el nombre de lo vendido; el número y el total, tampoco", async () => {
     expect((await cerrarCuenta(cuentaId)).ok).toBe(true);

@@ -50,13 +50,13 @@ describe("armarTicket con opciones (puro)", () => {
 });
 
 describe("armarComandas con opciones (puro)", () => {
-  it("la cocina ve las opciones del producto y el adicional marcado; la anulación de un adicional va con sus datos", () => {
+  it("la cocina ve el nombre compuesto del producto, su detalle y el adicional marcado; la anulación de un adicional va con sus datos", () => {
     const [comanda] = armarComandas(
       [
         {
           numero: 1,
           items: [
-            { id: "c", productoNombre: "Café", restante: 1, creadoPor: "Ana", opciones: ["Grande", "Almendras"], anulaciones: [] },
+            { id: "c", productoNombre: "Café", restante: 1, creadoPor: "Ana", nombreDeLinea: "Café grande almendras", detalleDeLinea: "azúcar", anulaciones: [] },
             { id: "s", productoNombre: "Shot extra", restante: 1, creadoPor: "Ana", esAdicional: true, anulaciones: [{ id: "e", cantidad: -1, motivoAnulacion: "No lo quiso", creadoPor: "Ana" }] },
             { id: "m", productoNombre: "Milanesa", restante: 1, creadoPor: "Ana", anulaciones: [] },
           ],
@@ -65,7 +65,7 @@ describe("armarComandas con opciones (puro)", () => {
       "Ana"
     );
     expect(comanda!.lineas).toEqual([
-      { itemId: "c", producto: "Café", cantidad: 1, opciones: ["Grande", "Almendras"] },
+      { itemId: "c", producto: "Café grande almendras", cantidad: 1, detalle: "azúcar" },
       { itemId: "s", producto: "Shot extra", cantidad: 1, esAdicional: true },
       { itemId: "m", producto: "Milanesa", cantidad: 1 },
     ]);
@@ -102,12 +102,12 @@ describe("ticket, «Tickets emitidos», detalle y comanda contra Postgres (GO-2b
   it("el detalle de la mesa suma lo mismo que cobra el cierre (el adicional sin descuento de cliente) y muestra las opciones", async () => {
     const detalle = await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, baseDeTest({ lectura: [s.sucursalId], escritura: [s.sucursalId] }).db, new Date());
     const cafe = detalle!.cuenta!.envios[0]!.items.find((i) => i.precioUnitario === 1250)!;
-    expect(cafe.opciones).toEqual(["Grande", "Almendras"]);
+    expect(cafe.nombreDeLinea).toBe("Café grande almendras");
     expect(detalle!.cuenta!.envios[0]!.items.find((i) => i.productoId === c.anclaDelShotId)!.esAdicional).toBe(true);
     expect(detalle!.cuenta!.total).toBe(2250 + 400 + 855 + 2700);
     // Y la comanda de ese envío (la arma la pantalla con `armarComandas`) lleva las opciones.
     const [comanda] = armarComandas(detalle!.cuenta!.envios, detalle!.cuenta!.mesero);
-    expect(comanda!.lineas.find((l) => l.opciones?.includes("Almendras"))).toMatchObject({ producto: "Café", cantidad: 2 });
+    expect(comanda!.lineas.find((l) => l.producto === "Café grande almendras")).toMatchObject({ cantidad: 2 });
   });
 
   it("la comanda muestra la anulación del adicional que arrastró anular su producto", async () => {
@@ -116,7 +116,7 @@ describe("ticket, «Tickets emitidos», detalle y comanda contra Postgres (GO-2b
     const detalle = await obtenerDetalleDeMesa(s.sucursalId, s.mesa.id, baseDeTest({ lectura: [s.sucursalId], escritura: [s.sucursalId] }).db, new Date());
     const [comanda] = armarComandas(detalle!.cuenta!.envios, detalle!.cuenta!.mesero);
     expect(comanda!.anulaciones.map((a) => [a.producto, a.cantidad, a.quedan, a.esAdicional ?? false])).toEqual([
-      ["Café", 1, 1, false],
+      ["Café grande almendras", 1, 1, false],
       ["Shot extra", 1, 1, true],
     ]);
   });

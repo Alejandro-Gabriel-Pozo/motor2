@@ -131,8 +131,9 @@ export async function PantallaDelPuesto({ ctx, detalle, ahora, variante }: { ctx
                   promoCuentaId: i.promoCuentaId,
                   promoTitulo: i.promoTitulo,
                   // GO-2d: lo de las opciones, solo cuando hay (una cuenta sin opciones manda lo de siempre).
-                  ...(i.opciones || i.elegidas ? { productoId: i.productoId } : {}),
-                  ...(i.opciones ? { opciones: i.opciones } : {}),
+                  ...(i.nombreDeLinea || i.elegidas ? { productoId: i.productoId } : {}),
+                  ...(i.nombreDeLinea ? { nombreDeLinea: i.nombreDeLinea } : {}),
+                  ...(i.detalleDeLinea ? { detalleDeLinea: i.detalleDeLinea } : {}),
                   ...(i.lineaPadreId ? { lineaPadreId: i.lineaPadreId } : {}),
                   ...(i.elegidas ? { elegidas: i.elegidas } : {}),
                 }))}
@@ -190,8 +191,8 @@ export async function PantallaDelPuesto({ ctx, detalle, ahora, variante }: { ctx
 }
 
 /**
- * Un ítem ya enviado: lo que queda (con lo pedido si hubo anulaciones), su importe vigente, «Anular» y sus anulaciones tachadas. GO-2d (ADR-030): con opciones, sus nombres
- * debajo, «Otro igual» y sus adicionales con sangría, sin «Anular» propio (se anulan con su producto: `anularItemEnviado`, que lo avisa en el diálogo).
+ * Un ítem ya enviado: lo que queda (con lo pedido si hubo anulaciones), su importe vigente, «Anular» y sus anulaciones tachadas. GO-2d (ADR-030): con opciones, su nombre compuesto
+ * (y lo incluido debajo), «Otro igual» y sus adicionales con sangría, sin «Anular» propio (se anulan con su producto: `anularItemEnviado`, que lo avisa en el diálogo).
  */
 function ItemEnviado({ item, adicionales, puedeAnular, puedePedir }: { item: ItemEnEnvio<ItemDeCuenta>; adicionales: ItemEnEnvio<ItemDeCuenta>[]; puedeAnular: boolean; puedePedir: boolean }) {
   const anuladoEntero = item.restante <= 0;
@@ -200,11 +201,11 @@ function ItemEnviado({ item, adicionales, puedeAnular, puedePedir }: { item: Ite
     <li data-item-enviado={item.productoNombre} className="py-2 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className={`min-w-0 [overflow-wrap:anywhere]${anuladoEntero ? " text-tinta-suave line-through" : ""}`}>
-          <span className="font-semibold tabular-nums">{formatearCantidad(anuladoEntero ? item.cantidad : item.restante)} ×</span> {item.productoNombre}
+          <span className="font-semibold tabular-nums">{formatearCantidad(anuladoEntero ? item.cantidad : item.restante)} ×</span> {item.nombreDeLinea ?? item.productoNombre}
           {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-sm text-tinta-suave"> (pedido {formatearCantidad(item.cantidad)})</span>}
-          {item.opciones && (
+          {item.detalleDeLinea && (
             <span data-opciones-de-linea className="block text-sm text-tinta-suave">
-              {item.opciones.join(" · ")}
+              {item.detalleDeLinea}
             </span>
           )}
         </span>
@@ -287,7 +288,7 @@ function PromoEnviada({ promoCuentaId, titulo, items, puedeAnular }: { promoCuen
             <li key={item.id} data-item-enviado={item.productoNombre}>
               <div className="flex items-center justify-between gap-3">
                 <span className={anuladoEntero ? "text-tinta-suave line-through" : undefined}>
-                  <span className="font-semibold tabular-nums">{formatearCantidad(anuladoEntero ? item.cantidad : item.restante)} ×</span> {item.productoNombre}
+                  <span className="font-semibold tabular-nums">{formatearCantidad(anuladoEntero ? item.cantidad : item.restante)} ×</span> {item.nombreDeLinea ?? item.productoNombre}
                   {!anuladoEntero && item.anulaciones.length > 0 && <span className="text-sm text-tinta-suave"> (pedido {formatearCantidad(item.cantidad)})</span>}
                 </span>
                 <span className="tabular-nums">{anuladoEntero ? "Anulado" : formatearMonto(item.restante * item.precioUnitario)}</span>

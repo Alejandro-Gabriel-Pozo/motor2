@@ -2,6 +2,7 @@ import { esNumeroFinito } from "@/core/numero";
 import { texto, LARGO_MAXIMO_MOTIVO_ANULACION } from "@/core/texto";
 import { precioCobradoConDescuentos } from "@/core/carta/public";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
+import { esBaseConfigurable, nombreDeLineaConfigurada, type FotoParaElNombre } from "@/core/opciones/public";
 import { nombreDelMesero, tiempoDesde } from "./mesas";
 import { validarCantidadPedido } from "./cantidad-pedido";
 import { claveDeLineaDeVenta } from "./clave-de-linea";
@@ -254,8 +255,9 @@ export interface ItemDeCuenta {
    *  suelto de siempre. `promoTitulo` es el snapshot congelado (`PromoCuenta.titulo`), no el título actual de `PromoCarta`. */
   promoCuentaId: string | null;
   promoTitulo: string | null;
-  /** GO-2b (ADR-030): los nombres de las opciones dentro del precio («Grande», «Almendras»). Ausente sin opciones. */
-  opciones?: string[];
+  /** El nombre compuesto de la línea con opciones («Café solo chico») y su renglón de detalle (lo incluido): lo que se MUESTRA y se comanda. `productoNombre` sigue siendo el del producto (identifica el ítem). Ausentes sin opciones. */
+  nombreDeLinea?: string;
+  detalleDeLinea?: string;
   /** GO-2b: `true` SOLO en un adicional (cuelga de la línea de su producto: no lleva descuento de cliente y no se anula solo). */
   esAdicional?: true;
   /** GO-2d: la línea de la que cuelga un adicional (para mostrarlo debajo de su producto). Ausente en las demás. */
@@ -305,7 +307,7 @@ export interface MesaConCuentaLeida {
     items: {
       id: string;
       productoId: string;
-      producto: { nombre: string; unidadStock: { decimales: number } };
+      producto: { nombre: string; modoDeVenta: string; unidadStock: { decimales: number } };
       cantidad: number;
       precioUnitario: number;
       precioCartaUnitario: number | null;
@@ -317,7 +319,7 @@ export interface MesaConCuentaLeida {
       promoCuenta: { id: string; titulo: string } | null;
       /** GO-2b: el padre de un adicional y la foto de lo elegido (opcionales: sin ellos, el detalle de siempre). */
       lineaPadreId?: string | null;
-      opcionesElegidas?: { nombreOpcion: string; tipoGrupo: string; opcionId?: string; cantidad?: number }[];
+      opcionesElegidas?: (FotoParaElNombre & { opcionId?: string })[];
     }[];
   }[];
 }
@@ -333,9 +335,10 @@ export function armarDetalleDeMesa(mesa: MesaConCuentaLeida | null, ahora: Date)
   if (!fila) return { mesa: { id: mesa.id, numero: mesa.numero }, cuenta: null };
 
   const items: ItemDeCuenta[] = fila.items.map((i) => {
-    const opciones = (i.opcionesElegidas ?? []).filter((f) => f.tipoGrupo !== "ADICIONAL").map((f) => f.nombreOpcion);
+    const fotos = i.opcionesElegidas ?? [];
+    const { nombre, detalle } = nombreDeLineaConfigurada(i.producto.nombre, esBaseConfigurable(i.producto.modoDeVenta), fotos);
     // GO-2d: lo elegido (opción y cuántas), solo de las fotos que lo traen.
-    const elegidas = (i.opcionesElegidas ?? []).flatMap((f) => (f.opcionId !== undefined && f.cantidad !== undefined ? [{ opcionId: f.opcionId, cantidad: f.cantidad }] : []));
+    const elegidas = fotos.flatMap((f) => (f.opcionId !== undefined ? [{ opcionId: f.opcionId, cantidad: f.cantidad }] : []));
     return {
     id: i.id,
     productoId: i.productoId,
@@ -351,7 +354,8 @@ export function armarDetalleDeMesa(mesa: MesaConCuentaLeida | null, ahora: Date)
     creadoEn: i.creadoEn,
     promoCuentaId: i.promoCuenta?.id ?? null,
     promoTitulo: i.promoCuenta?.titulo ?? null,
-    ...(opciones.length ? { opciones } : {}),
+    ...(fotos.some((f) => f.tipoGrupo !== "ADICIONAL") ? { nombreDeLinea: nombre } : {}),
+    ...(detalle ? { detalleDeLinea: detalle } : {}),
     ...(i.lineaPadreId ? { esAdicional: true as const } : {}),
     ...(i.lineaPadreId ? { lineaPadreId: i.lineaPadreId } : {}),
     ...(elegidas.length ? { elegidas } : {}),

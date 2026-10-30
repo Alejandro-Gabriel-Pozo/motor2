@@ -230,7 +230,7 @@ test("el mostrador vende lo mismo que el salón: un café con opciones y una pro
     await page.getByRole("button", { name: "Agregar 1 al pedido" }).click();
     await expect(aviso(page)).toContainText("Se agregó");
     const linea = page.locator(`[data-item-sin-enviar="${nombreCafe}"]`);
-    await expect(linea.locator("[data-opciones-de-linea]")).toHaveText("Grande");
+    await expect(linea).toContainText(`1 × ${nombreCafe} grande`);
     await expect(linea.locator(`[data-adicional-sin-enviar="${ancla.nombre}"]`)).toContainText("$ 600");
 
     // La promo armada: un componente del cupo, agregada por su precio.
