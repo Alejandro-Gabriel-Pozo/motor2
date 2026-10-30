@@ -13,11 +13,11 @@ import {
   type ProductoParaMantener,
 } from "@/core/carta/public";
 import { esBaseConfigurable } from "@/core/opciones/public";
-import { cartaDeUnProducto } from "@/core/pos/public";
+import { cartaDeUnProducto, conGrillaDeLaSucursal } from "@/core/pos/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
-import { conGrillaDeLaSucursal, opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
+import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
 import type { Db } from "@/lib/db-tipos";
 
 /**

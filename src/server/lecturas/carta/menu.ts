@@ -2,10 +2,10 @@ import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/c
 import { whereDisponibleEn } from "@/core/catalogo/public";
 import { armarMenuCarta, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, wherePromoOfrecidaEn, type AudienciaDePromo, type CartaV1, type MenuArmado } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
-import { conGrillaDeLaSucursal, opcionesDeLosProductosDeLaCarta, type GrupoParaLaCarta } from "@/server/lecturas/carta/opciones";
+import { opcionesDeLosProductosDeLaCarta, type GrupoParaLaCarta } from "@/server/lecturas/carta/opciones";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
 import { esBaseConfigurable } from "@/core/opciones/public";
-import { cartaDeUnProducto, resumenDePrecios } from "@/core/pos/public";
+import { cartaDeUnProducto, conGrillaDeLaSucursal, resumenDePrecios } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**

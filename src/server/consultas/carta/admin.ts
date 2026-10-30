@@ -5,9 +5,9 @@ import { whereDisponibleEn, type EstadoEnLaCarta } from "@/core/catalogo/public"
 import { WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos, esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, type SeccionCartaAdmin, type ProductoCartaAdmin, type GeneroCartaAdmin, type SucursalConCartaPropia, type DatosAdminCarta, type OpcionItemAgrupadoAdmin, type DatosAdminItemsAgrupados, type SucursalPortalAdmin, type TemaAdmin, type PortalEmpresaAdmin } from "@/core/carta/public";
 import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCartaConDiagnostico } from "@/server/lecturas/carta/menu";
-import { conGrillaDeLaSucursal, opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
+import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
-import { cartaDeUnProducto } from "@/core/pos/public";
+import { cartaDeUnProducto, conGrillaDeLaSucursal } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 import type { PrismaClient } from "@prisma/client";
 import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";

@@ -264,6 +264,15 @@ export function cartaDeUnProducto(entrada: {
   return { conDescuento, sinDescuento, tabla: tablaDePreciosParaLaCarta({ ...entrada, resumen: conDescuento }) };
 }
 
+/**
+ * Los grupos de UN producto con la grilla de tamaños de la sucursal (clave `productoId|opcionId`) puesta en las opciones de un tamaño en modo ABSOLUTO. La única mezcla de la grilla para los cuatro lectores
+ * de la carta (la pública, el «Va a mostrar», la vista previa del producto y las bases de un eje). Es una función PURA (no lee la base): vive en `core` y no en `lecturas`, así la matriz de denegación por
+ * defecto (`test/aislamiento/denegacion/`) no la cuenta como una puerta de lectura.
+ */
+export function conGrillaDeLaSucursal<G extends GrupoParaVender>(grupos: readonly G[], grilla: ReadonlyMap<string, number>, productoId: string): G[] {
+  return grupos.map((g) => (g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO" ? { ...g, opciones: g.opciones.map((o) => ({ ...o, precioDeSucursal: grilla.get(`${productoId}|${o.opcionId}`) ?? null })) } : g));
+}
+
 /** El total de una configuración elegida, para mostrarlo ANTES de confirmar. Los errores son los mismos códigos y mensajes de la validación y de la composición de la venta. */
 export type VistaPreviaDeConfiguracion =
   | {

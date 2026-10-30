@@ -1,9 +1,9 @@
 import "server-only";
 import { opcionesParaLaCarta, presentacionDeUnProductoSolo, vistaPreviaDeOpciones, type VistaPreviaDeLaCarta } from "@/core/carta/public";
-import { cartaDeUnProducto } from "@/core/pos/public";
+import { cartaDeUnProducto, conGrillaDeLaSucursal } from "@/core/pos/public";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
-import { conGrillaDeLaSucursal, opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
+import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
 import type { Db } from "@/lib/db-tipos";
 
 /**
