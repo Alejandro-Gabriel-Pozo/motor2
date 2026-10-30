@@ -105,8 +105,9 @@ describe("opciones, versiones y consumos (GO-2a)", () => {
       expect(await prisma.opcionDeGrupo.count({ where: { grupoId: e.grupoVarianteId } })).toBe(2);
     });
 
-    it("D-3: los consumos exigen el módulo Recetas (apagado junto con Producción, que lo requiere); sin consumos, la opción se crea igual", async () => {
-      await fijarModulosActivos(EMPRESA_POR_DEFECTO_ID, MODULOS_VENDIBLES.filter((m) => m !== "recetas" && m !== "produccion"));
+    it("D-3: los consumos exigen el módulo Recetas (apagado junto con Producción y Salón, que lo requieren); sin consumos, la opción se crea igual", async () => {
+      // Salón exige Recetas desde la decisión del dueño del 2026-10-29: si quedara activo, Recetas quedaría efectivo («incluido por Salón»).
+      await fijarModulosActivos(EMPRESA_POR_DEFECTO_ID, MODULOS_VENDIBLES.filter((m) => m !== "recetas" && m !== "produccion" && m !== "salon"));
       const conConsumo = { grupoId: e.grupoVarianteId, nombre: "Soja", orden: 5, esNinguna: false, ancla: null, version: { diferencia: MONTO(0), factorEscala: null, consumos: [{ efecto: "SUMA" as const, insumoProductoId: e.lecheId, reemplazaAProductoId: null, cantidad: 1, mermaPorcentaje: 0, escalaConLaMedida: false }] } };
       expect(await crearOpcionDeGrupoCasoDeUso(actor(), conConsumo, azarDelProceso)).toMatchObject({ ok: false, codigo: "MODULO_RECETAS_INACTIVO" });
       expect(await crearOpcionDeGrupoCasoDeUso(actor(), { ...conConsumo, version: sinConsumos() }, azarDelProceso)).toMatchObject({ ok: true });

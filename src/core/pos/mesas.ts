@@ -1,4 +1,3 @@
-import { esNumeroFinito } from "@/core/numero";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 
 /**
@@ -96,23 +95,6 @@ export function filtrarMesas<T extends Pick<MesaEnMapa, "numero" | "estado" | "m
     if (digitos && String(m.numero).includes(digitos)) return true;
     return Boolean(m.mesero && m.mesero.toLocaleLowerCase("es-AR").includes(q));
   });
-}
-
-const MAXIMO_LIMITE_MESAS_ABIERTAS = 9999;
-
-/**
- * Límite de mesas ABIERTAS a la vez en una sucursal (`Sucursal.maxMesasAbiertas`, docs/plan-comensales-y-limite-mesas-2026-09-26.md):
- * `null` = sin límite (default, y también lo que deja vacío el campo del formulario). Si no es `null`, entero entre 1 y
- * {@link MAXIMO_LIMITE_MESAS_ABIERTAS} (mismo tope que `NUMERO_MESA_MAXIMO` en src/core/features/mesas/mesas.guard.ts: no puede hacer falta
- * un límite mayor que la mesa más alta que se puede dar de alta).
- */
-export function validarMaxMesasAbiertas(valor: unknown): { ok: true; limite: number | null } | { ok: false; mensaje: string } {
-  if (valor === null) return { ok: true, limite: null };
-  const n = typeof valor === "number" ? valor : Number.NaN;
-  if (!Number.isInteger(n) || !esNumeroFinito(n) || n < 1 || n > MAXIMO_LIMITE_MESAS_ABIERTAS) {
-    return { ok: false, mensaje: `El límite tiene que ser un número entero entre 1 y ${MAXIMO_LIMITE_MESAS_ABIERTAS}, o vacío para no tener límite.` };
-  }
-  return { ok: true, limite: n };
 }
 
 /** Nombre visible de un usuario del salón: su nombre, o la parte local del email si no tiene (lo reusa src/core/pos/cuenta.ts). */

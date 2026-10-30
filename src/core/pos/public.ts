@@ -21,7 +21,7 @@ export { formatearCantidad, formatearMonto } from "./formato";
 export { NUMERO_DEL_MOSTRADOR, esMostrador, frasesDePuesto, rotuloDePuesto } from "./puesto";
 export { documentoDeReimpresion, resolverImpresion } from "./impresion";
 export type { DocumentoImprimible, PedidoImpresion } from "./impresion";
-export { armarMapaDeMesas, esEstadoMesa, filtrarMesas, nombreDelMesero, validarMaxMesasAbiertas } from "./mesas";
+export { armarMapaDeMesas, esEstadoMesa, filtrarMesas, nombreDelMesero } from "./mesas";
 export type { EstadoMesa, MapaDeMesas } from "./mesas";
 export { formatearNumeroTicket } from "./numeracion-ticket";
 export type { NumeroDeTicket } from "./numeracion-ticket";

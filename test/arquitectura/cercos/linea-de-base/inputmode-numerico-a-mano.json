@@ -1,10 +1,10 @@
 {
   "regla": "inputmode-numerico-a-mano",
   "meta": "0 (lote 6.33: un número es un CampoNumero con su tipo; un código de dígitos, un tipo de código declarado)",
-  "total": 18,
-  "entradas": 10,
+  "total": 17,
+  "entradas": 9,
   "porTipo": {
-    "inputmode-numerico": 18
+    "inputmode-numerico": 17
   },
   "cuentas": {
     "plataforma/src/app/instalaciones/[instalacion]/empresas/[id]/botones.tsx": {
@@ -32,9 +32,6 @@
       "inputmode-numerico": 2
     },
     "src/app/(pos)/mesas/[mesaId]/comensales-cuenta.tsx": {
-      "inputmode-numerico": 1
-    },
-    "src/app/(pos)/mesas/limite-mesas.tsx": {
       "inputmode-numerico": 1
     }
   }

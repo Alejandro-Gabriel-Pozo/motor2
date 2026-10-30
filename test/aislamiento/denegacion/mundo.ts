@@ -542,7 +542,7 @@ export async function sembrarMundo(): Promise<Mundo> {
 
   // E1: tres sucursales (S1 = «Central» de sembrarBase) y los usuarios.
   const s1Id = base.sucursal.id;
-  await prismaAdmin.sucursal.update({ where: { id: s1Id }, data: { nombre: "Central ZZ-A1", maxMesasAbiertas: 7 } });
+  await prismaAdmin.sucursal.update({ where: { id: s1Id }, data: { nombre: "Central ZZ-A1" } });
   await prismaAdmin.empresa.update({ where: { id: e1Id }, data: { nombre: "Empresa principal ZZ-A1" } });
   const s2 = await prismaAdmin.sucursal.create({ data: { id: "S2-sucursal-dos", empresaId: e1Id, nombre: NOMBRE_DE_S2 } });
   const s3 = await prismaAdmin.sucursal.create({ data: { id: "S3-sucursal-tres", empresaId: e1Id, nombre: NOMBRE_DE_S3 } });

@@ -10,7 +10,7 @@ import { formatearNumeroTicket } from "../../src/core/pos/numeracion-ticket";
 /**
  * El mostrador como puesto del salón (ADR-039, M1.5): lo mismo que una mesa, con su propia entrada. Dos casos de punta a punta:
  *  1. habilitar el puesto (el administrador, con el botón), abrir la cuenta SIN comensales, pedir, asignar un cliente con %, enviar a cocina, cerrar (venta con detalle «Mostrador», ticket numerado
- *     comparado contra la base), descartar una cuenta vacía y comprobar que el límite de mesas abiertas no cuenta el mostrador;
+ *     comparado contra la base), descartar una cuenta vacía;
  *  2. un café CON OPCIONES (tamaño y adicional) y una PROMO armable en una cuenta del mostrador, enviadas y cerradas.
  *
  * Limpieza en `finally`, en el orden de `pos-tomar-pedido.spec.ts` (espejos → hijos → ítems → auditoría → movimientos → operaciones → promo de la cuenta → ejemplares → comprobantes → cuentas) y, al final, el
@@ -97,9 +97,8 @@ async function habilitarDesdeElMapa(page: Page) {
   await expect(page.locator("main h1")).toHaveText("Mostrador");
 }
 
-test("el mostrador: habilitar, abrir sin comensales, pedir, cliente con %, enviar y cerrar con ticket numerado; descartar una cuenta vacía; no cuenta para el límite de mesas", async ({ paginaAutenticada: page, sucursalId }) => {
+test("el mostrador: habilitar, abrir sin comensales, pedir, cliente con %, enviar y cerrar con ticket numerado; descartar una cuenta vacía", async ({ paginaAutenticada: page, sucursalId }) => {
   const cat = await sembrarCatalogoSimple(sucursalId);
-  const limiteAntes = (await prisma.sucursal.findUniqueOrThrow({ where: { id: sucursalId } })).maxMesasAbiertas;
   await limpiarPuesto(sucursalId); // un resto de una corrida anterior que murió
   try {
     await interceptarImpresion(page);
@@ -111,12 +110,10 @@ test("el mostrador: habilitar, abrir sin comensales, pedir, cliente con %, envia
     await expect(page.getByText(/comensal/i)).toHaveCount(0);
     await expect(page.getByText("Sin cuenta abierta")).toHaveCount(0);
 
-    // El límite de mesas abiertas no cuenta el mostrador: con límite 1 y la cuenta del mostrador abierta, el mapa dice 0 de 1. (Se mira ANTES de pedir: `page.goto` recarga la página y
+    // El mapa muestra la cuenta abierta del mostrador en su tarjeta aparte. (Se mira ANTES de pedir: `page.goto` recarga la página y
     // borra las impresiones que `interceptarImpresion` fue registrando; de acá en más la pantalla del mostrador no se recarga.)
-    await prisma.sucursal.update({ where: { id: sucursalId }, data: { maxMesasAbiertas: 1 } });
     await page.goto("/mesas");
     await expect(page.locator('[data-mostrador="habilitado"]')).toContainText("1 cuenta abierta");
-    await expect(page.getByText("Máx. 1 mesas abiertas (0/1)")).toBeVisible();
     await page.goto("/mesas/mostrador");
     await expect(page.getByRole("combobox", { name: "Producto" })).toBeVisible();
 
@@ -170,7 +167,6 @@ test("el mostrador: habilitar, abrir sin comensales, pedir, cliente con %, envia
     await page.getByRole("link", { name: "Ir al mostrador" }).click();
     await page.waitForURL("/mesas/mostrador");
   } finally {
-    await prisma.sucursal.update({ where: { id: sucursalId }, data: { maxMesasAbiertas: limiteAntes } });
     await cat.limpiar();
   }
 });

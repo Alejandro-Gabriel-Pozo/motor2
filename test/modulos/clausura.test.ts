@@ -57,8 +57,8 @@ describe("modulosEfectivos (clausura por requiere)", () => {
     expect(efectivos.has("compras")).toBe(false);
   });
 
-  it("Salón trae Stock, Clientes básico y Catálogo básico", () => {
-    expect(ordenados(modulosEfectivos(["salon"]))).toEqual(["administracion", "catalogo_basico", "clientes_basico", "salon", "stock"]);
+  it("Salón trae Stock, Clientes básico, Recetas y Catálogo básico (Salón exige Recetas, decisión del dueño 2026-10-29)", () => {
+    expect(ordenados(modulosEfectivos(["salon"]))).toEqual(["administracion", "catalogo_basico", "clientes_basico", "recetas", "salon", "stock"]);
   });
 
   it("Producción trae Stock, Recetas y el catálogo; Promociones trae Carta", () => {
@@ -126,6 +126,15 @@ describe("modulosQueIncluyen («incluido por X»)", () => {
   it("Stock lo traen Salón y Compras; un módulo activo se incluye a sí mismo", () => {
     expect(ordenados(modulosQueIncluyen("stock", ["salon", "compras", "carta"]))).toEqual(["compras", "salon"]);
     expect(modulosQueIncluyen("carta", ["carta"])).toEqual(["carta"]);
+  });
+
+  it("Recetas lo traen Salón y Producción; no se desactiva mientras alguno de los dos esté activo", () => {
+    expect(ordenados(modulosQueIncluyen("recetas", ["salon", "produccion", "carta"]))).toEqual(["produccion", "salon"]);
+    for (const quien of ["salon", "produccion"]) {
+      const r = validarCambioDeModulos(["recetas", quien], { desactivar: ["recetas"] });
+      expect(r.ok, quien).toBe(false);
+      if (!r.ok) expect(r.errores).toEqual([{ motivo: "LO_REQUIEREN_OTROS", modulo: "recetas", requeridoPor: [quien] }]);
+    }
   });
 
   it("nadie trae un módulo que no se requiere", () => {
