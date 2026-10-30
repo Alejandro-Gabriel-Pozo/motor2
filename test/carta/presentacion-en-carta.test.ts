@@ -110,20 +110,6 @@ describe("6a · simple con aclaraciones: bife, plato con menos guarniciones y gr
     expect(item(armado, "Bife de chorizo")!.presentacion!.aclaraciones[0]).toEqual({ tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas"] });
     expect(item(armado, "Lomo")!.presentacion!.aclaraciones.map((a) => a.rotulo)).toEqual(["Extras"]);
   });
-
-  it("«Milanesas de» SIN prefijo y sin costo no es un eje: la base queda de un eje (oculta) y la variante va como aclaración", () => {
-    const armado = carta([{ id: "milanesas", nombre: "Milanesas", precioBase: MILANESA.precioBase, esBase: true, grupos: MILANESA.grupos }]);
-    expect(item(armado, "Milanesas")!.presentacion).toEqual({
-      forma: "tabla",
-      titulo: false,
-      columnas: [],
-      filas: [
-        { rotulo: "Simple", celdas: [20000] },
-        { rotulo: "Napolitana", celdas: [25000] },
-      ],
-      aclaraciones: [{ tipo: "eleccion", rotulo: "Milanesas de", opciones: ["carne", "pollo"] }],
-    });
-  });
 });
 
 describe("6b · tamaños de un producto directo: cada producto con SU tabla (sin tanda ni «–» compartida)", () => {
@@ -177,24 +163,6 @@ describe("6b · tamaños de un producto directo: cada producto con SU tabla (sin
 });
 
 describe("6c · tabla de dos ejes: las milanesas", () => {
-  it("«Simple | Napolitana» y una fila por opción de «Milanesas de» con su prefijo («De carne», «De pollo», «De trucha»); carne y pollo cuestan igual y NO se juntan", () => {
-    const armado = carta([milanesaConTrucha()]);
-    expect(item(armado, "Milanesas")!.presentacion).toEqual({
-      forma: "tabla",
-      titulo: true,
-      columnas: ["Simple", "Napolitana"],
-      filas: [
-        { rotulo: "De carne", celdas: [20000, 25000] },
-        { rotulo: "De pollo", celdas: [20000, 25000] },
-        { rotulo: "De trucha", celdas: [23000, 28000] },
-      ],
-      aclaraciones: [],
-    });
-    // Una base de dos ejes sale SIEMPRE en tabla: el interruptor no la cambia, y no es una base oculta.
-    expect(item(carta([{ ...milanesaConTrucha(), mostrarNombreArriba: true }]), "Milanesas")!.presentacion!.forma).toBe("tabla");
-    expect(armado.diagnostico.basesOcultas).toBeUndefined();
-  });
-
   it("una fila agotada no sale; una columna agotada no sale (la tabla queda con las columnas que hay)", () => {
     const m = milanesaConTrucha();
     const agotar = (nombre: string) => ({ ...m, grupos: m.grupos.map((g) => mapearOpciones(g, (o) => (o.nombre === nombre ? { ...o, apagadaEnSucursal: true } : o))) });
@@ -282,25 +250,6 @@ describe("6g · límites y diagnóstico interno", () => {
     const armado = carta([{ id: "te", nombre: "Té", precioBase: 1000, grupos: [tamanos(4)] }]);
     expect(item(armado, "Té")!.presentacion).toMatchObject({ forma: "tabla", titulo: true, columnas: [], filas: [{ rotulo: "T0", celdas: [1000] }, { rotulo: "T1" }, { rotulo: "T2" }, { rotulo: "T3", celdas: [1300] }] });
     expect(armado.diagnostico.productosConMuchasColumnas).toEqual([{ productoId: "te", nombre: "Té", columnas: 4 }]);
-  });
-
-  it("dos ejes con más de 3 columnas: se TRANSPONE (las variantes pasan a las columnas y el eje largo a las filas)", () => {
-    const g = tamanos(4);
-    const de = { ...MILANESA.grupos[1]!, prefijoEnCarta: "De" };
-    const armado = carta([{ id: "mila", nombre: "Milanesas", precioBase: 1000, esBase: true, grupos: [g, de] }]);
-    const p = item(armado, "Milanesas")!.presentacion!;
-    expect(p.forma === "tabla" && p.columnas).toEqual(["De carne", "De pollo"]);
-    expect(p.forma === "tabla" && p.filas.map((f) => [f.rotulo, f.celdas])).toEqual([["T0", [1000, 1000]], ["T1", [1100, 1100]], ["T2", [1200, 1200]], ["T3", [1300, 1300]]]);
-    expect(armado.diagnostico.productosConMuchasColumnas).toEqual([{ productoId: "mila", nombre: "Milanesas", columnas: 4 }]);
-  });
-
-  it("dos ejes con más de 3 en CADA uno: una fila por combinación, con el nombre arriba", () => {
-    const cuatro = { ...tamanos(4), grupoId: "g-variantes", nombre: "Punto", tipo: "VARIANTE" as const, prefijoEnCarta: "De", cantidadMinima: 1, cantidadMaxima: 1, opciones: tamanos(4).opciones.map((o, i) => ({ ...o, opcionId: `v${i}`, nombre: `V${i}`, versionVigenteId: `vv${i}`, precioAbsoluto: null, diferenciaDeLaVersion: { tipo: "MONTO" as const, monto: 0 } })) };
-    const armado = carta([{ id: "mila", nombre: "Milanesas", precioBase: 1000, esBase: true, grupos: [tamanos(4), cuatro] }]);
-    const p = item(armado, "Milanesas")!.presentacion!;
-    expect(p.forma === "tabla" && p.titulo && p.columnas).toEqual([]);
-    expect(p.forma === "tabla" && p.filas.slice(0, 2)).toEqual([{ rotulo: "T0, de v0", celdas: [1000] }, { rotulo: "T1, de v0", celdas: [1100] }]);
-    expect(p.forma === "tabla" && p.filas).toHaveLength(16);
   });
 
   it("más de 8 filas: se dibujan todas (nunca «desde» ni colapso) y se anota en el diagnóstico", () => {

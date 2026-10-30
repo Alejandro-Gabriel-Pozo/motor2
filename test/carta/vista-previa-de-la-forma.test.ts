@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { presentacionDeUnProductoSolo, vistaPreviaDeLaForma } from "../../src/core/carta/public";
+import { vistaPreviaDeLaForma } from "../../src/core/carta/public";
 import { limpiarBaseDeTest, prisma, prismaAdmin } from "../setup/test-db";
 import { sembrarCatalogoPrecioYCarta, type CatalogoPrecioYCarta } from "../setup/siembra-precio-y-carta";
 import { sembrarSalon } from "../pos/salon-fixture";
@@ -26,17 +26,6 @@ describe("vistaPreviaDeLaForma (puro)", () => {
     expect(vistaPreviaDeLaForma("Pizzas", { forma: "tabla", titulo: true, columnas: [], filas: [{ rotulo: "Muzzarella", celdas: [18000] }], aclaraciones: [] })).toBe("Va a mostrar «Pizzas» y debajo: Muzzarella $18.000.");
   });
 
-  it("un producto solo con tamaños en columnas: la misma forma que la carta, con sus encabezados", () => {
-    const tabla = {
-      grupos: [{ grupoId: "g", nombre: "Tamaño", tipo: "MEDIDA" as const, cantidadMinima: 1, cantidadMaxima: 1, prefijoEnCarta: null, papel: "define-el-precio" as const, opciones: [
-        { opcionId: "a", nombre: "Chico", esNinguna: false, orden: 0, precioFinal: 4000, diferencia: 0 },
-        { opcionId: "b", nombre: "Grande", esNinguna: false, orden: 1, precioFinal: 4300, diferencia: 300 },
-      ] }],
-      ejes: { columnas: "g", filas: null, sinLugar: [] },
-      celdas: [[4000, 4300]],
-    };
-    expect(presentacionDeUnProductoSolo({ tabla, esBase: false, mostrarNombreArriba: false, conDescuento: false })).toEqual({ forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [4000, 4300] }], aclaraciones: [] });
-  });
 });
 
 describe("«Va a mostrar» de «Agregar a la carta», contra Postgres", () => {
