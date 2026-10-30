@@ -451,6 +451,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 5 (CAMBIA COMPORTAMIENTO a propósito, decisión del dueño: escala de letra de la carta con mínimo de 14 px para el texto de decisión): en las dos lecturas de `carta.resolverCartaPublica` los tamaños por defecto del tema suben (`carta_fuente_item_nombre` y `_precio` de 0.88rem a 1.1875rem, `_descripcion` de 0.6875rem a 0.875rem y `_tags` de 0.6875rem a 0.75rem, y sus variables `--carta-fuente-item-*`) y se suman las variables `--carta-fs-*` (producto, precio, opción, aclaración, etiqueta, título, rótulo, columna, tamaño y elección, con su versión impresa). Revisado con `git diff`: cambian solo esos valores y se suman esas claves; ningún precio, nombre, orden ni conteo de consultas se movió. Quedó rojo en la CI (parte 4 de Integración) desde la Fase 5 porque nadie regeneró este golden.",
       },
+      {
+        blob: "28f13f8ab80a3ccd311ff09a3c517bcf0328c8a7",
+        // El commit PADRE de este (311b19bb, paso 2 del modelo unificado) es el último antes del cambio; el golden se regenera en el commit siguiente (paso 3).
+        commit: "311b19bb",
+        motivo:
+          "Decisión del dueño 2026-10-29: modelo unificado de la carta (paso 3, roles de letra; SOLO ESTILO DE LA CARTA, ningún dato ni precio): se retiran los roles `rotulo` (sustituido por Producto, jerarquía única) y `tamano` (fusionado en `columna`) de la escala, así que las variables CSS de la carta dejan de traer `--carta-fs-rotulo`, `--carta-fs-tamano` y sus dos pares en papel. Revisado con `git diff -U0`: cambian SOLO esas 4 líneas en cada una de las 2 apariciones del bloque `variablesCss` (8 líneas quitadas, ninguna agregada); nada de lo que lee o devuelve una lectura de datos cambia.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {

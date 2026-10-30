@@ -271,22 +271,8 @@ body:has(main[data-panel]) {
   font-size: var(--carta-fs-titulo);
   font-weight: 500;
 }
-.carta-shell .carta-rol-rotulo {
-  font-size: var(--carta-fs-rotulo);
-  font-weight: 600;
-  line-height: 1.3;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  color: var(--carta-ink);
-}
 .carta-shell .carta-rol-columna {
   font-size: var(--carta-fs-columna);
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--carta-ink);
-}
-.carta-shell .carta-rol-tamano {
-  font-size: var(--carta-fs-tamano);
   font-weight: 600;
   line-height: 1.3;
   color: var(--carta-ink);
@@ -569,14 +555,8 @@ html:has([data-carta-libro]) body {
   .carta-shell .carta-rol-etiqueta {
     font-size: var(--carta-fs-etiqueta-impresa) !important;
   }
-  .carta-shell .carta-rol-rotulo {
-    font-size: var(--carta-fs-rotulo-impresa) !important;
-  }
   .carta-shell .carta-rol-columna {
     font-size: var(--carta-fs-columna-impresa) !important;
-  }
-  .carta-shell .carta-rol-tamano {
-    font-size: var(--carta-fs-tamano-impresa) !important;
   }
   .carta-shell .carta-rol-eleccion {
     font-size: var(--carta-fs-eleccion-impresa) !important;
