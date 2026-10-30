@@ -753,6 +753,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Integración de Fase 7 (Catálogo y Carta; NO cambia contenido propio: es la SUMA de las dos regeneraciones anteriores). Las dos ramas regeneraron la línea de base desde el mismo ancestro (2b994fb6) y tocaron zonas distintas: Catálogo, 4 líneas de «Opciones y precio» de Pizzas y del grupo «Tipos de Pizza» (Biblioteca de opciones); Carta, las secciones de «Secciones» (pestañas, Géneros). La fusión de git dio el texto sin conflicto de líneas y este blob es el de ese texto fusionado, sin regenerar con Playwright en la integración; lo confirma el e2e de la CI (que compara la línea de base con la pantalla real) y, si difiriera, se regenera con REGENERAR_LB_PRECIO_Y_CARTA=1 y se declara acá.",
       },
+      {
+        blob: "29da11a6a61d0ae731a0281263b8cf766f9d9387",
+        // El commit PADRE de este (82636dab, paso 5 del modelo unificado) es el último antes de la regeneración; los cambios visuales son de los pasos 2 a 4.
+        commit: "82636dab",
+        motivo:
+          "Decisión del dueño 2026-10-29: modelo unificado de la carta (pasos 2 a 4, CAMBIO VISUAL DELIBERADO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en una corrida de Playwright contra motor2_ck_e2e local, 83 specs de carta y catálogo en verde). Revisado con `git diff -U0`: cambian SOLO líneas de forma, de roles y de nombres. (1) Milanesas (tabla de dos ejes): el nombre pasa de rótulo en mayúsculas de 13 px a título en rol Producto de 19 px («MILANESAS» → «Milanesas»), igual que «Café de especialidad». (2) El Café deja de ser una «tanda» y pasa a una tabla propia (forma «tabla», con su fila sin rótulo, cuyo nombre solo lee el lector de pantalla). (3) Se van los roles `rotulo` y `tamano` de la escala (sus pares tamaño / peso a 375 y 1280 px). (4) La vista previa de la ficha del producto dibuja las pizzas como la carta (un h3 por pizza, «### Pizza muzzarella», en lugar de «Cada opción se lee como un plato:»). Los precios y el resto del texto no cambian.",
+      },
     ],
   },
 };
