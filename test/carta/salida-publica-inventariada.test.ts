@@ -70,16 +70,13 @@ const CLAVES_DE_LA_CARTA = [
   "carta.secciones[].items[].presentacion.aclaraciones[].opciones[].recargo",
   "carta.secciones[].items[].presentacion.aclaraciones[].rotulo",
   "carta.secciones[].items[].presentacion.aclaraciones[].tipo",
-  "carta.secciones[].items[].presentacion.celdas",
   "carta.secciones[].items[].presentacion.columnas",
-  "carta.secciones[].items[].presentacion.encabezado",
-  // Fase 5 tanda C (aditivo): quién protagoniza una lista; valor fijo.
-  "carta.secciones[].items[].presentacion.protagonista",
   "carta.secciones[].items[].presentacion.filas",
   "carta.secciones[].items[].presentacion.filas[].celdas",
-  "carta.secciones[].items[].presentacion.filas[].precio",
   "carta.secciones[].items[].presentacion.filas[].rotulo",
   "carta.secciones[].items[].presentacion.forma",
+  // Modelo unificado (decisión del dueño, 2026-10-29): si el nombre del producto va de título de la tabla; valor fijo (booleano). Reemplaza a `encabezado` y `protagonista`.
+  "carta.secciones[].items[].presentacion.titulo",
   "carta.secciones[].items[].tags",
   "carta.secciones[].nombre",
   "carta.secciones[].orden",
@@ -88,11 +85,6 @@ const CLAVES_DE_LA_CARTA = [
   "carta.secciones[].promos[].orden",
   "carta.secciones[].promos[].precio",
   "carta.secciones[].promos[].titulo",
-  // Fase 5 (paso 7; aditivo): las tandas de columnas compartidas de la sección (índices de sus ítems y los rótulos de las columnas). Solo si hay alguna.
-  "carta.secciones[].tandas",
-  "carta.secciones[].tandas[].primero",
-  "carta.secciones[].tandas[].rotulos",
-  "carta.secciones[].tandas[].ultimo",
   "carta.secciones[].titulo",
   "carta.sucursal",
   "carta.sucursal.nombre",
@@ -245,12 +237,17 @@ describe("la salida de la carta pública está inventariada", () => {
         { nombre: "Extras", opciones: [{ nombre: "Medialuna", tipo: "recargo", recargo: 600 }] },
       ],
       // «Leche» (Vaca, sin costo; la otra, agotada hoy) se queda con UNA sola opción disponible: no hay nada que elegir, no sale como pastillas.
-      // Fase 5 («carta pareja», paso 7): la forma, ya resuelta: una fila de una tanda con el precio de cada tamaño (con el descuento sobre lo compuesto) y el adicional SIN descuento.
-      presentacion: { forma: "columnas", celdas: [810, 1170], aclaraciones: [{ tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "medialuna", recargo: 600 }] }] },
+      // Fase 5 («carta pareja», paso 7): la forma, ya resuelta: una tabla con una fila y el precio de cada tamaño (con el descuento sobre lo compuesto) y el adicional SIN descuento.
+      presentacion: {
+        forma: "tabla",
+        titulo: true,
+        columnas: ["Chico", "Grande"],
+        filas: [{ rotulo: null, celdas: [810, 1170] }],
+        aclaraciones: [{ tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "medialuna", recargo: 600 }] }],
+      },
     });
     expect(Object.keys(items.find((i) => i.nombre === "Café")!)).not.toContain("opcionesSinCosto");
-    const indiceDelCafe = items.findIndex((i) => i.nombre === "Café");
-    expect(carta.secciones[0].tandas).toEqual([{ primero: indiceDelCafe, ultimo: indiceDelCafe, rotulos: ["Chico", "Grande"] }]);
+    expect(carta.secciones[0]).not.toHaveProperty("tandas");
   });
 
   it("CARTA-C: la milanesa lleva su guarnición como pastillas (el punto de cocción, con una sola opción, no), el jugo sus tamaños iguales como pastillas «Vaso», y ninguno lleva `grupos`", async () => {

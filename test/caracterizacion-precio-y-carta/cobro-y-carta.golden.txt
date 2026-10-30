@@ -5,25 +5,23 @@ carta: version=1 generadoEn=<fecha> sucursal={"nombre":"Central"} secciones=4
 SECCION «Pizzas» descripcion=null imagenUrl=null orden=1 titulo=null items=1 promos=0
   ITEM «Pizzas» categoria="Pizzas" descripcion=null especial=false imagenUrl=null precio=18000 tags=[]
     lista «Tipos de Pizza»: Pizza muzzarella precio=18000 | Pizza de verduras asadas precio=20000 | Pizza fugazzeta precio=22000 | Pizza napolitana precio=22000 | Pizza con papas fritas precio=25000 | Pizza bomba precio=25000
-    presentacion {"forma":"lista","encabezado":true,"protagonista":"nombre","filas":[{"rotulo":"Pizza muzzarella","precio":18000},{"rotulo":"Pizza de verduras asadas","precio":20000},{"rotulo":"Pizza fugazzeta","precio":22000},{"rotulo":"Pizza napolitana","precio":22000},{"rotulo":"Pizza con papas fritas","precio":25000},{"rotulo":"Pizza bomba","precio":25000}],"aclaraciones":[]}
+    presentacion {"forma":"tabla","titulo":true,"columnas":[],"filas":[{"rotulo":"Pizza muzzarella","celdas":[18000]},{"rotulo":"Pizza de verduras asadas","celdas":[20000]},{"rotulo":"Pizza fugazzeta","celdas":[22000]},{"rotulo":"Pizza napolitana","celdas":[22000]},{"rotulo":"Pizza con papas fritas","celdas":[25000]},{"rotulo":"Pizza bomba","celdas":[25000]}],"aclaraciones":[]}
 SECCION «Platos» descripcion=null imagenUrl=null orden=2 titulo=null items=3 promos=0
-  tandas [{"primero":0,"ultimo":0,"rotulos":["Simple","Napolitana"]}]
   ITEM «Milanesas» categoria="Platos" descripcion=null especial=false imagenUrl=null precio=20000 tags=[]
     lista «Tipo de Milanesa»: Simple precio=20000 | Napolitana precio=25000
     pastillas «Milanesas de»: Carne | Pollo
-    presentacion {"forma":"columnas","celdas":[20000,25000],"aclaraciones":[{"tipo":"eleccion","rotulo":"Milanesas de","opciones":["carne","pollo"]}]}
+    presentacion {"forma":"tabla","titulo":true,"columnas":["Simple","Napolitana"],"filas":[{"rotulo":null,"celdas":[20000,25000]}],"aclaraciones":[{"tipo":"eleccion","rotulo":"Milanesas de","opciones":["carne","pollo"]}]}
   ITEM «Bife a la criolla» categoria="Platos" descripcion=null especial=false imagenUrl=null precio=20000 tags=[]
     lista «Extras»: Extra de papas recargo=+2000 | Huevo frito recargo=+1500
     pastillas «Guarnicion»: Ensalada | Papas fritas | Puré
     presentacion {"forma":"simple","aclaraciones":[{"tipo":"eleccion","rotulo":"Guarnicion","opciones":["ensalada","papas fritas","puré"]},{"tipo":"extras","rotulo":"Extras","opciones":[{"nombre":"extra de papas","recargo":2000},{"nombre":"huevo frito","recargo":1500}]}]}
   ITEM «Wok de verduras» categoria="Platos" descripcion=null especial=false imagenUrl=null precio=19000 tags=[]
 SECCION «Cafetería» descripcion=null imagenUrl=null orden=3 titulo=null items=1 promos=0
-  tandas [{"primero":0,"ultimo":0,"rotulos":["Chico","Mediano","Grande"]}]
   ITEM «Café» categoria="Cafetería" descripcion=null especial=false imagenUrl=null precio=4000 tags=[]
     lista «Tamaño del Café»: Chico precio=4000 | Mediano precio=4100 | Grande precio=4300
     lista «Preparación del café»: Lágrima recargo=+200 | Con leche recargo=+300
     pastillas «Preparación del café»: Solo | Cortado
-    presentacion {"forma":"columnas","celdas":[4000,4100,4300],"aclaraciones":[{"tipo":"extras","rotulo":"Preparación del café","opciones":[{"nombre":"solo","recargo":0},{"nombre":"cortado","recargo":0},{"nombre":"lágrima","recargo":200},{"nombre":"con leche","recargo":300}]}]}
+    presentacion {"forma":"tabla","titulo":true,"columnas":["Chico","Mediano","Grande"],"filas":[{"rotulo":null,"celdas":[4000,4100,4300]}],"aclaraciones":[{"tipo":"extras","rotulo":"Preparación del café","opciones":[{"nombre":"solo","recargo":0},{"nombre":"cortado","recargo":0},{"nombre":"lágrima","recargo":200},{"nombre":"con leche","recargo":300}]}]}
 SECCION «Bebidas» descripcion=null imagenUrl=null orden=4 titulo=null items=1 promos=0
   ITEM «Gaseosa 500 cc» categoria="Bebidas" descripcion=null especial=false imagenUrl=null precio=4000 tags=[]
 
@@ -162,5 +160,5 @@ SECCION «Bebidas» descripcion=null imagenUrl=null orden=4 titulo=null items=1 
     lista «Tamaño del Café»: Chico precio=4000 | Mediano precio=4200 | Grande precio=4300
     lista «Preparación del café»: Lágrima recargo=+200 | Con leche recargo=+300
     pastillas «Preparación del café»: Solo | Cortado
-    presentacion {"forma":"columnas","celdas":[4000,4200,4300],"aclaraciones":[{"tipo":"extras","rotulo":"Preparación del café","opciones":[{"nombre":"solo","recargo":0},{"nombre":"cortado","recargo":0},{"nombre":"lágrima","recargo":200},{"nombre":"con leche","recargo":300}]}]}
+    presentacion {"forma":"tabla","titulo":true,"columnas":["Chico","Mediano","Grande"],"filas":[{"rotulo":null,"celdas":[4000,4200,4300]}],"aclaraciones":[{"tipo":"extras","rotulo":"Preparación del café","opciones":[{"nombre":"solo","recargo":0},{"nombre":"cortado","recargo":0},{"nombre":"lágrima","recargo":200},{"nombre":"con leche","recargo":300}]}]}
 

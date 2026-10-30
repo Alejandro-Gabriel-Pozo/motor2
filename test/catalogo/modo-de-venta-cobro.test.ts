@@ -78,10 +78,10 @@ describe("C4: una base cobra y se muestra igual que antes, aunque su precio guar
   }
   /**
    * Lo que la carta DICE y cobra (nombres, precios, opciones), sin la forma con que se lee. Desde la Fase 5 (DEC-11) una base se lee distinto a propósito (oculta, sin encabezado, en lista) y
-   * `presentacion` y `tandas` son esa lectura: lo que no puede cambiar nunca al marcar base son los precios.
+   * `presentacion` es esa lectura: lo que no puede cambiar nunca al marcar base son los precios.
    */
   async function cartaSinLaForma(): Promise<string> {
-    const sinForma = (await secciones()).map((sc) => ({ ...sc, tandas: undefined, items: sc.items.map((item) => ({ ...item, presentacion: undefined })) }));
+    const sinForma = (await secciones()).map((sc) => ({ ...sc, items: sc.items.map((item) => ({ ...item, presentacion: undefined })) }));
     return JSON.stringify(sinForma);
   }
   const formaDe = async (nombre: string) => (await secciones()).flatMap((sc) => sc.items).find((i) => i.nombre === nombre)?.presentacion;
@@ -96,9 +96,9 @@ describe("C4: una base cobra y se muestra igual que antes, aunque su precio guar
     await marcarBase(cat.producto.milanesas!);
     expect(await cobrar(), "marcarlas base no cambia el cobro").toEqual(cobroDirecto);
     expect(await cartaSinLaForma(), "ni los precios ni las opciones de la carta pública").toEqual(cartaDirecto);
-    // La forma sí cambia, por diseño (DEC-11): la base de un eje sale oculta (sin encabezado) y la de dos ejes pierde las columnas compartidas, con las mismas filas y los mismos precios.
-    expect(await formaDe("Pizzas"), "Pizzas base: lista oculta").toMatchObject({ forma: "lista", encabezado: false });
-    expect(await formaDe("Milanesas"), "Milanesas base: lista con los mismos precios").toMatchObject({ forma: "lista", encabezado: false, filas: [{ rotulo: "Simple", precio: 20000 }, { rotulo: "Napolitana", precio: 25000 }] });
+    // La forma sí cambia, por diseño (DEC-11): la base de un eje sale oculta (sin título) y la de dos ejes pierde las columnas de tamaños, con las mismas filas y los mismos precios.
+    expect(await formaDe("Pizzas"), "Pizzas base: tabla oculta").toMatchObject({ forma: "tabla", titulo: false });
+    expect(await formaDe("Milanesas"), "Milanesas base: tabla oculta con los mismos precios").toMatchObject({ forma: "tabla", titulo: false, columnas: [], filas: [{ rotulo: "Simple", celdas: [20000] }, { rotulo: "Napolitana", celdas: [25000] }] });
 
     // El guardado ya no se usa: ponerlo en 0 (por SQL, como dueño; la pantalla no lo deja) no cambia nada.
     await prismaAdmin.producto.updateMany({ where: { id: { in: [cat.producto.pizzas!, cat.producto.milanesas!] } }, data: { precioVenta: 0 } });

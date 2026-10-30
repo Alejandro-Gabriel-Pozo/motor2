@@ -9,8 +9,9 @@ import { PRODUCTOS_DE_REFERENCIA, type ProductoDeReferencia } from "../setup/ref
  * Fase 5 de la ola «precio y carta» («carta pareja»): la FORMA con que la carta lee cada producto con opciones (`core/carta/presentacion-en-carta.ts`, por `armarMenuCarta`), sobre el catálogo de
  * referencia que reproduce producción (`test/setup/referencia-precio-y-carta.ts`). Cada precio sale de la tabla de la regla de la venta (`tablaDePreciosParaLaCarta`, como en `menu.ts`): acá se fija la
  * forma, no la cuenta (la paridad de cada celda la fija `test/pos/tabla-de-precios-para-la-carta.test.ts`). Casos: pizzas como base oculta (y con el nombre arriba), milanesas en tabla con «De carne»,
- * «De pollo» y «De trucha», café y cortado en una tanda con «–» y la medialuna debajo sin rótulos, bife con guarnición y extras, un plato con menos guarniciones, un grupo sin prefijo, lo agotado, el
- * descuento, más de 3 columnas, más de 8 filas y que la tanda se arma por `grupoId` y nunca por nombre. Nada de esto sale al público todavía (la proyección es del paso 7).
+ * «De pollo» y «De trucha», café y cortado cada uno con su tabla (modelo unificado: sin tanda ni «–» compartida) y la medialuna debajo sin rótulos, bife con guarnición y extras, un plato con menos
+ * guarniciones, un grupo sin prefijo, lo agotado, el descuento, más de 3 columnas (se transpone) y más de 8 filas. Las combinaciones de ejes, filas y columnas las recorre el oráculo de la forma
+ * (`forma-de-la-carta.oraculo.test.ts`).
  */
 
 const ref = (nombre: string): ProductoDeReferencia => PRODUCTOS_DE_REFERENCIA.find((p) => p.nombre === nombre)!;
@@ -113,18 +114,19 @@ describe("6a · simple con aclaraciones: bife, plato con menos guarniciones y gr
   it("«Milanesas de» SIN prefijo y sin costo no es un eje: la base queda de un eje (oculta) y la variante va como aclaración", () => {
     const armado = carta([{ id: "milanesas", nombre: "Milanesas", precioBase: MILANESA.precioBase, esBase: true, grupos: MILANESA.grupos }]);
     expect(item(armado, "Milanesas")!.presentacion).toEqual({
-      forma: "lista",
-      encabezado: false,
+      forma: "tabla",
+      titulo: false,
+      columnas: [],
       filas: [
-        { rotulo: "Simple", precio: 20000 },
-        { rotulo: "Napolitana", precio: 25000 },
+        { rotulo: "Simple", celdas: [20000] },
+        { rotulo: "Napolitana", celdas: [25000] },
       ],
       aclaraciones: [{ tipo: "eleccion", rotulo: "Milanesas de", opciones: ["carne", "pollo"] }],
     });
   });
 });
 
-describe("6b · columnas y tandas: el café y el cortado comparten columnas; la medialuna, debajo y sin rótulos", () => {
+describe("6b · tamaños de un producto directo: cada producto con SU tabla (sin tanda ni «–» compartida)", () => {
   const cortado = (): ProductoDePrueba => ({
     id: "cortado",
     nombre: "Cortado",
@@ -138,13 +140,15 @@ describe("6b · columnas y tandas: el café y el cortado comparten columnas; la 
       { id: "medialuna", nombre: "Medialuna", precioBase: 1200, grupos: [], seccion: "s2", orden: 3 },
     ]);
 
-  it("una tanda con la unión de las columnas en el orden del grupo; el cortado no ofrece «Grande»: «–» (null); la medialuna no lleva forma ni rótulos", () => {
+  it("cada producto lleva sus propios tamaños como columnas y una sola fila; el cortado no ofrece «Grande» y no lleva «–»; la medialuna no lleva forma", () => {
     const seccion = seccionCafe().carta.secciones.find((s) => s.nombre === "Cafetería")!;
     expect(seccion.items.map((i) => i.nombre)).toEqual(["Café", "Cortado", "Medialuna"]);
-    expect(seccion.tandas).toEqual([{ primero: 0, ultimo: 1, rotulos: ["Chico", "Mediano", "Grande"] }]);
+    expect(seccion).not.toHaveProperty("tandas");
     expect(seccion.items[0]!.presentacion).toEqual({
-      forma: "columnas",
-      celdas: [4000, 4100, 4300],
+      forma: "tabla",
+      titulo: true,
+      columnas: ["Chico", "Mediano", "Grande"],
+      filas: [{ rotulo: null, celdas: [4000, 4100, 4300] }],
       aclaraciones: [
         // Una línea por grupo, en su orden: lo que no suma va con recargo 0.
         {
@@ -161,37 +165,14 @@ describe("6b · columnas y tandas: el café y el cortado comparten columnas; la 
         { tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "shot", recargo: 600 }] },
       ],
     });
-    expect(seccion.items[1]!.presentacion).toEqual({ forma: "columnas", celdas: [3500, 3600, null], aclaraciones: [] });
+    expect(seccion.items[1]!.presentacion).toEqual({ forma: "tabla", titulo: true, columnas: ["Chico", "Mediano"], filas: [{ rotulo: null, celdas: [3500, 3600] }], aclaraciones: [] });
     expect(seccion.items[2]).not.toHaveProperty("presentacion");
   });
 
-  it("una columna agotada en TODA la tanda desaparece; agotada solo en uno, «–» en ese", () => {
+  it("una columna agotada solo desaparece en ese producto (el otro conserva la suya)", () => {
     const sinGrande = (p: ProductoDePrueba): ProductoDePrueba => ({ ...p, grupos: p.grupos.map((g, i) => (i === 0 ? mapearOpciones(g, (o) => (o.nombre === "Grande" ? { ...o, apagadaEnSucursal: true } : o)) : g)) });
     const seccion = seccionCafe({ cafe: sinGrande }).carta.secciones.find((s) => s.nombre === "Cafetería")!;
-    expect(seccion.tandas).toEqual([{ primero: 0, ultimo: 1, rotulos: ["Chico", "Mediano"] }]);
-    expect(seccion.items.map((i) => (i.presentacion?.forma === "columnas" ? i.presentacion.celdas : null))).toEqual([[4000, 4100], [3500, 3600], null]);
-  });
-
-  it("la tanda se arma por el grupo (`grupoId`), nunca por el nombre: dos grupos que se llaman igual y tienen las mismas opciones son dos tandas", () => {
-    const otroGrupo = (p: ProductoDePrueba): ProductoDePrueba => ({ ...p, grupos: p.grupos.map((g, i) => (i === 0 ? { ...g, grupoId: "g-otro-tamano" } : g)) });
-    const seccion = seccionCafe({ cortado: otroGrupo }).carta.secciones.find((s) => s.nombre === "Cafetería")!;
-    expect(seccion.items[1]!.presentacion).toMatchObject({ forma: "columnas", celdas: [3500, 3600] });
-    expect(seccion.tandas).toEqual([
-      { primero: 0, ultimo: 0, rotulos: ["Chico", "Mediano", "Grande"] },
-      { primero: 1, ultimo: 1, rotulos: ["Chico", "Mediano"] },
-    ]);
-  });
-
-  it("dos productos del mismo grupo separados por otro no comparten tanda (solo los consecutivos)", () => {
-    const armado = carta([
-      { id: "cafe", nombre: "Café", precioBase: CAFE.precioBase, grupos: CAFE.grupos, seccion: "s2", orden: 1 },
-      { id: "medialuna", nombre: "Medialuna", precioBase: 1200, grupos: [], seccion: "s2", orden: 2 },
-      { ...cortado(), seccion: "s2", orden: 3 },
-    ]);
-    expect(armado.carta.secciones[0]!.tandas!.map((t) => [t.primero, t.ultimo])).toEqual([
-      [0, 0],
-      [2, 2],
-    ]);
+    expect(seccion.items.map((i) => (i.presentacion?.forma === "tabla" ? [i.presentacion.columnas, i.presentacion.filas[0]!.celdas] : null))).toEqual([[["Chico", "Mediano"], [4000, 4100]], [["Chico", "Mediano"], [3500, 3600]], null]);
   });
 });
 
@@ -200,6 +181,7 @@ describe("6c · tabla de dos ejes: las milanesas", () => {
     const armado = carta([milanesaConTrucha()]);
     expect(item(armado, "Milanesas")!.presentacion).toEqual({
       forma: "tabla",
+      titulo: true,
       columnas: ["Simple", "Napolitana"],
       filas: [
         { rotulo: "De carne", celdas: [20000, 25000] },
@@ -225,15 +207,16 @@ describe("6d · lista de una base: las pizzas", () => {
   it("por defecto OCULTA (DEC-11): cada opción con su nombre completo y su precio final, sin encabezado; queda en el diagnóstico con los nombres tal como se leen", () => {
     const armado = carta([{ id: "pizzas", nombre: "Pizzas", precioBase: PIZZAS.precioBase, esBase: true, grupos: PIZZAS.grupos }]);
     expect(item(armado, "Pizzas")!.presentacion).toEqual({
-      forma: "lista",
-      encabezado: false,
+      forma: "tabla",
+      titulo: false,
+      columnas: [],
       filas: [
-        { rotulo: "Pizza muzzarella", precio: 18000 },
-        { rotulo: "Pizza de verduras asadas", precio: 20000 },
-        { rotulo: "Pizza fugazzeta", precio: 22000 },
-        { rotulo: "Pizza napolitana", precio: 22000 },
-        { rotulo: "Pizza con papas fritas", precio: 25000 },
-        { rotulo: "Pizza bomba", precio: 25000 },
+        { rotulo: "Pizza muzzarella", celdas: [18000] },
+        { rotulo: "Pizza de verduras asadas", celdas: [20000] },
+        { rotulo: "Pizza fugazzeta", celdas: [22000] },
+        { rotulo: "Pizza napolitana", celdas: [22000] },
+        { rotulo: "Pizza con papas fritas", celdas: [25000] },
+        { rotulo: "Pizza bomba", celdas: [25000] },
       ],
       aclaraciones: [],
     });
@@ -242,19 +225,18 @@ describe("6d · lista de una base: las pizzas", () => {
 
   it("con «Mostrar el nombre arriba» prendido, el nombre va de encabezado; el prefijo es opcional y NO decide el encabezado", () => {
     const conNombre = carta([{ id: "pizzas", nombre: "Pizzas", precioBase: PIZZAS.precioBase, esBase: true, grupos: PIZZAS.grupos, mostrarNombreArriba: true }]);
-    expect(item(conNombre, "Pizzas")!.presentacion).toMatchObject({ forma: "lista", encabezado: true });
-    expect(item(conNombre, "Pizzas")!.presentacion, "una base con el nombre arriba: protagonizan las opciones").not.toHaveProperty("protagonista");
+    expect(item(conNombre, "Pizzas")!.presentacion).toMatchObject({ forma: "tabla", titulo: true, columnas: [] });
     expect(conNombre.diagnostico.basesOcultas).toBeUndefined();
     const conPrefijoSinInterruptor = carta([{ id: "pizzas", nombre: "Pizzas", precioBase: PIZZAS.precioBase, esBase: true, grupos: conPrefijo(PIZZAS.grupos, "Tipos de Pizza", "De") }]);
     const conPrefijoLista = item(conPrefijoSinInterruptor, "Pizzas")!.presentacion!;
-    expect(conPrefijoLista).toMatchObject({ forma: "lista", encabezado: false });
-    expect(conPrefijoLista).not.toHaveProperty("protagonista");
-    expect(conPrefijoLista.forma === "lista" && conPrefijoLista.filas[0]).toEqual({ rotulo: "De pizza muzzarella", precio: 18000 });
+    expect(conPrefijoLista).toMatchObject({ forma: "tabla", titulo: false });
+    expect(conPrefijoLista.forma === "tabla" && conPrefijoLista.filas[0]).toEqual({ rotulo: "De pizza muzzarella", celdas: [18000] });
   });
 
-  it("el mismo grupo en un producto DIRECTO no es una base: sale en columnas (o en lista con el nombre arriba si son más de 3)", () => {
+  it("el mismo grupo en un producto DIRECTO no es una base: sale con el nombre arriba, los tamaños en las filas (son más de 3) y queda en el diagnóstico", () => {
     const directo = carta([{ id: "pizzas", nombre: "Pizzas", precioBase: PIZZAS.precioBase, grupos: PIZZAS.grupos }]);
-    expect(item(directo, "Pizzas")!.presentacion).toMatchObject({ forma: "lista", encabezado: true, protagonista: "nombre" });
+    expect(item(directo, "Pizzas")!.presentacion).toMatchObject({ forma: "tabla", titulo: true, columnas: [] });
+    expect(directo.diagnostico.productosConMuchasColumnas).toEqual([{ productoId: "pizzas", nombre: "Pizzas", columnas: 6 }]);
   });
 });
 
@@ -262,7 +244,7 @@ describe("6e · lo agotado hoy", () => {
   it("una pizza agotada no sale; un grupo obligatorio sin nada para elegir saca el producto de la carta, como hoy", () => {
     const sinBomba = PIZZAS.grupos.map((g) => mapearOpciones(g, (o) => (o.nombre === "Pizza bomba" ? { ...o, apagadaEnSucursal: true } : o)));
     const presentacion = item(carta([{ id: "pizzas", nombre: "Pizzas", precioBase: 18000, esBase: true, grupos: sinBomba }]), "Pizzas")!.presentacion!;
-    expect(presentacion.forma === "lista" && presentacion.filas.map((f) => f.rotulo)).not.toContain("Pizza bomba");
+    expect(presentacion.forma === "tabla" && presentacion.filas.map((f) => f.rotulo)).not.toContain("Pizza bomba");
     const todas = PIZZAS.grupos.map((g) => mapearOpciones(g, (o) => ({ ...o, apagadaEnSucursal: true })));
     expect(item(carta([{ id: "pizzas", nombre: "Pizzas", precioBase: 18000, esBase: true, grupos: todas }]), "Pizzas")).toBeUndefined();
   });
@@ -276,7 +258,7 @@ describe("6f · descuento de producto", () => {
     ]);
     const pizzas = item(armado, "Pizzas")!;
     expect(pizzas).toMatchObject({ precio: 15750, precioLista: 18000, descuentoPorcentaje: 12.5 });
-    expect(pizzas.presentacion!.forma === "lista" && pizzas.presentacion!.filas.map((f) => f.precio)).toEqual([15750, 17500, 19250, 19250, 21875, 21875]);
+    expect(pizzas.presentacion!.forma === "tabla" && pizzas.presentacion!.filas.map((f) => f.celdas[0])).toEqual([15750, 17500, 19250, 19250, 21875, 21875]);
     const bife = item(armado, BIFE.nombre)!;
     expect(bife).toMatchObject({ precio: 18000, descuentoPorcentaje: 10 });
     expect(bife.presentacion!.aclaraciones[1]).toEqual({ tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "extra de papas", recargo: 2000 }, { nombre: "huevo frito", recargo: 1500 }] });
@@ -296,30 +278,35 @@ describe("6g · límites y diagnóstico interno", () => {
     opciones: Array.from({ length: n }, (_, i) => ({ ...CAFE.grupos[0]!.opciones[0]!, opcionId: `t${i}`, nombre: `T${i}`, versionVigenteId: `v-t${i}`, orden: i, precioAbsoluto: 1000 + i * 100 })),
   });
 
-  it("más de 3 columnas en una tanda: cada producto cae a lista con el nombre arriba, sin tanda, y queda en el diagnóstico", () => {
+  it("más de 3 tamaños en un producto directo: una columna de precios y un tamaño por fila, con el nombre arriba; queda en el diagnóstico", () => {
     const armado = carta([{ id: "te", nombre: "Té", precioBase: 1000, grupos: [tamanos(4)] }]);
-    expect(item(armado, "Té")!.presentacion).toMatchObject({ forma: "lista", encabezado: true, protagonista: "nombre", filas: [{ rotulo: "T0", precio: 1000 }, { rotulo: "T1" }, { rotulo: "T2" }, { rotulo: "T3", precio: 1300 }] });
-    expect(armado.carta.secciones[0]).not.toHaveProperty("tandas");
+    expect(item(armado, "Té")!.presentacion).toMatchObject({ forma: "tabla", titulo: true, columnas: [], filas: [{ rotulo: "T0", celdas: [1000] }, { rotulo: "T1" }, { rotulo: "T2" }, { rotulo: "T3", celdas: [1300] }] });
     expect(armado.diagnostico.productosConMuchasColumnas).toEqual([{ productoId: "te", nombre: "Té", columnas: 4 }]);
   });
 
-  it("una tabla de dos ejes con más de 3 columnas: una fila por combinación, con el nombre arriba", () => {
+  it("dos ejes con más de 3 columnas: se TRANSPONE (las variantes pasan a las columnas y el eje largo a las filas)", () => {
     const g = tamanos(4);
     const de = { ...MILANESA.grupos[1]!, prefijoEnCarta: "De" };
     const armado = carta([{ id: "mila", nombre: "Milanesas", precioBase: 1000, esBase: true, grupos: [g, de] }]);
     const p = item(armado, "Milanesas")!.presentacion!;
-    expect(p, "las combinaciones son opciones: protagonizan ellas").not.toHaveProperty("protagonista");
-    expect(p.forma === "lista" && p.filas.slice(0, 2)).toEqual([
-      { rotulo: "T0, de carne", precio: 1000 },
-      { rotulo: "T1, de carne", precio: 1100 },
-    ]);
+    expect(p.forma === "tabla" && p.columnas).toEqual(["De carne", "De pollo"]);
+    expect(p.forma === "tabla" && p.filas.map((f) => [f.rotulo, f.celdas])).toEqual([["T0", [1000, 1000]], ["T1", [1100, 1100]], ["T2", [1200, 1200]], ["T3", [1300, 1300]]]);
     expect(armado.diagnostico.productosConMuchasColumnas).toEqual([{ productoId: "mila", nombre: "Milanesas", columnas: 4 }]);
+  });
+
+  it("dos ejes con más de 3 en CADA uno: una fila por combinación, con el nombre arriba", () => {
+    const cuatro = { ...tamanos(4), grupoId: "g-variantes", nombre: "Punto", tipo: "VARIANTE" as const, prefijoEnCarta: "De", cantidadMinima: 1, cantidadMaxima: 1, opciones: tamanos(4).opciones.map((o, i) => ({ ...o, opcionId: `v${i}`, nombre: `V${i}`, versionVigenteId: `vv${i}`, precioAbsoluto: null, diferenciaDeLaVersion: { tipo: "MONTO" as const, monto: 0 } })) };
+    const armado = carta([{ id: "mila", nombre: "Milanesas", precioBase: 1000, esBase: true, grupos: [tamanos(4), cuatro] }]);
+    const p = item(armado, "Milanesas")!.presentacion!;
+    expect(p.forma === "tabla" && p.titulo && p.columnas).toEqual([]);
+    expect(p.forma === "tabla" && p.filas.slice(0, 2)).toEqual([{ rotulo: "T0, de v0", celdas: [1000] }, { rotulo: "T1, de v0", celdas: [1100] }]);
+    expect(p.forma === "tabla" && p.filas).toHaveLength(16);
   });
 
   it("más de 8 filas: se dibujan todas (nunca «desde» ni colapso) y se anota en el diagnóstico", () => {
     const armado = carta([{ id: "pizzas", nombre: "Pizzas", precioBase: 1000, esBase: true, grupos: [tamanos(9)] }]);
     const p = item(armado, "Pizzas")!.presentacion!;
-    expect(p.forma === "lista" && p.filas).toHaveLength(9);
+    expect(p.forma === "tabla" && p.filas).toHaveLength(9);
     expect(armado.diagnostico.productosConMuchasFilas).toEqual([{ productoId: "pizzas", nombre: "Pizzas", filas: 9 }]);
   });
 

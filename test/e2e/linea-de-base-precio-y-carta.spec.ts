@@ -77,9 +77,9 @@ interface Letra {
 }
 
 interface ItemDeCarta {
-  /** Fase 5 («carta pareja»): la forma con que se dibuja (`data-forma`), «tanda» (una tabla por producto, de columnas compartidas) o «sin opciones» / «sin forma». */
+  /** Fase 5 («carta pareja»): la forma con que se dibuja (`data-forma`), «lista-sin-encabezado» (la base oculta), o «sin opciones» / «sin forma». */
   forma: string;
-  /** El nombre (los h3; en una tanda, el de cada producto, que protagoniza con su tabla propia). */
+  /** El nombre (los h3: el título de la tabla). */
   nombre: string;
   /** Lo que se dibuja a la derecha del nombre (null: nada; en una tabla o una lista, cada fila dice su precio). */
   precioDelRenglon: string | null;
@@ -158,7 +158,7 @@ function volcarCarta(page: Page): Promise<CartaVolcada> {
         }
         const items = [...p.querySelectorAll("[data-carta-scroll] > li")].map((li): ItemDeCarta => {
           const conOpciones = li.querySelector("[data-filas-carta], [data-aclaracion]") !== null;
-          const forma = li.getAttribute("data-forma") ?? (li.hasAttribute("data-tanda") ? "tanda" : conOpciones ? "sin forma (como antes)" : "sin opciones");
+          const forma = li.getAttribute("data-forma") ?? (conOpciones ? "sin forma (como antes)" : "sin opciones");
           const nombres = [...li.querySelectorAll("h3")].map(texto);
           const nombre = nombres.join(" | ");
           const precio = li.querySelector(":scope > div > [data-rol=precio]");

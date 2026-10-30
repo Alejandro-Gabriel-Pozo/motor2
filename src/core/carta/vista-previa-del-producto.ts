@@ -10,6 +10,6 @@ export type VistaPreviaDeLaCarta =
   /** Tiene grupos, pero hoy no se puede pedir (un grupo obligatorio sin ninguna opción disponible o con precio): no sale en la carta hasta que lo tenga. */
   | { tipo: "no-se-puede-pedir" }
   /** La forma exacta que le da la carta (la proyección de la Fase 5). */
-  | { tipo: "forma"; presentacion: PresentacionCartaV1; rotulos: string[] }
+  | { tipo: "forma"; presentacion: PresentacionCartaV1 }
   /** La carta no puede leerlo exacto (más de dos grupos cambian el precio): las listas de siempre, como una línea de texto. */
   | { tipo: "texto"; texto: string };

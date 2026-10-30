@@ -32,5 +32,5 @@ export async function cargarVistaPreviaDeLaCarta(
   const enCarta = opcionesParaLaCarta(resumen);
   if (enCarta === null) return { tipo: "no-se-puede-pedir" };
   const forma = tabla ? presentacionDeUnProductoSolo({ tabla, esBase: producto.esBase, mostrarNombreArriba, conDescuento: false }) : null;
-  return forma ? { tipo: "forma", presentacion: forma.presentacion, rotulos: forma.rotulos } : { tipo: "texto", texto: vistaPreviaDeOpciones(true, enCarta) };
+  return forma ? { tipo: "forma", presentacion: forma } : { tipo: "texto", texto: vistaPreviaDeOpciones(true, enCarta) };
 }

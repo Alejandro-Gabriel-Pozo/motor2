@@ -21,10 +21,10 @@ import { Seccion } from "../../src/components/carta-publica/seccion";
  *  - «Café de especialidad» es un producto DIRECTO (no base) en «Cafetería», con el MISMO grupo de tamaño que el café del catálogo de referencia (MEDIDA en ABSOLUTO: Chico $4.000, Mediano $4.100,
  *    Grande $4.300; el precio por tamaño vive en la admisión del producto) y un grupo propio «Preparación obligatoria» (VARIANTE 1..1, sin prefijo en la carta): Solo +$0, Cortado +$0,
  *    Lágrima +$200, Con leche +$300 (MONTO);
- *  - la carta lee de la base la forma «tabla» (rótulo = el nombre, filas = las preparaciones, columnas = los tamaños) y cada celda es la composición precio del tamaño + diferencia de la preparación,
+ *  - la carta lee de la base la forma «tabla» (título = el nombre, filas = las preparaciones, columnas = los tamaños) y cada celda es la composición precio del tamaño + diferencia de la preparación,
  *    calculada por la regla de la venta (`tablaDePreciosParaLaCarta`), la misma que cobra la caja: acá se compara las 12 celdas con lo que cobra `agregarItems`, la acción real del POS;
  *  - las filas no se juntan aunque cuesten igual (Solo y Cortado);
- *  - el HTML de la carta pública (`Seccion`) muestra el rótulo con el nombre, 4 encabezados de fila y los 12 precios finales.
+ *  - el HTML de la carta pública (`Seccion`) muestra el título con el nombre, 4 encabezados de fila y los 12 precios finales.
  * Sin prefijo, la fila se lee con el nombre de la opción tal cual está cargado.
  */
 let s: Awaited<ReturnType<typeof sembrarSalon>>;
@@ -104,17 +104,17 @@ describe("C10: un café con tamaño y preparación obligatoria sale como tabla d
     // (a) la forma
     expect(item.presentacion?.forma).toBe("tabla");
     // (b) y (c) las columnas, las filas en orden y los precios finales exactos
-    expect(item.presentacion).toEqual({ forma: "tabla", columnas: ["Chico", "Mediano", "Grande"], filas: TABLA_ESPERADA, aclaraciones: [] });
-    // El café de referencia, en su sección y al lado, sigue como estaba (columnas, con su preparación opcional).
-    expect((await itemDeLaCarta("Café")).presentacion).toMatchObject({ forma: "columnas", celdas: [4000, 4100, 4300] });
+    expect(item.presentacion).toEqual({ forma: "tabla", titulo: true, columnas: ["Chico", "Mediano", "Grande"], filas: TABLA_ESPERADA, aclaraciones: [] });
+    // El café de referencia, en su sección y al lado, sigue como estaba (una tabla de tamaños con una sola fila, con su preparación opcional).
+    expect((await itemDeLaCarta("Café")).presentacion).toMatchObject({ forma: "tabla", columnas: ["Chico", "Mediano", "Grande"], filas: [{ rotulo: null, celdas: [4000, 4100, 4300] }] });
   });
 
-  it("con la preparación OPCIONAL (cantidad mínima 0) ya no es un eje obligatorio: el café de especialidad NO sale como tabla", async () => {
+  it("con la preparación OPCIONAL (cantidad mínima 0) ya no es un eje obligatorio: el café de especialidad no tiene una fila por preparación (una sola fila de tamaños) y la preparación va debajo", async () => {
     await sembrarCafeDeEspecialidad(1);
     await prismaAdmin.grupoDeOpciones.updateMany({ where: { id: grupoPreparacionId }, data: { cantidadMinima: 0 } });
-    const forma = (await itemDeLaCarta("Café de especialidad")).presentacion?.forma;
-    expect(forma).toBeDefined();
-    expect(forma).not.toBe("tabla");
+    const forma = (await itemDeLaCarta("Café de especialidad")).presentacion;
+    expect(forma).toMatchObject({ forma: "tabla", columnas: ["Chico", "Mediano", "Grande"], filas: [{ rotulo: null }] });
+    expect(forma?.aclaraciones.map((a) => a.rotulo)).toContain("Preparación obligatoria");
   });
 
   it("(d) PARIDAD con la caja: cada una de las 12 celdas es lo que cobra la acción real del POS (`agregarItems`) para esa elección de tamaño y preparación", async () => {
@@ -127,7 +127,7 @@ describe("C10: un café con tamaño y preparación obligatoria sale como tabla d
     for (const fila of tabla.filas) {
       for (const [c, columna] of tabla.columnas.entries()) {
         const tamano = TAMANOS.find((t) => t.nombre === columna)!;
-        const prep = preparacion[fila.rotulo]!;
+        const prep = preparacion[fila.rotulo!]!;
         const r = await agregarItems(cuenta.id, [
           {
             productoId,
@@ -148,7 +148,7 @@ describe("C10: un café con tamaño y preparación obligatoria sale como tabla d
     expect(vistas.size).toBe(12);
   });
 
-  it("(e) el HTML de la carta pública: el nombre como rótulo antes de la tabla, 4 encabezados de fila (`th scope=\"row\"`) y los 12 precios finales", async () => {
+  it("(e) el HTML de la carta pública: el nombre como título antes de la tabla, 4 encabezados de fila (`th scope=\"row\"`) y los 12 precios finales", async () => {
     await sembrarCafeDeEspecialidad(1);
     const empresa = (await empresaCartaPublica("principal"))!;
     const entregada = (await cartaPublica(empresa, cat.slug, AHORA_DE_LA_CORRIDA))!;
@@ -157,13 +157,13 @@ describe("C10: un café con tamaño y preparación obligatoria sale como tabla d
 
     const li = html.split(/(?=<li data-forma=)/).find((x) => x.includes("Café de especialidad"))!;
     expect(li, "el café de especialidad sale como tabla").toMatch(/^<li data-forma="tabla"/);
-    expect(li).toMatch(/<h3 data-rol="rotulo" class="carta-rol-rotulo[^"]*"[^>]*>Café de especialidad<\/h3>/);
-    expect(li.indexOf('<h3 data-rol="rotulo"')).toBeLessThan(li.indexOf("<table"));
+    expect(li).toMatch(/<h3 data-rol="producto" class="carta-rol-producto[^"]*"[^>]*>Café de especialidad<\/h3>/);
+    expect(li.indexOf('<h3 data-rol="producto"')).toBeLessThan(li.indexOf("<table"));
     const tabla = li.slice(li.indexOf("<table"), li.indexOf("</table>"));
     const texto = (fragmento: string) => fragmento.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     expect(tabla.match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map(texto)).toEqual(["Chico", "Mediano", "Grande"]);
     expect(tabla.match(/<th scope="row"[^>]*>[\s\S]*?<\/th>/g)?.map(texto)).toEqual(["Solo", "Cortado", "Lágrima", "Con leche"]);
-    const precios = [...tabla.matchAll(/data-rol="precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1]);
+    const precios = [...tabla.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1]);
     expect(precios).toEqual(["$4.000", "$4.100", "$4.300", "$4.000", "$4.100", "$4.300", "$4.200", "$4.300", "$4.500", "$4.300", "$4.400", "$4.600"]);
     // El café de referencia, en su propia fila de la sección, no se mezcla con la tabla.
     expect(li).not.toContain("Preparación del café");

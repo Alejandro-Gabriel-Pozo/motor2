@@ -1,6 +1,6 @@
 import type { CartaV1, ItemCartaV1, OpcionItemCartaV1, PromoCartaV1, SeccionCartaV1 } from "./armar-menu";
 import type { GrupoCartaV1, OpcionesSinCostoCartaV1 } from "./opciones-en-carta";
-import type { AclaracionCartaV1, PresentacionCartaV1, TandaCartaV1 } from "./presentacion-en-carta";
+import type { AclaracionCartaV1, PresentacionCartaV1 } from "./presentacion-en-carta";
 
 /**
  * LO ÚNICO que la carta pública entrega a un anónimo (S-25 del plan de endurecimiento de seguridad, tanda T9; requisito del dueño: «la carta pública es la ÚNICA excepción
@@ -39,7 +39,7 @@ export interface ItemCartaPublico {
   /** CARTA-C: SOLO en un PV con opciones que no cambian el precio: el nombre del grupo y los nombres de sus opciones sin costo (pastillas). Solo textos: sin ids ni precios. */
   opcionesSinCosto?: OpcionesSinCostoCartaPublica[];
   /**
-   * Fase 5 («carta pareja», `presentacion-en-carta.ts`): SOLO en un PV con opciones cuya forma la carta puede leer con el precio exacto: cómo se lee (simple, fila de una tanda, tabla o lista), con
+   * Fase 5 («carta pareja», `presentacion-en-carta.ts`): SOLO en un PV con opciones cuya forma la carta puede leer con el precio exacto: cómo se lee (simple o tabla), con
    * cada precio ya resuelto en el servidor y las aclaraciones debajo del plato. Solo rótulos y precios: sin ids, sin el tipo interno del grupo. Sin ella, quien dibuja cae a `grupos`/`opcionesSinCosto`.
    */
   presentacion?: PresentacionCartaPublica;
@@ -51,16 +51,7 @@ export type AclaracionCartaPublica = { tipo: "eleccion"; rotulo: string; opcione
 /** La forma de un producto con opciones (Fase 5). `null` en una celda = no se ofrece («–»). */
 export type PresentacionCartaPublica =
   | { forma: "simple"; aclaraciones: AclaracionCartaPublica[] }
-  | { forma: "columnas"; celdas: (number | null)[]; aclaraciones: AclaracionCartaPublica[] }
-  | { forma: "tabla"; columnas: string[]; filas: { rotulo: string; celdas: (number | null)[] }[]; aclaraciones: AclaracionCartaPublica[] }
-  | { forma: "lista"; encabezado: boolean; protagonista?: "nombre"; filas: { rotulo: string; precio: number }[]; aclaraciones: AclaracionCartaPublica[] };
-
-/** Fase 5: los ítems `primero`…`ultimo` de la sección (índices en `items`) comparten los rótulos de sus columnas. */
-export interface TandaCartaPublica {
-  primero: number;
-  ultimo: number;
-  rotulos: string[];
-}
+  | { forma: "tabla"; titulo: boolean; columnas: string[]; filas: { rotulo: string | null; celdas: (number | null)[] }[]; aclaraciones: AclaracionCartaPublica[] };
 
 export interface OpcionesSinCostoCartaPublica {
   grupo: string;
@@ -90,8 +81,6 @@ export interface SeccionCartaPublica {
   orden: number;
   items: ItemCartaPublico[];
   promos: PromoCartaPublica[];
-  /** Fase 5: SOLO si la sección tiene alguna tanda de columnas compartidas. */
-  tandas?: TandaCartaPublica[];
 }
 
 export interface CartaPublicaV1 {
@@ -121,16 +110,10 @@ function proyectarPresentacion(p: PresentacionCartaV1): PresentacionCartaPublica
   switch (p.forma) {
     case "simple":
       return { forma: "simple", aclaraciones };
-    case "columnas":
-      return { forma: "columnas", celdas: [...p.celdas], aclaraciones };
     case "tabla":
-      return { forma: "tabla", columnas: [...p.columnas], filas: p.filas.map((f) => ({ rotulo: f.rotulo, celdas: [...f.celdas] })), aclaraciones };
-    case "lista":
-      return { forma: "lista", encabezado: p.encabezado, ...(p.protagonista !== undefined ? { protagonista: p.protagonista } : {}), filas: p.filas.map((f) => ({ rotulo: f.rotulo, precio: f.precio })), aclaraciones };
+      return { forma: "tabla", titulo: p.titulo, columnas: [...p.columnas], filas: p.filas.map((f) => ({ rotulo: f.rotulo, celdas: [...f.celdas] })), aclaraciones };
   }
 }
-
-const proyectarTanda = (t: TandaCartaV1): TandaCartaPublica => ({ primero: t.primero, ultimo: t.ultimo, rotulos: [...t.rotulos] });
 
 /** CARTA-C: un grupo de opciones sin costo, campo por campo (solo textos). */
 const proyectarSinCosto = (g: OpcionesSinCostoCartaV1): OpcionesSinCostoCartaPublica => ({ grupo: g.grupo, opciones: [...g.opciones] });
@@ -164,7 +147,6 @@ const proyectarSeccion = (s: SeccionCartaV1): SeccionCartaPublica => ({
   orden: s.orden,
   items: s.items.map(proyectarItem),
   promos: s.promos.map(proyectarPromo),
-  ...(s.tandas !== undefined ? { tandas: s.tandas.map(proyectarTanda) } : {}),
 });
 
 /**
@@ -182,11 +164,12 @@ export function etiquetaDeCacheDeCartasPublicas(empresaSlug: string): string {
 
 /**
  * La VERSIÓN de la forma de la carta armada que se guarda en el caché de la carta pública (Fase 5, «carta pareja»): va en la clave de `unstable_cache` (`server/carta-publica/sin-sesion.ts`), así un
- * despliegue que cambia lo que arma el servidor (la `presentacion` de cada ítem y las `tandas` de cada sección) no sirve durante 60 s una carta guardada por el código anterior. Se cambia cada vez que
+ * despliegue que cambia lo que arma el servidor (la `presentacion` de cada ítem) no sirve durante 60 s una carta guardada por el código anterior. Se cambia cada vez que
  * cambia la FORMA de `CartaV1` (no los datos). «carta-pareja-2»: suma `seccionesImpresas` (la carta completa del papel, paso 10b).
  * «carta-pareja-3»: suma `protagonista` en la lista (tanda C, jerarquía).
+ * «carta-pareja-4»: modelo unificado (decisión del dueño, 2026-10-29): la forma es `simple` o `tabla` (con `titulo`); sin `columnas`, `lista` ni `tandas`.
  */
-export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-3";
+export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-4";
 
 /** La carta armada, sin los ids internos: lo que la carta pública emite hacia el navegador. */
 export function proyectarCartaPublica(carta: CartaV1): CartaPublicaV1 {

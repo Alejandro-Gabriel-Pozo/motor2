@@ -1,4 +1,4 @@
-import type { AclaracionCartaPublica, EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica, TandaCartaPublica } from "@/core/carta/public";
+import type { AclaracionCartaPublica, EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
 import { formatearPrecioCarta, partirLaAclaracion, recargoEnPesos, textoDeLaAclaracion } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
 
@@ -59,12 +59,9 @@ export function Seccion({
 
       <ul data-carta-scroll className="carta-divisor min-h-0 flex-1 divide-y overflow-y-auto px-6 sm:px-10">
         {/* S-25: las `key` son la posición, no el id de la fila: React serializa la `key` de cada elemento en el payload RSC que baja al navegador. */}
-        {seccion.items.map((item, i) => {
-          // Fase 5: una TANDA (productos consecutivos que comparten columnas, Chico | Mediano | Grande) se dibuja UNA vez, en su primer ítem, como una tabla; los demás de la tanda van adentro.
-          const tanda = seccion.tandas?.find((t) => i >= t.primero && i <= t.ultimo);
-          if (tanda) return i === tanda.primero ? <TandaFila key={`item-${i}`} tanda={tanda} items={seccion.items.slice(tanda.primero, tanda.ultimo + 1)} estilo={estilo} /> : null;
-          return <ItemFila key={`item-${i}`} item={item} estilo={estilo} />;
-        })}
+        {seccion.items.map((item, i) => (
+          <ItemFila key={`item-${i}`} item={item} estilo={estilo} />
+        ))}
         {seccion.promos.map((promo, i) => (
           <PromoFila key={`promo-${i}`} promo={promo} />
         ))}
@@ -101,22 +98,6 @@ function NombreDelItem({ item, colores }: { item: ItemCartaPublico; colores: Col
       {item.nombre}
       {item.especial && <Estrella color={colores.estrella} />}
     </h3>
-  );
-}
-
-/**
- * El nombre «paraguas» de un producto (Milanesas, Pizzas) cuando son sus OPCIONES las que protagonizan: un RÓTULO (rol Rótulo: sans, mayúsculas espaciadas, tinta) con una línea fina de ancho completo
- * debajo y, a la derecha, el aviso del descuento si lo hay. Es un `h3`: la carta se recorre por sus títulos (la tabla de abajo no lleva ningún título dentro).
- */
-function RotuloDelItem({ item, colores }: { item: ItemCartaPublico; colores: ColoresDelItem }) {
-  return (
-    <div className="carta-linea-fina flex items-baseline justify-between gap-3 pb-1.5">
-      <h3 data-rol="rotulo" className="carta-rol-rotulo min-w-0 flex-1" style={{ overflowWrap: "anywhere" }}>
-        {item.nombre}
-        {item.especial && <Estrella color={colores.estrella} />}
-      </h3>
-      {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
-    </div>
   );
 }
 
@@ -231,13 +212,13 @@ function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly Aclaraci
  * tamaño y un solo peso por rol).
  *
  * Con opciones, el ítem se DIBUJA SEGÚN SU FORMA (`presentacion`, que resuelve el servidor: `core/carta/presentacion-en-carta.ts`; ADR-035): `simple` (el nombre y su precio, con las aclaraciones
- * debajo); `tabla` (dos ejes: el nombre como RÓTULO con su línea fina y una tabla real); `lista` (un eje en filas: con el nombre arriba, o la base OCULTA, cada opción como un plato); `columnas` va dentro de
- * su tanda (`TandaFila`: una tabla por producto). Sin `presentacion` (un producto sin opciones, o uno cuya forma la carta no puede leer exacta) va `ItemComoAntes`.
+ * debajo) o `tabla` (uno o dos ejes: el nombre como título, los encabezados de las columnas, una fila por opción; la base de un eje OCULTA, `titulo: false`, es cada opción como un plato). Sin
+ * `presentacion` (un producto sin opciones, o uno cuya forma la carta no puede leer exacta) va `ItemComoAntes`.
  *
- * JERARQUÍA («BC2»): si la opción define QUÉ PLATO es (De carne / De pollo; cada pizza; una combinación) → las OPCIONES protagonizan (letra de plato, rol Producto, y su precio en rol Precio) y el nombre del
- * producto es un RÓTULO (rol Rótulo, con una línea fina debajo). Si la opción es CÓMO lo querés (el tamaño) → el NOMBRE protagoniza (`protagonista: "nombre"`) y las filas son tamaños chicos (rol Opción). La tanda sigue la misma regla: sus columnas son tamaños → protagoniza el nombre.
+ * UNA sola jerarquía (decisión del dueño, 2026-10-29): el nombre del producto es el título (rol Producto, con su línea fina) y las filas son sus opciones (rol Opción); solo la base oculta, que no tiene
+ * título, dibuja sus opciones como platos (rol Producto).
  */
-function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
+export function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
   const colores = coloresDelItem(item.especial, estilo.valores);
   const p = item.presentacion;
   if (p?.forma === "simple") {
@@ -252,81 +233,17 @@ function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCart
       </li>
     );
   }
+  if (p?.forma === "tabla" && p.titulo) return <TablaDelItem item={item} p={p} colores={colores} />;
   if (p?.forma === "tabla") {
-    // Dos ejes (la milanesa: Simple | Napolitana × De carne / De pollo; DEC-06, DEC-10, DEC-11): el nombre es un RÓTULO con su línea fina (un h3 FUERA de la tabla: el HTML no admite títulos dentro de un
-    // th), los rótulos de las columnas como encabezados de columna y una fila por opción del otro eje (nunca se juntan aunque cuesten igual), cada una como un plato con su precio.
-    return (
-      <li data-forma="tabla" className="pb-2.5 pt-3.5">
-        <RotuloDelItem item={item} colores={colores} />
-        <table data-tabla-carta className="mb-0.5 w-full border-collapse">
-          <thead>
-            <tr>
-              <td />
-              {p.columnas.map((r, i) => (
-                <th key={`col-${i}`} scope="col" data-rol="columna" className="carta-rol-columna pb-1 pl-3 pt-1 text-right align-bottom">
-                  {r}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {p.filas.map((f, i) => (
-              <tr key={`fila-${i}`} className={i > 0 ? "carta-borde border-t" : undefined}>
-                <th scope="row" className="py-1.5 pr-1 text-left align-baseline font-normal">
-                  <span data-rol="producto" className="carta-rol-producto carta-titulo" style={{ color: colores.nombre, overflowWrap: "anywhere" }}>
-                    {f.rotulo}
-                  </span>
-                </th>
-                {f.celdas.map((precio, c) => (
-                  <td key={`celda-${c}`} className="whitespace-nowrap py-1.5 pl-3 text-right align-baseline">
-                    <CeldaDePrecio precio={precio} color={colores.precio} papel="precio" />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <DescripcionYTags item={item} colores={colores} />
-        <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
-      </li>
-    );
-  }
-  if (p?.forma === "lista" && p.encabezado && p.protagonista === "nombre") {
-    // Las filas son TAMAÑOS (cómo lo querés; la caída de una tanda de más de 3): protagoniza el NOMBRE, con su línea fina, y las filas con puntitos van debajo en rol Opción.
-    return (
-      <li data-forma="lista" data-protagonista="nombre" className="py-2.5">
-        <div className="carta-linea-fina flex items-baseline justify-between gap-3 pb-1.5">
-          <NombreDelItem item={item} colores={colores} />
-          {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
-        </div>
-        <DescripcionYTags item={item} colores={colores} />
-        <FilasDeOpcion nombre={item.nombre} filas={p.filas} colorPrecio={colores.precio} />
-        <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
-      </li>
-    );
-  }
-  if (p?.forma === "lista" && p.encabezado) {
-    // Un eje en filas con el nombre arriba (un producto directo con filas, o una base con «Mostrar el nombre arriba»; DEC-11): las OPCIONES protagonizan (cada fila es un plato con su precio) y el
-    // nombre es un rótulo con su línea fina.
-    return (
-      <li data-forma="lista" className="pt-3.5">
-        <RotuloDelItem item={item} colores={colores} />
-        <DescripcionYTags item={item} colores={colores} />
-        <FilasComoPlatos nombre={item.nombre} filas={p.filas} colores={colores} />
-        {p.aclaraciones.length > 0 && (
-          <div className="pb-2.5">
-            <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
-          </div>
-        )}
-      </li>
-    );
-  }
-  if (p?.forma === "lista") {
     // Una BASE de un eje, OCULTA (DEC-11, el default: las pizzas): cada opción se lee como un plato, con su nombre completo (h3, rol Producto) y su precio (rol Precio): «Pizza muzzarella $18.000».
     // El producto base no se nombra (su descripción, sus tags y su ★ no salen: lo avisa el diagnóstico interno); la lista lleva su nombre para el lector de pantalla.
+    const platos = p.filas.flatMap((f) => {
+      const [precio] = f.celdas;
+      return f.rotulo !== null && typeof precio === "number" ? [{ rotulo: f.rotulo, precio }] : [];
+    });
     return (
       <li data-forma="lista-sin-encabezado">
-        <FilasComoPlatos nombre={item.nombre} filas={p.filas} colores={colores} />
+        <FilasComoPlatos nombre={item.nombre} filas={platos} colores={colores} />
         {(item.descuentoPorcentaje !== undefined || p.aclaraciones.length > 0) && (
           <div className="pb-2.5">
             {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
@@ -380,89 +297,77 @@ function FilasDeOpcion({ nombre, filas, colorPrecio }: { nombre: string; filas: 
 }
 
 /**
- * Una celda de precio de una tabla, o «–» donde el producto no ofrece esa opción (con «no se ofrece» para el lector de pantalla: no depende de ver la raya). `papel`: `"precio"` en la tabla de dos
- * ejes (las opciones son platos: rol Precio) y `"opcion-precio"` en la tanda (rol Opción, 600). Las clases van escritas enteras: el cerco de tipografía y Tailwind las necesitan visibles.
+ * Una celda de precio de una tabla (rol Opción precio), o «–» donde el producto no ofrece esa opción (con «no se ofrece» para el lector de pantalla: no depende de ver la raya). Las clases van escritas
+ * enteras: el cerco de tipografía y Tailwind las necesitan visibles.
  */
-function CeldaDePrecio({ precio, color, papel }: { precio: number | null; color: string; papel: "precio" | "opcion-precio" }) {
-  if (precio === null) {
-    return (
-      <>
-        {papel === "precio" ? (
-          <span aria-hidden="true" data-rol="precio" className="carta-rol-precio carta-titulo" style={{ color: "var(--carta-ink-soft)" }}>
-            –
-          </span>
-        ) : (
-          <span aria-hidden="true" data-rol="opcion" className="carta-rol-opcion" style={{ color: "var(--carta-ink-soft)" }}>
-            –
-          </span>
-        )}
-        <span className="sr-only">no se ofrece</span>
-      </>
-    );
-  }
-  if (papel === "precio") {
-    return (
-      <span data-rol="precio" className="carta-rol-precio carta-titulo" style={{ color }}>
-        {formatearPrecioCarta(precio)}
-      </span>
-    );
-  }
+function CeldaDePrecio({ precio, color }: { precio: number | null; color: string }) {
   return (
-    <span data-rol="opcion-precio" className="carta-rol-opcion-precio carta-titulo" style={{ color }}>
-      {formatearPrecioCarta(precio)}
-    </span>
+    <>
+      <span aria-hidden={precio === null ? "true" : undefined} data-rol="opcion-precio" className="carta-rol-opcion-precio carta-titulo" style={{ color: precio === null ? "var(--carta-ink-soft)" : color }}>
+        {precio === null ? "–" : formatearPrecioCarta(precio)}
+      </span>
+      {precio === null && <span className="sr-only">no se ofrece</span>}
+    </>
   );
 }
 
 /**
- * Una TANDA (DEC-06, forma `columnas`): los productos consecutivos de la sección que comparten el grupo que define el precio (el café y el cortado: Chico | Mediano | Grande). Una tabla por
- * producto, columnas iguales y compartidas por la tanda (`table-fixed`); el nombre es el protagonista (un `h3`, rol Producto, con su línea fina debajo y el aviso del descuento a la derecha),
- * los tamaños se REPITEN como encabezados de columna (rol Tamaño) bajo el nombre de cada producto y cada celda dice su precio (rol Opción precio), con «–» donde el producto no ofrece ese
- * tamaño. Debajo de la tabla de cada producto, su descripción, sus tags y sus aclaraciones. Sin «desde».
+ * La TABLA de un producto con uno o dos ejes (forma `tabla` con título): el nombre es el título (un `h3`, rol Producto, con su línea fina y el aviso del descuento a la derecha: el HTML no admite títulos
+ * dentro de un `th`), los encabezados de las columnas (rol Columna) se REPITEN en cada producto, y cada fila es una opción (rol Opción) con el precio de cada celda (rol Opción precio, «–» donde no se
+ * ofrece). Una fila sin rótulo es la única de un producto sin variantes (el lector de pantalla lee el nombre del producto). Las columnas de precio miden LO MISMO en toda la carta y van alineadas a la
+ * derecha (`carta-col-precio`, `globals.css`): un Chico, un Mediano y un Grande quedan en la misma vertical aunque sean de productos distintos. Sin columnas con encabezado, una sola de precios.
+ * Debajo, la descripción, los tags y las aclaraciones.
  */
-function TandaFila({ tanda, items, estilo }: { tanda: TandaCartaPublica; items: readonly ItemCartaPublico[]; estilo: EstiloCarta }) {
+function TablaDelItem({ item, p, colores }: { item: ItemCartaPublico; p: Extract<NonNullable<ItemCartaPublico["presentacion"]>, { forma: "tabla" }>; colores: ColoresDelItem }) {
   return (
-    <li data-tanda className="py-2.5">
-      {items.map((item, k) => (
-        <ProductoDeTanda key={`producto-${k}`} item={item} rotulos={tanda.rotulos} primero={k === 0} estilo={estilo} />
-      ))}
-    </li>
-  );
-}
-
-function ProductoDeTanda({ item, rotulos, primero, estilo }: { item: ItemCartaPublico; rotulos: readonly string[]; primero: boolean; estilo: EstiloCarta }) {
-  const colores = coloresDelItem(item.especial, estilo.valores);
-  const celdas = item.presentacion?.forma === "columnas" ? item.presentacion.celdas : rotulos.map(() => null);
-  const aclaraciones = item.presentacion?.aclaraciones ?? [];
-  return (
-    <div data-producto-de-tanda className={primero ? undefined : "carta-borde mt-2.5 border-t pt-2.5"}>
+    <li data-forma="tabla" className="carta-tabla pb-2.5 pt-3.5">
       <div className="carta-linea-fina flex items-baseline justify-between gap-3 pb-1.5">
         <NombreDelItem item={item} colores={colores} />
         {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
       </div>
-      <table data-tabla-carta aria-label={item.nombre} className="w-full table-fixed border-collapse">
-        <thead>
-          <tr>
-            {rotulos.map((r, i) => (
-              <th key={`tam-${i}`} scope="col" data-rol="tamano" className="carta-rol-tamano pb-1 pt-1 text-left align-bottom">
-                {r}
-              </th>
-            ))}
-          </tr>
-        </thead>
+      <table data-tabla-carta aria-label={item.nombre} className="mb-0.5 w-full table-fixed border-collapse">
+        <colgroup>
+          <col />
+          {Array.from({ length: Math.max(1, p.columnas.length) }, (_, c) => (
+            <col key={`ancho-${c}`} className="carta-col-precio" />
+          ))}
+        </colgroup>
+        {p.columnas.length > 0 && (
+          <thead>
+            <tr>
+              <td />
+              {p.columnas.map((r, c) => (
+                <th key={`col-${c}`} scope="col" data-rol="columna" className="carta-rol-columna pb-1 pl-3 pt-1 text-right align-bottom">
+                  {r}
+                </th>
+              ))}
+            </tr>
+          </thead>
+        )}
         <tbody>
-          <tr>
-            {celdas.map((precio, i) => (
-              <td key={`cel-${i}`} className="whitespace-nowrap py-1.5 text-left align-baseline">
-                <CeldaDePrecio precio={precio} color={colores.precio} papel="opcion-precio" />
-              </td>
-            ))}
-          </tr>
+          {p.filas.map((f, i) => (
+            <tr key={`fila-${i}`} className={i > 0 ? "carta-borde border-t" : undefined}>
+              <th scope="row" className="py-1.5 pr-1 text-left align-baseline font-normal">
+                {f.rotulo === null ? (
+                  <span className="sr-only">{item.nombre}</span>
+                ) : (
+                  <span data-rol="opcion" className="carta-rol-opcion" style={{ overflowWrap: "anywhere" }}>
+                    {f.rotulo}
+                  </span>
+                )}
+              </th>
+              {f.celdas.map((precio, c) => (
+                <td key={`celda-${c}`} className="whitespace-nowrap py-1.5 pl-3 text-right align-baseline">
+                  <CeldaDePrecio precio={precio} color={colores.precio} />
+                </td>
+              ))}
+            </tr>
+          ))}
         </tbody>
       </table>
       <DescripcionYTags item={item} colores={colores} />
-      <GruposDeOpciones aclaraciones={aclaraciones} colores={colores} />
-    </div>
+      <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
+    </li>
   );
 }
 

@@ -37,7 +37,7 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   CapacidadSucursal: ["accionClave", "habilitado", "sucursalId"],
   CategoriaProducto: ["nombre"],
   // Fase 5 de la ola «precio y carta» (DEC-11; decisión técnica aprobada por el dueño: «modo, prefijo y mostrarNombreArriba entran a la lista cerrada»): + `mostrarNombreArriba`, el interruptor de un
-  // producto base con un solo eje (encabezado u oculto). Se LEE en el servidor para decidir la forma; no sale como campo propio (sale la forma ya resuelta, `presentacion`).
+  // producto base con un solo eje (con título u oculto). Se LEE en el servidor para decidir la forma; no sale como campo propio (sale la forma ya resuelta, `presentacion`).
   ContenidoCartaProducto: ["descripcion", "especial", "mostrarNombreArriba", "orden", "seccionCartaId", "tags"],
   DescuentoProductoSucursal: ["porcentaje", "productoId"],
   Empresa: ["id", "nombre", "slug"],

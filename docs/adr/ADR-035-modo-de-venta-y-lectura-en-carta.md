@@ -108,3 +108,13 @@ Se suma la clase `carta-linea-fina` (un trazo de 1 px del color de la tinta, ate
 
 Resuelto en C9 (decisión del dueño): «Elegí: …» / «Incluidas: …» sugerían algo que la carta no sabe (obligatoriedad, cuántas se eligen, que vienen juntas), porque la carta pública no tiene un dato de obligatoriedad del grupo (no se emite). Ahora la línea es neutra, sin verbo: las opciones separadas por « · » si todas son gratis, o «Sin cargo: …» si el grupo mezcla. Si alguna vez hace falta decir «obligatorio» o «una sola», hace falta un dato público (no una deducción).
 
+
+### Modelo unificado de la carta (2026-10-29)
+
+> Decisión del dueño sobre maquetas (documento de diseño «Simplificar la presentación de la carta», 2026-10-29, secciones B y H). **Estado: implementado en el código.** Reemplaza, en lo que se opone, la jerarquía BC2 / N y las tandas de la tanda C de arriba. No toca ningún dato ni migración, ni el precio cobrado.
+
+- **Un solo modelo de forma.** `PresentacionCartaV1` es `simple` (sin ejes: el nombre y su precio, con las aclaraciones debajo) o `tabla` (uno o dos ejes: `titulo`, `columnas`, `filas` con `rotulo` y `celdas`). Desaparecen `columnas`, `lista`, `encabezado`, `protagonista` y las tandas (`resolverTandas`, `TandaCartaV1`): cada producto muestra sus propios tamaños y repite sus encabezados, sin «–» compartida con el vecino.
+- **Una sola jerarquía.** El nombre del producto es el título (rol Producto, con su línea fina); cada fila es una opción (rol Opción) y cada celda un precio (rol Opción precio). La única excepción es la base de un eje OCULTA (`titulo: false`), que sigue dibujando cada opción como un plato.
+- **Más de 3 columnas se transpone**: el eje largo pasa a las filas y el otro, si hay, a las columnas; si los dos ejes tienen más de 3, una fila por combinación.
+- **Ancho único de las columnas de precio** (`carta-col-precio`, `globals.css`): el mismo en toda la carta y alineadas a la derecha, así el Chico, el Mediano y el Grande de productos distintos quedan en la misma vertical. Un `<col>` no respeta un porcentaje en Chrome: se mide contra el contenedor (`clamp(4.5rem, 16cqw, 9rem)` con `container-type: inline-size` en el ítem).
+- **Caché**: la versión pasa a **`carta-pareja-4`** (`VERSION_DE_LA_CARTA_EN_CACHE`) en el mismo commit que cambia la forma. `cobro-y-carta.golden.txt` y la línea de base de navegador cambian solo en las líneas de forma y de roles; `precios.golden.txt` y `huella-del-pos.golden.txt` no se mueven.

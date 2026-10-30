@@ -10,27 +10,23 @@ import { cargarCartaParaMantener } from "../../src/server/consultas/carta/manten
  * pública le va a dar al producto (la misma, `presentacionDeUnProductoSolo`, con la misma tabla de precios de la regla de la venta) en vez de las listas de antes.
  *  - Puro: el texto de cada forma.
  *  - Contra Postgres, con el catálogo de producción sembrado y Pizzas y Milanesas como base (sin contenido de carta: quedan «Fuera de carta»): pizzas como platos sueltos, milanesas en tabla con «De»,
- *    el café en columnas y el bife con su precio y lo que se lee debajo.
+ *    el café en una tabla de tamaños y el bife con su precio y lo que se lee debajo.
  */
 
 describe("vistaPreviaDeLaForma (puro)", () => {
   it("cada forma con sus precios y lo que se lee debajo", () => {
-    expect(vistaPreviaDeLaForma("Bife", { presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnicion", opciones: ["ensalada", "puré"] }] }, rotulos: [] })).toBe(
-      "Va a mostrar «Bife» con su precio · Guarnicion: ensalada o puré.",
-    );
-    expect(vistaPreviaDeLaForma("Café", { presentacion: { forma: "columnas", celdas: [4000, null], aclaraciones: [] }, rotulos: ["Chico", "Grande"] })).toBe("Va a mostrar «Café» en columnas: Chico $4.000, Grande –.");
+    expect(vistaPreviaDeLaForma("Bife", { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnicion", opciones: ["ensalada", "puré"] }] })).toBe("Va a mostrar «Bife» con su precio · Guarnicion: ensalada o puré.");
+    expect(vistaPreviaDeLaForma("Café", { forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [4000, null] }], aclaraciones: [] })).toBe("Va a mostrar una tabla «Café» (Chico / Grande): $4.000 / –.");
     expect(
-      vistaPreviaDeLaForma("Milanesas", { presentacion: { forma: "tabla", columnas: ["Simple", "Napolitana"], filas: [{ rotulo: "De carne", celdas: [20000, 25000] }], aclaraciones: [] }, rotulos: [] }),
+      vistaPreviaDeLaForma("Milanesas", { forma: "tabla", titulo: true, columnas: ["Simple", "Napolitana"], filas: [{ rotulo: "De carne", celdas: [20000, 25000] }], aclaraciones: [] }),
     ).toBe("Va a mostrar una tabla «Milanesas» (Simple / Napolitana): De carne $20.000 / $25.000.");
-    expect(vistaPreviaDeLaForma("Pizzas", { presentacion: { forma: "lista", encabezado: false, filas: [{ rotulo: "Pizza muzzarella", precio: 18000 }], aclaraciones: [] }, rotulos: [] })).toBe(
+    expect(vistaPreviaDeLaForma("Pizzas", { forma: "tabla", titulo: false, columnas: [], filas: [{ rotulo: "Pizza muzzarella", celdas: [18000] }], aclaraciones: [] })).toBe(
       "Va a mostrar cada opción como un plato: Pizza muzzarella $18.000.",
     );
-    expect(vistaPreviaDeLaForma("Pizzas", { presentacion: { forma: "lista", encabezado: true, filas: [{ rotulo: "Muzzarella", precio: 18000 }], aclaraciones: [] }, rotulos: [] })).toBe(
-      "Va a mostrar «Pizzas» y debajo: Muzzarella $18.000.",
-    );
+    expect(vistaPreviaDeLaForma("Pizzas", { forma: "tabla", titulo: true, columnas: [], filas: [{ rotulo: "Muzzarella", celdas: [18000] }], aclaraciones: [] })).toBe("Va a mostrar «Pizzas» y debajo: Muzzarella $18.000.");
   });
 
-  it("un producto solo con columnas: la tanda de él solo, con sus rótulos", () => {
+  it("un producto solo con tamaños en columnas: la misma forma que la carta, con sus encabezados", () => {
     const tabla = {
       grupos: [{ grupoId: "g", nombre: "Tamaño", tipo: "MEDIDA" as const, cantidadMinima: 1, cantidadMaxima: 1, prefijoEnCarta: null, papel: "define-el-precio" as const, opciones: [
         { opcionId: "a", nombre: "Chico", esNinguna: false, orden: 0, precioFinal: 4000, diferencia: 0 },
@@ -39,7 +35,7 @@ describe("vistaPreviaDeLaForma (puro)", () => {
       ejes: { columnas: "g", filas: null, sinLugar: [] },
       celdas: [[4000, 4300]],
     };
-    expect(presentacionDeUnProductoSolo({ tabla, esBase: false, mostrarNombreArriba: false, conDescuento: false })).toEqual({ presentacion: { forma: "columnas", celdas: [4000, 4300], aclaraciones: [] }, rotulos: ["Chico", "Grande"] });
+    expect(presentacionDeUnProductoSolo({ tabla, esBase: false, mostrarNombreArriba: false, conDescuento: false })).toEqual({ forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [4000, 4300] }], aclaraciones: [] });
   });
 });
 
@@ -61,14 +57,14 @@ describe("«Va a mostrar» de «Agregar a la carta», contra Postgres", () => {
     await prisma.contenidoCartaProducto.deleteMany({ where: { sucursalId: s.sucursalId } });
   });
 
-  it("pizzas como platos sueltos, milanesas en tabla, el café en columnas y el bife con su precio y lo que se lee debajo", async () => {
+  it("pizzas como platos sueltos, milanesas en tabla, el café en una tabla de tamaños y el bife con su precio y lo que se lee debajo", async () => {
     const carta = await cargarCartaParaMantener(prisma, s.sucursalId);
     const vista = (nombre: string) => carta.fueraDeCarta.find((p) => p.nombre === nombre)?.vistaPrevia;
     expect(vista("Pizzas")).toBe(
       "Va a mostrar cada opción como un plato: Pizza muzzarella $18.000, Pizza de verduras asadas $20.000, Pizza fugazzeta $22.000, Pizza napolitana $22.000, Pizza con papas fritas $25.000, Pizza bomba $25.000.",
     );
     expect(vista("Milanesas")).toBe("Va a mostrar una tabla «Milanesas» (Simple / Napolitana): De carne $20.000 / $25.000; De pollo $20.000 / $25.000.");
-    expect(vista("Café")).toMatch(/^Va a mostrar «Café» en columnas: Chico \$4\.000, Mediano \$4\.100, Grande \$4\.300 · Preparación del café: /);
+    expect(vista("Café")).toMatch(/^Va a mostrar una tabla «Café» \(Chico \/ Mediano \/ Grande\): \$4\.000 \/ \$4\.100 \/ \$4\.300 · Preparación del café: /);
     expect(vista("Bife a la criolla")).toBe("Va a mostrar «Bife a la criolla» con su precio · Guarnicion: ensalada, papas fritas o puré · Extras: extra de papas +$2.000, huevo frito +$1.500.");
   });
 });

@@ -619,6 +619,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 5 tanda C (jerarquía; ADITIVO, solo CARTA, el COBRO idéntico): la lista que cae de una tanda de más de 3 tamaños lleva protagonista: \"nombre\". Revisado con `git diff -U0`: cambia SOLO la línea `presentacion` de Pizzas (producto directo con 6 tamaños), que suma `\"protagonista\":\"nombre\"` después de `\"encabezado\":true`; de `## COBRO` en adelante nada cambia.",
       },
+      {
+        blob: "a5ff9dc08ecfab35b5c01e4e94430b15eac3a496",
+        // El commit PADRE de este (41bae333, paso 1 del modelo unificado) es el último antes del cambio; el golden se regenera en el commit siguiente (paso 2).
+        commit: "41bae333",
+        motivo:
+          "Decisión del dueño 2026-10-29: modelo unificado de la carta (docs/diseno-simplificar-presentacion-de-la-carta-2026-10-29.md, paso 2; SOLO CARTA, el COBRO idéntico): la forma de un producto con opciones es `simple` o `tabla` (con `titulo`, `columnas` y `filas`) y desaparecen `columnas`, `lista` y las tandas. Revisado con `git diff -U0`: cambian SOLO líneas de forma: las 4 líneas `presentacion` (Pizzas pasa de lista con el nombre protagonista a tabla de una columna con `titulo`; Milanesas, el Café de la sección y el Café de la carta con la grilla pasan de `columnas` a `tabla` con una fila sin rótulo) y se van las 2 líneas `tandas`; de `## COBRO` en adelante nada cambia, y `precios.golden.txt` no se mueve.",
+      },
     ],
   },
   "test/e2e/linea-de-base-precio-y-carta.golden.txt": {

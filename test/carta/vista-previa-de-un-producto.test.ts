@@ -36,7 +36,7 @@ describe("cargarVistaPreviaDeLaCarta, contra Postgres", () => {
   };
   /** El texto de «Va a mostrar» que corresponde a una vista previa: lo que `cargarCartaParaMantener` arma con las mismas piezas. */
   const comoVaAMostrar = (nombre: string, v: VistaPreviaDeLaCarta): string =>
-    v.tipo === "forma" ? vistaPreviaDeLaForma(nombre, { presentacion: v.presentacion, rotulos: v.rotulos }) : v.tipo === "texto" ? v.texto : v.tipo === "sin-opciones" ? vistaPreviaDeOpciones(false, null) : vistaPreviaDeOpciones(true, null);
+    v.tipo === "forma" ? vistaPreviaDeLaForma(nombre, v.presentacion) : v.tipo === "texto" ? v.texto : v.tipo === "sin-opciones" ? vistaPreviaDeOpciones(false, null) : vistaPreviaDeOpciones(true, null);
 
   it("coincide, producto por producto, con el «Va a mostrar» de «Agregar a la carta»", async () => {
     const carta = await cargarCartaParaMantener(prisma, s.sucursalId);
@@ -48,10 +48,10 @@ describe("cargarVistaPreviaDeLaCarta, contra Postgres", () => {
     }
   });
 
-  it("la forma de cada producto: pizzas como platos, milanesas en tabla, café en columnas, el bife con su precio y lo que se lee debajo, el wok sin opciones", async () => {
-    expect(await vista("pizzas")).toMatchObject({ tipo: "forma", presentacion: { forma: "lista", encabezado: false } });
+  it("la forma de cada producto: pizzas como platos, milanesas en tabla, café en una tabla de tamaños, el bife con su precio y lo que se lee debajo, el wok sin opciones", async () => {
+    expect(await vista("pizzas")).toMatchObject({ tipo: "forma", presentacion: { forma: "tabla", titulo: false } });
     expect(await vista("milanesas")).toMatchObject({ tipo: "forma", presentacion: { forma: "tabla", columnas: ["Simple", "Napolitana"] } });
-    expect(await vista("cafe")).toMatchObject({ tipo: "forma", presentacion: { forma: "columnas", celdas: [4000, 4100, 4300] }, rotulos: ["Chico", "Mediano", "Grande"] });
+    expect(await vista("cafe")).toMatchObject({ tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: ["Chico", "Mediano", "Grande"], filas: [{ rotulo: null, celdas: [4000, 4100, 4300] }] } });
     const bife = await vista("bife");
     expect(bife).toMatchObject({ tipo: "forma", presentacion: { forma: "simple" } });
     expect(bife.tipo === "forma" && bife.presentacion.aclaraciones.map((a) => a.rotulo)).toEqual(["Guarnicion", "Extras"]);
@@ -59,8 +59,8 @@ describe("cargarVistaPreviaDeLaCarta, contra Postgres", () => {
   });
 
   it("el «nombre arriba» de la carta pone el nombre del producto como encabezado de una base con un solo eje", async () => {
-    expect(await vista("pizzas", true)).toMatchObject({ tipo: "forma", presentacion: { forma: "lista", encabezado: true } });
-    expect(await vista("pizzas", false)).toMatchObject({ tipo: "forma", presentacion: { forma: "lista", encabezado: false } });
+    expect(await vista("pizzas", true)).toMatchObject({ tipo: "forma", presentacion: { forma: "tabla", titulo: true } });
+    expect(await vista("pizzas", false)).toMatchObject({ tipo: "forma", presentacion: { forma: "tabla", titulo: false } });
   });
 
   it("un producto con un grupo obligatorio sin ninguna opción disponible hoy no se puede pedir: no sale en la carta (igual que en «Agregar a la carta»)", async () => {
