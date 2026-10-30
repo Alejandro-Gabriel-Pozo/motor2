@@ -2,8 +2,8 @@ import type { CartaPublicaV1 } from "@/core/carta/public";
 
 /**
  * Carta fija con la que se dibuja la vista previa del editor del tema (ADR-006, Fase 4): dos secciones, un ítem común, uno
- * especial con tag y una promo. Fase 5 («carta pareja», ADR-035): «Entradas» trae además las cuatro FORMAS con que la carta lee un producto con opciones
- * (simple con lo que se lee debajo, la base oculta, la tabla de dos ejes y una tanda de columnas compartidas), para ver el tema sobre todas. Es fija a propósito — determinística para los e2e y siempre completa, aunque la sucursal
+ * especial con tag y una promo. Fase 5 («carta pareja», ADR-035): «Entradas» trae además las FORMAS con que la carta lee un producto con opciones
+ * (simple con lo que se lee debajo, la base oculta, la tabla de dos ejes y dos tablas de un eje con sus columnas), para ver el tema sobre todas. Es fija a propósito — determinística para los e2e y siempre completa, aunque la sucursal
  * todavía no tenga nada cargado. Se pasa por `CartaVista`, el MISMO componente de la carta pública: lo que se ve acá es lo que
  * se ve en vivo. Es una `CartaPublicaV1` (S-25): sin ids, como la que recibe un anónimo.
  */
@@ -45,11 +45,12 @@ export const CARTA_EJEMPLO: CartaPublicaV1 = {
           especial: false,
           imagenUrl: null,
           presentacion: {
-            forma: "lista",
-            encabezado: false,
+            forma: "tabla",
+            titulo: false,
+            columnas: [],
             filas: [
-              { rotulo: "Empanada de carne", precio: 2500 },
-              { rotulo: "Empanada de jamón y queso", precio: 2500 },
+              { rotulo: "Empanada de carne", celdas: [2500] },
+              { rotulo: "Empanada de jamón y queso", celdas: [2500] },
             ],
             aclaraciones: [],
           },
@@ -64,6 +65,7 @@ export const CARTA_EJEMPLO: CartaPublicaV1 = {
           imagenUrl: null,
           presentacion: {
             forma: "tabla",
+            titulo: true,
             columnas: ["Simple", "Napolitana"],
             filas: [
               { rotulo: "De carne", celdas: [20000, 25000] },
@@ -72,11 +74,10 @@ export const CARTA_EJEMPLO: CartaPublicaV1 = {
             aclaraciones: [],
           },
         },
-        { nombre: "Tabla de fiambres", categoria: "Entradas", descripcion: null, precio: 14000, tags: [], especial: false, imagenUrl: null, presentacion: { forma: "columnas", celdas: [14000, 26000], aclaraciones: [] } },
-        { nombre: "Tabla de quesos", categoria: "Entradas", descripcion: null, precio: 13000, tags: [], especial: false, imagenUrl: null, presentacion: { forma: "columnas", celdas: [13000, null], aclaraciones: [] } },
+        { nombre: "Tabla de fiambres", categoria: "Entradas", descripcion: null, precio: 14000, tags: [], especial: false, imagenUrl: null, presentacion: { forma: "tabla", titulo: true, columnas: ["Para 2", "Para 4"], filas: [{ rotulo: null, celdas: [14000, 26000] }], aclaraciones: [] } },
+        { nombre: "Tabla de quesos", categoria: "Entradas", descripcion: null, precio: 13000, tags: [], especial: false, imagenUrl: null, presentacion: { forma: "tabla", titulo: true, columnas: ["Para 2"], filas: [{ rotulo: null, celdas: [13000] }], aclaraciones: [] } },
       ],
       promos: [],
-      tandas: [{ primero: 4, ultimo: 5, rotulos: ["Para 2", "Para 4"] }],
     },
     {
       nombre: "Platos principales",

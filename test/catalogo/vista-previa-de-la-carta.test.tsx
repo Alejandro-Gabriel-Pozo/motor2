@@ -4,8 +4,8 @@ import type { VistaPreviaDeLaCarta as Vista } from "../../src/core/carta/public"
 import { VistaPreviaDeLaCarta } from "../../src/components/catalogo/espacio-del-producto/vista-previa-de-la-carta";
 
 /**
- * Fase 6, bloque 3, 6.18: el componente que DIBUJA la vista previa de un producto en la carta. Solo muestra lo que el servidor ya calculó: cada forma de la carta (con el producto, en columnas, en tabla,
- * en lista), lo que se lee debajo, el producto sin opciones y el que hoy no se puede pedir. Una celda sin precio dice «–» y, para el lector de pantalla, «no se ofrece». El HTML del servidor
+ * Fase 6, bloque 3, 6.18: el componente que DIBUJA la vista previa de un producto en la carta. Solo muestra lo que el servidor ya calculó: cada forma de la carta (el producto con su precio o la tabla,
+ * que se dibuja con el mismo componente que la carta pública), lo que se lee debajo, el producto sin opciones y el que hoy no se puede pedir. Una celda sin precio dice «–» y, para el lector de pantalla, «no se ofrece». El HTML del servidor
  * (el entorno de Vitest es Node): sin formularios ni botones, y solo tokens del sistema visual.
  */
 const dibujar = (vista: Vista) => renderToStaticMarkup(<VistaPreviaDeLaCarta nombre="Café" sucursalNombre="Central" vista={vista} />);
@@ -33,38 +33,38 @@ describe("VistaPreviaDeLaCarta", () => {
     expect(texto(dibujar({ tipo: "texto", texto: "Va a mostrar: Tamaño: Chico $ 4.000." }))).toContain("Va a mostrar: Tamaño: Chico $ 4.000.");
   });
 
-  it("columnas: una tabla con sus rótulos como encabezados, el precio de cada una y «no se ofrece» donde no hay precio", () => {
-    const html = dibujar({ tipo: "forma", rotulos: ["Chico", "Grande"], presentacion: { forma: "columnas", celdas: [4000, null], aclaraciones: [{ tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"] }] } });
-    expect(html).toContain("<caption");
+  it("tabla de un eje (el café): sus tamaños como encabezados, una sola fila, el precio de cada uno y «no se ofrece» donde no hay precio; el nombre es el título y lo que se elige va debajo", () => {
+    const html = dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [4000, null] }], aclaraciones: [{ tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"] }] } });
     expect(html.match(/<th scope="col"/g)).toHaveLength(2);
     const t = texto(html);
-    expect(t).toContain("Chico");
+    expect(t).toContain("Café Chico Grande");
     expect(t).toContain("$4.000");
-    expect(t).toContain("no se ofrece");
-    expect(t).toContain("Preparación: solo o cortado");
+    expect(t).toContain("Preparación solo · cortado");
+    expect(html).toContain('<span class="sr-only">no se ofrece</span>');
   });
 
-  it("tabla: columnas, filas con encabezado de fila y un precio por celda", () => {
-    const html = dibujar({ tipo: "forma", rotulos: [], presentacion: { forma: "tabla", columnas: ["Simple", "Napolitana"], filas: [{ rotulo: "De carne", celdas: [20000, 25000] }], aclaraciones: [] } });
+  it("tabla de dos ejes: columnas, filas con encabezado de fila y un precio por celda", () => {
+    const html = dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: ["Simple", "Napolitana"], filas: [{ rotulo: "De carne", celdas: [20000, 25000] }], aclaraciones: [] } });
     expect(html).toContain('<th scope="row"');
     expect(texto(html)).toMatch(/De carne \$20\.000 \$25\.000/);
   });
 
-  it("lista: con el nombre arriba o cada opción como un plato; el nombre también protagoniza la lista de tamaños de un directo", () => {
-    const filas = [{ rotulo: "Muzzarella", precio: 18000 }];
-    expect(texto(dibujar({ tipo: "forma", rotulos: [], presentacion: { forma: "lista", encabezado: true, filas, aclaraciones: [] } }))).toContain("Café Muzzarella $18.000");
-    expect(texto(dibujar({ tipo: "forma", rotulos: [], presentacion: { forma: "lista", encabezado: false, filas, aclaraciones: [] } }))).toContain("Cada opción se lee como un plato: Muzzarella $18.000");
-    expect(texto(dibujar({ tipo: "forma", rotulos: [], presentacion: { forma: "lista", encabezado: false, protagonista: "nombre", filas, aclaraciones: [] } }))).toContain("Café Muzzarella $18.000");
+  it("una columna de precios: con el nombre arriba (el nombre es el título) o la base oculta (cada opción como un plato, sin nombre)", () => {
+    const filas = [{ rotulo: "Muzzarella", celdas: [18000] }];
+    expect(texto(dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: [], filas, aclaraciones: [] } }))).toContain("Café Muzzarella $18.000");
+    const oculta = texto(dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: false, columnas: [], filas, aclaraciones: [] } }));
+    expect(oculta).toContain("Muzzarella $18.000");
+    expect(oculta).not.toContain("Café Muzzarella");
   });
 
   it("simple: el producto con su precio y lo que se lee debajo (los extras con su recargo)", () => {
-    const t = texto(dibujar({ tipo: "forma", rotulos: [], presentacion: { forma: "simple", aclaraciones: [{ tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "huevo", recargo: 1500 }] }] } }));
+    const t = texto(dibujar({ tipo: "forma", presentacion: { forma: "simple", aclaraciones: [{ tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "huevo", recargo: 1500 }] }] } }));
     expect(t).toContain("Café con su precio.");
     expect(t).toContain("Extras: huevo +$1.500");
   });
 
   it("solo dibuja: ni formularios, ni botones, ni enlaces, ni modo oscuro", () => {
-    for (const vista of [{ tipo: "sin-opciones" }, { tipo: "no-se-puede-pedir" }, { tipo: "forma", rotulos: ["A"], presentacion: { forma: "columnas", celdas: [1], aclaraciones: [] } }] as Vista[]) {
+    for (const vista of [{ tipo: "sin-opciones" }, { tipo: "no-se-puede-pedir" }, { tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: ["A"], filas: [{ rotulo: null, celdas: [1] }], aclaraciones: [] } }] as Vista[]) {
       const html = dibujar(vista);
       expect(html).not.toMatch(/<(form|button|input|select|textarea|a )/);
       expect(html).not.toContain("dark:");

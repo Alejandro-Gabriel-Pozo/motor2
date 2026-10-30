@@ -39,7 +39,8 @@ export function unirConO(nombres: readonly string[]): string {
  * regla de la venta (`resumenDePrecios`), nunca comparando nombres:
  *  - `define-el-precio`: un TAMAÑO (`MEDIDA`) cuyos precios finales disponibles son distintos (si son todos iguales, el tamaño no cambia nada para el cliente: va como aclaración);
  *  - `filas`: una VARIANTE obligatoria de una sola elección que suma o resta algo, o que tiene prefijo («De carne», «De pollo»: DEC-10): una fila por opción;
- *  - `aclaracion`: lo que se elige sin costo (una INCLUIDA, una VARIANTE sin costo y sin prefijo): una línea debajo del plato («Preparación: solo, cortado o con leche»);
+ *  - `aclaracion`: lo que se elige sin costo (una INCLUIDA, una VARIANTE sin costo y sin prefijo): una línea debajo del plato («Preparación: solo, cortado o con leche»). Excepción, que decide
+ *    `ejesDeLaCarta` y no este papel (el POS ordena con él): en un producto DIRECTO con un tamaño que define el precio, esa VARIANTE obligatoria es la fila de la grilla (Solo / Cortado / Lágrima × Chico / Mediano / Grande);
  *  - `adicional`: un ADICIONAL, o lo opcional que suma o resta algo: la línea «Extras: …» con su recargo.
  * Lo comparten la carta (qué forma toma el producto) y el diálogo del POS (en qué orden se eligen los grupos: `ordenarPorRol`). El POS no lee el prefijo (muestra grupo y opción tal cual): le pasa `null`.
  */
@@ -99,14 +100,18 @@ export interface EjesDeLaCarta {
  * Qué grupos son los EJES de la carta de un producto (Fase 5, «carta pareja»; DEC-06, DEC-10, DEC-11), siempre por sus papeles (`rolDelGrupo`) y su orden en el producto, nunca por nombres:
  *  - las COLUMNAS: el primer grupo de elegir uno que define el precio (un tamaño con precios distintos). En un producto BASE («se vende por opción»), si ningún tamaño tiene precios distintos, su primer
  *    tamaño de elegir uno igual hace de eje: es lo que nombra cada configuración;
- *  - las FILAS: el segundo grupo que define el precio o, si no hay, el primero de filas (una variante con costo o con prefijo: «De carne», «De pollo»);
+ *  - las FILAS: el segundo grupo que define el precio o, si no hay, el primero de filas (una variante con costo o con prefijo: «De carne», «De pollo») o, en un producto DIRECTO con un tamaño que define
+ *    el precio, la primera VARIANTE obligatoria de elegir una aunque no tenga costo ni prefijo (decisión del dueño, 2026-10-29: la grilla del café sin un prefijo artificial). Una base no la lleva: sale
+ *    de un eje y esa variante queda como aclaración;
  *  - sin columnas pero con filas (un producto directo con «De carne / De pollo»), las filas solas.
  */
 export function ejesDeLaCarta<G extends GrupoParaRol & { grupoId: string }>(grupos: readonly G[], esBase: boolean): EjesDeLaCarta {
   // `papel` (y no `rol`): el guardián de acceso trata toda comparación de una propiedad `rol` como una decisión de permisos.
   const conRol = grupos.map((g) => ({ g, papel: rolDelGrupo(g), eje: esDeUnaObligatoria(g) }));
   const definen = conRol.filter((x) => x.eje && x.papel === "define-el-precio").map((x) => x.g.grupoId);
-  const enFilas = conRol.filter((x) => x.eje && x.papel === "filas").map((x) => x.g.grupoId);
+  // La variante obligatoria sin costo ni prefijo (papel `aclaracion`) también puede ser la fila cuando hay un tamaño que define el precio en un producto directo, detrás de las que ya lo eran por su papel.
+  const conTamano = !esBase && definen.length > 0;
+  const enFilas = conRol.filter((x) => x.eje && (x.papel === "filas" || (conTamano && x.papel === "aclaracion" && x.g.tipo === "VARIANTE"))).sort((a, b) => Number(b.papel === "filas") - Number(a.papel === "filas")).map((x) => x.g.grupoId);
   const deRespaldo = esBase && definen.length === 0 ? conRol.find((x) => x.eje && x.g.tipo === "MEDIDA")?.g.grupoId : undefined;
   const columnas = definen[0] ?? deRespaldo ?? null;
   const filas = definen[1] ?? enFilas[0] ?? null;

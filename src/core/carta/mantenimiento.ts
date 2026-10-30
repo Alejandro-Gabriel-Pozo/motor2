@@ -131,21 +131,19 @@ export function vistaPreviaDeOpciones(tieneGrupos: boolean, enCarta: { grupos: r
 
 /**
  * Fase 5, paso 9 («carta pareja», ADR-035): la línea «Va a mostrar: …» con la FORMA que la carta pública le va a dar al producto (la misma proyección del servidor: `presentacionDeUnProductoSolo`),
- * en vez de las listas de antes: la tabla, las columnas, las filas (con el nombre arriba o cada opción como un plato) y lo que se lee debajo, con sus precios. `rotulos`: los de las columnas.
+ * en vez de las listas de antes: la tabla (con sus columnas y filas) o cada opción como un plato, y lo que se lee debajo, con sus precios.
  */
-export function vistaPreviaDeLaForma(nombre: string, forma: { presentacion: PresentacionCartaV1; rotulos: readonly string[] }): string {
+export function vistaPreviaDeLaForma(nombre: string, p: PresentacionCartaV1): string {
   const precio = (x: number | null) => (x === null ? "–" : formatearPrecioCarta(x));
-  const p = forma.presentacion;
+  const filas = (p.forma === "tabla" ? p.filas : []).map((f) => [f.rotulo, f.celdas.map(precio).join(" / ")].filter(Boolean).join(" "));
   const cuerpo =
     p.forma === "simple"
       ? `«${nombre}» con su precio`
-      : p.forma === "columnas"
-        ? `«${nombre}» en columnas: ${forma.rotulos.map((r, i) => `${r} ${precio(p.celdas[i] ?? null)}`).join(", ")}`
-        : p.forma === "tabla"
-          ? `una tabla «${nombre}» (${p.columnas.join(" / ")}): ${p.filas.map((f) => `${f.rotulo} ${f.celdas.map(precio).join(" / ")}`).join("; ")}`
-          : p.encabezado
-            ? `«${nombre}» y debajo: ${p.filas.map((f) => `${f.rotulo} ${precio(f.precio)}`).join(", ")}`
-            : `cada opción como un plato: ${p.filas.map((f) => `${f.rotulo} ${precio(f.precio)}`).join(", ")}`;
+      : !p.titulo
+        ? `cada opción como un plato: ${filas.join(", ")}`
+        : p.columnas.length === 0
+          ? `«${nombre}» y debajo: ${filas.join(", ")}`
+          : `una tabla «${nombre}» (${p.columnas.join(" / ")}): ${filas.join("; ")}`;
   const debajo = p.aclaraciones.map((a) => `${a.rotulo}: ${textoDeLaAclaracion(a)}`);
   return `Va a mostrar ${[cuerpo, ...debajo].join(" · ")}.`;
 }

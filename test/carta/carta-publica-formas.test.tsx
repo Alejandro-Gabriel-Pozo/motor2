@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { partirLaAclaracion, recargoEnPesos, resolverEstiloCarta, textoDeLaAclaracion, type AclaracionCartaPublica, type ItemCartaPublico, type SeccionCartaPublica } from "../../src/core/carta/public";
+import { partirLaAclaracion, recargoEnPesos, resolverEstiloCarta, textoDeLaAclaracion, type AclaracionCartaPublica, type ItemCartaPublico } from "../../src/core/carta/public";
 import { Seccion } from "../../src/components/carta-publica/seccion";
 
 const CSS_GLOBAL = readFileSync(join(__dirname, "../../src/app/globals.css"), "utf8");
@@ -15,10 +15,10 @@ const CSS_GLOBAL = readFileSync(join(__dirname, "../../src/app/globals.css"), "u
 
 const item = (extra: Partial<ItemCartaPublico> & { nombre: string }): ItemCartaPublico => ({ categoria: "Platos", descripcion: null, precio: 0, tags: [], especial: false, imagenUrl: null, ...extra });
 
-const dibujar = (items: ItemCartaPublico[], tandas?: SeccionCartaPublica["tandas"]) =>
+const dibujar = (items: ItemCartaPublico[]) =>
   renderToStaticMarkup(
     <Seccion
-      seccion={{ nombre: "Platos", titulo: null, descripcion: null, imagenUrl: null, orden: 0, items, promos: [], ...(tandas ? { tandas } : {}) }}
+      seccion={{ nombre: "Platos", titulo: null, descripcion: null, imagenUrl: null, orden: 0, items, promos: [] }}
       indice={0}
       total={1}
       estilo={resolverEstiloCarta({})}
@@ -34,7 +34,7 @@ const texto = (html: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-/** Los `<li>` de primer nivel de la lista de la sección (un ítem o una tanda cada uno, con lo que tengan adentro). */
+/** Los `<li>` de primer nivel de la lista de la sección (un ítem cada uno, con lo que tenga adentro). */
 function filasDeLaSeccion(html: string): string[] {
   const lista = html.slice(html.indexOf("<ul data-carta-scroll"));
   const salida: string[] = [];
@@ -140,61 +140,68 @@ describe("8a: forma simple (el bife: su precio y las aclaraciones debajo)", () =
   });
 });
 
-describe("8b: una tanda (el café y el cortado comparten Chico | Mediano | Grande): una tabla por producto, el nombre protagonista", () => {
-  const cafe = item({
-    nombre: "Café",
-    categoria: "Cafetería",
-    precio: 4000,
-    presentacion: { forma: "columnas", celdas: [4000, 4100, 4300], aclaraciones: [{ tipo: "extras", rotulo: "Preparación del café", opciones: [{ nombre: "solo", recargo: 0 }, { nombre: "lágrima", recargo: 200 }] }] },
-  });
-  const cortado = item({ nombre: "Cortado", categoria: "Cafetería", precio: 4200, especial: true, descuentoPorcentaje: 10, presentacion: { forma: "columnas", celdas: [4200, null, 4500], aclaraciones: [] } });
-  const medialuna = item({ nombre: "Medialuna", categoria: "Cafetería", precio: 1500 });
-  const html = dibujar([cafe, cortado, medialuna], [{ primero: 0, ultimo: 1, rotulos: ["Chico", "Mediano", "Grande"] }]);
-  const tanda = filaCon(html, "data-tanda");
-  /** Los bloques `data-producto-de-tanda` de la tanda (cada uno: nombre con su línea, su tabla y lo que va debajo). */
-  const productos = tanda.split("<div data-producto-de-tanda").slice(1);
-  const tablas = tanda.match(/<table[\s\S]*?<\/table>/g) ?? [];
+/** Lo que se lee de una tabla de la carta para compararla con otra: las clases de cada columna de precio, los roles de título, encabezado, fila y celda, y la alineación. */
+function estructuraDeLaTabla(html: string) {
+  const tabla = html.slice(html.indexOf("<table"), html.indexOf("</table>"));
+  return {
+    columnas: tabla.match(/<col class="[^"]*"/g) ?? [],
+    titulo: html.match(/<h3 data-rol="([^"]*)" class="([^"]*)"/)?.slice(1),
+    encabezados: [...new Set(tabla.match(/<th scope="col" data-rol="[^"]*" class="[^"]*"/g) ?? [])].map((t) => t.replace(/<th scope="col" /, "")),
+    filas: [...new Set(tabla.match(/<span data-rol="opcion" class="[^"]*"/g) ?? [])],
+    celdas: [...new Set(tabla.match(/<td class="[^"]*"/g) ?? [])],
+    precios: [...new Set(tabla.match(/data-rol="opcion-precio" class="[^"]*"/g) ?? [])],
+  };
+}
 
-  it("una tabla por producto (con su nombre accesible, columnas iguales `table-fixed`) y los tamaños REPETIDOS como encabezados de columna en cada una; ningún encabezado de fila", () => {
-    expect(html.match(/<table/g)).toHaveLength(2);
-    expect(tanda).toMatch(/^<li data-tanda/);
-    expect(productos).toHaveLength(2);
-    expect(tablas).toHaveLength(2);
-    expect(tablas[0]).toMatch(/^<table data-tabla-carta="true" aria-label="Café" class="w-full table-fixed/);
-    expect(tablas[1]).toMatch(/^<table data-tabla-carta="true" aria-label="Cortado" class="w-full table-fixed/);
-    for (const t of tablas) {
-      expect(t.match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map((h) => texto(h))).toEqual(["Chico", "Mediano", "Grande"]);
-      expect(t.match(/<th scope="col" data-rol="tamano" class="carta-rol-tamano/g)).toHaveLength(3);
-    }
-    expect(tanda.match(/<th scope="row"/g)).toBeNull();
-  });
+describe("8b: tabla de un eje (el café con variantes, el submarino sin ellas, el té): UNA sola jerarquía y el mismo ancho de columna", () => {
+  const T3 = ["Chico", "Mediano", "Grande"];
+  const tabla = (nombre: string, columnas: string[], filas: { rotulo: string | null; celdas: (number | null)[] }[], extra: Partial<ItemCartaPublico> = {}) =>
+    item({ nombre, categoria: "Bebidas calientes", precio: 3000, presentacion: { forma: "tabla", titulo: true, columnas, filas, aclaraciones: [] }, ...extra });
+  const cafe = tabla("Café", T3, ["Solo", "Cortado", "Lágrima"].map((rotulo) => ({ rotulo, celdas: [4000, 4100, 4300] })));
+  const submarino = tabla("Submarino", T3, [{ rotulo: null, celdas: [5000, 5500, 6000] }]);
+  const te = tabla("Té", ["Taza", "Jarra"], [{ rotulo: "Negro", celdas: [2800, 4200] }]);
 
-  it("el nombre protagoniza: un h3 (rol Producto) con su línea fina debajo, antes de su tabla; el descuento del cortado, a la derecha del nombre; la ★ en el especial", () => {
-    expect(productos[0]).toMatch(/^[^>]*><div class="carta-linea-fina[^"]*"><h3 data-rol="producto" class="carta-rol-producto[^"]*"[^>]*>Café<\/h3><\/div><table/);
-    expect(productos[1]).toMatch(/^[^>]*><div class="carta-linea-fina[^"]*"><h3 data-rol="producto" class="carta-rol-producto[^"]*"[^>]*>Cortado[\s\S]*?<\/h3>[\s\S]*?−10 %[\s\S]*?<\/div><table/);
-    expect(productos[1]).toContain("Especial");
-    expect(tanda).not.toContain('data-rol="rotulo"');
-    // Dentro de la tanda el nombre de cada producto va fuera de la tabla: ningún título dentro de una celda de encabezado.
-    expect(tanda).not.toMatch(/<th(?=[\s>])[^>]*>(?:(?!<\/th>)[\s\S])*<h[1-6]/);
-  });
-
-  it("cada celda con su precio (rol Opción precio) y «–» donde no se ofrece, con «no se ofrece» para el lector de pantalla; sin «desde»; la aclaración (P1) debajo de la tabla de su producto", () => {
-    expect(texto(tanda)).toBe("Café Chico Mediano Grande $4.000 $4.100 $4.300 Preparación del café Sin cargo: solo lágrima +$200 Cortado ★ −10 % Chico Mediano Grande $4.200 – $4.500");
-    expect(tablas[1]).toContain('<span class="sr-only">no se ofrece</span>');
-    expect(tablas[1]).toContain('data-rol="opcion" class="carta-rol-opcion"');
-    // 5 celdas de precio con valor (3 del café y 2 del cortado) + el recargo de «lágrima +$200» en su fila (P1).
-    expect(tanda.match(/data-rol="opcion-precio"/g)).toHaveLength(6);
-    expect(tablas.map((t) => t.match(/data-rol="opcion-precio"/g)?.length ?? 0)).toEqual([3, 2]);
-    expect(tanda).not.toMatch(/desde/i);
-    expect(productos[0].indexOf('data-aclaracion="Preparación del café"')).toBeGreaterThan(productos[0].indexOf("</table>"));
-    expect(productos[1]).not.toContain("data-aclaracion");
+  it("Café con variantes y Submarino sin variantes: mismas clases de columna y mismos roles (título en rol Producto, encabezado en rol Columna, fila en rol Opción, celda en rol Opción precio)", () => {
+    const delCafe = estructuraDeLaTabla(filaCon(dibujar([cafe]), "Café"));
+    const delSubmarino = estructuraDeLaTabla(filaCon(dibujar([submarino]), "Submarino"));
+    expect(delCafe.titulo?.[0]).toBe("producto");
+    expect(delCafe.columnas).toEqual(['<col class="carta-col-precio"', '<col class="carta-col-precio"', '<col class="carta-col-precio"']);
+    expect(delSubmarino.columnas).toEqual(['<col class="carta-col-precio"', '<col class="carta-col-precio"', '<col class="carta-col-precio"']);
+    const { filas: filasDelCafe, ...restoDelCafe } = delCafe;
+    const { filas: filasDelSubmarino, ...restoDelSubmarino } = delSubmarino;
+    expect(restoDelSubmarino).toEqual(restoDelCafe);
+    expect(delCafe.encabezados).toEqual(['data-rol="columna" class="carta-rol-columna pb-1 pl-3 pt-1 text-right align-bottom"']);
+    expect(delCafe.celdas).toEqual(['<td class="whitespace-nowrap py-1.5 pl-3 text-right align-baseline"']);
+    expect(delCafe.precios).toEqual(['data-rol="opcion-precio" class="carta-rol-opcion-precio carta-titulo"']);
+    expect(filasDelCafe, "las variantes del café: filas en rol Opción").toEqual(['<span data-rol="opcion" class="carta-rol-opcion"']);
+    expect(filasDelSubmarino, "el submarino no tiene variantes: una sola fila sin rótulo").toEqual([]);
   });
 
-  it("el segundo producto va separado del primero por una línea; lo que no está en la tanda (la medialuna) sigue debajo, como un ítem más", () => {
-    expect(productos[0]).not.toMatch(/^[^>]*border-t/);
-    expect(productos[1]).toMatch(/^="true" class="carta-borde mt-2\.5 border-t pt-2\.5"/);
-    expect(filaCon(html, "Medialuna")).toMatch(/<h3 data-rol="producto"[^>]*>Medialuna<\/h3>/);
-    expect(html.indexOf("Medialuna")).toBeGreaterThan(html.lastIndexOf("</table>"));
+  it("el Té con tamaños propios (Taza | Jarra) usa la misma clase de ancho en sus columnas, y cada producto repite sus encabezados (sin «–» ni tanda compartida)", () => {
+    const html = dibujar([submarino, cafe, te]);
+    expect(html.match(/<col class="carta-col-precio"/g)).toHaveLength(3 + 3 + 2);
+    expect(html.match(/<table/g)).toHaveLength(3);
+    expect(html).not.toContain("data-tanda");
+    expect(filaCon(html, "Té").match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map((h) => texto(h))).toEqual(["Taza", "Jarra"]);
+    expect(texto(filaCon(html, "Submarino"))).toBe("Submarino Chico Mediano Grande $5.000 $5.500 $6.000");
+  });
+
+  it("el título protagoniza: un h3 (rol Producto) con su línea fina ANTES de la tabla; el descuento a la derecha del nombre, una sola vez; la ★ en el especial", () => {
+    const html = filaCon(dibujar([{ ...cafe, especial: true, descuentoPorcentaje: 10 }]), "Café");
+    expect(html).toMatch(/^<li data-forma="tabla" class="carta-tabla/);
+    expect(html).toMatch(/<div class="carta-linea-fina[^"]*"><h3 data-rol="producto" class="carta-rol-producto[^"]*"[^>]*>Café[\s\S]*?<\/h3>[\s\S]*?−10 %[\s\S]*?<\/div><table/);
+    expect(html).toContain("Especial");
+    expect(html.match(/data-descuento-producto/g)).toHaveLength(1);
+    expect(html).not.toContain('data-rol="rotulo"');
+    // Ningún título dentro de una celda de encabezado (el HTML no lo admite).
+    expect(html).not.toMatch(/<th(?=[\s>])[^>]*>(?:(?!<\/th>)[\s\S])*<h[1-6]/);
+  });
+
+  it("una tabla sin encabezados (los tamaños van en las filas) es una sola columna de precios, sin `thead`", () => {
+    const filas = dibujar([tabla("Pizzas", [], [{ rotulo: "Chica", celdas: [18000] }, { rotulo: "Grande", celdas: [24000] }])]);
+    expect(filas.match(/<col class="carta-col-precio"/g)).toHaveLength(1);
+    expect(filas).not.toContain("<thead");
+    expect(texto(filaCon(filas, "Pizzas"))).toBe("Pizzas Chica $18.000 Grande $24.000");
   });
 });
 
@@ -205,6 +212,7 @@ describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / 
     descripcion: "Con papas",
     presentacion: {
       forma: "tabla",
+      titulo: true,
       columnas: ["Simple", "Napolitana"],
       filas: [
         { rotulo: "De carne", celdas: [20000, 25000] },
@@ -216,11 +224,10 @@ describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / 
   });
   const html = filaCon(dibujar([milanesas]), "Milanesas");
 
-  it("«BC2»: el nombre es un RÓTULO (h3, rol Rótulo) con su línea fina ANTES de la tabla, que no lleva ningún título; los rótulos de las columnas son encabezados de columna (rol Columna)", () => {
+  it("jerarquía única: el nombre es el TÍTULO (h3, rol Producto) con su línea fina ANTES de la tabla, que no lleva ningún título; los rótulos de las columnas son encabezados de columna (rol Columna)", () => {
     expect(html).toMatch(/^<li data-forma="tabla"/);
-    expect(html).toMatch(/<div class="carta-linea-fina[^"]*"><h3 data-rol="rotulo" class="carta-rol-rotulo[^"]*"[^>]*>Milanesas<\/h3><\/div>/);
-    expect(html.indexOf('<h3 data-rol="rotulo"')).toBeGreaterThan(-1);
-    expect(html.indexOf('<h3 data-rol="rotulo"')).toBeLessThan(html.indexOf("<table"));
+    expect(html).toMatch(/<div class="carta-linea-fina[^"]*"><h3 data-rol="producto" class="carta-rol-producto[^"]*"[^>]*>Milanesas<\/h3><\/div>/);
+    expect(html.indexOf('<h3 data-rol="producto"')).toBeLessThan(html.indexOf("<table"));
     const tabla = html.slice(html.indexOf("<table"), html.indexOf("</table>"));
     expect(tabla).not.toMatch(/<h[1-6][\s>]/);
     expect(html).not.toMatch(/<th(?=[\s>])[^>]*>(?:(?!<\/th>)[\s\S])*<h[1-6]/);
@@ -228,13 +235,13 @@ describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / 
     expect(tabla.match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map((t) => texto(t))).toEqual(["Simple", "Napolitana"]);
   });
 
-  it("las opciones protagonizan: cada fila (encabezado de fila) es un plato en rol Producto y cada celda un precio en rol Precio (nunca Opción), con una línea fina entre filas", () => {
+  it("las filas son opciones: cada encabezado de fila en rol Opción y cada celda un precio en rol Opción precio (nunca Producto ni Precio), con una línea fina entre filas", () => {
     const tabla = html.slice(html.indexOf("<table"), html.indexOf("</table>"));
-    expect(tabla.match(/<th scope="row"[^>]*><span data-rol="producto" class="carta-rol-producto[^"]*"[^>]*>([^<]*)<\/span><\/th>/g)?.map((t) => texto(t))).toEqual(["De carne", "De pollo", "De trucha"]);
+    expect(tabla.match(/<th scope="row"[^>]*><span data-rol="opcion" class="carta-rol-opcion[^"]*"[^>]*>([^<]*)<\/span><\/th>/g)?.map((t) => texto(t))).toEqual(["De carne", "De pollo", "De trucha"]);
     // 3 filas × 2 columnas: incluida la raya de «De trucha» × Napolitana, que lleva el mismo rol que el precio.
-    expect(tabla.match(/data-rol="precio"/g)).toHaveLength(6);
-    expect(tabla).not.toContain('data-rol="opcion-precio"');
-    expect(tabla).not.toContain('data-rol="opcion"');
+    expect(tabla.match(/data-rol="opcion-precio"/g)).toHaveLength(6);
+    expect(tabla).not.toContain('data-rol="precio"');
+    expect(tabla).not.toContain('data-rol="producto"');
     const trs = tabla.slice(tabla.indexOf("<tbody>")).split("<tr");
     expect(trs[1]).not.toContain("border-t");
     expect(trs[2]).toContain('class="carta-borde border-t"');
@@ -248,23 +255,23 @@ describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / 
     expect(html).toContain('<span class="sr-only">no se ofrece</span>');
   });
 
-  it("con descuento de producto: «−x %» una sola vez, dentro del bloque del rótulo (no en las celdas)", () => {
+  it("con descuento de producto: «−x %» una sola vez, dentro del bloque del título (no en las celdas)", () => {
     const conDescuento = filaCon(dibujar([{ ...milanesas, descuentoPorcentaje: 10 }]), "Milanesas");
     expect(conDescuento.match(/data-descuento-producto/g)).toHaveLength(1);
-    const rotulo = conDescuento.slice(0, conDescuento.indexOf("<table"));
-    expect(rotulo).toContain("data-descuento-producto");
-    expect(rotulo).toContain('<h3 data-rol="rotulo"');
+    const titulo = conDescuento.slice(0, conDescuento.indexOf("<table"));
+    expect(titulo).toContain("data-descuento-producto");
+    expect(titulo).toContain('<h3 data-rol="producto"');
     expect(conDescuento).not.toMatch(/<s[ >]/);
   });
 });
 
-describe("8d: lista de un eje (la base de las pizzas: oculta por defecto; con «Mostrar el nombre arriba», con encabezado)", () => {
+describe("8d: la base de un eje (las pizzas): oculta por defecto, cada opción como un plato; con «Mostrar el nombre arriba», una tabla con título", () => {
   const filas = [
-    { rotulo: "Pizza muzzarella", precio: 18000 },
-    { rotulo: "Pizza napolitana", precio: 22000 },
+    { rotulo: "Pizza muzzarella", celdas: [18000] },
+    { rotulo: "Pizza napolitana", celdas: [22000] },
   ];
-  const pizzas = (encabezado: boolean) =>
-    item({ nombre: "Pizzas", descripcion: "A la piedra", tags: ["veggie"], precio: 18000, presentacion: { forma: "lista", encabezado, filas, aclaraciones: [{ tipo: "eleccion", rotulo: "Masa", opciones: ["fina", "al molde"] }] } });
+  const pizzas = (titulo: boolean) =>
+    item({ nombre: "Pizzas", descripcion: "A la piedra", tags: ["veggie"], precio: 18000, presentacion: { forma: "tabla", titulo, columnas: [], filas, aclaraciones: [{ tipo: "eleccion", rotulo: "Masa", opciones: ["fina", "al molde"] }] } });
 
   it("OCULTA (DEC-11): cada opción es un plato con su nombre completo (h3, rol Producto) y su precio (rol Precio); el producto base no se nombra", () => {
     const html = filaCon(dibujar([pizzas(false)]), "Pizza muzzarella");
@@ -274,40 +281,18 @@ describe("8d: lista de un eje (la base de las pizzas: oculta por defecto; con «
     expect(texto(html)).toBe("Pizza muzzarella $18.000 Pizza napolitana $22.000 Masa fina · al molde");
     expect(html).toMatch(/<ul aria-label="Pizzas" data-filas-carta/);
     expect(html).not.toMatch(/>Pizzas</);
-    expect(html).not.toMatch(/data-rol="rotulo"/);
+    expect(html).not.toContain("<table");
     expect(html).not.toContain("carta-linea-fina");
   });
 
-  it("CON EL NOMBRE ARRIBA («BC2»): «Pizzas» es un rótulo (h3, rol Rótulo) con su línea fina; cada pizza es un plato (h3, rol Producto) con su precio (rol Precio); las aclaraciones al final", () => {
+  it("CON EL NOMBRE ARRIBA: «Pizzas» es el título (h3, rol Producto) con su línea fina; cada pizza es una fila (rol Opción) con su precio (rol Opción precio) en una sola columna sin encabezado; las aclaraciones al final", () => {
     const html = filaCon(dibujar([pizzas(true)]), "Pizzas");
-    expect(html).toMatch(/^<li data-forma="lista"/);
-    expect(html).not.toContain("data-protagonista");
-    expect(html.match(/<h3 data-rol="rotulo"[^>]*>([^<]*)<\/h3>/g)?.map((h) => texto(h))).toEqual(["Pizzas"]);
-    expect(html).toMatch(/<div class="carta-linea-fina[^"]*"><h3 data-rol="rotulo"/);
-    expect(html.match(/<h3 data-rol="producto"[^>]*>([^<]*)<\/h3>/g)?.map((h) => texto(h))).toEqual(["Pizza muzzarella", "Pizza napolitana"]);
-    expect([...html.matchAll(/data-rol="precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$18.000", "$22.000"]);
-    expect(html).not.toMatch(/data-rol="opcion"/);
-    expect(texto(html)).toBe("Pizzas A la piedra veggie Pizza muzzarella $18.000 Pizza napolitana $22.000 Masa fina · al molde");
-  });
-
-  it("lista con el NOMBRE protagonista (la caída de una tanda de más de 3 tamaños): el nombre (h3, rol Producto) con su línea fina y los tamaños como filas de opción; sin rótulo", () => {
-    const cafe = item({
-      nombre: "Café",
-      precio: 2500,
-      presentacion: {
-        forma: "lista",
-        encabezado: true,
-        protagonista: "nombre",
-        filas: [{ rotulo: "Mini", precio: 2000 }, { rotulo: "Chico", precio: 2500 }, { rotulo: "Mediano", precio: 2800 }, { rotulo: "Grande", precio: 3100 }],
-        aclaraciones: [],
-      },
-    });
-    const html = filaCon(dibujar([cafe]), "Café");
-    expect(html).toMatch(/^<li data-forma="lista" data-protagonista="nombre"/);
-    expect(html).toMatch(/<div class="carta-linea-fina[^"]*"><h3 data-rol="producto"[^>]*>Café<\/h3>/);
-    expect(html).not.toMatch(/data-rol="rotulo"/);
-    expect(html.match(/data-rol="opcion" class="carta-rol-opcion[ "]/g)).toHaveLength(4);
-    expect(texto(html)).toBe("Café Mini $2.000 Chico $2.500 Mediano $2.800 Grande $3.100");
+    expect(html).toMatch(/^<li data-forma="tabla"/);
+    expect(html).toMatch(/<div class="carta-linea-fina[^"]*"><h3 data-rol="producto"[^>]*>Pizzas<\/h3>/);
+    expect(html.match(/<span data-rol="opcion" class="carta-rol-opcion[^"]*"[^>]*>([^<]*)<\/span>/g)?.map((h) => texto(h))).toEqual(["Pizza muzzarella", "Pizza napolitana"]);
+    expect([...html.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$18.000", "$22.000"]);
+    expect(html).not.toContain("<thead");
+    expect(texto(html)).toBe("Pizzas Pizza muzzarella $18.000 Pizza napolitana $22.000 A la piedra veggie Masa fina · al molde");
   });
 
   it("con descuento de producto: «−x %» una vez, sin tachar fila por fila", () => {
@@ -351,12 +336,13 @@ describe("paso 9: sin forma (lo que la carta no puede leer exacto, o una carta g
   });
 });
 
-describe("la carta de ejemplo del editor del tema muestra las cuatro formas (paso 12)", () => {
-  it("simple, base oculta, tabla de dos ejes y una tanda, en «Entradas»", async () => {
+describe("la carta de ejemplo del editor del tema muestra las formas (paso 12)", () => {
+  it("simple, base oculta, tabla de dos ejes y tablas de un eje, en «Entradas»", async () => {
     const { CARTA_EJEMPLO } = await import("../../src/components/carta/carta-ejemplo");
     const entradas = CARTA_EJEMPLO.secciones[0]!;
     const html = renderToStaticMarkup(<Seccion seccion={entradas} indice={0} total={2} estilo={resolverEstiloCarta({})} />);
-    for (const forma of ['data-forma="simple"', 'data-forma="lista-sin-encabezado"', 'data-forma="tabla"', "data-tanda"]) expect(html, forma).toContain(forma);
+    for (const forma of ['data-forma="simple"', 'data-forma="lista-sin-encabezado"', 'data-forma="tabla"']) expect(html, forma).toContain(forma);
+    expect(html).not.toContain("data-tanda");
     expect(html).toContain("Salsa</p>");
     expect(html).toContain("ketchup · mayonesa · alioli");
   });
@@ -382,28 +368,17 @@ describe("C12: la línea que separa un producto del siguiente es la misma clara 
   // `divide-y` pinta el borde de abajo de cada `<li>` con el color DEL `<li>` (no del `ul`): un `<li>` sin color cae al color del texto y se ve negro. La forma de un producto no puede cambiar el separador.
   // C13: el color se declara UNA vez, en `globals.css` (`.carta-shell .carta-divisor > *`), y la lista de productos de la sección lleva `carta-divisor`: ningún `<li>` lo escribe por su cuenta.
   const aclaracion: AclaracionCartaPublica = { tipo: "eleccion", rotulo: "Guarnición", opciones: ["papas fritas", "puré"] };
-  const filas = [{ rotulo: "Pizza muzzarella", precio: 18000 }, { rotulo: "Pizza napolitana", precio: 22000 }];
+  const filas = [{ rotulo: "Pizza muzzarella", celdas: [18000] }, { rotulo: "Pizza napolitana", celdas: [22000] }];
   const siguiente = item({ nombre: "Flan", precio: 3200 });
-  const formas: { forma: string; productos: ItemCartaPublico[]; tandas?: SeccionCartaPublica["tandas"] }[] = [
+  const formas: { forma: string; productos: ItemCartaPublico[] }[] = [
     { forma: "simple", productos: [item({ nombre: "Bife", precio: 20000, presentacion: { forma: "simple", aclaraciones: [aclaracion] } })] },
     {
-      forma: "tabla",
-      productos: [item({ nombre: "Milanesas", precio: 20000, presentacion: { forma: "tabla", columnas: ["Simple", "Napolitana"], filas: [{ rotulo: "De carne", celdas: [20000, 25000] }, { rotulo: "De pollo", celdas: [20000, 25000] }], aclaraciones: [] } })],
+      forma: "tabla de dos ejes",
+      productos: [item({ nombre: "Milanesas", precio: 20000, presentacion: { forma: "tabla", titulo: true, columnas: ["Simple", "Napolitana"], filas: [{ rotulo: "De carne", celdas: [20000, 25000] }, { rotulo: "De pollo", celdas: [20000, 25000] }], aclaraciones: [] } })],
     },
-    { forma: "lista con rótulo", productos: [item({ nombre: "Pizzas", precio: 18000, presentacion: { forma: "lista", encabezado: true, filas, aclaraciones: [] } })] },
-    {
-      forma: "lista con el nombre protagonista",
-      productos: [item({ nombre: "Licuado", precio: 2000, presentacion: { forma: "lista", encabezado: true, protagonista: "nombre", filas: [{ rotulo: "Mini", precio: 2000 }, { rotulo: "Chico", precio: 2500 }], aclaraciones: [] } })],
-    },
-    { forma: "lista oculta (sin encabezado)", productos: [item({ nombre: "Empanadas", precio: 18000, presentacion: { forma: "lista", encabezado: false, filas, aclaraciones: [] } })] },
-    {
-      forma: "tanda",
-      productos: [
-        item({ nombre: "Café", precio: 4000, presentacion: { forma: "columnas", celdas: [4000, 4100], aclaraciones: [] } }),
-        item({ nombre: "Cortado", precio: 4200, presentacion: { forma: "columnas", celdas: [4200, 4500], aclaraciones: [] } }),
-      ],
-      tandas: [{ primero: 0, ultimo: 1, rotulos: ["Chico", "Grande"] }],
-    },
+    { forma: "tabla de un eje con el nombre arriba", productos: [item({ nombre: "Pizzas", precio: 18000, presentacion: { forma: "tabla", titulo: true, columnas: [], filas, aclaraciones: [] } })] },
+    { forma: "tabla de tamaños (café)", productos: [item({ nombre: "Licuado", precio: 2000, presentacion: { forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [2000, 2500] }], aclaraciones: [] } })] },
+    { forma: "base oculta (sin título)", productos: [item({ nombre: "Empanadas", precio: 18000, presentacion: { forma: "tabla", titulo: false, columnas: [], filas, aclaraciones: [] } })] },
     { forma: "sin opciones", productos: [item({ nombre: "Tostado", precio: 5000 })] },
     {
       forma: "sin forma (ItemComoAntes)",
@@ -417,8 +392,8 @@ describe("C12: la línea que separa un producto del siguiente es la misma clara 
     expect(regla(".carta-shell .carta-borde")).toMatch(/(?:^|[\s;])border-color:\s*var\(--carta-border\)\s*;/);
   });
 
-  it.each(formas)("$forma: la lista de productos de la sección lleva `carta-divisor` y ningún `<li>` escribe el color por su cuenta", ({ productos, tandas }) => {
-    const html = dibujar([...productos, siguiente], tandas);
+  it.each(formas)("$forma: la lista de productos de la sección lleva `carta-divisor` y ningún `<li>` escribe el color por su cuenta", ({ productos }) => {
+    const html = dibujar([...productos, siguiente]);
     const abre = html.slice(html.indexOf("<ul data-carta-scroll"), html.indexOf(">", html.indexOf("<ul data-carta-scroll")));
     const clases = (/class="([^"]*)"/.exec(abre)?.[1] ?? "").split(/\s+/);
     expect(clases).toEqual(expect.arrayContaining(["divide-y", "carta-divisor"]));

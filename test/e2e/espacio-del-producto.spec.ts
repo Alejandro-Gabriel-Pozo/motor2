@@ -562,9 +562,9 @@ for (const { ancho, alto } of [
         await page.goto(`/catalogo/productos/${productoId}/${ruta}`);
         const vista = page.getByRole("region", { name: "Cómo se va a ver en la carta" });
         await expect(vista, ruta).toBeVisible();
-        // Café con dos tamaños: la carta lo lee en columnas, con el precio de lista de la sucursal (4.000 y 4.000 + 300).
+        // Café con dos tamaños: la carta lo lee como una tabla (el mismo dibujo de la carta pública), con el precio de lista de la sucursal (4.000 y 4.000 + 300).
         await expect(vista.getByRole("columnheader")).toHaveText(["Chico", "Grande"]);
-        await expect(vista.getByRole("cell")).toHaveText(["$4.000", "$4.300"]);
+        await expect(vista.locator("tbody").getByRole("cell")).toHaveText(["$4.000", "$4.300"]);
         await expect(vista).toContainText("sin descuentos");
         await expectSinDesborde(page, `${ancho} px: ${ruta} con la vista previa`);
         if (ancho === 375) await capturar(page, `vista-previa-de-la-carta-${ruta}-${ancho}`);

@@ -28,6 +28,14 @@ function diferencia(tipo: string | null, monto: { toNumber(): number } | null, p
 /** Un grupo para la carta: el de la venta más su «se lee en la carta como» (Fase 4; lo lee SOLO la carta, Fase 5: no entra al precio). */
 export type GrupoParaLaCarta = GrupoParaVender & { prefijoEnCarta: string | null };
 
+/**
+ * Los grupos de UN producto con la grilla de tamaños de la sucursal (`preciosLocalesDeOpcionVigentesEnProductos`, clave `productoId|opcionId`) puesta en las opciones de un tamaño en modo ABSOLUTO.
+ * La única mezcla de la grilla para los cuatro lectores de la carta (la pública, el «Va a mostrar», la vista previa del producto y las bases de un eje).
+ */
+export function conGrillaDeLaSucursal(grupos: readonly GrupoParaLaCarta[], grilla: ReadonlyMap<string, number>, productoId: string): GrupoParaLaCarta[] {
+  return grupos.map((g) => (g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO" ? { ...g, opciones: g.opciones.map((o) => ({ ...o, precioDeSucursal: grilla.get(`${productoId}|${o.opcionId}`) ?? null })) } : g));
+}
+
 export async function opcionesDeLosProductosDeLaCarta(db: Db, sucursalId: string, productoIds: readonly string[]): Promise<Map<string, GrupoParaLaCarta[]>> {
   const ids = [...new Set(productoIds)];
   if (ids.length === 0) return new Map();

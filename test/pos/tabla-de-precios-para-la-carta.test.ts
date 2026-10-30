@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { armarLineaConfigurada, type GrupoParaVender, type OpcionParaVender } from "../../src/core/pos/linea-configurada";
-import { tablaDePreciosParaLaCarta, vistaPreviaDeConfiguracion, type TablaDePreciosParaLaCarta } from "../../src/core/pos/precio-de-configuracion";
+import { cartaDeUnProducto, resumenDePrecios, tablaDePreciosParaLaCarta, vistaPreviaDeConfiguracion, type TablaDePreciosParaLaCarta } from "../../src/core/pos/precio-de-configuracion";
 import { opcionesDelEje, type DiferenciaDePrecio } from "../../src/core/opciones/public";
 import { PRODUCTOS_DE_REFERENCIA } from "../setup/referencia-precio-y-carta";
 
@@ -181,5 +181,19 @@ describe("tablaDePreciosParaLaCarta: paridad de cada celda con el POS y con la v
     expect(tabla.ejes).toEqual({ columnas: "tamano", filas: "relleno", sinLugar: ["salsa"] });
     const agotado = [grupo("tamano", "MEDIDA", [opcion("chico", { apagadaEnSucursal: true })])];
     expect(tablaDePreciosParaLaCarta({ grupos: agotado, precioBase: 1000, descuentoDeProducto: null })).toBeNull();
+  });
+});
+
+describe("cartaDeUnProducto: el resumen y la tabla de la carta con un solo cálculo por producto", () => {
+  it("da lo mismo que pedir cada cosa por separado, con y sin descuento de producto; sin descuento, el resumen es el mismo", () => {
+    const cafe = PRODUCTOS_DE_REFERENCIA.find((p) => p.nombre === "Café")!;
+    for (const descuentoDeProducto of [null, 10]) {
+      const entrada = { grupos: cafe.grupos, precioBase: cafe.precioBase, descuentoDeProducto, esBase: false };
+      const r = cartaDeUnProducto(entrada);
+      expect(r.conDescuento).toEqual(resumenDePrecios(entrada));
+      expect(r.sinDescuento).toEqual(resumenDePrecios({ ...entrada, descuentoDeProducto: null }));
+      expect(r.tabla).toEqual(tablaDePreciosParaLaCarta(entrada));
+      if (descuentoDeProducto === null) expect(r.sinDescuento).toBe(r.conDescuento);
+    }
   });
 });

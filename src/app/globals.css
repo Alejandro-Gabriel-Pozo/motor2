@@ -271,22 +271,8 @@ body:has(main[data-panel]) {
   font-size: var(--carta-fs-titulo);
   font-weight: 500;
 }
-.carta-shell .carta-rol-rotulo {
-  font-size: var(--carta-fs-rotulo);
-  font-weight: 600;
-  line-height: 1.3;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  color: var(--carta-ink);
-}
 .carta-shell .carta-rol-columna {
   font-size: var(--carta-fs-columna);
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--carta-ink);
-}
-.carta-shell .carta-rol-tamano {
-  font-size: var(--carta-fs-tamano);
   font-weight: 600;
   line-height: 1.3;
   color: var(--carta-ink);
@@ -298,6 +284,14 @@ body:has(main[data-panel]) {
   color: var(--carta-ink);
 }
 /* La línea fina que separa filas o bloques de la carta (un trazo del color de la tinta, atenuado hacia el fondo). */
+/* El ancho de las columnas de precio de una tabla de la carta (Chico | Mediano | Grande): el MISMO en toda la carta, así las columnas de productos distintos quedan en la misma vertical. Un `<col>` no respeta
+   un porcentaje en Chrome: se mide contra el contenedor (`cqw`, el `li` de la tabla). Mínimo 72 px (cabe «$ 12.500» a 375 px); tope 144 px. */
+.carta-shell .carta-tabla {
+  container-type: inline-size;
+}
+.carta-shell .carta-col-precio {
+  width: clamp(4.5rem, 16cqw, 9rem);
+}
 .carta-shell .carta-linea-fina {
   border-bottom: 1px solid color-mix(in oklch, var(--carta-ink) 28%, var(--carta-bg));
 }
@@ -561,14 +555,8 @@ html:has([data-carta-libro]) body {
   .carta-shell .carta-rol-etiqueta {
     font-size: var(--carta-fs-etiqueta-impresa) !important;
   }
-  .carta-shell .carta-rol-rotulo {
-    font-size: var(--carta-fs-rotulo-impresa) !important;
-  }
   .carta-shell .carta-rol-columna {
     font-size: var(--carta-fs-columna-impresa) !important;
-  }
-  .carta-shell .carta-rol-tamano {
-    font-size: var(--carta-fs-tamano-impresa) !important;
   }
   .carta-shell .carta-rol-eleccion {
     font-size: var(--carta-fs-eleccion-impresa) !important;
