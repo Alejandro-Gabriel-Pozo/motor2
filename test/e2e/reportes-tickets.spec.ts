@@ -124,7 +124,7 @@ test("el detalle muestra el nombre de cada línea con opciones: dos cafés del m
   const tamano = await sembrarGrupo({ nombre: `E2E Tamaño tk ${marca}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca, opciones: [{ nombre: "Chico", factorEscala: 1 }] });
   const nombreCafe = `E2E Café tk ${marca}`;
   const { productoId } = await sembrarProductoConOpciones({ nombre: nombreCafe, codigo: `E2E-TK-CAFE-${marca}`, precioVenta: 4000, sucursalId, grupos: [{ grupo: preparacion }, { grupo: tamano }] });
-  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 945 } });
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 949 } });
   const emitidoEn = new Date();
   const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id, cerradaEn: emitidoEn, cerradaPorId: admin.id } });
   // Dos cafés a $ 4.000, uno «solo chico» y otro «cortado chico»: la foto de cada línea (orden del producto: preparación y después tamaño).
@@ -153,6 +153,8 @@ test("el detalle muestra el nombre de cada línea con opciones: dos cafés del m
             nombreGrupo: f.nombreGrupo,
             nombreOpcion: f.opcion,
             importeUnitario: 0,
+            // La medida lleva su modo de precio y su diferencia (lo exige el CHECK de la foto): acá, una diferencia en monto de $ 0.
+            ...(f.tipoGrupo === "MEDIDA" ? { modoPrecio: "DIFERENCIA", tipoDeDiferencia: "MONTO" } : {}),
             orden,
           })),
         },
