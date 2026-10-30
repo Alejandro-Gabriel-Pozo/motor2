@@ -31,11 +31,11 @@ async function leerDetalle(db: Db, donde: { id?: string; sucursalId: string; tip
           items: {
             orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
             include: {
-              producto: { select: { nombre: true, unidadStock: { select: { decimales: true } } } },
+              producto: { select: { nombre: true, modoDeVenta: true, unidadStock: { select: { decimales: true } } } },
               creadoPor: { select: { name: true, email: true } },
               promoCuenta: { select: { id: true, titulo: true } },
-              // GO-2b: los nombres de lo elegido, anidados en la misma consulta (sin opciones, vacío). GO-2d: y la opción con cuántas, para «Otro igual».
-              opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, opcionId: true, cantidad: true } },
+              // GO-2b: lo elegido, anidado en la misma consulta (sin opciones, vacío). GO-2d: la opción con cuántas, para «Otro igual». Y lo que compone el nombre de la línea: el prefijo del grupo y la marca «ninguna».
+              opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, opcionId: true, cantidad: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } },
             },
           },
         },

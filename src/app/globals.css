@@ -659,6 +659,11 @@ html:has([data-carta-libro]) body {
   font-weight: 700;
 }
 
+/* El renglón de detalle de la comanda (lo incluido, «nalga · puré de papa») va dentro del `li.ticket-item`: hereda la negrita del nombre y no debe pesar como él. */
+[data-imprimible] .ticket-item .ticket-dato {
+  font-weight: 400;
+}
+
 [data-imprimible] .ticket-separador {
   margin-top: 2mm;
   padding-top: 2mm;

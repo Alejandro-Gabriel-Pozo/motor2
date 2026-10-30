@@ -226,7 +226,7 @@ test("el mostrador vende lo mismo que el salón: un café con opciones y una pro
     await page.getByRole("button", { name: "Agregar 1 al pedido" }).click();
     await expect(aviso(page)).toContainText("Se agregó");
     const linea = page.locator(`[data-item-sin-enviar="${nombreCafe}"]`);
-    await expect(linea.locator("[data-opciones-de-linea]")).toHaveText("Grande");
+    await expect(linea).toContainText(`1 × ${nombreCafe} grande`);
     await expect(linea.locator(`[data-adicional-sin-enviar="${ancla.nombre}"]`)).toContainText("$ 600");
 
     // La promo armada: un componente del cupo, agregada por su precio.
@@ -256,7 +256,7 @@ test("el mostrador vende lo mismo que el salón: un café con opciones y una pro
 
     await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda", "ticket"]);
     const ticket = (await impresiones(page))[1]!.texto;
-    expect(ticket).toContain(`1 × ${nombreCafe}Grande`);
+    expect(ticket).toContain(`1 × ${nombreCafe} grande`);
     expect(ticket).toMatch(/TOTAL\s*\$\s?7\.400/);
     const ejemplar = await prisma.ejemplarTicket.findFirstOrThrow({ where: { cuenta: { mesa: { sucursalId, tipo: "MOSTRADOR" } } } });
     expect(ejemplar.ejemplar).toBe(1);
