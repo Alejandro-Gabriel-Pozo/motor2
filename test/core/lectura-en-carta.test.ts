@@ -94,6 +94,24 @@ describe("ejesDeLaCarta: columnas, filas y lo que no cabe, por papeles y nunca p
     expect(ejesDeLaCarta([g("guarnicion", { tipo: "INCLUIDA" })], false)).toEqual({ columnas: null, filas: null, sinLugar: [] });
   });
 
+  it("una VARIANTE obligatoria sin costo ni prefijo es la fila de la grilla cuando hay un tamaño que define el precio (el café: Solo / Cortado / Lágrima × Chico / Mediano / Grande); su papel para el POS no cambia", () => {
+    const sabor = g("sabor", { opciones: sinCosto(3) });
+    expect(rolDelGrupo(sabor)).toBe("aclaracion");
+    expect(ejesDeLaCarta([tamano("t", 4000, 4100, 4300), sabor], false)).toEqual({ columnas: "t", filas: "sabor", sinLugar: [] });
+    expect(ejesDeLaCarta([sabor, tamano("t", 4000, 4100, 4300)], false)).toEqual({ columnas: "t", filas: "sabor", sinLugar: [] });
+    // Solo la primera ocupa la fila, y la que ya lo era por su papel (con prefijo o con costo) va antes; lo que no es una variante de elegir una (una incluida, una opcional) sigue siendo una aclaración.
+    expect(ejesDeLaCarta([tamano("t", 1, 2), sabor, g("de", { prefijoEnCarta: "De" })], false).filas).toBe("de");
+    expect(ejesDeLaCarta([tamano("t", 1, 2), sabor, g("otro", { opciones: sinCosto(2) })], false).filas).toBe("sabor");
+    expect(ejesDeLaCarta([tamano("t", 1, 2), g("guarnicion", { tipo: "INCLUIDA" }), g("nota", { cantidadMinima: 0 })], false)).toEqual({ columnas: "t", filas: null, sinLugar: [] });
+  });
+
+  it("sin un tamaño que defina el precio (o en una base) esa variante sigue siendo una aclaración: la regla no toca las Tostadas ni las bases de producción", () => {
+    const sabor = g("sabor", { opciones: sinCosto(3) });
+    expect(ejesDeLaCarta([sabor], false)).toEqual({ columnas: null, filas: null, sinLugar: [] });
+    expect(ejesDeLaCarta([tamano("t", 5, 5), sabor], false)).toEqual({ columnas: null, filas: null, sinLugar: [] });
+    expect(ejesDeLaCarta([tamano("t", 1, 2), sabor], true)).toEqual({ columnas: "t", filas: null, sinLugar: [] });
+  });
+
   it("una base cuyo tamaño cuesta igual en todas sus opciones igual lo tiene de columna (es lo que nombra cada configuración); un directo, no", () => {
     expect(ejesDeLaCarta([tamano("t", 5, 5)], true)).toEqual({ columnas: "t", filas: null, sinLugar: [] });
     expect(ejesDeLaCarta([tamano("t", 5, 5)], false)).toEqual({ columnas: null, filas: null, sinLugar: [] });

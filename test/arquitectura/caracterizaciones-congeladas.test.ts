@@ -633,6 +633,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Decisión del dueño 2026-10-29: modelo unificado de la carta (docs/diseno-simplificar-presentacion-de-la-carta-2026-10-29.md, paso 2; SOLO CARTA, el COBRO idéntico): la forma de un producto con opciones es `simple` o `tabla` (con `titulo`, `columnas` y `filas`) y desaparecen `columnas`, `lista` y las tandas. Revisado con `git diff -U0`: cambian SOLO líneas de forma: las 4 líneas `presentacion` (Pizzas pasa de lista con el nombre protagonista a tabla de una columna con `titulo`; Milanesas, el Café de la sección y el Café de la carta con la grilla pasan de `columnas` a `tabla` con una fila sin rótulo) y se van las 2 líneas `tandas`; de `## COBRO` en adelante nada cambia, y `precios.golden.txt` no se mueve.",
       },
+      {
+        blob: "f0b45ea8511e22edd2a401110af68a34c14549b9",
+        // El commit PADRE de este (68f5701a, paso 3 del modelo unificado) es el último antes del cambio; el golden se regenera en el commit siguiente (paso 4).
+        commit: "68f5701a",
+        motivo:
+          "Decisión del dueño 2026-10-29: modelo unificado de la carta (paso 4, regla de filas; SOLO CARTA, el COBRO idéntico): una VARIANTE obligatoria de una sola elección sin costo ni prefijo es el eje de filas de un producto DIRECTO que tiene un tamaño que define el precio (la grilla del café sin un prefijo artificial); una base y un producto sin tamaño la siguen leyendo como aclaración. Revisado con `git diff -U0`: cambia UNA sola línea, la `presentacion` de la «Milanesas (M1)» directa del catálogo de referencia (tamaño Simple/Napolitana + «Milanesas de» carne/pollo sin costo ni prefijo): pasa de una fila con la aclaración «Milanesas de» a la grilla Carne/Pollo × Simple/Napolitana, con los mismos precios; de `## COBRO` en adelante nada cambia y `precios.golden.txt` no se mueve.",
+      },
     ],
   },
   "test/e2e/linea-de-base-precio-y-carta.golden.txt": {

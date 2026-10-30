@@ -10,7 +10,7 @@ SECCION «Platos» descripcion=null imagenUrl=null orden=2 titulo=null items=3 p
   ITEM «Milanesas» categoria="Platos" descripcion=null especial=false imagenUrl=null precio=20000 tags=[]
     lista «Tipo de Milanesa»: Simple precio=20000 | Napolitana precio=25000
     pastillas «Milanesas de»: Carne | Pollo
-    presentacion {"forma":"tabla","titulo":true,"columnas":["Simple","Napolitana"],"filas":[{"rotulo":null,"celdas":[20000,25000]}],"aclaraciones":[{"tipo":"eleccion","rotulo":"Milanesas de","opciones":["carne","pollo"]}]}
+    presentacion {"forma":"tabla","titulo":true,"columnas":["Simple","Napolitana"],"filas":[{"rotulo":"Carne","celdas":[20000,25000]},{"rotulo":"Pollo","celdas":[20000,25000]}],"aclaraciones":[]}
   ITEM «Bife a la criolla» categoria="Platos" descripcion=null especial=false imagenUrl=null precio=20000 tags=[]
     lista «Extras»: Extra de papas recargo=+2000 | Huevo frito recargo=+1500
     pastillas «Guarnicion»: Ensalada | Papas fritas | Puré
