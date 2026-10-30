@@ -1,6 +1,8 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { abrirComoRol } from "./fixtures/rol-pos";
+import { prismaAdmin } from "../setup/cliente-duenio";
+import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 
 /**
  * Tickets emitidos (Task #17 del backlog): antes de esta pantalla los tickets más viejas que las 3 últimas de una mesa
@@ -112,6 +114,61 @@ test("filtro por mesa, marcas de corrección/reemplazo, y el detalle enlaza a Tr
     await limpiarMesas([mesaA.id, mesaB.id]);
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
     await prisma.producto.deleteMany({ where: { id: producto.id } });
+  }
+});
+
+test("el detalle muestra el nombre de cada línea con opciones: dos cafés del mismo precio con distinta configuración no se confunden", async ({ paginaAutenticada: page, sucursalId }) => {
+  const marca = `${Date.now()}`;
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+  const preparacion = await sembrarGrupo({ nombre: `E2E Preparación tk ${marca}`, tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1, marca, opciones: [{ nombre: "Solo" }, { nombre: "Cortado" }] });
+  const tamano = await sembrarGrupo({ nombre: `E2E Tamaño tk ${marca}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca, opciones: [{ nombre: "Chico", factorEscala: 1 }] });
+  const nombreCafe = `E2E Café tk ${marca}`;
+  const { productoId } = await sembrarProductoConOpciones({ nombre: nombreCafe, codigo: `E2E-TK-CAFE-${marca}`, precioVenta: 4000, sucursalId, grupos: [{ grupo: preparacion }, { grupo: tamano }] });
+  const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 945 } });
+  const emitidoEn = new Date();
+  const cuenta = await prisma.cuenta.create({ data: { mesaId: mesa.id, abiertaPorId: admin.id, cerradaEn: emitidoEn, cerradaPorId: admin.id } });
+  // Dos cafés a $ 4.000, uno «solo chico» y otro «cortado chico»: la foto de cada línea (orden del producto: preparación y después tamaño).
+  for (const [i, prep] of (["Solo", "Cortado"] as const).entries()) {
+    const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: emitidoEn, usuarioId: admin.id, detalleLibre: "Mesa E2E RB" } });
+    const fotos = [
+      { grupo: preparacion, opcion: prep, tipoGrupo: "VARIANTE", nombreGrupo: `E2E Preparación tk ${marca}` },
+      { grupo: tamano, opcion: "Chico", tipoGrupo: "MEDIDA", nombreGrupo: `E2E Tamaño tk ${marca}` },
+    ];
+    await prisma.cuentaItem.create({
+      data: {
+        cuentaId: cuenta.id,
+        productoId,
+        cantidad: 1,
+        precioUnitario: 4000,
+        numeroEnvio: 1,
+        operacionId: venta.id,
+        creadoPorId: admin.id,
+        huellaOpciones: String(i).repeat(64),
+        opcionesElegidas: {
+          create: fotos.map((f, orden) => ({
+            grupoId: f.grupo.grupoId,
+            opcionId: f.grupo.opciones[f.opcion]!.opcionId,
+            versionDeOpcionId: f.grupo.opciones[f.opcion]!.versionId,
+            tipoGrupo: f.tipoGrupo,
+            nombreGrupo: f.nombreGrupo,
+            nombreOpcion: f.opcion,
+            importeUnitario: 0,
+            orden,
+          })),
+        },
+      },
+    });
+  }
+  const ejemplar = await prisma.ejemplarTicket.create({ data: { sucursalId, cuentaId: cuenta.id, numero: 100200, ejemplar: 1, emitidoEn, emitidoPorId: admin.id } });
+  try {
+    await page.goto(`/reportes/tickets?mesaId=${mesa.id}&desde=&hasta=`);
+    const fila = page.locator(`[data-ticket="${ejemplar.id}"]`);
+    await fila.locator("summary").click();
+    const nombres = fila.locator("tbody tr td:first-child");
+    await expect(nombres).toHaveText([`${nombreCafe} solo chico`, `${nombreCafe} cortado chico`]);
+  } finally {
+    await prismaAdmin.opcionElegidaEnLinea.deleteMany({ where: { cuentaItem: { cuentaId: cuenta.id } } });
+    await limpiarMesas([mesa.id]);
   }
 });
 

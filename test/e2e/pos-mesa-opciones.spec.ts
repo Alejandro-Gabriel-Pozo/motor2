@@ -114,7 +114,7 @@ test("la mesa muestra las opciones y el adicional bajo su producto; la comanda l
     await expect(page.getByText("La mesa está libre.")).toBeVisible();
     await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda", "ticket"]);
     const ticket = (await impresiones(page))[1]!.texto;
-    expect(ticket).toContain(`1 × ${d.nombreCafe}Grande`);
+    expect(ticket).toContain(`1 × ${d.nombreCafe} grande`);
     // El adicional en su línea con su precio: se busca el texto tal cual (sin armar una expresión regular con el nombre, que habría que escapar entera).
     const adicionalEnTicket = ticket.indexOf(`+ 1 × ${d.nombreAncla}`);
     expect(adicionalEnTicket, "el adicional va en su propia línea").toBeGreaterThan(-1);

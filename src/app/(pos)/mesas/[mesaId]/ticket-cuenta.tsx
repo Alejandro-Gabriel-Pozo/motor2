@@ -21,8 +21,9 @@ type DocumentoDeTicket = Extract<DocumentoImprimible, { ticket: unknown }>;
  * cobrado por la promo entera; sus componentes van indentados, SIN precio propio impreso (ya está en la cabecera). `key` incluye
  * `promoCuentaId` — dos instancias de la misma promo (o dos promos con el mismo total, por casualidad) no colisionan.
  *
- * GO-2d (ADR-030): una línea con opciones lleva sus nombres debajo («Grande · Almendras») y un adicional va con sangría, «+» y SU precio, justo debajo de la línea de su producto
- * (así lo arma `armarTicket`). La `key` suma las opciones, si es adicional y el orden: dos cafés del mismo precio con distinta leche son dos líneas.
+ * GO-2d (ADR-030): una línea con opciones lleva su nombre compuesto («1 × Café solo chico», `producto` ya viene armado por `armarTicket`) y, si hay, lo incluido en un renglón debajo
+ * («nalga · puré de papa»); un adicional va con sangría, «+» y SU precio, justo debajo de la línea de su producto. La `key` suma el orden: dos cafés del mismo precio con distinta
+ * configuración son dos líneas.
  */
 export function TicketCuenta({ documento, mesa, sucursal, zonaHoraria }: { documento: DocumentoDeTicket; mesa: string; sucursal: string; zonaHoraria: string }) {
   const { ticket } = documento;
@@ -48,7 +49,7 @@ export function TicketCuenta({ documento, mesa, sucursal, zonaHoraria }: { docum
       <ul className="ticket-separador">
         {ticket.lineas.map((l, n) => (
           <li
-            key={`${l.producto}|${l.precioUnitario}|${l.precioListaUnitario ?? ""}|${l.promoCuentaId ?? ""}${l.opciones || l.esAdicional ? `|${l.opciones?.join(",") ?? ""}|${l.esAdicional ? "a" : ""}|${n}` : ""}`}
+            key={`${l.producto}|${l.precioUnitario}|${l.precioListaUnitario ?? ""}|${l.promoCuentaId ?? ""}|${n}`}
             className={`ticket-linea${l.indentado || l.esAdicional ? " ticket-linea-indentada" : ""}`}
             {...(l.esAdicional ? { "data-adicional": true } : {})}
           >
@@ -56,7 +57,7 @@ export function TicketCuenta({ documento, mesa, sucursal, zonaHoraria }: { docum
               {l.esAdicional && "+ "}
               {formatearCantidad(l.cantidad)} × {l.producto}
             </p>
-            {l.opciones && <p className="ticket-dato">{l.opciones.join(" · ")}</p>}
+            {l.detalle && <p className="ticket-dato">{l.detalle}</p>}
             {!l.indentado && (
               <p className="ticket-monto">
                 <span>

@@ -1,5 +1,6 @@
 import { precioCobradoConDescuentos } from "@/core/carta/public";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
+import { esBaseConfigurable, nombreDeLineaConfigurada, type FotoParaElNombre } from "@/core/opciones/public";
 import { claveDeLineaDeVenta, lineasDeVenta } from "./cuenta";
 import { nombreDelMesero } from "./mesas";
 import type { NumeroDeTicket } from "./numeracion-ticket";
@@ -35,8 +36,8 @@ export interface LineaDeTicket {
    *  (paso 8c), para quien necesite el número exacto (ej. el detalle de `/reportes/tickets`); la vista de cliente/cocina
    *  no lo muestra. */
   indentado?: boolean;
-  /** GO-2b (ADR-030): los nombres de las opciones dentro del precio de una línea configurada («Grande», «Almendras»). Ausente sin opciones. */
-  opciones?: string[];
+  /** El nombre de la línea con opciones, en un renglón («Café solo chico»; `nombreDeLineaConfigurada`): reemplaza al nombre del producto SOLO acá, nunca en `productoNombre`. Ausente sin opciones. */
+  detalle?: string;
   /** GO-2b: `true` SOLO en un adicional (va justo después de la línea de su producto, sin descuento de cliente). Ausente en todas las demás. */
   esAdicional?: true;
 }
@@ -51,7 +52,9 @@ export interface ConfiguracionDeItemTicket {
   lineaPadreId?: string | null;
   anulaAItemId?: string | null;
   versionDeAdicional?: string | null;
-  opciones?: readonly string[];
+  /** El nombre compuesto de la línea («Café solo chico») y su renglón de detalle (lo incluido). Ausentes sin opciones: el ítem de siempre. */
+  nombreDeLinea?: string;
+  detalleDeLinea?: string;
 }
 
 /**
@@ -158,19 +161,21 @@ export function cuentaConOpciones(items: readonly { huellaOpciones?: string | nu
 }
 
 /**
- * GO-2b: la configuración de un ítem desde lo que leyó la consulta (`opcionesElegidas`, la foto): los nombres de lo que va dentro del precio y la versión de la
- * opción de un adicional. En una cuenta SIN opciones (`conOpciones` en false, ver `cuentaConOpciones`) devuelve `{}`: el ítem de siempre, bit a bit.
+ * GO-2b: la configuración de un ítem desde lo que leyó la consulta (`opcionesElegidas`, la foto): el nombre compuesto de la línea («Café solo chico», con su detalle de lo
+ * incluido) y la versión de la opción de un adicional. En una cuenta SIN opciones (`conOpciones` en false, ver `cuentaConOpciones`) devuelve `{}`: el ítem de siempre, bit a bit.
  */
 export function configuracionDeItemLeido(conOpciones: boolean, i: {
   id?: string;
   huellaOpciones?: string | null;
   lineaPadreId?: string | null;
   anulaAItemId?: string | null;
-  opcionesElegidas?: readonly { nombreOpcion: string; tipoGrupo: string; versionDeOpcionId: string }[];
+  producto: { nombre: string; modoDeVenta: string };
+  opcionesElegidas?: readonly (FotoParaElNombre & { versionDeOpcionId: string })[];
 }): ConfiguracionDeItemTicket {
   if (!conOpciones) return {};
   const fotos = i.opcionesElegidas ?? [];
-  const opciones = fotos.filter((f) => f.tipoGrupo !== "ADICIONAL").map((f) => f.nombreOpcion);
+  const propias = fotos.some((f) => f.tipoGrupo !== "ADICIONAL");
+  const { nombre, detalle } = nombreDeLineaConfigurada(i.producto.nombre, esBaseConfigurable(i.producto.modoDeVenta), fotos);
   const versionDeAdicional = fotos.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null;
   return {
     ...(i.id !== undefined ? { id: i.id } : {}),
@@ -178,7 +183,8 @@ export function configuracionDeItemLeido(conOpciones: boolean, i: {
     ...(i.lineaPadreId ? { lineaPadreId: i.lineaPadreId } : {}),
     ...(i.anulaAItemId ? { anulaAItemId: i.anulaAItemId } : {}),
     ...(versionDeAdicional ? { versionDeAdicional } : {}),
-    ...(opciones.length ? { opciones } : {}),
+    ...(propias ? { nombreDeLinea: nombre } : {}),
+    ...(detalle ? { detalleDeLinea: detalle } : {}),
   };
 }
 
@@ -209,9 +215,10 @@ export function armarTicket(
   const tituloPorPromo = new Map(items.flatMap((i) => (i.promo ? [[i.promo.promoCuentaId, i.promo.titulo] as const] : [])));
 
   const netas = lineasDeVenta(items.map(itemParaLineaDeVenta));
-  // GO-2b: los nombres de las opciones de una línea configurada salen de su primer ítem ORIGINAL (los espejos no tienen foto).
+  // El nombre de una línea configurada sale de su primer ítem ORIGINAL (los espejos no tienen foto), POR LÍNEA NETA: `nombres` (de arriba) no distingue la huella, y dos cafés del
+  // mismo precio con distinta configuración son dos líneas.
   const porId = new Map(items.flatMap((i) => (i.id !== undefined ? [[i.id, i] as const] : [])));
-  const opcionesDe = (l: (typeof netas)[number]) => (l.itemIds ?? []).map((id) => porId.get(id)).find((i) => i !== undefined && !i.anulaAItemId && (i.opciones?.length ?? 0) > 0)?.opciones;
+  const configuradoDe = (l: (typeof netas)[number]) => (l.itemIds ?? []).map((id) => porId.get(id)).find((i) => i !== undefined && !i.anulaAItemId && i.nombreDeLinea !== undefined);
   // `promoCuentaId` de cada neta se guarda APARTE (no en `componentes`, que es exactamente `LineaDeTicket` sin promo): así, sin
   // ninguna promo, `componentes` sale IDÉNTICO al de antes de esta Task, sin ningún campo de más que limpiar.
   const promoCuentaIdDeLaNeta = netas.map((l) => l.promoCuentaId);
@@ -219,14 +226,14 @@ export function armarTicket(
     // GO-2b: el adicional se cobra sin descuento de cliente (igual que en `cerrarCuenta`), así el ticket coincide al centavo con lo registrado.
     const esAdicional = l.indicePadre !== undefined;
     const cobro = esAdicional ? { precio: l.precioUnitario, precioLista: null } : precioCobradoConDescuentos(l.precioUnitario, l.precioCartaUnitario ?? null, descuentoPorcentaje);
-    const opciones = opcionesDe(l);
+    const configurado = configuradoDe(l);
     return {
-      producto: nombres.get(claveDeLineaDeVenta(l)) ?? "",
+      producto: configurado?.nombreDeLinea ?? nombres.get(claveDeLineaDeVenta(l)) ?? "",
       cantidad: l.cantidad,
       precioUnitario: cobro.precio,
       ...(cobro.precioLista !== null ? { precioListaUnitario: cobro.precioLista } : {}),
       subtotal: importeDeLinea(l.cantidad, cobro.precio),
-      ...(opciones ? { opciones: [...opciones] } : {}),
+      ...(configurado?.detalleDeLinea ? { detalle: configurado.detalleDeLinea } : {}),
       ...(esAdicional ? { esAdicional: true as const } : {}),
     };
   });
@@ -269,7 +276,7 @@ export interface CuentaCerradaLeida {
   cliente: { nombre: string } | null;
   items: {
     productoId: string;
-    producto: { nombre: string };
+    producto: { nombre: string; modoDeVenta: string };
     cantidad: number;
     precioUnitario: number;
     precioCartaUnitario: number | null;
@@ -281,7 +288,7 @@ export interface CuentaCerradaLeida {
     huellaOpciones?: string | null;
     lineaPadreId?: string | null;
     anulaAItemId?: string | null;
-    opcionesElegidas?: { nombreOpcion: string; tipoGrupo: string; versionDeOpcionId: string }[];
+    opcionesElegidas?: (FotoParaElNombre & { versionDeOpcionId: string })[];
   }[];
   ejemplaresTicket: {
     numero: number;

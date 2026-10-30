@@ -25,18 +25,18 @@ const H2 = "b".repeat(64);
 
 describe("armarTicket con opciones (puro)", () => {
   const items = [
-    { id: "c1", productoId: "cafe", productoNombre: "Café", cantidad: 1, precioUnitario: 1250, huellaOpciones: H1, opciones: ["Grande", "Almendras"] },
+    { id: "c1", productoId: "cafe", productoNombre: "Café", cantidad: 1, precioUnitario: 1250, huellaOpciones: H1, nombreDeLinea: "Café grande almendras" },
     { id: "s1", productoId: "shot", productoNombre: "Shot extra", cantidad: 2, precioUnitario: 200, lineaPadreId: "c1", versionDeAdicional: "v1" },
-    { id: "c2", productoId: "cafe", productoNombre: "Café", cantidad: 1, precioUnitario: 1250, huellaOpciones: H2, opciones: ["Grande", "De vaca"] },
+    { id: "c2", productoId: "cafe", productoNombre: "Café", cantidad: 1, precioUnitario: 1250, huellaOpciones: H2, nombreDeLinea: "Café grande de vaca", detalleDeLinea: "azúcar" },
     { id: "m", productoId: "mila", productoNombre: "Milanesa", cantidad: 1, precioUnitario: 9000 },
   ];
 
-  it("dos configuraciones al mismo precio son dos líneas con sus opciones; el adicional va después de su producto, marcado y sin descuento de cliente", () => {
+  it("dos configuraciones al mismo precio son dos líneas, cada una con SU nombre; el adicional va después de su producto, marcado y sin descuento de cliente", () => {
     expect(armarTicket(items, 10)).toEqual({
       lineas: [
-        { producto: "Café", cantidad: 1, precioUnitario: 1125, precioListaUnitario: 1250, subtotal: 1125, opciones: ["Grande", "Almendras"] },
+        { producto: "Café grande almendras", cantidad: 1, precioUnitario: 1125, precioListaUnitario: 1250, subtotal: 1125 },
         { producto: "Shot extra", cantidad: 2, precioUnitario: 200, subtotal: 400, esAdicional: true },
-        { producto: "Café", cantidad: 1, precioUnitario: 1125, precioListaUnitario: 1250, subtotal: 1125, opciones: ["Grande", "De vaca"] },
+        { producto: "Café grande de vaca", cantidad: 1, precioUnitario: 1125, precioListaUnitario: 1250, subtotal: 1125, detalle: "azúcar" },
         { producto: "Milanesa", cantidad: 1, precioUnitario: 8100, precioListaUnitario: 9000, subtotal: 8100 },
       ],
       total: 10750,
@@ -129,11 +129,11 @@ describe("ticket, «Tickets emitidos», detalle y comanda contra Postgres (GO-2b
     const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, db, undefined, new Date());
     expect(ticket!.total).toBe(Math.round(registrado * 100) / 100);
     // El orden es el de escritura (como el cierre): los sueltos van en el createMany antes que las líneas configuradas.
-    expect(ticket!.lineas.map((l) => [l.producto, l.cantidad, l.subtotal, l.opciones ?? null, l.esAdicional ?? false])).toEqual([
-      ["Flan", 1, 2700, null, false],
-      ["Café", 2, 2250, ["Grande", "Almendras"], false],
-      ["Shot extra", 2, 400, null, true],
-      ["Café", 1, 855, ["Chico"], false],
+    expect(ticket!.lineas.map((l) => [l.producto, l.cantidad, l.subtotal, l.esAdicional ?? false])).toEqual([
+      ["Flan", 1, 2700, false],
+      ["Café grande almendras", 2, 2250, false],
+      ["Shot extra", 2, 400, true],
+      ["Café chico", 1, 855, false],
     ]);
     const emitidos = await listarTicketsEmitidos(s.sucursalId, {}, db);
     const lineas = emitidos.items[0]!.detalle.lineas;

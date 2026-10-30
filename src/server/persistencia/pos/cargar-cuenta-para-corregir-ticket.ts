@@ -37,8 +37,8 @@ export async function cargarCuentaParaCorregirTicket(
     where: { id: args.cuentaId, mesa: { sucursalId: args.sucursalId } },
     include: {
       mesa: { select: { numero: true } },
-      // GO-2b: la versión del adicional (de su foto) anidada en la misma consulta, para agrupar las líneas como el cierre.
-      items: { include: { producto: { select: { nombre: true } }, operacion: { select: { anuladaEn: true } }, opcionesElegidas: { select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true } } } },
+      // GO-2b: la versión del adicional (de su foto) y lo que compone el nombre de la línea, anidados en la misma consulta, en el orden congelado de la venta.
+      items: { include: { producto: { select: { nombre: true, modoDeVenta: true } }, operacion: { select: { anuladaEn: true } }, opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } } } },
       ejemplaresTicket: { orderBy: { ejemplar: "desc" } },
     },
   });
