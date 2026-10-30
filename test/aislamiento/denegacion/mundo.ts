@@ -391,6 +391,27 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   await db.movimientoStock.create({
     data: { id: id("mov-venta"), empresaId, operacionId: venta.id, productoId: k.productoId, seccionId: seccion.id, proceso: "VENTA", cantidad: -1, detalle: `Venta ${marca}`, precioTotal: 800, precioPorUnidadStock: 100, costoUnitarioVenta: 100, precioListaUnitario: 1000 },
   });
+  // Ventas con opciones (2026-10-29): «Ventas por opción» (`generarVentasPorOpcion`) necesita una venta vigente con la FOTO de una opción elegida (la VARIANTE «Leche» del kit) para tener algo propio con marcador:
+  // una cuenta cerrada aparte (sin ticket, para no tocar los controles del POS) con una línea enlazada a la `venta` de arriba. La versión 1 de la opción es la que sembró el kit.
+  const mesaDeLaOpcion = await db.mesa.create({ data: { id: id("mesa-opcion"), empresaId, sucursalId, numero: 5 } });
+  const cuentaDeLaOpcion = await db.cuenta.create({ data: { id: id("cuenta-opcion"), empresaId, mesaId: mesaDeLaOpcion.id, abiertaPorId: miembro.id, cerradaEn: enElPasado(HORA_MS), cerradaPorId: miembro.id } });
+  const itemConOpcion = await db.cuentaItem.create({
+    data: { id: id("item-opcion"), empresaId, cuentaId: cuentaDeLaOpcion.id, productoId: k.productoId, cantidad: 1, precioUnitario: 800, numeroEnvio: 1, operacionId: venta.id, huellaOpciones: "0123456789abcdef".repeat(4), creadoPorId: miembro.id },
+  });
+  await db.opcionElegidaEnLinea.create({
+    data: {
+      id: id("foto-opcion"),
+      empresaId,
+      cuentaItemId: itemConOpcion.id,
+      grupoId: k.grupoDeOpcionesId,
+      opcionId: k.opcionDeGrupoId,
+      versionDeOpcionId: `${k.opcionDeGrupoId}-v1`,
+      tipoGrupo: "VARIANTE",
+      nombreGrupo: `Leches ${marca}`,
+      nombreOpcion: `Leche ${marca}`,
+      importeUnitario: 0,
+    },
+  });
   // Pérdidas y devoluciones: lo que leen los reportes de merma/consumo y de devoluciones (cada movimiento lleva el marcador en el detalle, el motivo, el destino, el cliente y el proveedor).
   const movimientoSuelto = async (n: string, proceso: "MERMA" | "CONSUMO" | "DEVOLUCION_CLIENTE" | "DEVOLUCION_PROVEEDOR" | "AJUSTE", cantidad: number, extra: object, productoId: string = k.productoId) => {
     const op = await db.operacion.create({ data: { id: id(n), empresaId, sucursalId, proceso, fecha: enElPasado(DIA_MS), usuarioId: miembro.id, detalleLibre: `${proceso} ${marca}`, ...extra } });

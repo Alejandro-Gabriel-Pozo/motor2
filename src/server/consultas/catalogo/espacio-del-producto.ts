@@ -4,7 +4,7 @@ import type { HechosDelProducto } from "@/core/catalogo/public";
 import type { Db } from "@/lib/db-tipos";
 import { estadoDelProductoEnLaCarta } from "@/server/consultas/carta/admin";
 import { cargarOpcionesDelProducto, type OpcionesDelProductoDelPanel } from "@/server/consultas/catalogo/opciones-de-venta";
-import { cargarOrigenDeStockParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
+import { cargarOrigenDeStockDelCatalogo } from "@/server/lecturas/movimientos/origen-de-stock-del-catalogo";
 
 /**
  * Las lecturas del ESPACIO DEL PRODUCTO (Fase 6, 6.12; DEC-12): lo que hace falta saber de UN producto para dibujar su marco (la cabecera y la tira de pasos con lo que le falta a cada uno). Solo las piden las
@@ -54,7 +54,7 @@ export interface LecturasPermitidas {
 
 /**
  * El texto del pendiente de la receta de una materia prima que se produce y todavía no tiene ingredientes: no se puede producir. (Un producto de venta sigue la regla «sin receta no se vende»,
- * `rechazoSinOrigenDeStock`, la misma del POS.)
+ * `rechazoSinOrigenDeStock`, la misma del POS, con lo que sus opciones ofrecidas podrían sumar.)
  */
 function rechazoDeUnaMateriaPrimaSinReceta(nombre: string): string {
   return `«${nombre}» se produce y todavía no tiene receta: armala en Catálogo → Recetas para poder producirla.`;
@@ -62,10 +62,17 @@ function rechazoDeUnaMateriaPrimaSinReceta(nombre: string): string {
 
 /** Por qué la receta del producto falta, o `null` si está. Lee la receta VIGENTE en la sucursal (la propia si la tiene habilitada, si no la central): la misma resolución que la venta. */
 async function rechazoDeLaReceta(db: Db, producto: ProductoDelEspacio, sucursalId: string): Promise<string | null> {
-  const origen = (await cargarOrigenDeStockParaVender(db, { sucursalId, productoIds: [producto.id] })).get(producto.id);
+  const origen = (await cargarOrigenDeStockDelCatalogo(db, { sucursalId, productoIds: [producto.id] })).get(producto.id);
   const ingredientes = origen?.ingredientesDeLaRecetaVigente ?? 0;
   if (producto.tipo === "MP") return ingredientes > 0 ? null : rechazoDeUnaMateriaPrimaSinReceta(producto.nombre);
-  return rechazoSinOrigenDeStock({ nombre: producto.nombre, seProduce: producto.seProduce, esAnclaDeAdicional: producto.esAnclaDeAdicional, ingredientesDeLaRecetaVigente: ingredientes });
+  return rechazoSinOrigenDeStock({
+    nombre: producto.nombre,
+    seProduce: producto.seProduce,
+    esAnclaDeAdicional: producto.esAnclaDeAdicional,
+    ingredientesDeLaRecetaVigente: ingredientes,
+    // Ventas con opciones (2026-10-29): sin receta, el producto también tiene origen de stock si alguna de sus opciones ofrecidas suma un insumo.
+    ...(origen?.opciones ? { opciones: origen.opciones } : {}),
+  });
 }
 
 /**

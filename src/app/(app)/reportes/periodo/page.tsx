@@ -5,7 +5,8 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo, reportePesadoSinCupo } fro
 import { resolverRangoDeReporte } from "@/core/reportes/public";
 import { obtenerUltimaCotizacionSinRomper } from "@/server/consultas/reportes/cotizacion-dolar";
 import { obtenerReportePorPeriodo } from "@/server/consultas/reportes/periodo";
-import { TablaVentasPorProducto, TablaComprasPorProveedor, TablaGastoPorInsumo, TablaPrecioPorInsumo, TablaImpactoRecetas } from "./tabla-periodo";
+import { generarVentasPorOpcion } from "@/server/consultas/reportes/ventas-por-opcion";
+import { TablaVentasPorProducto, TablaVentasPorOpcion, TablaComprasPorProveedor, TablaGastoPorInsumo, TablaPrecioPorInsumo, TablaImpactoRecetas } from "./tabla-periodo";
 import { GraficoGastoPorGrupo } from "./grafico-gasto-grupo";
 import { DigestAlertas } from "./digest-alertas";
 import { ComparativaPrecios } from "./comparativa-precios";
@@ -32,8 +33,10 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
   const rango = resolverRangoDeReporte(sp, ahora, ctx.empresaZonaHoraria);
   const desdeStr = rango.desdeISO;
   const hastaStr = rango.hastaISO;
-  const [rep, cotizacion, gateCostos] = await Promise.all([
+  const [rep, ventasPorOpcion, cotizacion, gateCostos] = await Promise.all([
     obtenerReportePorPeriodo(ctx.sucursalId, fechaDeColumnaDate(desdeStr), fechaDeColumnaDate(hastaStr), undefined, ctx.db, ahora, ctx.empresaZonaHoraria),
+    // Ventas con opciones (2026-10-29): mismo rango y misma zona que «Ventas por producto»; con el mismo permiso de la pantalla (`reporte_periodo`).
+    generarVentasPorOpcion(ctx.sucursalId, fechaDeColumnaDate(desdeStr), fechaDeColumnaDate(hastaStr), ctx.db, ctx.empresaZonaHoraria),
     obtenerUltimaCotizacionSinRomper(ctx.db),
     requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_costos", ctx.db),
   ]);
@@ -146,6 +149,14 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
       <div>
         <h2 className="mb-2 text-sm font-medium">Ventas por producto</h2>
         <TablaVentasPorProducto filas={rep.margen.porProducto} />
+      </div>
+
+      <div>
+        <h2 className="mb-1 flex items-center text-sm font-medium">
+          ¿Qué opción se vende más? Ventas por opción
+          <AyudaIcono texto="Cuánto se vendió de cada opción elegida dentro del precio (tamaño, variante o lo que viene incluido). Dentro de un grupo de elección única las filas suman el total del producto; entre grupos distintos no se suman: la misma venta aparece en «Grande» y en «Pollo». Los adicionales no figuran acá, ya aparecen como su producto. El costo es el que se guardó al vender." />
+        </h2>
+        <TablaVentasPorOpcion filas={ventasPorOpcion} />
       </div>
 
       <div>

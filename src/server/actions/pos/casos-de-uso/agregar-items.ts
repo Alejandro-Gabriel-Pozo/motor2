@@ -123,9 +123,11 @@ export async function agregarItemsCasoDeUso(
     // lecturas agrupadas por pedido. Es el error temprano para el mozo: el cobro lo vuelve a mirar (`armarLinea`), por si la receta se desactivó entre medio.
     const origenDeStock = await cargarOrigenDeStockParaVender(tx, { sucursalId: actor.sucursalId, productoIds: productoIdsDelPedido });
     // Ni un suelto ni un componente es el ancla de un adicional (el ancla suelta ya se rechazó; los adicionales de una línea configurada no pasan por acá). Un id que la lectura no ve, sin receta.
-    const sinReceta = (productoId: string, nombreSiNoSeVe: string) => {
+    // Una línea con opciones dentro del precio pasa además lo que esas opciones descuentan (ventas con opciones, 2026-10-29): una base sin receta se pide si lo elegido suma algún insumo.
+    const sinReceta = (productoId: string, nombreSiNoSeVe: string, opciones?: { insumos: number; nombres: readonly string[] }) => {
       const leido = origenDeStock.get(productoId);
-      return rechazoSinOrigenDeStock(leido ? { ...leido, esAnclaDeAdicional: false } : { nombre: nombreSiNoSeVe, seProduce: false, esAnclaDeAdicional: false, ingredientesDeLaRecetaVigente: 0 });
+      const origen = leido ? { ...leido, esAnclaDeAdicional: false } : { nombre: nombreSiNoSeVe, seProduce: false, esAnclaDeAdicional: false, ingredientesDeLaRecetaVigente: 0 };
+      return rechazoSinOrigenDeStock(opciones ? { ...origen, opciones } : origen);
     };
 
     // Fase 1: VALIDAR todo, sin escribir nada — ni los sueltos ni las promos (mismo criterio que registrarVentaEnTx).
@@ -146,19 +148,26 @@ export async function agregarItemsCasoDeUso(
       // GO-2b: recién después de los chequeos de siempre, las opciones (sin grupos admitidos ni opciones pedidas, el ítem sigue igual que antes).
       const admite = opcionesLeidas.get(producto.id) ?? { grupos: [], anclaDeOpcionId: null, esBase: false };
       if (admite.anclaDeOpcionId !== null) return fracaso("PRODUCTO_INVALIDO", `«${producto.nombre}» se vende solo como adicional de otro producto.`);
-      const rechazoReceta = sinReceta(producto.id, producto.nombre);
-      if (rechazoReceta !== null) return fracaso(CODIGO_PRODUCTO_SIN_RECETA, rechazoReceta);
       const elegidas = item.opciones ?? [];
+      const conOpciones = admite.grupos.length > 0 || elegidas.length > 0;
+      // Sin opciones, el chequeo de la receta queda donde estaba; con ellas se hace después de armar la línea (necesita lo que lo elegido descuenta).
+      if (!conOpciones) {
+        const rechazoReceta = sinReceta(producto.id, producto.nombre);
+        if (rechazoReceta !== null) return fracaso(CODIGO_PRODUCTO_SIN_RECETA, rechazoReceta);
+      }
       // GO-3b: el precio de LISTA que vio el mozo (opcional): si cambió desde entonces (el precio local, una opción), no se cobra otro en silencio: `PRECIO_CAMBIO`.
       const esperado = typeof item.precioDeListaEsperado === "number" ? item.precioDeListaEsperado : null;
       const cambioElPrecio = (lista: number) => esperado !== null && redondearMoneda(lista) !== redondearMoneda(esperado);
       const mensajeDePrecioCambiado = `«${producto.nombre}»: el precio cambió desde que lo elegiste. Volvé a mirarlo y agregalo de nuevo.`;
-      if (admite.grupos.length > 0 || elegidas.length > 0) {
+      if (conOpciones) {
         const armada = armarLineaConfigurada({ grupos: admite.grupos, elegidas, precioBase: precioDeLista, descuentoDeProducto: descuento, cantidad: cantidad.cantidad });
         if (!armada.ok) {
           const codigo = armada.codigo === "OPCION_CAMBIO" ? armada.codigo : "OPCIONES_INVALIDAS";
           return fracaso(codigo, `«${producto.nombre}»: ${armada.mensaje}`);
         }
+        // Una línea que solo lleva adicionales (sin opciones dentro del precio) cobra como una línea suelta: ahí la barrera mira solo la receta base.
+        const rechazoReceta = sinReceta(producto.id, producto.nombre, armada.linea && armada.linea.fotos.length > 0 ? { insumos: armada.linea.insumosSinLaBase, nombres: armada.linea.fotos.map((f) => f.nombreOpcion) } : undefined);
+        if (rechazoReceta !== null) return fracaso(CODIGO_PRODUCTO_SIN_RECETA, rechazoReceta);
         if (armada.linea) {
           if (cambioElPrecio(armada.linea.precioCartaUnitario ?? armada.linea.precioUnitario)) return fracaso("PRECIO_CAMBIO", mensajeDePrecioCambiado);
           configuradas.push({ productoId: producto.id, cantidad: cantidad.cantidad, linea: armada.linea });
