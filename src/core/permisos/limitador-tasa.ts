@@ -14,7 +14,7 @@
  *
  * Límite alto a propósito (no es antiabuso agresivo): tiene que convivir
  * con flujos legítimos de carga masiva (ej. la grilla de Conteo Físico,
- * que puede disparar decenas de `registrarConteoFisico` seguidos al
+ * que puede disparar decenas de conteos seguidos al
  * confirmar).
  */
 /**

@@ -10,11 +10,9 @@ import { setFrecuenciaConteoCasoDeUso } from "./casos-de-uso/set-frecuencia-cont
 
 /**
  * Agenda de conteo físico periódico por sucursal × producto (sub-plan S,
- * docs/plan-rendimiento-recetas-2026-09-22.md §E). Reusa el permiso
- * `proceso_control` ("Registrar un Conteo Físico") en vez de crear uno
- * nuevo (decisión S2 del plan): quien cuenta es quien configura cada
- * cuánto — mismo criterio que ya gatea `/reportes/conteos` y
- * `/stock/reclasificar`.
+ * docs/plan-rendimiento-recetas-2026-09-22.md §E). El plan (decisión S2) reusaba el permiso
+ * `proceso_control` ("Registrar un Conteo Físico"): quien cuenta es quien configura cada cuánto. Hoy tiene su PROPIA clave, `conteo_frecuencia`
+ * (piso operario, semilla admin y operador), y la lectura y las dos mutaciones la exigen.
  *
  * Desde el Hito 4 de la pureza (bloque C de la pieza carta/catálogo/stock, paso H4C-19) las dos mutaciones son adaptadores finos de sus casos de uso
  * (`./casos-de-uso/{set-frecuencia-conteo,eliminar-frecuencia-conteo}.ts`; escrituras en server/persistencia/stock/frecuencia-conteo.ts): el archivo entero está en

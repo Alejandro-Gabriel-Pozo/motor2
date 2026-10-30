@@ -11,8 +11,8 @@ import { setSeccionHabitualCasoDeUso } from "./casos-de-uso/set-seccion-habitual
 /**
  * Sección HABITUAL de un producto de venta en esta sucursal (docs/plan-seccion-habitual-stock-2026-09-25.md, C1/C2): de qué sección
  * de STOCK sale primero lo que consume al cerrar una cuenta del salón. Fila ausente = sin preferencia (el cierre resuelve solo, por
- * vencimiento). Reusa el permiso `stock_minimo` en vez de crear uno nuevo (mismo criterio que la Frecuencia de conteo reusó
- * `proceso_control`): es configuración de stock por sucursal × producto, la misma gente que fija mínimos.
+ * vencimiento). Tiene su propio permiso, `stock_seccion_habitual` (piso administrador; la lectura y las dos mutaciones lo exigen): es configuración de stock por
+ * sucursal × producto, de la misma gente que fija mínimos (`stock_minimo`), pero con clave propia.
  *
  * Desde el Hito 4 de la pureza (bloque C de la pieza carta/catálogo/stock, paso H4C-20) las dos mutaciones son adaptadores finos de sus casos de uso
  * (`./casos-de-uso/{set-seccion-habitual,eliminar-seccion-habitual}.ts`; escrituras en server/persistencia/stock/seccion-habitual.ts; el formato en

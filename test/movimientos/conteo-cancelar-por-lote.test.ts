@@ -5,7 +5,8 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico, cancelarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { cancelarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 /**
@@ -23,7 +24,7 @@ describe("M-2 por lote: cancelar un conteo de un lote solo lo frena lo posterior
   const saldo = () => calcularSaldoTotal(mpId, seccionId, prisma);
   const conteos = () => prisma.conteoFisico.findMany({ where: { productoId: mpId }, orderBy: { creadoEn: "asc" } });
   async function contar(conteoReal: number, loteVencimiento?: Date) {
-    const r = await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal, ...(loteVencimiento ? { loteVencimiento } : {}), fechaConteo: new Date(), accion: "AJUSTAR" });
+    const r = await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal, ...(loteVencimiento ? { loteVencimiento } : {}), fechaConteo: new Date(), accion: "AJUSTAR" });
     expect(r.ok, r.mensaje).toBe(true);
   }
 

@@ -255,11 +255,6 @@ const completos: Record<string, Valor> = {
       intento(c, ["compraId"], [k.compraId, { proveedorId: c.propio.proveedorId, nroFactura: "F-NUEVA", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
       intento(c, ["proveedorId"], [c.propio.compraId, { proveedorId: k.proveedorId, nroFactura: "F-NUEVA", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
     ),
-  "accion|actions/movimientos/conteo-fisico.ts|registrarConteoFisico": (k, c) =>
-    conVariantes(
-      intento(c, ["productoId"], [{ productoId: k.productoId, seccionId: c.propio.seccionId, conteoReal: 5, fechaConteo: hoy(), accion: "AJUSTAR", detalle: "texto" }]),
-      intento(c, ["seccionId"], [{ productoId: c.propio.productoId, seccionId: k.seccionId, conteoReal: 5, fechaConteo: hoy(), accion: "AJUSTAR", detalle: "texto" }]),
-    ),
   "accion|actions/movimientos/conteo-fisico.ts|registrarConteosFisicos": (k, c) =>
     conVariantes(
       intento(c, ["productoId"], [[{ productoId: k.productoId, seccionId: c.propio.seccionId, conteoReal: 5, fechaConteo: hoy(), accion: "AJUSTAR" }]]),

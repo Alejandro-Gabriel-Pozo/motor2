@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import type { Db } from "../../src/lib/db-tipos";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { ZONA_ARGENTINA, mediodiaDelDia, sumarDias } from "../../src/core/tiempo/zona-horaria";
 import { calcularRendimientoRecetas, calcularRendimientoRecetasCompartidas, calcularRendimientoRecetasSimples } from "../../src/server/consultas/reportes/rendimiento-recetas";
 
@@ -54,7 +54,7 @@ async function sembrar(n: number) {
   await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
   const producto = (codigo: string, tipo: "MP" | "PV", insumoId?: string) => sembrarProductoDisponible({ codigo, nombre: codigo, tipo, unidadStockId: kg.id, ...(insumoId ? { insumoId } : {}) }, sucursalId);
   const conteo = async (productoId: string, conteoReal: number, fechaConteo: Date) => {
-    const r = await registrarConteoFisico({ productoId, seccionId, conteoReal, fechaConteo, accion: "AJUSTAR" });
+    const r = await registrarUnConteoFisico({ productoId, seccionId, conteoReal, fechaConteo, accion: "AJUSTAR" });
     expect(r.ok, r.mensaje).toBe(true);
   };
 

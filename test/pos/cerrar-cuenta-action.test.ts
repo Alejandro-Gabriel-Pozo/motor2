@@ -7,7 +7,7 @@ import { crearMozo, crearUsuarioConRol, entrarComo, sembrarCuenta, sembrarSalon 
 import { anularItemEnviado } from "../../src/server/actions/pos/cuenta-anulacion";
 import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { calcularAlertasStock, obtenerResumenAlertasStock } from "../../src/server/consultas/stock/alertas";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
@@ -225,7 +225,7 @@ describe("cerrarCuenta (server action)", () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 6, precioUnitario: 12000, numeroEnvio: 1 }]);
       await cerrarCuenta(cuenta.id);
 
-      const r = await registrarConteoFisico({ productoId: s.muzzarella.id, seccionId: s.seccion.id, conteoReal: 3, fechaConteo: new Date(), accion: "AJUSTAR" });
+      const r = await registrarUnConteoFisico({ productoId: s.muzzarella.id, seccionId: s.seccion.id, conteoReal: 3, fechaConteo: new Date(), accion: "AJUSTAR" });
       expect(r).toEqual({ ok: true, mensaje: "Conteo registrado. Diferencia: +4 (ajustada)." });
       expect(await calcularSaldoTotal(s.muzzarella.id, s.seccion.id, prisma)).toBe(3);
       expect((await calcularAlertasStock(s.sucursalId, prisma)).some((a) => a.productoId === s.muzzarella.id)).toBe(false);

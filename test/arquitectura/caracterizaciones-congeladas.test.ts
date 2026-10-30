@@ -394,6 +394,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "E3a (ADR-041, pasos 9 y 10; agrega un dato, no cambia ninguno): «Compras registradas» devuelve en cada compra `facturaProveedorId` (la factura de proveedor de la que es parte, o null), para mostrar «Anular factura entera» en lugar de corregir o anular la compra suelta. Cambian SOLO 12 líneas, todas `facturaProveedorId: null` agregadas (ninguna compra del golden es parte de una factura); mismo número de consultas, ningún otro valor cambia.",
       },
+      {
+        blob: "1f7a7fbb8358fa662e1f6b112f05a849064a5f08",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `4b918ba0` («Stock: botones de confirmación con el componente común y «Cancelar» del conteo solo con permiso»).
+        commit: "4b918ba0",
+        motivo:
+          "Paquete de limpieza de deuda A, paso 2 (c) (retira código sin uso, sin cambio de comportamiento): `buscarProductoParaHistorial` no tenía ningún llamador en `src/` (el filtro del historial usa `SelectorProducto`), así que se borra junto con su caso de la caracterización. Cambia SOLO que desaparece la entrada «13. historial-producto.buscarProductoParaHistorial(Central, «pizza»)» (6 líneas: encabezado, consultas y resultado) y que las entradas siguientes bajan un número (14 → 13, 15 → 14, etc.): 33 líneas agregadas y 40 quitadas, las 33 agregadas son solo el encabezado `### N.` renumerado. Ninguna consulta ni resultado de otra entrada cambia.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {

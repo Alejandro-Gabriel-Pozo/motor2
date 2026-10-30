@@ -37,7 +37,7 @@ function condicionDelPar(p: AlcanceDeReconciliacion["pares"][number]) {
  *  1. un CONTROL o un AJUSTE vigente (un conteo físico aplicado, un ajuste manual). NO cuentan: las reversiones por anulación (son AJUSTE, pero son el propio deshacer de otra venta o compra:
  *     `OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION`), ni lo que hace un conteo CANCELADO (el original y su reversión se anulan entre sí).
  *  2. un CONTEO FÍSICO que NO escribió movimiento (I-1 de la auditoría final): diferencia 0 («el stock ya coincidía»), «Falta movimiento», «Descartar» o un pendiente ya cerrado. Igual reconcilió (o dejó
- *     asentado) el stock contra lo contado, y `registrarConteoFisico` no escribe `Operación` en esos casos, así que la lectura 1 no lo ve. Se mira la fila del propio conteo (`ConteoFisico`), no CANCELADO.
+ *     asentado) el stock contra lo contado, y `registrarConteosFisicos` no escribe `Operación` en esos casos, así que la lectura 1 no lo ve. Se mira la fila del propio conteo (`ConteoFisico`), no CANCELADO.
  *
  * `soloConteos` (cancelar un conteo y anular una compra, M-2 y M-3): un AJUSTE MANUAL (sin conteo) no cuenta. Es el remedio que el propio rechazo indica («corregí con un ajuste de stock») y el que
  * el mensaje de `STOCK_CONSUMIDO` (M-7) da para destrabar una compra; y un ajuste es un delta, no la lectura de lo que hay físicamente. Sí cuenta todo lo que escribió un conteo no cancelado
