@@ -578,5 +578,4 @@ export const SIN_GENERADOR: Readonly<Record<string, string>> = {
   "lectura|lecturas/catalogo/recetas-vigentes.ts|cargarHistorialDeVersiones": AYUDANTE_DE_RECETAS,
   "lectura|lecturas/catalogo/recetas-vigentes.ts|cargarRecetaVigente": AYUDANTE_DE_RECETAS,
   "lectura|lecturas/catalogo/recetas-vigentes.ts|cargarRecetasVigentes": AYUDANTE_DE_RECETAS,
-  "lectura|lecturas/catalogo/recetas-vigentes.ts|versionVigentePorProducto": AYUDANTE_DE_RECETAS,
 };
