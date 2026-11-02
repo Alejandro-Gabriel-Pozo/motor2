@@ -178,7 +178,7 @@ const lectura = (guarda: string) => `${guarda} — ${LECTURA_H8}`;
 const DELEGA_EN_GUARDAR_RECETA =
   "requerirVerDeEmpresa — mutación puntual del editor de la receta central: lee la vigente con obtenerRecetaVigente y guarda delegando en guardarReceta (conPermisoDeEmpresa guardar_receta, declarada arriba); la delegación la exige acciones-con-guarda";
 const SIN_ENVOLTORIO: Record<string, Readonly<Record<string, string>>> = {
-  "catalogo/precio-local.ts": { obtenerPrecioLocalProducto: lectura("requerirVerEnSucursal"), listarPreciosLocales: lectura("requerirVerEnSucursal") },
+  "catalogo/precio-local.ts": { listarPreciosLocales: lectura("requerirVerEnSucursal") },
   "catalogo/categorias-producto.ts": { listarCategoriasProducto: lectura("requerirVerAlguna") },
   "catalogo/insumos.ts": {
     listarInsumos: lectura("requerirVerAlguna"),

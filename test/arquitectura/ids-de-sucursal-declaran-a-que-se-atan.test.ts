@@ -139,7 +139,6 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     motivo: "S-07 (O.56): el origen se lee con membresía vigente y «Ver» de la copia ALLÍ (`leerOrigenDeCopia` en la propia acción); recién después se ensancha la LECTURA a esa sucursal (`conAlcanceEnSucursal`, M.3-A5), nunca la escritura",
   },
   "movimientos/lecturas-conteo-fisico.ts|obtenerHistorialConteosFisicos": { ata: "SUCURSAL_CON_GATE", motivo: "`reporte_conteos` EN la sucursal pedida" },
-  "catalogo/precio-local.ts|obtenerPrecioLocalProducto": { ata: "SUCURSAL_CON_GATE", motivo: "`precio_local` EN la sucursal pedida" },
   "catalogo/precio-local.ts|listarPreciosLocales": { ata: "SUCURSAL_CON_GATE", motivo: "`precio_local` EN la sucursal pedida" },
   "catalogo/precio-local.ts|sincronizarPrecioLocalGrupoCarta": { ata: "SUCURSAL_ACTIVA", motivo: "`precio_local` en la sucursal activa; el guard exige que el id sea la activa" },
   "movimientos/secciones.ts|listarSeccionesActivas": { ata: "SUCURSAL_CON_GATE", motivo: "alguna de las pantallas que usan secciones, EN la sucursal pedida" },
