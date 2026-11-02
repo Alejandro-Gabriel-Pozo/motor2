@@ -44,7 +44,6 @@ export interface ComandoEditarGrupoDeOpciones {
   nombre: string;
   cantidadMinima: number;
   cantidadMaxima: number;
-  activo: boolean;
   /**
    * Fase 4 (ADR-035): «se lee en la carta como» (`null` = sin prefijo; solo VARIANTE y MEDIDA). `undefined` = queda como estaba (un pedido que no lo manda). Como el resto de la fila, entra en la
    * comparación de la versión: un formulario viejo que cambia otra cosa arrastra el prefijo viejo y se rechaza con `VERSION_DESACTUALIZADA`.
@@ -89,8 +88,6 @@ export interface ComandoEditarOpcionDeGrupo {
   opcionId: string;
   versionEsperada: number;
   nombre: string;
-  orden: number;
-  activa: boolean;
 }
 
 export type ResultadoEditarOpcionDeGrupo = ResultadoCaso<
@@ -123,7 +120,7 @@ export interface OpcionAdmitidaEnComando {
   activo: boolean;
 }
 
-/** Reemplaza, para un par (producto, grupo), la fila del grupo y las de sus opciones. Nunca borra: quitar es `activo = false`. */
+/** Reemplaza, para un par (producto, grupo), la fila del grupo y las de sus opciones. Nunca borra; la fila del grupo queda siempre activa (quitar un grupo va por `vincularGrupoEnProducto`). */
 export interface ComandoFijarAdmisionDeGrupo {
   productoId: string;
   grupoId: string;
@@ -133,7 +130,6 @@ export interface ComandoFijarAdmisionDeGrupo {
   cantidadMinima: number | null;
   cantidadMaxima: number | null;
   modoPrecio: ModoDePrecioDeMedida | null;
-  activo: boolean;
   opciones: OpcionAdmitidaEnComando[];
 }
 

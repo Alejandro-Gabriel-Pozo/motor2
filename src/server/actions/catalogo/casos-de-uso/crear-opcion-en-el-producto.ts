@@ -153,7 +153,6 @@ export async function crearOpcionEnElProductoCasoDeUso(
           cantidadMinima: filaGrupo.cantidadMinima,
           cantidadMaxima: filaGrupo.cantidadMaxima,
           modoPrecio: filaGrupo.modoPrecio === null ? null : (filaGrupo.modoPrecio as "ABSOLUTO" | "DIFERENCIA"),
-          activo: true,
           opciones: [{ opcionId, versionEsperada: 0, cantidadMaxima, precioAbsoluto: absoluto, diferencia: null, activo: true }],
         });
         // La opción y su respaldo ya están escritos: devolver el rechazo los confirmaría. Se lanza.

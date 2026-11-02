@@ -15,7 +15,7 @@ import { cargarOpcionesDelProducto } from "../../src/server/consultas/catalogo/o
 /**
  * Fase 4 de la ola «precio y carta», C5 (ADR-035): mientras un producto se vende por opción, los escritores de opciones no lo dejan sin su grupo de precio final ni le cargan porcentajes:
  *  - QUITAR su grupo de precio (`vincular-grupo-en-producto`) → `BASE_SIN_PRECIO_FINAL` (antes quitar no validaba nada y el producto se vendía suelto a su precio guardado); quitar otro grupo, sí;
- *  - en lo que admite (`fijar-admision-de-grupo-en-producto`): apagar la admisión del grupo de precio, pasarlo a DIFERENCIA o un porcentaje en una variante → `CONFIGURACION_INVALIDA` (dejar una
+ *  - en lo que admite (`fijar-admision-de-grupo-en-producto`): pasarlo a DIFERENCIA o un porcentaje en una variante → `CONFIGURACION_INVALIDA` (dejar una
  *    opción ofrecida sin precio o apagarlas todas ya lo rechazaba la regla de siempre de una medida en ABSOLUTO: se fija que siga);
  *  - una versión en PORCENTAJE de una opción que la base ofrece sin su propia diferencia (`agregar-version-de-opcion`) → `CONFIGURACION_INVALIDA`;
  *  - el control de precio de lista de una base usa su precio de referencia: con el guardado en 0 una variante sin costo se admite y el producto SE VENDE (con DIRECTO y 0, hoy la admisión pasa —el
@@ -44,7 +44,6 @@ describe("C5: el invariante de la base en los escritores de opciones", () => {
       cantidadMinima: g.cantidadMinima,
       cantidadMaxima: g.cantidadMaxima,
       modoPrecio: g.modoPrecio as ModoDePrecioDeMedida | null,
-      activo: g.activo,
       opciones: filas.map((f) => ({ opcionId: f.opcionId, versionEsperada: f.version, cantidadMaxima: f.cantidadMaxima, precioAbsoluto: f.precioAbsoluto === null ? null : Number(f.precioAbsoluto), diferencia: dif(f), activo: f.activo })),
     };
   }
@@ -73,13 +72,12 @@ describe("C5: el invariante de la base en los escritores de opciones", () => {
     expect(await quitar(cat.producto.cafe!, await grupoDe(cat.producto.cafe!, "Tamaño del Café"))).toMatchObject({ ok: true });
   });
 
-  it("en lo que admite una base: apagar el grupo de precio, pasarlo a DIFERENCIA, dejar una opción ofrecida sin precio o apagarlas todas → CONFIGURACION_INVALIDA, sin escribir", async () => {
+  it("en lo que admite una base: pasarlo a DIFERENCIA, dejar una opción ofrecida sin precio o apagarlas todas → CONFIGURACION_INVALIDA, sin escribir", async () => {
     const tipos = await grupoDe(cat.producto.pizzas!, "Tipos de Pizza");
     await base(cat.producto.pizzas!);
     const antes = await huella();
     const actual = await comandoActual(cat.producto.pizzas!, tipos);
     const casos: [string, ComandoFijarAdmisionDeGrupo, RegExp][] = [
-      ["apagar el grupo de precio", { ...actual, activo: false }, /^«Pizzas» se vende por opción\. Falta el precio final de cada opción: /],
       ["pasarlo a DIFERENCIA", { ...actual, modoPrecio: "DIFERENCIA", opciones: actual.opciones.map((o) => ({ ...o, precioAbsoluto: null, diferencia: { tipo: "MONTO", monto: 0 } })) }, /Falta el precio final de cada opción/],
       // Estos dos ya los rechazaba la regla de siempre de la admisión (una medida en ABSOLUTO exige el precio de cada opción activa y su mínimo alcanzable): se fija que sigan rechazados.
       ["una opción sin precio", { ...actual, opciones: actual.opciones.map((o, i) => (i === 0 ? { ...o, precioAbsoluto: null } : o)) }, /necesita un precio propio de 0,01 o más/],
@@ -93,9 +91,6 @@ describe("C5: el invariante de la base en los escritores de opciones", () => {
     expect(await huella()).toEqual(antes);
     // Cambiar un precio final (sigue siendo de 0,01 o más) se puede.
     expect(await fijar({ ...actual, opciones: actual.opciones.map((o, i) => (i === 0 ? { ...o, precioAbsoluto: 18500 } : o)) })).toMatchObject({ ok: true });
-    // Y en un producto directo, apagar su grupo de medida se puede como siempre.
-    const tamano = await grupoDe(cat.producto.cafe!, "Tamaño del Café");
-    expect(await fijar({ ...(await comandoActual(cat.producto.cafe!, tamano)), activo: false })).toMatchObject({ ok: true });
   });
 
   it("un PORCENTAJE en la variante de una base se rechaza (en la fila del producto o como versión de la opción); en un producto directo, no", async () => {

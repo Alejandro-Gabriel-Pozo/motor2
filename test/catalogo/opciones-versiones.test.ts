@@ -124,22 +124,16 @@ describe("opciones, versiones y consumos (GO-2a)", () => {
   });
 
   describe("editar una opción", () => {
-    it("nombre, orden y activa con la versión esperada: audita solo lo que cambia; sin cambios no escribe; con la versión vieja y otro cambio, VERSION_DESACTUALIZADA", async () => {
-      const r = await editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: e.vacaId, versionEsperada: 1, nombre: "De vaca entera", orden: 1, activa: true });
+    it("nombre con la versión esperada: audita solo lo que cambia; sin cambios no escribe; con la versión vieja y otro cambio, VERSION_DESACTUALIZADA", async () => {
+      const r = await editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: e.vacaId, versionEsperada: 1, nombre: "De vaca entera" });
       expect(r).toMatchObject({ ok: true, datos: { version: 2, huboCambio: true } });
       expect(await prisma.registroAuditoria.findMany({ where: { entidad: "OpcionDeGrupo", entidadId: e.vacaId }, select: { campo: true, valorAnterior: true, valorNuevo: true } })).toEqual([
         { campo: "nombre", valorAnterior: "De vaca", valorNuevo: "De vaca entera" },
       ]);
-      expect(await editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: e.vacaId, versionEsperada: 1, nombre: "De vaca entera", orden: 1, activa: true })).toMatchObject({ ok: true, datos: { huboCambio: false, version: 2 } });
-      expect(await editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: e.vacaId, versionEsperada: 1, nombre: "Vaca", orden: 1, activa: true })).toMatchObject({ ok: false, codigo: "VERSION_DESACTUALIZADA" });
-      expect(await editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: e.vacaId, versionEsperada: 2, nombre: "almendras", orden: 1, activa: true })).toMatchObject({ ok: false, codigo: "NOMBRE_REPETIDO" });
-      expect(await editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: "no-existe", versionEsperada: 1, nombre: "X", orden: 0, activa: true })).toMatchObject({ ok: false, codigo: "OPCION_NO_ENCONTRADA" });
-    });
-
-    it("D-4: apagar la única opción de una INCLUIDA obligatoria avisa que el producto queda sin poder venderse (no se bloquea)", async () => {
-      const r = await editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: e.azucarId, versionEsperada: 1, nombre: "Azúcar", orden: 1, activa: false });
-      expect(r).toMatchObject({ ok: true, datos: { productosAfectados: 1 } });
-      expect(r.mensaje).toMatch(/1 producto que lo admite queda sin poder venderse/);
+      expect(await editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: e.vacaId, versionEsperada: 1, nombre: "De vaca entera" })).toMatchObject({ ok: true, datos: { huboCambio: false, version: 2 } });
+      expect(await editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: e.vacaId, versionEsperada: 1, nombre: "Vaca" })).toMatchObject({ ok: false, codigo: "VERSION_DESACTUALIZADA" });
+      expect(await editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: e.vacaId, versionEsperada: 2, nombre: "almendras" })).toMatchObject({ ok: false, codigo: "NOMBRE_REPETIDO" });
+      expect(await editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: "no-existe", versionEsperada: 1, nombre: "X" })).toMatchObject({ ok: false, codigo: "OPCION_NO_ENCONTRADA" });
     });
   });
 
@@ -192,14 +186,14 @@ describe("opciones, versiones y consumos (GO-2a)", () => {
       expect(await crearOpcionDeGrupo({ grupoId: e.grupoVarianteId, nombre: "Soja", orden: 3, esNinguna: false, ancla: null, version: { diferencia: { tipo: "MONTO", monto: "90,5" }, factorEscala: null, consumos: [] } })).toMatchObject({ ok: true });
       const soja = await prisma.opcionDeGrupo.findFirstOrThrow({ where: { nombre: "Soja" }, include: { versiones: true } });
       expect(Number(soja.versiones[0]!.diferenciaPrecio)).toBe(90.5);
-      expect(await editarOpcionDeGrupo({ opcionId: soja.id, versionEsperada: 1, nombre: "Soja", orden: 2, activa: true })).toMatchObject({ ok: true });
+      expect(await editarOpcionDeGrupo({ opcionId: soja.id, versionEsperada: 1, nombre: "Soja" })).toMatchObject({ ok: true });
       expect(await agregarVersionDeOpcion({ opcionId: soja.id, numeroEsperado: 1, version: { diferencia: { tipo: "MONTO", monto: 95 }, factorEscala: null, consumos: [] } })).toMatchObject({ ok: true });
 
       await mockearUsuarioActual({ id: operadorId, email: "operador@test.com", nombre: null });
       const versiones = await prisma.versionDeOpcion.count();
       for (const r of [
         await crearOpcionDeGrupo({ grupoId: e.grupoVarianteId, nombre: "Arroz", orden: 4, esNinguna: false, ancla: null, version: { diferencia: { tipo: "MONTO", monto: 0 }, factorEscala: null, consumos: [] } }),
-        await editarOpcionDeGrupo({ opcionId: soja.id, versionEsperada: 2, nombre: "Pisada", orden: 2, activa: false }),
+        await editarOpcionDeGrupo({ opcionId: soja.id, versionEsperada: 2, nombre: "Pisada" }),
         await agregarVersionDeOpcion({ opcionId: soja.id, numeroEsperado: 2, version: { diferencia: { tipo: "MONTO", monto: 1 }, factorEscala: null, consumos: [] } }),
       ]) {
         expect(r.ok).toBe(false);

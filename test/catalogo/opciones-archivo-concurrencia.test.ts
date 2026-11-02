@@ -81,7 +81,7 @@ describe("archivar y restaurar — concurrencia real (OPCIONES-LIMPIEZA)", () =>
       const vista = (await prisma.opcionDeGrupo.findUniqueOrThrow({ where: { id: e.grandeId } })).version;
       const [archivo, edicion] = await Promise.allSettled([
         archivar([], [e.grandeId], true),
-        editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: e.grandeId, versionEsperada: vista, nombre: `Grande ${i}`, orden: 3, activa: true }),
+        editarOpcionDeGrupoCasoDeUso(actor(), { opcionId: e.grandeId, versionEsperada: vista, nombre: `Grande ${i}` }),
       ]);
       expect(archivo.status === "fulfilled" && archivo.value.ok, `vuelta ${i}`).toBe(true);
       expect(edicion.status, `vuelta ${i}`).toBe("fulfilled");

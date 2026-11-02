@@ -172,7 +172,6 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
                     cantidadMaxima: null,
                     // Un tamaño necesita su modo de precio: arranca en «diferencia sobre el precio base» (con las diferencias de cada opción); se cambia después en su formulario.
                     modoPrecio: elegido?.tipo === "MEDIDA" ? "DIFERENCIA" : null,
-                    activo: true,
                     opciones: elegido ? elegido.opciones : [],
                   });
                 }}

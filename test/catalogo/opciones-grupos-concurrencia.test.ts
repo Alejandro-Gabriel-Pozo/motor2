@@ -34,8 +34,8 @@ describe("grupos de opciones — concurrencia real (GO-2a)", () => {
       const version = i + 1;
       const auditoriaAntes = await prisma.registroAuditoria.count({ where: { entidadId: grupoId } });
       const resultados = await Promise.allSettled([
-        editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: version, nombre: `Extras ${i}`, cantidadMinima: 0, cantidadMaxima: 5, activo: true }),
-        editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: version, nombre: "Extras", cantidadMinima: 1, cantidadMaxima: i % 2 === 0 ? 4 : 5, activo: true }),
+        editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: version, nombre: `Extras ${i}`, cantidadMinima: 0, cantidadMaxima: 5 }),
+        editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: version, nombre: "Extras", cantidadMinima: 1, cantidadMaxima: i % 2 === 0 ? 4 : 5 }),
       ]);
       expect(resultados.every((s) => s.status === "fulfilled"), `iteración ${i}: una promesa rechazó (el conflicto no se absorbió)`).toBe(true);
       const valores = resultados.map((s) => (s as PromiseFulfilledResult<Awaited<ReturnType<typeof editarGrupoDeOpcionesCasoDeUso>>>).value);
@@ -84,9 +84,9 @@ describe("grupos de opciones — concurrencia real (GO-2a)", () => {
   it("doble clic en serie (Next despacha las Server Actions de un cliente de a una): la segunda edición idéntica no escribe ni audita", async () => {
     const r = await crearGrupoDeOpcionesCasoDeUso(actor(), { nombre: "Tamaño", tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1 });
     const grupoId = r.ok ? r.datos.grupoId : "";
-    const primera = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Tamaños", cantidadMinima: 1, cantidadMaxima: 1, activo: true });
+    const primera = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Tamaños", cantidadMinima: 1, cantidadMaxima: 1 });
     const auditoria = await prisma.registroAuditoria.count();
-    const segunda = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Tamaños", cantidadMinima: 1, cantidadMaxima: 1, activo: true });
+    const segunda = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Tamaños", cantidadMinima: 1, cantidadMaxima: 1 });
     expect(primera).toMatchObject({ ok: true, datos: { version: 2, huboCambio: true } });
     expect(segunda).toMatchObject({ ok: true, datos: { version: 2, huboCambio: false } });
     expect(await prisma.registroAuditoria.count()).toBe(auditoria);

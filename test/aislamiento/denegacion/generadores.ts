@@ -35,7 +35,6 @@ const admisionDe = (productoId: string, grupoId: string, opcionId: string) => ({
   cantidadMinima: null,
   cantidadMaxima: null,
   modoPrecio: null,
-  activo: true,
   opciones: [{ opcionId, versionEsperada: 0, cantidadMaxima: 1, precioAbsoluto: null, diferencia: null, activo: true }],
 });
 /**
@@ -200,7 +199,7 @@ const completos: Record<string, Valor> = {
 
   // --- catálogo de opciones de venta (GO-2a, ADR-030): el catálogo es de la EMPRESA (ajeno solo en el escenario de otra empresa); lo de la sucursal (apagar, la grilla) lleva la sucursal ---
   "accion|actions/catalogo/opciones-de-venta.ts|crearGrupoDeOpciones": () => [{ nombre: "Grupo nuevo", tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1 }],
-  "accion|actions/catalogo/opciones-de-venta.ts|editarGrupoDeOpciones": (k) => [{ grupoId: k.grupoDeOpcionesId, versionEsperada: 1, nombre: "Nombre nuevo", cantidadMinima: 0, cantidadMaxima: 2, activo: true }],
+  "accion|actions/catalogo/opciones-de-venta.ts|editarGrupoDeOpciones": (k) => [{ grupoId: k.grupoDeOpcionesId, versionEsperada: 1, nombre: "Nombre nuevo", cantidadMinima: 0, cantidadMaxima: 2 }],
   "accion|actions/catalogo/opciones-de-venta.ts|crearOpcionDeGrupo": (k, c) =>
     conVariantes(
       intento(c, ["grupoDeOpcionesId"], [{ grupoId: k.grupoDeOpcionesId, nombre: "Opción nueva", orden: 5, esNinguna: false, ancla: null, version: versionDeOpcion() }]),
@@ -208,7 +207,7 @@ const completos: Record<string, Valor> = {
       intento(c, ["productoId"], [{ grupoId: c.propio.grupoDeOpcionesId, nombre: "Opción nueva", orden: 5, esNinguna: false, ancla: null, version: versionDeOpcion([sumaDe(k.productoId)]) }]),
       intento(c, ["unidadId"], [{ grupoId: c.propio.grupoAdicionalId, nombre: "Adicional nuevo", orden: 5, esNinguna: false, ancla: { unidadStockId: k.unidadId }, version: versionDeOpcion([], 100) }]),
     ),
-  "accion|actions/catalogo/opciones-de-venta.ts|editarOpcionDeGrupo": (k) => [{ opcionId: k.opcionDeGrupoId, versionEsperada: 1, nombre: "Nombre nuevo", orden: 3, activa: true }],
+  "accion|actions/catalogo/opciones-de-venta.ts|editarOpcionDeGrupo": (k) => [{ opcionId: k.opcionDeGrupoId, versionEsperada: 1, nombre: "Nombre nuevo" }],
   "accion|actions/catalogo/opciones-de-venta.ts|agregarVersionDeOpcion": (k, c) =>
     conVariantes(
       intento(c, ["opcionDeGrupoId"], [{ opcionId: k.opcionDeGrupoId, numeroEsperado: 1, version: versionDeOpcion([], 150) }]),

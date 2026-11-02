@@ -75,7 +75,7 @@ export async function vincularGrupoEnProductoCasoDeUso(
         return exito(`«${grupo}» se quitó de «${producto}». No se borró nada: lo que admitía queda guardado.`, { huboCambio: true });
       }
 
-      const r = await fijarAdmisionDeGrupoEnTx(tx, actor, { productoId: comando.productoId, grupoId: comando.grupoId, versionEsperada: fila.version, ...actual, activo: true, opciones: [] });
+      const r = await fijarAdmisionDeGrupoEnTx(tx, actor, { productoId: comando.productoId, grupoId: comando.grupoId, versionEsperada: fila.version, ...actual, opciones: [] });
       if (!r.ok) return r;
       return exito(`«${grupo}» volvió a «${producto}», como estaba.${r.datos.avisos.length ? ` ${r.datos.avisos.join(" ")}` : ""}`, { huboCambio: true });
     },

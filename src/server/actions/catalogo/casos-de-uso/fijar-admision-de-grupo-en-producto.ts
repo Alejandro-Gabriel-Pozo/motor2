@@ -43,7 +43,7 @@ function diferenciaDeLaFila(f: { tipoDeDiferencia: string | null; diferenciaPrec
 /**
  * Caso de uso «fijar lo que un producto admite de un grupo de opciones» (GO-2a; ADR-030 §4: lista de permitidos, fila ausente = no). Para el par (producto, grupo) deja la fila
  * de `ProductoAdmiteGrupo` y las de `ProductoAdmiteOpcion` de las opciones que trae el comando, cada una con la VERSIÓN que vio la pantalla (0 = todavía no existe). Nunca borra:
- * quitar es `activo = false`. Las filas de opciones del grupo que el comando no trae quedan como están (y cuentan para las reglas).
+ * quitar es `activo = false`, pero eso va por `vincular-grupo-en-producto.ts`: acá la fila del grupo queda SIEMPRE activa (reactiva una quitada). Las filas de opciones del grupo que el comando no trae quedan como están (y cuentan para las reglas).
  *
  * Todo dentro de UNA transacción SERIALIZABLE, con lo leído ahí:
  *  1. el producto existe, es de VENTA y no es el ancla de un adicional (un ancla no admite opciones);
@@ -107,7 +107,7 @@ export async function fijarAdmisionDeGrupoEnTx(
 
   // Lo que cambiaría, columna por columna (el antes y el después de la auditoría). Si NADA cambia, el estado ya es el pedido (un doble clic que llegó después de que el primero
   // confirmó): éxito sin escribir, aunque la versión que vio la pantalla ya no sea la de la base. Si algo cambia, cada versión esperada tiene que ser la de la base.
-  const fila = { orden: comando.orden, cantidadMinima: comando.cantidadMinima, cantidadMaxima: comando.cantidadMaxima, modoPrecio: comando.modoPrecio, activo: comando.activo };
+  const fila = { orden: comando.orden, cantidadMinima: comando.cantidadMinima, cantidadMaxima: comando.cantidadMaxima, modoPrecio: comando.modoPrecio, activo: true };
   const cambiosDelGrupo = cambiosPorColumna([
     { campo: "orden", antes: filaGrupo?.orden ?? null, despues: fila.orden },
     { campo: "cantidadMinima", antes: filaGrupo?.cantidadMinima ?? null, despues: fila.cantidadMinima },
@@ -154,7 +154,7 @@ export async function fijarAdmisionDeGrupoEnTx(
     resultantes.set(o.opcionId, { opcionId: o.opcionId, cantidadMaxima: o.cantidadMaxima, precioAbsoluto: o.precioAbsoluto, diferencia: o.diferencia, activo: o.activo });
   }
   const noTocadas = [...resultantes.values()].filter((r) => !comando.opciones.some((o) => o.opcionId === r.opcionId));
-  const admision = { cantidadMinima: comando.cantidadMinima, cantidadMaxima: comando.cantidadMaxima, modoPrecio: comando.modoPrecio, activo: comando.activo };
+  const admision = { cantidadMinima: comando.cantidadMinima, cantidadMaxima: comando.cantidadMaxima, modoPrecio: comando.modoPrecio, activo: true };
   const regla = validarAdmisionDeGrupo({
     grupo,
     opcionesDelGrupo: opcionesDelGrupo.map((o) => ({ opcionId: o.id, nombre: o.nombre, activa: o.activa, esNinguna: o.esNinguna })),
@@ -163,7 +163,7 @@ export async function fijarAdmisionDeGrupoEnTx(
   });
   if (!regla.ok) return fracaso("CONFIGURACION_INVALIDA", regla.mensaje);
 
-  if (comando.activo && !(filaGrupo?.activo ?? false) && !grupo.activo) {
+  if (!(filaGrupo?.activo ?? false) && !grupo.activo) {
     return fracaso("GRUPO_INACTIVO", `«${grupo.nombre}» está archivado: restauralo (en Biblioteca de opciones → Archivados) antes de que un producto lo use.`);
   }
   for (const o of comando.opciones) {
@@ -174,14 +174,14 @@ export async function fijarAdmisionDeGrupoEnTx(
   }
 
   // Control de precio de lista, con la diferencia de cada opción resuelta (la del producto si la sobrescribe, si no la de su versión vigente).
-  const activasAdmitidas = comando.activo ? [...resultantes.values()].filter((r) => r.activo && delGrupo.get(r.opcionId)!.activa) : [];
+  const activasAdmitidas = [...resultantes.values()].filter((r) => r.activo && delGrupo.get(r.opcionId)!.activa);
   const vigentes = new Map(await Promise.all(activasAdmitidas.map(async (r) => [r.opcionId, await versionVigenteEnTx(tx, r.opcionId)] as const)));
   let precioDeVenta = Number(producto.precioVenta);
   const esBase = esBaseConfigurable(producto.modoDeVenta);
   if (esBase) {
     const resultante: AdmisionParaSerBase = {
       grupo: { nombre: grupo.nombre, tipo: grupo.tipo, activo: grupo.activo },
-      activa: comando.activo,
+      activa: true,
       modoPrecio: comando.modoPrecio,
       opciones: opcionesDelGrupo.map((o) => {
         const r = resultantes.get(o.id);
@@ -235,7 +235,7 @@ export async function fijarAdmisionDeGrupoEnTx(
     if ((await actualizarAdmisionDeGrupo(tx, { id: filaGrupo.id, versionEsperada: filaGrupo.version, fila, ahora: actor.ahora })) === 0) return desactualizada(producto.nombre, grupo.nombre);
     version = filaGrupo.version + 1;
   }
-  const descripcionDelGrupo = `«${producto.nombre}» admite «${grupo.nombre}»${comando.activo ? "" : " (apagado en el producto)"}.`;
+  const descripcionDelGrupo = `«${producto.nombre}» admite «${grupo.nombre}».`;
   for (const c of cambiosDelGrupo) {
     await registrarCambioAuditado(tx, { entidad: "ProductoAdmiteGrupo", entidadId: admisionId, campo: c.campo, descripcion: descripcionDelGrupo, valorAnterior: c.antes, valorNuevo: c.despues, actorId: actor.usuarioId, sucursalId: null });
   }
