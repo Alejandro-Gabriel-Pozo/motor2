@@ -5,7 +5,7 @@ import { azarDelProceso } from "@/lib/azar";
 import { obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal } from "@/server/acceso/gate";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
-import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
+import { escaparComodinesLike, quitarCaracteresInadmisibles, textoDeBusqueda } from "@/core/texto";
 import { puedeBuscarPorReferenciaDelProveedor, whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
 import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-de-producto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
@@ -500,6 +500,9 @@ export async function listarPresentaciones(productoId: string): Promise<Presenta
   }));
 }
 
+/** Tope del largo de un id de producto aceptado por las lecturas por id (los ids son cuid, ~25 caracteres). */
+const LARGO_MAXIMO_ID = 100;
+
 /** Lo que la Compra por pasos muestra de un producto elegido a mano: su código y nombre, y en qué unidades se puede comprar (la por defecto y las presentaciones activas). */
 export interface DatosDeCompraDelProducto {
   codigo: string;
@@ -510,10 +513,12 @@ export interface DatosDeCompraDelProducto {
 /**
  * Solo lectura, para la pantalla de Compra (etapa 1 de Compras, paso 6): al elegir un producto a mano, la fila muestra su código y la unidad en que se interpreta la cantidad. Las unidades salen igual que
  * en el servidor al armar la línea (`armarLineaDeMovimiento`): la por defecto es la unidad de compra del producto o, si no tiene, la de stock, con el factor del producto; las presentaciones, solo las activas.
- * Exige el «Ver» de la compra. `null` si el producto no existe.
+ * Exige el «Ver» de la compra. `null` si el producto no existe o si el id no es un texto válido (no es string, vacío, demasiado largo o con NUL / sustitutos sueltos, que Postgres/Prisma rechazan con un
+ * error crudo): el mismo resultado que un id inexistente, sin filtrar nada. El permiso se exige primero.
  */
 export async function obtenerDatosDeCompraDelProducto(productoId: string): Promise<DatosDeCompraDelProducto | null> {
   const ctx = await requerirVer("proceso_compra");
+  if (typeof productoId !== "string" || productoId === "" || productoId.length > LARGO_MAXIMO_ID || quitarCaracteresInadmisibles(productoId) !== productoId) return null;
   const p = await ctx.db.producto.findUnique({
     where: { id: productoId },
     select: {
