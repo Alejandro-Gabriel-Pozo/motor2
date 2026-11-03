@@ -215,7 +215,6 @@ const SIN_ENVOLTORIO: Record<string, Readonly<Record<string, string>>> = {
     agregarIngredienteAReceta: DELEGA_EN_GUARDAR_RECETA,
     actualizarIngredienteDeReceta: DELEGA_EN_GUARDAR_RECETA,
     quitarIngredienteDeReceta: DELEGA_EN_GUARDAR_RECETA,
-    agregarPasoAReceta: DELEGA_EN_GUARDAR_RECETA,
     actualizarPasoDeReceta: DELEGA_EN_GUARDAR_RECETA,
     quitarPasoDeReceta: DELEGA_EN_GUARDAR_RECETA,
     reordenarPasosDeReceta: DELEGA_EN_GUARDAR_RECETA,

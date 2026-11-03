@@ -187,7 +187,6 @@ const completos: Record<string, Valor> = {
   "accion|actions/catalogo/recetas.ts|agregarIngredienteAReceta": (k, c) =>
     conVariantes(intento(c, ["productoPvId"], [k.productoPvId, ingrediente(k, c.propio.productoMp3Id), 1]), intento(c, ["productoMp3Id", "unidadId"], [c.propio.productoPvId, ingrediente(k, k.productoMp3Id), 1])),
   "accion|actions/catalogo/recetas.ts|actualizarIngredienteDeReceta": (k) => [k.productoPvId, k.productoId, { cantidad: 2, unidadId: k.unidadId }, 1],
-  "accion|actions/catalogo/recetas.ts|agregarPasoAReceta": (k) => [k.productoPvId, { orden: 2, instruccion: "Hornear" }, 1],
   "accion|actions/catalogo/recetas.ts|actualizarPasoDeReceta": (k) => [k.productoPvId, 1, { instruccion: "Hornear" }, 1],
   "accion|actions/catalogo/recetas.ts|reordenarPasosDeReceta": (k) => [k.productoPvId, [1], 1],
   "accion|actions/catalogo/recetas.ts|insertarPasoEnReceta": (k) => [k.productoPvId, 1, { instruccion: "Hornear" }, 1],

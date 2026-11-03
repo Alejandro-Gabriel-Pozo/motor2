@@ -11,7 +11,6 @@ import {
   guardComandoActualizarIngredienteDeReceta,
   guardComandoActualizarPasoDeReceta,
   guardComandoAgregarIngredienteAReceta,
-  guardComandoAgregarPasoAReceta,
   guardComandoGuardarVersionDeReceta,
   guardComandoInsertarPasoEnReceta,
   guardComandoQuitarIngredienteDeReceta,
@@ -214,20 +213,6 @@ export async function quitarIngredienteDeReceta(productoId: string, insumoProduc
   return guardarRecetaConPuerta(productoId, items, pasos, mapCabeceraAInput(vigente), versionVista, { guard, etapa: "INGREDIENTES_INVALIDOS" });
 }
 
-/** Agrega un paso nuevo — mismo criterio que agregarIngredienteAReceta, preserva ingredientes y cabecera vigentes. */
-export async function agregarPasoAReceta(productoId: string, paso: PasoInput, versionVista: number): Promise<ResultadoAccion> {
-  const guard = guardComandoAgregarPasoAReceta({ productoId, paso, versionVista });
-  if (!guard.forma.ok) return error(guard.forma.mensaje);
-  const vigente = await obtenerRecetaVigente(productoId);
-  const pasosExistentes = mapPasosAInput(vigente);
-
-  if (pasosExistentes.some((p) => p.orden === paso.orden)) {
-    return error(`Ya hay un paso con el orden ${paso.orden}.`);
-  }
-
-  return guardarRecetaConPuerta(productoId, mapIngredientesAInput(vigente), [...pasosExistentes, paso], mapCabeceraAInput(vigente), versionVista, { guard, etapa: "PASOS_INVALIDOS" });
-}
-
 /** Edita un paso ya cargado (identificado por su `orden` vigente) en un solo paso, mismo criterio que actualizarIngredienteDeReceta. */
 export async function actualizarPasoDeReceta(
   productoId: string,
@@ -289,9 +274,8 @@ export async function reordenarPasosDeReceta(productoId: string, secuencia: numb
 
 /**
  * Inserta un paso nuevo en una posición 1-indexada de la receta vigente
- * (corrida a [1, N+1]), corriendo los siguientes y renumerando — a
- * diferencia de `agregarPasoAReceta`, que solo agrega al final y rechaza un
- * `orden` duplicado (esa función queda intacta, es el camino "Al final").
+ * (corrida a [1, N+1]), corriendo los siguientes y renumerando. Agregar «al
+ * final» es pasar N+1 (la pantalla sabe cuántos pasos vigentes hay).
  */
 export async function insertarPasoEnReceta(productoId: string, posicion: number, paso: Omit<PasoInput, "orden">, versionVista: number): Promise<ResultadoAccion> {
   // S-52: la posición (un entero entre 0 y el tope: `insertarEnPosicion` recorta una fuera de rango, pero un NaN lo dejaría en silencio al principio) y la forma del paso las decide el guard

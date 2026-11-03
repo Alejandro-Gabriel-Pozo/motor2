@@ -138,7 +138,7 @@ describe("GT-11 — números y arreglos del cliente: un guard de comando con ran
     expect(Object.keys(SIN_GUARD_DE_COMANDO).length).toBeLessThanOrEqual(0);
   });
 
-  it("las 21 acciones que cerró S-52 llaman a su guard de comando (una por una: sacar la llamada de cualquiera la pone en rojo)", () => {
+  it("las 20 acciones que cerró S-52 y siguen (retirada agregarPasoAReceta) llaman a su guard de comando (una por una: sacar la llamada de cualquiera la pone en rojo)", () => {
     const porClave = new Map(delCodigo.map((e) => [e.clave, e]));
     const CERRADAS = [
       "carta/contenido-producto.ts|guardarContenidoCartaProducto",
@@ -156,14 +156,13 @@ describe("GT-11 — números y arreglos del cliente: un guard de comando con ran
       "catalogo/recetas.ts|agregarIngredienteAReceta",
       "catalogo/recetas.ts|actualizarIngredienteDeReceta",
       "catalogo/recetas.ts|quitarIngredienteDeReceta",
-      "catalogo/recetas.ts|agregarPasoAReceta",
       "catalogo/recetas.ts|actualizarPasoDeReceta",
       "catalogo/recetas.ts|quitarPasoDeReceta",
       "catalogo/recetas.ts|reordenarPasosDeReceta",
       "catalogo/recetas.ts|insertarPasoEnReceta",
       "catalogo/recetas.ts|actualizarCabeceraDeReceta",
     ];
-    expect(CERRADAS).toHaveLength(21);
+    expect(CERRADAS).toHaveLength(20);
     for (const clave of CERRADAS) {
       const e = porClave.get(clave);
       expect(e, `${clave}: el inventario la ve (tiene números o arreglos)`).toBeDefined();
