@@ -10,6 +10,7 @@ import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimient
 import { requierePermiso } from "../../src/server/acceso/gate";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Caracterización (Etapa A, punto 4d): una sucursal «que no vende» —la Central apagó `proceso_venta` en su matriz de capacidades—. Qué pasa HOY:
@@ -59,7 +60,7 @@ describe("sucursal sin ventas (proceso_venta apagado)", () => {
 
     // El gate de la compra no se ve afectado por apagar la venta.
     expect(await requierePermiso(s.admin.id, s.sucursalId, "proceso_compra", prisma)).toEqual({ ok: true });
-    const compra = await registrarMovimientoCasoDeUso(actor, { proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: d("2026-08-05"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 10, precioTotal: 500 }], claveIdempotencia: crypto.randomUUID() });
+    const compra = await registrarMovimientoCasoDeUso(actor, { proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: d("2026-08-05"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 10, precioTotal: 500, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     expect(compra.ok, compra.mensaje).toBe(true);
 
     const rep = await obtenerReportePorPeriodo(s.sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma, AHORA);

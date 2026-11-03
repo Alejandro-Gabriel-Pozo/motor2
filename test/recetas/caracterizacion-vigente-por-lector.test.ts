@@ -17,6 +17,7 @@ import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/
 import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 import { fijarRendimientoLocal } from "../../src/server/actions/catalogo/rendimiento-local";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * CARACTERIZACIÓN — congela cómo cada lector elige la receta VIGENTE (la de mayor `version` de cada plato) HOY, ANTES de unificar esa
@@ -93,7 +94,7 @@ describe("Caracterización: qué versión de receta usa cada lector (vigente = m
     await prisma.rendimientoLocalIngrediente.create({ data: { recetaIngredienteId: lineaAzucar(torta5), sucursalId: s2, cantidad: 2.5, mermaPorcentaje: null } });
 
     for (const [p, cantidad, precioTotal] of [[harina.id, 100, 500], [sal.id, 50, 250], [azucar.id, 80, 400]] as const) {
-      const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha, seccionId, items: [{ productoId: p, cantidad, precioTotal }], claveIdempotencia: crypto.randomUUID() });
+      const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha, seccionId, items: [{ productoId: p, cantidad, precioTotal, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       expect(r.ok, r.mensaje).toBe(true);
     }
   });

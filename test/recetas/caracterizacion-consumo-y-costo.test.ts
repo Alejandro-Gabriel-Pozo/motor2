@@ -13,6 +13,7 @@ import { claveCostoHistorico } from "../../src/core/reportes/costo-historico";
 import { reconstruirCostosDeVenta } from "../../src/server/consultas/reportes/costo-historico";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Test de caracterización (plan docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso 1) — capturado EXACTO del
@@ -75,18 +76,18 @@ describe("Caracterización: consumo y costo ANTES del rendimiento por sucursal (
     // Compras — fijan el costo de reposición de cada MP comprada.
     await registrarMovimiento({
       proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha, seccionId,
-      items: [{ productoId: tomate.id, cantidad: 100, precioTotal: 500 }],
+      items: [{ productoId: tomate.id, cantidad: 100, precioTotal: 500, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(), // $5/kg
     });
     // Dos lotes de la MISMA familia (Carne), vencimientos distintos — CarneB vence antes: FEFO la consume primero.
     await registrarMovimiento({
       proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha, seccionId,
-      items: [{ productoId: carneB.id, cantidad: 0.6, precioTotal: 30, loteVencimiento: new Date("2026-03-15T00:00:00Z") }],
+      items: [{ productoId: carneB.id, cantidad: 0.6, precioTotal: 30, loteVencimiento: new Date("2026-03-15T00:00:00Z"), referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(), // $50/kg
     });
     await registrarMovimiento({
       proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha, seccionId,
-      items: [{ productoId: carneA.id, cantidad: 5, precioTotal: 250, loteVencimiento: new Date("2026-04-01T00:00:00Z") }],
+      items: [{ productoId: carneA.id, cantidad: 5, precioTotal: 250, loteVencimiento: new Date("2026-04-01T00:00:00Z"), referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(), // $50/kg
     });
 

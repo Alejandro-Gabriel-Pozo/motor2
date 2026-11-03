@@ -8,6 +8,7 @@ import { entrarComo, sembrarCuenta, sembrarSalon } from "../../pos/salon-fixture
 import { cerrarCuenta } from "../../../src/server/actions/pos/cuenta-cierre";
 import { registrarMovimiento } from "../../../src/server/actions/movimientos/movimientos";
 import { anularVenta, registrarVenta } from "../../../src/server/actions/movimientos/venta";
+import { REFERENCIA_DE_PRUEBA } from "../../setup/referencia-de-prueba";
 
 /**
  * CARACTERIZACIÓN de la venta bajo concurrencia (Fase 4, tramo A: la venta sale de `core/movimientos`; NO se edita en ningún paso posterior). Lo que ya cubren
@@ -35,7 +36,7 @@ describe("venta: concurrencia entre mostrador y POS, y doble anulación", () => 
       s = await sembrarSalon();
       await entrarComo(s.admin);
       // 0,25 kg de Muzzarella = exactamente UNA pizza.
-      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 0.25, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 0.25, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 1, precioUnitario: 12000, numeroEnvio: 1 }]);
 
       const [mostrador, pos] = await Promise.all([
@@ -56,7 +57,7 @@ describe("venta: concurrencia entre mostrador y POS, y doble anulación", () => 
   }, 120_000);
 
   it("dos anulaciones simultáneas de la misma venta: una sola reversión y una sola fila de auditoría", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 2, precioTotal: 800 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 2, precioTotal: 800, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     const venta = await registrarVenta({ fecha: new Date("2026-09-28"), seccionId: s.seccion.id, ventas: [{ productoId: s.pizza.id, cantidadVendida: 2 }] });
     expect(venta.ok).toBe(true);
     const operacion = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });

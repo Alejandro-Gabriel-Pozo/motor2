@@ -9,6 +9,7 @@ import { comprobanteDePrueba } from "../../setup/comprobante-de-prueba";
 import { registrarMovimiento } from "../../../src/server/actions/movimientos/movimientos";
 import { registrarVentaCasoDeUso } from "../../../src/server/actions/movimientos/casos-de-uso/registrar-venta";
 import type { Transaccion } from "../../../src/lib/db-tipos";
+import { REFERENCIA_DE_PRUEBA } from "../../setup/referencia-de-prueba";
 
 /**
  * CARACTERIZACIÓN del reintento de la venta (Fase 4, tramo A; NO se edita en ningún paso posterior). La venta corre dentro de una transacción SERIALIZABLE que
@@ -43,8 +44,8 @@ describe("venta: el reintento ante un conflicto de escritura repite todo y no de
     pizza = (await sembrarProductoDisponible({ codigo: "PV_PIZZA", nombre: "Pizza", tipo: "PV", unidadStockId: unidad.id, precioVenta: 12000 }, sucursalId)).id;
     await prisma.recetaVersion.create({ data: { productoId: pan, version: 1, ingredientes: { create: [{ insumoProductoId: bollo, cantidad: 1, unidadId: unidad.id, mermaPorcentaje: 0 }] } } });
     await prisma.recetaVersion.create({ data: { productoId: pizza, version: 1, ingredientes: { create: [{ insumoProductoId: muzza, cantidad: 0.25, unidadId: kg.id, mermaPorcentaje: 0 }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: bollo, cantidad: 3, precioTotal: 90 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzza, cantidad: 1, precioTotal: 400 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: bollo, cantidad: 3, precioTotal: 90, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzza, cantidad: 1, precioTotal: 400, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   });
 
   const conflicto = () => new Prisma.PrismaClientKnownRequestError("Transaction failed due to a write conflict", { code: "P2034", clientVersion: "test" });
