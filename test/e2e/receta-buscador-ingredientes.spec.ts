@@ -95,7 +95,8 @@ for (const ancho of [375, 1280]) {
     await expect(buscador).toBeFocused();
     await expect(buscador).toHaveValue("");
     await expect(formulario.locator("[data-unidad-de-la-cantidad]")).toHaveCount(0);
-    await expect(formulario.locator("[data-lectura-de='cantidad-ingrediente-nuevo']")).toHaveText("");
+    // Sin materia prima no hay unidad: la lectura queda en el número pelado (como con el select vacío del formulario anterior), sin «g» ni «kg».
+    await expect(formulario.locator("[data-lectura-de='cantidad-ingrediente-nuevo']")).toHaveText("El sistema lee: = 0,25");
     await elegirMateriaPrima(formulario, "Materia prima", huevo.nombre);
     await expect(formulario.locator("[data-unidad-de-la-cantidad]")).toHaveText("unidad");
     await elegirMateriaPrima(formulario, "Materia prima", tomates[1].nombre);
