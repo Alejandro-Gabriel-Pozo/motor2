@@ -17,9 +17,7 @@ export interface ProcesoUiConfig {
     "VENTA" | "CONTROL" | "LIQUIDACION_CONSIGNACION" | "RECLASIFICACION" | "TRANSFERENCIA_SALIDA_SUCURSAL" | "TRANSFERENCIA_ENTRADA_SUCURSAL" | "REINGRESO_TRANSFERENCIA_SUCURSAL"
   >;
   titulo: string;
-  /** Compra/Devolución a Proveedor: hay un proveedor real y conviene pedir N° de factura. */
-  requiereProveedor: boolean;
-  /** Compra/Devolución a Proveedor: aplica factor de conversión — tiene sentido mostrar Precio Total/Peso Real. */
+  /** Compra/Devolución a Proveedor: hay un proveedor real (se pide el selector y N° de factura) y aplica factor de conversión — tiene sentido mostrar Precio Total/Peso Real. */
   esCompraLike: boolean;
   /** Solo Merma. */
   pideMotivo: boolean;
@@ -53,15 +51,15 @@ function filtroProductoDeProceso(proceso: ProcesoUiConfig["proceso"]): FiltroSel
 }
 
 const PROCESOS_UI_SIN_DERIVADOS: Record<string, Omit<ProcesoUiConfig, "exigeSeccion" | "filtroProducto">> = {
-  compra: { proceso: "COMPRA", titulo: "Compra", requiereProveedor: true, esCompraLike: true, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
-  produccion: { proceso: "PRODUCCION", titulo: "Producción", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
-  consumo: { proceso: "CONSUMO", titulo: "Consumo", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: true, cantidadConSigno: false },
-  ajuste: { proceso: "AJUSTE", titulo: "Ajuste de stock", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: true },
-  transferencia: { proceso: "TRANSFERENCIA", titulo: "Traslado entre depósitos", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
-  merma: { proceso: "MERMA", titulo: "Merma", requiereProveedor: false, esCompraLike: false, pideMotivo: true, pideDestino: false, cantidadConSigno: false },
-  "devolucion-consignacion": { proceso: "DEVOLUCION_CONSIGNACION", titulo: "Devolución al consignante", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
-  "devolucion-cliente": { proceso: "DEVOLUCION_CLIENTE", titulo: "Devolución de cliente (revendible)", requiereProveedor: false, esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
-  "devolucion-proveedor": { proceso: "DEVOLUCION_PROVEEDOR", titulo: "Devolución a proveedor", requiereProveedor: true, esCompraLike: true, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
+  compra: { proceso: "COMPRA", titulo: "Compra", esCompraLike: true, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
+  produccion: { proceso: "PRODUCCION", titulo: "Producción", esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
+  consumo: { proceso: "CONSUMO", titulo: "Consumo", esCompraLike: false, pideMotivo: false, pideDestino: true, cantidadConSigno: false },
+  ajuste: { proceso: "AJUSTE", titulo: "Ajuste de stock", esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: true },
+  transferencia: { proceso: "TRANSFERENCIA", titulo: "Traslado entre depósitos", esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
+  merma: { proceso: "MERMA", titulo: "Merma", esCompraLike: false, pideMotivo: true, pideDestino: false, cantidadConSigno: false },
+  "devolucion-consignacion": { proceso: "DEVOLUCION_CONSIGNACION", titulo: "Devolución al consignante", esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
+  "devolucion-cliente": { proceso: "DEVOLUCION_CLIENTE", titulo: "Devolución de cliente (revendible)", esCompraLike: false, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
+  "devolucion-proveedor": { proceso: "DEVOLUCION_PROVEEDOR", titulo: "Devolución a proveedor", esCompraLike: true, pideMotivo: false, pideDestino: false, cantidadConSigno: false },
 };
 
 export const PROCESOS_UI: Record<string, ProcesoUiConfig> = Object.fromEntries(

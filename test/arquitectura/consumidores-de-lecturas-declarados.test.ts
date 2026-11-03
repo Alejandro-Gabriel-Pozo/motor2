@@ -181,7 +181,7 @@ const LECTURAS: Readonly<Record<string, LecturaDeclarada>> = {
   listarProveedoresParaSelector: {
     modulo: "server/actions/catalogo/proveedores",
     consumidores: {
-      "app/(app)/movimientos/[proceso]/page.tsx": { claves: ["proceso_compra", "proceso_devolucion_proveedor"], porque: "los procesos que piden proveedor (`requiereProveedor`)" },
+      "app/(app)/movimientos/[proceso]/page.tsx": { claves: ["proceso_compra", "proceso_devolucion_proveedor"], porque: "los procesos que piden proveedor (`esCompraLike`)" },
       "app/(app)/reportes/compras/page.tsx": { claves: ["reporte_compras"] },
       "app/(app)/catalogo/productos/opciones-formulario.ts": { claves: ["alta_producto", "producto_ver_catalogo"], porque: FORMULARIO_DE_PRODUCTO },
     },
