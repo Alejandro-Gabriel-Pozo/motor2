@@ -90,6 +90,23 @@ Una materia prima puede tener varios proveedores; un código del proveedor apunt
 
 **Migración (etapa 2, junto a las letras del proveedor).** Una columna aditiva `codigoDelProveedor` en `ProveedorPorProducto` y un índice único parcial; `referenciaProveedor` no se toca. Sin datos que migrar. **Requiere autorización expresa**, con respaldo y ensayo.
 
+## 4.ter Peso fijo o variable en el producto (PROPUESTA; pedido del dueño del 2026-11-03)
+
+**Qué hace hoy el sistema** (`armar-linea-de-movimiento.ts`, verificado): en una compra, si se carga **peso real**, ese peso es la cantidad que entra al stock (en la unidad de stock); si no, entra cantidad × factor de conversión del producto; si el factor es 1, entra la cantidad. El importe no cambia nunca: el costo por unidad de stock es importe ÷ cantidad en stock. El peso real no es un dato informativo: mueve el stock.
+
+**Lo que pidió el dueño:** definir en el **producto** si su peso es **fijo** (bolsa de 2 kg) o **variable** (carne: cada caja pesa distinto), en vez de dejarlo a criterio del operador.
+
+**Propuesta (la forma más barata que lo resuelve).**
+
+- Un atributo del producto, «peso fijo / peso variable» (una columna aditiva con valor por defecto «fijo»; migración chica, junto a la del código del proveedor en la etapa 2: **requiere autorización expresa**).
+- **Peso fijo:** la compra usa el factor de conversión; el peso real no se pide.
+- **Peso variable:** la compra **pide el peso real** (la caja de bife no tiene un peso fijo): sin él, el stock y el costo por kilo serían una estimación con el promedio del factor.
+- **Cambio respecto de lo dicho antes:** la maqueta v5 y la respuesta «si el operador no sabe el peso se sigue igual» valían mientras el producto no distingue el tipo. Con el atributo, para un producto de peso variable el peso es **obligatorio** (PENDIENTE de confirmar: obligatorio, o aviso que permite seguir con el promedio y marca la línea como «peso estimado»).
+- **Etapa 1 no cambia:** sigue el campo opcional «Peso real (en la unidad de stock)». El atributo llega en la etapa 2.
+- «Kilos como dato independiente» (para un producto que se guarda por unidad pero se factura por kilo, como el helado en latas) sigue siendo PENDIENTE de la etapa 2 y no se confunde con este atributo.
+
+**Pregunta abierta (una):** en un producto de peso variable, ¿el peso real es obligatorio o se permite seguir con el promedio y marcar la línea «peso estimado»? *Recomendación: obligatorio para carnes y similares; si el dueño prefiere flexibilidad, el aviso con marca «estimado».*
+
 ## 5. Invariantes y políticas
 
 ### 5.1 Invariantes
