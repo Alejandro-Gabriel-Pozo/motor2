@@ -1,3 +1,4 @@
+import { Decimal } from "decimal.js";
 import type { Proceso } from "@/core/datos/enumerados-del-esquema";
 import type { AccionDeSucursal } from "@/core/permisos/acciones";
 
@@ -172,6 +173,37 @@ export const ACCION_POR_PROCESO: Partial<Record<Proceso, AccionDeSucursal>> = {
 export function redondearACantidadDeUnidad(cantidad: number, decimales: number): number {
   const factor = 10 ** decimales;
   return Math.round(cantidad * factor) / factor;
+}
+
+/** Clon propio de decimal.js (mismo patrón que `core/moneda.ts`): no depende de la configuración global y 40 dígitos sobran para cantidad × factor. */
+const D = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
+
+/**
+ * Conversión de una compra de su unidad de compra a la unidad de stock, en decimal EXACTO (nunca float): `cantidadComprada × factor`
+ * redondeado a los decimales de la unidad de stock.
+ *
+ * REGLA DE REDONDEO (la MISMA de `redondearACantidadDeUnidad`, que usaba `Math.round`): el empate va hacia +∞ (`Decimal.ROUND_HALF_CEIL`:
+ * 2,5 → 3 y −2,5 → −2; 0,125 → 0,13 pero −0,125 → −0,12 con 2 decimales). Lo único que cambia es que ahora el empate se detecta bien: con
+ * float, `1,005 × 100` da `100,49999999999999` y se redondeaba para abajo; y `0,1 × 3` arrastraba `0,30000000000000004`.
+ *
+ * Devuelve las dos cantidades: `exacta` (el producto sin redondear, para el texto del detalle) y `redondeada` (la que entra al Kardex).
+ * Entran y salen `number` (el borde del dominio); el `Decimal` no sale de acá. Los `number` de entrada se leen por su representación
+ * decimal más corta (`String(n)`), que es el valor que se tecleó o vino de la base (Decimal(14,4)), no su expansión binaria.
+ */
+export function convertirCantidadAUnidadDeStock(cantidadComprada: number, factor: number, decimales: number): { exacta: number; redondeada: number } {
+  const exacta = new D(cantidadComprada).times(factor);
+  return { exacta: exacta.toNumber(), redondeada: exacta.toDecimalPlaces(decimales, Decimal.ROUND_HALF_CEIL).toNumber() };
+}
+
+/**
+ * Precio por unidad = `precioTotal ÷ cantidad` en decimal EXACTO, a 4 decimales (la escala de las columnas `precioUnitario` y
+ * `precioPorUnidadStock`, Decimal(14,4)) con el empate ALEJÁNDOSE DEL CERO, igual que `NUMERIC` de Postgres y que `redondearMoneda`
+ * (`core/moneda.ts`). Sin precio o sin cantidad (los dos tienen que ser mayores que 0) devuelve 0, como antes. El `precioTotal` NO se
+ * redondea de nuevo: ya viene validado con 2 decimales.
+ */
+export function precioPorUnidad(precioTotal: number, cantidad: number): number {
+  if (!(precioTotal > 0 && cantidad > 0)) return 0;
+  return new D(precioTotal).dividedBy(cantidad).toDecimalPlaces(4, Decimal.ROUND_HALF_UP).toNumber();
 }
 
 /**
