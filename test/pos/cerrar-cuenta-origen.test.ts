@@ -11,6 +11,7 @@ import { type OrigenVenta } from "../../src/core/movimientos/registrar-venta";
 import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 
 /**
  * De qué sección sale cada insumo al cerrar una cuenta (docs/plan-seccion-habitual-stock-2026-09-25.md, C5/C6): nadie la elige; el
@@ -28,8 +29,8 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
     await entrarComo(s.admin);
   });
 
-  const comprar = (seccionId: string, productoId: string, cantidad: number, loteVencimiento?: Date) =>
-    registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId, cantidad, loteVencimiento }], claveIdempotencia: crypto.randomUUID() });
+  const comprar = async (seccionId: string, productoId: string, cantidad: number, loteVencimiento?: Date) =>
+    registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId, cantidad, loteVencimiento }], claveIdempotencia: crypto.randomUUID() });
   const movimientosDeLaMesa = () => prisma.movimientoStock.findMany({ where: { operacion: { proceso: "VENTA", detalleLibre: "Mesa 4" } }, orderBy: { creadoEn: "asc" } });
   const resumen = (filas: { proceso: string; productoId: string; seccionId: string; cantidad: unknown; loteVencimiento: Date | null }[]) =>
     filas.map((m) => [m.proceso, m.productoId, m.seccionId, Number(m.cantidad), m.loteVencimiento?.toISOString().slice(0, 10) ?? null]);

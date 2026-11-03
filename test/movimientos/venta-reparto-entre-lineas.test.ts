@@ -9,6 +9,7 @@ import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { type ActorVenta } from "../../src/core/movimientos/registrar-venta";
 import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 
 /**
  * H9 (docs/plan-seccion-habitual-stock-2026-09-25.md): dos LÍNEAS de la misma venta que consumen la misma familia de insumo. El
@@ -51,7 +52,7 @@ describe("H9: reparto por familia entre líneas de la misma venta", () => {
       });
     }
     await registrarMovimiento({
-      proceso: "COMPRA",
+      proceso: "COMPRA", ...(await comprobanteDePrueba()),
       fecha: new Date(),
       seccionId,
       items: [

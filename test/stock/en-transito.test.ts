@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularStockEnTransito } from "../../src/server/consultas/stock/en-transito";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 import {
   crearEnvioDirectoTransferencia,
   crearSolicitudTransferencia,
@@ -48,7 +49,7 @@ describe("stock en tránsito entre sucursales", () => {
     mpId = mp.id;
     await prisma.disponibilidadProducto.createMany({ data: [sucursalAId, sucursalBId].map((sucursalId) => ({ sucursalId, productoId: mp.id, disponible: true })) });
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
   });
 
   async function enviar(cantidad: number): Promise<string> {

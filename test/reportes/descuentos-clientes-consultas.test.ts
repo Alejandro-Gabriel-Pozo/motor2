@@ -10,6 +10,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { altaCliente } from "../../src/server/actions/clientes/cliente";
 import { obtenerReporteDescuentosClientes } from "../../src/server/consultas/reportes/descuentos-clientes";
 import type { Db } from "../../src/lib/db-tipos";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 
 /**
  * Pureza Fase 3 — descuentos por cliente. Con ventas SIN costo guardado, el margen real se RECONSTRUYE con el historial de compras: antes se leía ese historial dos veces
@@ -38,7 +39,7 @@ describe("obtenerReporteDescuentosClientes: el costo reconstruido se calcula una
 
   async function montar() {
     // Muzzarella comprada a $400/kg: cada pizza (0,25 kg) cuesta $100. Las ventas se cierran y se les BORRA el costo guardado para forzar la reconstrucción.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 40, precioTotal: 16000 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-01-01"), seccionId: s.seccion.id, items: [{ productoId: s.muzzarella.id, cantidad: 40, precioTotal: 16000 }], claveIdempotencia: crypto.randomUUID() });
     const ids = [await clienteConVenta("Ana", 10, 2), await clienteConVenta("Beto", 20, 3), await clienteConVenta("Carla", 0, 1)];
     await prisma.movimientoStock.updateMany({ where: { proceso: "VENTA" }, data: { costoUnitarioVenta: null } });
     return ids;

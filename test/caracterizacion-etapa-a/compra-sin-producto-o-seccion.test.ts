@@ -63,6 +63,7 @@ describe("COMPRA rechazada por producto o sección: sin filas, y el rechazo se r
   let pvId: string;
   let pvSeProduceId: string;
   let pvConsignacionId: string;
+  let proveedorId: string;
 
   beforeEach(async () => {
     await limpiarBaseDeTest();
@@ -74,6 +75,7 @@ describe("COMPRA rechazada por producto o sección: sin filas, y el rechazo se r
     seccionDeOtraSucursalId = (await sembrarSeccion(otraSucursal.id, "Depósito Norte")).id;
     adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id })).id;
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_CONSIGNA", nombre: "Consignante" } });
+    proveedorId = proveedor.id;
 
     harinaId = (await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: catalogo.kg.id, insumoId: catalogo.insumo.id }, sucursalId)).id;
     pvId = (await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 100 }, sucursalId)).id;
@@ -85,6 +87,8 @@ describe("COMPRA rechazada por producto o sección: sin filas, y el rechazo se r
   const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, sucursalNombre: "Central", ...baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }) });
   const compra = (productoId: string, seccion: string, extra: Partial<DatosMovimientoInput> = {}): DatosMovimientoInput => ({
     proceso: "COMPRA",
+    proveedorId,
+    nroFactura: "A-00001-00000001",
     fecha: FECHA,
     seccionId: seccion,
     items: [{ productoId, cantidad: 5, precioTotal: 100 }],

@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 
 /**
  * Caracterización (Etapa A, punto 4b): clasificar un insumo como «No comestibles» cambia el ratio Compras/Ventas de un período YA CERRADO.
@@ -57,8 +58,8 @@ describe("Mover un insumo a «No comestibles» cambia el ratio de un período pa
     await prisma.producto.update({ where: { id: cajaId }, data: { insumoId: insumoCajasId } });
 
     // Agosto, por los casos de uso: $50 de harina, $100 de cajas, y un pan vendido a $100.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-05"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-05"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: d("2026-08-05"), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: d("2026-08-05"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
     const v = await registrarVenta({ fecha: d("2026-08-06"), seccionId, ventas: [{ productoId: panId, cantidadVendida: 1 }] });
     expect(v.ok, v.mensaje).toBe(true);
   });

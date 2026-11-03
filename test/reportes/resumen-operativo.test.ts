@@ -8,6 +8,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerResumenOperativo } from "../../src/server/consultas/reportes/resumen-operativo";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 
 describe("obtenerResumenOperativo", () => {
   let sucursalId: string;
@@ -31,7 +32,7 @@ describe("obtenerResumenOperativo", () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] });
 
     const resumen = await obtenerResumenOperativo(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
@@ -47,7 +48,7 @@ describe("obtenerResumenOperativo", () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Harina 2", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const pv = await sembrarProductoDisponible({ codigo: "PV_2", nombre: "Pan 2", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] });
 
     const haceUnAño = new Date();

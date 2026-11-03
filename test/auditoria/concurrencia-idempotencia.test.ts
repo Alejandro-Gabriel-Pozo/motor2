@@ -14,6 +14,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 
 describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => {
   let sucursalId: string;
@@ -43,7 +44,7 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
   describe("Escenario 1: dos CONSUMO simultáneos sobre el mismo producto+sección", () => {
     it("con stock exacto para UNO solo de los dos, Postgres serializa: uno gana, el otro pierde con error, el saldo final nunca queda negativo ni se pierde una unidad", async () => {
       const mp = await crearMP("Harina");
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
       // Dos consumos de 6 c/u simultáneos sobre un saldo de 10: la suma (12)
       // excede el disponible, pero cada uno aislado (6 ≤ 10) pasaría si no
@@ -77,7 +78,7 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
       // regresión sea parte de la suite normal, no un chequeo manual.
       for (let intento = 0; intento < 15; intento++) {
         const mp = await crearMP(`HarinaC2_${intento}`);
-        await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
+        await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
 
         const settled = await Promise.allSettled([
           registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 6 }], claveIdempotencia: crypto.randomUUID() }),
@@ -109,7 +110,7 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
         fecha: new Date(),
         seccionId,
         proveedorId: proveedor.id,
-        nroFactura: "A-0001",
+        nroFactura: "A-00001-00000001",
         items: [{ productoId: mp.id, cantidad: 10 }],
       };
 
@@ -117,7 +118,7 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
       const settled = await Promise.allSettled([registrarMovimiento({ ...payload, claveIdempotencia: crypto.randomUUID() }), registrarMovimiento({ ...payload, claveIdempotencia: crypto.randomUUID() })]);
 
       const operacionesConEsaFactura = await prisma.operacion.count({
-        where: { sucursalId, proceso: "COMPRA", proveedorId: proveedor.id, nroFactura: "A-0001" },
+        where: { sucursalId, proceso: "COMPRA", proveedorId: proveedor.id, nroFactura: "A-00001-00000001" },
       });
 
       console.log(
@@ -140,7 +141,7 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
   describe("Escenario 3: doble-submit secuencial (click doble de usuario) — sin concurrencia real, mismo payload dos veces seguidas", () => {
     it("E1: con la clave obligatoria, un CONSUMO repetido (misma clave) crea UNA sola Operacion y descuenta una vez (antes: dos y el doble)", async () => {
       const mp = await crearMP("HarinaDobleSubmit");
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
       const payload = { proceso: "CONSUMO" as const, fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() };
       const r1 = await registrarMovimiento(payload);
@@ -160,7 +161,7 @@ describe("Auditoría — Fase 4: concurrencia, idempotencia, atomicidad", () => 
   describe("Escenario 4: atomicidad — fallo a mitad de un payload con varias líneas", () => {
     it("si una línea del payload es inválida (producto inexistente), NINGUNA línea válida del mismo payload queda persistida", async () => {
       const mpValida = await crearMP("HarinaValida");
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpValida.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpValida.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
 
       const resultado = await registrarMovimiento({
         proceso: "CONSUMO",

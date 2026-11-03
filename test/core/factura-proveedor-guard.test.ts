@@ -17,7 +17,7 @@ const S3 = "suc_3";
 const base = (extra: Record<string, unknown> = {}) => ({
   fecha: HOY,
   proveedorId: "prov",
-  nroFactura: "0001-00000077",
+  nroFactura: "A-00001-00000077",
   seccionId: "sec",
   items: [{ productoId: "p", cantidad: 3, precioTotal: 300 }],
   reparto: { modo: "IMPORTE", partes: [{ sucursalId: S3, valor: 200 }, { sucursalId: "suc_4", valor: 100 }] },

@@ -19,6 +19,7 @@ import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularCostosYMargenes } from "../../src/server/lecturas/reportes/costos";
 import { calcularValuacionInventario } from "../../src/server/consultas/reportes/valuacion";
 import { generarReporteConsignacion } from "../../src/server/consultas/reportes/consignacion";
+import { comprobanteDePrueba, nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
 
 /** Generador determinista (LCG) — la muestra es siempre la misma, así una diferencia se puede reproducir. */
 function* centavosAlAzar(cuantos: number, semilla: number): Generator<number> {
@@ -80,7 +81,7 @@ describe("Precisión — empates de medio centavo (oráculo: Postgres NUMERIC)",
     // Reventa: receta 1:1 sin merma.
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: lata.id, cantidad: 1, unidadId: unidad.id }] } } });
 
-    const compra = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: lata.id, cantidad: 8, precioTotal: 1024.36 }], claveIdempotencia: crypto.randomUUID() });
+    const compra = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: lata.id, cantidad: 8, precioTotal: 1024.36 }], claveIdempotencia: crypto.randomUUID() });
     expect(compra.ok, compra.mensaje).toBe(true);
     const movCompra = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: lata.id, proceso: "COMPRA" } });
     expect(movCompra.precioPorUnidadStock.toString()).toBe("128.045");
@@ -114,7 +115,7 @@ describe("Precisión — empates de medio centavo (oráculo: Postgres NUMERIC)",
         },
         sucursalId
       );
-      const recepcion = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: consignante.id, items: [{ productoId: queso.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+      const recepcion = await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId: consignante.id, items: [{ productoId: queso.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
       expect(recepcion.ok, recepcion.mensaje).toBe(true);
       return { kg3, consignante, queso };
     }
@@ -157,7 +158,7 @@ describe("Precisión — empates de medio centavo (oráculo: Postgres NUMERIC)",
     const jamon = await sembrarProductoDisponible({ codigo: "MP_JAMON", nombre: "Jamón crudo", tipo: "MP", unidadStockId: kg3.id, insumoId }, sucursalId);
     const pv = await sembrarProductoDisponible({ codigo: "PV_JAMON", nombre: "Jamón crudo por kg", tipo: "PV", unidadStockId: kg3.id, precioVenta: 1234.55 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: jamon.id, cantidad: 1, unidadId: kg3.id }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: jamon.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: jamon.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
 
     const venta = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.3 }] });
     expect(venta.ok, venta.mensaje).toBe(true);

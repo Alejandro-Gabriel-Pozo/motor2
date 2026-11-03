@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { generarReporteDevoluciones } from "../../src/server/consultas/reportes/devoluciones";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 
 describe("generarReporteDevoluciones", () => {
   let sucursalId: string;
@@ -29,7 +30,7 @@ describe("generarReporteDevoluciones", () => {
   it("agrupa devoluciones de clientes por producto y devoluciones a proveedores por proveedor", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Molino SA" } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20, precioTotal: 200 }], claveIdempotencia: crypto.randomUUID() }); // $10/kg
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 20, precioTotal: 200 }], claveIdempotencia: crypto.randomUUID() }); // $10/kg
 
     await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "DEVOLUCION_PROVEEDOR", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 3, precioTotal: 30 }], claveIdempotencia: crypto.randomUUID() });

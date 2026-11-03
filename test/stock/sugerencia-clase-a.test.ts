@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { sugerirInsumosClaseA } from "../../src/server/consultas/stock/sugerencia-clase-a";
 import { prisma } from "../setup/test-db";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 
 describe("sugerirInsumosClaseA", () => {
   let sucursalId: string;
@@ -39,9 +40,9 @@ describe("sugerirInsumosClaseA", () => {
     const barato2 = await sembrarProductoDisponible({ codigo: "MP_B2", nombre: "Pimienta", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
 
     // 900 + 50 + 50 = 1000 total: Carne sola ya es 90% acumulado → clase A; las otras dos quedan afuera.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: caro.id, cantidad: 10, precioTotal: 900 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: barato1.id, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: barato2.id, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: dentroDelRango, seccionId, items: [{ productoId: caro.id, cantidad: 10, precioTotal: 900 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: dentroDelRango, seccionId, items: [{ productoId: barato1.id, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: dentroDelRango, seccionId, items: [{ productoId: barato2.id, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
 
     // S-13: el importe y el porcentaje acumulado salen solo con `conImportes: true` (la consulta los niega por defecto).
     const sugeridos = await sugerirInsumosClaseA(sucursalId, desde, hasta, prisma, { conImportes: true });
@@ -55,7 +56,7 @@ describe("sugerirInsumosClaseA", () => {
     );
     // 5 x 200 = 1000: el corte al 80% (800) cae en el 4to producto (200+200+200+200=800, acumulado exactamente 80%).
     for (const p of productos) {
-      await registrarMovimiento({ proceso: "COMPRA", fecha: dentroDelRango, seccionId, items: [{ productoId: p.id, cantidad: 10, precioTotal: 200 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: dentroDelRango, seccionId, items: [{ productoId: p.id, cantidad: 10, precioTotal: 200 }], claveIdempotencia: crypto.randomUUID() });
     }
     const sugeridos = await sugerirInsumosClaseA(sucursalId, desde, hasta, prisma);
     expect(sugeridos).toHaveLength(4);
@@ -64,7 +65,7 @@ describe("sugerirInsumosClaseA", () => {
 
   it("ignora compras anuladas y fuera de la ventana elegida", async () => {
     const insumo = await sembrarProductoDisponible({ codigo: "MP_FUERA", nombre: "Fuera de ventana", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2025-06-01"), seccionId, items: [{ productoId: insumo.id, cantidad: 10, precioTotal: 500 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2025-06-01"), seccionId, items: [{ productoId: insumo.id, cantidad: 10, precioTotal: 500 }], claveIdempotencia: crypto.randomUUID() });
     expect(await sugerirInsumosClaseA(sucursalId, desde, hasta, prisma)).toEqual([]);
   });
 });

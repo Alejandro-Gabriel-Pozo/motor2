@@ -8,6 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarConteosFisicos, resolverConteoPendiente } from "../../src/server/actions/movimientos/conteo-fisico";
 import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 
 /**
  * S-09 (plan de endurecimiento de seguridad, tanda T5; D3 del dueño, SIN RESPUESTA todavía: se ejecuta con el DEFECTO, revertible y pendiente de confirmar): aplicar una
@@ -49,7 +50,7 @@ describe("S-09 (D3, defecto): aplicar la diferencia de un conteo al stock exige 
     productos = [];
     for (const codigo of ["MP_A", "MP_B", "MP_C"]) {
       const mp = await sembrarProductoDisponible({ codigo, nombre: `Insumo ${codigo}`, tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
       productos.push(mp.id);
     }
   });

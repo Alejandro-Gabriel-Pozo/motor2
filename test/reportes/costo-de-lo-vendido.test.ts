@@ -8,6 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 
 /**
  * 6b: «Costo de lo vendido (consumo)» junto al ratio Compras/Ventas (desembolso). El numerador es el costo congelado al vender (o reconstruido con el
@@ -27,7 +28,7 @@ describe("costo de lo vendido (consumo) del período", () => {
   const agosto = () => obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
   async function comprarHarina(fecha: string, cantidad = 10, precioTotal = 50) {
-    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: d(fecha), seccionId, items: [{ productoId: harinaId, cantidad, precioTotal }], claveIdempotencia: crypto.randomUUID() });
+    const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: d(fecha), seccionId, items: [{ productoId: harinaId, cantidad, precioTotal }], claveIdempotencia: crypto.randomUUID() });
     expect(r.ok, r.mensaje).toBe(true);
   }
 
@@ -165,7 +166,7 @@ describe("costo de lo vendido (consumo) del período", () => {
       data: { productoId: pizza.id, version: 1, ingredientes: { create: [{ insumoProductoId: harinaId, cantidad: 2, unidadId: kgId }, { insumoProductoId: cajaId, cantidad: 1, unidadId: kgId }] } },
     });
     await comprarHarina("2026-08-05"); // $50 de comida
-    await registrarMovimiento({ proceso: "COMPRA", fecha: d("2026-08-05"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }); // $100 de packaging
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: d("2026-08-05"), seccionId, items: [{ productoId: cajaId, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }); // $100 de packaging
     const v = await registrarVenta({ fecha: d("2026-08-06"), seccionId, ventas: [{ productoId: pizza.id, cantidadVendida: 1 }] });
     expect(v.ok, v.mensaje).toBe(true);
 

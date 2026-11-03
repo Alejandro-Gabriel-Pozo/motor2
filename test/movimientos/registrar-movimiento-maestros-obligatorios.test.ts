@@ -4,6 +4,7 @@ import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimient
 import { PROCESOS_UI } from "../../src/core/movimientos/ui-config";
 import type { DatosMovimientoInput } from "../../src/core/features/movimientos/movimiento.schema";
 import type { Transaccion } from "../../src/lib/db-tipos";
+import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
 
 /**
  * U11 (auditoría de abstracciones 2026-10-11, N4-8): `registrarMovimientoCasoDeUso` tiene que exigir EN EL SERVIDOR lo que la pantalla exige, y comprobar que el motivo, el
@@ -31,6 +32,9 @@ function dbFalso(m: Maestros): Prisma.TransactionClient {
     proveedor: { findUnique: fila(m.proveedor) },
     // P2: las compras candidatas del aviso C25 se leen ANTES de abrir la transacción (con la base de verificación): el cliente falso responde que no hay ninguna.
     operacion: { findMany: async () => [] },
+    // Una COMPRA busca su número en la empresa antes de seguir (cerrojo, facturas y compras): el cliente falso responde que no hay nada.
+    facturaProveedor: { count: async () => 0 },
+    $queryRaw: async () => [],
   } as unknown as Prisma.TransactionClient;
 }
 
@@ -108,7 +112,7 @@ describe("U11: motivo, destino y proveedor se vuelven a comprobar DENTRO de la t
   });
 
   it("un proveedor desactivado en el medio se rechaza", async () => {
-    const { r } = await llamar({ proceso: "COMPRA", proveedorId: "pr-1" }, { proveedor: true }, { proveedor: false });
+    const { r } = await llamar({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), proveedorId: "pr-1" }, { proveedor: true }, { proveedor: false });
     expect(r).toMatchObject({ ok: false, mensaje: "El proveedor elegido ya no está disponible." });
   });
 });

@@ -14,6 +14,7 @@ import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { registrarPagoConsignante } from "../../src/server/actions/reportes/consignacion";
 import { generarReporteConsignacion } from "../../src/server/consultas/reportes/consignacion";
 import { cargarPagoConsignantePorClave } from "../../src/server/persistencia/reportes/pago-consignante";
+import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
 
 describe("generarReporteConsignacion", () => {
   let sucursalId: string;
@@ -47,7 +48,7 @@ describe("generarReporteConsignacion", () => {
     const pv = await sembrarProductoDisponible({ codigo: "PV_COPA", nombre: "Copa de vino", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: consignante.id, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() }); // recepción sin costo real
+    await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId: consignante.id, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() }); // recepción sin costo real
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 3 }] });
 
     const rep = await generarReporteConsignacion(sucursalId, prisma);
@@ -66,7 +67,7 @@ describe("generarReporteConsignacion", () => {
     );
     const pv = await sembrarProductoDisponible({ codigo: `PV_COPA${sufijo}`, nombre: `Copa de vino${sufijo}`, tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: consignante.id, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId: consignante.id, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: importeLiquidado / 20 }] });
     return consignante;
   }

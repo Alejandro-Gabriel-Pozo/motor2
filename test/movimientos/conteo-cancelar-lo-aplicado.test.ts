@@ -8,6 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { resolverConteoPendiente, cancelarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
 import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 
 /**
  * S-04 (plan de endurecimiento de seguridad, tanda T5; informe B, K2): cancelar un conteo físico revertía `conteo.diferencia`, lo que el conteo REGISTRÓ, y no lo que el conteo APLICÓ
@@ -50,7 +51,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
 
     mpId = (await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Yerba", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId)).id;
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
   });
 
   it("un pendiente cerrado como «resuelto» nunca aplicó nada: cancelarlo NO escribe un ajuste fantasma (hoy escribía +3 de Control)", async () => {
@@ -103,7 +104,7 @@ describe("S-04: cancelar un conteo revierte exactamente lo que ese conteo aplic�
 
   it("la reversión conserva el lote del conteo", async () => {
     const lote = new Date(Date.now() + 30 * 24 * 3_600_000);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 4, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 4, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
     await registrarUnConteoFisico({ productoId: mpId, seccionId, loteVencimiento: lote, conteoReal: 1, fechaConteo: new Date(), accion: "AJUSTAR" });
     const conteo = await conteoDe();
     expect(await saldo()).toBe(11); // 10 sin lote + 1 del lote

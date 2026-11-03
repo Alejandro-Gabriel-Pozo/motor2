@@ -4,6 +4,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, prisma } from "../setup/test-db";
 import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-movimiento";
+import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
 
 /**
  * El vínculo proveedor↔producto de una Compra va DENTRO de la transacción SERIALIZABLE (decisión del dueño, 2026-10-06). Su escritura es un `INSERT … ON CONFLICT DO UPDATE` sobre
@@ -38,6 +39,7 @@ describe("vínculo proveedor↔producto: dos compras simultáneas de sucursales 
       });
       const compra = (seccionId: string, precioTotal: number, fecha: string) => ({
         proceso: "COMPRA" as const,
+        nroFactura: nroFacturaDePrueba(),
         fecha: new Date(fecha),
         seccionId,
         proveedorId: proveedor.id,
