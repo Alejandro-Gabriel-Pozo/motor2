@@ -354,6 +354,11 @@ const completos: Record<string, Valor> = {
   // Fase 7, M2: ¿puede quien busca encontrar un producto por lo que dice la factura del proveedor? Por los permisos del usuario en la sucursal activa del contexto (el propio).
   "consulta|consultas/catalogo/filtros-de-productos.ts|buscaPorReferenciaDelProveedorEnLaLista": (_k, c) => [contextoPropio(c)],
   "lectura|lecturas/catalogo/filtros-de-productos.ts|puedeBuscarPorReferenciaDelProveedor": (_k, c) => [contextoPropio(c)],
+  // Compras etapa 1, paso 5: la búsqueda de productos por palabras (compartida por la lista de Productos y el buscador de la compra). Una lectura cruda por el cliente de la sesión: dos variantes, sin y con la
+  // búsqueda por referencia del proveedor; la segunda lleva un proveedor AJENO (solo ordena: marca `vinculado`) y la primera, ninguno. `termino` es una palabra que está en el nombre de los productos de TODAS las empresas del mundo («Producto …»): la
+  // consulta llega a la base y, si filtrara por empresa mal, traería productos ajenos con su marcador.
+  "lectura|lecturas/catalogo/busqueda-de-producto.ts|buscarProductosPorPalabras": (k, c) =>
+    conVariantes([c.db, "producto", { porReferencia: false }], intento(c, ["proveedorId"], [c.db, "producto", { porReferencia: true, proveedorId: k.proveedorId }])),
   // El `where` de la lista de Productos con «sin receta» (el filtro que además lee la receta vigente de la sucursal): el contexto y la base son los propios.
   "lectura|lecturas/catalogo/filtros-de-productos.ts|whereDeLosProductos": (_k, c) => [
     contextoPropio(c),
