@@ -204,6 +204,7 @@
         "conteo_frecuencia",
         "conteo_resolver_pendiente",
         "insumo_alta",
+        "opcion_apagar_en_sucursal",
         "proceso_compra",
         "proceso_consumo",
         "proceso_control",
@@ -235,6 +236,7 @@
       ],
       "menu": [
         "catalogo|/catalogo/productos",
+        "carta|/carta",
         "movimientos|/movimientos/merma",
         "movimientos|/movimientos/compra",
         "movimientos|/movimientos",
@@ -253,6 +255,7 @@
       ],
       "panelSucursal": [
         "catalogo|/catalogo/productos",
+        "carta|/carta",
         "movimientos|/movimientos/merma",
         "movimientos|/movimientos/compra",
         "movimientos|/movimientos",
@@ -1425,7 +1428,8 @@
       "contexto": "sucursal",
       "nivelMinimo": "operario",
       "rolesEditarSemilla": [
-        "admin"
+        "admin",
+        "operador"
       ]
     },
     {

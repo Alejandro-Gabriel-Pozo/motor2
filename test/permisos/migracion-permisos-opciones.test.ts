@@ -96,7 +96,8 @@ describe("migración de datos GO-1a: las tres claves de los grupos de opciones d
     expect(enBase.rows.map((f) => f.clave)).toEqual([...CLAVES]);
     for (const clave of CLAVES) {
       expect(enAcciones(clave), clave).toBeDefined();
-      expect(enAcciones(clave)!.rolesEditarSemilla, clave).toEqual(["admin"]);
+      // La migración sembró solo `admin` (y eso lo siguen afirmando las pruebas de abajo sobre la base migrada). La semilla de las empresas NUEVAS (`ACCIONES`) de `opcion_apagar_en_sucursal` suma `operador` (decisión del dueño, limpieza paquete A paso 3b; las bases existentes no cambian, sin migración).
+      expect(enAcciones(clave)!.rolesEditarSemilla, clave).toEqual(clave === "opcion_apagar_en_sucursal" ? ["admin", "operador"] : ["admin"]);
       expect(enAcciones(clave)!.modulo, clave).toBe("catalogo_basico");
       expect(clave in RESERVADAS_EN_BASE, `${clave} ya está en ACCIONES: no puede seguir reservada`).toBe(false);
     }

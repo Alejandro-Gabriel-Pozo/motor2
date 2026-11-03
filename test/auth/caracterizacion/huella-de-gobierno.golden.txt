@@ -173,7 +173,7 @@
   PERMISO operador:motivos_destino_consumo ver=false editar=false
   PERMISO operador:motivos_merma ver=false editar=false
   PERMISO operador:notas_usuario_sucursal ver=false editar=false
-  PERMISO operador:opcion_apagar_en_sucursal ver=false editar=false
+  PERMISO operador:opcion_apagar_en_sucursal ver=true editar=true
   PERMISO operador:opciones_definir ver=false editar=false
   PERMISO operador:pagar_consignante ver=false editar=false
   PERMISO operador:pos_abrir_cuenta ver=false editar=false
@@ -590,7 +590,7 @@
   PERMISO operador:motivos_destino_consumo ver=false editar=false
   PERMISO operador:motivos_merma ver=false editar=false
   PERMISO operador:notas_usuario_sucursal ver=false editar=false
-  PERMISO operador:opcion_apagar_en_sucursal ver=false editar=false
+  PERMISO operador:opcion_apagar_en_sucursal ver=true editar=true
   PERMISO operador:opciones_definir ver=false editar=false
   PERMISO operador:pagar_consignante ver=false editar=false
   PERMISO operador:pos_abrir_cuenta ver=false editar=false

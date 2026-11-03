@@ -83,8 +83,6 @@ const O = [
   "compra_recibir",
   // E3a (decisión del dueño, 2026-10-27): proponer el reparto de una factura entre sucursales (de empresa, piso operario, semilla solo admin; el gerente la asigna en la matriz a quien reparte).
   "compra_repartir",
-  // GO-2a: apagar una opción de venta en la sucursal (piso operario, semilla solo admin; delegable al encargado del turno).
-  "opcion_apagar_en_sucursal",
   // GO-3b: cargar el plato del día de los menús en la sucursal (piso operario, semilla solo admin; delegable al encargado, D-5).
   "promo_menu_del_dia",
 ] as const satisfies readonly AccionClave[];
@@ -123,6 +121,8 @@ const L = [
   "proveedor_alta",
   "producto_asignar_insumo",
   "producto_disponibilidad",
+  // GO-2a: apagar una opción de venta en la sucursal (piso operario). Nació en la clase O (semilla solo admin); pasa a L en las empresas NUEVAS (semilla admin y operador, decisión del dueño, limpieza paquete A paso 3b; las bases existentes no cambian, sin migración).
+  "opcion_apagar_en_sucursal",
 ] as const satisfies readonly AccionClave[];
 
 const A = [
@@ -213,7 +213,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     // A: 63 → 62 en la Fase 3 de la ola «precio y carta» (sale `grupos_de_precio_definir` con GO-3a). E3a: `compra_repartir` pasa de A a O (piso operario, decisión del dueño 2026-10-27): O 22 → 23, A 62 → 61.
     // O 23 → 22: se retira `pos_limite_mesas_abiertas` (el límite de mesas abiertas por sucursal, decisión del dueño 2026-10-29).
     // A 61 → 60: se retira `notificar_alertas` (decisión del dueño, limpieza paquete A paso 3).
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 33, 60]);
+    // O 22 → 21 y L 33 → 34: `opcion_apagar_en_sucursal` pasa de O a L (su semilla suma `operador` en las empresas nuevas).
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 21, 34, 60]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {
