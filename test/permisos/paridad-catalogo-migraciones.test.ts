@@ -81,6 +81,8 @@ const RETIRADAS: Record<string, string> = {
   // Fase 3 de la ola «precio y carta» (retiro de GO-3a): el código ya no la tiene; la base la conserva hasta la migración de retiro (que la borra de `Accion` y `PermisoRol`, y ese día sale de acá).
   grupos_de_precio_definir: "las tarifas compartidas de las combinaciones (GO-3a), retiradas del código en la Fase 3; la base la conserva hasta la migración de retiro",
   // Retiro del límite de mesas abiertas por sucursal (decisión del dueño, 2026-10-29): el código ya no la tiene; la base la conserva hasta una migración de retiro (que la borre de `Accion` y `PermisoRol`, y ese día sale de acá).
+  // Limpieza del paquete A, paso 3 (decisión del dueño): la clave sale de ACCIONES sin migración; la base la conserva hasta una migración de retiro (que la borre de `Accion` y `PermisoRol`, y ese día sale de acá).
+  notificar_alertas: "decisión del dueño, limpieza paquete A paso 3: alertas de stock por mail, sin ningún uso en el código (faltaba un proveedor de mail); la base conserva la clave hasta una migración de retiro",
   pos_limite_mesas_abiertas: "el límite de mesas abiertas por sucursal (Task #13 §2), retirado del código el 2026-10-29 por decisión del dueño; la base la conserva hasta la migración de retiro",
 };
 

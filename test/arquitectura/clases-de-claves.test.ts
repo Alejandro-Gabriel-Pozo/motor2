@@ -149,7 +149,6 @@ const A = [
   "stock_minimo",
   "precio_local",
   "comparar_precios",
-  "notificar_alertas",
   "insumos_mezclados",
   "proceso_ajuste",
   "cancelar_conteo",
@@ -213,7 +212,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     expect(todas.length).toBe(ACCIONES.length);
     // A: 63 → 62 en la Fase 3 de la ola «precio y carta» (sale `grupos_de_precio_definir` con GO-3a). E3a: `compra_repartir` pasa de A a O (piso operario, decisión del dueño 2026-10-27): O 22 → 23, A 62 → 61.
     // O 23 → 22: se retira `pos_limite_mesas_abiertas` (el límite de mesas abiertas por sucursal, decisión del dueño 2026-10-29).
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 33, 61]);
+    // A 61 → 60: se retira `notificar_alertas` (decisión del dueño, limpieza paquete A paso 3).
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 33, 60]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

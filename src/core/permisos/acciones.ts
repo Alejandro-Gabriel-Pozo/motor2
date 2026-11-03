@@ -88,7 +88,6 @@ export const ACCIONES = [
   { clave: "ver_stock", modulo: "stock", descripcion: "Ver Stock consolidado, por familia y alertas", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "precio_local", modulo: "catalogo_basico", descripcion: "Fijar Precio Local por sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "comparar_precios", modulo: "compras", descripcion: "Comparar precios por proveedor", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "notificar_alertas", modulo: "stock", descripcion: "Notificar alertas de stock por mail", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "insumos_mezclados", modulo: "catalogo_basico", descripcion: "Revisar insumos con unidad mezclada", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // 'reconstruir_productos' NO se migra (ver plan, porción Catálogo): era
   // el parche de Apps Script para resincronizar Productos ↔ Hoja listado
