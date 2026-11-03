@@ -31,6 +31,7 @@ import {
 } from "@/server/consultas/catalogo/recetas";
 import { CampoNumero } from "@/components/campo-numero";
 import { LecturaDeCantidad } from "@/components/receta/lectura-de-cantidad";
+import { MateriaPrimaYCantidad } from "@/components/receta/materia-prima-y-cantidad";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -539,21 +540,7 @@ export default async function RecetaEditorPage({
           className="flex max-w-lg flex-col gap-2"
         >
           <h3 className="font-medium">Agregar ingrediente (genera la próxima versión)</h3>
-          <LecturaDeCantidad campoId="cantidad-ingrediente-nuevo" unidadDeStockPorMp={unidadDeStockPorMp} unidades={lecturaPorUnidad}>
-            <Selector etiqueta="Materia prima" etiquetaOculta name="insumoProductoId" required>
-              <option value="">Materia prima</option>
-              {mpDisponibles.map((mp) => (
-                <option key={mp.id} value={mp.id}>
-                  {mp.nombre} ({nombreDeUnidad(mp.unidadStockId)})
-                </option>
-              ))}
-            </Selector>
-            <p className="text-xs text-tinta-tenue">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
-            <div className="flex gap-2">
-              <CampoNumero tipo="cantidad" id="cantidad-ingrediente-nuevo" name="cantidad" placeholder="Cantidad" ariaLabel="Cantidad" required className="flex-1" />
-              <CampoNumero tipo="porcentaje" name="mermaPorcentaje" placeholder="Merma %" ariaLabel="Merma" className="w-28" />
-            </div>
-          </LecturaDeCantidad>
+          <MateriaPrimaYCantidad idCantidad="cantidad-ingrediente-nuevo" etiquetaMateriaPrima="Materia prima" etiquetaCantidad="Cantidad" etiquetaMerma="Merma" lecturaPorUnidad={lecturaPorUnidad} />
           <BotonDeServidor type="submit">
             Agregar
           </BotonDeServidor>

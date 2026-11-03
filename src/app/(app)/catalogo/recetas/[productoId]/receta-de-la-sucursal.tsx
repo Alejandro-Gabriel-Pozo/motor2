@@ -9,6 +9,7 @@ import { Casilla } from "@/ui/primitivas/casilla";
 import { Selector } from "@/ui/primitivas/selector";
 import { IconoDeAccion } from "@/components/iconos";
 import { LecturaDeCantidad } from "@/components/receta/lectura-de-cantidad";
+import { MateriaPrimaYCantidad } from "@/components/receta/materia-prima-y-cantidad";
 import type { UnidadDeLectura } from "@/core/catalogo/public";
 import {
   actualizarIngredienteDeRecetaPropia,
@@ -235,21 +236,13 @@ export function RecetaDeLaSucursal({
             className="flex max-w-lg flex-col gap-2"
           >
             <h3 className="font-medium">Agregar ingrediente a la receta de {sucursalNombre} (genera su próxima versión)</h3>
-            <LecturaDeCantidad campoId="cantidad-ingrediente-nuevo-propia" unidadDeStockPorMp={unidadDeStockPorMp} unidades={lecturaPorUnidad}>
-              <Selector etiqueta="Materia prima de la receta propia" etiquetaOculta name="insumoProductoId" required>
-                <option value="">Materia prima</option>
-                {materiasPrimas.map((mp) => (
-                  <option key={mp.id} value={mp.id}>
-                    {mp.nombre} ({nombreDeUnidad(mp.unidadStockId)})
-                  </option>
-                ))}
-              </Selector>
-              <p className="text-xs text-tinta-tenue">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
-              <div className="flex gap-2">
-                <CampoNumero tipo="cantidad" id="cantidad-ingrediente-nuevo-propia" name="cantidad" placeholder="Cantidad" ariaLabel="Cantidad en la receta propia" required className="flex-1" />
-                <CampoNumero tipo="porcentaje" name="mermaPorcentaje" placeholder="Merma %" ariaLabel="Merma en la receta propia" className="w-28" />
-              </div>
-            </LecturaDeCantidad>
+            <MateriaPrimaYCantidad
+              idCantidad="cantidad-ingrediente-nuevo-propia"
+              etiquetaMateriaPrima="Materia prima de la receta propia"
+              etiquetaCantidad="Cantidad en la receta propia"
+              etiquetaMerma="Merma en la receta propia"
+              lecturaPorUnidad={lecturaPorUnidad}
+            />
             <BotonDeServidor type="submit">
               Agregar a la receta propia
             </BotonDeServidor>

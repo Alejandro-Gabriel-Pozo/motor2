@@ -51,6 +51,11 @@ export interface ProductoOpcion {
   nombre: string;
 }
 
+/** Lo que devuelve el buscador `buscarProductosSelector`: la opción y la unidad de stock del producto (el editor de recetas la muestra en cada resultado y pegada a la cantidad). */
+export interface ProductoOpcionConUnidad extends ProductoOpcion {
+  unidadStock: { id: string; nombre: string };
+}
+
 const LIMITE_SELECTOR = 20;
 
 /**
@@ -62,7 +67,7 @@ const LIMITE_SELECTOR = 20;
  * vacío); con término, filtra por nombre o código (y, desde la Fase 7, por
  * cómo lo llama un proveedor, para quien ve ese dato: M2 del diseño de Catálogo).
  */
-export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto): Promise<ProductoOpcion[]> {
+export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto): Promise<ProductoOpcionConUnidad[]> {
   // H8 (D-2): el «O» de las claves de las 24 pantallas que muestran el selector (test/arquitectura/consumidores-de-lecturas-declarados.test.ts).
   const ctx = await requerirVerAlguna([
     "proceso_compra",
@@ -107,7 +112,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
   const verificacion = filtro?.soloDisponiblesEnAlguna ? await lecturaDeVerificacionEnLaEmpresa(ctx) : ctx;
   return verificacion.db.producto.findMany({
     where: condiciones.length ? { AND: condiciones } : {},
-    select: { id: true, codigo: true, nombre: true },
+    select: { id: true, codigo: true, nombre: true, unidadStock: { select: { id: true, nombre: true } } },
     orderBy: { nombre: "asc" },
     take: LIMITE_SELECTOR,
   });
