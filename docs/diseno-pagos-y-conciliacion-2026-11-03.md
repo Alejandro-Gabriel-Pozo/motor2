@@ -8,7 +8,7 @@ Estado: **BORRADOR en papel. Niveles 1 a 5 de la escalera de diseño; los nivele
 - **Qué pidió el dueño:** «dejar el terreno preparado» para esta idea. No pidió construirla.
 - **Corrección a mi recomendación anterior.** Dije que «una fecha y un medio por factura» era la forma barata. **Con esta idea no alcanza:** un solo pago cubre varias facturas y notas de crédito, incluye retenciones, y se concilia por diferencia. Retiro esa recomendación (ver §5, I1).
 - **Hallazgo central:** lo que esta idea necesita, **motor2 ya lo tiene planeado en otro lado**: `ConciliacionParcial` (N a N, con importe aplicado, deshacer con fila nueva) en `motor2-docs/04-contabilidad-y-caja/compatibilidad-motor2-contabilidad-odoo.md`. Y también hay una decisión que hay que reabrir: DM-11 dejó las **retenciones fuera del MVP**, pero este flujo las necesita para conciliar.
-- **Una sola pregunta (§11):** ¿motor2 registra solo el pago hecho y su conciliación, o también la solicitud y la aprobación previas?
+- **Decisión del dueño (2026-11-03, CONFIRMADA):** motor2 **absorbe todo el flujo**: solicitud → documentos → aprobación → pago o devolución → comprobante → conciliación y cierre, como un **expediente único** por caso (ver §9). Antes de diseñar tablas queda **una** pregunta abierta sobre las cuentas de correo y de archivos de cada cliente (§8).
 
 ## 1. Propósito y alcance
 
@@ -96,6 +96,47 @@ El dueño avisó que los archivos tienen errores; esto es lo que noté al leer, 
 
 ## 8. Preguntas abiertas
 
-1. **(Dueño, una sola, la que cambia el modelo de datos)** ¿Querés que motor2 registre **solo el pago hecho y su conciliación** (y el flujo de solicitud, auditoría y aprobación sigue en tu sistema actual por ahora), o que **también absorba la solicitud y la aprobación**? Recomiendo lo primero: es lo que hace falta para conciliar y para el flujo de fondos, y deja la aprobación para una etapa posterior con nombre.
+1. **RESUELTA (2026-11-03):** motor2 absorbe el flujo completo (ver §9). Texto original: «¿solo el pago hecho y su conciliación, o también la solicitud y la aprobación?». Respuesta del dueño: «la idea es que absorba todo».
+1.bis **(Dueño, una sola, la que cambia datos y permisos)** Los correos y los archivos pertenecen a cada cliente de motor2: ¿**cada cliente conecta su propia cuenta** (su Gmail y su Drive) o motor2 usa **una casilla y un almacenamiento propios por cliente** (por ejemplo un servicio de envío y recepción de correo y una carpeta por empresa)? Recomiendo lo segundo para arrancar: no depende de credenciales personales de cada cliente y se aísla por empresa desde el diseño; conectar el Gmail y el Drive de cada uno puede ser una etapa posterior con nombre.
 2. **NO VERIFICADO:** si el plan de `ConciliacionParcial` sigue vigente en la copia remota de `motor2-docs` (la local es del 2026-10-09).
 3. **PENDIENTE (después de la pregunta 1):** retenciones (DM-11), tolerancia de diferencia (I4) y almacenamiento de adjuntos (T7).
+
+## 9. Alcance confirmado: expediente completo (dueño, 2026-11-03)
+
+**Texto del dueño, resumido:** una plataforma interna para gestionar solicitudes y operaciones financieras con flujos de aprobación y comunicación por correo. El centro no son las «oportunidades comerciales» sino **cada caso o expediente y su estado**. Base de datos como registro principal; la hoja de cálculo solo para exportar o reportar.
+
+**Flujos que incluye (CONFIRMADA como alcance; el orden y el detalle son PROPUESTA):**
+1. **Cuentas por pagar:** facturas recibidas, notas de crédito, solicitudes de compra, devoluciones o reintegros por pagos realizados.
+2. **Cuentas por cobrar:** solicitudes de pago y facturas enviadas a clientes.
+3. **Devoluciones a clientes:** solicitud, aprobación, motivo y registro del reembolso.
+4. **Bandeja de correo:** mensajes entrantes y salientes vinculados al expediente correcto.
+
+**Qué lleva un expediente (PROPUESTA):** tipo, solicitante, proveedor o cliente, monto y moneda, documentos asociados, responsables, aprobaciones, fechas y la conversación de correo.
+
+**Dos estados separados (CONFIRMADA como principio, nombres PROPUESTA):**
+- **Estado de aprobación:** por ejemplo pendiente, aprobado, observado, rechazado.
+- **Estado del dinero:** por ejemplo por pagar, parcialmente pagado, pagado, reembolsado.
+- «Aprobado» **no** significa «ya se pagó».
+
+**Casos nuevos que pidió el dueño (se suman al oráculo `docs/oraculo-conciliacion-por-correo-2026-11-03.md`):**
+| Si… | Qué pasa (PROPUESTA) |
+|---|---|
+| El remitente manda un comprobante o una percepción equivocados | El expediente pasa a **«requiere corrección»**, indica qué documento o dato falta y permite **pedirlo de nuevo** |
+| El remitente responde **fuera del hilo** | La bandeja permite **vincular a mano** ese correo y sus adjuntos al expediente |
+| El remitente **no responde** | Queda registrado el **reenvío o seguimiento pendiente** (con fecha y quién) |
+| Se reemplaza un documento | Se guarda el nuevo y queda registro de **quién lo recibió o reemplazó**; el anterior no se borra |
+| Los documentos se almacenan | Vinculados al caso, con su origen (qué correo, quién) |
+
+**Servicios externos que nombró el dueño (decisión técnica PENDIENTE):** Gmail (enviar solicitudes y vincular respuestas), Drive (facturas, notas de crédito, comprobantes), Sheets (exportar y reportes) y «Resend o alguna casilla» para enviar y recibir. **NO VERIFICADO:** si el servicio de envío que motor2 ya usa para avisos (Resend, ADR-018) permite también **recibir** correo; hoy solo se usa para enviar. **NO VERIFICADO:** el alcance de permisos y la cuota de las APIs de Gmail y Drive para una plataforma con varios clientes.
+
+**Etapas propuestas (la más barata primero; cada una se puede frenar):**
+| Etapa | Qué entrega | Depende de |
+|---|---|---|
+| X1 | Expediente de **cuentas por pagar** con los dos estados, documentos adjuntos (almacenamiento a decidir), historial y **bandeja manual** (se carga o vincula el correo a mano, sin automatización) | decisión de almacenamiento (T7) y la pregunta 1.bis |
+| X2 | Envío de la solicitud por correo y recepción de respuestas, con la lista de decisión del oráculo (propuesta, sin asignar, bloqueo, observada) | canal de correo elegido |
+| X3 | Pagos y conciliación N a N, con retenciones y diferencia declarada | reabrir DM-11 (retenciones) |
+| X4 | Cuentas por cobrar | X1 |
+| X5 | Devoluciones a clientes | X1 |
+| X6 | Anticipos con rendición (saldo $0) | X1 y X3 |
+
+**Riesgo declarado:** esto es un módulo del tamaño de Compras o más. Por eso se diseña por etapas y **no se crea ninguna tabla** hasta tener confirmados los niveles 1 a 5 de X1.
