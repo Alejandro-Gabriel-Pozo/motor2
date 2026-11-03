@@ -1,4 +1,5 @@
-import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
+import { guardComprobanteDeCompra } from "@/core/features/compras/compra.guard";
+import { leerNumeroDeComprobanteDeCompra } from "@/core/datos/numero-comprobante";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 /**
@@ -40,9 +41,14 @@ function textoOVacio(v: string | null | undefined): string | null {
   return t === "" ? null : t;
 }
 
-/** Recorta los espacios y convierte el vacío en `null`, igual que hace la carga de una compra (`texto(x) || null`). */
+/**
+ * Recorta los espacios y convierte el vacío en `null`, igual que hace la carga de una compra (`texto(x) || null`). El N.º de factura que se puede leer como comprobante (letra, punto de venta y número) se
+ * reemplaza por su texto canónico: «A-23-1» y «A-00023-00000001» son el mismo número y no cuentan como cambio. Si no se puede leer queda tal cual (una compra vieja con texto libre cuyo número no cambia no se traba).
+ */
 export function normalizarCorreccion(entrada: EntradaCorreccion): CabeceraCompra {
-  return { proveedorId: textoOVacio(entrada.proveedorId), nroFactura: textoOVacio(entrada.nroFactura), detalleLibre: textoOVacio(entrada.detalleLibre) };
+  const nroFactura = textoOVacio(entrada.nroFactura);
+  const canonico = nroFactura === null ? null : leerNumeroDeComprobanteDeCompra(nroFactura);
+  return { proveedorId: textoOVacio(entrada.proveedorId), nroFactura: canonico?.ok ? canonico.valor : nroFactura, detalleLibre: textoOVacio(entrada.detalleLibre) };
 }
 
 /** Los campos que cambian entre lo guardado y lo pedido, en un orden fijo (proveedor, factura, detalle). */
@@ -58,10 +64,11 @@ export function diferenciasDeCabecera(actual: CabeceraCompra, nueva: CabeceraCom
 export function validarCorreccion(cambios: readonly CambioDeCabecera[]): string | null {
   for (const c of cambios) {
     if (c.campo === "nroFactura") {
-      // Mismo validador que la carga de la compra (registrarMovimiento): largo y al menos una letra o número.
-      const factura = guardNroFacturaCompra(c.nuevo);
+      // Mismo validador que la carga de la compra (registrarMovimiento): obligatorio y estructurado (letra, punto de venta y número). Quitar el número también se rechaza.
+      const factura = guardComprobanteDeCompra(c.nuevo);
       if (!factura.ok) return factura.mensaje;
     }
+    if (c.campo === "proveedorId" && !c.nuevo) return "La compra tiene que tener proveedor.";
     if (c.campo === "detalleLibre" && c.nuevo && c.nuevo.length > LARGO_MAXIMO_DETALLE_COMPRA) return `El detalle no puede superar los ${LARGO_MAXIMO_DETALLE_COMPRA} caracteres.`;
   }
   return null;
@@ -73,11 +80,6 @@ export function validarCorreccion(cambios: readonly CambioDeCabecera[]): string 
  */
 export function cabeceraCoincide(actual: CabeceraCompra, esperado: CabeceraCompra): boolean {
   return actual.proveedorId === esperado.proveedorId && actual.nroFactura === esperado.nroFactura && actual.detalleLibre === esperado.detalleLibre;
-}
-
-/** Los tres campos que forman la clave de «factura repetida» (con `sucursalId`): solo choca si hay proveedor y N.º de factura. */
-export function clavesDeFactura(cabecera: CabeceraCompra): { proveedorId: string; nroFactura: string } | null {
-  return cabecera.proveedorId && cabecera.nroFactura ? { proveedorId: cabecera.proveedorId, nroFactura: cabecera.nroFactura } : null;
 }
 
 /** Mensaje de éxito de una corrección (Task #41, Fase M): texto EXACTO que armaba en línea la Server Action `corregirCompra`. */

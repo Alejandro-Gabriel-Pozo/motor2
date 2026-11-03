@@ -11,7 +11,6 @@ export { claveDeLote, descripcionAuditoriaAnulacion, evaluarAnulacion, evaluarPo
 export type { LineaComprada, LineaDeReversion, SaldosPorLote } from "./anulacion";
 export {
   cabeceraCoincide,
-  clavesDeFactura,
   descripcionAuditoriaCorreccion,
   diferenciasDeCabecera,
   mensajeCompraCorregida,

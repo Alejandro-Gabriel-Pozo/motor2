@@ -17,8 +17,8 @@ const NUMERO_MAXIMO = 99999999;
 
 export const LETRAS_DE_COMPROBANTE = ["A", "B", "C", "E", "M", "X"] as const;
 export type LetraDeComprobante = (typeof LETRAS_DE_COMPROBANTE)[number];
-export const DIGITOS_DEL_PUNTO_DE_VENTA = 5;
-export const DIGITOS_DEL_NUMERO = 8;
+const DIGITOS_DEL_PUNTO_DE_VENTA = 5;
+const DIGITOS_DEL_NUMERO = 8;
 
 
 export type NumeroComprobante =

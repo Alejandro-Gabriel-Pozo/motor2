@@ -2,7 +2,7 @@ import { texto } from "@/core/texto";
 import { esDetalleReservadoParaReversiones } from "@/core/movimientos/public";
 import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
-import { validarNroFactura } from "@/core/datos/nro-factura";
+import { guardComprobanteDeCompra } from "./compra.guard";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
 import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, DatosFacturaProveedorInput } from "./factura-proveedor.schema";
@@ -25,8 +25,8 @@ function claveObligatoria(clave: unknown): ResultadoDato<string> {
 }
 
 /**
- * «Cargar factura». `sucursalActivaId` es la sucursal de la sesión (la que compra): si tiene parte, hace falta la sección donde entra; y si alguna parte es de OTRA sucursal, el número de
- * factura es obligatorio (D10: sin número no hay unicidad y una factura repartida cargada dos veces duplicaría stock en varias sucursales).
+ * «Cargar factura». `sucursalActivaId` es la sucursal de la sesión (la que compra): si tiene parte, hace falta la sección donde entra. El número de factura es OBLIGATORIO y estructurado (etapa 1 de Compras, I1:
+ * letra, punto de venta y número, `guardComprobanteDeCompra`) y el comando sigue con el texto canónico «A-00023-00237728» (D10: sin número no hay unicidad y una factura repartida cargada dos veces duplicaría stock en varias sucursales).
  */
 export function guardComandoRegistrarFacturaProveedor(entrada: unknown, ahora: Date, sucursalActivaId: string): ResultadoDato<DatosFacturaProveedorInput> {
   const e = (entrada ?? {}) as Partial<Record<keyof DatosFacturaProveedorInput, unknown>>;
@@ -61,15 +61,13 @@ export function guardComandoRegistrarFacturaProveedor(entrada: unknown, ahora: D
     }
   }
 
-  const numero = validarNroFactura(e.nroFactura);
+  const numero = guardComprobanteDeCompra(typeof e.nroFactura === "string" ? e.nroFactura : null);
   if (!numero.ok) return rechazar(numero.codigo, numero.mensaje);
-  const hayParteAjena = [...vistas].some((id) => id !== sucursalActivaId);
-  if (hayParteAjena && !numero.valor) return rechazar("vacio", "Para repartir una factura entre sucursales hace falta su número.");
   if (vistas.has(sucursalActivaId) && !texto(e.seccionId)) return rechazar("vacio", "Elegí la sección donde entra la parte de esta sucursal.");
 
   const clave = claveObligatoria(e.claveIdempotencia);
   if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
-  return aceptar(entrada as DatosFacturaProveedorInput);
+  return aceptar({ ...(entrada as DatosFacturaProveedorInput), nroFactura: numero.valor });
 }
 
 /** «Aceptar mi parte»: la parte, la sección y la fecha de stock (el rango contra la fecha de la factura lo mira el caso de uso, que la conoce). */

@@ -650,7 +650,7 @@ testAutenticado(
       // Rechazo por factura repetida: el aviso queda visible.
       await tarjeta.getByLabel("N.º de factura", { exact: true }).fill(`A11Y-USADA-${marca}`);
       await tarjeta.getByRole("button", { name: "Guardar corrección" }).click();
-      await expect(tarjeta.getByRole("alert").filter({ hasText: "Ya hay una compra registrada con esa factura" })).toBeVisible();
+      await expect(tarjeta.getByRole("alert").filter({ hasText: "Ya hay una factura de este proveedor con ese número" })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "rechazo por factura repetida").toEqual([]);
 
       // Corregida: el formulario se cierra y queda el aviso de éxito.

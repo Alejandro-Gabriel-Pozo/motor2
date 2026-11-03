@@ -6,7 +6,7 @@ import { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicad
 import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
-import { guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
+import { guardComprobanteDeCompra, guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { TRANSICIONES, armarFilasDeMovimiento, redondearACantidadDeUnidad } from "@/core/movimientos/public";
@@ -17,7 +17,8 @@ import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-c
 import { cargarOperacionPorClaveIdempotencia, chequearIdempotencia, registrarResultadoIdempotente } from "@/server/persistencia/movimientos/idempotencia";
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { DatosMovimientoInput, ProcesoGenerico, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
-import { cargarComprasParaAvisoDeDuplicado, cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+import { cargarComprasParaAvisoDeDuplicado, cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+import { hayComprobanteVigenteEnLaEmpresa } from "@/server/persistencia/compras/comprobante-en-la-empresa";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { registrarVinculoDeCompraEnTx } from "@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
@@ -40,11 +41,13 @@ const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<ProcesoGeneric
  *  1. sección propia (origen y, si Transferencia, destino) — Fase 6 (auditoría de seguridad/contratos): `conPermiso` ya validó el
  *     permiso en LA SUCURSAL DEL QUE LLAMA, nunca que la sección que mandó el cliente sea realmente de esa sucursal;
  *  2. motivo/destino (catálogos GLOBALES, solo activos) y proveedor (de la empresa, solo activo) — cliente global `prisma`, fuera de la transacción (camino rápido; la Merma sin motivo se rechaza acá) — U11: se vuelven a comprobar DENTRO de la transacción, después de la idempotencia;
- *  3. `guardNroFacturaCompra` — DESPUÉS de sección/motivo/destino a propósito (mismo orden que antes: cambiarlo cambiaría qué mensaje
- *     sale primero cuando hay más de un dato inválido a la vez);
- *  4. camino rápido de factura duplicada (`existeCompraVigenteConFactura`, cliente global) — el árbitro real es el índice único
- *     parcial, ver el catch de más abajo;
- *  5. `conTransaccionSerializable`, con `.catch(esChoqueDeFacturaUnica)` tal cual: I3, P17 (una sección dada de baja solo admite sacar: Consumo, Merma y Transferencia como origen; como destino no; código `SECCION_INACTIVA`; DESPUÉS de I3 a propósito), armado de cada línea
+ *  3. el N.º de factura — DESPUÉS de sección/motivo/destino a propósito (mismo orden que antes: cambiarlo cambiaría qué mensaje
+ *     sale primero cuando hay más de un dato inválido a la vez). En una COMPRA (etapa 1 de Compras, I1/I2/I5) el proveedor y el número son OBLIGATORIOS: sin proveedor `PROVEEDOR_OBLIGATORIO`; el número se lee con `guardComprobanteDeCompra`
+ *     (letra, punto de venta y número) y lo que se guarda es el texto canónico «A-00023-00237728». Los otros procesos (la Devolución a proveedor incluida) siguen con `guardNroFacturaCompra` (texto libre);
+ *  4. aviso C25 (parte 1) y apertura de la transacción. Ya NO hay camino rápido de factura repetida fuera de la transacción: corría ANTES del chequeo de idempotencia, así que un reintento de una compra ya guardada
+ *     recibía «duplicada» en vez de «repetida». El rechazo vive adentro (paso 5);
+ *  5. `conTransaccionSerializable`, con `.catch(esChoqueDeFacturaUnica)` (segunda barrera, dentro de la sucursal): una COMPRA abre la transacción con la base de verificación (lectura en toda la empresa, escritura como estaba) para
+ *     poder preguntar por el número en las demás sucursales; el rechazo `hayComprobanteVigenteEnLaEmpresa` va DESPUÉS de la idempotencia y de los maestros, con el mensaje único `MENSAJE_FACTURA_DUPLICADA` (sin fecha ni sucursal). I3, P17 (una sección dada de baja solo admite sacar: Consumo, Merma y Transferencia como origen; como destino no; código `SECCION_INACTIVA`; DESPUÉS de I3 a propósito), armado de cada línea
  *     (`armarLineaMovimiento`), validación de stock agregada, escritura de `Operacion` + `MovimientoStock[]` y, en una Compra, un
  *     vínculo proveedor↔producto por línea con unidad de compra conocida (el comando de Catálogo `registrarVinculoDeCompraEnTx`) — TODO dentro de la misma transacción (decisión del dueño, 2026-10-06:
  *     si falla el vínculo falla la compra entera y se reintenta con la misma clave I3, así nunca queda una compra a medias).
@@ -56,7 +59,7 @@ const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<ProcesoGeneric
  *
  * @contract Registra un movimiento de Kardex para cualquiera de los 9 procesos genéricos, con validación de stock agregada por producto+sección ANTES de escribir nada.
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
- * @transaction conTransaccionSerializable (SERIALIZABLE + reintento), con `.catch(esChoqueDeFacturaUnica)` para la factura duplicada.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) sobre la base de verificación en una COMPRA, con `.catch(esChoqueDeFacturaUnica)` para la factura duplicada.
  * @sideEffects registrarVinculoDeCompraEnTx (comando de Catálogo, Compra, DENTRO de la transacción) — un vínculo proveedor↔producto por línea con unidad de compra (la de compra o, si no tiene, la de stock) y la auditoría de su precio cuando cambia; si falla, falla la compra.
  * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
@@ -89,35 +92,21 @@ export async function registrarMovimientoCasoDeUso(
   if (noDisponible) return noDisponible;
 
   // El N.º de factura solo se carga en Compra y Devolución a proveedor (los procesos con proveedor): mismo validador que la corrección.
-  const factura = guardNroFacturaCompra(datos.nroFactura);
+  // Una COMPRA exige proveedor y un número estructurado (etapa 1 de Compras): el guard devuelve el texto canónico que se guarda.
+  if (datos.proceso === "COMPRA" && !datos.proveedorId) return fracaso("PROVEEDOR_OBLIGATORIO", "Elegí el proveedor de la factura.");
+  const factura = datos.proceso === "COMPRA" ? guardComprobanteDeCompra(datos.nroFactura) : guardNroFacturaCompra(datos.nroFactura);
   if (!factura.ok) return fracaso("FACTURA_INVALIDA", factura.mensaje);
   const nroFactura = factura.valor;
-
-  // Chequeo de factura duplicada (Movimientos.js:402-416): mismo
-  // proveedor + mismo número de factura ya cargados como Compra en esta
-  // sucursal — una factura sin número no se puede comparar, no bloquea.
-  // Camino RÁPIDO para el caso secuencial (el 99,99%): rechaza antes de
-  // abrir la transacción, con un mensaje inmediato. Bajo concurrencia
-  // real (dos requests simultáneos con la misma factura) este `findFirst`
-  // no alcanza — ninguno de los dos ve todavía la Operacion del otro
-  // (TOCTOU clásico). El árbitro real es el índice único parcial
-  // `Operacion_factura_unica_vigente_key` (docs/auditoria-motor2-plan-i3-
-  // idempotencia-2026-09-17.md §9.2): su violación se atrapa más abajo,
-  // fuera de la transacción (ya hizo rollback para cuando el `.catch`
-  // la recibe).
-  if (datos.proceso === "COMPRA" && datos.proveedorId && nroFactura) {
-    const yaExiste = await existeCompraVigenteConFactura(actor.db, { sucursalId: actor.sucursalId, proveedorId: datos.proveedorId, nroFactura });
-    if (yaExiste) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
-  }
 
   // Aviso C25 (posible factura repetida; NO bloquea), parte 1: solo en una Compra con proveedor. La VERIFICACIÓN abarca toda la empresa pero el aviso no muestra datos de otra sucursal (P2, decisión del dueño): las compras candidatas
   // se leen ACÁ, antes de abrir la transacción (la compra nueva todavía no existe, así que no se compara contra sí misma), con la base de VERIFICACIÓN (lectura en todas las sucursales de la empresa, escritura como estaba), y se mira en
   // cuáles de las sucursales de esas compras puede ver compras quien carga (`proceso_compra`, el mismo gate de siempre): el texto da el día solo de esas.
+  // La base de verificación es también la de la transacción de una COMPRA (rechazo del número repetido en toda la empresa, I2); los demás procesos siguen con la del actor.
+  const verificacion = datos.proceso === "COMPRA" ? await lecturaDeVerificacionEnLaEmpresa(actor) : actor;
   let candidatasDelAviso: CompraCandidata[] = [];
   let sucursalesQueVeQuienCarga: ReadonlySet<string> = new Set([actor.sucursalId]);
   if (datos.proceso === "COMPRA" && datos.proveedorId) {
     const diaDeLaCompra = diaDeCalendario(datos.fecha, ZONA_ARGENTINA);
-    const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
     candidatasDelAviso = await cargarComprasParaAvisoDeDuplicado(verificacion.db, {
       proveedorId: datos.proveedorId,
       desde: sumarDias(diaDeLaCompra, -DIAS_DE_VENTANA_DE_DUPLICADO),
@@ -130,7 +119,7 @@ export async function registrarMovimientoCasoDeUso(
   // La huella del pedido (I3), fuera de la transacción: no depende de nada que se lea adentro, y la usa también el `.catch` de abajo.
   const payloadHash = calcularPayloadHash(datos.proceso, actor.sucursalId, { ...datos, claveIdempotencia: undefined });
 
-  const resultado = await conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRegistrarMovimiento> => {
+  const resultado = await conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoRegistrarMovimiento> => {
     // 0) I3 — idempotencia: chequeo antes de cualquier lógica de negocio. La clave es obligatoria desde E1 (el guard la exige): no hay camino «sin clave».
     const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { operacionId: null, movimientos: null, repetida: true });
@@ -139,6 +128,12 @@ export async function registrarMovimientoCasoDeUso(
     // U11: la lectura de antes de abrir la transacción pudo quedar vieja (un motivo, destino o proveedor desactivado en el medio): se vuelve a comprobar acá, con el estado que ve la transacción.
     const yaNoDisponible = await maestroNoDisponible(tx, motivoId, destinoId, datos.proveedorId);
     if (yaNoDisponible) return yaNoDisponible;
+
+    // I2 (etapa 1 de Compras): el mismo número del mismo proveedor se rechaza en TODA la empresa (compra simple en cualquier sucursal o factura repartida). Va DESPUÉS de la idempotencia: un reintento de algo ya guardado
+    // devuelve «repetida», no «duplicada». Solo devuelve sí/no, y el mensaje no dice dónde está. La carrera de dos cargas a la vez la resuelven el cerrojo y el reintento por serialización (ver el lector).
+    if (datos.proceso === "COMPRA" && datos.proveedorId && nroFactura && (await hayComprobanteVigenteEnLaEmpresa(tx, { empresaId: actor.empresaId, proveedorId: datos.proveedorId, nroFactura }))) {
+      return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
+    }
 
     // P17 (decisión del dueño, 2026-10-11): una sección dada de baja solo admite SACAR mercadería (consumir, mermar o transferir) hasta vaciarla; no recibe mercadería nueva. Va DESPUÉS de I3:
     // un reintento de algo ya escrito tiene que devolver «repetida», nunca un rechazo que invite a cargarlo de nuevo en otra sección (duplicaría el stock). La sección se leyó arriba, sin
@@ -271,8 +266,7 @@ export async function registrarMovimientoCasoDeUso(
     return exito(mensaje, { operacionId: operacion.id, movimientos: filas.length, repetida: false });
   }, undefined, undefined, true).catch(async (e): Promise<ResultadoRegistrarMovimiento> => {
     // La transacción ya hizo rollback para cuando este catch la recibe — nunca se intenta seguir operando
-    // sobre ella. Choque de la carrera de factura duplicada (dos requests simultáneos, ver el comentario del
-    // chequeo previo más arriba): mismo mensaje de negocio, no un error 500.
+    // sobre ella. Segunda barrera de la factura duplicada (el índice único parcial de la sucursal): mismo mensaje de negocio, no un error 500.
     if (esChoqueDeFacturaUnica(e)) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
     // E1: la carrera con la MISMA clave ya la resuelven los reintentos (`tambienChoqueDeUnico`: al repetir, el chequeo ve al ganador). Si igual llega acá un choque de
     // la clave es porque la tiene una operación que este pedido NO ve (otra empresa u otra sucursal: la clave es única global). Molde del pedido del salón

@@ -18,11 +18,6 @@ export async function cargarAnulacionPorClaveIdempotencia(db: Db, claveIdempoten
   return db.anulacionDeFacturaProveedor.findUnique({ where: { claveIdempotencia }, select: { payloadHash: true, resultadoMensaje: true } });
 }
 
-/** ¿Hay una factura VIGENTE de ese proveedor con ese número normalizado (sin letra)? Camino rápido; el árbitro es el índice único parcial `FacturaProveedor_unica_vigente_key`. */
-export async function existeFacturaVigenteConNumero(db: Db, args: { proveedorId: string; nroFacturaNormalizado: string }): Promise<boolean> {
-  return (await db.facturaProveedor.count({ where: { proveedorId: args.proveedorId, nroFacturaNormalizado: args.nroFacturaNormalizado, letra: null, anuladaEn: null } })) > 0;
-}
-
 /** Las sucursales pedidas (de la empresa: la RLS esconde las ajenas), con su nombre y si están activas. `Sucursal` es de gobierno: no depende del alcance. */
 export async function cargarSucursalesDelReparto(db: Db, sucursalIds: readonly string[]): Promise<{ id: string; nombre: string; activo: boolean }[]> {
   return db.sucursal.findMany({ where: { id: { in: [...sucursalIds] } }, select: { id: true, nombre: true, activo: true } });

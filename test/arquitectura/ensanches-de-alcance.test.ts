@@ -257,8 +257,24 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
   "src/server/actions/movimientos/casos-de-uso/registrar-movimiento.ts": {
     lectores: { cargarComprasParaAvisoDeDuplicado: 0 },
     directos: [],
+    // Etapa 1 de Compras (I2): la transacción de una COMPRA se abre con la lectura en toda la empresa para rechazar el número repetido en cualquier sucursal.
+    transaccionA: { conTransaccionSerializable: 0 },
     devuelve: "MENSAJE",
-    motivo: "C25: las compras candidatas de TODA la empresa para el aviso; el texto da el día solo de las sucursales que quien carga ve (`avisoDePosibleDuplicado`) y nunca el importe ni el N.º de factura; no bloquea",
+    motivo: "C25: las compras candidatas de TODA la empresa para el aviso; el texto da el día solo de las sucursales que quien carga ve (`avisoDePosibleDuplicado`) y nunca el importe ni el N.º de factura; no bloquea. Y el rechazo del número repetido en TODA la empresa (`hayComprobanteVigenteEnLaEmpresa`, dentro de la transacción de una compra): devuelve solo el mensaje único, sin fecha ni sucursal",
+  },
+  "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts": {
+    lectores: {},
+    directos: [],
+    transaccionA: { conTransaccionSerializable: 0 },
+    devuelve: "MENSAJE",
+    motivo: "cargar una factura de proveedor: el rechazo del número repetido en toda la empresa (otra factura o una compra simple de cualquier sucursal, `hayComprobanteVigenteEnLaEmpresa`); la escritura NO se ensancha. Sale solo el mensaje único, sin fecha ni sucursal",
+  },
+  "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts": {
+    lectores: {},
+    directos: [],
+    transaccionA: { conTransaccionSerializable: 0 },
+    devuelve: "MENSAJE",
+    motivo: "corregir una compra: el rechazo del número repetido en toda la empresa al cambiar el proveedor o el número (`hayComprobanteVigenteEnLaEmpresa`, sin contar la propia compra); la escritura NO se ensancha. Sale solo el mensaje único, sin fecha ni sucursal",
   },
 };
 

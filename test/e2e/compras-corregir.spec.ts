@@ -111,7 +111,7 @@ test("un N.º de factura ya usado por otra compra vigente del proveedor se recha
     await tarjeta.getByLabel("N.º de factura", { exact: true }).fill(`USADA-${s.marca}`);
     await tarjeta.getByRole("button", { name: "Guardar corrección" }).click();
 
-    const error = tarjeta.getByRole("alert").filter({ hasText: "Ya hay una compra registrada con esa factura" });
+    const error = tarjeta.getByRole("alert").filter({ hasText: "Ya hay una factura de este proveedor con ese número" });
     await expect(error).toBeVisible();
     await expect(tarjeta.getByLabel("N.º de factura", { exact: true })).toBeVisible(); // sigue abierto para poder corregirlo
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: otra.id } })).nroFactura).toBe(`OTRA-${s.marca}`);

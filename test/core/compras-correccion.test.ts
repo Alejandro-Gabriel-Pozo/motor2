@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   LARGO_MAXIMO_DETALLE_COMPRA,
   cabeceraCoincide,
-  clavesDeFactura,
   descripcionAuditoriaCorreccion,
   diferenciasDeCabecera,
   mensajeCompraCorregida,
@@ -87,14 +86,6 @@ describe("cabeceraCoincide (guarda optimista)", () => {
 
   it("null y null coinciden (una compra sin proveedor sigue igual)", () => {
     expect(cabeceraCoincide(cabecera({ proveedorId: null }), cabecera({ proveedorId: null }))).toBe(true);
-  });
-});
-
-describe("clavesDeFactura", () => {
-  it("solo hay clave de factura repetida con proveedor Y N.º de factura", () => {
-    expect(clavesDeFactura(cabecera())).toEqual({ proveedorId: "prov1", nroFactura: "A-0001" });
-    expect(clavesDeFactura(cabecera({ proveedorId: null }))).toBeNull();
-    expect(clavesDeFactura(cabecera({ nroFactura: null }))).toBeNull();
   });
 });
 
