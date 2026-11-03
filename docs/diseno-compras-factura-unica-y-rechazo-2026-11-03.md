@@ -51,6 +51,34 @@ Contexto: Argentina (UTC-3); todo en pesos; cada empresa solo ve lo suyo y cada 
 - **Vínculo proveedor↔producto.** Ya existe (`ProveedorPorProducto`: unidad de compra, último precio, `referenciaProveedor` = cómo lo llama ese proveedor). En la primera compra de un insumo a un proveedor, `referenciaProveedor` pasa de opcional a **obligatoria** y se guarda al confirmar (CONFIRMADA).
 - **Unidad (CONFIRMADA).** La unidad de la compra es la del producto; no se toma la de la última compra. La cantidad se convierte a la unidad de stock.
 
+## 4.bis Dónde vive cada dato: insumo, materia prima y lo que dice el proveedor (PROPUESTA; pregunta del dueño del 2026-11-03)
+
+**Inventario real (código en `main`, producción en Neon el 2026-11-03).**
+
+- **Insumo** (`Insumo`): el concepto genérico que agrupa materias primas equivalentes («Bife angosto»); lo usan las recetas y el costo por insumo. Solo tiene nombre y grupo.
+- **Materia prima** (`Producto` con `tipo = MP`): lo concreto que se compra, con **nuestro** código y **nuestro** nombre, unidad de stock, unidad de compra, factor de conversión y alícuota de IVA de compra. Puede apuntar a un insumo (`insumoId`, opcional; el asistente de hermanar los une).
+- **Lo que dice el proveedor** (`ProveedorPorProducto`, una fila por proveedor × producto × unidad de compra): unidad de compra, último precio, última compra y **un solo texto libre**, `referenciaProveedor`, que hoy mezcla el código y el nombre del proveedor. La línea de la factura (`FacturaProveedorRenglon`) **no** guarda lo que decía la factura: ese texto solo sirve para escribir o actualizar el vínculo.
+- **Producción:** 0 materias primas, 0 insumos, 0 proveedores, 0 vínculos y 47 productos de venta. No hay nada que migrar de este lado.
+
+**Principio (PROPUESTA): cada dato vive en un solo lugar, y se pregunta de quién es.**
+
+| Dato | De quién es | Dónde vive | Se copia a otro lado |
+|---|---|---|---|
+| Nuestro código y nombre | de la materia prima | `Producto` | No |
+| El concepto genérico (para recetas y costo) | del insumo | `Insumo`, y la materia prima lo apunta | No: los reportes por insumo se calculan por la materia prima |
+| Código y descripción **que pone el proveedor** | del par proveedor × materia prima (el mismo producto lo llama distinto cada proveedor) | `ProveedorPorProducto`, **en dos campos separados**: `codigoDelProveedor` (nuevo) y `referenciaProveedor` (queda para la descripción) | No: las facturas y los reportes lo leen del vínculo |
+| Unidad de compra y conversión a unidad de stock | del producto y del vínculo | `Producto.factorConversion` y `ProveedorPorProducto.unidadCompraId` | No |
+| Unidades, kilos e importe de cada compra | del documento | la línea de la factura | No (precio por unidad y por kilo se calculan) |
+| Último precio | derivado | hoy `ProveedorPorProducto.precioUnitario`; se puede recalcular de la última línea | Es una caché que ya existe |
+
+**Qué evita duplicar.** Código y descripción **no** se guardan en el insumo ni en la materia prima ni en cada línea: viven en el vínculo proveedor × materia prima. Separar código y descripción en dos campos permite buscar por el **código exacto** del proveedor y sacar las dos columnas del reporte sin cortar texto. Una restricción única `(empresa, proveedor, código)` impide que un mismo código del proveedor apunte a dos productos.
+
+**Flujo.** Primera carga de un insumo a un proveedor: el operador escribe el código y la descripción tal como están en la factura y elige la materia prima (o la crea rápido); el sistema guarda el vínculo. Desde la segunda carga: escribir el código lo encuentra directo (coincidencia exacta primero, §5.2). Si se crea una materia prima nueva al vuelo, el nombre propuesto puede salir de la descripción del proveedor **una sola vez, al crearla**, y después se edita por separado (no queda ligado).
+
+**Historia (PENDIENTE).** La línea no guarda lo que decía la factura; si el proveedor cambia un nombre, el reporte de una factura vieja muestra el nombre nuevo. Opciones: (a) alcanza con lo último que dice el vínculo (lo más barato, sin columnas nuevas en la línea); (b) la línea guarda una foto de código y descripción (dos columnas aditivas). *Recomendación: (a) por ahora; se agrega (b) si hace falta la historia exacta.*
+
+**Migración (etapa 2, junto a las letras del proveedor).** Una columna aditiva `codigoDelProveedor` en `ProveedorPorProducto` y un índice único parcial; `referenciaProveedor` no se toca. Sin datos que migrar. **Requiere autorización expresa**, con respaldo y ensayo.
+
 ## 5. Invariantes y políticas
 
 ### 5.1 Invariantes
