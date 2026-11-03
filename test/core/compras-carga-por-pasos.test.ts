@@ -7,6 +7,7 @@ import {
   cantidadEnStock,
   decidirUnidadDePrecarga,
   etiquetaDeUnidad,
+  fusionarFilasConPrecarga,
   mensajeFinalDeCompra,
   pasoAnterior,
   pasoSiguiente,
@@ -161,5 +162,35 @@ describe("revisión", () => {
   it("mensajeFinalDeCompra suma los avisos al mensaje del servidor", () => {
     expect(mensajeFinalDeCompra("Compra registrada.", [])).toBe("Compra registrada.");
     expect(mensajeFinalDeCompra("Compra registrada.", ["A.", "B."])).toBe("Compra registrada. A. B.");
+  });
+});
+
+describe("fusionarFilasConPrecarga (elegir proveedor sin perder lo ya elegido)", () => {
+  const fila = (productoId: string, extra: Record<string, string> = {}) => ({ productoId, cantidad: "", importe: "", pesoReal: "", loteVencimiento: "", referenciaProveedor: "", ...extra });
+
+  it("conserva la fila con producto que no está en la precarga, con todo lo tecleado, después de la precarga", () => {
+    const r = fusionarFilasConPrecarga([fila("a", { cantidad: "3", importe: "450" })], [fila("p1"), fila("p2")]);
+    expect(r.map((f) => f.productoId)).toEqual(["p1", "p2", "a"]);
+    expect(r[2]).toMatchObject({ cantidad: "3", importe: "450" });
+  });
+
+  it("si el producto ya elegido está en la precarga, esa fila toma lo tecleado (la referencia vacía no pisa la del vínculo)", () => {
+    const r = fusionarFilasConPrecarga(
+      [fila("p2", { cantidad: "5", importe: "10", pesoReal: "4,9", loteVencimiento: "2027-01-01" })],
+      [fila("p1"), fila("p2", { referenciaProveedor: "REF-V" })]
+    );
+    expect(r).toHaveLength(2);
+    expect(r[1]).toMatchObject({ productoId: "p2", cantidad: "5", importe: "10", pesoReal: "4,9", loteVencimiento: "2027-01-01", referenciaProveedor: "REF-V" });
+    expect(r[0].cantidad).toBe("");
+  });
+
+  it("la referencia tecleada gana a la del vínculo", () => {
+    const r = fusionarFilasConPrecarga([fila("p", { referenciaProveedor: "MIA" })], [fila("p", { referenciaProveedor: "REF-V" })]);
+    expect(r[0].referenciaProveedor).toBe("MIA");
+  });
+
+  it("descarta las filas sin producto; sin precarga y sin filas con producto queda vacío", () => {
+    expect(fusionarFilasConPrecarga([fila(""), fila("", { cantidad: "9" })], [])).toEqual([]);
+    expect(fusionarFilasConPrecarga([fila(""), fila("a")], []).map((f) => f.productoId)).toEqual(["a"]);
   });
 });

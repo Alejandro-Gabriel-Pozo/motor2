@@ -195,3 +195,39 @@ export function avisosDeImporteCero(lineas: readonly { nombre: string; cantidad:
 export function mensajeFinalDeCompra(mensajeDelServidor: string, avisos: readonly string[]): string {
   return avisos.length ? `${mensajeDelServidor} ${avisos.join(" ")}` : mensajeDelServidor;
 }
+
+// ───────────────────────── Fusión de filas al elegir proveedor ─────────────────────────
+
+/** Los valores que tecleó la persona en una fila: lo único que la fusión traslada de una fila existente a la precargada del mismo producto. */
+export interface FilaConTecleado {
+  productoId: string;
+  cantidad: string;
+  importe: string;
+  pesoReal: string;
+  loteVencimiento: string;
+  referenciaProveedor: string;
+}
+
+/**
+ * Las filas que quedan al elegir (o cambiar) el proveedor: primero la precarga del proveedor; a continuación, las filas que ya tenían un producto elegido y NO están entre las precargadas (por ejemplo, el producto
+ * del deep-link de un reporte), con todo lo tecleado. Si un producto ya elegido SÍ está entre los precargados, la fila precargada toma lo tecleado en la existente (cantidad, importe, peso, lote y, si la existente
+ * tiene una, la referencia). Las filas sin producto se descartan. Devuelve vacío si no queda ninguna: quien llama pone la fila vacía.
+ */
+export function fusionarFilasConPrecarga<F extends FilaConTecleado>(existentes: readonly F[], precargadas: readonly F[]): F[] {
+  const conProducto = existentes.filter((f) => f.productoId !== "");
+  const porProducto = new Map(conProducto.map((f) => [f.productoId, f] as const));
+  const precargadasIds = new Set(precargadas.map((p) => p.productoId));
+  const fusionadas = precargadas.map((p) => {
+    const previa = porProducto.get(p.productoId);
+    if (!previa) return p;
+    return {
+      ...p,
+      cantidad: previa.cantidad,
+      importe: previa.importe,
+      pesoReal: previa.pesoReal,
+      loteVencimiento: previa.loteVencimiento,
+      referenciaProveedor: previa.referenciaProveedor !== "" ? previa.referenciaProveedor : p.referenciaProveedor,
+    };
+  });
+  return [...fusionadas, ...conProducto.filter((f) => !precargadasIds.has(f.productoId))];
+}

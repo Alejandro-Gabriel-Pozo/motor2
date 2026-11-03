@@ -32,6 +32,7 @@ export {
   cantidadEnStock,
   decidirUnidadDePrecarga,
   etiquetaDeUnidad,
+  fusionarFilasConPrecarga,
   mensajeFinalDeCompra,
   pasoAnterior,
   pasoSiguiente,

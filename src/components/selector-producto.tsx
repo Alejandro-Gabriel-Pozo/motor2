@@ -109,7 +109,7 @@ export function SelectorProducto({ id, value, onChange, filtro, proveedorId, pla
   }
 
   // La lista (role="listbox") solo existe cuando hay opciones que mostrar: un listbox sin opciones no es válido (axe aria-required-children), así que
-  // «Buscando…», el error y «Sin resultados.» son avisos aparte (role="status"/"alert") y no `<li>` sueltos adentro del listbox.
+  // «Buscando…», el error y «Ningún producto tiene todas esas palabras…» son avisos aparte (role="status"/"alert") y no `<li>` sueltos adentro del listbox.
   const hayLista = !cargando && opciones.length > 0;
   const idOpcion = (i: number) => `${listboxId}-op-${i}`;
   // Con `aria-label` el campo se nombra solo; sin él lo nombra el `<label>` de la pantalla. (La regla `campos-con-nombre` mira un solo archivo: no ve el `<label>` de afuera, y por eso el nombre va en un

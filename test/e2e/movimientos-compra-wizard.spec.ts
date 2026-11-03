@@ -227,8 +227,6 @@ test("?productoId= llega con el producto cargado en la fila («CÓDIGO — Nombr
   // El aviso se ve desde el primer paso; la fila con el producto, en el paso 2 («Qué compraste»).
   await expect(page.getByText(/Viniste desde un reporte para cargar precio de/)).toContainText(etiqueta);
   const factura = await completarPasoFactura(page, { proveedor: proveedor.nombre });
-  // BUG DE LA PANTALLA (ver el test «test.fail» de abajo): al elegir proveedor se reinician las filas y se pierde el producto del deep-link. Acá se vuelve a elegir a mano para seguir probando que la compra lleva el id del producto.
-  await elegirProductoEnLaFila(page, producto.nombre);
   await expect(page.locator('input[placeholder="Código o nombre…"]').first()).toHaveValue(etiqueta);
 
   await llenarLinea(page, { cantidad: "3", importe: "450", referencia: "Insumo del reporte" });
@@ -243,9 +241,8 @@ test("?productoId= llega con el producto cargado en la fila («CÓDIGO — Nombr
   expect((await prisma.operacion.findUniqueOrThrow({ where: { id: movimiento.operacionId } })).nroFactura).toBe(factura.texto);
 });
 
-/** BUG CONOCIDO (a corregir en src/): con `?productoId=` la fila del paso 2 tendría que seguir cargada con el producto después de elegir proveedor (hoy `elegirProveedor` llama a `reiniciarFilas()` o reemplaza `items` y lo pierde). Cuando se corrija, este test pasa y hay que sacarle el `test.fail`. */
-test("BUG conocido: ?productoId= conserva el producto en la fila del paso 2 tras elegir proveedor", async ({ paginaAutenticada: page, sucursalId }) => {
-  test.fail();
+/** Con `?productoId=` la fila del paso 2 sigue cargada con el producto después de elegir proveedor (la elección conserva las filas que ya tienen producto). */
+test("?productoId= conserva el producto en la fila del paso 2 tras elegir proveedor", async ({ paginaAutenticada: page, sucursalId }) => {
   const ahora = Date.now();
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-DLB-${ahora}`, nombre: `E2E Insumo Deep Link Bug ${ahora}`, tipo: "MP", unidadStockId: unidad.id } });

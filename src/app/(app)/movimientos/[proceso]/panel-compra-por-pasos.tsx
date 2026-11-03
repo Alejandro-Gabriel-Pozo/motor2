@@ -14,6 +14,7 @@ import {
   avisosDeImporteCero,
   cantidadEnStock,
   etiquetaDeUnidad,
+  fusionarFilasConPrecarga,
   mensajeFinalDeCompra,
   pasoAnterior,
   pasoSiguiente,
@@ -77,6 +78,8 @@ interface FilaCompra {
   referenciaProveedor: string;
   /** Solo referencia visual, no se manda al servidor. */
   ultimaCompraTexto: string;
+  /** La fila vino de la precarga de un proveedor y nadie la tocó desde entonces: al cambiar de proveedor se descarta (las de otro proveedor no se arrastran). */
+  precargada: boolean;
 }
 
 const FILA_VACIA: FilaCompra = {
@@ -94,6 +97,7 @@ const FILA_VACIA: FilaCompra = {
   pesoReal: "",
   referenciaProveedor: "",
   ultimaCompraTexto: "",
+  precargada: false,
 };
 
 // El día de hoy en Argentina (no en UTC: desde las 21:00 locales UTC ya es mañana).
@@ -200,6 +204,20 @@ export function PanelCompraPorPasos({
     setVersionItems((n) => n + 1);
   };
 
+  /** Al elegir o cambiar el proveedor se arma la precarga y se conservan las filas que ya tenían producto (p. ej. el del deep-link de un reporte); las filas vacías se descartan. */
+  const conservarFilasConProducto = (precargadas: FilaCompra[]) => {
+    setItems((prev) => {
+      // El selector se remonta (lee `etiquetaInicial` una sola vez): una fila elegida a mano no la tiene, así que se arma con el código y el nombre ya leídos.
+      const sinTocar = (f: FilaCompra) => f.precargada && !f.cantidad && !f.importe && !f.pesoReal && !f.loteVencimiento;
+      const previas = prev.filter((f) => !sinTocar(f)).map((f) => (f.productoId && !f.etiquetaInicial && f.codigo ? { ...f, etiquetaInicial: `${f.codigo} — ${f.nombre}` } : f));
+      const yaElegidos = new Set(previas.map((f) => f.productoId));
+      // Una fila precargada que la persona ya tocó pasa a ser suya: deja de descartarse al cambiar de proveedor.
+      const fusionadas = fusionarFilasConPrecarga(previas, precargadas).map((f) => (f.precargada && yaElegidos.has(f.productoId) ? { ...f, precargada: false } : f));
+      return fusionadas.length ? fusionadas : [{ ...FILA_VACIA }];
+    });
+    setVersionItems((n) => n + 1);
+  };
+
   const elegirProveedor = (id: string) => {
     setProveedorId(id);
     const pedido = ++pedidoProveedor.current;
@@ -207,7 +225,7 @@ export function PanelCompraPorPasos({
 
     if (!id) {
       setCargandoProveedor(false);
-      reiniciarFilas();
+      conservarFilasConProducto([]);
       setInfoProveedor("");
       return;
     }
@@ -221,7 +239,7 @@ export function PanelCompraPorPasos({
         // Si la carga falla las filas que había eran de OTRO proveedor: se vacían y el proveedor vuelve a «Elegí el proveedor», así se puede elegir el mismo de nuevo para reintentar.
         setCargandoProveedor(false);
         setProveedorId("");
-        reiniciarFilas();
+        conservarFilasConProducto([]);
         setInfoProveedor("No se pudo cargar lo que le comprás a este proveedor. Volvé a elegirlo para reintentar.");
       }
     ).then((productos) => {
@@ -229,15 +247,16 @@ export function PanelCompraPorPasos({
       if (pedido !== pedidoProveedor.current) return;
       setCargandoProveedor(false);
       if (!productos.length) {
-        reiniciarFilas();
+        conservarFilasConProducto([]);
         setInfoProveedor("Todavía no le compraste nada a este proveedor — agregalo con \"+ Agregar insumo\". La próxima vez va a aparecer solo acá.");
         return;
       }
       setProductosYaVinculados(new Set(productos.map((p) => p.productoId)));
       setInfoProveedor(`${productos.length} producto(s) que ya le comprás. Completá cantidad solo en los que estés comprando ahora — el resto queda sin cambios.`);
-      setItems(
+      conservarFilasConProducto(
         productos.map((p) => ({
           ...FILA_VACIA,
+          precargada: true,
           productoId: p.productoId,
           etiquetaInicial: `${p.productoCodigo} — ${p.productoNombre}`,
           codigo: p.productoCodigo,
@@ -254,7 +273,6 @@ export function PanelCompraPorPasos({
               : "",
         }))
       );
-      setVersionItems((n) => n + 1);
     });
   };
 

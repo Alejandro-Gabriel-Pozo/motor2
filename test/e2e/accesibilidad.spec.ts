@@ -289,9 +289,9 @@ testAutenticado("movimientos/precio-local: el selector de producto abierto (con 
     await selector.press("ArrowDown");
     await expect(selector).toHaveAttribute("aria-activedescendant", (await opcion.getAttribute("id")) ?? "sin-id");
 
-    // Sin resultados: el aviso «Sin resultados.» también vive dentro del listbox.
+    // Sin resultados: el aviso «Ningún producto tiene todas esas palabras…» también vive dentro del listbox.
     await selector.fill("zzz-no-existe-ningun-producto-asi");
-    await expect(page.getByText("Sin resultados.")).toBeVisible();
+    await expect(page.getByText("Ningún producto tiene todas esas palabras. Probá con menos palabras o con el código.")).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations, "listbox sin resultados").toEqual([]);
   } finally {
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
