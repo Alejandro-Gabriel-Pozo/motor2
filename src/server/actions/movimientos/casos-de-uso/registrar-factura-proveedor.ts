@@ -1,5 +1,6 @@
 import "server-only";
 import { texto } from "@/core/texto";
+import { mensajeReferenciaProveedorObligatoria } from "@/core/features/compras/compra.guard";
 import { normalizarNumeroDeComprobante, repartirFactura, type RepartoDeFactura } from "@/core/compras/public";
 import type { DatosMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
 import type { DatosFacturaProveedorInput, ResultadoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.schema";
@@ -23,6 +24,7 @@ import { cargarProveedor } from "@/server/persistencia/movimientos/cargar-valida
 import { escribirLineasDeMovimientoStock, escribirOperacionDeStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { chequearIdempotencia } from "@/server/persistencia/movimientos/idempotencia";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
+import { productosConVinculoConElProveedor } from "@/server/lecturas/catalogo/vinculos-de-proveedor";
 import { cargarFacturaPorClaveIdempotencia, cargarSucursalesDelReparto } from "@/server/persistencia/compras/cargar-factura-proveedor";
 import { hayComprobanteVigenteEnLaEmpresa } from "@/server/persistencia/compras/comprobante-en-la-empresa";
 import {
@@ -110,6 +112,12 @@ export async function registrarFacturaProveedorCasoDeUso(
       lineas.push({ linea: armado.linea, nombre: producto?.nombre ?? "", decimales: producto?.unidadStock.decimales ?? 0 });
     }
     if (!lineas.length) return fracaso("LINEA_INVALIDA", "Ninguna línea tiene una cantidad válida.");
+
+    // CU7/I12: misma regla que la compra simple — en la PRIMERA compra de un producto a este proveedor hay que escribir cómo lo llama (alcanza con que una línea del mismo producto nuevo la traiga). Antes de escribir nada.
+    const vinculados = await productosConVinculoConElProveedor(tx, datos.proveedorId, lineas.map((l) => l.linea.productoId));
+    const conReferencia = new Set(lineas.filter((l) => l.linea.referenciaProveedor).map((l) => l.linea.productoId));
+    const sinReferencia = lineas.find((l) => !vinculados.has(l.linea.productoId) && !conReferencia.has(l.linea.productoId));
+    if (sinReferencia) return fracaso("REFERENCIA_PROVEEDOR_OBLIGATORIA", mensajeReferenciaProveedorObligatoria(sinReferencia.nombre));
 
     const reparto = repartirFactura(
       lineas.map((l) => ({ nombre: l.nombre, precioTotal: l.linea.precioTotal, cantidadStock: l.linea.cantidadIngresada, decimales: l.decimales })),

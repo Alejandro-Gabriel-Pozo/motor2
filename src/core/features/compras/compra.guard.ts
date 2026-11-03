@@ -50,6 +50,11 @@ export function guardComprobanteDeCompra(valor: string | null | undefined) {
   return leerNumeroDeComprobanteDeCompra(valor ?? "");
 }
 
+/** Etapa 1 de Compras (CU7, I12): en la PRIMERA compra de un producto a un proveedor hay que escribir cómo lo llama el proveedor. */
+export function mensajeReferenciaProveedorObligatoria(nombreDelProducto: string): string {
+  return `Escribí cómo lo llama el proveedor a "${nombreDelProducto}" (código y descripción, como dice la factura): es la primera compra de ese producto a este proveedor.`;
+}
+
 /** Mismo texto que usaba la Server Action cuando la operación no existe en esta sucursal (anular y corregir). */
 export const MENSAJE_OPERACION_NO_ENCONTRADA = "No se encontró esa operación en esta sucursal.";
 

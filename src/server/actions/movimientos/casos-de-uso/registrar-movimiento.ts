@@ -6,7 +6,7 @@ import { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicad
 import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
-import { guardComprobanteDeCompra, guardNroFacturaCompra } from "@/core/features/compras/compra.guard";
+import { guardComprobanteDeCompra, guardNroFacturaCompra, mensajeReferenciaProveedorObligatoria } from "@/core/features/compras/compra.guard";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { TRANSICIONES, armarFilasDeMovimiento, redondearACantidadDeUnidad } from "@/core/movimientos/public";
@@ -19,6 +19,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import type { DatosMovimientoInput, ProcesoGenerico, ResultadoRegistrarMovimiento } from "@/core/features/movimientos/movimiento.schema";
 import { cargarComprasParaAvisoDeDuplicado, cargarDestinoConsumo, cargarMotivoMerma, cargarProveedor } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 import { hayComprobanteVigenteEnLaEmpresa } from "@/server/persistencia/compras/comprobante-en-la-empresa";
+import { productosConVinculoConElProveedor } from "@/server/lecturas/catalogo/vinculos-de-proveedor";
 import { escribirOperacionDeStock, escribirLineasDeMovimientoStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { registrarVinculoDeCompraEnTx } from "@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx";
 import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movimiento";
@@ -150,6 +151,18 @@ export async function registrarMovimientoCasoDeUso(
       if (armado.linea) lineas.push(armado.linea);
     }
     if (!lineas.length) return fracaso("SIN_LINEAS_VALIDAS", "Ninguna línea tiene una cantidad válida.");
+
+    // CU7/I12 (etapa 1 de Compras): en la PRIMERA compra de un producto a este proveedor (sin ninguna fila de vínculo, con cualquier unidad de compra) hay que escribir cómo lo llama el proveedor. Va DESPUÉS de la
+    // idempotencia y del número repetido (un reintento devuelve «repetida») y ANTES de escribir. Una sola lectura para todas las líneas; si dos líneas traen el mismo producto nuevo, alcanza con que una traiga la referencia.
+    if (datos.proceso === "COMPRA" && datos.proveedorId) {
+      const vinculados = await productosConVinculoConElProveedor(tx, datos.proveedorId, lineas.map((l) => l.productoId));
+      const conReferencia = new Set(lineas.filter((l) => l.referenciaProveedor).map((l) => l.productoId));
+      const sinReferencia = lineas.find((l) => !vinculados.has(l.productoId) && !conReferencia.has(l.productoId));
+      if (sinReferencia) {
+        const producto = await obtenerProducto(sinReferencia.productoId);
+        return fracaso("REFERENCIA_PROVEEDOR_OBLIGATORIA", mensajeReferenciaProveedorObligatoria(producto?.nombre ?? sinReferencia.productoId));
+      }
+    }
 
     // 2) Validación de stock AGREGADA por clave producto+sección dentro
     // de TODO el payload, antes de escribir nada (bugfix C-1,
