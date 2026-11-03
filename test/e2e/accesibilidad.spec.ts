@@ -288,6 +288,43 @@ testAutenticado("movimientos/precio-local: el selector de producto abierto (con 
   }
 });
 
+testAutenticado("catalogo/recetas/[id]: el buscador de materia prima de «Agregar ingrediente» (con resultados y su unidad, sin resultados y con una elegida) no tiene violaciones de axe", async ({ paginaAutenticada: page, sucursalId }) => {
+  const marca = Date.now();
+  const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const mp = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RBUS-${marca}`, nombre: `E2E A11y Materia ${marca}`, tipo: "MP", unidadStockId: kg.id } });
+  const pv = await prisma.producto.create({ data: { codigo: `E2E-A11Y-RPV-${marca}`, nombre: `E2E A11y Plato ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 100 } });
+  await prisma.disponibilidadProducto.createMany({ data: [mp.id, pv.id].map((productoId) => ({ sucursalId, productoId, disponible: true })) });
+  try {
+    await page.goto(`/catalogo/recetas/${pv.id}`);
+    await page.getByRole("button", { name: "+ Agregar ingrediente", exact: true }).click();
+    const formulario = page.locator("form").filter({ has: page.getByRole("heading", { name: "Agregar ingrediente (genera la próxima versión)" }) });
+    const buscador = formulario.getByRole("combobox", { name: "Materia prima", exact: true });
+
+    // Con resultados: cada uno lleva su unidad de stock y la resaltada la anuncia el combobox (aria-activedescendant).
+    await buscador.fill(mp.nombre);
+    const opcion = formulario.getByRole("option", { name: new RegExp(mp.nombre) });
+    await expect(opcion).toBeVisible();
+    await expect(opcion).toContainText("kg");
+    expect((await new AxeBuilder({ page }).analyze()).violations, "buscador de materia prima con resultados").toEqual([]);
+    await buscador.press("ArrowDown");
+    await expect(buscador).toHaveAttribute("aria-activedescendant", (await opcion.getAttribute("id")) ?? "sin-id");
+
+    // Sin resultados: «No encontré…» como aviso, fuera del listbox.
+    await buscador.fill("zzz-no-existe-ninguna-materia-asi");
+    await expect(formulario.getByText(/^No encontré «zzz-no-existe-ninguna-materia-asi»/)).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "buscador de materia prima sin resultados").toEqual([]);
+
+    // Con una elegida: la línea con «Cambiar» y la unidad pegada a la cantidad.
+    await buscador.fill(mp.nombre);
+    await opcion.click();
+    await expect(formulario.locator("[data-unidad-de-la-cantidad]")).toHaveText("kg");
+    expect((await new AxeBuilder({ page }).analyze()).violations, "materia prima elegida").toEqual([]);
+  } finally {
+    await prisma.disponibilidadProducto.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });
+    await prisma.producto.deleteMany({ where: { id: { in: [mp.id, pv.id] } } });
+  }
+});
+
 testAutenticado("con el sistema en oscuro, la app declara color-scheme: light (DEC-04) y la administración va sobre el papel (6.5)", async ({ paginaAutenticada: page }) => {
   // La app no tiene modo oscuro (DEC-04): aun con el sistema en oscuro, la raíz declara `color-scheme: light` (los controles que dibuja el navegador —la
   // lista desplegada de un <select>, las barras de scroll— salen claros) y el fondo del <body> sigue claro. Se verifica la declaración y el fondo (no se
