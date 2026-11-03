@@ -59,7 +59,7 @@ Contexto: Argentina (UTC-3); todo en pesos; cada empresa solo ve lo suyo y cada 
 |---|---|---|
 | I1 | El número de factura es obligatorio siempre | CONFIRMADA |
 | I2 | El mismo número del mismo proveedor se rechaza en toda la empresa, también desde la compra simple, la corrección y la aceptación | CONFIRMADA (los caminos: PROPUESTA) |
-| I3 | Número solo con dígitos; ceros a la izquierda se completan. Punto de venta de 5 dígitos y número de 8 (así viene en la planilla del dueño: `00023-00237728`) | CONFIRMADA lo de los dígitos; PROPUESTA los anchos 5 y 8 (respaldo: la planilla real; las fuentes secundarias consultadas sobre ARCA discrepan entre 4 y 5 dígitos y la documentación oficial NO VERIFICADA) |
+| I3 | Número solo con dígitos; ceros a la izquierda se completan. Punto de venta de 5 dígitos y número de 8 (así viene en la planilla del dueño: `00023-00237728`) | CONFIRMADA (los anchos 5 y 8 los confirmó el dueño el 2026-11-03 con su planilla real; la documentación oficial de ARCA no se consultó: NO VERIFICADA) |
 | I4 | Letra y punto de venta salen de lo configurado en el proveedor; con uno solo se eligen solos | CONFIRMADA |
 | I5 | Solo facturas con proveedor, sin remito | CONFIRMADA (proveedor obligatorio: PROPUESTA) |
 | I6 | Precio 0 se puede guardar y avisa; no actualiza el costo | CONFIRMADA |
@@ -99,7 +99,7 @@ Contexto: Argentina (UTC-3); todo en pesos; cada empresa solo ve lo suyo y cada 
 
 **Resueltas (CONFIRMADAS el 2026-11-03):**
 
-1. Anchos: se toman los de la planilla del dueño, punto de venta de 5 dígitos y número de 8 (I3).
+1. Anchos: punto de venta de **5** dígitos y número de **8**, confirmados por el dueño (I3).
 2. Si el proveedor no tiene letra o punto de venta cargados, la primera factura los pide y **ofrece guardarlos en la ficha, con confirmación**.
 3. Activar un producto al aceptar: alcanza con `producto_disponibilidad`. Quien acepta sin ese permiso solo puede rechazar.
 4. Propuesta sin respuesta: la sucursal que compró puede **retirarla con motivo**; el plazo se decide después.
