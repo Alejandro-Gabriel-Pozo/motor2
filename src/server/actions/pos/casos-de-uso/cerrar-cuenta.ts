@@ -19,9 +19,7 @@ import { describirAviso, formatearCantidad } from "../cuenta-comun";
 import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
- * Caso de uso «cerrar la cuenta de una mesa» (Task #41, Fase M12a — ver docs/arquitectura-casos-de-uso-2026-09-27.md). Es la
- * orquestación que antes vivía en línea en la Server Action `cerrarCuenta` (src/server/actions/pos/cuenta-cierre.ts), en el MISMO orden
- * y con los MISMOS textos; la Server Action quedó como adaptador fino (permiso → guard → este caso de uso → `aResultadoAccion`). El
+ * Caso de uso «cerrar la cuenta de una mesa». La Server Action es un adaptador fino (permiso → guard → este caso de uso → `aResultadoAccion`). El
  * criterio de negocio completo (líneas netas, descuento de cliente D7, sección automática, stock negativo B6bis) está documentado en la
  * Server Action.
  *

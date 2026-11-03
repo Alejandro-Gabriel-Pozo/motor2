@@ -39,11 +39,10 @@ import { emitirTicketCorregidoCasoDeUso } from "./casos-de-uso/emitir-ticket-cor
  * anulado) cierra sin venta. Idempotente: una cuenta ya cerrada devuelve ok sin volver a vender (la transacción serializable arbitra el
  * doble clic: el segundo reintenta, la ve cerrada y no escribe nada).
  *
- * Desde la Task #41 (Fase M12a, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
+ * Adaptador fino: permiso
  * (`conPermiso`) → formato (`guardComandoCerrarCuenta`, core/features/cuentas/) → caso de uso (`casos-de-uso/cerrar-cuenta.ts`:
  * transacción, carga, venta con `registrarVentaEnTx`, numeración del ticket, enlace de ítems, cierre y auditoría; lecturas y escrituras
- * en server/persistencia/pos/) → `aResultadoAccion`. Con `emitirTicketCorregido` (abajo, M12b) también migrada, el archivo entero está
- * en `ACCIONES_CON_CASO_DE_USO` (.dependency-cruiser-excepciones.cjs).
+ * en server/persistencia/pos/) → `aResultadoAccion`.
  */
 export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
   return conPermiso("pos_cerrar_cuenta", async (ctx) => {
@@ -65,7 +64,7 @@ export async function cerrarCuenta(cuentaId: string): Promise<ResultadoAccion> {
  * permiso que cerrar la cuenta. La transacción serializable arbitra dos emisiones a la vez: la segunda reintenta, ve el B ya emitido
  * (vigente) y se rechaza.
  *
- * Desde la Task #41 (Fase M12b, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
+ * Adaptador fino: permiso
  * (`conPermiso`) → formato del `cuentaId` (`guardComandoEmitirTicketCorregido`, core/features/cuentas/) → caso de uso
  * (`casos-de-uso/emitir-ticket-corregido.ts`: transacción, carga, guardas de estado, motivo, ejemplar nuevo y auditoría; lectura y
  * escritura en server/persistencia/pos/) → `{ ok, mensaje, numero, ejemplar }`.

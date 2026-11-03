@@ -9,9 +9,7 @@ import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta
 import { esMostrador, frasesDePuesto } from "@/core/pos/puesto";
 
 /**
- * Caso de uso «corregir los comensales de una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 6 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que
- * antes vivía en línea en la Server Action `corregirComensales` (`src/server/actions/pos/cuenta-apertura.ts`), movido TAL CUAL: la misma transacción
- * SERIALIZABLE, el mismo orden de chequeos y los mismos mensajes. La Server Action quedó como adaptador (`conPermiso("pos_abrir_cuenta")` →
+ * Caso de uso «corregir los comensales de una cuenta abierta». Transacción SERIALIZABLE. La Server Action es un adaptador (`conPermiso("pos_abrir_cuenta")` →
  * `guardComandoCorregirComensales` → este caso de uso → `aResultadoAccion`). El criterio de negocio (una cuenta cerrada no se toca: el dato queda congelado)
  * está documentado en la Server Action.
  *

@@ -13,9 +13,7 @@ import { escribirEjemplarCorregido } from "@/server/persistencia/pos/escribir-ej
 import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
- * Caso de uso «emitir ticket corregido» (Task #41, Fase M12b — ver docs/arquitectura-casos-de-uso-2026-09-27.md). Es la orquestación que
- * antes vivía en línea en la Server Action `emitirTicketCorregido` (src/server/actions/pos/cuenta-cierre.ts), en el MISMO orden y con los
- * MISMOS textos; la Server Action quedó como adaptador fino. El criterio de negocio (docs/plan-numeracion-ticket-2026-09-25.md, Fase 2)
+ * Caso de uso «emitir ticket corregido». La Server Action es un adaptador fino. El criterio de negocio (docs/plan-numeracion-ticket-2026-09-25.md, Fase 2)
  * está documentado en la Server Action.
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso("pos_emitir_ticket_corregido")`)

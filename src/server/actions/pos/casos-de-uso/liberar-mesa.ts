@@ -8,9 +8,7 @@ import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta
 import { esMostrador, frasesDePuesto } from "@/core/pos/puesto";
 
 /**
- * Caso de uso «liberar una mesa sin venta» (Hito 4 de la pureza, bloque 4.1, paso 5 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que antes vivía en línea
- * en la Server Action `liberarMesa` (`src/server/actions/pos/cuenta-apertura.ts`), movido TAL CUAL: las mismas lecturas, en el mismo orden, dentro de la misma
- * transacción SERIALIZABLE, y los mismos mensajes. La Server Action quedó como adaptador (`conPermiso("pos_liberar_mesa")` → `guardComandoLiberarMesa` → este
+ * Caso de uso «liberar una mesa sin venta». Transacción SERIALIZABLE. La Server Action es un adaptador (`conPermiso("pos_liberar_mesa")` → `guardComandoLiberarMesa` → este
  * caso de uso → `aResultadoAccion`). El criterio de negocio (solo una cuenta SIN NINGUNA fila; con cualquier fila se cierra con `cerrarCuenta`) está
  * documentado en la Server Action.
  *

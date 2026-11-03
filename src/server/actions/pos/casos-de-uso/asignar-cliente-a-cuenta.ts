@@ -9,10 +9,8 @@ import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta
 import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
- * Caso de uso «asignar (o quitar) el cliente con descuento de una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 7 — `docs/plan-hito-4-pureza.md` §5).
- * Es el cuerpo que antes vivía en línea en la Server Action `asignarClienteACuenta` (`src/server/actions/pos/cuenta-apertura.ts`), movido TAL CUAL: la misma
- * transacción SERIALIZABLE, las mismas lecturas en el mismo orden, la escritura ANTES de sus dos filas de auditoría y los mismos mensajes. La Server Action
- * quedó como adaptador (`conPermiso("pos_asignar_cliente")` → `guardComandoAsignarClienteACuenta` → este caso de uso → `aResultadoAccion`). El criterio de
+ * Caso de uso «asignar (o quitar) el cliente con descuento de una cuenta abierta». Transacción SERIALIZABLE; la escritura va ANTES de sus dos filas de auditoría. La Server Action
+ * es un adaptador (`conPermiso("pos_asignar_cliente")` → `guardComandoAsignarClienteACuenta` → este caso de uso → `aResultadoAccion`). El criterio de
  * negocio (D3: cualquier mozo; D7: el % se CONGELA en la cuenta al asignarlo; un cliente desactivado no se asigna pero sí se quita) está documentado en la
  * Server Action.
  *

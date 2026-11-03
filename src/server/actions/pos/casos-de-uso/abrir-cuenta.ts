@@ -10,11 +10,9 @@ import { abrirCuentaDeMesa } from "@/server/persistencia/pos/cuenta";
 import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
- * Caso de uso «abrir la cuenta de una mesa» (Hito 4 de la pureza, bloque 4.1, paso 8 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que antes vivía en línea
- * en la Server Action `abrirCuenta` (`src/server/actions/pos/cuenta-apertura.ts`), movido con el mismo orden de chequeos y los mismos mensajes; desde M1 (S-51) la
- * mesa y su sucursal se leen DENTRO de la transacción SERIALIZABLE (antes, con `actor.db`, afuera); el choque del índice único se atrapa FUERA de la transacción. La Server Action quedó como adaptador (`conPermiso("pos_abrir_cuenta")` → `guardComandoAbrirCuenta` → este caso de uso →
+ * Caso de uso «abrir la cuenta de una mesa». La mesa y su sucursal se leen DENTRO de la transacción SERIALIZABLE; el choque del índice único se atrapa FUERA de la transacción. La Server Action es un adaptador (`conPermiso("pos_abrir_cuenta")` → `guardComandoAbrirCuenta` → este caso de uso →
  * `aResultadoAccion`). El criterio de negocio (comensales obligatorios; idempotencia primero) está documentado en la Server
- * Action. El límite de mesas abiertas por sucursal (D6) se retiró el 2026-10-29 (decisión del dueño): ya no hay tope de mesas abiertas.
+ * Action. No hay límite de mesas abiertas por sucursal (se retiró el 2026-10-29, decisión del dueño).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (`conPermiso`) ni que el id de la mesa sea un texto (el guard).
  *

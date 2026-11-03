@@ -28,10 +28,7 @@ import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
- * Caso de uso «agregar ítems y promos sin enviar a una cuenta abierta» (Hito 4 de la pureza, bloque 4.1, paso 12a — `docs/plan-hito-4-pureza.md` §5). Es el
- * cuerpo que antes vivía en línea en la Server Action `agregarItems` (`src/server/actions/pos/cuenta-pedido.ts`), movido TAL CUAL: las mismas lecturas, en el
- * mismo orden y la misma cantidad (lo fija `test/pos/agregar-items-consultas.test.ts`, editado después solo por S-22 / D2 y P18 / D18: la lectura del registro de módulos), dentro de la misma transacción SERIALIZABLE, y los
- * mismos mensajes. La Server Action quedó como adaptador (`conPermiso("pos_tomar_pedido")` → `guardComandoAgregarItems` → este caso de uso →
+ * Caso de uso «agregar ítems y promos sin enviar a una cuenta abierta». Las lecturas, su orden y su cantidad los fija `test/pos/agregar-items-consultas.test.ts`, dentro de una transacción SERIALIZABLE. La Server Action es un adaptador (`conPermiso("pos_tomar_pedido")` → `guardComandoAgregarItems` → este caso de uso →
  * `aResultadoAccion`). El criterio de negocio (precio congelado al agregar, promo revalidada con la misma fuente que el selector, todo o nada) está documentado
  * en la Server Action.
  *
