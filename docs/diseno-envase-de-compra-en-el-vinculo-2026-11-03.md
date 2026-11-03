@@ -9,7 +9,7 @@ Documento SOLO de diseño, en papel. No hay código ni migraciones en esta rama.
 - **Qué NO cambia:** recetas, producción, stock, costo, venta, conteo, lotes, insumos. El stock y el costo de cada compra ya se guardan en unidad de stock: cambiar un envase nunca reescribe compras viejas.
 - **Riesgos:** (1) quien compra pasa a **definir** cuántas unidades trae un envase, y hoy eso es un permiso de administrador; (2) dos personas haciendo la primera compra del mismo envase a la vez (se resuelve con la regla «gana la primera, la otra se avisa»); (3) es **una columna nueva** en una tabla (requiere tu autorización de migración); (4) choca en archivos con la etapa 1 de Compras: se hace después de que esa entre.
 - **Alternativa más barata (B, sin migración):** que la pantalla de compra cree la «presentación» de siempre la primera vez. Baja la carga igual, pero el contenido de la «caja» sería el mismo para todos los proveedores.
-- **Faltan 3 decisiones tuyas** (§11): quién define y quién cambia el contenido de un envase; qué hacer si un mismo proveedor vende la misma unidad con dos contenidos; C o B.
+- **Decisiones (§11):** Q3 CONFIRMADA el 2026-11-03: el dueño eligió C («empecemos con C… etapas E1, E2, E3»); la migración de E1 y el retiro de E3 siguen requiriendo autorización expresa. Q2 queda como PROPUESTA asumida (unidades distintas «caja x6», «caja x12»; el dueño no lo contradijo). Q1 (quién define el contenido de un envase nuevo) sigue PENDIENTE.
 
 ## 1. Propósito y alcance
 
@@ -265,7 +265,7 @@ E1: respaldo + ensayo en rama de Neon + `down.sql` probado; despliegue de códig
 
 1. **Permisos (Q1).** Hoy solo el administrador define cuántas unidades trae un envase. Con C lo sabe quien compra. Propongo: el operario de compras **define** el contenido de un envase nuevo (queda auditado) y **cambiar** uno ya guardado queda para quien tiene el permiso de campos sensibles. ¿Estás de acuerdo, o preferís que también definir sea solo del administrador (más control, pero la primera compra se traba hasta que él lo cargue)?
 2. **Mismo proveedor, misma unidad, dos contenidos (Q2).** Si un proveedor vende «caja de 6» y «caja de 12» del mismo producto, ¿alcanza con usar dos unidades distintas («caja x6», «caja x12»), como recomiendo, o necesitás que el sistema las distinga dentro de la misma unidad (cambia la clave del vínculo)?
-3. **Opción (Q3).** ¿Avanzo con C (una columna nueva en el vínculo, con tu autorización de migración) o empezamos por B (sin migración, pero la «caja» tiene el mismo contenido para todos los proveedores)?
+3. **Opción (Q3) — RESUELTA el 2026-11-03: C (ver encabezado).** (Texto original:** ¿Avanzo con C (una columna nueva en el vínculo, con tu autorización de migración) o empezamos por B (sin migración, pero la «caja» tiene el mismo contenido para todos los proveedores)?)
 
 ## 12. Hallazgos que no coinciden con lo que estaba escrito o con lo que se suponía
 
