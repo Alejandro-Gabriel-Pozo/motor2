@@ -148,7 +148,6 @@ describe("quitar un grupo de un producto y volver a vincularlo (OPCIONES-LIMPIEZ
             cantidadMinima: null,
             cantidadMaxima: null,
             modoPrecio: null,
-            activo: true,
             opciones: [],
           }),
         ]);

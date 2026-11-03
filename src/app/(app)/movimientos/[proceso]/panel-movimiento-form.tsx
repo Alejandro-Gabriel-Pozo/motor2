@@ -377,7 +377,7 @@ export function PanelMovimientoForm({
         )}
       </div>
 
-      {config.requiereProveedor && (
+      {config.esCompraLike && (
         <div className="flex flex-wrap gap-3">
           <div className="min-w-36 flex-1">
             <Selector etiqueta="Proveedor" value={proveedorId} onChange={(e) => elegirProveedor(e.target.value)}>

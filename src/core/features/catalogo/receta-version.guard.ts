@@ -133,13 +133,6 @@ export function guardComandoQuitarIngredienteDeReceta(entrada: { productoId: unk
   };
 }
 
-/** Guard de «agregar un paso a la receta»: la forma del paso; el producto y la versión; y el rango de su orden (entero > 0 y razonable), sus textos, sus minutos y el tope de ingredientes marcados. */
-export function guardComandoAgregarPasoAReceta(entrada: { productoId: unknown; paso: unknown; versionVista: unknown }): PuertaDeReceta {
-  const forma: ResultadoDato<null> = esObjeto(entrada.paso) && typeof entrada.paso.orden === "number" ? formaDePaso(entrada.paso) : rechazar("formato", "El paso no es válido.");
-  const paso = entrada.paso as unknown as PasoInput;
-  return { forma, inmediata: etapaInmediata(entrada.productoId, entrada.versionVista), rango: forma.ok ? dePuerta(validarEncabezadoDePaso(paso) ?? validarMinutosYMarcadosDePaso(paso)) : aprobado() };
-}
-
 /** Guard de «editar un paso»: la forma de los cambios (la acción la aplica DESPUÉS de comprobar que el paso está en la receta); el producto y la versión; y el rango de sus textos, sus minutos y el tope de ingredientes marcados. */
 export function guardComandoActualizarPasoDeReceta(entrada: { productoId: unknown; orden: unknown; cambios: unknown; versionVista: unknown }): PuertaDeReceta {
   const forma = formaDePaso(entrada.cambios);

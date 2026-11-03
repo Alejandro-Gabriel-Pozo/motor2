@@ -88,7 +88,6 @@ export const ACCIONES = [
   { clave: "ver_stock", modulo: "stock", descripcion: "Ver Stock consolidado, por familia y alertas", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   { clave: "precio_local", modulo: "catalogo_basico", descripcion: "Fijar Precio Local por sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "comparar_precios", modulo: "compras", descripcion: "Comparar precios por proveedor", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "notificar_alertas", modulo: "stock", descripcion: "Notificar alertas de stock por mail", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "insumos_mezclados", modulo: "catalogo_basico", descripcion: "Revisar insumos con unidad mezclada", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // 'reconstruir_productos' NO se migra (ver plan, porción Catálogo): era
   // el parche de Apps Script para resincronizar Productos ↔ Hoja listado
@@ -249,7 +248,7 @@ export const ACCIONES = [
   // de precios de una opción por sucursal no tiene clave propia: va con `precio_local`.
   { clave: "opciones_definir", modulo: "catalogo_basico", descripcion: "Definir los grupos de opciones de venta y sus opciones", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "producto_opciones_admitidas", modulo: "catalogo_basico", descripcion: "Elegir qué grupos y opciones de venta admite cada producto", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "opcion_apagar_en_sucursal", modulo: "catalogo_basico", descripcion: "Apagar o prender una opción de venta en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "opcion_apagar_en_sucursal", modulo: "catalogo_basico", descripcion: "Apagar o prender una opción de venta en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
   // GO-3b (ADR-032): la clave que da de alta la migración de esquema `20261021100000_go3d_combos_y_menu_del_dia` (que se la dio al rol `admin` de cada empresa) entra a ACCIONES con su guarda y su
   // caso de uso, con la descripción IDÉNTICA a la de la base. Cargar el plato del día de los menús es de la SUCURSAL, piso operario y semilla solo admin (clase O: el gerente la delega al encargado,
   // D-5). La de las tarifas compartidas de las combinaciones (`grupos_de_precio_definir`, GO-3a) se retiró en la Fase 3 de la ola «precio y carta»: la base la conserva hasta la migración de retiro.

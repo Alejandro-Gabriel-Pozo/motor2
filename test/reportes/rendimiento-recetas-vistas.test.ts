@@ -6,7 +6,6 @@ import {
   calcularCantidadTeoricaBruta,
   calcularDesviacionPorcentaje,
   compararPorImpacto,
-  dentroDeLaBanda,
   desvioEsNotable,
   explicarConfianza,
   impactoDelDesvio,
@@ -31,7 +30,8 @@ describe("caso real: Agua mineral (72 comprados en cajas de 12, 63 vendidos, rec
   it("el desvío de +14,3 % cae DENTRO de la banda de ±19,0 %", () => {
     const desvio = calcularDesviacionPorcentaje(estimadaBruta, teorica);
     const banda = bandaDeRuidoDeLote([12, 12, 12, 12, 12, 12], 63, teorica);
-    expect(dentroDeLaBanda(desvio, banda)).toBe(true);
+    expect(banda).not.toBeNull();
+    expect(Math.abs(desvio!)).toBeLessThanOrEqual(banda!);
   });
 });
 
@@ -98,20 +98,6 @@ describe("bandaDeRuidoDeLote", () => {
   });
 });
 
-describe("dentroDeLaBanda", () => {
-  it("false sin banda calculable", () => {
-    expect(dentroDeLaBanda(5, null)).toBe(false);
-  });
-
-  it("false sin desvío", () => {
-    expect(dentroDeLaBanda(null, 20)).toBe(false);
-  });
-
-  it("false cuando el desvío excede la banda", () => {
-    expect(dentroDeLaBanda(25, 19)).toBe(false);
-  });
-});
-
 describe("desvioEsNotable — umbral FIJO en 10%, independiente de la banda de ruido", () => {
   it("la constante es 10", () => {
     expect(UMBRAL_DESVIO_AMBAR_PCT).toBe(10);
@@ -123,7 +109,7 @@ describe("desvioEsNotable — umbral FIJO en 10%, independiente de la banda de r
 
   it("notable en el umbral o por encima, sin importar si está dentro de la banda de ruido", () => {
     expect(desvioEsNotable(10)).toBe(true);
-    expect(desvioEsNotable(14.3)).toBe(true); // el caso del Agua SÍ se pinta ámbar, aunque esté dentro de la banda — dentroDeLaBanda solo cambia el texto
+    expect(desvioEsNotable(14.3)).toBe(true); // el caso del Agua SÍ se pinta ámbar, aunque esté dentro de la banda
   });
 
   it("null no es notable", () => {

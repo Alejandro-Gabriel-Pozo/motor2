@@ -2,10 +2,10 @@ import type { EleccionDePromo } from "@/core/pos/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
- * Tipos del PEDIDO de la cuenta de una mesa (feature Cuenta del salón, módulo POS; Hito 4 de la pureza, bloque 4.1 — `docs/plan-hito-4-pureza.md` §5): comandos y
+ * Tipos del PEDIDO de la cuenta de una mesa (feature Cuenta del salón, módulo POS): comandos y
  * resultados de los casos de uso de `src/server/actions/pos/casos-de-uso/` que vienen de `src/server/actions/pos/cuenta-pedido.ts` (agregar ítems y promos sin
  * enviar, quitarlos mientras no salieron y enviarlos a cocina). Archivo aparte de `cuenta-apertura.schema.ts`, `cuenta.schema.ts` (cierre y ticket) y
- * `cuenta-anulacion.schema.ts` por el mismo corte que ya tienen las Server Actions.
+ * `cuenta-anulacion.schema.ts` por el mismo corte que tienen las Server Actions.
  *
  * Los comandos traen el id YA validado por su guard (solo que sea un texto: si no, «no encontrado», el mismo mensaje que antes); lo demás lo valida el caso de
  * uso en el MISMO lugar que antes, así cada combinación inválida sigue respondiendo el mismo mensaje (lo fija `huella-del-pos`).

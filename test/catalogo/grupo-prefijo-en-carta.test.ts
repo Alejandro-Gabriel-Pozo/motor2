@@ -29,7 +29,7 @@ describe("C8: «se lee en la carta como» del grupo", () => {
   const auditorias = (id: string) => prismaAdmin.registroAuditoria.findMany({ where: { entidad: "GrupoDeOpciones", entidadId: id, campo: "prefijoEnCarta" }, select: { valorAnterior: true, valorNuevo: true }, orderBy: { creadoEn: "asc" } });
   /** Lo que manda el formulario del grupo con la versión que vio y los cambios encima. */
   const editar = async (id: string, vio: { nombre: string; version: number; prefijoEnCarta?: unknown }) => {
-    const c = guardComandoEditarGrupoDeOpciones({ grupoId: id, versionEsperada: vio.version, nombre: vio.nombre, cantidadMinima: 0, cantidadMaxima: 1, activo: true, ...("prefijoEnCarta" in vio ? { prefijoEnCarta: vio.prefijoEnCarta } : {}) });
+    const c = guardComandoEditarGrupoDeOpciones({ grupoId: id, versionEsperada: vio.version, nombre: vio.nombre, cantidadMinima: 0, cantidadMaxima: 1, ...("prefijoEnCarta" in vio ? { prefijoEnCarta: vio.prefijoEnCarta } : {}) });
     if (!c.ok) return c;
     return editarGrupoDeOpcionesCasoDeUso(actor(), c.valor);
   };
@@ -59,7 +59,7 @@ describe("C8: «se lee en la carta como» del grupo", () => {
     expect(await prisma.grupoDeOpciones.count()).toBe(0);
     const inc = await crear({ nombre: "Guarnición", tipo: "INCLUIDA" });
     const id = inc.ok && "datos" in inc ? inc.datos.grupoId : "";
-    const c = guardComandoEditarGrupoDeOpciones({ grupoId: id, versionEsperada: 1, nombre: "Guarnición", cantidadMinima: 1, cantidadMaxima: 1, activo: true, prefijoEnCarta: "Con" });
+    const c = guardComandoEditarGrupoDeOpciones({ grupoId: id, versionEsperada: 1, nombre: "Guarnición", cantidadMinima: 1, cantidadMaxima: 1, prefijoEnCarta: "Con" });
     expect(c.ok && (await editarGrupoDeOpcionesCasoDeUso(actor(), c.valor))).toEqual({ ok: false, codigo: "CONFIGURACION_INVALIDA", mensaje: MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA });
     expect(await grupo(id)).toMatchObject({ prefijoEnCarta: null, version: 1 });
   });

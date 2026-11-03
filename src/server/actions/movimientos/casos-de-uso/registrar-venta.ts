@@ -46,9 +46,8 @@ export async function registrarVentaCasoDeUso(
   try {
     return await registrarVentaEnTransaccion(actor, datos);
   } catch (e) {
-    // O.175: el `proveedorId` («a quién se vende») de OTRA empresa (o inexistente) lo rechaza la clave foránea compuesta `Operacion_empresaId_proveedorId_fkey` al insertar la operación, DENTRO de
-    // la transacción (que ya quedó abortada y deshecha: no se escribió nada). Se traduce AFUERA, a «No se encontró …»; cualquier otro error sigue de largo.
-    const rechazo = rechazoDeReferenciaNoEncontrada(e, { proveedorId: "el proveedor elegido" }, "No se encontró alguna de las referencias de la venta.");
+    // Una clave foránea que no encuentra su referencia aborta la transacción: no se escribió nada. Se traduce AFUERA; cualquier otro error sigue de largo.
+    const rechazo = rechazoDeReferenciaNoEncontrada(e, {}, "No se encontró alguna de las referencias de la venta.");
     if (rechazo) return fracaso("VENTA_RECHAZADA", rechazo);
     throw e;
   }
@@ -70,7 +69,6 @@ async function registrarVentaEnTransaccion(
       {
         fecha: datos.fecha,
         origen: { tipo: "seccion", seccionId: datos.seccionId },
-        proveedorId: datos.proveedorId,
         nroFactura: datos.nroFactura,
         detalle: datos.detalle,
         lineas: datos.ventas.map((item) => ({ productoId: item.productoId, cantidadVendida: item.cantidadVendida })),

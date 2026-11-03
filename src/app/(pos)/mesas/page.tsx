@@ -170,9 +170,7 @@ export default async function MapaDeMesasPage({ searchParams }: { searchParams: 
                 mesero={m.mesero ?? undefined}
                 tiempoAbierta={m.tiempoAbierta ?? undefined}
                 pedidosEnviados={m.pedidosEnviados}
-                hrefPedido={`/mesas/${m.id}`}
-                hrefVerPedidos={`/mesas/${m.id}`}
-                hrefFacturar={`/mesas/${m.id}`}
+                href={`/mesas/${m.id}`}
               />
             </li>
           ))}

@@ -1,6 +1,6 @@
 import { validarValoresTema } from "@/core/carta/public";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import type { ComandoCambiarAplicacionTema, ComandoGuardarTemaCarta } from "./tema.schema";
+import type { ComandoGuardarTemaCarta } from "./tema.schema";
 
 /**
  * Guard de la feature «tema de la carta» (convención «guard por feature», 2026-09-25; Hito 5, bloque D, `docs/plan-hito-5-pureza.md` §6.1). Formato del comando,
@@ -8,7 +8,7 @@ import type { ComandoCambiarAplicacionTema, ComandoGuardarTemaCarta } from "./te
  * formato. Puro: sin Prisma ni permisos.
  *
  * Es EXACTAMENTE lo que antes era lo primero de cada acción, antes de leer nada y en el MISMO orden: `carta_tema` es de contexto sucursal, así que otra sucursal
- * responde igual que una inexistente («No se encontró la sucursal.»; `sucursalActivaId` es la del contexto de quien llama); y, solo al guardar, los valores.
+ * responde igual que una inexistente («No se encontró la sucursal.»; `sucursalActivaId` es la del contexto de quien llama); y después los valores.
  */
 
 const SUCURSAL_NO_ENCONTRADA = "No se encontró la sucursal.";
@@ -19,10 +19,4 @@ export function guardComandoGuardarTemaCarta(entrada: { sucursalId: string; valo
   const validados = validarValoresTema(entrada.valores);
   if (!validados.ok) return rechazar("formato", validados.mensaje);
   return aceptar({ sucursalId: entrada.sucursalId, valores: validados.valor });
-}
-
-/** Guard del comando «aplicar o desaplicar el tema»: solo que sea la sucursal activa (el booleano nunca se validó). */
-export function guardComandoCambiarAplicacionTema(entrada: { sucursalId: string; aplicar: boolean; sucursalActivaId: string }): ResultadoDato<ComandoCambiarAplicacionTema> {
-  if (entrada.sucursalId !== entrada.sucursalActivaId) return rechazar("formato", SUCURSAL_NO_ENCONTRADA);
-  return aceptar({ sucursalId: entrada.sucursalId, aplicar: entrada.aplicar });
 }

@@ -90,11 +90,6 @@ export function bandaDeRuidoDeLote(cantidadesDeCadaCompra: number[], totalVendid
   return Math.round((loteTipico / totalVendido / cantidadTeoricaBruta) * 1000) / 10;
 }
 
-/** Solo elige el TEXTO ("cae dentro de la banda esperable"); nunca decide si la celda se pinta ámbar (esa es `desvioEsNotable`, fija — decisión 5 ya cerrada). */
-export function dentroDeLaBanda(desviacionPorcentaje: number | null, bandaRuidoPct: number | null): boolean {
-  return bandaRuidoPct !== null && desviacionPorcentaje !== null && Math.abs(desviacionPorcentaje) <= bandaRuidoPct;
-}
-
 // ---------------------------------------------------------------------------
 // Impacto en $ — lo que de verdad ordena el ranking (decisión 5)
 // ---------------------------------------------------------------------------

@@ -47,7 +47,7 @@ export default async function MovimientoPage({
     listarSeccionesActivas(ctx.sucursalId),
     // P17: una sección dada de baja solo admite SACAR mercadería: se ofrece como origen en los procesos que solo sacan (Merma, Consumo, Transferencia) y en ningún otro.
     PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA.has(config.proceso) ? seccionesDesactivadas(ctx.sucursalId, ctx.db) : Promise.resolve([]),
-    config.requiereProveedor ? listarProveedoresParaSelector(true) : Promise.resolve([]),
+    config.esCompraLike ? listarProveedoresParaSelector(true) : Promise.resolve([]),
     // Alta rápida de producto inline (solo Compra, ver QuickCrearProducto)
     // — no Devolución a proveedor pese a ser también `esCompraLike`: no
     // tiene sentido devolver algo que nunca se compró.

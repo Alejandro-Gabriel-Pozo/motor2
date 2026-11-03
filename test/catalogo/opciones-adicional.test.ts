@@ -105,7 +105,6 @@ describe("el ADICIONAL y su producto ancla (GO-2a)", () => {
         cantidadMinima: null,
         cantidadMaxima: null,
         modoPrecio: null,
-        activo: true,
         opciones: [],
       });
       expect(admitir).toMatchObject({ ok: false, codigo: "PRODUCTO_NO_ELEGIBLE" });

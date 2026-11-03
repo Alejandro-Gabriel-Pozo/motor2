@@ -5,7 +5,7 @@ import { numeroDelCampo } from "@/core/datos/numero-tecleado";
  * el grupo y la versión (que pone el closure de la página). NO valida: el guard y las reglas puras del servidor lo hacen todo (por eso devuelve `unknown`). Un número mal escrito
  * llega como `NaN` y el servidor lo rechaza con su mensaje; un mínimo o un máximo vacío es `null` («el del grupo»). Las opciones viajan como JSON en un campo oculto.
  */
-export function admisionDelFormulario(fd: FormData): { orden: unknown; cantidadMinima: unknown; cantidadMaxima: unknown; modoPrecio: unknown; activo: boolean; opciones: unknown } {
+export function admisionDelFormulario(fd: FormData): { orden: unknown; cantidadMinima: unknown; cantidadMaxima: unknown; modoPrecio: unknown; opciones: unknown } {
   const vacioONumero = (nombre: string) => {
     const t = String(fd.get(nombre) ?? "").trim();
     return t === "" ? null : numeroDelCampo(t);
@@ -23,7 +23,6 @@ export function admisionDelFormulario(fd: FormData): { orden: unknown; cantidadM
     cantidadMinima: vacioONumero("cantidadMinima"),
     cantidadMaxima: vacioONumero("cantidadMaxima"),
     modoPrecio: modo === "" ? null : modo,
-    activo: fd.get("activo") === "on",
     opciones,
   };
 }

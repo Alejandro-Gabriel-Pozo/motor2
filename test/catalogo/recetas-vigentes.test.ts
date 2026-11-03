@@ -2,7 +2,7 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import fc from "fast-check";
 import { quedarseConLaVigente } from "../../src/core/catalogo/recetas-vigentes";
 import { ALCANCE_CENTRAL, alcanceDeSucursal, incluirRecetaVigente, whereConReceta } from "../../src/core/catalogo/public";
-import { cargarRecetaVigente, cargarRecetasVigentes, versionVigentePorProducto } from "../../src/server/lecturas/catalogo/recetas-vigentes";
+import { cargarRecetaVigente, cargarRecetasVigentes } from "../../src/server/lecturas/catalogo/recetas-vigentes";
 
 /**
  * El embudo de la receta vigente (vigente = la de mayor `version` de cada plato). La lógica pura es `quedarseConLaVigente`; el resto son
@@ -93,10 +93,6 @@ describe("tipos del embudo", () => {
   it("cargarRecetasVigentes devuelve un Map por plato con el include tipado", () => {
     type Retorno = Awaited<ReturnType<typeof cargarRecetasVigentes<{ ingredientes: true }>>>;
     expectTypeOf<Retorno>().toExtend<Map<string, { productoId: string; version: number }>>();
-  });
-
-  it("versionVigentePorProducto devuelve el número (o null) por plato", () => {
-    expectTypeOf<Awaited<ReturnType<typeof versionVigentePorProducto>>>().toEqualTypeOf<Map<string, number | null>>();
   });
 
   it("los fragmentos de Producto son estructuras literales de solo lectura", () => {

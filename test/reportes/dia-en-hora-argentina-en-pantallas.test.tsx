@@ -37,6 +37,7 @@ vi.mock("../../src/server/actions/movimientos/secciones", () => ({ listarSeccion
 vi.mock("../../src/server/actions/movimientos/lecturas-conteo-fisico", () => ({ obtenerHistorialConteosFisicos: vi.fn(async () => ({ items: mocks.conteos, nextCursor: null })) }));
 vi.mock("../../src/server/consultas/movimientos/stock-para-conteo", () => ({ listarStockParaConteo: vi.fn(async () => []) }));
 
+import { obtenerMiNivelPermiso } from "../../src/server/acceso/gate";
 import TrazabilidadPage from "../../src/app/(app)/reportes/trazabilidad/page";
 import AlertasStockPage from "../../src/app/(app)/stock/alertas/page";
 import ComparativaPreciosPage from "../../src/app/(app)/catalogo/proveedores/comparativa/page";
@@ -205,6 +206,8 @@ describe("páginas del servidor: el día se lee en la zona de la empresa", () =>
         estado: "RESUELTO",
       },
     ];
+    // La página solo lee el historial con «Ver» de `reporte_conteos`: el usuario del test lo tiene.
+    vi.mocked(obtenerMiNivelPermiso).mockImplementation(async (_u, _s, accion) => (accion === "reporte_conteos" ? { ver: true, editar: false } : { ver: false, editar: false }));
     const html = renderToStaticMarkup((await ConteoFisicoPage({ searchParams: Promise.resolve({}) })) as ReactNode as never);
     afirmarElDiaArgentino(html);
   });

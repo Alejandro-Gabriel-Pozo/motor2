@@ -93,7 +93,6 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   },
   "carta/registro-publico.ts|agregarSucursalAlPortal": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa): administra el registro de todas sus sucursales" },
   "carta/registro-publico.ts|guardarSucursalPublica": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },
-  "carta/registro-publico.ts|quitarSucursalDelPortal": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },
   "carta/registro-publico.ts|moverSucursalEnMapa": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },
   // GO-2a: lo que decide cada sucursal sobre las opciones de venta. El id llega dentro de `entrada` (el eco de la pantalla) y el guard lo compara con la activa ANTES de leer nada.
   "catalogo/opciones-por-sucursal.ts|apagarOpcionEnSucursal": {
@@ -131,7 +130,6 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     motivo: "`entrada.sucursalId` es la sucursal que vio la pantalla: el guard la compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; la disponibilidad se escribe SOLO en `ctx.sucursalId` (y la RLS por sucursal, por debajo)",
   },
   "carta/tema.ts|guardarTemaCarta": { ata: "SUCURSAL_ACTIVA", motivo: "`carta_tema` en la sucursal activa; el guard rechaza un id distinto de `ctx.sucursalId`" },
-  "carta/tema.ts|cambiarAplicacionTema": { ata: "SUCURSAL_ACTIVA", motivo: "`carta_tema` en la sucursal activa; el guard rechaza un id distinto de `ctx.sucursalId`" },
   "catalogo/receta-sucursal.ts|copiarRecetaPropiaDeOtraSucursal": {
     ata: "MEMBRESIA_EN_ORIGEN",
     clave: "receta_sucursal_copiar",
@@ -139,7 +137,6 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     motivo: "S-07 (O.56): el origen se lee con membresía vigente y «Ver» de la copia ALLÍ (`leerOrigenDeCopia` en la propia acción); recién después se ensancha la LECTURA a esa sucursal (`conAlcanceEnSucursal`, M.3-A5), nunca la escritura",
   },
   "movimientos/lecturas-conteo-fisico.ts|obtenerHistorialConteosFisicos": { ata: "SUCURSAL_CON_GATE", motivo: "`reporte_conteos` EN la sucursal pedida" },
-  "catalogo/precio-local.ts|obtenerPrecioLocalProducto": { ata: "SUCURSAL_CON_GATE", motivo: "`precio_local` EN la sucursal pedida" },
   "catalogo/precio-local.ts|listarPreciosLocales": { ata: "SUCURSAL_CON_GATE", motivo: "`precio_local` EN la sucursal pedida" },
   "catalogo/precio-local.ts|sincronizarPrecioLocalGrupoCarta": { ata: "SUCURSAL_ACTIVA", motivo: "`precio_local` en la sucursal activa; el guard exige que el id sea la activa" },
   "movimientos/secciones.ts|listarSeccionesActivas": { ata: "SUCURSAL_CON_GATE", motivo: "alguna de las pantallas que usan secciones, EN la sucursal pedida" },

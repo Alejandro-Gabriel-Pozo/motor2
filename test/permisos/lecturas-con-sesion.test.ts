@@ -22,7 +22,7 @@ import { listarProveedores, listarProveedoresParaSelector } from "../../src/serv
 import { listarVersionesDeReceta, obtenerRecetaVigente } from "../../src/server/actions/catalogo/recetas";
 import { listarUnidadesActivas, listarUnidadesParaPanel } from "../../src/server/actions/catalogo/unidades";
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
-import { listarPreciosLocales, obtenerPrecioLocalProducto } from "../../src/server/actions/catalogo/precio-local";
+import { listarPreciosLocales } from "../../src/server/actions/catalogo/precio-local";
 import { listarSeccionesActivas, listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
 import { listarDestinosConsumoActivos, listarMotivosMermaActivos } from "../../src/server/actions/movimientos/motivos";
 import { listarCapacidades } from "../../src/server/actions/permisos/capacidades-sucursal";
@@ -66,7 +66,6 @@ const LECTURAS: Array<[string, () => Promise<unknown>]> = [
   ["listarMotivosMermaActivos", () => listarMotivosMermaActivos()],
   ["listarDestinosConsumoActivos", () => listarDestinosConsumoActivos()],
   ["listarPreciosLocales", () => listarPreciosLocales("x")],
-  ["obtenerPrecioLocalProducto", () => obtenerPrecioLocalProducto("x", "y")],
   ["listarSeccionesActivas", () => listarSeccionesActivas("x")],
   ["listarSeccionesParaPanel", () => listarSeccionesParaPanel("x")],
   ["listarCapacidades", () => listarCapacidades()],
@@ -84,7 +83,6 @@ const LECTURAS_POR_SUCURSAL: Array<[string, (sucursalId: string) => Promise<unkn
   ["listarUsuariosDeSucursal", (id) => listarUsuariosDeSucursal(id)],
   ["obtenerHistorialConteosFisicos", (id) => obtenerHistorialConteosFisicos(id)],
   ["listarPreciosLocales", (id) => listarPreciosLocales(id)],
-  ["obtenerPrecioLocalProducto", (id) => obtenerPrecioLocalProducto(id, "y")],
   ["listarSeccionesActivas", (id) => listarSeccionesActivas(id)],
   ["listarSeccionesParaPanel", (id) => listarSeccionesParaPanel(id)],
   ["listarStockMinimo", (id) => listarStockMinimo(id)],

@@ -149,7 +149,6 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                     nombre: String(formData.get("nombre") ?? ""),
                     cantidadMinima: numeroDelCampo(String(formData.get("cantidadMinima") ?? "")),
                     cantidadMaxima: numeroDelCampo(String(formData.get("cantidadMaxima") ?? "")),
-                    activo,
                     // Fase 4: va siempre (vacío = sin prefijo), así entra en la comparación de la versión; en los demás tipos no se manda.
                     ...(conPrefijo ? { prefijoEnCarta: String(formData.get("prefijoEnCarta") ?? "") } : {}),
                   });
@@ -207,8 +206,6 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                 const opcionId = o.id;
                 const versionOpcion = o.version;
                 const nombre = o.nombre;
-                const orden = o.orden;
-                const activa = o.activa;
                 const rige = o.cambios[0];
                 const numeroVigente = rige?.numero ?? 0;
                 return (
@@ -244,7 +241,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                           ofrecerRecargar
                           accion={async (formData: FormData) => {
                             "use server";
-                            return editarOpcionDeGrupo({ opcionId, versionEsperada: versionOpcion, nombre: String(formData.get("nombre") ?? ""), orden, activa });
+                            return editarOpcionDeGrupo({ opcionId, versionEsperada: versionOpcion, nombre: String(formData.get("nombre") ?? "") });
                           }}
                           className="flex flex-col gap-1"
                         >

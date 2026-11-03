@@ -150,7 +150,7 @@ describe("archivar y restaurar grupos y opciones (OPCIONES-LIMPIEZA)", () => {
 
   it("archivar sube la versión: una edición abierta antes (otra pestaña) recibe «cambió mientras la editabas» y no pisa el archivo", async () => {
     await archivar([], [e.grandeId]);
-    const r = await editarOpcionDeGrupo({ opcionId: e.grandeId, versionEsperada: 1, nombre: "Gigante", orden: 3, activa: true });
+    const r = await editarOpcionDeGrupo({ opcionId: e.grandeId, versionEsperada: 1, nombre: "Gigante" });
     expect(r).toMatchObject({ ok: false });
     expect(r.mensaje).toMatch(/cambió mientras la editabas/);
     expect(await prisma.opcionDeGrupo.findUniqueOrThrow({ where: { id: e.grandeId }, select: { nombre: true, activa: true } })).toEqual({ nombre: "Grande", activa: false });

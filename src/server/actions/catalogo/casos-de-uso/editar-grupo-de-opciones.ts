@@ -18,16 +18,16 @@ import {
 } from "./opciones-de-venta-en-tx";
 
 /**
- * Caso de uso «editar un grupo de opciones de venta» (GO-2a): el nombre, las cantidades, si está activo y (Fase 4, ADR-035) «se lee en la carta como» —solo en VARIANTE y MEDIDA; no entra al
- * precio ni a la foto de la venta—, con la VERSIÓN que vio la pantalla. El tipo no se edita nunca.
+ * Caso de uso «editar un grupo de opciones de venta» (GO-2a): el nombre, las cantidades y (Fase 4, ADR-035) «se lee en la carta como» —solo en VARIANTE y MEDIDA; no entra al
+ * precio ni a la foto de la venta—, con la VERSIÓN que vio la pantalla. El tipo no se edita nunca y tampoco el estado activo: archivar y restaurar un grupo va por `actualizar-activo-grupo.ts` (OPCIONES-LIMPIEZA), así que editar NO toca `activo`.
  *
  * Todo dentro de UNA transacción SERIALIZABLE: relee el grupo (no está → `GRUPO_NO_ENCONTRADO`; otra versión → `VERSION_DESACTUALIZADA`), valida las cantidades según el tipo
  * (`validarGrupo`) y contra las que cada PRODUCTO puso sobre el grupo (las admisiones activas, leídas acá: un producto con mínimo propio 2 no puede quedar con un máximo efectivo de 1),
  * el nombre único sin distinguir mayúsculas, y recién entonces escribe con `version = esperada` en el `where` (defensa doble: si otra edición confirmó en el medio, 0 filas →
- * `VERSION_DESACTUALIZADA`). Sin cambios no escribe, no sube la versión y no audita. D-4: apagar un grupo obligatorio (o dejar un mínimo inalcanzable) no se bloquea; el mensaje
+ * `VERSION_DESACTUALIZADA`). Sin cambios no escribe, no sube la versión y no audita. D-4: dejar un mínimo inalcanzable no se bloquea; el mensaje
  * avisa a cuántos productos deja sin poder venderse.
  *
- * @contract Deja el grupo con el nombre, las cantidades y el estado pedidos, y su versión + 1 (o igual si no cambió nada).
+ * @contract Deja el grupo con el nombre y las cantidades pedidos (el estado activo no cambia), y su versión + 1 (o igual si no cambió nada).
  * @idempotency Optimista — `versionEsperada` se compara dentro de la transacción y en el `where` del UPDATE: con la versión vieja y otro cambio da `VERSION_DESACTUALIZADA`; si el grupo ya está como se pide (el mismo pedido repetido), éxito sin escribir ni auditar.
  * @transaction conTransaccionSerializable (SERIALIZABLE) con `tambienChoqueDeUnico` (un renombre simultáneo al mismo nombre choca con el único y el reintento lo rechaza).
  * @sideEffects registrarCambioAuditado (una fila por columna cambiada, con el antes y el después), con el mismo `tx`.
@@ -52,7 +52,6 @@ export async function editarGrupoDeOpcionesCasoDeUso(
         { campo: "nombre", antes: grupo.nombre, despues: comando.nombre },
         { campo: "cantidadMinima", antes: grupo.cantidadMinima, despues: comando.cantidadMinima },
         { campo: "cantidadMaxima", antes: grupo.cantidadMaxima, despues: comando.cantidadMaxima },
-        { campo: "activo", antes: grupo.activo, despues: comando.activo },
         { campo: "prefijoEnCarta", antes: grupo.prefijoEnCarta, despues: prefijoEnCarta },
       ]);
       if (cambios.length === 0) return exito(`El grupo «${grupo.nombre}» no tenía cambios.`, { version: grupo.version, huboCambio: false, productosAfectados: 0 });
@@ -79,7 +78,7 @@ export async function editarGrupoDeOpcionesCasoDeUso(
         await registrarCambioAuditado(tx, { entidad: "GrupoDeOpciones", entidadId: grupo.id, campo: c.campo, descripcion, valorAnterior: c.antes, valorNuevo: c.despues, actorId: actor.usuarioId, sucursalId: null });
       }
 
-      const afectados = productosSinPoderVenderse({ tipo: grupo.tipo, ...comando }, admisiones, await opcionesActivasDelGrupo(tx, grupo.id));
+      const afectados = productosSinPoderVenderse({ tipo: grupo.tipo, ...comando, activo: grupo.activo }, admisiones, await opcionesActivasDelGrupo(tx, grupo.id));
       return exito(`Grupo «${comando.nombre}» guardado.${avisoDeProductosAfectados(afectados)}`, { version: grupo.version + 1, huboCambio: true, productosAfectados: afectados });
     },
     undefined,

@@ -5,7 +5,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { quitarPasoDeReceta, agregarPasoAReceta } from "../../src/server/actions/catalogo/recetas";
+import { quitarPasoDeReceta, insertarPasoEnReceta } from "../../src/server/actions/catalogo/recetas";
 import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 
 /**
@@ -77,7 +77,7 @@ describe("Auditoría de la receta central (RecetaVersion)", () => {
 
   it("quitarPasoDeReceta (y cualquier acción puntual que delega en guardarReceta) también queda auditado", async () => {
     await guardarReceta(pv.id, [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }]);
-    const conPaso = await agregarPasoAReceta(pv.id, { orden: 1, instruccion: "Amasar" }, await versionVigenteDeReceta(pv.id));
+    const conPaso = await insertarPasoEnReceta(pv.id, 1, { instruccion: "Amasar" }, await versionVigenteDeReceta(pv.id));
     expect(conPaso.ok, conPaso.mensaje).toBe(true);
 
     const r = await quitarPasoDeReceta(pv.id, 1, await versionVigenteDeReceta(pv.id));
