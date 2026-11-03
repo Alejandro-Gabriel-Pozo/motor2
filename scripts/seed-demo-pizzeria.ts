@@ -42,6 +42,7 @@ import { registrarVenta } from "../src/server/actions/movimientos/venta";
 import { registrarConteosFisicos } from "../src/server/actions/movimientos/conteo-fisico";
 import { calcularRendimientoRecetasSimples, calcularRendimientoRecetasCompartidas } from "../src/server/consultas/reportes/rendimiento-recetas";
 import { PROVEEDORES, PRODUCTOS, PRECIOS_REFERENCIA, RECETAS } from "./seed-demo-pizzeria-data";
+import { PROVEEDOR_DE_DEMO_CODIGO, PROVEEDOR_DE_DEMO_NOMBRE, crearNumeradorDeFacturas } from "./demo-seed/guion";
 
 const EMAIL_ADMIN = "alepogabriel@gmail.com";
 const NOMBRE_SUCURSAL = "La Cuadra";
@@ -205,7 +206,16 @@ describe("seed demo pizzería La Cuadra", () => {
           if (!p.activo) anotarSiFalla(`actualizarActivaProveedor(${p.nombre})`, await actualizarActivaProveedor(r.id, false));
         }
       }
+      // Compras etapa 1: una COMPRA exige proveedor y N.º estructurado. El stock inicial y la compra de feria (MP011B) no tienen proveedor formal: entran a nombre de un proveedor de demo fijo.
+      if (!proveedorIdPorNombre.has(PROVEEDOR_DE_DEMO_NOMBRE)) {
+        const r = await altaProveedor({ nombre: PROVEEDOR_DE_DEMO_NOMBRE });
+        anotarSiFalla(`altaProveedor(${PROVEEDOR_DE_DEMO_NOMBRE})`, r);
+        if (r.ok) proveedorIdPorNombre.set(PROVEEDOR_DE_DEMO_NOMBRE, r.id);
+      }
+      const proveedorDeDemoId = proveedorIdPorNombre.get(PROVEEDOR_DE_DEMO_NOMBRE)!;
       const proveedorPorCodigoSheet = new Map(PROVEEDORES.map((p) => [p.codigo, proveedorIdPorNombre.get(p.nombre)!]));
+      // N.º de factura estructurado y determinista: punto de venta fijo por proveedor y correlativo propio (el proveedor de demo, «X-00001-0000000N»).
+      const nroDe = crearNumeradorDeFacturas(PROVEEDORES.map((p) => p.codigo));
 
       // 5b) Grupo "No comestibles" → "Packaging"/"Limpieza", con un Insumo cada uno — para que el food cost
       // realmente EXCLUYA packaging y limpieza (src/core/catalogo/no-comestibles.ts). Hallazgo real (2026-09-22):
@@ -447,23 +457,23 @@ describe("seed demo pizzería La Cuadra", () => {
         const fechaInicial = fechaHace(31, 7);
         const necesidadSemana0 = necesidadSemanal(0);
         const todosLosMP = PRODUCTOS.filter((p) => p.tipo === "MP" && p.activo && !p.seProduce && p.codigo !== "MP099").map((p) => p.codigo);
-        const itemsCocina: { productoId: string; cantidad: number; precioTotal: number }[] = [];
-        const itemsBarra: { productoId: string; cantidad: number; precioTotal: number }[] = [];
+        const itemsCocina: { productoId: string; cantidad: number; precioTotal: number; referenciaProveedor: string }[] = [];
+        const itemsBarra: { productoId: string; cantidad: number; precioTotal: number; referenciaProveedor: string }[] = [];
         for (const codigo of [...todosLosMP, "MP011B"]) {
           const producto = productoPorCodigo.get(codigo)!;
           const necesidadTotal = (necesidadSemana0.directa[codigo] ?? 0) * 2; // 2 semanas de colchón inicial
           if (!(necesidadTotal > 0)) continue;
           const cantidadCompra = Math.max(1, Math.ceil((necesidadTotal * BUFFER) / producto.factorConversion.toNumber()));
           const ref = precioRef(codigo, codigo.startsWith("MX") ? "PRV_BEBIDAS" : "PRV_ALMACEN");
-          const item = { productoId: producto.id, cantidad: cantidadCompra, precioTotal: Math.round(cantidadCompra * ref.precioUnitarioCompra) };
+          const item = { productoId: producto.id, cantidad: cantidadCompra, precioTotal: Math.round(cantidadCompra * ref.precioUnitarioCompra), referenciaProveedor: producto.nombre };
           (SECCION_DE[codigo] === seccionBarra ? itemsBarra : itemsCocina).push(item);
         }
         if (itemsCocina.length) {
-          const r = await registrarMovimiento({ proceso: "COMPRA", fecha: fechaInicial, seccionId: seccionCocina, nroFactura: "STOCK-INICIAL-COCINA", items: itemsCocina, claveIdempotencia: crypto.randomUUID() });
+          const r = await registrarMovimiento({ proceso: "COMPRA", fecha: fechaInicial, seccionId: seccionCocina, proveedorId: proveedorDeDemoId, nroFactura: nroDe(PROVEEDOR_DE_DEMO_CODIGO), items: itemsCocina, claveIdempotencia: crypto.randomUUID() });
           anotarSiFalla("COMPRA stock inicial cocina", r);
         }
         if (itemsBarra.length) {
-          const r = await registrarMovimiento({ proceso: "COMPRA", fecha: fechaInicial, seccionId: seccionBarra, nroFactura: "STOCK-INICIAL-BARRA", items: itemsBarra, claveIdempotencia: crypto.randomUUID() });
+          const r = await registrarMovimiento({ proceso: "COMPRA", fecha: fechaInicial, seccionId: seccionBarra, proveedorId: proveedorDeDemoId, nroFactura: nroDe(PROVEEDOR_DE_DEMO_CODIGO), items: itemsBarra, claveIdempotencia: crypto.randomUUID() });
           anotarSiFalla("COMPRA stock inicial barra", r);
         }
         // Y una primera tanda de prepizza ya lista para el día 1.
@@ -507,6 +517,7 @@ describe("seed demo pizzería La Cuadra", () => {
               cantidad: cantidadCompra,
               precioTotal: Math.round(cantidadCompra * ref.precioUnitarioCompra),
               unidadCompraId: null,
+              referenciaProveedor: producto.nombre,
             });
           }
           if (!items.length) continue;
@@ -516,7 +527,7 @@ describe("seed demo pizzería La Cuadra", () => {
             fecha,
             seccionId: seccionCocina,
             proveedorId: proveedorPorCodigoSheet.get(proveedorCodigoOperacion),
-            nroFactura: `${proveedorCodigoOperacion}-${fecha.toISOString().slice(0, 10)}`,
+            nroFactura: nroDe(proveedorCodigoOperacion),
             items,
             claveIdempotencia: crypto.randomUUID(),
           });
@@ -537,7 +548,9 @@ describe("seed demo pizzería La Cuadra", () => {
             proceso: "COMPRA",
             fecha,
             seccionId: seccionCocina,
-            items: [{ productoId: idProd("MP011B"), cantidad: cantidadB, precioTotal: Math.round(cantidadB * 2450) }],
+            proveedorId: proveedorDeDemoId,
+            nroFactura: nroDe(PROVEEDOR_DE_DEMO_CODIGO),
+            items: [{ productoId: idProd("MP011B"), cantidad: cantidadB, precioTotal: Math.round(cantidadB * 2450), referenciaProveedor: productoPorCodigo.get("MP011B")!.nombre }],
             claveIdempotencia: crypto.randomUUID(),
           });
           anotarSiFalla(`COMPRA MP011B feria ${fecha.toISOString().slice(0, 10)}`, rB);
@@ -550,11 +563,11 @@ describe("seed demo pizzería La Cuadra", () => {
             const necesidadTotal = (necesidad.directa[codigo] ?? 0) * 2; // ventana de 2 semanas hasta la próxima entrega
             const cantidadCompra = Math.max(1, Math.ceil((necesidadTotal * BUFFER) / producto.factorConversion.toNumber()) || 1);
             const ref = precioRef(codigo, "PRV_DESCARTABLES");
-            return { productoId: producto.id, cantidad: cantidadCompra, precioTotal: Math.round(cantidadCompra * ref.precioUnitarioCompra) };
+            return { productoId: producto.id, cantidad: cantidadCompra, precioTotal: Math.round(cantidadCompra * ref.precioUnitarioCompra), referenciaProveedor: producto.nombre };
           });
           const r = await registrarMovimiento({
             proceso: "COMPRA", fecha, seccionId: seccionCocina, proveedorId: proveedorPorCodigoSheet.get("PRV_DESCARTABLES"),
-            nroFactura: `PRV_DESCARTABLES-${fecha.toISOString().slice(0, 10)}`, items,
+            nroFactura: nroDe("PRV_DESCARTABLES"), items,
             claveIdempotencia: crypto.randomUUID(),
           });
           anotarSiFalla(`COMPRA descartables ${fecha.toISOString().slice(0, 10)}`, r);
@@ -567,11 +580,11 @@ describe("seed demo pizzería La Cuadra", () => {
             const necesidadTotal = necesidad.directa[codigo] ?? 0;
             const cantidadCompra = Math.max(1, Math.ceil((necesidadTotal * BUFFER) / producto.factorConversion.toNumber()) || 1);
             const ref = precioRef(codigo, "PRV_BEBIDAS");
-            return { productoId: producto.id, cantidad: cantidadCompra, precioTotal: Math.round(cantidadCompra * ref.precioUnitarioCompra) };
+            return { productoId: producto.id, cantidad: cantidadCompra, precioTotal: Math.round(cantidadCompra * ref.precioUnitarioCompra), referenciaProveedor: producto.nombre };
           });
           const r = await registrarMovimiento({
             proceso: "COMPRA", fecha, seccionId: seccionBarra, proveedorId: proveedorPorCodigoSheet.get("PRV_BEBIDAS"),
-            nroFactura: `PRV_BEBIDAS-${fecha.toISOString().slice(0, 10)}`, items,
+            nroFactura: nroDe("PRV_BEBIDAS"), items,
             claveIdempotencia: crypto.randomUUID(),
           });
           anotarSiFalla(`COMPRA bebidas ${fecha.toISOString().slice(0, 10)}`, r);

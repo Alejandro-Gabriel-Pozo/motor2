@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { crearGeneradorAleatorio } from "../../scripts/demo-seed/prng";
-import { calcularTotalesEsperados, validarGuion, type EventoDemo, type GuionDemo } from "../../scripts/demo-seed/guion";
+import { calcularTotalesEsperados, validarGuion, PROVEEDOR_DE_DEMO_CODIGO, type EventoDemo, type GuionDemo } from "../../scripts/demo-seed/guion";
 import { generarGuionLaCuadra, necesidadSemanal, generarMultiplicadoresSemanales, construirMultiplicadoresPorPV, CONFIG_LA_CUADRA_DEFAULT } from "../../scripts/demo-seed/guion-la-cuadra";
 import { PRODUCTOS } from "../../scripts/seed-demo-pizzeria-data";
 
@@ -110,9 +110,9 @@ describe("generarGuionLaCuadra", () => {
 
   it("el bug del proveedor alternativo está corregido: cuando MP001 sale de un proveedor distinto del habitual, esa compra es SU PROPIA Operación (no mezclada con el resto de PRV_HARINAS)", () => {
     const guion = generarGuionLaCuadra(CONFIG_LA_CUADRA_DEFAULT, crearGeneradorAleatorio(1));
-    // Fuera del stock inicial (día -1): esa compra agrupa TODO lo que hace falta tener a mano antes de arrancar, de
+    // Fuera del stock inicial (día -1, que entra a nombre del proveedor de demo): esa compra agrupa TODO lo que hace falta tener a mano antes de arrancar, de
     // cualquier proveedor de referencia — no es la sustitución periódica que este test verifica.
-    const compras = porTipo(guion, "COMPRA").filter((c) => c.nroFactura !== "STOCK-INICIAL");
+    const compras = porTipo(guion, "COMPRA").filter((c) => c.proveedorCodigo !== PROVEEDOR_DE_DEMO_CODIGO);
     const conMP001 = compras.filter((c) => c.items.some((it) => it.productoCodigo === "MP001"));
     // Tiene que haber al menos una compra de MP001 a un proveedor que NO es PRV_HARINAS (la sustitución se disparó alguna vez en 26 semanas).
     const sustituidas = conMP001.filter((c) => c.proveedorCodigo !== "PRV_HARINAS");
@@ -123,6 +123,22 @@ describe("generarGuionLaCuadra", () => {
       expect(c.items).toHaveLength(1);
       expect(c.items[0]!.productoCodigo).toBe("MP001");
     }
+  });
+
+  it("toda compra lleva proveedor y un N.º estructurado, único por proveedor; el stock inicial y la feria van al proveedor de demo (letra X)", () => {
+    const guion = generarGuionLaCuadra(CONFIG_LA_CUADRA_DEFAULT, crearGeneradorAleatorio(1));
+    const compras = porTipo(guion, "COMPRA");
+    const vistos = new Set<string>();
+    for (const c of compras) {
+      expect(c.nroFactura, c.ref).toMatch(/^[AX]-\d{5}-\d{8}$/);
+      expect(c.nroFactura.startsWith("X-"), c.ref).toBe(c.proveedorCodigo === PROVEEDOR_DE_DEMO_CODIGO);
+      const clave = `${c.proveedorCodigo}|${c.nroFactura}`;
+      expect(vistos.has(clave), `repetido: ${clave}`).toBe(false);
+      vistos.add(clave);
+    }
+    const deDemo = compras.filter((c) => c.proveedorCodigo === PROVEEDOR_DE_DEMO_CODIGO);
+    expect(deDemo.some((c) => c.items.some((i) => i.productoCodigo === "MP011B"))).toBe(true); // la feria
+    expect(deDemo.some((c) => c.diaSemana === -1)).toBe(true); // el stock inicial
   });
 
   it("los precios de compra suben con el tiempo (inflación de la serie): el promedio del último mes es mayor que el del primero, para un insumo de compra frecuente", () => {
