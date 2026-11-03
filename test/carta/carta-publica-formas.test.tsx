@@ -170,8 +170,8 @@ describe("8b: tabla de un eje (el café con variantes, el submarino sin ellas, e
     const { filas: filasDelCafe, ...restoDelCafe } = delCafe;
     const { filas: filasDelSubmarino, ...restoDelSubmarino } = delSubmarino;
     expect(restoDelSubmarino).toEqual(restoDelCafe);
-    expect(delCafe.encabezados).toEqual(['data-rol="columna" class="carta-rol-columna pb-1 pl-3 pt-1 text-right align-bottom"']);
-    expect(delCafe.celdas).toEqual(['<td class="whitespace-nowrap py-1.5 pl-3 text-right align-baseline"']);
+    expect(delCafe.encabezados).toEqual(['data-rol="columna" class="carta-rol-columna pb-1 pl-1 pt-1 text-right align-bottom"']);
+    expect(delCafe.celdas).toEqual(['<td class="whitespace-nowrap py-1.5 pl-1 text-right align-baseline"']);
     expect(delCafe.precios).toEqual(['data-rol="opcion-precio" class="carta-rol-opcion-precio carta-titulo"']);
     expect(filasDelCafe, "las variantes del café: filas en rol Opción").toEqual(['<span data-rol="opcion" class="carta-rol-opcion"']);
     expect(filasDelSubmarino, "el submarino no tiene variantes: una sola fila sin rótulo").toEqual([]);

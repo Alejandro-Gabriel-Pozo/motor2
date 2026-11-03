@@ -337,7 +337,7 @@ function TablaDelItem({ item, p, colores }: { item: ItemCartaPublico; p: Extract
             <tr>
               <td />
               {p.columnas.map((r, c) => (
-                <th key={`col-${c}`} scope="col" data-rol="columna" className="carta-rol-columna pb-1 pl-3 pt-1 text-right align-bottom">
+                <th key={`col-${c}`} scope="col" data-rol="columna" className="carta-rol-columna pb-1 pl-1 pt-1 text-right align-bottom">
                   {r}
                 </th>
               ))}
@@ -357,7 +357,7 @@ function TablaDelItem({ item, p, colores }: { item: ItemCartaPublico; p: Extract
                 )}
               </th>
               {f.celdas.map((precio, c) => (
-                <td key={`celda-${c}`} className="whitespace-nowrap py-1.5 pl-3 text-right align-baseline">
+                <td key={`celda-${c}`} className="whitespace-nowrap py-1.5 pl-1 text-right align-baseline">
                   <CeldaDePrecio precio={precio} color={colores.precio} />
                 </td>
               ))}
