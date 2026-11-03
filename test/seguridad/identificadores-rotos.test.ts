@@ -4,7 +4,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, prisma, prismaAdmin } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal } from "../../src/server/actions/carta/registro-publico";
+import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa } from "../../src/server/actions/carta/registro-publico";
 import { actualizarCapacidad } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { guardarMargenObjetivo } from "../../src/server/actions/reportes/margen-objetivo";
 import type { AccionClave } from "../../src/core/permisos/acciones";
@@ -46,7 +46,6 @@ describe("acciones con un identificador roto no tocan filas", () => {
       const resultados = [
         await agregarSucursalAlPortal(id),
         await guardarSucursalPublica(id, { slug: "otro", publicada: true }),
-        await quitarSucursalDelPortal(id),
         await moverSucursalEnMapa(id, 50, 50),
       ];
       for (const r of resultados) expect(r).toEqual({ ok: false, mensaje: expect.any(String) });

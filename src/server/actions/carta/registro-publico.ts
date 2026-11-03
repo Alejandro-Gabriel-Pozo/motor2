@@ -4,7 +4,6 @@ import {
   guardComandoAgregarSucursalAlPortal,
   guardComandoGuardarSucursalPublica,
   guardComandoMoverSucursalEnMapa,
-  guardComandoQuitarSucursalDelPortal,
 } from "@/core/features/carta/registro-publico.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
@@ -12,7 +11,6 @@ import { error, type ResultadoAccion } from "../tipos";
 import { agregarSucursalAlPortalCasoDeUso } from "./casos-de-uso/agregar-sucursal-al-portal";
 import { guardarSucursalPublicaCasoDeUso } from "./casos-de-uso/guardar-sucursal-publica";
 import { moverSucursalEnMapaCasoDeUso } from "./casos-de-uso/mover-sucursal-en-mapa";
-import { quitarSucursalDelPortalCasoDeUso } from "./casos-de-uso/quitar-sucursal-del-portal";
 import { revalidarCartasPublicas } from "./revalidar";
 /**
  * Registro público de las sucursales en el portal/carta (docs/plan-registro-tenants-2026-09-24.md, M6): lo que
@@ -23,10 +21,10 @@ import { revalidarCartasPublicas } from "./revalidar";
  * Las tres reciben el `Sucursal.id` (la fila es 1:1 con la sucursal). No dependen de la sucursal activa de quien llama: el mapa
  * del portal es entre sucursales.
  *
- * Desde el Hito 5 de la pureza (bloque D, `docs/plan-hito-5-pureza.md` §6.1) las cuatro acciones son adaptadores finos de sus casos de uso
- * (`./casos-de-uso/{agregar-sucursal-al-portal,guardar-sucursal-publica,quitar-sucursal-del-portal,mover-sucursal-en-mapa}.ts`; escrituras en
+ * Desde el Hito 5 de la pureza (bloque D, `docs/plan-hito-5-pureza.md` §6.1) las tres acciones son adaptadores finos de sus casos de uso
+ * (`./casos-de-uso/{agregar-sucursal-al-portal,guardar-sucursal-publica,mover-sucursal-en-mapa}.ts`; escrituras en
  * server/persistencia/carta/registro-publico.ts; el formato en core/features/carta/registro-publico.guard.ts): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`.
- * Las cuatro revalidan la carta pública solo si salió bien, como antes.
+ * Las tres revalidan la carta pública solo si salió bien, como antes.
  */
 
 /**
@@ -66,20 +64,6 @@ export async function guardarSucursalPublica(sucursalId: string, datos: DatosSuc
     const comando = guardComandoGuardarSucursalPublica(sucursalId, datos);
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await guardarSucursalPublicaCasoDeUso(ctx, comando.valor);
-    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
-    return aResultadoAccion(resultado);
-  });
-}
-
-/**
- * Saca la sucursal del portal: la APAGA (`publicada = false`), no borra su fila (P16, 2026-10-11). El slug queda reservado y, si se vuelve a publicar, el QR ya impreso vuelve a funcionar.
- * Permiso → id (`guardComandoQuitarSucursalDelPortal`) → caso de uso (`casos-de-uso/quitar-sucursal-del-portal.ts`) → revalidar si salió bien → `aResultadoAccion`.
- */
-export async function quitarSucursalDelPortal(sucursalId: string): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("carta_portal", async (ctx) => {
-    const comando = guardComandoQuitarSucursalDelPortal(sucursalId);
-    if (!comando.ok) return error(comando.mensaje);
-    const resultado = await quitarSucursalDelPortalCasoDeUso(ctx, comando.valor);
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });

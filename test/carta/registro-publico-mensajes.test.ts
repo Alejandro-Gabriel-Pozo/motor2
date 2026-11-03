@@ -10,7 +10,6 @@ import {
   agregarSucursalAlPortal,
   guardarSucursalPublica,
   moverSucursalEnMapa,
-  quitarSucursalDelPortal,
   type DatosSucursalPublica,
 } from "../../src/server/actions/carta/registro-publico";
 
@@ -40,12 +39,11 @@ describe("registro público del portal: mensajes, orden de los chequeos y revali
     return n;
   };
 
-  it("un id que no es texto (vacío o de otro tipo) se rechaza en las cuatro ANTES de leer, sin revalidar", async () => {
+  it("un id que no es texto (vacío o de otro tipo) se rechaza en las tres ANTES de leer, sin revalidar", async () => {
     const roto = undefined as unknown as string;
     for (const id of ["", roto, 7 as unknown as string]) {
       expect(await agregarSucursalAlPortal(id)).toEqual({ ok: false, mensaje: "Sucursal inválida." });
       expect(await guardarSucursalPublica(id, datos())).toEqual({ ok: false, mensaje: "Sucursal inválida." });
-      expect(await quitarSucursalDelPortal(id)).toEqual({ ok: false, mensaje: "Sucursal inválida." });
       expect(await moverSucursalEnMapa(id, 1, 1)).toEqual({ ok: false, mensaje: "Sucursal inválida." });
     }
     expect(revalidaciones()).toBe(0);
@@ -131,26 +129,6 @@ describe("registro público del portal: mensajes, orden de los chequeos y revali
       expect(await guardarSucursalPublica(centralId, datos({ slug: "centro", posX: "10,5", posY: 20, posW: 30, orden: "3" }))).toEqual({ ok: true, mensaje: 'Portal: "Central" guardada (sin publicar).' });
       expect(revalidaciones()).toBe(1);
       expect(await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } })).toMatchObject({ publicada: false, orden: 3 });
-    });
-  });
-
-  describe("quitar", () => {
-    it("«no está en el portal» sin revalidar; el éxito nombra la sucursal y su slug RESERVADO, APAGA solo esa fila (no la borra) y revalida UNA vez", async () => {
-      const norte = (await prisma.sucursal.create({ data: { nombre: "Norte" } })).id;
-      await agregarSucursalAlPortal(centralId);
-      await agregarSucursalAlPortal(norte);
-      await guardarSucursalPublica(norte, datos({ slug: "norte", publicada: true }));
-      await guardarSucursalPublica(centralId, datos({ slug: "central", publicada: true }));
-      revalidaciones();
-      expect(await quitarSucursalDelPortal("cnoexiste000000000000000")).toEqual({ ok: false, mensaje: "Esta sucursal no está en el portal." });
-      expect(revalidaciones()).toBe(0);
-      expect(await quitarSucursalDelPortal(norte)).toEqual({ ok: true, mensaje: '"Norte" quitada del portal (slug norte reservado: vuelve a verse al publicarla).' });
-      expect(revalidaciones()).toBe(1);
-      const filas = await prisma.sucursalPublica.findMany({ select: { sucursalId: true, slug: true, publicada: true }, orderBy: { slug: "asc" } });
-      expect(filas).toEqual([
-        { sucursalId: centralId, slug: "central", publicada: true },
-        { sucursalId: norte, slug: "norte", publicada: false },
-      ]);
     });
   });
 

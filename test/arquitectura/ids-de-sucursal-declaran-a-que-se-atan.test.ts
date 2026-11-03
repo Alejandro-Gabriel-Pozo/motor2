@@ -93,7 +93,6 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   },
   "carta/registro-publico.ts|agregarSucursalAlPortal": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa): administra el registro de todas sus sucursales" },
   "carta/registro-publico.ts|guardarSucursalPublica": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },
-  "carta/registro-publico.ts|quitarSucursalDelPortal": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },
   "carta/registro-publico.ts|moverSucursalEnMapa": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },
   // GO-2a: lo que decide cada sucursal sobre las opciones de venta. El id llega dentro de `entrada` (el eco de la pantalla) y el guard lo compara con la activa ANTES de leer nada.
   "catalogo/opciones-por-sucursal.ts|apagarOpcionEnSucursal": {

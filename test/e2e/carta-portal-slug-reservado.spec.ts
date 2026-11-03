@@ -3,12 +3,12 @@ import { prisma } from "./fixtures/db";
 import AxeBuilder from "@axe-core/playwright";
 
 /**
- * P16 (decisión del dueño, 2026-10-11) de punta a punta: «Quitar del portal» APAGA la sucursal, no la borra. La carta pública de su dirección pasa a dar el 404 neutro (sin el nombre ni
+ * P16 (decisión del dueño, 2026-10-11) de punta a punta: despublicar una sucursal (destildar «Publicada en el portal» y guardar) la APAGA, no la borra. La carta pública de su dirección pasa a dar el 404 neutro (sin el nombre ni
  * la etiqueta de la sucursal), el slug queda RESERVADO (otra sucursal no lo puede tomar al editar) y, al volver a publicarla con la casilla, la MISMA dirección —la del QR ya impreso— vuelve a
  * funcionar. Prueba también que la caché de la carta (por etiqueta de empresa) se invalida en los dos sentidos: apagar y volver a publicar se ven al instante, sin esperar los 5 minutos.
  * Se mira con un pedido SIN sesión (`request`): la carta pública es un borde anónimo.
  */
-test("quitar apaga y reserva el slug: la dirección da 404, otra sucursal no la toma, y publicar de nuevo la devuelve", async ({ page, request, paginaAutenticada: admin }) => {
+test("despublicar apaga y reserva el slug: la dirección da 404, otra sucursal no la toma, y publicar de nuevo la devuelve", async ({ page, request, paginaAutenticada: admin }) => {
   const marca = `${Date.now()}`;
   const nombreA = `E2E Reservado A ${marca}`;
   const nombreB = `E2E Reservado B ${marca}`;
@@ -25,13 +25,15 @@ test("quitar apaga y reserva el slug: la dirección da 404, otra sucursal no la 
     expect(publicada.status()).toBe(200);
     expect(await publicada.text()).toContain(nombreA);
 
-    // 2. «Quitar» desde la pantalla: queda sin publicar, con su dirección, y la fila sigue en la base.
+    // 2. Destildar «Publicada en el portal» y guardar, desde la pantalla: queda sin publicar, con su dirección, y la fila sigue en la base.
     await admin.goto("/carta/portal");
     const filaA = admin.locator(`[data-sucursal-portal="${nombreA}"]`);
     const filaB = admin.locator(`[data-sucursal-portal="${nombreB}"]`);
     await expect(filaA).toContainText(`/carta/${slug} · publicada`);
     await filaA.locator("summary").click();
-    await filaA.getByRole("button", { name: `Quitar «${nombreA}» del portal` }).click();
+    await filaA.getByLabel("Publicada en el portal").uncheck();
+    await filaA.getByRole("button", { name: `Guardar «${nombreA}»` }).click();
+    await expect(filaA.getByText(`Portal: "${nombreA}" guardada (sin publicar).`)).toBeVisible();
     await expect(filaA).toContainText(`/carta/${slug} · sin publicar`);
     expect(await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: a.id } })).toMatchObject({ slug, publicada: false, etiqueta: etiquetaA });
 
@@ -58,7 +60,7 @@ test("quitar apaga y reserva el slug: la dirección da 404, otra sucursal no la 
     // 5. Volver a publicar con la casilla: la MISMA dirección vuelve a funcionar (la caché se invalidó en los dos sentidos).
     await filaA.getByLabel("Publicada en el portal").check();
     await filaA.getByRole("button", { name: `Guardar «${nombreA}»` }).click();
-    // Durante el guardado conviven el mensaje viejo («quitada del portal») y «Guardando…»: se espera el texto exacto, no «el» status.
+    // Durante el guardado conviven el mensaje viejo («guardada (sin publicar)») y «Guardando…»: se espera el texto exacto, no «el» status.
     await expect(filaA.getByText(`Portal: "${nombreA}" guardada y publicada.`)).toBeVisible();
     const republicada = await request.get(ruta);
     expect(republicada.status()).toBe(200);
