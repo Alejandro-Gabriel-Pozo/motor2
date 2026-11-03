@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { EstadoTraspaso } from "@prisma/client";
+import { EstadoTraspaso } from "@prisma/client";
 import { guardTransicionTraspaso } from "../../../../src/core/features/traspasos/traspaso.guard";
 import type { OperacionTraspaso } from "../../../../src/core/features/traspasos/traspaso.schema";
 
@@ -10,8 +10,8 @@ import type { OperacionTraspaso } from "../../../../src/core/features/traspasos/
  * el guard; test/traspasos/*.test.ts y test/auditoria/traspasos-en-transito.test.ts los comparan con regex.
  */
 
-const ESTADOS: EstadoTraspaso[] = ["SOLICITADA", "ENVIADA", "ACEPTADA", "RECHAZADA_ORIGEN", "RECHAZADA_DESTINO", "CERRADA", "CANCELADA"];
-const OPERACIONES: OperacionTraspaso[] = ["aprobar", "rechazar_solicitud", "cancelar_solicitud", "aceptar", "rechazar_envio", "confirmar_reingreso"];
+// I2: los estados salen del enum que genera Prisma — si el enum gana un valor, el producto crece y el test de tamaño de abajo falla hasta que alguien lo declare en el oráculo.
+const ESTADOS: EstadoTraspaso[] = Object.values(EstadoTraspaso);
 
 const ORIGEN = "suc-origen";
 const DESTINO = "suc-destino";
@@ -28,6 +28,9 @@ const ESPERADO: Record<OperacionTraspaso, { lado: string; desde: EstadoTraspaso;
   rechazar_envio: { lado: DESTINO, desde: "ENVIADA", hacia: "RECHAZADA_DESTINO", mensajeLado: NO_ES_DESTINO, mensajeEstado: (e) => `Este traspaso está en estado "${e}" — no se puede rechazar desde acá.` },
   confirmar_reingreso: { lado: ORIGEN, desde: "RECHAZADA_DESTINO", hacia: "CERRADA", mensajeLado: NO_ES_ORIGEN, mensajeEstado: (e) => `Este traspaso está en estado "${e}" — no hay ningún reingreso pendiente.` },
 };
+
+// I2: las operaciones salen de las claves del oráculo, que es `Record<OperacionTraspaso, …>` (exhaustivo en compilación: una operación nueva en el tipo no compila hasta tener fila).
+const OPERACIONES = Object.keys(ESPERADO) as OperacionTraspaso[];
 
 const CASOS = OPERACIONES.flatMap((operacion) =>
   ESTADOS.flatMap((estado) => [ORIGEN, DESTINO, AJENA].map((sucursalId) => ({ operacion, estado, sucursalId })))
