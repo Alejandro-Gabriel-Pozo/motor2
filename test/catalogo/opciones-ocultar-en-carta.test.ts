@@ -225,7 +225,7 @@ describe("«Mostrar este grupo en la carta»: el comando de admisión del produc
       await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando());
       await prisma.versionDeOpcion.create({ data: { opcionId: ojoId, numero: 2, tipoDeDiferencia: "MONTO", diferenciaPrecio: "500.00", creadoPorId: e.usuarioId } });
       await prisma.grupoDeOpciones.update({ where: { id: corteId }, data: { activo: false } });
-      expect(await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ versionEsperada: 1, seMuestraEnCarta: false, cantidadMinima: 0 }))).toMatchObject({ ok: true });
+      expect(await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ versionEsperada: 1, seMuestraEnCarta: false, cantidadMinima: 0, opciones: [] }))).toMatchObject({ ok: true });
       expect(await fila()).toMatchObject({ seMuestraEnCarta: false, activo: true });
       expect(await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ grupoId: e.grupoAdicionalId, seMuestraEnCarta: false, opciones: [] }))).toMatchObject({ ok: false, mensaje: MENSAJE_OCULTAR_SOLO_VARIANTE_O_INCLUIDA });
     });

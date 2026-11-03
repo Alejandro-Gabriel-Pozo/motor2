@@ -71,7 +71,7 @@ interface Fila {
  * Fase 6 (6.15a): con las primitivas del sistema (`OpcionesExcluyentes`, `Campo`, `Selector`, `Casilla`, `Boton`) y, debajo del importe de cada opción, la LECTURA del precio («Napolitana con Trucha =
  * $ 25.000 + $ 3.000 = $ 28.000»; `leerPrecioDeFilaDeAdmision`, que compone con el mismo compositor que la venta). `referencia` es lo más barato GUARDADO del grupo que fija el precio del producto y
  * `precioDeLista` el precio que se cobra si no hay referencia (`null`: un producto que se vende por opción y todavía no tiene precio final: ahí no se lee lo que suma). El formulario sigue mandando los
- * mismos campos que lee `admision-del-formulario.ts` (`orden`, `cantidadMinima`, `cantidadMaxima`, `modoPrecio`, `activo`, `seMuestraEnCarta` y `opciones`); los tres últimos se agregan al enviar, sin `<input type="hidden">`
+ * mismos campos que lee `admision-del-formulario.ts` (`orden`, `cantidadMinima`, `cantidadMaxima`, `modoPrecio`, `seMuestraEnCarta` y `opciones`); los dos últimos se agregan al enviar, sin `<input type="hidden">`
  * (`seMuestraEnCarta` solo en una variante o una incluida: la casilla «Mostrar este grupo en la carta», 2026-10-29; apagada y con una opción que cambia el precio, la carta lo muestra igual y la tarjeta avisa).
  */
 export function AdmisionDeGrupo({
