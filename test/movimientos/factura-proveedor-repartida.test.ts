@@ -13,6 +13,7 @@ import { listarPropuestasEnviadas, listarPropuestasParaAceptar } from "../../src
 import { obtenerCostoActualPorMP } from "../../src/server/lecturas/reportes/comun";
 import { mediodiaDelDia, ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../../src/core/tiempo/zona-horaria";
 import type { DatosFacturaProveedorInput } from "../../src/core/features/compras/factura-proveedor.schema";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * E3a (ADR-041; docs/diseno-factura-de-proveedor-e3a-2026-10-27.md): la factura de proveedor repartida entre sucursales por PROPUESTA (la que compra) y ACEPTACIÓN (cada destino), contra Postgres real.
@@ -50,7 +51,7 @@ const factura = (extra: Partial<DatosFacturaProveedorInput> = {}): DatosFacturaP
   seccionId: sec3,
   items: [
     { productoId: harina, cantidad: 240, precioTotal: 2_400_000, referenciaProveedor: "HARINA 000 X 25" },
-    { productoId: aceite, cantidad: 60, precioTotal: 600_000 },
+    { productoId: aceite, cantidad: 60, precioTotal: 600_000, referenciaProveedor: REFERENCIA_DE_PRUEBA },
   ],
   reparto: { modo: "IMPORTE", partes: [{ sucursalId: s3, valor: 1_500_000 }, { sucursalId: s4, valor: 1_000_000 }, { sucursalId: s6, valor: 500_000 }] },
   claveIdempotencia: randomUUID(),
@@ -176,14 +177,14 @@ describe("cargar factura", () => {
   it("rechazos: sucursal de otra empresa o inexistente, producto indivisible, importes que no suman (con lo que falta)", async () => {
     await comoOp3();
     expect((await registrarFacturaProveedor(factura({ reparto: { modo: "IMPORTE", partes: [{ sucursalId: s3, valor: 2_000_000 }, { sucursalId: "no-existe", valor: 1_000_000 }] } }))).mensaje).toContain("No se encontró una de las sucursales");
-    const indivisible = await registrarFacturaProveedor(factura({ items: [{ productoId: harina, cantidad: 1, precioTotal: 90 }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
+    const indivisible = await registrarFacturaProveedor(factura({ items: [{ productoId: harina, cantidad: 1, precioTotal: 90, referenciaProveedor: REFERENCIA_DE_PRUEBA }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
     // La harina es en kg con 2 decimales: 1 kg sí se parte (0,33 / 0,33 / 0,34). El indivisible se prueba con una unidad entera.
     expect(indivisible.ok, indivisible.mensaje).toBe(true);
     const unidad = await prisma.unidad.create({ data: { nombre: "bolsa", magnitud: "CANTIDAD", decimales: 0 } });
     const insumo = await prisma.insumo.create({ data: { nombre: "Bolsa" } });
     const bolsa = await prisma.producto.create({ data: { codigo: "MP_BOLSA", nombre: "Bolsa 25 kg", tipo: "MP", unidadStockId: unidad.id, insumoId: insumo.id } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId: s3, productoId: bolsa.id, disponible: true } });
-    const r = await registrarFacturaProveedor(factura({ nroFactura: "A-00001-00000088", items: [{ productoId: bolsa.id, cantidad: 1, precioTotal: 90 }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
+    const r = await registrarFacturaProveedor(factura({ nroFactura: "A-00001-00000088", items: [{ productoId: bolsa.id, cantidad: 1, precioTotal: 90, referenciaProveedor: REFERENCIA_DE_PRUEBA }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
     expect(r.mensaje).toContain("«Bolsa 25 kg» no se puede partir");
     const noSuma = await registrarFacturaProveedor(factura({ nroFactura: "A-00001-00000089", reparto: { modo: "IMPORTE", partes: [{ sucursalId: s3, valor: 2_000_000 }, { sucursalId: s4, valor: 900_000 }] } }));
     expect(noSuma.mensaje).toBe("Los importes de las sucursales no llegan al total: faltan $100000.00.");

@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { comprobanteDePrueba, nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 describe("registrarMovimiento", () => {
   let sucursalId: string;
@@ -61,7 +62,7 @@ describe("registrarMovimiento", () => {
     const mp = await crearMP("Harina");
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId,
-      items: [{ productoId: mp.id, cantidad: 10 }],
+      items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(true);
@@ -73,7 +74,7 @@ describe("registrarMovimiento", () => {
     // Sin fila DisponibilidadProducto en sucursalId: "fila ausente = no disponible".
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId,
-      items: [{ productoId: mp.id, cantidad: 10 }],
+      items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(false);
@@ -91,7 +92,7 @@ describe("registrarMovimiento", () => {
 
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId,
-      items: [{ productoId: mp.id, cantidad: 2, unidadCompraId: presentacion.unidadCompraId }],
+      items: [{ productoId: mp.id, cantidad: 2, unidadCompraId: presentacion.unidadCompraId, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok, resultado.mensaje).toBe(true);
@@ -103,7 +104,7 @@ describe("registrarMovimiento", () => {
     const mp = await crearMP("Harina simple");
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId,
-      items: [{ productoId: mp.id, cantidad: 5, unidadCompraId: unidadGId }],
+      items: [{ productoId: mp.id, cantidad: 5, unidadCompraId: unidadGId, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(), // no existe ninguna Presentacion para este producto
     });
     expect(resultado.ok, resultado.mensaje).toBe(true);
@@ -112,7 +113,7 @@ describe("registrarMovimiento", () => {
 
   it("Merma resta stock (signoStock -1) — el bug de v2.1.0 (Merma sin signo) no puede repetirse: el signo sale de un solo lugar (TRANSICIONES), no de una lista aparte", async () => {
     const mp = await crearMP("Tomate");
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const resultado = await registrarMovimiento({
       proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoVencidoId,
@@ -125,7 +126,7 @@ describe("registrarMovimiento", () => {
 
   it("U11: Merma sin motivo se rechaza en el servidor (no solo en la pantalla) y no mueve el saldo", async () => {
     const mp = await crearMP("Cebolla");
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const sinMotivo = await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
     expect(sinMotivo.ok).toBe(false);
@@ -136,7 +137,7 @@ describe("registrarMovimiento", () => {
 
   it("Merma rechaza un motivoId que no existe, y uno que existe pero está desactivado — el mensaje no revienta como error 500 crudo", async () => {
     const mp = await crearMP("Zanahoria");
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const inexistente = await registrarMovimiento({
       proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: "no-existe",
@@ -161,7 +162,7 @@ describe("registrarMovimiento", () => {
 
   it("Consumo rechaza un destinoId que no existe o que está desactivado, igual que Merma con motivoId", async () => {
     const mp = await crearMP("Apio");
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const inexistente = await registrarMovimiento({
       proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, destinoId: "no-existe",
@@ -185,7 +186,7 @@ describe("registrarMovimiento", () => {
 
   it("Tanda 6: un motivoId en un Consumo, o un destinoId en una Merma, se ignoran en vez de chocar con el CHECK de la base", async () => {
     const mp = await crearMP("Cebolla");
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const consumo = await registrarMovimiento({
       proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, destinoId: destinoPersonalId, motivoId: motivoRotoId,
@@ -210,7 +211,7 @@ describe("registrarMovimiento", () => {
 
   it("Tanda 6: un motivoId inexistente en un Consumo se ignora (no aplica a ese proceso), no devuelve 'motivo no disponible'", async () => {
     const mp = await crearMP("Zanahoria");
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     const r = await registrarMovimiento({
       proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, destinoId: destinoPersonalId, motivoId: "no-existe",
       items: [{ productoId: mp.id, cantidad: 1 }],
@@ -224,7 +225,7 @@ describe("registrarMovimiento", () => {
     // Ajuste, como Consumo/Merma, valida stock suficiente cuando el delta
     // es negativo (Movimientos.js:933-949: signo===0 && cantidad<0 también
     // acumula para validar) — hace falta stock previo para poder bajarlo.
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 8 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 8, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const bajaAjuste = await registrarMovimiento({ proceso: "AJUSTE", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: -3 }], claveIdempotencia: crypto.randomUUID() });
     expect(bajaAjuste.ok).toBe(true);
@@ -247,13 +248,13 @@ describe("registrarMovimiento", () => {
 
   it("Compra con sección: se registra (exigeSeccion=false solo deja a la pantalla preseleccionarla)", async () => {
     const mp = await crearMP("Aceite");
-    const resultado = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    const resultado = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     expect(resultado.ok).toBe(true);
   });
 
   it("bugfix C-1: dos líneas del mismo payload pidiendo más del mismo producto+sección se validan JUNTAS, no una por una", async () => {
     const mp = await crearMP("Papa");
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     // Dos líneas de 6 c/u contra un stock de 10: cada una por separado pasaría (6<=10), juntas piden 12 y no alcanza.
     const resultado = await registrarMovimiento({
@@ -269,7 +270,7 @@ describe("registrarMovimiento", () => {
 
   it("dos requests CONCURRENTES (no el mismo payload) nunca sobre-venden: aislamiento Serializable + reintento, equivalente real a conLock_", async () => {
     const mp = await crearMP("Limón");
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const [a, b] = await Promise.all([
       registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoRotoId, items: [{ productoId: mp.id, cantidad: 6 }], claveIdempotencia: crypto.randomUUID() }),
@@ -284,7 +285,7 @@ describe("registrarMovimiento", () => {
 
   it("Transferencia mueve stock entre 2 secciones sin cambiar el total global", async () => {
     const mp = await crearMP("Fideos");
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const resultado = await registrarMovimiento({
       proceso: "TRANSFERENCIA", fecha: new Date(), seccionId: seccionAId, seccionDestinoId: seccionBId,
@@ -312,14 +313,14 @@ describe("registrarMovimiento", () => {
 
     const primera = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId: proveedor.id, nroFactura: "A-00001-00000001",
-      items: [{ productoId: mp.id, cantidad: 5 }],
+      items: [{ productoId: mp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
     expect(primera.ok).toBe(true);
 
     const segunda = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId: proveedor.id, nroFactura: "A-00001-00000001",
-      items: [{ productoId: mp.id, cantidad: 5 }],
+      items: [{ productoId: mp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
     expect(segunda.ok).toBe(false);
@@ -332,7 +333,7 @@ describe("registrarMovimiento", () => {
     for (const proveedorId of ["no-existe", inactivo.id]) {
       const resultado = await registrarMovimiento({
         proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId, nroFactura: "B-00001-00000001",
-        items: [{ productoId: mp.id, cantidad: 5 }],
+        items: [{ productoId: mp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
         claveIdempotencia: crypto.randomUUID(),
       });
       expect(resultado, `proveedorId=${proveedorId}`).toEqual({ ok: false, mensaje: "El proveedor elegido ya no está disponible." });
@@ -340,13 +341,14 @@ describe("registrarMovimiento", () => {
     expect(await prisma.operacion.count()).toBe(0);
   });
 
-  it("Compra rechaza un número de factura de más de 60 caracteres, y no crea la Operacion", async () => {
+  it("Compra rechaza un número de factura que no tiene el formato estructurado (acá, 61 letras «A»), y no crea la Operacion", async () => {
+    // Etapa 1 de Compras: el número de la COMPRA es estructurado (`A-00001-00000001`); «AAAA…» (61 letras) se rechaza por FORMATO, no por largo (el tope de 60 caracteres es de la Devolución a proveedor, que sigue con texto libre).
     const mp = await crearMP("Harina");
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_LARGO", nombre: "Molino SA" } });
 
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, proveedorId: proveedor.id, nroFactura: "A".repeat(61),
-      items: [{ productoId: mp.id, cantidad: 5 }],
+      items: [{ productoId: mp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
     expect(resultado.ok).toBe(false);
@@ -386,7 +388,7 @@ describe("registrarMovimiento", () => {
     );
     const resultado = await registrarMovimiento({
       proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId,
-      items: [{ productoId: mp.id, cantidad: 500 }],
+      items: [{ productoId: mp.id, cantidad: 500, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(), // 500 g de unidad de compra
     });
     expect(resultado.ok).toBe(true);
@@ -412,8 +414,8 @@ describe("registrarMovimiento", () => {
     // estén disponibles EN ESTA SUCURSAL para repartirles consumo — crearMP ya lo hace (sembrarProductoDisponible).
     const pv = await sembrarProductoDisponible({ codigo: "PV_EMPANADA", nombre: "Empanada", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
 
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpA.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpB.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpA.id, cantidad: 3, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpB.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpA.id, cantidad: 5, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
@@ -462,7 +464,7 @@ describe("registrarMovimiento", () => {
     const mpConsignacion = await crearMP("Café en consignación", { esConsignacion: true, proveedorConsignacionId: proveedor.id, precioConsignacion: 50 });
     const pv = await sembrarProductoDisponible({ codigo: "PV_CAFE", nombre: "Café con leche", tipo: "PV", unidadStockId: unidadKgId, seProduce: true }, sucursalId);
 
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpConsignacion.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mpConsignacion.id, cantidad: 20, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpConsignacion.id, cantidad: 2, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
@@ -508,7 +510,7 @@ describe("registrarMovimiento", () => {
 
       const resultado = await registrarMovimiento({
         proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAjena.id,
-        items: [{ productoId: mp.id, cantidad: 10 }],
+        items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
         claveIdempotencia: crypto.randomUUID(),
       });
 
@@ -520,7 +522,7 @@ describe("registrarMovimiento", () => {
       const otraSucursal = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
       const seccionAjena = await sembrarSeccion(otraSucursal.id, "Depósito ajeno");
       const mp = await crearMP("Harina para transferir");
-      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
       const resultado = await registrarMovimiento({
         proceso: "TRANSFERENCIA", fecha: new Date(), seccionId: seccionAId, seccionDestinoId: seccionAjena.id,
@@ -543,21 +545,21 @@ describe("registrarMovimiento", () => {
 
     it("precioTotal NaN → error, sin Operacion (antes se guardaba 0 sin aviso)", async () => {
       const mp = await crearMP("Harina");
-      const resultado = await compra([{ productoId: mp.id, cantidad: 10, precioTotal: Number.NaN }]);
+      const resultado = await compra([{ productoId: mp.id, cantidad: 10, precioTotal: Number.NaN, referenciaProveedor: REFERENCIA_DE_PRUEBA }]);
       expect(resultado).toEqual({ ok: false, mensaje: 'El precio de "Harina" no es un número válido.' });
       expect(await prisma.operacion.count()).toBe(0);
     });
 
     it("precioTotal negativo → error, sin Operacion (antes se guardaba 0 sin aviso)", async () => {
       const mp = await crearMP("Harina");
-      const resultado = await compra([{ productoId: mp.id, cantidad: 10, precioTotal: -5 }]);
+      const resultado = await compra([{ productoId: mp.id, cantidad: 10, precioTotal: -5, referenciaProveedor: REFERENCIA_DE_PRUEBA }]);
       expect(resultado).toEqual({ ok: false, mensaje: 'El precio de "Harina" no puede ser negativo.' });
       expect(await prisma.operacion.count()).toBe(0);
     });
 
     it("precioTotal con más de 2 decimales (10.555) → error, sin Operacion", async () => {
       const mp = await crearMP("Harina");
-      const resultado = await compra([{ productoId: mp.id, cantidad: 10, precioTotal: 10.555 }]);
+      const resultado = await compra([{ productoId: mp.id, cantidad: 10, precioTotal: 10.555, referenciaProveedor: REFERENCIA_DE_PRUEBA }]);
       expect(resultado).toEqual({ ok: false, mensaje: 'El precio de "Harina" admite como máximo 2 decimales.' });
       expect(await prisma.operacion.count()).toBe(0);
     });
@@ -566,8 +568,8 @@ describe("registrarMovimiento", () => {
       const harina = await crearMP("Harina");
       const azucar = await crearMP("Azúcar");
       const resultado = await compra([
-        { productoId: harina.id, cantidad: 10, precioTotal: 100 },
-        { productoId: azucar.id, cantidad: Number.NaN, precioTotal: 50 },
+        { productoId: harina.id, cantidad: 10, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA },
+        { productoId: azucar.id, cantidad: Number.NaN, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA },
       ]);
       expect(resultado).toEqual({ ok: false, mensaje: 'La cantidad de "Azúcar" no es un número válido.' });
       expect(await prisma.operacion.count()).toBe(0);
@@ -579,7 +581,7 @@ describe("registrarMovimiento", () => {
         { codigo: "MP_HUEVO", nombre: "Huevo", tipo: "MP", unidadStockId: unidadGId, insumoId },
         sucursalId
       );
-      const resultado = await compra([{ productoId: mp.id, cantidad: 2.5 }]);
+      const resultado = await compra([{ productoId: mp.id, cantidad: 2.5, referenciaProveedor: REFERENCIA_DE_PRUEBA }]);
       expect(resultado).toEqual({ ok: false, mensaje: 'La cantidad de "Huevo" tiene que ser un número entero (la unidad "g" no admite decimales).' });
       expect(await prisma.movimientoStock.count()).toBe(0);
     });
@@ -587,7 +589,7 @@ describe("registrarMovimiento", () => {
     it("los decimales se miden en la unidad de COMPRA (la de la presentación elegida), no en la de stock", async () => {
       const mp = await crearMP("Harina en caja"); // stock en kg (2 decimales)
       const presentacion = await prisma.presentacion.create({ data: { productoId: mp.id, unidadCompraId: unidadGId, factorConversion: 20 } }); // "g" = 0 decimales
-      const resultado = await compra([{ productoId: mp.id, cantidad: 1.5, unidadCompraId: presentacion.unidadCompraId }]);
+      const resultado = await compra([{ productoId: mp.id, cantidad: 1.5, unidadCompraId: presentacion.unidadCompraId, referenciaProveedor: REFERENCIA_DE_PRUEBA }]);
       expect(resultado).toEqual({ ok: false, mensaje: 'La cantidad de "Harina en caja" tiene que ser un número entero (la unidad "g" no admite decimales).' });
       expect(await prisma.movimientoStock.count()).toBe(0);
     });
@@ -596,8 +598,8 @@ describe("registrarMovimiento", () => {
       const harina = await crearMP("Harina");
       const azucar = await crearMP("Azúcar");
       const resultado = await compra([
-        { productoId: harina.id, cantidad: 10 },
-        { productoId: azucar.id, cantidad: 0 },
+        { productoId: harina.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA },
+        { productoId: azucar.id, cantidad: 0, referenciaProveedor: REFERENCIA_DE_PRUEBA },
       ]);
       expect(resultado).toEqual({ ok: false, mensaje: 'La cantidad de "Azúcar" tiene que ser mayor que cero.' });
       expect(await prisma.operacion.count()).toBe(0);
@@ -605,20 +607,20 @@ describe("registrarMovimiento", () => {
 
     it("peso real negativo o NaN → error (antes se ignoraba sin aviso y se usaba el factor)", async () => {
       const mp = await crearMP("Carne");
-      const negativo = await compra([{ productoId: mp.id, cantidad: 1, pesoReal: -1 }]);
+      const negativo = await compra([{ productoId: mp.id, cantidad: 1, pesoReal: -1, referenciaProveedor: REFERENCIA_DE_PRUEBA }]);
       expect(negativo).toEqual({ ok: false, mensaje: 'El peso real de "Carne" tiene que ser mayor que cero.' });
-      const nan = await compra([{ productoId: mp.id, cantidad: 1, pesoReal: Number.NaN }]);
+      const nan = await compra([{ productoId: mp.id, cantidad: 1, pesoReal: Number.NaN, referenciaProveedor: REFERENCIA_DE_PRUEBA }]);
       expect(nan).toEqual({ ok: false, mensaje: 'El peso real de "Carne" no es un número válido.' });
-      const cero = await compra([{ productoId: mp.id, cantidad: 1, pesoReal: 0 }]);
+      const cero = await compra([{ productoId: mp.id, cantidad: 1, pesoReal: 0, referenciaProveedor: REFERENCIA_DE_PRUEBA }]);
       expect(cero).toEqual({ ok: false, mensaje: 'El peso real de "Carne" tiene que ser mayor que cero.' });
       expect(await prisma.operacion.count()).toBe(0);
     });
 
     it("peso real válido se usa como cantidad de stock; vacío (null) sigue sin peso real", async () => {
       const mp = await crearMP("Carne");
-      expect((await compra([{ productoId: mp.id, cantidad: 1, pesoReal: 2.35 }])).ok).toBe(true);
+      expect((await compra([{ productoId: mp.id, cantidad: 1, pesoReal: 2.35, referenciaProveedor: REFERENCIA_DE_PRUEBA }])).ok).toBe(true);
       expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(2.35);
-      expect((await compra([{ productoId: mp.id, cantidad: 1, pesoReal: null }])).ok).toBe(true);
+      expect((await compra([{ productoId: mp.id, cantidad: 1, pesoReal: null, referenciaProveedor: REFERENCIA_DE_PRUEBA }])).ok).toBe(true);
       expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(3.35);
     });
 
@@ -630,7 +632,7 @@ describe("registrarMovimiento", () => {
     it("Devolución a proveedor: N.º de factura sin ninguna letra ni número ('---') → error, sin Operacion", async () => {
       const mp = await crearMP("Harina");
       const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_GUION", nombre: "Molino SA" } });
-      expect((await compra([{ productoId: mp.id, cantidad: 5 }])).ok).toBe(true);
+      expect((await compra([{ productoId: mp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }])).ok).toBe(true);
       const resultado = await devolucion(mp.id, proveedor.id, "---");
       expect(resultado).toEqual({ ok: false, mensaje: "El número de factura tiene que tener al menos una letra o un número." });
       expect(await prisma.operacion.count({ where: { proceso: "DEVOLUCION_PROVEEDOR" } })).toBe(0);
@@ -639,7 +641,7 @@ describe("registrarMovimiento", () => {
     it("Devolución a proveedor, N.º de factura: 60 caracteres pasa; 61 da el mismo mensaje de siempre; se guarda recortado", async () => {
       const mp = await crearMP("Harina");
       const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_60", nombre: "Molino SA" } });
-      expect((await compra([{ productoId: mp.id, cantidad: 5 }])).ok).toBe(true);
+      expect((await compra([{ productoId: mp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }])).ok).toBe(true);
       const largo = await devolucion(mp.id, proveedor.id, "A".repeat(61));
       expect(largo).toEqual({ ok: false, mensaje: "El número de factura no puede superar los 60 caracteres." });
       const justo = await devolucion(mp.id, proveedor.id, `  ${"B".repeat(60)}  `);
@@ -649,21 +651,21 @@ describe("registrarMovimiento", () => {
 
     it("precioTotal vacío → se guarda 0 (una compra sin precio sigue permitida); precioTotal 0 → 0", async () => {
       const mp = await crearMP("Harina");
-      expect((await compra([{ productoId: mp.id, cantidad: 5 }])).ok).toBe(true);
-      expect((await compra([{ productoId: mp.id, cantidad: 5, precioTotal: 0 }])).ok).toBe(true);
+      expect((await compra([{ productoId: mp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }])).ok).toBe(true);
+      expect((await compra([{ productoId: mp.id, cantidad: 5, precioTotal: 0, referenciaProveedor: REFERENCIA_DE_PRUEBA }])).ok).toBe(true);
       const filas = await prisma.movimientoStock.findMany({ where: { productoId: mp.id } });
       expect(filas.map((f) => Number(f.precioTotal))).toEqual([0, 0]);
     });
 
     it("precioTotal válido con 2 decimales se guarda tal cual", async () => {
       const mp = await crearMP("Harina");
-      expect((await compra([{ productoId: mp.id, cantidad: 3, precioTotal: 1234.56 }])).ok).toBe(true);
+      expect((await compra([{ productoId: mp.id, cantidad: 3, precioTotal: 1234.56, referenciaProveedor: REFERENCIA_DE_PRUEBA }])).ok).toBe(true);
       expect(Number((await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id } })).precioTotal)).toBe(1234.56);
     });
 
     it("Devolución a proveedor usa las mismas reglas (decisión del dueño): precio NaN → error, no 0", async () => {
       const mp = await crearMP("Harina");
-      expect((await compra([{ productoId: mp.id, cantidad: 10 }])).ok).toBe(true);
+      expect((await compra([{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }])).ok).toBe(true);
       const resultado = await registrarMovimiento({
         proceso: "DEVOLUCION_PROVEEDOR", fecha: new Date(), seccionId: seccionAId,
         items: [{ productoId: mp.id, cantidad: 2, precioTotal: Number.NaN }],
@@ -676,7 +678,7 @@ describe("registrarMovimiento", () => {
     it("los procesos sin aplicaFactorConversion no cambian: una línea de Merma con cantidad 0 se sigue salteando", async () => {
       const harina = await crearMP("Harina");
       const azucar = await crearMP("Azúcar");
-      await compra([{ productoId: harina.id, cantidad: 10 }, { productoId: azucar.id, cantidad: 10 }]);
+      await compra([{ productoId: harina.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }, { productoId: azucar.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }]);
       const resultado = await registrarMovimiento({
         proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoVencidoId,
         items: [{ productoId: harina.id, cantidad: 2 }, { productoId: azucar.id, cantidad: 0 }],
@@ -690,7 +692,7 @@ describe("registrarMovimiento", () => {
     it.each([[NaN], [-1], [Infinity], ["2"]])("una línea de Merma con cantidad inválida (%s) rechaza todo el movimiento: no se registra la otra línea", async (cantidadInvalida) => {
       const harina = await crearMP("Harina");
       const azucar = await crearMP("Azúcar");
-      await compra([{ productoId: harina.id, cantidad: 10 }, { productoId: azucar.id, cantidad: 10 }]);
+      await compra([{ productoId: harina.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }, { productoId: azucar.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }]);
       const resultado = await registrarMovimiento({
         proceso: "MERMA", fecha: new Date(), seccionId: seccionAId, motivoId: motivoVencidoId,
         items: [{ productoId: harina.id, cantidad: 2 }, { productoId: azucar.id, cantidad: cantidadInvalida as never }],

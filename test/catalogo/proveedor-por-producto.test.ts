@@ -11,6 +11,7 @@ import { anularCompra, corregirCompra } from "../../src/server/actions/movimient
 import { upsertProveedorPorProducto } from "../../src/server/persistencia/catalogo/upsert-proveedor-por-producto";
 import { cargarOfertasDeProveedores } from "../../src/server/lecturas/catalogo/ofertas-de-proveedor";
 import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 describe("ProveedorPorProducto (sin gate propio)", () => {
   let sucursalId: string;
@@ -211,7 +212,7 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
     it("una compra real anulada con la ACCIÓN `anularCompra` deja de aparecer", async () => {
       await sembrarMotivosYDestinos();
-      expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000 }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
+      expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
       expect((await precioDe("Proveedor A"))?.precioPorUnidadStock).toBe(100);
 
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
@@ -221,7 +222,7 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
     it("corregir el proveedor de una compra MUEVE el precio al proveedor correcto", async () => {
       await sembrarMotivosYDestinos();
-      expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000 }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
+      expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
       const r = await corregirCompra(op.id, { proveedorId: proveedorBId, nroFactura: op.nroFactura ?? "", detalleLibre: "" }, { proveedorId: op.proveedorId, nroFactura: op.nroFactura, detalleLibre: op.detalleLibre });
       expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
