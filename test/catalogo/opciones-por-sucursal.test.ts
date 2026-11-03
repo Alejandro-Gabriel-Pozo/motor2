@@ -61,13 +61,15 @@ describe("opciones de venta en la sucursal (GO-2a)", () => {
       expect(await prisma.opcionApagadaEnSucursal.count()).toBe(0);
     });
 
-    it("la clave: el operador no la tiene de fábrica (clase O, semilla solo admin); si el gerente se la delega a su rol, puede (piso operario)", async () => {
+    it("la clave: el operador la tiene de fábrica (clase L, semilla admin y operador); si se la quitan a su rol, se rechaza nombrándola; devolviéndosela, puede de nuevo (piso operario)", async () => {
       await mockearUsuarioActual({ id: operadorId, email: "operador@test.com", nombre: null });
-      const sinClave = await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.almendrasId, apagada: true });
+      expect(await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.almendrasId, apagada: true })).toMatchObject({ ok: true });
+      await prisma.permisoRol.updateMany({ where: { rolId: operadorRolId, accionClave: "opcion_apagar_en_sucursal" }, data: { puedeVer: false, puedeEditar: false } });
+      const sinClave = await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.vacaId, apagada: true });
       expect(sinClave.ok).toBe(false);
       expect(sinClave.mensaje).toMatch(/opcion_apagar_en_sucursal/);
       await prisma.permisoRol.updateMany({ where: { rolId: operadorRolId, accionClave: "opcion_apagar_en_sucursal" }, data: { puedeVer: true, puedeEditar: true } });
-      expect(await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.almendrasId, apagada: true })).toMatchObject({ ok: true });
+      expect(await apagarOpcionEnSucursal({ sucursalId: e.sucursalA, opcionId: e.vacaId, apagada: true })).toMatchObject({ ok: true });
     });
 
     it("por debajo, la RLS por sucursal: como motor2_app con el alcance de A, escribir el apagado de B da 42501 (aunque el caso de uso se equivocara de id)", async () => {
