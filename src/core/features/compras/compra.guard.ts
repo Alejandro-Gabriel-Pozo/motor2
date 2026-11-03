@@ -1,5 +1,6 @@
 import { validarCantidad, type UnidadDeCantidad } from "@/core/datos/cantidad";
 import { validarImporte } from "@/core/datos/importe";
+import { leerNumeroDeComprobanteDeCompra } from "@/core/datos/numero-comprobante";
 import { validarNroFactura } from "@/core/datos/nro-factura";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
@@ -39,6 +40,14 @@ export function guardLineaCompra(
  */
 export function guardNroFacturaCompra(valor: string | null | undefined) {
   return validarNroFactura(valor);
+}
+
+/**
+ * Regla del N.º de factura de una COMPRA (etapa 1 de Compras, 2026-11-03): letra + punto de venta + número, obligatorio; devuelve el texto canónico «A-00023-00237728».
+ * La Devolución a proveedor sigue con `guardNroFacturaCompra` (texto libre).
+ */
+export function guardComprobanteDeCompra(valor: string | null | undefined) {
+  return leerNumeroDeComprobanteDeCompra(valor ?? "");
 }
 
 /** Mismo texto que usaba la Server Action cuando la operación no existe en esta sucursal (anular y corregir). */

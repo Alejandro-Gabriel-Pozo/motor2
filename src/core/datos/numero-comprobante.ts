@@ -6,12 +6,20 @@
  * Lee «1-1234», «0001-00001234» y «A 0001-00001234» (letra A/B/C/E/M, en mayúscula o minúscula, seguida de espacio, guion o nada). Si el punto
  * de venta o el número es 0 o se pasa del rango (punto de venta 1..99999, número 1..99999999), o el texto tiene cualquier otra forma, es LIBRE
  * y se muestra tal cual se guardó. Los dígitos son solo ASCII (0-9).
+ *
+ * Desde la etapa 1 de Compras (2026-11-03) la carga de una compra exige y arma el texto canónico «A-00023-00237728» con `armarNumeroDeComprobante`
+ * y `leerNumeroDeComprobanteDeCompra` (más abajo); el lector de pantalla de arriba no cambia.
  */
+import { aceptar, rechazar, type ResultadoDato } from "./resultado";
 
 const PUNTO_DE_VENTA_MAXIMO = 99999;
 const NUMERO_MAXIMO = 99999999;
 
-type LetraDeComprobante = "A" | "B" | "C" | "E" | "M";
+export const LETRAS_DE_COMPROBANTE = ["A", "B", "C", "E", "M", "X"] as const;
+export type LetraDeComprobante = (typeof LETRAS_DE_COMPROBANTE)[number];
+export const DIGITOS_DEL_PUNTO_DE_VENTA = 5;
+export const DIGITOS_DEL_NUMERO = 8;
+
 
 export type NumeroComprobante =
   | { tipo: "NORMALIZADO"; letra: LetraDeComprobante | null; puntoDeVenta: number; numero: number }
@@ -35,4 +43,40 @@ export function formatearNumeroComprobante(comprobante: NumeroComprobante): stri
   if (comprobante.tipo === "LIBRE") return comprobante.texto;
   const cuerpo = `${String(comprobante.puntoDeVenta).padStart(5, "0")}-${String(comprobante.numero).padStart(8, "0")}`;
   return comprobante.letra ? `${comprobante.letra} ${cuerpo}` : cuerpo;
+}
+
+const MENSAJE_LETRA = "Elegí la letra de la factura (A, B, C, E, M o X).";
+const MENSAJE_FORMATO = "El número de la factura tiene que tener letra, punto de venta y número (por ejemplo A-00023-00237728).";
+
+/** Valida un grupo numérico (punto de venta o número): solo dígitos, hasta `digitos` tal cual se tecleó, no todo ceros. */
+function armarGrupo(crudo: string, digitos: number, etiqueta: string, ejemplo: string): ResultadoDato<string> {
+  const g = crudo.trim();
+  if (!/^\d+$/.test(g) || g.length > digitos) return rechazar("caracteres", `${etiqueta} va solo con números, hasta ${digitos} dígitos (por ejemplo ${ejemplo}).`);
+  if (/^0+$/.test(g)) return rechazar("cero", `${etiqueta} no puede ser 0.`);
+  return aceptar(g.padStart(digitos, "0"));
+}
+
+/**
+ * Arma el texto canónico de una factura de proveedor: «A-00023-00237728» (letra, punto de venta de 5 dígitos, número de 8; se completan con ceros a la izquierda).
+ * Los códigos de rechazo reusan los de `CodigoDato`: letra → «formato», no-dígitos o demasiados dígitos → «caracteres», todo ceros → «cero».
+ */
+export function armarNumeroDeComprobante(partes: { letra: string; puntoDeVenta: string; numero: string }): ResultadoDato<string> {
+  const letra = partes.letra.trim().toUpperCase();
+  if (!(LETRAS_DE_COMPROBANTE as readonly string[]).includes(letra)) return rechazar("formato", MENSAJE_LETRA);
+  const pv = armarGrupo(partes.puntoDeVenta, DIGITOS_DEL_PUNTO_DE_VENTA, "El punto de venta", "00023");
+  if (!pv.ok) return pv;
+  const nro = armarGrupo(partes.numero, DIGITOS_DEL_NUMERO, "El número de la factura", "00237728");
+  if (!nro.ok) return nro;
+  return aceptar(`${letra}-${pv.valor}-${nro.valor}`);
+}
+
+/**
+ * Lee el formato con que la pantalla manda el número dentro de `nroFactura`: letra, punto de venta y número separados por guion o espacios («A-23-237728», «a 00023 00237728»)
+ * y delega en `armarNumeroDeComprobante`. Vacío → «vacio»; sin esa forma → «formato».
+ */
+export function leerNumeroDeComprobanteDeCompra(texto: string): ResultadoDato<string> {
+  if (!texto.trim()) return rechazar("vacio", "Falta el número de la factura: letra, punto de venta y número.");
+  const m = /^\s*([A-Za-z])\s*[-\s]\s*(\d+)\s*[-\s]\s*(\d+)\s*$/.exec(texto);
+  if (!m) return rechazar("formato", MENSAJE_FORMATO);
+  return armarNumeroDeComprobante({ letra: m[1], puntoDeVenta: m[2], numero: m[3] });
 }
