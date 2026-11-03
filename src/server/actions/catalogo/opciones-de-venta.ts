@@ -128,6 +128,8 @@ export async function fijarAdmisionDeGrupoEnProducto(entrada: {
   cantidadMinima: unknown;
   cantidadMaxima: unknown;
   modoPrecio: unknown;
+  /** «Mostrar este grupo en la carta» (2026-10-29): opcional; sin él se conserva lo guardado. */
+  seMuestraEnCarta?: unknown;
   opciones: unknown;
 }): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("producto_opciones_admitidas", async (ctx) => {

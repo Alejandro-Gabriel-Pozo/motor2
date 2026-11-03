@@ -90,6 +90,8 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
       "id:text:NO", "empresaId:text:NO", "productoId:text:NO", "grupoId:text:NO", "orden:integer:NO", "cantidadMinima:integer:YES", "cantidadMaxima:integer:YES", "modoPrecio:text:YES", "activo:boolean:NO", "version:integer:NO", `creadoEn:${T}:NO`, `actualizadoEn:${T}:NO`,
       // GO-3a (ADR-032): el eje de las combinaciones del producto, nulable.
       "ejeDeCombinacion:smallint:YES",
+      // «Mostrar este grupo en la carta» (2026-10-29, decisión del dueño): la decisión guardada, por defecto «se muestra».
+      "seMuestraEnCarta:boolean:NO",
     ]);
     expect(forma("ProductoAdmiteOpcion")).toEqual([
       "id:text:NO", "empresaId:text:NO", "productoId:text:NO", "opcionId:text:NO", "cantidadMaxima:integer:NO", "precioAbsoluto:numeric(14,2):YES", "tipoDeDiferencia:text:YES", "diferenciaPrecio:numeric(14,2):YES", "porcentaje:numeric(7,4):YES",
@@ -205,8 +207,8 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
     // La Fase 4 de la ola «precio y carta» (ADR-035) suma `prefijoEnCarta` («se lee en la carta como», editable).
     expect(await actualizables("GrupoDeOpciones")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "nombre", "prefijoEnCarta", "version"]);
     expect(await actualizables("OpcionDeGrupo")).toEqual(["activa", "actualizadoEn", "nombre", "orden", "version"]);
-    // GO-3a (ADR-032) suma `ejeDeCombinacion` (el eje de las combinaciones, editable).
-    expect(await actualizables("ProductoAdmiteGrupo")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "ejeDeCombinacion", "modoPrecio", "orden", "version"]);
+    // GO-3a (ADR-032) suma `ejeDeCombinacion` (el eje de las combinaciones, editable); «Mostrar este grupo en la carta» (2026-10-29), `seMuestraEnCarta`.
+    expect(await actualizables("ProductoAdmiteGrupo")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "ejeDeCombinacion", "modoPrecio", "orden", "seMuestraEnCarta", "version"]);
     expect(await actualizables("ProductoAdmiteOpcion")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "diferenciaPrecio", "porcentaje", "precioAbsoluto", "tipoDeDiferencia", "version"]);
     expect(await actualizables("VersionDeOpcion")).toEqual([]);
     expect(await actualizables("ConsumoDeOpcion")).toEqual([]);

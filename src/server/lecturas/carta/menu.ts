@@ -5,7 +5,7 @@ import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuent
 import { opcionesDeLosProductosDeLaCarta, type GrupoParaLaCarta } from "@/server/lecturas/carta/opciones";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
 import { esBaseConfigurable } from "@/core/opciones/public";
-import { cartaDeUnProducto, conGrillaDeLaSucursal, resumenDePrecios } from "@/core/pos/public";
+import { cartaDeUnProducto, conGrillaDeLaSucursal } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -138,7 +138,7 @@ export async function resolverMenuCartaConDiagnostico(
     const conResumen = new Set(opcionesDeProductos.map((o) => o.productoId));
     for (const p of conOpciones ? productos : []) {
       if (!esBaseConfigurable(p.modoDeVenta) || conResumen.has(p.id)) continue;
-      const sinPrecio = resumenDePrecios({ grupos: [], precioBase: 0, descuentoDeProducto: null, esBase: true });
+      const sinPrecio = cartaDeUnProducto({ grupos: [], precioBase: 0, descuentoDeProducto: null, esBase: true }).conDescuento;
       opcionesDeProductos.push({ productoId: p.id, conDescuento: sinPrecio, sinDescuento: sinPrecio, tabla: null, esBase: true });
     }
     return opcionesDeProductos;
