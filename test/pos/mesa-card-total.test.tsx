@@ -9,7 +9,7 @@ import { formatearMonto } from "../../src/core/pos/public";
  * (`formatearMonto`). Antes la tarjeta redondeaba a pesos enteros (`maximumFractionDigits: 0`) y mostraba «$ 1.235» donde el ticket decía «$ 1.234,56».
  * No necesita base: se dibuja el componente a HTML estático.
  */
-const base = { numero: "01", productosSinEnviar: 2 } satisfies Partial<MesaCardProps>;
+const base = { numero: "01", productosSinEnviar: 2, href: "/mesas/m1" } satisfies Partial<MesaCardProps>;
 // `formatearMonto` separa el símbolo con un espacio no cortable: se normaliza solo para comparar texto legible.
 const plano = (html: string) => html.replace(/\u00a0/g, " ");
 
