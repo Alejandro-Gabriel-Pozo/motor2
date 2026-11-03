@@ -34,6 +34,17 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
         className="portada-bloque flex flex-col items-center gap-4"
         style={{ "--portada-pos-bloque": p.posBloquePct } as React.CSSProperties}
       >
+      <div className="relative flex flex-col items-center gap-4">
+      {/* Velo CENTRADO en el bloque (logo y textos), no sobre toda la imagen: oscurece solo detrás del texto y se desvanece hacia los bordes (mancha suave casi del ancho de la pantalla, como la portada original),
+          así la imagen conserva sus colores. Sin ajuste en el Tema: es parte de cómo se ve la portada con imagen. Acompaña al bloque porque es su hijo. */}
+      {bgUrl && (
+        <div
+          data-portada-velo
+          aria-hidden
+          className="pointer-events-none absolute -inset-x-12 -inset-y-40 -z-10"
+          style={{ backgroundImage: "radial-gradient(closest-side, oklch(0 0 0 / 0.5), oklch(0 0 0 / 0.3) 45%, transparent)" }}
+        />
+      )}
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={logoUrl} alt={restauranteNombre} className="h-16 w-16 object-contain" />
@@ -74,6 +85,7 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
           <span className="block h-px w-10 opacity-30" style={{ backgroundColor: "currentColor" }} />
         </div>
       )}
+      </div>
       </div>
 
       {v.carta_texto_portada_cta && (
