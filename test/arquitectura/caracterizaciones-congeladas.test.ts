@@ -110,6 +110,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Salón exige Recetas (decisión del dueño 2026-10-29; CAMBIA COMPORTAMIENTO a propósito): `salon.requiere` suma `recetas`, así que en los registros de la matriz con Salón activo (y no solo con Recetas) el módulo Recetas queda efectivo («incluido por Salón») y sus acciones dejan de salir como `MODULO_NO_ACTIVO`/`SIN_CAPACIDAD` para esos registros. No cambia ninguna clave ni ningún piso.",
       },
+      {
+        blob: "0d465e92de9f1330a440fa49f4f7496f57c284e6",
+        // El commit PADRE de este (2e29174c) es el último antes del cambio; el golden se regenera en el commit siguiente (retiro de `notificar_alertas`, decisión del dueño, limpieza paquete A paso 3).
+        commit: "2e29174c",
+        motivo:
+          "Retiro de `notificar_alertas` de ACCIONES (decisión del dueño, limpieza paquete A paso 3; SACA una clave, no cambia ninguna otra respuesta): desaparece de las listas de claves de cada bloque y registro (228 apariciones). Lo único que no es una resta son las líneas `sucursalesDondeElUsuarioPuedeVer(<clave>)` que muestrean la clave por POSICIÓN del catálogo (`DE_SUCURSAL[20]` y `[40]`): al salir una clave anterior, el muestreo pasa a la clave siguiente (proceso_control a proceso_transferencia, pagar_consignante a ver_auditoria); mismo artefacto del generador que en retiros anteriores. Revisado con `git diff --word-diff`.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -209,6 +216,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "5c218a6f",
         motivo:
           "Salón exige Recetas (decisión del dueño 2026-10-29; CAMBIA COMPORTAMIENTO a propósito): al activar Salón desde la consola de plataforma (paso 8a), los módulos efectivos suman `recetas` (antes administracion, catalogo_basico, clientes_basico, salon, stock). Solo cambia esa línea.",
+      },
+      {
+        blob: "b25a8e00ec5b2c19170aebf454c084a3f197f398",
+        // El commit PADRE de este (2e29174c) es el último antes del cambio; el golden se regenera en el commit siguiente (retiro de `notificar_alertas`, decisión del dueño, limpieza paquete A paso 3).
+        commit: "2e29174c",
+        motivo:
+          "Retiro de `notificar_alertas` de ACCIONES (decisión del dueño, limpieza paquete A paso 3; SACA una clave): `ACCIONES 130 a 129` y desaparecen las 2 filas PERMISO de la clave (admin y operador) en cada uno de los dos registros. El resto del archivo no cambia.",
       },
     ],
   },
