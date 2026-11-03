@@ -59,7 +59,7 @@ export { ZONAS_PORTAL } from "./portal";
 export type { DefinicionClavePortal } from "./portal";
 export { validarValorTema } from "./tema";
 // Hito 5, bloque D: el guard y los casos de uso del tema (`core/features/carta/tema.guard.ts`, `casos-de-uso/{guardar-tema-carta,cambiar-aplicacion-tema}.ts`) usan los mismos validadores y contadores que usaba la Server Action.
-export { contarValoresTema, validarValoresTema } from "./tema";
+export { validarValoresTema } from "./tema";
 export type { ValoresTema } from "./tema";
 export { ZONAS_TEMA } from "./tema";
 export type { DefinicionClaveTema } from "./tema";

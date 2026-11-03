@@ -19,9 +19,9 @@ import { envoltoriosDe, exportadasSinEnvoltorio, problemasSinEnvoltorio, type En
  * pero viven en el mismo archivo y el analizador las ve), y `recetas.ts` solo `guardarReceta` (las acciones puntuales del editor delegan en ella, no llaman a
  * ningún envoltorio). Son las 52 de `test/permisos/tramo-c-rechaza-sin-permiso.test.ts` más esas 5.
  *
- * Hito 5, bloque D (`docs/plan-hito-5-pureza.md` §6.1): se suman las 19 funciones de las 8 acciones de configuración de la carta (`secciones`, `generos`,
+ * Hito 5, bloque D (`docs/plan-hito-5-pureza.md` §6.1): se suman las 18 funciones de las 8 acciones de configuración de la carta (`secciones`, `generos`,
  * `contenido-producto`, `items-agrupados`, `portal-empresa`, `registro-publico`, `tema`, `copiar-carta`), ANTES de mudarlas a casos de uso: 16 entran por
- * `conPermisoDeEmpresa` y 3 (`copiarCartaDeSucursal`, `guardarTemaCarta`, `cambiarAplicacionTema`) por `conPermiso`.
+ * `conPermisoDeEmpresa` y 2 (`copiarCartaDeSucursal`, `guardarTemaCarta`) por `conPermiso`.
  */
 const RAIZ = join(__dirname, "../../src/server/actions");
 
@@ -157,7 +157,6 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
   },
   "carta/tema.ts": {
     guardarTemaCarta: SUC("carta_tema"),
-    cambiarAplicacionTema: SUC("carta_tema"),
   },
   "carta/copiar-carta.ts": {
     copiarCartaDeSucursal: SUC("carta_copiar_de_sucursal"),
@@ -238,16 +237,16 @@ describe("tramo C (carta, catálogo y stock): cada Server Action entra por su en
     ).toEqual(esperadas);
   });
 
-  it("son las 51 mutaciones de la pieza en 17 archivos, más guardarReceta (y las 5 de la receta propia que comparten archivo), más las 19 de configuración de la carta en 8 archivos, más `guardarSoloSalonPromoCarta` (interruptor «solo salón»)", () => {
+  it("son las 51 mutaciones de la pieza en 17 archivos, más guardarReceta (y las 5 de la receta propia que comparten archivo), más las 18 de configuración de la carta en 8 archivos, más `guardarSoloSalonPromoCarta` (interruptor «solo salón»)", () => {
     const total = Object.values(DECLARADAS).reduce((n, fs) => n + Object.keys(fs).length, 0);
     // + 1: `guardarSoloSalonPromoCarta` (docs/diseno-promo-solo-salon-2026-10-26.md), en `carta/promos.ts` (que ya estaba entre los 17 archivos).
-    expect(total).toBe(51 + 1 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 19);
+    expect(total).toBe(51 + 1 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 18);
     expect(Object.keys(DECLARADAS).filter((a) => a !== "catalogo/recetas.ts")).toHaveLength(17 + 8);
     for (const f of RECETA_PROPIA_YA_MIGRADAS) expect(DECLARADAS["catalogo/receta-sucursal.ts"][f], f).toBeDefined();
-    // Bloque D: de las 19, 7 son de empresa (secciones —con «Ordenar» de CARTA-MANT F3—, portal y registro público) y 12 de sucursal: copiar la carta y las dos del tema, y desde S-10/D1 (O.59) las 9 de géneros, contenido e ítems agrupados.
+    // Bloque D: de las 18, 7 son de empresa (secciones —con «Ordenar» de CARTA-MANT F3—, portal y registro público) y 11 de sucursal: copiar la carta y la del tema, y desde S-10/D1 (O.59) las 9 de géneros, contenido e ítems agrupados.
     const delBloqueD = ["carta/secciones.ts", "carta/generos.ts", "carta/contenido-producto.ts", "carta/items-agrupados.ts", "carta/portal-empresa.ts", "carta/registro-publico.ts", "carta/tema.ts", "carta/copiar-carta.ts"].flatMap((a) => Object.values(DECLARADAS[a]));
-    expect(delBloqueD).toHaveLength(19);
-    expect(delBloqueD.filter((d) => d.envoltorio === "conPermiso")).toHaveLength(12);
+    expect(delBloqueD).toHaveLength(18);
+    expect(delBloqueD.filter((d) => d.envoltorio === "conPermiso")).toHaveLength(11);
   });
 });
 

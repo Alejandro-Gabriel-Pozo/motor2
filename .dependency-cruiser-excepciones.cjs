@@ -343,7 +343,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/carta/tema.ts",
     motivo:
-      "Hito 5, bloque D (D8): guardarTemaCarta (con guardComandoGuardarTemaCarta) y cambiarAplicacionTema (con guardComandoCambiarAplicacionTema) → carta/casos-de-uso/{guardar-tema-carta,cambiar-aplicacion-tema}.ts; escrituras en server/persistencia/carta/tema.ts (el upsert por sucursal y el cambio de aplicarEnCarta), con la base del contexto y sin transacción ni auditoría (el tema visual no es plata), como antes. Los guards reciben la sucursal activa del contexto y la comparan ANTES de leer (otra sucursal responde «No se encontró la sucursal.»), dentro de conPermiso; la acción revalida la carta pública solo si salió bien (también en los avisos «sin efecto»). El archivo no tiene ninguna otra mutación.",
+      "Hito 5, bloque D (D8): guardarTemaCarta (con guardComandoGuardarTemaCarta) → carta/casos-de-uso/guardar-tema-carta.ts; escritura en server/persistencia/carta/tema.ts (el upsert por sucursal, con aplicarEnCarta: true), con la base del contexto y sin transacción ni auditoría (el tema visual no es plata), como antes. Los guards reciben la sucursal activa del contexto y la comparan ANTES de leer (otra sucursal responde «No se encontró la sucursal.»), dentro de conPermiso; la acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
   },
   {
     ruta: "src/server/actions/carta/items-agrupados.ts",

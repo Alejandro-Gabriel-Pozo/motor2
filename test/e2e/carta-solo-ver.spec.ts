@@ -223,7 +223,7 @@ test("Apariencia y publicación: quien solo VE el tema y el portal recibe los ca
     await expect(main.locator("[data-aviso-solo-lectura]")).toBeVisible();
     await expect(main.locator("fieldset[data-solo-lectura]")).toHaveAttribute("disabled", "");
     await expect(main.locator("fieldset[data-solo-lectura] input").first()).toBeDisabled();
-    await expect(main.getByRole("button", { name: /Guardar tema|Aplicar el tema|Desaplicar el tema/ })).toHaveCount(0);
+    await expect(main.getByRole("button", { name: /Guardar tema/ })).toHaveCount(0);
     // Como en accesibilidad.spec.ts («carta/tema»): la vista previa dibuja la carta pública con sus propios colores y su deslizador; se audita aparte.
     const axeTema = await new AxeBuilder({ page }).include("main").exclude("[data-vista-previa-tema]").analyze();
     expect(axeTema.violations.map((v) => v.id)).toEqual([]);

@@ -343,8 +343,3 @@ export function armarTemaCarta(fila: FilaTemaCarta, ahora: Date): TemaCartaV1 {
   }
   return { version: 1, generadoEn: ahora.toISOString(), sucursalId: fila.sucursalId, actualizadoEn: fila.actualizadoEn.toISOString(), valores };
 }
-
-/** Cuántas claves del catálogo tienen valor válido en el Json guardado (0 = tema vacío: no se puede aplicar). */
-export function contarValoresTema(valores: unknown): number {
-  return Object.values(armarTemaCarta({ sucursalId: "", valores, actualizadoEn: new Date(0) }, new Date(0)).valores).filter((v) => v !== null).length;
-}
