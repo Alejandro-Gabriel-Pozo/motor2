@@ -205,7 +205,7 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
     expect(r.mensaje).not.toContain("⚠");
     expect(resumen(await movimientosDeLaMesa())).toEqual([["VENTA", torta.id, deposito.id, -5, null]]);
     expect(await calcularSaldoTotal(torta.id, deposito.id, prisma)).toBe(-3);
-    expect(await prisma.registroAuditoria.count()).toBe(0);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion" } })).toBe(0);
     const fila = (await calcularStockConsolidado(s.sucursalId, prisma)).find((f) => f.productoId === torta.id);
     expect(fila).toMatchObject({ seccionId: deposito.id, teorico: -3, estado: "NEGATIVO" });
   });

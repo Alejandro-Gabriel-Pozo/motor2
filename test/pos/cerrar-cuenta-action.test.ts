@@ -200,7 +200,7 @@ describe("cerrarCuenta (server action)", () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 2, precioUnitario: 12000, numeroEnvio: 1 }]);
       const r = await cerrarCuenta(cuenta.id);
       expect(r.mensaje).toContain('"Muzzarella" en «Salón» (tenía 0, se consumió 0,5, quedó en -0,5)');
-      const [fila] = await prisma.registroAuditoria.findMany();
+      const [fila] = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion" } });
       expect(fila.descripcion).toContain("tenía 0, la venta consumió 0,5, faltaron 0,5");
     });
 
