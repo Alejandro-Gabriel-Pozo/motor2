@@ -283,20 +283,29 @@ test.describe("carta pública: portada (fondo y posición, C7)", () => {
     }
   });
 
-  test("con imagen de fondo, hero_color_fondo tiñe el velo (mix del color, no el --carta-bg)", async ({ page, sucursalId }) => {
+  test("con imagen de fondo, el velo es un degradé centrado en el bloque (logo y textos) y sin imagen no hay velo", async ({ page, sucursalId }) => {
     const carta = await crearCarta(sucursalId, { secciones: 2, valores: { ...PORTADA, hero_imagen_fondo_url: "https://example.com/fondo.jpg" } });
     try {
-      await page.setViewportSize(MOBILE);
-      await page.goto(carta.ruta);
-      const velo = page.locator(".carta-pagina").first().locator("div[aria-hidden]").first();
-      const fondo = await velo.evaluate((n) => getComputedStyle(n).backgroundColor);
-      // 75 % de #181818 sobre transparente (oklch, luminosidad ≈ 0,21 y opacidad .75), no el blanco de --carta-bg (luminosidad 1).
-      const m = fondo.match(/^oklch\(([\d.]+) [^/]*\/ ([\d.]+)\)$/);
-      expect(m).not.toBeNull();
-      expect(Number(m![1])).toBeLessThan(0.3);
-      expect(Number(m![2])).toBeCloseTo(0.75, 2);
+      for (const vp of [MOBILE, DESKTOP]) {
+        await page.setViewportSize(vp);
+        await page.goto(carta.ruta);
+        const velo = page.locator("[data-portada-velo]");
+        expect(await velo.evaluate((n) => getComputedStyle(n).backgroundImage)).toMatch(/^radial-gradient\(/);
+        const v = (await velo.boundingBox())!;
+        const b = (await page.locator("[data-portada-bloque]").boundingBox())!;
+        expect(Math.abs(v.x + v.width / 2 - (b.x + b.width / 2))).toBeLessThan(2);
+        expect(Math.abs(v.y + v.height / 2 - (b.y + b.height / 2))).toBeLessThan(2);
+      }
     } finally {
       await carta.limpiar();
+    }
+    const sinImagen = await crearCarta(sucursalId, { secciones: 2, valores: PORTADA });
+    try {
+      await page.goto(sinImagen.ruta);
+      await expect(page.locator("[data-portada-bloque]")).toBeVisible();
+      await expect(page.locator("[data-portada-velo]")).toHaveCount(0);
+    } finally {
+      await sinImagen.limpiar();
     }
   });
 });

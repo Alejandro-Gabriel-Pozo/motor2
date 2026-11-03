@@ -5,6 +5,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { crearMembresia } from "../setup/membresia";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
+import { DESCUENTO_POR_PRODUCTO_VISIBLE } from "../../src/core/carta/descuento-producto";
 
 /**
  * Ver ≠ editar en las pantallas de la carta (/carta y /carta/agrupados): con «Ver» pero sin «Editar» de las claves de la carta (carta_secciones, carta_generos, carta_contenido_producto, carta_promo_definir / carta_promo_activar / carta_promo_precio_local, carta_items_agrupados) se
@@ -127,7 +128,10 @@ test("un rol que solo VE la carta ve secciones, contenido y promos en /carta com
     const datosContenido = contenido.locator("[data-solo-lectura]").first();
     await expect(datosContenido).toContainText(`Contenido del plato ${carta.marca}`);
     await expect(datosContenido).toContainText("Sin TACC");
-    await expect(contenido.locator("[data-solo-lectura]").filter({ hasText: "Descuento en esta sucursal" })).toContainText("Sin descuento");
+    // Interruptor del descuento por producto (decisión del dueño 2026-10-29): apagado, la ficha de solo lectura tampoco muestra el dato.
+    const descuentoDeLaSucursal = contenido.locator("[data-solo-lectura]").filter({ hasText: "Descuento en esta sucursal" });
+    if (DESCUENTO_POR_PRODUCTO_VISIBLE) await expect(descuentoDeLaSucursal).toContainText("Sin descuento");
+    else await expect(descuentoDeLaSucursal).toHaveCount(0);
     await expect(datosContenido).toContainText(carta.seccion.nombre);
     await expect(main.locator("input, textarea, select"), "no tenía que haber ningún campo editable").toHaveCount(0);
     await expect(main.getByRole("button", { name: BOTONES_DE_EDICION }), "no tenía que haber botones de edición").toHaveCount(0);

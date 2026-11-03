@@ -830,6 +830,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Decisión del dueño 2026-10-29: modelo unificado de la carta (pasos 2 a 4, CAMBIO VISUAL DELIBERADO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en una corrida de Playwright contra motor2_ck_e2e local, 83 specs de carta y catálogo en verde). Revisado con `git diff -U0`: cambian SOLO líneas de forma, de roles y de nombres. (1) Milanesas (tabla de dos ejes): el nombre pasa de rótulo en mayúsculas de 13 px a título en rol Producto de 19 px («MILANESAS» → «Milanesas»), igual que «Café de especialidad». (2) El Café deja de ser una «tanda» y pasa a una tabla propia (forma «tabla», con su fila sin rótulo, cuyo nombre solo lee el lector de pantalla). (3) Se van los roles `rotulo` y `tamano` de la escala (sus pares tamaño / peso a 375 y 1280 px). (4) La vista previa de la ficha del producto dibuja las pizzas como la carta (un h3 por pizza, «### Pizza muzzarella», en lugar de «Cada opción se lee como un plato:»). Los precios y el resto del texto no cambian.",
       },
+      {
+        blob: "52cf3c97810d2f7826717c0141d463d805f7d64c",
+        // El commit PADRE de este (aff7f403) es el último antes de la regeneración; el golden se regenera en el commit siguiente.
+        commit: "aff7f403",
+        motivo:
+          "Integración de ramas, decisiones del dueño 2026-10-29 (NO cambia contenido propio de la carta: es la SUMA de dos ramas que regeneraron o no este golden sin conocerse). La rama `carta-unificada` regeneró esta línea de base con la ficha de producto que ofrecía el descuento por producto; la rama `deuda-paquete-b` apagó ese descuento con el interruptor `DESCUENTO_POR_PRODUCTO_VISIBLE = false` (decisión del dueño 2026-10-29) sin tocar este golden porque no lo regenera. Regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 sobre el árbol integrado contra motor2_ct_e2e local. Revisado con `git diff -U0`: cambian SOLO 42 líneas, todas BORRADAS y todas del descuento en la ficha de producto del admin (por cada producto, a 375 y a 1280 px: «Descuento en esta sucursal, % (vacío = sin descuento)», «[campo: vacío]» y «[botón: Guardar descuento de «…»]»); no se agrega ninguna línea y la carta pública (texto y tipografía) queda idéntica.",
+      },
     ],
   },
 };

@@ -652,9 +652,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Pizzas»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Pizzas»]
     [botón: Quitar «Pizzas» de la carta (vuelve a «Fuera de carta»)]
   --- data-grupo-de-la-carta=«Platos» (abierto)
     ▾
@@ -677,9 +674,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Milanesas»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Milanesas»]
     [botón: Quitar «Milanesas» de la carta (vuelve a «Fuera de carta»)]
     ▾ Bife a la criolla · Platos · $20.000 · se muestra
     [enlace: Abrir en el producto]
@@ -698,9 +692,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Bife a la criolla»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Bife a la criolla»]
     [botón: Quitar «Bife a la criolla» de la carta (vuelve a «Fuera de carta»)]
     ▾ Wok de verduras · Platos · $19.000 · se muestra
     [enlace: Abrir en el producto]
@@ -719,9 +710,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Wok de verduras»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Wok de verduras»]
     [botón: Quitar «Wok de verduras» de la carta (vuelve a «Fuera de carta»)]
   --- data-grupo-de-la-carta=«Cafetería» (abierto)
     ▾
@@ -744,9 +732,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Café»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Café»]
     [botón: Quitar «Café» de la carta (vuelve a «Fuera de carta»)]
     ▾ Café de especialidad · Cafetería · $4.000 · se muestra
     [enlace: Abrir en el producto]
@@ -765,9 +750,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Café de especialidad»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Café de especialidad»]
     [botón: Quitar «Café de especialidad» de la carta (vuelve a «Fuera de carta»)]
   --- data-grupo-de-la-carta=«Bebidas» (abierto)
     ▾
@@ -790,9 +772,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Gaseosa 500 cc»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Gaseosa 500 cc»]
     [botón: Quitar «Gaseosa 500 cc» de la carta (vuelve a «Fuera de carta»)]
 
 ## ADMINISTRACIÓN a 375 px: Carta › Parametrización › Secciones (/carta/parametrizacion/secciones)
@@ -936,9 +915,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Pizzas»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Pizzas»]
     [botón: Quitar «Pizzas» de la carta (vuelve a «Fuera de carta»)]
   --- data-grupo-de-la-carta=«Platos» (abierto)
     ▾
@@ -961,9 +937,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Milanesas»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Milanesas»]
     [botón: Quitar «Milanesas» de la carta (vuelve a «Fuera de carta»)]
     ▾ Bife a la criolla · Platos · $20.000 · se muestra
     [enlace: Abrir en el producto]
@@ -982,9 +955,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Bife a la criolla»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Bife a la criolla»]
     [botón: Quitar «Bife a la criolla» de la carta (vuelve a «Fuera de carta»)]
     ▾ Wok de verduras · Platos · $19.000 · se muestra
     [enlace: Abrir en el producto]
@@ -1003,9 +973,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Wok de verduras»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Wok de verduras»]
     [botón: Quitar «Wok de verduras» de la carta (vuelve a «Fuera de carta»)]
   --- data-grupo-de-la-carta=«Cafetería» (abierto)
     ▾
@@ -1028,9 +995,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Café»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Café»]
     [botón: Quitar «Café» de la carta (vuelve a «Fuera de carta»)]
     ▾ Café de especialidad · Cafetería · $4.000 · se muestra
     [enlace: Abrir en el producto]
@@ -1049,9 +1013,6 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Café de especialidad»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Café de especialidad»]
     [botón: Quitar «Café de especialidad» de la carta (vuelve a «Fuera de carta»)]
   --- data-grupo-de-la-carta=«Bebidas» (abierto)
     ▾
@@ -1074,7 +1035,4 @@
     Tags (separados por coma)
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Gaseosa 500 cc»]
-    Descuento en esta sucursal, % (vacío = sin descuento)
-    [campo: vacío]
-    [botón: Guardar descuento de «Gaseosa 500 cc»]
     [botón: Quitar «Gaseosa 500 cc» de la carta (vuelve a «Fuera de carta»)]

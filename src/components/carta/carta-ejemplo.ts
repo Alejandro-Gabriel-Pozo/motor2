@@ -66,7 +66,7 @@ export const CARTA_EJEMPLO: CartaPublicaV1 = {
           presentacion: {
             forma: "tabla",
             titulo: true,
-            columnas: ["Simple", "Napolitana"],
+            columnas: ["Simple", "Doble"],
             filas: [
               { rotulo: "De carne", celdas: [20000, 25000] },
               { rotulo: "De pollo", celdas: [20000, 25000] },
