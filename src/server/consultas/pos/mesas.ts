@@ -13,14 +13,6 @@ import type { Db } from "@/lib/db-tipos";
  */
 
 /**
- * Límite de mesas abiertas de la sucursal (`/mesas`, «LimiteMesasAbiertas»): SOLO `{ maxMesasAbiertas }` (`null` = sin límite).
- * `findUniqueOrThrow` a propósito: la sucursal sale del contexto de la sesión, así que si no existe es un error, no «sin límite».
- */
-export async function obtenerLimiteMesasAbiertas(sucursalId: string, db: Db) {
-  return db.sucursal.findUniqueOrThrow({ where: { id: sucursalId }, select: { maxMesasAbiertas: true } });
-}
-
-/**
  * Todas las mesas de la sucursal, ordenadas por número, con su estado derivado — UNA sola consulta (mesas + cuenta abierta + ítems + quién la abrió). La página la
  * llama directo, después de `requierePermisoVer(…, "pos_mesas")`: no es una Server Action de lectura. `ahora` es OBLIGATORIO (O.22-a, Hito 4): lo fija la
  * pantalla en el borde.

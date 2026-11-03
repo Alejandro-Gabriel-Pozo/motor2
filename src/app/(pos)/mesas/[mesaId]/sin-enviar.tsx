@@ -19,9 +19,10 @@ export interface ItemSinEnviar {
   /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 11): la promo de la que este ítem es un componente — null en un suelto. */
   promoCuentaId: string | null;
   promoTitulo: string | null;
-  /** GO-2d (ADR-030): el producto, los nombres de sus opciones («Grande · Almendras»), la línea de la que cuelga un adicional y lo elegido (para «Otro igual»). Ausentes sin opciones. */
+  /** GO-2d (ADR-030): el producto, el nombre compuesto de la línea («Café solo chico») con su detalle de lo incluido, la línea de la que cuelga un adicional y lo elegido (para «Otro igual»). Ausentes sin opciones. */
   productoId?: string;
-  opciones?: string[];
+  nombreDeLinea?: string;
+  detalleDeLinea?: string;
   lineaPadreId?: string;
   elegidas?: { opcionId: string; cantidad: number }[];
 }
@@ -60,7 +61,7 @@ function agruparFilas(items: ItemSinEnviar[]): FilaSinEnviar[] {
  * Al salir bien pide imprimir la comanda del envío que el SERVIDOR dice que creó ESTA llamada (`numeroEnvio` con `envioNuevo`). Si no
  * creó ninguno (pestaña vieja: otro ya los había enviado), no imprime: esa comanda ya salió desde donde se envió.
  *
- * GO-2d (ADR-030): una línea con opciones muestra sus nombres debajo y sus adicionales con sangría («+ 1 × Huevo frito», con su importe), sin «Quitar» propio: se quitan con su
+ * GO-2d (ADR-030): una línea con opciones muestra su nombre compuesto (y lo incluido debajo) y sus adicionales con sangría («+ 1 × Huevo frito», con su importe), sin «Quitar» propio: se quitan con su
  * producto (lo hace el servidor, `quitarItemSinEnviar`), y por eso «Quitar» en un producto con adicionales pide confirmar avisándolo. «Otro igual» abre «Elegir opciones» con
  * esa misma elección.
  */
@@ -100,10 +101,10 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
               <li key={fila.item.id} data-item-sin-enviar={fila.item.productoNombre} className="py-2 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="min-w-0 [overflow-wrap:anywhere]">
-                    <span className="font-semibold tabular-nums">{formatearCantidad(fila.item.cantidad)} ×</span> {fila.item.productoNombre}
-                    {fila.item.opciones && (
+                    <span className="font-semibold tabular-nums">{formatearCantidad(fila.item.cantidad)} ×</span> {fila.item.nombreDeLinea ?? fila.item.productoNombre}
+                    {fila.item.detalleDeLinea && (
                       <span data-opciones-de-linea className="block text-sm text-tinta-suave">
-                        {fila.item.opciones.join(" · ")}
+                        {fila.item.detalleDeLinea}
                       </span>
                     )}
                   </span>
@@ -159,7 +160,7 @@ export function SinEnviar({ cuentaId, items, puede, puedeEnviar }: { cuentaId: s
                 <ul className="mt-1 space-y-0.5 pl-4 text-sm text-tinta-suave">
                   {fila.items.map((i) => (
                     <li key={i.id} data-item-sin-enviar={i.productoNombre}>
-                      <span className="tabular-nums">{formatearCantidad(i.cantidad)} ×</span> {i.productoNombre}
+                      <span className="tabular-nums">{formatearCantidad(i.cantidad)} ×</span> {i.nombreDeLinea ?? i.productoNombre}
                     </li>
                   ))}
                 </ul>

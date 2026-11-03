@@ -50,10 +50,10 @@ Reemplaza la tabla de ADR-014 §3. «Requiere» es dura y «usa si existe» es b
 | Producción | vendible | Stock, Recetas | — |
 | Carta | vendible | Catálogo básico | Salón |
 | Promociones | vendible | Carta | Salón |
-| Salón | vendible | Stock, Clientes básico | Carta, Promociones |
+| Salón | vendible | Stock, Clientes básico, **Recetas** (desde 2026-10-29, ver §6) | Carta, Promociones |
 
 Los módulos de soporte se calculan como la clausura por `requiere` (ADR-014 §2): por ejemplo, con solo Consignación activa quedan activos también
-Proveedores básico, Stock y Catálogo básico, pero no Compras. Con solo Salón quedan Stock, Clientes básico y Catálogo básico.
+Proveedores básico, Stock y Catálogo básico, pero no Compras. Con solo Salón quedan Stock, Clientes básico, Recetas (desde 2026-10-29, §6) y Catálogo básico.
 
 ### 5. Mapeo acción → módulo
 
@@ -91,3 +91,7 @@ Los ADR originales no se reescriben; ADR-014 lleva una línea de estado que apun
 - **Desactivar Stock exige que ningún módulo activo lo requiera** (Compras, Traspasos, Consignación, Producción, Salón): la consola lo bloquea
   según ADR-011 §3.
 - **Rollback**: el cambio es solo documental; se revierte con `git revert` del commit.
+
+### 6. Actualización (2026-10-29, decisión del dueño): Salón requiere Recetas
+
+Una empresa con Salón y sin Recetas no puede vender nada que se produzca, así que la dependencia es **dura** («claramente debería ser bloqueante»): `salon.requiere` pasa de `["stock", "clientes_basico"]` a `["stock", "clientes_basico", "recetas"]` (`src/core/modulos/catalogo.ts`). Consecuencias, todas por la clausura de §4 (sin pantallas ni lógica nuevas): activar Salón deja a Recetas «incluido por Salón»; Recetas no se puede desactivar mientras Salón (o Producción) esté activo; desactivar Salón pierde también Recetas si nadie más la trae. Recetas requiere solo Catálogo básico, así que no hay ciclos, y `usaSiExiste` de Salón (Carta, Promociones) no cambia. Verificado en producción (solo lectura, 2026-10-29): la única empresa ya tiene Recetas activa, así que no cambia lo que ve nadie hoy. La tabla de ADR-014 §3 queda reemplazada, como ya decía §4.

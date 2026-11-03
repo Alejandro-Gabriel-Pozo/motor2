@@ -108,11 +108,12 @@ describe("«Mostrar este grupo en la carta»: la carta pública y la impresa", (
     await prisma.versionDeOpcion.create({ data: { opcionId: bife.ojo, numero: 2, tipoDeDiferencia: "MONTO", diferenciaPrecio: "500.00", creadoPorId: s.admin.id } });
     const item = itemDe((await armada()).secciones, "Bife")!;
     expect(item.presentacion).toEqual({
-      forma: "lista",
-      encabezado: true,
+      forma: "tabla",
+      titulo: true,
+      columnas: [],
       filas: [
-        { rotulo: "Ojo de bife", precio: 20500 },
-        { rotulo: "Bife de chorizo", precio: 20000 },
+        { rotulo: "Ojo de bife", celdas: [20500] },
+        { rotulo: "Bife de chorizo", celdas: [20000] },
       ],
       aclaraciones: [],
     });
@@ -141,9 +142,9 @@ describe("«Mostrar este grupo en la carta»: la vista previa del producto y el 
   const productoParaLaVistaPrevia = () => ({ id: bife.productoId, precioVenta: 20000, esBase: false });
 
   it("la vista previa «En la carta de {sucursal}» lee lo mismo que la carta pública", async () => {
-    expect(await cargarVistaPreviaDeLaCarta(prisma, s.sucursalId, productoParaLaVistaPrevia(), false)).toEqual({ tipo: "forma", presentacion: { forma: "simple", aclaraciones: [LINEA_DEL_CORTE] }, rotulos: [] });
+    expect(await cargarVistaPreviaDeLaCarta(prisma, s.sucursalId, productoParaLaVistaPrevia(), false)).toEqual({ tipo: "forma", presentacion: { forma: "simple", aclaraciones: [LINEA_DEL_CORTE] } });
     await ocultarElCorte();
-    expect(await cargarVistaPreviaDeLaCarta(prisma, s.sucursalId, productoParaLaVistaPrevia(), false)).toEqual({ tipo: "forma", presentacion: { forma: "simple", aclaraciones: [] }, rotulos: [] });
+    expect(await cargarVistaPreviaDeLaCarta(prisma, s.sucursalId, productoParaLaVistaPrevia(), false)).toEqual({ tipo: "forma", presentacion: { forma: "simple", aclaraciones: [] } });
   });
 
   it("con los dos cortes agotados la vista previa sigue diciendo «no se puede pedir» (se calcula con el grupo oculto incluido)", async () => {

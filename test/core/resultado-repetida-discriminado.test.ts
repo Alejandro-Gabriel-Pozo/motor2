@@ -44,7 +44,7 @@ describe("Datos*: repetida/repetido discrimina — los campos de datos no pueden
     if (nuevo.repetido === false) expectTypeOf(nuevo.pagoId).toEqualTypeOf<string>();
   });
 
-  it("registrarConteoFisico: las dos combinaciones válidas compilan, la contradictoria no", () => {
+  it("registrarConteoFisicoCasoDeUso: las dos combinaciones válidas compilan, la contradictoria no", () => {
     const repetido: DatosRegistrarConteoFisico = { repetido: true, conteoId: null, diferencia: null, ajustado: null };
     const nuevo: DatosRegistrarConteoFisico = { repetido: false, conteoId: "conteo-1", diferencia: -3, ajustado: true };
     // @ts-expect-error — repetido:true no puede llevar conteoId/diferencia/ajustado reales.

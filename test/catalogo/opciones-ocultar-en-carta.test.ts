@@ -235,14 +235,14 @@ describe("«Mostrar este grupo en la carta»: el comando de admisión del produc
 
     it("una versión nueva de «Ojo de bife» con +$500 desde la Biblioteca entra, deja la fila (versión, interruptor y auditoría) intacta, y la vista previa muestra el grupo de nuevo", async () => {
       await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ seMuestraEnCarta: false }));
-      expect(await vistaPrevia()).toEqual({ tipo: "forma", presentacion: { forma: "simple", aclaraciones: [] }, rotulos: [] });
+      expect(await vistaPrevia()).toEqual({ tipo: "forma", presentacion: { forma: "simple", aclaraciones: [] } });
       const antes = { fila: await fila(), auditorias: await prisma.registroAuditoria.count({ where: { entidad: "ProductoAdmiteGrupo" } }) };
       const v = await agregarVersionDeOpcionCasoDeUso(actor(), { opcionId: ojoId, numeroEsperado: 1, version: { diferencia: { tipo: "MONTO", monto: 500 }, factorEscala: null, consumos: [] } });
       expect(v).toMatchObject({ ok: true });
       expect({ fila: await fila(), auditorias: await prisma.registroAuditoria.count({ where: { entidad: "ProductoAdmiteGrupo" } }) }, "no se escribió nada en lo que admite el producto").toEqual(antes);
       expect(await fila()).toMatchObject({ seMuestraEnCarta: false });
       const despues = await vistaPrevia();
-      expect(despues).toMatchObject({ tipo: "forma", presentacion: { forma: "lista", filas: [{ rotulo: "Ojo de bife", precio: 20500 }, { rotulo: "Bife de chorizo", precio: 20000 }] } });
+      expect(despues).toMatchObject({ tipo: "forma", presentacion: { forma: "tabla", filas: [{ rotulo: "Ojo de bife", celdas: [20500] }, { rotulo: "Bife de chorizo", celdas: [20000] }] } });
     });
 
     it("una opción nueva con recargo en el grupo oculto («+ Opción»): entra sin tocar el interruptor (I3)", async () => {

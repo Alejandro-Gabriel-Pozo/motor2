@@ -40,19 +40,19 @@ describe("Fase 5, DEC-11: las bases de un eje y lo que la carta lee de la base",
         [cat.producto.milanesas!, false],
       ])
     );
-    expect(await presentacionDe("Pizzas")).toMatchObject({ forma: "lista", encabezado: false });
-    expect(await presentacionDe("Pizzas"), "una base: protagonizan las opciones").not.toHaveProperty("protagonista");
+    expect(await presentacionDe("Pizzas")).toMatchObject({ forma: "tabla", titulo: false, columnas: [] });
 
     await prisma.contenidoCartaProducto.updateMany({ where: { sucursalId: s.sucursalId, productoId: cat.producto.pizzas! }, data: { mostrarNombreArriba: true } });
     expect((await basesDeUnEjeEnLaCarta(s.sucursalId, prisma)).get(cat.producto.pizzas!)).toBe(true);
-    expect(await presentacionDe("Pizzas")).toMatchObject({ forma: "lista", encabezado: true });
+    expect(await presentacionDe("Pizzas")).toMatchObject({ forma: "tabla", titulo: true, columnas: [] });
   });
 
   it("con «De» en «Milanesas de», la milanesa pasa a dos ejes: sale en tabla («De carne», «De pollo») y ya no es una base de un eje", async () => {
-    expect(await presentacionDe("Milanesas")).toMatchObject({ forma: "lista", encabezado: false, aclaraciones: [{ tipo: "eleccion", rotulo: "Milanesas de", opciones: ["carne", "pollo"] }] });
+    expect(await presentacionDe("Milanesas")).toMatchObject({ forma: "tabla", titulo: false, aclaraciones: [{ tipo: "eleccion", rotulo: "Milanesas de", opciones: ["carne", "pollo"] }] });
     await prismaAdmin.grupoDeOpciones.updateMany({ where: { nombre: "Milanesas de" }, data: { prefijoEnCarta: "De" } });
     expect(await presentacionDe("Milanesas")).toEqual({
       forma: "tabla",
+      titulo: true,
       columnas: ["Simple", "Napolitana"],
       filas: [
         { rotulo: "De carne", celdas: [20000, 25000] },

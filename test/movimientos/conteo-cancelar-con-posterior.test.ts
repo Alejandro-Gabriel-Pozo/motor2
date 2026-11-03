@@ -5,7 +5,8 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico, resolverConteoPendiente, cancelarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { resolverConteoPendiente, cancelarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 /**
@@ -25,7 +26,7 @@ describe("M-2: cancelar un conteo con otro posterior se rechaza (CONTEO_POSTERIO
   const conteos = () => prisma.conteoFisico.findMany({ where: { productoId: mpId }, orderBy: { creadoEn: "asc" } });
 
   async function contar(conteoReal: number, accion: "AJUSTAR" | "FALTA_MOVIMIENTO" | "DESCARTAR" = "AJUSTAR") {
-    const r = await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal, fechaConteo: new Date(), accion });
+    const r = await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal, fechaConteo: new Date(), accion });
     expect(r.ok, r.mensaje).toBe(true);
   }
 
@@ -121,7 +122,7 @@ describe("M-2: cancelar un conteo con otro posterior se rechaza (CONTEO_POSTERIO
     await contar(5);
     const [conteo] = await conteos();
     const otroId = (await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Azúcar", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId)).id;
-    await registrarConteoFisico({ productoId: otroId, seccionId, conteoReal: 1, fechaConteo: new Date(), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: otroId, seccionId, conteoReal: 1, fechaConteo: new Date(), accion: "AJUSTAR" });
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
 
     const r = await cancelarConteoFisico(conteo.id);

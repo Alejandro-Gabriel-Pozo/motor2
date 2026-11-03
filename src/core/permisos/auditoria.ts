@@ -22,8 +22,7 @@ export const ENTIDADES_AUDITABLES = [
   // "RecetaSucursal": una sucursal pasa a usar su receta propia de un plato o vuelve a la central — `entidadId` es `${sucursalId}:${productoId}`, `campo: "habilitada"`, con `sucursalId`.
   "RecetaSucursal",
   "RendimientoLocalIngrediente",
-  // "Sucursal" (docs/plan-comensales-y-limite-mesas-2026-09-26.md): el límite de mesas abiertas (`maxMesasAbiertas`) se edita desde
-  // el mapa de mesas con el mismo permiso que da de alta mesas (`pos_mesas`) — `entidadId` es el id de la Sucursal.
+  // "Sucursal": alta, renombre y activar/desactivar una sucursal — `entidadId` es el id de la Sucursal. (El límite de mesas abiertas, `maxMesasAbiertas`, ya no se edita: se retiró el 2026-10-29.)
   "Sucursal",
   // "PagoConsignante" (Task #41, M14): un pago a un proveedor de consignación — `entidadId` es el id del PagoConsignante creado,
   // `campo: "importe"`, `valorAnterior: null` (siempre una creación, nunca una edición — append-only, igual que el resto del Kardex).

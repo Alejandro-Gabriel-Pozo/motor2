@@ -14,7 +14,7 @@ import { listarTicketsEmitidos } from "../../src/server/consultas/reportes/ticke
 
 /**
  * M1.4c del mostrador (ADR-039): abrir la cuenta del mostrador, venderla y cerrarla como una mesa. Con la base real:
- *  - abrir: idempotente por estado, doble clic y dos cajeros dan UNA cuenta (el mismo id); sin puesto habilitado se rechaza; sin comensales; no cuenta para el límite;
+ *  - abrir: idempotente por estado, doble clic y dos cajeros dan UNA cuenta (el mismo id); sin puesto habilitado se rechaza; sin comensales;
  *  - el circuito completo (pedir, enviar, cliente con %, cerrar) con el «detalle» y los mensajes del mostrador, ticket numerado y reintento del cierre (`YA_CERRADA`);
  *  - la numeración de tickets bajo concurrencia entre una cuenta de mostrador y una de mesa (consecutivos, sin huecos ni duplicados);
  *  - cerrar contra agregar en la misma cuenta del mostrador; descartar una cuenta vacía.
@@ -96,13 +96,13 @@ describe("la cuenta del mostrador", () => {
       expect(await abrirCuentaDeMostradorCasoDeUso(actor)).toMatchObject({ ok: false, codigo: "SUCURSAL_INACTIVA" });
     });
 
-    it("no cuenta para el límite de mesas abiertas, y las mesas siguen con una sola cuenta abierta cada una", async () => {
-      await prisma.sucursal.update({ where: { id: s.sucursalId }, data: { maxMesasAbiertas: 1 } });
+    it("con el mostrador abierto, las mesas siguen con una sola cuenta abierta cada una", async () => {
       expect((await abrirCuentaDeMostrador()).ok).toBe(true);
       expect((await abrirCuenta(s.mesa.id, 2)).ok).toBe(true);
       const otra = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 9 } });
-      expect((await abrirCuenta(otra.id, 2)).ok).toBe(false);
+      expect((await abrirCuenta(otra.id, 2)).ok).toBe(true);
       expect(await abrirCuenta(s.mesa.id, 2)).toEqual({ ok: true, mensaje: "La mesa 4 ya tenía una cuenta abierta." });
+      expect(await prisma.cuenta.count({ where: { mesaId: s.mesa.id, cerradaEn: null } })).toBe(1);
     });
 
     it("la lectura del mostrador trae la cuenta abierta con rótulo «Mostrador» (número 0); sin cuenta, cuenta null", async () => {

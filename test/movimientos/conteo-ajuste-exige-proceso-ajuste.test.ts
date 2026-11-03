@@ -5,7 +5,8 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico, registrarConteosFisicos, resolverConteoPendiente } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarConteosFisicos, resolverConteoPendiente } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 
 /**
@@ -73,10 +74,10 @@ describe("S-09 (D3, defecto): aplicar la diferencia de un conteo al stock exige 
       expect(await prisma.conteoFisico.count()).toBe(0);
     });
 
-    it("ATAQUE: lo mismo con el conteo de un solo producto (registrarConteoFisico)", async () => {
+    it("ATAQUE: lo mismo con una grilla de una sola fila (un conteo de un solo producto)", async () => {
       await comoOperario();
 
-      const r = await registrarConteoFisico(fila(productos[0], 0, "AJUSTAR"));
+      const r = await registrarUnConteoFisico(fila(productos[0], 0, "AJUSTAR"));
 
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("permiso de Ajuste");
@@ -87,8 +88,8 @@ describe("S-09 (D3, defecto): aplicar la diferencia de un conteo al stock exige 
     it("el operario sí REGISTRA el conteo: «Falta movimiento» queda pendiente y «Descartar» queda descartado, sin tocar el stock", async () => {
       await comoOperario();
 
-      expect((await registrarConteoFisico(fila(productos[0], 4, "FALTA_MOVIMIENTO"))).ok).toBe(true);
-      expect((await registrarConteoFisico(fila(productos[1], 4, "DESCARTAR"))).ok).toBe(true);
+      expect((await registrarUnConteoFisico(fila(productos[0], 4, "FALTA_MOVIMIENTO"))).ok).toBe(true);
+      expect((await registrarUnConteoFisico(fila(productos[1], 4, "DESCARTAR"))).ok).toBe(true);
 
       expect((await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: productos[0] } })).estado).toBe("PENDIENTE");
       expect((await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: productos[1] } })).estado).toBe("DESCARTADO");
@@ -121,7 +122,7 @@ describe("S-09 (D3, defecto): aplicar la diferencia de un conteo al stock exige 
   describe("resolver un conteo pendiente", () => {
     async function pendiente(contado: number) {
       await comoOperario();
-      expect((await registrarConteoFisico(fila(productos[0], contado, "FALTA_MOVIMIENTO"))).ok).toBe(true);
+      expect((await registrarUnConteoFisico(fila(productos[0], contado, "FALTA_MOVIMIENTO"))).ok).toBe(true);
       return prisma.conteoFisico.findFirstOrThrow({ where: { productoId: productos[0], estado: "PENDIENTE" } });
     }
 

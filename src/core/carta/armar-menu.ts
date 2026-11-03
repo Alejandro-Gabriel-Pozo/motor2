@@ -24,7 +24,7 @@
 
 import { aplicarDescuentoDeProducto } from "./descuento-producto";
 import { opcionesParaLaCarta, type GrupoCartaV1, type OpcionesSinCostoCartaV1, type ResumenDePreciosParaCarta } from "./opciones-en-carta";
-import { FILAS_SUGERIDAS_EN_CARTA, presentacionDelProducto, resolverTandas, type PendienteDeTanda, type PresentacionCartaV1, type TablaDePreciosParaCarta, type TandaCartaV1 } from "./presentacion-en-carta";
+import { FILAS_SUGERIDAS_EN_CARTA, presentacionDelProducto, type PresentacionCartaV1, type TablaDePreciosParaCarta } from "./presentacion-en-carta";
 
 export interface ItemCartaV1 {
   productoId: string;
@@ -76,8 +76,8 @@ export interface ItemCartaV1 {
    */
   opcionesSinCosto?: OpcionesSinCostoCartaV1[];
   /**
-   * Fase 5 («carta pareja», `presentacion-en-carta.ts`): SOLO en un PV con opciones que hoy se puede pedir y cuya forma la carta puede leer con el precio exacto: cómo se lee (simple, una fila de una
-   * tanda de columnas, tabla de dos ejes o lista), con el precio de cada celda ya resuelto por la regla de la venta y las aclaraciones debajo del plato. Un ítem sin opciones no lleva esta clave (su JSON
+   * Fase 5 («carta pareja», `presentacion-en-carta.ts`): SOLO en un PV con opciones que hoy se puede pedir y cuya forma la carta puede leer con el precio exacto: cómo se lee (simple o tabla de
+   * uno o dos ejes), con el precio de cada celda ya resuelto por la regla de la venta y las aclaraciones debajo del plato. Un ítem sin opciones no lleva esta clave (su JSON
    * queda igual que antes). Mientras conviva con `grupos`/`opcionesSinCosto`, quien dibuja cae a esos si falta. Campo aditivo de la v1: `version` no cambia. `precio` sigue siendo el «desde».
    */
   presentacion?: PresentacionCartaV1;
@@ -110,8 +110,6 @@ export interface SeccionCartaV1 {
   orden: number;
   items: ItemCartaV1[];
   promos: PromoCartaV1[];
-  /** Fase 5: SOLO si hay alguna: los ítems consecutivos (por índice en `items`) que comparten columnas (Chico | Mediano | Grande). Una sección sin tandas no lleva la clave. */
-  tandas?: TandaCartaV1[];
 }
 
 export interface CartaV1 {
@@ -266,7 +264,7 @@ export interface MenuArmado {
     productosSinPresentacion?: { productoId: string; nombre: string; motivo: string }[];
     /** PV con más de `FILAS_SUGERIDAS_EN_CARTA` filas: se dibujan todas; la administración sugiere dividirlo. */
     productosConMuchasFilas?: { productoId: string; nombre: string; filas: number }[];
-    /** PV cuya tanda o tabla tenía más de 3 columnas: cayó a una lista. */
+    /** PV con más de 3 columnas: se transpuso (el eje largo pasa a las filas) o cayó a una fila por combinación. */
     productosConMuchasColumnas?: { productoId: string; nombre: string; columnas: number }[];
     /** Bases de un eje que salen OCULTAS (cada opción sola, sin el nombre del producto), con los rótulos tal como se leen: si alguno no se entiende solo, cargá «se lee en la carta como» o prendé «Mostrar el nombre arriba». */
     basesOcultas?: { productoId: string; nombre: string; filas: string[] }[];
@@ -333,11 +331,11 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
   // Solo llegan las secciones ACTIVAS: un seccionCartaId que no está acá es de una sección apagada (o no tiene).
   const nombreDeSeccion = new Map(entrada.secciones.map((s) => [s.id, s.nombre]));
 
-  type ItemConOrden = { item: ItemCartaV1; orden: number; pendiente?: PendienteDeTanda };
+  type ItemConOrden = { item: ItemCartaV1; orden: number };
   const itemsPorSeccion = new Map<string, ItemConOrden[]>();
-  const ubicar = (seccionId: string, item: ItemCartaV1, orden: number, pendiente?: PendienteDeTanda) => {
+  const ubicar = (seccionId: string, item: ItemCartaV1, orden: number) => {
     const lista = itemsPorSeccion.get(seccionId) ?? [];
-    lista.push({ item, orden, ...(pendiente ? { pendiente } : {}) });
+    lista.push({ item, orden });
     itemsPorSeccion.set(seccionId, lista);
   };
   const productosSinPresentacion: NonNullable<MenuArmado["diagnostico"]["productosSinPresentacion"]> = [];
@@ -368,13 +366,13 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
       enCarta && conOpciones
         ? { precio: enCarta.desde, ...(listaConOpciones !== null && listaConOpciones !== enCarta.desde && conDescuento.porcentaje !== null ? { precioLista: listaConOpciones, descuentoPorcentaje: conDescuento.porcentaje } : {}) }
         : { precio: conDescuento.precio, ...(conDescuento.precioLista !== null ? { precioLista: conDescuento.precioLista, descuentoPorcentaje: conDescuento.porcentaje! } : {}) };
-    // Fase 5 («carta pareja»): la forma con que la carta lee el producto, desde su tabla de precios (la regla de la venta, con el mismo descuento). Las columnas de un directo esperan a su tanda.
+    // Fase 5 («carta pareja»): la forma con que la carta lee el producto, desde su tabla de precios (la regla de la venta, con el mismo descuento).
     const forma =
       enCarta && conOpciones?.tabla
         ? presentacionDelProducto({ tabla: conOpciones.tabla, esBase: conOpciones.esBase === true, mostrarNombreArriba: p.contenido.mostrarNombreArriba === true, conDescuento: (descuentoPorProducto.get(p.id) ?? 0) > 0 })
         : undefined;
     if (forma?.tipo === "sin-forma") productosSinPresentacion.push({ productoId: p.id, nombre: p.nombre, motivo: forma.motivo });
-    if (forma?.tipo === "lista" && forma.columnasDeMas !== undefined) productosConMuchasColumnas.push({ productoId: p.id, nombre: p.nombre, columnas: forma.columnasDeMas });
+    if (forma?.tipo === "forma" && forma.columnasDeMas !== undefined) productosConMuchasColumnas.push({ productoId: p.id, nombre: p.nombre, columnas: forma.columnasDeMas });
     ubicar(
       p.seccionCartaId,
       {
@@ -388,10 +386,9 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
         imagenUrl: null,
         ...(enCarta && enCarta.grupos.length > 0 ? { grupos: enCarta.grupos } : {}),
         ...(enCarta && enCarta.sinCosto.length > 0 ? { opcionesSinCosto: enCarta.sinCosto } : {}),
-        ...(forma?.tipo === "lista" ? { presentacion: forma.presentacion } : {}),
+        ...(forma?.tipo === "forma" ? { presentacion: forma.presentacion } : {}),
       },
-      p.contenido.orden,
-      forma?.tipo === "columnas" ? { grupoId: forma.grupoId, columnas: forma.columnas, aclaraciones: forma.aclaraciones } : undefined
+      p.contenido.orden
     );
   }
 
@@ -447,11 +444,7 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
     .sort((a, b) => a.orden - b.orden || comparar(a.nombre, b.nombre))
     .map((s) => {
       // Sueltos y agrupados comparten la misma escala de orden dentro de la sección: `orden` → nombre.
-      const ordenados = (itemsPorSeccion.get(s.id) ?? []).sort((a, b) => a.orden - b.orden || comparar(a.item.nombre, b.item.nombre));
-      // Fase 5: las tandas se arman con la sección YA ordenada (los vecinos que comparten el grupo de sus columnas).
-      const { porItem, tandas, caidasALista } = resolverTandas(ordenados.map((x) => x.pendiente ?? null));
-      for (const c of caidasALista) productosConMuchasColumnas.push({ productoId: ordenados[c.indice]!.item.productoId, nombre: ordenados[c.indice]!.item.nombre, columnas: c.columnas });
-      const items = ordenados.map((x, i) => (porItem.has(i) ? { ...x.item, presentacion: porItem.get(i)! } : x.item));
+      const items = (itemsPorSeccion.get(s.id) ?? []).sort((a, b) => a.orden - b.orden || comparar(a.item.nombre, b.item.nombre)).map((x) => x.item);
       const promos = (promosPorSeccion.get(s.id) ?? []).sort((a, b) => a.orden - b.orden || comparar(a.titulo, b.titulo));
       return {
         id: s.id,
@@ -462,17 +455,16 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
         orden: s.orden,
         items,
         promos,
-        ...(tandas.length > 0 ? { tandas } : {}),
       };
     })
     .filter((s) => s.items.length > 0 || s.promos.length > 0);
 
   // Fase 5: lo que la administración tiene que ver de las formas (interno: nunca sale al público).
   const conForma = secciones.flatMap((s) => s.items.flatMap((i) => (i.presentacion ? [{ item: i, presentacion: i.presentacion }] : [])));
-  const filasDe = (pr: PresentacionCartaV1) => (pr.forma === "tabla" || pr.forma === "lista" ? pr.filas.length : 0);
+  const filasDe = (pr: PresentacionCartaV1) => (pr.forma === "tabla" ? pr.filas.length : 0);
   const productosConMuchasFilas = conForma.filter((x) => filasDe(x.presentacion) > FILAS_SUGERIDAS_EN_CARTA).map((x) => ({ productoId: x.item.productoId, nombre: x.item.nombre, filas: filasDe(x.presentacion) }));
   const basesOcultas = conForma.flatMap((x) =>
-    x.presentacion.forma === "lista" && !x.presentacion.encabezado ? [{ productoId: x.item.productoId, nombre: x.item.nombre, filas: x.presentacion.filas.map((f) => f.rotulo) }] : []
+    x.presentacion.forma === "tabla" && !x.presentacion.titulo ? [{ productoId: x.item.productoId, nombre: x.item.nombre, filas: x.presentacion.filas.map((f) => f.rotulo ?? "") }] : []
   );
   const porNombre = <T extends { nombre: string }>(xs: T[]) => xs.sort((a, b) => comparar(a.nombre, b.nombre));
 

@@ -5,7 +5,7 @@
  *
  * El TEMA de la sucursal sigue mandando hacia ARRIBA: el nombre, el precio, la descripción (también la línea «Elegí: …») y los tags toman `max(piso, lo que pide el tema)` (`carta_fuente_item_*`); un tema
  * que pide menos que el piso queda en el piso. El rol Opción (16 px) no tiene clave de tema (decisión del dueño). MÍNIMO de 14 px para todo texto que el cliente necesita para decidir; las únicas
- * excepciones son el `rotulo` (13 px, en mayúsculas espaciadas) y la `etiqueta` (los tags, de 12 px, decisión del dueño).
+ * excepción es la `etiqueta` (los tags, de 12 px, decisión del dueño).
  *
  * En PAPEL (`@media print`) la escala es otra, en puntos, y el tema no cuenta (igual que sus colores): `ESCALA_IMPRESA`. Puro.
  */
@@ -22,26 +22,20 @@ export const ESCALA_DE_LA_CARTA = {
   etiqueta: "0.75rem",
   /** El título del portal de sucursales: 24 px. */
   titulo: "1.5rem",
-  /** El rótulo en mayúsculas del nombre «paraguas» (MILANESAS, PIZZAS): 13 px. */
-  rotulo: "0.8125rem",
-  /** El encabezado de columna de una tabla (Simple / Napolitana): 16 px. */
+  /** El encabezado de columna de una tabla (Chico / Mediano / Grande; Simple / Napolitana): 16 px. */
   columna: "1rem",
-  /** El encabezado de tamaño (Chico / Mediano / Grande): 15 px. */
-  tamano: "0.9375rem",
   /** La línea «Elegí: …» / «Incluidas: …»: 15 px. */
   eleccion: "0.9375rem",
 } as const;
 
-/** Los mismos roles en papel: Producto 12 pt, Opción 11 pt, Aclaración 10 pt, Etiqueta 9 pt, Título 16 pt, Rótulo 9,5 pt, Columna 11 pt, Tamaño 10,5 pt y Elección 10,5 pt. */
+/** Los mismos roles en papel: Producto 12 pt, Opción 11 pt, Aclaración 10 pt, Etiqueta 9 pt, Título 16 pt, Columna 11 pt y Elección 10,5 pt. */
 export const ESCALA_IMPRESA = {
   producto: "12pt",
   opcion: "11pt",
   aclaracion: "10pt",
   etiqueta: "9pt",
   titulo: "16pt",
-  rotulo: "9.5pt",
   columna: "11pt",
-  tamano: "10.5pt",
   eleccion: "10.5pt",
 } as const;
 
@@ -68,9 +62,7 @@ export function variablesDeLaEscala(tema?: TamanosDelTema): Record<string, strin
     "--carta-fs-aclaracion": piso(e.aclaracion, tema?.descripcion),
     "--carta-fs-etiqueta": piso(e.etiqueta, tema?.tags),
     "--carta-fs-titulo": e.titulo,
-    "--carta-fs-rotulo": e.rotulo,
     "--carta-fs-columna": e.columna,
-    "--carta-fs-tamano": e.tamano,
     "--carta-fs-eleccion": piso(e.eleccion, tema?.descripcion),
     ...Object.fromEntries(Object.entries(ESCALA_IMPRESA).map(([rol, valor]) => [`--carta-fs-${rol}-impresa`, valor])),
   };

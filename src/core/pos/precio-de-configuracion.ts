@@ -188,13 +188,10 @@ function gruposOcultosEnLaCarta(grupos: readonly GrupoDeEntradaDeLaCarta[]): Set
 }
 
 /**
- * El resumen de precios PARA LA CARTA (`resumenDePrecios` con los grupos que la carta no oculta): el cálculo se hace con TODOS los grupos (el «desde», si hay variación y si se puede pedir no cambian
- * nunca: un grupo oculto no cambia el precio, y uno obligatorio agotado sigue sacando al producto de la carta) y solo se filtra la SALIDA. Lo usan todos los lectores de la carta (pública, impresa,
- * vista previa y «Va a mostrar»); el POS y el cobro usan `resumenDePrecios` tal cual (`test/arquitectura/grupos-de-la-carta-en-un-solo-lugar.test.ts`).
+ * Al resumen COMPLETO le saca los grupos que la carta no lee (`ocultos`); sin ninguno devuelve el mismo objeto. El cálculo se hizo con TODOS los grupos (el «desde», si hay variación y si se puede pedir no
+ * cambian nunca: un grupo oculto no cambia el precio, y uno obligatorio agotado sigue sacando al producto de la carta): solo se filtra la SALIDA.
  */
-export function resumenDePreciosParaLaCarta(entrada: { grupos: readonly GrupoDeEntradaDeLaCarta[]; precioBase: number; descuentoDeProducto: number | null; esBase?: boolean }): ResumenDePrecios {
-  const resumen = resumenDePrecios(entrada);
-  const ocultos = gruposOcultosEnLaCarta(entrada.grupos);
+function sinLosGruposOcultos(resumen: ResumenDePrecios, ocultos: ReadonlySet<string>): ResumenDePrecios {
   return ocultos.size === 0 ? resumen : { ...resumen, grupos: resumen.grupos.filter((g) => !ocultos.has(g.grupoId)) };
 }
 
@@ -239,8 +236,10 @@ export function tablaDePreciosParaLaCarta(entrada: {
   precioBase: number;
   descuentoDeProducto: number | null;
   esBase?: boolean;
+  /** El resumen de precios de ESTA misma entrada, si quien llama ya lo calculó (`cartaDeUnProducto`): se reutiliza en vez de recalcularlo. */
+  resumen?: ResumenDePrecios;
 }): TablaDePreciosParaLaCarta | null {
-  const resumen = resumenDePrecios(entrada);
+  const resumen = entrada.resumen ?? resumenDePrecios(entrada);
   if (!resumen.vendible) return null;
   const vigentes = gruposVigentes(entrada.grupos);
   const { precioBase } = baseDeComposicion(vigentes, entrada);
@@ -279,6 +278,34 @@ export function tablaDePreciosParaLaCarta(entrada: {
     })
   );
   return { grupos, ejes, celdas };
+}
+
+/**
+ * TODO lo que la carta lee de un producto con opciones, calculado UNA vez (los lectores de la carta pasan por acá, y es el único lugar donde la carta decide qué grupos lee): el resumen de precios con el
+ * descuento de producto (`conDescuento`) y sin él (`sinDescuento`, el precio tachado; es el mismo objeto si no hay descuento), SIN los grupos que la carta no lee (`seOcultaEnLaCarta`), y la tabla de precios
+ * de cada celda, que reutiliza el resumen COMPLETO en vez de recalcularlo y filtra los grupos antes de los ejes. El cálculo es siempre con todos los grupos: solo se filtra la salida.
+ */
+export function cartaDeUnProducto(entrada: {
+  grupos: readonly GrupoDeEntradaDeLaCarta[];
+  precioBase: number;
+  descuentoDeProducto: number | null;
+  esBase?: boolean;
+}): { conDescuento: ResumenDePrecios; sinDescuento: ResumenDePrecios; tabla: TablaDePreciosParaLaCarta | null } {
+  const completoConDescuento = resumenDePrecios(entrada);
+  const completoSinDescuento = entrada.descuentoDeProducto === null ? completoConDescuento : resumenDePrecios({ ...entrada, descuentoDeProducto: null });
+  const ocultos = gruposOcultosEnLaCarta(entrada.grupos);
+  const conDescuento = sinLosGruposOcultos(completoConDescuento, ocultos);
+  const sinDescuento = completoSinDescuento === completoConDescuento ? conDescuento : sinLosGruposOcultos(completoSinDescuento, ocultos);
+  return { conDescuento, sinDescuento, tabla: tablaDePreciosParaLaCarta({ ...entrada, resumen: completoConDescuento }) };
+}
+
+/**
+ * Los grupos de UN producto con la grilla de tamaños de la sucursal (clave `productoId|opcionId`) puesta en las opciones de un tamaño en modo ABSOLUTO. La única mezcla de la grilla para los cuatro lectores
+ * de la carta (la pública, el «Va a mostrar», la vista previa del producto y las bases de un eje). Es una función PURA (no lee la base): vive en `core` y no en `lecturas`, así la matriz de denegación por
+ * defecto (`test/aislamiento/denegacion/`) no la cuenta como una puerta de lectura.
+ */
+export function conGrillaDeLaSucursal<G extends GrupoParaVender>(grupos: readonly G[], grilla: ReadonlyMap<string, number>, productoId: string): G[] {
+  return grupos.map((g) => (g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO" ? { ...g, opciones: g.opciones.map((o) => ({ ...o, precioDeSucursal: grilla.get(`${productoId}|${o.opcionId}`) ?? null })) } : g));
 }
 
 /** El total de una configuración elegida, para mostrarlo ANTES de confirmar. Los errores son los mismos códigos y mensajes de la validación y de la composición de la venta. */

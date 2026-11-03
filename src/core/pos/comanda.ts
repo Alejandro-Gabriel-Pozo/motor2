@@ -27,8 +27,8 @@ export interface LineaDeComanda {
    *  la cocina lo ve anotado, sin precios (esta comanda nunca los tiene). AUSENTE = un suelto de siempre (salida idéntica a
    *  antes de esta Task). */
   promoTitulo?: string;
-  /** GO-2b (ADR-030): los nombres de las opciones dentro del precio («Grande», «Almendras») — la cocina tiene que saber qué preparar. Ausente sin opciones. */
-  opciones?: string[];
+  /** Lo incluido en la línea («nalga · puré de papa»), debajo de `producto`, que ya trae el nombre compuesto («Café solo chico»): la cocina tiene que saber qué preparar. Ausente sin opciones o sin incluidos. */
+  detalle?: string;
   /** GO-2b: `true` SOLO en un adicional (va con el producto del que cuelga). Ausente en los demás. */
   esAdicional?: true;
 }
@@ -49,7 +49,7 @@ export interface AnulacionDeComanda {
   /** Task #16: igual que en `LineaDeComanda` — la promo de la que este ítem anulado era un componente. Ausente = un suelto. */
   promoTitulo?: string;
   /** GO-2b: igual que en `LineaDeComanda`. */
-  opciones?: string[];
+  detalle?: string;
   esAdicional?: true;
 }
 
@@ -73,16 +73,17 @@ export interface ItemParaComanda {
   /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 10): "Menú del día" si es un componente de esa promo. Ausente/null =
    *  un suelto de siempre. */
   promoTitulo?: string | null;
-  /** GO-2b: los nombres de las opciones y si es un adicional (opcionales: sin ellos, la comanda de siempre). */
-  opciones?: readonly string[];
+  /** El nombre compuesto y el detalle de la línea con opciones, y si es un adicional (opcionales: sin ellos, la comanda de siempre). `productoNombre` sigue siendo el del producto. */
+  nombreDeLinea?: string;
+  detalleDeLinea?: string;
   esAdicional?: boolean;
   anulaciones: readonly { id: string; cantidad: number; motivoAnulacion: string | null; creadoPor: string | null }[];
 }
 
 /** Una comanda por envío, en el orden recibido. `mesero` es el mozo de la cuenta: el respaldo de «Tomó» cuando ningún ítem tiene autor. */
 /** GO-2b: lo de las opciones que va en la comanda, solo cuando hay (así una comanda sin opciones sale idéntica a la de siempre). */
-function deOpciones(i: Pick<ItemParaComanda, "opciones" | "esAdicional">): { opciones?: string[]; esAdicional?: true } {
-  return { ...(i.opciones?.length ? { opciones: [...i.opciones] } : {}), ...(i.esAdicional ? { esAdicional: true as const } : {}) };
+function deOpciones(i: Pick<ItemParaComanda, "detalleDeLinea" | "esAdicional">): { detalle?: string; esAdicional?: true } {
+  return { ...(i.detalleDeLinea ? { detalle: i.detalleDeLinea } : {}), ...(i.esAdicional ? { esAdicional: true as const } : {}) };
 }
 
 export function armarComandas(envios: readonly { numero: number; items: readonly ItemParaComanda[] }[], mesero: string): ComandaDeEnvio[] {
@@ -90,12 +91,12 @@ export function armarComandas(envios: readonly { numero: number; items: readonly
     const autores = [...new Set(envio.items.flatMap((i) => (i.creadoPor ? [i.creadoPor] : [])))];
     const lineas: LineaDeComanda[] = envio.items
       .filter((i) => i.restante > 0)
-      .map((i) => ({ itemId: i.id, producto: i.productoNombre, cantidad: i.restante, ...(i.promoTitulo ? { promoTitulo: i.promoTitulo } : {}), ...deOpciones(i) }));
+      .map((i) => ({ itemId: i.id, producto: i.nombreDeLinea ?? i.productoNombre, cantidad: i.restante, ...(i.promoTitulo ? { promoTitulo: i.promoTitulo } : {}), ...deOpciones(i) }));
     const anulaciones: AnulacionDeComanda[] = envio.items.flatMap((item) =>
       item.anulaciones.map((a, n) => ({
         id: a.id,
         itemId: item.id,
-        producto: item.productoNombre,
+        producto: item.nombreDeLinea ?? item.productoNombre,
         cantidad: -a.cantidad,
         motivo: a.motivoAnulacion ?? "",
         por: a.creadoPor ?? "—",

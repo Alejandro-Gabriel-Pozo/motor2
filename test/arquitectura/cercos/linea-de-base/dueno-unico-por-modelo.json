@@ -1,16 +1,15 @@
 {
   "regla": "dueno-unico-por-modelo",
   "meta": "bajar: cada modelo lo escribe un solo dominio; la Fase 2 saca PrecioLocalProducto (DEC-22)",
-  "total": 21,
-  "entradas": 8,
+  "total": 19,
+  "entradas": 7,
   "porTipo": {
-    "dominio:auth": 5,
+    "dominio:auth": 4,
     "dominio:catalogo": 1,
     "dominio:compras": 1,
     "dominio:invitaciones": 2,
     "dominio:movimientos": 6,
     "dominio:permisos": 2,
-    "dominio:pos": 1,
     "dominio:reportes": 1,
     "dominio:traspasos": 2
   },
@@ -34,10 +33,6 @@
     },
     "PagoConsignante": {
       "dominio:reportes": 1
-    },
-    "Sucursal": {
-      "dominio:auth": 1,
-      "dominio:pos": 1
     },
     "UsuarioEmpresa": {
       "dominio:auth": 1,

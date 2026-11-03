@@ -10,7 +10,7 @@ import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia } from "../../src/core/
  *
  * Los `ConteoFisico` se siembran directo por Prisma (mismo criterio que el resto de los E2E de este reporte: los
  * movimientos de Kardex se escriben directo, sin pasar por la acción — lo que se prueba con browser real es la
- * PANTALLA, no `registrarConteoFisico`, que ya tiene su propia cobertura en test/movimientos/conteo-fisico.test.ts).
+ * PANTALLA, no `registrarConteosFisicos`, que ya tiene su propia cobertura en test/movimientos/conteo-fisico.test.ts).
  */
 test("con dos anclas de Conteo Físico que cubren el insumo, la fila se mide (no se estima): 0% de desvío, 'Medido (Conteo Físico)' y 'contado dd → dd' en vez de Δ stock", async ({
   paginaAutenticada: page,

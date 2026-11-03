@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ACCIONES } from "../../src/core/permisos/acciones";
-import { GRUPOS_NAV } from "../../src/core/navegacion/estructura";
+import { GRUPOS_NAV, RUTAS_FUERA_DEL_MENU } from "../../src/core/navegacion/estructura";
 
 /**
  * Cada página de /reportes tiene que estar protegida con una acción de «Ver», y esa acción tiene que ser la misma que el
@@ -21,7 +21,9 @@ function paginas(dir: string): string[] {
 }
 
 const CLAVES = new Set(ACCIONES.map((a) => a.clave as string));
-const itemsDelMenu = new Map(GRUPOS_NAV.flatMap((g) => g.items).map((i) => [i.href, i]));
+// Decisión del dueño 2026-10-29: «Descuentos de productos» está oculto del menú (`DESCUENTO_POR_PRODUCTO_VISIBLE = false`) y pasa a `RUTAS_FUERA_DEL_MENU`; su pantalla sigue existiendo y la acción
+// declarada tiene que seguir siendo la que pide la página. Se mira el menú y las pantallas fuera del menú (con el interruptor prendido, vuelve al menú).
+const itemsDelMenu = new Map([...GRUPOS_NAV.flatMap((g) => g.items), ...RUTAS_FUERA_DEL_MENU].map((i) => [i.href, i]));
 
 describe("reportes: toda página lleva una acción de Ver y coincide con el menú", () => {
   const todas = paginas(RAIZ).map((ruta) => {
@@ -39,7 +41,7 @@ describe("reportes: toda página lleva una acción de Ver y coincide con el men�
     expect(CLAVES.has(clave as string), `${pagina.href} usa la acción "${clave}", que no está en ACCIONES`).toBe(true);
 
     const item = itemsDelMenu.get(pagina.href);
-    expect(item, `${pagina.href} no está en el menú (GRUPOS_NAV)`).toBeDefined();
+    expect(item, `${pagina.href} no está en el menú (GRUPOS_NAV) ni en RUTAS_FUERA_DEL_MENU`).toBeDefined();
     expect(item?.accion, `El menú muestra ${pagina.href} con la acción "${item?.accion}" pero la página se protege con "${clave}"`).toBe(clave);
   });
 });

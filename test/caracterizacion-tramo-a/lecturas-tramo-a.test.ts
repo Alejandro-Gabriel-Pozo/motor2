@@ -55,8 +55,8 @@ import { detectarCuentasDeGoogleSospechosas, medirPrecargadosSinGoogle } from ".
  * Archivo propio y no los snapshots de Vitest para que `-u` no lo pueda regenerar en silencio.
  *
  * Lo que NO se repite acá porque ya tiene su resultado completo con `toEqual` en otro test (anotado en el informe del trabajo 2.3):
- * `obtenerLimiteMesasAbiertas` (test/consultas/pos/mesas.test.ts) y el resultado de `medirPrecargadosSinGoogle` (test/auth/precargados.test.ts; acá solo
- * se fija su conteo de consultas).
+ * el resultado de `medirPrecargadosSinGoogle` (test/auth/precargados.test.ts; acá solo se fija su conteo de consultas). (`obtenerLimiteMesasAbiertas` también estaba
+ * en esta lista; se retiró el 2026-10-29 con el límite de mesas.)
  */
 const ARCHIVO = join(__dirname, "lecturas-tramo-a.golden.json");
 const REGENERAR = process.env.REGENERAR_CARACTERIZACION_TRAMO_A === "1";
@@ -141,7 +141,7 @@ const CAJERO = "usr-cajero";
  */
 async function sembrarEscenario(): Promise<void> {
   // Sucursales, portal y tema.
-  await prisma.sucursal.create({ data: { id: CENTRAL, nombre: "Central", maxMesasAbiertas: 5, creadoEn: t(-600) } });
+  await prisma.sucursal.create({ data: { id: CENTRAL, nombre: "Central", creadoEn: t(-600) } });
   await prisma.sucursal.create({ data: { id: NORTE, nombre: "Norte", creadoEn: t(-600) } });
   await prisma.sucursal.create({ data: { id: SUR, nombre: "Sur", activo: false, creadoEn: t(-600) } });
   await prisma.sucursalPublica.createMany({

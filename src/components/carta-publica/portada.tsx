@@ -12,10 +12,9 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
   const v = estilo.valores;
   const logoUrl = v.restaurante_logo_url;
   const bgUrl = v.hero_imagen_fondo_url;
-  // Sin `hero_ink` cargado: con imagen de fondo, el overlay aclara hacia --carta-bg (texto oscuro contrasta bien); sin
-  // imagen, el fondo es --carta-primary sólido (un ámbar oscuro) y el --carta-ink por defecto (casi negro) no alcanza
-  // 3:1 — blanco sí. Puesto una sola vez acá y heredado por todo el contenido (currentColor en los separadores).
-  // `estilo.portada.colorTexto` ya trae la prioridad textos > hero_ink > derivado del fondo cargado.
+  // Sin color de texto cargado, la imagen conserva sus colores y el texto cae a --carta-ink; sin imagen, el fondo es
+  // --carta-primary sólido (un ámbar oscuro) y el blanco da mejor contraste. `estilo.portada.colorTexto` ya prioriza
+  // color_portada_textos > hero_ink > derivado del fondo cargado.
   const p = estilo.portada;
   const colorTexto = p.colorTexto ?? (bgUrl ? "var(--carta-ink)" : "#fff");
   const colorCta = p.colorCta;
@@ -27,7 +26,6 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- fondo full-bleed de tamaño desconocido, no candidato de next/image */}
       {bgUrl && <img src={bgUrl} alt="" aria-hidden loading="eager" className="absolute inset-0 -z-10 h-full w-full object-cover" />}
-      {bgUrl && <div className="absolute inset-0 -z-10" style={{ backgroundColor: `color-mix(in oklch, ${p.fondo ?? "var(--carta-bg)"} 75%, transparent)` }} aria-hidden />}
 
       {/* Bloque y CTA: en mobile van posicionados por % (`carta_pos_bloque` / `carta_pos_cta`, ver `.portada-bloque`/`.portada-cta` en
           globals.css); desde `sm` vuelven al flujo centrado de siempre. */}
@@ -36,6 +34,17 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
         className="portada-bloque flex flex-col items-center gap-4"
         style={{ "--portada-pos-bloque": p.posBloquePct } as React.CSSProperties}
       >
+      <div className="relative flex flex-col items-center gap-4">
+      {/* Velo CENTRADO en el bloque (logo y textos), no sobre toda la imagen: oscurece solo detrás del texto y se desvanece hacia los bordes (mancha suave casi del ancho de la pantalla, como la portada original),
+          así la imagen conserva sus colores. Sin ajuste en el Tema: es parte de cómo se ve la portada con imagen. Acompaña al bloque porque es su hijo. */}
+      {bgUrl && (
+        <div
+          data-portada-velo
+          aria-hidden
+          className="pointer-events-none absolute -inset-x-12 -inset-y-40 -z-10"
+          style={{ backgroundImage: "radial-gradient(closest-side, oklch(0 0 0 / 0.5), oklch(0 0 0 / 0.3) 45%, transparent)" }}
+        />
+      )}
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={logoUrl} alt={restauranteNombre} className="h-16 w-16 object-contain" />
@@ -76,6 +85,7 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
           <span className="block h-px w-10 opacity-30" style={{ backgroundColor: "currentColor" }} />
         </div>
       )}
+      </div>
       </div>
 
       {v.carta_texto_portada_cta && (

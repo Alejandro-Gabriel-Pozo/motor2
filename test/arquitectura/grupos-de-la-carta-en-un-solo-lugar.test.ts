@@ -3,8 +3,8 @@ import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * Regla de arquitectura: «¿qué grupos de opciones lee la carta de este producto?» se decide en UN solo lugar —`resumenDePreciosParaLaCarta` y `tablaDePreciosParaLaCarta`
- * (`core/pos/precio-de-configuracion.ts`), que aplican `seOcultaEnLaCarta` (`core/opciones/lectura-en-carta.ts`)—. Decisión del dueño del 2026-10-29 («Mostrar este grupo en la carta»,
+ * Regla de arquitectura: «¿qué grupos de opciones lee la carta de este producto?» se decide en UN solo lugar —`cartaDeUnProducto`
+ * (`core/pos/precio-de-configuracion.ts`, que calcula el resumen y la tabla de cada producto una sola vez), que aplica `seOcultaEnLaCarta` (`core/opciones/lectura-en-carta.ts`)—. Decisión del dueño del 2026-10-29 («Mostrar este grupo en la carta»,
  * diseño `docs/diseno-ocultar-grupo-en-carta-2026-10-29.md`, I5). Un lector de la carta que llame `resumenDePrecios` a secas muestra un grupo que otro oculta: la carta en pantalla, la impresa,
  * la vista previa del producto y el «Va a mostrar» de Carta › Hoy dejarían de coincidir, y TypeScript no lo detecta (las dos funciones tipan igual).
  *
@@ -50,7 +50,7 @@ describe("grupos de la carta: un solo lugar decide cuáles se leen", () => {
     expect(deLaCarta.length).toBeGreaterThan(10);
   });
 
-  it("ningún lector de la carta llama `resumenDePrecios` a secas: todos pasan por `resumenDePreciosParaLaCarta`", () => {
+  it("ningún lector de la carta llama `resumenDePrecios` a secas: todos pasan por `cartaDeUnProducto`", () => {
     const problemas: string[] = [];
     for (const ruta of deLaCarta) {
       const nombre = relative(RAIZ, ruta).split(sep).join("/");
@@ -58,21 +58,22 @@ describe("grupos de la carta: un solo lugar decide cuáles se leen", () => {
     }
     expect(
       problemas,
-      `Estas líneas leen el resumen de precios sin pasar por resumenDePreciosParaLaCarta (core/pos/precio-de-configuracion): la carta mostraría un grupo que el dueño ocultó:\n${problemas.join("\n")}`
+      `Estas líneas leen el resumen de precios sin pasar por cartaDeUnProducto (core/pos/precio-de-configuracion): la carta mostraría un grupo que el dueño ocultó:\n${problemas.join("\n")}`
     ).toEqual([]);
   });
 
   it("los tres lectores que arman las opciones de la carta usan el punto único (la regla no quedó sin lectores)", () => {
     for (const lector of ["server/lecturas/carta/menu.ts", "server/consultas/carta/mantenimiento.ts", "server/consultas/carta/vista-previa-de-un-producto.ts"]) {
-      expect(readFileSync(join(RAIZ, lector), "utf8"), lector).toMatch(/\bresumenDePreciosParaLaCarta\(/);
+      expect(readFileSync(join(RAIZ, lector), "utf8"), lector).toMatch(/\bcartaDeUnProducto\(/);
     }
   });
 
   it("el punto único calcula con TODOS los grupos y filtra la salida (no el cálculo)", () => {
     const fuente = readFileSync(join(RAIZ, "core/pos/precio-de-configuracion.ts"), "utf8");
-    const cuerpo = fuente.slice(fuente.indexOf("export function resumenDePreciosParaLaCarta"), fuente.indexOf("/** Un grupo vigente tal como lo lee la carta"));
+    const cuerpo = fuente.slice(fuente.indexOf("export function cartaDeUnProducto"), fuente.indexOf("/**\n * Los grupos de UN producto con la grilla"));
     expect(cuerpo).toMatch(/resumenDePrecios\(entrada\)/);
-    expect(cuerpo).toMatch(/\.filter\(/);
+    expect(cuerpo).toMatch(/sinLosGruposOcultos\(/);
+    expect(fuente).toMatch(/function sinLosGruposOcultos[^]*?\.filter\(/);
     expect(fuente).toMatch(/const ocultos = gruposOcultosEnLaCarta\(entrada\.grupos\);\s*const grupos: GrupoDeLaTablaDeLaCarta\[\] = resumen\.grupos\.filter\(/);
   });
 
@@ -87,7 +88,7 @@ describe("grupos de la carta: un solo lugar decide cuáles se leen", () => {
     });
 
     it("no marca el punto único ni un comentario que menciona la función", () => {
-      const fuente = ["const enCarta = opcionesParaLaCarta(resumenDePreciosParaLaCarta({ grupos }));", " * la misma regla que la venta (`resumenDePrecios`)", "// resumenDePrecios"].join("\n");
+      const fuente = ["const enCarta = opcionesParaLaCarta(cartaDeUnProducto({ grupos }).conDescuento);", " * la misma regla que la venta (`resumenDePrecios`)", "// resumenDePrecios"].join("\n");
       expect(lineasConResumenDePreciosASecas(fuente)).toEqual([]);
     });
   });

@@ -10,7 +10,7 @@
  */
 export type { CartaV1 } from "./armar-menu";
 // S-25: lo único que la carta pública entrega a un anónimo (la carta armada SIN los ids internos) y la proyección que la arma; ver `carta-publica.ts`.
-export type { AclaracionCartaPublica, CartaPublicaV1, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica, TandaCartaPublica } from "./carta-publica";
+export type { AclaracionCartaPublica, CartaPublicaV1, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "./carta-publica";
 export { partirLaAclaracion, pieDeLaCartaImpresa, recargoEnPesos, textoDeLaAclaracion } from "./texto-de-la-carta";
 export { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-publica";
 export { precioDeCarta } from "./armar-menu";
@@ -21,7 +21,7 @@ export type { TipoDeCupo } from "./cupos-de-promo";
 // GO-3b (D3): la administración de los cupos sin borrar (la clave natural de cada cupo y la diferencia contra lo que hay) y los tipos de cupo para el guard.
 export { LARGO_MAXIMO_NOMBRE_DE_CUPO, TIPOS_DE_CUPO, claveNaturalDeCupo, diferenciaDeCupos } from "./cupos-de-promo";
 export type { CupoExistente, CupoPedido } from "./cupos-de-promo";
-export { aplicarDescuentoDeProducto, precioCobradoConDescuentos } from "./descuento-producto";
+export { DESCUENTO_POR_PRODUCTO_VISIBLE, aplicarDescuentoDeProducto, precioCobradoConDescuentos } from "./descuento-producto";
 export type { Resultado } from "./validaciones";
 // Hito 4, H4C-2: el guard de las promos (`core/features/carta/promos.guard.ts`) valida con los mismos validadores de la carta que usaba la Server Action.
 export { LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_TITULO_CARTA, validarCantidadCupoPromo, validarOrdenCarta, validarPrecioCarta, validarTextoLibreCarta } from "./validaciones";

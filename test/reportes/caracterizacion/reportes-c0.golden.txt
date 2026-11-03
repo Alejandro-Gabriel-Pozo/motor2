@@ -919,14 +919,7 @@
       ultimaFechaConteo: null
     }
   ]
-### 13. historial-producto.buscarProductoParaHistorial(Central, «pizza»)
-  consultas (2): disponibilidadProducto.findMany×1, producto.findMany×1
-  resultado: [
-    {codigo: "MP_CAJA", disponible: true, nombre: "Caja pizza", productoId: "#41", tipo: "MP"},
-    {codigo: "PV_PIZZA", disponible: true, nombre: "Pizza muzzarella", productoId: "#34", tipo: "PV"},
-    {codigo: "PV_NAPOLITANA", disponible: true, nombre: "Pizza napolitana", productoId: "#35", tipo: "PV"}
-  ]
-### 14. historial-producto.obtenerHistorialProducto(Central, Harina 000, todas las secciones, período)
+### 13. historial-producto.obtenerHistorialProducto(Central, Harina 000, todas las secciones, período)
   consultas (7): $queryRaw×1, conteoFisico.count×1, conteoFisico.findMany×1, movimientoStock.aggregate×2, movimientoStock.count×1, producto.findUnique×1
   resultado: {
     codigo: "MP_HARINA",
@@ -1148,27 +1141,27 @@
     totalMovimientos: 13,
     unidadStockNombre: "kg"
   }
-### 15. historial-producto.obtenerIngredientesRecetaVigente(Pizza, Central)
+### 14. historial-producto.obtenerIngredientesRecetaVigente(Pizza, Central)
   consultas (2): recetaSucursal.findMany×1, recetaVersion.findFirst×1
   resultado: [
     {cantidad: 1, nombre: "Caja pizza", unidad: "unidad"},
     {cantidad: 0.2, nombre: "Harina 000", unidad: "kg"},
     {cantidad: 0.25, nombre: "Muzzarella A", unidad: "kg"}
   ]
-### 16. historial-producto.obtenerIngredientesRecetaVigente(Pizza, Norte: muzzarella calibrada)
+### 15. historial-producto.obtenerIngredientesRecetaVigente(Pizza, Norte: muzzarella calibrada)
   consultas (2): recetaSucursal.findMany×1, recetaVersion.findFirst×1
   resultado: [
     {cantidad: 1, nombre: "Caja pizza", unidad: "unidad"},
     {cantidad: 0.2, nombre: "Harina 000", unidad: "kg"},
     {cantidad: 0.28, nombre: "Muzzarella A", unidad: "kg"}
   ]
-### 17. huecos-catalogo.generarReporteHuecosCatalogo(Central)
+### 16. huecos-catalogo.generarReporteHuecosCatalogo(Central)
   consultas (8): $queryRaw×1, capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, recetaVersion.findMany×1
   resultado: {
     insumosConRecetaSinProveedor: [{codigo: "MP_TOMATE", insumoNombre: null, producto: "Tomate", productoId: "#42"}],
     pvSinVentaNunca: [{codigo: "PV_EMPANADA", producto: "Empanada", productoId: "#45"}]
   }
-### 18. huecos-catalogo.obtenerProblemasUnidadMezclada()
+### 17. huecos-catalogo.obtenerProblemasUnidadMezclada()
   consultas (1): producto.findMany×1
   resultado: [
     {
@@ -1178,13 +1171,13 @@
       unidades: ["kg", "unidad"]
     }
   ]
-### 19. insumos-sin-receta.generarReporteInsumosSinRecetaVinculada(Central)
+### 18. insumos-sin-receta.generarReporteInsumosSinRecetaVinculada(Central)
   consultas (7): $queryRaw×1, capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, recetaVersion.findMany×1
   resultado: [
     {codigo: "MP_ACEITE", insumoNombre: "Aceite", producto: "Aceite de oliva", productoId: "#48", tieneProveedor: true},
     {codigo: "MP_HARINA_BOLSA", insumoNombre: "Harina", producto: "Harina en bolsa", productoId: "#49", tieneProveedor: false}
   ]
-### 20. margen-promociones.obtenerReporteMargenPromociones(Central, período)
+### 19. margen-promociones.obtenerReporteMargenPromociones(Central, período)
   consultas (12): $queryRaw×1, capacidadSucursal.findMany×1, cuentaItem.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×2, precioLocalProducto.findMany×1, producto.findMany×1, promoCarta.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1
   resultado: {
     ahorroCliente: 1000,
@@ -1214,7 +1207,7 @@
       }
     ]
   }
-### 21. margen-real.calcularMargenRealDelPeriodo(Central, las líneas del período, sin catálogo precargado)
+### 20. margen-real.calcularMargenRealDelPeriodo(Central, las líneas del período, sin catálogo precargado)
   consultas (9): $queryRaw×1, capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1
   resultado: {
     coberturaCostoRealPct: 53.6,
@@ -1308,7 +1301,7 @@
     },
     ventasSinPrecioExcluidas: 0
   }
-### 22. perdidas.generarReportePerdidas(Central, 30 días)
+### 21. perdidas.generarReportePerdidas(Central, 30 días)
   consultas (2): $queryRaw×1, movimientoStock.findMany×1
   resultado: {
     consumos: [
@@ -1618,7 +1611,7 @@
     totalConsumo: 48228,
     totalMerma: 3000
   }
-### 23. periodo-margen.calcularMargenDelPeriodo(Central, líneas y ventas del período, catálogo cargado, SIN índice de recetas)
+### 22. periodo-margen.calcularMargenDelPeriodo(Central, líneas y ventas del período, catálogo cargado, SIN índice de recetas)
   consultas (6): $queryRaw×2, indicePrecio.findMany×1, movimientoStock.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1
   resultado: {
     antiguedadIPC: {diasDeAtraso: 14, estado: "al-dia", maximo: 60, ultimoMes: "2026-02"},
@@ -1717,7 +1710,7 @@
     ],
     ventasSinPrecioExcluidas: 0
   }
-### 24. periodo-precios.calcularTendenciaPreciosDelPeriodo(Central, desde 16-feb)
+### 23. periodo-precios.calcularTendenciaPreciosDelPeriodo(Central, desde 16-feb)
   consultas (1): $queryRaw×1
   resultado: [
     {
@@ -1751,7 +1744,7 @@
       sospechoso: false
     }
   ]
-### 25. periodo-precios.calcularComparativaPreciosDelPeriodo(Central, período, tendencia de arriba)
+### 24. periodo-precios.calcularComparativaPreciosDelPeriodo(Central, período, tendencia de arriba)
   consultas (4): capacidadSucursal.findMany×1, indicePrecio.findMany×1, precioLocalProducto.findMany×1, registroAuditoria.findMany×1
   resultado: {
     antiguedadIPC: {diasDeAtraso: 14, estado: "al-dia", maximo: 60, ultimoMes: "2026-02"},
@@ -1763,7 +1756,7 @@
     variacionIPCPct: 0,
     variacionInsumosPct: 11.8
   }
-### 26. periodo-ratio.calcularRatioGastoVentas(Central, período, totales del reporte, SIN clasificación precargada)
+### 25. periodo-ratio.calcularRatioGastoVentas(Central, período, totales del reporte, SIN clasificación precargada)
   consultas (2): grupo.findMany×1, movimientoStock.groupBy×1
   resultado: {
     aviso: "Compras ÷ Ventas del período — mide desembolso, no consumo real: una compra grande para stockear sube este número sin que se haya consumido más. Sirve para ver la tendencia, no como food cost exacto. Solo cuenta comida y bebida: el packaging y la limpieza (grupo «No comestibles») quedan fuera de este porcentaje, y de su comparación con el período anterior.",
@@ -1772,7 +1765,7 @@
     porcentaje: 19.8,
     porcentajePeriodoAnterior: 394.6
   }
-### 27. periodo.obtenerReportePorPeriodo(Central, 16-feb → 15-mar, sin filtros)
+### 26. periodo.obtenerReportePorPeriodo(Central, 16-feb → 15-mar, sin filtros)
   consultas (17): $queryRaw×4, capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, indicePrecio.findMany×1, margenObjetivo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×1, precioLocalProducto.findMany×1, producto.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1, registroAuditoria.findMany×1
   resultado: {
     comparativaPrecios: {
@@ -3606,7 +3599,7 @@
       totalFacturado: 234700
     }
   }
-### 28. periodo.obtenerReportePorPeriodoConCatalogo(Central, 16-feb → 15-mar, sin filtros)
+### 27. periodo.obtenerReportePorPeriodoConCatalogo(Central, 16-feb → 15-mar, sin filtros)
   consultas (17): $queryRaw×4, capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, indicePrecio.findMany×1, margenObjetivo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×1, precioLocalProducto.findMany×1, producto.findMany×1, recetaSucursal.findMany×1, recetaVersion.findMany×1, registroAuditoria.findMany×1
   resultado.reporte: idéntico al de obtenerReportePorPeriodo
   resultado.productos: Map{
@@ -3849,7 +3842,7 @@
       unidadStockNombre: "unidad"
     }
   }
-### 29. periodo.generarReporteVentasPorCategoria(Central, período)
+### 28. periodo.generarReporteVentasPorCategoria(Central, período)
   consultas (6): capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×1, precioLocalProducto.findMany×1, producto.findMany×1
   resultado: {
     aviso: "Importe real registrado en cada venta (no una estimación).",
@@ -3868,7 +3861,7 @@
     pvSinCategoria: ["Empanada"],
     totalFacturado: 234700
   }
-### 30. rendimiento-por-sucursal.compararRendimientosPorSucursal(Central + Norte, todas)
+### 29. rendimiento-por-sucursal.compararRendimientosPorSucursal(Central + Norte, todas)
   consultas (2): recetaSucursal.findMany×1, recetaVersion.findMany×1
   resultado: [
     {
@@ -3970,7 +3963,7 @@
       unidadNombre: "kg"
     }
   ]
-### 31. rendimiento-por-sucursal.compararRendimientosDeSucursales(Central + Norte, solo calibradas)
+### 30. rendimiento-por-sucursal.compararRendimientosDeSucursales(Central + Norte, solo calibradas)
   consultas (2): recetaSucursal.findMany×1, recetaVersion.findMany×1
   resultado: [
     {
@@ -3988,7 +3981,7 @@
       unidadNombre: "kg"
     }
   ]
-### 32. rendimiento-recetas.calcularRendimientoRecetasSimples(Central, período)
+### 31. rendimiento-recetas.calcularRendimientoRecetasSimples(Central, período)
   consultas (15): $queryRaw×1, conteoFisico.findMany×1, grupo.findMany×1, movimientoStock.findMany×5, movimientoStock.groupBy×3, producto.findMany×2, recetaSucursal.findMany×1, recetaVersion.findMany×1
   resultado: [
     {
@@ -4147,7 +4140,7 @@
       unidadRecetaNombre: "kg"
     }
   ]
-### 33. rendimiento-recetas.calcularRendimientoRecetasCompartidas(Central, período)
+### 32. rendimiento-recetas.calcularRendimientoRecetasCompartidas(Central, período)
   consultas (11): $queryRaw×1, conteoFisico.findMany×1, grupo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×2, producto.findMany×2, recetaSucursal.findMany×1, recetaVersion.findMany×1
   resultado: [
     {
@@ -4211,7 +4204,7 @@
       unidadRecetaNombre: "kg"
     }
   ]
-### 34. resumen-operativo.obtenerResumenOperativo(Central, ahora, rango por defecto)
+### 33. resumen-operativo.obtenerResumenOperativo(Central, ahora, rango por defecto)
   consultas (22): $queryRaw×4, capacidadSucursal.findMany×1, disponibilidadProducto.findMany×1, grupo.findMany×1, indicePrecio.findMany×1, margenObjetivo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×3, precioLocalProducto.findMany×1, producto.findMany×2, recetaSucursal.findMany×1, recetaVersion.findMany×1, registroAuditoria.findMany×1, seccion.findMany×1, stockMinimoProducto.findMany×1
   resultado: {
     alertas: {bajos: 1, criticos: 0, total: 1},
@@ -4276,7 +4269,7 @@
       {producto: "Pizza napolitana", saldo: -7, seccion: "Depósito"}
     ]
   }
-### 35. resumen-consolidado.obtenerResumenConsolidado(Central + Norte, ahora)
+### 34. resumen-consolidado.obtenerResumenConsolidado(Central + Norte, ahora)
   consultas (16): $queryRaw×1, capacidadSucursal.findMany×2, disponibilidadProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×1, movimientoStock.groupBy×1, precioLocalProducto.findMany×2, producto.findMany×1, recetaSucursal.findMany×2, recetaVersion.findMany×2, seccion.findMany×1, stockMinimoProducto.findMany×1
   resultado: [
     {
@@ -4298,7 +4291,7 @@
       ventasTotal: 13000
     }
   ]
-### 36. rotacion-mesas.generarReporteRotacionMesas(Central, 1-mar → 15-mar, Buenos Aires)
+### 35. rotacion-mesas.generarReporteRotacionMesas(Central, 1-mar → 15-mar, Buenos Aires)
   consultas (1): cuenta.findMany×1
   resultado: {
     abiertasSinCerrar: 1,
@@ -4311,7 +4304,7 @@
     porFranjaHoraria: [{cantidad: 1, comensalesPromedio: 2, duracionPromedioMin: 70, hora: 9}, {cantidad: 1, comensalesPromedio: 4, duracionPromedioMin: 90, hora: 17}],
     porTamanoGrupo: [{cantidad: 1, duracionPromedioMin: 70, grupo: "2"}, {cantidad: 1, duracionPromedioMin: 90, grupo: "4"}]
   }
-### 37. salud-por-producto.generarReporteSaludPorProducto(Central)
+### 36. salud-por-producto.generarReporteSaludPorProducto(Central)
   consultas (18): $queryRaw×1, capacidadSucursal.findMany×1, conteoFisico.findMany×1, disponibilidadProducto.findMany×1, frecuenciaConteoProducto.findMany×1, grupo.findMany×1, movimientoStock.findMany×2, movimientoStock.groupBy×2, precioLocalProducto.findMany×1, producto.findMany×2, recetaSucursal.findMany×1, recetaVersion.findMany×2, seccion.findMany×1, stockMinimoProducto.findMany×1
   resultado: [
     {
@@ -4414,7 +4407,7 @@
       sinRecetaVinculada: false
     }
   ]
-### 38. tickets-emitidos.listarTicketsEmitidos(Central, sin filtro)
+### 37. tickets-emitidos.listarTicketsEmitidos(Central, sin filtro)
   consultas (1): ejemplarTicket.findMany×1
   resultado: {
     items: [
@@ -4529,10 +4522,10 @@
     ],
     nextCursor: null
   }
-### 39. tickets-emitidos.obtenerNumeroDeMesa(Central, mesa 4)
+### 38. tickets-emitidos.obtenerNumeroDeMesa(Central, mesa 4)
   consultas (1): mesa.findFirst×1
   resultado: 4
-### 40. trazabilidad.obtenerOperacionPorId(Central, la primera compra de lácteos)
+### 39. trazabilidad.obtenerOperacionPorId(Central, la primera compra de lácteos)
   consultas (1): operacion.findFirst×1
   resultado: {
     anuladaEn: null,
@@ -4568,7 +4561,7 @@
     proveedorNombre: "Lácteos del Sur",
     total: 2
   }
-### 41. trazabilidad.buscarOperacionesPorProducto(Central, «harina»)
+### 40. trazabilidad.buscarOperacionesPorProducto(Central, «harina»)
   consultas (1): movimientoStock.findMany×1
   resultado: [
     {fecha: Date(2026-03-10T18:00:00.000Z), idOperacion: "#58", proceso: "CONTROL", seccionNombre: "Depósito"},
@@ -4585,7 +4578,7 @@
     {fecha: Date(2026-02-01T13:00:00.000Z), idOperacion: "#165", proceso: "CONSUMO", seccionNombre: "Depósito"},
     {fecha: Date(2026-01-22T10:00:00.000Z), idOperacion: "#28", proceso: "COMPRA", seccionNombre: "Depósito"}
   ]
-### 42. valuacion.calcularValuacionInventario(Central)
+### 41. valuacion.calcularValuacionInventario(Central)
   consultas (3): $queryRaw×1, movimientoStock.groupBy×1, producto.findMany×1
   resultado: {
     cantidadSinCosto: 2,
@@ -4689,7 +4682,7 @@
     ],
     totalValorizado: 122280
   }
-### 43. vencimientos.generarReporteLotesProximosAVencer(Central, 7 días)
+### 42. vencimientos.generarReporteLotesProximosAVencer(Central, 7 días)
   consultas (3): movimientoStock.groupBy×1, producto.findMany×1, seccion.findMany×1
   resultado: [
     {
@@ -4726,7 +4719,7 @@
       unidadStockNombre: "kg"
     }
   ]
-### 44. vencimientos.generarConciliacionVencimientos(Central)
+### 43. vencimientos.generarConciliacionVencimientos(Central)
   consultas (2): conteoFisico.findMany×1, movimientoStock.findMany×1
   resultado: [
     {
@@ -4740,7 +4733,7 @@
       ventasPeriodo: 0.05
     }
   ]
-### 45. vencimientos.obtenerReporteVencimientosDatos(Central, 7 días)
+### 44. vencimientos.obtenerReporteVencimientosDatos(Central, 7 días)
   consultas (5): conteoFisico.findMany×1, movimientoStock.findMany×1, movimientoStock.groupBy×1, producto.findMany×1, seccion.findMany×1
   resultado: {
     conciliacion: [
@@ -4792,7 +4785,7 @@
       }
     ]
   }
-### 46. ventas-sin-receta.generarReporteVentasSinReceta(Central)
+### 45. ventas-sin-receta.generarReporteVentasSinReceta(Central)
   consultas (4): $queryRaw×1, disponibilidadProducto.findMany×1, grupo.findMany×1, producto.findMany×1
   resultado: [
     {

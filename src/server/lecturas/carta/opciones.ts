@@ -16,7 +16,7 @@ import type { Db } from "@/lib/db-tipos";
  *
  * Fase 5 de la ola «precio y carta» («carta pareja»): + `prefijoEnCarta` del grupo («se lee en la carta como», Fase 4, en `PUBLICACION_CARTA`), para el papel del grupo y el rótulo de cada fila.
  *
- * «Mostrar este grupo en la carta» (2026-10-29): + `ProductoAdmiteGrupo.seMuestraEnCarta` (en `PUBLICACION_CARTA`), que decide `resumenDePreciosParaLaCarta` / `tablaDePreciosParaLaCarta` (el único lugar que filtra grupos de la carta).
+ * «Mostrar este grupo en la carta» (2026-10-29): + `ProductoAdmiteGrupo.seMuestraEnCarta` (en `PUBLICACION_CARTA`), que decide `cartaDeUnProducto` (`core/pos/precio-de-configuracion.ts`, el único lugar que filtra grupos de la carta).
  *
  * SIN `import "server-only"` a propósito, como las demás lecturas de la carta (`menu.ts`, `descuentos.ts`): las alcanza la carta pública y los tests la llaman directo.
  */

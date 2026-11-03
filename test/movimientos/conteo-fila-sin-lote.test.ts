@@ -5,12 +5,12 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { listarStockParaConteo } from "../../src/server/consultas/movimientos/stock-para-conteo";
 
 /**
  * La grilla del conteo físico ofrece una fila por (producto, lote) y, si el producto TAMBIÉN tiene stock sin lote, una fila «Todos los lotes» con el saldo TOTAL: contar sin lote es contar el
- * total (`registrarConteoFisico` compara contra `calcularSaldoTotal`), y lo que la grilla muestra tiene que ser lo que se compara (decisión del dueño, opción 2). Antes esa fila mostraba el saldo
+ * total (`registrarConteoFisicoCasoDeUso` compara contra `calcularSaldoTotal`), y lo que la grilla muestra tiene que ser lo que se compara (decisión del dueño, opción 2). Antes esa fila mostraba el saldo
  * del grupo sin lote (4) pero se comparaba contra el total (14): contarla con 4 ajustaba −10 y el sistema quedaba con 4 teniendo 14 físicos. Caso mixto: 10 con lote y 4 sin lote.
  */
 describe("conteo: la fila «sin lote» de un producto con lotes es el total y se compara contra el total", () => {
@@ -46,7 +46,7 @@ describe("conteo: la fila «sin lote» de un producto con lotes es el total y se
     const fila = (await filasDelProducto()).find((f) => f.esTotalDeLotes)!;
     const movimientosAntes = await prisma.movimientoStock.count();
 
-    const r = await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: fila.saldoSistema, fechaConteo: new Date(), accion: "AJUSTAR" });
+    const r = await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: fila.saldoSistema, fechaConteo: new Date(), accion: "AJUSTAR" });
 
     expect(r.ok, r.mensaje).toBe(true);
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
@@ -56,7 +56,7 @@ describe("conteo: la fila «sin lote» de un producto con lotes es el total y se
   });
 
   it("contar la fila del lote sigue comparando contra ese lote (10), sin mirar lo sin lote", async () => {
-    const r = await registrarConteoFisico({ productoId: mpId, seccionId, loteVencimiento: lote, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" });
+    const r = await registrarUnConteoFisico({ productoId: mpId, seccionId, loteVencimiento: lote, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" });
     expect(r.ok, r.mensaje).toBe(true);
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
     expect(Number(conteo.saldoSistema)).toBe(10);

@@ -1,4 +1,6 @@
-import { formatearPrecioCarta, textoDeLaAclaracion, type AclaracionCartaV1, type PresentacionCartaV1, type VistaPreviaDeLaCarta } from "@/core/carta/public";
+import type { CSSProperties } from "react";
+import { resolverEstiloCarta, textoDeLaAclaracion, type AclaracionCartaV1, type PresentacionCartaV1, type VistaPreviaDeLaCarta } from "@/core/carta/public";
+import { ItemFila } from "@/components/carta-publica/seccion";
 import { Aviso } from "@/ui/primitivas/aviso";
 
 /**
@@ -6,17 +8,10 @@ import { Aviso } from "@/ui/primitivas/aviso";
  * recibe: el servidor ya calculó la forma y los precios con la regla de la venta (`cargarVistaPreviaDeLaCarta`). Acá no se compone ni se redondea ningún precio, no se aplica ningún descuento ni se
  * arma un resumen: el archivo no puede importar `core/pos` (regla de dependency-cruiser `vista-previa-sin-calculo-de-precio`), así que no tiene con qué. Es de solo lectura, sin formularios.
  *
- * Las formas son las de la carta: el producto con su precio (`simple`), en columnas, en tabla, o en lista (con el nombre arriba o cada opción como un plato), y debajo lo que se elige o se suma.
- * Una celda sin precio dice «–» y, para el lector de pantalla, «no se ofrece». Solo tokens del sistema visual y sin modo oscuro (DEC-04).
+ * Las formas son las de la carta: el producto con su precio (`simple`, en un renglón de texto: acá no hay un precio de «desde» para mostrar) o la tabla, que se dibuja con el MISMO componente que la carta
+ * pública (`ItemFila`, con la escala de letra y los colores de la carta sin tema). Una celda sin precio dice «–» y, para el lector de pantalla, «no se ofrece».
  */
-const SIN_PRECIO = (
-  <>
-    <span aria-hidden="true">–</span>
-    <span className="sr-only">no se ofrece</span>
-  </>
-);
-
-const precio = (x: number | null) => (x === null ? SIN_PRECIO : formatearPrecioCarta(x));
+const ESTILO = resolverEstiloCarta({});
 
 function Aclaraciones({ lista }: { lista: AclaracionCartaV1[] }) {
   if (lista.length === 0) return null;
@@ -31,99 +26,26 @@ function Aclaraciones({ lista }: { lista: AclaracionCartaV1[] }) {
   );
 }
 
-const CELDA = "px-2 py-1 text-right tabular-nums";
-
-function Forma({ nombre, presentacion, rotulos }: { nombre: string; presentacion: PresentacionCartaV1; rotulos: readonly string[] }) {
-  switch (presentacion.forma) {
-    case "simple":
-      return (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm">
-            <span className="font-medium">{nombre}</span> con su precio.
-          </p>
-          <Aclaraciones lista={presentacion.aclaraciones} />
-        </div>
-      );
-    case "columnas":
-      return (
-        <div className="flex flex-col gap-2">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <caption className="pb-1 text-left font-medium">{nombre}</caption>
-              <thead>
-                <tr className="border-b border-borde text-tinta-suave">
-                  {rotulos.map((r) => (
-                    <th key={r} scope="col" className={`${CELDA} font-normal`}>
-                      {r}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {presentacion.celdas.map((c, i) => (
-                    <td key={rotulos[i] ?? i} className={CELDA}>
-                      {precio(c)}
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <Aclaraciones lista={presentacion.aclaraciones} />
-        </div>
-      );
-    case "tabla":
-      return (
-        <div className="flex flex-col gap-2">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <caption className="pb-1 text-left font-medium">{nombre}</caption>
-              <thead>
-                <tr className="border-b border-borde text-tinta-suave">
-                  <td />
-                  {presentacion.columnas.map((c) => (
-                    <th key={c} scope="col" className={`${CELDA} font-normal`}>
-                      {c}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {presentacion.filas.map((f) => (
-                  <tr key={f.rotulo} className="border-b border-borde last:border-b-0">
-                    <th scope="row" className="px-2 py-1 text-left font-normal">
-                      {f.rotulo}
-                    </th>
-                    {f.celdas.map((c, i) => (
-                      <td key={presentacion.columnas[i] ?? i} className={CELDA}>
-                        {precio(c)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Aclaraciones lista={presentacion.aclaraciones} />
-        </div>
-      );
-    case "lista":
-      return (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium">{presentacion.encabezado || presentacion.protagonista === "nombre" ? nombre : "Cada opción se lee como un plato:"}</p>
-          <ul className="flex flex-col text-sm">
-            {presentacion.filas.map((f) => (
-              <li key={f.rotulo} className="flex justify-between gap-3 border-b border-borde py-1 last:border-b-0">
-                <span>{f.rotulo}</span>
-                <span className="tabular-nums">{formatearPrecioCarta(f.precio)}</span>
-              </li>
-            ))}
-          </ul>
-          <Aclaraciones lista={presentacion.aclaraciones} />
-        </div>
-      );
+function Forma({ nombre, presentacion }: { nombre: string; presentacion: PresentacionCartaV1 }) {
+  if (presentacion.forma === "simple") {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm">
+          <span className="font-medium">{nombre}</span> con su precio.
+        </p>
+        <Aclaraciones lista={presentacion.aclaraciones} />
+      </div>
+    );
   }
+  // La tabla (o la base oculta) es el dibujo de la carta: el servidor ya puso el precio de cada celda.
+  const item = { nombre, categoria: "", descripcion: null, precio: 0, tags: [], especial: false, imagenUrl: null, presentacion };
+  return (
+    <div className="carta-shell rounded px-4" style={ESTILO.variablesCss as CSSProperties}>
+      <ul>
+        <ItemFila item={item} estilo={ESTILO} />
+      </ul>
+    </div>
+  );
 }
 
 export function VistaPreviaDeLaCarta({ nombre, sucursalNombre, vista }: { nombre: string; sucursalNombre: string; vista: VistaPreviaDeLaCarta }) {
@@ -142,7 +64,7 @@ export function VistaPreviaDeLaCarta({ nombre, sucursalNombre, vista }: { nombre
       ) : vista.tipo === "texto" ? (
         <p className="text-sm">{vista.texto}</p>
       ) : (
-        <Forma nombre={nombre} presentacion={vista.presentacion} rotulos={vista.rotulos} />
+        <Forma nombre={nombre} presentacion={vista.presentacion} />
       )}
     </section>
   );

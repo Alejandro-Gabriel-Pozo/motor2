@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { enElPasado, DIA_MS } from "../setup/tiempo";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
 import type { Db } from "../../src/lib/db-tipos";
 
@@ -52,7 +52,7 @@ describe("calcularStockConsolidado: entradas y salidas desde el conteo", () => {
       [azucar, seccionAId, 7],
     ] as const) {
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad }], claveIdempotencia: crypto.randomUUID() });
-      await registrarConteoFisico({ productoId: p.id, seccionId, conteoReal: cantidad, fechaConteo, accion: "AJUSTAR" });
+      await registrarUnConteoFisico({ productoId: p.id, seccionId, conteoReal: cantidad, fechaConteo, accion: "AJUSTAR" });
     }
     // Sal tiene movimientos pero NINGÚN conteo.
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: sal.id, cantidad: 9 }], claveIdempotencia: crypto.randomUUID() });
@@ -79,7 +79,7 @@ describe("calcularStockConsolidado: entradas y salidas desde el conteo", () => {
     for (let i = 0; i < 6; i++) productos.push(await producto(`MP_${i}`, `Insumo ${i}`));
     for (const p of productos) {
       await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: p.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
-      await registrarConteoFisico({ productoId: p.id, seccionId: seccionAId, conteoReal: 10, fechaConteo: enElPasado(DIA_MS), accion: "AJUSTAR" });
+      await registrarUnConteoFisico({ productoId: p.id, seccionId: seccionAId, conteoReal: 10, fechaConteo: enElPasado(DIA_MS), accion: "AJUSTAR" });
     }
 
     const operaciones: string[] = [];

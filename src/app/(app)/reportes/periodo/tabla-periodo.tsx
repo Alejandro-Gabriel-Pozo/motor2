@@ -1,7 +1,7 @@
 "use client";
 
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { SIN_PROVEEDOR, type FilaMargenProducto, type FilaCompraPorProveedor, type FilaGastoPorInsumo, type FilaPrecioInsumo, type FilaImpactoRecetaPorPeriodo } from "@/core/reportes/public";
+import { SIN_PROVEEDOR, type FilaVentaPorOpcion, type FilaMargenProducto, type FilaCompraPorProveedor, type FilaGastoPorInsumo, type FilaPrecioInsumo, type FilaImpactoRecetaPorPeriodo } from "@/core/reportes/public";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 
 const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
@@ -73,6 +73,46 @@ function columnasCompras(desde?: string, hasta?: string): ColumnaReporte<FilaCom
 export function TablaVentasPorProducto({ filas }: { filas: FilaMargenProducto[] }) {
   return (
     <TablaReporte columnas={COLUMNAS_VENTAS} filas={filas} claveFila={(v) => v.productoId} sinFilasTexto="Sin ventas en el período." nombreExport="ventas-por-producto" />
+  );
+}
+
+/** Centavos enteros a pesos para MOSTRAR (la cuenta se hizo en centavos). */
+const pesos = (centavos: number) => `$${(centavos / 100).toLocaleString("es-AR")}`;
+
+// Ventas con opciones (2026-10-29): una fila por (producto, grupo, opción). El margen solo cuando todas las ventas de la fila guardaron su costo al vender.
+const COLUMNAS_VENTAS_POR_OPCION: ColumnaReporte<FilaVentaPorOpcion>[] = [
+  { clave: "producto", etiqueta: "Producto", valor: (f) => f.producto, render: (f) => f.producto },
+  { clave: "grupo", etiqueta: "Grupo", valor: (f) => f.grupo, render: (f) => f.grupo },
+  { clave: "opcion", etiqueta: "Opción", valor: (f) => f.opcion, render: (f) => f.opcion },
+  { clave: "unidades", etiqueta: "Unidades", alinear: "derecha", valor: (f) => f.unidades, render: (f) => f.unidades.toLocaleString("es-AR") },
+  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (f) => f.importeCentavos / 100, render: (f) => pesos(f.importeCentavos) },
+  {
+    clave: "costo",
+    etiqueta: "Costo al vender",
+    alinear: "derecha",
+    valor: (f) => (f.costoCentavos === null ? null : f.costoCentavos / 100),
+    render: (f) =>
+      f.costoCentavos !== null ? pesos(f.costoCentavos) : <span className="text-aviso-tinta">costo incompleto ({f.costoIncompleto?.sinCosto} de {f.costoIncompleto?.de} ventas sin costo guardado)</span>,
+    ayuda: "El costo que se guardó en cada venta al cobrarla (no el de hoy). Si a alguna venta de la fila no se le guardó, no se calcula el margen ni se inventa el costo.",
+  },
+  {
+    clave: "margen",
+    etiqueta: "Margen",
+    alinear: "derecha",
+    valor: (f) => (f.margenCentavos === null ? null : f.margenCentavos / 100),
+    render: (f) => (f.margenCentavos === null ? <span className="text-tinta-suave">—</span> : `${pesos(f.margenCentavos)}${f.margenPorcentaje !== null ? ` (${f.margenPorcentaje}%)` : ""}`),
+  },
+];
+
+export function TablaVentasPorOpcion({ filas }: { filas: FilaVentaPorOpcion[] }) {
+  return (
+    <TablaReporte
+      columnas={COLUMNAS_VENTAS_POR_OPCION}
+      filas={filas}
+      claveFila={(f) => `${f.productoId}|${f.grupoId}|${f.opcionId}`}
+      sinFilasTexto="No hubo ventas con opciones en el período."
+      nombreExport="ventas-por-opcion"
+    />
   );
 }
 

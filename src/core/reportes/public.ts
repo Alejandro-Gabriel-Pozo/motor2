@@ -59,6 +59,9 @@ export type { Confianza } from "./rendimiento-recetas-vistas";
 export { armarSaludPorProducto } from "./salud-por-producto";
 export type { FilaSaludProducto } from "./salud-por-producto";
 export type { FilaVentaSinReceta } from "./ventas-sin-receta";
+// Ventas con opciones (2026-10-29): las ventas por opción elegida, de una sección de Período.
+export { armarVentasPorOpcion } from "./ventas-por-opcion";
+export type { FilaVentaPorOpcion } from "./ventas-por-opcion";
 export type { OperacionEncontrada } from "./trazabilidad";
 export type { ItemOperacion } from "./trazabilidad";
 export type { FilaValuacionInventario } from "./valuacion";
@@ -99,7 +102,6 @@ export type { AccProducto } from "./devoluciones";
 export type { ReporteDevoluciones } from "./devoluciones";
 export type { EstadoDiferencia } from "./diferencias-ajustes";
 export type { RecetaQueUsaInsumo } from "./diferencias-ajustes";
-export type { FilaBusquedaProducto } from "./historial-producto";
 export type { HistorialProducto } from "./historial-producto";
 export type { ProblemaUnidadMezclada } from "./huecos-catalogo";
 export type { ReporteHuecosCatalogo } from "./huecos-catalogo";

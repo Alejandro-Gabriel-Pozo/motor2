@@ -3,7 +3,7 @@ import { presentacionDeUnProductoSolo } from "../../src/core/carta/public";
 import { opcionesParaLaCarta } from "../../src/core/carta/opciones-en-carta";
 import { MODOS_DE_VENTA, TIPOS_DE_GRUPO_DE_OPCIONES, validarAdmisionDeGrupo, validarVersion, type DiferenciaDePrecio, type TipoDeGrupoDeOpciones } from "../../src/core/opciones/public";
 import { armarLineaConfigurada, type GrupoParaVender, type OpcionParaVender } from "../../src/core/pos/linea-configurada";
-import { resumenDePrecios, resumenDePreciosParaLaCarta, tablaDePreciosParaLaCarta, vistaPreviaDeConfiguracion } from "../../src/core/pos/precio-de-configuracion";
+import { cartaDeUnProducto, resumenDePrecios, tablaDePreciosParaLaCarta, vistaPreviaDeConfiguracion } from "../../src/core/pos/precio-de-configuracion";
 
 /**
  * «Mostrar este grupo en la carta» (decisión del dueño, 2026-10-29), COMBINACIONES. Las dimensiones cuyas combinaciones cambian dinero, visibilidad o stock (D1 a D10 del diseño
@@ -65,7 +65,7 @@ function grupo(grupoId: string, nombre: string, tipo: TipoDeGrupoDeOpciones, opc
 
 /** Todo lo que lee la carta de un producto: el resumen, las opciones, la tabla de precios y la forma (la misma cadena que la carta pública, la impresa, la vista previa y «Va a mostrar»). */
 function leerLaCarta(grupos: readonly GrupoDeLaCarta[], p: { precioBase: number; esBase: boolean; descuentoDeProducto: number | null }) {
-  const resumen = resumenDePreciosParaLaCarta({ grupos, ...p });
+  const resumen = cartaDeUnProducto({ grupos, ...p }).conDescuento;
   const enCarta = opcionesParaLaCarta(resumen);
   const tabla = tablaDePreciosParaLaCarta({ grupos, ...p });
   const forma = tabla ? presentacionDeUnProductoSolo({ tabla, esBase: p.esBase, mostrarNombreArriba: false, conDescuento: p.descuentoDeProducto !== null }) : null;
@@ -267,40 +267,40 @@ const agotada = (o: OpcionParaVender): OpcionParaVender => ({ ...o, apagadaEnSuc
 describe("Filas literales del bife (el caso del dueño): la salida esperada está escrita a mano", () => {
   const fila = (caso: string, grupos: GrupoDeLaCarta[], esperado: unknown, p = BIFE) => ({ caso, grupos, esperado, p });
   const FILAS = [
-    fila("1. Corte como incluida, mostrado: una línea «Corte: …»", [corte("INCLUIDA")], { presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Corte", opciones: ["ojo de bife", "bife de chorizo"] }] }, rotulos: [] }),
-    fila("2. Corte como incluida, oculto: «Bife $X» sin aclaraciones", [corte("INCLUIDA", { seMuestraEnCarta: false })], { presentacion: { forma: "simple", aclaraciones: [] }, rotulos: [] }),
-    fila("3. Corte como variante obligatoria, oculto: «Bife $X» sin aclaraciones", [corte("VARIANTE", { seMuestraEnCarta: false })], { presentacion: { forma: "simple", aclaraciones: [] }, rotulos: [] }),
-    fila("4. Corte como variante opcional (0..1), oculto: sin aclaraciones", [corte("VARIANTE", { seMuestraEnCarta: false, cantidadMinima: 0 })], { presentacion: { forma: "simple", aclaraciones: [] }, rotulos: [] }),
+    fila("1. Corte como incluida, mostrado: una línea «Corte: …»", [corte("INCLUIDA")], { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Corte", opciones: ["ojo de bife", "bife de chorizo"] }] }),
+    fila("2. Corte como incluida, oculto: «Bife $X» sin aclaraciones", [corte("INCLUIDA", { seMuestraEnCarta: false })], { forma: "simple", aclaraciones: [] }),
+    fila("3. Corte como variante obligatoria, oculto: «Bife $X» sin aclaraciones", [corte("VARIANTE", { seMuestraEnCarta: false })], { forma: "simple", aclaraciones: [] }),
+    fila("4. Corte como variante opcional (0..1), oculto: sin aclaraciones", [corte("VARIANTE", { seMuestraEnCarta: false, cantidadMinima: 0 })], { forma: "simple", aclaraciones: [] }),
     fila(
       "5. Corte con prefijo «De» (variante 1..1), mostrado: una fila por corte con el nombre arriba",
       [corte("VARIANTE", { prefijoEnCarta: "De" })],
-      { presentacion: { forma: "lista", encabezado: true, filas: [{ rotulo: "De ojo de bife", precio: 20000 }, { rotulo: "De bife de chorizo", precio: 20000 }], aclaraciones: [] }, rotulos: [] }
+      { forma: "tabla", titulo: true, columnas: [], filas: [{ rotulo: "De ojo de bife", celdas: [20000] }, { rotulo: "De bife de chorizo", celdas: [20000] }], aclaraciones: [] }
     ),
-    fila("6. El mismo corte con prefijo, oculto: vuelve a «Bife $X»", [corte("VARIANTE", { prefijoEnCarta: "De", seMuestraEnCarta: false })], { presentacion: { forma: "simple", aclaraciones: [] }, rotulos: [] }),
+    fila("6. El mismo corte con prefijo, oculto: vuelve a «Bife $X»", [corte("VARIANTE", { prefijoEnCarta: "De", seMuestraEnCarta: false })], { forma: "simple", aclaraciones: [] }),
     fila(
       "7. Corte oculto pero con +$2.000 en «Ojo de bife» (apareció un precio): la carta lo muestra igual",
       [corte("VARIANTE", { seMuestraEnCarta: false }, [opcion("o-ojo", "Ojo de bife", { diferenciaDeLaVersion: monto(2000) }), opcion("o-chorizo", "Bife de chorizo")])],
-      { presentacion: { forma: "lista", encabezado: true, filas: [{ rotulo: "Ojo de bife", precio: 22000 }, { rotulo: "Bife de chorizo", precio: 20000 }], aclaraciones: [] }, rotulos: [] }
+      { forma: "tabla", titulo: true, columnas: [], filas: [{ rotulo: "Ojo de bife", celdas: [22000] }, { rotulo: "Bife de chorizo", celdas: [20000] }], aclaraciones: [] }
     ),
     fila(
       "8. Corte oculto y Guarnición mostrada: queda solo la línea de la guarnición",
       [corte("INCLUIDA", { seMuestraEnCarta: false }), guarnicion()],
-      { presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas", "puré"] }] }, rotulos: [] }
+      { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas", "puré"] }] }
     ),
     fila(
       "9. Corte oculto y un ADICIONAL «Extras»: el adicional sigue con su recargo",
       [corte("INCLUIDA", { seMuestraEnCarta: false }), grupo("g-extras", "Extras", "ADICIONAL", [opcion("o-huevo", "Huevo frito", { productoAnclaId: "p-huevo", diferenciaDeLaVersion: monto(1500) })], { orden: 1 })],
-      { presentacion: { forma: "simple", aclaraciones: [{ tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "huevo frito", recargo: 1500 }] }] }, rotulos: [] }
+      { forma: "simple", aclaraciones: [{ tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "huevo frito", recargo: 1500 }] }] }
     ),
     fila(
       "10. Un corte agotado hoy y el otro no, oculto: el plato sigue en la carta («Bife $X»)",
       [corte("INCLUIDA", { seMuestraEnCarta: false }, [agotada(opcion("o-ojo", "Ojo de bife")), opcion("o-chorizo", "Bife de chorizo")])],
-      { presentacion: { forma: "simple", aclaraciones: [] }, rotulos: [] }
+      { forma: "simple", aclaraciones: [] }
     ),
     fila(
       "11. Un grupo de adicionales no se oculta aunque el interruptor esté apagado",
       [corte("ADICIONAL", { seMuestraEnCarta: false }, [opcion("o-ojo", "Ojo de bife", { productoAnclaId: "p-ojo", diferenciaDeLaVersion: monto(500) })])],
-      { presentacion: { forma: "simple", aclaraciones: [{ tipo: "extras", rotulo: "Corte", opciones: [{ nombre: "ojo de bife", recargo: 500 }] }] }, rotulos: [] }
+      { forma: "simple", aclaraciones: [{ tipo: "extras", rotulo: "Corte", opciones: [{ nombre: "ojo de bife", recargo: 500 }] }] }
     ),
     fila(
       "12. El caso de producción («se vende por opción»): Preparación define el plato, Proteína oculta y Guarniciones mostrada",
@@ -310,13 +310,11 @@ describe("Filas literales del bife (el caso del dueño): la salida esperada est�
         grupo("g-guar", "Guarniciones", "INCLUIDA", [opcion("o-ensalada", "Ensalada"), opcion("o-papas", "Papas fritas")], { orden: 2 }),
       ],
       {
-        presentacion: {
-          forma: "lista",
-          encabezado: false,
-          filas: [{ rotulo: "A criolla", precio: 30000 }, { rotulo: "Con chimichurri", precio: 30000 }],
-          aclaraciones: [{ tipo: "eleccion", rotulo: "Guarniciones", opciones: ["ensalada", "papas fritas"] }],
-        },
-        rotulos: [],
+        forma: "tabla",
+        titulo: false,
+        columnas: [],
+        filas: [{ rotulo: "A criolla", celdas: [30000] }, { rotulo: "Con chimichurri", celdas: [30000] }],
+        aclaraciones: [{ tipo: "eleccion", rotulo: "Guarniciones", opciones: ["ensalada", "papas fritas"] }],
       },
       { precioBase: 0, esBase: true, descuentoDeProducto: null }
     ),
@@ -333,7 +331,7 @@ describe("Filas literales del bife (el caso del dueño): la salida esperada est�
     const grupos = (conAgotado: boolean) => [corte("INCLUIDA", { seMuestraEnCarta: false }, [opcion("o-ojo", "Ojo de bife", { apagadaEnSucursal: conAgotado }), opcion("o-chorizo", "Bife de chorizo", { apagadaEnSucursal: conAgotado })])];
     expect(leerLaCarta(grupos(true), BIFE).enCarta).toBeNull();
     expect(leerLaCarta(grupos(true), BIFE).forma).toBeNull();
-    expect(leerLaCarta(grupos(false), BIFE).forma).toEqual({ presentacion: { forma: "simple", aclaraciones: [] }, rotulos: [] });
+    expect(leerLaCarta(grupos(false), BIFE).forma).toEqual({ forma: "simple", aclaraciones: [] });
   });
 
   it("14. Ocultar no mueve el «desde» ni el precio: «Bife $20.000» con y sin el interruptor", () => {
@@ -352,33 +350,36 @@ describe("Filas literales del café (columnas Chico | Mediano | Grande, MEDIDA):
   const leche = (extra: Partial<GrupoDeLaCarta> = {}, opciones: OpcionParaVender[] = [opcion("o-entera", "Entera"), opcion("o-desla", "Deslactosada")]) => grupo("g-leche", "Leche", "VARIANTE", opciones, { orden: 1, ...extra });
   const COLUMNAS = ["Chico", "Mediano", "Grande"];
   const GRILLA = [4000, 4100, 4300];
-  const LINEA_DE_LECHE = { tipo: "eleccion", rotulo: "Leche", opciones: ["entera", "deslactosada"] };
 
-  it("C1. Leche sin costo, mostrada: la grilla y una línea «Leche: entera o deslactosada»", () => {
-    expect(leerLaCarta([tamano(), leche()], CAFE).forma).toEqual({ presentacion: { forma: "columnas", celdas: GRILLA, aclaraciones: [LINEA_DE_LECHE] }, rotulos: COLUMNAS });
+  // Modelo unificado de la carta: un café DIRECTO con tamaño cuya leche es una variante obligatoria sin costo lee la leche como eje de filas (Entera / Deslactosada, con la grilla de tamaños en las columnas).
+  const FILAS_DE_LECHE = [
+    { rotulo: "Entera", celdas: GRILLA },
+    { rotulo: "Deslactosada", celdas: GRILLA },
+  ];
+
+  it("C1. Leche sin costo, mostrada: la leche es el eje de filas (Entera / Deslactosada) y la grilla de tamaños son las columnas", () => {
+    expect(leerLaCarta([tamano(), leche()], CAFE).forma).toEqual({ forma: "tabla", titulo: true, columnas: COLUMNAS, filas: FILAS_DE_LECHE, aclaraciones: [] });
   });
 
-  it("C2. Leche sin costo, oculta: la MISMA grilla y solo se va la línea de la leche", () => {
-    expect(leerLaCarta([tamano(), leche({ seMuestraEnCarta: false })], CAFE).forma).toEqual({ presentacion: { forma: "columnas", celdas: GRILLA, aclaraciones: [] }, rotulos: COLUMNAS });
+  it("C2. Leche sin costo, oculta: la MISMA grilla de precios, en una sola fila sin rótulo (la leche deja de multiplicar las filas)", () => {
+    expect(leerLaCarta([tamano(), leche({ seMuestraEnCarta: false })], CAFE).forma).toEqual({ forma: "tabla", titulo: true, columnas: COLUMNAS, filas: [{ rotulo: null, celdas: GRILLA }], aclaraciones: [] });
   });
 
   it("C3. El tamaño (MEDIDA) no se oculta: con el interruptor apagado la grilla y la leche salen igual que en C1", () => {
-    expect(leerLaCarta([tamano({ seMuestraEnCarta: false }), leche()], CAFE).forma).toEqual({ presentacion: { forma: "columnas", celdas: GRILLA, aclaraciones: [LINEA_DE_LECHE] }, rotulos: COLUMNAS });
+    expect(leerLaCarta([tamano({ seMuestraEnCarta: false }), leche()], CAFE).forma).toEqual({ forma: "tabla", titulo: true, columnas: COLUMNAS, filas: FILAS_DE_LECHE, aclaraciones: [] });
   });
 
   it("C4. Leche con recargo (+$300 la vegetal), apagada: la carta la muestra igual como segunda entrada de la tabla", () => {
     const conRecargo = leche({ seMuestraEnCarta: false }, [opcion("o-entera", "Entera"), opcion("o-vegetal", "Vegetal", { diferenciaDeLaVersion: monto(300) })]);
     expect(leerLaCarta([tamano(), conRecargo], CAFE).forma).toEqual({
-      presentacion: {
-        forma: "tabla",
-        columnas: COLUMNAS,
-        filas: [
-          { rotulo: "Entera", celdas: [4000, 4100, 4300] },
-          { rotulo: "Vegetal", celdas: [4300, 4400, 4600] },
-        ],
-        aclaraciones: [],
-      },
-      rotulos: [],
+      forma: "tabla",
+      titulo: true,
+      columnas: COLUMNAS,
+      filas: [
+        { rotulo: "Entera", celdas: [4000, 4100, 4300] },
+        { rotulo: "Vegetal", celdas: [4300, 4400, 4600] },
+      ],
+      aclaraciones: [],
     });
   });
 
@@ -386,8 +387,9 @@ describe("Filas literales del café (columnas Chico | Mediano | Grande, MEDIDA):
     const conDescuento = { ...CAFE, descuentoDeProducto: 10 };
     const mostrada = leerLaCarta([tamano(), leche()], conDescuento);
     const oculta = leerLaCarta([tamano(), leche({ seMuestraEnCarta: false })], conDescuento);
-    expect(oculta.tabla?.celdas).toEqual(mostrada.tabla?.celdas);
+    // La leche oculta deja de ser el eje de filas: queda una sola fila, y cada fila de la mostrada (Entera, Deslactosada) tiene exactamente esos precios.
     expect(oculta.tabla?.celdas).toEqual([[3600, 3690, 3870]]);
+    expect(mostrada.tabla?.celdas.every((fila) => JSON.stringify(fila) === JSON.stringify(oculta.tabla?.celdas[0]))).toBe(true);
     expect(oculta.enCarta?.desde).toBe(mostrada.enCarta?.desde);
   });
 });

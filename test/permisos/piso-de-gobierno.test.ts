@@ -153,7 +153,8 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     for (const a of ACCIONES.filter((x) => (ACCIONES_DE_EMPRESA_DE_D15 as readonly string[]).includes(x.clave))) expect([...a.rolesEditarSemilla], a.clave).toEqual(["admin"]);
   });
 
-  it("el conteo del catálogo: 56 operario, 61 administrador, 12 administrador de sistema, 2 gerente", () => {
+  it("el conteo del catálogo: 55 operario, 61 administrador, 12 administrador de sistema, 2 gerente", () => {
+    // 56 → 55 operario: se retira `pos_limite_mesas_abiertas` (el límite de mesas abiertas por sucursal; decisión del dueño 2026-10-29; clase O).
     // 55 → 56 operario y 62 → 61 administrador: E3a baja `compra_repartir` a piso operario (decisión del dueño P3, 2026-10-28; clase A → O, semilla sigue solo `admin`).
     // 63 → 62 administrador: la Fase 3 de la ola «precio y carta» retira `grupos_de_precio_definir` (GO-3a).
     // 54 → 55 operario: GO-3b suma `promo_menu_del_dia` (clase O).
@@ -163,6 +164,6 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     // 52 → 53 operario: Paquete 3 M3a suma `compra_recibir` (clase O).
     // 59 → 60 administrador: Paquete 3 M3a suma `compra_repartir` (clase A).
     // 51 → 52: M.2 P1 suma `producto_campos_sensibles` (piso operario, clase O); los otros pisos no se mueven.
-    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([56, 61, 12, 2]);
+    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([55, 61, 12, 2]);
   });
 });

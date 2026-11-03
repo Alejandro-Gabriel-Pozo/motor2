@@ -69,9 +69,7 @@ function textoDeCarta(c: CartaPublicaV1, soloItem?: string): string[] {
   if (soloItem === undefined) out.push(`carta: version=${c.version} generadoEn=<fecha> sucursal=${JSON.stringify(c.sucursal)} secciones=${c.secciones.length}`);
   for (const s of c.secciones) {
     const items = soloItem === undefined ? s.items : s.items.filter((i) => i.nombre === soloItem);
-    if (soloItem === undefined) out.push(`SECCION «${s.nombre}» ${claves(s, ["nombre", "items", "promos", "tandas"])} items=${s.items.length} promos=${s.promos.length}`);
-    // Fase 5 (paso 7): las tandas de la sección, en su propia línea (JSON tal como viaja).
-    if (soloItem === undefined && s.tandas !== undefined) out.push(`  tandas ${valorDeCarta(s.tandas)}`);
+    if (soloItem === undefined) out.push(`SECCION «${s.nombre}» ${claves(s, ["nombre", "items", "promos"])} items=${s.items.length} promos=${s.promos.length}`);
     for (const i of items) out.push(...textoDelItem(i));
     for (const p of s.promos) out.push(`  PROMO ${claves(p, [])}`);
   }

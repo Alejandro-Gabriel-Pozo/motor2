@@ -21,7 +21,7 @@ export { formatearCantidad, formatearMonto } from "./formato";
 export { NUMERO_DEL_MOSTRADOR, esMostrador, frasesDePuesto, rotuloDePuesto } from "./puesto";
 export { documentoDeReimpresion, resolverImpresion } from "./impresion";
 export type { DocumentoImprimible, PedidoImpresion } from "./impresion";
-export { armarMapaDeMesas, esEstadoMesa, filtrarMesas, nombreDelMesero, validarMaxMesasAbiertas } from "./mesas";
+export { armarMapaDeMesas, esEstadoMesa, filtrarMesas, nombreDelMesero } from "./mesas";
 export type { EstadoMesa, MapaDeMesas } from "./mesas";
 export { formatearNumeroTicket } from "./numeracion-ticket";
 export type { NumeroDeTicket } from "./numeracion-ticket";
@@ -31,6 +31,8 @@ export type { CupoPromoDefinicion, EleccionDePromo } from "./promo-combo";
 export { claveDeComponenteConfigurado, esCupoFijo } from "./promo-combo";
 export type { CupoDePromo, CupoDeEntradasDefinicion, EntradaElegibleDeCupo } from "./promo-combo";
 export type { LineaConfigurada } from "./linea-configurada";
+// Ventas con opciones (2026-10-29): cuántos insumos puede sumar alguna opción que un producto ofrece (el origen de stock del catálogo).
+export { insumosQuePuedeSumarAlgunaOpcion } from "./insumos-de-las-opciones";
 export { armarSelectorCartaPos, pediblesDeEntrada } from "./selector-carta";
 export type { CupoDeEntradasSelectorCarta, EntradaCarpetaSelectorCarta, EntradaPromoSelectorCarta, EntradaSelectorCarta, GenerosSelectorCartaPos, ProductoPedible, PromoSelectorCartaPos, SelectorCartaPos } from "./selector-carta";
 export { SECCION_FUERA_DE_CARTA, estadoInicialSelectorCarta, reducirSelectorCarta } from "./selector-carta-estado";
@@ -47,7 +49,7 @@ export { revisarAlicuotasDeCombo } from "./alicuotas-de-combo";
 export type { ComponenteConAlicuota } from "./alicuotas-de-combo";
 export { claveDeConfiguracion as claveDeConfiguracionFija } from "./promo-combo";
 // GO-2d (ADR-030 «Pantallas»): los precios PARA MOSTRAR de un producto con opciones (el «desde», cada tamaño, la vista previa del diálogo del POS), con la misma regla que la venta.
-export { opcionDisponible, resumenDePrecios, resumenDePreciosParaLaCarta, tablaDePreciosParaLaCarta, vistaPreviaDeConfiguracion } from "./precio-de-configuracion";
+export { cartaDeUnProducto, conGrillaDeLaSucursal, opcionDisponible, resumenDePrecios, vistaPreviaDeConfiguracion } from "./precio-de-configuracion";
 export type { ResumenDePrecios } from "./precio-de-configuracion";
 export { avisoEnPromo, claveDeConfiguracion, elegidasParaPedir, esDeUnaSolaEleccion, estadoInicialElegirOpciones, grupoCompleto, gruposEnOrdenParaElegir, gruposQueFaltan, masPedidasParaElDialogo, reducirElegirOpciones, resumenDeConfiguracion } from "./elegir-opciones-estado";
 export type { ConfiguracionDelSelector } from "./elegir-opciones-estado";
