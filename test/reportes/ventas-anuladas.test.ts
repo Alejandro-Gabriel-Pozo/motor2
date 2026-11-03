@@ -198,7 +198,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
     it("anular una COMPRA no deja un ajuste de −10 kg", async () => {
       await comprarHarina("2026-08-05");
       const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-      expect((await anularCompra(compra.id)).ok).toBe(true);
+      expect((await anularCompra(compra.id, crypto.randomUUID())).ok).toBe(true);
 
       expect(await ajusteDeHarina()).toEqual({ suma: 0, sugerencia: null });
     });
@@ -227,7 +227,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
     await anularVenta(venta);
     // La compra ya no tiene todo su stock (parte se vendió y ya se devolvió con la anulación): con el stock repuesto se puede anular.
-    expect((await anularCompra(compra.id)).ok).toBe(true);
+    expect((await anularCompra(compra.id, crypto.randomUUID())).ok).toBe(true);
 
     const reversiones = await prisma.operacion.findMany({ where: { proceso: "AJUSTE" } });
     expect(reversiones).toHaveLength(2);

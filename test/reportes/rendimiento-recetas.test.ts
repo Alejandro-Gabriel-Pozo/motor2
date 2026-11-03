@@ -291,7 +291,7 @@ describe("calcularRendimientoRecetasSimples", () => {
     const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: hoy, seccionId, items: [{ productoId: harina.id, cantidad: 50 }], claveIdempotencia: crypto.randomUUID() });
     expect(r.ok, r.mensaje).toBe(true);
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId, movimientos: { some: { productoId: harina.id } } } });
-    const anulacion = await anularCompra(compra.id);
+    const anulacion = await anularCompra(compra.id, crypto.randomUUID());
     expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
     // El contra-asiento (AJUSTE) se escribe a la fecha REAL de la anulación (ahora), no a la fecha de la compra original — el rango tiene que cubrir las dos.
@@ -490,7 +490,7 @@ describe("calcularRendimientoRecetasSimples — método CONTEO (Task #26, Diseñ
     const compraExtra = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-06"), seccionId, items: [{ productoId: aguaCaja.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     expect(compraExtra.ok, compraExtra.mensaje).toBe(true);
     const operacionExtra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId, fecha: mediodia("2026-01-06") } });
-    const anulacion = await anularCompra(operacionExtra.id);
+    const anulacion = await anularCompra(operacionExtra.id, crypto.randomUUID());
     expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
     await registrarVenta({ fecha: mediodia("2026-01-15"), seccionId, ventas: [{ productoId: aguaBotella.id, cantidadVendida: 63 }] });

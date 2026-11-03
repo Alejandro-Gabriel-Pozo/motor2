@@ -129,7 +129,7 @@ describe("obtenerHistorialProducto", () => {
     expect(r.ok, r.mensaje).toBe(true);
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId } });
 
-    const anulacion = await anularCompra(compra.id);
+    const anulacion = await anularCompra(compra.id, crypto.randomUUID());
     expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
     const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);

@@ -12,7 +12,7 @@ import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimient
 import { registrarFacturaProveedorCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor";
 import { corregirCompraCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/corregir-compra";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
-import { mediodiaDelDia, ZONA_ARGENTINA, diaDeCalendario } from "../../src/core/tiempo/zona-horaria";
+import { mediodiaDelDia, ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../../src/core/tiempo/zona-horaria";
 import { guardComandoRegistrarFacturaProveedor } from "../../src/core/features/compras/factura-proveedor.guard";
 import type { DatosMovimientoInput } from "../../src/core/features/movimientos/movimiento.schema";
 import type { DatosFacturaProveedorInput } from "../../src/core/features/compras/factura-proveedor.schema";
@@ -225,5 +225,19 @@ describe("proveedor y número obligatorios en una COMPRA", () => {
     const r = await registrarMovimientoCasoDeUso(actorDe(s1), { proceso: "DEVOLUCION_PROVEEDOR", fecha: mediodiaDeHoy(), seccionId: sec1, proveedorId, nroFactura: "#NC-123", items: [{ productoId: harinaId, cantidad: 1 }], claveIdempotencia: randomUUID() } as DatosMovimientoInput);
     expect(r.ok, r.mensaje).toBe(true);
     expect((await prisma.operacion.findFirstOrThrow({ where: { proceso: "DEVOLUCION_PROVEEDOR" } })).nroFactura).toBe("#NC-123");
+  });
+});
+
+describe("I13: la fecha de una compra no puede ser posterior a hoy (etapa 1 de Compras)", () => {
+  it("una compra con fecha de mañana por la Server Action se rechaza y no escribe nada", async () => {
+    const antes = await prisma.operacion.count();
+    const manana = mediodiaDelDia(sumarDias(diaDeCalendario(new Date(), ZONA_ARGENTINA), 1), ZONA_ARGENTINA);
+    __setCookieDeTestParaSucursal(s2);
+    await mockearUsuarioActual({ id: op2Id, email: "op2@test.com", nombre: null });
+    const r = await registrarMovimiento({ ...compra("A-00023-00237728", { sucursalId: s2 }), fecha: manana });
+    expect(r.ok).toBe(false);
+    expect(r.mensaje).toBe("La fecha de la compra no puede ser posterior a hoy.");
+    expect(await prisma.operacion.count()).toBe(antes);
+    expect(await prisma.movimientoStock.count()).toBe(0);
   });
 });

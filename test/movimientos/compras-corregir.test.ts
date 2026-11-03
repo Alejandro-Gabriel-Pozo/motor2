@@ -132,7 +132,7 @@ describe("corregirCompra", () => {
 
     it("el número de una compra ANULADA queda libre: se puede usar en otra", async () => {
       const vieja = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
-      expect((await anularCompra(vieja.id)).ok).toBe(true);
+      expect((await anularCompra(vieja.id, crypto.randomUUID())).ok).toBe(true);
       const otra = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000009" });
 
       const r = await corregirCompra(otra.id, { proveedorId: molinoId, nroFactura: "A-00001-00000001", detalleLibre: "" }, vista(otra));
@@ -159,7 +159,7 @@ describe("corregirCompra", () => {
   describe("guardas", () => {
     it("una compra ANULADA no se corrige", async () => {
       const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
-      await anularCompra(op.id);
+      await anularCompra(op.id, crypto.randomUUID());
       const anulada = await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } });
 
       const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00001-00000002", detalleLibre: "" }, vista(anulada));

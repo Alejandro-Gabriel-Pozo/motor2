@@ -275,7 +275,9 @@ describe("aceptar mi parte", () => {
     await comoOp4();
     const ayer = mediodiaDelDia(sumarDias(diaDeCalendario(hoy(), ZONA_ARGENTINA), -1), ZONA_ARGENTINA);
     const manana = mediodiaDelDia(sumarDias(diaDeCalendario(hoy(), ZONA_ARGENTINA), 1), ZONA_ARGENTINA);
-    for (const f of [ayer, manana]) expect((await aceptarPropuestaDeFactura(p4.id, sec4, f, randomUUID())).mensaje).toContain("La fecha de stock tiene que estar entre");
+    expect((await aceptarPropuestaDeFactura(p4.id, sec4, ayer, randomUUID())).mensaje).toContain("La fecha de stock tiene que estar entre");
+    // I13: mañana ya lo rechaza el guard (la fecha de una compra no puede ser posterior a hoy), antes del rango del caso de uso.
+    expect((await aceptarPropuestaDeFactura(p4.id, sec4, manana, randomUUID())).mensaje).toBe("La fecha de la compra no puede ser posterior a hoy.");
     expect(await kardexDe(s4)).toEqual([]);
   });
 });

@@ -88,7 +88,7 @@ describe("aislamiento entre sucursales", () => {
     });
 
     await mockearUsuarioActual(adminA);
-    const resultado = await anularCompra(operacion.id);
+    const resultado = await anularCompra(operacion.id, crypto.randomUUID());
 
     expect(resultado.ok).toBe(false);
     const releida = await prisma.operacion.findUniqueOrThrow({ where: { id: operacion.id } });

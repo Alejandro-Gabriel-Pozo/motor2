@@ -50,6 +50,15 @@ describe("guardComandoRegistrarFacturaProveedor", () => {
     expect(guardComandoRegistrarFacturaProveedor(base({ items: [] }), AHORA, S3).ok).toBe(false);
     expect(guardComandoRegistrarFacturaProveedor(base({ fecha: new Date("2026-11-30T15:00:00Z") }), AHORA, S3).ok).toBe(false);
   });
+  it("I13: una factura con fecha de mañana se rechaza (la de hoy pasa)", () => {
+    const manana = mediodiaDelDia("2026-10-29", ZONA_ARGENTINA);
+    expect(guardComandoRegistrarFacturaProveedor(base({ fecha: manana }), AHORA, S3)).toMatchObject({ ok: false, codigo: "rango", mensaje: "La fecha de la compra no puede ser posterior a hoy." });
+    expect(guardComandoRegistrarFacturaProveedor(base({ fecha: HOY }), AHORA, S3).ok).toBe(true);
+  });
+  it("I13: aceptar mi parte con fechaStock de mañana se rechaza", () => {
+    const manana = mediodiaDelDia("2026-10-29", ZONA_ARGENTINA);
+    expect(guardComandoAceptarParteDeFactura({ propuestaId: "p", seccionId: "s", fechaStock: manana, claveIdempotencia: CLAVE }, AHORA)).toMatchObject({ ok: false, codigo: "rango", mensaje: "La fecha de la compra no puede ser posterior a hoy." });
+  });
 });
 
 describe("guardComandoAceptarParteDeFactura y guardComandoAnularFacturaProveedor", () => {

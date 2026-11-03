@@ -215,7 +215,7 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       expect((await precioDe("Proveedor A"))?.precioPorUnidadStock).toBe(100);
 
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-      expect((await anularCompra(op.id)).ok).toBe(true);
+      expect((await anularCompra(op.id, crypto.randomUUID())).ok).toBe(true);
       expect(await precioDe("Proveedor A")).toBeUndefined();
     });
 

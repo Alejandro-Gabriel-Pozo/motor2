@@ -1,6 +1,6 @@
 import { texto } from "@/core/texto";
 import { esDetalleReservadoParaReversiones } from "@/core/movimientos/public";
-import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
+import { validarFechaDeCompra } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { guardComprobanteDeCompra } from "./compra.guard";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
@@ -42,7 +42,7 @@ export function guardComandoRegistrarFacturaProveedor(entrada: unknown, ahora: D
   const detalle = validarTextoLibre(e.detalleLibre, "El detalle", LARGO_MAXIMO_DETALLE);
   if (!detalle.ok) return rechazar(detalle.codigo, detalle.mensaje);
   if (typeof e.detalleLibre === "string" && esDetalleReservadoParaReversiones(e.detalleLibre)) return rechazar("formato", "Ese detalle está reservado para las anulaciones: escribilo de otra forma.");
-  const fecha = validarFechaOperacion(e.fecha, ahora);
+  const fecha = validarFechaDeCompra(e.fecha, ahora);
   if (!fecha.ok) return rechazar(fecha.codigo, fecha.mensaje);
 
   const reparto = e.reparto as { modo?: unknown; partes?: unknown } | undefined;
@@ -75,7 +75,7 @@ export function guardComandoAceptarParteDeFactura(entrada: unknown, ahora: Date)
   const e = (entrada ?? {}) as Partial<Record<keyof ComandoAceptarParteDeFactura, unknown>>;
   if (!texto(e.propuestaId)) return rechazar("vacio", "No se encontró la parte de la factura.");
   if (!texto(e.seccionId)) return rechazar("vacio", "Elegí la sección donde entra la mercadería.");
-  const fecha = validarFechaOperacion(e.fechaStock, ahora);
+  const fecha = validarFechaDeCompra(e.fechaStock, ahora);
   if (!fecha.ok) return rechazar(fecha.codigo, fecha.mensaje);
   const clave = claveObligatoria(e.claveIdempotencia);
   if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
