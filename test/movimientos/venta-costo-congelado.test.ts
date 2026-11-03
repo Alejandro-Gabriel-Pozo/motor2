@@ -9,6 +9,7 @@ import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * «Margen real» = el costo que quedó CONGELADO en cada venta al registrarla (MovimientoStock.costoUnitarioVenta). Una venta
@@ -34,7 +35,7 @@ describe("Margen real: el costo congelado al vender", () => {
     await prisma.recetaVersion.create({ data: { productoId: pan.id, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 2, unidadId: kg.id }] } } });
     pvId = pan.id;
     // Se compran 10 kg por $50: $5 el kilo; el pan lleva 2 kg → cuesta $10.
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   });
 
   it("una venta registrada desde la aplicación guarda el costo de la receta en ese momento", async () => {

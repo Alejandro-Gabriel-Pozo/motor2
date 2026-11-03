@@ -11,6 +11,7 @@ import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * El cierre del POS PREFIERE la sección habitual del PV (`SeccionHabitualProducto`, docs/plan-seccion-habitual-stock-2026-09-25.md
@@ -33,7 +34,7 @@ describe("cerrarCuenta: la sección habitual del PV", () => {
   });
 
   const comprar = async (seccionId: string, cantidad: number, loteVencimiento?: Date) =>
-    registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: s.muzzarella.id, cantidad, loteVencimiento }], claveIdempotencia: crypto.randomUUID() });
+    registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: s.muzzarella.id, cantidad, loteVencimiento, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   const habitual = (seccionId: string, productoId = s.pizza.id, sucursalId = s.sucursalId) => prisma.seccionHabitualProducto.create({ data: { sucursalId, productoId, seccionId } });
   const cerrarPizzas = async (cantidad: number) => cerrarCuenta((await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad, precioUnitario: 12000, numeroEnvio: 1 }])).id);
   const filas = async () =>

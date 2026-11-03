@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { agregarPresentacionAlternativa, actualizarActivaPresentacion, listarPresentaciones } from "../../src/server/actions/catalogo/productos";
 import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 describe("Presentaciones de compra alternativas", () => {
   let unidadKgId: string;
@@ -96,7 +97,7 @@ describe("Presentaciones de compra alternativas", () => {
     });
 
     const comprarEnLaPresentacion = async () => {
-      const r = await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId, items: [{ productoId, cantidad: 2, unidadCompraId: unidadGId, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
+      const r = await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId, items: [{ productoId, cantidad: 2, unidadCompraId: unidadGId, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       expect(r.ok, r.mensaje).toBe(true);
     };
     const factorGuardado = async () => Number((await prisma.presentacion.findFirstOrThrow({ where: { productoId, unidadCompraId: unidadGId } })).factorConversion);

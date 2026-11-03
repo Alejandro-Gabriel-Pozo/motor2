@@ -20,6 +20,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 describe("Regresión: condición de carrera de factura de compra duplicada", () => {
   let sucursalId: string;
@@ -47,8 +48,8 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
       );
       const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_FACTURA_${i}`, nombre: `Proveedor ${i}` } });
 
-      const payloadA = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "A-00001-00000001", items: [{ productoId: mp.id, cantidad: 10 }] };
-      const payloadB = { ...payloadA, items: [{ productoId: mp.id, cantidad: 10 }] };
+      const payloadA = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "A-00001-00000001", items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }] };
+      const payloadB = { ...payloadA, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }] };
 
       const settled = await Promise.allSettled([registrarMovimiento({ ...payloadA, claveIdempotencia: crypto.randomUUID() }), registrarMovimiento({ ...payloadB, claveIdempotencia: crypto.randomUUID() })]);
 
@@ -80,7 +81,7 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
   it("K1c: la factura de una compra ANULADA se puede volver a usar («anular y recargar» con el mismo número)", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_RECARGA", nombre: "Harina Recarga", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_RECARGA", nombre: "Proveedor Recarga" } });
-    const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "A-00018-00000001", items: [{ productoId: mp.id, cantidad: 10 }] };
+    const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "A-00018-00000001", items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }] };
 
     const primera = await registrarMovimiento({ ...payload, claveIdempotencia: crypto.randomUUID() });
     expect(primera.ok).toBe(true);
@@ -107,7 +108,7 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
     for (let i = 0; i < 5; i++) {
       const mp = await sembrarProductoDisponible({ codigo: `MP_RECARGA_C${i}`, nombre: `Harina Recarga Carrera ${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
       const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_RECARGA_C${i}`, nombre: `Proveedor Recarga Carrera ${i}` } });
-      const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "A-00018-00000002", items: [{ productoId: mp.id, cantidad: 10 }] };
+      const payload = { proceso: "COMPRA" as const, fecha: new Date(), seccionId, proveedorId: proveedor.id, nroFactura: "A-00018-00000002", items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }] };
 
       expect((await registrarMovimiento({ ...payload, claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
       await anular((await prisma.operacion.findFirstOrThrow({ where: { proveedorId: proveedor.id, nroFactura: "A-00018-00000002" } })).id);

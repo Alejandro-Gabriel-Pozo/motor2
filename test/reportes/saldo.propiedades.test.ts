@@ -11,6 +11,7 @@ import { obtenerHistorialProducto } from "../../src/server/consultas/reportes/hi
 import { limitadorMutaciones } from "../../src/server/actions/limitador-de-mutaciones";
 import { prisma } from "../setup/test-db";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Property-based testing (Task #41, Fase F4): la vista de historial de un producto (`obtenerHistorialProducto`, saldo
@@ -88,7 +89,7 @@ describe("propiedad: historial de producto vs. calcularSaldoTotal", () => {
       const delta = deltaConSigno(paso);
       const debeAceptarse = delta > 0 || saldoModelo >= -delta;
       // U11: la Merma exige un motivo en el servidor.
-      const r = await registrarMovimiento({ proceso: paso.proceso, fecha: fechaDe(i), seccionId, ...(paso.proceso === "MERMA" && { motivoId }), ...(paso.proceso === "COMPRA" && (await comprobanteDePrueba())), items: [{ productoId, cantidad: paso.centesimas / 100 }], claveIdempotencia: crypto.randomUUID() });
+      const r = await registrarMovimiento({ proceso: paso.proceso, fecha: fechaDe(i), seccionId, ...(paso.proceso === "MERMA" && { motivoId }), ...(paso.proceso === "COMPRA" && (await comprobanteDePrueba())), items: [{ productoId, cantidad: paso.centesimas / 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       expect(r.ok, `${paso.proceso} ${paso.centesimas / 100} con saldo ${saldoModelo / 100}: ${r.mensaje}`).toBe(debeAceptarse);
       if (r.ok) {
         saldoModelo += delta;

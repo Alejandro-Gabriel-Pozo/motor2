@@ -14,6 +14,7 @@ import { generarReporteLotesProximosAVencer, obtenerReporteVencimientosDatos } f
 import { generarReporteDiferenciasAjustes } from "../../src/server/consultas/reportes/diferencias-ajustes";
 import { generarReporteSaludPorProducto } from "../../src/server/consultas/reportes/salud-por-producto";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * D.3a (docs/pureza-integracion.md): los reportes de pérdidas, devoluciones, vencimientos, diferencias de ajuste (y Salud por producto, que la usa) miden
@@ -45,7 +46,7 @@ describe("los reportes de la sucursal miden el tiempo contra el `ahora` que reci
 
   it("pérdidas: una merma de hace 35 días entra en «últimos 30 días» con ahora = hace 10 días, y queda afuera con el reloj real", async () => {
     const mp = await harina();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: enElPasado(40 * DIA_MS), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: enElPasado(40 * DIA_MS), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "MERMA", fecha: enElPasado(35 * DIA_MS), seccionId, motivoId: motivoVencidoId, items: [{ productoId: mp.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
 
     const conHoraFija = await generarReportePerdidas(sucursalId, 30, prisma, enElPasado(10 * DIA_MS));
@@ -58,7 +59,7 @@ describe("los reportes de la sucursal miden el tiempo contra el `ahora` que reci
 
   it("devoluciones: una devolución de hace 35 días entra con ahora = hace 10 días, y queda afuera con el reloj real", async () => {
     const mp = await harina();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: enElPasado(40 * DIA_MS), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: enElPasado(40 * DIA_MS), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "DEVOLUCION_CLIENTE", fecha: enElPasado(35 * DIA_MS), seccionId, items: [{ productoId: mp.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
 
     const conHoraFija = await generarReporteDevoluciones(sucursalId, 30, prisma, enElPasado(10 * DIA_MS));
@@ -71,7 +72,7 @@ describe("los reportes de la sucursal miden el tiempo contra el `ahora` que reci
   it("vencimientos: un lote que vence dentro de 20 días entra en «próximos 7 días» con ahora = dentro de 15 días, y queda afuera con el reloj real", async () => {
     const mp = await harina();
     const lote = new Date(enElFuturo(20 * DIA_MS).toISOString().slice(0, 10));
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, loteVencimiento: lote, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const enQuinceDias = enElFuturo(15 * DIA_MS);
     const conHoraFija = await generarReporteLotesProximosAVencer(sucursalId, 7, prisma, enQuinceDias);
@@ -89,7 +90,7 @@ describe("los reportes de la sucursal miden el tiempo contra el `ahora` que reci
     const mp = await harina();
     await setFrecuenciaConteo(mp.id, 7);
     const haceTresDias = enElPasado(3 * DIA_MS);
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: haceTresDias, seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: haceTresDias, seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await registrarUnConteoFisico({ productoId: mp.id, seccionId, conteoReal: 8, fechaConteo: haceTresDias, accion: "AJUSTAR" });
 
     const alDia = (await generarReporteDiferenciasAjustes(sucursalId, prisma, AHORA_DE_LA_CORRIDA)).find((f) => f.productoId === mp.id)!;

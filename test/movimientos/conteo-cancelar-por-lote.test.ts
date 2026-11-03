@@ -9,6 +9,7 @@ import { cancelarConteoFisico } from "../../src/server/actions/movimientos/conte
 import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Cancelar un conteo de UN lote con un conteo posterior de OTRO lote (M-2 afinada por el dueño): son independientes, así que no frena. Frena, como siempre, lo posterior del MISMO lote y todo
@@ -38,8 +39,8 @@ describe("M-2 por lote: cancelar un conteo de un lote solo lo frena lo posterior
     const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id });
     await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
     mpId = (await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: catalogo.kg.id, insumoId: catalogo.insumo.id }, sucursalId)).id;
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10, loteVencimiento: loteA }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 6, loteVencimiento: loteB }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10, loteVencimiento: loteA, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 6, loteVencimiento: loteB, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   });
 
   it("EL CASO: contar el lote A (−2) y después el lote B (−1): cancelar el conteo de A se permite y no toca a B", async () => {

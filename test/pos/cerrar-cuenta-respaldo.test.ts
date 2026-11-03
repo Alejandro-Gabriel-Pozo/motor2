@@ -9,6 +9,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Secciones excluibles del respaldo automático (`Seccion.sirveDeRespaldoEnVentas`, docs/plan-seccion-habitual-stock-2026-09-25.md
@@ -28,7 +29,7 @@ describe("cerrarCuenta: secciones que no sirven de respaldo automático", () => 
   });
 
   const comprar = async (seccionId: string, cantidad: number, loteVencimiento?: Date) =>
-    registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: s.muzzarella.id, cantidad, loteVencimiento }], claveIdempotencia: crypto.randomUUID() });
+    registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: s.muzzarella.id, cantidad, loteVencimiento, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   const excluir = (seccionId: string) => prisma.seccion.update({ where: { id: seccionId }, data: { sirveDeRespaldoEnVentas: false } });
   const cuentaCon = (productoId: string, cantidad: number) => sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId, cantidad, precioUnitario: 1000, numeroEnvio: 1 }]);
   const filas = async () =>

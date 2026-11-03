@@ -10,6 +10,7 @@ import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
 import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-movimiento";
 import { ZONA_ARGENTINA, mediodiaDelDia } from "../../src/core/tiempo/zona-horaria";
 import { cargarComprasParaAvisoDeDuplicado } from "../../src/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Aviso C25 de posible factura repetida al REGISTRAR una compra: toda la empresa, ±7 días, mismo proveedor e importe; nombra la sucursal y NO bloquea. Postgres real; las compras se
@@ -47,7 +48,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       proveedorId: extra.proveedor ?? proveedorId,
       nroFactura: extra.nroFactura ?? nroFacturaDePrueba(),
       claveIdempotencia: extra.claveIdempotencia ?? crypto.randomUUID(),
-      items: [{ productoId, cantidad: 10, ...(precioTotal === undefined ? {} : { precioTotal }) }],
+      items: [{ productoId, cantidad: 10, ...(precioTotal === undefined ? {} : { precioTotal }), referenciaProveedor: REFERENCIA_DE_PRUEBA }],
     });
 
   const comprarEnNorte = (fecha: string, precioTotal: number | undefined, extra: { nroFactura?: string; proveedor?: string; claveIdempotencia?: string } = {}) =>
@@ -58,7 +59,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       proveedorId: extra.proveedor ?? proveedorId,
       nroFactura: extra.nroFactura ?? nroFacturaDePrueba(),
       claveIdempotencia: extra.claveIdempotencia ?? crypto.randomUUID(),
-      items: [{ productoId, cantidad: 10, ...(precioTotal === undefined ? {} : { precioTotal }) }],
+      items: [{ productoId, cantidad: 10, ...(precioTotal === undefined ? {} : { precioTotal }), referenciaProveedor: REFERENCIA_DE_PRUEBA }],
     });
 
   /** Una compra de `usuarioId` actuando en la sucursal dada (para elegir quién carga y qué sucursales ve). */
@@ -69,7 +70,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       seccionId,
       proveedorId,
       nroFactura: extra.nroFactura ?? nroFacturaDePrueba(),
-      items: [{ productoId, cantidad: 10, precioTotal }],
+      items: [{ productoId, cantidad: 10, precioTotal, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
 
@@ -175,7 +176,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       seccionId: seccionCentral,
       proveedorId,
       nroFactura: nroFacturaDePrueba(),
-      items: [{ productoId, cantidad: 10, precioTotal: 1500 }],
+      items: [{ productoId, cantidad: 10, precioTotal: 1500, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
     expect(primera.ok).toBe(true);
@@ -282,7 +283,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     try {
       const r = await registrarMovimientoCasoDeUso(
         { usuarioId: usuarioNorte, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalNorte, sucursalNombre: "Norte", ...baseDeTest(alcance) },
-        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-13", ZONA_ARGENTINA), seccionId: seccionNorte, proveedorId, nroFactura: "A-00009-00000077", items: [{ productoId, cantidad: 10, precioTotal: 1500 }], claveIdempotencia: crypto.randomUUID() },
+        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-13", ZONA_ARGENTINA), seccionId: seccionNorte, proveedorId, nroFactura: "A-00009-00000077", items: [{ productoId, cantidad: 10, precioTotal: 1500, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() },
       );
       expect(r.ok, r.mensaje).toBe(true);
       expect(r.mensaje).toContain("en la sucursal Central. Revisá");
@@ -320,7 +321,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     try {
       const r = await registrarMovimientoCasoDeUso(
         { usuarioId: usuarioCentral, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalCentral, sucursalNombre: "Central", ...baseDeTest(alcance) },
-        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-12", ZONA_ARGENTINA), seccionId: seccionCentral, proveedorId, nroFactura: "A-00001-00001234", items: [{ productoId, cantidad: 10, precioTotal: 1500 }], claveIdempotencia: crypto.randomUUID() },
+        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-12", ZONA_ARGENTINA), seccionId: seccionCentral, proveedorId, nroFactura: "A-00001-00001234", items: [{ productoId, cantidad: 10, precioTotal: 1500, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() },
       );
       expect(r.ok, r.mensaje).toBe(true);
       expect(r.mensaje).not.toContain(AVISO);

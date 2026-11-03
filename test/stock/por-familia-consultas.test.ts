@@ -8,6 +8,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { calcularStockPorFamilia } from "../../src/server/consultas/stock/por-familia";
 import type { Db } from "../../src/lib/db-tipos";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Pureza Fase 3 — stock por familia. La cadena del grupo (`Bebidas > Gaseosas`) se arma sobre el árbol de grupos leído UNA vez, no con una consulta por
@@ -31,7 +32,7 @@ describe("calcularStockPorFamilia: la cadena de grupos sale de una sola lectura"
   async function insumoConStock(nombre: string, grupoId: string | null, codigo: string) {
     const insumo = await prisma.insumo.create({ data: { nombre, grupoId } });
     const p = await sembrarProductoDisponible({ codigo, nombre: `${nombre} (MP)`, tipo: "MP", unidadStockId: unidadKgId, insumoId: insumo.id }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad: 3, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     return insumo;
   }
 

@@ -10,6 +10,7 @@ import { reclasificarStock } from "../../src/server/actions/stock/reclasificacio
 import { registrarConteosFisicos } from "../../src/server/actions/movimientos/conteo-fisico";
 import { registrarPagoConsignante } from "../../src/server/actions/reportes/consignacion";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 // S-08: una fecha rota (Invalid Date → 500 de Prisma) o absurda (año 2099, 1970) se rechaza con un mensaje antes de escribir nada.
 const DIA = 24 * 60 * 60 * 1000;
@@ -43,7 +44,7 @@ describe("las acciones que registran operaciones validan la fecha", () => {
 
   describe.each(FECHAS_MALAS)("fecha %s", (_n, fecha, mensaje) => {
     it("registrarMovimiento", async () => {
-      expect(await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha, seccionId, items: [{ productoId, cantidad: 1, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() })).toEqual({ ok: false, mensaje });
+      expect(await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha, seccionId, items: [{ productoId, cantidad: 1, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).toEqual({ ok: false, mensaje });
       await nada();
     });
 
@@ -70,8 +71,8 @@ describe("las acciones que registran operaciones validan la fecha", () => {
   });
 
   it("una fecha de hoy y una de ayer siguen funcionando", async () => {
-    expect((await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId, cantidad: 3, precioTotal: 30 }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
-    expect((await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(Date.now() - DIA), seccionId, items: [{ productoId, cantidad: 3, precioTotal: 30 }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
+    expect((await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId, cantidad: 3, precioTotal: 30, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
+    expect((await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(Date.now() - DIA), seccionId, items: [{ productoId, cantidad: 3, precioTotal: 30, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
     // B2 (ola «precio y carta», Fase 2): el pago es a un consignante, el de algún producto.
     const kg = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
     await prisma.producto.create({ data: { codigo: "MP_CONSIGNADO", nombre: "Vino consignado", tipo: "MP", unidadStockId: kg.id, esConsignacion: true, proveedorConsignacionId: proveedorId, precioConsignacion: 20 } });

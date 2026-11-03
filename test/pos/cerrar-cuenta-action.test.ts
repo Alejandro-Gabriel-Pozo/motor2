@@ -15,6 +15,7 @@ import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";
 import { obtenerDetalleDeMesa } from "../../src/server/consultas/pos/detalle-de-mesa";
 import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Cierre de cuenta (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 6): registra la venta con el núcleo
@@ -31,7 +32,7 @@ describe("cerrarCuenta (server action)", () => {
     await entrarComo(s.admin);
   });
 
-  const comprar = async (productoId: string, cantidad: number) => registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId, cantidad }], claveIdempotencia: crypto.randomUUID() });
+  const comprar = async (productoId: string, cantidad: number) => registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId, cantidad, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   const ventasDeLaMesa = () =>
     prisma.operacion.findMany({ where: { proceso: "VENTA", detalleLibre: "Mesa 4" }, include: { movimientos: { orderBy: { proceso: "asc" } } }, orderBy: { creadoEn: "asc" } });
 

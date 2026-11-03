@@ -18,6 +18,7 @@ import { obtenerCostoActualPorMP } from "../../src/server/lecturas/reportes/comu
 import { calcularValuacionInventario } from "../../src/server/consultas/reportes/valuacion";
 import { valorizarLineaDeTraspaso } from "../../src/core/stock/public";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * E2 «el costo viaja con el traspaso» (ADR-040, docs/diseno-costo-en-el-traspaso-2026-10-27.md, §11 «¿qué pasa si…?»). Por las acciones reales (permiso → guard → caso de uso → base):
@@ -58,7 +59,7 @@ describe("E2: el costo viaja con el traspaso", () => {
 
   /** Una compra por la acción real; `precioTotal` undefined = sin precio. */
   async function comprar(seccionId: string, productoId: string, cantidad: number, precioTotal: number | undefined, fecha: Date) {
-    const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha, seccionId, items: [{ productoId, cantidad, ...(precioTotal === undefined ? {} : { precioTotal }) }], claveIdempotencia: crypto.randomUUID() });
+    const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha, seccionId, items: [{ productoId, cantidad, ...(precioTotal === undefined ? {} : { precioTotal }), referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     expect(r.ok, r.mensaje).toBe(true);
   }
 

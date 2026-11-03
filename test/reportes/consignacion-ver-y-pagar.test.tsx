@@ -14,6 +14,7 @@ import { registrarPagoConsignante } from "../../src/server/actions/reportes/cons
 import ConsignacionPage from "../../src/app/(app)/reportes/consignacion/page";
 import { TablaDebidoConsignante } from "../../src/app/(app)/reportes/consignacion/tabla-consignacion";
 import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /** Los props de cada `tipo` de componente que el árbol (ya armado por la página) lleva. */
 function propsDe(arbol: ReactNode, tipo: unknown): Record<string, unknown>[] {
@@ -65,7 +66,7 @@ describe("Consignación: ver el reporte no es poder pagar", () => {
     );
     const pv = await sembrarProductoDisponible({ codigo: "PV_COPA", nombre: "Copa de vino", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 50 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: catalogo.kg.id }] } } });
-    expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId: consignanteId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
+    expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId: consignanteId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
     expect((await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 3 }] })).ok).toBe(true);
   });
 

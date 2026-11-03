@@ -10,6 +10,7 @@ import { anularVenta, registrarVenta } from "../../src/server/actions/movimiento
 import { listarRegistrosAuditoria } from "../../src/server/consultas/permisos/auditoria";
 import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /** `anularVenta` deja rastro en la auditoría administrativa, igual que `anularCompra`. */
 describe("anularVenta: auditoría", () => {
@@ -35,7 +36,7 @@ describe("anularVenta: auditoría", () => {
     const harina = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kg.id }, sucursalId);
     panId = (await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: kg.id, precioVenta: 100 }, sucursalId)).id;
     await prisma.recetaVersion.create({ data: { productoId: panId, version: 1, ingredientes: { create: [{ insumoProductoId: harina.id, cantidad: 1, unidadId: kg.id }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-05T12:00:00Z"), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-05T12:00:00Z"), seccionId, items: [{ productoId: harina.id, cantidad: 10, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   });
 
   it("anular una venta deja UNA fila de auditoría con quién, cuándo y de cuál", async () => {

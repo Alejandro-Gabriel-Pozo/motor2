@@ -9,6 +9,7 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { generarConciliacionVencimientos } from "../../src/server/consultas/reportes/vencimientos";
 import type { Db } from "../../src/lib/db-tipos";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Pureza Fase 3 — conciliación de vencimientos. Por cada lote que «desaparece» entre dos conteos se sumaban las ventas y consumos del período con UNA consulta
@@ -39,7 +40,7 @@ describe("conciliación de vencimientos: las ventas y consumos del período sale
   async function loteQueDesaparece(codigo: string, nombre: string, contado: number, consumos: number[]) {
     const mp = await sembrarProductoDisponible({ codigo, nombre, tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const lote = new Date("2026-03-10");
-    const compra = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: contado, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
+    const compra = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: contado, loteVencimiento: lote, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     expect(compra.ok, compra.mensaje).toBe(true);
     await registrarUnConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: contado, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
     for (const cantidad of consumos) {

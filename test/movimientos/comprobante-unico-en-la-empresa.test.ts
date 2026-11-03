@@ -16,6 +16,7 @@ import { mediodiaDelDia, ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../.
 import { guardComandoRegistrarFacturaProveedor } from "../../src/core/features/compras/factura-proveedor.guard";
 import type { DatosMovimientoInput } from "../../src/core/features/movimientos/movimiento.schema";
 import type { DatosFacturaProveedorInput } from "../../src/core/features/compras/factura-proveedor.schema";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Etapa 1 de Compras (docs/diseno-compras-factura-unica-y-rechazo-2026-11-03.md, I1, I2, I5, I15): el mismo número del mismo proveedor se rechaza en TODA la empresa, venga como compra simple, como factura repartida o
@@ -43,7 +44,7 @@ const compra = (nroFactura: string | undefined, extra: Partial<DatosMovimientoIn
     seccionId: seccionDe(sucursalId ?? s1),
     proveedorId,
     nroFactura,
-    items: [{ productoId: harinaId, cantidad: 10, precioTotal: 1000 }],
+    items: [{ productoId: harinaId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
     claveIdempotencia: randomUUID(),
     ...resto,
   } as DatosMovimientoInput;
@@ -55,7 +56,7 @@ const facturaRepartida = (sucursalId: string, nroFactura: string, extra: Partial
   proveedorId,
   nroFactura,
   seccionId: seccionDe(sucursalId),
-  items: [{ productoId: harinaId, cantidad: 10, precioTotal: 1000 }],
+  items: [{ productoId: harinaId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
   reparto: { modo: "PORCENTAJE", partes: [{ sucursalId, valor: 100 }] },
   claveIdempotencia: randomUUID(),
   ...extra,

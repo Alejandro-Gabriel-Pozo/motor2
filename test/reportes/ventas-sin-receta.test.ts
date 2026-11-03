@@ -8,6 +8,7 @@ import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { generarReporteVentasSinReceta } from "../../src/server/consultas/reportes/ventas-sin-receta";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * El reporte «Ventas sin receta». Desde ADR-033 («sin receta no se vende») es una VERIFICACIÓN: una venta nueva de un PV sin receta se rechaza, así que con datos nuevos da vacío; lo que
@@ -44,7 +45,7 @@ describe("generarReporteVentasSinReceta", () => {
     const sinReceta = await sembrarProductoDisponible({ codigo: "PV_SIN", nombre: "Sin receta", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 50 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: conReceta.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
-    const compra = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    const compra = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     expect(compra.ok, compra.mensaje).toBe(true);
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: conReceta.id, cantidadVendida: 1 }] }); // sí genera consumo: no debe aparecer
     // RECETA (ADR-033): una venta NUEVA sin receta ya no se registra — con datos nuevos, el reporte (una verificación) da vacío.

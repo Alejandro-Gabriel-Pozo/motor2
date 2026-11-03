@@ -2,6 +2,7 @@ import { intento, variantes, type ContextoDeArgumentos, type Generadores, type K
 import { DIA_DEL_PLATO_DEL_MUNDO } from "./mundo";
 import { sumarDias } from "../../../src/core/tiempo/zona-horaria";
 import { nroFacturaDePrueba } from "../../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../../setup/referencia-de-prueba";
 
 /**
  * Los GENERADORES de argumentos de la matriz de denegación por defecto (GT-3b), solo para lo que `argumentos.ts` no deriva por nombre de parámetro: puertas con un objeto de entrada
@@ -265,9 +266,9 @@ const completos: Record<string, Valor> = {
     conVariantes(
       // E1 (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md): la clave de reintento es obligatoria; cada intento manda una nueva para llegar a la lógica.
       // Compra con la sección ajena, y (de otra empresa) con el proveedor o el producto ajenos.
-      intento(c, ["seccionId", "proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: k.seccionId, proveedorId: k.proveedorId, nroFactura: nroFacturaDePrueba(), items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }]),
-      intento(c, ["proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, proveedorId: k.proveedorId, nroFactura: nroFacturaDePrueba(), items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }]),
-      intento(c, ["productoId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, proveedorId: c.propio.proveedorId, nroFactura: nroFacturaDePrueba(), items: [{ productoId: k.productoId, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }]),
+      intento(c, ["seccionId", "proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: k.seccionId, proveedorId: k.proveedorId, nroFactura: nroFacturaDePrueba(), items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }]),
+      intento(c, ["proveedorId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, proveedorId: k.proveedorId, nroFactura: nroFacturaDePrueba(), items: [{ productoId: c.propio.productoId, cantidad: 1, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }]),
+      intento(c, ["productoId"], [{ proceso: "COMPRA", fecha: hoy(), seccionId: c.propio.seccionId, proveedorId: c.propio.proveedorId, nroFactura: nroFacturaDePrueba(), items: [{ productoId: k.productoId, cantidad: 1, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }]),
       // Merma con el motivo ajeno; consumo con el destino ajeno (son de la empresa).
       intento(c, ["motivoId"], [{ proceso: "MERMA", fecha: hoy(), seccionId: c.propio.seccionId, motivoId: k.motivoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() }]),
       intento(c, ["destinoId"], [{ proceso: "CONSUMO", fecha: hoy(), seccionId: c.propio.seccionId, destinoId: k.destinoId, items: [{ productoId: c.propio.productoId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() }]),
@@ -315,7 +316,7 @@ const completos: Record<string, Valor> = {
       proveedorId: o.proveedorId ?? c.propio.proveedorId,
       nroFactura: nroFacturaDePrueba(),
       seccionId: o.seccionId ?? c.propio.seccionId,
-      items: [{ productoId: o.productoId ?? c.propio.productoId, cantidad: 2, precioTotal: 100 }],
+      items: [{ productoId: o.productoId ?? c.propio.productoId, cantidad: 2, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       reparto: { modo: "IMPORTE", partes: o.partes ?? [{ sucursalId: c.propio.sucursalId, valor: 100 }] },
       claveIdempotencia: crypto.randomUUID(),
     });

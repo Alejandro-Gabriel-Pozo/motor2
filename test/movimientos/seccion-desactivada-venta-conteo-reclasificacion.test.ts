@@ -11,6 +11,7 @@ import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { reclasificarStock } from "../../src/server/actions/stock/reclasificacion";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * P17 (decisión del dueño, 2026-10-11): una sección dada de baja solo admite sacar mercadería (consumir, mermar o transferir). Acá, los otros tres caminos que la tocan, contra la base real:
@@ -49,7 +50,7 @@ describe("P17: venta, conteo y reclasificación con una sección dada de baja", 
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 0.2, unidadId: unidadKgId, mermaPorcentaje: 0 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   });
 
   describe("venta de mostrador", () => {

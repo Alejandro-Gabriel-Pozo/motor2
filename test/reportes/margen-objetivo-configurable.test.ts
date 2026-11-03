@@ -10,6 +10,7 @@ import { calcularCostosYMargenes } from "../../src/server/lecturas/reportes/cost
 import { cargarObjetivosDeMargen } from "../../src/server/consultas/reportes/margen-objetivo-consulta";
 import { FOOD_COST_OBJETIVO_PCT } from "../../src/core/reportes/margen-objetivo";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Margen objetivo configurable (Etapa 1): `guardarMargenObjetivo` fija el objetivo de la empresa o de una categoría (solo administración), y
@@ -51,7 +52,7 @@ describe("margen objetivo configurable", () => {
     pizzaId = await plato("PV_PIZZA", categoriaPizzaId);
     bebidaId = await plato("PV_BEBIDA", categoriaBebidaId);
     sinCategoriaId = await plato("PV_SIN_CAT", null);
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 4000 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 4000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   });
 
   async function filas() {

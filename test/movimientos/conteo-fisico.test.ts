@@ -17,6 +17,7 @@ import { getUsuarioActual } from "../../src/server/sesion/session";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { cargarConteoFisicoPorClave } from "../../src/server/persistencia/movimientos/escribir-conteo-fisico";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 describe("Conteo Físico", () => {
   let sucursalId: string;
@@ -41,7 +42,7 @@ describe("Conteo Físico", () => {
 
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Yerba", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     mpId = mp.id;
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   });
 
   it("AJUSTAR escribe el movimiento de corrección y el saldo queda en lo contado", async () => {
@@ -148,7 +149,7 @@ describe("Conteo Físico", () => {
     const conteo = await prisma.conteoFisico.findFirstOrThrow({ where: { productoId: mpId } });
 
     // Entre medio se cargó otra Compra — el saldo de "hoy" ya no es el de cuando se contó.
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 3, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const resultado = await resolverConteoPendiente(conteo.id, "ajustar");
     expect(resultado.ok).toBe(true);
@@ -239,7 +240,7 @@ describe("Conteo Físico", () => {
 
   it("obtenerHistorialConteosFisicos filtra por producto y por rango de fechas (hallazgo de la auditoría: existían pero nunca se exponían)", async () => {
     const otroMp = await sembrarProductoDisponible({ codigo: "MP_2", nombre: "Café", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: otroMp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: otroMp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 3, fechaConteo: new Date(2026, 0, 5), accion: "AJUSTAR" });
     await registrarUnConteoFisico({ productoId: otroMp.id, seccionId, conteoReal: 2, fechaConteo: new Date(2026, 0, 15), accion: "AJUSTAR" });
@@ -277,7 +278,7 @@ describe("Conteo Físico", () => {
   describe("registrarConteosFisicos (toda la grilla en una llamada)", () => {
     async function crearMpConStock(codigo: string, cantidad: number) {
       const mp = await sembrarProductoDisponible({ codigo, nombre: `Producto ${codigo}`, tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       return mp;
     }
     const fila = (productoId: string, conteoReal: number, accion: "AJUSTAR" | "FALTA_MOVIMIENTO" | "DESCARTAR" = "AJUSTAR") => ({
@@ -475,7 +476,7 @@ describe("Conteo Físico", () => {
     it("dos conteos SIMULTÁNEOS con la MISMA clave — exactamente uno escribe, ninguno rechaza, los dos devuelven el mismo mensaje", async () => {
       for (let i = 0; i < 10; i++) {
         const mp = await sembrarProductoDisponible({ codigo: `MP_CONC_${i}`, nombre: `Concurrente ${i}`, tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-        await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+        await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
         const clave = crypto.randomUUID();
 
         // Dos grillas de UNA fila con la misma clave, llamando a la acción de la pantalla (`registrarConteosFisicos`) directamente: el guardián de cobertura concurrente de I3 busca el nombre de la acción dentro del `Promise.allSettled`.
@@ -496,7 +497,7 @@ describe("Conteo Físico", () => {
 
     it("la grilla reenviada entera (mismas claves por fila) no duplica ninguna fila ni vuelve a ajustar", async () => {
       const b = await sembrarProductoDisponible({ codigo: "MP_B", nombre: "Producto B", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: b.id, cantidad: 8 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: b.id, cantidad: 8, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       const grilla = [comando(mpId, 7, crypto.randomUUID()), comando(b.id, 5, crypto.randomUUID())];
 
       const primera = await registrarConteosFisicos(grilla);
@@ -514,7 +515,7 @@ describe("Conteo Físico", () => {
 
     it("la grilla reenviada tras cargar una fila más escribe SOLO la nueva", async () => {
       const b = await sembrarProductoDisponible({ codigo: "MP_B", nombre: "Producto B", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: b.id, cantidad: 8 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: b.id, cantidad: 8, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       const filaA = comando(mpId, 7, crypto.randomUUID());
       await registrarConteosFisicos([filaA]);
 

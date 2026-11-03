@@ -16,6 +16,7 @@ import { generarReporteDiferenciasAjustes } from "../../src/server/consultas/rep
 import { OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION } from "../../src/core/movimientos/anulaciones";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Una VENTA anulada es una venta que no ocurrió: ningún reporte de dinero ni de consumo la cuenta. Antes `anularVenta` escribía el contra-asiento (stock bien) pero
@@ -39,7 +40,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
   const agosto = () => obtenerReportePorPeriodo(sucursalId, d("2026-08-01"), d("2026-08-31"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
   async function comprarHarina(fecha: string) {
-    const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: d(fecha), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: d(fecha), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     expect(r.ok, r.mensaje).toBe(true);
   }
 
@@ -118,7 +119,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
 
     it("el ratio Compras/Ventas del período ANTERIOR tampoco cuenta la venta anulada (y compara lo mismo que el actual)", async () => {
       // Julio: compras vigentes por $25 y dos ventas: una de $200 vigente y una de $300 anulada. Con la anulada, el ratio sería 25/500 = 5 %, no 12,5 %.
-      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: d("2026-07-10"), seccionId, items: [{ productoId: harinaId, cantidad: 5, precioTotal: 25 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: d("2026-07-10"), seccionId, items: [{ productoId: harinaId, cantidad: 5, precioTotal: 25, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       const venta = async (importe: number, anulada: boolean) => {
         const op = await prisma.operacion.create({
           data: { sucursalId, proceso: "VENTA", fecha: d("2026-07-15"), usuarioId: adminId, ...(anulada ? { anuladaEn: new Date(), anuladaPorId: adminId } : {}) },
@@ -166,7 +167,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
     });
 
     it("Pérdidas y consumo: el consumo automático por receta de una venta anulada no es consumo", async () => {
-      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       const registrada = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: panId, cantidadVendida: 1 }] });
       expect(registrada.ok, registrada.mensaje).toBe(true);
       const antes = await generarReportePerdidas(sucursalId, 30, prisma, AHORA_DE_LA_CORRIDA);

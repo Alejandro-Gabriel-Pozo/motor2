@@ -14,6 +14,7 @@ import { MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idemp
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /** K1c: anular una compra ya confirmada (Postgres real, sin mocks de base). */
 describe("anularCompra", () => {
@@ -35,7 +36,7 @@ describe("anularCompra", () => {
       seccionId,
       proveedorId,
       nroFactura: opciones.nroFactura ?? nroFacturaDePrueba(),
-      items: [{ productoId: opciones.productoId ?? harinaId, cantidad: opciones.cantidad ?? 10, precioTotal: opciones.precioTotal ?? 1000, loteVencimiento: opciones.lote }],
+      items: [{ productoId: opciones.productoId ?? harinaId, cantidad: opciones.cantidad ?? 10, precioTotal: opciones.precioTotal ?? 1000, loteVencimiento: opciones.lote, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
     expect(r.ok, r.mensaje).toBe(true);
@@ -326,7 +327,7 @@ describe("anularCompra", () => {
       expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(10);
 
       // Y la recarga, ya vigente, vuelve a ocupar el número.
-      const repetida = await registrarMovimiento({ proceso: "COMPRA", fecha: hoy(), seccionId, proveedorId, nroFactura: "A-00006-00000009", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() });
+      const repetida = await registrarMovimiento({ proceso: "COMPRA", fecha: hoy(), seccionId, proveedorId, nroFactura: "A-00006-00000009", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       expect(repetida.ok).toBe(false);
       expect(repetida.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
     });

@@ -22,6 +22,7 @@ import {
   rechazarTransferencia,
   confirmarReingresoTransferencia,
 } from "../../src/server/actions/traspasos/traspasos";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tránsito'", () => {
   let sucursalAId: string;
@@ -74,7 +75,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
   it("Estado 'en tránsito' (ENVIADA): el origen ya bajó su stock, el destino todavía no lo tiene — el stock total del sistema (A+B) es menor durante ese lapso, por diseño (no es un bug)", async () => {
     const mp = await crearMP("Harina");
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const envio = await crearEnvioDirectoTransferencia({
       destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId,
@@ -102,7 +103,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
   it("Rechazo + reingreso: el ciclo completo devuelve exactamente la cantidad original al origen, sin duplicar ni perder stock", async () => {
     const mp = await crearMP("Harina2");
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
     if (!envio.ok) throw new Error(envio.mensaje);
 
@@ -132,7 +133,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
   it("Aceptación duplicada (secuencial): la segunda llamada a aceptarTransferencia sobre un traspaso ya ACEPTADA es rechazada por el guard de estado, no genera una segunda entrada de stock", async () => {
     const mp = await crearMP("Harina3");
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
     if (!envio.ok) throw new Error(envio.mensaje);
 
@@ -150,7 +151,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
   it("HALLAZGO A VERIFICAR: aceptar y rechazar simultáneos sobre el MISMO traspaso ENVIADA — ¿el guard de estado dentro de la transacción evita que ambos tengan efecto?", async () => {
     const mp = await crearMP("Harina4");
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
     if (!envio.ok) throw new Error(envio.mensaje);
 
@@ -188,7 +189,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
   it("REGRESIÓN (Plan I3, §11.7): rechazo simultáneo — exactamente UNO de los dos gana, el otro recibe un error de estado explícito, nunca ambos ok:true pisando el motivo", async () => {
     const mp = await crearMP("HarinaRechazo");
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
     if (!envio.ok) throw new Error(envio.mensaje);
 
@@ -218,7 +219,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
   it("Reingreso simultáneo (sin clave de idempotencia): dos confirmarReingresoTransferencia en paralelo sobre el mismo traspaso RECHAZADA_DESTINO — exactamente uno tiene efecto, el otro recibe el error de estado, nunca se duplica el reingreso", async () => {
     const mp = await crearMP("HarinaReingreso");
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     const envio = await crearEnvioDirectoTransferencia({ destinoSucursalId: sucursalBId, productoId: mp.id, cantidad: 4, seccionOrigenId: seccionAId });
     if (!envio.ok) throw new Error(envio.mensaje);
 
@@ -263,7 +264,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
   it("REGRESIÓN (stock en tránsito): aprobar y rechazar la MISMA solicitud simultáneos — exactamente uno gana, y nunca queda RECHAZADA_ORIGEN con la SALIDA ya hecha", async () => {
     const mp = await crearMP("HarinaCarrera");
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 20 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 20, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const DESFASAJES_MS = [0, 0, 1, 2, 4, 8, 15];
     for (const desfasaje of DESFASAJES_MS) {
@@ -300,7 +301,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
   it("REGRESIÓN (stock en tránsito): doble cancelación simultánea de la misma solicitud — exactamente una tiene efecto, la otra recibe el error de estado", async () => {
     const mp = await crearMP("HarinaDobleCancela");
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     await comoB();
     const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 2, seccionDestinoId: seccionBId });
@@ -322,7 +323,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
   it("REGRESIÓN (stock en tránsito): doble rechazo simultáneo de la misma solicitud — exactamente uno gana, el otro recibe el error de estado, nunca se pisa el motivo en silencio", async () => {
     const mp = await crearMP("HarinaDobleRechazoSol");
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     await comoB();
     const sol = await crearSolicitudTransferencia({ origenSucursalId: sucursalAId, productoId: mp.id, cantidad: 2, seccionDestinoId: seccionBId });
@@ -355,7 +356,7 @@ describe("Auditoría — Fase 4: traspasos entre sucursales en estado 'en tráns
     // atómicos de verdad, ninguna de las dos filas debe sobrevivir.
     const mp = await crearMP("Harina5");
     await comoA();
-    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await prisma.usuarioSucursal.findFirstOrThrow({ where: { usuarioId: usuarioAId } }); // precondición: la membresía existe antes de simular el fallo
 
     class FalloSimulado extends Error {}

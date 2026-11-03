@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularCompra, corregirCompra } from "../../src/server/actions/movimientos/compras";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /** K1b: corregir la cabecera (proveedor, N.º de factura, detalle) de una compra confirmada. Postgres real, sin mocks de base. */
 describe("corregirCompra", () => {
@@ -143,7 +144,7 @@ describe("corregirCompra", () => {
       const op = await compra({ proveedorId: molinoId });
       expect((await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00014-00000077", detalleLibre: "" }, vista(op))).ok).toBe(true);
 
-      const carga = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: molinoId, nroFactura: "A-00014-00000077", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() });
+      const carga = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: molinoId, nroFactura: "A-00014-00000077", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       expect(carga.ok).toBe(false);
       expect(carga.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
     });

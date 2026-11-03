@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
 import { mediodiaDelDia, ZONA_ARGENTINA } from "@/core/tiempo/zona-horaria";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * E3a, paso 2: el formato de los tres comandos de la factura de proveedor (clave obligatoria, número obligatorio al repartir con otras sucursales, sección de la parte propia, reparto bien formado
@@ -19,7 +20,7 @@ const base = (extra: Record<string, unknown> = {}) => ({
   proveedorId: "prov",
   nroFactura: "A-00001-00000077",
   seccionId: "sec",
-  items: [{ productoId: "p", cantidad: 3, precioTotal: 300 }],
+  items: [{ productoId: "p", cantidad: 3, precioTotal: 300, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
   reparto: { modo: "IMPORTE", partes: [{ sucursalId: S3, valor: 200 }, { sucursalId: "suc_4", valor: 100 }] },
   claveIdempotencia: CLAVE,
   ...extra,
