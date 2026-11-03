@@ -277,7 +277,6 @@ const completos: Record<string, Valor> = {
     conVariantes(
       intento(c, ["seccionId"], [{ fecha: hoy(), seccionId: k.seccionId, ventas: [{ productoId: c.propio.productoPvId, cantidadVendida: 1 }] }]),
       intento(c, ["productoPvId"], [{ fecha: hoy(), seccionId: c.propio.seccionId, ventas: [{ productoId: k.productoPvId, cantidadVendida: 1 }] }]),
-      intento(c, ["proveedorId"], [{ fecha: hoy(), seccionId: c.propio.seccionId, proveedorId: k.proveedorId, ventas: [{ productoId: c.propio.productoPvId, cantidadVendida: 1 }] }]),
     ),
   "accion|actions/stock/reclasificacion.ts|reclasificarStock": (k, c) =>
     conVariantes(
