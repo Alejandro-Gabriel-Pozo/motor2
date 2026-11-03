@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { Browser, Page } from "@playwright/test";
+import type { Browser } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { crearMembresias } from "../setup/membresia";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import { completarPasoFactura, elegirProductoEnLaFila, elegirSelectPorOpcion, llenarLinea, siguiente, verPaso } from "./fixtures/compra-por-pasos";
 
 /**
  * E3a (ADR-041; docs/diseno-factura-de-proveedor-e3a-2026-10-27.md): la factura de proveedor repartida, de punta a punta, en la pantalla de Compra.
@@ -13,16 +14,6 @@ import { prismaAdmin } from "../setup/cliente-duenio";
  *  3. El administrador anula la factura entera desde «Compras registradas», con motivo: sin permiso en la otra sucursal se rechaza (P4); con permiso, el stock vuelve en las dos.
  * Todo lo sembrado lleva una marca única y se limpia al final con el dueño de las tablas (las de la factura solo admiten agregar para la app).
  */
-async function elegirSelectPorOpcion(page: Page, textoOpcion: string) {
-  for (const select of await page.locator("select").all()) {
-    if ((await select.locator("option").allTextContents()).includes(textoOpcion)) {
-      await select.selectOption({ label: textoOpcion });
-      return;
-    }
-  }
-  throw new Error(`Ningún <select> tiene una opción "${textoOpcion}"`);
-}
-
 async function operarioSoloEn(browser: Browser, baseURL: string | undefined, sucursalId: string, marca: string) {
   const operador = await prisma.rol.findFirstOrThrow({ where: { clave: "operador" } });
   const usuario = await prisma.user.create({ data: { email: `e2e-factura-op-${marca}@local.test`, activoGlobal: true } });
@@ -45,21 +36,20 @@ test("cargar una factura repartida, aceptar la parte desde la otra sucursal (sin
   const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_FR_${marca}`, nombre: `E2E Proveedor Repartida ${marca}` } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-FR-${marca}`, nombre: `E2E Harina Repartida ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
   await prisma.disponibilidadProducto.createMany({ data: [sucursalId, destino.id].map((s) => ({ sucursalId: s, productoId: producto.id, disponible: true })) });
-  const numero = `0007-${marca.replace("-", "").slice(-8)}`;
   const op = await operarioSoloEn(browser, baseURL, destino.id, marca);
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
 
   try {
     // 1. Cargar la factura y repartirla.
     await page.goto("/movimientos/compra");
-    await elegirSelectPorOpcion(page, seccion.nombre);
-    await elegirSelectPorOpcion(page, proveedor.nombre);
+    await completarPasoFactura(page, { proveedor: proveedor.nombre });
     await expect(page.getByText(/Todavía no le compraste nada a este proveedor/)).toBeVisible();
-    await page.getByLabel("N° de factura").fill(numero);
-    await page.locator('input[placeholder="Código o nombre…"]').first().fill(producto.nombre);
-    await page.getByRole("option", { name: new RegExp(producto.nombre) }).click();
-    await page.locator("label:has-text('Cantidad') input").first().fill("10");
-    await page.locator("label:has-text('Precio total') input").first().fill("1000");
+    await elegirProductoEnLaFila(page, producto.nombre);
+    await llenarLinea(page, { cantidad: "10", importe: "1000", referencia: "Harina repartida" });
+    // Paso 3 «Dónde entra»: el depósito de la sucursal que compra y el reparto entre sucursales.
+    await siguiente(page);
+    await verPaso(page, 3, "Dónde entra");
+    await elegirSelectPorOpcion(page, seccion.nombre);
     const bloque = page.getByTestId("bloque-reparto");
     await bloque.getByLabel("Repartir entre sucursales").check();
     await bloque.getByLabel(`Parte de ${destino.nombre}`, { exact: true }).check();
@@ -67,7 +57,11 @@ test("cargar una factura repartida, aceptar la parte desde la otra sucursal (sin
     await expect(bloque).toContainText("Falta repartir");
     await bloque.getByLabel(`Importe de ${destino.nombre}`).fill("400");
     await expect(bloque).toContainText("El reparto cierra.");
-    await page.getByRole("button", { name: "Confirmar", exact: true }).click();
+    await siguiente(page);
+    await verPaso(page, 4, "Pago");
+    await siguiente(page);
+    await verPaso(page, 5, "Revisar y confirmar");
+    await page.getByRole("button", { name: "Confirmar compra", exact: true }).click();
     await expect(page.getByText(/Quedan para aceptar las partes de/)).toBeVisible();
 
     const factura = await prismaAdmin.facturaProveedor.findFirstOrThrow({ where: { proveedorId: proveedor.id }, include: { partes: true, propuestas: true } });

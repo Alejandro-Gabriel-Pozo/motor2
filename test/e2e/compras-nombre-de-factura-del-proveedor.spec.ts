@@ -1,16 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
-
-async function elegirSelectPorOpcion(page: Page, textoOpcion: string) {
-  for (const select of await page.locator("select").all()) {
-    if ((await select.locator("option").allTextContents()).includes(textoOpcion)) {
-      await select.selectOption({ label: textoOpcion });
-      return;
-    }
-  }
-  throw new Error(`Ningún <select> tiene una opción "${textoOpcion}"`);
-}
+import { completarPasoFactura, confirmarCompra, elegirProductoEnLaFila, irARevisar, llenarLinea, siguiente, anterior, elegirSelectPorOpcion, verPaso } from "./fixtures/compra-por-pasos";
 
 /** Si CAPTURAS_DIR está definida, guarda una captura de la pantalla (para mostrarle al dueño el recorrido). */
 async function capturar(page: Page, nombre: string) {
@@ -37,20 +28,17 @@ test("un producto, dos proveedores con su nombre de factura: se guarda al compra
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
   const nombreEnLaFacturaA = "Ojo de bife rioplatense";
   const nombreEnLaFacturaB = "Ojo de bife a secas";
-  const referencia = page.getByRole("textbox", { name: "Código/nombre del proveedor" }).first();
+  const referencia = page.getByRole("textbox", { name: /Cómo lo llama el proveedor/ }).first();
   const productoDeLaFila = page.locator('input[placeholder="Código o nombre…"]').first();
 
   async function primeraCompra(proveedorNombre: string, nombreEnLaFactura: string, kilos: string, precioTotal: string) {
     await page.goto("/movimientos/compra");
-    await elegirSelectPorOpcion(page, seccion.nombre);
-    await elegirSelectPorOpcion(page, proveedorNombre);
+    await completarPasoFactura(page, { proveedor: proveedorNombre });
     await expect(page.getByText(/Todavía no le compraste nada a este proveedor/)).toBeVisible();
-    await productoDeLaFila.fill(nombreProducto);
-    await page.getByRole("option", { name: new RegExp(nombreProducto) }).click();
-    await referencia.fill(nombreEnLaFactura);
-    await page.locator("label:has-text('Cantidad') input").first().fill(kilos);
-    await page.locator("label:has-text('Precio total') input").first().fill(precioTotal);
-    await page.getByRole("button", { name: "Confirmar" }).click();
+    await elegirProductoEnLaFila(page, nombreProducto);
+    await llenarLinea(page, { cantidad: kilos, importe: precioTotal, referencia: nombreEnLaFactura });
+    await irARevisar(page, seccion.nombre);
+    await confirmarCompra(page);
     await expect(page.getByText(/Se guardaron \d+ movimiento/)).toBeVisible();
   }
 
@@ -68,14 +56,17 @@ test("un producto, dos proveedores con su nombre de factura: se guarda al compra
 
   // 2) La vez siguiente, al elegir al proveedor, la fila viene sola con SU nombre de factura y solo falta la cantidad.
   await page.goto("/movimientos/compra");
-  await elegirSelectPorOpcion(page, seccion.nombre);
-  await elegirSelectPorOpcion(page, proveedorA.nombre);
+  await completarPasoFactura(page, { proveedor: proveedorA.nombre });
   await expect(page.getByText(/1 producto\(s\) que ya le comprás/)).toBeVisible();
   await expect(productoDeLaFila).toHaveValue(new RegExp(nombreProducto));
   await expect(referencia).toHaveValue(nombreEnLaFacturaA);
   await capturar(page, "1-proveedor-a-fila-precargada");
 
+  // Se vuelve al paso 1 a cambiar de proveedor y se avanza otra vez: la fila viene con el nombre de factura de ESE proveedor.
+  await anterior(page);
+  await verPaso(page, 1, "Factura");
   await elegirSelectPorOpcion(page, proveedorB.nombre);
+  await siguiente(page);
   await expect(page.getByText(/1 producto\(s\) que ya le comprás/)).toBeVisible();
   await expect(productoDeLaFila).toHaveValue(new RegExp(nombreProducto));
   await expect(referencia).toHaveValue(nombreEnLaFacturaB);
