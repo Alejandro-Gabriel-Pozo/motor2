@@ -68,7 +68,7 @@ Contexto: Argentina (UTC-3); todo en pesos; cada empresa solo ve lo suyo y cada 
 | El concepto genérico (para recetas y costo) | del insumo | `Insumo`, y la materia prima lo apunta | No: los reportes por insumo se calculan por la materia prima |
 | Código y descripción **que pone el proveedor** | del par proveedor × materia prima (el mismo producto lo llama distinto cada proveedor) | `ProveedorPorProducto`, **en dos campos separados**: `codigoDelProveedor` (nuevo) y `referenciaProveedor` (queda para la descripción) | No: las facturas y los reportes lo leen del vínculo |
 | Unidad de compra y conversión a unidad de stock | del producto y del vínculo | `Producto.factorConversion` y `ProveedorPorProducto.unidadCompraId` | No |
-| Unidades, kilos e importe de cada compra | del documento | la línea de la factura | No (precio por unidad y por kilo se calculan) |
+| Unidades, kilos e importe de cada compra | del documento | la línea: importe en `MovimientoStock.precioTotal` / `FacturaProveedorRenglon.precioTotal` (HOY); UM y unidades **NO EXISTEN hoy** y llegan con la migración 2a (§6, §14); kilos solo si la unidad de stock es de peso (§14) | No (precio por unidad y por kilo se calculan) |
 | Último precio | derivado | hoy `ProveedorPorProducto.precioUnitario`; se puede recalcular de la última línea | Es una caché que ya existe |
 
 **Qué evita duplicar.** Código y descripción **no** se guardan en el insumo ni en la materia prima ni en cada línea: viven en el vínculo proveedor × materia prima. Separar código y descripción en dos campos permite buscar por el **código exacto** del proveedor y sacar las dos columnas del reporte sin cortar texto. Una restricción única `(empresa, proveedor, código)` impide que un mismo código del proveedor apunte a dos productos.
@@ -163,6 +163,7 @@ Lo más barato primero:
 | Etapa | Qué | Migración |
 |---|---|---|
 | **1** | Número estructurado (dígitos, ceros a la izquierda), clave única en toda la empresa también desde la compra simple, corrección y aceptación; buscador por palabras; «cómo lo llama» obligatorio en la primera carga; aviso de precio 0; pasos y confirmaciones en pantalla; fecha ≤ hoy; clave obligatoria al anular una compra; letras y puntos de venta tomados de la ficha cuando ya estén | **Ninguna** |
+| **2a** (primera, sola) | UM y unidades de cada línea comprada (§14.1): `unidadCompraId` y `cantidadCompra`, nulables, en `FacturaProveedorRenglon` y en `MovimientoStock` (solo las escribe una COMPRA). **Precondición del uso real de compras** (CONFIRMADA el 2026-11-03): no se habilita la carga real sin ella | Aditiva, reversible, chica y aparte para poder aplicarla antes. **Requiere autorización expresa** por base, con respaldo y ensayo |
 | **2** | Letras de comprobante del proveedor: columna aditiva en `Proveedor` con CHECK (los puntos de venta ya tienen su tabla `PuntoDeVentaDeProveedor`, hoy sin uso); escribir `FacturaProveedor.letra` | Aditiva, reversible. **Requiere autorización expresa** |
 | **3** | Estado RECHAZADA de la propuesta con motivo y referencia a la parte devuelta | Aditiva (ampliar el CHECK de estado, columna de motivo). **Requiere autorización expresa** |
 | Aparte | Buscar sin tildes (`unaccent` o columna normalizada) | Aditiva. **Requiere autorización expresa** |
@@ -225,3 +226,54 @@ Pedido, cotización y orden de compra (sin necesidad escrita); remito y recepci�
 ## 14. Reporte tipo planilla (PENDIENTE por ahora; pedido del dueño del 2026-11-03)
 
 **Decisión (CONFIRMADA el 2026-11-03): los reportes quedan pendientes en esta etapa.** Lo que sí se hace ahora es guardar cada línea con los datos de la planilla del dueño (fecha de emisión, proveedor, punto de venta y número, línea, código, descripción, UM, unidades, kilos, importe y tipo de línea), para que el reporte se arme después sin recargar nada: una fila por línea, con filtros por proveedor, punto de venta, monto y producto, exportable a Excel, y solo con el ejemplar vigente. Las columnas y filtros definitivos se deciden cuando se construya. Hoy existe «Compras registradas» (`reporte_compras`) con otras columnas.
+
+**Corrección (2026-11-03).** «Se guarda cada línea con sus datos» NO se cumple del todo en la etapa 1, que va sin migración: la UM y las unidades compradas no tienen dónde guardarse (`armarLineaMovimiento` convierte con el factor y descarta lo comprado). Llegan con la migración 2a (§6). **Decisión del dueño (CONFIRMADA el 2026-11-03):** esas columnas tienen que estar aplicadas ANTES de que un cliente real cargue compras; la autorización para aplicarlas sigue pendiente (por base, con respaldo y ensayo).
+
+### 14.1 Dónde vive cada columna de la planilla (verificado contra el código de la rama `alegp/compras-etapa-1`, 2026-11-03)
+
+| Columna | Compra simple (`Operacion` COMPRA + `MovimientoStock`) | Factura repartida (`FacturaProveedor` + `FacturaProveedorRenglon`) |
+|---|---|---|
+| Fecha de emisión | `Operacion.fecha` (único día cargado: vale de stock y de factura) | `FacturaProveedor.fecha` (día de stock y costo). `fechaComprobante` existe pero nunca se escribe |
+| Proveedor | `Operacion.proveedorId` (obligatorio desde la etapa 1) | `FacturaProveedor.proveedorId` |
+| PV y número | Derivable: se parsea `Operacion.nroFactura` (canónico «A-00023-00237728» desde la etapa 1; las compras viejas de texto libre pueden no parsear, I15) | Derivable de `FacturaProveedor.nroFactura` (canónico). `letra` no se escribe (etapa 2) |
+| Línea (n.º de renglón) | **NO EXISTE** (sin orden; `creadoEn` es igual para todas las líneas) | `FacturaProveedorRenglon.orden` |
+| Código | `Producto.codigo` (NUESTRO). El código del proveedor no existe (etapa 2, `codigoDelProveedor`) | Igual |
+| Descripción | `Producto.nombre`, o `ProveedorPorProducto.referenciaProveedor` (la ACTUAL, no histórica: opción a de §4.bis) | Igual (`FacturaProveedorRenglon.descripcion` existe pero no se escribe en MERCADERIA) |
+| UM | **NO EXISTE** (llega con 2a) | **NO EXISTE** (llega con 2a) |
+| Unidades (en la UM) | **NO EXISTE** (llega con 2a) | **NO EXISTE** (llega con 2a) |
+| Kilos | Solo si la unidad de stock es de peso (`Unidad.magnitud = PESO`): `MovimientoStock.cantidad`. Si no, **NO EXISTE** | Igual, `FacturaProveedorRenglon.cantidadStock` |
+| Importe (con IVA) | `MovimientoStock.precioTotal` | `FacturaProveedorRenglon.precioTotal` (cada parte tiene además su movimiento: no sumar dos veces) |
+| Tipo de línea | **NO EXISTE** (siempre COMPRA) | `FacturaProveedorRenglon.naturaleza` (hoy siempre MERCADERIA) |
+
+**Peso real hoy.** El «peso real» REEMPLAZA la cantidad de stock y se interpreta en la unidad de stock del producto, sin mirar si es de peso. Unidad de stock kg, 1 caja con peso real 12,4: entran 12,4 kg; el «1 caja» queda solo en el texto `detalle`. Unidad de stock «lata», 1 caja de 24 con peso real 10: entran **10 latas**, no 24 (el campo se rotula «Peso real (en la unidad de stock, opcional)», D1, pero un operador que escribe kilos ahí carga mal el stock). PENDIENTE: ver §14.2.
+
+**Sin columna no alcanza.** La única fuente de UM y unidades sin migrar sería parsear el texto `MovimientoStock.detalle` («3 × 24 = 72 lata», «Peso real: 12.4 kg (1 compradas)»): no trae el nombre de la UM, con factor 1 dice solo «COMPRA» y en una parte de factura copia el texto del renglón entero. No es exacto: se descarta.
+
+### 14.2 Propuesta de la migración 2a (PROPUESTA; requiere autorización expresa, NO se aplica en la etapa 1)
+
+**Columnas** (aditivas, nulables; NULL = dato heredado, se muestra «pendiente de completar», nunca se inventa):
+
+- `FacturaProveedorRenglon.unidadCompraId TEXT NULL` + `cantidadCompra DECIMAL(14,4) NULL`: la UM y las unidades del renglón de la factura.
+- `MovimientoStock.unidadCompraId TEXT NULL` + `cantidadCompra DECIMAL(14,4) NULL`: las mismas dos, para la compra simple, que no tiene renglón. En las partes de una factura repartida quedan NULL y se leen del renglón (`facturaProveedorRenglonId`), para no repartir unidades que no son exactas.
+- En las dos tablas: FK compuesta `(empresaId, unidadCompraId) → Unidad(empresaId, id)` como el resto del esquema; `CHECK ((unidadCompraId IS NULL) = (cantidadCompra IS NULL))` y `CHECK (cantidadCompra IS NULL OR cantidadCompra > 0)`. Sin índices nuevos (el reporte filtra por proveedor, fecha y producto, que ya tienen índice). No cambia la RLS (columnas en tablas que ya la tienen).
+
+**Cómo se escriben, sin cambiar stock ni costo.** `armarLineaMovimiento` ya conoce la unidad de compra efectiva (la de la presentación elegida o la del producto) y `numCant` (lo comprado): solo los devuelve en la línea calculada, y `armarFilasDeMovimiento` / `escribirCabeceraDeFactura` los copian a las columnas nuevas. `cantidadStock`, `precioPorUnidadStock`, el costo (V-T1) y el Kardex quedan EXACTAMENTE igual: el test de caracterización de venta y los goldens no deberían cambiar en importes ni stock (solo agregar las dos columnas en las filas de compra). Lo escriben solo COMPRA y factura repartida; los demás procesos dejan NULL.
+
+**down.sql** (aborta si ya hay datos, como las demás):
+
+```sql
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM "MovimientoStock" WHERE "cantidadCompra" IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM "FacturaProveedorRenglon" WHERE "cantidadCompra" IS NOT NULL) THEN
+    RAISE EXCEPTION 'Hay líneas con unidad de compra cargada: revertir perdería datos';
+  END IF;
+END $$;
+ALTER TABLE "MovimientoStock" DROP COLUMN "cantidadCompra", DROP COLUMN "unidadCompraId";
+ALTER TABLE "FacturaProveedorRenglon" DROP COLUMN "cantidadCompra", DROP COLUMN "unidadCompraId";
+```
+
+**Orden.** Va PRIMERA y SOLA (recomendado): es chica, aditiva, no depende de las letras del proveedor ni del estado RECHAZADA, y es precondición del uso real; aplicarla aparte permite habilitar la carga real sin esperar el resto de la etapa 2. Las letras / `codigoDelProveedor` vienen después en su propia migración.
+
+**Preguntas abiertas (PENDIENTE):**
+1. **Kilos independientes** (D1, PENDIENTE de la etapa 2): para un producto cuya unidad de stock no es de peso, ¿hace falta guardar kilos (p. ej. latas por kilo)? Si sí, una tercera columna `kilos` nulable en la misma migración 2a; si no, «precio por kilo» solo se calcula cuando la unidad de stock es de peso.
+2. **Peso real con unidad que no es de peso** (riesgo de stock mal cargado, ver arriba): propuesta más barata, sin migración, para el paso 6 de la etapa 1: mostrar «Peso real» solo cuando la unidad de stock del producto es de peso, y que el servidor lo rechace si no lo es. Requiere OK porque cambia lo aceptado en D1.
