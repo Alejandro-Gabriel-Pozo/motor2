@@ -9,7 +9,7 @@ Documento SOLO de diseño, en papel. No hay código ni migraciones en esta rama.
 - **Qué NO cambia:** recetas, producción, stock, costo, venta, conteo, lotes, insumos. El stock y el costo de cada compra ya se guardan en unidad de stock: cambiar un envase nunca reescribe compras viejas.
 - **Riesgos:** (1) quien compra pasa a **definir** cuántas unidades trae un envase, y hoy eso es un permiso de administrador; (2) dos personas haciendo la primera compra del mismo envase a la vez (se resuelve con la regla «gana la primera, la otra se avisa»); (3) es **una columna nueva** en una tabla (requiere tu autorización de migración); (4) choca en archivos con la etapa 1 de Compras: se hace después de que esa entre.
 - **Alternativa más barata (B, sin migración):** que la pantalla de compra cree la «presentación» de siempre la primera vez. Baja la carga igual, pero el contenido de la «caja» sería el mismo para todos los proveedores.
-- **Decisiones (§11):** Q3 CONFIRMADA el 2026-11-03: el dueño eligió C («empecemos con C… etapas E1, E2, E3»); la migración de E1 y el retiro de E3 siguen requiriendo autorización expresa. Q2 queda como PROPUESTA asumida (unidades distintas «caja x6», «caja x12»; el dueño no lo contradijo). Q1 (quién define el contenido de un envase nuevo) sigue PENDIENTE.
+- **Decisiones (§11):** Q3 CONFIRMADA el 2026-11-03: el dueño eligió C («empecemos con C… etapas E1, E2, E3»); la migración de E1 y el retiro de E3 siguen requiriendo autorización expresa. Q2 queda como PROPUESTA asumida (unidades distintas «caja x6», «caja x12»; el dueño no lo contradijo). Q1 CONFIRMADA el 2026-11-03: define el contenido de un envase nuevo el operario que compra, con auditoría; cambiar uno ya guardado exige el permiso de campos sensibles. I9 (peso real) DECIDIDA el 2026-11-03 por delegación del dueño («habría que considerar cuál es mejor»): rige la variante de tipos distintos (ver I9 y H6).
 
 ## 1. Propósito y alcance
 
@@ -60,7 +60,7 @@ Documento SOLO de diseño, en papel. No hay código ni migraciones en esta rama.
 | I6 | El primer factor que se guarda para un envase gana; una segunda «primera compra» con otro factor se rechaza con aviso (no pisa en silencio). | PROPUESTA |
 | I7 | Cambiar el factor de un envase existente exige declarar el valor anterior que se vio (valor esperado) y el permiso de Q1; deja fila de auditoría antes/después. | PROPUESTA (permiso PENDIENTE Q1) |
 | I8 | La devolución a proveedor nunca crea ni cambia un envase. | PROPUESTA |
-| I9 | Peso real: solo se acepta si el tipo (`Unidad.magnitud`) de la unidad de compra —con C, la del envase— difiere del de la unidad de stock; viene completado con cantidad × factor; si son del mismo tipo el servidor lo rechaza. | PENDIENTE (OK final del dueño). OJO: §14.2 de Compras propone otra variante («solo si la unidad de stock es de peso»): hay que elegir una |
+| I9 | Peso real: solo se acepta si el tipo (`Unidad.magnitud`) de la unidad de compra —con C, la del envase— difiere del de la unidad de stock; viene completado con cantidad × factor; si son del mismo tipo el servidor lo rechaza. | DECIDIDA 2026-11-03 (el dueño delegó la elección en el ingeniero): rige esta variante, «tipos distintos». Motivo: si la conversión cruza de tipo (caja → kg, kg → unidades), el factor es solo una estimación y el dato real es el que importa; si no cruza (kg → g, caja → botella), la conversión es exacta y un «peso real» solo abriría una segunda fuente de verdad. La variante de Compras §14.2 («solo si la unidad de stock es de peso») no cubre kg → unidades ni caja → litros, y permitiría pisar una conversión exacta kg → g. Compras §14.2 debe alinearse a esta |
 | I10 | Lote/vencimiento opcional; stock inicial por ajuste o conteo sin costo. No cambian. | CONFIRMADA 2026-11-03 |
 
 **Escalera de producto (N0–N5).** N0: MP con solo unidad de stock (se compra en esa unidad, factor 1). N1: la primera compra a un proveedor deja su envase. N2: varios envases por proveedor. Lo cargado en N0 no se rompe al subir. Lo que falta («envase sin contenido» en vínculos viejos) se muestra «pendiente de completar en la próxima compra», como ya se hace con la referencia del proveedor (`proveedores/[id]/page.tsx:136`).
@@ -176,7 +176,7 @@ El cambio de factor no reescribe nada: `MovimientoStock.cantidad` y `precioPorUn
 | Vínculo con envases | «Envase»: los del proveedor, el último usado primero, cada uno «caja (12 botellas)»; precargado con el último. Al final «Otro envase…». |
 | Sin vínculo (primera compra) | «Envase»: la unidad de stock (y la default del producto si tiene) + «Otro envase…» → elige unidad y responde «¿Cuántas [botellas/kg] trae 1 [caja]?». Junto a «Cómo lo llama el proveedor» (etapa 1 de Compras). |
 | Envase guardado y el operario ve otro contenido | Con permiso: puede corregir el número (avisa «cambia para las próximas compras; las ya cargadas no cambian»). Sin permiso: aviso y no puede guardar esa línea hasta que alguien con permiso lo corrija (Q1). |
-| Unidad de otro tipo (caja → kg) | Aparece «Peso real (kg)», completado con cantidad × contenido (I9, PENDIENTE). |
+| Unidad de otro tipo (caja → kg) | Aparece «Peso real (kg)», completado con cantidad × contenido (I9, DECIDIDA). |
 | Devolución | Lista los envases del proveedor elegido; sin «Otro envase…». |
 
 Fechas: el orden por `ultimaCompra` y cualquier fecha mostrada en hora argentina (`ZONA_ARGENTINA`, como el resto de la pantalla). Ficha del proveedor: la columna «Unidad de compra» pasa a «Envase» con su contenido; sin contenido: «pendiente de completar en la próxima compra».
@@ -213,7 +213,7 @@ Dimensiones que cambian stock/dinero/permisos: **P** proceso (COMPRA / DEVOLUCIO
 | R8 | DEVOLUCION, Pv, V = F | F | nada | D presente → rechazo |
 | R9 | DEVOLUCION, (sin Pv o V ≠ F) | caída | nada | D presente → rechazo |
 | R10 | M = distinta | el de arriba | igual | peso real aceptado (reemplaza cantidad × factor) |
-| R11 | M = igual | el de arriba | igual | peso real → rechazo (PENDIENTE I9) |
+| R11 | M = igual | el de arriba | igual | peso real → rechazo (I9, DECIDIDA) |
 
 ### 10.3 Checklist de reglas de datos
 
@@ -263,7 +263,7 @@ E1: respaldo + ensayo en rama de Neon + `down.sql` probado; despliegue de códig
 
 ### Preguntas al dueño (una por una, solo las que cambian datos, dinero o permisos)
 
-1. **Permisos (Q1).** Hoy solo el administrador define cuántas unidades trae un envase. Con C lo sabe quien compra. Propongo: el operario de compras **define** el contenido de un envase nuevo (queda auditado) y **cambiar** uno ya guardado queda para quien tiene el permiso de campos sensibles. ¿Estás de acuerdo, o preferís que también definir sea solo del administrador (más control, pero la primera compra se traba hasta que él lo cargue)?
+1. **Permisos (Q1) — RESUELTA el 2026-11-03: el operario que compra define el envase nuevo, con auditoría; cambiar uno guardado exige el permiso de campos sensibles.** (Texto original:) Hoy solo el administrador define cuántas unidades trae un envase. Con C lo sabe quien compra. Propongo: el operario de compras **define** el contenido de un envase nuevo (queda auditado) y **cambiar** uno ya guardado queda para quien tiene el permiso de campos sensibles. ¿Estás de acuerdo, o preferís que también definir sea solo del administrador (más control, pero la primera compra se traba hasta que él lo cargue)?
 2. **Mismo proveedor, misma unidad, dos contenidos (Q2).** Si un proveedor vende «caja de 6» y «caja de 12» del mismo producto, ¿alcanza con usar dos unidades distintas («caja x6», «caja x12»), como recomiendo, o necesitás que el sistema las distinga dentro de la misma unidad (cambia la clave del vínculo)?
 3. **Opción (Q3) — RESUELTA el 2026-11-03: C (ver encabezado).** (Texto original:** ¿Avanzo con C (una columna nueva en el vínculo, con tu autorización de migración) o empezamos por B (sin migración, pero la «caja» tiene el mismo contenido para todos los proveedores)?)
 
@@ -274,7 +274,7 @@ E1: respaldo + ensayo en rama de Neon + `down.sql` probado; despliegue de códig
 - **H3 — la devolución a proveedor no escribe el vínculo** (solo COMPRA: `registrar-movimiento.ts:246`). Con C, la devolución solo lee.
 - **H4 — la precarga por proveedor ignora el envase del vínculo a propósito** (`ofertas-de-proveedor.ts:162`, pone la unidad por defecto del producto): hoy una compra precargada con un envase no default convierte con el default si el operario no cambia el selector. C lo corrige como parte de E1.
 - **H5 — `presentacionTieneUso` mira el vínculo de CUALQUIER proveedor** con esa unidad (`historia-de-producto.ts:47-49`); con C esa pregunta pierde sentido (cada proveedor tiene su factor) y se retira en E3.
-- **H6 — dos variantes de la regla del peso real**: la del pedido (tipos distintos entre unidad de compra y de stock) y la de Compras §14.2 (solo si la unidad de stock es de peso). Hay que elegir una (I9).
+- **H6 — dos variantes de la regla del peso real**: la del pedido (tipos distintos entre unidad de compra y de stock) y la de Compras §14.2 (solo si la unidad de stock es de peso). RESUELTO el 2026-11-03: rige la de tipos distintos (I9). Pendiente: alinear Compras §14.2 y verificar si el código actual de `armar-linea-de-movimiento.ts` (hoy `pesoReal` reemplaza sin mirar el tipo) necesita rechazar el mismo tipo; se hace con la migración 2a, no antes.
 - **H7 — el precio del vínculo ya no lo lee ninguna pantalla** (`upsert-proveedor-por-producto.ts:26-28`: se deriva del Kardex); de la tabla solo se leen unidad y referencia. El factor sería el tercer dato «vivo» del vínculo.
 
 ## 13. Lo que no pude verificar o no entendí
