@@ -1,4 +1,4 @@
-import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import { guardDeId } from "./guard-de-id";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "./cuenta.guard";
 import type { ComandoAbrirCuenta, ComandoAsignarClienteACuenta, ComandoCorregirComensales, ComandoLiberarMesa } from "./cuenta-apertura.schema";
 
@@ -15,29 +15,13 @@ import type { ComandoAbrirCuenta, ComandoAsignarClienteACuenta, ComandoCorregirC
 export const MENSAJE_MESA_NO_ENCONTRADA = "No se encontró esa mesa en esta sucursal.";
 
 /** Guard del comando «abrir la cuenta de una mesa»: los `comensales` pasan TAL CUAL (los valida el caso de uso después de mirar si la mesa ya estaba abierta). */
-export function guardComandoAbrirCuenta(entrada: unknown): ResultadoDato<ComandoAbrirCuenta> {
-  const { mesaId, comensales } = (entrada ?? {}) as { mesaId?: unknown; comensales?: unknown };
-  if (typeof mesaId !== "string") return rechazar("formato", MENSAJE_MESA_NO_ENCONTRADA);
-  return aceptar({ mesaId, comensales });
-}
+export const guardComandoAbrirCuenta = guardDeId<ComandoAbrirCuenta>("mesaId", MENSAJE_MESA_NO_ENCONTRADA, "comensales");
 
 /** Guard del comando «liberar la mesa sin venta». */
-export function guardComandoLiberarMesa(entrada: unknown): ResultadoDato<ComandoLiberarMesa> {
-  const { cuentaId } = (entrada ?? {}) as { cuentaId?: unknown };
-  if (typeof cuentaId !== "string") return rechazar("formato", MENSAJE_CUENTA_NO_ENCONTRADA);
-  return aceptar({ cuentaId });
-}
+export const guardComandoLiberarMesa = guardDeId<ComandoLiberarMesa>("cuentaId", MENSAJE_CUENTA_NO_ENCONTRADA);
 
 /** Guard del comando «corregir los comensales»: los `comensales` pasan TAL CUAL (los valida el caso de uso después de encontrar la cuenta abierta). */
-export function guardComandoCorregirComensales(entrada: unknown): ResultadoDato<ComandoCorregirComensales> {
-  const { cuentaId, comensales } = (entrada ?? {}) as { cuentaId?: unknown; comensales?: unknown };
-  if (typeof cuentaId !== "string") return rechazar("formato", MENSAJE_CUENTA_NO_ENCONTRADA);
-  return aceptar({ cuentaId, comensales });
-}
+export const guardComandoCorregirComensales = guardDeId<ComandoCorregirComensales>("cuentaId", MENSAJE_CUENTA_NO_ENCONTRADA, "comensales");
 
 /** Guard del comando «asignar o quitar el cliente»: el `clienteId` pasa TAL CUAL (el caso de uso lo busca después de encontrar la cuenta abierta). */
-export function guardComandoAsignarClienteACuenta(entrada: unknown): ResultadoDato<ComandoAsignarClienteACuenta> {
-  const { cuentaId, clienteId } = (entrada ?? {}) as { cuentaId?: unknown; clienteId?: unknown };
-  if (typeof cuentaId !== "string") return rechazar("formato", MENSAJE_CUENTA_NO_ENCONTRADA);
-  return aceptar({ cuentaId, clienteId });
-}
+export const guardComandoAsignarClienteACuenta = guardDeId<ComandoAsignarClienteACuenta>("cuentaId", MENSAJE_CUENTA_NO_ENCONTRADA, "clienteId");

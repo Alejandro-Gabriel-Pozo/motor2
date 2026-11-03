@@ -1,4 +1,4 @@
-import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import { guardDeId } from "./guard-de-id";
 import type { ComandoCerrarCuenta, ComandoEmitirTicketCorregido } from "./cuenta.schema";
 
 /**
@@ -14,11 +14,7 @@ export const MENSAJE_CUENTA_NO_ENCONTRADA = "No se encontró esa cuenta en esta 
  * que ya respondía `cerrarCuenta` (que con un id no-string salteaba el `findFirst` y devolvía ese error). Un string —exista o no— pasa
  * tal cual, y el caso de uso sigue respondiendo como siempre.
  */
-export function guardComandoCerrarCuenta(entrada: unknown): ResultadoDato<ComandoCerrarCuenta> {
-  const { cuentaId } = (entrada ?? {}) as { cuentaId?: unknown };
-  if (typeof cuentaId !== "string") return rechazar("formato", MENSAJE_CUENTA_NO_ENCONTRADA);
-  return aceptar({ cuentaId });
-}
+export const guardComandoCerrarCuenta = guardDeId<ComandoCerrarCuenta>("cuentaId", MENSAJE_CUENTA_NO_ENCONTRADA);
 
 /**
  * Guard del comando «emitir ticket corregido» (M12b). Solo el `cuentaId`, con el mismo criterio que `guardComandoCerrarCuenta`: si no es
@@ -26,8 +22,4 @@ export function guardComandoCerrarCuenta(entrada: unknown): ResultadoDato<Comand
  * validar: `validarMotivoAnulacion` corre en el caso de uso, después de las guardas de estado (así un motivo vacío sobre un ticket vigente
  * sigue respondiendo «ya refleja las anulaciones», como antes).
  */
-export function guardComandoEmitirTicketCorregido(entrada: unknown): ResultadoDato<ComandoEmitirTicketCorregido> {
-  const { cuentaId, motivo } = (entrada ?? {}) as { cuentaId?: unknown; motivo?: unknown };
-  if (typeof cuentaId !== "string") return rechazar("formato", MENSAJE_CUENTA_NO_ENCONTRADA);
-  return aceptar({ cuentaId, motivo });
-}
+export const guardComandoEmitirTicketCorregido = guardDeId<ComandoEmitirTicketCorregido>("cuentaId", MENSAJE_CUENTA_NO_ENCONTRADA, "motivo");
