@@ -117,6 +117,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Retiro de `notificar_alertas` de ACCIONES (decisión del dueño, limpieza paquete A paso 3; SACA una clave, no cambia ninguna otra respuesta): desaparece de las listas de claves de cada bloque y registro (228 apariciones). Lo único que no es una resta son las líneas `sucursalesDondeElUsuarioPuedeVer(<clave>)` que muestrean la clave por POSICIÓN del catálogo (`DE_SUCURSAL[20]` y `[40]`): al salir una clave anterior, el muestreo pasa a la clave siguiente (proceso_control a proceso_transferencia, pagar_consignante a ver_auditoria); mismo artefacto del generador que en retiros anteriores. Revisado con `git diff --word-diff`.",
       },
+      {
+        blob: "0614df7b2fdaab6f21cdf5dc84f0539e7711361a",
+        // El commit PADRE de este (91670bc8) es el último antes del cambio; el golden se regenera en el commit siguiente (semilla del operador, decisión del dueño, limpieza paquete A paso 3b).
+        commit: "91670bc8",
+        motivo:
+          "Semilla de `opcion_apagar_en_sucursal` (decisión del dueño, limpieza paquete A paso 3b; CAMBIA COMPORTAMIENTO a propósito en las empresas NUEVAS): la clave pasa de [admin] a [admin, operador] (clase O a L; piso operario intacto). Cambia SOLO lo que dice esa clave para el usuario «operador» (y los roles que lo incluyen): sale de los grupos de SIN_PERMISO/`ver=false editar=false` y entra a los de `ok`/`ver=true editar=true`/`sucursalesDondeElUsuarioPuedeVer`; el resto son movimientos de orden de la clave dentro de las listas. Ninguna respuesta de otra clave cambia. Revisado con `git diff --word-diff`.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -223,6 +230,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "2e29174c",
         motivo:
           "Retiro de `notificar_alertas` de ACCIONES (decisión del dueño, limpieza paquete A paso 3; SACA una clave): `ACCIONES 130 a 129` y desaparecen las 2 filas PERMISO de la clave (admin y operador) en cada uno de los dos registros. El resto del archivo no cambia.",
+      },
+      {
+        blob: "5aadf9bbbe2e16435c46d75908daed44c9e790b9",
+        // El commit PADRE de este (91670bc8) es el último antes del cambio; el golden se regenera en el commit siguiente (semilla del operador, decisión del dueño, limpieza paquete A paso 3b).
+        commit: "91670bc8",
+        motivo:
+          "Semilla de `opcion_apagar_en_sucursal` (decisión del dueño, limpieza paquete A paso 3b; CAMBIA COMPORTAMIENTO a propósito en las empresas NUEVAS): la fila PERMISO del operador pasa de `ver=false editar=false` a `ver=true editar=true` en cada uno de los dos registros. Ninguna otra línea cambia.",
       },
     ],
   },
