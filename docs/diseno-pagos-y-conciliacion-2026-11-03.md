@@ -65,6 +65,7 @@ Estado: **BORRADOR en papel. Niveles 1 a 5 de la escalera de diseño; los nivele
 | I6 | Las retenciones son un componente del pago (lo retenido y su comprobante), no un descuento de la factura. | PENDIENTE (DM-11 a reabrir) |
 | I7 | Corregir a mano un dato (importe, tipo, fecha) deja el valor original, el nuevo, quién, cuándo y el motivo. | PROPUESTA (el flujo de referencia ya lo hace) |
 | I8 | Quien aprueba o paga no es quien carga (separación de funciones), con permisos verificados en el servidor. | PROPUESTA |
+| I9 | **En cada caso decide una persona** (human in the loop): el sistema lee, cruza y propone; nunca marca pagado ni aplica un pago por su cuenta. Los errores operativos clásicos y no clásicos del envío y la respuesta por correo están en `docs/oraculo-conciliacion-por-correo-2026-11-03.md`. | CONFIRMADA (pedido del dueño, 2026-11-03) |
 
 ## 6. Casos que el flujo de referencia no contempla (leídos en los archivos; **no ejecutados**, NO VERIFICADOS en producción)
 
