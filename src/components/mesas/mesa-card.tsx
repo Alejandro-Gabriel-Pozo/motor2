@@ -4,11 +4,10 @@
 // Insumo de diseño provisto (mesa-card.tsx + mesas-tokens.css), con los ajustes del plan
 // docs/plan-mapa-de-mesas-2026-09-24.md §A.4: colores de texto con el contraste aprobado por el dueño (§A.3) y `EstadoMesa`
 // importado del núcleo. Desde «tomar pedido» (docs/plan-tomar-pedido-2026-09-25.md, paso 7) las acciones son ENLACES a la pantalla
-// de la mesa (`href*`); una acción sin `href` se sigue dibujando deshabilitada. El número llega ya formateado por quien llama («01»).
+// de la mesa (`href`). El número llega ya formateado por quien llama («01»).
 // El total se formatea con `formatearMonto` (el mismo del ticket y de la pantalla de la mesa, centavos incluidos; P19, decisión del dueño 2026-10-11).
 
 import Link from "next/link";
-import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { IndicadorDeEnlace } from "@/components/indicador-de-enlace";
 import type { ReactNode } from "react";
 import { formatearMonto, type EstadoMesa } from "@/core/pos/public";
@@ -24,14 +23,8 @@ export interface MesaCardProps {
   mesero?: string;
   tiempoAbierta?: string; // ej. "hace 42 min"
   pedidosEnviados?: number;
-  /**
-   * Destinos de las acciones de la tarjeta (hoy, los tres van a la pantalla de la mesa, `/mesas/<id>`): «Tomar pedido» / «Continuar
-   * pedido», «Ver pedidos» y «Facturar». Sin `href`, la acción se dibuja DESHABILITADA: nunca un botón habilitado que no hace nada.
-   * «Opciones de mesa» (mover/unir mesas) sigue fuera de alcance: siempre deshabilitado.
-   */
-  hrefPedido?: string;
-  hrefVerPedidos?: string;
-  hrefFacturar?: string;
+  /** Destino de las acciones de la tarjeta («Tomar pedido» / «Continuar pedido», «Ver pedidos» y «Facturar»): la pantalla de la mesa, `/mesas/<id>`. */
+  href: string;
 }
 
 /**
@@ -47,7 +40,7 @@ const ESTADO_CONFIG: Record<EstadoMesa, { label: string; varColor: string; varTi
 };
 
 export function MesaCard(props: MesaCardProps) {
-  const { numero, estado, productosSinEnviar, total, mesero, tiempoAbierta, pedidosEnviados, hrefPedido, hrefVerPedidos, hrefFacturar } = props;
+  const { numero, estado, productosSinEnviar, total, mesero, tiempoAbierta, pedidosEnviados, href } = props;
   const cfg = ESTADO_CONFIG[estado];
 
   return (
@@ -60,15 +53,9 @@ export function MesaCard(props: MesaCardProps) {
           <div className="text-xl font-extrabold leading-none tabular-nums">{numero}</div>
         </div>
 
-        {estado === "ocupada" ? (
-          <BotonDeServidor variante="enlace" tamano="compacto" disabled aria-label="Opciones de mesa" title="Mover o unir mesas todavía no está disponible." className="-mr-1">
-            <IconDots />
-          </BotonDeServidor>
-        ) : (
-          <span className="rounded-md px-2 py-1 text-xs font-semibold" style={{ color: cfg.varTexto, background: cfg.varTint }}>
-            {cfg.label}
-          </span>
-        )}
+        <span className="rounded-md px-2 py-1 text-xs font-semibold" style={{ color: cfg.varTexto, background: cfg.varTint }}>
+          {cfg.label}
+        </span>
       </div>
 
       {estado === "libre" && <p className="mb-4 text-sm text-tinta-suave">Disponible para comensales</p>}
@@ -99,13 +86,13 @@ export function MesaCard(props: MesaCardProps) {
       )}
 
       {estado === "libre" && (
-        <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefPedido} icon={<IconCart />}>
+        <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={href} icon={<IconCart />}>
           Tomar pedido
         </ActionButton>
       )}
 
       {estado === "en_pedido" && (
-        <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefPedido} icon={<IconEdit />}>
+        <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={href} icon={<IconEdit />}>
           Continuar pedido
         </ActionButton>
       )}
@@ -114,20 +101,14 @@ export function MesaCard(props: MesaCardProps) {
         // Contenedor propio: en la tarjeta angosta (2 columnas en celular) los dos botones no entran lado a lado sin cortar «Facturar»; se apilan y, con lugar, van en fila.
         <div className="@container">
           <div className="flex flex-col gap-2 @[14rem]:flex-row">
-            {hrefVerPedidos ? (
-              <Link
-                href={hrefVerPedidos}
-                className="flex w-full min-w-0 items-center justify-center rounded-lg border border-borde py-[9px] text-sm font-semibold hover:bg-black/[0.03] max-md:min-h-11"
-              >
-                Ver pedidos
-                <IndicadorDeEnlace />
-              </Link>
-            ) : (
-              <BotonDeServidor variante="secundario" disabled className="w-full">
-                Ver pedidos
-              </BotonDeServidor>
-            )}
-            <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={hrefFacturar} grande>
+            <Link
+              href={href}
+              className="flex w-full min-w-0 items-center justify-center rounded-lg border border-borde py-[9px] text-sm font-semibold hover:bg-black/[0.03] max-md:min-h-11"
+            >
+              Ver pedidos
+              <IndicadorDeEnlace />
+            </Link>
+            <ActionButton color={cfg.varColor} textColor={cfg.varTextoBoton} href={href} grande>
               Facturar
             </ActionButton>
           </div>
@@ -137,39 +118,21 @@ export function MesaCard(props: MesaCardProps) {
   );
 }
 
-/** Con `href`, un enlace con aspecto de botón; sin él, un botón deshabilitado (la acción no está disponible). */
-function ActionButton({ color, textColor, href, icon, grande = false, children }: { color: string; textColor: string; href?: string; icon?: ReactNode; grande?: boolean; children: ReactNode }) {
-  if (href) {
-    return (
-      <Link
-        href={href}
-        className={`flex w-full min-w-0 items-center justify-center gap-1.5 rounded-lg py-[9px] ${grande ? "text-sm" : "text-[13px]"} font-semibold transition-opacity hover:opacity-90 max-md:min-h-11`}
-        style={{ background: color, color: textColor }}
-      >
-        {icon}
-        {children}
-        <IndicadorDeEnlace />
-      </Link>
-    );
-  }
+/** Enlace con aspecto de botón; el color es el del ESTADO de la mesa (dato: libre, en pedido, ocupada), va en `style`. */
+function ActionButton({ color, textColor, href, icon, grande = false, children }: { color: string; textColor: string; href: string; icon?: ReactNode; grande?: boolean; children: ReactNode }) {
   return (
-    // El color es el del ESTADO de la mesa (dato: libre, en pedido, ocupada), no una variante del botón: va en `style`, que le gana a la variante.
-    <BotonDeServidor disabled className="w-full" style={{ background: color, color: textColor }}>
+    <Link
+      href={href}
+      className={`flex w-full min-w-0 items-center justify-center gap-1.5 rounded-lg py-[9px] ${grande ? "text-sm" : "text-[13px]"} font-semibold transition-opacity hover:opacity-90 max-md:min-h-11`}
+      style={{ background: color, color: textColor }}
+    >
       {icon}
       {children}
-    </BotonDeServidor>
+      <IndicadorDeEnlace />
+    </Link>
   );
 }
 
-function IconDots() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <circle cx="12" cy="5" r="1.6" />
-      <circle cx="12" cy="12" r="1.6" />
-      <circle cx="12" cy="19" r="1.6" />
-    </svg>
-  );
-}
 function IconUser() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" aria-hidden>
