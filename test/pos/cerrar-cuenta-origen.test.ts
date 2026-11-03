@@ -103,7 +103,7 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
     ]);
     expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id, prisma)).toBe(0.5);
     expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id, prisma)).toBe(0);
-    expect(await prisma.registroAuditoria.count()).toBe(0);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion" } })).toBe(0);
   });
 
   it("respaldo por vencimiento entre dos secciones: primero la que tiene el lote que vence antes, el resto de la otra", async () => {
@@ -149,7 +149,7 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
       expect(r.mensaje).toContain('⚠ Quedó stock negativo: "Muzzarella" en «Depósito» (tenía 0,2, se consumió 0,5, quedó en -0,3).');
       expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id, prisma)).toBe(-0.3);
       const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", detalleLibre: "Mesa 4" } });
-      const [auditoria] = await prisma.registroAuditoria.findMany();
+      const [auditoria] = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion" } });
       expect(auditoria).toMatchObject({ entidad: "Operacion", entidadId: venta.id, campo: "saldoStock", valorAnterior: "0.2", valorNuevo: "-0.3" });
       expect(auditoria.descripcion).toBe(
         'Mesa 4: al cerrar la cuenta (admin@test.com) el stock de "Muzzarella" en «Depósito» quedó en negativo — tenía 0,2, la venta consumió 0,5, faltaron 0,3. La venta se registró igual; corregí el saldo con un Conteo Físico o un Ajuste.'

@@ -40,35 +40,17 @@ describe("diferenciasDeCabecera", () => {
 });
 
 describe("validarCorreccion — solo valida lo que cambia", () => {
-  it("acepta un N.º de factura y un detalle dentro del largo", () => {
-    expect(validarCorreccion([{ campo: "nroFactura", anterior: null, nuevo: "x".repeat(60) }])).toBeNull();
+  it("acepta un detalle dentro del largo", () => {
     expect(validarCorreccion([{ campo: "detalleLibre", anterior: null, nuevo: "x".repeat(LARGO_MAXIMO_DETALLE_COMPRA) }])).toBeNull();
   });
 
-  it("rechaza un N.º de factura de más de 60 caracteres y un detalle de más de 200", () => {
-    expect(validarCorreccion([{ campo: "nroFactura", anterior: null, nuevo: "x".repeat(61) }])).toContain("60 caracteres");
+  it("rechaza un detalle de más de 200 caracteres", () => {
     expect(validarCorreccion([{ campo: "detalleLibre", anterior: null, nuevo: "x".repeat(LARGO_MAXIMO_DETALLE_COMPRA + 1) }])).toContain("200 caracteres");
   });
 
   it("un detalle viejo, más largo que el límite de hoy y que NO se toca, no traba la corrección de otro campo", () => {
     // El detalle largo no está entre los cambios: solo se corrige el proveedor.
     expect(validarCorreccion([{ campo: "proveedorId", anterior: null, nuevo: "prov1" }])).toBeNull();
-  });
-
-  it("borrar un campo (null) no se valida como largo", () => {
-    expect(validarCorreccion([{ campo: "nroFactura", anterior: "A-1", nuevo: null }])).toBeNull();
-  });
-
-  // docs/plan-validacion-de-datos-2026-09-25.md, Paso C2: el mismo validador que la carga de la compra (validarNroFactura).
-  it("rechaza un N.º de factura sin ninguna letra ni número, igual que la carga", () => {
-    expect(validarCorreccion([{ campo: "nroFactura", anterior: "A-1", nuevo: "---" }])).toBe("El número de factura tiene que tener al menos una letra o un número.");
-    expect(validarCorreccion([{ campo: "nroFactura", anterior: "A-1", nuevo: "#*#" }])).toBe("El número de factura tiene que tener al menos una letra o un número.");
-  });
-
-  it("el mensaje de largo no cambia y un N.º de factura con caracteres típicos pasa", () => {
-    expect(validarCorreccion([{ campo: "nroFactura", anterior: null, nuevo: "x".repeat(61) }])).toBe("El número de factura no puede superar los 60 caracteres.");
-    expect(validarCorreccion([{ campo: "nroFactura", anterior: null, nuevo: "#12/345*" }])).toBeNull();
-    expect(validarCorreccion([{ campo: "nroFactura", anterior: null, nuevo: "-0001" }])).toBeNull();
   });
 
   it("un N.º de factura viejo inválido que NO se toca no traba la corrección de otro campo", () => {

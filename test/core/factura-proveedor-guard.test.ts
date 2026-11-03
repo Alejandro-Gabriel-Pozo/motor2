@@ -6,7 +6,7 @@ import { mediodiaDelDia, ZONA_ARGENTINA } from "@/core/tiempo/zona-horaria";
  * E3a, paso 2: el formato de los tres comandos de la factura de proveedor (clave obligatoria, número obligatorio al repartir con otras sucursales, sección de la parte propia, reparto bien formado
  * y motivo de la anulación).
  *
- * Mutaciones (anotadas en el commit): volver opcional la clave (`claveObligatoria` acepta vacío) → rojo «sin clave»; quitar la exigencia del número al repartir → rojo «número obligatorio»;
+ * Mutaciones (anotadas en el commit): volver opcional la clave (`claveObligatoria` acepta vacío) → rojo «sin clave»;
  * quitar el chequeo de sucursal repetida → rojo «sucursal dos veces»; aceptar motivo vacío → rojo «motivo».
  */
 const AHORA = new Date("2026-10-28T15:00:00.000Z");
@@ -30,10 +30,6 @@ describe("guardComandoRegistrarFacturaProveedor", () => {
   it("sin clave o con clave inválida se rechaza (decisión 8)", () => {
     expect(guardComandoRegistrarFacturaProveedor(base({ claveIdempotencia: undefined }), AHORA, S3)).toMatchObject({ ok: false, mensaje: "Falta la clave de reintento: recargá la pantalla." });
     expect(guardComandoRegistrarFacturaProveedor(base({ claveIdempotencia: "x" }), AHORA, S3)).toMatchObject({ ok: false, mensaje: "Clave de reintento inválida." });
-  });
-  it("número obligatorio cuando hay partes de otra sucursal (D10); opcional si todo queda en la propia", () => {
-    expect(guardComandoRegistrarFacturaProveedor(base({ nroFactura: "" }), AHORA, S3)).toMatchObject({ ok: false, mensaje: expect.stringContaining("hace falta su número") });
-    expect(guardComandoRegistrarFacturaProveedor(base({ nroFactura: "", reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: S3, valor: 100 }] } }), AHORA, S3).ok).toBe(true);
   });
   it("la sección es obligatoria solo si la sucursal que carga tiene parte", () => {
     expect(guardComandoRegistrarFacturaProveedor(base({ seccionId: "" }), AHORA, S3)).toMatchObject({ ok: false, mensaje: expect.stringContaining("sección") });

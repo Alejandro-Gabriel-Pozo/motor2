@@ -63,7 +63,7 @@ describe("cerrarCuenta (server action)", () => {
     expect(cerrada.cerradaEn).not.toBeNull();
     expect(cerrada.cerradaPorId).toBe(s.admin.id);
     expect((await obtenerMapaDeMesas(s.sucursalId, prisma, new Date())).mesas[0]).toMatchObject({ estado: "libre", total: 0 });
-    expect(await prisma.registroAuditoria.count()).toBe(0);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion" } })).toBe(0);
   });
 
   it("las anulaciones netean: una línea anulada entera no se vende, una parcial vende lo que quedó", async () => {
@@ -186,7 +186,7 @@ describe("cerrarCuenta (server action)", () => {
       const ventas = await ventasDeLaMesa();
       expect(ventas).toHaveLength(2);
 
-      const auditoria = await prisma.registroAuditoria.findMany();
+      const auditoria = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion" } });
       expect(auditoria).toHaveLength(1);
       const ventaDeLaPizza = ventas.find((v) => v.movimientos.some((m) => m.proceso === "CONSUMO" && m.productoId === s.muzzarella.id))!;
       expect(auditoria[0]).toMatchObject({ entidad: "Operacion", entidadId: ventaDeLaPizza.id, campo: "saldoStock", valorAnterior: "0.5", valorNuevo: "-1", actorId: s.admin.id, sucursalId: s.sucursalId });

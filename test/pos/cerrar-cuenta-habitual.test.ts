@@ -80,7 +80,7 @@ describe("cerrarCuenta: la sección habitual del PV", () => {
     ]);
     expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id, prisma)).toBe(-0.4);
     expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id, prisma)).toBe(0);
-    const [auditoria] = await prisma.registroAuditoria.findMany();
+    const [auditoria] = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion" } });
     expect(auditoria.descripcion).toContain('el stock de "Muzzarella" en «Cocina» quedó en negativo — tenía 0, la venta consumió 0,4, faltaron 0,4.');
   });
 

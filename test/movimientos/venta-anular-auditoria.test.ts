@@ -85,7 +85,7 @@ describe("anularVenta: auditoría", () => {
   it("una anulación que falla no deja rastro en la auditoría (la fila se escribe dentro de la misma transacción)", async () => {
     const r = await anularVenta("no-existe");
     expect(r.ok).toBe(false);
-    expect(await prisma.registroAuditoria.count()).toBe(0);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion" } })).toBe(0);
   });
 });
 

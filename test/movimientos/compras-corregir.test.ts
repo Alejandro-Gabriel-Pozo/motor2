@@ -95,13 +95,6 @@ describe("corregirCompra", () => {
     expect(fila.valorNuevo).toBe("Distribuidora Sur");
   });
 
-  it("se puede borrar el N.º de factura (dejarlo vacío)", async () => {
-    const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
-    const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "   ", detalleLibre: "" }, vista(op));
-    expect(r.ok, r.mensaje).toBe(true);
-    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).nroFactura).toBeNull();
-  });
-
   describe("factura repetida", () => {
     it("se rechaza si OTRA compra vigente del mismo proveedor ya usa ese número, y no cambia nada", async () => {
       await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
@@ -226,13 +219,9 @@ describe("corregirCompra", () => {
       expect(r.ok, r.mensaje).toBe(true);
     });
 
-    it("un N.º de factura de más de 60 caracteres se rechaza; un detalle viejo largo que no se toca no traba la corrección", async () => {
+    it("un detalle viejo largo que no se toca no traba la corrección", async () => {
       const larga = "x".repeat(300);
       const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001", detalleLibre: larga });
-
-      const a = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "y".repeat(61), detalleLibre: larga }, vista(op));
-      expect(a.ok).toBe(false);
-      expect(a.mensaje).toContain("60 caracteres");
 
       const b = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00001-00000002", detalleLibre: larga }, vista(op));
       expect(b.ok, b.mensaje).toBe(true);

@@ -622,22 +622,29 @@ describe("registrarMovimiento", () => {
       expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(3.35);
     });
 
-    it("N.º de factura sin ninguna letra ni número ('---') → error, sin Operacion", async () => {
+    // Etapa 1 de Compras: en la COMPRA el número es estructurado (ver comprobante-unico-en-la-empresa.test.ts); la Devolución a proveedor sigue con texto libre (`guardNroFacturaCompra`).
+    async function devolucion(mpId: string, proveedorId: string, nroFactura: string) {
+      return registrarMovimiento({ proceso: "DEVOLUCION_PROVEEDOR", fecha: new Date(), seccionId: seccionAId, proveedorId, nroFactura, items: [{ productoId: mpId, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
+    }
+
+    it("Devolución a proveedor: N.º de factura sin ninguna letra ni número ('---') → error, sin Operacion", async () => {
       const mp = await crearMP("Harina");
       const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_GUION", nombre: "Molino SA" } });
-      const resultado = await compra([{ productoId: mp.id, cantidad: 5 }], { proveedorId: proveedor.id, nroFactura: "---" });
+      expect((await compra([{ productoId: mp.id, cantidad: 5 }])).ok).toBe(true);
+      const resultado = await devolucion(mp.id, proveedor.id, "---");
       expect(resultado).toEqual({ ok: false, mensaje: "El número de factura tiene que tener al menos una letra o un número." });
-      expect(await prisma.operacion.count()).toBe(0);
+      expect(await prisma.operacion.count({ where: { proceso: "DEVOLUCION_PROVEEDOR" } })).toBe(0);
     });
 
-    it("N.º de factura: 60 caracteres pasa; 61 da el mismo mensaje de siempre; se guarda recortado", async () => {
+    it("Devolución a proveedor, N.º de factura: 60 caracteres pasa; 61 da el mismo mensaje de siempre; se guarda recortado", async () => {
       const mp = await crearMP("Harina");
       const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_60", nombre: "Molino SA" } });
-      const largo = await compra([{ productoId: mp.id, cantidad: 5 }], { proveedorId: proveedor.id, nroFactura: "A".repeat(61) });
+      expect((await compra([{ productoId: mp.id, cantidad: 5 }])).ok).toBe(true);
+      const largo = await devolucion(mp.id, proveedor.id, "A".repeat(61));
       expect(largo).toEqual({ ok: false, mensaje: "El número de factura no puede superar los 60 caracteres." });
-      const justo = await compra([{ productoId: mp.id, cantidad: 5 }], { proveedorId: proveedor.id, nroFactura: `  ${"B".repeat(60)}  ` });
+      const justo = await devolucion(mp.id, proveedor.id, `  ${"B".repeat(60)}  `);
       expect(justo.ok, justo.mensaje).toBe(true);
-      expect((await prisma.operacion.findFirstOrThrow()).nroFactura).toBe("B".repeat(60));
+      expect((await prisma.operacion.findFirstOrThrow({ where: { proceso: "DEVOLUCION_PROVEEDOR" } })).nroFactura).toBe("B".repeat(60));
     });
 
     it("precioTotal vacío → se guarda 0 (una compra sin precio sigue permitida); precioTotal 0 → 0", async () => {

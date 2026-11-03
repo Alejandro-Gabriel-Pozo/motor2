@@ -275,7 +275,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     expect(await prisma.operacion.count({ where: { proceso: "COMPRA" } })).toBe(2);
   });
 
-  it("(10) con un actor de ALCANCE de una sola sucursal (el que arma el contexto real): las compras candidatas se leen con toda la empresa, la transacción de la compra NO se ensancha y el mensaje no da el día de la otra", async () => {
+  it("(10) con un actor de ALCANCE de una sola sucursal (el que arma el contexto real): las compras candidatas se leen con toda la empresa, la transacción de la compra se abre con la LECTURA en toda la empresa y la ESCRITURA sigue en la sucursal activa, y el mensaje no da el día de la otra", async () => {
     await comprarEnCentral("2026-09-10", 1500, { nroFactura: "A-00001-00001234" });
     const alcance = { lectura: [sucursalNorte], escritura: [sucursalNorte] };
     const observador = observarAlcances();
@@ -289,9 +289,11 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       expect(r.mensaje).not.toContain("10/09/2026");
       // La lectura de las candidatas corrió con TODA la empresa (Central y Norte) y la escritura solo en la activa...
       expect(deVerificacion(observador.vistos(), [sucursalCentral, sucursalNorte], [sucursalNorte]).length).toBeGreaterThan(0);
-      // ...y la transacción de la compra (stock, líneas, escritura) siguió con el alcance de siempre: solo Norte.
-      expect(observador.transacciones().length).toBeGreaterThan(0);
-      expect(observador.transacciones().every((t) => t.lectura.join() === sucursalNorte && t.escritura.join() === sucursalNorte)).toBe(true);
+      // ...y la transacción de la compra (etapa 1 de Compras, I2: rechaza el número repetido en cualquier sucursal) se abre con la LECTURA en toda la empresa y la ESCRITURA solo en Norte. Lo estático (que la función no
+      // ensancha la escritura y que registrar-movimiento.ts abre la transacción con esa base) lo fija `ensanches-de-alcance.test.ts`; lo que solo se ve corriendo, el alcance real de cada transacción, se mide acá.
+      const transacciones = observador.transacciones();
+      expect(transacciones.length).toBeGreaterThan(0);
+      expect(deVerificacion(transacciones, [sucursalCentral, sucursalNorte], [sucursalNorte])).toHaveLength(transacciones.length);
       expect(conEscrituraMasAnchaQue(observador.vistos(), [sucursalNorte])).toEqual([]);
     } finally {
       observador.restaurar();
