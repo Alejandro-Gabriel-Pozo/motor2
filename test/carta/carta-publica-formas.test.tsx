@@ -278,7 +278,7 @@ describe("8d: la base de un eje (las pizzas): oculta por defecto, cada opción c
     expect(html).toMatch(/^<li data-forma="lista-sin-encabezado"/);
     expect(html.match(/<h3 data-rol="producto"[^>]*>([^<]*)<\/h3>/g)?.map((h) => texto(h))).toEqual(["Pizza muzzarella", "Pizza napolitana"]);
     expect([...html.matchAll(/data-rol="precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$18.000", "$22.000"]);
-    expect(texto(html)).toBe("Pizza muzzarella $18.000 Pizza napolitana $22.000 Masa fina · al molde");
+    expect(texto(html)).toBe("Pizza muzzarella $18.000 Pizza napolitana $22.000 En todos Masa fina · al molde");
     expect(html).toMatch(/<ul aria-label="Pizzas" data-filas-carta/);
     expect(html).not.toMatch(/>Pizzas</);
     expect(html).not.toContain("<table");
@@ -293,6 +293,22 @@ describe("8d: la base de un eje (las pizzas): oculta por defecto, cada opción c
     expect([...html.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$18.000", "$22.000"]);
     expect(html).not.toContain("<thead");
     expect(texto(html)).toBe("Pizzas Pizza muzzarella $18.000 Pizza napolitana $22.000 A la piedra veggie Masa fina · al molde");
+  });
+
+  it("«En todos» (2 o más platos con aclaraciones): el rótulo y la línea gruesa van ANTES de las aclaraciones, en un solo bloque", () => {
+    const html = filaCon(dibujar([pizzas(false)]), "Pizza muzzarella");
+    expect(html.match(/data-en-todos/g)).toHaveLength(1);
+    expect(html).toMatch(/<div data-en-todos="[^"]*" class="carta-borde border-t-2[^"]*"><p class="carta-rol-etiqueta[^"]*"[^>]*>En todos<\/p><div data-aclaracion="Masa"/);
+  });
+
+  it("«En todos» no aparece con UN solo plato, ni con 2 platos sin aclaraciones, ni con el nombre arriba, ni en la forma simple", () => {
+    const una = { ...pizzas(false), presentacion: { forma: "tabla" as const, titulo: false, columnas: [], filas: filas.slice(0, 1), aclaraciones: [{ tipo: "eleccion" as const, rotulo: "Masa", opciones: ["fina"] }] } };
+    expect(filaCon(dibujar([una]), "Pizza muzzarella")).not.toContain("En todos");
+    const sinAclaraciones = { ...pizzas(false), presentacion: { forma: "tabla" as const, titulo: false, columnas: [], filas, aclaraciones: [] } };
+    expect(filaCon(dibujar([sinAclaraciones]), "Pizza muzzarella")).not.toContain("En todos");
+    expect(filaCon(dibujar([pizzas(true)]), "Pizzas")).not.toContain("En todos");
+    const simple = item({ nombre: "Bife", precio: 20000, presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["puré", "papas"] }] } });
+    expect(filaCon(dibujar([simple]), "Bife")).not.toContain("En todos");
   });
 
   it("con descuento de producto: «−x %» una vez, sin tachar fila por fila", () => {
