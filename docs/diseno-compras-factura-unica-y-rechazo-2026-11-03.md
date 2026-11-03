@@ -150,6 +150,7 @@ Una materia prima puede tener varios proveedores; un código del proveedor apunt
 7. **Descuento por línea.** No se carga por ahora (poda). Lo que se cargó es lo que se pagó.
 8. **«Se cobra por kilo».** No hace falta marcarlo en el producto: con unidad de medida, kilos e importe se tienen ambas cuentas. Los **kilos son opcionales**: si el operador no los sabe, se sigue y solo se calcula el precio por unidad.
 9. **Reportes.** Pendientes por ahora. Se guarda cada línea con sus datos (código, descripción, UM, unidades, kilos, importe) para armarlos después sin recargar nada (§14).
+9.bis **Stock inicial (CONFIRMADA el 2026-11-03).** Desde que la compra exige proveedor y número, el stock inicial de un cliente real se carga como Ajuste o Conteo físico, sin costo: queda «sin costo hasta la primera compra» de cada insumo y lo incompleto queda como dato heredado; no cambia la regla V-T1 ni se agrega un camino nuevo (los seeds de demo siguen cargándolo como compra con un proveedor de demo).
 
 **Abierta:**
 
