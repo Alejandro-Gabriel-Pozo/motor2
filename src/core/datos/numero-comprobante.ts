@@ -80,3 +80,46 @@ export function leerNumeroDeComprobanteDeCompra(texto: string): ResultadoDato<st
   if (!m) return rechazar("formato", MENSAJE_FORMATO);
   return armarNumeroDeComprobante({ letra: m[1], puntoDeVenta: m[2], numero: m[3] });
 }
+
+/** Lo que la pantalla de una compra teclea en TRES campos (letra, punto de venta y número); `armarNumeroDeComprobante` los junta. Todo texto: los vacíos son «todavía no tecleado». */
+export interface PartesDeNumeroDeComprobante {
+  letra: string;
+  puntoDeVenta: string;
+  numero: string;
+}
+
+export const PARTES_DE_NUMERO_VACIAS: PartesDeNumeroDeComprobante = { letra: "", puntoDeVenta: "", numero: "" };
+
+/** Deja solo los dígitos ASCII (0-9) de lo tecleado o pegado en el punto de venta o el número, cortado a `maximo`. */
+export function soloDigitos(texto: string, maximo: number): string {
+  return texto.replace(/[^0-9]/g, "").slice(0, maximo);
+}
+
+export const MAXIMO_DE_DIGITOS_DEL_PUNTO_DE_VENTA = DIGITOS_DEL_PUNTO_DE_VENTA;
+export const MAXIMO_DE_DIGITOS_DEL_NUMERO = DIGITOS_DEL_NUMERO;
+
+/**
+ * Qué muestra la pantalla debajo de los tres campos: `vacio` (no se tecleó nada: sin error todavía), `valido` con el texto armado y con ceros («A-00023-00237728») o `error` con qué falta o está mal.
+ * Los mensajes de caracteres y de ceros son los de `armarNumeroDeComprobante`; lo que falta se avisa aparte, campo por campo.
+ */
+export type EstadoDelNumeroTecleado = { tipo: "vacio" } | { tipo: "valido"; numero: string } | { tipo: "error"; mensaje: string };
+
+export function estadoDelNumeroTecleado(partes: PartesDeNumeroDeComprobante): EstadoDelNumeroTecleado {
+  const letra = partes.letra.trim();
+  const pv = partes.puntoDeVenta.trim();
+  const nro = partes.numero.trim();
+  if (!letra && !pv && !nro) return { tipo: "vacio" };
+  if (!letra) return { tipo: "error", mensaje: MENSAJE_LETRA };
+  if (!pv) return { tipo: "error", mensaje: "Falta el punto de venta (hasta 5 dígitos, por ejemplo 00023)." };
+  if (!nro) return { tipo: "error", mensaje: "Falta el número de la factura (hasta 8 dígitos, por ejemplo 00237728)." };
+  const armado = armarNumeroDeComprobante(partes);
+  return armado.ok ? { tipo: "valido", numero: armado.valor } : { tipo: "error", mensaje: armado.mensaje };
+}
+
+/** Las tres partes de un número YA guardado, si tiene la forma «A-00023-00237728» (o la que lee `leerNumeroDeComprobanteDeCompra`); `null` si está vacío o es un texto libre de una compra vieja. */
+export function partesDeNumeroGuardado(texto: string | null | undefined): PartesDeNumeroDeComprobante | null {
+  const leido = leerNumeroDeComprobanteDeCompra(texto ?? "");
+  if (!leido.ok) return null;
+  const [letra, puntoDeVenta, numero] = leido.valor.split("-");
+  return { letra, puntoDeVenta, numero };
+}

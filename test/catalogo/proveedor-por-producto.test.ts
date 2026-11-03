@@ -162,9 +162,9 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       expect(lista).toHaveLength(2);
       expect(lista[0].productoId).toBe(producto2.id); // más reciente primero
       expect(lista[1]).toMatchObject({ productoId, referenciaProveedor: "ACE-5L", ultimoPrecioPorUnidadStock: 100, origenDelPrecio: "SUCURSAL" });
-      // O.10: la fila del carrito no lleva la unidad de compra (la precarga usa la unidad por defecto del producto, a propósito).
+      // Etapa 1 de Compras, paso 6: la fila trae la unidad del vínculo, las unidades del producto y con cuál arranca (antes, O.10, la sacó porque la pantalla no la mostraba).
       expect(Object.keys(lista[1]).sort()).toEqual(
-        ["origenDelPrecio", "productoCodigo", "productoId", "productoNombre", "referenciaProveedor", "ultimaCompra", "ultimoPrecioPorUnidadStock", "unidadStockNombre"],
+        ["origenDelPrecio", "productoCodigo", "productoId", "productoNombre", "referenciaProveedor", "ultimaCompra", "ultimoPrecioPorUnidadStock", "unidadCompraId", "unidadCompraNombre", "unidadDelVinculoVigente", "unidadElegidaId", "unidadStockNombre", "unidades"],
       );
     });
 

@@ -24,3 +24,22 @@ export type { RepartoDeFactura } from "./reparto-de-factura";
 export { normalizarNumeroDeComprobante } from "./numero-de-comprobante";
 export { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicados } from "./posible-duplicado";
 export type { CompraCandidata, CompraNueva } from "./posible-duplicado";
+export {
+  PASOS_DE_COMPRA,
+  avisoDeImporteCero,
+  avisoDeUnidadNoVigente,
+  avisosDeImporteCero,
+  cantidadEnStock,
+  decidirUnidadDePrecarga,
+  etiquetaDeUnidad,
+  mensajeFinalDeCompra,
+  pasoAnterior,
+  pasoSiguiente,
+  precioPorUnidad,
+  seMuestraElPesoReal,
+  unidadEfectiva,
+  validarPasoDonde,
+  validarPasoFactura,
+  validarPasoLineas,
+} from "./carga-por-pasos";
+export type { ErrorDePaso, LineaParaValidar, PasoDeCompra, UnidadDeCompra, UnidadesDeCompraDelProducto } from "./carga-por-pasos";

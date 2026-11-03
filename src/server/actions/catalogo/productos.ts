@@ -14,6 +14,7 @@ import type { CampoSensibleDelProducto } from "@/core/features/catalogo/producto
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
+import type { UnidadesDeCompraDelProducto } from "@/core/compras/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
@@ -497,6 +498,44 @@ export async function listarPresentaciones(productoId: string): Promise<Presenta
     factorConversion: Number(p.factorConversion),
     activa: p.activa,
   }));
+}
+
+/** Lo que la Compra por pasos muestra de un producto elegido a mano: su código y nombre, y en qué unidades se puede comprar (la por defecto y las presentaciones activas). */
+export interface DatosDeCompraDelProducto {
+  codigo: string;
+  nombre: string;
+  unidades: UnidadesDeCompraDelProducto;
+}
+
+/**
+ * Solo lectura, para la pantalla de Compra (etapa 1 de Compras, paso 6): al elegir un producto a mano, la fila muestra su código y la unidad en que se interpreta la cantidad. Las unidades salen igual que
+ * en el servidor al armar la línea (`armarLineaDeMovimiento`): la por defecto es la unidad de compra del producto o, si no tiene, la de stock, con el factor del producto; las presentaciones, solo las activas.
+ * Exige el «Ver» de la compra. `null` si el producto no existe.
+ */
+export async function obtenerDatosDeCompraDelProducto(productoId: string): Promise<DatosDeCompraDelProducto | null> {
+  const ctx = await requerirVer("proceso_compra");
+  const p = await ctx.db.producto.findUnique({
+    where: { id: productoId },
+    select: {
+      codigo: true,
+      nombre: true,
+      factorConversion: true,
+      unidadStock: { select: { id: true, nombre: true } },
+      unidadCompra: { select: { id: true, nombre: true } },
+      presentaciones: { where: { activa: true }, select: { unidadCompraId: true, factorConversion: true, unidadCompra: { select: { nombre: true } } } },
+    },
+  });
+  if (!p) return null;
+  const base = p.unidadCompra ?? p.unidadStock;
+  return {
+    codigo: p.codigo,
+    nombre: p.nombre,
+    unidades: {
+      unidadStockNombre: p.unidadStock.nombre,
+      porDefecto: { unidadCompraId: base.id, nombre: base.nombre, factor: Number(p.factorConversion) || 1 },
+      presentaciones: p.presentaciones.map((x) => ({ unidadCompraId: x.unidadCompraId, nombre: x.unidadCompra.nombre, factor: Number(x.factorConversion) })).sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    },
+  };
 }
 
 export async function agregarPresentacionAlternativa(
