@@ -17,7 +17,6 @@ export interface ItemVentaInput {
 export interface DatosVentaInput {
   fecha: Date;
   seccionId: string;
-  proveedorId?: string; // "a quién se vende" — null/undefined = mostrador (Movimientos.js:1769, 'Mostrador' como texto libre por defecto)
   nroFactura?: string;
   detalle?: string;
   ventas: ItemVentaInput[];

@@ -110,7 +110,6 @@ export async function cerrarCuentaCasoDeUso(
       {
         fecha: ahora,
         origen: { tipo: "automatico" },
-        proveedorId: null,
         clienteId: cuenta.clienteId,
         detalle: puesto.detalle,
         lineas: lineasVenta,
