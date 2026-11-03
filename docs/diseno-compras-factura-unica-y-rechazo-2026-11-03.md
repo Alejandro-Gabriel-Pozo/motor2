@@ -10,7 +10,7 @@ Fuentes: decisiones del dueño del 2026-11-03 (esta conversación); auditoría d
 
 **Lo más barato primero.** Casi todo se hace **sin migración** (etapa 1). Lo que necesita migración aditiva y autorización expresa son dos cosas: guardar las letras del proveedor (etapa 2) y el estado RECHAZADA con su motivo (etapa 3). Ninguna se aplica a una base real sin respaldo y ensayo.
 
-**Confirmadas el 2026-11-03 (segunda ronda):** si el proveedor no tiene letra o punto de venta cargados, la primera factura ofrece guardarlos, con confirmación; activar un producto al aceptar alcanza con el permiso `producto_disponibilidad` (si quien acepta no lo tiene, solo puede rechazar); la sucursal que compró puede retirar una propuesta sin respuesta, con motivo (el plazo, después). **Siguen abiertas** (§5.4): IVA neto por línea, importe de línea como dato de la factura, descuento en % o importe, cómo se marca «se cobra por kilo», qué otros filtros pide el reporte, y la forma de las notas de crédito del proveedor.
+**Confirmadas el 2026-11-03 (segunda ronda):** si el proveedor no tiene letra o punto de venta cargados, la primera factura ofrece guardarlos, con confirmación; activar un producto al aceptar alcanza con el permiso `producto_disponibilidad` (si quien acepta no lo tiene, solo puede rechazar); la sucursal que compró puede retirar una propuesta sin respuesta, con motivo (el plazo, después). **Confirmadas el 2026-11-03 (tercera ronda):** punto de venta de 5 dígitos y número de 8; **se carga el total pagado con IVA incluido** (pagué 100, se carga 100) y el IVA queda como dato del producto (ya existe `alicuotaIvaCompra`) para más adelante; sin descuento por línea por ahora; no hace falta marcar «se cobra por kilo» (se calculan el precio por unidad y por kilo con lo que se cargue); los reportes quedan pendientes. **Sigue abierta** solo la pregunta 10 (lote y vencimiento), que no se decide hasta que el dueño la pida.
 
 ## 1. Propósito y alcance
 
@@ -64,7 +64,7 @@ Contexto: Argentina (UTC-3); todo en pesos; cada empresa solo ve lo suyo y cada 
 | I5 | Solo facturas con proveedor, sin remito | CONFIRMADA (proveedor obligatorio: PROPUESTA) |
 | I6 | Precio 0 se puede guardar y avisa; no actualiza el costo | CONFIRMADA |
 | I7 | La unidad es la del producto | CONFIRMADA |
-| I8 | Dinero: total de cada línea con IVA incluido, en pesos, con redondeo definido; la suma de renglones es igual al total en centavos | HOY |
+| I8 | Dinero: el importe de cada línea es el total pagado con IVA incluido, en pesos; el total de la factura es la suma de los importes (al centavo); precio por unidad y por kilo se calculan | CONFIRMADA (HOY) |
 | I9 | Rechazo: motivo obligatorio; la parte vuelve a la sucursal que la envió; Σ partes = total | CONFIRMADA |
 | I10 | Activar un producto al aceptar exige un permiso de quien acepta | PENDIENTE (cuál) |
 | I11 | Toda acción lleva confirmación explícita: guardar, aceptar, rechazar, activar, anular | CONFIRMADA |
@@ -104,13 +104,16 @@ Contexto: Argentina (UTC-3); todo en pesos; cada empresa solo ve lo suyo y cada 
 3. Activar un producto al aceptar: alcanza con `producto_disponibilidad`. Quien acepta sin ese permiso solo puede rechazar.
 4. Propuesta sin respuesta: la sucursal que compró puede **retirarla con motivo**; el plazo se decide después.
 
-**Abiertas (una por tema, con recomendación):**
+**Resueltas en la tercera ronda (CONFIRMADAS el 2026-11-03):**
 
-5. **IVA por línea.** La planilla del dueño trae importes que parecen sin IVA (23,82 kg × $31.276,68 = $745.010,52, importe de la factura $745.010,49), y la decisión #8 de 2026-10-06 pide neto e IVA por renglón en la carga. ¿La carga pide importe neto + alícuota por línea, o el total con IVA como hoy? *Recomendación: neto + IVA por línea, con la perilla `llevaIvaDeCompras`.*
-6. **Importe de la línea.** El precio unitario de la factura viene redondeado ($0,03 de diferencia en el ejemplo). *Recomendación: el importe de cada línea es el dato que se carga (se sugiere precio × cantidad, manda la factura) y el total es la suma de los importes, siempre al centavo.*
-7. **Descuento por línea:** ¿en % o en importe? *Recomendación: %.* El descuento por pronto pago es otro concepto («descuento obtenido», decisión #10), no baja el costo.
-8. **«Se cobra por kilo».** En la planilla el Bife Angosto se cobra por kilo y el resto por unidad (las otras líneas: precio × unidades aunque haya kilos). ¿Cómo se marca? *Recomendación: un atributo del producto (hoy existe «peso real» por línea).*
-9. **Filtros del reporte.** Además de proveedor, punto de venta, monto y producto: ¿sucursal, medio de pago, letra, rubro, concepto de gasto?
+5. **IVA.** «No va a ser un sistema ERP aún»: la carga es el **total con IVA incluido** (como HOY, `precioTotal`); la alícuota de compra vive en el **producto** (`Producto.alicuotaIvaCompra`, HOY) y la perilla `llevaIvaDeCompras` sigue apagada. No se pide neto ni IVA por línea.
+6. **Importe de la línea.** Es el dato que se carga (el de la factura); el total de la factura es la suma de los importes, siempre al centavo. El precio por unidad y por kilo se **calculan** (importe ÷ unidades, importe ÷ kilos); no se cargan.
+7. **Descuento por línea.** No se carga por ahora (poda). Lo que se cargó es lo que se pagó.
+8. **«Se cobra por kilo».** No hace falta marcarlo en el producto: con unidad de medida, kilos e importe se tienen ambas cuentas. Los **kilos son opcionales**: si el operador no los sabe, se sigue y solo se calcula el precio por unidad.
+9. **Reportes.** Pendientes por ahora. Se guarda cada línea con sus datos (código, descripción, UM, unidades, kilos, importe) para armarlos después sin recargar nada (§14).
+
+**Abierta:**
+
 10. **Lote y vencimiento.** Hoy es un campo opcional por línea («Lote (Fecha VTO.)»). ¿Obligatorio para los que vencen? *No se decide hasta que el dueño lo pida.*
 
 ## 6. Persistencia (esbozo; NO se migra hasta confirmar 1 a 5)
@@ -179,6 +182,6 @@ Pedido, cotización y orden de compra (sin necesidad escrita); remito y recepci�
 - **Fuera:** reparto por centros de costos (E8) y cuenta corriente (E9).
 - Prender el módulo `gastos` y las claves `gasto_*` es parte de esa etapa y se decide aparte.
 
-## 14. Reporte tipo planilla (PROPUESTA; pedido del dueño del 2026-11-03)
+## 14. Reporte tipo planilla (PENDIENTE por ahora; pedido del dueño del 2026-11-03)
 
-Una fila por línea de factura, con las columnas de la planilla del dueño: fecha de emisión, proveedor, N.º de factura (punto de venta + número), línea, código, descripción, UM, cantidad de unidades, kilos, precio unitario, descuento e importe; más el tipo (producto o servicio). Filtros por proveedor, punto de venta, monto y producto (y los de la pregunta 9). Exporta a Excel con las mismas columnas. Solo cuenta el ejemplar vigente de cada factura. No exige tablas nuevas si cada línea guarda esos datos; se verifica en el diseño de persistencia. Hoy existe el reporte «Compras registradas» (`reporte_compras`) con otras columnas.
+**Decisión (CONFIRMADA el 2026-11-03): los reportes quedan pendientes en esta etapa.** Lo que sí se hace ahora es guardar cada línea con los datos de la planilla del dueño (fecha de emisión, proveedor, punto de venta y número, línea, código, descripción, UM, unidades, kilos, importe y tipo de línea), para que el reporte se arme después sin recargar nada: una fila por línea, con filtros por proveedor, punto de venta, monto y producto, exportable a Excel, y solo con el ejemplar vigente. Las columnas y filtros definitivos se deciden cuando se construya. Hoy existe «Compras registradas» (`reporte_compras`) con otras columnas.
