@@ -12,6 +12,8 @@ interface Props {
   value: string;
   onChange: (productoId: string) => void;
   filtro?: FiltroSelectorProducto;
+  /** Solo en la carga de COMPRA: el proveedor elegido. Solo ordena el resultado (primero lo que ese proveedor ya llama así). */
+  proveedorId?: string;
   placeholder?: string;
   required?: boolean;
   /** Para precargar la etiqueta visible cuando `value` ya viene elegido desde afuera (ej. editar). */
@@ -36,7 +38,7 @@ interface Props {
  * `required` siga bloqueando el submit nativo como con el `<select>`
  * anterior — el `<input>` visible es solo el término de búsqueda.
  */
-export function SelectorProducto({ id, value, onChange, filtro, placeholder = "Código o nombre…", required, etiquetaInicial, limpiarSenal, className, "aria-label": ariaLabel }: Props) {
+export function SelectorProducto({ id, value, onChange, filtro, proveedorId, placeholder = "Código o nombre…", required, etiquetaInicial, limpiarSenal, className, "aria-label": ariaLabel }: Props) {
   const [query, setQuery] = useState(etiquetaInicial ?? "");
   const [opciones, setOpciones] = useState<ProductoOpcion[]>([]);
   const [abierto, setAbierto] = useState(false);
@@ -74,7 +76,7 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
       void (async () => {
         setCargando(true);
         setErrorBusqueda(false);
-        const res = await leer(() => buscarProductosSelector(termino, filtro), () => setErrorBusqueda(true));
+        const res = await leer(() => buscarProductosSelector(termino, filtro, proveedorId || undefined), () => setErrorBusqueda(true));
         setOpciones(res ?? []);
         setResaltado(0);
         setCargando(false);
@@ -161,7 +163,7 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
           {!cargando && !errorBusqueda && !opciones.length && (
             <div className="px-2 py-1.5">
               <Aviso variante="informacion" forma="en-linea">
-                Sin resultados.
+                {query.trim() ? "Ningún producto tiene todas esas palabras. Probá con menos palabras o con el código." : "No hay productos para elegir."}
               </Aviso>
             </div>
           )}

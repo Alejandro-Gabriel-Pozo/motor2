@@ -5,10 +5,11 @@ import { azarDelProceso } from "@/lib/azar";
 import { obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal } from "@/server/acceso/gate";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
-import { textoDeBusqueda } from "@/core/texto";
+import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { puedeBuscarPorReferenciaDelProveedor, whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
+import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-de-producto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { leerFiltrosDeProductos, necesitaLaEmpresaEntera, type EntradaDeFiltrosDeProductos, whereBusquedaDeProducto, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
+import { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeProductos, necesitaLaEmpresaEntera, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
@@ -62,7 +63,7 @@ const LIMITE_SELECTOR = 20;
  * vacío); con término, filtra por nombre o código (y, desde la Fase 7, por
  * cómo lo llama un proveedor, para quien ve ese dato: M2 del diseño de Catálogo).
  */
-export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto): Promise<ProductoOpcion[]> {
+export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto, proveedorId?: string): Promise<ProductoOpcion[]> {
   // H8 (D-2): el «O» de las claves de las 24 pantallas que muestran el selector (test/arquitectura/consumidores-de-lecturas-declarados.test.ts).
   const ctx = await requerirVerAlguna([
     "proceso_compra",
@@ -99,18 +100,49 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
     ...(filtro?.soloSeProduce ? [{ seProduce: true }] : []),
     ...(filtro?.elegibleParaReceta ? [{ OR: [{ tipo: "PV" as const }, { tipo: "MP" as const, seProduce: true }] }] : []),
     ...(filtro?.esConsignacion !== undefined ? [{ esConsignacion: filtro.esConsignacion }] : []),
-    // Fase 7, M2: con término, por nombre o código y, para quien ve el dato (`puedeBuscarPorReferenciaDelProveedor`), por cómo lo llama un proveedor en su factura.
-    ...(t ? [whereBusquedaDeProducto(t, await puedeBuscarPorReferenciaDelProveedor(ctx))] : []),
   ];
   // P2 (RLS por sucursal): `soloDisponiblesEnAlguna` pregunta «¿está disponible en ALGUNA sucursal?» (`disponibilidades: { some }`): con ese filtro la lectura corre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como
   // estaba); sin él, con la base de siempre. Devuelve filas de `Producto` (id, código, nombre: tabla de la empresa), nunca la disponibilidad de otra sucursal.
   const verificacion = filtro?.soloDisponiblesEnAlguna ? await lecturaDeVerificacionEnLaEmpresa(ctx) : ctx;
-  return verificacion.db.producto.findMany({
-    where: condiciones.length ? { AND: condiciones } : {},
-    select: { id: true, codigo: true, nombre: true },
-    orderBy: { nombre: "asc" },
-    take: LIMITE_SELECTOR,
-  });
+  const select = { id: true, codigo: true, nombre: true } as const;
+  const buscar = (where: object, take = LIMITE_SELECTOR) =>
+    verificacion.db.producto.findMany({ where: { AND: [...condiciones, where] }, select, orderBy: { nombre: "asc" }, take });
+  if (!t) return verificacion.db.producto.findMany({ where: condiciones.length ? { AND: condiciones } : {}, select, orderBy: { nombre: "asc" }, take: LIMITE_SELECTOR });
+
+  // Fase 7, M2 + Compras etapa 1 (§5.2): por palabras, en nombre, código y —para quien ve el dato (`puedeBuscarPorReferenciaDelProveedor`)— en cómo lo llama un proveedor en su factura.
+  const porReferencia = await puedeBuscarPorReferenciaDelProveedor(ctx);
+  // El proveedor elegido (viene del cliente) solo ORDENA: la RLS acota a la empresa, y sin permiso para ver referencias se ignora (ordenar por un dato que no se ve revelaría ese dato).
+  const proveedor = porReferencia && typeof proveedorId === "string" && proveedorId !== "" ? proveedorId : undefined;
+  // Una sola lectura cruda (con la base de la sesión: Producto y ProveedorPorProducto son de la empresa, no hace falta la de verificación; sin distinguir tildes) da los ids de las tres capas del orden; el `findMany` de cada tramo aplica los mismos filtros, select y tope de siempre.
+  const encontrados = await buscarProductosPorPalabras(ctx.db, t, { porReferencia, proveedorId: proveedor });
+  const idsDe = (cuales: (e: (typeof encontrados)[number]) => boolean) => ({ id: { in: encontrados.filter(cuales).map((e) => e.id) } });
+  const tokenUnico = !/\s/.test(t);
+  // `equals` insensible va como ILIKE sin escapar: los comodines y la barra se escapan acá.
+  const exactoDeCodigo = buscar({ codigo: { equals: escaparComodinesLike(t), mode: "insensitive" as const } });
+  // La referencia del proveedor elegido: se trae solo para decidir «palabra completa» y NO sale de acá (se devuelve id, código y nombre).
+  const exactoDeReferencia =
+    proveedor && tokenUnico
+      ? verificacion.db.producto
+          .findMany({
+            where: { AND: [...condiciones, { proveedorPorProducto: { some: { proveedorId: proveedor, referenciaProveedor: { contains: escaparComodinesLike(t), mode: "insensitive" as const } } } }] },
+            select: { ...select, proveedorPorProducto: { where: { proveedorId: proveedor }, select: { referenciaProveedor: true } } },
+            orderBy: { nombre: "asc" },
+            take: LIMITE_SELECTOR,
+          })
+          .then((filas) =>
+            filas
+              .filter((f) => f.proveedorPorProducto.some((v) => esCoincidenciaExactaDeCodigo(t, "", v.referenciaProveedor, true)))
+              .map(({ id, codigo, nombre }) => ({ id, codigo, nombre })),
+          )
+      : Promise.resolve([]);
+  const [exactosPorCodigo, exactosPorReferencia, vinculados, empiezan, resto] = await Promise.all([
+    exactoDeCodigo,
+    exactoDeReferencia,
+    proveedor ? buscar(idsDe((e) => e.vinculado)) : Promise.resolve([]),
+    buscar(idsDe((e) => e.empiezaConLaPrimera)),
+    buscar(idsDe(() => true)),
+  ]);
+  return combinarTramosDeProductos([exactosPorCodigo, exactosPorReferencia, vinculados, empiezan, resto], LIMITE_SELECTOR);
 }
 
 /**

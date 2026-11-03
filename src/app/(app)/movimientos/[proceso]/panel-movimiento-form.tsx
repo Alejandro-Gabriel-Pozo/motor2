@@ -432,6 +432,7 @@ export function PanelMovimientoForm({
                 value={fila.productoId}
                 onChange={(id) => cambiarProducto(idx, id)}
                 filtro={config.filtroProducto}
+                proveedorId={config.proceso === "COMPRA" ? proveedorId || undefined : undefined}
                 etiquetaInicial={fila.etiquetaInicial}
                 required
               />

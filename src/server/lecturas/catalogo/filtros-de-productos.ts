@@ -1,9 +1,10 @@
 import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { whereCartaDeSucursal } from "@/core/carta/public";
-import { FALTAS_FILTRABLES, whereBusquedaDeProducto, whereDisponibleEn, whereDisponibleEnAlguna, type FaltaFiltrable, type FiltrosDeProductos } from "@/core/catalogo/public";
+import { FALTAS_FILTRABLES, whereDisponibleEn, whereDisponibleEnAlguna, type FaltaFiltrable, type FiltrosDeProductos } from "@/core/catalogo/public";
 import { accionesDelMenuQueElUsuarioPuedeVer, obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
 import { denegacionDeModuloDeAccion } from "@/server/acceso/modulos-de-empresa";
+import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-de-producto";
 import { cargarOrigenDeStockDelCatalogo } from "@/server/lecturas/movimientos/origen-de-stock-del-catalogo";
 
 /**
@@ -44,10 +45,9 @@ export async function puedeBuscarPorReferenciaDelProveedor(ctx: ContextoDeLosFil
   return (await accionesDelMenuQueElUsuarioPuedeVer(ctx.usuarioId, ctx.empresaId, ctx.sucursalId, ["proveedores", "proceso_compra"], ctx.db)).size > 0;
 }
 
-/** Los criterios que no dependen de la receta: la búsqueda (por referencia del proveedor solo si `porReferencia`), el tipo, el modo, la disponibilidad y los dos «le falta» que son una condición de tabla. */
-function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, faltasPermitidas: readonly FaltaFiltrable[], porReferencia: boolean): Prisma.ProductoWhereInput[] {
+/** Los criterios que no dependen de la receta: el tipo, el modo, la disponibilidad y los dos «le falta» que son una condición de tabla. */
+function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, faltasPermitidas: readonly FaltaFiltrable[]): Prisma.ProductoWhereInput[] {
   const y: Prisma.ProductoWhereInput[] = [];
-  if (f.q !== "") y.push(whereBusquedaDeProducto(f.q, porReferencia));
   switch (f.tipo) {
     case "venta":
       y.push({ tipo: "PV", opcionQueRespalda: { is: null } });
@@ -114,7 +114,9 @@ async function idsSinReceta(db: PrismaClient, sucursalId: string, y: Prisma.Prod
  */
 export async function whereDeLosProductos(ctx: ContextoDeLosFiltros, db: PrismaClient, f: FiltrosDeProductos): Promise<Prisma.ProductoWhereInput> {
   const [permitidas, porReferencia] = await Promise.all([faltasQueSePuedenFiltrar(ctx), f.q !== "" ? puedeBuscarPorReferenciaDelProveedor(ctx) : false]);
-  const y = criteriosDeTabla(ctx, f, permitidas, porReferencia);
+  const y = criteriosDeTabla(ctx, f, permitidas);
+  // La búsqueda por texto (palabras, sin tildes) es la misma lectura cruda que usa el buscador de producto: da los ids y acá se filtra por ellos.
+  if (f.q !== "") y.push({ id: { in: (await buscarProductosPorPalabras(db, f.q, { porReferencia })).map((e) => e.id) } });
   if (f.falta === "sin-receta" && permitidas.includes("sin-receta")) y.push({ id: { in: await idsSinReceta(db, ctx.sucursalId, y) } });
   return y.length ? { AND: y } : {};
 }
