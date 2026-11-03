@@ -39,5 +39,7 @@ Lectura estática del código (no se corrió ningún test), pedida por el dueño
 
 Arreglos baratos de pasada: derivar `ESTADOS` y `OPERACIONES` de `traspaso-guard.test.ts` desde el enum; que `caracterizaciones-congeladas` enumere los `*.golden.*` y falle ante uno no declarado.
 
+Convención de escritura de matrices (I1, I2, I3, I5, vigente desde el 2026-11-03): ver «Convención vigente (E0)» en `docs/diseno-arnes-de-matrices-2026-11-03.md`.
+
 ## Límites de este mapa
 No se leyeron los e2e de Playwright, la consola de plataforma ni el contenido de los goldens grandes; no se ejecutó ningún test («cubierto» = existe el test y, por lectura, cubre eso).

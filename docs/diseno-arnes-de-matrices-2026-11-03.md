@@ -1,6 +1,6 @@
 # Diseño: arnés de matrices de combinaciones (pendiente con nombre) — 2026-11-03
 
-Estado del documento: **en papel**. No hay código, ni migración, ni librería nueva. Rama `alegp/diseno-arnes-de-matrices` (desde `origin/main` `bc9d1282`). Todo lo contado de `test/` se verificó leyendo los archivos el 2026-11-03; no se corrió ningún test.
+Estado del documento: **E0 implementada (2026-11-03)**; E1 a E3 siguen **en papel**. No hay migración ni librería nueva. Rama `alegp/diseno-arnes-de-matrices` (desde `origin/main` `bc9d1282`). Todo lo contado de `test/` se verificó leyendo los archivos el 2026-11-03; no se corrió ningún test.
 
 ## Resumen para el dueño
 
@@ -11,7 +11,7 @@ Estado del documento: **en papel**. No hay código, ni migración, ni librería 
   - **E2 (guardián de columnas nuevas):** la matriz 8 del mapa del 2026-10-28, apoyada en el motor de «trinquete» que ya existe.
   - **Parqueado:** mutación automática por PR (hoy manual; ver §10).
 - **Ahorro honesto:** las matrices actuales tienen 77 a 122 líneas; el ayudante ahorraría del orden de 15 a 25 por matriz. Vale la pena por las 8 que faltan, no por las 3 que ya están. Por eso E1 espera.
-- **Una sola pregunta** (§11): ¿arrancamos por E0 y dejamos E1 para cuando haya una cuarta matriz?
+- **Una sola pregunta** (§11): ¿arrancamos por E0 y dejamos E1 para cuando haya una cuarta matriz? **Respondida: sí, E0 (CONFIRMADA por el dueño el 2026-11-03: «Sí, arrancá por E0»).** E1, E2 y E3 no se hacen todavía.
 
 ## 1. Propósito y alcance, y lo que ya existe (nivel 1 + inventario)
 
@@ -65,11 +65,11 @@ El dueño (define qué es «una combinación que cambia dinero, permisos, visibi
 
 | # | Regla | Estado |
 |---|---|---|
-| I1 | El oráculo se escribe aparte y a mano; **nunca** se genera ejecutando el código que se prueba (sería un test que se prueba a sí mismo). | PROPUESTA |
-| I2 | Las dimensiones que salen de un enum se **derivan** del enum; si no se puede, se declara el motivo. | PROPUESTA |
-| I3 | El test afirma el **tamaño** del producto (p. ej. 6×7×3 = 126) para que quitar una dimensión por descuido falle. | PROPUESTA (ya lo hace `traspaso-guard.test.ts`) |
+| I1 | El oráculo se escribe aparte y a mano; **nunca** se genera ejecutando el código que se prueba (sería un test que se prueba a sí mismo). | VIGENTE (E0, confirmada 2026-11-03) |
+| I2 | Las dimensiones que salen de un enum se **derivan** del enum; si no se puede, se declara el motivo. | VIGENTE (E0, confirmada 2026-11-03) |
+| I3 | El test afirma el **tamaño** del producto (p. ej. 6×7×3 = 126) para que quitar una dimensión por descuido falle. | VIGENTE (E0, confirmada 2026-11-03; ya lo hace `traspaso-guard.test.ts`) |
 | I4 | Hasta ~500 combinaciones: exhaustivo. Más: `fast-check` contra el oráculo, o pares. | PROPUESTA (la regla del dueño ya lo dice) |
-| I5 | Un fallo imprime la combinación completa y lo esperado vs. obtenido. | PROPUESTA |
+| I5 | Un fallo imprime la combinación completa y lo esperado vs. obtenido. | VIGENTE (E0, confirmada 2026-11-03) |
 | I6 | El molde recorre y reporta; **no oculta** la intención: la tabla sigue legible. | PROPUESTA |
 | I7 | Sin librería nueva (Vitest `it.each`, `fast-check` y el motor de trinquete alcanzan). | PROPUESTA (regla de `AGENTS.md`) |
 | I8 | La mutación **no** entra en el gate de 8 comandos. | CONFIRMADA (ya figura en `stryker.config.mjs`) |
@@ -123,12 +123,23 @@ La experiencia es el mensaje de fallo (CU4): «Cobro de línea — {tipo: combo,
 
 | Etapa | Qué hace | Costo estimado | Depende de |
 |---|---|---|---|
-| **E0** | Convención de 4 reglas (I1–I3, I5) escrita en un documento de pruebas del repo (a ubicar) + derivar `ESTADOS`/`OPERACIONES` de `traspaso-guard.test.ts` y `ESTADOS` de `ventas-por-opcion.test.ts` del enum (cambio de 2–3 líneas por archivo) | muy bajo | nada |
+| **E0** (CONFIRMADA por el dueño el 2026-11-03) | Convención de 4 reglas (I1–I3, I5) escrita en un documento de pruebas del repo (a ubicar) + derivar `ESTADOS`/`OPERACIONES` de `traspaso-guard.test.ts` y `ESTADOS` de `ventas-por-opcion.test.ts` del enum (cambio de 2–3 líneas por archivo) | muy bajo | nada |
 | **E1** | Ayudante `recorrerMatriz` (~60 líneas) en `test/` extraído de las matrices que ya existen, **recién** al escribir la 4.ª matriz real (cobro de línea, factura repartida, IVA de compras o proceso × Kardex) | bajo | leer el oráculo de compras (§1 hallazgo 4) |
 | **E2** | Guardián de columnas: parsea `prisma/schema.prisma` y falla ante booleano/fecha/máscara/CHECK nueva en modelos de dinero, visibilidad o stock sin declaración. Usa el motor `trinquete.ts`, sin motor nuevo | medio | E0 |
 | **E3 (parqueado)** | Mutación incremental sobre los archivos tocados por un PR | a medir | decisión del dueño; hoy ~0,4 s/mutante en `core` puro y mucho más contra Postgres |
 
 **Verificación de cada etapa cuando se implemente:** gate completo de 8 comandos en la misma corrida, conteo de tests antes/después (nunca menos), y para cada guardián la demostración de que detecta (agregar la dimensión falsa → rojo → revertir → verde).
+
+## Convención vigente (E0)
+
+Rige desde el 2026-11-03 (CONFIRMADA por el dueño). Vale para toda matriz de combinaciones nueva o que se toque; no obliga a reescribir las que ya andan.
+
+1. **I1 — El oráculo se escribe aparte y a mano.** La tabla de lo esperado nunca se genera ejecutando el código que se prueba (sería un test que se prueba a sí mismo) y no importa lógica de `src/`: solo tipos y enums.
+2. **I2 — Las dimensiones se derivan de la fuente.** Si un eje sale de un enum de Prisma (`Object.values(Enum)`) o de un `Record<Tipo, …>` exhaustivo (`Object.keys`), se deriva: así un valor nuevo no pasa desapercibido. Si no hay fuente en runtime (tipo local, columna de texto libre), la lista queda a mano **con un comentario que dice el motivo**.
+3. **I3 — El test afirma el tamaño del producto** (p. ej. 6×7×3 = 126). Con la lista derivada, un valor nuevo cambia el producto y el test falla hasta que alguien lo declare en el oráculo.
+4. **I5 — Un fallo imprime la combinación completa y lo esperado vs. obtenido** (nombre de cada caso con todas sus dimensiones, y comparación de la fila entera, no de un campo suelto).
+
+**Aplicado en E0:** `test/core/features/traspasos/traspaso-guard.test.ts` (`ESTADOS` sale de `EstadoTraspaso`; `OPERACIONES` sale de las claves de `ESPERADO`) y `test/reportes/ventas-por-opcion.test.ts` (`ESTADOS` queda a mano: `Estado` es un tipo local, la anulación de una venta es un registro nuevo y no un enum).
 
 ## 11. Preguntas abiertas
 
