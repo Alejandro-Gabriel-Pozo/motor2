@@ -75,7 +75,18 @@ Contexto: Argentina (UTC-3); todo en pesos; cada empresa solo ve lo suyo y cada 
 
 **Flujo.** Primera carga de un insumo a un proveedor: el operador escribe el código y la descripción tal como están en la factura y elige la materia prima (o la crea rápido); el sistema guarda el vínculo. Desde la segunda carga: escribir el código lo encuentra directo (coincidencia exacta primero, §5.2). Si se crea una materia prima nueva al vuelo, el nombre propuesto puede salir de la descripción del proveedor **una sola vez, al crearla**, y después se edita por separado (no queda ligado).
 
-**Historia (PENDIENTE).** La línea no guarda lo que decía la factura; si el proveedor cambia un nombre, el reporte de una factura vieja muestra el nombre nuevo. Opciones: (a) alcanza con lo último que dice el vínculo (lo más barato, sin columnas nuevas en la línea); (b) la línea guarda una foto de código y descripción (dos columnas aditivas). *Recomendación: (a) por ahora; se agrega (b) si hace falta la historia exacta.*
+**Historia (CONFIRMADA el 2026-11-03: opción a).** La línea no guarda lo que decía la factura: alcanza con lo último que dice el vínculo. Si el proveedor cambia un nombre, el reporte de una factura vieja muestra el nombre nuevo; se pasa a (b), una foto de código y descripción en la línea (dos columnas aditivas), solo si hace falta la historia exacta.
+
+**Ejemplo (códigos y descripciones de Cedisur reales, de la planilla del dueño; el resto inventado para ilustrar un segundo proveedor).**
+
+| Insumo | Nuestro código (MP) | Nuestro nombre (MP) | Proveedor | Código del proveedor | Descripción del proveedor | Unidad de compra |
+|---|---|---|---|---|---|---|
+| Bife angosto | MP_3fa9c1 | Bife angosto c/cordón | Cedisur S.A. | A1067000007 | Bife Angosto Con Cordon Refrigerado Rioplatense (x KG.) | CAJA |
+| Bife angosto | MP_3fa9c1 | Bife angosto c/cordón | Frigorífico del Valle (ejemplo) | BAN-0045 | BIFE ANGOSTO C/CORDON ENFRIADO X KG | CAJA |
+| Bife angosto | MP_81be20 | Bife angosto congelado | Frigorífico del Valle (ejemplo) | BAN-0145 | BIFE ANGOSTO C/CORDON CONGELADO X KG | CAJA |
+| Frutos rojos | MP_c70d44 | Mix frutos rojos congelados 2 kg | Cedisur S.A. | A0340020055 | Mix De Frutos Rojos Congelados IQF La Piedad (2 KG.) | BOLSA |
+
+Una materia prima puede tener varios proveedores; un código del proveedor apunta a una sola materia prima; el insumo agrupa materias primas y no guarda nada del proveedor; la factura guarda la materia prima, las unidades, los kilos y el importe, sin copiar ningún nombre.
 
 **Migración (etapa 2, junto a las letras del proveedor).** Una columna aditiva `codigoDelProveedor` en `ProveedorPorProducto` y un índice único parcial; `referenciaProveedor` no se toca. Sin datos que migrar. **Requiere autorización expresa**, con respaldo y ensayo.
 
