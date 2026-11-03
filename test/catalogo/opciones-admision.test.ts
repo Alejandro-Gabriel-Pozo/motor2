@@ -30,7 +30,6 @@ describe("lo que admite cada producto (GO-2a)", () => {
     cantidadMinima: null,
     cantidadMaxima: null,
     modoPrecio: null,
-    activo: true,
     opciones: [op(e.vacaId), op(e.almendrasId, { diferencia: { tipo: "MONTO", monto: 100 } })],
     ...extra,
   });
@@ -84,15 +83,6 @@ describe("lo que admite cada producto (GO-2a)", () => {
     expect(await prisma.registroAuditoria.count()).toBe(auditoria);
     expect(await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ versionEsperada: 1, opciones: [op(e.almendrasId, { versionEsperada: 1, cantidadMaxima: 2 })] }))).toMatchObject({ ok: false, codigo: "VERSION_DESACTUALIZADA" });
     expect(await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ versionEsperada: 0, orden: 5, opciones: [] }))).toMatchObject({ ok: false, codigo: "VERSION_DESACTUALIZADA" });
-  });
-
-  it("quitar es apagar: `activo = false` deja las filas (no se borra nada) y la auditoría lo cuenta", async () => {
-    await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando());
-    const r = await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ versionEsperada: 1, activo: false, opciones: [] }));
-    expect(r).toMatchObject({ ok: true, datos: { version: 2 } });
-    expect(await prisma.productoAdmiteGrupo.count({ where: { productoId: teId } })).toBe(1);
-    expect(await prisma.productoAdmiteOpcion.count({ where: { productoId: teId } })).toBe(2);
-    expect(await prisma.registroAuditoria.findFirst({ where: { entidad: "ProductoAdmiteGrupo", campo: "activo", valorAnterior: "true" }, select: { valorNuevo: true } })).toEqual({ valorNuevo: "false" });
   });
 
   it("producto, grupo y opciones: PRODUCTO_NO_ENCONTRADO, PRODUCTO_NO_ELEGIBLE (una materia prima), GRUPO_NO_ENCONTRADO y una opción de otro grupo (CONFIGURACION_INVALIDA)", async () => {

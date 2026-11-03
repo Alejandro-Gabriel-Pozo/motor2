@@ -1,7 +1,7 @@
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
- * Tipos de la feature Mesas del salón (módulo POS; Hito 4 de la pureza, bloque 4.1 — `docs/plan-hito-4-pureza.md` §5): los comandos y resultados de los
+ * Tipos de la feature Mesas del salón (módulo POS): los comandos y resultados de los
  * casos de uso de `src/server/actions/pos/casos-de-uso/` que vienen de `src/server/actions/pos/mesas.ts` (alta de una mesa y habilitar el mostrador). Mismo
  * criterio que `core/features/cuentas/cuenta.schema.ts`.
  */

@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { quedarseConLaVigente, type AlcanceCentral, type AlcanceDeReceta } from "@/core/catalogo/public";
+import { quedarseConLaVigente, type AlcanceDeReceta } from "@/core/catalogo/public";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -73,13 +73,6 @@ export async function cargarRecetaVigente<const A extends { include?: Prisma.Rec
  */
 export async function cargarHistorialDeVersiones<I extends Prisma.RecetaVersionInclude>(db: Db, alcance: AlcanceDeReceta, productoId: string, include: I): Promise<ConIncluyente<I>[]> {
   return (await db.recetaVersion.findMany({ where: { productoId, sucursalId: alcance.sucursalId }, orderBy: { version: "desc" }, include })) as unknown as ConIncluyente<I>[];
-}
-
-/** El número de la versión CENTRAL vigente de cada plato dado (`null` si no tiene ninguna). Sin platos, no consulta. */
-export async function versionVigentePorProducto(db: Db, _alcance: AlcanceCentral, productoIds: readonly string[]): Promise<Map<string, number | null>> {
-  if (productoIds.length === 0) return new Map();
-  const vigentes = await db.recetaVersion.groupBy({ by: ["productoId"], where: { productoId: { in: [...productoIds] }, sucursalId: null }, _max: { version: true } });
-  return new Map(vigentes.map((v) => [v.productoId, v._max.version]));
 }
 
 /**

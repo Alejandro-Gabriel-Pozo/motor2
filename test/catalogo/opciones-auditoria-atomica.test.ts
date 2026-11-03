@@ -65,7 +65,7 @@ describe("catálogo de opciones: la escritura y su auditoría son atómicas (GO-
     const auditoriaDelAlta = await prisma.registroAuditoria.count();
     interruptor.llamadas = 0;
     interruptor.fallarEnLlamada = 2;
-    await expect(editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Agregados", cantidadMinima: 0, cantidadMaxima: 2, activo: false })).rejects.toThrow("auditoría caída");
+    await expect(editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Agregados", cantidadMinima: 0, cantidadMaxima: 2 })).rejects.toThrow("auditoría caída");
     expect(await prisma.grupoDeOpciones.findUniqueOrThrow({ where: { id: grupoId } })).toMatchObject({ nombre: "Extras", cantidadMaxima: 3, activo: true, version: 1 });
     expect(await prisma.registroAuditoria.count()).toBe(auditoriaDelAlta);
   });
@@ -109,7 +109,7 @@ describe("catálogo de opciones: la escritura y su auditoría son atómicas (GO-
     interruptor.fallarEnLlamada = 5; // 2 de la fila del grupo + 3 de la primera opción: falla la tercera de la primera opción
     const op = (opcionId: string) => ({ opcionId, versionEsperada: 0, cantidadMaxima: 1, precioAbsoluto: null, diferencia: null, activo: true });
     await expect(
-      fijarAdmisionDeGrupoEnProductoCasoDeUso(actorDePrueba(e.usuarioId, e.sucursalA), { productoId: te.id, grupoId: e.grupoVarianteId, versionEsperada: 0, orden: 0, cantidadMinima: null, cantidadMaxima: null, modoPrecio: null, activo: true, opciones: [op(e.vacaId), op(e.almendrasId)] })
+      fijarAdmisionDeGrupoEnProductoCasoDeUso(actorDePrueba(e.usuarioId, e.sucursalA), { productoId: te.id, grupoId: e.grupoVarianteId, versionEsperada: 0, orden: 0, cantidadMinima: null, cantidadMaxima: null, modoPrecio: null, opciones: [op(e.vacaId), op(e.almendrasId)] })
     ).rejects.toThrow("auditoría caída");
     expect(await prisma.productoAdmiteGrupo.count({ where: { productoId: te.id } })).toBe(0);
     expect(await prisma.productoAdmiteOpcion.count({ where: { productoId: te.id } })).toBe(0);

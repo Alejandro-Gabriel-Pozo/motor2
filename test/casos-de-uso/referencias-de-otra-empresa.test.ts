@@ -1,25 +1,22 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { EMPRESA_POR_DEFECTO_ID, baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
+import { EMPRESA_POR_DEFECTO_ID, baseDeTest, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
 import { darDeAltaProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/dar-de-alta-producto";
 import { darDeAltaProductoRapidoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/dar-de-alta-producto-rapido";
 import { actualizarProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/actualizar-producto";
 import { crearOActualizarGrupoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/crear-o-actualizar-grupo";
-import { registrarVentaCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta";
-import { darRecetaDeReventa } from "../setup/receta-de-venta";
 import { azarDelProceso } from "../../src/lib/azar";
 import type { EntradaProducto } from "../../src/core/features/catalogo/productos.schema";
 import { guardComandoDatosDeProducto } from "../../src/core/features/catalogo/productos.guard";
 
 /**
- * Hallazgo O.175 (GT-3b, cerrado): cinco acciones rechazaban un id de OTRA empresa con una excepción CRUDA de Prisma (clave foránea compuesta por empresa, `P2003`) en lugar de `{ ok: false }`
- * con el rechazo de pertenencia. No cruzaba nada (la base lo impide y no se escribe una fila), pero el cliente recibía un error genérico y, en la venta, la excepción salía de dentro de la transacción.
+ * Hallazgo O.175 (GT-3b, cerrado): cuatro acciones rechazaban un id de OTRA empresa con una excepción CRUDA de Prisma (clave foránea compuesta por empresa, `P2003`) en lugar de `{ ok: false }`
+ * con el rechazo de pertenencia. No cruzaba nada (la base lo impide y no se escribe una fila), pero el cliente recibía un error genérico.
  * Ahora cada caso de uso traduce la violación de clave foránea a «No se encontró …» en su borde (fuera de la transacción abortada). Postgres real; el ataque es el id de una segunda empresa.
  * Cada caso tiene su CONTROL positivo (el mismo pedido con ids propios termina bien): el rechazo no es de forma.
  */
 describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor y grupo padre → «No se encontró …», sin excepción cruda", () => {
   let sucursalId: string;
   let sucursalNombre: string;
-  let seccionId: string;
   let adminId: string;
   let unidadId: string;
   let unidadCompraId: string;
@@ -44,7 +41,6 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
     unidadCompraId = catalogo.g.id;
     categoriaId = catalogo.categoria.id;
     insumoId = catalogo.insumo.id;
-    seccionId = (await sembrarSeccion(sucursalId)).id;
     adminId = (await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId, rolId: base.admin.id })).id;
     proveedorId = (await prisma.proveedor.create({ data: { codigo: "PRV_PROPIO", nombre: "Proveedor propio" } })).id;
     grupoId = (await prisma.grupo.create({ data: { nombre: "Grupo propio" } })).id;
@@ -142,30 +138,6 @@ describe("O.175: ids de otra empresa en categoría, insumo, unidades, proveedor 
     it("control: con un padre propio termina bien", async () => {
       const padre = await prisma.grupo.create({ data: { nombre: "Padre propio" } });
       expect((await crearOActualizarGrupoCasoDeUso(actor(), { nombre: "Grupo nuevo", grupoPadreId: padre.id })).ok).toBe(true);
-    });
-  });
-
-  describe("registrarVenta: a quién se vende (proveedor)", () => {
-    let gaseosaId: string;
-    beforeEach(async () => {
-      const gaseosa = await sembrarProductoDisponible({ codigo: "PV_GASEOSA", nombre: "Gaseosa", tipo: "PV", unidadStockId: unidadId, precioVenta: 500 }, sucursalId);
-      gaseosaId = gaseosa.id;
-      // RECETA (ADR-033, sin receta no se vende): la gaseosa es de reventa, con stock en la sección.
-      await darRecetaDeReventa(prisma, gaseosa, { sucursalIds: [sucursalId], stock: { cantidad: 10, seccionIds: [seccionId], usuarioId: adminId } });
-    });
-    const venta = (extra: { proveedorId?: string }) => ({ fecha: new Date("2026-08-06T12:00:00Z"), seccionId, nroFactura: "F-1", ventas: [{ productoId: gaseosaId, cantidadVendida: 1 }], ...extra });
-
-    it("proveedorId de otra empresa: rechazo de pertenencia, sin ninguna Operacion escrita", async () => {
-      const r = await registrarVentaCasoDeUso(actor(), venta({ proveedorId: ajeno.proveedorId }));
-      expect(r).toMatchObject({ ok: false, codigo: "VENTA_RECHAZADA" });
-      expect(r.mensaje).toMatch(/No se encontró el proveedor elegido\./);
-      expect(await prisma.operacion.count({ where: { proceso: { not: "COMPRA" } } })).toBe(0); // RECETA: sin la COMPRA del stock de reventa
-    });
-
-    it("control: con el proveedor propio la venta termina bien", async () => {
-      const r = await registrarVentaCasoDeUso(actor(), venta({ proveedorId }));
-      expect(r.ok).toBe(true);
-      expect(await prisma.operacion.count({ where: { proceso: "VENTA" } })).toBe(1);
     });
   });
 });

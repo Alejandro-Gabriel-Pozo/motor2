@@ -6,11 +6,11 @@ import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, pr
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { dbDeEmpresa } from "../../src/server/sesion/base";
 import { resolverCartaPublica, resolverPortalCarta } from "../../src/server/lecturas/carta/publica";
-import { agregarSucursalAlPortal, guardarSucursalPublica, quitarSucursalDelPortal, type DatosSucursalPublica } from "../../src/server/actions/carta/registro-publico";
+import { agregarSucursalAlPortal, guardarSucursalPublica, type DatosSucursalPublica } from "../../src/server/actions/carta/registro-publico";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
 /**
- * P16 (decisión del dueño, 2026-10-11): «Quitar del portal» APAGA la sucursal (`publicada = false`), no borra su fila. El slug queda RESERVADO (otra sucursal no lo puede tomar ni por el alta
+ * P16 (decisión del dueño, 2026-10-11): Despublicar una sucursal del portal (destildar «Publicada» y guardar) la APAGA (`publicada = false`), no borra su fila. El slug queda RESERVADO (otra sucursal no lo puede tomar ni por el alta
  * ni por la edición) y, si se vuelve a publicar, la misma dirección —la del QR ya impreso— vuelve a funcionar. Con el slug apagado la carta pública da el MISMO `null` (404 neutro) que uno
  * inexistente y NO abre la base de la sucursal: es un borde sin sesión, no puede dar ningún dato de ella.
  * Rojo previo (con `deleteMany`): el slug se liberaba y lo tomaba otra sucursal; el QR impreso no se podía recuperar.
@@ -50,7 +50,7 @@ describe("P16: sacar una sucursal del portal la apaga y reserva su slug", () => 
   });
 
   it("reserva: apagada «Central» (central), otra sucursal con el mismo nombre en otra grafía recibe central-2 y no puede editarse el slug a central", async () => {
-    expect(await quitarSucursalDelPortal(centralId)).toMatchObject({ ok: true });
+    expect(await guardarSucursalPublica(centralId, datos({ publicada: false }))).toMatchObject({ ok: true });
     const otra = (await prisma.sucursal.create({ data: { nombre: "CENTRAL" } })).id;
     expect(await agregarSucursalAlPortal(otra)).toEqual({ ok: true, mensaje: '"CENTRAL" agregada al portal con el slug central-2 (sin publicar todavía).' });
     expect(await guardarSucursalPublica(otra, datos({ slug: "central" }))).toEqual({ ok: false, mensaje: 'El slug central ya lo usa "Central".' });
@@ -64,7 +64,7 @@ describe("P16: sacar una sucursal del portal la apaga y reserva su slug", () => 
     const antes = await resolverCartaPublica(empresa, "central", basesDe(empresa.id).bases, AHORA_DE_LA_CORRIDA);
     expect(antes?.carta.sucursal.id).toBe(centralId);
 
-    expect(await quitarSucursalDelPortal(centralId)).toMatchObject({ ok: true });
+    expect(await guardarSucursalPublica(centralId, datos({ publicada: false }))).toMatchObject({ ok: true });
     await expect(resolverCartaPublica(empresa, "central", basesDe(empresa.id).bases, AHORA_DE_LA_CORRIDA)).resolves.toBeNull();
     expect(await prisma.sucursalPublica.count({ where: { sucursalId: centralId } })).toBe(1);
 
@@ -77,7 +77,7 @@ describe("P16: sacar una sucursal del portal la apaga y reserva su slug", () => 
   });
 
   it("borde sin sesión: con el slug apagado NO se abre la base de la sucursal, la respuesta es la de un slug inexistente y el portal no la lista", async () => {
-    expect(await quitarSucursalDelPortal(centralId)).toMatchObject({ ok: true });
+    expect(await guardarSucursalPublica(centralId, datos({ publicada: false }))).toMatchObject({ ok: true });
     const apagado = basesDe(empresa.id);
     const inexistente = basesDe(empresa.id);
     const respuestaApagado = await resolverCartaPublica(empresa, "central", apagado.bases, AHORA_DE_LA_CORRIDA);
@@ -88,14 +88,14 @@ describe("P16: sacar una sucursal del portal la apaga y reserva su slug", () => 
     expect((await resolverPortalCarta(empresa, dbDeEmpresa(empresa.id))).map((p) => p.slug)).toEqual([]);
   });
 
-  it("aislamiento entre empresas: quitar la sucursal de OTRA empresa no encuentra nada ni la toca; apagar un slug no afecta al mismo slug de la otra empresa", async () => {
+  it("aislamiento entre empresas: despublicar la sucursal de OTRA empresa no encuentra nada ni la toca; apagar un slug no afecta al mismo slug de la otra empresa", async () => {
     const ajena = await crearSucursalDeOtraEmpresa("Ajena");
     await prismaAdmin.sucursalPublica.create({ data: { sucursalId: ajena, empresaId: OTRA_EMPRESA_ID, slug: "central", publicada: true } });
 
-    expect(await quitarSucursalDelPortal(ajena)).toEqual({ ok: false, mensaje: "Esta sucursal no está en el portal." });
+    expect(await guardarSucursalPublica(ajena, datos({ publicada: false }))).toEqual({ ok: false, mensaje: "Esta sucursal no está en el portal: agregala primero." });
     expect(await prismaAdmin.sucursalPublica.findFirstOrThrow({ where: { sucursalId: ajena } })).toMatchObject({ slug: "central", publicada: true });
 
-    expect(await quitarSucursalDelPortal(centralId)).toMatchObject({ ok: true });
+    expect(await guardarSucursalPublica(centralId, datos({ publicada: false }))).toMatchObject({ ok: true });
     await expect(resolverCartaPublica(empresa, "central", basesDe(empresa.id).bases, AHORA_DE_LA_CORRIDA)).resolves.toBeNull();
     const deLaOtra = await resolverCartaPublica(otraEmpresa, "central", basesDe(otraEmpresa.id).bases, AHORA_DE_LA_CORRIDA);
     expect(deLaOtra?.carta.sucursal.id).toBe(ajena);

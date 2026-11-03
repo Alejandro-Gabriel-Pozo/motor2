@@ -61,8 +61,8 @@ import {
   quitarOpcionItemAgrupadoCarta,
 } from "../../src/server/actions/carta/items-agrupados";
 import { guardarPortalEmpresa } from "../../src/server/actions/carta/portal-empresa";
-import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal } from "../../src/server/actions/carta/registro-publico";
-import { cambiarAplicacionTema, guardarTemaCarta } from "../../src/server/actions/carta/tema";
+import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa } from "../../src/server/actions/carta/registro-publico";
+import { guardarTemaCarta } from "../../src/server/actions/carta/tema";
 import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-carta";
 
 /**
@@ -79,9 +79,9 @@ import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-car
  *
  * Antes de este test, ~38 de las 52 no tenían ningún test de rechazo (entre ellas las 5 de promos y `setPrecioLocalProducto`, que son dinero).
  *
- * Hito 5, bloque D (`docs/plan-hito-5-pureza.md` §6.1): se suman las 19 funciones de las 8 acciones de configuración de la carta (`secciones`, `generos`,
- * `contenido-producto`, `items-agrupados`, `portal-empresa`, `registro-publico`, `tema`, `copiar-carta`), con su red ANTES de mudarlas: 71 en total (72 con `guardarSoloSalonPromoCarta`, el interruptor «solo salón»). 16 son de
- * contexto empresa y 3 de sucursal (`copiarCartaDeSucursal`, `guardarTemaCarta`, `cambiarAplicacionTema`). La foto suma las 8 tablas de la carta que escriben
+ * Hito 5, bloque D (`docs/plan-hito-5-pureza.md` §6.1): se suman las 17 funciones de las 8 acciones de configuración de la carta (`secciones`, `generos`,
+ * `contenido-producto`, `items-agrupados`, `portal-empresa`, `registro-publico`, `tema`, `copiar-carta`), con su red ANTES de mudarlas: 69 en total (70 con `guardarSoloSalonPromoCarta`, el interruptor «solo salón»). 15 son de
+ * contexto empresa y 2 de sucursal (`copiarCartaDeSucursal`, `guardarTemaCarta`). La foto suma las 8 tablas de la carta que escriben
  * (`seccionCarta`, `generoCarta`, `contenidoCartaProducto`, `itemAgrupadoCarta`, `opcionItemAgrupadoCarta`, `portalCartaEmpresa`, `sucursalPublica`,
  * `temaCartaSucursal`). `copiarCartaDeSucursal` tiene un `preparar`: solo escribe sobre una carta VACÍA, así que antes de la foto se vacía la carta de Central y se
  * le da una carta propia a Norte (si no, sin el guard igual terminaría en «ya tiene carta propia» sin escribir y la foto no distinguiría nada).
@@ -256,10 +256,8 @@ const MUTACIONES: Mutacion[] = [
     contexto: "empresa",
     llamar: (e) => guardarSucursalPublica(e.centralId, { slug: "central-nueva", etiqueta: "Casa central", publicada: true }),
   },
-  { nombre: "quitarSucursalDelPortal", clave: "carta_portal", contexto: "empresa", llamar: (e) => quitarSucursalDelPortal(e.centralId) },
   { nombre: "moverSucursalEnMapa", clave: "carta_portal", contexto: "empresa", llamar: (e) => moverSucursalEnMapa(e.centralId, 30, 40) },
   { nombre: "guardarTemaCarta", clave: "carta_tema", contexto: "sucursal", llamar: (e) => guardarTemaCarta(e.centralId, { restaurante_nombre: "La Esquina" }) },
-  { nombre: "cambiarAplicacionTema", clave: "carta_tema", contexto: "sucursal", llamar: (e) => cambiarAplicacionTema(e.centralId, false) },
   {
     nombre: "copiarCartaDeSucursal",
     clave: "carta_copiar_de_sucursal",
@@ -462,15 +460,15 @@ async function rechazaSinTocarNada(actor: { id: string; email: string }, m: Muta
 const BAJO_EL_PISO = MUTACIONES.filter((m) => PISO.get(m.clave) === "administrador");
 const DE_SUCURSAL = MUTACIONES.filter((m) => m.contexto === "sucursal");
 
-describe("tramo C (carta, catálogo y stock): las 72 mutaciones rechazan sin el permiso y no cambian ninguna tabla", () => {
-  it("la lista son las 72 (las 51 de la pieza, guardarReceta, las 19 de configuración de la carta y guardarSoloSalonPromoCarta), con el contexto del catálogo y los pisos esperados", () => {
-    expect(MUTACIONES).toHaveLength(72);
-    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(72);
+describe("tramo C (carta, catálogo y stock): las 70 mutaciones rechazan sin el permiso y no cambian ninguna tabla", () => {
+  it("la lista son las 70 (las 51 de la pieza, guardarReceta, las 17 de configuración de la carta y guardarSoloSalonPromoCarta), con el contexto del catálogo y los pisos esperados", () => {
+    expect(MUTACIONES).toHaveLength(70);
+    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(70);
     for (const m of MUTACIONES) expect(m.contexto, `${m.nombre}: el contexto declarado no es el del catálogo`).toBe(CONTEXTO.get(m.clave));
     // +1: guardarSoloSalonPromoCarta (carta_promo_definir, piso administrador).
-    expect(BAJO_EL_PISO.length).toBe(40 + 19);
-    // 19 de la pieza original + 3 del bloque D (copiar la carta y el tema) + 9 que pasaron a contexto sucursal con S-10/D1 (géneros, contenido e ítems agrupados, O.59).
-    expect(DE_SUCURSAL.length).toBe(19 + 3 + 9);
+    expect(BAJO_EL_PISO.length).toBe(40 + 17);
+    // 19 de la pieza original + 2 del bloque D (copiar la carta y el tema) + 9 que pasaron a contexto sucursal con S-10/D1 (géneros, contenido e ítems agrupados, O.59).
+    expect(DE_SUCURSAL.length).toBe(19 + 2 + 9);
   });
 
   it.each(MUTACIONES.map((m) => [m.nombre, m] as const))("un rol sin ninguna fila: %s rechaza con el texto del guard", async (_n, m) => {

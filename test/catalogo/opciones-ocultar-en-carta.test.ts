@@ -71,7 +71,6 @@ describe("«Mostrar este grupo en la carta»: el comando de admisión del produc
     cantidadMinima: null,
     cantidadMaxima: null,
     modoPrecio: null,
-    activo: true,
     opciones: [op(ojoId), op(chorizoId)],
     ...extra,
   });
@@ -222,11 +221,13 @@ describe("«Mostrar este grupo en la carta»: el comando de admisión del produc
       expect({ ...(await filas()), fila: await fila() }).toEqual(antes);
     });
 
-    it("con la admisión apagada no se valida el precio (no hay nada que ocultar): se guarda sin efecto; el tipo sí se controla", async () => {
+    it("con el grupo archivado no se valida el precio (no hay nada que ocultar): se guarda sin efecto; el tipo sí se controla", async () => {
+      await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando());
       await prisma.versionDeOpcion.create({ data: { opcionId: ojoId, numero: 2, tipoDeDiferencia: "MONTO", diferenciaPrecio: "500.00", creadoPorId: e.usuarioId } });
-      expect(await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ activo: false, seMuestraEnCarta: false, cantidadMinima: 0 }))).toMatchObject({ ok: true });
-      expect(await fila()).toMatchObject({ seMuestraEnCarta: false, activo: false });
-      expect(await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ grupoId: e.grupoAdicionalId, activo: false, seMuestraEnCarta: false, opciones: [] }))).toMatchObject({ ok: false, mensaje: MENSAJE_OCULTAR_SOLO_VARIANTE_O_INCLUIDA });
+      await prisma.grupoDeOpciones.update({ where: { id: corteId }, data: { activo: false } });
+      expect(await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ versionEsperada: 1, seMuestraEnCarta: false, cantidadMinima: 0 }))).toMatchObject({ ok: true });
+      expect(await fila()).toMatchObject({ seMuestraEnCarta: false, activo: true });
+      expect(await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ grupoId: e.grupoAdicionalId, seMuestraEnCarta: false, opciones: [] }))).toMatchObject({ ok: false, mensaje: MENSAJE_OCULTAR_SOLO_VARIANTE_O_INCLUIDA });
     });
   });
 
@@ -267,10 +268,10 @@ describe("«Mostrar este grupo en la carta»: el comando de admisión del produc
       expect(await auditoriasDelInterruptor()).toHaveLength(1);
     });
 
-    it("«Agregar un grupo existente» (el comando sin el campo, sobre una fila apagada) no pisa el interruptor", async () => {
+    it("«Agregar un grupo existente» (el comando sin el campo, sobre una fila quitada) no pisa el interruptor", async () => {
       await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ seMuestraEnCarta: false }));
-      await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ versionEsperada: 1, activo: false, opciones: [] }));
-      expect(await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ versionEsperada: 2, activo: true, opciones: [] }))).toMatchObject({ ok: true });
+      await vincularGrupoEnProductoCasoDeUso(actor(), { productoId: bifeId, grupoId: corteId, vinculado: false });
+      expect(await fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando({ versionEsperada: (await fila()).version, opciones: [] }))).toMatchObject({ ok: true });
       expect(await fila()).toMatchObject({ activo: true, seMuestraEnCarta: false });
     });
   });

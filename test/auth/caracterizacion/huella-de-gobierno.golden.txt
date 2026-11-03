@@ -44,7 +44,6 @@
   PERMISO admin:motivos_destino_consumo ver=true editar=true
   PERMISO admin:motivos_merma ver=true editar=true
   PERMISO admin:notas_usuario_sucursal ver=true editar=true
-  PERMISO admin:notificar_alertas ver=true editar=true
   PERMISO admin:opcion_apagar_en_sucursal ver=true editar=true
   PERMISO admin:opciones_definir ver=true editar=true
   PERMISO admin:pagar_consignante ver=true editar=true
@@ -174,8 +173,7 @@
   PERMISO operador:motivos_destino_consumo ver=false editar=false
   PERMISO operador:motivos_merma ver=false editar=false
   PERMISO operador:notas_usuario_sucursal ver=false editar=false
-  PERMISO operador:notificar_alertas ver=false editar=false
-  PERMISO operador:opcion_apagar_en_sucursal ver=false editar=false
+  PERMISO operador:opcion_apagar_en_sucursal ver=true editar=true
   PERMISO operador:opciones_definir ver=false editar=false
   PERMISO operador:pagar_consignante ver=false editar=false
   PERMISO operador:pos_abrir_cuenta ver=false editar=false
@@ -265,7 +263,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Central/true, Norte/true
-  ACCIONES 130
+  ACCIONES 129
 ### 0b. Primer gerente incorporado
   resultado: {"ok":true,"sucursalId":"sucursal1","sucursalNombre":"Central","membresiaId":"id#1"}
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
@@ -463,7 +461,6 @@
   PERMISO admin:motivos_destino_consumo ver=true editar=true
   PERMISO admin:motivos_merma ver=true editar=true
   PERMISO admin:notas_usuario_sucursal ver=true editar=true
-  PERMISO admin:notificar_alertas ver=true editar=true
   PERMISO admin:opcion_apagar_en_sucursal ver=true editar=true
   PERMISO admin:opciones_definir ver=true editar=true
   PERMISO admin:pagar_consignante ver=true editar=true
@@ -593,8 +590,7 @@
   PERMISO operador:motivos_destino_consumo ver=false editar=false
   PERMISO operador:motivos_merma ver=false editar=false
   PERMISO operador:notas_usuario_sucursal ver=false editar=false
-  PERMISO operador:notificar_alertas ver=false editar=false
-  PERMISO operador:opcion_apagar_en_sucursal ver=false editar=false
+  PERMISO operador:opcion_apagar_en_sucursal ver=true editar=true
   PERMISO operador:opciones_definir ver=false editar=false
   PERMISO operador:pagar_consignante ver=false editar=false
   PERMISO operador:pos_abrir_cuenta ver=false editar=false
@@ -684,7 +680,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Casa central/true
-  ACCIONES 130
+  ACCIONES 129
 ### 7a. Aceptar con un CUIT inválido
   resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1."}
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires

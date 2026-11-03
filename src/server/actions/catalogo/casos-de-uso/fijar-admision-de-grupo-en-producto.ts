@@ -44,7 +44,7 @@ function diferenciaDeLaFila(f: { tipoDeDiferencia: string | null; diferenciaPrec
 /**
  * Caso de uso «fijar lo que un producto admite de un grupo de opciones» (GO-2a; ADR-030 §4: lista de permitidos, fila ausente = no). Para el par (producto, grupo) deja la fila
  * de `ProductoAdmiteGrupo` y las de `ProductoAdmiteOpcion` de las opciones que trae el comando, cada una con la VERSIÓN que vio la pantalla (0 = todavía no existe). Nunca borra:
- * quitar es `activo = false`. Las filas de opciones del grupo que el comando no trae quedan como están (y cuentan para las reglas).
+ * quitar es `activo = false`, pero eso va por `vincular-grupo-en-producto.ts`: acá la fila del grupo queda SIEMPRE activa (reactiva una quitada). Las filas de opciones del grupo que el comando no trae quedan como están (y cuentan para las reglas).
  *
  * Todo dentro de UNA transacción SERIALIZABLE, con lo leído ahí:
  *  1. el producto existe, es de VENTA y no es el ancla de un adicional (un ancla no admite opciones);
@@ -116,7 +116,7 @@ export async function fijarAdmisionDeGrupoEnTx(
     cantidadMinima: comando.cantidadMinima,
     cantidadMaxima: comando.cantidadMaxima,
     modoPrecio: comando.modoPrecio,
-    activo: comando.activo,
+    activo: true,
     ...(comando.seMuestraEnCarta === undefined ? {} : { seMuestraEnCarta: comando.seMuestraEnCarta }),
   };
   const cambiosDelGrupo = cambiosPorColumna([
@@ -166,7 +166,7 @@ export async function fijarAdmisionDeGrupoEnTx(
     resultantes.set(o.opcionId, { opcionId: o.opcionId, cantidadMaxima: o.cantidadMaxima, precioAbsoluto: o.precioAbsoluto, diferencia: o.diferencia, activo: o.activo });
   }
   const noTocadas = [...resultantes.values()].filter((r) => !comando.opciones.some((o) => o.opcionId === r.opcionId));
-  const admision = { cantidadMinima: comando.cantidadMinima, cantidadMaxima: comando.cantidadMaxima, modoPrecio: comando.modoPrecio, activo: comando.activo };
+  const admision = { cantidadMinima: comando.cantidadMinima, cantidadMaxima: comando.cantidadMaxima, modoPrecio: comando.modoPrecio, activo: true };
   const regla = validarAdmisionDeGrupo({
     grupo,
     opcionesDelGrupo: opcionesDelGrupo.map((o) => ({ opcionId: o.id, nombre: o.nombre, activa: o.activa, esNinguna: o.esNinguna })),
@@ -175,7 +175,7 @@ export async function fijarAdmisionDeGrupoEnTx(
   });
   if (!regla.ok) return fracaso("CONFIGURACION_INVALIDA", regla.mensaje);
 
-  if (comando.activo && !(filaGrupo?.activo ?? false) && !grupo.activo) {
+  if (!(filaGrupo?.activo ?? false) && !grupo.activo) {
     return fracaso("GRUPO_INACTIVO", `«${grupo.nombre}» está archivado: restauralo (en Biblioteca de opciones → Archivados) antes de que un producto lo use.`);
   }
   for (const o of comando.opciones) {
@@ -186,16 +186,16 @@ export async function fijarAdmisionDeGrupoEnTx(
   }
 
   // Control de precio de lista, con la diferencia de cada opción resuelta (la del producto si la sobrescribe, si no la de su versión vigente).
-  const activasAdmitidas = comando.activo ? [...resultantes.values()].filter((r) => r.activo && delGrupo.get(r.opcionId)!.activa) : [];
+  const activasAdmitidas = [...resultantes.values()].filter((r) => r.activo && delGrupo.get(r.opcionId)!.activa);
   const vigentes = new Map(await Promise.all(activasAdmitidas.map(async (r) => [r.opcionId, await versionVigenteEnTx(tx, r.opcionId)] as const)));
   // «Mostrar este grupo en la carta» apagado (2026-10-29): se valida sobre el estado RESULTANTE (lo que quedaría guardado con este comando): solo una variante o una incluida, y ninguna opción ofrecida cambia el
-  // precio en este producto. Con la admisión o el grupo apagados no hay nada que ocultar: solo se controla el tipo, y el precio se valida cuando se vuelva a prender con el formulario.
+  // precio en este producto. Con el grupo archivado no hay nada que ocultar: solo se controla el tipo, y el precio se valida cuando se vuelva a prender con el formulario.
   if (comando.seMuestraEnCarta === false) {
     const rechazoDeLaCarta = rechazoParaOcultarEnCarta({
       tipo: grupo.tipo,
       grupo: grupo.nombre,
       producto: producto.nombre,
-      opciones: comando.activo && grupo.activo
+      opciones: grupo.activo
         ? opcionesDelGrupo.map((o) => {
             const r = resultantes.get(o.id);
             return { nombre: o.nombre, esNinguna: o.esNinguna, ofrecida: o.activa && (r?.activo ?? false), diferencia: r?.diferencia ?? vigentes.get(o.id)?.diferencia ?? null, precioAbsoluto: r?.precioAbsoluto ?? null };
@@ -209,7 +209,7 @@ export async function fijarAdmisionDeGrupoEnTx(
   if (esBase) {
     const resultante: AdmisionParaSerBase = {
       grupo: { nombre: grupo.nombre, tipo: grupo.tipo, activo: grupo.activo },
-      activa: comando.activo,
+      activa: true,
       modoPrecio: comando.modoPrecio,
       opciones: opcionesDelGrupo.map((o) => {
         const r = resultantes.get(o.id);
@@ -263,7 +263,7 @@ export async function fijarAdmisionDeGrupoEnTx(
     if ((await actualizarAdmisionDeGrupo(tx, { id: filaGrupo.id, versionEsperada: filaGrupo.version, fila, ahora: actor.ahora })) === 0) return desactualizada(producto.nombre, grupo.nombre);
     version = filaGrupo.version + 1;
   }
-  const descripcionDelGrupo = `«${producto.nombre}» admite «${grupo.nombre}»${comando.activo ? "" : " (apagado en el producto)"}.`;
+  const descripcionDelGrupo = `«${producto.nombre}» admite «${grupo.nombre}».`;
   for (const c of cambiosDelGrupo) {
     await registrarCambioAuditado(tx, { entidad: "ProductoAdmiteGrupo", entidadId: admisionId, campo: c.campo, descripcion: descripcionDelGrupo, valorAnterior: c.antes, valorNuevo: c.despues, actorId: actor.usuarioId, sucursalId: null });
   }

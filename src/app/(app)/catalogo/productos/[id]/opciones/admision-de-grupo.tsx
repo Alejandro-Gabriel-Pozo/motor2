@@ -121,10 +121,9 @@ export function AdmisionDeGrupo({
       activo: f.admitida,
     }));
 
-  // OPCIONES-LIMPIEZA: el formulario es el de un grupo EN USO (`activo` = «on»; sacarlo es «Quitar de este producto», con «Deshacer», al pie de la tarjeta). Las opciones viajan como JSON.
+  // OPCIONES-LIMPIEZA: el formulario es el de un grupo EN USO (sacarlo es «Quitar de este producto», con «Deshacer», al pie de la tarjeta). Las opciones viajan como JSON.
   const enviar = (formData: FormData) => {
     formData.set("opciones", JSON.stringify(opciones));
-    formData.set("activo", "on");
     if (sePuedeOcultar) formData.set("seMuestraEnCarta", seMuestraEnCarta ? "si" : "no");
     return accion(formData);
   };

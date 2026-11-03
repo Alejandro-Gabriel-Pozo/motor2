@@ -1,15 +1,14 @@
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
- * Tipos de la ANULACIÓN de lo que ya salió a cocina (feature Cuenta del salón, módulo POS; Task #41, Fase M —
- * docs/arquitectura-casos-de-uso-2026-09-27.md): comandos y resultados de los casos de uso de `src/server/actions/pos/casos-de-uso/` que
+ * Tipos de la ANULACIÓN de lo que ya salió a cocina (feature Cuenta del salón, módulo POS): comandos y resultados de los casos de uso de `src/server/actions/pos/casos-de-uso/` que
  * vienen de `src/server/actions/pos/cuenta-anulacion.ts`. Archivo aparte de `cuenta.schema.ts` (cierre y ticket, `cuenta-cierre.ts`) por
- * el mismo corte que ya tienen las Server Actions: acá el sujeto es un ÍTEM (o una promo) de la cuenta, no la cuenta.
- * `anularItemEnviado` (M12c) y `anularPromoEnviada` (M12d): las dos funciones del archivo de acciones.
+ * el mismo corte que tienen las Server Actions: acá el sujeto es un ÍTEM (o una promo) de la cuenta, no la cuenta.
+ * `anularItemEnviado` y `anularPromoEnviada`: las dos funciones del archivo de acciones.
  */
 
 /**
- * Comando «anular un ítem ya enviado a cocina» (M12c): lo que recibe `anularItemEnviadoCasoDeUso`
+ * Comando «anular un ítem ya enviado a cocina»: lo que recibe `anularItemEnviadoCasoDeUso`
  * (src/server/actions/pos/casos-de-uso/anular-item-enviado.ts), con el `cuentaItemId` ya validado por `guardComandoAnularItemEnviado`.
  * `cantidad`, `motivo` y `restanteVisto` viajan CRUDOS (`unknown`, tal como llegaron): los valida el caso de uso en el MISMO orden que
  * antes — guardas de estado → motivo (`validarMotivoAnulacion`) → guarda optimista (`restanteVisto`) → cantidad (`validarCantidadPedido`,
@@ -64,7 +63,7 @@ export interface DatosAnularItemEnviado {
 export type ResultadoAnularItemEnviado = ResultadoCaso<DatosAnularItemEnviado, CodigoAnularItemEnviado>;
 
 /**
- * Comando «anular una promo ya enviada a cocina» (M12d): lo que recibe `anularPromoEnviadaCasoDeUso`
+ * Comando «anular una promo ya enviada a cocina»: lo que recibe `anularPromoEnviadaCasoDeUso`
  * (src/server/actions/pos/casos-de-uso/anular-promo-enviada.ts), con el `promoCuentaId` ya validado por `guardComandoAnularPromoEnviada`.
  * `motivo` viaja CRUDO (`unknown`): lo valida el caso de uso DESPUÉS de las guardas de estado, en el mismo orden que antes, así una
  * promo cerrada o sin enviar sigue respondiendo eso aunque el motivo esté vacío. No hay cantidad ni guarda optimista: la promo se anula

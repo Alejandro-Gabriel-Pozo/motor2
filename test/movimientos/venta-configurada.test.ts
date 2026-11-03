@@ -27,7 +27,7 @@ beforeEach(async () => {
 const actor = () => ({ usuarioId: s.admin.id, sucursalId: s.sucursalId, sucursalNombre: s.sucursal.nombre });
 const vender = (lineas: LineaVentaEnTx[]) =>
   baseDeTest({ lectura: [s.sucursalId], escritura: [s.sucursalId] }).transaccion((tx) =>
-    registrarVentaEnTx(tx, actor(), { fecha: new Date(), origen: { tipo: "automatico" }, proveedorId: null, detalle: "Mesa 4", lineas }, { permitirStockNegativo: true })
+    registrarVentaEnTx(tx, actor(), { fecha: new Date(), origen: { tipo: "automatico" }, detalle: "Mesa 4", lineas }, { permitirStockNegativo: true })
   );
 
 const consumo = (insumoProductoId: string, cantidad: number, extra: Partial<ConsumoDeOpcionParaVender> = {}): ConsumoDeOpcionParaVender => ({

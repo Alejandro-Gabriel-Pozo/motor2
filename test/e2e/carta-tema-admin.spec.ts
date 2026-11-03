@@ -15,10 +15,9 @@ async function esperarHidratado(el: Locator) {
 
 /**
  * Tema de la carta (/carta/tema, docs/plan-tema-carta-2026-09-24.md, M9) de punta a punta: cargar campos del formulario (la vista previa
- * los refleja sin guardar y un valor inválido se marca en el campo), Guardar persiste, Aplicar lo deja aplicado en la carta y Desaplicar
- * lo saca conservando los valores.
+ * los refleja sin guardar y un valor inválido se marca en el campo), Guardar persiste y lo deja aplicado en la carta (guardar = aplicar).
  */
-test("cargar el formulario, guardar, aplicar y desaplicar el tema de la carta", async ({ paginaAutenticada: page, sucursalId }) => {
+test("cargar el formulario y guardar (queda aplicado) el tema de la carta", async ({ paginaAutenticada: page, sucursalId }) => {
   await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
   await page.setViewportSize({ width: 1280, height: 900 });
   try {
@@ -48,38 +47,22 @@ test("cargar el formulario, guardar, aplicar y desaplicar el tema de la carta", 
     // Nada se guardó todavía.
     expect(await prisma.temaCartaSucursal.count({ where: { sucursalId } })).toBe(0);
 
-    // 3. Guardar, recargar: persiste lo cargado.
+    // 3. Guardar, recargar: persiste lo cargado y queda aplicado en la carta (el efecto en la carta pública lo cubre el test siguiente).
     await page.getByRole("button", { name: "Guardar tema" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "guardado" })).toContainText('guardado (2 valores cargados; el resto usa el default de la carta). Es un borrador');
+    await expect(page.getByRole("status").filter({ hasText: "guardado" })).toContainText('guardado (2 valores cargados; el resto usa el default de la carta). Está aplicado');
     await page.reload();
-    await expect(page.locator("[data-estado-tema]")).toContainText("Tema: borrador");
+    await expect(page.locator("[data-estado-tema]")).toContainText("Tema: tema aplicado");
     await expect(page.locator('[name="color_item_nombre"]')).toHaveValue("#aa3300");
     await expect(page.locator('[name="carta_fuente_item_nombre"]')).toHaveValue("clamp(1.2rem, 2vw, 1.5rem)");
     await expect(page.locator('[name="color_item_precio"]')).toHaveValue("");
     expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } })).valores).toEqual({ color_item_nombre: "#aa3300", carta_fuente_item_nombre: "clamp(1.2rem, 2vw, 1.5rem)" });
-
-    // 4. Aplicar: la fila queda aplicada en la carta, con lo guardado (el efecto en la carta pública lo cubre el test siguiente).
-    expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } })).aplicarEnCarta).toBe(false);
-    await page.getByRole("button", { name: "Aplicar el tema" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "aplicado" })).toBeVisible();
-    await expect(page.locator("[data-estado-tema]")).toContainText("Tema: tema aplicado");
-    const aplicado = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } });
-    expect(aplicado.aplicarEnCarta).toBe(true);
-    expect(aplicado.valores).toMatchObject({ color_item_nombre: "#aa3300", carta_fuente_item_nombre: "clamp(1.2rem, 2vw, 1.5rem)" });
-
-    // 5. Desaplicar: deja de aplicarse, y los valores se conservan.
-    await page.getByRole("button", { name: "Desaplicar el tema" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "desaplicado" })).toBeVisible();
-    await expect(page.locator("[data-estado-tema]")).toContainText("Tema: borrador");
-    const desaplicado = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } });
-    expect(desaplicado.aplicarEnCarta).toBe(false);
-    expect(desaplicado.valores).toMatchObject({ color_item_nombre: "#aa3300" });
+    expect((await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId } })).aplicarEnCarta).toBe(true);
   } finally {
     await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
   }
 });
 
-test("aplicar y desaplicar el tema se ve al instante en la carta pública (invalida el caché de la página)", async ({ paginaAutenticada: page, sucursalId }) => {
+test("guardar el tema (y vaciarlo) se ve al instante en la carta pública (invalida el caché de la página)", async ({ paginaAutenticada: page, sucursalId }) => {
   // ADR-006, Fase 4: la página de la sucursal se cachea 5 minutos (`revalidate = 300`); las acciones de carta la invalidan
   // (`revalidarCartasPublicas`). Sin la invalidación, la segunda visita traería la respuesta cacheada de la primera.
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
@@ -100,15 +83,14 @@ test("aplicar y desaplicar el tema se ve al instante en la carta pública (inval
     await page.locator('[name="restaurante_nombre"]').fill(nombre);
     await page.getByRole("button", { name: "Guardar tema" }).click();
     await expect(page.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
-    await page.getByRole("button", { name: "Aplicar el tema" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "aplicado" })).toBeVisible();
 
     await page.goto(`/carta-publica/e2e/${slug}`);
     await expect(titulo).toHaveCount(1);
 
     await page.goto("/carta/tema");
-    await page.getByRole("button", { name: "Desaplicar el tema" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "desaplicado" })).toBeVisible();
+    await page.locator('[name="restaurante_nombre"]').fill("");
+    await page.getByRole("button", { name: "Guardar tema" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
 
     await page.goto(`/carta-publica/e2e/${slug}`);
     await expect(titulo).toHaveCount(0);

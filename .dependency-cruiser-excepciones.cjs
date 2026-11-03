@@ -343,7 +343,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/carta/tema.ts",
     motivo:
-      "Hito 5, bloque D (D8): guardarTemaCarta (con guardComandoGuardarTemaCarta) y cambiarAplicacionTema (con guardComandoCambiarAplicacionTema) → carta/casos-de-uso/{guardar-tema-carta,cambiar-aplicacion-tema}.ts; escrituras en server/persistencia/carta/tema.ts (el upsert por sucursal y el cambio de aplicarEnCarta), con la base del contexto y sin transacción ni auditoría (el tema visual no es plata), como antes. Los guards reciben la sucursal activa del contexto y la comparan ANTES de leer (otra sucursal responde «No se encontró la sucursal.»), dentro de conPermiso; la acción revalida la carta pública solo si salió bien (también en los avisos «sin efecto»). El archivo no tiene ninguna otra mutación.",
+      "Hito 5, bloque D (D8): guardarTemaCarta (con guardComandoGuardarTemaCarta) → carta/casos-de-uso/guardar-tema-carta.ts; escritura en server/persistencia/carta/tema.ts (el upsert por sucursal, con aplicarEnCarta: true), con la base del contexto y sin transacción ni auditoría (el tema visual no es plata), como antes. Los guards reciben la sucursal activa del contexto y la comparan ANTES de leer (otra sucursal responde «No se encontró la sucursal.»), dentro de conPermiso; la acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
   },
   {
     ruta: "src/server/actions/carta/items-agrupados.ts",
@@ -353,7 +353,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/carta/registro-publico.ts",
     motivo:
-      "Hito 5, bloque D (D12): agregarSucursalAlPortal (con guardComandoAgregarSucursalAlPortal), guardarSucursalPublica (con guardComandoGuardarSucursalPublica), quitarSucursalDelPortal (con guardComandoQuitarSucursalDelPortal) y moverSucursalEnMapa (con guardComandoMoverSucursalEnMapa: solo el id, porque la posición se valida DESPUÉS de leer la fila) → carta/casos-de-uso/{agregar-sucursal-al-portal,guardar-sucursal-publica,quitar-sucursal-del-portal,mover-sucursal-en-mapa}.ts; escrituras en server/persistencia/carta/registro-publico.ts, con la base del contexto y sin transacción ni auditoría (el registro del portal no es plata), como antes. El bucle de hasta 5 intentos del slug y los catch de la carrera del índice único (esChoqueDeIndiceUnico) viven en los casos de uso, tal cual. La acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
+      "Hito 5, bloque D (D12): agregarSucursalAlPortal (con guardComandoAgregarSucursalAlPortal), guardarSucursalPublica (con guardComandoGuardarSucursalPublica) y moverSucursalEnMapa (con guardComandoMoverSucursalEnMapa: solo el id, porque la posición se valida DESPUÉS de leer la fila) → carta/casos-de-uso/{agregar-sucursal-al-portal,guardar-sucursal-publica,mover-sucursal-en-mapa}.ts; escrituras en server/persistencia/carta/registro-publico.ts, con la base del contexto y sin transacción ni auditoría (el registro del portal no es plata), como antes. El bucle de hasta 5 intentos del slug y los catch de la carrera del índice único (esChoqueDeIndiceUnico) viven en los casos de uso, tal cual. La acción revalida la carta pública solo si salió bien. El archivo no tiene ninguna otra mutación.",
   },
   {
     ruta: "src/server/actions/catalogo/opciones-de-venta.ts",

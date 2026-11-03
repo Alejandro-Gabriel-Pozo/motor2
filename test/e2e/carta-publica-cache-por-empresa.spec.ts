@@ -11,7 +11,7 @@ import { activarEmpresaB, crearUsuarioEn, paginaConSesion, suspenderEmpresaB, ty
  * a pegarle a la base. Un cliente puede así degradar a todos los demás.
  *
  * Se mide en el artefacto REAL (`next build` + `next start`) con DOS empresas activas: las dos cartas se calientan (la segunda visita es `x-nextjs-cache: HIT`),
- * el administrador de A guarda y aplica su tema desde la pantalla, y entonces la carta de A tiene que mostrar el cambio (se invalidó) y la de B seguir siendo HIT.
+ * el administrador de A guarda su tema (guardar = aplicar) desde la pantalla, y entonces la carta de A tiene que mostrar el cambio (se invalidó) y la de B seguir siendo HIT.
  */
 test.describe.configure({ mode: "serial" });
 
@@ -60,8 +60,6 @@ test("guardar y aplicar el tema de A cambia la carta de A al instante y NO saca 
     await pagina.locator('[name="restaurante_nombre"]').fill(nombre);
     await pagina.getByRole("button", { name: "Guardar tema" }).click();
     await expect(pagina.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
-    await pagina.getByRole("button", { name: "Aplicar el tema" }).click();
-    await expect(pagina.getByRole("status").filter({ hasText: "aplicado" })).toBeVisible();
   } finally {
     await pagina.context().close();
   }

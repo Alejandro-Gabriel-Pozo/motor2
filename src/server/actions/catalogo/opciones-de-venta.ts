@@ -62,7 +62,6 @@ export async function editarGrupoDeOpciones(entrada: {
   nombre: unknown;
   cantidadMinima: unknown;
   cantidadMaxima: unknown;
-  activo: unknown;
   /** Fase 4 (ADR-035): «se lee en la carta como»; no viene = queda como estaba. */
   prefijoEnCarta?: unknown;
 }): Promise<ResultadoAccion> {
@@ -93,7 +92,7 @@ export async function crearOpcionDeGrupo(entrada: { grupoId: unknown; nombre: un
   });
 }
 
-export async function editarOpcionDeGrupo(entrada: { opcionId: unknown; versionEsperada: unknown; nombre: unknown; orden: unknown; activa: unknown }): Promise<ResultadoAccion> {
+export async function editarOpcionDeGrupo(entrada: { opcionId: unknown; versionEsperada: unknown; nombre: unknown }): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("opciones_definir", async (ctx) => {
     const comando = guardComandoEditarOpcionDeGrupo(entrada);
     if (!comando.ok) return error(comando.mensaje);
@@ -129,7 +128,6 @@ export async function fijarAdmisionDeGrupoEnProducto(entrada: {
   cantidadMinima: unknown;
   cantidadMaxima: unknown;
   modoPrecio: unknown;
-  activo: unknown;
   /** «Mostrar este grupo en la carta» (2026-10-29): opcional; sin él se conserva lo guardado. */
   seMuestraEnCarta?: unknown;
   opciones: unknown;

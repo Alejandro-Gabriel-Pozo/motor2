@@ -203,7 +203,7 @@ function leeVersionesDeRecetaPorSuCuenta(fuente: string): boolean {
   return PATRONES_DEL_EMBUDO.some((re) => re.test(limpia));
 }
 
-const USO_DEL_EMBUDO = /\b(cargarRecetasVigentes|cargarRecetaVigente|cargarHistorialDeVersiones|versionVigentePorProducto|incluirRecetaVigente|whereConReceta|quedarseConLaVigente)\b/;
+const USO_DEL_EMBUDO = /\b(cargarRecetasVigentes|cargarRecetaVigente|cargarHistorialDeVersiones|incluirRecetaVigente|whereConReceta|quedarseConLaVigente)\b/;
 const LECTURA_DE_INGREDIENTES = /\brecetaIngrediente\s*\.\s*find\w*/;
 
 /** true si el archivo consume el embudo, o lee `RecetaIngrediente` directo: tiene que estar clasificado efectivo/central. */
@@ -224,7 +224,7 @@ describe("lectores de receta: el embudo es el único que elige la versión vigen
     const sueltos = [...fuentes].filter(([nombre, fuente]) => nombre !== EMBUDO && nombre !== EMBUDO_PURO && leeVersionesDeRecetaPorSuCuenta(fuente)).map(([nombre]) => nombre);
     expect(
       sueltos,
-      `Estos archivos eligen o leen versiones de receta sin pasar por server/lecturas/catalogo/recetas-vigentes.ts (usá cargarRecetasVigentes / cargarRecetaVigente / cargarHistorialDeVersiones / versionVigentePorProducto / incluirRecetaVigente / whereConReceta):\n${sueltos.join("\n")}`
+      `Estos archivos eligen o leen versiones de receta sin pasar por server/lecturas/catalogo/recetas-vigentes.ts (usá cargarRecetasVigentes / cargarRecetaVigente / cargarHistorialDeVersiones / incluirRecetaVigente / whereConReceta):\n${sueltos.join("\n")}`
     ).toEqual([]);
   });
 
@@ -361,7 +361,7 @@ describe("el detector de consumidores (con fuentes sintéticas)", () => {
     expect(necesitaClasificacion("const v = await cargarRecetaVigente(db, id, { include: {} });")).toBe(true);
     expect(necesitaClasificacion("const m = await cargarRecetasVigentes(db, { include });")).toBe(true);
     expect(necesitaClasificacion("const h = await cargarHistorialDeVersiones(db, id, inc);")).toBe(true);
-    expect(necesitaClasificacion("const n = await versionVigentePorProducto(db, ids);")).toBe(true);
+    expect(necesitaClasificacion("const n = await cargarRecetasVigentes(db, ids);")).toBe(true);
     expect(necesitaClasificacion("include: incluirRecetaVigente({ ingredientes: true })")).toBe(true);
     expect(necesitaClasificacion("where: { ...whereConReceta() }")).toBe(true);
     expect(necesitaClasificacion("const usos = await db.recetaIngrediente.findMany({ where: { insumoProductoId } });")).toBe(true);

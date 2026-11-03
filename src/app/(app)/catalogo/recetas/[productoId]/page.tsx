@@ -11,7 +11,6 @@ import {
   agregarIngredienteAReceta,
   actualizarIngredienteDeReceta,
   quitarIngredienteDeReceta,
-  agregarPasoAReceta,
   reordenarPasosDeReceta,
   insertarPasoEnReceta,
   actualizarPasoDeReceta,
@@ -113,7 +112,7 @@ export default async function RecetaEditorPage({
   // La versión que ESTA pantalla muestra: cada cambio puntual la manda de vuelta, y si mientras tanto alguien guardó otra, el cambio se rechaza con un mensaje en vez de pisarlo (H7).
   const versionVista = vigente?.version ?? 0;
   const volver = `/catalogo/recetas/${producto.id}`;
-  const siguienteOrdenPaso = vigente?.pasos.length ? Math.max(...vigente.pasos.map((p) => p.orden)) + 1 : 1;
+  const pasosVigentes = vigente?.pasos.length ?? 0;
 
   // M.3-A5: lo que esta pantalla muestra de OTRAS sucursales (de dónde copiar la receta, en cuáles falta un ingrediente, dónde está calibrado) se limita a las sucursales que el usuario puede ver: la LECTURA
   // se ensancha a las sucursales donde el rol ve `receta_sucursal_copiar` (el mismo «Ver» que exige `leerOrigenDeCopia` al copiar), además de la activa. `sucursalesVisibles` sale de ese alcance (membresías
@@ -687,8 +686,8 @@ export default async function RecetaEditorPage({
                   insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
                 };
                 const posicion = String(formData.get("posicion") ?? "final");
-                if (posicion === "final") return agregarPasoAReceta(producto.id, { orden: siguienteOrdenPaso, ...datos }, versionVista);
-                return insertarPasoEnReceta(producto.id, Number(posicion), datos, versionVista);
+                // «Al final» es la posición N+1 (N = pasos vigentes que vio la pantalla); `insertarPasoEnReceta` renumera.
+                return insertarPasoEnReceta(producto.id, posicion === "final" ? pasosVigentes + 1 : Number(posicion), datos, versionVista);
               }}
               className="flex max-w-lg flex-col gap-2"
             >

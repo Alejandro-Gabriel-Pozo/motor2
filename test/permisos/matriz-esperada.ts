@@ -44,7 +44,6 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   ver_stock: { modulo: "stock", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin", "operador"] },
   precio_local: { modulo: "catalogo_basico", contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] },
   comparar_precios: { modulo: "compras", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
-  notificar_alertas: { modulo: "stock", contexto: "sucursal", nivelMinimo: "administrador", roles: ["admin"] },
   insumos_mezclados: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   gestion_usuarios: { modulo: "administracion", contexto: "sucursal", nivelMinimo: "administrador_sistema", roles: ["admin"] },
   gestion_permisos: { modulo: "administracion", contexto: "empresa", nivelMinimo: "administrador_sistema", roles: ["admin"] },
@@ -144,6 +143,6 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   compra_recibir: { modulo: "compras", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
   opciones_definir: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
   producto_opciones_admitidas: { modulo: "catalogo_basico", contexto: "empresa", nivelMinimo: "administrador", roles: ["admin"] },
-  opcion_apagar_en_sucursal: { modulo: "catalogo_basico", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
+  opcion_apagar_en_sucursal: { modulo: "catalogo_basico", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin", "operador"] },
   promo_menu_del_dia: { modulo: "promociones", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
 };

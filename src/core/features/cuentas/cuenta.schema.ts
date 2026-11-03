@@ -1,13 +1,13 @@
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
- * Tipos de la feature Cuenta del salón (módulo POS; Task #41, Fase M — docs/arquitectura-casos-de-uso-2026-09-27.md): los comandos y
+ * Tipos de la feature Cuenta del salón (módulo POS): los comandos y
  * resultados de los casos de uso de `src/server/actions/pos/casos-de-uso/`. Mismo criterio que `core/features/ventas/venta.schema.ts`.
- * Hoy: `cerrarCuenta` (M12a) y `emitirTicketCorregido` (M12b), las dos de `src/server/actions/pos/cuenta-cierre.ts`.
+ * Hoy: `cerrarCuenta` y `emitirTicketCorregido`, las dos de `src/server/actions/pos/cuenta-cierre.ts`.
  */
 
 /**
- * Comando «cerrar la cuenta de una mesa» (M12a): lo que recibe `cerrarCuentaCasoDeUso`
+ * Comando «cerrar la cuenta de una mesa»: lo que recibe `cerrarCuentaCasoDeUso`
  * (src/server/actions/pos/casos-de-uso/cerrar-cuenta.ts), YA validado por `guardComandoCerrarCuenta`. Sin clave de idempotencia I3:
  * `cerrarCuenta` nunca la tuvo — es idempotente POR ESTADO (una cuenta ya cerrada responde ok sin volver a vender).
  */
@@ -44,7 +44,7 @@ export interface DatosCerrarCuenta {
 export type ResultadoCerrarCuenta = ResultadoCaso<DatosCerrarCuenta, CodigoCerrarCuenta>;
 
 /**
- * Comando «emitir ticket corregido» (M12b): lo que recibe `emitirTicketCorregidoCasoDeUso`
+ * Comando «emitir ticket corregido»: lo que recibe `emitirTicketCorregidoCasoDeUso`
  * (src/server/actions/pos/casos-de-uso/emitir-ticket-corregido.ts), con el `cuentaId` ya validado por `guardComandoEmitirTicketCorregido`.
  * El `motivo` viaja CRUDO (`unknown`, tal como llegó): lo valida el caso de uso con `validarMotivoAnulacion` (core/pos/cuenta.ts) DESPUÉS
  * de las guardas de estado, igual que antes — sobre un ticket vigente, un motivo vacío sigue respondiendo «ya refleja las anulaciones».

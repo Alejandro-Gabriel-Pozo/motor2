@@ -11,7 +11,6 @@ import {
   agregarIngredienteAReceta,
   actualizarIngredienteDeReceta,
   quitarIngredienteDeReceta,
-  agregarPasoAReceta,
   actualizarPasoDeReceta,
   quitarPasoDeReceta,
   reordenarPasosDeReceta,
@@ -273,10 +272,10 @@ describe("recetas", () => {
       expect(resultado.ok).toBe(false);
     });
 
-    it("agregarPasoAReceta agrega preservando ingredientes y cabecera vigentes, rechaza orden duplicado", async () => {
+    it("insertarPasoEnReceta en la posición N+1 agrega al final preservando ingredientes y cabecera vigentes, con órdenes 1..N+1", async () => {
       await guardarReceta(pvId, [{ insumoProductoId: mp1Id, cantidad: 0.3, unidadId: unidadKgId }], [], { racionesCantidad: 4 });
 
-      const resultado = await agregarPasoAReceta(pvId, { orden: 1, instruccion: "Estirar la masa" }, await versionVigenteDeReceta(pvId));
+      const resultado = await insertarPasoEnReceta(pvId, 1, { instruccion: "Estirar la masa" }, await versionVigenteDeReceta(pvId));
       expect(resultado.ok).toBe(true);
 
       const vigente = await obtenerRecetaVigente(pvId);
@@ -284,8 +283,10 @@ describe("recetas", () => {
       expect(vigente?.racionesCantidad).toBe(4);
       expect(vigente?.pasos).toHaveLength(1);
 
-      const duplicado = await agregarPasoAReceta(pvId, { orden: 1, instruccion: "Otro paso" }, await versionVigenteDeReceta(pvId));
-      expect(duplicado.ok).toBe(false);
+      const segundo = await insertarPasoEnReceta(pvId, 2, { instruccion: "Otro paso" }, await versionVigenteDeReceta(pvId));
+      expect(segundo.ok).toBe(true);
+      const final = await obtenerRecetaVigente(pvId);
+      expect(final?.pasos.map((p) => [p.orden, p.instruccion])).toEqual([[1, "Estirar la masa"], [2, "Otro paso"]]);
     });
 
     it("actualizarPasoDeReceta edita UN paso sin tocar los demás, en una sola versión nueva", async () => {

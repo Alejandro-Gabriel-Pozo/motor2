@@ -217,7 +217,6 @@ export function guardComandoEditarGrupoDeOpciones(entrada: {
   nombre: unknown;
   cantidadMinima: unknown;
   cantidadMaxima: unknown;
-  activo: unknown;
   prefijoEnCarta?: unknown;
 }): ResultadoDato<ComandoEditarGrupoDeOpciones> {
   const grupoId = id(entrada.grupoId, MENSAJE_GRUPO_NO_ENCONTRADO);
@@ -230,8 +229,6 @@ export function guardComandoEditarGrupoDeOpciones(entrada: {
   if (!minimo.ok) return minimo;
   const maximo = entero(entrada.cantidadMaxima, "El máximo de opciones", 1, CANTIDAD_MAXIMA_DE_OPCION);
   if (!maximo.ok) return maximo;
-  const activo = booleano(entrada.activo, "«Activo»");
-  if (!activo.ok) return activo;
   const prefijo = prefijoEnCarta(entrada.prefijoEnCarta);
   if (!prefijo.ok) return prefijo;
   return aceptar({
@@ -240,7 +237,6 @@ export function guardComandoEditarGrupoDeOpciones(entrada: {
     nombre: n.valor,
     cantidadMinima: minimo.valor,
     cantidadMaxima: maximo.valor,
-    activo: activo.valor,
     ...(prefijo.valor === undefined ? {} : { prefijoEnCarta: prefijo.valor }),
   });
 }
@@ -275,18 +271,14 @@ export function guardComandoCrearOpcionDeGrupo(entrada: {
   return aceptar({ grupoId: grupoId.valor, nombre: n.valor, orden: orden.valor, esNinguna: esNinguna.valor, version: version.valor, ancla });
 }
 
-export function guardComandoEditarOpcionDeGrupo(entrada: { opcionId: unknown; versionEsperada: unknown; nombre: unknown; orden: unknown; activa: unknown }): ResultadoDato<ComandoEditarOpcionDeGrupo> {
+export function guardComandoEditarOpcionDeGrupo(entrada: { opcionId: unknown; versionEsperada: unknown; nombre: unknown }): ResultadoDato<ComandoEditarOpcionDeGrupo> {
   const opcionId = id(entrada.opcionId, MENSAJE_OPCION_NO_ENCONTRADA);
   if (!opcionId.ok) return opcionId;
   const version = versionEsperada(entrada.versionEsperada, 1);
   if (!version.ok) return version;
   const n = nombre(entrada.nombre, "El nombre de la opción");
   if (!n.ok) return n;
-  const orden = entero(entrada.orden, "El orden", 0, ENTERO_MAXIMO_RAZONABLE);
-  if (!orden.ok) return orden;
-  const activa = booleano(entrada.activa, "«Activa»");
-  if (!activa.ok) return activa;
-  return aceptar({ opcionId: opcionId.valor, versionEsperada: version.valor, nombre: n.valor, orden: orden.valor, activa: activa.valor });
+  return aceptar({ opcionId: opcionId.valor, versionEsperada: version.valor, nombre: n.valor });
 }
 
 export function guardComandoAgregarVersionDeOpcion(entrada: { opcionId: unknown; numeroEsperado: unknown; version: unknown }): ResultadoDato<ComandoAgregarVersionDeOpcion> {
@@ -328,7 +320,6 @@ export function guardComandoFijarAdmisionDeGrupo(entrada: {
   cantidadMinima: unknown;
   cantidadMaxima: unknown;
   modoPrecio: unknown;
-  activo: unknown;
   /** Opcional: ausente (o `undefined`) = no cambia lo guardado. */
   seMuestraEnCarta?: unknown;
   opciones: unknown;
@@ -351,8 +342,6 @@ export function guardComandoFijarAdmisionDeGrupo(entrada: {
     if (!modo.ok) return modo;
     modoPrecio = modo.valor;
   }
-  const activo = booleano(entrada.activo, "«Activo»");
-  if (!activo.ok) return activo;
   let seMuestraEnCarta: boolean | undefined;
   if (entrada.seMuestraEnCarta !== undefined) {
     const se = booleano(entrada.seMuestraEnCarta, "«Mostrar este grupo en la carta»");
@@ -376,7 +365,6 @@ export function guardComandoFijarAdmisionDeGrupo(entrada: {
     cantidadMinima: minimo.valor,
     cantidadMaxima: maximo.valor,
     modoPrecio,
-    activo: activo.valor,
     ...(seMuestraEnCarta === undefined ? {} : { seMuestraEnCarta }),
     opciones,
   });

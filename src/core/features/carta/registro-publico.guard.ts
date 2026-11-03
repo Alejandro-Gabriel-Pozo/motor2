@@ -12,7 +12,6 @@ import type {
   ComandoAgregarSucursalAlPortal,
   ComandoGuardarSucursalPublica,
   ComandoMoverSucursalEnMapa,
-  ComandoQuitarSucursalDelPortal,
 } from "./registro-publico.schema";
 
 /**
@@ -73,12 +72,6 @@ export function guardComandoGuardarSucursalPublica(sucursalId: unknown, datos: E
     orden: orden.valor,
     publicada: datos.publicada,
   });
-}
-
-/** Guard del comando «sacar la sucursal del portal»: que el id sea un texto no vacío. */
-export function guardComandoQuitarSucursalDelPortal(sucursalId: unknown): ResultadoDato<ComandoQuitarSucursalDelPortal> {
-  if (!esIdentificador(sucursalId)) return rechazar("vacio", SUCURSAL_INVALIDA);
-  return aceptar({ sucursalId });
 }
 
 /** Guard del comando «mover la sucursal en el mapa»: SOLO que el id sea un texto no vacío; las coordenadas pasan crudas y el caso de uso las valida después de leer la fila. */

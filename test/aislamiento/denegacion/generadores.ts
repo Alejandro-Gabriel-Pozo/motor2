@@ -35,7 +35,6 @@ const admisionDe = (productoId: string, grupoId: string, opcionId: string) => ({
   cantidadMinima: null,
   cantidadMaxima: null,
   modoPrecio: null,
-  activo: true,
   opciones: [{ opcionId, versionEsperada: 0, cantidadMaxima: 1, precioAbsoluto: null, diferencia: null, activo: true }],
 });
 /**
@@ -188,7 +187,6 @@ const completos: Record<string, Valor> = {
   "accion|actions/catalogo/recetas.ts|agregarIngredienteAReceta": (k, c) =>
     conVariantes(intento(c, ["productoPvId"], [k.productoPvId, ingrediente(k, c.propio.productoMp3Id), 1]), intento(c, ["productoMp3Id", "unidadId"], [c.propio.productoPvId, ingrediente(k, k.productoMp3Id), 1])),
   "accion|actions/catalogo/recetas.ts|actualizarIngredienteDeReceta": (k) => [k.productoPvId, k.productoId, { cantidad: 2, unidadId: k.unidadId }, 1],
-  "accion|actions/catalogo/recetas.ts|agregarPasoAReceta": (k) => [k.productoPvId, { orden: 2, instruccion: "Hornear" }, 1],
   "accion|actions/catalogo/recetas.ts|actualizarPasoDeReceta": (k) => [k.productoPvId, 1, { instruccion: "Hornear" }, 1],
   "accion|actions/catalogo/recetas.ts|reordenarPasosDeReceta": (k) => [k.productoPvId, [1], 1],
   "accion|actions/catalogo/recetas.ts|insertarPasoEnReceta": (k) => [k.productoPvId, 1, { instruccion: "Hornear" }, 1],
@@ -200,7 +198,7 @@ const completos: Record<string, Valor> = {
 
   // --- catálogo de opciones de venta (GO-2a, ADR-030): el catálogo es de la EMPRESA (ajeno solo en el escenario de otra empresa); lo de la sucursal (apagar, la grilla) lleva la sucursal ---
   "accion|actions/catalogo/opciones-de-venta.ts|crearGrupoDeOpciones": () => [{ nombre: "Grupo nuevo", tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1 }],
-  "accion|actions/catalogo/opciones-de-venta.ts|editarGrupoDeOpciones": (k) => [{ grupoId: k.grupoDeOpcionesId, versionEsperada: 1, nombre: "Nombre nuevo", cantidadMinima: 0, cantidadMaxima: 2, activo: true }],
+  "accion|actions/catalogo/opciones-de-venta.ts|editarGrupoDeOpciones": (k) => [{ grupoId: k.grupoDeOpcionesId, versionEsperada: 1, nombre: "Nombre nuevo", cantidadMinima: 0, cantidadMaxima: 2 }],
   "accion|actions/catalogo/opciones-de-venta.ts|crearOpcionDeGrupo": (k, c) =>
     conVariantes(
       intento(c, ["grupoDeOpcionesId"], [{ grupoId: k.grupoDeOpcionesId, nombre: "Opción nueva", orden: 5, esNinguna: false, ancla: null, version: versionDeOpcion() }]),
@@ -208,7 +206,7 @@ const completos: Record<string, Valor> = {
       intento(c, ["productoId"], [{ grupoId: c.propio.grupoDeOpcionesId, nombre: "Opción nueva", orden: 5, esNinguna: false, ancla: null, version: versionDeOpcion([sumaDe(k.productoId)]) }]),
       intento(c, ["unidadId"], [{ grupoId: c.propio.grupoAdicionalId, nombre: "Adicional nuevo", orden: 5, esNinguna: false, ancla: { unidadStockId: k.unidadId }, version: versionDeOpcion([], 100) }]),
     ),
-  "accion|actions/catalogo/opciones-de-venta.ts|editarOpcionDeGrupo": (k) => [{ opcionId: k.opcionDeGrupoId, versionEsperada: 1, nombre: "Nombre nuevo", orden: 3, activa: true }],
+  "accion|actions/catalogo/opciones-de-venta.ts|editarOpcionDeGrupo": (k) => [{ opcionId: k.opcionDeGrupoId, versionEsperada: 1, nombre: "Nombre nuevo" }],
   "accion|actions/catalogo/opciones-de-venta.ts|agregarVersionDeOpcion": (k, c) =>
     conVariantes(
       intento(c, ["opcionDeGrupoId"], [{ opcionId: k.opcionDeGrupoId, numeroEsperado: 1, version: versionDeOpcion([], 150) }]),
@@ -278,7 +276,6 @@ const completos: Record<string, Valor> = {
     conVariantes(
       intento(c, ["seccionId"], [{ fecha: hoy(), seccionId: k.seccionId, ventas: [{ productoId: c.propio.productoPvId, cantidadVendida: 1 }] }]),
       intento(c, ["productoPvId"], [{ fecha: hoy(), seccionId: c.propio.seccionId, ventas: [{ productoId: k.productoPvId, cantidadVendida: 1 }] }]),
-      intento(c, ["proveedorId"], [{ fecha: hoy(), seccionId: c.propio.seccionId, proveedorId: k.proveedorId, ventas: [{ productoId: c.propio.productoPvId, cantidadVendida: 1 }] }]),
     ),
   "accion|actions/stock/reclasificacion.ts|reclasificarStock": (k, c) =>
     conVariantes(
@@ -578,5 +575,4 @@ export const SIN_GENERADOR: Readonly<Record<string, string>> = {
   "lectura|lecturas/catalogo/recetas-vigentes.ts|cargarHistorialDeVersiones": AYUDANTE_DE_RECETAS,
   "lectura|lecturas/catalogo/recetas-vigentes.ts|cargarRecetaVigente": AYUDANTE_DE_RECETAS,
   "lectura|lecturas/catalogo/recetas-vigentes.ts|cargarRecetasVigentes": AYUDANTE_DE_RECETAS,
-  "lectura|lecturas/catalogo/recetas-vigentes.ts|versionVigentePorProducto": AYUDANTE_DE_RECETAS,
 };

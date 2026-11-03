@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLAVES_NO_POR_TENANT, CLAVES_TEMA_V1 } from "../../src/core/carta/tema";
+import { CLAVES_TEMA_V1 } from "../../src/core/carta/tema";
 import {
   CLAVES_PORTAL_V1,
   avisoImagenSinMapa,
@@ -26,12 +26,6 @@ describe("catálogo CLAVES_PORTAL_V1", () => {
     expect(new Set(claves).size).toBe(claves.length);
     const tema = new Set<string>(CLAVES_TEMA_V1.map((d) => d.clave));
     expect(claves.filter((c) => tema.has(c))).toEqual([]);
-  });
-
-  it("cubre todas las claves de portal de la config raíz original (portal_*, logo y derechos)", () => {
-    const originales = (CLAVES_NO_POR_TENANT as readonly string[]).filter((c) => c.startsWith("portal_") || c === "empresa_logo_url" || c === "footer_texto_derechos");
-    expect(originales).toHaveLength(17);
-    expect(originales.filter((c) => !claves.includes(c))).toEqual([]);
   });
 
   it("todo default no vacío pasa su propia validación y sale igual (es un valor que el formulario aceptaría)", () => {

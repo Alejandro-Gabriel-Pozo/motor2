@@ -79,9 +79,9 @@ describe("grupos de opciones de venta (GO-2a)", () => {
       grupoId = r.ok ? r.datos.grupoId : "";
     });
 
-    it("cambia el nombre, las cantidades y si está activo; sube la versión en 1 y audita SOLO lo que cambió, con el antes y el después", async () => {
+    it("cambia el nombre y las cantidades (sin tocar `activo`); sube la versión en 1 y audita SOLO lo que cambió, con el antes y el después", async () => {
       const despues = new Date(actor().ahora.getTime() + 60_000);
-      const r = await editarGrupoDeOpcionesCasoDeUso(actorDePrueba(adminId, sucursalId, despues), { grupoId, versionEsperada: 1, nombre: "Agregados", cantidadMinima: 0, cantidadMaxima: 2, activo: true });
+      const r = await editarGrupoDeOpcionesCasoDeUso(actorDePrueba(adminId, sucursalId, despues), { grupoId, versionEsperada: 1, nombre: "Agregados", cantidadMinima: 0, cantidadMaxima: 2 });
       expect(r).toMatchObject({ ok: true, datos: { version: 2, huboCambio: true, productosAfectados: 0 } });
       const g = await prisma.grupoDeOpciones.findUniqueOrThrow({ where: { id: grupoId } });
       expect(g).toMatchObject({ nombre: "Agregados", cantidadMaxima: 2, version: 2, tipo: "ADICIONAL" });
@@ -95,46 +95,46 @@ describe("grupos de opciones de venta (GO-2a)", () => {
 
     it("sin cambios no escribe, no sube la versión ni audita", async () => {
       const antes = await prisma.registroAuditoria.count();
-      const r = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 0, cantidadMaxima: 3, activo: true });
+      const r = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 0, cantidadMaxima: 3 });
       expect(r).toMatchObject({ ok: true, datos: { version: 1, huboCambio: false } });
       expect((await prisma.grupoDeOpciones.findUniqueOrThrow({ where: { id: grupoId } })).version).toBe(1);
       expect(await prisma.registroAuditoria.count()).toBe(antes);
     });
 
     it("VERSION_DESACTUALIZADA con la versión vieja (otra persona guardó en el medio), sin escribir nada", async () => {
-      await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 0, cantidadMaxima: 2, activo: true });
+      await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 0, cantidadMaxima: 2 });
       const antes = await prisma.registroAuditoria.count();
-      const r = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 1, cantidadMaxima: 3, activo: true });
+      const r = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 1, cantidadMaxima: 3 });
       expect(r).toMatchObject({ ok: false, codigo: "VERSION_DESACTUALIZADA" });
       expect(await prisma.grupoDeOpciones.findUniqueOrThrow({ where: { id: grupoId } })).toMatchObject({ cantidadMinima: 0, cantidadMaxima: 2, version: 2 });
       expect(await prisma.registroAuditoria.count()).toBe(antes);
     });
 
     it("GRUPO_NO_ENCONTRADO, NOMBRE_REPETIDO y CONFIGURACION_INVALIDA (el tipo manda: un ADICIONAL no puede pasar a máximo 0)", async () => {
-      expect(await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId: "no-existe", versionEsperada: 1, nombre: "X", cantidadMinima: 0, cantidadMaxima: 1, activo: true })).toMatchObject({ ok: false, codigo: "GRUPO_NO_ENCONTRADO" });
+      expect(await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId: "no-existe", versionEsperada: 1, nombre: "X", cantidadMinima: 0, cantidadMaxima: 1 })).toMatchObject({ ok: false, codigo: "GRUPO_NO_ENCONTRADO" });
       await crearGrupoDeOpcionesCasoDeUso(actor(), { nombre: "Salsas", tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1 });
-      expect(await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "SALSAS", cantidadMinima: 0, cantidadMaxima: 3, activo: true })).toMatchObject({ ok: false, codigo: "NOMBRE_REPETIDO" });
-      expect(await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 4, cantidadMaxima: 3, activo: true })).toMatchObject({ ok: false, codigo: "CONFIGURACION_INVALIDA" });
+      expect(await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "SALSAS", cantidadMinima: 0, cantidadMaxima: 3 })).toMatchObject({ ok: false, codigo: "NOMBRE_REPETIDO" });
+      expect(await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 4, cantidadMaxima: 3 })).toMatchObject({ ok: false, codigo: "CONFIGURACION_INVALIDA" });
       // Cambiar solo las mayúsculas del propio nombre no choca consigo mismo.
-      expect(await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "EXTRAS", cantidadMinima: 0, cantidadMaxima: 3, activo: true })).toMatchObject({ ok: true });
+      expect(await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "EXTRAS", cantidadMinima: 0, cantidadMaxima: 3 })).toMatchObject({ ok: true });
     });
 
     it("no deja a un producto con cantidades incoherentes: con un mínimo propio de 2, el máximo del grupo no baja a 1 (se lee la admisión dentro de la transacción)", async () => {
       const unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
       const cafe = await prisma.producto.create({ data: { codigo: "PV_CAFE", nombre: "Café", tipo: "PV", unidadStockId: unidadId, precioVenta: "1000.00" } });
       await prisma.productoAdmiteGrupo.create({ data: { productoId: cafe.id, grupoId, cantidadMinima: 2 } });
-      const r = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 0, cantidadMaxima: 1, activo: true });
+      const r = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 0, cantidadMaxima: 1 });
       expect(r).toMatchObject({ ok: false, codigo: "CONFIGURACION_INVALIDA" });
       expect(r.mensaje).toMatch(/«Café»/);
     });
 
-    it("D-4: apagar un grupo que un producto necesita NO se bloquea, pero el mensaje avisa a cuántos productos deja sin poder venderse", async () => {
+    it("D-4: editar un grupo cuyo producto ya no alcanza su mínimo NO se bloquea, y el mensaje avisa a cuántos productos quedan sin poder venderse", async () => {
       const unidadId = (await prisma.unidad.create({ data: { nombre: "u", magnitud: "CANTIDAD", decimales: 0 } })).id;
       for (const nombre of ["Café", "Té"]) {
         const p = await prisma.producto.create({ data: { codigo: `PV_${nombre}`, nombre, tipo: "PV", unidadStockId: unidadId } });
         await prisma.productoAdmiteGrupo.create({ data: { productoId: p.id, grupoId, cantidadMinima: nombre === "Café" ? 1 : null } });
       }
-      const r = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 0, cantidadMaxima: 3, activo: false });
+      const r = await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId, versionEsperada: 1, nombre: "Extras", cantidadMinima: 0, cantidadMaxima: 2 });
       expect(r).toMatchObject({ ok: true, datos: { productosAfectados: 1 } });
       expect(r.mensaje).toMatch(/1 producto que lo admite queda sin poder venderse/);
     });
@@ -142,7 +142,7 @@ describe("grupos de opciones de venta (GO-2a)", () => {
     it("un grupo de OTRA empresa no se ve: GRUPO_NO_ENCONTRADO, y la fila ajena no cambia", async () => {
       const testigo = clienteConEmpresaDePrueba(urlDeSembradoDeVitest(), EMPRESA_TESTIGO_ID);
       const ajeno = await testigo.grupoDeOpciones.create({ data: { nombre: "Ajeno", tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1 } });
-      expect(await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId: ajeno.id, versionEsperada: 1, nombre: "Pisado", cantidadMinima: 0, cantidadMaxima: 1, activo: false })).toMatchObject({ ok: false, codigo: "GRUPO_NO_ENCONTRADO" });
+      expect(await editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId: ajeno.id, versionEsperada: 1, nombre: "Pisado", cantidadMinima: 0, cantidadMaxima: 1 })).toMatchObject({ ok: false, codigo: "GRUPO_NO_ENCONTRADO" });
       expect(await testigo.grupoDeOpciones.findUniqueOrThrow({ where: { id: ajeno.id } })).toMatchObject({ nombre: "Ajeno", activo: true, version: 1 });
     });
   });
@@ -151,13 +151,13 @@ describe("grupos de opciones de venta (GO-2a)", () => {
     it("el admin crea y edita; el operador (sin `opciones_definir`) recibe el rechazo del gate y no se escribe nada", async () => {
       expect(await crearGrupoDeOpciones({ nombre: "Tamaño", tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1 })).toEqual({ ok: true, mensaje: "Grupo «Tamaño» creado." });
       const grupoId = (await prisma.grupoDeOpciones.findFirstOrThrow()).id;
-      expect(await editarGrupoDeOpciones({ grupoId, versionEsperada: 1, nombre: "Tamaños", cantidadMinima: 1, cantidadMaxima: 1, activo: true })).toMatchObject({ ok: true });
+      expect(await editarGrupoDeOpciones({ grupoId, versionEsperada: 1, nombre: "Tamaños", cantidadMinima: 1, cantidadMaxima: 1 })).toMatchObject({ ok: true });
 
       await mockearUsuarioActual({ id: operadorId, email: "operador@test.com", nombre: null });
       const r = await crearGrupoDeOpciones({ nombre: "Leche", tipo: "VARIANTE", cantidadMinima: 0, cantidadMaxima: 1 });
       expect(r.ok).toBe(false);
       expect(r.mensaje).toMatch(/opciones_definir/);
-      expect(await editarGrupoDeOpciones({ grupoId, versionEsperada: 2, nombre: "Pisado", cantidadMinima: 1, cantidadMaxima: 1, activo: false })).toMatchObject({ ok: false });
+      expect(await editarGrupoDeOpciones({ grupoId, versionEsperada: 2, nombre: "Pisado", cantidadMinima: 1, cantidadMaxima: 1 })).toMatchObject({ ok: false });
       expect(await prisma.grupoDeOpciones.count()).toBe(1);
       expect((await prisma.grupoDeOpciones.findUniqueOrThrow({ where: { id: grupoId } })).nombre).toBe("Tamaños");
     });

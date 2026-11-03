@@ -10,7 +10,6 @@ export function admisionDelFormulario(fd: FormData): {
   cantidadMinima: unknown;
   cantidadMaxima: unknown;
   modoPrecio: unknown;
-  activo: boolean;
   seMuestraEnCarta: boolean | undefined;
   opciones: unknown;
 } {
@@ -31,7 +30,6 @@ export function admisionDelFormulario(fd: FormData): {
     cantidadMinima: vacioONumero("cantidadMinima"),
     cantidadMaxima: vacioONumero("cantidadMaxima"),
     modoPrecio: modo === "" ? null : modo,
-    activo: fd.get("activo") === "on",
     // «Mostrar este grupo en la carta»: el formulario manda «si» o «no» solo en un grupo que se puede ocultar (variante o incluida); sin el campo, el servidor conserva lo guardado.
     seMuestraEnCarta: fd.get("seMuestraEnCarta") === "si" ? true : fd.get("seMuestraEnCarta") === "no" ? false : undefined,
     opciones,

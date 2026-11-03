@@ -9,9 +9,7 @@ import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta
 import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
- * Caso de uso «quitar un ítem que todavía no salió a cocina» (Hito 4 de la pureza, bloque 4.1, paso 9 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que
- * antes vivía en línea en la Server Action `quitarItemSinEnviar` (`src/server/actions/pos/cuenta-pedido.ts`), movido TAL CUAL: las mismas lecturas, en el
- * mismo orden, dentro de la misma transacción SERIALIZABLE, y los mismos mensajes. La Server Action quedó como adaptador (`conPermiso("pos_tomar_pedido")` →
+ * Caso de uso «quitar un ítem que todavía no salió a cocina». Transacción SERIALIZABLE. La Server Action es un adaptador (`conPermiso("pos_tomar_pedido")` →
  * `guardComandoQuitarItemSinEnviar` → este caso de uso → `aResultadoAccion`). El criterio de negocio (un ítem sin enviar es un borrador: se borra de verdad,
  * sin motivo ni auditoría; uno ya enviado se anula con motivo) está documentado en la Server Action.
  *
