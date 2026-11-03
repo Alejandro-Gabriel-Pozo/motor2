@@ -5,7 +5,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { generarReporteLotesProximosAVencer, generarConciliacionVencimientos } from "../../src/server/consultas/reportes/vencimientos";
 import { prisma } from "../setup/test-db";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
@@ -56,11 +56,11 @@ describe("Reporte de vencimientos", () => {
     const lote = new Date("2026-02-10");
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 10, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 10, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
 
     await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destinoId: destinoElaboracionId, items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
 
-    await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
 
     const conciliacion = await generarConciliacionVencimientos(sucursalId, prisma);
     const fila = conciliacion.find((c) => c.productoNombre === "Harina")!;
@@ -73,12 +73,12 @@ describe("Reporte de vencimientos", () => {
     const lote = new Date("2026-02-10");
 
     await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-01-01"), seccionId, items: [{ productoId: mp.id, cantidad: 10, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 10, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 10, fechaConteo: new Date("2026-01-01"), accion: "AJUSTAR" });
 
     // Solo se consumieron 3 de los 10 — el resto se "perdió" sin dejar rastro.
     await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date("2026-01-02"), seccionId, destinoId: destinoElaboracionId, items: [{ productoId: mp.id, cantidad: 3, loteVencimiento: lote }], claveIdempotencia: crypto.randomUUID() });
 
-    await registrarConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
+    await registrarUnConteoFisico({ productoId: mp.id, seccionId, loteVencimiento: lote, conteoReal: 0, fechaConteo: new Date("2026-01-03"), accion: "AJUSTAR" });
 
     const conciliacion = await generarConciliacionVencimientos(sucursalId, prisma);
     const fila = conciliacion.find((c) => c.productoNombre === "Harina")!;

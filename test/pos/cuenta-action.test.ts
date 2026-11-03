@@ -64,32 +64,7 @@ describe("tomar pedido (server actions)", () => {
       expect(await prisma.cuenta.count()).toBe(0);
     });
 
-    it("con la sucursal en el límite de mesas abiertas, no deja abrir otra (bloqueo en seco)", async () => {
-      await prisma.sucursal.update({ where: { id: s.sucursalId }, data: { maxMesasAbiertas: 1 } });
-      expect((await abrirCuenta(s.mesa.id, 2)).ok).toBe(true);
-      const otraMesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 5 } });
-      expect(await abrirCuenta(otraMesa.id, 2)).toEqual({
-        ok: false,
-        mensaje: 'Se alcanzó el máximo de 1 mesas abiertas en «Central». Cerrá o liberá una antes de abrir otra.',
-      });
-      expect(await prisma.cuenta.count({ where: { mesaId: otraMesa.id } })).toBe(0);
-    });
-
-    it("bajar el límite por debajo de las mesas ya abiertas no cierra ninguna, solo bloquea aperturas nuevas", async () => {
-      const otraMesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 5 } });
-      expect((await abrirCuenta(s.mesa.id, 2)).ok).toBe(true);
-      expect((await abrirCuenta(otraMesa.id, 2)).ok).toBe(true);
-      await prisma.sucursal.update({ where: { id: s.sucursalId }, data: { maxMesasAbiertas: 1 } });
-      expect(await prisma.cuenta.count({ where: { cerradaEn: null } })).toBe(2); // ninguna se cerró sola
-
-      const terceraMesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 6 } });
-      expect((await abrirCuenta(terceraMesa.id, 2)).ok).toBe(false);
-      // La MISMA mesa ya abierta reabre igual (idempotente), aunque el límite ya esté superado.
-      expect((await abrirCuenta(s.mesa.id, 2)).ok).toBe(true);
-    });
-
-    it("sin límite (null, default), se puede abrir cualquier cantidad de mesas", async () => {
-      expect((await prisma.sucursal.findUniqueOrThrow({ where: { id: s.sucursalId } })).maxMesasAbiertas).toBeNull();
+    it("no hay tope de mesas abiertas (el límite por sucursal se retiró el 2026-10-29): se puede abrir cualquier cantidad de mesas", async () => {
       for (let i = 0; i < 5; i++) {
         const mesa = await prisma.mesa.create({ data: { sucursalId: s.sucursalId, numero: 300 + i } });
         expect((await abrirCuenta(mesa.id, 2)).ok).toBe(true);

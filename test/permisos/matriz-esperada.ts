@@ -136,7 +136,6 @@ export const MATRIZ_ESPERADA: Readonly<Record<AccionClave, FilaEsperada>> = {
   proveedor_alta: { modulo: "proveedores_basico", contexto: "empresa", nivelMinimo: "operario", roles: ["admin", "operador"] },
   producto_disponibilidad: { modulo: "catalogo_basico", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin", "operador"] },
   pos_alta_mesa: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
-  pos_limite_mesas_abiertas: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
   pos_abrir_cuenta: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
   pos_enviar_a_cocina: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },
   pos_liberar_mesa: { modulo: "salon", contexto: "sucursal", nivelMinimo: "operario", roles: ["admin"] },

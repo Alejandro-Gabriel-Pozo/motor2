@@ -2,13 +2,11 @@ import { Prisma } from "@prisma/client";
 import { ZONA_ARGENTINA, rangoDeDias } from "@/core/tiempo/zona-horaria";
 import { tieneStockReal } from "@/core/movimientos/public";
 import { rendimientoEfectivo } from "@/core/catalogo/public";
-import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { alcanceDeSucursal } from "@/core/catalogo/public";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 import type { Db } from "@/lib/db-tipos";
-import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { redondearCantidad } from "@/core/reportes/public";
-import type { FilaBusquedaProducto, EventoHistorialProducto, HistorialProducto, IngredienteRecetaVigente } from "@/core/reportes/public";
+import type { EventoHistorialProducto, HistorialProducto, IngredienteRecetaVigente } from "@/core/reportes/public";
 
 /** La fila del `$queryRaw` de movimientos de `obtenerHistorialProducto` (Fase 6, tramo 6b: vivía en `core/reportes/historial-producto.ts` con `Prisma.Decimal`; este es su único lector). */
 interface FilaMovimientoHistorial {
@@ -26,23 +24,6 @@ interface FilaMovimientoHistorial {
   anuladaEn: Date | null;
   proveedorNombre: string | null;
   sustituyeANombre: string | null;
-}
-
-/**
- * Port de buscarProductoParaHistorial (Reportes.js:1217-1230) — a
- * diferencia de otros buscadores del proyecto (compra, conteo, precio
- * local), incluye NO DISPONIBLES a propósito: se puede querer ver el
- * historial de algo que ya se discontinuó en esta sucursal.
- */
-export async function buscarProductoParaHistorial(sucursalId: string, termino: string, db: Db): Promise<FilaBusquedaProducto[]> {
-  const q = textoDeBusqueda(termino);
-  const productos = await db.producto.findMany({
-    where: q ? { OR: [{ nombre: { contains: escaparComodinesLike(q), mode: "insensitive" } }, { codigo: { contains: escaparComodinesLike(q), mode: "insensitive" } }] } : {},
-    take: 20,
-    orderBy: { nombre: "asc" },
-  });
-  const disponibilidad = await disponibilidadDeProductos(sucursalId, productos.map((p) => p.id), db);
-  return productos.map((p) => ({ productoId: p.id, codigo: p.codigo, nombre: p.nombre, tipo: p.tipo, disponible: disponibilidad.get(p.id) === true }));
 }
 
 /**

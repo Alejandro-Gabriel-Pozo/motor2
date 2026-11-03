@@ -211,7 +211,6 @@ export const SIN_MARCA_PROPIA: Readonly<Record<string, string>> = {
   "consulta|consultas/catalogo/receta-propia.ts|listarSucursalesConRecetaPropia": "lista las OTRAS sucursales con receta propia donde el usuario tiene membresía y «Ver» (origen de una copia): u1 solo es miembro de S1, así que es vacío por diseño (y no debe traer S2)",
   "consulta|consultas/permisos/auditoria.ts|sucursalesVisiblesDeAuditoria": "devuelve solo ids de sucursal",
   "consulta|consultas/permisos/gerencia.ts|listarCandidatosAGerente": "candidatos a recibir la gerencia: administradores efectivos distintos del gerente; el mundo no siembra otro, así que es vacío por diseño",
-  "consulta|consultas/pos/mesas.ts|obtenerLimiteMesasAbiertas": "devuelve solo un número (el tope de mesas)",
   "consulta|consultas/pos/tickets.ts|obtenerTicketsRecientes": "tickets de una ventana de tiempo reciente respecto de `ahora`; el reloj de la matriz avanza 61 s por llamada y el ticket sembrado queda fuera de la ventana",
   "consulta|consultas/reportes/cotizacion-dolar.ts|obtenerUltimaCotizacion": "lee `CotizacionDolar`, una tabla global del sistema (no es de ninguna empresa): no hay fila propia con marcador",
   "consulta|consultas/reportes/cotizacion-dolar.ts|obtenerUltimaCotizacionSinRomper": "lee `CotizacionDolar`, una tabla global del sistema (no es de ninguna empresa): no hay fila propia con marcador",

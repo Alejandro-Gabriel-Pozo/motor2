@@ -31,7 +31,8 @@ export const MODULOS = [
   { id: "produccion", nombre: "Producción", tipo: "vendible", estado: "disponible", requiere: ["stock", "recetas"], usaSiExiste: [] },
   { id: "carta", nombre: "Carta", tipo: "vendible", estado: "disponible", requiere: ["catalogo_basico"], usaSiExiste: ["salon"] },
   { id: "promociones", nombre: "Promociones", tipo: "vendible", estado: "disponible", requiere: ["carta"], usaSiExiste: ["salon"] },
-  { id: "salon", nombre: "Salón", tipo: "vendible", estado: "disponible", requiere: ["stock", "clientes_basico"], usaSiExiste: ["carta", "promociones"] },
+  // Decisión del dueño, 2026-10-29: Salón EXIGE Recetas (bloqueante). Una empresa con Salón y sin Recetas no puede vender nada que se produzca; activar Salón trae Recetas («incluido por Salón»).
+  { id: "salon", nombre: "Salón", tipo: "vendible", estado: "disponible", requiere: ["stock", "clientes_basico", "recetas"], usaSiExiste: ["carta", "promociones"] },
   // Etapa A, punto 6: nace «en desarrollo» (sin acciones ni menú): la consola lo muestra como «Próximamente» y no se puede activar ni entrar.
   { id: "gastos", nombre: "Gastos y servicios", tipo: "vendible", estado: "en_desarrollo", requiere: ["proveedores_basico"], usaSiExiste: ["compras"] },
   // M7 (centros de costos): nace «en desarrollo» y requiere Gastos y servicios (los centros distribuyen gastos). Solo el modelo de datos: la consola lo muestra como «Próximamente».

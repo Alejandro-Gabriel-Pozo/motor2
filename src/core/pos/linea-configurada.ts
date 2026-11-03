@@ -102,6 +102,11 @@ export interface LineaConfigurada {
   /** Las fotos de la línea del producto (MEDIDA, VARIANTE e INCLUIDA). */
   fotos: FotoDeOpcion[];
   adicionales: AdicionalArmado[];
+  /**
+   * Cuántos insumos pide lo elegido DENTRO del precio sin contar la receta de la base (el consumo de las opciones con la base vacía: una SUMA por insumo; un REEMPLAZA sin nada que reemplazar
+   * no cuenta). Con la base sin receta, la línea se pide solo si es mayor que 0 (ventas con opciones, 2026-10-29): es el aviso temprano de lo que el cobro vuelve a decidir con los pedidos reales.
+   */
+  insumosSinLaBase: number;
 }
 
 export type CodigoDeLineaConfigurada = CodigoDeErrorDeOpciones | CodigoDeErrorDePrecio | CodigoDeErrorDeConsumo | "CONFIGURACION_INVALIDA";
@@ -196,6 +201,7 @@ export function armarLineaConfigurada(entrada: EntradaLineaConfigurada): Resulta
       huellaOpciones: huellaDeOpciones(fotos.map((f) => ({ opcionId: f.opcionId, versionDeOpcionId: f.versionDeOpcionId, cantidad: f.cantidad, importeUnitario: f.importeUnitario, factorEscala: f.factorEscala }))),
       fotos,
       adicionales,
+      insumosSinLaBase: consumo.pedidos.length,
     },
   };
 }

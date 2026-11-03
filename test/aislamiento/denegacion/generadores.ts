@@ -255,11 +255,6 @@ const completos: Record<string, Valor> = {
       intento(c, ["compraId"], [k.compraId, { proveedorId: c.propio.proveedorId, nroFactura: "F-NUEVA", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
       intento(c, ["proveedorId"], [c.propio.compraId, { proveedorId: k.proveedorId, nroFactura: "F-NUEVA", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
     ),
-  "accion|actions/movimientos/conteo-fisico.ts|registrarConteoFisico": (k, c) =>
-    conVariantes(
-      intento(c, ["productoId"], [{ productoId: k.productoId, seccionId: c.propio.seccionId, conteoReal: 5, fechaConteo: hoy(), accion: "AJUSTAR", detalle: "texto" }]),
-      intento(c, ["seccionId"], [{ productoId: c.propio.productoId, seccionId: k.seccionId, conteoReal: 5, fechaConteo: hoy(), accion: "AJUSTAR", detalle: "texto" }]),
-    ),
   "accion|actions/movimientos/conteo-fisico.ts|registrarConteosFisicos": (k, c) =>
     conVariantes(
       intento(c, ["productoId"], [[{ productoId: k.productoId, seccionId: c.propio.seccionId, conteoReal: 5, fechaConteo: hoy(), accion: "AJUSTAR" }]]),
@@ -369,12 +364,17 @@ const completos: Record<string, Valor> = {
   "consulta|consultas/permisos/auditoria.ts|listarRegistrosAuditoria": (_k, c) => [{ sucursalIds: [c.propio.sucursalId], incluirFilasDeEmpresa: true }, c.db],
   "consulta|consultas/reportes/costo-historico.ts|reconstruirCostosDeVenta": (k, c) => [c.propio.sucursalId, [{ productoId: k.productoId, fecha: hoy() }], c.db],
   "consulta|consultas/reportes/costos.ts|cargarCostosYMargenes": (_k, c) => [c.propio.sucursalId, c.db, { empresaPct: null, porCategoria: new Map() }],
+  // Ventas con opciones (2026-10-29): «Ventas por opción» de Período, con el rango de un día y la zona de la empresa.
+  // El rango cubre los últimos días: la venta con opción del mundo es de hace un día.
+  "consulta|consultas/reportes/ventas-por-opcion.ts|generarVentasPorOpcion": (_k, c) => [c.propio.sucursalId, new Date(Date.now() - 5 * 86_400_000), hoy(), c.db],
   "consulta|consultas/reportes/rendimiento-por-sucursal.ts|compararRendimientosDeSucursales": (k, c) => [[{ id: c.propio.sucursalId, nombre: "Central ZZ-A1" }], { productoId: k.productoPvId, todas: true }, c.db],
   "consulta|consultas/reportes/rendimiento-por-sucursal.ts|compararRendimientosPorSucursal": (k, c) => [[{ id: c.propio.sucursalId, nombre: "Central ZZ-A1" }], { productoId: k.productoPvId, todas: true }, c.db],
   "lectura|lecturas/auth/cupo-de-correo.ts|cupoDeCorreoDeEmpresa": (k, c) => [c.db, { empresaId: c.propio.empresaId, destinatario: `${k.marca.toLowerCase()}-invitado@ajeno.test`, ahora: hoy() }],
   "lectura|lecturas/movimientos/receta-para-vender.ts|cargarRecetaVigenteParaVender": (k, c) => [c.db, { productoId: k.productoPvId, sucursalId: c.propio.sucursalId }],
   // RECETA (ADR-033): el origen de stock de los productos de un pedido (nombre, si se produce, ingredientes de la receta vigente): con un PV ajeno no ve nada de él.
   "lectura|lecturas/movimientos/receta-para-vender.ts|cargarOrigenDeStockParaVender": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, productoIds: [k.productoPvId] }],
+  // Ventas con opciones (2026-10-29): el origen de stock para el catálogo, con las opciones ofrecidas de un producto sin receta: con un PV ajeno no ve nada de él.
+  "lectura|lecturas/movimientos/origen-de-stock-del-catalogo.ts|cargarOrigenDeStockDelCatalogo": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, productoIds: [k.productoPvId] }],
   "lectura|lecturas/permisos/gobierno.ts|invarianteRolSinUsuariosActivos": (k, c) => [c.db, { id: k.rolId, nombre: "Rol de prueba" }],
 
   // El ítem agrupado se resuelve desde el primer producto en la sucursal activa: el ajeno y el propio no se mezclan; la sucursal que llega tiene que ser la activa. El último argumento es el precio que

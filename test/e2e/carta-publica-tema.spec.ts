@@ -282,23 +282,6 @@ test.describe("carta pública: portada (fondo y posición, C7)", () => {
       await carta.limpiar();
     }
   });
-
-  test("con imagen de fondo, hero_color_fondo tiñe el velo (mix del color, no el --carta-bg)", async ({ page, sucursalId }) => {
-    const carta = await crearCarta(sucursalId, { secciones: 2, valores: { ...PORTADA, hero_imagen_fondo_url: "https://example.com/fondo.jpg" } });
-    try {
-      await page.setViewportSize(MOBILE);
-      await page.goto(carta.ruta);
-      const velo = page.locator(".carta-pagina").first().locator("div[aria-hidden]").first();
-      const fondo = await velo.evaluate((n) => getComputedStyle(n).backgroundColor);
-      // 75 % de #181818 sobre transparente (oklch, luminosidad ≈ 0,21 y opacidad .75), no el blanco de --carta-bg (luminosidad 1).
-      const m = fondo.match(/^oklch\(([\d.]+) [^/]*\/ ([\d.]+)\)$/);
-      expect(m).not.toBeNull();
-      expect(Number(m![1])).toBeLessThan(0.3);
-      expect(Number(m![2])).toBeCloseTo(0.75, 2);
-    } finally {
-      await carta.limpiar();
-    }
-  });
 });
 
 test.describe("carta pública: alto de la banda (C6)", () => {

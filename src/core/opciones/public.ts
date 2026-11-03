@@ -49,6 +49,9 @@ export type { AdmisionParaSerBase, ProductoParaSerBase } from "./modo-de-venta";
 export { MODOS_DE_VENTA } from "./tipos";
 export type { ModoDeVenta } from "./tipos";
 export { LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA, MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA, admitePrefijoEnCarta, leerOpcionEnCarta } from "./lectura-en-carta";
+// El nombre de una línea vendida con opciones («Café solo chico»), una lectura pura de la foto: lo usan el ticket, la comanda y la mesa.
+export { nombreDeLineaConfigurada } from "./nombre-de-la-linea";
+export type { FotoParaElNombre } from "./nombre-de-la-linea";
 // Fase 5 («carta pareja»): el papel de cada grupo en la carta y el orden en que se leen y se eligen (lo comparten la carta y el diálogo del POS), y los textos de las aclaraciones.
 export { ejesDeLaCarta, opcionesDelEje, ordenarPorRol, primeraEnMinuscula, rolDelGrupo, unirConO } from "./lectura-en-carta";
 export type { EjesDeLaCarta, GrupoParaRol, RolDelGrupoEnCarta } from "./lectura-en-carta";

@@ -5,10 +5,10 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { registrarConteoFisico } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
-import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente, buscarProductoParaHistorial } from "../../src/server/consultas/reportes/historial-producto";
+import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "../../src/server/consultas/reportes/historial-producto";
 import { ZONA_ARGENTINA, mediodiaDelDia } from "../../src/core/tiempo/zona-horaria";
 
 /** El día que elige un formulario, como lo guarda (P1): las 12:00 argentinas. Los límites `desde`/`hasta` de la consulta, en cambio, son fechas «de solo día» (00:00 UTC) que la consulta expande en la zona. */
@@ -38,7 +38,7 @@ describe("obtenerHistorialProducto", () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: mediodia("2026-01-02"), seccionId, items: [{ productoId: mpId, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
     // DESCARTAR con diferencia != 0: queda registrado como bitácora, sin generar ningún movimiento de Kardex.
-    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: mediodia("2026-01-03"), accion: "DESCARTAR" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: mediodia("2026-01-03"), accion: "DESCARTAR" });
     await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-04"), seccionId, items: [{ productoId: mpId, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
 
     const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);
@@ -67,7 +67,7 @@ describe("obtenerHistorialProducto", () => {
   it("REGRESIÓN (Plan R2): totalMovimientos/totalConteos siguen siendo el total DE SIEMPRE, incluso con un filtro `desde` que oculta movimientos anteriores", async () => {
     await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: mediodia("2026-01-02"), seccionId, items: [{ productoId: mpId, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: mediodia("2026-01-03"), accion: "DESCARTAR" });
+    await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: mediodia("2026-01-03"), accion: "DESCARTAR" });
     await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
 
     // Filtro que deja fuera del rango visible a los 2 primeros movimientos
@@ -214,19 +214,5 @@ describe("obtenerIngredientesRecetaVigente", () => {
 
   it("producto sin ninguna receta: lista vacía, sin tirar error", async () => {
     expect(await obtenerIngredientesRecetaVigente(pvId, prisma)).toEqual([]);
-  });
-});
-
-describe("buscarProductoParaHistorial", () => {
-  it("incluye productos no disponibles en la sucursal a propósito", async () => {
-    await limpiarBaseDeTest();
-    const base = await sembrarBase();
-    const catalogo = await sembrarCatalogoBase();
-    // Sin fila DisponibilidadProducto para esta sucursal: "fila ausente = no disponible" (disponibilidad-producto.ts).
-    const noDisponible = await prisma.producto.create({ data: { codigo: "MP_VIEJA", nombre: "Descontinuada", tipo: "MP", unidadStockId: catalogo.kg.id } });
-
-    const filas = await buscarProductoParaHistorial(base.sucursal.id, "Descontinuada", prisma);
-    expect(filas.map((f) => f.productoId)).toContain(noDisponible.id);
-    expect(filas.find((f) => f.productoId === noDisponible.id)?.disponible).toBe(false);
   });
 });

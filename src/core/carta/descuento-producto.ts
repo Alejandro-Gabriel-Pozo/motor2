@@ -14,6 +14,18 @@ export interface PrecioConDescuentoDeProducto {
   porcentaje: number | null;
 }
 
+/**
+ * INTERRUPTOR del «descuento por producto» (decisión del dueño, 2026-10-29): hoy NO SE VE. Una sola constante (el mismo patrón que `MENU_DEL_DIA_VISIBLE`, `menu-del-dia.ts`). Motivo: con el precio
+ * local apagado el descuento nunca se aplica (`descuentosVigentes`), y en producción hay 0 filas en `DescuentoProductoSucursal`: no cambia ningún precio.
+ * Con `false`:
+ *  - la ficha del producto en la carta (`components/carta/contenido-del-producto.tsx`) no ofrece el campo «Descuento en esta sucursal» (ni el dato de solo lectura);
+ *  - el reporte «Descuentos de productos» no es ítem del menú (`core/navegacion/estructura.ts`: pasa a `RUTAS_FUERA_DEL_MENU`; la pantalla sigue existiendo).
+ * No se borra nada: la Server Action `guardarDescuentoProducto`, su caso de uso, la persistencia, la tabla, el permiso y la página del reporte quedan como estaban, y los descuentos que ya existieran se
+ * siguen leyendo igual (carta pública, selector del POS, alta a la cuenta).
+ * Para volver a encenderlo: poner `true` (nada más). El retiro definitivo es una etapa aparte que exige autorización expresa del dueño.
+ */
+export const DESCUENTO_POR_PRODUCTO_VISIBLE: boolean = false;
+
 /** Lo que se cobra de una línea con los dos descuentos posibles, y de cuál de los dos viene. */
 export interface PrecioCobradoConDescuentos {
   precio: number;

@@ -33,7 +33,7 @@ const ACCIONES_CONTEO: Record<AccionConteo, { ajusta: boolean; estado: EstadoCon
  * Caso de uso «registrar un conteo físico» — port de `_registrarConteoFisicoSinRecalculo_` (Stock.js:1523-1649, Task #41, Fase M,
  * M13e1 — docs/arquitectura-casos-de-uso-2026-09-27.md). Es la orquestación que antes vivía en `registrarConteoConContexto`
  * (`src/server/actions/movimientos/conteo-fisico.ts`), en el MISMO orden y con los MISMOS textos; esa función quedó como el motor
- * compartido de dos adaptadores finos (`registrarConteoFisico` y, por fila, `registrarConteosFisicos`): permiso (`conPermiso`, una vez
+ * compartido de adaptador fino (`registrarConteosFisicos`, que lo llama una vez por fila): permiso (`conPermiso`, una vez
  * por llamada) → guard de comando (`guardComandoConteoFisico`, `core/features/movimientos/conteo-fisico.guard.ts`) → este caso de uso →
  * `aResultadoAccion`.
  *

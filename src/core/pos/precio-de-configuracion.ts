@@ -207,8 +207,10 @@ export function tablaDePreciosParaLaCarta(entrada: {
   precioBase: number;
   descuentoDeProducto: number | null;
   esBase?: boolean;
+  /** El resumen de precios de ESTA misma entrada, si quien llama ya lo calculó (`cartaDeUnProducto`): se reutiliza en vez de recalcularlo. */
+  resumen?: ResumenDePrecios;
 }): TablaDePreciosParaLaCarta | null {
-  const resumen = resumenDePrecios(entrada);
+  const resumen = entrada.resumen ?? resumenDePrecios(entrada);
   if (!resumen.vendible) return null;
   const vigentes = gruposVigentes(entrada.grupos);
   const { precioBase } = baseDeComposicion(vigentes, entrada);
@@ -245,6 +247,30 @@ export function tablaDePreciosParaLaCarta(entrada: {
     })
   );
   return { grupos, ejes, celdas };
+}
+
+/**
+ * TODO lo que la carta lee de un producto con opciones, calculado UNA vez (los cuatro lectores de la carta pasan por acá): el resumen de precios con el descuento de producto (`conDescuento`) y sin él
+ * (`sinDescuento`, el precio tachado; es el mismo objeto si no hay descuento) y la tabla de precios de cada celda, que reutiliza el resumen en vez de recalcularlo.
+ */
+export function cartaDeUnProducto(entrada: {
+  grupos: readonly (GrupoParaVender & { prefijoEnCarta?: string | null })[];
+  precioBase: number;
+  descuentoDeProducto: number | null;
+  esBase?: boolean;
+}): { conDescuento: ResumenDePrecios; sinDescuento: ResumenDePrecios; tabla: TablaDePreciosParaLaCarta | null } {
+  const conDescuento = resumenDePrecios(entrada);
+  const sinDescuento = entrada.descuentoDeProducto === null ? conDescuento : resumenDePrecios({ ...entrada, descuentoDeProducto: null });
+  return { conDescuento, sinDescuento, tabla: tablaDePreciosParaLaCarta({ ...entrada, resumen: conDescuento }) };
+}
+
+/**
+ * Los grupos de UN producto con la grilla de tamaños de la sucursal (clave `productoId|opcionId`) puesta en las opciones de un tamaño en modo ABSOLUTO. La única mezcla de la grilla para los cuatro lectores
+ * de la carta (la pública, el «Va a mostrar», la vista previa del producto y las bases de un eje). Es una función PURA (no lee la base): vive en `core` y no en `lecturas`, así la matriz de denegación por
+ * defecto (`test/aislamiento/denegacion/`) no la cuenta como una puerta de lectura.
+ */
+export function conGrillaDeLaSucursal<G extends GrupoParaVender>(grupos: readonly G[], grilla: ReadonlyMap<string, number>, productoId: string): G[] {
+  return grupos.map((g) => (g.tipo === "MEDIDA" && g.modoPrecio === "ABSOLUTO" ? { ...g, opciones: g.opciones.map((o) => ({ ...o, precioDeSucursal: grilla.get(`${productoId}|${o.opcionId}`) ?? null })) } : g));
 }
 
 /** El total de una configuración elegida, para mostrarlo ANTES de confirmar. Los errores son los mismos códigos y mensajes de la validación y de la composición de la venta. */

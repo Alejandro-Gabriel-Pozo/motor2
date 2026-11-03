@@ -7,13 +7,13 @@ vi.mock("../../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn()
 
 import { crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, prismaAdmin } from "../../setup/test-db";
 import { crearMozo, entrarComo, sembrarSalon } from "../salon-fixture";
-import { crearMesa, actualizarMaxMesasAbiertas } from "../../../src/server/actions/pos/mesas";
+import { crearMesa } from "../../../src/server/actions/pos/mesas";
 import { abrirCuenta, asignarClienteACuenta, corregirComensales, liberarMesa } from "../../../src/server/actions/pos/cuenta-apertura";
 import { agregarItems, enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar } from "../../../src/server/actions/pos/cuenta-pedido";
 
 /**
- * HUELLA del POS (Hito 4, paso 0.1 de `docs/plan-hito-4-pureza.md` §5): las 10 Server Actions del POS que todavía no pasan por un caso de uso —apertura y
- * mesas (`abrirCuenta`, `corregirComensales`, `asignarClienteACuenta`, `liberarMesa`, `crearMesa`, `actualizarMaxMesasAbiertas`) y pedido (`agregarItems`,
+ * HUELLA del POS (Hito 4, paso 0.1 de `docs/plan-hito-4-pureza.md` §5): las Server Actions del POS que todavía no pasan por un caso de uso —apertura y
+ * mesas (`abrirCuenta`, `corregirComensales`, `asignarClienteACuenta`, `liberarMesa`, `crearMesa`; eran 10: `actualizarMaxMesasAbiertas` se retiró el 2026-10-29 con el límite de mesas, decisión del dueño) y pedido (`agregarItems`,
  * `quitarPromoSinEnviar`, `quitarItemSinEnviar`, `enviarACocina`)— recorridas por las acciones públicas, con la sesión de un admin, de un «mozo» armado desde la
  * matriz y del operador de fábrica (sin ninguna clave del salón). Se escribe ANTES de mover nada (contra el código de `4c00ab79`) y NO se edita en ningún paso
  * posterior: si una mudanza cambia una fila, un mensaje, el orden de dos chequeos o el de dos filas de auditoría, este archivo lo tiene que ver en rojo. Para
@@ -21,11 +21,10 @@ import { agregarItems, enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar 
  * la regeneración se declara además en `test/arquitectura/caracterizaciones-congeladas.test.ts`. Archivo propio y no snapshots de Vitest, para que `-u` no lo
  * regenere en silencio.
  *
- * Es UNA secuencia con estado (un turno del salón): alta de mesas y límite; abrir, reabrir, corregir comensales, asignar y quitar un cliente, liberar; cargar,
+ * Es UNA secuencia con estado (un turno del salón): alta de mesas; abrir, reabrir, corregir comensales, asignar y quitar un cliente, liberar; cargar,
  * quitar y enviar ítems y promos; el mozo haciendo su circuito; y cada rechazo con su texto. Hay pasos con DOS FALLAS A LA VEZ (cuenta cerrada + comensales
- * inválidos, mesa ya abierta + comensales inválidos, cuenta de otra sucursal + lista vacía, id que no es texto + lista vacía, límite alcanzado + comensales
- * inválidos): fijan qué chequeo gana, que es lo primero que una mudanza puede dar vuelta sin querer. Después de cada paso se vuelcan el resultado y TODAS las
- * filas de `Mesa`, `Cuenta`, `CuentaItem`, `PromoCuenta`, `Sucursal` (nombre y `maxMesasAbiertas`) y `RegistroAuditoria` de la empresa, con todas sus columnas
+ * inválidos, mesa ya abierta + comensales inválidos, cuenta de otra sucursal + lista vacía, id que no es texto + lista vacía): fijan qué chequeo gana, que es lo primero que una mudanza puede dar vuelta sin querer. Después de cada paso se vuelcan el resultado y TODAS las
+ * filas de `Mesa`, `Cuenta`, `CuentaItem`, `PromoCuenta`, `Sucursal` (nombre) y `RegistroAuditoria` de la empresa, con todas sus columnas
  * (las fechas, solo si hay o no: `<fecha>`/`null`), los ids reemplazados por nombres simbólicos y la auditoría ordenada por `[creadoEn, id]`.
  */
 const ARCHIVO = join(__dirname, "huella-del-pos.golden.txt");
@@ -35,7 +34,7 @@ afterAll(async () => {
   await limpiarBaseDeTest();
 });
 
-describe("Huella del POS (las 10 acciones sin caso de uso)", () => {
+describe("Huella del POS (las 9 acciones sin caso de uso)", () => {
   const nombres = new Map<string, string>();
   const contadores = new Map<string, number>();
   const lineas: string[] = [];
@@ -76,7 +75,7 @@ describe("Huella del POS (las 10 acciones sin caso de uso)", () => {
     items.forEach((i) => nombrar("item", i.id));
     const auditoria = await prismaAdmin.registroAuditoria.findMany({ where: donde, orderBy: porCreacion });
     auditoria.forEach((a) => nombrar("auditoria", a.id));
-    const sucursales = await prismaAdmin.sucursal.findMany({ where: donde, orderBy: { nombre: "asc" }, select: { id: true, nombre: true, maxMesasAbiertas: true } });
+    const sucursales = await prismaAdmin.sucursal.findMany({ where: donde, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } });
     const filas = (titulo: string, datos: object[]) => datos.map((d) => `  ${titulo} ${fila({ ...(d as Record<string, unknown>) })}`);
     return [
       ...filas("SUCURSAL", sucursales),
@@ -155,7 +154,7 @@ describe("Huella del POS (las 10 acciones sin caso de uso)", () => {
     const itemDe = async (cuentaId: string, productoId: string, conPromo: boolean) =>
       (await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId, productoId, promoCuentaId: conPromo ? { not: null } : null, numeroEnvio: null }, orderBy: [{ creadoEn: "asc" }, { id: "asc" }] })).id;
 
-    // ── A. Mesas y límite (admin) ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    // ── A. Mesas (admin) ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     await entrarComo(s.admin);
     const alta5 = await crearMesa(5);
     const mesa5 = (await prisma.mesa.findFirstOrThrow({ where: { sucursalId: s.sucursalId, numero: 5 } })).id;
@@ -163,10 +162,6 @@ describe("Huella del POS (las 10 acciones sin caso de uso)", () => {
     await paso("A1. Alta de la mesa 5", alta5);
     await paso("A2. Alta de la mesa 5 otra vez (número repetido)", await crearMesa(5));
     await paso("A3. Números inválidos: 0, 1,5, 10000, NaN y un texto", [await crearMesa(0), await crearMesa(1.5), await crearMesa(10000), await crearMesa(Number.NaN), await crearMesa("7" as unknown as number)]);
-    await paso("A4. Límite de mesas abiertas en 3", await actualizarMaxMesasAbiertas(3));
-    await paso("A5. El mismo límite otra vez (sin auditoría nueva)", await actualizarMaxMesasAbiertas(3));
-    await paso("A6. Límites inválidos: 0, 2,5, 10000 y un texto", [await actualizarMaxMesasAbiertas(0), await actualizarMaxMesasAbiertas(2.5), await actualizarMaxMesasAbiertas(10000), await actualizarMaxMesasAbiertas("4" as unknown as number)]);
-    await paso("A7. Sin límite (null)", await actualizarMaxMesasAbiertas(null));
 
     // ── B. Apertura (admin) ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     await paso("B1. Abrir la mesa 4 con 2 comensales", await abrirCuenta(s.mesa.id, 2));
@@ -177,11 +172,6 @@ describe("Huella del POS (las 10 acciones sin caso de uso)", () => {
     await paso("B5. DOS FALLAS: id de mesa que no es texto + comensales inválidos", await abrirCuenta(123 as unknown as string, 0));
     await paso("B6. Una mesa que no existe", await abrirCuenta("mesa-que-no-existe", 2));
     await paso("B7. Comensales inválidos en una mesa libre: 0, 1,5, 100 y un texto", [await abrirCuenta(mesa5, 0), await abrirCuenta(mesa5, 1.5), await abrirCuenta(mesa5, 100), await abrirCuenta(mesa5, "2" as unknown as number)]);
-    await actualizarMaxMesasAbiertas(1);
-    await paso("B8. Con el límite en 1 (ya hay una abierta), abrir la mesa 5", await abrirCuenta(mesa5, 2));
-    await paso("B9. DOS FALLAS: límite alcanzado + comensales inválidos", await abrirCuenta(mesa5, 0));
-    await paso("B10. Con el límite alcanzado, reabrir la MISMA mesa 4", await abrirCuenta(s.mesa.id, 3));
-    await actualizarMaxMesasAbiertas(null);
     await paso("B11. Corregir los comensales de la mesa 4 a 4", await corregirComensales(cuenta4, 4));
     await paso("B12. Corregir con valores inválidos: 0, 100, un texto", [await corregirComensales(cuenta4, 0), await corregirComensales(cuenta4, 100), await corregirComensales(cuenta4, "3" as unknown as number)]);
     await paso("B13. DOS FALLAS: cuenta de otra sucursal + comensales inválidos", await corregirComensales(cuentaNorte.id, 0));
@@ -264,13 +254,12 @@ describe("Huella del POS (las 10 acciones sin caso de uso)", () => {
     await paso("F2. Mozo: corregir a 3, asignar a Fulano, agregar un Flan", [await corregirComensales(cuenta5b, 3), await asignarClienteACuenta(cuenta5b, fulano.id), await agregarItems(cuenta5b, [{ productoId: s.flan.id, cantidad: 1 }])]);
     const flanDelMozo = await itemDe(cuenta5b, s.flan.id, false);
     await paso("F3. Mozo: enviar a cocina y liberar (no se puede, tiene ítems)", [await enviarACocina(cuenta5b, [flanDelMozo]), await liberarMesa(cuenta5b)]);
-    await paso("F4. Mozo: alta de mesa y límite (sin esas claves)", [await crearMesa(8), await actualizarMaxMesasAbiertas(2)]);
+    await paso("F4. Mozo: alta de mesa (sin esa clave)", [await crearMesa(8)]);
 
     // ── G. El operador de fábrica (sin ninguna clave del salón) ─────────────────────────────────────────────────────────────────────────────────────────────
     await entrarComo(operador);
-    await paso("G1. Operador: las 10 acciones", [
+    await paso("G1. Operador: las 9 acciones", [
       await crearMesa(8),
-      await actualizarMaxMesasAbiertas(2),
       await abrirCuenta(mesa5, 2),
       await corregirComensales(cuenta4, 2),
       await asignarClienteACuenta(cuenta4, null),

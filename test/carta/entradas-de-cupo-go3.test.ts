@@ -63,6 +63,31 @@ describe("las opciones de un lugar LISTA y la vigencia de una promo (GO-3b, D4)"
     expect(await auditoria()).toHaveLength(1);
   });
 
+  it("ventas con opciones (2026-10-29): una base SIN receta entra con una configuración fija que descuenta un insumo (Coca); con una que no descuenta nada (Fanta) se rechaza nombrando la opción", async () => {
+    const botella = await prisma.producto.create({ data: { codigo: "MP_COCA_500", nombre: "Coca botella 500", tipo: "MP", unidadStockId: e.unidadId } });
+    await prisma.disponibilidadProducto.create({ data: { sucursalId: e.sucursalA, productoId: botella.id, disponible: true } });
+    const grupo = await prisma.grupoDeOpciones.create({ data: { nombre: "Marca", tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1 } });
+    const opcion = async (nombre: string, orden: number, conConsumo: boolean) => {
+      const o = await prisma.opcionDeGrupo.create({ data: { grupoId: grupo.id, nombre, orden } });
+      const v = await prisma.versionDeOpcion.create({ data: { opcionId: o.id, numero: 1, tipoDeDiferencia: "MONTO", diferenciaPrecio: "0.00", creadoPorId: e.usuarioId } });
+      if (conConsumo) await prisma.consumoDeOpcion.create({ data: { versionDeOpcionId: v.id, efecto: "SUMA", insumoProductoId: botella.id, cantidad: "1.0000", unidadId: e.unidadId } });
+      await prisma.productoAdmiteOpcion.create({ data: { productoId: e.sinRecetaId, opcionId: o.id } });
+      return o.id;
+    };
+    await prisma.productoAdmiteGrupo.create({ data: { productoId: e.sinRecetaId, grupoId: grupo.id, orden: 0 } });
+    const cocaId = await opcion("Coca", 1, true);
+    const fantaId = await opcion("Fanta", 2, false);
+
+    const fanta = await agregar(e.cupoEntradaId, e.sinRecetaId, [{ opcionId: fantaId }]);
+    expect(fanta).toMatchObject({ ok: false, codigo: "COMPONENTE_SIN_RECETA" });
+    expect(fanta.mensaje).toContain("“Sin receta” con “Fanta” no descuenta ningún insumo");
+    expect(await prisma.entradaDeCupo.count()).toBe(0);
+    expect(await agregar(e.cupoEntradaId, e.sinRecetaId, [{ opcionId: cocaId }])).toMatchObject({ ok: true, datos: { huboCambio: true } });
+    expect(await prisma.entradaDeCupo.count({ where: { productoId: e.sinRecetaId } })).toBe(1);
+    // Sin configuración sigue siendo un componente sin receta (el grupo obligatorio pide su configuración).
+    expect(await agregar(e.cupoEntradaId, e.sinRecetaId)).toMatchObject({ ok: false });
+  });
+
   it("D-8: sin precio de venta de referencia se rechaza; una materia prima o el ancla de un adicional no son componentes", async () => {
     await prisma.producto.update({ where: { id: e.guisoId }, data: { precioVenta: 0 } });
     expect(await agregar(e.cupoEntradaId, e.guisoId)).toMatchObject({ ok: false, codigo: "COMPONENTE_SIN_PRECIO_DE_REFERENCIA" });

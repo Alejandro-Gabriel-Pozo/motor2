@@ -5,8 +5,7 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
  * Tipos de la feature «conteo físico» (Task #41, Fase M, M13e1 — docs/arquitectura-casos-de-uso-2026-09-27.md). El comando y el
  * resultado del caso de uso de `src/server/actions/movimientos/casos-de-uso/registrar-conteo-fisico.ts`.
  *
- * Migración PARCIAL a propósito en M13e1 (como P1 con `recetas.ts`): esta feature cubrió SOLO `registrarConteoFisico`/
- * `registrarConteosFisicos`. `resolverConteoPendiente`/`cancelarConteoFisico` migraron en M13e2 (tipos propios en
+ * Migración PARCIAL a propósito en M13e1 (como P1 con `recetas.ts`): esta feature cubrió SOLO `registrarConteosFisicos`. `resolverConteoPendiente`/`cancelarConteoFisico` migraron en M13e2 (tipos propios en
  * `resolver-conteo.schema.ts`/`cancelar-conteo.schema.ts`) y `obtenerHistorialConteosFisicos` se mudó a
  * `src/server/actions/movimientos/lecturas-conteo-fisico.ts` — ver docs/arquitectura-casos-de-uso-2026-09-27.md, M13e2.
  */

@@ -96,6 +96,20 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 3, paso 3.1 (retiro de GO-3a; SACA una clave, no cambia ninguna otra): `grupos_de_precio_definir` (las tarifas compartidas de las combinaciones) sale de ACCIONES y desaparece de las listas de claves de cada bloque y registro. Revisado con `git diff --word-diff=porcelain … | grep '^[-+][^-+]' | sort | uniq -c`: 120 líneas pierden `, grupos_de_precio_definir` (108 donde la lista terminaba en `producto_opciones_admitidas, grupos_de_precio_definir` y 12 en el medio de una lista) y lo único que no es una resta son los 2 mensajes de denegación de «operador + especial», que nombran la ÚLTIMA clave del catálogo que no tienen: vuelven a nombrar `producto_opciones_admitidas` (como antes de GO-3b), el mismo artefacto del generador que en M.2, GO-2a y GO-3b. Ninguna respuesta de otra clave cambia.",
       },
+      {
+        blob: "94cae8694b139a497557b4bacd0dad25c8ef6845",
+        // El commit PADRE de este (4cbb8750) es el último antes del cambio; el golden se regenera en el commit siguiente (retiro del límite de mesas abiertas, decisión del dueño 2026-10-29).
+        commit: "4cbb8750",
+        motivo:
+          "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; SACA una clave, no cambia ninguna otra): `pos_limite_mesas_abiertas` sale de ACCIONES y desaparece de las listas de claves de cada bloque y registro. El resto del archivo no cambia.",
+      },
+      {
+        blob: "3db4ca0c405259334e62cf5b1778b73187918dfc",
+        // El commit PADRE de este (5c218a6f) es el último antes del cambio; el golden se regenera en el commit siguiente (Salón exige Recetas, decisión del dueño 2026-10-29).
+        commit: "5c218a6f",
+        motivo:
+          "Salón exige Recetas (decisión del dueño 2026-10-29; CAMBIA COMPORTAMIENTO a propósito): `salon.requiere` suma `recetas`, así que en los registros de la matriz con Salón activo (y no solo con Recetas) el módulo Recetas queda efectivo («incluido por Salón») y sus acciones dejan de salir como `MODULO_NO_ACTIVO`/`SIN_CAPACIDAD` para esos registros. No cambia ninguna clave ni ningún piso.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -181,6 +195,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "0c12131",
         motivo:
           "Ola «precio y carta», Fase 3, paso 3.1 (retiro de GO-3a; SACA una clave): `ACCIONES 132 a 131` y desaparecen las 2 filas PERMISO de `grupos_de_precio_definir` (admin con Ver y Editar, operador sin) de cada una de las 2 empresas sembradas: 4 líneas menos y los 2 conteos (diff revisado línea a línea). Ningún resultado, mensaje ni otra fila cambia.",
+      },
+      {
+        blob: "e6031b0a2aec3f9205a74fde6eb4ea70b4f668aa",
+        // El commit PADRE de este (4cbb8750) es el último antes del cambio; el golden se regenera en el commit siguiente (retiro del límite de mesas abiertas, decisión del dueño 2026-10-29).
+        commit: "4cbb8750",
+        motivo:
+          "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; SACA una clave, no cambia ninguna otra): `pos_limite_mesas_abiertas` sale de ACCIONES y la huella pierde sus 4 filas PERMISO (admin y operador, en cada registro) y baja el conteo de ACCIONES de 131 a 130. El resto del archivo no cambia.",
+      },
+      {
+        blob: "9be3e628269575aecb1391ed746651d65a0ec28b",
+        // El commit PADRE de este (5c218a6f) es el último antes del cambio; el golden se regenera en el commit siguiente (Salón exige Recetas, decisión del dueño 2026-10-29).
+        commit: "5c218a6f",
+        motivo:
+          "Salón exige Recetas (decisión del dueño 2026-10-29; CAMBIA COMPORTAMIENTO a propósito): al activar Salón desde la consola de plataforma (paso 8a), los módulos efectivos suman `recetas` (antes administracion, catalogo_basico, clientes_basico, salon, stock). Solo cambia esa línea.",
       },
     ],
   },
@@ -394,6 +422,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "E3a (ADR-041, pasos 9 y 10; agrega un dato, no cambia ninguno): «Compras registradas» devuelve en cada compra `facturaProveedorId` (la factura de proveedor de la que es parte, o null), para mostrar «Anular factura entera» en lugar de corregir o anular la compra suelta. Cambian SOLO 12 líneas, todas `facturaProveedorId: null` agregadas (ninguna compra del golden es parte de una factura); mismo número de consultas, ningún otro valor cambia.",
       },
+      {
+        blob: "1f7a7fbb8358fa662e1f6b112f05a849064a5f08",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `4b918ba0` («Stock: botones de confirmación con el componente común y «Cancelar» del conteo solo con permiso»).
+        commit: "4b918ba0",
+        motivo:
+          "Paquete de limpieza de deuda A, paso 2 (c) (retira código sin uso, sin cambio de comportamiento): `buscarProductoParaHistorial` no tenía ningún llamador en `src/` (el filtro del historial usa `SelectorProducto`), así que se borra junto con su caso de la caracterización. Cambia SOLO que desaparece la entrada «13. historial-producto.buscarProductoParaHistorial(Central, «pizza»)» (6 líneas: encabezado, consultas y resultado) y que las entradas siguientes bajan un número (14 → 13, 15 → 14, etc.): 33 líneas agregadas y 40 quitadas, las 33 agregadas son solo el encabezado `### N.` renumerado. Ninguna consulta ni resultado de otra entrada cambia.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {
@@ -451,6 +486,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 5 (CAMBIA COMPORTAMIENTO a propósito, decisión del dueño: escala de letra de la carta con mínimo de 14 px para el texto de decisión): en las dos lecturas de `carta.resolverCartaPublica` los tamaños por defecto del tema suben (`carta_fuente_item_nombre` y `_precio` de 0.88rem a 1.1875rem, `_descripcion` de 0.6875rem a 0.875rem y `_tags` de 0.6875rem a 0.75rem, y sus variables `--carta-fuente-item-*`) y se suman las variables `--carta-fs-*` (producto, precio, opción, aclaración, etiqueta, título, rótulo, columna, tamaño y elección, con su versión impresa). Revisado con `git diff`: cambian solo esos valores y se suman esas claves; ningún precio, nombre, orden ni conteo de consultas se movió. Quedó rojo en la CI (parte 4 de Integración) desde la Fase 5 porque nadie regeneró este golden.",
       },
+      {
+        blob: "28f13f8ab80a3ccd311ff09a3c517bcf0328c8a7",
+        // El commit PADRE de este (311b19bb, paso 2 del modelo unificado) es el último antes del cambio; el golden se regenera en el commit siguiente (paso 3).
+        commit: "311b19bb",
+        motivo:
+          "Decisión del dueño 2026-10-29: modelo unificado de la carta (paso 3, roles de letra; SOLO ESTILO DE LA CARTA, ningún dato ni precio): se retiran los roles `rotulo` (sustituido por Producto, jerarquía única) y `tamano` (fusionado en `columna`) de la escala, así que las variables CSS de la carta dejan de traer `--carta-fs-rotulo`, `--carta-fs-tamano` y sus dos pares en papel. Revisado con `git diff -U0`: cambian SOLO esas 4 líneas en cada una de las 2 apariciones del bloque `variablesCss` (8 líneas quitadas, ninguna agregada); nada de lo que lee o devuelve una lectura de datos cambia.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -472,6 +514,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "a878640a",
         motivo:
           "M1 del mostrador (ADR-039, migración 20261027100000_m1_puesto_mostrador; ADITIVO, no cambia comportamiento): las 207 líneas MESA suman `tipo=SALON` y las 174 CUENTA suman `tipoMesa=SALON` (las columnas nuevas `Mesa.tipo` y `Cuenta.tipoMesa`, default SALON). Verificado con `git diff --word-diff` y por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior (e6f590094e95), byte a byte; ningún mensaje, número ni orden cambió (los textos de las mesas pasaron por core/pos/puesto.ts en M1.1 y esta huella pasó verde sin regenerar).",
+      },
+      {
+        blob: "6cc53d53e3c45ff4f5ac49bb8fc8bd01079637b7",
+        // El commit PADRE de este (4cbb8750) es el último antes del cambio; el golden se regenera en el commit siguiente (retiro del límite de mesas abiertas, decisión del dueño 2026-10-29).
+        commit: "4cbb8750",
+        motivo:
+          "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; CAMBIA COMPORTAMIENTO a propósito): se quita la acción `actualizarMaxMesasAbiertas` y el chequeo del límite dentro de `abrirCuenta`. El escenario ya no fija límites (salen los pasos A4 a A7 y B8 a B10; F4 y G1 sin esa acción) y las líneas SUCURSAL ya no vuelcan `maxMesasAbiertas`. Los resultados y las filas de las demás acciones (apertura, idempotencia de reabrir, comensales, cliente, pedido, mozo y operador) no cambian.",
       },
     ],
   },
@@ -619,6 +668,20 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ola «precio y carta», Fase 5 tanda C (jerarquía; ADITIVO, solo CARTA, el COBRO idéntico): la lista que cae de una tanda de más de 3 tamaños lleva protagonista: \"nombre\". Revisado con `git diff -U0`: cambia SOLO la línea `presentacion` de Pizzas (producto directo con 6 tamaños), que suma `\"protagonista\":\"nombre\"` después de `\"encabezado\":true`; de `## COBRO` en adelante nada cambia.",
       },
+      {
+        blob: "a5ff9dc08ecfab35b5c01e4e94430b15eac3a496",
+        // El commit PADRE de este (41bae333, paso 1 del modelo unificado) es el último antes del cambio; el golden se regenera en el commit siguiente (paso 2).
+        commit: "41bae333",
+        motivo:
+          "Decisión del dueño 2026-10-29: modelo unificado de la carta (docs/diseno-simplificar-presentacion-de-la-carta-2026-10-29.md, paso 2; SOLO CARTA, el COBRO idéntico): la forma de un producto con opciones es `simple` o `tabla` (con `titulo`, `columnas` y `filas`) y desaparecen `columnas`, `lista` y las tandas. Revisado con `git diff -U0`: cambian SOLO líneas de forma: las 4 líneas `presentacion` (Pizzas pasa de lista con el nombre protagonista a tabla de una columna con `titulo`; Milanesas, el Café de la sección y el Café de la carta con la grilla pasan de `columnas` a `tabla` con una fila sin rótulo) y se van las 2 líneas `tandas`; de `## COBRO` en adelante nada cambia, y `precios.golden.txt` no se mueve.",
+      },
+      {
+        blob: "f0b45ea8511e22edd2a401110af68a34c14549b9",
+        // El commit PADRE de este (68f5701a, paso 3 del modelo unificado) es el último antes del cambio; el golden se regenera en el commit siguiente (paso 4).
+        commit: "68f5701a",
+        motivo:
+          "Decisión del dueño 2026-10-29: modelo unificado de la carta (paso 4, regla de filas; SOLO CARTA, el COBRO idéntico): una VARIANTE obligatoria de una sola elección sin costo ni prefijo es el eje de filas de un producto DIRECTO que tiene un tamaño que define el precio (la grilla del café sin un prefijo artificial); una base y un producto sin tamaño la siguen leyendo como aclaración. Revisado con `git diff -U0`: cambia UNA sola línea, la `presentacion` de la «Milanesas (M1)» directa del catálogo de referencia (tamaño Simple/Napolitana + «Milanesas de» carne/pollo sin costo ni prefijo): pasa de una fila con la aclaración «Milanesas de» a la grilla Carne/Pollo × Simple/Napolitana, con los mismos precios; de `## COBRO` en adelante nada cambia y `precios.golden.txt` no se mueve.",
+      },
     ],
   },
   "test/e2e/linea-de-base-precio-y-carta.golden.txt": {
@@ -731,6 +794,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "3055d2fb",
         motivo:
           "Integración de Fase 7 (Catálogo y Carta; NO cambia contenido propio: es la SUMA de las dos regeneraciones anteriores). Las dos ramas regeneraron la línea de base desde el mismo ancestro (2b994fb6) y tocaron zonas distintas: Catálogo, 4 líneas de «Opciones y precio» de Pizzas y del grupo «Tipos de Pizza» (Biblioteca de opciones); Carta, las secciones de «Secciones» (pestañas, Géneros). La fusión de git dio el texto sin conflicto de líneas y este blob es el de ese texto fusionado, sin regenerar con Playwright en la integración; lo confirma el e2e de la CI (que compara la línea de base con la pantalla real) y, si difiriera, se regenera con REGENERAR_LB_PRECIO_Y_CARTA=1 y se declara acá.",
+      },
+      {
+        blob: "29da11a6a61d0ae731a0281263b8cf766f9d9387",
+        // El commit PADRE de este (82636dab, paso 5 del modelo unificado) es el último antes de la regeneración; los cambios visuales son de los pasos 2 a 4.
+        commit: "82636dab",
+        motivo:
+          "Decisión del dueño 2026-10-29: modelo unificado de la carta (pasos 2 a 4, CAMBIO VISUAL DELIBERADO; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 en una corrida de Playwright contra motor2_ck_e2e local, 83 specs de carta y catálogo en verde). Revisado con `git diff -U0`: cambian SOLO líneas de forma, de roles y de nombres. (1) Milanesas (tabla de dos ejes): el nombre pasa de rótulo en mayúsculas de 13 px a título en rol Producto de 19 px («MILANESAS» → «Milanesas»), igual que «Café de especialidad». (2) El Café deja de ser una «tanda» y pasa a una tabla propia (forma «tabla», con su fila sin rótulo, cuyo nombre solo lee el lector de pantalla). (3) Se van los roles `rotulo` y `tamano` de la escala (sus pares tamaño / peso a 375 y 1280 px). (4) La vista previa de la ficha del producto dibuja las pizzas como la carta (un h3 por pizza, «### Pizza muzzarella», en lugar de «Cada opción se lee como un plato:»). Los precios y el resto del texto no cambian.",
+      },
+      {
+        blob: "52cf3c97810d2f7826717c0141d463d805f7d64c",
+        // El commit PADRE de este (aff7f403) es el último antes de la regeneración; el golden se regenera en el commit siguiente.
+        commit: "aff7f403",
+        motivo:
+          "Integración de ramas, decisiones del dueño 2026-10-29 (NO cambia contenido propio de la carta: es la SUMA de dos ramas que regeneraron o no este golden sin conocerse). La rama `carta-unificada` regeneró esta línea de base con la ficha de producto que ofrecía el descuento por producto; la rama `deuda-paquete-b` apagó ese descuento con el interruptor `DESCUENTO_POR_PRODUCTO_VISIBLE = false` (decisión del dueño 2026-10-29) sin tocar este golden porque no lo regenera. Regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 sobre el árbol integrado contra motor2_ct_e2e local. Revisado con `git diff -U0`: cambian SOLO 42 líneas, todas BORRADAS y todas del descuento en la ficha de producto del admin (por cada producto, a 375 y a 1280 px: «Descuento en esta sucursal, % (vacío = sin descuento)», «[campo: vacío]» y «[botón: Guardar descuento de «…»]»); no se agrega ninguna línea y la carta pública (texto y tipografía) queda idéntica.",
       },
     ],
   },

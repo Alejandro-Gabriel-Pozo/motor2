@@ -7,7 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { reclasificarStock } from "../../src/server/actions/stock/reclasificacion";
-import { registrarConteoFisico, registrarConteosFisicos } from "../../src/server/actions/movimientos/conteo-fisico";
+import { registrarConteosFisicos } from "../../src/server/actions/movimientos/conteo-fisico";
 import { registrarPagoConsignante } from "../../src/server/actions/reportes/consignacion";
 
 // S-08: una fecha rota (Invalid Date → 500 de Prisma) o absurda (año 2099, 1970) se rechaza con un mensaje antes de escribir nada.
@@ -56,9 +56,8 @@ describe("las acciones que registran operaciones validan la fecha", () => {
       await nada();
     });
 
-    it("registrarConteoFisico y registrarConteosFisicos", async () => {
+    it("registrarConteosFisicos", async () => {
       const fila = { productoId, seccionId, conteoReal: 5, fechaConteo: fecha, accion: "AJUSTAR" as const };
-      expect(await registrarConteoFisico(fila)).toEqual({ ok: false, mensaje });
       expect(await registrarConteosFisicos([fila])).toMatchObject({ ok: true, resultados: [{ ok: false, mensaje }] });
       await nada();
     });

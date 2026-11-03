@@ -2,7 +2,7 @@
  * Ejecutor del guion de 6 meses de "La Cuadra" (docs/planes-demo-y-claridad-reportes-2026-09-21.md §5, tramo 3): arma el
  * catálogo (sucursal, secciones, categorías, unidades, proveedores, productos, recetas — igual que
  * scripts/seed-demo-pizzeria.ts) y después recorre el `GuionDemo` de scripts/demo-seed/guion-la-cuadra.ts llamando a los
- * server actions REALES (registrarMovimiento/registrarVenta/registrarConteoFisico/anularCompra/corregirCompra/
+ * server actions REALES (registrarMovimiento/registrarVenta/registrarConteosFisicos/anularCompra/corregirCompra/
  * guardarReceta) — nunca INSERTs directos, mismo criterio que el seed de 30 días.
  *
  * NUNCA corre contra Neon (guarda en vitest.seed-6-meses.config.ts, antes de que exista un cliente Prisma siquiera):
@@ -40,7 +40,7 @@ import { darDeAltaProducto, actualizarDisponibilidadProducto } from "../src/serv
 import { guardarRecetaACiegas as guardarReceta } from "../src/server/actions/catalogo/receta-a-ciegas";
 import { registrarMovimiento } from "../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../src/server/actions/movimientos/venta";
-import { registrarConteoFisico } from "../src/server/actions/movimientos/conteo-fisico";
+import { registrarConteosFisicos } from "../src/server/actions/movimientos/conteo-fisico";
 import { anularCompra, corregirCompra } from "../src/server/actions/movimientos/compras";
 import { setStockMinimoProducto } from "../src/server/actions/stock/stock-minimo";
 import type { ResultadoAccion } from "../src/server/actions/tipos";
@@ -319,8 +319,8 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
           const saldo = await prisma.movimientoStock.aggregate({ where: { productoId, seccionId }, _sum: { cantidad: true } });
           const saldoActual = Number(saldo._sum.cantidad ?? 0);
           const conteoReal = Math.max(0, Math.round((saldoActual + ev.ajusteRelativo) * 100) / 100);
-          const r = await registrarConteoFisico({ productoId, seccionId, conteoReal, fechaConteo: fecha, accion: ev.accion, detalle: ev.detalle });
-          anotarSiFalla(`CONTEO_FISICO ${ev.ref}`, r);
+          const r = await registrarConteosFisicos([{ productoId, seccionId, conteoReal, fechaConteo: fecha, accion: ev.accion, detalle: ev.detalle }]);
+          anotarSiFalla(`CONTEO_FISICO ${ev.ref}`, r.ok ? r.resultados[0] : r);
         } else if (ev.tipo === "CREAR_RECETA") {
           const ingredientes = RECETA_POR_PRODUCTO.get(ev.productoCodigo);
           if (!ingredientes) {

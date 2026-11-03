@@ -6,6 +6,14 @@ vi.mock("../../src/server/actions/carta/contenido-producto", () => ({ guardarCon
 vi.mock("../../src/server/actions/carta/descuento-producto", () => ({ guardarDescuentoProducto: vi.fn() }));
 vi.mock("../../src/server/actions/carta/mantenimiento", () => ({ quitarProductoDeLaCarta: vi.fn() }));
 vi.mock("../../src/server/actions/refrescar", () => ({ refrescarVistaSiHaceFalta: vi.fn() }));
+// Interruptor del descuento por producto (`DESCUENTO_POR_PRODUCTO_VISIBLE`, decisión del dueño 2026-10-29): apagado en el código; acá se prende para seguir probando el campo y se apaga en el último test.
+const interruptor = vi.hoisted(() => ({ visible: true }));
+vi.mock("../../src/core/carta/public", async (original) => ({
+  ...(await original<typeof import("../../src/core/carta/public")>()),
+  get DESCUENTO_POR_PRODUCTO_VISIBLE() {
+    return interruptor.visible;
+  },
+}));
 import { ContenidoDelProducto } from "../../src/components/carta/contenido-del-producto";
 
 /**
@@ -116,5 +124,23 @@ describe("ContenidoDelProducto: contraespejos de quien no puede editar", () => {
 
   it("con el precio local apagado, el descuento avisa que no rige", () => {
     expect(dibujar(producto({ descuento: 10 }), { precioLocalActivo: false })).toContain("No rige: el precio local está apagado en esta sucursal");
+  });
+});
+
+describe("ContenidoDelProducto: interruptor del descuento por producto (decisión del dueño 2026-10-29)", () => {
+  it("apagado, no ofrece el campo ni el botón ni el dato de solo lectura del descuento, pero el contenido sigue editable", () => {
+    interruptor.visible = false;
+    try {
+      for (const extra of [{}, { puedeDescuento: false }] as const) {
+        const html = dibujar(producto(), extra);
+        expect(html).toContain("Guardar contenido de «Milanesas»");
+        expect(html).not.toContain('name="descuento"');
+        expect(html).not.toContain("Guardar descuento");
+        expect(html).not.toContain("Descuento en esta sucursal");
+        expect(html).not.toContain("Sin descuento");
+      }
+    } finally {
+      interruptor.visible = true;
+    }
   });
 });

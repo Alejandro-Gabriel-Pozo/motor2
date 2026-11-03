@@ -168,7 +168,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/pos/cuenta-apertura.ts",
     motivo:
-      "Hito 4, bloque 4.1 (pasos 5 a 8): liberarMesa → pos/casos-de-uso/liberar-mesa.ts, corregirComensales → corregir-comensales.ts, asignarClienteACuenta → asignar-cliente-a-cuenta.ts y abrirCuenta → abrir-cuenta.ts (transacción serializable, la cuenta o la mesa, la idempotencia y el límite de mesas, la persistencia en server/persistencia/pos/{cuenta,cerrar-cuenta}.ts y la auditoría del cliente viven en el caso de uso); el formato del id lo validan sus guardComando* (core/features/cuentas/cuenta-apertura.guard.ts) dentro de conPermiso. El archivo no tiene ninguna otra función.",
+      "Hito 4, bloque 4.1 (pasos 5 a 8): liberarMesa → pos/casos-de-uso/liberar-mesa.ts, corregirComensales → corregir-comensales.ts, asignarClienteACuenta → asignar-cliente-a-cuenta.ts y abrirCuenta → abrir-cuenta.ts (transacción serializable, la cuenta o la mesa, la idempotencia, la persistencia en server/persistencia/pos/{cuenta,cerrar-cuenta}.ts y la auditoría del cliente viven en el caso de uso); el formato del id lo validan sus guardComando* (core/features/cuentas/cuenta-apertura.guard.ts) dentro de conPermiso. El archivo no tiene ninguna otra función.",
   },
   {
     ruta: "src/server/actions/pos/cuenta-pedido.ts",
@@ -178,7 +178,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/pos/mesas.ts",
     motivo:
-      "Hito 4, bloque 4.1 (pasos 3 y 4): crearMesa → pos/casos-de-uso/crear-mesa.ts y actualizarMaxMesasAbiertas → pos/casos-de-uso/actualizar-max-mesas-abiertas.ts (la escritura en server/persistencia/pos/mesas.ts, la traducción del número repetido y la auditoría del límite viven en el caso de uso); el formato lo validan guardComandoCrearMesa y guardComandoActualizarMaxMesasAbiertas dentro de conPermiso. El archivo no tiene ninguna otra función.",
+      "Hito 4, bloque 4.1 (paso 3): crearMesa → pos/casos-de-uso/crear-mesa.ts (la escritura en server/persistencia/pos/mesas.ts y la traducción del número repetido viven en el caso de uso); el formato lo valida guardComandoCrearMesa dentro de conPermiso. (El paso 4, actualizarMaxMesasAbiertas, se retiró el 2026-10-29 con el límite de mesas abiertas, decisión del dueño.) El archivo no tiene ninguna otra función que no pase por un caso de uso.",
   },
   {
     ruta: "src/server/actions/pos/cuenta-anulacion.ts",
@@ -203,7 +203,7 @@ const ACCIONES_CON_CASO_DE_USO = [
   {
     ruta: "src/server/actions/movimientos/conteo-fisico.ts",
     motivo:
-      "M13e1 + M13e2, cierra la cadena M13a-e: registrarConteoFisico/registrarConteosFisicos (M13e1) → casos-de-uso/registrar-conteo-fisico.ts; resolverConteoPendiente (M13e2) → casos-de-uso/resolver-conteo-pendiente.ts; cancelarConteoFisico (M13e2) → casos-de-uso/cancelar-conteo-fisico.ts (persistencia compartida: cargar-conteo-fisico.ts, escribir-conteo-fisico.ts, y de M13b/M13d cargar-producto-con-unidad-de-stock.ts/escribir-movimiento-de-stock.ts). obtenerHistorialConteosFisicos (solo lectura) se mudó tal cual a lecturas-conteo-fisico.ts. El archivo no tiene ninguna otra función.",
+      "M13e1 + M13e2, cierra la cadena M13a-e: registrarConteosFisicos (M13e1) → casos-de-uso/registrar-conteo-fisico.ts; resolverConteoPendiente (M13e2) → casos-de-uso/resolver-conteo-pendiente.ts; cancelarConteoFisico (M13e2) → casos-de-uso/cancelar-conteo-fisico.ts (persistencia compartida: cargar-conteo-fisico.ts, escribir-conteo-fisico.ts, y de M13b/M13d cargar-producto-con-unidad-de-stock.ts/escribir-movimiento-de-stock.ts). obtenerHistorialConteosFisicos (solo lectura) se mudó tal cual a lecturas-conteo-fisico.ts. El archivo no tiene ninguna otra función.",
   },
   {
     ruta: "src/server/actions/reportes/consignacion.ts",

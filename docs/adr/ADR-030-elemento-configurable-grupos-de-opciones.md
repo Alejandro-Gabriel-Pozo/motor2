@@ -83,7 +83,7 @@ Cuatro decisiones de negocio que el diseño no resolvía. **GO-1 asumió la reco
 1. **Una versión nueva de una opción rige desde que se carga** (`creadoEn`, en UTC, que se muestra en la zona de la empresa): la vigente es la de número mayor, sin columna de fecha, como `RecetaVersion`. *Alternativa:* una fecha de vigencia (`rigeDesde`, «desde el lunes» en hora argentina) y la vigente pasa a ser la mayor con `rigeDesde <= now()`.
 2. **`ProductoAdmiteOpcion` y `PrecioLocalDeOpcion` se actualizan en el lugar, con auditoría del antes y el después.** Son precios de lista (configuración), como hoy `Producto.precioVenta` y `PrecioLocalProducto`; lo cobrado queda congelado en la foto, que no tiene UPDATE, y la diferencia de la versión solo se agrega. *Alternativa:* versionar también esas dos tablas (dos tablas más que solo se agregan, con su vigente).
 3. **El adicional es solo monto fijo** (sin porcentaje), como ya aplica `componerPrecioDeLinea`; la foto lo repite con el CHECK `OpcionElegidaEnLinea_adicional_chk`. *Alternativa:* permitir porcentaje en el adicional: se saca ese CHECK y cambia el núcleo.
-4. **No se da de alta la clave `reporte_opciones_vendidas`**: entra con el reporte, porque una clave sin consumidor queda reservada sin plazo. *Alternativa:* sumarla a GO-1a como cuarta clave (sucursal, piso administrador, semilla `admin`).
+4. **No se da de alta la clave `reporte_opciones_vendidas`**: entra con el reporte, porque una clave sin consumidor queda reservada sin plazo. *Alternativa:* sumarla a GO-1a como cuarta clave (sucursal, piso administrador, semilla `admin`). **Sin efecto desde el 2026-10-29:** el reporte entró como la sección «Ventas por opción» de Período (`src/server/consultas/reportes/ventas-por-opcion.ts`), con la clave `reporte_periodo` que ya existe; no se crea ninguna clave nueva ni migración de datos (decisión del dueño).
 
 ## GO-2a: administración del catálogo de opciones (2026-10-13, sin pantallas)
 
@@ -267,3 +267,7 @@ sin salir, con `crearGrupoEnElProducto` (`src/server/actions/catalogo/opciones-d
 | Clave foránea de tres columnas para «misma cuenta» y «tipo del grupo» | No expresa una comparación contra otra tabla ni el estado de otra fila; se usa un disparador |
 | Foto de IVA solo en el adicional | Inconsistente con la línea padre |
 | Esperar a `PrecioAplicable`, D27 y D31 | Postergados por el dueño; la composición queda en una función pura que podrá absorber después |
+
+## Enmienda 2026-10-29: el nombre de la línea
+
+Una línea vendida con opciones se lee en un renglón («1 × Café solo chico») en el ticket (cierre, reimpresión y corrección), la comanda, la mesa y `/reportes/tickets`, sin tocar importes, cantidades, numeración ni claves de agrupación. Es una lectura pura de la foto `OpcionElegidaEnLinea`, en el orden congelado de la venta (`nombreDeLineaConfigurada`): en un producto BASE el plato sale de la opción de la medida; en uno DIRECTO arranca con el nombre del producto; lo incluido va en un renglón de detalle («nalga · puré de papa»); los adicionales siguen en renglón propio con «+» y su precio; una cantidad mayor a 1 se muestra «×N». Diseño y decisiones del dueño: el diseño «nombre de la línea configurada» del 2026-10-29 (`docs/diseno-nombre-de-linea-configurada-2026-10-29.md`).

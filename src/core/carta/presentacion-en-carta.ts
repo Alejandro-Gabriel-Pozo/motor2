@@ -2,25 +2,24 @@ import { redondearMoneda } from "@/core/moneda";
 import { leerOpcionEnCarta, opcionesDelEje, primeraEnMinuscula, type EjesDeLaCarta, type RolDelGrupoEnCarta, type TipoDeGrupoDeOpciones } from "@/core/opciones/public";
 
 /**
- * Fase 5 de la ola «precio y carta» («carta pareja»; ADR-035; DEC-06, DEC-07, DEC-10, DEC-11, DEC-34): cómo se LEE en la carta un producto con opciones. Lógica PURA, en el servidor: recibe la tabla de
- * precios que ya calculó la regla de la venta (`tablaDePreciosParaLaCarta` de `core/pos`, la misma cuenta que se cobra) y la traduce a la FORMA que dibuja la carta. No calcula ningún precio: cada
- * número sale de una celda de la tabla. La forma se declara acá, sin importar `core/pos` (este último ya usa la carta para el descuento de producto: sería un ciclo), igual que
- * `ResumenDePreciosParaCarta` en `opciones-en-carta.ts`.
+ * Fase 5 de la ola «precio y carta» («carta pareja»; ADR-035; DEC-07, DEC-10, DEC-11, DEC-34) y modelo unificado de la carta (decisión del dueño, 2026-10-29): cómo se LEE en la carta un producto con
+ * opciones. Lógica PURA, en el servidor: recibe la tabla de precios que ya calculó la regla de la venta (`tablaDePreciosParaLaCarta` de `core/pos`, la misma cuenta que se cobra) y la traduce a la
+ * FORMA que dibuja la carta. No calcula ningún precio: cada número sale de una celda de la tabla. La forma se declara acá, sin importar `core/pos` (este último ya usa la carta para el descuento de
+ * producto: sería un ciclo), igual que `ResumenDePreciosParaCarta` en `opciones-en-carta.ts`.
  *
- * LAS FORMAS (decididas acá, desde datos declarados: el modo del producto, el papel de cada grupo, sus ejes y el interruptor «Mostrar el nombre arriba»; nunca comparando nombres):
+ * UN SOLO MODELO (decidido desde datos declarados: el modo del producto, el papel de cada grupo, sus ejes y el interruptor «Mostrar el nombre arriba»; nunca comparando nombres):
  *  - `simple`: sin ejes (el bife con guarnición y extras): el nombre y su precio, con las aclaraciones debajo;
- *  - `columnas`: un producto DIRECTO con un tamaño que define el precio (el café): una fila dentro de una TANDA de productos consecutivos de la sección que comparten el MISMO grupo (`grupoId`), con
- *    columnas compartidas (Chico | Mediano | Grande) y «–» (`null`) donde el producto no ofrece ese tamaño. Más de 3 columnas en la tanda: cada producto cae a `lista` (DEC-06, decisión del dueño);
- *  - `tabla`: dos ejes (la milanesa: Simple | Napolitana × De carne / De pollo / De trucha): el nombre arriba, una fila por opción del segundo eje (nunca se juntan aunque cuesten igual: DEC-10). Una
- *    base con dos ejes sale SIEMPRE así (DEC-11). Más de 3 columnas: `lista`, una fila por combinación;
- *  - `lista`: un eje en filas con su precio final. Una BASE de un solo eje (las pizzas) sale OCULTA por defecto (`encabezado: false`: cada opción es una fila con su nombre completo, «Pizza
- *    muzzarella $18.000») y con el nombre arriba si su interruptor está prendido (DEC-11). Un producto directo en lista lleva siempre el nombre arriba.
- * JERARQUÍA de la `lista` (campo aditivo `protagonista`): sin el campo protagonizan las OPCIONES (una base, las filas que definen el plato, las combinaciones: lo que se lee primero es cada fila); con
- * `protagonista: "nombre"` protagoniza el NOMBRE del producto, porque las filas son sus tamaños (cómo lo querés, no qué plato es). Solo lo pone la caída de una tanda de más de 3 tamaños.
+ *  - `tabla`: con 1 o 2 ejes. El nombre del producto es el TÍTULO (`titulo`), las columnas son los encabezados que se repiten en cada producto (nunca se juntan con los de un vecino), y cada fila es una
+ *    opción (`rotulo`; `null` = la única fila de un producto sin variantes) con el precio final de cada celda. Las filas NUNCA se juntan aunque cuesten igual (DEC-10). Cuántas columnas y filas sale de los ejes:
+ *      · dos ejes (la milanesa: Simple | Napolitana × De carne / De pollo / De trucha): el primero en columnas y el otro en filas; siempre con título (DEC-11);
+ *      · un eje de tamaños de un producto DIRECTO (el café): columnas con una sola fila; un eje en filas (De carne / De pollo; las pizzas de un directo), una columna de precios sin encabezado;
+ *      · MÁS de 3 columnas: se TRANSPONE (el eje largo pasa a las filas y el otro, si hay, a las columnas); si los dos ejes tienen más de 3, una fila por combinación («Simple, de carne»);
+ *      · una BASE de un solo eje (las pizzas) sale OCULTA por defecto (`titulo: false`: cada opción es una fila con su nombre completo, «Pizza muzzarella $18.000») y con el nombre arriba si su
+ *        interruptor está prendido (DEC-11).
  * Las ACLARACIONES van debajo del plato, en el orden del producto (DEC-07): lo que se elige sin costo («Guarnición: ensalada, papas fritas o puré»: el nombre del grupo como rótulo y la primera letra de
  * cada opción en minúscula) y, si algo suma o resta, la línea con cada recargo («Extras: papas +$2.000»; el recargo de un adicional NUNCA lleva el descuento de producto). Una sola opción sin costo no
  * tiene línea.
- * Lo agotado hoy ya no llega (lo saca la regla de la venta): su fila no sale, su celda queda «–» y su columna desaparece si está agotada en toda la tanda.
+ * Lo agotado hoy ya no llega (lo saca la regla de la venta): su fila no sale, su celda queda «–» y su columna desaparece si está agotada en todo el producto.
  * Lo que la carta no puede leer con el precio exacto (un tercer grupo que cambia el precio; un recargo dentro del precio con descuento de producto) NO toma forma nueva: sale como antes y queda en el
  * diagnóstico interno.
  */
@@ -51,43 +50,24 @@ export type AclaracionCartaV1 = { tipo: "eleccion"; rotulo: string; opciones: st
 /** La forma con que la carta lee un producto con opciones (ver arriba). `null` en una celda = no se ofrece (se dibuja «–», con «no se ofrece» para el lector de pantalla). */
 export type PresentacionCartaV1 =
   | { forma: "simple"; aclaraciones: AclaracionCartaV1[] }
-  | { forma: "columnas"; celdas: (number | null)[]; aclaraciones: AclaracionCartaV1[] }
-  | { forma: "tabla"; columnas: string[]; filas: { rotulo: string; celdas: (number | null)[] }[]; aclaraciones: AclaracionCartaV1[] }
   | {
-      forma: "lista";
-      encabezado: boolean;
-      /**
-       * Quién protagoniza la lista. Sin el campo protagonizan las opciones (base, filas que definen el plato, combinaciones); `"nombre"` cuando las filas son los tamaños de un producto directo
-       * (cómo lo querés, no qué plato es). Solo lo pone la caída de una tanda de más de 3 tamaños.
-       */
-      protagonista?: "nombre";
-      filas: { rotulo: string; precio: number }[];
+      forma: "tabla";
+      /** El nombre del producto va de título. `false` solo en una base de un eje oculta (cada fila es un plato entero). */
+      titulo: boolean;
+      /** Los encabezados de las columnas de precio; vacío = una sola columna de precios sin encabezado. */
+      columnas: string[];
+      /** Una fila por opción, con un precio por columna (o uno solo si no hay encabezados). `rotulo: null` = la única fila de un producto sin variantes. */
+      filas: { rotulo: string | null; celdas: (number | null)[] }[];
       aclaraciones: AclaracionCartaV1[];
     };
 
-/** Una tanda de una sección: los ítems `primero`…`ultimo` (índices en `items`, inclusive) comparten los rótulos de sus columnas. */
-export interface TandaCartaV1 {
-  primero: number;
-  ultimo: number;
-  rotulos: string[];
-}
-
-/** Una columna de un producto que todavía no tiene tanda (la arma la sección, con sus vecinos). */
-interface ColumnaPendiente {
-  opcionId: string;
-  orden: number;
-  rotulo: string;
-  precio: number;
-}
-
-/** Lo que resuelve un producto solo: su forma final, o sus columnas a la espera de la tanda, o por qué no toma forma nueva. */
+/** Lo que resuelve un producto: su forma, o por qué no toma forma nueva. */
 export type PresentacionDelProducto =
-  /** `columnasDeMas`: una tabla de dos ejes con más columnas de las que entran cayó a una fila por combinación (cuántas columnas tenía). */
-  | { tipo: "lista"; presentacion: PresentacionCartaV1; columnasDeMas?: number }
-  | { tipo: "columnas"; grupoId: string; columnas: ColumnaPendiente[]; aclaraciones: AclaracionCartaV1[] }
+  /** `columnasDeMas`: tenía más columnas de las que entran y se transpuso o cayó a una fila por combinación (cuántas columnas tenía). */
+  | { tipo: "forma"; presentacion: PresentacionCartaV1; columnasDeMas?: number }
   | { tipo: "sin-forma"; motivo: string };
 
-/** Hasta cuántas columnas entra una tanda o una tabla (decisión del dueño); con más, cae a lista. */
+/** Hasta cuántas columnas entra una tabla (decisión del dueño); con más, se transpone. */
 const MAXIMO_DE_COLUMNAS_EN_CARTA = 3;
 
 /** Más filas que esto: se dibujan todas (nunca «desde» ni colapso) y el producto queda en el diagnóstico interno (la administración sugiere dividirlo). */
@@ -119,11 +99,10 @@ function aclaracionesDe(tabla: TablaDePreciosParaCarta, conDescuento: boolean): 
 }
 
 /** Las opciones de un eje con su rótulo («De carne»: el prefijo de la carta y la primera letra en minúscula; sin prefijo, tal cual). */
-const ejeConRotulos = (g: Grupo) => opcionesDelEje(g).map((o) => ({ opcionId: o.opcionId, orden: o.orden, rotulo: leerOpcionEnCarta(g.prefijoEnCarta, o) }));
+const ejeConRotulos = (g: Grupo) => opcionesDelEje(g).map((o) => ({ rotulo: leerOpcionEnCarta(g.prefijoEnCarta, o) }));
 
 /**
- * La forma de UN producto con opciones (sin mirar a sus vecinos: las columnas de un producto directo quedan pendientes de su tanda, `resolverTandas`). `conDescuento`: si rige un descuento de producto
- * en la sucursal (las celdas ya lo traen; decide si un recargo dentro del precio se puede leer exacto).
+ * La forma de UN producto con opciones. `conDescuento`: si rige un descuento de producto en la sucursal (las celdas ya lo traen; decide si un recargo dentro del precio se puede leer exacto).
  */
 export function presentacionDelProducto(entrada: { tabla: TablaDePreciosParaCarta; esBase: boolean; mostrarNombreArriba: boolean; conDescuento: boolean }): PresentacionDelProducto {
   const { tabla, esBase } = entrada;
@@ -136,8 +115,13 @@ export function presentacionDelProducto(entrada: { tabla: TablaDePreciosParaCart
   const grupoDe = (grupoId: string | null) => tabla.grupos.find((g) => g.grupoId === grupoId);
   const columnas = grupoDe(tabla.ejes.columnas);
   const filas = grupoDe(tabla.ejes.filas);
+  const forma = (t: { titulo: boolean; columnas: string[]; filas: { rotulo: string | null; celdas: (number | null)[] }[] }, columnasDeMas?: number): PresentacionDelProducto => ({
+    tipo: "forma",
+    presentacion: { forma: "tabla", ...t, aclaraciones },
+    ...(columnasDeMas !== undefined ? { columnasDeMas } : {}),
+  });
 
-  if (!columnas && !filas) return { tipo: "lista", presentacion: { forma: "simple", aclaraciones } };
+  if (!columnas && !filas) return { tipo: "forma", presentacion: { forma: "simple", aclaraciones } };
 
   if (columnas && filas) {
     const rotulosDeColumnas = ejeConRotulos(columnas);
@@ -147,10 +131,11 @@ export function presentacionDelProducto(entrada: { tabla: TablaDePreciosParaCart
     const fs = ejeConRotulos(filas)
       .map((f, i) => ({ rotulo: f.rotulo, celdas: (tabla.celdas[i] ?? []).filter((_, c) => conAlguna[c]).map((x) => x ?? null) }))
       .filter((f) => f.celdas.some((x) => x !== null));
-    if (cols.length <= MAXIMO_DE_COLUMNAS_EN_CARTA) return { tipo: "lista", presentacion: { forma: "tabla", columnas: cols.map((c) => c.rotulo), filas: fs, aclaraciones } };
-    // Más de 3 columnas: una fila por combinación («Simple, de carne»), con el nombre arriba.
-    const combinadas = fs.flatMap((f) => f.celdas.flatMap((precio, c) => (precio === null ? [] : [{ rotulo: `${cols[c]!.rotulo}, ${primeraEnMinuscula(f.rotulo)}`, precio }])));
-    return { tipo: "lista", presentacion: { forma: "lista", encabezado: true, filas: combinadas, aclaraciones }, columnasDeMas: cols.length };
+    if (cols.length <= MAXIMO_DE_COLUMNAS_EN_CARTA) return forma({ titulo: true, columnas: cols.map((c) => c.rotulo), filas: fs });
+    // Más de 3 columnas: el eje largo pasa a las filas (las variantes, a las columnas) y, si las variantes también son más de 3, una fila por combinación («Simple, de carne»).
+    if (fs.length <= MAXIMO_DE_COLUMNAS_EN_CARTA) return forma({ titulo: true, columnas: fs.map((f) => f.rotulo), filas: cols.map((c, i) => ({ rotulo: c.rotulo, celdas: fs.map((f) => f.celdas[i] ?? null) })) }, cols.length);
+    const combinadas = fs.flatMap((f) => f.celdas.flatMap((precio, c) => (precio === null ? [] : [{ rotulo: `${cols[c]!.rotulo}, ${primeraEnMinuscula(f.rotulo)}`, celdas: [precio] }])));
+    return forma({ titulo: true, columnas: [], filas: combinadas }, cols.length);
   }
 
   // Un solo eje.
@@ -158,66 +143,20 @@ export function presentacionDelProducto(entrada: { tabla: TablaDePreciosParaCart
   const precioDe = (i: number) => (columnas ? tabla.celdas[0]?.[i] : tabla.celdas[i]?.[0]) ?? null;
   const opciones = ejeConRotulos(eje).flatMap((o, i) => {
     const precio = precioDe(i);
-    return precio === null ? [] : [{ ...o, precio }];
+    return precio === null ? [] : [{ rotulo: o.rotulo, precio }];
   });
-  if (columnas && !esBase) return { tipo: "columnas", grupoId: columnas.grupoId, columnas: opciones, aclaraciones };
-  // Una base de un eje: oculta salvo «Mostrar el nombre arriba» (DEC-11). Un directo con filas solas («De carne», «De pollo»): siempre con el nombre arriba.
-  const encabezado = esBase ? entrada.mostrarNombreArriba : true;
-  return { tipo: "lista", presentacion: { forma: "lista", encabezado, filas: opciones.map((o) => ({ rotulo: o.rotulo, precio: o.precio })), aclaraciones } };
-}
-
-/** Un ítem de una sección para armar sus tandas: sus columnas pendientes (o `null` si no tiene). */
-export interface PendienteDeTanda {
-  grupoId: string;
-  columnas: readonly ColumnaPendiente[];
-  aclaraciones: AclaracionCartaV1[];
+  // Los tamaños de un directo (el café): sus encabezados y una sola fila de precios, con el nombre arriba.
+  const comoColumnas = columnas !== undefined && !esBase;
+  if (comoColumnas && opciones.length <= MAXIMO_DE_COLUMNAS_EN_CARTA) return forma({ titulo: true, columnas: opciones.map((o) => o.rotulo), filas: [{ rotulo: null, celdas: opciones.map((o) => o.precio) }] });
+  // Lo demás (un eje en filas, más de 3 tamaños, una base): una columna de precios, una fila por opción. Una base de un eje: oculta salvo «Mostrar el nombre arriba» (DEC-11); un directo, con el nombre arriba.
+  return forma({ titulo: esBase ? entrada.mostrarNombreArriba : true, columnas: [], filas: opciones.map((o) => ({ rotulo: o.rotulo, celdas: [o.precio] })) }, comoColumnas ? opciones.length : undefined);
 }
 
 /**
- * Las TANDAS de una sección ya ordenada: los ítems CONSECUTIVOS con columnas del mismo grupo (`grupoId`, un dato declarado: dos grupos distintos con las mismas opciones son dos tandas) comparten
- * columnas: la unión de sus opciones disponibles, en el orden del grupo; donde un producto no ofrece una, `null` («–»). Una columna agotada en toda la tanda no sale (no está en ninguna). Con más de
- * `MAXIMO_DE_COLUMNAS_EN_CARTA` columnas, cada ítem de la tanda cae a `lista` (con el nombre arriba) y la tanda no existe. Devuelve la forma de cada ítem pendiente (por índice) y las tandas.
+ * La forma de UN producto mirado SOLO, sin sus vecinos de sección (la vista previa «Va a mostrar» de «Agregar a la carta» y la de la ficha del producto): la misma que da la carta. `null` si la carta
+ * no lo puede leer con el precio exacto (sale como antes).
  */
-export function resolverTandas(pendientes: readonly (PendienteDeTanda | null)[]): { porItem: Map<number, PresentacionCartaV1>; tandas: TandaCartaV1[]; caidasALista: { indice: number; columnas: number }[] } {
-  const porItem = new Map<number, PresentacionCartaV1>();
-  const tandas: TandaCartaV1[] = [];
-  const caidasALista: { indice: number; columnas: number }[] = [];
-  let i = 0;
-  while (i < pendientes.length) {
-    const primero = pendientes[i];
-    if (!primero) {
-      i++;
-      continue;
-    }
-    let ultimo = i;
-    while (pendientes[ultimo + 1]?.grupoId === primero.grupoId) ultimo++;
-    const grupo = pendientes.slice(i, ultimo + 1) as PendienteDeTanda[];
-    const union = new Map<string, ColumnaPendiente>();
-    for (const p of grupo) for (const c of p.columnas) if (!union.has(c.opcionId)) union.set(c.opcionId, c);
-    const ordenadas = [...union.values()].sort((a, b) => a.orden - b.orden || (a.opcionId < b.opcionId ? -1 : a.opcionId > b.opcionId ? 1 : 0));
-    grupo.forEach((p, k) => {
-      if (ordenadas.length > MAXIMO_DE_COLUMNAS_EN_CARTA) {
-        porItem.set(i + k, { forma: "lista", encabezado: true, protagonista: "nombre", filas: p.columnas.map((c) => ({ rotulo: c.rotulo, precio: c.precio })), aclaraciones: p.aclaraciones });
-        caidasALista.push({ indice: i + k, columnas: ordenadas.length });
-        return;
-      }
-      const precio = new Map(p.columnas.map((c) => [c.opcionId, c.precio]));
-      porItem.set(i + k, { forma: "columnas", celdas: ordenadas.map((c) => precio.get(c.opcionId) ?? null), aclaraciones: p.aclaraciones });
-    });
-    if (ordenadas.length <= MAXIMO_DE_COLUMNAS_EN_CARTA) tandas.push({ primero: i, ultimo, rotulos: ordenadas.map((c) => c.rotulo) });
-    i = ultimo + 1;
-  }
-  return { porItem, tandas, caidasALista };
-}
-
-/**
- * La forma de UN producto mirado SOLO, sin sus vecinos de sección (la vista previa «Va a mostrar» de «Agregar a la carta», paso 9): lo mismo que la carta, y si sus columnas quedan pendientes de
- * una tanda, la tanda de él solo (con más de 3 columnas, cae a lista como en la carta). `null` si la carta no lo puede leer con el precio exacto (sale como antes). `rotulos`: los de sus columnas.
- */
-export function presentacionDeUnProductoSolo(entrada: Parameters<typeof presentacionDelProducto>[0]): { presentacion: PresentacionCartaV1; rotulos: string[] } | null {
+export function presentacionDeUnProductoSolo(entrada: Parameters<typeof presentacionDelProducto>[0]): PresentacionCartaV1 | null {
   const r = presentacionDelProducto(entrada);
-  if (r.tipo === "sin-forma") return null;
-  if (r.tipo === "lista") return { presentacion: r.presentacion, rotulos: [] };
-  const { porItem, tandas } = resolverTandas([{ grupoId: r.grupoId, columnas: r.columnas, aclaraciones: r.aclaraciones }]);
-  return { presentacion: porItem.get(0)!, rotulos: tandas[0]?.rotulos ?? [] };
+  return r.tipo === "forma" ? r.presentacion : null;
 }

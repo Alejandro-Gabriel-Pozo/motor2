@@ -10,7 +10,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
  * precarga de la grilla de Conteo Físico (mismo criterio que "Fetch Items
  * from Warehouse" de ERPNext, `stock_reconciliation.py::get_items`: solo
  * lo que ya tiene historial de stock ahí, no el catálogo entero). Excluye
- * PV comunes (mismo filtro que registrarConteoFisico, tieneStockReal) y
+ * PV comunes (mismo filtro que el caso de uso de registrar el conteo, tieneStockReal) y
  * saldo 0 — nada que verificar ahí; si hay algo real que el sistema no
  * sabe (nunca contado, sin factura), se agrega a mano en la grilla, que sí
  * admite contar sobre saldo 0.

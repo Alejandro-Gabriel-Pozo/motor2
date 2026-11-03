@@ -35,6 +35,8 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
   const { editar: puedeResolverPendiente } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "conteo_resolver_pendiente", ctx.db);
   // Igual: aplicar la diferencia al stock (AJUSTAR en la grilla, «Ajustar ahora» en un pendiente) exige además `proceso_ajuste` (S-09, D3).
   const { editar: puedeAjustar } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "proceso_ajuste", ctx.db);
+  // Igual: revertir un conteo ya aplicado (el botón «Cancelar» del historial) exige `cancelar_conteo` (piso administrador).
+  const { editar: puedeCancelar } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "cancelar_conteo", ctx.db);
 
   const sp = unicosDeUrl(await searchParams);
   const [secciones, { items: historial }] = await Promise.all([
@@ -114,7 +116,7 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
                   <td className={`px-2 ${ESTADO_COLOR[c.estado]}`}>{c.estado}</td>
                   <td className="px-2 py-2">
                     {c.estado === "PENDIENTE" && puedeResolverPendiente && <AccionesConteoPendiente conteoId={c.id} puedeAjustar={puedeAjustar} />}
-                    {c.estado === "RESUELTO" && <BotonCancelarConteo conteoId={c.id} />}
+                    {c.estado === "RESUELTO" && puedeCancelar && <BotonCancelarConteo conteoId={c.id} />}
                   </td>
                 </tr>
               ))}
