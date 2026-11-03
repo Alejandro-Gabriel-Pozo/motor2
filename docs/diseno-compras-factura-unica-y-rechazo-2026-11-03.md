@@ -10,13 +10,13 @@ Fuentes: decisiones del dueño del 2026-11-03 (esta conversación); auditoría d
 
 **Lo más barato primero.** Casi todo se hace **sin migración** (etapa 1). Lo que necesita migración aditiva y autorización expresa son dos cosas: guardar las letras del proveedor (etapa 2) y el estado RECHAZADA con su motivo (etapa 3). Ninguna se aplica a una base real sin respaldo y ensayo.
 
-**Preguntas que siguen abiertas** (§5.4): anchos de punto de venta y número; si la letra y el punto de venta también se aprenden de la primera compra; qué permiso permite activar un producto al aceptar; qué pasa si nadie responde a una propuesta.
+**Confirmadas el 2026-11-03 (segunda ronda):** si el proveedor no tiene letra o punto de venta cargados, la primera factura ofrece guardarlos, con confirmación; activar un producto al aceptar alcanza con el permiso `producto_disponibilidad` (si quien acepta no lo tiene, solo puede rechazar); la sucursal que compró puede retirar una propuesta sin respuesta, con motivo (el plazo, después). **Siguen abiertas** (§5.4): IVA neto por línea, importe de línea como dato de la factura, descuento en % o importe, cómo se marca «se cobra por kilo», qué otros filtros pide el reporte, y la forma de las notas de crédito del proveedor.
 
 ## 1. Propósito y alcance
 
 - **Propósito (CONFIRMADA).** Que cada factura de un proveedor entre una sola vez a la empresa, con su número bien escrito, y que cargarla sea corto y sin ambigüedades. Necesidad escrita: hallazgo H2 (duplicados entre la compra simple y la factura repartida) y pedido del dueño del 2026-11-03.
 - **Dentro (CONFIRMADA).** Facturas de proveedor de mercadería con stock, cargadas desde la pantalla de Compra, de una o varias líneas, para una sucursal o repartidas entre varias.
-- **Fuera por ahora (CONFIRMADA: «solo carga de facturas sin remito por ahora»).** Remitos y la recepción separada (`compra_recibir`); compras sin comprobante; pedidos, cotizaciones y órdenes de compra; gastos sin stock (E4); bienes de uso; nota de crédito; cuenta corriente y pagos (E9); IVA desglosado (se mantiene el total con IVA incluido).
+- **Fuera por ahora (CONFIRMADA: «solo carga de facturas sin remito por ahora»).** Remitos y la recepción separada (`compra_recibir`); compras sin comprobante; pedidos, cotizaciones y órdenes de compra; gastos sin stock (E4, ver §13); bienes de uso; nota de crédito; cuenta corriente y pagos (E9); IVA desglosado (se mantiene el total con IVA incluido).
 - **Supuesto declarado (PROPUESTA).** Si no hay remito ni compra sin comprobante, tampoco se cargan compras sin proveedor: el proveedor es obligatorio. Hoy el sistema admite compra sin proveedor y sin número.
 
 ## 2. Actores y contexto
@@ -59,7 +59,7 @@ Contexto: Argentina (UTC-3); todo en pesos; cada empresa solo ve lo suyo y cada 
 |---|---|---|
 | I1 | El número de factura es obligatorio siempre | CONFIRMADA |
 | I2 | El mismo número del mismo proveedor se rechaza en toda la empresa, también desde la compra simple, la corrección y la aceptación | CONFIRMADA (los caminos: PROPUESTA) |
-| I3 | Número solo con dígitos; ceros a la izquierda se completan | CONFIRMADA |
+| I3 | Número solo con dígitos; ceros a la izquierda se completan. Punto de venta de 5 dígitos y número de 8 (así viene en la planilla del dueño: `00023-00237728`) | CONFIRMADA lo de los dígitos; PROPUESTA los anchos 5 y 8 (respaldo: la planilla real; las fuentes secundarias consultadas sobre ARCA discrepan entre 4 y 5 dígitos y la documentación oficial NO VERIFICADA) |
 | I4 | Letra y punto de venta salen de lo configurado en el proveedor; con uno solo se eligen solos | CONFIRMADA |
 | I5 | Solo facturas con proveedor, sin remito | CONFIRMADA (proveedor obligatorio: PROPUESTA) |
 | I6 | Precio 0 se puede guardar y avisa; no actualiza el costo | CONFIRMADA |
@@ -95,13 +95,23 @@ Contexto: Argentina (UTC-3); todo en pesos; cada empresa solo ve lo suyo y cada 
 | **Datos faltantes** | Falta letra, punto de venta, número o proveedor: no guarda | Falta depósito o fecha de stock: no acepta | Sin motivo: no rechaza |
 | **Cambio de permisos** | Se revisa en el servidor al guardar | Si perdió `proceso_compra` o el permiso para activar, no acepta | Si perdió `proceso_compra` en la destino, no rechaza |
 
-### 5.4 Preguntas abiertas (una por tema)
+### 5.4 Preguntas
 
-1. **Anchos.** ¿Punto de venta de 4 dígitos y número de 8 (formato de las facturas electrónicas)? *Recomendación: sí.*
-2. **Aprender de la primera compra.** Si el proveedor no tiene letra o punto de venta cargados, ¿se ofrece guardarlos al confirmar la primera factura, o solo se cargan desde la ficha? *Recomendación: se ofrece guardarlos, con confirmación.*
-3. **Activar al aceptar.** ¿Alcanza con el permiso existente `producto_disponibilidad` (operario) o hace falta otro? *Recomendación: alcanza, y si quien acepta no lo tiene, solo puede rechazar.*
-4. **Si nadie responde.** Una propuesta pendiente queda sin plazo (H3). ¿Hace falta un plazo, o que la sucursal que compró pueda retirarla? *Recomendación: que la sucursal que compró pueda retirarla con motivo; el plazo después.*
-5. **Lote y vencimiento.** Hoy es un campo opcional por línea («Lote (Fecha VTO.)»). ¿Es obligatorio para productos que vencen? *No se decide hasta que el dueño lo pida.*
+**Resueltas (CONFIRMADAS el 2026-11-03):**
+
+1. Anchos: se toman los de la planilla del dueño, punto de venta de 5 dígitos y número de 8 (I3).
+2. Si el proveedor no tiene letra o punto de venta cargados, la primera factura los pide y **ofrece guardarlos en la ficha, con confirmación**.
+3. Activar un producto al aceptar: alcanza con `producto_disponibilidad`. Quien acepta sin ese permiso solo puede rechazar.
+4. Propuesta sin respuesta: la sucursal que compró puede **retirarla con motivo**; el plazo se decide después.
+
+**Abiertas (una por tema, con recomendación):**
+
+5. **IVA por línea.** La planilla del dueño trae importes que parecen sin IVA (23,82 kg × $31.276,68 = $745.010,52, importe de la factura $745.010,49), y la decisión #8 de 2026-10-06 pide neto e IVA por renglón en la carga. ¿La carga pide importe neto + alícuota por línea, o el total con IVA como hoy? *Recomendación: neto + IVA por línea, con la perilla `llevaIvaDeCompras`.*
+6. **Importe de la línea.** El precio unitario de la factura viene redondeado ($0,03 de diferencia en el ejemplo). *Recomendación: el importe de cada línea es el dato que se carga (se sugiere precio × cantidad, manda la factura) y el total es la suma de los importes, siempre al centavo.*
+7. **Descuento por línea:** ¿en % o en importe? *Recomendación: %.* El descuento por pronto pago es otro concepto («descuento obtenido», decisión #10), no baja el costo.
+8. **«Se cobra por kilo».** En la planilla el Bife Angosto se cobra por kilo y el resto por unidad (las otras líneas: precio × unidades aunque haya kilos). ¿Cómo se marca? *Recomendación: un atributo del producto (hoy existe «peso real» por línea).*
+9. **Filtros del reporte.** Además de proveedor, punto de venta, monto y producto: ¿sucursal, medio de pago, letra, rubro, concepto de gasto?
+10. **Lote y vencimiento.** Hoy es un campo opcional por línea («Lote (Fecha VTO.)»). ¿Obligatorio para los que vencen? *No se decide hasta que el dueño lo pida.*
 
 ## 6. Persistencia (esbozo; NO se migra hasta confirmar 1 a 5)
 
@@ -143,3 +153,32 @@ Por pasos: 1 proveedor y comprobante; 2 qué se compró; 3 a qué sucursal va; 4
 ## 11. Qué NO está resuelto
 
 Pedido, cotización y orden de compra (sin necesidad escrita); remito y recepción separada; gastos sin stock; IVA desglosado; adjunto del comprobante (falta decidir dónde se guardan los archivos); cuenta corriente; nota de crédito; moneda distinta del peso; centros de costos (no aplican a mercadería, ADR-031).
+
+## 12. Corrección con ejemplares (PROPUESTA; pedido del dueño del 2026-11-03)
+
+**Necesidad.** Corregir una factura mal cargada sin borrar lo cargado mal y sin que el sistema quede inconsistente. Hoy solo se corrige la cabecera (proveedor, número, detalle, `src/core/compras/correccion.ts`); un precio o una cantidad mal cargada se arregla anulando y cargando de nuevo (K1c).
+
+**Qué dice ARCA (fuentes secundarias; documentación oficial NO VERIFICADA).** Una factura electrónica con CAE no se anula ni se modifica: el emisor la corrige con una **nota de crédito o de débito asociada** al comprobante original. Eso es un documento del proveedor (etapa de notas de crédito, sin construir) y es distinto de un **error de carga nuestro**.
+
+**Propuesta para el error de carga nuestro.** Mismo patrón que los tickets (`EjemplarTicket`: ejemplar 1 = A original; la corrección es una fila **nueva** con el mismo número, el ejemplar siguiente, `corrigeAId` → A y motivo; nunca se edita ni se borra):
+
+- Corregir = **una sola operación atómica**: se revierte lo que movió el ejemplar vigente (stock y costo, con el Kardex que solo agrega) y se carga el ejemplar siguiente con el **mismo número**, vinculado al anterior, con motivo obligatorio. El anterior queda visible como «reemplazado».
+- El número no se cambia: es el mismo comprobante, así que no choca con la regla de repetidos (la unicidad rige entre ejemplares **vigentes**).
+- Solo cuenta el ejemplar vigente para stock, costo y reportes.
+- Permiso: administrador (`corregir_compra`). Con confirmación.
+- Facturas repartidas: se corrige el ejemplar entero; las partes de otras sucursales ya aceptadas se tratan como en la anulación entera (bloqueo si algo se consumió: decisión PENDIENTE de detalle).
+- Reutiliza el patrón de `ReclasificacionRenglon` (versiones que solo agregan) para las líneas sin stock.
+
+**Persistencia (esbozo).** Probablemente columnas aditivas en `FacturaProveedor` (`ejemplar`, `corrigeAId`, `motivo`) y el índice único parcial sobre los vigentes. Migración aditiva: **requiere autorización expresa**; no se diseña a fondo hasta confirmar §5 y esta sección.
+
+## 13. Servicios y tipo de proveedor (etapa E4; PROPUESTA)
+
+- **Ya existe en el modelo (HOY):** `Proveedor.ofreceProductos` y `ofreceServicios` (al menos uno, por CHECK), `ConceptoDeGasto`, `ImputacionDeGasto` (una por sucursal, solo agrega), 7 claves `gasto_*` en la base fuera de `ACCIONES`, módulo `gastos` en desarrollo. **Ninguna pantalla los lee todavía.**
+- **Propuesta (la forma más barata):** una sola pantalla de carga. El tipo del proveedor decide qué líneas admite: solo productos, solo servicios, o ambos (a elección por línea). Una línea de servicio lleva **concepto** (gas, electricidad, flete…), descripción e importe, no pasa por stock y se imputa a una o varias sucursales.
+- **Ficha del proveedor:** casillas «productos» y «servicios», letras y puntos de venta, y la lista de cómo llama a cada insumo.
+- **Fuera:** reparto por centros de costos (E8) y cuenta corriente (E9).
+- Prender el módulo `gastos` y las claves `gasto_*` es parte de esa etapa y se decide aparte.
+
+## 14. Reporte tipo planilla (PROPUESTA; pedido del dueño del 2026-11-03)
+
+Una fila por línea de factura, con las columnas de la planilla del dueño: fecha de emisión, proveedor, N.º de factura (punto de venta + número), línea, código, descripción, UM, cantidad de unidades, kilos, precio unitario, descuento e importe; más el tipo (producto o servicio). Filtros por proveedor, punto de venta, monto y producto (y los de la pregunta 9). Exporta a Excel con las mismas columnas. Solo cuenta el ejemplar vigente de cada factura. No exige tablas nuevas si cada línea guarda esos datos; se verifica en el diseño de persistencia. Hoy existe el reporte «Compras registradas» (`reporte_compras`) con otras columnas.
