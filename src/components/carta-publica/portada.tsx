@@ -12,10 +12,9 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
   const v = estilo.valores;
   const logoUrl = v.restaurante_logo_url;
   const bgUrl = v.hero_imagen_fondo_url;
-  // Sin `hero_ink` cargado: con imagen de fondo, el overlay aclara hacia --carta-bg (texto oscuro contrasta bien); sin
-  // imagen, el fondo es --carta-primary sólido (un ámbar oscuro) y el --carta-ink por defecto (casi negro) no alcanza
-  // 3:1 — blanco sí. Puesto una sola vez acá y heredado por todo el contenido (currentColor en los separadores).
-  // `estilo.portada.colorTexto` ya trae la prioridad textos > hero_ink > derivado del fondo cargado.
+  // Sin color de texto cargado, la imagen conserva sus colores y el texto cae a --carta-ink; sin imagen, el fondo es
+  // --carta-primary sólido (un ámbar oscuro) y el blanco da mejor contraste. `estilo.portada.colorTexto` ya prioriza
+  // color_portada_textos > hero_ink > derivado del fondo cargado.
   const p = estilo.portada;
   const colorTexto = p.colorTexto ?? (bgUrl ? "var(--carta-ink)" : "#fff");
   const colorCta = p.colorCta;
@@ -27,7 +26,6 @@ export function Portada({ estilo, restauranteNombre }: { estilo: EstiloCarta; re
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- fondo full-bleed de tamaño desconocido, no candidato de next/image */}
       {bgUrl && <img src={bgUrl} alt="" aria-hidden loading="eager" className="absolute inset-0 -z-10 h-full w-full object-cover" />}
-      {bgUrl && <div className="absolute inset-0 -z-10" style={{ backgroundColor: `color-mix(in oklch, ${p.fondo ?? "var(--carta-bg)"} 75%, transparent)` }} aria-hidden />}
 
       {/* Bloque y CTA: en mobile van posicionados por % (`carta_pos_bloque` / `carta_pos_cta`, ver `.portada-bloque`/`.portada-cta` en
           globals.css); desde `sm` vuelven al flujo centrado de siempre. */}
