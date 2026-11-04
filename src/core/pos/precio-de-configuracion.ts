@@ -205,7 +205,7 @@ export interface GrupoDeLaTablaDeLaCarta {
   prefijoEnCarta: string | null;
   /** El papel del grupo en la carta (`rolDelGrupo`). */
   papel: RolDelGrupoEnCarta;
-  opciones: { opcionId: string; nombre: string; esNinguna: boolean; orden: number; precioFinal: number | null; diferencia: number }[];
+  opciones: { opcionId: string; nombre: string; esNinguna: boolean; orden: number; precioFinal: number | null; diferencia: number; descripcionEnCarta: string | null }[];
 }
 
 /**
@@ -250,6 +250,7 @@ export function tablaDePreciosParaLaCarta(entrada: {
     const g = porId.get(r.grupoId)!;
     const conRol = { ...r, prefijoEnCarta: g.prefijoEnCarta ?? null };
     const orden = new Map(g.opciones.map((o) => [o.opcionId, o.orden]));
+    const descripcion = new Map(g.opciones.map((o) => [o.opcionId, o.descripcionEnCarta ?? null]));
     return {
       grupoId: r.grupoId,
       nombre: r.nombre,
@@ -258,7 +259,7 @@ export function tablaDePreciosParaLaCarta(entrada: {
       cantidadMaxima: r.cantidadMaxima,
       prefijoEnCarta: conRol.prefijoEnCarta,
       papel: rolDelGrupo(conRol),
-      opciones: r.opciones.map((o) => ({ opcionId: o.opcionId, nombre: o.nombre, esNinguna: o.esNinguna, orden: orden.get(o.opcionId) ?? 0, precioFinal: o.precioFinal, diferencia: o.diferencia })),
+      opciones: r.opciones.map((o) => ({ opcionId: o.opcionId, nombre: o.nombre, esNinguna: o.esNinguna, orden: orden.get(o.opcionId) ?? 0, precioFinal: o.precioFinal, diferencia: o.diferencia, descripcionEnCarta: descripcion.get(o.opcionId) ?? null })),
     };
   });
   const ejes = ejesDeLaCarta(grupos, entrada.esBase === true);

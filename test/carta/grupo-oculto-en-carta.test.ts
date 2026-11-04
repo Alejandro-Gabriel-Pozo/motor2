@@ -60,7 +60,7 @@ beforeEach(async () => {
 const armada = async () => (await resolverMenuCartaConDiagnostico(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA, undefined, "publico", true))!.carta;
 const itemDe = (secciones: readonly { items: readonly { nombre: string; precio: number; presentacion?: unknown }[] }[], nombre: string) => secciones.flatMap((x) => x.items).find((i) => i.nombre === nombre);
 
-const LINEA_DEL_CORTE = { tipo: "eleccion", rotulo: "Corte", opciones: ["ojo de bife", "bife de chorizo"], cantidadMinima: 1, cantidadMaxima: 1 };
+const LINEA_DEL_CORTE = { tipo: "eleccion", rotulo: "Corte", opciones: ["ojo de bife", "bife de chorizo"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 };
 
 describe("«Mostrar este grupo en la carta»: la carta pública y la impresa", () => {
   it("por defecto (la columna vale true) la carta lee el grupo: «Corte: ojo de bife o bife de chorizo»", async () => {

@@ -68,7 +68,8 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   // («De carne»). Se LEE en el servidor; lo que sale es el rótulo ya armado.
   GrupoDeOpciones: ["activo", "cantidadMaxima", "cantidadMinima", "id", "nombre", "opciones", "prefijoEnCarta", "tipo"],
   OpcionApagadaEnSucursal: ["apagada"],
-  OpcionDeGrupo: ["activa", "apagadasEnSucursal", "esNinguna", "grupo", "grupoId", "id", "nombre", "orden", "productosQueLaAdmiten", "versiones"],
+  // Carta «B», E3 (2026-11-04): + `OpcionDeGrupo.descripcionEnCarta` (la descripción de la opción). Se LEE en el servidor y sale SOLO dentro de `aclaraciones[].descripciones` de la presentación (lo cierra `CLAVES_DE_LA_CARTA`).
+  OpcionDeGrupo: ["activa", "apagadasEnSucursal", "descripcionEnCarta", "esNinguna", "grupo", "grupoId", "id", "nombre", "orden", "productosQueLaAdmiten", "versiones"],
   PrecioLocalDeOpcion: ["habilitado", "opcion", "opcionId", "precio", "productoId"],
   // «Mostrar este grupo en la carta» (decisión del dueño, 2026-10-29: plato por plato): + `ProductoAdmiteGrupo.seMuestraEnCarta`, con el mismo criterio que `prefijoEnCarta` y `mostrarNombreArriba`: se LEE en el servidor y
   // decide qué grupos lee la carta (`seOcultaEnLaCarta`); no sale a la salida (la salida solo pierde la línea del grupo: lo cierra `CLAVES_DE_LA_CARTA`, sin claves nuevas).

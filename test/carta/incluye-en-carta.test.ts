@@ -6,7 +6,7 @@ import { incluyeDeLaSeccion, textoDeIncluye, textoDeLasOpciones, textoDelBloque,
  * oráculo escrito a mano están en `incluye-en-carta.oraculo.test.tsx`, y el dibujo en `carta-publica-formas.test.tsx`.
  */
 
-const eleccion = (rotulo: string, opciones: string[], minimo = 1, maximo = 1): AclaracionParaIncluye => ({ tipo: "eleccion", rotulo, opciones, cantidadMinima: minimo, cantidadMaxima: maximo });
+const eleccion = (rotulo: string, opciones: string[], minimo = 1, maximo = 1, descripciones: (string | null)[] = opciones.map(() => null)): AclaracionParaIncluye => ({ tipo: "eleccion", rotulo, opciones, descripciones, cantidadMinima: minimo, cantidadMaxima: maximo });
 const extras = (rotulo: string): AclaracionParaIncluye => ({ tipo: "extras", rotulo, opciones: [{ nombre: "queso", recargo: 1000 }] });
 const lineas = (platos: readonly (readonly AclaracionParaIncluye[])[]) => incluyeDeLaSeccion(platos).platos.map(textoDeIncluye);
 

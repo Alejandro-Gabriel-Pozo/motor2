@@ -54,6 +54,7 @@ export function AltaDeOpcion({
       className="flex max-w-xl flex-col gap-3"
     >
       <Campo etiqueta="Nombre de la opción" name="nombre" required maxLength={120} placeholder={tipo === "MEDIDA" ? "Ej.: Mediano" : tipo === "ADICIONAL" ? "Ej.: Huevo frito" : "Ej.: Con leche"} />
+      <Campo etiqueta="Descripción en la carta (opcional)" name="descripcionEnCarta" maxLength={120} ayuda="Una línea, por ejemplo «lechuga, tomate, cebolla». Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS." />
       {admiteNinguna && <Casilla etiqueta="Es la opción «ninguna» (por ejemplo, «Sin guarnición»): no lleva precio ni consumo" name="esNinguna" checked={esNinguna} onChange={(e) => setEsNinguna(e.target.checked)} />}
       <CamposDeVersion key={formulario} tipo={tipo} sinPrecio={esNinguna} referencia={referencia} receta={receta} consumos={insumos ? { insumos, inicial: [] } : null} />
       {tipo === "ADICIONAL" && (

@@ -16,6 +16,9 @@ import { primeraEnMinuscula, unirConO } from "@/core/opciones/public";
  * Qué es el «plato»: un ítem de la sección (un producto con sus aclaraciones). Qué es el bloque: el UNIÓN de las opciones que ofrecen los platos de ESA sección que incluyen el grupo, en el orden del
  * grupo. El mismo grupo en dos secciones da un bloque en cada una. Un plato que ofrece todas las del bloque dice solo la palabra; el que ofrece menos, las nombra.
  *
+ * Carta «B», E3: cada opción puede traer su DESCRIPCIÓN («lechuga, tomate, cebolla»; la escribe el dueño, de cualquier grupo). El bloque la lleva (`descripciones`, alineada con `opciones`) y la carta la muestra en un
+ * desplegable «Ver detalle» por bloque, que solo existe si alguna opción del bloque tiene descripción (`detalleDelBloque`); en papel van siempre visibles. Nunca va en el texto del plato.
+ *
  * «elegís N» sale de los límites del grupo EN CADA PLATO (`ProductoAdmiteGrupo.cantidadMinima/Maxima` si el plato los sobrescribe, si no los del grupo). Si todos los platos del bloque coinciden, el
  * bloque lo dice en su título; si alguno difiere, el bloque NO dice nada y cada plato lo aclara entre paréntesis (I17). Supuesto declarado: el dueño confirmó «elegís N» para el caso 1:1; para
  * los demás (mínimo 0, rango) se usa «opcional, hasta N» y «elegís de A a B», las mismas palabras de siempre de `textoDeLimites`.
@@ -23,7 +26,7 @@ import { primeraEnMinuscula, unirConO } from "@/core/opciones/public";
 
 /** Lo que este módulo lee de una aclaración de un plato (estructural: `AclaracionCartaV1` y `AclaracionCartaPublica` cumplen esta forma). Solo las `eleccion` tienen línea y bloque; los extras se ignoran. */
 export type AclaracionParaIncluye =
-  | { tipo: "eleccion"; rotulo: string; opciones: readonly string[]; cantidadMinima: number; cantidadMaxima: number }
+  | { tipo: "eleccion"; rotulo: string; opciones: readonly string[]; descripciones: readonly (string | null)[]; cantidadMinima: number; cantidadMaxima: number }
   | { tipo: "extras"; rotulo: string; opciones: readonly { nombre: string; recargo: number }[] };
 
 /** Un grupo dentro de la línea «Incluye …» de UN plato. */
@@ -46,6 +49,8 @@ export interface BloqueDeOpciones {
   elegis: string | null;
   /** Todas las opciones del bloque, sin repetir, en el orden del grupo. */
   opciones: string[];
+  /** Carta «B», E3: la descripción de cada opción (alineada con `opciones`; `null` = sin descripción). El desplegable «Ver detalle» solo existe si alguna tiene. */
+  descripciones: (string | null)[];
   /** «Con los platos que dicen «Incluye guarnición»». */
   paraLosPlatos: string;
   /** Qué platos de la sección (posición en la lista) lo incluyen: lo usa la marca de «Va con» (E2). */
@@ -74,11 +79,21 @@ function unirConY(partes: readonly string[]): string {
   return `${partes.slice(0, -1).join(", ")} ${/^h?i(?![aeou])/i.test(ultimo) ? "e" : "y"} ${ultimo}`;
 }
 
-/** Suma al bloque las opciones de un plato conservando el orden relativo del grupo: cada una nueva va justo después de la que la precede en la lista de ese plato. */
-function sumarEnOrden(bloque: string[], delPlato: readonly string[]): void {
+/**
+ * Suma al bloque las opciones de un plato conservando el orden relativo del grupo: cada una nueva va justo después de la que la precede en la lista de ese plato. La descripción es de la OPCIÓN (no del plato):
+ * si dos platos traen la misma opción, vale la que no sea `null`.
+ */
+function sumarEnOrden(bloque: string[], descripciones: (string | null)[], delPlato: readonly string[], descDelPlato: readonly (string | null)[]): void {
   delPlato.forEach((nombre, i) => {
-    if (bloque.includes(nombre)) return;
-    bloque.splice(i === 0 ? 0 : bloque.indexOf(delPlato[i - 1]!) + 1, 0, nombre);
+    const descripcion = descDelPlato[i] ?? null;
+    const ya = bloque.indexOf(nombre);
+    if (ya >= 0) {
+      descripciones[ya] ??= descripcion;
+      return;
+    }
+    const lugar = i === 0 ? 0 : bloque.indexOf(delPlato[i - 1]!) + 1;
+    bloque.splice(lugar, 0, nombre);
+    descripciones.splice(lugar, 0, descripcion);
   });
 }
 
@@ -96,12 +111,13 @@ export function incluyeDeLaSeccion(platos: readonly (readonly AclaracionParaIncl
 
   for (const grupo of grupos) {
     const opciones: string[] = [];
+    const descripciones: (string | null)[] = [];
     const incluyen: number[] = [];
     libres.forEach((delPlato, i) => {
       const a = delPlato.find((x) => x.rotulo === grupo);
       if (!a) return;
       incluyen.push(i);
-      sumarEnOrden(opciones, a.opciones);
+      sumarEnOrden(opciones, descripciones, a.opciones, a.descripciones);
     });
     const limites = new Set(incluyen.map((i) => { const a = libres[i]!.find((x) => x.rotulo === grupo)!; return `${a.cantidadMinima}-${a.cantidadMaxima}`; }));
     const coinciden = limites.size === 1;
@@ -121,6 +137,7 @@ export function incluyeDeLaSeccion(platos: readonly (readonly AclaracionParaIncl
       titulo: grupo,
       elegis: coinciden ? textoDeElegis(primero.cantidadMinima, primero.cantidadMaxima) : null,
       opciones,
+      descripciones,
       paraLosPlatos: `Con los platos que dicen «Incluye ${palabra}»`,
       platos: incluyen,
     });
@@ -150,6 +167,11 @@ export function textoDeLasOpciones(b: BloqueDeOpciones): string {
   return b.opciones.join(" · ");
 }
 
+/** Carta «B», E3: lo que lleva el desplegable «Ver detalle» (solo las opciones con descripción, en el orden del bloque). Vacío = no hay desplegable. */
+export function detalleDelBloque(b: BloqueDeOpciones): { nombre: string; descripcion: string }[] {
+  return b.opciones.flatMap((nombre, i) => (b.descripciones[i] ? [{ nombre, descripcion: b.descripciones[i]! }] : []));
+}
+
 /** El título de un bloque: «Guarnición · elegís 1», o solo «Guarnición» si los platos no coinciden. */
 export function textoDelTitulo(b: BloqueDeOpciones): string {
   return b.elegis ? `${b.titulo} · ${b.elegis}` : b.titulo;
@@ -157,5 +179,6 @@ export function textoDelTitulo(b: BloqueDeOpciones): string {
 
 /** Un bloque entero en texto, para donde no hay dibujo («Va a mostrar»): «Guarnición · elegís 1: puré · ensalada. Con los platos que dicen «Incluye guarnición»». */
 export function textoDelBloque(b: BloqueDeOpciones): string {
-  return `${textoDelTitulo(b)}: ${textoDeLasOpciones(b)}. ${b.paraLosPlatos}`;
+  const detalle = detalleDelBloque(b);
+  return `${textoDelTitulo(b)}: ${textoDeLasOpciones(b)}. ${b.paraLosPlatos}${detalle.length > 0 ? `. Ver detalle: ${detalle.map((d) => `${d.nombre}: ${d.descripcion}`).join("; ")}` : ""}`;
 }
