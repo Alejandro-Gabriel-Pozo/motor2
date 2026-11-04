@@ -332,6 +332,9 @@ const completos: Record<string, Valor> = {
     ),
   // Anular: la factura que cargó la sucursal ajena (la cabecera es de la empresa: la defensa es pedir `anular_compra` en la sucursal que la cargó y en cada una con parte).
   "accion|actions/movimientos/facturas-proveedor.ts|anularFacturaProveedor": (k, c) => intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, "motivo de prueba", crypto.randomUUID()]),
+  // Pagos X0: declarar y anular el pago. La clave es de EMPRESA (`declarar_pago_compra`) y la cabecera de la factura es de la empresa: la defensa es la RLS (la factura o el pago de otra empresa no existe para quien pide) y el permiso. `pagoId` usa el mismo id ajeno: ninguno existe en esta empresa.
+  "accion|actions/movimientos/pagos-factura-proveedor.ts|declararPagoDeFacturaProveedor": (k, c) => intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, "2026-11-04", "EFECTIVO", crypto.randomUUID()]),
+  "accion|actions/movimientos/pagos-factura-proveedor.ts|anularPagoDeFacturaProveedor": (k, c) => intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, "motivo de prueba", crypto.randomUUID()]),
 
   // --- consultas de las páginas y lecturas (el contexto —sucursal activa, empresa, usuario, hora, db— es el propio; los ids del cliente, los ajenos) ---
   // Las candidatas son las sucursales con carta propia; la consulta tiene que dejar afuera las que u1 no ve (S2, S3, las de otra empresa).
