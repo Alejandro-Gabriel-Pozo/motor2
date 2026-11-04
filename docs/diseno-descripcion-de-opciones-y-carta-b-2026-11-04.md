@@ -2,7 +2,7 @@
 
 Estado: **BORRADOR en papel para el dueño.** Niveles 1 a 5 de la escalera de diseño; los niveles 6 a 10 están esbozados y **no se migra nada** hasta que el dueño confirme 1 a 5. Cada decisión lleva su estado: CONFIRMADA (dicha por el dueño), PROPUESTA, PENDIENTE o NO VERIFICADA. Todo lo que se dice del código sale de una lectura (agente de solo lectura sobre `df3cd634`, 2026-11-04); **no se ejecutó ningún test ni se tocó ninguna base**.
 
-Maquetas (copias en `docs/maquetas-carta-b/` para quien implemente; los verdes de las maquetas son **solo de ejemplo**, ver I18): `en-todos-variantes.html` (cinco variantes), `invitar-a-bajar.html` (cinco formas de invitar a bajar) y `carta-b-5mas2-descripciones.html` (la composición final a tamaño real).
+Maquetas (se entregaron al dueño por fuera del repositorio: el guardián de clasificación solo admite Markdown dentro de `docs/`; los verdes de las maquetas son **solo de ejemplo**, ver I18): `en-todos-variantes.html` (cinco variantes), `invitar-a-bajar.html` (cinco formas de invitar a bajar) y `carta-b-5mas2-descripciones.html` (la composición final a tamaño real).
 
 ## 0. Resumen para el dueño
 
