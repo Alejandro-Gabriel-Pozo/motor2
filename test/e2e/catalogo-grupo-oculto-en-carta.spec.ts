@@ -46,7 +46,7 @@ for (const ancho of [1280, 375]) {
     const casilla = grupo.getByLabel("Mostrar este grupo en la carta");
     await expect(casilla).toBeChecked();
     await expect(vistaPrevia(page)).toContainText(`Corte`);
-    await expect(vistaPrevia(page)).toContainText("ojo de bife o bife de chorizo");
+    await expect(vistaPrevia(page)).toContainText("ojo de bife · bife de chorizo");
     expect((await new AxeBuilder({ page }).analyze()).violations, "con la casilla tildada").toEqual([]);
 
     await casilla.uncheck();
@@ -78,7 +78,7 @@ for (const ancho of [1280, 375]) {
     await tarjeta(page, bife.grupoNombre).getByRole("button", { name: `Guardar «${bife.grupoNombre}»` }).click();
     await expect(tarjeta(page, bife.grupoNombre).getByRole("status").filter({ hasText: "como pediste" })).toBeVisible();
     await expect(tarjeta(page, bife.grupoNombre)).not.toContainText("no se muestra en la carta");
-    await expect(vistaPrevia(page)).toContainText("ojo de bife o bife de chorizo");
+    await expect(vistaPrevia(page)).toContainText("ojo de bife · bife de chorizo");
     expect((await prisma.productoAdmiteGrupo.findFirstOrThrow({ where: { productoId: bife.productoId }, select: { seMuestraEnCarta: true } })).seMuestraEnCarta).toBe(true);
   });
 }

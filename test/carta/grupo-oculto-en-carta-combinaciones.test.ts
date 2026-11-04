@@ -267,7 +267,7 @@ const agotada = (o: OpcionParaVender): OpcionParaVender => ({ ...o, apagadaEnSuc
 describe("Filas literales del bife (el caso del dueño): la salida esperada está escrita a mano", () => {
   const fila = (caso: string, grupos: GrupoDeLaCarta[], esperado: unknown, p = BIFE) => ({ caso, grupos, esperado, p });
   const FILAS = [
-    fila("1. Corte como incluida, mostrado: una línea «Corte: …»", [corte("INCLUIDA")], { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Corte", opciones: ["ojo de bife", "bife de chorizo"] }] }),
+    fila("1. Corte como incluida, mostrado: una línea «Corte: …»", [corte("INCLUIDA")], { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Corte", opciones: ["ojo de bife", "bife de chorizo"], cantidadMinima: 1, cantidadMaxima: 1 }] }),
     fila("2. Corte como incluida, oculto: «Bife $X» sin aclaraciones", [corte("INCLUIDA", { seMuestraEnCarta: false })], { forma: "simple", aclaraciones: [] }),
     fila("3. Corte como variante obligatoria, oculto: «Bife $X» sin aclaraciones", [corte("VARIANTE", { seMuestraEnCarta: false })], { forma: "simple", aclaraciones: [] }),
     fila("4. Corte como variante opcional (0..1), oculto: sin aclaraciones", [corte("VARIANTE", { seMuestraEnCarta: false, cantidadMinima: 0 })], { forma: "simple", aclaraciones: [] }),
@@ -285,7 +285,7 @@ describe("Filas literales del bife (el caso del dueño): la salida esperada est�
     fila(
       "8. Corte oculto y Guarnición mostrada: queda solo la línea de la guarnición",
       [corte("INCLUIDA", { seMuestraEnCarta: false }), guarnicion()],
-      { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas", "puré"] }] }
+      { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas", "puré"], cantidadMinima: 1, cantidadMaxima: 1 }] }
     ),
     fila(
       "9. Corte oculto y un ADICIONAL «Extras»: el adicional sigue con su recargo",
@@ -314,7 +314,7 @@ describe("Filas literales del bife (el caso del dueño): la salida esperada est�
         titulo: false,
         columnas: [],
         filas: [{ rotulo: "A criolla", celdas: [30000] }, { rotulo: "Con chimichurri", celdas: [30000] }],
-        aclaraciones: [{ tipo: "eleccion", rotulo: "Guarniciones", opciones: ["ensalada", "papas fritas"] }],
+        aclaraciones: [{ tipo: "eleccion", rotulo: "Guarniciones", opciones: ["ensalada", "papas fritas"], cantidadMinima: 1, cantidadMaxima: 1 }],
       },
       { precioBase: 0, esBase: true, descuentoDeProducto: null }
     ),

@@ -36,7 +36,7 @@ Lectura estática del código (no se corrió ningún test), pedida por el dueño
 5. **Proceso × campos del Kardex** (medio): tabla legible de signo, precio, lote, sección, conteo y origen por proceso.
 6. **Rol × clave por puerta** (medio-grande): escenario «rol sin su clave» para todas las puertas inventariadas.
 7. **Consignación + fuente de costo** (medio).
-8. **Guardián transversal de dimensión** (medio): parsea `prisma/schema.prisma` y falla ante un booleano, fecha, máscara o columna con CHECK nueva en modelos de dinero, visibilidad o stock sin declaración «afecta: sí/no» con motivo.
+8. **Guardián transversal de dimensión** (medio): parsea `prisma/schema.prisma` y falla ante un booleano, fecha, máscara o columna con CHECK nueva en modelos de dinero, visibilidad o stock sin declaración «afecta: sí/no» con motivo. **HECHO (E2, 2026-11-04):** `test/arquitectura/cerco-columnas-de-significado.test.ts` sobre 69 modelos (36 de dinero, 22 de visibilidad, 11 de stock; lista en `docs/diseno-arnes-de-matrices-2026-11-03.md`, E2); 179 columnas de significado: 97 declaradas y 82 en la línea de base (solo baja). Límite: ve el CHECK solo si el `///` de la columna lo anota; los `Decimal` los cubre `escrituras-auditadas`.
 
 Arreglos baratos de pasada: ~~derivar `ESTADOS` y `OPERACIONES` de `traspaso-guard.test.ts` desde el enum~~ (HECHO el 2026-11-03, E0); que `caracterizaciones-congeladas` enumere los `*.golden.*` y falle ante uno no declarado.
 
