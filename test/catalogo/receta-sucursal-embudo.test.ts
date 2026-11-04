@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ALCANCE_CENTRAL, alcanceDeSucursal, incluirRecetaVigente, whereConReceta } from "../../src/core/catalogo/public";
-import { cargarHistorialDeVersiones, cargarRecetasPropiasHabilitadas, cargarRecetasVigentes, cargarRecetaVigente, versionVigentePorProducto } from "../../src/server/lecturas/catalogo/recetas-vigentes";
+import { cargarHistorialDeVersiones, cargarRecetasPropiasHabilitadas, cargarRecetasVigentes, cargarRecetaVigente } from "../../src/server/lecturas/catalogo/recetas-vigentes";
 import { dependenciasParaDesactivar } from "../../src/server/lecturas/catalogo/dependencias-para-desactivar";
 import { compararRendimientosPorSucursal } from "../../src/server/consultas/reportes/rendimiento-por-sucursal";
 import { limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible } from "../setup/test-db";
@@ -103,7 +103,7 @@ describe("recetas con alcance: la receta efectiva de una sucursal (ADR-009, over
       expect(await cargarRecetaVigente(prisma, alcanceDeSucursal(surId), empanada.id, {})).toBeNull();
       expect(await cargarRecetaVigente(prisma, alcanceDeSucursal(norteId), empanada.id, {})).toMatchObject({ version: 1, sucursalId: norteId });
 
-      expect((await versionVigentePorProducto(prisma, ALCANCE_CENTRAL, [pizza.id, empanada.id])).get(empanada.id) ?? null).toBeNull();
+      expect((await cargarRecetasVigentes(prisma, ALCANCE_CENTRAL, { include: {} })).get(empanada.id) ?? null).toBeNull();
       const conReceta = await prisma.producto.findMany({ where: { ...whereConReceta(ALCANCE_CENTRAL), tipo: "PV" }, select: { id: true } });
       expect(conReceta.map((p) => p.id)).toEqual([pizza.id]);
       const conVigente = await prisma.producto.findMany({ where: { id: { in: [pizza.id, empanada.id] } }, include: incluirRecetaVigente(ALCANCE_CENTRAL, {}) });

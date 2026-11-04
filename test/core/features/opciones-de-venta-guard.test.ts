@@ -74,14 +74,13 @@ describe("guardComandoCrearGrupoDeOpciones y guardComandoEditarGrupoDeOpciones",
     expect(rechazo(guardComandoCrearGrupoDeOpciones({ ...alta, cantidadMinima: undefined }))).toMatch(/no es un número válido/);
   });
 
-  it("la edición exige el id del grupo, una versión esperada entera ≥ 1 y «activo» booleano", () => {
-    const edicion = { grupoId: "g1", versionEsperada: 3, nombre: "Tamaño", cantidadMinima: 1, cantidadMaxima: 1, activo: false };
+  it("la edición exige el id del grupo, una versión esperada entera ≥ 1 (el estado activo no se edita acá)", () => {
+    const edicion = { grupoId: "g1", versionEsperada: 3, nombre: "Tamaño", cantidadMinima: 1, cantidadMaxima: 1 };
     expect(guardComandoEditarGrupoDeOpciones(edicion)).toEqual({ ok: true, valor: edicion });
     for (const grupoId of IDS_RAROS) expect(rechazo(guardComandoEditarGrupoDeOpciones({ ...edicion, grupoId }))).toMatch(/No se encontró el grupo/);
     for (const versionEsperada of [0, -1, 1.5, Number.NaN, "x", null]) {
       expect(rechazo(guardComandoEditarGrupoDeOpciones({ ...edicion, versionEsperada })), String(versionEsperada)).toMatch(/recargá la pantalla/);
     }
-    expect(rechazo(guardComandoEditarGrupoDeOpciones({ ...edicion, activo: "no" }))).toMatch(/sí o no/);
   });
 });
 
@@ -149,11 +148,10 @@ describe("guardComandoCrearOpcionDeGrupo, guardComandoEditarOpcionDeGrupo y guar
   });
 
   it("editar una opción y agregar una versión exigen una versión o un número esperado entero ≥ 1", () => {
-    const edicion = { opcionId: "o1", versionEsperada: 1, nombre: "Almendras", orden: 0, activa: true };
+    const edicion = { opcionId: "o1", versionEsperada: 1, nombre: "Almendras" };
     expect(guardComandoEditarOpcionDeGrupo(edicion)).toEqual({ ok: true, valor: edicion });
     expect(rechazo(guardComandoEditarOpcionDeGrupo({ ...edicion, opcionId: 7 }))).toMatch(/No se encontró la opción/);
     expect(rechazo(guardComandoEditarOpcionDeGrupo({ ...edicion, versionEsperada: 0 }))).toMatch(/recargá/);
-    expect(rechazo(guardComandoEditarOpcionDeGrupo({ ...edicion, activa: null }))).toMatch(/sí o no/);
     expect(guardComandoAgregarVersionDeOpcion({ opcionId: "o1", numeroEsperado: 4, version: VERSION }).ok).toBe(true);
     expect(rechazo(guardComandoAgregarVersionDeOpcion({ opcionId: "o1", numeroEsperado: 0, version: VERSION }))).toMatch(/recargá/);
     expect(rechazo(guardComandoAgregarVersionDeOpcion({ opcionId: "o1", numeroEsperado: Number.NaN, version: VERSION }))).toMatch(/recargá/);
@@ -162,7 +160,7 @@ describe("guardComandoCrearOpcionDeGrupo, guardComandoEditarOpcionDeGrupo y guar
 
 describe("guardComandoFijarAdmisionDeGrupo", () => {
   const opcion = { opcionId: "o1", versionEsperada: 0, cantidadMaxima: 1, precioAbsoluto: 2800, diferencia: null, activo: true };
-  const admision = { productoId: "p1", grupoId: "g1", versionEsperada: 0, orden: 0, cantidadMinima: null, cantidadMaxima: null, modoPrecio: "ABSOLUTO", activo: true, opciones: [opcion] };
+  const admision = { productoId: "p1", grupoId: "g1", versionEsperada: 0, orden: 0, cantidadMinima: null, cantidadMaxima: null, modoPrecio: "ABSOLUTO", opciones: [opcion] };
 
   it("camino feliz y valores por defecto (tope 1, activa)", () => {
     expect(guardComandoFijarAdmisionDeGrupo(admision)).toEqual({ ok: true, valor: admision });
@@ -172,14 +170,21 @@ describe("guardComandoFijarAdmisionDeGrupo", () => {
     });
   });
 
-  it("rechazos: ids, versión, cantidades, modo, «activo», la lista y cada opción", () => {
+  it("«Mostrar este grupo en la carta» (2026-10-29): sin el campo (o `undefined`) el comando no lo trae; con un booleano pasa tal cual; con otra cosa se rechaza", () => {
+    expect("seMuestraEnCarta" in (guardComandoFijarAdmisionDeGrupo(admision) as { valor: object }).valor).toBe(false);
+    expect("seMuestraEnCarta" in (guardComandoFijarAdmisionDeGrupo({ ...admision, seMuestraEnCarta: undefined }) as { valor: object }).valor).toBe(false);
+    expect(guardComandoFijarAdmisionDeGrupo({ ...admision, seMuestraEnCarta: false })).toEqual({ ok: true, valor: { ...admision, seMuestraEnCarta: false } });
+    expect(guardComandoFijarAdmisionDeGrupo({ ...admision, seMuestraEnCarta: true })).toEqual({ ok: true, valor: { ...admision, seMuestraEnCarta: true } });
+    for (const malo of ["no", "si", 0, 1, null, {}]) expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, seMuestraEnCarta: malo }))).toMatch(/Mostrar este grupo en la carta/);
+  });
+
+  it("rechazos: ids, versión, cantidades, modo, la lista y cada opción", () => {
     expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, productoId: null }))).toMatch(/producto/);
     expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, grupoId: {} }))).toMatch(/grupo/);
     expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, versionEsperada: -1 }))).toMatch(/recargá/);
     expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, cantidadMinima: 11 }))).toMatch(/mínimo/);
     expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, cantidadMaxima: 0 }))).toMatch(/máximo/);
     expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, modoPrecio: "FIJO" }))).toMatch(/modo de precio/);
-    expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, activo: undefined }))).toMatch(/sí o no/);
     expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, opciones: {} }))).toMatch(/no son una lista/);
     expect(rechazo(guardComandoFijarAdmisionDeGrupo({ ...admision, opciones: Array.from({ length: 101 }, () => opcion) }))).toMatch(/más de 100/);
     const conOpcion = (o: Record<string, unknown>) => guardComandoFijarAdmisionDeGrupo({ ...admision, opciones: [{ ...opcion, ...o }] });

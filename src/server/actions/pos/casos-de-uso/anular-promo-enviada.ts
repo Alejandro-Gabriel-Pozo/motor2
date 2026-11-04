@@ -12,9 +12,7 @@ import { formatearCantidad } from "../cuenta-comun";
 import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
- * Caso de uso «anular una promo ya enviada a cocina» (Task #41, Fase M12d — ver docs/arquitectura-casos-de-uso-2026-09-27.md). Es la
- * orquestación que antes vivía en línea en la Server Action `anularPromoEnviada` (src/server/actions/pos/cuenta-anulacion.ts), en el
- * MISMO orden y con los MISMOS textos; la Server Action quedó como adaptador fino. El criterio de negocio (Task #16, D4: la promo se anula
+ * Caso de uso «anular una promo ya enviada a cocina». La Server Action es un adaptador fino. El criterio de negocio (Task #16, D4: la promo se anula
  * ENTERA, nunca un componente suelto) está documentado en la Server Action.
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso("pos_anular_item")`) ni

@@ -10,7 +10,6 @@ import {
   actualizarIngredienteDeReceta,
   actualizarPasoDeReceta,
   agregarIngredienteAReceta,
-  agregarPasoAReceta,
   insertarPasoEnReceta,
   quitarIngredienteDeReceta,
   quitarPasoDeReceta,
@@ -86,7 +85,6 @@ describe("S-52: los guards de la puerta de las acciones de receta", () => {
     ["agregarIngredienteAReceta", (v) => sinTipos(agregarIngredienteAReceta)(pvId, linea(quesoId), v)],
     ["actualizarIngredienteDeReceta", (v) => sinTipos(actualizarIngredienteDeReceta)(pvId, harinaId, { cantidad: 2, unidadId: kgId }, v)],
     ["quitarIngredienteDeReceta", (v) => sinTipos(quitarIngredienteDeReceta)(pvId, harinaId, v)],
-    ["agregarPasoAReceta", (v) => sinTipos(agregarPasoAReceta)(pvId, paso(3), v)],
     ["actualizarPasoDeReceta", (v) => sinTipos(actualizarPasoDeReceta)(pvId, 1, { instruccion: "Otra" }, v)],
     ["quitarPasoDeReceta", (v) => sinTipos(quitarPasoDeReceta)(pvId, 1, v)],
     ["reordenarPasosDeReceta", (v) => sinTipos(reordenarPasosDeReceta)(pvId, [2, 1], v)],
@@ -189,7 +187,7 @@ describe("S-52: los guards de la puerta de las acciones de receta", () => {
       expect(await versiones()).toBe(1);
     });
 
-    it("los minutos (negativos, NaN, no enteros, enormes), el orden y la instrucción de un paso se rechazan al agregar, editar e insertar", async () => {
+    it("los minutos (negativos, NaN, no enteros, enormes), el orden y la instrucción de un paso se rechazan al editar e insertar", async () => {
       const MINUTOS: [unknown, string][] = [
         [-1, "Los minutos de un paso no pueden ser negativos."],
         [Number.NaN, "Los minutos de un paso no son un número válido."],
@@ -197,14 +195,11 @@ describe("S-52: los guards de la puerta de las acciones de receta", () => {
         [1e9, "Los minutos de un paso tienen que ser un número entero razonable."],
       ];
       for (const [minutos, mensaje] of MINUTOS) {
-        expect(await sinTipos(agregarPasoAReceta)(pvId, paso(3, { minutos }), 1), `agregar ${minutos}`).toEqual({ ok: false, mensaje });
         expect(await sinTipos(actualizarPasoDeReceta)(pvId, 1, { instruccion: "Otra", minutos }, 1), `editar ${minutos}`).toEqual({ ok: false, mensaje });
         expect(await sinTipos(insertarPasoEnReceta)(pvId, 1, { instruccion: "Nuevo", minutos }, 1), `insertar ${minutos}`).toEqual({ ok: false, mensaje });
       }
-      expect(await sinTipos(agregarPasoAReceta)(pvId, paso(0), 1)).toEqual({ ok: false, mensaje: "Cada paso necesita un orden mayor a 0." });
-      expect(await sinTipos(agregarPasoAReceta)(pvId, paso(1e9), 1)).toEqual({ ok: false, mensaje: "El orden de un paso tiene que ser un número entero razonable." });
-      expect(await sinTipos(agregarPasoAReceta)(pvId, paso(3, { instruccion: "   " }), 1)).toEqual({ ok: false, mensaje: "Cada paso necesita una instrucción." });
-      for (const p of [null, undefined, 7, {}, { orden: 3 }]) expect((await sinTipos(agregarPasoAReceta)(pvId, p, 1)).ok, JSON.stringify(p)).toBe(false);
+      expect(await sinTipos(insertarPasoEnReceta)(pvId, 1, { instruccion: "   " }, 1)).toEqual({ ok: false, mensaje: "Cada paso necesita una instrucción." });
+      for (const p of [null, undefined, 7, {}]) expect((await sinTipos(insertarPasoEnReceta)(pvId, 1, p, 1)).ok, JSON.stringify(p)).toBe(false);
       expect(await versiones()).toBe(1);
     });
 
@@ -228,7 +223,6 @@ describe("S-52: los guards de la puerta de las acciones de receta", () => {
     it("un producto inexistente gana sobre un dato fuera de rango (el guard se aplica DESPUÉS de leer el producto)", async () => {
       const NO_ENCONTRADO = { ok: false, mensaje: "No se encontró el producto." };
       expect(await sinTipos(agregarIngredienteAReceta)("no-existe", linea(quesoId, { cantidad: Number.NaN }), 0)).toEqual(NO_ENCONTRADO);
-      expect(await sinTipos(agregarPasoAReceta)("no-existe", paso(3, { minutos: -5 }), 0)).toEqual(NO_ENCONTRADO);
       expect(await sinTipos(insertarPasoEnReceta)("no-existe", 1, { instruccion: "x", minutos: -5 }, 0)).toEqual(NO_ENCONTRADO);
       expect(await sinTipos(agregarIngredienteARecetaPropia)("no-existe", linea(quesoId, { cantidad: Number.NaN }), 0, false)).toEqual(NO_ENCONTRADO);
     });
@@ -255,7 +249,7 @@ describe("S-52: los guards de la puerta de las acciones de receta", () => {
   it("controles: lo válido sigue funcionando, con y sin los valores del borde (cantidad 0,001; merma 1000; minutos 0; versión 1)", async () => {
     expect((await agregarIngredienteAReceta(pvId, linea(quesoId, { cantidad: 0.01, mermaPorcentaje: 1000 }), 1)).ok).toBe(true); // v2
     expect((await actualizarIngredienteDeReceta(pvId, quesoId, { cantidad: 2, unidadId: kgId }, 2)).ok).toBe(true); // v3
-    expect((await agregarPasoAReceta(pvId, paso(3, { minutos: 0 }), 3)).ok).toBe(true); // v4
+    expect((await insertarPasoEnReceta(pvId, 3, { instruccion: "Paso 3", minutos: 0 }, 3)).ok).toBe(true); // v4
     expect((await actualizarPasoDeReceta(pvId, 3, { instruccion: "Hornear", minutos: 20 }, 4)).ok).toBe(true); // v5
     expect((await actualizarCabeceraDeReceta(pvId, { racionesCantidad: 4, tiempoCoccionMinutos: 30 }, 5)).ok).toBe(true); // v6
     expect((await quitarIngredienteDeReceta(pvId, quesoId, 6)).ok).toBe(true); // v7

@@ -313,7 +313,6 @@ export async function registrarVentaEnTx(
     const operacion: { id: string } = await escribirOperacionDeVenta(tx, {
       sucursalId: actor.sucursalId,
       fecha: datos.fecha,
-      proveedorId: datos.proveedorId ?? null,
       clienteId: datos.clienteId ?? null,
       promoCuentaId: venta.promoCuentaId,
       nroFactura: texto(datos.nroFactura) || null,

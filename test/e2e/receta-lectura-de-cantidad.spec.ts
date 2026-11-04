@@ -5,6 +5,7 @@ import type { Locator } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { expectObjetivosTactiles, expectSinDesborde } from "./fixtures/movil";
+import { elegirMateriaPrima } from "./fixtures/receta";
 
 /**
  * Lectura en vivo de la cantidad de un ingrediente (src/core/catalogo/lectura-de-cantidad.ts, src/components/receta/lectura-de-cantidad.tsx): mientras se tipea,
@@ -50,7 +51,8 @@ for (const ancho of [375, 1280]) {
     await expect(lectura).toHaveAttribute("aria-live", "polite");
 
     // Vacío: nada que leer.
-    await formulario.getByRole("combobox", { name: "Materia prima", exact: true }).selectOption({ label: `${harina.nombre} (kg)` });
+    await elegirMateriaPrima(formulario, "Materia prima", harina.nombre);
+    await expect(formulario.locator("[data-unidad-de-la-cantidad]")).toHaveText("kg");
     await expect(lectura).toHaveText("");
     await capturarFormulario(formulario, `receta-lectura-${ancho}-vacio`);
 
@@ -81,17 +83,19 @@ for (const ancho of [375, 1280]) {
     await expect(lectura).toContainText("= 3 kg");
 
     // Otra materia prima, otra unidad: la lectura sigue a la unidad de stock de la elegida.
-    await formulario.getByRole("combobox", { name: "Materia prima", exact: true }).selectOption({ label: `${huevo.nombre} (unidad)` });
+    await elegirMateriaPrima(formulario, "Materia prima", huevo.nombre);
+    await expect(formulario.locator("[data-unidad-de-la-cantidad]")).toHaveText("unidad");
     await expect(lectura).toContainText("= 3 unidad");
 
     // Es solo información: no bloquea el envío y lo que se guarda es lo que interpretó el parser (0,30 → 0,3 kg).
-    await formulario.getByRole("combobox", { name: "Materia prima", exact: true }).selectOption({ label: `${harina.nombre} (kg)` });
+    await elegirMateriaPrima(formulario, "Materia prima", harina.nombre);
     await cantidad.fill("0,30");
     await expect(lectura).toContainText("= 300 g");
     await formulario.getByRole("button", { name: "Agregar", exact: true }).click();
     await expect(page.locator("tbody tr").filter({ hasText: harina.nombre })).toBeVisible();
-    // El formulario se resetea al guardar bien («Materia prima» vuelve a vacío): la lectura deja de hablar en la unidad de la harina.
+    // El formulario se resetea al guardar bien (el buscador de «Materia prima» vuelve a vacío y sin la elegida): la lectura deja de hablar en la unidad de la harina.
     await expect(formulario.getByRole("combobox", { name: "Materia prima", exact: true })).toHaveValue("");
+    await expect(formulario.locator("[data-unidad-de-la-cantidad]")).toHaveCount(0);
     await expect(lectura).not.toContainText(" g");
     const vigente = await prisma.recetaVersion.findFirstOrThrow({ where: { productoId: pizza.id, sucursalId: null }, orderBy: { version: "desc" }, include: { ingredientes: true } });
     expect(Number(vigente.ingredientes.find((i) => i.insumoProductoId === harina.id)?.cantidad)).toBe(0.3);
@@ -128,7 +132,9 @@ test("receta propia de la sucursal: el alta de un ingrediente también muestra l
   await page.getByRole("button", { name: "Crear receta propia a partir de la central" }).click();
   await expect(page.getByText(/en lugar de la central/)).toBeVisible();
   await page.getByRole("button", { name: "+ Agregar ingrediente a la receta de la sucursal" }).click();
-  await page.getByLabel("Materia prima de la receta propia").selectOption({ label: `${harina.nombre} (kg)` });
+  const formularioPropio = page.locator("form").filter({ has: page.getByRole("heading", { name: /^Agregar ingrediente a la receta de / }) });
+  await elegirMateriaPrima(formularioPropio, "Materia prima de la receta propia", harina.nombre);
+  await expect(formularioPropio.locator("[data-unidad-de-la-cantidad]")).toHaveText("kg");
   const lectura = page.locator('[data-lectura-de="cantidad-ingrediente-nuevo-propia"]');
   await page.locator("#cantidad-ingrediente-nuevo-propia").fill("0,30");
   await expect(lectura).toContainText("= 300 g");

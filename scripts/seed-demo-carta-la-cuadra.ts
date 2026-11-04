@@ -40,7 +40,7 @@ import { __setCookieDeTestParaSucursal } from "../test/setup/next-headers-stub";
 import { getUsuarioActual } from "../src/server/sesion/session";
 import { guardarSeccionCarta } from "../src/server/actions/carta/secciones";
 import { guardarContenidoCartaProducto, type DatosContenidoCarta } from "../src/server/actions/carta/contenido-producto";
-import { guardarTemaCarta, cambiarAplicacionTema } from "../src/server/actions/carta/tema";
+import { guardarTemaCarta } from "../src/server/actions/carta/tema";
 import { agregarSucursalAlPortal, guardarSucursalPublica } from "../src/server/actions/carta/registro-publico";
 import type { ResultadoAccion } from "../src/server/actions/tipos";
 
@@ -145,7 +145,6 @@ describe("seed de carta pública — demo pizzería La Cuadra", () => {
           color_item_precio: "#b3401f",
         })
       );
-      anotarSiFalla("cambiarAplicacionTema", await cambiarAplicacionTema(sucursal.id, true));
 
       // --- 4) Alta y publicación en el portal (idempotente: se salta el alta si ya está). ---
       const yaEnPortal = await prisma.sucursalPublica.findFirst({ where: { sucursalId: sucursal.id } });

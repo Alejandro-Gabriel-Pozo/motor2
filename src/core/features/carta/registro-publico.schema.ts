@@ -4,7 +4,7 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
 /**
  * Tipos de la feature «registro público de las sucursales en el portal» (docs/plan-registro-tenants-2026-09-24.md, M6; Hito 5, bloque D, `docs/plan-hito-5-pureza.md`
  * §6.1): los comandos y resultados de los casos de uso de
- * `src/server/actions/carta/casos-de-uso/{agregar-sucursal-al-portal,guardar-sucursal-publica,quitar-sucursal-del-portal,mover-sucursal-en-mapa}.ts`, que vienen de la
+ * `src/server/actions/carta/casos-de-uso/{agregar-sucursal-al-portal,guardar-sucursal-publica,mover-sucursal-en-mapa}.ts`, que vienen de la
  * Server Action `src/server/actions/carta/registro-publico.ts`. Las cuatro reciben el `Sucursal.id` (la fila es 1:1 con la sucursal) y NO dependen de la sucursal activa:
  * el mapa del portal es entre sucursales.
  */
@@ -42,14 +42,6 @@ export interface ComandoGuardarSucursalPublica {
  *  - `SLUG_TOMADO`: otra sucursal se lo ganó entre el chequeo y la escritura (el índice único).
  */
 export type ResultadoGuardarSucursalPublica = ResultadoCaso<null, "NO_ESTA_EN_EL_PORTAL" | "SLUG_EN_USO" | "SLUG_TOMADO">;
-
-/** Comando «sacar la sucursal del portal»: solo el id, ya comprobado como texto por el guard. */
-export interface ComandoQuitarSucursalDelPortal {
-  sucursalId: string;
-}
-
-/** `NO_ESTA_EN_EL_PORTAL`: la sucursal no tiene fila. */
-export type ResultadoQuitarSucursalDelPortal = ResultadoCaso<null, "NO_ESTA_EN_EL_PORTAL">;
 
 /**
  * Comando «mover la tarjeta de una sucursal sobre el mapa»: el id (comprobado como texto por el guard) y las coordenadas CRUDAS. La posición se valida DESPUÉS de leer

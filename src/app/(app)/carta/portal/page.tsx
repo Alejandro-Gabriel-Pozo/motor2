@@ -8,7 +8,7 @@ import { CLAVES_PORTAL_V1, PESTANAS_DE_APARIENCIA, urlCartaPublicaConEmpresaUnic
 import { cargarAdminPortal, cargarPortalEmpresaAdmin } from "@/server/consultas/carta/admin";
 import { entradasVistaPreviaPortal } from "@/core/carta/public";
 import { guardarPortalEmpresa } from "@/server/actions/carta/portal-empresa";
-import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal } from "@/server/actions/carta/registro-publico";
+import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa } from "@/server/actions/carta/registro-publico";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
@@ -47,7 +47,7 @@ export default async function PortalSucursalesPage() {
   const gate = await requierePermisoVerDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_portal", ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
-  // DEC-33 (ver ≠ escribir): con «Ver» y sin «Editar» de `carta_portal`, el editor sale deshabilitado y cada sucursal como texto, sin agregar, editar ni quitar; las acciones igual lo exigen.
+  // DEC-33 (ver ≠ escribir): con «Ver» y sin «Editar» de `carta_portal`, el editor sale deshabilitado y cada sucursal como texto, sin agregar ni editar; las acciones igual lo exigen.
   const [sucursales, apariencia, nivel] = await Promise.all([cargarAdminPortal(ctx.db), cargarPortalEmpresaAdmin(ctx.db), obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "carta_portal", ctx.db)]);
   const puedeEditar = nivel.editar;
 
@@ -57,7 +57,7 @@ export default async function PortalSucursalesPage() {
       <div>
         <h1 className="mb-1 text-xl font-semibold">Portal de sucursales</h1>
         <p className="text-sm text-tinta-tenue">
-          Qué sucursales muestra la carta pública en su portal y con qué dirección (/carta/&lt;slug&gt;). «Quitar del portal» la apaga, no la borra: la dirección queda reservada para esa sucursal. Solo sale en el portal si está publicada y la sucursal está
+          Qué sucursales muestra la carta pública en su portal y con qué dirección (/carta/&lt;slug&gt;). Para sacar una sucursal del portal se destilda «Publicada en el portal» y se guarda: no se borra, la dirección queda reservada para esa sucursal. Solo sale en el portal si está publicada y la sucursal está
           activa. La carta toma los cambios en hasta 5 minutos.
         </p>
         <div className="mt-1 flex flex-wrap gap-x-4 text-sm">
@@ -195,19 +195,6 @@ function SucursalEnPortal({ sucursal: s, empresaSlug, puedeEditar }: { sucursal:
                 Guardar «{s.nombre}»
               </BotonDeServidor>
             </div>
-          </FormConResultado>
-
-          <FormConResultado
-            accion={async () => {
-              "use server";
-              return refrescarSiOk(await quitarSucursalDelPortal(sucursalId));
-            }}
-            className="mt-3 border-t pt-3"
-          >
-            <p className="text-sm text-tinta-tenue">Quitarla la saca del portal y de su dirección pública, pero conserva estos datos: el slug queda reservado para esta sucursal. Para volver a mostrarla, marcá «Publicada en el portal» y guardá.</p>
-            <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
-              Quitar «{s.nombre}» del portal
-            </BotonDeServidor>
           </FormConResultado>
         </details>
       )}

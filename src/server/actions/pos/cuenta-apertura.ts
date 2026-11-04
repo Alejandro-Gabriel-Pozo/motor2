@@ -18,7 +18,7 @@ import { liberarMesaCasoDeUso } from "./casos-de-uso/liberar-mesa";
 /**
  * Toma de pedido en el salón — abrir la cuenta de una mesa, corregir sus comensales, asignarle un cliente y liberar la mesa sin venta.
  * Criterio común de todas las acciones de «tomar pedido» (transacción SERIALIZABLE, mesa de la sucursal activa, cuenta abierta, sin
- * refrescar la vista) y ayudantes compartidos: ./cuenta-comun.ts. Desde el Hito 4 de la pureza (bloque 4.1) cada acción es un adaptador fino de su
+ * refrescar la vista) y ayudantes compartidos: ./cuenta-comun.ts. Cada acción es un adaptador fino de su
  * caso de uso (./casos-de-uso/{abrir-cuenta,corregir-comensales,asignar-cliente-a-cuenta,liberar-mesa}.ts).
  */
 
@@ -33,11 +33,10 @@ import { liberarMesaCasoDeUso } from "./casos-de-uso/liberar-mesa";
  *
  * Ya no hay límite de mesas abiertas por sucursal: se retiró el 2026-10-29 (decisión del dueño; `Sucursal.maxMesasAbiertas` quedó en el esquema sin uso).
  *
- * Desde el Hito 4 de la pureza (bloque 4.1, paso 8) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_abrir_cuenta")`) → formato del
+ * Adaptador fino: permiso (`conPermiso("pos_abrir_cuenta")`) → formato del
  * `mesaId` (`guardComandoAbrirCuenta`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/abrir-cuenta.ts`: la mesa fuera de la transacción, la transacción
  * serializable con la idempotencia y los comensales, la escritura en server/persistencia/pos/cuenta.ts y el choque del índice único) →
- * `aResultadoAccion`. Con `corregirComensales`, `asignarClienteACuenta` y `liberarMesa` (pasos 5 a 7) también migradas, el archivo entero está en
- * `ACCIONES_CON_CASO_DE_USO`.
+ * `aResultadoAccion`.
  */
 export async function abrirCuenta(mesaId: string, comensales: number): Promise<ResultadoAccion> {
   return conPermiso("pos_abrir_cuenta", async (ctx) => {
@@ -65,7 +64,7 @@ export async function abrirCuentaDeMostrador(): Promise<ResultadoAbrirCuentaDeMo
  * se cargó mal al abrir). Mismo permiso que abrir la cuenta. Una cuenta ya cerrada no se toca: el dato queda congelado, igual que el
  * precio de cada ítem.
  *
- * Desde el Hito 4 de la pureza (bloque 4.1, paso 6) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_abrir_cuenta")`) → formato del
+ * Adaptador fino: permiso (`conPermiso("pos_abrir_cuenta")`) → formato del
  * `cuentaId` (`guardComandoCorregirComensales`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/corregir-comensales.ts`: transacción serializable, la
  * cuenta abierta, los comensales y la escritura en server/persistencia/pos/cuenta.ts) → `aResultadoAccion`.
  */
@@ -91,7 +90,7 @@ export async function corregirComensales(cuentaId: string, comensales: number): 
  * cliente nunca revierte una cuenta en curso.
  *
  * Quién puso (o sacó) un cliente con descuento queda en la auditoría (dos filas: cliente y % congelado): la `Operacion` de la venta solo guarda a quien cerró
- * la cuenta. Desde el Hito 4 de la pureza (bloque 4.1, paso 7) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_asignar_cliente")`) →
+ * la cuenta. Adaptador fino: permiso (`conPermiso("pos_asignar_cliente")`) →
  * formato del `cuentaId` (`guardComandoAsignarClienteACuenta`, DENTRO del envoltorio) → caso de uso (`casos-de-uso/asignar-cliente-a-cuenta.ts`: transacción
  * serializable, la cuenta abierta, el cliente, la escritura en server/persistencia/pos/cuenta.ts y las dos filas de auditoría) → `aResultadoAccion`.
  */
@@ -108,10 +107,9 @@ export async function asignarClienteACuenta(cuentaId: string, clienteId: string 
  * venta. Con cualquier fila — aunque todo esté anulado — no: esa cuenta se cierra con `cerrarCuenta`, que deja la venta (o su
  * ausencia) registrada.
  *
- * `cerradaEn` es la hora del PEDIDO (`ctx.ahora`, la que fija `conPermiso` una vez; Pureza 1.2), igual que en `cerrarCuenta`: antes leía el reloj por su
- * cuenta (`new Date()`). Cambio aprobado por el dueño (Hito 4, 2026-10-08); lo fija `test/pos/liberar-mesa-hora-del-pedido.test.ts`.
+ * `cerradaEn` es la hora del PEDIDO (`ctx.ahora`, la que fija `conPermiso` una vez), igual que en `cerrarCuenta`; lo fija `test/pos/liberar-mesa-hora-del-pedido.test.ts`.
  *
- * Desde el Hito 4 de la pureza (bloque 4.1, paso 5) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_liberar_mesa")`) → formato del
+ * Adaptador fino: permiso (`conPermiso("pos_liberar_mesa")`) → formato del
  * `cuentaId` (`guardComandoLiberarMesa`, core/features/cuentas/cuenta-apertura.guard.ts, DENTRO del envoltorio) → caso de uso (`casos-de-uso/liberar-mesa.ts`:
  * transacción serializable, la cuenta abierta, que no tenga filas y el cierre en server/persistencia/pos/) → `aResultadoAccion`.
  */

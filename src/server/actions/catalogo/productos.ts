@@ -53,6 +53,11 @@ export interface ProductoOpcion {
   nombre: string;
 }
 
+/** Lo que devuelve el buscador `buscarProductosSelector`: la opción y la unidad de stock del producto (el editor de recetas la muestra en cada resultado y pegada a la cantidad). */
+export interface ProductoOpcionConUnidad extends ProductoOpcion {
+  unidadStock: { id: string; nombre: string };
+}
+
 const LIMITE_SELECTOR = 20;
 
 /**
@@ -64,7 +69,7 @@ const LIMITE_SELECTOR = 20;
  * vacío); con término, filtra por nombre o código (y, desde la Fase 7, por
  * cómo lo llama un proveedor, para quien ve ese dato: M2 del diseño de Catálogo).
  */
-export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto, proveedorId?: string): Promise<ProductoOpcion[]> {
+export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto, proveedorId?: string): Promise<ProductoOpcionConUnidad[]> {
   // H8 (D-2): el «O» de las claves de las 24 pantallas que muestran el selector (test/arquitectura/consumidores-de-lecturas-declarados.test.ts).
   const ctx = await requerirVerAlguna([
     "proceso_compra",
@@ -105,7 +110,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
   // P2 (RLS por sucursal): `soloDisponiblesEnAlguna` pregunta «¿está disponible en ALGUNA sucursal?» (`disponibilidades: { some }`): con ese filtro la lectura corre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como
   // estaba); sin él, con la base de siempre. Devuelve filas de `Producto` (id, código, nombre: tabla de la empresa), nunca la disponibilidad de otra sucursal.
   const verificacion = filtro?.soloDisponiblesEnAlguna ? await lecturaDeVerificacionEnLaEmpresa(ctx) : ctx;
-  const select = { id: true, codigo: true, nombre: true } as const;
+  const select = { id: true, codigo: true, nombre: true, unidadStock: { select: { id: true, nombre: true } } } as const;
   const buscar = (where: object, take = LIMITE_SELECTOR) =>
     verificacion.db.producto.findMany({ where: { AND: [...condiciones, where] }, select, orderBy: { nombre: "asc" }, take });
   if (!t) return verificacion.db.producto.findMany({ where: condiciones.length ? { AND: condiciones } : {}, select, orderBy: { nombre: "asc" }, take: LIMITE_SELECTOR });
@@ -133,7 +138,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
           .then((filas) =>
             filas
               .filter((f) => f.proveedorPorProducto.some((v) => esCoincidenciaExactaDeCodigo(t, "", v.referenciaProveedor, true)))
-              .map(({ id, codigo, nombre }) => ({ id, codigo, nombre })),
+              .map(({ id, codigo, nombre, unidadStock }) => ({ id, codigo, nombre, unidadStock })),
           )
       : Promise.resolve([]);
   const [exactosPorCodigo, exactosPorReferencia, vinculados, empiezan, resto] = await Promise.all([

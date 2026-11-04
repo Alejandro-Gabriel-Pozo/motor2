@@ -37,7 +37,6 @@ describe("lo que admite cada producto — concurrencia real (GO-2a)", () => {
         cantidadMinima: null,
         cantidadMaxima: null,
         modoPrecio: null,
-        activo: true,
         opciones: [{ opcionId: e.vacaId, versionEsperada: 0, cantidadMaxima: 1, precioAbsoluto: null, diferencia: null, activo: true }],
       });
       const [a, b] = await Promise.all([fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando(1)), fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), comando(2))]);
@@ -68,7 +67,7 @@ describe("lo que admite cada producto — concurrencia real (GO-2a)", () => {
       const demora = i % 2 === 0 ? 0 : 20 * i;
       const [edicion, admision] = await Promise.all([
         new Promise((r) => setTimeout(r, demora)).then(() =>
-          editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId: grupo.id, versionEsperada: 1, nombre: grupo.nombre, cantidadMinima: 0, cantidadMaxima: 1, activo: true })
+          editarGrupoDeOpcionesCasoDeUso(actor(), { grupoId: grupo.id, versionEsperada: 1, nombre: grupo.nombre, cantidadMinima: 0, cantidadMaxima: 1 })
         ),
         fijarAdmisionDeGrupoEnProductoCasoDeUso(actor(), {
           productoId: e.cafeId,
@@ -78,7 +77,6 @@ describe("lo que admite cada producto — concurrencia real (GO-2a)", () => {
           cantidadMinima: 2,
           cantidadMaxima: null,
           modoPrecio: null,
-          activo: true,
           opciones: opciones.map((o) => ({ opcionId: o.id, versionEsperada: 0, cantidadMaxima: 1, precioAbsoluto: null, diferencia: null, activo: true })),
         }),
       ]);

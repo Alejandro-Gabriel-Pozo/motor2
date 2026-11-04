@@ -44,6 +44,7 @@ interface Spec {
   sucursal: "activa" | "otra";
   fecha: Fecha;
 }
+// I2 (a mano, con motivo): `Estado` es un tipo local del test, no un enum ni una columna de la base (la venta se anula con un registro nuevo, no con un estado guardado): no hay fuente en runtime de la que derivarlo.
 const ESTADOS: Estado[] = ["vigente", "anulada"];
 const TIPOS: Tipo[] = ["MEDIDA", "VARIANTE", "INCLUIDA", "NINGUNA", "ADICIONAL"];
 const FECHAS: Fecha[] = ["dentro", "borde-fin", "borde-inicio", "antes", "despues"];

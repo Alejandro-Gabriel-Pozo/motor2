@@ -1,13 +1,13 @@
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
- * Tipos de la APERTURA de la cuenta de una mesa (feature Cuenta del salón, módulo POS; Hito 4 de la pureza, bloque 4.1 — `docs/plan-hito-4-pureza.md` §5):
+ * Tipos de la APERTURA de la cuenta de una mesa (feature Cuenta del salón, módulo POS):
  * comandos y resultados de los casos de uso de `src/server/actions/pos/casos-de-uso/` que vienen de `src/server/actions/pos/cuenta-apertura.ts` (abrir la
  * cuenta, corregir sus comensales, asignarle un cliente y liberar la mesa sin venta). Archivo aparte de `cuenta.schema.ts` (cierre y ticket) y de
- * `cuenta-anulacion.schema.ts` por el mismo corte que ya tienen las Server Actions.
+ * `cuenta-anulacion.schema.ts` por el mismo corte que tienen las Server Actions.
  *
- * Los comandos traen el id YA validado por su guard (solo que sea un texto: si no, «no encontrado», el mismo mensaje que antes); el resto viaja CRUDO
- * (`unknown`), porque lo valida el caso de uso en el MISMO lugar que antes (después de encontrar la cuenta), y así cada combinación inválida sigue respondiendo
+ * Los comandos traen el id YA validado por su guard (solo que sea un texto: si no, «no encontrado», el mismo mensaje); el resto viaja CRUDO
+ * (`unknown`), porque lo valida el caso de uso en el MISMO lugar (después de encontrar la cuenta), y así cada combinación inválida sigue respondiendo
  * el mismo mensaje.
  */
 

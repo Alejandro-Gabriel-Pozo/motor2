@@ -73,7 +73,6 @@ export type LineaConfiguradaEnTx =
 export interface DatosVentaEnTx {
   fecha: Date;
   origen: OrigenVenta;
-  proveedorId?: string | null;
   /** Cliente con descuento de la cuenta, si tiene uno asignado (Task #14 — ver el docstring del módulo). */
   clienteId?: string | null;
   nroFactura?: string;

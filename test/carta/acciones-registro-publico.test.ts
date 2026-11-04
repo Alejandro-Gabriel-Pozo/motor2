@@ -5,11 +5,11 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, crearUsuarioConMembresia, prisma, prismaAdmin } from "../setup/test-db";
 import { activarTodosLosModulos } from "../setup/modulos";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, quitarSucursalDelPortal, type DatosSucursalPublica } from "../../src/server/actions/carta/registro-publico";
+import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa, type DatosSucursalPublica } from "../../src/server/actions/carta/registro-publico";
 
 /**
  * Server Actions del registro de tenants del portal (docs/plan-registro-tenants-2026-09-24.md, M6): permiso `carta`, slug
- * derivado del nombre y desambiguado, edición manual del slug, validaciones (slug, posición, textos, orden) y "Quitar del portal"
+ * derivado del nombre y desambiguado, edición manual del slug, validaciones (slug, posición, textos, orden) y despublicar (destildar «Publicada»)
  * apaga la fila (P16: no la borra; el slug queda reservado).
  */
 const datos = (p: Partial<DatosSucursalPublica> = {}): DatosSucursalPublica => ({ slug: "central", publicada: false, ...p });
@@ -124,22 +124,17 @@ describe("Server Actions del registro público", () => {
     expect(await guardarSucursalPublica(centralId, datos())).toEqual({ ok: false, mensaje: "Esta sucursal no está en el portal: agregala primero." });
   });
 
-  it("quitar APAGA la fila y conserva el slug (P16), no toca la sucursal, y repetirlo da ok sin cambios", async () => {
+  it("despublicar (destildar «Publicada» y guardar) APAGA la fila y conserva el slug y los datos (P16), no toca la sucursal, y repetirlo da ok sin cambios", async () => {
     await agregarSucursalAlPortal(centralId);
     await guardarSucursalPublica(centralId, datos({ publicada: true, etiqueta: "Casa" }));
-    expect(await quitarSucursalDelPortal(centralId)).toEqual({ ok: true, mensaje: '"Central" quitada del portal (slug central reservado: vuelve a verse al publicarla).' });
+    expect(await guardarSucursalPublica(centralId, datos({ publicada: false, etiqueta: "Casa" }))).toEqual({ ok: true, mensaje: 'Portal: "Central" guardada (sin publicar).' });
     const apagada = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } });
     expect(apagada).toMatchObject({ slug: "central", publicada: false, etiqueta: "Casa" });
     expect(await prisma.sucursalPublica.count()).toBe(1);
     expect(await prisma.sucursal.findUniqueOrThrow({ where: { id: centralId } })).toMatchObject({ nombre: "Central", activo: true });
-    // Idempotente por estado: la segunda vez es ok y la fila queda igual (antes la fila ya no estaba y respondía «no está en el portal»).
-    expect(await quitarSucursalDelPortal(centralId)).toMatchObject({ ok: true });
+    expect(await guardarSucursalPublica(centralId, datos({ publicada: false, etiqueta: "Casa" }))).toMatchObject({ ok: true });
     const repetida = await prisma.sucursalPublica.findFirstOrThrow({ where: { sucursalId: centralId } });
     expect({ ...repetida, actualizadoEn: null }).toEqual({ ...apagada, actualizadoEn: null });
-  });
-
-  it("quitar una sucursal que nunca estuvo en el portal responde «no está en el portal»", async () => {
-    expect(await quitarSucursalDelPortal(centralId)).toEqual({ ok: false, mensaje: "Esta sucursal no está en el portal." });
   });
 
   it("sin el permiso `carta` (el operador arranca sin él) ninguna acción escribe", async () => {
@@ -149,7 +144,7 @@ describe("Server Actions del registro público", () => {
     const operador = await crearUsuarioConMembresia({ email: "operador@test.com", sucursalId: centralId, rolId: operadorRolId });
     await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
 
-    for (const r of [await agregarSucursalAlPortal(norte), await guardarSucursalPublica(centralId, datos({ slug: "otro" })), await quitarSucursalDelPortal(centralId)]) {
+    for (const r of [await agregarSucursalAlPortal(norte), await guardarSucursalPublica(centralId, datos({ slug: "otro" }))]) {
       expect(r.ok).toBe(false);
       expect(r.mensaje).toMatch(/No tenés permiso/);
     }

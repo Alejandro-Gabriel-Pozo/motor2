@@ -5,7 +5,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
-import { agregarPasoAReceta, actualizarIngredienteDeReceta, quitarIngredienteDeReceta, actualizarCabeceraDeReceta, obtenerRecetaVigente, listarVersionesDeReceta } from "../../src/server/actions/catalogo/recetas";
+import { insertarPasoEnReceta, actualizarIngredienteDeReceta, quitarIngredienteDeReceta, actualizarCabeceraDeReceta, obtenerRecetaVigente, listarVersionesDeReceta } from "../../src/server/actions/catalogo/recetas";
 import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 
 /**
@@ -70,7 +70,7 @@ describe("recetas: sustitutos por línea de ingrediente", () => {
     expect(await sustitutosDeBife()).toEqual([insumoOjoId, insumoVacioId]);
 
     // Agregar un paso nuevo (no toca ingredientes).
-    await agregarPasoAReceta(pvId, { orden: 1, instruccion: "Sellar a fuego fuerte." }, await versionVigenteDeReceta(pvId));
+    await insertarPasoEnReceta(pvId, 1, { instruccion: "Sellar a fuego fuerte." }, await versionVigenteDeReceta(pvId));
     expect(await sustitutosDeBife()).toEqual([insumoOjoId, insumoVacioId]);
 
     // Editar la cabecera/ficha (no toca ingredientes).
@@ -156,7 +156,7 @@ describe("recetas: sustitutos por línea de ingrediente", () => {
 
   it("mutación: sacar la copia de insumoSustitutoIds en mapIngredientesAInput hace caer la regresión de ida y vuelta", async () => {
     // Demostración documentada (no aplicada): si mapIngredientesAInput dejara de copiar insumoSustitutoIds, cualquier acción
-    // puntual que relea la receta vigente (agregarPasoAReceta, actualizarCabeceraDeReceta, actualizarIngredienteDeReceta de OTRO
+    // puntual que relea la receta vigente (insertarPasoEnReceta, actualizarCabeceraDeReceta, actualizarIngredienteDeReceta de OTRO
     // ingrediente, quitarIngredienteDeReceta de OTRO ingrediente) perdería los sustitutos de Bife en la próxima versión — el test
     // "regresión de ida y vuelta" de arriba lo detecta en rojo.
     await guardarReceta(pvId, [{ insumoProductoId: bifeId, cantidad: 0.2, unidadId: kgId, insumoSustitutoIds: [insumoOjoId] }]);

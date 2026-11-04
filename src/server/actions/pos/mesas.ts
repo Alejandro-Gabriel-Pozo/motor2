@@ -17,7 +17,7 @@ import { habilitarMostradorCasoDeUso } from "./casos-de-uso/habilitar-mostrador"
  *
  * No llama a `refrescarVistaSiHaceFalta`: su único llamador (`NuevaMesa`, un componente de cliente) ya hace `router.refresh()`.
  *
- * Desde el Hito 4 de la pureza (bloque 4.1, paso 3) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_alta_mesa")`) → formato del número
+ * Adaptador fino: permiso (`conPermiso("pos_alta_mesa")`) → formato del número
  * (`guardComandoCrearMesa`, core/features/mesas/mesas.guard.ts, DENTRO del envoltorio) → caso de uso (`casos-de-uso/crear-mesa.ts`: la escritura en
  * server/persistencia/pos/mesas.ts y la traducción del número repetido) → `aResultadoAccion`.
  */

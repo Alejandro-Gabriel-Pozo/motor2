@@ -7,9 +7,7 @@ import { escribirMesaNueva } from "@/server/persistencia/pos/mesas";
 import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
- * Caso de uso «dar de alta una mesa del salón» (Hito 4 de la pureza, bloque 4.1, paso 3 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que antes vivía en
- * línea en la Server Action `crearMesa` (`src/server/actions/pos/mesas.ts`), movido TAL CUAL: la misma escritura, sin transacción, con la base del contexto
- * (`actor.db`), y el mismo mensaje. La Server Action quedó como adaptador (`conPermiso("pos_alta_mesa")` → `guardComandoCrearMesa` → este caso de uso →
+ * Caso de uso «dar de alta una mesa del salón». Una escritura, sin transacción, con la base del contexto (`actor.db`). La Server Action es un adaptador (`conPermiso("pos_alta_mesa")` → `guardComandoCrearMesa` → este caso de uso →
  * `aResultadoAccion`). El criterio de negocio (sin baja ni renumeración, número único por sucursal) está documentado en la Server Action.
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso`) ni el rango del número (`guardComandoCrearMesa`).

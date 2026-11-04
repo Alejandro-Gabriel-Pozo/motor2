@@ -34,11 +34,11 @@ export async function crearGrupoDeOpciones(
 /** Devuelve cuántas filas tocó: 0 si la versión ya no es la esperada. */
 export async function actualizarGrupoDeOpciones(
   tx: Tx,
-  args: { id: string; versionEsperada: number; nombre: string; cantidadMinima: number; cantidadMaxima: number; activo: boolean; prefijoEnCarta: string | null; ahora: Date }
+  args: { id: string; versionEsperada: number; nombre: string; cantidadMinima: number; cantidadMaxima: number; prefijoEnCarta: string | null; ahora: Date }
 ): Promise<number> {
   const { count } = await tx.grupoDeOpciones.updateMany({
     where: { id: args.id, version: args.versionEsperada },
-    data: { nombre: args.nombre, cantidadMinima: args.cantidadMinima, cantidadMaxima: args.cantidadMaxima, activo: args.activo, prefijoEnCarta: args.prefijoEnCarta, version: { increment: 1 }, actualizadoEn: args.ahora },
+    data: { nombre: args.nombre, cantidadMinima: args.cantidadMinima, cantidadMaxima: args.cantidadMaxima, prefijoEnCarta: args.prefijoEnCarta, version: { increment: 1 }, actualizadoEn: args.ahora },
   });
   return count;
 }
@@ -67,11 +67,11 @@ export async function crearOpcionDeGrupo(
   });
 }
 
-/** Devuelve cuántas filas tocó: 0 si la versión ya no es la esperada. */
-export async function actualizarOpcionDeGrupo(tx: Tx, args: { id: string; versionEsperada: number; nombre: string; orden: number; activa: boolean; ahora: Date }): Promise<number> {
+/** Devuelve cuántas filas tocó: 0 si la versión ya no es la esperada. `orden` y `activa` ausentes = esa columna no se toca (editar el nombre no las escribe; reordenar sí manda ambas). */
+export async function actualizarOpcionDeGrupo(tx: Tx, args: { id: string; versionEsperada: number; nombre: string; orden?: number; activa?: boolean; ahora: Date }): Promise<number> {
   const { count } = await tx.opcionDeGrupo.updateMany({
     where: { id: args.id, version: args.versionEsperada },
-    data: { nombre: args.nombre, orden: args.orden, activa: args.activa, version: { increment: 1 }, actualizadoEn: args.ahora },
+    data: { nombre: args.nombre, ...(args.orden === undefined ? {} : { orden: args.orden }), ...(args.activa === undefined ? {} : { activa: args.activa }), version: { increment: 1 }, actualizadoEn: args.ahora },
   });
   return count;
 }
@@ -133,6 +133,8 @@ interface FilaDeAdmisionDeGrupo {
   cantidadMaxima: number | null;
   modoPrecio: ModoDePrecioDeMedida | null;
   activo: boolean;
+  /** «Mostrar este grupo en la carta»: `undefined` = no se escribe (Prisma lo ignora): una fila nueva queda en `true` y una existente conserva lo guardado. */
+  seMuestraEnCarta?: boolean;
 }
 
 interface FilaDeAdmisionDeOpcion {

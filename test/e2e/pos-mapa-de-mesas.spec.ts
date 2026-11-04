@@ -123,7 +123,7 @@ test("P19: el total de la tarjeta muestra los centavos como el ticket (1.234,56,
   }
 });
 
-test("las acciones de cada tarjeta llevan a la pantalla de la mesa; «Opciones de mesa» sigue deshabilitado, y el salón no muestra el menú de administración", async ({ paginaAutenticada: page, sucursalId }) => {
+test("las acciones de cada tarjeta llevan a la pantalla de la mesa; no hay botón «Opciones de mesa», y el salón no muestra el menú de administración", async ({ paginaAutenticada: page, sucursalId }) => {
   const { libre, enPedido, ocupada, limpiar } = await sembrarTresMesas(sucursalId, [911, 912, 913]);
   try {
     await page.goto("/mesas");
@@ -131,7 +131,7 @@ test("las acciones de cada tarjeta llevan a la pantalla de la mesa; «Opciones d
     await expect(tarjeta(page, 912).getByRole("link", { name: "Continuar pedido" })).toHaveAttribute("href", `/mesas/${enPedido.id}`);
     await expect(tarjeta(page, 913).getByRole("link", { name: "Ver pedidos" })).toHaveAttribute("href", `/mesas/${ocupada.id}`);
     await expect(tarjeta(page, 913).getByRole("link", { name: "Facturar" })).toHaveAttribute("href", `/mesas/${ocupada.id}`);
-    await expect(tarjeta(page, 913).getByRole("button", { name: "Opciones de mesa" })).toBeDisabled();
+    await expect(tarjeta(page, 913).getByRole("button", { name: "Opciones de mesa" })).toHaveCount(0);
     // Ya no queda ningún botón de acción deshabilitado por corte de alcance, ni la nota del pie que lo explicaba.
     await expect(page.getByRole("button", { name: /Tomar pedido|Continuar pedido|Ver pedidos|Facturar/ })).toHaveCount(0);
     await expect(page.getByText("todavía no están habilitados en esta versión")).toHaveCount(0);

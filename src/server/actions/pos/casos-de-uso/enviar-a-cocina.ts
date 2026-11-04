@@ -8,9 +8,7 @@ import { cuentaAbiertaDeSucursal } from "@/server/persistencia/pos/cargar-cuenta
 import { frasesDePuesto } from "@/core/pos/puesto";
 
 /**
- * Caso de uso «enviar a cocina» (Hito 4 de la pureza, bloque 4.1, paso 11 — `docs/plan-hito-4-pureza.md` §5). Es el cuerpo que antes vivía en línea en la
- * Server Action `enviarACocina` (`src/server/actions/pos/cuenta-pedido.ts`), movido TAL CUAL: las mismas lecturas, en el mismo orden, dentro de la misma
- * transacción SERIALIZABLE, y los mismos mensajes. La Server Action quedó como adaptador (`conPermiso("pos_enviar_a_cocina")` → `guardComandoEnviarACocina` →
+ * Caso de uso «enviar a cocina». Transacción SERIALIZABLE. La Server Action es un adaptador (`conPermiso("pos_enviar_a_cocina")` → `guardComandoEnviarACocina` →
  * este caso de uso → `{ ...ok(mensaje), numeroEnvio, envioNuevo }`: no pasa por `aResultadoAccion` porque la pantalla necesita además el envío; está en
  * `SIN_ENVOLTORIO_TODAVIA` con su motivo). El criterio de negocio (KOT derivado de `numeroEnvio`, solo los ids que el mozo tenía en pantalla, una promo nunca
  * sale a medias) está documentado en la Server Action.

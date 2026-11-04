@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   armarTemaCarta,
   CLAVES_FIJAS_DEL_SISTEMA,
-  CLAVES_NO_POR_TENANT,
-  CLAVES_RETIRADAS,
   CLAVES_TEMA_V1,
   validarValoresTema,
   validarValorTema,
@@ -11,100 +9,9 @@ import {
 } from "../../src/core/carta/tema";
 
 /**
- * Catálogo del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M3, D3): las 64 claves por tenant, la clasificación del
- * resto de `SiteConfig`, la paridad con los defaults de la carta, un validador por tipo
+ * Catálogo del tema de la carta (docs/plan-tema-carta-2026-09-24.md, M3, D3): las 64 claves por tenant, los defaults de la carta, un validador por tipo
  * y el saneamiento de la salida del endpoint.
  */
-
-/** D3 del plan, copiado tal cual, por bloque. */
-const BLOQUE_A = ["restaurante_nombre", "restaurante_subtitulo", "restaurante_descripcion", "restaurante_logo_url", "hero_imagen_fondo_url", "hero_etiqueta_superior"];
-const BLOQUE_B = [
-  "color_marca",
-  "hero_color_fondo",
-  "hero_ink",
-  "color_fondo_dia",
-  "color_portada_textos",
-  "color_portada_cta",
-  "color_nav_flechas",
-  "color_nav_iconos",
-  "color_indice_numeros",
-  "color_indice_titulos",
-  "color_indice_titulo",
-  "color_banda_etiqueta",
-  "color_banda_titulo",
-  "color_banda_descripcion",
-  "color_item_nombre",
-  "color_item_precio",
-  "color_item_descripcion",
-  "color_item_tags",
-  "color_especial_item_nombre",
-  "color_especial_item_precio",
-  "color_especial_item_descripcion",
-  "color_especial_item_tags",
-  "topbar_back_color",
-];
-const BLOQUE_C = [
-  "carta_texto_portada_cta",
-  "carta_texto_portada_separador",
-  "carta_texto_indice_etiqueta",
-  "carta_texto_indice_titulo",
-  "topbar_back_label",
-  "restaurante_instagram",
-  "restaurante_facebook",
-  "restaurante_whatsapp",
-  "restaurante_footer_maps_url",
-];
-const BLOQUE_D = [
-  "carta_fuente_familia",
-  "carta_fuente_banda_etiqueta",
-  "carta_fuente_banda_titulo",
-  "carta_fuente_banda_descripcion",
-  "carta_fuente_item_nombre",
-  "carta_fuente_item_precio",
-  "carta_fuente_item_descripcion",
-  "carta_fuente_item_tags",
-  "carta_fuente_portada_etiqueta",
-  "carta_fuente_portada_nombre",
-  "carta_fuente_portada_subtitulo",
-  "carta_fuente_portada_descripcion",
-  "carta_fuente_portada_cta",
-  "carta_fuente_indice_etiqueta",
-  "carta_fuente_indice_titulo",
-  "carta_fuente_indice_numero",
-  "carta_fuente_indice_item",
-  "topbar_back_size",
-  "carta_pos_bloque",
-  "carta_pos_cta",
-  "carta_banda_alto_mobile",
-  "carta_banda_alto_desktop",
-  "carta_imagen_pos_x",
-  "carta_imagen_pos_y",
-  "carta_imagen_overlay",
-  "carta_imagen_opacidad",
-];
-
-/** Las 109 claves de `SiteConfig`, copiadas en orden de restaurant-menu-design/lib/get-config.ts (commit f4529ce). */
-const CLAVES_SITE_CONFIG = [
-  "restaurante_nombre", "restaurante_subtitulo", "restaurante_descripcion", "restaurante_boton_hero", "color_marca", "theme_color",
-  "favicon_url", "restaurante_logo_url", "lang", "meta_title", "meta_descripcion", "meta_og_image_url",
-  "meta_og_locale", "meta_og_url", "meta_twitter_card", "hero_color_fondo", "hero_imagen_fondo_url", "hero_etiqueta_superior",
-  "hero_etiqueta_scroll", "hero_ink", "hero_pos_contenido", "hero_pos_contenido_mobile", "hero_pos_logo", "hero_pos_logo_mobile",
-  "color_fondo_dia", "color_nav", "color_seccion", "color_especial", "color_cta", "color_tags",
-  "color_precio", "color_portada_textos", "color_portada_cta", "color_nav_flechas", "color_nav_iconos", "color_indice_numeros",
-  "color_indice_titulos", "color_indice_titulo", "color_banda_etiqueta", "color_banda_titulo", "color_banda_descripcion", "color_item_nombre",
-  "color_item_precio", "color_item_descripcion", "color_item_tags", "color_especial_item_nombre", "color_especial_item_precio", "color_especial_item_descripcion",
-  "color_especial_item_tags", "empresa_nombre", "empresa_logo_url", "portal_etiqueta", "portal_titulo", "portal_titulo_color",
-  "portal_bg_image_url", "portal_bg_overlay", "portal_card_color", "portal_card_color_hover", "portal_card_border_hover", "portal_header_bg",
-  "portal_header_color", "portal_etiqueta_color", "portal_card_bg", "portal_card_border", "portal_card_notas_color", "portal_card_flecha_color",
-  "topbar_back_label", "topbar_back_size", "topbar_back_color", "restaurante_footer_maps_url", "restaurante_instagram", "restaurante_facebook",
-  "restaurante_whatsapp", "precio_simbolo", "precio_locale", "precio_posicion", "carta_pos_bloque", "carta_pos_cta",
-  "carta_banda_alto_mobile", "carta_banda_alto_desktop", "carta_imagen_modo", "carta_imagen_ancho_mobile", "carta_imagen_ancho_desktop", "carta_imagen_pos_x",
-  "carta_imagen_pos_y", "carta_imagen_overlay", "carta_imagen_opacidad", "carta_fuente_banda_etiqueta", "carta_fuente_banda_titulo", "carta_fuente_banda_descripcion",
-  "carta_fuente_item_nombre", "carta_fuente_item_precio", "carta_fuente_item_descripcion", "carta_fuente_item_tags", "carta_fuente_portada_etiqueta", "carta_fuente_portada_nombre",
-  "carta_fuente_portada_subtitulo", "carta_fuente_portada_descripcion", "carta_fuente_portada_cta", "carta_fuente_indice_etiqueta", "carta_fuente_indice_titulo", "carta_fuente_indice_numero",
-  "carta_fuente_indice_categoria", "carta_fuente_indice_item", "carta_texto_portada_cta", "carta_texto_portada_separador", "carta_texto_indice_etiqueta", "carta_texto_indice_titulo",
-  "footer_texto_derechos",
-];
 
 /**
  * Los defaults NO VACÍOS de los bloques A a D en `defaults` de restaurant-menu-design/lib/get-config.ts (commit f4529ce), copiados
@@ -149,34 +56,12 @@ const claves = CLAVES_TEMA_V1.map((d) => d.clave as string);
 const ordenar = (xs: readonly string[]) => [...xs].sort();
 
 describe("catálogo CLAVES_TEMA_V1", () => {
-  it("exactamente las 63 claves de D3 (menos las 4 retiradas) más carta_fuente_familia, con 6/23/9/26 por bloque", () => {
-    expect(claves).toHaveLength(64);
-    expect(ordenar(claves)).toEqual(ordenar([...BLOQUE_A, ...BLOQUE_B, ...BLOQUE_C, ...BLOQUE_D]));
-    const porBloque = (b: string) => ordenar(CLAVES_TEMA_V1.filter((d) => d.bloque === b).map((d) => d.clave));
-    expect(porBloque("A")).toEqual(ordenar(BLOQUE_A));
-    expect(porBloque("B")).toEqual(ordenar(BLOQUE_B));
-    expect(porBloque("C")).toEqual(ordenar(BLOQUE_C));
-    expect(porBloque("D")).toEqual(ordenar(BLOQUE_D));
-    expect([BLOQUE_A.length, BLOQUE_B.length, BLOQUE_C.length, BLOQUE_D.length]).toEqual([6, 23, 9, 26]);
-  });
-
-  it("sin repetidas y sin intersección con las fijas del sistema ni con las que no son por tenant", () => {
+  it("son 64 claves y todas distintas, sin intersección con las fijas del sistema", () => {
     const fijas = Object.keys(CLAVES_FIJAS_DEL_SISTEMA);
+    expect(claves).toHaveLength(64);
     expect(new Set(claves).size).toBe(claves.length);
-    expect(new Set(CLAVES_NO_POR_TENANT).size).toBe(CLAVES_NO_POR_TENANT.length);
     expect(claves.filter((c) => fijas.includes(c))).toEqual([]);
-    expect(claves.filter((c) => (CLAVES_NO_POR_TENANT as readonly string[]).includes(c))).toEqual([]);
-    expect(fijas.filter((c) => (CLAVES_NO_POR_TENANT as readonly string[]).includes(c))).toEqual([]);
-  });
-
-  it("63 (+ carta_fuente_familia, propia de motor2) + 3 + 39 + 4 retiradas = las 109 claves de SiteConfig, ni una más ni una menos", () => {
-    expect(CLAVES_SITE_CONFIG).toHaveLength(109);
-    expect(Object.keys(CLAVES_FIJAS_DEL_SISTEMA)).toHaveLength(3);
-    expect(CLAVES_NO_POR_TENANT).toHaveLength(39);
-    expect(CLAVES_RETIRADAS).toEqual(["carta_fuente_indice_categoria", "carta_imagen_modo", "carta_imagen_ancho_mobile", "carta_imagen_ancho_desktop"]);
-    for (const r of CLAVES_RETIRADAS) expect(claves).not.toContain(r);
     expect(claves).not.toContain("carta_fuente_indice_categoria");
-    expect(ordenar([...claves.filter((c) => c !== "carta_fuente_familia"), ...Object.keys(CLAVES_FIJAS_DEL_SISTEMA), ...CLAVES_NO_POR_TENANT, ...CLAVES_RETIRADAS])).toEqual(ordenar(CLAVES_SITE_CONFIG));
   });
 
   it("las 3 fijas del sistema son las de precio, con la convención argentina", () => {

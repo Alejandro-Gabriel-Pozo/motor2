@@ -12,7 +12,6 @@ import type { Prisma } from "@prisma/client";
 export interface OperacionDeVentaAEscribir {
   sucursalId: string;
   fecha: Date;
-  proveedorId: string | null;
   clienteId: string | null;
   promoCuentaId: string | null;
   nroFactura: string | null;

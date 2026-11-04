@@ -174,7 +174,6 @@ export async function crearGrupoEnElProductoCasoDeUso(
           cantidadMinima: null,
           cantidadMaxima: null,
           modoPrecio: forma.modoPrecio,
-          activo: true,
           opciones: comando.opciones.map((o, i) => ({
             opcionId: opcionIds[i]!,
             versionEsperada: filasDeOpciones.get(opcionIds[i]!)?.version ?? 0,

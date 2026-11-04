@@ -430,7 +430,7 @@ test("línea de base de navegador de la carta pública y del catálogo de opcion
     if (process.env.REGENERAR_LB_PRECIO_Y_CARTA === "1" || !existsSync(ARCHIVO)) writeFileSync(ARCHIVO, actual);
     expect(actual).toBe(readFileSync(ARCHIVO, "utf8").replace(/\r\n/g, "\n"));
 
-    // Capturas con TEMA OSCURO (solo con MOTOR2_LB_CAPTURAS, fuera del golden): el usuario propio carga un fondo oscuro y un color de marca en el tema de la sucursal, lo aplica (la acción
+    // Capturas con TEMA OSCURO (solo con MOTOR2_LB_CAPTURAS, fuera del golden): el usuario propio carga un fondo oscuro y un color de marca en el tema de la sucursal, lo guarda y queda aplicado (la acción
     // revalida la carta) y se vuelve a capturar la carta a cada ancho. La limpieza borra el tema.
     if (process.env.MOTOR2_LB_CAPTURAS) {
       await admin.setViewportSize({ width: 1280, height: 900 });
@@ -440,8 +440,6 @@ test("línea de base de navegador de la carta pública y del catálogo de opcion
       await admin.locator('[name="color_marca"]').fill("#f2b544");
       await admin.getByRole("button", { name: "Guardar tema" }).click();
       await expect(admin.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
-      await admin.getByRole("button", { name: "Aplicar el tema" }).click();
-      await expect(admin.getByRole("status").filter({ hasText: "aplicado" })).toBeVisible();
       for (const { ancho, alto } of ANCHOS) {
         await page.setViewportSize({ width: ancho, height: alto });
         await page.goto(ruta);

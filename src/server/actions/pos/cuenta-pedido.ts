@@ -13,7 +13,7 @@ import { quitarPromoSinEnviarCasoDeUso } from "./casos-de-uso/quitar-promo-sin-e
 /**
  * Toma de pedido en el salón — cargar el pedido: agregar ítems y promos sin enviar, quitarlos mientras no salieron y enviarlos a cocina.
  * Criterio común de todas las acciones de «tomar pedido» (transacción SERIALIZABLE, mesa de la sucursal activa, cuenta abierta, sin
- * refrescar la vista) y ayudantes compartidos: ./cuenta-comun.ts. Desde el Hito 4 de la pureza (bloque 4.1, pasos 9 a 12) cada acción es un adaptador fino
+ * refrescar la vista) y ayudantes compartidos: ./cuenta-comun.ts. Cada acción es un adaptador fino
  * de su caso de uso (./casos-de-uso/{agregar-items,quitar-promo-sin-enviar,quitar-item-sin-enviar,enviar-a-cocina}.ts).
  */
 
@@ -39,11 +39,10 @@ import { quitarPromoSinEnviarCasoDeUso } from "./casos-de-uso/quitar-promo-sin-e
  * clic) devuelva el mensaje original sin duplicar los ítems; con otro pedido bajo la misma clave responde el conflicto de idempotencia. NO protege dos pestañas con dos pedidos distintos (dos claves, dos
  * intenciones), y SIN clave dos llamadas iguales siguen duplicando. Ver el caso de uso.
  *
- * Desde el Hito 4 de la pureza (bloque 4.1, paso 12) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_tomar_pedido")`) → formato de las listas,
+ * Adaptador fino: permiso (`conPermiso("pos_tomar_pedido")`) → formato de las listas,
  * el tope y el `cuentaId` (`guardComandoAgregarItems`, core/features/cuentas/cuenta-pedido.guard.ts, DENTRO del envoltorio: los mismos chequeos de antes de la
  * transacción, en el mismo orden) → caso de uso (`casos-de-uso/agregar-items.ts`: transacción serializable, la cuenta abierta, la validación de cada ítem y
- * cada promo y las escrituras en server/persistencia/pos/pedido.ts) → `aResultadoAccion`. Con las cuatro migradas, el archivo entero está en
- * `ACCIONES_CON_CASO_DE_USO` (.dependency-cruiser-excepciones.cjs).
+ * cada promo y las escrituras en server/persistencia/pos/pedido.ts) → `aResultadoAccion`.
  */
 export async function agregarItems(cuentaId: string, items: ItemParaAgregar[], promos?: PromoParaAgregar[], claveIdempotencia?: string): Promise<ResultadoAccion> {
   return conPermiso("pos_tomar_pedido", async (ctx) => {
@@ -58,7 +57,7 @@ export async function agregarItems(cuentaId: string, items: ItemParaAgregar[], p
  * verdad (borradores, sin motivo ni auditoría — mismo criterio que `quitarItemSinEnviar`). Si algún componente ya salió a
  * cocina, no se borra nada: hay que anular la promo entera (`anularPromoEnviada`, D4).
  *
- * Desde el Hito 4 de la pureza (bloque 4.1, paso 10) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_tomar_pedido")`) → formato del
+ * Adaptador fino: permiso (`conPermiso("pos_tomar_pedido")`) → formato del
  * `promoCuentaId` (`guardComandoQuitarPromoSinEnviar`, core/features/cuentas/cuenta-pedido.guard.ts, DENTRO del envoltorio) → caso de uso
  * (`casos-de-uso/quitar-promo-sin-enviar.ts`: transacción serializable, la promo, la cuenta abierta, que nada haya salido y el borrado en
  * server/persistencia/pos/pedido.ts) → `aResultadoAccion`.
@@ -76,7 +75,7 @@ export async function quitarPromoSinEnviar(promoCuentaId: string): Promise<Resul
  * condición vive en el mismo DELETE (`numeroEnvio: null`, y nunca una fila espejo): si otro mozo lo envió un instante antes, no se
  * borra nada. Un ítem ya enviado se anula con motivo (`anularItemEnviado`).
  *
- * Desde el Hito 4 de la pureza (bloque 4.1, paso 9) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_tomar_pedido")`) → formato del
+ * Adaptador fino: permiso (`conPermiso("pos_tomar_pedido")`) → formato del
  * `cuentaItemId` (`guardComandoQuitarItemSinEnviar`, core/features/cuentas/cuenta-pedido.guard.ts, DENTRO del envoltorio) → caso de uso
  * (`casos-de-uso/quitar-item-sin-enviar.ts`: transacción serializable, el ítem, la cuenta abierta y el borrado condicional en server/persistencia/pos/pedido.ts)
  * → `aResultadoAccion`.
@@ -97,7 +96,7 @@ export async function quitarItemSinEnviar(cuentaItemId: string): Promise<Resulta
  * Además de `{ ok, mensaje }` devuelve `numeroEnvio` y `envioNuevo` (`ResultadoEnvioACocina`): la pantalla imprime la comanda solo del
  * envío que creó esta llamada; en el caso idempotente informa el envío en el que ya habían salido, con `envioNuevo: false`.
  *
- * Desde el Hito 4 de la pureza (bloque 4.1, paso 11) esta Server Action es un adaptador fino: permiso (`conPermiso("pos_enviar_a_cocina")`) → formato de la
+ * Adaptador fino: permiso (`conPermiso("pos_enviar_a_cocina")`) → formato de la
  * lista y del `cuentaId` (`guardComandoEnviarACocina`, core/features/cuentas/cuenta-pedido.guard.ts, DENTRO del envoltorio: la lista primero, como antes) → caso
  * de uso (`casos-de-uso/enviar-a-cocina.ts`: transacción serializable, la cuenta abierta, los hermanos de promo, el número de envío y el `UPDATE` condicional en
  * server/persistencia/pos/pedido.ts). No usa `aResultadoAccion` (la pantalla necesita además el envío): copia a mano SOLO `numeroEnvio` y `envioNuevo` de

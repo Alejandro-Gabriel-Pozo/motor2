@@ -45,14 +45,6 @@ export async function guardarRegistroPublicoDeSucursal(db: Prisma.TransactionCli
   });
 }
 
-/**
- * Apaga la fila de una sucursal en el portal (`publicada = false`) SIN borrarla (P16, decisión del dueño 2026-10-11): la sucursal desaparece del portal y de su URL pública, pero el
- * slug queda RESERVADO por el índice único `(empresaId, slug)` y, si se vuelve a publicar, el QR ya impreso vuelve a funcionar. Repetirlo deja el mismo estado. La sucursal en sí no se toca.
- */
-export async function apagarRegistroPublicoDeSucursal(db: Prisma.TransactionClient, args: { id: string }): Promise<void> {
-  await db.sucursalPublica.update({ where: { id: args.id }, data: { publicada: false } });
-}
-
 /** Mueve la tarjeta de una sucursal sobre el mapa: guarda SOLO `posX` y `posY` (el ancho y el alto quedan como estaban). */
 export async function moverRegistroPublicoEnMapa(db: Prisma.TransactionClient, args: { id: string; posX: number | null; posY: number | null }): Promise<void> {
   await db.sucursalPublica.update({ where: { id: args.id }, data: { posX: args.posX, posY: args.posY } });

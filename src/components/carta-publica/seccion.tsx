@@ -247,7 +247,15 @@ export function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: Est
         {(item.descuentoPorcentaje !== undefined || p.aclaraciones.length > 0) && (
           <div className="pb-2.5">
             {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
-            <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
+            {platos.length >= 2 && p.aclaraciones.length > 0 ? (
+              // Con 2 o más platos arriba, las aclaraciones valen para TODOS (no solo para el último): una línea más gruesa las separa de las filas y el rótulo «En todos» lo dice (decisión del dueño, 2026-11-03).
+              <div data-en-todos className="carta-borde border-t-2 pt-1.5">
+                <p className="carta-rol-etiqueta uppercase tracking-wider" style={{ color: "var(--carta-ink-soft)" }}>En todos</p>
+                <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
+              </div>
+            ) : (
+              <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
+            )}
           </div>
         )}
       </li>

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { buscarProductosSelector, type ProductoOpcion } from "@/server/actions/catalogo/productos";
+import { buscarProductosSelector, type ProductoOpcionConUnidad } from "@/server/actions/catalogo/productos";
 import type { FiltroSelectorProducto } from "@/core/catalogo/public";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Campo } from "@/ui/primitivas/campo";
+import { Insignia } from "@/ui/primitivas/insignia";
 
 interface Props {
   id?: string;
@@ -26,6 +27,68 @@ interface Props {
    * (`nombradoPorFuera` de `Campo`): así lo usan hoy todas las pantallas.
    */
   "aria-label"?: string;
+  /** El nombre con el que el `<input>` oculto (el `productoId` elegido) viaja en el `FormData` de un `<form>`. Sin él, no viaja: quien lo usa lleva el valor en su propio estado. */
+  name?: string;
+  /** Se llama con la opción COMPLETA elegida (código, nombre y unidad de stock), justo después de `onChange(id)`. Sin ella, solo se entrega el id. */
+  onElegir?: (opcion: ProductoOpcionConUnidad) => void;
+  /** Muestra, en cada resultado, la unidad de stock del producto (una insignia a la derecha: «kg»). Sin ella, cada resultado es «código — nombre» como siempre. */
+  mostrarUnidad?: boolean;
+  /** El aviso cuando la búsqueda no encuentra nada, a partir de lo que se escribió. Sin él: «Sin resultados.». */
+  textoSinResultados?: (termino: string) => string;
+}
+
+/**
+ * La lista de resultados (`role="listbox"`) del combobox. Es un componente aparte, sin estado propio, para poder probar en Node (Vitest no tiene DOM) que cada resultado muestra lo que debe y
+ * que elegirlo entrega la opción completa. `SelectorProducto` es el único que la usa.
+ */
+export function ListaDeResultados({
+  opciones,
+  resaltado,
+  idLista,
+  idOpcion,
+  mostrarUnidad,
+  alElegir,
+  alResaltar,
+}: {
+  opciones: ProductoOpcionConUnidad[];
+  resaltado: number;
+  idLista: string;
+  idOpcion: (indice: number) => string;
+  mostrarUnidad: boolean;
+  alElegir: (opcion: ProductoOpcionConUnidad) => void;
+  alResaltar: (indice: number) => void;
+}) {
+  return (
+    <ul id={idLista} role="listbox">
+      {opciones.map((op, i) => (
+        <li
+          key={op.id}
+          id={idOpcion(i)}
+          role="option"
+          aria-selected={i === resaltado}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            alElegir(op);
+          }}
+          onMouseEnter={() => alResaltar(i)}
+          className={`cursor-pointer px-2 py-1.5 max-md:py-3 ${mostrarUnidad ? "flex items-center justify-between gap-2 " : ""}${i === resaltado ? "bg-superficie-suave" : ""}`}
+        >
+          {mostrarUnidad ? (
+            <>
+              <span>
+                {op.codigo} — {op.nombre}
+              </span>
+              <Insignia>{op.unidadStock.nombre}</Insignia>
+            </>
+          ) : (
+            <>
+              {op.codigo} — {op.nombre}
+            </>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /**
@@ -38,9 +101,9 @@ interface Props {
  * `required` siga bloqueando el submit nativo como con el `<select>`
  * anterior — el `<input>` visible es solo el término de búsqueda.
  */
-export function SelectorProducto({ id, value, onChange, filtro, proveedorId, placeholder = "Código o nombre…", required, etiquetaInicial, limpiarSenal, className, "aria-label": ariaLabel }: Props) {
+export function SelectorProducto({ id, value, onChange, filtro, proveedorId, placeholder = "Código o nombre…", required, etiquetaInicial, limpiarSenal, className, "aria-label": ariaLabel, name, onElegir, mostrarUnidad = false, textoSinResultados }: Props) {
   const [query, setQuery] = useState(etiquetaInicial ?? "");
-  const [opciones, setOpciones] = useState<ProductoOpcion[]>([]);
+  const [opciones, setOpciones] = useState<ProductoOpcionConUnidad[]>([]);
   const [abierto, setAbierto] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [errorBusqueda, setErrorBusqueda] = useState(false);
@@ -84,8 +147,9 @@ export function SelectorProducto({ id, value, onChange, filtro, proveedorId, pla
     }, 250);
   }
 
-  function elegir(op: ProductoOpcion) {
+  function elegir(op: ProductoOpcionConUnidad) {
     onChange(op.id);
+    onElegir?.(op);
     setQuery(`${op.codigo} — ${op.nombre}`);
     setAbierto(false);
   }
@@ -118,7 +182,7 @@ export function SelectorProducto({ id, value, onChange, filtro, proveedorId, pla
 
   return (
     <div ref={contenedorRef} className={`relative ${className ?? ""}`}>
-      <input type="hidden" required={required} value={value} onChange={() => {}} />
+      <input type="hidden" name={name} required={required} value={value} onChange={() => {}} />
       <Campo
         {...nombre}
         id={id}
@@ -163,29 +227,16 @@ export function SelectorProducto({ id, value, onChange, filtro, proveedorId, pla
           {!cargando && !errorBusqueda && !opciones.length && (
             <div className="px-2 py-1.5">
               <Aviso variante="informacion" forma="en-linea">
-                {query.trim() ? "Ningún producto tiene todas esas palabras. Probá con menos palabras o con el código." : "No hay productos para elegir."}
+                {textoSinResultados
+                  ? textoSinResultados(query)
+                  : query.trim()
+                    ? "Ningún producto tiene todas esas palabras. Probá con menos palabras o con el código."
+                    : "No hay productos para elegir."}
               </Aviso>
             </div>
           )}
           {hayLista && (
-            <ul id={listboxId} role="listbox">
-              {opciones.map((op, i) => (
-                <li
-                  key={op.id}
-                  id={idOpcion(i)}
-                  role="option"
-                  aria-selected={i === resaltado}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    elegir(op);
-                  }}
-                  onMouseEnter={() => setResaltado(i)}
-                  className={`cursor-pointer px-2 py-1.5 max-md:py-3 ${i === resaltado ? "bg-superficie-suave" : ""}`}
-                >
-                  {op.codigo} — {op.nombre}
-                </li>
-              ))}
-            </ul>
+            <ListaDeResultados opciones={opciones} resaltado={resaltado} idLista={listboxId} idOpcion={idOpcion} mostrarUnidad={mostrarUnidad} alElegir={elegir} alResaltar={setResaltado} />
           )}
         </div>
       )}

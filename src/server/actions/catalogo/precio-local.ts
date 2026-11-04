@@ -20,13 +20,8 @@ import { sincronizarPrecioLocalGrupoCartaCasoDeUso } from "./casos-de-uso/sincro
  *
  * Desde el Hito 4 de la pureza (bloque 4.2, paso H4C-4) las dos mutaciones son adaptadores finos de sus casos de uso
  * (`./casos-de-uso/{set-precio-local-producto,sincronizar-precio-local-grupo-carta}.ts`, con el paso compartido `guardar-precio-local-en-tx.ts` que escribe en
- * server/persistencia/catalogo/precio-local.ts y audita): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. Las dos lecturas de abajo siguen acá.
+ * server/persistencia/catalogo/precio-local.ts y audita): el archivo entero está en `ACCIONES_CON_CASO_DE_USO`. La lectura de abajo (`listarPreciosLocales`) sigue acá.
  */
-export async function obtenerPrecioLocalProducto(sucursalId: string, productoId: string) {
-  const ctx = await requerirVerEnSucursal(sucursalId, "precio_local");
-  return ctx.db.precioLocalProducto.findUnique({ where: { sucursalId_productoId: { sucursalId, productoId } } });
-}
-
 export async function listarPreciosLocales(sucursalId: string) {
   const ctx = await requerirVerEnSucursal(sucursalId, "precio_local");
   // S-15 (plan de endurecimiento, T7): solo lo que el panel dibuja (el `Producto` entero llevaba el costo de consignación a quien invoca la acción a mano). Más campos: se AGREGAN acá (GT-3a).

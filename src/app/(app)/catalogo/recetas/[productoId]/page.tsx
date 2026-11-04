@@ -11,7 +11,6 @@ import {
   agregarIngredienteAReceta,
   actualizarIngredienteDeReceta,
   quitarIngredienteDeReceta,
-  agregarPasoAReceta,
   reordenarPasosDeReceta,
   insertarPasoEnReceta,
   actualizarPasoDeReceta,
@@ -32,6 +31,7 @@ import {
 } from "@/server/consultas/catalogo/recetas";
 import { CampoNumero } from "@/components/campo-numero";
 import { LecturaDeCantidad } from "@/components/receta/lectura-de-cantidad";
+import { MateriaPrimaYCantidad } from "@/components/receta/materia-prima-y-cantidad";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
@@ -113,7 +113,7 @@ export default async function RecetaEditorPage({
   // La versión que ESTA pantalla muestra: cada cambio puntual la manda de vuelta, y si mientras tanto alguien guardó otra, el cambio se rechaza con un mensaje en vez de pisarlo (H7).
   const versionVista = vigente?.version ?? 0;
   const volver = `/catalogo/recetas/${producto.id}`;
-  const siguienteOrdenPaso = vigente?.pasos.length ? Math.max(...vigente.pasos.map((p) => p.orden)) + 1 : 1;
+  const pasosVigentes = vigente?.pasos.length ?? 0;
 
   // M.3-A5: lo que esta pantalla muestra de OTRAS sucursales (de dónde copiar la receta, en cuáles falta un ingrediente, dónde está calibrado) se limita a las sucursales que el usuario puede ver: la LECTURA
   // se ensancha a las sucursales donde el rol ve `receta_sucursal_copiar` (el mismo «Ver» que exige `leerOrigenDeCopia` al copiar), además de la activa. `sucursalesVisibles` sale de ese alcance (membresías
@@ -540,21 +540,7 @@ export default async function RecetaEditorPage({
           className="flex max-w-lg flex-col gap-2"
         >
           <h3 className="font-medium">Agregar ingrediente (genera la próxima versión)</h3>
-          <LecturaDeCantidad campoId="cantidad-ingrediente-nuevo" unidadDeStockPorMp={unidadDeStockPorMp} unidades={lecturaPorUnidad}>
-            <Selector etiqueta="Materia prima" etiquetaOculta name="insumoProductoId" required>
-              <option value="">Materia prima</option>
-              {mpDisponibles.map((mp) => (
-                <option key={mp.id} value={mp.id}>
-                  {mp.nombre} ({nombreDeUnidad(mp.unidadStockId)})
-                </option>
-              ))}
-            </Selector>
-            <p className="text-xs text-tinta-tenue">La cantidad se carga en la unidad de stock de la materia prima (la que figura entre paréntesis).</p>
-            <div className="flex gap-2">
-              <CampoNumero tipo="cantidad" id="cantidad-ingrediente-nuevo" name="cantidad" placeholder="Cantidad" ariaLabel="Cantidad" required className="flex-1" />
-              <CampoNumero tipo="porcentaje" name="mermaPorcentaje" placeholder="Merma %" ariaLabel="Merma" className="w-28" />
-            </div>
-          </LecturaDeCantidad>
+          <MateriaPrimaYCantidad idCantidad="cantidad-ingrediente-nuevo" etiquetaMateriaPrima="Materia prima" etiquetaCantidad="Cantidad" etiquetaMerma="Merma" lecturaPorUnidad={lecturaPorUnidad} />
           <BotonDeServidor type="submit">
             Agregar
           </BotonDeServidor>
@@ -687,8 +673,8 @@ export default async function RecetaEditorPage({
                   insumoProductoIds: formData.getAll("insumoProductoIds").map(String),
                 };
                 const posicion = String(formData.get("posicion") ?? "final");
-                if (posicion === "final") return agregarPasoAReceta(producto.id, { orden: siguienteOrdenPaso, ...datos }, versionVista);
-                return insertarPasoEnReceta(producto.id, Number(posicion), datos, versionVista);
+                // «Al final» es la posición N+1 (N = pasos vigentes que vio la pantalla); `insertarPasoEnReceta` renumera.
+                return insertarPasoEnReceta(producto.id, posicion === "final" ? pasosVigentes + 1 : Number(posicion), datos, versionVista);
               }}
               className="flex max-w-lg flex-col gap-2"
             >

@@ -38,8 +38,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   // prueban `test/catalogo/opciones-admision.test.ts` y `opciones-versiones.test.ts`, y `escrituras-auditadas` exige la cadena.
   // Fase 4 de la ola «precio y carta» (ADR-035): + `prefijoEnCarta` («se lee en la carta como»).
   { archivo: "src/server/actions/catalogo/casos-de-uso/crear-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "tipo", "cantidadMinima", "cantidadMaxima", "prefijoEnCarta"] },
-  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "cantidadMinima", "cantidadMaxima", "activo", "prefijoEnCarta"] },
-  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["nombre", "orden", "activa"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "cantidadMinima", "cantidadMaxima", "prefijoEnCarta"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["nombre"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/agregar-version-de-opcion.ts", entidad: "VersionDeOpcion", campos: ["numero", "tipoDeDiferencia", "diferenciaPrecio", "porcentaje", "factorEscala"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/apagar-opcion-en-sucursal.ts", entidad: "OpcionApagadaEnSucursal", campos: ["apagada"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/fijar-precio-local-de-opcion.ts", entidad: "PrecioLocalDeOpcion", campos: ["precio", "habilitado"] },

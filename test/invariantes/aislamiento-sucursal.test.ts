@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
-import { obtenerPrecioLocalProducto, listarPreciosLocales } from "../../src/server/actions/catalogo/precio-local";
+import { listarPreciosLocales } from "../../src/server/actions/catalogo/precio-local";
 
 /**
  * Fase 0.3 del checklist de multi-tenancy (Downloads/Motor 2/motor2-multitenancy-checklist (1).md, sección "Fase 0"): tests de
@@ -25,7 +25,7 @@ import { obtenerPrecioLocalProducto, listarPreciosLocales } from "../../src/serv
  *     sesión de un segundo actor): cambiar de usuario mockeado A MITAD de un mismo test no tiene precedente en este repo
  *     (`obtenerContextoUsuario` usa `cache()` de React, pensado para memoizar por request — sembrar por Prisma evita esa
  *     duda por completo, sin necesitar resolverla).
- *  3. `obtenerPrecioLocalProducto`/`listarPreciosLocales` de OTRA sucursal — rechazado al nivel de PERMISO
+ *  3. `listarPreciosLocales` de OTRA sucursal — rechazado al nivel de PERMISO
  *     (`requerirVerEnSucursal`), ni siquiera llega a leer nada: quien no tiene membresía en esa sucursal no puede ver su
  *     precio local. `setPrecioLocalProducto` (la escritura) ni siquiera se puede intentar contra otra sucursal: no acepta
  *     `sucursalId` por parámetro, siempre opera sobre `ctx.sucursalId` — aislamiento por construcción, no por chequeo.
@@ -95,10 +95,9 @@ describe("aislamiento entre sucursales", () => {
     expect(releida.anuladaEn).toBeNull();
   });
 
-  it("obtenerPrecioLocalProducto/listarPreciosLocales de otra sucursal se rechazan al nivel de permiso, sin llegar a leer nada", async () => {
+  it("listarPreciosLocales de otra sucursal se rechaza al nivel de permiso, sin llegar a leer nada", async () => {
     await mockearUsuarioActual(adminA);
 
-    await expect(obtenerPrecioLocalProducto(sucursalBId, "cualquier-producto")).rejects.toThrow();
     await expect(listarPreciosLocales(sucursalBId)).rejects.toThrow();
   });
 });

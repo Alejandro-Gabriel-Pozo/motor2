@@ -96,12 +96,6 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     puertas: ["carta/registro-publico.ts|moverSucursalEnMapa"],
     motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): la posición de cada tarjeta se arrastra sobre el mapa de todas las sucursales; el defecto vigente es permisivo (la clave en cualquier membresía mueve la tarjeta de cualquier sucursal)",
   },
-  "carta/casos-de-uso/quitar-sucursal-del-portal.ts": {
-    ata: "EMPRESA_ENTERA",
-    ensanches: [],
-    puertas: ["carta/registro-publico.ts|quitarSucursalDelPortal"],
-    motivo: "A CONFIRMAR POR EL DUEÑO (decisión 36): el portal se trata como de la empresa entera (`carta_portal`): sacar una sucursal del portal la APAGA (`publicada = false`, P16, 2026-10-11; ya no es la vuelta atrás de agregarla porque no borra la fila y deja el slug reservado); el defecto vigente es permisivo (la clave en cualquier membresía apaga a cualquier sucursal)",
-  },
   // ── Gobierno de las sucursales (claves `administrador_sistema` de empresa) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
   "auth/casos-de-uso/actualizar-activo-sucursal.ts": {
     ata: "EMPRESA_ENTERA",
