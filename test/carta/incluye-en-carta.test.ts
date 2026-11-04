@@ -80,7 +80,7 @@ describe("incluyeDeLaSeccion", () => {
   it("I17: si algún plato del bloque tiene límites distintos, el bloque NO dice N y CADA plato dice cuántas lleva (y con 2 o más, la palabra en plural)", () => {
     const r = incluyeDeLaSeccion([[eleccion("Guarnición", ["a", "b"], 1, 1)], [eleccion("Guarnición", ["a", "b"], 1, 2)], [eleccion("Salsa", ["x", "y"], 1, 1)]]);
     expect(r.bloques.map(textoDelTitulo)).toEqual(["Guarnición", "Salsa · elegís 1"]);
-    expect(r.platos.map(textoDeIncluye)).toEqual(["Incluye 1 guarnición", "Incluye de 1 a 2 guarniciones", "Incluye 1 salsa"]);
+    expect(r.platos.map(textoDeIncluye)).toEqual(["Incluye 1 guarnición", "Incluye hasta 2 guarniciones", "Incluye 1 salsa"]);
   });
 
   it("un grupo sin opciones (o una lista vacía) no tiene línea ni bloque", () => {
@@ -152,13 +152,13 @@ describe("incluyeDeLaSeccion", () => {
 describe("cuántas lleva cada plato (2026-11-04, opción A confirmada por el dueño)", () => {
   const e = (rotulo: string, min: number, max: number) => eleccion(rotulo, ["a", "b", "c"], min, max);
 
-  it("1, 2, «hasta N» (mínimo 0) y «de N a M»: el número y la palabra en singular o plural, según SUS límites", () => {
+  it("1, 2 y «hasta N» (cuando el mínimo y el máximo difieren): el número y la palabra en singular o plural, según SUS límites", () => {
     expect(lineas([[e("Guarnición", 1, 1)], [e("Guarnición", 2, 2)], [e("Guarnición", 0, 2)], [e("Guarnición", 0, 1)], [e("Guarnición", 1, 3)]])).toEqual([
       "Incluye 1 guarnición",
       "Incluye 2 guarniciones",
       "Incluye hasta 2 guarniciones",
       "Incluye hasta 1 guarnición",
-      "Incluye de 1 a 3 guarniciones",
+      "Incluye hasta 3 guarniciones",
     ]);
   });
 

@@ -18,7 +18,7 @@
  *  - canal:    pública, impresa (las dos arman la SECCIÓN con los dos platos), vista previa del producto y «Va a mostrar» (las dos miran SOLO a P1).
  *
  * LAS REGLAS (cada combinación cae en una sola fila; el test lo comprueba):
- *  0. (2026-11-04, opción A, confirmada por el dueño) CADA plato dice cuántas lleva de cada cosa, según SUS límites: «Incluye 1 guarnición y 1 salsa»; con 2, «2 guarniciones»; con límites distintos, «de 1 a 2 guarniciones» (redacción PROPUESTA; con mínimo 0, «hasta 2 guarniciones»). El título del bloque sigue como estaba («Guarnición · elegís 1»; sin «elegís» si los platos no coinciden), y el pie dice «Con los platos que incluyen guarnición».
+ *  0. (2026-11-04, opción A, confirmada por el dueño) CADA plato dice cuántas lleva de cada cosa, según SUS límites: «Incluye 1 guarnición y 1 salsa»; con 2, «2 guarniciones»; con límites distintos, «hasta 2 guarniciones» (redacción PROPUESTA; con mínimo 0, «hasta 2 guarniciones»). El título del bloque sigue como estaba («Guarnición · elegís 1»; sin «elegís» si los platos no coinciden), y el pie dice «Con los platos que incluyen guarnición».
  *  1. Un grupo oculto no se dibuja: ni línea «Incluye», ni bloque, ni descripciones, en ningún canal.
  *  2. Un grupo con una sola opción no es una elección: ni línea ni bloque.
  *  3. Con un plato que no incluye el grupo: ese plato no dice «Incluye». En la sección, P2 sigue diciéndolo y el bloque existe; mirado solo, no hay nada.
@@ -107,12 +107,12 @@ export const REGLAS: readonly Regla[] = [
   {
     nombre: "R5 sección, Bife todas, límites distintos, todas las opciones",
     si: { visible: ["visible"], cantidad: [3], canal: SECCION, incluye: ["todas"], limites: ["distintos"], opcion: ["todas-encendidas"] },
-    entonces: { bife: "Incluye de 1 a 2 guarniciones", milanesa: "Incluye 1 guarnición", bloque: bloque("Guarnición", TRES) },
+    entonces: { bife: "Incluye hasta 2 guarniciones", milanesa: "Incluye 1 guarnición", bloque: bloque("Guarnición", TRES) },
   },
   {
     nombre: "R5b sección, Bife todas, límites distintos, última apagada",
     si: { visible: ["visible"], cantidad: [3], canal: SECCION, incluye: ["todas"], limites: ["distintos"], opcion: ["ultima-apagada"] },
-    entonces: { bife: "Incluye de 1 a 2 guarniciones", milanesa: "Incluye 1 guarnición", bloque: bloque("Guarnición", DOS) },
+    entonces: { bife: "Incluye hasta 2 guarniciones", milanesa: "Incluye 1 guarnición", bloque: bloque("Guarnición", DOS) },
   },
   // Bife incluye un subconjunto (puré o ensalada): con todas las opciones, lo nombra; con la última apagada, ya es todo lo que hay.
   {
@@ -128,12 +128,12 @@ export const REGLAS: readonly Regla[] = [
   {
     nombre: "R7 sección, Bife subconjunto, límites distintos, todas las opciones",
     si: { visible: ["visible"], cantidad: [3], canal: SECCION, incluye: ["subconjunto"], limites: ["distintos"], opcion: ["todas-encendidas"] },
-    entonces: { bife: "Incluye de 1 a 2 guarniciones: puré o ensalada", milanesa: "Incluye 1 guarnición", bloque: bloque("Guarnición", TRES) },
+    entonces: { bife: "Incluye hasta 2 guarniciones: puré o ensalada", milanesa: "Incluye 1 guarnición", bloque: bloque("Guarnición", TRES) },
   },
   {
     nombre: "R7b sección, Bife subconjunto, límites distintos, última apagada",
     si: { visible: ["visible"], cantidad: [3], canal: SECCION, incluye: ["subconjunto"], limites: ["distintos"], opcion: ["ultima-apagada"] },
-    entonces: { bife: "Incluye de 1 a 2 guarniciones", milanesa: "Incluye 1 guarnición", bloque: bloque("Guarnición", DOS) },
+    entonces: { bife: "Incluye hasta 2 guarniciones", milanesa: "Incluye 1 guarnición", bloque: bloque("Guarnición", DOS) },
   },
 
   // ---- Canales que miran SOLO a Bife (vista previa del producto, «Va a mostrar»): una sección de uno ----
@@ -151,12 +151,12 @@ export const REGLAS: readonly Regla[] = [
   {
     nombre: "R10 solo, Bife todas, límites distintos, todas las opciones",
     si: { visible: ["visible"], cantidad: [3], canal: SOLO, incluye: ["todas"], limites: ["distintos"], opcion: ["todas-encendidas"] },
-    entonces: { bife: "Incluye de 1 a 2 guarniciones", milanesa: null, bloque: bloque("Guarnición · elegís de 1 a 2", TRES) },
+    entonces: { bife: "Incluye hasta 2 guarniciones", milanesa: null, bloque: bloque("Guarnición · elegís de 1 a 2", TRES) },
   },
   {
     nombre: "R10b solo, Bife todas, límites distintos, última apagada",
     si: { visible: ["visible"], cantidad: [3], canal: SOLO, incluye: ["todas"], limites: ["distintos"], opcion: ["ultima-apagada"] },
-    entonces: { bife: "Incluye de 1 a 2 guarniciones", milanesa: null, bloque: bloque("Guarnición · elegís de 1 a 2", DOS) },
+    entonces: { bife: "Incluye hasta 2 guarniciones", milanesa: null, bloque: bloque("Guarnición · elegís de 1 a 2", DOS) },
   },
   // Mirado solo, el bloque lista las opciones de ESE plato: con un subconjunto, solo puré y ensalada (no hay otro plato que sume la última), y el plato no nombra nada porque es todo el bloque.
   {
@@ -167,7 +167,7 @@ export const REGLAS: readonly Regla[] = [
   {
     nombre: "R12 solo, Bife subconjunto, límites distintos",
     si: { visible: ["visible"], cantidad: [3], canal: SOLO, incluye: ["subconjunto"], limites: ["distintos"] },
-    entonces: { bife: "Incluye de 1 a 2 guarniciones", milanesa: null, bloque: bloque("Guarnición · elegís de 1 a 2", DOS) },
+    entonces: { bife: "Incluye hasta 2 guarniciones", milanesa: null, bloque: bloque("Guarnición · elegís de 1 a 2", DOS) },
   },
 ];
 

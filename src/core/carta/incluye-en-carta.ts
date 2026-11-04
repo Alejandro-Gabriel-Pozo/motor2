@@ -39,7 +39,7 @@ export interface ParteDeIncluye {
   subconjunto: string | null;
   /** «elegís 2», solo si los platos del bloque no coinciden en cuántas se eligen: lo dice el título del bloque cuando coinciden; el plato ya dice cuántas lleva (`cantidad`). */
   elegis: string | null;
-  /** Cuántas lleva ESTE plato (los límites del grupo EN ESE PLATO): «1», «2», «hasta 2», «de 1 a 3» (redacción PROPUESTA; el dueño la ve en las capturas). */
+  /** Cuántas lleva ESTE plato (los límites del grupo EN ESE PLATO): «1», «2», «hasta 2» (redacción confirmada por el dueño). */
   cantidad: string;
   /** La palabra como se lee en la línea del plato, con el número que le corresponde: «guarnición» (1), «guarniciones» (2 o más, «hasta 2»). */
   palabraEnLinea: string;
@@ -95,11 +95,10 @@ function pluralizar(palabra: string): string {
   return palabras.map((p, i) => (i === k ? plural : p)).join(" ");
 }
 
-/** «1», «2», «hasta 2», «de 1 a 3»: cuántas lleva el plato de un grupo, según SUS límites. `plural` = si la palabra va en plural. */
+/** «1», «2», «hasta 2»: cuántas lleva el plato de un grupo, según SUS límites (redacción confirmada por el dueño: cuando el mínimo y el máximo difieren, «hasta N»). `plural` = si la palabra va en plural. */
 function cantidadDelPlato(minimo: number, maximo: number): { texto: string; plural: boolean } {
   if (minimo === maximo) return { texto: String(maximo), plural: maximo !== 1 };
-  if (minimo === 0) return { texto: `hasta ${maximo}`, plural: maximo !== 1 };
-  return { texto: `de ${minimo} a ${maximo}`, plural: true };
+  return { texto: `hasta ${maximo}`, plural: maximo !== 1 };
 }
 
 /**
