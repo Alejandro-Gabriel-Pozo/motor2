@@ -186,7 +186,7 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 | Etapa | Qué ve el cliente | Qué hay que construir | Depende de |
 |---|---|---|---|
 | **N0 (hoy)** | Se cierra la cuenta y listo; no hay cobro, medio de pago ni comprobante | — | — |
-| **N1 Comprobante externo** | Cargar la factura o nota de crédito del otro sistema, con número sugerido y corrección, **los conceptos declarados** (alojamiento, productos regionales…) y clientes con CUIT | Punto de venta por sucursal, comprobante, catálogo de conceptos, clientes con CUIT | — |
+| **N1 Comprobante externo** (primera etapa a diseñar en tablas) | Cargar la factura o nota de crédito del otro sistema, con número sugerido y corrección, **los conceptos declarados** (alojamiento, productos regionales…) y clientes con CUIT | Punto de venta por sucursal, comprobante, catálogo de conceptos, clientes con CUIT | — |
 | **N2 Conciliar** | La factura propone los tickets sin factura; se ve la diferencia; lista de «sin factura». **La columna de cobro dice «pendiente de completar»** hasta la etapa N3 | Aplicación ticket–comprobante, listas | N1 |
 | **N3 Cobrar** | Al cobrar un ticket se elige el medio (uno o varios, parcial) y se cargan sus datos; aparecen «sin cobrar» y «**pendiente de declarar factura**» (cobrado sin factura) | Cobro, catálogo de medios, anulación; pantalla del cajero | N2 para las listas cruzadas |
 | **N4 Cuenta corriente** | «Cuenta corriente» como medio; saldo del cliente | Clientes con cuenta corriente habilitada, cargos y saldo derivado | N1 (CUIT), N3 |
@@ -215,10 +215,13 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 | P14 | Seña | **Se puede facturar** la seña; si se cobró menos que la política, **debe verse en el cierre** de la reserva | CONFIRMADA |
 | P15 | Alojamiento de tarifa fija | **Declarado como importe por ahora** (no por mostrador); se puede pasar a mostrador más adelante | CONFIRMADA |
 | P16 | Consumo fuera de convenio | **Bloquea** hasta resolver (corregir el ticket o pasarlo al agente como cliente) | CONFIRMADA |
+| P17 | Política de seña | **Un porcentaje de la tarifa.** El **valor del porcentaje** no está dicho todavía | Forma CONFIRMADA; valor PENDIENTE (es un parámetro que carga la empresa; hasta entonces el sistema no sugiere seña) |
+| P18 | Datos del **cheque** | **Banco, número y fecha de cobro** | CONFIRMADA |
+| P19 | Datos del **QR / billetera** | «**No sé todavía**» | PENDIENTE. Mientras tanto: solo se anota el medio y el importe, sin dato obligatorio (agregar uno después es un cambio chico) |
 
-**Preguntas que quedan abiertas:**
-- **Q1.** **QR:** ¿pide lo mismo que la transferencia (DNI)? **Cheque:** ¿banco, número y fecha de cobro?
-- **Q7.** **Política de seña:** el dueño habla de «la política». ¿Cuál es la regla (porcentaje de la tarifa, monto fijo, depende del convenio)? Hace falta para mostrar «seña faltante» en el cierre de la reserva.
+**Preguntas que quedan abiertas (ninguna frena el diseño de tablas de la primera etapa):**
+- **Q1.** **QR / billetera:** qué dato se pide (ver P19).
+- **Q7.** **Porcentaje de la política de seña:** qué valor (ver P17). Se carga como parámetro de la empresa.
 
 ## Qué sigue
 
