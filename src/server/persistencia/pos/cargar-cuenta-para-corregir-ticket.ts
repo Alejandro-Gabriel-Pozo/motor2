@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
-import { configuracionDeItemLeido, cuentaConOpciones, type ItemConVenta } from "@/core/pos/public";
+import { whereCartaDeSucursal } from "@/core/carta/public";
+import { configuracionDeItemLeido, cuentaConOpciones, nombreParaElTicket, type ItemConVenta } from "@/core/pos/public";
 
 /**
  * Lectura de el TICKET CORREGIDO de una cuenta del salón (Task #41, Fase M12b — docs/arquitectura-casos-de-uso-2026-09-27.md; mismo
@@ -38,7 +39,7 @@ export async function cargarCuentaParaCorregirTicket(
     include: {
       mesa: { select: { numero: true } },
       // GO-2b: la versión del adicional (de su foto) y lo que compone el nombre de la línea, anidados en la misma consulta, en el orden congelado de la venta.
-      items: { include: { producto: { select: { nombre: true, modoDeVenta: true } }, operacion: { select: { anuladaEn: true } }, opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } } } },
+      items: { include: { producto: { select: { nombre: true, modoDeVenta: true, contenidosCarta: { where: whereCartaDeSucursal(args.sucursalId), take: 1, select: { nombreEnCarta: true } } } }, operacion: { select: { anuladaEn: true } }, opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } } } },
       ejemplaresTicket: { orderBy: { ejemplar: "desc" } },
     },
   });
@@ -50,7 +51,7 @@ export async function cargarCuentaParaCorregirTicket(
     cerradaEn: cuenta.cerradaEn,
     items: cuenta.items.map((i) => ({
       productoId: i.productoId,
-      productoNombre: i.producto.nombre,
+      productoNombre: nombreParaElTicket(i.producto),
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,

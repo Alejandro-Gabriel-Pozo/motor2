@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * «Nombre en la carta» (2026-11-04; `docs/diseno-nombre-en-carta-2026-11-04.md`): `ContenidoCartaProducto.nombreEnCarta` lo leen SOLO la carta (pública, impresa, vista previa del producto) y el selector del
- * mozo. NUNCA la comanda, el ticket, la cocina, el stock ni los reportes: ahí el producto sigue con su nombre interno, y la foto de una venta no lo copia. El guardián compara, en las dos direcciones, los
+ * mozo y, desde la confirmación del dueño del mismo día, el TICKET DEL CLIENTE de un producto directo (`nombreParaElTicket` y sus tres lectores, declarados abajo). NUNCA la comanda de cocina (KOT), el stock ni los reportes de gestión: ahí el producto sigue con su nombre interno, y la foto de una venta no lo copia. El guardián compara, en las dos direcciones, los
  * archivos de `src/` que nombran la columna con la lista cerrada de abajo (cada uno con su motivo): un lector nuevo (por ejemplo el ticket) aparece como archivo de más y falla hasta que alguien lo declare.
  */
 const RAIZ = join(__dirname, "../..");
@@ -24,6 +24,10 @@ const LISTA_CERRADA: Record<string, string> = {
   "src/server/actions/carta/casos-de-uso/quitar-producto-de-la-carta.ts": "administración: audita lo que se pierde al quitar",
   "src/server/actions/carta/contenido-producto.ts": "administración: la acción",
   "src/server/consultas/carta/admin.ts": "administración: lectura del contenido y de la vista previa",
+  "src/core/pos/ticket.ts": "TICKET DEL CLIENTE: nombra a un producto directo con el nombre de la carta (`nombreParaElTicket`); la comanda no pasa por acá",
+  "src/server/consultas/pos/tickets.ts": "TICKET DEL CLIENTE: lee el nombre de la carta de la sucursal",
+  "src/server/consultas/reportes/tickets-emitidos.ts": "TICKET DEL CLIENTE (reimpresión): lee el nombre de la carta de la sucursal",
+  "src/server/persistencia/pos/cargar-cuenta-para-corregir-ticket.ts": "TICKET DEL CLIENTE (corrección): lee el nombre de la carta de la sucursal",
   "src/server/lecturas/carta/choque-de-nombre.ts": "administración: junta los nombres usados en la carta de la sucursal para detectar un nombre repetido",
   "src/server/lecturas/carta/menu.ts": "CARTA: el lector de la carta (lista cerrada `PUBLICACION_CARTA`)",
   "src/server/lecturas/pos/selector-carta.ts": "SELECTOR DEL MOZO: lee el nombre de la carta de la sucursal",
@@ -48,8 +52,9 @@ describe("el nombre en la carta es solo de la carta y del selector del mozo", ()
     expect(conLaColumna).toEqual(Object.keys(LISTA_CERRADA).sort());
   });
 
-  it("ninguna lectura de venta, ticket, comanda, cocina, stock o reportes la nombra (salvo el pedible del selector)", () => {
-    const prohibidos = conLaColumna.filter((f) => /\/(ticket|comanda|cocina|stock|movimientos|reportes|ventas)\//.test(f));
+  it("ninguna lectura de comanda, cocina, stock, movimientos, ventas o reportes de gestión la nombra (salvo el reimpreso del ticket del cliente)", () => {
+    const LECTORES_DEL_TICKET = new Set(["src/server/consultas/reportes/tickets-emitidos.ts"]);
+    const prohibidos = conLaColumna.filter((f) => /\/(ticket|comanda|cocina|stock|movimientos|reportes|ventas)\//.test(f) && !LECTORES_DEL_TICKET.has(f));
     expect(prohibidos).toEqual([]);
   });
 
