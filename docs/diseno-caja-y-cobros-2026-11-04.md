@@ -140,7 +140,8 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | C4 | Un ticket no se cobra **más de su total**; el total sale del ticket ya cerrado (con sus correcciones) | PROPUESTA |
 | C5 | Un **cargo se puede cubrir con más de un comprobante** (una factura toma una **parte** del cargo, con su importe); la **suma de lo aplicado a un cargo no pasa de su importe** | CONFIRMADA (respuesta Q10 del 2026-11-04; reemplaza «a lo sumo una aplicación» del diseño del 26/10) |
 | C6 | El **número** de un comprobante es único entre los **vigentes** de (empresa, clase, letra, punto de venta, número) | PROPUESTA |
-| C7 | El **número se sugiere** como el último de esa serie + 1, **y se puede cambiar**; la sugerencia nunca es obligatoria | CONFIRMADA (punto 3) |
+| C7 | El **número se sugiere** como el último de esa serie + 1, **y se puede cambiar**; la sugerencia nunca es obligatoria. **Motivo (dueño, 2026-11-04):** en Excel «no miraban lo que decía el sistema: les pedía la 303 y cargaban la 308, y se descuadraba todo». Texto de la sugerencia: **«Anteriormente se cargó la 303. Te sugiero la 304.»** Se puede escribir cualquier número y **corregir después si hace falta** | CONFIRMADA (punto 3 y respuesta del 2026-11-04) |
+| C33 | Si el número escrito **no es el sugerido**, la pantalla **avisa que se saltea un tramo** («te salteás de la 304 a la 307») **antes de guardar**, sin bloquear; y la lista de la serie puede mostrar los **huecos** | PROPUESTA (nace del problema de Excel; el dueño la confirma o la descarta) |
 | C8 | Corregir un comprobante deja la **auditoría** (quién, cuándo, antes/después, motivo); el número anterior queda libre solo si se anula | CONFIRMADA (punto 3) |
 | C9 | **Letra A** exige un cliente con CUIT; **letra B** admite consumidor final | CONFIRMADA (respuesta P4 del 2026-11-04) |
 | C10 | El **punto de venta** pertenece a **una sucursal**, y un comprobante usa un punto de venta de **su** sucursal | CONFIRMADA (punto 2) |
@@ -360,7 +361,7 @@ Un `40001` se reintenta solo (seguro por I3). **Error parcial:** cabecera, líne
 
 ## Nivel 9. Consultas y experiencia (N1)
 
-- **Correlativo sugerido** al elegir punto de venta, clase y letra; se puede cambiar.
+- **Correlativo sugerido** al elegir punto de venta, clase y letra, con el texto **«Anteriormente se cargó la 00002417. Te sugiero la 00002418.»**; se puede cambiar. **Si el número escrito se aparta del sugerido**, aviso visible («te salteás de la 00002419 a la 00002422») antes de guardar, sin bloquear (C33, PROPUESTA).
 - **Cliente por CUIT:** al escribirlo, el sistema busca; si existe lo muestra y lo usa («ya existe, se usa este»); si no, ofrece cargarlo al instante.
 - **Mensajes claros:** número repetido (con qué comprobante lo usa), CUIT inválido, letra A sin CUIT, líneas que pasan del monto, fecha futura.
 - **«Sin explicar»** visible en cada comprobante (monto menos conceptos declarados) hasta que N2 le sume los tickets.
@@ -394,7 +395,7 @@ Cuenta aproximada: 2 × 2 × 3 × 5 × 5 × 2 × 3 = **1.800 combinaciones**, ex
 
 1. **R1 (RESPONDIDA, CONFIRMADA).** Los puntos de venta los **administra la administración**; se **declaran por sucursal** con su nombre.
 2. **R2 (RESPONDIDA, CONFIRMADA).** La numeración es la de **ARCA**: **cada punto de venta tiene su numeración**, desde 1. La sugerencia de número sale del **último vigente de la serie (punto de venta, clase y letra) más 1**; si todavía no hay ninguno, **no se sugiere** y se escribe el primero a mano.
-3. **R3 (abierta).** Quito el «guardar borrador» (nadie lo pidió): el comprobante se carga ya confirmado y se corrige con registro. ¿Está bien?
+3. **R3 (RESPONDIDA, CONFIRMADA).** **Sin borrador:** el comprobante se carga ya confirmado y se corrige con registro.
 
 ## Qué sigue
 
