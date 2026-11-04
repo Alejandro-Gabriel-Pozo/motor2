@@ -98,6 +98,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | CU7 | **Pendientes:** tickets sin cobrar, cobrados sin factura («pendiente de declarar factura»), saldo de cuenta corriente | N4 | CONFIRMADA (punto 5) |
 | CU8 | **Anular** un cobro o un comprobante (con registro nuevo, nunca borrando) | N1 y N3 | PROPUESTA (regla del sistema) |
 | CU9 | **Reservas informativas (folio)**: anotar a mano las reservas de un cliente, empresa o agente y ver cuáles están sin cobrar. **Informativo**: no hay módulo de reservas ni integración | N5 | CONFIRMADA que se arme como apartado informativo (respuesta del 2026-11-04); su forma PROPUESTA (ver nivel 4) |
+| CU12 | **Cierre de reserva**: ver en un solo lugar los cargos, las señas y cobros, los comprobantes y **lo que falta** (incluida la **seña cobrada de menos** respecto de la política) | N6 | CONFIRMADA que la diferencia debe verse (respuesta Q6); la pantalla PROPUESTA |
 | CU11 | **Cerrar la caja chica del turno**: elegir sucursal, turno y hora; cargar la **cantidad de billetes por denominación**; el sistema calcula importes y total; queda firmado por quien cierra. **Solo se registra el conteo** (no se compara con lo esperado en esta etapa) | N5 | CONFIRMADA (punto 10 y respuestas P10 a P12) |
 | CU10 | Nota de crédito externa: **baja el monto a conciliar de la factura que corrige** | N3 | CONFIRMADA (punto 2 y respuesta P5 del 2026-11-04) |
 
@@ -136,7 +137,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | C2 | Cobrar **no** cambia la venta ni el stock: no se toca `cerrarCuenta` | PROPUESTA |
 | C3 | Un cobro **solo se agrega**; se anula con un registro nuevo con motivo; nunca DELETE | CONFIRMADA (regla de trazabilidad) |
 | C4 | Un ticket no se cobra **más de su total**; el total sale del ticket ya cerrado (con sus correcciones) | PROPUESTA |
-| C5 | Un ticket tiene **a lo sumo una aplicación vigente** a un comprobante (índice único parcial) | PROPUESTA (del diseño del 26/10, B4) |
+| C5 | Un **cargo se puede cubrir con más de un comprobante** (una factura toma una **parte** del cargo, con su importe); la **suma de lo aplicado a un cargo no pasa de su importe** | CONFIRMADA (respuesta Q10 del 2026-11-04; reemplaza «a lo sumo una aplicación» del diseño del 26/10) |
 | C6 | El **número** de un comprobante es único entre los **vigentes** de (empresa, clase, letra, punto de venta, número) | PROPUESTA |
 | C7 | El **número se sugiere** como el último de esa serie + 1, **y se puede cambiar**; la sugerencia nunca es obligatoria | CONFIRMADA (punto 3) |
 | C8 | Corregir un comprobante deja la **auditoría** (quién, cuándo, antes/después, motivo); el número anterior queda libre solo si se anula | CONFIRMADA (punto 3) |
@@ -158,9 +159,10 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | C26 | El cierre lo **firma** el usuario autenticado: se guarda **quién y cuándo** (hora de Argentina). Una firma impresa o escrita a mano no reemplaza al usuario | PROPUESTA |
 | C27 | El permiso de **cerrar caja chica** nace **excluido** (fail-closed), por sucursal; el servidor lo valida | CONFIRMADA (principio del 22/10) |
 | C28 | Un **cobro sin imputar** (seña) queda **a favor** del cliente o de la reserva y **no se pierde**: se aplica a cargos o se devuelve con registro. La suma de imputaciones de un cobro **no pasa de su importe** | PROPUESTA |
-| C29 | Una **reserva agrupa cargos**; un cargo está en **a lo sumo una** reserva. Una **factura parcial** toma un subconjunto de cargos de la reserva | PROPUESTA (el dueño lo imagina así; falta confirmar) |
-| C30 | **Consumo fuera de convenio:** un ticket de un cliente empresa con ítems **fuera del convenio** **no se factura a la empresa** sin resolverse: se **corrige el ticket** o ese consumo se **imputa al agente como cliente** | PENDIENTE (Q9) |
-| C31 | La **seña de política** es una **sugerencia**; el importe cobrado manda y se muestra lo que falta | PROPUESTA |
+| C29 | Una **reserva agrupa cargos**; un cargo está en **a lo sumo una** reserva. Una **factura parcial** toma **todo o una parte** de uno o más cargos de la reserva | CONFIRMADA (respuesta Q10 del 2026-11-04) |
+| C30 | **Consumo fuera de convenio:** un ticket de un cliente empresa con ítems **fuera del convenio** **no se puede aplicar a la factura de la empresa hasta resolverlo**: se **corrige el ticket** o ese consumo se **imputa al agente como cliente**. **Bloquea** | CONFIRMADA (respuesta Q9 del 2026-11-04) |
+| C31 | La **seña de política** es una **sugerencia**; el importe cobrado manda. **Si se cobró menos que la política, la diferencia tiene que verse en el cierre de la reserva** | CONFIRMADA (respuesta Q6 del 2026-11-04) |
+| C32 | **La seña se puede facturar**: un comprobante puede cubrir un cobro a cuenta (seña) además de cargos. Cómo se descuenta después en la factura final lo resuelve el otro sistema; motor2 muestra qué está facturado y qué falta | CONFIRMADA que se factura; el detalle de conciliación PROPUESTA |
 | C23 | La **reserva informativa** no cambia el stock ni la venta: agrupa y muestra; solo se agrega y se anula con registro nuevo | PROPUESTA |
 | C18 | Un cliente «consumidor final» es la cuenta **sin cliente**; el **recurrente identificado** es un cliente con nombre y, si quiere comprobante A, CUIT | PROPUESTA |
 
@@ -209,14 +211,14 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 | P10 | El cierre de caja chica, ¿se compara con algo? | **Solo registrar el conteo y el total**, como la planilla. Comparar con lo esperado queda para una etapa posterior | CONFIRMADA |
 | P11 | Turnos | **Cada sucursal arma sus 3 turnos** con nombre y franja horaria propios; un cierre por turno por día | CONFIRMADA |
 | P12 | Qué se cuenta | **Solo billetes** (10, 20, 50, 100, 200, 500, 1.000, 2.000, 10.000 y 20.000) | CONFIRMADA |
+| P13 | Reserva | **Un número que agrupa cargos.** Una factura parcial toma todo o una parte de los cargos; **un cargo sí se puede dividir** entre facturas | CONFIRMADA |
+| P14 | Seña | **Se puede facturar** la seña; si se cobró menos que la política, **debe verse en el cierre** de la reserva | CONFIRMADA |
+| P15 | Alojamiento de tarifa fija | **Declarado como importe por ahora** (no por mostrador); se puede pasar a mostrador más adelante | CONFIRMADA |
+| P16 | Consumo fuera de convenio | **Bloquea** hasta resolver (corregir el ticket o pasarlo al agente como cliente) | CONFIRMADA |
 
 **Preguntas que quedan abiertas:**
 - **Q1.** **QR:** ¿pide lo mismo que la transferencia (DNI)? **Cheque:** ¿banco, número y fecha de cobro?
-- **Q6.** **Seña:** ¿se cobra **contra la reserva** antes de que exista ticket o factura, y después se **aplica** a los cargos (como propone C28)?
-- **Q7.** **Política de seña:** ¿existe una regla (porcentaje de la tarifa o monto fijo) que el sistema deba **sugerir**? Si no, no se sugiere nada.
-- **Q8.** **Alojamiento de tarifa fija por mostrador:** ¿se vende como un **producto con precio fijo** en el mostrador (genera ticket y cargo en el sistema), o se sigue **declarando** como importe en la factura? Es la forma barata de que el alojamiento exista como cargo sin módulo nuevo.
-- **Q9.** **Consumo fuera de convenio:** al facturar a una empresa, ¿el sistema **bloquea** hasta que se corrija el ticket o se pase el consumo al agente, o solo **avisa**? Recomiendo bloquear (la empresa no debería pagar lo no pactado).
-- **Q10.** **Reserva y factura:** ¿confirmás que una reserva agrupa cargos y que una factura parcial toma un subconjunto de esos cargos (C29)?
+- **Q7.** **Política de seña:** el dueño habla de «la política». ¿Cuál es la regla (porcentaje de la tarifa, monto fijo, depende del convenio)? Hace falta para mostrar «seña faltante» en el cierre de la reserva.
 
 ## Qué sigue
 
