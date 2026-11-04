@@ -68,7 +68,7 @@ export async function cargarSelectorCartaPos(
   // listas vacías y el `null` son exactamente lo que da una empresa que nunca cargó una carta.
   const conCarta = modulos.carta;
   const conPromos = conCarta && modulos.promociones;
-  const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
+  const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, nombresEnCarta, agrupadosConGenero, promosCarta] = await Promise.all([
     conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido, "salon") : Promise.resolve(null),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
@@ -80,6 +80,7 @@ export async function cargarSelectorCartaPos(
     precioLocalActivoLeido,
     conCarta ? db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }) : Promise.resolve([]),
     conCarta ? db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true } }) : Promise.resolve([]),
+    conCarta ? db.contenidoCartaProducto.findMany({ where: { nombreEnCarta: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, nombreEnCarta: true } }) : Promise.resolve([]),
     conCarta ? db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, generoCartaId: true } }) : Promise.resolve([]),
     // Sin el módulo Promociones no se lee ninguna promo (ni se ofrece ni se acepta).
     conPromos
@@ -108,6 +109,7 @@ export async function cargarSelectorCartaPos(
       : Promise.resolve([]),
   ]);
   const localPorProducto = preciosLocales;
+  const nombreEnCartaPorProducto = new Map(nombresEnCarta.map((c) => [c.productoId, c.nombreEnCarta!]));
   const pedibles: ProductoPedible[] = productos.map((p) => {
     // Producto con descuento (Fase 2): el precio del pedible es el DESCONTADO (el que se congela al agregar); el de lista queda aparte para mostrarlo tachado.
     const aplicado = aplicarDescuentoDeProducto(precioDeCarta(Number(p.precioVenta), localPorProducto.get(p.id)), descuentos.get(p.id) ?? null);
@@ -115,6 +117,7 @@ export async function cargarSelectorCartaPos(
       productoId: p.id,
       codigo: p.codigo,
       nombre: p.nombre,
+      ...(nombreEnCartaPorProducto.has(p.id) ? { nombreEnCarta: nombreEnCartaPorProducto.get(p.id)! } : {}),
       precio: aplicado.precio,
       ...(aplicado.precioLista !== null ? { precioLista: aplicado.precioLista } : {}),
       decimales: p.unidadStock.decimales,

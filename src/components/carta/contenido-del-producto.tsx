@@ -125,6 +125,8 @@ export function ContenidoDelProducto({
                 await guardarContenidoCartaProducto(productoId, {
                   visibleEnCarta: fd.get("visibleEnCarta") === "on",
                   seccionCartaId: campo(fd, "seccionCartaId") || null,
+                  // «Nombre en la carta» (2026-11-04): el campo siempre viaja en este formulario; vacío = sin nombre en la carta (la carta usa el nombre del producto).
+                  nombreEnCarta: campo(fd, "nombreEnCarta"),
                   descripcion: campo(fd, "descripcion"),
                   tags: campo(fd, "tags"),
                   especial: fd.get("especial") === "on",
@@ -160,6 +162,16 @@ export function ContenidoDelProducto({
                 />
               </div>
             )}
+            <div className="sm:col-span-2">
+              <Campo
+                etiqueta="Nombre en la carta (opcional)"
+                name="nombreEnCarta"
+                maxLength={80}
+                defaultValue={p.contenido?.nombreEnCarta ?? ""}
+                placeholder={p.nombre}
+                ayuda="Así lo ven el cliente y el mozo en esta sucursal. Vacío = se usa el nombre del producto. No cambia el ticket, la comanda ni los reportes."
+              />
+            </div>
             <div className="sm:col-span-2">
               <AreaDeTexto etiqueta="Descripción (opcional)" name="descripcion" rows={2} defaultValue={p.contenido?.descripcion ?? ""} />
             </div>
@@ -230,6 +242,7 @@ function ContenidoSoloLectura({ producto: p, ubicacion, mostrarNombreArriba }: {
       <Dato etiqueta="Sección de carta">{seccion && `${seccion.nombre}${seccion.activa ? "" : " (apagada)"}`}</Dato>
       <Dato etiqueta="Género">{genero && `${genero.nombre}${genero.activo ? "" : " (apagado)"}`}</Dato>
       <Dato etiqueta="Orden">{c.orden}</Dato>
+      <Dato etiqueta="Nombre en la carta">{c.nombreEnCarta ?? "(usa el nombre del producto)"}</Dato>
       {mostrarNombreArriba !== undefined && <Dato etiqueta="Nombre del producto arriba">{mostrarNombreArriba ? "Sí" : "No: cada opción sale sola"}</Dato>}
       <Dato etiqueta="Descripción" ancho>
         {c.descripcion}

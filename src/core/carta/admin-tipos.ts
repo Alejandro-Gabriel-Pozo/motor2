@@ -31,7 +31,7 @@ export interface ProductoCartaAdmin {
   /** % de descuento CONFIGURADO de este producto EN esta sucursal (producto con descuento, 2026-10-01), o null. Rige solo con `precioLocalActivo` (R1). */
   descuento: number | null;
   contenido:
-    | { visibleEnCarta: boolean; seccionCartaId: string | null; descripcion: string | null; tags: string[]; especial: boolean; orden: number; generoCartaId: string | null }
+    | { visibleEnCarta: boolean; seccionCartaId: string | null; descripcion: string | null; tags: string[]; especial: boolean; orden: number; generoCartaId: string | null; nombreEnCarta: string | null }
     | null;
   /** Nombre del ítem agrupado donde está (docs/plan-agrupacion-items-carta-2026-09-24.md, M6), o null: si está, sale solo ahí. */
   agrupadoEn: string | null;

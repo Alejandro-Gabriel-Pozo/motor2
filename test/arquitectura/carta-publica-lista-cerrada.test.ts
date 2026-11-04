@@ -38,7 +38,8 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   CategoriaProducto: ["nombre"],
   // Fase 5 de la ola «precio y carta» (DEC-11; decisión técnica aprobada por el dueño: «modo, prefijo y mostrarNombreArriba entran a la lista cerrada»): + `mostrarNombreArriba`, el interruptor de un
   // producto base con un solo eje (con título u oculto). Se LEE en el servidor para decidir la forma; no sale como campo propio (sale la forma ya resuelta, `presentacion`).
-  ContenidoCartaProducto: ["descripcion", "especial", "mostrarNombreArriba", "orden", "seccionCartaId", "tags"],
+  // «Nombre en la carta» (2026-11-04): `nombreEnCarta` es el `nombre` del plato en la carta pública de la sucursal (no sale como campo propio: reemplaza al nombre del producto en `nombre`).
+  ContenidoCartaProducto: ["descripcion", "especial", "mostrarNombreArriba", "nombreEnCarta", "orden", "seccionCartaId", "tags"],
   DescuentoProductoSucursal: ["porcentaje", "productoId"],
   Empresa: ["id", "nombre", "slug"],
   ItemAgrupadoCarta: ["descripcion", "especial", "id", "nombre", "opciones", "orden", "seccionCartaId", "tags"],

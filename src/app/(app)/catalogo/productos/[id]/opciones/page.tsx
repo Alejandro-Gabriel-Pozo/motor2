@@ -4,7 +4,8 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { fijarAdmisionDeGrupoEnProducto, vincularGrupoEnProducto } from "@/server/actions/catalogo/opciones-de-venta";
-import { basesDeUnEjeEnLaCarta } from "@/server/consultas/carta/admin";
+import { basesDeUnEjeEnLaCarta, nombreEnCartaDeUnProducto } from "@/server/consultas/carta/admin";
+import { nombreDeCarta } from "@/core/carta/public";
 import { cargarVistaPreviaDeLaCarta } from "@/server/consultas/carta/vista-previa-de-un-producto";
 import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
 import { cargarOpcionesDelProducto } from "@/server/consultas/catalogo/opciones-de-venta";
@@ -87,6 +88,8 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
   // La vista previa de la carta (6.18): el «nombre arriba» es del contenido de carta del producto, así que solo se lee si quien mira puede abrir el paso «En la carta»; si no, se dibuja con el valor por defecto.
   const puedeVerLaCarta = marco.pasos.some((p) => p.paso === "en-la-carta" && p.href !== null);
   const mostrarNombreArriba = puedeVerLaCarta ? ((await basesDeUnEjeEnLaCarta(ctx.sucursalId, ctx.db)).get(productoId) ?? false) : false;
+  // El «Nombre en la carta» es del mismo contenido de carta: solo se lee con el mismo permiso; si no, la vista previa usa el nombre del producto.
+  const nombreEnCarta = puedeVerLaCarta ? await nombreEnCartaDeUnProducto(ctx.sucursalId, productoId, ctx.db) : null;
   const vistaPreviaDeLaCarta = await cargarVistaPreviaDeLaCarta(ctx.db, ctx.sucursalId, { id: productoId, precioVenta: productoDelEspacio.precioVenta, esBase: producto.esBase }, mostrarNombreArriba);
   const enUso = admitidos.filter((g) => g.fila.activo);
   const quitados = admitidos.filter((g) => !g.fila.activo);
@@ -266,7 +269,7 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
             </section>
           )}
 
-          <VistaPreviaDeLaCarta nombre={producto.nombre} sucursalNombre={ctx.sucursalNombre} vista={vistaPreviaDeLaCarta} />
+          <VistaPreviaDeLaCarta nombre={nombreDeCarta(producto, { nombreEnCarta })} sucursalNombre={ctx.sucursalNombre} vista={vistaPreviaDeLaCarta} />
 
           <section aria-labelledby="titulo-asi-se-cobra" className="flex flex-col gap-2 rounded border border-borde p-4">
             <h3 id="titulo-asi-se-cobra" className="sr-only">

@@ -21,6 +21,8 @@ interface DatosDeContenidoDeCarta {
   generoCartaId: string | null;
   /** Fase 5 (DEC-11): el interruptor de un producto base con un solo eje. `undefined` = no se toca (Prisma ignora la clave). */
   mostrarNombreArriba?: boolean;
+  /** «Nombre en la carta»: `undefined` = no se toca (Prisma ignora la clave); `null` = se vacía. */
+  nombreEnCarta?: string | null;
 }
 
 /** Crea o reemplaza el contenido completo del producto en la sucursal (una sola fila por par, `@@unique([sucursalId, productoId])`). */

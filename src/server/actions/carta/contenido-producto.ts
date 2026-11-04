@@ -34,6 +34,8 @@ export interface DatosContenidoCarta {
   generoCartaId?: string | null;
   /** Fase 5 (DEC-11): «Mostrar el nombre del producto arriba» (producto base con un solo eje). OPCIONAL: sin la clave, queda como estaba. */
   mostrarNombreArriba?: boolean;
+  /** «Nombre en la carta» (2026-11-04): el nombre de cara al cliente en ESTA sucursal. OPCIONAL: sin la clave, queda como estaba; vacío = sin nombre en la carta (la carta usa el nombre interno). */
+  nombreEnCarta?: string | null;
 }
 
 /** Permiso → caso de uso (`casos-de-uso/guardar-contenido-carta-producto.ts`: el producto, la validación, la sección, el género y el `upsert`) → revalidar si salió bien → `aResultadoAccion`. */

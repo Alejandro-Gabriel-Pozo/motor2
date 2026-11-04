@@ -28,13 +28,19 @@ export interface EntradaContenidoCartaProducto {
    * porque el producto no es una base de un eje) queda como estaba; con ella se escribe y, si cambió, se audita por columna.
    */
   mostrarNombreArriba?: boolean;
+  /** «Nombre en la carta»: lo valida el guard (`ContenidoCartaValidado.nombreEnCarta`); acá solo viaja el dato del formulario. */
+  nombreEnCarta?: string | null;
 }
 
-/** Lo que `guardComandoGuardarContenidoCartaProducto` valida y normaliza del contenido: la descripción (recortada, `null` si queda vacía), los tags y el orden. */
+/**
+ * Lo que `guardComandoGuardarContenidoCartaProducto` valida y normaliza del contenido: la descripción (recortada, `null` si queda vacía), los tags, el orden y «Nombre en la carta» (`null` = sin nombre en la
+ * carta; ausente = el pedido no traía la clave: no se toca).
+ */
 export interface ContenidoCartaValidado {
   descripcion: string | null;
   tags: string[];
   orden: number;
+  nombreEnCarta?: string | null;
 }
 
 /**

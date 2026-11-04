@@ -73,6 +73,12 @@ export async function origenesDeCopiaVisibles(usuarioId: string, origenes: reado
   return origenes.filter((o) => visibles.has(o.id));
 }
 
+/** El «Nombre en la carta» del producto en ESTA sucursal (`null` si no tiene fila o no lo cargó: la carta usa el nombre del producto). Sin guarda de permiso: la pone la página. */
+export async function nombreEnCartaDeUnProducto(sucursalId: string, productoId: string, db: Db): Promise<string | null> {
+  const fila = await db.contenidoCartaProducto.findFirst({ where: { ...whereCartaDeSucursal(sucursalId), productoId }, select: { nombreEnCarta: true } });
+  return fila?.nombreEnCarta ?? null;
+}
+
 /**
  * Fase 5 de la ola «precio y carta» (DEC-11): los productos que se venden por opción (BASE) con UN SOLO eje en la carta de esta sucursal —los únicos en que «Mostrar el nombre arriba» decide algo:
  * una base de dos ejes sale siempre en tabla con el nombre arriba, y un producto directo no es una base—, con el valor guardado en su contenido (`false` si no tiene fila). El eje sale de la MISMA
@@ -127,6 +133,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date, 
             visibleEnCarta: true,
             seccionCartaId: true,
             seccionCarta: { select: { nombre: true, activa: true } },
+            nombreEnCarta: true,
             descripcion: true,
             tags: true,
             especial: true,
@@ -174,6 +181,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date, 
         especial: c.especial,
         orden: c.orden,
         generoCartaId: c.generoCartaId,
+        nombreEnCarta: c.nombreEnCarta,
       } : null,
       agrupadoEn: p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre ?? null,
       generoCarta: c?.generoCarta?.activo ? c.generoCarta.nombre : null,

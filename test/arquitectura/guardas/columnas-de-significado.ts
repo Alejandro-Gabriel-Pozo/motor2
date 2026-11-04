@@ -110,6 +110,7 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   // Carta y promos
   "SeccionCarta.activa": d("visibilidad", "Nunca se borra una sección de la carta: se apaga, y apagada deja de mostrarse."),
   "ContenidoCartaProducto.visibleEnCarta": d("visibilidad", "Decide si el producto aparece en la carta pública."),
+  "ContenidoCartaProducto.nombreEnCarta": d("visibilidad", "Cambia cómo se llama el plato en la carta de la sucursal (cliente y selector del mozo); el nombre interno no cambia, 2026-11-04."),
   "ContenidoCartaProducto.mostrarNombreArriba": d("visibilidad", "Decide cómo se lee un producto base en la carta (nombre como encabezado u oculto), DEC-11."),
   "PromoCarta.soloSalon": d("visibilidad", "La promo se vende desde el POS pero no aparece en la carta pública (web, QR ni impresa)."),
   "PromoCarta.vigenteDesde": d("dinero", "Vigencia de la promo (días de la zona de la empresa): fuera de ella no rige su precio. Se evalúa al agregar la promo a la cuenta."),
