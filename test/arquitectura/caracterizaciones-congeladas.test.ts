@@ -710,6 +710,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Decisión del dueño 2026-10-29: modelo unificado de la carta (paso 4, regla de filas; SOLO CARTA, el COBRO idéntico): una VARIANTE obligatoria de una sola elección sin costo ni prefijo es el eje de filas de un producto DIRECTO que tiene un tamaño que define el precio (la grilla del café sin un prefijo artificial); una base y un producto sin tamaño la siguen leyendo como aclaración. Revisado con `git diff -U0`: cambia UNA sola línea, la `presentacion` de la «Milanesas (M1)» directa del catálogo de referencia (tamaño Simple/Napolitana + «Milanesas de» carne/pollo sin costo ni prefijo): pasa de una fila con la aclaración «Milanesas de» a la grilla Carne/Pollo × Simple/Napolitana, con los mismos precios; de `## COBRO` en adelante nada cambia y `precios.golden.txt` no se mueve.",
       },
+      {
+        blob: "ef06b73ddef540812719f1d6cb345f2da14abbbf",
+        // El commit PADRE de este (c45d56c5) es el último antes del cambio; el golden se regenera en el commit siguiente (carta B, etapa E1).
+        commit: "c45d56c5",
+        motivo:
+          "Carta B (E1; ADITIVO, solo CARTA, el COBRO idéntico): la forma que la carta le da a una elección (`aclaraciones` de tipo «eleccion») trae los límites de lo que se elige, `cantidadMinima` y `cantidadMaxima`, para que la carta muestre «elegís de A a B» y «opcional, hasta N». Revisado con `git diff -U0`: cambia SOLO la línea `presentacion` de «Bife a la criolla» (la elección «Guarnicion» suma `\"cantidadMinima\":1,\"cantidadMaxima\":1`); de `## COBRO` en adelante nada cambia.",
+      },
     ],
   },
   "test/e2e/linea-de-base-precio-y-carta.golden.txt": {
@@ -836,6 +843,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "aff7f403",
         motivo:
           "Integración de ramas, decisiones del dueño 2026-10-29 (NO cambia contenido propio de la carta: es la SUMA de dos ramas que regeneraron o no este golden sin conocerse). La rama `carta-unificada` regeneró esta línea de base con la ficha de producto que ofrecía el descuento por producto; la rama `deuda-paquete-b` apagó ese descuento con el interruptor `DESCUENTO_POR_PRODUCTO_VISIBLE = false` (decisión del dueño 2026-10-29) sin tocar este golden porque no lo regenera. Regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 sobre el árbol integrado contra motor2_ct_e2e local. Revisado con `git diff -U0`: cambian SOLO 42 líneas, todas BORRADAS y todas del descuento en la ficha de producto del admin (por cada producto, a 375 y a 1280 px: «Descuento en esta sucursal, % (vacío = sin descuento)», «[campo: vacío]» y «[botón: Guardar descuento de «…»]»); no se agrega ninguna línea y la carta pública (texto y tipografía) queda idéntica.",
+      },
+      {
+        blob: "c21c405bf59c192c4422a5181baf6f48b09c3868",
+        // El commit PADRE de este (29c40392) es el último antes de la regeneración; los cambios son de la carta B (E1).
+        commit: "29c40392",
+        motivo:
+          "Carta B (E1; CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04 con maquetas): cada plato muestra «Incluye …» debajo del nombre, las opciones que se repiten en todos los platos de una sección van en un bloque al pie de la sección (se retira el rótulo «En todos») y la lista de cada sección es alcanzable con teclado. Regenerado por la sesión de la etapa E1 (commit e58bc9b8, «golden de la línea de base»); el CI de la PR lo compara contra el navegador.",
       },
     ],
   },
