@@ -28,8 +28,10 @@ export {
   MENSAJE_FACTURA_DUPLICADA,
   esChoqueDeClaveIdempotenciaDeFactura,
   esChoqueDeClaveIdempotenciaDeOperacion,
+  esChoqueDeClaveIdempotenciaDePago,
   esChoqueDeFacturaDeProveedorUnica,
   esChoqueDeFacturaUnica,
   esChoqueDeParteYaExistente,
+  esChoqueDePagoVigenteDeFactura,
 } from "./factura-unica";
 export type { AvisoStockNegativo } from "./registrar-venta";

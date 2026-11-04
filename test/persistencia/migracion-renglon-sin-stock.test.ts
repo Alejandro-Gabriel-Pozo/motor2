@@ -46,7 +46,8 @@ describe("el renglón sin stock en la base real", () => {
   it("la migración suma conceptoGastoId y tipoDeCosto (TEXT NULL) al final del renglón, con su clave foránea compuesta RESTRICT, su índice y el índice único del discriminador", async () => {
     const columnas = await prismaAdmin.$queryRaw<Array<{ columna: string; tipo: string; es_nulable: string }>>`
       SELECT column_name::text AS columna, data_type AS tipo, is_nullable AS es_nulable FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'FacturaProveedorRenglon' ORDER BY ordinal_position`;
-    expect(columnas.slice(-2).map((c) => `${c.columna}:${c.tipo}:${c.es_nulable}`)).toEqual(["conceptoGastoId:text:YES", "tipoDeCosto:text:YES"]);
+    // Las dos últimas son de Compras etapa 2a (unidadCompraId, cantidadCompra); las de esta migración van justo antes.
+    expect(columnas.slice(-4, -2).map((c) => `${c.columna}:${c.tipo}:${c.es_nulable}`)).toEqual(["conceptoGastoId:text:YES", "tipoDeCosto:text:YES"]);
     const [fk] = await prismaAdmin.$queryRaw<Array<{ definicion: string }>>`SELECT pg_get_constraintdef(oid) AS definicion FROM pg_constraint WHERE conname = 'FacturaProveedorRenglon_empresaId_conceptoGastoId_fkey'`;
     expect(fk!.definicion).toBe('FOREIGN KEY ("empresaId", "conceptoGastoId") REFERENCES "ConceptoDeGasto"("empresaId", id) ON UPDATE CASCADE ON DELETE RESTRICT');
     const indices = await prismaAdmin.$queryRaw<Array<{ nombre: string; definicion: string }>>`SELECT indexname::text AS nombre, indexdef AS definicion FROM pg_indexes WHERE tablename = 'FacturaProveedorRenglon' AND indexname IN ('FacturaProveedorRenglon_empresaId_id_naturaleza_key', 'FacturaProveedorRenglon_conceptoGastoId_idx') ORDER BY 1`;

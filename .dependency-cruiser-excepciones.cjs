@@ -146,6 +146,11 @@ const ACCIONES_CON_CASO_DE_USO = [
       "Hito 3, B3-5 + B3-7: aceptarMiInvitacion → auth/casos-de-uso/aceptar-invitacion-de-gerente.ts y aceptarMiInvitacionDeUsuario → auth/casos-de-uso/aceptar-invitacion-de-usuario.ts (transacción serializable, revalidación, persistencia y auditoría viven en el caso de uso). abrirInvitacion solo lee la invitación y escribe la cookie: no escribe la base.",
   },
   {
+    ruta: "src/server/actions/movimientos/pagos-factura-proveedor.ts",
+    motivo:
+      "Pagos X0: declararPagoDeFacturaProveedor → movimientos/casos-de-uso/declarar-pago-de-factura-proveedor.ts y anularPagoDeFacturaProveedor → anular-pago-de-factura-proveedor.ts (transacción serializable, idempotencia, candado de la cabecera, persistencia en server/persistencia/compras y auditoría viven en el caso de uso). La acción solo pide el permiso de empresa `declarar_pago_compra`, valida el formato y delega.",
+  },
+  {
     ruta: "src/server/actions/movimientos/facturas-proveedor.ts",
     motivo:
       "E3a (ADR-041): registrarFacturaProveedor → movimientos/casos-de-uso/registrar-factura-proveedor.ts, aceptarPropuestaDeFactura → aceptar-propuesta-de-factura.ts y anularFacturaProveedor → anular-factura-proveedor.ts (transacción serializable, idempotencia, candado de la cabecera, persistencia en server/persistencia/compras y auditoría viven en el caso de uso). La acción solo pide el permiso, valida el formato y traduce el resultado.",
@@ -398,7 +403,7 @@ const ACCIONES_CON_CASO_DE_USO = [
 const DEUDA = "Deuda de la ola precio y carta:";
 const MOTIVO_MEMBRESIAS = `${DEUDA} las membresías (UsuarioEmpresa/UsuarioSucursal) se persisten en persistencia/permisos y las escriben casos de uso de auth; la carpeta de la acción y la de la persistencia no coinciden. Decidir el dueño (alinear las carpetas o exponer un comando de permisos).`;
 const MOTIVO_INVITACIONES = `${DEUDA} la invitación tiene su persistencia en persistencia/invitaciones y sus casos de uso en actions/auth: dos nombres para un mismo dominio (también la registra el cerco dueno-unico-por-modelo, Invitacion).`;
-const MOTIVO_COMPRAS = `${DEUDA} anular y corregir una compra, y cargar, aceptar y anular una factura de proveedor (E3a), son casos de uso de actions/movimientos (las Server Actions son movimientos/compras.ts y movimientos/facturas-proveedor.ts) con la persistencia de persistencia/compras: dos nombres para un mismo dominio.`;
+const MOTIVO_COMPRAS = `${DEUDA} anular y corregir una compra, cargar, aceptar y anular una factura de proveedor (E3a) y declarar o anular su pago (Pagos X0), son casos de uso de actions/movimientos (las Server Actions son movimientos/compras.ts y movimientos/facturas-proveedor.ts) con la persistencia de persistencia/compras: dos nombres para un mismo dominio.`;
 const MOTIVO_IDEMPOTENCIA = `${DEUDA} la idempotencia I3 (registrarResultadoIdempotente) vive en persistencia/movimientos y la reusan Stock y Traspasos sin un comando público; mudarla a una pieza común o declararla.`;
 const MOTIVO_STOCK = `${DEUDA} reclasificar stock escribe movimientos de stock con la persistencia de Movimientos (dueño de MovimientoStock) en vez de un comando suyo.`;
 
@@ -422,6 +427,10 @@ const PERSISTENCIA_DE_OTRO_DOMINIO = [
   { desde: "src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor.ts", hacia: "src/server/persistencia/compras/cargar-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor.ts", hacia: "src/server/persistencia/compras/escribir-anulacion-de-compra.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor.ts", hacia: "src/server/persistencia/compras/escribir-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
+  { desde: "src/server/actions/movimientos/casos-de-uso/anular-pago-de-factura-proveedor.ts", hacia: "src/server/persistencia/compras/cargar-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
+  { desde: "src/server/actions/movimientos/casos-de-uso/anular-pago-de-factura-proveedor.ts", hacia: "src/server/persistencia/compras/escribir-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
+  { desde: "src/server/actions/movimientos/casos-de-uso/declarar-pago-de-factura-proveedor.ts", hacia: "src/server/persistencia/compras/cargar-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
+  { desde: "src/server/actions/movimientos/casos-de-uso/declarar-pago-de-factura-proveedor.ts", hacia: "src/server/persistencia/compras/escribir-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts", hacia: "src/server/persistencia/compras/cargar-compra-para-corregir.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts", hacia: "src/server/persistencia/compras/escribir-correccion-de-compra.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts", hacia: "src/server/persistencia/compras/comprobante-en-la-empresa.ts", motivo: MOTIVO_COMPRAS },

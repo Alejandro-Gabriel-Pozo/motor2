@@ -113,6 +113,10 @@ export interface KitDeSucursal {
   facturaEnviadaId: string;
   /** E3a: la propuesta PENDIENTE que la vecina le hizo a ESTA sucursal (la acepta esta sucursal). */
   propuestaParaAceptarId: string;
+  /** Pagos X0: una factura de proveedor «pendiente de pago» sin pago (a esa se le declara el pago). */
+  facturaPendienteDePagoId: string;
+  /** Pagos X0: un pago VIGENTE de otra factura pendiente de pago (ese se anula). */
+  pagoDeFacturaId: string;
   pagoConsignanteId: string;
   precioLocalId: string;
   frecuenciaId: string;
@@ -164,6 +168,8 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   traspasoPedidoId: true,
   facturaEnviadaId: true,
   propuestaParaAceptarId: true,
+  facturaPendienteDePagoId: true,
+  pagoDeFacturaId: true,
   pagoConsignanteId: true,
   precioLocalId: true,
   frecuenciaId: true,
@@ -464,6 +470,17 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     });
     facturasE3a[sufijo] = { facturaId: factura.id, propuestaId: propuesta.id };
   }
+  // Pagos X0: dos facturas «pendiente de pago» de la empresa (sin propuestas): una sin pago, para declararle uno, y otra con un pago vigente, para anularlo. El día de la factura es ayer; el pago, de ayer.
+  const facturasPendientes: Record<string, string> = {};
+  for (const sufijo of ["factura-pendiente-de-pago", "factura-con-pago"]) {
+    const factura = await db.facturaProveedor.create({
+      data: { id: id(sufijo), empresaId, proveedorId: k.proveedorId, nroFactura: `Factura ${marca} ${sufijo}`, nroFacturaNormalizado: id(sufijo), fecha: enElPasado(DIA_MS), importeTotal: 100, condicionPago: "PENDIENTE_DE_PAGO", estado: "CONFIRMADA", confirmadaEn: enElPasado(DIA_MS), confirmadaPorId: miembro.id, creadoPorId: miembro.id },
+    });
+    facturasPendientes[sufijo] = factura.id;
+  }
+  const pagoDeFactura = await db.pagoDeFacturaProveedor.create({
+    data: { id: id("pago-de-factura"), empresaId, facturaProveedorId: facturasPendientes["factura-con-pago"]!, fechaPago: enElPasado(DIA_MS), medio: "TRANSFERENCIA", claveIdempotencia: id("pago-de-factura-clave"), payloadHash: "h", resultadoMensaje: "Pago declarado.", creadoPorId: miembro.id },
+  });
   const pago = await db.pagoConsignante.create({ data: { id: id("pago"), empresaId, sucursalId, proveedorId: k.proveedorId, importe: 500, fecha: enElPasado(DIA_MS), notas: `Pago ${marca}`, usuarioId: miembro.id } });
 
   // Configuración por sucursal.
@@ -533,6 +550,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     traspasoPedidoId: traspasoPedido.id,
     facturaEnviadaId: facturasE3a["factura-enviada"].facturaId,
     propuestaParaAceptarId: facturasE3a["factura-para-aceptar"].propuestaId,
+    facturaPendienteDePagoId: facturasPendientes["factura-pendiente-de-pago"]!,
+    pagoDeFacturaId: pagoDeFactura.id,
     pagoConsignanteId: pago.id,
     precioLocalId: precioLocal.id,
     frecuenciaId: frecuencia.id,

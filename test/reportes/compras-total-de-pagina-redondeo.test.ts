@@ -15,6 +15,7 @@ vi.mock("@/server/sesion/contexto", () => ({ obtenerContextoUsuario: async () =>
 vi.mock("@/server/acceso/gate", () => ({
   requierePermisoVer: async () => ({ ok: true }),
   obtenerMiNivelPermiso: async () => ({ ver: true, editar: false }),
+  obtenerMiNivelPermisoDeEmpresa: async () => ({ ver: true, editar: false }),
 }));
 vi.mock("@/server/consultas/reportes/compras-registradas", () => ({ listarComprasRegistradas: async () => ({ items: mocks.compras, nextCursor: null }) }));
 vi.mock("@/server/actions/catalogo/proveedores", () => ({ listarProveedoresParaSelector: async () => [] }));
@@ -36,6 +37,7 @@ function compra(idOperacion: string, total: number, anulada = false): CompraRegi
     anuladaPorEmail: null,
     cantidadProductos: 1,
     facturaProveedorId: null,
+    pago: null,
     renglones: [],
   };
 }

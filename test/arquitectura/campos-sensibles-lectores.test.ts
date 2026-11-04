@@ -41,6 +41,8 @@ const NO_SON_SECRETOS: Readonly<Record<string, string>> = {
   "FacturaProveedor.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "ReclasificacionRenglon.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "AnulacionDeFacturaProveedor.payloadHash": "Huella del pedido de anulación para la idempotencia (E3a, ADR-041): no abre nada.",
+  "PagoDeFacturaProveedor.payloadHash": "Huella del pedido de pago para la idempotencia (Pagos X0): no abre nada.",
+  "AnulacionDePagoDeFacturaProveedor.payloadHash": "Huella del pedido de anulación de pago para la idempotencia (Pagos X0): no abre nada.",
   "NotaCreditoProveedor.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "DistribucionCostoVersion.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
 };
