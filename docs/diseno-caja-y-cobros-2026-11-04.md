@@ -141,7 +141,9 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | C5 | Un **cargo se puede cubrir con más de un comprobante** (una factura toma una **parte** del cargo, con su importe); la **suma de lo aplicado a un cargo no pasa de su importe** | CONFIRMADA (respuesta Q10 del 2026-11-04; reemplaza «a lo sumo una aplicación» del diseño del 26/10) |
 | C6 | El **número** de un comprobante es único entre los **vigentes** de (empresa, clase, letra, punto de venta, número) | PROPUESTA |
 | C7 | El **número se sugiere** como el último de esa serie + 1, **y se puede cambiar**; la sugerencia nunca es obligatoria. **Motivo (dueño, 2026-11-04):** en Excel «no miraban lo que decía el sistema: les pedía la 303 y cargaban la 308, y se descuadraba todo». Texto de la sugerencia: **«Anteriormente se cargó la 303. Te sugiero la 304.»** Se puede escribir cualquier número y **corregir después si hace falta** | CONFIRMADA (punto 3 y respuesta del 2026-11-04) |
-| C33 | Si el número escrito **no es el sugerido**, la pantalla **avisa que se saltea un tramo** («te salteás de la 304 a la 307») **antes de guardar**, sin bloquear; y la lista de la serie puede mostrar los **huecos** | PROPUESTA (nace del problema de Excel; el dueño la confirma o la descarta) |
+| C33 | **Si el número escrito no es el sugerido, hay un FRENO en dos momentos y una fundamentación obligatoria.** (1) **Al escribir el número:** aviso visible con confirmación explícita («se te sugiere la 304 y estás poniendo la 308: ¿lo confirmás?»). (2) **Al guardar el comprobante:** se vuelve a pedir la confirmación («se te sugería la 304 y hiciste otra cosa»). (3) **Hay que escribir por qué** (fundamentación) cuando no coincide; sin fundamentación, no guarda. Si lo hizo a conciencia, **se corrige después**. Motivo del dueño: los descuadres pasaron porque el sistema sugería algo y la persona siguió «como lo hizo el anterior», sin pedir ayuda ni corregir antes | CONFIRMADA (dueño, 2026-11-04) |
+| C34 | **El servidor recalcula la sugerencia dentro de la transacción** y compara con el número recibido; **lo que dice la pantalla no vale como prueba**. Si no coinciden, exige la fundamentación (1 a 200 caracteres) y **guarda qué se sugería y por qué se puso otro** junto al comprobante. Sin comprobantes previos en la serie **no hay sugerencia** y no se pide fundamentación | PROPUESTA (consecuencia técnica de C33) |
+| C35 | **Corregir el número** de un comprobante ya guardado también pide **motivo**, y queda en la auditoría. La lista de comprobantes permite filtrar **«cargados con un número distinto del sugerido»** para que administración los revise | PROPUESTA |
 | C8 | Corregir un comprobante deja la **auditoría** (quién, cuándo, antes/después, motivo); el número anterior queda libre solo si se anula | CONFIRMADA (punto 3) |
 | C9 | **Letra A** exige un cliente con CUIT; **letra B** admite consumidor final | CONFIRMADA (respuesta P4 del 2026-11-04) |
 | C10 | El **punto de venta** pertenece a **una sucursal**, y un comprobante usa un punto de venta de **su** sucursal | CONFIRMADA (punto 2) |
@@ -281,6 +283,8 @@ Regla del producto: se migran **solo las tablas de la etapa que se implementa**,
 | `monto` | decimal(14,2) | CHECK > 0; **no es un cobro** |
 | `clienteId` | texto, opcional | FK compuesta a `Cliente`; NULL = consumidor final |
 | `facturaAfectadaId` | texto, opcional | FK compuesta a sí misma; pareo: obligatoria **si y solo si** `clase = NOTA_DE_CREDITO` (CHECK) |
+| `numeroSugerido` | entero, opcional | el número que el **servidor** sugería al guardar (último vigente de la serie + 1); NULL si no había serie previa |
+| `motivoNumeroDistinto` | texto, opcional | la fundamentación; CHECK: 1 a 200 caracteres sin espacios a los costados; **obligatoria si y solo si** `numeroSugerido` no es NULL y es distinto de `numero` (CHECK de pareo) |
 | `version` | entero | control optimista, ≥ 1 |
 | `claveIdempotencia`, `payloadHash`, `resultadoMensaje` | texto | I3: clave única global; van juntas (CHECK) |
 | `creadoPorId`, `creadoEn` | | quién y cuándo |
@@ -333,7 +337,7 @@ Todo comando corre en **una transacción `SERIALIZABLE`** (`conTransaccionSerial
 
 | Comando | Orden dentro de la transacción | Quién arbitra la carrera |
 |---|---|---|
-| Cargar comprobante | I3 → ¿punto de venta activo y de la sucursal? → reglas puras (Σ líneas ≤ monto, letra A exige cliente con CUIT, fecha) → `INSERT` cabecera + líneas + auditoría | El **índice único parcial** del número vigente: gana uno; el otro recibe «ese número ya está cargado en ese punto de venta» |
+| Cargar comprobante | I3 → ¿punto de venta activo y de la sucursal? → **recalcular el número sugerido de la serie; si el número recibido es distinto, exigir la fundamentación (C34)** → reglas puras (Σ líneas ≤ monto, letra A exige cliente con CUIT, fecha) → `INSERT` cabecera + líneas + auditoría | El **índice único parcial** del número vigente: gana uno; el otro recibe «ese número ya está cargado en ese punto de venta» |
 | Corregir comprobante | `SELECT … FOR UPDATE` de la cabecera → `UPDATE … WHERE version = esperada` → auditoría por campo | `version` y el mismo índice único si cambia el número |
 | Anular comprobante | `SELECT … FOR UPDATE` → `UPDATE … WHERE anuladaEn IS NULL` (0 filas = `YA_ANULADO`) → `INSERT` de la anulación → auditoría | El `UPDATE` condicional y el único `(comprobanteId)` de la anulación |
 | Alta de cliente con CUIT | validar dígito verificador → buscar por CUIT → si existe, **devolver el existente** («ya existe»); si no, `INSERT` | El índice único parcial del CUIT |
@@ -361,7 +365,7 @@ Un `40001` se reintenta solo (seguro por I3). **Error parcial:** cabecera, líne
 
 ## Nivel 9. Consultas y experiencia (N1)
 
-- **Correlativo sugerido** al elegir punto de venta, clase y letra, con el texto **«Anteriormente se cargó la 00002417. Te sugiero la 00002418.»**; se puede cambiar. **Si el número escrito se aparta del sugerido**, aviso visible («te salteás de la 00002419 a la 00002422») antes de guardar, sin bloquear (C33, PROPUESTA).
+- **Correlativo sugerido** al elegir punto de venta, clase y letra, con el texto **«Anteriormente se cargó la 00002417. Te sugiero la 00002418.»**; se puede cambiar. **Si el número escrito se aparta del sugerido** (C33, CONFIRMADA): (1) **aviso al escribirlo**, con casilla de confirmación («Se te sugiere la 00002418 y estás poniendo la 00002423; se saltean de la 00002419 a la 00002422»); (2) **segunda confirmación al guardar**; (3) **campo de fundamentación obligatorio** («¿Por qué ponés otro número?»). Es un freno **a propósito**; si fue a conciencia, se corrige después.
 - **Cliente por CUIT:** al escribirlo, el sistema busca; si existe lo muestra y lo usa («ya existe, se usa este»); si no, ofrece cargarlo al instante.
 - **Mensajes claros:** número repetido (con qué comprobante lo usa), CUIT inválido, letra A sin CUIT, líneas que pasan del monto, fecha futura.
 - **«Sin explicar»** visible en cada comprobante (monto menos conceptos declarados) hasta que N2 le sume los tickets.
@@ -378,10 +382,11 @@ Un `40001` se reintenta solo (seguro por I3). **Error parcial:** cabecera, líne
 | Cliente | consumidor final, con CUIT, sin CUIT |
 | Conceptos | ninguno, uno, varios, suma igual al monto, suma mayor al monto |
 | Número | nuevo, repetido de un vigente, repetido de uno anulado, correlativo sugerido, corregido a otro |
+| Número frente a lo sugerido | coincide, distinto con fundamentación, distinto sin fundamentación (se rechaza), sin sugerencia (primera de la serie), la sugerencia cambió mientras se escribía |
 | Estado | vigente, anulado |
 | Permiso | tiene, no tiene, tiene en otra sucursal |
 
-Cuenta aproximada: 2 × 2 × 3 × 5 × 5 × 2 × 3 = **1.800 combinaciones**, exhaustivas (el oráculo las enumera). Un **guardián** falla si aparece una columna, un valor de `clase` o `letra`, o una clave de permiso nuevos sin declarar si afectan.
+Cuenta aproximada: 2 × 2 × 3 × 5 × 5 × 5 × 2 × 3 = **9.000 combinaciones** crudas, exhaustivas (el oráculo las enumera; muchas colapsan en la misma regla). Un **guardián** falla si aparece una columna, un valor de `clase` o `letra`, o una clave de permiso nuevos sin declarar si afectan.
 
 **Pruebas obligatorias** (calco de pagos X0 y notas de crédito): reglas puras con propiedades de `fast-check` (Σ líneas, redondeo); integración contra Postgres real; **concurrencia con el caso de uso real, tres veces** (dos cargan el mismo número a la vez: gana uno; corregir contra anular; dos altas del mismo CUIT); **idempotencia** (el mismo envío no duplica); **aislamiento entre empresas y entre sucursales** (RLS); migración **subir, bajar y subir** con `down.sql` que **aborta si hay datos**; e2e a 375 px de la carga y de la corrección; accesibilidad con `axe`.
 
