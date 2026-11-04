@@ -72,3 +72,23 @@ export const TAMANO_DE_COLISION = 10 * 3;
 export function debeRechazarse(colision: (typeof COLISION)[number]): boolean {
   return colision === "nombre-en-carta-de-otro" || colision === "interno-de-otro-visible" || colision === "agrupado" || colision === "promo";
 }
+
+/**
+ * LA DIMENSIÓN «ESTADO DEL NOMBRE» (confirmado por el dueño, 2026-11-04: «Está bien así») de un plato VISIBLE en la carta de una sucursal:
+ *  - pendiente: sin decidir (NULL): la carta lo muestra con el nombre del producto y el admin dice «pendiente de completar»;
+ *  - propio: tiene un nombre de carta distinto del interno;
+ *  - confirmado-igual-al-interno: alguien lo dejó igual al interno a propósito; ya no está pendiente.
+ * REGLAS DEL BOTÓN «Está bien así» (estado × colisión de la tabla de arriba):
+ *  6. Pendiente y sin choque: copia el nombre del producto al campo (a propósito, auditado).
+ *  7. Pendiente y con choque (otro plato visible, agrupado o promo ya usa ese nombre): rechaza con el mensaje y NO copia; sigue pendiente.
+ *  8. Propio o confirmado: no cambia nada ni audita (ya estaba), haya o no un choque.
+ */
+export const ESTADO_DEL_NOMBRE = ["pendiente", "propio", "confirmado-igual-al-interno"] as const;
+
+export function resultadoEsperadoDelBoton(estado: (typeof ESTADO_DEL_NOMBRE)[number], colision: (typeof COLISION)[number]): "copia" | "rechaza" | "ya-estaba" {
+  if (estado !== "pendiente") return "ya-estaba";
+  return debeRechazarse(colision) ? "rechaza" : "copia";
+}
+
+/** Cuántas combinaciones tiene estado × colisión: 3 × 10. */
+export const TAMANO_DEL_BOTON = 3 * 10;

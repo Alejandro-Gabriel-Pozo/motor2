@@ -73,6 +73,19 @@ export async function origenesDeCopiaVisibles(usuarioId: string, origenes: reado
   return origenes.filter((o) => visibles.has(o.id));
 }
 
+/**
+ * «Platos de la carta sin nombre de carta» (confirmado por el dueño, 2026-11-04): los productos VISIBLES en la carta de ESTA sucursal con el nombre de carta sin decidir (`NULL`). Siguen saliendo con el nombre del
+ * producto (nunca se oculta un plato); el admin los lista como «pendiente de completar». No cuentan los productos base (la carta lee los rótulos de sus opciones, no su nombre) ni los de otra sucursal.
+ * Sin guarda de permiso: la pone la página.
+ */
+export async function listarPlatosSinNombreDeCarta(sucursalId: string, db: Db): Promise<{ productoId: string; nombre: string }[]> {
+  const filas = await db.contenidoCartaProducto.findMany({
+    where: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, nombreEnCarta: null, producto: { tipo: "PV", modoDeVenta: { not: "BASE_CONFIGURABLE" } } },
+    select: { productoId: true, producto: { select: { nombre: true } } },
+  });
+  return filas.map((f) => ({ productoId: f.productoId, nombre: f.producto.nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+}
+
 /** El «Nombre en la carta» del producto en ESTA sucursal (`null` si no tiene fila o no lo cargó: la carta usa el nombre del producto). Sin guarda de permiso: la pone la página. */
 export async function nombreEnCartaDeUnProducto(sucursalId: string, productoId: string, db: Db): Promise<string | null> {
   const fila = await db.contenidoCartaProducto.findFirst({ where: { ...whereCartaDeSucursal(sucursalId), productoId }, select: { nombreEnCarta: true } });

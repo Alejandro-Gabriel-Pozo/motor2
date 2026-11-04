@@ -78,3 +78,15 @@ export async function tomarElProductoParaGuardarContenido(db: Prisma.Transaction
 export async function tomarLosNombresDeLaCarta(db: Prisma.TransactionClient, sucursalId: string): Promise<void> {
   await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`nombres-de-la-carta:${sucursalId}`}, 0))`;
 }
+
+/**
+ * «Está bien así»: pone el nombre en la carta SOLO si todavía no tiene (`nombreEnCarta` en `NULL`) y el plato está visible, en una sola sentencia (no pisa lo que otro cargó un instante antes). Devuelve cuántas
+ * filas cambió: 0 = alguien se adelantó o el plato ya no está visible.
+ */
+export async function fijarNombreEnCartaSiVacio(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string; nombre: string }): Promise<number> {
+  const r = await db.contenidoCartaProducto.updateMany({
+    where: { sucursalId: args.sucursalId, productoId: args.productoId, visibleEnCarta: true, nombreEnCarta: null },
+    data: { nombreEnCarta: args.nombre },
+  });
+  return r.count;
+}

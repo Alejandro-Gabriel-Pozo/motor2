@@ -18,7 +18,7 @@ export const LARGO_MAXIMO_DEL_NOMBRE_EN_CARTA = 80;
  * usa el nombre interno); si no, UNA línea (sin saltos), sin espacios a los costados (no se recorta: se avisa), de hasta 80 caracteres y con el juego de caracteres de un nombre de catálogo (letras, números,
  * espacios y `- . , ( ) % & / ' _`: nunca HTML). El CHECK de la base repite el tope, los costados y los saltos.
  */
-function nombreEnCarta(valor: unknown): ResultadoDato<string | null | undefined> {
+export function validarNombreEnCarta(valor: unknown): ResultadoDato<string | null | undefined> {
   if (valor === undefined) return aceptar(undefined);
   if (valor === null) return aceptar(null);
   const etiqueta = "«Nombre en la carta»";
@@ -49,7 +49,7 @@ export function guardComandoGuardarContenidoCartaProducto(entrada: { datos: unkn
   }
   // Fase 5 (DEC-11): «Mostrar el nombre arriba», si viene, es un sí o un no (un texto «false» sería verdadero en JS).
   if (d.mostrarNombreArriba !== undefined && typeof d.mostrarNombreArriba !== "boolean") return rechazar("formato", "«Mostrar el nombre del producto arriba» no es válido.");
-  const nombre = nombreEnCarta(d.nombreEnCarta);
+  const nombre = validarNombreEnCarta(d.nombreEnCarta);
   if (!nombre.ok) return nombre;
   return aceptar({ descripcion: descripcion.valor, tags: tags.valor, orden: orden.valor, ...(nombre.valor === undefined ? {} : { nombreEnCarta: nombre.valor }) });
 }

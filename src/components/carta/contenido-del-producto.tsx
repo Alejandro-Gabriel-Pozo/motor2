@@ -58,6 +58,7 @@ export function ContenidoDelProducto({
   precioLocalActivo,
   sucursalId,
   mostrarNombreArriba,
+  nombreDeCartaPendiente = false,
   abierto = false,
   abrirEnElProducto = false,
 }: {
@@ -73,6 +74,8 @@ export function ContenidoDelProducto({
    * formulario no lo muestra ni lo manda (queda como estaba).
    */
   mostrarNombreArriba?: boolean;
+  /** «Nombre en la carta» sin decidir en un plato visible (`estadoDelNombreDeCarta`): la carta usa el nombre del producto y se avisa «pendiente de completar». */
+  nombreDeCartaPendiente?: boolean;
   /** La ficha llega desplegada (el paso «En la carta» del producto muestra una sola y no tiene sentido plegarla). */
   abierto?: boolean;
   /** «Abrir en el producto»: un enlace al paso «En la carta» de ESTE producto (Parametrización › Secciones lo ofrece; el paso mismo no). Va por `EnlaceInterno`: solo se ve el enlace si el rol puede abrir ese paso. */
@@ -169,7 +172,7 @@ export function ContenidoDelProducto({
                 maxLength={80}
                 defaultValue={p.contenido?.nombreEnCarta ?? ""}
                 placeholder={p.nombre}
-                ayuda="Así lo ven el cliente y el mozo en esta sucursal. Vacío = se usa el nombre del producto. No cambia el ticket, la comanda ni los reportes."
+                ayuda={`${nombreDeCartaPendiente ? "Pendiente de completar: hoy la carta usa el nombre del producto. " : ""}Así lo ven el cliente y el mozo en esta sucursal (y el ticket de un producto directo). Vacío = se usa el nombre del producto. No cambia la comanda ni los reportes.`}
               />
             </div>
             <div className="sm:col-span-2">

@@ -19,6 +19,7 @@ const LISTA_CERRADA: Record<string, string> = {
   "src/core/features/carta/contenido-producto.schema.ts": "administración: tipos del comando",
   "src/core/pos/selector-carta.ts": "SELECTOR DEL MOZO: el campo OPCIONAL del pedible; la venta no lo copia",
   "src/server/actions/carta/casos-de-uso/actualizar-visible-en-carta.ts": "administración: mostrar un plato comprueba su nombre efectivo contra la carta (sin nombres repetidos)",
+  "src/server/actions/carta/casos-de-uso/confirmar-nombre-en-carta.ts": "administración: «Está bien así» (con auditoría por columna)",
   "src/server/actions/carta/casos-de-uso/copiar-carta-de-sucursal.ts": "administración: la copia de carta lo lleva",
   "src/server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts": "administración: el único que lo escribe (con auditoría por columna)",
   "src/server/actions/carta/casos-de-uso/quitar-producto-de-la-carta.ts": "administración: audita lo que se pierde al quitar",

@@ -49,3 +49,16 @@ export function mensajeDeChoqueDeNombre(nombre: string, choque: ChoqueDeNombre, 
         : `la promo "${choque.con}"`;
   return `"${nombre}" ya lo usa ${quien} en la carta de ${sucursalNombre}. Ponele un nombre de carta distinto a uno de los dos.`;
 }
+
+/**
+ * El estado del «Nombre en la carta» de un plato EN LA CARTA de una sucursal (2026-11-04, confirmado por el dueño): el interno solo vale como nombre de carta «si es apto para carta y fue adrede».
+ *  - `pendiente`: sin decidir (`NULL`): la carta usa el nombre del producto (nunca se oculta un plato) pero el admin lo muestra «pendiente de completar»;
+ *  - `propio`: tiene un nombre de carta distinto del interno;
+ *  - `confirmado-igual-al-interno`: alguien lo dejó igual al interno a propósito («Está bien así»): no está pendiente. Si después renombran el producto, el de la carta queda como estaba.
+ */
+export type EstadoDelNombreDeCarta = "pendiente" | "propio" | "confirmado-igual-al-interno";
+
+export function estadoDelNombreDeCarta(producto: { nombre: string }, contenido: { nombreEnCarta: string | null }): EstadoDelNombreDeCarta {
+  if (contenido.nombreEnCarta === null) return "pendiente";
+  return contenido.nombreEnCarta === producto.nombre ? "confirmado-igual-al-interno" : "propio";
+}

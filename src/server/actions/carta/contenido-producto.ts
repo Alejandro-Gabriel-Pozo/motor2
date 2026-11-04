@@ -5,6 +5,7 @@ import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import type { ResultadoAccion } from "../tipos";
 import { actualizarVisibleEnCartaCasoDeUso } from "./casos-de-uso/actualizar-visible-en-carta";
+import { confirmarNombreEnCartaCasoDeUso } from "./casos-de-uso/confirmar-nombre-en-carta";
 import { guardarContenidoCartaProductoCasoDeUso } from "./casos-de-uso/guardar-contenido-carta-producto";
 import { revalidarCartasPublicas } from "./revalidar";
 
@@ -57,6 +58,18 @@ export async function guardarContenidoCartaProducto(productoId: string, datos: D
 export async function actualizarVisibleEnCarta(productoId: string, visibleEnCarta: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta_contenido_producto", async (ctx) => {
     const resultado = await actualizarVisibleEnCartaCasoDeUso(ctx, { productoId, visibleEnCarta });
+    if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
+  });
+}
+
+/**
+ * «Está bien así» (2026-11-04): confirma, a propósito, que el nombre del producto sirve como nombre de carta de esta sucursal (el plato estaba «pendiente de completar»). Permiso → caso de uso
+ * (`casos-de-uso/confirmar-nombre-en-carta.ts`) → revalidar si salió bien → `aResultadoAccion`. Repetirlo no cambia nada ni audita de más.
+ */
+export async function confirmarNombreEnCarta(productoId: string): Promise<ResultadoAccion> {
+  return conPermiso("carta_contenido_producto", async (ctx) => {
+    const resultado = await confirmarNombreEnCartaCasoDeUso(ctx, { productoId });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
