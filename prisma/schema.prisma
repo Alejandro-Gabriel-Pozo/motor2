@@ -3525,6 +3525,10 @@ model OpcionDeGrupo {
   version       Int             @default(1)
   creadoEn      DateTime        @default(now())
   actualizadoEn DateTime        @default(now())
+  /// Carta «B», E3 (2026-11-04): la descripción OPCIONAL de la opción («lechuga, tomate, cebolla»), de una línea. La escribe el dueño y la lee SOLO la carta (pública, impresa, vista previa del producto y «Va a mostrar»):
+  /// ni el precio, ni el stock, ni el ticket, ni la comanda, ni el POS, ni los reportes, y la foto de la venta (`OpcionElegidaEnLinea`) no la copia. Sin versión propia (como el nombre). NULL = sin descripción.
+  /// CHECK "OpcionDeGrupo_descripcion_en_carta_chk": de 1 a 120 caracteres, sin espacios a los costados ni saltos de línea. Tiene su propio GRANT de UPDATE por columna para `motor2_app`.
+  descripcionEnCarta String?
 
   versiones             VersionDeOpcion[]
   productosQueLaAdmiten ProductoAdmiteOpcion[]
