@@ -21,6 +21,8 @@ export interface CabeceraAEscribir {
   ahora: Date;
   claveIdempotencia: string;
   payloadHash: string;
+  /** Pagos X0: ausente = `CONTADO_PAGADA` (como siempre). */
+  condicionPago?: "CONTADO_PAGADA" | "PENDIENTE_DE_PAGO";
 }
 
 /** La cabecera nace CONFIRMADA: el reparto queda declarado completo al cargar (ADR-041); lo pendiente es la aceptación de cada destino. */
@@ -38,6 +40,7 @@ export async function escribirCabeceraDeFactura(tx: Prisma.TransactionClient, c:
       detalleLibre: c.detalleLibre,
       claveIdempotencia: c.claveIdempotencia,
       payloadHash: c.payloadHash,
+      condicionPago: c.condicionPago ?? "CONTADO_PAGADA",
       creadoPorId: c.usuarioId,
     },
     select: { id: true },
@@ -137,6 +140,30 @@ export async function escribirAnulacionDeFactura(
   if (r.count === 0) return 0;
   await tx.anulacionDeFacturaProveedor.create({
     data: { facturaProveedorId: a.facturaProveedorId, motivo: a.motivo, claveIdempotencia: a.claveIdempotencia, payloadHash: a.payloadHash, resultadoMensaje: a.resultadoMensaje, creadoPorId: a.usuarioId },
+  });
+  return r.count;
+}
+
+/** Pagos X0: escribe el pago declarado (siempre nuevo; el índice parcial `PagoDeFacturaProveedor_vigente_key` impide un segundo vigente). `fechaPago` es el día (`AAAA-MM-DD`) como fecha de columna `DATE`. */
+export async function escribirPagoDeFactura(
+  tx: Prisma.TransactionClient,
+  p: { facturaProveedorId: string; fechaPago: Date; medio: string; usuarioId: string; claveIdempotencia: string; payloadHash: string; resultadoMensaje: string }
+): Promise<{ id: string }> {
+  return tx.pagoDeFacturaProveedor.create({
+    data: { facturaProveedorId: p.facturaProveedorId, fechaPago: p.fechaPago, medio: p.medio, creadoPorId: p.usuarioId, claveIdempotencia: p.claveIdempotencia, payloadHash: p.payloadHash, resultadoMensaje: p.resultadoMensaje },
+    select: { id: true },
+  });
+}
+
+/** Pagos X0: marca anulado el pago (guarda `anuladoEn IS NULL`: 0 = otra anulación ganó) y escribe la anulación como registro nuevo. Devuelve cuántos pagos tocó. */
+export async function escribirAnulacionDePago(
+  tx: Prisma.TransactionClient,
+  a: { pagoId: string; usuarioId: string; ahora: Date; motivo: string; claveIdempotencia: string; payloadHash: string; resultadoMensaje: string }
+): Promise<number> {
+  const r = await tx.pagoDeFacturaProveedor.updateMany({ where: { id: a.pagoId, anuladoEn: null }, data: { anuladoEn: a.ahora, anuladoPorId: a.usuarioId } });
+  if (r.count === 0) return 0;
+  await tx.anulacionDePagoDeFacturaProveedor.create({
+    data: { pagoId: a.pagoId, motivo: a.motivo, claveIdempotencia: a.claveIdempotencia, payloadHash: a.payloadHash, resultadoMensaje: a.resultadoMensaje, creadoPorId: a.usuarioId },
   });
   return r.count;
 }
