@@ -15,6 +15,8 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin redondear a la unidad del insumo", () => {
   let sucursalId: string;
@@ -39,7 +41,7 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.3, unidadId: unidadEntera.id, mermaPorcentaje: 7 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 1000 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const resultado = await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date(), seccionId, items: [{ productoId: pv.id, cantidad: 7 }], claveIdempotencia: crypto.randomUUID() });
     expect(resultado.ok, resultado.mensaje).toBe(true);
@@ -64,7 +66,7 @@ describe("Auditoría — Pivote 4: PRODUCCIÓN persiste el consumo de receta sin
     await prisma.recetaVersion.create({
       data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mpInsumo.id, cantidad: 0.3, unidadId: unidadEntera.id, mermaPorcentaje: 7 }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 1000 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpInsumo.id, cantidad: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const { registrarVenta } = await import("../../src/server/actions/movimientos/venta");
     const resultado = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 7 }] });

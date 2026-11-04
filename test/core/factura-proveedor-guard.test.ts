@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
 import { mediodiaDelDia, ZONA_ARGENTINA } from "@/core/tiempo/zona-horaria";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * E3a, paso 2: el formato de los tres comandos de la factura de proveedor (clave obligatoria, número obligatorio al repartir con otras sucursales, sección de la parte propia, reparto bien formado
  * y motivo de la anulación).
  *
- * Mutaciones (anotadas en el commit): volver opcional la clave (`claveObligatoria` acepta vacío) → rojo «sin clave»; quitar la exigencia del número al repartir → rojo «número obligatorio»;
+ * Mutaciones (anotadas en el commit): volver opcional la clave (`claveObligatoria` acepta vacío) → rojo «sin clave»;
  * quitar el chequeo de sucursal repetida → rojo «sucursal dos veces»; aceptar motivo vacío → rojo «motivo».
  */
 const AHORA = new Date("2026-10-28T15:00:00.000Z");
@@ -17,9 +18,9 @@ const S3 = "suc_3";
 const base = (extra: Record<string, unknown> = {}) => ({
   fecha: HOY,
   proveedorId: "prov",
-  nroFactura: "0001-00000077",
+  nroFactura: "A-00001-00000077",
   seccionId: "sec",
-  items: [{ productoId: "p", cantidad: 3, precioTotal: 300 }],
+  items: [{ productoId: "p", cantidad: 3, precioTotal: 300, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
   reparto: { modo: "IMPORTE", partes: [{ sucursalId: S3, valor: 200 }, { sucursalId: "suc_4", valor: 100 }] },
   claveIdempotencia: CLAVE,
   ...extra,
@@ -30,10 +31,6 @@ describe("guardComandoRegistrarFacturaProveedor", () => {
   it("sin clave o con clave inválida se rechaza (decisión 8)", () => {
     expect(guardComandoRegistrarFacturaProveedor(base({ claveIdempotencia: undefined }), AHORA, S3)).toMatchObject({ ok: false, mensaje: "Falta la clave de reintento: recargá la pantalla." });
     expect(guardComandoRegistrarFacturaProveedor(base({ claveIdempotencia: "x" }), AHORA, S3)).toMatchObject({ ok: false, mensaje: "Clave de reintento inválida." });
-  });
-  it("número obligatorio cuando hay partes de otra sucursal (D10); opcional si todo queda en la propia", () => {
-    expect(guardComandoRegistrarFacturaProveedor(base({ nroFactura: "" }), AHORA, S3)).toMatchObject({ ok: false, mensaje: expect.stringContaining("hace falta su número") });
-    expect(guardComandoRegistrarFacturaProveedor(base({ nroFactura: "", reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: S3, valor: 100 }] } }), AHORA, S3).ok).toBe(true);
   });
   it("la sección es obligatoria solo si la sucursal que carga tiene parte", () => {
     expect(guardComandoRegistrarFacturaProveedor(base({ seccionId: "" }), AHORA, S3)).toMatchObject({ ok: false, mensaje: expect.stringContaining("sección") });
@@ -49,6 +46,15 @@ describe("guardComandoRegistrarFacturaProveedor", () => {
     expect(guardComandoRegistrarFacturaProveedor(base({ proveedorId: "" }), AHORA, S3).ok).toBe(false);
     expect(guardComandoRegistrarFacturaProveedor(base({ items: [] }), AHORA, S3).ok).toBe(false);
     expect(guardComandoRegistrarFacturaProveedor(base({ fecha: new Date("2026-11-30T15:00:00Z") }), AHORA, S3).ok).toBe(false);
+  });
+  it("I13: una factura con fecha de mañana se rechaza (la de hoy pasa)", () => {
+    const manana = mediodiaDelDia("2026-10-29", ZONA_ARGENTINA);
+    expect(guardComandoRegistrarFacturaProveedor(base({ fecha: manana }), AHORA, S3)).toMatchObject({ ok: false, codigo: "rango", mensaje: "La fecha de la compra no puede ser posterior a hoy." });
+    expect(guardComandoRegistrarFacturaProveedor(base({ fecha: HOY }), AHORA, S3).ok).toBe(true);
+  });
+  it("I13: aceptar mi parte con fechaStock de mañana se rechaza", () => {
+    const manana = mediodiaDelDia("2026-10-29", ZONA_ARGENTINA);
+    expect(guardComandoAceptarParteDeFactura({ propuestaId: "p", seccionId: "s", fechaStock: manana, claveIdempotencia: CLAVE }, AHORA)).toMatchObject({ ok: false, codigo: "rango", mensaje: "La fecha de la compra no puede ser posterior a hoy." });
   });
 });
 

@@ -9,6 +9,8 @@ import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { type ActorVenta } from "../../src/core/movimientos/registrar-venta";
 import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * H9 (docs/plan-seccion-habitual-stock-2026-09-25.md): dos LÍNEAS de la misma venta que consumen la misma familia de insumo. El
@@ -51,12 +53,12 @@ describe("H9: reparto por familia entre líneas de la misma venta", () => {
       });
     }
     await registrarMovimiento({
-      proceso: "COMPRA",
+      proceso: "COMPRA", ...(await comprobanteDePrueba()),
       fecha: new Date(),
       seccionId,
       items: [
-        { productoId: muzzaA, cantidad: 0.3, loteVencimiento: new Date("2026-10-01") },
-        { productoId: muzzaB, cantidad: 0.3, loteVencimiento: new Date("2026-11-01") },
+        { productoId: muzzaA, cantidad: 0.3, loteVencimiento: new Date("2026-10-01"), referenciaProveedor: REFERENCIA_DE_PRUEBA },
+        { productoId: muzzaB, cantidad: 0.3, loteVencimiento: new Date("2026-11-01"), referenciaProveedor: REFERENCIA_DE_PRUEBA },
       ],
       claveIdempotencia: crypto.randomUUID(),
     });

@@ -13,6 +13,7 @@ import { listarPropuestasEnviadas, listarPropuestasParaAceptar } from "../../src
 import { obtenerCostoActualPorMP } from "../../src/server/lecturas/reportes/comun";
 import { mediodiaDelDia, ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../../src/core/tiempo/zona-horaria";
 import type { DatosFacturaProveedorInput } from "../../src/core/features/compras/factura-proveedor.schema";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * E3a (ADR-041; docs/diseno-factura-de-proveedor-e3a-2026-10-27.md): la factura de proveedor repartida entre sucursales por PROPUESTA (la que compra) y ACEPTACIÓN (cada destino), contra Postgres real.
@@ -46,11 +47,11 @@ const comoAdminEn = (sucursalId: string) => como(admin, "admin@test.com", sucurs
 const factura = (extra: Partial<DatosFacturaProveedorInput> = {}): DatosFacturaProveedorInput => ({
   fecha: mediodiaDeHoy(),
   proveedorId,
-  nroFactura: "0001-00000077",
+  nroFactura: "A-00001-00000077",
   seccionId: sec3,
   items: [
     { productoId: harina, cantidad: 240, precioTotal: 2_400_000, referenciaProveedor: "HARINA 000 X 25" },
-    { productoId: aceite, cantidad: 60, precioTotal: 600_000 },
+    { productoId: aceite, cantidad: 60, precioTotal: 600_000, referenciaProveedor: REFERENCIA_DE_PRUEBA },
   ],
   reparto: { modo: "IMPORTE", partes: [{ sucursalId: s3, valor: 1_500_000 }, { sucursalId: s4, valor: 1_000_000 }, { sucursalId: s6, valor: 500_000 }] },
   claveIdempotencia: randomUUID(),
@@ -93,7 +94,7 @@ describe("cargar factura", () => {
     const r = await registrarFacturaProveedor(factura({ reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 100 }] } }));
     expect(r.ok, r.mensaje).toBe(true);
     const cab = await prisma.facturaProveedor.findFirstOrThrow({ include: { renglones: true, partes: true } });
-    expect([cab.estado, Number(cab.importeTotal), cab.nroFacturaNormalizado, cab.renglones.length]).toEqual(["CONFIRMADA", 3_000_000, "1-77", 2]);
+    expect([cab.estado, Number(cab.importeTotal), cab.nroFacturaNormalizado, cab.renglones.length]).toEqual(["CONFIRMADA", 3_000_000, "A:1-77", 2]);
     expect(cab.partes.map((p) => [p.sucursalId, p.porcentajeDeclaradoBp, p.estadoRecepcion, Boolean(p.operacionId)])).toEqual([[s3, 10000, "RECIBIDA", true]]);
     expect(await calcularSaldoTotal(harina, sec3, prisma)).toBe(240);
     expect(await pesosEn(s3)).toBe(3_000_000);
@@ -161,31 +162,31 @@ describe("cargar factura", () => {
     expect(await prisma.facturaProveedorPropuesta.count()).toBe(2);
     const otraVez = await registrarFacturaProveedor(datos);
     expect([otraVez.ok, otraVez.mensaje]).toEqual([true, rs[0]!.mensaje]);
-    const conflicto = await registrarFacturaProveedor({ ...datos, nroFactura: "0001-00000099" });
+    const conflicto = await registrarFacturaProveedor({ ...datos, nroFactura: "A-00001-00000099" });
     expect(conflicto.ok).toBe(false);
   });
 
   it("dos cargas simultáneas del mismo número (claves distintas): una sola factura; la otra recibe «ya hay una factura»", async () => {
     await comoOp3();
-    const rs = await Promise.all([registrarFacturaProveedor(factura()), registrarFacturaProveedor(factura({ nroFactura: "1-77" }))]);
+    const rs = await Promise.all([registrarFacturaProveedor(factura()), registrarFacturaProveedor(factura({ nroFactura: "A-1-77" }))]);
     expect(rs.filter((r) => r.ok)).toHaveLength(1);
-    expect(rs.find((r) => !r.ok)?.mensaje).toMatch(/Ya hay una factura de este proveedor con ese número|Ya hay una compra registrada con esa factura/);
+    expect(rs.find((r) => !r.ok)?.mensaje).toMatch(/Ya hay una factura de este proveedor con ese número/);
     expect(await prisma.facturaProveedor.count()).toBe(1);
   });
 
   it("rechazos: sucursal de otra empresa o inexistente, producto indivisible, importes que no suman (con lo que falta)", async () => {
     await comoOp3();
     expect((await registrarFacturaProveedor(factura({ reparto: { modo: "IMPORTE", partes: [{ sucursalId: s3, valor: 2_000_000 }, { sucursalId: "no-existe", valor: 1_000_000 }] } }))).mensaje).toContain("No se encontró una de las sucursales");
-    const indivisible = await registrarFacturaProveedor(factura({ items: [{ productoId: harina, cantidad: 1, precioTotal: 90 }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
+    const indivisible = await registrarFacturaProveedor(factura({ items: [{ productoId: harina, cantidad: 1, precioTotal: 90, referenciaProveedor: REFERENCIA_DE_PRUEBA }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
     // La harina es en kg con 2 decimales: 1 kg sí se parte (0,33 / 0,33 / 0,34). El indivisible se prueba con una unidad entera.
     expect(indivisible.ok, indivisible.mensaje).toBe(true);
     const unidad = await prisma.unidad.create({ data: { nombre: "bolsa", magnitud: "CANTIDAD", decimales: 0 } });
     const insumo = await prisma.insumo.create({ data: { nombre: "Bolsa" } });
     const bolsa = await prisma.producto.create({ data: { codigo: "MP_BOLSA", nombre: "Bolsa 25 kg", tipo: "MP", unidadStockId: unidad.id, insumoId: insumo.id } });
     await prisma.disponibilidadProducto.create({ data: { sucursalId: s3, productoId: bolsa.id, disponible: true } });
-    const r = await registrarFacturaProveedor(factura({ nroFactura: "0001-00000088", items: [{ productoId: bolsa.id, cantidad: 1, precioTotal: 90 }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
+    const r = await registrarFacturaProveedor(factura({ nroFactura: "A-00001-00000088", items: [{ productoId: bolsa.id, cantidad: 1, precioTotal: 90, referenciaProveedor: REFERENCIA_DE_PRUEBA }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
     expect(r.mensaje).toContain("«Bolsa 25 kg» no se puede partir");
-    const noSuma = await registrarFacturaProveedor(factura({ nroFactura: "0001-00000089", reparto: { modo: "IMPORTE", partes: [{ sucursalId: s3, valor: 2_000_000 }, { sucursalId: s4, valor: 900_000 }] } }));
+    const noSuma = await registrarFacturaProveedor(factura({ nroFactura: "A-00001-00000089", reparto: { modo: "IMPORTE", partes: [{ sucursalId: s3, valor: 2_000_000 }, { sucursalId: s4, valor: 900_000 }] } }));
     expect(noSuma.mensaje).toBe("Los importes de las sucursales no llegan al total: faltan $100000.00.");
   });
 });
@@ -224,12 +225,12 @@ describe("aceptar mi parte", () => {
 
   it("también cuando la que compra no se quedó con parte (compra para otras): el operario de la 3 no acepta por la 4", async () => {
     await comoOp3();
-    const r = await registrarFacturaProveedor(factura({ nroFactura: "0001-00000500", seccionId: undefined, reparto: { modo: "IMPORTE", partes: [{ sucursalId: s4, valor: 2_000_000 }, { sucursalId: s6, valor: 1_000_000 }] } }));
+    const r = await registrarFacturaProveedor(factura({ nroFactura: "A-00001-00000500", seccionId: undefined, reparto: { modo: "IMPORTE", partes: [{ sucursalId: s4, valor: 2_000_000 }, { sucursalId: s6, valor: 1_000_000 }] } }));
     expect(r.ok, r.mensaje).toBe(true);
-    const nueva = await prisma.facturaProveedorPropuesta.findFirstOrThrow({ where: { destinoSucursalId: s4, facturaProveedor: { nroFactura: "0001-00000500" } } });
+    const nueva = await prisma.facturaProveedorPropuesta.findFirstOrThrow({ where: { destinoSucursalId: s4, facturaProveedor: { nroFactura: "A-00001-00000500" } } });
     const a = await aceptarPropuestaDeFactura(nueva.id, sec3, mediodiaDeHoy(), randomUUID());
     expect(a.ok).toBe(false);
-    expect(await prisma.facturaProveedorSucursal.count({ where: { facturaProveedor: { nroFactura: "0001-00000500" } } })).toBe(0);
+    expect(await prisma.facturaProveedorSucursal.count({ where: { facturaProveedor: { nroFactura: "A-00001-00000500" } } })).toBe(0);
     expect((await prisma.facturaProveedorPropuesta.findUniqueOrThrow({ where: { id: nueva.id } })).estado).toBe("PENDIENTE");
   });
 
@@ -275,7 +276,9 @@ describe("aceptar mi parte", () => {
     await comoOp4();
     const ayer = mediodiaDelDia(sumarDias(diaDeCalendario(hoy(), ZONA_ARGENTINA), -1), ZONA_ARGENTINA);
     const manana = mediodiaDelDia(sumarDias(diaDeCalendario(hoy(), ZONA_ARGENTINA), 1), ZONA_ARGENTINA);
-    for (const f of [ayer, manana]) expect((await aceptarPropuestaDeFactura(p4.id, sec4, f, randomUUID())).mensaje).toContain("La fecha de stock tiene que estar entre");
+    expect((await aceptarPropuestaDeFactura(p4.id, sec4, ayer, randomUUID())).mensaje).toContain("La fecha de stock tiene que estar entre");
+    // I13: mañana ya lo rechaza el guard (la fecha de una compra no puede ser posterior a hoy), antes del rango del caso de uso.
+    expect((await aceptarPropuestaDeFactura(p4.id, sec4, manana, randomUUID())).mensaje).toBe("La fecha de la compra no puede ser posterior a hoy.");
     expect(await kardexDe(s4)).toEqual([]);
   });
 });
@@ -330,11 +333,11 @@ describe("anular la factura", () => {
 
   it("la factura que la 3 cargó solo para otras no la anula un administrador de la 6 sin permiso en la 3 (hallazgo de la matriz de denegación)", async () => {
     await comoOp3();
-    const r = await registrarFacturaProveedor(factura({ nroFactura: "0001-00000600", seccionId: undefined, reparto: { modo: "IMPORTE", partes: [{ sucursalId: s4, valor: 2_000_000 }, { sucursalId: s6, valor: 1_000_000 }] } }));
+    const r = await registrarFacturaProveedor(factura({ nroFactura: "A-00001-00000600", seccionId: undefined, reparto: { modo: "IMPORTE", partes: [{ sucursalId: s4, valor: 2_000_000 }, { sucursalId: s6, valor: 1_000_000 }] } }));
     expect(r.ok, r.mensaje).toBe(true);
     const admin6 = await crearUsuarioConMembresia({ email: "admin6@test.com", sucursalId: s6, rolId: (await prisma.rol.findFirstOrThrow({ where: { clave: "admin" } })).id });
     await como(admin6.id, "admin6@test.com", s6);
-    const id = (await prisma.facturaProveedor.findFirstOrThrow({ where: { nroFactura: "0001-00000600" } })).id;
+    const id = (await prisma.facturaProveedor.findFirstOrThrow({ where: { nroFactura: "A-00001-00000600" } })).id;
     const a = await anularFacturaProveedor(id, "no es mía", randomUUID());
     expect(a.ok).toBe(false);
     expect(a.mensaje).toContain("la cargó otra sucursal donde no tenés permiso");

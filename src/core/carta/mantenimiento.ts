@@ -17,6 +17,7 @@
 
 import type { GrupoCartaV1, OpcionesSinCostoCartaV1 } from "./opciones-en-carta";
 import { formatearPrecioCarta } from "./precio-carta";
+import { incluyeDeLaSeccion, textoDeIncluye, textoDelBloque } from "./incluye-en-carta";
 import type { PresentacionCartaV1 } from "./presentacion-en-carta";
 import { textoDeLaAclaracion } from "./texto-de-la-carta";
 
@@ -144,8 +145,11 @@ export function vistaPreviaDeLaForma(nombre: string, p: PresentacionCartaV1): st
         : p.columnas.length === 0
           ? `«${nombre}» y debajo: ${filas.join(", ")}`
           : `una tabla «${nombre}» (${p.columnas.join(" / ")}): ${filas.join("; ")}`;
-  const debajo = p.aclaraciones.map((a) => `${a.rotulo}: ${textoDeLaAclaracion(a)}`);
-  return `Va a mostrar ${[cuerpo, ...debajo].join(" · ")}.`;
+  // Carta «B»: lo que se elige sin costo lo dicen el plato («Incluye …») y el bloque del pie, con la MISMA función que la carta pública (`incluyeDeLaSeccion`): el producto solo es una sección de uno.
+  const incluye = incluyeDeLaSeccion([p.aclaraciones]);
+  const linea = textoDeIncluye(incluye.platos[0] ?? []);
+  const debajo = p.aclaraciones.filter((a) => a.tipo === "extras").map((a) => `${a.rotulo}: ${textoDeLaAclaracion(a)}`);
+  return `Va a mostrar ${[cuerpo, ...(linea ? [linea] : []), ...debajo, ...incluye.bloques.map(textoDelBloque)].join(" · ")}.`;
 }
 
 /**

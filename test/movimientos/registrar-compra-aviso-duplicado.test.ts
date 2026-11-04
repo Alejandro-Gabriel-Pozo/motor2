@@ -6,9 +6,11 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { baseDeTest, EMPRESA_POR_DEFECTO_ID, crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, sembrarBase, sembrarCatalogoBase, sembrarMotivosYDestinos, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
 import { crearMembresia } from "../setup/membresia";
 import { conEscrituraMasAnchaQue, deVerificacion, observarAlcances } from "../setup/alcances-observados";
+import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
 import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-movimiento";
 import { ZONA_ARGENTINA, mediodiaDelDia } from "../../src/core/tiempo/zona-horaria";
 import { cargarComprasParaAvisoDeDuplicado } from "../../src/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Aviso C25 de posible factura repetida al REGISTRAR una compra: toda la empresa, ±7 días, mismo proveedor e importe; nombra la sucursal y NO bloquea. Postgres real; las compras se
@@ -44,9 +46,9 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
       seccionId: seccionCentral,
       proveedorId: extra.proveedor ?? proveedorId,
-      nroFactura: extra.nroFactura,
+      nroFactura: extra.nroFactura ?? nroFacturaDePrueba(),
       claveIdempotencia: extra.claveIdempotencia ?? crypto.randomUUID(),
-      items: [{ productoId, cantidad: 10, ...(precioTotal === undefined ? {} : { precioTotal }) }],
+      items: [{ productoId, cantidad: 10, ...(precioTotal === undefined ? {} : { precioTotal }), referenciaProveedor: REFERENCIA_DE_PRUEBA }],
     });
 
   const comprarEnNorte = (fecha: string, precioTotal: number | undefined, extra: { nroFactura?: string; proveedor?: string; claveIdempotencia?: string } = {}) =>
@@ -55,9 +57,9 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
       seccionId: seccionNorte,
       proveedorId: extra.proveedor ?? proveedorId,
-      nroFactura: extra.nroFactura,
+      nroFactura: extra.nroFactura ?? nroFacturaDePrueba(),
       claveIdempotencia: extra.claveIdempotencia ?? crypto.randomUUID(),
-      items: [{ productoId, cantidad: 10, ...(precioTotal === undefined ? {} : { precioTotal }) }],
+      items: [{ productoId, cantidad: 10, ...(precioTotal === undefined ? {} : { precioTotal }), referenciaProveedor: REFERENCIA_DE_PRUEBA }],
     });
 
   /** Una compra de `usuarioId` actuando en la sucursal dada (para elegir quién carga y qué sucursales ve). */
@@ -67,8 +69,8 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
       seccionId,
       proveedorId,
-      nroFactura: extra.nroFactura,
-      items: [{ productoId, cantidad: 10, precioTotal }],
+      nroFactura: extra.nroFactura ?? nroFacturaDePrueba(),
+      items: [{ productoId, cantidad: 10, precioTotal, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
 
@@ -98,11 +100,11 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   });
 
   it("(1) otra sucursal de la empresa que quien carga NO ve, 3 días después y mismo importe: sale bien y el mensaje nombra SOLO la sucursal (sin el día), no el número de factura (P2: antes daba la fecha)", async () => {
-    const primera = await comprarEnCentral("2026-09-10", 1500, { nroFactura: "1-1234" });
+    const primera = await comprarEnCentral("2026-09-10", 1500, { nroFactura: "A-00001-00001234" });
     expect(primera.ok).toBe(true);
     expect(primera.mensaje).not.toContain(AVISO);
 
-    const segunda = await comprarEnNorte("2026-09-13", 1500, { nroFactura: "9-77" });
+    const segunda = await comprarEnNorte("2026-09-13", 1500, { nroFactura: "A-00009-00000077" });
     expect(segunda.ok).toBe(true);
     expect(segunda.mensaje).toContain(AVISO);
     expect(segunda.mensaje).toContain("(±7 días): en la sucursal Central. Revisá que no la estés cargando dos veces.");
@@ -114,8 +116,8 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   });
 
   it("(1c) si quien carga SÍ ve las compras de la otra sucursal (administrador en las dos), el mensaje nombra la sucursal y el día", async () => {
-    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "1-1234" });
-    const r = await comprarEn(usuarioAmbas, sucursalNorte, "Norte", seccionNorte, "2026-09-13", 1500, { nroFactura: "9-77" });
+    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "A-00001-00001234" });
+    const r = await comprarEn(usuarioAmbas, sucursalNorte, "Norte", seccionNorte, "2026-09-13", 1500, { nroFactura: "A-00009-00000077" });
     expect(r.ok).toBe(true);
     expect(r.mensaje).toContain("(±7 días): en la sucursal Central el 10/09/2026. Revisá que no la estés cargando dos veces.");
     expect(r.mensaje).not.toContain("1234");
@@ -146,8 +148,8 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   });
 
   it("(1b) en la misma sucursal dice «en esta sucursal»", async () => {
-    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "A-1" });
-    const segunda = await comprarEnCentral("2026-09-12", 1500, { nroFactura: "A-2" });
+    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "A-00001-00000001" });
+    const segunda = await comprarEnCentral("2026-09-12", 1500, { nroFactura: "A-00001-00000002" });
     expect(segunda.ok).toBe(true);
     expect(segunda.mensaje).toContain("en esta sucursal");
   });
@@ -173,7 +175,8 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
       fecha: new Date("2026-09-10T23:30:00-03:00"),
       seccionId: seccionCentral,
       proveedorId,
-      items: [{ productoId, cantidad: 10, precioTotal: 1500 }],
+      nroFactura: nroFacturaDePrueba(),
+      items: [{ productoId, cantidad: 10, precioTotal: 1500, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
     expect(primera.ok).toBe(true);
@@ -192,7 +195,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   });
 
   it("(4) si la compra anterior está anulada, no avisa", async () => {
-    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "1-1234" });
+    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "A-00001-00001234" });
     await prisma.operacion.updateMany({ where: { proceso: "COMPRA" }, data: { anuladaEn: new Date("2026-09-11T12:00:00Z"), anuladaPorId: usuarioCentral } });
     const r = await comprarEnNorte("2026-09-12", 1500);
     expect(r.ok).toBe(true);
@@ -207,13 +210,13 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   });
 
   it("(5b) la lectura trae solo las compras VIGENTES del proveedor pedido, dentro de los días pedidos, con su sucursal, su importe y el día en hora argentina", async () => {
-    await comprarEnCentral("2026-09-10", 1500.5, { nroFactura: "1-1234" });
-    await comprarEnNorte("2026-09-17", 700, { nroFactura: "A-17" });
-    await comprarEnNorte("2026-09-18", 700, { nroFactura: "A-18" }); // un día después de la ventana
-    await comprarEnNorte("2026-09-02", 700, { nroFactura: "A-02" }); // un día antes de la ventana
-    await comprarEnNorte("2026-09-12", 700, { nroFactura: "A-12", proveedor: otroProveedorId }); // otro proveedor
-    await comprarEnNorte("2026-09-13", 700, { nroFactura: "A-13" });
-    await prisma.operacion.updateMany({ where: { proceso: "COMPRA", nroFactura: "A-13" }, data: { anuladaEn: new Date("2026-09-14T12:00:00Z"), anuladaPorId: usuarioNorte } }); // anulada
+    await comprarEnCentral("2026-09-10", 1500.5, { nroFactura: "A-00001-00001234" });
+    await comprarEnNorte("2026-09-17", 700, { nroFactura: "A-00001-00000017" });
+    await comprarEnNorte("2026-09-18", 700, { nroFactura: "A-00001-00000018" }); // un día después de la ventana
+    await comprarEnNorte("2026-09-02", 700, { nroFactura: "A-00001-00000002" }); // un día antes de la ventana
+    await comprarEnNorte("2026-09-12", 700, { nroFactura: "A-00001-00000012", proveedor: otroProveedorId }); // otro proveedor
+    await comprarEnNorte("2026-09-13", 700, { nroFactura: "A-00001-00000013" });
+    await prisma.operacion.updateMany({ where: { proceso: "COMPRA", nroFactura: "A-00001-00000013" }, data: { anuladaEn: new Date("2026-09-14T12:00:00Z"), anuladaPorId: usuarioNorte } }); // anulada
 
     // Con la base que `registrarMovimientoCasoDeUso` le pasa a esta lectura: la de VERIFICACIÓN de quien opera en la Central (lectura en todas las sucursales de la empresa, escritura solo en la Central). El texto del aviso
     // después decide qué sucursales nombra con su día (las que quien carga ve); acá se prueba que la lectura trae las compras de toda la empresa.
@@ -234,7 +237,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     const productoB = await prismaAdmin.producto.create({ data: { empresaId: e, codigo: "MP_B_C25", nombre: "Aceite B", tipo: "MP", unidadStockId: unidadB.id } });
     const proveedorB = await prismaAdmin.proveedor.create({ data: { empresaId: e, codigo: "PRV_B_C25", nombre: "Proveedor B" } });
     const operacionB = await prismaAdmin.operacion.create({
-      data: { empresaId: e, sucursalId: sucursalB.id, proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-11", ZONA_ARGENTINA), proveedorId: proveedorB.id, nroFactura: "1-1234", usuarioId: usuarioCentral },
+      data: { empresaId: e, sucursalId: sucursalB.id, proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-11", ZONA_ARGENTINA), proveedorId: proveedorB.id, nroFactura: "A-00001-00001234", usuarioId: usuarioCentral },
     });
     await prismaAdmin.movimientoStock.create({
       data: { empresaId: e, operacionId: operacionB.id, productoId: productoB.id, seccionId: seccionB.id, proceso: "COMPRA", cantidad: 10, precioTotal: 1500, precioPorUnidadStock: 150, detalle: "" },
@@ -261,35 +264,37 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   });
 
   it("(8) el reintento con la misma clave devuelve el MISMO mensaje (con el aviso) y no escribe de nuevo", async () => {
-    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "1-1234" });
+    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "A-00001-00001234" });
     const clave = randomUUID();
-    const primera = await comprarEnNorte("2026-09-13", 1500, { claveIdempotencia: clave });
+    const primera = await comprarEnNorte("2026-09-13", 1500, { claveIdempotencia: clave, nroFactura: "A-00001-00000300" });
     expect(primera.ok).toBe(true);
     expect(primera.mensaje).toContain(AVISO);
 
-    const reintento = await comprarEnNorte("2026-09-13", 1500, { claveIdempotencia: clave });
+    const reintento = await comprarEnNorte("2026-09-13", 1500, { claveIdempotencia: clave, nroFactura: "A-00001-00000300" });
     expect(reintento.ok).toBe(true);
     expect(reintento.mensaje).toBe(primera.mensaje);
     expect(await prisma.operacion.count({ where: { proceso: "COMPRA" } })).toBe(2);
   });
 
-  it("(10) con un actor de ALCANCE de una sola sucursal (el que arma el contexto real): las compras candidatas se leen con toda la empresa, la transacción de la compra NO se ensancha y el mensaje no da el día de la otra", async () => {
-    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "1-1234" });
+  it("(10) con un actor de ALCANCE de una sola sucursal (el que arma el contexto real): las compras candidatas se leen con toda la empresa, la transacción de la compra se abre con la LECTURA en toda la empresa y la ESCRITURA sigue en la sucursal activa, y el mensaje no da el día de la otra", async () => {
+    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "A-00001-00001234" });
     const alcance = { lectura: [sucursalNorte], escritura: [sucursalNorte] };
     const observador = observarAlcances();
     try {
       const r = await registrarMovimientoCasoDeUso(
         { usuarioId: usuarioNorte, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalNorte, sucursalNombre: "Norte", ...baseDeTest(alcance) },
-        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-13", ZONA_ARGENTINA), seccionId: seccionNorte, proveedorId, nroFactura: "9-77", items: [{ productoId, cantidad: 10, precioTotal: 1500 }], claveIdempotencia: crypto.randomUUID() },
+        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-13", ZONA_ARGENTINA), seccionId: seccionNorte, proveedorId, nroFactura: "A-00009-00000077", items: [{ productoId, cantidad: 10, precioTotal: 1500, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() },
       );
       expect(r.ok, r.mensaje).toBe(true);
       expect(r.mensaje).toContain("en la sucursal Central. Revisá");
       expect(r.mensaje).not.toContain("10/09/2026");
       // La lectura de las candidatas corrió con TODA la empresa (Central y Norte) y la escritura solo en la activa...
       expect(deVerificacion(observador.vistos(), [sucursalCentral, sucursalNorte], [sucursalNorte]).length).toBeGreaterThan(0);
-      // ...y la transacción de la compra (stock, líneas, escritura) siguió con el alcance de siempre: solo Norte.
-      expect(observador.transacciones().length).toBeGreaterThan(0);
-      expect(observador.transacciones().every((t) => t.lectura.join() === sucursalNorte && t.escritura.join() === sucursalNorte)).toBe(true);
+      // ...y la transacción de la compra (etapa 1 de Compras, I2: rechaza el número repetido en cualquier sucursal) se abre con la LECTURA en toda la empresa y la ESCRITURA solo en Norte. Lo estático (que la función no
+      // ensancha la escritura y que registrar-movimiento.ts abre la transacción con esa base) lo fija `ensanches-de-alcance.test.ts`; lo que solo se ve corriendo, el alcance real de cada transacción, se mide acá.
+      const transacciones = observador.transacciones();
+      expect(transacciones.length).toBeGreaterThan(0);
+      expect(deVerificacion(transacciones, [sucursalCentral, sucursalNorte], [sucursalNorte])).toHaveLength(transacciones.length);
       expect(conEscrituraMasAnchaQue(observador.vistos(), [sucursalNorte])).toEqual([]);
     } finally {
       observador.restaurar();
@@ -305,7 +310,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     const productoB = await prismaAdmin.producto.create({ data: { empresaId: e, codigo: "MP_B_C25_ALC", nombre: "Aceite B", tipo: "MP", unidadStockId: unidadB.id } });
     const proveedorB = await prismaAdmin.proveedor.create({ data: { empresaId: e, codigo: "PRV_B_C25_ALC", nombre: "Proveedor B" } });
     const operacionB = await prismaAdmin.operacion.create({
-      data: { empresaId: e, sucursalId: sucursalB.id, proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-11", ZONA_ARGENTINA), proveedorId: proveedorB.id, nroFactura: "1-1234", usuarioId: usuarioCentral },
+      data: { empresaId: e, sucursalId: sucursalB.id, proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-11", ZONA_ARGENTINA), proveedorId: proveedorB.id, nroFactura: "A-00001-00001234", usuarioId: usuarioCentral },
     });
     await prismaAdmin.movimientoStock.create({
       data: { empresaId: e, operacionId: operacionB.id, productoId: productoB.id, seccionId: seccionB.id, proceso: "COMPRA", cantidad: 10, precioTotal: 1500, precioPorUnidadStock: 150, detalle: "" },
@@ -316,7 +321,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     try {
       const r = await registrarMovimientoCasoDeUso(
         { usuarioId: usuarioCentral, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalCentral, sucursalNombre: "Central", ...baseDeTest(alcance) },
-        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-12", ZONA_ARGENTINA), seccionId: seccionCentral, proveedorId, nroFactura: "1-1234", items: [{ productoId, cantidad: 10, precioTotal: 1500 }], claveIdempotencia: crypto.randomUUID() },
+        { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-12", ZONA_ARGENTINA), seccionId: seccionCentral, proveedorId, nroFactura: "A-00001-00001234", items: [{ productoId, cantidad: 10, precioTotal: 1500, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() },
       );
       expect(r.ok, r.mensaje).toBe(true);
       expect(r.mensaje).not.toContain(AVISO);
@@ -329,13 +334,13 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   });
 
   it("(9) la compra se escribe igual: la operación, la línea y el stock quedan", async () => {
-    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "1-1234" });
-    const r = await comprarEnNorte("2026-09-13", 1500, { nroFactura: "9-77" });
+    await comprarEnCentral("2026-09-10", 1500, { nroFactura: "A-00001-00001234" });
+    const r = await comprarEnNorte("2026-09-13", 1500, { nroFactura: "A-00009-00000077" });
     expect(r.ok).toBe(true);
     expect(r.mensaje).toContain(AVISO);
     const operaciones = await prisma.operacion.findMany({ where: { proceso: "COMPRA", sucursalId: sucursalNorte }, include: { movimientos: true } });
     expect(operaciones).toHaveLength(1);
-    expect(operaciones[0]!.nroFactura).toBe("9-77");
+    expect(operaciones[0]!.nroFactura).toBe("A-00009-00000077");
     expect(operaciones[0]!.movimientos).toHaveLength(1);
     expect(Number(operaciones[0]!.movimientos[0]!.precioTotal)).toBe(1500);
   });

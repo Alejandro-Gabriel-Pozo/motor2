@@ -14,6 +14,8 @@ import { calcularStockConsolidado } from "../../src/server/consultas/stock/conso
 import { obtenerMapaDeMesas } from "../../src/server/consultas/pos/mesas";
 import { obtenerDetalleDeMesa } from "../../src/server/consultas/pos/detalle-de-mesa";
 import { obtenerTicketsRecientes } from "../../src/server/consultas/pos/tickets";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Cierre de cuenta (src/server/actions/pos/cuenta.ts, docs/plan-tomar-pedido-2026-09-25.md paso 6): registra la venta con el núcleo
@@ -30,7 +32,7 @@ describe("cerrarCuenta (server action)", () => {
     await entrarComo(s.admin);
   });
 
-  const comprar = (productoId: string, cantidad: number) => registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId, cantidad }], claveIdempotencia: crypto.randomUUID() });
+  const comprar = async (productoId: string, cantidad: number) => registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: s.seccion.id, items: [{ productoId, cantidad, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   const ventasDeLaMesa = () =>
     prisma.operacion.findMany({ where: { proceso: "VENTA", detalleLibre: "Mesa 4" }, include: { movimientos: { orderBy: { proceso: "asc" } } }, orderBy: { creadoEn: "asc" } });
 
@@ -62,7 +64,7 @@ describe("cerrarCuenta (server action)", () => {
     expect(cerrada.cerradaEn).not.toBeNull();
     expect(cerrada.cerradaPorId).toBe(s.admin.id);
     expect((await obtenerMapaDeMesas(s.sucursalId, prisma, new Date())).mesas[0]).toMatchObject({ estado: "libre", total: 0 });
-    expect(await prisma.registroAuditoria.count()).toBe(0);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion" } })).toBe(0);
   });
 
   it("las anulaciones netean: una línea anulada entera no se vende, una parcial vende lo que quedó", async () => {
@@ -185,7 +187,7 @@ describe("cerrarCuenta (server action)", () => {
       const ventas = await ventasDeLaMesa();
       expect(ventas).toHaveLength(2);
 
-      const auditoria = await prisma.registroAuditoria.findMany();
+      const auditoria = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion" } });
       expect(auditoria).toHaveLength(1);
       const ventaDeLaPizza = ventas.find((v) => v.movimientos.some((m) => m.proceso === "CONSUMO" && m.productoId === s.muzzarella.id))!;
       expect(auditoria[0]).toMatchObject({ entidad: "Operacion", entidadId: ventaDeLaPizza.id, campo: "saldoStock", valorAnterior: "0.5", valorNuevo: "-1", actorId: s.admin.id, sucursalId: s.sucursalId });
@@ -198,7 +200,7 @@ describe("cerrarCuenta (server action)", () => {
       const cuenta = await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad: 2, precioUnitario: 12000, numeroEnvio: 1 }]);
       const r = await cerrarCuenta(cuenta.id);
       expect(r.mensaje).toContain('"Muzzarella" en «Salón» (tenía 0, se consumió 0,5, quedó en -0,5)');
-      const [fila] = await prisma.registroAuditoria.findMany();
+      const [fila] = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion" } });
       expect(fila.descripcion).toContain("tenía 0, la venta consumió 0,5, faltaron 0,5");
     });
 

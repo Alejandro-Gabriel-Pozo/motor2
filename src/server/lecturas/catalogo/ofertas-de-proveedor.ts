@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { armarComparativaDePrecios, whereDisponibleEn, type FilaComparativaPrecios } from "@/core/catalogo/public";
+import { decidirUnidadDePrecarga, type UnidadDeCompra, type UnidadesDeCompraDelProducto } from "@/core/compras/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -159,8 +160,15 @@ export interface ProductoDeProveedor {
   productoId: string;
   productoCodigo: string;
   productoNombre: string;
-  // O.10 (Hito 4): sin `unidadCompraId`/`unidadCompraNombre`. La precarga del carrito no los usaba (pone `unidadCompraId: ""` = la unidad por defecto del
-  // producto, a propósito: ver `panel-movimiento-form.tsx`); la unidad de la última compra al proveedor sigue en `cargarOfertasDeProveedores` (la ficha y la comparativa).
+  /** La unidad de la última compra a este proveedor (la del vínculo), tal cual se guardó. Etapa 1 de Compras, paso 6: vuelve al carrito (O.10 la había sacado porque la fila no mostraba la unidad; ahora la muestra y la hace confirmar si no sirve). */
+  unidadCompraId: string;
+  unidadCompraNombre: string;
+  /** Las unidades de compra del producto: la por defecto y las presentaciones ACTIVAS (se leen con los productos, en la misma consulta). */
+  unidades: UnidadesDeCompraDelProducto;
+  /** La unidad con que arranca la fila: vacío = la por defecto del producto (como al elegirlo a mano), o el id de una presentación activa. */
+  unidadElegidaId: string;
+  /** `false` si la unidad del vínculo ya no está activa (presentación desactivada o inexistente): `unidadElegidaId` cae a la por defecto y la pantalla pide confirmarla. */
+  unidadDelVinculoVigente: boolean;
   unidadStockNombre: string;
   referenciaProveedor: string | null;
   ultimoPrecioPorUnidadStock: number;
@@ -187,7 +195,8 @@ export async function cargarProductosDeProveedorParaElCarrito(db: Db, proveedorI
     (
       await db.producto.findMany({
         where: { id: { in: deLaEmpresa.map((o) => o.productoId) }, ...whereDisponibleEn(sucursalId) },
-        include: { unidadStock: true },
+        // Las presentaciones activas y las unidades van en la MISMA consulta (una por proveedor, no una por fila).
+        include: { unidadStock: true, unidadCompra: true, presentaciones: { where: { activa: true }, include: { unidadCompra: true } } },
       })
     ).map((p) => [p.id, p])
   );
@@ -198,11 +207,24 @@ export async function cargarProductosDeProveedorParaElCarrito(db: Db, proveedorI
       const producto = productos.get(o.productoId)!;
       // «Propio» si y solo si la sucursal tiene alguna compra vigente del par (su fecha no es null); su precio puede ser 0 (ninguna de la sucursal con precio).
       const propia = o.ultimaCompraEnLaSucursal !== null;
+      // Igual que el servidor (`armarLineaDeMovimiento`): la por defecto es la unidad de compra del producto o, si no tiene, la de stock, con el factor del producto (1 si no es un número).
+      const porDefecto: UnidadDeCompra = { unidadCompraId: (producto.unidadCompra ?? producto.unidadStock).id, nombre: (producto.unidadCompra ?? producto.unidadStock).nombre, factor: Number(producto.factorConversion) || 1 };
+      const unidades: UnidadesDeCompraDelProducto = {
+        unidadStockNombre: producto.unidadStock.nombre,
+        porDefecto,
+        presentaciones: producto.presentaciones.map((p) => ({ unidadCompraId: p.unidadCompraId, nombre: p.unidadCompra.nombre, factor: Number(p.factorConversion) })).sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      };
+      const unidadDeLaPrecarga = decidirUnidadDePrecarga(o.unidadCompraId, unidades);
       return {
         productoId: o.productoId,
         productoCodigo: producto.codigo,
         productoNombre: producto.nombre,
         unidadStockNombre: producto.unidadStock.nombre,
+        unidadCompraId: o.unidadCompraId,
+        unidadCompraNombre: o.unidadCompraNombre,
+        unidades,
+        unidadElegidaId: unidadDeLaPrecarga.unidadCompraId,
+        unidadDelVinculoVigente: unidadDeLaPrecarga.vigente,
         referenciaProveedor: o.referenciaProveedor,
         ultimoPrecioPorUnidadStock: propia ? (o.precioEnLaSucursal ?? 0) : o.precioPorUnidadStock,
         ultimaCompra: o.ultimaCompraEnLaSucursal ?? o.ultimaCompra,

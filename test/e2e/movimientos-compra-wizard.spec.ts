@@ -1,16 +1,19 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
-
-async function elegirSelectPorOpcion(page: Page, textoOpcion: string) {
-  for (const select of await page.locator("select").all()) {
-    if ((await select.locator("option").allTextContents()).includes(textoOpcion)) {
-      await select.selectOption({ label: textoOpcion });
-      return;
-    }
-  }
-  throw new Error(`Ningún <select> tiene una opción "${textoOpcion}"`);
-}
+import {
+  anterior,
+  completarPasoFactura,
+  confirmarCompra,
+  elegirProductoEnLaFila,
+  elegirSelectPorOpcion,
+  irARevisar,
+  llenarLinea,
+  llenarNumeroDeFactura,
+  numeroDeFacturaUnico,
+  siguiente,
+  verPaso,
+} from "./fixtures/compra-por-pasos";
 
 /**
  * Circuito Movimientos — wizard de Compra por proveedor con alta rápida
@@ -29,10 +32,9 @@ test("crear producto inline durante una Compra no pisa el proveedor ni la fila, 
 
   await page.goto("/movimientos/compra");
 
-  // Selects por opción visible en vez de por posición — no asume orden
+  // Paso 1 «Factura»: selects por opción visible en vez de por posición — no asume orden
   // (otros specs/datos previos pueden agregar más proveedores/secciones).
-  await elegirSelectPorOpcion(page, proveedor.nombre);
-  await elegirSelectPorOpcion(page, seccion.nombre);
+  const factura = await completarPasoFactura(page, { proveedor: proveedor.nombre });
 
   await page.getByRole("button", { name: "+ Nuevo producto" }).click();
   // El modal es un `<dialog>` con rol de diálogo (antes se lo buscaba por sus clases CSS, un detalle de implementación).
@@ -46,9 +48,10 @@ test("crear producto inline durante una Compra no pisa el proveedor ni la fila, 
   // producto recién creado — antes del fix, los dos se perdían.
   await expect(page.locator('input[placeholder="Código o nombre…"]').first()).toHaveValue(nombreProducto);
 
-  await page.locator("label:has-text('Cantidad') input").first().fill("10");
-  await page.locator("label:has-text('Precio total') input").first().fill("1000");
-  await page.getByRole("button", { name: "Confirmar" }).click();
+  // Paso 2: es la primera compra del producto a este proveedor, así que «cómo lo llama» es obligatorio.
+  await llenarLinea(page, { cantidad: "10", importe: "1000", referencia: "Harina 000 x kg" });
+  await irARevisar(page, seccion.nombre);
+  await confirmarCompra(page);
 
   await expect(page.getByText(/Se guardaron \d+ movimiento/)).toBeVisible();
 
@@ -57,6 +60,9 @@ test("crear producto inline durante una Compra no pisa el proveedor ni la fila, 
   expect(movimiento.proceso).toBe("COMPRA");
   expect(Number(movimiento.cantidad)).toBe(10);
   expect(Number(movimiento.precioTotal)).toBe(1000);
+  const operacion = await prisma.operacion.findUniqueOrThrow({ where: { id: movimiento.operacionId } });
+  expect(operacion.proveedorId).toBe(proveedor.id);
+  expect(operacion.nroFactura).toBe(factura.texto);
 });
 
 /**
@@ -65,9 +71,8 @@ test("crear producto inline durante una Compra no pisa el proveedor ni la fila, 
  * vuelve a montar (cambia su `key`) y el modal abierto desaparece solo, con lo tipeado. Ahora el botón queda
  * deshabilitado mientras esa carga está en curso. Se retrasa la respuesta del servidor para que la ventana sea larga.
  */
-test("«+ Nuevo producto» queda deshabilitado mientras se cargan los productos del proveedor", async ({ paginaAutenticada: page, seccionId }) => {
+test("«+ Nuevo producto» queda deshabilitado mientras se cargan los productos del proveedor", async ({ paginaAutenticada: page }) => {
   const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_${Date.now()}`, nombre: `E2E Proveedor Carga ${Date.now()}` } });
-  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
 
   // Ojo: esto retrasa TODOS los POST a esta ruta (cualquier server action de la página: precarga, alta rápida,
   // confirmar). Este test solo dispara la precarga; si se le agrega un paso, cada acción suma 1,5 s.
@@ -77,13 +82,15 @@ test("«+ Nuevo producto» queda deshabilitado mientras se cargan los productos 
   });
 
   await page.goto("/movimientos/compra");
-  const nuevoProducto = page.getByRole("button", { name: "+ Nuevo producto", exact: true }).first();
-  await expect(nuevoProducto).toBeEnabled();
+  await verPaso(page, 1, "Factura");
 
-  // La sección va ANTES que el proveedor: elegir el proveedor arranca el retraso de 1,5 s, y lo que se haga
-  // entre ese momento y la aserción de «deshabilitado» se come el margen.
-  await elegirSelectPorOpcion(page, seccion.nombre);
+  // El número va ANTES que el proveedor: elegir el proveedor arranca el retraso de 1,5 s, y lo que se haga
+  // entre ese momento y la aserción de «deshabilitado» se come el margen. Siguiente no espera al servidor: pasa al paso 2 con la carga en curso.
+  await llenarNumeroDeFactura(page, numeroDeFacturaUnico());
   await elegirSelectPorOpcion(page, proveedor.nombre);
+  await siguiente(page);
+  await verPaso(page, 2, "Qué compraste");
+  const nuevoProducto = page.getByRole("button", { name: "+ Nuevo producto", exact: true }).first();
 
   // Mientras la carga está en curso el botón no se puede usar...
   await expect(nuevoProducto).toBeDisabled();
@@ -123,31 +130,43 @@ test("si falla la carga de productos del proveedor, se avisa, se vacían las fil
   const selectorProveedor = page.locator("select").filter({ has: page.locator("option", { hasText: proveedorA.nombre }) });
 
   await page.goto("/movimientos/compra");
-  await elegirSelectPorOpcion(page, seccion.nombre);
+  const numero = numeroDeFacturaUnico();
+  await llenarNumeroDeFactura(page, numero);
 
-  // Con el proveedor A la carga sale bien y la fila trae su producto.
+  // Con el proveedor A la carga sale bien y la fila (paso 2) trae su producto.
   await elegirSelectPorOpcion(page, proveedorA.nombre);
+  await siguiente(page);
+  await verPaso(page, 2, "Qué compraste");
   await expect(page.getByText(/1 producto\(s\) que ya le comprás/)).toBeVisible();
   await expect(productoDeLaFila).toHaveValue(new RegExp(producto.nombre));
 
-  // Se corta la conexión con el servidor y se cambia al proveedor B: la carga falla.
+  // Se corta la conexión con el servidor (el pedido tarda un instante en fallar, lo justo para pasar al paso 2 y ver el aviso ahí) y se vuelve al paso 1 a cambiar al proveedor B: la carga falla.
   await page.route(rutaCompra, async (route) => {
-    if (route.request().method() === "POST") await route.abort();
-    else await route.continue();
+    if (route.request().method() === "POST") {
+      await new Promise((resolver) => setTimeout(resolver, 800));
+      await route.abort();
+    } else await route.continue();
   });
+  await anterior(page);
+  await verPaso(page, 1, "Factura");
   await elegirSelectPorOpcion(page, proveedorB.nombre);
+  await siguiente(page);
+  await verPaso(page, 2, "Qué compraste");
 
   await expect(page.getByText(/No se pudo cargar lo que le comprás a este proveedor/)).toBeVisible();
   await expect(productoDeLaFila).toHaveValue(""); // ya no queda el producto del proveedor A
-  await expect(selectorProveedor).toHaveValue("");
   await expect(page.getByRole("button", { name: "+ Nuevo producto", exact: true }).first()).toBeEnabled();
   await expect(page.getByRole("button", { name: /\+ Agregar insumo/ })).toBeEnabled();
+  // El proveedor volvió a «Elegí el proveedor» (paso 1) para poder elegir el mismo de nuevo y reintentar.
+  await anterior(page);
+  await expect(selectorProveedor).toHaveValue("");
 
   // Vuelve la conexión: se elige de nuevo el mismo proveedor B y ahora carga.
   await page.unroute(rutaCompra);
   await elegirSelectPorOpcion(page, proveedorB.nombre);
-  await expect(page.getByText(/Todavía no le compraste nada a este proveedor/)).toBeVisible();
   await expect(selectorProveedor).toHaveValue(proveedorB.id);
+  await siguiente(page);
+  await expect(page.getByText(/Todavía no le compraste nada a este proveedor/)).toBeVisible();
 });
 
 /**
@@ -156,11 +175,10 @@ test("si falla la carga de productos del proveedor, se avisa, se vacían las fil
  * ejecuta las server actions de a una, así que el pedido de B sale recién cuando el de A terminó: el fallo de A llega
  * con B ya elegido y todavía sin respuesta, y es entonces cuando hay que descartarlo.
  */
-test("un fallo tardío de un proveedor anterior no pisa al proveedor elegido después", async ({ paginaAutenticada: page, seccionId }) => {
+test("un fallo tardío de un proveedor anterior no pisa al proveedor elegido después", async ({ paginaAutenticada: page }) => {
   const ahora = Date.now();
   const proveedorA = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_TA_${ahora}`, nombre: `E2E Proveedor Lento ${ahora}` } });
   const proveedorB = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_TB_${ahora}`, nombre: `E2E Proveedor Rápido ${ahora}` } });
-  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
   const selectorProveedor = page.locator("select").filter({ has: page.locator("option", { hasText: proveedorA.nombre }) });
 
   // Los pedidos del proveedor A (se reconocen por su id en el cuerpo) esperan 1,5 s y fallan; el resto pasa normal.
@@ -174,15 +192,18 @@ test("un fallo tardío de un proveedor anterior no pisa al proveedor elegido des
   });
 
   await page.goto("/movimientos/compra");
-  await elegirSelectPorOpcion(page, seccion.nombre);
+  await llenarNumeroDeFactura(page, numeroDeFacturaUnico());
   await elegirSelectPorOpcion(page, proveedorA.nombre);
   await elegirSelectPorOpcion(page, proveedorB.nombre);
+  await siguiente(page);
+  await verPaso(page, 2, "Qué compraste");
   await expect(page.getByText(/Todavía no le compraste nada a este proveedor/)).toBeVisible();
 
   // Espera a que el fallo del proveedor A llegue (1,5 s + margen) y comprueba que no cambió nada.
   await page.waitForTimeout(2500);
   await expect(page.getByText(/No se pudo cargar lo que le comprás/)).toHaveCount(0);
   await expect(page.getByText(/Todavía no le compraste nada a este proveedor/)).toBeVisible();
+  await anterior(page);
   await expect(selectorProveedor).toHaveValue(proveedorB.id);
 });
 
@@ -197,61 +218,83 @@ test("?productoId= llega con el producto cargado en la fila («CÓDIGO — Nombr
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-DL-${ahora}`, nombre: `E2E Insumo Deep Link ${ahora}`, tipo: "MP", unidadStockId: unidad.id } });
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+  const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_DL_${ahora}`, nombre: `E2E Proveedor Deep Link ${ahora}` } });
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
   const etiqueta = `${producto.codigo} — ${producto.nombre}`;
 
   await page.goto(`/movimientos/compra?productoId=${producto.id}`);
 
-  await expect(page.locator('input[placeholder="Código o nombre…"]').first()).toHaveValue(etiqueta);
+  // El aviso se ve desde el primer paso; la fila con el producto, en el paso 2 («Qué compraste»).
   await expect(page.getByText(/Viniste desde un reporte para cargar precio de/)).toContainText(etiqueta);
+  const factura = await completarPasoFactura(page, { proveedor: proveedor.nombre });
+  await expect(page.locator('input[placeholder="Código o nombre…"]').first()).toHaveValue(etiqueta);
 
-  await elegirSelectPorOpcion(page, seccion.nombre);
-  await page.locator("label:has-text('Cantidad') input").first().fill("3");
-  await page.locator("label:has-text('Precio total') input").first().fill("450");
-  await page.getByRole("button", { name: "Confirmar" }).click();
+  await llenarLinea(page, { cantidad: "3", importe: "450", referencia: "Insumo del reporte" });
+  await irARevisar(page, seccion.nombre);
+  await confirmarCompra(page);
 
   await expect(page.getByText(/Se guardaron \d+ movimiento/)).toBeVisible();
   const movimiento = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: producto.id, seccionId } });
   expect(movimiento.proceso).toBe("COMPRA");
   expect(Number(movimiento.cantidad)).toBe(3);
   expect(Number(movimiento.precioTotal)).toBe(450);
+  expect((await prisma.operacion.findUniqueOrThrow({ where: { id: movimiento.operacionId } })).nroFactura).toBe(factura.texto);
+});
+
+/** Con `?productoId=` la fila del paso 2 sigue cargada con el producto después de elegir proveedor (la elección conserva las filas que ya tienen producto). */
+test("?productoId= conserva el producto en la fila del paso 2 tras elegir proveedor", async ({ paginaAutenticada: page, sucursalId }) => {
+  const ahora = Date.now();
+  const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
+  const producto = await prisma.producto.create({ data: { codigo: `E2E-DLB-${ahora}`, nombre: `E2E Insumo Deep Link Bug ${ahora}`, tipo: "MP", unidadStockId: unidad.id } });
+  await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
+  const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_DLB_${ahora}`, nombre: `E2E Proveedor Deep Link Bug ${ahora}` } });
+  await page.goto(`/movimientos/compra?productoId=${producto.id}`);
+  await completarPasoFactura(page, { proveedor: proveedor.nombre });
+  await expect(page.locator('input[placeholder="Código o nombre…"]').first()).toHaveValue(`${producto.codigo} — ${producto.nombre}`, { timeout: 3000 });
 });
 
 /**
- * Validación de datos (docs/plan-validacion-de-datos-2026-09-25.md, Paso C3): el precio total pasa por el parser central. Antes,
+ * Validación de datos (docs/plan-validacion-de-datos-2026-09-25.md, Paso C3): el importe pasa por el parser central. Antes,
  * "...,.,.,..." y "1.000.000" daban NaN y la compra se guardaba con precio 0 sin ningún aviso.
+ * Deja la pantalla en el paso 2 con el producto elegido, la cantidad y la referencia del proveedor (primera compra) cargadas.
  */
-async function prepararCompraDeUnProducto(page: Page, sucursalId: string, seccionId: string) {
+async function prepararCompraDeUnProducto(page: Page, sucursalId: string) {
   const ahora = Date.now();
   const unidad = await prisma.unidad.findFirstOrThrow({ where: { nombre: "kg" } });
   const producto = await prisma.producto.create({ data: { codigo: `E2E-VD-${ahora}`, nombre: `E2E Producto Precio ${ahora}`, tipo: "MP", unidadStockId: unidad.id } });
   await prisma.disponibilidadProducto.create({ data: { sucursalId, productoId: producto.id, disponible: true } });
-  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+  const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_VD_${ahora}`, nombre: `E2E Proveedor Precio ${ahora}` } });
 
   await page.goto("/movimientos/compra");
-  await elegirSelectPorOpcion(page, seccion.nombre);
-  await page.locator('input[placeholder="Código o nombre…"]').first().fill(producto.nombre);
-  await page.getByRole("option", { name: new RegExp(producto.nombre) }).click();
-  await page.locator("label:has-text('Cantidad') input").first().fill("10");
+  await completarPasoFactura(page, { proveedor: proveedor.nombre });
+  await elegirProductoEnLaFila(page, producto.nombre);
+  await llenarLinea(page, { cantidad: "10", referencia: "Producto de precio" });
   return producto;
 }
 
-test("un precio '...,.,.,...' no se guarda como 0: el campo lo marca y no se registra nada", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
-  const producto = await prepararCompraDeUnProducto(page, sucursalId, seccionId);
-  const precio = page.locator("label:has-text('Precio total') input").first();
-  await precio.fill("...,.,.,...");
-  await page.getByRole("button", { name: "Confirmar" }).click();
+test("un importe '...,.,.,...' no se guarda como 0: el campo lo marca y no se registra nada", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+  const producto = await prepararCompraDeUnProducto(page, sucursalId);
+  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+  const importe = page.locator("label:has-text('Importe con IVA') input").first();
+  await importe.fill("...,.,.,...");
 
-  expect(await precio.evaluate((e: HTMLInputElement) => e.validity.customError), "el precio tiene que quedar inválido").toBe(true);
-  expect(await precio.evaluate((e: HTMLInputElement) => e.validationMessage)).toBe("El precio total no es un número válido.");
+  expect(await importe.evaluate((e: HTMLInputElement) => e.validity.customError), "el importe tiene que quedar inválido").toBe(true);
+  expect(await importe.evaluate((e: HTMLInputElement) => e.validationMessage)).toBe("El importe no es un número válido.");
+
+  // El formulario por pasos va sin validación nativa (`noValidate`): aunque el campo esté inválido se puede llegar a confirmar, y es el servidor el que rechaza.
+  await irARevisar(page, seccion.nombre);
+  await confirmarCompra(page);
+  await expect(page.getByText(/no es un número válido/).first()).toBeVisible();
   await page.waitForTimeout(500); // margen para que un envío que no debió salir llegue a la base
   expect(await prisma.movimientoStock.count({ where: { productoId: producto.id } }), "no tenía que registrarse ninguna compra").toBe(0);
 });
 
-test("un precio '1.000.000' (miles en es-AR) se guarda como 1000000", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
-  const producto = await prepararCompraDeUnProducto(page, sucursalId, seccionId);
-  await page.locator("label:has-text('Precio total') input").first().fill("1.000.000");
-  await page.getByRole("button", { name: "Confirmar" }).click();
+test("un importe '1.000.000' (miles en es-AR) se guarda como 1000000", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+  const producto = await prepararCompraDeUnProducto(page, sucursalId);
+  const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+  await page.locator("label:has-text('Importe con IVA') input").first().fill("1.000.000");
+  await irARevisar(page, seccion.nombre);
+  await confirmarCompra(page);
 
   await expect(page.getByText(/Se guardaron \d+ movimiento/)).toBeVisible();
   const movimiento = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: producto.id, seccionId } });

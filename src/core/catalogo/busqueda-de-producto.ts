@@ -1,22 +1,39 @@
-import { escaparComodinesLike } from "@/core/texto";
+/**
+ * La búsqueda de un producto por texto, parte PURA (Fase 7, Catálogo, mejora M2; Compras etapa 1, paso 5): el término se parte en palabras y CADA una tiene que estar, en cualquier orden. El SQL (nombre, código y, para quien
+ * ve el dato, la referencia del proveedor; sin distinguir mayúsculas NI tildes, con `%` y `_` como letras) vive en `server/lecturas/catalogo/busqueda-de-producto.ts` y lo comparten la lista de Productos y el buscador
+ * de producto (las dos buscan igual). Acá: el armado de palabras y el orden de los tramos del buscador de la compra.
+ */
+
+/** Tope de palabras de una búsqueda: lo que sobra se ignora (acota el tamaño de la consulta). */
+const MAXIMO_DE_PALABRAS_DE_BUSQUEDA = 8;
+
+/** Las palabras de un término de búsqueda (separadas por espacios, sin vacías, hasta `MAXIMO_DE_PALABRAS_DE_BUSQUEDA`). PURO. */
+export function palabrasDeBusqueda(termino: string): string[] {
+  return termino.split(/\s+/).filter((p) => p !== "").slice(0, MAXIMO_DE_PALABRAS_DE_BUSQUEDA);
+}
+
+/** Coincidencia EXACTA de código (tramo a del orden): el término entero (sin espacios de más, sin distinguir mayúsculas) es nuestro código, o —solo con `porReferencia`— una PALABRA completa de la referencia del proveedor elegido. PURO. */
+export function esCoincidenciaExactaDeCodigo(termino: string, codigo: string, referenciaDelProveedorElegido: string | null, porReferencia: boolean): boolean {
+  const t = termino.trim().toLowerCase();
+  if (t === "") return false;
+  if (codigo.toLowerCase() === t) return true;
+  return porReferencia && referenciaDelProveedorElegido !== null && referenciaDelProveedorElegido.toLowerCase().split(/\s+/).includes(t);
+}
 
 /**
- * La búsqueda de un producto por texto como `where` de Prisma (Fase 7, Catálogo, mejora M2; diseño `docs/diseno-modulo-catalogo-2026-10-28.md` I9): PURO (objetos planos, sin base), como
- * `disponibilidad-producto-consulta.ts`. La usan la lista de Productos (`whereDeLosProductos`) y el buscador de producto (`buscarProductosSelector`), así que las dos buscan igual.
- *
- * Siempre busca por nombre y código, sin distinguir mayúsculas y con `%` y `_` como letras (no comodines). Con `porReferenciaDelProveedor`, además por cómo lo llama ALGÚN proveedor en su factura
- * (`ProveedorPorProducto.referenciaProveedor`): así el operario que escribe lo que dice la factura («ojo de bife rioplatense») encuentra el producto del sistema («Ojo de bife»). Quién puede buscar así lo
- * decide el servidor (`puedeBuscarPorReferenciaDelProveedor`): el que no ve ese dato en ninguna pantalla busca solo por nombre y código, porque un filtro por algo que no se ve revelaría justo eso.
- *
- * `termino` llega ya limpio (`textoDeBusqueda`) y no vacío. Sin tipos de Prisma, para que este archivo no arrastre el cliente de base (`mode` va `as const`: Prisma pide el literal).
+ * Junta los tramos del buscador YA ORDENADOS (exactos de código, vínculo del proveedor elegido, nombre que empieza con la primera palabra, el resto por nombre), sin repetir un producto (gana
+ * su primer tramo) y con tope `limite`. PURO.
  */
-export function whereBusquedaDeProducto(termino: string, porReferenciaDelProveedor: boolean) {
-  const contiene = { contains: escaparComodinesLike(termino), mode: "insensitive" as const };
-  return {
-    OR: [
-      { nombre: contiene },
-      { codigo: contiene },
-      ...(porReferenciaDelProveedor ? [{ proveedorPorProducto: { some: { referenciaProveedor: contiene } } }] : []),
-    ],
-  };
+export function combinarTramosDeProductos<T extends { id: string }>(tramos: readonly (readonly T[])[], limite: number): T[] {
+  const vistos = new Set<string>();
+  const salida: T[] = [];
+  for (const tramo of tramos) {
+    for (const p of tramo) {
+      if (vistos.has(p.id)) continue;
+      vistos.add(p.id);
+      salida.push(p);
+      if (salida.length >= limite) return salida;
+    }
+  }
+  return salida;
 }

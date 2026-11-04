@@ -5,14 +5,16 @@ import { azarDelProceso } from "@/lib/azar";
 import { obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal } from "@/server/acceso/gate";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
-import { textoDeBusqueda } from "@/core/texto";
+import { escaparComodinesLike, quitarCaracteresInadmisibles, textoDeBusqueda } from "@/core/texto";
 import { puedeBuscarPorReferenciaDelProveedor, whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
+import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-de-producto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { leerFiltrosDeProductos, necesitaLaEmpresaEntera, type EntradaDeFiltrosDeProductos, whereBusquedaDeProducto, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
+import { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeProductos, necesitaLaEmpresaEntera, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
 import { ofrecerSincronizarPrecio } from "@/core/carta/public";
+import type { UnidadesDeCompraDelProducto } from "@/core/compras/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { conPermiso, conPermisoDeEmpresa } from "../con-permiso";
@@ -67,7 +69,7 @@ const LIMITE_SELECTOR = 20;
  * vacío); con término, filtra por nombre o código (y, desde la Fase 7, por
  * cómo lo llama un proveedor, para quien ve ese dato: M2 del diseño de Catálogo).
  */
-export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto): Promise<ProductoOpcionConUnidad[]> {
+export async function buscarProductosSelector(termino: string, filtro?: FiltroSelectorProducto, proveedorId?: string): Promise<ProductoOpcionConUnidad[]> {
   // H8 (D-2): el «O» de las claves de las 24 pantallas que muestran el selector (test/arquitectura/consumidores-de-lecturas-declarados.test.ts).
   const ctx = await requerirVerAlguna([
     "proceso_compra",
@@ -104,18 +106,49 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
     ...(filtro?.soloSeProduce ? [{ seProduce: true }] : []),
     ...(filtro?.elegibleParaReceta ? [{ OR: [{ tipo: "PV" as const }, { tipo: "MP" as const, seProduce: true }] }] : []),
     ...(filtro?.esConsignacion !== undefined ? [{ esConsignacion: filtro.esConsignacion }] : []),
-    // Fase 7, M2: con término, por nombre o código y, para quien ve el dato (`puedeBuscarPorReferenciaDelProveedor`), por cómo lo llama un proveedor en su factura.
-    ...(t ? [whereBusquedaDeProducto(t, await puedeBuscarPorReferenciaDelProveedor(ctx))] : []),
   ];
   // P2 (RLS por sucursal): `soloDisponiblesEnAlguna` pregunta «¿está disponible en ALGUNA sucursal?» (`disponibilidades: { some }`): con ese filtro la lectura corre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como
   // estaba); sin él, con la base de siempre. Devuelve filas de `Producto` (id, código, nombre: tabla de la empresa), nunca la disponibilidad de otra sucursal.
   const verificacion = filtro?.soloDisponiblesEnAlguna ? await lecturaDeVerificacionEnLaEmpresa(ctx) : ctx;
-  return verificacion.db.producto.findMany({
-    where: condiciones.length ? { AND: condiciones } : {},
-    select: { id: true, codigo: true, nombre: true, unidadStock: { select: { id: true, nombre: true } } },
-    orderBy: { nombre: "asc" },
-    take: LIMITE_SELECTOR,
-  });
+  const select = { id: true, codigo: true, nombre: true, unidadStock: { select: { id: true, nombre: true } } } as const;
+  const buscar = (where: object, take = LIMITE_SELECTOR) =>
+    verificacion.db.producto.findMany({ where: { AND: [...condiciones, where] }, select, orderBy: { nombre: "asc" }, take });
+  if (!t) return verificacion.db.producto.findMany({ where: condiciones.length ? { AND: condiciones } : {}, select, orderBy: { nombre: "asc" }, take: LIMITE_SELECTOR });
+
+  // Fase 7, M2 + Compras etapa 1 (§5.2): por palabras, en nombre, código y —para quien ve el dato (`puedeBuscarPorReferenciaDelProveedor`)— en cómo lo llama un proveedor en su factura.
+  const porReferencia = await puedeBuscarPorReferenciaDelProveedor(ctx);
+  // El proveedor elegido (viene del cliente) solo ORDENA: la RLS acota a la empresa, y sin permiso para ver referencias se ignora (ordenar por un dato que no se ve revelaría ese dato).
+  const proveedor = porReferencia && typeof proveedorId === "string" && proveedorId !== "" ? proveedorId : undefined;
+  // Una sola lectura cruda (con la base de la sesión: Producto y ProveedorPorProducto son de la empresa, no hace falta la de verificación; sin distinguir tildes) da los ids de las tres capas del orden; el `findMany` de cada tramo aplica los mismos filtros, select y tope de siempre.
+  const encontrados = await buscarProductosPorPalabras(ctx.db, t, { porReferencia, proveedorId: proveedor });
+  const idsDe = (cuales: (e: (typeof encontrados)[number]) => boolean) => ({ id: { in: encontrados.filter(cuales).map((e) => e.id) } });
+  const tokenUnico = !/\s/.test(t);
+  // `equals` insensible va como ILIKE sin escapar: los comodines y la barra se escapan acá.
+  const exactoDeCodigo = buscar({ codigo: { equals: escaparComodinesLike(t), mode: "insensitive" as const } });
+  // La referencia del proveedor elegido: se trae solo para decidir «palabra completa» y NO sale de acá (se devuelve id, código y nombre).
+  const exactoDeReferencia =
+    proveedor && tokenUnico
+      ? verificacion.db.producto
+          .findMany({
+            where: { AND: [...condiciones, { proveedorPorProducto: { some: { proveedorId: proveedor, referenciaProveedor: { contains: escaparComodinesLike(t), mode: "insensitive" as const } } } }] },
+            select: { ...select, proveedorPorProducto: { where: { proveedorId: proveedor }, select: { referenciaProveedor: true } } },
+            orderBy: { nombre: "asc" },
+            take: LIMITE_SELECTOR,
+          })
+          .then((filas) =>
+            filas
+              .filter((f) => f.proveedorPorProducto.some((v) => esCoincidenciaExactaDeCodigo(t, "", v.referenciaProveedor, true)))
+              .map(({ id, codigo, nombre, unidadStock }) => ({ id, codigo, nombre, unidadStock })),
+          )
+      : Promise.resolve([]);
+  const [exactosPorCodigo, exactosPorReferencia, vinculados, empiezan, resto] = await Promise.all([
+    exactoDeCodigo,
+    exactoDeReferencia,
+    proveedor ? buscar(idsDe((e) => e.vinculado)) : Promise.resolve([]),
+    buscar(idsDe((e) => e.empiezaConLaPrimera)),
+    buscar(idsDe(() => true)),
+  ]);
+  return combinarTramosDeProductos([exactosPorCodigo, exactosPorReferencia, vinculados, empiezan, resto], LIMITE_SELECTOR);
 }
 
 /**
@@ -470,6 +503,49 @@ export async function listarPresentaciones(productoId: string): Promise<Presenta
     factorConversion: Number(p.factorConversion),
     activa: p.activa,
   }));
+}
+
+/** Tope del largo de un id de producto aceptado por las lecturas por id (los ids son cuid, ~25 caracteres). */
+const LARGO_MAXIMO_ID = 100;
+
+/** Lo que la Compra por pasos muestra de un producto elegido a mano: su código y nombre, y en qué unidades se puede comprar (la por defecto y las presentaciones activas). */
+export interface DatosDeCompraDelProducto {
+  codigo: string;
+  nombre: string;
+  unidades: UnidadesDeCompraDelProducto;
+}
+
+/**
+ * Solo lectura, para la pantalla de Compra (etapa 1 de Compras, paso 6): al elegir un producto a mano, la fila muestra su código y la unidad en que se interpreta la cantidad. Las unidades salen igual que
+ * en el servidor al armar la línea (`armarLineaDeMovimiento`): la por defecto es la unidad de compra del producto o, si no tiene, la de stock, con el factor del producto; las presentaciones, solo las activas.
+ * Exige el «Ver» de la compra. `null` si el producto no existe o si el id no es un texto válido (no es string, vacío, demasiado largo o con NUL / sustitutos sueltos, que Postgres/Prisma rechazan con un
+ * error crudo): el mismo resultado que un id inexistente, sin filtrar nada. El permiso se exige primero.
+ */
+export async function obtenerDatosDeCompraDelProducto(productoId: string): Promise<DatosDeCompraDelProducto | null> {
+  const ctx = await requerirVer("proceso_compra");
+  if (typeof productoId !== "string" || productoId === "" || productoId.length > LARGO_MAXIMO_ID || quitarCaracteresInadmisibles(productoId) !== productoId) return null;
+  const p = await ctx.db.producto.findUnique({
+    where: { id: productoId },
+    select: {
+      codigo: true,
+      nombre: true,
+      factorConversion: true,
+      unidadStock: { select: { id: true, nombre: true } },
+      unidadCompra: { select: { id: true, nombre: true } },
+      presentaciones: { where: { activa: true }, select: { unidadCompraId: true, factorConversion: true, unidadCompra: { select: { nombre: true } } } },
+    },
+  });
+  if (!p) return null;
+  const base = p.unidadCompra ?? p.unidadStock;
+  return {
+    codigo: p.codigo,
+    nombre: p.nombre,
+    unidades: {
+      unidadStockNombre: p.unidadStock.nombre,
+      porDefecto: { unidadCompraId: base.id, nombre: base.nombre, factor: Number(p.factorConversion) || 1 },
+      presentaciones: p.presentaciones.map((x) => ({ unidadCompraId: x.unidadCompraId, nombre: x.unidadCompra.nombre, factor: Number(x.factorConversion) })).sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    },
+  };
 }
 
 export async function agregarPresentacionAlternativa(

@@ -89,6 +89,8 @@ interface ItemDeCarta {
   filas: string[];
   /** Lo que se lee debajo del plato (`data-aclaracion`). */
   aclaraciones: string[];
+  /** Carta «B»: la línea «Incluye …» del plato (`data-incluye`), una por fila de la base oculta. */
+  incluye: string[];
   /** Todo el texto visible de la fila (para que nada quede afuera aunque cambie la estructura). */
   texto: string[];
 }
@@ -157,9 +159,11 @@ function volcarCarta(page: Page): Promise<CartaVolcada> {
           letra("banda · título de la sección (h2)", banda.querySelector("h2"));
         }
         const items = [...p.querySelectorAll("[data-carta-scroll] > li")].map((li): ItemDeCarta => {
-          const conOpciones = li.querySelector("[data-filas-carta], [data-aclaracion]") !== null;
-          const forma = li.getAttribute("data-forma") ?? (conOpciones ? "sin forma (como antes)" : "sin opciones");
-          const nombres = [...li.querySelectorAll("h3")].map(texto);
+          const conOpciones = li.querySelector("[data-filas-carta], [data-aclaracion], [data-incluye]") !== null;
+          // Carta «B»: el bloque de opciones al pie de la sección es una fila más de la lista (su título es un h4).
+          const esBloque = li.hasAttribute("data-bloque-de-opciones");
+          const forma = esBloque ? "bloque de opciones" : (li.getAttribute("data-forma") ?? (conOpciones ? "sin forma (como antes)" : "sin opciones"));
+          const nombres = esBloque ? [...li.querySelectorAll("h4")].map(texto) : [...li.querySelectorAll("h3")].map(texto);
           const nombre = nombres.join(" | ");
           const precio = li.querySelector(":scope > div > [data-rol=precio]");
           const tablaEl = li.querySelector("table");
@@ -171,11 +175,12 @@ function volcarCarta(page: Page): Promise<CartaVolcada> {
             : null;
           const filas = [...li.querySelectorAll("[data-filas-carta] > li")].map(texto);
           const aclaraciones = [...li.querySelectorAll("[data-aclaracion]")].map(texto);
+          const incluye = [...li.querySelectorAll("[data-incluye]")].map(texto);
           if (primeraVez(`forma ${forma}`)) {
             letra(`forma «${forma}» «${nombres[0] ?? ""}» · nombre`, li.querySelector("h3"));
             if (precio) letra(`forma «${forma}» «${nombres[0] ?? ""}» · precio del renglón`, precio);
           }
-          return { forma, nombre, precioDelRenglon: precio ? texto(precio) : null, tabla, filas, aclaraciones, texto: lineas(li) };
+          return { forma, nombre, precioDelRenglon: precio ? texto(precio) : null, tabla, filas, aclaraciones, incluye, texto: lineas(li) };
         });
         return { etiqueta: texto(banda.querySelector("p")), titulo: texto(banda.querySelector("h2")), items };
       });
@@ -234,6 +239,7 @@ function textoDeCarta(c: CartaVolcada): string[] {
       out.push(`  ÍTEM «${it.nombre}» · forma: ${it.forma} · precio del renglón: ${it.precioDelRenglon === null ? "(ninguno)" : `«${it.precioDelRenglon}»`}`);
       if (it.tabla) out.push(`    tabla: columnas ${it.tabla.columnas.map((c) => `«${c}»`).join(" ")}`, ...it.tabla.filas.map((f) => `      fila: ${f}`));
       if (it.filas.length) out.push(`    filas: ${it.filas.map((f) => `«${f}»`).join(" ")}`);
+      for (const a of it.incluye) out.push(`    incluye: «${a}»`);
       for (const a of it.aclaraciones) out.push(`    debajo: «${a}»`);
       out.push(`    texto visible: ${it.texto.map((l) => `«${l}»`).join(" ")}`);
     }

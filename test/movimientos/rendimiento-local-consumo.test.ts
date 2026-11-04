@@ -9,6 +9,8 @@ import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { calcularCostosYMargenes } from "../../src/server/lecturas/reportes/costos";
 import { type Db } from "../../src/lib/db-tipos";
 import { construirIndiceRecetas } from "../../src/server/lecturas/reportes/comun";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Paso 5 del plan (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md): el consumo de venta/producción y
@@ -49,7 +51,7 @@ describe("Rendimiento local: consumo de venta/producción y costos usan el valor
     recetaIngredienteId = receta.ingredientes[0].id;
 
     // Stock amplio en las dos sucursales, para que ninguna venta rechace por falta de stock.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 1000, precioTotal: 10000 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: mp.id, cantidad: 1000, precioTotal: 10000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   });
 
   async function comprarStockEnB() {

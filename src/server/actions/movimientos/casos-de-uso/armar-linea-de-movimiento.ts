@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { esNumeroEstricto } from "@/core/numero";
 import { guardLineaCompra } from "@/core/features/compras/compra.guard";
-import { TRANSICIONES, esSignoFijo, productoValidoParaProceso, redondearACantidadDeUnidad, type ConsumoParaFilas } from "@/core/movimientos/public";
+import { TRANSICIONES, convertirCantidadAUnidadDeStock, esSignoFijo, precioPorUnidad, productoValidoParaProceso, redondearACantidadDeUnidad, type ConsumoParaFilas } from "@/core/movimientos/public";
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia } from "@/server/lecturas/movimientos/saldos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
@@ -165,8 +165,10 @@ export async function armarLineaMovimiento(
       detalle = `Peso real: ${pesoReal} ${producto.unidadStock.nombre} (${numCant} compradas)`;
       huboConversion = true;
     } else if (factor !== 1) {
-      cantidadStock = numCant * factor;
-      detalle = `${numCant} × ${factor} = ${cantidadStock} ${producto.unidadStock.nombre}`;
+      // Decimal exacto, no float (ver `convertirCantidadAUnidadDeStock`): ya sale redondeada a los decimales de la unidad de stock.
+      const conversion = convertirCantidadAUnidadDeStock(numCant, factor, producto.unidadStock.decimales);
+      cantidadStock = conversion.redondeada;
+      detalle = `${numCant} × ${factor} = ${conversion.exacta} ${producto.unidadStock.nombre}`;
       huboConversion = true;
     }
   }
@@ -174,11 +176,13 @@ export async function armarLineaMovimiento(
   // Decimales por unidad: la barrera real de lo que entra al Kardex, no
   // solo el `step` de un input — se aplica DESPUÉS de la conversión (la
   // que puede dejar más decimales de la cuenta, ej. 3 CJ × 4.5 factor).
+  // La conversión de una compra ya salió redondeada en decimal exacto (arriba): acá es idempotente (una cantidad ya en la grilla de la
+  // unidad no se mueve); el redondeo de verdad lo hace para el resto de los casos (peso real, sin factor, otros procesos).
   cantidadStock = redondearACantidadDeUnidad(cantidadStock, producto.unidadStock.decimales);
 
   const precioTotal = precioEntrada;
-  const precioUnitario = precioTotal > 0 && numCant > 0 ? precioTotal / numCant : 0;
-  const precioPorUnidadStock = precioTotal > 0 && cantidadStock > 0 ? precioTotal / cantidadStock : 0;
+  const precioUnitario = precioPorUnidad(precioTotal, numCant);
+  const precioPorUnidadStock = precioPorUnidad(precioTotal, cantidadStock);
 
   // FEFO simplificado — solo Consumo asume el lote que vence antes si no
   // se especificó uno (Movimientos.js:678, PROCESOS_CON_LOTE_AUTOMATICO_AL_VENCER).

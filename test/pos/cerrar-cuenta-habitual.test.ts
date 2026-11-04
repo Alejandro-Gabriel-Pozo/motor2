@@ -10,6 +10,8 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * El cierre del POS PREFIERE la sección habitual del PV (`SeccionHabitualProducto`, docs/plan-seccion-habitual-stock-2026-09-25.md
@@ -31,8 +33,8 @@ describe("cerrarCuenta: la sección habitual del PV", () => {
     deposito = await sembrarSeccion(s.sucursalId, "Depósito");
   });
 
-  const comprar = (seccionId: string, cantidad: number, loteVencimiento?: Date) =>
-    registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: s.muzzarella.id, cantidad, loteVencimiento }], claveIdempotencia: crypto.randomUUID() });
+  const comprar = async (seccionId: string, cantidad: number, loteVencimiento?: Date) =>
+    registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: s.muzzarella.id, cantidad, loteVencimiento, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   const habitual = (seccionId: string, productoId = s.pizza.id, sucursalId = s.sucursalId) => prisma.seccionHabitualProducto.create({ data: { sucursalId, productoId, seccionId } });
   const cerrarPizzas = async (cantidad: number) => cerrarCuenta((await sembrarCuenta(s.mesa.id, s.admin.id, [{ productoId: s.pizza.id, cantidad, precioUnitario: 12000, numeroEnvio: 1 }])).id);
   const filas = async () =>
@@ -79,7 +81,7 @@ describe("cerrarCuenta: la sección habitual del PV", () => {
     ]);
     expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id, prisma)).toBe(-0.4);
     expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id, prisma)).toBe(0);
-    const [auditoria] = await prisma.registroAuditoria.findMany();
+    const [auditoria] = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion" } });
     expect(auditoria.descripcion).toContain('el stock de "Muzzarella" en «Cocina» quedó en negativo — tenía 0, la venta consumió 0,4, faltaron 0,4.');
   });
 

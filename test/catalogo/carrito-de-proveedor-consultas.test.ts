@@ -11,6 +11,7 @@ import type { Db } from "../../src/lib/db-tipos";
  * Dos escenarios por tamaño: con la fila de `ProveedorPorProducto` de cada par (lo normal desde 2026-10-07: toda compra con proveedor la escribe) y sin ninguna (compras viejas:
  * el lector lee además la unidad de compra de los productos). Nació (paso A3) fijando el conteo de entonces: 5 y 7, con DOS lecturas de ofertas (la de la empresa y la filtrada
  * por la sucursal). O.5 (paso A4) las fusionó en una (`precioDeLaSucursal`): 3 y 4, igual con 2 y 5 productos y 2 y 5 sucursales.
+ * Etapa 1 de Compras, paso 6: el lector además trae la unidad del vínculo y las presentaciones ACTIVAS de los productos; van en la MISMA consulta de productos (`include`), así que el conteo no cambia.
  */
 describe("carrito de una Compra: consultas de la precarga por proveedor", () => {
   let sucursalId: string;

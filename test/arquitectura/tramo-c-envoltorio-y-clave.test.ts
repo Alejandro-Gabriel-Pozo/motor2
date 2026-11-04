@@ -190,6 +190,7 @@ const SIN_ENVOLTORIO: Record<string, Readonly<Record<string, string>>> = {
     obtenerPrecioVentaProducto: lectura("requerirVer"),
     listarProductosPagina: lectura("requerirVerDeEmpresa"),
     listarPresentaciones: lectura("requerirVerAlguna"),
+    obtenerDatosDeCompraDelProducto: lectura("requerirVer"),
   },
   "catalogo/unidades.ts": {
     listarUnidadesParaPanel: lectura("requerirVerDeEmpresa"),

@@ -10,6 +10,8 @@ import { anularCompra } from "../../src/server/actions/movimientos/compras";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "../../src/server/consultas/reportes/historial-producto";
 import { ZONA_ARGENTINA, mediodiaDelDia } from "../../src/core/tiempo/zona-horaria";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /** El día que elige un formulario, como lo guarda (P1): las 12:00 argentinas. Los límites `desde`/`hasta` de la consulta, en cambio, son fechas «de solo día» (00:00 UTC) que la consulta expande en la zona. */
 const mediodia = (dia: string) => mediodiaDelDia(dia, ZONA_ARGENTINA);
@@ -35,11 +37,11 @@ describe("obtenerHistorialProducto", () => {
   });
 
   it("calcula el saldo corriente acumulado y mergea los conteos físicos en la misma línea de tiempo", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: mediodia("2026-01-02"), seccionId, items: [{ productoId: mpId, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
     // DESCARTAR con diferencia != 0: queda registrado como bitácora, sin generar ningún movimiento de Kardex.
     await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: mediodia("2026-01-03"), accion: "DESCARTAR" });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-04"), seccionId, items: [{ productoId: mpId, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-04"), seccionId, items: [{ productoId: mpId, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);
     expect(historial?.saldoActual).toBe(10 - 2 + 5);
@@ -55,8 +57,8 @@ describe("obtenerHistorialProducto", () => {
   });
 
   it("desde/hasta solo recorta qué se MUESTRA — el saldo corriente sigue arrancando del primer movimiento real", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, new Date("2026-01-10"), new Date("2026-01-31"), prisma);
     expect(historial?.eventos.length).toBe(1); // solo la segunda compra queda visible
@@ -65,10 +67,10 @@ describe("obtenerHistorialProducto", () => {
   });
 
   it("REGRESIÓN (Plan R2): totalMovimientos/totalConteos siguen siendo el total DE SIEMPRE, incluso con un filtro `desde` que oculta movimientos anteriores", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: mediodia("2026-01-02"), seccionId, items: [{ productoId: mpId, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
     await registrarUnConteoFisico({ productoId: mpId, seccionId, conteoReal: 20, fechaConteo: mediodia("2026-01-03"), accion: "DESCARTAR" });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     // Filtro que deja fuera del rango visible a los 2 primeros movimientos
     // y al conteo — igual deben contarse en el total.
@@ -79,9 +81,9 @@ describe("obtenerHistorialProducto", () => {
   });
 
   it("REGRESIÓN (Plan R2): con solo `hasta` (sin `desde`), se sigue viendo TODO desde el principio hasta esa fecha — sin necesidad de un saldo inicial separado", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-02-01"), seccionId, items: [{ productoId: mpId, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-02-01"), seccionId, items: [{ productoId: mpId, cantidad: 3, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, new Date("2026-01-31"), prisma);
     expect(historial?.eventos.length).toBe(2); // las dos compras de enero, no la de febrero
@@ -92,9 +94,9 @@ describe("obtenerHistorialProducto", () => {
 
   it("REGRESIÓN (Plan R2): con seccionId + rango de fechas combinados, el saldo inicial y el detalle respetan AMBOS filtros a la vez", async () => {
     const seccionB = (await sembrarSeccion(sucursalId, "Depósito B")).id;
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId: seccionB, items: [{ productoId: mpId, cantidad: 100 }], claveIdempotencia: crypto.randomUUID() }); // otra sección, no debe contaminar
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-01"), seccionId: seccionB, items: [{ productoId: mpId, cantidad: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // otra sección, no debe contaminar
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-15"), seccionId, items: [{ productoId: mpId, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const historial = await obtenerHistorialProducto(sucursalId, mpId, seccionId, new Date("2026-01-10"), new Date("2026-01-31"), prisma);
     expect(historial?.eventos.length).toBe(1);
@@ -105,7 +107,7 @@ describe("obtenerHistorialProducto", () => {
   // --- Paso 2 del plan (docs/plan-historial-producto-mp-pv-2026-09-22.md): campos nuevos para "Cómo se compró"/"Cómo se vendió". ---
 
   it("precioPorUnidadStock llega desde una COMPRA real", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);
     const compra = historial?.eventos.find((e) => e.tipo === "movimiento");
@@ -114,7 +116,7 @@ describe("obtenerHistorialProducto", () => {
   });
 
   it("una línea sin hecho financiero propio (AJUSTE) trae precioTotal/precioPorUnidadStock en 0, no undefined", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "AJUSTE", fecha: mediodia("2026-01-02"), seccionId, items: [{ productoId: mpId, cantidad: -2 }], claveIdempotencia: crypto.randomUUID() });
 
     const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);
@@ -124,11 +126,11 @@ describe("obtenerHistorialProducto", () => {
   });
 
   it("después de anularCompra: la compra original queda anulada:true, y el contra-asiento AJUSTE aparece como su propia fila (anulada:false)", async () => {
-    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000 }], claveIdempotencia: crypto.randomUUID() });
+    const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     expect(r.ok, r.mensaje).toBe(true);
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId } });
 
-    const anulacion = await anularCompra(compra.id);
+    const anulacion = await anularCompra(compra.id, crypto.randomUUID());
     expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
     const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);
@@ -169,7 +171,7 @@ describe("obtenerHistorialProducto", () => {
     await prisma.recetaVersion.create({
       data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: bife.id, cantidad: 0.3, unidadId: unidadKgId, sustitutos: { create: [{ insumoSustitutoId: insumoOjo.id, orden: 1 }] } }] } },
     });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: ojo.id, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: ojo.id, cantidad: 1, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const r = await registrarVenta({ fecha: mediodia("2026-01-02"), seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: 1 }] });
     expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);

@@ -8,6 +8,7 @@
  * espacios: solo choca con la misma escritura.
  *
  * Criterio conservador: ante la duda NO iguala (un falso «ya está cargada» frenaría una carga legítima; un duplicado no detectado igual lo ve el aviso de posible duplicado).
+ * Desde la etapa 1 de Compras (2026-11-03) el texto canónico «A-00023-00237728» lo arma `core/datos/numero-comprobante.ts`.
  */
 export function normalizarNumeroDeComprobante(numero: string): string {
   const limpio = numero.trim().toUpperCase();

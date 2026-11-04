@@ -137,6 +137,8 @@ export function PanelMovimientoForm({
   const pedidoProveedor = useRef(0);
 
   const precargaPorProveedor = config.proceso === "COMPRA";
+  // Productos que ya le comprás al proveedor elegido (la lista de la precarga): en cualquier otro, es la primera compra y «cómo lo llama el proveedor» es obligatorio (CU7). El servidor igual lo exige por su cuenta.
+  const [productosYaVinculados, setProductosYaVinculados] = useState<ReadonlySet<string>>(new Set());
 
   const actualizarFila = (idx: number, cambios: Partial<FilaItem>) => {
     setItems((prev) => prev.map((f, i) => (i === idx ? { ...f, ...cambios } : f)));
@@ -184,6 +186,7 @@ export function PanelMovimientoForm({
     if (!precargaPorProveedor) return;
 
     const pedido = ++pedidoProveedor.current;
+    setProductosYaVinculados(new Set());
 
     if (!id) {
       setCargandoProveedor(false); // un pedido anterior que quedó en vuelo ya no va a apagar esta bandera (se descarta)
@@ -226,6 +229,7 @@ export function PanelMovimientoForm({
         setInfoProveedor("Todavía no le compraste nada a este proveedor — agregalo con \"+ Agregar producto\". La próxima vez va a aparecer solo acá.");
         return;
       }
+      setProductosYaVinculados(new Set(productos.map((p) => p.productoId)));
       setInfoProveedor(`${productos.length} producto(s) que ya le comprás. Completá cantidad solo en los que estés comprando ahora — el resto queda sin cambios.`);
       setItems(
         productos.map((p) => ({
@@ -272,7 +276,7 @@ export function PanelMovimientoForm({
         precioTotal: numeroDelCampo(f.precioTotal),
         pesoReal: numeroDelCampo(f.pesoReal) ?? null,
         unidadCompraId: config.esCompraLike && f.unidadCompraId ? f.unidadCompraId : undefined,
-        referenciaProveedor: precargaPorProveedor ? f.referenciaProveedor || undefined : undefined,
+        referenciaProveedor: precargaPorProveedor ? f.referenciaProveedor.trim() || undefined : undefined,
       }));
 
     if (!itemsValidos.length) {
@@ -428,6 +432,7 @@ export function PanelMovimientoForm({
                 value={fila.productoId}
                 onChange={(id) => cambiarProducto(idx, id)}
                 filtro={config.filtroProducto}
+                proveedorId={config.proceso === "COMPRA" ? proveedorId || undefined : undefined}
                 etiquetaInicial={fila.etiquetaInicial}
                 required
               />
@@ -503,11 +508,12 @@ export function PanelMovimientoForm({
             {precargaPorProveedor && (
               <div className="w-44">
                 <Campo
-                  etiqueta="Código/nombre del proveedor"
+                  etiqueta="Cómo lo llama el proveedor (código y descripción, como dice la factura)"
                   tamano="compacto"
                   value={fila.referenciaProveedor}
                   onChange={(e) => actualizarFila(idx, { referenciaProveedor: e.target.value })}
-                  placeholder="opcional"
+                  required={Boolean(proveedorId && fila.productoId && fila.cantidad !== "" && !productosYaVinculados.has(fila.productoId))}
+                  placeholder={proveedorId && fila.productoId && !productosYaVinculados.has(fila.productoId) ? "obligatorio en la primera compra" : "opcional"}
                 />
               </div>
             )}

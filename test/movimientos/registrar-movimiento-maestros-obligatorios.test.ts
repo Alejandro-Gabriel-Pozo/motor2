@@ -4,6 +4,7 @@ import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimient
 import { PROCESOS_UI } from "../../src/core/movimientos/ui-config";
 import type { DatosMovimientoInput } from "../../src/core/features/movimientos/movimiento.schema";
 import type { Transaccion } from "../../src/lib/db-tipos";
+import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
 
 /**
  * U11 (auditoría de abstracciones 2026-10-11, N4-8): `registrarMovimientoCasoDeUso` tiene que exigir EN EL SERVIDOR lo que la pantalla exige, y comprobar que el motivo, el
@@ -12,7 +13,7 @@ import type { Transaccion } from "../../src/lib/db-tipos";
  * Sin base de datos: el caso de uso se llama con un cliente y una transacción falsos (solo lo que las validaciones leen; desde P2, también las compras candidatas del aviso C25, que se leen antes de la transacción). Lo que corre DESPUÉS de las validaciones (armado de
  * líneas, stock, escritura) lo cubren los tests con base de `registrar-movimiento.test.ts`.
  *
- * Qué exige hoy la pantalla (`panel-movimiento-form.tsx`): SOLO el motivo de la Merma es obligatorio (`<select required>`). El proveedor de Compra/Devolución a proveedor
+ * Qué exige hoy la pantalla (`panel-movimiento-form.tsx`): SOLO el motivo de la Merma es obligatorio (`<select required>`). El proveedor de la Devolución a proveedor
  * («Sin proveedor») y el destino de Consumo («Sin destino específico») son opcionales en la UI, así que el servidor tampoco los exige.
  */
 const SUCURSAL = "suc-1";
@@ -31,6 +32,9 @@ function dbFalso(m: Maestros): Prisma.TransactionClient {
     proveedor: { findUnique: fila(m.proveedor) },
     // P2: las compras candidatas del aviso C25 se leen ANTES de abrir la transacción (con la base de verificación): el cliente falso responde que no hay ninguna.
     operacion: { findMany: async () => [] },
+    // Una COMPRA busca su número en la empresa antes de seguir (cerrojo, facturas y compras): el cliente falso responde que no hay nada.
+    facturaProveedor: { count: async () => 0 },
+    $queryRaw: async () => [],
   } as unknown as Prisma.TransactionClient;
 }
 
@@ -81,12 +85,19 @@ describe("U11: la Merma exige un motivo en el servidor", () => {
     }
   });
 
-  it("no endurece lo que la pantalla no exige: Compra, Consumo y Devolución a proveedor sin proveedor/destino siguen pasando", async () => {
-    for (const proceso of ["COMPRA", "CONSUMO", "DEVOLUCION_PROVEEDOR", "AJUSTE", "PRODUCCION"] as const) {
+  it("no endurece lo que la pantalla no exige: Consumo y Devolución a proveedor sin proveedor/destino, Ajuste y Producción siguen pasando", async () => {
+    for (const proceso of ["CONSUMO", "DEVOLUCION_PROVEEDOR", "AJUSTE", "PRODUCCION"] as const) {
       const { r, estado } = await llamar({ proceso }, {}, null);
       expect(r.ok, proceso).toBe(true);
       expect(estado.abierta, proceso).toBe(1);
     }
+  });
+
+  // Etapa 1 de Compras (I1): en una COMPRA el proveedor es obligatorio en el servidor; antes «Compra sin proveedor» pasaba.
+  it("Compra sin proveedor se rechaza (PROVEEDOR_OBLIGATORIO) y no escribe nada: ni abre la transacción", async () => {
+    const { r, estado } = await llamar({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba() }, {}, null);
+    expect(r).toEqual({ ok: false, codigo: "PROVEEDOR_OBLIGATORIO", mensaje: "Elegí el proveedor de la factura." });
+    expect(estado.abierta).toBe(0);
   });
 
   it("la regla del servidor y la de la pantalla no se desincronizan: el único proceso que pide motivo en ui-config es la Merma", () => {
@@ -108,7 +119,7 @@ describe("U11: motivo, destino y proveedor se vuelven a comprobar DENTRO de la t
   });
 
   it("un proveedor desactivado en el medio se rechaza", async () => {
-    const { r } = await llamar({ proceso: "COMPRA", proveedorId: "pr-1" }, { proveedor: true }, { proveedor: false });
+    const { r } = await llamar({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), proveedorId: "pr-1" }, { proveedor: true }, { proveedor: false });
     expect(r).toMatchObject({ ok: false, mensaje: "El proveedor elegido ya no está disponible." });
   });
 });

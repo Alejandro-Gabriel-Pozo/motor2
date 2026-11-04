@@ -17,7 +17,9 @@
 export {
   ACCION_POR_PROCESO,
   TRANSICIONES,
+  convertirCantidadAUnidadDeStock,
   esSignoFijo,
+  precioPorUnidad,
   productoValidoParaProceso,
   redondearACantidadDeUnidad,
   tieneStockReal,

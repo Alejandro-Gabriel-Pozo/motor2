@@ -46,7 +46,7 @@ import { setStockMinimoProducto } from "../src/server/actions/stock/stock-minimo
 import type { ResultadoAccion } from "../src/server/actions/tipos";
 import { crearGeneradorAleatorio } from "./demo-seed/prng";
 import { generarGuionLaCuadra, necesidadSemanal, construirMultiplicadoresPorPV, MP_POR_PROVEEDOR, CONFIG_LA_CUADRA_DEFAULT } from "./demo-seed/guion-la-cuadra";
-import { validarGuion, calcularTotalesEsperados } from "./demo-seed/guion";
+import { validarGuion, calcularTotalesEsperados, PROVEEDOR_DE_DEMO_CODIGO, PROVEEDOR_DE_DEMO_NOMBRE } from "./demo-seed/guion";
 import { EQUIVALENCIA_MOTIVO_MERMA_LEGACY } from "../src/core/movimientos/motivos-semilla";
 import { verificarBaseVacia, pideRehacer } from "./demo-seed/guardas-destino";
 import { PROVEEDORES, PRODUCTOS, RECETAS } from "./seed-demo-pizzeria-data";
@@ -142,7 +142,13 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
           if (!p.activo) anotarSiFalla(`actualizarActivaProveedor(${p.nombre})`, await actualizarActivaProveedor(r.id, false));
         }
       }
-      const proveedorIdPorCodigo = new Map(PROVEEDORES.map((p) => [p.codigo, proveedorIdPorNombre.get(p.nombre)!]));
+      // Compras etapa 1: una COMPRA exige proveedor. El stock inicial y la compra de feria (MP011B) no tienen proveedor formal: entran a nombre de un proveedor de demo fijo.
+      if (!proveedorIdPorNombre.has(PROVEEDOR_DE_DEMO_NOMBRE)) {
+        const r = await altaProveedor({ nombre: PROVEEDOR_DE_DEMO_NOMBRE });
+        anotarSiFalla(`altaProveedor(${PROVEEDOR_DE_DEMO_NOMBRE})`, r);
+        if (r.ok) proveedorIdPorNombre.set(PROVEEDOR_DE_DEMO_NOMBRE, r.id);
+      }
+      const proveedorIdPorCodigo = new Map([...PROVEEDORES.map((p) => [p.codigo, proveedorIdPorNombre.get(p.nombre)!] as const), [PROVEEDOR_DE_DEMO_CODIGO, proveedorIdPorNombre.get(PROVEEDOR_DE_DEMO_NOMBRE)!] as const]);
 
       // --- 5b) Grupo "No comestibles" → "Packaging"/"Limpieza", con un Insumo cada uno (ver el mismo bloque, con
       // el docstring completo, en seed-demo-pizzeria.ts) — MP019/MP020 (cajas de pizza) y OT001/OT002
@@ -251,14 +257,16 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
       console.log(`Guion: ${guion.eventos.length} eventos — esperado: $${esperado.compras.totalGastado.toLocaleString("es-AR")} en compras, $${esperado.ventas.totalFacturado.toLocaleString("es-AR")} en ventas.`);
 
       // --- "Hoy" ancla el final de la ventana — semana N-1, día 6 (sábado) = hoy. ---
-      const HOY = new Date();
+      const AHORA = new Date();
+      const HOY = new Date(AHORA);
       HOY.setUTCHours(0, 0, 0, 0);
       function fechaDe(semana: number, diaSemana: number, horaUtc = 14): Date {
         const diasDesdeElFinal = (CONFIG_LA_CUADRA_DEFAULT.semanas - 1 - semana) * 7 + (6 - diaSemana);
         const f = new Date(HOY);
         f.setUTCDate(f.getUTCDate() - diasDesdeElFinal);
         f.setUTCHours(horaUtc, 0, 0, 0);
-        return f;
+        // I13 (etapa 1 de Compras): una compra no puede ser posterior a hoy; las horas del último día (14:00 UTC) pueden caer más tarde que «ahora» o ya en el «mañana» argentino.
+        return f.getTime() > AHORA.getTime() ? new Date(AHORA) : f;
       }
 
       const RECETA_POR_PRODUCTO = new Map(RECETAS.map((r) => [r.productoCodigo, r.ingredientes]));
@@ -287,12 +295,14 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
             cantidad: it.cantidad,
             precioTotal: Math.round(it.cantidad * it.precioUnitario),
             loteVencimiento: it.loteVencimiento ?? undefined,
+            // Etapa 1 de Compras: la primera compra de un producto a un proveedor exige «cómo lo llama el proveedor»; acá, el nombre del producto (en todas las líneas: repetirlo no cambia nada).
+            referenciaProveedor: productoPorCodigo.get(it.productoCodigo)?.nombre,
           }));
           const r = await registrarMovimiento({
             proceso: "COMPRA",
             fecha,
             seccionId: idSeccion(ev.seccion),
-            proveedorId: ev.proveedorCodigo ? proveedorIdPorCodigo.get(ev.proveedorCodigo) : undefined,
+            proveedorId: proveedorIdPorCodigo.get(ev.proveedorCodigo),
             nroFactura: ev.nroFactura,
             items,
             claveIdempotencia: crypto.randomUUID(),
@@ -332,7 +342,7 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
         } else if (ev.tipo === "ANULAR_COMPRA") {
           const operacionId = operacionIdPorRef.get(ev.refCompra);
           if (!operacionId) fallos.push(`ANULAR_COMPRA ${ev.ref}: no se resolvió la compra "${ev.refCompra}"`);
-          else anotarSiFalla(`ANULAR_COMPRA ${ev.ref}`, await anularCompra(operacionId));
+          else anotarSiFalla(`ANULAR_COMPRA ${ev.ref}`, await anularCompra(operacionId, crypto.randomUUID()));
         } else if (ev.tipo === "CORREGIR_COMPRA") {
           const operacionId = operacionIdPorRef.get(ev.refCompra);
           if (!operacionId) {

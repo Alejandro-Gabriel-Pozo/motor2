@@ -60,7 +60,7 @@ beforeEach(async () => {
 const armada = async () => (await resolverMenuCartaConDiagnostico(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA, undefined, "publico", true))!.carta;
 const itemDe = (secciones: readonly { items: readonly { nombre: string; precio: number; presentacion?: unknown }[] }[], nombre: string) => secciones.flatMap((x) => x.items).find((i) => i.nombre === nombre);
 
-const LINEA_DEL_CORTE = { tipo: "eleccion", rotulo: "Corte", opciones: ["ojo de bife", "bife de chorizo"] };
+const LINEA_DEL_CORTE = { tipo: "eleccion", rotulo: "Corte", opciones: ["ojo de bife", "bife de chorizo"], cantidadMinima: 1, cantidadMaxima: 1 };
 
 describe("«Mostrar este grupo en la carta»: la carta pública y la impresa", () => {
   it("por defecto (la columna vale true) la carta lee el grupo: «Corte: ojo de bife o bife de chorizo»", async () => {
@@ -157,7 +157,7 @@ describe("«Mostrar este grupo en la carta»: la vista previa del producto y el 
   it("el «Va a mostrar» de un producto fuera de la carta: sin el grupo oculto, con su precio", async () => {
     await prisma.contenidoCartaProducto.deleteMany({ where: { sucursalId: s.sucursalId, productoId: bife.productoId } });
     const vistaPrevia = async () => (await cargarCartaParaMantener(prisma, s.sucursalId)).fueraDeCarta.find((p) => p.id === bife.productoId)?.vistaPrevia;
-    expect(await vistaPrevia()).toBe("Va a mostrar «Bife» con su precio · Corte: ojo de bife o bife de chorizo.");
+    expect(await vistaPrevia()).toBe("Va a mostrar «Bife» con su precio · Incluye corte · Corte · elegís 1: ojo de bife · bife de chorizo. Con los platos que dicen «Incluye corte».");
     await ocultarElCorte();
     expect(await vistaPrevia()).toBe("Va a mostrar «Bife» con su precio.");
   });

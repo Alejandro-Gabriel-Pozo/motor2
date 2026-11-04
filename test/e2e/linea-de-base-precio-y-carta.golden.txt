@@ -23,11 +23,13 @@
       fila: De pollo | $20.000 | $25.000
     texto visible: «Milanesas» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000»
   ÍTEM «Bife a la criolla» · forma: simple · precio del renglón: «$20.000»
-    debajo: «Guarnicion ensalada · papas fritas · puré»
+    incluye: «Incluye guarnicion»
     debajo: «Extras extra de papas +$2.000 huevo frito +$1.500»
-    texto visible: «Bife a la criolla» «$20.000» «Guarnicion» «ensalada · papas fritas · puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500»
+    texto visible: «Bife a la criolla» «$20.000» «Incluye guarnicion» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500»
   ÍTEM «Wok de verduras» · forma: sin opciones · precio del renglón: «$19.000»
     texto visible: «Wok de verduras» «$19.000»
+  ÍTEM «GUARNICION · ELEGÍS 1» · forma: bloque de opciones · precio del renglón: (ninguno)
+    texto visible: «GUARNICION · ELEGÍS 1» «ensalada · papas fritas · puré» «Con los platos que dicen «Incluye guarnicion»»
 ### Sección «Cafetería» (banda «03 / 04»)
   ÍTEM «Café» · forma: tabla · precio del renglón: (ninguno)
     tabla: columnas «Chico» «Mediano» «Grande»
@@ -51,7 +53,7 @@
   [1 portada] «L» «LB Precio y carta»
   [2 índice] «Índice» «01» «Pizzas» «02» «Platos» «03» «Cafetería» «04» «Bebidas»
   [3 sección] «01 / 04» «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000»
-  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000» «Bife a la criolla» «$20.000» «Guarnicion» «ensalada · papas fritas · puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500» «Wok de verduras» «$19.000»
+  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000» «Bife a la criolla» «$20.000» «Incluye guarnicion» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500» «Wok de verduras» «$19.000» «GUARNICION · ELEGÍS 1» «ensalada · papas fritas · puré» «Con los platos que dicen «Incluye guarnicion»»
   [5 sección] «03 / 04» «Cafetería» «Café» «Chico Mediano Grande» «Café» «$4.000 $4.100 $4.300» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$200» «con leche» «+$300» «Café de especialidad» «Chico Mediano Grande» «Solo $4.000 $4.100 $4.300» «Cortado $4.000 $4.100 $4.300» «Lágrima $4.200 $4.300 $4.500» «Con leche $4.300 $4.400 $4.600»
   [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$4.000»
 ### Tipografía computada (getComputedStyle: fontSize / fontWeight)
@@ -71,13 +73,15 @@
 ### Separadores entre productos (getComputedStyle: borderBottomColor de cada ítem de la lista de la sección, salvo el último)
   tinta (--carta-ink): rgb(28, 27, 25)
   «Pizzas»: (un solo producto: sin separadores)
-  «Platos»: rgb(231, 229, 228) · rgb(231, 229, 228)
+  «Platos»: rgb(231, 229, 228) · rgb(231, 229, 228) · rgb(231, 229, 228)
   «Cafetería»: rgb(231, 229, 228)
   «Bebidas»: (un solo producto: sin separadores)
 ### Escala única (DEC-35): cada rol, con su ÚNICO par tamaño / peso
+  aclaracion: 14px / 400
   aclaracion-rotulo: 14px / 600
   columna: 16px / 600
   eleccion: 15px / 400
+  etiqueta: 12px / 400
   opcion: 16px / 400
   opcion-precio: 16px / 600
   precio: 19px / 600
@@ -87,8 +91,10 @@
   pie: «Precios vigentes al «fecha» · http://carta.localhost/lb-precio-y-carta»
   con lo agotado hoy («Pizza bomba»): sí
   aclaracion-rotulo: 13.3333px / 600
+  aclaracion: 13.3333px / 400
   columna: 14.6667px / 600
   eleccion: 14px / 400
+  etiqueta: 12px / 400
   opcion-precio: 14.6667px / 600
   opcion: 14.6667px / 400
   precio: 16px / 600
@@ -116,11 +122,13 @@
       fila: De pollo | $20.000 | $25.000
     texto visible: «Milanesas» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000»
   ÍTEM «Bife a la criolla» · forma: simple · precio del renglón: «$20.000»
-    debajo: «Guarnicion ensalada · papas fritas · puré»
+    incluye: «Incluye guarnicion»
     debajo: «Extras extra de papas +$2.000 huevo frito +$1.500»
-    texto visible: «Bife a la criolla» «$20.000» «Guarnicion» «ensalada · papas fritas · puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500»
+    texto visible: «Bife a la criolla» «$20.000» «Incluye guarnicion» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500»
   ÍTEM «Wok de verduras» · forma: sin opciones · precio del renglón: «$19.000»
     texto visible: «Wok de verduras» «$19.000»
+  ÍTEM «GUARNICION · ELEGÍS 1» · forma: bloque de opciones · precio del renglón: (ninguno)
+    texto visible: «GUARNICION · ELEGÍS 1» «ensalada · papas fritas · puré» «Con los platos que dicen «Incluye guarnicion»»
 ### Sección «Cafetería» (banda «03 / 04»)
   ÍTEM «Café» · forma: tabla · precio del renglón: (ninguno)
     tabla: columnas «Chico» «Mediano» «Grande»
@@ -144,7 +152,7 @@
   [1 portada] «L» «LB Precio y carta»
   [2 índice] «Índice» «01» «Pizzas» «02» «Platos» «03» «Cafetería» «04» «Bebidas»
   [3 sección] «01 / 04» «Pizzas» «Pizza muzzarella» «$18.000» «Pizza de verduras asadas» «$20.000» «Pizza fugazzeta» «$22.000» «Pizza napolitana» «$22.000» «Pizza con papas fritas» «$25.000»
-  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000» «Bife a la criolla» «$20.000» «Guarnicion» «ensalada · papas fritas · puré» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500» «Wok de verduras» «$19.000»
+  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple Napolitana» «De carne $20.000 $25.000» «De pollo $20.000 $25.000» «Bife a la criolla» «$20.000» «Incluye guarnicion» «Extras» «extra de papas» «+$2.000» «huevo frito» «+$1.500» «Wok de verduras» «$19.000» «GUARNICION · ELEGÍS 1» «ensalada · papas fritas · puré» «Con los platos que dicen «Incluye guarnicion»»
   [5 sección] «03 / 04» «Cafetería» «Café» «Chico Mediano Grande» «Café» «$4.000 $4.100 $4.300» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$200» «con leche» «+$300» «Café de especialidad» «Chico Mediano Grande» «Solo $4.000 $4.100 $4.300» «Cortado $4.000 $4.100 $4.300» «Lágrima $4.200 $4.300 $4.500» «Con leche $4.300 $4.400 $4.600»
   [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$4.000»
 ### Tipografía computada (getComputedStyle: fontSize / fontWeight)
@@ -164,13 +172,15 @@
 ### Separadores entre productos (getComputedStyle: borderBottomColor de cada ítem de la lista de la sección, salvo el último)
   tinta (--carta-ink): rgb(28, 27, 25)
   «Pizzas»: (un solo producto: sin separadores)
-  «Platos»: rgb(231, 229, 228) · rgb(231, 229, 228)
+  «Platos»: rgb(231, 229, 228) · rgb(231, 229, 228) · rgb(231, 229, 228)
   «Cafetería»: rgb(231, 229, 228)
   «Bebidas»: (un solo producto: sin separadores)
 ### Escala única (DEC-35): cada rol, con su ÚNICO par tamaño / peso
+  aclaracion: 14px / 400
   aclaracion-rotulo: 14px / 600
   columna: 16px / 600
   eleccion: 15px / 400
+  etiqueta: 12px / 400
   opcion: 16px / 400
   opcion-precio: 16px / 600
   precio: 19px / 600
@@ -180,8 +190,10 @@
   pie: «Precios vigentes al «fecha» · http://carta.localhost/lb-precio-y-carta»
   con lo agotado hoy («Pizza bomba»): sí
   aclaracion-rotulo: 13.3333px / 600
+  aclaracion: 13.3333px / 400
   columna: 14.6667px / 600
   eleccion: 14px / 400
+  etiqueta: 12px / 400
   opcion-precio: 14.6667px / 600
   opcion: 14.6667px / 400
   precio: 16px / 600

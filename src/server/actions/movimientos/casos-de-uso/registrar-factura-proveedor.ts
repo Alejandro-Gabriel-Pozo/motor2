@@ -1,5 +1,6 @@
 import "server-only";
 import { texto } from "@/core/texto";
+import { mensajeReferenciaProveedorObligatoria } from "@/core/features/compras/compra.guard";
 import { normalizarNumeroDeComprobante, repartirFactura, type RepartoDeFactura } from "@/core/compras/public";
 import type { DatosMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
 import type { DatosFacturaProveedorInput, ResultadoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.schema";
@@ -11,19 +12,21 @@ import {
   esChoqueDeFacturaDeProveedorUnica,
   esChoqueDeFacturaUnica,
   MENSAJE_CONFLICTO_IDEMPOTENCIA,
-  MENSAJE_FACTURA_DE_PROVEEDOR_DUPLICADA,
   MENSAJE_FACTURA_DUPLICADA,
 } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
+import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
-import { cargarProveedor, existeCompraVigenteConFactura } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+import { cargarProveedor } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 import { escribirLineasDeMovimientoStock, escribirOperacionDeStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { chequearIdempotencia } from "@/server/persistencia/movimientos/idempotencia";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
-import { cargarFacturaPorClaveIdempotencia, cargarSucursalesDelReparto, existeFacturaVigenteConNumero } from "@/server/persistencia/compras/cargar-factura-proveedor";
+import { productosConVinculoConElProveedor } from "@/server/lecturas/catalogo/vinculos-de-proveedor";
+import { cargarFacturaPorClaveIdempotencia, cargarSucursalesDelReparto } from "@/server/persistencia/compras/cargar-factura-proveedor";
+import { hayComprobanteVigenteEnLaEmpresa } from "@/server/persistencia/compras/comprobante-en-la-empresa";
 import {
   escribirCabeceraDeFactura,
   escribirParteRecibida,
@@ -42,16 +45,17 @@ import { armarLineaMovimiento, type LineaCalculada } from "./armar-linea-de-movi
  * (`guardComandoRegistrarFacturaProveedor`).
  *
  * Pasos:
- *  1. (fuera de la transacción) la sección de la parte propia es de esta sucursal; el número normalizado; caminos rápidos de factura repetida (en la empresa, y como compra en esta sucursal);
- *  2. dentro de UNA transacción SERIALIZABLE: I3 (la clave y la huella viven en la cabecera); proveedor activo; sección activa; las sucursales destino existen en la empresa y están activas; cada renglón se arma como
+ *  1. (fuera de la transacción) la sección de la parte propia es de esta sucursal; el número normalizado. Ya NO hay caminos rápidos de factura repetida: el rechazo vive adentro, después de la idempotencia;
+ *  2. dentro de UNA transacción SERIALIZABLE, abierta con la base de verificación (lectura en toda la empresa, escritura como estaba): I3 (la clave y la huella viven en la cabecera); el número no está cargado en la empresa
+ *     (`hayComprobanteVigenteEnLaEmpresa`: otra factura repartida o una compra simple de CUALQUIER sucursal; mensaje único sin fecha ni sucursal); proveedor activo; sección activa; las sucursales destino existen en la empresa y están activas; cada renglón se arma como
  *     una línea de compra (`armarLineaMovimiento`: producto, conversión, precio y referencia del proveedor); el reparto exacto (`repartirFactura`, los importes tipeados son los pesos) y sus sumas verificadas;
  *  3. escribe la cabecera CONFIRMADA, los renglones, la compra de la parte propia (Operacion + Kardex con el renglón) y su parte RECIBIDA, una propuesta PENDIENTE con sus renglones por cada otra sucursal, el
  *     vínculo proveedor↔producto (comando de Catálogo) y la auditoría; guarda el mensaje para la idempotencia.
- *  Choques: el número repetido en la empresa (`FacturaProveedor_unica_vigente_key`) o como compra en esta sucursal → «factura duplicada»; la clave tomada por otro pedido → conflicto o repetida.
+ *  Choques: el número repetido en la empresa (`FacturaProveedor_unica_vigente_key`) o como compra en esta sucursal (segunda barrera) → «factura duplicada», con el mismo mensaje; la clave tomada por otro pedido → conflicto o repetida.
  *
  * @contract Carga una factura de proveedor de mercadería y la reparte exactamente entre sucursales: la parte propia entra al stock y las ajenas quedan propuestas para aceptar.
  * @idempotency I3 (claveIdempotencia + payloadHash en la cabecera de la factura), dentro de la misma transacción.
- * @transaction conTransaccionSerializable (SERIALIZABLE + reintento), con `.catch` de la factura duplicada y de la clave tomada.
+ * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) sobre la base de verificación, con `.catch` de la factura duplicada y de la clave tomada.
  * @sideEffects registrarVinculoDeCompraEnTx (comando de Catálogo, dentro de la transacción) y registrarCambioAuditado (el reparto).
  * @ficha permiso=compra_repartir+proceso_compra transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
@@ -67,25 +71,23 @@ export async function registrarFacturaProveedorCasoDeUso(
   if (propia && !seccion) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección.");
 
   const payloadHash = calcularPayloadHash("FACTURA_PROVEEDOR", actor.sucursalId, { ...datos, claveIdempotencia: undefined });
-  // Un reenvío de una carga que YA se hizo tiene que devolver su mensaje, no el «ya hay una factura con ese número» del camino rápido (la factura repetida es ella misma). El chequeo que vale es el de adentro de la
-  // transacción; este solo evita el falso rechazo.
+  // Un reenvío de una carga que YA se hizo tiene que devolver su mensaje, no el «ya hay una factura con ese número» (la factura repetida es ella misma). El chequeo que vale es el de adentro de la
+  // transacción; este solo evita abrirla de más.
   const previa = decidirIdempotencia(await cargarFacturaPorClaveIdempotencia(actor.db, datos.claveIdempotencia), payloadHash);
   if (previa.estado === "duplicado") return exito(previa.mensaje, { repetida: true, facturaId: null });
   if (previa.estado === "conflicto") return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
 
   const nroFactura = texto(datos.nroFactura) || null;
   const nroFacturaNormalizado = nroFactura ? normalizarNumeroDeComprobante(nroFactura) : null;
-  if (nroFacturaNormalizado && (await existeFacturaVigenteConNumero(actor.db, { proveedorId: datos.proveedorId, nroFacturaNormalizado }))) {
-    return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DE_PROVEEDOR_DUPLICADA);
-  }
-  if (propia && nroFactura && (await existeCompraVigenteConFactura(actor.db, { sucursalId: actor.sucursalId, proveedorId: datos.proveedorId, nroFactura }))) {
-    return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
-  }
 
-  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoRegistrarFacturaProveedor> => {
+  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+  return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoRegistrarFacturaProveedor> => {
     const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash, cargarFacturaPorClaveIdempotencia);
     if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { repetida: true, facturaId: null });
     if (chequeo.estado === "conflicto") return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
+
+    // I2 (etapa 1 de Compras): el número no puede estar ya cargado en la empresa, ni como otra factura ni como compra simple de cualquier sucursal. Sí/no; el mensaje no dice dónde está.
+    if (nroFactura && (await hayComprobanteVigenteEnLaEmpresa(tx, { empresaId: actor.empresaId, proveedorId: datos.proveedorId, nroFactura }))) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
 
     const proveedor = await cargarProveedor(tx, datos.proveedorId);
     if (!proveedor?.activo) return fracaso("PROVEEDOR_NO_DISPONIBLE", "El proveedor elegido ya no está disponible.");
@@ -110,6 +112,12 @@ export async function registrarFacturaProveedorCasoDeUso(
       lineas.push({ linea: armado.linea, nombre: producto?.nombre ?? "", decimales: producto?.unidadStock.decimales ?? 0 });
     }
     if (!lineas.length) return fracaso("LINEA_INVALIDA", "Ninguna línea tiene una cantidad válida.");
+
+    // CU7/I12: misma regla que la compra simple — en la PRIMERA compra de un producto a este proveedor hay que escribir cómo lo llama (alcanza con que una línea del mismo producto nuevo la traiga). Antes de escribir nada.
+    const vinculados = await productosConVinculoConElProveedor(tx, datos.proveedorId, lineas.map((l) => l.linea.productoId));
+    const conReferencia = new Set(lineas.filter((l) => l.linea.referenciaProveedor).map((l) => l.linea.productoId));
+    const sinReferencia = lineas.find((l) => !vinculados.has(l.linea.productoId) && !conReferencia.has(l.linea.productoId));
+    if (sinReferencia) return fracaso("REFERENCIA_PROVEEDOR_OBLIGATORIA", mensajeReferenciaProveedorObligatoria(sinReferencia.nombre));
 
     const reparto = repartirFactura(
       lineas.map((l) => ({ nombre: l.nombre, precioTotal: l.linea.precioTotal, cantidadStock: l.linea.cantidadIngresada, decimales: l.decimales })),
@@ -228,7 +236,7 @@ export async function registrarFacturaProveedorCasoDeUso(
     await registrarResultadoDeFactura(tx, factura.id, mensaje);
     return exito(mensaje, { repetida: false, facturaId: factura.id });
   }, undefined, undefined, true).catch(async (e): Promise<ResultadoRegistrarFacturaProveedor> => {
-    if (esChoqueDeFacturaDeProveedorUnica(e)) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DE_PROVEEDOR_DUPLICADA);
+    if (esChoqueDeFacturaDeProveedorUnica(e)) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
     if (esChoqueDeFacturaUnica(e)) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
     if (esChoqueDeClaveIdempotenciaDeFactura(e)) {
       const ganador = await cargarFacturaPorClaveIdempotencia(actor.db, datos.claveIdempotencia);

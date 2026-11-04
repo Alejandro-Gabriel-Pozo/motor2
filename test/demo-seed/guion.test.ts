@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { validarGuion, calcularTotalesEsperados, refsDelGuion, type GuionDemo, type EventoDemo } from "../../scripts/demo-seed/guion";
+import { validarGuion, calcularTotalesEsperados, refsDelGuion, crearNumeradorDeFacturas, nroFacturaEstructurado, PROVEEDOR_DE_DEMO_CODIGO, type GuionDemo, type EventoDemo } from "../../scripts/demo-seed/guion";
 
-const compra = (ref: string, semana: number, proveedorCodigo: string | null, items: { productoCodigo: string; cantidad: number; precioUnitario: number }[]): EventoDemo => ({
+const compra = (ref: string, semana: number, proveedorCodigo: string, items: { productoCodigo: string; cantidad: number; precioUnitario: number }[]): EventoDemo => ({
   tipo: "COMPRA",
   ref,
   semana,
   diaSemana: 1,
   seccion: "Cocina",
   proveedorCodigo,
+  nroFactura: "A-00001-00000001",
   items,
 });
 const venta = (ref: string, semana: number, items: { productoCodigo: string; cantidad: number }[]): EventoDemo => ({
@@ -22,7 +23,7 @@ const anular = (ref: string, semana: number, refCompra: string): EventoDemo => (
 
 describe("refsDelGuion", () => {
   it("da las refs en orden", () => {
-    const guion: GuionDemo = { eventos: [compra("c1", 0, null, []), venta("v1", 0, [])] };
+    const guion: GuionDemo = { eventos: [compra("c1", 0, "PRV_A", []), venta("v1", 0, [])] };
     expect(refsDelGuion(guion)).toEqual(["c1", "v1"]);
   });
 });
@@ -36,12 +37,12 @@ describe("validarGuion", () => {
   });
 
   it("detecta refs duplicadas", () => {
-    const guion: GuionDemo = { eventos: [compra("c1", 0, null, []), venta("c1", 1, [])] };
+    const guion: GuionDemo = { eventos: [compra("c1", 0, "PRV_A", []), venta("c1", 1, [])] };
     expect(validarGuion(guion).some((p) => p.includes("duplicada"))).toBe(true);
   });
 
   it("detecta que el guion no viene en orden cronológico", () => {
-    const guion: GuionDemo = { eventos: [compra("c1", 5, null, []), venta("v1", 2, [])] };
+    const guion: GuionDemo = { eventos: [compra("c1", 5, "PRV_A", []), venta("v1", 2, [])] };
     expect(validarGuion(guion).some((p) => p.includes("orden cronológico"))).toBe(true);
   });
 
@@ -79,10 +80,10 @@ describe("calcularTotalesEsperados", () => {
     expect(totales.compras.cantidadCompras).toBe(3);
   });
 
-  it("una compra sin proveedor cae bajo la clave SIN_PROVEEDOR", () => {
-    const guion: GuionDemo = { eventos: [compra("c1", 0, null, [{ productoCodigo: "MP001", cantidad: 1, precioUnitario: 500 }])] };
+  it("la compra del proveedor de demo (stock inicial, feria) cae bajo su propia clave", () => {
+    const guion: GuionDemo = { eventos: [compra("c1", 0, PROVEEDOR_DE_DEMO_CODIGO, [{ productoCodigo: "MP001", cantidad: 1, precioUnitario: 500 }])] };
     const totales = calcularTotalesEsperados(guion, precios);
-    expect(totales.compras.porProveedor.get("SIN_PROVEEDOR")).toBe(500);
+    expect(totales.compras.porProveedor.get(PROVEEDOR_DE_DEMO_CODIGO)).toBe(500);
   });
 
   it("una compra ANULADA no cuenta ni en el total ni por proveedor ni en cantidadCompras — mismo criterio que K1c", () => {
@@ -121,5 +122,25 @@ describe("calcularTotalesEsperados", () => {
     expect(totales.compras.totalGastado).toBe(0);
     expect(totales.compras.cantidadCompras).toBe(0);
     expect(totales.ventas.totalFacturado).toBe(0);
+  });
+});
+
+describe("crearNumeradorDeFacturas", () => {
+  it("arma números estructurados con punto de venta fijo por proveedor y correlativo propio", () => {
+    const nroDe = crearNumeradorDeFacturas(["PRV_A", "PRV_B"]);
+    expect([nroDe("PRV_A"), nroDe("PRV_B"), nroDe("PRV_A"), nroDe("PRV_A")]).toEqual(["A-00001-00000001", "A-00002-00000001", "A-00001-00000002", "A-00001-00000003"]);
+  });
+
+  it("el proveedor de demo va con letra X, punto de venta 1", () => {
+    const nroDe = crearNumeradorDeFacturas(["PRV_A"]);
+    expect([nroDe(PROVEEDOR_DE_DEMO_CODIGO), nroDe(PROVEEDOR_DE_DEMO_CODIGO)]).toEqual(["X-00001-00000001", "X-00001-00000002"]);
+  });
+
+  it("un proveedor sin punto de venta es un error del guion", () => {
+    expect(() => crearNumeradorDeFacturas(["PRV_A"])("PRV_Z")).toThrow(/PRV_Z/);
+  });
+
+  it("nroFacturaEstructurado completa con ceros (5 dígitos el punto de venta, 8 el número)", () => {
+    expect(nroFacturaEstructurado("A", 23, 237728)).toBe("A-00023-00237728");
   });
 });

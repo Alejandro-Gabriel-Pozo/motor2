@@ -9,6 +9,8 @@ import { anularCompra, corregirCompra } from "../../src/server/actions/movimient
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { datosDeFactura, datosDeRenglon } from "../setup/factura-proveedor";
+import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * E3a, paso 6 (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md, invariante D8): la compra de UNA parte de una factura de proveedor (sus líneas del Kardex salen de un renglón,
@@ -78,7 +80,7 @@ describe("la compra de una parte de factura no se anula ni se corrige suelta (E3
   });
 
   it("una compra simple (sin renglón de factura) se sigue anulando como siempre", async () => {
-    const r1 = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 100 }], claveIdempotencia: randomUUID() });
+    const r1 = await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: randomUUID() });
     expect(r1.ok, r1.mensaje).toBe(true);
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId }, orderBy: { creadoEn: "desc" } });
 

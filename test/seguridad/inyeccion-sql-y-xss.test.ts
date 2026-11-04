@@ -323,7 +323,8 @@ describe("seguridad de entradas: SQL injection y XSS contra las acciones reales"
     it("lo normal sigue igual: sin distinguir mayúsculas ni acentos de la ñ, por nombre y por código", async () => {
       expect(await buscar("HARINA")).toEqual(todas(["MP_CMD_HARINA"]));
       expect(await buscar("MP_CMD_PAN")).toEqual(todas(["MP_CMD_PAN", "MP_CMD_PANB"]));
-      expect(await buscar("pan integral")).toEqual(todas(["MP_CMD_PANB"]));
+      // Búsqueda por palabras (Compras paso 5): «pan integral» = las dos palabras, en cualquier lugar: también «Pan_integral» (antes: solo la frase contigua «Pan integral»).
+      expect(await buscar("pan integral")).toEqual(todas(["MP_CMD_PAN", "MP_CMD_PANB"]));
     });
   });
 

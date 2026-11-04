@@ -13,6 +13,8 @@ import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/pe
 import { MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idempotencia";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /** K1c: anular una compra ya confirmada (Postgres real, sin mocks de base). */
 describe("anularCompra", () => {
@@ -33,8 +35,8 @@ describe("anularCompra", () => {
       fecha: hoy(),
       seccionId,
       proveedorId,
-      nroFactura: opciones.nroFactura,
-      items: [{ productoId: opciones.productoId ?? harinaId, cantidad: opciones.cantidad ?? 10, precioTotal: opciones.precioTotal ?? 1000, loteVencimiento: opciones.lote }],
+      nroFactura: opciones.nroFactura ?? nroFacturaDePrueba(),
+      items: [{ productoId: opciones.productoId ?? harinaId, cantidad: opciones.cantidad ?? 10, precioTotal: opciones.precioTotal ?? 1000, loteVencimiento: opciones.lote, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
       claveIdempotencia: crypto.randomUUID(),
     });
     expect(r.ok, r.mensaje).toBe(true);
@@ -77,13 +79,13 @@ describe("anularCompra", () => {
   });
 
   it("anula la compra: el stock vuelve a lo de antes, la original queda marcada y se escribe el contra-asiento", async () => {
-    const compra = await comprar({ nroFactura: "A-0001" });
+    const compra = await comprar({ nroFactura: "A-00001-00000001" });
     expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(10);
 
-    const r = await anularCompra(compra.id);
+    const r = await anularCompra(compra.id, randomUUID());
     expect(r.ok, r.mensaje).toBe(true);
     expect(r.mensaje).toContain("Compra anulada");
-    expect(r.mensaje).toContain("A-0001");
+    expect(r.mensaje).toContain("A-00001-00000001");
 
     expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(0);
 
@@ -100,7 +102,7 @@ describe("anularCompra", () => {
     // El contra-asiento: una operación AJUSTE con una línea inversa.
     const reversion = await prisma.operacion.findFirstOrThrow({ where: { proceso: "AJUSTE", sucursalId }, include: { movimientos: true } });
     expect(reversion.detalleLibre).toContain(compra.id);
-    expect(reversion.detalleLibre).toContain("A-0001");
+    expect(reversion.detalleLibre).toContain("A-00001-00000001");
     expect(reversion.movimientos).toHaveLength(1);
     expect(reversion.movimientos[0].proceso).toBe("AJUSTE");
     expect(Number(reversion.movimientos[0].cantidad)).toBe(-10);
@@ -109,21 +111,21 @@ describe("anularCompra", () => {
   });
 
   it("queda una fila de auditoría con quién anuló y cuándo", async () => {
-    const compra = await comprar({ nroFactura: "A-0002" });
-    await anularCompra(compra.id);
+    const compra = await comprar({ nroFactura: "A-00001-00000002" });
+    await anularCompra(compra.id, randomUUID());
 
     const filas = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion", entidadId: compra.id } });
     expect(filas).toHaveLength(1);
     expect(filas[0]).toMatchObject({ campo: "anuladaEn", valorAnterior: null, actorId: adminId, sucursalId });
     expect(filas[0].descripcion).toContain("Molino SA");
-    expect(filas[0].descripcion).toContain("A-0002");
+    expect(filas[0].descripcion).toContain("A-00001-00000002");
     expect(filas[0].valorNuevo).not.toBeNull();
   });
 
   it("original + reversión netean EXACTAMENTE a cero, en cantidad y en centavos (con decimales que en coma flotante no cierran)", async () => {
     const compra = await comprar({ cantidad: 3, precioTotal: 100.1 });
-    await comprar({ cantidad: 7, precioTotal: 200.2, nroFactura: "otra" }); // otra compra que NO se anula
-    await anularCompra(compra.id);
+    await comprar({ cantidad: 7, precioTotal: 200.2, nroFactura: "A-00099-00000001" }); // otra compra que NO se anula
+    await anularCompra(compra.id, randomUUID());
 
     const lineas = await prisma.movimientoStock.findMany({ where: { OR: [{ operacionId: compra.id }, { operacion: { detalleLibre: { contains: compra.id } } }] } });
     expect(lineas).toHaveLength(2);
@@ -134,13 +136,13 @@ describe("anularCompra", () => {
   });
 
   it("el gasto del período deja de contar la compra anulada, y solo esa", async () => {
-    const compra = await comprar({ precioTotal: 1000, nroFactura: "G-1" });
-    await comprar({ precioTotal: 300, nroFactura: "G-2" });
+    const compra = await comprar({ precioTotal: 1000, nroFactura: "A-00007-00000001" });
+    await comprar({ precioTotal: 300, nroFactura: "A-00007-00000002" });
     const desde = new Date(Date.now() - 86_400_000);
     const hasta = new Date(Date.now() + 86_400_000);
 
     expect((await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma, AHORA_DE_LA_CORRIDA)).compras.totalGastado).toBe(1300);
-    await anularCompra(compra.id);
+    await anularCompra(compra.id, randomUUID());
     expect((await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma, AHORA_DE_LA_CORRIDA)).compras.totalGastado).toBe(300);
   });
 
@@ -149,7 +151,7 @@ describe("anularCompra", () => {
       const compra = await comprar();
       await consumir(6);
 
-      const r = await anularCompra(compra.id);
+      const r = await anularCompra(compra.id, randomUUID());
 
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("Harina");
@@ -164,26 +166,26 @@ describe("anularCompra", () => {
     it("es POR LOTE: si el lote de la compra ya se vendió, se bloquea aunque haya stock de otro lote del mismo producto", async () => {
       const loteViejo = new Date("2026-12-01T00:00:00.000Z");
       const loteNuevo = new Date("2027-06-01T00:00:00.000Z");
-      await comprar({ cantidad: 50, lote: loteViejo, nroFactura: "L-1" }); // stock previo de OTRO lote
-      const compra = await comprar({ cantidad: 10, lote: loteNuevo, nroFactura: "L-2" });
+      await comprar({ cantidad: 50, lote: loteViejo, nroFactura: "A-00012-00000001" }); // stock previo de OTRO lote
+      const compra = await comprar({ cantidad: 10, lote: loteNuevo, nroFactura: "A-00012-00000002" });
       await consumir(10, { lote: loteNuevo }); // el lote de esta compra se agotó
 
       // Hay 50 kg en total: contra el total pasaría; por lote no.
       expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(50);
       expect(await calcularSaldoPorLote(harinaId, seccionId, loteNuevo, prisma)).toBe(0);
 
-      const r = await anularCompra(compra.id);
+      const r = await anularCompra(compra.id, randomUUID());
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("lote que vence el 2027-06-01");
       expect((await prisma.operacion.findUniqueOrThrow({ where: { id: compra.id } })).anuladaEn).toBeNull();
     });
 
     it("con stock de sobra (había stock previo del mismo lote), se puede anular", async () => {
-      await comprar({ cantidad: 20, nroFactura: "S-1" });
-      const compra = await comprar({ cantidad: 10, nroFactura: "S-2" });
+      await comprar({ cantidad: 20, nroFactura: "A-00019-00000001" });
+      const compra = await comprar({ cantidad: 10, nroFactura: "A-00019-00000002" });
       await consumir(15); // quedan 15: alcanza para revertir los 10 de S-2
 
-      const r = await anularCompra(compra.id);
+      const r = await anularCompra(compra.id, randomUUID());
       expect(r.ok, r.mensaje).toBe(true);
       expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(5);
     });
@@ -192,8 +194,8 @@ describe("anularCompra", () => {
   describe("guardas", () => {
     it("una compra ya anulada no se anula dos veces", async () => {
       const compra = await comprar();
-      expect((await anularCompra(compra.id)).ok).toBe(true);
-      const otra = await anularCompra(compra.id);
+      expect((await anularCompra(compra.id, randomUUID())).ok).toBe(true);
+      const otra = await anularCompra(compra.id, randomUUID());
       expect(otra.ok).toBe(false);
       expect(otra.mensaje).toContain("ya está anulada");
       expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } }), "una sola reversión").toBe(1);
@@ -207,7 +209,7 @@ describe("anularCompra", () => {
       expect((await registrarVenta({ fecha: hoy(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] })).ok).toBe(true);
       const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
 
-      const r = await anularCompra(venta.id);
+      const r = await anularCompra(venta.id, randomUUID());
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("no es una Compra");
       expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toBeNull();
@@ -221,14 +223,14 @@ describe("anularCompra", () => {
         data: { operacionId: operacionAjena.id, productoId: harinaId, seccionId: seccionOtra.id, proceso: "COMPRA", cantidad: 5, detalle: "Compra", precioTotal: 50, precioPorUnidadStock: 10 },
       });
 
-      const r = await anularCompra(operacionAjena.id);
+      const r = await anularCompra(operacionAjena.id, randomUUID());
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("No se encontró");
       expect((await prisma.operacion.findUniqueOrThrow({ where: { id: operacionAjena.id } })).anuladaEn).toBeNull();
     });
 
     it("un id inexistente da «no se encontró», no un error", async () => {
-      const r = await anularCompra("no-existe");
+      const r = await anularCompra("no-existe", randomUUID());
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("No se encontró");
     });
@@ -237,9 +239,20 @@ describe("anularCompra", () => {
       const compra = await comprar();
       await mockearUsuarioActual({ id: operadorId, email: "operador@test.com", nombre: null });
 
-      const r = await anularCompra(compra.id);
+      const r = await anularCompra(compra.id, randomUUID());
 
       expect(r.ok).toBe(false);
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: compra.id } })).anuladaEn).toBeNull();
+      expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(0);
+    });
+
+    it("sin clave de reintento (ausente, null o vacía) se rechaza antes de tocar nada", async () => {
+      const compra = await comprar();
+      for (const clave of [undefined, null, ""]) {
+        const r = await anularCompra(compra.id, clave as unknown as string | undefined);
+        expect(r.ok).toBe(false);
+        expect(r.mensaje).toBe("Falta la clave de reintento: recargá la pantalla.");
+      }
       expect((await prisma.operacion.findUniqueOrThrow({ where: { id: compra.id } })).anuladaEn).toBeNull();
       expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(0);
     });
@@ -255,7 +268,7 @@ describe("anularCompra", () => {
 
   describe("idempotencia", () => {
     it("reenviar la misma clave devuelve el mensaje ORIGINAL (no «ya está anulada») y no anula dos veces", async () => {
-      const compra = await comprar({ nroFactura: "I-1" });
+      const compra = await comprar({ nroFactura: "A-00009-00000001" });
       const clave = randomUUID();
 
       const primera = await anularCompra(compra.id, clave);
@@ -269,8 +282,8 @@ describe("anularCompra", () => {
     });
 
     it("la misma clave usada para anular OTRA compra es un conflicto, no un duplicado silencioso", async () => {
-      const a = await comprar({ nroFactura: "I-2" });
-      const b = await comprar({ nroFactura: "I-3" });
+      const a = await comprar({ nroFactura: "A-00009-00000002" });
+      const b = await comprar({ nroFactura: "A-00009-00000003" });
       const clave = randomUUID();
 
       expect((await anularCompra(a.id, clave)).ok).toBe(true);
@@ -285,9 +298,9 @@ describe("anularCompra", () => {
   describe("concurrencia", () => {
     it("dos anulaciones simultáneas de la misma compra: exactamente una reversión, ninguna llamada rechaza", async () => {
       for (let i = 0; i < 5; i++) {
-        const compra = await comprar({ nroFactura: `C-${i}`, cantidad: 4, precioTotal: 40 });
+        const compra = await comprar({ nroFactura: `A-00003-${String(i + 1).padStart(8, "0")}`, cantidad: 4, precioTotal: 40 });
 
-        const settled = await Promise.allSettled([anularCompra(compra.id), anularCompra(compra.id)]);
+        const settled = await Promise.allSettled([anularCompra(compra.id, randomUUID()), anularCompra(compra.id, randomUUID())]);
 
         expect(settled.every((s) => s.status === "fulfilled"), `iteración ${i}: ninguna llamada debe rechazar: ${JSON.stringify(settled)}`).toBe(true);
         const resultados = settled.map((s) => (s.status === "fulfilled" ? s.value : { ok: false, mensaje: "rejected" }));
@@ -301,10 +314,10 @@ describe("anularCompra", () => {
 
   describe("anular y recargar", () => {
     it("se puede volver a cargar la compra con el MISMO N.º de factura, y el gasto es solo el de la recarga", async () => {
-      const compra = await comprar({ cantidad: 10, precioTotal: 1000, nroFactura: "F-9" }); // se cargó con un precio mal tipeado
-      await anularCompra(compra.id);
+      const compra = await comprar({ cantidad: 10, precioTotal: 1000, nroFactura: "A-00006-00000009" }); // se cargó con un precio mal tipeado
+      await anularCompra(compra.id, randomUUID());
 
-      const recarga = await comprar({ cantidad: 10, precioTotal: 100, nroFactura: "F-9" }); // el precio correcto
+      const recarga = await comprar({ cantidad: 10, precioTotal: 100, nroFactura: "A-00006-00000009" }); // el precio correcto
       expect(recarga.id).not.toBe(compra.id);
 
       const desde = new Date(Date.now() - 86_400_000);
@@ -314,18 +327,18 @@ describe("anularCompra", () => {
       expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(10);
 
       // Y la recarga, ya vigente, vuelve a ocupar el número.
-      const repetida = await registrarMovimiento({ proceso: "COMPRA", fecha: hoy(), seccionId, proveedorId, nroFactura: "F-9", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() });
+      const repetida = await registrarMovimiento({ proceso: "COMPRA", fecha: hoy(), seccionId, proveedorId, nroFactura: "A-00006-00000009", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       expect(repetida.ok).toBe(false);
       expect(repetida.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
     });
 
     it("el costo de reposición vuelve a valer el de la compra que quedó vigente, no el de la anulada", async () => {
       const { obtenerCostoActualPorMP } = await import("../../src/server/lecturas/reportes/comun");
-      await comprar({ cantidad: 10, precioTotal: 100, nroFactura: "R-1" }); // $10/kg
-      const cara = await comprar({ cantidad: 10, precioTotal: 1000, nroFactura: "R-2" }); // $100/kg, más reciente
+      await comprar({ cantidad: 10, precioTotal: 100, nroFactura: "A-00018-00000001" }); // $10/kg
+      const cara = await comprar({ cantidad: 10, precioTotal: 1000, nroFactura: "A-00018-00000002" }); // $100/kg, más reciente
       expect((await obtenerCostoActualPorMP(sucursalId, prisma)).get(harinaId)?.precioPorUnidadStock).toBe(100);
 
-      await anularCompra(cara.id);
+      await anularCompra(cara.id, randomUUID());
       expect((await obtenerCostoActualPorMP(sucursalId, prisma)).get(harinaId)?.precioPorUnidadStock).toBe(10);
     });
   });

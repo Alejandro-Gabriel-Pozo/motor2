@@ -7,6 +7,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularCompra, corregirCompra } from "../../src/server/actions/movimientos/compras";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /** K1b: corregir la cabecera (proveedor, N.º de factura, detalle) de una compra confirmada. Postgres real, sin mocks de base. */
 describe("corregirCompra", () => {
@@ -58,10 +59,10 @@ describe("corregirCompra", () => {
   });
 
   it("completa una compra cargada «Sin proveedor», y su Kardex queda EXACTAMENTE igual", async () => {
-    const op = await compra({ nroFactura: "A-0001" });
+    const op = await compra({ nroFactura: "A-00001-00000001" });
     const antes = await prisma.movimientoStock.findMany({ where: { operacionId: op.id }, orderBy: { id: "asc" } });
 
-    const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-0001", detalleLibre: "" }, vista(op));
+    const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00001-00000001", detalleLibre: "" }, vista(op));
 
     expect(r.ok, r.mensaje).toBe(true);
     expect(r.mensaje).toContain("proveedor");
@@ -73,15 +74,15 @@ describe("corregirCompra", () => {
   });
 
   it("corrige el N.º de factura y el detalle, y deja una fila de auditoría POR CAMPO que cambió (ninguna por los que no)", async () => {
-    const op = await compra({ proveedorId: molinoId, nroFactura: "A-0001", detalleLibre: "tipeo mal" });
+    const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001", detalleLibre: "tipeo mal" });
 
-    const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-0002", detalleLibre: "compra de la semana" }, vista(op));
+    const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00001-00000002", detalleLibre: "compra de la semana" }, vista(op));
 
     expect(r.ok, r.mensaje).toBe(true);
     const filas = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion", entidadId: op.id }, orderBy: { campo: "asc" } });
     expect(filas.map((f) => f.campo)).toEqual(["detalleLibre", "nroFactura"]); // el proveedor no cambió: sin fila
     const factura = filas.find((f) => f.campo === "nroFactura")!;
-    expect(factura).toMatchObject({ valorAnterior: "A-0001", valorNuevo: "A-0002", actorId: adminId, sucursalId });
+    expect(factura).toMatchObject({ valorAnterior: "A-00001-00000001", valorNuevo: "A-00001-00000002", actorId: adminId, sucursalId });
     expect(factura.descripcion).toContain("2026-08-10");
     expect(factura.descripcion).toContain("N.º de factura");
   });
@@ -95,62 +96,55 @@ describe("corregirCompra", () => {
     expect(fila.valorNuevo).toBe("Distribuidora Sur");
   });
 
-  it("se puede borrar el N.º de factura (dejarlo vacío)", async () => {
-    const op = await compra({ proveedorId: molinoId, nroFactura: "A-0001" });
-    const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "   ", detalleLibre: "" }, vista(op));
-    expect(r.ok, r.mensaje).toBe(true);
-    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).nroFactura).toBeNull();
-  });
-
   describe("factura repetida", () => {
     it("se rechaza si OTRA compra vigente del mismo proveedor ya usa ese número, y no cambia nada", async () => {
-      await compra({ proveedorId: molinoId, nroFactura: "A-0001" });
-      const otra = await compra({ proveedorId: molinoId, nroFactura: "A-0009" });
+      await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
+      const otra = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000009" });
 
-      const r = await corregirCompra(otra.id, { proveedorId: molinoId, nroFactura: "A-0001", detalleLibre: "" }, vista(otra));
+      const r = await corregirCompra(otra.id, { proveedorId: molinoId, nroFactura: "A-00001-00000001", detalleLibre: "" }, vista(otra));
 
       expect(r.ok).toBe(false);
       expect(r.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
-      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: otra.id } })).nroFactura).toBe("A-0009");
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: otra.id } })).nroFactura).toBe("A-00001-00000009");
       expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion" } })).toBe(0);
     });
 
     it("el MISMO número con OTRO proveedor no es un choque", async () => {
-      await compra({ proveedorId: molinoId, nroFactura: "A-0001" });
-      const otra = await compra({ proveedorId: otroProveedorId, nroFactura: "B-0001" });
-      const r = await corregirCompra(otra.id, { proveedorId: otroProveedorId, nroFactura: "A-0001", detalleLibre: "" }, vista(otra));
+      await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
+      const otra = await compra({ proveedorId: otroProveedorId, nroFactura: "A-00002-00000001" });
+      const r = await corregirCompra(otra.id, { proveedorId: otroProveedorId, nroFactura: "A-00001-00000001", detalleLibre: "" }, vista(otra));
       expect(r.ok, r.mensaje).toBe(true);
     });
 
     it("cambiar el PROVEEDOR de una compra a uno que ya tiene ese número también choca", async () => {
-      await compra({ proveedorId: otroProveedorId, nroFactura: "A-0001" });
-      const op = await compra({ proveedorId: molinoId, nroFactura: "A-0001" });
-      const r = await corregirCompra(op.id, { proveedorId: otroProveedorId, nroFactura: "A-0001", detalleLibre: "" }, vista(op));
+      await compra({ proveedorId: otroProveedorId, nroFactura: "A-00001-00000001" });
+      const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
+      const r = await corregirCompra(op.id, { proveedorId: otroProveedorId, nroFactura: "A-00001-00000001", detalleLibre: "" }, vista(op));
       expect(r.ok).toBe(false);
       expect(r.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
     });
 
     it("el número de una compra ANULADA queda libre: se puede usar en otra", async () => {
-      const vieja = await compra({ proveedorId: molinoId, nroFactura: "A-0001" });
-      expect((await anularCompra(vieja.id)).ok).toBe(true);
-      const otra = await compra({ proveedorId: molinoId, nroFactura: "A-0009" });
+      const vieja = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
+      expect((await anularCompra(vieja.id, crypto.randomUUID())).ok).toBe(true);
+      const otra = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000009" });
 
-      const r = await corregirCompra(otra.id, { proveedorId: molinoId, nroFactura: "A-0001", detalleLibre: "" }, vista(otra));
+      const r = await corregirCompra(otra.id, { proveedorId: molinoId, nroFactura: "A-00001-00000001", detalleLibre: "" }, vista(otra));
       expect(r.ok, r.mensaje).toBe(true);
     });
 
     it("una compra sin proveedor no se compara con nada (como en la carga): dos «sin proveedor» con el mismo número conviven", async () => {
-      await compra({ nroFactura: "S-1" });
-      const otra = await compra({ nroFactura: "S-2" });
-      const r = await corregirCompra(otra.id, { proveedorId: null, nroFactura: "S-1", detalleLibre: "" }, vista(otra));
+      await compra({ nroFactura: "A-00019-00000001" });
+      const otra = await compra({ nroFactura: "A-00019-00000002" });
+      const r = await corregirCompra(otra.id, { proveedorId: null, nroFactura: "A-00019-00000001", detalleLibre: "" }, vista(otra));
       expect(r.ok, r.mensaje).toBe(true);
     });
 
     it("la corrección ocupa el número: después no se puede cargar otra compra con ese proveedor y factura", async () => {
       const op = await compra({ proveedorId: molinoId });
-      expect((await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "N-77", detalleLibre: "" }, vista(op))).ok).toBe(true);
+      expect((await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00014-00000077", detalleLibre: "" }, vista(op))).ok).toBe(true);
 
-      const carga = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: molinoId, nroFactura: "N-77", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() });
+      const carga = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: molinoId, nroFactura: "A-00014-00000077", items: [{ productoId: harinaId, cantidad: 1, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       expect(carga.ok).toBe(false);
       expect(carga.mensaje).toBe(MENSAJE_FACTURA_DUPLICADA);
     });
@@ -158,36 +152,36 @@ describe("corregirCompra", () => {
 
   describe("guardas", () => {
     it("una compra ANULADA no se corrige", async () => {
-      const op = await compra({ proveedorId: molinoId, nroFactura: "A-0001" });
-      await anularCompra(op.id);
+      const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
+      await anularCompra(op.id, crypto.randomUUID());
       const anulada = await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } });
 
-      const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-0002", detalleLibre: "" }, vista(anulada));
+      const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00001-00000002", detalleLibre: "" }, vista(anulada));
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("anulada");
-      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).nroFactura).toBe("A-0001");
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).nroFactura).toBe("A-00001-00000001");
     });
 
     it("guarda optimista: si la compra cambió mientras se editaba, no se pisa y se avisa", async () => {
-      const op = await compra({ proveedorId: molinoId, nroFactura: "A-0001" });
+      const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
       const vistaVieja = vista(op);
       // Otra persona la corrige primero.
-      expect((await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-0002", detalleLibre: "" }, vistaVieja)).ok).toBe(true);
+      expect((await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00001-00000002", detalleLibre: "" }, vistaVieja)).ok).toBe(true);
 
       // La primera persona, con lo que veía antes, intenta otra cosa.
-      const r = await corregirCompra(op.id, { proveedorId: otroProveedorId, nroFactura: "A-0001", detalleLibre: "" }, vistaVieja);
+      const r = await corregirCompra(op.id, { proveedorId: otroProveedorId, nroFactura: "A-00001-00000001", detalleLibre: "" }, vistaVieja);
 
       expect(r.ok).toBe(false);
       expect(r.mensaje).toContain("cambió mientras la editabas");
       const guardada = await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } });
-      expect(guardada.nroFactura).toBe("A-0002");
+      expect(guardada.nroFactura).toBe("A-00001-00000002");
       expect(guardada.proveedorId).toBe(molinoId);
     });
 
     it("es idempotente: reenviar la misma corrección (se perdió la respuesta) no falla ni duplica la auditoría", async () => {
-      const op = await compra({ proveedorId: molinoId, nroFactura: "A-0001" });
+      const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
       const vistaOriginal = vista(op);
-      const pedido = { proveedorId: molinoId, nroFactura: "A-0002", detalleLibre: "" };
+      const pedido = { proveedorId: molinoId, nroFactura: "A-00001-00000002", detalleLibre: "" };
 
       expect((await corregirCompra(op.id, pedido, vistaOriginal)).ok).toBe(true);
       const reenvio = await corregirCompra(op.id, pedido, vistaOriginal);
@@ -198,8 +192,8 @@ describe("corregirCompra", () => {
     });
 
     it("sin ningún cambio no escribe nada", async () => {
-      const op = await compra({ proveedorId: molinoId, nroFactura: "A-0001", detalleLibre: "nota" });
-      const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-0001", detalleLibre: "nota" }, vista(op));
+      const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001", detalleLibre: "nota" });
+      const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00001-00000001", detalleLibre: "nota" }, vista(op));
       expect(r.ok).toBe(true);
       expect(r.mensaje).toContain("nada que corregir");
       expect(await prisma.registroAuditoria.count()).toBe(0);
@@ -220,21 +214,17 @@ describe("corregirCompra", () => {
     });
 
     it("un proveedor que ya estaba en la compra y hoy está inactivo no traba corregir OTRO campo", async () => {
-      const op = await compra({ proveedorId: molinoId, nroFactura: "A-0001" });
+      const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
       await prisma.proveedor.update({ where: { id: molinoId }, data: { activo: false } });
-      const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-0002", detalleLibre: "" }, vista(op));
+      const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00001-00000002", detalleLibre: "" }, vista(op));
       expect(r.ok, r.mensaje).toBe(true);
     });
 
-    it("un N.º de factura de más de 60 caracteres se rechaza; un detalle viejo largo que no se toca no traba la corrección", async () => {
+    it("un detalle viejo largo que no se toca no traba la corrección", async () => {
       const larga = "x".repeat(300);
-      const op = await compra({ proveedorId: molinoId, nroFactura: "A-0001", detalleLibre: larga });
+      const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001", detalleLibre: larga });
 
-      const a = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "y".repeat(61), detalleLibre: larga }, vista(op));
-      expect(a.ok).toBe(false);
-      expect(a.mensaje).toContain("60 caracteres");
-
-      const b = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-0002", detalleLibre: larga }, vista(op));
+      const b = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00001-00000002", detalleLibre: larga }, vista(op));
       expect(b.ok, b.mensaje).toBe(true);
     });
 
@@ -256,13 +246,13 @@ describe("corregirCompra", () => {
     });
 
     it("sin el permiso corregir_compra (el operador arranca sin él) no se puede, y no se escribe nada", async () => {
-      const op = await compra({ proveedorId: molinoId, nroFactura: "A-0001" });
+      const op = await compra({ proveedorId: molinoId, nroFactura: "A-00001-00000001" });
       await mockearUsuarioActual({ id: operadorId, email: "operador@test.com", nombre: null });
 
-      const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-0002", detalleLibre: "" }, vista(op));
+      const r = await corregirCompra(op.id, { proveedorId: molinoId, nroFactura: "A-00001-00000002", detalleLibre: "" }, vista(op));
 
       expect(r.ok).toBe(false);
-      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).nroFactura).toBe("A-0001");
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).nroFactura).toBe("A-00001-00000001");
       expect(await prisma.registroAuditoria.count()).toBe(0);
     });
   });
@@ -272,7 +262,7 @@ describe("corregirCompra", () => {
       for (let i = 0; i < 5; i++) {
         const a = await compra({ proveedorId: molinoId });
         const b = await compra({ proveedorId: molinoId });
-        const factura = `CONC-${i}`;
+        const factura = `A-00020-${String(i + 1).padStart(8, "0")}`;
 
         const settled = await Promise.allSettled([
           corregirCompra(a.id, { proveedorId: molinoId, nroFactura: factura, detalleLibre: "" }, vista(a)),

@@ -4,6 +4,7 @@ import { prisma } from "./fixtures/db";
 import { crearMembresia } from "../setup/membresia";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import { llenarNumeroDeFactura, numeroDeFacturaUnico } from "./fixtures/compra-por-pasos";
 
 /**
  * Corregir la cabecera de una compra (proveedor, N.º de factura y detalle) desde «Compras registradas» (K1b). Se siembran las compras directo en la base, con
@@ -48,31 +49,35 @@ async function sembrar(sucursalId: string, seccionId: string) {
 test("se corrige el proveedor y el N.º de factura de una compra, sin tocar sus líneas, y el foco y los avisos acompañan", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const s = await sembrar(sucursalId, seccionId);
   try {
-    // Una compra cargada «Sin proveedor» y con la factura mal tipeada: el caso real.
-    const op = await s.compra({ nroFactura: `MAL-${s.marca}`, detalleLibre: "sin proveedor" });
-    // El filtro por factura usa la marca, que tienen tanto el número mal tipeado como el corregido: si filtrara por el número viejo, la compra saldría de la
+    // Una compra vieja cargada «Sin proveedor» y con la factura mal tipeada (texto libre, de antes de que el número fuera obligatorio y armado): el caso real.
+    const bien = numeroDeFacturaUnico();
+    const op = await s.compra({ nroFactura: `MAL-${bien.numero}`, detalleLibre: "sin proveedor" });
+    // El filtro por factura usa los 8 dígitos del número, que tienen tanto el número mal tipeado como el corregido: si filtrara por el número viejo, la compra saldría de la
     // lista apenas se corrige (ya no coincide) y el aviso de éxito se iría con ella.
-    await page.goto(`/reportes/compras?factura=${encodeURIComponent(s.marca)}`);
+    await page.goto(`/reportes/compras?factura=${encodeURIComponent(bien.numero)}`);
     const tarjeta = page.locator(`[data-compra="${op.id}"]`);
     await expect(tarjeta).toContainText("Sin proveedor");
     await tarjeta.locator("summary").click();
 
     // Abrir: el foco va al primer campo y el formulario avisa qué NO se corrige acá.
     await tarjeta.getByRole("button", { name: /^Corregir proveedor y factura/ }).click();
-    const proveedor = tarjeta.getByLabel("Proveedor", { exact: true });
+    const proveedor = tarjeta.getByRole("combobox", { name: "Proveedor", exact: true });
     await expect(proveedor).toBeFocused();
     await expect(tarjeta.getByText(/Para cambiar precios o cantidades, anulá la compra/)).toBeVisible();
     await expect(tarjeta.getByRole("button", { name: "Guardar corrección" })).toBeDisabled(); // todavía no hay cambios
+    // No hay «Sin proveedor» para elegir, y el texto libre de antes se muestra aparte, no en los tres campos.
+    await expect(proveedor.locator("option", { hasText: "Sin proveedor" })).toHaveCount(0);
+    await expect(tarjeta.getByText(`Número cargado antes: MAL-${bien.numero}`)).toBeVisible();
 
     // Escape cancela y el foco vuelve al botón que lo abrió; no se guardó nada.
     await page.keyboard.press("Escape");
-    await expect(tarjeta.getByLabel("Proveedor", { exact: true })).toHaveCount(0);
+    await expect(tarjeta.getByRole("combobox", { name: "Proveedor", exact: true })).toHaveCount(0);
     await expect(tarjeta.getByRole("button", { name: /^Corregir proveedor y factura/ })).toBeFocused();
 
     // Corregir de verdad.
     await tarjeta.getByRole("button", { name: /^Corregir proveedor y factura/ }).click();
-    await tarjeta.getByLabel("Proveedor", { exact: true }).selectOption({ label: s.molino.nombre });
-    await tarjeta.getByLabel("N.º de factura", { exact: true }).fill(`BIEN-${s.marca}`);
+    await tarjeta.getByRole("combobox", { name: "Proveedor", exact: true }).selectOption({ label: s.molino.nombre });
+    await llenarNumeroDeFactura(tarjeta, bien);
     await expect(tarjeta.getByRole("button", { name: "Guardar corrección" })).toBeEnabled();
     await tarjeta.getByRole("button", { name: "Guardar corrección" }).click();
 
@@ -84,12 +89,12 @@ test("se corrige el proveedor y el N.º de factura de una compra, sin tocar sus 
 
     // La fila ya muestra lo corregido.
     await expect(tarjeta).toContainText(s.molino.nombre);
-    await expect(tarjeta).toContainText(`Factura BIEN-${s.marca}`);
+    await expect(tarjeta).toContainText(`Factura ${bien.letra} ${bien.puntoDeVenta}-${bien.numero}`);
 
     // En la base: cabecera corregida, auditoría por campo y el Kardex EXACTAMENTE igual.
     const guardada = await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } });
     expect(guardada.proveedorId).toBe(s.molino.id);
-    expect(guardada.nroFactura).toBe(`BIEN-${s.marca}`);
+    expect(guardada.nroFactura).toBe(bien.texto);
     expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion", entidadId: op.id } })).toBe(2);
     const linea = await prisma.movimientoStock.findFirstOrThrow({ where: { operacionId: op.id } });
     expect(Number(linea.precioTotal)).toBe(1000);
@@ -102,19 +107,21 @@ test("se corrige el proveedor y el N.º de factura de una compra, sin tocar sus 
 test("un N.º de factura ya usado por otra compra vigente del proveedor se rechaza con un aviso visible, y el formulario sigue abierto", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const s = await sembrar(sucursalId, seccionId);
   try {
-    await s.compra({ proveedorId: s.molino.id, nroFactura: `USADA-${s.marca}` });
-    const otra = await s.compra({ proveedorId: s.molino.id, nroFactura: `OTRA-${s.marca}` });
+    const usada = numeroDeFacturaUnico();
+    const propia = numeroDeFacturaUnico();
+    await s.compra({ proveedorId: s.molino.id, nroFactura: usada.texto });
+    const otra = await s.compra({ proveedorId: s.molino.id, nroFactura: propia.texto });
     await page.goto(`/reportes/compras?proveedorId=${s.molino.id}`);
     const tarjeta = page.locator(`[data-compra="${otra.id}"]`);
     await tarjeta.locator("summary").click();
     await tarjeta.getByRole("button", { name: /^Corregir proveedor y factura/ }).click();
-    await tarjeta.getByLabel("N.º de factura", { exact: true }).fill(`USADA-${s.marca}`);
+    await llenarNumeroDeFactura(tarjeta, usada);
     await tarjeta.getByRole("button", { name: "Guardar corrección" }).click();
 
-    const error = tarjeta.getByRole("alert").filter({ hasText: "Ya hay una compra registrada con esa factura" });
+    const error = tarjeta.getByRole("alert").filter({ hasText: "Ya hay una factura de este proveedor con ese número" });
     await expect(error).toBeVisible();
-    await expect(tarjeta.getByLabel("N.º de factura", { exact: true })).toBeVisible(); // sigue abierto para poder corregirlo
-    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: otra.id } })).nroFactura).toBe(`OTRA-${s.marca}`);
+    await expect(tarjeta.getByTestId("numero-de-comprobante")).toBeVisible(); // sigue abierto para poder corregirlo
+    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: otra.id } })).nroFactura).toBe(propia.texto);
   } finally {
     await s.limpiar();
   }
@@ -128,7 +135,7 @@ test("si otra persona corrigió la compra mientras se editaba, no se pisa: se av
     const tarjeta = page.locator(`[data-compra="${op.id}"]`);
     await tarjeta.locator("summary").click();
     await tarjeta.getByRole("button", { name: /^Corregir proveedor y factura/ }).click();
-    await tarjeta.getByLabel("N.º de factura", { exact: true }).fill(`MIA-${s.marca}`);
+    await llenarNumeroDeFactura(tarjeta, numeroDeFacturaUnico());
 
     // Mientras tanto, otra persona la corrige (directo en la base).
     await prisma.operacion.update({ where: { id: op.id }, data: { nroFactura: `DE-OTRA-${s.marca}` } });

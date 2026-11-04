@@ -7,10 +7,12 @@ vi.mock("../../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn()
 
 import { limpiarBaseDeTest, sembrarBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../../setup/test-db";
 import { mockearUsuarioActual } from "../../setup/mock-sesion";
+import { comprobanteDePrueba } from "../../setup/comprobante-de-prueba";
 import { registrarMovimiento } from "../../../src/server/actions/movimientos/movimientos";
 import { anularVenta } from "../../../src/server/actions/movimientos/venta";
 import { type ActorVenta, type DatosVentaEnTx, type OpcionesVentaEnTx, type ResultadoVentaEnTx } from "../../../src/core/movimientos/registrar-venta";
 import { registrarVentaEnTx } from "../../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
+import { REFERENCIA_DE_PRUEBA } from "../../setup/referencia-de-prueba";
 
 /**
  * CARACTERIZACIÓN de la venta (Fase 4 del plan de pureza, tramo A: la venta sale de `core/movimientos` a `server/`). Se escribe ANTES de mover
@@ -133,10 +135,10 @@ describe("Caracterización de la venta: una secuencia completa con filas y traza
     for (const [nombre, id] of Object.entries(ids)) nombres.set(id, nombre);
 
     // Costos de reposición determinísticos: MuzzaA y MuzzaB con costos DISTINTOS (1000 y 1200/kg); el costo de Pizza queda anclado a MuzzaA.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaA, cantidad: 0.3, precioTotal: 300 }], claveIdempotencia: claveDePreparacion() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaB, cantidad: 0.3, precioTotal: 360 }], claveIdempotencia: claveDePreparacion() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: vino, cantidad: 2, precioTotal: 200 }], claveIdempotencia: claveDePreparacion() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: bollo, cantidad: 3, precioTotal: 90 }], claveIdempotencia: claveDePreparacion() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaA, cantidad: 0.3, precioTotal: 300, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: claveDePreparacion() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: muzzaB, cantidad: 0.3, precioTotal: 360, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: claveDePreparacion() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: vino, cantidad: 2, precioTotal: 200, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: claveDePreparacion() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: bollo, cantidad: 3, precioTotal: 90, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: claveDePreparacion() });
     await registrarMovimiento({ proceso: "PRODUCCION", fecha: new Date("2026-09-01"), seccionId, items: [{ productoId: torta, cantidad: 2, loteVencimiento: new Date("2026-10-01") }], claveIdempotencia: claveDePreparacion() });
   });
 
@@ -213,7 +215,7 @@ describe("Caracterización de la venta: una secuencia completa con filas y traza
     expect(s1.ok).toBe(true);
 
     // 2. Reposición de MuzzaA y mostrador con clave I3 (queda en la PRIMERA Operación del lote).
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-27"), seccionId, items: [{ productoId: ids.muzzaA, cantidad: 2, precioTotal: 2000 }], claveIdempotencia: claveDePreparacion() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-09-27"), seccionId, items: [{ productoId: ids.muzzaA, cantidad: 2, precioTotal: 2000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: claveDePreparacion() });
     const s2 = await paso(
       "2. Mostrador: Pizza ×2 con clave de idempotencia, N.º de factura y detalle",
       { fecha: new Date("2026-09-27"), origen: { tipo: "seccion", seccionId }, nroFactura: "A-0001", detalle: "mesa 4", lineas: [{ productoId: ids.pizza, cantidadVendida: 2 }] },

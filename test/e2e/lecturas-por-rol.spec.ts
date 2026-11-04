@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { abrirComoRol } from "./fixtures/rol-pos";
+import { completarPasoFactura, elegirProductoEnLaFila, llenarLinea, siguiente, verPaso } from "./fixtures/compra-por-pasos";
 import type { AccionClave } from "../../src/core/permisos/acciones";
 
 /**
@@ -36,11 +37,17 @@ test("el operador de fábrica abre las pantallas que consumen las lecturas de H8
     const page = operador.page;
 
     // Compra: secciones, proveedores para elegir (sin la ficha) y el buscador de productos.
+    // Cada lectura vive en su paso: proveedores (1 «Factura»), buscador de productos (2 «Qué compraste») y depósitos (3 «Dónde entra»).
     await abreSinError(page, "/movimientos/compra", "Compra");
-    await expect(page.getByLabel("Depósito").locator("option", { hasText: "Depósito E2E" })).toHaveCount(1);
     await expect(page.getByLabel("Proveedor").locator("option", { hasText: proveedor.nombre })).toHaveCount(1);
+    await completarPasoFactura(page, { proveedor: proveedor.nombre });
     await page.locator('input[role="combobox"]').first().fill(producto.codigo);
     await expect(page.getByRole("option", { name: new RegExp(producto.codigo) })).toBeVisible();
+    await elegirProductoEnLaFila(page, producto.nombre);
+    await llenarLinea(page, { cantidad: "1", referencia: "Lectura por rol" });
+    await siguiente(page);
+    await verPaso(page, 3, "Dónde entra");
+    await expect(page.getByLabel("Depósito").locator("option", { hasText: "Depósito E2E" })).toHaveCount(1);
 
     // Merma y consumo: los motivos y los destinos activos (sembrados por la base del E2E).
     await abreSinError(page, "/movimientos/merma", "Merma");

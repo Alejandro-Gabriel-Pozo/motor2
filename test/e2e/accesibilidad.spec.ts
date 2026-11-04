@@ -7,6 +7,17 @@ import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 import { crearMembresias, crearMembresia } from "../setup/membresia";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import {
+  completarPasoFactura,
+  elegirProductoEnLaFila,
+  elegirSelectPorOpcion,
+  llenarLinea,
+  llenarNumeroDeFactura,
+  numeroDeFacturaUnico,
+  sembrarProveedorEInsumo,
+  siguiente,
+  verPaso,
+} from "./fixtures/compra-por-pasos";
 import { activarEmpresaB, crearUsuarioEn, paginaConSesion, suspenderEmpresaB, type EmpresasDeLaPrueba } from "./fixtures/multiempresa";
 
 /**
@@ -278,9 +289,9 @@ testAutenticado("movimientos/precio-local: el selector de producto abierto (con 
     await selector.press("ArrowDown");
     await expect(selector).toHaveAttribute("aria-activedescendant", (await opcion.getAttribute("id")) ?? "sin-id");
 
-    // Sin resultados: el aviso «Sin resultados.» también vive dentro del listbox.
+    // Sin resultados: el aviso «Ningún producto tiene todas esas palabras…» también vive dentro del listbox.
     await selector.fill("zzz-no-existe-ningun-producto-asi");
-    await expect(page.getByText("Sin resultados.")).toBeVisible();
+    await expect(page.getByText("Ningún producto tiene todas esas palabras. Probá con menos palabras o con el código.")).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations, "listbox sin resultados").toEqual([]);
   } finally {
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
@@ -673,25 +684,27 @@ testAutenticado(
       await prisma.movimientoStock.create({ data: { operacionId: op.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 5, detalle: "Compra", precioTotal: 50, precioPorUnidadStock: 10 } });
       return op;
     }
-    await compra(`A11Y-USADA-${marca}`);
-    const aCorregir = await compra(`A11Y-MAL-${marca}`);
+    const usada = numeroDeFacturaUnico();
+    const bien = numeroDeFacturaUnico();
+    await compra(usada.texto);
+    const aCorregir = await compra(`A11Y-MAL-${marca}`); // texto libre de una compra vieja
     try {
       await page.goto(`/reportes/compras?proveedorId=${proveedor.id}`);
       await conTitulo(page, "Compras registradas");
       const tarjeta = page.locator(`[data-compra="${aCorregir.id}"]`);
       await tarjeta.locator("summary").click();
       await tarjeta.getByRole("button", { name: /^Corregir proveedor y factura/ }).click();
-      await expect(tarjeta.getByLabel("Proveedor", { exact: true })).toBeVisible();
+      await expect(tarjeta.getByRole("combobox", { name: "Proveedor", exact: true })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "formulario abierto").toEqual([]);
 
       // Rechazo por factura repetida: el aviso queda visible.
-      await tarjeta.getByLabel("N.º de factura", { exact: true }).fill(`A11Y-USADA-${marca}`);
+      await llenarNumeroDeFactura(tarjeta, usada);
       await tarjeta.getByRole("button", { name: "Guardar corrección" }).click();
-      await expect(tarjeta.getByRole("alert").filter({ hasText: "Ya hay una compra registrada con esa factura" })).toBeVisible();
+      await expect(tarjeta.getByRole("alert").filter({ hasText: "Ya hay una factura de este proveedor con ese número" })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "rechazo por factura repetida").toEqual([]);
 
       // Corregida: el formulario se cierra y queda el aviso de éxito.
-      await tarjeta.getByLabel("N.º de factura", { exact: true }).fill(`A11Y-BIEN-${marca}`);
+      await llenarNumeroDeFactura(tarjeta, bien);
       await tarjeta.getByRole("button", { name: "Guardar corrección" }).click();
       await expect(tarjeta.getByRole("status").filter({ hasText: "Compra corregida" })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "compra corregida").toEqual([]);
@@ -1689,3 +1702,40 @@ base.describe("login con sesión: elegir empresa y empresa suspendida", () => {
     await page.context().close();
   });
 });
+
+testAutenticado(
+  "movimientos/compra (por pasos): «Factura», «Qué compraste», «Dónde entra», «Pago» y «Revisar y confirmar» sin violaciones de axe",
+  async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+    const { proveedor, producto } = await sembrarProveedorEInsumo(prisma, sucursalId, "A11YCP");
+    const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+    await page.goto("/movimientos/compra");
+
+    // Paso 1: sin tocar nada, y con el error del número a la vista (se intenta avanzar sin completarlo).
+    await verPaso(page, 1, "Factura");
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 1 «Factura»").toEqual([]);
+    await siguiente(page);
+    await expect(page.getByRole("alert").first()).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 1 con el error de proveedor/número").toEqual([]);
+
+    await completarPasoFactura(page, { proveedor: proveedor.nombre });
+    await elegirProductoEnLaFila(page, producto.nombre);
+    await llenarLinea(page, { cantidad: "2", importe: "100", referencia: "Harina A11y" });
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 «Qué compraste»").toEqual([]);
+
+    await siguiente(page);
+    await verPaso(page, 3, "Dónde entra");
+    await elegirSelectPorOpcion(page, seccion.nombre);
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 3 «Dónde entra»").toEqual([]);
+
+    await siguiente(page);
+    await verPaso(page, 4, "Pago");
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 4 «Pago»").toEqual([]);
+
+    await siguiente(page);
+    await verPaso(page, 5, "Revisar y confirmar");
+    await expect(page.getByTestId("resumen-de-compra")).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations, "paso 5 «Revisar y confirmar»").toEqual([]);
+    await page.emulateMedia({ colorScheme: "dark" });
+    expect((await new AxeBuilder({ page }).include("main").analyze()).violations, "paso 5 en modo oscuro emulado").toEqual([]);
+  }
+);

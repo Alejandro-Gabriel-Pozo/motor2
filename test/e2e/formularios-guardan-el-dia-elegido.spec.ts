@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { DIA_MS } from "../setup/tiempo";
+import { completarPasoFactura, elegirProductoEnLaFila, irARevisar, llenarLinea, confirmarCompra } from "./fixtures/compra-por-pasos";
 import { ZONA_ARGENTINA, diaDeCalendario, mediodiaDelDia, sumarDias } from "../../src/core/tiempo/zona-horaria";
 
 /**
@@ -65,19 +66,19 @@ test.describe(`con el navegador en ${zona}`, () => {
     });
 
     test("Compra: el día elegido queda guardado como el mediodía argentino de ese día", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
-      const { producto } = await sembrarProducto(sucursalId, "COM");
+      const { marca, producto } = await sembrarProducto(sucursalId, "COM");
       const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
+      const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_FDE_COM_${marca}`, nombre: `E2E Proveedor Día ${marca}` } });
 
       await page.goto("/movimientos/compra");
       expect(await navegadorEstaEnLaZona(page, zona), "el navegador tiene que estar en la zona del caso").toBe(true);
 
-      await page.getByLabel(/^Fecha(?: \*)?$/).fill(DIA);
-      await page.getByRole("combobox", { name: "Depósito", exact: true }).selectOption({ label: seccion.nombre });
-      await page.locator('input[placeholder="Código o nombre…"]').first().fill(producto.nombre);
-      await page.getByRole("option", { name: new RegExp(producto.nombre) }).click();
-      await page.locator("label:has-text('Cantidad') input").first().fill("10");
-      await page.locator("label:has-text('Precio total') input").first().fill("1000");
-      await page.getByRole("button", { name: "Confirmar", exact: true }).click();
+      // Paso 1 «Factura»: la fecha de la factura es el día elegido.
+      await completarPasoFactura(page, { proveedor: proveedor.nombre, fecha: DIA });
+      await elegirProductoEnLaFila(page, producto.nombre);
+      await llenarLinea(page, { cantidad: "10", importe: "1000", referencia: "Harina del día" });
+      await irARevisar(page, seccion.nombre);
+      await confirmarCompra(page);
 
       await expect(page.getByText(/Se guardaron 1 movimiento/)).toBeVisible();
       const movimiento = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: producto.id, proceso: "COMPRA" }, include: { operacion: true } });
