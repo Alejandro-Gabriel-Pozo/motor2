@@ -2,16 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { AyudaCampo } from "@/components/ayuda-campo";
 import { altaProveedor, actualizarProveedor, type DatosProveedor } from "@/server/actions/catalogo/proveedores";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { Campo } from "@/ui/primitivas/campo";
+import { Casilla } from "@/ui/primitivas/casilla";
 
 export interface ProveedorExistente extends DatosProveedor {
   id: string;
   codigo: string;
+  ofreceProductos: boolean;
+  ofreceServicios: boolean;
 }
 
 export function ProveedorForm({ proveedorExistente }: { proveedorExistente?: ProveedorExistente }) {
@@ -26,7 +28,9 @@ export function ProveedorForm({ proveedorExistente }: { proveedorExistente?: Pro
       onSubmit={(e) => {
         e.preventDefault();
         const form = new FormData(e.currentTarget);
-        const datos: Omit<DatosProveedor, "nombre"> = {
+        const nombre = texto(form.get("nombre"));
+        const oferta = { ofreceProductos: form.get("ofreceProductos") === "on", ofreceServicios: form.get("ofreceServicios") === "on" };
+        const datos: Omit<DatosProveedor, "nombre" | "ofreceProductos" | "ofreceServicios"> = {
           contacto: texto(form.get("contacto")) || undefined,
           telefono: texto(form.get("telefono")) || undefined,
           email: texto(form.get("email")) || undefined,
@@ -37,8 +41,8 @@ export function ProveedorForm({ proveedorExistente }: { proveedorExistente?: Pro
 
         startTransition(async () => {
           const resultado = editando
-            ? await actualizarProveedor(proveedorExistente!.id, datos)
-            : await altaProveedor({ nombre: texto(form.get("nombre")), ...datos });
+            ? await actualizarProveedor(proveedorExistente!.id, { ...datos, ...oferta, nombre, nombreEsperado: proveedorExistente!.nombre })
+            : await altaProveedor({ nombre, ...oferta, ...datos });
           setMensaje(resultado.mensaje);
           if (resultado.ok) {
             const idFicha = editando ? proveedorExistente!.id : "id" in resultado ? resultado.id : null;
@@ -50,14 +54,14 @@ export function ProveedorForm({ proveedorExistente }: { proveedorExistente?: Pro
     >
       <h2 className="font-medium">{editando ? `Editar "${proveedorExistente!.nombre}"` : "Nuevo proveedor"}</h2>
 
-      {editando ? (
-        <div className="flex flex-col gap-1">
-          <p className="text-sm">{proveedorExistente!.nombre}</p>
-          <AyudaCampo>El nombre no se edita acá — es el identificador del proveedor, igual que en Productos e Insumos.</AyudaCampo>
-        </div>
-      ) : (
-        <Campo aria-label="Nombre" name="nombre" placeholder="Nombre" required />
-      )}
+      <Campo aria-label="Nombre" name="nombre" placeholder="Nombre" defaultValue={proveedorExistente?.nombre ?? ""} required />
+      {editando && <p className="text-xs text-tinta-tenue">Código {proveedorExistente!.codigo}: no cambia. Las compras y facturas del proveedor siguen siendo las mismas aunque corrijas el nombre.</p>}
+
+      <fieldset className="flex flex-col gap-1">
+        <legend className="text-sm font-medium">¿Qué le comprás?</legend>
+        <Casilla name="ofreceProductos" etiqueta="Productos" defaultChecked={proveedorExistente?.ofreceProductos ?? true} />
+        <Casilla name="ofreceServicios" etiqueta="Servicios (luz, gas, alquiler…)" defaultChecked={proveedorExistente?.ofreceServicios ?? false} />
+      </fieldset>
 
       <Campo aria-label="Contacto" name="contacto" placeholder="Contacto" defaultValue={proveedorExistente?.contacto ?? ""} />
       <Campo aria-label="Teléfono" name="telefono" placeholder="Teléfono" defaultValue={proveedorExistente?.telefono ?? ""} />

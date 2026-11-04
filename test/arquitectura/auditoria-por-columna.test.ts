@@ -26,6 +26,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
     // Fase 4 de la ola «precio y carta» (ADR-035): `modoDeVenta` («¿Cómo se vende?»: directo o por opción).
     campos: ["precioVenta", "precioConsignacion", "pasoVenta", "modoDeVenta", "factorConversion", "unidadStockId", "unidadCompraId", "seProduce", "esConsignacion", "proveedorConsignacionId"],
   },
+  // Proveedores (2026-11-04): corregir un proveedor deja una fila por columna que cambia entre el nombre y las dos marcas de qué le compramos (productos / servicios).
+  { archivo: "src/server/actions/catalogo/casos-de-uso/actualizar-proveedor.ts", entidad: "Proveedor", campos: ["nombre", "ofreceProductos", "ofreceServicios"] },
   // ADR-039: habilitar el mostrador de una sucursal deja su fila (la mesa creada, `Mesa.tipo`).
   { archivo: "src/server/actions/pos/casos-de-uso/habilitar-mostrador.ts", entidad: "Mesa", campos: ["tipo"] },
   {

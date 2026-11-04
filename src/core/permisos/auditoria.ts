@@ -57,6 +57,9 @@ export const ENTIDADES_AUDITABLES = [
   // "ConteoFisico" (Pureza, decisión del dueño 2026-10-07): el alta de un conteo físico de stock — `entidadId` es el id del conteo, `campo: "conteoReal"`, `valorAnterior` el saldo del sistema
   // y `valorNuevo` lo contado, con `sucursalId`. Un conteo sin diferencia no deja fila (no cambia nada).
   "ConteoFisico",
+  // "Proveedor": corregir un proveedor (`actualizarProveedor`) — `entidadId` es el id del Proveedor, `campo` `nombre`, `ofreceProductos` u `ofreceServicios` (una fila por columna que cambia, con el antes
+  // y el después), `sucursalId` null (catálogo central). El contacto no deja fila.
+  "Proveedor",
   // "FacturaProveedor" (E3a, ADR-041): la carga de una factura de proveedor repartida (`campo: "reparto"`, el reparto por sucursal en `valorNuevo`), la aceptación de la parte de una sucursal destino (`campo: "parteAceptada"`)
   // y la anulación (`campo: "anuladaEn"`, con el motivo en la descripción) — `entidadId` es el id de la factura, `sucursalId` el de la sucursal de quien actúa (nunca la ajena).
   "FacturaProveedor",
