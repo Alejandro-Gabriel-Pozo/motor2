@@ -92,3 +92,30 @@ describe("clave de unicidad del número armado (propiedad)", () => {
     );
   });
 });
+
+describe("leerNumeroDeComprobanteDeCompra: texto largo o que no es texto (revisión independiente, 2026-11-04)", () => {
+  it("rechaza sin trabajar de más un texto largo de espacios (antes la expresión regular tardaba segundos)", () => {
+    for (const largo of ["A" + " ".repeat(200_000) + "x", "A-1" + " ".repeat(200_000) + "x", " ".repeat(200_000) + "A-1-1"]) {
+      const inicio = performance.now();
+      const r = leerNumeroDeComprobanteDeCompra(largo);
+      expect(r.ok).toBe(false);
+      expect(performance.now() - inicio).toBeLessThan(200);
+    }
+  });
+
+  it("rechaza algo que no es texto con el mensaje de formato, sin lanzar", () => {
+    for (const raro of [123, {}, [], true] as unknown[]) {
+      const r = leerNumeroDeComprobanteDeCompra(raro as string);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.codigo).toBe("formato");
+    }
+  });
+
+  it.each(["A-1-1234", "A-0001-00001234", "a 00023 00237728", "A - 23 - 237728", "A 23-237728", "A-23 237728", "  A-23-237728  "])("sigue aceptando %s", (texto) => {
+    expect(leerNumeroDeComprobanteDeCompra(texto).ok).toBe(true);
+  });
+
+  it.each(["A--1-2", "A1-2", "A-1--2", "A-1-2-3", "A-1"])("sigue rechazando %s", (texto) => {
+    expect(leerNumeroDeComprobanteDeCompra(texto).ok).toBe(false);
+  });
+});

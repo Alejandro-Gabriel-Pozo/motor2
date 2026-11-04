@@ -10,6 +10,7 @@
  * Desde la etapa 1 de Compras (2026-11-03) la carga de una compra exige y arma el texto canónico «A-00023-00237728» con `armarNumeroDeComprobante`
  * y `leerNumeroDeComprobanteDeCompra` (más abajo); el lector de pantalla de arriba no cambia.
  */
+import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { aceptar, rechazar, type ResultadoDato } from "./resultado";
 
 const PUNTO_DE_VENTA_MAXIMO = 99999;
@@ -75,8 +76,12 @@ export function armarNumeroDeComprobante(partes: { letra: string; puntoDeVenta: 
  * y delega en `armarNumeroDeComprobante`. Vacío → «vacio»; sin esa forma → «formato».
  */
 export function leerNumeroDeComprobanteDeCompra(texto: string): ResultadoDato<string> {
+  // Un valor que no es texto (payload armado a mano) es «formato», no un error del servidor. El tope de largo va ANTES de la expresión regular: sin él, un texto
+  // largo de espacios la hace trabajar de más (el campo guardado nunca pasa de LARGO_MAXIMO_NRO_FACTURA). Separadores sin ambigüedad: «-» con espacios opcionales, o espacios.
+  if (typeof texto !== "string") return rechazar("formato", MENSAJE_FORMATO);
   if (!texto.trim()) return rechazar("vacio", "Falta el número de la factura: letra, punto de venta y número.");
-  const m = /^\s*([A-Za-z])\s*[-\s]\s*(\d+)\s*[-\s]\s*(\d+)\s*$/.exec(texto);
+  if (texto.length > LARGO_MAXIMO_NRO_FACTURA) return rechazar("formato", MENSAJE_FORMATO);
+  const m = /^\s*([A-Za-z])(?:\s*-\s*|\s+)(\d+)(?:\s*-\s*|\s+)(\d+)\s*$/.exec(texto);
   if (!m) return rechazar("formato", MENSAJE_FORMATO);
   return armarNumeroDeComprobante({ letra: m[1], puntoDeVenta: m[2], numero: m[3] });
 }
