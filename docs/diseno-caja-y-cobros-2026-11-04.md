@@ -1,6 +1,6 @@
 # Diseño: caja y cobros, con la factura emitida en otro sistema (2026-11-04)
 
-Estado: **diseño en papel, a validar por el dueño. Sin código ni migraciones.** Cubre los niveles 1 a 5 de la escalera de diseño y la escalera de producto N0 a N5. **Las tablas (nivel 6) no se diseñan hasta que el dueño confirme los niveles 1 a 5** (compuerta de `AGENTS.md`).
+Estado: **diseño en papel, a validar por el dueño. Sin código ni migraciones.** Cubre los niveles 1 a 5 (confirmados el 2026-11-04) y, desde el 2026-11-04 a pedido del dueño, el **nivel 6 al 10 de la PRIMERA etapa (N1, comprobante externo)**. Las etapas siguientes quedan con su modelo en papel (§ «Tablas diferidas») y **no se migran**.
 
 Continúa `docs/diseno-clientes-convenios-y-facturacion-externa-2026-10-26.md` (no lo reemplaza): de ahí se toman la factura externa, el cobro y la cuenta corriente, y acá se corrigen dos puntos por lo que dijo el dueño el 2026-11-04 (ver §0.2). Se apoya en `docs/diseno-pagos-y-conciliacion-2026-11-03.md` (mismo patrón de «pago aparte que solo se agrega, y una persona decide») y en `docs/diseno-notas-de-credito-de-proveedor-2026-11-04.md` (regla N16: el documento cancela una factura y el dinero se cruza aparte).
 
@@ -120,7 +120,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 - **Cobro:** registro que **solo se agrega**; se anula con un registro nuevo. Lleva medio de pago, importe, quién y cuándo, y los datos que pide el medio. **Se imputa a uno o más cargos**; la parte **sin imputar** es una **seña o saldo a favor** del cliente o de la reserva, visible hasta que se aplique o se devuelva. **Seña distinta de la «política»:** el sistema acepta el importe que se cobró y muestra lo que **falta** respecto de la seña sugerida; nunca bloquea.
 - **Medio de pago:** catálogo de la empresa; cada medio declara **qué datos adicionales pide**. **Dicho por el dueño:** transferencia → **DNI**; tarjeta de débito o crédito → **nombre de la tarjeta, cuotas (solo crédito) y número de cupón**. **Propuesta mía, a confirmar:** cheque → banco, número y fecha de cobro; QR o billetera → igual que transferencia. **La cuenta corriente es un medio especial que no ingresa a caja.**
 - **Cuenta corriente del cliente:** saldo **derivado** (cargos − cobros posteriores). Solo para clientes que la posean. Nunca se guarda un saldo editable.
-- **Comprobante externo:** `BORRADOR → CONFIRMADO → ANULADO`. Clase `FACTURA` o `NOTA_DE_CREDITO`; letra `A` o `B`; punto de venta; número; fecha; monto; cliente. Una nota de crédito **cancela una factura** (la factura afectada), y el dinero se cruza aparte (regla N16 del diseño de notas de crédito).
+- **Comprobante externo:** `CONFIRMADO → ANULADO`. **PROPUESTA: sin estado «borrador»** (nadie lo pidió; se carga ya confirmado y se corrige con registro). Clase `FACTURA` o `NOTA_DE_CREDITO`; letra `A` o `B`; punto de venta; número; fecha; monto; cliente. Una nota de crédito **cancela una factura** (la factura afectada), y el dinero se cruza aparte (regla N16 del diseño de notas de crédito).
 - **Conceptos declarados:** importes que **se escriben en el comprobante** y que **no salen de este sistema**. El primero es **alojamiento** (no hay módulo de alojamiento); el dueño pidió además **«productos regionales»** y **poder armar la lista** (CONFIRMADA, 2026-11-04). Entonces: **catálogo de conceptos de la empresa** (nombre, activo), y en cada comprobante cero o más líneas «concepto + importe». Vale 0 si no hay. Cuando exista un módulo de alojamiento, el importe podrá salir de ahí.
 - **Composición del comprobante:** **monto = Σ conceptos declarados + Σ tickets aplicados**. La diferencia se **muestra** («falta $X» o «sobra $X»); nunca se fuerza ni se esconde, y la decide una persona.
 - **Punto de venta de la sucursal:** número y **nombre**, propio de cada sucursal.
@@ -223,6 +223,178 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 - **Q1.** **QR / billetera:** qué dato se pide (ver P19).
 - **Q7.** **Porcentaje de la política de seña:** qué valor (ver P17). Se carga como parámetro de la empresa.
 
+## Nivel 6. Historia y persistencia (SOLO la primera etapa, N1 «Comprobante externo»)
+
+Regla del producto: se migran **solo las tablas de la etapa que se implementa**, con puntos de extensión previstos (claves foráneas opcionales, estados con CHECK, historial que solo agrega) y migraciones **aditivas y reversibles**. Todas las tablas nuevas son de **EMPRESA** (`POR_EMPRESA`, con `empresaId` y la política `aislamiento_empresa`); las que pertenecen a una sucursal suman las **cuatro políticas restrictivas por sucursal** del patrón de `Mesa` y `Cuenta` (migración `20261014140000_rls_sucursal_b4_punto_de_venta`). Dinero en `DECIMAL(14,2)`. Nada se borra: no hay `DELETE` en ningún grant.
+
+### Necesidad de cada tabla (regla de poda)
+
+| Tabla o columna | Necesidad (quién y dónde está escrita) |
+|---|---|
+| `PuntoDeVentaDeSucursal` | «Punto de venta por sucursal, con su nombre» (dueño, 2026-11-04, punto 2) |
+| `Cliente.cuit` | «Cuit del cliente sí… una vez cargado se lo identifica desde el módulo de clientes; si ya existe se le indica» (dueño, punto 4) |
+| `ConceptoDeComprobante` | «Productos regionales… que nos deje armar la lista» (dueño, P9) |
+| `ComprobanteExterno` | Tipo A o B, factura o nota de crédito, punto de venta, número, fecha, monto (dueño, punto 2) |
+| `LineaDeConceptoDeComprobante` | «Alojamiento 0 o algún valor» y otros conceptos declarados (dueño, punto 9 y P9) |
+| `AnulacionDeComprobanteExterno` | Corregir y anular **con registro**, nunca borrando (regla de trazabilidad; dueño, punto 3) |
+
+### Tablas de la etapa N1
+
+**`PuntoDeVentaDeSucursal`** (nueva, propia de una sucursal)
+
+| Columna | Tipo | Regla |
+|---|---|---|
+| `id` | texto (cuid) | clave |
+| `empresaId` | texto | default `app_empresa_actual()` |
+| `sucursalId` | texto | FK compuesta `(empresaId, sucursalId)` → `Sucursal` |
+| `numero` | entero | CHECK 1 a 99999 (como `PuntoDeVentaDeProveedor`) |
+| `nombre` | texto | CHECK: 1 a 60 caracteres, sin espacios a los costados ni saltos de línea |
+| `activo` | booleano | baja lógica; nunca se borra |
+| `creadoEn` | fecha y hora | |
+
+Únicos: `(sucursalId, numero)`; `(empresaId, sucursalId, id)` (destino de la clave foránea del comprobante, para que **el punto de venta sea de la misma sucursal** que el comprobante, imposible de violar desde la base); `(empresaId, id)`.
+
+**`Cliente`** (existente): una columna **aditiva** `cuit` (texto, NULL = sin CUIT). CHECK: 11 dígitos. Único parcial `(empresaId, cuit) WHERE cuit IS NOT NULL` (un CUIT, un cliente). `validarCuit` (dígito verificador) lo aplica la aplicación; no se repite en la base. Las filas actuales quedan en NULL.
+
+**`ConceptoDeComprobante`** (nueva, catálogo de la empresa)
+
+| Columna | Tipo | Regla |
+|---|---|---|
+| `id`, `empresaId` | | clave y empresa |
+| `nombre` | texto | CHECK 1 a 60; único por empresa **sin distinguir mayúsculas** (índice sobre `lower(nombre)`) |
+| `activo` | booleano | baja lógica |
+| `creadoEn` | fecha y hora | |
+
+**`ComprobanteExterno`** (nueva, propia de una sucursal): la factura o nota de crédito emitida en el otro sistema
+
+| Columna | Tipo | Regla |
+|---|---|---|
+| `id`, `empresaId` | | |
+| `sucursalId` | texto | FK compuesta a `Sucursal` |
+| `puntoDeVentaId` | texto | FK compuesta `(empresaId, sucursalId, puntoDeVentaId)` → `PuntoDeVentaDeSucursal` |
+| `clase` | texto | CHECK `FACTURA` o `NOTA_DE_CREDITO` |
+| `letra` | texto | CHECK `A` o `B` (lista cerrada, como `LETRAS_DE_COMPROBANTE`, ampliable) |
+| `numero` | entero | CHECK 1 a 99999999 (8 dígitos) |
+| `fecha` | día (`DATE`) | día local de Argentina, no futuro (lo valida la aplicación) |
+| `monto` | decimal(14,2) | CHECK > 0; **no es un cobro** |
+| `clienteId` | texto, opcional | FK compuesta a `Cliente`; NULL = consumidor final |
+| `facturaAfectadaId` | texto, opcional | FK compuesta a sí misma; pareo: obligatoria **si y solo si** `clase = NOTA_DE_CREDITO` (CHECK) |
+| `version` | entero | control optimista, ≥ 1 |
+| `claveIdempotencia`, `payloadHash`, `resultadoMensaje` | texto | I3: clave única global; van juntas (CHECK) |
+| `creadoPorId`, `creadoEn` | | quién y cuándo |
+| `anuladaEn`, `anuladaPorId` | | pareo (CHECK): el único `UPDATE` de anulación |
+
+Únicos: **`(puntoDeVentaId, clase, letra, numero) WHERE anuladaEn IS NULL`** (el número vigente no se repite; es lo que arbitra la carrera entre dos personas); `(empresaId, id)`. Índices: `(empresaId, sucursalId, fecha)` y `(empresaId, clienteId)`.
+
+**`LineaDeConceptoDeComprobante`** (nueva): un concepto declarado del comprobante («alojamiento $120.000»)
+
+| Columna | Tipo | Regla |
+|---|---|---|
+| `id`, `empresaId` | | |
+| `comprobanteId` | texto | FK compuesta a `ComprobanteExterno` |
+| `conceptoId` | texto | FK compuesta a `ConceptoDeComprobante` |
+| `importe` | decimal(14,2) | CHECK > 0 (un concepto en 0 no se escribe: «alojamiento 0» es **ninguna línea**) |
+| `anuladaEn`, `anuladaPorId` | | pareo; corregir = anular la línea y agregar otra |
+| `creadoPorId`, `creadoEn` | | |
+
+Único parcial `(comprobanteId, conceptoId) WHERE anuladaEn IS NULL` (un concepto una vez por comprobante). **Que la suma de las líneas no pase del monto lo controla la aplicación** (cruza filas).
+
+**`AnulacionDeComprobanteExterno`** (nueva, calco de `AnulacionDeFacturaProveedor`): `comprobanteId` (único: una anulación por comprobante), `motivo` (CHECK no vacío, hasta 200), `claveIdempotencia` (única global), `payloadHash`, `resultadoMensaje`, `creadoPorId`, `creadoEn`. Solo `SELECT` e `INSERT`.
+
+### Qué es calculado y nunca guardado
+
+- **«Sin explicar»** de un comprobante = `monto − Σ líneas vigentes` (en N2 se le restan los tickets aplicados).
+- **El correlativo sugerido** = el mayor `numero` vigente de `(puntoDeVentaId, clase, letra)` más 1, o 1 si no hay (patrón `siguienteNumeroTicket`). Es **orientativo**: manda el índice único.
+- **Saldo y cuenta corriente** (etapa posterior): nunca una columna editable.
+
+### Correcciones y auditoría
+
+- **Corregir** un comprobante confirmado cambia solo `numero`, `fecha`, `monto`, `clienteId` y `puntoDeVentaId` (privilegio de `UPDATE` **por columna**), con `version` (`UPDATE … WHERE version = esperada`; 0 filas = `VERSION_DESACTUALIZADA`) y **una fila de auditoría por campo** (`registrarCambioAuditado`). `clase` y `letra` **no se corrigen**: se anula y se carga uno nuevo.
+- **Anular**: fila en `AnulacionDeComprobanteExterno` + `anuladaEn`/`anuladaPorId` en la cabecera; libera el número.
+- **Las líneas** solo se agregan; se anulan con su marca.
+
+### Tablas diferidas (en papel; NO se migran en N1)
+
+| Tabla | Etapa | Idea (para que el modelo completo no se pierda) |
+|---|---|---|
+| `AplicacionDeCargo` | N2 | `comprobanteId`, `cargoId` (ticket o concepto de reserva), `importe` (un cargo se puede dividir; Σ aplicado ≤ cargo) |
+| `CobroDeCliente`, `MedioDePago`, `DatoDelCobro` | N3 | cobro con medio, importe, clave de reintento; datos del medio (DNI, tarjeta, cuotas, cupón, banco…) |
+| `ImputacionDeCobro` | N3 | a qué cargo se aplica un cobro; la parte sin imputar es seña o saldo a favor |
+| `Cliente.cuentaCorrienteHabilitada` y movimientos | N4 | habilitación por administración; saldo derivado |
+| `TurnoDeCajaChica`, `CierreDeCajaChica`, `CierreDeCajaChicaBillete` (+ anulación) | N5 | turnos por sucursal, conteo por denominación, firma, un cierre vigente por (sucursal, día, turno) |
+| `Reserva`, `CargoDeReserva` | N6 | número de reserva, cliente, agente, cargos agrupados |
+| `ParametroDeSena` | N6 | el porcentaje de la política de seña (parámetro de la empresa) |
+
+## Nivel 7. Atomicidad y concurrencia (N1)
+
+Todo comando corre en **una transacción `SERIALIZABLE`** (`conTransaccionSerializable`), con la clave de idempotencia (I3) como **primera** sentencia y el alcance de sucursal ya fijado.
+
+| Comando | Orden dentro de la transacción | Quién arbitra la carrera |
+|---|---|---|
+| Cargar comprobante | I3 → ¿punto de venta activo y de la sucursal? → reglas puras (Σ líneas ≤ monto, letra A exige cliente con CUIT, fecha) → `INSERT` cabecera + líneas + auditoría | El **índice único parcial** del número vigente: gana uno; el otro recibe «ese número ya está cargado en ese punto de venta» |
+| Corregir comprobante | `SELECT … FOR UPDATE` de la cabecera → `UPDATE … WHERE version = esperada` → auditoría por campo | `version` y el mismo índice único si cambia el número |
+| Anular comprobante | `SELECT … FOR UPDATE` → `UPDATE … WHERE anuladaEn IS NULL` (0 filas = `YA_ANULADO`) → `INSERT` de la anulación → auditoría | El `UPDATE` condicional y el único `(comprobanteId)` de la anulación |
+| Alta de cliente con CUIT | validar dígito verificador → buscar por CUIT → si existe, **devolver el existente** («ya existe»); si no, `INSERT` | El índice único parcial del CUIT |
+| Alta o baja de punto de venta | `INSERT` / `UPDATE activo` | `(sucursalId, numero)` único |
+
+Un `40001` se reintenta solo (seguro por I3). **Error parcial:** cabecera, líneas y auditoría se guardan juntas o no se guarda nada. **Un comprobante cargado no toca ventas, stock ni cobros**: ningún escritor de `cerrarCuenta` cambia.
+
+## Nivel 8. Acceso e interfaces (N1)
+
+- **Permisos nuevos, todos nacen excluidos** (fail-closed), de contexto **sucursal**, nivel **administrador** (PROPUESTA):
+
+| Clave (propuesta) | Qué permite |
+|---|---|
+| `cargar_comprobante_externo` | cargar un comprobante |
+| `corregir_comprobante_externo` | corregir número, fecha, monto, cliente o punto de venta |
+| `anular_comprobante_externo` | anular, con motivo |
+| `administrar_puntos_de_venta` | alta y baja de puntos de venta de la sucursal |
+| `administrar_conceptos_de_comprobante` | lista de conceptos (de empresa) |
+
+- **El CUIT del cliente** se carga con el permiso que hoy edita clientes (**NO VERIFICADA** cuál es; se confirma antes de implementar).
+- **Módulo:** PROPUESTA un módulo nuevo `facturacion_externa` que requiere `clientes_basico` (agregar un módulo no necesita migración; los permisos nuevos sí van a la tabla de acciones, que es de datos).
+- **Campos sensibles:** `monto` e importes de las líneas con piso administrador, como los de `FacturaProveedor`.
+- **Pantallas:** (1) lista de comprobantes con filtros de sucursal, fecha, clase, letra y estado; (2) alta y corrección (pantalla 2 de la maqueta), con el cliente por CUIT y las líneas de concepto; (3) puntos de venta de la sucursal; (4) lista de conceptos. **Sin «guardar borrador».**
+- **Todo se valida en el servidor**: quién pide, con qué permiso, en qué sucursal.
+
+## Nivel 9. Consultas y experiencia (N1)
+
+- **Correlativo sugerido** al elegir punto de venta, clase y letra; se puede cambiar.
+- **Cliente por CUIT:** al escribirlo, el sistema busca; si existe lo muestra y lo usa («ya existe, se usa este»); si no, ofrece cargarlo al instante.
+- **Mensajes claros:** número repetido (con qué comprobante lo usa), CUIT inválido, letra A sin CUIT, líneas que pasan del monto, fecha futura.
+- **«Sin explicar»** visible en cada comprobante (monto menos conceptos declarados) hasta que N2 le sume los tickets.
+- **Rendimiento:** listas paginadas por `(sucursal, fecha)`; el correlativo sale del índice único.
+
+## Nivel 10. Pruebas, migración y operación (N1)
+
+**Dimensiones cuyas combinaciones cambian dinero, permisos o visibilidad** (con una tabla de reglas esperadas escrita **aparte del código**, `docs/oraculo-combinaciones-caja-y-cobros-AAAA-MM-DD.md`, y un test que las recorre **todas**):
+
+| Dimensión | Valores |
+|---|---|
+| Clase | factura, nota de crédito |
+| Letra | A, B |
+| Cliente | consumidor final, con CUIT, sin CUIT |
+| Conceptos | ninguno, uno, varios, suma igual al monto, suma mayor al monto |
+| Número | nuevo, repetido de un vigente, repetido de uno anulado, correlativo sugerido, corregido a otro |
+| Estado | vigente, anulado |
+| Permiso | tiene, no tiene, tiene en otra sucursal |
+
+Cuenta aproximada: 2 × 2 × 3 × 5 × 5 × 2 × 3 = **1.800 combinaciones**, exhaustivas (el oráculo las enumera). Un **guardián** falla si aparece una columna, un valor de `clase` o `letra`, o una clave de permiso nuevos sin declarar si afectan.
+
+**Pruebas obligatorias** (calco de pagos X0 y notas de crédito): reglas puras con propiedades de `fast-check` (Σ líneas, redondeo); integración contra Postgres real; **concurrencia con el caso de uso real, tres veces** (dos cargan el mismo número a la vez: gana uno; corregir contra anular; dos altas del mismo CUIT); **idempotencia** (el mismo envío no duplica); **aislamiento entre empresas y entre sucursales** (RLS); migración **subir, bajar y subir** con `down.sql` que **aborta si hay datos**; e2e a 375 px de la carga y de la corrección; accesibilidad con `axe`.
+
+**Guardianes que se tocan:** clasificación de tablas (`POR_EMPRESA`), columnas de significado (declarar `cuit`, `monto`, `clase`, `letra`, `numero`), matriz de permisos y claves reservadas, campos sensibles, solo-agrega de líneas y anulaciones, denegación por defecto (control positivo con mundo sembrado).
+
+**Operación:** una sola migración aditiva (`20261105…_comprobante_externo`, el timestamp lo fija el que la escriba, posterior a la última); se aplica **con respaldo y ensayo** en una rama de Neon, como las anteriores; el `down.sql` aborta si hay comprobantes, puntos de venta o CUIT cargados (nunca borra en silencio).
+
+**Riesgos declarados:** (1) el correlativo sugerido puede equivocarse si en el otro sistema se emitió algo que acá no se cargó: es orientativo; (2) sin integración, la verdad del comprobante vive en el otro sistema y motor2 guarda lo que se tipea; (3) `Cliente.cuit` único por empresa: dos clientes ya cargados con el mismo CUIT escrito a mano chocarían: hay que revisar los datos antes (hoy el campo no existe, así que no hay choque); (4) un módulo y cinco permisos nuevos son superficie de seguridad: auditoría independiente antes de fusionar.
+
+## Preguntas nuevas de esta vuelta
+
+1. **R1.** ¿El punto de venta lo administra el **gerente de cada sucursal** o solo **administración**? Recomiendo administración.
+2. **R2.** El número sugerido sale del **último de cada serie** (punto de venta, clase y letra), como propuse. ¿Es así en el otro sistema, o la numeración es corrida entre letras? (Si es corrida, la sugerencia cambia.)
+3. **R3.** Quito el «guardar borrador» (nadie lo pidió): el comprobante se carga ya confirmado y se corrige con registro. ¿Está bien?
+
 ## Qué sigue
 
-Con los niveles 1 a 5 confirmados se diseña el nivel 6 (tablas, solo las de la etapa elegida, aditivas y reversibles), el 7 (atomicidad y concurrencia), el 8 (permisos y pantallas), el 9 (consultas) y el 10 (pruebas con oráculo de combinaciones: medio × parcial × cuenta corriente × facturado × letra). Ver las pantallas dibujadas en la maqueta que acompaña a este documento.
+Niveles 6 a 10 de la primera etapa (comprobante externo) escritos arriba. Falta que el dueño responda R1 a R3 y confirme las tablas antes de implementar. Las pantallas dibujadas están en la maqueta que acompaña a este documento. **Nada se implementa hasta la orden expresa del dueño.**
