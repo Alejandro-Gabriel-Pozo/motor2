@@ -16,8 +16,8 @@ import { leerOpcionEnCarta, opcionesDelEje, primeraEnMinuscula, type EjesDeLaCar
  *      · MÁS de 3 columnas: se TRANSPONE (el eje largo pasa a las filas y el otro, si hay, a las columnas); si los dos ejes tienen más de 3, una fila por combinación («Simple, de carne»);
  *      · una BASE de un solo eje (las pizzas) sale OCULTA por defecto (`titulo: false`: cada opción es una fila con su nombre completo, «Pizza muzzarella $18.000») y con el nombre arriba si su
  *        interruptor está prendido (DEC-11).
- * Las ACLARACIONES van debajo del plato, en el orden del producto (DEC-07): lo que se elige sin costo («Guarnición: ensalada, papas fritas o puré»: el nombre del grupo como rótulo y la primera letra de
- * cada opción en minúscula) y, si algo suma o resta, la línea con cada recargo («Extras: papas +$2.000»; el recargo de un adicional NUNCA lleva el descuento de producto). Una sola opción sin costo no
+ * Las ACLARACIONES van debajo del plato, en el orden del producto (DEC-07): lo que se elige sin costo (`eleccion`: el nombre del grupo como rótulo y la primera letra de cada opción en minúscula; la
+ * carta lo lee como «Incluye guarnición» bajo el plato y un bloque al pie de la sección, `incluye-en-carta.ts`, carta «B» de 2026-11-04) y, si algo suma o resta, la línea con cada recargo («Extras: papas +$2.000»; el recargo de un adicional NUNCA lleva el descuento de producto). Una sola opción sin costo no
  * tiene línea.
  * Lo agotado hoy ya no llega (lo saca la regla de la venta): su fila no sale, su celda queda «–» y su columna desaparece si está agotada en todo el producto.
  * Lo que la carta no puede leer con el precio exacto (un tercer grupo que cambia el precio; un recargo dentro del precio con descuento de producto) NO toma forma nueva: sale como antes y queda en el
@@ -45,7 +45,7 @@ export interface TablaDePreciosParaCarta {
  * Una línea debajo del plato, una por grupo: lo que se elige sin costo (solo nombres) o, si algo suma o resta, cada opción con su recargo sobre lo que el precio ya incluye (0 = no suma; en un
  * adicional solo van las que suman).
  */
-export type AclaracionCartaV1 = { tipo: "eleccion"; rotulo: string; opciones: string[] } | { tipo: "extras"; rotulo: string; opciones: { nombre: string; recargo: number }[] };
+export type AclaracionCartaV1 = { tipo: "eleccion"; rotulo: string; opciones: string[]; cantidadMinima: number; cantidadMaxima: number } | { tipo: "extras"; rotulo: string; opciones: { nombre: string; recargo: number }[] };
 
 /** La forma con que la carta lee un producto con opciones (ver arriba). `null` en una celda = no se ofrece (se dibuja «–», con «no se ofrece» para el lector de pantalla). */
 export type PresentacionCartaV1 =
@@ -92,7 +92,8 @@ function aclaracionesDe(tabla: TablaDePreciosParaCarta, conDescuento: boolean): 
       // UNA línea por grupo, en el orden del grupo: lo que suma con su recargo y lo que no, con recargo 0 («solo, cortado, lágrima +$200 o con leche +$300»). Lo que no suma de un adicional no se pide: no va.
       salida.push({ tipo: "extras", rotulo: g.nombre, opciones: g.tipo === "ADICIONAL" ? conRecargo.filter((o) => o.recargo !== 0) : conRecargo });
     } else if (reales.length > 1) {
-      salida.push({ tipo: "eleccion", rotulo: g.nombre, opciones: reales.map((o) => primeraEnMinuscula(o.nombre)) });
+      // Carta «B»: los límites (los del producto si los sobrescribe, si no los del grupo) viajan con la elección: de ahí sale el «elegís N» del bloque (`incluye-en-carta.ts`).
+      salida.push({ tipo: "eleccion", rotulo: g.nombre, opciones: reales.map((o) => primeraEnMinuscula(o.nombre)), cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima });
     }
   }
   return salida;
