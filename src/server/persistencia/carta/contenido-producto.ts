@@ -62,3 +62,11 @@ export async function crearContenidoVisibleDeProducto(db: Prisma.TransactionClie
 export async function borrarContenidoDeProducto(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string }): Promise<number> {
   return (await db.contenidoCartaProducto.deleteMany({ where: { sucursalId: args.sucursalId, productoId: args.productoId } })).count;
 }
+
+/**
+ * Serializa los guardados del contenido de UN producto: toma su fila (`FOR UPDATE`, la MISMA que toma el catálogo) hasta el final de la transacción. `ContenidoCartaProducto` no tiene versión, así que
+ * dos guardados a la vez se ordenan acá: el segundo lee lo que dejó el primero y la cadena de auditoría encadena. No lee ni escribe datos.
+ */
+export async function tomarElProductoParaGuardarContenido(db: Prisma.TransactionClient, productoId: string): Promise<void> {
+  await db.$queryRaw`SELECT id FROM "Producto" WHERE id = ${productoId} FOR UPDATE`;
+}

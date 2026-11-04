@@ -4,8 +4,7 @@ import { whereCartaDeSucursal } from "@/core/carta/public";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { MENSAJE_FALTA_SECCION_DE_CARTA, type ComandoGuardarContenidoCartaProducto, type ResultadoGuardarContenidoCartaProducto } from "@/core/features/carta/contenido-producto.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { guardarContenidoDeProducto } from "@/server/persistencia/carta/contenido-producto";
-import { tomarFilaDeProducto } from "@/server/persistencia/catalogo/productos";
+import { guardarContenidoDeProducto, tomarElProductoParaGuardarContenido } from "@/server/persistencia/carta/contenido-producto";
 import { validarGeneroCartaOpcional } from "../generos-compartido";
 
 /**
@@ -79,7 +78,7 @@ export async function guardarContenidoCartaProductoCasoDeUso(
     // Con un dato que se audita (el interruptor o el nombre en la carta) se toma primero la fila del producto (`FOR UPDATE`): dos guardados a la vez se SERIALIZAN, el segundo lee el valor que dejó el primero y la
     // cadena de auditoría encadena (el «antes» de uno es el «después» del otro); también evita que dos altas simultáneas del contenido de un producto sin fila choquen en el único.
     const conAuditoria = mostrarNombreArriba !== undefined || nombreEnCarta !== undefined;
-    if (conAuditoria) await tomarFilaDeProducto(tx, productoId);
+    if (conAuditoria) await tomarElProductoParaGuardarContenido(tx, productoId);
     // El valor que había, leído en la transacción (por la relación del producto, en la carta de ESTA sucursal): sin fila, el default de la columna (`false`) o sin nombre en la carta (`null`).
     const actual = conAuditoria ? await tx.producto.findUnique({ where: { id: productoId }, select: { contenidosCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { mostrarNombreArriba: true, nombreEnCarta: true } } } }) : null;
     await guardarContenidoDeProducto(tx, { sucursalId: actor.sucursalId, productoId, datos: data });
