@@ -96,17 +96,17 @@ test("carta B: «Incluye …» bajo cada plato y un bloque por grupo al pie de l
 
             // Cada plato dice lo que incluye; el que no incluye nada no dice «Incluye».
             const fila = (i: number) => page.locator("li", { has: page.getByRole("heading", { name: nombres[i]! }) });
-            await expect(fila(0).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye guarnición ${m} · elegí abajo ↓`);
-            await expect(fila(2).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye salsa ${m} · elegí abajo ↓`);
+            await expect(fila(0).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye 1 guarnición ${m} · elegí abajo ↓`);
+            await expect(fila(2).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye 1 salsa ${m} · elegí abajo ↓`);
             // El subconjunto se nombra («puré o ensalada»); el plato que ofrece todas las del bloque, no.
-            await expect(fila(3).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye guarnición ${m}: puré o ensalada · elegí abajo ↓`);
+            await expect(fila(3).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye 1 guarnición ${m}: puré o ensalada · elegí abajo ↓`);
             await expect(page.locator("[data-incluye]", { hasText: "papas fritas" }), `ningún plato nombra «papas fritas» como subconjunto (${etiqueta})`).toHaveCount(0);
             // El pie de la sección: un bloque por grupo, con TODAS las opciones en texto (sin botones ni chips) y a qué platos va. «elegís 1» sale de los límites del grupo.
             const bloqueG = page.locator(`[data-bloque-de-opciones='Guarnición ${m}']`);
             const bloqueS = page.locator(`[data-bloque-de-opciones='Salsa ${m}']`);
             await expect(bloqueG.locator("h4"), etiqueta).toHaveText(`Guarnición ${m} · elegís 1`);
             await expect(bloqueG.locator("[data-rol=eleccion]"), etiqueta).toHaveText("puré · ensalada · papas fritas");
-            await expect(bloqueG, etiqueta).toContainText(`Con los platos que dicen «Incluye guarnición ${m}»`);
+            await expect(bloqueG, etiqueta).toContainText(`Con los platos que incluyen guarnición ${m}`);
             await expect(bloqueS.locator("[data-rol=eleccion]"), etiqueta).toHaveText("filetto · crema · rosa");
             await expect(bloqueG.locator("button, a, input"), `el bloque no tiene botones ni chips (${etiqueta})`).toHaveCount(0);
             // «En todos» se retiró.

@@ -37,8 +37,12 @@ export interface ParteDeIncluye {
   palabra: string;
   /** Las opciones que admite el plato, solo si son un SUBCONJUNTO de las del bloque («puré o ensalada»); `null` = todas. */
   subconjunto: string | null;
-  /** «elegís 2», solo si los platos del bloque no coinciden en cuántas se eligen (el plato lo aclara); `null` = lo dice el título del bloque, o ya no hace falta. */
+  /** «elegís 2», solo si los platos del bloque no coinciden en cuántas se eligen: lo dice el título del bloque cuando coinciden; el plato ya dice cuántas lleva (`cantidad`). */
   elegis: string | null;
+  /** Cuántas lleva ESTE plato (los límites del grupo EN ESE PLATO): «1», «2», «hasta 2», «de 1 a 3» (redacción PROPUESTA; el dueño la ve en las capturas). */
+  cantidad: string;
+  /** La palabra como se lee en la línea del plato, con el número que le corresponde: «guarnición» (1), «guarniciones» (2 o más, «hasta 2»). */
+  palabraEnLinea: string;
 }
 
 /** El bloque de un grupo al pie de la sección. */
@@ -70,6 +74,32 @@ function textoDeElegis(minimo: number, maximo: number): string {
   if (minimo === maximo) return `elegís ${maximo}`;
   if (minimo === 0) return `opcional, hasta ${maximo}`;
   return `elegís de ${minimo} a ${maximo}`;
+}
+
+/**
+ * El plural de un nombre de grupo para «Incluye 2 guarniciones» (2026-11-04). Reglas del español, sin diccionario: ya termina en «s» o «x» → igual; en vocal → «s»; en «z» → «ces»; en otra consonante → «es», y una
+ * palabra aguda en «-ón/-án/-én/-ín/-ún» pierde la tilde («guarnición» → «guarniciones»). De varias palabras se pluraliza la que manda: la anterior a «de/del» («tipo de leche» → «tipos de leche») o, si no hay, la última.
+ */
+function pluralizar(palabra: string): string {
+  const palabras = palabra.split(" ");
+  const iDe = palabras.findIndex((p, i) => i > 0 && (p === "de" || p === "del"));
+  const k = iDe > 0 ? iDe - 1 : palabras.length - 1;
+  const w = palabras[k]!;
+  const plural = /[sx]$/i.test(w)
+    ? w
+    : /[aeiouáéíóú]$/i.test(w)
+      ? `${w}s`
+      : /z$/i.test(w)
+        ? `${w.slice(0, -1)}ces`
+        : `${w.replace(/[áéíóú](n)$/i, (_m, n: string, o: number) => `${"aeiou"["áéíóú".indexOf(_m[0]!)]}${n}`)}es`;
+  return palabras.map((p, i) => (i === k ? plural : p)).join(" ");
+}
+
+/** «1», «2», «hasta 2», «de 1 a 3»: cuántas lleva el plato de un grupo, según SUS límites. `plural` = si la palabra va en plural. */
+function cantidadDelPlato(minimo: number, maximo: number): { texto: string; plural: boolean } {
+  if (minimo === maximo) return { texto: String(maximo), plural: maximo !== 1 };
+  if (minimo === 0) return { texto: `hasta ${maximo}`, plural: maximo !== 1 };
+  return { texto: `de ${minimo} a ${maximo}`, plural: true };
 }
 
 /**
@@ -132,11 +162,14 @@ export function incluyeDeLaSeccion(platos: readonly (readonly AclaracionParaIncl
     const palabra = primeraEnMinuscula(grupo);
     for (const i of incluyen) {
       const a = libres[i]!.find((x) => x.rotulo === grupo)!;
+      const lleva = cantidadDelPlato(a.cantidadMinima, a.cantidadMaxima);
       const parte: ParteDeIncluye = {
         grupo,
         palabra,
         subconjunto: a.opciones.length < opciones.length ? unirConO(a.opciones) : null,
         elegis: coinciden ? null : textoDeElegis(a.cantidadMinima, a.cantidadMaxima),
+        cantidad: lleva.texto,
+        palabraEnLinea: lleva.plural ? pluralizar(palabra) : palabra,
       };
       (partesPorPlato.get(i) ?? partesPorPlato.set(i, new Map()).get(i)!).set(grupo, parte);
     }
@@ -146,7 +179,7 @@ export function incluyeDeLaSeccion(platos: readonly (readonly AclaracionParaIncl
       elegis: coinciden ? textoDeElegis(primero.cantidadMinima, primero.cantidadMaxima) : null,
       opciones,
       descripciones,
-      paraLosPlatos: `Con los platos que dicen «Incluye ${palabra}»`,
+      paraLosPlatos: `Con los platos que incluyen ${palabra}`,
       platos: incluyen,
     });
   }
@@ -160,17 +193,22 @@ export function incluyeDeLaSeccion(platos: readonly (readonly AclaracionParaIncl
   return { platos: dichoPorPlato, bloques };
 }
 
-/** Lo que sigue a la palabra del grupo en la línea del plato: «», «: puré o ensalada», « (elegís 2)». */
+/** Lo que sigue a la palabra del grupo en la línea del plato: «» o «: puré o ensalada». (El número ya va antes de la palabra: ya no hace falta «(elegís 2)».) */
 export function restoDeLaParte(p: ParteDeIncluye): string {
-  return `${p.subconjunto ? `: ${p.subconjunto}` : ""}${p.elegis ? ` (${p.elegis})` : ""}`;
+  return p.subconjunto ? `: ${p.subconjunto}` : "";
 }
 
-/** Un grupo dentro de la línea del plato: «guarnición», «guarnición: puré o ensalada», «guarnición (elegís 2)». */
+/** El comienzo de un grupo en la línea del plato, antes de la palabra tocable: «1 », «2 », «hasta 2 », «de 1 a 3 ». */
+export function cantidadDeLaParte(p: ParteDeIncluye): string {
+  return `${p.cantidad} `;
+}
+
+/** Un grupo dentro de la línea del plato: «1 guarnición», «1 guarnición: puré o ensalada», «2 guarniciones». */
 function textoDeUnaParte(p: ParteDeIncluye): string {
-  return `${p.palabra}${restoDeLaParte(p)}`;
+  return `${cantidadDeLaParte(p)}${p.palabraEnLinea}${restoDeLaParte(p)}`;
 }
 
-/** La línea de UN plato: «Incluye guarnición y salsa». `null` si no incluye ningún grupo libre (no hay línea). */
+/** La línea de UN plato: «Incluye 1 guarnición y 1 salsa». `null` si no incluye ningún grupo libre (no hay línea). */
 export function textoDeIncluye(partes: readonly ParteDeIncluye[]): string | null {
   return partes.length === 0 ? null : `Incluye ${unirConY(partes.map(textoDeUnaParte))}`;
 }

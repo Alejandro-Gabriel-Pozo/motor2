@@ -48,8 +48,8 @@ test("invitación 5+2: tocar «salsa» o «guarnición» baja al bloque, lo ilum
     await abrir();
 
     // La línea del plato y sus botones.
-    await expect(fila(0).locator("[data-incluye]")).toHaveText(`Incluye guarnición ${m} y salsa ${m} · elegí abajo ↓`);
-    await expect(fila(4).locator("[data-incluye]")).toHaveText(`Incluye guarnición ${m}: puré o ensalada · elegí abajo ↓`);
+    await expect(fila(0).locator("[data-incluye]")).toHaveText(`Incluye 1 guarnición ${m} y 1 salsa ${m} · elegí abajo ↓`);
+    await expect(fila(4).locator("[data-incluye]")).toHaveText(`Incluye 1 guarnición ${m}: puré o ensalada · elegí abajo ↓`);
     await expect(fila(0).getByRole("button")).toHaveCount(2);
     await expect(fila(3).locator("[data-incluye]")).toHaveCount(0);
     expect(await marcados().count(), "nada marcado al llegar").toBe(0);

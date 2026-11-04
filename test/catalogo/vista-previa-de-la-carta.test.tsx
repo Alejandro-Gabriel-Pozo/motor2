@@ -39,8 +39,8 @@ describe("VistaPreviaDeLaCarta", () => {
     const t = texto(html);
     expect(t).toContain("Café Chico Grande");
     expect(t).toContain("$4.000");
-    // Carta «B»: el plato dice «Incluye preparación» y el pie de la sección nombra las opciones (la misma función que la carta pública).
-    expect(t).toContain("Incluye preparación");
+    // Carta «B»: el plato dice «Incluye 1 preparación» y el pie de la sección nombra las opciones (la misma función que la carta pública).
+    expect(t).toContain("Incluye 1 preparación");
     expect(t).toContain("Preparación · elegís 1 solo · cortado");
     expect(html).toContain('<span class="sr-only">no se ofrece</span>');
   });
