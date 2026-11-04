@@ -8,8 +8,11 @@ import { RAIZ_DEL_REPO, revisarCerco, type Cerco } from "./trinquete";
  */
 const DIR_LINEA_DE_BASE = join(__dirname, "linea-de-base");
 
-/** Registra en Vitest el test del trinquete de `cerco` contra la línea de base real del repo (`linea-de-base/`). */
-export function probarCerco(cerco: Cerco): void {
+/**
+ * Registra en Vitest el test del trinquete de `cerco` contra la línea de base real del repo (`linea-de-base/`).
+ * `ayuda` (opcional): un texto fijo que se agrega al final del mensaje cuando el cerco falla (cómo arreglarlo, para los cercos cuyo arreglo no es obvio).
+ */
+export function probarCerco(cerco: Cerco, ayuda?: string): void {
   describe(`cerco «${cerco.regla}»: la línea de base solo baja`, () => {
     it("ninguna cuenta subió, ninguna bajó sin fijarse, y las excepciones y los motivos siguen haciendo falta", () => {
       const revision = revisarCerco(cerco, {
@@ -18,7 +21,7 @@ export function probarCerco(cerco: Cerco): void {
         bajar: process.env.BAJAR_CERCOS === "1",
         crear: process.env.CREAR_CERCOS === "1",
       });
-      expect(revision.problemas, revision.problemas.join("\n\n")).toEqual([]);
+      expect(revision.problemas, [...revision.problemas, ...(revision.problemas.length > 0 && ayuda ? [ayuda] : [])].join("\n\n")).toEqual([]);
     });
   });
 }
