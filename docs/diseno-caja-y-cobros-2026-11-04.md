@@ -180,7 +180,7 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 6. **P6. Medios de pago y datos que pide cada uno.** Propongo: efectivo, transferencia, tarjeta de débito, tarjeta de crédito, cheque, cuenta corriente. ¿Falta alguno? ¿Qué dato de cada uno es obligatorio?
 7. **P7. Cuenta corriente:** ¿hay **límite** por cliente y quién la **habilita**? (Recomiendo: administración la habilita, sin límite al principio.)
 8. **P8. Reservas:** como no hay módulo de reservas, ¿alcanza por ahora con una **referencia de texto** en el ticket o comprobante? (Recomiendo sí; el folio se arma cuando exista el módulo.)
-9. **P9. Otros conceptos:** Además del alojamiento, ¿la factura puede traer otro concepto que no sea un ticket** (eventos, salón, otros)? Recomiendo **solo «alojamiento» por ahora**, como un importe escrito; lo demás son tickets. Si hubiera otros conceptos, serían una lista corta de conceptos declarados.
+9. **P9. Otros conceptos:** Además del alojamiento, ¿la factura puede traer otro concepto que no sea un ticket (eventos, salón, otros)? Recomiendo **solo «alojamiento» por ahora**, como un importe escrito; lo demás son tickets. Si hubiera otros conceptos, serían una lista corta de conceptos declarados.
 
 ## Qué sigue
 
