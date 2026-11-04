@@ -251,7 +251,7 @@ test.describe("carta de una sucursal", () => {
         await expect(filas.milanesa).toContainText("$9.500");
         const incluyeMila = filas.milanesa.locator("[data-incluye]");
         await expect(incluyeMila).toBeVisible();
-        await expect(incluyeMila).toHaveText(`Incluye guarnición ${m}`);
+        await expect(incluyeMila).toHaveText(`Incluye guarnición ${m} · elegí abajo ↓`);
         const bloqueGuarnicion = page.locator(`[data-bloque-de-opciones='Guarnición ${m}']`);
         await expect(bloqueGuarnicion).toBeVisible();
         await expect(bloqueGuarnicion.locator("h4")).toHaveText(`Guarnición ${m} · elegís 1`);
