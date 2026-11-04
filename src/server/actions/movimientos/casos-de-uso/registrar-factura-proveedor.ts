@@ -138,6 +138,7 @@ export async function registrarFacturaProveedorCasoDeUso(
       ahora: actor.ahora,
       claveIdempotencia: datos.claveIdempotencia,
       payloadHash,
+      condicionPago: datos.condicionPago,
     });
     const renglonIds = await escribirRenglonesDeFactura(
       tx,
@@ -232,7 +233,7 @@ export async function registrarFacturaProveedorCasoDeUso(
       sucursalId: actor.sucursalId,
     });
 
-    const mensaje = mensajeDeCarga(movimientosPropios, ajenas.map((p) => nombres.get(p.sucursalId) ?? ""));
+    const mensaje = mensajeDeCarga(movimientosPropios, ajenas.map((p) => nombres.get(p.sucursalId) ?? ""), datos.condicionPago === "PENDIENTE_DE_PAGO");
     await registrarResultadoDeFactura(tx, factura.id, mensaje);
     return exito(mensaje, { repetida: false, facturaId: factura.id });
   }, undefined, undefined, true).catch(async (e): Promise<ResultadoRegistrarFacturaProveedor> => {
@@ -258,8 +259,9 @@ function verificarSumas(reparto: Extract<RepartoDeFactura, { ok: true }>, renglo
   if (bp !== 10000 || !renglonesOk) throw new Error("registrarFacturaProveedor: el reparto no cierra (puntos básicos o sumas por renglón); no se escribe nada.");
 }
 
-function mensajeDeCarga(movimientosPropios: number, destinos: readonly string[]): string {
-  const propia = movimientosPropios ? `Factura cargada: ${movimientosPropios} movimiento(s) entraron al stock de esta sucursal.` : "Factura cargada.";
+function mensajeDeCarga(movimientosPropios: number, destinos: readonly string[], pendienteDePago = false): string {
+  const aviso = pendienteDePago ? " Quedó pendiente de pago: declaralo desde «Compras registradas» cuando se pague." : "";
+  const propia = (movimientosPropios ? `Factura cargada: ${movimientosPropios} movimiento(s) entraron al stock de esta sucursal.` : "Factura cargada.") + aviso;
   if (!destinos.length) return propia;
   return `${propia} Quedan para aceptar las partes de: ${destinos.map((d) => `«${d}»`).join(", ")} (cada sucursal la acepta desde su Compra; hasta entonces no cuenta en su stock ni en su gasto).`;
 }

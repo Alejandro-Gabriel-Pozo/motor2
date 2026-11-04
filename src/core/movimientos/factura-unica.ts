@@ -96,6 +96,17 @@ export function esChoqueDeClaveIdempotenciaDeFactura(e: unknown): boolean {
   return nombre === "FacturaProveedor_claveIdempotencia_key" || nombre === "AnulacionDeFacturaProveedor_claveIdempotencia_key";
 }
 
+/** Pagos X0: la clave de reintento de un pago declarado y la de su anulación (únicas GLOBALES, como las demás). */
+export function esChoqueDeClaveIdempotenciaDePago(e: unknown): boolean {
+  const nombre = nombreDeIndiceViolado(e);
+  return nombre === "PagoDeFacturaProveedor_claveIdempotencia_key" || nombre === "AnulacionDePagoDeFacturaProveedor_claveIdempotencia_key";
+}
+
+/** Pagos X0: la segunda barrera contra dos pagos vigentes de la misma factura (índice único parcial de la migración 20261104110000). */
+export function esChoqueDePagoVigenteDeFactura(e: unknown): boolean {
+  return nombreDeIndiceViolado(e) === "PagoDeFacturaProveedor_vigente_key";
+}
+
 /** E3a: la segunda barrera contra una doble aceptación: una sola parte por (factura, sucursal), índice único de M3b. */
 export function esChoqueDeParteYaExistente(e: unknown): boolean {
   return nombreDeIndiceViolado(e) === "FacturaProveedorSucursal_facturaProveedorId_sucursalId_key";

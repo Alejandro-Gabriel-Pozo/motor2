@@ -1400,6 +1400,14 @@
       ]
     },
     {
+      "clave": "declarar_pago_compra",
+      "contexto": "empresa",
+      "nivelMinimo": "operario",
+      "rolesEditarSemilla": [
+        "admin"
+      ]
+    },
+    {
       "clave": "compra_recibir",
       "contexto": "sucursal",
       "nivelMinimo": "operario",

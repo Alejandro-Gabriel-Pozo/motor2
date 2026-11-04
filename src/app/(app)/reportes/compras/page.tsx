@@ -2,7 +2,7 @@ import Link from "next/link";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { obtenerMiNivelPermiso, requierePermisoVer } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { SIN_PROVEEDOR } from "@/core/reportes/public";
@@ -10,10 +10,11 @@ import { listarComprasRegistradas } from "@/server/consultas/reportes/compras-re
 import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
 import { BotonAnularCompra } from "./boton-anular-compra";
 import { BotonAnularFactura } from "./boton-anular-factura";
+import { PagoDeFactura } from "./pago-de-factura";
 import { FormularioCorregirCompra } from "./formulario-corregir-compra";
 import { formatearNumeroComprobante, leerNumeroComprobante } from "@/core/datos/numero-comprobante";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
-import { ZONA_UTC, diaDeCalendario, esDiaISOReal, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, ZONA_UTC, diaDeCalendario, esDiaISOReal, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { redondearMoneda } from "@/core/moneda";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 import { Campo } from "@/ui/primitivas/campo";
@@ -41,10 +42,13 @@ export default async function ComprasRegistradasPage({
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, "reporte_compras", ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
-  const [{ editar: puedeAnular }, { editar: puedeCorregir }] = await Promise.all([
+  const [{ editar: puedeAnular }, { editar: puedeCorregir }, { editar: puedeDeclararPago }] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_compra", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "corregir_compra", ctx.db),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "declarar_pago_compra", ctx.db),
   ]);
+  // Pagos X0: el «hoy» de la fecha de pago es el día argentino (el servidor lo vuelve a validar con su reloj).
+  const hoyArgentina = diaDeCalendario(new Date(), ZONA_ARGENTINA);
   // El día de una compra (o de su anulación) es un instante: se lee en la zona de la empresa, el mismo corte del filtro. El vencimiento del lote es una fecha de solo día: se lee en UTC.
   const fechaCorta = (f: Date) => diaDeCalendario(f, ctx.empresaZonaHoraria);
   const fechaDeLote = (f: Date) => diaDeCalendario(f, ZONA_UTC);
@@ -183,6 +187,16 @@ export default async function ComprasRegistradasPage({
                   {c.facturaProveedorId && (
                     <div className="mt-2 flex flex-col gap-2">
                       <p className="text-xs text-tinta-tenue">Es la parte de esta sucursal en una factura de proveedor: no se corrige ni se anula sola, se anula la factura entera (con todas sus partes).</p>
+                      {c.pago && !c.anuladaEn && (
+                        <PagoDeFactura
+                          facturaId={c.facturaProveedorId}
+                          pago={c.pago}
+                          puedeDeclarar={puedeDeclararPago}
+                          hoy={hoyArgentina}
+                          desde={diaDeCalendario(c.fecha, ZONA_ARGENTINA)}
+                          resumen={`del ${fechaCorta(c.fecha)}${c.proveedorNombre ? ` de ${c.proveedorNombre}` : ""}${c.nroFactura ? `, N° ${c.nroFactura}` : ""}`}
+                        />
+                      )}
                       {puedeAnular && (
                         <BotonAnularFactura
                           facturaId={c.facturaProveedorId}

@@ -124,6 +124,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Semilla de `opcion_apagar_en_sucursal` (decisión del dueño, limpieza paquete A paso 3b; CAMBIA COMPORTAMIENTO a propósito en las empresas NUEVAS): la clave pasa de [admin] a [admin, operador] (clase O a L; piso operario intacto). Cambia SOLO lo que dice esa clave para el usuario «operador» (y los roles que lo incluyen): sale de los grupos de SIN_PERMISO/`ver=false editar=false` y entra a los de `ok`/`ver=true editar=true`/`sucursalesDondeElUsuarioPuedeVer`; el resto son movimientos de orden de la clave dentro de las listas. Ninguna respuesta de otra clave cambia. Revisado con `git diff --word-diff`.",
       },
+      {
+        blob: "476335882b111a8d02307eee107a7e557b5dc7e5",
+        // El commit PADRE de este (562b3ab) es el último antes del cambio; el golden se regenera en el commit siguiente (Pagos X0).
+        commit: "562b3ab",
+        motivo:
+          "Pagos X0 (ADITIVO; la clave es nueva y nadie la tenía): `declarar_pago_compra` (empresa, piso operario, clase O, semilla solo `admin`) aparece en las listas de claves de cada bloque y registro (112 líneas, todas del mismo tipo: se suma esa clave junto a `compra_repartir`). Revisado con `git diff --word-diff`: ninguna otra respuesta del guard cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -237,6 +244,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "91670bc8",
         motivo:
           "Semilla de `opcion_apagar_en_sucursal` (decisión del dueño, limpieza paquete A paso 3b; CAMBIA COMPORTAMIENTO a propósito en las empresas NUEVAS): la fila PERMISO del operador pasa de `ver=false editar=false` a `ver=true editar=true` en cada uno de los dos registros. Ninguna otra línea cambia.",
+      },
+      {
+        blob: "f6a51eb01e20fae06a14c4f227afac5b331d9a99",
+        // El commit PADRE de este (56a6acc) es el último antes del cambio; el golden se regenera en el commit siguiente (Pagos X0).
+        commit: "56a6acc",
+        motivo:
+          "Pagos X0 (ADITIVO; clave nueva): `ACCIONES 129 a 130` y las dos filas `PERMISO` de `declarar_pago_compra` (admin ver=true editar=true; operador sin Ver ni Editar). Revisado con `git diff`: solo se suman esas tres líneas; ningún otro permiso ni rol cambia.",
       },
     ],
   },
@@ -470,6 +484,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "4b918ba0",
         motivo:
           "Paquete de limpieza de deuda A, paso 2 (c) (retira código sin uso, sin cambio de comportamiento): `buscarProductoParaHistorial` no tenía ningún llamador en `src/` (el filtro del historial usa `SelectorProducto`), así que se borra junto con su caso de la caracterización. Cambia SOLO que desaparece la entrada «13. historial-producto.buscarProductoParaHistorial(Central, «pizza»)» (6 líneas: encabezado, consultas y resultado) y que las entradas siguientes bajan un número (14 → 13, 15 → 14, etc.): 33 líneas agregadas y 40 quitadas, las 33 agregadas son solo el encabezado `### N.` renumerado. Ninguna consulta ni resultado de otra entrada cambia.",
+      },
+      {
+        blob: "4b13af82ff1748dbbd2961977a92a6771e41b742",
+        // El commit PADRE de este (56a6acc) es el último antes del cambio; el golden se regenera en el commit siguiente (Pagos X0).
+        commit: "56a6acc",
+        motivo:
+          "Pagos X0 (ADITIVO; no cambia ningún importe ni conteo de consultas): cada compra de «Compras registradas» suma el campo `pago: null` (sin factura de proveedor no hay estado de pago). Revisado con `git diff`: solo suma esas líneas.",
       },
     ],
   },

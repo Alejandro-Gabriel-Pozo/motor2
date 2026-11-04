@@ -84,7 +84,7 @@ export { redondearCantidad } from "./redondeo";
 export { TAMANO_PAGINA_COMPRAS } from "./compras-registradas";
 export type { FiltroCompras } from "./compras-registradas";
 export type { RenglonCompra } from "./compras-registradas";
-export type { CompraRegistrada } from "./compras-registradas";
+export type { CompraRegistrada, PagoDeCompra } from "./compras-registradas";
 export type { PaginaCompras } from "./compras-registradas";
 export type { ReporteConsignacion } from "./consignacion";
 export type { IndiceRecetas } from "./comun";

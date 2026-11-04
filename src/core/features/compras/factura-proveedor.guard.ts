@@ -5,7 +5,9 @@ import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { guardComprobanteDeCompra } from "./compra.guard";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
-import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, DatosFacturaProveedorInput } from "./factura-proveedor.schema";
+import { esCondicionDePago, esMedioDePago } from "@/core/compras/public";
+import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal } from "@/core/tiempo/zona-horaria";
+import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, ComandoAnularPagoDeFactura, ComandoDeclararPagoDeFactura, DatosFacturaProveedorInput } from "./factura-proveedor.schema";
 
 /**
  * E3a: guards de formato de los tres comandos de la factura de proveedor (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md). Puros, sin base ni permisos: corren dentro de
@@ -65,6 +67,8 @@ export function guardComandoRegistrarFacturaProveedor(entrada: unknown, ahora: D
   if (!numero.ok) return rechazar(numero.codigo, numero.mensaje);
   if (vistas.has(sucursalActivaId) && !texto(e.seccionId)) return rechazar("vacio", "Elegí la sección donde entra la parte de esta sucursal.");
 
+  if (e.condicionPago !== undefined && !esCondicionDePago(e.condicionPago)) return rechazar("formato", "Elegí si la factura se pagó ahora o queda pendiente de pago.");
+
   const clave = claveObligatoria(e.claveIdempotencia);
   if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
   return aceptar({ ...(entrada as DatosFacturaProveedorInput), nroFactura: numero.valor });
@@ -92,4 +96,32 @@ export function guardComandoAnularFacturaProveedor(entrada: unknown): ResultadoD
   const clave = claveObligatoria(e.claveIdempotencia);
   if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
   return aceptar({ facturaId: texto(e.facturaId), motivo: motivo.valor, claveIdempotencia: clave.valor });
+}
+
+/**
+ * Pagos X0 «Declarar pago»: la factura, el día del pago (texto `AAAA-MM-DD` real, no posterior a HOY en Argentina) y el medio (lista cerrada). El piso (no anterior al día de la factura) y el resto lo decide el caso de uso, que conoce la
+ * factura. El «hoy» sale del reloj que pasa quien llama (el del servidor), nunca del cliente.
+ */
+export function guardComandoDeclararPagoDeFactura(entrada: unknown, ahora: Date): ResultadoDato<ComandoDeclararPagoDeFactura> {
+  const e = (entrada ?? {}) as Partial<Record<keyof ComandoDeclararPagoDeFactura, unknown>>;
+  if (!texto(e.facturaId)) return rechazar("vacio", "No se encontró la factura.");
+  if (e.fechaPago === undefined || e.fechaPago === null || e.fechaPago === "") return rechazar("vacio", "Elegí la fecha en que se pagó.");
+  if (!esDiaISOReal(e.fechaPago)) return rechazar("formato", "La fecha del pago no es válida.");
+  if (e.fechaPago > diaDeCalendario(ahora, ZONA_ARGENTINA)) return rechazar("rango", "La fecha del pago no puede ser posterior a hoy.");
+  if (!esMedioDePago(e.medio)) return rechazar("formato", "Elegí cómo se pagó.");
+  const clave = claveObligatoria(e.claveIdempotencia);
+  if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
+  return aceptar({ facturaId: texto(e.facturaId), fechaPago: e.fechaPago, medio: e.medio, claveIdempotencia: clave.valor });
+}
+
+/** Pagos X0 «Anular pago declarado»: el pago y el motivo (obligatorio, 1 a 200 caracteres). */
+export function guardComandoAnularPagoDeFactura(entrada: unknown): ResultadoDato<ComandoAnularPagoDeFactura> {
+  const e = (entrada ?? {}) as Partial<Record<keyof ComandoAnularPagoDeFactura, unknown>>;
+  if (!texto(e.pagoId)) return rechazar("vacio", "No se encontró el pago.");
+  const motivo = validarTextoLibre(e.motivo, "El motivo", LARGO_MAXIMO_MOTIVO_ANULACION);
+  if (!motivo.ok) return rechazar(motivo.codigo, motivo.mensaje);
+  if (!motivo.valor) return rechazar("vacio", "Escribí el motivo de la anulación del pago.");
+  const clave = claveObligatoria(e.claveIdempotencia);
+  if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
+  return aceptar({ pagoId: texto(e.pagoId), motivo: motivo.valor, claveIdempotencia: clave.valor });
 }

@@ -1,10 +1,11 @@
 import "server-only";
+import { esCondicionDePago, estadoDePago, esMedioDePago } from "@/core/compras/public";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
 import { escaparComodinesLike, textoDeBusqueda } from "@/core/texto";
 import { SIN_PROVEEDOR } from "@/core/reportes/public";
-import { ZONA_ARGENTINA, rangoDeDias } from "@/core/tiempo/zona-horaria";
-import { TAMANO_PAGINA_COMPRAS, type FiltroCompras, type RenglonCompra, type CompraRegistrada, type PaginaCompras } from "@/core/reportes/public";
+import { ZONA_ARGENTINA, diaDeColumnaDate, rangoDeDias } from "@/core/tiempo/zona-horaria";
+import { TAMANO_PAGINA_COMPRAS, type FiltroCompras, type RenglonCompra, type CompraRegistrada, type PagoDeCompra, type PaginaCompras } from "@/core/reportes/public";
 
 /**
  * `desde`/`hasta` llegan como fecha "de solo día" (00:00 UTC del día elegido): el rango es de días COMPLETOS EN LA ZONA de la empresa (`zona`, la de `ctx.empresaZonaHoraria`;
@@ -49,7 +50,26 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
   const hayMas = operaciones.length > TAMANO_PAGINA_COMPRAS;
   const pagina = hayMas ? operaciones.slice(0, TAMANO_PAGINA_COMPRAS) : operaciones;
 
+  // Pagos X0: la condición de pago y el pago vigente de las facturas de proveedor de esta página (una sola consulta; la factura es de la empresa).
+  const facturaIds = [...new Set(pagina.map((o) => o.movimientos.find((m) => m.facturaProveedorRenglon)?.facturaProveedorRenglon?.facturaProveedorId).filter((id): id is string => Boolean(id)))];
+  const facturas = facturaIds.length
+    ? await db.facturaProveedor.findMany({
+        where: { id: { in: facturaIds } },
+        select: { id: true, condicionPago: true, pagos: { where: { anuladoEn: null }, select: { id: true, fechaPago: true, medio: true } } },
+      })
+    : [];
+  const pagoDeFactura = new Map<string, PagoDeCompra>();
+  for (const f of facturas) {
+    if (!esCondicionDePago(f.condicionPago)) continue;
+    const vigente = f.pagos[0];
+    pagoDeFactura.set(f.id, {
+      estado: estadoDePago(f.condicionPago, Boolean(vigente)),
+      pagoVigente: vigente && esMedioDePago(vigente.medio) ? { pagoId: vigente.id, dia: diaDeColumnaDate(vigente.fechaPago), medio: vigente.medio } : null,
+    });
+  }
+
   const items: CompraRegistrada[] = pagina.map((o) => {
+    const facturaProveedorId = o.movimientos.find((m) => m.facturaProveedorRenglon)?.facturaProveedorRenglon?.facturaProveedorId ?? null;
     const renglones: RenglonCompra[] = o.movimientos.map((m) => ({
       idMovimiento: m.id,
       productoCodigo: m.producto.codigo,
@@ -75,7 +95,8 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
       anuladaPorEmail: o.anuladaPor?.email ?? null,
       // codigo es @unique (prisma/schema.prisma) — dedupe seguro, mismo criterio de "productos distintos" que §2 (tabla-periodo.tsx).
       cantidadProductos: new Set(renglones.map((l) => l.productoCodigo)).size,
-      facturaProveedorId: o.movimientos.find((m) => m.facturaProveedorRenglon)?.facturaProveedorRenglon?.facturaProveedorId ?? null,
+      facturaProveedorId,
+      pago: facturaProveedorId ? (pagoDeFactura.get(facturaProveedorId) ?? null) : null,
       renglones,
     };
   });

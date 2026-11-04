@@ -32,6 +32,7 @@
   PERMISO admin:conteo_frecuencia ver=true editar=true
   PERMISO admin:conteo_resolver_pendiente ver=true editar=true
   PERMISO admin:corregir_compra ver=true editar=true
+  PERMISO admin:declarar_pago_compra ver=true editar=true
   PERMISO admin:gestion_permisos ver=true editar=true
   PERMISO admin:gestion_roles ver=true editar=true
   PERMISO admin:gestion_usuarios ver=true editar=true
@@ -161,6 +162,7 @@
   PERMISO operador:conteo_frecuencia ver=true editar=true
   PERMISO operador:conteo_resolver_pendiente ver=true editar=true
   PERMISO operador:corregir_compra ver=false editar=false
+  PERMISO operador:declarar_pago_compra ver=false editar=false
   PERMISO operador:gestion_permisos ver=false editar=false
   PERMISO operador:gestion_roles ver=false editar=false
   PERMISO operador:gestion_usuarios ver=false editar=false
@@ -263,7 +265,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Central/true, Norte/true
-  ACCIONES 129
+  ACCIONES 130
 ### 0b. Primer gerente incorporado
   resultado: {"ok":true,"sucursalId":"sucursal1","sucursalNombre":"Central","membresiaId":"id#1"}
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=ACTIVE id=E llevaIvaDeCompras=false moneda=ARS nombre=Empresa huella permisosEditables=true slug=E zonaHoraria=America/Argentina/Buenos_Aires
@@ -449,6 +451,7 @@
   PERMISO admin:conteo_frecuencia ver=true editar=true
   PERMISO admin:conteo_resolver_pendiente ver=true editar=true
   PERMISO admin:corregir_compra ver=true editar=true
+  PERMISO admin:declarar_pago_compra ver=true editar=true
   PERMISO admin:gestion_permisos ver=true editar=true
   PERMISO admin:gestion_roles ver=true editar=true
   PERMISO admin:gestion_usuarios ver=true editar=true
@@ -578,6 +581,7 @@
   PERMISO operador:conteo_frecuencia ver=true editar=true
   PERMISO operador:conteo_resolver_pendiente ver=true editar=true
   PERMISO operador:corregir_compra ver=false editar=false
+  PERMISO operador:declarar_pago_compra ver=false editar=false
   PERMISO operador:gestion_permisos ver=false editar=false
   PERMISO operador:gestion_roles ver=false editar=false
   PERMISO operador:gestion_usuarios ver=false editar=false
@@ -680,7 +684,7 @@
   MOTIVOS Devolución de cliente (no revendible), Mal preparado / quemado, Otro, Robo o faltante, Roto o caído, Vencido
   DESTINOS Degustación / cortesía, Elaboración interna, Evento, Otro, Personal
   SUCURSALES Casa central/true
-  ACCIONES 129
+  ACCIONES 130
 ### 7a. Aceptar con un CUIT inválido
   resultado: {"ok":false,"mensaje":"El CUIT no tiene un formato válido: son 11 dígitos, por ejemplo 30-12345678-1."}
   EMPRESA condicionIva=null creadoEn=<enmascarado> cuit=null dosPaneles=true estado=PROVISIONING id=F llevaIvaDeCompras=false moneda=ARS nombre=Empresa en alta permisosEditables=true slug=F zonaHoraria=America/Argentina/Buenos_Aires

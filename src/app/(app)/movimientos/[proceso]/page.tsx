@@ -107,6 +107,7 @@ export default async function MovimientoPage({
             unidades={unidades.map((u) => ({ id: u.id, nombre: u.nombre }))}
             productoInicial={productoInicial ? { id: productoInicial.id, etiqueta: `${productoInicial.codigo} — ${productoInicial.nombre}` } : undefined}
             reparto={nivelReparto.editar && otrasSucursales.length ? { sucursalActiva: { id: ctx.sucursalId, nombre: ctx.sucursalNombre }, otras: otrasSucursales } : undefined}
+            sucursalActivaId={ctx.sucursalId}
           />
         ) : (
           <PanelMovimientoForm
