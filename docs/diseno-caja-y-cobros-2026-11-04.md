@@ -1,0 +1,181 @@
+# Diseño: caja y cobros, con la factura emitida en otro sistema (2026-11-04)
+
+Estado: **diseño en papel, a validar por el dueño. Sin código ni migraciones.** Cubre los niveles 1 a 5 de la escalera de diseño y la escalera de producto N0 a N5. **Las tablas (nivel 6) no se diseñan hasta que el dueño confirme los niveles 1 a 5** (compuerta de `AGENTS.md`).
+
+Continúa `docs/diseno-clientes-convenios-y-facturacion-externa-2026-10-26.md` (no lo reemplaza): de ahí se toman la factura externa, el cobro y la cuenta corriente, y acá se corrigen dos puntos por lo que dijo el dueño el 2026-11-04 (ver §0.2). Se apoya en `docs/diseno-pagos-y-conciliacion-2026-11-03.md` (mismo patrón de «pago aparte que solo se agrega, y una persona decide») y en `docs/diseno-notas-de-credito-de-proveedor-2026-11-04.md` (regla N16: el documento cancela una factura y el dinero se cruza aparte).
+
+Estados de cada decisión: **CONFIRMADA** (dicha por el dueño; se cita), **PROPUESTA** (de este diseño), **PENDIENTE** (falta decidir), **NO VERIFICADA**.
+
+## 0. Lo que hay hoy, verificado en el código (2026-11-04)
+
+Inventario hecho leyendo `prisma/schema.prisma` y `src/` (no los documentos).
+
+| Pieza | Estado hoy | Evidencia |
+|---|---|---|
+| Cobro de una cuenta del salón, medio de pago, propina, caja, turno, arqueo | **NO EXISTE** | `cuenta-cierre.ts:17-18`: «pagar y cerrar son UNA sola acción atómica (plan B5: motor2 no tiene entidad de caja ni de pago)» |
+| «Cuenta cerrada» | Significa **vendida con stock descontado**, no cobrada. Solo `cerradaEn` y `cerradaPorId` | `cerrar-cuenta.ts:54-171`; `Cuenta` `schema.prisma:2303-2348` |
+| Estado «cobrada / sin cobrar» | **NO EXISTE** | idem |
+| `Cliente` | Solo `nombre`, `descuentoPorcentaje`, `activo`. **Sin CUIT, tipo, condición de IVA ni cuenta corriente** | `schema.prisma:756-771` |
+| Cuenta corriente de clientes (saldo, movimientos, límite) | **NO EXISTE** (lo de proveedores es otro libro) | idem |
+| Factura de VENTA emitida en otro sistema (tipo, punto de venta, número, fecha) | **NO EXISTE** | ninguna columna fiscal en `Cuenta`, `Venta`, `Operacion`, `EjemplarTicket` |
+| Punto de venta PROPIO de la sucursal | **NO EXISTE** (solo `PuntoDeVentaDeProveedor`) | `schema.prisma:3051-3063` |
+| Reservas, alojamiento, habitaciones, folio, huésped | **NO EXISTE** (ni modelo, ni ruta, ni permiso, ni módulo) | `catalogo.ts:21-40` no tiene módulo de hotel |
+| `Venta` (cabecera con total y canal) | Existe en el esquema, **nadie la escribe ni la lee** | `schema.prisma:2714-2738` |
+| `EjemplarTicket` | Control interno, **«no válido como factura»** | `numeracion-ticket.ts:5` |
+| Listado de tickets | `listarTicketsEmitidos` por sucursal y fechas, **sin filtro por cliente ni noción de sin cobrar** | `tickets-emitidos.ts:42-138` |
+| Alcance por sucursal | `Mesa`, `Cuenta`, `CuentaItem`, `EjemplarTicket` tienen RLS por sucursal; `Cliente` es de empresa | migración `20261014140000_rls_sucursal_b4_punto_de_venta` |
+
+**Patrones ya probados que se reutilizan** (no se inventa nada nuevo):
+
+| Necesidad | Patrón existente |
+|---|---|
+| Registro que solo se agrega y se anula con un registro nuevo, un solo vigente, reintento seguro | Pagos X0: `PagoDeFacturaProveedor` + `AnulacionDePagoDeFacturaProveedor` (índice único parcial de vigente, clave de reintento única, auditoría, nunca DELETE) |
+| Número de comprobante, letra, formato y parser | `src/core/datos/numero-comprobante.ts` (`LETRAS_DE_COMPROBANTE`, `armarNumeroDeComprobante`) |
+| Corregir un número mal cargado con registro | `emitirTicketCorregido` (fila nueva con `corrigeAId` y `motivo`) y `corregirCompra` (auditoría por campo) |
+| «Próximo número» | `siguienteNumeroTicket(max)` = `(max ?? 0) + 1` dentro de la transacción |
+| Lista cerrada de medios de pago | `MEDIOS_DE_PAGO` de proveedores (`pago-de-factura.ts:9`); sirve como forma, no como dato |
+| Unicidad del número de factura vigente | `FacturaProveedor_unica_vigente_key` y su detector |
+
+## 0.1 Lo que dijo el dueño el 2026-11-04 (CONFIRMADA, textual resumido)
+
+1. **Facturan en otro sistema.** motor2 no emite. La idea es **conciliar con el otro sistema con un par de datos más los datos de este sistema**.
+2. **Datos de la factura externa:** tipo de comprobante **A o B**; **factura o nota de crédito**; **punto de venta por sucursal, con su nombre**; **número** y **fecha**; y el **monto de la factura** («que no es cobrar tampoco»).
+3. **Número:** se carga el de la primera factura y luego se **sugieren los correlativos**; si el agente carga mal uno, **debe poder corregirse**.
+4. **Cliente:** por **CUIT**. Una vez cargado, el módulo de clientes lo identifica; si ya existe, **se le indica** y no se carga de nuevo.
+5. **A partir de la letra, el tipo y el monto se concilia:**
+   - factura **a consumidor final** sin cargo de alojamiento → aparecen los **tickets a consumidor final sin cobrar**;
+   - **un ticket cobrado sin factura** → queda **«pendiente de declarar factura»**;
+   - **cliente específico** (empresa, empleado, consumidor final recurrente identificado) → trae **sus tickets que no se cobraron**.
+6. **Reservas:** poder **señalar la reserva** y guardar, **como un folio, las reservas del cliente, empresa o agente de empresa**; si no se cobraron, **se mantienen pendientes**.
+7. **El cobro es según los medios de pago usados**, y **según el medio se pide información adicional**.
+8. **«Cuenta corriente» es un medio de pago:** va a la cuenta corriente de **esa empresa o cliente que la posee**.
+
+## 0.2 Qué corrige este diseño del documento del 2026-10-26
+
+| Punto del diseño viejo | Qué cambia | Por qué |
+|---|---|---|
+| Decisión 7 del mapa: «Cuenta corriente no es un medio de pago, es lo que queda sin cobrar» (PROPUESTA) | **Se reemplaza.** La cuenta corriente **se elige como medio al cobrar** y registra un cargo en la cuenta del cliente, sin ingreso a caja | Punto 8 del dueño. CONFIRMADA |
+| Los cobros se imputaban a la **factura** (`CobroDeCliente → ImputacionDeCobro → FacturaExterna`) | **El cobro se imputa al TICKET**, con su medio, antes o sin factura. La factura se **concilia** con tickets, no recibe el cobro | Puntos 5 y 7. «Cobrado» y «facturado» son **dos ejes independientes** del ticket |
+| Reservas: solo texto en la línea | Se mantiene como **referencia de texto** hasta que exista un módulo de reservas (no existe), con la idea de **folio** anotada | Punto 6, sin módulo que lo sostenga |
+
+## Nivel 1. Propósito y alcance
+
+- **Propósito:** que la administración pueda **saber qué se cobró, qué falta cobrar y qué falta facturar**, y **conciliar** lo que motor2 sabe (tickets, clientes, cobros) con las facturas que se emiten en otro sistema, **cargando pocos datos** de esas facturas.
+- **Necesidad:** pedido del dueño del 2026-11-04 (§0.1); antecedentes `docs/diseno-clientes-convenios-y-facturacion-externa-2026-10-26.md` y la validación del 2026-10-26. CONFIRMADA.
+- **Alcance:**
+  - **Entra:** identificar al cliente por CUIT, cobrar un ticket con medios de pago, cuenta corriente como medio, cargar el comprobante externo (factura o nota de crédito), conciliarlo con tickets, ver pendientes.
+  - **No entra:** emitir comprobantes fiscales, hablar con ARCA, importar desde el otro sistema (idea posterior), alojamiento y reservas como módulo, caja diaria con cierre y arqueo (N5), contabilidad.
+- **Primero lo más barato (regla del 2026-10-27):** motor2 ya tiene el cierre de cuenta, el cliente y los patrones de pago y anulación; lo que falta es **una capa de cobro y una de comprobante externo**. No se toca `cerrarCuenta`.
+
+## Nivel 2. Actores y contexto
+
+| Actor | Qué hace | Estado |
+|---|---|---|
+| Cajero u operario de la sucursal | Cobra tickets con medios de pago | PROPUESTA |
+| Administración | Carga comprobantes externos, concilia, ve pendientes y cuentas corrientes, anula | PROPUESTA |
+| Gerente | Ve todo de su sucursal y de la empresa, corrige | PROPUESTA |
+| Agente de una empresa cliente | Es quien consume por la empresa; no usa el sistema (vínculo agente–empresa, etapa N3 del diseño del 26/10) | CONFIRMADA (H2 del 26/10) |
+| Sistema externo de facturación | **No se integra.** Sus datos se tipean | CONFIRMADA (punto 1) |
+
+Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursal); fecha y cortes de día en zona horaria Argentina (UTC-3); moneda única de la empresa.
+
+## Nivel 3. Casos de uso
+
+| CU | Caso | Etapa | Estado |
+|---|---|---|---|
+| CU1 | Identificar o dar de alta un cliente por **CUIT** (si existe, se indica) | N3 | CONFIRMADA (punto 4) |
+| CU2 | **Cobrar un ticket** con uno o más medios de pago y sus datos adicionales | N1 | CONFIRMADA el principio (punto 7); varios medios y pago parcial PENDIENTE (P2) |
+| CU3 | Cobrar **con cuenta corriente**: el importe pasa a la cuenta del cliente | N2 | CONFIRMADA (punto 8) |
+| CU4 | **Cargar un comprobante externo**: letra A o B, factura o nota de crédito, punto de venta de la sucursal, número (sugerido), fecha, monto, cliente | N3 | CONFIRMADA datos (puntos 2 y 3) |
+| CU5 | **Corregir** un comprobante mal cargado (con registro) | N3 | CONFIRMADA (punto 3) |
+| CU6 | **Conciliar**: a partir del comprobante, proponer tickets (consumidor final sin cobrar; o los del cliente sin cobrar) y que **una persona confirme** | N4 | CONFIRMADA el flujo (punto 5); la confirmación humana es PROPUESTA (como I9 de pagos) |
+| CU7 | **Pendientes:** tickets sin cobrar, cobrados sin factura («pendiente de declarar factura»), saldo de cuenta corriente | N4 | CONFIRMADA (punto 5) |
+| CU8 | **Anular** un cobro o un comprobante (con registro nuevo, nunca borrando) | N1 y N3 | PROPUESTA (regla del sistema) |
+| CU9 | **Folio de reservas** del cliente, empresa o agente | N5 | DIFERIDA (no hay módulo de reservas) |
+| CU10 | Nota de crédito externa: baja lo que hay que conciliar | N3 | CONFIRMADA que existe como clase (punto 2); su efecto PENDIENTE (P5) |
+
+## Nivel 4. Conceptos y ciclo de vida
+
+- **Ticket** = la `Cuenta` cerrada con venta (no `Venta`, que nadie escribe). Tiene **dos ejes independientes y derivados**, no guardados como estado:
+  - **Cobro:** `sin cobrar` → (`parcial`) → `cobrado` (o `a cuenta corriente`);
+  - **Facturación:** `sin factura` → `facturado` (aplicado a un comprobante vigente).
+- **Combinaciones que importan** (de lo que dijo el dueño):
+
+| Cobro | Facturación | Cómo se lee | Dónde aparece |
+|---|---|---|---|
+| sin cobrar | sin factura | Pendiente de cobrar | lista de sin cobrar del cliente |
+| cobrado | sin factura | **Pendiente de declarar factura** | lista de pendientes de factura |
+| sin cobrar | facturado | Facturado y a cobrar | cuenta corriente / sin cobrar |
+| cobrado | facturado | Cerrado | no aparece |
+
+- **Cobro:** registro que **solo se agrega**; se anula con un registro nuevo. Lleva medio de pago, importe, quién y cuándo, y los datos que pide el medio.
+- **Medio de pago:** catálogo de la empresa; cada medio declara **qué datos adicionales pide** (por ejemplo, transferencia: referencia y fecha; cheque: banco, número y fecha de cobro; tarjeta: últimos 4 dígitos y cupón). **La cuenta corriente es un medio especial que no ingresa a caja.**
+- **Cuenta corriente del cliente:** saldo **derivado** (cargos − cobros posteriores). Solo para clientes que la posean. Nunca se guarda un saldo editable.
+- **Comprobante externo:** `BORRADOR → CONFIRMADO → ANULADO`. Clase `FACTURA` o `NOTA_DE_CREDITO`; letra `A` o `B`; punto de venta; número; fecha; monto; cliente. Una nota de crédito **cancela una factura** (la factura afectada), y el dinero se cruza aparte (regla N16 del diseño de notas de crédito).
+- **Punto de venta de la sucursal:** número y **nombre**, propio de cada sucursal.
+- **Conciliación:** la **aplicación** de un ticket a un comprobante. La diferencia entre el monto del comprobante y lo aplicado se **muestra**; una persona decide.
+- **Folio de reserva** (DIFERIDO): agrupa las reservas de un cliente, empresa o agente, con su estado de cobro.
+
+## Nivel 5. Invariantes y políticas
+
+| # | Regla | Estado |
+|---|---|---|
+| C1 | Dinero en decimal exacto (`DECIMAL(14,2)`), moneda de la empresa, redondeo definido; nunca flotantes | CONFIRMADA (regla permanente) |
+| C2 | Cobrar **no** cambia la venta ni el stock: no se toca `cerrarCuenta` | PROPUESTA |
+| C3 | Un cobro **solo se agrega**; se anula con un registro nuevo con motivo; nunca DELETE | CONFIRMADA (regla de trazabilidad) |
+| C4 | Un ticket no se cobra **más de su total**; el total sale del ticket ya cerrado (con sus correcciones) | PROPUESTA |
+| C5 | Un ticket tiene **a lo sumo una aplicación vigente** a un comprobante (índice único parcial) | PROPUESTA (del diseño del 26/10, B4) |
+| C6 | El **número** de un comprobante es único entre los **vigentes** de (empresa, clase, letra, punto de venta, número) | PROPUESTA |
+| C7 | El **número se sugiere** como el último de esa serie + 1, **y se puede cambiar**; la sugerencia nunca es obligatoria | CONFIRMADA (punto 3) |
+| C8 | Corregir un comprobante deja la **auditoría** (quién, cuándo, antes/después, motivo); el número anterior queda libre solo si se anula | CONFIRMADA (punto 3) |
+| C9 | **Letra A** exige un cliente con CUIT; **letra B** admite consumidor final | PENDIENTE (P4) |
+| C10 | El **punto de venta** pertenece a **una sucursal**, y un comprobante usa un punto de venta de **su** sucursal | CONFIRMADA (punto 2) |
+| C11 | Un comprobante cubre tickets de **una sola sucursal** (la de su punto de venta) | PENDIENTE (P3) |
+| C12 | El sistema **propone** la conciliación; **una persona confirma**; nunca se aplica solo | PROPUESTA (como I9 de pagos) |
+| C13 | **Cuenta corriente** como medio exige un cliente con cuenta corriente habilitada; sin cliente identificado, se rechaza | PROPUESTA |
+| C14 | El **CUIT** se valida con el dígito verificador (`validarCuit`) y es único por empresa; si ya existe, se indica y se usa el existente | CONFIRMADA (punto 4); la unicidad PROPUESTA |
+| C15 | Todo se filtra por empresa; los tickets, además, por el alcance de sucursal; el servidor valida quién lo pide y con qué permiso | CONFIRMADA (regla permanente) |
+| C16 | Los permisos nuevos nacen **excluidos** (fail-closed): cobrar, cargar comprobante, conciliar, anular, ver cuenta corriente | CONFIRMADA (principio del 22/10) |
+| C17 | Fechas en zona Argentina; la fecha del cobro y la del comprobante son de **día local** | CONFIRMADA (regla permanente) |
+| C18 | Un cliente «consumidor final» es la cuenta **sin cliente**; el **recurrente identificado** es un cliente con nombre y, si quiere comprobante A, CUIT | PROPUESTA |
+
+## «¿Qué pasa si…?» de los comandos principales
+
+| | **Cobrar un ticket** | **Cargar comprobante externo** | **Conciliar (aplicar tickets)** | **Anular cobro o comprobante** |
+|---|---|---|---|---|
+| Repetición (doble clic) | Clave de idempotencia: el mismo envío no duplica el cobro | Clave de idempotencia; el mismo número vigente rechaza con mensaje claro | Una aplicación vigente por ticket; repetir da «ya estaba aplicado» | `YA_ANULADO`; no repite |
+| Concurrencia | Dos cajeros cobran el mismo ticket: uno gana; el otro ve el cobro hecho (candado de la cuenta y suma ≤ total) | Dos personas cargan el mismo número: gana uno (índice único parcial) | Dos conciliaciones sobre el mismo ticket: gana una | Anular contra cobrar: se serializa |
+| Tiempo | La fecha es la del día local; cortes de día de caja en N5 | La fecha del comprobante puede ser anterior; no puede ser futura | El ticket puede ser de otro mes: se muestra, no se bloquea | Se puede anular después, con motivo |
+| Incertidumbre | La pantalla muestra «queda $X» orientativo; manda el total dentro de la transacción | El correlativo sugerido es orientativo; manda el índice único | Lo que se muestra como propuesta se revalida al confirmar | — |
+| Reintento | Misma clave, mismo resultado | Idem | Idem | Idem |
+| Error parcial | Cobro y sus datos del medio se guardan juntos o no se guarda nada | Cabecera y auditoría juntos | Aplicaciones y auditoría juntas | Anulación y auditoría juntas |
+| Datos faltantes | Sin medio o sin los datos que el medio pide: no cobra | Sin letra, clase, punto de venta, número, fecha o monto: no confirma (puede quedar en borrador) | Sin comprobante confirmado: no concilia | Sin motivo: no anula |
+| Cambio de permisos | Se valida cada vez en servidor y por sucursal | Idem | Idem, y por cada sucursal de los tickets | Idem |
+
+## Escalera de producto N0 a N5
+
+Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como «pendiente de completar», nunca se inventa.
+
+| Etapa | Qué ve el cliente | Qué hay que construir | Depende de |
+|---|---|---|---|
+| **N0 (hoy)** | Se cierra la cuenta y listo; no hay cobro, medio de pago ni comprobante | — | — |
+| **N1 Cobrar** | Al cobrar un ticket se elige el medio y se cargan sus datos; el ticket figura cobrado | Cobro, catálogo de medios, anulación; pantalla del cajero | — |
+| **N2 Cuenta corriente** | «Cuenta corriente» como medio; saldo del cliente | Clientes con cuenta corriente, cargos y saldo derivado | N1, N3 (CUIT) |
+| **N3 Comprobante externo** | Cargar la factura o nota de crédito del otro sistema, con sugerencia de número y corrección; clientes con CUIT | Punto de venta por sucursal, comprobante, clientes con CUIT | — |
+| **N4 Conciliar** | La factura trae los tickets a aplicar; lista de pendientes de declarar factura | Aplicación ticket–comprobante, listas de pendientes | N1, N3 |
+| **N5 Caja y reservas** | Cierre de caja por día y sucursal; folio de reservas cuando exista el módulo | Caja diaria, movimientos de caja; vínculo a reservas | N1; módulo de reservas |
+
+## Preguntas para el dueño (ordenadas por impacto en modelo, dinero y permisos)
+
+1. **P1. Orden de las etapas.** Recomiendo **N1 → N3 → N4 → N2** (primero cobrar; después cargar y conciliar comprobantes; la cuenta corriente al final porque pide clientes con CUIT y saldos).
+2. **P2. Un ticket, ¿varios medios y pago parcial?** Por ejemplo, la mitad en efectivo y la mitad con tarjeta, o una seña y el resto después. Recomiendo **sí a varios medios y sí a parcial**, porque es lo habitual en hotel y restaurante. Cambia el modelo (un ticket puede tener varios cobros).
+3. **P3. ¿Un comprobante puede cubrir tickets de varias sucursales?** Recomiendo **no**: un comprobante, una sucursal, porque el punto de venta es de la sucursal.
+4. **P4. Reglas de letra:** ¿la **A** exige cliente con CUIT y la **B** admite consumidor final? Dijiste «A consumidor final»: ¿quisiste decir la **B**?
+5. **P5. Nota de crédito externa:** ¿baja el monto a conciliar de la factura que corrige (recomendado) o se concilia aparte contra sus propios tickets?
+6. **P6. Medios de pago y datos que pide cada uno.** Propongo: efectivo, transferencia, tarjeta de débito, tarjeta de crédito, cheque, cuenta corriente. ¿Falta alguno? ¿Qué dato de cada uno es obligatorio?
+7. **P7. Cuenta corriente:** ¿hay **límite** por cliente y quién la **habilita**? (Recomiendo: administración la habilita, sin límite al principio.)
+8. **P8. Reservas:** como no hay módulo de reservas, ¿alcanza por ahora con una **referencia de texto** en el ticket o comprobante? (Recomiendo sí; el folio se arma cuando exista el módulo.)
+
+## Qué sigue
+
+Con los niveles 1 a 5 confirmados se diseña el nivel 6 (tablas, solo las de la etapa elegida, aditivas y reversibles), el 7 (atomicidad y concurrencia), el 8 (permisos y pantallas), el 9 (consultas) y el 10 (pruebas con oráculo de combinaciones: medio × parcial × cuenta corriente × facturado × letra). Ver las pantallas dibujadas en la maqueta que acompaña a este documento.
