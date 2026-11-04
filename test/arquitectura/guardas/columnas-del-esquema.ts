@@ -62,7 +62,7 @@ export function columnasDelEsquema(esquema: string): ColumnaDelEsquema[] {
 }
 
 /** Las columnas de auditoría TÉCNICA (cuándo se creó o se tocó la fila): no cambian dinero, visibilidad ni stock. Las demás fechas (`anuladaEn`, `cerradaEn`, `vigenteHasta`…) sí pueden. */
-export const FECHAS_DE_AUDITORIA_TECNICA: ReadonlySet<string> = new Set(["creadoEn", "creadaEn", "actualizadoEn"]);
+const FECHAS_DE_AUDITORIA_TECNICA: ReadonlySet<string> = new Set(["creadoEn", "creadaEn", "actualizadoEn"]);
 
 /**
  * ¿Es una «columna de significado»? Las que pueden cambiar QUÉ se cobra, QUÉ se ve o CUÁNTO stock hay sin ser un `Decimal` (los `Decimal` los cubre `escrituras-auditadas`):
