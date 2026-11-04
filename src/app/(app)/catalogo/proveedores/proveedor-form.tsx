@@ -52,7 +52,7 @@ export function ProveedorForm({ proveedorExistente }: { proveedorExistente?: Pro
       }}
       className="flex max-w-md flex-col gap-2"
     >
-      <h2 className="font-medium">{editando ? `Editar "${proveedorExistente!.nombre}"` : "Nuevo proveedor"}</h2>
+      <h1 className="text-lg font-medium">{editando ? `Editar "${proveedorExistente!.nombre}"` : "Nuevo proveedor"}</h1>
 
       <Campo aria-label="Nombre" name="nombre" placeholder="Nombre" defaultValue={proveedorExistente?.nombre ?? ""} required />
       {editando && <p className="text-xs text-tinta-tenue">Código {proveedorExistente!.codigo}: no cambia. Las compras y facturas del proveedor siguen siendo las mismas aunque corrijas el nombre.</p>}

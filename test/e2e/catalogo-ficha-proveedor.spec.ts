@@ -47,9 +47,8 @@ test("editar y guardar vuelve a la ficha con el aviso, y la ficha muestra lo nue
   await page.getByRole("link", { name: "Editar", exact: true }).click();
   await page.waitForURL(new RegExp(`/catalogo/proveedores/${proveedor.id}/editar$`));
 
-  // El nombre se muestra pero no se edita.
-  await expect(page.locator('input[name="nombre"]')).toHaveCount(0);
-  await expect(page.getByText(proveedor.nombre, { exact: true })).toBeVisible();
+  // El nombre es un campo editable (desde el 2026-11-04 se puede corregir).
+  await expect(page.locator('input[name="nombre"]')).toHaveValue(proveedor.nombre);
   await expect(page.locator('input[name="contacto"]')).toHaveValue("Juan Pérez");
   await expect(page.locator('input[name="condicionesPago"]')).toHaveValue("30 días");
 
