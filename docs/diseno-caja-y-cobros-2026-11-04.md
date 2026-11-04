@@ -85,15 +85,15 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | CU | Caso | Etapa | Estado |
 |---|---|---|---|
 | CU1 | Identificar o dar de alta un cliente por **CUIT** (si existe, se indica) | N3 | CONFIRMADA (punto 4) |
-| CU2 | **Cobrar un ticket** con uno o más medios de pago y sus datos adicionales | N1 | CONFIRMADA el principio (punto 7); varios medios y pago parcial PENDIENTE (P2) |
+| CU2 | **Cobrar un ticket** con uno o más medios de pago y sus datos adicionales; el cobro puede ser **parcial** | N1 | CONFIRMADA (punto 7 y respuesta P2 del 2026-11-04) |
 | CU3 | Cobrar **con cuenta corriente**: el importe pasa a la cuenta del cliente | N2 | CONFIRMADA (punto 8) |
-| CU4 | **Cargar un comprobante externo**: letra A o B, factura o nota de crédito, punto de venta de la sucursal, número (sugerido), fecha, monto, cliente, y **cuánto de ese monto es alojamiento** (se escribe; vale 0 si no hay) | N3 | CONFIRMADA datos (puntos 2, 3 y 9) |
+| CU4 | **Cargar un comprobante externo**: letra A o B, factura o nota de crédito, punto de venta de la sucursal, número (sugerido), fecha, monto, cliente, y **cuánto de ese monto es alojamiento u otro concepto de la lista de la empresa** (se escribe; vale 0 si no hay) | N3 | CONFIRMADA datos (puntos 2, 3 y 9) |
 | CU5 | **Corregir** un comprobante mal cargado (con registro) | N3 | CONFIRMADA (punto 3) |
 | CU6 | **Conciliar**: a partir del comprobante, proponer tickets (consumidor final sin cobrar; o los del cliente sin cobrar) y que **una persona confirme** | N4 | CONFIRMADA el flujo (punto 5); la confirmación humana es PROPUESTA (como I9 de pagos) |
 | CU7 | **Pendientes:** tickets sin cobrar, cobrados sin factura («pendiente de declarar factura»), saldo de cuenta corriente | N4 | CONFIRMADA (punto 5) |
 | CU8 | **Anular** un cobro o un comprobante (con registro nuevo, nunca borrando) | N1 y N3 | PROPUESTA (regla del sistema) |
-| CU9 | **Folio de reservas** del cliente, empresa o agente | N5 | DIFERIDA (no hay módulo de reservas) |
-| CU10 | Nota de crédito externa: baja lo que hay que conciliar | N3 | CONFIRMADA que existe como clase (punto 2); su efecto PENDIENTE (P5) |
+| CU9 | **Reservas informativas (folio)**: anotar a mano las reservas de un cliente, empresa o agente y ver cuáles están sin cobrar. **Informativo**: no hay módulo de reservas ni integración | N5 | CONFIRMADA que se arme como apartado informativo (respuesta del 2026-11-04); su forma PROPUESTA (ver nivel 4) |
+| CU10 | Nota de crédito externa: **baja el monto a conciliar de la factura que corrige** | N3 | CONFIRMADA (punto 2 y respuesta P5 del 2026-11-04) |
 
 ## Nivel 4. Conceptos y ciclo de vida
 
@@ -113,11 +113,11 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 - **Medio de pago:** catálogo de la empresa; cada medio declara **qué datos adicionales pide** (por ejemplo, transferencia: referencia y fecha; cheque: banco, número y fecha de cobro; tarjeta: últimos 4 dígitos y cupón). **La cuenta corriente es un medio especial que no ingresa a caja.**
 - **Cuenta corriente del cliente:** saldo **derivado** (cargos − cobros posteriores). Solo para clientes que la posean. Nunca se guarda un saldo editable.
 - **Comprobante externo:** `BORRADOR → CONFIRMADO → ANULADO`. Clase `FACTURA` o `NOTA_DE_CREDITO`; letra `A` o `B`; punto de venta; número; fecha; monto; cliente. Una nota de crédito **cancela una factura** (la factura afectada), y el dinero se cruza aparte (regla N16 del diseño de notas de crédito).
-- **Alojamiento declarado:** un **importe que se escribe en el comprobante** y que **no sale de este sistema** (no hay módulo de alojamiento). Vale 0 si la factura no lo trae. Cuando exista el módulo de alojamiento, ese importe podrá salir de ahí.
-- **Composición del comprobante:** **monto = alojamiento declarado + Σ tickets aplicados**. La diferencia se **muestra** («falta $X» o «sobra $X»); nunca se fuerza ni se esconde, y la decide una persona.
+- **Conceptos declarados:** importes que **se escriben en el comprobante** y que **no salen de este sistema**. El primero es **alojamiento** (no hay módulo de alojamiento); el dueño pidió además **«productos regionales»** y **poder armar la lista** (CONFIRMADA, 2026-11-04). Entonces: **catálogo de conceptos de la empresa** (nombre, activo), y en cada comprobante cero o más líneas «concepto + importe». Vale 0 si no hay. Cuando exista un módulo de alojamiento, el importe podrá salir de ahí.
+- **Composición del comprobante:** **monto = Σ conceptos declarados + Σ tickets aplicados**. La diferencia se **muestra** («falta $X» o «sobra $X»); nunca se fuerza ni se esconde, y la decide una persona.
 - **Punto de venta de la sucursal:** número y **nombre**, propio de cada sucursal.
 - **Conciliación:** la **aplicación** de un ticket a un comprobante. La diferencia entre el monto del comprobante y lo aplicado se **muestra**; una persona decide.
-- **Folio de reserva** (DIFERIDO): agrupa las reservas de un cliente, empresa o agente, con su estado de cobro.
+- **Reserva informativa y folio** (PROPUESTA de forma; el dueño pidió el apartado informativo): una **reserva** se anota a mano con su **referencia** (el código del sistema de reservas, como texto), el **cliente** (persona o empresa), el **agente** si es de una empresa, las **fechas**, el **importe estimado** y su **estado de cobro** (`pendiente` o `cobrada`, que se marca a mano o por el cobro). El **folio** es la vista de las reservas de un cliente, empresa o agente. **No** crea habitaciones, tarifas ni disponibilidad, **no** integra con el sistema de reservas y **no** genera cargos solo.
 
 ## Nivel 5. Invariantes y políticas
 
@@ -131,17 +131,20 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | C6 | El **número** de un comprobante es único entre los **vigentes** de (empresa, clase, letra, punto de venta, número) | PROPUESTA |
 | C7 | El **número se sugiere** como el último de esa serie + 1, **y se puede cambiar**; la sugerencia nunca es obligatoria | CONFIRMADA (punto 3) |
 | C8 | Corregir un comprobante deja la **auditoría** (quién, cuándo, antes/después, motivo); el número anterior queda libre solo si se anula | CONFIRMADA (punto 3) |
-| C9 | **Letra A** exige un cliente con CUIT; **letra B** admite consumidor final | PENDIENTE (P4) |
+| C9 | **Letra A** exige un cliente con CUIT; **letra B** admite consumidor final | CONFIRMADA (respuesta P4 del 2026-11-04) |
 | C10 | El **punto de venta** pertenece a **una sucursal**, y un comprobante usa un punto de venta de **su** sucursal | CONFIRMADA (punto 2) |
-| C11 | Un comprobante cubre tickets de **una sola sucursal** (la de su punto de venta) | PENDIENTE (P3) |
+| C11 | Un comprobante cubre tickets de **una sola sucursal** (la de su punto de venta) | CONFIRMADA (respuesta P3 del 2026-11-04) |
 | C12 | El sistema **propone** la conciliación; **una persona confirma**; nunca se aplica solo | PROPUESTA (como I9 de pagos) |
-| C13 | **Cuenta corriente** como medio exige un cliente con cuenta corriente habilitada; sin cliente identificado, se rechaza | PROPUESTA |
+| C13 | **Cuenta corriente** como medio exige un cliente con cuenta corriente **habilitada por administración**; sin cliente identificado, se rechaza. Sin límite por cliente al principio | CONFIRMADA (respuesta P7 del 2026-11-04) |
 | C14 | El **CUIT** se valida con el dígito verificador (`validarCuit`) y es único por empresa; si ya existe, se indica y se usa el existente | CONFIRMADA (punto 4); la unicidad PROPUESTA |
 | C15 | Todo se filtra por empresa; los tickets, además, por el alcance de sucursal; el servidor valida quién lo pide y con qué permiso | CONFIRMADA (regla permanente) |
 | C16 | Los permisos nuevos nacen **excluidos** (fail-closed): cobrar, cargar comprobante, conciliar, anular, ver cuenta corriente | CONFIRMADA (principio del 22/10) |
 | C17 | Fechas en zona Argentina; la fecha del cobro y la del comprobante son de **día local** | CONFIRMADA (regla permanente) |
-| C19 | **Monto del comprobante = alojamiento declarado + Σ tickets aplicados.** El alojamiento declarado es ≥ 0 y ≤ monto. Si la suma no cierra, se muestra la diferencia y la persona decide (no se bloquea guardar) | CONFIRMADA el principio (punto 9); no bloquear PROPUESTA |
-| C20 | El **alojamiento declarado no crea cobro, ticket ni cargo** en este sistema: solo explica una parte del monto del comprobante | CONFIRMADA (punto 9) |
+| C19 | **Monto del comprobante = Σ conceptos declarados + Σ tickets aplicados.** Cada concepto declarado es ≥ 0 y su suma es ≤ monto. Si la suma no cierra, se muestra la diferencia y la persona decide (no se bloquea guardar) | CONFIRMADA el principio (punto 9); no bloquear PROPUESTA |
+| C20 | Un **concepto declarado no crea cobro, ticket ni cargo** en este sistema: solo explica una parte del monto del comprobante | CONFIRMADA (punto 9) |
+| C21 | **Un ticket se puede cobrar con varios medios y en partes**: la suma de sus cobros vigentes no pasa de su total; «cobrado» es cuando la suma lo iguala | CONFIRMADA (respuesta P2 del 2026-11-04) |
+| C22 | Una **nota de crédito** se aplica a una factura y **baja el monto a conciliar** de esa factura; el dinero se cruza aparte | CONFIRMADA (respuesta P5 del 2026-11-04) |
+| C23 | La **reserva informativa** no cambia el stock, la venta, el cobro ni el comprobante: es un registro para ver pendientes; solo se agrega y se anula con registro nuevo | PROPUESTA |
 | C18 | Un cliente «consumidor final» es la cuenta **sin cliente**; el **recurrente identificado** es un cliente con nombre y, si quiere comprobante A, CUIT | PROPUESTA |
 
 ## «¿Qué pasa si…?» de los comandos principales
@@ -159,28 +162,37 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 
 ## Escalera de producto N0 a N5
 
-Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como «pendiente de completar», nunca se inventa.
+Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como «pendiente de completar», nunca se inventa. **Orden elegido por el dueño el 2026-11-04: comprobante → conciliar → cobrar → cuenta corriente.**
 
 | Etapa | Qué ve el cliente | Qué hay que construir | Depende de |
 |---|---|---|---|
 | **N0 (hoy)** | Se cierra la cuenta y listo; no hay cobro, medio de pago ni comprobante | — | — |
-| **N1 Cobrar** | Al cobrar un ticket se elige el medio y se cargan sus datos; el ticket figura cobrado | Cobro, catálogo de medios, anulación; pantalla del cajero | — |
-| **N2 Cuenta corriente** | «Cuenta corriente» como medio; saldo del cliente | Clientes con cuenta corriente, cargos y saldo derivado | N1, N3 (CUIT) |
-| **N3 Comprobante externo** | Cargar la factura o nota de crédito del otro sistema, con sugerencia de número y corrección, **y el alojamiento declarado**; clientes con CUIT | Punto de venta por sucursal, comprobante, clientes con CUIT | — |
-| **N4 Conciliar** | La factura trae los tickets a aplicar; lista de pendientes de declarar factura | Aplicación ticket–comprobante, listas de pendientes | N1, N3 |
-| **N5 Caja y reservas** | Cierre de caja por día y sucursal; folio de reservas cuando exista el módulo | Caja diaria, movimientos de caja; vínculo a reservas | N1; módulo de reservas |
+| **N1 Comprobante externo** | Cargar la factura o nota de crédito del otro sistema, con número sugerido y corrección, **los conceptos declarados** (alojamiento, productos regionales…) y clientes con CUIT | Punto de venta por sucursal, comprobante, catálogo de conceptos, clientes con CUIT | — |
+| **N2 Conciliar** | La factura propone los tickets sin factura; se ve la diferencia; lista de «sin factura». **La columna de cobro dice «pendiente de completar»** hasta la etapa N3 | Aplicación ticket–comprobante, listas | N1 |
+| **N3 Cobrar** | Al cobrar un ticket se elige el medio (uno o varios, parcial) y se cargan sus datos; aparecen «sin cobrar» y «**pendiente de declarar factura**» (cobrado sin factura) | Cobro, catálogo de medios, anulación; pantalla del cajero | N2 para las listas cruzadas |
+| **N4 Cuenta corriente** | «Cuenta corriente» como medio; saldo del cliente | Clientes con cuenta corriente habilitada, cargos y saldo derivado | N1 (CUIT), N3 |
+| **N5 Reservas informativas y caja** | Apartado de reservas por cliente, empresa o agente con su estado de cobro; cierre de caja por día y sucursal | Reserva informativa, caja diaria | N3 |
 
-## Preguntas para el dueño (ordenadas por impacto en modelo, dinero y permisos)
+**Consecuencia del orden elegido:** hasta que exista N3, el sistema **no puede decir «cobrado»**. Por eso en N2 la lista de «tickets sin cobrar» y la de «pendientes de declarar factura» (que son las de cobro) **se muestran como «pendiente de completar»**, y solo funciona «tickets sin factura». Esto es coherente con la regla del producto, pero hay que tenerlo presente al probar.
 
-1. **P1. Orden de las etapas.** Recomiendo **N1 → N3 → N4 → N2** (primero cobrar; después cargar y conciliar comprobantes; la cuenta corriente al final porque pide clientes con CUIT y saldos).
-2. **P2. Un ticket, ¿varios medios y pago parcial?** Por ejemplo, la mitad en efectivo y la mitad con tarjeta, o una seña y el resto después. Recomiendo **sí a varios medios y sí a parcial**, porque es lo habitual en hotel y restaurante. Cambia el modelo (un ticket puede tener varios cobros).
-3. **P3. ¿Un comprobante puede cubrir tickets de varias sucursales?** Recomiendo **no**: un comprobante, una sucursal, porque el punto de venta es de la sucursal.
-4. **P4. Reglas de letra:** ¿la **A** exige cliente con CUIT y la **B** admite consumidor final? Dijiste «A consumidor final»: ¿quisiste decir la **B**?
-5. **P5. Nota de crédito externa:** ¿baja el monto a conciliar de la factura que corrige (recomendado) o se concilia aparte contra sus propios tickets?
-6. **P6. Medios de pago y datos que pide cada uno.** Propongo: efectivo, transferencia, tarjeta de débito, tarjeta de crédito, cheque, cuenta corriente. ¿Falta alguno? ¿Qué dato de cada uno es obligatorio?
-7. **P7. Cuenta corriente:** ¿hay **límite** por cliente y quién la **habilita**? (Recomiendo: administración la habilita, sin límite al principio.)
-8. **P8. Reservas:** como no hay módulo de reservas, ¿alcanza por ahora con una **referencia de texto** en el ticket o comprobante? (Recomiendo sí; el folio se arma cuando exista el módulo.)
-9. **P9. Otros conceptos:** Además del alojamiento, ¿la factura puede traer otro concepto que no sea un ticket (eventos, salón, otros)? Recomiendo **solo «alojamiento» por ahora**, como un importe escrito; lo demás son tickets. Si hubiera otros conceptos, serían una lista corta de conceptos declarados.
+## Decisiones del dueño del 2026-11-04 (respuestas a las preguntas)
+
+| # | Pregunta | Respuesta | Estado |
+|---|---|---|---|
+| P1 | Orden de las etapas | **Comprobante → conciliar → cobrar → cuenta corriente** (no la que yo recomendaba; ver consecuencia arriba) | CONFIRMADA |
+| P2 | Un ticket, ¿varios medios y pago parcial? | **Sí, varios medios y parcial** | CONFIRMADA |
+| P3 | ¿Un comprobante cubre varias sucursales? | **No: una factura, una sucursal** | CONFIRMADA |
+| P4 | Reglas de letra | **A exige cliente con CUIT; B admite consumidor final** | CONFIRMADA |
+| P5 | Nota de crédito externa | **Baja el monto de la factura que corrige** | CONFIRMADA |
+| P6 | Medios de pago | Los propuestos (efectivo, transferencia, débito, crédito, cheque, cuenta corriente) **más QR / billetera virtual**. Los **datos que pide cada medio**: «cambiar alguno», **todavía no dijo cuál** | Medios CONFIRMADA; datos PENDIENTE |
+| P7 | Cuenta corriente | **Administración la habilita, sin límite al principio** | CONFIRMADA |
+| P8 | Reservas | **Armar el apartado como informativo** (no esperar al módulo de reservas); su forma, PROPUESTA (nivel 4) | CONFIRMADA que se arme; forma PROPUESTA |
+| P9 | Otros conceptos en la factura | **Sí: «productos regionales», y que se pueda armar la lista** (catálogo de la empresa) | CONFIRMADA |
+
+**Preguntas que quedan abiertas:**
+- **Q1.** ¿Qué dato de cada medio de pago hay que cambiar? Propuesta mía: transferencia, referencia y fecha; débito y crédito, últimos 4 dígitos y número de cupón; cheque, banco, número y fecha de cobro; QR o billetera, referencia de la operación; efectivo, nada; cuenta corriente, cliente.
+- **Q2.** Reserva informativa: ¿qué datos se anotan? Propuesta: referencia (código del otro sistema), cliente, agente, fechas de entrada y salida, importe estimado y estado de cobro.
+- **Q3.** ¿Una reserva informativa se puede **vincular** a una factura como parte de su concepto «alojamiento», o queda aparte (solo para ver pendientes)? Recomiendo **aparte** por ahora.
 
 ## Qué sigue
 
