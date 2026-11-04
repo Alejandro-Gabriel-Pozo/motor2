@@ -110,6 +110,11 @@ describe("combinaciones del número de factura único: dimensiones declaradas (g
     const esperadas = producto(dims.map((d) => oraculo.dimensiones[d]!)).map((f) => f.join("|"));
     const reales = oraculo.filas.map((f) => dims.map((d) => f[d]).join("|"));
     expect(reales.length, `la tabla debería tener ${esperadas.length} filas`).toBe(esperadas.length);
+    // Tamaño del producto con el número literal (convención I3 del arnés de matrices): agregar un valor a una dimensión exige actualizar este número a propósito.
+    const TAMANO_LITERAL = 4 * 2 * 2 * 2; // N × L × P × O = 32
+    const msgTamano = "agregar un valor a una dimensión (N, L, P, O) cambia el tamaño del producto: actualizá este número a propósito (4 * 2 * 2 * 2 = 32)";
+    expect(dims.map((d) => oraculo.dimensiones[d]!.length).reduce((a, b) => a * b, 1), msgTamano).toBe(TAMANO_LITERAL);
+    expect(oraculo.filas.length, msgTamano).toBe(TAMANO_LITERAL);
     expect(new Set(reales).size, "hay filas repetidas").toBe(reales.length);
     expect([...reales].sort(), "faltan combinaciones o hay valores no declarados").toEqual([...esperadas].sort());
     for (const f of oraculo.filas) expect(RESULTADOS, `resultado inválido en ${dims.map((d) => f[d]).join("/")}`).toContain(f.Resultado);

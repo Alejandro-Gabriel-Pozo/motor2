@@ -84,7 +84,7 @@ const n8 = (n: number) => String(n).padStart(8, "0");
 
 beforeAll(() => {
   // Si el .md no trae 32 filas el test no puede decir nada: el guardián explica por qué; acá se corta antes de armar escenarios.
-  expect(oraculo.filas.length).toBeGreaterThan(0);
+  expect(oraculo.filas.length, "agregar un valor a una dimensión (N, L, P, O) cambia el tamaño del producto: actualizá este número a propósito (4 * 2 * 2 * 2 = 32)").toBe(32);
 });
 
 beforeEach(async () => {
