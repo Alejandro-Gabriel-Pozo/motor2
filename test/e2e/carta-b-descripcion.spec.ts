@@ -49,8 +49,10 @@ test("la descripción de una opción: se escribe en la administración, se ve en
       await expect(desplegable.locator("summary")).toHaveText("Ver detalle ▾");
       await expect(bloque().locator("[data-rol=eleccion]")).toHaveText("puré · ensalada · papas fritas");
       expect(await desplegable.evaluate((el: HTMLDetailsElement) => el.open), `cerrado al llegar (${ancho} px)`).toBe(false);
-      await expect(desplegable).not.toContainText("lechuga");
+      // Cerrado, el texto está en el HTML pero no se ve.
+      await expect(desplegable.getByText("lechuga, tomate, cebolla")).toBeHidden();
       await desplegable.locator("summary").click();
+      await expect(desplegable.getByText("lechuga, tomate, cebolla")).toBeVisible();
       await expect(desplegable).toContainText("ensalada · lechuga, tomate, cebolla");
       await expect(page.locator("[data-incluye]").first()).not.toContainText("lechuga");
       expect((await new AxeBuilder({ page }).include("[data-bloque-de-opciones]").analyze()).violations, `axe del bloque (${ancho} px)`).toEqual([]);
