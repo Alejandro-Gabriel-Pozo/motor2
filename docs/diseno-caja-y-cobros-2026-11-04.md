@@ -123,7 +123,8 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 - **Comprobante externo:** `CONFIRMADO → ANULADO`. **PROPUESTA: sin estado «borrador»** (nadie lo pidió; se carga ya confirmado y se corrige con registro). Clase `FACTURA` o `NOTA_DE_CREDITO`; letra `A` o `B`; punto de venta; número; fecha; monto; cliente. Una nota de crédito **cancela una factura** (la factura afectada), y el dinero se cruza aparte (regla N16 del diseño de notas de crédito).
 - **Conceptos declarados:** importes que **se escriben en el comprobante** y que **no salen de este sistema**. El primero es **alojamiento** (no hay módulo de alojamiento); el dueño pidió además **«productos regionales»** y **poder armar la lista** (CONFIRMADA, 2026-11-04). Entonces: **catálogo de conceptos de la empresa** (nombre, activo), y en cada comprobante cero o más líneas «concepto + importe». Vale 0 si no hay. Cuando exista un módulo de alojamiento, el importe podrá salir de ahí.
 - **Composición del comprobante:** **monto = Σ conceptos declarados + Σ tickets aplicados**. La diferencia se **muestra** («falta $X» o «sobra $X»); nunca se fuerza ni se esconde, y la decide una persona.
-- **Punto de venta de la sucursal:** número y **nombre**, propio de cada sucursal.
+- **Punto de venta de la sucursal:** número y **nombre**, propio de cada sucursal. Los **administra la administración** y se **declaran** («esta sucursal tiene estos puntos de venta y se llaman así»), para que quien opera se guíe por el nombre. **No se validan contra ARCA**: es una lista declarada. CONFIRMADA (dueño, 2026-11-04).
+- **Numeración (ARCA):** **cada punto de venta tiene su propia numeración**: cuando se emitió la primera vez fue 1 y después 1, 2, 3… El otro sistema usa la numeración de ARCA. Por lo tanto, la **serie** de un comprobante es **(punto de venta, clase, letra)**: Factura A, Factura B, Nota de crédito A y Nota de crédito B llevan cada una su propio correlativo dentro del mismo punto de venta. **NO VERIFICADA** contra la norma oficial de ARCA: se apoya en lo que dijo el dueño y en el uso habitual; se confirma antes de implementar.
 - **Conciliación:** la **aplicación** de un ticket a un comprobante. La diferencia entre el monto del comprobante y lo aplicado se **muestra**; una persona decide.
 - **Turno de caja chica:** una **sucursal** tiene **tres turnos** por día (por ejemplo, mañana, tarde y noche, con su franja horaria: el de la foto es «tarde, 15 a 23»). CONFIRMADA: los turnos son **configurables por sucursal** (nombre, desde, hasta); son tres por sucursal (respuesta P11).
 - **Cierre de caja chica (arqueo):** el conteo del **efectivo** de un turno: por cada **denominación** (lista cerrada de billetes: 10, 20, 50, 100, 200, 500, 1.000, 2.000, 10.000, 20.000) una **cantidad entera**; el importe de cada fila y el **total son calculados**, nunca tipeados. Lo firma quien cierra (usuario del sistema, con fecha y hora). Solo se agrega; una corrección es un cierre **anulado con motivo y uno nuevo**, nunca tapar.
@@ -348,7 +349,7 @@ Un `40001` se reintenta solo (seguro por I3). **Error parcial:** cabecera, líne
 | `cargar_comprobante_externo` | cargar un comprobante |
 | `corregir_comprobante_externo` | corregir número, fecha, monto, cliente o punto de venta |
 | `anular_comprobante_externo` | anular, con motivo |
-| `administrar_puntos_de_venta` | alta y baja de puntos de venta de la sucursal |
+| `administrar_puntos_de_venta` | declarar, renombrar y dar de baja los puntos de venta de una sucursal. **Lo tiene administración** (decisión del dueño); no se siembra a gerente ni a operario |
 | `administrar_conceptos_de_comprobante` | lista de conceptos (de empresa) |
 
 - **El CUIT del cliente** se carga con el permiso que hoy edita clientes (**NO VERIFICADA** cuál es; se confirma antes de implementar).
@@ -391,9 +392,9 @@ Cuenta aproximada: 2 × 2 × 3 × 5 × 5 × 2 × 3 = **1.800 combinaciones**, ex
 
 ## Preguntas nuevas de esta vuelta
 
-1. **R1.** ¿El punto de venta lo administra el **gerente de cada sucursal** o solo **administración**? Recomiendo administración.
-2. **R2.** El número sugerido sale del **último de cada serie** (punto de venta, clase y letra), como propuse. ¿Es así en el otro sistema, o la numeración es corrida entre letras? (Si es corrida, la sugerencia cambia.)
-3. **R3.** Quito el «guardar borrador» (nadie lo pidió): el comprobante se carga ya confirmado y se corrige con registro. ¿Está bien?
+1. **R1 (RESPONDIDA, CONFIRMADA).** Los puntos de venta los **administra la administración**; se **declaran por sucursal** con su nombre.
+2. **R2 (RESPONDIDA, CONFIRMADA).** La numeración es la de **ARCA**: **cada punto de venta tiene su numeración**, desde 1. La sugerencia de número sale del **último vigente de la serie (punto de venta, clase y letra) más 1**; si todavía no hay ninguno, **no se sugiere** y se escribe el primero a mano.
+3. **R3 (abierta).** Quito el «guardar borrador» (nadie lo pidió): el comprobante se carga ya confirmado y se corrige con registro. ¿Está bien?
 
 ## Qué sigue
 
