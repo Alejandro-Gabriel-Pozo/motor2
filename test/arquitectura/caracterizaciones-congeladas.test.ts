@@ -124,6 +124,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Semilla de `opcion_apagar_en_sucursal` (decisión del dueño, limpieza paquete A paso 3b; CAMBIA COMPORTAMIENTO a propósito en las empresas NUEVAS): la clave pasa de [admin] a [admin, operador] (clase O a L; piso operario intacto). Cambia SOLO lo que dice esa clave para el usuario «operador» (y los roles que lo incluyen): sale de los grupos de SIN_PERMISO/`ver=false editar=false` y entra a los de `ok`/`ver=true editar=true`/`sucursalesDondeElUsuarioPuedeVer`; el resto son movimientos de orden de la clave dentro de las listas. Ninguna respuesta de otra clave cambia. Revisado con `git diff --word-diff`.",
       },
+      {
+        blob: "476335882b111a8d02307eee107a7e557b5dc7e5",
+        // El commit PADRE de este (562b3ab) es el último antes del cambio; el golden se regenera en el commit siguiente (Pagos X0).
+        commit: "562b3ab",
+        motivo:
+          "Pagos X0 (ADITIVO; la clave es nueva y nadie la tenía): `declarar_pago_compra` (empresa, piso operario, clase O, semilla solo `admin`) aparece en las listas de claves de cada bloque y registro (112 líneas, todas del mismo tipo: se suma esa clave junto a `compra_repartir`). Revisado con `git diff --word-diff`: ninguna otra respuesta del guard cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {

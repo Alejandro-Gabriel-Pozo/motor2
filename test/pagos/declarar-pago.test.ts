@@ -279,7 +279,7 @@ describe("concurrencia", () => {
 
 describe("anular el pago (registro nuevo, nada se borra)", () => {
   it("anula con motivo, la factura vuelve a pendiente y se puede declarar un pago nuevo; el historial queda", async () => {
-    const id = await pendiente();
+    const id = await pendiente(2);
     await declarar(id, haceDias(1), "CHEQUE");
     const [primero] = await pagosDe(id);
     const anulado = await anularPagoDeFacturaProveedor(primero!.id, "Era otra fecha", randomUUID());
