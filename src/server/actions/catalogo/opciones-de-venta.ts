@@ -78,7 +78,7 @@ export async function editarGrupoDeOpciones(entrada: {
   });
 }
 
-export async function crearOpcionDeGrupo(entrada: { grupoId: unknown; nombre: unknown; orden: unknown; esNinguna: unknown; version: unknown; ancla: unknown }): Promise<ResultadoAccion> {
+export async function crearOpcionDeGrupo(entrada: { grupoId: unknown; nombre: unknown; orden: unknown; esNinguna: unknown; version: unknown; ancla: unknown; descripcionEnCarta?: unknown }): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("opciones_definir", async (ctx) => {
     const comando = guardComandoCrearOpcionDeGrupo(entrada);
     if (!comando.ok) return error(comando.mensaje);
@@ -92,7 +92,7 @@ export async function crearOpcionDeGrupo(entrada: { grupoId: unknown; nombre: un
   });
 }
 
-export async function editarOpcionDeGrupo(entrada: { opcionId: unknown; versionEsperada: unknown; nombre: unknown }): Promise<ResultadoAccion> {
+export async function editarOpcionDeGrupo(entrada: { opcionId: unknown; versionEsperada: unknown; nombre: unknown; descripcionEnCarta?: unknown }): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("opciones_definir", async (ctx) => {
     const comando = guardComandoEditarOpcionDeGrupo(entrada);
     if (!comando.ok) return error(comando.mensaje);

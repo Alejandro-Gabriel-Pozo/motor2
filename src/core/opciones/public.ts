@@ -48,7 +48,7 @@ export { MENSAJE_FALTA_PRECIO_FINAL, esBaseConfigurable, precioDeReferenciaDeAdm
 export type { AdmisionParaSerBase, ProductoParaSerBase } from "./modo-de-venta";
 export { MODOS_DE_VENTA } from "./tipos";
 export type { ModoDeVenta } from "./tipos";
-export { LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA, MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA, admitePrefijoEnCarta, leerOpcionEnCarta } from "./lectura-en-carta";
+export { LARGO_MAXIMO_DE_LA_DESCRIPCION_EN_CARTA, LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA, MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA, admitePrefijoEnCarta, leerOpcionEnCarta } from "./lectura-en-carta";
 // «Mostrar este grupo en la carta» (2026-10-29): la regla pura de qué grupos NO lee la carta en un producto y su validación al guardar. Ver `lectura-en-carta.ts`.
 export { MENSAJE_OCULTAR_SOLO_VARIANTE_O_INCLUIDA, opcionesQueCambianElPrecio, rechazoParaOcultarEnCarta, seOcultaEnLaCarta } from "./lectura-en-carta";
 export type { OpcionParaOcultarEnCarta } from "./lectura-en-carta";
