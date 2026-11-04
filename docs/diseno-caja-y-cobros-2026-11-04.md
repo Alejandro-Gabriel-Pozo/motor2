@@ -92,7 +92,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 
 | CU | Caso | Etapa | Estado |
 |---|---|---|---|
-| CU1 | Identificar o dar de alta un cliente por **CUIT** (si existe, se indica) | N3 | CONFIRMADA (punto 4) |
+| CU1 | Identificar o dar de alta un cliente por **DNI o CUIT** en **un solo campo**: el sistema reconoce cuál es por la cantidad de dígitos y valida (si existe, se indica) | N3 | CONFIRMADA CUIT (punto 4); DNI o CUIT en un solo campo: propuesta del dueño, 2026-11-04 |
 | CU2 | **Cobrar un ticket** con uno o más medios de pago y sus datos adicionales; el cobro puede ser **parcial** | N1 | CONFIRMADA (punto 7 y respuesta P2 del 2026-11-04) |
 | CU3 | Cobrar **con cuenta corriente**: el importe pasa a la cuenta del cliente | N2 | CONFIRMADA (punto 8) |
 | CU4 | **Cargar un comprobante externo**: letra A o B, factura o nota de crédito, punto de venta de la sucursal, número (sugerido), fecha, monto, cliente, y **cuánto de ese monto es alojamiento u otro concepto de la lista de la empresa** (se escribe; vale 0 si no hay) | N3 | CONFIRMADA datos (puntos 2, 3 y 9) |
@@ -124,7 +124,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 - **Medio de pago:** catálogo de la empresa; cada medio declara **qué datos adicionales pide**. **Dicho por el dueño:** transferencia → **DNI**; tarjeta de débito o crédito → **nombre de la tarjeta, cuotas (solo crédito) y número de cupón**. **Propuesta mía, a confirmar:** cheque → banco, número y fecha de cobro; QR o billetera → igual que transferencia. **La cuenta corriente es un medio especial que no ingresa a caja.**
 - **Cuenta corriente del cliente:** saldo **derivado** (cargos − cobros posteriores). Solo para clientes que la posean. Nunca se guarda un saldo editable.
 - **Comprobante externo:** `CONFIRMADO → ANULADO`. **PROPUESTA: sin estado «borrador»** (nadie lo pidió; se carga ya confirmado y se corrige con registro). Clase `FACTURA` o `NOTA_DE_CREDITO`; letra `A` o `B`; punto de venta; número; fecha; monto; cliente. Una nota de crédito **cancela una factura** (la factura afectada), y el dinero se cruza aparte (regla N16 del diseño de notas de crédito).
-- **Conceptos declarados:** importes que **se escriben en el comprobante** y que **no salen de este sistema**. El primero es **alojamiento** (no hay módulo de alojamiento); el dueño pidió además **«productos regionales»** y **poder armar la lista** (CONFIRMADA, 2026-11-04). Entonces: **catálogo de conceptos de la empresa** (nombre, activo), y en cada comprobante cero o más líneas «concepto + importe». Vale 0 si no hay. Cuando exista un módulo de alojamiento, el importe podrá salir de ahí.
+- **Conceptos declarados:** líneas que **se escriben en el comprobante** y que **no salen de este sistema**. El dueño las mostró en sus facturas reales (campo «Detalle»): **Alojamiento**, **Confitería**, **productos regionales** y **Anticipo recibido**, que va **en negativo** y **resta** (es la seña ya facturada). Por eso el **catálogo de conceptos de la empresa** lleva un **signo**: `SUMA` o `RESTA`; la línea se guarda con **importe positivo** y el signo lo pone el concepto (CONFIRMADA, evidencia del 2026-11-04; el signo es PROPUESTA de forma). Cuando exista un módulo de alojamiento, el importe podrá salir de ahí.
 - **Composición del comprobante:** **monto = Σ conceptos declarados + Σ tickets aplicados**. La diferencia se **muestra** («falta $X» o «sobra $X»); nunca se fuerza ni se esconde, y la decide una persona.
 - **Punto de venta de la sucursal:** número y **nombre**, propio de cada sucursal. Los **administra la administración** y se **declaran** («esta sucursal tiene estos puntos de venta y se llaman así»), para que quien opera se guíe por el nombre. **No se validan contra ARCA**: es una lista declarada. CONFIRMADA (dueño, 2026-11-04).
 - **Numeración (ARCA):** **cada punto de venta tiene su propia numeración**: cuando se emitió la primera vez fue 1 y después 1, 2, 3… El otro sistema usa la numeración de ARCA. Por lo tanto, la **serie** de un comprobante es **(punto de venta, clase, letra)**: Factura A, Factura B, Nota de crédito A y Nota de crédito B llevan cada una su propio correlativo dentro del mismo punto de venta. **NO VERIFICADA** contra la norma oficial de ARCA: se apoya en lo que dijo el dueño y en el uso habitual; se confirma antes de implementar.
@@ -166,16 +166,16 @@ Se diseña en papel junto con la maqueta del flujo completo (`flujo-completo`). 
 | C34 | **El servidor recalcula la sugerencia dentro de la transacción** y compara con el número recibido; **lo que dice la pantalla no vale como prueba**. Si no coinciden, exige la fundamentación (1 a 200 caracteres) y **guarda qué se sugería y por qué se puso otro** junto al comprobante. Sin comprobantes previos en la serie **no hay sugerencia** y no se pide fundamentación | PROPUESTA (consecuencia técnica de C33) |
 | C35 | **Corregir el número** de un comprobante ya guardado lleva **el mismo freno que cargarlo**: aviso al escribirlo, segunda confirmación al guardar y **motivo obligatorio**; queda en la auditoría. La lista de comprobantes permite filtrar **«cargados o corregidos con un número distinto del sugerido»** para que administración los revise | CONFIRMADA el freno en ambos casos (dueño, 2026-11-04); el filtro PROPUESTA |
 | C8 | Corregir un comprobante deja la **auditoría** (quién, cuándo, antes/después, motivo); el número anterior queda libre solo si se anula | CONFIRMADA (punto 3) |
-| C9 | **Letra A** exige un cliente con CUIT; **letra B** admite consumidor final | CONFIRMADA (respuesta P4 del 2026-11-04) |
+| C9 | **Letra A** exige un cliente identificado con **CUIT** (un DNI no alcanza); **letra B** admite consumidor final y también un cliente con **DNI** | CONFIRMADA (respuesta P4 del 2026-11-04); el DNI en la B PROPUESTA |
 | C10 | El **punto de venta** pertenece a **una sucursal**, y un comprobante usa un punto de venta de **su** sucursal | CONFIRMADA (punto 2) |
 | C11 | Un comprobante cubre tickets de **una sola sucursal** (la de su punto de venta) | CONFIRMADA (respuesta P3 del 2026-11-04) |
 | C12 | El sistema **propone** la conciliación; **una persona confirma**; nunca se aplica solo | PROPUESTA (como I9 de pagos) |
 | C13 | **Cuenta corriente** como medio exige un cliente con cuenta corriente **habilitada por administración**; sin cliente identificado, se rechaza. Sin límite por cliente al principio | CONFIRMADA (respuesta P7 del 2026-11-04) |
-| C14 | El **CUIT** se valida con el dígito verificador (`validarCuit`) y es único por empresa; si ya existe, se indica y se usa el existente | CONFIRMADA (punto 4); la unicidad PROPUESTA |
+| C14 | **DNI o CUIT en un solo campo.** Se escriben los dígitos y el sistema decide: **7 u 8 dígitos = DNI**; **11 dígitos = CUIT** (con dígito verificador válido, `validarCuit`); **cualquier otra cantidad se rechaza** (menos que un DNI, 9 o 10, o más que un CUIT). Formato de CUIT: `11-12345678-1`. El documento es **único por empresa y tipo**; si ya existe, se indica y se usa el existente. **Aviso de posible duplicado:** un CUIT de persona (20, 23, 24 o 27) contiene el DNI en el medio: si se carga uno y ya existe el otro, se avisa | CONFIRMADA la idea (dueño, 2026-11-04); el aviso de duplicado y los largos PROPUESTA |
 | C15 | Todo se filtra por empresa; los tickets, además, por el alcance de sucursal; el servidor valida quién lo pide y con qué permiso | CONFIRMADA (regla permanente) |
 | C16 | Los permisos nuevos nacen **excluidos** (fail-closed): cobrar, cargar comprobante, conciliar, anular, ver cuenta corriente | CONFIRMADA (principio del 22/10) |
 | C17 | Fechas en zona Argentina; la fecha del cobro y la del comprobante son de **día local** | CONFIRMADA (regla permanente) |
-| C19 | **Monto del comprobante = Σ conceptos declarados + Σ tickets aplicados.** Cada concepto declarado es ≥ 0 y su suma es ≤ monto. Si la suma no cierra, se muestra la diferencia y la persona decide (no se bloquea guardar) | CONFIRMADA el principio (punto 9); no bloquear PROPUESTA |
+| C19 | **Monto del comprobante = Σ conceptos declarados (con su signo: «Anticipo recibido» resta) + Σ tickets aplicados.** Cada línea es > 0 y lo que resta no deja el monto en negativo. Si la suma no cierra, se muestra la diferencia y la persona decide (no se bloquea guardar). **Así se ve en las facturas reales:** alojamiento $140.000 menos anticipo recibido $98.000 = $42.000 | CONFIRMADA el principio (punto 9) y el anticipo en negativo (evidencia del dueño); no bloquear PROPUESTA |
 | C20 | Un **concepto declarado no crea cobro, ticket ni cargo** en este sistema: solo explica una parte del monto del comprobante | CONFIRMADA (punto 9) |
 | C21 | **Un ticket se puede cobrar con varios medios y en partes**: la suma de sus cobros vigentes no pasa de su total; «cobrado» es cuando la suma lo iguala | CONFIRMADA (respuesta P2 del 2026-11-04) |
 | C22 | Una **nota de crédito** se aplica a una factura y **baja el monto a conciliar** de esa factura; el dinero se cruza aparte | CONFIRMADA (respuesta P5 del 2026-11-04) |
@@ -259,8 +259,8 @@ Regla del producto: se migran **solo las tablas de la etapa que se implementa**,
 | Tabla o columna | Necesidad (quién y dónde está escrita) |
 |---|---|
 | `PuntoDeVentaDeSucursal` | «Punto de venta por sucursal, con su nombre» (dueño, 2026-11-04, punto 2) |
-| `Cliente.cuit` | «Cuit del cliente sí… una vez cargado se lo identifica desde el módulo de clientes; si ya existe se le indica» (dueño, punto 4) |
-| `ConceptoDeComprobante` | «Productos regionales… que nos deje armar la lista» (dueño, P9) |
+| `Cliente.documentoTipo` y `Cliente.documento` | «Cuit del cliente sí… una vez cargado se lo identifica desde el módulo de clientes» (dueño, punto 4) y la factura B real con **DNI** (dueño, 2026-11-04): «¿DNI o CUIT según el caso? ¿No es mejor que si pasa los dígitos vea si es CUIT?» |
+| `ConceptoDeComprobante` | «Productos regionales… que nos deje armar la lista» (dueño, P9); y los detalles reales de sus facturas: Alojamiento, Confitería, productos regionales, Anticipo recibido (2026-11-04) |
 | `ComprobanteExterno` | Tipo A o B, factura o nota de crédito, punto de venta, número, fecha, monto (dueño, punto 2) |
 | `LineaDeConceptoDeComprobante` | «Alojamiento 0 o algún valor» y otros conceptos declarados (dueño, punto 9 y P9) |
 | `AnulacionDeComprobanteExterno` | Corregir y anular **con registro**, nunca borrando (regla de trazabilidad; dueño, punto 3) |
@@ -281,7 +281,7 @@ Regla del producto: se migran **solo las tablas de la etapa que se implementa**,
 
 Únicos: `(sucursalId, numero)`; `(empresaId, sucursalId, id)` (destino de la clave foránea del comprobante, para que **el punto de venta sea de la misma sucursal** que el comprobante, imposible de violar desde la base); `(empresaId, id)`.
 
-**`Cliente`** (existente): una columna **aditiva** `cuit` (texto, NULL = sin CUIT). CHECK: 11 dígitos. Único parcial `(empresaId, cuit) WHERE cuit IS NOT NULL` (un CUIT, un cliente). `validarCuit` (dígito verificador) lo aplica la aplicación; no se repite en la base. Las filas actuales quedan en NULL.
+**`Cliente`** (existente): dos columnas **aditivas** y opcionales, `documentoTipo` (`DNI` o `CUIT`) y `documento` (solo dígitos), **juntas o ambas NULL** (CHECK de pareo). CHECK de largo: `DNI` de **7 u 8** dígitos; `CUIT` de **11**. Único parcial `(empresaId, documentoTipo, documento) WHERE documento IS NOT NULL`. El dígito verificador del CUIT (`validarCuit`) y el aviso de posible duplicado entre DNI y CUIT los aplica la aplicación; no se repiten en la base. Las filas actuales quedan en NULL.
 
 **`ConceptoDeComprobante`** (nueva, catálogo de la empresa)
 
@@ -289,6 +289,7 @@ Regla del producto: se migran **solo las tablas de la etapa que se implementa**,
 |---|---|---|
 | `id`, `empresaId` | | clave y empresa |
 | `nombre` | texto | CHECK 1 a 60; único por empresa **sin distinguir mayúsculas** (índice sobre `lower(nombre)`) |
+| `signo` | texto | CHECK `SUMA` o `RESTA`; por defecto `SUMA`. «Anticipo recibido» es `RESTA` |
 | `activo` | booleano | baja lógica |
 | `creadoEn` | fecha y hora | |
 
@@ -322,7 +323,7 @@ Regla del producto: se migran **solo las tablas de la etapa que se implementa**,
 | `id`, `empresaId` | | |
 | `comprobanteId` | texto | FK compuesta a `ComprobanteExterno` |
 | `conceptoId` | texto | FK compuesta a `ConceptoDeComprobante` |
-| `importe` | decimal(14,2) | CHECK > 0 (un concepto en 0 no se escribe: «alojamiento 0» es **ninguna línea**) |
+| `importe` | decimal(14,2) | CHECK > 0, siempre **positivo**; el **signo lo pone el concepto** (un anticipo recibido de $98.000 se guarda como 98.000 con un concepto `RESTA`). Un concepto en 0 no se escribe: «alojamiento 0» es **ninguna línea** |
 | `anuladaEn`, `anuladaPorId` | | pareo; corregir = anular la línea y agregar otra |
 | `creadoPorId`, `creadoEn` | | |
 
