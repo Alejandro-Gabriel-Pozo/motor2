@@ -86,6 +86,7 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   // Opciones de venta
   "GrupoDeOpciones.activo": d("visibilidad", "Si el grupo está activo cambia qué opciones se pueden elegir al vender (columna de significado en escrituras-auditadas)."),
   "OpcionDeGrupo.activa": d("visibilidad", "Si la opción está activa cambia qué se puede elegir al vender (columna de significado en escrituras-auditadas)."),
+  "OpcionDeGrupo.descripcionEnCarta": d("visibilidad", "Carta B, E3 (2026-11-04): el texto que la carta le muestra al cliente bajo «Ver detalle» de la opción; decide qué lee el cliente, no toca precio ni stock, y no sale en ticket, comanda, POS ni reportes."),
   "ProductoAdmiteGrupo.activo": d("visibilidad", "Qué grupos admite un producto: cualquier escritura cambia qué se ofrece al vender (escrituras-auditadas)."),
   "ProductoAdmiteGrupo.seMuestraEnCarta": d("visibilidad", "«Mostrar este grupo en la carta» (decisión del dueño 2026-10-29): false = la carta no lee este grupo en este plato."),
   "ProductoAdmiteGrupo.modoPrecio": d("dinero", "ABSOLUTO o DIFERENCIA para una MEDIDA: decide si el precio de la medida reemplaza o ajusta el del producto."),
