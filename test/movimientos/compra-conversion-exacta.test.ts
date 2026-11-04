@@ -38,8 +38,10 @@ describe("compra con factor de conversión decimal: cuentas exactas de punta a p
   const crearMP = (nombre: string, factorConversion: string) =>
     sembrarProductoDisponible({ codigo: `MP_${nombre.toUpperCase()}`, nombre, tipo: "MP", unidadStockId: unidadKgId, insumoId, factorConversion }, sucursalId);
 
+  // Misma fecha en toda la prueba: la huella de idempotencia incluye la fecha, y un reintento real reenvía el mismo formulario.
+  const FECHA = new Date();
   const comprar = (productoId: string, cantidad: number, precioTotal: number, clave: string = crypto.randomUUID()) =>
-    registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId, items: [{ productoId, cantidad, precioTotal }], claveIdempotencia: clave });
+    registrarMovimiento({ proceso: "COMPRA", fecha: FECHA, seccionId, proveedorId, items: [{ productoId, cantidad, precioTotal }], claveIdempotencia: clave });
 
   it("empate que el float redondeaba mal: 1 × 1,005 en una unidad de 2 decimales guarda 1,01 (antes 1,00) y el precio por unidad exacto", async () => {
     const mp = await crearMP("Empate", "1.005");
