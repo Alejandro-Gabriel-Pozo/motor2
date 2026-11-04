@@ -1,5 +1,4 @@
 import "server-only";
-import { whereCartaDeSucursal } from "@/core/carta/public";
 import { TICKETS_RECIENTES_POR_MESA, armarTicketsDeCuentas, type TicketDeCuenta } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 
@@ -28,8 +27,7 @@ export async function obtenerTicketsRecientes(
       items: {
         orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
         include: {
-          // «Nombre en la carta»: el ticket del cliente nombra un producto directo con el nombre de la carta de ESTA sucursal (si lo tiene).
-          producto: { select: { nombre: true, modoDeVenta: true, contenidosCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { nombreEnCarta: true } } } },
+          producto: { select: { nombre: true, modoDeVenta: true } },
           operacion: { select: { anuladaEn: true } },
           promoCuenta: { select: { id: true, titulo: true } },
           // GO-2b: la foto de lo elegido (los nombres y la versión del adicional), anidada en la misma consulta; sin opciones, vacía.

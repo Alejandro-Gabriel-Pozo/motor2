@@ -1,5 +1,5 @@
 import type { AclaracionCartaPublica, BloqueDeOpciones, EstiloCarta, ItemCartaPublico, ParteDeIncluye, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
-import { conectorDeLaParte, detalleDelBloque, formatearPrecioCarta, incluyeDeLaSeccion, partirLaAclaracion, recargoEnPesos, textoDeIncluye, textoDeLaAclaracion, textoDeLasOpciones, textoDeVaCon, textoDelTitulo, restoDeLaParte, vaConDelBloque } from "@/core/carta/public";
+import { conectorDeLaParte, detalleDelBloque, formatearPrecioCarta, incluyeDeLaSeccion, partirLaAclaracion, recargoEnPesos, textoDeIncluye, textoDeLaAclaracion, textoDeLasOpciones, nombresDeLosPlatosDelItem, textoDeVaCon, textoDelTitulo, restoDeLaParte, vaConDelBloque } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
 import { ListaDeLaSeccion } from "./lista-de-la-seccion";
 
@@ -29,7 +29,8 @@ export function Seccion({
   // Carta «B»: qué incluye cada plato y los bloques del pie de ESTA sección (la misma función en la carta pública, la impresa, la vista previa y «Va a mostrar»).
   const incluye = incluyeDeLaSeccion(seccion.items.map((i) => i.presentacion?.aclaraciones ?? []));
   // Invitación «5+2» (E2): lo que dice cada bloque mientras está iluminado («Va con: …»), con los nombres de los platos que lo incluyen.
-  const platosConNombre = seccion.items.map((i, k) => ({ nombre: i.nombre, partes: incluye.platos[k] ?? [] }));
+  // Una base con la medida oculta se dibuja como varios platos (uno por renglón): «Va con» los nombra con lo que el cliente LEE, nunca con el nombre interno de la base (`nombresDeLosPlatosDelItem`).
+  const platosConNombre = seccion.items.map((i, k) => ({ nombre: i.nombre, nombres: nombresDeLosPlatosDelItem(i), partes: incluye.platos[k] ?? [] }));
   const vaCon = incluye.bloques.map((b) => textoDeVaCon(vaConDelBloque(b, platosConNombre)));
   return (
     <div className={`carta-pagina flex flex-col${soloPantalla ? " carta-solo-pantalla" : ""}`}>

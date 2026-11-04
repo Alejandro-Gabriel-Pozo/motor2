@@ -200,13 +200,29 @@ export function textoDelBloque(b: BloqueDeOpciones): string {
  * Carta «B», E2 (invitación «5+2»): los platos que lleva un bloque, para el «Va con: …» que se ve mientras el bloque está iluminado. Uno por plato que lo incluye (`BloqueDeOpciones.platos`, en el orden de
  * la sección); el que admite solo algunas opciones lo dice («Pechuga grille (solo puré o ensalada)»). `platos[i]` trae el nombre y lo que dice el plato `i` (`IncluyeDeLaSeccion.platos[i]`). Puro.
  */
-export function vaConDelBloque(bloque: BloqueDeOpciones, platos: readonly { nombre: string; partes: readonly ParteDeIncluye[] }[]): string[] {
+export function vaConDelBloque(bloque: BloqueDeOpciones, platos: readonly { nombre: string; nombres?: readonly string[]; partes: readonly ParteDeIncluye[] }[]): string[] {
   return bloque.platos.flatMap((i) => {
     const plato = platos[i];
     if (!plato) return [];
     const subconjunto = plato.partes.find((p) => p.grupo === bloque.titulo)?.subconjunto;
-    return [subconjunto ? `${plato.nombre} (solo ${subconjunto})` : plato.nombre];
+    // Un ítem que la carta dibuja como VARIOS platos (una base con la medida oculta: un renglón por opción) los nombra uno por uno, con lo que dice cada renglón.
+    return (plato.nombres ?? [plato.nombre]).map((nombre) => (subconjunto ? `${nombre} (solo ${subconjunto})` : nombre));
   });
+}
+
+/**
+ * Cómo se llama(n) el/los plato(s) que la carta dibuja para un ítem (2026-11-04, caso del dueño: al tocar «guarnición» el «Va con: …» mostraba el nombre INTERNO de la base, «BIFE-»): lo que el cliente LEE.
+ *  - producto directo, o base con el nombre arriba (la tabla con título): el nombre del ítem (`nombreEnCarta ?? nombre`, resuelto al armar la carta);
+ *  - base con la medida oculta (la tabla SIN título: «cada opción como un plato»): los rótulos de sus renglones, uno por plato («Bife a criolla», «Bife con chimichurri»).
+ * Puro; es la MISMA regla con que la sección decide qué dibuja como título.
+ */
+export function nombresDeLosPlatosDelItem(item: { nombre: string; presentacion?: { forma: string; titulo?: boolean; filas?: readonly { rotulo: string | null }[] } | null }): string[] {
+  const p = item.presentacion;
+  if (p && p.forma === "tabla" && p.titulo === false) {
+    const rotulos = (p.filas ?? []).flatMap((f) => (f.rotulo ? [f.rotulo] : []));
+    if (rotulos.length > 0) return rotulos;
+  }
+  return [item.nombre];
 }
 
 /** «Va con: Bife a la criolla · Pechuga grille (solo puré o ensalada)»; sin platos, `null`. */

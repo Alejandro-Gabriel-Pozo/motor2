@@ -1,4 +1,4 @@
-import { nombreDeCarta, precioCobradoConDescuentos } from "@/core/carta/public";
+import { precioCobradoConDescuentos } from "@/core/carta/public";
 import { importeDeLinea, redondearMoneda } from "@/core/moneda";
 import { esBaseConfigurable, nombreDeLineaConfigurada, type FotoParaElNombre } from "@/core/opciones/public";
 import { claveDeLineaDeVenta, lineasDeVenta } from "./cuenta";
@@ -161,24 +161,6 @@ export function cuentaConOpciones(items: readonly { huellaOpciones?: string | nu
 }
 
 /**
- * El producto de un ítem tal como lo leen las consultas del ticket. `contenidosCarta` (opcional; la fila de ESTA sucursal, `take: 1`): su «Nombre en la carta» (2026-11-04, confirmado por el dueño). Sin él, el
- * nombre del producto, como siempre.
- */
-export interface ProductoParaElTicket {
-  nombre: string;
-  modoDeVenta: string;
-  contenidosCarta?: readonly { nombreEnCarta: string | null }[];
-}
-
-/**
- * El nombre con que el TICKET DEL CLIENTE nombra a un producto: `nombreEnCarta ?? nombre` (el principio del dueño: lo que define el plato es el rótulo de la OPCIÓN; si no hay opción que lo defina —un producto
- * DIRECTO—, sale el nombre del producto, y ahí entra el nombre de la carta). En una base con MEDIDA el plato sale del rótulo de la opción y este nombre no se usa. La comanda de cocina NO pasa por acá.
- */
-export function nombreParaElTicket(producto: ProductoParaElTicket): string {
-  return nombreDeCarta(producto, producto.contenidosCarta?.[0]);
-}
-
-/**
  * GO-2b: la configuración de un ítem desde lo que leyó la consulta (`opcionesElegidas`, la foto): el nombre compuesto de la línea («Café solo chico», con su detalle de lo
  * incluido) y la versión de la opción de un adicional. En una cuenta SIN opciones (`conOpciones` en false, ver `cuentaConOpciones`) devuelve `{}`: el ítem de siempre, bit a bit.
  */
@@ -187,13 +169,13 @@ export function configuracionDeItemLeido(conOpciones: boolean, i: {
   huellaOpciones?: string | null;
   lineaPadreId?: string | null;
   anulaAItemId?: string | null;
-  producto: ProductoParaElTicket;
+  producto: { nombre: string; modoDeVenta: string };
   opcionesElegidas?: readonly (FotoParaElNombre & { versionDeOpcionId: string })[];
 }): ConfiguracionDeItemTicket {
   if (!conOpciones) return {};
   const fotos = i.opcionesElegidas ?? [];
   const propias = fotos.some((f) => f.tipoGrupo !== "ADICIONAL");
-  const { nombre, detalle } = nombreDeLineaConfigurada(nombreParaElTicket(i.producto), esBaseConfigurable(i.producto.modoDeVenta), fotos);
+  const { nombre, detalle } = nombreDeLineaConfigurada(i.producto.nombre, esBaseConfigurable(i.producto.modoDeVenta), fotos);
   const versionDeAdicional = fotos.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null;
   return {
     ...(i.id !== undefined ? { id: i.id } : {}),
@@ -294,7 +276,7 @@ export interface CuentaCerradaLeida {
   cliente: { nombre: string } | null;
   items: {
     productoId: string;
-    producto: ProductoParaElTicket;
+    producto: { nombre: string; modoDeVenta: string };
     cantidad: number;
     precioUnitario: number;
     precioCartaUnitario: number | null;
@@ -323,7 +305,7 @@ export function armarTicketsDeCuentas(cuentas: readonly CuentaCerradaLeida[], ah
     const conOpciones = cuentaConOpciones(cuenta.items);
     const items: ItemConVenta[] = cuenta.items.map((i) => ({
       productoId: i.productoId,
-      productoNombre: nombreParaElTicket(i.producto),
+      productoNombre: i.producto.nombre,
       cantidad: i.cantidad,
       precioUnitario: i.precioUnitario,
       precioCartaUnitario: i.precioCartaUnitario,

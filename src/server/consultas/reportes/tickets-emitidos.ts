@@ -1,7 +1,6 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
-import { whereCartaDeSucursal } from "@/core/carta/public";
-import { armarTicketImpresoEn, estadoDeTicket, claveDeLineaDeVenta, configuracionDeItemLeido, cuentaConOpciones, itemParaLineaDeVenta, lineasDeVenta, nombreDelMesero, nombreParaElTicket, type ItemConVenta } from "@/core/pos/public";
+import { armarTicketImpresoEn, estadoDeTicket, claveDeLineaDeVenta, configuracionDeItemLeido, cuentaConOpciones, itemParaLineaDeVenta, lineasDeVenta, nombreDelMesero, type ItemConVenta } from "@/core/pos/public";
 import { TAMANO_PAGINA_TICKETS, type FiltroTickets, type LineaTicketEmitido, type FilaTicketEmitido, type PaginaTickets } from "@/core/reportes/public";
 
 /** Las líneas NETAS del ticket «como se imprimió» en `impresaEn`, con el `operacionId` de cada una (misma agrupación que
@@ -74,7 +73,7 @@ export async function listarTicketsEmitidos(sucursalId: string, filtro: FiltroTi
               anulaAItemId: true,
               opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } },
               productoId: true,
-              producto: { select: { nombre: true, modoDeVenta: true, contenidosCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { nombreEnCarta: true } } } },
+              producto: { select: { nombre: true, modoDeVenta: true } },
               cantidad: true,
               precioUnitario: true,
               precioCartaUnitario: true,
@@ -96,7 +95,7 @@ export async function listarTicketsEmitidos(sucursalId: string, filtro: FiltroTi
     const conOpciones = cuentaConOpciones(e.cuenta.items);
     const items: ItemConVenta[] = e.cuenta.items.map((i) => ({
       productoId: i.productoId,
-      productoNombre: nombreParaElTicket(i.producto),
+      productoNombre: i.producto.nombre,
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
