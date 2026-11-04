@@ -2,7 +2,9 @@
 
 **Alcance corregido por el dueño (2026-11-04, vía coordinación; reemplaza la primera versión de este documento).** El problema no es QUIÉN puede usar la promo sino QUÉ puede elegir el mozo DENTRO de ella. Palabras del dueño (resumidas): «hoy el mozo se podría equivocar eligiendo una promoción que no es; para eso no necesito establecer ningún cliente. Lo que quiero es que, si elige la promoción correcta (por ejemplo "Promo Empresa 1", como hoy), vea SOLO lo que se puede sacar por mesa con esa promo: dentro de Platos principales solo los bifes; dentro de Bebidas solo agua o agua saborizada. Es "para esta empresa tenemos este menú", a través de esa promoción. Después la promo capaz pasa al convenio, pero hoy ya funcionaría así. También: si armo una promo temática (Halloween, con galletitas con un nombre determinado), que nada se salga de la temática.» **CONFIRMADA** (dicho por el dueño). La asignación de la promo a la cuenta sigue **manual, como hoy**; reservar la promo a una empresa o convenio queda para después (§8, N2) y **sin** la tabla `PromoCartaCliente` de la primera versión.
 
-**Estado: SOLO DISEÑO Y MAQUETA.** Sin código, sin migraciones, sin tests, sin PR. Nada se implementa hasta que el dueño apruebe viendo la maqueta (`/home/user/revision-del-dueno/promo-subconjunto/index.html`; en `docs/` solo se admiten `.md`, la maqueta no se versiona acá). Estados: **CONFIRMADA** (dicha por el dueño), **PROPUESTA**, **PENDIENTE**, **NO VERIFICADA**.
+**Decisiones del dueño CONFIRMADAS (2026-11-04, vía coordinación) a las 4 preguntas de la versión anterior:** (1) el mozo elige opciones **solo** en las entradas que el dueño marque «a elegir» (`A_ELEGIR`); el resto queda fijo como hoy. (2) «Solo los bifes» = **lista explícita** de productos, con atajo «agregar todos los de la categoría X» (carga la lista en ese momento) y aviso cuando aparece un producto nuevo; **no** sigue la sección ni la categoría sola. (3) **No** entran adicionales con recargo dentro de una promo de precio fijo. (4) El precio (por ejemplo $55.000) es **fijo** elija lo que elija el mozo, y la **cantidad de guarniciones no se define en la promo**: depende del **grupo** (sus límites mínimo y máximo y los que el plato sobrescribe en `ProductoAdmiteGrupo`); la entrada `A_ELEGIR` **respeta esos límites**, sin un número propio de la promo.
+
+**Estado: SOLO DISEÑO Y MAQUETA.** Sin código, sin migraciones, sin tests, sin PR. Nada se implementa hasta que el dueño apruebe viendo la maqueta (`/home/user/revision-del-dueno/promo-subconjunto/index.html`; en `docs/` solo se admiten `.md`, la maqueta no se versiona acá). Estados: **CONFIRMADA** (dicha por el dueño), **PROPUESTA**, **PENDIENTE**, **NO VERIFICADA**. Falta la enmienda de ADR-032 (D-6) y la aprobación del dueño de la maqueta antes de implementar.
 
 Fuentes leídas en el código real (rama `alegp/diseno-promo-subconjunto`, desde `origin/main`): `prisma/schema.prisma`, `src/core/pos/promo-combo.ts`, `src/core/pos/linea-configurada.ts`, `src/core/pos/componente-de-combo.ts`, `src/core/carta/piso-de-promo.ts`, `src/server/actions/pos/casos-de-uso/agregar-items.ts`, `src/server/lecturas/pos/promo-para-agregar.ts`, `src/server/lecturas/pos/entradas-de-promo-para-vender.ts`, `src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts`, `src/app/(pos)/mesas/[mesaId]/armar-promo.tsx`, `docs/adr/ADR-030`, `ADR-032` y `ADR-035`. **NO VERIFICADA** la base de producción: el producto «BIFE-» y sus grupos son los que describió la coordinación; no leí ninguna base. Tampoco está en esta sesión el repositorio `motor2-docs` (puede haber un plan aprobado allá).
 
@@ -13,9 +15,9 @@ Fuentes leídas en el código real (rama `alegp/diseno-promo-subconjunto`, desde
 1. **Halloween ya funciona hoy.** Una promo temática con un lugar «Galletitas» de tipo LISTA y las galletitas como entradas es «solo lo de la promo»: el mozo no ve ni puede mandar otra cosa.
 2. **«Solo los bifes» y «solo agua o agua saborizada» también se pueden armar hoy, con un costo alto:** el bife es un producto «se vende por opción» (con tamaño o preparación obligatoria) y hoy una promo solo lo acepta como entrada con la configuración **fija** que cargó el dueño (decisión D-6 de ADR-032): el mozo no elige. Para el bife real (2 preparaciones × 2 proteínas × 3 guarniciones) hacen falta **12 entradas** cargadas a mano, y 36 filas de opciones.
 3. **En un lugar de tipo «sección» el mozo ve todos los productos de la sección** (no solo los bifes), y un producto con opción obligatoria ni se puede armar ahí.
-4. **Propuesta más barata (lo que el dueño quiere AHORA):** que una entrada de la lista pueda marcarse «el mozo elige entre estas opciones» (en vez de una configuración fija). El bife pasa de **12 entradas a 1**, sin tabla nueva y con **una sola columna**. «Solo los bifes» se resuelve listando los bifes (1 o pocos), lo que hoy ya existe.
+4. **Propuesta más barata (lo que el dueño quiere AHORA):** que una entrada de la lista pueda marcarse «el mozo elige entre estas opciones» (en vez de una configuración fija). El bife pasa de **12 entradas a 1**, sin tabla nueva y con **una sola columna**. «Solo los bifes» se resuelve listando los bifes (1 o pocos), lo que hoy ya existe. **CONFIRMADA.**
 5. **Seguridad de «que no se equivoque»:** el selector solo muestra lo permitido y el servidor vuelve a validar con la **misma** regla que ya valida las opciones de una venta suelta, filtrada a lo permitido por la promo. Fail-closed.
-6. **Esto enmienda una decisión de ADR-032 (D-6):** el mozo hoy no elige opciones dentro del combo. Pasa a poder hacerlo, **solo** en las entradas que el dueño marque «a elegir» y **solo** entre lo que permitió. El precio de la promo (por ejemplo $55.000) sigue fijo.
+6. **Esto enmienda una decisión de ADR-032 (D-6):** el mozo hoy no elige opciones dentro del combo. Pasa a poder hacerlo, **solo** en las entradas que el dueño marque «a elegir» y **solo** entre lo que permitió. El precio de la promo (por ejemplo $55.000) sigue fijo (**CONFIRMADA**) y la cantidad de guarniciones la fijan los límites del grupo, no la promo (**CONFIRMADA**).
 
 ---
 
@@ -83,6 +85,7 @@ Contexto: la promo es de la empresa y se prende por sucursal; las opciones se pu
 - **Entrada de lista:** un producto elegible de un lugar. Hoy con modo de opciones `FIJAS`. **Nuevo (PROPUESTA):** modo `A_ELEGIR`.
 - **Entrada «a elegir» (`A_ELEGIR`):** el producto más, por grupo, las **opciones permitidas** (las que el mozo puede elegir). La identidad de la entrada incluye el conjunto de permitidas (como hoy incluye la configuración fija): cambiar lo permitido es **otra entrada** y la anterior se desactiva (la regla de la casa: solo se agrega).
 - **Opciones permitidas efectivas** (lo que ve y puede mandar el mozo, calculado en el momento): las permitidas de la entrada ∩ las que el producto admite ∩ las que no están apagadas en la sucursal. Si un grupo obligatorio se queda sin ninguna opción, la entrada **no es elegible** (falla cerrado: no se ofrece ni se acepta).
+- **Cuánto puede elegir de cada grupo (CONFIRMADA):** lo que dicen los **límites del grupo** (`GrupoDeOpciones.cantidadMinima/Maxima`) y los que el plato sobrescribe en `ProductoAdmiteGrupo` (`NULL` = los del grupo, `schema.prisma:3678`). La promo **no tiene un número propio**: si el grupo Guarniciones admite 1, el mozo elige 1; si mañana admite hasta 2 distintas, elige hasta 2, sin tocar la promo.
 - **Lo elegido por el mozo:** por entrada, una o más **configuraciones** (cada una con sus opciones y su cantidad). Dos configuraciones distintas del mismo producto son dos líneas (igual que dos configuraciones de una entrada fija hoy, `claveDeComponenteConfigurado`).
 - **Ciclo:** `entrada creada` → `ofrecida hoy` (elegible) → `elegida por el mozo` → `agregada a la cuenta` (precio, componentes, foto de opciones **congelados**, I5) → eventualmente `desactivada` (la entrada se da de baja; lo ya cargado no cambia).
 
@@ -92,9 +95,10 @@ Contexto: la promo es de la empresa y se prende por sucursal; las opciones se pu
 | I1 | Un componente que no es elegible hoy en el lugar nunca entra a la cuenta | `validarYAplanarEleccionPromo`, ya existente | EXISTE |
 | I2 | En una entrada `A_ELEGIR` solo se acepta una opción que esté entre las permitidas efectivas; cualquier otra se rechaza **antes de escribir** | `armarLineaConfigurada` recibiendo `grupos` filtrados a lo permitido (la misma función que valida una venta suelta) | PROPUESTA |
 | I3 | El selector del mozo y el servidor usan **la misma** lista de permitidas efectivas (una sola función de lectura) | `cargarEntradasDePromoParaVender`, compartido; test de paridad como `promo-combo-consulta` | PROPUESTA |
-| I4 | El precio de la promo es fijo: elegir otra opción **nunca** cambia el total cobrado, solo el reparto entre componentes | `prorratearPrecioPromo` + `repartirImporte` (existe; el total siempre es exacto) | EXISTE; PROPUESTA aplicarlo a las entradas `A_ELEGIR` |
+| I4 | El precio de la promo es fijo: elegir otra opción **nunca** cambia el total cobrado, solo el reparto entre componentes | `prorratearPrecioPromo` + `repartirImporte` (existe; el total siempre es exacto) | **CONFIRMADA** (decisión 4 del dueño); EXISTE para lo de hoy; PROPUESTA aplicarlo a las entradas `A_ELEGIR` |
 | I5 | Lo agregado a la cuenta (precio, componentes, opciones elegidas) no cambia si después cambia lo permitido, se apaga una opción o cambia la sección | la lectura es al agregar, nunca al cerrar (como la vigencia, ADR-032 D-7) | EXISTE (precio); PROPUESTA (opciones) |
-| I6 | En una entrada `A_ELEGIR` **no se permite** un grupo `ADICIONAL` (el recargo rompería el precio fijo y agrega una línea hija con su propio stock) | caso de uso al guardar y al leer | PROPUESTA (pregunta 3) |
+| I6 | En una entrada `A_ELEGIR` **no se permite** un grupo `ADICIONAL` (el recargo rompería el precio fijo y agrega una línea hija con su propio stock) | caso de uso al guardar y al leer | **CONFIRMADA** (decisión 3 del dueño) |
+| I11 | Cuánto se elige de cada grupo lo fijan **los límites del grupo** (y los que el plato sobrescribe en `ProductoAdmiteGrupo`); la promo no tiene un tope propio. Si las opciones permitidas efectivas de un grupo obligatorio son menos que su mínimo, la entrada no es elegible | `validarOpcionesElegidas` con los grupos filtrados (mínimos y máximos del grupo, ya existentes) | **CONFIRMADA** (decisión 4 del dueño); EXISTE el validador |
 | I7 | Si el mozo elige con una versión de opción que cambió desde que la vio: se rechaza («volvé a mirarla») | `OPCION_CAMBIO` (existe para ventas sueltas) | EXISTE; PROPUESTA aplicarlo |
 | I8 | Una entrada `A_ELEGIR` solo se puede guardar si existe al menos una configuración armable con precio de referencia ≥ $0,01 y origen de stock (D-8/D-9); y cada **elegida** se vuelve a validar al agregar | `rechazoDeComponenteDeCombo` sobre la configuración elegida | PROPUESTA |
 | I9 | Toda alta, baja o cambio de lo permitido deja auditoría en la misma transacción; las entradas y sus opciones nunca se borran | `registrarCambioAuditado`; privilegios sin DELETE | EXISTE (patrón) |
@@ -111,12 +115,13 @@ Caso descrito por la coordinación (**NO VERIFICADA** contra la base): producto 
 | Alternativa | Qué se carga | Entradas | Filas de opciones | Qué ve el mozo | Costo de agregar una guarnición nueva («Arroz») |
 |---|---|---|---|---|---|
 | **A. LISTA fija (hoy, D-6)** | Una entrada por combinación | **12** (2×2×3) | **36** (3 por entrada) | 12 renglones largos | +4 entradas y +12 filas (2×2×1) |
-| A'. LISTA fija, «hasta 2 guarniciones distintas» | Una entrada por combinación | **24** (2×2×(3+3)) | 24×(2 a 4) | 24 renglones | crece más |
 | **B. LISTA con entrada «a elegir» (recomendada)** | UNA entrada del bife + sus opciones permitidas por grupo | **1** | **7** (2+2+3) | 1 renglón con 3 selectores | 1 entrada nueva (la vieja se desactiva) y 8 filas |
 | C. Lugar de SECCIÓN con subconjunto + opciones permitidas | 1 producto permitido + 7 opciones permitidas | 0 entradas; 8 filas | 8 | 1 renglón con 3 selectores | +1 fila, pero **tabla nueva** y columna nueva |
 | D. Sin restringir (lo que el producto admite) | Nada | 0 | 0 | todas las opciones del producto | — (no cumple «solo estas opciones» si el producto admite más) |
 
 **La más barata que cumple lo que el dueño quiere: B** — cero tablas nuevas, una columna (`EntradaDeCupo.modoDeOpciones`, §6) y reutiliza `OpcionDeEntradaDeCupo` (que pasa a guardar las **permitidas** cuando el modo es `A_ELEGIR`). Bebidas: «Agua» (1 entrada) y «Agua saborizada» (1 entrada `A_ELEGIR` con sus sabores permitidos) = **2** entradas en lugar de 1 + k.
+
+**La cantidad de guarniciones no cambia nada de esto (CONFIRMADA):** en B sigue siendo 1 entrada, sea que el grupo admita 1 o hasta 2; con lista fija (A) crecería a 24 entradas (2×2×(3+3)) si el grupo admitiera hasta 2 distintas, y habría que recargar todo si el grupo cambia sus límites.
 
 **Total del caso Empresa 1:** con la alternativa A, **12 + 1 + k** entradas (k = sabores del agua saborizada); con la B, **3**.
 
@@ -124,7 +129,7 @@ Caso descrito por la coordinación (**NO VERIFICADA** contra la base): producto 
 
 ## 4. Cómo se elige el subconjunto: ¿por producto, por categoría o por lista? (decisión y justificación)
 
-**Decisión (PROPUESTA): por lista explícita de productos** (lo que hoy ya es un lugar LISTA), con dos ayudas:
+**Decisión (CONFIRMADA por el dueño, 2026-11-04): por lista explícita de productos** (lo que hoy ya es un lugar LISTA), con dos ayudas:
 
 1. un **atajo «agregar todos los de esta categoría»** que carga la lista **en ese momento** (con vista previa) y no la deja atada a la categoría;
 2. un **aviso** en la pantalla de la promo («hay N productos nuevos de la categoría X que no están en esta promo: ¿agregarlos?»).
@@ -159,7 +164,7 @@ Por qué **no** «seguir la sección» ni «seguir la categoría» automáticame
 | **Comanda y ticket** | Hoy una línea configurada imprime sus opciones; dos configuraciones del mismo producto en una promo son **dos líneas** (clave de línea con huella). | La escritura existe (`componentesConfigurados`); lo nuevo es que la configuración la elige el mozo, no el dueño. **NO VERIFICADA** la presentación exacta del ticket de un combo con dos bifes de configuraciones distintas (hay que mirarla con una venta de prueba). |
 | **Versiones de opciones** | Entre que el mozo ve y confirma, una opción cambia de versión o de precio. | `OPCION_CAMBIO` (existe) y `PROMO_CAMBIO` para el precio de la promo. |
 | **Opciones apagadas** | Se apaga «Papas fritas» en una sucursal. | Sale de lo permitido efectivo; si un grupo obligatorio queda vacío, el producto deja de ofrecerse (falla cerrado). |
-| **Explosión por «hasta 2 guarniciones»** | Si el grupo admite varias, crece el espacio de elecciones. | No crece en entradas (sigue 1), solo en lo que puede armar el mozo; se valida con los mismos máximos del grupo. |
+| **Límites del grupo que cambian** | Si el dueño cambia los límites del grupo o del plato (de 1 a 2 guarniciones), cambia lo que el mozo puede armar en TODAS las promos que lo usan. | **Es la regla confirmada** (I11): la promo no guarda un tope propio. La entrada sigue siendo 1; el cambio rige para lo que se agregue desde ese momento y no toca lo ya cargado (I5). El administrador ve en la promo los límites vigentes del grupo (solo lectura). |
 | **Complejidad del diálogo del mozo** | Más controles en «Armar promo». | Un selector por grupo, solo en las entradas `A_ELEGIR`; el resto del diálogo no cambia. |
 
 ---
@@ -271,7 +276,7 @@ Formalidad y detalle son ejes separados: cada peldaño suma sin romper lo cargad
 | **X** lo elegido | `DENTRO` · `FUERA` | La opción o el producto elegido, dentro o fuera de lo permitido |
 | **P** producto en la sucursal | `DISPONIBLE` · `APAGADO` · `SIN_ORIGEN_DE_STOCK` | Producto disponible, apagado o sin receta ni stock propio |
 | **G** opción en la sucursal | `ACTIVA` · `APAGADA` | Opción permitida pero apagada en la sucursal |
-| **Q** cantidad | `BAJO_MINIMO` · `EN_RANGO` · `SOBRE_MAXIMO` | Contra mínimo y máximo del lugar y del grupo |
+| **Q** cantidad | `BAJO_MINIMO` · `EN_RANGO` · `SOBRE_MAXIMO` | Contra el mínimo y el máximo del **lugar** (los de la promo) y los del **grupo** (los del grupo o los que el plato sobrescribe en `ProductoAdmiteGrupo`; la promo no tiene un tope propio de opciones, I11) |
 | **R** reserva a cliente o convenio | (no aplica hasta N2) | Declarada: **no cambia el resultado en N1** (la asignación sigue manual) |
 
 **Imposibles (marcados, no probados):** `S ≠ TODOS` con `T ≠ SECCION`; `O = A_ELEGIR_PERMITIDAS` con `T ≠ LISTA`; `G = APAGADA` sin opciones; `X = FUERA` con `O = FIJAS` y entrada sin configuración (nada que elegir).
@@ -299,12 +304,15 @@ Formalidad y detalle son ejes separados: cada peldaño suma sin romper lo cargad
 
 ---
 
-## 12. Preguntas para el dueño (máximo 4; solo las que cambian modelo, dinero o permisos)
+## 12. Decisiones del dueño y lo que queda
 
-1. **¿El mozo elige entre las opciones permitidas solo en las promos y entradas que vos marques, o en cualquier promo con productos con opciones?** (modelo y reglas). *Recomendación: solo en las entradas que marques «a elegir»; el resto sigue como hoy (fail-closed).*
-2. **«Solo los bifes» de Platos principales: ¿se arma listando los bifes en la promo (1 o pocos), o querés que la promo siga automáticamente lo que haya en la sección o la categoría?** (modelo y dinero: el precio es fijo y un producto nuevo cambia el margen). *Recomendación: lista explícita, con un atajo que carga la categoría y un aviso cuando aparece un producto nuevo; no seguir la sección ni la categoría sola.*
-3. **Los adicionales con recargo (extras pagos), ¿entran dentro de la promo?** (dinero). *Recomendación: no; dentro de la promo solo preparación, proteína y guarnición incluidas, sin recargo. Un extra se pide aparte, suelto.*
-4. **Proteína y preparación: ¿el precio de $55.000 es siempre el mismo, elija lo que elija el mozo (nalga o bife de chorizo)? ¿Y las guarniciones, una sola o hasta dos distintas?** (dinero y modelo). *Recomendación: precio siempre fijo (es lo que hace el prorrateo hoy) y una guarnición; «hasta dos» se puede sumar sin cambiar el modelo.*
+**Confirmadas el 2026-11-04** (las 4 preguntas de la versión anterior; ver el encabezado): (1) la elección del mozo es **solo** en las entradas marcadas «a elegir»; (2) lista explícita de productos, con atajo por categoría y aviso de productos nuevos; (3) sin adicionales con recargo dentro de la promo; (4) precio fijo elija lo que elija el mozo, y cantidad de guarniciones por los límites del grupo.
+
+**Qué decisiones quedan (ninguna cambia modelo, dinero ni permisos):**
+- **Enmienda de ADR-032 (D-6)** (§5.1): hay que escribirla y que el dueño la apruebe antes de implementar.
+- **Aprobación de la maqueta** por el dueño.
+- **Verificaciones previas a implementar (NO VERIFICADAS, §13):** presentación del ticket y la comanda de un combo con dos configuraciones del mismo producto, conducta del cobro con una opción permitida agotada, y lectura del reporte de margen de promociones. Son comprobaciones con una venta de prueba, no decisiones de negocio.
+- **N1b (subconjunto de una sección)** sigue PENDIENTE y solo se retoma si el dueño lo pide: con la decisión (2) ya no hace falta para «solo los bifes».
 
 ---
 
