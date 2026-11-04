@@ -34,6 +34,9 @@ async function capturar(page: Page, nombre: string): Promise<void> {
   await page.screenshot({ path: join(carpeta, `${nombre}.png`), fullPage: false });
 }
 
+// 24 combinaciones (5 y 12 platos x 3 marcas x claro y oscuro x 375 y 1280 px) con axe en cada una: lleva más que los 30 s por defecto, sobre todo con la máquina cargada.
+test.setTimeout(180_000);
+
 test("carta B: «Incluye …» bajo cada plato y un bloque por grupo al pie de la sección, con 5 y 12 platos, tres marcas, fondo claro y oscuro", async ({ page, sucursalId }) => {
   const m = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   // La carta pública se guarda en caché 60 s por sucursal y slug: cada combinación de tema y de platos usa un slug propio para no leer una carta vieja.
