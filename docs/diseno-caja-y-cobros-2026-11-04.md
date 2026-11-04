@@ -43,12 +43,13 @@ Inventario hecho leyendo `prisma/schema.prisma` y `src/` (no los documentos).
 3. **Número:** se carga el de la primera factura y luego se **sugieren los correlativos**; si el agente carga mal uno, **debe poder corregirse**.
 4. **Cliente:** por **CUIT**. Una vez cargado, el módulo de clientes lo identifica; si ya existe, **se le indica** y no se carga de nuevo.
 5. **A partir de la letra, el tipo y el monto se concilia:**
-   - factura **a consumidor final** sin cargo de alojamiento → aparecen los **tickets a consumidor final sin cobrar**;
+   - factura **a consumidor final** → aparecen los **tickets a consumidor final sin cobrar**, para que **lleven la factura hasta su monto**;
    - **un ticket cobrado sin factura** → queda **«pendiente de declarar factura»**;
    - **cliente específico** (empresa, empleado, consumidor final recurrente identificado) → trae **sus tickets que no se cobraron**.
 6. **Reservas:** poder **señalar la reserva** y guardar, **como un folio, las reservas del cliente, empresa o agente de empresa**; si no se cobraron, **se mantienen pendientes**.
 7. **El cobro es según los medios de pago usados**, y **según el medio se pide información adicional**.
 8. **«Cuenta corriente» es un medio de pago:** va a la cuenta corriente de **esa empresa o cliente que la posee**.
+9. **El alojamiento no existe ni se genera en este sistema** (aclaración del 2026-11-04). La factura a consumidor final **puede traer un cargo de alojamiento**; hoy solo se **declara** («factura $200.000, alojamiento $0» o «alojamiento $120.000»). **Los tickets son los que tienen que igualar el resto**, para que la factura quede cubierta por sus $200.000. Es decir: **monto de la factura = alojamiento declarado + tickets aplicados**.
 
 ## 0.2 Qué corrige este diseño del documento del 2026-10-26
 
@@ -86,7 +87,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | CU1 | Identificar o dar de alta un cliente por **CUIT** (si existe, se indica) | N3 | CONFIRMADA (punto 4) |
 | CU2 | **Cobrar un ticket** con uno o más medios de pago y sus datos adicionales | N1 | CONFIRMADA el principio (punto 7); varios medios y pago parcial PENDIENTE (P2) |
 | CU3 | Cobrar **con cuenta corriente**: el importe pasa a la cuenta del cliente | N2 | CONFIRMADA (punto 8) |
-| CU4 | **Cargar un comprobante externo**: letra A o B, factura o nota de crédito, punto de venta de la sucursal, número (sugerido), fecha, monto, cliente | N3 | CONFIRMADA datos (puntos 2 y 3) |
+| CU4 | **Cargar un comprobante externo**: letra A o B, factura o nota de crédito, punto de venta de la sucursal, número (sugerido), fecha, monto, cliente, y **cuánto de ese monto es alojamiento** (se escribe; vale 0 si no hay) | N3 | CONFIRMADA datos (puntos 2, 3 y 9) |
 | CU5 | **Corregir** un comprobante mal cargado (con registro) | N3 | CONFIRMADA (punto 3) |
 | CU6 | **Conciliar**: a partir del comprobante, proponer tickets (consumidor final sin cobrar; o los del cliente sin cobrar) y que **una persona confirme** | N4 | CONFIRMADA el flujo (punto 5); la confirmación humana es PROPUESTA (como I9 de pagos) |
 | CU7 | **Pendientes:** tickets sin cobrar, cobrados sin factura («pendiente de declarar factura»), saldo de cuenta corriente | N4 | CONFIRMADA (punto 5) |
@@ -112,6 +113,8 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 - **Medio de pago:** catálogo de la empresa; cada medio declara **qué datos adicionales pide** (por ejemplo, transferencia: referencia y fecha; cheque: banco, número y fecha de cobro; tarjeta: últimos 4 dígitos y cupón). **La cuenta corriente es un medio especial que no ingresa a caja.**
 - **Cuenta corriente del cliente:** saldo **derivado** (cargos − cobros posteriores). Solo para clientes que la posean. Nunca se guarda un saldo editable.
 - **Comprobante externo:** `BORRADOR → CONFIRMADO → ANULADO`. Clase `FACTURA` o `NOTA_DE_CREDITO`; letra `A` o `B`; punto de venta; número; fecha; monto; cliente. Una nota de crédito **cancela una factura** (la factura afectada), y el dinero se cruza aparte (regla N16 del diseño de notas de crédito).
+- **Alojamiento declarado:** un **importe que se escribe en el comprobante** y que **no sale de este sistema** (no hay módulo de alojamiento). Vale 0 si la factura no lo trae. Cuando exista el módulo de alojamiento, ese importe podrá salir de ahí.
+- **Composición del comprobante:** **monto = alojamiento declarado + Σ tickets aplicados**. La diferencia se **muestra** («falta $X» o «sobra $X»); nunca se fuerza ni se esconde, y la decide una persona.
 - **Punto de venta de la sucursal:** número y **nombre**, propio de cada sucursal.
 - **Conciliación:** la **aplicación** de un ticket a un comprobante. La diferencia entre el monto del comprobante y lo aplicado se **muestra**; una persona decide.
 - **Folio de reserva** (DIFERIDO): agrupa las reservas de un cliente, empresa o agente, con su estado de cobro.
@@ -137,6 +140,8 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | C15 | Todo se filtra por empresa; los tickets, además, por el alcance de sucursal; el servidor valida quién lo pide y con qué permiso | CONFIRMADA (regla permanente) |
 | C16 | Los permisos nuevos nacen **excluidos** (fail-closed): cobrar, cargar comprobante, conciliar, anular, ver cuenta corriente | CONFIRMADA (principio del 22/10) |
 | C17 | Fechas en zona Argentina; la fecha del cobro y la del comprobante son de **día local** | CONFIRMADA (regla permanente) |
+| C19 | **Monto del comprobante = alojamiento declarado + Σ tickets aplicados.** El alojamiento declarado es ≥ 0 y ≤ monto. Si la suma no cierra, se muestra la diferencia y la persona decide (no se bloquea guardar) | CONFIRMADA el principio (punto 9); no bloquear PROPUESTA |
+| C20 | El **alojamiento declarado no crea cobro, ticket ni cargo** en este sistema: solo explica una parte del monto del comprobante | CONFIRMADA (punto 9) |
 | C18 | Un cliente «consumidor final» es la cuenta **sin cliente**; el **recurrente identificado** es un cliente con nombre y, si quiere comprobante A, CUIT | PROPUESTA |
 
 ## «¿Qué pasa si…?» de los comandos principales
@@ -161,7 +166,7 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 | **N0 (hoy)** | Se cierra la cuenta y listo; no hay cobro, medio de pago ni comprobante | — | — |
 | **N1 Cobrar** | Al cobrar un ticket se elige el medio y se cargan sus datos; el ticket figura cobrado | Cobro, catálogo de medios, anulación; pantalla del cajero | — |
 | **N2 Cuenta corriente** | «Cuenta corriente» como medio; saldo del cliente | Clientes con cuenta corriente, cargos y saldo derivado | N1, N3 (CUIT) |
-| **N3 Comprobante externo** | Cargar la factura o nota de crédito del otro sistema, con sugerencia de número y corrección; clientes con CUIT | Punto de venta por sucursal, comprobante, clientes con CUIT | — |
+| **N3 Comprobante externo** | Cargar la factura o nota de crédito del otro sistema, con sugerencia de número y corrección, **y el alojamiento declarado**; clientes con CUIT | Punto de venta por sucursal, comprobante, clientes con CUIT | — |
 | **N4 Conciliar** | La factura trae los tickets a aplicar; lista de pendientes de declarar factura | Aplicación ticket–comprobante, listas de pendientes | N1, N3 |
 | **N5 Caja y reservas** | Cierre de caja por día y sucursal; folio de reservas cuando exista el módulo | Caja diaria, movimientos de caja; vínculo a reservas | N1; módulo de reservas |
 
@@ -175,6 +180,7 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 6. **P6. Medios de pago y datos que pide cada uno.** Propongo: efectivo, transferencia, tarjeta de débito, tarjeta de crédito, cheque, cuenta corriente. ¿Falta alguno? ¿Qué dato de cada uno es obligatorio?
 7. **P7. Cuenta corriente:** ¿hay **límite** por cliente y quién la **habilita**? (Recomiendo: administración la habilita, sin límite al principio.)
 8. **P8. Reservas:** como no hay módulo de reservas, ¿alcanza por ahora con una **referencia de texto** en el ticket o comprobante? (Recomiendo sí; el folio se arma cuando exista el módulo.)
+9. **P9. Otros conceptos:** Además del alojamiento, ¿la factura puede traer otro concepto que no sea un ticket** (eventos, salón, otros)? Recomiendo **solo «alojamiento» por ahora**, como un importe escrito; lo demás son tickets. Si hubiera otros conceptos, serían una lista corta de conceptos declarados.
 
 ## Qué sigue
 
