@@ -731,6 +731,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Carta B (E1; ADITIVO, solo CARTA, el COBRO idéntico): la forma que la carta le da a una elección (`aclaraciones` de tipo «eleccion») trae los límites de lo que se elige, `cantidadMinima` y `cantidadMaxima`, para que la carta muestre «elegís de A a B» y «opcional, hasta N». Revisado con `git diff -U0`: cambia SOLO la línea `presentacion` de «Bife a la criolla» (la elección «Guarnicion» suma `\"cantidadMinima\":1,\"cantidadMaxima\":1`); de `## COBRO` en adelante nada cambia.",
       },
+      {
+        blob: "c919e0749f71b401cad0f5bb8630d552c217f647",
+        // El commit PADRE de este (a7ffb2e1) es el último antes del cambio; el golden se regenera en el commit siguiente (carta B, etapa E3).
+        commit: "a7ffb2e1",
+        motivo:
+          "Carta B (E3; ADITIVO, solo CARTA, el COBRO idéntico): la forma que la carta le da a una elección (`aclaraciones` de tipo «eleccion») trae `descripciones`, la descripción de cada opción alineada con `opciones` (`null` = sin descripción; en este catálogo ninguna tiene). Revisado con `git diff -U0`: cambia SOLO la línea `presentacion` de «Bife a la criolla» (la elección «Guarnicion» suma `\"descripciones\":[null,null,null]`); de `## COBRO` en adelante nada cambia.",
+      },
     ],
   },
   "test/e2e/linea-de-base-precio-y-carta.golden.txt": {
