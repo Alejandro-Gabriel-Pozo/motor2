@@ -14,6 +14,7 @@ import { FilaDeMovimientos } from "@/components/fila-de-movimientos";
 import { listarOtrasSucursalesParaReparto, listarPropuestasEnviadas, listarPropuestasParaAceptar } from "@/server/consultas/movimientos/facturas-proveedor";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { PanelMovimientoForm } from "./panel-movimiento-form";
+import { PanelCompraPorPasos } from "./panel-compra-por-pasos";
 import { BandejaParaAceptar } from "./bandeja-para-aceptar";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 
@@ -97,17 +98,29 @@ export default async function MovimientoPage({
         />
       )}
       <div className="max-w-2xl">
-        <PanelMovimientoForm
-          config={config}
-          secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
-          seccionesDesactivadas={desactivadas}
-          proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
-          unidades={unidades.map((u) => ({ id: u.id, nombre: u.nombre }))}
-          motivos={motivos.map((m) => ({ id: m.id, nombre: m.nombre }))}
-          destinos={destinos.map((d) => ({ id: d.id, nombre: d.nombre }))}
-          productoInicial={productoInicial ? { id: productoInicial.id, etiqueta: `${productoInicial.codigo} — ${productoInicial.nombre}` } : undefined}
-          reparto={esCompra && nivelReparto.editar && otrasSucursales.length ? { sucursalActiva: { id: ctx.sucursalId, nombre: ctx.sucursalNombre }, otras: otrasSucursales } : undefined}
-        />
+        {esCompra ? (
+          // Etapa 1 de Compras, paso 6: la Compra se carga por pasos (Factura → Qué compraste → Dónde entra → Pago → Revisar). Los otros ocho procesos siguen con el panel genérico.
+          <PanelCompraPorPasos
+            config={config}
+            secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+            proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
+            unidades={unidades.map((u) => ({ id: u.id, nombre: u.nombre }))}
+            productoInicial={productoInicial ? { id: productoInicial.id, etiqueta: `${productoInicial.codigo} — ${productoInicial.nombre}` } : undefined}
+            reparto={nivelReparto.editar && otrasSucursales.length ? { sucursalActiva: { id: ctx.sucursalId, nombre: ctx.sucursalNombre }, otras: otrasSucursales } : undefined}
+          />
+        ) : (
+          <PanelMovimientoForm
+            config={config}
+            secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
+            seccionesDesactivadas={desactivadas}
+            proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
+            unidades={unidades.map((u) => ({ id: u.id, nombre: u.nombre }))}
+            motivos={motivos.map((m) => ({ id: m.id, nombre: m.nombre }))}
+            destinos={destinos.map((d) => ({ id: d.id, nombre: d.nombre }))}
+            productoInicial={productoInicial ? { id: productoInicial.id, etiqueta: `${productoInicial.codigo} — ${productoInicial.nombre}` } : undefined}
+            reparto={esCompra && nivelReparto.editar && otrasSucursales.length ? { sucursalActiva: { id: ctx.sucursalId, nombre: ctx.sucursalNombre }, otras: otrasSucursales } : undefined}
+          />
+        )}
       </div>
       {esCompra && enviadas.length > 0 && (
         <section className="flex max-w-2xl flex-col gap-2" aria-labelledby="titulo-lo-que-cargue">

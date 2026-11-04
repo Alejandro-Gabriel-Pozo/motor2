@@ -8,6 +8,8 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { generarReporteSaludPorProducto } from "../../src/server/consultas/reportes/salud-por-producto";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 describe("generarReporteSaludPorProducto", () => {
   let sucursalId: string;
@@ -29,7 +31,7 @@ describe("generarReporteSaludPorProducto", () => {
 
   it("una MP con movimientos pero sin receta vinculada dispara Atención aunque los otros 3 ejes estén bien", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Sin receta", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const filas = await generarReporteSaludPorProducto(sucursalId, prisma, AHORA_DE_LA_CORRIDA);
     const fila = filas.find((f) => f.productoId === mp.id)!;
@@ -42,7 +44,7 @@ describe("generarReporteSaludPorProducto", () => {
     const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await registrarUnConteoFisico({ productoId: mp.id, seccionId, conteoReal: 10, fechaConteo: new Date(), accion: "AJUSTAR" }); // diferencia 0 -> CONCILIADO
 
     const filas = await generarReporteSaludPorProducto(sucursalId, prisma, AHORA_DE_LA_CORRIDA);

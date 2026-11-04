@@ -14,6 +14,7 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { upsertProveedorPorProducto } from "../../src/server/persistencia/catalogo/upsert-proveedor-por-producto";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * El vínculo proveedor↔producto de una Compra va DENTRO de la transacción (Pureza Fase 4; investigación del 2026-10-06, `para motor 2\_planes\investigacion-vinculo-proveedor-
@@ -43,7 +44,7 @@ describe("registrarMovimiento (Compra): el vínculo proveedor↔producto es part
   });
 
   const comprar = (claveIdempotencia: string = randomUUID()) =>
-    registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId: seccionAId, proveedorId, claveIdempotencia, items: [{ productoId, cantidad: 10, precioTotal: 1000 }] });
+    registrarMovimiento({ proceso: "COMPRA", nroFactura: "A-00001-00000001", fecha: new Date("2026-09-20"), seccionId: seccionAId, proveedorId, claveIdempotencia, items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }] });
 
   const estado = async () => ({
     saldo: await calcularSaldoTotal(productoId, seccionAId, prisma),

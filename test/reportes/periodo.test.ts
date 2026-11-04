@@ -10,6 +10,8 @@ import { guardarMargenObjetivo } from "../../src/server/actions/reportes/margen-
 import { obtenerReportePorPeriodo, generarReporteVentasPorCategoria } from "../../src/server/consultas/reportes/periodo";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { darRecetaDeReventa } from "../setup/receta-de-venta";
+import { comprobanteDePrueba, nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 describe("obtenerReportePorPeriodo", () => {
   let sucursalId: string;
@@ -44,10 +46,10 @@ describe("obtenerReportePorPeriodo", () => {
     // 00:00 del 1 (03:00Z) ENTRA; 23:59:59.999 del 5 (02:59:59.999Z del 6) ENTRA;
     // 23:59:59.999 del 31/7 (02:59:59.999Z del 1) y 00:00 del 6 (03:00Z) quedan AFUERA.
     // Con el corte anterior (UTC) el primero entraba corrido un día y el segundo quedaba afuera: el mismo instante caía en otro día que en Tickets.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-01T03:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-06T02:59:59.999Z"), seccionId, items: [{ productoId: mp.id, cantidad: 3, precioTotal: 60 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-01T02:59:59.999Z"), seccionId, items: [{ productoId: mp.id, cantidad: 99, precioTotal: 1 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-06T03:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 98, precioTotal: 2 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-01T03:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 5, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-06T02:59:59.999Z"), seccionId, items: [{ productoId: mp.id, cantidad: 3, precioTotal: 60, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-01T02:59:59.999Z"), seccionId, items: [{ productoId: mp.id, cantidad: 99, precioTotal: 1, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-06T03:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 98, precioTotal: 2, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-01"), new Date("2026-08-05"), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.total).toBe(2);
@@ -60,7 +62,7 @@ describe("obtenerReportePorPeriodo", () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 100 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     // Venta real (registrarVenta guarda Precio Total real).
     const hoy = new Date();
@@ -84,8 +86,8 @@ describe("obtenerReportePorPeriodo", () => {
   it("compras agrupa por proveedor y suma importe; avisa si alguna se cargó sin precio", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Molino SA" } });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 500 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() }); // sin precio, MISMO producto: otra compra, no otro producto
+    await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 500, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId: proveedor.id, items: [{ productoId: mp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // sin precio, MISMO producto: otra compra, no otro producto
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.compras.totalGastado).toBe(500);
@@ -102,14 +104,14 @@ describe("obtenerReportePorPeriodo", () => {
     const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_2", nombre: "Distribuidora" } });
     // Una sola compra (una Operacion) con dos renglones del MISMO producto (dos lotes) + uno de otro producto: 3 renglones, 2 productos distintos, 1 compra.
     await registrarMovimiento({
-      proceso: "COMPRA",
+      proceso: "COMPRA", nroFactura: nroFacturaDePrueba(),
       fecha: new Date(),
       seccionId,
       proveedorId: proveedor.id,
       items: [
-        { productoId: mp1.id, cantidad: 10, precioTotal: 100 },
-        { productoId: mp1.id, cantidad: 5, precioTotal: 50 },
-        { productoId: mp2.id, cantidad: 1, precioTotal: 20 },
+        { productoId: mp1.id, cantidad: 10, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA },
+        { productoId: mp1.id, cantidad: 5, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA },
+        { productoId: mp2.id, cantidad: 1, precioTotal: 20, referenciaProveedor: REFERENCIA_DE_PRUEBA },
       ],
       claveIdempotencia: crypto.randomUUID(),
     });
@@ -128,8 +130,8 @@ describe("obtenerReportePorPeriodo", () => {
     const proveedorA = await prisma.proveedor.create({ data: { codigo: "PRV_A", nombre: "Molino A" } });
     const proveedorB = await prisma.proveedor.create({ data: { codigo: "PRV_B", nombre: "Molino B" } });
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedorA.id, items: [{ productoId: mp1.id, cantidad: 10, precioTotal: 300 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, proveedorId: proveedorB.id, items: [{ productoId: mp2.id, cantidad: 5, precioTotal: 200 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId: proveedorA.id, items: [{ productoId: mp1.id, cantidad: 10, precioTotal: 300, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId: proveedorB.id, items: [{ productoId: mp2.id, cantidad: 5, precioTotal: 200, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
@@ -153,8 +155,8 @@ describe("obtenerReportePorPeriodo", () => {
     const insumo2 = await prisma.insumo.create({ data: { nombre: "Muzzarella" } });
     const mp2 = await sembrarProductoDisponible({ codigo: "MP_M1", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumo2.id }, sucursalId);
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp2.id, cantidad: 1, precioTotal: 750 }], claveIdempotencia: crypto.randomUUID() }); // 75% del gasto
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp1.id, cantidad: 1, precioTotal: 250 }], claveIdempotencia: crypto.randomUUID() }); // 25% del gasto
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp2.id, cantidad: 1, precioTotal: 750, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // 75% del gasto
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp1.id, cantidad: 1, precioTotal: 250, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // 25% del gasto
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
@@ -172,8 +174,8 @@ describe("obtenerReportePorPeriodo", () => {
     const insumoB = await prisma.insumo.create({ data: { nombre: "Chico" } });
     const mpA = await sembrarProductoDisponible({ codigo: "MP_GRANDE", nombre: "Grande", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoA.id }, sucursalId);
     const mpB = await sembrarProductoDisponible({ codigo: "MP_CHICO", nombre: "Chico", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoB.id }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpA.id, cantidad: 1, precioTotal: 900 }], claveIdempotencia: crypto.randomUUID() }); // 90 %
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpB.id, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() }); // 10 %
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpA.id, cantidad: 1, precioTotal: 900, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // 90 %
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpB.id, cantidad: 1, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // 10 %
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
@@ -182,7 +184,7 @@ describe("obtenerReportePorPeriodo", () => {
 
   it("gastoPorInsumo separa 'Sin insumo asignado' de 'Sin categoría' cuando el producto no tiene Insumo", async () => {
     const mpSinInsumo = await sembrarProductoDisponible({ codigo: "MP_SUELTO", nombre: "Producto suelto", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSinInsumo.id, cantidad: 1, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpSinInsumo.id, cantidad: 1, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
@@ -211,11 +213,11 @@ describe("obtenerReportePorPeriodo", () => {
     const pv = await conRecetaDeReventa(await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId));
 
     // Período anterior (9 de agosto, un día antes del rango elegido): compró 80, facturó 100 -> 80%.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-09T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 80 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-09T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 80, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date("2026-08-09T12:00:00.000Z"), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
 
     // Período elegido (10 de agosto): compró 100, facturó 200 -> 50%.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-10T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-10T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await registrarVenta({ fecha: new Date("2026-08-10T12:00:00.000Z"), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 2 }] });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-10"), undefined, prisma, AHORA_DE_LA_CORRIDA);
@@ -226,7 +228,7 @@ describe("obtenerReportePorPeriodo", () => {
 
   it("ratioGastoVentas da null (no divide por cero) si no hubo ventas facturadas", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_1", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.ratioGastoVentas.porcentaje).toBeNull();
@@ -239,12 +241,12 @@ describe("obtenerReportePorPeriodo", () => {
     const mpCaro = await sembrarProductoDisponible({ codigo: "MP_MUZZA", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: caro.id }, sucursalId);
 
     // Orégano: $10/kg -> $20/kg dentro del período (+100%, pero solo 1kg -> impacto $10).
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpBarato.id, cantidad: 1, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpBarato.id, cantidad: 1, precioTotal: 20 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpBarato.id, cantidad: 1, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpBarato.id, cantidad: 1, precioTotal: 20, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     // Muzzarella: $1000/kg -> $1100/kg dentro del período (+10%, pero 50kg -> impacto $5000).
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 50000 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 55000 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 50000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 55000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
@@ -263,12 +265,12 @@ describe("obtenerReportePorPeriodo", () => {
   it("tendenciaPrecios: primera compra de un insumo da delta null (no hay con qué comparar); una variación poco creíble se marca sospechosa", async () => {
     const insumoNuevo = await prisma.insumo.create({ data: { nombre: "Insumo nuevo" } });
     const mpNuevo = await sembrarProductoDisponible({ codigo: "MP_NUEVO", nombre: "Insumo nuevo", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoNuevo.id }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpNuevo.id, cantidad: 1, precioTotal: 100 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpNuevo.id, cantidad: 1, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const insumoSal = await prisma.insumo.create({ data: { nombre: "Sal" } });
     const mpSal = await sembrarProductoDisponible({ codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(Date.now() - 172800000), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() }); // $1/kg, antes del período
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() }); // $50/kg — +4900%, probable error de carga
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(Date.now() - 172800000), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // $1/kg, antes del período
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // $50/kg — +4900%, probable error de carga
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
@@ -284,7 +286,7 @@ describe("obtenerReportePorPeriodo", () => {
 
   it("tendenciaPrecios excluye productos sin Insumo asignado (mezclar precios sin relación no tiene sentido)", async () => {
     const mpSuelto = await sembrarProductoDisponible({ codigo: "MP_SUELTO", nombre: "Producto suelto", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSuelto.id, cantidad: 1, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpSuelto.id, cantidad: 1, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
     expect(rep.tendenciaPrecios).toEqual([]);
@@ -294,13 +296,13 @@ describe("obtenerReportePorPeriodo", () => {
     const caro = await prisma.insumo.create({ data: { nombre: "Muzzarella" } });
     const mpCaro = await sembrarProductoDisponible({ codigo: "MP_MUZZA", nombre: "Muzzarella", tipo: "MP", unidadStockId: unidadKgId, insumoId: caro.id }, sucursalId);
     // $1000/kg -> $1100/kg dentro del período (+10%, 50kg): base=50000, delta=5000.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 50000 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 55000 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 50000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpCaro.id, cantidad: 50, precioTotal: 55000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const insumoSal = await prisma.insumo.create({ data: { nombre: "Sal" } });
     const mpSal = await sembrarProductoDisponible({ codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() }); // $1/kg
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() }); // $50/kg — sospechoso, se excluye del agregado
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // $1/kg
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // $50/kg — sospechoso, se excluye del agregado
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
@@ -433,8 +435,8 @@ describe("obtenerReportePorPeriodo", () => {
   it("digest prioriza el dato sospechoso primero, y nombra el insumo", async () => {
     const insumoSal = await prisma.insumo.create({ data: { nombre: "Sal" } });
     const mpSal = await sembrarProductoDisponible({ codigo: "MP_SAL", nombre: "Sal", tipo: "MP", unidadStockId: unidadKgId, insumoId: insumoSal.id }, sucursalId);
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(Date.now() - 172800000), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() }); // $1/kg antes
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50 }], claveIdempotencia: crypto.randomUUID() }); // $50/kg — sospechoso
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(Date.now() - 172800000), seccionId, items: [{ productoId: mpSal.id, cantidad: 10, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // $1/kg antes
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpSal.id, cantidad: 1, precioTotal: 50, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() }); // $50/kg — sospechoso
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date(Date.now() - 86400000), new Date(Date.now() + 86400000), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
@@ -448,8 +450,8 @@ describe("obtenerReportePorPeriodo", () => {
     const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan Especial", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 20 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 20, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
@@ -462,8 +464,8 @@ describe("obtenerReportePorPeriodo", () => {
     const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Pan Especial", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 1000 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
 
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 20 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-05T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 20, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date("2026-08-11T12:00:00.000Z"), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-08-10"), new Date("2026-08-14"), undefined, prisma, AHORA_DE_LA_CORRIDA);
 
@@ -481,7 +483,7 @@ describe("obtenerReportePorPeriodo", () => {
       const pv = await sembrarProductoDisponible({ codigo: "PV_OBJ", nombre, tipo: "PV", unidadStockId: unidadKgId, precioVenta }, sucursalId);
       await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
       // Costo de reposición $600 el kg: sobre un precio de $1000 es food cost 60 %.
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 600 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1, precioTotal: 600, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     }
     const rango = () => [new Date(Date.now() - 86400000), new Date(Date.now() + 86400000)] as const;
 

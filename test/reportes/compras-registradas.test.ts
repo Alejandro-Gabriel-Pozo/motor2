@@ -10,6 +10,19 @@ import { listarComprasRegistradas } from "../../src/server/consultas/reportes/co
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 
+/** Una COMPRA escrita DIRECTO como dato viejo (proveedor y N.º de factura de texto libre, o ausentes): Operacion + una fila de Kardex por renglón, a nombre del admin de pruebas. */
+async function sembrarCompraVieja(p: { sucursalId: string; seccionId: string; fecha: Date; proveedorId?: string; nroFactura?: string; items: { productoId: string; cantidad: number; precioTotal?: number }[] }) {
+  const admin = await prisma.user.findFirstOrThrow({ where: { email: "admin@test.com" } });
+  const operacion = await prisma.operacion.create({ data: { sucursalId: p.sucursalId, proceso: "COMPRA", fecha: p.fecha, usuarioId: admin.id, proveedorId: p.proveedorId ?? null, nroFactura: p.nroFactura ?? null } });
+  for (const i of p.items) {
+    const precioTotal = i.precioTotal ?? 0;
+    await prisma.movimientoStock.create({
+      data: { operacionId: operacion.id, productoId: i.productoId, seccionId: p.seccionId, proceso: "COMPRA", cantidad: i.cantidad, detalle: "Compra", precioTotal, precioPorUnidadStock: precioTotal / i.cantidad },
+    });
+  }
+  return operacion;
+}
+
 /**
  * Listado de compras por factura: qué se compró, a quién, con qué factura, cuándo y por cuánto. Solo lectura.
  */
@@ -38,9 +51,9 @@ describe("listarComprasRegistradas", () => {
     provBId = (await prisma.proveedor.create({ data: { codigo: "PRV_B", nombre: "Lácteos B" } })).id;
   });
 
+  // Compras viejas de texto libre (I15: las compras anteriores a la etapa 1 siguen existiendo y no se tocan): se siembran directo, porque la carga actual ya no las admite.
   async function comprar(fecha: string, proveedorId: string | undefined, nroFactura: string | undefined, items: { productoId: string; cantidad: number; precioTotal?: number }[]) {
-    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: d(fecha), seccionId, proveedorId, nroFactura, items, claveIdempotencia: crypto.randomUUID() });
-    expect(r.ok, r.mensaje).toBe(true);
+    return sembrarCompraVieja({ sucursalId, seccionId, fecha: d(fecha), proveedorId, nroFactura, items });
   }
 
   it("una fila por factura con sus líneas, el total y quién la cargó; más recientes primero", async () => {
@@ -170,8 +183,9 @@ describe("Compras por proveedor (Período) lleva el id del proveedor para enlaza
     const harina = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: kg.id }, sucursalId);
     const prov = await prisma.proveedor.create({ data: { codigo: "PRV_A", nombre: "Molino A" } });
     const fecha = new Date("2026-08-01T12:00:00Z");
-    await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, proveedorId: prov.id, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 5 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha, seccionId, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 6 }], claveIdempotencia: crypto.randomUUID() });
+    // Dato viejo sin proveedor ni número (I15): se siembra directo.
+    await sembrarCompraVieja({ sucursalId, seccionId, fecha, proveedorId: prov.id, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 5 }] });
+    await sembrarCompraVieja({ sucursalId, seccionId, fecha, items: [{ productoId: harina.id, cantidad: 1, precioTotal: 6 }] });
 
     const rep = await obtenerReportePorPeriodo(sucursalId, new Date("2026-07-30"), new Date("2026-08-05"), undefined, prisma, AHORA_DE_LA_CORRIDA);
     const porNombre = new Map(rep.compras.porProveedor.map((p) => [p.proveedor, p.proveedorId]));

@@ -1,6 +1,6 @@
 import { texto } from "@/core/texto";
 import { esDetalleReservadoParaReversiones } from "@/core/movimientos/public";
-import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
+import { validarFechaDeCompra, validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
@@ -51,7 +51,8 @@ export function guardComandoRegistrarMovimiento(entrada: unknown, ahora: Date): 
     if (!referencia.ok) return rechazar(referencia.codigo, referencia.mensaje);
   }
   if (!texto(seccionId)) return rechazar("vacio", "Elegí una sección.");
-  const fechaValida = validarFechaOperacion(fecha, ahora);
+  // I13: la fecha de una COMPRA no puede ser posterior a hoy; los demás procesos conservan el día de margen.
+  const fechaValida = proceso === "COMPRA" ? validarFechaDeCompra(fecha, ahora) : validarFechaOperacion(fecha, ahora);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
   // E1 del circuito de abastecimiento (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md): la clave de reintento es OBLIGATORIA, con
   // los mismos textos que el pago al consignante. Sin ella, un doble clic o un reintento duplicaría stock y dinero; la pantalla la genera al abrirse,

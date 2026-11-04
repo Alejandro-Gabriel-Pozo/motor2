@@ -5,6 +5,8 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, sembrarMotivosYDestinos, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
+import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * El precio del vínculo proveedor↔producto (`ProveedorPorProducto.precioPorUnidadStock`) lo escribe un `$executeRaw` dentro de la compra. Decisión del dueño (2026-10-08): ese cambio de
@@ -19,7 +21,7 @@ describe("la compra audita el cambio de precio del vínculo proveedor↔producto
   let adminId: string;
 
   const comprar = (fecha: string, precioTotal: number, cantidad = 10) =>
-    registrarMovimiento({ proceso: "COMPRA", fecha: new Date(fecha), seccionId, proveedorId, items: [{ productoId, cantidad, precioTotal }], claveIdempotencia: crypto.randomUUID() });
+    registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(fecha), seccionId, proveedorId, items: [{ productoId, cantidad, precioTotal, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   const filas = () => prisma.registroAuditoria.findMany({ where: { entidad: "ProveedorPorProducto" }, orderBy: { creadoEn: "asc" } });
 
   beforeEach(async () => {
@@ -68,7 +70,7 @@ describe("la compra audita el cambio de precio del vínculo proveedor↔producto
   });
 
   it("una compra rechazada (stock o validación) no deja fila: la auditoría va en la misma transacción", async () => {
-    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-10"), seccionId, proveedorId: "no-existe", items: [{ productoId, cantidad: 10, precioTotal: 1000 }], claveIdempotencia: crypto.randomUUID() });
+    const r = await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-10"), seccionId, proveedorId: "no-existe", items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     expect(r.ok).toBe(false);
     expect(await filas()).toHaveLength(0);
   });

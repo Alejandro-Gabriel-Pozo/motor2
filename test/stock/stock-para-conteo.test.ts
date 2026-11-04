@@ -6,6 +6,8 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { listarStockParaConteo } from "../../src/server/consultas/movimientos/stock-para-conteo";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 describe("listarStockParaConteo", () => {
   let sucursalId: string;
@@ -35,7 +37,7 @@ describe("listarStockParaConteo", () => {
   });
 
   it("trae el producto con su saldo actual", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     const filas = await listarStockParaConteo(seccionId, sucursalId, prisma);
     expect(filas).toHaveLength(1);
@@ -46,12 +48,12 @@ describe("listarStockParaConteo", () => {
     const lote1 = new Date("2026-01-01");
     const lote2 = new Date("2026-02-01");
     await registrarMovimiento({
-      proceso: "COMPRA",
+      proceso: "COMPRA", ...(await comprobanteDePrueba()),
       fecha: new Date(),
       seccionId,
       items: [
-        { productoId: mpId, cantidad: 4, loteVencimiento: lote1 },
-        { productoId: mpId, cantidad: 6, loteVencimiento: lote2 },
+        { productoId: mpId, cantidad: 4, loteVencimiento: lote1, referenciaProveedor: REFERENCIA_DE_PRUEBA },
+        { productoId: mpId, cantidad: 6, loteVencimiento: lote2, referenciaProveedor: REFERENCIA_DE_PRUEBA },
       ],
       claveIdempotencia: crypto.randomUUID(),
     });
@@ -62,7 +64,7 @@ describe("listarStockParaConteo", () => {
   });
 
   it("excluye combinaciones (producto, lote) en saldo 0 — nada que verificar ahí", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     // U11: la Merma exige un motivo en el servidor (antes este test la registraba sin motivo).
     const { motivos } = await sembrarMotivosYDestinos();
     await registrarMovimiento({ proceso: "MERMA", fecha: new Date(), seccionId, motivoId: motivos.get("Vencido")!, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
@@ -85,7 +87,7 @@ describe("listarStockParaConteo", () => {
   });
 
   it("no mezcla stock de otra sección", async () => {
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mpId, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     const otraSeccion = await sembrarSeccion(sucursalId, "Barra");
 
     expect(await listarStockParaConteo(otraSeccion.id, sucursalId, prisma)).toEqual([]);

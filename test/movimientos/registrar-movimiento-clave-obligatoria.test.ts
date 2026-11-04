@@ -16,11 +16,13 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento, type DatosMovimientoInput } from "../../src/server/actions/movimientos/movimientos";
 import { guardComandoRegistrarMovimiento } from "../../src/core/features/movimientos/movimiento.guard";
 import { MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/public-servidor";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 const MENSAJE_SIN_CLAVE = "Falta la clave de reintento: recargá la pantalla.";
 
 describe("guardComandoRegistrarMovimiento — la clave de reintento es obligatoria", () => {
-  const base = { proceso: "COMPRA", fecha: new Date(), seccionId: "s1", items: [{ productoId: "p1", cantidad: 1 }] };
+  const base = { proceso: "COMPRA", fecha: new Date(), seccionId: "s1", items: [{ productoId: "p1", cantidad: 1, referenciaProveedor: REFERENCIA_DE_PRUEBA }] };
   const ahora = new Date();
 
   it("ausente, nula o vacía: rechazo «vacio» con el texto del pago al consignante", () => {
@@ -66,7 +68,7 @@ describe("registrarMovimiento — clave de reintento obligatoria (con base)", ()
   }
 
   async function comprar(productoId: string, cantidad: number) {
-    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId, cantidad }], claveIdempotencia: crypto.randomUUID() });
+    const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId, cantidad, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     expect(r.ok, r.mensaje).toBe(true);
   }
 
@@ -78,7 +80,7 @@ describe("registrarMovimiento — clave de reintento obligatoria (con base)", ()
   it("sin clave (ausente, nula o vacía): rechazo con mensaje claro y CERO filas en Operacion y MovimientoStock, en los 4 procesos", async () => {
     const mp = await crearMP("SinClave");
     const pedidos = [
-      { proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 1000 }] },
+      { proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }] },
       { proceso: "CONSUMO", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 1 }] },
       { proceso: "MERMA", fecha: new Date(), seccionId, motivoId, items: [{ productoId: mp.id, cantidad: 1 }] },
       { proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5 }] },
@@ -107,7 +109,7 @@ describe("registrarMovimiento — clave de reintento obligatoria (con base)", ()
 
     it("compra sin proveedor", async () => {
       const mp = await crearMP("CompraSimultanea");
-      await ochoALaVez({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 1500 }], claveIdempotencia: crypto.randomUUID() });
+      await ochoALaVez({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 1500, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       expect(await saldo(mp.id)).toBe(10);
     });
 
@@ -136,12 +138,12 @@ describe("registrarMovimiento — clave de reintento obligatoria (con base)", ()
   it("misma clave con contenido distinto: rechazo explícito (conflicto), nunca el resultado del otro pedido; nada nuevo en la base", async () => {
     const mp = await crearMP("Conflicto");
     const clave = crypto.randomUUID();
-    const r1 = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 1000 }], claveIdempotencia: clave });
+    const r1 = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: clave });
     expect(r1.ok, r1.mensaje).toBe(true);
 
     const otroContenido: DatosMovimientoInput[] = [
-      { proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 9999 }], claveIdempotencia: clave },
-      { proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 11, precioTotal: 1000 }], claveIdempotencia: clave },
+      { proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 9999, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: clave },
+      { proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 11, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: clave },
       { proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: clave },
     ];
     for (const datos of otroContenido) {
@@ -159,7 +161,7 @@ describe("registrarMovimiento — clave de reintento obligatoria (con base)", ()
       data: { empresaId: EMPRESA_TESTIGO_ID, sucursalId: sucursalAjena.id, proceso: "COMPRA", fecha: new Date(), usuarioId, claveIdempotencia: clave, payloadHash: "huella-ajena", resultadoMensaje: "MENSAJE-SECRETO-DE-OTRA-EMPRESA" },
     });
 
-    const r = await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: clave });
+    const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: clave });
     expect(r).toEqual({ ok: false, mensaje: MENSAJE_CONFLICTO_IDEMPOTENCIA });
 
     expect(await prisma.operacion.count({ where: { sucursalId } })).toBe(0);

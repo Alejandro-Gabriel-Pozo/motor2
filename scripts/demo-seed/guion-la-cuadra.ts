@@ -25,8 +25,8 @@
  */
 import { gaussiana, type GeneradorAleatorio } from "./prng";
 import { generarSerieDePrecio, precioEnSemana, type PuntoDeSerie } from "./series-precio";
-import type { EventoDemo, GuionDemo, ItemCompra, Seccion } from "./guion";
-import { PRECIOS_REFERENCIA, PRODUCTOS, RECETAS } from "../seed-demo-pizzeria-data";
+import { PROVEEDOR_DE_DEMO_CODIGO, crearNumeradorDeFacturas, nroFacturaEstructurado, type EventoDemo, type GuionDemo, type ItemCompra, type Seccion } from "./guion";
+import { PRECIOS_REFERENCIA, PRODUCTOS, PROVEEDORES, RECETAS } from "../seed-demo-pizzeria-data";
 
 export interface ConfigGuionLaCuadra {
   /** Duración total del guion, en semanas — 26 ≈ 6 meses (§0). */
@@ -156,7 +156,7 @@ function construirSeriesDePrecios(semanas: number, rand: GeneradorAleatorio): Ma
     const clave = `${ref.productoCodigo}|${ref.proveedorCodigo}`;
     series.set(clave, generarSerieDePrecio({ ...CONFIG_SERIE_PRECIO, precioInicial: ref.precioUnitarioCompra, semanas }, rand));
   }
-  series.set("MP011B|SIN_PROVEEDOR", generarSerieDePrecio({ ...CONFIG_SERIE_PRECIO, precioInicial: PRECIO_INICIAL_MP011B, semanas }, rand));
+  series.set(`MP011B|${PROVEEDOR_DE_DEMO_CODIGO}`, generarSerieDePrecio({ ...CONFIG_SERIE_PRECIO, precioInicial: PRECIO_INICIAL_MP011B, semanas }, rand));
   return series;
 }
 function precioDeCompra(series: Map<string, PuntoDeSerie[]>, productoCodigo: string, proveedorCodigo: string, semana: number): number {
@@ -169,6 +169,14 @@ function precioDeCompra(series: Map<string, PuntoDeSerie[]>, productoCodigo: str
 /** El proveedor de referencia de un producto (el primero que aparece en PRECIOS_REFERENCIA) — para el stock inicial, que compra CUALQUIER MP que haga falta, no solo los que tienen una cadencia semanal propia (ej. descartables, bebidas). */
 function proveedorHabitualDe(productoCodigo: string): string | null {
   return PRECIOS_REFERENCIA.find((p) => p.productoCodigo === productoCodigo)?.proveedorCodigo ?? null;
+}
+
+/** El N.º «bien tipeado» de la corrección: el mismo punto de venta (el del proveedor de esa compra) con el número 4521, que ningún correlativo del guion alcanza. */
+function nroFacturaCorregido(eventos: EventoDemo[], refCompra: string, codigosDeProveedores: readonly string[]): string {
+  const compra = eventos.find((e) => e.tipo === "COMPRA" && e.ref === refCompra);
+  const proveedorCodigo = compra?.tipo === "COMPRA" ? compra.proveedorCodigo : null;
+  const posicion = proveedorCodigo === null ? -1 : codigosDeProveedores.indexOf(proveedorCodigo);
+  return posicion < 0 ? nroFacturaEstructurado("X", 1, 4521) : nroFacturaEstructurado("A", posicion + 1, 4521);
 }
 
 /** Contador incremental para refs únicas — un objeto mutable simple, no hace falta más ceremonia para esto. */
@@ -188,6 +196,9 @@ export function generarGuionLaCuadra(config: ConfigGuionLaCuadra, rand: Generado
   const series = construirSeriesDePrecios(config.semanas, rand);
   const ref = crearContador();
   const eventos: EventoDemo[] = [];
+  // Compras etapa 1: el N.º de factura es estructurado y correlativo por proveedor (punto de venta fijo por proveedor; el stock inicial y la feria van al proveedor de demo, letra X).
+  const codigosDeProveedores = PROVEEDORES.map((p) => p.codigo);
+  const nroDe = crearNumeradorDeFacturas(codigosDeProveedores);
 
   // --- Stock inicial ("día -1" de la semana 0): sin esto, las ventas/producción del domingo de la semana 0 se
   // quedarían sin stock — las primeras compras programadas recién caen martes/miércoles (CADENCIA_PROVEEDOR), como si
@@ -210,7 +221,7 @@ export function generarGuionLaCuadra(config: ConfigGuionLaCuadra, rand: Generado
     }
     for (const [seccion, items] of itemsPorSeccion) {
       if (!items.length) continue;
-      eventos.push({ tipo: "COMPRA", ref: ref(), semana: 0, diaSemana: -1, seccion, proveedorCodigo: null, nroFactura: "STOCK-INICIAL", items });
+      eventos.push({ tipo: "COMPRA", ref: ref(), semana: 0, diaSemana: -1, seccion, proveedorCodigo: PROVEEDOR_DE_DEMO_CODIGO, nroFactura: nroDe(PROVEEDOR_DE_DEMO_CODIGO), items });
     }
     // Producción inicial de los intermedios y de PV030 — para que el día 0 ya tenga algo armado, no solo comprado.
     for (const clave of ["MPZ01", "MPZ02", "PV030"] as const) {
@@ -298,12 +309,9 @@ export function generarGuionLaCuadra(config: ConfigGuionLaCuadra, rand: Generado
             diaSemana: dia,
             seccion: "Cocina",
             proveedorCodigo: proveedorEfectivo,
-            // Incluye la RONDA (provCodigo) además del proveedor efectivo: cuando la sustitución del proveedor
-            // alternativo cae el mismo día que la entrega habitual de ESE MISMO proveedor efectivo (ej. MP001
-            // sustituido a PRV_ALMACEN un martes, el mismo día que la entrega regular de PRV_ALMACEN), las dos
-            // compras son operaciones DISTINTAS a nombre del mismo proveedor — sin la ronda en la factura, la
-            // segunda pisaría el número de la primera (única por proveedor+factura).
-            nroFactura: `${provCodigo}-${proveedorEfectivo}-s${semana}d${dia}`,
+            // Un número por Operación, correlativo por proveedor EFECTIVO: cuando la sustitución del proveedor alternativo cae el mismo día que la entrega habitual de ese mismo proveedor, son dos
+            // compras distintas con dos números distintos (el número es único por proveedor).
+            nroFactura: nroDe(proveedorEfectivo),
             items: semana === SEMANA_VENCIMIENTO && dia === dias[0] ? items.map((it) => (it.productoCodigo === "MP006" ? { ...it, loteVencimiento: new Date(Date.UTC(2000, 0, 1 + semana * 7 + dia + 12)) } : it)) : items,
           });
           refsCompraDeLaSemana.push(r);
@@ -315,10 +323,10 @@ export function generarGuionLaCuadra(config: ConfigGuionLaCuadra, rand: Generado
     {
       const necesidadMorron = necesidad.directa.MP011 ?? 0;
       const cantidadB = Math.max(5, Math.round(necesidadMorron * bufferSemana * 0.4));
-      const precioB = precioDeCompra(series, "MP011B", "SIN_PROVEEDOR", semana);
+      const precioB = precioDeCompra(series, "MP011B", PROVEEDOR_DE_DEMO_CODIGO, semana);
       const r = ref();
       eventos.push({
-        tipo: "COMPRA", ref: r, semana, diaSemana: 4, seccion: "Cocina", proveedorCodigo: null,
+        tipo: "COMPRA", ref: r, semana, diaSemana: 4, seccion: "Cocina", proveedorCodigo: PROVEEDOR_DE_DEMO_CODIGO, nroFactura: nroDe(PROVEEDOR_DE_DEMO_CODIGO),
         items: [{ productoCodigo: "MP011B", cantidad: cantidadB, precioUnitario: Math.round(cantidadB * precioB) / cantidadB }],
       });
       refsCompraDeLaSemana.push(r);
@@ -334,7 +342,7 @@ export function generarGuionLaCuadra(config: ConfigGuionLaCuadra, rand: Generado
         return { productoCodigo: codigo, cantidad, precioUnitario: Math.round(cantidad * precio) / cantidad };
       });
       const r = ref();
-      eventos.push({ tipo: "COMPRA", ref: r, semana, diaSemana: 2, seccion: "Cocina", proveedorCodigo: "PRV_DESCARTABLES", nroFactura: `PRV_DESCARTABLES-s${semana}`, items });
+      eventos.push({ tipo: "COMPRA", ref: r, semana, diaSemana: 2, seccion: "Cocina", proveedorCodigo: "PRV_DESCARTABLES", nroFactura: nroDe("PRV_DESCARTABLES"), items });
       refsCompraDeLaSemana.push(r);
     }
 
@@ -348,7 +356,7 @@ export function generarGuionLaCuadra(config: ConfigGuionLaCuadra, rand: Generado
         return { productoCodigo: codigo, cantidad, precioUnitario: Math.round(cantidad * precio) / cantidad };
       });
       const r = ref();
-      eventos.push({ tipo: "COMPRA", ref: r, semana, diaSemana: 4, seccion: "Barra", proveedorCodigo: "PRV_BEBIDAS", nroFactura: `PRV_BEBIDAS-s${semana}`, items });
+      eventos.push({ tipo: "COMPRA", ref: r, semana, diaSemana: 4, seccion: "Barra", proveedorCodigo: "PRV_BEBIDAS", nroFactura: nroDe("PRV_BEBIDAS"), items });
       refsCompraDeLaSemana.push(r);
     }
 
@@ -415,7 +423,7 @@ export function generarGuionLaCuadra(config: ConfigGuionLaCuadra, rand: Generado
       refCompraParaAnular = null;
     }
     if (semana === SEMANA_ANULACION + 1 && refCompraParaCorregir) {
-      eventos.push({ tipo: "CORREGIR_COMPRA", ref: ref(), semana, diaSemana: 1, refCompra: refCompraParaCorregir, nroFactura: "0001-00004521" });
+      eventos.push({ tipo: "CORREGIR_COMPRA", ref: ref(), semana, diaSemana: 1, refCompra: refCompraParaCorregir, nroFactura: nroFacturaCorregido(eventos, refCompraParaCorregir, codigosDeProveedores) });
       refCompraParaCorregir = null;
     }
   }

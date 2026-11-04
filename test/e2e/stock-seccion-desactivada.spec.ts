@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
+import { completarPasoFactura, elegirProductoEnLaFila, llenarLinea, siguiente, verPaso } from "./fixtures/compra-por-pasos";
 
 /**
  * P17 (decisión del dueño, 2026-10-11): una sección de stock dada de baja solo admite SACAR mercadería (consumir, mermar o transferir) hasta vaciarla. El servidor lo controla
@@ -47,6 +48,7 @@ async function elegirProducto(page: Page, nombre: string) {
 
 test("merma: la sección dada de baja se ofrece como «(desactivada)» y se puede vaciar; en Compra no se ofrece", async ({ paginaAutenticada: page, sucursalId }) => {
   const s = await sembrar(sucursalId, 10);
+  const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_SD_${s.mp.id.slice(-8)}`, nombre: `E2E SD Proveedor ${s.mp.id.slice(-8)}` } });
   try {
     await page.goto("/movimientos/merma");
     const seccion = page.getByRole("combobox", { name: "Depósito", exact: true });
@@ -60,11 +62,18 @@ test("merma: la sección dada de baja se ofrece como «(desactivada)» y se pued
     expect(await calcularSaldoTotal(s.mp.id, s.baja.id, prisma)).toBe(0);
 
     // Donde entra mercadería no se ofrece: Compra.
+    // En Compra el depósito se elige en el paso 3 «Dónde entra»: se llega con proveedor, número y una línea válidos.
     await page.goto("/movimientos/compra");
+    await completarPasoFactura(page, { proveedor: proveedor.nombre });
+    await elegirProductoEnLaFila(page, s.mp.nombre);
+    await llenarLinea(page, { cantidad: "1", importe: "10", referencia: "Harina SD" });
+    await siguiente(page);
+    await verPaso(page, 3, "Dónde entra");
     await expect(page.getByRole("combobox", { name: "Depósito", exact: true })).toBeVisible();
     await expect(page.getByRole("combobox", { name: "Depósito", exact: true }).locator("option", { hasText: s.baja.nombre })).toHaveCount(0);
   } finally {
     await s.limpiar();
+    await prisma.proveedor.deleteMany({ where: { id: proveedor.id } });
   }
 });
 

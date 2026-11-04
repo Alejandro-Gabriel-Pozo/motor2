@@ -37,21 +37,6 @@ export async function cargarProveedor(db: Prisma.TransactionClient, proveedorId:
 }
 
 /**
- * true si ya existe una Compra VIGENTE (no anulada) con ese proveedor + N.º de factura en esta sucursal (Movimientos.js:402-416).
- * Camino RÁPIDO previo a la SERIALIZABLE — ver el docstring del archivo: bajo concurrencia real el árbitro es el índice único parcial
- * `Operacion_factura_unica_vigente_key`, no esta lectura.
- */
-export async function existeCompraVigenteConFactura(
-  db: Prisma.TransactionClient,
-  args: { sucursalId: string; proveedorId: string; nroFactura: string }
-): Promise<boolean> {
-  const yaExiste = await db.operacion.findFirst({
-    where: { sucursalId: args.sucursalId, proceso: "COMPRA", proveedorId: args.proveedorId, nroFactura: args.nroFactura, anuladaEn: null },
-  });
-  return !!yaExiste;
-}
-
-/**
  * Las Compras VIGENTES (no anuladas) de ese proveedor entre dos días de calendario («AAAA-MM-DD», ambos inclusive), de TODAS las sucursales de la empresa, con el
  * nombre de la sucursal y el importe (suma de `precioTotal` de sus líneas, redondeada a centavos, como el reporte de compras registradas). Es la lectura del aviso C25 de posible
  * factura repetida (`posiblesDuplicados`, src/core/compras/posible-duplicado.ts). P2: corre ANTES de la transacción de `registrarMovimiento` y con la base de VERIFICACIÓN

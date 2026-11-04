@@ -76,20 +76,21 @@ describe("guardComandoAnularCompra", () => {
   const UUID = "0b5c3a1e-7d2f-4c8a-9e61-2f3d4b5a6c7d";
   const NO_ENCONTRADA = "No se encontró esa operación en esta sucursal.";
   const CLAVE_INVALIDA = "Clave de reintento inválida.";
+  const CLAVE_FALTANTE = "Falta la clave de reintento: recargá la pantalla.";
 
   it.each([
-    { caso: "válida, sin clave (undefined → null)", entrada: { operacionId: "op-1", claveIdempotencia: undefined }, esperado: { ok: true, valor: { operacionId: "op-1", claveIdempotencia: null } } },
-    { caso: "válida, sin la propiedad clave", entrada: { operacionId: "op-1" }, esperado: { ok: true, valor: { operacionId: "op-1", claveIdempotencia: null } } },
+    { caso: "sin clave (undefined): obligatoria", entrada: { operacionId: "op-1", claveIdempotencia: undefined }, esperado: { ok: false, codigo: "vacio", mensaje: CLAVE_FALTANTE } },
+    { caso: "sin la propiedad clave: obligatoria", entrada: { operacionId: "op-1" }, esperado: { ok: false, codigo: "vacio", mensaje: CLAVE_FALTANTE } },
     { caso: "válida, con clave UUID", entrada: { operacionId: "op-1", claveIdempotencia: UUID }, esperado: { ok: true, valor: { operacionId: "op-1", claveIdempotencia: UUID } } },
     { caso: "clave que no es un UUID", entrada: { operacionId: "op-1", claveIdempotencia: "no-es-un-uuid" }, esperado: { ok: false, codigo: "formato", mensaje: CLAVE_INVALIDA } },
-    { caso: "clave vacía", entrada: { operacionId: "op-1", claveIdempotencia: "" }, esperado: { ok: false, codigo: "formato", mensaje: CLAVE_INVALIDA } },
-    { caso: "clave null (solo undefined es «sin clave», como antes)", entrada: { operacionId: "op-1", claveIdempotencia: null }, esperado: { ok: false, codigo: "formato", mensaje: CLAVE_INVALIDA } },
+    { caso: "clave vacía", entrada: { operacionId: "op-1", claveIdempotencia: "" }, esperado: { ok: false, codigo: "vacio", mensaje: CLAVE_FALTANTE } },
+    { caso: "clave null", entrada: { operacionId: "op-1", claveIdempotencia: null }, esperado: { ok: false, codigo: "vacio", mensaje: CLAVE_FALTANTE } },
     { caso: "clave inválida Y operacionId no-string: primero la clave (mismo orden que antes)", entrada: { operacionId: 7, claveIdempotencia: "x" }, esperado: { ok: false, codigo: "formato", mensaje: CLAVE_INVALIDA } },
-    { caso: "operacionId número", entrada: { operacionId: 123 }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
-    { caso: "operacionId null", entrada: { operacionId: null }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
-    { caso: "operacionId undefined (antes: Prisma ignoraba el filtro y tomaba la PRIMERA operación de la sucursal)", entrada: { operacionId: undefined }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
-    { caso: "operacionId objeto", entrada: { operacionId: { id: "x" } }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
-    { caso: "entrada null", entrada: null, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
+    { caso: "operacionId número", entrada: { operacionId: 123, claveIdempotencia: UUID }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
+    { caso: "operacionId null", entrada: { operacionId: null, claveIdempotencia: UUID }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
+    { caso: "operacionId undefined (antes: Prisma ignoraba el filtro y tomaba la PRIMERA operación de la sucursal)", entrada: { operacionId: undefined, claveIdempotencia: UUID }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
+    { caso: "operacionId objeto", entrada: { operacionId: { id: "x" }, claveIdempotencia: UUID }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
+    { caso: "entrada null (sin clave: primero la clave)", entrada: null, esperado: { ok: false, codigo: "vacio", mensaje: CLAVE_FALTANTE } },
   ])("$caso", ({ entrada, esperado }) => {
     expect(guardComandoAnularCompra(entrada)).toStrictEqual(esperado);
   });

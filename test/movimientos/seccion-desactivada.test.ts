@@ -27,7 +27,7 @@ const mensaje = (nombre: string) =>
 
 /** `Record<ProcesoGenerico, …>`: si el motor gana un proceso, esta tabla deja de compilar y hay que decidir qué pasa con una sección dada de baja. */
 const PROCESOS: Record<ProcesoGenerico, { extra: Partial<DatosMovimientoInput>; sacaSinMas: boolean }> = {
-  COMPRA: { extra: {}, sacaSinMas: false },
+  COMPRA: { extra: { proveedorId: "pr-1", nroFactura: "A-00001-00000001" }, sacaSinMas: false },
   PRODUCCION: { extra: {}, sacaSinMas: false },
   CONSUMO: { extra: {}, sacaSinMas: true },
   AJUSTE: { extra: {}, sacaSinMas: false },
@@ -52,6 +52,10 @@ function dbFalso(): Prisma.TransactionClient {
     motivoMerma: { findUnique: async () => ({ activo: true }) },
     destinoConsumo: { findUnique: async () => ({ activo: true }) },
     proveedor: { findUnique: async () => ({ activo: true }) },
+    // Una COMPRA (con proveedor y número) lee las compras candidatas del aviso C25 y busca el número en la empresa: el cliente falso responde que no hay ninguna.
+    operacion: { findMany: async () => [] },
+    facturaProveedor: { count: async () => 0 },
+    $queryRaw: async () => [],
   } as unknown as Prisma.TransactionClient;
 }
 

@@ -11,6 +11,8 @@ import { type OrigenVenta } from "../../src/core/movimientos/registrar-venta";
 import { registrarVentaEnTx } from "../../src/server/actions/movimientos/casos-de-uso/registrar-venta-en-tx";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * De qué sección sale cada insumo al cerrar una cuenta (docs/plan-seccion-habitual-stock-2026-09-25.md, C5/C6): nadie la elige; el
@@ -28,8 +30,8 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
     await entrarComo(s.admin);
   });
 
-  const comprar = (seccionId: string, productoId: string, cantidad: number, loteVencimiento?: Date) =>
-    registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId, cantidad, loteVencimiento }], claveIdempotencia: crypto.randomUUID() });
+  const comprar = async (seccionId: string, productoId: string, cantidad: number, loteVencimiento?: Date) =>
+    registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId, cantidad, loteVencimiento, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
   const movimientosDeLaMesa = () => prisma.movimientoStock.findMany({ where: { operacion: { proceso: "VENTA", detalleLibre: "Mesa 4" } }, orderBy: { creadoEn: "asc" } });
   const resumen = (filas: { proceso: string; productoId: string; seccionId: string; cantidad: unknown; loteVencimiento: Date | null }[]) =>
     filas.map((m) => [m.proceso, m.productoId, m.seccionId, Number(m.cantidad), m.loteVencimiento?.toISOString().slice(0, 10) ?? null]);
@@ -102,7 +104,7 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
     ]);
     expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id, prisma)).toBe(0.5);
     expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id, prisma)).toBe(0);
-    expect(await prisma.registroAuditoria.count()).toBe(0);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion" } })).toBe(0);
   });
 
   it("respaldo por vencimiento entre dos secciones: primero la que tiene el lote que vence antes, el resto de la otra", async () => {
@@ -148,7 +150,7 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
       expect(r.mensaje).toContain('⚠ Quedó stock negativo: "Muzzarella" en «Depósito» (tenía 0,2, se consumió 0,5, quedó en -0,3).');
       expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id, prisma)).toBe(-0.3);
       const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", detalleLibre: "Mesa 4" } });
-      const [auditoria] = await prisma.registroAuditoria.findMany();
+      const [auditoria] = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion" } });
       expect(auditoria).toMatchObject({ entidad: "Operacion", entidadId: venta.id, campo: "saldoStock", valorAnterior: "0.2", valorNuevo: "-0.3" });
       expect(auditoria.descripcion).toBe(
         'Mesa 4: al cerrar la cuenta (admin@test.com) el stock de "Muzzarella" en «Depósito» quedó en negativo — tenía 0,2, la venta consumió 0,5, faltaron 0,3. La venta se registró igual; corregí el saldo con un Conteo Físico o un Ajuste.'
@@ -203,7 +205,7 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
     expect(r.mensaje).not.toContain("⚠");
     expect(resumen(await movimientosDeLaMesa())).toEqual([["VENTA", torta.id, deposito.id, -5, null]]);
     expect(await calcularSaldoTotal(torta.id, deposito.id, prisma)).toBe(-3);
-    expect(await prisma.registroAuditoria.count()).toBe(0);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion" } })).toBe(0);
     const fila = (await calcularStockConsolidado(s.sucursalId, prisma)).find((f) => f.productoId === torta.id);
     expect(fila).toMatchObject({ seccionId: deposito.id, teorico: -3, estado: "NEGATIVO" });
   });

@@ -25,12 +25,11 @@ const NOMBRE_INDICE_FACTURA_UNICA = "Operacion_factura_unica_vigente_key";
 const NOMBRES_INDICE_FACTURA_UNICA: readonly string[] = [NOMBRE_INDICE_FACTURA_UNICA, "Operacion_factura_unica_key"];
 
 /**
- * Mismo mensaje que el chequeo previo de `registrarMovimiento` (el camino
- * rápido, fuera de la transacción): el usuario no debe poder distinguir
- * "perdí una carrera contra otra carga simultánea" de "la factura ya
- * estaba cargada" — para él es el mismo hecho y la misma acción correctiva.
+ * El ÚNICO mensaje de «ese número ya está cargado» (etapa 1 de Compras, I2): el mismo para la compra simple, la factura repartida, la corrección y los choques de índice (el chequeo dentro de la transacción y la
+ * carrera que arbitra la base). El usuario no distingue «perdí una carrera» de «ya estaba cargada»: es el mismo hecho y la misma acción correctiva. No lleva fecha ni sucursal: el rechazo abarca toda la empresa y
+ * no puede mostrar datos de una sucursal que quien carga no ve (regla P2 del aviso C25).
  */
-export const MENSAJE_FACTURA_DUPLICADA = "Ya hay una compra registrada con esa factura para este proveedor. Si es una corrección, usá Ajuste en vez de volver a cargarla.";
+export const MENSAJE_FACTURA_DUPLICADA = "Ya hay una factura de este proveedor con ese número cargada en la empresa. Si hay que corregirla, anulala y volvé a cargarla.";
 
 /** El nombre del índice violado, si `e` trae uno reconocible (P2002 de Prisma o un DriverAdapterError crudo). */
 function nombreDeIndiceViolado(e: unknown): string | undefined {
@@ -85,9 +84,6 @@ export function esChoqueDeClaveIdempotenciaDeOperacion(e: unknown): boolean {
 
 /** E3a: el índice único parcial de la FACTURA DE PROVEEDOR (empresa + proveedor + letra + número normalizado, vigentes; ADR-029 §3). Vive solo en su migración. */
 const NOMBRE_INDICE_FACTURA_DE_PROVEEDOR_UNICA = "FacturaProveedor_unica_vigente_key";
-
-/** El mismo hecho que el camino rápido de la carga: la factura ya está cargada (en cualquier sucursal de la empresa). */
-export const MENSAJE_FACTURA_DE_PROVEEDOR_DUPLICADA = "Ya hay una factura de este proveedor con ese número cargada en la empresa. Si hay que corregirla, anulala y volvé a cargarla.";
 
 /** Detecta ESPECÍFICAMENTE el choque contra `FacturaProveedor_unica_vigente_key` (dos cargas simultáneas del mismo número), nunca «cualquier P2002». */
 export function esChoqueDeFacturaDeProveedorUnica(e: unknown): boolean {

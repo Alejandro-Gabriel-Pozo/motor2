@@ -294,6 +294,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "E1 del circuito de abastecimiento (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md; CAMBIA SOLO LA PREPARACIÓN): `registrarMovimiento` exige la clave de reintento, así que las compras y producciones de PREPARACIÓN de la matriz la mandan (claves fijas `00000000-0000-4000-8000-00000000000N`, en orden). Cambian SOLO 41 líneas OPERACION de esas preparaciones: `claveIdempotencia` null → la clave fija, `payloadHash` null → <enmascarado> y `resultadoMensaje` null → «Se guardaron N movimiento(s).». Verificado con un script sobre el diff: normalizando esas tres columnas, cada línea es idéntica a la anterior; ninguna venta, KARDEX, lectura, escritura ni resultado cambia. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA=1.",
       },
+      {
+        blob: "c29c756005e48286ca367f2269c5e6b4bb359b35",
+        // El commit PADRE de este (54154ec, etapa 1 de Compras paso 3) es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "54154ec",
+        motivo:
+          "Etapa 1 de Compras: las compras del escenario llevan proveedor y N.º de factura obligatorios (CAMBIA SOLO LA PREPARACIÓN). Cambia SOLO `nroFactura` (null a `A-00001-0000000N`) y `proveedorId` (null a `id#1`) en las 34 líneas OPERACION de proceso COMPRA; ningún importe, stock, costo, venta, lectura ni escritura cambia. Verificado línea a línea por programa: todas las líneas distintas son OPERACION COMPRA y difieren solo en esas dos columnas.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -386,6 +393,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "0a2991dc",
         motivo:
           "E1 del circuito de abastecimiento (docs/diseno-idempotencia-obligatoria-movimientos-2026-10-27.md; CAMBIA SOLO LA PREPARACIÓN): `registrarMovimiento` exige la clave de reintento, así que las compras y producciones de PREPARACIÓN de la matriz la mandan (claves fijas `00000000-0000-4000-8000-00000000000N`, en orden). Cambian SOLO 127 líneas OPERACION de esas preparaciones: `claveIdempotencia` null → la clave fija, `payloadHash` null → <enmascarado> y `resultadoMensaje` null → «Se guardaron N movimiento(s).». Verificado con un script sobre el diff: normalizando esas tres columnas, cada línea es idéntica a la anterior; ninguna venta, KARDEX, lectura, escritura ni resultado cambia. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1.",
+      },
+      {
+        blob: "bf57b250218ece8ae0033d6a9e367cc6b14a6dd9",
+        // El commit PADRE de este (98c93f3, «Compras etapa 1: tests existentes cargan «cómo lo llama el proveedor» en sus compras») es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "98c93f3",
+        motivo:
+          "Compras etapa 1 (CAMBIA SOLO LO QUE REGISTRA LA COMPRA DEL ESCENARIO, no la venta): una COMPRA ahora exige proveedor y N.º de comprobante estructurado, así que las 115 líneas OPERACION (las de las compras de preparación de las cinco jornadas; ninguna compra queda sin proveedor) pasan de `proveedorId=null nroFactura=null` a `proveedorId=id#1 nroFactura=A-00001-00000001` (y siguientes): son SOLO esos dos campos, comparados campo por campo contra la versión anterior (cero otros campos cambian en esas líneas). Más 122 líneas NUEVAS de AUDITORIA con entidad=ProveedorPorProducto («Precio de ... con el proveedor \"Proveedor de pruebas\" (compra)», campo precioPorUnidadStock): son consecuencia de que la compra ahora lleva proveedor obligatorio, que crea/actualiza el vínculo proveedor-producto y lo audita. NO cambia ninguna fila de venta, KARDEX, stock, costo ni importe (las 115 líneas borradas son las 115 OPERACION y nada más; las 237 agregadas son esas 115 y las 122 AUDITORIA). La referencia que ahora carga la compra (`referenciaProveedor`, REFERENCIA_DE_PRUEBA) no aparece en ninguna línea del golden (no se vuelca ninguna columna de ProveedorPorProducto). Diff guardado: golden-venta-matriz-ampliada.diff (237 agregadas, 115 borradas).",
       },
     ],
   },

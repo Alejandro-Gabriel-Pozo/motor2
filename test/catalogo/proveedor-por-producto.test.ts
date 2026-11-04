@@ -10,6 +10,8 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { anularCompra, corregirCompra } from "../../src/server/actions/movimientos/compras";
 import { upsertProveedorPorProducto } from "../../src/server/persistencia/catalogo/upsert-proveedor-por-producto";
 import { cargarOfertasDeProveedores } from "../../src/server/lecturas/catalogo/ofertas-de-proveedor";
+import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 describe("ProveedorPorProducto (sin gate propio)", () => {
   let sucursalId: string;
@@ -160,9 +162,9 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       expect(lista).toHaveLength(2);
       expect(lista[0].productoId).toBe(producto2.id); // más reciente primero
       expect(lista[1]).toMatchObject({ productoId, referenciaProveedor: "ACE-5L", ultimoPrecioPorUnidadStock: 100, origenDelPrecio: "SUCURSAL" });
-      // O.10: la fila del carrito no lleva la unidad de compra (la precarga usa la unidad por defecto del producto, a propósito).
+      // Etapa 1 de Compras, paso 6: la fila trae la unidad del vínculo, las unidades del producto y con cuál arranca (antes, O.10, la sacó porque la pantalla no la mostraba).
       expect(Object.keys(lista[1]).sort()).toEqual(
-        ["origenDelPrecio", "productoCodigo", "productoId", "productoNombre", "referenciaProveedor", "ultimaCompra", "ultimoPrecioPorUnidadStock", "unidadStockNombre"],
+        ["origenDelPrecio", "productoCodigo", "productoId", "productoNombre", "referenciaProveedor", "ultimaCompra", "ultimoPrecioPorUnidadStock", "unidadCompraId", "unidadCompraNombre", "unidadDelVinculoVigente", "unidadElegidaId", "unidadStockNombre", "unidades"],
       );
     });
 
@@ -210,19 +212,19 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
     it("una compra real anulada con la ACCIÓN `anularCompra` deja de aparecer", async () => {
       await sembrarMotivosYDestinos();
-      expect((await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000 }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
+      expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
       expect((await precioDe("Proveedor A"))?.precioPorUnidadStock).toBe(100);
 
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-      expect((await anularCompra(op.id)).ok).toBe(true);
+      expect((await anularCompra(op.id, crypto.randomUUID())).ok).toBe(true);
       expect(await precioDe("Proveedor A")).toBeUndefined();
     });
 
     it("corregir el proveedor de una compra MUEVE el precio al proveedor correcto", async () => {
       await sembrarMotivosYDestinos();
-      expect((await registrarMovimiento({ proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000 }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
+      expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-      const r = await corregirCompra(op.id, { proveedorId: proveedorBId, nroFactura: "", detalleLibre: "" }, { proveedorId: op.proveedorId, nroFactura: op.nroFactura, detalleLibre: op.detalleLibre });
+      const r = await corregirCompra(op.id, { proveedorId: proveedorBId, nroFactura: op.nroFactura ?? "", detalleLibre: "" }, { proveedorId: op.proveedorId, nroFactura: op.nroFactura, detalleLibre: op.detalleLibre });
       expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
 
       expect(await precioDe("Proveedor A")).toBeUndefined();
@@ -310,7 +312,7 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       await sembrarMotivosYDestinos();
       expect((await prisma.producto.findUniqueOrThrow({ where: { id: productoId } })).unidadCompraId).toBeNull();
       const r = await registrarMovimiento({
-        proceso: "COMPRA", fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId,
+        proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId,
         items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: "ACE-5L" }],
         claveIdempotencia: crypto.randomUUID(),
       });

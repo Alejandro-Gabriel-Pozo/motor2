@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validarFechaOperacion } from "../../src/core/datos/fecha-operacion";
+import { validarFechaDeCompra, validarFechaOperacion } from "../../src/core/datos/fecha-operacion";
 import { ZONA_ARGENTINA, mediodiaDelDia } from "../../src/core/tiempo/zona-horaria";
 
 // 2026-10-01 12:00 en Argentina (UTC-3) = 15:00 UTC.
@@ -53,5 +53,33 @@ describe("validarFechaOperacion con el mediodía argentino que guardan los formu
     const ahora = new Date(ahoraIso);
     expect(validarFechaOperacion(mediodiaDelDia("2026-10-02", ZONA_ARGENTINA), ahora).ok).toBe(true);
     expect(validarFechaOperacion(mediodiaDelDia("2026-10-03", ZONA_ARGENTINA), ahora).ok).toBe(false);
+  });
+});
+
+describe("validarFechaDeCompra (I13: la fecha de una compra no es posterior a hoy)", () => {
+  const MENSAJE = "La fecha de la compra no puede ser posterior a hoy.";
+
+  it("las 23:59 argentinas de hoy pasan; las 00:00 argentinas de mañana se rechazan", () => {
+    // Hoy 1/10 en Argentina; mañana 00:00 AR = 2026-10-02T03:00Z.
+    expect(validarFechaDeCompra(new Date("2026-10-02T02:59:59Z"), AHORA).ok).toBe(true);
+    expect(validarFechaDeCompra(new Date("2026-10-02T03:00:00Z"), AHORA)).toEqual({ ok: false, codigo: "rango", mensaje: MENSAJE });
+  });
+
+  it("corte UTC: con 01:00 UTC del día D (22:00 del D-1 en Argentina), 'hoy' es D-1", () => {
+    const ahora = new Date("2026-10-02T01:00:00Z"); // 22:00 del 1/10 en Argentina
+    expect(validarFechaDeCompra(new Date("2026-10-02T01:30:00Z"), ahora).ok).toBe(true); // 22:30 del 1/10 AR
+    expect(validarFechaDeCompra(new Date("2026-10-02T03:30:00Z"), ahora)).toMatchObject({ ok: false, mensaje: MENSAJE }); // 00:30 del 2/10 AR
+  });
+
+  it("el mediodía de mañana se rechaza (validarFechaOperacion sí lo acepta: no se tocó)", () => {
+    const mananaAlMediodia = mediodiaDelDia("2026-10-02", ZONA_ARGENTINA);
+    expect(validarFechaDeCompra(mananaAlMediodia, AHORA).ok).toBe(false);
+    expect(validarFechaOperacion(mananaAlMediodia, AHORA).ok).toBe(true);
+  });
+
+  it("el piso es de 400 días y un Invalid Date se rechaza", () => {
+    expect(validarFechaDeCompra(new Date(AHORA.getTime() - 400 * DIA), AHORA).ok).toBe(true);
+    expect(validarFechaDeCompra(new Date(AHORA.getTime() - 401 * DIA), AHORA)).toMatchObject({ ok: false, codigo: "rango" });
+    expect(validarFechaDeCompra(new Date("no es una fecha"), AHORA)).toEqual({ ok: false, codigo: "formato", mensaje: "La fecha no es válida." });
   });
 });

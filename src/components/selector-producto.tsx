@@ -13,6 +13,8 @@ interface Props {
   value: string;
   onChange: (productoId: string) => void;
   filtro?: FiltroSelectorProducto;
+  /** Solo en la carga de COMPRA: el proveedor elegido. Solo ordena el resultado (primero lo que ese proveedor ya llama así). */
+  proveedorId?: string;
   placeholder?: string;
   required?: boolean;
   /** Para precargar la etiqueta visible cuando `value` ya viene elegido desde afuera (ej. editar). */
@@ -99,7 +101,7 @@ export function ListaDeResultados({
  * `required` siga bloqueando el submit nativo como con el `<select>`
  * anterior — el `<input>` visible es solo el término de búsqueda.
  */
-export function SelectorProducto({ id, value, onChange, filtro, placeholder = "Código o nombre…", required, etiquetaInicial, limpiarSenal, className, "aria-label": ariaLabel, name, onElegir, mostrarUnidad = false, textoSinResultados }: Props) {
+export function SelectorProducto({ id, value, onChange, filtro, proveedorId, placeholder = "Código o nombre…", required, etiquetaInicial, limpiarSenal, className, "aria-label": ariaLabel, name, onElegir, mostrarUnidad = false, textoSinResultados }: Props) {
   const [query, setQuery] = useState(etiquetaInicial ?? "");
   const [opciones, setOpciones] = useState<ProductoOpcionConUnidad[]>([]);
   const [abierto, setAbierto] = useState(false);
@@ -137,7 +139,7 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
       void (async () => {
         setCargando(true);
         setErrorBusqueda(false);
-        const res = await leer(() => buscarProductosSelector(termino, filtro), () => setErrorBusqueda(true));
+        const res = await leer(() => buscarProductosSelector(termino, filtro, proveedorId || undefined), () => setErrorBusqueda(true));
         setOpciones(res ?? []);
         setResaltado(0);
         setCargando(false);
@@ -171,7 +173,7 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
   }
 
   // La lista (role="listbox") solo existe cuando hay opciones que mostrar: un listbox sin opciones no es válido (axe aria-required-children), así que
-  // «Buscando…», el error y «Sin resultados.» son avisos aparte (role="status"/"alert") y no `<li>` sueltos adentro del listbox.
+  // «Buscando…», el error y «Ningún producto tiene todas esas palabras…» son avisos aparte (role="status"/"alert") y no `<li>` sueltos adentro del listbox.
   const hayLista = !cargando && opciones.length > 0;
   const idOpcion = (i: number) => `${listboxId}-op-${i}`;
   // Con `aria-label` el campo se nombra solo; sin él lo nombra el `<label>` de la pantalla. (La regla `campos-con-nombre` mira un solo archivo: no ve el `<label>` de afuera, y por eso el nombre va en un
@@ -225,7 +227,11 @@ export function SelectorProducto({ id, value, onChange, filtro, placeholder = "C
           {!cargando && !errorBusqueda && !opciones.length && (
             <div className="px-2 py-1.5">
               <Aviso variante="informacion" forma="en-linea">
-                {textoSinResultados ? textoSinResultados(query) : "Sin resultados."}
+                {textoSinResultados
+                  ? textoSinResultados(query)
+                  : query.trim()
+                    ? "Ningún producto tiene todas esas palabras. Probá con menos palabras o con el código."
+                    : "No hay productos para elegir."}
               </Aviso>
             </div>
           )}

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { cargarCompraParaAnular } from "../../src/server/persistencia/compras/cargar-compra-para-anular";
 import { escribirAnulacionDeCompra } from "../../src/server/persistencia/compras/escribir-anulacion-de-compra";
-import { cargarCompraParaCorregir, cargarProveedorParaCorreccion, hayOtraCompraVigenteConFactura } from "../../src/server/persistencia/compras/cargar-compra-para-corregir";
+import { cargarCompraParaCorregir, cargarProveedorParaCorreccion } from "../../src/server/persistencia/compras/cargar-compra-para-corregir";
 import { escribirCorreccionDeCompra } from "../../src/server/persistencia/compras/escribir-correccion-de-compra";
 import { registrarResultadoIdempotente } from "../../src/server/persistencia/movimientos/idempotencia";
 import { claveDeLote, construirReversion } from "../../src/core/compras/anulacion";
@@ -172,17 +172,6 @@ describe("persistencia de compras", () => {
       await prisma.proveedor.update({ where: { id: proveedorId }, data: { activo: false } });
       expect(await prisma.$transaction((tx) => cargarProveedorParaCorreccion(tx, proveedorId))).toEqual({ nombre: "Molino SA", activo: false });
       expect(await prisma.$transaction((tx) => cargarProveedorParaCorreccion(tx, "no-existe"))).toBeNull();
-    });
-
-    it("hayOtraCompraVigenteConFactura: solo cuenta OTRA compra vigente de esta sucursal con el mismo proveedor + N.º", async () => {
-      const a = await compra({ nroFactura: "F-1" });
-      const hay = (excluir: string) =>
-        prisma.$transaction((tx) => hayOtraCompraVigenteConFactura(tx, { sucursalId, proveedorId, nroFactura: "F-1", excluirOperacionId: excluir }));
-
-      expect(await hay(a.id), "la propia compra no cuenta").toBe(false);
-      expect(await hay("otra-cualquiera")).toBe(true);
-      await prisma.operacion.update({ where: { id: a.id }, data: { anuladaEn: new Date() } });
-      expect(await hay("otra-cualquiera"), "una anulada deja libre el número").toBe(false);
     });
 
     it("escribirCorreccionDeCompra: actualiza los tres campos de la cabecera y no toca las líneas", async () => {

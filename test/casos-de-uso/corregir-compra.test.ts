@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { baseDeTest, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
+import { baseDeTest, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { corregirCompraCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/corregir-compra";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
 
@@ -18,7 +18,7 @@ describe("corregirCompraCasoDeUso", () => {
 
   /** La base del actor con el alcance que le da la producción: su sucursal activa, para lectura y escritura (ADR-028). Sin él, las políticas por sucursal no le dejan ver ni escribir nada. */
   const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
-  const actor = () => ({ usuarioId: adminId, sucursalId, ...baseDe(sucursalId) });
+  const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, ...baseDe(sucursalId) });
   const vista = (op: { proveedorId: string | null; nroFactura: string | null; detalleLibre: string | null }) => ({
     proveedorId: op.proveedorId,
     nroFactura: op.nroFactura,
@@ -61,7 +61,7 @@ describe("corregirCompraCasoDeUso", () => {
 
     const r = await corregirCompraCasoDeUso(actor(), {
       operacionId: op.id,
-      nueva: { proveedorId: surId, nroFactura: "  B-0002 ", detalleLibre: "" },
+      nueva: { proveedorId: surId, nroFactura: "  A-00002-00000002 ", detalleLibre: "" },
       esperado: vista(op),
     });
 
@@ -70,11 +70,11 @@ describe("corregirCompraCasoDeUso", () => {
       mensaje: "Compra corregida: proveedor, N.º de factura, detalle.",
       datos: { compraId: op.id, camposCorregidos: ["proveedorId", "nroFactura", "detalleLibre"] },
     });
-    expect(await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).toMatchObject({ proveedorId: surId, nroFactura: "B-0002", detalleLibre: null });
+    expect(await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).toMatchObject({ proveedorId: surId, nroFactura: "A-00002-00000002", detalleLibre: null });
     const filas = await prisma.registroAuditoria.findMany({ where: { entidadId: op.id }, orderBy: { campo: "asc" } });
     expect(filas.map((f) => [f.campo, f.descripcion, f.valorAnterior, f.valorNuevo])).toEqual([
       ["detalleLibre", "Compra del 2026-08-10 (factura A-0001): detalle", "semanal", null],
-      ["nroFactura", "Compra del 2026-08-10 (factura A-0001): N.º de factura", "A-0001", "B-0002"],
+      ["nroFactura", "Compra del 2026-08-10 (factura A-0001): N.º de factura", "A-0001", "A-00002-00000002"],
       ["proveedorId", "Compra del 2026-08-10 (factura A-0001): proveedor", "Molino SA", "Distribuidora Sur"],
     ]);
     expect(filas.every((f) => f.actorId === adminId && f.sucursalId === sucursalId)).toBe(true);
@@ -96,7 +96,7 @@ describe("corregirCompraCasoDeUso", () => {
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await corregirCompraCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ...baseDe(otra.id) }, { operacionId: op.id, nueva, esperado: vista(op) })).toMatchObject({
+    expect(await corregirCompraCasoDeUso({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: otra.id, ...baseDe(otra.id) }, { operacionId: op.id, nueva, esperado: vista(op) })).toMatchObject({
       ok: false,
       codigo: "NO_ENCONTRADA",
     });
@@ -118,8 +118,8 @@ describe("corregirCompraCasoDeUso", () => {
     const op = await compra();
     const r = await corregirCompraCasoDeUso(actor(), {
       operacionId: op.id,
-      nueva: { proveedorId: molinoId, nroFactura: "A-0009", detalleLibre: "semanal" },
-      esperado: { ...vista(op), nroFactura: "A-0005" },
+      nueva: { proveedorId: molinoId, nroFactura: "A-00001-00000009", detalleLibre: "semanal" },
+      esperado: { ...vista(op), nroFactura: "A-00001-00000005" },
     });
     expect(r).toEqual({
       ok: false,
@@ -145,10 +145,10 @@ describe("corregirCompraCasoDeUso", () => {
   });
 
   it("FACTURA_DUPLICADA: otra compra vigente del mismo proveedor ya usa ese número", async () => {
-    await compra({ nroFactura: "F-1" });
-    const op = await compra({ nroFactura: "F-2" });
-    const r = await corregirCompraCasoDeUso(actor(), { operacionId: op.id, nueva: { proveedorId: molinoId, nroFactura: "F-1", detalleLibre: "semanal" }, esperado: vista(op) });
+    await compra({ nroFactura: "A-00006-00000001" });
+    const op = await compra({ nroFactura: "A-00006-00000002" });
+    const r = await corregirCompraCasoDeUso(actor(), { operacionId: op.id, nueva: { proveedorId: molinoId, nroFactura: "A-00006-00000001", detalleLibre: "semanal" }, esperado: vista(op) });
     expect(r).toEqual({ ok: false, codigo: "FACTURA_DUPLICADA", mensaje: MENSAJE_FACTURA_DUPLICADA });
-    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).nroFactura).toBe("F-2");
+    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).nroFactura).toBe("A-00006-00000002");
   });
 });

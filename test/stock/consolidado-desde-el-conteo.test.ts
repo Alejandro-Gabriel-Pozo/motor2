@@ -9,6 +9,8 @@ import { registrarMovimiento } from "../../src/server/actions/movimientos/movimi
 import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
 import { calcularStockConsolidado } from "../../src/server/consultas/stock/consolidado";
 import type { Db } from "../../src/lib/db-tipos";
+import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Pureza Fase 3 — stock consolidado. «Entradas y salidas DESDE el último conteo» explica por qué el teórico de hoy ya no es el número que se contó ese
@@ -51,16 +53,16 @@ describe("calcularStockConsolidado: entradas y salidas desde el conteo", () => {
       [harina, seccionBId, 4],
       [azucar, seccionAId, 7],
     ] as const) {
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: p.id, cantidad, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       await registrarUnConteoFisico({ productoId: p.id, seccionId, conteoReal: cantidad, fechaConteo, accion: "AJUSTAR" });
     }
     // Sal tiene movimientos pero NINGÚN conteo.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: sal.id, cantidad: 9 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: sal.id, cantidad: 9, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
 
     // Movimientos posteriores al conteo: entradas y salidas distintas por clave.
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: harina.id, cantidad: 5 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: harina.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: harina.id, cantidad: 2 }], claveIdempotencia: crypto.randomUUID() });
-    await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionBId, items: [{ productoId: harina.id, cantidad: 1 }], claveIdempotencia: crypto.randomUUID() });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionBId, items: [{ productoId: harina.id, cantidad: 1, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     await registrarMovimiento({ proceso: "CONSUMO", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: azucar.id, cantidad: 3 }], claveIdempotencia: crypto.randomUUID() });
 
     const filas = await calcularStockConsolidado(sucursalId, prisma);
@@ -78,7 +80,7 @@ describe("calcularStockConsolidado: entradas y salidas desde el conteo", () => {
     const productos = [] as { id: string }[];
     for (let i = 0; i < 6; i++) productos.push(await producto(`MP_${i}`, `Insumo ${i}`));
     for (const p of productos) {
-      await registrarMovimiento({ proceso: "COMPRA", fecha: new Date(), seccionId: seccionAId, items: [{ productoId: p.id, cantidad: 10 }], claveIdempotencia: crypto.randomUUID() });
+      await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId: seccionAId, items: [{ productoId: p.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       await registrarUnConteoFisico({ productoId: p.id, seccionId: seccionAId, conteoReal: 10, fechaConteo: enElPasado(DIA_MS), accion: "AJUSTAR" });
     }
 

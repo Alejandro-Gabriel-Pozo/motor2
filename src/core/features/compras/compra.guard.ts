@@ -1,5 +1,6 @@
 import { validarCantidad, type UnidadDeCantidad } from "@/core/datos/cantidad";
 import { validarImporte } from "@/core/datos/importe";
+import { leerNumeroDeComprobanteDeCompra } from "@/core/datos/numero-comprobante";
 import { validarNroFactura } from "@/core/datos/nro-factura";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
@@ -41,29 +42,42 @@ export function guardNroFacturaCompra(valor: string | null | undefined) {
   return validarNroFactura(valor);
 }
 
+/**
+ * Regla del N.º de factura de una COMPRA (etapa 1 de Compras, 2026-11-03): letra + punto de venta + número, obligatorio; devuelve el texto canónico «A-00023-00237728».
+ * La Devolución a proveedor sigue con `guardNroFacturaCompra` (texto libre).
+ */
+export function guardComprobanteDeCompra(valor: string | null | undefined) {
+  return leerNumeroDeComprobanteDeCompra(valor ?? "");
+}
+
+/** Etapa 1 de Compras (CU7, I12): en la PRIMERA compra de un producto a un proveedor hay que escribir cómo lo llama el proveedor. */
+export function mensajeReferenciaProveedorObligatoria(nombreDelProducto: string): string {
+  return `Escribí cómo lo llama el proveedor a "${nombreDelProducto}" (código y descripción, como dice la factura): es la primera compra de ese producto a este proveedor.`;
+}
+
 /** Mismo texto que usaba la Server Action cuando la operación no existe en esta sucursal (anular y corregir). */
 export const MENSAJE_OPERACION_NO_ENCONTRADA = "No se encontró esa operación en esta sucursal.";
 
 /** Mismo texto que usaba `anularCompra` para una clave I3 que no es un UUID. */
 const MENSAJE_CLAVE_REINTENTO_INVALIDA = "Clave de reintento inválida.";
 
+/** Anular una compra exige la clave de reintento (I3): sin ella un doble toque podría anular dos veces. */
+const MENSAJE_CLAVE_REINTENTO_FALTANTE = "Falta la clave de reintento: recargá la pantalla.";
+
 /**
  * Guard del comando «anular una compra» (Task #41, Fase M). Formato, ANTES de abrir la transacción, en el mismo orden que la Server
  * Action anterior:
- *  1. `claveIdempotencia`: ausente (`undefined`) → sin clave (`null`); cualquier otra cosa que no sea un UUID → «Clave de reintento
- *     inválida.» (un `null` o un `""` también: antes solo `undefined` contaba como "sin clave", y se mantiene).
+ *  1. `claveIdempotencia` OBLIGATORIA (etapa 1 de Compras): ausente (`undefined`), `null` o `""` → «Falta la clave de reintento: recargá la
+ *     pantalla.»; cualquier otra cosa que no sea un UUID → «Clave de reintento inválida.».
  *  2. `operacionId` que no es un string → el MISMO mensaje que «no encontrada». Antes llegaba así a `findFirst` y Prisma lo rechazaba
  *     con un error crudo de validación (un 500 para la pantalla).
  */
 export function guardComandoAnularCompra(entrada: unknown): ResultadoDato<ComandoAnularCompra> {
   const { operacionId, claveIdempotencia } = (entrada ?? {}) as { operacionId?: unknown; claveIdempotencia?: unknown };
-  let clave: string | null = null;
-  if (claveIdempotencia !== undefined) {
-    if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", MENSAJE_CLAVE_REINTENTO_INVALIDA);
-    clave = claveIdempotencia;
-  }
+  if (claveIdempotencia === undefined || claveIdempotencia === null || claveIdempotencia === "") return rechazar("vacio", MENSAJE_CLAVE_REINTENTO_FALTANTE);
+  if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", MENSAJE_CLAVE_REINTENTO_INVALIDA);
   if (typeof operacionId !== "string") return rechazar("formato", MENSAJE_OPERACION_NO_ENCONTRADA);
-  return aceptar({ operacionId, claveIdempotencia: clave });
+  return aceptar({ operacionId, claveIdempotencia });
 }
 
 /**

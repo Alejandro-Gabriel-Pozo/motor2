@@ -25,6 +25,35 @@ export interface ItemCompra {
   /** Vence este lote (ej. una compra grande de oportunidad que después queda parte sin consumir) — reporte de vencimientos, §0 regla 4. */
   loteVencimiento?: Date;
 }
+/**
+ * Compras etapa 1: una COMPRA exige proveedor y un N.º de factura estructurado («A-00001-00000001»). El stock inicial y la compra de oportunidad de MP011B (la feria) no tienen
+ * proveedor formal: entran a nombre de un proveedor de demo fijo, que el ejecutor crea (o reutiliza por nombre) como a los demás. Su `proveedorCodigo` en el guion es este código; no
+ * está en `PROVEEDORES` (seed-demo-pizzeria-data.ts), así que el ejecutor lo resuelve aparte.
+ */
+export const PROVEEDOR_DE_DEMO_CODIGO = "PRV_DEMO_STOCK_INICIAL";
+export const PROVEEDOR_DE_DEMO_NOMBRE = "Proveedor de demo (stock inicial)";
+
+/** «A-00001-00000001»: letra, punto de venta de 5 dígitos y número de 8, con ceros a la izquierda. */
+export function nroFacturaEstructurado(letra: string, puntoDeVenta: number, numero: number): string {
+  return `${letra}-${String(puntoDeVenta).padStart(5, "0")}-${String(numero).padStart(8, "0")}`;
+}
+
+/**
+ * Un numerador de facturas determinista: cada proveedor tiene su punto de venta FIJO (su posición en `codigosDeProveedores`, desde 1; letra A) y su propio correlativo (1, 2, 3…) en
+ * el orden en que se le pide un número. El proveedor de demo usa letra X, punto de venta 1. Un proveedor que no está en la lista (y no es el de demo) es un error del guion: lanza.
+ */
+export function crearNumeradorDeFacturas(codigosDeProveedores: readonly string[]): (proveedorCodigo: string) => string {
+  const ultimo = new Map<string, number>();
+  return (proveedorCodigo) => {
+    const numero = (ultimo.get(proveedorCodigo) ?? 0) + 1;
+    ultimo.set(proveedorCodigo, numero);
+    if (proveedorCodigo === PROVEEDOR_DE_DEMO_CODIGO) return nroFacturaEstructurado("X", 1, numero);
+    const posicion = codigosDeProveedores.indexOf(proveedorCodigo);
+    if (posicion < 0) throw new Error(`crearNumeradorDeFacturas: proveedor sin punto de venta: "${proveedorCodigo}"`);
+    return nroFacturaEstructurado("A", posicion + 1, numero);
+  };
+}
+
 export interface EventoCompra {
   tipo: "COMPRA";
   /** Referencia lógica ÚNICA del evento dentro del guion — la usan ANULAR_COMPRA/CORREGIR_COMPRA para apuntar a esta compra sin depender de un id de base todavía inexistente. */
@@ -32,8 +61,10 @@ export interface EventoCompra {
   semana: number;
   diaSemana: number;
   seccion: Seccion;
-  proveedorCodigo: string | null;
-  nroFactura?: string;
+  /** Código del proveedor (o `PROVEEDOR_DE_DEMO_CODIGO`): toda COMPRA tiene proveedor. */
+  proveedorCodigo: string;
+  /** N.º estructurado («A-00001-00000001»), único por proveedor (ver `crearNumeradorDeFacturas`). */
+  nroFactura: string;
   items: ItemCompra[];
 }
 
@@ -170,7 +201,7 @@ export function validarGuion(guion: GuionDemo): string[] {
 
 export interface TotalesDeCompras {
   totalGastado: number;
-  /** Clave: proveedorCodigo, o "SIN_PROVEEDOR". */
+  /** Clave: proveedorCodigo (el de las compras de stock inicial y de feria es `PROVEEDOR_DE_DEMO_CODIGO`). */
   porProveedor: Map<string, number>;
   /** Compras (operaciones) que NO terminaron anuladas por un ANULAR_COMPRA posterior. */
   cantidadCompras: number;
@@ -206,7 +237,7 @@ export function calcularTotalesEsperados(guion: GuionDemo, precioVentaPorCodigo:
     if (ev.tipo === "COMPRA") {
       if (refsCompraAnuladas.has(ev.ref)) continue; // anulada: no cuenta ni en el total ni por proveedor, mismo criterio que K1c
       compras.cantidadCompras += 1;
-      const clave = ev.proveedorCodigo ?? "SIN_PROVEEDOR";
+      const clave = ev.proveedorCodigo;
       let importeCompra = 0;
       for (const item of ev.items) importeCompra += item.cantidad * item.precioUnitario;
       compras.totalGastado += importeCompra;

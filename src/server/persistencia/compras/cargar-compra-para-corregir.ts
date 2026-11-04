@@ -4,7 +4,7 @@ import type { CabeceraCompra } from "@/core/compras/public";
 
 /**
  * Lecturas de la CORRECCIÓN de la cabecera de una compra (Task #41, Fase M; mismo contrato que `cargar-compra-para-anular.ts`: `tx`
- * obligatorio, tipos de dominio, sin reglas de negocio). Son EXACTAMENTE las tres consultas que antes hacía en línea `corregirCompra`
+ * obligatorio, tipos de dominio, sin reglas de negocio). Son las consultas que antes hacía en línea `corregirCompra`
  * (src/server/actions/movimientos/compras.ts); CUÁNDO se llama cada una lo decide el caso de uso.
  */
 
@@ -46,23 +46,4 @@ export async function cargarCompraParaCorregir(
 /** El proveedor nuevo pedido: `null` si no existe. */
 export async function cargarProveedorParaCorreccion(tx: Prisma.TransactionClient, proveedorId: string): Promise<{ nombre: string; activo: boolean } | null> {
   return tx.proveedor.findUnique({ where: { id: proveedorId }, select: { nombre: true, activo: true } });
-}
-
-/** ¿Hay OTRA compra vigente (no anulada) de esta sucursal con el mismo proveedor + N.º de factura? Mismo criterio que el índice único parcial. */
-export async function hayOtraCompraVigenteConFactura(
-  tx: Prisma.TransactionClient,
-  args: { sucursalId: string; proveedorId: string; nroFactura: string; excluirOperacionId: string }
-): Promise<boolean> {
-  const otra = await tx.operacion.findFirst({
-    where: {
-      sucursalId: args.sucursalId,
-      proceso: "COMPRA",
-      proveedorId: args.proveedorId,
-      nroFactura: args.nroFactura,
-      anuladaEn: null,
-      id: { not: args.excluirOperacionId },
-    },
-    select: { id: true },
-  });
-  return otra !== null;
 }

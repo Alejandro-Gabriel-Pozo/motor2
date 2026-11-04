@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { corregirCompra, type CabeceraVista } from "@/server/actions/movimientos/compras";
-import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
+import { CampoNumeroDeComprobante } from "@/components/campo-numero-de-comprobante";
+import { PARTES_DE_NUMERO_VACIAS, estadoDelNumeroTecleado, partesDeNumeroGuardado, type PartesDeNumeroDeComprobante } from "@/core/datos/numero-comprobante";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { Campo } from "@/ui/primitivas/campo";
@@ -44,7 +45,9 @@ export function FormularioCorregirCompra({
   const [abierto, setAbierto] = useState(false);
   const [esperado, setEsperado] = useState<CabeceraVista>(actual);
   const [proveedorId, setProveedorId] = useState(actual.proveedorId ?? "");
-  const [nroFactura, setNroFactura] = useState(actual.nroFactura ?? "");
+  // El número va en tres campos (letra, punto de venta y número). Una compra vieja con texto libre muestra «Número cargado antes: …» y los campos vacíos: si no se tocan, se manda el texto tal cual.
+  const [numero, setNumero] = useState<PartesDeNumeroDeComprobante>(partesDeNumeroGuardado(actual.nroFactura) ?? PARTES_DE_NUMERO_VACIAS);
+  const [intentoGuardar, setIntentoGuardar] = useState(false);
   const [detalleLibre, setDetalleLibre] = useState(actual.detalleLibre ?? "");
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
@@ -70,13 +73,21 @@ export function FormularioCorregirCompra({
 
   // El proveedor actual siempre está entre las opciones (aunque hoy esté inactivo); el resto, solo los activos.
   const opciones = proveedores.filter((p) => p.activo || p.id === actual.proveedorId);
+  const numeroSinTocar = numero.letra === "" && numero.puntoDeVenta === "" && numero.numero === "";
+  const numeroTecleado = estadoDelNumeroTecleado(numero);
+  // Sin tocar los tres campos se manda el número guardado tal cual; tocados, el armado («A-00023-00237728»).
+  const guardado = estadoDelNumeroTecleado(partesDeNumeroGuardado(esperado.nroFactura) ?? PARTES_DE_NUMERO_VACIAS);
+  const mismoQueElGuardado = numeroTecleado.tipo === "valido" && guardado.tipo === "valido" && guardado.numero === numeroTecleado.numero;
+  const nroFactura = numeroSinTocar || mismoQueElGuardado ? (esperado.nroFactura ?? "") : numeroTecleado.tipo === "valido" ? numeroTecleado.numero : "";
   const hayCambios = (proveedorId || null) !== (esperado.proveedorId ?? null) || nroFactura.trim() !== (esperado.nroFactura ?? "") || detalleLibre.trim() !== (esperado.detalleLibre ?? "");
+  const numeroViejoDeTextoLibre = esperado.nroFactura && partesDeNumeroGuardado(esperado.nroFactura) === null ? esperado.nroFactura : null;
 
   function abrir() {
     // Lo que se ve hoy es lo que se envía como «esperado»: la guarda contra pisar la corrección de otra persona.
     setEsperado(actual);
     setProveedorId(actual.proveedorId ?? "");
-    setNroFactura(actual.nroFactura ?? "");
+    setNumero(partesDeNumeroGuardado(actual.nroFactura) ?? PARTES_DE_NUMERO_VACIAS);
+    setIntentoGuardar(false);
     setDetalleLibre(actual.detalleLibre ?? "");
     setError(null);
     setExito(null);
@@ -90,6 +101,16 @@ export function FormularioCorregirCompra({
   }
 
   function guardar() {
+    if (!proveedorId) {
+      setError("Elegí el proveedor.");
+      return;
+    }
+    // Con el número a medias no se guarda: se dice qué falta (el servidor revalida igual).
+    if (!numeroSinTocar && numeroTecleado.tipo !== "valido") {
+      setIntentoGuardar(true);
+      setError(null);
+      return;
+    }
     startTransition(async () => {
       const r = await corregirCompra(idOperacion, { proveedorId: proveedorId || null, nroFactura, detalleLibre }, esperado);
       if (!r.ok) {
@@ -132,8 +153,8 @@ export function FormularioCorregirCompra({
       <p className="text-xs text-tinta-tenue">
         Se corrige solo la cabecera de la compra. Para cambiar precios o cantidades, anulá la compra y cargala de nuevo.
       </p>
-      <Selector id={`${idBase}-proveedor`} ref={primerCampo} etiqueta="Proveedor" value={proveedorId} onChange={(e) => setProveedorId(e.target.value)}>
-        <option value="">Sin proveedor</option>
+      <Selector id={`${idBase}-proveedor`} ref={primerCampo} etiqueta="Proveedor" value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} required>
+        <option value="">Elegí el proveedor</option>
         {opciones.map((p) => (
           <option key={p.id} value={p.id}>
             {p.nombre}
@@ -141,7 +162,8 @@ export function FormularioCorregirCompra({
           </option>
         ))}
       </Selector>
-      <Campo id={`${idBase}-factura`} etiqueta="N.º de factura" value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} maxLength={LARGO_MAXIMO_NRO_FACTURA} />
+      {numeroViejoDeTextoLibre && <p className="text-xs text-tinta-tenue">Número cargado antes: {numeroViejoDeTextoLibre}. Si no lo cambiás, queda tal cual.</p>}
+      <CampoNumeroDeComprobante etiqueta="N.º de factura" partes={numero} onCambio={setNumero} mostrarErrores={intentoGuardar && !numeroSinTocar} />
       <Campo id={`${idBase}-detalle`} etiqueta="Detalle" value={detalleLibre} onChange={(e) => setDetalleLibre(e.target.value)} maxLength={200} />
       {error && (
         <Aviso variante="error">

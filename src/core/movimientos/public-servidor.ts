@@ -25,7 +25,6 @@ export type { OpcionesEspera } from "./reintentar";
 export { MENSAJE_CONFLICTO_IDEMPOTENCIA, calcularPayloadHash, decidirIdempotencia } from "./idempotencia";
 export type { ResultadoChequeoIdempotencia } from "./idempotencia";
 export {
-  MENSAJE_FACTURA_DE_PROVEEDOR_DUPLICADA,
   MENSAJE_FACTURA_DUPLICADA,
   esChoqueDeClaveIdempotenciaDeFactura,
   esChoqueDeClaveIdempotenciaDeOperacion,
