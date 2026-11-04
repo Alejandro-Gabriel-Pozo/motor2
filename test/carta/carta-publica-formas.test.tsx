@@ -255,7 +255,7 @@ describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / 
   });
 
   it("las filas no se juntan aunque cuesten igual (DEC-10); «–» donde no se ofrece; sin «desde»; debajo, la descripción y las aclaraciones", () => {
-    expect(texto(html)).toBe("Milanesas Simple Napolitana De carne $20.000 $25.000 De pollo $20.000 $25.000 De trucha $23.000 – Con papas Guarnición papas fritas · puré");
+    expect(texto(html)).toBe("Milanesas Simple Napolitana De carne $20.000 $25.000 De pollo $20.000 $25.000 De trucha $23.000 – Con papas Incluye guarnición");
     expect(html).not.toMatch(/desde/i);
     expect(html).toContain('<span class="sr-only">no se ofrece</span>');
   });
@@ -369,7 +369,8 @@ describe("la carta de ejemplo del editor del tema muestra las formas (paso 12)",
     const html = renderToStaticMarkup(<Seccion seccion={entradas} indice={0} total={2} estilo={resolverEstiloCarta({})} />);
     for (const forma of ['data-forma="simple"', 'data-forma="lista-sin-encabezado"', 'data-forma="tabla"']) expect(html, forma).toContain(forma);
     expect(html).not.toContain("data-tanda");
-    expect(html).toContain("Salsa</p>");
+    // Carta «B»: el plato dice «Incluye salsa» y las opciones van en el bloque al pie de la sección.
+    expect(html).toContain("Incluye salsa");
     expect(html).toContain("ketchup · mayonesa · alioli");
   });
 });

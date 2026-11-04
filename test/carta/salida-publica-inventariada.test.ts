@@ -276,7 +276,7 @@ describe("la salida de la carta pública está inventariada", () => {
       especial: false,
       imagenUrl: null,
       opcionesSinCosto: [{ grupo: "Vaso", opciones: ["Chico", "Grande"] }],
-      presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Vaso", opciones: ["chico", "grande"] }] },
+      presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Vaso", opciones: ["chico", "grande"], cantidadMinima: 1, cantidadMaxima: 1 }] },
     });
     // La carta de la PANTALLA (la del papel, completa, puede llevar lo agotado hoy: lo prueba el paso 10b).
     const serializado = JSON.stringify(carta.secciones);
