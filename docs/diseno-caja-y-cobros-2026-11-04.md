@@ -49,6 +49,10 @@ Inventario hecho leyendo `prisma/schema.prisma` y `src/` (no los documentos).
 6. **Reservas:** poder **señalar la reserva** y guardar, **como un folio, las reservas del cliente, empresa o agente de empresa**; si no se cobraron, **se mantienen pendientes**.
 7. **El cobro es según los medios de pago usados**, y **según el medio se pide información adicional**.
 8. **«Cuenta corriente» es un medio de pago:** va a la cuenta corriente de **esa empresa o cliente que la posee**.
+11. **Datos de cada medio de pago** (respuesta del 2026-11-04): **transferencia: DNI**; **tarjeta de débito o crédito: nombre de la tarjeta, cuotas (solo si es crédito) y número de cupón**; el **QR** («de transferencia, ¿o?»: él mismo dudó cómo se trata).
+12. **Reserva = un número que agrupa cargos.** Sus datos: **número de reserva, cliente y agente**. El **agente va dentro del cliente** (es una persona de la empresa) **y puede ser también cliente propio**. Los clientes que son **empresas pueden tener convenios**. La **reserva y la factura probablemente comparten cargos**, salvo que la factura sea **parcial**.
+13. **Consumo fuera del convenio.** A las empresas se les factura por lo que consumió el agente **y está dentro del convenio**. Lo que **no** está dentro del convenio **debería facturarse al agente como cliente, no a la empresa**, o **corregir el ticket**. Además, una empresa con convenio puede tener permitido que el consumo de restaurante salga **bajo una promoción** (ejemplo: «MENÚ EMPRESA1 $55.000») con **platos o secciones específicos** (ya previsto en las decisiones H3 y H5 del diseño del 26/10).
+14. **Tarifa fija y seña.** Idea: si la **tarifa de alojamiento es fija**, podría **salir de mostrador**. Pregunta abierta del dueño: ¿qué pasa con una reserva que **dejó una seña** y luego, al alojarse, **le queda por pagar el resto de la seña**, o que **pagó una seña distinta de la de política**?
 10. **Caja chica en 3 turnos por sucursal** (planilla en papel que mostró el dueño el 2026-11-04). Cada planilla dice: **hostería y sector** (ejemplo: «Hostería Manzano Amargo, Recepción»), **«Caja Chica: Dinero en efectivo»**, **turno** (ejemplo: «Tarde»), **hora** («15 a 23»), la **fecha**, una tabla de **billetes** (10, 20, 50, 100, 200, 500, 1.000, 2.000, 10.000 y 20.000) con **cantidad** e **importe** por cada uno, el **total** y la **firma** de quien cierra. Ejemplo de la foto (turno tarde del 3/11): 1 × $500 + 1 × $1.000 + 59 × $2.000 + 13 × $10.000 = **$249.500**. Se ve **corrector** sobre una fila (el conteo se corrigió tapando): el sistema debe corregir **con registro**, no tapando. CONFIRMADA como práctica actual.
 9. **El alojamiento no existe ni se genera en este sistema** (aclaración del 2026-11-04). La factura a consumidor final **puede traer un cargo de alojamiento**; hoy solo se **declara** («factura $200.000, alojamiento $0» o «alojamiento $120.000»). **Los tickets son los que tienen que igualar el resto**, para que la factura quede cubierta por sus $200.000. Es decir: **monto de la factura = alojamiento declarado + tickets aplicados**.
 
@@ -57,7 +61,7 @@ Inventario hecho leyendo `prisma/schema.prisma` y `src/` (no los documentos).
 | Punto del diseño viejo | Qué cambia | Por qué |
 |---|---|---|
 | Decisión 7 del mapa: «Cuenta corriente no es un medio de pago, es lo que queda sin cobrar» (PROPUESTA) | **Se reemplaza.** La cuenta corriente **se elige como medio al cobrar** y registra un cargo en la cuenta del cliente, sin ingreso a caja | Punto 8 del dueño. CONFIRMADA |
-| Los cobros se imputaban a la **factura** (`CobroDeCliente → ImputacionDeCobro → FacturaExterna`) | **El cobro se imputa al TICKET**, con su medio, antes o sin factura. La factura se **concilia** con tickets, no recibe el cobro | Puntos 5 y 7. «Cobrado» y «facturado» son **dos ejes independientes** del ticket |
+| Los cobros se imputaban a la **factura** (`CobroDeCliente → ImputacionDeCobro → FacturaExterna`) | **El cobro es un registro propio** (cliente, reserva si hay, medio, importe) y **se imputa a cargos** (tickets o conceptos), **antes o sin factura**. Un cobro **todavía sin imputar** es una **seña o saldo a favor**. La factura se **concilia** con cargos, no recibe el cobro | Puntos 5, 7 y 14. «Cobrado» y «facturado» son **dos ejes independientes** del cargo |
 | Reservas: solo texto en la línea | Se mantiene como **referencia de texto** hasta que exista un módulo de reservas (no existe), con la idea de **folio** anotada | Punto 6, sin módulo que lo sostenga |
 
 ## Nivel 1. Propósito y alcance
@@ -111,8 +115,9 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | sin cobrar | facturado | Facturado y a cobrar | cuenta corriente / sin cobrar |
 | cobrado | facturado | Cerrado | no aparece |
 
-- **Cobro:** registro que **solo se agrega**; se anula con un registro nuevo. Lleva medio de pago, importe, quién y cuándo, y los datos que pide el medio.
-- **Medio de pago:** catálogo de la empresa; cada medio declara **qué datos adicionales pide** (por ejemplo, transferencia: referencia y fecha; cheque: banco, número y fecha de cobro; tarjeta: últimos 4 dígitos y cupón). **La cuenta corriente es un medio especial que no ingresa a caja.**
+- **Cargo:** lo que se debe y se puede facturar. Hay dos clases: el **ticket** (consumo del salón o mostrador) y el **concepto declarado** (alojamiento, productos regionales…). **PROPUESTA:** un cargo pertenece a **a lo sumo una reserva** y está **cubierto por a lo sumo un comprobante vigente**; una **factura parcial** toma un **subconjunto de cargos** (un cargo no se divide en esta etapa).
+- **Cobro:** registro que **solo se agrega**; se anula con un registro nuevo. Lleva medio de pago, importe, quién y cuándo, y los datos que pide el medio. **Se imputa a uno o más cargos**; la parte **sin imputar** es una **seña o saldo a favor** del cliente o de la reserva, visible hasta que se aplique o se devuelva. **Seña distinta de la «política»:** el sistema acepta el importe que se cobró y muestra lo que **falta** respecto de la seña sugerida; nunca bloquea.
+- **Medio de pago:** catálogo de la empresa; cada medio declara **qué datos adicionales pide**. **Dicho por el dueño:** transferencia → **DNI**; tarjeta de débito o crédito → **nombre de la tarjeta, cuotas (solo crédito) y número de cupón**. **Propuesta mía, a confirmar:** cheque → banco, número y fecha de cobro; QR o billetera → igual que transferencia. **La cuenta corriente es un medio especial que no ingresa a caja.**
 - **Cuenta corriente del cliente:** saldo **derivado** (cargos − cobros posteriores). Solo para clientes que la posean. Nunca se guarda un saldo editable.
 - **Comprobante externo:** `BORRADOR → CONFIRMADO → ANULADO`. Clase `FACTURA` o `NOTA_DE_CREDITO`; letra `A` o `B`; punto de venta; número; fecha; monto; cliente. Una nota de crédito **cancela una factura** (la factura afectada), y el dinero se cruza aparte (regla N16 del diseño de notas de crédito).
 - **Conceptos declarados:** importes que **se escriben en el comprobante** y que **no salen de este sistema**. El primero es **alojamiento** (no hay módulo de alojamiento); el dueño pidió además **«productos regionales»** y **poder armar la lista** (CONFIRMADA, 2026-11-04). Entonces: **catálogo de conceptos de la empresa** (nombre, activo), y en cada comprobante cero o más líneas «concepto + importe». Vale 0 si no hay. Cuando exista un módulo de alojamiento, el importe podrá salir de ahí.
@@ -121,7 +126,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 - **Conciliación:** la **aplicación** de un ticket a un comprobante. La diferencia entre el monto del comprobante y lo aplicado se **muestra**; una persona decide.
 - **Turno de caja chica:** una **sucursal** tiene **tres turnos** por día (por ejemplo, mañana, tarde y noche, con su franja horaria: el de la foto es «tarde, 15 a 23»). CONFIRMADA: los turnos son **configurables por sucursal** (nombre, desde, hasta); son tres por sucursal (respuesta P11).
 - **Cierre de caja chica (arqueo):** el conteo del **efectivo** de un turno: por cada **denominación** (lista cerrada de billetes: 10, 20, 50, 100, 200, 500, 1.000, 2.000, 10.000, 20.000) una **cantidad entera**; el importe de cada fila y el **total son calculados**, nunca tipeados. Lo firma quien cierra (usuario del sistema, con fecha y hora). Solo se agrega; una corrección es un cierre **anulado con motivo y uno nuevo**, nunca tapar.
-- **Reserva informativa y folio** (PROPUESTA de forma; el dueño pidió el apartado informativo): una **reserva** se anota a mano con su **referencia** (el código del sistema de reservas, como texto), el **cliente** (persona o empresa), el **agente** si es de una empresa, las **fechas**, el **importe estimado** y su **estado de cobro** (`pendiente` o `cobrada`, que se marca a mano o por el cobro). El **folio** es la vista de las reservas de un cliente, empresa o agente. **No** crea habitaciones, tarifas ni disponibilidad, **no** integra con el sistema de reservas y **no** genera cargos solo.
+- **Reserva** (en el apartado informativo; el dueño la imagina como **un número que agrupa cargos**): lleva **número de reserva**, **cliente** y **agente** (el agente va dentro del cliente y puede ser cliente propio); el cliente empresa puede tener **convenio**. Agrupa **cargos** (tickets y conceptos declarados) y **señas**; muestra qué está **cobrado**, qué está **facturado** y qué falta. El **folio** es la vista de las reservas de un cliente, empresa o agente. **No** crea habitaciones, tarifas ni disponibilidad, **no** integra con el sistema de reservas y **no** genera cargos solo.
 
 ## Nivel 5. Invariantes y políticas
 
@@ -152,7 +157,11 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | C25 | **Denominaciones** de lista cerrada; **cantidades enteras ≥ 0**; el importe de cada fila y el total los **calcula el sistema** (cantidad × denominación) en dinero exacto; no se aceptan importes tipeados | PROPUESTA |
 | C26 | El cierre lo **firma** el usuario autenticado: se guarda **quién y cuándo** (hora de Argentina). Una firma impresa o escrita a mano no reemplaza al usuario | PROPUESTA |
 | C27 | El permiso de **cerrar caja chica** nace **excluido** (fail-closed), por sucursal; el servidor lo valida | CONFIRMADA (principio del 22/10) |
-| C23 | La **reserva informativa** no cambia el stock, la venta, el cobro ni el comprobante: es un registro para ver pendientes; solo se agrega y se anula con registro nuevo | PROPUESTA |
+| C28 | Un **cobro sin imputar** (seña) queda **a favor** del cliente o de la reserva y **no se pierde**: se aplica a cargos o se devuelve con registro. La suma de imputaciones de un cobro **no pasa de su importe** | PROPUESTA |
+| C29 | Una **reserva agrupa cargos**; un cargo está en **a lo sumo una** reserva. Una **factura parcial** toma un subconjunto de cargos de la reserva | PROPUESTA (el dueño lo imagina así; falta confirmar) |
+| C30 | **Consumo fuera de convenio:** un ticket de un cliente empresa con ítems **fuera del convenio** **no se factura a la empresa** sin resolverse: se **corrige el ticket** o ese consumo se **imputa al agente como cliente** | PENDIENTE (Q9) |
+| C31 | La **seña de política** es una **sugerencia**; el importe cobrado manda y se muestra lo que falta | PROPUESTA |
+| C23 | La **reserva informativa** no cambia el stock ni la venta: agrupa y muestra; solo se agrega y se anula con registro nuevo | PROPUESTA |
 | C18 | Un cliente «consumidor final» es la cuenta **sin cliente**; el **recurrente identificado** es un cliente con nombre y, si quiere comprobante A, CUIT | PROPUESTA |
 
 ## «¿Qué pasa si…?» de los comandos principales
@@ -193,7 +202,7 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 | P3 | ¿Un comprobante cubre varias sucursales? | **No: una factura, una sucursal** | CONFIRMADA |
 | P4 | Reglas de letra | **A exige cliente con CUIT; B admite consumidor final** | CONFIRMADA |
 | P5 | Nota de crédito externa | **Baja el monto de la factura que corrige** | CONFIRMADA |
-| P6 | Medios de pago | Los propuestos (efectivo, transferencia, débito, crédito, cheque, cuenta corriente) **más QR / billetera virtual**. Los **datos que pide cada medio**: «cambiar alguno», **todavía no dijo cuál** | Medios CONFIRMADA; datos PENDIENTE |
+| P6 | Medios de pago | Efectivo, transferencia, débito, crédito, cheque, cuenta corriente **y QR / billetera virtual**. Datos: **transferencia = DNI**; **tarjeta = nombre de la tarjeta, cuotas (crédito) y número de cupón**. **Faltan confirmar** QR y cheque | Medios y datos de transferencia y tarjeta CONFIRMADA; QR y cheque PENDIENTE |
 | P7 | Cuenta corriente | **Administración la habilita, sin límite al principio** | CONFIRMADA |
 | P8 | Reservas | **Armar el apartado como informativo** (no esperar al módulo de reservas); su forma, PROPUESTA (nivel 4) | CONFIRMADA que se arme; forma PROPUESTA |
 | P9 | Otros conceptos en la factura | **Sí: «productos regionales», y que se pueda armar la lista** (catálogo de la empresa) | CONFIRMADA |
@@ -202,9 +211,12 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 | P12 | Qué se cuenta | **Solo billetes** (10, 20, 50, 100, 200, 500, 1.000, 2.000, 10.000 y 20.000) | CONFIRMADA |
 
 **Preguntas que quedan abiertas:**
-- **Q1.** ¿Qué dato de cada medio de pago hay que cambiar? Propuesta mía: transferencia, referencia y fecha; débito y crédito, últimos 4 dígitos y número de cupón; cheque, banco, número y fecha de cobro; QR o billetera, referencia de la operación; efectivo, nada; cuenta corriente, cliente.
-- **Q2.** Reserva informativa: ¿qué datos se anotan? Propuesta: referencia (código del otro sistema), cliente, agente, fechas de entrada y salida, importe estimado y estado de cobro.
-- **Q3.** ¿Una reserva informativa se puede **vincular** a una factura como parte de su concepto «alojamiento», o queda aparte (solo para ver pendientes)? Recomiendo **aparte** por ahora.
+- **Q1.** **QR:** ¿pide lo mismo que la transferencia (DNI)? **Cheque:** ¿banco, número y fecha de cobro?
+- **Q6.** **Seña:** ¿se cobra **contra la reserva** antes de que exista ticket o factura, y después se **aplica** a los cargos (como propone C28)?
+- **Q7.** **Política de seña:** ¿existe una regla (porcentaje de la tarifa o monto fijo) que el sistema deba **sugerir**? Si no, no se sugiere nada.
+- **Q8.** **Alojamiento de tarifa fija por mostrador:** ¿se vende como un **producto con precio fijo** en el mostrador (genera ticket y cargo en el sistema), o se sigue **declarando** como importe en la factura? Es la forma barata de que el alojamiento exista como cargo sin módulo nuevo.
+- **Q9.** **Consumo fuera de convenio:** al facturar a una empresa, ¿el sistema **bloquea** hasta que se corrija el ticket o se pase el consumo al agente, o solo **avisa**? Recomiendo bloquear (la empresa no debería pagar lo no pactado).
+- **Q10.** **Reserva y factura:** ¿confirmás que una reserva agrupa cargos y que una factura parcial toma un subconjunto de esos cargos (C29)?
 
 ## Qué sigue
 
