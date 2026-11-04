@@ -48,7 +48,12 @@ Fuentes leídas (código de `main` en `3836bf97` y planes):
 - El período del servicio necesita **dos columnas aditivas** en el renglón de la factura: **REQUIERE AUTORIZACIÓN EXPRESA** (pregunta 1). Mientras no se autoricen, el período se puede escribir en la descripción.
 - La etapa BU (fichas y amortización) son tablas nuevas, que se piden después.
 
-**Preguntas abiertas para vos (§13): tres.**
+**Respuestas del dueño del 2026-11-04 (prevalecen sobre el resto del documento donde haya diferencia):**
+- **Pregunta 1 (período), CONFIRMADA y SIMPLIFICADA por el dueño:** en vez de dos campos «desde» y «hasta», **un solo mes por línea, por calendario** («atribuirle un mes»). Una columna opcional `mesDeImputacion` (fecha, primer día del mes) en `FacturaProveedorRenglon`, solo en líneas de servicio. Una factura bimestral se carga como **dos líneas**, una por mes (el sistema ya admite varias líneas por factura): es una regla de carga, no de código. Reemplaza a P2 y a E4-P (dos columnas y tres CHECK pasan a una columna y un CHECK de «primer día del mes»). Migración aditiva y reversible: **cubierta por la autorización del 2026-11-03**. No confundir con el mes de **pago**: el consumo de la luz de septiembre es de septiembre aunque se pague en octubre; el flujo de caja usa la fecha de pago (ver `docs/diseno-pagos-y-conciliacion-2026-11-03.md`, etapa X0).
+- **Pregunta 2 (servicio precargado), CONFIRMADA:** alcanza con que el sistema proponga el mismo servicio que en la factura anterior de ese proveedor.
+- **Pregunta 3 (ferretería y limpieza), PENDIENTE:** el dueño pidió que se la explique de nuevo en simple.
+
+**Preguntas abiertas para vos (§13), estado al 2026-11-04: solo queda la 3.**
 1. ¿Autorizás guardar el período del servicio en dos campos?
 2. ¿Alcanza con que el sistema proponga el mismo servicio que la última factura de ese proveedor?
 3. ¿Confirmás los niveles de seguimiento por defecto?
