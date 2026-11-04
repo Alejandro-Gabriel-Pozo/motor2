@@ -107,7 +107,7 @@ describe("compra con factor de conversión decimal: cuentas exactas de punta a p
     expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(0.3);
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId } });
 
-    const anulada = await anularCompra(compra.id);
+    const anulada = await anularCompra(compra.id, crypto.randomUUID());
     expect(anulada.ok, anulada.mensaje).toBe(true);
 
     expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(0);
@@ -123,7 +123,7 @@ describe("compra con factor de conversión decimal: cuentas exactas de punta a p
     expect(r.ok, r.mensaje).toBe(true);
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId } });
 
-    const anulada = await anularCompra(compra.id);
+    const anulada = await anularCompra(compra.id, crypto.randomUUID());
     expect(anulada.ok, anulada.mensaje).toBe(true);
 
     const reversion = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id, proceso: "AJUSTE" } });
