@@ -202,7 +202,7 @@ describe("carta «B»: el oráculo de combinaciones (escrito aparte, a mano)", (
         return;
       }
       // E3: el desplegable «Ver detalle ▾» (solo pantalla) y la lista de papel (solo papel) existen juntos o no existen, con el mismo contenido y el rótulo genérico.
-      expect(detalle, mensaje).toEqual(reglaDetalle.detalle === null ? { pantalla: null, rotulo: null, papel: null } : { pantalla: reglaDetalle.detalle.replace(" · ", " · "), rotulo: "Ver detalle ▾", papel: reglaDetalle.detalle });
+      expect(detalle, mensaje).toEqual(reglaDetalle.detalle === null ? { pantalla: null, rotulo: null, papel: null } : { pantalla: reglaDetalle.detalle, rotulo: "Ver detalle ▾", papel: reglaDetalle.detalle });
       // En los canales de vista previa solo se mira a Bife; en los de sección, a los dos.
       const esperadoDelCanal: Esperado = c.canal === "vista-previa" ? { ...esperado, milanesa: null } : esperado;
       expect(obtenido, mensaje).toEqual(esperadoDelCanal);
