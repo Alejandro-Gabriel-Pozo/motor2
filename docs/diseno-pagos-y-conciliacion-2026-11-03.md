@@ -140,3 +140,11 @@ El dueño avisó que los archivos tienen errores; esto es lo que noté al leer, 
 | X6 | Anticipos con rendición (saldo $0) | X1 y X3 |
 
 **Riesgo declarado:** esto es un módulo del tamaño de Compras o más. Por eso se diseña por etapas y **no se crea ninguna tabla** hasta tener confirmados los niveles 1 a 5 de X1.
+
+## 10. Respuestas del dueño del 2026-11-04 (prevalecen donde haya diferencia)
+
+- **Hoy alcanza con «cargar la factura y después confirmar cuándo se pagó»** (CONFIRMADA). Ejemplo del dueño: la factura se carga el viernes, se paga el martes, se pasa de mes; **el flujo de caja es del mes de pago**, no del mes de la factura. El sistema completo (§9) se **prevé**, pero no se construye ahora.
+- **Etapa X0 (la más barata, nueva; PROPUESTA de forma, CONFIRMADA de alcance):** la factura nace «pendiente de pago»; una acción «Declarar pago» guarda **fecha de pago (no posterior a hoy) y medio**, una sola vez, con quién y cuándo, idempotente y con control de versión. Reusa las columnas que ya existen en la factura (`fechaPagoDeclarada`, `medioPagoDeclarado`) y pide ampliar el CHECK de la condición de pago para admitir «pendiente de pago»: **migración mínima aditiva y reversible, cubierta por la autorización del 2026-11-03**. Para el flujo de caja se agrupa por **mes de la fecha de pago**; el reporte en sí queda pendiente (ver compras, reportes tipo planilla).
+- **Compatibilidad con lo que viene:** cuando exista el pago como registro aparte con conciliación N a N (X3), cada pago declarado en X0 se convierte, una sola vez, en un pago con una imputación a su factura (sin perder fecha ni medio). Por eso X0 no es un callejón sin salida.
+- **Retenciones (DM-11):** se **posponen**; siguen previstas para X3.
+- **Cuentas de correo y archivos de cada cliente:** la pregunta **no es urgente**: solo importa para X1 y X2 (bandeja y envío de correo). Queda abierta y se vuelve a plantear antes de X1.
