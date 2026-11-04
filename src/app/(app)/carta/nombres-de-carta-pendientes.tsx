@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { EnlaceInterno } from "@/components/enlace-interno";
+import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 
 /**
@@ -62,9 +63,9 @@ export function NombresDeCartaPendientes({
                 )}
               </div>
               {r && (
-                <p role="status" className={r.ok ? "text-tinta-suave" : "text-error"}>
+                <Aviso variante={r.ok ? "exito" : "error"} forma="en-linea">
                   {r.mensaje}
-                </p>
+                </Aviso>
               )}
             </li>
           );

@@ -95,6 +95,8 @@ const completos: Record<string, Valor> = {
       intento(c, ["seccionCartaId"], [c.propio.productoPvId, { visibleEnCarta: true, seccionCartaId: k.seccionCartaId, generoCartaId: c.propio.generoCartaId, descripcion: "texto" }]),
       intento(c, ["generoCartaId"], [c.propio.productoPvId, { visibleEnCarta: true, seccionCartaId: c.propio.seccionCartaId, generoCartaId: k.generoCartaId, descripcion: "texto" }]),
     ),
+  // «Está bien así» (2026-11-04): el PV con opciones del mundo está VISIBLE en la carta de la sucursal con el nombre de carta sin decidir; el control positivo lo confirma.
+  "accion|actions/carta/contenido-producto.ts|confirmarNombreEnCarta": (k) => [k.productoConOpcionesId],
   // CARTA-MANT: «Agregar a la carta» (eco de la sucursal primero). El `pv2` del mundo está disponible en S1 y SIN contenido de carta (el `pv` tiene uno oculto): el control positivo lo agrega.
   "accion|actions/carta/mantenimiento.ts|agregarProductoALaCarta": (k, c) =>
     conVariantes(
@@ -480,6 +482,7 @@ const parametros: Record<string, Record<string, Valor>> = {
     elegidas: (k) => [{ productoId: k.productoConOpcionesId, opcionIds: [k.opcionMedidaId] }],
   },
   // GO-3b: los componentes de un combo (el PV con receta) y las alícuotas de todo lo que el combo puede tener (la sección de carta, la lista y el plato del día; la carta de la sucursal activa).
+  "lectura|lecturas/carta/choque-de-nombre.ts|buscarChoqueDeNombreEnLaCarta": { args: (k) => ({ sucursalId: k.sucursalId, productoIdPropio: k.productoPvId, nombre: "Nombre de prueba" }) },
   "lectura|lecturas/carta/componentes-de-promo.ts|cargarProductosComoComponentes": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoPvId] }) },
   "lectura|lecturas/carta/componentes-de-promo.ts|cargarAlicuotasPosiblesDeLugares": {
     lugares: (k) => ({ seccionCartaIds: [k.seccionCartaId], cupoListaIds: [k.cupoListaId], cupoDelDiaIds: [k.cupoDelDiaId] }),

@@ -68,7 +68,7 @@ export async function cargarSelectorCartaPos(
   // listas vacías y el `null` son exactamente lo que da una empresa que nunca cargó una carta.
   const conCarta = modulos.carta;
   const conPromos = conCarta && modulos.promociones;
-  const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, nombresEnCarta, agrupadosConGenero, promosCarta] = await Promise.all([
+  const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
     conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido, "salon") : Promise.resolve(null),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
@@ -79,8 +79,8 @@ export async function cargarSelectorCartaPos(
     conCarta ? descuentosDeProductoEnSucursal(sucursalId, db, undefined, precioLocalActivoLeido) : Promise.resolve(new Map<string, number>()),
     precioLocalActivoLeido,
     conCarta ? db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }) : Promise.resolve([]),
-    conCarta ? db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true } }) : Promise.resolve([]),
-    conCarta ? db.contenidoCartaProducto.findMany({ where: { nombreEnCarta: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, nombreEnCarta: true } }) : Promise.resolve([]),
+    // El género y el «Nombre en la carta» (2026-11-04) salen de la MISMA lectura del contenido de la sucursal: ninguna consulta de más.
+    conCarta ? db.contenidoCartaProducto.findMany({ where: { OR: [{ generoCartaId: { not: null } }, { nombreEnCarta: { not: null } }], ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true, nombreEnCarta: true } }) : Promise.resolve([]),
     conCarta ? db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, generoCartaId: true } }) : Promise.resolve([]),
     // Sin el módulo Promociones no se lee ninguna promo (ni se ofrece ni se acepta).
     conPromos
@@ -109,7 +109,7 @@ export async function cargarSelectorCartaPos(
       : Promise.resolve([]),
   ]);
   const localPorProducto = preciosLocales;
-  const nombreEnCartaPorProducto = new Map(nombresEnCarta.map((c) => [c.productoId, c.nombreEnCarta!]));
+  const nombreEnCartaPorProducto = new Map(contenidosConGenero.flatMap((c) => (c.nombreEnCarta !== null ? [[c.productoId, c.nombreEnCarta] as const] : [])));
   const pedibles: ProductoPedible[] = productos.map((p) => {
     // Producto con descuento (Fase 2): el precio del pedible es el DESCONTADO (el que se congela al agregar); el de lista queda aparte para mostrarlo tachado.
     const aplicado = aplicarDescuentoDeProducto(precioDeCarta(Number(p.precioVenta), localPorProducto.get(p.id)), descuentos.get(p.id) ?? null);
@@ -127,7 +127,7 @@ export async function cargarSelectorCartaPos(
   });
   const generos: GenerosSelectorCartaPos = {
     generos: generosActivos,
-    generoPorProducto: new Map(contenidosConGenero.map((c) => [c.productoId, c.generoCartaId!])),
+    generoPorProducto: new Map(contenidosConGenero.flatMap((c) => (c.generoCartaId !== null ? [[c.productoId, c.generoCartaId] as const] : []))),
     generoPorAgrupado: new Map(agrupadosConGenero.map((a) => [a.id, a.generoCartaId!])),
   };
   // GO-3b: con el día, solo las promos que valen hoy (su vigencia) y, de las que tienen cupos de entradas, sus entradas elegibles de hoy (la MISMA lectura que valida la venta).

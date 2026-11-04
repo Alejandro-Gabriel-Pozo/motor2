@@ -570,6 +570,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Decisión del dueño 2026-10-29: modelo unificado de la carta (paso 3, roles de letra; SOLO ESTILO DE LA CARTA, ningún dato ni precio): se retiran los roles `rotulo` (sustituido por Producto, jerarquía única) y `tamano` (fusionado en `columna`) de la escala, así que las variables CSS de la carta dejan de traer `--carta-fs-rotulo`, `--carta-fs-tamano` y sus dos pares en papel. Revisado con `git diff -U0`: cambian SOLO esas 4 líneas en cada una de las 2 apariciones del bloque `variablesCss` (8 líneas quitadas, ninguna agregada); nada de lo que lee o devuelve una lectura de datos cambia.",
       },
+      {
+        blob: "72d6e9c040cdcd31944933dbbaa4ccee31f9d272",
+        // El commit PADRE de este (b762efe5) es el último antes de la regeneración; el cambio es de «Nombre en la carta» (pedido del dueño, 2026-11-04).
+        commit: "b762efe5",
+        motivo:
+          "«Nombre en la carta» (ADITIVO; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): el contenido de carta de cada producto en la administración (`cargarAdminCarta`, `contenido`) suma la clave `nombreEnCarta` (null en todo el mundo de la caracterización: nadie la cargó). Revisado con `git diff -U0`: solo 7 líneas `\"nombreEnCarta\": null` nuevas (más la coma de la línea anterior); ningún dato, precio ni conteo de consultas cambia (el selector del POS lee el nombre de la MISMA consulta del contenido que ya leía el género: sin consultas de más).",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {

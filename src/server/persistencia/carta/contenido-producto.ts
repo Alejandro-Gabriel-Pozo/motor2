@@ -76,7 +76,7 @@ export async function tomarElProductoParaGuardarContenido(db: Prisma.Transaction
  * buscar si el nombre ya está usado, así dos a la vez se ordenan (el segundo ve lo que dejó el primero) y no pasan los dos. No lee ni escribe datos.
  */
 export async function tomarLosNombresDeLaCarta(db: Prisma.TransactionClient, sucursalId: string): Promise<void> {
-  await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`nombres-de-la-carta:${sucursalId}`}, 0))`;
+  await db.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`nombres-de-la-carta:${sucursalId}`}, 0))::text`;
 }
 
 /**

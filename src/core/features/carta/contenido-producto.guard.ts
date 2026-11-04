@@ -1,7 +1,7 @@
 import { LARGO_MAXIMO_DESCRIPCION_CARTA, normalizarTagsCarta, validarOrdenCarta, validarTextoLibreCarta } from "@/core/carta/public";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { RE_TEXTO_CATALOGO } from "@/core/texto";
-import type { ContenidoCartaValidado } from "./contenido-producto.schema";
+import type { ComandoConfirmarNombreEnCarta, ContenidoCartaValidado } from "./contenido-producto.schema";
 
 /**
  * Guard de la feature «contenido de carta de un producto» (S-52; convención «guard por feature», 2026-09-25). Formato y rango de lo que el cliente manda a
@@ -52,4 +52,11 @@ export function guardComandoGuardarContenidoCartaProducto(entrada: { datos: unkn
   const nombre = validarNombreEnCarta(d.nombreEnCarta);
   if (!nombre.ok) return nombre;
   return aceptar({ descripcion: descripcion.valor, tags: tags.valor, orden: orden.valor, ...(nombre.valor === undefined ? {} : { nombreEnCarta: nombre.valor }) });
+}
+
+/** «Está bien así» (2026-11-04): el comando es solo el id del producto, un texto no vacío; el nombre sale del producto y lo valida el caso de uso. */
+export function guardComandoConfirmarNombreEnCarta(entrada: { productoId: unknown }): ResultadoDato<ComandoConfirmarNombreEnCarta> {
+  const { productoId } = entrada;
+  if (typeof productoId !== "string" || productoId.trim() === "") return rechazar("formato", "No se encontró el producto.");
+  return aceptar({ productoId });
 }

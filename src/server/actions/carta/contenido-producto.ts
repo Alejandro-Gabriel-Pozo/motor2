@@ -1,9 +1,9 @@
 "use server";
 
-import { guardComandoGuardarContenidoCartaProducto } from "@/core/features/carta/contenido-producto.guard";
+import { guardComandoConfirmarNombreEnCarta, guardComandoGuardarContenidoCartaProducto } from "@/core/features/carta/contenido-producto.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
-import type { ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion } from "../tipos";
 import { actualizarVisibleEnCartaCasoDeUso } from "./casos-de-uso/actualizar-visible-en-carta";
 import { confirmarNombreEnCartaCasoDeUso } from "./casos-de-uso/confirmar-nombre-en-carta";
 import { guardarContenidoCartaProductoCasoDeUso } from "./casos-de-uso/guardar-contenido-carta-producto";
@@ -69,7 +69,9 @@ export async function actualizarVisibleEnCarta(productoId: string, visibleEnCart
  */
 export async function confirmarNombreEnCarta(productoId: string): Promise<ResultadoAccion> {
   return conPermiso("carta_contenido_producto", async (ctx) => {
-    const resultado = await confirmarNombreEnCartaCasoDeUso(ctx, { productoId });
+    const comando = guardComandoConfirmarNombreEnCarta({ productoId });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await confirmarNombreEnCartaCasoDeUso(ctx, comando.valor);
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });

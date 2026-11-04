@@ -14,6 +14,8 @@ const LISTA_CERRADA: Record<string, string> = {
   "src/app/(pos)/mesas/[mesaId]/selector-carta.tsx": "SELECTOR DEL MOZO: muestra el nombre de la carta en los botones de producto directo",
   "src/components/carta/contenido-del-producto.tsx": "administración: el campo del formulario y el dato de solo lectura",
   "src/core/carta/admin-tipos.ts": "administración: tipo del contenido",
+  "src/core/carta/incluye-en-carta.ts": "CARTA: «Va con» nombra a una base oculta por los rótulos de sus renglones (no por su nombre interno ni por el de la carta)",
+  "src/core/carta/nombre-en-carta.ts": "CARTA: el estado del nombre (pendiente / propio / confirmado) y el control de nombres repetidos",
   "src/core/carta/armar-menu.ts": "CARTA: `nombreDeCarta`, la única regla de resolución, y el nombre de cada plato",
   "src/core/features/carta/contenido-producto.guard.ts": "administración: validación del comando",
   "src/core/features/carta/contenido-producto.schema.ts": "administración: tipos del comando",
