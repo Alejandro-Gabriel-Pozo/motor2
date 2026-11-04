@@ -62,7 +62,8 @@ test("invitación 5+2: tocar «salsa» o «guarnición» baja al bloque, lo ilum
     await expect(marcados()).toHaveCount(2);
     await expect(fila(0)).toHaveAttribute("data-marcado", "");
     await expect(fila(2)).toHaveAttribute("data-marcado", "");
-    for (const i of [1, 3, 4]) await expect(fila(i)).not.toHaveAttribute("data-marcado", "");
+    // Los que no la incluyen no se marcan (el 4.º, sin opciones, ni siquiera lleva `data-plato`).
+    for (const i of [1, 3, 4]) await expect(page.locator(`[data-plato="${i}"][data-marcado]`)).toHaveCount(0);
     await expect(bloqueS()).toBeInViewport();
     await expect(bloqueS()).toBeFocused();
 
