@@ -9,7 +9,7 @@ Maquetas entregadas al dueño (fuera del repositorio): `en-todos-variantes.html`
 - **Qué se quiere (CONFIRMADO por el dueño, 2026-11-04):** (1) la variante **B** de carta: cada plato dice «Incluye guarnición» o «Incluye salsa», y las opciones van **al pie en texto, sin chips**, atadas a cada plato (reemplaza el rótulo «En todos»); (2) la invitación **5+2**: «elegí abajo ↓» más las palabras «guarnición» y «salsa» tocables, que bajan al bloque y marcan los platos que lo incluyen; (3) la **descripción B**: un texto opcional por opción (ej. «tomate, albahaca, ajo»), que escribe el dueño y se ve **solo en la carta**.
 - **Hallazgo que cambia el tamaño:** el texto «Incluye guarnición» **no existe hoy** en el código. Hoy la carta imprime el rótulo del grupo y sus opciones («Guarnición: ensalada · papas fritas · puré») y, desde la PR #137, el rótulo «En todos». La variante B es entonces un **cambio de presentación de la carta**, además de la descripción. Tampoco existe ningún campo de descripción por opción.
 - **Etapas (la más barata primero, cada una se puede frenar):** E1 carta B (sin migración) → E3 descripción (1 columna, migración reversible ya autorizada) → E2 invitación 5+2 (código de pantalla, sin migración).
-- **Dos preguntas (§8):** cómo se muestran las descripciones (siempre visibles, desplegable por bloque o toque por opción) y cómo se escribe «guarnición» en singular en el plato y en el título del bloque.
+- **Resuelto el 2026-11-04:** desplegable por bloque y un solo grupo por cosa, con cada plato tildando sus opciones. **Queda una decisión menor (§8):** el rótulo genérico del desplegable.
 
 ## 1. Propósito y alcance
 
@@ -60,7 +60,10 @@ Maquetas entregadas al dueño (fuera del repositorio): `en-todos-variantes.html`
 | I10 | La carta pública sigue siendo de **lista cerrada**: la columna nueva se declara a mano en el guardián antes de leerse | PROPUESTA (lo exige el repositorio) |
 | I11 | Se muestra en los cuatro lugares de carta (pública, impresa, vista previa, «Va a mostrar») con **la misma función** | PROPUESTA |
 | I13 | La descripción es un campo de **cada opción de cualquier grupo** (guarnición, salsa, adicional…), no solo de las salsas: p. ej. la ensalada puede decir «lechuga, tomate, cebolla». Cada opción la tiene o no la tiene | CONFIRMADA (dueño, 2026-11-04) |
-| I14 | **Cómo se muestran** las descripciones en el bloque: (1) siempre visibles, una por renglón; (2) un desplegable por bloque («Qué lleva cada salsa ▾»), con la lista de nombres siempre a la vista; (3) toque en cada opción. En papel, siempre visibles | PENDIENTE (el dueño recordó el desplegable; maqueta `carta-descripciones-formas.html`) |
+| I14 | **Cómo se muestran** las descripciones en el bloque: (1) siempre visibles, una por renglón; (2) un desplegable por bloque («Qué lleva cada salsa ▾»), con la lista de nombres siempre a la vista; (3) toque en cada opción. En papel, siempre visibles | **CONFIRMADA: desplegable por bloque** (dueño, 2026-11-04; maqueta `carta-descripciones-formas.html`) |
+| I15 | Hay **un solo grupo** por cosa («Guarnición», «Salsa»); cada plato **tilda** qué opciones admite (`ProductoAdmiteGrupo` + `ProductoAdmiteOpcion`): la pechuga solo «puré o ensalada». El bloque del pie lista **todas** las opciones del grupo; la línea «Incluye…» de cada plato dice las suyas si son un subconjunto | CONFIRMADA (dueño, 2026-11-04; coincide con el modelo existente) |
+| I16 | El rótulo del desplegable es **genérico**, no usa el nombre del grupo (un grupo de café o de tamaños no «lleva» nada): propuesta «Ver detalle ▾» (alternativas: «Qué lleva cada una ▾», «Más detalle ▾»). Solo aparece si alguna opción del grupo tiene descripción | PROPUESTA |
+| I17 | «elegís N» del bloque sale de los límites del grupo; **cada plato puede tener límites propios** (`ProductoAdmiteGrupo.cantidadMinima/Maxima`, opcionales). Si todos los platos del bloque coinciden, se muestra N; si no, el bloque no dice N y cada plato lo aclara en su línea | PROPUESTA (a verificar en el código al implementar E1) |
 | I12 | Accesibilidad: las palabras tocables son botones; con «movimiento reducido» no hay animación; la barra de marca no es el único aviso (también el texto «Va con: …») | PROPUESTA |
 
 ## 6. Historia y persistencia (PROPUESTA; se diseña porque 1 a 3 están confirmados en lo que toca datos)
@@ -90,9 +93,7 @@ Maquetas entregadas al dueño (fuera del repositorio): `en-todos-variantes.html`
 - **Pantallas del administrador:** el campo junto a «renombrar» en `catalogo/opciones/[grupoId]`, y en el alta de opción (también desde el producto). **No verificado:** si la alta en lote desde «nuevo grupo en el producto» necesita el campo.
 - **Pantallas del comensal:** carta pública (sección, componente de cliente para las palabras tocables), impresa (sin interacción), vista previa, «Va a mostrar».
 
-**Pregunta abierta 1 (PENDIENTE):** cómo se muestran las descripciones (I14). Medido a tamaño real con 5 platos: sin descripciones el final de las opciones queda en ~733 px; con desplegable por bloque ~811 px; con toque en cada opción ~913 px; siempre visibles ~935 px (una pantalla útil de celular llega a ~750 px). **Recomendación:** el desplegable por bloque: la carta queda corta y la lista de nombres siempre visible.
-
-**Pregunta abierta 2 (PENDIENTE):** el plato dice «Incluye **guarnición**» (singular) pero las capturas del dueño titulan el bloque «GUARNICIONES · ELEGÍ 1» (plural). Hoy el sistema solo tiene **un** nombre por grupo (p. ej. «Guarnición»). **Propuesta (la más barata):** usar ese nombre tal cual en las dos partes («GUARNICIÓN · elegís 1»). Si se quiere el plural, haría falta **otra columna** (un rótulo del bloque) y otra migración.
+**Preguntas abiertas:** (1) **RESUELTA:** desplegable por bloque (I14). (2) **RESUELTA en lo esencial:** hay un solo grupo («Guarnición», «Salsa») y el nombre del grupo se usa tal cual en el plato y en el título del bloque; el dueño puede llamarlo como quiera. Si algún día se quiere un plural distinto, hace falta otra columna. (3) **PENDIENTE (menor):** el rótulo del desplegable (I16); propuesta «Ver detalle ▾».
 
 ## 9. Consultas y experiencia
 
