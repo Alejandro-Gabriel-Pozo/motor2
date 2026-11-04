@@ -103,7 +103,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | CU9 | **Reservas informativas (folio)**: anotar a mano las reservas de un cliente, empresa o agente y ver cuáles están sin cobrar. **Informativo**: no hay módulo de reservas ni integración | N5 | CONFIRMADA que se arme como apartado informativo (respuesta del 2026-11-04); su forma PROPUESTA (ver nivel 4) |
 | CU12 | **Cierre de reserva**: ver en un solo lugar los cargos, las señas y cobros, los comprobantes y **lo que falta** (incluida la **seña cobrada de menos** respecto de la política) | N6 | CONFIRMADA que la diferencia debe verse (respuesta Q6); la pantalla PROPUESTA |
 | CU11 | **Cerrar la caja chica del turno**: elegir sucursal, turno y hora; cargar la **cantidad de billetes por denominación**; el sistema calcula importes y total; queda firmado por quien cierra. **Solo se registra el conteo** (no se compara con lo esperado en esta etapa) | N5 | CONFIRMADA (punto 10 y respuestas P10 a P12) |
-| CU10 | Nota de crédito externa: **baja el monto a conciliar de la factura que corrige** | N3 | CONFIRMADA (punto 2 y respuesta P5 del 2026-11-04) |
+| CU10 | Nota de crédito externa: **baja el monto a conciliar de la factura que corrige**; **no mueve dinero por sí sola** (el saldo a favor o la devolución son aparte) | N3 | CONFIRMADA (punto 2 y respuesta P5 del 2026-11-04) |
 
 ## Nivel 4. Conceptos y ciclo de vida
 
@@ -139,16 +139,17 @@ Se diseña en papel junto con la maqueta del flujo completo (`flujo-completo`). 
 
 | Pieza | Qué es | Estado |
 |---|---|---|
-| **Caja diaria** | Una fila por comprobante, cobro o movimiento, con columnas por rubro y por medio de pago; **una por sucursal y por día** | CONFIRMADA la planilla; «una por sucursal y día» PROPUESTA |
+| **Caja diaria** | Una fila por comprobante, cobro o movimiento, con columnas por rubro y por medio de pago; **una por sucursal y por día, con la marca del turno en cada fila** | CONFIRMADA (dueño, 2026-11-04) |
 | **Rubro del cargo** | Restaurante, alojamiento, y los de mostrador (merchandising, productos regionales, otros). Es el **catálogo de conceptos** que la empresa arma | CONFIRMADA (P9 y punto 15) |
 | **Reparto entre medios** | El importe de un cargo se reparte entre uno o más medios; **la suma de los medios de la fila tiene que dar la suma de los cargos** | CONFIRMADA (punto 15) |
 | **Egreso de la sucursal** | Efectivo que sale de la caja chica de un turno; lo anota el operario; lleva sucursal | CONFIRMADA (punto 16) |
 | **Egreso de la empresa** | Egreso por transferencia; lo hace la empresa; **lleva siempre la sucursal**; no suma a la caja de efectivo de la sucursal | CONFIRMADA (punto 16) |
-| **Cajas** | Caja chica, caja grande (la fuerte) y banco | CONFIRMADA chica y grande; banco por los depósitos; si hay más, PENDIENTE |
+| **Cajas** | **Caja chica, caja grande (la fuerte) y banco**; no hay otras | CONFIRMADA (dueño, 2026-11-04) |
+| **Saldo a favor del cliente** | Lo que el cliente tiene a favor: **cobro de más** (por ejemplo, transfirió más de lo debido), **nota de crédito sin devolución** («la próxima te cobro menos»), **seña no aplicada**. Se **registra la diferencia** y se muestra; se aplica a un cargo futuro o se devuelve con registro | CONFIRMADA que se registra la diferencia (dueño, 2026-11-04); quién lo tiene y cómo se usa, PENDIENTE |
 | **Movimiento entre cajas** | Saca de una y pone en otra; nunca se pierde ni se inventa dinero; solo se agrega, se anula con registro | CONFIRMADA los tipos (punto 17); la regla PROPUESTA |
 | **Otro ingreso** | Entrada que no es una venta; se anota con su motivo | CONFIRMADA que existe; categorías PENDIENTE |
 
-**Reglas nuevas (PROPUESTA):** (a) en la caja diaria, una fila de **venta** cierra cuando **Σ medios = Σ cargos** (contando la **seña previa** aplicada y la **cuenta corriente** como medios que no ponen efectivo en la caja); (b) una **seña** y un **cobro de cuenta corriente** son filas **sin rubro** (no son un cargo nuevo); (c) un **egreso por transferencia** de proveedores **se toma del pago ya declarado** en compras (no se carga dos veces); (d) la **devolución en efectivo de una nota de crédito** sale como un **egreso de la caja chica** del turno; (e) el **conteo de billetes** sigue siendo solo registro (P10); la comparación con lo esperado queda para después.
+**Reglas nuevas (PROPUESTA):** (a) en la caja diaria, una fila de **venta** cierra cuando **Σ medios = Σ cargos** (contando la **seña previa** aplicada y la **cuenta corriente** como medios que no ponen efectivo en la caja); (b) una **seña** y un **cobro de cuenta corriente** son filas **sin rubro** (no son un cargo nuevo); (c) un **egreso por transferencia** de proveedores **se toma del pago ya declarado** en compras, no se carga dos veces (**CONFIRMADA**); (d) **una nota de crédito NO implica devolución de dinero**: baja el monto de la factura, y el dinero se arregla aparte (se devuelve como un egreso, queda como **saldo a favor**, o se arregla de otra forma) (**CONFIRMADA** por el dueño: «no significa que yo le vaya a devolver el dinero»); (e) el **conteo de billetes** sigue siendo solo registro; **no se registra faltante ni sobrante**: comparar con lo esperado sería una **mejora de producto futura**, que hoy no tienen (**CONFIRMADA**).
 
 ## Nivel 5. Invariantes y políticas
 
