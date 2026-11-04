@@ -168,7 +168,7 @@ export const REGLAS: readonly Regla[] = [
 ];
 
 /** ¿La regla aplica a esta combinación? */
-export function aplica(regla: Regla, c: Combinacion): boolean {
+function aplica(regla: Regla, c: Combinacion): boolean {
   return (Object.keys(regla.si) as (keyof Combinacion)[]).every((k) => (regla.si[k] as readonly unknown[]).includes(c[k]));
 }
 
