@@ -2,7 +2,7 @@
 
 Estado: **BORRADOR en papel para el dueño.** Niveles 1 a 5 de la escalera de diseño; los niveles 6 a 10 están esbozados y **no se migra nada** hasta que el dueño confirme 1 a 5. Cada decisión lleva su estado: CONFIRMADA (dicha por el dueño), PROPUESTA, PENDIENTE o NO VERIFICADA. Todo lo que se dice del código sale de una lectura (agente de solo lectura sobre `df3cd634`, 2026-11-04); **no se ejecutó ningún test ni se tocó ninguna base**.
 
-Maquetas entregadas al dueño (fuera del repositorio): `en-todos-variantes.html` (cinco variantes), `invitar-a-bajar.html` (cinco formas de invitar a bajar) y `carta-b-5mas2-descripciones.html` (la composición final a tamaño real).
+Maquetas (copias en `docs/maquetas-carta-b/` para quien implemente; los verdes de las maquetas son **solo de ejemplo**, ver I18): `en-todos-variantes.html` (cinco variantes), `invitar-a-bajar.html` (cinco formas de invitar a bajar) y `carta-b-5mas2-descripciones.html` (la composición final a tamaño real).
 
 ## 0. Resumen para el dueño
 
@@ -64,6 +64,7 @@ Maquetas entregadas al dueño (fuera del repositorio): `en-todos-variantes.html`
 | I15 | Hay **un solo grupo** por cosa («Guarnición», «Salsa»); cada plato **tilda** qué opciones admite (`ProductoAdmiteGrupo` + `ProductoAdmiteOpcion`): la pechuga solo «puré o ensalada». El bloque del pie lista **todas** las opciones del grupo; la línea «Incluye…» de cada plato dice las suyas si son un subconjunto | CONFIRMADA (dueño, 2026-11-04; coincide con el modelo existente) |
 | I16 | El rótulo del desplegable es **genérico**, no usa el nombre del grupo (un grupo de café o de tamaños no «lleva» nada): propuesta «Ver detalle ▾» (alternativas: «Qué lleva cada una ▾», «Más detalle ▾»). Solo aparece si alguna opción del grupo tiene descripción | PROPUESTA |
 | I17 | «elegís N» del bloque sale de los límites del grupo; **cada plato puede tener límites propios** (`ProductoAdmiteGrupo.cantidadMinima/Maxima`, opcionales). Si todos los platos del bloque coinciden, se muestra N; si no, el bloque no dice N y cada plato lo aclara en su línea | PROPUESTA (a verificar en el código al implementar E1) |
+| I18 | **Colores del tema, nunca fijos.** Todo color nuevo (marca de los platos, resaltado del bloque, palabras tocables, flecha, desplegable) sale de los tokens del tema de cada sucursal (`--carta-primary` = color de marca, `--carta-ink`, `--carta-ink-soft`, `--carta-bg`; hoy se arman en `carta-vista.tsx` desde `color_marca` y `color_fondo_dia`), no de un verde fijo. El texto secundario usa `--carta-ink-soft` (contraste seguro); el color de marca se usa para barra, borde, resaltado y subrayado, no para texto largo. Debe verificarse el contraste con marcas claras, oscuras y de bajo contraste. Si más adelante se quiere un color propio para estas marcas, es una clave nueva del catálogo del tema | CONFIRMADA (dueño, 2026-11-04: «no puede ser ese verde para todas las sucursales»); detalle PROPUESTA |
 | I12 | Accesibilidad: las palabras tocables son botones; con «movimiento reducido» no hay animación; la barra de marca no es el único aviso (también el texto «Va con: …») | PROPUESTA |
 
 ## 6. Historia y persistencia (PROPUESTA; se diseña porque 1 a 3 están confirmados en lo que toca datos)

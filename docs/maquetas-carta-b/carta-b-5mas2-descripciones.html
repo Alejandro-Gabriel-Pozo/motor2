@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Carta B: cómo mostrar las descripciones</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#22201c;--soft:#6b665d;--line:#ddd7cb;--acc:#2f5d50;--acc2:#e8f0ec;--warn:#9a3412;--warnbg:#fdf0e6;--pend:#5b3a8c;--pendbg:#f1eafb}
+@media (prefers-color-scheme:dark){:root{--bg:#171613;--card:#201e1a;--ink:#ece8df;--soft:#a39d90;--line:#3a362f;--acc:#7fc4ad;--acc2:#1f2d28;--warn:#f0b27a;--warnbg:#2e2218;--pend:#c9a9f0;--pendbg:#2a2036}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
+.pagina{display:grid;grid-template-columns:300px 390px;gap:28px;justify-content:center;padding:16px;align-items:start}
+@media(max-width:760px){.pagina{grid-template-columns:1fr;padding:0;gap:0}.ctl{margin:12px 16px 16px}}
+.ctl{position:sticky;top:16px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+@media(max-width:760px){.ctl{position:static}}
+.ctl h1{font-size:16px;margin:0 0 6px}.ctl .small{font-size:12px;color:var(--soft)}
+.ctl h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin:12px 0 4px}
+.op{display:flex;flex-direction:column;gap:6px}.op button{border:1px solid var(--line);background:var(--card);color:var(--soft);border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;cursor:pointer;text-align:left}.op button.on{border-color:var(--acc);color:var(--acc);background:var(--acc2);font-weight:600}
+.nota{font-size:12px;border-radius:8px;padding:6px 8px;margin-top:10px}.nota.p{background:var(--pendbg);color:var(--pend)}.nota.m{background:var(--warnbg);color:var(--warn)}
+
+.carta{width:390px;max-width:100%;background:#1a1a1a;color:#f2efe6;font-family:"Hanken Grotesk",system-ui,sans-serif;position:relative;padding:22px 20px 40px;line-height:1.35}
+@media(max-width:430px){.carta{width:100%}}
+.pag{font-size:12px;letter-spacing:.2em;color:#9a968a}
+.carta h3{font-size:27px;font-weight:400;margin:8px 0 14px}
+.plato{display:flex;justify-content:space-between;gap:14px;padding:14px 8px 14px 10px;border-top:1px solid #2e2e2e;border-left:3px solid transparent;transition:border-color .3s,background .3s}
+.plato:first-of-type{border-top:0}
+.plato .n,.plato .p{font-weight:600;font-size:17px}.plato .p{white-space:nowrap}
+.plato.reg .n,.plato.reg .p{color:#b4b98f}
+.plato.marca{border-left-color:#c5cca6;background:#232420}
+.inc{font-size:14px;color:#c5cca6;margin-top:4px}.cuerpo{min-width:0}
+.tok{color:inherit;font:inherit;background:none;border:0;padding:0;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;text-decoration-color:#8d9470}
+.cue{display:inline-block;margin-left:8px;white-space:nowrap;color:#e6e9c8}
+.rebota{display:inline-block;animation:reb 1.4s ease-in-out 2}
+@keyframes reb{0%,100%{transform:translateY(0)}50%{transform:translateY(3px)}}
+@media (prefers-reduced-motion:reduce){.rebota{animation:none}}
+.pie{border-top:1px solid #3a3a3a;margin-top:22px;padding:14px 8px 12px;border-radius:6px;transition:background .4s,box-shadow .4s}
+.pie.brilla{background:#262820;box-shadow:0 0 0 2px #c5cca6 inset}
+.pie .t{font-size:12px;letter-spacing:.14em;color:#cfcbbf;text-transform:uppercase}
+.pie .o{font-size:16px;margin-top:6px}.pie .para{font-size:13px;color:#9a968a;margin-top:6px}
+.pie .va{font-size:13px;color:#c5cca6;margin-top:7px;display:none}.pie.brilla .va{display:block}
+.sep{color:#6f6b60;margin:0 6px}
+.desp{margin-top:8px}.desp summary{cursor:pointer;color:#c5cca6;font-size:14px;padding:6px 0;list-style:none}.desp summary::-webkit-details-marker{display:none}
+.desp[open] summary{color:#e6e9c8}.dl{font-size:14px;color:#c9c5b8;margin:4px 0 0 2px}
+.op1{margin-top:6px}.tg{background:none;border:0;color:inherit;font:inherit;font-size:16px;padding:6px 0;cursor:pointer;display:flex;gap:8px;align-items:center;width:100%;text-align:left}
+.tg .mas{color:#c5cca6;margin-left:auto}.dd{display:none;font-size:14px;color:#c9c5b8;margin:0 0 4px 2px}.dd.abierto{display:block}
+@media print{.desp>*{display:block}.dd{display:block}}
+</style></head><body>
+<div class="pagina">
+ <div class="ctl">
+  <h1>Cómo mostrar las descripciones</h1>
+  <div class="small">Carta <b>B</b> + invitación <b>5+2</b>, a tamaño real (390 px). La descripción es un campo de <b>cada opción de cualquier grupo</b>: acá la <b>ensalada</b> (guarniciones) y las <b>salsas</b> la tienen; el puré y las papas no. Tocá «guarnición» o «salsa» en los platos.</div>
+  <h2>Cómo se muestran</h2>
+  <div class="op" id="modos"></div>
+  <h2>Cuántos platos tiene la sección</h2>
+  <div class="op" id="cant"></div>
+  <div class="nota m" id="lectura"></div>
+  <div class="nota p">Los ingredientes de la ensalada y de las salsas son inventados (ejemplo). Los 5 primeros platos son los de tus capturas; los demás, de ejemplo.</div>
+ </div>
+ <div class="carta" id="carta"></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const dot='<span class="sep">·</span>';
+const GUARN=[['puré de papa',''],['ensalada','lechuga, tomate, cebolla'],['papas fritas','']];
+const SALSAS=[['salsa filetto','tomate, albahaca, ajo'],['salsa crema','crema de leche, nuez moscada'],['salsa rosa','filetto y crema']];
+const REALES=[
+ {n:'Bife a criolla',p:'$30.000',g:true,s:true},{n:'Bife con chimichurri',p:'$30.000',g:true},
+ {n:'Chivo del norte neuquino',p:'$34.000',s:true,reg:true},{n:'Estofado de chivo',p:'$23.000',reg:true},
+ {n:'Pechuga grille con salsa de mostaza y miel',p:'$20.000',g:'puré o ensalada'}];
+const EJ=[6,7,8,9,10,11,12].map(i=>({n:'Plato de ejemplo '+i,p:'$'+(18+i)+'.000',g:i%2===0,s:i%3===0}));
+const MODOS=[['no','Sin descripciones (como hoy)'],['siempre','1. Siempre visibles, una por renglón'],['bloque','2. Un desplegable por bloque («Ver detalle ▾»)'],['opcion','3. Toque en cada opción (＋)']];
+let modo='bloque',cant='5';
+const platos=()=>cant==='5'?REALES:REALES.concat(EJ);
+function inc(x){
+ const tok=(g,t)=>`<button class="tok" data-ir="${g}">${t}</button>`;
+ const pa=[];
+ if(x.g===true)pa.push(tok('g','guarnición'));else if(x.g)pa.push(tok('g','guarnición')+': '+x.g);
+ if(x.s)pa.push(tok('s','salsa'));
+ return pa.length?`<div class="inc">Incluye ${pa.join(' y ')} <span class="cue"><span class="rebota">elegí abajo ↓</span></span></div>`:'';
+}
+function lista(ops,g,titulo){
+ const hay=ops.some(o=>o[1]);const nombres=ops.map(o=>o[0]).join(' · ');
+ if(modo==='no'||!hay)return `<div class="o">${nombres.split(' · ').join(dot)}</div>`;
+ if(modo==='siempre')return ops.map(([n,d])=>`<div class="o" style="margin-top:8px"><b style="font-weight:600">${n}</b>${d?`<div style="font-size:14px;color:#c9c5b8;margin-top:1px">${d}</div>`:''}</div>`).join('');
+ if(modo==='bloque')return `<div class="o">${nombres.split(' · ').join(dot)}</div><details class="desp"><summary>Ver detalle ▾</summary>${ops.filter(o=>o[1]).map(([n,d])=>`<div class="dl"><b style="font-weight:600">${n}</b> · ${d}</div>`).join('')}</details>`;
+ return ops.map(([n,d],i)=>d?`<div class="op1"><button class="tg" data-tg="${g}${i}" aria-expanded="false"><b style="font-weight:600">${n}</b><span class="mas">＋</span></button><div class="dd" id="dd-${g}${i}">${d}</div></div>`:`<div class="op1"><div style="padding:6px 0;font-weight:600">${n}</div></div>`).join('');
+}
+function pintar(){
+ const vaG=cant==='5'?'Bife a criolla · Bife con chimichurri · Pechuga (solo puré o ensalada)':'los platos marcados con barra';
+ const vaS=cant==='5'?'Bife a criolla · Chivo del norte neuquino':'los platos marcados con barra';
+ $('#carta').innerHTML=`<div class="pag">01 / 10</div><h3>Platos principales</h3>`+platos().map(x=>`<div class="plato ${x.reg?'reg':''}" data-g="${x.g?1:0}" data-s="${x.s?1:0}"><div class="cuerpo"><div class="n">${x.n}</div>${inc(x)}</div><div class="p">${x.p}</div></div>`).join('')+
+ `<div class="pie" id="bl-g"><div class="t">Guarnición · elegís 1</div>${lista(GUARN,'g','guarnición')}<div class="para">Con los platos que dicen «Incluye guarnición»</div><div class="va">Va con: ${vaG.split(' · ').join(dot)}</div></div>`+
+ `<div class="pie" id="bl-s" style="margin-top:14px"><div class="t">Salsa · elegís 1</div>${lista(SALSAS,'s','salsa')}<div class="para">Con los platos que dicen «Incluye salsa»</div><div class="va">Va con: ${vaS.split(' · ').join(dot)}</div></div>`;
+ $('#modos').innerHTML=MODOS.map(([k,t])=>`<button data-m="${k}" class="${k===modo?'on':''}">${t}</button>`).join('');
+ $('#cant').innerHTML=[['5','5 platos (como tus capturas)'],['12','12 platos (sección larga)']].map(([k,t])=>`<button data-c="${k}" class="${k===cant?'on':''}">${t}</button>`).join('');
+ const bs=$('#bl-s');const fin=bs.offsetTop+bs.offsetHeight;
+ $('#lectura').innerHTML=`Con ${cant} platos y este modo, el final de las opciones queda en <b>${Math.round(fin)} px</b>; una pantalla útil de celular llega a ~750 px. ${fin<=750?'<b>Todo entra sin bajar.</b>':'<b>Hay que bajar.</b> Por eso la invitación 5+2.'}`;
+}
+function ir(g){const bl=$('#bl-'+g);const red=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ window.scrollTo({top:bl.getBoundingClientRect().top+scrollY-24,behavior:red?'auto':'smooth'});
+ document.querySelectorAll('.pie').forEach(p=>p.classList.remove('brilla'));bl.classList.add('brilla');
+ document.querySelectorAll('.plato').forEach(p=>p.classList.toggle('marca',p.dataset[g]==='1'));
+ clearTimeout(window._t);window._t=setTimeout(()=>{bl.classList.remove('brilla');document.querySelectorAll('.plato').forEach(p=>p.classList.remove('marca'))},6000);}
+document.addEventListener('click',e=>{
+ const m=e.target.closest('[data-m]');if(m){modo=m.dataset.m;pintar();return}
+ const c=e.target.closest('[data-c]');if(c){cant=c.dataset.c;pintar();return}
+ const a=e.target.closest('[data-ir]');if(a){ir(a.dataset.ir);return}
+ const t=e.target.closest('[data-tg]');if(t){const d=document.getElementById('dd-'+t.dataset.tg);const ab=d.classList.toggle('abierto');t.setAttribute('aria-expanded',ab);t.querySelector('.mas').textContent=ab?'－':'＋'}
+});
+pintar();
+</script></body></html>
