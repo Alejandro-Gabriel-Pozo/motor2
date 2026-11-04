@@ -33,6 +33,27 @@ export function guardLineaCompra(
   return aceptar({ cantidad: cantidad.valor!, precioTotal: precioTotal.valor ?? 0, pesoReal: pesoReal.valor });
 }
 
+/** Las tres magnitudes de `Unidad.magnitud` (enum `MagnitudUnidad` del esquema). */
+export type MagnitudDeUnidad = "PESO" | "VOLUMEN" | "CANTIDAD";
+
+/**
+ * Regla del «peso real» (Compras etapa 2a; docs/diseno-compras-factura-unica-y-rechazo-2026-11-03.md §14.2, punto 2, CONFIRMADA): la cantidad real
+ * se carga SOLO cuando la conversión cruza de tipo (la magnitud de la unidad de compra es DISTINTA de la de stock: caja→kg, kg→unidades, caja→litros).
+ * Con el mismo tipo (kg→g, caja→botella) la conversión es exacta y una cantidad real sería una segunda fuente de verdad: se rechaza. Sin cantidad real, no hay nada que validar.
+ */
+export function guardPesoRealPorMagnitud(
+  productoNombre: string,
+  pesoReal: number | null,
+  magnitudDeCompra: MagnitudDeUnidad,
+  magnitudDeStock: MagnitudDeUnidad
+): ResultadoDato<null> {
+  if (pesoReal === null || magnitudDeCompra !== magnitudDeStock) return aceptar(null);
+  return rechazar(
+    "regla",
+    `La cantidad real de "${productoNombre}" no se carga: la unidad de compra y la de stock son del mismo tipo, así que la conversión es exacta. Dejá la cantidad real vacía.`
+  );
+}
+
 /**
  * Guard del número de factura de una Compra/Devolución a proveedor — en la carga (`registrarMovimiento`) y en la corrección
  * (`src/core/compras/correccion.ts`), la MISMA regla en los dos lugares. Hoy es un paso directo a `validarNroFactura`; queda acá,

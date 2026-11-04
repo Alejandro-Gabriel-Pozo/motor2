@@ -315,6 +315,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Etapa 1 de Compras: las compras del escenario llevan proveedor y N.º de factura obligatorios (CAMBIA SOLO LA PREPARACIÓN). Cambia SOLO `nroFactura` (null a `A-00001-0000000N`) y `proveedorId` (null a `id#1`) en las 34 líneas OPERACION de proceso COMPRA; ningún importe, stock, costo, venta, lectura ni escritura cambia. Verificado línea a línea por programa: todas las líneas distintas son OPERACION COMPRA y difieren solo en esas dos columnas.",
       },
+      {
+        blob: "37ac0cf03a18776e07b4e029af83f3955a0ab972",
+        // El commit PADRE de este (d3088bf, con la migración y el código de Compras 2a) es el último antes de regenerar; el golden se regenera en el commit siguiente.
+        commit: "d3088bf",
+        motivo:
+          "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -414,6 +421,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "98c93f3",
         motivo:
           "Compras etapa 1 (CAMBIA SOLO LO QUE REGISTRA LA COMPRA DEL ESCENARIO, no la venta): una COMPRA ahora exige proveedor y N.º de comprobante estructurado, así que las 115 líneas OPERACION (las de las compras de preparación de las cinco jornadas; ninguna compra queda sin proveedor) pasan de `proveedorId=null nroFactura=null` a `proveedorId=id#1 nroFactura=A-00001-00000001` (y siguientes): son SOLO esos dos campos, comparados campo por campo contra la versión anterior (cero otros campos cambian en esas líneas). Más 122 líneas NUEVAS de AUDITORIA con entidad=ProveedorPorProducto («Precio de ... con el proveedor \"Proveedor de pruebas\" (compra)», campo precioPorUnidadStock): son consecuencia de que la compra ahora lleva proveedor obligatorio, que crea/actualiza el vínculo proveedor-producto y lo audita. NO cambia ninguna fila de venta, KARDEX, stock, costo ni importe (las 115 líneas borradas son las 115 OPERACION y nada más; las 237 agregadas son esas 115 y las 122 AUDITORIA). La referencia que ahora carga la compra (`referenciaProveedor`, REFERENCIA_DE_PRUEBA) no aparece en ninguna línea del golden (no se vuelca ninguna columna de ProveedorPorProducto). Diff guardado: golden-venta-matriz-ampliada.diff (237 agregadas, 115 borradas).",
+      },
+      {
+        blob: "dadbaf08bb45293357081676d8126da8e0ba2286",
+        // El commit PADRE de este (d3088bf, con la migración y el código de Compras 2a) es el último antes de regenerar; el golden se regenera en el commit siguiente.
+        commit: "d3088bf",
+        motivo:
+          "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
       },
     ],
   },
@@ -601,6 +615,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "RECETA (ADR-033; CAMBIA COMPORTAMIENTO, decisión del dueño del 2026-10-13: «sin receta no se vende»): el flan del fixture del salón ahora tiene su receta de reventa (1 unidad de «Flan (reventa)», con stock), así que su venta CONSUME. Diff revisado línea a línea: UNA sola línea nueva, el MOVIMIENTO CONSUMO de `flanReventa` (-1, op1, sección salon); las demás filas son idénticas salvo el número correlativo `movN` de los movimientos, que se corre en uno. Ningún resultado, consulta, precio ni fila de la cuenta cambia.",
       },
+      {
+        blob: "60da9f16c1dc894f301059b6c41bbe45df5f51d6",
+        // El commit PADRE de este (d3088bf, con la migración y el código de Compras 2a) es el último antes de regenerar; el golden se regenera en el commit siguiente.
+        commit: "d3088bf",
+        motivo:
+          "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
+      },
     ],
   },
   "test/persistencia/__golden__/kardex-escritores.golden.json": {
@@ -636,6 +657,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "79927ec9",
         motivo:
           "E2 «el costo viaja con el traspaso» (ADR-040; CAMBIA COMPORTAMIENTO por decisión del dueño del 2026-10-27, columna `TraspasoSucursal.costoUnitarioOrigen` autorizada). Regenerado con `REGENERAR_HUELLA_KARDEX=1`. Los 8 casos de antes pasan `costoUnitarioOrigen: null` (sin costo conocido): sus escrituras y filas solo SUMAN la clave `costoUnitarioOrigen` en null (en el `data` del alta o del `update` del traspaso y en cada fila volcada de `TraspasoSucursal`); verificado por programa (quitando esa clave en null, cada caso es IDÉNTICO al blob anterior, con el mismo orden de casos; precios de las líneas en 0 como antes). Se suman 3 casos nuevos al final de los traspasos: envío directo con costo 100,04 (salida -2,5 por $250,10), aceptación con la copia 100,04 (entrada 3 por $300,12) y reingreso con la copia 0,3333 (3 por $1,00: 0,9999 redondeado una sola vez); en los tres el traspaso queda con su copia.",
+      },
+      {
+        blob: "65c482d1cc393b4bb33023b9c1fd753d746f08cf",
+        // El commit PADRE de este (d3088bf, con la migración y el código de Compras 2a) es el último antes de regenerar; el golden se regenera en el commit siguiente.
+        commit: "d3088bf",
+        motivo:
+          "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
       },
     ],
   },

@@ -74,6 +74,9 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   "Producto.modoDeVenta": d("dinero", "Decide si se cobra el precio guardado del producto (DIRECTO) o el de cada opción (BASE_CONFIGURABLE), ADR-035."),
   "Producto.alicuotaIvaVenta": d("dinero", "Alícuota de IVA con la que se vende el producto y la que trae la factura de proveedor al comprarlo."),
   "DisponibilidadProducto.disponible": d("visibilidad", "Si el producto se usa en la sucursal (fila ausente = no disponible): lo saca de la carta y del POS."),
+  // Compras etapa 2a: la unidad en que se compró (y cuántas, en cantidadCompra) es un dato informativo de la línea.
+  "MovimientoStock.unidadCompraId": d("ninguna", "Unidad en que se compró la línea (solo COMPRA simple); NO decide stock ni dinero: la cantidad de stock y el importe se calculan antes (oráculo de Compras 2a)."),
+  "FacturaProveedorRenglon.unidadCompraId": d("ninguna", "Unidad en que se compró el renglón de la factura; NO decide stock ni dinero: la cantidad de stock y el importe se calculan antes (oráculo de Compras 2a)."),
   // Precio local
   "PrecioLocalProducto.habilitado": d("dinero", "El precio local rige solo si está cargado y habilitado; si no, rige el precio de lista del producto."),
   "PrecioLocalDeOpcion.habilitado": d("dinero", "Sin fila habilitada rige el precio de la empresa, el de ProductoAdmiteOpcion o el de la versión de la opción."),

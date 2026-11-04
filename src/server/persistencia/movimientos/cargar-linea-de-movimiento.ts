@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { MagnitudUnidad, Prisma } from "@prisma/client";
 import { alcanceDeSucursal } from "@/core/catalogo/public";
 import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes";
 
@@ -22,7 +22,7 @@ import { cargarRecetaVigente } from "@/server/lecturas/catalogo/recetas-vigentes
 export async function cargarPresentacionActiva(
   tx: Prisma.TransactionClient,
   args: { productoId: string; unidadCompraId: string }
-): Promise<{ unidadCompraId: string; factorConversion: number; unidadCompra: { nombre: string; decimales: number } } | null> {
+): Promise<{ unidadCompraId: string; factorConversion: number; unidadCompra: { nombre: string; decimales: number; magnitud: MagnitudUnidad } } | null> {
   const presentacion = await tx.presentacion.findFirst({
     where: { productoId: args.productoId, unidadCompraId: args.unidadCompraId, activa: true },
     include: { unidadCompra: true },
@@ -31,7 +31,7 @@ export async function cargarPresentacionActiva(
   return {
     unidadCompraId: presentacion.unidadCompraId,
     factorConversion: Number(presentacion.factorConversion),
-    unidadCompra: { nombre: presentacion.unidadCompra.nombre, decimales: presentacion.unidadCompra.decimales },
+    unidadCompra: { nombre: presentacion.unidadCompra.nombre, decimales: presentacion.unidadCompra.decimales, magnitud: presentacion.unidadCompra.magnitud },
   };
 }
 

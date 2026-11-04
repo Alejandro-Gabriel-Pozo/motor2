@@ -55,6 +55,9 @@ export interface RenglonAEscribir {
   loteVencimiento: Date | null;
   detalle: string;
   precioTotal: number;
+  /** Compras etapa 2a: la unidad en que se compró y cuántas (juntas o ninguna; la base lo exige). */
+  unidadCompraId: string | null;
+  cantidadCompra: number | null;
 }
 
 /** Los renglones en orden (desde 1). Devuelve sus ids en el mismo orden. */
@@ -62,7 +65,7 @@ export async function escribirRenglonesDeFactura(tx: Prisma.TransactionClient, f
   const ids: string[] = [];
   for (const [i, r] of renglones.entries()) {
     const fila = await tx.facturaProveedorRenglon.create({
-      data: { facturaProveedorId, orden: i + 1, naturaleza: "MERCADERIA", productoId: r.productoId, cantidadStock: r.cantidadStock, precioPorUnidadStock: r.precioPorUnidadStock, loteVencimiento: r.loteVencimiento, detalle: r.detalle, precioTotal: r.precioTotal },
+      data: { facturaProveedorId, orden: i + 1, naturaleza: "MERCADERIA", productoId: r.productoId, cantidadStock: r.cantidadStock, precioPorUnidadStock: r.precioPorUnidadStock, loteVencimiento: r.loteVencimiento, detalle: r.detalle, precioTotal: r.precioTotal, unidadCompraId: r.unidadCompraId, cantidadCompra: r.cantidadCompra },
       select: { id: true },
     });
     ids.push(fila.id);

@@ -150,6 +150,9 @@ export async function registrarFacturaProveedorCasoDeUso(
         loteVencimiento: linea.loteVencimiento,
         detalle: linea.detalle,
         precioTotal: linea.precioTotal,
+        // Compras etapa 2a: lo comprado vive en el renglón; las partes (movimientos) quedan en NULL y lo leen de acá.
+        unidadCompraId: linea.unidadCompraId,
+        cantidadCompra: linea.cantidadCompra,
       }))
     );
 
