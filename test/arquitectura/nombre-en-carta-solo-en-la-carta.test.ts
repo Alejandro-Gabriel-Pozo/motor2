@@ -27,6 +27,7 @@ const LISTA_CERRADA: Record<string, string> = {
   "src/server/actions/carta/casos-de-uso/quitar-producto-de-la-carta.ts": "administración: audita lo que se pierde al quitar",
   "src/server/actions/carta/contenido-producto.ts": "administración: la acción",
   "src/server/consultas/carta/admin.ts": "administración: lectura del contenido y de la vista previa",
+  "src/server/lecturas/catalogo/busqueda-de-producto.ts": "BUSCADOR DEL MOZO (POS): encuentra también por el nombre de carta de la sucursal activa (el resultado sigue mostrando código y nombre interno)",
   "src/server/lecturas/carta/choque-de-nombre.ts": "administración: junta los nombres usados en la carta de la sucursal para detectar un nombre repetido",
   "src/server/lecturas/carta/menu.ts": "CARTA: el lector de la carta (lista cerrada `PUBLICACION_CARTA`)",
   "src/server/lecturas/pos/selector-carta.ts": "SELECTOR DEL MOZO: lee el nombre de la carta de la sucursal",

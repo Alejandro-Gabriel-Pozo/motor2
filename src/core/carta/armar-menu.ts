@@ -384,12 +384,15 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
         : undefined;
     if (forma?.tipo === "sin-forma") productosSinPresentacion.push({ productoId: p.id, nombre: p.nombre, motivo: forma.motivo });
     if (forma?.tipo === "forma" && forma.columnasDeMas !== undefined) productosConMuchasColumnas.push({ productoId: p.id, nombre: p.nombre, columnas: forma.columnasDeMas });
+    // Una base con la medida OCULTA (la tabla sin título: «cada opción como un plato») no se nombra en la carta: el cliente lee los rótulos de sus renglones. Su `nombre` solo lo lee el lector de pantalla (rótulo de la
+    // lista) y es el nombre de la carta del producto o, si no tiene, el de la SECCIÓN: nunca el interno (decisión del dueño, 2026-11-04).
+    const baseOculta = forma?.tipo === "forma" && forma.presentacion.forma === "tabla" && forma.presentacion.titulo === false;
     ubicar(
       p.seccionCartaId,
       {
         productoId: p.id,
         // «Nombre en la carta» (2026-11-04): lo que ve el cliente; sin nombre cargado, el interno. El diagnóstico de la administración (abajo) sigue con el nombre interno.
-        nombre: nombreDeCarta(p, p.contenido),
+        nombre: baseOculta ? (textoONull(p.contenido.nombreEnCarta) ?? seccionNombre) : nombreDeCarta(p, p.contenido),
         categoria: textoONull(p.categoriaNombre) ?? seccionNombre,
         descripcion: textoONull(p.contenido.descripcion),
         ...precios,

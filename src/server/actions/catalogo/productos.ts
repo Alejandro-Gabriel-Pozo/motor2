@@ -120,7 +120,7 @@ export async function buscarProductosSelector(termino: string, filtro?: FiltroSe
   // El proveedor elegido (viene del cliente) solo ORDENA: la RLS acota a la empresa, y sin permiso para ver referencias se ignora (ordenar por un dato que no se ve revelaría ese dato).
   const proveedor = porReferencia && typeof proveedorId === "string" && proveedorId !== "" ? proveedorId : undefined;
   // Una sola lectura cruda (con la base de la sesión: Producto y ProveedorPorProducto son de la empresa, no hace falta la de verificación; sin distinguir tildes) da los ids de las tres capas del orden; el `findMany` de cada tramo aplica los mismos filtros, select y tope de siempre.
-  const encontrados = await buscarProductosPorPalabras(ctx.db, t, { porReferencia, proveedorId: proveedor });
+  const encontrados = await buscarProductosPorPalabras(ctx.db, t, { porReferencia, proveedorId: proveedor, ...(filtro?.tambienPorNombreDeCarta ? { sucursalDeLaCarta: ctx.sucursalId } : {}) });
   const idsDe = (cuales: (e: (typeof encontrados)[number]) => boolean) => ({ id: { in: encontrados.filter(cuales).map((e) => e.id) } });
   const tokenUnico = !/\s/.test(t);
   // `equals` insensible va como ILIKE sin escapar: los comodines y la barra se escapan acá.

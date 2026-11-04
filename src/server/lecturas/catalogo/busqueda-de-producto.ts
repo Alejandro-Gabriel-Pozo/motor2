@@ -22,6 +22,8 @@ export interface OpcionesDeBusquedaDeProducto {
   porReferencia: boolean;
   /** Solo para ORDENAR en la compra: marca como `vinculado` el producto cuya referencia, en el vínculo con ESTE proveedor, contiene todas las palabras. Quien llama lo pasa solo si `porReferencia`. */
   proveedorId?: string;
+  /** El buscador del POS: buscar también en el «Nombre en la carta» de ESTA sucursal (la de la sesión). */
+  sucursalDeLaCarta?: string;
 }
 
 export interface ProductoEncontrado {
@@ -36,11 +38,15 @@ const comoTexto = (columna: Prisma.Sql) => Prisma.sql`unaccent(lower(${columna})
 const contiene = (columna: Prisma.Sql, palabra: string) => Prisma.sql`${comoTexto(columna)} LIKE '%' || unaccent(lower(${escaparComodinesLike(palabra)})) || '%' ESCAPE '\\'`;
 
 /** Los productos (por nombre) que tienen todas las palabras de `termino`; vacío si el término no tiene palabras. */
-export async function buscarProductosPorPalabras(db: Db, termino: string, { porReferencia, proveedorId }: OpcionesDeBusquedaDeProducto): Promise<ProductoEncontrado[]> {
+export async function buscarProductosPorPalabras(db: Db, termino: string, { porReferencia, proveedorId, sucursalDeLaCarta }: OpcionesDeBusquedaDeProducto): Promise<ProductoEncontrado[]> {
   const palabras = palabrasDeBusqueda(termino);
   if (palabras.length === 0) return [];
   const cadaPalabra = palabras.map((w) =>
     Prisma.sql`(${contiene(Prisma.sql`p."nombre"`, w)} OR ${contiene(Prisma.sql`p."codigo"`, w)}${
+      sucursalDeLaCarta
+        ? Prisma.sql` OR EXISTS (SELECT 1 FROM "ContenidoCartaProducto" c WHERE c."productoId" = p."id" AND c."sucursalId" = ${sucursalDeLaCarta} AND ${contiene(Prisma.sql`c."nombreEnCarta"`, w)})`
+        : Prisma.empty
+    }${
       porReferencia
         ? Prisma.sql` OR EXISTS (SELECT 1 FROM "ProveedorPorProducto" r WHERE r."productoId" = p."id" AND ${contiene(Prisma.sql`r."referenciaProveedor"`, w)})`
         : Prisma.empty
