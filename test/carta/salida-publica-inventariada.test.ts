@@ -65,6 +65,9 @@ const CLAVES_DE_LA_CARTA = [
   // ids, sin el tipo interno del grupo («MEDIDA», «ADICIONAL»), sin el prefijo suelto ni «Mostrar el nombre arriba» (salen ya aplicados). `tipo` de una aclaración y `forma` tienen valores fijos.
   "carta.secciones[].items[].presentacion",
   "carta.secciones[].items[].presentacion.aclaraciones",
+  // Carta «B» (2026-11-04): los límites de una elección sin costo («elegís N» del bloque al pie de la sección). Son números del catálogo que ya se leen en el menú; no llevan ids.
+  "carta.secciones[].items[].presentacion.aclaraciones[].cantidadMaxima",
+  "carta.secciones[].items[].presentacion.aclaraciones[].cantidadMinima",
   "carta.secciones[].items[].presentacion.aclaraciones[].opciones",
   "carta.secciones[].items[].presentacion.aclaraciones[].opciones[].nombre",
   "carta.secciones[].items[].presentacion.aclaraciones[].opciones[].recargo",
@@ -262,7 +265,7 @@ describe("la salida de la carta pública está inventariada", () => {
       especial: false,
       imagenUrl: null,
       opcionesSinCosto: [{ grupo: "Guarnición", opciones: ["Puré", "Papas"] }],
-      presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["puré", "papas"] }] },
+      presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["puré", "papas"], cantidadMinima: 1, cantidadMaxima: 1 }] },
     });
     expect(items.find((i) => i.nombre === "Jugo")).toEqual({
       nombre: "Jugo",
