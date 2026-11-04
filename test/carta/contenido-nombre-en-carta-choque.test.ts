@@ -56,6 +56,13 @@ describe("«Nombre en la carta»: sin nombres repetidos en una carta", () => {
       case "nombre-en-carta-de-otro":
         await contenido(sucursalId, otro, { visibleEnCarta: true, nombreEnCarta: "La Napólitana" });
         break;
+      case "nombre-en-carta-de-otro-oculto":
+        await contenido(sucursalId, otro, { visibleEnCarta: false, nombreEnCarta: "La Napólitana" });
+        break;
+      case "interno-de-otra-base":
+        await prisma.producto.update({ where: { id: otro }, data: { nombre: "La Napólitana", modoDeVenta: "BASE_CONFIGURABLE" } });
+        await contenido(sucursalId, otro, { visibleEnCarta: true });
+        break;
       case "interno-de-otro-visible":
         await prisma.producto.update({ where: { id: otro }, data: { nombre: "La Napólitana" } });
         await contenido(sucursalId, otro, { visibleEnCarta: true });
@@ -100,7 +107,7 @@ describe("«Nombre en la carta»: sin nombres repetidos en una carta", () => {
         const etiqueta = `${colision} / ${variante}`;
         expect(!r.ok, etiqueta).toBe(debeRechazarse(colision));
         if (debeRechazarse(colision)) {
-          expect(r.mensaje, etiqueta).toContain("elegí otro");
+          expect(r.mensaje, etiqueta).toContain("Ponele un nombre de carta distinto a uno de los dos.");
           expect(await nombreGuardado(objetivoId), `no escribió (${etiqueta})`).toBeNull();
           expect(await auditorias(), `no auditó (${etiqueta})`).toBe(0);
         } else {
@@ -117,8 +124,7 @@ describe("«Nombre en la carta»: sin nombres repetidos en una carta", () => {
     await contenido(sucursalId, otro, { visibleEnCarta: true, nombreEnCarta: "La Napo" });
     const r = await guardar(objetivoId, "la napo");
     expect(r).toMatchObject({ ok: false });
-    expect(r.mensaje).toContain("«la napo»");
-    expect(r.mensaje).toContain("«Pizza especial»");
+    expect(r.mensaje).toBe(`"la napo" ya lo usa el producto "Pizza especial" en la carta de ${(await prisma.sucursal.findUniqueOrThrow({ where: { id: sucursalId } })).nombre}. Ponele un nombre de carta distinto a uno de los dos.`);
   });
 
   it("repetir el mismo guardado (doble clic) no choca consigo mismo y no deja otra auditoría", async () => {
@@ -137,7 +143,7 @@ describe("«Nombre en la carta»: sin nombres repetidos en una carta", () => {
     const otro = await producto("PV_OTRO", "Pizza especial");
     const resultados = await Promise.all([guardar(objetivoId, "La Napo"), guardar(otro, "la napo")]);
     expect(resultados.filter((r) => r.ok)).toHaveLength(1);
-    expect(resultados.filter((r) => !r.ok)[0]!.mensaje).toContain("elegí otro");
+    expect(resultados.filter((r) => !r.ok)[0]!.mensaje).toContain("Ponele un nombre de carta distinto a uno de los dos.");
     expect(await prisma.contenidoCartaProducto.count({ where: { sucursalId, nombreEnCarta: { not: null } } })).toBe(1);
     expect(await auditorias()).toBe(1);
   });
@@ -158,6 +164,32 @@ describe("«Nombre en la carta»: sin nombres repetidos en una carta", () => {
     // Con un nombre en la carta propio, mostrar sí puede.
     expect((await guardar(objetivoId, "Milanesa de la casa", false)).ok).toBe(true);
     expect((await actualizarVisibleEnCarta(objetivoId, true)).ok).toBe(true);
+  });
+
+  it("un alta OCULTA que choca pasa; mostrarla después se rechaza (y con otro nombre en la carta, pasa)", async () => {
+    const otro = await producto("PV_OTRO", "Pizza especial");
+    await contenido(sucursalId, otro, { visibleEnCarta: true, nombreEnCarta: "La Napo" });
+    expect((await guardar(objetivoId, "La Napo", false)).ok, "oculto no molesta").toBe(true);
+    expect(await nombreGuardado(objetivoId)).toBe("La Napo");
+    expect(await actualizarVisibleEnCarta(objetivoId, true)).toMatchObject({ ok: false });
+    expect((await guardar(objetivoId, "La Napo", true)).ok, "guardar visible con el mismo nombre").toBe(false);
+    expect((await guardar(objetivoId, "La Napo 2", true)).ok).toBe(true);
+  });
+
+  it("caso real de producción: dos opciones de una base («a la criolla» / «al chimichurri») y un directo «Bife de chorizo» no chocan; los nombres se comparan COMPLETOS, nunca por prefijo", async () => {
+    // La base «BIFE-» (visible, con grupo de preparación) no ocupa nombre del producto: el cliente lee «Bife de chorizo a la criolla» / «al chimichurri» (rótulos de sus opciones).
+    const base = await producto("BIFE-", "BIFE-");
+    await prisma.producto.update({ where: { id: base }, data: { modoDeVenta: "BASE_CONFIGURABLE" } });
+    await contenido(sucursalId, base, { visibleEnCarta: true });
+    const directo = await producto("PV_BIFE", "Bife de chorizo");
+    expect((await guardar(directo, null)).ok, "el directo «Bife de chorizo» no choca con la base").toBe(true);
+    const otro = await producto("PV_OTRO", "Pizza especial");
+    expect((await guardar(otro, "Bife de chorizo a la criolla")).ok, "un nombre más largo no es el mismo").toBe(true);
+    expect((await guardar(objetivoId, "Bife de chorizo al chimichurri")).ok).toBe(true);
+    expect((await guardar(objetivoId, "bife de chorizo")).ok, "el corto sí choca con «Bife de chorizo» directo, y es lo único que choca").toBe(false);
+    // Una base con nombre en la carta solo se compara con los nombres en la carta de los demás.
+    expect((await guardar(base, "Bife de chorizo")).ok, "la base no choca con el nombre del producto de un directo").toBe(true);
+    expect((await guardar(base, "Bife de chorizo al chimichurri")).ok, "pero sí con el nombre en la carta de otro plato visible").toBe(false);
   });
 
   it("«copiar carta»: si la sucursal destino tiene una promo con el mismo nombre, ese nombre en la carta no se copia (el plato sale con el de su producto), se informa y el resto de la copia sigue", async () => {

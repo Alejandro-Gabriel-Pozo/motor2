@@ -25,20 +25,20 @@ import { fijarVisibleEnCarta, tomarLosNombresDeLaCarta } from "@/server/persiste
  * @ficha permiso=carta_contenido_producto transaccion=SIMPLE idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function actualizarVisibleEnCartaCasoDeUso(
-  actor: Pick<ContextoUsuario, "db" | "transaccion" | "sucursalId">,
+  actor: Pick<ContextoUsuario, "db" | "transaccion" | "sucursalId" | "sucursalNombre">,
   comando: ComandoActualizarVisibleEnCarta,
 ): Promise<ResultadoActualizarVisibleEnCarta> {
   const { productoId, visibleEnCarta } = comando;
   const producto = await actor.db.producto.findUnique({
     where: { id: productoId },
-    select: { nombre: true, tipo: true, contenidosCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { seccionCartaId: true } } },
+    select: { nombre: true, tipo: true, modoDeVenta: true, contenidosCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { seccionCartaId: true } } },
   });
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
   if (producto.tipo !== "PV") return fracaso("NO_ES_PV", "Solo un producto de venta (PV) puede ir en la carta.");
   if (visibleEnCarta && !producto.contenidosCarta[0]?.seccionCartaId) return fracaso("FALTA_SECCION", MENSAJE_FALTA_SECCION_DE_CARTA);
   if (!visibleEnCarta) {
     await fijarVisibleEnCarta(actor.db, { sucursalId: actor.sucursalId, productoId, visibleEnCarta });
-    return exito(`Carta: "${producto.nombre}" queda oculto.`, null);
+    return exito(`Carta: "${producto.nombre}" ${visibleEnCarta ? "se muestra" : "queda oculto"}.`, null);
   }
   let choque: ChoqueDeNombre | null = null;
   let nombreEfectivo = producto.nombre;
@@ -46,10 +46,14 @@ export async function actualizarVisibleEnCartaCasoDeUso(
     await tomarLosNombresDeLaCarta(tx, actor.sucursalId);
     const propio = await tx.contenidoCartaProducto.findFirst({ where: { ...whereCartaDeSucursal(actor.sucursalId), productoId }, select: { nombreEnCarta: true } });
     nombreEfectivo = propio?.nombreEnCarta ?? producto.nombre;
-    choque = await buscarChoqueDeNombreEnLaCarta(tx, { sucursalId: actor.sucursalId, productoIdPropio: productoId, nombre: nombreEfectivo });
-    if (choque) return;
+    // Una base se lee en la carta por los rótulos de sus opciones, no por su nombre: sin nombre en la carta no ocupa ninguno; con uno, solo se compara con los nombres en la carta de los demás.
+    const esBase = producto.modoDeVenta === "BASE_CONFIGURABLE";
+    if (!esBase || propio?.nombreEnCarta != null) {
+      choque = await buscarChoqueDeNombreEnLaCarta(tx, { sucursalId: actor.sucursalId, productoIdPropio: productoId, nombre: nombreEfectivo, soloNombresEnCarta: esBase });
+      if (choque) return;
+    }
     await fijarVisibleEnCarta(tx, { sucursalId: actor.sucursalId, productoId, visibleEnCarta });
   });
-  if (choque) return fracaso("NOMBRE_EN_USO", mensajeDeChoqueDeNombre(nombreEfectivo, choque));
+  if (choque) return fracaso("NOMBRE_EN_USO", mensajeDeChoqueDeNombre(nombreEfectivo, choque, actor.sucursalNombre));
   return exito(`Carta: "${producto.nombre}" se muestra.`, null);
 }

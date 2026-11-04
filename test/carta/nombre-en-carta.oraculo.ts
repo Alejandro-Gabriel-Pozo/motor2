@@ -41,19 +41,32 @@ export function nombreEsperado({ nombre, canal, forma }: Combinacion): string {
  * LA DIMENSIÓN «COLISIÓN» (regla del dueño, 2026-11-04: en la carta de una sucursal NO puede haber dos cosas con el mismo nombre visible). El nombre que se quiere guardar (o con el que se quiere mostrar un plato)
  * puede coincidir —sin distinguir mayúsculas ni tildes— con:
  *  - nada (sin choque);
- *  - el «Nombre en la carta» de OTRO plato de la sucursal;
+ *  - el «Nombre en la carta» de OTRO plato VISIBLE de la sucursal;
+ *  - el «Nombre en la carta» de otro plato OCULTO (no sale en la carta: NO es un choque; se vuelve a chequear al mostrarlo);
  *  - el nombre del producto de otro plato VISIBLE de la sucursal que sale con el interno;
  *  - el nombre del producto de otro plato OCULTO sin nombre en la carta (no sale en la carta: NO es un choque);
+ *  - el nombre del producto de otra BASE visible (se vende por opción: el cliente lee los rótulos de sus opciones, no el nombre del producto; etapa posterior: NO es un choque en esta etapa);
  *  - un ítem agrupado de la sucursal;
  *  - una promo que se ofrece en la sucursal;
  *  - una promo de OTRA sucursal (no es de esta carta: NO es un choque);
  *  - el nombre en la carta de otro plato en OTRA sucursal (cada carta es propia: NO es un choque).
  */
-export const COLISION = ["sin-choque", "nombre-en-carta-de-otro", "interno-de-otro-visible", "interno-de-otro-oculto", "agrupado", "promo", "promo-de-otra-sucursal", "nombre-en-carta-de-otra-sucursal"] as const;
+export const COLISION = [
+  "sin-choque",
+  "nombre-en-carta-de-otro",
+  "nombre-en-carta-de-otro-oculto",
+  "interno-de-otro-visible",
+  "interno-de-otro-oculto",
+  "interno-de-otra-base",
+  "agrupado",
+  "promo",
+  "promo-de-otra-sucursal",
+  "nombre-en-carta-de-otra-sucursal",
+] as const;
 export const VARIANTE_DEL_NOMBRE = ["igual", "otras-mayusculas", "otras-tildes"] as const;
 
-/** Cuántas combinaciones tiene colisión × variante: 8 × 3. */
-export const TAMANO_DE_COLISION = 8 * 3;
+/** Cuántas combinaciones tiene colisión × variante: 10 × 3. */
+export const TAMANO_DE_COLISION = 10 * 3;
 
 /** Si el guardado DEBE rechazarse por nombre repetido (regla 5: solo choca lo que se ve en ESTA carta; la variante de mayúsculas o tildes no cambia nada). */
 export function debeRechazarse(colision: (typeof COLISION)[number]): boolean {

@@ -74,7 +74,7 @@ describe("«Nombre en la carta» del contenido de carta (migración 202611041300
     await poner(null);
   });
 
-  it("(b2) el único parcial: dos platos de la MISMA sucursal no pueden tener el mismo nombre en la carta (sin distinguir mayúsculas); en otra sucursal sí, y los NULL no chocan", async () => {
+  it("(b2) el único parcial: dos platos VISIBLES de la MISMA sucursal no pueden tener el mismo nombre en la carta (sin distinguir mayúsculas); en otra sucursal sí, y los NULL no chocan", async () => {
     await base.cliente.query("BEGIN");
     try {
       await base.cliente.query(`INSERT INTO "Sucursal" ("id","empresaId","nombre") VALUES ('norte',$1,'norte')`, [E]);
@@ -90,6 +90,10 @@ describe("«Nombre en la carta» del contenido de carta (migración 202611041300
       await expect(base.cliente.query(`UPDATE "ContenidoCartaProducto" SET "nombreEnCarta" = 'la napo' WHERE "id" = 'c-flan-nulo'`), "mismo nombre, otras mayúsculas").rejects.toMatchObject({ code: "23505" });
       await base.cliente.query(`ROLLBACK TO SAVEPOINT s1`);
       await alta("c-flan-norte", "norte", "flan", "La Napo");
+      // Un plato OCULTO con el mismo nombre no molesta (se vuelve a chequear al mostrarlo): el único es parcial sobre los visibles.
+      await base.cliente.query(`UPDATE "ContenidoCartaProducto" SET "visibleEnCarta" = false WHERE "id" = 'c-flan-nulo'`);
+      await base.cliente.query(`UPDATE "ContenidoCartaProducto" SET "nombreEnCarta" = 'LA NAPO' WHERE "id" = 'c-flan-nulo'`);
+      await expect(base.cliente.query(`UPDATE "ContenidoCartaProducto" SET "visibleEnCarta" = true WHERE "id" = 'c-flan-nulo'`), "mostrarlo choca").rejects.toMatchObject({ code: "23505" });
     } finally {
       await base.cliente.query("ROLLBACK");
     }

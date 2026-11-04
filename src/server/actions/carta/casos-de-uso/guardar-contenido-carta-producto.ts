@@ -43,7 +43,7 @@ export async function guardarContenidoCartaProductoCasoDeUso(
   comando: ComandoGuardarContenidoCartaProducto,
 ): Promise<ResultadoGuardarContenidoCartaProducto> {
   const { productoId, datos, validados } = comando;
-  const producto = await actor.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true } });
+  const producto = await actor.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true, modoDeVenta: true } });
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
   if (producto.tipo !== "PV") return fracaso("NO_ES_PV", "Solo un producto de venta (PV) puede ir en la carta.");
 
@@ -75,8 +75,10 @@ export async function guardarContenidoCartaProductoCasoDeUso(
     ...(nombreEnCarta !== undefined ? { nombreEnCarta } : {}),
   };
   const entidadId = `${actor.sucursalId}:${productoId}`;
-  // Regla del dueño (2026-11-04): en la carta de una sucursal no hay dos cosas con el mismo nombre. Se chequea al mostrar el plato o al ponerle un nombre en la carta (con el candado de los nombres de la sucursal).
-  const conChequeoDeNombre = visibleEnCarta || (nombreEnCarta !== undefined && nombreEnCarta !== null);
+  // Regla del dueño (2026-11-04): en la carta de una sucursal no hay dos cosas con el mismo nombre. Se chequea cuando el plato queda visible (con el candado de los nombres de la sucursal).
+  // El control corre solo si el plato va a quedar VISIBLE (oculto no molesta; se vuelve a chequear al mostrarlo) y no es una base (el cliente lee los rótulos de sus opciones, no su nombre).
+  const esBase = producto.modoDeVenta === "BASE_CONFIGURABLE";
+  const conChequeoDeNombre = visibleEnCarta;
   let choque: ChoqueDeNombre | null = null;
   let nombreEfectivo = producto.nombre;
   await actor.transaccion(async (tx) => {
@@ -88,9 +90,13 @@ export async function guardarContenidoCartaProductoCasoDeUso(
     // El valor que había, leído en la transacción (por la relación del producto, en la carta de ESTA sucursal): sin fila, el default de la columna (`false`) o sin nombre en la carta (`null`).
     const actual = conAuditoria || conChequeoDeNombre ? await tx.producto.findUnique({ where: { id: productoId }, select: { contenidosCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { mostrarNombreArriba: true, nombreEnCarta: true } } } }) : null;
     if (conChequeoDeNombre) {
-      nombreEfectivo = (nombreEnCarta !== undefined ? nombreEnCarta : actual?.contenidosCarta[0]?.nombreEnCarta) ?? producto.nombre;
-      choque = await buscarChoqueDeNombreEnLaCarta(tx, { sucursalId: actor.sucursalId, productoIdPropio: productoId, nombre: nombreEfectivo });
-      if (choque) return;
+      const nombreDeLaCarta = (nombreEnCarta !== undefined ? nombreEnCarta : actual?.contenidosCarta[0]?.nombreEnCarta) ?? null;
+      nombreEfectivo = nombreDeLaCarta ?? producto.nombre;
+      // Una base sin nombre en la carta no ocupa ninguno (el cliente lee los rótulos de sus opciones); con uno, solo se compara con los nombres en la carta de los demás.
+      if (!esBase || nombreDeLaCarta !== null) {
+        choque = await buscarChoqueDeNombreEnLaCarta(tx, { sucursalId: actor.sucursalId, productoIdPropio: productoId, nombre: nombreEfectivo, soloNombresEnCarta: esBase });
+        if (choque) return;
+      }
     }
     await guardarContenidoDeProducto(tx, { sucursalId: actor.sucursalId, productoId, datos: data });
     if (mostrarNombreArriba !== undefined) {
@@ -118,6 +124,6 @@ export async function guardarContenidoCartaProductoCasoDeUso(
       });
     }
   });
-  if (choque) return fracaso("NOMBRE_EN_USO", mensajeDeChoqueDeNombre(nombreEfectivo, choque));
+  if (choque) return fracaso("NOMBRE_EN_USO", mensajeDeChoqueDeNombre(nombreEfectivo, choque, actor.sucursalNombre));
   return exito(`Carta: "${producto.nombre}" ${data.visibleEnCarta ? "se muestra" : "queda oculto"}.`, null);
 }

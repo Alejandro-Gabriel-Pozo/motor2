@@ -42,6 +42,7 @@ export async function agregarProductoALaCartaCasoDeUso(
         select: {
           nombre: true,
           tipo: true,
+          modoDeVenta: true,
           opcionQueRespalda: { select: { id: true } },
           contenidosCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { visibleEnCarta: true, seccionCartaId: true } },
           opcionesItemAgrupadoCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { itemAgrupadoCarta: { select: { nombre: true } } } },
@@ -67,9 +68,12 @@ export async function agregarProductoALaCartaCasoDeUso(
 
       // Regla del dueño (2026-11-04): en la carta de una sucursal no hay dos cosas con el mismo nombre. Sale con su nombre de producto (no tiene contenido todavía): con el candado de los nombres de la sucursal, se
       // busca si ya lo usa otro plato (por su nombre en la carta o por el del producto), un ítem agrupado o una promo.
-      await tomarLosNombresDeLaCarta(tx, actor.sucursalId);
-      const choque = await buscarChoqueDeNombreEnLaCarta(tx, { sucursalId: actor.sucursalId, productoIdPropio: comando.productoId, nombre: producto.nombre });
-      if (choque) return fracaso("NOMBRE_EN_USO", mensajeDeChoqueDeNombre(producto.nombre, choque));
+      // (Una base no ocupa un nombre en esta etapa: el cliente lee los rótulos de sus opciones.)
+      if (producto.modoDeVenta !== "BASE_CONFIGURABLE") {
+        await tomarLosNombresDeLaCarta(tx, actor.sucursalId);
+        const choque = await buscarChoqueDeNombreEnLaCarta(tx, { sucursalId: actor.sucursalId, productoIdPropio: comando.productoId, nombre: producto.nombre });
+        if (choque) return fracaso("NOMBRE_EN_USO", mensajeDeChoqueDeNombre(producto.nombre, choque, actor.sucursalNombre));
+      }
 
       const [contenidos, agrupados] = await Promise.all([
         tx.contenidoCartaProducto.findMany({ where: { ...whereCartaDeSucursal(actor.sucursalId), seccionCartaId: seccion.id }, select: { orden: true } }),

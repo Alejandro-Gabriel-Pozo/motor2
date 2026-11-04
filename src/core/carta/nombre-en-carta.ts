@@ -39,15 +39,13 @@ export function buscarChoqueEntreNombres(nombre: string, usados: readonly Nombre
   return choca ? { tipo: choca.tipo, con: choca.nombre, ...(choca.producto === undefined ? {} : { producto: choca.producto }) } : null;
 }
 
-/** El mensaje al usuario: nombra el nombre repetido y quién lo usa. */
-export function mensajeDeChoqueDeNombre(nombre: string, choque: ChoqueDeNombre): string {
+/** El mensaje al usuario (redacción confirmada por el dueño, 2026-11-04): nombra el nombre repetido, quién ya lo usa y la carta. */
+export function mensajeDeChoqueDeNombre(nombre: string, choque: ChoqueDeNombre, sucursalNombre: string): string {
   const quien =
-    choque.tipo === "nombre-en-carta"
-      ? `el plato «${choque.producto ?? choque.con}» de esta carta, que se llama así en la carta`
-      : choque.tipo === "nombre-del-producto"
-        ? `el plato «${choque.con}» de esta carta, que sale con el nombre de su producto`
-        : choque.tipo === "agrupado"
-          ? `el ítem agrupado «${choque.con}» de esta carta`
-          : `la promo «${choque.con}» de esta sucursal`;
-  return `«${nombre}» ya lo usa ${quien}. En una carta no puede haber dos cosas con el mismo nombre: elegí otro.`;
+    choque.tipo === "nombre-en-carta" || choque.tipo === "nombre-del-producto"
+      ? `el producto "${choque.producto ?? choque.con}"`
+      : choque.tipo === "agrupado"
+        ? `el ítem agrupado "${choque.con}"`
+        : `la promo "${choque.con}"`;
+  return `"${nombre}" ya lo usa ${quien} en la carta de ${sucursalNombre}. Ponele un nombre de carta distinto a uno de los dos.`;
 }
