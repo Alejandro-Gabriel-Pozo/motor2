@@ -6,6 +6,9 @@
 -- ADITIVA: el código anterior no lee ni escribe la columna (sus `data` son explícitos y los INSERT, también los de «copiar carta», toman NULL). Sin políticas nuevas ni GRANT nuevo: las políticas de `ContenidoCartaProducto`
 -- (por empresa y por sucursal) son por fila, y `motor2_app` tiene los privilegios de TABLA (sin privilegios por columna sobre esta tabla), que cubren la columna nueva.
 -- ADD COLUMN sin default solo toca el catálogo; validar el CHECK recorre las filas de `ContenidoCartaProducto` (todas en NULL).
+-- ÚNICO PARCIAL `ContenidoCartaProducto_sucursal_nombre_en_carta_key` (regla del dueño, 2026-11-04: en la carta de una sucursal no hay dos cosas con el mismo nombre): sin distinguir mayúsculas, dos platos de la
+-- misma sucursal no pueden tener el mismo «Nombre en la carta» (la base lo cuida aunque el código falle). El caso de uso valida además, sin mayúsculas ni tildes, contra el nombre del producto de los demás platos visibles,
+-- los ítems agrupados y las promos (eso no lo puede expresar un índice). Sobre filas todas en NULL: el índice nace vacío.
 -- Reversa: down.sql (a mano, como dueño; ABORTA si algún contenido tiene un nombre cargado; después marcar la migración como revertida).
 
 ALTER TABLE "ContenidoCartaProducto" ADD COLUMN "nombreEnCarta" TEXT;
@@ -14,3 +17,5 @@ ALTER TABLE "ContenidoCartaProducto" ADD COLUMN "nombreEnCarta" TEXT;
 -- (en el punto de una expresión regular de Postgres cabe el salto, por eso se pide aparte).
 ALTER TABLE "ContenidoCartaProducto" ADD CONSTRAINT "ContenidoCartaProducto_nombre_en_carta_chk"
   CHECK ("nombreEnCarta" IS NULL OR ("nombreEnCarta" ~ '^\S(.*\S)?$' AND "nombreEnCarta" !~ '[\r\n]' AND char_length("nombreEnCarta") <= 80));
+
+CREATE UNIQUE INDEX "ContenidoCartaProducto_sucursal_nombre_en_carta_key" ON "ContenidoCartaProducto" ("sucursalId", lower("nombreEnCarta")) WHERE "nombreEnCarta" IS NOT NULL;

@@ -62,7 +62,7 @@ export interface ComandoGuardarContenidoCartaProducto {
  *  - `SECCION_NO_ENCONTRADA`: la sección elegida no existe (gana sobre el género);
  *  - `GENERO_INVALIDO`: el género no existe en esta sucursal o está apagado.
  */
-export type ResultadoGuardarContenidoCartaProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "DATO_INVALIDO" | "FALTA_SECCION" | "SECCION_NO_ENCONTRADA" | "GENERO_INVALIDO">;
+export type ResultadoGuardarContenidoCartaProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "DATO_INVALIDO" | "FALTA_SECCION" | "SECCION_NO_ENCONTRADA" | "GENERO_INVALIDO" | "NOMBRE_EN_USO">;
 
 /** Comando «mostrar u ocultar un producto en la carta» (el atajo): solo un id y un booleano, que nunca se validaron en la acción (sin guard). */
 export interface ComandoActualizarVisibleEnCarta {
@@ -74,4 +74,4 @@ export interface ComandoActualizarVisibleEnCarta {
  *  - `PRODUCTO_NO_ENCONTRADO` / `NO_ES_PV`: como arriba;
  *  - `FALTA_SECCION`: mostrar un producto cuyo contenido (EN ESTA sucursal) todavía no tiene sección.
  */
-export type ResultadoActualizarVisibleEnCarta = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "FALTA_SECCION">;
+export type ResultadoActualizarVisibleEnCarta = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "FALTA_SECCION" | "NOMBRE_EN_USO">;

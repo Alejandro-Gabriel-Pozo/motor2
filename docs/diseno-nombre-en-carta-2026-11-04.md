@@ -45,7 +45,7 @@ Versión corta de la escalera de 10 niveles (regla del dueño del 2026-10-26). E
 | I6 | **No cambia el precio, ni el stock, ni la receta, ni la venta.** Es solo presentación | PROPUESTA |
 | I7 | Ticket, comanda, cocina y reportes siguen con el nombre **interno** | PROPUESTA (pregunta abierta A) |
 | I8 | El **buscador** del POS (`SelectorProducto`, el campo «Buscar por nombre o código») es genérico y busca por nombre interno y código; **no se toca** | PROPUESTA (pregunta abierta B) |
-| I9 | Dos productos con el mismo nombre en la carta, en una misma sección: **sin restricción nueva** | PROPUESTA (pregunta abierta C) |
+| I9 | **En la carta de una sucursal no puede haber dos cosas con el mismo nombre visible** (regla del dueño, 2026-11-04). «Mismo» = sin distinguir mayúsculas, tildes ni espacios de los bordes. Nombre visible = el nombre en la carta de un plato, o el nombre de su producto si no lo tiene (solo los platos **visibles**), el de un ítem agrupado o el título de una promo que se ofrece en la sucursal. Lo cuida la base (único parcial `(sucursalId, lower(nombreEnCarta))`, solo entre nombres en la carta) y el caso de uso (el resto, dentro de la misma transacción y con el candado de los nombres de la sucursal) | CONFIRMADA (principio, dueño); la forma de cuidarlo, PROPUESTA |
 | I10 | El orden de los platos dentro de una sección (`orden`, y a igual `orden` el nombre) desempata por el nombre que se **ve** (el de la carta) | PROPUESTA |
 | I11 | Las listas de administración (diagnóstico de la carta, «Carta hoy», fuera de carta) siguen con el nombre **interno**: quien administra identifica el producto real | PROPUESTA |
 
@@ -71,6 +71,10 @@ Versión corta de la escalera de 10 niveles (regla del dueño del 2026-10-26). E
 | El usuario pierde el permiso mientras edita | Rechazo en el servidor antes de escribir (`conPermiso("carta_contenido_producto")`) |
 | El producto deja de ser PV, no existe o es de otra empresa | `PRODUCTO_NO_ENCONTRADO` / `NO_ES_PV`, sin escribir (el orden de chequeos de siempre) |
 | La carta pública está en caché | Se invalida con la misma etiqueta de siempre al guardar; se sube `VERSION_DE_LA_CARTA_EN_CACHE` (cambia lo que arma el servidor: el `nombre` de cada ítem) |
+| Dos usuarios guardan el mismo nombre en dos platos a la vez | El candado de los nombres de la sucursal los ordena: gana uno; el otro recibe «ya lo usa el plato X… elegí otro» y no escribe ni audita. El único parcial de la base es la segunda barrera |
+| Se repite el mismo guardado (doble clic, reintento) | No choca consigo mismo (se excluye el propio plato); no deja otra fila de auditoría |
+| Se muestra un plato (atajo «Mostrar», «Agregar a la carta» o «Guardar» con visible) cuyo nombre ya usa otro | Se rechaza con el mismo mensaje; no escribe. Un plato **oculto** no ocupa su nombre de producto |
+| Se pide un nombre que choca con un ítem agrupado o una promo de la sucursal | Se rechaza. Una promo de otra sucursal, o el nombre en la carta de otra sucursal, no chocan (cada carta es propia) |
 | Se copia la carta a otra sucursal | El nombre viaja en el `INSERT` de la copia; la sucursal destino queda con el mismo nombre |
 | Se desactiva o se saca el producto de la carta | La fila de contenido queda con su nombre guardado pero no se muestra (como todo el contenido) |
 
@@ -90,6 +94,8 @@ Versión corta de la escalera de 10 niveles (regla del dueño del 2026-10-26). E
 ## 10. Pruebas, migración y operación
 
 **Dimensiones que cambian lo que ve el cliente (regla «Combinaciones», 2026-10-28):** A) nombre en la carta (ausente / presente); B) canal (carta pública, impresa, vista previa del producto, «Va a mostrar», selector del mozo); C) tipo de plato (producto directo / base con opciones / ítem agrupado).
+**Dimensión «colisión» (regla del dueño, 2026-11-04):** sin choque / choca con el nombre en la carta de otro plato / con el nombre del producto de otro plato visible / con el de uno oculto (no choca) / con un agrupado / con una promo / con una promo de otra sucursal (no choca) / con el nombre en la carta de otra sucursal (no choca), × variante (igual, otras mayúsculas, otras tildes). Oráculo en `test/carta/nombre-en-carta.oraculo.ts`, recorrido completo (24 combinaciones) en `test/carta/contenido-nombre-en-carta-choque.test.ts`.
+
 **Oráculo (tabla aparte del código, a escribir a mano):** el nombre que se ve es el de la carta **si y solo si** A = presente, el canal es de carta o selector y el plato es un producto (directo o base); un ítem agrupado nunca lo usa (tiene su propio nombre); sin nombre en la carta se ve siempre el interno; ticket, comanda y reportes (fuera de las dimensiones) no cambian.
 
 | Qué se rompe o se amplía al sumar la columna | Dónde |
@@ -112,7 +118,7 @@ Versión corta de la escalera de 10 niveles (regla del dueño del 2026-10-26). E
 
 - **A. Comanda, ticket, cocina y reportes:** hoy la propuesta los deja con el nombre **interno**. Consecuencia: el mozo elige «Bife de chorizo a la parrilla» y en la lista «Por agregar», en la cuenta, en la comanda y en el ticket ve «BIFE_CHORIZO_300». Si lo que le hace ruido es el nombre interno en TODO el recorrido, habría que mostrar el de la carta también en la cuenta (cambia el ticket y la foto de la venta: otra etapa con diseño propio). ¿Alcanza con la carta y el selector?
 - **B. Buscador del POS:** el campo «Buscar por nombre o código» (`SelectorProducto`) es genérico (lo usan otras pantallas) y hoy busca por **nombre interno y código** y muestra el interno en el resultado. Si el mozo escribe «parrilla» (el nombre de la carta), no lo encuentra. Hacer que encuentre por los dos (y que muestre el de la carta) toca la búsqueda compartida. ¿Se hace como etapa aparte?
-- **C. Nombres repetidos en una sección:** dos productos con el mismo nombre en la carta, en la misma sección, hoy se permiten (sin restricción nueva). ¿Está bien, o se quiere un aviso al guardar?
+- **C. (resuelta por el dueño, 2026-11-04)** Nombres repetidos: **no se permiten** (ver I9). Quedan como PENDIENTES de otra etapa, declaradas acá para que no se pierdan: (1) el sentido inverso: **crear o renombrar un ítem agrupado, crear o renombrar una promo, o renombrar un producto** con un nombre que ya usa un plato de la carta no se valida todavía (hoy el choque se detecta recién al guardar o mostrar el plato); (2) **prender** un agrupado o una promo apagados que chocan; (3) una promo propia de la sucursal destino que choca con un nombre copiado: **«copiar carta» no copia ese nombre** (el plato sale con el de su producto), lo informa y sigue con el resto — decisión PROPUESTA.
 
 ## 12. NO VERIFICADO
 

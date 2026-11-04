@@ -70,3 +70,11 @@ export async function borrarContenidoDeProducto(db: Prisma.TransactionClient, ar
 export async function tomarElProductoParaGuardarContenido(db: Prisma.TransactionClient, productoId: string): Promise<void> {
   await db.$queryRaw`SELECT id FROM "Producto" WHERE id = ${productoId} FOR UPDATE`;
 }
+
+/**
+ * Candado de los NOMBRES de la carta de UNA sucursal (`pg_advisory_xact_lock`, hasta el final de la transacción): los casos de uso que muestran un plato o le ponen «Nombre en la carta» lo toman ANTES de
+ * buscar si el nombre ya está usado, así dos a la vez se ordenan (el segundo ve lo que dejó el primero) y no pasan los dos. No lee ni escribe datos.
+ */
+export async function tomarLosNombresDeLaCarta(db: Prisma.TransactionClient, sucursalId: string): Promise<void> {
+  await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`nombres-de-la-carta:${sucursalId}`}, 0))`;
+}

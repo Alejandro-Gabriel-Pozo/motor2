@@ -1,6 +1,6 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
-import { whereCartaDeSucursal } from "@/core/carta/public";
+import { claveDeNombreDeCarta, whereCartaDeSucursal, wherePromoOfrecidaEn } from "@/core/carta/public";
 import type { ComandoCopiarCartaDeSucursal, ResultadoCopiarCartaDeSucursal } from "@/core/features/carta/copiar-carta.schema";
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -72,6 +72,11 @@ export async function copiarCartaDeSucursalCasoDeUso(
       const nuevo = await copiarGeneroDeCarta(tx, { sucursalId: actor.sucursalId, nombre: g.nombre, orden: g.orden, activo: g.activo });
       generoNuevo.set(g.id, nuevo.id);
     }
+    // Regla del dueño (2026-11-04): en una carta no hay dos cosas con el mismo nombre. Los «Nombre en la carta» del origen no chocan entre sí (el origen ya cumple la regla), pero la sucursal destino puede tener
+    // una promo propia (las promos no se copian) con ese nombre: ese nombre NO se copia (el plato sale con el de su producto) y se informa; la copia entera sigue.
+    const promosDelDestino = await tx.promoCarta.findMany({ where: wherePromoOfrecidaEn(actor.sucursalId, "salon"), select: { titulo: true } });
+    const titulosDePromo = new Set(promosDelDestino.map((p) => claveDeNombreDeCarta(p.titulo)));
+    const sinCopiarElNombre = contenidos.filter((c) => c.nombreEnCarta !== null && titulosDePromo.has(claveDeNombreDeCarta(c.nombreEnCarta)));
     const remapearGenero = (id: string | null) => (id ? (generoNuevo.get(id) ?? null) : null);
 
     for (const it of items) {
@@ -106,7 +111,7 @@ export async function copiarCartaDeSucursalCasoDeUso(
           // Fase 5 (DEC-11): «Mostrar el nombre arriba» es del contenido de la sucursal: se copia como el resto.
           mostrarNombreArriba: c.mostrarNombreArriba,
           // «Nombre en la carta» (2026-11-04): también es del contenido de la sucursal; «copiar carta» lo copia como el resto.
-          nombreEnCarta: c.nombreEnCarta,
+          nombreEnCarta: sinCopiarElNombre.includes(c) ? null : c.nombreEnCarta,
         })),
       });
     }
@@ -121,7 +126,8 @@ export async function copiarCartaDeSucursalCasoDeUso(
       actorId: actor.usuarioId,
       sucursalId: actor.sucursalId,
     });
-    return exito(`Se copió la carta de «${origen.nombre}» a «${actor.sucursalNombre}»: ${contenidos.length} productos, ${items.length} ítems agrupados y ${generos.length} géneros.`, {
+    const aviso = sinCopiarElNombre.length > 0 ? ` No se copió el nombre en la carta de ${sinCopiarElNombre.length} plato(s) porque una promo de esta sucursal ya se llama igual: ${sinCopiarElNombre.map((c) => `«${c.nombreEnCarta}»`).join(", ")}.` : "";
+    return exito(`Se copió la carta de «${origen.nombre}» a «${actor.sucursalNombre}»: ${contenidos.length} productos, ${items.length} ítems agrupados y ${generos.length} géneros.${aviso}`, {
       productos: contenidos.length,
       itemsAgrupados: items.length,
       generos: generos.length,

@@ -74,11 +74,34 @@ describe("«Nombre en la carta» del contenido de carta (migración 202611041300
     await poner(null);
   });
 
-  it("(c) sin políticas, índices ni privilegios nuevos (la tabla tiene privilegios de TABLA); la única restricción nueva es el CHECK", async () => {
+  it("(b2) el único parcial: dos platos de la MISMA sucursal no pueden tener el mismo nombre en la carta (sin distinguir mayúsculas); en otra sucursal sí, y los NULL no chocan", async () => {
+    await base.cliente.query("BEGIN");
+    try {
+      await base.cliente.query(`INSERT INTO "Sucursal" ("id","empresaId","nombre") VALUES ('norte',$1,'norte')`, [E]);
+      await base.cliente.query(`INSERT INTO "Producto" ("id","empresaId","codigo","nombre","tipo","unidadStockId","precioVenta") VALUES ('flan',$1,'FL','Flan','PV','u',5000)`, [E]);
+      const alta = (id: string, sucursal: string, producto: string, nombre: string | null) =>
+        base.cliente.query(
+          `INSERT INTO "ContenidoCartaProducto" ("id","empresaId","sucursalId","productoId","visibleEnCarta","tags","especial","orden","actualizadoEn","nombreEnCarta") VALUES ($1,$2,$3,$4,true,'{}',false,0,now(),$5)`,
+          [id, E, sucursal, producto, nombre]
+        );
+      await poner("La Napo");
+      await alta("c-flan-nulo", "central", "flan", null);
+      await base.cliente.query(`SAVEPOINT s1`);
+      await expect(base.cliente.query(`UPDATE "ContenidoCartaProducto" SET "nombreEnCarta" = 'la napo' WHERE "id" = 'c-flan-nulo'`), "mismo nombre, otras mayúsculas").rejects.toMatchObject({ code: "23505" });
+      await base.cliente.query(`ROLLBACK TO SAVEPOINT s1`);
+      await alta("c-flan-norte", "norte", "flan", "La Napo");
+    } finally {
+      await base.cliente.query("ROLLBACK");
+    }
+    await poner(null);
+  });
+
+  it("(c) sin políticas ni privilegios nuevos (la tabla tiene privilegios de TABLA); lo nuevo es el CHECK y el único parcial por sucursal", async () => {
     const despues = (await fotoDelContenido()) as Record<string, { nombre?: string }[]>;
     const antes = fotoAntes as Record<string, { nombre?: string }[]>;
-    for (const k of ["indices", "politicas", "privilegios"]) expect(despues[k], k).toEqual(antes[k]);
+    for (const k of ["politicas", "privilegios"]) expect(despues[k], k).toEqual(antes[k]);
     expect(despues.restricciones!.filter((r) => !antes.restricciones!.some((a) => a.nombre === r.nombre)).map((r) => r.nombre)).toEqual(["ContenidoCartaProducto_nombre_en_carta_chk"]);
+    expect(despues.indices!.filter((r) => !antes.indices!.some((a) => a.nombre === r.nombre)).map((r) => r.nombre)).toEqual(["ContenidoCartaProducto_sucursal_nombre_en_carta_key"]);
   });
 
   it("(d) el down.sql ABORTA si hay algún nombre cargado, sin tocar nada", async () => {

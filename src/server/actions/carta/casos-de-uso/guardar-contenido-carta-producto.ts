@@ -1,10 +1,11 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
-import { whereCartaDeSucursal } from "@/core/carta/public";
+import { mensajeDeChoqueDeNombre, whereCartaDeSucursal, type ChoqueDeNombre } from "@/core/carta/public";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { MENSAJE_FALTA_SECCION_DE_CARTA, type ComandoGuardarContenidoCartaProducto, type ResultadoGuardarContenidoCartaProducto } from "@/core/features/carta/contenido-producto.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { guardarContenidoDeProducto, tomarElProductoParaGuardarContenido } from "@/server/persistencia/carta/contenido-producto";
+import { guardarContenidoDeProducto, tomarElProductoParaGuardarContenido, tomarLosNombresDeLaCarta } from "@/server/persistencia/carta/contenido-producto";
+import { buscarChoqueDeNombreEnLaCarta } from "@/server/lecturas/carta/choque-de-nombre";
 import { validarGeneroCartaOpcional } from "../generos-compartido";
 
 /**
@@ -74,13 +75,23 @@ export async function guardarContenidoCartaProductoCasoDeUso(
     ...(nombreEnCarta !== undefined ? { nombreEnCarta } : {}),
   };
   const entidadId = `${actor.sucursalId}:${productoId}`;
+  // Regla del dueño (2026-11-04): en la carta de una sucursal no hay dos cosas con el mismo nombre. Se chequea al mostrar el plato o al ponerle un nombre en la carta (con el candado de los nombres de la sucursal).
+  const conChequeoDeNombre = visibleEnCarta || (nombreEnCarta !== undefined && nombreEnCarta !== null);
+  let choque: ChoqueDeNombre | null = null;
+  let nombreEfectivo = producto.nombre;
   await actor.transaccion(async (tx) => {
+    if (conChequeoDeNombre) await tomarLosNombresDeLaCarta(tx, actor.sucursalId);
     // Con un dato que se audita (el interruptor o el nombre en la carta) se toma primero la fila del producto (`FOR UPDATE`): dos guardados a la vez se SERIALIZAN, el segundo lee el valor que dejó el primero y la
     // cadena de auditoría encadena (el «antes» de uno es el «después» del otro); también evita que dos altas simultáneas del contenido de un producto sin fila choquen en el único.
     const conAuditoria = mostrarNombreArriba !== undefined || nombreEnCarta !== undefined;
     if (conAuditoria) await tomarElProductoParaGuardarContenido(tx, productoId);
     // El valor que había, leído en la transacción (por la relación del producto, en la carta de ESTA sucursal): sin fila, el default de la columna (`false`) o sin nombre en la carta (`null`).
-    const actual = conAuditoria ? await tx.producto.findUnique({ where: { id: productoId }, select: { contenidosCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { mostrarNombreArriba: true, nombreEnCarta: true } } } }) : null;
+    const actual = conAuditoria || conChequeoDeNombre ? await tx.producto.findUnique({ where: { id: productoId }, select: { contenidosCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { mostrarNombreArriba: true, nombreEnCarta: true } } } }) : null;
+    if (conChequeoDeNombre) {
+      nombreEfectivo = (nombreEnCarta !== undefined ? nombreEnCarta : actual?.contenidosCarta[0]?.nombreEnCarta) ?? producto.nombre;
+      choque = await buscarChoqueDeNombreEnLaCarta(tx, { sucursalId: actor.sucursalId, productoIdPropio: productoId, nombre: nombreEfectivo });
+      if (choque) return;
+    }
     await guardarContenidoDeProducto(tx, { sucursalId: actor.sucursalId, productoId, datos: data });
     if (mostrarNombreArriba !== undefined) {
       await registrarCambioAuditado(tx, {
@@ -107,5 +118,6 @@ export async function guardarContenidoCartaProductoCasoDeUso(
       });
     }
   });
+  if (choque) return fracaso("NOMBRE_EN_USO", mensajeDeChoqueDeNombre(nombreEfectivo, choque));
   return exito(`Carta: "${producto.nombre}" ${data.visibleEnCarta ? "se muestra" : "queda oculto"}.`, null);
 }
