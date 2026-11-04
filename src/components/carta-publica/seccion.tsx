@@ -59,7 +59,8 @@ export function Seccion({
         </div>
       </div>
 
-      <ul data-carta-scroll className="carta-divisor min-h-0 flex-1 divide-y overflow-y-auto px-6 sm:px-10">
+      {/* `tabIndex={0}`: la lista tiene scroll propio y con la carta «B» (platos + bloques al pie) casi siempre desborda; sin foco, quien navega con teclado no podría llegar a los bloques (axe: scrollable-region-focusable). */}
+      <ul data-carta-scroll tabIndex={0} aria-label={seccion.titulo ?? seccion.nombre} className="carta-divisor min-h-0 flex-1 divide-y overflow-y-auto px-6 sm:px-10">
         {/* S-25: las `key` son la posición, no el id de la fila: React serializa la `key` de cada elemento en el payload RSC que baja al navegador. */}
         {seccion.items.map((item, i) => (
           <ItemFila key={`item-${i}`} item={item} estilo={estilo} incluye={incluye.platos[i] ?? []} />

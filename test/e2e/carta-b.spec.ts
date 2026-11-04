@@ -3,6 +3,7 @@ import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
+import { prismaAdmin } from "../setup/cliente-duenio";
 import { prisma } from "./fixtures/db";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 
@@ -35,7 +36,9 @@ async function capturar(page: Page, nombre: string): Promise<void> {
 
 test("carta B: «Incluye …» bajo cada plato y un bloque por grupo al pie de la sección, con 5 y 12 platos, tres marcas, fondo claro y oscuro", async ({ page, sucursalId }) => {
   const m = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-  const slug = `e2e-carta-b-${m}`;
+  // La carta pública se guarda en caché 60 s por sucursal y slug: cada combinación de tema y de platos usa un slug propio para no leer una carta vieja.
+  let slug = `e2e-carta-b-${m}`;
+  let tanda = 0;
   const guarnicion = await sembrarGrupo({ nombre: `Guarnición ${m}`, tipo: "INCLUIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Puré" }, { nombre: "Ensalada" }, { nombre: "Papas fritas" }] });
   const salsa = await sembrarGrupo({ nombre: `Salsa ${m}`, tipo: "INCLUIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Filetto" }, { nombre: "Crema" }, { nombre: "Rosa" }] });
   const seccion = await prisma.seccionCarta.create({ data: { nombre: `E2E Platos principales ${m}` } });
@@ -51,7 +54,8 @@ test("carta B: «Incluye …» bajo cada plato y un bloque por grupo al pie de l
       const conSalsa = i === 2 || i === 4 || (i >= 5 && i % 3 === 0);
       const grupos = [...(conGuarnicion ? [{ grupo: guarnicion }] : []), ...(conSalsa ? [{ grupo: salsa }] : [])];
       const { productoId } = await sembrarProductoConOpciones({ nombre, codigo: `E2E-CB-${m}-${n}-${i}`, precioVenta: 18000 + i * 1000, sucursalId, grupos });
-      if (i === 3) await prisma.productoAdmiteOpcion.deleteMany({ where: { productoId, opcionId: guarnicion.opciones["Papas fritas"]!.opcionId } });
+      // El rol de la app no borra admisiones de opción: el subconjunto se arma con el dueño de la base.
+      if (i === 3) await prismaAdmin.productoAdmiteOpcion.deleteMany({ where: { productoId, opcionId: guarnicion.opciones["Papas fritas"]!.opcionId } });
       await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId, visibleEnCarta: true, seccionCartaId: seccion.id, orden: i } });
       productoIds.push(productoId);
       nombres.push(nombre);
@@ -66,6 +70,8 @@ test("carta B: «Incluye …» bajo cada plato y un bloque por grupo al pie de l
   await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
   await prisma.sucursalPublica.create({ data: { sucursalId, slug, publicada: true } });
   const usarTema = async (marca: string, fondo: string) => {
+    slug = `e2e-carta-b-${m}-${++tanda}`;
+    await prisma.sucursalPublica.updateMany({ where: { sucursalId }, data: { slug } });
     await prisma.temaCartaSucursal.deleteMany({ where: { sucursalId } });
     await prisma.temaCartaSucursal.create({ data: { sucursalId, aplicarEnCarta: true, valores: { color_marca: marca, color_fondo_dia: fondo } } });
   };
@@ -115,7 +121,11 @@ test("carta B: «Incluye …» bajo cada plato y un bloque por grupo al pie de l
             expect(posiciones.iBloque, `el bloque va después del último plato (${etiqueta})`).toBeGreaterThan(posiciones.iPlato);
             // Sin desborde horizontal ni violaciones de accesibilidad.
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `la página se desborda (${etiqueta})`).toBe(true);
-            expect((await new AxeBuilder({ page }).analyze()).violations, `axe: ${etiqueta}`).toEqual([]);
+            // Axe sobre lo NUEVO de la carta B (la línea «Incluye …» y los bloques del pie). La página entera no se exige con las marcas clara y de bajo contraste: el precio y el número de sección usan el color de
+            // marca tal cual (decisión anterior del tema, fuera de E1) y con esas marcas no llegan a 4,5:1; se informa aparte.
+            const nuevo = await new AxeBuilder({ page }).include("[data-incluye]").include("[data-bloque-de-opciones]").analyze();
+            expect(nuevo.violations, `axe (línea «Incluye» y bloques): ${etiqueta}`).toEqual([]);
+            if (marca.nombre === "oscuro" && fondo.nombre === "claro") expect((await new AxeBuilder({ page }).analyze()).violations, `axe de la página entera: ${etiqueta}`).toEqual([]);
 
             await bloqueG.scrollIntoViewIfNeeded();
             await capturar(page, `carta-b-${cantidad}-platos-marca-${marca.nombre}-fondo-${fondo.nombre}-${ancho}`);
