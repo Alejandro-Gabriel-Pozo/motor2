@@ -37,7 +37,8 @@ describe("descripción de la opción: guard", () => {
 
   it("el alta lleva la misma regla", () => {
     const alta = (descripcionEnCarta?: unknown) => guardComandoCrearOpcionDeGrupo({ grupoId: "g1", nombre: "Ensalada", orden: 0, esNinguna: false, version: { diferencia: { tipo: "MONTO", monto: 0 }, factorEscala: null, consumos: [] }, ancla: null, ...(descripcionEnCarta === undefined ? {} : { descripcionEnCarta }) });
-    expect(alta().ok && "descripcionEnCarta" in alta().valor!).toBe(false);
+    const sinDescripcion = alta();
+    expect(sinDescripcion.ok && "descripcionEnCarta" in sinDescripcion.valor).toBe(false);
     expect(alta("lechuga, tomate")).toMatchObject({ ok: true, valor: { descripcionEnCarta: "lechuga, tomate" } });
     expect(alta("a\nb").ok).toBe(false);
   });

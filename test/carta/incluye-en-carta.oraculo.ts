@@ -14,6 +14,7 @@
  *  - incluye:  P1 admite todas las opciones del grupo, solo un subconjunto, o no lo incluye;
  *  - cantidad: el grupo tiene 1 opción definida o 3 («2 o más»);
  *  - limites:  P1 elige lo mismo que P2 (de 1 a 1) o tiene límites propios (de 1 a 2);
+ *  - descripcion: (E3) la opción «Papas fritas» (la última definida, la que puede apagarse o quedar fuera del subconjunto) no tiene descripción, o tiene «papas rústicas con cáscara»;
  *  - canal:    pública, impresa (las dos arman la SECCIÓN con los dos platos), vista previa del producto y «Va a mostrar» (las dos miran SOLO a P1).
  *
  * LAS REGLAS (cada combinación cae en una sola fila; el test lo comprueba):
@@ -32,9 +33,10 @@ export const INCLUYE = ["todas", "subconjunto", "no"] as const;
 export const CANTIDAD = [1, 3] as const;
 export const LIMITES = ["iguales", "distintos"] as const;
 export const CANAL = ["publica", "impresa", "vista-previa", "va-a-mostrar"] as const;
+export const DESCRIPCION = ["ninguna", "texto"] as const;
 
-/** Cuántas combinaciones tiene el producto de las dimensiones: 2 × 2 × 3 × 2 × 2 × 4. Si una dimensión gana un valor, este número y el test dejan de coincidir. */
-export const TAMANO_DEL_PRODUCTO = 2 * 2 * 3 * 2 * 2 * 4;
+/** Cuántas combinaciones tiene el producto de las dimensiones: 2 × 2 × 3 × 2 × 2 × 4 × 2. Si una dimensión gana un valor, este número y el test dejan de coincidir. */
+export const TAMANO_DEL_PRODUCTO = 2 * 2 * 3 * 2 * 2 * 4 * 2;
 
 export interface Combinacion {
   visible: (typeof VISIBLE)[number];
@@ -43,6 +45,7 @@ export interface Combinacion {
   cantidad: (typeof CANTIDAD)[number];
   limites: (typeof LIMITES)[number];
   canal: (typeof CANAL)[number];
+  descripcion: (typeof DESCRIPCION)[number];
 }
 
 /** Lo que se ve de la escena. `null` = no hay línea (o no hay bloque). En un canal que mira solo a P1, `milanesa` no se mira. */
@@ -168,18 +171,48 @@ export const REGLAS: readonly Regla[] = [
 ];
 
 /** ¿La regla aplica a esta combinación? */
-function aplica(regla: Regla, c: Combinacion): boolean {
+function aplica(regla: { si: Condicion }, c: Combinacion): boolean {
   return (Object.keys(regla.si) as (keyof Combinacion)[]).every((k) => (regla.si[k] as readonly unknown[]).includes(c[k]));
 }
 
 /** Todas las combinaciones del producto de las dimensiones. */
 export function todasLasCombinaciones(): Combinacion[] {
   const salida: Combinacion[] = [];
-  for (const visible of VISIBLE) for (const opcion of OPCION) for (const incluye of INCLUYE) for (const cantidad of CANTIDAD) for (const limites of LIMITES) for (const canal of CANAL) salida.push({ visible, opcion, incluye, cantidad, limites, canal });
+  for (const visible of VISIBLE) for (const opcion of OPCION) for (const incluye of INCLUYE) for (const cantidad of CANTIDAD) for (const limites of LIMITES) for (const canal of CANAL) for (const descripcion of DESCRIPCION) salida.push({ visible, opcion, incluye, cantidad, limites, canal, descripcion });
   return salida;
 }
 
 /** La regla de una combinación: exactamente una, o el test avisa cuál falta o cuáles se pisan. */
 export function reglasQueAplican(c: Combinacion): Regla[] {
   return REGLAS.filter((r) => aplica(r, c));
+}
+
+// ---- E3: la descripción de la opción («Ver detalle») ----------------------------------------------------------------------------------------------------------------------------------------
+//
+// REGLA DE LA DESCRIPCIÓN (I8 y la elección del dueño): el desplegable «Ver detalle ▾» existe SI Y SOLO SI el bloque existe y alguna opción QUE EL BLOQUE LISTA tiene descripción. La descripción es de «Papas fritas»:
+// si esa opción está apagada en la sucursal no llega al bloque (ni su descripción); si el plato mirado solo (vista previa, «Va a mostrar») admite un subconjunto sin ella, el bloque de ese plato tampoco la lista.
+// Se lee de arriba abajo y GANA LA PRIMERA fila que aplica (las condiciones se pisan a propósito: «sin bloque» ya cubre varias dimensiones a la vez); la última fila es la única que muestra el detalle.
+
+export const DETALLE_VISIBLE = "papas fritas · papas rústicas con cáscara";
+
+interface ReglaDeDetalle {
+  nombre: string;
+  si: Condicion;
+  /** `null` = no hay desplegable (ni lista de papel). */
+  detalle: string | null;
+}
+
+export const REGLAS_DEL_DETALLE: readonly ReglaDeDetalle[] = [
+  { nombre: "E1 sin descripción cargada", si: { descripcion: ["ninguna"] }, detalle: null },
+  { nombre: "E2 grupo oculto: ni bloque ni detalle", si: { visible: ["oculto"] }, detalle: null },
+  { nombre: "E3 una sola opción: no hay bloque", si: { cantidad: [1] }, detalle: null },
+  { nombre: "E4 mirado solo y el plato no incluye el grupo: no hay bloque", si: { canal: SOLO, incluye: ["no"] }, detalle: null },
+  { nombre: "E5 la opción con descripción está apagada en la sucursal: no llega al bloque", si: { opcion: ["ultima-apagada"] }, detalle: null },
+  { nombre: "E6 mirado solo, el subconjunto del plato no lleva «papas fritas»: su bloque no la lista", si: { canal: SOLO, incluye: ["subconjunto"] }, detalle: null },
+  { nombre: "E7 el bloque lista «papas fritas» y tiene descripción: aparece «Ver detalle»", si: {}, detalle: DETALLE_VISIBLE },
+];
+
+/** La primera regla del detalle que aplica a la combinación (la tabla termina en una regla sin condiciones, así que siempre hay una). */
+export function reglaDelDetalle(c: Combinacion): ReglaDeDetalle {
+  return REGLAS_DEL_DETALLE.find((r) => aplica(r, c))!;
 }
