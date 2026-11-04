@@ -94,7 +94,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | CU7 | **Pendientes:** tickets sin cobrar, cobrados sin factura («pendiente de declarar factura»), saldo de cuenta corriente | N4 | CONFIRMADA (punto 5) |
 | CU8 | **Anular** un cobro o un comprobante (con registro nuevo, nunca borrando) | N1 y N3 | PROPUESTA (regla del sistema) |
 | CU9 | **Reservas informativas (folio)**: anotar a mano las reservas de un cliente, empresa o agente y ver cuáles están sin cobrar. **Informativo**: no hay módulo de reservas ni integración | N5 | CONFIRMADA que se arme como apartado informativo (respuesta del 2026-11-04); su forma PROPUESTA (ver nivel 4) |
-| CU11 | **Cerrar la caja chica del turno**: elegir sucursal, turno y hora; cargar la **cantidad de billetes por denominación**; el sistema calcula importes y total; queda firmado por quien cierra | N5 | CONFIRMADA la práctica (punto 10); su comparación con lo esperado PENDIENTE (Q4) |
+| CU11 | **Cerrar la caja chica del turno**: elegir sucursal, turno y hora; cargar la **cantidad de billetes por denominación**; el sistema calcula importes y total; queda firmado por quien cierra. **Solo se registra el conteo** (no se compara con lo esperado en esta etapa) | N5 | CONFIRMADA (punto 10 y respuestas P10 a P12) |
 | CU10 | Nota de crédito externa: **baja el monto a conciliar de la factura que corrige** | N3 | CONFIRMADA (punto 2 y respuesta P5 del 2026-11-04) |
 
 ## Nivel 4. Conceptos y ciclo de vida
@@ -119,7 +119,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 - **Composición del comprobante:** **monto = Σ conceptos declarados + Σ tickets aplicados**. La diferencia se **muestra** («falta $X» o «sobra $X»); nunca se fuerza ni se esconde, y la decide una persona.
 - **Punto de venta de la sucursal:** número y **nombre**, propio de cada sucursal.
 - **Conciliación:** la **aplicación** de un ticket a un comprobante. La diferencia entre el monto del comprobante y lo aplicado se **muestra**; una persona decide.
-- **Turno de caja chica:** una **sucursal** tiene **tres turnos** por día (por ejemplo, mañana, tarde y noche, con su franja horaria: el de la foto es «tarde, 15 a 23»). PROPUESTA: los turnos son **configurables por sucursal** (nombre, desde, hasta).
+- **Turno de caja chica:** una **sucursal** tiene **tres turnos** por día (por ejemplo, mañana, tarde y noche, con su franja horaria: el de la foto es «tarde, 15 a 23»). CONFIRMADA: los turnos son **configurables por sucursal** (nombre, desde, hasta); son tres por sucursal (respuesta P11).
 - **Cierre de caja chica (arqueo):** el conteo del **efectivo** de un turno: por cada **denominación** (lista cerrada de billetes: 10, 20, 50, 100, 200, 500, 1.000, 2.000, 10.000, 20.000) una **cantidad entera**; el importe de cada fila y el **total son calculados**, nunca tipeados. Lo firma quien cierra (usuario del sistema, con fecha y hora). Solo se agrega; una corrección es un cierre **anulado con motivo y uno nuevo**, nunca tapar.
 - **Reserva informativa y folio** (PROPUESTA de forma; el dueño pidió el apartado informativo): una **reserva** se anota a mano con su **referencia** (el código del sistema de reservas, como texto), el **cliente** (persona o empresa), el **agente** si es de una empresa, las **fechas**, el **importe estimado** y su **estado de cobro** (`pendiente` o `cobrada`, que se marca a mano o por el cobro). El **folio** es la vista de las reservas de un cliente, empresa o agente. **No** crea habitaciones, tarifas ni disponibilidad, **no** integra con el sistema de reservas y **no** genera cargos solo.
 
@@ -197,12 +197,13 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 | P7 | Cuenta corriente | **Administración la habilita, sin límite al principio** | CONFIRMADA |
 | P8 | Reservas | **Armar el apartado como informativo** (no esperar al módulo de reservas); su forma, PROPUESTA (nivel 4) | CONFIRMADA que se arme; forma PROPUESTA |
 | P9 | Otros conceptos en la factura | **Sí: «productos regionales», y que se pueda armar la lista** (catálogo de la empresa) | CONFIRMADA |
+| P10 | El cierre de caja chica, ¿se compara con algo? | **Solo registrar el conteo y el total**, como la planilla. Comparar con lo esperado queda para una etapa posterior | CONFIRMADA |
+| P11 | Turnos | **Cada sucursal arma sus 3 turnos** con nombre y franja horaria propios; un cierre por turno por día | CONFIRMADA |
+| P12 | Qué se cuenta | **Solo billetes** (10, 20, 50, 100, 200, 500, 1.000, 2.000, 10.000 y 20.000) | CONFIRMADA |
 
 **Preguntas que quedan abiertas:**
 - **Q1.** ¿Qué dato de cada medio de pago hay que cambiar? Propuesta mía: transferencia, referencia y fecha; débito y crédito, últimos 4 dígitos y número de cupón; cheque, banco, número y fecha de cobro; QR o billetera, referencia de la operación; efectivo, nada; cuenta corriente, cliente.
 - **Q2.** Reserva informativa: ¿qué datos se anotan? Propuesta: referencia (código del otro sistema), cliente, agente, fechas de entrada y salida, importe estimado y estado de cobro.
-- **Q4.** El cierre de caja chica, ¿se **compara con algo** o solo se registra? Hoy la planilla solo cuenta y suma. Opciones: (a) solo registrar el conteo y el total, como la planilla (recomendado para empezar); (b) compararlo con un **esperado** (fondo inicial del turno + cobros en efectivo − egresos), lo que exige la etapa de cobros.
-- **Q5.** Los **turnos**: ¿son siempre tres por sucursal, con nombre y horario propios de cada una? Propuesta: configurables por sucursal (nombre, desde, hasta), y un cierre por turno por día.
 - **Q3.** ¿Una reserva informativa se puede **vincular** a una factura como parte de su concepto «alojamiento», o queda aparte (solo para ver pendientes)? Recomiendo **aparte** por ahora.
 
 ## Qué sigue
