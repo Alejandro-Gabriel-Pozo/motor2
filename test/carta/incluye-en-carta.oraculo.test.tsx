@@ -88,7 +88,15 @@ const ESTILO = resolverEstiloCarta({});
 
 // ---- Lo que se lee en cada canal, normalizado a la forma del oráculo -------------------------------------------------------------------------------------------------------------------
 
-const sinEtiquetas = (html: string) => html.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").trim();
+/** Saca las etiquetas hasta que no quede ninguna (una sola pasada puede dejar `<script` armado con lo que queda; alerta de CodeQL «incomplete multi-character sanitization»). */
+function sinEtiquetas(html: string): string {
+  let texto = html;
+  for (let previo = ""; previo !== texto; ) {
+    previo = texto;
+    texto = texto.replace(/<[^>]+>/g, "");
+  }
+  return texto.replace(/&amp;/g, "&").trim();
+}
 
 /** La línea «Incluye …» del plato `nombre` en un HTML de carta (null si no tiene). */
 function lineaEnHtml(html: string, nombre: string): string | null {
