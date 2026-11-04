@@ -193,7 +193,7 @@ export function reglasQueAplican(c: Combinacion): Regla[] {
 // si esa opción está apagada en la sucursal no llega al bloque (ni su descripción); si el plato mirado solo (vista previa, «Va a mostrar») admite un subconjunto sin ella, el bloque de ese plato tampoco la lista.
 // Se lee de arriba abajo y GANA LA PRIMERA fila que aplica (las condiciones se pisan a propósito: «sin bloque» ya cubre varias dimensiones a la vez); la última fila es la única que muestra el detalle.
 
-export const DETALLE_VISIBLE = "papas fritas · papas rústicas con cáscara";
+const DETALLE_VISIBLE = "papas fritas · papas rústicas con cáscara";
 
 interface ReglaDeDetalle {
   nombre: string;
