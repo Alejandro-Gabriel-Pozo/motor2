@@ -36,6 +36,7 @@ function compra(idOperacion: string, total: number, anulada = false): CompraRegi
     anuladaPorEmail: null,
     cantidadProductos: 1,
     facturaProveedorId: null,
+    pago: null,
     renglones: [],
   };
 }

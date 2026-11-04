@@ -19,6 +19,17 @@ export {
 } from "./correccion";
 export type { CabeceraCompra } from "./correccion";
 export { rechazoPorCompraDeFactura } from "./compra-de-factura";
+export {
+  CONDICIONES_DE_PAGO,
+  ETIQUETA_DE_MEDIO_DE_PAGO,
+  MEDIOS_DE_PAGO,
+  decidirDeclaracionDePago,
+  esCondicionDePago,
+  esMedioDePago,
+  estadoDePago,
+  etiquetaDeEstadoDePago,
+} from "./pago-de-factura";
+export type { CodigoDeRechazoDePago, CondicionDePago, DecisionDeDeclaracionDePago, EntradaDeDeclaracionDePago, EstadoDePago, MedioDePago } from "./pago-de-factura";
 export { repartirFactura } from "./reparto-de-factura";
 export type { RepartoDeFactura } from "./reparto-de-factura";
 export { normalizarNumeroDeComprobante } from "./numero-de-comprobante";

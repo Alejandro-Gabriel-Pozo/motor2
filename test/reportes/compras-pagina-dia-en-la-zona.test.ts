@@ -42,6 +42,7 @@ function compra(): CompraRegistrada {
     anuladaPorEmail: null,
     cantidadProductos: 1,
     facturaProveedorId: null,
+    pago: null,
     renglones: [
       {
         idMovimiento: "m1",

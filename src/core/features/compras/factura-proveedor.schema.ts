@@ -1,5 +1,6 @@
 import type { ResultadoCaso } from "@/core/resultado-caso";
 import type { ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
+import type { CondicionDePago, MedioDePago } from "@/core/compras/pago-de-factura";
 
 /**
  * E3a (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md): los contratos de los tres comandos de la factura de proveedor de mercadería repartida entre sucursales por PROPUESTA (la
@@ -27,6 +28,8 @@ export interface DatosFacturaProveedorInput {
   detalleLibre?: string;
   items: ItemMovimientoInput[];
   reparto: { modo: ModoDeRepartoInput; partes: ParteDeRepartoInput[] };
+  /** Pagos X0: cómo se paga. Ausente = `CONTADO_PAGADA` (como siempre). `PENDIENTE_DE_PAGO`: el pago se declara después (`declararPagoDeFacturaProveedor`). */
+  condicionPago?: CondicionDePago;
   /** I3 — UUID que genera la pantalla al abrirse; obligatoria. */
   claveIdempotencia: string;
 }
@@ -93,3 +96,36 @@ export type CodigoAnularFacturaProveedor =
 export type DatosAnularFacturaProveedor = { repetida: boolean; facturaId: string };
 
 export type ResultadoAnularFacturaProveedor = ResultadoCaso<DatosAnularFacturaProveedor, CodigoAnularFacturaProveedor>;
+
+/** Pagos X0 «Declarar pago»: el día del pago (texto `AAAA-MM-DD`, día de Argentina) y el medio, sobre una factura `PENDIENTE_DE_PAGO`. */
+export interface ComandoDeclararPagoDeFactura {
+  facturaId: string;
+  fechaPago: string;
+  medio: MedioDePago;
+  claveIdempotencia: string;
+}
+
+export type CodigoDeclararPagoDeFactura =
+  | "CONFLICTO_IDEMPOTENCIA"
+  | "NO_ENCONTRADA"
+  | "FACTURA_ANULADA"
+  | "NO_ADMITE_PAGO"
+  | "YA_TIENE_PAGO"
+  | "FECHA_FUERA_DE_RANGO";
+
+export type DatosDeclararPagoDeFactura = { repetida: boolean; pagoId: string | null };
+
+export type ResultadoDeclararPagoDeFactura = ResultadoCaso<DatosDeclararPagoDeFactura, CodigoDeclararPagoDeFactura>;
+
+/** Pagos X0 «Anular pago declarado»: con motivo; el pago queda anulado (registro nuevo) y la factura vuelve a pendiente. */
+export interface ComandoAnularPagoDeFactura {
+  pagoId: string;
+  motivo: string;
+  claveIdempotencia: string;
+}
+
+export type CodigoAnularPagoDeFactura = "CONFLICTO_IDEMPOTENCIA" | "NO_ENCONTRADO" | "YA_ANULADO";
+
+export type DatosAnularPagoDeFactura = { repetida: boolean };
+
+export type ResultadoAnularPagoDeFactura = ResultadoCaso<DatosAnularPagoDeFactura, CodigoAnularPagoDeFactura>;
