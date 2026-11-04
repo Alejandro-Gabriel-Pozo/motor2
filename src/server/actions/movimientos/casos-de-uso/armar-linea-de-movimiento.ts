@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { texto } from "@/core/texto";
 import { esNumeroEstricto } from "@/core/numero";
-import { guardLineaCompra } from "@/core/features/compras/compra.guard";
+import { guardLineaCompra, guardPesoRealPorMagnitud } from "@/core/features/compras/compra.guard";
 import { TRANSICIONES, convertirCantidadAUnidadDeStock, esSignoFijo, precioPorUnidad, productoValidoParaProceso, redondearACantidadDeUnidad, type ConsumoParaFilas } from "@/core/movimientos/public";
 import { obtenerLoteMasProximoAVencer, resolverConsumoPorFamilia } from "@/server/lecturas/movimientos/saldos";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
@@ -34,7 +34,10 @@ export interface LineaCalculada {
   precioPorUnidadStock: number;
   /** Solo Compra: para enganchar upsertProveedorPorProducto (Catálogo). */
   precioUnitario: number;
+  /** Solo Compra/Devolución a proveedor: la unidad en que se compró (la de la presentación elegida o la del producto). */
   unidadCompraId: string | null;
+  /** Solo Compra/Devolución a proveedor: cuántas unidades de compra se tecleó (`unidadCompraId`), ANTES de convertir. Es el dato que `armarFilasDeMovimiento` copia a `MovimientoStock.cantidadCompra` en una COMPRA. */
+  cantidadCompra: number | null;
   referenciaProveedor: string | undefined;
   consumosReceta: ConsumoParaFilas[];
   /** true si se aplicó factor de conversión o peso real — para el aviso final "se convirtió automáticamente". */
@@ -122,6 +125,9 @@ export async function armarLineaMovimiento(
     numCant = validada.valor.cantidad;
     precioEntrada = validada.valor.precioTotal;
     pesoReal = validada.valor.pesoReal;
+    // Compras etapa 2a: la cantidad real solo cruza de tipo (caja→kg); con el mismo tipo el servidor la rechaza (nunca una segunda fuente de verdad).
+    const pesoRealAdmitido = guardPesoRealPorMagnitud(producto.nombre, pesoReal, unidadDeCompra.magnitud, producto.unidadStock.magnitud);
+    if (!pesoRealAdmitido.ok) return { ok: false, mensaje: pesoRealAdmitido.mensaje };
   } else {
     let cant: number | null = item.cantidad;
     // Solo una cantidad AUSENTE (null) o en 0 saltea la línea (mismo criterio que Apps Script). Una cantidad que no es un número finito
@@ -211,6 +217,7 @@ export async function armarLineaMovimiento(
       precioPorUnidadStock,
       precioUnitario,
       unidadCompraId,
+      cantidadCompra: transicion.aplicaFactorConversion ? numCant : null,
       referenciaProveedor: texto(item.referenciaProveedor) || undefined,
       consumosReceta,
       huboConversion,

@@ -605,6 +605,8 @@ model Unidad {
   recetaVersionesPorRacion      RecetaVersion[]        @relation("RecetaVersionRacionUnidad")
   consumosDeOpcion              ConsumoDeOpcion[]
   ingredientesDeRecetaDeCombinacion RecetaDeCombinacionIngrediente[]
+  movimientosPorUnidadCompra    MovimientoStock[]         @relation("MovimientoUnidadCompra")
+  renglonesPorUnidadCompra      FacturaProveedorRenglon[] @relation("RenglonUnidadCompra")
 
   @@unique([empresaId, nombre])
   @@unique([empresaId, id])
@@ -1412,6 +1414,13 @@ model MovimientoStock {
   /// CHECK en la base: solo en COMPRA. Se escribe solo en el INSERT (el Kardex solo agrega). Nada de `src/` la escribe todavía (Etapa C).
   facturaProveedorRenglonId String?
   facturaProveedorRenglon   FacturaProveedorRenglon? @relation(fields: [empresaId, facturaProveedorRenglonId], references: [empresaId, id], onDelete: Restrict)
+
+  /// Compras etapa 2a (docs/diseno-compras-factura-unica-y-rechazo-2026-11-03.md §14.2): SOLO en una línea de COMPRA simple, la unidad en que se compró (`unidadCompraId`) y cuántas (`cantidadCompra`, en esa unidad). Van juntas (CHECK) y
+  /// `cantidadCompra` > 0 (CHECK). `null` = «pendiente de completar» (compras anteriores, o cualquier otro proceso): nunca se inventa. En las partes de una factura repartida quedan `null` y se leen del renglón (`facturaProveedorRenglonId`).
+  /// No cambia `cantidad`, `precioTotal` ni el costo: es solo el dato de lo comprado.
+  unidadCompraId String?
+  unidadCompra   Unidad?  @relation("MovimientoUnidadCompra", fields: [empresaId, unidadCompraId], references: [empresaId, id])
+  cantidadCompra Decimal? @db.Decimal(14, 4)
 
   creadoEn DateTime @default(now())
 
@@ -2823,6 +2832,10 @@ model FacturaProveedorRenglon {
   importeIva           Decimal?         @db.Decimal(14, 2)
   importeIvaComputable Decimal          @default(0) @db.Decimal(14, 2)
   creadoEn             DateTime         @default(now())
+  /// Compras etapa 2a (§14.2): la unidad en que se compró el renglón y cuántas (`cantidadCompra`, en esa unidad). Van juntas (CHECK), `cantidadCompra` > 0 (CHECK). `null` = pendiente de completar (renglones anteriores y los `SIN_STOCK`).
+  unidadCompraId       String?
+  unidadCompra         Unidad?          @relation("RenglonUnidadCompra", fields: [empresaId, unidadCompraId], references: [empresaId, id])
+  cantidadCompra       Decimal?         @db.Decimal(14, 4)
   /// M4.2: solo en un renglón `SIN_STOCK` (CHECK de pareo): el concepto de gasto y la COPIA de su tipo de costo (COSTO_DE_VENTAS, GASTO_OPERATIVO, EXTRAORDINARIO, INVERSION o RESULTADO_FINANCIERO; CHECK).
   conceptoGastoId      String?
   conceptoGasto        ConceptoDeGasto? @relation(fields: [empresaId, conceptoGastoId], references: [empresaId, id])
