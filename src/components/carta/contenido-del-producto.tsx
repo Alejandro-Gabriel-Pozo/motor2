@@ -172,7 +172,7 @@ export function ContenidoDelProducto({
                 maxLength={80}
                 defaultValue={p.contenido?.nombreEnCarta ?? ""}
                 placeholder={p.nombre}
-                ayuda={`${nombreDeCartaPendiente ? "Pendiente de completar: hoy la carta usa el nombre del producto. " : ""}Así lo ven el cliente y el mozo en esta sucursal (y el ticket de un producto directo). Vacío = se usa el nombre del producto. No cambia la comanda ni los reportes.`}
+                ayuda={`${nombreDeCartaPendiente ? "Pendiente de completar: hoy la carta usa el nombre del producto. " : ""}Así lo ven el cliente y el mozo en esta sucursal. Vacío = se usa el nombre del producto. No cambia la comanda ni los reportes.`}
               />
             </div>
             <div className="sm:col-span-2">
