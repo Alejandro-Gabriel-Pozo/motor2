@@ -928,6 +928,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Carta B (E3; ADITIVO, SOLO la pantalla de administración del grupo): cada opción suma el formulario «Descripción en la carta (opcional)» con su botón «Guardar descripción» y su ayuda («Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS»). Revisado con `git diff -U0`: 48 líneas agregadas, ninguna quitada; la carta pública (texto y tipografía) y las demás pantallas quedan idénticas, porque el catálogo sembrado no tiene descripciones.",
       },
+      {
+        blob: "b7c7c6cf767dad72fe350e7c4f429f8c9049e180",
+        // El commit PADRE de este (aa43542b) es el último antes de la regeneración; el cambio es de la carta B (E2).
+        commit: "aa43542b",
+        motivo:
+          "Carta B (E2; CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04, invitación «5+2»): la línea «Incluye …» de un plato con elecciones termina en « · elegí abajo ↓» y su palabra es un botón. Revisado con `git diff -U0`: cambian 6 líneas (3 por ancho, 375 y 1280 px) y TODAS son el texto de «Bife a la criolla» (`incluye`, `texto visible` y el texto plano de la página); ninguna otra pantalla ni precio cambia.",
+      },
     ],
   },
 };

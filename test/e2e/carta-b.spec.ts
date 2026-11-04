@@ -34,6 +34,9 @@ async function capturar(page: Page, nombre: string): Promise<void> {
   await page.screenshot({ path: join(carpeta, `${nombre}.png`), fullPage: false });
 }
 
+// 24 combinaciones (5 y 12 platos x 3 marcas x claro y oscuro x 375 y 1280 px) con axe en cada una: lleva más que los 30 s por defecto, sobre todo con la máquina cargada.
+test.setTimeout(180_000);
+
 test("carta B: «Incluye …» bajo cada plato y un bloque por grupo al pie de la sección, con 5 y 12 platos, tres marcas, fondo claro y oscuro", async ({ page, sucursalId }) => {
   const m = `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
   // La carta pública se guarda en caché 60 s por sucursal y slug: cada combinación de tema y de platos usa un slug propio para no leer una carta vieja.
@@ -93,10 +96,10 @@ test("carta B: «Incluye …» bajo cada plato y un bloque por grupo al pie de l
 
             // Cada plato dice lo que incluye; el que no incluye nada no dice «Incluye».
             const fila = (i: number) => page.locator("li", { has: page.getByRole("heading", { name: nombres[i]! }) });
-            await expect(fila(0).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye guarnición ${m}`);
-            await expect(fila(2).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye salsa ${m}`);
+            await expect(fila(0).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye guarnición ${m} · elegí abajo ↓`);
+            await expect(fila(2).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye salsa ${m} · elegí abajo ↓`);
             // El subconjunto se nombra («puré o ensalada»); el plato que ofrece todas las del bloque, no.
-            await expect(fila(3).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye guarnición ${m}: puré o ensalada`);
+            await expect(fila(3).locator("[data-incluye]"), etiqueta).toHaveText(`Incluye guarnición ${m}: puré o ensalada · elegí abajo ↓`);
             await expect(page.locator("[data-incluye]", { hasText: "papas fritas" }), `ningún plato nombra «papas fritas» como subconjunto (${etiqueta})`).toHaveCount(0);
             // El pie de la sección: un bloque por grupo, con TODAS las opciones en texto (sin botones ni chips) y a qué platos va. «elegís 1» sale de los límites del grupo.
             const bloqueG = page.locator(`[data-bloque-de-opciones='Guarnición ${m}']`);

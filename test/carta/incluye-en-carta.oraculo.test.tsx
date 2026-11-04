@@ -8,7 +8,7 @@ import { vistaPreviaDeLaForma } from "../../src/core/carta/mantenimiento";
 import type { DiferenciaDePrecio } from "../../src/core/opciones/public";
 import type { GrupoParaVender, OpcionParaVender } from "../../src/core/pos/linea-configurada";
 import { cartaDeUnProducto } from "../../src/core/pos/precio-de-configuracion";
-import { CANAL, CANTIDAD, DESCRIPCION, INCLUYE, LIMITES, OPCION, REGLAS, REGLAS_DEL_DETALLE, TAMANO_DEL_PRODUCTO, VISIBLE, reglaDelDetalle, reglasQueAplican, todasLasCombinaciones, type Combinacion, type Esperado } from "./incluye-en-carta.oraculo";
+import { CANAL, CANTIDAD, DESCRIPCION, INCLUYE, LIMITES, OPCION, REGLAS, REGLAS_DEL_DETALLE, TAMANO_DEL_PRODUCTO, VISIBLE, CUE_DE_LA_INVITACION, reglaDelDetalle, reglasQueAplican, todasLasCombinaciones, vaConEsperado, type Combinacion, type Esperado } from "./incluye-en-carta.oraculo";
 
 /**
  * Carta «B» (2026-11-04): las COMBINACIONES de lo que dice la carta de lo que se elige sin costo, recorridas ENTERAS contra el oráculo escrito a mano en `incluye-en-carta.oraculo.ts` (que no importa nada
@@ -127,8 +127,14 @@ function detalleEnHtml(html: string): { pantalla: string | null; rotulo: string 
   return { pantalla: pantalla ? filas(pantalla) : null, rotulo: pantalla ? sinEtiquetas(pantalla.match(/<summary[^>]*>(.*?)<\/summary>/)?.[1] ?? "") : null, papel: papel ? filas(papel) : null };
 }
 
+/** E2: el «Va con: …» del bloque (null si no hay) y cuántos botones de invitación hay en el HTML. */
+function invitacionEnHtml(html: string): { vaCon: string | null; botones: number } {
+  const vaCon = html.match(/<p data-va-con[^>]*>(.*?)<\/p>/)?.[1];
+  return { vaCon: vaCon ? sinEtiquetas(vaCon) : null, botones: (html.match(/data-ir-al-bloque=/g) ?? []).length };
+}
+
 /** Lo que se ve en el canal, con la forma del oráculo; en «Va a mostrar» (un texto) se compara la oración entera aparte. */
-function leerElCanal(c: Combinacion): { obtenido: Esperado; oracion?: string; detalle?: ReturnType<typeof detalleEnHtml> } {
+function leerElCanal(c: Combinacion): { obtenido: Esperado; oracion?: string; detalle?: ReturnType<typeof detalleEnHtml>; invitacion?: ReturnType<typeof invitacionEnHtml> } {
   const gruposBife = gruposDelPlato(c, "bife");
   const gruposMilanesa = gruposDelPlato(c, "milanesa");
   const formaBife = formaDelPlato(gruposBife);
@@ -136,20 +142,20 @@ function leerElCanal(c: Combinacion): { obtenido: Esperado; oracion?: string; de
 
   if (c.canal === "publica") {
     const html = renderToStaticMarkup(<Seccion seccion={seccionDe([itemDe("Bife", formaBife), itemDe("Milanesa", formaMilanesa)])} indice={0} total={1} estilo={ESTILO} />);
-    return { obtenido: { bife: lineaEnHtml(html, "Bife"), milanesa: lineaEnHtml(html, "Milanesa"), bloque: bloqueEnHtml(html) }, detalle: detalleEnHtml(html) };
+    return { obtenido: { bife: lineaEnHtml(html, "Bife"), milanesa: lineaEnHtml(html, "Milanesa"), bloque: bloqueEnHtml(html) }, detalle: detalleEnHtml(html), invitacion: invitacionEnHtml(html) };
   }
   if (c.canal === "impresa") {
     const seccion = seccionDe([itemDe("Bife", formaBife), itemDe("Milanesa", formaMilanesa)]);
     const carta: CartaPublicaV1 = { version: 1, generadoEn: "2026-11-04T15:00:00.000Z", sucursal: { nombre: "Centro" }, secciones: [seccion], seccionesImpresas: [seccion] };
     const html = renderToStaticMarkup(<CartaVista carta={carta} estilo={ESTILO} />);
     const impresa = html.slice(html.indexOf("data-carta-impresa"));
-    return { obtenido: { bife: lineaEnHtml(impresa, "Bife"), milanesa: lineaEnHtml(impresa, "Milanesa"), bloque: bloqueEnHtml(impresa) }, detalle: detalleEnHtml(impresa) };
+    return { obtenido: { bife: lineaEnHtml(impresa, "Bife"), milanesa: lineaEnHtml(impresa, "Milanesa"), bloque: bloqueEnHtml(impresa) }, detalle: detalleEnHtml(impresa), invitacion: invitacionEnHtml(impresa) };
   }
   if (c.canal === "vista-previa") {
     const vista = formaBife ? ({ tipo: "forma", presentacion: formaBife } as const) : ({ tipo: "sin-opciones" } as const);
     const html = renderToStaticMarkup(<VistaPreviaDeLaCarta nombre="Bife" sucursalNombre="Centro" vista={vista} />);
     const m = html.match(/<p data-incluye[^>]*>(.*?)<\/p>/);
-    return { obtenido: { bife: m ? sinEtiquetas(m[1]!) : null, milanesa: null, bloque: bloqueEnHtml(html) }, detalle: detalleEnHtml(html) };
+    return { obtenido: { bife: m ? sinEtiquetas(m[1]!) : null, milanesa: null, bloque: bloqueEnHtml(html) }, detalle: detalleEnHtml(html), invitacion: invitacionEnHtml(html) };
   }
   // «Va a mostrar»: un texto. Sin opciones el administrador lee «Sin opciones.» (otra función, otra regla); con ellas, la oración de `vistaPreviaDeLaForma`.
   if (!formaBife) return { obtenido: { bife: null, milanesa: null, bloque: null }, oracion: "Va a mostrar «Bife» con su precio." };
@@ -194,7 +200,7 @@ describe("carta «B»: el oráculo de combinaciones (escrito aparte, a mano)", (
     it("lo que se lee en el canal es lo que dice la regla", () => {
       const [regla] = reglasQueAplican(c);
       const esperado = regla!.entonces;
-      const { obtenido, oracion, detalle } = leerElCanal(c);
+      const { obtenido, oracion, detalle, invitacion } = leerElCanal(c);
       const reglaDetalle = reglaDelDetalle(c);
       const mensaje = `${nombreDe(c)} [${regla!.nombre}] [detalle: ${reglaDetalle.nombre}]`;
       if (oracion !== undefined) {
@@ -205,7 +211,13 @@ describe("carta «B»: el oráculo de combinaciones (escrito aparte, a mano)", (
       expect(detalle, mensaje).toEqual(reglaDetalle.detalle === null ? { pantalla: null, rotulo: null, papel: null } : { pantalla: reglaDetalle.detalle, rotulo: "Ver detalle ▾", papel: reglaDetalle.detalle });
       // En los canales de vista previa solo se mira a Bife; en los de sección, a los dos.
       const esperadoDelCanal: Esperado = c.canal === "vista-previa" ? { ...esperado, milanesa: null } : esperado;
-      expect(obtenido, mensaje).toEqual(esperadoDelCanal);
+      // E2: solo la sección (pública e impresa) es interactiva: cada línea termina en «elegí abajo ↓» y el bloque dice «Va con: …»; la vista previa no tiene ni botones ni cue.
+      const interactivo = c.canal === "publica" || c.canal === "impresa";
+      const conCue = (linea: string | null) => (linea !== null && interactivo ? `${linea}${CUE_DE_LA_INVITACION}` : linea);
+      expect(obtenido, mensaje).toEqual({ ...esperadoDelCanal, bife: conCue(esperadoDelCanal.bife), milanesa: conCue(esperadoDelCanal.milanesa) });
+      const botonesEsperados = interactivo ? (esperadoDelCanal.bife === null ? 0 : (esperadoDelCanal.bife.match(/Incluye/g) ?? []).length) + (esperadoDelCanal.milanesa === null ? 0 : 1) : 0;
+      expect(invitacion?.botones ?? 0, `${mensaje} [botones]`).toBe(botonesEsperados);
+      expect(invitacion?.vaCon ?? null, `${mensaje} [va con]`).toBe(vaConEsperado(esperadoDelCanal, c.canal));
     });
   });
 

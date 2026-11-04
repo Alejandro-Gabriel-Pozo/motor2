@@ -216,3 +216,20 @@ export const REGLAS_DEL_DETALLE: readonly ReglaDeDetalle[] = [
 export function reglaDelDetalle(c: Combinacion): ReglaDeDetalle {
   return REGLAS_DEL_DETALLE.find((r) => aplica(r, c))!;
 }
+
+// ---- E2: la invitación «5+2» ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//
+// SOLO la carta de la sección (pública e impresa) es interactiva: cada línea «Incluye …» termina en « · elegí abajo ↓» y cada bloque dice «Va con: …» (visible solo mientras está iluminado). La vista previa
+// del producto y «Va a mostrar» no tienen botones, ni cue, ni «Va con». «Va con» lista, en el orden de la sección, a los platos que DICEN «Incluye <grupo>»; el que admite un subconjunto lo aclara.
+
+export const CUE_DE_LA_INVITACION = " · elegí abajo ↓";
+
+/** Lo que dice el bloque como «Va con: …» según la tabla de reglas (null = no lo dice). Se escribe a mano a partir de lo que cada plato dice, no se lee del código. */
+export function vaConEsperado(e: Esperado, canal: Combinacion["canal"]): string | null {
+  if (!(SECCION as readonly string[]).includes(canal) || e.bloque === null) return null;
+  const platos = [
+    ...(e.bife === null ? [] : [e.bife.includes(": puré o ensalada") ? "Bife (solo puré o ensalada)" : "Bife"]),
+    ...(e.milanesa === null ? [] : ["Milanesa"]),
+  ];
+  return platos.length === 0 ? null : `Va con: ${platos.join(" · ")}`;
+}
