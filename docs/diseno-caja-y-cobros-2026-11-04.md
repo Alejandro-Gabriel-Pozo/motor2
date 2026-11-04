@@ -49,6 +49,7 @@ Inventario hecho leyendo `prisma/schema.prisma` y `src/` (no los documentos).
 6. **Reservas:** poder **señalar la reserva** y guardar, **como un folio, las reservas del cliente, empresa o agente de empresa**; si no se cobraron, **se mantienen pendientes**.
 7. **El cobro es según los medios de pago usados**, y **según el medio se pide información adicional**.
 8. **«Cuenta corriente» es un medio de pago:** va a la cuenta corriente de **esa empresa o cliente que la posee**.
+10. **Caja chica en 3 turnos por sucursal** (planilla en papel que mostró el dueño el 2026-11-04). Cada planilla dice: **hostería y sector** (ejemplo: «Hostería Manzano Amargo, Recepción»), **«Caja Chica: Dinero en efectivo»**, **turno** (ejemplo: «Tarde»), **hora** («15 a 23»), la **fecha**, una tabla de **billetes** (10, 20, 50, 100, 200, 500, 1.000, 2.000, 10.000 y 20.000) con **cantidad** e **importe** por cada uno, el **total** y la **firma** de quien cierra. Ejemplo de la foto (turno tarde del 3/11): 1 × $500 + 1 × $1.000 + 59 × $2.000 + 13 × $10.000 = **$249.500**. Se ve **corrector** sobre una fila (el conteo se corrigió tapando): el sistema debe corregir **con registro**, no tapando. CONFIRMADA como práctica actual.
 9. **El alojamiento no existe ni se genera en este sistema** (aclaración del 2026-11-04). La factura a consumidor final **puede traer un cargo de alojamiento**; hoy solo se **declara** («factura $200.000, alojamiento $0» o «alojamiento $120.000»). **Los tickets son los que tienen que igualar el resto**, para que la factura quede cubierta por sus $200.000. Es decir: **monto de la factura = alojamiento declarado + tickets aplicados**.
 
 ## 0.2 Qué corrige este diseño del documento del 2026-10-26
@@ -65,7 +66,7 @@ Inventario hecho leyendo `prisma/schema.prisma` y `src/` (no los documentos).
 - **Necesidad:** pedido del dueño del 2026-11-04 (§0.1); antecedentes `docs/diseno-clientes-convenios-y-facturacion-externa-2026-10-26.md` y la validación del 2026-10-26. CONFIRMADA.
 - **Alcance:**
   - **Entra:** identificar al cliente por CUIT, cobrar un ticket con medios de pago, cuenta corriente como medio, cargar el comprobante externo (factura o nota de crédito), conciliarlo con tickets, ver pendientes.
-  - **No entra:** emitir comprobantes fiscales, hablar con ARCA, importar desde el otro sistema (idea posterior), alojamiento y reservas como módulo, caja diaria con cierre y arqueo (N5), contabilidad.
+  - **No entra:** emitir comprobantes fiscales, hablar con ARCA, importar desde el otro sistema (idea posterior), alojamiento y reservas como módulo, contabilidad. **Sí entra, más adelante (N5), el cierre de caja chica por turno con arqueo de billetes**, porque hoy se hace en papel.
 - **Primero lo más barato (regla del 2026-10-27):** motor2 ya tiene el cierre de cuenta, el cliente y los patrones de pago y anulación; lo que falta es **una capa de cobro y una de comprobante externo**. No se toca `cerrarCuenta`.
 
 ## Nivel 2. Actores y contexto
@@ -93,6 +94,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | CU7 | **Pendientes:** tickets sin cobrar, cobrados sin factura («pendiente de declarar factura»), saldo de cuenta corriente | N4 | CONFIRMADA (punto 5) |
 | CU8 | **Anular** un cobro o un comprobante (con registro nuevo, nunca borrando) | N1 y N3 | PROPUESTA (regla del sistema) |
 | CU9 | **Reservas informativas (folio)**: anotar a mano las reservas de un cliente, empresa o agente y ver cuáles están sin cobrar. **Informativo**: no hay módulo de reservas ni integración | N5 | CONFIRMADA que se arme como apartado informativo (respuesta del 2026-11-04); su forma PROPUESTA (ver nivel 4) |
+| CU11 | **Cerrar la caja chica del turno**: elegir sucursal, turno y hora; cargar la **cantidad de billetes por denominación**; el sistema calcula importes y total; queda firmado por quien cierra | N5 | CONFIRMADA la práctica (punto 10); su comparación con lo esperado PENDIENTE (Q4) |
 | CU10 | Nota de crédito externa: **baja el monto a conciliar de la factura que corrige** | N3 | CONFIRMADA (punto 2 y respuesta P5 del 2026-11-04) |
 
 ## Nivel 4. Conceptos y ciclo de vida
@@ -117,6 +119,8 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 - **Composición del comprobante:** **monto = Σ conceptos declarados + Σ tickets aplicados**. La diferencia se **muestra** («falta $X» o «sobra $X»); nunca se fuerza ni se esconde, y la decide una persona.
 - **Punto de venta de la sucursal:** número y **nombre**, propio de cada sucursal.
 - **Conciliación:** la **aplicación** de un ticket a un comprobante. La diferencia entre el monto del comprobante y lo aplicado se **muestra**; una persona decide.
+- **Turno de caja chica:** una **sucursal** tiene **tres turnos** por día (por ejemplo, mañana, tarde y noche, con su franja horaria: el de la foto es «tarde, 15 a 23»). PROPUESTA: los turnos son **configurables por sucursal** (nombre, desde, hasta).
+- **Cierre de caja chica (arqueo):** el conteo del **efectivo** de un turno: por cada **denominación** (lista cerrada de billetes: 10, 20, 50, 100, 200, 500, 1.000, 2.000, 10.000, 20.000) una **cantidad entera**; el importe de cada fila y el **total son calculados**, nunca tipeados. Lo firma quien cierra (usuario del sistema, con fecha y hora). Solo se agrega; una corrección es un cierre **anulado con motivo y uno nuevo**, nunca tapar.
 - **Reserva informativa y folio** (PROPUESTA de forma; el dueño pidió el apartado informativo): una **reserva** se anota a mano con su **referencia** (el código del sistema de reservas, como texto), el **cliente** (persona o empresa), el **agente** si es de una empresa, las **fechas**, el **importe estimado** y su **estado de cobro** (`pendiente` o `cobrada`, que se marca a mano o por el cobro). El **folio** es la vista de las reservas de un cliente, empresa o agente. **No** crea habitaciones, tarifas ni disponibilidad, **no** integra con el sistema de reservas y **no** genera cargos solo.
 
 ## Nivel 5. Invariantes y políticas
@@ -144,6 +148,10 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | C20 | Un **concepto declarado no crea cobro, ticket ni cargo** en este sistema: solo explica una parte del monto del comprobante | CONFIRMADA (punto 9) |
 | C21 | **Un ticket se puede cobrar con varios medios y en partes**: la suma de sus cobros vigentes no pasa de su total; «cobrado» es cuando la suma lo iguala | CONFIRMADA (respuesta P2 del 2026-11-04) |
 | C22 | Una **nota de crédito** se aplica a una factura y **baja el monto a conciliar** de esa factura; el dinero se cruza aparte | CONFIRMADA (respuesta P5 del 2026-11-04) |
+| C24 | Hay **un solo cierre vigente** por (sucursal, fecha local, turno). Un segundo cierre del mismo turno se rechaza; para corregir, se anula el vigente con motivo y se carga otro | PROPUESTA |
+| C25 | **Denominaciones** de lista cerrada; **cantidades enteras ≥ 0**; el importe de cada fila y el total los **calcula el sistema** (cantidad × denominación) en dinero exacto; no se aceptan importes tipeados | PROPUESTA |
+| C26 | El cierre lo **firma** el usuario autenticado: se guarda **quién y cuándo** (hora de Argentina). Una firma impresa o escrita a mano no reemplaza al usuario | PROPUESTA |
+| C27 | El permiso de **cerrar caja chica** nace **excluido** (fail-closed), por sucursal; el servidor lo valida | CONFIRMADA (principio del 22/10) |
 | C23 | La **reserva informativa** no cambia el stock, la venta, el cobro ni el comprobante: es un registro para ver pendientes; solo se agrega y se anula con registro nuevo | PROPUESTA |
 | C18 | Un cliente «consumidor final» es la cuenta **sin cliente**; el **recurrente identificado** es un cliente con nombre y, si quiere comprobante A, CUIT | PROPUESTA |
 
@@ -160,7 +168,7 @@ Contexto: multiempresa; la **sucursal** es la unidad (punto de venta por sucursa
 | Datos faltantes | Sin medio o sin los datos que el medio pide: no cobra | Sin letra, clase, punto de venta, número, fecha o monto: no confirma (puede quedar en borrador) | Sin comprobante confirmado: no concilia | Sin motivo: no anula |
 | Cambio de permisos | Se valida cada vez en servidor y por sucursal | Idem | Idem, y por cada sucursal de los tickets | Idem |
 
-## Escalera de producto N0 a N5
+## Escalera de producto N0 a N6
 
 Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como «pendiente de completar», nunca se inventa. **Orden elegido por el dueño el 2026-11-04: comprobante → conciliar → cobrar → cuenta corriente.**
 
@@ -171,7 +179,8 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 | **N2 Conciliar** | La factura propone los tickets sin factura; se ve la diferencia; lista de «sin factura». **La columna de cobro dice «pendiente de completar»** hasta la etapa N3 | Aplicación ticket–comprobante, listas | N1 |
 | **N3 Cobrar** | Al cobrar un ticket se elige el medio (uno o varios, parcial) y se cargan sus datos; aparecen «sin cobrar» y «**pendiente de declarar factura**» (cobrado sin factura) | Cobro, catálogo de medios, anulación; pantalla del cajero | N2 para las listas cruzadas |
 | **N4 Cuenta corriente** | «Cuenta corriente» como medio; saldo del cliente | Clientes con cuenta corriente habilitada, cargos y saldo derivado | N1 (CUIT), N3 |
-| **N5 Reservas informativas y caja** | Apartado de reservas por cliente, empresa o agente con su estado de cobro; cierre de caja por día y sucursal | Reserva informativa, caja diaria | N3 |
+| **N5 Caja chica por turno** | Cierre de caja chica de cada turno con el conteo de billetes por denominación y el total, firmado; lo que hoy se hace en papel | Turnos por sucursal, cierre y arqueo | — (puede ir antes o después de N3) |
+| **N6 Reservas informativas** | Apartado de reservas por cliente, empresa o agente con su estado de cobro | Reserva informativa | N3 |
 
 **Consecuencia del orden elegido:** hasta que exista N3, el sistema **no puede decir «cobrado»**. Por eso en N2 la lista de «tickets sin cobrar» y la de «pendientes de declarar factura» (que son las de cobro) **se muestran como «pendiente de completar»**, y solo funciona «tickets sin factura». Esto es coherente con la regla del producto, pero hay que tenerlo presente al probar.
 
@@ -192,6 +201,8 @@ Peldaños acumulativos, que no rompen lo cargado; lo que falta se muestra como �
 **Preguntas que quedan abiertas:**
 - **Q1.** ¿Qué dato de cada medio de pago hay que cambiar? Propuesta mía: transferencia, referencia y fecha; débito y crédito, últimos 4 dígitos y número de cupón; cheque, banco, número y fecha de cobro; QR o billetera, referencia de la operación; efectivo, nada; cuenta corriente, cliente.
 - **Q2.** Reserva informativa: ¿qué datos se anotan? Propuesta: referencia (código del otro sistema), cliente, agente, fechas de entrada y salida, importe estimado y estado de cobro.
+- **Q4.** El cierre de caja chica, ¿se **compara con algo** o solo se registra? Hoy la planilla solo cuenta y suma. Opciones: (a) solo registrar el conteo y el total, como la planilla (recomendado para empezar); (b) compararlo con un **esperado** (fondo inicial del turno + cobros en efectivo − egresos), lo que exige la etapa de cobros.
+- **Q5.** Los **turnos**: ¿son siempre tres por sucursal, con nombre y horario propios de cada una? Propuesta: configurables por sucursal (nombre, desde, hasta), y un cierre por turno por día.
 - **Q3.** ¿Una reserva informativa se puede **vincular** a una factura como parte de su concepto «alojamiento», o queda aparte (solo para ver pendientes)? Recomiendo **aparte** por ahora.
 
 ## Qué sigue
