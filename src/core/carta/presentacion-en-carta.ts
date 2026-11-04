@@ -34,7 +34,7 @@ export interface TablaDePreciosParaCarta {
     cantidadMaxima: number;
     prefijoEnCarta: string | null;
     papel: RolDelGrupoEnCarta;
-    opciones: readonly { opcionId: string; nombre: string; esNinguna: boolean; orden: number; precioFinal: number | null; diferencia: number }[];
+    opciones: readonly { opcionId: string; nombre: string; esNinguna: boolean; orden: number; precioFinal: number | null; diferencia: number; descripcionEnCarta?: string | null }[];
   }[];
   ejes: EjesDeLaCarta;
   /** `celdas[fila][columna]`, con el descuento de producto; `null` = esa combinación no se compone. */
@@ -45,7 +45,7 @@ export interface TablaDePreciosParaCarta {
  * Una línea debajo del plato, una por grupo: lo que se elige sin costo (solo nombres) o, si algo suma o resta, cada opción con su recargo sobre lo que el precio ya incluye (0 = no suma; en un
  * adicional solo van las que suman).
  */
-export type AclaracionCartaV1 = { tipo: "eleccion"; rotulo: string; opciones: string[]; cantidadMinima: number; cantidadMaxima: number } | { tipo: "extras"; rotulo: string; opciones: { nombre: string; recargo: number }[] };
+export type AclaracionCartaV1 = { tipo: "eleccion"; rotulo: string; opciones: string[]; descripciones: (string | null)[]; cantidadMinima: number; cantidadMaxima: number } | { tipo: "extras"; rotulo: string; opciones: { nombre: string; recargo: number }[] };
 
 /** La forma con que la carta lee un producto con opciones (ver arriba). `null` en una celda = no se ofrece (se dibuja «–», con «no se ofrece» para el lector de pantalla). */
 export type PresentacionCartaV1 =
@@ -93,7 +93,7 @@ function aclaracionesDe(tabla: TablaDePreciosParaCarta, conDescuento: boolean): 
       salida.push({ tipo: "extras", rotulo: g.nombre, opciones: g.tipo === "ADICIONAL" ? conRecargo.filter((o) => o.recargo !== 0) : conRecargo });
     } else if (reales.length > 1) {
       // Carta «B»: los límites (los del producto si los sobrescribe, si no los del grupo) viajan con la elección: de ahí sale el «elegís N» del bloque (`incluye-en-carta.ts`).
-      salida.push({ tipo: "eleccion", rotulo: g.nombre, opciones: reales.map((o) => primeraEnMinuscula(o.nombre)), cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima });
+      salida.push({ tipo: "eleccion", rotulo: g.nombre, opciones: reales.map((o) => primeraEnMinuscula(o.nombre)), descripciones: reales.map((o) => o.descripcionEnCarta ?? null), cantidadMinima: g.cantidadMinima, cantidadMaxima: g.cantidadMaxima });
     }
   }
   return salida;

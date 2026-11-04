@@ -1,5 +1,5 @@
 import type { AclaracionCartaPublica, BloqueDeOpciones, EstiloCarta, ItemCartaPublico, ParteDeIncluye, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
-import { formatearPrecioCarta, incluyeDeLaSeccion, partirLaAclaracion, recargoEnPesos, textoDeIncluye, textoDeLaAclaracion, textoDeLasOpciones, textoDelTitulo } from "@/core/carta/public";
+import { detalleDelBloque, formatearPrecioCarta, incluyeDeLaSeccion, partirLaAclaracion, recargoEnPesos, textoDeIncluye, textoDeLaAclaracion, textoDeLasOpciones, textoDelTitulo } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
 
 /**
@@ -192,8 +192,40 @@ export function BloquesDeOpciones({ bloques }: { bloques: readonly BloqueDeOpcio
       <p data-rol="aclaracion" className="carta-rol-aclaracion mt-1" style={{ color: "var(--carta-ink-soft)", overflowWrap: "anywhere" }}>
         {b.paraLosPlatos}
       </p>
+      <DetalleDelBloque bloque={b} />
     </li>
   ));
+}
+
+/**
+ * Carta «B», E3: las descripciones de las opciones de UN bloque. En pantalla, un desplegable nativo (`details`/`summary`: anda sin JavaScript y se maneja con teclado y lector de pantalla) con el rótulo genérico
+ * «Ver detalle ▾» (nunca el nombre del grupo: un grupo de tamaños no «lleva» nada), que solo existe si alguna opción tiene descripción; los nombres de las opciones siguen siempre a la vista arriba. En papel
+ * las descripciones van SIEMPRE visibles: el desplegable es solo de pantalla (`carta-solo-pantalla`) y una lista igual, solo de papel (`carta-solo-papel`), la reemplaza. Texto plano: React lo escapa.
+ */
+function DetalleDelBloque({ bloque }: { bloque: BloqueDeOpciones }) {
+  const detalle = detalleDelBloque(bloque);
+  if (detalle.length === 0) return null;
+  const filas = detalle.map((d, i) => (
+    <p key={`detalle-${i}`} data-rol="aclaracion" className="carta-rol-aclaracion mt-1" style={{ color: "var(--carta-ink-soft)", overflowWrap: "anywhere" }}>
+      <span data-rol="aclaracion-rotulo" className="carta-rol-aclaracion-rotulo" style={{ color: "var(--carta-ink)" }}>
+        {d.nombre}
+      </span>
+      {` · ${d.descripcion}`}
+    </p>
+  ));
+  return (
+    <>
+      <details data-detalle-del-bloque className="carta-solo-pantalla mt-1">
+        <summary data-rol="aclaracion" className="carta-rol-aclaracion min-h-[44px] cursor-pointer py-2" style={{ color: "var(--carta-ink)" }}>
+          Ver detalle ▾
+        </summary>
+        {filas}
+      </details>
+      <div data-detalle-en-papel className="carta-solo-papel">
+        {filas}
+      </div>
+    </>
+  );
 }
 
 /**

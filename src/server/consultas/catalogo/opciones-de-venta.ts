@@ -73,6 +73,8 @@ export interface OpcionDelPanel {
   esNinguna: boolean;
   /** La `version` de la fila (la esperada de la próxima edición del nombre, el orden o el estado). */
   version: number;
+  /** Carta «B», E3: la descripción que lee solo la carta (`null` = sin descripción). */
+  descripcionEnCarta: string | null;
   /** El producto interno que respalda el stock de un adicional (solo para leer). */
   anclaNombre: string | null;
   /** Del más nuevo al más viejo: `cambios[0]` es el que rige. */
@@ -167,6 +169,7 @@ export async function cargarGrupoDelPanel(db: Db, grupoId: string, sucursalId: s
       activa: o.activa,
       esNinguna: o.esNinguna,
       version: o.version,
+      descripcionEnCarta: o.descripcionEnCarta,
       anclaNombre: o.producto?.nombre ?? null,
       cambios: o.versiones.map((v) => ({
         numero: v.numero,

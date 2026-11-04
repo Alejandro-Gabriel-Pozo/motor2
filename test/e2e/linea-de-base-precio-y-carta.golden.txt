@@ -392,6 +392,10 @@
   [lector: Nombre de Pizza muzzarella]
   [campo: «Pizza muzzarella»]
   [botón: Renombrar (lector: «Renombrar Pizza muzzarella»)]
+  [lector: Descripción en la carta de Pizza muzzarella]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza muzzarella»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza muzzarella»)]
   [botón: Archivar (lector: «Archivar Pizza muzzarella»)]
   Pizza de verduras asadas
@@ -401,6 +405,10 @@
   [lector: Nombre de Pizza de verduras asadas]
   [campo: «Pizza de verduras asadas»]
   [botón: Renombrar (lector: «Renombrar Pizza de verduras asadas»)]
+  [lector: Descripción en la carta de Pizza de verduras asadas]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza de verduras asadas»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza de verduras asadas»)]
   [botón: Archivar (lector: «Archivar Pizza de verduras asadas»)]
   Pizza fugazzeta
@@ -410,6 +418,10 @@
   [lector: Nombre de Pizza fugazzeta]
   [campo: «Pizza fugazzeta»]
   [botón: Renombrar (lector: «Renombrar Pizza fugazzeta»)]
+  [lector: Descripción en la carta de Pizza fugazzeta]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza fugazzeta»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza fugazzeta»)]
   [botón: Archivar (lector: «Archivar Pizza fugazzeta»)]
   Pizza napolitana
@@ -419,6 +431,10 @@
   [lector: Nombre de Pizza napolitana]
   [campo: «Pizza napolitana»]
   [botón: Renombrar (lector: «Renombrar Pizza napolitana»)]
+  [lector: Descripción en la carta de Pizza napolitana]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza napolitana»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza napolitana»)]
   [botón: Archivar (lector: «Archivar Pizza napolitana»)]
   Pizza con papas fritas
@@ -428,6 +444,10 @@
   [lector: Nombre de Pizza con papas fritas]
   [campo: «Pizza con papas fritas»]
   [botón: Renombrar (lector: «Renombrar Pizza con papas fritas»)]
+  [lector: Descripción en la carta de Pizza con papas fritas]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza con papas fritas»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza con papas fritas»)]
   [botón: Archivar (lector: «Archivar Pizza con papas fritas»)]
   Pizza bomba
@@ -437,6 +457,10 @@
   [lector: Nombre de Pizza bomba]
   [campo: «Pizza bomba»]
   [botón: Renombrar (lector: «Renombrar Pizza bomba»)]
+  [lector: Descripción en la carta de Pizza bomba]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza bomba»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza bomba»)]
   [botón: Archivar (lector: «Archivar Pizza bomba»)]
   [botón: Ordenar opciones]
@@ -471,6 +495,10 @@
   [lector: Nombre de Pizza muzzarella]
   [campo: «Pizza muzzarella»]
   [botón: Renombrar (lector: «Renombrar Pizza muzzarella»)]
+  [lector: Descripción en la carta de Pizza muzzarella]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza muzzarella»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza muzzarella»)]
   [botón: Archivar (lector: «Archivar Pizza muzzarella»)]
   Pizza de verduras asadas
@@ -480,6 +508,10 @@
   [lector: Nombre de Pizza de verduras asadas]
   [campo: «Pizza de verduras asadas»]
   [botón: Renombrar (lector: «Renombrar Pizza de verduras asadas»)]
+  [lector: Descripción en la carta de Pizza de verduras asadas]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza de verduras asadas»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza de verduras asadas»)]
   [botón: Archivar (lector: «Archivar Pizza de verduras asadas»)]
   Pizza fugazzeta
@@ -489,6 +521,10 @@
   [lector: Nombre de Pizza fugazzeta]
   [campo: «Pizza fugazzeta»]
   [botón: Renombrar (lector: «Renombrar Pizza fugazzeta»)]
+  [lector: Descripción en la carta de Pizza fugazzeta]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza fugazzeta»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza fugazzeta»)]
   [botón: Archivar (lector: «Archivar Pizza fugazzeta»)]
   Pizza napolitana
@@ -498,6 +534,10 @@
   [lector: Nombre de Pizza napolitana]
   [campo: «Pizza napolitana»]
   [botón: Renombrar (lector: «Renombrar Pizza napolitana»)]
+  [lector: Descripción en la carta de Pizza napolitana]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza napolitana»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza napolitana»)]
   [botón: Archivar (lector: «Archivar Pizza napolitana»)]
   Pizza con papas fritas
@@ -507,6 +547,10 @@
   [lector: Nombre de Pizza con papas fritas]
   [campo: «Pizza con papas fritas»]
   [botón: Renombrar (lector: «Renombrar Pizza con papas fritas»)]
+  [lector: Descripción en la carta de Pizza con papas fritas]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza con papas fritas»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza con papas fritas»)]
   [botón: Archivar (lector: «Archivar Pizza con papas fritas»)]
   Pizza bomba
@@ -516,6 +560,10 @@
   [lector: Nombre de Pizza bomba]
   [campo: «Pizza bomba»]
   [botón: Renombrar (lector: «Renombrar Pizza bomba»)]
+  [lector: Descripción en la carta de Pizza bomba]
+  [campo: vacío, ayuda «Descripción en la carta (opcional)»]
+  [botón: Guardar descripción (lector: «Guardar la descripción de Pizza bomba»)]
+  Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.
   [botón: Cambiar precio o consumo (lector: «Cambiar precio o consumo de Pizza bomba»)]
   [botón: Archivar (lector: «Archivar Pizza bomba»)]
   [botón: Ordenar opciones]

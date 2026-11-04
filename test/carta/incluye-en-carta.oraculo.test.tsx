@@ -8,7 +8,7 @@ import { vistaPreviaDeLaForma } from "../../src/core/carta/mantenimiento";
 import type { DiferenciaDePrecio } from "../../src/core/opciones/public";
 import type { GrupoParaVender, OpcionParaVender } from "../../src/core/pos/linea-configurada";
 import { cartaDeUnProducto } from "../../src/core/pos/precio-de-configuracion";
-import { CANAL, CANTIDAD, INCLUYE, LIMITES, OPCION, REGLAS, TAMANO_DEL_PRODUCTO, VISIBLE, reglasQueAplican, todasLasCombinaciones, type Combinacion, type Esperado } from "./incluye-en-carta.oraculo";
+import { CANAL, CANTIDAD, DESCRIPCION, INCLUYE, LIMITES, OPCION, REGLAS, REGLAS_DEL_DETALLE, TAMANO_DEL_PRODUCTO, VISIBLE, reglaDelDetalle, reglasQueAplican, todasLasCombinaciones, type Combinacion, type Esperado } from "./incluye-en-carta.oraculo";
 
 /**
  * Carta «B» (2026-11-04): las COMBINACIONES de lo que dice la carta de lo que se elige sin costo, recorridas ENTERAS contra el oráculo escrito a mano en `incluye-en-carta.oraculo.ts` (que no importa nada
@@ -53,7 +53,9 @@ function gruposDelPlato(c: Combinacion, plato: "bife" | "milanesa"): (GrupoParaV
     const admitida = plato === "bife" && c.incluye === "subconjunto" && definidas > 1 ? !esLaUltima : true;
     // La apagada es la última definida; con una sola definida no se apaga (dejaría el grupo obligatorio sin opciones y el plato no se podría pedir: ese caso lo cubre la regla de la venta).
     const apagada = c.opcion === "ultima-apagada" && esLaUltima && definidas > 1;
-    return opcion(`o${i}`, nombre, i, { admitida, apagadaEnSucursal: apagada });
+    // E3: la descripción es de «Papas fritas» (la última definida).
+    const descripcionEnCarta = c.descripcion === "texto" && nombre === "Papas fritas" ? "papas rústicas con cáscara" : null;
+    return opcion(`o${i}`, nombre, i, { admitida, apagadaEnSucursal: apagada, descripcionEnCarta });
   });
   const propios = plato === "bife" && c.limites === "distintos";
   return [
@@ -117,8 +119,16 @@ function bloqueEnHtml(html: string): Esperado["bloque"] {
   return { titulo: sinEtiquetas(titulo ?? ""), opciones: sinEtiquetas(opciones ?? ""), paraLosPlatos: sinEtiquetas(para ?? "") };
 }
 
+/** E3: el detalle del bloque en un HTML de carta: el desplegable de pantalla (con su rótulo) y la lista de papel, normalizados a «nombre · descripción». `null` = no hay. */
+function detalleEnHtml(html: string): { pantalla: string | null; rotulo: string | null; papel: string | null } {
+  const pantalla = html.match(/<details data-detalle-del-bloque[^>]*>(.*?)<\/details>/)?.[1] ?? null;
+  const papel = html.match(/<div data-detalle-en-papel[^>]*>(.*?)<\/div>/)?.[1] ?? null;
+  const filas = (x: string) => [...x.matchAll(/<p [^>]*>(.*?)<\/p>/g)].map((m) => sinEtiquetas(m[1]!)).join(" | ");
+  return { pantalla: pantalla ? filas(pantalla) : null, rotulo: pantalla ? sinEtiquetas(pantalla.match(/<summary[^>]*>(.*?)<\/summary>/)?.[1] ?? "") : null, papel: papel ? filas(papel) : null };
+}
+
 /** Lo que se ve en el canal, con la forma del oráculo; en «Va a mostrar» (un texto) se compara la oración entera aparte. */
-function leerElCanal(c: Combinacion): { obtenido: Esperado; oracion?: string } {
+function leerElCanal(c: Combinacion): { obtenido: Esperado; oracion?: string; detalle?: ReturnType<typeof detalleEnHtml> } {
   const gruposBife = gruposDelPlato(c, "bife");
   const gruposMilanesa = gruposDelPlato(c, "milanesa");
   const formaBife = formaDelPlato(gruposBife);
@@ -126,40 +136,42 @@ function leerElCanal(c: Combinacion): { obtenido: Esperado; oracion?: string } {
 
   if (c.canal === "publica") {
     const html = renderToStaticMarkup(<Seccion seccion={seccionDe([itemDe("Bife", formaBife), itemDe("Milanesa", formaMilanesa)])} indice={0} total={1} estilo={ESTILO} />);
-    return { obtenido: { bife: lineaEnHtml(html, "Bife"), milanesa: lineaEnHtml(html, "Milanesa"), bloque: bloqueEnHtml(html) } };
+    return { obtenido: { bife: lineaEnHtml(html, "Bife"), milanesa: lineaEnHtml(html, "Milanesa"), bloque: bloqueEnHtml(html) }, detalle: detalleEnHtml(html) };
   }
   if (c.canal === "impresa") {
     const seccion = seccionDe([itemDe("Bife", formaBife), itemDe("Milanesa", formaMilanesa)]);
     const carta: CartaPublicaV1 = { version: 1, generadoEn: "2026-11-04T15:00:00.000Z", sucursal: { nombre: "Centro" }, secciones: [seccion], seccionesImpresas: [seccion] };
     const html = renderToStaticMarkup(<CartaVista carta={carta} estilo={ESTILO} />);
     const impresa = html.slice(html.indexOf("data-carta-impresa"));
-    return { obtenido: { bife: lineaEnHtml(impresa, "Bife"), milanesa: lineaEnHtml(impresa, "Milanesa"), bloque: bloqueEnHtml(impresa) } };
+    return { obtenido: { bife: lineaEnHtml(impresa, "Bife"), milanesa: lineaEnHtml(impresa, "Milanesa"), bloque: bloqueEnHtml(impresa) }, detalle: detalleEnHtml(impresa) };
   }
   if (c.canal === "vista-previa") {
     const vista = formaBife ? ({ tipo: "forma", presentacion: formaBife } as const) : ({ tipo: "sin-opciones" } as const);
     const html = renderToStaticMarkup(<VistaPreviaDeLaCarta nombre="Bife" sucursalNombre="Centro" vista={vista} />);
     const m = html.match(/<p data-incluye[^>]*>(.*?)<\/p>/);
-    return { obtenido: { bife: m ? sinEtiquetas(m[1]!) : null, milanesa: null, bloque: bloqueEnHtml(html) } };
+    return { obtenido: { bife: m ? sinEtiquetas(m[1]!) : null, milanesa: null, bloque: bloqueEnHtml(html) }, detalle: detalleEnHtml(html) };
   }
   // «Va a mostrar»: un texto. Sin opciones el administrador lee «Sin opciones.» (otra función, otra regla); con ellas, la oración de `vistaPreviaDeLaForma`.
   if (!formaBife) return { obtenido: { bife: null, milanesa: null, bloque: null }, oracion: "Va a mostrar «Bife» con su precio." };
   return { obtenido: { bife: null, milanesa: null, bloque: null }, oracion: vistaPreviaDeLaForma("Bife", formaBife) };
 }
 
-/** La oración que debe leer «Va a mostrar» según el oráculo (la plantilla la escribe el test: «el cuerpo, la línea del plato, el bloque»). */
-function oracionEsperada(e: Esperado): string {
+/** La oración que debe leer «Va a mostrar» según el oráculo (la plantilla la escribe el test: «el cuerpo, la línea del plato, el bloque y, si hay, el detalle»). */
+function oracionEsperada(e: Esperado, detalle: string | null): string {
   const linea = e.bife ? ` · ${e.bife}` : "";
-  const bloque = e.bloque ? ` · ${e.bloque.titulo}: ${e.bloque.opciones}. ${e.bloque.paraLosPlatos}` : "";
+  // «papas fritas · papas rústicas con cáscara» (el oráculo) se lee en el texto como «papas fritas: papas rústicas con cáscara».
+  const ver = detalle ? `. Ver detalle: ${detalle.replace(" · ", ": ")}` : "";
+  const bloque = e.bloque ? ` · ${e.bloque.titulo}: ${e.bloque.opciones}. ${e.bloque.paraLosPlatos}${ver}` : "";
   return `Va a mostrar «Bife» con su precio${linea}${bloque}.`;
 }
 
-const nombreDe = (c: Combinacion) => `visible=${c.visible} opcion=${c.opcion} incluye=${c.incluye} cantidad=${c.cantidad} limites=${c.limites} canal=${c.canal}`;
+const nombreDe = (c: Combinacion) => `visible=${c.visible} opcion=${c.opcion} incluye=${c.incluye} cantidad=${c.cantidad} limites=${c.limites} canal=${c.canal} descripcion=${c.descripcion}`;
 
 describe("carta «B»: el oráculo de combinaciones (escrito aparte, a mano)", () => {
   const todas = todasLasCombinaciones();
 
   it("el producto de las dimensiones tiene el tamaño declarado (un valor nuevo obliga a declararlo en el oráculo)", () => {
-    expect(VISIBLE.length * OPCION.length * INCLUYE.length * CANTIDAD.length * LIMITES.length * CANAL.length).toBe(TAMANO_DEL_PRODUCTO);
+    expect(VISIBLE.length * OPCION.length * INCLUYE.length * CANTIDAD.length * LIMITES.length * CANAL.length * DESCRIPCION.length).toBe(TAMANO_DEL_PRODUCTO);
     expect(todas).toHaveLength(TAMANO_DEL_PRODUCTO);
   });
 
@@ -172,16 +184,25 @@ describe("carta «B»: el oráculo de combinaciones (escrito aparte, a mano)", (
     expect(huerfanas).toEqual([]);
   });
 
+  it("E3: toda combinación cae en alguna regla del detalle y cada regla del detalle se usa (una regla huérfana no prueba nada)", () => {
+    expect(todas.filter((c) => !REGLAS_DEL_DETALLE.some((r) => r.nombre === reglaDelDetalle(c).nombre))).toEqual([]);
+    const usadas = new Set(todas.map((c) => reglaDelDetalle(c).nombre));
+    expect(REGLAS_DEL_DETALLE.filter((r) => !usadas.has(r.nombre)).map((r) => r.nombre)).toEqual([]);
+  });
+
   describe.each(todas.map((c) => [nombreDe(c), c] as const))("%s", (_nombre, c) => {
     it("lo que se lee en el canal es lo que dice la regla", () => {
       const [regla] = reglasQueAplican(c);
       const esperado = regla!.entonces;
-      const { obtenido, oracion } = leerElCanal(c);
-      const mensaje = `${nombreDe(c)} [${regla!.nombre}]`;
+      const { obtenido, oracion, detalle } = leerElCanal(c);
+      const reglaDetalle = reglaDelDetalle(c);
+      const mensaje = `${nombreDe(c)} [${regla!.nombre}] [detalle: ${reglaDetalle.nombre}]`;
       if (oracion !== undefined) {
-        expect(oracion, mensaje).toBe(oracionEsperada(esperado));
+        expect(oracion, mensaje).toBe(oracionEsperada(esperado, reglaDetalle.detalle));
         return;
       }
+      // E3: el desplegable «Ver detalle ▾» (solo pantalla) y la lista de papel (solo papel) existen juntos o no existen, con el mismo contenido y el rótulo genérico.
+      expect(detalle, mensaje).toEqual(reglaDetalle.detalle === null ? { pantalla: null, rotulo: null, papel: null } : { pantalla: reglaDetalle.detalle, rotulo: "Ver detalle ▾", papel: reglaDetalle.detalle });
       // En los canales de vista previa solo se mira a Bife; en los de sección, a los dos.
       const esperadoDelCanal: Esperado = c.canal === "vista-previa" ? { ...esperado, milanesa: null } : esperado;
       expect(obtenido, mensaje).toEqual(esperadoDelCanal);

@@ -68,6 +68,9 @@ const CLAVES_DE_LA_CARTA = [
   // Carta «B» (2026-11-04): los límites de una elección sin costo («elegís N» del bloque al pie de la sección). Son números del catálogo que ya se leen en el menú; no llevan ids.
   "carta.secciones[].items[].presentacion.aclaraciones[].cantidadMaxima",
   "carta.secciones[].items[].presentacion.aclaraciones[].cantidadMinima",
+  // Carta «B», E3: la descripción de cada opción de una elección (solo texto; `null` = sin descripción).
+  "carta.secciones[].items[].presentacion.aclaraciones[].descripciones",
+  "carta.secciones[].items[].presentacion.aclaraciones[].descripciones[]",
   "carta.secciones[].items[].presentacion.aclaraciones[].opciones",
   "carta.secciones[].items[].presentacion.aclaraciones[].opciones[].nombre",
   "carta.secciones[].items[].presentacion.aclaraciones[].opciones[].recargo",
@@ -265,7 +268,7 @@ describe("la salida de la carta pública está inventariada", () => {
       especial: false,
       imagenUrl: null,
       opcionesSinCosto: [{ grupo: "Guarnición", opciones: ["Puré", "Papas"] }],
-      presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["puré", "papas"], cantidadMinima: 1, cantidadMaxima: 1 }] },
+      presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["puré", "papas"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 }] },
     });
     expect(items.find((i) => i.nombre === "Jugo")).toEqual({
       nombre: "Jugo",
@@ -276,7 +279,7 @@ describe("la salida de la carta pública está inventariada", () => {
       especial: false,
       imagenUrl: null,
       opcionesSinCosto: [{ grupo: "Vaso", opciones: ["Chico", "Grande"] }],
-      presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Vaso", opciones: ["chico", "grande"], cantidadMinima: 1, cantidadMaxima: 1 }] },
+      presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Vaso", opciones: ["chico", "grande"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 }] },
     });
     // La carta de la PANTALLA (la del papel, completa, puede llevar lo agotado hoy: lo prueba el paso 10b).
     const serializado = JSON.stringify(carta.secciones);

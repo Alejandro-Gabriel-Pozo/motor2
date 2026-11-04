@@ -257,6 +257,28 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                             </BotonDeServidor>
                           </div>
                         </FormConResultado>
+                        {/* Carta «B», E3: la descripción que lee SOLO la carta (no el ticket, ni la comanda, ni el POS). Vacía = sin descripción. */}
+                        <FormConResultado
+                          ofrecerRecargar
+                          accion={async (formData: FormData) => {
+                            "use server";
+                            return editarOpcionDeGrupo({ opcionId, versionEsperada: versionOpcion, nombre, descripcionEnCarta: String(formData.get("descripcionEnCarta") ?? "") });
+                          }}
+                          className="flex max-w-full flex-col gap-1"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <label htmlFor={`opcion-descripcion-${o.id}`} className="sr-only">
+                              Descripción en la carta de {o.nombre}
+                            </label>
+                            <div className="w-full max-w-64 min-w-0">
+                              <Campo nombradoPorFuera id={`opcion-descripcion-${o.id}`} name="descripcionEnCarta" maxLength={120} defaultValue={o.descripcionEnCarta ?? ""} placeholder="Descripción en la carta (opcional)" tamano="compacto" />
+                            </div>
+                            <BotonDeServidor variante="enlace" tamano="tactil" type="submit" aria-label={`Guardar la descripción de ${nombre}`}>
+                              Guardar descripción
+                            </BotonDeServidor>
+                          </div>
+                          <p className="max-w-full text-xs text-tinta-suave">Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.</p>
+                        </FormConResultado>
                         {rige && (
                           <CambiarPrecio
                             nombre={nombre}
@@ -359,6 +381,7 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                     esNinguna: formData.get("esNinguna") === "on",
                     version: versionDelFormulario(formData),
                     ancla: tipo === "ADICIONAL" ? { unidadStockId: unidadAncla } : null,
+                    descripcionEnCarta: String(formData.get("descripcionEnCarta") ?? ""),
                   });
                 }}
               />

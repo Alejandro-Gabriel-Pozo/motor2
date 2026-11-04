@@ -79,6 +79,8 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
     ]);
     expect(forma("OpcionDeGrupo")).toEqual([
       "id:text:NO", "empresaId:text:NO", "grupoId:text:NO", "nombre:text:NO", "orden:integer:NO", "activa:boolean:NO", "esNinguna:boolean:NO", "productoId:text:YES", "version:integer:NO", `creadoEn:${T}:NO`, `actualizadoEn:${T}:NO`,
+      // Carta «B», E3 (2026-11-04): la descripción de la opción, nulable.
+      "descripcionEnCarta:text:YES",
     ]);
     expect(forma("VersionDeOpcion")).toEqual([
       "id:text:NO", "empresaId:text:NO", "opcionId:text:NO", "numero:integer:NO", "tipoDeDiferencia:text:NO", "diferenciaPrecio:numeric(14,2):YES", "porcentaje:numeric(7,4):YES", "factorEscala:numeric(8,4):YES", "creadoPorId:text:NO", `creadoEn:${T}:NO`,
@@ -176,7 +178,7 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
     expect(checks.map((c) => c.nombre)).toEqual([
       "ConsumoDeOpcion_cantidad_chk", "ConsumoDeOpcion_efecto_chk", "ConsumoDeOpcion_merma_chk", "ConsumoDeOpcion_orden_chk", "ConsumoDeOpcion_reemplazo_chk",
       "GrupoDeOpciones_cantidades_chk", "GrupoDeOpciones_incluida_chk", "GrupoDeOpciones_medida_chk", "GrupoDeOpciones_nombre_chk", "GrupoDeOpciones_prefijo_en_carta_chk" /* Fase 4 */, "GrupoDeOpciones_tipo_chk", "GrupoDeOpciones_version_chk",
-      "OpcionDeGrupo_nombre_chk", "OpcionDeGrupo_ninguna_sin_producto_chk", "OpcionDeGrupo_orden_chk", "OpcionDeGrupo_version_chk",
+      "OpcionDeGrupo_descripcion_en_carta_chk" /* Carta B, E3 */, "OpcionDeGrupo_nombre_chk", "OpcionDeGrupo_ninguna_sin_producto_chk", "OpcionDeGrupo_orden_chk", "OpcionDeGrupo_version_chk",
       "ProductoAdmiteGrupo_cantidades_chk", "ProductoAdmiteGrupo_eje_de_combinacion_chk" /* GO-3a */, "ProductoAdmiteGrupo_modo_precio_chk", "ProductoAdmiteGrupo_orden_chk", "ProductoAdmiteGrupo_version_chk",
       "ProductoAdmiteOpcion_absoluto_o_diferencia_chk", "ProductoAdmiteOpcion_cantidad_maxima_chk", "ProductoAdmiteOpcion_diferencia_chk", "ProductoAdmiteOpcion_porcentaje_chk", "ProductoAdmiteOpcion_precio_absoluto_chk", "ProductoAdmiteOpcion_tipo_de_diferencia_chk", "ProductoAdmiteOpcion_version_chk",
       "VersionDeOpcion_diferencia_chk", "VersionDeOpcion_factor_chk", "VersionDeOpcion_numero_chk", "VersionDeOpcion_porcentaje_chk", "VersionDeOpcion_tipo_de_diferencia_chk",
@@ -206,7 +208,8 @@ describe("la migración deja las tablas, los índices, las claves foráneas, las
       )).map((c) => c.columna);
     // La Fase 4 de la ola «precio y carta» (ADR-035) suma `prefijoEnCarta` («se lee en la carta como», editable).
     expect(await actualizables("GrupoDeOpciones")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "nombre", "prefijoEnCarta", "version"]);
-    expect(await actualizables("OpcionDeGrupo")).toEqual(["activa", "actualizadoEn", "nombre", "orden", "version"]);
+    // Carta «B», E3: + `descripcionEnCarta` (la descripción de la opción, editable).
+    expect(await actualizables("OpcionDeGrupo")).toEqual(["activa", "actualizadoEn", "descripcionEnCarta", "nombre", "orden", "version"]);
     // GO-3a (ADR-032) suma `ejeDeCombinacion` (el eje de las combinaciones, editable); «Mostrar este grupo en la carta» (2026-10-29), `seMuestraEnCarta`.
     expect(await actualizables("ProductoAdmiteGrupo")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "cantidadMinima", "ejeDeCombinacion", "modoPrecio", "orden", "seMuestraEnCarta", "version"]);
     expect(await actualizables("ProductoAdmiteOpcion")).toEqual(["activo", "actualizadoEn", "cantidadMaxima", "diferenciaPrecio", "porcentaje", "precioAbsoluto", "tipoDeDiferencia", "version"]);

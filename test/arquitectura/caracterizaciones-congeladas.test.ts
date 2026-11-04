@@ -780,6 +780,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Carta B (E1; ADITIVO, solo CARTA, el COBRO idéntico): la forma que la carta le da a una elección (`aclaraciones` de tipo «eleccion») trae los límites de lo que se elige, `cantidadMinima` y `cantidadMaxima`, para que la carta muestre «elegís de A a B» y «opcional, hasta N». Revisado con `git diff -U0`: cambia SOLO la línea `presentacion` de «Bife a la criolla» (la elección «Guarnicion» suma `\"cantidadMinima\":1,\"cantidadMaxima\":1`); de `## COBRO` en adelante nada cambia.",
       },
+      {
+        blob: "c919e0749f71b401cad0f5bb8630d552c217f647",
+        // El commit PADRE de este (a7ffb2e1) es el último antes del cambio; el golden se regenera en el commit siguiente (carta B, etapa E3).
+        commit: "a7ffb2e1",
+        motivo:
+          "Carta B (E3; ADITIVO, solo CARTA, el COBRO idéntico): la forma que la carta le da a una elección (`aclaraciones` de tipo «eleccion») trae `descripciones`, la descripción de cada opción alineada con `opciones` (`null` = sin descripción; en este catálogo ninguna tiene). Revisado con `git diff -U0`: cambia SOLO la línea `presentacion` de «Bife a la criolla» (la elección «Guarnicion» suma `\"descripciones\":[null,null,null]`); de `## COBRO` en adelante nada cambia.",
+      },
     ],
   },
   "test/e2e/linea-de-base-precio-y-carta.golden.txt": {
@@ -913,6 +920,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "29c40392",
         motivo:
           "Carta B (E1; CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04 con maquetas): cada plato muestra «Incluye …» debajo del nombre, las opciones que se repiten en todos los platos de una sección van en un bloque al pie de la sección (se retira el rótulo «En todos») y la lista de cada sección es alcanzable con teclado. Regenerado por la sesión de la etapa E1 (commit e58bc9b8, «golden de la línea de base»); el CI de la PR lo compara contra el navegador.",
+      },
+      {
+        blob: "089202b4191331531201c147522244252465785f",
+        // El commit PADRE de este (dea003a4) es el último antes de la regeneración; los cambios son de la carta B (E3).
+        commit: "dea003a4",
+        motivo:
+          "Carta B (E3; ADITIVO, SOLO la pantalla de administración del grupo): cada opción suma el formulario «Descripción en la carta (opcional)» con su botón «Guardar descripción» y su ayuda («Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS»). Revisado con `git diff -U0`: 48 líneas agregadas, ninguna quitada; la carta pública (texto y tipografía) y las demás pantallas quedan idénticas, porque el catálogo sembrado no tiene descripciones.",
       },
     ],
   },

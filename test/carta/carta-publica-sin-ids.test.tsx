@@ -171,7 +171,7 @@ describe("Fase 5 («carta pareja»): la forma también se copia campo por campo"
               columnas: ["Chico", "Grande"],
               filas: [{ rotulo: null, celdas: [4000, null], opcionId: "opcion-interna" }],
               aclaraciones: [
-                { tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"], tipoDelGrupo: "VARIANTE" },
+                { tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"], descripciones: [null, "con espuma"], cantidadMinima: 1, cantidadMaxima: 1, tipoDelGrupo: "VARIANTE" },
                 { tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "shot", recargo: 600, opcionId: "opcion-interna", productoAnclaId: "ancla-interna" }] },
               ],
             },
@@ -225,7 +225,7 @@ describe("Fase 5 («carta pareja»): la forma también se copia campo por campo"
       columnas: ["Chico", "Grande"],
       filas: [{ rotulo: null, celdas: [4000, null] }],
       aclaraciones: [
-        { tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"] },
+        { tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"], descripciones: [null, "con espuma"], cantidadMinima: 1, cantidadMaxima: 1 },
         { tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "shot", recargo: 600 }] },
       ],
     });

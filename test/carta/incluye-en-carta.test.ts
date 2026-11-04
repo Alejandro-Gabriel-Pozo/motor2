@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { incluyeDeLaSeccion, textoDeIncluye, textoDeLasOpciones, textoDelBloque, textoDelTitulo, type AclaracionParaIncluye } from "../../src/core/carta/incluye-en-carta";
+import { detalleDelBloque, incluyeDeLaSeccion, textoDeIncluye, textoDeLasOpciones, textoDelBloque, textoDelTitulo, type AclaracionParaIncluye } from "../../src/core/carta/incluye-en-carta";
 
 /**
  * Carta «B» (2026-11-04): la función PURA que dice qué incluye cada plato y arma el bloque del pie de la sección. Acá, los casos de borde de la lógica sola; las COMBINACIONES de dimensiones contra el
  * oráculo escrito a mano están en `incluye-en-carta.oraculo.test.tsx`, y el dibujo en `carta-publica-formas.test.tsx`.
  */
 
-const eleccion = (rotulo: string, opciones: string[], minimo = 1, maximo = 1): AclaracionParaIncluye => ({ tipo: "eleccion", rotulo, opciones, cantidadMinima: minimo, cantidadMaxima: maximo });
+const eleccion = (rotulo: string, opciones: string[], minimo = 1, maximo = 1, descripciones: (string | null)[] = opciones.map(() => null)): AclaracionParaIncluye => ({ tipo: "eleccion", rotulo, opciones, descripciones, cantidadMinima: minimo, cantidadMaxima: maximo });
 const extras = (rotulo: string): AclaracionParaIncluye => ({ tipo: "extras", rotulo, opciones: [{ nombre: "queso", recargo: 1000 }] });
 const lineas = (platos: readonly (readonly AclaracionParaIncluye[])[]) => incluyeDeLaSeccion(platos).platos.map(textoDeIncluye);
 
@@ -97,5 +97,30 @@ describe("incluyeDeLaSeccion", () => {
     const copia = structuredClone(entrada);
     expect(incluyeDeLaSeccion(entrada)).toEqual(incluyeDeLaSeccion(entrada));
     expect(entrada).toEqual(copia);
+  });
+
+  describe("descripción de la opción (E3)", () => {
+    const con = (...d: (string | null)[]) => eleccion("Guarnición", ["puré", "ensalada", "papas fritas"], 1, 1, d);
+
+    it("el bloque lleva la descripción de cada opción, alineada con sus nombres; sin ninguna no hay detalle", () => {
+      const b = incluyeDeLaSeccion([[con(null, "lechuga, tomate, cebolla", null)]]).bloques[0]!;
+      expect(b.descripciones).toEqual([null, "lechuga, tomate, cebolla", null]);
+      expect(detalleDelBloque(b)).toEqual([{ nombre: "ensalada", descripcion: "lechuga, tomate, cebolla" }]);
+      expect(detalleDelBloque(incluyeDeLaSeccion([[con(null, null, null)]]).bloques[0]!)).toEqual([]);
+    });
+
+    it("la descripción es de la OPCIÓN: si dos platos traen la misma, vale la que no es null y el orden del bloque se mantiene", () => {
+      const platos = [[eleccion("Guarnición", ["puré", "papas fritas"], 1, 1, [null, null])], [eleccion("Guarnición", ["puré", "ensalada", "papas fritas"], 1, 1, [null, "lechuga", "rústicas"])]];
+      const b = incluyeDeLaSeccion(platos).bloques[0]!;
+      expect(b.opciones).toEqual(["puré", "ensalada", "papas fritas"]);
+      expect(b.descripciones).toEqual([null, "lechuga", "rústicas"]);
+      expect(detalleDelBloque(b).map((d) => d.nombre)).toEqual(["ensalada", "papas fritas"]);
+    });
+
+    it("«Va a mostrar» las lleva al final del bloque; nunca en la línea del plato", () => {
+      const r = incluyeDeLaSeccion([[con(null, "lechuga, tomate, cebolla", null)]]);
+      expect(textoDelBloque(r.bloques[0]!)).toBe("Guarnición · elegís 1: puré · ensalada · papas fritas. Con los platos que dicen «Incluye guarnición». Ver detalle: ensalada: lechuga, tomate, cebolla");
+      expect(textoDeIncluye(r.platos[0]!)).toBe("Incluye guarnición");
+    });
   });
 });

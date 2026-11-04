@@ -96,7 +96,7 @@ describe("8a: forma simple (el bife: su precio y las aclaraciones debajo)", () =
     presentacion: {
       forma: "simple",
       aclaraciones: [
-        { tipo: "eleccion", rotulo: "Guarnicion", opciones: ["ensalada", "papas fritas", "puré"], cantidadMinima: 1, cantidadMaxima: 1 },
+        { tipo: "eleccion", rotulo: "Guarnicion", opciones: ["ensalada", "papas fritas", "puré"], descripciones: [null, null, null], cantidadMinima: 1, cantidadMaxima: 1 },
         { tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "extra de papas", recargo: 2000 }, { nombre: "huevo frito", recargo: 1500 }] },
       ],
     },
@@ -135,11 +135,11 @@ describe("8a: forma simple (el bife: su precio y las aclaraciones debajo)", () =
 
 
   it("los nombres del negocio se escapan (no son HTML crudo)", () => {
-    const raro = filaCon(dibujar([item({ nombre: "Plato", precio: 1, presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "<b>G</b>", opciones: ['<img src=x onerror="alert(1)">', "b"], cantidadMinima: 1, cantidadMaxima: 1 }] } })]), "Plato");
+    const raro = filaCon(dibujar([item({ nombre: "Plato", precio: 1, presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "<b>G</b>", opciones: ['<img src=x onerror="alert(1)">', "b"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 }] } })]), "Plato");
     expect(raro).not.toContain("<img src=x");
     expect(raro).toContain("Incluye &lt;b&gt;G&lt;/b&gt;</p>");
     // ...ni en el bloque del pie, donde van el nombre del grupo y sus opciones.
-    const entera = dibujar([item({ nombre: "Plato", precio: 1, presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "<b>G</b>", opciones: ['<img src=x onerror="alert(1)">', "b"], cantidadMinima: 1, cantidadMaxima: 1 }] } })]);
+    const entera = dibujar([item({ nombre: "Plato", precio: 1, presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "<b>G</b>", opciones: ['<img src=x onerror="alert(1)">', "b"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 }] } })]);
     expect(entera).not.toContain("<img src=x");
     expect(entera).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
   });
@@ -224,7 +224,7 @@ describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / 
         { rotulo: "De pollo", celdas: [20000, 25000] },
         { rotulo: "De trucha", celdas: [23000, null] },
       ],
-      aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["papas fritas", "puré"], cantidadMinima: 1, cantidadMaxima: 1 }],
+      aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["papas fritas", "puré"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 }],
     },
   });
   const html = filaCon(dibujar([milanesas]), "Milanesas");
@@ -276,7 +276,7 @@ describe("8d: la base de un eje (las pizzas): oculta por defecto, cada opción c
     { rotulo: "Pizza napolitana", celdas: [22000] },
   ];
   const pizzas = (titulo: boolean) =>
-    item({ nombre: "Pizzas", descripcion: "A la piedra", tags: ["veggie"], precio: 18000, presentacion: { forma: "tabla", titulo, columnas: [], filas, aclaraciones: [{ tipo: "eleccion", rotulo: "Masa", opciones: ["fina", "al molde"], cantidadMinima: 1, cantidadMaxima: 1 }] } });
+    item({ nombre: "Pizzas", descripcion: "A la piedra", tags: ["veggie"], precio: 18000, presentacion: { forma: "tabla", titulo, columnas: [], filas, aclaraciones: [{ tipo: "eleccion", rotulo: "Masa", opciones: ["fina", "al molde"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 }] } });
 
   it("OCULTA (DEC-11): cada opción es un plato con su nombre completo (h3, rol Producto) y su precio (rol Precio); el producto base no se nombra", () => {
     const html = filaCon(dibujar([pizzas(false)]), "Pizza muzzarella");
@@ -380,7 +380,7 @@ describe("C9: la carta con P1 no usa verbos en las aclaraciones", () => {
   it("ningún texto de la carta con P1 (bife, café, café con una sola gratis, carta de ejemplo) contiene «Elegí» ni «Incluida»", async () => {
     const { CARTA_EJEMPLO } = await import("../../src/components/carta/carta-ejemplo");
     const textos = [
-      texto(dibujar([item({ nombre: "Bife", precio: 20000, presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnicion", opciones: ["ensalada", "papas fritas", "puré"], cantidadMinima: 1, cantidadMaxima: 1 }] } })])),
+      texto(dibujar([item({ nombre: "Bife", precio: 20000, presentacion: { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnicion", opciones: ["ensalada", "papas fritas", "puré"], descripciones: [null, null, null], cantidadMinima: 1, cantidadMaxima: 1 }] } })])),
       texto(dibujar([item({ nombre: "Café", precio: 4000, presentacion: { forma: "simple", aclaraciones: [{ tipo: "extras", rotulo: "Preparación", opciones: [{ nombre: "solo", recargo: 0 }, { nombre: "cortado", recargo: 0 }, { nombre: "lágrima", recargo: 200 }] }] } })])),
       texto(dibujar([item({ nombre: "Café", precio: 4000, presentacion: { forma: "simple", aclaraciones: [{ tipo: "extras", rotulo: "Preparación", opciones: [{ nombre: "solo", recargo: 0 }, { nombre: "lágrima", recargo: 200 }] }] } })])),
       renderToStaticMarkup(<Seccion seccion={CARTA_EJEMPLO.secciones[0]!} indice={0} total={2} estilo={resolverEstiloCarta({})} />),
@@ -395,7 +395,7 @@ describe("C9: la carta con P1 no usa verbos en las aclaraciones", () => {
 describe("C12: la línea que separa un producto del siguiente es la misma clara en toda forma", () => {
   // `divide-y` pinta el borde de abajo de cada `<li>` con el color DEL `<li>` (no del `ul`): un `<li>` sin color cae al color del texto y se ve negro. La forma de un producto no puede cambiar el separador.
   // C13: el color se declara UNA vez, en `globals.css` (`.carta-shell .carta-divisor > *`), y la lista de productos de la sección lleva `carta-divisor`: ningún `<li>` lo escribe por su cuenta.
-  const aclaracion: AclaracionCartaPublica = { tipo: "eleccion", rotulo: "Guarnición", opciones: ["papas fritas", "puré"], cantidadMinima: 1, cantidadMaxima: 1 };
+  const aclaracion: AclaracionCartaPublica = { tipo: "eleccion", rotulo: "Guarnición", opciones: ["papas fritas", "puré"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 };
   const filas = [{ rotulo: "Pizza muzzarella", celdas: [18000] }, { rotulo: "Pizza napolitana", celdas: [22000] }];
   const siguiente = item({ nombre: "Flan", precio: 3200 });
   const formas: { forma: string; productos: ItemCartaPublico[] }[] = [

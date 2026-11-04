@@ -39,6 +39,11 @@ import {
 export interface OpcionParaVender extends OpcionPermitida {
   /** `OpcionDeGrupo.orden`. */
   orden: number;
+  /**
+   * Carta «B», E3: `OpcionDeGrupo.descripcionEnCarta`. La lee SOLO la carta (`lecturas/carta/opciones.ts` la carga y `tablaDePreciosParaLaCarta` la pasa a la forma): la venta, el POS, el ticket, la comanda, el stock y
+   * los reportes no la cargan (queda ausente) y la foto de la venta (`OpcionElegidaEnLinea`) no la copia. Ausente o `null` = sin descripción.
+   */
+  descripcionEnCarta?: string | null;
   /** `OpcionDeGrupo.productoId`: el producto ANCLA de un adicional (`null` en las demás y en «ninguna»). */
   productoAnclaId: string | null;
   /** La diferencia de la versión vigente (`VersionDeOpcion`: siempre tiene una, MONTO o PORCENTAJE). */

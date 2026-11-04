@@ -94,7 +94,7 @@ describe("6a · simple con aclaraciones: bife, plato con menos guarniciones y gr
     expect(bife.presentacion).toEqual({
       forma: "simple",
       aclaraciones: [
-        { tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas", "puré"], cantidadMinima: 1, cantidadMaxima: 1 },
+        { tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas", "puré"], descripciones: [null, null, null], cantidadMinima: 1, cantidadMaxima: 1 },
         { tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "extra de papas", recargo: 2000 }, { nombre: "huevo frito", recargo: 1500 }] },
       ],
     });
@@ -107,7 +107,7 @@ describe("6a · simple con aclaraciones: bife, plato con menos guarniciones y gr
       { id: "chorizo", nombre: "Bife de chorizo", precioBase: 24000, grupos: sinPure },
       { id: "lomo", nombre: "Lomo", precioBase: 26000, grupos: soloPapas },
     ]);
-    expect(item(armado, "Bife de chorizo")!.presentacion!.aclaraciones[0]).toEqual({ tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas"], cantidadMinima: 1, cantidadMaxima: 1 });
+    expect(item(armado, "Bife de chorizo")!.presentacion!.aclaraciones[0]).toEqual({ tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 });
     expect(item(armado, "Lomo")!.presentacion!.aclaraciones.map((a) => a.rotulo)).toEqual(["Extras"]);
   });
 });

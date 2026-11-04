@@ -34,7 +34,7 @@ describe("VistaPreviaDeLaCarta", () => {
   });
 
   it("tabla de un eje (el café): sus tamaños como encabezados, una sola fila, el precio de cada uno y «no se ofrece» donde no hay precio; el nombre es el título y lo que se elige va debajo", () => {
-    const html = dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [4000, null] }], aclaraciones: [{ tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"], cantidadMinima: 1, cantidadMaxima: 1 }] } });
+    const html = dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [4000, null] }], aclaraciones: [{ tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 }] } });
     expect(html.match(/<th scope="col"/g)).toHaveLength(2);
     const t = texto(html);
     expect(t).toContain("Café Chico Grande");

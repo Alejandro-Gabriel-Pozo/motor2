@@ -16,6 +16,8 @@ import type { Db } from "@/lib/db-tipos";
  *
  * Fase 5 de la ola «precio y carta» («carta pareja»): + `prefijoEnCarta` del grupo («se lee en la carta como», Fase 4, en `PUBLICACION_CARTA`), para el papel del grupo y el rótulo de cada fila.
  *
+ * Carta «B», E3 (2026-11-04): + `OpcionDeGrupo.descripcionEnCarta` (en `PUBLICACION_CARTA`): la descripción de cada opción, que lee SOLO la carta.
+ *
  * «Mostrar este grupo en la carta» (2026-10-29): + `ProductoAdmiteGrupo.seMuestraEnCarta` (en `PUBLICACION_CARTA`), que decide `cartaDeUnProducto` (`core/pos/precio-de-configuracion.ts`, el único lugar que filtra grupos de la carta).
  *
  * SIN `import "server-only"` a propósito, como las demás lecturas de la carta (`menu.ts`, `descuentos.ts`): las alcanza la carta pública y los tests la llaman directo.
@@ -67,6 +69,7 @@ export async function opcionesDeLosProductosDeLaCarta(db: Db, sucursalId: string
                   orden: true,
                   activa: true,
                   esNinguna: true,
+                  descripcionEnCarta: true,
                   apagadasEnSucursal: { where: { sucursalId }, select: { apagada: true } },
                   versiones: { orderBy: { numero: "desc" }, take: 1, select: { numero: true, tipoDeDiferencia: true, diferenciaPrecio: true, porcentaje: true } },
                 },
@@ -105,6 +108,7 @@ export async function opcionesDeLosProductosDeLaCarta(db: Db, sucursalId: string
               nombre: o.nombre,
               orden: o.orden,
               activa: o.activa,
+              descripcionEnCarta: o.descripcionEnCarta,
               admitida: a !== null && a.activo,
               apagadaEnSucursal: o.apagadasEnSucursal[0]?.apagada ?? false,
               cantidadMaxima: a?.cantidadMaxima ?? 0,

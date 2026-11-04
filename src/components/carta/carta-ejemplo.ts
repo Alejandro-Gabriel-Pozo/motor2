@@ -31,7 +31,7 @@ export const CARTA_EJEMPLO: CartaPublicaV1 = {
           presentacion: {
             forma: "simple",
             aclaraciones: [
-              { tipo: "eleccion", rotulo: "Salsa", opciones: ["ketchup", "mayonesa", "alioli"], cantidadMinima: 1, cantidadMaxima: 1 },
+              { tipo: "eleccion", rotulo: "Salsa", opciones: ["ketchup", "mayonesa", "alioli"], descripciones: [null, null, null], cantidadMinima: 1, cantidadMaxima: 1 },
               { tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "cheddar", recargo: 1200 }] },
             ],
           },
