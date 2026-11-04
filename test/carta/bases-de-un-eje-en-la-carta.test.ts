@@ -48,7 +48,7 @@ describe("Fase 5, DEC-11: las bases de un eje y lo que la carta lee de la base",
   });
 
   it("con «De» en «Milanesas de», la milanesa pasa a dos ejes: sale en tabla («De carne», «De pollo») y ya no es una base de un eje", async () => {
-    expect(await presentacionDe("Milanesas")).toMatchObject({ forma: "tabla", titulo: false, aclaraciones: [{ tipo: "eleccion", rotulo: "Milanesas de", opciones: ["carne", "pollo"] }] });
+    expect(await presentacionDe("Milanesas")).toMatchObject({ forma: "tabla", titulo: false, aclaraciones: [{ tipo: "eleccion", rotulo: "Milanesas de", opciones: ["carne", "pollo"], cantidadMinima: 1, cantidadMaxima: 1 }] });
     await prismaAdmin.grupoDeOpciones.updateMany({ where: { nombre: "Milanesas de" }, data: { prefijoEnCarta: "De" } });
     expect(await presentacionDe("Milanesas")).toEqual({
       forma: "tabla",

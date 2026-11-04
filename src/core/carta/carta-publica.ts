@@ -46,7 +46,7 @@ export interface ItemCartaPublico {
 }
 
 /** Una línea debajo del plato (Fase 5). */
-export type AclaracionCartaPublica = { tipo: "eleccion"; rotulo: string; opciones: string[] } | { tipo: "extras"; rotulo: string; opciones: { nombre: string; recargo: number }[] };
+export type AclaracionCartaPublica = { tipo: "eleccion"; rotulo: string; opciones: string[]; cantidadMinima: number; cantidadMaxima: number } | { tipo: "extras"; rotulo: string; opciones: { nombre: string; recargo: number }[] };
 
 /** La forma de un producto con opciones (Fase 5). `null` en una celda = no se ofrece («–»). */
 export type PresentacionCartaPublica =
@@ -102,7 +102,7 @@ const proyectarGrupo = (g: GrupoCartaV1): GrupoCartaPublico => ({
 
 /** Fase 5: una aclaración, campo por campo. */
 const proyectarAclaracion = (a: AclaracionCartaV1): AclaracionCartaPublica =>
-  a.tipo === "eleccion" ? { tipo: "eleccion", rotulo: a.rotulo, opciones: [...a.opciones] } : { tipo: "extras", rotulo: a.rotulo, opciones: a.opciones.map((o) => ({ nombre: o.nombre, recargo: o.recargo })) };
+  a.tipo === "eleccion" ? { tipo: "eleccion", rotulo: a.rotulo, opciones: [...a.opciones], cantidadMinima: a.cantidadMinima, cantidadMaxima: a.cantidadMaxima } : { tipo: "extras", rotulo: a.rotulo, opciones: a.opciones.map((o) => ({ nombre: o.nombre, recargo: o.recargo })) };
 
 /** Fase 5: la forma de un producto, campo por campo según la forma (nunca `{ ...presentacion }`: un campo interno nuevo no sale solo). */
 function proyectarPresentacion(p: PresentacionCartaV1): PresentacionCartaPublica {
@@ -168,8 +168,10 @@ export function etiquetaDeCacheDeCartasPublicas(empresaSlug: string): string {
  * cambia la FORMA de `CartaV1` (no los datos). «carta-pareja-2»: suma `seccionesImpresas` (la carta completa del papel, paso 10b).
  * «carta-pareja-3»: suma `protagonista` en la lista (tanda C, jerarquía).
  * «carta-pareja-4»: modelo unificado (decisión del dueño, 2026-10-29): la forma es `simple` o `tabla` (con `titulo`); sin `columnas`, `lista` ni `tandas`.
+ * «carta-pareja-5»: carta «B» (2026-11-04): cada aclaración `eleccion` suma `cantidadMinima` y `cantidadMaxima` (de ahí salen la línea «Incluye …» del plato y el bloque al pie de la sección). Una carta
+ * guardada con la forma anterior no los trae y se dibujaría sin «elegís N».
  */
-export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-4";
+export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-5";
 
 /** La carta armada, sin los ids internos: lo que la carta pública emite hacia el navegador. */
 export function proyectarCartaPublica(carta: CartaV1): CartaPublicaV1 {
