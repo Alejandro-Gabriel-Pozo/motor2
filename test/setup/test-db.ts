@@ -136,6 +136,8 @@ export async function limpiarBaseDeTest() {
   // Los conceptos de gasto (M4.1) los referencian los renglones sin stock (RESTRICT): DESPUÉS de los renglones.
   await prismaAdmin.conceptoDeGasto.deleteMany();
   // E3a (ADR-041): la anulación de una factura la referencia (RESTRICT).
+  await prismaAdmin.anulacionDePagoDeFacturaProveedor.deleteMany();
+  await prismaAdmin.pagoDeFacturaProveedor.deleteMany();
   await prismaAdmin.anulacionDeFacturaProveedor.deleteMany();
   await prismaAdmin.facturaProveedor.deleteMany();
   // GO-1d: las operaciones hijas (de los adicionales) referencian a su padre (RESTRICT): primero ellas.
