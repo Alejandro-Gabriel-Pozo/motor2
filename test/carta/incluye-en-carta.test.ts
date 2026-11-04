@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detalleDelBloque, incluyeDeLaSeccion, textoDeIncluye, textoDeLasOpciones, textoDelBloque, textoDelTitulo, type AclaracionParaIncluye } from "../../src/core/carta/incluye-en-carta";
+import { detalleDelBloque, incluyeDeLaSeccion, textoDeIncluye, textoDeLasOpciones, textoDeVaCon, textoDelBloque, textoDelTitulo, vaConDelBloque, type AclaracionParaIncluye } from "../../src/core/carta/incluye-en-carta";
 
 /**
  * Carta «B» (2026-11-04): la función PURA que dice qué incluye cada plato y arma el bloque del pie de la sección. Acá, los casos de borde de la lógica sola; las COMBINACIONES de dimensiones contra el
@@ -121,6 +121,30 @@ describe("incluyeDeLaSeccion", () => {
       const r = incluyeDeLaSeccion([[con(null, "lechuga, tomate, cebolla", null)]]);
       expect(textoDelBloque(r.bloques[0]!)).toBe("Guarnición · elegís 1: puré · ensalada · papas fritas. Con los platos que dicen «Incluye guarnición». Ver detalle: ensalada: lechuga, tomate, cebolla");
       expect(textoDeIncluye(r.platos[0]!)).toBe("Incluye guarnición");
+    });
+  });
+
+  describe("invitación «5+2» (E2): qué platos marca y qué dice «Va con»", () => {
+    const nombres = ["Bife a la criolla", "Bife con chimichurri", "Chivo del norte", "Estofado de chivo", "Pechuga grille"];
+    const G = eleccion("Guarnición", ["puré", "ensalada", "papas fritas"]);
+    const S = eleccion("Salsa", ["filetto", "crema"]);
+    const platos = [[G, S], [G], [S], [], [eleccion("Guarnición", ["puré", "ensalada"])]];
+    const r = incluyeDeLaSeccion(platos);
+    const va = (grupo: string) => vaConDelBloque(r.bloques.find((b) => b.titulo === grupo)!, nombres.map((nombre, i) => ({ nombre, partes: r.platos[i]! })));
+
+    it("marca exactamente los platos que incluyen el grupo (el que no lo incluye, nunca)", () => {
+      expect(r.bloques.find((b) => b.titulo === "Guarnición")!.platos).toEqual([0, 1, 4]);
+      expect(r.bloques.find((b) => b.titulo === "Salsa")!.platos).toEqual([0, 2]);
+    });
+
+    it("«Va con»: los platos del bloque en el orden de la sección, y el que admite un subconjunto lo dice", () => {
+      expect(va("Guarnición")).toEqual(["Bife a la criolla", "Bife con chimichurri", "Pechuga grille (solo puré o ensalada)"]);
+      expect(textoDeVaCon(va("Salsa"))).toBe("Va con: Bife a la criolla · Chivo del norte");
+    });
+
+    it("sin platos no hay «Va con»; una posición que no existe se ignora", () => {
+      expect(textoDeVaCon([])).toBeNull();
+      expect(vaConDelBloque({ ...r.bloques[0]!, platos: [9] }, [])).toEqual([]);
     });
   });
 });

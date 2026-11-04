@@ -72,11 +72,19 @@ function textoDeElegis(minimo: number, maximo: number): string {
   return `elegís de ${minimo} a ${maximo}`;
 }
 
-/** Une una lista con comas y una «y» al final («guarnición, salsa y postre»); «e» delante de un sonido «i» (no de «ia», «ie», «io», «iu»). */
+/**
+ * Lo que va ANTES de la parte `k` de una lista de `n` partes: nada en la primera, una coma en las del medio y una «y» en la última («e» delante de un sonido «i», no de «ia», «ie», «io», «iu»).
+ * Lo comparten el texto plano (`textoDeIncluye`) y la carta con palabras tocables (E2), para que no se desalineen.
+ */
+export function conectorDeLaParte(textos: readonly string[], k: number): string {
+  if (k === 0) return "";
+  if (k < textos.length - 1) return ", ";
+  return /^h?i(?![aeou])/i.test(textos[k]!) ? " e " : " y ";
+}
+
+/** Une una lista con comas y una «y» al final («guarnición, salsa y postre»). */
 function unirConY(partes: readonly string[]): string {
-  if (partes.length <= 1) return partes[0] ?? "";
-  const ultimo = partes[partes.length - 1]!;
-  return `${partes.slice(0, -1).join(", ")} ${/^h?i(?![aeou])/i.test(ultimo) ? "e" : "y"} ${ultimo}`;
+  return partes.map((texto, k) => `${conectorDeLaParte(partes, k)}${texto}`).join("");
 }
 
 /**
@@ -152,9 +160,14 @@ export function incluyeDeLaSeccion(platos: readonly (readonly AclaracionParaIncl
   return { platos: dichoPorPlato, bloques };
 }
 
+/** Lo que sigue a la palabra del grupo en la línea del plato: «», «: puré o ensalada», « (elegís 2)». */
+export function restoDeLaParte(p: ParteDeIncluye): string {
+  return `${p.subconjunto ? `: ${p.subconjunto}` : ""}${p.elegis ? ` (${p.elegis})` : ""}`;
+}
+
 /** Un grupo dentro de la línea del plato: «guarnición», «guarnición: puré o ensalada», «guarnición (elegís 2)». */
 function textoDeUnaParte(p: ParteDeIncluye): string {
-  return `${p.palabra}${p.subconjunto ? `: ${p.subconjunto}` : ""}${p.elegis ? ` (${p.elegis})` : ""}`;
+  return `${p.palabra}${restoDeLaParte(p)}`;
 }
 
 /** La línea de UN plato: «Incluye guarnición y salsa». `null` si no incluye ningún grupo libre (no hay línea). */
@@ -181,4 +194,22 @@ export function textoDelTitulo(b: BloqueDeOpciones): string {
 export function textoDelBloque(b: BloqueDeOpciones): string {
   const detalle = detalleDelBloque(b);
   return `${textoDelTitulo(b)}: ${textoDeLasOpciones(b)}. ${b.paraLosPlatos}${detalle.length > 0 ? `. Ver detalle: ${detalle.map((d) => `${d.nombre}: ${d.descripcion}`).join("; ")}` : ""}`;
+}
+
+/**
+ * Carta «B», E2 (invitación «5+2»): los platos que lleva un bloque, para el «Va con: …» que se ve mientras el bloque está iluminado. Uno por plato que lo incluye (`BloqueDeOpciones.platos`, en el orden de
+ * la sección); el que admite solo algunas opciones lo dice («Pechuga grille (solo puré o ensalada)»). `platos[i]` trae el nombre y lo que dice el plato `i` (`IncluyeDeLaSeccion.platos[i]`). Puro.
+ */
+export function vaConDelBloque(bloque: BloqueDeOpciones, platos: readonly { nombre: string; partes: readonly ParteDeIncluye[] }[]): string[] {
+  return bloque.platos.flatMap((i) => {
+    const plato = platos[i];
+    if (!plato) return [];
+    const subconjunto = plato.partes.find((p) => p.grupo === bloque.titulo)?.subconjunto;
+    return [subconjunto ? `${plato.nombre} (solo ${subconjunto})` : plato.nombre];
+  });
+}
+
+/** «Va con: Bife a la criolla · Pechuga grille (solo puré o ensalada)»; sin platos, `null`. */
+export function textoDeVaCon(lista: readonly string[]): string | null {
+  return lista.length === 0 ? null : `Va con: ${lista.join(" · ")}`;
 }
