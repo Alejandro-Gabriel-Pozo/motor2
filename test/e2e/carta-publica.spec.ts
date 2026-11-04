@@ -246,12 +246,18 @@ test.describe("carta de una sucursal", () => {
         await expect(extrasCafe.locator("[data-rol=opcion]")).toHaveText(["medialuna", "shot"]);
         await expect(extrasCafe.locator("[data-rol=opcion-precio]")).toHaveText(["+$600", "+$500"]);
         await expect(filas.cafe.locator("[data-tamanos-carta], [data-suma-carta], [data-opciones-sin-costo]")).toHaveCount(0);
-        // La milanesa (Fase 5, forma «simple»): su precio base de siempre y, debajo, la etiqueta «Guarnición» y, en una línea, «papas fritas · puré · ensalada» (sin «Ver opciones» ni desplegable; sin la «ninguna»); el flan, un producto común.
+        // La milanesa (Fase 5, forma «simple»; carta «B» de 2026-11-04): su precio base de siempre y, debajo, «Incluye guarnición …»; las opciones («papas fritas · puré · ensalada», sin la «ninguna») van en el bloque
+        // al pie de la sección, sin «Ver opciones» ni desplegable; el flan, un producto común.
         await expect(filas.milanesa).toContainText("$9.500");
-        const guarnicionMila = filas.milanesa.locator(`[data-aclaracion='Guarnición ${m}']`);
-        await expect(guarnicionMila).toBeVisible();
-        await expect(guarnicionMila.locator("[data-rol=aclaracion-rotulo]")).toHaveText(`Guarnición ${m}`);
-        await expect(guarnicionMila.locator("[data-rol=eleccion]")).toHaveText("papas fritas · puré · ensalada");
+        const incluyeMila = filas.milanesa.locator("[data-incluye]");
+        await expect(incluyeMila).toBeVisible();
+        await expect(incluyeMila).toHaveText(`Incluye guarnición ${m}`);
+        const bloqueGuarnicion = page.locator(`[data-bloque-de-opciones='Guarnición ${m}']`);
+        await expect(bloqueGuarnicion).toBeVisible();
+        await expect(bloqueGuarnicion.locator("h4")).toHaveText(`Guarnición ${m} · elegís 1`);
+        const opcionesGuarnicion = bloqueGuarnicion.locator("[data-rol=eleccion]");
+        await expect(opcionesGuarnicion).toHaveText("papas fritas · puré · ensalada");
+        await expect(bloqueGuarnicion).toContainText(`Con los platos que dicen «Incluye guarnición ${m}»`);
         await expect(filas.milanesa).not.toContainText("Ver opciones");
         await expect(filas.milanesa).not.toContainText("Sin guarnición");
         expect(await filas.milanesa.locator("details").count(), "ningún desplegable").toBe(0);
@@ -266,7 +272,8 @@ test.describe("carta de una sucursal", () => {
         expect(await tamanoPx(tabla.getByRole("rowheader").first().locator("[data-rol=opcion]"))).toBe(16);
         expect(await tamanoPx(tabla.locator("tbody [data-rol=opcion-precio]").first())).toBe(16);
         expect(await tamanoPx(extrasCafe.locator("[data-rol=aclaracion-rotulo]"))).toBe(14);
-        expect(await tamanoPx(guarnicionMila.locator("[data-rol=eleccion]"))).toBe(15);
+        expect(await tamanoPx(opcionesGuarnicion)).toBe(15);
+        expect(await tamanoPx(incluyeMila)).toBe(14);
         // Sin desborde horizontal: ni la página ni la fila del café.
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `la página se desborda a ${ancho} px`).toBe(true);
         expect(await filas.cafe.evaluate((el) => el.scrollWidth <= el.clientWidth), `el café se desborda a ${ancho} px`).toBe(true);

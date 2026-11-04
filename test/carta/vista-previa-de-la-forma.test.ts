@@ -15,7 +15,9 @@ import { cargarCartaParaMantener } from "../../src/server/consultas/carta/manten
 
 describe("vistaPreviaDeLaForma (puro)", () => {
   it("cada forma con sus precios y lo que se lee debajo", () => {
-    expect(vistaPreviaDeLaForma("Bife", { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnicion", opciones: ["ensalada", "puré"] }] })).toBe("Va a mostrar «Bife» con su precio · Guarnicion: ensalada o puré.");
+    expect(vistaPreviaDeLaForma("Bife", { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnicion", opciones: ["ensalada", "puré"], cantidadMinima: 1, cantidadMaxima: 1 }] })).toBe(
+      "Va a mostrar «Bife» con su precio · Incluye guarnicion · Guarnicion · elegís 1: ensalada · puré. Con los platos que dicen «Incluye guarnicion».",
+    );
     expect(vistaPreviaDeLaForma("Café", { forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [4000, null] }], aclaraciones: [] })).toBe("Va a mostrar una tabla «Café» (Chico / Grande): $4.000 / –.");
     expect(
       vistaPreviaDeLaForma("Milanesas", { forma: "tabla", titulo: true, columnas: ["Simple", "Napolitana"], filas: [{ rotulo: "De carne", celdas: [20000, 25000] }], aclaraciones: [] }),
@@ -54,6 +56,8 @@ describe("«Va a mostrar» de «Agregar a la carta», contra Postgres", () => {
     );
     expect(vista("Milanesas")).toBe("Va a mostrar una tabla «Milanesas» (Simple / Napolitana): De carne $20.000 / $25.000; De pollo $20.000 / $25.000.");
     expect(vista("Café")).toMatch(/^Va a mostrar una tabla «Café» \(Chico \/ Mediano \/ Grande\): \$4\.000 \/ \$4\.100 \/ \$4\.300 · Preparación del café: /);
-    expect(vista("Bife a la criolla")).toBe("Va a mostrar «Bife a la criolla» con su precio · Guarnicion: ensalada, papas fritas o puré · Extras: extra de papas +$2.000, huevo frito +$1.500.");
+    expect(vista("Bife a la criolla")).toBe(
+      "Va a mostrar «Bife a la criolla» con su precio · Incluye guarnicion · Extras: extra de papas +$2.000, huevo frito +$1.500 · Guarnicion · elegís 1: ensalada · papas fritas · puré. Con los platos que dicen «Incluye guarnicion».",
+    );
   });
 });

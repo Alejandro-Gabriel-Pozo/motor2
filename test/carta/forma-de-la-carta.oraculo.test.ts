@@ -131,7 +131,7 @@ describe("oráculo: filas literales de los productos de producción (café, mila
   it("Milanesa (base de producción): oculta, cada tipo como un plato; la proteína, una aclaración", () => {
     const forma = formaReal(deReferencia("Milanesas (M1"), true, false);
     expect(filas(forma)).toEqual([["Simple", [20000]], ["Napolitana", [25000]]]);
-    expect(forma).toMatchObject({ titulo: false, columnas: [], aclaraciones: [{ tipo: "eleccion", rotulo: "Milanesas de", opciones: ["carne", "pollo"] }] });
+    expect(forma).toMatchObject({ titulo: false, columnas: [], aclaraciones: [{ tipo: "eleccion", rotulo: "Milanesas de", opciones: ["carne", "pollo"], cantidadMinima: 1, cantidadMaxima: 1 }] });
   });
 
   it("Pizza (base de producción): oculta, las seis pizzas como platos con su precio final", () => {
@@ -144,7 +144,7 @@ describe("oráculo: filas literales de los productos de producción (café, mila
     expect(formaReal(deReferencia("Bife a la criolla"), false, false)).toEqual({
       forma: "simple",
       aclaraciones: [
-        { tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas", "puré"] },
+        { tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas", "puré"], cantidadMinima: 1, cantidadMaxima: 1 },
         { tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "extra de papas", recargo: 2000 }, { nombre: "huevo frito", recargo: 1500 }] },
       ],
     });

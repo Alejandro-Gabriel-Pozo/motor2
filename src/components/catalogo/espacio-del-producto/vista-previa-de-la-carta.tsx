@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
-import { resolverEstiloCarta, textoDeLaAclaracion, type AclaracionCartaV1, type PresentacionCartaV1, type VistaPreviaDeLaCarta } from "@/core/carta/public";
-import { ItemFila } from "@/components/carta-publica/seccion";
+import { incluyeDeLaSeccion, resolverEstiloCarta, textoDeIncluye, textoDeLaAclaracion, type AclaracionCartaV1, type PresentacionCartaV1, type VistaPreviaDeLaCarta } from "@/core/carta/public";
+import { BloquesDeOpciones, ItemFila } from "@/components/carta-publica/seccion";
 import { Aviso } from "@/ui/primitivas/aviso";
 
 /**
@@ -13,11 +13,13 @@ import { Aviso } from "@/ui/primitivas/aviso";
  */
 const ESTILO = resolverEstiloCarta({});
 
+/** Los grupos CON PRECIO debajo del plato (lo que se elige sin costo lo dice «Incluye …» y el bloque del pie: carta «B»). */
 function Aclaraciones({ lista }: { lista: AclaracionCartaV1[] }) {
-  if (lista.length === 0) return null;
+  const conPrecio = lista.filter((a) => a.tipo === "extras");
+  if (conPrecio.length === 0) return null;
   return (
     <ul className="flex flex-col gap-1 text-sm text-tinta-suave">
-      {lista.map((a) => (
+      {conPrecio.map((a) => (
         <li key={a.rotulo}>
           <span className="font-medium text-tinta">{a.rotulo}:</span> {textoDeLaAclaracion(a)}
         </li>
@@ -27,13 +29,28 @@ function Aclaraciones({ lista }: { lista: AclaracionCartaV1[] }) {
 }
 
 function Forma({ nombre, presentacion }: { nombre: string; presentacion: PresentacionCartaV1 }) {
+  // Carta «B»: el producto mirado solo es una sección de uno; la MISMA función que la carta pública dice qué incluye y arma el bloque del pie.
+  const incluye = incluyeDeLaSeccion([presentacion.aclaraciones]);
   if (presentacion.forma === "simple") {
+    const linea = textoDeIncluye(incluye.platos[0] ?? []);
     return (
       <div className="flex flex-col gap-2">
         <p className="text-sm">
           <span className="font-medium">{nombre}</span> con su precio.
         </p>
+        {linea && (
+          <p data-incluye className="text-sm text-tinta-suave">
+            {linea}
+          </p>
+        )}
         <Aclaraciones lista={presentacion.aclaraciones} />
+        {incluye.bloques.length > 0 && (
+          <div className="carta-shell rounded px-4" style={ESTILO.variablesCss as CSSProperties}>
+            <ul>
+              <BloquesDeOpciones bloques={incluye.bloques} />
+            </ul>
+          </div>
+        )}
       </div>
     );
   }
@@ -41,8 +58,9 @@ function Forma({ nombre, presentacion }: { nombre: string; presentacion: Present
   const item = { nombre, categoria: "", descripcion: null, precio: 0, tags: [], especial: false, imagenUrl: null, presentacion };
   return (
     <div className="carta-shell rounded px-4" style={ESTILO.variablesCss as CSSProperties}>
-      <ul>
-        <ItemFila item={item} estilo={ESTILO} />
+      <ul className="carta-divisor divide-y">
+        <ItemFila item={item} estilo={ESTILO} incluye={incluye.platos[0] ?? []} />
+        <BloquesDeOpciones bloques={incluye.bloques} />
       </ul>
     </div>
   );
