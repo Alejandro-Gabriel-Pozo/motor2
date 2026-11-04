@@ -872,6 +872,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Carta B (E1; CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04 con maquetas): cada plato muestra «Incluye …» debajo del nombre, las opciones que se repiten en todos los platos de una sección van en un bloque al pie de la sección (se retira el rótulo «En todos») y la lista de cada sección es alcanzable con teclado. Regenerado por la sesión de la etapa E1 (commit e58bc9b8, «golden de la línea de base»); el CI de la PR lo compara contra el navegador.",
       },
+      {
+        blob: "089202b4191331531201c147522244252465785f",
+        // El commit PADRE de este (dea003a4) es el último antes de la regeneración; los cambios son de la carta B (E3).
+        commit: "dea003a4",
+        motivo:
+          "Carta B (E3; ADITIVO, SOLO la pantalla de administración del grupo): cada opción suma el formulario «Descripción en la carta (opcional)» con su botón «Guardar descripción» y su ayuda («Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS»). Revisado con `git diff -U0`: 48 líneas agregadas, ninguna quitada; la carta pública (texto y tipografía) y las demás pantallas quedan idénticas, porque el catálogo sembrado no tiene descripciones.",
+      },
     ],
   },
 };

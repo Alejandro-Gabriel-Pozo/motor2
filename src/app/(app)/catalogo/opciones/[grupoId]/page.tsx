@@ -264,20 +264,20 @@ export default async function GrupoDeOpcionesPage({ params }: { params: Promise<
                             "use server";
                             return editarOpcionDeGrupo({ opcionId, versionEsperada: versionOpcion, nombre, descripcionEnCarta: String(formData.get("descripcionEnCarta") ?? "") });
                           }}
-                          className="flex flex-col gap-1"
+                          className="flex max-w-full flex-col gap-1"
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <label htmlFor={`opcion-descripcion-${o.id}`} className="sr-only">
                               Descripción en la carta de {o.nombre}
                             </label>
-                            <div className="w-64">
+                            <div className="w-full max-w-64 min-w-0">
                               <Campo nombradoPorFuera id={`opcion-descripcion-${o.id}`} name="descripcionEnCarta" maxLength={120} defaultValue={o.descripcionEnCarta ?? ""} placeholder="Descripción en la carta (opcional)" tamano="compacto" />
                             </div>
                             <BotonDeServidor variante="enlace" tamano="tactil" type="submit" aria-label={`Guardar la descripción de ${nombre}`}>
                               Guardar descripción
                             </BotonDeServidor>
                           </div>
-                          <p className="text-xs text-tinta-suave">Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.</p>
+                          <p className="max-w-full text-xs text-tinta-suave">Una línea (por ejemplo «lechuga, tomate, cebolla»). Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS.</p>
                         </FormConResultado>
                         {rige && (
                           <CambiarPrecio
