@@ -5,7 +5,7 @@ import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { guardComprobanteDeCompra } from "./compra.guard";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
-import { esCondicionDePago, esMedioDePago } from "@/core/compras/pago-de-factura";
+import { esCondicionDePago, esMedioDePago } from "@/core/compras/public";
 import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal } from "@/core/tiempo/zona-horaria";
 import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, ComandoAnularPagoDeFactura, ComandoDeclararPagoDeFactura, DatosFacturaProveedorInput } from "./factura-proveedor.schema";
 

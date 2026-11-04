@@ -1,6 +1,6 @@
 import type { ResultadoCaso } from "@/core/resultado-caso";
 import type { ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
-import type { CondicionDePago, MedioDePago } from "@/core/compras/pago-de-factura";
+import type { CondicionDePago, MedioDePago } from "@/core/compras/public";
 
 /**
  * E3a (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md): los contratos de los tres comandos de la factura de proveedor de mercadería repartida entre sucursales por PROPUESTA (la
