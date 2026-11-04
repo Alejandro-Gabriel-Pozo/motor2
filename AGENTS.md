@@ -49,6 +49,15 @@ Todo módulo o feature nuevo (compras, reservas, ventas, caja, clientes, lo que 
 - Alcance de la petición (regla del dueño, 2026-10-28): el agente hace SOLO lo que se pide y no asume nada ni suma funciones que nadie pidió (un cupo extra, días de disponibilidad, opciones «por las dudas»). Si la petición es ambigua, no hace nada hasta resolver la ambigüedad con UNA pregunta; mientras tanto deja constancia como pregunta abierta, no como supuesto. Antes de construir se verifica que la necesidad esté escrita (quién la pidió y cuándo); si hay una forma más simple con lo que ya existe (subir el cupo original, apagar los días que no valen), se propone esa.
 - El documento de diseño vive en `docs/diseno-<modulo>-AAAA-MM-DD.md` (ver el piloto de clientes, convenios y facturación externa).
 
+## Quién escribe código (regla del dueño, 2026-11-04)
+
+Los modelos **Opus** y **Fable** (cualquier versión) **no escriben código** en este proyecto: planifican, revisan y verifican. El código (`src/`, `test/`, `prisma/`, `scripts/` y la configuración) lo escribe **Sonnet**.
+
+- Una sesión que corre en Opus o Fable no edita código con sus propias herramientas: delega cada cambio a un subagente Sonnet (`Agent` con `model: "sonnet"`), revisa el diff y corre las verificaciones. Los arreglos que salgan del gate también los hace un Sonnet.
+- Todo subagente que se lance para escribir código es Sonnet. Los agentes de planificación (`Plan`, `model: "opus"`, ver «Diseño de planes») entregan texto, no código.
+- En el informe final de cada tarea se declara qué código salió de qué modelo.
+- Alcance (supuesto declarado, el dueño lo corrige si no es así): la regla es sobre código. Los documentos de diseño (`docs/`) y las operaciones de git no la alcanzan.
+
 ## Exploración con Explore
 
 Antes de tocar código en una tarea que obliga a ubicar algo en más de ~10 archivos
