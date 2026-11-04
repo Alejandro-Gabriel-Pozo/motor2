@@ -88,6 +88,7 @@ const GRUPOS: Readonly<Record<string, Grupo>> = {
     dato: "Proveedor.{cuit,email,telefono,contacto,condicionesPago,notas} (D-4 de H8)",
     clave: "proveedores",
     campos: ["Proveedor.cuit", "Proveedor.email", "Proveedor.telefono", "Proveedor.contacto", "Proveedor.condicionesPago", "Proveedor.notas"],
+    excluir: { "src/server/actions/catalogo/casos-de-uso/actualizar-proveedor.ts": "Caso de uso de escritura: lee el contacto SOLO para compararlo con lo que se guarda (no escribir ni auditar de más); no lo devuelve ni lo dibuja." },
     puertas: {
       [`${APP}/catalogo/proveedores/page.tsx`]: { clave: "proveedores" },
       [`${APP}/catalogo/proveedores/[id]/page.tsx`]: { clave: "proveedores" },

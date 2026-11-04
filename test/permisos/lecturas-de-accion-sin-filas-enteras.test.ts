@@ -188,7 +188,7 @@ describe("S-15: las Server Actions de lectura devuelven solo lo que la pantalla 
     it("EL ATAQUE: el listado de Proveedores no devuelve el CUIT, el correo, el teléfono ni las condiciones de pago (son de la ficha)", async () => {
       const filas = await listarProveedores();
       expect(filas).toHaveLength(1);
-      expect(Object.keys(filas[0]!).sort()).toEqual(["activo", "codigo", "contacto", "id", "nombre"]);
+      expect(Object.keys(filas[0]!).sort()).toEqual(["activo", "codigo", "contacto", "id", "nombre", "ofreceProductos", "ofreceServicios"]);
       expect(JSON.stringify(filas)).not.toMatch(/30-70000000-1|ventas@lacteos|30 dias|Tel/);
     });
 
