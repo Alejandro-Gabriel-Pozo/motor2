@@ -7,6 +7,8 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { anularCompra } from "../../src/server/actions/movimientos/compras";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
+import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /**
  * Conversión de una compra en decimal EXACTO, de punta a punta con Postgres real: la cantidad de stock y los precios por unidad se
@@ -40,8 +42,10 @@ describe("compra con factor de conversión decimal: cuentas exactas de punta a p
 
   // Misma fecha en toda la prueba: la huella de idempotencia incluye la fecha, y un reintento real reenvía el mismo formulario.
   const FECHA = new Date();
-  const comprar = (productoId: string, cantidad: number, precioTotal: number, clave: string = crypto.randomUUID()) =>
-    registrarMovimiento({ proceso: "COMPRA", fecha: FECHA, seccionId, proveedorId, items: [{ productoId, cantidad, precioTotal }], claveIdempotencia: clave });
+  // Desde la etapa 1 de Compras el proveedor y el número de factura son obligatorios, y «cómo lo llama el proveedor» también en la primera compra de cada producto.
+  // Un reintento real reenvía el mismo formulario, con el mismo número: la prueba de idempotencia lo pasa explícito.
+  const comprar = (productoId: string, cantidad: number, precioTotal: number, clave: string = crypto.randomUUID(), nroFactura: string = nroFacturaDePrueba()) =>
+    registrarMovimiento({ proceso: "COMPRA", fecha: FECHA, seccionId, proveedorId, nroFactura, items: [{ productoId, cantidad, precioTotal, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: clave });
 
   it("empate que el float redondeaba mal: 1 × 1,005 en una unidad de 2 decimales guarda 1,01 (antes 1,00) y el precio por unidad exacto", async () => {
     const mp = await crearMP("Empate", "1.005");
@@ -81,10 +85,11 @@ describe("compra con factor de conversión decimal: cuentas exactas de punta a p
   it("idempotencia: repetir la compra con la MISMA clave de reintento no duplica ni stock ni filas", async () => {
     const mp = await crearMP("Idem", "1.005");
     const clave = crypto.randomUUID();
+    const nroFactura = nroFacturaDePrueba();
 
-    const primera = await comprar(mp.id, 1, 10, clave);
+    const primera = await comprar(mp.id, 1, 10, clave, nroFactura);
     expect(primera.ok, primera.mensaje).toBe(true);
-    const segunda = await comprar(mp.id, 1, 10, clave);
+    const segunda = await comprar(mp.id, 1, 10, clave, nroFactura);
     expect(segunda.ok, segunda.mensaje).toBe(true);
     expect(segunda.mensaje).toBe(primera.mensaje); // el mensaje ORIGINAL
 
