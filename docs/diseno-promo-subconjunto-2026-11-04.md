@@ -4,7 +4,11 @@
 
 **Decisiones del dueño CONFIRMADAS (2026-11-04, vía coordinación) a las 4 preguntas de la versión anterior:** (1) el mozo elige opciones **solo** en las entradas que el dueño marque «a elegir» (`A_ELEGIR`); el resto queda fijo como hoy. (2) «Solo los bifes» = **lista explícita** de productos, con atajo «agregar todos los de la categoría X» (carga la lista en ese momento) y aviso cuando aparece un producto nuevo; **no** sigue la sección ni la categoría sola. (3) **No** entran adicionales con recargo dentro de una promo de precio fijo. (4) El precio (por ejemplo $55.000) es **fijo** elija lo que elija el mozo, y la **cantidad de guarniciones no se define en la promo**: depende del **grupo** (sus límites mínimo y máximo y los que el plato sobrescribe en `ProductoAdmiteGrupo`); la entrada `A_ELEGIR` **respeta esos límites**, sin un número propio de la promo.
 
-**Estado: SOLO DISEÑO Y MAQUETA.** Sin código, sin migraciones, sin tests, sin PR. Nada se implementa hasta que el dueño apruebe viendo la maqueta (`/home/user/revision-del-dueno/promo-subconjunto/index.html`; en `docs/` solo se admiten `.md`, la maqueta no se versiona acá). Estados: **CONFIRMADA** (dicha por el dueño), **PROPUESTA**, **PENDIENTE**, **NO VERIFICADA**. Falta la enmienda de ADR-032 (D-6) y la aprobación del dueño de la maqueta antes de implementar.
+**Decisión 5, CONFIRMADA (2026-11-05, el dueño mirando la maqueta): cómo se arma un lugar de la promo.** Cada lugar se define por su **origen**: una **sección de la carta** o **«no está en la carta»** (fuera de la carta). De ese origen la pantalla muestra los **productos de venta (PV)** y el administrador **tilda** los que entran a la promo; de cada PV tildado define qué elige el mozo (configuración fija o «el mozo elige» entre las opciones permitidas). El origen es la **fuente para tildar**, no una regla viva: la lista queda como se tildó (decisión 2, lista explícita); un producto nuevo de la sección no entra solo.
+
+**Maqueta APROBADA por el dueño el 2026-11-05** (`/home/user/revision-del-dueno/promo-subconjunto/index.html`). Falta la enmienda de ADR-032 (D-6) antes de implementar.
+
+**Estado: SOLO DISEÑO Y MAQUETA.** Sin código, sin migraciones, sin tests, sin PR. Nada se implementa hasta que el dueño apruebe viendo la maqueta (`/home/user/revision-del-dueno/promo-subconjunto/index.html`; en `docs/` solo se admiten `.md`, la maqueta no se versiona acá). Estados: **CONFIRMADA** (dicha por el dueño), **PROPUESTA**, **PENDIENTE**, **NO VERIFICADA**. Antes de implementar falta la enmienda de ADR-032 (D-6); la maqueta ya está aprobada (2026-11-05).
 
 Fuentes leídas en el código real (rama `alegp/diseno-promo-subconjunto`, desde `origin/main`): `prisma/schema.prisma`, `src/core/pos/promo-combo.ts`, `src/core/pos/linea-configurada.ts`, `src/core/pos/componente-de-combo.ts`, `src/core/carta/piso-de-promo.ts`, `src/server/actions/pos/casos-de-uso/agregar-items.ts`, `src/server/lecturas/pos/promo-para-agregar.ts`, `src/server/lecturas/pos/entradas-de-promo-para-vender.ts`, `src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta.ts`, `src/app/(pos)/mesas/[mesaId]/armar-promo.tsx`, `docs/adr/ADR-030`, `ADR-032` y `ADR-035`. **NO VERIFICADA** la base de producción: el producto «BIFE-» y sus grupos son los que describió la coordinación; no leí ninguna base. Tampoco está en esta sesión el repositorio `motor2-docs` (puede haber un plan aprobado allá).
 
@@ -74,7 +78,7 @@ Contexto: la promo es de la empresa y se prende por sucursal; las opciones se pu
 | # | Caso de uso | Etapa |
 |---|---|---|
 | CU1 | Armar una promo temática (lugar LISTA con entradas fijas, p. ej. Halloween) | N0, existe |
-| CU2 | Cargar el bife como UNA entrada «el mozo elige» con las opciones permitidas por grupo | N1 |
+| CU2 | Elegir el origen de un lugar (sección de la carta o fuera de la carta), tildar sus PV y cargar el bife como UNA entrada «el mozo elige» con las opciones permitidas por grupo | N1 |
 | CU3 | Ver en el selector solo lo permitido y elegir dentro de eso | N1 |
 | CU4 | Agregar la promo a la cuenta: el servidor revalida productos y opciones elegidas | N0 existe; la parte «opciones elegidas» es N1 |
 | CU5 | Cambiar lo permitido de una entrada (agregar una guarnición permitida) | N1 |
@@ -82,6 +86,8 @@ Contexto: la promo es de la empresa y se prende por sucursal; las opciones se pu
 | CU7 | Reservar la promo a una empresa o convenio | N2 (después, sin tabla propia) |
 
 ### Nivel 4. Conceptos y ciclo de vida
+- **Lugar de la promo (vocabulario de la pantalla, CONFIRMADA):** cada lugar tiene un **origen** —una *sección de la carta* o *fuera de la carta*— y las entradas son los **PV tildados** de ese origen. En la pantalla el lugar de una sección se llama como la sección («Platos principales», «Bebidas»); un lugar fuera de la carta lleva un nombre que escribe el administrador (por ejemplo «Galletitas de Halloween»). El mozo ve el nombre del lugar y, dentro, solo los PV tildados.
+- **Cómo se guarda (PROPUESTA, sin cambio de modelo):** ambos orígenes se guardan como un lugar de **lista explícita** (`PromoCartaCupo` tipo `LISTA` con sus `EntradaDeCupo`), porque la decisión 2 es «lista explícita, no sigue la sección». El origen solo filtra los PV que la pantalla del administrador ofrece para tildar; **no** se guarda como regla (un lugar de tipo `SECCION` ofrecería todos los PV de la sección y por eso no se usa para «solo los bifes»). Los PV de una sección son los productos visibles de esa sección de la carta (sueltos u opciones de un ítem agrupado, como el selector del POS); los de «fuera de la carta» son los PV que no están en ninguna sección.
 - **Entrada de lista:** un producto elegible de un lugar. Hoy con modo de opciones `FIJAS`. **Nuevo (PROPUESTA):** modo `A_ELEGIR`.
 - **Entrada «a elegir» (`A_ELEGIR`):** el producto más, por grupo, las **opciones permitidas** (las que el mozo puede elegir). La identidad de la entrada incluye el conjunto de permitidas (como hoy incluye la configuración fija): cambiar lo permitido es **otra entrada** y la anterior se desactiva (la regla de la casa: solo se agrega).
 - **Opciones permitidas efectivas** (lo que ve y puede mandar el mozo, calculado en el momento): las permitidas de la entrada ∩ las que el producto admite ∩ las que no están apagadas en la sucursal. Si un grupo obligatorio se queda sin ninguna opción, la entrada **no es elegible** (falla cerrado: no se ofrece ni se acepta).
@@ -298,7 +304,7 @@ Formalidad y detalle son ejes separados: cada peldaño suma sin romper lo cargad
 
 - **Nivel 6 (persistencia):** solo lo de §6. No se diseña ni migra sin confirmar niveles 1 a 5.
 - **Nivel 7 (atomicidad y concurrencia):** `agregarItems` ya es SERIALIZABLE; lo permitido se lee **adentro**. El guardado de entradas ya es SERIALIZABLE con reintento y clave natural.
-- **Nivel 8 (acceso e interfaces):** un selector por grupo en `armar-promo.tsx` solo para entradas `A_ELEGIR`; en la administración, casillas de opciones permitidas por grupo, con el atajo «cargar la categoría» y el aviso de productos nuevos.
+- **Nivel 8 (acceso e interfaces) — la maqueta aprobada es la referencia:** en la administración, cada lugar elige su **origen** (sección de la carta o fuera de la carta), muestra los PV de ese origen para **tildar**, y de cada PV tildado define la configuración fija o «el mozo elige» con casillas de opciones permitidas por grupo (límites del grupo en solo lectura, adicionales bloqueados), con el atajo «tildar todos los de la categoría» y el aviso de productos nuevos sin tildar; cambiar el origen de un lugar vacía su lista (con aviso). En el POS, un selector por grupo en `armar-promo.tsx` solo para entradas `A_ELEGIR`; el mozo elige el plato entre los PV tildados y después sus opciones.
 - **Nivel 9 (consultas):** `cargarEntradasDePromoParaVender` devuelve, por entrada `A_ELEGIR`, los grupos con las opciones permitidas efectivas (misma función para selector y servidor; test de paridad).
 - **Nivel 10 (pruebas, migración, operación):** §10; migración aditiva (una columna) con `down.sql` que aborta si hay filas `A_ELEGIR`; **aplicación a cualquier base real solo con autorización expresa, respaldo y ensayo** (`docs/deploy-con-migraciones.md`).
 
@@ -308,9 +314,10 @@ Formalidad y detalle son ejes separados: cada peldaño suma sin romper lo cargad
 
 **Confirmadas el 2026-11-04** (las 4 preguntas de la versión anterior; ver el encabezado): (1) la elección del mozo es **solo** en las entradas marcadas «a elegir»; (2) lista explícita de productos, con atajo por categoría y aviso de productos nuevos; (3) sin adicionales con recargo dentro de la promo; (4) precio fijo elija lo que elija el mozo, y cantidad de guarniciones por los límites del grupo.
 
+**Confirmada el 2026-11-05:** (5) el origen del lugar es una sección de la carta o «no está en la carta», se tildan los PV y el origen no es una regla viva; **la maqueta quedó aprobada por el dueño**.
+
 **Qué decisiones quedan (ninguna cambia modelo, dinero ni permisos):**
 - **Enmienda de ADR-032 (D-6)** (§5.1): hay que escribirla y que el dueño la apruebe antes de implementar.
-- **Aprobación de la maqueta** por el dueño.
 - **Verificaciones previas a implementar (NO VERIFICADAS, §13):** presentación del ticket y la comanda de un combo con dos configuraciones del mismo producto, conducta del cobro con una opción permitida agotada, y lectura del reporte de margen de promociones. Son comprobaciones con una venta de prueba, no decisiones de negocio.
 - **N1b (subconjunto de una sección)** sigue PENDIENTE y solo se retoma si el dueño lo pide: con la decisión (2) ya no hace falta para «solo los bifes».
 
