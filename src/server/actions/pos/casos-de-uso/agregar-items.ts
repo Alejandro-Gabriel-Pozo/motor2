@@ -15,6 +15,7 @@ import { armarLineaConfigurada, type LineaConfigurada } from "@/core/pos/linea-c
 import { validarOpcionesElegidas } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
+import { cargarNombresDeCartaParaElTicket } from "@/server/lecturas/carta/nombres-para-el-ticket";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { modulosDelPosDeEmpresa, type ModulosDelPos } from "@/server/lecturas/pos/modulos-del-pos";
 import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-agregar";
@@ -116,6 +117,9 @@ export async function agregarItemsCasoDeUso(
       items_.flatMap((i) => (typeof i?.productoId === "string" && Array.isArray(i.opciones) ? [{ productoId: i.productoId, opcionIds: i.opciones.map((o) => o.opcionId) }] : []))
     );
 
+    // El «Nombre en la carta» de los productos del pedido (UNA lectura): se congela en la línea para el ticket del cliente (`CuentaItem.nombreEnTicket`).
+    const nombresDeCarta = await cargarNombresDeCartaParaElTicket(tx, { sucursalId: actor.sucursalId, productoIds: productoIdsDelPedido });
+
     // RECETA (ADR-033, sin receta no se vende): de cada producto del pedido (sueltos y componentes), si tiene origen de stock — receta vigente en ESTA sucursal o stock propio —, en
     // lecturas agrupadas por pedido. Es el error temprano para el mozo: el cobro lo vuelve a mirar (`armarLinea`), por si la receta se desactivó entre medio.
     const origenDeStock = await cargarOrigenDeStockParaVender(tx, { sucursalId: actor.sucursalId, productoIds: productoIdsDelPedido });
@@ -181,6 +185,7 @@ export async function agregarItemsCasoDeUso(
         cantidad: cantidad.cantidad,
         precioUnitario: aplicado.precio,
         precioCartaUnitario: aplicado.precioLista,
+        nombreEnTicket: nombresDeCarta.get(producto.id) ?? null,
         numeroEnvio: null,
         creadoPorId: actor.usuarioId,
       });
@@ -266,6 +271,7 @@ export async function agregarItemsCasoDeUso(
             productoId: fila.productoId,
             cantidad: fila.cantidad,
             precioUnitario: fila.precioUnitario,
+            nombreEnTicket: nombresDeCarta.get(fila.productoId) ?? null,
             numeroEnvio: null,
             creadoPorId: actor.usuarioId,
             promoCuentaId,
@@ -278,6 +284,7 @@ export async function agregarItemsCasoDeUso(
           productoId: fila.productoId,
           cantidad: fila.cantidad,
           precioUnitario: fila.precioUnitario,
+          nombreEnTicket: nombresDeCarta.get(fila.productoId) ?? null,
           numeroEnvio: null,
           creadoPorId: actor.usuarioId,
           promoCuentaId,
@@ -299,6 +306,7 @@ export async function agregarItemsCasoDeUso(
           precioUnitario: c.precioUnitario,
           precioCartaUnitario: c.linea.precioUnitario,
           huellaOpciones: c.linea.huellaOpciones,
+          nombreEnTicket: nombresDeCarta.get(c.productoId) ?? null,
           fotos: c.linea.fotos,
           promoCuentaId: c.promoCuentaId,
         },
@@ -315,6 +323,7 @@ export async function agregarItemsCasoDeUso(
           precioUnitario: c.linea.precioUnitario,
           precioCartaUnitario: c.linea.precioCartaUnitario,
           huellaOpciones: c.linea.huellaOpciones,
+          nombreEnTicket: nombresDeCarta.get(c.productoId) ?? null,
           fotos: c.linea.fotos,
         },
         adicionales: c.linea.adicionales.map((a) => ({ productoId: a.productoId, cantidad: a.cantidad, precioUnitario: a.precioUnitario, foto: a.foto })),
