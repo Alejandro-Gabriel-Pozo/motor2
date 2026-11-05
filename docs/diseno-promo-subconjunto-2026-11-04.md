@@ -6,7 +6,7 @@
 
 **Decisión 5, CONFIRMADA (2026-11-05, el dueño mirando la maqueta): cómo se arma un lugar de la promo.** Cada lugar se define por su **origen**: una **sección de la carta** o **«no está en la carta»** (fuera de la carta). De ese origen la pantalla muestra los **productos de venta (PV)** y el administrador **tilda** los que entran a la promo; de cada PV tildado define qué elige el mozo (configuración fija o «el mozo elige» entre las opciones permitidas). El origen es la **fuente para tildar**, no una regla viva: la lista queda como se tildó (decisión 2, lista explícita); un producto nuevo de la sección no entra solo.
 
-**Maqueta APROBADA por el dueño el 2026-11-05** (`/home/user/revision-del-dueno/promo-subconjunto/index.html`). La enmienda de ADR-032 (D-6) está escrita como PROPUESTA al final de `docs/adr/ADR-032-combos-menu-del-dia-y-combinaciones.md` y espera la aprobación del dueño; las tres verificaciones previas están hechas (sección 14).
+**Maqueta APROBADA por el dueño el 2026-11-05** (`/home/user/revision-del-dueno/promo-subconjunto/index.html`). La enmienda de ADR-032 (D-6) está escrita al final de `docs/adr/ADR-032-combos-menu-del-dia-y-combinaciones.md` y **fue APROBADA por el dueño el 2026-11-05** (solo la enmienda); las tres verificaciones previas están hechas (sección 14). **PENDIENTE:** el mínimo y el máximo del lugar principal (sección 14, «Otro hallazgo de V3»).
 
 **Estado: SOLO DISEÑO Y MAQUETA.** Sin código, sin migraciones, sin tests. Nada se implementa hasta que el dueño apruebe la enmienda de ADR-032; la maqueta ya está aprobada (`/home/user/revision-del-dueno/promo-subconjunto/index.html`; en `docs/` solo se admiten `.md`, la maqueta no se versiona acá). Estados: **CONFIRMADA** (dicha por el dueño), **PROPUESTA**, **PENDIENTE**, **NO VERIFICADA**.
 
@@ -156,7 +156,7 @@ Por qué **no** «seguir la sección» ni «seguir la categoría» automáticame
 
 ## 5. Qué parte de ADR-032 hay que enmendar, y los riesgos
 
-### 5.1 Qué se enmienda (PROPUESTA)
+### 5.1 Qué se enmienda (APROBADA por el dueño el 2026-11-05)
 - **D-6** («El mozo NO elige opciones dentro del combo en v1», línea 20 de `ADR-032`): pasa a «el mozo elige opciones dentro del combo **solo** en las entradas de lista que el dueño marcó `A_ELEGIR`, **solo** entre las permitidas por el dueño, y nunca un adicional». En un lugar de **sección** y en el **plato del día** sigue valiendo D-6 sin cambios (`PROMO_CON_OPCIONES`, `agregar-items.ts:223`; el supuesto «un plato del día es un producto sin configuración fija»).
 - **D-8 y D-9** (precio de referencia y origen de stock): se evalúan **por configuración elegida** al agregar, y al cargar la entrada se exige que exista **al menos una** configuración armable.
 - **El texto de `armar-promo.tsx`** y su nota GO-2d («pedilo suelto»): el diálogo gana los selectores de opciones por entrada `A_ELEGIR`; el aviso se mantiene para lugares de sección.
@@ -317,7 +317,7 @@ Formalidad y detalle son ejes separados: cada peldaño suma sin romper lo cargad
 **Confirmada el 2026-11-05:** (5) el origen del lugar es una sección de la carta o «no está en la carta», se tildan los PV y el origen no es una regla viva; **la maqueta quedó aprobada por el dueño**.
 
 **Qué queda (ninguna decisión cambia modelo, dinero ni permisos):**
-- **Aprobación de la enmienda de ADR-032 (D-6)** por el dueño (escrita como PROPUESTA en el ADR). Hasta entonces D-6 sigue vigente y no se implementa nada.
+- **La enmienda de ADR-032 (D-6) está APROBADA** (2026-11-05, solo la enmienda). Falta decidir, **PENDIENTE**, el mínimo y el máximo del lugar principal. Nada se implementó: la implementación va por pasos chicos, con su plan, su migración (autorización expresa) y sus pruebas.
 - **Las tres verificaciones previas están hechas** (sección 14): salieron como se esperaba, con dos observaciones para el diseño (el reporte de margen no desglosa por configuración; el cobro no se bloquea con una opción agotada, avisa).
 - **N1b (subconjunto de una sección)** sigue PENDIENTE y solo se retoma si el dueño lo pide: con la decisión (2) ya no hace falta para «solo los bifes».
 
@@ -327,7 +327,7 @@ Formalidad y detalle son ejes separados: cada peldaño suma sin romper lo cargad
 
 - **NO VERIFICADA:** la base real (grupos y opciones del «BIFE-» tal como los describió la coordinación; las verificaciones usaron el café de las fixtures de prueba, no el bife); si existe un plan aprobado en `motor2-docs` (no está en esta sesión).
 - Las tres verificaciones previas están hechas (sección 14) y V1 se repitió con una **reconstrucción del bife** (producto «se vende por opción», preparación con precio absoluto y tres grupos; sección 14, V1 con el bife). **Pendiente:** repetirla con los datos reales de la empresa del dueño (productos, precios, prefijos y consumos de verdad), que esta sesión no leyó.
-- Este diseño **enmienda D-6 de ADR-032**: la enmienda está escrita como PROPUESTA al final del ADR y espera la aprobación del dueño.
+- Este diseño **enmienda D-6 de ADR-032**: la enmienda está escrita al final del ADR y **APROBADA por el dueño el 2026-11-05**. Sigue PENDIENTE el mínimo y el máximo del lugar principal.
 - No se tocó código, migraciones, Neon ni Vercel. La maqueta usa datos de ejemplo claramente marcados.
 
 ---

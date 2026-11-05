@@ -17,7 +17,7 @@ Hoy un combo (`PromoCarta` + `PromoCartaCupo` + `PromoCuenta`) solo deja «eleg�
 | D-3 | Precios de combinación y de grupo editados EN EL LUGAR, con versión optimista y auditoría por columna | `version` en `CombinacionDeProducto` y `GrupoDePrecio` (CHECK >= 1); lo cobrado queda en la línea y en la foto `CombinacionEnLinea` |
 | D-4 | Grupos de precio (tarifas compartidas) y precio local de combinación o de grupo en v1 | `GrupoDePrecio`, `PrecioLocalDeCombinacion` (una sola tabla, `num_nonnulls = 1`); precedencia en `src/core/opciones/combinaciones.ts` |
 | D-5 | El permiso del menú del día es delegable al encargado (operario, clase O) | Clave `promo_menu_del_dia` (sucursal, piso operario, semilla admin) dada de alta por la migración GO-3d; entra a `ACCIONES` con su caso de uso (F3) |
-| D-6 | El mozo NO elige opciones dentro del combo en v1 | Un producto con grupo obligatorio solo entra como entrada con CONFIGURACIÓN FIJA del dueño (`EntradaDeCupo.claveConfiguracion` + `OpcionDeEntradaDeCupo`); en un cupo de sección sigue `PROMO_CON_OPCIONES` (GO-2b) |
+| D-6 | El mozo NO elige opciones dentro del combo en v1 (ENMENDADA el 2026-11-05: ver «Enmienda APROBADA» al final de este ADR) | Un producto con grupo obligatorio solo entra como entrada con CONFIGURACIÓN FIJA del dueño (`EntradaDeCupo.claveConfiguracion` + `OpcionDeEntradaDeCupo`); en un cupo de sección sigue `PROMO_CON_OPCIONES` (GO-2b) |
 | D-7 | Vigencia opcional por días de semana y por fechas, sin horario | `PromoCarta.vigenteDesde/vigenteHasta/diasDeSemana`; `promoVigenteEl` (`src/core/carta/vigencia-de-promo.ts`), con «hoy» de la zona de la empresa (`diaDeLaSemana` en `src/core/tiempo/zona-horaria.ts`) |
 | D-8 | Todo componente tiene precio de referencia (>= 0,01) | Lo valida el caso de uso al cargar y al vender (`COMPONENTE_SIN_PRECIO_DE_REFERENCIA`, F3/F5): el prorrateo pesa por el precio de lista |
 | D-9 | Solo entran productos PV existentes con ORIGEN DE STOCK (receta vigente habilitada en la sucursal, o stock propio `seProduce`); sin eso, `COMPONENTE_SIN_RECETA` | Validación de los casos de uso (F3 y F5), al cargar y al vender; sin cambios de esquema. La venta suelta NO cambia |
@@ -166,9 +166,9 @@ Una promo (`PromoCarta`, que es de la empresa y alimenta los combos de este ADR)
 - **Despliegue:** la migración aditiva `20261026120000_promo_carta_solo_salon` va ANTES que el código; su `down.sql` aborta si hay promos en «solo salón» (bajarla las haría públicas).
 - **Fuera de alcance, pendiente aparte:** la carta pública no respeta la vigencia (`vigenteDesde`, `vigenteHasta`, `diasDeSemana`) de la promo.
 
-## Enmienda PROPUESTA (2026-11-05): D-6, el mozo elige entre las opciones permitidas en las entradas «a elegir» — pendiente de aprobación del dueño
+## Enmienda APROBADA (2026-11-05): D-6, el mozo elige entre las opciones permitidas en las entradas «a elegir» — aprobada por el dueño, todavía no implementada
 
-**Estado: PROPUESTA. No se implementó nada.** Diseño y maqueta: `docs/diseno-promo-subconjunto-2026-11-04.md` (maqueta aprobada por el dueño el 2026-11-05). Esta enmienda solo cambia D-6; el resto de las decisiones de este ADR (D-1 a D-5, D-7 a D-9) sigue como está, con la precisión de D-8 y D-9 que se dice abajo.
+**Estado: APROBADA por el dueño el 2026-11-05 (solo la enmienda). No se implementó nada.** Diseño y maqueta: `docs/diseno-promo-subconjunto-2026-11-04.md` (maqueta aprobada por el dueño el 2026-11-05). Esta enmienda solo cambia D-6; el resto de las decisiones de este ADR (D-1 a D-5, D-7 a D-9) sigue como está, con la precisión de D-8 y D-9 que se dice abajo.
 
 **Qué dice D-6 hoy.** «El mozo NO elige opciones dentro del combo en v1.» Un producto con grupo obligatorio solo entra como entrada de un lugar LISTA con CONFIGURACIÓN FIJA que carga el dueño (`EntradaDeCupo.claveConfiguracion` más `OpcionDeEntradaDeCupo`); en un lugar de sección sigue `PROMO_CON_OPCIONES` (`src/server/actions/pos/casos-de-uso/agregar-items.ts`). Consecuencia: para el bife real (2 preparaciones × 2 proteínas × 3 guarniciones) hacen falta 12 entradas cargadas a mano.
 
@@ -188,4 +188,4 @@ Una promo (`PromoCarta`, que es de la empresa y alimenta los combos de este ADR)
 
 **Riesgos y su verificación.** El resultado de las tres verificaciones previas (ticket y comanda con dos configuraciones del mismo producto, cobro con una opción agotada y reporte de margen), hechas con una venta de prueba en una base local descartable, está en la sección 14 de `docs/diseno-promo-subconjunto-2026-11-04.md`.
 
-**Aprobación:** pendiente del dueño. Hasta entonces este ADR no cambia de estado y D-6 sigue vigente.
+**Aprobación:** el dueño aprobó la enmienda el 2026-11-05. Aprobó SOLO la enmienda: lo demás sigue PENDIENTE, en particular el mínimo y el máximo del lugar principal de la promo (una decisión de negocio, ver la sección 14 del diseño). D-6 queda enmendado en los términos de arriba; el código sigue como estaba hasta que se implemente, con su propio plan, su migración (que necesita autorización expresa) y sus pruebas.
