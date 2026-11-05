@@ -85,6 +85,8 @@ export async function sembrarBifeAElegir(sucursalId: string, marca: string | nul
   return {
     titulo,
     nombreBife,
+    /** Cómo lo ve quien elige (`nombreParaMostrar`): la base sin la carta que la nombre sale por los rótulos de su medida, con el nombre interno entre paréntesis. */
+    nombreEnPantalla: `Bife a la criolla · Bife con chimichurri (${nombreBife})`,
     nombreMilanesa,
     seccion,
     cupo,

@@ -27,33 +27,33 @@ test("el mozo elige el Bife y sus opciones permitidas: no deja confirmar hasta c
     await expect(agregarPromo).toBeDisabled();
 
     // Elegir el plato suma una unidad con sus grupos; todavía falta lo obligatorio.
-    await dialogo.getByRole("button", { name: `Sumar ${d.nombreBife} a Plato principal` }).click();
-    const unidad = dialogo.getByRole("group", { name: `Opciones de ${d.nombreBife}` });
+    await dialogo.getByRole("button", { name: `Sumar ${d.nombreEnPantalla} a Plato principal` }).click();
+    const unidad = dialogo.getByRole("group", { name: `Opciones de ${d.nombreEnPantalla}` });
     await expect(unidad).toBeVisible();
     await expect(unidad.getByText(`Falta elegir: ${d.grupos.proteina}, ${d.grupos.preparacion}`)).toBeVisible();
     await expect(agregarPromo).toBeDisabled();
 
     // Solo lo permitido: «Ojo de bife» lo admite el producto pero la promo no lo permite.
-    await expect(unidad.getByRole("button", { name: "Nalga" })).toBeVisible();
-    await expect(unidad.getByRole("button", { name: "Bife de chorizo" })).toBeVisible();
-    await expect(unidad.getByRole("button", { name: "Ojo de bife" })).toHaveCount(0);
+    await expect(unidad.getByRole("button", { name: "Nalga", exact: true })).toBeVisible();
+    await expect(unidad.getByRole("button", { name: "Bife de chorizo", exact: true })).toBeVisible();
+    await expect(unidad.getByRole("button", { name: "Ojo de bife", exact: true })).toHaveCount(0);
     // Sin precios ni adicionales: el precio de la promo es fijo.
     await expect(unidad).not.toContainText("$");
 
-    await unidad.getByRole("button", { name: "Nalga" }).click();
+    await unidad.getByRole("button", { name: "Nalga", exact: true }).click();
     await expect(agregarPromo).toBeDisabled(); // falta la preparación
-    await unidad.getByRole("button", { name: "Bife con chimichurri" }).click();
+    await unidad.getByRole("button", { name: "Bife con chimichurri", exact: true }).click();
     await expect(agregarPromo).toBeEnabled(); // las guarniciones son opcionales
 
     // Elegir otra proteína reemplaza a la anterior (un grupo de una sola elección).
-    await unidad.getByRole("button", { name: "Bife de chorizo" }).click();
-    await expect(unidad.getByRole("button", { name: "Bife de chorizo" })).toHaveAttribute("aria-pressed", "true");
-    await expect(unidad.getByRole("button", { name: "Nalga" })).toHaveAttribute("aria-pressed", "false");
+    await unidad.getByRole("button", { name: "Bife de chorizo", exact: true }).click();
+    await expect(unidad.getByRole("button", { name: "Bife de chorizo", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(unidad.getByRole("button", { name: "Nalga", exact: true })).toHaveAttribute("aria-pressed", "false");
     // Guarniciones: hasta 2.
-    await unidad.getByRole("button", { name: "Sumar uno de Puré de papa en " + d.nombreBife }).click();
-    await unidad.getByRole("button", { name: "Sumar uno de Papas fritas en " + d.nombreBife }).click();
-    await expect(unidad.getByRole("button", { name: "Sumar uno de Ensalada en " + d.nombreBife })).toBeEnabled(); // el tope del grupo lo aplica el reductor: no suma
-    await unidad.getByRole("button", { name: "Sumar uno de Ensalada en " + d.nombreBife }).click();
+    await unidad.getByRole("button", { name: "Sumar uno de Puré de papa en " + d.nombreEnPantalla }).click();
+    await unidad.getByRole("button", { name: "Sumar uno de Papas fritas en " + d.nombreEnPantalla }).click();
+    await expect(unidad.getByRole("button", { name: "Sumar uno de Ensalada en " + d.nombreEnPantalla })).toBeEnabled(); // el tope del grupo lo aplica el reductor: no suma
+    await unidad.getByRole("button", { name: "Sumar uno de Ensalada en " + d.nombreEnPantalla }).click();
     await expect(unidad.locator('[data-cuantas="Ensalada"]')).toHaveText("0");
 
     // Accesibilidad con las opciones abiertas.
@@ -84,17 +84,17 @@ test("una unidad sin completar bloquea aunque haya otra lista; el plato fijo con
   try {
     const dialogo = await abrirArmarPromo(page, d);
     const agregarPromo = dialogo.getByRole("button", { name: "Agregar promo" });
-    await dialogo.getByRole("button", { name: `Sumar ${d.nombreBife} a Plato principal` }).click();
-    await dialogo.getByRole("button", { name: `Sumar ${d.nombreBife} a Plato principal` }).click();
+    await dialogo.getByRole("button", { name: `Sumar ${d.nombreEnPantalla} a Plato principal` }).click();
+    await dialogo.getByRole("button", { name: `Sumar ${d.nombreEnPantalla} a Plato principal` }).click();
     // Máximo del lugar: 2 unidades; no se suma una tercera ni el plato fijo.
     await expect(dialogo.getByRole("group", { name: "Plato principal · 2/2 (mínimo 1)" })).toBeVisible();
     await expect(dialogo.getByRole("button", { name: `Sumar ${d.nombreMilanesa} a Plato principal` })).toBeDisabled();
     const unidades = dialogo.getByRole("group", { name: /^Opciones de / });
     await expect(unidades).toHaveCount(2);
-    await unidades.nth(0).getByRole("button", { name: "Nalga" }).click();
-    await unidades.nth(0).getByRole("button", { name: "Bife a la criolla" }).click();
+    await unidades.nth(0).getByRole("button", { name: "Nalga", exact: true }).click();
+    await unidades.nth(0).getByRole("button", { name: "Bife a la criolla", exact: true }).click();
     await expect(agregarPromo).toBeDisabled(); // la segunda unidad está incompleta
-    await dialogo.getByRole("button", { name: `Restar ${d.nombreBife} de Plato principal` }).click();
+    await dialogo.getByRole("button", { name: `Restar ${d.nombreEnPantalla} de Plato principal` }).click();
     await expect(dialogo.getByRole("group", { name: /^Opciones de / })).toHaveCount(1);
     await expect(agregarPromo).toBeEnabled();
     // La milanesa (configuración fija) se elige como siempre, sin opciones.
@@ -111,11 +111,11 @@ test("en el celular (375 px) las opciones entran sin desborde horizontal y los b
   try {
     await page.setViewportSize({ width: 375, height: 812 });
     const dialogo = await abrirArmarPromo(page, d);
-    await dialogo.getByRole("button", { name: `Sumar ${d.nombreBife} a Plato principal` }).click();
-    const unidad = dialogo.getByRole("group", { name: `Opciones de ${d.nombreBife}` });
+    await dialogo.getByRole("button", { name: `Sumar ${d.nombreEnPantalla} a Plato principal` }).click();
+    const unidad = dialogo.getByRole("group", { name: `Opciones de ${d.nombreEnPantalla}` });
     await expect(unidad).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    const alto = await unidad.getByRole("button", { name: "Nalga" }).evaluate((el) => el.getBoundingClientRect().height);
+    const alto = await unidad.getByRole("button", { name: "Nalga", exact: true }).evaluate((el) => el.getBoundingClientRect().height);
     expect(alto).toBeGreaterThanOrEqual(44);
   } finally {
     await d.limpiar();

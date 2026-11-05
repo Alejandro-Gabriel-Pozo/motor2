@@ -202,13 +202,6 @@ function filasDeBaseOculta(presentacion: PresentacionCartaV1 | undefined): { rot
   return presentacion.filas.flatMap((f) => (f.rotulo !== null && f.celdas[0] != null ? [{ rotulo: f.rotulo, precio: f.celdas[0] }] : []));
 }
 
-/** El nombre PARA MOSTRAR de una entrada «a elegir»: los renglones de la carta de una base con el nombre oculto unidos con « · »; si no los tiene, el nombre en la carta o el del producto. */
-function nombreDeEntradaAElegir(productoId: string, nombreDelProducto: string, rotulosDeBase: ReadonlyMap<string, readonly string[]>, pediblePorId: ReadonlyMap<string, ProductoPedible>): string {
-  const rotulos = rotulosDeBase.get(productoId);
-  if (rotulos && rotulos.length > 0) return rotulos.join(" · ");
-  return pediblePorId.get(productoId)?.nombreEnCarta ?? nombreDelProducto;
-}
-
 /**
  * La opción que corresponde a un renglón de una base oculta («Bife con chimichurri» → la opción «Con chimichurri» del grupo de preparación): para abrir «Elegir opciones» ya con esa elegida.
  * Sale de la lectura de la carta (el rótulo es la opción tal cual, o con el prefijo del grupo delante y la primera letra en minúscula); si no hay UNA sola opción que calce, `null` (el diálogo
@@ -255,8 +248,6 @@ export function armarSelectorCartaPos(
   // Task #16: se guarda por sección ANTES de filtrar las vacías — una promo puede vivir en una sección sin ningún producto
   // propio, y los elegibles de un cupo (D5) se leen de acá sin importar el orden de iteración entre secciones.
   const entradasPorSeccion = new Map<string, EntradaSelectorCarta[]>();
-  /** Los renglones que la carta dibuja de cada base con el nombre oculto (los mismos `filasEnCarta` del selector): con ellos se nombra la entrada «a elegir» de una promo. */
-  const rotulosDeBase = new Map<string, string[]>();
   for (const seccion of carta?.secciones ?? []) {
     const sueltas: EntradaSelectorCarta[] = [];
     const porCarpeta = new Map<string, EntradaCarpetaSelectorCarta[]>();
@@ -290,7 +281,6 @@ export function armarSelectorCartaPos(
       const p = tomar(item.productoId);
       if (!p) continue;
       const filas = filasDeBaseOculta(item.presentacion);
-      if (filas.length > 0) rotulosDeBase.set(item.productoId, filas.map((f) => f.rotulo));
       const entrada: EntradaProductoSelectorCarta = { tipo: "producto", producto: filas.length > 0 ? { ...p, filasEnCarta: filas } : p };
       const genero = generoDe(generos?.generoPorProducto, item.productoId);
       if (genero) agregarACarpeta(genero.id, entrada);
@@ -317,12 +307,7 @@ export function armarSelectorCartaPos(
       precio: promo.precio,
       cupos: promo.cupos.map((c) =>
         "cupoId" in c
-          ? {
-              // GO-3b: un cupo de entradas ya viene con sus elegibles de hoy (los resuelve la lectura de la venta, no la carta). Una entrada «a elegir» se nombra como la ve el mozo en el selector y el cliente en la
-              // carta: los renglones de la base con el nombre oculto unidos con « · » («Bife a la criolla · Bife con chimichurri»), si no el nombre en la carta, si no el del producto (nunca el nombre interno).
-              ...c,
-              entradas: c.entradas.map((e) => (e.grupos === undefined ? e : { ...e, nombre: nombreDeEntradaAElegir(e.productoId, e.nombre, rotulosDeBase, pediblePorId) })),
-            }
+          ? c // GO-3b: un cupo de entradas ya viene con sus elegibles de hoy (los resuelve la lectura de la venta, no la carta).
           : {
               seccionCartaId: c.seccionCartaId,
               nombreSeccion: c.nombreSeccion,
