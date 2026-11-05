@@ -429,6 +429,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
       },
+      {
+        blob: "ee91a6fb40311a29d978444e17c2dabff135ef80",
+        // El commit PADRE de este (afdd6435) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "afdd6435",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1): las líneas CUENTA_ITEM suman  (nadie tiene «Nombre en la carta» en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior; ninguna venta, KARDEX, stock, costo ni importe cambia.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -606,6 +613,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; CAMBIA COMPORTAMIENTO a propósito): se quita la acción `actualizarMaxMesasAbiertas` y el chequeo del límite dentro de `abrirCuenta`. El escenario ya no fija límites (salen los pasos A4 a A7 y B8 a B10; F4 y G1 sin esa acción) y las líneas SUCURSAL ya no vuelcan `maxMesasAbiertas`. Los resultados y las filas de las demás acciones (apertura, idempotencia de reabrir, comensales, cliente, pedido, mozo y operador) no cambian.",
       },
+      {
+        blob: "38b6a812b6778f7a4abb64f8994603a150dbb8d2",
+        // El commit PADRE de este (a8f5e55e) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "a8f5e55e",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_HUELLA_DEL_POS=1): las líneas ITEM suman `nombreEnTicket=null` (nadie tiene «Nombre en la carta» en este mundo) y las fotos de opción suman `ocultaEnCarta=false`. Verificado por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior.",
+      },
     ],
   },
   "test/pos/caracterizacion/venta-con-opciones.golden.txt": {
@@ -628,6 +642,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "d3088bf",
         motivo:
           "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
+      },
+      {
+        blob: "efa65999faf6b0d100368064cacb35e3b8d1cf22",
+        // El commit PADRE de este (a8f5e55e) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "a8f5e55e",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_VENTA_CON_OPCIONES=1): las líneas ITEM suman `nombreEnTicket=null` (nadie tiene «Nombre en la carta» en este mundo) y las fotos de opción suman `ocultaEnCarta=false`. Verificado por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior.",
       },
     ],
   },

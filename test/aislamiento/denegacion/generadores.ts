@@ -483,6 +483,7 @@ const parametros: Record<string, Record<string, Valor>> = {
   },
   // GO-3b: los componentes de un combo (el PV con receta) y las alícuotas de todo lo que el combo puede tener (la sección de carta, la lista y el plato del día; la carta de la sucursal activa).
   "lectura|lecturas/carta/choque-de-nombre.ts|buscarChoqueDeNombreEnLaCarta": { args: (k) => ({ sucursalId: k.sucursalId, productoIdPropio: k.productoPvId, nombre: "Nombre de prueba" }) },
+  "lectura|lecturas/carta/nombres-para-el-ticket.ts|cargarNombresDeCartaParaElTicket": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoPvId] }) },
   "lectura|lecturas/carta/componentes-de-promo.ts|cargarProductosComoComponentes": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoPvId] }) },
   "lectura|lecturas/carta/componentes-de-promo.ts|cargarAlicuotasPosiblesDeLugares": {
     lugares: (k) => ({ seccionCartaIds: [k.seccionCartaId], cupoListaIds: [k.cupoListaId], cupoDelDiaIds: [k.cupoDelDiaId] }),

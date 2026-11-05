@@ -5,16 +5,15 @@ import {
   ejesDeLaCarta,
   opcionesDelEje,
   rolDelGrupo,
-  seOcultaEnLaCarta,
   validarOpcionesElegidas,
   type EjesDeLaCarta,
   type OpcionElegida,
-  type OpcionParaOcultarEnCarta,
   type OpcionParaPrecio,
   type RolDelGrupoEnCarta,
   type TipoDeGrupoDeOpciones,
 } from "@/core/opciones/public";
 import type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
+import { gruposOcultosEnLaCarta } from "./grupos-ocultos-en-la-carta";
 import { opcionParaPrecio } from "./opcion-para-precio";
 
 /**
@@ -170,22 +169,6 @@ export function resumenDePrecios(entrada: { grupos: readonly GrupoParaVender[]; 
 
 /** Un grupo tal como lo lee la carta: lo de la venta más el interruptor «Mostrar este grupo en la carta» de `ProductoAdmiteGrupo` (ausente = se muestra). */
 type GrupoDeEntradaDeLaCarta = GrupoParaVender & { prefijoEnCarta?: string | null; seMuestraEnCarta?: boolean };
-
-/** Lo que la regla de «no se lee en la carta» necesita de las opciones de un grupo, desde lo que ya leyó la venta: lo ofrecido (activa y admitida; lo agotado hoy NO cuenta) y la diferencia que rige. */
-function opcionesParaOcultar(g: GrupoParaVender): OpcionParaOcultarEnCarta[] {
-  return g.opciones.map((o) => ({
-    nombre: o.nombre,
-    esNinguna: o.esNinguna,
-    ofrecida: o.activa && o.admitida,
-    diferencia: o.esNinguna ? null : (o.diferenciaDelProducto ?? o.diferenciaDeLaVersion),
-    precioAbsoluto: o.precioAbsoluto,
-  }));
-}
-
-/** Los grupos que la carta NO lee en este producto (`seOcultaEnLaCarta`, `core/opciones`): el único lugar donde la carta decide qué grupos lee. */
-function gruposOcultosEnLaCarta(grupos: readonly GrupoDeEntradaDeLaCarta[]): Set<string> {
-  return new Set(grupos.filter((g) => seOcultaEnLaCarta({ tipo: g.tipo, ...(g.seMuestraEnCarta === undefined ? {} : { seMuestraEnCarta: g.seMuestraEnCarta }), opciones: opcionesParaOcultar(g) })).map((g) => g.grupoId));
-}
 
 /**
  * Al resumen COMPLETO le saca los grupos que la carta no lee (`ocultos`); sin ninguno devuelve el mismo objeto. El cálculo se hizo con TODOS los grupos (el «desde», si hay variación y si se puede pedir no
