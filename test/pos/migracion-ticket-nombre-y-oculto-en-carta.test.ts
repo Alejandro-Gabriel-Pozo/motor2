@@ -63,7 +63,7 @@ describe("Ticket: nombre de la carta y lo oculto congelados al vender (migració
     const despues = (await q(`SELECT * FROM "CuentaItem" ORDER BY "id"`)) as Record<string, unknown>[];
     expect(despues.map((f) => f.nombreEnTicket)).toEqual([null]);
     expect(despues.map((f) => Object.fromEntries(Object.entries(f).filter(([c]) => c !== "nombreEnTicket"))), "ninguna otra columna cambió").toEqual(antes);
-    const f = (await foto()) as Record<string, { columnas: { columna: string }[] }>;
+    const f = (await foto()) as unknown as Record<string, { columnas: { columna: string }[] }>;
     expect(f.CuentaItem!.columnas.at(-1)).toEqual({ columna: "nombreEnTicket", data_type: "text", is_nullable: "YES", column_default: null });
     expect(f.OpcionElegidaEnLinea!.columnas.at(-1)).toEqual({ columna: "ocultaEnCarta", data_type: "boolean", is_nullable: "NO", column_default: "false" });
   });
@@ -79,7 +79,7 @@ describe("Ticket: nombre de la carta y lo oculto congelados al vender (migració
   });
 
   it("(c) sin políticas, índices ni privilegios nuevos; lo nuevo es el CHECK de CuentaItem", async () => {
-    const despues = (await foto()) as Record<string, Record<string, { nombre?: string }[]>>;
+    const despues = (await foto()) as unknown as Record<string, Record<string, { nombre?: string }[]>>;
     const antes = fotoAntes as typeof despues;
     for (const t of TABLAS) for (const k of ["politicas", "privilegios", "indices"]) expect(despues[t]![k], `${t}.${k}`).toEqual(antes[t]![k]);
     expect(despues.CuentaItem!.restricciones!.filter((r) => !antes.CuentaItem!.restricciones!.some((a) => a.nombre === r.nombre)).map((r) => r.nombre)).toEqual(["CuentaItem_nombre_en_ticket_chk"]);
