@@ -63,7 +63,9 @@ test("un lugar «lista» con su entrada (queda fijo); volver a guardar los cupos
     const otraVez = page.locator(`[data-promo-carta="${d.titulo}"]`);
     await otraVez.locator("summary").first().click();
     const agregar = otraVez.locator('[data-agregar-entrada="Bebida"]');
-    await agregar.locator("select").first().selectOption({ label: d.gaseosa.nombre });
+    // Armar el lugar (etapa N1, PR B): el origen («no está en la carta»: la gaseosa del test no está en ninguna sección), tildar el producto y sumar.
+    await agregar.getByLabel(/De dónde salen los productos/).selectOption("FUERA");
+    await agregar.getByRole("checkbox", { name: d.gaseosa.nombre }).check();
     await agregar.getByRole("button", { name: "Sumar" }).click();
     await expect(agregar.getByRole("status")).toBeVisible();
     await expect.poll(async () => prisma.entradaDeCupo.count({ where: { cupo: { promoCartaId: d.promo.id } } })).toBe(1);

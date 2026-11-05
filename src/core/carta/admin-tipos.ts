@@ -296,6 +296,22 @@ export interface ProductoParaEntrada {
   productoId: string;
   nombre: string;
   grupos: { grupoId: string; nombre: string; obligatorio: boolean; opciones: { opcionId: string; nombre: string }[] }[];
+  /** La sección de la carta de ESTA sucursal donde se ubica (suelto o dentro de un ítem agrupado); `null` = «no está en la carta». Solo es la fuente para tildar: no es una regla viva. */
+  seccionCartaId: string | null;
+  /** El rubro del producto (`CategoriaProducto`), para el atajo «tildar todos los de la categoría»; `null` = sin categoría. */
+  categoria: { id: string; nombre: string } | null;
+  /** Todos los grupos que admite, para «el mozo elige» (promo a elegir): con los límites del grupo (solo lectura) y las opciones activas. Un ADICIONAL va marcado: no entra en una promo de precio fijo. */
+  gruposAElegir: GrupoParaElegirAdmin[];
+}
+
+/** Un grupo de opciones de un producto, tal como lo muestra la pantalla de «el mozo elige» (límites en solo lectura). */
+interface GrupoParaElegirAdmin {
+  grupoId: string;
+  nombre: string;
+  adicional: boolean;
+  cantidadMinima: number;
+  cantidadMaxima: number;
+  opciones: { opcionId: string; nombre: string }[];
 }
 
 export interface CombosDeLaCarta {
