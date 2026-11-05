@@ -949,6 +949,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "«Nombre en la carta» y carta B con cantidades (CAMBIO VISUAL DELIBERADO, decisiones del dueño del 2026-11-04; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). (1) Carta pública: «Incluye guarnicion · elegí abajo ↓» pasa a «Incluye 1 guarnicion · elegí abajo ↓» (opción A de «elegís 1») y el pie del bloque pasa de «Con los platos que dicen «Incluye guarnicion»» a «Con los platos que incluyen guarnicion»: cambian los renglones `incluye`, `texto visible` y el texto plano de la página de «Bife a la criolla», a 375 y 1280 px. (2) ADMINISTRACIÓN (ADITIVO): la ficha «En la carta» de cada producto de «Carta › Parametrización › Secciones» suma el campo «Nombre en la carta (opcional)» con su ayuda (7 productos × 2 anchos = 14 apariciones). Revisado con `git diff -U0`: ninguna otra pantalla, precio ni tipografía cambia. Si el dueño descarta el commit de las cantidades, hay que regenerar este golden de nuevo (solo cambian las líneas del punto 1).",
       },
+      {
+        blob: "c26ac3b87260737495a792f9c1fde94b8486cfd6",
+        // El commit PADRE de este (ed55a378) es el último antes de la regeneración; el cambio es de texto de la carta pública pedido por el dueño (2026-11-04).
+        commit: "ed55a378",
+        motivo:
+          "Carta pública, cambio de TEXTO (CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): la carta pública no toma pedidos (el mozo elige en el POS), así que el cue de la línea «Incluye …» pasa de «· elegí abajo ↓» a «· ver opciones ↓». Revisado con `git diff -U0`: cambian 6 líneas (3 por ancho, 375 y 1280 px) y TODAS son el texto de «Bife a la criolla» (`incluye`, `texto visible` y el texto plano de la página); ninguna otra pantalla, precio ni tipografía cambia.",
+      },
     ],
   },
 };
