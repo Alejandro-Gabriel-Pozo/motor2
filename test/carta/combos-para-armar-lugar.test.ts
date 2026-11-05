@@ -54,6 +54,17 @@ describe("lo que la administración lee para armar el lugar de una promo", () =>
     expect(cafe.grupos.map((g) => g.nombre).sort()).toEqual(["Leche", "Tamaño", "Viene con"]);
   });
 
+  it("una base con el nombre oculto se nombra por los rótulos de su medida, con el nombre interno al lado; con el nombre arriba o con nombre en la carta, no", async () => {
+    await prisma.producto.update({ where: { id: e.cafeId }, data: { modoDeVenta: "BASE_CONFIGURABLE" } });
+    const nombre = async () => (await leer()).find((p) => p.productoId === e.cafeId)!.nombreParaMostrar;
+    expect(await nombre()).toMatch(/^Chico · Mediano · Grande \(Café\)$/);
+    const contenido = await prisma.contenidoCartaProducto.create({ data: { sucursalId: e.sucursalA, productoId: e.cafeId, visibleEnCarta: false } });
+    expect(await nombre()).toBe("Chico · Mediano · Grande (Café)");
+    await prisma.contenidoCartaProducto.update({ where: { id: contenido.id }, data: { visibleEnCarta: true, seccionCartaId: (await prisma.seccionCarta.create({ data: { nombre: "Cafetería" } })).id, mostrarNombreArriba: true } });
+    expect(await nombre()).toBe("Café");
+    expect((await leer()).find((p) => p.productoId === e.milanesaId)!.nombreParaMostrar).toBe("Milanesa con puré");
+  });
+
   it("una entrada «el mozo elige» se nombra con sus opciones permitidas", async () => {
     const r = await agregarEntradaDeCupoCasoDeUso(actor(), { cupoId: e.cupoEntradaId, productoId: e.cafeId, modoDeOpciones: "A_ELEGIR", opciones: [{ opcionId: e.chicoId, cantidad: 10 }, { opcionId: e.medianoId, cantidad: 10 }, { opcionId: e.azucarId, cantidad: 10 }] });
     expect(r, r.mensaje).toMatchObject({ ok: true });

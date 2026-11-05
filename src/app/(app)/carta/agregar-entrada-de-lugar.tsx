@@ -198,7 +198,7 @@ export function AgregarEntradaDeLugar({
               return (
                 <div key={p.productoId} className="py-1" data-producto-de-origen={p.nombre}>
                   <Casilla
-                    etiqueta={p.nombre}
+                    etiqueta={p.nombreParaMostrar}
                     ayuda={yaEsta ? "Ya está en la lista." : undefined}
                     checked={yaEsta || !!borrador}
                     disabled={yaEsta || pendiente}
@@ -260,7 +260,7 @@ function ConfiguracionDelProducto({
   return (
     <div className="mb-2 ml-7 flex flex-col gap-2 rounded bg-superficie-suave p-2" data-configuracion-de={producto.nombre}>
       <OpcionesExcluyentes
-        leyenda={`Qué pasa con las opciones de «${producto.nombre}»`}
+        leyenda={`Qué pasa con las opciones de «${producto.nombreParaMostrar}»`}
         nombre={`${base}-modo`}
         presentacion="fila"
         valorInicial={borrador.modo}

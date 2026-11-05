@@ -1,6 +1,6 @@
 import "server-only";
 import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
-import { whereCartaDeSucursal, type CombosDeLaCarta, type LugarDeCombo, type ProductoParaEntrada } from "@/core/carta/public";
+import { nombreParaMostrar, whereCartaDeSucursal, type CombosDeLaCarta, type LugarDeCombo, type ProductoParaEntrada } from "@/core/carta/public";
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import type { Db } from "@/lib/db-tipos";
 
@@ -40,7 +40,7 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
     }),
     db.producto.findMany({ where: { tipo: "PV" }, orderBy: [{ nombre: "asc" }, { id: "asc" }], select: { id: true, nombre: true, categoria: { select: { id: true, nombre: true } } } }),
     // El origen de cada producto (la sección de la carta de ESTA sucursal): suelto o dentro de un ítem agrupado. Un producto fuera de ambos «no está en la carta».
-    db.contenidoCartaProducto.findMany({ where: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, seccionCartaId: { not: null } }, select: { productoId: true, seccionCartaId: true } }),
+    db.contenidoCartaProducto.findMany({ where: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, seccionCartaId: { not: null } }, select: { productoId: true, seccionCartaId: true, nombreEnCarta: true, mostrarNombreArriba: true } }),
     db.opcionItemAgrupadoCarta.findMany({ where: { ...whereCartaDeSucursal(sucursalId), itemAgrupadoCarta: { activo: true } }, select: { productoId: true, itemAgrupadoCarta: { select: { seccionCartaId: true } } } }),
   ]);
   const seccionDe = new Map<string, string>();
@@ -48,6 +48,22 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
   // Un producto dentro de un ítem agrupado sale en la sección del ítem, nunca suelto (D3 de la carta): el ítem manda sobre su contenido.
   for (const a of enItemAgrupado) seccionDe.set(a.productoId, a.itemAgrupadoCarta.seccionCartaId);
   const opciones = await cargarOpcionesParaVender(db, { sucursalId, productoIds: pvs.map((p) => p.id) });
+  // El prefijo de lectura en la carta de cada grupo MEDIDA (para el nombre para mostrar de una base con el nombre oculto).
+  const medidaIds = [...new Set([...opciones.values()].flatMap((o) => (o.esBase ? o.grupos.filter((g) => g.tipo === "MEDIDA" && g.admitido && g.activo).map((g) => g.grupoId) : [])))];
+  const prefijos = new Map((await db.grupoDeOpciones.findMany({ where: { id: { in: medidaIds } }, select: { id: true, prefijoEnCarta: true } })).map((g) => [g.id, g.prefijoEnCarta] as const));
+  const contenidoDe = new Map(enSeccion.map((c) => [c.productoId, c] as const));
+  const nombreDe = (p: { id: string; nombre: string }): string => {
+    const admite = opciones.get(p.id);
+    const medida = admite?.grupos.find((g) => g.tipo === "MEDIDA" && g.admitido && g.activo);
+    return nombreParaMostrar({
+      nombre: p.nombre,
+      nombreEnCarta: contenidoDe.get(p.id)?.nombreEnCarta ?? null,
+      esBase: admite?.esBase ?? false,
+      mostrarNombreArriba: contenidoDe.get(p.id)?.mostrarNombreArriba ?? false,
+      medida: medida ? { prefijoEnCarta: prefijos.get(medida.grupoId) ?? null, opciones: medida.opciones.filter((o) => o.activa && o.admitida) } : null,
+    });
+  };
+  const nombreParaMostrarPorProducto = new Map(pvs.map((p) => [p.id, nombreDe(p)] as const));
   const productos: ProductoParaEntrada[] = pvs.flatMap((p) => {
     const admite = opciones.get(p.id);
     // El ancla de un adicional no entra a un combo (se vende solo como adicional).
@@ -66,7 +82,7 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
         cantidadMaxima: g.cantidadMaxima,
         opciones: g.opciones.filter((o) => o.activa && o.admitida).map((o) => ({ opcionId: o.opcionId, nombre: o.nombre })),
       }));
-    return [{ productoId: p.id, nombre: p.nombre, grupos, seccionCartaId: seccionDe.get(p.id) ?? null, categoria: p.categoria, gruposAElegir }];
+    return [{ productoId: p.id, nombre: p.nombre, nombreParaMostrar: nombreParaMostrarPorProducto.get(p.id)!, grupos, seccionCartaId: seccionDe.get(p.id) ?? null, categoria: p.categoria, gruposAElegir }];
   });
   const porPromo: CombosDeLaCarta["porPromo"] = {};
   for (const pr of promos) {
@@ -85,8 +101,8 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
         // «el mozo elige»: las opciones de la entrada son las PERMITIDAS (sin sus unidades: el tope es el de los límites del grupo).
         nombre:
           e.modoDeOpciones === "A_ELEGIR"
-            ? `${e.producto.nombre} · el mozo elige entre: ${e.opciones.map((o) => o.opcion.nombre).join(", ")}`
-            : [e.producto.nombre, ...e.opciones.map((o) => (o.cantidad > 1 ? `${o.opcion.nombre} ×${o.cantidad}` : o.opcion.nombre))].join(" · "),
+            ? `${nombreParaMostrarPorProducto.get(e.productoId) ?? e.producto.nombre} · el mozo elige entre: ${e.opciones.map((o) => o.opcion.nombre).join(", ")}`
+            : [nombreParaMostrarPorProducto.get(e.productoId) ?? e.producto.nombre, ...e.opciones.map((o) => (o.cantidad > 1 ? `${o.opcion.nombre} ×${o.cantidad}` : o.opcion.nombre))].join(" · "),
       })),
     }));
     porPromo[pr.id] = {

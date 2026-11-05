@@ -296,7 +296,10 @@ export interface VigenciaDePromoAdmin {
 /** Un producto de venta que se puede sumar a una lista, con los grupos de UNA sola elección que admite (para fijar su configuración). */
 export interface ProductoParaEntrada {
   productoId: string;
+  /** El nombre interno (`Producto.nombre`). */
   nombre: string;
+  /** Cómo se llama para quien arma: una base con el nombre oculto, por los rótulos de su medida con el nombre interno entre paréntesis; si no, el nombre en la carta o el interno (`nombreParaMostrar`). */
+  nombreParaMostrar: string;
   grupos: { grupoId: string; nombre: string; obligatorio: boolean; opciones: { opcionId: string; nombre: string }[] }[];
   /** La sección de la carta de ESTA sucursal donde se ubica (suelto o dentro de un ítem agrupado); `null` = «no está en la carta». Solo es la fuente para tildar: no es una regla viva. */
   seccionCartaId: string | null;

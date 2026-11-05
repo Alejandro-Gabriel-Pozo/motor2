@@ -6,6 +6,7 @@ import { ORIGEN_FUERA_DE_LA_CARTA, borradorInicial, categoriasDe, comandoDeProdu
 const bife: ProductoParaEntrada = {
   productoId: "bife",
   nombre: "BIFE-",
+  nombreParaMostrar: "Bife a criolla · Bife con chimichurri (BIFE-)",
   grupos: [],
   seccionCartaId: "sec-principales",
   categoria: { id: "cat-carnes", nombre: "Carnes" },
@@ -16,10 +17,11 @@ const bife: ProductoParaEntrada = {
     { grupoId: "g-extra", nombre: "Extras", adicional: true, cantidadMinima: 0, cantidadMaxima: 2, opciones: [{ opcionId: "huevo", nombre: "Huevo frito" }] },
   ],
 };
-const agua: ProductoParaEntrada = { productoId: "agua", nombre: "Agua", grupos: [], seccionCartaId: null, categoria: { id: "cat-bebidas", nombre: "Bebidas" }, gruposAElegir: [] };
+const agua: ProductoParaEntrada = { productoId: "agua", nombre: "Agua", nombreParaMostrar: "Agua", grupos: [], seccionCartaId: null, categoria: { id: "cat-bebidas", nombre: "Bebidas" }, gruposAElegir: [] };
 const cafe: ProductoParaEntrada = {
   productoId: "cafe",
   nombre: "Café",
+  nombreParaMostrar: "Café",
   grupos: [{ grupoId: "g-tam", nombre: "Tamaño", obligatorio: true, opciones: [{ opcionId: "chico", nombre: "Chico" }, { opcionId: "grande", nombre: "Grande" }] }],
   seccionCartaId: "sec-bebidas",
   categoria: { id: "cat-bebidas", nombre: "Bebidas" },

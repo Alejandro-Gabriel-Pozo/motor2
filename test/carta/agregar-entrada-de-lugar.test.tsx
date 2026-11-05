@@ -12,13 +12,14 @@ import { AgregarEntradaDeLugar } from "../../src/app/(app)/carta/agregar-entrada
 const bife: ProductoParaEntrada = {
   productoId: "bife",
   nombre: "BIFE-",
+  nombreParaMostrar: "Bife a criolla · Bife con chimichurri (BIFE-)",
   grupos: [],
   seccionCartaId: "sec-principales",
   categoria: { id: "cat-carnes", nombre: "Carnes" },
   gruposAElegir: [{ grupoId: "g-prot", nombre: "Proteína", adicional: false, cantidadMinima: 1, cantidadMaxima: 1, opciones: [{ opcionId: "nalga", nombre: "Nalga" }] }],
 };
-const milanesa: ProductoParaEntrada = { productoId: "mila", nombre: "Milanesa", grupos: [], seccionCartaId: "sec-principales", categoria: { id: "cat-carnes", nombre: "Carnes" }, gruposAElegir: [] };
-const agua: ProductoParaEntrada = { productoId: "agua", nombre: "Agua", grupos: [], seccionCartaId: null, categoria: null, gruposAElegir: [] };
+const milanesa: ProductoParaEntrada = { productoId: "mila", nombre: "Milanesa", nombreParaMostrar: "Milanesa", grupos: [], seccionCartaId: "sec-principales", categoria: { id: "cat-carnes", nombre: "Carnes" }, gruposAElegir: [] };
+const agua: ProductoParaEntrada = { productoId: "agua", nombre: "Agua", nombreParaMostrar: "Agua", grupos: [], seccionCartaId: null, categoria: null, gruposAElegir: [] };
 const secciones = [{ id: "sec-principales", nombre: "Platos principales" }, { id: "sec-bebidas", nombre: "Bebidas" }];
 const agregar = vi.fn();
 const sacar = vi.fn();
@@ -49,6 +50,8 @@ describe("AgregarEntradaDeLugar: un lugar que ya tiene opciones", () => {
   it("abre en el origen de lo que ya tiene y muestra solo los productos de ese origen", () => {
     expect(html).toContain('<option value="sec-principales" selected="">');
     expect(html).toContain('data-producto-de-origen="BIFE-"');
+    // Quien arma lo lee por lo que la carta muestra, con el nombre interno al lado.
+    expect(html).toContain("Bife a criolla · Bife con chimichurri (BIFE-)");
     expect(html).toContain('data-producto-de-origen="Milanesa"');
     expect(html).not.toContain('data-producto-de-origen="Agua"');
   });
@@ -71,7 +74,7 @@ describe("AgregarEntradaDeLugar: un lugar que ya tiene opciones", () => {
 });
 
 describe("esFijo: una entrada «el mozo elige» no es una configuración fija", () => {
-  const lugar = (modoDeOpciones: "FIJAS" | "A_ELEGIR") => ({ id: "l", tipo: "LISTA" as const, nombre: "Plato", cantidadMinima: 1, cantidadMaxima: 1, orden: 1, entradas: [{ id: "e", activa: true, productoId: "bife", nombre: "BIFE-", modoDeOpciones }] });
+  const lugar = (modoDeOpciones: "FIJAS" | "A_ELEGIR") => ({ id: "l", tipo: "LISTA" as const, nombre: "Plato", cantidadMinima: 1, cantidadMaxima: 1, orden: 1, entradas: [{ id: "e", activa: true, productoId: "bife", nombre: "BIFE-", nombreParaMostrar: "Bife a criolla · Bife con chimichurri (BIFE-)", modoDeOpciones }] });
   it("una sola entrada fija con mínimo = máximo viene fija; la «a elegir», no", () => {
     expect(esFijo(lugar("FIJAS"))).toBe(true);
     expect(esFijo(lugar("A_ELEGIR"))).toBe(false);
