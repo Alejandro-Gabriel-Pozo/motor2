@@ -57,7 +57,7 @@ interface Props {
   lista: EstadoListaPorAgregar;
   despachar: (accion: AccionSelectorCarta) => void;
   /** Suma un producto a la lista «Por agregar» (y avisa acá para vaciar el buscador y cerrar el agrupado suelto, G3). */
-  sumar: (productoId: string) => void;
+  sumar: (productoId: string, rotulo?: string) => void;
   /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 11): toca una promo armable — abre el diálogo "Armar promo"
    *  (`ArmarPromo`, en el padre: una promo no se suma directo como un producto). */
   abrirPromo: (entrada: EntradaPromoSelectorCarta) => void;
@@ -89,6 +89,29 @@ export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrir
     const configuracion = configuraciones[p.productoId];
     if (configuracion) {
       const sinLugar = llena;
+      // Una base con el nombre oculto en la carta (2026-11-05): el mozo ve los mismos renglones que el cliente («Bife a la criolla $ 18.000»), no el nombre interno. Tocar uno abre el mismo
+      // «Elegir opciones», con esa opción ya elegida.
+      if (configuracion.vendible && p.filasEnCarta && p.filasEnCarta.length > 0) {
+        return (
+          <div data-producto-carta={p.productoId} className="flex flex-col gap-2">
+            {p.filasEnCarta.map((f) => (
+              <button
+                key={f.rotulo}
+                type="button"
+                aria-haspopup="dialog"
+                disabled={sinLugar}
+                title={sinLugar ? `Llegaste al máximo de ${MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.` : undefined}
+                data-fila-carta={f.rotulo}
+                onClick={() => sumar(p.productoId, f.rotulo)}
+                className={BOTON_PRODUCTO}
+              >
+                <span>{f.rotulo}</span>
+                <span className={PRECIO}>{`${formatearMonto(f.precio)} · Opciones`}</span>
+              </button>
+            ))}
+          </div>
+        );
+      }
       return (
         <button
           type="button"
