@@ -45,13 +45,13 @@ export function OpcionesDeUnidad({
                     key={o.opcionId}
                     variante="seleccion"
                     tamano="tactil"
-                    className="w-full justify-start"
+                    className="w-full"
                     aria-pressed={elegida}
                     // Un grupo obligatorio no se puede dejar vacío tocando la elegida (se cambia eligiendo otra); uno opcional sí.
                     onClick={() => onOpcion(elegida ? "restar" : "elegir", g.grupoId, o.opcionId)}
                     disabled={elegida && g.cantidadMinima > 0}
                   >
-                    {o.nombre}
+                    <span className="w-full text-left">{o.nombre}</span>
                   </Boton>
                 );
               }
