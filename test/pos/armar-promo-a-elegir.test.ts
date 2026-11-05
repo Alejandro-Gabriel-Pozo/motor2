@@ -5,7 +5,7 @@ import type { EntradaPromoSelectorCarta } from "../../src/core/pos/selector-cart
 
 /**
  * Promo «a elegir», PR C (selector del POS; diseño 2026-11-04 §7 y §11 nivel 8): el reductor de «Armar promo» con una entrada que el mozo configura. Es el bife real de la empresa: Proteína (incluida,
- * 1 de 2), Preparación (medida, 1 de 2) y Guarniciones (incluida, hasta 2 de 3). Fija: cada «+» suma una unidad con sus propias opciones; la unidad cuenta para el máximo del cupo; «Agregar promo» espera
+ * 1 de 2), Preparación (medida, 1 de 2) y Guarniciones (variante, hasta 2 de 3). Fija: cada «+» suma una unidad con sus propias opciones; la unidad cuenta para el máximo del cupo; «Agregar promo» espera
  * a que cada unidad cumpla los mínimos de sus grupos; las unidades con la misma configuración viajan en UNA fila (el servidor rechaza dos filas iguales); una entrada de configuración fija se comporta
  * como siempre; solo se elige entre lo que la lectura ofrece (lo permitido efectivo), con la versión que el mozo vio.
  *
@@ -47,7 +47,7 @@ const grupo = (grupoId: string, tipo: GrupoParaVender["tipo"], cantidadMinima: n
 const GRUPOS_BIFE = [
   grupo("Proteína", "INCLUIDA", 1, 1, [opcion("nalga", "Nalga", 1), opcion("chorizo", "Bife de chorizo", 2)]),
   grupo("Preparación", "MEDIDA", 1, 1, [opcion("criolla", "Bife a la criolla", 1), opcion("chimi", "Bife con chimichurri", 2)]),
-  grupo("Guarniciones", "INCLUIDA", 0, 2, [opcion("pure", "Puré de papa", 1), opcion("ensalada", "Ensalada", 2), opcion("papas", "Papas fritas", 3)]),
+  grupo("Guarniciones", "VARIANTE", 0, 2, [opcion("pure", "Puré de papa", 1), opcion("ensalada", "Ensalada", 2), opcion("papas", "Papas fritas", 3)]),
 ];
 
 const promo = (): EntradaPromoSelectorCarta => ({
