@@ -120,6 +120,10 @@ describe("8a: forma simple (el bife: su precio y las aclaraciones debajo)", () =
     expect(texto(entera.slice(entera.indexOf("<li data-bloque-de-opciones")))).toBe("Guarnicion · elegís 1 ensalada · papas fritas · puré");
     expect(entera.indexOf("<li data-bloque-de-opciones"), "el bloque va después del plato").toBeGreaterThan(entera.indexOf("Bife a la criolla"));
     expect(entera).not.toMatch(/Con los platos que incluyen|Lo incluyen|data-va-con/);
+    // Sin línea divisoria entre el plato y SU bloque (se lee como parte del mismo plato); la del bloque al plato siguiente no se toca.
+    expect(entera).toMatch(/<li data-forma="simple" data-plato="0" class="py-2.5 border-b-0">/);
+    expect(entera).toMatch(/<li data-bloque-de-opciones="Guarnicion"[^>]*class="py-3 border-t-0">/);
+    expect(filaCon(dibujar([item({ nombre: "Sin opciones propias", precio: 5 })]), "Sin opciones propias")).not.toContain("border-b-0");
     expect(extras).not.toContain('data-rol="eleccion"');
     expect(extras).toMatch(/<ul aria-label="Extras" data-recargos-carta/);
     expect(extras.match(/<li[\s>]/g)).toHaveLength(2);
