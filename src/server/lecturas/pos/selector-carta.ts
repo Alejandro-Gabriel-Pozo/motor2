@@ -19,6 +19,8 @@ import type { Db } from "@/lib/db-tipos";
  *
  *  - La estructura: la carta pública de la sucursal, tal cual (`resolverMenuCarta`). Sucursal inactiva → `null` → todo a «Fuera de
  *    carta».
+ *  - La carta se pide CON las opciones de los productos (`conOpciones`, 2026-11-05): de ahí sale cómo la carta dibuja una base con el nombre oculto (sus renglones), que el selector del mozo muestra igual que el
+ *    cliente. Un producto que hoy no se puede pedir (grupo obligatorio sin opciones) la carta ya no lo ubica y cae a «Fuera de carta», donde el diálogo sigue diciendo «Sin opciones disponibles hoy».
  *  - Los pedibles: los PV disponibles en la sucursal (`whereDisponibleEn`, el mismo filtro que el buscador del POS y que valida
  *    `agregarItems`), con el precio que se congelaría al agregarlos: Precio Local habilitado o, si no, el global (`precioDeCarta`,
  *    paridad con `resolverPrecioVenta`, fijada por test/pos/selector-carta-consulta.test.ts).
@@ -69,7 +71,7 @@ export async function cargarSelectorCartaPos(
   const conCarta = modulos.carta;
   const conPromos = conCarta && modulos.promociones;
   const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
-    conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido, "salon") : Promise.resolve(null),
+    conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido, "salon", true) : Promise.resolve(null),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
