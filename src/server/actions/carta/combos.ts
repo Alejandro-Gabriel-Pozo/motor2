@@ -17,7 +17,7 @@ import { revalidarCartasPublicas } from "./revalidar";
  */
 
 /** Que un producto (con su configuración fija, si la lleva) sea una opción de un lugar LISTA: la crea o la reactiva. */
-export async function agregarEntradaDeCupo(entrada: { cupoId: unknown; productoId: unknown; opciones?: unknown }): Promise<ResultadoAccion> {
+export async function agregarEntradaDeCupo(entrada: { cupoId: unknown; productoId: unknown; opciones?: unknown; modoDeOpciones?: unknown }): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("carta_promo_definir", async (ctx) => {
     const comando = guardComandoAgregarEntradaDeCupo(entrada);
     if (!comando.ok) return error(comando.mensaje);

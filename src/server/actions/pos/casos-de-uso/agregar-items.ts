@@ -12,6 +12,7 @@ import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarYAplanarEleccionPromo, type ComponentePromoElegido, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
 import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
 import { armarLineaConfigurada, type LineaConfigurada } from "@/core/pos/linea-configurada";
+import { armarConfiguracionDeEntradaAElegir } from "@/core/pos/public-servidor";
 import { validarOpcionesElegidas } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
@@ -218,10 +219,24 @@ export async function agregarItemsCasoDeUso(
         return fracaso(codigo, `«${def.titulo}»: ${validacion.mensaje}`);
       }
       const entradas = def.entradas;
+      // Promo «a elegir» (ADR-032 D-6 enmendada): lo que el mozo eligió en una entrada «a elegir» se arma ACÁ, dentro de la transacción, contra las opciones permitidas efectivas que esa misma lectura devolvió
+      // (la que alimenta al selector): una opción fuera de lo permitido, un mínimo o máximo del grupo roto, una versión vieja o una configuración sin origen de stock rechazan sin escribir nada. El precio de la
+      // promo es el de siempre; la lista de cada configuración elegida solo pesa en el reparto.
+      const lineaPorClave = new Map(entradas?.lineaPorClave);
+      const precioCartaPorClave = new Map(entradas?.precioCartaPorClave);
+      for (const c of validacion.componentes) {
+        if (c.opciones === undefined || c.entradaId === undefined || c.claveComponente === undefined) continue;
+        const leida = entradas?.aElegirPorEntrada.get(c.entradaId);
+        if (!leida) return fracaso("ENTRADA_NO_DISPONIBLE", `«${def.titulo}»: esa opción ya no está disponible hoy en esta promo.`);
+        const armada = armarConfiguracionDeEntradaAElegir(leida, c.opciones);
+        if (!armada.ok) return fracaso(armada.codigo, `«${def.titulo}»: ${armada.mensaje}`);
+        precioCartaPorClave.set(c.claveComponente, armada.precioDeLista);
+        if (armada.linea) lineaPorClave.set(c.claveComponente, armada.linea);
+      }
       // Un componente de un cupo de entradas pesa con el precio de lista de SU entrada (por `claveComponente`: con su configuración); uno de sección, con el de siempre.
       const componentes = validacion.componentes.map((c) => ({
         ...c,
-        precioCarta: c.entradaId !== undefined && c.claveComponente !== undefined ? (entradas?.precioCartaPorClave.get(c.claveComponente) ?? 0) : (def.precioCartaPorProducto.get(c.productoId) ?? 0),
+        precioCarta: c.entradaId !== undefined && c.claveComponente !== undefined ? (precioCartaPorClave.get(c.claveComponente) ?? 0) : (def.precioCartaPorProducto.get(c.productoId) ?? 0),
       }));
       const prorrateo = prorratearPrecioPromo(def.precio, componentes);
       if (!prorrateo.ok) return fracaso("PROMO_INVALIDA", `«${def.titulo}»: ${prorrateo.mensaje}`);
@@ -243,7 +258,7 @@ export async function agregarItemsCasoDeUso(
         }));
         if (!alicuotas.ok) return fracaso(alicuotas.codigo, `«${def.titulo}»: ${alicuotas.mensaje}`);
       }
-      promosValidadas.push({ titulo: def.titulo, promoCartaId: def.id, precio: def.precio, componentes, filas: prorrateo.filas, lineaPorClave: entradas?.lineaPorClave ?? new Map() });
+      promosValidadas.push({ titulo: def.titulo, promoCartaId: def.id, precio: def.precio, componentes, filas: prorrateo.filas, lineaPorClave });
     }
 
     // GO-2b: el tope de líneas, contando ahora los adicionales de las líneas configuradas (el guard no podía saber cuáles son).

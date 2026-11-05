@@ -53,6 +53,11 @@ export interface EntradaElegibleDeCupo {
   entradaId: string;
   productoId: string;
   claveComponente: string;
+  /**
+   * Promo «a elegir» (`EntradaDeCupo.modoDeOpciones = 'A_ELEGIR'`, diseño 2026-11-04): el mozo elige las opciones entre las permitidas efectivas, así que la `claveComponente` de lo que se agrega sale de
+   * la configuración ELEGIDA (no de ésta, que es solo un marcador de la entrada). Ausente = configuración fija (o sin configuración), como siempre.
+   */
+  aElegir?: boolean;
 }
 
 /** Un cupo LISTA o DEL_DIA: se identifica por su id (no tiene sección) y sus elegibles son entradas. Un LISTA con UNA sola entrada y mínimo = máximo es un COMPONENTE FIJO. */
@@ -70,10 +75,20 @@ export interface CupoDeEntradasDefinicion {
 /** Cualquier cupo de una promo: los de sección de siempre o los de entradas de GO-3. */
 export type CupoDePromo = CupoPromoDefinicion | CupoDeEntradasDefinicion;
 
-/** Lo elegido en un cupo de entradas: la entrada (no el producto) y sus unidades. */
+/** Una opción que el mozo eligió dentro de una entrada «a elegir»: la opción, cuántas por unidad y la versión que vio (como en un ítem suelto). El precio nunca viene del cliente. */
+export interface OpcionDeEleccionDePromo {
+  opcionId: string;
+  cantidad: number;
+  versionDeOpcionId: string;
+}
+
+/**
+ * Lo elegido en un cupo de entradas: la entrada (no el producto) y sus unidades. En una entrada «a elegir» lleva además las `opciones` (puede ser vacío si todos sus grupos son opcionales) y la misma
+ * entrada puede repetirse con otras opciones (cada fila es una configuración distinta con sus unidades); en cualquier otra entrada `opciones` no va (se rechaza).
+ */
 export interface EleccionDeCupoPorId {
   cupoId: string;
-  elegidos: readonly { entradaId: string; cantidad: number }[];
+  elegidos: readonly { entradaId: string; cantidad: number; opciones?: readonly OpcionDeEleccionDePromo[] }[];
 }
 
 /** Cualquier elección: por sección (la de siempre, sin cambios) o por cupo (GO-3). */
@@ -83,6 +98,8 @@ export type EleccionDePromo = EleccionDeCupo | EleccionDeCupoPorId;
 export interface ComponenteValidado extends ProductoElegidoEnCupo {
   entradaId?: string;
   claveComponente?: string;
+  /** Solo en una entrada «a elegir»: las opciones que eligió el mozo (copiadas campo a campo). `agregarItemsCasoDeUso` las arma contra lo permitido. */
+  opciones?: readonly OpcionDeEleccionDePromo[];
 }
 
 /** Los códigos de los rechazos de GO-3 que quien llama necesita distinguir (los de siempre no llevan código: solo el mensaje). */
@@ -94,7 +111,8 @@ function esCupoDeEntradas(cupo: CupoDePromo): cupo is CupoDeEntradasDefinicion {
 
 /** ¿El cupo es un COMPONENTE FIJO? Un LISTA con exactamente una entrada elegible y mínimo = máximo (de 1 o más): el servidor lo completa solo y el mozo no elige nada. */
 export function esCupoFijo(cupo: CupoDePromo): cupo is CupoDeEntradasDefinicion {
-  return esCupoDeEntradas(cupo) && cupo.tipo === "LISTA" && cupo.entradas.size === 1 && cupo.cantidadMinima >= 1 && cupo.cantidadMinima === cupo.cantidadMaximaCupo;
+  // Una entrada «a elegir» nunca es un componente fijo: el mozo tiene que elegir sus opciones.
+  return esCupoDeEntradas(cupo) && cupo.tipo === "LISTA" && cupo.entradas.size === 1 && cupo.cantidadMinima >= 1 && cupo.cantidadMinima === cupo.cantidadMaximaCupo && ![...cupo.entradas.values()][0]!.aElegir;
 }
 
 /**
@@ -178,6 +196,13 @@ export function validarYAplanarEleccionPromo(cupos: readonly CupoDePromo[], elec
       if (!Array.isArray(elegidos)) return formaRota;
       for (const el of elegidos as readonly unknown[]) {
         if (typeof el !== "object" || el === null || typeof (el as Partial<EleccionDeCupoPorId["elegidos"][number]>).entradaId !== "string") return formaRota;
+        const opciones = (el as Partial<EleccionDeCupoPorId["elegidos"][number]>).opciones;
+        if (opciones !== undefined) {
+          if (!Array.isArray(opciones)) return formaRota;
+          for (const o of opciones as readonly unknown[]) {
+            if (typeof o !== "object" || o === null || typeof (o as Partial<OpcionDeEleccionDePromo>).opcionId !== "string" || typeof (o as Partial<OpcionDeEleccionDePromo>).versionDeOpcionId !== "string") return formaRota;
+          }
+        }
       }
       if (!cuposDeEntradas.has(cupoId)) return { ok: false, mensaje: "La elección incluye un lugar que no es parte de esta promo." };
       if (eleccionPorCupo.has(cupoId)) return { ok: false, mensaje: "La elección repite un lugar de la promo: se elige una sola vez por lugar." };
@@ -238,7 +263,7 @@ function aplanarCupoDeEntradas(cupo: CupoDeEntradasDefinicion, eleccion: Eleccio
   if (esCupoFijo(cupo)) {
     const [unica] = [...cupo.entradas.keys()];
     const fijo = [{ entradaId: unica!, cantidad: cupo.cantidadMinima }];
-    if (eleccion !== undefined && !(elegidos.length === 1 && elegidos[0]!.entradaId === unica && elegidos[0]!.cantidad === cupo.cantidadMinima)) {
+    if (eleccion !== undefined && !(elegidos.length === 1 && elegidos[0]!.entradaId === unica && elegidos[0]!.cantidad === cupo.cantidadMinima && elegidos[0]!.opciones === undefined)) {
       return { ok: false, codigo: "COMPONENTE_FIJO", mensaje: `«${cupo.nombre}» viene fijo en esta promo: no se elige.` };
     }
     elegidos = fijo;
@@ -252,6 +277,28 @@ function aplanarCupoDeEntradas(cupo: CupoDeEntradasDefinicion, eleccion: Eleccio
     }
     const entrada = cupo.entradas.get(el.entradaId);
     if (!entrada) return { ok: false, codigo: "ENTRADA_NO_DISPONIBLE", mensaje: `Esa opción de "${cupo.nombre}" no está disponible hoy en esta promo.` };
+    if (entrada.aElegir === true) {
+      // «A elegir»: cada fila es UNA configuración (sus opciones y sus unidades); la misma entrada puede repetirse con otra configuración, nunca con la misma.
+      const opciones = el.opciones ?? [];
+      const canonico = claveDeConfiguracion(opciones);
+      if (canonico === null) return { ok: false, mensaje: `Las opciones elegidas en "${cupo.nombre}" repiten una opción o tienen una cantidad fuera de 1 a 10.` };
+      const identidad = `${el.entradaId}|${canonico}`;
+      if (yaElegidas.has(identidad)) return { ok: false, mensaje: `Una opción está repetida en "${cupo.nombre}" con las mismas opciones: la cantidad se elige en una sola fila.` };
+      yaElegidas.add(identidad);
+      total += el.cantidad;
+      // Sin opciones elegidas la clave es la del producto con marca (nunca la del producto pelado, que es la de un componente de sección).
+      const claveComponente = canonico === "" ? `${entrada.productoId}#` : claveDeComponenteConfigurado(entrada.productoId, canonico);
+      componentes.push({
+        productoId: entrada.productoId,
+        cantidad: el.cantidad,
+        entradaId: entrada.entradaId,
+        claveComponente,
+        opciones: opciones.map((o) => ({ opcionId: o.opcionId, cantidad: o.cantidad, versionDeOpcionId: o.versionDeOpcionId })),
+      });
+      continue;
+    }
+    // Una entrada de configuración fija no deja elegir opciones: lo que mande de más se rechaza (nunca se ignora en silencio).
+    if (el.opciones !== undefined) return { ok: false, mensaje: `Esa opción de "${cupo.nombre}" viene con su configuración fija en esta promo: no se eligen opciones.` };
     if (yaElegidas.has(el.entradaId)) return { ok: false, mensaje: `Una opción está repetida en "${cupo.nombre}": la cantidad se elige en una sola fila.` };
     yaElegidas.add(el.entradaId);
     total += el.cantidad;

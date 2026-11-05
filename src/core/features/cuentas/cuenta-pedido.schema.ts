@@ -33,7 +33,7 @@ export interface ItemParaAgregar {
 /** Una promo armada por el mozo, para el tercer parámetro de `agregarItems` (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 8a). */
 export interface PromoParaAgregar {
   promoCartaId: string;
-  /** Por sección (la de siempre) o, GO-3b, por cupo de entradas (`{ cupoId, elegidos: [{ entradaId, cantidad }] }`). Un componente fijo no se manda: lo completa el servidor. */
+  /** Por sección (la de siempre) o, GO-3b, por cupo de entradas (`{ cupoId, elegidos: [{ entradaId, cantidad, opciones? }] }`; `opciones` solo en una entrada «a elegir»). Un componente fijo no se manda: lo completa el servidor. */
   elecciones: EleccionDePromo[];
   /** GO-3b (ADR-032): el precio de la promo que vio el mozo (opcional). Si ya no es el de hoy, `PROMO_CAMBIO`: nunca se cobra distinto de lo que se vio. */
   precioEsperado?: number;
@@ -68,6 +68,8 @@ export interface ComandoAgregarItems {
  *  - GO-3b, en cada promo (después de encontrarla): `PROMO_CAMBIO` (su precio de hoy no es el que vio el mozo), `MENU_DEL_DIA_SIN_CARGAR` (un lugar del día sin plato de hoy),
  *    `ENTRADA_NO_DISPONIBLE` (una entrada elegida ya no se puede elegir hoy: se desactivó, se quitó del día o se apagó una opción) y `COMBO_ALICUOTAS_DISTINTAS` (lo elegido en
  *    un combo con cupos de entradas mezcla alícuotas de IVA declaradas distintas, D-2). Una promo fuera de su vigencia es `PROMO_INVALIDA` (no está disponible hoy).
+ *  - Promo «a elegir» (ADR-032 D-6 enmendada), en una entrada marcada `A_ELEGIR`: `OPCION_NO_PERMITIDA_EN_PROMO` (el mozo mandó una opción que la promo no permite), más `OPCION_CAMBIO` y `OPCIONES_INVALIDAS`
+ *    (mínimo o máximo del grupo, cantidades) con las mismas reglas de un ítem suelto; una configuración sin precio de referencia u origen de stock es `ENTRADA_NO_DISPONIBLE`.
  * Todo se valida ANTES de la primera escritura: un rechazo no deja nada escrito.
  */
 export type ResultadoAgregarItems = ResultadoCaso<
@@ -85,6 +87,7 @@ export type ResultadoAgregarItems = ResultadoCaso<
   | "PROMO_CAMBIO"
   | "MENU_DEL_DIA_SIN_CARGAR"
   | "ENTRADA_NO_DISPONIBLE"
+  | "OPCION_NO_PERMITIDA_EN_PROMO"
   | "COMBO_ALICUOTAS_DISTINTAS"
 >;
 

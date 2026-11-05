@@ -56,12 +56,13 @@ describe("la migración deja las columnas, las tablas, los índices, las claves 
     expect(defecto("PromoCarta", "version"), "control optimista: toda promo de hoy queda en la versión 1").toBe("1");
     expect(defecto("PromoCartaCupo", "tipo")).toBe("'SECCION'::text");
     expect(defecto("PromoCartaCupo", "activo")).toBe("true");
-    expect(forma("EntradaDeCupo")).toEqual(["id:text:NO", "empresaId:text:NO", "cupoId:text:NO", "productoId:text:NO", "claveConfiguracion:text:NO", "orden:integer:NO", "activa:boolean:NO", `creadoEn:${T}:NO`, `actualizadoEn:${T}:NO`]);
+    expect(forma("EntradaDeCupo")).toEqual(["id:text:NO", "empresaId:text:NO", "cupoId:text:NO", "productoId:text:NO", "claveConfiguracion:text:NO", "orden:integer:NO", "activa:boolean:NO", `creadoEn:${T}:NO`, `actualizadoEn:${T}:NO`, "modoDeOpciones:text:NO"]);
     expect(forma("OpcionDeEntradaDeCupo")).toEqual(["id:text:NO", "empresaId:text:NO", "entradaId:text:NO", "opcionId:text:NO", "cantidad:integer:NO", `creadoEn:${T}:NO`]);
     expect(forma("EntradaDelDiaDeCupo")).toEqual([
       "id:text:NO", "empresaId:text:NO", "cupoId:text:NO", "sucursalId:text:NO", "fecha:date:NO", "productoId:text:NO", "activa:boolean:NO", "actualizadoPorId:text:NO", `creadoEn:${T}:NO`, `actualizadoEn:${T}:NO`,
     ]);
     expect(defecto("EntradaDeCupo", "claveConfiguracion")).toBe("''::text");
+    expect(defecto("EntradaDeCupo", "modoDeOpciones"), "promo «a elegir»: toda entrada anterior queda FIJAS").toBe("'FIJAS'::text");
     for (const tabla of TABLAS) expect(defecto(tabla, "empresaId"), tabla).toMatch(/app_empresa_actual\(\)/);
     expect(columnas.filter((c) => /double|real|money/.test(c.tipo))).toEqual([]);
   });
@@ -96,6 +97,8 @@ describe("la migración deja las columnas, las tablas, los índices, las claves 
     );
     expect(checks).toEqual([
       { nombre: "EntradaDeCupo_clave_configuracion_chk", validada: true },
+      // Promo «a elegir» (2026-11-05, 20261105120000_promo_entrada_a_elegir): el CHECK de la columna `modoDeOpciones`.
+      { nombre: "EntradaDeCupo_modo_de_opciones_chk", validada: true },
       { nombre: "EntradaDeCupo_orden_chk", validada: true },
       { nombre: "OpcionDeEntradaDeCupo_cantidad_chk", validada: true },
       { nombre: "PromoCartaCupo_nombre_chk", validada: true },
