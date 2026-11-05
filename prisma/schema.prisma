@@ -1891,6 +1891,10 @@ model ContenidoCartaProducto {
   /// base sale OCULTA (cada opción, una fila con su nombre completo). En un producto directo o en una base de dos ejes (que sale siempre como tabla) no decide nada. Lo escribe solo
   /// `guardarContenidoCartaProducto` (auditado por columna) y lo copia «copiar carta».
   mostrarNombreArriba Boolean @default(false)
+  /// «Nombre en la carta» (pedido del dueño, 2026-11-04): el nombre con que la carta (pública, impresa, vista previa y «Va a mostrar») y el selector del mozo muestran este producto en ESTA sucursal. NULL = usa
+  /// el nombre interno (`Producto.nombre`). Solo presentación: no entra al precio, al stock, al ticket, a la comanda ni a los reportes. Lo escribe solo `guardarContenidoCartaProducto` (auditado por columna) y
+  /// lo copia «copiar carta». CHECK "ContenidoCartaProducto_nombre_en_carta_chk": de 1 a 80 caracteres, sin espacios a los costados ni saltos de línea.
+  nombreEnCarta  String?
   /// Carpeta VISUAL de género del POS (docs/plan-genero-carta-2026-09-26.md, G1/G2), opcional. No implica precio ni
   /// sustituibilidad (eso es ItemAgrupadoCarta) ni tiene nada que ver con Grupo (Insumo/stock) ni con CategoriaProducto (que no
   /// ubica nada en la carta): solo visual, solo del POS por ahora (G4, la carta pública `CartaV1` no lo usa).

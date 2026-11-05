@@ -1,0 +1,154 @@
+# Diseño: «Nombre en la carta» por sucursal (2026-11-04)
+
+Versión corta de la escalera de 10 niveles (regla del dueño del 2026-10-26). Estados: **CONFIRMADA** (dicha por el dueño), **PROPUESTA**, **PENDIENTE**, **NO VERIFICADA**. Todo lo que se dice del código sale de una lectura del código real en `main` (`94cbe181`, 2026-11-04); los tests se corren recién al implementar.
+
+## 1. Propósito y alcance
+
+- **Necesidad (CONFIRMADA, dueño, 2026-11-04):** el cliente ve en la carta el nombre **interno** del producto de venta, y al mozo también le hace ruido verlo al elegir platos. Hoy no existe un nombre de cara al cliente: la carta (`src/server/lecturas/carta/menu.ts`, `src/core/carta/armar-menu.ts`) y el selector del mozo (`src/server/lecturas/pos/selector-carta.ts` → `src/core/pos/selector-carta.ts` → `selector-carta.tsx`) usan `Producto.nombre`.
+- **Dentro:** un campo opcional «Nombre en la carta» por producto **y por sucursal**; la carta pública, la impresa, la vista previa del producto, «Va a mostrar» y el selector del mozo lo usan cuando está cargado; «copiar carta» lo copia.
+- **Fuera (CONFIRMADA):** los ítems agrupados y las promos (ya tienen nombre propio); nada más (ni opciones «por las dudas»: sin idiomas, sin nombre corto, sin nombre por canal).
+- **Fuera por supuesto declarado (PROPUESTA, abiertos al final):** comanda, ticket, cocina y reportes siguen con el nombre interno.
+
+## 2. Actores
+
+| Actor | Qué hace | Permiso (existente) |
+|---|---|---|
+| Quien arma la carta | Escribe, corrige o borra el nombre en la carta de un producto en SU sucursal activa | `carta_contenido_producto` (el mismo que hoy edita el contenido de carta) |
+| Comensal | Lee la carta (pública o impresa) | ninguno |
+| Mozo | Ve el nombre de carta al elegir platos | los del POS (sin cambios) |
+
+## 3. Casos de uso
+
+| # | Caso | Resultado |
+|---|---|---|
+| CU1 | El dueño carga «Bife de chorizo a la parrilla» para «BIFE_CHORIZO_300» en la sucursal Centro | la carta de Centro, su vista previa, «Va a mostrar» y el selector del mozo de Centro dicen eso |
+| CU2 | Otra sucursal no lo cargó | su carta sigue con el nombre interno |
+| CU3 | Se borra el texto y se guarda | vuelve a NULL: la carta usa el nombre interno |
+| CU4 | «Copiar carta» de una sucursal a otra | el nombre en la carta viaja con el resto del contenido |
+| CU5 | Se renombra el producto (nombre interno) | si hay nombre en la carta, la carta no cambia; si no hay, la carta sigue al nombre interno |
+
+## 4. Conceptos y ciclo de vida
+
+- **Nombre en la carta:** texto corto, una línea, **opcional**, editable en el lugar, **sin versión propia** (como `descripcion` y `mostrarNombreArriba` del contenido). Vive en el contenido de carta del producto (`ContenidoCartaProducto`), que ya es de UNA sucursal (ADR-009, C3), así que la regla «por sucursal» sale sola del modelo existente.
+- **Regla de resolución (pura, una sola):** `nombreDeCarta = nombreEnCarta ?? Producto.nombre`. Se resuelve **una vez**, al armar la carta (`armarMenuCarta`), y de ahí la usan la carta pública, la impresa y la vista previa del producto. El selector del mozo lee el campo del contenido de la sucursal y lo pone en el pedible (`nombreEnCarta?`) para mostrarlo en el botón; el resto del POS sigue con `nombre` (ajuste de implementación, declarado).
+- **Sin fila de contenido = sin nombre en la carta:** un producto fuera de carta no tiene a dónde guardarlo (hay que agregarlo a la carta primero), igual que hoy la descripción.
+
+## 5. Invariantes y políticas
+
+| # | Regla | Estado |
+|---|---|---|
+| I1 | Es **por producto y por sucursal**; vacío (NULL) = usa el nombre interno | CONFIRMADA |
+| I2 | «Copiar carta» lo copia | CONFIRMADA |
+| I3 | Lo escribe solo `guardarContenidoCartaProducto`, con el permiso que hoy edita el contenido de carta; auditado por columna; idempotente | CONFIRMADA (pedido del padre, 2026-11-04) |
+| I4 | Largo: de 1 a 80 caracteres, una sola línea (sin saltos), sin espacios a los costados; vacío o solo espacios = NULL. El tope de 80 es el de un nombre de catálogo | PROPUESTA |
+| I5 | Texto plano con el mismo juego de caracteres de un nombre de catálogo (letras, números, espacios y `- . , ( ) % & / ' _`; no puede empezar con «-»): nunca HTML | PROPUESTA |
+| I6 | **No cambia el precio, ni el stock, ni la receta, ni la venta.** Es solo presentación | PROPUESTA |
+| I7 | **Principio (CONFIRMADO por el dueño, 2026-11-04):** el rótulo de la **opción** es lo principal; si el producto no tiene opción que defina el plato, sale el nombre del producto, y ahí entra «Nombre en la carta» (`nombreEnCarta ?? nombre`). Hoy el ticket y la comanda **ya no** usan el nombre interno en una base (el plato sale del rótulo de la opción de la MEDIDA y lo incluido va en el `detalle`; `src/core/opciones/nombre-de-la-linea.ts`, decisión 2026-10-29): el nombre del producto solo se usa en el producto **directo**. «Nombre en la carta» reemplaza **solo** el uso de `productoNombre` de cara al cliente: carta pública/impresa/vista previa/«Va a mostrar», encabezado de «nombre arriba» y selector del mozo (implementado). **Ticket del cliente, línea de un producto directo:** CONFIRMADO por el dueño (2026-11-04) que imprima `nombreEnCarta ?? nombre`, pero **NO va en esta PR**: la reimpresión de un ticket cerrado tiene que dar EXACTAMENTE lo mismo que el original, y hoy el ticket se arma «derivado, sin tabla» (leería el nombre vigente), así que hay que **congelar el nombre al vender**, lo que exige una columna nueva. Decisión de diseño (a pedido del padre): se hace **una sola vez, en la PR 3 «ticket respeta lo oculto»** junto con `ocultaEnCarta` (una migración), y por eso el cambio de `ticket.ts` **se sacó de esta PR** (que queda con carta, vista previa, «Va a mostrar», selector, regla de no repetir y «Está bien así»). **Comanda de cocina (KOT):** sin cambios (`nombreDeLinea ?? productoNombre` + `detalle`; ahí debe verse lo operativo y poder controlar que «no se sacó nalga cuando era bife»), PENDIENTE de que el dueño lo confirme; protegida con test (`test/pos/comanda.test.ts`: un `nombreEnCarta` que llegara de más no entra; el consumo de stock por opción está en `test/core/opciones/consumo-de-linea-configurada.test.ts`). Reportes: sin cambios (nombre interno) | CONFIRMADA (principio) / PENDIENTE (ticket de producto directo; KOT) |
+| I8 | El **buscador** del POS (`SelectorProducto`, el campo «Buscar por nombre o código») es genérico y busca por nombre interno y código; **no se toca** | PROPUESTA (pregunta abierta B) |
+| I9 | **En la carta de una sucursal no puede haber dos cosas con el mismo nombre visible** (regla del dueño, 2026-11-04). «Mismo» = **nombre COMPLETO**, sin distinguir mayúsculas, tildes ni espacios de los bordes (nunca por prefijo: «Bife de chorizo» no choca con «Bife de chorizo a la criolla»). **Qué es el «nombre visible» según la forma del producto:** producto directo = `nombreEnCarta ?? nombre` (solo si está **visible**: uno oculto no ocupa nombre); agrupado y promo = su nombre / su título; **base (se vende por opción) = lo que el cliente lee son los rótulos de sus opciones** («nombre arriba» = nombre + rótulos): **en esta etapa una base NO ocupa el nombre de su producto** (sin nombre en la carta no entra a la regla; con uno, solo se compara con los nombres en la carta de los demás platos visibles). Comparar rótulos completos de opciones de bases es la **etapa posterior declarada** (necesita armar la tabla de la carta de cada base en cada guardado). El control corre solo cuando el plato va a quedar **visible** en esa carta (alta, «Mostrar», «Agregar a la carta» o guardar visible); cada sucursal se mira por separado. Lo cuida la base (único parcial `(sucursalId, lower(nombreEnCarta))` **solo entre visibles**) y el caso de uso (el resto, dentro de la misma transacción y con el candado de los nombres de la sucursal). Mensaje CONFIRMADO: «"<nombre>" ya lo usa el producto "<nombre interno del otro>" en la carta de <sucursal>. Ponele un nombre de carta distinto a uno de los dos.» (para un agrupado o una promo dice «el ítem agrupado» / «la promo») | **CONFIRMADA** (dueño, 2026-11-04): el principio, el rechazo y el mensaje; PROPUESTA: la forma de cuidarlo y el límite de la etapa para las bases |
+| I10 | El orden de los platos dentro de una sección (`orden`, y a igual `orden` el nombre) desempata por el nombre que se **ve** (el de la carta) | PROPUESTA |
+| I11 | Las listas de administración (diagnóstico de la carta, «Carta hoy», fuera de carta) siguen con el nombre **interno**: quien administra identifica el producto real | PROPUESTA |
+
+## 6. Historia y persistencia
+
+- **Una columna:** `ContenidoCartaProducto.nombreEnCarta TEXT NULL`, con `CHECK` (`NULL`, o 1 a 80 caracteres, visible a los costados y sin saltos), en pareo con `OpcionDeGrupo_descripcion_en_carta_chk` (E3).
+- **Migración** `20261104130000_contenido_carta_nombre_en_carta`: aditiva y reversible; `down.sql` **aborta** si algún contenido tiene un nombre cargado (no lo borra en silencio) y después `DROP CONSTRAINT IF EXISTS` y `DROP COLUMN IF EXISTS`. Forma copiada de `20261021140000_contenido_carta_mostrar_nombre_arriba` y de la de E3. Autorización: el dueño autorizó migraciones reversibles de la carta; **aplicarla en producción la coordina el padre** (respaldo, ensayo y despliegue).
+- **Sin GRANT por columna (ajuste a la propuesta del padre, verificado en el código):** `ContenidoCartaProducto` NO tiene privilegios por columna para `motor2_app` (los de tabla alcanzan; lo dice la migración de `mostrarNombreArriba` y no hay ningún `GRANT … (columna)` sobre esta tabla). Agregar uno sería inventar una restricción que la tabla no tiene. El test de la migración fija que los privilegios de tabla no cambian.
+- **Sin columna de versión (NO VERIFICADA hasta correr el test):** `ContenidoCartaProducto` no tiene `version`; se guarda con un `upsert` por (sucursal, producto) y su concurrencia es «la última escritura gana, con auditoría coherente» (ver §7). No se agrega `version` a la tabla: sería un cambio grande que nadie pidió.
+- **Auditoría por columna:** `ContenidoCartaProducto.nombreEnCarta`, del valor anterior al nuevo, con la sucursal, en la misma transacción que la escritura (como `mostrarNombreArriba`).
+
+## 7. Atomicidad y concurrencia — «¿qué pasa si…?» del comando guardar
+
+| Si… | Qué pasa (PROPUESTA) |
+|---|---|
+| Se hace doble clic en «Guardar» / se reintenta | Mismo pedido, mismo estado: el `upsert` escribe lo mismo y **no deja otra fila de auditoría** (`registrarCambioAuditado` no anota lo que no cambió) |
+| Dos personas guardan a la vez el nombre del mismo producto en la misma sucursal | Las dos escrituras se **serializan** (la lectura del valor anterior toma el bloqueo de la fila, `FOR UPDATE`): gana la última en el orden serializado y la cadena de auditoría encadena (el «antes» de una es el «después» de la otra); nunca queda un nombre sin su fila de auditoría ni una fila a medias |
+| Dos altas simultáneas del contenido de un producto sin fila todavía | Choca el único (sucursal, producto): un pedido gana y el otro vuelve a leer y escribe sobre la fila ya creada (el `upsert` ya lo cubre); sin duplicados |
+| El pedido NO trae la clave (un formulario que no la muestra) | No se toca el nombre ni se audita (patrón `mostrarNombreArriba`) |
+| Se guarda vacío o con espacios | Se interpreta como «sin nombre en la carta» (NULL) |
+| Texto con `<script>`, saltos de línea, espacios a los costados o más de 80 caracteres | Rechazo en el guard del servidor, sin escribir; la base repite el tope y los costados con el `CHECK` |
+| Falla la auditoría | No queda el nombre sin su registro: una sola transacción |
+| El usuario pierde el permiso mientras edita | Rechazo en el servidor antes de escribir (`conPermiso("carta_contenido_producto")`) |
+| El producto deja de ser PV, no existe o es de otra empresa | `PRODUCTO_NO_ENCONTRADO` / `NO_ES_PV`, sin escribir (el orden de chequeos de siempre) |
+| La carta pública está en caché | Se invalida con la misma etiqueta de siempre al guardar; se sube `VERSION_DE_LA_CARTA_EN_CACHE` (cambia lo que arma el servidor: el `nombre` de cada ítem) |
+| Dos usuarios guardan el mismo nombre en dos platos a la vez | El candado de los nombres de la sucursal los ordena: gana uno; el otro recibe «ya lo usa el plato X… elegí otro» y no escribe ni audita. El único parcial de la base es la segunda barrera |
+| Se repite el mismo guardado (doble clic, reintento) | No choca consigo mismo (se excluye el propio plato); no deja otra fila de auditoría |
+| Se muestra un plato (atajo «Mostrar», «Agregar a la carta» o «Guardar» con visible) cuyo nombre ya usa otro | Se rechaza con el mensaje confirmado; no escribe. Un plato **oculto** no ocupa nombre: un alta oculta que choca **pasa**, y mostrarla después se rechaza |
+| Un producto base («Bife a criolla» / «Bife con chimichurri» como opciones de «BIFE-») | No ocupa el nombre de su producto: no choca con un directo «Bife de chorizo»; los rótulos completos de sus opciones quedan para la etapa posterior |
+| Se pide un nombre que choca con un ítem agrupado o una promo de la sucursal | Se rechaza. Una promo de otra sucursal, o el nombre en la carta de otra sucursal, no chocan (cada carta es propia) |
+| Se copia la carta a otra sucursal | El nombre viaja en el `INSERT` de la copia; la sucursal destino queda con el mismo nombre |
+| Se desactiva o se saca el producto de la carta | La fila de contenido queda con su nombre guardado pero no se muestra (como todo el contenido) |
+
+## 8. Acceso e interfaces
+
+- **Permisos:** sin claves nuevas (`carta_contenido_producto`).
+- **Pantalla del administrador:** el campo «Nombre en la carta (opcional)» en el contenido de carta del producto (`catalogo/productos/[id]/en-la-carta`, `components/carta/contenido-del-producto.tsx`), con la ayuda «Vacío = la carta usa el nombre del producto. No cambia el ticket, la comanda ni los reportes».
+- **Pantallas del comensal / mozo:** sin pantallas nuevas; cambia el texto del nombre en la carta pública, la impresa, la vista previa, «Va a mostrar» y el selector del mozo.
+- **Salida pública:** NO suma ninguna clave (el nombre resuelto va en el `nombre` que ya sale): `CLAVES_DE_LA_CARTA` no cambia. Sí se declara la columna en la lista cerrada de lo que **lee** la carta pública (`PUBLICACION_CARTA`).
+
+## 9. Consultas y experiencia
+
+- **Cadena de lectura:** `menu.ts` (select de `contenidosCarta`: + `nombreEnCarta`) → `armarMenuCarta` (`nombre: nombreDeCarta(...)` del ítem; el diagnóstico interno sigue con el nombre interno) → `CartaV1` → `proyectarCartaPublica` (sin cambios) → la carta pública / la impresa; `armarSelectorCartaPos` (el producto del selector muestra el nombre del ítem de la carta); la ficha del producto y «Va a mostrar» (`vistaPreviaDeLaForma(nombre, …)`) reciben el nombre ya resuelto.
+- **El selector del mozo:** muestra el nombre de la carta en cada plato (con sus opciones como en la carta). La lista «Por agregar» y la cuenta siguen con el nombre interno (ver pregunta abierta A).
+- **Qué pasa si el nombre interno cambia:** con nombre de carta cargado, la carta no se mueve.
+
+## 10. Pruebas, migración y operación
+
+**Dimensiones que cambian lo que ve el cliente (regla «Combinaciones», 2026-10-28):** A) nombre en la carta (ausente / presente); B) canal (carta pública, impresa, vista previa del producto, «Va a mostrar», selector del mozo); C) tipo de plato (producto directo / base con opciones / ítem agrupado).
+**Dimensión «colisión» (regla del dueño, 2026-11-04):** sin choque / choca con el nombre en la carta de otro plato / con el nombre del producto de otro plato visible / con el nombre en la carta de uno oculto (no choca) / con el de uno oculto (no choca) / con el de una base (no choca en esta etapa) / con un agrupado / con una promo / con una promo de otra sucursal (no choca) / con el nombre en la carta de otra sucursal (no choca), × variante (igual, otras mayúsculas, otras tildes). Oráculo en `test/carta/nombre-en-carta.oraculo.ts` (con las dos variantes nuevas, «oculto» y «base»), recorrido completo (30 combinaciones) en `test/carta/contenido-nombre-en-carta-choque.test.ts`.
+
+**Oráculo (tabla aparte del código, a escribir a mano):** el nombre que se ve es el de la carta **si y solo si** A = presente, el canal es de carta o selector y el plato es un producto (directo o base); un ítem agrupado nunca lo usa (tiene su propio nombre); sin nombre en la carta se ve siempre el interno; ticket, comanda y reportes (fuera de las dimensiones) no cambian.
+
+| Qué se rompe o se amplía al sumar la columna | Dónde |
+|---|---|
+| Regla de resolución `nombreEnCarta ?? nombre` | test unitario puro nuevo |
+| Oráculo de combinaciones (A × B × C) | test nuevo + tabla escrita aparte, con el tamaño del producto afirmado y la combinación completa en el fallo |
+| Migración (forma, CHECK, privilegios de TABLA sin cambios, `down.sql` que aborta, subir-bajar-subir) | molde: `test/persistencia/migracion-opcion-descripcion-en-carta.test.ts` |
+| Guard (ausente / vacío / costados / saltos / largo / caracteres) | molde: `test/catalogo/opcion-descripcion-en-carta.test.ts` |
+| Caso de uso: auditoría por columna, idempotencia, **concurrencia real** (dos guardados a la vez), permiso y sucursal activa | molde: `test/carta/contenido-mostrar-nombre-arriba.test.ts` |
+| «Copiar carta» copia el nombre | test de copiar carta existente, ampliado |
+| Auditoría por columna | `test/arquitectura/auditoria-por-columna.test.ts` |
+| Columnas de significado (declarar `ContenidoCartaProducto.nombreEnCarta` como «visibilidad») | `test/arquitectura/guardas/columnas-de-significado.ts` |
+| Lista cerrada de lo que lee la carta pública | `test/arquitectura/carta-publica-lista-cerrada.test.ts` (`ContenidoCartaProducto`) |
+| Caché de la carta | `test/carta/cartas-publicas-cache-por-empresa.test.ts` (la versión) |
+| e2e a 375 px: el selector del mozo muestra el nombre de la carta (y el interno donde corresponde); la carta pública también | spec nuevo |
+
+**Operación:** el padre coordina el respaldo, el ensayo y el despliegue de la migración; revertir exige antes vaciar los nombres cargados.
+
+## 11. Preguntas abiertas (para el dueño; NO se resuelven por cuenta propia)
+
+- **A. (corregida, 2026-11-04)** Ver I7: la comanda (KOT) no se toca y el ticket de un producto **directo** queda PENDIENTE de confirmar; en una base ya salen el rótulo de la opción y el detalle, sin el nombre del producto. Sigue abierta solo la línea del ticket de producto directo y la lista «Por agregar» del mozo (hoy con el nombre interno).
+- **B. (CONFIRMADA por el dueño, 2026-11-04) Buscador del POS:** el buscador del mozo encuentra por **ambos nombres**, el interno y el de la carta (solo en el POS, con el nombre de carta de la sucursal activa; sin distinguir mayúsculas ni tildes; el resultado sigue mostrando código y nombre interno; `test/carta/buscador-por-nombre-de-carta.test.ts`). Texto anterior, ya resuelto: **Buscador del POS:** el campo «Buscar por nombre o código» (`SelectorProducto`) es genérico (lo usan otras pantallas) y hoy busca por **nombre interno y código** y muestra el interno en el resultado. Si el mozo escribe «parrilla» (el nombre de la carta), no lo encuentra. Hacer que encuentre por los dos (y que muestre el de la carta) toca la búsqueda compartida. ¿Se hace como etapa aparte?
+- **C. (resuelta por el dueño, 2026-11-04)** Nombres repetidos: **no se permiten** (ver I9). Quedan como PENDIENTES de otra etapa, declaradas acá para que no se pierdan: (1) el sentido inverso: **crear o renombrar un ítem agrupado, crear o renombrar una promo, o renombrar un producto** con un nombre que ya usa un plato de la carta no se valida todavía (hoy el choque se detecta recién al guardar o mostrar el plato); (2) **prender** un agrupado o una promo apagados que chocan; (3) una promo propia de la sucursal destino que choca con un nombre copiado: **«copiar carta» no copia ese nombre** (el plato sale con el de su producto), lo informa y sigue con el resto — decisión PROPUESTA.
+
+- **E. Ticket de una cuenta cerrada cuando el nombre de la carta cambia después (DECIDIDA por el dueño, 2026-11-04: congelar al vender):** el ticket se arma hoy «derivado, sin tabla» y leería el nombre vigente. Elección de esta PR: **no tocar el ticket acá**; el nombre de carta de un producto directo se **congela al vender** en la PR 3 (columna aditiva en la línea vendida, la misma migración que `ocultaEnCarta`), así la reimpresión es idéntica al original aunque el nombre de carta cambie después. Motivo: congelar exige columna (cambio de modelo) y hacerlo dos veces serían dos migraciones sobre las mismas tablas.
+- **F. «Sin decidir» y «Está bien así» (CONFIRMADA por el dueño, 2026-11-04: «Sí, armalo así con el botón "Está bien así"»; IMPLEMENTADA, sin columna nueva):** el nombre interno solo vale como nombre de carta «si es apto para carta y fue adrede». `NULL` en `nombreEnCarta` = **sin decidir**: un plato **visible** con `NULL` sigue saliendo con el nombre del producto (nunca se oculta un plato) y el admin lo dice «Nombre de carta: pendiente de completar» (en la ficha «En la carta» del producto y en una lista **«Platos de la carta sin nombre de carta»** en Carta › Hoy, por sucursal, solo de productos **visibles** en esa carta; las bases —que se leen por los rótulos de sus opciones— no entran). El botón **«Está bien así»** (por producto, permiso `carta_contenido_producto`) copia el nombre del producto al campo, a propósito, con auditoría (quién, cuándo, de `null` al nombre) y bajo la **misma regla de no repetir** (si choca con otro plato visible, un agrupado o una promo: mensaje confirmado y no copia). Garantías: serializado con el candado de los nombres de la sucursal y la fila del producto; el `UPDATE` solo escribe si el campo sigue en `NULL` y el plato visible (dos clics a la vez: uno escribe y el otro ve «ya estaba»; tocarlo dos veces no cambia ni audita de más); valida en el servidor (el mismo validador del formulario: más de 80 caracteres, saltos o espacios a los costados → «escribí uno en la ficha»); sin permiso no escribe. Estados: `pendiente` / `propio` / `confirmado-igual-al-interno` (`estadoDelNombreDeCarta`); al renombrar el producto después, el nombre de la carta **no cambia** (independiente, a propósito). Oráculo: estado × colisión (30 combinaciones) en `test/carta/nombre-en-carta.oraculo.ts` (`resultadoEsperadoDelBoton`), recorrido en `test/carta/confirmar-nombre-en-carta.test.ts`; e2e a 375 px de la lista y del botón en `test/e2e/carta-nombre-pendiente.spec.ts`. Riesgo a tener presente: los platos que **hoy** ya están en la carta quedarán todos «pendientes de completar» hasta que alguien los marque o los complete (la carta pública no cambia: siguen saliendo con el nombre del producto). Cuántos van a aparecer en producción: consulta de solo lectura para correr en Neon, sin tocar datos: `SELECT s.nombre AS sucursal, p.nombre AS plato FROM "ContenidoCartaProducto" c JOIN "Producto" p ON p.id = c."productoId" JOIN "Sucursal" s ON s.id = c."sucursalId" WHERE c."visibleEnCarta" AND c."nombreEnCarta" IS NULL AND p.tipo = 'PV' AND p."modoDeVenta" <> 'BASE_CONFIGURABLE' ORDER BY 1, 2;` (la columna nueva no existe todavía en producción: hasta aplicar la migración, la lista equivalente es la misma con la condición `c."nombreEnCarta" IS NULL` quitada).
+- **D. Selector del mozo por renglones como la carta (etapa posterior, PROPUESTA; pedido de alcance del padre, 2026-11-04):** hoy el selector muestra un producto con opciones (también una base) como **un botón** con su nombre y «desde $X · Opciones» que abre la ventana de opciones. La v1 es **solo la opción A**: el mismo botón con `nombreEnCarta ?? nombre`. La opción **B** —que el mozo vea «lo mismo que la carta», o sea, para una base oculta, un renglón por rótulo de opción («Bife a criolla», «Bife con chimichurri»)— es un cambio más grande que el campo nuevo y **no existe en ningún punto del código** (verificado: el selector arma un botón por producto y un botón por opción solo dentro de un ítem agrupado). Queda como etapa posterior con nombre; no se arma acá.
+
+- **G. (CONFIRMADA, 2026-11-04) Nombre que lee el lector de pantalla de una base oculta:** el `aria-label` de la lista de una base con la medida oculta lee el nombre de carta del producto y, si no tiene, el nombre de la **sección** (nunca el interno). Hecho en `armarMenuCarta` (`test/carta/presentacion-en-carta.test.ts`, «el nombre del ítem de una base con la medida oculta»).
+- **H. Etapa posterior, PROPUESTA con nombre: «No repetir también entre los rótulos de las opciones de una base»** (confirmado por el dueño que queda para después): comparar los rótulos completos de las opciones de las bases (los que el cliente lee) contra los demás nombres de la carta exige armar la tabla de la carta de cada base en cada guardado. En esta etapa una base no ocupa el nombre de su producto.
+- **I. Redacción de «Incluye N» (CONFIRMADA, 2026-11-04):** «Incluye 1 guarnición y 1 salsa»; con 2, «2 guarniciones»; cuando el mínimo y el máximo difieren, «hasta N» («Incluye hasta 2 guarniciones y 1 salsa · elegí abajo ↓»). Va en un commit aparte (si el dueño lo descarta, se revierte solo ese commit y se regenera el golden de la línea de base).
+
+- **J. Cambios de TEXTO de la carta pública (CONFIRMADOS por el dueño, 2026-11-04; mensaje del padre; solo estos textos):** (1) «Va con: …» pasa a **«Lo incluyen: …»** (bloque al pie); (2) «Ver detalle ▾» pasa a **«Qué lleva cada opción ▾»** (en papel sigue abierto; «Va a mostrar» de administración conserva su «Ver detalle:»); (3) **verificado en el código que la carta pública NO toma pedidos** (sin formularios, sin acciones de servidor, páginas de solo lectura; el mozo elige en el POS), así que el cue «· elegí abajo ↓» pasa a **«· ver opciones ↓»**; (4) cantidades con forma distinta: «opcional, hasta 2» pasa a **«elegís hasta 2 (opcional)»**; «elegís de 1 a 3» y «elegís 1» quedan (siempre el verbo «elegís»; el título del bloque y la línea «Va a mostrar» comparten esa función, así que el cambio también se ve ahí); (5) cada plato dice su cantidad en el renglón («Incluye 1 guarnición y 1 salsa»): ya estaba hecho (ver I). Los goldens que dependen de estos textos se regeneran y se declaran en `caracterizaciones-congeladas`.
+
+## 11 bis. «Va con: …» y los demás lugares donde la carta nombra un plato (caso Nº 1 del dueño, 2026-11-04)
+
+El origen del pedido: al tocar «guarnición» de «Incluye guarnición…», el «Va con: …» mostraba el **nombre interno** (`Producto.nombre`, p. ej. «BIFE-» en la base real). Resuelto: `nombresDeLosPlatosDelItem` (`core/carta/incluye-en-carta.ts`) dice cómo se llama cada plato que la carta dibuja para un ítem —producto directo o base con «nombre arriba»: el nombre del ítem (`nombreEnCarta ?? nombre`); base con la medida oculta: **los rótulos de sus renglones**, uno por plato, con su «(solo …)» si admite un subconjunto; agrupado: el nombre del ítem agrupado—. Oráculo en `test/carta/va-con.oraculo.ts` (forma × nombre en la carta × subconjunto, 16 combinaciones) recorrido en `test/carta/va-con.test.ts`.
+
+| Lugar (carta pública, impresa, vista previa, «Va a mostrar») | Nombre que usaba antes | Nombre que usa ahora / debería usar |
+|---|---|---|
+| Título de un plato directo (`NombreDelItem`, `h3`) | nombre interno | `nombreEnCarta ?? nombre` (hecho, en `armarMenuCarta`) |
+| Título de una base con «nombre arriba» (`NombreDelItem`) | nombre interno | `nombreEnCarta ?? nombre` (hecho) |
+| Renglones de una base oculta (`FilasComoPlatos`, `h3` por renglón) | rótulo de la opción | igual (ya era lo que se lee) |
+| **«Va con: …» del bloque** (`seccion.tsx` → `vaConDelBloque`) | nombre interno del ítem (**el caso del dueño**) | directo/nombre arriba: nombre de carta; base oculta: **los rótulos de sus renglones**; agrupado: el del agrupado (hecho) |
+| `aria-label` de la lista de renglones de una base oculta (`FilasComoPlatos`, solo lector de pantalla) | nombre interno del ítem (p. ej. «BIFE-») | **sin cambiar en esta PR** (no se ve; PENDIENTE de decisión: usar el nombre de carta si lo hay, o no rotular la lista con un nombre que el cliente nunca lee) |
+| `aria-label` de la tabla y `sr-only` de la fila sin rótulo (`TablaDeOpciones`) | nombre del ítem | igual: es el título que el cliente ve (nombre de carta si tiene; hecho) |
+| Vista previa del producto (admin) | nombre interno | `nombreEnCarta ?? nombre` en directo; en una base oculta no hay nombre arriba (hecho) |
+| «Va a mostrar» (Agregar a la carta) | nombre interno | nombre interno: el producto todavía no está en la carta, no tiene contenido (hecho: se declara en el oráculo) |
+| `alt` / `title` de imágenes, metadatos (`metadatos.ts`), `sitemap.xml` | nombre de la empresa o la sucursal | **no usan nombres de platos** (verificado): nada que cambiar |
+
+## 12. NO VERIFICADO
+
+- Que el `upsert` por (sucursal, producto) sea realmente seguro ante dos altas simultáneas del contenido sin fila previa (se prueba con concurrencia real al implementar; si falla, se informa).
+- Qué otros lectores del nombre de un producto de la carta existen fuera de los listados (se buscan al implementar; un lector de carta que quede con el nombre interno se declara).
+- Si algún golden (`cobro-y-carta`, la línea de base de navegador) cambia con el selector del mozo o la carta (se regenera y se declara solo si cambia).

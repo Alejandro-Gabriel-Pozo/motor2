@@ -64,7 +64,7 @@ export async function resolverMenuCartaConDiagnostico(
         precioVenta: true,
         modoDeVenta: true,
         categoria: { select: { nombre: true } },
-        contenidosCarta: { where: whereCartaDeSucursal(sucursalId), select: { seccionCartaId: true, descripcion: true, tags: true, especial: true, orden: true, mostrarNombreArriba: true }, take: 1 },
+        contenidosCarta: { where: whereCartaDeSucursal(sucursalId), select: { seccionCartaId: true, descripcion: true, tags: true, especial: true, orden: true, mostrarNombreArriba: true, nombreEnCarta: true }, take: 1 },
         // GO-2d: si admite algún grupo de opciones (en la misma consulta): solo esos se leen después, así una carta sin opciones hace las mismas consultas que antes.
         gruposAdmitidos: { where: { activo: true }, select: { id: true }, take: 1 },
       },

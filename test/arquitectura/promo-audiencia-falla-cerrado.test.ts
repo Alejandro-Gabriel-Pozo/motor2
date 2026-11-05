@@ -25,7 +25,14 @@ const MENU = "src/server/lecturas/carta/menu.ts";
 const POS_SELECTOR = "src/server/lecturas/pos/selector-carta.ts";
 
 /** Los archivos del salón: los únicos que pueden pedir `"salon"` (el filtro o el menú). */
-const LECTORES_DEL_SALON = [POS_SELECTOR, "src/server/lecturas/pos/promo-para-agregar.ts", "src/server/consultas/carta/mantenimiento.ts"] as const;
+/** Los dos últimos NO son lectores del salón sino el control de nombres repetidos (2026-11-04): una promo que se ofrece en la sucursal —también la «solo salón»— ocupa su título en la carta de esa sucursal, así que se la mira completa y no solo la pública. */
+const LECTORES_DEL_SALON = [
+  POS_SELECTOR,
+  "src/server/lecturas/pos/promo-para-agregar.ts",
+  "src/server/consultas/carta/mantenimiento.ts",
+  "src/server/lecturas/carta/choque-de-nombre.ts",
+  "src/server/actions/carta/casos-de-uso/copiar-carta-de-sucursal.ts",
+] as const;
 /** La parte de la entrada pública que es un archivo suelto; el resto son carpetas. */
 const ENTRADA_PUBLICA_ARCHIVOS = ["src/server/lecturas/carta/publica.ts"] as const;
 const ENTRADA_PUBLICA_CARPETAS = ["src/server/carta-publica", "src/app/(carta-publica)", "src/components/carta-publica"] as const;

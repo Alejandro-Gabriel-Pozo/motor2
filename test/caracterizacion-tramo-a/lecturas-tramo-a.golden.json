@@ -709,7 +709,8 @@
             "tags": [],
             "especial": false,
             "orden": 1,
-            "generoCartaId": "gen-viejo"
+            "generoCartaId": "gen-viejo",
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": null
@@ -727,7 +728,8 @@
             "tags": [],
             "especial": false,
             "orden": 0,
-            "generoCartaId": null
+            "generoCartaId": null,
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": null
@@ -745,7 +747,8 @@
             "tags": [],
             "especial": false,
             "orden": 0,
-            "generoCartaId": null
+            "generoCartaId": null,
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": null
@@ -766,7 +769,8 @@
             ],
             "especial": true,
             "orden": 2,
-            "generoCartaId": "gen-veggie"
+            "generoCartaId": "gen-veggie",
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": "Veggie"
@@ -794,7 +798,8 @@
             "tags": [],
             "especial": false,
             "orden": 0,
-            "generoCartaId": null
+            "generoCartaId": null,
+            "nombreEnCarta": null
           },
           "agrupadoEn": "Tragos",
           "generoCarta": null
@@ -946,7 +951,8 @@
             "tags": [],
             "especial": false,
             "orden": 0,
-            "generoCartaId": null
+            "generoCartaId": null,
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": null
@@ -974,7 +980,8 @@
             "tags": [],
             "especial": false,
             "orden": 0,
-            "generoCartaId": "gen-norte"
+            "generoCartaId": "gen-norte",
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": "Norteño"

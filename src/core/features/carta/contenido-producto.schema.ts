@@ -28,13 +28,19 @@ export interface EntradaContenidoCartaProducto {
    * porque el producto no es una base de un eje) queda como estaba; con ella se escribe y, si cambió, se audita por columna.
    */
   mostrarNombreArriba?: boolean;
+  /** «Nombre en la carta»: lo valida el guard (`ContenidoCartaValidado.nombreEnCarta`); acá solo viaja el dato del formulario. */
+  nombreEnCarta?: string | null;
 }
 
-/** Lo que `guardComandoGuardarContenidoCartaProducto` valida y normaliza del contenido: la descripción (recortada, `null` si queda vacía), los tags y el orden. */
+/**
+ * Lo que `guardComandoGuardarContenidoCartaProducto` valida y normaliza del contenido: la descripción (recortada, `null` si queda vacía), los tags, el orden y «Nombre en la carta» (`null` = sin nombre en la
+ * carta; ausente = el pedido no traía la clave: no se toca).
+ */
 export interface ContenidoCartaValidado {
   descripcion: string | null;
   tags: string[];
   orden: number;
+  nombreEnCarta?: string | null;
 }
 
 /**
@@ -56,7 +62,22 @@ export interface ComandoGuardarContenidoCartaProducto {
  *  - `SECCION_NO_ENCONTRADA`: la sección elegida no existe (gana sobre el género);
  *  - `GENERO_INVALIDO`: el género no existe en esta sucursal o está apagado.
  */
-export type ResultadoGuardarContenidoCartaProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "DATO_INVALIDO" | "FALTA_SECCION" | "SECCION_NO_ENCONTRADA" | "GENERO_INVALIDO">;
+export type ResultadoGuardarContenidoCartaProducto = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "DATO_INVALIDO" | "FALTA_SECCION" | "SECCION_NO_ENCONTRADA" | "GENERO_INVALIDO" | "NOMBRE_EN_USO">;
+
+/** Comando «Está bien así» (2026-11-04): confirmar a propósito que el nombre del producto sirve como nombre de carta de ESTA sucursal. Solo el id: el nombre sale del producto. */
+export interface ComandoConfirmarNombreEnCarta {
+  productoId: string;
+}
+
+/**
+ *  - `PRODUCTO_NO_ENCONTRADO` / `NO_ES_PV`: como arriba;
+ *  - `ES_BASE`: un producto que se vende por opción no tiene nombre de plato propio (la carta lee los rótulos de sus opciones);
+ *  - `NO_ESTA_EN_LA_CARTA`: el plato no está visible en la carta de esta sucursal (no hay nada que confirmar);
+ *  - `DATO_INVALIDO`: el nombre del producto no cumple lo que pide un nombre de carta (largo, caracteres): hay que escribir uno;
+ *  - `NOMBRE_EN_USO`: otro plato, un ítem agrupado o una promo de la sucursal ya usa ese nombre.
+ * Si ya tenía nombre de carta no es un error: `huboCambio: false`.
+ */
+export type ResultadoConfirmarNombreEnCarta = ResultadoCaso<{ huboCambio: boolean }, "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "ES_BASE" | "NO_ESTA_EN_LA_CARTA" | "DATO_INVALIDO" | "NOMBRE_EN_USO">;
 
 /** Comando «mostrar u ocultar un producto en la carta» (el atajo): solo un id y un booleano, que nunca se validaron en la acción (sin guard). */
 export interface ComandoActualizarVisibleEnCarta {
@@ -68,4 +89,4 @@ export interface ComandoActualizarVisibleEnCarta {
  *  - `PRODUCTO_NO_ENCONTRADO` / `NO_ES_PV`: como arriba;
  *  - `FALTA_SECCION`: mostrar un producto cuyo contenido (EN ESTA sucursal) todavía no tiene sección.
  */
-export type ResultadoActualizarVisibleEnCarta = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "FALTA_SECCION">;
+export type ResultadoActualizarVisibleEnCarta = ResultadoCaso<null, "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "FALTA_SECCION" | "NOMBRE_EN_USO">;

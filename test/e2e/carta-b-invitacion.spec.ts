@@ -5,8 +5,8 @@ import { prismaAdmin } from "../setup/cliente-duenio";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 
 /**
- * Carta «B», E2 (invitación «5+2», 2026-11-04), en el navegador a 375 px y con la base real: el plato dice «Incluye guarnición y salsa · elegí abajo ↓», las palabras «guarnición» y «salsa» son botones; al tocar
- * una, la lista baja al bloque, lo ilumina («Va con: …») y marca con una barra a los platos que lo incluyen; tocar dos veces o tocar otra palabra no rompe nada; a los pocos segundos todo vuelve a su lugar; con
+ * Carta «B», E2 (invitación «5+2», 2026-11-04), en el navegador a 375 px y con la base real: el plato dice «Incluye guarnición y salsa · ver opciones ↓», las palabras «guarnición» y «salsa» son botones; al tocar
+ * una, la lista baja al bloque, lo ilumina («Lo incluyen: …») y marca con una barra a los platos que lo incluyen; tocar dos veces o tocar otra palabra no rompe nada; a los pocos segundos todo vuelve a su lugar; con
  * «movimiento reducido» no hay animación (ni de la flecha ni del scroll); con teclado funciona; en papel no hay interacción. Axe sin violaciones sobre la sección.
  */
 const EMPRESA = "e2e";
@@ -48,8 +48,8 @@ test("invitación 5+2: tocar «salsa» o «guarnición» baja al bloque, lo ilum
     await abrir();
 
     // La línea del plato y sus botones.
-    await expect(fila(0).locator("[data-incluye]")).toHaveText(`Incluye guarnición ${m} y salsa ${m} · elegí abajo ↓`);
-    await expect(fila(4).locator("[data-incluye]")).toHaveText(`Incluye guarnición ${m}: puré o ensalada · elegí abajo ↓`);
+    await expect(fila(0).locator("[data-incluye]")).toHaveText(`Incluye 1 guarnición ${m} y 1 salsa ${m} · ver opciones ↓`);
+    await expect(fila(4).locator("[data-incluye]")).toHaveText(`Incluye 1 guarnición ${m}: puré o ensalada · ver opciones ↓`);
     await expect(fila(0).getByRole("button")).toHaveCount(2);
     await expect(fila(3).locator("[data-incluye]")).toHaveCount(0);
     expect(await marcados().count(), "nada marcado al llegar").toBe(0);
@@ -58,7 +58,7 @@ test("invitación 5+2: tocar «salsa» o «guarnición» baja al bloque, lo ilum
     // Toca «salsa» del primer plato: baja al bloque, lo ilumina y marca solo los platos con salsa.
     await fila(0).getByRole("button", { name: `Ir a las opciones de salsa ${m}` }).click();
     await expect(bloqueS()).toHaveAttribute("data-iluminado", "");
-    await expect(bloqueS().locator("[data-va-con]")).toHaveText(`Va con: E2E Bife a la criolla ${m} · E2E Chivo del norte ${m}`);
+    await expect(bloqueS().locator("[data-va-con]")).toHaveText(`Lo incluyen: E2E Bife a la criolla ${m} · E2E Chivo del norte ${m}`);
     await expect(marcados()).toHaveCount(2);
     await expect(fila(0)).toHaveAttribute("data-marcado", "");
     await expect(fila(2)).toHaveAttribute("data-marcado", "");
@@ -76,7 +76,7 @@ test("invitación 5+2: tocar «salsa» o «guarnición» baja al bloque, lo ilum
     await fila(1).getByRole("button", { name: `Ir a las opciones de guarnición ${m}` }).click();
     await expect(bloqueG()).toHaveAttribute("data-iluminado", "");
     await expect(bloqueS()).not.toHaveAttribute("data-iluminado", "");
-    await expect(bloqueG().locator("[data-va-con]")).toHaveText(`Va con: E2E Bife a la criolla ${m} · E2E Bife con chimichurri ${m} · E2E Pechuga grille ${m} (solo puré o ensalada)`);
+    await expect(bloqueG().locator("[data-va-con]")).toHaveText(`Lo incluyen: E2E Bife a la criolla ${m} · E2E Bife con chimichurri ${m} · E2E Pechuga grille ${m} (solo puré o ensalada)`);
     await expect(marcados()).toHaveCount(3);
     expect((await new AxeBuilder({ page }).include("[data-carta-scroll]").analyze()).violations, "axe con el bloque iluminado").toEqual([]);
 
@@ -118,7 +118,7 @@ test("invitación 5+2: tocar «salsa» o «guarnición» baja al bloque, lo ilum
     await expect(bloqueS()).toHaveAttribute("data-iluminado", "");
     await page.emulateMedia({ reducedMotion: "no-preference" });
 
-    // En papel no hay interacción: ni «elegí abajo ↓», ni «Va con», ni barra, y la palabra no lleva subrayado.
+    // En papel no hay interacción: ni «ver opciones ↓», ni «Lo incluyen», ni barra, y la palabra no lleva subrayado.
     await abrir();
     await fila(0).getByRole("button", { name: `Ir a las opciones de salsa ${m}` }).click();
     await page.emulateMedia({ media: "print" });

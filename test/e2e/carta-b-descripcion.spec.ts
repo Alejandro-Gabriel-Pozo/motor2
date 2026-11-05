@@ -46,7 +46,7 @@ test("la descripción de una opción: se escribe en la administración, se ve en
       await page.setViewportSize({ width: ancho, height: ancho === 375 ? 812 : 900 });
       await abrirCarta();
       const desplegable = bloque().locator("details[data-detalle-del-bloque]");
-      await expect(desplegable.locator("summary")).toHaveText("Ver detalle ▾");
+      await expect(desplegable.locator("summary")).toHaveText("Qué lleva cada opción ▾");
       await expect(bloque().locator("[data-rol=eleccion]")).toHaveText("puré · ensalada · papas fritas");
       expect(await desplegable.evaluate((el: HTMLDetailsElement) => el.open), `cerrado al llegar (${ancho} px)`).toBe(false);
       // Cerrado, el texto está en el HTML pero no se ve.

@@ -74,6 +74,25 @@ export async function origenesDeCopiaVisibles(usuarioId: string, origenes: reado
 }
 
 /**
+ * «Platos de la carta sin nombre de carta» (confirmado por el dueño, 2026-11-04): los productos VISIBLES en la carta de ESTA sucursal con el nombre de carta sin decidir (`NULL`). Siguen saliendo con el nombre del
+ * producto (nunca se oculta un plato); el admin los lista como «pendiente de completar». No cuentan los productos base (la carta lee los rótulos de sus opciones, no su nombre) ni los de otra sucursal.
+ * Sin guarda de permiso: la pone la página.
+ */
+export async function listarPlatosSinNombreDeCarta(sucursalId: string, db: Db): Promise<{ productoId: string; nombre: string }[]> {
+  const filas = await db.contenidoCartaProducto.findMany({
+    where: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, nombreEnCarta: null, producto: { tipo: "PV", modoDeVenta: { not: "BASE_CONFIGURABLE" } } },
+    select: { productoId: true, producto: { select: { nombre: true } } },
+  });
+  return filas.map((f) => ({ productoId: f.productoId, nombre: f.producto.nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+}
+
+/** El «Nombre en la carta» del producto en ESTA sucursal (`null` si no tiene fila o no lo cargó: la carta usa el nombre del producto). Sin guarda de permiso: la pone la página. */
+export async function nombreEnCartaDeUnProducto(sucursalId: string, productoId: string, db: Db): Promise<string | null> {
+  const fila = await db.contenidoCartaProducto.findFirst({ where: { ...whereCartaDeSucursal(sucursalId), productoId }, select: { nombreEnCarta: true } });
+  return fila?.nombreEnCarta ?? null;
+}
+
+/**
  * Fase 5 de la ola «precio y carta» (DEC-11): los productos que se venden por opción (BASE) con UN SOLO eje en la carta de esta sucursal —los únicos en que «Mostrar el nombre arriba» decide algo:
  * una base de dos ejes sale siempre en tabla con el nombre arriba, y un producto directo no es una base—, con el valor guardado en su contenido (`false` si no tiene fila). El eje sale de la MISMA
  * cuenta que la carta (`tablaDePreciosParaLaCarta` con las opciones que hoy se pueden elegir; una base se compone sobre su precio de referencia, así que no lee el precio guardado). Lo usa el formulario
@@ -127,6 +146,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date, 
             visibleEnCarta: true,
             seccionCartaId: true,
             seccionCarta: { select: { nombre: true, activa: true } },
+            nombreEnCarta: true,
             descripcion: true,
             tags: true,
             especial: true,
@@ -174,6 +194,7 @@ export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date, 
         especial: c.especial,
         orden: c.orden,
         generoCartaId: c.generoCartaId,
+        nombreEnCarta: c.nombreEnCarta,
       } : null,
       agrupadoEn: p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre ?? null,
       generoCarta: c?.generoCarta?.activo ? c.generoCarta.nombre : null,

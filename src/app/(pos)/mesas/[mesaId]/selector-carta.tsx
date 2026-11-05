@@ -100,7 +100,7 @@ export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrir
           onClick={() => sumar(p.productoId)}
           className={BOTON_PRODUCTO}
         >
-          <span>{p.nombre}</span>
+          <span>{p.nombreEnCarta ?? p.nombre}</span>
           <span className={PRECIO}>
             {configuracion.vendible
               ? `${configuracion.hayVariacion && configuracion.desde !== null ? `desde ${formatearMonto(configuracion.desde)}` : formatearMonto(configuracion.desde ?? p.precio)} · Opciones`
@@ -119,7 +119,7 @@ export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrir
         onClick={() => sumar(p.productoId)}
         className={BOTON_PRODUCTO}
       >
-        <span>{p.nombre}</span>
+        <span>{p.nombreEnCarta ?? p.nombre}</span>
         <span className={PRECIO}>
           {p.precioLista !== undefined && <s data-precio-lista className="mr-1">{formatearMonto(p.precioLista)}</s>}
           {formatearMonto(p.precio)}

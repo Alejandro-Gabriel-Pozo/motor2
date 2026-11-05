@@ -12,10 +12,11 @@ export type { CartaV1 } from "./armar-menu";
 // S-25: lo único que la carta pública entrega a un anónimo (la carta armada SIN los ids internos) y la proyección que la arma; ver `carta-publica.ts`.
 export type { AclaracionCartaPublica, CartaPublicaV1, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "./carta-publica";
 export { partirLaAclaracion, pieDeLaCartaImpresa, recargoEnPesos, textoDeLaAclaracion } from "./texto-de-la-carta";
-export { conectorDeLaParte, detalleDelBloque, incluyeDeLaSeccion, restoDeLaParte, textoDeIncluye, textoDeLasOpciones, textoDeVaCon, textoDelTitulo, vaConDelBloque } from "./incluye-en-carta";
+export { cantidadDeLaParte, conectorDeLaParte, detalleDelBloque, incluyeDeLaSeccion, nombresDeLosPlatosDelItem, restoDeLaParte, textoDeIncluye, textoDeLasOpciones, textoDeVaCon, textoDelTitulo, vaConDelBloque } from "./incluye-en-carta";
 export type { BloqueDeOpciones, ParteDeIncluye } from "./incluye-en-carta";
 export { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-publica";
-export { precioDeCarta } from "./armar-menu";
+export { nombreDeCarta, precioDeCarta } from "./armar-menu";
+export { buscarChoqueEntreNombres, claveDeNombreDeCarta, estadoDelNombreDeCarta, mensajeDeChoqueDeNombre, type ChoqueDeNombre, type NombreUsadoEnLaCarta } from "./nombre-en-carta";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, type AudienciaDePromo } from "./promo-sucursal";
 // GO-3 (ADR-032): los tipos de cupo y la lectura tolerante del primer despliegue (solo los cupos de sección activos; una promo con un cupo activo de tipo nuevo no se ofrece).
 export { SUMAR_LUGAR_DE_LISTA_VISIBLE, WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos } from "./cupos-de-promo";

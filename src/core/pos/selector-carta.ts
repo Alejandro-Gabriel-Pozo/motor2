@@ -35,6 +35,8 @@ export interface ProductoPedible {
   productoId: string;
   codigo: string;
   nombre: string;
+  /** «Nombre en la carta» de esta sucursal (2026-11-04): cómo lo ve el cliente. Solo el selector lo muestra en lugar de `nombre`; la lista «Por agregar», la comanda y el ticket siguen con `nombre`. Ausente = el nombre del producto. */
+  nombreEnCarta?: string;
   /** Lo que se cobra al agregarlo (con el descuento del producto en esta sucursal ya aplicado, si lo tiene — Fase 2). */
   precio: number;
   /** Producto con descuento: el precio de lista, antes del descuento (se muestra tachado). Ausente = sin descuento. */

@@ -21,6 +21,8 @@ interface DatosDeContenidoDeCarta {
   generoCartaId: string | null;
   /** Fase 5 (DEC-11): el interruptor de un producto base con un solo eje. `undefined` = no se toca (Prisma ignora la clave). */
   mostrarNombreArriba?: boolean;
+  /** «Nombre en la carta»: `undefined` = no se toca (Prisma ignora la clave); `null` = se vacía. */
+  nombreEnCarta?: string | null;
 }
 
 /** Crea o reemplaza el contenido completo del producto en la sucursal (una sola fila por par, `@@unique([sucursalId, productoId])`). */
@@ -59,4 +61,32 @@ export async function crearContenidoVisibleDeProducto(db: Prisma.TransactionClie
  */
 export async function borrarContenidoDeProducto(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string }): Promise<number> {
   return (await db.contenidoCartaProducto.deleteMany({ where: { sucursalId: args.sucursalId, productoId: args.productoId } })).count;
+}
+
+/**
+ * Serializa los guardados del contenido de UN producto: toma su fila (`FOR UPDATE`, la MISMA que toma el catálogo) hasta el final de la transacción. `ContenidoCartaProducto` no tiene versión, así que
+ * dos guardados a la vez se ordenan acá: el segundo lee lo que dejó el primero y la cadena de auditoría encadena. No lee ni escribe datos.
+ */
+export async function tomarElProductoParaGuardarContenido(db: Prisma.TransactionClient, productoId: string): Promise<void> {
+  await db.$queryRaw`SELECT id FROM "Producto" WHERE id = ${productoId} FOR UPDATE`;
+}
+
+/**
+ * Candado de los NOMBRES de la carta de UNA sucursal (`pg_advisory_xact_lock`, hasta el final de la transacción): los casos de uso que muestran un plato o le ponen «Nombre en la carta» lo toman ANTES de
+ * buscar si el nombre ya está usado, así dos a la vez se ordenan (el segundo ve lo que dejó el primero) y no pasan los dos. No lee ni escribe datos.
+ */
+export async function tomarLosNombresDeLaCarta(db: Prisma.TransactionClient, sucursalId: string): Promise<void> {
+  await db.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`nombres-de-la-carta:${sucursalId}`}, 0))::text`;
+}
+
+/**
+ * «Está bien así»: pone el nombre en la carta SOLO si todavía no tiene (`nombreEnCarta` en `NULL`) y el plato está visible, en una sola sentencia (no pisa lo que otro cargó un instante antes). Devuelve cuántas
+ * filas cambió: 0 = alguien se adelantó o el plato ya no está visible.
+ */
+export async function fijarNombreEnCartaSiVacio(db: Prisma.TransactionClient, args: { sucursalId: string; productoId: string; nombre: string }): Promise<number> {
+  const r = await db.contenidoCartaProducto.updateMany({
+    where: { sucursalId: args.sucursalId, productoId: args.productoId, visibleEnCarta: true, nombreEnCarta: null },
+    data: { nombreEnCarta: args.nombre },
+  });
+  return r.count;
 }
