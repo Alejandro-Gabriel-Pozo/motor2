@@ -22,6 +22,8 @@ export interface FotoParaElNombre {
   cantidad: number;
   grupo: { prefijoEnCarta: string | null };
   opcion: { esNinguna: boolean };
+  /** La carta no la lee (`OpcionElegidaEnLinea.ocultaEnCarta`, congelado al vender): el ticket del cliente la omite; la comanda y el detalle interno, no. Ausente = se imprime. */
+  ocultaEnCarta?: boolean;
 }
 
 export interface NombreDeLinea {

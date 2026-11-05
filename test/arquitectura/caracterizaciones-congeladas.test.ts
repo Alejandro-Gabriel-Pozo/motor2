@@ -429,6 +429,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
       },
+      {
+        blob: "ee91a6fb40311a29d978444e17c2dabff135ef80",
+        // El commit PADRE de este (afdd6435) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "afdd6435",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1): las líneas CUENTA_ITEM suman  (nadie tiene «Nombre en la carta» en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior; ninguna venta, KARDEX, stock, costo ni importe cambia.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -606,6 +613,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; CAMBIA COMPORTAMIENTO a propósito): se quita la acción `actualizarMaxMesasAbiertas` y el chequeo del límite dentro de `abrirCuenta`. El escenario ya no fija límites (salen los pasos A4 a A7 y B8 a B10; F4 y G1 sin esa acción) y las líneas SUCURSAL ya no vuelcan `maxMesasAbiertas`. Los resultados y las filas de las demás acciones (apertura, idempotencia de reabrir, comensales, cliente, pedido, mozo y operador) no cambian.",
       },
+      {
+        blob: "38b6a812b6778f7a4abb64f8994603a150dbb8d2",
+        // El commit PADRE de este (a8f5e55e) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "a8f5e55e",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_HUELLA_DEL_POS=1): las líneas ITEM suman `nombreEnTicket=null` (nadie tiene «Nombre en la carta» en este mundo) y las fotos de opción suman `ocultaEnCarta=false`. Verificado por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior.",
+      },
     ],
   },
   "test/pos/caracterizacion/venta-con-opciones.golden.txt": {
@@ -628,6 +642,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "d3088bf",
         motivo:
           "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
+      },
+      {
+        blob: "efa65999faf6b0d100368064cacb35e3b8d1cf22",
+        // El commit PADRE de este (a8f5e55e) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "a8f5e55e",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_VENTA_CON_OPCIONES=1): las líneas ITEM suman `nombreEnTicket=null` (nadie tiene «Nombre en la carta» en este mundo) y las fotos de opción suman `ocultaEnCarta=false`. Verificado por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior.",
       },
     ],
   },
@@ -955,6 +976,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "ed55a378",
         motivo:
           "Carta pública, cambio de TEXTO (CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): la carta pública no toma pedidos (el mozo elige en el POS), así que el cue de la línea «Incluye …» pasa de «· elegí abajo ↓» a «· ver opciones ↓». Revisado con `git diff -U0`: cambian 6 líneas (3 por ancho, 375 y 1280 px) y TODAS son el texto de «Bife a la criolla» (`incluye`, `texto visible` y el texto plano de la página); ninguna otra pantalla, precio ni tipografía cambia.",
+      },
+      {
+        blob: "29fbe1b1228aabc568a86acdb155326f03248868",
+        // El commit PADRE de este (e9ce889) es el último antes de la regeneración; el cambio es de texto de la ficha del producto pedido por el dueño (2026-11-05).
+        commit: "e9ce889",
+        motivo:
+          "Ficha del producto → «En la carta», cambio de TEXTO (CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-05, PR del selector del mozo; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): bajo «Nombre en la carta (opcional)» de un producto base con el interruptor «Mostrar el nombre del producto arriba» se suma la frase fija «Solo se usa si elegís «Sí: … arriba». Con «No», cada opción sale sola con su nombre.». Cambian SOLO 2 líneas del golden (las de la ayuda de ese campo, en las dos pantallas de opciones de Pizzas de la ficha); ninguna otra pantalla ni la carta pública se tocan.",
       },
     ],
   },

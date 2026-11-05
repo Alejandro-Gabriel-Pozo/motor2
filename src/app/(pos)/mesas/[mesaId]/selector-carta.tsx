@@ -57,7 +57,7 @@ interface Props {
   lista: EstadoListaPorAgregar;
   despachar: (accion: AccionSelectorCarta) => void;
   /** Suma un producto a la lista «Por agregar» (y avisa acá para vaciar el buscador y cerrar el agrupado suelto, G3). */
-  sumar: (productoId: string) => void;
+  sumar: (productoId: string, rotulo?: string) => void;
   /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 11): toca una promo armable — abre el diálogo "Armar promo"
    *  (`ArmarPromo`, en el padre: una promo no se suma directo como un producto). */
   abrirPromo: (entrada: EntradaPromoSelectorCarta) => void;
@@ -89,24 +89,40 @@ export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrir
     const configuracion = configuraciones[p.productoId];
     if (configuracion) {
       const sinLugar = llena;
+      // Una base con el nombre oculto en la carta (2026-11-05): el mozo ve los mismos renglones que el cliente («Bife a la criolla $ 18.000»), no el nombre interno. Tocar uno abre el mismo
+      // «Elegir opciones», con esa opción ya elegida. Es el MISMO botón del producto con opciones, una vez por renglón (un solo botón en el código, como pide el cerco «controles-a-mano»).
+      const renglones =
+        configuracion.vendible && p.filasEnCarta && p.filasEnCarta.length > 0
+          ? p.filasEnCarta.map((f) => ({ rotulo: f.rotulo as string | undefined, nombre: f.rotulo, precio: `${formatearMonto(f.precio)} · Opciones` }))
+          : [
+              {
+                rotulo: undefined as string | undefined,
+                nombre: p.nombreEnCarta ?? p.nombre,
+                precio: configuracion.vendible
+                  ? `${configuracion.hayVariacion && configuracion.desde !== null ? `desde ${formatearMonto(configuracion.desde)}` : formatearMonto(configuracion.desde ?? p.precio)} · Opciones`
+                  : "Sin opciones disponibles hoy",
+              },
+            ];
       return (
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          disabled={!configuracion.vendible || sinLugar}
-          title={!configuracion.vendible ? "Hoy no se puede vender: un grupo obligatorio se quedó sin opciones." : sinLugar ? `Llegaste al máximo de ${MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.` : undefined}
-          data-producto-carta={p.productoId}
-          data-con-opciones=""
-          onClick={() => sumar(p.productoId)}
-          className={BOTON_PRODUCTO}
-        >
-          <span>{p.nombreEnCarta ?? p.nombre}</span>
-          <span className={PRECIO}>
-            {configuracion.vendible
-              ? `${configuracion.hayVariacion && configuracion.desde !== null ? `desde ${formatearMonto(configuracion.desde)}` : formatearMonto(configuracion.desde ?? p.precio)} · Opciones`
-              : "Sin opciones disponibles hoy"}
-          </span>
-        </button>
+        <div className="flex flex-col gap-2">
+          {renglones.map((r) => (
+            <button
+              key={r.nombre}
+              type="button"
+              aria-haspopup="dialog"
+              disabled={!configuracion.vendible || sinLugar}
+              title={!configuracion.vendible ? "Hoy no se puede vender: un grupo obligatorio se quedó sin opciones." : sinLugar ? `Llegaste al máximo de ${MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.` : undefined}
+              data-producto-carta={p.productoId}
+              data-con-opciones=""
+              {...(r.rotulo ? { "data-fila-carta": r.rotulo } : {})}
+              onClick={() => sumar(p.productoId, r.rotulo)}
+              className={BOTON_PRODUCTO}
+            >
+              <span>{r.nombre}</span>
+              <span className={PRECIO}>{r.precio}</span>
+            </button>
+          ))}
+        </div>
       );
     }
     return (

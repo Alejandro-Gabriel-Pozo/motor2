@@ -709,7 +709,7 @@
     Sí: «Pizzas» arriba y las opciones debajo
     Nombre en la carta (opcional)
     [campo: vacío, ayuda «Pizzas»]
-    Así lo ven el cliente y el mozo en esta sucursal. Vacío = se usa el nombre del producto. No cambia la comanda ni los reportes.
+    Así lo ven el cliente y el mozo en esta sucursal. Vacío = se usa el nombre del producto. No cambia la comanda ni los reportes. Solo se usa si elegís «Sí: … arriba». Con «No», cada opción sale sola con su nombre.
     Descripción (opcional)
     [campo: vacío]
     Tags (separados por coma)
@@ -993,7 +993,7 @@
     Sí: «Pizzas» arriba y las opciones debajo
     Nombre en la carta (opcional)
     [campo: vacío, ayuda «Pizzas»]
-    Así lo ven el cliente y el mozo en esta sucursal. Vacío = se usa el nombre del producto. No cambia la comanda ni los reportes.
+    Así lo ven el cliente y el mozo en esta sucursal. Vacío = se usa el nombre del producto. No cambia la comanda ni los reportes. Solo se usa si elegís «Sí: … arriba». Con «No», cada opción sale sola con su nombre.
     Descripción (opcional)
     [campo: vacío]
     Tags (separados por coma)
