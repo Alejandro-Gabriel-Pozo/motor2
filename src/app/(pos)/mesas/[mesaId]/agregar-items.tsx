@@ -265,7 +265,7 @@ export function AgregarItems({
               onChange={(id) => {
                 if (id) sumar(id);
               }}
-              filtro={{ tipo: "PV", soloDisponibles: true }}
+              filtro={{ tipo: "PV", soloDisponibles: true, tambienPorNombreDeCarta: true }}
               placeholder="Buscar por nombre o código…"
               limpiarSenal={estado.limpiarBuscador}
             />

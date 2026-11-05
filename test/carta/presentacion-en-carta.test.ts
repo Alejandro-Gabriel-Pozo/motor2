@@ -27,6 +27,7 @@ interface ProductoDePrueba {
   descuento?: number;
   orden?: number;
   mostrarNombreArriba?: boolean;
+  nombreEnCarta?: string | null;
   seccion?: string;
 }
 
@@ -46,7 +47,7 @@ function carta(productos: readonly ProductoDePrueba[]) {
         precioVenta: p.precioBase,
         categoriaNombre: null,
         seccionCartaId: p.seccion ?? "s1",
-        contenido: { descripcion: null, tags: [], especial: false, orden: p.orden ?? i, ...(p.mostrarNombreArriba !== undefined ? { mostrarNombreArriba: p.mostrarNombreArriba } : {}) },
+        contenido: { descripcion: null, tags: [], especial: false, orden: p.orden ?? i, ...(p.mostrarNombreArriba !== undefined ? { mostrarNombreArriba: p.mostrarNombreArriba } : {}), ...(p.nombreEnCarta !== undefined ? { nombreEnCarta: p.nombreEnCarta } : {}) },
       })
     ),
     preciosLocales: [],
@@ -69,7 +70,9 @@ function carta(productos: readonly ProductoDePrueba[]) {
   return armarMenuCarta(entrada);
 }
 
-const item = (armado: ReturnType<typeof carta>, nombre: string): ItemCartaV1 | undefined => armado.carta.secciones.flatMap((s) => s.items).find((i) => i.nombre === nombre);
+// Una base con la medida OCULTA ya no lleva su nombre interno en el ítem (2026-11-04: se llama como su sección o su nombre de carta): las pizzas se buscan también por su id.
+const item = (armado: ReturnType<typeof carta>, nombre: string): ItemCartaV1 | undefined =>
+  armado.carta.secciones.flatMap((s) => s.items).find((i) => i.nombre === nombre || (nombre === PIZZAS.nombre && i.productoId === "pizzas"));
 
 const PIZZAS = ref("Pizzas");
 const MILANESA = ref("Milanesas (M1: terminación con precio absoluto)");
@@ -275,5 +278,23 @@ describe("6g · límites y diagnóstico interno", () => {
     const publica = proyectarCartaPublica(conOpciones.carta);
     expect(JSON.stringify(publica)).not.toContain("basesOcultas");
     expect(publica.secciones[0]!.items[0]!.presentacion).toEqual(item(conOpciones, "Pizzas")!.presentacion);
+  });
+});
+
+describe("el nombre del ítem de una base con la medida oculta (2026-11-04: nunca el interno)", () => {
+  const pizzas = (extra: Partial<ProductoDePrueba> = {}): ProductoDePrueba => ({ id: "pizzas", nombre: PIZZAS.nombre, precioBase: PIZZAS.precioBase, esBase: true, grupos: PIZZAS.grupos, ...extra });
+  const primero = (armado: ReturnType<typeof carta>) => armado.carta.secciones.flatMap((s) => s.items)[0]!;
+
+  it("base OCULTA sin nombre de carta: el ítem se llama como su SECCIÓN (lo lee solo el lector de pantalla); con nombre de carta, ese; nunca «Pizzas» (el interno)", () => {
+    expect(primero(carta([pizzas()])).presentacion).toMatchObject({ forma: "tabla", titulo: false });
+    expect(primero(carta([pizzas()])).nombre).toBe("Clásicos");
+    expect(primero(carta([pizzas({ nombreEnCarta: "Pizzas de la casa" })])).nombre).toBe("Pizzas de la casa");
+    expect(primero(carta([pizzas({ nombreEnCarta: "   " })])).nombre).toBe("Clásicos");
+  });
+
+  it("base con el NOMBRE ARRIBA: ese es el título que lee el cliente (nombre de carta o, sin él, el interno)", () => {
+    expect(primero(carta([pizzas({ mostrarNombreArriba: true })])).presentacion).toMatchObject({ forma: "tabla", titulo: true });
+    expect(primero(carta([pizzas({ mostrarNombreArriba: true })])).nombre).toBe(PIZZAS.nombre);
+    expect(primero(carta([pizzas({ mostrarNombreArriba: true, nombreEnCarta: "Pizzas de la casa" })])).nombre).toBe("Pizzas de la casa");
   });
 });

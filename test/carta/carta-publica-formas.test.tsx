@@ -107,20 +107,20 @@ describe("8a: forma simple (el bife: su precio y las aclaraciones debajo)", () =
     expect(html).toMatch(/^<li data-forma="simple"/);
     expect(html).toMatch(/<h3 data-rol="producto"[^>]*>Bife a la criolla<\/h3>/);
     expect(html).toMatch(/data-rol="precio"[^>]*>\$20\.000<\/span>/);
-    expect(texto(html)).toBe("Bife a la criolla $20.000 Con salsa criolla Incluye guarnicion · elegí abajo ↓ Extras extra de papas +$2.000 huevo frito +$1.500");
+    expect(texto(html)).toBe("Bife a la criolla $20.000 Con salsa criolla Incluye 1 guarnicion · ver opciones ↓ Extras extra de papas +$2.000 huevo frito +$1.500");
     expect(html.match(/<div data-aclaracion="/g)).toHaveLength(1);
     expect(html).toMatch(/<p data-rol="aclaracion-rotulo" class="carta-rol-aclaracion-rotulo"[^>]*>Extras<\/p>/);
   });
 
-  it("carta «B»: lo que no cuesta lo dice el plato en UNA línea («Incluye guarnicion», rol Aclaración) y sus opciones van al pie de la sección; cada extra que suma, en su fila con el recargo a la derecha (rol Opción)", () => {
+  it("carta «B»: lo que no cuesta lo dice el plato en UNA línea («Incluye 1 guarnicion», rol Aclaración) y sus opciones van al pie de la sección; cada extra que suma, en su fila con el recargo a la derecha (rol Opción)", () => {
     const extras = html.slice(html.indexOf('<div data-aclaracion="Extras"'));
-    // Invitación «5+2» (E2): la palabra del grupo es un botón real y la línea termina en «elegí abajo ↓» (solo pantalla).
-    expect(texto(html.match(/<p data-incluye[^>]*>.*?<\/p>/)![0])).toBe("Incluye guarnicion · elegí abajo ↓");
+    // Invitación «5+2» (E2): la palabra del grupo es un botón real y la línea termina en «ver opciones ↓» (solo pantalla).
+    expect(texto(html.match(/<p data-incluye[^>]*>.*?<\/p>/)![0])).toBe("Incluye 1 guarnicion · ver opciones ↓");
     expect(html).toMatch(/<button type="button" data-ir-al-bloque="Guarnicion" aria-label="Ir a las opciones de guarnicion" class="carta-palabra-tocable">guarnicion<\/button>/);
     expect(html).toMatch(/<span class="carta-solo-pantalla" data-cue-abajo/);
     expect(html).not.toMatch(/data-rol="eleccion"|ensalada/);
     const pie = dibujar([bife]);
-    expect(texto(pie.slice(pie.indexOf("<li data-bloque-de-opciones")))).toBe("Guarnicion · elegís 1 ensalada · papas fritas · puré Con los platos que dicen «Incluye guarnicion» Va con: Bife a la criolla");
+    expect(texto(pie.slice(pie.indexOf("<li data-bloque-de-opciones")))).toBe("Guarnicion · elegís 1 ensalada · papas fritas · puré Con los platos que incluyen guarnicion Lo incluyen: Bife a la criolla");
     expect(extras).not.toContain('data-rol="eleccion"');
     expect(extras).toMatch(/<ul aria-label="Extras" data-recargos-carta/);
     expect(extras.match(/<li[\s>]/g)).toHaveLength(2);
@@ -258,7 +258,7 @@ describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / 
   });
 
   it("las filas no se juntan aunque cuesten igual (DEC-10); «–» donde no se ofrece; sin «desde»; debajo, la descripción y las aclaraciones", () => {
-    expect(texto(html)).toBe("Milanesas Simple Napolitana De carne $20.000 $25.000 De pollo $20.000 $25.000 De trucha $23.000 – Con papas Incluye guarnición · elegí abajo ↓");
+    expect(texto(html)).toBe("Milanesas Simple Napolitana De carne $20.000 $25.000 De pollo $20.000 $25.000 De trucha $23.000 – Con papas Incluye 1 guarnición · ver opciones ↓");
     expect(html).not.toMatch(/desde/i);
     expect(html).toContain('<span class="sr-only">no se ofrece</span>');
   });
@@ -287,7 +287,7 @@ describe("8d: la base de un eje (las pizzas): oculta por defecto, cada opción c
     expect(html.match(/<h3 data-rol="producto"[^>]*>([^<]*)<\/h3>/g)?.map((h) => texto(h))).toEqual(["Pizza muzzarella", "Pizza napolitana"]);
     expect([...html.matchAll(/data-rol="precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$18.000", "$22.000"]);
     // Carta «B»: cada plato dice lo que incluye (el rótulo «En todos» se retiró); las opciones de la masa van al pie de la sección.
-    expect(texto(html)).toBe("Pizza muzzarella $18.000 Incluye masa · elegí abajo ↓ Pizza napolitana $22.000 Incluye masa · elegí abajo ↓");
+    expect(texto(html)).toBe("Pizza muzzarella $18.000 Incluye 1 masa · ver opciones ↓ Pizza napolitana $22.000 Incluye 1 masa · ver opciones ↓");
     expect(html).toMatch(/<ul aria-label="Pizzas" data-filas-carta/);
     expect(html).not.toMatch(/>Pizzas</);
     expect(html).not.toContain("<table");
@@ -301,7 +301,7 @@ describe("8d: la base de un eje (las pizzas): oculta por defecto, cada opción c
     expect(html.match(/<span data-rol="opcion" class="carta-rol-opcion[^"]*"[^>]*>([^<]*)<\/span>/g)?.map((h) => texto(h))).toEqual(["Pizza muzzarella", "Pizza napolitana"]);
     expect([...html.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$18.000", "$22.000"]);
     expect(html).not.toContain("<thead");
-    expect(texto(html)).toBe("Pizzas Pizza muzzarella $18.000 Pizza napolitana $22.000 A la piedra veggie Incluye masa · elegí abajo ↓");
+    expect(texto(html)).toBe("Pizzas Pizza muzzarella $18.000 Pizza napolitana $22.000 A la piedra veggie Incluye 1 masa · ver opciones ↓");
   });
 
   it("carta «B»: el rótulo «En todos» se retiró; CADA plato de la base dice lo que incluye (una línea bajo cada uno) y el pie de la sección nombra las opciones", () => {
@@ -309,7 +309,7 @@ describe("8d: la base de un eje (las pizzas): oculta por defecto, cada opción c
     expect(html).not.toMatch(/En todos|data-en-todos/);
     expect(html.match(/<p data-incluye/g)).toHaveLength(2);
     const seccion = dibujar([pizzas(false)]);
-    expect(texto(seccion.slice(seccion.indexOf("<li data-bloque-de-opciones")))).toBe("Masa · elegís 1 fina · al molde Con los platos que dicen «Incluye masa» Va con: Pizzas");
+    expect(texto(seccion.slice(seccion.indexOf("<li data-bloque-de-opciones")))).toBe("Masa · elegís 1 fina · al molde Con los platos que incluyen masa Lo incluyen: Pizza muzzarella · Pizza napolitana");
   });
 
   it("con 2 o más platos y un grupo CON PRECIO, la línea gruesa los separa de las filas (vale para todos); sin rótulo; con un solo plato o sin grupo con precio, no hay línea gruesa", () => {
@@ -372,8 +372,8 @@ describe("la carta de ejemplo del editor del tema muestra las formas (paso 12)",
     const html = renderToStaticMarkup(<Seccion seccion={entradas} indice={0} total={2} estilo={resolverEstiloCarta({})} />);
     for (const forma of ['data-forma="simple"', 'data-forma="lista-sin-encabezado"', 'data-forma="tabla"']) expect(html, forma).toContain(forma);
     expect(html).not.toContain("data-tanda");
-    // Carta «B»: el plato dice «Incluye salsa» y las opciones van en el bloque al pie de la sección.
-    expect(html).toContain("Incluye salsa");
+    // Carta «B»: el plato dice «Incluye 1 salsa» y las opciones van en el bloque al pie de la sección.
+    expect(html).toContain("Incluye <span>1 <button");
     expect(html).toContain("ketchup · mayonesa · alioli");
   });
 });

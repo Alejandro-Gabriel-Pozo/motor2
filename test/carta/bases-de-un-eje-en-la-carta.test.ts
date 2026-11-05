@@ -29,7 +29,9 @@ beforeEach(async () => {
 
 const presentacionDe = async (nombre: string) => {
   const armado = await resolverMenuCartaConDiagnostico(s.sucursalId, prisma, AHORA_DE_LA_CORRIDA, undefined, "publico", true);
-  return armado!.carta.secciones.flatMap((x) => x.items).find((i) => i.nombre === nombre)!.presentacion;
+  // Una base con la medida OCULTA ya no lleva su nombre interno en el ítem (2026-11-04: se llama como su sección o su nombre de carta): se la busca por el id de su producto.
+  const productoId = (await prisma.producto.findFirstOrThrow({ where: { nombre }, select: { id: true } })).id;
+  return armado!.carta.secciones.flatMap((x) => x.items).find((i) => i.productoId === productoId)!.presentacion;
 };
 
 describe("Fase 5, DEC-11: las bases de un eje y lo que la carta lee de la base", () => {

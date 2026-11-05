@@ -429,6 +429,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
       },
+      {
+        blob: "ee91a6fb40311a29d978444e17c2dabff135ef80",
+        // El commit PADRE de este (afdd6435) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "afdd6435",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1): las líneas CUENTA_ITEM suman  (nadie tiene «Nombre en la carta» en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior; ninguna venta, KARDEX, stock, costo ni importe cambia.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -570,6 +577,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Decisión del dueño 2026-10-29: modelo unificado de la carta (paso 3, roles de letra; SOLO ESTILO DE LA CARTA, ningún dato ni precio): se retiran los roles `rotulo` (sustituido por Producto, jerarquía única) y `tamano` (fusionado en `columna`) de la escala, así que las variables CSS de la carta dejan de traer `--carta-fs-rotulo`, `--carta-fs-tamano` y sus dos pares en papel. Revisado con `git diff -U0`: cambian SOLO esas 4 líneas en cada una de las 2 apariciones del bloque `variablesCss` (8 líneas quitadas, ninguna agregada); nada de lo que lee o devuelve una lectura de datos cambia.",
       },
+      {
+        blob: "72d6e9c040cdcd31944933dbbaa4ccee31f9d272",
+        // El commit PADRE de este (b762efe5) es el último antes de la regeneración; el cambio es de «Nombre en la carta» (pedido del dueño, 2026-11-04).
+        commit: "b762efe5",
+        motivo:
+          "«Nombre en la carta» (ADITIVO; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): el contenido de carta de cada producto en la administración (`cargarAdminCarta`, `contenido`) suma la clave `nombreEnCarta` (null en todo el mundo de la caracterización: nadie la cargó). Revisado con `git diff -U0`: solo 7 líneas `\"nombreEnCarta\": null` nuevas (más la coma de la línea anterior); ningún dato, precio ni conteo de consultas cambia (el selector del POS lee el nombre de la MISMA consulta del contenido que ya leía el género: sin consultas de más).",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -599,6 +613,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; CAMBIA COMPORTAMIENTO a propósito): se quita la acción `actualizarMaxMesasAbiertas` y el chequeo del límite dentro de `abrirCuenta`. El escenario ya no fija límites (salen los pasos A4 a A7 y B8 a B10; F4 y G1 sin esa acción) y las líneas SUCURSAL ya no vuelcan `maxMesasAbiertas`. Los resultados y las filas de las demás acciones (apertura, idempotencia de reabrir, comensales, cliente, pedido, mozo y operador) no cambian.",
       },
+      {
+        blob: "38b6a812b6778f7a4abb64f8994603a150dbb8d2",
+        // El commit PADRE de este (a8f5e55e) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "a8f5e55e",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_HUELLA_DEL_POS=1): las líneas ITEM suman `nombreEnTicket=null` (nadie tiene «Nombre en la carta» en este mundo) y las fotos de opción suman `ocultaEnCarta=false`. Verificado por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior.",
+      },
     ],
   },
   "test/pos/caracterizacion/venta-con-opciones.golden.txt": {
@@ -621,6 +642,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "d3088bf",
         motivo:
           "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
+      },
+      {
+        blob: "efa65999faf6b0d100368064cacb35e3b8d1cf22",
+        // El commit PADRE de este (a8f5e55e) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "a8f5e55e",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_VENTA_CON_OPCIONES=1): las líneas ITEM suman `nombreEnTicket=null` (nadie tiene «Nombre en la carta» en este mundo) y las fotos de opción suman `ocultaEnCarta=false`. Verificado por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior.",
       },
     ],
   },
@@ -934,6 +962,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "aa43542b",
         motivo:
           "Carta B (E2; CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04, invitación «5+2»): la línea «Incluye …» de un plato con elecciones termina en « · elegí abajo ↓» y su palabra es un botón. Revisado con `git diff -U0`: cambian 6 líneas (3 por ancho, 375 y 1280 px) y TODAS son el texto de «Bife a la criolla» (`incluye`, `texto visible` y el texto plano de la página); ninguna otra pantalla ni precio cambia.",
+      },
+      {
+        blob: "86ac8d3b2277fbb4b51b714ce93e27d138e90894",
+        // El commit PADRE de este (e3bb94d6) es el último antes de la regeneración; los cambios son de dos pedidos del dueño del 2026-11-04 que van en la misma rama: «Nombre en la carta» (administración) y «cada plato dice cuántas lleva» (carta B).
+        commit: "e3bb94d6",
+        motivo:
+          "«Nombre en la carta» y carta B con cantidades (CAMBIO VISUAL DELIBERADO, decisiones del dueño del 2026-11-04; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). (1) Carta pública: «Incluye guarnicion · elegí abajo ↓» pasa a «Incluye 1 guarnicion · elegí abajo ↓» (opción A de «elegís 1») y el pie del bloque pasa de «Con los platos que dicen «Incluye guarnicion»» a «Con los platos que incluyen guarnicion»: cambian los renglones `incluye`, `texto visible` y el texto plano de la página de «Bife a la criolla», a 375 y 1280 px. (2) ADMINISTRACIÓN (ADITIVO): la ficha «En la carta» de cada producto de «Carta › Parametrización › Secciones» suma el campo «Nombre en la carta (opcional)» con su ayuda (7 productos × 2 anchos = 14 apariciones). Revisado con `git diff -U0`: ninguna otra pantalla, precio ni tipografía cambia. Si el dueño descarta el commit de las cantidades, hay que regenerar este golden de nuevo (solo cambian las líneas del punto 1).",
+      },
+      {
+        blob: "c26ac3b87260737495a792f9c1fde94b8486cfd6",
+        // El commit PADRE de este (ed55a378) es el último antes de la regeneración; el cambio es de texto de la carta pública pedido por el dueño (2026-11-04).
+        commit: "ed55a378",
+        motivo:
+          "Carta pública, cambio de TEXTO (CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): la carta pública no toma pedidos (el mozo elige en el POS), así que el cue de la línea «Incluye …» pasa de «· elegí abajo ↓» a «· ver opciones ↓». Revisado con `git diff -U0`: cambian 6 líneas (3 por ancho, 375 y 1280 px) y TODAS son el texto de «Bife a la criolla» (`incluye`, `texto visible` y el texto plano de la página); ninguna otra pantalla, precio ni tipografía cambia.",
       },
     ],
   },

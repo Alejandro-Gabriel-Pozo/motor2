@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { armarComandas, type ItemParaComanda } from "../../src/core/pos/comanda";
 import { documentoDeReimpresion } from "../../src/core/pos/impresion";
+import { nombreDeLineaConfigurada, type FotoParaElNombre } from "../../src/core/opciones/nombre-de-la-linea";
 
 /** Comanda de cocina (KOT) por envío (src/core/pos/comanda.ts, docs/plan-imprimir-comanda-y-ticket-2026-09-25.md B1): núcleo puro, sin precios. */
 
@@ -105,5 +106,30 @@ describe("documentoDeReimpresion", () => {
     const comandas = armarComandas([{ numero: 1, items: [item("a", "Milanesa", 1, "Juan")] }, { numero: 2, items: [item("b", "Flan", 1, "Juan")] }], "Juan");
     expect(documentoDeReimpresion(comandas, 2)).toEqual({ tipo: "reimpresion", comanda: comandas[1] });
     expect(documentoDeReimpresion(comandas, 3)).toBeNull();
+  });
+});
+
+/**
+ * «Nombre en la carta» (2026-11-04): la COMANDA de cocina (KOT) no se toca. Ahí tiene que verse lo operativo: qué se cocina (la opción elegida, con lo incluido en el detalle), para poder controlar que «no se sacó
+ * nalga cuando era bife». El nombre de la carta es solo de cara al cliente: la línea sale de `nombreDeLinea ?? productoNombre` y `detalleDeLinea`, y un `nombreEnCarta` que llegara de más no entra. El consumo de
+ * stock de cada opción elegida está cubierto por `test/core/opciones/consumo-de-linea-configurada.test.ts` (cada opción consume SU receta; un reemplazo saca lo reemplazado y no otra cosa).
+ */
+describe("armarComandas: el nombre en la carta no entra a la comanda", () => {
+  const fotos = (...f: [string, string][]): FotoParaElNombre[] => f.map(([tipoGrupo, nombreOpcion]) => ({ tipoGrupo, nombreOpcion, cantidad: 1, grupo: { prefijoEnCarta: null }, opcion: { esNinguna: false } }));
+
+  it("producto directo: «Plato del día» con Proteína = Bife de chorizo sale como «Plato del día bife de chorizo» con lo incluido en el detalle; el nombre de la carta no aparece", () => {
+    const { nombre, detalle } = nombreDeLineaConfigurada("Plato del día", false, fotos(["VARIANTE", "Bife de chorizo"], ["INCLUIDA", "Puré de papa"]));
+    const entrada = { ...item("a", "Plato del día", 1, "Juan"), nombreDeLinea: nombre, detalleDeLinea: detalle, nombreEnCarta: "La Parrillada" };
+    const [comanda] = armarComandas([{ numero: 1, items: [entrada] }], "Ana");
+    expect(comanda.lineas).toEqual([{ itemId: "a", producto: "Plato del día bife de chorizo", cantidad: 1, detalle: "puré de papa" }]);
+    expect(JSON.stringify(comanda)).not.toContain("La Parrillada");
+  });
+
+  it("base: el plato sale del rótulo de la opción de la medida («Bife de chorizo a la criolla»), con lo incluido (nalga · puré de papa) en el detalle, y no con el nombre interno del producto ni con el de la carta", () => {
+    const { nombre, detalle } = nombreDeLineaConfigurada("BIFE-", true, fotos(["MEDIDA", "Bife de chorizo a la criolla"], ["INCLUIDA", "Nalga"], ["INCLUIDA", "Puré de papa"]));
+    const entrada = { ...item("b", "BIFE-", 2, "Juan"), nombreDeLinea: nombre, detalleDeLinea: detalle, nombreEnCarta: "El Bife" };
+    const [comanda] = armarComandas([{ numero: 1, items: [entrada] }], "Ana");
+    expect(comanda.lineas).toEqual([{ itemId: "b", producto: "Bife de chorizo a la criolla", cantidad: 2, detalle: "nalga · puré de papa" }]);
+    expect(JSON.stringify(comanda)).not.toContain("El Bife");
   });
 });

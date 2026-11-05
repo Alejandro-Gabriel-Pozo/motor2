@@ -17,7 +17,8 @@ import { cartaDeUnProducto, resumenDePrecios, tablaDePreciosParaLaCarta, vistaPr
  *    una versión con precio»); en cualquier otro caso la salida es idéntica, byte a byte, a la del interruptor prendido.
  *  - O3 forma: si se oculta, la presentación es la del producto SIN ese grupo; «no se puede pedir» se sigue calculando con el producto completo (un grupo oculto obligatorio agotado saca al plato).
  *  - O4 agotado: con un grupo obligatorio y todas sus opciones agotadas hoy, el plato no aparece en la carta en pantalla y SÍ en la impresa (DEC-20), oculto o no.
- *  - O5 POS, stock, ticket y reportes no dependen del interruptor (los grupos con el interruptor apagado o prendido arman la misma línea y el mismo resumen).
+ *  - O5 POS, stock, ticket y reportes no dependen del interruptor (los grupos con el interruptor apagado o prendido arman la misma línea y el mismo resumen). ÚNICA excepción (2026-11-05): la marca congelada
+ *    `ocultaEnCarta` de la foto, que es la que hace que el ticket del CLIENTE (no la comanda, no el stock, no los reportes) omita lo que la carta no leía; sale exactamente cuando el oráculo oculta el grupo.
  */
 
 const monto = (m: number): DiferenciaDePrecio => ({ tipo: "MONTO", monto: m });
@@ -245,7 +246,14 @@ describe("Combinaciones de «Mostrar este grupo en la carta» contra el oráculo
       const gNo = gruposDe(c, false, true);
       const elegidas = elegidasDe(gSi);
       const entradaDeLinea = (grupos: GrupoDeLaCarta[]) => ({ grupos, elegidas, precioBase: PRECIO_BASE, descuentoDeProducto: c.descuento, cantidad: 2 });
-      expect(armarLineaConfigurada(entradaDeLinea(gNo)), etiqueta).toEqual(armarLineaConfigurada(entradaDeLinea(gSi)));
+      // La única diferencia de la línea es la marca CONGELADA `ocultaEnCarta` de la foto (2026-11-05, ticket del cliente): sale del oráculo, y es lo único que el interruptor mueve.
+      const marcas = (r: ReturnType<typeof armarLineaConfigurada>) => (r.ok && r.linea ? [...r.linea.fotos, ...r.linea.adicionales.map((a) => a.foto)].map((f) => [f.grupoId, f.ocultaEnCarta]) : []);
+      const sinMarca = (r: ReturnType<typeof armarLineaConfigurada>) => JSON.parse(JSON.stringify(r, (clave, valor) => (clave === "ocultaEnCarta" ? undefined : valor)));
+      const lineaNo = armarLineaConfigurada(entradaDeLinea(gNo));
+      const lineaSi = armarLineaConfigurada(entradaDeLinea(gSi));
+      expect(sinMarca(lineaNo), etiqueta).toEqual(sinMarca(lineaSi));
+      expect(marcas(lineaSi).filter(([, oculta]) => oculta), `${etiqueta}: prendido, nada se marca`).toEqual([]);
+      expect(marcas(lineaNo).filter(([, oculta]) => oculta).map(([g]) => g), `${etiqueta}: apagado, se marca el grupo oculto y solo si el oráculo lo oculta`).toEqual(ocultar && marcas(lineaNo).some(([g]) => g === "g-x") ? ["g-x"] : []);
       expect(vistaPreviaDeConfiguracion(entradaDeLinea(gNo)), etiqueta).toEqual(vistaPreviaDeConfiguracion(entradaDeLinea(gSi)));
       expect(resumenDePrecios({ grupos: gNo, precioBase: PRECIO_BASE, descuentoDeProducto: c.descuento, esBase }), etiqueta).toEqual(resumenDePrecios({ grupos: gSi, precioBase: PRECIO_BASE, descuentoDeProducto: c.descuento, esBase }));
     }

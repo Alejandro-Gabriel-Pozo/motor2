@@ -31,7 +31,7 @@ export async function obtenerTicketsRecientes(
           operacion: { select: { anuladaEn: true } },
           promoCuenta: { select: { id: true, titulo: true } },
           // GO-2b: la foto de lo elegido (los nombres y la versión del adicional), anidada en la misma consulta; sin opciones, vacía.
-          opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } },
+          opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, ocultaEnCarta: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } },
         },
       },
       ejemplaresTicket: {
@@ -52,6 +52,7 @@ export async function obtenerTicketsRecientes(
       items: c.items.map((i) => ({
         productoId: i.productoId,
         producto: i.producto,
+        nombreEnTicket: i.nombreEnTicket,
         cantidad: Number(i.cantidad),
         precioUnitario: Number(i.precioUnitario),
         precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,

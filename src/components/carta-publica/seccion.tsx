@@ -1,5 +1,5 @@
 import type { AclaracionCartaPublica, BloqueDeOpciones, EstiloCarta, ItemCartaPublico, ParteDeIncluye, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
-import { conectorDeLaParte, detalleDelBloque, formatearPrecioCarta, incluyeDeLaSeccion, partirLaAclaracion, recargoEnPesos, textoDeIncluye, textoDeLaAclaracion, textoDeLasOpciones, textoDeVaCon, textoDelTitulo, restoDeLaParte, vaConDelBloque } from "@/core/carta/public";
+import { cantidadDeLaParte, conectorDeLaParte, detalleDelBloque, formatearPrecioCarta, incluyeDeLaSeccion, partirLaAclaracion, recargoEnPesos, textoDeIncluye, textoDeLaAclaracion, textoDeLasOpciones, nombresDeLosPlatosDelItem, textoDeVaCon, textoDelTitulo, restoDeLaParte, vaConDelBloque } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
 import { ListaDeLaSeccion } from "./lista-de-la-seccion";
 
@@ -29,7 +29,8 @@ export function Seccion({
   // Carta «B»: qué incluye cada plato y los bloques del pie de ESTA sección (la misma función en la carta pública, la impresa, la vista previa y «Va a mostrar»).
   const incluye = incluyeDeLaSeccion(seccion.items.map((i) => i.presentacion?.aclaraciones ?? []));
   // Invitación «5+2» (E2): lo que dice cada bloque mientras está iluminado («Va con: …»), con los nombres de los platos que lo incluyen.
-  const platosConNombre = seccion.items.map((i, k) => ({ nombre: i.nombre, partes: incluye.platos[k] ?? [] }));
+  // Una base con la medida oculta se dibuja como varios platos (uno por renglón): «Va con» los nombra con lo que el cliente LEE, nunca con el nombre interno de la base (`nombresDeLosPlatosDelItem`).
+  const platosConNombre = seccion.items.map((i, k) => ({ nombre: i.nombre, nombres: nombresDeLosPlatosDelItem(i), partes: incluye.platos[k] ?? [] }));
   const vaCon = incluye.bloques.map((b) => textoDeVaCon(vaConDelBloque(b, platosConNombre)));
   return (
     <div className={`carta-pagina flex flex-col${soloPantalla ? " carta-solo-pantalla" : ""}`}>
@@ -182,21 +183,22 @@ function LineaIncluye({ partes, colores, interactiva = false }: { partes: readon
   }
   // Invitación «5+2» (E2): la palabra del grupo es un botón real que baja al bloque de ese grupo (`lista-de-la-seccion.tsx`), y la línea termina en «elegí abajo ↓» (la flecha rebota dos veces y queda quieta; con
   // «movimiento reducido» no se anima). En papel no hay interacción: el cue no sale (`carta-solo-pantalla`) y la palabra pierde el subrayado.
-  const palabras = partes.map((x) => x.palabra);
+  const palabras = partes.map((x) => `${cantidadDeLaParte(x)}${x.palabraEnLinea}`);
   return (
     <p data-incluye data-rol="aclaracion" className="carta-rol-aclaracion mt-1" style={estilo}>
       {"Incluye "}
       {partes.map((x, k) => (
         <span key={`parte-${k}`}>
           {conectorDeLaParte(palabras, k)}
+          {cantidadDeLaParte(x)}
           <button type="button" data-ir-al-bloque={x.grupo} aria-label={`Ir a las opciones de ${x.palabra}`} className="carta-palabra-tocable">
-            {x.palabra}
+            {x.palabraEnLinea}
           </button>
           {restoDeLaParte(x)}
         </span>
       ))}
       <span className="carta-solo-pantalla" data-cue-abajo>
-        {" · elegí abajo "}
+        {" · ver opciones "}
         <span aria-hidden="true" className="carta-flecha">
           ↓
         </span>
@@ -254,7 +256,7 @@ function DetalleDelBloque({ bloque }: { bloque: BloqueDeOpciones }) {
     <>
       <details data-detalle-del-bloque className="carta-solo-pantalla mt-1">
         <summary data-rol="aclaracion" className="carta-rol-aclaracion min-h-[44px] cursor-pointer py-2" style={{ color: "var(--carta-ink)" }}>
-          Ver detalle ▾
+          Qué lleva cada opción ▾
         </summary>
         {filas}
       </details>

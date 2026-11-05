@@ -157,7 +157,7 @@ describe("«Mostrar este grupo en la carta»: la vista previa del producto y el 
   it("el «Va a mostrar» de un producto fuera de la carta: sin el grupo oculto, con su precio", async () => {
     await prisma.contenidoCartaProducto.deleteMany({ where: { sucursalId: s.sucursalId, productoId: bife.productoId } });
     const vistaPrevia = async () => (await cargarCartaParaMantener(prisma, s.sucursalId)).fueraDeCarta.find((p) => p.id === bife.productoId)?.vistaPrevia;
-    expect(await vistaPrevia()).toBe("Va a mostrar «Bife» con su precio · Incluye corte · Corte · elegís 1: ojo de bife · bife de chorizo. Con los platos que dicen «Incluye corte».");
+    expect(await vistaPrevia()).toBe("Va a mostrar «Bife» con su precio · Incluye 1 corte · Corte · elegís 1: ojo de bife · bife de chorizo. Con los platos que incluyen corte.");
     await ocultarElCorte();
     expect(await vistaPrevia()).toBe("Va a mostrar «Bife» con su precio.");
   });

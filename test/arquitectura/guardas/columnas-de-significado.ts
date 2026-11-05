@@ -97,6 +97,7 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   "OpcionElegidaEnLinea.tipoDeDiferencia": d("dinero", "Foto de lo cobrado: cómo se calculó la diferencia de la opción elegida en la línea (MONTO o PORCENTAJE)."),
   "OpcionElegidaEnLinea.modoPrecio": d("dinero", "Foto de lo cobrado: ABSOLUTO o DIFERENCIA de la medida elegida en la línea."),
   "OpcionElegidaEnLinea.precioDeSucursal": d("dinero", "Foto de lo cobrado: el importe de la opción salió de la grilla de la sucursal (PrecioLocalDeOpcion)."),
+  "OpcionElegidaEnLinea.ocultaEnCarta": d("visibilidad", "Foto congelada al vender (2026-11-05): la carta no leía este grupo (apagado y sin precio), así que el ticket del CLIENTE no imprime la opción; comanda, stock, reportes y detalle interno no cambian."),
   "ConsumoDeOpcion.efecto": d("stock", "SUMA o REEMPLAZA: si la opción agrega un insumo o reemplaza un ingrediente de la receta, y por lo tanto qué se descuenta."),
   "ConsumoDeOpcion.escalaConLaMedida": d("stock", "Si el consumo se multiplica por el factor de la MEDIDA elegida: cambia cuánto se descuenta."),
   "CombinacionDeProducto.activa": d("visibilidad", "Con activa = false esa combinación no se vende (COMBINACION_NO_DISPONIBLE)."),
@@ -110,6 +111,7 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   // Carta y promos
   "SeccionCarta.activa": d("visibilidad", "Nunca se borra una sección de la carta: se apaga, y apagada deja de mostrarse."),
   "ContenidoCartaProducto.visibleEnCarta": d("visibilidad", "Decide si el producto aparece en la carta pública."),
+  "ContenidoCartaProducto.nombreEnCarta": d("visibilidad", "Cambia cómo se llama el plato en la carta de la sucursal (cliente y selector del mozo); el nombre interno no cambia, 2026-11-04."),
   "ContenidoCartaProducto.mostrarNombreArriba": d("visibilidad", "Decide cómo se lee un producto base en la carta (nombre como encabezado u oculto), DEC-11."),
   "PromoCarta.soloSalon": d("visibilidad", "La promo se vende desde el POS pero no aparece en la carta pública (web, QR ni impresa)."),
   "PromoCarta.vigenteDesde": d("dinero", "Vigencia de la promo (días de la zona de la empresa): fuera de ella no rige su precio. Se evalúa al agregar la promo a la cuenta."),

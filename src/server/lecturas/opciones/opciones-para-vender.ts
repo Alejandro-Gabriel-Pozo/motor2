@@ -57,6 +57,7 @@ export async function cargarOpcionesParaVender(
           cantidadMinima: true,
           cantidadMaxima: true,
           modoPrecio: true,
+          seMuestraEnCarta: true,
           activo: true,
           grupo: {
             select: {
@@ -115,6 +116,7 @@ export async function cargarOpcionesParaVender(
       cantidadMaxima: pg.cantidadMaxima ?? pg.grupo.cantidadMaxima,
       orden: pg.orden,
       modoPrecio: pg.modoPrecio as ModoDePrecioDeMedida | null,
+      seMuestraEnCarta: pg.seMuestraEnCarta,
       opciones: pg.grupo.opciones.flatMap((o): OpcionParaVender[] => {
         const vigente = versionVigente(o.versiones);
         if (!vigente) return [];

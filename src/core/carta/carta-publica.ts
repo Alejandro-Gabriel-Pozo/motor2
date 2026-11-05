@@ -171,8 +171,9 @@ export function etiquetaDeCacheDeCartasPublicas(empresaSlug: string): string {
  * «carta-pareja-5»: carta «B» (2026-11-04): cada aclaración `eleccion` suma `cantidadMinima` y `cantidadMaxima` (de ahí salen la línea «Incluye …» del plato y el bloque al pie de la sección). Una carta
  * guardada con la forma anterior no los trae y se dibujaría sin «elegís N».
  * «carta-pareja-6»: carta «B», E3: cada aclaración `eleccion` suma `descripciones` (la descripción de cada opción, alineada con `opciones`; `null` = sin descripción).
+ * «carta-pareja-7»: «Nombre en la carta» (2026-11-04): el `nombre` de cada plato puede ser el de la carta de la sucursal (no el interno). La forma no cambia, pero una carta guardada con el nombre interno no debe seguir sirviéndose.
  */
-export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-6";
+export const VERSION_DE_LA_CARTA_EN_CACHE = "carta-pareja-7";
 
 /** La carta armada, sin los ids internos: lo que la carta pública emite hacia el navegador. */
 export function proyectarCartaPublica(carta: CartaV1): CartaPublicaV1 {

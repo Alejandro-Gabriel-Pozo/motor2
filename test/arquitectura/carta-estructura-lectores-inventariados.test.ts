@@ -19,6 +19,12 @@ import { describe, expect, it } from "vitest";
 const RAIZ = join(__dirname, "../../src");
 const ARCHIVOS_PERMITIDOS = [
   "server/lecturas/carta/menu.ts",
+  // «Nombre en la carta» (2026-11-04): el control de nombres repetidos junta los nombres que usa la carta de la sucursal (otros platos, ítems agrupados y promos), y los casos de uso que muestran un plato o confirman su nombre lo llaman.
+  "server/lecturas/carta/choque-de-nombre.ts",
+  // Ticket del cliente (2026-11-05): lee UNA vez el «Nombre en la carta» de los productos del pedido para congelarlo en la línea; no lee secciones ni estructura, solo ese campo del contenido.
+  "server/lecturas/carta/nombres-para-el-ticket.ts",
+  "server/actions/carta/casos-de-uso/actualizar-visible-en-carta.ts",
+  "server/actions/carta/casos-de-uso/confirmar-nombre-en-carta.ts",
   "server/consultas/carta/admin.ts",
   "server/lecturas/carta/grupo-de-producto.ts",
   "server/lecturas/pos/selector-carta.ts",

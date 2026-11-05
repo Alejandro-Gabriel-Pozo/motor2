@@ -36,7 +36,7 @@ function producto(cambios: Partial<ProductoCartaAdmin> = {}): ProductoCartaAdmin
     seccionCarta: "Platos",
     precio: 20000,
     descuento: null,
-    contenido: { visibleEnCarta: true, seccionCartaId: "s1", descripcion: "Con papas", tags: ["Regional"], especial: false, orden: 2, generoCartaId: null },
+    contenido: { visibleEnCarta: true, seccionCartaId: "s1", descripcion: "Con papas", tags: ["Regional"], especial: false, orden: 2, generoCartaId: null, nombreEnCarta: null },
     agrupadoEn: null,
     generoCarta: null,
     ...cambios,
@@ -80,7 +80,7 @@ describe("ContenidoDelProducto: el formulario de quien puede editar", () => {
     expect(casilla).toContain('type="checkbox"');
     expect(casilla).toContain("required");
     expect(html).toContain("Entiendo que se pierde la descripción, los tags");
-    const vacio = dibujar(producto({ contenido: { visibleEnCarta: true, seccionCartaId: "s1", descripcion: null, tags: [], especial: false, orden: 0, generoCartaId: null } }));
+    const vacio = dibujar(producto({ contenido: { visibleEnCarta: true, seccionCartaId: "s1", descripcion: null, tags: [], especial: false, orden: 0, generoCartaId: null, nombreEnCarta: null } }));
     expect(vacio).not.toContain('name="confirmado"');
     expect(vacio).toContain("Quitar «Milanesas» de la carta");
   });
