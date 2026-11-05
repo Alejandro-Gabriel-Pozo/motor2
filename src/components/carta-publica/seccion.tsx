@@ -228,7 +228,7 @@ export function BloquesDeOpciones({ bloques, vaCon, propio = false }: { bloques:
   // Con `vaCon` (la carta, no la vista previa del administrador) el bloque es el destino de la invitación «5+2»: recibe el foco al llegar, sabe qué platos lo incluyen y dice «Va con: …» mientras está iluminado.
   const destino = vaCon !== undefined;
   return bloques.map((b, i) => (
-    <li key={`bloque-${i}`} data-bloque-de-opciones={b.titulo} {...(destino ? { "data-platos": b.platos.join(","), tabIndex: -1 } : {})} className={`py-3${propio ? " border-t-0" : ""}`}>
+    <li key={`bloque-${i}`} data-bloque-de-opciones={b.titulo} {...(destino ? { "data-platos": b.platos.join(","), tabIndex: -1 } : {})} className="py-3" style={propio ? { borderTopWidth: 0 } : undefined}>
       <h4 data-rol="etiqueta" className="carta-rol-etiqueta uppercase tracking-wider" style={{ color: "var(--carta-ink-soft)", overflowWrap: "anywhere" }}>
         {textoDelTitulo(b)}
       </h4>
@@ -351,12 +351,13 @@ function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly Aclaraci
  */
 export function ItemFila({ item, estilo, incluye, posicion, sinLineaAbajo = false }: { item: ItemCartaPublico; estilo: EstiloCarta; incluye: readonly ParteDeIncluye[]; posicion?: number; sinLineaAbajo?: boolean }) {
   // Con opciones propias debajo (2026-11-05) la línea divisoria no va entre el plato y SU bloque: se lee como parte del mismo plato.
-  const sinLinea = sinLineaAbajo ? " border-b-0" : "";
+  // (Con `style` y no con una clase de ancho: el contrato `borde-propio-de-carta` vigila las clases `border-*` con ancho, y esto no dibuja un borde, lo quita.)
+  const sinLinea = sinLineaAbajo ? ({ borderBottomWidth: 0 } as const) : undefined;
   const colores = coloresDelItem(item.especial, estilo.valores);
   const p = item.presentacion;
   if (p?.forma === "simple") {
     return (
-      <li data-forma="simple" data-plato={posicion} className={`py-2.5${sinLinea}`}>
+      <li data-forma="simple" data-plato={posicion} className="py-2.5" style={sinLinea}>
         <div className="flex items-baseline justify-between gap-3">
           <NombreDelItem item={item} colores={colores} />
           <PrecioDelRenglon item={item} color={colores.precio} />
@@ -376,7 +377,7 @@ export function ItemFila({ item, estilo, incluye, posicion, sinLineaAbajo = fals
       return f.rotulo !== null && typeof precio === "number" ? [{ rotulo: f.rotulo, precio }] : [];
     });
     return (
-      <li data-forma="lista-sin-encabezado" data-plato={posicion} className={sinLinea.trim() || undefined}>
+      <li data-forma="lista-sin-encabezado" data-plato={posicion} style={sinLinea}>
         <FilasComoPlatos nombre={item.nombre} filas={platos} colores={colores} incluye={incluye} interactiva={posicion !== undefined} />
         {(item.descuentoPorcentaje !== undefined || p.aclaraciones.some((a) => a.tipo === "extras")) && (
           <div className="pb-2.5">
@@ -466,9 +467,9 @@ function CeldaDePrecio({ precio, color }: { precio: number | null; color: string
  * derecha (`carta-col-precio`, `globals.css`): un Chico, un Mediano y un Grande quedan en la misma vertical aunque sean de productos distintos. Sin columnas con encabezado, una sola de precios.
  * Debajo, la descripción, los tags y las aclaraciones.
  */
-function TablaDelItem({ item, p, colores, incluye, posicion, sinLinea = "" }: { sinLinea?: string; item: ItemCartaPublico; p: Extract<NonNullable<ItemCartaPublico["presentacion"]>, { forma: "tabla" }>; colores: ColoresDelItem; incluye: readonly ParteDeIncluye[]; posicion?: number }) {
+function TablaDelItem({ item, p, colores, incluye, posicion, sinLinea }: { sinLinea?: { readonly borderBottomWidth: 0 }; item: ItemCartaPublico; p: Extract<NonNullable<ItemCartaPublico["presentacion"]>, { forma: "tabla" }>; colores: ColoresDelItem; incluye: readonly ParteDeIncluye[]; posicion?: number }) {
   return (
-    <li data-forma="tabla" data-plato={posicion} className={`carta-tabla pb-2.5 pt-3.5${sinLinea}`}>
+    <li data-forma="tabla" data-plato={posicion} className="carta-tabla pb-2.5 pt-3.5" style={sinLinea}>
       <div className="carta-linea-fina flex items-baseline justify-between gap-3 pb-1.5">
         <NombreDelItem item={item} colores={colores} />
         {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
