@@ -34,7 +34,8 @@ export function Seccion({
   const platosConNombre = seccion.items.map((i, k) => ({ nombre: i.nombre, nombres: nombresDeLosPlatosDelItem(i), partes: incluye.platos[k] ?? [] }));
   // Un grupo que pertenece a UN SOLO plato de la sección va DEBAJO de ese plato (decisión del dueño, 2026-11-05: «los sabores quedaron al pie y son del jugo»), con cualquier cantidad de opciones y sin
   // «Con los platos que incluyen…» ni «Lo incluyen: …» (no hay otros platos). Los que usan varios platos siguen al pie, como antes.
-  const esPropio = (b: BloqueDeOpciones) => b.platos.length === 1;
+  // (Un ítem que la carta dibuja como VARIOS platos —una base con la medida oculta, un renglón por opción— no es «un solo plato»: su grupo sigue al pie, como antes.)
+  const esPropio = (b: BloqueDeOpciones) => b.platos.length === 1 && nombresDeLosPlatosDelItem(seccion.items[b.platos[0]!]!).length === 1;
   const compartidos = incluye.bloques.filter((b) => !esPropio(b));
   const vaCon = compartidos.map((b) => textoDeVaCon(vaConDelBloque(b, platosConNombre)));
   return (
