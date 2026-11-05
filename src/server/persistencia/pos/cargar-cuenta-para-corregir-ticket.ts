@@ -38,7 +38,7 @@ export async function cargarCuentaParaCorregirTicket(
     include: {
       mesa: { select: { numero: true } },
       // GO-2b: la versión del adicional (de su foto) y lo que compone el nombre de la línea, anidados en la misma consulta, en el orden congelado de la venta.
-      items: { include: { producto: { select: { nombre: true, modoDeVenta: true } }, operacion: { select: { anuladaEn: true } }, opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } } } },
+      items: { include: { producto: { select: { nombre: true, modoDeVenta: true } }, operacion: { select: { anuladaEn: true } }, opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, ocultaEnCarta: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } } } },
       ejemplaresTicket: { orderBy: { ejemplar: "desc" } },
     },
   });
@@ -50,7 +50,7 @@ export async function cargarCuentaParaCorregirTicket(
     cerradaEn: cuenta.cerradaEn,
     items: cuenta.items.map((i) => ({
       productoId: i.productoId,
-      productoNombre: i.producto.nombre,
+      productoNombre: i.nombreEnTicket ?? i.producto.nombre,
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,

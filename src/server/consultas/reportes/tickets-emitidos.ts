@@ -71,8 +71,9 @@ export async function listarTicketsEmitidos(sucursalId: string, filtro: FiltroTi
               huellaOpciones: true,
               lineaPadreId: true,
               anulaAItemId: true,
-              opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } },
+              opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, ocultaEnCarta: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } },
               productoId: true,
+              nombreEnTicket: true,
               producto: { select: { nombre: true, modoDeVenta: true } },
               cantidad: true,
               precioUnitario: true,
@@ -95,7 +96,7 @@ export async function listarTicketsEmitidos(sucursalId: string, filtro: FiltroTi
     const conOpciones = cuentaConOpciones(e.cuenta.items);
     const items: ItemConVenta[] = e.cuenta.items.map((i) => ({
       productoId: i.productoId,
-      productoNombre: i.producto.nombre,
+      productoNombre: i.nombreEnTicket ?? i.producto.nombre,
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,

@@ -97,6 +97,7 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   "OpcionElegidaEnLinea.tipoDeDiferencia": d("dinero", "Foto de lo cobrado: cómo se calculó la diferencia de la opción elegida en la línea (MONTO o PORCENTAJE)."),
   "OpcionElegidaEnLinea.modoPrecio": d("dinero", "Foto de lo cobrado: ABSOLUTO o DIFERENCIA de la medida elegida en la línea."),
   "OpcionElegidaEnLinea.precioDeSucursal": d("dinero", "Foto de lo cobrado: el importe de la opción salió de la grilla de la sucursal (PrecioLocalDeOpcion)."),
+  "OpcionElegidaEnLinea.ocultaEnCarta": d("visibilidad", "Foto congelada al vender (2026-11-05): la carta no leía este grupo (apagado y sin precio), así que el ticket del CLIENTE no imprime la opción; comanda, stock, reportes y detalle interno no cambian."),
   "ConsumoDeOpcion.efecto": d("stock", "SUMA o REEMPLAZA: si la opción agrega un insumo o reemplaza un ingrediente de la receta, y por lo tanto qué se descuenta."),
   "ConsumoDeOpcion.escalaConLaMedida": d("stock", "Si el consumo se multiplica por el factor de la MEDIDA elegida: cambia cuánto se descuenta."),
   "CombinacionDeProducto.activa": d("visibilidad", "Con activa = false esa combinación no se vende (COMBINACION_NO_DISPONIBLE)."),

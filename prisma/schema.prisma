@@ -2423,6 +2423,8 @@ model CuentaItem {
   ///    null en un suelto sin descuento. Mide el ahorro del cliente (reporte «Descuentos de productos»).
   /// Queda congelado igual que `precioUnitario`: si el precio de carta del producto cambia después, esta fila no se entera.
   precioCartaUnitario Decimal?     @db.Decimal(14, 2)
+  /// El nombre con que el TICKET DEL CLIENTE nombra el producto de esta línea, CONGELADO al agregarla (el «Nombre en la carta» de la sucursal de la cuenta, si lo tenía; 2026-11-04). NULL = el ticket usa el nombre del producto, como siempre. Solo lo lee el ticket del cliente: la comanda, el stock y los reportes no.
+  nombreEnTicket      String?
 
   /// GO-1 (el «elemento configurable»): la HUELLA de las opciones que van DENTRO del precio de esta línea (SHA-256 hexadecimal de 64 caracteres, CHECK; `huellaDeOpciones`, `src/core/opciones/huella-de-opciones.ts`). NULL = una línea sin opciones (todas las
   /// de hoy) y toda línea ADICIONAL (un adicional no lleva huella). Inmutable una vez escrita (disparador `CuentaItem_opciones_chk`). Dos líneas del mismo producto con distinta huella son líneas distintas.
@@ -3816,6 +3818,8 @@ model OpcionElegidaEnLinea {
   importeUnitario   Decimal         @db.Decimal(14, 2)
   /// El importe salió de la grilla de la sucursal (`PrecioLocalDeOpcion`).
   precioDeSucursal  Boolean         @default(false)
+  /// La carta ocultaba esta opción AL VENDER (`seOcultaEnLaCarta`: el grupo no se muestra en el producto y no cambia el precio): el TICKET DEL CLIENTE la omite; la comanda y el detalle interno no. Congelado al vender (2026-11-04).
+  ocultaEnCarta     Boolean         @default(false)
   /// Solo MEDIDA (> 0 y hasta 10).
   factorEscala      Decimal?        @db.Decimal(8, 4)
   orden             Int             @default(0)

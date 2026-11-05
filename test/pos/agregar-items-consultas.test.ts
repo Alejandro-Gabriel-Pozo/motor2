@@ -127,6 +127,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
     expect(r.ok, r.mensaje).toBe(true);
     expect(contar(consultas)).toEqual([
       "capacidadSucursal.findMany×2",
+      "contenidoCartaProducto.findMany×1", // el «Nombre en la carta» de los productos del pedido, para congelarlo en el ticket (2026-11-05)
       "cuenta.findFirst×1",
       "cuentaItem.createMany×1",
       "descuentoProductoSucursal.findMany×1",
@@ -167,6 +168,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
     // El N+1: 1 + 6 por ítem (producto, disponibilidad, 2 de capacidad, precio local, descuento) + la escritura.
     expect(contar(consultas)).toEqual([
       "capacidadSucursal.findMany×6",
+      "contenidoCartaProducto.findMany×1", // el «Nombre en la carta» de los productos del pedido, para congelarlo en el ticket (2026-11-05)
       "cuenta.findFirst×1",
       "cuentaItem.createMany×1",
       "descuentoProductoSucursal.findMany×3",
@@ -186,7 +188,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
     expect(r.ok, r.mensaje).toBe(true);
     expect(contar(consultas)).toEqual([
       "capacidadSucursal.findMany×1",
-      "contenidoCartaProducto.findMany×1",
+      "contenidoCartaProducto.findMany×2",
       "cuenta.findFirst×1",
       "cuentaItem.createMany×1",
       "descuentoProductoSucursal.findMany×2",
@@ -211,7 +213,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
     expect(r.ok, r.mensaje).toBe(true);
     expect(contar(consultas)).toEqual([
       "capacidadSucursal.findMany×3",
-      "contenidoCartaProducto.findMany×1",
+      "contenidoCartaProducto.findMany×2",
       "cuenta.findFirst×1",
       "cuentaItem.createMany×1",
       "descuentoProductoSucursal.findMany×3",
@@ -243,6 +245,7 @@ describe("agregarItems: consultas por escenario (contra el código de antes de m
     expect(r).toEqual({ ok: false, mensaje: "«Muzzarella» no se puede pedir: solo se piden productos de venta (PV)." });
     expect(contar(consultas)).toEqual([
       "capacidadSucursal.findMany×2",
+      "contenidoCartaProducto.findMany×1", // el «Nombre en la carta» de los productos del pedido, para congelarlo en el ticket (2026-11-05)
       "cuenta.findFirst×1",
       "descuentoProductoSucursal.findMany×1",
       "disponibilidadProducto.findUnique×1",
@@ -275,6 +278,7 @@ describe("agregarItems CON clave de idempotencia (P3, I3): +1 lectura y +1 escri
       "agregadoDeCuenta.create×1", // +1 escritura
       "agregadoDeCuenta.findUnique×1", // +1 lectura
       "capacidadSucursal.findMany×2",
+      "contenidoCartaProducto.findMany×1", // el «Nombre en la carta» de los productos del pedido, para congelarlo en el ticket (2026-11-05)
       "cuenta.findFirst×1",
       "cuentaItem.createMany×1",
       "descuentoProductoSucursal.findMany×1",
@@ -329,6 +333,7 @@ describe("agregarItems CON opciones (GO-2b, cuarta edición): la línea configur
     expect(r).toEqual({ ok: true, mensaje: "Se agregó 1 ítem a la mesa 4." });
     expect(contar(consultas)).toEqual([
       "capacidadSucursal.findMany×2",
+      "contenidoCartaProducto.findMany×1", // el «Nombre en la carta» de los productos del pedido, para congelarlo en el ticket (2026-11-05)
       "cuenta.findFirst×1",
       "cuentaItem.create×2",
       "descuentoProductoSucursal.findMany×1",
@@ -350,6 +355,7 @@ describe("agregarItems CON opciones (GO-2b, cuarta edición): la línea configur
     expect(r).toEqual({ ok: true, mensaje: "Se agregaron 2 ítems a la mesa 4." });
     expect(contar(consultas)).toEqual([
       "capacidadSucursal.findMany×5",
+      "contenidoCartaProducto.findMany×1", // el «Nombre en la carta» de los productos del pedido, para congelarlo en el ticket (2026-11-05)
       "cuenta.findFirst×1",
       "cuentaItem.create×1",
       "cuentaItem.createMany×1",
