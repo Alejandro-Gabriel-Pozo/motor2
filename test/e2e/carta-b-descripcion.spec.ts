@@ -54,7 +54,8 @@ test("la descripción de una opción: se escribe en la administración, se ve en
       await desplegable.locator("summary").click();
       await expect(desplegable.getByText("lechuga, tomate, cebolla")).toBeVisible();
       await expect(desplegable).toContainText("ensalada · lechuga, tomate, cebolla");
-      await expect(page.locator("[data-incluye]").first()).not.toContainText("lechuga");
+      // La guarnición es de UN solo plato: sus opciones van debajo del plato y la fila del plato no lleva la descripción.
+      await expect(page.locator("[data-plato]").first()).not.toContainText("lechuga");
       expect((await new AxeBuilder({ page }).include("[data-bloque-de-opciones]").analyze()).violations, `axe del bloque (${ancho} px)`).toEqual([]);
     }
 

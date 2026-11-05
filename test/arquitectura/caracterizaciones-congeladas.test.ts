@@ -977,6 +977,20 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Carta pública, cambio de TEXTO (CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): la carta pública no toma pedidos (el mozo elige en el POS), así que el cue de la línea «Incluye …» pasa de «· elegí abajo ↓» a «· ver opciones ↓». Revisado con `git diff -U0`: cambian 6 líneas (3 por ancho, 375 y 1280 px) y TODAS son el texto de «Bife a la criolla» (`incluye`, `texto visible` y el texto plano de la página); ninguna otra pantalla, precio ni tipografía cambia.",
       },
+      {
+        blob: "29fbe1b1228aabc568a86acdb155326f03248868",
+        // El commit PADRE de este (e9ce889) es el último antes de la regeneración; el cambio es de texto de la ficha del producto pedido por el dueño (2026-11-05).
+        commit: "e9ce889",
+        motivo:
+          "Ficha del producto → «En la carta», cambio de TEXTO (CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-05, PR del selector del mozo; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): bajo «Nombre en la carta (opcional)» de un producto base con el interruptor «Mostrar el nombre del producto arriba» se suma la frase fija «Solo se usa si elegís «Sí: … arriba». Con «No», cada opción sale sola con su nombre.». Cambian SOLO 2 líneas del golden (las de la ayuda de ese campo, en las dos pantallas de opciones de Pizzas de la ficha); ninguna otra pantalla ni la carta pública se tocan.",
+      },
+      {
+        blob: "9dbf2caf16f1b017469806c5601dd31008adb520",
+        // El commit PADRE de este (22b2b958) es el último antes de la regeneración; el cambio es de «opciones debajo del plato» (pedido del dueño, 2026-11-05).
+        commit: "22b2b958",
+        motivo:
+          "Carta pública: el grupo de opciones de UN solo plato va debajo de ese plato (CAMBIA LO QUE VE EL CLIENTE, a propósito; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): en el bife (único plato con «Guarnición») desaparece la línea «Incluye 1 guarnicion · ver opciones ↓», el bloque «GUARNICION · ELEGÍS 1» pasa a ir justo debajo del plato (antes, al pie de la sección) y ya no dice «Con los platos que incluyen guarnicion»; consecuencia en las muestras de tipografía: desaparecen las dos líneas `aclaracion` (14px / 13.3333px), que solo existían por esa línea «Incluye…». Verificado con `git diff -U0`: ningún precio, nombre ni opción cambia; solo esas líneas y el lugar del bloque.",
+      },
     ],
   },
 };

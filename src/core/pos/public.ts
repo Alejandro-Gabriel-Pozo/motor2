@@ -33,7 +33,7 @@ export type { CupoDePromo, CupoDeEntradasDefinicion, EntradaElegibleDeCupo } fro
 export type { LineaConfigurada } from "./linea-configurada";
 // Ventas con opciones (2026-10-29): cuántos insumos puede sumar alguna opción que un producto ofrece (el origen de stock del catálogo).
 export { insumosQuePuedeSumarAlgunaOpcion } from "./insumos-de-las-opciones";
-export { armarSelectorCartaPos, pediblesDeEntrada } from "./selector-carta";
+export { armarSelectorCartaPos, opcionDeLaFila, pediblesDeEntrada } from "./selector-carta";
 export type { CupoDeEntradasSelectorCarta, EntradaCarpetaSelectorCarta, EntradaPromoSelectorCarta, EntradaSelectorCarta, GenerosSelectorCartaPos, ProductoPedible, PromoSelectorCartaPos, SelectorCartaPos } from "./selector-carta";
 export { SECCION_FUERA_DE_CARTA, estadoInicialSelectorCarta, reducirSelectorCarta } from "./selector-carta-estado";
 export type { AccionSelectorCarta, EstadoSelectorCarta } from "./selector-carta-estado";

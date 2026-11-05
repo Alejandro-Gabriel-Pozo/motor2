@@ -115,7 +115,8 @@ function bloqueEnHtml(html: string): Esperado["bloque"] {
   if (!b) return null;
   const titulo = b.match(/<h4[^>]*>(.*?)<\/h4>/)?.[1];
   const opciones = b.match(/<p data-rol="eleccion"[^>]*>(.*?)<\/p>/)?.[1];
-  const para = b.match(/<p data-rol="aclaracion"[^>]*>(.*?)<\/p>/)?.[1];
+  // Solo la línea «Con los platos que incluyen…» (un bloque propio de un plato no la lleva; las demás aclaraciones del bloque son su detalle).
+  const para = b.match(/<p data-rol="aclaracion"[^>]*>(Con los platos[^<]*)<\/p>/)?.[1];
   return { titulo: sinEtiquetas(titulo ?? ""), opciones: sinEtiquetas(opciones ?? ""), paraLosPlatos: sinEtiquetas(para ?? "") };
 }
 

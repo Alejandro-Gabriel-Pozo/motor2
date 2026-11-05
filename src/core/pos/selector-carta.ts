@@ -1,4 +1,5 @@
-import type { CartaV1 } from "@/core/carta/public";
+import type { CartaV1, PresentacionCartaV1 } from "@/core/carta/public";
+import { primeraEnMinuscula } from "@/core/opciones/public";
 
 /**
  * «Agregar al pedido» del POS organizado por SECCIÓN DE CARTA (docs/plan-selector-carta-pos-2026-09-25.md) y, dentro de cada
@@ -37,6 +38,11 @@ export interface ProductoPedible {
   nombre: string;
   /** «Nombre en la carta» de esta sucursal (2026-11-04): cómo lo ve el cliente. Solo el selector lo muestra en lugar de `nombre`; la lista «Por agregar», la comanda y el ticket siguen con `nombre`. Ausente = el nombre del producto. */
   nombreEnCarta?: string;
+  /**
+   * Una base configurable con el nombre oculto en la carta (2026-11-05): los renglones que la carta dibuja en su lugar («Bife a la criolla $ 18.000», «Bife con chimichurri $ 19.000»), TAL CUAL
+   * los lee el cliente (`presentacion` de la carta: mismo rótulo, mismo precio). El selector los muestra como botones en vez del nombre interno. Ausente = se muestra el producto.
+   */
+  filasEnCarta?: readonly { rotulo: string; precio: number }[];
   /** Lo que se cobra al agregarlo (con el descuento del producto en esta sucursal ya aplicado, si lo tiene — Fase 2). */
   precio: number;
   /** Producto con descuento: el precio de lista, antes del descuento (se muestra tachado). Ausente = sin descuento. */
@@ -184,6 +190,25 @@ export interface PromoSelectorCartaPos {
 
 const comparar = (a: string, b: string) => a.localeCompare(b, "es");
 
+/** Los renglones de una base con el nombre oculto (la tabla SIN título y de una sola columna de precios), como los dibuja la carta; vacío para cualquier otro producto. */
+function filasDeBaseOculta(presentacion: PresentacionCartaV1 | undefined): { rotulo: string; precio: number }[] {
+  if (!presentacion || presentacion.forma !== "tabla" || presentacion.titulo || presentacion.columnas.length > 0) return [];
+  return presentacion.filas.flatMap((f) => (f.rotulo !== null && f.celdas[0] != null ? [{ rotulo: f.rotulo, precio: f.celdas[0] }] : []));
+}
+
+/**
+ * La opción que corresponde a un renglón de una base oculta («Bife con chimichurri» → la opción «Con chimichurri» del grupo de preparación): para abrir «Elegir opciones» ya con esa elegida.
+ * Sale de la lectura de la carta (el rótulo es la opción tal cual, o con el prefijo del grupo delante y la primera letra en minúscula); si no hay UNA sola opción que calce, `null` (el diálogo
+ * se abre sin elegir nada, como siempre: nunca se adivina).
+ */
+export function opcionDeLaFila(grupos: readonly { admitido: boolean; activo: boolean; opciones: readonly { opcionId: string; nombre: string; esNinguna: boolean }[] }[], rotulo: string): string | null {
+  const buscado = rotulo.trim().toLocaleLowerCase("es-AR");
+  const calzan = grupos
+    .filter((g) => g.admitido && g.activo)
+    .flatMap((g) => g.opciones.filter((o) => !o.esNinguna && (o.nombre.trim().toLocaleLowerCase("es-AR") === buscado || buscado.endsWith(` ${primeraEnMinuscula(o.nombre.trim()).toLocaleLowerCase("es-AR")}`))));
+  return calzan.length === 1 ? calzan[0]!.opcionId : null;
+}
+
 /**
  * El cuarto parámetro OPCIONAL (Task #16, docs/plan-promo-combo-2026-09-26.md): las promos ARMABLES activas de la sucursal.
  * Sin él (u omitiendo el parámetro), la salida es IDÉNTICA a la de antes de que existieran las promos armables — mismo
@@ -249,7 +274,8 @@ export function armarSelectorCartaPos(
       }
       const p = tomar(item.productoId);
       if (!p) continue;
-      const entrada: EntradaProductoSelectorCarta = { tipo: "producto", producto: p };
+      const filas = filasDeBaseOculta(item.presentacion);
+      const entrada: EntradaProductoSelectorCarta = { tipo: "producto", producto: filas.length > 0 ? { ...p, filasEnCarta: filas } : p };
       const genero = generoDe(generos?.generoPorProducto, item.productoId);
       if (genero) agregarACarpeta(genero.id, entrada);
       else sueltas.push(entrada);
