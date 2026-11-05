@@ -326,7 +326,7 @@ Formalidad y detalle son ejes separados: cada peldaño suma sin romper lo cargad
 ## 13. Riesgos y pendientes
 
 - **NO VERIFICADA:** la base real (grupos y opciones del «BIFE-» tal como los describió la coordinación; las verificaciones usaron el café de las fixtures de prueba, no el bife); si existe un plan aprobado en `motor2-docs` (no está en esta sesión).
-- Las tres verificaciones previas están hechas (sección 14). Falta repetir V1 con el bife real (medida en ABSOLUTO y tres grupos) cuando exista la pantalla de la promo, en una rama, con los datos de la empresa del dueño.
+- Las tres verificaciones previas están hechas (sección 14) y V1 se repitió con una **reconstrucción del bife** (producto «se vende por opción», preparación con precio absoluto y tres grupos; sección 14, V1 con el bife). **Pendiente:** repetirla con los datos reales de la empresa del dueño (productos, precios, prefijos y consumos de verdad), que esta sesión no leyó.
 - Este diseño **enmienda D-6 de ADR-032**: la enmienda está escrita como PROPUESTA al final del ADR y espera la aprobación del dueño.
 - No se tocó código, migraciones, Neon ni Vercel. La maqueta usa datos de ejemplo claramente marcados.
 
@@ -343,3 +343,32 @@ Formalidad y detalle son ejes separados: cada peldaño suma sin romper lo cargad
 | **V3** Reporte «Margen de promociones» con configuraciones distintas por venta | Promo «Café a elección» de $1.000 con tres entradas (chico, mediano y grande); vendí 4 veces (2 chicos, 1 mediano, 1 grande) y consulté el reporte | Que el reporte sume bien, sin errores, con el costo real de cada venta | **OK con una limitación.** Cobrado $1.000 por venta; costo congelado por venta $100, $100, $200 y $300. Reporte: UNA fila, 4 instancias, cobrado $4.000, a lista $4.000, ahorro $0, margen real $3.300 (82,5 %). **Limitación a tener en cuenta:** el reporte agrupa por promo y NO desglosa por configuración, así que no muestra que la ganancia por venta va de $900 (chico) a $700 (grande); el «ahorro» total puede dar 0 aunque unas configuraciones cobren más que su lista y otras menos. |
 
 **Qué cambia en el diseño por estas verificaciones:** nada del modelo. Dos observaciones para la escalera de producto: (1) con el modo «a elegir» el margen por venta varía según lo que elija el mozo; un corte «por configuración» del reporte de margen queda como peldaño N4 (reporte) de la sección 9, no como condición para implementar N1; (2) como el cobro no se bloquea con una opción agotada, el administrador debe poder ver qué opciones permitidas no tienen stock: se resuelve con lo que ya existe (las opciones se pueden apagar por sucursal).
+
+### V1 con el bife (reconstrucción) y V3 en profundidad (2026-11-05)
+
+**Qué se armó (base local descartable, reconstrucción, NO los datos reales del dueño):** un producto «BIFE-» de venta «se vende por opción» con tres grupos de elegir uno — **Preparación** (medida con precio absoluto: «Bife a criolla» $28.000, «Bife con chimichurri» $30.000), **Proteína** («Nalga» +$0, «Bife de chorizo» +$4.000) y **Guarnición** («Puré», «Ensalada», «Papas fritas»); cada opción descuenta un insumo con su costo (nalga, chorizo, salsa criolla, chimichurri, papa, verdura). La promo «Menú Empresa 1» de $55.000 con un lugar «Platos principales» (lista, mínimo 1, máximo 2) y un lugar «Bebida» (agua, fija). Con la lista fija de hoy, el bife necesitó **12 entradas** cargadas (confirma la cuenta de la sección 3).
+
+| # | Qué hice | Qué pasó |
+|---|---|---|
+| **V1 con el bife** | Vendí el menú con DOS bifes de configuraciones distintas más el agua (criolla · nalga · puré, y chimichurri · bife de chorizo · papas fritas); envié a cocina y cerré | **OK.** El total de las tres líneas es **$55.000,00 exacto**: bife 1 $24.251,97 (lista $28.000), bife 2 $29.448,82 (lista $34.000) y agua $1.299,21 (lista $1.500), repartidos en proporción a su precio de lista. **Comanda:** un envío con tres renglones; los bifes salen como «Bife a criolla nalga» con el detalle «puré» y «Bife con chimichurri bife de chorizo» con «papas fritas» (cocina ve la guarnición), todos con «Menú Empresa 1». **Ticket:** cabecera «Menú Empresa 1 $55.000» y tres renglones sangrados con su precio. **Stock al cerrar:** se descontó exactamente lo que dicen las opciones (salsa criolla 0,05; nalga 0,3; papa 0,45 = puré 0,2 + papas fritas 0,25; chimichurri 0,05; chorizo 0,3; agua 1). |
+
+**Dos observaciones de V1 (no son defectos de la promo; son cómo ya se muestran las líneas con opciones):** (1) el **ticket del cliente no imprime la guarnición** (el grupo «incluido» solo sale en la comanda); si el dueño quiere verla en el ticket es otra decisión y afecta a todas las líneas con opciones, no solo a las promos. (2) El nombre compuesto sale «Bife con chimichurri bife de chorizo» porque en la reconstrucción no hay prefijos cargados («De», «Con» en cada grupo); con los prefijos reales del dueño se lee mejor.
+
+**V3: ¿limitación o se soluciona? — Se soluciona, sin migración.** Todo lo necesario **ya se guarda** en cada venta de una promo: la promo y la instancia (`Operacion.promoCuentaId`), el precio cobrado de cada componente, el **costo congelado al vender** (que ya incluye lo que descuentan las opciones elegidas), la huella y la foto de las opciones de cada línea (`CuentaItem.huellaOpciones`, `OpcionElegidaEnLinea`). Lo único que falta es **agrupar distinto en la lectura**. Con un prototipo descartable (solo consultas sobre lo ya guardado, sin tocar el sistema) vendí 7 menús y salió:
+
+| Armado vendido (promo completa) | Veces | Cobrado por vez | Costo por vez | Margen por vez |
+|---|---|---|---|---|
+| agua + bife criolla · nalga · puré | 3 | $55.000 | $3.490 | $51.510 (93,7 %) |
+| agua + bife chimichurri · bife de chorizo · papas fritas | 2 | $55.000 | $4.500 | $50.500 (91,8 %) |
+| agua + bife chimichurri · nalga · ensalada | 1 | $55.000 | $3.525 | $51.475 (93,6 %) |
+| agua + los dos bifes de arriba | 1 | $55.000 | $7.590 | $47.410 (86,2 %) |
+
+(Los costos son inventados de la reconstrucción; lo que importa es que la apertura sale **exacta** y cada fila coincide con la suma de los consumos de sus opciones.) El reporte actual, en cambio, junta las 7 ventas en una fila: cobrado $385.000, margen real $354.415 (92,1 %).
+
+**Cómo se arreglaría (PROPUESTA, sin migración, es una lectura nueva):**
+1. **Por armado** (la promo completa que se vendió): es la unidad **exacta** del margen, porque el precio de la promo es uno solo y el costo es la suma de lo elegido. Es el corte recomendado.
+2. **Por opción elegida** (por ejemplo «Proteína: Nalga» contra «Bife de chorizo»): es lo que de verdad mueve el costo y evita una lista larga cuando hay muchas combinaciones.
+3. **Por componente** (cada bife con su configuración): sirve, pero es una **aproximación**, porque su «cobrado» es el precio repartido por lista, no un precio real.
+Con el modo «a elegir» las combinaciones pueden ser muchas (12 bifes por las bebidas…): la pantalla muestra el resumen por promo y, al abrirla, el desglose ordenado por margen, con tope y el resto agrupado en «otros». Dónde vive: una lectura nueva junto a `obtenerReporteMargenPromociones` (la consulta ya trae el costo congelado y el precio de cada componente) y su tabla en la pantalla «Margen de promociones». Es **peldaño N4 (reporte)** de la sección 9: no condiciona implementar el modo «a elegir», pero conviene hacerlo **junto con él**, porque desde ese momento el margen de cada venta depende de lo que elija el mozo.
+
+**Otro hallazgo de V3 (de la regla de la promo, no de la elección):** en la prueba, la promo permitía 1 o 2 bifes por el **mismo** precio fijo, y la mayoría de las ventas fueron de un solo bife: el reporte mostró un «ahorro del cliente» **negativo** (−$130.500: el cliente pagó $55.000 por algo que a lista vale $29.500). No es un error del reporte; es lo que pasa cuando el rango mínimo-máximo de un lugar deja armar menús de valor muy distinto al mismo precio. Es una **decisión de negocio** del dueño (por ejemplo, fijar mínimo = máximo en el lugar principal, o precios distintos), que la apertura «por armado» hace visible.
