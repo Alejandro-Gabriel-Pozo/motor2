@@ -90,46 +90,39 @@ export function SelectorCarta({ selector, estado, lista, despachar, sumar, abrir
     if (configuracion) {
       const sinLugar = llena;
       // Una base con el nombre oculto en la carta (2026-11-05): el mozo ve los mismos renglones que el cliente («Bife a la criolla $ 18.000»), no el nombre interno. Tocar uno abre el mismo
-      // «Elegir opciones», con esa opción ya elegida.
-      if (configuracion.vendible && p.filasEnCarta && p.filasEnCarta.length > 0) {
-        return (
-          <div data-producto-carta={p.productoId} className="flex flex-col gap-2">
-            {p.filasEnCarta.map((f) => (
-              <button
-                key={f.rotulo}
-                type="button"
-                aria-haspopup="dialog"
-                disabled={sinLugar}
-                title={sinLugar ? `Llegaste al máximo de ${MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.` : undefined}
-                data-fila-carta={f.rotulo}
-                onClick={() => sumar(p.productoId, f.rotulo)}
-                className={BOTON_PRODUCTO}
-              >
-                <span>{f.rotulo}</span>
-                <span className={PRECIO}>{`${formatearMonto(f.precio)} · Opciones`}</span>
-              </button>
-            ))}
-          </div>
-        );
-      }
+      // «Elegir opciones», con esa opción ya elegida. Es el MISMO botón del producto con opciones, una vez por renglón (un solo botón en el código, como pide el cerco «controles-a-mano»).
+      const renglones =
+        configuracion.vendible && p.filasEnCarta && p.filasEnCarta.length > 0
+          ? p.filasEnCarta.map((f) => ({ rotulo: f.rotulo as string | undefined, nombre: f.rotulo, precio: `${formatearMonto(f.precio)} · Opciones` }))
+          : [
+              {
+                rotulo: undefined as string | undefined,
+                nombre: p.nombreEnCarta ?? p.nombre,
+                precio: configuracion.vendible
+                  ? `${configuracion.hayVariacion && configuracion.desde !== null ? `desde ${formatearMonto(configuracion.desde)}` : formatearMonto(configuracion.desde ?? p.precio)} · Opciones`
+                  : "Sin opciones disponibles hoy",
+              },
+            ];
       return (
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          disabled={!configuracion.vendible || sinLugar}
-          title={!configuracion.vendible ? "Hoy no se puede vender: un grupo obligatorio se quedó sin opciones." : sinLugar ? `Llegaste al máximo de ${MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.` : undefined}
-          data-producto-carta={p.productoId}
-          data-con-opciones=""
-          onClick={() => sumar(p.productoId)}
-          className={BOTON_PRODUCTO}
-        >
-          <span>{p.nombreEnCarta ?? p.nombre}</span>
-          <span className={PRECIO}>
-            {configuracion.vendible
-              ? `${configuracion.hayVariacion && configuracion.desde !== null ? `desde ${formatearMonto(configuracion.desde)}` : formatearMonto(configuracion.desde ?? p.precio)} · Opciones`
-              : "Sin opciones disponibles hoy"}
-          </span>
-        </button>
+        <div className="flex flex-col gap-2">
+          {renglones.map((r) => (
+            <button
+              key={r.nombre}
+              type="button"
+              aria-haspopup="dialog"
+              disabled={!configuracion.vendible || sinLugar}
+              title={!configuracion.vendible ? "Hoy no se puede vender: un grupo obligatorio se quedó sin opciones." : sinLugar ? `Llegaste al máximo de ${MAXIMO_ITEMS_POR_AGREGADO} productos distintos: sacá alguno de la lista antes de sumar otro.` : undefined}
+              data-producto-carta={p.productoId}
+              data-con-opciones=""
+              {...(r.rotulo ? { "data-fila-carta": r.rotulo } : {})}
+              onClick={() => sumar(p.productoId, r.rotulo)}
+              className={BOTON_PRODUCTO}
+            >
+              <span>{r.nombre}</span>
+              <span className={PRECIO}>{r.precio}</span>
+            </button>
+          ))}
+        </div>
       );
     }
     return (
