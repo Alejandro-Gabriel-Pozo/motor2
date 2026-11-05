@@ -121,6 +121,7 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   "PromoCartaCupo.activo": d("dinero", "Baja lógica de un cupo: cambia cuántas unidades de cada lugar entran en el combo por su precio (escrituras-auditadas)."),
   "PromoCartaCupo.tipo": d("dinero", "SECCION, LISTA o DEL_DIA (CHECK): de dónde sale lo que entra en el combo por su precio."),
   "EntradaDeCupo.activa": d("dinero", "Qué entra en un combo por su precio (las opciones de un lugar LISTA): cualquier escritura se audita (escrituras-auditadas)."),
+  "EntradaDeCupo.modoDeOpciones": d("dinero", "FIJAS o A_ELEGIR (CHECK): si las opciones de la entrada son la configuración fija del dueño o las permitidas entre las que elige el mozo; define qué entra al combo por su precio fijo y cómo se reparte entre componentes (escrituras-auditadas)."),
   "EntradaDelDiaDeCupo.activa": d("dinero", "Qué entra en un combo por su precio (el plato del día): cualquier escritura se audita (escrituras-auditadas)."),
   "EntradaDelDiaDeCupo.fecha": d("dinero", "El día de calendario en que vale el plato del día dentro del combo (escrituras-auditadas)."),
   "SucursalPublica.publicada": d("visibilidad", "Si la sucursal está en el portal público de cartas (fila ausente = no está)."),

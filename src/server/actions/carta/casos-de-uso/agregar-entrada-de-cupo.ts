@@ -15,6 +15,9 @@ import { nombreDeLaEntrada, revisarAlicuotasEnTx, validarComponenteEnTx } from "
  * CONFIGURACIÓN FIJA opcional de sus opciones de venta («Café · Mediano · Con leche»: el mozo no elige opciones dentro de un combo, D-6). La identidad de la entrada es (lugar, producto,
  * configuración): la misma con otra configuración es otra entrada.
  *
+ * Promo «a elegir» (`modoDeOpciones = 'A_ELEGIR'`, enmienda de ADR-032 D-6): las opciones del comando son las PERMITIDAS y el mozo elige entre ellas (solo entre lo permitido y dentro de los límites del grupo);
+ * sin adicionales (el precio de la promo es fijo). La identidad sigue siendo (lugar, producto, conjunto de opciones) y no cambia: cambiar lo permitido es otra entrada y la anterior se da de baja.
+ *
  * Dentro de UNA transacción SERIALIZABLE, en este orden y sin escribir nada hasta el final:
  *  1. el lugar: existe (la RLS oculta el de otra empresa: «no encontrado», sin oráculo), es un LISTA y está activo;
  *  2. el producto como componente (`validarComponenteEnTx`): PV, no ancla, la configuración válida para lo que admite (lo mismo que la venta: `armarLineaConfigurada`; sin adicionales), precio de
@@ -45,7 +48,7 @@ export async function agregarEntradaDeCupoCasoDeUso(
       if (cupo.tipo !== "LISTA") return fracaso("CUPO_INVALIDO", "Ese lugar de la promo no es una lista propia: sus opciones salen de una sección de la carta o del plato del día.");
       if (!cupo.activo) return fracaso("CUPO_INVALIDO", `«${cupo.nombre ?? ""}» está dado de baja en la promo: volvé a agregarlo en sus cupos.`);
 
-      const validado = await validarComponenteEnTx(tx, { sucursalId: actor.sucursalId, productoId: comando.productoId, opciones: comando.opciones, etiqueta: "con esa configuración" });
+      const validado = await validarComponenteEnTx(tx, { sucursalId: actor.sucursalId, productoId: comando.productoId, opciones: comando.opciones, etiqueta: "con esa configuración", modoDeOpciones: comando.modoDeOpciones });
       if (!validado.ok) return validado;
       const { producto, claveConfiguracion } = validado.componente;
       const alicuotas = await revisarAlicuotasEnTx(tx, {
@@ -57,8 +60,12 @@ export async function agregarEntradaDeCupoCasoDeUso(
       if (!alicuotas.ok) return alicuotas;
 
       const nombre = await nombreDeLaEntrada(tx, producto.nombre, comando.opciones.map((o) => o.opcionId));
-      const descripcion = `Promo "${cupo.promoCarta.titulo}", lugar «${cupo.nombre ?? ""}»: ${nombre}`;
-      const existente = await tx.entradaDeCupo.findUnique({ where: { cupoId_productoId_claveConfiguracion: { cupoId: cupo.id, productoId: producto.id, claveConfiguracion } }, select: { id: true, activa: true } });
+      const descripcion = `Promo "${cupo.promoCarta.titulo}", lugar «${cupo.nombre ?? ""}»: ${nombre}${comando.modoDeOpciones === "A_ELEGIR" ? " (el mozo elige entre las opciones permitidas)" : ""}`;
+      const existente = await tx.entradaDeCupo.findUnique({ where: { cupoId_productoId_claveConfiguracion: { cupoId: cupo.id, productoId: producto.id, claveConfiguracion } }, select: { id: true, activa: true, modoDeOpciones: true } });
+      // La clave (lugar, producto, opciones) es la misma para una configuración fija y para un conjunto permitido igual: no se mezclan (se rechaza, nunca se «convierte» una en la otra).
+      if (existente && existente.modoDeOpciones !== comando.modoDeOpciones) {
+        return fracaso("CONFIGURACION_INVALIDA", `${nombre} ya está en «${cupo.nombre ?? ""}» ${existente.modoDeOpciones === "A_ELEGIR" ? "como opción a elegir por el mozo" : "con esas opciones fijas"}: dala de baja si querés cambiar el modo.`);
+      }
       if (existente?.activa) return exito(`${nombre} ya era una opción de «${cupo.nombre ?? ""}».`, { entradaId: existente.id, huboCambio: false });
 
       let entradaId: string;
@@ -67,7 +74,7 @@ export async function agregarEntradaDeCupoCasoDeUso(
         entradaId = existente.id;
       } else {
         const ultima = await tx.entradaDeCupo.aggregate({ where: { cupoId: cupo.id }, _max: { orden: true } });
-        entradaId = (await crearEntradaDeCupo(tx, { cupoId: cupo.id, productoId: producto.id, claveConfiguracion, orden: (ultima._max.orden ?? -1) + 1, opciones: comando.opciones, ahora: actor.ahora })).id;
+        entradaId = (await crearEntradaDeCupo(tx, { cupoId: cupo.id, productoId: producto.id, claveConfiguracion, modoDeOpciones: comando.modoDeOpciones, orden: (ultima._max.orden ?? -1) + 1, opciones: comando.opciones, ahora: actor.ahora })).id;
       }
       await registrarCambioAuditado(tx, {
         entidad: "EntradaDeCupo",

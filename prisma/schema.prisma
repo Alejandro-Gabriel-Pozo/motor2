@@ -2139,6 +2139,10 @@ model EntradaDeCupo {
   producto           Producto                @relation(fields: [empresaId, productoId], references: [empresaId, id])
   /// El canónico de la configuración fija (CHECK de forma); vacío = sin configuración.
   claveConfiguracion String                  @default("")
+  /// Promo «a elegir» (diseño 2026-11-04, ADR-032 D-6 enmendada): `FIJAS` (lo de siempre: las opciones de la entrada son la configuración fija que define el dueño) o `A_ELEGIR` (las opciones
+  /// de la entrada son las PERMITIDAS: el mozo elige entre ellas, dentro de los límites del grupo; `cantidad` = tope de unidades de esa opción). CHECK `IN ('FIJAS','A_ELEGIR')`. Inmutable como
+  /// el resto de la identidad: cambiar lo permitido es otra entrada. Solo un lugar LISTA lo usa; sin adicionales con recargo (el precio de la promo es fijo).
+  modoDeOpciones     String                  @default("FIJAS")
   orden              Int                     @default(0)
   activa             Boolean                 @default(true)
   creadoEn           DateTime                @default(now())
