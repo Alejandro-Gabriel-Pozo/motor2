@@ -163,7 +163,7 @@ export async function cargarSelectorCartaPos(
         cantidadMinima: definicion.cantidadMinima,
         cantidadMaximaCupo: definicion.cantidadMaximaCupo,
         fijo: esCupoFijo(definicion),
-        entradas: [...definicion.entradas.values()].map((e) => ({ entradaId: e.entradaId, productoId: e.productoId, nombre: entradas.nombrePorEntrada.get(e.entradaId) ?? "", precioLista: entradas.precioCartaPorClave.get(e.claveComponente) ?? 0 })),
+        entradas: [...definicion.entradas.values()].map((e) => ({ entradaId: e.entradaId, productoId: e.productoId, nombre: entradas.nombrePorEntrada.get(e.entradaId) ?? "", precioLista: entradas.precioCartaPorClave.get(e.claveComponente) ?? 0, ...(e.aElegir ? { grupos: entradas.aElegirPorEntrada.get(e.entradaId)?.grupos ?? [] } : {}) })),
       };
       return [deEntradas];
     });
