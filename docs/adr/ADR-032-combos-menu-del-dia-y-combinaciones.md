@@ -165,3 +165,27 @@ Una promo (`PromoCarta`, que es de la empresa y alimenta los combos de este ADR)
 - **Caso de uso aparte** `guardarSoloSalonPromoCarta` (`carta_promo_definir`): control optimista con `PromoCarta.version` (la misma de la vigencia, rechazo conservador), SERIALIZABLE, idempotente por estado (pedir el valor que ya tiene es éxito sin escribir ni auditar) y auditado (`PromoCarta.soloSalon`). `guardarPromoCarta` no lo toca; solo el alta puede crear la promo ya en «solo salón».
 - **Despliegue:** la migración aditiva `20261026120000_promo_carta_solo_salon` va ANTES que el código; su `down.sql` aborta si hay promos en «solo salón» (bajarla las haría públicas).
 - **Fuera de alcance, pendiente aparte:** la carta pública no respeta la vigencia (`vigenteDesde`, `vigenteHasta`, `diasDeSemana`) de la promo.
+
+## Enmienda PROPUESTA (2026-11-05): D-6, el mozo elige entre las opciones permitidas en las entradas «a elegir» — pendiente de aprobación del dueño
+
+**Estado: PROPUESTA. No se implementó nada.** Diseño y maqueta: `docs/diseno-promo-subconjunto-2026-11-04.md` (maqueta aprobada por el dueño el 2026-11-05). Esta enmienda solo cambia D-6; el resto de las decisiones de este ADR (D-1 a D-5, D-7 a D-9) sigue como está, con la precisión de D-8 y D-9 que se dice abajo.
+
+**Qué dice D-6 hoy.** «El mozo NO elige opciones dentro del combo en v1.» Un producto con grupo obligatorio solo entra como entrada de un lugar LISTA con CONFIGURACIÓN FIJA que carga el dueño (`EntradaDeCupo.claveConfiguracion` más `OpcionDeEntradaDeCupo`); en un lugar de sección sigue `PROMO_CON_OPCIONES` (`src/server/actions/pos/casos-de-uso/agregar-items.ts`). Consecuencia: para el bife real (2 preparaciones × 2 proteínas × 3 guarniciones) hacen falta 12 entradas cargadas a mano.
+
+**Qué cambia (decisiones del dueño del 2026-11-04 y 2026-11-05, todas CONFIRMADAS).**
+1. La entrada de un lugar LISTA gana un modo: `FIJAS` (lo de hoy, por defecto) o `A_ELEGIR`. Solo en las entradas que el dueño marca `A_ELEGIR` el mozo elige opciones; en todo lo demás sigue D-6 sin cambios (lugares de sección, plato del día, entradas `FIJAS`).
+2. En una entrada `A_ELEGIR`, las filas de `OpcionDeEntradaDeCupo` son las opciones PERMITIDAS por grupo (en lugar de la configuración fija). El mozo elige solo entre ellas.
+3. Cuánto elige de cada grupo lo fijan los límites del GRUPO (y los que el plato sobrescribe en `ProductoAdmiteGrupo`); la promo no tiene un tope propio. En la pantalla de la promo esos límites se ven en solo lectura.
+4. Un grupo de adicionales (con recargo) NO se permite dentro de una promo de precio fijo.
+5. El precio de la promo es FIJO elija lo que elija el mozo: el total cobrado no cambia, solo el reparto entre componentes (`prorratearPrecioPromo`, `src/core/pos/promo-combo.ts`).
+6. La lista de productos es explícita: se tildan los productos de venta de una sección de la carta o de «fuera de la carta»; el origen es la fuente para tildar, no una regla que siga a la sección.
+
+**Por qué sigue coherente con la configuración fija.** La configuración fija es el caso particular de esta regla en que cada grupo tiene UNA sola opción permitida y el mozo no elige. Ambos modos comparten: la misma función que arma y valida la línea (`armarLineaConfigurada`, `src/core/pos/linea-configurada.ts`, que ya recibe «qué grupos y opciones admite el producto» y valida lo elegido contra eso: «solo estas opciones» es pasarle esa lista más corta, sin una regla paralela); la misma escritura del componente configurado, colgado de su `PromoCuenta`, con su foto de opciones; la misma identidad de la entrada (el canónico `opcionId=cantidad` ordenado, ahora del CONJUNTO permitido: cambiar lo permitido es otra entrada y la anterior se desactiva, como hoy); y la misma lectura para el selector y para el servidor (`src/server/lecturas/pos/entradas-de-promo-para-vender.ts`), de modo que el mozo nunca ve lo que el servidor rechazaría. Fail-closed: un grupo obligatorio que se queda sin opciones permitidas efectivas (por una opción apagada en la sucursal, por ejemplo) deja la entrada fuera de lo que se ofrece.
+
+**Qué se precisa de D-8 y D-9.** El precio de referencia (D-8) y el origen de stock (D-9) se evalúan sobre la configuración ELEGIDA al agregar, con `rechazoDeComponenteDeCombo` (`src/core/pos/componente-de-combo.ts`); al cargar la entrada se exige que exista al menos una configuración armable. Sin cambio: D-2 (IVA, el producto es el mismo), el piso de $0,01 por unidad (suma de máximos de unidades, no depende de lo elegido), D-7 (vigencia) y la lectura al agregar (lo ya cargado no cambia si después cambia lo permitido).
+
+**Datos (en papel, no migrado).** Una columna aditiva y reversible, `EntradaDeCupo.modoDeOpciones` TEXT NOT NULL DEFAULT `'FIJAS'` con CHECK `('FIJAS','A_ELEGIR')`; sin tabla nueva ni permiso nuevo. `down.sql` que aborta si hay entradas `A_ELEGIR`. La migración exige autorización expresa, respaldo y ensayo (`docs/deploy-con-migraciones.md`).
+
+**Riesgos y su verificación.** El resultado de las tres verificaciones previas (ticket y comanda con dos configuraciones del mismo producto, cobro con una opción agotada y reporte de margen), hechas con una venta de prueba en una base local descartable, está en la sección 14 de `docs/diseno-promo-subconjunto-2026-11-04.md`.
+
+**Aprobación:** pendiente del dueño. Hasta entonces este ADR no cambia de estado y D-6 sigue vigente.
