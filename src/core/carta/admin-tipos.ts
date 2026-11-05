@@ -269,6 +269,8 @@ export interface EntradaDeLugarAdmin {
   activa: boolean;
   productoId: string;
   nombre: string;
+  /** `A_ELEGIR`: las opciones de la entrada son las PERMITIDAS y el mozo elige entre ellas (no es una configuración fija). */
+  modoDeOpciones: "FIJAS" | "A_ELEGIR";
 }
 
 /** Un lugar de entradas de una promo: LISTA («Bebida»: se elige de una lista; con una sola entrada y mínimo = máximo, viene FIJO) o DEL_DIA («Plato del día»: lo carga cada sucursal por día). */

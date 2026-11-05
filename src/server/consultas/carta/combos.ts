@@ -81,6 +81,7 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
         id: e.id,
         activa: e.activa,
         productoId: e.productoId,
+        modoDeOpciones: e.modoDeOpciones as "FIJAS" | "A_ELEGIR",
         // «el mozo elige»: las opciones de la entrada son las PERMITIDAS (sin sus unidades: el tope es el de los límites del grupo).
         nombre:
           e.modoDeOpciones === "A_ELEGIR"

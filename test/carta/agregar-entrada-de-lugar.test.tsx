@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { ProductoParaEntrada } from "../../src/core/carta/public";
+import { esFijo } from "../../src/app/(app)/carta/parametrizacion/formularios";
 import { AgregarEntradaDeLugar } from "../../src/app/(app)/carta/agregar-entrada-de-lugar";
 
 /**
@@ -66,5 +67,13 @@ describe("AgregarEntradaDeLugar: un lugar que ya tiene opciones", () => {
 
   it("el botón de sumar arranca apagado (nada tildado)", () => {
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Sumar<\/button>/);
+  });
+});
+
+describe("esFijo: una entrada «el mozo elige» no es una configuración fija", () => {
+  const lugar = (modoDeOpciones: "FIJAS" | "A_ELEGIR") => ({ id: "l", tipo: "LISTA" as const, nombre: "Plato", cantidadMinima: 1, cantidadMaxima: 1, orden: 1, entradas: [{ id: "e", activa: true, productoId: "bife", nombre: "BIFE-", modoDeOpciones }] });
+  it("una sola entrada fija con mínimo = máximo viene fija; la «a elegir», no", () => {
+    expect(esFijo(lugar("FIJAS"))).toBe(true);
+    expect(esFijo(lugar("A_ELEGIR"))).toBe(false);
   });
 });

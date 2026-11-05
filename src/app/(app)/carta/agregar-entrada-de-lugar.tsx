@@ -152,11 +152,11 @@ export function AgregarEntradaDeLugar({
       {origenPendiente !== null && (
         <Aviso variante="advertencia">
           <p>
-            Cambiar el origen saca de «{lugar}» las {entradasActivas.length} opción{entradasActivas.length === 1 ? "" : "es"} que ya tiene (después las podés volver a ofrecer). El origen es solo de dónde se tildan los productos.
+            Cambiar el origen saca de «{lugar}» {entradasActivas.length === 1 ? "la opción que ya tiene" : `las ${entradasActivas.length} opciones que ya tienen`} (después las podés volver a ofrecer). El origen es solo de dónde se tildan los productos.
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Boton tamano="tactil" variante="peligro" disabled={pendiente} onClick={confirmarCambioDeOrigen}>
-              Cambiar y sacar las {entradasActivas.length} opciones
+              {entradasActivas.length === 1 ? "Cambiar y sacar la opción" : `Cambiar y sacar las ${entradasActivas.length} opciones`}
             </Boton>
             <Boton tamano="tactil" variante="secundario" disabled={pendiente} onClick={() => setOrigenPendiente(null)}>
               Dejar el origen como está
