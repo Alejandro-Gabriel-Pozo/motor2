@@ -75,6 +75,8 @@ const DOS = "puré · ensalada";
 
 /** El bloque de la guarnición (con o sin «elegís …» en el título). */
 const bloque = (titulo: string, opciones: string) => ({ titulo, opciones, paraLosPlatos: PARA });
+/** El bloque de un grupo que pertenece a UN solo plato (2026-11-05): va debajo de ese plato y no dice «Con los platos que incluyen…» (no hay otros). */
+const bloquePropio = (titulo: string, opciones: string) => ({ titulo, opciones, paraLosPlatos: "" });
 
 export const REGLAS: readonly Regla[] = [
   // 1 y 2: nada que dibujar.
@@ -82,16 +84,17 @@ export const REGLAS: readonly Regla[] = [
   { nombre: "R2 una sola opción no es una elección", si: { visible: ["visible"], cantidad: [1] }, entonces: NADA },
 
   // ---- Canales de SECCIÓN (pública, impresa): Bife y Milanesa, con el bloque completo ----
-  // P1 no incluye el grupo: solo Milanesa lo dice, y como es la única, sus límites coinciden con los del bloque.
+  // P1 no incluye el grupo: solo Milanesa lo tiene, así que el grupo es PROPIO de Milanesa (2026-11-05, decisión del dueño: «los sabores quedaron al pie y son del jugo»): va debajo de Milanesa, sin la línea
+  // «Incluye 1 guarnición · ver opciones ↓» (el grupo ya está a la vista, no hay nada que invitar a buscar abajo) y sin «Con los platos que incluyen…» ni «Lo incluyen:».
   {
     nombre: "R3 sección, Bife no incluye, todas las opciones",
     si: { visible: ["visible"], cantidad: [3], canal: SECCION, incluye: ["no"], opcion: ["todas-encendidas"] },
-    entonces: { bife: null, milanesa: "Incluye 1 guarnición", bloque: bloque("Guarnición · elegís 1", TRES) },
+    entonces: { bife: null, milanesa: null, bloque: bloquePropio("Guarnición · elegís 1", TRES) },
   },
   {
     nombre: "R3b sección, Bife no incluye, última apagada",
     si: { visible: ["visible"], cantidad: [3], canal: SECCION, incluye: ["no"], opcion: ["ultima-apagada"] },
-    entonces: { bife: null, milanesa: "Incluye 1 guarnición", bloque: bloque("Guarnición · elegís 1", DOS) },
+    entonces: { bife: null, milanesa: null, bloque: bloquePropio("Guarnición · elegís 1", DOS) },
   },
   // Bife incluye todas las del bloque.
   {
