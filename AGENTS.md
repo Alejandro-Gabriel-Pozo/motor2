@@ -58,6 +58,16 @@ Los modelos **Opus** y **Fable** (cualquier versión) **no escriben código** en
 - En el informe final de cada tarea se declara qué código salió de qué modelo.
 - Alcance (supuesto declarado, el dueño lo corrige si no es así): la regla es sobre código. Los documentos de diseño (`docs/`) y las operaciones de git no la alcanzan.
 
+## Maquetas con pantallas y datos reales (regla del dueño, 2026-11-05)
+
+Toda maqueta o captura que se le muestre al dueño para aprobar es la **pantalla real del sistema con datos reales de su empresa** (el bife, el jugo Fresli, sus proveedores y precios), no un dibujo HTML armado aparte con datos inventados: así se pierde el contexto y no se entiende.
+
+- Si la pantalla todavía no existe, se arma la pantalla real mínima en una rama (sin migración ni lógica extra) y se captura sobre datos reales.
+- Los datos reales se leen de producción solo en lectura, o se copian a una base local descartable; nunca se escribe en producción para una maqueta. Los datos de prueba con sufijos numéricos no sirven para que el dueño apruebe: confunden.
+- Capturas a 375 px (celular) y, si hace falta, a escritorio.
+- Las maquetas HTML anteriores al 2026-11-05 (carpeta `_maquetas/` de `motor2-docs`) quedan como antecedente; la de promos, ya aprobada, se respeta.
+- Detalle y motivo: `motor2-docs/memoria-claude/feedback-maquetas-con-datos-y-pantallas-reales.md`.
+
 ## Exploración con Explore
 
 Antes de tocar código en una tarea que obliga a ubicar algo en más de ~10 archivos
