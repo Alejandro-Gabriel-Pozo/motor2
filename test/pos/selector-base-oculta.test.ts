@@ -54,6 +54,43 @@ describe("selector del mozo: base con el nombre oculto", () => {
     }
   });
 
+  describe("entrada «a elegir» de una promo: el nombre para mostrar nunca es el interno", () => {
+    const promo = (productoId: string, nombre: string) => ({
+      promoCartaId: "p1",
+      seccionCartaId: "s1",
+      titulo: "Bife con guarnición",
+      precio: 55000,
+      cupos: [
+        {
+          cupoId: "c1",
+          tipo: "LISTA" as const,
+          nombre: "Plato principal",
+          cantidadMinima: 1,
+          cantidadMaximaCupo: 1,
+          fijo: false,
+          entradas: [
+            { entradaId: "e-elegir", productoId, nombre, precioLista: 1, grupos: [] },
+            { entradaId: "e-fija", productoId, nombre, precioLista: 1 },
+          ],
+        },
+      ],
+    });
+    const entradasDe = (carta: CartaV1, pedibles: ProductoPedible[], p: ReturnType<typeof promo>) => {
+      const e = armarSelectorCartaPos(carta, pedibles, undefined, [p]).seccionesCarta[0]!.entradas.find((x) => x.tipo === "promo")!;
+      const cupo = e.tipo === "promo" ? e.cupos[0]! : null;
+      return cupo && "cupoId" in cupo ? Object.fromEntries(cupo.entradas.map((x) => [x.entradaId, x.nombre])) : {};
+    };
+
+    it("base con el nombre oculto: los renglones de la carta unidos con « · » (solo la entrada «a elegir»; la fija queda como hoy)", () => {
+      expect(entradasDe(cartaCon([item("p-bife", "BIFE-", tabla(false))]), [pedible("p-bife", "BIFE-")], promo("p-bife", "BIFE-"))).toEqual({ "e-elegir": "Bife a la criolla · Bife con chimichurri", "e-fija": "BIFE-" });
+    });
+    it("sin nombre oculto: el nombre en la carta y, si no, el del producto", () => {
+      const conNombre = { ...pedible("p", "BIFE-"), nombreEnCarta: "Bife de la casa" };
+      expect(entradasDe(cartaCon([item("p", "BIFE-")]), [conNombre], promo("p", "BIFE-"))["e-elegir"]).toBe("Bife de la casa");
+      expect(entradasDe(cartaCon([item("p", "BIFE-")]), [pedible("p", "BIFE-")], promo("p", "BIFE-"))["e-elegir"]).toBe("BIFE-");
+    });
+  });
+
   describe("opcionDeLaFila", () => {
     const g = (opciones: { opcionId: string; nombre: string; esNinguna?: boolean }[], extra = {}) => ({ admitido: true, activo: true, opciones: opciones.map((o) => ({ esNinguna: false, ...o })), ...extra });
     const grupos = [g([{ opcionId: "lomo", nombre: "Lomo" }]), g([{ opcionId: "cri", nombre: "A la criolla" }, { opcionId: "chi", nombre: "Con chimichurri" }])];
