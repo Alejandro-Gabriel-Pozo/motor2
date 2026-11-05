@@ -9,8 +9,8 @@
  */
 export { estaEnListaPorAgregar, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar } from "./agregar-lista-estado";
 export type { EstadoListaPorAgregar } from "./agregar-lista-estado";
-export { cantidadElegida, claveDeCupo, eleccionParaAgregar, estadoInicialArmarPromo, puedeConfirmarArmarPromo, reducirArmarPromo, totalElegidoDelCupo } from "./armar-promo-estado";
-export type { EleccionParaAgregar } from "./armar-promo-estado";
+export { cantidadElegida, claveDeCupo, eleccionParaAgregar, estadoInicialArmarPromo, gruposQueFaltanDeUnidad, puedeConfirmarArmarPromo, reducirArmarPromo, totalElegidoDelCupo, unidadesDeEntrada } from "./armar-promo-estado";
+export type { EleccionParaAgregar, UnidadAElegir } from "./armar-promo-estado";
 export { MAXIMO_ITEMS_POR_AGREGADO } from "./cantidad-pedido";
 export { armarComandas } from "./comanda";
 export type { ComandaDeEnvio } from "./comanda";

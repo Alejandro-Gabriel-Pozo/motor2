@@ -1,8 +1,9 @@
 import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { whereDisponibleEn } from "@/core/catalogo/public";
-import { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, promoVigenteEl, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal } from "@/core/carta/public";
+import { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, promoVigenteEl, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal, nombreParaMostrar } from "@/core/carta/public";
 import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
+import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import { cargarEntradasDePromoParaVender, type CupoDeEntradasLeido } from "@/server/lecturas/pos/entradas-de-promo-para-vender";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCarta } from "@/server/lecturas/carta/menu";
@@ -148,6 +149,35 @@ export async function cargarSelectorCartaPos(
             .map(async (p) => [p.id, await cargarEntradasDePromoParaVender(db, { sucursalId, dia, cupos: cuposDeEntradasDe(p), precioLocalActivo: precioLocalActivoLeido })] as const)
         )
   );
+  // Promo «a elegir»: el plato se nombra para quien lo elige con `nombreParaMostrar` (la regla única de la administración de promos): una base con el nombre oculto, por los rótulos de su medida
+  // («Bife a criolla · Bife con chimichurri (BIFE-)»); si no, el nombre en la carta o el del producto. Solo se lee si hay alguna entrada «a elegir».
+  const productosAElegir = [...new Map([...entradasPorPromo.values()].flatMap((e) => [...e.aElegirPorEntrada.values()].map((a) => [a.productoId, a.producto.nombre] as const))).entries()];
+  const nombreAElegirPorProducto = new Map<string, string>();
+  if (productosAElegir.length > 0) {
+    const ids = productosAElegir.map(([id]) => id);
+    const [admitidos, contenidos] = await Promise.all([
+      cargarOpcionesParaVender(db, { sucursalId, productoIds: ids }),
+      db.contenidoCartaProducto.findMany({ where: { ...whereCartaDeSucursal(sucursalId), productoId: { in: ids } }, select: { productoId: true, nombreEnCarta: true, mostrarNombreArriba: true } }),
+    ]);
+    const medidaDe = (id: string) => admitidos.get(id)?.grupos.find((g) => g.tipo === "MEDIDA" && g.admitido && g.activo);
+    const prefijos = new Map(
+      (await db.grupoDeOpciones.findMany({ where: { id: { in: ids.flatMap((id) => medidaDe(id)?.grupoId ?? []) } }, select: { id: true, prefijoEnCarta: true } })).map((g) => [g.id, g.prefijoEnCarta] as const)
+    );
+    const contenidoDe = new Map(contenidos.map((c) => [c.productoId, c] as const));
+    for (const [id, nombre] of productosAElegir) {
+      const medida = medidaDe(id);
+      nombreAElegirPorProducto.set(
+        id,
+        nombreParaMostrar({
+          nombre,
+          nombreEnCarta: contenidoDe.get(id)?.nombreEnCarta ?? null,
+          esBase: admitidos.get(id)?.esBase ?? false,
+          mostrarNombreArriba: contenidoDe.get(id)?.mostrarNombreArriba ?? false,
+          medida: medida ? { prefijoEnCarta: prefijos.get(medida.grupoId) ?? null, opciones: medida.opciones.filter((o) => o.activa && o.admitida) } : null,
+        })
+      );
+    }
+  }
   const promos: PromoSelectorCartaPos[] = promosDeHoy.flatMap((p): PromoSelectorCartaPos[] => {
     const entradas = entradasPorPromo.get(p.id);
     const deSeccion = new Map(cuposDeSeccionActivos(p.cupos).map((c) => [c.id, { seccionCartaId: c.seccionCartaId, nombreSeccion: c.seccionCarta.nombre, cantidadMinima: c.cantidadMinima, cantidadMaximaCupo: c.cantidadMaxima }]));
@@ -163,7 +193,7 @@ export async function cargarSelectorCartaPos(
         cantidadMinima: definicion.cantidadMinima,
         cantidadMaximaCupo: definicion.cantidadMaximaCupo,
         fijo: esCupoFijo(definicion),
-        entradas: [...definicion.entradas.values()].map((e) => ({ entradaId: e.entradaId, productoId: e.productoId, nombre: entradas.nombrePorEntrada.get(e.entradaId) ?? "", precioLista: entradas.precioCartaPorClave.get(e.claveComponente) ?? 0 })),
+        entradas: [...definicion.entradas.values()].map((e) => ({ entradaId: e.entradaId, productoId: e.productoId, nombre: (e.aElegir ? nombreAElegirPorProducto.get(e.productoId) : undefined) ?? entradas.nombrePorEntrada.get(e.entradaId) ?? "", precioLista: entradas.precioCartaPorClave.get(e.claveComponente) ?? 0, ...(e.aElegir ? { grupos: entradas.aElegirPorEntrada.get(e.entradaId)?.grupos ?? [] } : {}) })),
       };
       return [deEntradas];
     });

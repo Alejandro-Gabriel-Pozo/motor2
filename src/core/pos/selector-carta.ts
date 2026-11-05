@@ -1,5 +1,6 @@
 import type { CartaV1, PresentacionCartaV1 } from "@/core/carta/public";
 import { primeraEnMinuscula } from "@/core/opciones/public";
+import type { GrupoParaVender } from "./linea-configurada";
 
 /**
  * «Agregar al pedido» del POS organizado por SECCIÓN DE CARTA (docs/plan-selector-carta-pos-2026-09-25.md) y, dentro de cada
@@ -107,6 +108,11 @@ export interface EntradaDeCupoSelectorCarta {
   nombre: string;
   /** El precio de lista con su configuración en la sucursal (la referencia del reparto). */
   precioLista: number;
+  /**
+   * Promo «a elegir» (`EntradaDeCupo.modoDeOpciones = 'A_ELEGIR'`, diseño 2026-11-04 §7): los grupos con SOLO las opciones permitidas efectivas de hoy, que el mozo elige después de elegir el plato. Es la MISMA
+   * lectura que usa el servidor para validar lo que llega (`aElegirPorEntrada`). Presente = la entrada se elige con opciones; ausente = configuración fija, como siempre.
+   */
+  grupos?: readonly GrupoParaVender[];
 }
 
 /** GO-3b (ADR-032): un cupo LISTA («Entrada»: una lista de productos, con o sin configuración) o DEL_DIA («Plato del día»: lo que el encargado cargó hoy en la sucursal). */
