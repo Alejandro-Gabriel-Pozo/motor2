@@ -73,7 +73,7 @@ describe("incluyeDeLaSeccion", () => {
     expect(textoDelTitulo(r.bloques[0]!)).toBe("Guarnición · elegís 1");
     expect(r.platos.map(textoDeIncluye)).toEqual(["Incluye 1 guarnición", "Incluye 1 guarnición"]);
     expect(textoDelTitulo(incluyeDeLaSeccion([[eleccion("Salsa", ["a", "b"], 2, 2)]]).bloques[0]!)).toBe("Salsa · elegís 2");
-    expect(textoDelTitulo(incluyeDeLaSeccion([[eleccion("Salsa", ["a", "b"], 0, 2)]]).bloques[0]!)).toBe("Salsa · opcional, hasta 2");
+    expect(textoDelTitulo(incluyeDeLaSeccion([[eleccion("Salsa", ["a", "b"], 0, 2)]]).bloques[0]!)).toBe("Salsa · elegís hasta 2 (opcional)");
     expect(textoDelTitulo(incluyeDeLaSeccion([[eleccion("Salsa", ["a", "b", "c"], 1, 3)]]).bloques[0]!)).toBe("Salsa · elegís de 1 a 3");
   });
 
@@ -139,7 +139,7 @@ describe("incluyeDeLaSeccion", () => {
 
     it("«Va con»: los platos del bloque en el orden de la sección, y el que admite un subconjunto lo dice", () => {
       expect(va("Guarnición")).toEqual(["Bife a la criolla", "Bife con chimichurri", "Pechuga grille (solo puré o ensalada)"]);
-      expect(textoDeVaCon(va("Salsa"))).toBe("Va con: Bife a la criolla · Chivo del norte");
+      expect(textoDeVaCon(va("Salsa"))).toBe("Lo incluyen: Bife a la criolla · Chivo del norte");
     });
 
     it("sin platos no hay «Va con»; una posición que no existe se ignora", () => {

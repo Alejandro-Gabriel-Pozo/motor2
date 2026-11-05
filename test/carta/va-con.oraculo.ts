@@ -20,7 +20,7 @@ export const DE_CARTA = "Bife de la casa";
 export const RENGLONES = ["Bife a criolla", "Bife con chimichurri"] as const;
 export const AGRUPADO = "Platos del día";
 
-/** Lo que DEBE decir «Va con» (sin el «Va con: »), en el orden de la sección, para ese plato. */
+/** Lo que DEBE decir «Va con» (sin el «Lo incluyen: »), en el orden de la sección, para ese plato. */
 export function vaConEsperado(forma: (typeof FORMA_DEL_PLATO)[number], conNombre: (typeof NOMBRE_EN_CARTA)[number], subconjunto: (typeof SUBCONJUNTO)[number]): string[] {
   const nombres =
     forma === "base-oculta"

@@ -69,10 +69,10 @@ interface IncluyeDeLaSeccion {
 
 type Eleccion = Extract<AclaracionParaIncluye, { tipo: "eleccion" }>;
 
-/** «elegís 1», «opcional, hasta 2», «elegís de 1 a 3»: los límites en palabras (los mismos casos que `textoDeLimites`, en la persona de la carta). */
+/** «elegís 1», «elegís hasta 2 (opcional)», «elegís de 1 a 3»: los límites en palabras (siempre el verbo «elegís», decisión del dueño, 2026-11-04) (los mismos casos que `textoDeLimites`, en la persona de la carta). */
 function textoDeElegis(minimo: number, maximo: number): string {
   if (minimo === maximo) return `elegís ${maximo}`;
-  if (minimo === 0) return `opcional, hasta ${maximo}`;
+  if (minimo === 0) return `elegís hasta ${maximo} (opcional)`;
   return `elegís de ${minimo} a ${maximo}`;
 }
 
@@ -262,7 +262,7 @@ export function nombresDeLosPlatosDelItem(item: { nombre: string; presentacion?:
   return [item.nombre];
 }
 
-/** «Va con: Bife a la criolla · Pechuga grille (solo puré o ensalada)»; sin platos, `null`. */
+/** «Lo incluyen: Bife a la criolla · Pechuga grille (solo puré o ensalada)»; sin platos, `null`. (Antes «Va con: …»; cambio de texto confirmado por el dueño, 2026-11-04.) */
 export function textoDeVaCon(lista: readonly string[]): string | null {
-  return lista.length === 0 ? null : `Va con: ${lista.join(" · ")}`;
+  return lista.length === 0 ? null : `Lo incluyen: ${lista.join(" · ")}`;
 }

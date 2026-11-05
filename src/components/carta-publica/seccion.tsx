@@ -198,7 +198,7 @@ function LineaIncluye({ partes, colores, interactiva = false }: { partes: readon
         </span>
       ))}
       <span className="carta-solo-pantalla" data-cue-abajo>
-        {" · elegí abajo "}
+        {" · ver opciones "}
         <span aria-hidden="true" className="carta-flecha">
           ↓
         </span>
@@ -256,7 +256,7 @@ function DetalleDelBloque({ bloque }: { bloque: BloqueDeOpciones }) {
     <>
       <details data-detalle-del-bloque className="carta-solo-pantalla mt-1">
         <summary data-rol="aclaracion" className="carta-rol-aclaracion min-h-[44px] cursor-pointer py-2" style={{ color: "var(--carta-ink)" }}>
-          Ver detalle ▾
+          Qué lleva cada opción ▾
         </summary>
         {filas}
       </details>
