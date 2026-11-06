@@ -248,11 +248,11 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
     motivo: "prender una opción de un lugar LISTA (GO-3b, D-2): mismas alícuotas que el alta, en la carta de TODAS las sucursales; escribe solo la entrada y su auditoría (de empresa)",
   },
   // ── Compras: aviso C25 de posible factura repetida ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  "src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor.ts": {
+  "src/server/actions/movimientos/casos-de-uso/permiso-en-las-sucursales-de-la-factura.ts": {
     lectores: { sucursalesConParteDeFactura: 0 },
     directos: [],
     devuelve: "SUCURSALES_PARA_EL_GATE",
-    motivo: "E3a (ADR-041): anular una factura de proveedor entera: en qué sucursales ya entró una parte (solo sus ids), para pedir `anular_compra` EN CADA UNA con `permisoYAlcanceEnSucursal` antes de escribir su reversión; si falta en una, se rechaza. No se muestra nada de otra sucursal",
+    motivo: "E3a (ADR-041) y U1 de «una sola compra»: anular o corregir los datos de una factura de proveedor entera: en qué sucursales ya entró una parte (solo sus ids), para pedir `anular_compra` o `corregir_compra` EN CADA UNA con `permisoYAlcanceEnSucursal` antes de escribir su reversión; si falta en una, se rechaza. No se muestra nada de otra sucursal",
   },
   "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts": {
     lectores: { cargarComprasParaAvisoDeDuplicado: 0 },
@@ -261,12 +261,12 @@ const VERIFICACION: Readonly<Record<string, UsoDeVerificacion>> = {
     devuelve: "MENSAJE",
     motivo: "cargar una compra (toda compra es una factura de una o más partes, U0 de «una sola compra»): el rechazo del número repetido en toda la empresa (otra factura o una compra anterior de cualquier sucursal, `hayComprobanteVigenteEnLaEmpresa`) y C25, las compras candidatas de TODA la empresa para el aviso de posible repetida (el texto da el día solo de las sucursales que quien carga ve — `avisoDePosibleDuplicado` — y nunca el importe ni el N.º de factura; no bloquea); la escritura NO se ensancha. Sale solo el mensaje único o el aviso, sin fecha ajena ni sucursal",
   },
-  "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts": {
+  "src/server/actions/movimientos/casos-de-uso/corregir-factura-proveedor.ts": {
     lectores: {},
     directos: [],
     transaccionA: { conTransaccionSerializable: 0 },
     devuelve: "MENSAJE",
-    motivo: "corregir una compra: el rechazo del número repetido en toda la empresa al cambiar el proveedor o el número (`hayComprobanteVigenteEnLaEmpresa`, sin contar la propia compra); la escritura NO se ensancha. Sale solo el mensaje único, sin fecha ni sucursal",
+    motivo: "corregir los datos de una factura: el rechazo del número repetido en toda la empresa al cambiar el proveedor o el número (`hayComprobanteVigenteEnLaEmpresa`, sin contar la propia factura ni sus partes); la escritura NO se ensancha. Sale solo el mensaje único, sin fecha ni sucursal",
   },
 };
 

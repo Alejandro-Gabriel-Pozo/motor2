@@ -37,15 +37,16 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   "arg:empresaId": { dimensiones: [], noAfecta: "Otra empresa", motivo: "el cerrojo es por empresa y el RLS aísla las lecturas: otra empresa no se ve" },
   "arg:proveedorId": { dimensiones: [], noAfecta: "Otro proveedor", motivo: "la clave es por proveedor: otro proveedor con el mismo número no choca" },
   "arg:nroFactura": { dimensiones: ["N", "L"], motivo: "el número es la clave; normalizado, incluye la letra («A:1-1234» contra «1-1234»), de ahí L" },
-  "arg:excluirOperacionId": { dimensiones: ["O"], motivo: "la corrección excluye a la propia compra; la compra nueva no excluye nada" },
+  "arg:excluirFacturaId": { dimensiones: ["O"], motivo: "la corrección excluye a la propia factura (su cabecera y la compra de sus partes); la compra nueva no excluye nada" },
   "where:facturaProveedor.proveedorId": { dimensiones: [], noAfecta: "Otro proveedor", motivo: "misma clave por proveedor, en la cabecera de la factura repartida" },
   "where:facturaProveedor.nroFacturaNormalizado": { dimensiones: ["N", "L"], motivo: "la clave normalizada (con la letra como prefijo) de la cabecera: N = REPETIDO_FACTURA_REPARTIDA, L" },
+  "where:facturaProveedor.id": { dimensiones: ["O"], motivo: "excluye a la factura que se corrige (`excluirFacturaId`)" },
   "where:facturaProveedor.anuladaEn": { dimensiones: [], noAfecta: "ANULADO", motivo: "solo cuentan las cabeceras vigentes" },
   "where:operacion.proceso": { dimensiones: ["N"], motivo: "solo las compras simples cuentan como comprobante (N = REPETIDO_MISMA_SUCURSAL / REPETIDO_OTRA_SUCURSAL)" },
   "where:operacion.proveedorId": { dimensiones: [], noAfecta: "Otro proveedor", motivo: "misma clave por proveedor, en la compra simple" },
   "where:operacion.anuladaEn": { dimensiones: [], noAfecta: "ANULADO", motivo: "solo cuentan las compras vigentes" },
   "where:operacion.nroFactura": { dimensiones: ["N", "L"], motivo: "la preselección por el último grupo de dígitos; la comparación exacta normaliza (con la letra) en el código" },
-  "where:operacion.id": { dimensiones: ["O"], motivo: "excluye a la compra que se corrige (`excluirOperacionId`)" },
+  "where:operacion.NOT": { dimensiones: ["O"], motivo: "excluye la compra de las partes de la factura que se corrige (`excluirFacturaId`)" },
 };
 
 /** Las propiedades de primer nivel de un objeto `where`, entrando por los `...(cond ? { … } : {})`. */

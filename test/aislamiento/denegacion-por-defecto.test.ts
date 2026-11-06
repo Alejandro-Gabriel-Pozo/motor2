@@ -58,7 +58,7 @@ const MAXIMOS = {
 describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario", () => {
   it("el inventario ve las puertas de siempre (el lector por AST no se rompió)", () => {
     for (const ancla of [
-      "accion|actions/movimientos/compras.ts|anularCompra",
+      "accion|actions/movimientos/facturas-proveedor.ts|anularFacturaProveedor",
       "accion|actions/pos/cuenta-cierre.ts|cerrarCuenta",
       "accion|actions/carta/copiar-carta.ts|copiarCartaDeSucursal",
       "consulta|consultas/pos/detalle-de-mesa.ts|obtenerDetalleDeMesa",

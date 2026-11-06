@@ -1,3 +1,4 @@
+import { borrarCabeceraSembrada, borrarFacturaSembrada, sembrarFacturaDeUnaParte } from "./fixtures/factura-de-una-parte";
 import { randomUUID } from "node:crypto";
 import { test as base, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
@@ -613,14 +614,15 @@ testAutenticado(
     const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_A11Y_AN_${marca}`, nombre: `E2E A11y Proveedor Anular ${marca}` } });
     const productos: string[] = [];
     const operaciones: string[] = [];
+    const facturas: string[] = [];
     async function compra(sufijo: string, consumido: number) {
       const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-AN-${sufijo}-${marca}`, nombre: `E2E A11y Anular ${sufijo} ${marca}`, tipo: "MP", unidadStockId: kg.id } });
       productos.push(producto.id);
-      const op = await prisma.operacion.create({
-        data: { sucursalId, proceso: "COMPRA", fecha: new Date("2026-08-10T12:00:00Z"), proveedorId: proveedor.id, nroFactura: `A11Y-${sufijo}-${marca}`, usuarioId: admin.id },
-      });
+      // Toda compra es una factura de una parte (U1 de «una sola compra»).
+      const f = await sembrarFacturaDeUnaParte({ sucursalId, seccionId, proveedorId: proveedor.id, productoId: producto.id, usuarioId: admin.id, nroFactura: `A11Y-${sufijo}-${marca}`, cantidad: 10, precioTotal: 100 });
+      const op = { id: f.operacionId };
+      facturas.push(f.facturaId);
       operaciones.push(op.id);
-      await prisma.movimientoStock.create({ data: { operacionId: op.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Compra", precioTotal: 100, precioPorUnidadStock: 10 } });
       if (consumido) {
         const consumo = await prisma.operacion.create({ data: { sucursalId, proceso: "CONSUMO", fecha: new Date("2026-08-11T12:00:00Z"), usuarioId: admin.id } });
         operaciones.push(consumo.id);
@@ -641,11 +643,13 @@ testAutenticado(
       expect((await new AxeBuilder({ page }).analyze()).violations, "detalles abiertos, en reposo").toEqual([]);
 
       // Confirmación abierta: acá viven el role="alert", el aria-describedby y los dos botones.
+      await tarjetaIntacta.getByLabel("Motivo de la anulación").fill("Prueba de accesibilidad");
       await tarjetaIntacta.getByRole("button", { name: /^Anular compra/ }).click();
       await expect(tarjetaIntacta.getByRole("button", { name: "Sí, anular" })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "confirmación abierta").toEqual([]);
 
       // Rechazo por stock consumido: el mensaje de error queda visible.
+      await tarjetaConsumida.getByLabel("Motivo de la anulación").fill("Prueba de accesibilidad");
       await tarjetaConsumida.getByRole("button", { name: /^Anular compra/ }).click();
       await tarjetaConsumida.getByRole("button", { name: "Sí, anular" }).click();
       await expect(tarjetaConsumida.getByRole("alert").filter({ hasText: "No se puede anular" })).toBeVisible();
@@ -658,9 +662,10 @@ testAutenticado(
       expect((await new AxeBuilder({ page }).analyze()).violations, "compra anulada").toEqual([]);
     } finally {
       const reversiones = await prisma.operacion.findMany({ where: { OR: [{ detalleLibre: { contains: intacta.id } }, { detalleLibre: { contains: consumida.id } }] }, select: { id: true } });
+      await borrarFacturaSembrada(facturas);
       await prisma.movimientoStock.deleteMany({ where: { productoId: { in: productos } } });
       await prisma.operacion.deleteMany({ where: { id: { in: [...operaciones, ...reversiones.map((r) => r.id)] } } });
-      await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: { in: [intacta.id, consumida.id] } } });
+      await borrarCabeceraSembrada(facturas);
       await prisma.producto.deleteMany({ where: { id: { in: productos } } });
       await prisma.proveedor.deleteMany({ where: { id: proveedor.id } });
     }
@@ -676,13 +681,13 @@ testAutenticado(
     const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-CO-${marca}`, nombre: `E2E A11y Corregir ${marca}`, tipo: "MP", unidadStockId: kg.id } });
     const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_A11Y_CO_${marca}`, nombre: `E2E A11y Proveedor Corregir ${marca}` } });
     const operaciones: string[] = [];
+    const facturas: string[] = [];
     async function compra(nroFactura: string) {
-      const op = await prisma.operacion.create({
-        data: { sucursalId, proceso: "COMPRA", fecha: new Date("2026-08-10T12:00:00Z"), proveedorId: proveedor.id, nroFactura, usuarioId: admin.id },
-      });
-      operaciones.push(op.id);
-      await prisma.movimientoStock.create({ data: { operacionId: op.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 5, detalle: "Compra", precioTotal: 50, precioPorUnidadStock: 10 } });
-      return op;
+      // Toda compra es una factura de una parte (U1 de «una sola compra»).
+      const f = await sembrarFacturaDeUnaParte({ sucursalId, seccionId, proveedorId: proveedor.id, productoId: producto.id, usuarioId: admin.id, nroFactura, cantidad: 5, precioTotal: 50 });
+      operaciones.push(f.operacionId);
+      facturas.push(f.facturaId);
+      return { id: f.operacionId };
     }
     const usada = numeroDeFacturaUnico();
     const bien = numeroDeFacturaUnico();
@@ -709,9 +714,10 @@ testAutenticado(
       await expect(tarjeta.getByRole("status").filter({ hasText: "Compra corregida" })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "compra corregida").toEqual([]);
     } finally {
-      await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: { in: operaciones } } });
+      await borrarFacturaSembrada(facturas);
       await prisma.movimientoStock.deleteMany({ where: { productoId: producto.id } });
       await prisma.operacion.deleteMany({ where: { id: { in: operaciones } } });
+      await borrarCabeceraSembrada(facturas);
       await prisma.producto.deleteMany({ where: { id: producto.id } });
       await prisma.proveedor.deleteMany({ where: { id: proveedor.id } });
     }

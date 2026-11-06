@@ -1,6 +1,7 @@
 import type { ResultadoCaso } from "@/core/resultado-caso";
 import type { ItemMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
 import type { CondicionDePago, MedioDePago } from "@/core/compras/public";
+import type { CabeceraVista, CorreccionCompraInput } from "./compra.schema";
 
 /**
  * E3a (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md): los contratos de los tres comandos de la factura de proveedor de mercadería repartida entre sucursales por PROPUESTA (la
@@ -100,6 +101,32 @@ export type CodigoAnularFacturaProveedor =
 export type DatosAnularFacturaProveedor = { repetida: boolean; facturaId: string };
 
 export type ResultadoAnularFacturaProveedor = ResultadoCaso<DatosAnularFacturaProveedor, CodigoAnularFacturaProveedor>;
+
+/**
+ * U1 de «una sola compra» — «Corregir datos de la factura» (proveedor, número, detalle): `nueva` es lo que se pide y `esperado` lo que la persona vio al abrir el formulario (guarda optimista contra pisar la corrección de otra).
+ * Sin clave de reintento: es idempotente por estado (si ya tiene lo pedido, «no hay nada que corregir»).
+ */
+export interface ComandoCorregirFacturaProveedor {
+  facturaId: string;
+  nueva: CorreccionCompraInput;
+  esperado: CabeceraVista;
+}
+
+export type CodigoCorregirFacturaProveedor =
+  | "NO_ENCONTRADA"
+  | "YA_ANULADA"
+  | "SIN_PERMISO_EN_SUCURSAL"
+  | "CAMBIO_CONCURRENTE"
+  | "ENTRADA_INVALIDA"
+  | "PROVEEDOR_INEXISTENTE"
+  | "PROVEEDOR_INACTIVO"
+  | "CON_NOTAS_DE_CREDITO"
+  | "FACTURA_DUPLICADA";
+
+/** Qué campos cambiaron, en el orden fijo de `diferenciasDeCabecera` (vacío si ya tenía esos datos). */
+export type DatosCorregirFacturaProveedor = { facturaId: string; camposCorregidos: (keyof CabeceraVista)[] };
+
+export type ResultadoCorregirFacturaProveedor = ResultadoCaso<DatosCorregirFacturaProveedor, CodigoCorregirFacturaProveedor>;
 
 /** Pagos X0 «Declarar pago»: el día del pago (texto `AAAA-MM-DD`, día de Argentina) y el medio, sobre una factura `PENDIENTE_DE_PAGO`. */
 export interface ComandoDeclararPagoDeFactura {

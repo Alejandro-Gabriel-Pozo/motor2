@@ -7,7 +7,7 @@ import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
 import { esCondicionDePago, esMedioDePago } from "@/core/compras/public";
 import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal } from "@/core/tiempo/zona-horaria";
-import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, ComandoAnularPagoDeFactura, ComandoDeclararPagoDeFactura, DatosFacturaProveedorInput } from "./factura-proveedor.schema";
+import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, ComandoAnularPagoDeFactura, ComandoCorregirFacturaProveedor, ComandoDeclararPagoDeFactura, DatosFacturaProveedorInput } from "./factura-proveedor.schema";
 
 /**
  * E3a: guards de formato de los tres comandos de la factura de proveedor (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md). Puros, sin base ni permisos: corren dentro de
@@ -92,6 +92,17 @@ export function guardComandoAnularFacturaProveedor(entrada: unknown): ResultadoD
   const clave = claveObligatoria(e.claveIdempotencia);
   if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
   return aceptar({ facturaId: texto(e.facturaId), motivo: motivo.valor, claveIdempotencia: clave.valor });
+}
+
+/**
+ * U1 «Corregir datos de la factura»: solo la factura. `nueva` y `esperado` pasan tal cual: los normaliza `normalizarCorreccion` (core/compras/correccion.ts) en el caso de uso, que ya tolera `null`/`undefined` en cada campo.
+ * El formato del número y la regla «con proveedor» las valida `validarCorreccion` sobre lo que cambia (una factura vieja con texto libre no se traba por un campo que no se tocó).
+ */
+export function guardComandoCorregirFacturaProveedor(entrada: unknown): ResultadoDato<ComandoCorregirFacturaProveedor> {
+  const e = (entrada ?? {}) as Partial<Record<keyof ComandoCorregirFacturaProveedor, unknown>>;
+  if (typeof e.facturaId !== "string" || !texto(e.facturaId)) return rechazar("formato", "No se encontró la factura.");
+  if (typeof e.nueva !== "object" || e.nueva === null || typeof e.esperado !== "object" || e.esperado === null) return rechazar("formato", "Faltan los datos a corregir: recargá la pantalla.");
+  return aceptar({ facturaId: texto(e.facturaId), nueva: e.nueva as ComandoCorregirFacturaProveedor["nueva"], esperado: e.esperado as ComandoCorregirFacturaProveedor["esperado"] });
 }
 
 /**

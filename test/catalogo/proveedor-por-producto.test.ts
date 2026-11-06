@@ -7,9 +7,8 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { crearMembresia } from "../setup/membresia";
 import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { corregirCompra } from "../../src/server/actions/movimientos/compras";
+import { corregirCompraDeTest } from "../setup/corregir-compra-de-prueba";
 import { anularCompraDeTest } from "../setup/anular-compra-de-prueba";
-import { sembrarCompraSimpleDeAntes } from "../setup/compra-simple-de-antes";
 import { upsertProveedorPorProducto } from "../../src/server/persistencia/catalogo/upsert-proveedor-por-producto";
 import { cargarOfertasDeProveedores } from "../../src/server/lecturas/catalogo/ofertas-de-proveedor";
 import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
@@ -224,10 +223,9 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
     it("corregir el proveedor de una compra MUEVE el precio al proveedor correcto", async () => {
       await sembrarMotivosYDestinos();
-      // Una compra simple de ANTES de U0 (sin factura): es la única que `corregirCompra` todavía corrige; U1 retira la acción y la corrección pasa a la factura.
-      await sembrarCompraSimpleDeAntes({ sucursalId, seccionId, usuarioId: adminId, proveedorId: proveedorAId, nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), items: [{ productoId, cantidad: 10, precioTotal: 1000 }] });
+      expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-      const r = await corregirCompra(op.id, { proveedorId: proveedorBId, nroFactura: op.nroFactura ?? "", detalleLibre: "" }, { proveedorId: op.proveedorId, nroFactura: op.nroFactura, detalleLibre: op.detalleLibre });
+      const r = await corregirCompraDeTest(op.id, { proveedorId: proveedorBId });
       expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
 
       expect(await precioDe("Proveedor A")).toBeUndefined();
