@@ -24,6 +24,7 @@ export interface FiltroCompras {
 
 export interface RenglonCompra {
   idMovimiento: string;
+  productoId: string;
   productoCodigo: string;
   productoNombre: string;
   cantidad: number;
@@ -54,6 +55,10 @@ export interface CompraRegistrada {
   facturaProveedorId: string | null;
   /** Pagos X0: el estado de pago de esa factura (`null` si la compra es suelta, sin factura). `pagoVigente` solo existe en `PAGADA`. */
   pago: PagoDeCompra | null;
+  /** Corrección por ejemplar (etapa C0): la compra original a la que ESTA reemplaza (`null` si no es una corrección). */
+  reemplazaAId: string | null;
+  /** Corrección por ejemplar: la compra que reemplazó a ESTA (`null` si sigue vigente o si se anuló sin reemplazo). Una compra reemplazada se muestra «Reemplazada», no «Anulada». */
+  reemplazadaPorId: string | null;
   renglones: RenglonCompra[];
 }
 

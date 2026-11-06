@@ -203,6 +203,7 @@ const SIN_ENVOLTORIO: Record<string, Readonly<Record<string, string>>> = {
   "clientes/cliente.ts": { listarClientes: lectura("requerirVerDeEmpresa"), listarClientesParaCuenta: lectura("requerirVer") },
   "movimientos/motivos.ts": {
     listarMotivosMermaActivos: lectura("requerirVer"),
+    listarMotivosDeCorreccionActivos: lectura("requerirVer"),
     listarDestinosConsumoActivos: lectura("requerirVer"),
     listarMotivosMermaParaPanel: lectura("requerirVerDeEmpresa"),
     listarDestinosConsumoParaPanel: lectura("requerirVerDeEmpresa"),

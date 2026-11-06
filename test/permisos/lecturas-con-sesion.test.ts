@@ -24,7 +24,7 @@ import { listarUnidadesActivas, listarUnidadesParaPanel } from "../../src/server
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarPreciosLocales } from "../../src/server/actions/catalogo/precio-local";
 import { listarSeccionesActivas, listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
-import { listarDestinosConsumoActivos, listarMotivosMermaActivos } from "../../src/server/actions/movimientos/motivos";
+import { listarDestinosConsumoActivos, listarMotivosDeCorreccionActivos, listarMotivosMermaActivos } from "../../src/server/actions/movimientos/motivos";
 import { listarCapacidades } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { listarMatrizPermisos } from "../../src/server/actions/permisos/permisos";
 import { listarRoles } from "../../src/server/actions/permisos/roles";
@@ -64,6 +64,7 @@ const LECTURAS: Array<[string, () => Promise<unknown>]> = [
   ["listarUnidadesParaPanel", () => listarUnidadesParaPanel()],
   ["obtenerHistorialConteosFisicos", () => obtenerHistorialConteosFisicos("x")],
   ["listarMotivosMermaActivos", () => listarMotivosMermaActivos()],
+  ["listarMotivosDeCorreccionActivos", () => listarMotivosDeCorreccionActivos()],
   ["listarDestinosConsumoActivos", () => listarDestinosConsumoActivos()],
   ["listarPreciosLocales", () => listarPreciosLocales("x")],
   ["listarSeccionesActivas", () => listarSeccionesActivas("x")],

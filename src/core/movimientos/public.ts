@@ -24,7 +24,8 @@ export {
   redondearACantidadDeUnidad,
   tieneStockReal,
 } from "./transiciones";
-export { DESTINOS_CONSUMO_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "./motivos-semilla";
+export { AMBITOS_DE_MOTIVO, DESTINOS_CONSUMO_SEMILLA, MOTIVOS_CORRECCION_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "./motivos-semilla";
+export type { AmbitoDeMotivo } from "./motivos-semilla";
 export { NAV_MOVIMIENTOS, PROCESOS_DEL_SELECTOR, obtenerConfigProceso } from "./ui-config";
 export type { ProcesoDelSelector, ProcesoUiConfig } from "./ui-config";
 export {

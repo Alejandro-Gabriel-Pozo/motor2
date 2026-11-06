@@ -28,7 +28,17 @@ import { crearMotivoMermaCasoDeUso } from "./casos-de-uso/crear-motivo-merma";
  */
 export async function listarMotivosMermaActivos() {
   const ctx = await requerirVer("proceso_merma");
-  return ctx.db.motivoMerma.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } });
+  // El desplegable de Merma ofrece los motivos de merma y los generales (`TODOS`), nunca los propios de las correcciones.
+  return ctx.db.motivoMerma.findMany({ where: { activo: true, ambito: { in: ["MERMA", "TODOS"] } }, orderBy: { nombre: "asc" } });
+}
+
+/**
+ * Los motivos que se ofrecen al CORREGIR un comprobante (compra, y más adelante ticket y conteo): los activos de ámbito CORRECCION o TODOS, de la MISMA lista configurable de motivos (Configuración → Motivos).
+ * Exige el «Ver» de la corrección de compras (`corregir_compra`), la clave de la única pantalla que la consume por ahora.
+ */
+export async function listarMotivosDeCorreccionActivos() {
+  const ctx = await requerirVer("corregir_compra");
+  return ctx.db.motivoMerma.findMany({ where: { activo: true, ambito: { in: ["CORRECCION", "TODOS"] } }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true, descripcion: true } });
 }
 
 export async function listarDestinosConsumoActivos() {
@@ -47,9 +57,9 @@ export async function listarDestinosConsumoParaPanel() {
 }
 
 /** Alta de un Motivo de Merma. Dedup case-insensible: RECHAZA (no reusa) un nombre ya existente — mismo criterio que crearSeccion, a diferencia de crearCategoriaProducto (que sí reusa porque también la llama un quick-create inline; acá nadie más la llama). */
-export async function crearMotivoMerma(nombre: string, descripcion?: string): Promise<ResultadoConId> {
+export async function crearMotivoMerma(nombre: string, descripcion?: string, ambito?: string): Promise<ResultadoConId> {
   return conPermisoDeEmpresa<ResultadoConId>("motivos_merma", async (ctx) => {
-    const comando = guardComandoCrearMotivoMerma({ nombre, descripcion });
+    const comando = guardComandoCrearMotivoMerma({ nombre, descripcion, ambito });
     if (!comando.ok) return error(comando.mensaje);
     const r = await crearMotivoMermaCasoDeUso(ctx, comando.valor);
     if (r.ok) refrescarVistaSiHaceFalta(); // ver crearSeccion — solo lo llama la pantalla de administración, sin quick-create inline

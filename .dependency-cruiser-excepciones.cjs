@@ -432,6 +432,8 @@ const PERSISTENCIA_DE_OTRO_DOMINIO = [
   { desde: "src/server/actions/movimientos/casos-de-uso/declarar-pago-de-factura-proveedor.ts", hacia: "src/server/persistencia/compras/cargar-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/declarar-pago-de-factura-proveedor.ts", hacia: "src/server/persistencia/compras/escribir-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts", hacia: "src/server/persistencia/compras/cargar-compra-para-corregir.ts", motivo: MOTIVO_COMPRAS },
+  { desde: "src/server/actions/movimientos/casos-de-uso/corregir-importes-de-compra.ts", hacia: "src/server/persistencia/compras/cargar-compra-para-corregir-importes.ts", motivo: MOTIVO_COMPRAS },
+  { desde: "src/server/actions/movimientos/casos-de-uso/corregir-importes-de-compra.ts", hacia: "src/server/persistencia/compras/escribir-correccion-de-compra-por-ejemplar.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts", hacia: "src/server/persistencia/compras/escribir-correccion-de-compra.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/corregir-compra.ts", hacia: "src/server/persistencia/compras/comprobante-en-la-empresa.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts", hacia: "src/server/persistencia/compras/cargar-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },

@@ -57,6 +57,8 @@ const GRUPOS: Readonly<Record<string, Grupo>> = {
     campos: ["Operacion.nroFactura", "Operacion.proveedor", "Operacion.proveedorId"],
     puertas: {
       [`${APP}/reportes/historial/page.tsx`]: { clave: "reporte_historial_importes" },
+      [`${APP}/movimientos/corregir-compra/page.tsx`]: { clave: "corregir_compra", motivo: "La búsqueda de la factura a corregir lista las compras con su proveedor y su número; corregir compras es de piso administrador." },
+      [`${APP}/movimientos/corregir-compra/[operacionId]/page.tsx`]: { clave: "corregir_compra", motivo: "La pantalla de corrección muestra la factura (proveedor y número) y pide además el permiso de Editar corregir_compra; es de piso administrador." },
       [`${APP}/reportes/compras/page.tsx`]: { clave: "reporte_compras", motivo: "«Compras registradas» ES el listado de las compras con su proveedor y su factura; es de piso administrador, igual que los datos comerciales del historial." },
       [`${APP}/reportes/devoluciones/page.tsx`]: { clave: "reporte_devoluciones", motivo: "«Devoluciones» muestra a qué proveedor se devolvió; es de piso administrador." },
       [`${APP}/reportes/periodo/page.tsx`]: { clave: "reporte_periodo", motivo: "«Período» dibuja «Compras por proveedor»; es de piso administrador." },

@@ -44,9 +44,12 @@ function compra(): CompraRegistrada {
     cantidadProductos: 1,
     facturaProveedorId: null,
     pago: null,
+    reemplazaAId: null,
+    reemplazadaPorId: null,
     renglones: [
       {
         idMovimiento: "m1",
+        productoId: "p1",
         productoCodigo: "P1",
         productoNombre: "Harina",
         cantidad: 1,

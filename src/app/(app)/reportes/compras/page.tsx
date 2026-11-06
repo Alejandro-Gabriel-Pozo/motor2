@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -131,7 +131,12 @@ export default async function ComprasRegistradasPage({
                   <span className="text-tinta-tenue" title="Productos DISTINTOS de esta factura — dos renglones del mismo producto cuentan una sola vez.">
                     {c.cantidadProductos} producto(s)
                   </span>
-                  {c.anuladaEn && (
+                  {c.anuladaEn && c.reemplazadaPorId && (
+                    <span className="rounded border px-1.5 text-xs text-tinta-tenue" title={`Reemplazada el ${fechaCorta(c.anuladaEn)}${c.anuladaPorEmail ? ` por ${c.anuladaPorEmail}` : ""}: cuenta la versión corregida`}>
+                      Reemplazada por la versión corregida
+                    </span>
+                  )}
+                  {c.anuladaEn && !c.reemplazadaPorId && (
                     <span
                       className="rounded border border-error px-1.5 text-xs text-error"
                       title={`Anulada el ${fechaCorta(c.anuladaEn)}${c.anuladaPorEmail ? ` por ${c.anuladaPorEmail}` : ""}: no cuenta en el gasto`}
@@ -139,6 +144,7 @@ export default async function ComprasRegistradasPage({
                       Anulada
                     </span>
                   )}
+                  {c.reemplazaAId && <span className="rounded border px-1.5 text-xs text-tinta-tenue">Corregida</span>}
                   <span className={`ml-auto font-semibold tabular-nums ${c.anuladaEn ? "line-through" : ""}`}>
                     {plata(c.total)}
                     {c.haySinPrecio && (
@@ -183,6 +189,15 @@ export default async function ComprasRegistradasPage({
                     <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(c.idOperacion)}`} className="underline">
                       ver la operación
                     </EnlaceInterno>
+                    {c.reemplazaAId && (
+                      <>
+                        {" "}
+                        ·{" "}
+                        <EnlaceInterno href={`/reportes/trazabilidad?idOperacion=${encodeURIComponent(c.reemplazaAId)}`} className="underline">
+                          ver la original
+                        </EnlaceInterno>
+                      </>
+                    )}
                   </p>
                   {c.facturaProveedorId && (
                     <div className="mt-2 flex flex-col gap-2">
@@ -209,6 +224,11 @@ export default async function ComprasRegistradasPage({
                   {!c.facturaProveedorId && (puedeAnular || (puedeCorregir && !c.anuladaEn)) && (
                     <div className="mt-2 flex flex-col gap-2">
                       {puedeCorregir && !c.anuladaEn && (
+                        <EnlaceInterno href={`/movimientos/corregir-compra/${c.idOperacion}`} className="self-start text-sm underline">
+                          Corregir esta factura →
+                        </EnlaceInterno>
+                      )}
+                      {puedeCorregir && !c.anuladaEn && (
                         <FormularioCorregirCompra
                           idOperacion={c.idOperacion}
                           resumen={`del ${fechaCorta(c.fecha)}${c.proveedorNombre ? ` a ${c.proveedorNombre}` : ""}${c.nroFactura ? `, factura ${c.nroFactura}` : ""}`}
@@ -233,9 +253,9 @@ export default async function ComprasRegistradasPage({
       )}
 
       {nextCursor && (
-        <Link href={`/reportes/compras?${paramsSiguiente.toString()}`} className="text-sm underline">
+        <EnlaceInterno href={`/reportes/compras?${paramsSiguiente.toString()}`} className="text-sm underline">
           Página siguiente →
-        </Link>
+        </EnlaceInterno>
       )}
     </div>
   );

@@ -4,7 +4,7 @@ import { leerNumeroDeComprobanteDeCompra } from "@/core/datos/numero-comprobante
 import { validarNroFactura } from "@/core/datos/nro-factura";
 import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import type { CabeceraVista, ComandoAnularCompra, ComandoCorregirCompra, CorreccionCompraInput, DatosLineaCompra, LineaCompraValidada } from "./compra.schema";
+import type { CabeceraVista, ComandoAnularCompra, ComandoCorregirCompra, ComandoCorregirImportesDeCompra, CorreccionCompraInput, DatosLineaCompra, LineaCompraValidada } from "./compra.schema";
 
 /**
  * Guard de la feature Compra/Devolución a proveedor (convención "guard por feature", 2026-09-25;
@@ -111,4 +111,42 @@ export function guardComandoCorregirCompra(entrada: unknown): ResultadoDato<Coma
   const { operacionId, nueva, esperado } = (entrada ?? {}) as { operacionId?: unknown; nueva?: CorreccionCompraInput; esperado?: CabeceraVista };
   if (typeof operacionId !== "string") return rechazar("formato", MENSAJE_OPERACION_NO_ENCONTRADA);
   return aceptar({ operacionId, nueva: nueva as CorreccionCompraInput, esperado: esperado as CabeceraVista });
+}
+
+const MAXIMO_DE_RENGLONES_A_CORREGIR = 200;
+const LARGO_MAXIMO_DETALLE_DE_MOTIVO = 200;
+
+/**
+ * Guard del comando «corregir los importes de una compra» por ejemplar (etapa C0). Formato, ANTES de tocar la base: la clave de reintento (obligatoria, UUID), el `operacionId` y el `motivoId` (textos), el detalle del
+ * motivo (opcional, hasta 200) y la lista de importes (de 1 a 200; cada uno con su `movimientoId` y el importe en CENTAVOS ENTEROS mayores que cero). Que el renglón sea de la compra, que haya cambios y que el motivo exista y esté activo
+ * lo decide el caso de uso con la base.
+ */
+export function guardComandoCorregirImportesDeCompra(entrada: unknown): ResultadoDato<ComandoCorregirImportesDeCompra> {
+  const { operacionId, importes, motivoId, detalleMotivo, claveIdempotencia } = (entrada ?? {}) as {
+    operacionId?: unknown;
+    importes?: unknown;
+    motivoId?: unknown;
+    detalleMotivo?: unknown;
+    claveIdempotencia?: unknown;
+  };
+  if (claveIdempotencia === undefined || claveIdempotencia === null || claveIdempotencia === "") return rechazar("vacio", MENSAJE_CLAVE_REINTENTO_FALTANTE);
+  if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", MENSAJE_CLAVE_REINTENTO_INVALIDA);
+  if (typeof operacionId !== "string") return rechazar("formato", MENSAJE_OPERACION_NO_ENCONTRADA);
+  if (typeof motivoId !== "string" || motivoId.trim() === "") return rechazar("vacio", "Elegí el motivo de la corrección.");
+  if (!Array.isArray(importes) || importes.length === 0) return rechazar("vacio", "Indicá el importe que querés corregir.");
+  if (importes.length > MAXIMO_DE_RENGLONES_A_CORREGIR) return rechazar("largo", `No se pueden corregir más de ${MAXIMO_DE_RENGLONES_A_CORREGIR} renglones a la vez.`);
+  const lista: { movimientoId: string; importeEnCentavos: number }[] = [];
+  for (const i of importes) {
+    const { movimientoId, importeEnCentavos } = (i ?? {}) as { movimientoId?: unknown; importeEnCentavos?: unknown };
+    if (typeof movimientoId !== "string" || movimientoId === "") return rechazar("formato", "Uno de los renglones no es válido.");
+    if (typeof importeEnCentavos !== "number" || !Number.isInteger(importeEnCentavos) || importeEnCentavos < 1) return rechazar("formato", "El importe tiene que ser mayor que cero.");
+    lista.push({ movimientoId, importeEnCentavos });
+  }
+  let detalle: string | null = null;
+  if (detalleMotivo !== undefined && detalleMotivo !== null && detalleMotivo !== "") {
+    if (typeof detalleMotivo !== "string") return rechazar("formato", "El detalle del motivo no es válido.");
+    detalle = detalleMotivo.trim() === "" ? null : detalleMotivo.trim();
+    if (detalle !== null && detalle.length > LARGO_MAXIMO_DETALLE_DE_MOTIVO) return rechazar("largo", `El detalle no puede superar los ${LARGO_MAXIMO_DETALLE_DE_MOTIVO} caracteres.`);
+  }
+  return aceptar({ operacionId, importes: lista, motivoId: motivoId.trim(), detalleMotivo: detalle, claveIdempotencia });
 }

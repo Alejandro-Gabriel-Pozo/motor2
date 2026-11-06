@@ -139,6 +139,8 @@ const TRASPASOS = (pantalla: string) => EMAIL_DEL_QUE_OPERO(`La bandeja de ${pan
 const EXCEPCIONES_DE_PAGINA: Readonly<Record<string, string>> = {
   "src/app/(app)/movimientos/[proceso]/page.tsx|MovimientoStock.precioPorUnidadStock": D_B,
   "src/app/(app)/movimientos/[proceso]/page.tsx|Operacion.proveedorId": D_B,
+  "src/app/(app)/movimientos/corregir-compra/page.tsx|User.email": EMAIL_DEL_QUE_OPERO("«Corregir una factura de compra» (`corregir_compra`): quién cargó/anuló la compra,", "etapa C0 de corrección de compras, mismo criterio que «Compras registradas»"),
+  "src/app/(app)/movimientos/corregir-compra/[operacionId]/page.tsx|User.email": EMAIL_DEL_QUE_OPERO("«Corregir una factura de compra» (`corregir_compra`): quién cargó/anuló la compra,", "etapa C0 de corrección de compras, mismo criterio que «Compras registradas»"),
   "src/app/(app)/reportes/compras/page.tsx|User.email": EMAIL_DEL_QUE_OPERO("«Compras registradas» (`reporte_compras`, administrador): quién anuló una compra,", "rama «endurecimiento 2» (mostrar el nombre y no el correo)"),
   "src/app/(app)/reportes/salud/page.tsx|MovimientoStock.precioPorUnidadStock": SALUD,
   "src/app/(app)/reportes/salud/page.tsx|Producto.proveedorConsignacion": SALUD,

@@ -8,9 +8,15 @@
  * catálogo administrable no cambia nada visible para quien ya usa el sistema, solo deja de estar fijo en un enum.
  */
 
+/** Dónde se ofrece un motivo (columna `MotivoMerma.ambito`, CHECK en la base): el desplegable de Merma, las correcciones de comprobantes o los dos. */
+export const AMBITOS_DE_MOTIVO = ["MERMA", "CORRECCION", "TODOS"] as const;
+export type AmbitoDeMotivo = (typeof AMBITOS_DE_MOTIVO)[number];
+
 export interface MotivoSemilla {
   nombre: string;
   descripcion?: string;
+  /** Por omisión `MERMA` (lo de siempre). */
+  ambito?: AmbitoDeMotivo;
 }
 
 export const MOTIVOS_MERMA_SEMILLA: readonly MotivoSemilla[] = [
@@ -25,7 +31,20 @@ export const MOTIVOS_MERMA_SEMILLA: readonly MotivoSemilla[] = [
       "Devuelto por el cliente pero NO revendible: descuenta stock de verdad. Si la mercadería vuelve en condiciones de revenderse, va por el proceso «Devolución de cliente (revendible)», que SUMA stock — nunca por este motivo.",
   },
   { nombre: "Robo o faltante" },
-  { nombre: "Otro" },
+  // Genérico: se ofrece en Merma y en las correcciones.
+  { nombre: "Otro", ambito: "TODOS" },
+] as const;
+
+/**
+ * Motivos iniciales de las CORRECCIONES de compras (corrección por ejemplar, etapa C0; docs/diseno-correccion-de-compras-2026-11-06.md §13). Propuestos y aceptados por el dueño el 2026-11-06; después los
+ * administra él desde Configuración (esta lista solo es el punto de partida de cada empresa). Los motivos de las correcciones de tickets se suman cuando se construya esa etapa. «Otro» ya está en
+ * `MOTIVOS_MERMA_SEMILLA` con ámbito `TODOS`.
+ */
+export const MOTIVOS_CORRECCION_SEMILLA: readonly MotivoSemilla[] = [
+  { nombre: "Error de tipeo", ambito: "TODOS" },
+  { nombre: "Faltó cargar el precio", ambito: "CORRECCION" },
+  { nombre: "Cantidad mal cargada", ambito: "CORRECCION" },
+  { nombre: "Producto equivocado", ambito: "CORRECCION" },
 ] as const;
 
 export const DESTINOS_CONSUMO_SEMILLA: readonly MotivoSemilla[] = [

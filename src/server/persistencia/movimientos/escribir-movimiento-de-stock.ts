@@ -26,6 +26,8 @@ export interface OperacionDeStockAEscribir {
   usuarioId: string;
   claveIdempotencia: string | null;
   payloadHash: string | null;
+  /** Solo la corrección por ejemplar de una compra la pasa: la compra original a la que reemplaza este ejemplar (única por empresa; CHECK: solo VENTA o COMPRA). */
+  reemplazaAOperacionId?: string;
 }
 
 export async function escribirOperacionDeStock(tx: Prisma.TransactionClient, datos: OperacionDeStockAEscribir): Promise<{ id: string }> {

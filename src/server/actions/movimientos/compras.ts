@@ -1,12 +1,13 @@
 "use server";
 
-import { guardComandoAnularCompra, guardComandoCorregirCompra } from "@/core/features/compras/compra.guard";
+import { guardComandoAnularCompra, guardComandoCorregirCompra, guardComandoCorregirImportesDeCompra } from "@/core/features/compras/compra.guard";
 import type { CabeceraVista as CabeceraVistaSchema, CorreccionCompraInput as CorreccionCompraInputSchema } from "@/core/features/compras/compra.schema";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
 import { anularCompraCasoDeUso } from "./casos-de-uso/anular-compra";
 import { corregirCompraCasoDeUso } from "./casos-de-uso/corregir-compra";
+import { corregirImportesDeCompraCasoDeUso } from "./casos-de-uso/corregir-importes-de-compra";
 
 /**
  * Anula una compra ya confirmada (K1c, docs/planes-implementacion-pendientes-2026-09-21.md §5). Las reglas viven en
@@ -73,5 +74,19 @@ export async function corregirCompra(operacionId: string, nueva: CorreccionCompr
     const comando = guardComandoCorregirCompra({ operacionId, nueva, esperado });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await corregirCompraCasoDeUso(ctx, comando.valor));
+  });
+}
+
+/**
+ * Corrige los IMPORTES de una compra ya confirmada por ejemplar (etapa C0, docs/diseno-correccion-de-compras-2026-11-06.md): la original queda congelada (anulada con su contra-asiento y el motivo) y un ejemplar nuevo la reemplaza con
+ * las mismas cantidades y los importes corregidos (en centavos enteros, con IVA incluido). No mueve stock, así que no depende de que lo comprado siga disponible. Adaptador fino: permiso (`conPermiso("corregir_compra")`) → formato
+ * (`guardComandoCorregirImportesDeCompra`) → caso de uso → `aResultadoAccion`. El motivo es un id del catálogo configurable de motivos (ámbito CORRECCION o TODOS); `claveIdempotencia` es obligatoria (un UUID que genera la pantalla
+ * al abrir el formulario y reenvía tal cual en un reintento). La acción no refresca la vista: quien la llama pide `router.refresh()`.
+ */
+export async function corregirImportesDeCompra(entrada: { operacionId: string; importes: { movimientoId: string; importeEnCentavos: number }[]; motivoId: string; detalleMotivo?: string; claveIdempotencia: string }): Promise<ResultadoAccion> {
+  return conPermiso("corregir_compra", async (ctx) => {
+    const comando = guardComandoCorregirImportesDeCompra(entrada);
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await corregirImportesDeCompraCasoDeUso(ctx, comando.valor));
   });
 }

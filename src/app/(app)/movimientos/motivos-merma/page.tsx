@@ -4,6 +4,10 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { crearMotivoMerma, actualizarActivoMotivoMerma, listarMotivosMermaParaPanel } from "@/server/actions/movimientos/motivos";
+import { Selector } from "@/ui/primitivas/selector";
+
+/** Cómo se muestra cada «dónde se ofrece» del motivo (lista cerrada, `MotivoMerma.ambito`). */
+const ROTULO_DE_AMBITO: Record<string, string> = { MERMA: "Merma", CORRECCION: "Correcciones", TODOS: "Merma y correcciones" };
 
 /**
  * Administración del catálogo Motivo de Merma (antes una lista fija en el código, ui-config.ts; plan "motivos de Consumo/Merma como
@@ -27,7 +31,7 @@ export default async function MotivosMermaPage() {
   return (
     <PanelDeMaestroSimple
       ctx={ctx}
-      titulo="Configuración · Motivos de merma"
+      titulo="Configuración · Motivos"
       ruta="/movimientos/motivos-merma"
       quePuedeVer="los motivos de merma"
       items={motivos}
@@ -35,10 +39,21 @@ export default async function MotivosMermaPage() {
       activar={actualizarActivoMotivoMerma}
       crear={async (formData: FormData) => {
         "use server";
-        return crearMotivoMerma(String(formData.get("nombre") ?? ""), String(formData.get("descripcion") ?? ""));
+        return crearMotivoMerma(String(formData.get("nombre") ?? ""), String(formData.get("descripcion") ?? ""), String(formData.get("ambito") ?? ""));
       }}
       etiquetaNombre="Nombre del motivo"
       placeholderNombre="nombre del motivo"
+      extra={{
+        tituloColumna: "Dónde se ofrece",
+        valorDe: (m) => ROTULO_DE_AMBITO[(m as { ambito?: string }).ambito ?? "MERMA"] ?? "Merma",
+        campoDeAlta: (
+          <Selector etiqueta="Dónde se ofrece" name="ambito" defaultValue="CORRECCION">
+            <option value="CORRECCION">Correcciones (compras, tickets, conteos)</option>
+            <option value="MERMA">Merma</option>
+            <option value="TODOS">Merma y correcciones</option>
+          </Selector>
+        ),
+      }}
     />
   );
 }

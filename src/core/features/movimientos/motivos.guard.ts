@@ -1,6 +1,7 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { nombreDeCatalogo } from "@/core/features/catalogo/nombre-de-catalogo";
 import { texto, validarLargoTexto } from "@/core/texto";
+import { AMBITOS_DE_MOTIVO, type AmbitoDeMotivo } from "@/core/movimientos/public";
 import type { ComandoCrearMotivo } from "./motivos.schema";
 
 /**
@@ -28,8 +29,13 @@ function comandoCrearMotivo(entrada: { nombre: unknown; descripcion: unknown }, 
 }
 
 /** Guard del alta de un motivo de merma: EXACTAMENTE lo que antes era lo primero de `crearMotivoMerma`, con los MISMOS textos y en el MISMO orden. */
-export function guardComandoCrearMotivoMerma(entrada: { nombre: unknown; descripcion: unknown }): ResultadoDato<ComandoCrearMotivo> {
-  return comandoCrearMotivo(entrada, "El nombre del motivo");
+export function guardComandoCrearMotivoMerma(entrada: { nombre: unknown; descripcion: unknown; ambito?: unknown }): ResultadoDato<ComandoCrearMotivo> {
+  const comando = comandoCrearMotivo(entrada, "El nombre del motivo");
+  if (!comando.ok) return comando;
+  // «Dónde se ofrece»: lista cerrada. Sin dato, lo de siempre (el desplegable de Merma); un valor que no es de la lista se rechaza (el servidor no confía en la pantalla).
+  if (entrada.ambito === undefined || entrada.ambito === null || entrada.ambito === "") return comando;
+  if (typeof entrada.ambito !== "string" || !(AMBITOS_DE_MOTIVO as readonly string[]).includes(entrada.ambito)) return rechazar("formato", "Elegí dónde se ofrece el motivo: Merma, Correcciones o Todos.");
+  return aceptar({ ...comando.valor, ambito: entrada.ambito as AmbitoDeMotivo });
 }
 
 /** Guard del alta de un destino de consumo: EXACTAMENTE lo que antes era lo primero de `crearDestinoConsumo`, con los MISMOS textos y en el MISMO orden. */

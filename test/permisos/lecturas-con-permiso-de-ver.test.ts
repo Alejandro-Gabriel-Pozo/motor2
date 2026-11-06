@@ -19,7 +19,7 @@ import { listarProveedores } from "../../src/server/actions/catalogo/proveedores
 import { obtenerHistorialConteosFisicos } from "../../src/server/actions/movimientos/lecturas-conteo-fisico";
 import { listarPreciosLocales } from "../../src/server/actions/catalogo/precio-local";
 import { listarSeccionesParaPanel } from "../../src/server/actions/movimientos/secciones";
-import { listarMotivosMermaParaPanel, listarDestinosConsumoParaPanel, listarMotivosMermaActivos, listarDestinosConsumoActivos } from "../../src/server/actions/movimientos/motivos";
+import { listarMotivosMermaParaPanel, listarDestinosConsumoParaPanel, listarMotivosMermaActivos, listarMotivosDeCorreccionActivos, listarDestinosConsumoActivos } from "../../src/server/actions/movimientos/motivos";
 import { obtenerSaldoDisponibleParaReclasificar } from "../../src/server/actions/stock/lecturas-reclasificacion";
 import { listarCapacidades } from "../../src/server/actions/permisos/capacidades-sucursal";
 import { listarMatrizPermisos } from "../../src/server/actions/permisos/permisos";
@@ -77,6 +77,7 @@ const LECTURAS: Fila[] = [
   { nombre: "listarUnidadesParaPanel", clave: "unidades", pagina: "catalogo/unidades/page.tsx", archivo: "catalogo/unidades.ts", llamar: () => listarUnidadesParaPanel() },
   { nombre: "listarProveedores", clave: "proveedores", pagina: "catalogo/proveedores/page.tsx", archivo: "catalogo/proveedores.ts", llamar: () => listarProveedores() },
   { nombre: "listarMotivosMermaActivos", clave: "proceso_merma", pagina: "movimientos/[proceso]/page.tsx", archivo: "movimientos/motivos.ts", viaProceso: "MERMA", llamar: () => listarMotivosMermaActivos() },
+  { nombre: "listarMotivosDeCorreccionActivos", clave: "corregir_compra", pagina: "movimientos/corregir-compra/[operacionId]/page.tsx", archivo: "movimientos/motivos.ts", llamar: () => listarMotivosDeCorreccionActivos() },
   { nombre: "listarDestinosConsumoActivos", clave: "proceso_consumo", pagina: "movimientos/[proceso]/page.tsx", archivo: "movimientos/motivos.ts", viaProceso: "CONSUMO", llamar: () => listarDestinosConsumoActivos() },
   {
     nombre: "obtenerSaldoDisponibleParaReclasificar",

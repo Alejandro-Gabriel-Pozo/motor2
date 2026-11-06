@@ -24,6 +24,6 @@ export async function crearMotivoMermaCasoDeUso(actor: Pick<ContextoUsuario, "db
   const existente = await actor.db.motivoMerma.findFirst({ where: { nombre: { equals: comando.nombre, mode: "insensitive" } } });
   if (existente) return fracaso("NOMBRE_REPETIDO", `Ya existe un motivo "${existente.nombre}" (no distingue mayúsculas/espacios).`);
 
-  const creado = await crearMotivoMermaNuevo(actor.db, { nombre: comando.nombre, descripcion: comando.descripcion });
+  const creado = await crearMotivoMermaNuevo(actor.db, { nombre: comando.nombre, descripcion: comando.descripcion, ambito: comando.ambito });
   return exito(`Motivo "${creado.nombre}" creado.`, { id: creado.id, nombre: creado.nombre });
 }

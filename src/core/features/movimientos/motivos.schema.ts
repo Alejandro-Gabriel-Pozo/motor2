@@ -11,6 +11,8 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
 export interface ComandoCrearMotivo {
   nombre: string;
   descripcion: string | null;
+  /** Solo el alta de un motivo de merma/corrección la pasa: dónde se ofrece (`MERMA`, `CORRECCION` o `TODOS`). Ausente = `MERMA`, lo de siempre. */
+  ambito?: "MERMA" | "CORRECCION" | "TODOS";
 }
 
 /** El id y el nombre del motivo o destino creado, para el `ResultadoConId` de la Server Action. */

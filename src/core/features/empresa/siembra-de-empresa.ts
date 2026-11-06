@@ -1,4 +1,4 @@
-import { DESTINOS_CONSUMO_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "@/core/movimientos/public";
+import { DESTINOS_CONSUMO_SEMILLA, MOTIVOS_CORRECCION_SEMILLA, MOTIVOS_MERMA_SEMILLA } from "@/core/movimientos/public";
 import { ACCIONES } from "@/core/permisos/acciones";
 
 /**
@@ -25,7 +25,7 @@ export function planDeSiembra(empresaId: string, nombreSucursal: string) {
     // `Accion` es global (una fila por clave para todo el sistema): las de la primera empresa ya están, no se pisan (el escritor usa `skipDuplicates`).
     acciones: ACCIONES.map((a) => ({ clave: a.clave, descripcion: a.descripcion })),
     unidades: UNIDADES_BASE.map((u) => ({ empresaId, ...u })),
-    motivosDeMerma: MOTIVOS_MERMA_SEMILLA.map((m) => ({ empresaId, nombre: m.nombre, descripcion: m.descripcion ?? null })),
+    motivosDeMerma: [...MOTIVOS_MERMA_SEMILLA, ...MOTIVOS_CORRECCION_SEMILLA].map((m) => ({ empresaId, nombre: m.nombre, descripcion: m.descripcion ?? null, ambito: m.ambito ?? "MERMA" })),
     destinosDeConsumo: DESTINOS_CONSUMO_SEMILLA.map((d) => ({ empresaId, nombre: d.nombre, descripcion: d.descripcion ?? null })),
     sucursal: { empresaId, nombre: nombreSucursal },
   };

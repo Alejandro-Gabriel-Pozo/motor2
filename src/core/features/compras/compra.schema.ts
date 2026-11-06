@@ -93,3 +93,36 @@ export interface DatosCorregirCompra {
 }
 
 export type ResultadoCorregirCompra = ResultadoCaso<DatosCorregirCompra, CodigoCorregirCompra>;
+
+/**
+ * Comando «corregir los importes de una compra» por ejemplar (etapa C0, docs/diseno-correccion-de-compras-2026-11-06.md): lo que recibe `corregirImportesDeCompraCasoDeUso`, YA validado por
+ * `guardComandoCorregirImportesDeCompra`. Los importes van en CENTAVOS ENTEROS. `motivoId` es un motivo ACTIVO del catálogo configurable (ámbito CORRECCION o TODOS); `detalleMotivo` es un texto opcional.
+ */
+export interface ComandoCorregirImportesDeCompra {
+  operacionId: string;
+  importes: { movimientoId: string; importeEnCentavos: number }[];
+  motivoId: string;
+  detalleMotivo: string | null;
+  claveIdempotencia: string;
+}
+
+export type CodigoCorregirImportes =
+  | "NO_ENCONTRADA"
+  | "NO_ES_COMPRA"
+  | "YA_ANULADA"
+  | "YA_REEMPLAZADA"
+  | "COMPRA_DE_FACTURA"
+  | "SIN_RENGLONES"
+  | "SIN_CAMBIOS"
+  | "ENTRADA_INVALIDA"
+  | "MOTIVO_INVALIDO"
+  | "CONFLICTO_IDEMPOTENCIA";
+
+/** `datos` de una corrección exitosa. Un reenvío con la misma clave (`repetida: true`) devuelve el mensaje ORIGINAL y `compraNuevaId` en `null`. */
+export interface DatosCorregirImportes {
+  compraAnteriorId: string;
+  compraNuevaId: string | null;
+  repetida: boolean;
+}
+
+export type ResultadoCorregirImportes = ResultadoCaso<DatosCorregirImportes, CodigoCorregirImportes>;

@@ -32,6 +32,7 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
       proveedor: { select: { nombre: true } },
       usuario: { select: { email: true } },
       anuladaPor: { select: { email: true } },
+      reemplazadaPor: { select: { id: true } },
       movimientos: {
         where: { proceso: "COMPRA" },
         include: {
@@ -72,6 +73,7 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
     const facturaProveedorId = o.movimientos.find((m) => m.facturaProveedorRenglon)?.facturaProveedorRenglon?.facturaProveedorId ?? null;
     const renglones: RenglonCompra[] = o.movimientos.map((m) => ({
       idMovimiento: m.id,
+      productoId: m.productoId,
       productoCodigo: m.producto.codigo,
       productoNombre: m.producto.nombre,
       cantidad: Math.abs(Number(m.cantidad)),
@@ -97,6 +99,8 @@ export async function listarComprasRegistradas(sucursalId: string, filtro: Filtr
       cantidadProductos: new Set(renglones.map((l) => l.productoCodigo)).size,
       facturaProveedorId,
       pago: facturaProveedorId ? (pagoDeFactura.get(facturaProveedorId) ?? null) : null,
+      reemplazaAId: o.reemplazaAOperacionId,
+      reemplazadaPorId: o.reemplazadaPor?.id ?? null,
       renglones,
     };
   });

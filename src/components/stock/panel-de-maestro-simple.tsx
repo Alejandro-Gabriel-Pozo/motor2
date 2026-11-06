@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { IconoDeAccion } from "@/components/iconos";
 import { FilaDeStock } from "@/components/fila-de-stock";
 import { AvisoSoloLecturaDeStock } from "@/components/stock/aviso-solo-lectura";
@@ -16,6 +17,13 @@ import type { ResultadoAccion } from "@/server/actions/tipos";
  */
 export type ItemDeMaestroSimple = { id: string; nombre: string; descripcion: string | null; activo: boolean };
 
+/** Una columna y un campo de alta EXTRA, opcionales (hoy: «Dónde se ofrece» de los Motivos). Sin ellos el panel es el de siempre. */
+export interface ExtraDeMaestroSimple {
+  tituloColumna: string;
+  valorDe: (item: ItemDeMaestroSimple) => string;
+  campoDeAlta: ReactNode;
+}
+
 export function PanelDeMaestroSimple({
   ctx,
   titulo,
@@ -27,6 +35,7 @@ export function PanelDeMaestroSimple({
   crear,
   etiquetaNombre,
   placeholderNombre,
+  extra,
 }: {
   ctx: ContextoUsuario;
   titulo: string;
@@ -39,6 +48,7 @@ export function PanelDeMaestroSimple({
   crear: (formData: FormData) => Promise<ResultadoAccion>;
   etiquetaNombre: string;
   placeholderNombre: string;
+  extra?: ExtraDeMaestroSimple;
 }) {
   return (
     <div className="space-y-6">
@@ -51,6 +61,7 @@ export function PanelDeMaestroSimple({
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Nombre</th>
+              {extra && <th>{extra.tituloColumna}</th>}
               <th>Activo</th>
               <th><span className="sr-only">Acciones</span></th>
             </tr>
@@ -62,6 +73,7 @@ export function PanelDeMaestroSimple({
                   <div>{m.nombre}</div>
                   {m.descripcion && <div className="text-xs text-tinta-tenue">{m.descripcion}</div>}
                 </td>
+                {extra && <td>{extra.valorDe(m)}</td>}
                 <td>{m.activo ? "Sí" : "No"}</td>
                 <td>
                   {puedeEditar && (
@@ -87,6 +99,7 @@ export function PanelDeMaestroSimple({
               <BotonDeServidor type="submit">Crear</BotonDeServidor>
             </div>
             <Campo name="descripcion" aria-label="Descripción (opcional)" placeholder="descripción (opcional)" />
+            {extra?.campoDeAlta}
           </FormConResultado>
         )}
       </section>

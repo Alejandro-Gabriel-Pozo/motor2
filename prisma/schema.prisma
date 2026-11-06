@@ -1002,6 +1002,9 @@ model MotivoMerma {
   nombre      String
   descripcion String?
   activo      Boolean     @default(true)
+  /// Dónde se ofrece el motivo: `MERMA` (el desplegable de Merma, lo de siempre), `CORRECCION` (las correcciones de comprobantes: compra, ticket, conteo) o `TODOS`. CHECK en la base (lista cerrada; se amplía con una
+  /// migración chica). Lo ya cargado queda `MERMA`. Diseño: docs/diseno-correccion-de-compras-2026-11-06.md §13 (el catálogo de motivos es UNO, configurable, y sirve para contar las correcciones por motivo).
+  ambito      String      @default("MERMA")
   operaciones Operacion[]
 
   @@unique([empresaId, nombre])

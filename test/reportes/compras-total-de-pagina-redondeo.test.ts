@@ -38,6 +38,8 @@ function compra(idOperacion: string, total: number, anulada = false): CompraRegi
     cantidadProductos: 1,
     facturaProveedorId: null,
     pago: null,
+    reemplazaAId: null,
+    reemplazadaPorId: null,
     renglones: [],
   };
 }

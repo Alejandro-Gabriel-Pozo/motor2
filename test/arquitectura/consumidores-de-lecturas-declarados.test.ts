@@ -136,6 +136,10 @@ const LECTURAS: Readonly<Record<string, LecturaDeclarada>> = {
     modulo: "server/actions/movimientos/motivos",
     consumidores: { "app/(app)/movimientos/[proceso]/page.tsx": { claves: ["proceso_merma"], porque: "solo el proceso que pide motivo (`pideMotivo`: merma)" } },
   },
+  listarMotivosDeCorreccionActivos: {
+    modulo: "server/actions/movimientos/motivos",
+    consumidores: { "app/(app)/movimientos/corregir-compra/[operacionId]/page.tsx": { claves: ["corregir_compra"], porque: "el desplegable de motivos de la corrección de compras (catálogo configurable, ámbito CORRECCION o TODOS)" } },
+  },
   listarDestinosConsumoActivos: {
     modulo: "server/actions/movimientos/motivos",
     consumidores: { "app/(app)/movimientos/[proceso]/page.tsx": { claves: ["proceso_consumo"], porque: "solo el proceso que pide destino (`pideDestino`: consumo)" } },
@@ -183,6 +187,7 @@ const LECTURAS: Readonly<Record<string, LecturaDeclarada>> = {
     consumidores: {
       "app/(app)/movimientos/[proceso]/page.tsx": { claves: ["proceso_compra", "proceso_devolucion_proveedor"], porque: "los procesos que piden proveedor (`esCompraLike`)" },
       "app/(app)/reportes/compras/page.tsx": { claves: ["reporte_compras"] },
+      "app/(app)/movimientos/corregir-compra/page.tsx": { claves: ["corregir_compra"] },
       "app/(app)/catalogo/productos/opciones-formulario.ts": { claves: ["alta_producto", "producto_ver_catalogo"], porque: FORMULARIO_DE_PRODUCTO },
     },
   },

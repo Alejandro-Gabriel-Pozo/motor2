@@ -9,8 +9,8 @@ import type { Prisma } from "@prisma/client";
  */
 
 /** Crea el motivo de merma. Devuelve el id y el nombre guardados. */
-export async function crearMotivoMermaNuevo(db: Prisma.TransactionClient, args: { nombre: string; descripcion: string | null }): Promise<{ id: string; nombre: string }> {
-  const creado = await db.motivoMerma.create({ data: { nombre: args.nombre, descripcion: args.descripcion } });
+export async function crearMotivoMermaNuevo(db: Prisma.TransactionClient, args: { nombre: string; descripcion: string | null; ambito?: "MERMA" | "CORRECCION" | "TODOS" }): Promise<{ id: string; nombre: string }> {
+  const creado = await db.motivoMerma.create({ data: { nombre: args.nombre, descripcion: args.descripcion, ...(args.ambito ? { ambito: args.ambito } : {}) } });
   return { id: creado.id, nombre: creado.nombre };
 }
 

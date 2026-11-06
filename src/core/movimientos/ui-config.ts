@@ -136,6 +136,8 @@ export const NAV_MOVIMIENTOS: ItemNavDeMovimientos[] = [
   // Antes «Venta». Carga ventas que no tienen ticket (el mostrador real llegará como Salón › Mostrador); misma ruta, misma clave.
   { href: "/movimientos/venta", label: "Carga de ventas sin ticket", accion: "proceso_venta", panel: "sucursal" },
   { href: "/movimientos/conteo-fisico", label: "Conteo físico", accion: "proceso_control", panel: "sucursal" },
+  // Corrección de compras por ejemplar (etapa C0): buscar la factura y corregirla en otra pantalla; misma clave que la acción que escribe.
+  { href: "/movimientos/corregir-compra", label: "Corregir una compra", accion: "corregir_compra", panel: "sucursal" },
 ];
 
 // Verificación en tiempo de import: todo slug de PROCESOS_UI tiene que

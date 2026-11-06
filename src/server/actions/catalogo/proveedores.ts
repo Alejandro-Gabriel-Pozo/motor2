@@ -44,7 +44,7 @@ export interface ProveedorParaSelector {
  * (proveedor de consignación) solo necesitan el id, el nombre y si está activo. La ficha completa (`listarProveedores`) es de la pantalla de Proveedores.
  */
 export async function listarProveedoresParaSelector(soloActivos = false): Promise<ProveedorParaSelector[]> {
-  const ctx = await requerirVerAlguna(["proceso_compra", "proceso_devolucion_proveedor", "reporte_compras", "alta_producto", "producto_ver_catalogo"]);
+  const ctx = await requerirVerAlguna(["proceso_compra", "proceso_devolucion_proveedor", "reporte_compras", "corregir_compra", "alta_producto", "producto_ver_catalogo"]);
   return ctx.db.proveedor.findMany({
     where: soloActivos ? { activo: true } : {},
     select: { id: true, nombre: true, activo: true },

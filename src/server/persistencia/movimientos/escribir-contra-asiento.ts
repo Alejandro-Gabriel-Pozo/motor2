@@ -31,13 +31,15 @@ export interface ContraAsientoAEscribir {
   idempotencia?: { claveIdempotencia: string | null; payloadHash: string | null };
   /** Las líneas inversas, ya armadas por quien llama (sin `operacionId`: lo pone esta función). */
   filas: readonly FilaDeContraAsiento[];
+  /** Solo la corrección por ejemplar la pasa: el motivo con que se anula la original (`Operacion.motivoAnulacion`, CHECK: solo en una anulada, hasta 200). Sin él, el `update` no lo lleva (las anulaciones de siempre). */
+  motivoAnulacion?: string;
 }
 
 export async function escribirContraAsiento(
   tx: Prisma.TransactionClient,
   contraAsiento: ContraAsientoAEscribir
 ): Promise<{ reversionId: string; movimientos: number }> {
-  const { operacionAnuladaId, sucursalId, usuarioId, ahora, detalleLibre, idempotencia, filas } = contraAsiento;
+  const { operacionAnuladaId, sucursalId, usuarioId, ahora, detalleLibre, idempotencia, filas, motivoAnulacion } = contraAsiento;
   const reversion = await tx.operacion.create({
     data: {
       sucursalId,
@@ -52,7 +54,7 @@ export async function escribirContraAsiento(
   const filasConOperacion: Prisma.MovimientoStockCreateManyInput[] = filas.map((fila) => ({ operacionId: reversion.id, ...fila }));
   await tx.movimientoStock.createMany({ data: filasConOperacion });
 
-  await tx.operacion.update({ where: { id: operacionAnuladaId }, data: { anuladaEn: ahora, anuladaPorId: usuarioId } });
+  await tx.operacion.update({ where: { id: operacionAnuladaId }, data: { anuladaEn: ahora, anuladaPorId: usuarioId, motivoAnulacion } });
 
   return { reversionId: reversion.id, movimientos: filasConOperacion.length };
 }

@@ -76,7 +76,7 @@ const USOS_PERMITIDOS_DE_OPERACION: UsoSobreOperacion[] = [
   {
     archivo: "src/server/persistencia/movimientos/escribir-contra-asiento.ts",
     operaciones: ["update"],
-    columnas: ["anuladaEn", "anuladaPorId"],
+    columnas: ["anuladaEn", "anuladaPorId", "motivoAnulacion"],
     motivo:
       "Anular una compra o una venta (Hito 5, 5.4-A5: un solo escritor para las dos): marca la cabecera como anulada (`anuladaEn` = «no existió y se revirtió»); las líneas del Kardex se REVIERTEN con filas nuevas.",
   },
