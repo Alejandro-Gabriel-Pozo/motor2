@@ -22,7 +22,7 @@ import { escribirAnulacionDeVenta } from "@/server/persistencia/movimientos/escr
  * la Server Action quedó como adaptador fino (permiso → guard → este caso de uso → `aResultadoAccion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso("anular_venta")`) ni
- * valida formato (eso lo hizo `guardComandoAnularVenta`). Sin idempotencia I3: `anularVenta` nunca la tuvo (el doble clic lo arbitra el
+ * valida formato (eso lo hizo `guardComandoAnularVenta`, que desde E0 de la corrección por ajuste exige el MOTIVO, 1 a 200 caracteres: se guarda en `motivoAnulacion` de cada venta anulada, hermanas e hijas incluidas, y cada contra-asiento nace con `revierteAOperacionId`). Sin idempotencia I3: `anularVenta` nunca la tuvo (el doble clic lo arbitra el
  * aislamiento SERIALIZABLE, y el segundo intento responde «ya está anulada»).
  *
  * Todo corre dentro de UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con reintento ante un conflicto de escritura):
@@ -49,7 +49,7 @@ export async function anularVentaCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
   comando: ComandoAnularVenta
 ): Promise<ResultadoAnularVenta> {
-  const { operacionId } = comando;
+  const { operacionId, motivo } = comando;
 
   return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAnularVenta> => {
     const venta = await cargarVentaParaAnular(tx, { operacionId, sucursalId: actor.sucursalId });
@@ -83,6 +83,7 @@ export async function anularVentaCasoDeUso(
         usuarioId: actor.usuarioId,
         ahora,
         detalleLibre: detalleReversionDeVenta(op.id, op.fecha),
+        motivoAnulacion: motivo,
         reversion,
       });
       reversionIds.push(escrita.reversionId);

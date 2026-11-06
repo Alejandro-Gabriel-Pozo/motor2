@@ -232,11 +232,11 @@ describe("Caracterización de la venta: una secuencia completa con filas y traza
 
     // 5. Anular la venta del paso 2 (contra-asiento AJUSTE por línea) y volver a anularla (rechazo).
     if (!s2.ok) return;
-    const anulada = await anularVenta(s2.operacionIds[0]!);
+    const anulada = await anularVenta(s2.operacionIds[0]!, "Error de carga");
     lineas.push("### 5. Anular la venta del paso 2");
     lineas.push(`  resultado: ${JSON.stringify(anulada)}`);
     lineas.push(...(await volcado()));
-    const otraVez = await anularVenta(s2.operacionIds[0]!);
+    const otraVez = await anularVenta(s2.operacionIds[0]!, "Error de carga");
     lineas.push("### 6. Anularla otra vez");
     lineas.push(`  resultado: ${JSON.stringify(otraVez)}`);
     lineas.push(...(await volcado()));
