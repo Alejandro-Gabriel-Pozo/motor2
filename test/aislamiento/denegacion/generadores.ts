@@ -183,11 +183,6 @@ const completos: Record<string, Valor> = {
   "accion|actions/catalogo/proveedores.ts|altaProveedor": () => [{ nombre: "Proveedor nuevo" }],
   "accion|actions/catalogo/proveedores.ts|actualizarProveedor": (k) => [k.proveedorId, { contacto: "contacto nuevo" }],
   "accion|actions/catalogo/unidades.ts|crearUnidad": () => [{ nombre: "Unidad nueva", magnitud: "PESO" }],
-  "accion|actions/catalogo/recetas.ts|guardarReceta": (k, c) =>
-    conVariantes(
-      intento(c, ["productoPvId"], [k.productoPvId, [ingrediente(k, c.propio.productoId)], [{ orden: 1, instruccion: "Mezclar" }], {}, 1]),
-      intento(c, ["productoId", "unidadId"], [c.propio.productoPvId, [ingrediente(k)], [{ orden: 1, instruccion: "Mezclar" }], {}, 1]),
-    ),
   "accion|actions/catalogo/recetas.ts|agregarIngredienteAReceta": (k, c) =>
     conVariantes(intento(c, ["productoPvId"], [k.productoPvId, ingrediente(k, c.propio.productoMp3Id), 1]), intento(c, ["productoMp3Id", "unidadId"], [c.propio.productoPvId, ingrediente(k, k.productoMp3Id), 1])),
   "accion|actions/catalogo/recetas.ts|actualizarIngredienteDeReceta": (k) => [k.productoPvId, k.productoId, { cantidad: 2, unidadId: k.unidadId }, 1],

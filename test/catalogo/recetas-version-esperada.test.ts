@@ -8,8 +8,8 @@ import type { Transaccion } from "../../src/lib/db-tipos";
 import { guardarVersionDeRecetaCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/guardar-version-de-receta";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { darDeAltaProducto } from "../../src/server/actions/catalogo/productos";
-import { agregarIngredienteAReceta, guardarReceta } from "../../src/server/actions/catalogo/recetas";
-import { guardarRecetaACiegas } from "../../src/server/actions/catalogo/receta-a-ciegas";
+import { agregarIngredienteAReceta } from "../../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas, guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 import { versionVigenteDeReceta } from "../setup/version-de-receta";
 import { agregarIngredienteARecetaPropia, crearRecetaPropiaDesdeLaCentral, volverALaRecetaCentral } from "../../src/server/actions/catalogo/receta-sucursal";
 
