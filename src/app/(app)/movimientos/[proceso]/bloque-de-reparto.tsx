@@ -1,6 +1,7 @@
 "use client";
 
 import { CampoNumero } from "@/components/campo-numero";
+import { faltaRepartir } from "@/core/compras/public";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { Casilla } from "@/ui/primitivas/casilla";
 import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
@@ -27,20 +28,21 @@ export function BloqueDeReparto({
   onCambio,
   sucursalActiva,
   otras,
-  totalDeLaFactura,
+  preciosDeLosRenglones,
 }: {
   estado: EstadoDeReparto;
   onCambio: (e: EstadoDeReparto) => void;
   sucursalActiva: { id: string; nombre: string };
   otras: { id: string; nombre: string }[];
-  /** Σ de los precios totales tecleados en los renglones. */
-  totalDeLaFactura: number;
+  /** Precio total tecleado en cada renglón: el servidor redondea cada uno a centavos y los suma, así que la pantalla también. */
+  preciosDeLosRenglones: number[];
 }) {
   const sucursales = [sucursalActiva, ...otras];
   const incluir = (id: string, si: boolean) => onCambio({ ...estado, incluidas: si ? [...estado.incluidas, id] : estado.incluidas.filter((x) => x !== id) });
-  const suma = estado.incluidas.reduce((s, id) => s + (numeroDelCampo(estado.valores[id] ?? "") ?? 0), 0);
-  const objetivo = estado.modo === "IMPORTE" ? totalDeLaFactura : 100;
-  const diferencia = Math.round((objetivo - suma) * 100) / 100;
+  const totalDeLaFactura = faltaRepartir("IMPORTE", preciosDeLosRenglones, []) / 100;
+  // La MISMA cuenta que el servidor (`faltaRepartir`, enteros): centavos en modo importe, puntos básicos (centésimas de %) en modo porcentaje. Positivo = falta, negativo = sobra.
+  const faltante = faltaRepartir(estado.modo, preciosDeLosRenglones, estado.incluidas.map((id) => numeroDelCampo(estado.valores[id] ?? "") ?? 0));
+  const diferencia = faltante / 100;
   const texto = estado.modo === "IMPORTE" ? plata(Math.abs(diferencia)) : `${Math.abs(diferencia).toLocaleString("es-AR")} %`;
 
   return (
@@ -97,7 +99,7 @@ export function BloqueDeReparto({
           })}
           <p className="text-sm" aria-live="polite">
             {estado.modo === "IMPORTE" ? `Total de la factura: ${plata(totalDeLaFactura)}. ` : ""}
-            {diferencia === 0 ? "El reparto cierra." : diferencia > 0 ? `Falta repartir ${texto}.` : `Sobra ${texto}.`}
+            {faltante === 0 ? "El reparto cierra." : diferencia > 0 ? `Falta repartir ${texto}.` : `Sobra ${texto}.`}
           </p>
         </>
       )}
