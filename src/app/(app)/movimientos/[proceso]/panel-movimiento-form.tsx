@@ -535,7 +535,7 @@ export function PanelMovimientoForm({
           onCambio={setEstadoReparto}
           sucursalActiva={reparto.sucursalActiva}
           otras={reparto.otras}
-          totalDeLaFactura={items.reduce((s, f) => s + (numeroDelCampo(f.precioTotal) ?? 0), 0)}
+          preciosDeLosRenglones={items.map((f) => numeroDelCampo(f.precioTotal) ?? 0)}
         />
       )}
 
