@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { precioDeCarta } from "@/core/carta/public";
 import { whereDisponibleEn } from "@/core/catalogo/public";
 import { redondearMoneda } from "@/core/moneda";
-import { claveDeComponenteConfigurado, configuracionMinimaDeGruposEfectivos, opcionesPermitidasEfectivas, rechazoDeComponenteDeCombo, type ComponenteConAlicuota, type CupoDeEntradasDefinicion, type EntradaElegibleDeCupo, type LineaConfigurada } from "@/core/pos/public";
+import { claveDeComponente, configuracionMinimaDeGruposEfectivos, opcionesPermitidasEfectivas, rechazoDeComponenteDeCombo, type ComponenteConAlicuota, type CupoDeEntradasDefinicion, type EntradaElegibleDeCupo, type LineaConfigurada } from "@/core/pos/public";
 import { armarLineaConfigurada, type EntradaAElegirLeida } from "@/core/pos/public-servidor";
 import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
@@ -111,7 +111,7 @@ export async function cargarEntradasDePromoParaVender(
       const queDescuentan = minima.linea !== null && minima.linea.fotos.length > 0 ? { insumos: minima.linea.insumosSinLaBase, nombres: minima.linea.fotos.map((f) => f.nombreOpcion) } : undefined;
       if (rechazoDeComponenteDeCombo({ ...producto, precioDeReferencia, ...(queDescuentan ? { opcionesQueDescuentan: queDescuentan } : {}) }) !== null) continue;
       // La clave es solo un marcador de la entrada: lo que se agrega lleva la de la configuración ELEGIDA (`validarYAplanarEleccionPromo`).
-      const claveComponente = `${producto.id}#@${e.id}`;
+      const claveComponente = claveDeComponente(producto.id, { forma: "a-elegir", entradaId: e.id });
       elegiblesPorCupo.get(e.cupoId)?.set(e.id, { entradaId: e.id, productoId: producto.id, claveComponente, aElegir: true });
       resultado.precioCartaPorClave.set(claveComponente, precioDeReferencia);
       resultado.alicuotaPorProducto.set(producto.id, { productoId: producto.id, nombre: producto.nombre, alicuota: producto.alicuota });
@@ -131,7 +131,7 @@ export async function cargarEntradasDePromoParaVender(
     const descuentan = linea !== null && linea.fotos.length > 0 ? { insumos: linea.insumosSinLaBase, nombres: linea.fotos.map((f) => f.nombreOpcion) } : undefined;
     if (rechazoDeComponenteDeCombo({ ...producto, precioDeReferencia: precioDeLista, ...(descuentan ? { opcionesQueDescuentan: descuentan } : {}) }) !== null) continue;
     // Una entrada que lleva línea configurada nunca comparte la clave del producto pelado (la de un componente de sección): si no, el prorrateo la juntaría con él en una línea sin su foto.
-    const claveComponente = linea === null ? producto.id : e.claveConfiguracion === "" ? `${producto.id}#` : claveDeComponenteConfigurado(producto.id, e.claveConfiguracion);
+    const claveComponente = claveDeComponente(producto.id, linea === null ? { forma: "producto" } : { forma: "configurada", claveConfiguracion: e.claveConfiguracion });
     elegiblesPorCupo.get(e.cupoId)?.set(e.id, { entradaId: e.id, productoId: producto.id, claveComponente });
     resultado.precioCartaPorClave.set(claveComponente, precioDeLista);
     if (linea !== null) resultado.lineaPorClave.set(claveComponente, linea);
