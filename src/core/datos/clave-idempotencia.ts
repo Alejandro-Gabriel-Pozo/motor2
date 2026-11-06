@@ -12,3 +12,6 @@ const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-
 export function esClaveIdempotenciaValida(clave: unknown): clave is string {
   return typeof clave === "string" && REGEX_UUID.test(clave);
 }
+
+/** El rechazo de una clave de reintento que no es un UUID: el mismo texto en todos los guards que la validan. */
+export const MENSAJE_CLAVE_DE_REINTENTO_INVALIDA = "Clave de reintento inválida.";

@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 
 /**
  * Escrituras de los PRODUCTOS del catálogo (`Producto`, sus presentaciones de compra y su disponibilidad por sucursal; Hito 4 de la pureza, bloque 4.3, pasos
@@ -48,7 +49,7 @@ type CamposDeEdicionDeProducto = Omit<CamposDeProducto, "unidadStockId" | "facto
  */
 export async function crearProductoNuevo(
   db: Prisma.TransactionClient,
-  args: { codigo: string; tipo: "MP" | "PV"; campos: CamposDeProducto },
+  args: { codigo: string; tipo: TipoProducto; campos: CamposDeProducto },
 ): Promise<{ id: string; codigo: string; nombre: string }> {
   const creado = await db.producto.create({ data: { codigo: args.codigo, tipo: args.tipo, ...args.campos } });
   return { id: creado.id, codigo: creado.codigo, nombre: creado.nombre };

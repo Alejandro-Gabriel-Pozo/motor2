@@ -13,7 +13,7 @@ import {
   type CartaParaMantener,
   type ProductoParaMantener,
 } from "@/core/carta/public";
-import { esBaseConfigurable } from "@/core/opciones/public";
+import { esBaseConfigurable, grupoVigente } from "@/core/opciones/public";
 import { cartaDeUnProducto, conGrillaDeLaSucursal } from "@/core/pos/public";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
@@ -79,7 +79,7 @@ export async function cargarCartaParaMantener(db: Db, sucursalId: string): Promi
   ]);
   for (const p of carta.fueraDeCarta) {
     const leidos = opciones.get(p.id) ?? [];
-    const vigentes = leidos.some((g) => g.admitido && g.activo);
+    const vigentes = leidos.some(grupoVigente);
     if (!conGrupos.has(p.id) || !vigentes) {
       p.vistaPrevia = vistaPreviaDeOpciones(false, null);
       continue;

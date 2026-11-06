@@ -1,6 +1,7 @@
 import "server-only";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE, buscarChoqueEntreNombres, whereCartaDeSucursal, wherePromoOfrecidaEn, type ChoqueDeNombre, type NombreUsadoEnLaCarta } from "@/core/carta/public";
 import type { Db } from "@/lib/db-tipos";
+import { MODO_DE_VENTA } from "@/core/opciones/public";
 
 /**
  * Regla del dueño (2026-11-04): en la carta de una sucursal no puede haber dos cosas con el mismo nombre visible. Esta lectura junta los nombres que YA usa la carta de la sucursal, SIN el producto
@@ -17,7 +18,7 @@ import type { Db } from "@/lib/db-tipos";
 export async function buscarChoqueDeNombreEnLaCarta(db: Db, args: { sucursalId: string; productoIdPropio: string; nombre: string; soloNombresEnCarta?: boolean }): Promise<ChoqueDeNombre | null> {
   const { sucursalId, productoIdPropio, nombre, soloNombresEnCarta = false } = args;
   const contenidosPromesa = db.contenidoCartaProducto.findMany({
-    where: { ...whereCartaDeSucursal(sucursalId), productoId: { not: productoIdPropio }, visibleEnCarta: true, producto: { modoDeVenta: { not: "BASE_CONFIGURABLE" } } },
+    where: { ...whereCartaDeSucursal(sucursalId), productoId: { not: productoIdPropio }, visibleEnCarta: true, producto: { modoDeVenta: { not: MODO_DE_VENTA.BASE_CONFIGURABLE } } },
     select: { nombreEnCarta: true, producto: { select: { nombre: true } } },
   });
   const [contenidos, agrupados, promos] = soloNombresEnCarta

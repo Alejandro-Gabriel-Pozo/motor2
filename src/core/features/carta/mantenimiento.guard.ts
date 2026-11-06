@@ -1,6 +1,7 @@
 import { esIdentificador } from "@/core/datos/identificador";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { MENSAJE_SUCURSAL_CAMBIADA } from "@/core/features/catalogo/opciones-por-sucursal.guard";
+import { LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
 import {
   MAXIMO_DE_CAMBIOS_DE_HOY,
   type ComandoAgregarProductoALaCarta,
@@ -15,7 +16,6 @@ import {
  * otra pestaña), no se escribe nada. El caso de uso escribe SOLO en la sucursal activa del contexto; las políticas por sucursal de la base son la segunda barrera (42501).
  */
 
-const LARGO_MAXIMO_DE_ID = 64;
 
 function id(valor: unknown, mensaje: string): ResultadoDato<string> {
   return esIdentificador(valor) && valor.length <= LARGO_MAXIMO_DE_ID ? aceptar(valor) : rechazar("formato", mensaje);

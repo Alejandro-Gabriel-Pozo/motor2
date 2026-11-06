@@ -2,6 +2,7 @@ import type { AccionClave } from "@/core/permisos/acciones";
 import type { PanelNav } from "@/core/navegacion/panel";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "./genero-e-item-agrupado";
 import { MENU_DEL_DIA_VISIBLE } from "./menu-del-dia";
+import type { ClavesDeVer } from "@/core/navegacion/claves-de-ver";
 
 /**
  * Fuente del módulo Carta en el menú y de sus filas de pestañas (Fase 7, DEC-24 del dueño; diseño en `docs/diseno-modulo-carta-2026-10-28.md` §8): TRES entradas, «Carta» (pestañas Hoy · Secciones y
@@ -79,8 +80,6 @@ export const PESTANAS_DE_APARIENCIA: readonly PestanaDeCarta[] = [
 function clavesDe(pestanas: readonly PestanaDeCarta[]): [AccionClave, ...AccionClave[]] {
   return [...new Set(pestanas.flatMap((p) => p.pantallas.map((x) => x.accion)))] as [AccionClave, ...AccionClave[]];
 }
-
-type ClavesDeVer = { accion: AccionClave; algunaDe?: never } | { algunaDe: readonly [AccionClave, ...AccionClave[]]; accion?: never };
 
 /** Un ítem del grupo Carta del menú (mismo molde que `ItemNav` de `core/navegacion/estructura.ts`). */
 export type ItemNavDeCarta = { href: string; label: string; panel: PanelNav } & ClavesDeVer;

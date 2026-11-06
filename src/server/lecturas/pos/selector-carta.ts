@@ -11,6 +11,7 @@ import { modulosDelPosDeSucursal, type ModulosDelPos } from "@/server/lecturas/p
 import { tieneStockReal } from "@/core/movimientos/public";
 import { armarSelectorCartaPos, esCupoFijo, type CupoDeEntradasSelectorCarta, type GenerosSelectorCartaPos, type ProductoPedible, type PromoSelectorCartaPos, type SelectorCartaPos } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
+import { grupoVigente, opcionOfrecida } from "@/core/opciones/public";
 
 /**
  * Capa de LECTURA del selector por sección de carta del POS (docs/plan-selector-carta-pos-2026-09-25.md) y por carpeta de género
@@ -161,7 +162,7 @@ export async function cargarSelectorCartaPos(
       cargarOpcionesParaVender(db, { sucursalId, productoIds: ids }),
       db.contenidoCartaProducto.findMany({ where: { ...whereCartaDeSucursal(sucursalId), productoId: { in: ids } }, select: { productoId: true, nombreEnCarta: true, mostrarNombreArriba: true } }),
     ]);
-    const medidaDe = (id: string) => admitidos.get(id)?.grupos.find((g) => g.tipo === "MEDIDA" && g.admitido && g.activo);
+    const medidaDe = (id: string) => admitidos.get(id)?.grupos.find((g) => g.tipo === "MEDIDA" && grupoVigente(g));
     const prefijos = new Map(
       (await db.grupoDeOpciones.findMany({ where: { id: { in: ids.flatMap((id) => medidaDe(id)?.grupoId ?? []) } }, select: { id: true, prefijoEnCarta: true } })).map((g) => [g.id, g.prefijoEnCarta] as const)
     );
@@ -175,7 +176,7 @@ export async function cargarSelectorCartaPos(
           nombreEnCarta: contenidoDe.get(id)?.nombreEnCarta ?? null,
           esBase: admitidos.get(id)?.esBase ?? false,
           mostrarNombreArriba: contenidoDe.get(id)?.mostrarNombreArriba ?? false,
-          medida: medida ? { prefijoEnCarta: prefijos.get(medida.grupoId) ?? null, opciones: medida.opciones.filter((o) => o.activa && o.admitida) } : null,
+          medida: medida ? { prefijoEnCarta: prefijos.get(medida.grupoId) ?? null, opciones: medida.opciones.filter(opcionOfrecida) } : null,
         })
       );
     }

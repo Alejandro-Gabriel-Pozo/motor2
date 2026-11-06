@@ -1,5 +1,5 @@
 import type { CartaV1, PresentacionCartaV1 } from "@/core/carta/public";
-import { primeraEnMinuscula } from "@/core/opciones/public";
+import { primeraEnMinuscula, grupoVigente } from "@/core/opciones/public";
 import type { GrupoParaVender } from "./linea-configurada";
 
 /**
@@ -210,7 +210,7 @@ function filasDeBaseOculta(presentacion: PresentacionCartaV1 | undefined): { rot
 export function opcionDeLaFila(grupos: readonly { admitido: boolean; activo: boolean; opciones: readonly { opcionId: string; nombre: string; esNinguna: boolean }[] }[], rotulo: string): string | null {
   const buscado = rotulo.trim().toLocaleLowerCase("es-AR");
   const calzan = grupos
-    .filter((g) => g.admitido && g.activo)
+    .filter(grupoVigente)
     .flatMap((g) => g.opciones.filter((o) => !o.esNinguna && (o.nombre.trim().toLocaleLowerCase("es-AR") === buscado || buscado.endsWith(` ${primeraEnMinuscula(o.nombre.trim()).toLocaleLowerCase("es-AR")}`))));
   return calzan.length === 1 ? calzan[0]!.opcionId : null;
 }
