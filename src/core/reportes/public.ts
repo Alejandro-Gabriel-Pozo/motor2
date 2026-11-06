@@ -123,7 +123,7 @@ export type { FiltrosPeriodo } from "./periodo-tipos";
 export { generarDigestAlertas } from "./periodo-alertas";
 export { calcularComprasDelPeriodo } from "./periodo-compras";
 export { calcularGastoPorInsumoDelPeriodo } from "./periodo-compras";
-export { calcularVentasDelPeriodo } from "./periodo-ventas";
+export { avisoDeVentasSinDato, calcularVentasDelPeriodo } from "./periodo-ventas";
 export type { FilaCategoriaVenta } from "./periodo-categorias";
 export { agruparVentasPorCategoria } from "./periodo-categorias";
 export { pvSinCategoriaDe } from "./periodo-categorias";

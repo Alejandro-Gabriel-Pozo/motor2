@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { calcularVentasDelPeriodo } from "@/core/reportes/public";
+import { avisoDeVentasSinDato, calcularVentasDelPeriodo } from "@/core/reportes/public";
 import type { ItemPeriodo } from "@/core/reportes/periodo-tipos";
 
 /**
@@ -73,5 +73,17 @@ describe("calcularVentasDelPeriodo: importe $0 = sin dato, nunca se revalúa", (
       ),
       { numRuns: 300 }
     );
+  });
+});
+
+describe("avisoDeVentasSinDato: el mismo texto en todos los reportes (Consolidado incluido)", () => {
+  it("sin ventas $0 no dice nada", () => expect(avisoDeVentasSinDato(0)).toBe(""));
+  it("singular y plural", () => {
+    expect(avisoDeVentasSinDato(1)).toBe("1 venta sin importe registrado queda FUERA de estos totales (sin dato): no se estiman al precio de hoy.");
+    expect(avisoDeVentasSinDato(3)).toBe("3 ventas sin importe registrado quedan FUERA de estos totales (sin dato): no se estiman al precio de hoy.");
+  });
+  it("el aviso de calcularVentasDelPeriodo es ese mismo texto", () => {
+    const r = calcularVentasDelPeriodo([venta({ productoId: "a" }), venta({ productoId: "b" })]);
+    expect(r.aviso).toBe(avisoDeVentasSinDato(2));
   });
 });

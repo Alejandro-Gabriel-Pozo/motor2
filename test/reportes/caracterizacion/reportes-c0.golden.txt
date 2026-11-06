@@ -4272,6 +4272,7 @@
       margenTotal: 209482,
       sucursalId: "#149",
       sucursalNombre: "Central",
+      ventasSinDato: 0,
       ventasTotal: 234700
     },
     {
@@ -4281,6 +4282,7 @@
       margenTotal: 13000,
       sucursalId: "#150",
       sucursalNombre: "Norte",
+      ventasSinDato: 0,
       ventasTotal: 13000
     }
   ]
