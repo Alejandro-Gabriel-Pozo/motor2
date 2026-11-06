@@ -11,6 +11,7 @@ import { cartaDeUnProducto, conGrillaDeLaSucursal } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 import type { PrismaClient } from "@prisma/client";
 import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
+import { MODO_DE_VENTA } from "@/core/opciones/public";
 
 /** Las secciones de carta (orden, nombre) con cuántos ítems ya tiene cada una (`cantidadItems`, DA6). */
 async function seccionesConCantidad(sucursalId: string, db: Db): Promise<SeccionCartaAdmin[]> {
@@ -80,7 +81,7 @@ export async function origenesDeCopiaVisibles(usuarioId: string, origenes: reado
  */
 export async function listarPlatosSinNombreDeCarta(sucursalId: string, db: Db): Promise<{ productoId: string; nombre: string }[]> {
   const filas = await db.contenidoCartaProducto.findMany({
-    where: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, nombreEnCarta: null, producto: { tipo: "PV", modoDeVenta: { not: "BASE_CONFIGURABLE" } } },
+    where: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, nombreEnCarta: null, producto: { tipo: "PV", modoDeVenta: { not: MODO_DE_VENTA.BASE_CONFIGURABLE } } },
     select: { productoId: true, producto: { select: { nombre: true } } },
   });
   return filas.map((f) => ({ productoId: f.productoId, nombre: f.producto.nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
@@ -100,7 +101,7 @@ export async function nombreEnCartaDeUnProducto(sucursalId: string, productoId: 
  */
 export async function basesDeUnEjeEnLaCarta(sucursalId: string, db: Db): Promise<Map<string, boolean>> {
   const bases = await db.producto.findMany({
-    where: { tipo: "PV", modoDeVenta: "BASE_CONFIGURABLE", ...whereDisponibleEn(sucursalId) },
+    where: { tipo: "PV", modoDeVenta: MODO_DE_VENTA.BASE_CONFIGURABLE, ...whereDisponibleEn(sucursalId) },
     select: { id: true, contenidosCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { mostrarNombreArriba: true } } },
   });
   if (bases.length === 0) return new Map();

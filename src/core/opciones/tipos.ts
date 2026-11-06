@@ -33,6 +33,8 @@ export type TipoDeDiferencia = (typeof TIPOS_DE_DIFERENCIA)[number];
  */
 export const MODOS_DE_VENTA = ["DIRECTO", "BASE_CONFIGURABLE"] as const;
 export type ModoDeVenta = (typeof MODOS_DE_VENTA)[number];
+/** Los valores con nombre, para escribirlos (un `where` de Prisma, una opción de pantalla) sin repetir el texto: el único lugar donde se escriben los literales (lo vigila `cerco-modo-de-venta`). */
+export const MODO_DE_VENTA = { DIRECTO: "DIRECTO", BASE_CONFIGURABLE: "BASE_CONFIGURABLE" } as const satisfies { [M in ModoDeVenta]: M };
 
 /** Una diferencia de precio ya resuelta (la del producto si la sobrescribe, si no la de la versión de la opción). El porcentaje es el de `DECIMAL(7,4)`: hasta 4 decimales. */
 export type DiferenciaDePrecio = { tipo: "MONTO"; monto: number } | { tipo: "PORCENTAJE"; porcentaje: number };
