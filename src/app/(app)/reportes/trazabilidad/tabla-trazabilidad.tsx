@@ -2,6 +2,7 @@
 
 import { IconoDeAccion } from "@/components/iconos";
 import Link from "next/link";
+import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { enlaceParaCorregirMovimiento, type OperacionEncontrada, type ItemOperacion } from "@/core/reportes/public";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
@@ -58,9 +59,9 @@ const COLUMNA_CORREGIR: ColumnaReporte<ItemOperacion> = {
   clave: "corregir",
   etiqueta: "",
   render: (it) => (
-    <Link href={enlaceParaCorregirMovimiento(it.idMovimiento)} className="underline inline-flex items-center gap-1" aria-label={`Corregir este movimiento de ${it.productoNombre}`}>
+    <EnlaceInterno href={enlaceParaCorregirMovimiento(it.idMovimiento)} className="underline inline-flex items-center gap-1" aria-label={`Corregir este movimiento de ${it.productoNombre}`}>
       Corregir este movimiento
-    </Link>
+    </EnlaceInterno>
   ),
 };
 
