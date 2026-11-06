@@ -1,5 +1,5 @@
 import { esIdentificador } from "@/core/datos/identificador";
-import { MAXIMO_CUPOS_POR_PROMO, validarTopeDeLista } from "@/core/datos/limites";
+import { MAXIMO_CUPOS_POR_PROMO, validarTopeDeLista, LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DESCRIPCION_CARTA, LARGO_MAXIMO_NOMBRE_DE_CUPO, LARGO_MAXIMO_TITULO_CARTA, TIPOS_DE_CUPO, validarCantidadCupoPromo, validarOrdenCarta, validarPrecioCarta, validarTextoLibreCarta, type TipoDeCupo } from "@/core/carta/public";
 import type { ComandoGuardarPromoCarta, ComandoGuardarSoloSalonPromoCarta, CupoValidadoPromoCarta } from "./promos.schema";
@@ -54,8 +54,6 @@ export function guardComandoGuardarPromoCarta(datos: EntradaPromoCarta): Resulta
   });
 }
 
-/** El largo más alto que acepta un id de promo (los ids son `cuid`: de sobra). */
-const LARGO_MAXIMO_DE_ID = 64;
 
 /**
  * Guard del comando «dónde se ve una promo» (interruptor «solo salón»): el id de la promo (texto no vacío y acotado), la versión que vio la pantalla (entero >= 1) y el interruptor, que tiene que ser EXACTAMENTE un booleano (un `"true"`, un `1` o su

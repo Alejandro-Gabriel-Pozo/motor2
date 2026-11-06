@@ -2,7 +2,7 @@ import "server-only";
 import { mismosCentavos } from "@/core/datos/importe";
 import { rechazoDeReferenciaNoEncontrada } from "@/core/datos/errores-de-base";
 import type { ComandoCrearGrupoEnElProducto, DatosDeVersionDeOpcion, ResultadoCrearGrupoEnElProducto } from "@/core/features/catalogo/opciones-de-venta.schema";
-import { contenidoDeVersionIgual, formaDelGrupoPorRespuesta } from "@/core/opciones/public";
+import { contenidoDeVersionIgual, formaDelGrupoPorRespuesta, PASO_DE_ORDEN } from "@/core/opciones/public";
 import { exito, fracaso, type Fracaso } from "@/core/resultado-caso";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -12,9 +12,6 @@ import { crearGrupoDeOpcionesEnTx } from "./crear-grupo-de-opciones";
 import { crearOpcionDeGrupoEnTx } from "./crear-opcion-de-grupo";
 import { fijarAdmisionDeGrupoEnTx } from "./fijar-admision-de-grupo-en-producto";
 import { versionVigenteEnTx } from "./opciones-de-venta-en-tx";
-
-/** Paso entre el orden de un grupo y el siguiente, dentro de las opciones del grupo y de los grupos del producto: lo que ya usa la pantalla (`PASO_DE_ORDEN` de «Opciones de venta») y deja lugar para uno en el medio. */
-const PASO_DE_ORDEN = 10;
 
 type FracasoDelComando = Fracaso<Extract<ResultadoCrearGrupoEnElProducto, { ok: false }>["codigo"]>;
 

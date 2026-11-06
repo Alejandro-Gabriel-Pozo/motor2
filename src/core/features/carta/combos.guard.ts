@@ -2,13 +2,13 @@ import { esIdentificador } from "@/core/datos/identificador";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { mascaraDeDias, TODOS_LOS_DIAS, validarVigenciaDePromo } from "@/core/carta/public";
 import type { ComandoActivarEntradaDeCupo, ComandoAgregarEntradaDeCupo, ComandoGuardarVigenciaPromoCarta, OpcionDeConfiguracionFija } from "./combos.schema";
+import { LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
 
 /**
  * Guard de la feature «combos y menú del día» (GO-3b, ADR-032). Formato del comando, ANTES de tocar la base; lo llama la Server Action DENTRO de su `conPermiso…(…)`, así el rechazo por permiso
  * sigue llegando antes que el de formato. Puro: sin Prisma ni permisos.
  */
 
-const LARGO_MAXIMO_DE_ID = 64;
 /** Tope de opciones de una configuración fija (una por grupo admitido, de sobra). */
 const MAXIMO_OPCIONES_DE_CONFIGURACION = 20;
 

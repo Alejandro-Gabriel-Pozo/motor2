@@ -1,4 +1,4 @@
-import { seOcultaEnLaCarta, type DiferenciaDePrecio, type GrupoPermitido, type OpcionPermitida, type OpcionParaOcultarEnCarta } from "@/core/opciones/public";
+import { seOcultaEnLaCarta, type DiferenciaDePrecio, type GrupoPermitido, type OpcionPermitida, type OpcionParaOcultarEnCarta, opcionOfrecida } from "@/core/opciones/public";
 
 /**
  * Un grupo con lo mínimo que la regla de «no se lee en la carta» necesita (forma estructural: lo cumple `GrupoParaVender` sin importarlo, así `linea-configurada` y `precio-de-configuracion` comparten esta
@@ -14,7 +14,7 @@ function opcionesParaOcultar(g: GrupoParaOcultarEnLaCarta): OpcionParaOcultarEnC
   return g.opciones.map((o) => ({
     nombre: o.nombre,
     esNinguna: o.esNinguna,
-    ofrecida: o.activa && o.admitida,
+    ofrecida: opcionOfrecida(o),
     diferencia: o.esNinguna ? null : (o.diferenciaDelProducto ?? o.diferenciaDeLaVersion),
     precioAbsoluto: o.precioAbsoluto,
   }));
