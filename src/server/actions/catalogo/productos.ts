@@ -9,7 +9,7 @@ import { escaparComodinesLike, quitarCaracteresInadmisibles, textoDeBusqueda } f
 import { puedeBuscarPorReferenciaDelProveedor, whereDeLosProductos } from "@/server/lecturas/catalogo/filtros-de-productos";
 import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-de-producto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
-import { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeProductos, necesitaLaEmpresaEntera, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
+import { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeProductos, necesitaLaEmpresaEntera, MENSAJE_PRESENTACIONES_APAGADAS, PRESENTACIONES_VISIBLES, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
@@ -491,6 +491,8 @@ export interface PresentacionOpcion {
  */
 export async function listarPresentaciones(productoId: string): Promise<PresentacionOpcion[]> {
   const ctx = await requerirVerAlguna(["producto_ver_catalogo", "proceso_compra", "proceso_devolucion_proveedor"]);
+  // Interruptor de las presentaciones (decisión del dueño, 2026-11-06): apagado, no se ve ninguna (los datos no se tocan).
+  if (!PRESENTACIONES_VISIBLES) return [];
   const filas = await ctx.db.presentacion.findMany({
     where: { productoId },
     include: { unidadCompra: true },
@@ -543,7 +545,7 @@ export async function obtenerDatosDeCompraDelProducto(productoId: string): Promi
     unidades: {
       unidadStockNombre: p.unidadStock.nombre,
       porDefecto: { unidadCompraId: base.id, nombre: base.nombre, factor: Number(p.factorConversion) || 1 },
-      presentaciones: p.presentaciones.map((x) => ({ unidadCompraId: x.unidadCompraId, nombre: x.unidadCompra.nombre, factor: Number(x.factorConversion) })).sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      presentaciones: PRESENTACIONES_VISIBLES ? p.presentaciones.map((x) => ({ unidadCompraId: x.unidadCompraId, nombre: x.unidadCompra.nombre, factor: Number(x.factorConversion) })).sort((a, b) => a.nombre.localeCompare(b.nombre)) : [],
     },
   };
 }
@@ -556,6 +558,8 @@ export async function agregarPresentacionAlternativa(
   // Desde el Hito 4 (H4C-11): permiso → caso de uso (`casos-de-uso/agregar-presentacion-alternativa.ts`: el producto, el factor con los decimales de su unidad de
   // stock, y la presentación con su auditoría en UNA transacción) → `aResultadoAccion`. Sin guard (`SIN_GUARD`: el factor se valida después de leer el producto).
   return conPermisoDeEmpresa("producto_presentaciones", async (ctx) => {
+    // Interruptor de las presentaciones (decisión del dueño, 2026-11-06): apagado, no se crea ni se reactiva ninguna, aunque el pedido venga armado a mano. Va después del permiso (sin permiso, el rechazo es el de siempre).
+    if (!PRESENTACIONES_VISIBLES) return error(MENSAJE_PRESENTACIONES_APAGADAS);
     // S-52: el guard se CALCULA acá; los ids rotos se rechazan en el acto y el rango del factor lo aplica el caso de uso después de leer el producto (un producto inexistente gana sobre un factor inválido).
     const puerta = guardComandoAgregarPresentacionAlternativa({ productoId, unidadCompraId, factorConversion });
     if (!puerta.ids.ok) return error(puerta.ids.mensaje);
@@ -572,6 +576,8 @@ export async function agregarPresentacionAlternativa(
  */
 export async function actualizarActivaPresentacion(presentacionId: string, activa: boolean): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("producto_presentaciones", async (ctx) => {
+    // Interruptor de las presentaciones (decisión del dueño, 2026-11-06): apagado, no se activa ni se desactiva ninguna.
+    if (!PRESENTACIONES_VISIBLES) return error(MENSAJE_PRESENTACIONES_APAGADAS);
     return aResultadoAccion(await actualizarActivaPresentacionCasoDeUso(ctx, { presentacionId, activa }));
   });
 }

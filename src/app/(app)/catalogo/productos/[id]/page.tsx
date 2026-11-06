@@ -6,6 +6,7 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
+import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
 import { actualizarDisponibilidadProducto, listarPresentaciones } from "@/server/actions/catalogo/productos";
 import { disponibilidadPorSucursalDeProducto } from "@/server/consultas/catalogo/disponibilidad";
 import { obtenerFichaProducto, obtenerSeccionHabitualEnSucursal } from "@/server/consultas/catalogo/productos";
@@ -71,7 +72,7 @@ export default async function FichaProductoPage({
   const productoId = p.id;
 
   const [presentaciones, disponibilidadPorSucursal, seccionHabitual, opcionesDeVenta, nivelOpciones] = await Promise.all([
-    p.tipo === "MP" ? listarPresentaciones(p.id) : Promise.resolve([]),
+    PRESENTACIONES_VISIBLES && p.tipo === "MP" ? listarPresentaciones(p.id) : Promise.resolve([]),
     disponibilidadPorSucursalDeProducto(p.id, ctx.db),
     // Solo lectura (se configura en Stock › Sección habitual): la de ESTA sucursal, y solo si apunta a una sección activa de acá — la misma regla
     // con la que la usa el cierre de cuenta del salón (docs/plan-seccion-habitual-stock-2026-09-25.md).

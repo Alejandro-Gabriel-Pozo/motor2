@@ -7,6 +7,7 @@ import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
 import { GestionPresentaciones } from "@/components/catalogo/gestion-presentaciones";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
+import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
@@ -432,7 +433,7 @@ export function ProductoForm({
         </div>
       )}
 
-      {editando && tipo === "MP" && (
+      {PRESENTACIONES_VISIBLES && editando && tipo === "MP" && (
         <GestionPresentaciones
           productoId={productoExistente!.id}
           unidades={unidades.filter((u) => !u.inactiva)}
