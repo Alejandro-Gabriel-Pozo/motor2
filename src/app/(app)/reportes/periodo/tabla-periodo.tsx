@@ -11,7 +11,7 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
     valor: (v) => v.producto,
     render: (v) => (
       <EnlaceInterno href={`/reportes/historial?productoId=${v.productoId}`} className="underline">
-        {v.producto} {v.ingresoEstimado && <span className="text-aviso-tinta">(estimado)</span>}
+        {v.producto}
       </EnlaceInterno>
     ),
   },

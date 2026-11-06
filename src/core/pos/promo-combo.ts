@@ -1,5 +1,5 @@
 import { esNumeroFinito } from "@/core/numero";
-import { importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda";
+import { IMPORTE_MINIMO, IMPORTE_MINIMO_TEXTO, importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda";
 import type { TipoDeCupo } from "@/core/carta/public";
 
 /**
@@ -115,12 +115,29 @@ export function esCupoFijo(cupo: CupoDePromo): cupo is CupoDeEntradasDefinicion 
   return esCupoDeEntradas(cupo) && cupo.tipo === "LISTA" && cupo.entradas.size === 1 && cupo.cantidadMinima >= 1 && cupo.cantidadMinima === cupo.cantidadMaximaCupo && ![...cupo.entradas.values()][0]!.aElegir;
 }
 
+/** Las formas de la clave de un componente de promo (ver `claveDeComponente`). */
+export type FormaDeClaveDeComponente =
+  | { forma: "producto" }
+  | { forma: "configurada"; claveConfiguracion: string }
+  | { forma: "a-elegir"; entradaId: string };
+
 /**
- * La clave de componente de una entrada con configuración fija: `productoId` más el canónico de la configuración (`claveDeConfiguracion`). Sin configuración (canónico vacío) es el
- * `productoId` solo, que es la clave de siempre.
+ * LA ÚNICA función que arma la clave que identifica a un plato dentro de una promo (la usan el validador de la elección y la lectura de entradas para vender; el precio de lista se busca
+ * por esta clave y, si no se encuentra, el plato pesaría $0 en el reparto):
+ *  - `producto`: el `productoId` solo (componente de sección, o entrada fija sin configuración);
+ *  - `configurada`: `productoId#canónico` (`claveDeConfiguracion`); con canónico vacío, `productoId#` — nunca el producto pelado, que es el de un componente de sección;
+ *  - `a-elegir`: `productoId#@entradaId`, el marcador de una entrada «a elegir» (lo que se agrega lleva la clave de la configuración ELEGIDA).
  */
+export function claveDeComponente(productoId: string, forma: FormaDeClaveDeComponente): string {
+  // CLAVE-UNICA: el único lugar donde se concatena el «#» (lo vigila test/pos/clave-de-componente-de-promo.test.ts).
+  if (forma.forma === "producto") return productoId;
+  if (forma.forma === "configurada") return `${productoId}#${forma.claveConfiguracion}`; // CLAVE-UNICA
+  return `${productoId}#@${forma.entradaId}`; // CLAVE-UNICA
+}
+
+/** La clave de componente de una entrada con configuración fija: sin configuración (canónico vacío) es el `productoId` solo, que es la clave de siempre. */
 export function claveDeComponenteConfigurado(productoId: string, claveConfiguracion: string): string {
-  return claveConfiguracion === "" ? productoId : `${productoId}#${claveConfiguracion}`;
+  return claveDeComponente(productoId, claveConfiguracion === "" ? { forma: "producto" } : { forma: "configurada", claveConfiguracion });
 }
 
 /**
@@ -287,7 +304,7 @@ function aplanarCupoDeEntradas(cupo: CupoDeEntradasDefinicion, eleccion: Eleccio
       yaElegidas.add(identidad);
       total += el.cantidad;
       // Sin opciones elegidas la clave es la del producto con marca (nunca la del producto pelado, que es la de un componente de sección).
-      const claveComponente = canonico === "" ? `${entrada.productoId}#` : claveDeComponenteConfigurado(entrada.productoId, canonico);
+      const claveComponente = claveDeComponente(entrada.productoId, { forma: "configurada", claveConfiguracion: canonico });
       componentes.push({
         productoId: entrada.productoId,
         cantidad: el.cantidad,
@@ -333,7 +350,7 @@ function totalUnidades(componentes: readonly { cantidad: number }[]): number {
  * medio, ej. se agregó un cupo con más máximo después de fijar el precio).
  */
 export function precioMinimoPromo(componentes: readonly { cantidad: number }[]): number {
-  return redondearMoneda(0.01 * totalUnidades(componentes));
+  return redondearMoneda(IMPORTE_MINIMO * totalUnidades(componentes));
 }
 
 export interface ComponentePromoElegido extends ProductoElegidoEnCupo {
@@ -393,13 +410,13 @@ export function prorratearPrecioPromo(precioPromo: number, componentes: readonly
   const n = unidades.length;
   const minimo = precioMinimoPromo(componentes);
   if (redondearMoneda(precioPromo) < minimo) {
-    return { ok: false, mensaje: `El precio de la promo ($${precioPromo}) no alcanza el piso de $0,01 por unidad (${n} unidades: mínimo $${minimo}).` };
+    return { ok: false, mensaje: `El precio de la promo ($${precioPromo}) no alcanza el piso de ${IMPORTE_MINIMO_TEXTO} por unidad (${n} unidades: mínimo $${minimo}).` };
   }
 
   const pesos = unidades.map((u) => u.peso);
   const directo = repartirImporte(precioPromo, pesos);
-  const precioPorUnidad = directo.some((v) => v < 0.01)
-    ? repartirImporte(redondearMoneda(precioPromo - 0.01 * n), pesos).map((extra) => redondearMoneda(0.01 + extra))
+  const precioPorUnidad = directo.some((v) => v < IMPORTE_MINIMO)
+    ? repartirImporte(redondearMoneda(precioPromo - IMPORTE_MINIMO * n), pesos).map((extra) => redondearMoneda(IMPORTE_MINIMO + extra))
     : directo;
 
   const filas: FilaPromoProrrateada[] = [];

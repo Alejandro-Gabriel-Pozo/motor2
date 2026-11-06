@@ -5,7 +5,8 @@ export interface ResumenFinanciero {
   margenTotal: number;
   margenPct: number | null;
   costoTotal: number;
-  hayEstimados: boolean;
+  /** Ventas con importe $0 («sin dato»): quedan fuera de `ventasTotal` y nunca se estiman. */
+  ventasSinDato: number;
   hayCostoIncompleto: boolean;
   topProductos: { producto: string; importe: number }[];
   gastadoTotal: number;

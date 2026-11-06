@@ -594,7 +594,7 @@ export function PanelCompraPorPasos({
               </option>
             ))}
           </Selector>
-          {reparto && <BloqueDeReparto estado={estadoReparto} onCambio={setEstadoReparto} sucursalActiva={reparto.sucursalActiva} otras={reparto.otras} totalDeLaFactura={totalDeLaCompra} />}
+          {reparto && <BloqueDeReparto estado={estadoReparto} onCambio={setEstadoReparto} sucursalActiva={reparto.sucursalActiva} otras={reparto.otras} preciosDeLosRenglones={lineasAGuardar.map((f) => numeroDelCampo(f.importe) ?? 0)} />}
           <Campo etiqueta="Detalle (opcional)" value={detalleLibre} onChange={(e) => setDetalleLibre(e.target.value)} />
         </div>
       )}
