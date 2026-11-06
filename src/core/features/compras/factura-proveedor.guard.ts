@@ -1,5 +1,5 @@
 import { texto, LARGO_MAXIMO_MOTIVO_ANULACION } from "@/core/texto";
-import { esDetalleReservadoParaReversiones } from "@/core/movimientos/public";
+import { validarDetalleLibreDeOperacion } from "@/core/movimientos/public";
 import { validarFechaDeCompra } from "@/core/datos/fecha-operacion";
 import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { guardComprobanteDeCompra } from "./compra.guard";
@@ -38,9 +38,8 @@ export function guardComandoRegistrarFacturaProveedor(entrada: unknown, ahora: D
     const referencia = validarTextoLibre((item as { referenciaProveedor?: unknown }).referenciaProveedor, "La referencia del proveedor", LARGO_MAXIMO_DETALLE);
     if (!referencia.ok) return rechazar(referencia.codigo, referencia.mensaje);
   }
-  const detalle = validarTextoLibre(e.detalleLibre, "El detalle", LARGO_MAXIMO_DETALLE);
+  const detalle = validarDetalleLibreDeOperacion(e.detalleLibre);
   if (!detalle.ok) return rechazar(detalle.codigo, detalle.mensaje);
-  if (typeof e.detalleLibre === "string" && esDetalleReservadoParaReversiones(e.detalleLibre)) return rechazar("formato", "Ese detalle está reservado para las anulaciones: escribilo de otra forma.");
   const fecha = validarFechaDeCompra(e.fecha, ahora);
   if (!fecha.ok) return rechazar(fecha.codigo, fecha.mensaje);
 

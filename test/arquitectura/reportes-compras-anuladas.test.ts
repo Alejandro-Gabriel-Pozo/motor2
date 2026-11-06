@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
+import { procesosSinDecidirAnuladas } from "./cercos/anuladas";
 
 /**
  * Regla de arquitectura (K1c y anularVenta): toda consulta o filtro de `src/core/reportes/` sobre el proceso COMPRA o VENTA tiene que decidir qué hace con las
@@ -17,9 +18,6 @@ import { describe, expect, it } from "vitest";
  * Excepciones: un archivo que MUESTRA las anuladas (en vez de calcular dinero con ellas) va en `MUESTRAN_ANULADAS`, con el motivo.
  */
 const RAIZ = join(__dirname, "../../src/core/reportes");
-const VENTANA_ANTES = 3;
-const VENTANA_DESPUES = 8;
-const PROCESOS = ["COMPRA", "VENTA"] as const;
 
 const MUESTRAN_ANULADAS: Record<string, string> = {
   "compras-registradas.ts": "es el listado de facturas: muestra las anuladas marcadas (y la página las deja fuera del total)",
@@ -30,23 +28,6 @@ function archivos(dir: string): string[] {
     const ruta = join(dir, nombre);
     return statSync(ruta).isDirectory() ? archivos(ruta) : ruta.endsWith(".ts") ? [ruta] : [];
   });
-}
-
-function esComentario(linea: string): boolean {
-  const t = linea.trim();
-  return t.startsWith("*") || t.startsWith("//") || t.startsWith("/*");
-}
-
-/** Las líneas (1-based) con una mención a COMPRA o VENTA en código que no tienen ninguna referencia a anuladas cerca. */
-function procesosSinDecidirAnuladas(fuente: string): number[] {
-  const lineas = fuente.replace(/\r\n/g, "\n").split("\n");
-  const malas: number[] = [];
-  lineas.forEach((linea, i) => {
-    if (esComentario(linea) || !PROCESOS.some((p) => new RegExp(`["']${p}["']`).test(linea))) return;
-    const ventana = lineas.slice(Math.max(0, i - VENTANA_ANTES), i + VENTANA_DESPUES + 1).join("\n");
-    if (!/anulad/i.test(ventana)) malas.push(i + 1);
-  });
-  return malas;
 }
 
 describe("reportes: toda mención al proceso COMPRA o VENTA decide qué hace con las anuladas", () => {
