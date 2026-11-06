@@ -657,7 +657,7 @@ testAutenticado(
 
       // Anulada: la fila marcada y el aviso de éxito.
       await tarjetaIntacta.getByRole("button", { name: "Sí, anular" }).click();
-      await expect(tarjetaIntacta.getByRole("status").filter({ hasText: "Compra anulada" })).toBeVisible();
+      await expect(tarjetaIntacta.getByRole("status").filter({ hasText: "Factura anulada" })).toBeVisible();
       await expect(tarjetaIntacta.getByText("Anulada", { exact: true })).toBeVisible();
       expect((await new AxeBuilder({ page }).analyze()).violations, "compra anulada").toEqual([]);
     } finally {

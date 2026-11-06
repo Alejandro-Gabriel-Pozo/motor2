@@ -157,7 +157,9 @@ test("una compra anulada no ofrece corregir, y quien no tiene «corregir_compra�
   try {
     const anulada = await s.compra({ proveedorId: s.molino.id, nroFactura: `ANUL-${s.marca}` });
     const quien = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
+    // Como la deja la anulación real: la factura y la compra de su parte, las dos marcadas.
     await prisma.facturaProveedor.update({ where: { id: anulada.facturaId }, data: { anuladaEn: new Date(), anuladaPorId: quien.id } });
+    await prisma.operacion.update({ where: { id: anulada.id }, data: { anuladaEn: new Date(), anuladaPorId: quien.id } });
     const vigente = await s.compra({ proveedorId: s.molino.id, nroFactura: `VIG-${s.marca}` });
 
     // El admin: la vigente ofrece corregir; la anulada, no.

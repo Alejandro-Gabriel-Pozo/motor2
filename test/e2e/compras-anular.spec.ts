@@ -69,7 +69,7 @@ test("se anula una compra desde su detalle, con confirmación: el stock vuelve, 
     // Confirmar.
     await tarjeta.getByRole("button", { name: /^Anular compra/ }).click();
     await tarjeta.getByRole("button", { name: "Sí, anular" }).click();
-    await expect(tarjeta.getByRole("status").filter({ hasText: "Compra anulada" })).toBeVisible();
+    await expect(tarjeta.getByRole("status").filter({ hasText: "Factura anulada" })).toBeVisible();
     await expect(tarjeta.getByRole("status")).toContainText(c.factura); // avisa que el número quedó libre
 
     // La fila queda marcada como anulada, con el total tachado y sin el botón de anular.

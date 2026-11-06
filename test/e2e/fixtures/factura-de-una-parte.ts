@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "./db";
 import { prismaAdmin } from "../../setup/cliente-duenio";
+import { normalizarNumeroDeComprobante } from "../../../src/core/compras/public";
 
 /**
  * Siembra, directo en la base, una compra como la guarda el sistema desde U1 de «una sola compra»: una FACTURA (cabecera + un renglón de mercadería) con UNA parte (la compra de la sucursal y su línea de Kardex, que apunta al renglón).
@@ -30,7 +31,7 @@ export async function sembrarFacturaDeUnaParte(p: {
   const precioTotal = p.precioTotal ?? 360;
   const factura = await prisma.facturaProveedor.create({
     data: {
-      proveedorId: p.proveedorId, nroFactura: p.nroFactura, detalleLibre: p.detalleLibre ?? null, fecha, importeTotal: precioTotal.toFixed(2), estado: "CONFIRMADA", confirmadaEn: fecha, confirmadaPorId: p.usuarioId,
+      proveedorId: p.proveedorId, nroFactura: p.nroFactura, nroFacturaNormalizado: normalizarNumeroDeComprobante(p.nroFactura), detalleLibre: p.detalleLibre ?? null, fecha, importeTotal: precioTotal.toFixed(2), estado: "CONFIRMADA", confirmadaEn: fecha, confirmadaPorId: p.usuarioId,
       origen: "CARGA", condicionPago: p.condicionPago ?? "CONTADO_PAGADA", claveIdempotencia: randomUUID(), payloadHash: "huella-e2e", resultadoMensaje: "Compra registrada.", creadoPorId: p.usuarioId,
     } as never,
   });
