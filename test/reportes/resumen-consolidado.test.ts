@@ -52,6 +52,25 @@ describe("obtenerResumenConsolidado", () => {
     const norte = filas.find((f) => f.sucursalId === sucursal2.id)!;
     expect(central.ventasTotal).toBe(200); // 2 × 100, no se mezcla con Norte
     expect(norte.ventasTotal).toBe(150); // 3 × 50
+    expect(central.ventasSinDato).toBe(0);
+    expect(norte.ventasSinDato).toBe(0);
+  });
+
+  it("una venta con importe $0 es «sin dato»: no suma a las ventas (no se revalúa al precio de lista) y se cuenta aparte", async () => {
+    const base = await sembrarBase();
+    const catalogo = await sembrarCatalogoBase();
+    const seccion = await sembrarSeccion(base.sucursal.id);
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: base.sucursal.id, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+    const pv = await sembrarProductoDisponible({ codigo: "PV_1", nombre: "Brownie", tipo: "PV", unidadStockId: catalogo.kg.id, precioVenta: 10000 }, base.sucursal.id);
+    const operacion = await prisma.operacion.create({ data: { sucursalId: base.sucursal.id, proceso: "VENTA", fecha: AHORA_DE_LA_CORRIDA, usuarioId: admin.id } });
+    const venta = (precioTotal: number, detalle: string) => ({ operacionId: operacion.id, productoId: pv.id, seccionId: seccion.id, proceso: "VENTA" as const, cantidad: -1, detalle, precioTotal, precioPorUnidadStock: precioTotal });
+    await prisma.movimientoStock.create({ data: venta(10000, "Venta con importe") });
+    await prisma.movimientoStock.create({ data: venta(0, "Venta sin importe") });
+
+    const [fila] = await obtenerResumenConsolidado([{ id: base.sucursal.id, nombre: base.sucursal.nombre }], prisma, AHORA_DE_LA_CORRIDA);
+    expect(fila.ventasTotal).toBe(10000); // solo la del importe; la de $0 NO vale $10.000 (precio de lista de hoy)
+    expect(fila.ventasSinDato).toBe(1);
   });
 
   it("sin ninguna venta/compra, da filas en 0 en vez de romper", async () => {
@@ -61,7 +80,7 @@ describe("obtenerResumenConsolidado", () => {
 
     const filas = await obtenerResumenConsolidado([{ id: base.sucursal.id, nombre: base.sucursal.nombre }], prisma, AHORA_DE_LA_CORRIDA);
     expect(filas).toEqual([
-      expect.objectContaining({ sucursalId: base.sucursal.id, ventasTotal: 0, margenTotal: 0, gastadoTotal: 0, alertasCriticas: 0, alertasBajas: 0 }),
+      expect.objectContaining({ sucursalId: base.sucursal.id, ventasTotal: 0, ventasSinDato: 0, margenTotal: 0, gastadoTotal: 0, alertasCriticas: 0, alertasBajas: 0 }),
     ]);
   });
 });

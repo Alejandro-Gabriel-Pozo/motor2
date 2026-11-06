@@ -9,7 +9,7 @@ import { ZONA_ARGENTINA } from "@/core/tiempo/zona-horaria";
 /**
  * Ventas por SECCIÓN DE CARTA (docs/plan-carta-catalogo-2026-09-24.md, M4; rehecho a nivel de PRODUCTO en
  * docs/plan-carta-seccion-directa-2026-09-25.md, M5). Las mismas ventas que «Ventas por categoría» (mismo
- * `cargarLineasDelPeriodo` + `calcularVentasDelPeriodo`, mismo criterio de ventas reales/estimadas), agrupadas por la sección de carta donde el
+ * `cargarLineasDelPeriodo` + `calcularVentasDelPeriodo`, mismo criterio: importe real, o «sin dato» y fuera del total), agrupadas por la sección de carta donde el
  * cliente ve CADA producto EN LA CARTA PROPIA DE LA SUCURSAL (ADR-009, C3) — no por su categoría, que ya no ubica nada en la carta:
  *  - opción de un ítem agrupado → la sección del ítem agrupado (un producto agrupado sale solo ahí, D3);
  *  - si no, PV suelto con `ContenidoCartaProducto` visible y con sección → esa sección;
@@ -137,7 +137,7 @@ export async function generarReporteVentasPorSeccion(sucursalId: string, desde: 
     cargarLineasDelPeriodo(sucursalId, desde, hasta, { proceso: "VENTA" }, db, {}, zona),
     seccionesDeProductos(sucursalId, db),
   ]);
-  const ventas = calcularVentasDelPeriodo(items, productos);
+  const ventas = calcularVentasDelPeriodo(items);
   return reagruparPorSeccion(
     {
       desde: desdeRango,

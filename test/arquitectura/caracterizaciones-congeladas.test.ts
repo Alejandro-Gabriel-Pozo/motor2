@@ -513,6 +513,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Pagos X0 (ADITIVO; no cambia ningún importe ni conteo de consultas): cada compra de «Compras registradas» suma el campo `pago: null` (sin factura de proveedor no hay estado de pago). Revisado con `git diff`: solo suma esas líneas.",
       },
+      {
+        blob: "5c93d6784a88871230661954f6159610fe861b9c",
+        // El commit PADRE de este es el último antes del cambio; el golden se regenera en el commit de «Ventas del período: importe $0 es sin dato» de la rama alegp/deuda-lote1b-ceros-y-reparto (PR #168).
+        commit: "50c1153",
+        motivo:
+          "Lote 1b, hallazgo C (decisión del dueño, 2026-11-06; CAMBIA COMPORTAMIENTO: las ventas con importe $0 ya no se revalúan al precio de hoy, quedan «sin dato»). Cambia SOLO la forma, sin tocar ningún importe del escenario (no tiene ventas $0): `ventas` suma `lineasSinDato: 0` y pierde `estimado` en cada fila de `porProducto`; las filas del margen pierden `ingresoEstimado`; el resumen operativo cambia `hayEstimados: false` por `ventasSinDato: 0`; y cada fila del Consolidado suma `ventasSinDato: 0`. Revisado con `git diff`: solo esas líneas.",
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {

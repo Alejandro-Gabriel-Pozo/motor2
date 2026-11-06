@@ -3,6 +3,7 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
 import { requierePermisoVer, sucursalesVisiblesPara } from "@/server/acceso/gate";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo, reportePesadoSinCupo } from "@/server/actions/limitador-de-lecturas";
+import { avisoDeVentasSinDato } from "@/core/reportes/public";
 import { obtenerResumenConsolidado } from "@/server/consultas/reportes/resumen-consolidado";
 import { TablaConsolidado } from "./tabla-consolidado";
 import { EnlaceInterno } from "@/components/enlace-interno";
@@ -43,10 +44,11 @@ export default async function ConsolidadoPage() {
   const totales = filas.reduce(
     (acc, f) => ({
       ventasTotal: acc.ventasTotal + f.ventasTotal,
+      ventasSinDato: acc.ventasSinDato + f.ventasSinDato,
       margenTotal: acc.margenTotal + f.margenTotal,
       gastadoTotal: acc.gastadoTotal + f.gastadoTotal,
     }),
-    { ventasTotal: 0, margenTotal: 0, gastadoTotal: 0 }
+    { ventasTotal: 0, ventasSinDato: 0, margenTotal: 0, gastadoTotal: 0 }
   );
 
   return (
@@ -60,6 +62,7 @@ export default async function ConsolidadoPage() {
         <div className="rounded border p-4">
           <p className="text-xs text-tinta-tenue">Ventas del mes (las {filas.length} sucursales)</p>
           <p className="text-lg font-semibold">${totales.ventasTotal.toLocaleString("es-AR")}</p>
+          {totales.ventasSinDato > 0 && <p className="text-xs text-aviso-tinta">{avisoDeVentasSinDato(totales.ventasSinDato)}</p>}
         </div>
         <div className="rounded border p-4">
           <p className="text-xs text-tinta-tenue">Margen del mes (las {filas.length} sucursales)</p>
