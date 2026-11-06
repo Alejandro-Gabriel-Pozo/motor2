@@ -137,9 +137,9 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
   "catalogo/casos-de-uso/guardar-version-de-receta.ts": {
     ata: "EMPRESA_ENTERA",
     ensanches: ["ESCRITURA_EN_LA_EMPRESA"],
-    puertas: ["catalogo/receta-a-ciegas.ts|guardarRecetaACiegas", "catalogo/recetas.ts|guardarReceta"],
+    puertas: ["catalogo/receta-a-ciegas.ts|guardarRecetaACiegas"],
     motivo:
-      "las dos puertas de empresa guardan la receta CENTRAL (`sucursalId` null): el caso de uso solo arrastra a la versión nueva las calibraciones locales que cada sucursal YA tenía (D3), sin elegir ni cambiar ninguna; la rama de receta PROPIA de una sucursal (`destino.sucursalId`) la alcanzan solo las puertas de sucursal (`receta_sucursal_*`)",
+      "la puerta de empresa (y las acciones puntuales de `recetas.ts`, que pasan por el mismo caso de uso) guardan la receta CENTRAL (`sucursalId` null): el caso de uso solo arrastra a la versión nueva las calibraciones locales que cada sucursal YA tenía (D3), sin elegir ni cambiar ninguna; la rama de receta PROPIA de una sucursal (`destino.sucursalId`) la alcanzan solo las puertas de sucursal (`receta_sucursal_*`)",
   },
 };
 
