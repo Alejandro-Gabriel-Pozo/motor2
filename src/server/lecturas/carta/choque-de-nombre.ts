@@ -1,5 +1,5 @@
 import "server-only";
-import { buscarChoqueEntreNombres, whereCartaDeSucursal, wherePromoOfrecidaEn, type ChoqueDeNombre, type NombreUsadoEnLaCarta } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, buscarChoqueEntreNombres, whereCartaDeSucursal, wherePromoOfrecidaEn, type ChoqueDeNombre, type NombreUsadoEnLaCarta } from "@/core/carta/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -24,7 +24,8 @@ export async function buscarChoqueDeNombreEnLaCarta(db: Db, args: { sucursalId: 
     ? [await contenidosPromesa, [], []]
     : await Promise.all([
         contenidosPromesa,
-        db.itemAgrupadoCarta.findMany({ where: whereCartaDeSucursal(sucursalId), select: { nombre: true } }),
+        // Interruptor de ítem agrupado apagado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): sus nombres no salen en la carta, así que no ocupan ninguno.
+        GENERO_E_ITEM_AGRUPADO_VISIBLE ? db.itemAgrupadoCarta.findMany({ where: whereCartaDeSucursal(sucursalId), select: { nombre: true } }) : Promise.resolve([]),
         db.promoCarta.findMany({ where: wherePromoOfrecidaEn(sucursalId, "salon"), select: { titulo: true } }),
       ]);
   const porNombre = (a: NombreUsadoEnLaCarta, b: NombreUsadoEnLaCarta) => a.nombre.localeCompare(b.nombre, "es");

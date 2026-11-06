@@ -1,7 +1,7 @@
 import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { whereDisponibleEn } from "@/core/catalogo/public";
-import { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, promoVigenteEl, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal, nombreParaMostrar } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, promoVigenteEl, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal, nombreParaMostrar } from "@/core/carta/public";
 import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import { cargarEntradasDePromoParaVender, type CupoDeEntradasLeido } from "@/server/lecturas/pos/entradas-de-promo-para-vender";
@@ -71,6 +71,8 @@ export async function cargarSelectorCartaPos(
   // listas vacías y el `null` son exactamente lo que da una empresa que nunca cargó una carta.
   const conCarta = modulos.carta;
   const conPromos = conCarta && modulos.promociones;
+  // Interruptor de género/ítem agrupado apagado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): el POS no agrupa por género (ni lee los géneros ni el de cada producto o agrupado) y la carta no arma agrupados: queda la lista plana de la sección.
+  const conGeneros = conCarta && GENERO_E_ITEM_AGRUPADO_VISIBLE;
   const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
     conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido, "salon", true) : Promise.resolve(null),
     db.producto.findMany({
@@ -81,10 +83,10 @@ export async function cargarSelectorCartaPos(
     // P18 / D18: el descuento de producto es de la Carta; sin el módulo no se lee y el precio mostrado es el de lista (el que `agregarItems` congela).
     conCarta ? descuentosDeProductoEnSucursal(sucursalId, db, undefined, precioLocalActivoLeido) : Promise.resolve(new Map<string, number>()),
     precioLocalActivoLeido,
-    conCarta ? db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }) : Promise.resolve([]),
+    conGeneros ? db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }) : Promise.resolve([]),
     // El género y el «Nombre en la carta» (2026-11-04) salen de la MISMA lectura del contenido de la sucursal: ninguna consulta de más.
-    conCarta ? db.contenidoCartaProducto.findMany({ where: { OR: [{ generoCartaId: { not: null } }, { nombreEnCarta: { not: null } }], ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true, nombreEnCarta: true } }) : Promise.resolve([]),
-    conCarta ? db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, generoCartaId: true } }) : Promise.resolve([]),
+    conCarta ? db.contenidoCartaProducto.findMany({ where: { OR: [...(conGeneros ? [{ generoCartaId: { not: null } }] : []), { nombreEnCarta: { not: null } }], ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true, nombreEnCarta: true } }) : Promise.resolve([]),
+    conGeneros ? db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, generoCartaId: true } }) : Promise.resolve([]),
     // Sin el módulo Promociones no se lee ninguna promo (ni se ofrece ni se acepta).
     conPromos
       ? db.promoCarta.findMany({
@@ -130,7 +132,7 @@ export async function cargarSelectorCartaPos(
   });
   const generos: GenerosSelectorCartaPos = {
     generos: generosActivos,
-    generoPorProducto: new Map(contenidosConGenero.flatMap((c) => (c.generoCartaId !== null ? [[c.productoId, c.generoCartaId] as const] : []))),
+    generoPorProducto: new Map(contenidosConGenero.flatMap((c) => (conGeneros && c.generoCartaId !== null ? [[c.productoId, c.generoCartaId] as const] : []))),
     generoPorAgrupado: new Map(agrupadosConGenero.map((a) => [a.id, a.generoCartaId!])),
   };
   // GO-3b: con el día, solo las promos que valen hoy (su vigencia) y, de las que tienen cupos de entradas, sus entradas elegibles de hoy (la MISMA lectura que valida la venta).

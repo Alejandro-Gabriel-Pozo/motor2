@@ -13,7 +13,7 @@ import { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeP
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
-import { ofrecerSincronizarPrecio } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO, ofrecerSincronizarPrecio } from "@/core/carta/public";
 import type { UnidadesDeCompraDelProducto } from "@/core/compras/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
@@ -444,6 +444,8 @@ export async function actualizarProducto(productoId: string, datos: DatosProduct
  */
 export async function sincronizarPrecioGrupoCarta(productoIds: string[], precio: number, preciosVistos?: Readonly<Record<string, number>>): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("producto_sincronizar_precio_carta", async (ctx) => {
+    // Interruptor de género/ítem agrupado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): apagado, no hay ítems agrupados que igualar; se rechaza (después del permiso) sin leer ni escribir nada.
+    if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) return error(MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO);
     const comando = guardComandoSincronizarPrecioGrupoCarta({ productoIds, precio, preciosVistos });
     if (!comando.ok) return error(comando.mensaje);
     // M.2 (D-3): sincronizar es cambiar el precio de venta de varios productos: además de la clave de sincronizar pide `producto_campos_sensibles` (el caso de uso lo rechaza antes de leer nada).
