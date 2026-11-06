@@ -17,8 +17,6 @@ export function FormularioDeAlta({ instalacion }: { instalacion: string }) {
       <input id="slug" name="slug" required maxLength={63} placeholder="hosteria-sur" autoCapitalize="none" />
       <label htmlFor="zonaHoraria">Zona horaria</label>
       <input id="zonaHoraria" name="zonaHoraria" required defaultValue="America/Argentina/Buenos_Aires" />
-      <label htmlFor="moneda">Moneda (3 letras)</label>
-      <input id="moneda" name="moneda" required maxLength={3} defaultValue="ARS" />
       <label htmlFor="nombreSucursal">Primera sucursal</label>
       <input id="nombreSucursal" name="nombreSucursal" required maxLength={120} defaultValue="Central" />
       <label htmlFor="emailDuenio">Email del dueño (será el gerente)</label>
