@@ -388,6 +388,26 @@ Cada peldaño no rompe lo cargado. Se migran solo las tablas de la etapa que se 
 
 **Una pregunta (cambia dinero).** Cuando se corrige el **precio de una compra vieja**, el margen **reconstruido** de las ventas ya hechas (que se calcula con el historial de compras vigentes) cambia hacia atrás, también en un mes que ya miraste. ¿Está bien que se recalcule siempre con el precio corregido? *Recomendación:* **sí**; el precio corregido es el verdadero, la versión original queda visible en el historial, y los reportes lo rotulan «reconstruido». Cuando exista el cierre de períodos, un mes cerrado pediría otra regla. Supuesto que declaro mientras no me contestes: se recalcula.
 
+## 13. Motivos de corrección: de dónde salen (evaluación del 2026-11-06, pedido del dueño: «que no estén hardcodeados»)
+
+**Hoy (verificado):** los motivos de anular una venta, de corregir un ticket y de corregir una compra son **texto libre** (hasta 200 caracteres). Existen dos catálogos administrables de Movimientos, `MotivoMerma` y `DestinoConsumo` (nombre, descripción, activo; nunca se borran; se administran con los permisos `motivos_merma` y `motivos_destino_consumo`; la semilla vive en `src/core/movimientos/motivos-semilla.ts` y la usa también la siembra de cada empresa nueva). En la maqueta, la lista de motivos que muestro está **escrita en el código** (mis propias palabras, no un dato del dueño): eso se reemplaza.
+
+| Opción | Cómo es | Ventajas | Desventajas |
+|---|---|---|---|
+| **A. Reutilizar `MotivoMerma`** | La misma lista para mermas y correcciones | Cero tablas nuevas | **No encaja:** una merma es una pérdida de stock; «Error de tipeo» o «Faltó cargar el precio» no son mermas, y ensuciarían el selector de Merma y sus reportes |
+| **B. Catálogo propio `MotivoDeCorreccion` (recomendada)** | Mismo patrón que `MotivoMerma`: por empresa, nombre, descripción, activo, nunca se borra, con pantalla de administración y semilla inicial | No está escrito en el código; el administrador agrega, renombra y desactiva; sirve para ticket, compra y lo que venga | Una tabla nueva, una pantalla de administración, un permiso nuevo y la siembra por empresa (migración aditiva) |
+| **C. Texto libre con sugerencias** | Se sigue escribiendo, y el sistema sugiere lo ya usado antes | Sin tablas; no hay nada fijo | No hay lista cuidada ni se puede desactivar o corregir un motivo mal escrito; los reportes por motivo salen sucios |
+
+**Recomendación (PROPUESTA): B, con estas reglas**
+1. **Una sola lista para todas las correcciones,** con un campo «dónde se usa» de lista cerrada (`COMPRA`, `TICKET`, `TODOS`; se amplía con una migración chica cuando llegue venta o nota de crédito), para que en un ticket no aparezca «Faltó cargar el precio».
+2. **El historial no depende del catálogo:** al corregir se guarda el **texto** del motivo en la propia corrección (`Operacion.motivoAnulacion` y `EjemplarTicket.motivo`, que ya existen) y, además, la referencia al motivo elegido. Renombrar o desactivar un motivo después **no cambia lo ya registrado** (el Kardex y los documentos solo agregan).
+3. **«Otro» exige detalle escrito;** los demás lo admiten opcional (hasta 200 caracteres).
+4. **Tipo de motivo (PENDIENTE de tu respuesta, ver abajo):** un campo de clasificación opcional para poder contar correcciones por causa.
+5. **Permisos:** administrar el catálogo con un permiso propio (por ejemplo `motivos_correccion`, administrador); usarlo, con `corregir_compra` y el permiso de emitir el ticket corregido.
+6. **Semilla inicial editable** (se carga en cada empresa y después la administra el dueño). Los valores de la maqueta (compra: «Error de tipeo», «Faltó cargar el precio», «Cantidad mal cargada», «Producto equivocado», «Otro»; ticket: «El cliente devolvió el producto», «Error al cargar el pedido», «Producto no entregado», «Otro») son **propuestas mías, no datos tuyos**: se confirman o se cambian antes de sembrarlos.
+7. **Migración (aditiva y reversible, requiere autorización por base):** tabla `MotivoDeCorreccion` (con CHECK del «dónde se usa»), una columna nula con la referencia en `Operacion` (y en `EjemplarTicket` cuando se construya el ticket), y la siembra. Se suma al CHECK de `reemplazaAOperacionId` del §6.
+8. **Primero lo más barato:** si preferís no sumar una tabla todavía, la opción C sirve de puente; migrar de C a B no rompe lo cargado (el texto ya está guardado).
+
 ## 12. Lo que no se pudo verificar
 
 - **NO VERIFICADA:** dónde se guarda la condición de pago («Pagada ahora») de una compra simple.
