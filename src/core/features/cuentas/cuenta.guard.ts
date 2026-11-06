@@ -2,7 +2,7 @@ import { guardDeId } from "./guard-de-id";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
-import { validarMotivoAnulacion } from "@/core/pos/cuenta";
+import { LARGO_MAXIMO_MOTIVO_ANULACION, texto } from "@/core/texto";
 import type { ComandoCerrarCuenta, ComandoCorregirLineaDeTicket, ComandoEmitirTicketCorregido } from "./cuenta.schema";
 
 /**
@@ -39,14 +39,16 @@ export function guardComandoCorregirLineaDeTicket(entrada: unknown): ResultadoDa
   if (typeof e.operacionId !== "string") return rechazar("formato", MENSAJE_OPERACION_NO_ENCONTRADA);
   if (e.claveIdempotencia === undefined || e.claveIdempotencia === null || e.claveIdempotencia === "") return rechazar("vacio", "Falta la clave de reintento: recargá la pantalla.");
   if (!esClaveIdempotenciaValida(e.claveIdempotencia)) return rechazar("formato", MENSAJE_CLAVE_DE_REINTENTO_INVALIDA);
-  const motivo = validarMotivoAnulacion(e.motivo);
-  if (!motivo.ok) return rechazar("vacio", motivo.mensaje);
+  // El motivo, con los mismos textos que `validarMotivoAnulacion` (core/pos/cuenta.ts, que emite el ticket): obligatorio, hasta 200 caracteres.
+  const motivoTexto = typeof e.motivo === "string" ? texto(e.motivo) : "";
+  if (!motivoTexto) return rechazar("vacio", "Escribí el motivo de la anulación.");
+  if (motivoTexto.length > LARGO_MAXIMO_MOTIVO_ANULACION) return rechazar("largo", `El motivo no puede superar los ${LARGO_MAXIMO_MOTIVO_ANULACION} caracteres.`);
   if (typeof e.ejemplarVisto !== "number" || !Number.isInteger(e.ejemplarVisto) || e.ejemplarVisto < 1) return rechazar("formato", "Recargá la pantalla: no se pudo leer el ticket que estabas viendo.");
   if (typeof e.totalVisto !== "number" || !Number.isFinite(e.totalVisto) || e.totalVisto < 0) return rechazar("formato", "Recargá la pantalla: no se pudo leer el total que estabas viendo.");
   return aceptar({
     cuentaId: e.cuentaId,
     operacionId: e.operacionId,
-    motivo: motivo.motivo,
+    motivo: motivoTexto,
     ejemplarVisto: e.ejemplarVisto,
     totalVisto: e.totalVisto,
     claveIdempotencia: e.claveIdempotencia,
