@@ -77,12 +77,15 @@ describe("guardián de columnas de significado: las declaraciones", () => {
     expect(problemas, problemas.join("\n")).toEqual([]);
   });
 
-  it("el detector no pasa en vacío: ve cientos de columnas, las ya declaradas y las que siguen en la línea de base", () => {
+  it("el detector no pasa en vacío: ve cientos de columnas, las ya declaradas, y una columna sin declarar aparece (la línea de base está en 0)", () => {
     expect(deSignificado.size).toBeGreaterThan(150);
     expect(Object.keys(DECLARACIONES).length).toBeGreaterThan(80);
     // Una columna por cada razón de entrar: Boolean, fecha de estado, enum y CHECK.
     for (const clave of ["Producto.seProduce", "Operacion.anuladaEn", "TraspasoSucursal.estado", "PromoCarta.diasDeSemana"]) expect(deSignificado.has(clave), clave).toBe(true);
-    expect(Object.keys(medirSinDeclarar(ESQUEMA, TODOS_LOS_MODELOS_EN_ALCANCE, DECLARACIONES)).length).toBeGreaterThan(0);
+    // Con la deuda pagada, hoy no queda nada sin declarar; el detector tiene que seguir viendo una columna a la que se le saca la declaración (si no, el guardián pasaría en vacío).
+    const sinUna = Object.fromEntries(Object.entries(DECLARACIONES).filter(([clave]) => clave !== "Producto.seProduce"));
+    expect(Object.keys(medirSinDeclarar(ESQUEMA, TODOS_LOS_MODELOS_EN_ALCANCE, DECLARACIONES))).toEqual([]);
+    expect(Object.keys(medirSinDeclarar(ESQUEMA, TODOS_LOS_MODELOS_EN_ALCANCE, sinUna))).toEqual(["Producto.seProduce"]);
   });
 });
 

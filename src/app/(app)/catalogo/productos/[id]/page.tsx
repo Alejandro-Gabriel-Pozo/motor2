@@ -19,6 +19,7 @@ import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marc
 import { TablaDeDatos } from "@/ui/componentes/datos/tabla-de-datos";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { claseDeBoton } from "@/ui/primitivas/boton";
+import { esBaseConfigurable, modoDeVentaDe } from "@/core/opciones/public";
 
 const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
@@ -90,7 +91,7 @@ export default async function FichaProductoPage({
     nombre: p.nombre,
     codigo: p.codigo,
     tipo: p.tipo,
-    modoDeVenta: p.modoDeVenta === "BASE_CONFIGURABLE" ? "BASE_CONFIGURABLE" : "DIRECTO",
+    modoDeVenta: modoDeVentaDe(p.modoDeVenta),
     precioVenta: Number(p.precioVenta),
     seProduce: p.seProduce,
     esAnclaDeAdicional: esDeRespaldo,
@@ -141,7 +142,7 @@ export default async function FichaProductoPage({
           </Dato>
           {/* Fase 4 (ADR-035): de una base no se cobra el precio guardado: la ficha dice cómo se vende y lo muestra como guardado. */}
           {p.tipo === "PV" &&
-            (p.modoDeVenta === "BASE_CONFIGURABLE" ? (
+            (esBaseConfigurable(p.modoDeVenta) ? (
               <Dato etiqueta="Cómo se vende">
                 <span data-se-vende-por-opcion="">Se vende por opción</span> · precio guardado {plata(Number(p.precioVenta))} (no se cobra: el precio final está en cada opción)
               </Dato>

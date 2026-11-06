@@ -5,6 +5,7 @@ import { MENSAJE_FALTA_SECCION_DE_CARTA, type ComandoActualizarVisibleEnCarta, t
 import { exito, fracaso } from "@/core/resultado-caso";
 import { buscarChoqueDeNombreEnLaCarta } from "@/server/lecturas/carta/choque-de-nombre";
 import { fijarVisibleEnCarta, tomarLosNombresDeLaCarta } from "@/server/persistencia/carta/contenido-producto";
+import { esBaseConfigurable } from "@/core/opciones/public";
 
 /**
  * Caso de uso «mostrar u ocultar un producto en la carta de la sucursal activa» (el atajo; docs/plan-carta-catalogo-2026-09-24.md, M9; Hito 5, bloque D,
@@ -47,7 +48,7 @@ export async function actualizarVisibleEnCartaCasoDeUso(
     const propio = await tx.contenidoCartaProducto.findFirst({ where: { ...whereCartaDeSucursal(actor.sucursalId), productoId }, select: { nombreEnCarta: true } });
     nombreEfectivo = propio?.nombreEnCarta ?? producto.nombre;
     // Una base se lee en la carta por los rótulos de sus opciones, no por su nombre: sin nombre en la carta no ocupa ninguno; con uno, solo se compara con los nombres en la carta de los demás.
-    const esBase = producto.modoDeVenta === "BASE_CONFIGURABLE";
+    const esBase = esBaseConfigurable(producto.modoDeVenta);
     if (!esBase || propio?.nombreEnCarta != null) {
       choque = await buscarChoqueDeNombreEnLaCarta(tx, { sucursalId: actor.sucursalId, productoIdPropio: productoId, nombre: nombreEfectivo, soloNombresEnCarta: esBase });
       if (choque) return;

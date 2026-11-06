@@ -7,7 +7,7 @@ import { denegacionDeModuloDeAccion } from "@/server/acceso/modulos-de-empresa";
 import { agregarVersionDeOpcion, archivarOpciones, crearOpcionDeGrupo, editarGrupoDeOpciones, editarOpcionDeGrupo, reordenarOpcionesDeGrupo } from "@/server/actions/catalogo/opciones-de-venta";
 import { cargarGrupoDelPanel, type CambioDeOpcionDelPanel, type OpcionDelPanel } from "@/server/consultas/catalogo/opciones-de-venta";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
-import { nombreDelTipoDeGrupo, resumenDeConsumos, textoDeDiferencia, textoDeLimites } from "@/core/opciones/public";
+import { nombreDelTipoDeGrupo, resumenDeConsumos, textoDeDiferencia, textoDeLimites, PASO_DE_ORDEN } from "@/core/opciones/public";
 import { formatearCantidad, formatearMonto } from "@/core/pos/public";
 import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
@@ -24,9 +24,6 @@ import { CampoSeLeeEnLaCarta } from "./campo-se-lee-en-la-carta";
 import { CambiarPrecio } from "./cambiar-precio";
 import { OrdenarOpciones } from "./ordenar-opciones";
 import { versionDelFormulario } from "./version-del-formulario";
-
-/** Paso entre el orden de una opción y la siguiente (el mismo del «mover tocando»): una opción nueva va al final, dejando lugar para mover otra entre dos. */
-const PASO_DE_ORDEN = 10;
 
 /** «+ $ 400», «+ 16 %», «+ $ 600» (recargo) o «sin recargo»; en un tamaño, además, cuánto consume. */
 function precioDeLaOpcion(tipo: string, o: OpcionDelPanel, rige: CambioDeOpcionDelPanel | undefined = o.cambios[0]): string {

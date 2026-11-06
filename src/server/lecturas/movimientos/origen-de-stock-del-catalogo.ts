@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { insumosQuePuedeSumarAlgunaOpcion } from "@/core/pos/public";
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import { cargarOrigenDeStockParaVender, type OrigenDeStockParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
+import { grupoVigente, opcionOfrecida } from "@/core/opciones/public";
 
 /**
  * El ORIGEN DE STOCK de los productos para el CATÁLOGO (el espacio del producto y el filtro «le falta: receta»; ventas con opciones, 2026-10-29): lo mismo que lee la venta
@@ -23,7 +24,7 @@ export async function cargarOrigenDeStockDelCatalogo(tx: Prisma.TransactionClien
   const resultado = new Map<string, OrigenDeStockDelCatalogo>(origen);
   for (const id of sinReceta) {
     const grupos = opciones.get(id)?.grupos ?? [];
-    const ofreceOpciones = grupos.some((g) => g.activo && g.admitido && g.tipo !== "ADICIONAL" && g.opciones.some((o) => o.activa && o.admitida));
+    const ofreceOpciones = grupos.some((g) => grupoVigente(g) && g.tipo !== "ADICIONAL" && g.opciones.some(opcionOfrecida));
     if (ofreceOpciones) resultado.set(id, { ...origen.get(id)!, opciones: { insumos: insumosQuePuedeSumarAlgunaOpcion(grupos), nombres: [], ofrecidas: true } });
   }
   return resultado;
