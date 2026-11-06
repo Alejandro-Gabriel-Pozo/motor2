@@ -1,4 +1,5 @@
 import { tieneStockReal } from "@/core/movimientos/public";
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 
 export type EstadoStockConsolidado = "NEGATIVO" | "SIN_MOVIMIENTOS" | "SIN_CONTEO" | "CONCILIADO" | "CON_DESVIO";
 
@@ -33,7 +34,7 @@ export interface ProductoParaConsolidado {
   id: string;
   codigo: string;
   nombre: string;
-  tipo: "MP" | "PV";
+  tipo: TipoProducto;
   seProduce: boolean;
   unidadStock: { nombre: string };
   insumo: { nombre: string } | null;
