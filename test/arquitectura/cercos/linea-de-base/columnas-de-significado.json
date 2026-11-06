@@ -1,10 +1,10 @@
 {
   "regla": "columnas-de-significado",
   "meta": "bajar a 0: toda columna de significado de un modelo de dinero, visibilidad o stock declara si afecta o no, con motivo (E2)",
-  "total": 82,
-  "entradas": 82,
+  "total": 67,
+  "entradas": 67,
   "porTipo": {
-    "sin-declarar": 82
+    "sin-declarar": 67
   },
   "cuentas": {
     "CentroDeCostos.activo": {
@@ -14,15 +14,6 @@
       "sin-declarar": 1
     },
     "CentroDeCostos.codigo": {
-      "sin-declarar": 1
-    },
-    "Cliente.activo": {
-      "sin-declarar": 1
-    },
-    "CombinacionEnLinea.origenPrecio": {
-      "sin-declarar": 1
-    },
-    "CombinacionEnLinea.precioDeSucursal": {
       "sin-declarar": 1
     },
     "ConceptoDeGasto.activo": {
@@ -37,25 +28,10 @@
     "ConteoFisico.fecha": {
       "sin-declarar": 1
     },
-    "Cuenta.abiertaEn": {
-      "sin-declarar": 1
-    },
-    "CuentaItem.huellaOpciones": {
-      "sin-declarar": 1
-    },
-    "CuentaItem.lineaPadreId": {
-      "sin-declarar": 1
-    },
     "DistribucionCostoVersion.motivo": {
       "sin-declarar": 1
     },
     "DistribucionCostoVersion.numero": {
-      "sin-declarar": 1
-    },
-    "Empresa.dosPaneles": {
-      "sin-declarar": 1
-    },
-    "Empresa.estado": {
       "sin-declarar": 1
     },
     "EntradaDeCupo.claveConfiguracion": {
@@ -101,9 +77,6 @@
       "sin-declarar": 1
     },
     "GrupoDeOpciones.tipo": {
-      "sin-declarar": 1
-    },
-    "GrupoDePrecio.activo": {
       "sin-declarar": 1
     },
     "ImputacionDeGasto.naturalezaRenglon": {
@@ -158,15 +131,6 @@
       "sin-declarar": 1
     },
     "OpcionDeGrupo.esNinguna": {
-      "sin-declarar": 1
-    },
-    "OpcionElegidaEnLinea.cantidad": {
-      "sin-declarar": 1
-    },
-    "OpcionElegidaEnLinea.porcentaje": {
-      "sin-declarar": 1
-    },
-    "OpcionElegidaEnLinea.tipoGrupo": {
       "sin-declarar": 1
     },
     "Operacion.fecha": {
@@ -239,15 +203,6 @@
       "sin-declarar": 1
     },
     "Unidad.magnitud": {
-      "sin-declarar": 1
-    },
-    "Venta.canal": {
-      "sin-declarar": 1
-    },
-    "Venta.cuentaId": {
-      "sin-declarar": 1
-    },
-    "Venta.fecha": {
       "sin-declarar": 1
     },
     "VersionDeOpcion.numero": {
