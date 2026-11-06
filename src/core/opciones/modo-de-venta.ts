@@ -1,5 +1,6 @@
 import { IMPORTE_MINIMO, MODO_DE_VENTA, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type ModoDeVenta, type TipoDeGrupoDeOpciones } from "./tipos";
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
+import { opcionOfrecida } from "./opcion-ofrecida";
 
 /**
  * El MODO DE VENTA de un producto (Fase 4 de la ola «precio y carta», ADR-035; `Producto.modoDeVenta`). Puro: sin Prisma.
@@ -60,7 +61,7 @@ export interface AdmisionParaSerBase {
   opciones: readonly OpcionAdmitidaParaSerBase[];
 }
 
-const ofrecidas = (a: AdmisionParaSerBase) => a.opciones.filter((o) => o.activa && o.admitida);
+const ofrecidas = (a: AdmisionParaSerBase) => a.opciones.filter(opcionOfrecida);
 const vigente = (a: AdmisionParaSerBase) => a.activa && a.grupo.activo;
 const esGrupoDePrecio = (a: AdmisionParaSerBase) => vigente(a) && a.grupo.tipo === "MEDIDA" && a.modoPrecio === "ABSOLUTO";
 const conPrecioFinal = (o: OpcionAdmitidaParaSerBase) => o.precioAbsoluto !== null && Number.isFinite(o.precioAbsoluto) && o.precioAbsoluto >= IMPORTE_MINIMO;
