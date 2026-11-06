@@ -32,8 +32,6 @@ export interface LineaCalculada {
   detalle: string;
   precioTotal: number;
   precioPorUnidadStock: number;
-  /** Solo Compra: para enganchar upsertProveedorPorProducto (Catálogo). */
-  precioUnitario: number;
   /** Solo Compra/Devolución a proveedor: la unidad en que se compró (la de la presentación elegida o la del producto). */
   unidadCompraId: string | null;
   /** Solo Compra/Devolución a proveedor: cuántas unidades de compra se tecleó (`unidadCompraId`), ANTES de convertir. Es el dato que `armarFilasDeMovimiento` copia a `MovimientoStock.cantidadCompra` en una COMPRA. */
@@ -187,7 +185,6 @@ export async function armarLineaMovimiento(
   cantidadStock = redondearACantidadDeUnidad(cantidadStock, producto.unidadStock.decimales);
 
   const precioTotal = precioEntrada;
-  const precioUnitario = precioPorUnidad(precioTotal, numCant);
   const precioPorUnidadStock = precioPorUnidad(precioTotal, cantidadStock);
 
   // FEFO simplificado — solo Consumo asume el lote que vence antes si no
@@ -215,7 +212,6 @@ export async function armarLineaMovimiento(
       detalle: detalle || datos.proceso,
       precioTotal,
       precioPorUnidadStock,
-      precioUnitario,
       unidadCompraId,
       cantidadCompra: transicion.aplicaFactorConversion ? numCant : null,
       referenciaProveedor: texto(item.referenciaProveedor) || undefined,

@@ -255,12 +255,10 @@ export async function registrarMovimientoCasoDeUso(
       for (const l of lineas) {
         if (!l.unidadCompraId) continue;
         // El vínculo y su auditoría son de Catálogo (DEC-36, Fase 2b D2): su comando, con el cliente de ESTA transacción.
-        await registrarVinculoDeCompraEnTx(tx, actor, {
+        await registrarVinculoDeCompraEnTx(tx, {
           productoId: l.productoId,
           proveedorId: datos.proveedorId,
           unidadCompraId: l.unidadCompraId,
-          precioUnitario: l.precioUnitario,
-          precioPorUnidadStock: l.precioPorUnidadStock,
           fechaCompra: datos.fecha,
           referenciaProveedor: l.referenciaProveedor,
         });
