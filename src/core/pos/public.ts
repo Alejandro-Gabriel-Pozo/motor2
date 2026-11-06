@@ -28,7 +28,7 @@ export type { NumeroDeTicket } from "./numeracion-ticket";
 export { componentesDeEleccion, precioMinimoPromo } from "./promo-combo";
 export type { CupoPromoDefinicion, EleccionDePromo } from "./promo-combo";
 // GO-3b (I2): los cupos de entradas (LISTA y DEL_DIA) que arma la lectura de la promo para agregar, y la clave de prorrateo de una entrada configurada.
-export { claveDeComponenteConfigurado, esCupoFijo } from "./promo-combo";
+export { claveDeComponente, esCupoFijo } from "./promo-combo";
 export type { CupoDePromo, CupoDeEntradasDefinicion, EntradaElegibleDeCupo } from "./promo-combo";
 export type { LineaConfigurada } from "./linea-configurada";
 // Ventas con opciones (2026-10-29): cuántos insumos puede sumar alguna opción que un producto ofrece (el origen de stock del catálogo).
