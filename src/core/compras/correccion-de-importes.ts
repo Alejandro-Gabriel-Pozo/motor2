@@ -1,5 +1,5 @@
 import type { CodigoCorregirImportes } from "@/core/features/compras/compra.schema";
-import { precioPorUnidad } from "@/core/movimientos/transiciones";
+import { precioPorUnidad } from "@/core/movimientos/public";
 
 /**
  * Reglas de la CORRECCIÓN DE IMPORTES de una compra por ejemplar (etapa C0, docs/diseno-correccion-de-compras-2026-11-06.md). Módulo PURO: sin base de datos ni permisos.

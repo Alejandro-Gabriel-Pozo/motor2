@@ -2,7 +2,6 @@
 
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { useState, useTransition } from "react";
-import { EnlaceInterno } from "@/components/enlace-interno";
 import { corregirImportesDeCompra } from "@/server/actions/movimientos/compras";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";

@@ -4,7 +4,6 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVer } from "@/server/acceso/gate";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
-import { EnlaceInterno } from "@/components/enlace-interno";
 import { SIN_PROVEEDOR } from "@/core/reportes/public";
 import { listarComprasRegistradas } from "@/server/consultas/reportes/compras-registradas";
 import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";

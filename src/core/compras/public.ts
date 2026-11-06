@@ -19,8 +19,8 @@ export {
 } from "./correccion";
 export type { CabeceraCompra } from "./correccion";
 export { rechazoPorCompraDeFactura } from "./compra-de-factura";
-export { IMPORTE_MAXIMO_EN_CENTAVOS, evaluarCorreccionDeImportes, mensajeCorreccionDeImportes } from "./correccion-de-importes";
-export type { CambioDeImporte, ImporteCorregidoPedido, LineaCorregida, RenglonVigente, ResultadoCorreccionDeImportes } from "./correccion-de-importes";
+export { evaluarCorreccionDeImportes, mensajeCorreccionDeImportes } from "./correccion-de-importes";
+export type { LineaCorregida, RenglonVigente } from "./correccion-de-importes";
 export {
   ETIQUETA_DE_MEDIO_DE_PAGO,
   MEDIOS_DE_PAGO,
