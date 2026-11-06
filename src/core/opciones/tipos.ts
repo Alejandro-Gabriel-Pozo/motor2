@@ -43,5 +43,8 @@ export const CANTIDAD_MAXIMA_DE_OPCION = 10;
 /** Tope del factor de escala de una MEDIDA (CHECK `factorEscala > 0 AND factorEscala <= 10`, `DECIMAL(8,4)`). */
 export const FACTOR_DE_ESCALA_MAXIMO = 10;
 
+/** Paso entre el orden de un grupo (o de una opción) y el siguiente: una alta va al final y queda lugar para poner otra entre dos sin renumerar. Lo usan la pantalla y los casos de uso de alta y de reordenamiento. */
+export const PASO_DE_ORDEN = 10;
+
 /** Piso de un precio de lista y de un recargo: 0,01. Es el mismo piso de todo el sistema: vive en `core/moneda.ts` y se reexporta acá para los módulos de opciones. */
 export { IMPORTE_MINIMO } from "../moneda";
