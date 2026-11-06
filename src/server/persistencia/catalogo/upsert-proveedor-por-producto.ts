@@ -10,69 +10,40 @@ import type { Db } from "@/lib/db-tipos";
  * la porción Movimientos, que gatea con 'proceso_compra' antes de llamar
  * a esto. Acá solo se construye la operación de catálogo en sí.
  *
- * Usa `$executeRaw` con `INSERT ... ON CONFLICT DO UPDATE` (no
- * `prisma.upsert()`) a propósito: el UPDATE necesita una condición
- * (`CASE WHEN`, Catalogo.js:3241-3247 — un precio 0 nunca pisa un precio
- * bueno ya cargado) que el upsert de Prisma no soporta sin una lectura
- * previa, lo que reintroduciría la ventana de carrera cross-hostería que
- * esto reemplaza. El UNIQUE(productoId, proveedorId, unidadCompraId) hace
- * que dos ejecuciones concurrentes sobre la misma clave nunca produzcan
- * dos filas — ver Catalogo.js:3278-3294 para el bug real que esto cierra.
+ * Usa `$executeRaw` con `INSERT ... ON CONFLICT DO UPDATE` (no `prisma.upsert()`) a propósito: es UNA sola sentencia atómica, sin lectura previa, así que dos ejecuciones concurrentes
+ * sobre la misma clave nunca producen dos filas (UNIQUE(productoId, proveedorId, unidadCompraId); ver Catalogo.js:3278-3294 para el bug real que esto cierra).
  *
- * Desde Pureza Fase 4 (decisión del dueño, 2026-10-06) corre DENTRO de la transacción de la compra (`tx`). Una compra con FECHA ATRASADA no pisa el último precio ni retrocede
- * `ultimaCompra`: el precio solo se actualiza si la fecha nueva es >= la guardada (ERPNext hace lo mismo: `last_purchase_rate` ignora un documento más viejo) y `ultimaCompra` toma
- * la más reciente; con la misma fecha gana la carga posterior. (Eso protege lo que SÍ se lee de esta tabla —la unidad y la referencia más recientes—; el precio ya no lo lee nadie.)
+ * Desde Pureza Fase 4 (decisión del dueño, 2026-10-06) corre DENTRO de la transacción de la compra (`tx`). `ultimaCompra` toma la fecha más reciente (una compra con FECHA ATRASADA no la
+ * retrocede) y la referencia del proveedor se guarda si viene (un valor vacío nunca pisa uno ya cargado).
  *
- * OJO: desde la parte 2 del vínculo (2026-10-07) las pantallas NO leen el precio ni la fecha de esta tabla: la comparativa, la ficha del proveedor, la precarga del carrito y los reportes «tiene
- * proveedor» se derivan del Kardex vigente (`server/lecturas/catalogo/ofertas-de-proveedor.ts`), que sí se entera de una compra anulada o de un proveedor corregido. De esta tabla solo se lee
- * la unidad de compra y la referencia del proveedor, que el Kardex no guarda.
+ * PODA (decisión del dueño, 2026-11-06): ya NO escribe el precio (`precioUnitario`, `precioPorUnidadStock`): desde la parte 2 del vínculo (2026-10-07) las pantallas NO lo leen —la comparativa,
+ * la ficha del proveedor, la precarga del carrito y los reportes «tiene proveedor» se derivan del Kardex vigente (`server/lecturas/catalogo/ofertas-de-proveedor.ts`), que sí se entera de una compra
+ * anulada o de un proveedor corregido—, y el precio de cada compra queda en el Kardex. De esta tabla se lee la unidad de compra, la referencia del proveedor y `ultimaCompra` (ordena la fila más
+ * reciente del par). Las columnas de precio siguen en la tabla con su valor por defecto (0) y lo viejo queda como está: borrarlas es destructivo y va aparte.
  */
-/** Lo que quedó del vínculo tras el upsert: el precio por unidad de stock ANTES (`null` si el par no existía) y DESPUÉS, y los nombres para describir el cambio en la auditoría. */
-export interface ResultadoDelVinculo {
-  precioAnterior: number | null;
-  precioNuevo: number;
-  productoNombre: string;
-  proveedorNombre: string;
-}
-
 export async function upsertProveedorPorProducto(db: Db, datos: {
   productoId: string;
   proveedorId: string;
   unidadCompraId: string;
-  precioUnitario: number;
-  precioPorUnidadStock: number;
   fechaCompra?: Date;
-  /** Cómo llama el proveedor a este producto — igual criterio que el precio: un valor vacío nunca pisa uno ya cargado. */
+  /** Cómo llama el proveedor a este producto — un valor vacío nunca pisa uno ya cargado. */
   referenciaProveedor?: string;
-}): Promise<ResultadoDelVinculo> {
+}): Promise<void> {
   // Ni el reloj ni el azar se leen acá (Pureza, auditoría de las Fases 0 y 1): el id lo genera la base (`gen_random_uuid()`) y, si el llamador no trae la fecha de la compra, vale la hora de la
   // base (`now()`, el mismo default de la columna). El único llamador de producción siempre pasa `fechaCompra`.
   const fecha = datos.fechaCompra ?? null;
-  const clave = { productoId_proveedorId_unidadCompraId: { productoId: datos.productoId, proveedorId: datos.proveedorId, unidadCompraId: datos.unidadCompraId } };
-  // El precio ANTERIOR (para la auditoría del caso de uso): se lee dentro de la misma transacción, justo antes del upsert.
-  const previa = await db.proveedorPorProducto.findUnique({ where: clave, select: { precioPorUnidadStock: true } });
   const referencia = datos.referenciaProveedor?.trim() || null;
 
   await db.$executeRaw`
     INSERT INTO "ProveedorPorProducto"
-      (id, "productoId", "proveedorId", "unidadCompraId", "precioUnitario", "precioPorUnidadStock", "ultimaCompra", "referenciaProveedor")
+      (id, "productoId", "proveedorId", "unidadCompraId", "ultimaCompra", "referenciaProveedor")
     VALUES
       (gen_random_uuid()::text, ${datos.productoId}, ${datos.proveedorId}, ${datos.unidadCompraId},
-       ${datos.precioUnitario}, ${datos.precioPorUnidadStock}, COALESCE(${fecha}::timestamp, timezone('utc', now())), ${referencia})
+       COALESCE(${fecha}::timestamp, timezone('utc', now())), ${referencia})
     ON CONFLICT ("productoId", "proveedorId", "unidadCompraId")
     DO UPDATE SET
-      "precioUnitario" = CASE WHEN excluded."precioUnitario" > 0 AND excluded."ultimaCompra" >= "ProveedorPorProducto"."ultimaCompra"
-        THEN excluded."precioUnitario" ELSE "ProveedorPorProducto"."precioUnitario" END,
-      "precioPorUnidadStock" = CASE WHEN excluded."precioPorUnidadStock" > 0 AND excluded."ultimaCompra" >= "ProveedorPorProducto"."ultimaCompra"
-        THEN excluded."precioPorUnidadStock" ELSE "ProveedorPorProducto"."precioPorUnidadStock" END,
       "ultimaCompra" = GREATEST("ProveedorPorProducto"."ultimaCompra", excluded."ultimaCompra"),
       "referenciaProveedor" = CASE WHEN excluded."referenciaProveedor" IS NOT NULL
         THEN excluded."referenciaProveedor" ELSE "ProveedorPorProducto"."referenciaProveedor" END
   `;
-
-  const actual = await db.proveedorPorProducto.findUniqueOrThrow({
-    where: clave,
-    select: { precioPorUnidadStock: true, producto: { select: { nombre: true } }, proveedor: { select: { nombre: true } } },
-  });
-  return { precioAnterior: previa ? Number(previa.precioPorUnidadStock) : null, precioNuevo: Number(actual.precioPorUnidadStock), productoNombre: actual.producto.nombre, proveedorNombre: actual.proveedor.nombre };
 }

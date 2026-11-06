@@ -466,7 +466,7 @@ const COMANDOS_PUBLICOS = [
   {
     ruta: "src/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx.ts",
     motivo:
-      "Decisión del dueño (Fase 2b, D2; DEC-36): el vínculo proveedor↔producto (ProveedorPorProducto) es de Catálogo y lo registra, con la auditoría de su precio, este comando de Catálogo; el registro de una Compra de Movimientos (registrar-movimiento.ts) lo invoca dentro de su propia transacción en vez de llamar a la persistencia de Catálogo.",
+      "Decisión del dueño (Fase 2b, D2; DEC-36): el vínculo proveedor↔producto (ProveedorPorProducto) es de Catálogo y lo registra este comando de Catálogo (sin precio ni auditoría desde la poda del 2026-11-06); el registro de una Compra de Movimientos (registrar-movimiento.ts) lo invoca dentro de su propia transacción en vez de llamar a la persistencia de Catálogo.",
   },
 ];
 

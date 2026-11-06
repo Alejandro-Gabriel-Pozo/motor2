@@ -62,7 +62,7 @@ const PROCESOS_QUE_SACAN_DE_UNA_SECCION_DADA_DE_BAJA: ReadonlySet<ProcesoGeneric
  * @idempotency I3 (claveIdempotencia + payloadHash), dentro de la misma transacción.
  * @transaction conTransaccionSerializable (SERIALIZABLE + reintento) sobre la base de verificación en una COMPRA, con `.catch(esChoqueDeFacturaUnica)` para la factura duplicada.
  * @sideEffects registrarVinculoDeCompraEnTx (comando de Catálogo, Compra, DENTRO de la transacción) — un vínculo proveedor↔producto por línea con unidad de compra (la de compra o, si no tiene, la de stock) y la auditoría de su precio cuando cambia; si falla, falla la compra.
- * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
+ * @ficha permiso=POR_PROCESO transaccion=SERIALIZABLE idempotencia=I3 auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function registrarMovimientoCasoDeUso(
   actor: Pick<ContextoUsuario, "usuarioId" | "sucursalId" | "sucursalNombre" | "db" | "transaccion" | "empresaId" | "alcance">,
@@ -255,12 +255,10 @@ export async function registrarMovimientoCasoDeUso(
       for (const l of lineas) {
         if (!l.unidadCompraId) continue;
         // El vínculo y su auditoría son de Catálogo (DEC-36, Fase 2b D2): su comando, con el cliente de ESTA transacción.
-        await registrarVinculoDeCompraEnTx(tx, actor, {
+        await registrarVinculoDeCompraEnTx(tx, {
           productoId: l.productoId,
           proveedorId: datos.proveedorId,
           unidadCompraId: l.unidadCompraId,
-          precioUnitario: l.precioUnitario,
-          precioPorUnidadStock: l.precioPorUnidadStock,
           fechaCompra: datos.fecha,
           referenciaProveedor: l.referenciaProveedor,
         });

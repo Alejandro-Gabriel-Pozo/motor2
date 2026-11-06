@@ -213,12 +213,10 @@ export async function registrarFacturaProveedorCasoDeUso(
     // El vínculo proveedor↔producto (comparativa de precios, ficha del proveedor y la referencia con que el proveedor llama al producto), una vez por renglón, como en la compra simple.
     for (const { linea } of lineas) {
       if (!linea.unidadCompraId) continue;
-      await registrarVinculoDeCompraEnTx(tx, actor, {
+      await registrarVinculoDeCompraEnTx(tx, {
         productoId: linea.productoId,
         proveedorId: datos.proveedorId,
         unidadCompraId: linea.unidadCompraId,
-        precioUnitario: linea.precioUnitario,
-        precioPorUnidadStock: linea.precioPorUnidadStock,
         fechaCompra: datos.fecha,
         referenciaProveedor: linea.referenciaProveedor,
       });

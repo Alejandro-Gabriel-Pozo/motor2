@@ -335,7 +335,7 @@ describe("ficha de caso de uso: el observador ve lo que el código hace (la regl
     expect(auditoria("@/server/actions/catalogo/casos-de-uso/comando-que-audita", () => null)).toBe("DOCUMENTO_PROPIO");
     // El lector real solo reconoce lo que está en COMANDOS_PUBLICOS.
     expect(leerComandoPublico(new Set())("@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx")).toBeNull();
-    expect(leerComandoPublico(COMANDOS_PUBLICOS)("@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx")?.fuente).toContain("registrarCambioAuditado(");
+    expect(leerComandoPublico(COMANDOS_PUBLICOS)("@/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx")?.fuente).toContain("registrarVinculoDeCompraEnTx");
   });
 
   it("idempotencia I3 solo si llama a chequearIdempotencia; auditoría solo si llama a registrarCambioAuditado", () => {

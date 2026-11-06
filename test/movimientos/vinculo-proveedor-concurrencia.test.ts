@@ -14,7 +14,7 @@ import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
  * `conTransaccionSerializable` reconoce y reintenta, y no como un 500 (`P2010`, «raw query failed», no está manejado). Estas pruebas lo ejercitan contra Postgres real.
  */
 describe("vínculo proveedor↔producto: dos compras simultáneas de sucursales distintas sobre la misma fila", () => {
-  it("terminan las dos, sin error, con UNA sola fila y el precio de la más reciente", async () => {
+  it("terminan las dos, sin error, con UNA sola fila y la fecha de la más reciente", async () => {
     for (let vuelta = 0; vuelta < 6; vuelta++) {
       await limpiarBaseDeTest();
       const base = await sembrarBase();
@@ -59,9 +59,8 @@ describe("vínculo proveedor↔producto: dos compras simultáneas de sucursales 
 
       const filas = await prisma.proveedorPorProducto.findMany({ where: { productoId: producto.id } });
       expect(filas, `vuelta ${vuelta}`).toHaveLength(1);
-      // Gana la compra de fecha más reciente (21/09, $150 el kg), cualquiera haya sido el orden en que se confirmaron.
+      // Gana la compra de fecha más reciente (21/09), cualquiera haya sido el orden en que se confirmaron.
       expect(filas[0]!.ultimaCompra.toISOString().slice(0, 10), `vuelta ${vuelta}`).toBe("2026-09-21");
-      expect(Number(filas[0]!.precioPorUnidadStock), `vuelta ${vuelta}`).toBe(150);
       expect(await prisma.operacion.count({ where: { proceso: "COMPRA" } }), `vuelta ${vuelta}: una Operación por compra`).toBe(2);
     }
   }, 180_000);
