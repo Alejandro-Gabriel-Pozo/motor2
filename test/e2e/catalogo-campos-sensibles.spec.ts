@@ -4,6 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { crearMembresia } from "../setup/membresia";
+import { PRESENTACIONES_VISIBLES } from "../../src/core/catalogo/presentaciones-visibles";
 
 /**
  * M.2 (P6): la clave fina `producto_campos_sensibles` en las pantallas de producto. El servidor ya la exige (P2 a P5); acá se mira lo que ve y puede hacer la persona en el navegador:
@@ -100,16 +101,22 @@ test("el administrador (con la clave) ve los campos editables y sin avisos, y ca
     await page.waitForURL(new RegExp(`/catalogo/productos/${mp.id}\\?guardado=cambios$`));
     expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: mp.id } })).factorConversion)).toBe(30);
 
-    // Una presentación nueva en «ml» (la «g» es la unidad de compra por defecto y la «l» ya es una presentación).
-    await page.goto(`/catalogo/productos/${mp.id}/datos`);
-    // El selector de la unidad de compra de la presentación (el del bloque «Presentaciones de compra alternativas»; el de arriba es el de la unidad por defecto del producto).
-    await page.locator("div", { has: page.getByText("Presentaciones de compra alternativas", { exact: true }) }).last().getByLabel("Unidad de compra").selectOption({ label: "ml" });
-    const factorPresentacion = page.locator("label", { hasText: "Factor de conversión" }).locator("input[type=text]");
-    await factorPresentacion.focus();
-    await factorPresentacion.fill("50");
-    await page.getByRole("button", { name: "Agregar", exact: true }).click();
-    await expect(page.getByRole("cell", { name: "50", exact: true })).toBeVisible();
-    expect(Number((await prisma.presentacion.findFirstOrThrow({ where: { productoId: mp.id, unidadCompraId: ml.id } })).factorConversion)).toBe(50);
+    // Interruptor de las presentaciones (`PRESENTACIONES_VISIBLES`, decisión del dueño 2026-11-06): apagado, la pantalla no ofrece su gestión; encendido, se agrega una como siempre.
+    if (!PRESENTACIONES_VISIBLES) {
+      await page.goto(`/catalogo/productos/${mp.id}/datos`);
+      await expect(page.getByText("Presentaciones de compra alternativas", { exact: true })).toHaveCount(0);
+    } else {
+      // Una presentación nueva en «ml» (la «g» es la unidad de compra por defecto y la «l» ya es una presentación).
+      await page.goto(`/catalogo/productos/${mp.id}/datos`);
+      // El selector de la unidad de compra de la presentación (el del bloque «Presentaciones de compra alternativas»; el de arriba es el de la unidad por defecto del producto).
+      await page.locator("div", { has: page.getByText("Presentaciones de compra alternativas", { exact: true }) }).last().getByLabel("Unidad de compra").selectOption({ label: "ml" });
+      const factorPresentacion = page.locator("label", { hasText: "Factor de conversión" }).locator("input[type=text]");
+      await factorPresentacion.focus();
+      await factorPresentacion.fill("50");
+      await page.getByRole("button", { name: "Agregar", exact: true }).click();
+      await expect(page.getByRole("cell", { name: "50", exact: true })).toBeVisible();
+      expect(Number((await prisma.presentacion.findFirstOrThrow({ where: { productoId: mp.id, unidadCompraId: ml.id } })).factorConversion)).toBe(50);
+    }
 
     // Un producto de venta: el precio editable.
     await page.goto(`/catalogo/productos/${pv.id}/datos`);
@@ -135,8 +142,14 @@ test("sin la clave, la edición de una materia prima muestra factor y unidades g
     await expect(page.getByLabel("Unidad de stock")).toHaveCount(0);
     await expect(page.getByLabel("Unidad de compra", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Agregar", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Desactivar" })).toBeVisible();
-    await expect(page.locator("[data-aviso-presentaciones-sin-permiso]")).toContainText("campos sensibles del producto");
+    // Con el interruptor de las presentaciones apagado no hay ni lista ni aviso de presentaciones.
+    if (PRESENTACIONES_VISIBLES) {
+      await expect(page.getByRole("button", { name: "Desactivar" })).toBeVisible();
+      await expect(page.locator("[data-aviso-presentaciones-sin-permiso]")).toContainText("campos sensibles del producto");
+    } else {
+      await expect(page.getByRole("button", { name: "Desactivar" })).toHaveCount(0);
+      await expect(page.locator("[data-aviso-presentaciones-sin-permiso]")).toHaveCount(0);
+    }
 
     const nuevoNombre = `${mp.nombre} renombrada`;
     await page.locator('input[name="nombre"]').fill(nuevoNombre);
@@ -239,6 +252,7 @@ test("un formulario de edición abierto ANTES de que le quiten la clave: el rech
 });
 
 test("un formulario abierto ANTES de que le quiten la clave: «Agregar» una presentación muestra el rechazo y no crea nada", async ({ browser, baseURL, sucursalId }) => {
+  test.skip(!PRESENTACIONES_VISIBLES, "las presentaciones están apagadas (PRESENTACIONES_VISIBLES = false en src/core/catalogo/presentaciones-visibles.ts): la pantalla no ofrece «Agregar» una presentación");
   const { mp, ml, limpiar: limpiarProductos } = await sembrarProductos(sucursalId);
   const { page, quitarLaClaveFina, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { conClaveFina: true });
   try {

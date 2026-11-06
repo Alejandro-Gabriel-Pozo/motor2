@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { armarComparativaDePrecios, whereDisponibleEn, type FilaComparativaPrecios } from "@/core/catalogo/public";
+import { armarComparativaDePrecios, PRESENTACIONES_VISIBLES, whereDisponibleEn, type FilaComparativaPrecios } from "@/core/catalogo/public";
 import { decidirUnidadDePrecarga, type UnidadDeCompra, type UnidadesDeCompraDelProducto } from "@/core/compras/public";
 import type { Db } from "@/lib/db-tipos";
 
@@ -212,7 +212,7 @@ export async function cargarProductosDeProveedorParaElCarrito(db: Db, proveedorI
       const unidades: UnidadesDeCompraDelProducto = {
         unidadStockNombre: producto.unidadStock.nombre,
         porDefecto,
-        presentaciones: producto.presentaciones.map((p) => ({ unidadCompraId: p.unidadCompraId, nombre: p.unidadCompra.nombre, factor: Number(p.factorConversion) })).sort((a, b) => a.nombre.localeCompare(b.nombre)),
+        presentaciones: !PRESENTACIONES_VISIBLES ? [] : producto.presentaciones.map((p) => ({ unidadCompraId: p.unidadCompraId, nombre: p.unidadCompra.nombre, factor: Number(p.factorConversion) })).sort((a, b) => a.nombre.localeCompare(b.nombre)),
       };
       const unidadDeLaPrecarga = decidirUnidadDePrecarga(o.unidadCompraId, unidades);
       return {
