@@ -4,9 +4,10 @@ import type { Prisma } from "@prisma/client";
 /**
  * EL escritor del contra-asiento de una anulación (Hito 5, pieza 5.4, A5; O.13 de `docs/pureza-integracion.md`). Anular una compra o una venta no
  * edita nada: el Kardex solo agrega. Se escribe, en este orden y dentro de la transacción de quien llama:
- *  1. la `Operacion` AJUSTE nueva (el contra-asiento), con la clave de idempotencia I3 y su hash SOLO si `idempotencia` viene;
+ *  1. la `Operacion` AJUSTE nueva (el contra-asiento), con `revierteAOperacionId` apuntando a la original (E0 del diseño de corrección por ajuste: el enlace real, que además arbitra la carrera de
+ *     dos anulaciones a la vez con su índice único) y con la clave de idempotencia I3 y su hash SOLO si `idempotencia` viene;
  *  2. sus líneas de Kardex (`createMany`, una por cada línea a revertir; ya calculadas por el núcleo, con el `operacionId` del paso 1 agregado acá);
- *  3. la marca `anuladaEn`/`anuladaPorId` en la `Operacion` original (la única columna de la cabecera que se toca, y la única excepción de
+ *  3. la marca `anuladaEn`/`anuladaPorId` (y `motivoAnulacion`, si quien llama lo pasa) en la `Operacion` original (las únicas columnas de la cabecera que se tocan, y la única excepción de
  *     `test/arquitectura/kardex-solo-agrega.test.ts` junto con el resultado de I3 y la corrección de una compra).
  * Antes eran dos copias casi iguales: `escribirAnulacionDeCompra` (`server/persistencia/compras/`) y `escribirAnulacionDeVenta` (acá al lado). Las dos
  * delegan y las escrituras que llegan a la base son las mismas (lo prueba la huella `test/persistencia/kardex-escritores-huella.test.ts`). Dos diferencias
@@ -29,6 +30,8 @@ export interface ContraAsientoAEscribir {
   detalleLibre: string;
   /** Solo la anulación de compra la pasa: si falta, el `create` no lleva esas dos claves (ni siquiera con `null`). */
   idempotencia?: { claveIdempotencia: string | null; payloadHash: string | null };
+  /** Por qué se anula (1 a 200 caracteres, ya validado por el guard del comando). Solo lo pasa quien lo pide (la anulación de venta); la de compra no lo lleva todavía. */
+  motivoAnulacion?: string;
   /** Las líneas inversas, ya armadas por quien llama (sin `operacionId`: lo pone esta función). */
   filas: readonly FilaDeContraAsiento[];
 }
@@ -37,7 +40,7 @@ export async function escribirContraAsiento(
   tx: Prisma.TransactionClient,
   contraAsiento: ContraAsientoAEscribir
 ): Promise<{ reversionId: string; movimientos: number }> {
-  const { operacionAnuladaId, sucursalId, usuarioId, ahora, detalleLibre, idempotencia, filas } = contraAsiento;
+  const { operacionAnuladaId, sucursalId, usuarioId, ahora, detalleLibre, idempotencia, motivoAnulacion, filas } = contraAsiento;
   const reversion = await tx.operacion.create({
     data: {
       sucursalId,
@@ -45,6 +48,7 @@ export async function escribirContraAsiento(
       fecha: ahora,
       detalleLibre,
       usuarioId,
+      revierteAOperacionId: operacionAnuladaId,
       ...(idempotencia ? { claveIdempotencia: idempotencia.claveIdempotencia, payloadHash: idempotencia.payloadHash } : {}),
     },
   });
@@ -52,7 +56,7 @@ export async function escribirContraAsiento(
   const filasConOperacion: Prisma.MovimientoStockCreateManyInput[] = filas.map((fila) => ({ operacionId: reversion.id, ...fila }));
   await tx.movimientoStock.createMany({ data: filasConOperacion });
 
-  await tx.operacion.update({ where: { id: operacionAnuladaId }, data: { anuladaEn: ahora, anuladaPorId: usuarioId } });
+  await tx.operacion.update({ where: { id: operacionAnuladaId }, data: { anuladaEn: ahora, anuladaPorId: usuarioId, motivoAnulacion: motivoAnulacion ?? null } });
 
   return { reversionId: reversion.id, movimientos: filasConOperacion.length };
 }

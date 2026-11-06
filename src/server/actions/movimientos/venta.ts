@@ -85,9 +85,9 @@ export async function registrarVenta(datos: DatosVentaInput): Promise<ResultadoA
  * MISMA transacción, cada una con su propia Operacion AJUSTE de reversión: una promo nunca queda anulada a medias, se elija
  * la que se elija de sus componentes para anular.
  */
-export async function anularVenta(operacionId: string): Promise<ResultadoAccion> {
+export async function anularVenta(operacionId: string, motivo: string): Promise<ResultadoAccion> {
   return conPermiso("anular_venta", async (ctx) => {
-    const comando = guardComandoAnularVenta({ operacionId });
+    const comando = guardComandoAnularVenta({ operacionId, motivo });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await anularVentaCasoDeUso(ctx, comando.valor));
   });

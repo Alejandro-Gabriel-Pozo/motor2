@@ -42,7 +42,7 @@ describe("anularVenta: auditoría", () => {
   it("anular una venta deja UNA fila de auditoría con quién, cuándo y de cuál", async () => {
     const venta = await vender("F-100");
 
-    const r = await anularVenta(venta.id);
+    const r = await anularVenta(venta.id, "Error de carga");
     expect(r.ok, r.mensaje).toBe(true);
 
     const filas = await prisma.registroAuditoria.findMany({ where: { entidad: "Operacion", entidadId: venta.id } });
@@ -59,7 +59,7 @@ describe("anularVenta: auditoría", () => {
   it("P1 paso 7: la descripción cita el día ARGENTINO de la venta — una venta de las 22:30 argentinas del 6/8 (01:30Z del 7/8) es «del 2026-08-06»", async () => {
     const venta = await vender("F-200", new Date("2026-08-07T01:30:00Z"));
 
-    const r = await anularVenta(venta.id);
+    const r = await anularVenta(venta.id, "Error de carga");
     expect(r.ok, r.mensaje).toBe(true);
 
     const fila = await prisma.registroAuditoria.findFirstOrThrow({ where: { entidad: "Operacion", entidadId: venta.id } });
@@ -68,7 +68,7 @@ describe("anularVenta: auditoría", () => {
 
   it("aparece en el listado de la pantalla de auditoría, filtrando por la entidad Operación", async () => {
     const venta = await vender();
-    await anularVenta(venta.id);
+    await anularVenta(venta.id, "Error de carga");
 
     const { items } = await listarRegistrosAuditoria({ entidad: "Operacion", incluirFilasDeEmpresa: true, sucursalIds: [sucursalId] }, prisma);
     expect(items.map((f) => f.entidadId)).toContain(venta.id);
@@ -76,15 +76,15 @@ describe("anularVenta: auditoría", () => {
 
   it("una anulación rechazada (ya estaba anulada) no deja una segunda fila", async () => {
     const venta = await vender();
-    await anularVenta(venta.id);
-    const otra = await anularVenta(venta.id);
+    await anularVenta(venta.id, "Error de carga");
+    const otra = await anularVenta(venta.id, "Error de carga");
 
     expect(otra.ok).toBe(false);
     expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion", entidadId: venta.id } })).toBe(1);
   });
 
   it("una anulación que falla no deja rastro en la auditoría (la fila se escribe dentro de la misma transacción)", async () => {
-    const r = await anularVenta("no-existe");
+    const r = await anularVenta("no-existe", "Error de carga");
     expect(r.ok).toBe(false);
     expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion" } })).toBe(0);
   });
@@ -145,7 +145,7 @@ describe("anularVenta: D4 — anula a los hermanos de la misma promo", () => {
   it("anular UN componente anula el otro también, cada uno con su propia Operacion AJUSTE y fila de auditoría", async () => {
     const [opGaseosa, opEmpanada] = await venderPromoDeDosComponentes();
 
-    const r = await anularVenta(opGaseosa);
+    const r = await anularVenta(opGaseosa, "Error de carga");
     expect(r.ok, r.mensaje).toBe(true);
     expect(r.mensaje).toContain("2 componentes");
 
@@ -173,15 +173,15 @@ describe("anularVenta: D4 — anula a los hermanos de la misma promo", () => {
 
   it("anular el otro componente primero da el mismo resultado (no importa cuál se elija)", async () => {
     const [opGaseosa, opEmpanada] = await venderPromoDeDosComponentes();
-    const r = await anularVenta(opEmpanada);
+    const r = await anularVenta(opEmpanada, "Error de carga");
     expect(r.ok).toBe(true);
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: opGaseosa } })).anuladaEn).not.toBeNull();
   });
 
   it("anular una promo ya anulada rechaza sin duplicar nada", async () => {
     const [opGaseosa] = await venderPromoDeDosComponentes();
-    await anularVenta(opGaseosa);
-    const otra = await anularVenta(opGaseosa);
+    await anularVenta(opGaseosa, "Error de carga");
+    const otra = await anularVenta(opGaseosa, "Error de carga");
     expect(otra.ok).toBe(false);
     expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(2);
   });
@@ -190,7 +190,7 @@ describe("anularVenta: D4 — anula a los hermanos de la misma promo", () => {
     const r = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: gaseosaId, cantidadVendida: 1 }] });
     expect(r.ok).toBe(true);
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
-    const anulacion = await anularVenta(venta.id);
+    const anulacion = await anularVenta(venta.id, "Error de carga");
     expect(anulacion.ok).toBe(true);
     expect(anulacion.mensaje).not.toContain("componentes");
     expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(1);
