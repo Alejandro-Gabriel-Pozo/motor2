@@ -334,3 +334,32 @@ Una venta con **importe $0** (precio de la línea 0, o producto regalado) hoy se
 Mientras no se responda, no se toca `periodo-ventas.ts` ni el piso de $0,01 de `moneda.ts`.
 
 **Queda pendiente (modelo de datos, no se pregunta ahora):** separar «sin stock hoy» de «se usa en esta sucursal» (`DisponibilidadProducto.disponible`), que afecta a 7 reportes.
+
+---
+
+## 9. Anexo: ¿es «la misma pantalla»? Armazón común y página configurable (pedido del dueño vía otra sesión, 2026-11-06)
+
+**Armazón (VERIFICADO):** las 27 páginas siguen el mismo comienzo: `obtenerContextoUsuario` → `irAlLogin` → `lecturaSinCupo` → `requierePermisoVer`. De ahí en adelante se bifurcan: 10 leen rango (`resolverRangoDeReporte`), 4 leen «días atrás», 8 no leen parámetros, el resto tiene filtros propios.
+- Líneas idénticas entre páginas (líneas de más de 12 caracteres, sin comentarios): 13 líneas distintas aparecen en 10 o más páginas (279 apariciones); 24 en 5 o más (350). El preámbulo completo con imports es ≈276 líneas.
+- Páginas «armazón + una consulta + tablas» (≤83 líneas): 18 (categorías, consignación, consolidado, costos, descuentos ×2, devoluciones, diferencias, huecos, insumos, margen de promociones, pérdidas, salud, sin receta, valuación, vencimientos, sección, por sucursal): 975 líneas en total. Cada una es unas 10 de preámbulo + 15-20 de cabecera/totales/avisos con texto propio + el render de las tablas.
+
+**Tablas y Excel (VERIFICADO):** el Excel ya sale de un solo lugar (`TablaReporte` → `generarExcel`). Hay 22 archivos `tabla-*.tsx` (1.567 líneas); lo que cambia entre ellos son las columnas, que son declarativas. Lo único repetido es el envoltorio `<TablaReporte claveFila sinFilasTexto nombreExport ordenInicial direccionInicial>` (≈8 líneas por tabla, ≈30 instancias). Casi iguales entre sí: Categorías y Sección (19 líneas cada una), Consolidado (17), Sin receta e Insumos sin receta (37). No son duplicados: muestran columnas distintas.
+
+**Las que no encajan (VERIFICADO por lectura de cada página):**
+- Rendimiento de recetas (311): muchos filtros (método, confianza), dos tipos de fila y calibración local dentro de la pantalla.
+- Compras (228): paginación por cursor, filtros de proveedor y factura, y acciones que escriben (anular, corregir, pagar) con permiso por nivel.
+- Período (206): segundo permiso (`reporte_costos`, `periodo/page.tsx:41`), dólar, 8 bloques, cupo «pesado».
+- Tickets (177): filtro por mesa, cursor y render de ticket.
+- Resumen (134) y Rotación de mesas (139): tarjetas y render propios, no usan `TablaReporte`. Historial (129): permiso extra de dinero. Trazabilidad y Consignación: botones que escriben.
+
+**Consultas y core (VERIFICADO):** lo repetido entre consultas es el esqueleto del `where` del Kardex (≈10 sitios × ≈8 líneas ≈ 80 líneas) y `MARCA_DE_OPCIONES` (3 copias). Todo lo demás es lógica propia de cada reporte. En `core` hay 850 líneas de solo tipos y 1.035 de código compartido; el resto es cálculo propio.
+
+**Estimación con página configurable (permiso + consulta + columnas) (PROPUESTA):** unas **250-300 líneas** (preámbulo ≈190 + parseo de parámetros y cabecera ≈60-100 en las 18 simples), apenas más que el helper de preámbulo solo (≈190). La diferencia no justifica una abstracción que tenga que expresar los textos de totales y avisos de cada reporte.
+
+**Riesgos (VERIFICADO el primero y el segundo):**
+1. **Los tests de arquitectura leen cada `page.tsx` buscando `requierePermisoVer`** (`menu-con-permiso`, `enlaces-con-permiso`, `acceso-solo-por-el-guard`, `puertas-sin-permiso-inventariadas`, `toda-accion-se-usa`, `analizador-de-rutas`). Una página configurable esconde la clave en un objeto y esos guardianes tendrían que reescribirse: se pierde la red justo donde está el permiso. Un helper que se llame desde cada página, con la clave a la vista, no los rompe.
+2. **Cupo de lecturas:** hay dos: `lecturaSinCupo` y `reportePesadoSinCupo("periodo")`, este último compartido entre Período y Resumen. La configuración tendría que modelar el cupo compartido.
+3. **Permisos por nivel y adicionales:** Compras, Consignación, Historial, Rendimiento y Trazabilidad piden además el nivel «Editar» (`obtenerMiNivelPermiso`), Período pide un segundo permiso y Huecos es de empresa (`requierePermisoVerDeEmpresa`). Una configuración de «una clave» no alcanza.
+4. **Zona horaria:** a favor: obligar a la página configurable a recibir `ctx.empresaZonaHoraria` corrige las 8 páginas que hoy no la pasan. En contra: nada que las 5 tablas con zona fija no necesiten arreglar igual.
+
+**Recomendación (PROPUESTA):** helper de preámbulo antes que página configurable (misma ganancia, sin tocar los guardianes de permisos).
