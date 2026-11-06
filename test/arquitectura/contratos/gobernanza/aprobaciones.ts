@@ -130,6 +130,7 @@ export const APROBACIONES: readonly Aprobacion[] = [
   { archivo: "test/arquitectura/contratos/gobernanza/exclusiones.ts#exclusiones", blob: "0637a088a01e8ddab3bf3fa98dbe804cbde1a0dc", referencia: "DEC-03", motivo: "poda de prisma/fase-a/ (ADR-004): EXCLUSIONES queda vacía; era la única exclusión real y se retiró junto con su código" },
   { archivo: "test/arquitectura/contratos/gobernanza/exclusiones.ts#logica", blob: "57824f25ed6fda89cf77d23ded20e1b358432de2", referencia: "DEC-03", motivo: "poda de prisma/fase-a/ (ADR-004): el ejemplo del mensaje de ruta demasiado ancha ya no cita la carpeta retirada; la lógica no cambia" },
   { archivo: "test/arquitectura/contratos/mutaciones/operadores.ts", blob: "3fb20559a20f5f8de5a848590fc847f3ef40b37e", referencia: "DEC-03", motivo: "poda de prisma/fase-a/ (ADR-004): el modo sobre-codigo del operador exclusion arma su exclusión entera y no depende de una real (EXCLUSIONES queda vacía); sale la mención a la exclusión retirada de un comentario" },
+  { archivo: ".github/workflows/ci.yml#sin-sha", blob: "af31b38d552d412a444cb3adf13c24ec070f15c3", referencia: "PR #172", motivo: "CI: el paso lint del job estático sube el tope de memoria de Node de 4096 a 8192 MB; ESLint daba OOM (código 134) en el runner (pico de heap ~5.4 GB en main limpio) y el runner tiene 16 GB" },
 ];
 
 // ---------------------------------------------------------------------------------------------------------------------------------
