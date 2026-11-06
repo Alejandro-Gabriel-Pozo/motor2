@@ -1,6 +1,7 @@
 "use server";
 
 import { guardComandoGuardarGeneroCarta } from "@/core/features/carta/generos.guard";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO } from "@/core/carta/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -34,6 +35,7 @@ export interface DatosGeneroCarta {
  */
 export async function guardarGeneroCarta(datos: DatosGeneroCarta): Promise<ResultadoConId> {
   return conPermiso<ResultadoConId>("carta_generos", async (ctx) => {
+    if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) return error(MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO);
     const comando = guardComandoGuardarGeneroCarta(datos);
     if (!comando.ok) return error(comando.mensaje);
     const r = await guardarGeneroCartaCasoDeUso(ctx, comando.valor);
@@ -49,6 +51,7 @@ export async function guardarGeneroCarta(datos: DatosGeneroCarta): Promise<Resul
  */
 export async function actualizarActivoGeneroCarta(generoCartaId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta_generos", async (ctx) => {
+    if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) return error(MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO);
     const resultado = await actualizarActivoGeneroCartaCasoDeUso(ctx, { generoCartaId, activo });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);

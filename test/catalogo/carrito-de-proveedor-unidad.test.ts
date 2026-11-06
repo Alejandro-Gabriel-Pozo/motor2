@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Estos tests ejercen las presentaciones de compra: corren con el interruptor ENCENDIDO (`PRESENTACIONES_VISIBLES`, decisión del dueño 2026-11-06). El estado apagado y la reversibilidad: `presentaciones-interruptor*.test.ts(x)`.
+vi.mock("../../src/core/catalogo/presentaciones-visibles", async (original) => ({ ...(await original<typeof import("../../src/core/catalogo/presentaciones-visibles")>()), PRESENTACIONES_VISIBLES: true }));
 import { baseDeTest, crearUsuarioConMembresia, EMPRESA_POR_DEFECTO_ID, limpiarBaseDeTest, prisma, sembrarBase, sembrarCompraDeKardex, sembrarSeccion } from "../setup/test-db";
 import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
 import { cargarProductosDeProveedorParaElCarrito } from "../../src/server/lecturas/catalogo/ofertas-de-proveedor";

@@ -1,5 +1,5 @@
 import "server-only";
-import { mensajeDeChoqueDeNombre, ordenAlFinalDeLaSeccion, whereCartaDeSucursal } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, mensajeDeChoqueDeNombre, ordenAlFinalDeLaSeccion, whereCartaDeSucursal } from "@/core/carta/public";
 import type { ComandoAgregarProductoALaCarta, ResultadoAgregarProductoALaCarta } from "@/core/features/carta/mantenimiento.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -54,7 +54,8 @@ export async function agregarProductoALaCartaCasoDeUso(
       if (producto.opcionQueRespalda) return fracaso("ES_ANCLA_DE_ADICIONAL", `«${producto.nombre}» es el producto de respaldo de un adicional: se vende solo como adicional, no va suelto en la carta.`);
 
       // D3: un PV agrupado sale en la carta SOLO dentro de su ítem agrupado; suelto no se mostraría y quedaría duplicado. Se saca o se suma desde «Agrupados».
-      const agrupado = producto.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre;
+      // Con el interruptor de ítem agrupado apagado la carta ignora los agrupados (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): el producto sale suelto, así que no es «miembro de agrupado».
+      const agrupado = GENERO_E_ITEM_AGRUPADO_VISIBLE ? producto.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre : undefined;
       if (agrupado) return fracaso("ES_MIEMBRO_DE_AGRUPADO", `«${producto.nombre}» ya sale en la carta dentro del agrupado «${agrupado}»: se maneja desde «Agrupados».`);
 
       const seccion = await tx.seccionCarta.findUnique({ where: { id: comando.seccionCartaId }, select: { id: true, nombre: true, activa: true } });
