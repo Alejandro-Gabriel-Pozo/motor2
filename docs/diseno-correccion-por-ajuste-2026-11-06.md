@@ -11,6 +11,7 @@
 3. La nota de crédito es otra entidad: un documento del proveedor que actúa sobre los hechos de A sin alterar A. Ya tiene diseño propio (`docs/diseno-notas-de-credito-de-proveedor-2026-11-04.md`).
 4. Al corregir por ajuste el precio de un renglón de compra mal cargado, el costo vigente del producto pasa a ser el precio corregido. Una bonificación del proveedor, en cambio, no cambia el costo.
 5. Las ventas quedan congeladas. Un importe $0 significa «sin dato» y nunca se revalúa.
+6. Si después de la compra mal cargada ya hubo otra compra del mismo producto, el costo vigente sigue siendo el de la compra más nueva (ver §10).
 
 ---
 
@@ -20,7 +21,7 @@
 - **La pieza principal ya existe y la usan las mesas.** Para corregir se «da vuelta» el original y en el mismo instante se carga la versión correcta. El original queda a la vista con la marca «Reemplazada por…». Es lo que hace hoy el ticket 1-A → 1-B. Para las ventas, este método («anular y rehacer») ya estaba aprobado en octubre en el plan de documento comercial. Se propone usar este mismo concepto para la venta, la compra y el stock.
 - **Ninguna de las piezas es nueva.** La base ya tiene las columnas pensadas para esto (qué operación revierte a cuál, cuál reemplaza a cuál, el motivo de la anulación) y nadie las escribe todavía. Aprovecharlas es la forma más barata.
 - **El callejón sin salida de la compra se resuelve así.** Hoy, si parte de la mercadería ya se vendió, no se puede anular la compra para cargarla de nuevo. Con la corrección, el sistema mira solo la **diferencia**: si cambia el precio y la cantidad no, el stock no se mueve y la corrección se acepta aunque ya se hayan vendido 2 de las 24 cervezas.
-- **El costo vigente queda con el precio corregido.** Es la decisión 4. Las ventas ya hechas conservan el costo que tenían ese día. Hay una sola pregunta abierta: qué pasa si después de la compra mal cargada ya hubo otra compra del mismo producto (§10).
+- **El costo vigente queda con el precio corregido.** Es la decisión 4. Las ventas ya hechas conservan el costo que tenían ese día. Si después de la compra mal cargada ya hubo otra compra del mismo producto, el costo sigue siendo el de la compra más nueva (decisión 6, §10).
 - **La nota de crédito no es una corrección.** Es un papel del proveedor, con su propio diseño. Acá solo se traza la frontera entre las dos (§4).
 - **Etapas:**
   - **E0** (sin migración): un solo botón «Corregir una línea» en las cuentas cerradas, con el motivo en el mismo paso. Además se ve el pago en la compra y se arreglan detalles de pantalla.
@@ -349,9 +350,7 @@ No se agregan claves de permiso nuevas ni tablas.
 
 ## 10. Preguntas abiertas y supuestos
 
-**Pregunta 1 (cambia el costo, que es dinero).** Se corrige el precio de una compra de octubre, pero en noviembre ya hubo otra compra del mismo producto. ¿El costo de reposición sigue siendo el de la compra de noviembre, o pasa a ser el precio corregido de octubre?
-
-- *Recomendación:* sigue el de noviembre. La corrección pone el precio correcto en el lugar de la compra mal cargada, y el costo vigente sigue siendo el de la compra más nueva. Si la compra corregida es la más nueva, el costo pasa a ser el precio corregido (decisión 4). Estado: PENDIENTE de respuesta del dueño.
+**Decisión 6 (CONFIRMADA por el dueño, 2026-11-06).** Se corrige el precio de una compra de octubre, pero en noviembre ya hubo otra compra del mismo producto: **el costo de reposición sigue siendo el de la compra de noviembre**. La corrección pone el precio correcto en el lugar de la compra mal cargada, y el costo vigente sigue siendo el de la compra más nueva. Solo si la compra corregida es la más nueva, el costo pasa a ser el precio corregido (decisión 4). No requiere cambio en la consulta del costo vigente (V-T1): ya ordena por fecha de la operación. No queda ninguna pregunta abierta en este diseño; lo único pendiente es la autorización expresa de cada migración (E2, E3, E4) cuando se implemente.
 
 **Supuestos declarados** (una línea cada uno; el dueño los corrige si no son así):
 
