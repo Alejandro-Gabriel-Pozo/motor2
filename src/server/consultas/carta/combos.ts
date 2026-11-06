@@ -1,6 +1,6 @@
 import "server-only";
 import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
-import { nombreParaMostrar, whereCartaDeSucursal, type CombosDeLaCarta, type LugarDeCombo, type ProductoParaEntrada } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, nombreParaMostrar, whereCartaDeSucursal, type CombosDeLaCarta, type LugarDeCombo, type ProductoParaEntrada } from "@/core/carta/public";
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import type { Db } from "@/lib/db-tipos";
 import { grupoVigente, opcionOfrecida } from "@/core/opciones/public";
@@ -42,7 +42,8 @@ export async function cargarCombosDeLaCarta(db: Db, sucursalId: string): Promise
     db.producto.findMany({ where: { tipo: "PV" }, orderBy: [{ nombre: "asc" }, { id: "asc" }], select: { id: true, nombre: true, categoria: { select: { id: true, nombre: true } } } }),
     // El origen de cada producto (la sección de la carta de ESTA sucursal): suelto o dentro de un ítem agrupado. Un producto fuera de ambos «no está en la carta».
     db.contenidoCartaProducto.findMany({ where: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, seccionCartaId: { not: null } }, select: { productoId: true, seccionCartaId: true, nombreEnCarta: true, mostrarNombreArriba: true } }),
-    db.opcionItemAgrupadoCarta.findMany({ where: { ...whereCartaDeSucursal(sucursalId), itemAgrupadoCarta: { activo: true } }, select: { productoId: true, itemAgrupadoCarta: { select: { seccionCartaId: true } } } }),
+    // Interruptor de ítem agrupado apagado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): la carta ignora los agrupados, así que no hay origen «dentro de un ítem agrupado».
+    GENERO_E_ITEM_AGRUPADO_VISIBLE ? db.opcionItemAgrupadoCarta.findMany({ where: { ...whereCartaDeSucursal(sucursalId), itemAgrupadoCarta: { activo: true } }, select: { productoId: true, itemAgrupadoCarta: { select: { seccionCartaId: true } } } }) : Promise.resolve([]),
   ]);
   const seccionDe = new Map<string, string>();
   for (const c of enSeccion) if (c.seccionCartaId) seccionDe.set(c.productoId, c.seccionCartaId);

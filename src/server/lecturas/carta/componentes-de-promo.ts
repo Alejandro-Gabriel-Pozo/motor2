@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { ALICUOTAS_IVA, type AlicuotaIva } from "@/core/fiscal/public";
 import type { ComponenteConAlicuota } from "@/core/pos/public";
-import { whereCartaDeSucursal } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, whereCartaDeSucursal } from "@/core/carta/public";
 import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { cargarOrigenDeStockParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { cargarOpcionesParaVender, type OpcionesDeProducto } from "@/server/lecturas/opciones/opciones-para-vender";
@@ -100,7 +100,8 @@ export async function cargarAlicuotasPosiblesDeLugares(
     for (const sucursalId of args.sucursalIds) {
       const sueltos = await tx.contenidoCartaProducto.findMany({ where: { ...whereCartaDeSucursal(sucursalId), seccionCartaId: { in: secciones }, visibleEnCarta: true }, select: { productoId: true } });
       for (const c of sueltos) productoIds.add(c.productoId);
-      const agrupados = await tx.opcionItemAgrupadoCarta.findMany({ where: { ...whereCartaDeSucursal(sucursalId), itemAgrupadoCarta: { seccionCartaId: { in: secciones }, activo: true } }, select: { productoId: true } });
+      // Interruptor de ítem agrupado apagado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): la carta ignora los agrupados; sus productos cuentan por su contenido suelto (arriba).
+      const agrupados = !GENERO_E_ITEM_AGRUPADO_VISIBLE ? [] : await tx.opcionItemAgrupadoCarta.findMany({ where: { ...whereCartaDeSucursal(sucursalId), itemAgrupadoCarta: { seccionCartaId: { in: secciones }, activo: true } }, select: { productoId: true } });
       for (const o of agrupados) productoIds.add(o.productoId);
     }
   }
