@@ -1,5 +1,6 @@
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { PanelNav } from "@/core/navegacion/panel";
+import type { ClavesDeVer } from "@/core/navegacion/claves-de-ver";
 
 /**
  * Fuente del módulo Catálogo en el menú y de sus filas de pestañas (Fase 7, DEC-13 del dueño; diseño en `docs/diseno-modulo-catalogo-2026-10-28.md` §8): CINCO entradas, «Productos» (pestañas Productos ·
@@ -9,8 +10,6 @@ import type { PanelNav } from "@/core/navegacion/panel";
  * Cada pantalla lleva la clave de «Ver» que pide su página (`accion`), o la lista de la que alcanza con una (`algunaDe`, solo la entrada «Maestros»): un test comprueba que coincidan con la guarda de cada
  * página. Quién ve cada pestaña lo decide el servidor con esas claves; este archivo es puro.
  */
-type ClavesDeVer = { accion: AccionClave; algunaDe?: never } | { algunaDe: readonly [AccionClave, ...AccionClave[]]; accion?: never };
-
 /** Una pantalla del módulo: su ruta, cómo se nombra (pestaña o buscador), su panel y la clave de «Ver» que la protege. */
 export type PantallaDeCatalogo = { href: string; texto: string; panel: PanelNav } & ClavesDeVer;
 

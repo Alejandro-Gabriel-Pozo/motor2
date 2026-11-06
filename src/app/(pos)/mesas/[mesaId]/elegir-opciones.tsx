@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useReducer, useRef } from "react";
-import { textoDeLimites } from "@/core/opciones/public";
+import { textoDeLimites, grupoVigente, opcionOfrecida } from "@/core/opciones/public";
 import {
   elegidasParaPedir,
   esDeUnaSolaEleccion,
@@ -69,7 +69,7 @@ export function ElegirOpciones({
   const { precioBase, descuentoDeProducto, esBase, sinStock } = configuracion;
   // Solo los grupos que hoy cuentan.
   const vigentes = useMemo(
-    () => configuracion.grupos.filter((g) => g.admitido && g.activo).map((g) => ({ ...g, opciones: g.opciones.filter((o) => o.activa && o.admitida) })),
+    () => configuracion.grupos.filter(grupoVigente).map((g) => ({ ...g, opciones: g.opciones.filter(opcionOfrecida) })),
     [configuracion]
   );
   const precios = useMemo(() => resumenDePrecios({ grupos: vigentes, precioBase, descuentoDeProducto, esBase }), [vigentes, precioBase, descuentoDeProducto, esBase]);

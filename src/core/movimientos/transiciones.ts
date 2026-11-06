@@ -1,5 +1,5 @@
 import { Decimal } from "decimal.js";
-import type { Proceso } from "@/core/datos/enumerados-del-esquema";
+import type { Proceso, TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import type { AccionDeSucursal } from "@/core/permisos/acciones";
 
 /**
@@ -109,7 +109,7 @@ export function esSignoFijo(proceso: Proceso): boolean {
 }
 
 /** Port de tieneStockReal_ (Movimientos.js:564-566). */
-export function tieneStockReal(tipo: "MP" | "PV", seProduce: boolean): boolean {
+export function tieneStockReal(tipo: TipoProducto, seProduce: boolean): boolean {
   return tipo === "MP" || (tipo === "PV" && seProduce);
 }
 
@@ -129,7 +129,7 @@ export function tieneStockReal(tipo: "MP" | "PV", seProduce: boolean): boolean {
  */
 export function productoValidoParaProceso(
   proceso: Proceso,
-  producto: { tipo: "MP" | "PV"; seProduce: boolean; esConsignacion: boolean }
+  producto: { tipo: TipoProducto; seProduce: boolean; esConsignacion: boolean }
 ): boolean {
   const t = TRANSICIONES[proceso];
 

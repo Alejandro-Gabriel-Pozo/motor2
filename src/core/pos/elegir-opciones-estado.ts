@@ -1,4 +1,4 @@
-import { ordenarPorRol, rolDelGrupo } from "@/core/opciones/public";
+import { ordenarPorRol, rolDelGrupo, grupoVigente } from "@/core/opciones/public";
 import type { GrupoParaVender } from "./linea-configurada";
 import { opcionDisponible, type ResumenDePrecios } from "./precio-de-configuracion";
 
@@ -110,7 +110,7 @@ export function elegidasParaPedir(estado: EstadoElegirOpciones, grupos: readonly
 
 /** Los grupos obligatorios (de los vigentes) que todavía no llegan a su mínimo, en orden: «Falta elegir: Tamaño». */
 export function gruposQueFaltan(estado: EstadoElegirOpciones, grupos: readonly GrupoParaVender[]): GrupoParaVender[] {
-  return grupos.filter((g) => g.admitido && g.activo && g.cantidadMinima > 0 && totalDelGrupo(estado, g) < g.cantidadMinima);
+  return grupos.filter((g) => grupoVigente(g) && g.cantidadMinima > 0 && totalDelGrupo(estado, g) < g.cantidadMinima);
 }
 
 /** Si el grupo ya no admite más: tiene su elección (uno de una sola elección) o llegó a su máximo. Con eso el diálogo lleva la vista al grupo siguiente. */
@@ -157,7 +157,7 @@ export function masPedidasParaElDialogo(
   pedidas: readonly { elegidas: readonly { opcionId: string; cantidad: number }[]; unidades: number }[],
   maximo = 3
 ): { etiqueta: string; elegidas: { opcionId: string; cantidad: number }[] }[] {
-  const disponibles = new Map(grupos.filter((g) => g.admitido && g.activo).flatMap((g) => g.opciones.filter(opcionDisponible).map((o) => [o.opcionId, o] as const)));
+  const disponibles = new Map(grupos.filter(grupoVigente).flatMap((g) => g.opciones.filter(opcionDisponible).map((o) => [o.opcionId, o] as const)));
   const juntas = new Map<string, { elegidas: { opcionId: string; cantidad: number }[]; unidades: number; orden: number }>();
   pedidas.forEach((p, orden) => {
     if (p.elegidas.length === 0 || !p.elegidas.every((e) => disponibles.has(e.opcionId))) return;

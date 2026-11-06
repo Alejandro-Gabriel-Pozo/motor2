@@ -1,6 +1,6 @@
 import { texto } from "@/core/texto";
 import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
-import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { validarDetalleLibreDeOperacion } from "@/core/movimientos/public";
 import { MAXIMO_DESTINOS_RECLASIFICACION, validarTopeDeLista } from "@/core/datos/limites";
@@ -40,7 +40,7 @@ export function guardComandoReclasificarStock(entrada: unknown, ahora: Date): Re
   const detalleValido = validarDetalleLibreDeOperacion(detalle);
   if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
   if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
-    return rechazar("formato", "Clave de reintento inválida.");
+    return rechazar("formato", MENSAJE_CLAVE_DE_REINTENTO_INVALIDA);
   }
   for (const d of destinos) {
     const seccionId = (d as { seccionId?: unknown } | null)?.seccionId;

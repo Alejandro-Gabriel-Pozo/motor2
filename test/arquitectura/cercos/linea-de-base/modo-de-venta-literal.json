@@ -1,0 +1,8 @@
+{
+  "regla": "modo-de-venta-literal",
+  "meta": "0 (lote 3a: el modo de venta se compara con esBaseConfigurable y se tipa con ModoDeVenta; el tipo de producto con TipoProducto)",
+  "total": 0,
+  "entradas": 0,
+  "porTipo": {},
+  "cuentas": {}
+}

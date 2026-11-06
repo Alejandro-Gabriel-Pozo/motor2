@@ -7,6 +7,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { buscarChoqueDeNombreEnLaCarta } from "@/server/lecturas/carta/choque-de-nombre";
 import { fijarNombreEnCartaSiVacio, tomarElProductoParaGuardarContenido, tomarLosNombresDeLaCarta } from "@/server/persistencia/carta/contenido-producto";
+import { esBaseConfigurable } from "@/core/opciones/public";
 
 /**
  * Caso de uso «Está bien así» (confirmado por el dueño, 2026-11-04; `docs/diseno-nombre-en-carta-2026-11-04.md`, §11 F): un plato VISIBLE en la carta de la sucursal activa que todavía no tiene «Nombre en la
@@ -32,7 +33,7 @@ export async function confirmarNombreEnCartaCasoDeUso(
   const producto = await actor.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true, modoDeVenta: true } });
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
   if (producto.tipo !== "PV") return fracaso("NO_ES_PV", "Solo un producto de venta (PV) puede ir en la carta.");
-  if (producto.modoDeVenta === "BASE_CONFIGURABLE") return fracaso("ES_BASE", `«${producto.nombre}» se vende por opción: la carta lee los rótulos de sus opciones, no su nombre.`);
+  if (esBaseConfigurable(producto.modoDeVenta)) return fracaso("ES_BASE", `«${producto.nombre}» se vende por opción: la carta lee los rótulos de sus opciones, no su nombre.`);
   const valido = validarNombreEnCarta(producto.nombre);
   if (!valido.ok || valido.valor === null || valido.valor === undefined) {
     return fracaso("DATO_INVALIDO", `El nombre «${producto.nombre}» no sirve como nombre de carta${valido.ok ? "" : ` (${valido.mensaje})`}: escribí uno en la ficha del producto.`);
