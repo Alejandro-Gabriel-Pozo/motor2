@@ -29,7 +29,7 @@ export {
   etiquetaDeEstadoDePago,
 } from "./pago-de-factura";
 export type { CondicionDePago, EstadoDePago, MedioDePago } from "./pago-de-factura";
-export { repartirFactura } from "./reparto-de-factura";
+export { faltaRepartir, repartirFactura } from "./reparto-de-factura";
 export type { RepartoDeFactura } from "./reparto-de-factura";
 export { normalizarNumeroDeComprobante } from "./numero-de-comprobante";
 export { DIAS_DE_VENTANA_DE_DUPLICADO, avisoDePosibleDuplicado, posiblesDuplicados } from "./posible-duplicado";

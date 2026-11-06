@@ -58,7 +58,7 @@ describe("obtenerReportePorPeriodo", () => {
     expect(rep.hasta.toISOString()).toBe("2026-08-06T02:59:59.999Z");
   });
 
-  it("ventas con Precio Total real se toman tal cual; sin precio se estiman al precio de venta vigente y se marcan 'estimado'", async () => {
+  it("ventas con Precio Total real se toman tal cual; una con importe $0 queda «sin dato»: fuera del total y sin estimar al precio vigente", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_HARINA", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     const pv = await sembrarProductoDisponible({ codigo: "PV_PAN", nombre: "Pan", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: unidadKgId }] } } });
@@ -77,10 +77,10 @@ describe("obtenerReportePorPeriodo", () => {
     const hasta = new Date(hoy); hasta.setDate(hasta.getDate() + 1);
     const rep = await obtenerReportePorPeriodo(sucursalId, desde, hasta, undefined, prisma, AHORA_DE_LA_CORRIDA);
 
-    expect(rep.ventas.totalFacturado).toBe(2 * 100 + 1 * 100); // real (2×100) + estimado (1×precioVenta vigente)
+    expect(rep.ventas.totalFacturado).toBe(2 * 100); // solo la real (2×100): la de importe $0 NO se revalúa al precio vigente
     const fila = rep.ventas.porProducto.find((v) => v.productoId === pv.id)!;
-    expect(fila.estimado).toBe(true);
-    expect(fila.cantidad).toBe(3);
+    expect(fila.cantidad).toBe(2);
+    expect(rep.ventas.lineasSinDato).toBe(1);
   });
 
   it("compras agrupa por proveedor y suma importe; avisa si alguna se cargó sin precio", async () => {

@@ -216,7 +216,7 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
   // confirmado hasta ahora). Se cargan acá una sola vez, igual que el catálogo. Y lo mismo, desde O.39, para la serie del IPC (margen y
   // comparativa la leían cada uno) y el costo de reposición de HOY (impacto de recetas, margen y alerta de margen objetivo: 3 lecturas).
   const [indiceRecetas, serieIPC, costosActuales] = await Promise.all([construirIndiceRecetas(db, sucursalId), cargarSerieIPC(db), obtenerCostoActualPorMP(sucursalId, db)]);
-  const ventas = calcularVentasDelPeriodo(items, productos);
+  const ventas = calcularVentasDelPeriodo(items);
   const compras = calcularComprasDelPeriodo(items, productos);
   const gastoPorInsumo = calcularGastoPorInsumoDelPeriodo(items, productos);
   const ratioGastoVentas = await calcularRatioGastoVentas(sucursalId, desde, hasta, compras.totalGastado, compras.totalNoComestibles, ventas.totalFacturado, productos, db, clasificacionNoComestibles);
@@ -251,13 +251,13 @@ export async function obtenerReportePorPeriodoConCatalogo(sucursalId: string, de
 /**
  * Port de generarReporteVentasPorCategoria (Reportes.js:243-283) — reusa
  * calcularVentasDelPeriodo (vía cargarLineasDelPeriodo) en vez de
- * reimplementar el criterio real-vs-estimado, solo reagrupa por Categoría.
+ * reimplementar el criterio de importe real / sin dato, solo reagrupa por Categoría.
  */
 export async function generarReporteVentasPorCategoria(sucursalId: string, desde: Date, hasta: Date, db: Db, zona: string = ZONA_ARGENTINA) {
   // Solo las ventas: las líneas y el catálogo (`cargarLineasDelPeriodo`) y las mismas ventas que el reporte del período (`calcularVentasDelPeriodo`, que
   // descarta las anuladas con `r.anulada`), sin armar el resto del reporte que acá no se muestra (O.39: 21 consultas antes, la mayoría para tirar).
   const { desde: desdeRango, hasta: hastaRango, items, productos } = await cargarLineasDelPeriodo(sucursalId, desde, hasta, { proceso: "VENTA" }, db, {}, zona);
-  const ventas = calcularVentasDelPeriodo(items, productos);
+  const ventas = calcularVentasDelPeriodo(items);
 
   return {
     desde: desdeRango,

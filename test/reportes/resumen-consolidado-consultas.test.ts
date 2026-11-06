@@ -106,6 +106,7 @@ describe("Consolidado: lo común se lee una vez y por sucursal solo lo suyo (O.3
           sucursalId: s.id,
           sucursalNombre: s.nombre,
           ventasTotal: operativo.financiero.ventasTotal,
+          ventasSinDato: operativo.financiero.ventasSinDato,
           margenTotal: operativo.financiero.margenTotal,
           gastadoTotal: operativo.financiero.gastadoTotal,
           alertasCriticas: operativo.alertas.criticos,

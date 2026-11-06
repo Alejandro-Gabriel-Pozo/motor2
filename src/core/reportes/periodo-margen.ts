@@ -9,7 +9,6 @@ export interface FilaMargenProducto {
   producto: string;
   cantidad: number;
   ingreso: number;
-  ingresoEstimado: boolean;
   costoUnitario: number | null;
   costo: number | null;
   costoIncompleto: boolean;
@@ -72,8 +71,8 @@ export interface MargenDelPeriodo {
   /** `costoDeLoVendidoTotal / ingresoConCostoReal`, en %. */
   costoDeLoVendidoPctTotal: number | null;
   /**
-   * Qué parte de lo vendido se pudo costear: `ingresoConCostoReal / (ingresoConCostoReal + ingresoSinCostoReal)`. La base NO es `ingresoTotal`: ese incluye las
-   * ventas viejas sin precio valorizadas al precio vigente (estimado), que acá ni siquiera entran. `null` si no hay ventas costeables ni sin costear.
+   * Qué parte de lo vendido se pudo costear: `ingresoConCostoReal / (ingresoConCostoReal + ingresoSinCostoReal)`. La base NO es `ingresoTotal`: ese puede incluir
+   * ventas sin costo reconstruible, que acá ni siquiera entran. `null` si no hay ventas costeables ni sin costear.
    */
   coberturaCostoRealPct: number | null;
   avisoCostoDeLoVendido: string;
@@ -139,7 +138,6 @@ export function calcularMargenNominalDelPeriodo(
         producto: v.producto,
         cantidad: v.cantidad,
         ingreso: v.importe,
-        ingresoEstimado: v.estimado,
         costoUnitario: costoUnitario === null ? null : redondearMoneda(costoUnitario),
         costo: costoLinea,
         costoIncompleto: costoLinea === null,
