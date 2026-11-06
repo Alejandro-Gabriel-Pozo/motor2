@@ -8,6 +8,7 @@ import { guardarContenidoDeProducto, tomarElProductoParaGuardarContenido, tomarL
 import { buscarChoqueDeNombreEnLaCarta } from "@/server/lecturas/carta/choque-de-nombre";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "@/core/carta/public";
 import { validarGeneroCartaOpcional } from "../generos-compartido";
+import { esBaseConfigurable } from "@/core/opciones/public";
 
 /**
  * Caso de uso «guardar el contenido de carta de un producto de venta en la sucursal activa» (docs/plan-carta-catalogo-2026-09-24.md, M9; Hito 5, bloque D,
@@ -79,7 +80,7 @@ export async function guardarContenidoCartaProductoCasoDeUso(
   const entidadId = `${actor.sucursalId}:${productoId}`;
   // Regla del dueño (2026-11-04): en la carta de una sucursal no hay dos cosas con el mismo nombre. Se chequea cuando el plato queda visible (con el candado de los nombres de la sucursal).
   // El control corre solo si el plato va a quedar VISIBLE (oculto no molesta; se vuelve a chequear al mostrarlo) y no es una base (el cliente lee los rótulos de sus opciones, no su nombre).
-  const esBase = producto.modoDeVenta === "BASE_CONFIGURABLE";
+  const esBase = esBaseConfigurable(producto.modoDeVenta);
   const conChequeoDeNombre = visibleEnCarta;
   let choque: ChoqueDeNombre | null = null;
   let nombreEfectivo = producto.nombre;

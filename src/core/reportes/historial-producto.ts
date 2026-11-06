@@ -1,3 +1,4 @@
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 export interface EventoHistorialProducto {
   tipo: "movimiento" | "conteo";
   fecha: Date;
@@ -31,7 +32,7 @@ export interface HistorialProducto {
   productoId: string;
   codigo: string;
   producto: string;
-  tipo: "MP" | "PV";
+  tipo: TipoProducto;
   unidadStockNombre: string;
   saldoActual: number;
   eventos: EventoHistorialProducto[];

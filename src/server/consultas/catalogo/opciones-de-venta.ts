@@ -7,6 +7,7 @@ import { precioLocalGuardadoDe, preciosLocalesVigentes } from "@/server/lecturas
 import { cargarRecetaVigenteParaVender } from "@/server/lecturas/movimientos/receta-para-vender";
 import { cargarOpcionesParaVender, completarPreciosDeSucursal } from "@/server/lecturas/opciones/opciones-para-vender";
 import type { Db } from "@/lib/db-tipos";
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 
 /**
  * Las CONSULTAS de las pantallas del catálogo de opciones de venta (GO-2d; ADR-030 «Pantallas»). Las páginas leen por acá y no por `server/lecturas` (regla
@@ -259,7 +260,7 @@ function estadoEnLaCarta(g: { tipo: TipoDeGrupoDeOpciones; seMuestraEnCarta: boo
 
 export interface OpcionesDelProductoDelPanel {
   /** `esBase`: se vende por opción (`modoDeVenta = BASE_CONFIGURABLE`): su precio guardado no se cobra, rige el precio final de sus opciones. */
-  producto: { id: string; nombre: string; tipo: "MP" | "PV"; esAnclaDeAdicional: boolean; esBase: boolean };
+  producto: { id: string; nombre: string; tipo: TipoProducto; esAnclaDeAdicional: boolean; esBase: boolean };
   /** Los grupos que el producto tiene asignados (activos o no en el producto), en su orden. */
   admitidos: GrupoAdmitidoDelPanel[];
   /** Los grupos prendidos de la empresa que el producto todavía no tiene: los que ofrece «Agregar grupo», con sus opciones prendidas y el máximo del grupo. */

@@ -1,7 +1,7 @@
 import { texto } from "@/core/texto";
 import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { validarImporte } from "@/core/datos/importe";
-import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
 import type { ComandoRegistrarPagoConsignante } from "./pago-consignante.schema";
@@ -42,7 +42,7 @@ export function guardComandoRegistrarPagoConsignante(entrada: unknown, ahora: Da
   // Ola «precio y carta», Fase 2, paso B1: la clave de reintento es OBLIGATORIA (es dinero: sin ella, un doble envío pagaría dos veces). La pantalla la genera al abrirse;
   // si no viene es una pantalla vieja o una llamada a mano: se rechaza sin escribir.
   if (claveIdempotencia === undefined || claveIdempotencia === null || claveIdempotencia === "") return rechazar("vacio", "Falta la clave de reintento: recargá la pantalla.");
-  if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", "Clave de reintento inválida.");
+  if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", MENSAJE_CLAVE_DE_REINTENTO_INVALIDA);
 
   return aceptar({
     proveedorId: proveedorId as string,

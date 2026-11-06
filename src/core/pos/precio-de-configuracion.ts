@@ -1,17 +1,6 @@
 import { aplicarDescuentoDeProducto } from "@/core/carta/public";
 import { totalDeLineas } from "@/core/moneda";
-import {
-  componerPrecioDeLinea,
-  ejesDeLaCarta,
-  opcionesDelEje,
-  rolDelGrupo,
-  validarOpcionesElegidas,
-  type EjesDeLaCarta,
-  type OpcionElegida,
-  type OpcionParaPrecio,
-  type RolDelGrupoEnCarta,
-  type TipoDeGrupoDeOpciones,
-} from "@/core/opciones/public";
+import { componerPrecioDeLinea, ejesDeLaCarta, opcionesDelEje, rolDelGrupo, validarOpcionesElegidas, type EjesDeLaCarta, type OpcionElegida, type OpcionParaPrecio, type RolDelGrupoEnCarta, type TipoDeGrupoDeOpciones, grupoVigente, opcionOfrecida } from "@/core/opciones/public";
 import type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
 import { gruposOcultosEnLaCarta } from "./grupos-ocultos-en-la-carta";
 import { opcionParaPrecio } from "./opcion-para-precio";
@@ -29,12 +18,12 @@ import { opcionParaPrecio } from "./opcion-para-precio";
 
 /** Si una opción se puede elegir hoy en la sucursal: prendida para la empresa, admitida por el producto y no apagada (agotada) en la sucursal. */
 export function opcionDisponible(opcion: Pick<OpcionParaVender, "activa" | "admitida" | "apagadaEnSucursal">): boolean {
-  return opcion.activa && opcion.admitida && !opcion.apagadaEnSucursal;
+  return opcionOfrecida(opcion) && !opcion.apagadaEnSucursal;
 }
 
 /** Los grupos que cuentan para vender: los que el producto admite (fila activa) y están prendidos para la empresa. */
 function gruposVigentes<G extends GrupoParaVender>(grupos: readonly G[]): G[] {
-  return grupos.filter((g) => g.admitido && g.activo);
+  return grupos.filter(grupoVigente);
 }
 
 /** Lo que aporta cada opción disponible de un grupo, para mostrarla («Mediano $ 2.800», «Con leche + $ 400», «Huevo frito + $ 600»). */

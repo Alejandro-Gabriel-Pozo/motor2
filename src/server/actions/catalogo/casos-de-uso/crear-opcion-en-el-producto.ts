@@ -10,9 +10,7 @@ import { tomarFilaDeProducto } from "@/server/persistencia/catalogo/productos";
 import { crearOpcionDeGrupoEnTx } from "./crear-opcion-de-grupo";
 import { fijarAdmisionDeGrupoEnTx } from "./fijar-admision-de-grupo-en-producto";
 import { cargarGrupoEnTx } from "./opciones-de-venta-en-tx";
-
-/** Paso entre el orden de una opción y el de la siguiente dentro del grupo: el de «Opciones de venta» y el del alta compuesta del grupo, con lugar para una en el medio. */
-const PASO_DE_ORDEN = 10;
+import { PASO_DE_ORDEN } from "@/core/opciones/public";
 
 type FracasoDelComando = Fracaso<Extract<ResultadoCrearOpcionEnElProducto, { ok: false }>["codigo"]>;
 

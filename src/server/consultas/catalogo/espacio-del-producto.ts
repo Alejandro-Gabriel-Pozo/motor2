@@ -5,6 +5,8 @@ import type { Db } from "@/lib/db-tipos";
 import { estadoDelProductoEnLaCarta } from "@/server/consultas/carta/admin";
 import { cargarOpcionesDelProducto, type OpcionesDelProductoDelPanel } from "@/server/consultas/catalogo/opciones-de-venta";
 import { cargarOrigenDeStockDelCatalogo } from "@/server/lecturas/movimientos/origen-de-stock-del-catalogo";
+import { type ModoDeVenta, modoDeVentaDe } from "@/core/opciones/public";
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 
 /**
  * Las lecturas del ESPACIO DEL PRODUCTO (Fase 6, 6.12; DEC-12): lo que hace falta saber de UN producto para dibujar su marco (la cabecera y la tira de pasos con lo que le falta a cada uno). Solo las piden las
@@ -17,8 +19,8 @@ export interface ProductoDelEspacio {
   id: string;
   nombre: string;
   codigo: string;
-  tipo: "PV" | "MP";
-  modoDeVenta: "DIRECTO" | "BASE_CONFIGURABLE";
+  tipo: TipoProducto;
+  modoDeVenta: ModoDeVenta;
   precioVenta: number;
   /** Solo una materia prima con `seProduce` tiene receta propia. */
   seProduce: boolean;
@@ -38,7 +40,7 @@ export async function leerProductoDelEspacio(db: Db, productoId: string): Promis
     nombre: p.nombre,
     codigo: p.codigo,
     tipo: p.tipo,
-    modoDeVenta: p.modoDeVenta === "BASE_CONFIGURABLE" ? "BASE_CONFIGURABLE" : "DIRECTO",
+    modoDeVenta: modoDeVentaDe(p.modoDeVenta),
     precioVenta: Number(p.precioVenta),
     seProduce: p.seProduce,
     esAnclaDeAdicional: p.opcionQueRespalda !== null,

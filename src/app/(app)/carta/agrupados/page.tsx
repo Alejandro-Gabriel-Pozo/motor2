@@ -25,6 +25,7 @@ import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
 import { Selector } from "@/ui/primitivas/selector";
+import type { UbicacionEnCarta } from "@/components/carta/contenido-del-producto";
 
 /**
  * Ítems agrupados de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M7): un renglón visible ("Gaseosa 500 CC") que
@@ -50,9 +51,6 @@ const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
 const CLASE_AVISO = "rounded border border-aviso p-3 text-sm";
 
 type ProductoSinGrupo = { id: string; nombre: string; precioAca: number };
-type OpcionGenero = { id: string; nombre: string; activo: boolean };
-/** Para el select de sección + orden sugerido (DA6): las secciones, y cuántos ítems ya tiene cada una. */
-type UbicacionEnCarta = { secciones: { id: string; nombre: string; activa: boolean }[]; cantidadPorSeccion: Record<string, number>; generos: OpcionGenero[] };
 
 export default async function ItemsAgrupadosPage() {
   const ctx = await obtenerContextoUsuario();
