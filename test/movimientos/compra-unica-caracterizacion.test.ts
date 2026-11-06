@@ -11,6 +11,7 @@ import { registrarFacturaProveedorCasoDeUso } from "../../src/server/actions/mov
 import { obtenerCostoActualPorMP } from "../../src/server/lecturas/reportes/comun";
 import { cargarLineasDelPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { calcularComprasDelPeriodo } from "../../src/core/reportes/public";
+import { DIA_MS, enElFuturo } from "../setup/tiempo";
 import { mediodiaDelDia, ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../../src/core/tiempo/zona-horaria";
 import type { ItemMovimientoInput } from "../../src/core/features/movimientos/movimiento.schema";
 
@@ -79,7 +80,7 @@ interface CasoDeCaracterizacion {
   detalleLibre?: string;
 }
 
-const LOTE = new Date("2027-03-15T15:00:00.000Z");
+const LOTE = enElFuturo(120 * DIA_MS);
 const CASOS: CasoDeCaracterizacion[] = [
   { nombre: "una línea con cifras redondas", items: (p) => [{ productoId: p.MP_A!, cantidad: 10, precioTotal: 123.45, referenciaProveedor: REFERENCIA_DE_PRUEBA }] },
   { nombre: "tercios: 10 ÷ 3 = 3,3333 por unidad (el redondeo a 4 decimales)", items: (p) => [{ productoId: p.MP_A!, cantidad: 3, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }] },
