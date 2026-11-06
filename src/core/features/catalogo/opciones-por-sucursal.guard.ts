@@ -2,6 +2,7 @@ import { esIdentificador } from "@/core/datos/identificador";
 import { validarImporte } from "@/core/datos/importe";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import type { ComandoApagarOpcionEnSucursal, ComandoFijarPrecioLocalDeOpcion, PrecioLocalVisto } from "./opciones-por-sucursal.schema";
+import { LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
 
 /**
  * Guard de la feature «opciones de venta en la sucursal» (GO-2a). Formato del comando, ANTES de tocar la base; lo llama la Server Action DENTRO de su `conPermiso(…)`. Puro.
@@ -12,7 +13,6 @@ import type { ComandoApagarOpcionEnSucursal, ComandoFijarPrecioLocalDeOpcion, Pr
 
 export const MENSAJE_SUCURSAL_CAMBIADA = "La sucursal activa cambió desde que se cargó la pantalla: recargala y volvé a intentar.";
 
-const LARGO_MAXIMO_DE_ID = 64;
 
 function id(valor: unknown, mensaje: string): ResultadoDato<string> {
   return esIdentificador(valor) && valor.length <= LARGO_MAXIMO_DE_ID ? aceptar(valor) : rechazar("formato", mensaje);

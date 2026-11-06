@@ -1,4 +1,4 @@
-import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { esImporteAlCentavo } from "@/core/datos/importe";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { guardDeId } from "./guard-de-id";
@@ -44,7 +44,7 @@ export function guardComandoAgregarItems(entrada: unknown): ResultadoDato<Comand
   const cantidadDeLineas = items_.length + promos_.reduce((suma, p) => suma + componentesDeEleccion(Array.isArray(p?.elecciones) ? p.elecciones : []).length, 0);
   if (cantidadDeLineas > MAXIMO_ITEMS_POR_AGREGADO) return rechazar("rango", `No se pueden agregar más de ${MAXIMO_ITEMS_POR_AGREGADO} ítems de una vez.`);
   if (typeof cuentaId !== "string") return rechazar("formato", MENSAJE_CUENTA_NO_ENCONTRADA);
-  if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", "Clave de reintento inválida.");
+  if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", MENSAJE_CLAVE_DE_REINTENTO_INVALIDA);
   const conOpciones = itemsConOpcionesValidadas(items_);
   if (!conOpciones.ok) return conOpciones;
   // GO-3b: el precio de la promo que vio el mozo, si viene, es un importe (como el de cada ítem); otra cosa no se ignora en silencio.
