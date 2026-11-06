@@ -1,5 +1,6 @@
 import type { OpcionElegida } from "@/core/opciones/public";
 import type { GrupoParaVender } from "./linea-configurada";
+import { opcionDisponible } from "./precio-de-configuracion";
 
 /**
  * Las OPCIONES PERMITIDAS EFECTIVAS de una entrada «a elegir» de una promo (`EntradaDeCupo.modoDeOpciones = 'A_ELEGIR'`, docs/diseno-promo-subconjunto-2026-11-04.md §2 nivel 4 e I2/I3/I6/I11). Función PURA y
@@ -32,7 +33,7 @@ export function opcionesPermitidasEfectivas(gruposDelProducto: readonly GrupoPar
       continue;
     }
     const opciones = g.opciones
-      .filter((o) => tope.has(o.opcionId) && o.activa && o.admitida && !o.apagadaEnSucursal)
+      .filter((o) => tope.has(o.opcionId) && opcionDisponible(o))
       .map((o) => ({ ...o, cantidadMaxima: Math.min(o.cantidadMaxima, tope.get(o.opcionId)!) }));
     if (!g.activo || opciones.length === 0) {
       if (g.cantidadMinima > 0) return { ok: false, motivo: `Para «${g.nombre}» no queda ninguna opción permitida y activa.` };

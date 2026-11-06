@@ -1,8 +1,8 @@
 import { texto } from "@/core/texto";
 import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
-import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { LARGO_MAXIMO_DETALLE, validarTextoLibre } from "@/core/datos/limites";
+import { validarDetalleLibreDeOperacion } from "@/core/movimientos/public";
 import type { AccionConteo } from "@/core/datos/enumerados-del-esquema";
 import type { ComandoConteoFisico } from "./conteo-fisico.schema";
 
@@ -28,10 +28,10 @@ export function guardComandoConteoFisico(entrada: unknown, ahora: Date): Resulta
   if (typeof accion !== "string" || !Object.hasOwn(ACCIONES_VALIDAS, accion)) return rechazar("formato", "Elegí qué hacer con la diferencia del conteo.");
   const fechaValida = validarFechaOperacion(fechaConteo, ahora);
   if (!fechaValida.ok) return rechazar(fechaValida.codigo, fechaValida.mensaje);
-  const detalleValido = validarTextoLibre(detalle, "El detalle", LARGO_MAXIMO_DETALLE);
+  const detalleValido = validarDetalleLibreDeOperacion(detalle);
   if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
   if (claveIdempotencia !== undefined && !esClaveIdempotenciaValida(claveIdempotencia)) {
-    return rechazar("formato", "Clave de reintento inválida.");
+    return rechazar("formato", MENSAJE_CLAVE_DE_REINTENTO_INVALIDA);
   }
   return aceptar(entrada as ComandoConteoFisico);
 }

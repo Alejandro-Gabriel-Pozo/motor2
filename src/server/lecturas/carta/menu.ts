@@ -4,7 +4,7 @@ import { armarMenuCarta, precioDeCarta, precioDePromo, seleccionDeSucursalDeProm
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { opcionesDeLosProductosDeLaCarta, type GrupoParaLaCarta } from "@/server/lecturas/carta/opciones";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
-import { esBaseConfigurable } from "@/core/opciones/public";
+import { esBaseConfigurable, grupoVigente } from "@/core/opciones/public";
 import { cartaDeUnProducto, conGrillaDeLaSucursal } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 
@@ -121,7 +121,7 @@ export async function resolverMenuCartaConDiagnostico(
   const armarOpcionesDeProductos = (sinAgotadoHoy: boolean) => {
     const opcionesDeProductos = [...opcionesLeidas].flatMap(([productoId, gruposLeidos]) => {
       const p = productoPorId.get(productoId);
-      if (!p || !gruposLeidos.some((g) => g.admitido && g.activo)) return [];
+      if (!p || !gruposLeidos.some(grupoVigente)) return [];
       const grupos = conGrillaDeLaSucursal(
         gruposLeidos.map((g) => (sinAgotadoHoy ? { ...g, opciones: g.opciones.map((o) => ({ ...o, apagadaEnSucursal: false })) } : g)),
         grillaDeTamanos,

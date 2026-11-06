@@ -9,7 +9,7 @@ import { nombreDeCarta } from "@/core/carta/public";
 import { cargarVistaPreviaDeLaCarta } from "@/server/consultas/carta/vista-previa-de-un-producto";
 import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
 import { cargarOpcionesDelProducto } from "@/server/consultas/catalogo/opciones-de-venta";
-import { nombreDelTipoDeGrupo, referenciaDePrecioDeAdmisiones } from "@/core/opciones/public";
+import { nombreDelTipoDeGrupo, referenciaDePrecioDeAdmisiones, PASO_DE_ORDEN } from "@/core/opciones/public";
 import { formatearMonto } from "@/core/pos/public";
 import { AvisoConDeshacer, BotonConDeshacer } from "@/components/aviso-con-deshacer";
 import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
@@ -26,9 +26,6 @@ import { Aviso } from "@/ui/primitivas/aviso";
 import { Enlace } from "@/ui/primitivas/enlace";
 import { AdmisionDeGrupo } from "./admision-de-grupo";
 import { admisionDelFormulario } from "./admision-del-formulario";
-
-/** Paso entre el orden de un grupo y el siguiente en el producto: uno nuevo va al final, con lugar para poner otro entre dos. */
-const PASO_DE_ORDEN = 10;
 
 /**
  * Paso 2 del espacio del producto, «Opciones y precio» (GO-2d; ADR-030; Fase 6, 6.15b y 6.15c; DEC-12): qué grupos admite el producto, con qué límites propios, cómo se cobra cada tamaño y qué opciones de cada

@@ -1,4 +1,6 @@
 import { GUIA_PARA_CORREGIR_CON_UN_AJUSTE } from "@/core/guia-de-ajuste";
+import { LARGO_MAXIMO_DETALLE, validarTextoLibre } from "@/core/datos/limites";
+import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 /**
@@ -23,6 +25,21 @@ const PREFIJO_REVERSION_COMPRA = "Anulación de la compra ";
 export function esDetalleReservadoParaReversiones(detalle: string): boolean {
   const d = detalle.trimStart().toLocaleLowerCase("es");
   return d.startsWith(PREFIJO_REVERSION_VENTA.toLocaleLowerCase("es")) || d.startsWith(PREFIJO_REVERSION_COMPRA.toLocaleLowerCase("es"));
+}
+
+/** Lo que se le dice a quien escribe un detalle reservado. Una sola frase para todos los comandos. */
+export const MENSAJE_DETALLE_RESERVADO = "Ese detalle está reservado para las anulaciones: escribilo de otra forma.";
+
+/**
+ * ÚNICA puerta para el detalle libre que una persona escribe y que termina en `Operacion.detalleLibre`: texto opcional recortado (mismo tope y mismos códigos que `validarTextoLibre`)
+ * y, además, rechazo del comienzo reservado de las reversiones (código `formato`). Todo comando con un detalle libre que llegue a una Operación pasa por acá (lo vigila
+ * `test/core/detalle-reservado-en-cada-comando.test.ts`): copiar la comparación en cada guard es lo que dejó huecos.
+ */
+export function validarDetalleLibreDeOperacion(valor: unknown, etiqueta = "El detalle"): ResultadoDato<string | null> {
+  const detalle = validarTextoLibre(valor, etiqueta, LARGO_MAXIMO_DETALLE);
+  if (!detalle.ok) return detalle;
+  if (detalle.valor !== null && esDetalleReservadoParaReversiones(detalle.valor)) return rechazar("formato", MENSAJE_DETALLE_RESERVADO);
+  return aceptar(detalle.valor);
 }
 
 /**

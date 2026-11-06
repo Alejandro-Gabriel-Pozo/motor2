@@ -33,11 +33,11 @@ const APROBACION: Aprobacion = { por: "dueño", referencia: "PR #165" };
 const INICIO = "2026-11-06";
 const MOTIVO = "Deuda heredada con la meta vieja ya pasada: se fecha sin pagarla en este lote; fecha escalonada por riesgo de negocio (propuesta, la corrige el dueño).";
 
-const lista = (regla: string, vence: string): VencimientoDeLista => ({ regla, inicio: INICIO, vence, responsable: "dueño", aprobacion: APROBACION, motivo: MOTIVO });
+const lista = (regla: string, vence: string, aprobacion: Aprobacion = APROBACION, motivo: string = MOTIVO): VencimientoDeLista => ({ regla, inicio: INICIO, vence, responsable: "dueño", aprobacion, motivo });
 
 /** Escalonadas entre 2026-12-03 y 2027-01-05 (el tope de 60 días desde 2026-11-06), de más a menos riesgo: dinero, escritores, permisos, fechas y números, presentación. */
 export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
-  lista("columnas-de-significado", "2026-12-03"),
+  lista("anuladas-en-consultas", "2026-12-02", { por: "dueño", referencia: "PR #177" }, "Deuda nueva al ampliar el guardián de anuladas a server/consultas y server/lecturas (lote 2, 2026-11-06): se declara sin pagarla, a 60 días como máximo."),
   lista("primitivas-de-dominio", "2026-12-04"),
   lista("dueno-unico-por-modelo", "2026-12-08"),
   lista("casos-de-uso-en-guardianes", "2026-12-11"),

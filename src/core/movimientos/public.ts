@@ -31,7 +31,7 @@ export {
   OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION,
   detalleReversionDeCompra,
   detalleReversionDeVenta,
-  esDetalleReservadoParaReversiones,
+  validarDetalleLibreDeOperacion,
   evaluarAnulacionDeVenta,
   evaluarPosterioresAAnularVenta,
   evaluarPosterioresACancelarConteo,

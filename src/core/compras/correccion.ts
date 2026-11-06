@@ -1,5 +1,6 @@
 import { guardComprobanteDeCompra } from "@/core/features/compras/compra.guard";
 import { leerNumeroDeComprobanteDeCompra } from "@/core/datos/numero-comprobante";
+import { validarDetalleLibreDeOperacion } from "@/core/movimientos/public";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 /**
@@ -69,7 +70,11 @@ export function validarCorreccion(cambios: readonly CambioDeCabecera[]): string 
       if (!factura.ok) return factura.mensaje;
     }
     if (c.campo === "proveedorId" && !c.nuevo) return "La compra tiene que tener proveedor.";
-    if (c.campo === "detalleLibre" && c.nuevo && c.nuevo.length > LARGO_MAXIMO_DETALLE_COMPRA) return `El detalle no puede superar los ${LARGO_MAXIMO_DETALLE_COMPRA} caracteres.`;
+    if (c.campo === "detalleLibre") {
+      // Mismo validador que toda carga de un detalle libre (largo y comienzo reservado de las reversiones): vacío/`null` pasa.
+      const detalle = validarDetalleLibreDeOperacion(c.nuevo);
+      if (!detalle.ok) return detalle.mensaje;
+    }
   }
   return null;
 }

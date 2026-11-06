@@ -1,7 +1,7 @@
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { CANTIDAD_MAXIMA } from "@/core/datos/cantidad";
-import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esIdentificador } from "@/core/datos/identificador";
 import { tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
@@ -48,7 +48,7 @@ export function guardComandoRegistrarVenta(entrada: unknown, ahora: Date): Resul
   const fecha = validarFechaOperacion(datos.fecha, ahora);
   if (!fecha.ok) return rechazar(fecha.codigo, fecha.mensaje);
   if (datos.claveIdempotencia !== undefined && !esClaveIdempotenciaValida(datos.claveIdempotencia)) {
-    return rechazar("formato", "Clave de reintento inválida.");
+    return rechazar("formato", MENSAJE_CLAVE_DE_REINTENTO_INVALIDA);
   }
   const errorLargoFactura = validarLargoTexto(datos.nroFactura, "El número de factura", LARGO_MAXIMO_NRO_FACTURA);
   if (errorLargoFactura) return rechazar("largo", errorLargoFactura);
