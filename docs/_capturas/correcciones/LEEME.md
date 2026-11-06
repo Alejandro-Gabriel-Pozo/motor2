@@ -55,6 +55,18 @@ Misma serie con prefijo `30-mostrador-…` (se anuló el Flan: ticket 2-A $17.00
 | 54-nota-credito-en-lista / 55-…-escritorio | Sección «Notas de crédito de proveedores»: −$36.000, «Suelta (sin factura enganchada)», motivo con el número de factura, quién y cuándo. La factura sigue en $216.000 (no se netea) |
 | 56-reporte-devoluciones-escritorio | Reporte de devoluciones: CORDECC $36.000 (el mismo monto, tecleado por separado) |
 
+### Maqueta del diseño «corregir una compra por ejemplar» (docs/diseno-correccion-de-compras-2026-11-06.md §4)
+Pantalla real armada en esta rama (`corregir-factura-maqueta.tsx`) sobre la compra real de CORDECC, con el stock real del depósito (Cerveza Patagonia: 24 comprados − 2 vendidos − 6 devueltos = 16). **Muestra y calcula, pero NO guarda** (falta el caso de uso y ampliar el CHECK de la base; el botón y un cartel lo dicen). Los recortes de 61 a 65 son solo el panel de corrección.
+| Archivo (celular y escritorio) | Muestra |
+|---|---|
+| 60-corregir-1-contenedor | El contenedor con el botón nuevo «Corregir esta factura» (junto a los de hoy) |
+| 61-corregir-2-que-queres-corregir | Primer paso: «¿Qué querés corregir?» (importe, cantidad; producto y renglones aparecen como próxima etapa) |
+| 62-corregir-3-original-y-copia | El original congelado (gris, «no se modifica») y la copia «Como debería quedar · versión 2» |
+| 63-corregir-4-importe-que-cambia | Cerveza $144.000 → $150.000: total $216.000 → $222.000, costo de reposición $6.000 → $6.250, «Stock: no cambia» |
+| 64-corregir-5-cantidad-limite-exacto | Bajar de 24 a 5: «Comprados 24 · hoy quedan 16 · se puede bajar hasta 8» |
+| 65-corregir-6-cantidad-que-cambia | Bajar de 24 a 20: stock 16 → 12, y avisa que el costo por unidad pasa de $6.000 a $7.200 porque el importe del renglón sigue en $144.000 |
+No se pudo mostrar con datos reales «completar un importe faltante ($0)»: las únicas compras con $0 son el stock inicial de la maqueta, sin proveedor. Tampoco el «después de guardar» ni el historial de versiones: necesitan la escritura y la migración del CHECK.
+
 ## Respuestas por caso (VERIFICADO = visto en la pantalla real; PROPUESTA = mi sugerencia; NO VERIFICADO = no probado)
 
 ### Casos 1 y 2 — ticket corregido (mesa y mostrador, idénticos)

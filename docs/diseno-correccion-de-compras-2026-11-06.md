@@ -268,6 +268,8 @@ Motivo (obligatorio) [ Error de tipeo ▾ ] [ …detalle ]
 
 Cuando se corrige una cantidad, el límite se dice en el campo: «Comprados 24 · hoy quedan 22 · se puede bajar hasta 2». Si se pide menos, el campo se marca y el botón queda apagado con el motivo («Para devolver mercadería al proveedor usá Devolución a proveedor»).
 
+**Hallazgo de la maqueta real (capturas 60 a 65):** si se corrige solo la **cantidad** y el importe del renglón queda igual, el precio por unidad cambia (de $6.000 a $7.200 en el ejemplo) y con él el costo de reposición. La pantalla lo avisa («el importe de este renglón sigue en $144.000: si el de la factura es otro, corregí también el importe») y lo suma al resumen «qué cambia». PROPUESTA: en la etapa C1, al corregir una cantidad se pregunta siempre «¿el importe de la factura sigue siendo $X?».
+
 ### 4.4 Después de guardar y el historial
 
 - El contenedor muestra la **versión vigente** y la etiqueta «Corregida · versión 2».
