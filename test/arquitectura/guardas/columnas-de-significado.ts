@@ -178,5 +178,17 @@ export const DECLARACIONES: Readonly<Record<string, Declaracion>> = {
   "Proveedor.condicionIva": d("dinero", "Condición del proveedor frente al IVA (CHECK): quien la lea falla cerrado si es NULL."),
   "Empresa.llevaIvaDeCompras": d("dinero", "Perilla de IVA de las compras (ADR-029): apagada, la factura no exige neto, IVA ni alícuota; prendida, se exigen según la letra."),
   "Empresa.condicionIva": d("dinero", "Condición de la empresa frente al IVA (CHECK): decide cómo se computa el IVA de las compras."),
+  // Deuda pagada, lote 4 (2026-11-06): Kardex, conteos, traspasos, secciones y unidades. Cada motivo sale de quién escribe y quién lee la columna en `src/` (verificado a mano).
+  "ConteoFisico.fecha": d("stock", "Día del conteo: el consolidado ordena los conteos por ella y se queda con el más nuevo válido de cada producto, sección y lote como base del saldo; los movimientos posteriores se suman encima."),
+  "MovimientoStock.facturaProveedorRenglonId": d("stock", "En una línea de COMPRA, el renglón de la factura de proveedor de la que salió (solo COMPRA, CHECK): anular o corregir una compra mira si viene de una factura, y una de factura solo se anula junto con ella."),
+  "Operacion.fecha": d("stock", "Instante del movimiento: el historial del producto, el reporte de vencimientos y los períodos de ventas, compras y consignación filtran por ella (el consolidado y las alertas usan creadoEn de las líneas)."),
+  "Operacion.operacionPadreId": d("dinero", "Venta de un ADICIONAL: apunta a la operación del producto al que se sumó (solo VENTA, inmutable); anular la venta de un adicional se rechaza (ES_ADICIONAL) y la del producto arrastra a sus adicionales; los reportes marcan la línea como configurada."),
+  "Operacion.ventaId": d("ninguna", "Cabecera Venta a la que pertenece la línea (solo VENTA, CHECK): sin escritor ni lector en src/ (solo aparece en un tipo de venta.schema.ts; la tabla Venta no se escribe todavía, Etapa C)."),
+  "Seccion.activa": d("stock", "Dar de baja una sección: no se vende desde ella (mensajeSeccionDesactivada) y el cierre de cuenta del POS solo elige entre las secciones activas de la sucursal para descontar el stock."),
+  "TraspasoSucursal.iniciadoPor": d("ninguna", "ORIGEN (envío directo) o DESTINO (solicitud PULL): se escribe al crear el traspaso y solo lo lee la bandeja para saber quién espera la decisión; el estado es el que mueve el stock."),
+  "Unidad.activa": d("stock", "Baja lógica de la unidad: los selectores del catálogo (productos, extras de opciones) ofrecen solo las activas, así que una inactiva deja de poder elegirse como unidad de stock o de compra."),
+  "Unidad.magnitud": d("stock", "PESO, VOLUMEN o CANTIDAD: al cargar una compra, la cantidad real (peso real) solo cruza de tipo entre unidad de compra y de stock (guardPesoRealPorMagnitud); con el mismo tipo el servidor la rechaza."),
+  "Insumo.activo": d("ninguna", "Baja lógica del insumo (agrupa productos por nombre): lo escribe actualizar-activo-insumo y en src/ ninguna consulta lo usa para filtrar ni decidir; no cambia plata, carta ni stock."),
+  "RecetaDeCombinacionVersion.numero": d("ninguna", "Familia GO-3a retirada del código (cerco go3a-retirado): sin escritor ni lector en src/; el modelo sigue en el esquema hasta la migración de retiro."),
   "Empresa.permisosEditables": d("ninguna", "Política de permisos de plataforma (ADR-008/ADR-010); no toca dinero, carta ni stock."),
 };

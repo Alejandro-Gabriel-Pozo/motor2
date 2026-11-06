@@ -1,10 +1,10 @@
 {
   "regla": "columnas-de-significado",
   "meta": "bajar a 0: toda columna de significado de un modelo de dinero, visibilidad o stock declara si afecta o no, con motivo (E2)",
-  "total": 82,
-  "entradas": 82,
+  "total": 71,
+  "entradas": 71,
   "porTipo": {
-    "sin-declarar": 82
+    "sin-declarar": 71
   },
   "cuentas": {
     "CentroDeCostos.activo": {
@@ -32,9 +32,6 @@
       "sin-declarar": 1
     },
     "ContenidoCartaProducto.especial": {
-      "sin-declarar": 1
-    },
-    "ConteoFisico.fecha": {
       "sin-declarar": 1
     },
     "Cuenta.abiertaEn": {
@@ -109,16 +106,10 @@
     "ImputacionDeGasto.naturalezaRenglon": {
       "sin-declarar": 1
     },
-    "Insumo.activo": {
-      "sin-declarar": 1
-    },
     "ItemAgrupadoCarta.activo": {
       "sin-declarar": 1
     },
     "ItemAgrupadoCarta.especial": {
-      "sin-declarar": 1
-    },
-    "MovimientoStock.facturaProveedorRenglonId": {
       "sin-declarar": 1
     },
     "NotaCreditoProveedor.condicionIvaEmpresa": {
@@ -169,15 +160,6 @@
     "OpcionElegidaEnLinea.tipoGrupo": {
       "sin-declarar": 1
     },
-    "Operacion.fecha": {
-      "sin-declarar": 1
-    },
-    "Operacion.operacionPadreId": {
-      "sin-declarar": 1
-    },
-    "Operacion.ventaId": {
-      "sin-declarar": 1
-    },
     "PagoConsignante.fecha": {
       "sin-declarar": 1
     },
@@ -217,9 +199,6 @@
     "PuntoDeVentaDeProveedor.activo": {
       "sin-declarar": 1
     },
-    "RecetaDeCombinacionVersion.numero": {
-      "sin-declarar": 1
-    },
     "ReclasificacionRenglon.motivo": {
       "sin-declarar": 1
     },
@@ -227,18 +206,6 @@
       "sin-declarar": 1
     },
     "ReclasificacionRenglon.numero": {
-      "sin-declarar": 1
-    },
-    "Seccion.activa": {
-      "sin-declarar": 1
-    },
-    "TraspasoSucursal.iniciadoPor": {
-      "sin-declarar": 1
-    },
-    "Unidad.activa": {
-      "sin-declarar": 1
-    },
-    "Unidad.magnitud": {
       "sin-declarar": 1
     },
     "Venta.canal": {
