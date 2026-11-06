@@ -1,52 +1,55 @@
 /**
- * MAQUETA del diseño docs/diseno-correccion-de-compras-2026-11-06.md: la pantalla real «Corregir esta factura» sobre la compra real de CORDECC (la de las capturas 40 a 56).
- * Muestra y calcula pero NO guarda. Celular (375) y escritorio (1280). Corre después de correr-todo.sh y con el servidor en el puerto 3300.
+ * MAQUETA «Corregir una factura de compra» por pasos (mismo formato que «Corregir un ticket»): paso 1, buscar (fecha, proveedor, letra, número; resultados abajo) y paso 2, otra página con el original
+ * a la izquierda y la copia editable a la derecha. Pantallas reales sobre la compra real de CORDECC y el stock real. Muestra y calcula; NO guarda. Escritorio (1280) y celular (375).
  */
-import path from "node:path";
-import { abrir, foto, CARPETA } from "./comun";
-
-/** Solo el panel de la corrección (la tabla de renglones de la página, que ya existía, ensancha la hoja en el celular). */
-async function panel(tarjeta: import("playwright").Locator, selector: string, nombre: string) {
-  await tarjeta.locator(selector).screenshot({ path: path.join(CARPETA, `${nombre}.png`) });
-  console.log(`[captura] ${nombre}.png`);
-}
+import { abrir, foto } from "./comun";
 
 async function recorrer(ancho: 375 | 1280, sufijo: string) {
   const { navegador, page } = await abrir(ancho);
-  await page.goto("http://localhost:3300/reportes/compras");
-  const tarjeta = page.locator("[data-compra]").first();
-  await tarjeta.waitFor();
-  await tarjeta.locator("summary").click();
-  await foto(page, `60-corregir-1-contenedor-${sufijo}`);
+  await page.goto("http://localhost:3300/reportes/compras/corregir");
+  await page.getByRole("heading", { name: "Corregir una factura de compra" }).waitFor();
+  await foto(page, `60-factura-paso1-buscar-${sufijo}`);
 
-  await tarjeta.getByRole("button", { name: "Corregir esta factura" }).click();
-  await tarjeta.locator("[data-corregir-que]").waitFor();
-  await panel(tarjeta, "[data-corregir-que]", `61-corregir-2-que-queres-corregir-${sufijo}`);
+  // Buscar: proveedor CORDECC, letra A, número 4567
+  await page.getByLabel("Proveedor").selectOption({ label: "CORDECC" });
+  await page.getByLabel("Letra").selectOption("A");
+  await page.getByLabel("N.º de factura").fill("4567");
+  await page.getByRole("button", { name: "Buscar" }).click();
+  await page.locator('[data-factura-resultado="A-00003-00004567"]').waitFor();
+  await foto(page, `61-factura-paso1-resultado-${sufijo}`);
 
-  // Caso importe: la cerveza se cargó a $144.000 y era $150.000 (el caso que hoy es un callejón)
-  await tarjeta.getByLabel("Un importe (precio) de un renglón").check();
-  await tarjeta.getByRole("button", { name: "Seguir" }).click();
-  await tarjeta.locator("[data-corregir-editar]").waitFor();
-  await panel(tarjeta, "[data-corregir-editar]", `62-corregir-3-original-y-copia-${sufijo}`);
-  await tarjeta.getByLabel(/^Importe de Cerveza Patagonia/).fill("150.000");
-  await panel(tarjeta, "[data-corregir-editar]", `63-corregir-4-importe-que-cambia-${sufijo}`);
+  // Elegir → otra página
+  await page.getByRole("link", { name: "Corregir →" }).click();
+  await page.locator("[data-corregir-factura]").waitFor();
+  await foto(page, `62-factura-paso2-original-y-corregida-${sufijo}`);
 
-  // Caso cantidad: bajar a 5 de 24 con 16 en el depósito → límite exacto; bajar a 20 → se puede
-  await page.reload();
-  await tarjeta.locator("summary").click();
-  await tarjeta.getByRole("button", { name: "Corregir esta factura" }).click();
-  await tarjeta.getByLabel("Una cantidad").check();
-  await tarjeta.getByRole("button", { name: "Seguir" }).click();
-  await tarjeta.getByLabel(/^Cantidad de Cerveza Patagonia/).fill("5");
-  await panel(tarjeta, "[data-corregir-editar]", `64-corregir-5-cantidad-limite-exacto-${sufijo}`);
-  await tarjeta.getByLabel(/^Cantidad de Cerveza Patagonia/).fill("20");
-  await panel(tarjeta, "[data-corregir-editar]", `65-corregir-6-cantidad-que-cambia-${sufijo}`);
+  // Importe: la cerveza era $150.000
+  await page.getByLabel("Un importe (precio)").check();
+  await page.getByLabel(/^Importe de Cerveza Patagonia/).fill("150.000");
+  await foto(page, `63-factura-paso2-importe-que-cambia-${sufijo}`);
+
+  // Cantidad: bajar a 5 de 24 con 16 en el depósito → límite exacto; a 20 → se puede
+  await page.getByLabel("Un importe (precio)").uncheck();
+  await page.getByLabel("Una cantidad").check();
+  await page.getByLabel(/^Cantidad de Cerveza Patagonia/).fill("5");
+  await foto(page, `64-factura-paso2-cantidad-limite-exacto-${sufijo}`);
+  await page.getByLabel(/^Cantidad de Cerveza Patagonia/).fill("20");
+  await foto(page, `65-factura-paso2-cantidad-que-cambia-${sufijo}`);
+
+  // Completar un importe faltante ($0 = sin dato): una compra real de la base sin precio (el stock inicial de la maqueta)
+  await page.goto("http://localhost:3300/reportes/compras/corregir");
+  await page.locator("[data-factura-resultado=sin-numero]").first().getByRole("link", { name: "Corregir →" }).click();
+  await page.locator("[data-corregir-factura]").waitFor();
+  await page.getByLabel("Un importe (precio)").check();
+  const campo = page.getByLabel(/^Importe de /).first();
+  await campo.fill("1.500");
+  await foto(page, `66-factura-paso2-completar-importe-faltante-${sufijo}`);
   await navegador.close();
 }
 
 (async () => {
-  await recorrer(375, "celular");
   await recorrer(1280, "escritorio");
+  await recorrer(375, "celular");
 })().catch((e) => {
   console.error(e);
   process.exit(1);

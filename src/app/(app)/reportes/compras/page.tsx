@@ -13,8 +13,6 @@ import { BotonAnularFactura } from "./boton-anular-factura";
 import { PagoDeFactura } from "./pago-de-factura";
 import { FormularioCorregirCompra } from "./formulario-corregir-compra";
 import { FormularioNotaCredito } from "./formulario-nota-credito";
-import { CorregirFacturaMaqueta } from "./corregir-factura-maqueta";
-import { obtenerCostoActualPorMP } from "@/server/lecturas/reportes/comun";
 import { listarNotasDeCredito } from "@/server/consultas/reportes/notas-de-credito";
 import { formatearNumeroComprobante, leerNumeroComprobante } from "@/core/datos/numero-comprobante";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
@@ -70,16 +68,6 @@ export default async function ComprasRegistradasPage({
     listarProveedoresParaSelector(),
     listarNotasDeCredito(ctx.db, sp.proveedorId && sp.proveedorId !== SIN_PROVEEDOR ? sp.proveedorId : undefined),
   ]);
-
-  // MAQUETA «Corregir esta factura»: lo que hay hoy en el depósito de cada producto y cuál renglón fija el costo de reposición.
-  const codigosDeProducto = [...new Set(items.flatMap((c) => c.renglones.map((l) => l.productoCodigo)))];
-  const productosDeLaPagina = codigosDeProducto.length ? await ctx.db.producto.findMany({ where: { codigo: { in: codigosDeProducto } }, select: { id: true, codigo: true } }) : [];
-  const idPorCodigo = new Map(productosDeLaPagina.map((p) => [p.codigo, p.id]));
-  const saldosPorProducto = productosDeLaPagina.length
-    ? await ctx.db.movimientoStock.groupBy({ by: ["productoId"], where: { productoId: { in: productosDeLaPagina.map((p) => p.id) }, seccion: { sucursalId: ctx.sucursalId } }, _sum: { cantidad: true } })
-    : [];
-  const saldoDe = new Map(saldosPorProducto.map((x) => [x.productoId, Number(x._sum.cantidad ?? 0)]));
-  const costosDeReposicion = await obtenerCostoActualPorMP(ctx.sucursalId, ctx.db);
 
   const paramsSiguiente = new URLSearchParams();
   if (desde) paramsSiguiente.set("desde", desde);
@@ -223,24 +211,10 @@ export default async function ComprasRegistradasPage({
                   )}
                   {!c.facturaProveedorId && (puedeAnular || (puedeCorregir && !c.anuladaEn)) && (
                     <div className="mt-2 flex flex-col gap-2">
-                      {puedeCorregir && !c.anuladaEn && c.proveedorId && (
-                        <CorregirFacturaMaqueta
-                          nroFactura={c.nroFactura ? formatearNumeroComprobante(leerNumeroComprobante(c.nroFactura)) : "sin número"}
-                          proveedor={c.proveedorNombre ?? "—"}
-                          renglones={c.renglones.map((l) => {
-                            const productoId = idPorCodigo.get(l.productoCodigo) ?? "";
-                            const costo = costosDeReposicion.get(productoId);
-                            return {
-                              idMovimiento: l.idMovimiento,
-                              producto: l.productoNombre,
-                              cantidad: l.cantidad,
-                              unidad: l.unidad,
-                              importeCentavos: Math.round(l.precioTotal * 100),
-                              saldo: saldoDe.get(productoId) ?? 0,
-                              esUltimaEntrada: Boolean(costo?.fecha && costo.fecha.getTime() === c.fecha.getTime() && Math.round(costo.precioPorUnidadStock * 100) === Math.round(l.precioPorUnidadStock * 100)),
-                            };
-                          })}
-                        />
+                      {puedeCorregir && !c.anuladaEn && (
+                        <Link href={`/reportes/compras/corregir/${c.idOperacion}`} className="self-start text-sm underline">
+                          Corregir esta factura →
+                        </Link>
                       )}
                       {puedeCorregir && !c.anuladaEn && (
                         <FormularioCorregirCompra

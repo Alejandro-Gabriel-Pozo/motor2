@@ -55,17 +55,19 @@ Misma serie con prefijo `30-mostrador-…` (se anuló el Flan: ticket 2-A $17.00
 | 54-nota-credito-en-lista / 55-…-escritorio | Sección «Notas de crédito de proveedores»: −$36.000, «Suelta (sin factura enganchada)», motivo con el número de factura, quién y cuándo. La factura sigue en $216.000 (no se netea) |
 | 56-reporte-devoluciones-escritorio | Reporte de devoluciones: CORDECC $36.000 (el mismo monto, tecleado por separado) |
 
-### Maqueta del diseño «corregir una compra por ejemplar» (docs/diseno-correccion-de-compras-2026-11-06.md §4)
-Pantalla real armada en esta rama (`corregir-factura-maqueta.tsx`) sobre la compra real de CORDECC, con el stock real del depósito (Cerveza Patagonia: 24 comprados − 2 vendidos − 6 devueltos = 16). **Muestra y calcula, pero NO guarda** (falta el caso de uso y ampliar el CHECK de la base; el botón y un cartel lo dicen). Los recortes de 61 a 65 son solo el panel de corrección.
-| Archivo (celular y escritorio) | Muestra |
+### Maqueta «Corregir una factura de compra» por pasos (mismo formato que el ticket; diseño en docs/diseno-correccion-de-compras-2026-11-06.md §4)
+Pantallas reales (`/reportes/compras/corregir` y `/reportes/compras/corregir/<compra>`) sobre la compra real de CORDECC y el stock real. En «Compras registradas» ahora solo queda el enlace «Corregir esta factura →» (reemplaza al panel que se abría dentro de la lista). **Muestra y calcula, NO guarda** (falta el caso de uso y ampliar el CHECK de la base; el botón y un cartel lo dicen). Paso 1: filtros en una fila (desde, hasta, proveedor, letra, N.º de factura) y resultados abajo. Paso 2, otra página: original congelado a la izquierda y «Como debería quedar · versión 2» a la derecha (dos columnas en escritorio; apiladas en celular).
+El stock de Cerveza Patagonia es 14: 24 comprados − 2 vendidos en la Mesa 1 (1-A) − 6 devueltos − 2 vendidos en el ticket 3-A.
+| Archivo (escritorio y celular) | Muestra |
 |---|---|
-| 60-corregir-1-contenedor | El contenedor con el botón nuevo «Corregir esta factura» (junto a los de hoy) |
-| 61-corregir-2-que-queres-corregir | Primer paso: «¿Qué querés corregir?» (importe, cantidad; producto y renglones aparecen como próxima etapa) |
-| 62-corregir-3-original-y-copia | El original congelado (gris, «no se modifica») y la copia «Como debería quedar · versión 2» |
-| 63-corregir-4-importe-que-cambia | Cerveza $144.000 → $150.000: total $216.000 → $222.000, costo de reposición $6.000 → $6.250, «Stock: no cambia» |
-| 64-corregir-5-cantidad-limite-exacto | Bajar de 24 a 5: «Comprados 24 · hoy quedan 16 · se puede bajar hasta 8» |
-| 65-corregir-6-cantidad-que-cambia | Bajar de 24 a 20: stock 16 → 12, y avisa que el costo por unidad pasa de $6.000 a $7.200 porque el importe del renglón sigue en $144.000 |
-No se pudo mostrar con datos reales «completar un importe faltante ($0)»: las únicas compras con $0 son el stock inicial de la maqueta, sin proveedor. Tampoco el «después de guardar» ni el historial de versiones: necesitan la escritura y la migración del CHECK.
+| 60-factura-paso1-buscar | Paso 1: filtros y las 5 compras de la base (la de CORDECC y 4 de stock inicial «pendiente de completar») |
+| 61-factura-paso1-resultado | Buscar proveedor CORDECC, letra A, número 4567: un resultado |
+| 62-factura-paso2-original-y-corregida | Paso 2: original congelado y la copia; «¿Qué querés corregir?» (importe, cantidad; el resto, próxima etapa) |
+| 63-factura-paso2-importe-que-cambia | Cerveza $144.000 → $150.000: total $222.000, costo de reposición $6.000 → $6.250, «Stock: no cambia» |
+| 64-factura-paso2-cantidad-limite-exacto | Bajar de 24 a 5: «Comprados 24 · hoy quedan 14 · se puede bajar hasta 10» |
+| 65-factura-paso2-cantidad-que-cambia | Bajar de 24 a 20: stock 14 → 10; avisa que el costo por unidad pasa de $6.000 a $7.200 porque el importe sigue en $144.000 |
+| 66-factura-paso2-completar-importe-faltante | Una compra real sin precio («pendiente de completar», $0): al completar $1.500 pasa a fijar el costo de reposición |
+No se pudo mostrar «después de guardar» ni el historial de versiones (necesitan la escritura y la migración). Proveedor y N.º de factura, producto y agregar/quitar renglón figuran como próxima etapa.
 
 ### Maqueta «Corregir un ticket» por pasos (pedido del dueño, 2026-11-06)
 Pantallas reales (`/reportes/tickets/corregir` y `/reportes/tickets/corregir/<ticket>`) sobre los tickets reales de la base local: 1-A/1-B y 2-A/2-B ya corregidos, y 3-A (Mesa 01, $46.000) y 4-A (Mostrador, $25.000) sin corregir. **Muestra y calcula, NO guarda.** Paso 1: filtros en una sola fila (desde, hasta, letra, N.º de ticket) y resultados abajo. Elegir uno abre OTRA página (paso 2): en escritorio, el ticket original congelado a la izquierda y el corregido a la derecha, en dos columnas para que no quede una columna larga; en celular se apilan.
