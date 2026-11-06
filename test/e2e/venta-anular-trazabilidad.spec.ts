@@ -23,7 +23,9 @@ async function sembrarVenta(sucursalId: string, seccionId: string) {
     const reversiones = await prisma.operacion.findMany({ where: { detalleLibre: { contains: venta.id } }, select: { id: true } });
     const ids = (await prisma.movimientoStock.findMany({ where: { productoId: { in: [insumo.id, plato.id] } }, select: { operacionId: true } })).map((m) => m.operacionId);
     await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [insumo.id, plato.id] } } });
-    await prisma.operacion.deleteMany({ where: { id: { in: [...new Set([...ids, ...reversiones.map((r) => r.id)])] } } });
+    // Las reversiones apuntan a la venta (`revierteAOperacionId`, FK RESTRICT): primero ellas, después el resto.
+    await prisma.operacion.deleteMany({ where: { id: { in: reversiones.map((r) => r.id) } } });
+    await prisma.operacion.deleteMany({ where: { id: { in: [...new Set(ids)] } } });
     await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: venta.id } });
     await prisma.producto.deleteMany({ where: { id: { in: [insumo.id, plato.id] } } });
   };
@@ -48,12 +50,18 @@ test("se anula una venta desde su trazabilidad, con confirmación: el insumo vue
 
     // Confirmar.
     await page.getByRole("button", { name: "Anular venta" }).click();
+    // Sin motivo no se puede confirmar (E0 de la corrección por ajuste).
+    await expect(page.getByRole("button", { name: "Sí, anular" })).toBeDisabled();
+    await page.getByLabel("Motivo de la anulación").fill("Cargada dos veces por error");
     await page.getByRole("button", { name: "Sí, anular" }).click();
     await expect(page.getByText(/Anulada el/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Anular venta" })).toHaveCount(0);
 
     // En la base: marcada, el insumo vuelve a 10, un solo AJUSTE de reversión y una sola fila de auditoría.
-    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: v.venta.id } })).anuladaEn).not.toBeNull();
+    const anulada = await prisma.operacion.findUniqueOrThrow({ where: { id: v.venta.id } });
+    expect(anulada.anuladaEn).not.toBeNull();
+    expect(anulada.motivoAnulacion).toBe("Cargada dos veces por error");
+    expect(await prisma.operacion.count({ where: { revierteAOperacionId: v.venta.id } })).toBe(1);
     expect(await v.saldoDelInsumo()).toBe(10);
     expect(await prisma.operacion.count({ where: { proceso: "AJUSTE", detalleLibre: { contains: v.venta.id } } })).toBe(1);
     expect(await prismaAdmin.registroAuditoria.count({ where: { entidad: "Operacion", entidadId: v.venta.id } })).toBe(1);
@@ -77,6 +85,7 @@ test("una venta ya anulada por otra persona: al confirmar se ve el aviso y no se
     const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
     await prisma.operacion.update({ where: { id: v.venta.id }, data: { anuladaEn: new Date(), anuladaPorId: admin.id } });
 
+    await page.getByLabel("Motivo de la anulación").fill("Otra persona ya la anuló");
     await page.getByRole("button", { name: "Sí, anular" }).click();
     await expect(page.getByText("Esta venta ya está anulada.")).toBeVisible();
     expect(await prisma.operacion.count({ where: { proceso: "AJUSTE", detalleLibre: { contains: v.venta.id } } })).toBe(0);

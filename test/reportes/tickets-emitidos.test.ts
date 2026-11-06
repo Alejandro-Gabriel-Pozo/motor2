@@ -70,7 +70,7 @@ describe("listarTicketsEmitidos", () => {
 
   it("orden: numero desc, y a igual número el ejemplar más nuevo (la corrección B) va ANTES que su A", async () => {
     const { cuenta, ventaFlan } = await cerrarTresLineas();
-    expect((await anularVenta(ventaFlan)).ok).toBe(true);
+    expect((await anularVenta(ventaFlan, "Error de carga")).ok).toBe(true);
     expect((await emitirTicketCorregido(cuenta.id, "No quiso el flan")).ok).toBe(true);
 
     const { items } = await listarTicketsEmitidos(s.sucursalId, undefined, prisma);
@@ -82,7 +82,7 @@ describe("listarTicketsEmitidos", () => {
 
   it("marcas de corrección y reemplazo: la B es «corrección de» la A, y la A queda «reemplazada por» la B; solo la B (la última) trae `estado`", async () => {
     const { cuenta, ventaFlan } = await cerrarTresLineas();
-    expect((await anularVenta(ventaFlan)).ok).toBe(true);
+    expect((await anularVenta(ventaFlan, "Error de carga")).ok).toBe(true);
     expect((await emitirTicketCorregido(cuenta.id, "No quiso el flan")).ok).toBe(true);
 
     const [b, a] = (await listarTicketsEmitidos(s.sucursalId, undefined, prisma)).items;
@@ -94,7 +94,7 @@ describe("listarTicketsEmitidos", () => {
   it("con la venta anulada ENTERA, el último ejemplar (el único, la A) queda «Venta anulada»", async () => {
     const cuenta = await cerrarUna(2);
     const item = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id } });
-    expect((await anularVenta(item.operacionId!)).ok).toBe(true);
+    expect((await anularVenta(item.operacionId!, "Error de carga")).ok).toBe(true);
 
     const [a] = (await listarTicketsEmitidos(s.sucursalId, undefined, prisma)).items;
     expect(a).toMatchObject({ numero: { numero: 1, ejemplar: 1 }, esUltimoEjemplar: true, estado: "anulada" });
@@ -104,14 +104,14 @@ describe("listarTicketsEmitidos", () => {
     const { cuenta, ventaFlan, ventaMila2 } = await cerrarTresLineas();
 
     // Se anula el flan y se emite la B: ya refleja esa anulación (vigente).
-    expect((await anularVenta(ventaFlan)).ok).toBe(true);
+    expect((await anularVenta(ventaFlan, "Error de carga")).ok).toBe(true);
     expect((await emitirTicketCorregido(cuenta.id, "No quiso el flan")).ok).toBe(true);
     const [vigenteTodavia] = (await listarTicketsEmitidos(s.sucursalId, undefined, prisma)).items;
     expect(vigenteTodavia).toMatchObject({ numero: { numero: 1, ejemplar: 2 }, estado: "vigente" });
 
     // Se anula la segunda milanesa DESPUÉS de emitir la B, sin emitir una C todavía: la B queda desactualizada (no "anulada": la
     // primera milanesa sigue vendida).
-    expect((await anularVenta(ventaMila2)).ok).toBe(true);
+    expect((await anularVenta(ventaMila2, "Error de carga")).ok).toBe(true);
     const [desactualizada] = (await listarTicketsEmitidos(s.sucursalId, undefined, prisma)).items;
     expect(desactualizada).toMatchObject({ numero: { numero: 1, ejemplar: 2 }, esUltimoEjemplar: true, estado: "desactualizada" });
   });

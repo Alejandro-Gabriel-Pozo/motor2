@@ -78,7 +78,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
       await venderPan("2026-08-07", 1); // $100, costo $10
       expect((await agosto()).ventas.totalFacturado).toBe(300);
 
-      expect((await anularVenta(ventaA)).ok).toBe(true);
+      expect((await anularVenta(ventaA, "Error de carga")).ok).toBe(true);
       const { ventas, margen } = await agosto();
 
       expect(ventas.totalFacturado).toBe(100); // solo la vigente; antes de este arreglo seguía en 300
@@ -93,7 +93,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
     it("anular TODAS las ventas del período deja el reporte en cero, no en una venta fantasma", async () => {
       await comprarHarina("2026-08-05");
       const venta = await venderPan("2026-08-06", 3);
-      await anularVenta(venta);
+      await anularVenta(venta, "Error de carga");
 
       const { ventas, margen } = await agosto();
 
@@ -138,7 +138,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
       await comprarHarina("2026-08-05");
       const anulada = await venderPan("2026-08-06", 4);
       await venderPan("2026-08-07", 1);
-      await anularVenta(anulada);
+      await anularVenta(anulada, "Error de carga");
 
       const filas = await calcularRendimientoRecetasSimples(sucursalId, d("2026-08-01"), d("2026-08-31"), prisma);
       const fila = filas.find((f) => f.productoVentaId === panId);
@@ -150,7 +150,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
       const venta = await venderPan("2026-08-06", 1);
 
       expect((await generarReporteHuecosCatalogo(sucursalId, prisma)).pvSinVentaNunca.map((p) => p.productoId)).not.toContain(panId);
-      await anularVenta(venta);
+      await anularVenta(venta, "Error de carga");
       expect((await generarReporteHuecosCatalogo(sucursalId, prisma)).pvSinVentaNunca.map((p) => p.productoId)).toContain(panId);
     });
 
@@ -162,7 +162,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
       expect((await generarReporteVentasSinReceta(sucursalId, prisma)).map((f) => f.productoId)).toContain(sinReceta.id);
 
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
-      await anularVenta(op.id);
+      await anularVenta(op.id, "Error de carga");
       expect((await generarReporteVentasSinReceta(sucursalId, prisma)).map((f) => f.productoId)).not.toContain(sinReceta.id);
     });
 
@@ -175,7 +175,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
       expect(antes.totalConsumo).toBe(10); // 2 kg de harina a $5
 
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
-      await anularVenta(op.id);
+      await anularVenta(op.id, "Error de carga");
       const despues = await generarReportePerdidas(sucursalId, 30, prisma, AHORA_DE_LA_CORRIDA);
       expect(despues.consumos).toEqual([]);
       expect(despues.totalConsumo).toBe(0);
@@ -191,7 +191,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
     it("anular una VENTA no deja un ajuste de +2 kg de harina (ni la sugerencia falsa de bajar la merma)", async () => {
       await comprarHarina("2026-08-05");
       const venta = await venderPan("2026-08-06", 1);
-      await anularVenta(venta);
+      await anularVenta(venta, "Error de carga");
 
       expect(await ajusteDeHarina()).toEqual({ suma: 0, sugerencia: null }); // antes: +2 y «disminuir»
     });
@@ -226,7 +226,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
     await comprarHarina("2026-08-05");
     const venta = await venderPan("2026-08-06", 1);
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-    await anularVenta(venta);
+    await anularVenta(venta, "Error de carga");
     // La compra ya no tiene todo su stock (parte se vendió y ya se devolvió con la anulación): con el stock repuesto se puede anular.
     expect((await anularCompra(compra.id, crypto.randomUUID())).ok).toBe(true);
 

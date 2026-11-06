@@ -24,6 +24,8 @@ export interface AnulacionDeVentaAEscribir {
   ahora: Date;
   /** `detalleLibre` del contra-asiento (`detalleReversionDeVenta`, core/movimientos/anulaciones.ts). */
   detalleLibre: string;
+  /** Motivo de la anulación (obligatorio en la venta): queda en `Operacion.motivoAnulacion` de la venta original. */
+  motivoAnulacion: string;
   reversion: readonly LineaDeReversionDeVenta[];
 }
 
@@ -49,6 +51,7 @@ export async function escribirAnulacionDeVenta(
     usuarioId: anulacion.usuarioId,
     ahora: anulacion.ahora,
     detalleLibre: anulacion.detalleLibre,
+    motivoAnulacion: anulacion.motivoAnulacion,
     filas,
   });
 }
