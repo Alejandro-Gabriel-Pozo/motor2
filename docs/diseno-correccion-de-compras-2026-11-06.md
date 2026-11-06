@@ -408,6 +408,8 @@ Cada peldaño no rompe lo cargado. Se migran solo las tablas de la etapa que se 
 7. **Migración (aditiva y reversible, requiere autorización por base):** tabla `MotivoDeCorreccion` (con CHECK del «dónde se usa»), una columna nula con la referencia en `Operacion` (y en `EjemplarTicket` cuando se construya el ticket), y la siembra. Se suma al CHECK de `reemplazaAOperacionId` del §6.
 8. **Primero lo más barato:** si preferís no sumar una tabla todavía, la opción C sirve de puente; migrar de C a B no rompe lo cargado (el texto ya está guardado).
 
+**Aclaración del dueño (2026-11-06) y ajuste de la recomendación.** «Configurable» = el desplegable de la pantalla se alimenta de una lista que se administra en **otra pantalla**, como «Destino de consumo» (verificado: el selector del panel de Consumo se carga con `listarDestinosConsumoActivos`, no con una lista escrita en el código). Un motivo como «Error de tipeo» sirve para **cualquier proceso**, incluido el conteo físico: por eso es **una sola lista** y el campo «dónde se usa» es **opcional** (por defecto, todos; el administrador puede limitar un motivo). Se quiere **contar después**: cada corrección guarda la **referencia** al motivo elegido (además del texto), y queda una consulta «Correcciones por motivo» como etapa posterior. **Se descarta el campo «tipo»** de la regla 4 (contar por motivo alcanza; agrupar motivos se puede sumar después sin romper lo cargado). Estado: **CONFIRMADA** (dueño) la lista configurable y el conteo por motivo; **PROPUESTA** el resto. Pendiente: la lista inicial de motivos y la autorización de las migraciones.
+
 ## 12. Lo que no se pudo verificar
 
 - **NO VERIFICADA:** dónde se guarda la condición de pago («Pagada ahora») de una compra simple.
