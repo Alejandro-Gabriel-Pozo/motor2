@@ -11,7 +11,7 @@ const etiqueta = process.argv[2] === "antes" ? "antes" : "despues";
 (async () => {
   const cerveza = await prisma.producto.findFirstOrThrow({ where: { nombre: "Cerveza Patagonia (reventa)" } });
   if (etiqueta === "antes") {
-    const caja = (await prisma.unidad.findFirst({ where: { nombre: "caja" } })) ?? (await prisma.unidad.create({ data: { nombre: "caja", decimales: 0 } }));
+    const caja = (await prisma.unidad.findFirst({ where: { nombre: "caja" } })) ?? (await prisma.unidad.create({ data: { nombre: "caja", decimales: 0, magnitud: (await prisma.unidad.findFirstOrThrow({ where: { nombre: "unidad" } })).magnitud } }));
     const ya = await prisma.presentacion.findFirst({ where: { productoId: cerveza.id, unidadCompraId: caja.id } });
     if (!ya) await prisma.presentacion.create({ data: { productoId: cerveza.id, unidadCompraId: caja.id, factorConversion: 24 } });
   }
@@ -30,6 +30,8 @@ const etiqueta = process.argv[2] === "antes" ? "antes" : "despues";
   await grupo.getByLabel("Letra").selectOption({ label: "A" });
   await grupo.getByLabel("Punto de venta").fill("3");
   await grupo.getByLabel("Número", { exact: true }).fill("4567");
+  await page.waitForLoadState("networkidle").catch(() => undefined);
+  await page.waitForTimeout(2000); // deja que la página termine de hidratar antes de tocar «Siguiente»
   await page.getByRole("button", { name: "Siguiente", exact: true }).click();
   await page.getByRole("heading", { name: /^Paso 2 de 5: Qué compraste$/ }).waitFor();
   const linea = page.getByTestId("linea-de-compra").nth(0);
