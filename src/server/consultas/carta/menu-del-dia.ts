@@ -5,6 +5,7 @@ import { diaDeCalendario, fechaDeColumnaDate, sumarDias } from "@/core/tiempo/zo
 import { cargarProductosComoComponentes } from "@/server/lecturas/carta/componentes-de-promo";
 import { DIAS_DE_ANTICIPACION_DEL_MENU, seleccionDeSucursalDePromo, type CandidatoAPlato, type MenuDelDiaDeLaSucursal } from "@/core/carta/public";
 import type { Db } from "@/lib/db-tipos";
+import { grupoVigente } from "@/core/opciones/public";
 
 /**
  * La CONSULTA de la pantalla «Menú del día» (GO-3b, ADR-032, F6 paso U2): para la sucursal ACTIVA y un día (de hoy a hoy + 13, en la zona de la empresa), los lugares del día de las promos
@@ -39,7 +40,7 @@ export async function cargarMenuDelDia(db: Db, args: { sucursalId: string; ahora
     const leido = comoComponentes.get(p.id);
     const rechazo = leido ? rechazoDeComponenteDeCombo({ ...leido, precioDeReferencia: leido.precioVenta }) : null;
     // Un plato del día no lleva opciones (D-6): un producto con un grupo obligatorio no se puede elegir.
-    const conObligatorio = leido?.opciones.grupos.some((g) => g.admitido && g.activo && g.cantidadMinima > 0) ?? false;
+    const conObligatorio = leido?.opciones.grupos.some((g) => grupoVigente(g) && g.cantidadMinima > 0) ?? false;
     return { productoId: p.id, nombre: p.nombre, aviso: rechazo?.mensaje ?? (conObligatorio ? `«${p.nombre}» se pide con opciones: no puede ser plato del día.` : null) };
   });
   return {

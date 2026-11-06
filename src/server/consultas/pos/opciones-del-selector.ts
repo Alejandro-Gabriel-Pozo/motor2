@@ -8,6 +8,7 @@ import { saldosTeoricosEnSucursal } from "@/server/lecturas/movimientos/saldos";
 import { configuracionesMasPedidasEnSucursal } from "@/server/lecturas/pos/mas-pedidas";
 import { diaDeCalendario, inicioDelDia, sumarDias } from "@/core/tiempo/zona-horaria";
 import type { Db } from "@/lib/db-tipos";
+import { grupoVigente } from "@/core/opciones/public";
 
 /**
  * Las OPCIONES de los productos del selector del POS (GO-2d): para cada pedible que admite opciones, lo que necesita el diálogo «Elegir opciones» (ver `ConfiguracionDelSelector`).
@@ -36,7 +37,7 @@ export async function cargarOpcionesDelSelector(
   if (pedibles.size === 0) return {};
 
   const opciones = await cargarOpcionesParaVender(db, { sucursalId, productoIds: [...pedibles.keys()] });
-  const conOpciones = [...opciones].filter(([, o]) => o.grupos.some((g) => g.admitido && g.activo)).map(([id]) => id);
+  const conOpciones = [...opciones].filter(([, o]) => o.grupos.some(grupoVigente)).map(([id]) => id);
   if (conOpciones.length === 0) return {};
 
   const capacidad = precioLocalActivoEn(sucursalId, db);
