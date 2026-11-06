@@ -27,7 +27,9 @@ const CONFIG = {
 
 (async () => {
   const puesto = (process.argv[2] as Puesto) ?? "mesa";
-  const c = CONFIG[puesto];
+  // «solo-cerrar»: deja un ticket más SIN corregir (para la maqueta de «Corregir un ticket»); las capturas van a archivos descartables.
+  const soloCerrar = process.argv[3] === "solo-cerrar";
+  const c = soloCerrar ? { ...CONFIG[puesto], prefijo: `zz-descartar-${puesto}`, items: puesto === "mesa" ? CONFIG.mesa.items : ([["Capuccino", "2"], ["Flan casero", "1"]] as Array<[string, string]>) } : CONFIG[puesto];
   const { navegador, page } = await abrir(375);
   depuracion = page;
   process.on('unhandledRejection', () => undefined);
@@ -81,6 +83,10 @@ const CONFIG = {
   await clic(cierre.getByRole("button", { name: "Cerrar y registrar la venta" }));
   await page.getByRole("heading", { name: "Cuentas cerradas" }).waitFor();
   await foto(page, `${c.prefijo}-2-antes-cuenta-cerrada`);
+  if (soloCerrar) {
+    await navegador.close();
+    return;
+  }
 
   // 4) Anular UNA línea ya vendida (Reportes → Tickets → abrir el ticket → «Trazabilidad» de la línea → Anular venta)
   await page.goto("http://localhost:3300/reportes/tickets");

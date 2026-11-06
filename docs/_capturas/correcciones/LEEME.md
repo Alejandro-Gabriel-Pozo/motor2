@@ -67,6 +67,16 @@ Pantalla real armada en esta rama (`corregir-factura-maqueta.tsx`) sobre la comp
 | 65-corregir-6-cantidad-que-cambia | Bajar de 24 a 20: stock 16 → 12, y avisa que el costo por unidad pasa de $6.000 a $7.200 porque el importe del renglón sigue en $144.000 |
 No se pudo mostrar con datos reales «completar un importe faltante ($0)»: las únicas compras con $0 son el stock inicial de la maqueta, sin proveedor. Tampoco el «después de guardar» ni el historial de versiones: necesitan la escritura y la migración del CHECK.
 
+### Maqueta «Corregir un ticket» por pasos (pedido del dueño, 2026-11-06)
+Pantallas reales (`/reportes/tickets/corregir` y `/reportes/tickets/corregir/<ticket>`) sobre los tickets reales de la base local: 1-A/1-B y 2-A/2-B ya corregidos, y 3-A (Mesa 01, $46.000) y 4-A (Mostrador, $25.000) sin corregir. **Muestra y calcula, NO guarda.** Paso 1: filtros en una sola fila (desde, hasta, letra, N.º de ticket) y resultados abajo. Elegir uno abre OTRA página (paso 2): en escritorio, el ticket original congelado a la izquierda y el corregido a la derecha, en dos columnas para que no quede una columna larga; en celular se apilan.
+| Archivo (escritorio y celular) | Muestra |
+|---|---|
+| 70-ticket-paso1-buscar | Paso 1: filtros arriba y los 6 tickets del día abajo, con estado («Al día», «Reemplazado por 1-B», «Corrección de 1-A») y «Corregir →» o «Ver →» |
+| 71-ticket-paso1-resultado | Buscar letra A y número 3: un resultado |
+| 72-ticket-paso2-original-y-corregido | Paso 2: «ORIGINAL N.º 3-A, no se modifica» y «COMO QUEDA N.º 3-B» con «Quitar» por línea |
+| 73-ticket-paso2-quitando-una-linea | Se quita el Brownie: total corregido $36.000 y «el 3-A queda en el historial como Reemplazado por 3-B» |
+Lo que reúne: hoy son tres pasos en tres pantallas (Reportes → Tickets, anular cada línea en Trazabilidad, volver a la mesa a emitir). La maqueta los junta en uno. **Pendiente de decidir:** hoy anular y emitir son dos operaciones separadas; hacerlo en un solo paso exige un caso de uso nuevo que sea atómico (todo o nada) y pida el motivo una vez. «Quitar» saca la línea entera (la venta se registra por línea); quitar una unidad de dos sería «anular y rehacer» (plan aprobado, no construido). Una promo no se quita por componente (botón deshabilitado).
+
 ## Respuestas por caso (VERIFICADO = visto en la pantalla real; PROPUESTA = mi sugerencia; NO VERIFICADO = no probado)
 
 ### Casos 1 y 2 — ticket corregido (mesa y mostrador, idénticos)
