@@ -322,6 +322,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
       },
+      {
+        blob: "59f8f71c8420fd9abeb1f76e20f8ee65bf53d94e",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `eac39a98` (E0 f+b).
+        commit: "eac39a98",
+        motivo:
+          "E0 de la corrección por ajuste (PR1, f+b): anular una venta pide MOTIVO (queda en `motivoAnulacion` de la venta anulada) y el contra-asiento escribe `revierteAOperacionId` apuntando a ella. Cambian SOLO esos dos campos en las filas OPERACION de las anulaciones; ninguna línea de Kardex ni ningún otro campo cambia.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -435,6 +442,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "afdd6435",
         motivo:
           "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1): las líneas CUENTA_ITEM suman  (nadie tiene «Nombre en la carta» en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior; ninguna venta, KARDEX, stock, costo ni importe cambia.",
+      },
+      {
+        blob: "c9034474f828f29af1056624ae17f691509e5c79",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `eac39a98` (E0 f+b).
+        commit: "eac39a98",
+        motivo:
+          "E0 de la corrección por ajuste (PR1, f+b): igual que la matriz de la venta; cambian SOLO `motivoAnulacion` (venta anulada) y `revierteAOperacionId` (contra-asiento) en las filas OPERACION de las anulaciones.",
       },
     ],
   },
@@ -699,6 +713,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "d3088bf",
         motivo:
           "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
+      },
+      {
+        blob: "b68c265f09c5d834addb0428bb3422fa2f6324e7",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `eac39a98` (E0 f+b).
+        commit: "eac39a98",
+        motivo:
+          "E0 de la corrección por ajuste (PR1, f+b): el contra-asiento nace con `revierteAOperacionId` y el `update` de la original escribe `motivoAnulacion` (null en la compra, el motivo en la venta). Sin otros cambios.",
       },
     ],
   },

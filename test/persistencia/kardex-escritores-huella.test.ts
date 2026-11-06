@@ -410,6 +410,7 @@ const CASOS: Array<{ nombre: string; correr: (g: Grabadora, m: Mundo, cliente: C
           usuarioId: m.usuarioId,
           ahora: AHORA,
           detalleLibre: "Anulación de venta de prueba",
+          motivoAnulacion: "Error de carga",
           reversion: construirReversionDeVenta(lineas),
         })
       );

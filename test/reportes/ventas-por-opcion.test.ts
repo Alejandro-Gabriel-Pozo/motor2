@@ -325,7 +325,7 @@ describe("ventas por opción: el flujo real de la caja", () => {
     const anulada = await cobrar([{ productoId: c.cafeId, cantidad: 3, opciones: [elegida(c, c.medianoId)] }]);
     // Se anula la venta del café (la Operación padre); lo hace el camino de siempre.
     const operacionDeLaAnulada = (await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: anulada }, select: { operacionId: true } })).operacionId!;
-    const anulacion = await anularVenta(operacionDeLaAnulada);
+    const anulacion = await anularVenta(operacionDeLaAnulada, "Error de carga");
     expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
     const db = dbDe(s.sucursalId);

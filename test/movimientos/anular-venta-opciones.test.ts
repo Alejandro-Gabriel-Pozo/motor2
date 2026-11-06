@@ -40,7 +40,7 @@ const reversiones = async () =>
 
 describe("anular la venta de un producto con adicionales (GO-2b)", () => {
   it("la del producto arrastra a sus dos adicionales: tres reversiones, tres auditorías y el mensaje lo dice", async () => {
-    const r = await anularVenta(ops.padre);
+    const r = await anularVenta(ops.padre, "Error de carga");
     expect(r.ok, r.mensaje).toBe(true);
     expect(r.mensaje).toMatch(/Tenía 2 adicionales: se anuló con ellos\.$/);
     const anuladas = await prisma.operacion.findMany({ where: { id: { in: [ops.padre, ...ops.hijas] } } });
@@ -48,17 +48,17 @@ describe("anular la venta de un producto con adicionales (GO-2b)", () => {
     expect((await reversiones()).map((x) => x.revierteAOperacionId).sort()).toEqual([ops.padre, ...ops.hijas].sort());
     expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion", campo: "anuladaEn" } })).toBe(3);
     // Otra vez: ya anulada, sin nada nuevo.
-    expect(await anularVenta(ops.padre)).toEqual({ ok: false, mensaje: "Esta venta ya está anulada." });
+    expect(await anularVenta(ops.padre, "Error de carga")).toEqual({ ok: false, mensaje: "Esta venta ya está anulada." });
     expect(await reversiones()).toHaveLength(3);
   });
 
   it("la venta de un adicional sola no se anula (ES_ADICIONAL) y no escribe nada", async () => {
-    expect(await anularVenta(ops.hijas[0]!)).toEqual({ ok: false, mensaje: "Esta venta es un adicional de otro producto: anulá la venta de ese producto y se anula con sus adicionales." });
+    expect(await anularVenta(ops.hijas[0]!, "Error de carga")).toEqual({ ok: false, mensaje: "Esta venta es un adicional de otro producto: anulá la venta de ese producto y se anula con sus adicionales." });
     expect(await reversiones()).toHaveLength(0);
   });
 
   it("dos anulaciones a la vez (Promise.all): una gana y deja UNA reversión por operación; la otra ve «ya anulada»", async () => {
-    const resultados = await Promise.all([anularVenta(ops.padre), anularVenta(ops.padre)]);
+    const resultados = await Promise.all([anularVenta(ops.padre, "Error de carga"), anularVenta(ops.padre, "Error de carga")]);
     expect(resultados.filter((r) => r.ok)).toHaveLength(1);
     expect(resultados.find((r) => !r.ok)!.mensaje).toBe("Esta venta ya está anulada.");
     const porOperacion = (await reversiones()).map((x) => x.revierteAOperacionId);

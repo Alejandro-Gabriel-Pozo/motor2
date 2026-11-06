@@ -131,7 +131,7 @@ describe("cerrarCuenta: sección de cada insumo resuelta sola", () => {
     await cerrarCuenta(cuenta.id);
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", detalleLibre: "Mesa 4" } });
 
-    expect((await anularVenta(venta.id)).ok).toBe(true);
+    expect((await anularVenta(venta.id, "Error de carga")).ok).toBe(true);
     expect(await calcularSaldoTotal(s.muzzarella.id, cocina.id, prisma)).toBe(0.3);
     expect(await calcularSaldoTotal(s.muzzarella.id, deposito.id, prisma)).toBe(0.3);
     expect(await calcularSaldoTotal(s.pizza.id, deposito.id, prisma)).toBe(0);
