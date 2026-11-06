@@ -1,0 +1,14 @@
+{
+  "regla": "anuladas-en-consultas",
+  "meta": "0 (cada consulta o lectura de COMPRA/VENTA del servidor decide qué hace con las anuladas; lote posterior unifica los mecanismos)",
+  "total": 1,
+  "entradas": 1,
+  "porTipo": {
+    "proceso-sin-decidir-anuladas": 1
+  },
+  "cuentas": {
+    "src/server/consultas/carta/ventas-por-seccion.ts": {
+      "proceso-sin-decidir-anuladas": 1
+    }
+  }
+}

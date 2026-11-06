@@ -37,6 +37,7 @@ const lista = (regla: string, vence: string): VencimientoDeLista => ({ regla, in
 
 /** Escalonadas entre 2026-12-03 y 2027-01-05 (el tope de 60 días desde 2026-11-06), de más a menos riesgo: dinero, escritores, permisos, fechas y números, presentación. */
 export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
+  lista("anuladas-en-consultas", "2026-12-02"),
   lista("columnas-de-significado", "2026-12-03"),
   lista("primitivas-de-dominio", "2026-12-04"),
   lista("dueno-unico-por-modelo", "2026-12-08"),
