@@ -5,6 +5,7 @@ import { corregirImportesDeCompraCasoDeUso } from "../../src/server/actions/movi
 import { anularCompraCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/anular-compra";
 import { obtenerCostoActualPorMP } from "../../src/server/lecturas/reportes/comun";
 import type { ComandoCorregirImportesDeCompra } from "../../src/core/features/compras/compra.schema";
+import { AHORA_DE_LA_CORRIDA, DIA_MS, enElPasado } from "../setup/tiempo";
 
 /**
  * Caso de uso `corregirImportesDeCompraCasoDeUso` (etapa C0 de la corrección por ejemplar, docs/diseno-correccion-de-compras-2026-11-06.md). Postgres real, sin mocks. Lo que importa de negocio:
@@ -23,18 +24,18 @@ describe("corregirImportesDeCompraCasoDeUso", () => {
   let motivoId: string;
 
   const baseDe = (sucursal: string) => baseDeTest({ lectura: [sucursal], escritura: [sucursal] });
-  const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, ahora: new Date("2026-11-06T15:00:00Z"), ...baseDe(sucursalId) });
+  const actor = () => ({ usuarioId: adminId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, ahora: AHORA_DE_LA_CORRIDA, ...baseDe(sucursalId) });
 
   /** La factura de la maqueta: 24 cervezas a $144.000 y 48 aguas a $72.000. */
   async function factura(opciones: { cerveza?: number; proceso?: "COMPRA" | "MERMA"; anulada?: boolean } = {}) {
     const op = await prisma.operacion.create({
-      data: { sucursalId, proceso: opciones.proceso ?? "COMPRA", fecha: new Date("2026-11-05T15:00:00Z"), usuarioId: adminId, proveedorId, nroFactura: "A-00003-00004567", detalleLibre: "semanal", anuladaEn: opciones.anulada ? new Date() : null },
+      data: { sucursalId, proceso: opciones.proceso ?? "COMPRA", fecha: enElPasado(2 * DIA_MS), usuarioId: adminId, proveedorId, nroFactura: "A-00003-00004567", detalleLibre: "semanal", anuladaEn: opciones.anulada ? new Date() : null },
     });
     const cerveza = await prisma.movimientoStock.create({
-      data: { operacionId: op.id, productoId: cervezaId, seccionId, proceso: op.proceso, cantidad: 24, detalle: "24 unidad", precioTotal: opciones.cerveza ?? 144000, precioPorUnidadStock: (opciones.cerveza ?? 144000) / 24 },
+      data: { operacionId: op.id, productoId: cervezaId, seccionId, proceso: op.proceso, cantidad: opciones.proceso === "MERMA" ? -24 : 24, detalle: "24 unidad", precioTotal: opciones.cerveza ?? 144000, precioPorUnidadStock: (opciones.cerveza ?? 144000) / 24 },
     });
     const agua = await prisma.movimientoStock.create({
-      data: { operacionId: op.id, productoId: aguaId, seccionId, proceso: op.proceso, cantidad: 48, detalle: "48 unidad", precioTotal: 72000, precioPorUnidadStock: 1500 },
+      data: { operacionId: op.id, productoId: aguaId, seccionId, proceso: op.proceso, cantidad: opciones.proceso === "MERMA" ? -48 : 48, detalle: "48 unidad", precioTotal: 72000, precioPorUnidadStock: 1500 },
     });
     return { op, cerveza, agua };
   }
@@ -111,7 +112,7 @@ describe("corregirImportesDeCompraCasoDeUso", () => {
 
   it("corregir un importe NO depende de que lo comprado siga en stock: con la mercadería ya vendida, igual se corrige y el stock no cambia", async () => {
     const f = await factura();
-    const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "MERMA", fecha: new Date("2026-11-06T12:00:00Z"), usuarioId: adminId } });
+    const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "MERMA", fecha: enElPasado(DIA_MS / 2), usuarioId: adminId } });
     await prisma.movimientoStock.create({ data: { operacionId: venta.id, productoId: cervezaId, seccionId, proceso: "MERMA", cantidad: -22, detalle: "salió", precioTotal: 0, precioPorUnidadStock: 0 } });
     expect(await saldoDe(cervezaId)).toBe(2);
 

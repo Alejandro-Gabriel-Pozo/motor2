@@ -11,3 +11,9 @@ ALTER TABLE "Operacion" ADD CONSTRAINT "Operacion_reemplaza_venta_o_compra_chk" 
   "reemplazaAOperacionId" IS NULL OR (proceso IN ('VENTA', 'COMPRA') AND "reemplazaAOperacionId" <> id)
 ) NOT VALID;
 ALTER TABLE "Operacion" VALIDATE CONSTRAINT "Operacion_reemplaza_venta_o_compra_chk";
+
+-- El motivo (`motivoId`) también se admite en una COMPRA: la compra corregida por ejemplar guarda el motivo de la corrección (catálogo MotivoMerma con ámbito CORRECCION). Antes: solo MERMA. Se conserva el NOMBRE de la restricción
+-- (como ya se hizo con `Operacion_anulacion_coherente_chk`) para no romper la migración original ni su verificación previa; ahora admite MERMA o COMPRA. Más laxo: toda fila existente la cumple.
+ALTER TABLE "Operacion" DROP CONSTRAINT IF EXISTS "Operacion_motivo_solo_merma_chk";
+ALTER TABLE "Operacion" ADD CONSTRAINT "Operacion_motivo_solo_merma_chk" CHECK ("motivoId" IS NULL OR proceso IN ('MERMA', 'COMPRA')) NOT VALID;
+ALTER TABLE "Operacion" VALIDATE CONSTRAINT "Operacion_motivo_solo_merma_chk";

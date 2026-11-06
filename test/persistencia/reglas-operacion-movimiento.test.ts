@@ -22,6 +22,7 @@ const CARPETA = join(__dirname, "../../prisma/migrations/20261002160000_reglas_e
  * (solo VENTA y COMPRA): cada vez que lo hace tiene que volver a correr la de M6.3, o los archivos que corran después y anulen una devolución fallarían según el orden en que se ejecuten.
  */
 const CARPETA_M6_3 = join(__dirname, "../../prisma/migrations/20261018102000_anulacion_coherente_admite_devolucion");
+const CARPETA_C0 = join(__dirname, "../../prisma/migrations/20261106110000_reemplaza_admite_compra");
 
 const CHECKS = [
   "MovimientoStock_signo_por_proceso_chk",
@@ -58,7 +59,11 @@ async function correr(archivo: string, carpeta: string = CARPETA) {
 }
 
 /** Vuelve a dejar la regla de anulación como la define M6.3 (la migración original la deja con la definición vieja). */
-const restaurarAnulacionCoherente = () => correr("migration.sql", CARPETA_M6_3);
+const restaurarAnulacionCoherente = async () => {
+  await correr("migration.sql", CARPETA_M6_3);
+  // Y las reglas que ensanchó la corrección de compras por ejemplar (C0): la migración original deja `motivoId` solo en MERMA y el reemplazo solo en VENTA.
+  await correr("migration.sql", CARPETA_C0);
+};
 
 let usuarioId: string;
 let otroUsuarioId: string;
@@ -312,11 +317,11 @@ describe("MovimientoStock: cada paso de un traspaso escribe una sola línea", ()
 });
 
 describe("Operacion: campos que pertenecen a un solo proceso", () => {
-  it("el motivo solo en la MERMA", async () => {
+  it("el motivo solo en la MERMA o la COMPRA (corregida por ejemplar, C0)", async () => {
     const { motivos } = await sembrarMotivosYDestinos();
     const motivoId = [...motivos.values()][0];
-    const compra = await operacion({ proceso: "COMPRA" });
-    await exigirRechazo("Operacion", compra.id, `"motivoId" = '${motivoId}'`, "Operacion_motivo_solo_merma_chk");
+    const venta = await operacion({ proceso: "VENTA" });
+    await exigirRechazo("Operacion", venta.id, `"motivoId" = '${motivoId}'`, "Operacion_motivo_solo_merma_chk");
   });
 
   it("el destino solo en el CONSUMO", async () => {
