@@ -84,7 +84,7 @@ async function financieroDeLaSucursal(
   costosActuales: Map<string, CostoMP>,
   db: Db
 ): Promise<{ ventasTotal: number; margenTotal: number; gastadoTotal: number }> {
-  const ventas = calcularVentasDelPeriodo(items, productos);
+  const ventas = calcularVentasDelPeriodo(items);
   const compras = calcularComprasDelPeriodo(items, productos);
   // El costo de HOY de cada plato (receta efectiva de la sucursal + su costo de reposición, ya leído), sin objetivos: lo mismo que usa el margen del período.
   const { margenTotal } = calcularMargenNominalDelPeriodo(ventas, await calcularCostosYMargenes(sucursalId, db, productos, undefined, undefined, costosActuales));

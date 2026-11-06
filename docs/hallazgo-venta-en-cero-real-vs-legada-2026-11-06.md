@@ -1,6 +1,12 @@
 # Hallazgo C (lote 1b): `precioTotal = 0` se lee como «venta vieja sin precio»
 
-Estado: **NO implementado — espera una decisión del dueño** (ver «Pregunta abierta»). Verificado contra el código el 2026-11-06.
+Estado: **RESUELTO por decisión del dueño (CONFIRMADA, 2026-11-06)**: las ventas quedan congeladas, un importe $0 significa «sin dato» y nada más; no se revalúa a precio de hoy ni se estima. Sin migración.
+
+Qué se cambió: `calcularVentasDelPeriodo` ya no estima; las líneas $0 (no anuladas) quedan fuera del total y de las filas y se cuentan en `lineasSinDato`. Reportes que comparten la regla (todos pasan por esa función): Período (y su margen nominal), Ventas por categoría, Ventas por sección de carta, Consolidado (solo totales), Resumen operativo. Visible para el usuario: se quitó la marca «(estimado)» de la tabla del Período; el aviso de ventas pasa a decir cuántas ventas quedan sin dato; en el Resumen la leyenda «incluye estimados» pasa a «N ventas sin dato (fuera del total)». Coherente con el margen Real, que ya las excluía.
+
+(Lo que sigue es el análisis previo a la decisión.)
+
+Verificado contra el código el 2026-11-06.
 
 ## Qué pasa hoy
 `calcularVentasDelPeriodo` (`src/core/reportes/periodo-ventas.ts`) trata una fila VENTA con `precioTotal > 0` como importe real y una con `precioTotal = 0` como «venta vieja sin precio»: la valúa al **precio de venta vigente hoy** y la marca `estimado`. `margen-real.ts` y `periodo-margen.ts` hacen lo opuesto (la dejan afuera por «sin precio»).

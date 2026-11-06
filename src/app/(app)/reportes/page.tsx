@@ -51,7 +51,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
           </p>
           <p className="text-lg font-semibold">${r.financiero.ventasTotal.toLocaleString("es-AR")}</p>
           <EnDolares pesos={r.financiero.ventasTotal} cotizacion={cotizacion} />
-          {r.financiero.hayEstimados && <p className="text-xs text-aviso-tinta">incluye estimados</p>}
+          {r.financiero.ventasSinDato > 0 && <p className="text-xs text-aviso-tinta">{r.financiero.ventasSinDato} {r.financiero.ventasSinDato === 1 ? "venta sin dato" : "ventas sin dato"} (fuera del total)</p>}
         </div>
         {/* Mismo tratamiento que /reportes/periodo (§2): una cifra principal (el margen Real, acá "Ganancia de lo vendido"), definiciones visibles en vez de tooltip, nominal e IPC plegados. */}
         <div className="rounded border p-4">

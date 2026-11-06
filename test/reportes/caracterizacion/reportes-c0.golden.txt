@@ -1646,7 +1646,6 @@
         costoIncompleto: false,
         costoUnitario: 2802,
         ingreso: 105600,
-        ingresoEstimado: false,
         ingresoRealReconstruido: 21600,
         margen: 80382,
         margenPct: 76.1,
@@ -1663,7 +1662,6 @@
         costoIncompleto: true,
         costoUnitario: null,
         ingreso: 86800,
-        ingresoEstimado: false,
         ingresoRealReconstruido: 0,
         margen: null,
         margenPct: null,
@@ -1680,7 +1678,6 @@
         costoIncompleto: true,
         costoUnitario: null,
         ingreso: 22200,
-        ingresoEstimado: false,
         ingresoRealReconstruido: 0,
         margen: null,
         margenPct: null,
@@ -1697,7 +1694,6 @@
         costoIncompleto: true,
         costoUnitario: null,
         ingreso: 20100,
-        ingresoEstimado: false,
         ingresoRealReconstruido: 0,
         margen: null,
         margenPct: null,
@@ -3472,7 +3468,6 @@
           costoIncompleto: false,
           costoUnitario: 2802,
           ingreso: 105600,
-          ingresoEstimado: false,
           ingresoRealReconstruido: 21600,
           margen: 80382,
           margenPct: 76.1,
@@ -3489,7 +3484,6 @@
           costoIncompleto: true,
           costoUnitario: null,
           ingreso: 86800,
-          ingresoEstimado: false,
           ingresoRealReconstruido: 0,
           margen: null,
           margenPct: null,
@@ -3506,7 +3500,6 @@
           costoIncompleto: true,
           costoUnitario: null,
           ingreso: 22200,
-          ingresoEstimado: false,
           ingresoRealReconstruido: 0,
           margen: null,
           margenPct: null,
@@ -3523,7 +3516,6 @@
           costoIncompleto: true,
           costoUnitario: null,
           ingreso: 20100,
-          ingresoEstimado: false,
           ingresoRealReconstruido: 0,
           margen: null,
           margenPct: null,
@@ -3590,11 +3582,12 @@
     total: 74,
     ventas: {
       aviso: "Importe real registrado en cada venta (no una estimación).",
+      lineasSinDato: 0,
       porProducto: [
-        {cantidad: 9, estimado: false, importe: 105600, precioUnitario: 12000, producto: "Pizza muzzarella", productoId: "#34"},
-        {cantidad: 7, estimado: false, importe: 86800, precioUnitario: 14000, producto: "Pizza napolitana", productoId: "#35"},
-        {cantidad: 6, estimado: false, importe: 22200, precioUnitario: 3400, producto: "Flan", productoId: "#36"},
-        {cantidad: 7, estimado: false, importe: 20100, precioUnitario: 2400, producto: "Copa de vino", productoId: "#43"}
+        {cantidad: 9, importe: 105600, precioUnitario: 12000, producto: "Pizza muzzarella", productoId: "#34"},
+        {cantidad: 7, importe: 86800, precioUnitario: 14000, producto: "Pizza napolitana", productoId: "#35"},
+        {cantidad: 6, importe: 22200, precioUnitario: 3400, producto: "Flan", productoId: "#36"},
+        {cantidad: 7, importe: 20100, precioUnitario: 2400, producto: "Copa de vino", productoId: "#43"}
       ],
       totalFacturado: 234700
     }
@@ -4220,7 +4213,6 @@
       hasta: Date(2026-03-16T02:59:59.999Z),
       hayComprasSinPrecio: true,
       hayCostoIncompleto: true,
-      hayEstimados: false,
       ipcVencido: false,
       margenIPCPct: 76.1,
       margenIPCProvisorio: true,
@@ -4242,6 +4234,7 @@
         {importe: 5000, proveedor: "Envases SA"},
         {importe: 0, proveedor: "Bodega Andina"}
       ],
+      ventasSinDato: 0,
       ventasTotal: 234700
     },
     movimientos: {
