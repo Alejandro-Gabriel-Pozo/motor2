@@ -134,7 +134,7 @@ describe("obtenerReporteMargenPromociones", () => {
     const cuenta = await sembrarCuentaConPromo(s.mesa.id, promo.id, "Combo Test", 3000, [{ productoId: s.flan.id, cantidad: 1, precioUnitario: 3000, precioCartaUnitario: 3000 }]);
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", promoCuentaId: { not: null } } });
-    expect((await anularVenta(venta.id)).ok).toBe(true);
+    expect((await anularVenta(venta.id, "Error de carga")).ok).toBe(true);
 
     const rep = await obtenerReporteMargenPromociones(s.sucursalId, desde, hasta, prisma);
     expect(rep.promos).toEqual([]);

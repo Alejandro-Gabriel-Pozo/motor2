@@ -330,7 +330,7 @@ describe("S-22 · Salón apagado: ninguna puerta del POS responde (se fija lo qu
     { nombre: "cerrarCuenta", clave: "pos_cerrar_cuenta", llamar: (x) => cerrarCuenta(x.cuentaLista) },
     { nombre: "emitirTicketCorregido", clave: "pos_emitir_ticket_corregido", llamar: (x) => emitirTicketCorregido(x.cuentaConTicket, "Se anuló el flan") },
     { nombre: "registrarVenta (venta de mostrador)", clave: "proceso_venta", llamar: () => registrarVenta({ fecha: AHORA_DE_LA_CORRIDA, seccionId: s.seccion.id, ventas: [{ productoId: s.flan.id, cantidadVendida: 1 }] }) },
-    { nombre: "anularVenta", clave: "anular_venta", llamar: (x) => anularVenta(x.operacionDeVenta) },
+    { nombre: "anularVenta", clave: "anular_venta", llamar: (x) => anularVenta(x.operacionDeVenta, "Error de carga") },
   ];
 
   beforeEach(async () => {
@@ -361,7 +361,7 @@ describe("S-22 · Salón apagado: ninguna puerta del POS responde (se fija lo qu
     const cierre = await cerrarCuenta(conTicket.id);
     if (!cierre.ok) throw new Error(cierre.mensaje);
     const flanVendido = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: conTicket.id, productoId: s.flan.id } });
-    const anulacion = await anularVenta(flanVendido.operacionId!);
+    const anulacion = await anularVenta(flanVendido.operacionId!, "Error de carga");
     if (!anulacion.ok) throw new Error(anulacion.mensaje);
 
     // Otra cuenta cerrada, con su venta VIGENTE: es la que `anularVenta` anularía.

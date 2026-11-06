@@ -96,7 +96,7 @@ describe("obtenerReporteDescuentosProductos", () => {
     const cuenta = await vender([{ productoId: s.flan.id, cantidad: 1 }]);
     await cerrarCuenta(cuenta.id);
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
-    expect((await anularVenta(venta.id)).ok).toBe(true);
+    expect((await anularVenta(venta.id, "Error de carga")).ok).toBe(true);
     expect((await reporte()).productos).toEqual([]);
   });
 
