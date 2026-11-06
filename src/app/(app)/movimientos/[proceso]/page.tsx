@@ -115,11 +115,9 @@ export default async function MovimientoPage({
             secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
             seccionesDesactivadas={desactivadas}
             proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
-            unidades={unidades.map((u) => ({ id: u.id, nombre: u.nombre }))}
             motivos={motivos.map((m) => ({ id: m.id, nombre: m.nombre }))}
             destinos={destinos.map((d) => ({ id: d.id, nombre: d.nombre }))}
             productoInicial={productoInicial ? { id: productoInicial.id, etiqueta: `${productoInicial.codigo} — ${productoInicial.nombre}` } : undefined}
-            reparto={esCompra && nivelReparto.editar && otrasSucursales.length ? { sucursalActiva: { id: ctx.sucursalId, nombre: ctx.sucursalNombre }, otras: otrasSucursales } : undefined}
           />
         )}
       </div>
