@@ -12,6 +12,8 @@ import { BotonAnularCompra } from "./boton-anular-compra";
 import { BotonAnularFactura } from "./boton-anular-factura";
 import { PagoDeFactura } from "./pago-de-factura";
 import { FormularioCorregirCompra } from "./formulario-corregir-compra";
+import { FormularioNotaCredito } from "./formulario-nota-credito";
+import { listarNotasDeCredito } from "@/server/consultas/reportes/notas-de-credito";
 import { formatearNumeroComprobante, leerNumeroComprobante } from "@/core/datos/numero-comprobante";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { ZONA_ARGENTINA, ZONA_UTC, diaDeCalendario, esDiaISOReal, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
@@ -55,7 +57,7 @@ export default async function ComprasRegistradasPage({
   const sp = unicosDeUrl(await searchParams);
   const desde = esDiaISOReal(sp.desde) ? sp.desde : "";
   const hasta = esDiaISOReal(sp.hasta) ? sp.hasta : "";
-  const [{ items, nextCursor }, proveedores] = await Promise.all([
+  const [{ items, nextCursor }, proveedores, notasDeCredito] = await Promise.all([
     listarComprasRegistradas(ctx.sucursalId, {
       desde: desde ? fechaDeColumnaDate(desde) : undefined,
       hasta: hasta ? fechaDeColumnaDate(hasta) : undefined,
@@ -64,6 +66,7 @@ export default async function ComprasRegistradasPage({
       cursor: sp.cursor,
     }, ctx.db, ctx.empresaZonaHoraria),
     listarProveedoresParaSelector(),
+    listarNotasDeCredito(ctx.db, sp.proveedorId && sp.proveedorId !== SIN_PROVEEDOR ? sp.proveedorId : undefined),
   ]);
 
   const paramsSiguiente = new URLSearchParams();
@@ -216,6 +219,14 @@ export default async function ComprasRegistradasPage({
                           actual={{ proveedorId: c.proveedorId, nroFactura: c.nroFactura, detalleLibre: c.detalle }}
                         />
                       )}
+                      {puedeCorregir && !c.anuladaEn && c.proveedorId && (
+                        <FormularioNotaCredito
+                          idOperacion={c.idOperacion}
+                          nroFactura={c.nroFactura}
+                          hoy={hoyArgentina}
+                          renglones={c.renglones.map((l) => ({ idMovimiento: l.idMovimiento, producto: l.productoNombre, cantidad: l.cantidad, unidad: l.unidad, precioTotal: l.precioTotal }))}
+                        />
+                      )}
                       {puedeAnular && (
                         <BotonAnularCompra
                           idOperacion={c.idOperacion}
@@ -230,6 +241,38 @@ export default async function ComprasRegistradasPage({
             ))}
           </div>
         </>
+      )}
+
+      {notasDeCredito.length > 0 && (
+        <section aria-labelledby="notas-de-credito-titulo" className="flex flex-col gap-2" data-notas-de-credito>
+          <h2 id="notas-de-credito-titulo" className="text-base font-semibold">
+            Notas de crédito de proveedores
+          </h2>
+          <p className="text-xs text-tinta-tenue">
+            Documentos con que el proveedor te acredita plata. No mueven el stock ni el costo, y todavía no se aplican a ningún pago (pendiente de completar). Una nota no se edita ni se borra.
+          </p>
+          {notasDeCredito.map((n) => (
+            <div key={n.id} className="rounded border px-3 py-2 text-sm" data-nota-de-credito={n.numero}>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="w-24 tabular-nums">{fechaCorta(n.fecha)}</span>
+                <span className="font-medium">{n.proveedorNombre}</span>
+                <span className="text-tinta-tenue">Nota de crédito {formatearNumeroComprobante(leerNumeroComprobante(n.numero))}</span>
+                <span className="rounded border px-1.5 text-xs text-tinta-tenue">{n.tipo === "SUELTA" ? "Suelta (sin factura enganchada)" : "Sobre factura"}</span>
+                <span className="ml-auto font-semibold tabular-nums">−{plata(n.total)}</span>
+              </div>
+              <ul className="mt-1 text-xs text-tinta-tenue">
+                {n.lineas.map((l, i) => (
+                  <li key={i}>
+                    {l.descripcion} · −{plata(l.importe)}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-xs text-tinta-tenue">
+                {n.motivo} · cargada por {n.creadaPor} el {fechaCorta(n.creadaEn)}
+              </p>
+            </div>
+          ))}
+        </section>
       )}
 
       {nextCursor && (
