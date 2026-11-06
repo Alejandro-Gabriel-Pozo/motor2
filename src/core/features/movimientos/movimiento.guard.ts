@@ -1,7 +1,7 @@
 import { texto } from "@/core/texto";
-import { esDetalleReservadoParaReversiones } from "@/core/movimientos/public";
+import { validarDetalleLibreDeOperacion } from "@/core/movimientos/public";
 import { validarFechaDeCompra, validarFechaOperacion } from "@/core/datos/fecha-operacion";
-import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
 import type { DatosMovimientoInput, ProcesoGenerico } from "./movimiento.schema";
@@ -41,11 +41,10 @@ export function guardComandoRegistrarMovimiento(entrada: unknown, ahora: Date): 
   if (!Array.isArray(items) || !items.length) return rechazar("vacio", "Cargá al menos un producto con cantidad.");
   const excedeLineas = validarTopeDeLista(items, "Las líneas", MAXIMO_LINEAS_POR_OPERACION);
   if (excedeLineas) return rechazar("rango", excedeLineas);
-  const detalleValido = validarTextoLibre(detalleLibre, "El detalle", LARGO_MAXIMO_DETALLE);
+  const detalleValido = validarDetalleLibreDeOperacion(detalleLibre);
   if (!detalleValido.ok) return rechazar(detalleValido.codigo, detalleValido.mensaje);
   // M-1 (auditoría intermedia, S-03): «Anulación de la venta/compra …» está reservado para las reversiones por anulación, que se reconocen SOLO por el comienzo de su detalle. Un ajuste manual
   // con ese comienzo no contaría como «posterior» a una venta y se la podría anular a ciegas.
-  if (typeof detalleLibre === "string" && esDetalleReservadoParaReversiones(detalleLibre)) return rechazar("formato", "Ese detalle está reservado para las anulaciones: escribilo de otra forma.");
   for (const item of items) {
     const referencia = validarTextoLibre((item as { referenciaProveedor?: unknown } | null)?.referenciaProveedor, "La referencia del proveedor", LARGO_MAXIMO_DETALLE);
     if (!referencia.ok) return rechazar(referencia.codigo, referencia.mensaje);
@@ -58,7 +57,7 @@ export function guardComandoRegistrarMovimiento(entrada: unknown, ahora: Date): 
   // los mismos textos que el pago al consignante. Sin ella, un doble clic o un reintento duplicaría stock y dinero; la pantalla la genera al abrirse,
   // así que si no viene es una llamada a mano o un script: se rechaza sin escribir.
   if (claveIdempotencia === undefined || claveIdempotencia === null || claveIdempotencia === "") return rechazar("vacio", "Falta la clave de reintento: recargá la pantalla.");
-  if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", "Clave de reintento inválida.");
+  if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", MENSAJE_CLAVE_DE_REINTENTO_INVALIDA);
 
   if (proceso === "TRANSFERENCIA") {
     if (!seccionDestinoId) return rechazar("vacio", "La sección destino no puede estar vacía.");

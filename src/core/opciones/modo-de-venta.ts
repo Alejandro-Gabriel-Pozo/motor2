@@ -1,4 +1,6 @@
-import { IMPORTE_MINIMO, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type ModoDeVenta, type TipoDeGrupoDeOpciones } from "./tipos";
+import { IMPORTE_MINIMO, MODO_DE_VENTA, type DiferenciaDePrecio, type ModoDePrecioDeMedida, type ModoDeVenta, type TipoDeGrupoDeOpciones } from "./tipos";
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
+import { opcionOfrecida } from "./opcion-ofrecida";
 
 /**
  * El MODO DE VENTA de un producto (Fase 4 de la ola «precio y carta», ADR-035; `Producto.modoDeVenta`). Puro: sin Prisma.
@@ -14,7 +16,12 @@ import { IMPORTE_MINIMO, type DiferenciaDePrecio, type ModoDePrecioDeMedida, typ
 
 /** Si el modo guardado (TEXT de lista cerrada en la base) es «se vende por opción». Cualquier otro valor es DIRECTO: el CHECK de la base no deja guardar otro. */
 export function esBaseConfigurable(modo: ModoDeVenta | string): boolean {
-  return modo === "BASE_CONFIGURABLE";
+  return modo === MODO_DE_VENTA.BASE_CONFIGURABLE;
+}
+
+/** El modo guardado (TEXT en la base) como `ModoDeVenta`: lo que no es «por opción» es DIRECTO (misma lectura que `esBaseConfigurable`). */
+export function modoDeVentaDe(modo: string): ModoDeVenta {
+  return esBaseConfigurable(modo) ? MODO_DE_VENTA.BASE_CONFIGURABLE : MODO_DE_VENTA.DIRECTO;
 }
 
 /** El rechazo base: no hay grupo de precio final. */
@@ -24,7 +31,7 @@ export const MENSAJE_FALTA_PRECIO_FINAL =
 /** Lo que la regla mira del producto. */
 export interface ProductoParaSerBase {
   nombre: string;
-  tipo: "MP" | "PV";
+  tipo: TipoProducto;
   seProduce: boolean;
   esConsignacion: boolean;
   esAnclaDeAdicional: boolean;
@@ -54,7 +61,7 @@ export interface AdmisionParaSerBase {
   opciones: readonly OpcionAdmitidaParaSerBase[];
 }
 
-const ofrecidas = (a: AdmisionParaSerBase) => a.opciones.filter((o) => o.activa && o.admitida);
+const ofrecidas = (a: AdmisionParaSerBase) => a.opciones.filter(opcionOfrecida);
 const vigente = (a: AdmisionParaSerBase) => a.activa && a.grupo.activo;
 const esGrupoDePrecio = (a: AdmisionParaSerBase) => vigente(a) && a.grupo.tipo === "MEDIDA" && a.modoPrecio === "ABSOLUTO";
 const conPrecioFinal = (o: OpcionAdmitidaParaSerBase) => o.precioAbsoluto !== null && Number.isFinite(o.precioAbsoluto) && o.precioAbsoluto >= IMPORTE_MINIMO;

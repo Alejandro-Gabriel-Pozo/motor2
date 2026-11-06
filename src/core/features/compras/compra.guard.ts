@@ -2,7 +2,7 @@ import { validarCantidad, type UnidadDeCantidad } from "@/core/datos/cantidad";
 import { validarImporte } from "@/core/datos/importe";
 import { leerNumeroDeComprobanteDeCompra } from "@/core/datos/numero-comprobante";
 import { validarNroFactura } from "@/core/datos/nro-factura";
-import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import type { CabeceraVista, ComandoAnularCompra, ComandoCorregirCompra, CorreccionCompraInput, DatosLineaCompra, LineaCompraValidada } from "./compra.schema";
 
@@ -79,9 +79,6 @@ export function mensajeReferenciaProveedorObligatoria(nombreDelProducto: string)
 /** Mismo texto que usaba la Server Action cuando la operación no existe en esta sucursal (anular y corregir). */
 export const MENSAJE_OPERACION_NO_ENCONTRADA = "No se encontró esa operación en esta sucursal.";
 
-/** Mismo texto que usaba `anularCompra` para una clave I3 que no es un UUID. */
-const MENSAJE_CLAVE_REINTENTO_INVALIDA = "Clave de reintento inválida.";
-
 /** Anular una compra exige la clave de reintento (I3): sin ella un doble toque podría anular dos veces. */
 const MENSAJE_CLAVE_REINTENTO_FALTANTE = "Falta la clave de reintento: recargá la pantalla.";
 
@@ -96,7 +93,7 @@ const MENSAJE_CLAVE_REINTENTO_FALTANTE = "Falta la clave de reintento: recargá 
 export function guardComandoAnularCompra(entrada: unknown): ResultadoDato<ComandoAnularCompra> {
   const { operacionId, claveIdempotencia } = (entrada ?? {}) as { operacionId?: unknown; claveIdempotencia?: unknown };
   if (claveIdempotencia === undefined || claveIdempotencia === null || claveIdempotencia === "") return rechazar("vacio", MENSAJE_CLAVE_REINTENTO_FALTANTE);
-  if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", MENSAJE_CLAVE_REINTENTO_INVALIDA);
+  if (!esClaveIdempotenciaValida(claveIdempotencia)) return rechazar("formato", MENSAJE_CLAVE_DE_REINTENTO_INVALIDA);
   if (typeof operacionId !== "string") return rechazar("formato", MENSAJE_OPERACION_NO_ENCONTRADA);
   return aceptar({ operacionId, claveIdempotencia });
 }
