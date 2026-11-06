@@ -18,7 +18,7 @@
 
 ## 2. Escalera de diseño, niveles 1 a 5
 
-**Nivel 1, propósito.** Que todo dato declare su flujo, paso y para qué, y que toda deuda tenga vencimiento. CONFIRMADA. No se paga deuda ahora; las 168 cuentan como vencidas: CONFIRMADA. Re-fecharlas: PROPUESTA.
+**Nivel 1, propósito.** Que todo dato declare su flujo, paso y para qué, y que toda deuda tenga vencimiento. CONFIRMADA. No se paga deuda ahora; las 168 cuentan como vencidas: CONFIRMADA. Re-fecharlas con el tope de 60 días de G1b, renovable con motivo y aprobación: CONFIRMADA (dueño, 2026-11-06). **Intención del dueño: atender TODA la deuda** («60 días, aunque la idea es atender toda deuda»): el vencimiento no es para postergar sino para forzar el orden de atención; el orden de las etapas de pago se propone por riesgo de negocio (dinero, permisos, visibilidad, stock) y lo aprueba el dueño: PROPUESTA.
 
 **Nivel 2, actores.** El dueño nombra los flujos de cada módulo y aprueba fechas y renovaciones (único responsable válido hoy: «dueño»): CONFIRMADA. El código lo escribe Sonnet (regla del 2026-11-04): CONFIRMADA. El CI «Gate (requerido)» es el árbitro: CONFIRMADA.
 
@@ -103,5 +103,5 @@ Antes de E1, anotar el conteo de tests de `npx vitest run` en main. Después de 
 
 ## 7. Preguntas abiertas y no verificado
 - **PENDIENTE (dueño):** qué flujos tiene cada módulo, empezando por la cadena hasta la carta. ¿Alcanzan «producto vendible», «opción de venta», «promo de carta» y «cuenta del salón»?
-- **PENDIENTE (dueño, para E4):** ¿las 168 se re-fechan con el tope de 60 días de G1b (propuesta) o con plazos más largos por hito?
+- **CONFIRMADA (dueño, 2026-11-06), para E4:** las 168 se re-fechan con el tope de 60 días de G1b, renovable con motivo y aprobación. La intención de fondo es atender toda la deuda, no solo fecharla.
 - **NO VERIFICADO:** los conteos del inventario (31 modelos, 139 columnas, 46 declaradas, 19 de deuda, 74 ciegas); que la Fase 6 esté cerrada; que el lector del esquema distinga el valor por defecto; si leer `nombreEnTicket` en reportes es la reimpresión (F2) o un uso nuevo; que no haya lectores por SQL crudo.
