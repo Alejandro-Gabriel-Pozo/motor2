@@ -234,10 +234,17 @@ export async function agregarItemsCasoDeUso(
         if (armada.linea) lineaPorClave.set(c.claveComponente, armada.linea);
       }
       // Un componente de un cupo de entradas pesa con el precio de lista de SU entrada (por `claveComponente`: con su configuración); uno de sección, con el de siempre.
-      const componentes = validacion.componentes.map((c) => ({
-        ...c,
-        precioCarta: c.entradaId !== undefined && c.claveComponente !== undefined ? (precioCartaPorClave.get(c.claveComponente) ?? 0) : (def.precioCartaPorProducto.get(c.productoId) ?? 0),
-      }));
+      // Si la clave de un componente de entradas no está en el mapa de precios, el plato pesaría $0 en el reparto: se rechaza sin escribir nada (nunca un cero silencioso).
+      const componentes: ((typeof validacion.componentes)[number] & { precioCarta: number })[] = [];
+      for (const c of validacion.componentes) {
+        if (c.entradaId !== undefined && c.claveComponente !== undefined) {
+          const precioDeLista = precioCartaPorClave.get(c.claveComponente);
+          if (precioDeLista === undefined) return fracaso("PROMO_INVALIDA", `«${def.titulo}»: no se encontró el precio de lista de uno de los platos elegidos; actualizá la carta y volvé a armar la promo.`);
+          componentes.push({ ...c, precioCarta: precioDeLista });
+        } else {
+          componentes.push({ ...c, precioCarta: def.precioCartaPorProducto.get(c.productoId) ?? 0 });
+        }
+      }
       const prorrateo = prorratearPrecioPromo(def.precio, componentes);
       if (!prorrateo.ok) return fracaso("PROMO_INVALIDA", `«${def.titulo}»: ${prorrateo.mensaje}`);
       // GO-2b (v1): un componente DE SECCIÓN no lleva opciones. Si su producto tiene un grupo obligatorio, no se puede armar en la promo; con grupos opcionales entra sin opciones. GO-3b: un
