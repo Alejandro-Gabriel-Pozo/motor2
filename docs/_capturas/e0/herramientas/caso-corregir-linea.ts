@@ -62,7 +62,7 @@ const CONFIG = {
   await dialogo.waitFor();
   await foto(page, `${c.prefijo}-1-dialogo-abierto`);
   toques += 1;
-  await dialogo.getByRole("radio", { name: new RegExp(c.linea) }).check();
+  await dialogo.locator("label", { hasText: c.linea }).click(); // la persona toca la tarjeta entera
   await foto(page, `${c.prefijo}-2-linea-elegida`);
   campos += 1;
   await dialogo.getByLabel("Motivo (obligatorio)").fill(c.motivo);
@@ -70,10 +70,13 @@ const CONFIG = {
   toques += 1;
   await dialogo.getByRole("button", { name: "Corregir e imprimir" }).click();
   await page.getByText(/Ticket N\.º .* emitida/).first().waitFor();
-  await page.waitForLoadState("networkidle");
-  // (e) SIN recargar: la fila de la cuenta tiene que mostrar ya el ejemplar B y el total nuevo
-  await foto(page, `${c.prefijo}-4-despues-sin-recargar`);
+  // (e) SIN recargar: se mide cuánto tarda la fila de la cuenta en mostrar el ejemplar B y el total nuevo
+  const t0 = Date.now();
   const fila = page.locator("[data-cuenta-cerrada]").first();
+  await fila.getByText(/N\.º \d+-B/).waitFor();
+  console.log(`[refresco] la fila mostró el ejemplar B ${Date.now() - t0} ms después del aviso, sin recargar`);
+  await page.waitForLoadState("networkidle");
+  await foto(page, `${c.prefijo}-4-despues-sin-recargar`);
   console.log(`[fila sin recargar] ${(await fila.innerText()).replace(/\s+/g, " ")}`);
   await page.goto(urlPuesto);
   await page.getByRole("heading", { name: "Cuentas cerradas" }).waitFor();
