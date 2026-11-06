@@ -1,3 +1,4 @@
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "../../src/core/carta/genero-e-item-agrupado";
 import { randomUUID } from "node:crypto";
 import type { Browser } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
@@ -157,6 +158,7 @@ test("un rol que solo VE la carta ve secciones, contenido y promos en /carta com
 });
 
 test("un rol que solo VE la carta ve los ítems agrupados y sus opciones en /carta/agrupados como texto, sin campos ni botones", async ({ browser, baseURL, sucursalId }) => {
+  test.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GENERO_E_ITEM_AGRUPADO_VISIBLE = false en src/core/carta/genero-e-item-agrupado.ts): la pantalla /carta/agrupados responde «no existe»");
   const carta = await crearCarta(sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, false);
   try {
@@ -202,13 +204,15 @@ test("un rol CON editar de la carta ve los formularios y las altas en las dos pa
     await expect(seccion.getByRole("button", { name: `Apagar «${carta.seccion.nombre}»` })).toBeVisible();
     await expect(main.locator("[data-solo-lectura]")).toHaveCount(0);
 
-    await page.goto("/carta/agrupados");
-    await expect(main.getByRole("heading", { name: "Nuevo ítem agrupado" })).toBeVisible();
-    const item = main.locator(`[data-item-agrupado="${carta.item.nombre}"]`);
-    await item.locator("summary").click();
-    await expect(item.getByRole("button", { name: `Quitar «${carta.agrupado.nombre}»` })).toBeVisible();
-    await expect(item.getByRole("button", { name: `Apagar «${carta.item.nombre}»` })).toBeVisible();
-    await expect(main.locator("[data-solo-lectura]")).toHaveCount(0);
+    if (GENERO_E_ITEM_AGRUPADO_VISIBLE) {
+      await page.goto("/carta/agrupados");
+      await expect(main.getByRole("heading", { name: "Nuevo ítem agrupado" })).toBeVisible();
+      const item = main.locator(`[data-item-agrupado="${carta.item.nombre}"]`);
+      await item.locator("summary").click();
+      await expect(item.getByRole("button", { name: `Quitar «${carta.agrupado.nombre}»` })).toBeVisible();
+      await expect(item.getByRole("button", { name: `Apagar «${carta.item.nombre}»` })).toBeVisible();
+      await expect(main.locator("[data-solo-lectura]")).toHaveCount(0);
+    }
   } finally {
     await limpiar();
     await carta.limpiar();

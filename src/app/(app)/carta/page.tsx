@@ -14,7 +14,7 @@ import { actualizarVisibleEnCarta, confirmarNombreEnCarta } from "@/server/actio
 import { actualizarActivaSeccionCarta } from "@/server/actions/carta/secciones";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
-import { PESTANAS_DE_CARTA, primeraPantallaVisible } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, PESTANAS_DE_CARTA, primeraPantallaVisible } from "@/core/carta/public";
 import { formatearCantidad } from "@/core/pos/public";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
@@ -52,7 +52,7 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
 
   // DEC-24: `/carta` es la entrada «Carta» del menú (pestañas Hoy · Secciones y géneros · Ítems agrupados): se abre con el «Ver» de ALGUNA de sus pestañas (las mismas claves del ítem del menú). Quien no ve
   // la carta (`carta_ver`) pero sí otra pestaña —el encargado que solo agota opciones— va directo a la primera que puede abrir.
-  const gate = await requierePermisoVerDeAlguna(ctx.usuarioId, ctx.sucursalId, ["carta_ver", "opcion_apagar_en_sucursal", "carta_items_agrupados"], ctx.db);
+  const gate = await requierePermisoVerDeAlguna(ctx.usuarioId, ctx.sucursalId, ["carta_ver", "opcion_apagar_en_sucursal", ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? (["carta_items_agrupados"] as const) : [])], ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
   if (!gate.visibles.has("carta_ver")) {
     const otra = primeraPantallaVisible(PESTANAS_DE_CARTA, gate.visibles);

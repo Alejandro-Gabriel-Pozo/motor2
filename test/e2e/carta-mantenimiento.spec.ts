@@ -1,3 +1,4 @@
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "../../src/core/carta/genero-e-item-agrupado";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
@@ -151,13 +152,13 @@ async function recorrer(page: Page, d: Awaited<ReturnType<typeof sembrar>>, anch
 
   // ---------- Pestañas de la entrada «Carta» (DEC-24: reemplazan las puertas Mantenimiento / Parametrización) ----------
   const pestanas = page.getByRole("navigation", { name: "Carta", exact: true });
-  await expect(pestanas.getByRole("link")).toHaveText(["Hoy", "Secciones y géneros", "Ítems agrupados"]);
+  await expect(pestanas.getByRole("link")).toHaveText(GENERO_E_ITEM_AGRUPADO_VISIBLE ? ["Hoy", "Secciones y géneros", "Ítems agrupados"] : ["Hoy", "Secciones"]);
   await expect(pestanas.getByRole("link", { name: "Hoy" })).toHaveAttribute("aria-current", "page");
   if (celular) await expectObjetivosTactiles(pestanas.getByRole("link"), "pestañas de Carta");
-  await pestanas.getByRole("link", { name: "Secciones y géneros" }).click();
+  await pestanas.getByRole("link", { name: GENERO_E_ITEM_AGRUPADO_VISIBLE ? "Secciones y géneros" : "Secciones", exact: true }).click();
   // Con `next dev` la primera visita compila la pantalla: se le da más margen que el de una aserción.
   await expect(page).toHaveURL(/\/carta\/parametrizacion\/secciones$/, { timeout: 30_000 });
-  await expect(page.getByRole("navigation", { name: "Carta", exact: true }).getByRole("link", { name: "Secciones y géneros" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "Carta", exact: true }).getByRole("link", { name: GENERO_E_ITEM_AGRUPADO_VISIBLE ? "Secciones y géneros" : "Secciones", exact: true })).toHaveAttribute("aria-current", "page");
   await expectSinDesborde(page, `Secciones y géneros ${ancho} px`);
   await capturar(page, `carta-mant-secciones-${ancho}`);
   expect((await new AxeBuilder({ page }).analyze()).violations, `Secciones y géneros a ${ancho} px`).toEqual([]);

@@ -23,3 +23,13 @@ export const GENERO_E_ITEM_AGRUPADO_VISIBLE: boolean = false;
 
 /** Lo que responde el servidor a una escritura de géneros o ítems agrupados con el interruptor apagado. */
 export const MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO = "Los géneros y los ítems agrupados de la carta están apagados por ahora: se resuelven con las opciones de venta.";
+
+/** Las claves de permiso de las pantallas ocultas. Siguen en el catálogo y en la base (no se borra nada); con el interruptor apagado no se ofrecen en la matriz. */
+export const CLAVES_DE_PERMISO_DE_GENERO_Y_AGRUPADO: readonly string[] = ["carta_generos", "carta_items_agrupados"];
+
+/**
+ * ¿La clave de permiso se oculta de la matriz? `visible` es el interruptor: quien llama le pasa `GENERO_E_ITEM_AGRUPADO_VISIBLE` (sin valor por defecto a propósito, como en `menu-del-dia.ts`). Pura.
+ */
+export function claveOcultaDeLaMatriz(clave: string, visible: boolean): boolean {
+  return !visible && CLAVES_DE_PERMISO_DE_GENERO_Y_AGRUPADO.includes(clave);
+}

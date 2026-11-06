@@ -1,3 +1,4 @@
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "../../src/core/carta/genero-e-item-agrupado";
 import { test, expect } from "./fixtures/auth";
 import { capturar } from "./fixtures/movil";
 import { limpiarLineaDeBasePrecioYCarta, restosDeLaLineaDeBase, sembrarLineaDeBasePrecioYCarta } from "./fixtures/siembra-precio-y-carta";
@@ -45,7 +46,7 @@ const PANTALLAS_CON_SESION: readonly Pantalla[] = [
   { nombre: "administracion-usuarios", ruta: "/administracion/usuarios" },
   { nombre: "carta", ruta: "/carta", oscuro: true },
   { nombre: "carta-parametrizacion-secciones", ruta: "/carta/parametrizacion/secciones" },
-  { nombre: "carta-parametrizacion-generos", ruta: "/carta/parametrizacion/generos" },
+  ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? [{ nombre: "carta-parametrizacion-generos", ruta: "/carta/parametrizacion/generos" }] : []),
   { nombre: "mesas", ruta: "/mesas" },
 ];
 

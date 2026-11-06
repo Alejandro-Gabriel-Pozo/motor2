@@ -11,7 +11,7 @@ import { FormConResultado } from "@/components/form-con-resultado";
 import { AvisoSoloLectura, Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { FilaDeCarta } from "@/components/fila-de-carta";
 import { EnlaceInterno } from "@/components/enlace-interno";
-import { PESTANAS_DE_CARTA } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, PESTANAS_DE_CARTA } from "@/core/carta/public";
 import { EncabezadoDeCarta } from "../../encabezado-de-carta";
 import estilos from "../../carta-mant.module.css";
 import { ContenidoDelProducto, type UbicacionEnCarta } from "@/components/carta/contenido-del-producto";
@@ -91,9 +91,11 @@ export default async function SeccionesDeCartaPage() {
       <div className={estilos.contenido}>
         <div className={estilos.pad}>
           {/* DEC-24: la pestaña «Secciones y géneros» reúne dos pantallas; esta lleva a la otra. */}
-          <EnlaceInterno href="/carta/parametrizacion/generos" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
-            Géneros (carpetas del selector del POS) ›
-          </EnlaceInterno>
+          {GENERO_E_ITEM_AGRUPADO_VISIBLE && (
+            <EnlaceInterno href="/carta/parametrizacion/generos" className={`${estilos.boton} ${estilos.botonSuave} ${estilos.volver}`}>
+              Géneros (carpetas del selector del POS) ›
+            </EnlaceInterno>
+          )}
           {!(puedeEditarSecciones || puedeEditarContenido || puedeDescuento) && <AvisoSoloLectura />}
           <OrdenarSecciones
             secciones={datos.secciones.map((x) => ({ id: x.id, nombre: x.nombre, activa: x.activa, orden: x.orden }))}

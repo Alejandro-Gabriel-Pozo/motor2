@@ -189,9 +189,9 @@ describe("guardianes: una dimensión nueva sin declarar hace fallar", () => {
     "server/actions/carta/casos-de-uso/quitar-opcion-item-agrupado-carta.ts": "por-la-accion",
     "server/persistencia/carta/generos.ts": "por-la-accion",
     "server/persistencia/carta/items-agrupados.ts": "por-la-accion",
-    // Etapa 2 (PR2): las pantallas de administración y su consulta.
-    "server/consultas/carta/admin.ts": "pantalla-etapa-2",
-    "server/consultas/carta/mantenimiento.ts": "pantalla-etapa-2",
+    // Las consultas de las pantallas de administración (etapa 2): sin género ni agrupados.
+    "server/consultas/carta/admin.ts": "aplica",
+    "server/consultas/carta/mantenimiento.ts": "aplica",
     // Sin efecto, a propósito: valida el género de un contenido (lo llama `guardar-contenido-carta-producto.ts` SOLO con el interruptor encendido) y copiar la carta de otra sucursal
     // lleva lo que existe tal cual (los géneros y agrupados ocultos viajan, para que al encender vuelvan completos); el alcance de sucursal es un documento.
     "server/actions/carta/generos-compartido.ts": "sin-efecto",

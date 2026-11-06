@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "@/core/carta/public";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
@@ -28,6 +30,8 @@ const refrescarSiOk = (r: ResultadoAccion) => {
  * entrar pide «Ver» de `carta_ver`; los formularios se dibujan solo con «Editar» de `carta_generos` (cortesía de la interfaz: la acción vuelve a exigirlo).
  */
 export default async function GenerosDeCartaPage() {
+  // Interruptor de género e ítem agrupado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`, decisión del dueño 2026-11-06): apagado, la pantalla responde «no existe» (404) para todos, antes de leer nada.
+  if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) notFound();
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.

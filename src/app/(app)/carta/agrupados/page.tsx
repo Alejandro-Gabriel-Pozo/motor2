@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "@/core/carta/public";
 import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { PESTANAS_DE_CARTA } from "@/core/carta/public";
 import { FilaDeCarta } from "@/components/fila-de-carta";
@@ -55,6 +57,8 @@ type OpcionGenero = { id: string; nombre: string; activo: boolean };
 type UbicacionEnCarta = { secciones: { id: string; nombre: string; activa: boolean }[]; cantidadPorSeccion: Record<string, number>; generos: OpcionGenero[] };
 
 export default async function ItemsAgrupadosPage() {
+  // Interruptor de género e ítem agrupado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`, decisión del dueño 2026-11-06): apagado, la pantalla responde «no existe» (404) para todos, antes de leer nada.
+  if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) notFound();
   const ctx = await obtenerContextoUsuario();
   if (!ctx) return irAlLogin();
   // S-28 (I-3, B31): cupo de lecturas por usuario (el mismo de las Server Actions de lectura), antes del gate y de la consulta.

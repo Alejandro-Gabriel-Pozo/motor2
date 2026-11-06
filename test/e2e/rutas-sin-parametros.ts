@@ -1,3 +1,4 @@
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "../../src/core/carta/genero-e-item-agrupado";
 import { MENU_DEL_DIA_VISIBLE } from "../../src/core/carta/menu-del-dia";
 
 /**
@@ -16,11 +17,12 @@ export const RUTAS_SIN_PARAMETROS = [
   "/administracion/sucursales",
   "/administracion/usuarios",
   "/carta",
-  "/carta/agrupados",
+  // Género e ítem agrupado solo mientras su interruptor esté encendido (`GENERO_E_ITEM_AGRUPADO_VISIBLE`, decisión del dueño 2026-11-06): apagado, esas pantallas responden «no existe».
+  ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? ["/carta/agrupados"] : []),
   // CARTA-MANT: la puerta «Parametrización» de la carta y sus pantallas.
   "/carta/parametrizacion",
   "/carta/parametrizacion/apariencia",
-  "/carta/parametrizacion/generos",
+  ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? ["/carta/parametrizacion/generos"] : []),
   "/carta/parametrizacion/promociones",
   "/carta/parametrizacion/secciones",
   "/carta/portal",

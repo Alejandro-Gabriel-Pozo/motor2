@@ -1,6 +1,7 @@
 "use server";
 
 import { guardComandoGuardarPermisos, type CambioDeMatriz } from "@/core/features/permisos/matriz.guard";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, claveOcultaDeLaMatriz } from "@/core/carta/public";
 import { claveEnCatalogo } from "@/core/permisos/acciones";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conEdicionDePermisos } from "../con-permiso";
@@ -15,7 +16,8 @@ export async function listarMatrizPermisos() {
     ctx.db.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     ctx.db.permisoRol.findMany(),
   ]);
-  return { acciones: acciones.filter((a) => claveEnCatalogo(a.clave)), roles, permisos };
+  // Género e ítem agrupado ocultos (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): sus claves siguen en el catálogo y la base, pero no se ofrecen en la matriz.
+  return { acciones: acciones.filter((a) => claveEnCatalogo(a.clave) && !claveOcultaDeLaMatriz(a.clave, GENERO_E_ITEM_AGRUPADO_VISIBLE)), roles, permisos };
 }
 
 /** Un cambio de la matriz (lo que la persona vio y lo que quiere). Vive en `core/features/permisos/matriz.guard.ts` (lo usa también el caso de uso). */

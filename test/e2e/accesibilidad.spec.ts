@@ -1105,6 +1105,7 @@ testAutenticado("carta: sin violaciones de axe, con formularios abiertos y «Fue
 });
 
 testAutenticado("carta/agrupados: sin violaciones de axe, con un ítem abierto, el aviso ámbar de precios distintos y los selects", async ({ paginaAutenticada: page, sucursalId }) => {
+  testAutenticado.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GENERO_E_ITEM_AGRUPADO_VISIBLE = false en src/core/carta/genero-e-item-agrupado.ts): la pantalla responde «no existe»");
   // docs/plan-agrupacion-items-carta-2026-09-24.md, M7. Un ítem agrupado con dos opciones de distinto precio (el drift posterior de D5,
   // sembrado directo: la acción de agregar lo bloquearía) dibuja el aviso ámbar; se abre su <details> para exponer el formulario del ítem,
   // las opciones (orden y quitar) y el select "Agregar producto" (hay un PV suelto disponible para listar).

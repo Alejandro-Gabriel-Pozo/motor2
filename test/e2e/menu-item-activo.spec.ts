@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/auth";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "../../src/core/carta/genero-e-item-agrupado";
 
 /**
  * El menú resalta UN solo ítem: el de la pantalla abierta. Antes quedaban dos (el ítem y el que era prefijo de su ruta) en
@@ -7,7 +8,7 @@ import { test, expect } from "./fixtures/auth";
 const CASOS = [
   // DEC-24: Carta tiene tres entradas; sus pestañas resaltan la entrada (Opciones agotadas, aunque su URL empiece con /movimientos, resalta «Carta»).
   { ruta: "/carta", nombre: "Carta" },
-  { ruta: "/carta/agrupados", nombre: "Carta" },
+  ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? [{ ruta: "/carta/agrupados", nombre: "Carta" }] : []),
   { ruta: "/movimientos/opciones-agotadas", nombre: "Carta" },
   { ruta: "/carta/parametrizacion/promociones", nombre: "Promociones" },
   { ruta: "/carta/tema", nombre: "Apariencia y publicación" },

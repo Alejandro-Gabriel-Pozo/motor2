@@ -1,5 +1,6 @@
 import type { AccionClave } from "@/core/permisos/acciones";
 import type { PanelNav } from "@/core/navegacion/panel";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "./genero-e-item-agrupado";
 import { MENU_DEL_DIA_VISIBLE } from "./menu-del-dia";
 
 /**
@@ -34,6 +35,9 @@ const RUTA_TABLERO_VIEJO = "/carta/parametrizacion";
 /** La pestaña «Secciones y géneros» (a donde redirige el tablero viejo). */
 export const RUTA_SECCIONES = "/carta/parametrizacion/secciones";
 
+const PANTALLA_GENEROS: PantallaDeCarta = { href: "/carta/parametrizacion/generos", texto: "Géneros", accion: "carta_ver", panel: "sucursal" };
+const PESTANA_AGRUPADOS: PestanaDeCarta = { texto: "Ítems agrupados", pantallas: [{ href: "/carta/agrupados", texto: "Ítems agrupados", accion: "carta_items_agrupados", panel: "sucursal" }] };
+
 /** Las pestañas de «Carta». La primera pantalla de «Hoy» es la entrada del menú. */
 export const PESTANAS_DE_CARTA: readonly PestanaDeCarta[] = [
   {
@@ -44,13 +48,14 @@ export const PESTANAS_DE_CARTA: readonly PestanaDeCarta[] = [
     ],
   },
   {
-    texto: "Secciones y géneros",
+    // Género e ítem agrupado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): apagado, la pestaña es solo «Secciones» y no hay pestaña de agrupados.
+    texto: GENERO_E_ITEM_AGRUPADO_VISIBLE ? "Secciones y géneros" : "Secciones",
     pantallas: [
       { href: RUTA_SECCIONES, texto: "Secciones de la carta", accion: "carta_ver", panel: "sucursal" },
-      { href: "/carta/parametrizacion/generos", texto: "Géneros", accion: "carta_ver", panel: "sucursal" },
+      ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? [PANTALLA_GENEROS] : []),
     ],
   },
-  { texto: "Ítems agrupados", pantallas: [{ href: "/carta/agrupados", texto: "Ítems agrupados", accion: "carta_items_agrupados", panel: "sucursal" }] },
+  ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? [PESTANA_AGRUPADOS] : []),
 ];
 
 const PESTANA_MENU_DEL_DIA: PestanaDeCarta = {

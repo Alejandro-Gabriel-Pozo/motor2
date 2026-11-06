@@ -2,7 +2,7 @@ import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { whereDisponibleEn, type EstadoEnLaCarta } from "@/core/catalogo/public";
-import { WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos, esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, type SeccionCartaAdmin, type ProductoCartaAdmin, type GeneroCartaAdmin, type SucursalConCartaPropia, type DatosAdminCarta, type OpcionItemAgrupadoAdmin, type DatosAdminItemsAgrupados, type SucursalPortalAdmin, type TemaAdmin, type PortalEmpresaAdmin } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos, esClavePortal, esClaveTema, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, type SeccionCartaAdmin, type ProductoCartaAdmin, type GeneroCartaAdmin, type SucursalConCartaPropia, type DatosAdminCarta, type OpcionItemAgrupadoAdmin, type DatosAdminItemsAgrupados, type SucursalPortalAdmin, type TemaAdmin, type PortalEmpresaAdmin } from "@/core/carta/public";
 import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCartaConDiagnostico } from "@/server/lecturas/carta/menu";
 import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
@@ -19,7 +19,7 @@ async function seccionesConCantidad(sucursalId: string, db: Db): Promise<Seccion
       _count: {
         select: {
           // Mismo criterio que la carta: un PV agrupado no sale suelto (D3), aunque tenga contenido visible. Cuenta solo la carta PROPIA de la sucursal.
-          contenidos: { where: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, producto: { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } } } },
+          contenidos: { where: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? { producto: { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } } } : {}) } },
           agrupados: { where: { ...whereCartaDeSucursal(sucursalId), activo: true } },
         },
       },
@@ -34,12 +34,14 @@ async function seccionesConCantidad(sucursalId: string, db: Db): Promise<Seccion
     imagenUrl: s.imagenUrl,
     orden: s.orden,
     activa: s.activa,
-    cantidadItems: s._count.contenidos + s._count.agrupados,
+    // Apagado el interruptor, la carta ignora los agrupados: ninguno cuenta.
+    cantidadItems: s._count.contenidos + (GENERO_E_ITEM_AGRUPADO_VISIBLE ? s._count.agrupados : 0),
   }));
 }
 
 /** Todos los géneros (docs/plan-genero-carta-2026-09-26.md), activos primero, orden, nombre — reusado por las dos pantallas. */
 async function generosOrdenados(sucursalId: string, db: Db): Promise<GeneroCartaAdmin[]> {
+  if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) return [];
   const generos = await db.generoCarta.findMany({ where: whereCartaDeSucursal(sucursalId), orderBy: [{ activo: "desc" }, { orden: "asc" }, { nombre: "asc" }] });
   return generos.map((g) => ({ id: g.id, nombre: g.nombre, orden: g.orden, activo: g.activo }));
 }
@@ -196,8 +198,8 @@ export async function cargarAdminCarta(sucursalId: string, db: Db, ahora: Date, 
         generoCartaId: c.generoCartaId,
         nombreEnCarta: c.nombreEnCarta,
       } : null,
-      agrupadoEn: p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre ?? null,
-      generoCarta: c?.generoCarta?.activo ? c.generoCarta.nombre : null,
+      agrupadoEn: GENERO_E_ITEM_AGRUPADO_VISIBLE ? (p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre ?? null) : null,
+      generoCarta: GENERO_E_ITEM_AGRUPADO_VISIBLE && c?.generoCarta?.activo ? c.generoCarta.nombre : null,
     };
   });
 
@@ -408,7 +410,7 @@ export async function estadoDelProductoEnLaCarta(db: Db, sucursalId: string, pro
     },
   });
   if (!p) return "no-disponible";
-  const agrupado = p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta;
+  const agrupado = GENERO_E_ITEM_AGRUPADO_VISIBLE ? p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta : undefined;
   if (agrupado) return !agrupado.activo ? "oculto" : agrupado.seccionCarta.activa ? "agrupado" : "sin-seccion";
   const contenido = p.contenidosCarta[0];
   if (!contenido) return "fuera";

@@ -1,6 +1,7 @@
 import "server-only";
 import { whereDisponibleEn } from "@/core/catalogo/public";
 import {
+  GENERO_E_ITEM_AGRUPADO_VISIBLE,
   opcionesParaLaCarta,
   organizarCartaParaMantener,
   precioDeCarta,
@@ -62,7 +63,7 @@ export async function cargarCartaParaMantener(db: Db, sucursalId: string): Promi
       ...(esBaseConfigurable(p.modoDeVenta) ? { seVendePorOpcion: true } : {}),
       disponibleAca: disponibles.get(p.id) === true,
       esAnclaDeAdicional: p.opcionQueRespalda !== null,
-      agrupadoEn: p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre ?? null,
+      agrupadoEn: GENERO_E_ITEM_AGRUPADO_VISIBLE ? (p.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre ?? null) : null,
       contenido: c ? { visibleEnCarta: c.visibleEnCarta, seccionCartaId: c.seccionCartaId, orden: c.orden } : null,
     };
   });
@@ -111,8 +112,9 @@ export interface ResumenDeParametrizacion {
 export async function resumirParametrizacionDeCarta(db: Db, sucursalId: string): Promise<ResumenDeParametrizacion> {
   const [secciones, generos, agrupados, promosActivas, sucursal] = await Promise.all([
     db.seccionCarta.findMany({ select: { nombre: true, activa: true }, orderBy: [{ orden: "asc" }, { nombre: "asc" }] }),
-    db.generoCarta.count({ where: { ...whereCartaDeSucursal(sucursalId), activo: true } }),
-    db.itemAgrupadoCarta.count({ where: { ...whereCartaDeSucursal(sucursalId), activo: true } }),
+    // Apagado el interruptor (`GENERO_E_ITEM_AGRUPADO_VISIBLE`) no se cuentan: la carta los ignora.
+    GENERO_E_ITEM_AGRUPADO_VISIBLE ? db.generoCarta.count({ where: { ...whereCartaDeSucursal(sucursalId), activo: true } }) : Promise.resolve(0),
+    GENERO_E_ITEM_AGRUPADO_VISIBLE ? db.itemAgrupadoCarta.count({ where: { ...whereCartaDeSucursal(sucursalId), activo: true } }) : Promise.resolve(0),
     db.promoCarta.count({ where: wherePromoOfrecidaEn(sucursalId, "salon") }),
     db.sucursal.findUnique({ where: { id: sucursalId }, select: { publica: { select: { publicada: true } } } }),
   ]);

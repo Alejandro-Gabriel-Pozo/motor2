@@ -3,7 +3,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
 import { Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
-import { DESCUENTO_POR_PRODUCTO_VISIBLE, type ProductoCartaAdmin } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, DESCUENTO_POR_PRODUCTO_VISIBLE, type ProductoCartaAdmin } from "@/core/carta/public";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
 import { guardarDescuentoProducto } from "@/server/actions/carta/descuento-producto";
 import { quitarProductoDeLaCarta } from "@/server/actions/carta/mantenimiento";
@@ -150,7 +150,7 @@ export function ContenidoDelProducto({
               guardado={p.contenido && { seccionCartaId: p.contenido.seccionCartaId, orden: p.contenido.orden }}
               etiquetaSeccion="Sección de carta (obligatoria si se muestra)"
             />
-            <SelectGenero generos={ubicacion.generos} guardado={p.contenido?.generoCartaId ?? null} />
+            {GENERO_E_ITEM_AGRUPADO_VISIBLE && <SelectGenero generos={ubicacion.generos} guardado={p.contenido?.generoCartaId ?? null} />}
             {mostrarNombreArriba !== undefined && (
               <div className="sm:col-span-2" data-mostrar-nombre-arriba={p.nombre}>
                 {/* Dos opciones excluyentes: el valor viaja como «si» o «no» y la acción solo lo lee si el formulario lo mostró. */}
@@ -243,7 +243,7 @@ function ContenidoSoloLectura({ producto: p, ubicacion, mostrarNombreArriba }: {
       <Dato etiqueta="Se muestra en la carta">{c.visibleEnCarta ? "Sí" : "No"}</Dato>
       <Dato etiqueta="Especial (★)">{c.especial ? "Sí" : "No"}</Dato>
       <Dato etiqueta="Sección de carta">{seccion && `${seccion.nombre}${seccion.activa ? "" : " (apagada)"}`}</Dato>
-      <Dato etiqueta="Género">{genero && `${genero.nombre}${genero.activo ? "" : " (apagado)"}`}</Dato>
+      {GENERO_E_ITEM_AGRUPADO_VISIBLE && <Dato etiqueta="Género">{genero && `${genero.nombre}${genero.activo ? "" : " (apagado)"}`}</Dato>}
       <Dato etiqueta="Orden">{c.orden}</Dato>
       <Dato etiqueta="Nombre en la carta">{c.nombreEnCarta ?? "(usa el nombre del producto)"}</Dato>
       {mostrarNombreArriba !== undefined && <Dato etiqueta="Nombre del producto arriba">{mostrarNombreArriba ? "Sí" : "No: cada opción sale sola"}</Dato>}
