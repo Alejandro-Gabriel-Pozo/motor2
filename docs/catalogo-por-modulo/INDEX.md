@@ -6,7 +6,7 @@ Diseño de partida: `docs/diseno-flujos-y-pasos-2026-11-06.md` (rama `alegp/dise
 
 | # | Módulo | Archivo | Estado | Flujos declarados | Columnas | Duplicados | Fuentes de verdad múltiples | Deuda sin vencimiento |
 |---|---|---|---|---|---|---|---|---|
-| 1 | catalogo-y-opciones | `catalogo-y-opciones.md` | esperando | — | — | — | — | — |
+| 1 | catalogo-y-opciones | `catalogo-y-opciones.md` | recibido (rama `alegp/catalogo-catalogo-y-opciones`) | 5 (F1 producto de catálogo, F2 producto vendible, …) | 14 modelos en alcance; 9 columnas sin declarar | precio lista vs. local escrito a mano en ~5 lugares (verificado por muestreo) | precio en BASE_CONFIGURABLE (5 capas); «cómo se compra» en 3 tablas | 9 ítems, ninguno con fecha |
 | 2 | carta-y-promos | `carta-y-promos.md` | esperando | — | — | — | — | — |
 | 3 | salon-pos-ticket | `salon-pos-ticket.md` | esperando | — | — | — | — | — |
 | 4 | stock-traspasos-consignacion | `stock-traspasos-consignacion.md` | esperando | — | — | — | — | — |
