@@ -10,6 +10,7 @@ import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { IconoDeAccion } from "@/components/iconos";
 import { claseDeBoton } from "@/ui/primitivas/boton";
+import { etiquetaDeOferta } from "@/core/features/catalogo/oferta-de-proveedor";
 import { AvisoSoloLecturaDeCatalogo } from "@/components/catalogo/aviso-solo-lectura";
 
 /**
@@ -62,6 +63,7 @@ export default async function ProveedoresPage() {
             <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Código</th>
               <th>Nombre</th>
+              <th>Ofrece</th>
               <th>Contacto</th>
               <th>Activo</th>
               <th><span className="sr-only">Acciones</span></th>
@@ -76,6 +78,7 @@ export default async function ProveedoresPage() {
                     {p.nombre}
                   </Link>
                 </td>
+                <td>{etiquetaDeOferta(p)}</td>
                 <td>{p.contacto ?? "—"}</td>
                 <td>{p.activo ? "Sí" : "No"}</td>
                 <td className="py-2">
@@ -103,7 +106,7 @@ export default async function ProveedoresPage() {
             ))}
             {!proveedores.length && (
               <tr>
-                <td className="py-2 text-tinta-tenue" colSpan={5}>
+                <td className="py-2 text-tinta-tenue" colSpan={6}>
                   Sin proveedores.
                 </td>
               </tr>

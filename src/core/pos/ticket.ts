@@ -170,12 +170,15 @@ export function configuracionDeItemLeido(conOpciones: boolean, i: {
   lineaPadreId?: string | null;
   anulaAItemId?: string | null;
   producto: { nombre: string; modoDeVenta: string };
+  /** El «Nombre en la carta» congelado al vender (`CuentaItem.nombreEnTicket`); `null`/ausente = el nombre interno. */
+  nombreEnTicket?: string | null;
   opcionesElegidas?: readonly (FotoParaElNombre & { versionDeOpcionId: string })[];
 }): ConfiguracionDeItemTicket {
   if (!conOpciones) return {};
   const fotos = i.opcionesElegidas ?? [];
   const propias = fotos.some((f) => f.tipoGrupo !== "ADICIONAL");
-  const { nombre, detalle } = nombreDeLineaConfigurada(i.producto.nombre, esBaseConfigurable(i.producto.modoDeVenta), fotos);
+  // El ticket del CLIENTE no imprime lo que la carta oculta (congelado al vender); lo que se cobra nunca está oculto. La comanda arma su nombre aparte, con todas las fotos.
+  const { nombre, detalle } = nombreDeLineaConfigurada(i.nombreEnTicket ?? i.producto.nombre, esBaseConfigurable(i.producto.modoDeVenta), fotos.filter((f) => !f.ocultaEnCarta));
   const versionDeAdicional = fotos.find((f) => f.tipoGrupo === "ADICIONAL")?.versionDeOpcionId ?? null;
   return {
     ...(i.id !== undefined ? { id: i.id } : {}),
@@ -277,6 +280,7 @@ export interface CuentaCerradaLeida {
   items: {
     productoId: string;
     producto: { nombre: string; modoDeVenta: string };
+    nombreEnTicket?: string | null;
     cantidad: number;
     precioUnitario: number;
     precioCartaUnitario: number | null;
@@ -305,7 +309,7 @@ export function armarTicketsDeCuentas(cuentas: readonly CuentaCerradaLeida[], ah
     const conOpciones = cuentaConOpciones(cuenta.items);
     const items: ItemConVenta[] = cuenta.items.map((i) => ({
       productoId: i.productoId,
-      productoNombre: i.producto.nombre,
+      productoNombre: i.nombreEnTicket ?? i.producto.nombre,
       cantidad: i.cantidad,
       precioUnitario: i.precioUnitario,
       precioCartaUnitario: i.precioCartaUnitario,

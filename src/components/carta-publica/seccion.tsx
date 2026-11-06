@@ -1,6 +1,8 @@
-import type { AclaracionCartaPublica, EstiloCarta, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
-import { formatearPrecioCarta, partirLaAclaracion, recargoEnPesos, textoDeLaAclaracion } from "@/core/carta/public";
+import { Fragment } from "react";
+import type { AclaracionCartaPublica, BloqueDeOpciones, EstiloCarta, ItemCartaPublico, ParteDeIncluye, PromoCartaPublica, SeccionCartaPublica } from "@/core/carta/public";
+import { cantidadDeLaParte, conectorDeLaParte, detalleDelBloque, formatearPrecioCarta, incluyeDeLaSeccion, partirLaAclaracion, recargoEnPesos, textoDeIncluye, textoDeLaAclaracion, textoDeLasOpciones, nombresDeLosPlatosDelItem, textoDeVaCon, textoDelTitulo, restoDeLaParte, vaConDelBloque } from "@/core/carta/public";
 import { TagIcon } from "./iconos";
+import { ListaDeLaSeccion } from "./lista-de-la-seccion";
 
 /**
  * ADR-006, Fase 3: banda + ítems + promos de UNA sección de la carta — desenredado de `carta-view.tsx` (el `BandaContenido`
@@ -25,6 +27,17 @@ export function Seccion({
 }) {
   const img = estilo.imagenSeccion;
   const c = estilo.colores;
+  // Carta «B»: qué incluye cada plato y los bloques del pie de ESTA sección (la misma función en la carta pública, la impresa, la vista previa y «Va a mostrar»).
+  const incluye = incluyeDeLaSeccion(seccion.items.map((i) => i.presentacion?.aclaraciones ?? []));
+  // Invitación «5+2» (E2): lo que dice cada bloque mientras está iluminado («Va con: …»), con los nombres de los platos que lo incluyen.
+  // Una base con la medida oculta se dibuja como varios platos (uno por renglón): «Va con» los nombra con lo que el cliente LEE, nunca con el nombre interno de la base (`nombresDeLosPlatosDelItem`).
+  const platosConNombre = seccion.items.map((i, k) => ({ nombre: i.nombre, nombres: nombresDeLosPlatosDelItem(i), partes: incluye.platos[k] ?? [] }));
+  // Un grupo que pertenece a UN SOLO plato de la sección va DEBAJO de ese plato (decisión del dueño, 2026-11-05: «los sabores quedaron al pie y son del jugo»), con cualquier cantidad de opciones y sin
+  // «Con los platos que incluyen…» ni «Lo incluyen: …» (no hay otros platos). Los que usan varios platos siguen al pie, como antes.
+  // (Un ítem que la carta dibuja como VARIOS platos —una base con la medida oculta, un renglón por opción— no es «un solo plato»: su grupo sigue al pie, como antes.)
+  const esPropio = (b: BloqueDeOpciones) => b.platos.length === 1 && nombresDeLosPlatosDelItem(seccion.items[b.platos[0]!]!).length === 1;
+  const compartidos = incluye.bloques.filter((b) => !esPropio(b));
+  const vaCon = compartidos.map((b) => textoDeVaCon(vaConDelBloque(b, platosConNombre)));
   return (
     <div className={`carta-pagina flex flex-col${soloPantalla ? " carta-solo-pantalla" : ""}`}>
       <div
@@ -57,15 +70,23 @@ export function Seccion({
         </div>
       </div>
 
-      <ul data-carta-scroll className="carta-divisor min-h-0 flex-1 divide-y overflow-y-auto px-6 sm:px-10">
+      {/* `tabIndex={0}`: la lista tiene scroll propio y con la carta «B» (platos + bloques al pie) casi siempre desborda; sin foco, quien navega con teclado no podría llegar a los bloques (axe: scrollable-region-focusable). */}
+      <ListaDeLaSeccion nombre={seccion.titulo ?? seccion.nombre} className="carta-divisor min-h-0 flex-1 divide-y overflow-y-auto px-6 sm:px-10">
         {/* S-25: las `key` son la posición, no el id de la fila: React serializa la `key` de cada elemento en el payload RSC que baja al navegador. */}
-        {seccion.items.map((item, i) => (
-          <ItemFila key={`item-${i}`} item={item} estilo={estilo} />
-        ))}
+        {seccion.items.map((item, i) => {
+          const propios = incluye.bloques.filter((b) => esPropio(b) && b.platos[0] === i);
+          return (
+            <Fragment key={`item-${i}`}>
+              <ItemFila item={item} estilo={estilo} incluye={(incluye.platos[i] ?? []).filter((x) => !propios.some((b) => b.titulo === x.grupo))} posicion={i} sinLineaAbajo={propios.length > 0} />
+              <BloquesDeOpciones bloques={propios} propio />
+            </Fragment>
+          );
+        })}
         {seccion.promos.map((promo, i) => (
           <PromoFila key={`promo-${i}`} promo={promo} />
         ))}
-      </ul>
+        <BloquesDeOpciones bloques={compartidos} vaCon={vaCon} />
+      </ListaDeLaSeccion>
     </div>
   );
 }
@@ -158,12 +179,116 @@ function DescripcionYTags({ item, colores }: { item: ItemCartaPublico; colores: 
 }
 
 /**
+ * Carta «B» (decisión del dueño, 2026-11-04): lo que se elige SIN COSTO, dicho por el plato: «Incluye guarnición y salsa» (o, si admite solo algunas opciones del bloque, «Incluye guarnición: puré o
+ * ensalada»). Rol Aclaración, con el color de la descripción del tema (o la tinta suave del tema): nunca un color fijo. El texto lo arma `textoDeIncluye` (`incluye-en-carta.ts`), el mismo de «Va a mostrar».
+ */
+function LineaIncluye({ partes, colores, interactiva = false }: { partes: readonly ParteDeIncluye[]; colores: ColoresDelItem; interactiva?: boolean }) {
+  const texto = textoDeIncluye(partes);
+  if (texto === null) return null;
+  const estilo = { color: colores.descripcion ?? "var(--carta-ink-soft)", overflowWrap: "anywhere" } as const;
+  if (!interactiva) {
+    return (
+      <p data-incluye data-rol="aclaracion" className="carta-rol-aclaracion mt-1" style={estilo}>
+        {texto}
+      </p>
+    );
+  }
+  // Invitación «5+2» (E2): la palabra del grupo es un botón real que baja al bloque de ese grupo (`lista-de-la-seccion.tsx`), y la línea termina en «elegí abajo ↓» (la flecha rebota dos veces y queda quieta; con
+  // «movimiento reducido» no se anima). En papel no hay interacción: el cue no sale (`carta-solo-pantalla`) y la palabra pierde el subrayado.
+  const palabras = partes.map((x) => `${cantidadDeLaParte(x)}${x.palabraEnLinea}`);
+  return (
+    <p data-incluye data-rol="aclaracion" className="carta-rol-aclaracion mt-1" style={estilo}>
+      {"Incluye "}
+      {partes.map((x, k) => (
+        <span key={`parte-${k}`}>
+          {conectorDeLaParte(palabras, k)}
+          {cantidadDeLaParte(x)}
+          <button type="button" data-ir-al-bloque={x.grupo} aria-label={`Ir a las opciones de ${x.palabra}`} className="carta-palabra-tocable">
+            {x.palabraEnLinea}
+          </button>
+          {restoDeLaParte(x)}
+        </span>
+      ))}
+      <span className="carta-solo-pantalla" data-cue-abajo>
+        {" · ver opciones "}
+        <span aria-hidden="true" className="carta-flecha">
+          ↓
+        </span>
+      </span>
+    </p>
+  );
+}
+
+/**
+ * Los BLOQUES al pie de la sección (carta «B»), uno por grupo libre que usan sus platos: el título en Etiqueta («GUARNICIÓN · elegís 1»), las opciones en texto separadas por « · » (sin chips ni botones),
+ * y a qué platos va («Con los platos que dicen «Incluye guarnición»»). Son filas de la misma lista que los platos (`li`), así se desplazan con ellos y la línea divisoria los separa. Todo con los tokens
+ * del tema (`--carta-ink`, `--carta-ink-soft`): ni un color fijo. Lo comparte la carta pública, la impresa y la vista previa del producto.
+ */
+export function BloquesDeOpciones({ bloques, vaCon, propio = false }: { bloques: readonly BloqueDeOpciones[]; vaCon?: readonly (string | null)[]; propio?: boolean }) {
+  // Con `vaCon` (la carta, no la vista previa del administrador) el bloque es el destino de la invitación «5+2»: recibe el foco al llegar, sabe qué platos lo incluyen y dice «Va con: …» mientras está iluminado.
+  const destino = vaCon !== undefined;
+  return bloques.map((b, i) => (
+    <li key={`bloque-${i}`} data-bloque-de-opciones={b.titulo} {...(destino ? { "data-platos": b.platos.join(","), tabIndex: -1 } : {})} className="py-3" style={propio ? { borderTopWidth: 0 } : undefined}>
+      <h4 data-rol="etiqueta" className="carta-rol-etiqueta uppercase tracking-wider" style={{ color: "var(--carta-ink-soft)", overflowWrap: "anywhere" }}>
+        {textoDelTitulo(b)}
+      </h4>
+      <p data-rol="eleccion" className="carta-rol-eleccion mt-1" style={{ color: "var(--carta-ink)", overflowWrap: "anywhere" }}>
+        {textoDeLasOpciones(b)}
+      </p>
+      {!propio && (
+        <p data-rol="aclaracion" className="carta-rol-aclaracion mt-1" style={{ color: "var(--carta-ink-soft)", overflowWrap: "anywhere" }}>
+          {b.paraLosPlatos}
+        </p>
+      )}
+      <DetalleDelBloque bloque={b} />
+      {destino && vaCon[i] && (
+        <p data-va-con data-rol="aclaracion" className="carta-rol-aclaracion mt-1" style={{ color: "var(--carta-ink-soft)", overflowWrap: "anywhere" }}>
+          {vaCon[i]}
+        </p>
+      )}
+    </li>
+  ));
+}
+
+/**
+ * Carta «B», E3: las descripciones de las opciones de UN bloque. En pantalla, un desplegable nativo (`details`/`summary`: anda sin JavaScript y se maneja con teclado y lector de pantalla) con el rótulo genérico
+ * «Ver detalle ▾» (nunca el nombre del grupo: un grupo de tamaños no «lleva» nada), que solo existe si alguna opción tiene descripción; los nombres de las opciones siguen siempre a la vista arriba. En papel
+ * las descripciones van SIEMPRE visibles: el desplegable es solo de pantalla (`carta-solo-pantalla`) y una lista igual, solo de papel (`carta-solo-papel`), la reemplaza. Texto plano: React lo escapa.
+ */
+function DetalleDelBloque({ bloque }: { bloque: BloqueDeOpciones }) {
+  const detalle = detalleDelBloque(bloque);
+  if (detalle.length === 0) return null;
+  const filas = detalle.map((d, i) => (
+    <p key={`detalle-${i}`} data-rol="aclaracion" className="carta-rol-aclaracion mt-1" style={{ color: "var(--carta-ink-soft)", overflowWrap: "anywhere" }}>
+      <span data-rol="aclaracion-rotulo" className="carta-rol-aclaracion-rotulo" style={{ color: "var(--carta-ink)" }}>
+        {d.nombre}
+      </span>
+      {` · ${d.descripcion}`}
+    </p>
+  ));
+  return (
+    <>
+      <details data-detalle-del-bloque className="carta-solo-pantalla mt-1">
+        <summary data-rol="aclaracion" className="carta-rol-aclaracion min-h-[44px] cursor-pointer py-2" style={{ color: "var(--carta-ink)" }}>
+          Qué lleva cada opción ▾
+        </summary>
+        {filas}
+      </details>
+      <div data-detalle-en-papel className="carta-solo-papel">
+        {filas}
+      </div>
+    </>
+  );
+}
+
+/**
  * Lo que se lee DEBAJO del plato (DEC-07), un GRUPO por aclaración en el orden del producto, en «P1»: la etiqueta del grupo (rol Aclaración 600, sin dos puntos); lo que NO cuesta en UNA línea
  * («ensalada · papas fritas · puré» si todo es gratis; «Sin cargo: solo · cortado» cuando el grupo mezcla gratis y con recargo; rol Elección); y cada opción que SÍ suma o resta en su PROPIA fila, con el recargo
  * a la derecha («+$200»; rol Opción). La partición es la de `partirLaAclaracion`, la misma que usa la vista previa de la administración.
  */
 function GruposDeOpciones({ aclaraciones, colores }: { aclaraciones: readonly AclaracionCartaPublica[]; colores: ColoresDelItem }) {
-  return aclaraciones.map((a, i) => {
+  // Carta «B»: lo que se elige sin costo (`eleccion`) ya no se dibuja acá: lo dice la línea «Incluye …» del plato y el bloque al pie de la sección. Quedan los grupos con precio.
+  return aclaraciones.filter((a) => a.tipo === "extras").map((a, i) => {
     const { libres, conRecargo } = partirLaAclaracion(a);
     return (
       <div key={`aclaracion-${i}`} data-aclaracion={a.rotulo} className="mt-3">
@@ -195,10 +320,16 @@ function GruposDeOpciones({ aclaraciones, colores }: { aclaraciones: readonly Ac
 }
 
 /**
+ * Una aclaración del respaldo de `ItemComoAntes`: lo que llega en `opcionesSinCosto` no trae los límites del grupo (`cantidadMinima`/`cantidadMaxima`), así que no puede ir al bloque de la carta «B»
+ * (que dice «elegís N») y sigue como línea de texto.
+ */
+type AclaracionDelRespaldo = { tipo: "eleccion"; rotulo: string; opciones: readonly string[] } | Extract<AclaracionCartaPublica, { tipo: "extras" }>;
+
+/**
  * La línea ÚNICA de siempre, «Guarnición: ensalada, papas fritas o puré»: el rótulo en Aclaración 600 y el resto en Aclaración (`textoDeLaAclaracion`). Queda SOLO en `ItemComoAntes`: lo que la
  * carta no puede leer exacto sale como antes (no se le arma la jerarquía de grupos y filas).
  */
-function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly AclaracionCartaPublica[]; color: string | undefined }) {
+function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly AclaracionDelRespaldo[]; color: string | undefined }) {
   return aclaraciones.map((a, i) => (
     <p key={`aclaracion-${i}`} data-aclaracion={a.rotulo} data-rol="aclaracion" className="carta-rol-aclaracion mt-0.5" style={{ color, overflowWrap: "anywhere" }}>
       <span data-rol="aclaracion-rotulo" className="carta-rol-aclaracion-rotulo" style={{ color: "var(--carta-ink)" }}>{`${a.rotulo}:`}</span> {textoDeLaAclaracion(a)}
@@ -218,22 +349,26 @@ function Aclaraciones({ aclaraciones, color }: { aclaraciones: readonly Aclaraci
  * UNA sola jerarquía (decisión del dueño, 2026-10-29): el nombre del producto es el título (rol Producto, con su línea fina) y las filas son sus opciones (rol Opción); solo la base oculta, que no tiene
  * título, dibuja sus opciones como platos (rol Producto).
  */
-export function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: EstiloCarta }) {
+export function ItemFila({ item, estilo, incluye, posicion, sinLineaAbajo = false }: { item: ItemCartaPublico; estilo: EstiloCarta; incluye: readonly ParteDeIncluye[]; posicion?: number; sinLineaAbajo?: boolean }) {
+  // Con opciones propias debajo (2026-11-05) la línea divisoria no va entre el plato y SU bloque: se lee como parte del mismo plato.
+  // (Con `style` y no con una clase de ancho: el contrato `borde-propio-de-carta` vigila las clases `border-*` con ancho, y esto no dibuja un borde, lo quita.)
+  const sinLinea = sinLineaAbajo ? ({ borderBottomWidth: 0 } as const) : undefined;
   const colores = coloresDelItem(item.especial, estilo.valores);
   const p = item.presentacion;
   if (p?.forma === "simple") {
     return (
-      <li data-forma="simple" className="py-2.5">
+      <li data-forma="simple" data-plato={posicion} className="py-2.5" style={sinLinea}>
         <div className="flex items-baseline justify-between gap-3">
           <NombreDelItem item={item} colores={colores} />
           <PrecioDelRenglon item={item} color={colores.precio} />
         </div>
         <DescripcionYTags item={item} colores={colores} />
+        <LineaIncluye partes={incluye} colores={colores} interactiva={posicion !== undefined} />
         <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
       </li>
     );
   }
-  if (p?.forma === "tabla" && p.titulo) return <TablaDelItem item={item} p={p} colores={colores} />;
+  if (p?.forma === "tabla" && p.titulo) return <TablaDelItem item={item} p={p} colores={colores} incluye={incluye} posicion={posicion} sinLinea={sinLinea} />;
   if (p?.forma === "tabla") {
     // Una BASE de un eje, OCULTA (DEC-11, el default: las pizzas): cada opción se lee como un plato, con su nombre completo (h3, rol Producto) y su precio (rol Precio): «Pizza muzzarella $18.000».
     // El producto base no se nombra (su descripción, sus tags y su ★ no salen: lo avisa el diagnóstico interno); la lista lleva su nombre para el lector de pantalla.
@@ -242,15 +377,15 @@ export function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: Est
       return f.rotulo !== null && typeof precio === "number" ? [{ rotulo: f.rotulo, precio }] : [];
     });
     return (
-      <li data-forma="lista-sin-encabezado">
-        <FilasComoPlatos nombre={item.nombre} filas={platos} colores={colores} />
-        {(item.descuentoPorcentaje !== undefined || p.aclaraciones.length > 0) && (
+      <li data-forma="lista-sin-encabezado" data-plato={posicion} style={sinLinea}>
+        <FilasComoPlatos nombre={item.nombre} filas={platos} colores={colores} incluye={incluye} interactiva={posicion !== undefined} />
+        {(item.descuentoPorcentaje !== undefined || p.aclaraciones.some((a) => a.tipo === "extras")) && (
           <div className="pb-2.5">
             {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
-            {platos.length >= 2 && p.aclaraciones.length > 0 ? (
-              // Con 2 o más platos arriba, las aclaraciones valen para TODOS (no solo para el último): una línea más gruesa las separa de las filas y el rótulo «En todos» lo dice (decisión del dueño, 2026-11-03).
-              <div data-en-todos className="carta-borde border-t-2 pt-1.5">
-                <p className="carta-rol-etiqueta uppercase tracking-wider" style={{ color: "var(--carta-ink-soft)" }}>En todos</p>
+            {platos.length >= 2 && p.aclaraciones.some((a) => a.tipo === "extras") ? (
+              // Con 2 o más platos arriba, los grupos con precio valen para TODOS (no solo para el último): una línea más gruesa los separa de las filas. El rótulo «En todos» se retiró con la carta «B»
+              // (2026-11-04): lo que se elige sin costo ya lo dice cada plato («Incluye …»).
+              <div className="carta-borde border-t-2 pt-1.5">
                 <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
               </div>
             ) : (
@@ -264,18 +399,24 @@ export function ItemFila({ item, estilo }: { item: ItemCartaPublico; estilo: Est
   return <ItemComoAntes item={item} colores={colores} />;
 }
 
-/** Las filas de un eje como PLATOS (rol Producto en un h3, precio en rol Precio): «Pizza muzzarella $18.000». Una lista (`ul`) con el nombre del producto base para el lector de pantalla. */
-function FilasComoPlatos({ nombre, filas, colores }: { nombre: string; filas: readonly { rotulo: string; precio: number }[]; colores: ColoresDelItem }) {
+/**
+ * Las filas de un eje como PLATOS (rol Producto en un h3, precio en rol Precio): «Pizza muzzarella $18.000». Una lista (`ul`) con el nombre del producto base para el lector de pantalla. Cada plato dice
+ * lo que incluye (carta «B»): todos los de la base comparten las mismas elecciones sin costo, y la línea se repite bajo cada uno.
+ */
+function FilasComoPlatos({ nombre, filas, colores, incluye, interactiva }: { nombre: string; filas: readonly { rotulo: string; precio: number }[]; colores: ColoresDelItem; incluye: readonly ParteDeIncluye[]; interactiva: boolean }) {
   return (
     <ul aria-label={nombre} data-filas-carta className="carta-divisor flex flex-col divide-y">
       {filas.map((f, i) => (
-        <li key={`fila-${i}`} className="flex items-baseline justify-between gap-3 py-2.5">
-          <h3 data-rol="producto" className="carta-rol-producto min-w-0 flex-1 carta-titulo" style={{ color: colores.nombre, overflowWrap: "anywhere" }}>
-            {f.rotulo}
-          </h3>
-          <span data-rol="precio" className="carta-rol-precio shrink-0 carta-titulo" style={{ color: colores.precio }}>
-            {formatearPrecioCarta(f.precio)}
-          </span>
+        <li key={`fila-${i}`} className="py-2.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 data-rol="producto" className="carta-rol-producto min-w-0 flex-1 carta-titulo" style={{ color: colores.nombre, overflowWrap: "anywhere" }}>
+              {f.rotulo}
+            </h3>
+            <span data-rol="precio" className="carta-rol-precio shrink-0 carta-titulo" style={{ color: colores.precio }}>
+              {formatearPrecioCarta(f.precio)}
+            </span>
+          </div>
+          <LineaIncluye partes={incluye} colores={colores} interactiva={interactiva} />
         </li>
       ))}
     </ul>
@@ -326,9 +467,9 @@ function CeldaDePrecio({ precio, color }: { precio: number | null; color: string
  * derecha (`carta-col-precio`, `globals.css`): un Chico, un Mediano y un Grande quedan en la misma vertical aunque sean de productos distintos. Sin columnas con encabezado, una sola de precios.
  * Debajo, la descripción, los tags y las aclaraciones.
  */
-function TablaDelItem({ item, p, colores }: { item: ItemCartaPublico; p: Extract<NonNullable<ItemCartaPublico["presentacion"]>, { forma: "tabla" }>; colores: ColoresDelItem }) {
+function TablaDelItem({ item, p, colores, incluye, posicion, sinLinea }: { sinLinea?: { readonly borderBottomWidth: 0 }; item: ItemCartaPublico; p: Extract<NonNullable<ItemCartaPublico["presentacion"]>, { forma: "tabla" }>; colores: ColoresDelItem; incluye: readonly ParteDeIncluye[]; posicion?: number }) {
   return (
-    <li data-forma="tabla" className="carta-tabla pb-2.5 pt-3.5">
+    <li data-forma="tabla" data-plato={posicion} className="carta-tabla pb-2.5 pt-3.5" style={sinLinea}>
       <div className="carta-linea-fina flex items-baseline justify-between gap-3 pb-1.5">
         <NombreDelItem item={item} colores={colores} />
         {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
@@ -374,6 +515,7 @@ function TablaDelItem({ item, p, colores }: { item: ItemCartaPublico; p: Extract
         </tbody>
       </table>
       <DescripcionYTags item={item} colores={colores} />
+      <LineaIncluye partes={incluye} colores={colores} interactiva={posicion !== undefined} />
       <GruposDeOpciones aclaraciones={p.aclaraciones} colores={colores} />
     </li>
   );
@@ -415,13 +557,13 @@ function ItemComoAntes({ item, colores }: { item: ItemCartaPublico; colores: Col
  * «Adicionales: con leche +$400, medialuna +$600»; lo que no cambia nada, una aclaración por grupo con sus opciones («Guarnición: papas fritas o puré»). Solo presentación: los precios vienen del
  * servidor.
  */
-function respaldoDeLasOpciones(item: ItemCartaPublico): { filas: { nombre: string; filas: { rotulo: string; precio: number }[] }[]; aclaraciones: AclaracionCartaPublica[] } {
+function respaldoDeLasOpciones(item: ItemCartaPublico): { filas: { nombre: string; filas: { rotulo: string; precio: number }[] }[]; aclaraciones: AclaracionDelRespaldo[] } {
   const filas = (item.grupos ?? [])
     .map((g) => ({ nombre: g.nombre, filas: g.opciones.flatMap((o) => (o.tipo === "final" ? [{ rotulo: o.nombre, precio: o.precio }] : [])) }))
     .filter((g) => g.filas.length > 0);
   const recargos = (item.grupos ?? []).flatMap((g) => g.opciones.flatMap((o) => (o.tipo === "recargo" ? [{ nombre: o.nombre, recargo: o.recargo }] : [])));
-  const aclaraciones: AclaracionCartaPublica[] = [
-    ...(item.opcionesSinCosto ?? []).filter((g) => g.opciones.length > 0).map((g): AclaracionCartaPublica => ({ tipo: "eleccion", rotulo: g.grupo, opciones: g.opciones })),
+  const aclaraciones: AclaracionDelRespaldo[] = [
+    ...(item.opcionesSinCosto ?? []).filter((g) => g.opciones.length > 0).map((g): AclaracionDelRespaldo => ({ tipo: "eleccion", rotulo: g.grupo, opciones: g.opciones })),
     ...(recargos.length > 0 ? [{ tipo: "extras" as const, rotulo: "Adicionales", opciones: recargos }] : []),
   ];
   return { filas, aclaraciones };

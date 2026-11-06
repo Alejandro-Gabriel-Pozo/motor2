@@ -10,7 +10,7 @@ import { actualizarOpcionDeGrupo } from "@/server/persistencia/catalogo/opciones
 import { cargarOpcionEnTx, opcionConElMismoNombre } from "./opciones-de-venta-en-tx";
 
 /**
- * Caso de uso «editar una opción de un grupo» (GO-2a): el nombre, con la VERSIÓN que vio la pantalla (el orden va por `reordenar-opciones-de-grupo.ts` y archivar o restaurar por `archivar-opciones.ts`: editar NO toca esas columnas). Nunca cambia el grupo, el producto ancla ni la
+ * Caso de uso «editar una opción de un grupo» (GO-2a): el nombre y, carta «B» E3, la descripción que lee solo la carta (ausente = queda; `null` = se vacía), con la VERSIÓN que vio la pantalla (el orden va por `reordenar-opciones-de-grupo.ts` y archivar o restaurar por `archivar-opciones.ts`: editar NO toca esas columnas). Nunca cambia el grupo, el producto ancla ni la
  * «ninguna» (la app no tiene UPDATE de esas columnas). Lo que cobra y consume la opción no se edita: se le agrega una versión (`agregar-version-de-opcion.ts`).
  *
  * Dentro de UNA transacción SERIALIZABLE: relee la opción (no está → `OPCION_NO_ENCONTRADA`; otra versión → `VERSION_DESACTUALIZADA`), el nombre único en el grupo sin distinguir
@@ -31,8 +31,11 @@ export async function editarOpcionDeGrupoCasoDeUso(
     async (tx): Promise<ResultadoEditarOpcionDeGrupo> => {
       const opcion = await cargarOpcionEnTx(tx, comando.opcionId);
       if (!opcion) return fracaso("OPCION_NO_ENCONTRADA", MENSAJE_OPCION_NO_ENCONTRADA);
+      // Carta «B», E3: ausente = la descripción queda como está; `null` = se vacía (el mismo patrón que `prefijoEnCarta` del grupo).
+      const descripcionEnCarta = comando.descripcionEnCarta === undefined ? opcion.descripcionEnCarta : comando.descripcionEnCarta;
       const cambios = cambiosPorColumna([
         { campo: "nombre", antes: opcion.nombre, despues: comando.nombre },
+        { campo: "descripcionEnCarta", antes: opcion.descripcionEnCarta, despues: descripcionEnCarta },
       ]);
       if (cambios.length === 0) return exito(`La opción «${opcion.nombre}» no tenía cambios.`, { version: opcion.version, huboCambio: false, productosAfectados: 0 });
       if (opcion.version !== comando.versionEsperada) {
@@ -44,7 +47,7 @@ export async function editarOpcionDeGrupoCasoDeUso(
         if (otra) return fracaso("NOMBRE_REPETIDO", `Ya hay una opción llamada «${otra.nombre}» en «${opcion.grupo.nombre}». Elegí otro nombre.`);
       }
 
-      const tocadas = await actualizarOpcionDeGrupo(tx, { id: opcion.id, versionEsperada: comando.versionEsperada, nombre: comando.nombre, ahora: actor.ahora });
+      const tocadas = await actualizarOpcionDeGrupo(tx, { id: opcion.id, versionEsperada: comando.versionEsperada, nombre: comando.nombre, descripcionEnCarta, ahora: actor.ahora });
       if (tocadas === 0) return fracaso("VERSION_DESACTUALIZADA", `La opción «${opcion.nombre}» cambió mientras la editabas. Recargá la pantalla y volvé a hacer el cambio.`);
 
       const descripcion = `Opción «${comando.nombre}» de «${opcion.grupo.nombre}»: edición.`;

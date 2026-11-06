@@ -12,9 +12,11 @@ import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarYAplanarEleccionPromo, type ComponentePromoElegido, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
 import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
 import { armarLineaConfigurada, type LineaConfigurada } from "@/core/pos/linea-configurada";
+import { armarConfiguracionDeEntradaAElegir } from "@/core/pos/public-servidor";
 import { validarOpcionesElegidas } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
+import { cargarNombresDeCartaParaElTicket } from "@/server/lecturas/carta/nombres-para-el-ticket";
 import { productoDisponibleEn } from "@/server/lecturas/catalogo/disponibilidad";
 import { modulosDelPosDeEmpresa, type ModulosDelPos } from "@/server/lecturas/pos/modulos-del-pos";
 import { cargarPromoCartaParaAgregar } from "@/server/lecturas/pos/promo-para-agregar";
@@ -116,6 +118,9 @@ export async function agregarItemsCasoDeUso(
       items_.flatMap((i) => (typeof i?.productoId === "string" && Array.isArray(i.opciones) ? [{ productoId: i.productoId, opcionIds: i.opciones.map((o) => o.opcionId) }] : []))
     );
 
+    // El «Nombre en la carta» de los productos del pedido (UNA lectura): se congela en la línea para el ticket del cliente (`CuentaItem.nombreEnTicket`).
+    const nombresDeCarta = await cargarNombresDeCartaParaElTicket(tx, { sucursalId: actor.sucursalId, productoIds: productoIdsDelPedido });
+
     // RECETA (ADR-033, sin receta no se vende): de cada producto del pedido (sueltos y componentes), si tiene origen de stock — receta vigente en ESTA sucursal o stock propio —, en
     // lecturas agrupadas por pedido. Es el error temprano para el mozo: el cobro lo vuelve a mirar (`armarLinea`), por si la receta se desactivó entre medio.
     const origenDeStock = await cargarOrigenDeStockParaVender(tx, { sucursalId: actor.sucursalId, productoIds: productoIdsDelPedido });
@@ -181,6 +186,7 @@ export async function agregarItemsCasoDeUso(
         cantidad: cantidad.cantidad,
         precioUnitario: aplicado.precio,
         precioCartaUnitario: aplicado.precioLista,
+        nombreEnTicket: nombresDeCarta.get(producto.id) ?? null,
         numeroEnvio: null,
         creadoPorId: actor.usuarioId,
       });
@@ -213,10 +219,24 @@ export async function agregarItemsCasoDeUso(
         return fracaso(codigo, `«${def.titulo}»: ${validacion.mensaje}`);
       }
       const entradas = def.entradas;
+      // Promo «a elegir» (ADR-032 D-6 enmendada): lo que el mozo eligió en una entrada «a elegir» se arma ACÁ, dentro de la transacción, contra las opciones permitidas efectivas que esa misma lectura devolvió
+      // (la que alimenta al selector): una opción fuera de lo permitido, un mínimo o máximo del grupo roto, una versión vieja o una configuración sin origen de stock rechazan sin escribir nada. El precio de la
+      // promo es el de siempre; la lista de cada configuración elegida solo pesa en el reparto.
+      const lineaPorClave = new Map(entradas?.lineaPorClave);
+      const precioCartaPorClave = new Map(entradas?.precioCartaPorClave);
+      for (const c of validacion.componentes) {
+        if (c.opciones === undefined || c.entradaId === undefined || c.claveComponente === undefined) continue;
+        const leida = entradas?.aElegirPorEntrada.get(c.entradaId);
+        if (!leida) return fracaso("ENTRADA_NO_DISPONIBLE", `«${def.titulo}»: esa opción ya no está disponible hoy en esta promo.`);
+        const armada = armarConfiguracionDeEntradaAElegir(leida, c.opciones);
+        if (!armada.ok) return fracaso(armada.codigo, `«${def.titulo}»: ${armada.mensaje}`);
+        precioCartaPorClave.set(c.claveComponente, armada.precioDeLista);
+        if (armada.linea) lineaPorClave.set(c.claveComponente, armada.linea);
+      }
       // Un componente de un cupo de entradas pesa con el precio de lista de SU entrada (por `claveComponente`: con su configuración); uno de sección, con el de siempre.
       const componentes = validacion.componentes.map((c) => ({
         ...c,
-        precioCarta: c.entradaId !== undefined && c.claveComponente !== undefined ? (entradas?.precioCartaPorClave.get(c.claveComponente) ?? 0) : (def.precioCartaPorProducto.get(c.productoId) ?? 0),
+        precioCarta: c.entradaId !== undefined && c.claveComponente !== undefined ? (precioCartaPorClave.get(c.claveComponente) ?? 0) : (def.precioCartaPorProducto.get(c.productoId) ?? 0),
       }));
       const prorrateo = prorratearPrecioPromo(def.precio, componentes);
       if (!prorrateo.ok) return fracaso("PROMO_INVALIDA", `«${def.titulo}»: ${prorrateo.mensaje}`);
@@ -238,7 +258,7 @@ export async function agregarItemsCasoDeUso(
         }));
         if (!alicuotas.ok) return fracaso(alicuotas.codigo, `«${def.titulo}»: ${alicuotas.mensaje}`);
       }
-      promosValidadas.push({ titulo: def.titulo, promoCartaId: def.id, precio: def.precio, componentes, filas: prorrateo.filas, lineaPorClave: entradas?.lineaPorClave ?? new Map() });
+      promosValidadas.push({ titulo: def.titulo, promoCartaId: def.id, precio: def.precio, componentes, filas: prorrateo.filas, lineaPorClave });
     }
 
     // GO-2b: el tope de líneas, contando ahora los adicionales de las líneas configuradas (el guard no podía saber cuáles son).
@@ -266,6 +286,7 @@ export async function agregarItemsCasoDeUso(
             productoId: fila.productoId,
             cantidad: fila.cantidad,
             precioUnitario: fila.precioUnitario,
+            nombreEnTicket: nombresDeCarta.get(fila.productoId) ?? null,
             numeroEnvio: null,
             creadoPorId: actor.usuarioId,
             promoCuentaId,
@@ -278,6 +299,7 @@ export async function agregarItemsCasoDeUso(
           productoId: fila.productoId,
           cantidad: fila.cantidad,
           precioUnitario: fila.precioUnitario,
+          nombreEnTicket: nombresDeCarta.get(fila.productoId) ?? null,
           numeroEnvio: null,
           creadoPorId: actor.usuarioId,
           promoCuentaId,
@@ -299,6 +321,7 @@ export async function agregarItemsCasoDeUso(
           precioUnitario: c.precioUnitario,
           precioCartaUnitario: c.linea.precioUnitario,
           huellaOpciones: c.linea.huellaOpciones,
+          nombreEnTicket: nombresDeCarta.get(c.productoId) ?? null,
           fotos: c.linea.fotos,
           promoCuentaId: c.promoCuentaId,
         },
@@ -315,6 +338,7 @@ export async function agregarItemsCasoDeUso(
           precioUnitario: c.linea.precioUnitario,
           precioCartaUnitario: c.linea.precioCartaUnitario,
           huellaOpciones: c.linea.huellaOpciones,
+          nombreEnTicket: nombresDeCarta.get(c.productoId) ?? null,
           fotos: c.linea.fotos,
         },
         adicionales: c.linea.adicionales.map((a) => ({ productoId: a.productoId, cantidad: a.cantidad, precioUnitario: a.precioUnitario, foto: a.foto })),

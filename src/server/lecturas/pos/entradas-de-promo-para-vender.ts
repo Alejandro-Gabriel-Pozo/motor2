@@ -3,8 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { precioDeCarta } from "@/core/carta/public";
 import { whereDisponibleEn } from "@/core/catalogo/public";
 import { redondearMoneda } from "@/core/moneda";
-import { claveDeComponenteConfigurado, rechazoDeComponenteDeCombo, type ComponenteConAlicuota, type CupoDeEntradasDefinicion, type EntradaElegibleDeCupo, type LineaConfigurada } from "@/core/pos/public";
-import { armarLineaConfigurada } from "@/core/pos/public-servidor";
+import { claveDeComponenteConfigurado, configuracionMinimaDeGruposEfectivos, opcionesPermitidasEfectivas, rechazoDeComponenteDeCombo, type ComponenteConAlicuota, type CupoDeEntradasDefinicion, type EntradaElegibleDeCupo, type LineaConfigurada } from "@/core/pos/public";
+import { armarLineaConfigurada, type EntradaAElegirLeida } from "@/core/pos/public-servidor";
 import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { cargarProductosComoComponentes } from "@/server/lecturas/carta/componentes-de-promo";
@@ -21,6 +21,11 @@ import { completarPreciosDeSucursal } from "@/server/lecturas/opciones/opciones-
  *    adicionales. Un producto con un grupo obligatorio y sin configuración tampoco se arma: afuera.
  * El precio de LISTA de cada entrada (la referencia del prorrateo, D-8) es el de la sucursal (precio local si rige) compuesto con su configuración, SIN el descuento de producto (dentro de una
  * promo no aplica). Se agrupa por `claveComponente` (`claveDeComponenteConfigurado`): dos configuraciones del mismo producto son dos líneas distintas.
+ *
+ * Promo «a elegir» (`EntradaDeCupo.modoDeOpciones = 'A_ELEGIR'`, diseño 2026-11-04, ADR-032 D-6 enmendada): las opciones de la entrada son las PERMITIDAS, no una configuración fija. Es elegible hoy si el producto
+ * está disponible y quedan opciones permitidas efectivas (`opcionesPermitidasEfectivas`: las de la entrada ∩ las que el producto admite ∩ las que no están apagadas en la sucursal, sin adicionales) y
+ * existe al menos una configuración armable con precio de referencia y origen de stock (`configuracionMinimaDeGruposEfectivos`, I8). Esta lectura devuelve, por entrada, los grupos efectivos
+ * (`aElegirPorEntrada`): el selector del mozo muestra SOLO eso y el servidor (`agregarItemsCasoDeUso`) arma lo elegido contra EXACTAMENTE lo mismo (`armarConfiguracionDeEntradaAElegir`, `core/pos`, I2 e I3).
  */
 
 type Tx = Prisma.TransactionClient;
@@ -44,6 +49,8 @@ export interface EntradasDePromoParaVender {
   alicuotaPorProducto: Map<string, ComponenteConAlicuota>;
   /** Para mostrar en el POS: «Café · Mediano · Almendras» (el producto y su configuración), por entrada elegible. */
   nombrePorEntrada: Map<string, string>;
+  /** Las entradas «a elegir» elegibles hoy, por id de entrada. Su `precioCartaPorClave` es solo de referencia (la configuración mínima): el de lo que se agrega sale de lo elegido. */
+  aElegirPorEntrada: Map<string, EntradaAElegirLeida>;
 }
 
 export async function cargarEntradasDePromoParaVender(
@@ -56,7 +63,7 @@ export async function cargarEntradasDePromoParaVender(
     listaIds.length
       ? tx.entradaDeCupo.findMany({
           where: { cupoId: { in: listaIds }, activa: true },
-          select: { id: true, cupoId: true, productoId: true, claveConfiguracion: true, opciones: { select: { opcionId: true, cantidad: true }, orderBy: [{ creadoEn: "asc" }, { id: "asc" }] } },
+          select: { id: true, cupoId: true, productoId: true, claveConfiguracion: true, modoDeOpciones: true, opciones: { select: { opcionId: true, cantidad: true }, orderBy: [{ creadoEn: "asc" }, { id: "asc" }] } },
           orderBy: [{ orden: "asc" }, { creadoEn: "asc" }, { id: "asc" }],
         })
       : Promise.resolve([]),
@@ -69,8 +76,8 @@ export async function cargarEntradasDePromoParaVender(
       : Promise.resolve([]),
   ]);
   const entradas = [
-    ...deLista.map((e) => ({ id: e.id, cupoId: e.cupoId, productoId: e.productoId, claveConfiguracion: e.claveConfiguracion, opciones: e.opciones })),
-    ...delDia.map((e) => ({ id: e.id, cupoId: e.cupoId, productoId: e.productoId, claveConfiguracion: "", opciones: [] as { opcionId: string; cantidad: number }[] })),
+    ...deLista.map((e) => ({ id: e.id, cupoId: e.cupoId, productoId: e.productoId, claveConfiguracion: e.claveConfiguracion, aElegir: e.modoDeOpciones === "A_ELEGIR", opciones: e.opciones })),
+    ...delDia.map((e) => ({ id: e.id, cupoId: e.cupoId, productoId: e.productoId, claveConfiguracion: "", aElegir: false, opciones: [] as { opcionId: string; cantidad: number }[] })),
   ];
   const productoIds = [...new Set(entradas.map((e) => e.productoId))];
   const [productos, disponibles, locales] = await Promise.all([
@@ -87,13 +94,31 @@ export async function cargarEntradasDePromoParaVender(
     entradas.filter((e) => e.opciones.length > 0).map((e) => ({ productoId: e.productoId, opcionIds: e.opciones.map((o) => o.opcionId) })),
   );
 
-  const resultado: EntradasDePromoParaVender = { cupos: new Map(), precioCartaPorClave: new Map(), lineaPorClave: new Map(), alicuotaPorProducto: new Map(), nombrePorEntrada: new Map() };
+  const resultado: EntradasDePromoParaVender = { cupos: new Map(), precioCartaPorClave: new Map(), lineaPorClave: new Map(), alicuotaPorProducto: new Map(), nombrePorEntrada: new Map(), aElegirPorEntrada: new Map() };
   const elegiblesPorCupo = new Map<string, Map<string, EntradaElegibleDeCupo>>(args.cupos.map((c) => [c.id, new Map()]));
   for (const e of entradas) {
     const producto = productos.get(e.productoId);
     if (!producto || !disponible.has(producto.id)) continue;
     const precioBase = redondearMoneda(precioDeCarta(producto.precioVenta, locales.get(producto.id)));
     const grupos = opciones.get(producto.id)?.grupos ?? [];
+    if (e.aElegir) {
+      // Promo «a elegir»: lo permitido efectivo y UNA configuración mínima armable (I8). Sin eso, la entrada no se ofrece (falla cerrado).
+      const efectivos = opcionesPermitidasEfectivas(grupos, e.opciones);
+      if (!efectivos.ok) continue;
+      const minima = armarLineaConfigurada({ grupos: efectivos.grupos, elegidas: configuracionMinimaDeGruposEfectivos(efectivos.grupos), precioBase, descuentoDeProducto: null, cantidad: 1 });
+      if (!minima.ok) continue;
+      const precioDeReferencia = minima.linea?.precioUnitario ?? precioBase;
+      const queDescuentan = minima.linea !== null && minima.linea.fotos.length > 0 ? { insumos: minima.linea.insumosSinLaBase, nombres: minima.linea.fotos.map((f) => f.nombreOpcion) } : undefined;
+      if (rechazoDeComponenteDeCombo({ ...producto, precioDeReferencia, ...(queDescuentan ? { opcionesQueDescuentan: queDescuentan } : {}) }) !== null) continue;
+      // La clave es solo un marcador de la entrada: lo que se agrega lleva la de la configuración ELEGIDA (`validarYAplanarEleccionPromo`).
+      const claveComponente = `${producto.id}#@${e.id}`;
+      elegiblesPorCupo.get(e.cupoId)?.set(e.id, { entradaId: e.id, productoId: producto.id, claveComponente, aElegir: true });
+      resultado.precioCartaPorClave.set(claveComponente, precioDeReferencia);
+      resultado.alicuotaPorProducto.set(producto.id, { productoId: producto.id, nombre: producto.nombre, alicuota: producto.alicuota });
+      resultado.nombrePorEntrada.set(e.id, producto.nombre);
+      resultado.aElegirPorEntrada.set(e.id, { entradaId: e.id, productoId: producto.id, producto, precioBase, grupos: efectivos.grupos, gruposDelProducto: grupos });
+      continue;
+    }
     let precioDeLista = precioBase;
     let linea: LineaConfigurada | null = null;
     if (grupos.length > 0 || e.opciones.length > 0) {

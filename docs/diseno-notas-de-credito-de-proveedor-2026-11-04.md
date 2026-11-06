@@ -68,7 +68,7 @@ Contexto: pesos argentinos, hora argentina, varias empresas y sucursales; sin ci
 |---|---|---|---|
 | CU1 | Nota sobre factura por renglón | NC0 | PROPUESTA |
 | CU2 | Nota sobre factura «sobre el total»: línea `REPARTO_DEL_TOTAL` por renglón, proporcional a su `precioTotal` | NC0 | regla CONFIRMADA; forma PROPUESTA |
-| CU3 | Nota suelta: líneas `SIN_FACTURA` de mercadería, imputadas a una sucursal declarada; el número de la factura afectada va en el motivo | NC0 | «nota sin factura» CONFIRMADA; número en el motivo PROPUESTA |
+| CU3 | Nota suelta: líneas `SIN_FACTURA` de mercadería, imputadas a una sucursal declarada; el número de la factura afectada va en el motivo | NC0 | «nota sin factura» CONFIRMADA; número en el motivo CONFIRMADA (2026-11-04) |
 | CU4 | Anular una nota entera, con motivo; libera su número | NC0 | CONFIRMADA |
 | CU5 | Ver notas por proveedor y mes, y en cada factura «Acreditado $X · Queda $Y» | NC0 | PROPUESTA |
 | CU6 | Nota con devolución: crear o vincular la devolución; la cantidad no supera lo comprado | NC1 | regla CONFIRMADA; etapa PROPUESTA |
@@ -94,15 +94,16 @@ Contexto: pesos argentinos, hora argentina, varias empresas y sucursales; sin ci
 | N4 | Topes que **rechazan**: por renglón, por (renglón, sucursal) y por factura; una nota total es válida (llega a 0) | CONFIRMADA |
 | N5 | Número único entre las notas vigentes de (empresa, proveedor, letra, número normalizado). La letra va siempre en `letra` **y** el normalizado sale del mismo `normalizarNumeroDeComprobante` sobre el canónico; un único constructor para todos los escritores (si no, «A» + «A:1-77» y «» + «A:1-77» no chocan) | PROPUESTA (riesgo real detectado) |
 | N6 | Idempotencia I3: clave obligatoria + huella; misma clave y contenido = mismo mensaje; otro contenido = conflicto | CONFIRMADA |
-| N7 | Fecha de la nota ≥ fecha de la factura y ≤ hoy (hora argentina); cuenta en el mes de la **nota** (NC2) | ≥ factura CONFIRMADA; ≤ hoy PROPUESTA; mes PENDIENTE (pregunta 2) |
+| N7 | Fecha de la nota ≥ fecha de la factura y ≤ hoy (hora argentina); cuenta en el mes de la **nota** (NC2) | ≥ factura CONFIRMADA; ≤ hoy PROPUESTA; mes de la nota CONFIRMADA (2026-11-04, pregunta 2) |
 | N8 | No se carga nota sobre una factura anulada | CONFIRMADA |
 | N9 | No se carga nota sobre una factura con propuestas de reparto sin aceptar | PROPUESTA |
 | N10 | No se anula una factura con notas vigentes (C29, ya en código) | CONFIRMADA |
 | N11 | La nota nunca edita la factura; no mueve stock ni costo vigente; en NC0 no toca pagos | CONFIRMADA |
 | N12 | La nota suelta exige que el usuario declare la sucursal (fallo cerrado); en NC0, una sola | fallo cerrado CONFIRMADA; una sola PROPUESTA |
-| N13 | Nota sobre factura repartida: imputación por sucursal proporcional a lo que le costó a cada parte (calculada); permiso en cada sucursal con parte | PENDIENTE (pregunta 3) |
+| N13 | Nota sobre factura repartida: imputación por sucursal proporcional a lo que le costó a cada parte (calculada); permiso en cada sucursal con parte | CONFIRMADA (2026-11-04, pregunta 3: reparto automático y proporcional, con vista previa) |
 | N14 | Trazabilidad: quién/cuándo/motivo en la propia nota + `registrarCambioAuditado` en la misma transacción; nada se borra | CONFIRMADA |
 | N15 | Aislamiento por RLS de empresa; la imputación solo con alcance de escritura en su sucursal; importes con piso administrador | CONFIRMADA |
+| N16 | **Cada nota se aplica a una factura (nivel documento) y el dinero se cruza aparte (nivel conciliación).** Para conciliar, una nota siempre cancela (total o parcialmente) una factura concreta: la «factura afectada». Pero el flujo de dinero no tiene que coincidir con ese vínculo: se puede haber pagado de más la factura 124 por la nota 25 y pagar de menos la 125, descontando la nota 25 del saldo a pagar. El saldo de **cada factura** se calcula con sus propias notas (N4); el neteo entre facturas ocurre solo en el pago, en la relación N a N de `diseno-pagos-y-conciliacion-2026-11-03.md` (I1 e I10). La nota nunca se «mueve» a otra factura para que cierre el dinero. | CONFIRMADA (dueño, 2026-11-04) |
 | N16 | Aviso de posible duplicado (mismo proveedor e importe a ±7 días, en toda la empresa); no bloquea y nombra la sucursal | CONFIRMADA (2026-10-06); en NC0 PROPUESTA |
 
 **Escalera de producto:** N0 hoy (devolución suelta sin nota); N1 NC0 (nota solo dinero, anulación, lista, «acreditado / queda»; pagos y reportes netos «pendiente de completar»); N2 NC1 (con devolución vinculada y tope de cantidad); N3 NC2 (reportes netos); N4 NC3 (gastos, IVA, percepciones); N5 NC4/NC5 (aplicada en pagos o reintegrada; enganche a la compra simple).
@@ -186,10 +187,12 @@ Sobre factura: 2 × 3 × 3 × 2 × 2 × 3 = **216**; suelta: 1 × 3 × 2 × 3 = 
 
 ## 6. Preguntas al dueño (con recomendación)
 
-1. **Compra simple con nota de crédito.** Cuando el proveedor manda una nota por una compra cargada «normal» (no repartida entre sucursales), ¿alcanza con cargarla como nota suelta, escribiendo en el motivo el número de la factura que corrige, o necesitan que quede enganchada a esa compra desde el primer día? *Recomendación:* suelta con el número en el motivo; el enganche llega cuando toda compra sea documento (E3b), sin rehacer nada.
-2. **Reportes.** ¿La nota tiene que bajar el gasto en compras y la relación compras/ventas? ¿En el mes de la nota o en el de la factura (factura de octubre, nota de noviembre)? *Recomendación:* sí, en el mes de la **nota**, como el documento fiscal, en NC2. En NC0 se ve en su propia lista sin cambiar los números que ya conocen.
-3. **Factura repartida entre sucursales.** Si llega una bonificación sobre el total de una factura repartida (hotel y restaurante), ¿se reparte sola en la misma proporción o prefieren elegir a qué sucursal le toca? *Recomendación:* sola y proporcional, con vista previa antes de confirmar; quien la carga necesita permiso en cada sucursal.
-4. **Devolución con mercadería.** ¿Al cargar la nota quieren poder elegir la devolución ya registrada (o hacerla en el mismo paso) para no acreditar dos veces, o por ahora alcanza con cargarlas por separado? *Recomendación:* por separado en NC0 y vinculadas en NC1.
+1. **[CONFIRMADA 2026-11-04: sí a la recomendación] Compra simple con nota de crédito.** Cuando el proveedor manda una nota por una compra cargada «normal» (no repartida entre sucursales), ¿alcanza con cargarla como nota suelta, escribiendo en el motivo el número de la factura que corrige, o necesitan que quede enganchada a esa compra desde el primer día? *Recomendación:* suelta con el número en el motivo; el enganche llega cuando toda compra sea documento (E3b), sin rehacer nada.
+2. **[CONFIRMADA 2026-11-04] Reportes.** ¿La nota tiene que bajar el gasto en compras y la relación compras/ventas? ¿En el mes de la nota o en el de la factura (factura de octubre, nota de noviembre)? *Recomendación:* sí, en el mes de la **nota**, como el documento fiscal, en NC2. En NC0 se ve en su propia lista sin cambiar los números que ya conocen.
+3. **[CONFIRMADA 2026-11-04: sí a la recomendación] Factura repartida entre sucursales.** Si llega una bonificación sobre el total de una factura repartida (hotel y restaurante), ¿se reparte sola en la misma proporción o prefieren elegir a qué sucursal le toca? *Recomendación:* sola y proporcional, con vista previa antes de confirmar; quien la carga necesita permiso en cada sucursal.
+4. **[CONFIRMADA 2026-11-04: sí a la recomendación] Devolución con mercadería.** ¿Al cargar la nota quieren poder elegir la devolución ya registrada (o hacerla en el mismo paso) para no acreditar dos veces, o por ahora alcanza con cargarlas por separado? *Recomendación:* por separado en NC0 y vinculadas en NC1.
+
+**Consecuencia de la regla N16 sobre la pregunta 1 (aclaración del dueño, 2026-11-04):** en NC0 la nota suelta lleva el número de la factura solo como texto en el motivo. Eso alcanza para cargarla, pero **no alcanza para conciliarla**: como una nota siempre debe cancelar una factura, antes de que NC4 (nota aplicable en la conciliación) pueda usar una nota suelta hay que enganchar esa nota a su factura (NC5, o E3b si antes toda compra es documento). Dependencia declarada: **NC4 requiere NC5 para las notas sueltas**; las notas cargadas sobre una factura documento ya cumplen la regla desde NC0.
 
 ## 7. Verificación end-to-end al cerrar NC0
 

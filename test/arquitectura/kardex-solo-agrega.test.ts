@@ -275,6 +275,7 @@ const RELACIONES_HACIA_EL_HISTORIAL = [
   "movimientos",
   "devoluciones",
   "consumosQueLoSustituyen",
+  "movimientosPorUnidadCompra",
   "movimientoStockRel",
   "registrosAuditoria",
   "registroAuditoriaRel",

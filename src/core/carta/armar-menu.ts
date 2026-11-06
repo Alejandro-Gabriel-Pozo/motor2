@@ -145,6 +145,8 @@ export interface ContenidoCartaEntrada {
   orden: number;
   /** Fase 5 (DEC-11): «Mostrar el nombre arriba» de un producto base con un solo eje (`ContenidoCartaProducto.mostrarNombreArriba`). Sin la clave: apagado (la base sale oculta). */
   mostrarNombreArriba?: boolean;
+  /** «Nombre en la carta» (2026-11-04): el nombre de cara al cliente de ESTA sucursal. Sin la clave o `null`: la carta usa el nombre interno del producto (`nombreDeCarta`). */
+  nombreEnCarta?: string | null;
 }
 
 export interface ProductoCartaEntrada {
@@ -280,6 +282,15 @@ export interface MenuArmado {
  * movimientos/precio-venta.ts, port de resolverPrecioVenta_ de Catalogo.js): el Precio Local si está cargado Y habilitado, si no el
  * precio de venta global. Fijado por un test de paridad en test/carta/armar-menu.test.ts.
  */
+/**
+ * «Nombre en la carta» (pedido del dueño, 2026-11-04): el nombre con que la carta (pública, impresa, vista previa y «Va a mostrar») y el selector del mozo muestran un producto de venta en ESTA sucursal. La regla es una
+ * sola: el nombre cargado en el contenido de la carta o, si no hay (`null`, ausente o vacío), el nombre interno del producto. Pura: la usa `armarMenuCarta` y la ficha del producto.
+ */
+export function nombreDeCarta(producto: { nombre: string }, contenido: { nombreEnCarta?: string | null } | null | undefined): string {
+  const enCarta = contenido?.nombreEnCarta;
+  return enCarta !== undefined && enCarta !== null && enCarta.trim() !== "" ? enCarta : producto.nombre;
+}
+
 export function precioDeCarta(precioVenta: number, local: { precio: number; habilitado: boolean } | null | undefined): number {
   return local?.habilitado ? local.precio : precioVenta;
 }
@@ -373,11 +384,15 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
         : undefined;
     if (forma?.tipo === "sin-forma") productosSinPresentacion.push({ productoId: p.id, nombre: p.nombre, motivo: forma.motivo });
     if (forma?.tipo === "forma" && forma.columnasDeMas !== undefined) productosConMuchasColumnas.push({ productoId: p.id, nombre: p.nombre, columnas: forma.columnasDeMas });
+    // Una base con la medida OCULTA (la tabla sin título: «cada opción como un plato») no se nombra en la carta: el cliente lee los rótulos de sus renglones. Su `nombre` solo lo lee el lector de pantalla (rótulo de la
+    // lista) y es el nombre de la carta del producto o, si no tiene, el de la SECCIÓN: nunca el interno (decisión del dueño, 2026-11-04).
+    const baseOculta = forma?.tipo === "forma" && forma.presentacion.forma === "tabla" && forma.presentacion.titulo === false;
     ubicar(
       p.seccionCartaId,
       {
         productoId: p.id,
-        nombre: p.nombre,
+        // «Nombre en la carta» (2026-11-04): lo que ve el cliente; sin nombre cargado, el interno. El diagnóstico de la administración (abajo) sigue con el nombre interno.
+        nombre: baseOculta ? (textoONull(p.contenido.nombreEnCarta) ?? seccionNombre) : nombreDeCarta(p, p.contenido),
         categoria: textoONull(p.categoriaNombre) ?? seccionNombre,
         descripcion: textoONull(p.contenido.descripcion),
         ...precios,
@@ -462,9 +477,11 @@ export function armarMenuCarta(entrada: EntradaArmarMenu): MenuArmado {
   // Fase 5: lo que la administración tiene que ver de las formas (interno: nunca sale al público).
   const conForma = secciones.flatMap((s) => s.items.flatMap((i) => (i.presentacion ? [{ item: i, presentacion: i.presentacion }] : [])));
   const filasDe = (pr: PresentacionCartaV1) => (pr.forma === "tabla" ? pr.filas.length : 0);
-  const productosConMuchasFilas = conForma.filter((x) => filasDe(x.presentacion) > FILAS_SUGERIDAS_EN_CARTA).map((x) => ({ productoId: x.item.productoId, nombre: x.item.nombre, filas: filasDe(x.presentacion) }));
+  // La administración identifica el producto REAL: acá va el nombre interno, no el de la carta.
+  const nombreInterno = new Map(entrada.productos.map((p) => [p.id, p.nombre]));
+  const productosConMuchasFilas = conForma.filter((x) => filasDe(x.presentacion) > FILAS_SUGERIDAS_EN_CARTA).map((x) => ({ productoId: x.item.productoId, nombre: nombreInterno.get(x.item.productoId) ?? x.item.nombre, filas: filasDe(x.presentacion) }));
   const basesOcultas = conForma.flatMap((x) =>
-    x.presentacion.forma === "tabla" && !x.presentacion.titulo ? [{ productoId: x.item.productoId, nombre: x.item.nombre, filas: x.presentacion.filas.map((f) => f.rotulo ?? "") }] : []
+    x.presentacion.forma === "tabla" && !x.presentacion.titulo ? [{ productoId: x.item.productoId, nombre: nombreInterno.get(x.item.productoId) ?? x.item.nombre, filas: x.presentacion.filas.map((f) => f.rotulo ?? "") }] : []
   );
   const porNombre = <T extends { nombre: string }>(xs: T[]) => xs.sort((a, b) => comparar(a.nombre, b.nombre));
 

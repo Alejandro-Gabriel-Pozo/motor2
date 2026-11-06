@@ -59,19 +59,41 @@ export async function fijarActivoDeGrupoDeOpciones(tx: Tx, args: { id: string; v
 
 export async function crearOpcionDeGrupo(
   tx: Tx,
-  args: { grupoId: string; nombre: string; orden: number; esNinguna: boolean; productoAnclaId: string | null; ahora: Date }
+  args: { grupoId: string; nombre: string; orden: number; esNinguna: boolean; productoAnclaId: string | null; descripcionEnCarta?: string | null; ahora: Date }
 ): Promise<{ id: string }> {
   return tx.opcionDeGrupo.create({
-    data: { grupoId: args.grupoId, nombre: args.nombre, orden: args.orden, esNinguna: args.esNinguna, productoId: args.productoAnclaId, creadoEn: args.ahora, actualizadoEn: args.ahora },
+    data: {
+      grupoId: args.grupoId,
+      nombre: args.nombre,
+      orden: args.orden,
+      esNinguna: args.esNinguna,
+      productoId: args.productoAnclaId,
+      ...(args.descripcionEnCarta === undefined ? {} : { descripcionEnCarta: args.descripcionEnCarta }),
+      creadoEn: args.ahora,
+      actualizadoEn: args.ahora,
+    },
     select: { id: true },
   });
 }
 
-/** Devuelve cuántas filas tocó: 0 si la versión ya no es la esperada. `orden` y `activa` ausentes = esa columna no se toca (editar el nombre no las escribe; reordenar sí manda ambas). */
-export async function actualizarOpcionDeGrupo(tx: Tx, args: { id: string; versionEsperada: number; nombre: string; orden?: number; activa?: boolean; ahora: Date }): Promise<number> {
+/**
+ * Devuelve cuántas filas tocó: 0 si la versión ya no es la esperada. `orden`, `activa` y `descripcionEnCarta` ausentes = esa columna no se toca (editar el nombre no las escribe; reordenar sí manda ambas;
+ * `descripcionEnCarta: null` la vacía).
+ */
+export async function actualizarOpcionDeGrupo(
+  tx: Tx,
+  args: { id: string; versionEsperada: number; nombre: string; orden?: number; activa?: boolean; descripcionEnCarta?: string | null; ahora: Date }
+): Promise<number> {
   const { count } = await tx.opcionDeGrupo.updateMany({
     where: { id: args.id, version: args.versionEsperada },
-    data: { nombre: args.nombre, ...(args.orden === undefined ? {} : { orden: args.orden }), ...(args.activa === undefined ? {} : { activa: args.activa }), version: { increment: 1 }, actualizadoEn: args.ahora },
+    data: {
+      nombre: args.nombre,
+      ...(args.orden === undefined ? {} : { orden: args.orden }),
+      ...(args.activa === undefined ? {} : { activa: args.activa }),
+      ...(args.descripcionEnCarta === undefined ? {} : { descripcionEnCarta: args.descripcionEnCarta }),
+      version: { increment: 1 },
+      actualizadoEn: args.ahora,
+    },
   });
   return count;
 }

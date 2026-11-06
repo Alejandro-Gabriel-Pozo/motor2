@@ -53,6 +53,9 @@ model User {
   propuestasDeFacturaCreadas  FacturaProveedorPropuesta[]   @relation("FacturaProveedorPropuestaCreadaPor")
   propuestasDeFacturaAceptadas FacturaProveedorPropuesta[]  @relation("FacturaProveedorPropuestaAceptadaPor")
   anulacionesDeFacturaProveedor AnulacionDeFacturaProveedor[] @relation("AnulacionDeFacturaProveedorCreadaPor")
+  pagosDeFacturaProveedor           PagoDeFacturaProveedor[]             @relation("PagoDeFacturaProveedorCreadoPor")
+  pagosDeFacturaProveedorAnulados   PagoDeFacturaProveedor[]             @relation("PagoDeFacturaProveedorAnuladoPor")
+  anulacionesDePagoDeFacturaProveedor AnulacionDePagoDeFacturaProveedor[] @relation("AnulacionDePagoDeFacturaProveedorCreadaPor")
   traspasosCreados           TraspasoSucursal[]   @relation("TraspasoCreadoPor")
   traspasosDecididosOrigen   TraspasoSucursal[]   @relation("TraspasoDecididoOrigen")
   traspasosDecididosDestino  TraspasoSucursal[]   @relation("TraspasoDecididoDestino")
@@ -605,6 +608,8 @@ model Unidad {
   recetaVersionesPorRacion      RecetaVersion[]        @relation("RecetaVersionRacionUnidad")
   consumosDeOpcion              ConsumoDeOpcion[]
   ingredientesDeRecetaDeCombinacion RecetaDeCombinacionIngrediente[]
+  movimientosPorUnidadCompra    MovimientoStock[]         @relation("MovimientoUnidadCompra")
+  renglonesPorUnidadCompra      FacturaProveedorRenglon[] @relation("RenglonUnidadCompra")
 
   @@unique([empresaId, nombre])
   @@unique([empresaId, id])
@@ -1413,6 +1418,13 @@ model MovimientoStock {
   facturaProveedorRenglonId String?
   facturaProveedorRenglon   FacturaProveedorRenglon? @relation(fields: [empresaId, facturaProveedorRenglonId], references: [empresaId, id], onDelete: Restrict)
 
+  /// Compras etapa 2a (docs/diseno-compras-factura-unica-y-rechazo-2026-11-03.md §14.2): SOLO en una línea de COMPRA simple, la unidad en que se compró (`unidadCompraId`) y cuántas (`cantidadCompra`, en esa unidad). Van juntas (CHECK) y
+  /// `cantidadCompra` > 0 (CHECK). `null` = «pendiente de completar» (compras anteriores, o cualquier otro proceso): nunca se inventa. En las partes de una factura repartida quedan `null` y se leen del renglón (`facturaProveedorRenglonId`).
+  /// No cambia `cantidad`, `precioTotal` ni el costo: es solo el dato de lo comprado.
+  unidadCompraId String?
+  unidadCompra   Unidad?  @relation("MovimientoUnidadCompra", fields: [empresaId, unidadCompraId], references: [empresaId, id])
+  cantidadCompra Decimal? @db.Decimal(14, 4)
+
   creadoEn DateTime @default(now())
 
   @@unique([empresaId, id])
@@ -1879,6 +1891,10 @@ model ContenidoCartaProducto {
   /// base sale OCULTA (cada opción, una fila con su nombre completo). En un producto directo o en una base de dos ejes (que sale siempre como tabla) no decide nada. Lo escribe solo
   /// `guardarContenidoCartaProducto` (auditado por columna) y lo copia «copiar carta».
   mostrarNombreArriba Boolean @default(false)
+  /// «Nombre en la carta» (pedido del dueño, 2026-11-04): el nombre con que la carta (pública, impresa, vista previa y «Va a mostrar») y el selector del mozo muestran este producto en ESTA sucursal. NULL = usa
+  /// el nombre interno (`Producto.nombre`). Solo presentación: no entra al precio, al stock, al ticket, a la comanda ni a los reportes. Lo escribe solo `guardarContenidoCartaProducto` (auditado por columna) y
+  /// lo copia «copiar carta». CHECK "ContenidoCartaProducto_nombre_en_carta_chk": de 1 a 80 caracteres, sin espacios a los costados ni saltos de línea.
+  nombreEnCarta  String?
   /// Carpeta VISUAL de género del POS (docs/plan-genero-carta-2026-09-26.md, G1/G2), opcional. No implica precio ni
   /// sustituibilidad (eso es ItemAgrupadoCarta) ni tiene nada que ver con Grupo (Insumo/stock) ni con CategoriaProducto (que no
   /// ubica nada en la carta): solo visual, solo del POS por ahora (G4, la carta pública `CartaV1` no lo usa).
@@ -2123,6 +2139,10 @@ model EntradaDeCupo {
   producto           Producto                @relation(fields: [empresaId, productoId], references: [empresaId, id])
   /// El canónico de la configuración fija (CHECK de forma); vacío = sin configuración.
   claveConfiguracion String                  @default("")
+  /// Promo «a elegir» (diseño 2026-11-04, ADR-032 D-6 enmendada): `FIJAS` (lo de siempre: las opciones de la entrada son la configuración fija que define el dueño) o `A_ELEGIR` (las opciones
+  /// de la entrada son las PERMITIDAS: el mozo elige entre ellas, dentro de los límites del grupo; `cantidad` = tope de unidades de esa opción). CHECK `IN ('FIJAS','A_ELEGIR')`. Inmutable como
+  /// el resto de la identidad: cambiar lo permitido es otra entrada. Solo un lugar LISTA lo usa; sin adicionales con recargo (el precio de la promo es fijo).
+  modoDeOpciones     String                  @default("FIJAS")
   orden              Int                     @default(0)
   activa             Boolean                 @default(true)
   creadoEn           DateTime                @default(now())
@@ -2407,6 +2427,8 @@ model CuentaItem {
   ///    null en un suelto sin descuento. Mide el ahorro del cliente (reporte «Descuentos de productos»).
   /// Queda congelado igual que `precioUnitario`: si el precio de carta del producto cambia después, esta fila no se entera.
   precioCartaUnitario Decimal?     @db.Decimal(14, 2)
+  /// El nombre con que el TICKET DEL CLIENTE nombra el producto de esta línea, CONGELADO al agregarla (el «Nombre en la carta» de la sucursal de la cuenta, si lo tenía; 2026-11-04). NULL = el ticket usa el nombre del producto, como siempre. Solo lo lee el ticket del cliente: la comanda, el stock y los reportes no.
+  nombreEnTicket      String?
 
   /// GO-1 (el «elemento configurable»): la HUELLA de las opciones que van DENTRO del precio de esta línea (SHA-256 hexadecimal de 64 caracteres, CHECK; `huellaDeOpciones`, `src/core/opciones/huella-de-opciones.ts`). NULL = una línea sin opciones (todas las
   /// de hoy) y toda línea ADICIONAL (un adicional no lleva huella). Inmutable una vez escrita (disparador `CuentaItem_opciones_chk`). Dos líneas del mismo producto con distinta huella son líneas distintas.
@@ -2552,6 +2574,8 @@ model Empresa {
   facturaProveedorPropuestaRel   FacturaProveedorPropuesta[]
   facturaProveedorPropuestaRenglonRel FacturaProveedorPropuestaRenglon[]
   anulacionDeFacturaProveedorRel AnulacionDeFacturaProveedor[]
+  pagoDeFacturaProveedorRel PagoDeFacturaProveedor[]
+  anulacionDePagoDeFacturaProveedorRel AnulacionDePagoDeFacturaProveedor[]
   facturaProveedorTributoRel     FacturaProveedorTributo[]
   puntoDeVentaDeProveedorRel     PuntoDeVentaDeProveedor[]
   conceptoDeGastoRel             ConceptoDeGasto[]
@@ -2760,10 +2784,12 @@ model FacturaProveedor {
   confirmadaPor              User?     @relation("FacturaProveedorConfirmadaPor", fields: [confirmadaPorId], references: [id], onDelete: Restrict)
   /// `CARGA` (la cargó una persona) o `MIGRACION` (la creó un relleno). Solo `CARGA` puede quedar pendiente.
   origen                     String    @default("CARGA")
-  /// Hoy solo `CONTADO_PAGADA` (CHECK).
+  /// `CONTADO_PAGADA` (se pagó al cargar) o `PENDIENTE_DE_PAGO` (Pagos X0: se declara el pago después, en `PagoDeFacturaProveedor`). CHECK en la base; no cambia nunca (sin UPDATE).
   condicionPago              String    @default("CONTADO_PAGADA")
   recibidaEnAdministracionEn DateTime? @db.Date
+  /// SIN USO desde Pagos X0 (el pago declarado vive en `PagoDeFacturaProveedor`): candidata a poda en X3. Nada de `src/` la escribe.
   fechaPagoDeclarada         DateTime? @db.Date
+  /// SIN USO desde Pagos X0 (ver `fechaPagoDeclarada`).
   medioPagoDeclarado         String?
   detalleLibre               String?
   /// UUID que genera la pantalla. Único GLOBAL, igual que `Operacion`, `ConteoFisico` y `PagoConsignante` (ADR-028). Va junto con la huella (CHECK).
@@ -2782,6 +2808,8 @@ model FacturaProveedor {
   /// E3a (ADR-041): las propuestas de parte a otras sucursales y su anulación (registro nuevo, una por factura).
   propuestas FacturaProveedorPropuesta[]
   anulaciones AnulacionDeFacturaProveedor[]
+  /// Pagos X0: los pagos declarados de esta factura (vigentes y anulados; a lo sumo uno vigente).
+  pagos PagoDeFacturaProveedor[]
   /// M3d: percepciones e impuestos que trae la factura además del IVA.
   tributos  FacturaProveedorTributo[]
   /// M6: las notas de crédito del proveedor que se cargaron sobre esta factura (vigentes y anuladas).
@@ -2823,6 +2851,10 @@ model FacturaProveedorRenglon {
   importeIva           Decimal?         @db.Decimal(14, 2)
   importeIvaComputable Decimal          @default(0) @db.Decimal(14, 2)
   creadoEn             DateTime         @default(now())
+  /// Compras etapa 2a (§14.2): la unidad en que se compró el renglón y cuántas (`cantidadCompra`, en esa unidad). Van juntas (CHECK), `cantidadCompra` > 0 (CHECK). `null` = pendiente de completar (renglones anteriores y los `SIN_STOCK`).
+  unidadCompraId       String?
+  unidadCompra         Unidad?          @relation("RenglonUnidadCompra", fields: [empresaId, unidadCompraId], references: [empresaId, id])
+  cantidadCompra       Decimal?         @db.Decimal(14, 4)
   /// M4.2: solo en un renglón `SIN_STOCK` (CHECK de pareo): el concepto de gasto y la COPIA de su tipo de costo (COSTO_DE_VENTAS, GASTO_OPERATIVO, EXTRAORDINARIO, INVERSION o RESULTADO_FINANCIERO; CHECK).
   conceptoGastoId      String?
   conceptoGasto        ConceptoDeGasto? @relation(fields: [empresaId, conceptoGastoId], references: [empresaId, id])
@@ -2958,6 +2990,53 @@ model AnulacionDeFacturaProveedor {
 
   @@unique([empresaId, id])
   @@unique([facturaProveedorId])
+}
+
+/// Pagos X0 (docs/diseno-pagos-x0-2026-11-04.md): el pago DECLARADO de una factura `PENDIENTE_DE_PAGO`, como registro aparte que solo se agrega. `fechaPago` es un día (Argentina) no anterior al de la factura ni posterior a hoy; `medio` de
+/// lista cerrada (CHECK). Paga la factura entera: no guarda importe ni moneda (X3 los agrega). Un ÚNICO pago vigente por factura (índice parcial `PagoDeFacturaProveedor_vigente_key`, que vive solo en la migración). Se anula con un registro
+/// nuevo (`AnulacionDePagoDeFacturaProveedor`) y la marca `anuladoEn`/`anuladoPorId` (el único UPDATE de la app). Clave de reintento única GLOBAL (ADR-028).
+model PagoDeFacturaProveedor {
+  id                 String           @id @default(cuid())
+  empresaId          String           @default(dbgenerated("app_empresa_actual()"))
+  empresa            Empresa          @relation(fields: [empresaId], references: [id])
+  facturaProveedorId String
+  facturaProveedor   FacturaProveedor @relation(fields: [empresaId, facturaProveedorId], references: [empresaId, id], map: "PagoDeFacturaProveedor_factura_fkey")
+  fechaPago          DateTime         @db.Date
+  medio              String
+  claveIdempotencia  String           @unique
+  payloadHash        String
+  resultadoMensaje   String
+  creadoPorId        String
+  creadoPor          User             @relation("PagoDeFacturaProveedorCreadoPor", fields: [creadoPorId], references: [id], onDelete: Restrict, map: "PagoDeFacturaProveedor_creadoPor_fkey")
+  creadoEn           DateTime         @default(now())
+  anuladoEn          DateTime?
+  anuladoPorId       String?
+  anuladoPor         User?            @relation("PagoDeFacturaProveedorAnuladoPor", fields: [anuladoPorId], references: [id], onDelete: Restrict, map: "PagoDeFacturaProveedor_anuladoPor_fkey")
+
+  anulaciones AnulacionDePagoDeFacturaProveedor[]
+
+  @@unique([empresaId, id])
+  @@index([facturaProveedorId])
+  @@index([empresaId, fechaPago])
+}
+
+/// Pagos X0: la anulación de un pago declarado como registro nuevo (una por pago): motivo, clave de reintento (única GLOBAL), huella y el mensaje devuelto (I3). Solo SELECT e INSERT.
+model AnulacionDePagoDeFacturaProveedor {
+  id                String                 @id @default(cuid())
+  empresaId         String                 @default(dbgenerated("app_empresa_actual()"))
+  empresa           Empresa                @relation(fields: [empresaId], references: [id])
+  pagoId            String
+  pago              PagoDeFacturaProveedor @relation(fields: [empresaId, pagoId], references: [empresaId, id], map: "AnulacionDePagoDeFacturaProveedor_pago_fkey")
+  motivo            String
+  claveIdempotencia String                 @unique
+  payloadHash       String
+  resultadoMensaje  String
+  creadoPorId       String
+  creadoPor         User                   @relation("AnulacionDePagoDeFacturaProveedorCreadaPor", fields: [creadoPorId], references: [id], onDelete: Restrict, map: "AnulacionDePagoDeFacturaProveedor_creadoPor_fkey")
+  creadoEn          DateTime               @default(now())
+
+  @@unique([empresaId, id])
+  @@unique([pagoId])
 }
 
 /// Paquete 3 (M3d): un tributo de la factura (percepción o impuesto que trae además del IVA). Cuelga de la cabecera, es DE EMPRESA y solo se agrega (la app tiene SELECT e INSERT). `tipo` es de lista cerrada y `importe` mayor
@@ -3525,6 +3604,10 @@ model OpcionDeGrupo {
   version       Int             @default(1)
   creadoEn      DateTime        @default(now())
   actualizadoEn DateTime        @default(now())
+  /// Carta «B», E3 (2026-11-04): la descripción OPCIONAL de la opción («lechuga, tomate, cebolla»), de una línea. La escribe el dueño y la lee SOLO la carta (pública, impresa, vista previa del producto y «Va a mostrar»):
+  /// ni el precio, ni el stock, ni el ticket, ni la comanda, ni el POS, ni los reportes, y la foto de la venta (`OpcionElegidaEnLinea`) no la copia. Sin versión propia (como el nombre). NULL = sin descripción.
+  /// CHECK "OpcionDeGrupo_descripcion_en_carta_chk": de 1 a 120 caracteres, sin espacios a los costados ni saltos de línea. Tiene su propio GRANT de UPDATE por columna para `motor2_app`.
+  descripcionEnCarta String?
 
   versiones             VersionDeOpcion[]
   productosQueLaAdmiten ProductoAdmiteOpcion[]
@@ -3739,6 +3822,8 @@ model OpcionElegidaEnLinea {
   importeUnitario   Decimal         @db.Decimal(14, 2)
   /// El importe salió de la grilla de la sucursal (`PrecioLocalDeOpcion`).
   precioDeSucursal  Boolean         @default(false)
+  /// La carta ocultaba esta opción AL VENDER (`seOcultaEnLaCarta`: el grupo no se muestra en el producto y no cambia el precio): el TICKET DEL CLIENTE la omite; la comanda y el detalle interno no. Congelado al vender (2026-11-04).
+  ocultaEnCarta     Boolean         @default(false)
   /// Solo MEDIDA (> 0 y hasta 10).
   factorEscala      Decimal?        @db.Decimal(8, 4)
   orden             Int             @default(0)

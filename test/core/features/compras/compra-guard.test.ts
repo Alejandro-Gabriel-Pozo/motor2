@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { guardComandoAnularCompra, guardComandoCorregirCompra, guardLineaCompra, guardNroFacturaCompra } from "../../../../src/core/features/compras/compra.guard";
+import { guardComandoAnularCompra, guardComandoCorregirCompra, guardLineaCompra, guardNroFacturaCompra, guardPesoRealPorMagnitud, type MagnitudDeUnidad } from "../../../../src/core/features/compras/compra.guard";
 
 /** Guard de la feature Compra/Devolución a proveedor (src/core/features/compras/compra.guard.ts): formato + normalización, puro. */
 
@@ -109,5 +109,31 @@ describe("guardComandoCorregirCompra", () => {
     { caso: "operacionId undefined", entrada: { operacionId: undefined, nueva, esperado }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
   ])("$caso", ({ entrada, esperado: resultado }) => {
     expect(guardComandoCorregirCompra(entrada)).toStrictEqual(resultado);
+  });
+});
+
+describe("guardPesoRealPorMagnitud (Compras etapa 2a: la cantidad real solo cuando la conversión cruza de tipo)", () => {
+  const MAGNITUDES: MagnitudDeUnidad[] = ["PESO", "VOLUMEN", "CANTIDAD"];
+
+  it("recorre las 9 combinaciones de tipo de compra × tipo de stock: con cantidad real, solo acepta cuando son DISTINTOS", () => {
+    for (const compra of MAGNITUDES) {
+      for (const stock of MAGNITUDES) {
+        const r = guardPesoRealPorMagnitud("Harina", 12.4, compra, stock);
+        expect(r.ok, `${compra} → ${stock}`).toBe(compra !== stock);
+      }
+    }
+  });
+
+  it("sin cantidad real (null) acepta siempre, sea cual sea el tipo", () => {
+    for (const compra of MAGNITUDES) for (const stock of MAGNITUDES) expect(guardPesoRealPorMagnitud("Harina", null, compra, stock), `${compra} → ${stock}`).toEqual({ ok: true, valor: null });
+  });
+
+  it("caja → kg y kg → unidades cruzan de tipo: aceptan; kg → g y caja → botella son del mismo tipo: rechazan con un mensaje que nombra el producto", () => {
+    expect(guardPesoRealPorMagnitud("Jamón", 12.4, "CANTIDAD", "PESO").ok).toBe(true);
+    expect(guardPesoRealPorMagnitud("Jamón", 3, "PESO", "CANTIDAD").ok).toBe(true);
+    expect(guardPesoRealPorMagnitud("Jamón", 12.4, "CANTIDAD", "VOLUMEN").ok).toBe(true);
+    const mal = guardPesoRealPorMagnitud("Jamón", 4.9, "PESO", "PESO");
+    expect(mal).toMatchObject({ ok: false, codigo: "regla" });
+    expect(!mal.ok && mal.mensaje).toMatch(/cantidad real de "Jamón".*mismo tipo/);
   });
 });

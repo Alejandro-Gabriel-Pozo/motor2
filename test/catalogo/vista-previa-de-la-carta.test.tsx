@@ -34,12 +34,14 @@ describe("VistaPreviaDeLaCarta", () => {
   });
 
   it("tabla de un eje (el café): sus tamaños como encabezados, una sola fila, el precio de cada uno y «no se ofrece» donde no hay precio; el nombre es el título y lo que se elige va debajo", () => {
-    const html = dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [4000, null] }], aclaraciones: [{ tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"] }] } });
+    const html = dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [4000, null] }], aclaraciones: [{ tipo: "eleccion", rotulo: "Preparación", opciones: ["solo", "cortado"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 }] } });
     expect(html.match(/<th scope="col"/g)).toHaveLength(2);
     const t = texto(html);
     expect(t).toContain("Café Chico Grande");
     expect(t).toContain("$4.000");
-    expect(t).toContain("Preparación solo · cortado");
+    // Carta «B»: el plato dice «Incluye 1 preparación» y el pie de la sección nombra las opciones (la misma función que la carta pública).
+    expect(t).toContain("Incluye 1 preparación");
+    expect(t).toContain("Preparación · elegís 1 solo · cortado");
     expect(html).toContain('<span class="sr-only">no se ofrece</span>');
   });
 

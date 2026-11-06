@@ -13,6 +13,7 @@
         haySinPrecio: false,
         idOperacion: "#1",
         nroFactura: "A-0005",
+        pago: null,
         proveedorId: "#2",
         proveedorNombre: "Lácteos del Sur",
         renglones: [
@@ -52,6 +53,7 @@
         haySinPrecio: false,
         idOperacion: "#5",
         nroFactura: "M-102",
+        pago: null,
         proveedorId: "#6",
         proveedorNombre: "Molino Norte",
         renglones: [
@@ -80,6 +82,7 @@
         haySinPrecio: false,
         idOperacion: "#8",
         nroFactura: "E-8",
+        pago: null,
         proveedorId: "#9",
         proveedorNombre: "Envases SA",
         renglones: [
@@ -108,6 +111,7 @@
         haySinPrecio: false,
         idOperacion: "#11",
         nroFactura: "A-0004",
+        pago: null,
         proveedorId: "#2",
         proveedorNombre: "Lácteos del Sur",
         renglones: [
@@ -147,6 +151,7 @@
         haySinPrecio: false,
         idOperacion: "#14",
         nroFactura: "M-101",
+        pago: null,
         proveedorId: "#6",
         proveedorNombre: "Molino Norte",
         renglones: [
@@ -175,6 +180,7 @@
         haySinPrecio: false,
         idOperacion: "#16",
         nroFactura: "A-0003",
+        pago: null,
         proveedorId: "#2",
         proveedorNombre: "Lácteos del Sur",
         renglones: [
@@ -214,6 +220,7 @@
         haySinPrecio: true,
         idOperacion: "#19",
         nroFactura: "B-1",
+        pago: null,
         proveedorId: "#20",
         proveedorNombre: "Bodega Andina",
         renglones: [
@@ -242,6 +249,7 @@
         haySinPrecio: false,
         idOperacion: "#22",
         nroFactura: null,
+        pago: null,
         proveedorId: null,
         proveedorNombre: null,
         renglones: [
@@ -270,6 +278,7 @@
         haySinPrecio: false,
         idOperacion: "#24",
         nroFactura: "A-0002",
+        pago: null,
         proveedorId: "#2",
         proveedorNombre: "Lácteos del Sur",
         renglones: [
@@ -298,6 +307,7 @@
         haySinPrecio: false,
         idOperacion: "#26",
         nroFactura: "E-7",
+        pago: null,
         proveedorId: "#9",
         proveedorNombre: "Envases SA",
         renglones: [
@@ -326,6 +336,7 @@
         haySinPrecio: false,
         idOperacion: "#28",
         nroFactura: "M-100",
+        pago: null,
         proveedorId: "#6",
         proveedorNombre: "Molino Norte",
         renglones: [
@@ -354,6 +365,7 @@
         haySinPrecio: false,
         idOperacion: "#30",
         nroFactura: "A-0001",
+        pago: null,
         proveedorId: "#2",
         proveedorNombre: "Lácteos del Sur",
         renglones: [

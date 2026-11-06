@@ -82,7 +82,7 @@ function versionPlana(v: FilaDeVersion) {
 
 export type VersionDeOpcionLeida = ReturnType<typeof versionPlana>;
 
-const SELECT_OPCION = { id: true, nombre: true, orden: true, activa: true, esNinguna: true, productoId: true, version: true } as const;
+const SELECT_OPCION = { id: true, nombre: true, orden: true, activa: true, esNinguna: true, productoId: true, version: true, descripcionEnCarta: true } as const;
 
 /**
  * Los grupos de la empresa con sus opciones y, de cada opción, la VERSIÓN VIGENTE con sus consumos, más cuántos productos admiten el grupo (filas activas). Tres consultas en total

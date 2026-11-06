@@ -8,6 +8,7 @@ import { requierePermisoVerDeEmpresa, accionesDelMenuQueElUsuarioPuedeVer, obten
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { listarProductosQueLeCompran, obtenerFichaProveedor } from "@/server/consultas/catalogo/proveedores";
 import { formatearCuit } from "@/core/fiscal/public";
+import { etiquetaDeOferta } from "@/core/features/catalogo/oferta-de-proveedor";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { claseDeBoton } from "@/ui/primitivas/boton";
@@ -71,7 +72,7 @@ export default async function FichaProveedorPage({
           <div>
             <h1 className="text-xl font-semibold">{p.nombre}</h1>
             <p className="text-sm text-tinta-tenue">
-              {p.codigo} · {p.activo ? "Activo" : "Inactivo"}
+              {p.codigo} · {p.activo ? "Activo" : "Inactivo"} · <span data-testid="oferta-del-proveedor">{etiquetaDeOferta(p)}</span>
             </p>
           </div>
           {puedeEditar && (

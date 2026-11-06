@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { SelectorProducto } from "@/components/selector-producto";
 import { agregarItems } from "@/server/actions/pos/cuenta-pedido";
-import { pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos, estadoInicialSelectorCarta, reducirSelectorCarta, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar, type EleccionParaAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearCantidad, formatearMonto, avisoEnPromo, claveDeConfiguracion, resumenDeConfiguracion, vistaPreviaDeConfiguracion, type ConfiguracionDelSelector } from "@/core/pos/public";
+import { opcionDeLaFila, pediblesDeEntrada, type EntradaPromoSelectorCarta, type ProductoPedible, type SelectorCartaPos, estadoInicialSelectorCarta, reducirSelectorCarta, estadoInicialListaPorAgregar, itemsDeListaPorAgregar, listaPorAgregarLlena, puedeConfirmarListaPorAgregar, reducirListaPorAgregar, type EleccionParaAgregar, MAXIMO_ITEMS_POR_AGREGADO, formatearCantidad, formatearMonto, avisoEnPromo, claveDeConfiguracion, resumenDeConfiguracion, vistaPreviaDeConfiguracion, type ConfiguracionDelSelector } from "@/core/pos/public";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { SelectorCarta } from "./selector-carta";
@@ -88,7 +88,7 @@ export function AgregarItems({
   const [promosPorAgregar, setPromosPorAgregar] = useState<PromoPorAgregar[]>([]);
   const [promoAbierta, setPromoAbierta] = useState<EntradaPromoSelectorCarta | null>(null);
   // GO-2d: el producto con opciones que se está eligiendo AHORA en «Elegir opciones» (null = cerrado), con la elección de arranque de «Otro igual».
-  const [opcionesAbiertas, setOpcionesAbiertas] = useState<{ productoId: string; inicial?: { opcionId: string; cantidad: number }[] } | null>(null);
+  const [opcionesAbiertas, setOpcionesAbiertas] = useState<{ productoId: string; inicial?: { opcionId: string; cantidad: number }[]; titulo?: string } | null>(null);
   const hayCarta = !!selectorCarta && selectorCarta.seccionesCarta.length > 0;
 
   // Para mostrar nombre/precio/decimales de cada línea: cualquier pedible, lo haya sumado la carta o el buscador — la carta
@@ -110,8 +110,13 @@ export function AgregarItems({
    * Tocar un producto —desde la carta o el buscador—: lo suma a la lista y limpia el buscador / cierra el agrupado suelto (G3). GO-2d: un producto que admite opciones abre
    * «Elegir opciones» en vez de sumarse directo (uno sin opciones se sigue sumando con un toque).
    */
-  const sumar = (productoId: string) => {
-    if (configuraciones[productoId]) setOpcionesAbiertas({ productoId });
+  const sumar = (productoId: string, rotulo?: string) => {
+    const configuracion = configuraciones[productoId];
+    if (configuracion) {
+      // Un renglón de una base oculta: se abre con su opción ya elegida y titulado como lo lee el cliente; si no calza una sola opción, como siempre (sin elegir, con el nombre del producto).
+      const opcionId = rotulo ? opcionDeLaFila(configuracion.grupos, rotulo) : null;
+      setOpcionesAbiertas(opcionId && rotulo ? { productoId, inicial: [{ opcionId, cantidad: 1 }], titulo: rotulo } : { productoId });
+    }
     else despacharLista({ tipo: "sumarProducto", productoId, tope: MAXIMO_ITEMS_POR_AGREGADO });
     despachar({ tipo: "productoSumado" });
   };
@@ -265,7 +270,7 @@ export function AgregarItems({
               onChange={(id) => {
                 if (id) sumar(id);
               }}
-              filtro={{ tipo: "PV", soloDisponibles: true }}
+              filtro={{ tipo: "PV", soloDisponibles: true, tambienPorNombreDeCarta: true }}
               placeholder="Buscar por nombre o código…"
               limpiarSenal={estado.limpiarBuscador}
             />
@@ -375,7 +380,7 @@ export function AgregarItems({
       {promoAbierta && <ArmarPromo entrada={promoAbierta} onCerrar={() => setPromoAbierta(null)} onConfirmar={confirmarPromo} noSeArman={noSeArmanEnPromo} />}
       {opcionesAbiertas && productoAbierto && configuracionAbierta && (
         <ElegirOpciones
-          nombre={productoAbierto.nombre}
+          nombre={opcionesAbiertas.titulo ?? productoAbierto.nombre}
           configuracion={configuracionAbierta}
           precargas={configuracionAbierta.masPedidas}
           inicial={opcionesAbiertas.inicial}

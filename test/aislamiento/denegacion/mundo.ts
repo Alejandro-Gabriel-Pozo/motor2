@@ -113,6 +113,10 @@ export interface KitDeSucursal {
   facturaEnviadaId: string;
   /** E3a: la propuesta PENDIENTE que la vecina le hizo a ESTA sucursal (la acepta esta sucursal). */
   propuestaParaAceptarId: string;
+  /** Pagos X0: una factura de proveedor «pendiente de pago» sin pago (a esa se le declara el pago). */
+  facturaPendienteDePagoId: string;
+  /** Pagos X0: un pago VIGENTE de otra factura pendiente de pago (ese se anula). */
+  pagoDeFacturaId: string;
   pagoConsignanteId: string;
   precioLocalId: string;
   frecuenciaId: string;
@@ -164,6 +168,8 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   traspasoPedidoId: true,
   facturaEnviadaId: true,
   propuestaParaAceptarId: true,
+  facturaPendienteDePagoId: true,
+  pagoDeFacturaId: true,
   pagoConsignanteId: true,
   precioLocalId: true,
   frecuenciaId: true,
@@ -464,6 +470,17 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     });
     facturasE3a[sufijo] = { facturaId: factura.id, propuestaId: propuesta.id };
   }
+  // Pagos X0: dos facturas «pendiente de pago» de la empresa (sin propuestas): una sin pago, para declararle uno, y otra con un pago vigente, para anularlo. El día de la factura es ayer; el pago, de ayer.
+  const facturasPendientes: Record<string, string> = {};
+  for (const sufijo of ["factura-pendiente-de-pago", "factura-con-pago"]) {
+    const factura = await db.facturaProveedor.create({
+      data: { id: id(sufijo), empresaId, proveedorId: k.proveedorId, nroFactura: `Factura ${marca} ${sufijo}`, nroFacturaNormalizado: id(sufijo), fecha: enElPasado(DIA_MS), importeTotal: 100, condicionPago: "PENDIENTE_DE_PAGO", estado: "CONFIRMADA", confirmadaEn: enElPasado(DIA_MS), confirmadaPorId: miembro.id, creadoPorId: miembro.id },
+    });
+    facturasPendientes[sufijo] = factura.id;
+  }
+  const pagoDeFactura = await db.pagoDeFacturaProveedor.create({
+    data: { id: id("pago-de-factura"), empresaId, facturaProveedorId: facturasPendientes["factura-con-pago"]!, fechaPago: enElPasado(DIA_MS), medio: "TRANSFERENCIA", claveIdempotencia: id("pago-de-factura-clave"), payloadHash: "h", resultadoMensaje: "Pago declarado.", creadoPorId: miembro.id },
+  });
   const pago = await db.pagoConsignante.create({ data: { id: id("pago"), empresaId, sucursalId, proveedorId: k.proveedorId, importe: 500, fecha: enElPasado(DIA_MS), notas: `Pago ${marca}`, usuarioId: miembro.id } });
 
   // Configuración por sucursal.
@@ -485,7 +502,9 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const opcion = await db.opcionItemAgrupadoCarta.create({ data: { id: id("opcion"), empresaId, sucursalId, itemAgrupadoCartaId: itemAgrupado.id, productoId: k.productoPvId } });
   await db.contenidoCartaProducto.create({ data: { id: id("contenido"), empresaId, sucursalId, productoId: k.productoMp2Id, visibleEnCarta: true, seccionCartaId: k.seccionCartaId, descripcion: `Contenido ${marca}`, generoCartaId: genero.id } });
   // Contenido de carta del PV (oculto: el control positivo de «mostrar en la carta» lo muestra), posición en el mapa del portal y un tema con una clave válida (un tema vacío no se puede aplicar).
-  await db.contenidoCartaProducto.create({ data: { id: id("contenido-pv"), empresaId, sucursalId, productoId: k.productoPvId, visibleEnCarta: false, seccionCartaId: k.seccionCartaId, descripcion: `Contenido PV ${marca}`, generoCartaId: genero.id } });
+  // «Está bien así» (2026-11-04): un PV VISIBLE en la carta de la sucursal con el nombre de carta sin decidir (`NULL`): el control positivo de `confirmarNombreEnCarta` lo confirma. Sin fila de otro producto que lo use como nombre.
+  await db.contenidoCartaProducto.create({ data: { id: id("contenido-pv-opciones"), empresaId, sucursalId, productoId: k.productoConOpcionesId, visibleEnCarta: true, seccionCartaId: k.seccionCartaId, descripcion: `Contenido PV con opciones ${marca}`, generoCartaId: genero.id } });
+  await db.contenidoCartaProducto.create({ data: { id: id("contenido-pv"), empresaId, sucursalId, productoId: k.productoPvId, visibleEnCarta: false, seccionCartaId: k.seccionCartaId, descripcion: `Contenido PV ${marca}`, generoCartaId: genero.id, nombreEnCarta: `Nombre de carta ${marca}` } });
   await db.sucursalPublica.create({ data: { id: id("publica"), empresaId, sucursalId, slug: id("slug").toLowerCase(), etiqueta: `Etiqueta ${marca}`, publicada: true, posX: 50, posY: 50, posW: 10, posH: 5 } });
   await db.temaCartaSucursal.create({ data: { id: id("tema"), empresaId, sucursalId, valores: { restaurante_nombre: `Restaurante ${marca}` }, aplicarEnCarta: false } });
   await db.capacidadSucursal.create({ data: { id: id("capacidad"), empresaId, accionClave: "carta_tema", sucursalId, habilitado: true } });
@@ -533,6 +552,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     traspasoPedidoId: traspasoPedido.id,
     facturaEnviadaId: facturasE3a["factura-enviada"].facturaId,
     propuestaParaAceptarId: facturasE3a["factura-para-aceptar"].propuestaId,
+    facturaPendienteDePagoId: facturasPendientes["factura-pendiente-de-pago"]!,
+    pagoDeFacturaId: pagoDeFactura.id,
     pagoConsignanteId: pago.id,
     precioLocalId: precioLocal.id,
     frecuenciaId: frecuencia.id,

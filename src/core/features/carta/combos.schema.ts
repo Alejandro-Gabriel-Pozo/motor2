@@ -17,7 +17,11 @@ export interface OpcionDeConfiguracionFija {
 export interface ComandoAgregarEntradaDeCupo {
   cupoId: string;
   productoId: string;
-  /** La configuración fija (vacía = el producto sin opciones). */
+  /**
+   * `FIJAS` (lo de siempre): `opciones` es la configuración fija (vacía = el producto sin opciones). `A_ELEGIR` (promo que deja elegir al mozo, enmienda de ADR-032 D-6): `opciones` son las PERMITIDAS por
+   * grupo (`cantidad` = tope de unidades de esa opción), al menos una, sin adicionales; el mozo elige entre ellas dentro de los límites del grupo.
+   */
+  modoDeOpciones: "FIJAS" | "A_ELEGIR";
   opciones: readonly OpcionDeConfiguracionFija[];
 }
 

@@ -27,9 +27,9 @@ vi.mock("../../src/server/persistencia/catalogo/proveedores", async (importOrigi
       await antes(args[1].valores.cuit);
       return original.crearProveedorNuevo(...args);
     },
-    guardarContactoDeProveedor: async (...args: Parameters<typeof original.guardarContactoDeProveedor>) => {
+    guardarProveedor: async (...args: Parameters<typeof original.guardarProveedor>) => {
       await antes(args[1].valores.cuit);
-      return original.guardarContactoDeProveedor(...args);
+      return original.guardarProveedor(...args);
     },
   };
 });

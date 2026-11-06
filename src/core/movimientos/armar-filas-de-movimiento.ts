@@ -29,6 +29,9 @@ export interface LineaParaFilas {
   detalle: string;
   precioTotal: number;
   precioPorUnidadStock: number;
+  /** Compras etapa 2a: la unidad de compra y lo comprado en ella (solo una COMPRA los copia a la fila; ver `armarFilasDeMovimiento`). Ausentes o `null` = pendiente de completar. */
+  unidadCompraId?: string | null;
+  cantidadCompra?: number | null;
   consumosReceta: ConsumoParaFilas[];
 }
 
@@ -51,6 +54,9 @@ export interface FilaDeMovimiento {
   detalle: string;
   precioTotal: number;
   precioPorUnidadStock: number;
+  /** Compras etapa 2a: SOLO en las filas de una COMPRA (las dos juntas o ninguna; CHECK en la base). El resto de los procesos no las trae. */
+  unidadCompraId?: string;
+  cantidadCompra?: number;
 }
 
 /**
@@ -95,6 +101,8 @@ export function armarFilasDeMovimiento(ctx: ContextoFilasDeMovimiento, lineas: L
       operacionId: ctx.operacionId, productoId: l.productoId, seccionId: ctx.seccionId, proceso: ctx.proceso,
       cantidad: l.cantidadFirmada, loteVencimiento: l.loteVencimiento,
       detalle: l.detalle, precioTotal: l.precioTotal, precioPorUnidadStock: l.precioPorUnidadStock,
+      // Compras etapa 2a: solo una COMPRA guarda lo comprado, y solo si tiene LAS DOS (la unidad sin la cantidad, o al revés, violaría el CHECK de la base). No cambia cantidad, precio ni costo.
+      ...(ctx.proceso === "COMPRA" && l.unidadCompraId && l.cantidadCompra ? { unidadCompraId: l.unidadCompraId, cantidadCompra: l.cantidadCompra } : {}),
     });
 
     for (const c of l.consumosReceta) {

@@ -164,7 +164,8 @@ describe("la reclasificación del gobierno (ADR-027 §3, 3.4-4)", () => {
     // 60 → 62 administrador: GO-2a suma `opciones_definir` y `producto_opciones_admitidas` (clase A).
     // 52 → 53 operario: Paquete 3 M3a suma `compra_recibir` (clase O).
     // 59 → 60 administrador: Paquete 3 M3a suma `compra_repartir` (clase A).
+    // 55 → 56 operario: Pagos X0 suma `declarar_pago_compra` (clase O).
     // 51 → 52: M.2 P1 suma `producto_campos_sensibles` (piso operario, clase O); los otros pisos no se mueven.
-    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([55, 60, 12, 2]);
+    expect(["operario", "administrador", "administrador_sistema", "gerente"].map((p) => conPiso(p as NivelDeAccion).length)).toEqual([56, 60, 12, 2]);
   });
 });

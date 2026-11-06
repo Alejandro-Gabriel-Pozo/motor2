@@ -133,9 +133,9 @@ export function CamposPromo({
  * nativo, `FormConResultado` ya resetea el form entero cuando la acción sale bien (vuelve a los `defaultValue`/`defaultChecked`
  * de lo recién guardado, en el próximo render del servidor).
  */
-/** GO-3b: ¿un lugar LISTA viene FIJO? (una sola entrada activa y mínimo = máximo, de 1 o más: lo completa el servidor). */
+/** GO-3b: ¿un lugar LISTA viene FIJO? (una sola entrada activa y mínimo = máximo, de 1 o más: lo completa el servidor). Una entrada «el mozo elige» no es fija: el mozo elige entre sus opciones. */
 export function esFijo(l: LugarDeCombo): boolean {
-  return l.tipo === "LISTA" && l.entradas.filter((e) => e.activa).length === 1 && l.cantidadMinima >= 1 && l.cantidadMinima === l.cantidadMaxima;
+  return l.tipo === "LISTA" && l.entradas.filter((e) => e.activa).length === 1 && l.entradas.every((e) => !e.activa || e.modoDeOpciones === "FIJAS") && l.cantidadMinima >= 1 && l.cantidadMinima === l.cantidadMaxima;
 }
 
 const NOMBRES_DE_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];

@@ -33,6 +33,7 @@ export async function actualizarActivaEntradaDeCupoCasoDeUso(
         id: true,
         activa: true,
         productoId: true,
+        modoDeOpciones: true,
         producto: { select: { nombre: true } },
         opciones: { orderBy: [{ opcionId: "asc" }], select: { opcionId: true, cantidad: true } },
         cupo: { select: { tipo: true, activo: true, nombre: true, promoCartaId: true, promoCarta: { select: { titulo: true } } } },
@@ -46,7 +47,7 @@ export async function actualizarActivaEntradaDeCupoCasoDeUso(
 
     if (comando.activa) {
       if (entrada.cupo.tipo !== "LISTA" || !entrada.cupo.activo) return fracaso("CUPO_INVALIDO", `«${lugar}» está dado de baja en la promo: volvé a agregarlo en sus cupos.`);
-      const validado = await validarComponenteEnTx(tx, { sucursalId: actor.sucursalId, productoId: entrada.productoId, opciones: entrada.opciones, etiqueta: "con esa configuración" });
+      const validado = await validarComponenteEnTx(tx, { sucursalId: actor.sucursalId, productoId: entrada.productoId, opciones: entrada.opciones, etiqueta: "con esa configuración", modoDeOpciones: entrada.modoDeOpciones === "A_ELEGIR" ? "A_ELEGIR" : "FIJAS" });
       if (!validado.ok) return validado;
       const alicuotas = await revisarAlicuotasEnTx(tx, {
         lugares: await cargarLugaresActivosDePromo(tx, entrada.cupo.promoCartaId),
