@@ -13,7 +13,7 @@ Rama temporal `alegp/tmp-capturas-poda-presentaciones` (no se mergea). Capturas 
 | 1-antes-editar-insumo-cerveza-patagonia | Catálogo → insumo → Datos: bloque «Presentaciones de compra alternativas» con «caja ×24», «Desactivar» y el alta de otra |
 | 1-despues-editar-insumo-cerveza-patagonia | Misma pantalla: el bloque ya no está |
 | 2-antes-… / 2-despues-ficha-insumo-cerveza-patagonia | Ficha (Resumen): la sección «Presentaciones de compra» aparece antes y no después |
-| 3-antes-… / 3-despues-compra-paso2-cerveza-patagonia | Compra, paso 2, Cerveza elegida: antes el desplegable «UM» ofrece la caja; después solo la unidad por defecto |
+| 3-antes-… / 3-despues-compra-paso2-cerveza-patagonia | Compra, paso 2, Cerveza elegida (el desplegable «UM» queda cerrado en la captura; con el interruptor encendido sus opciones incluyen las presentaciones activas, apagado solo la unidad por defecto) |
 
 ## Qué pasa en el sistema (PR #191)
 Sin migración y sin tocar datos. Con el interruptor apagado el servidor rechaza crear o activar/desactivar presentaciones y las lecturas no devuelven ninguna. Para volver a encenderlo: `true`.
