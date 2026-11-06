@@ -64,6 +64,7 @@ export { armarVentasPorOpcion } from "./ventas-por-opcion";
 export type { FilaVentaPorOpcion } from "./ventas-por-opcion";
 export type { OperacionEncontrada } from "./trazabilidad";
 export type { ItemOperacion } from "./trazabilidad";
+export { detalleDeCorreccionDeMovimiento, enlaceParaCorregirMovimiento } from "./trazabilidad";
 export type { FilaValuacionInventario } from "./valuacion";
 export { resolverRangoPorDefecto } from "./rango-por-defecto";
 export type { CotizacionDia, ResultadoSincronizacionDolar, UltimaCotizacion } from "./cotizacion-dolar";

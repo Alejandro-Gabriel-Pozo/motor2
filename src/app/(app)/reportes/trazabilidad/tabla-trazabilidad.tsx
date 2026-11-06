@@ -3,7 +3,7 @@
 import { IconoDeAccion } from "@/components/iconos";
 import Link from "next/link";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
-import type { OperacionEncontrada, ItemOperacion } from "@/core/reportes/public";
+import { enlaceParaCorregirMovimiento, type OperacionEncontrada, type ItemOperacion } from "@/core/reportes/public";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 
 /** El día de calendario de un instante en hora argentina (P1): `Operacion.fecha` es un instante; leerlo en UTC mostraba el día siguiente a partir de las 21:00. */
@@ -53,6 +53,17 @@ export function TablaOperacionesEncontradas({ filas }: { filas: OperacionEncontr
   return <TablaReporte columnas={COLUMNAS_ENCONTRADAS} filas={filas} claveFila={(e) => e.idOperacion} />;
 }
 
-export function TablaItemsOperacion({ filas, nombreExport }: { filas: ItemOperacion[]; nombreExport: string }) {
-  return <TablaReporte columnas={COLUMNAS_ITEMS} filas={filas} claveFila={(it) => it.idMovimiento} nombreExport={nombreExport} />;
+/** E0 (g): una columna más, SOLO para quien puede cargar un Ajuste (`puedeCorregir`): «Corregir este movimiento» abre el Ajuste prellenado con el producto, la sección y la referencia al original. El original no se toca. */
+const COLUMNA_CORREGIR: ColumnaReporte<ItemOperacion> = {
+  clave: "corregir",
+  etiqueta: "",
+  render: (it) => (
+    <Link href={enlaceParaCorregirMovimiento(it.idMovimiento)} className="underline inline-flex items-center gap-1" aria-label={`Corregir este movimiento de ${it.productoNombre}`}>
+      Corregir este movimiento
+    </Link>
+  ),
+};
+
+export function TablaItemsOperacion({ filas, nombreExport, puedeCorregir = false }: { filas: ItemOperacion[]; nombreExport: string; puedeCorregir?: boolean }) {
+  return <TablaReporte columnas={puedeCorregir ? [...COLUMNAS_ITEMS, COLUMNA_CORREGIR] : COLUMNAS_ITEMS} filas={filas} claveFila={(it) => it.idMovimiento} nombreExport={nombreExport} />;
 }

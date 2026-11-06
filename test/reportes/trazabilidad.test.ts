@@ -65,6 +65,22 @@ describe("Trazabilidad", () => {
     expect(filaVenta.sustituyeANombre).toBeNull();
   });
 
+  it("E0 (d): una VENTA aparece al buscar por el producto vendido o por su insumo, rotulada «VENTA» (la de la operación) y una sola vez; antes salía como «CONSUMO» del insumo", async () => {
+    const bife = await sembrarProductoDisponible({ codigo: "MP_BIFE", nombre: "Bife de chorizo", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
+    const milanesa = await sembrarProductoDisponible({ codigo: "PV_MILA", nombre: "Milanesa", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 5000 }, sucursalId);
+    await prisma.recetaVersion.create({ data: { productoId: milanesa.id, version: 1, ingredientes: { create: [{ insumoProductoId: bife.id, cantidad: 0.3, unidadId: unidadKgId }] } } });
+    await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: bife.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
+    expect((await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: milanesa.id, cantidadVendida: 1 }] })).ok).toBe(true);
+    const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
+
+    for (const termino of ["Milanesa", "PV_MILA", "Bife de chorizo"]) {
+      const encontradas = await buscarOperacionesPorProducto(sucursalId, termino, prisma);
+      const delaVenta = encontradas.filter((o) => o.idOperacion === venta.id);
+      expect(delaVenta, termino).toHaveLength(1);
+      expect(delaVenta[0].proceso, termino).toBe("VENTA");
+    }
+  });
+
   it("buscarOperacionesPorProducto encuentra por nombre o código, sin duplicar operación", async () => {
     const mp = await sembrarProductoDisponible({ codigo: "MP_ESPECIAL", nombre: "Harina 000", tipo: "MP", unidadStockId: unidadKgId, insumoId }, sucursalId);
     await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 5, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });

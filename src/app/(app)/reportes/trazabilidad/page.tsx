@@ -21,6 +21,8 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
 
   // Ver la trazabilidad no autoriza a anular: el botón solo aparece con `anular_venta` (la acción lo vuelve a exigir en el servidor).
   const { editar: puedeAnularVenta } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_venta", ctx.db);
+  // Lo mismo con «Corregir este movimiento» (E0): abre el Ajuste, que se guarda solo con `proceso_ajuste` Editar (el servidor lo vuelve a exigir).
+  const { editar: puedeAjustar } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "proceso_ajuste", ctx.db);
   // S-14: el proveedor, el N.º de factura y el email de quien anuló son los datos comerciales de `reporte_historial_importes` (piso administrador), igual que en Historial.
   const { ver: veDatosComerciales } = await obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_historial_importes", ctx.db);
   const sp = unicosDeUrl(await searchParams);
@@ -69,7 +71,7 @@ export default async function TrazabilidadPage({ searchParams }: { searchParams:
           ) : (
             operacion.proceso === "VENTA" && puedeAnularVenta && <BotonAnularVenta idOperacion={operacion.idOperacion} />
           )}
-          <TablaItemsOperacion filas={operacion.items} nombreExport={`operacion-${operacion.idOperacion}`} />
+          <TablaItemsOperacion filas={operacion.items} nombreExport={`operacion-${operacion.idOperacion}`} puedeCorregir={puedeAjustar} />
         </div>
       )}
     </div>
