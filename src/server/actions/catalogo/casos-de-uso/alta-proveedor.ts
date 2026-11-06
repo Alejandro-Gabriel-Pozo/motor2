@@ -28,14 +28,14 @@ import { crearProveedorNuevo } from "@/server/persistencia/catalogo/proveedores"
  * @ficha permiso=proveedor_alta transaccion=NINGUNA idempotencia=POR_ESTADO auditoria=DOCUMENTO_PROPIO reloj=INYECTADO periodo=NO_APLICA
  */
 export async function altaProveedorCasoDeUso(actor: Pick<ContextoUsuario, "db">, comando: ComandoAltaProveedor, azar: FuenteDeAzar): Promise<ResultadoAltaProveedor> {
-  const { nombre, valores } = comando;
+  const { nombre, valores, oferta } = comando;
   const dup = await actor.db.proveedor.findFirst({ where: { nombre: { equals: nombre, mode: "insensitive" } } });
   if (dup) return fracaso("NOMBRE_REPETIDO", `Ya existe un proveedor llamado "${nombre}".`);
   const conMismoCuit = await proveedorConCuit(actor.db, valores.cuit);
   if (conMismoCuit) return fracaso("CUIT_REPETIDO", mensajeCuitDuplicado(conMismoCuit));
 
   try {
-    const proveedor = await crearConCodigoAutogenerado("PRV", undefined, (codigo) => crearProveedorNuevo(actor.db, { codigo, nombre, valores }), azar);
+    const proveedor = await crearConCodigoAutogenerado("PRV", undefined, (codigo) => crearProveedorNuevo(actor.db, { codigo, nombre, valores, oferta }), azar);
     return exito(`Proveedor "${proveedor.nombre}" creado.`, { id: proveedor.id, nombre: proveedor.nombre });
   } catch (e) {
     // Carrera: dos altas con el mismo CUIT a la vez pasan el chequeo de arriba y las frena el índice único (empresaId, cuit).

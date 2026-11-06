@@ -1,9 +1,10 @@
 "use client";
 
 import { useReducer } from "react";
-import { type EntradaPromoSelectorCarta, cantidadElegida, claveDeCupo, eleccionParaAgregar, estadoInicialArmarPromo, puedeConfirmarArmarPromo, reducirArmarPromo, totalElegidoDelCupo, type EleccionParaAgregar, formatearMonto } from "@/core/pos/public";
+import { type EntradaPromoSelectorCarta, type GrupoParaVender, cantidadElegida, claveDeCupo, eleccionParaAgregar, estadoInicialArmarPromo, puedeConfirmarArmarPromo, reducirArmarPromo, totalElegidoDelCupo, unidadesDeEntrada, type EleccionParaAgregar, formatearMonto } from "@/core/pos/public";
 import { Dialogo } from "@/ui/componentes/superposiciones/dialogo";
 import { Boton } from "@/ui/primitivas/boton";
+import { OpcionesDeUnidad } from "./armar-promo-opciones";
 
 /**
  * Diálogo "Armar promo" (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 11): por cada cupo, los productos elegibles con
@@ -24,6 +25,9 @@ import { Boton } from "@/ui/primitivas/boton";
  * GO-3b (ADR-032): un cupo de ENTRADAS (LISTA o DEL_DIA) muestra sus entradas de hoy por su nombre con la configuración («Café · Mediano · Almendras») y se elige con los mismos −/+; un
  * cupo FIJO se ve como «Viene con: …», sin botones (lo completa el servidor); un lugar del día sin plato cargado lo dice y no deja confirmar. Lo de los productos con opciones (`noSeArman`) no
  * aplica a una entrada: su configuración ya viene fijada.
+ *
+ * Promo «a elegir» (diseño 2026-11-04 §7): una entrada con opciones permitidas se elige como las demás (−/+ de su plato) y cada unidad muestra debajo SUS grupos, solo con las opciones permitidas de hoy
+ * (`OpcionesDeUnidad`); «Agregar promo» espera a que cada unidad cumpla los mínimos de sus grupos. El precio de la promo no cambia. El servidor vuelve a validar todo contra lo permitido.
  */
 export function ArmarPromo({
   entrada,
@@ -53,8 +57,8 @@ export function ArmarPromo({
             const nombreDelCupo = "cupoId" in cupo ? cupo.nombre : cupo.nombreSeccion;
             const elegibles =
               "cupoId" in cupo
-                ? cupo.entradas.map((e) => ({ clave: e.entradaId, nombre: e.nombre, noSeArma: undefined as string | undefined }))
-                : cupo.elegibles.map((p) => ({ clave: p.productoId, nombre: p.nombre, noSeArma: noSeArman?.get(p.productoId) }));
+                ? cupo.entradas.map((e) => ({ clave: e.entradaId, nombre: e.nombre, noSeArma: undefined as string | undefined, grupos: e.grupos }))
+                : cupo.elegibles.map((p) => ({ clave: p.productoId, nombre: p.nombre, noSeArma: noSeArman?.get(p.productoId), grupos: undefined as readonly GrupoParaVender[] | undefined }));
             return (
               <fieldset key={clave} data-cupo-armar-promo={clave} className="flex flex-col gap-2 rounded-[12px] border border-borde p-3">
                 <legend className="px-1 text-sm font-semibold">
@@ -73,38 +77,52 @@ export function ArmarPromo({
                     {elegibles.map((p) => {
                       const cantidad = cantidadElegida(estado, clave, p.clave);
                       const noSeArma = p.noSeArma;
+                      const unidades = p.grupos ? unidadesDeEntrada(estado, clave, p.clave) : [];
                       return (
-                        <li key={p.clave} data-producto-armar-promo={p.clave} className="flex items-center justify-between gap-2 py-1.5">
-                          <span className="min-w-0 flex-1 text-sm">
-                            {p.nombre}
-                            {noSeArma && (
-                              <span data-no-se-arma className="block text-sm text-tinta-suave">
-                                {noSeArma}
-                              </span>
-                            )}
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            <Boton
-                              variante="secundario" tamano="compacto" className="min-w-11"
-                              aria-label={`Restar ${p.nombre} de ${nombreDelCupo}`}
-                              disabled={cantidad === 0}
-                              onClick={() => despachar({ tipo: "decrementar", seccionCartaId: clave, productoId: p.clave })}
-                            >
-                              −
-                            </Boton>
-                            <span aria-live="polite" className="w-5 text-center text-sm tabular-nums">
-                              {cantidad}
+                        <li key={p.clave} data-producto-armar-promo={p.clave} className="flex flex-col gap-2 py-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="min-w-0 flex-1 text-sm">
+                              {p.nombre}
+                              {noSeArma && (
+                                <span data-no-se-arma className="block text-sm text-tinta-suave">
+                                  {noSeArma}
+                                </span>
+                              )}
                             </span>
-                            <Boton
-                              variante="secundario" tamano="compacto" className="min-w-11"
-                              aria-label={`Sumar ${p.nombre} a ${nombreDelCupo}`}
-                              disabled={llegoAlMaximo || noSeArma !== undefined}
-                              title={noSeArma ?? (llegoAlMaximo ? `Ya elegiste el máximo de ${nombreDelCupo} (${cupo.cantidadMaximaCupo}).` : undefined)}
-                              onClick={() => despachar({ tipo: "incrementar", seccionCartaId: clave, productoId: p.clave })}
-                            >
-                              +
-                            </Boton>
+                            <div className="flex items-center gap-1.5">
+                              <Boton
+                                variante="secundario" tamano="compacto" className="min-w-11"
+                                aria-label={`Restar ${p.nombre} de ${nombreDelCupo}`}
+                                disabled={cantidad === 0}
+                                onClick={() => despachar({ tipo: "decrementar", seccionCartaId: clave, productoId: p.clave })}
+                              >
+                                −
+                              </Boton>
+                              <span aria-live="polite" className="w-5 text-center text-sm tabular-nums">
+                                {cantidad}
+                              </span>
+                              <Boton
+                                variante="secundario" tamano="compacto" className="min-w-11"
+                                aria-label={`Sumar ${p.nombre} a ${nombreDelCupo}`}
+                                disabled={llegoAlMaximo || noSeArma !== undefined}
+                                title={noSeArma ?? (llegoAlMaximo ? `Ya elegiste el máximo de ${nombreDelCupo} (${cupo.cantidadMaximaCupo}).` : undefined)}
+                                onClick={() => despachar({ tipo: "incrementar", seccionCartaId: clave, productoId: p.clave })}
+                              >
+                                +
+                              </Boton>
+                            </div>
                           </div>
+                          {p.grupos &&
+                            unidades.map((u, i) => (
+                              <OpcionesDeUnidad
+                                key={u.uid}
+                                nombre={p.nombre}
+                                numero={unidades.length > 1 ? i + 1 : null}
+                                grupos={p.grupos!}
+                                unidad={u}
+                                onOpcion={(accion, grupoId, opcionId) => despachar({ tipo: "opcion", seccionCartaId: clave, uid: u.uid, accion, grupoId, opcionId })}
+                              />
+                            ))}
                         </li>
                       );
                     })}

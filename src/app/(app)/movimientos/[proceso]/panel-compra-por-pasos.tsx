@@ -120,6 +120,7 @@ export function PanelCompraPorPasos({
   unidades,
   productoInicial,
   reparto,
+  sucursalActivaId,
 }: {
   config: ProcesoUiConfig;
   secciones: Opcion[];
@@ -130,6 +131,8 @@ export function PanelCompraPorPasos({
   productoInicial?: { id: string; etiqueta: string };
   /** E3a (ADR-041): solo si quien carga puede repartir y hay otras sucursales activas. */
   reparto?: { sucursalActiva: Opcion; otras: Opcion[] };
+  /** Pagos X0: la sucursal activa, para cargar una compra «pendiente de pago» sin repartir (queda como factura de proveedor con una sola parte, la de esta sucursal). */
+  sucursalActivaId: string;
 }) {
   const router = useRouter();
   const leer = useLeerServidor();
@@ -148,6 +151,8 @@ export function PanelCompraPorPasos({
   const [detalleLibre, setDetalleLibre] = useState("");
   const [estadoReparto, setEstadoReparto] = useState<EstadoDeReparto>(REPARTO_APAGADO);
   const repartiendo = Boolean(reparto && estadoReparto.repartir);
+  // Pagos X0: «pagada ahora» (como siempre) o «pendiente de pago» (se declara cuándo y cómo se pagó desde «Compras registradas»).
+  const [pendienteDePago, setPendienteDePago] = useState(false);
   const [items, setItems] = useState<FilaCompra[]>([productoInicial ? { ...FILA_VACIA, productoId: productoInicial.id, etiquetaInicial: productoInicial.etiqueta } : { ...FILA_VACIA }]);
   const [productosYaVinculados, setProductosYaVinculados] = useState<ReadonlySet<string>>(new Set());
   const [cargandoProveedor, setCargandoProveedor] = useState(false);
@@ -352,6 +357,20 @@ export function PanelCompraPorPasos({
             detalleLibre: detalleLibre || undefined,
             items: itemsValidos,
             reparto: { modo: estadoReparto.modo, partes },
+            ...(pendienteDePago ? { condicionPago: "PENDIENTE_DE_PAGO" as const } : {}),
+            claveIdempotencia,
+          });
+        } else if (pendienteDePago) {
+          // Pendiente de pago sin repartir: una factura con UNA parte del 100 % en esta sucursal (mismo stock y Kardex que la compra simple), para poder declararle el pago después.
+          resultado = await registrarFacturaProveedor({
+            fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
+            proveedorId,
+            nroFactura,
+            seccionId,
+            detalleLibre: detalleLibre || undefined,
+            items: itemsValidos,
+            reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: sucursalActivaId, valor: 100 }] },
+            condicionPago: "PENDIENTE_DE_PAGO",
             claveIdempotencia,
           });
         } else {
@@ -379,6 +398,7 @@ export function PanelCompraPorPasos({
           setInfoProveedor("");
           reiniciarFilas();
           setEstadoReparto(REPARTO_APAGADO);
+          setPendienteDePago(false);
           setClaveIdempotencia(crypto.randomUUID());
           router.refresh();
         }
@@ -579,7 +599,15 @@ export function PanelCompraPorPasos({
         </div>
       )}
 
-      {paso === "PAGO" && <p data-testid="pago-pendiente">Pendiente de completar: la forma y fecha de pago se cargan en una etapa posterior.</p>}
+      {paso === "PAGO" && (
+        <div className="flex flex-col gap-3" data-testid="paso-de-pago">
+          <Selector etiqueta="¿Se pagó ya?" value={pendienteDePago ? "PENDIENTE_DE_PAGO" : "CONTADO_PAGADA"} onChange={(e) => setPendienteDePago(e.target.value === "PENDIENTE_DE_PAGO")} data-testid="condicion-de-pago">
+            <option value="CONTADO_PAGADA">Pagada ahora</option>
+            <option value="PENDIENTE_DE_PAGO">Pendiente de pago</option>
+          </Selector>
+          {pendienteDePago && <p className="text-sm text-tinta-tenue">Cuando se pague, declaralo desde «Compras registradas» con la fecha y el medio de pago.</p>}
+        </div>
+      )}
 
       {paso === "REVISAR" && (
         <div className="flex flex-col gap-3" data-testid="resumen-de-compra">
@@ -592,6 +620,8 @@ export function PanelCompraPorPasos({
             <dd>{fecha}</dd>
             <dt className="font-medium">Depósito</dt>
             <dd>{secciones.find((s) => s.id === seccionId)?.nombre ?? "—"}</dd>
+            <dt className="font-medium">Pago</dt>
+            <dd data-testid="pago-del-resumen">{pendienteDePago ? "Pendiente de pago" : "Pagada ahora"}</dd>
             {repartiendo && reparto && (
               <>
                 <dt className="font-medium">Reparto</dt>

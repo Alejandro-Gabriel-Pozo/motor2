@@ -3,6 +3,9 @@ import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { formatearPrecioCarta } from "./precio-carta";
 
 /**
+ * Carta «B» (2026-11-04): lo que se elige SIN costo (`eleccion`) ya no se lee con estas funciones en la carta ni en «Va a mostrar» (lo dicen «Incluye …» y el bloque al pie, `incluye-en-carta.ts`); sigue acá
+ * solo para el respaldo de un producto cuya forma la carta no puede leer exacta (`ItemComoAntes`), que no trae los límites del grupo.
+ *
  * Fase 5 («carta pareja», ADR-035): los TEXTOS con que se lee la forma de un producto, compartidos por la carta pública (`components/carta-publica/seccion.tsx`) y la vista previa de la
  * administración («Va a mostrar», `mantenimiento.ts`): una sola manera de escribir un recargo y una aclaración. Puro. (Aparte de `presentacion-en-carta.ts` para no cerrar un ciclo con el tema
  * por `precio-carta.ts`.)

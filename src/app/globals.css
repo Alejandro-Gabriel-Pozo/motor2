@@ -315,6 +315,71 @@ body:has(main[data-panel]) {
   display: none;
 }
 
+/* Carta «B», E2 (invitación «5+2», 2026-11-04): «Incluye guarnición y salsa · elegí abajo ↓». Las palabras del grupo son botones (subrayado punteado con el color de marca del tema); al tocar una, `lista-de-la-seccion.tsx`
+   pone `data-iluminado` al bloque (borde con el color de marca y «Va con: …») y `data-marcado` a los platos que lo incluyen (barra lateral con el color de marca). Todo sale de los tokens del tema (`--carta-primary`,
+   `--carta-ink`): ningún color fijo. La flecha rebota dos veces y queda quieta; con «movimiento reducido» no se anima (la animación solo existe si el navegador NO pidió reducirla). */
+.carta-shell .carta-palabra-tocable {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--carta-primary);
+  text-underline-offset: 3px;
+}
+.carta-shell .carta-palabra-tocable:focus-visible {
+  outline: 2px solid var(--carta-ink);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.carta-shell .carta-flecha {
+  display: inline-block;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .carta-shell .carta-flecha {
+    animation: carta-rebote 1.4s ease-in-out 2;
+  }
+}
+@keyframes carta-rebote {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+.carta-shell [data-plato] {
+  position: relative;
+}
+.carta-shell [data-plato][data-marcado]::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--carta-primary);
+}
+.carta-shell [data-bloque-de-opciones][data-iluminado] {
+  outline: 2px solid var(--carta-primary);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+.carta-shell [data-bloque-de-opciones]:focus {
+  outline-offset: -2px;
+}
+.carta-shell [data-va-con] {
+  display: none;
+}
+.carta-shell [data-iluminado] [data-va-con] {
+  display: block;
+}
+
 /* Portal de sucursales (`PortalVista`): colores y tamaños llegan como `--portal-*` desde `resolverEstiloPortal` (config de
    `PortalCartaEmpresa`). Sin valor cargado cae a los tokens `--carta-*` (contraste AA). */
 .carta-shell .portal {
@@ -569,6 +634,14 @@ html:has([data-carta-libro]) body {
   .carta-shell [data-carta-impresa] > .carta-pagina:last-child {
     page-break-after: auto;
     break-after: auto;
+  }
+  /* Carta «B», E2: en papel no hay interacción: la palabra pierde el subrayado y nada se ilumina ni se marca. */
+  .carta-shell .carta-palabra-tocable {
+    text-decoration: none !important;
+  }
+  .carta-shell [data-va-con],
+  .carta-shell [data-plato]::before {
+    display: none !important;
   }
   /* Paso 10b: si hoy hay algo agotado, el papel lleva la carta COMPLETA (`[data-carta-impresa]`) en lugar de las páginas de la pantalla. */
   .carta-shell .carta-solo-pantalla {

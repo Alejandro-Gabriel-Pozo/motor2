@@ -41,6 +41,8 @@ const NO_SON_SECRETOS: Readonly<Record<string, string>> = {
   "FacturaProveedor.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "ReclasificacionRenglon.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "AnulacionDeFacturaProveedor.payloadHash": "Huella del pedido de anulación para la idempotencia (E3a, ADR-041): no abre nada.",
+  "PagoDeFacturaProveedor.payloadHash": "Huella del pedido de pago para la idempotencia (Pagos X0): no abre nada.",
+  "AnulacionDePagoDeFacturaProveedor.payloadHash": "Huella del pedido de anulación de pago para la idempotencia (Pagos X0): no abre nada.",
   "NotaCreditoProveedor.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
   "DistribucionCostoVersion.payloadHash": "Huella del pedido para la idempotencia: no abre nada.",
 };
@@ -70,6 +72,15 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   "src/server/actions/catalogo/proveedores.ts": P("Proveedor.contacto"),
   "src/server/actions/traspasos/lecturas.ts": P("User.email"),
   "src/server/consultas/catalogo/productos.ts": P("Producto.proveedorConsignacion"),
+  "src/server/actions/catalogo/casos-de-uso/actualizar-proveedor.ts": I(
+    "Caso de uso de escritura: lee el contacto del proveedor SOLO para compararlo con lo que se guarda (si no cambió nada, no escribe ni audita) y devuelve un ResultadoAccion; el contacto no sale a la pantalla.",
+    "Proveedor.contacto",
+    "Proveedor.telefono",
+    "Proveedor.email",
+    "Proveedor.cuit",
+    "Proveedor.condicionesPago",
+    "Proveedor.notas"
+  ),
   "src/server/consultas/catalogo/proveedores.ts": P("Proveedor.contacto", "Proveedor.telefono", "Proveedor.email", "Proveedor.cuit", "Proveedor.condicionesPago", "Proveedor.notas"),
   "src/server/consultas/permisos/auditoria.ts": P("User.email"),
   "src/server/consultas/permisos/gerencia.ts": P("User.email"),

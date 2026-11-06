@@ -1,6 +1,6 @@
 import { intento, variantes, type ContextoDeArgumentos, type Generadores, type Kit, type Valor } from "./argumentos";
 import { DIA_DEL_PLATO_DEL_MUNDO } from "./mundo";
-import { sumarDias } from "../../../src/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../../../src/core/tiempo/zona-horaria";
 import { nroFacturaDePrueba } from "../../setup/comprobante-de-prueba";
 import { REFERENCIA_DE_PRUEBA } from "../../setup/referencia-de-prueba";
 
@@ -95,6 +95,8 @@ const completos: Record<string, Valor> = {
       intento(c, ["seccionCartaId"], [c.propio.productoPvId, { visibleEnCarta: true, seccionCartaId: k.seccionCartaId, generoCartaId: c.propio.generoCartaId, descripcion: "texto" }]),
       intento(c, ["generoCartaId"], [c.propio.productoPvId, { visibleEnCarta: true, seccionCartaId: c.propio.seccionCartaId, generoCartaId: k.generoCartaId, descripcion: "texto" }]),
     ),
+  // «Está bien así» (2026-11-04): el PV con opciones del mundo está VISIBLE en la carta de la sucursal con el nombre de carta sin decidir; el control positivo lo confirma.
+  "accion|actions/carta/contenido-producto.ts|confirmarNombreEnCarta": (k) => [k.productoConOpcionesId],
   // CARTA-MANT: «Agregar a la carta» (eco de la sucursal primero). El `pv2` del mundo está disponible en S1 y SIN contenido de carta (el `pv` tiene uno oculto): el control positivo lo agrega.
   "accion|actions/carta/mantenimiento.ts|agregarProductoALaCarta": (k, c) =>
     conVariantes(
@@ -332,6 +334,11 @@ const completos: Record<string, Valor> = {
     ),
   // Anular: la factura que cargó la sucursal ajena (la cabecera es de la empresa: la defensa es pedir `anular_compra` en la sucursal que la cargó y en cada una con parte).
   "accion|actions/movimientos/facturas-proveedor.ts|anularFacturaProveedor": (k, c) => intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, "motivo de prueba", crypto.randomUUID()]),
+  // Pagos X0: declarar y anular el pago. La clave es de EMPRESA (`declarar_pago_compra`) y la cabecera de la factura es de la empresa: la defensa es la RLS (la factura o el pago de otra empresa no existe para quien pide) y el permiso. La
+  // factura que se paga es una «pendiente de pago» sin pago; el pago que se anula es el vigente de otra factura (el mundo siembra las dos). La fecha es HOY en Argentina (nunca anterior al día de la factura, que es ayer).
+  "accion|actions/movimientos/pagos-factura-proveedor.ts|declararPagoDeFacturaProveedor": (k, c) =>
+    intento(c, ["facturaPendienteDePagoId"], [k.facturaPendienteDePagoId, diaDeCalendario(new Date(), ZONA_ARGENTINA), "EFECTIVO", crypto.randomUUID()]),
+  "accion|actions/movimientos/pagos-factura-proveedor.ts|anularPagoDeFacturaProveedor": (k, c) => intento(c, ["pagoDeFacturaId"], [k.pagoDeFacturaId, "motivo de prueba", crypto.randomUUID()]),
 
   // --- consultas de las páginas y lecturas (el contexto —sucursal activa, empresa, usuario, hora, db— es el propio; los ids del cliente, los ajenos) ---
   // Las candidatas son las sucursales con carta propia; la consulta tiene que dejar afuera las que u1 no ve (S2, S3, las de otra empresa).
@@ -475,6 +482,8 @@ const parametros: Record<string, Record<string, Valor>> = {
     elegidas: (k) => [{ productoId: k.productoConOpcionesId, opcionIds: [k.opcionMedidaId] }],
   },
   // GO-3b: los componentes de un combo (el PV con receta) y las alícuotas de todo lo que el combo puede tener (la sección de carta, la lista y el plato del día; la carta de la sucursal activa).
+  "lectura|lecturas/carta/choque-de-nombre.ts|buscarChoqueDeNombreEnLaCarta": { args: (k) => ({ sucursalId: k.sucursalId, productoIdPropio: k.productoPvId, nombre: "Nombre de prueba" }) },
+  "lectura|lecturas/carta/nombres-para-el-ticket.ts|cargarNombresDeCartaParaElTicket": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoPvId] }) },
   "lectura|lecturas/carta/componentes-de-promo.ts|cargarProductosComoComponentes": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoPvId] }) },
   "lectura|lecturas/carta/componentes-de-promo.ts|cargarAlicuotasPosiblesDeLugares": {
     lugares: (k) => ({ seccionCartaIds: [k.seccionCartaId], cupoListaIds: [k.cupoListaId], cupoDelDiaIds: [k.cupoDelDiaId] }),

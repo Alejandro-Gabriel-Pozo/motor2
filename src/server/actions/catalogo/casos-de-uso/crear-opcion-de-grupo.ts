@@ -71,7 +71,7 @@ export async function crearOpcionDeGrupoEnTx(
   const existente = await opcionConElMismoNombre(tx, grupo.id, comando.nombre, null);
   if (existente) {
     const vigente = await versionVigenteEnTx(tx, existente.id);
-    const identica = existente.esNinguna === comando.esNinguna && vigente !== null && vigente.numero === 1 && contenidoDeVersionIgual(vigente, comando.version);
+    const identica = existente.esNinguna === comando.esNinguna && existente.descripcionEnCarta === (comando.descripcionEnCarta ?? null) && vigente !== null && vigente.numero === 1 && contenidoDeVersionIgual(vigente, comando.version);
     return identica
       ? exito(`Ya existía la opción «${existente.nombre}» en «${grupo.nombre}»: no se creó otra.`, { opcionId: existente.id, versionDeOpcionId: vigente.id, productoAnclaId: existente.productoId, yaExistia: true })
       : fracaso("NOMBRE_REPETIDO", `Ya hay una opción llamada «${existente.nombre}» en «${grupo.nombre}». Elegí otro nombre.`);
@@ -110,7 +110,7 @@ export async function crearOpcionDeGrupoEnTx(
     }
   }
 
-  const opcion = await crearOpcionDeGrupo(tx, { grupoId: grupo.id, nombre: comando.nombre, orden: comando.orden, esNinguna: comando.esNinguna, productoAnclaId: ancla?.id ?? null, ahora: actor.ahora });
+  const opcion = await crearOpcionDeGrupo(tx, { grupoId: grupo.id, nombre: comando.nombre, orden: comando.orden, esNinguna: comando.esNinguna, productoAnclaId: ancla?.id ?? null, descripcionEnCarta: comando.descripcionEnCarta ?? null, ahora: actor.ahora });
   const version = await agregarVersionDeOpcion(tx, {
     opcionId: opcion.id,
     numero: 1,
@@ -127,6 +127,8 @@ export async function crearOpcionDeGrupoEnTx(
     { campo: "orden", valorNuevo: comando.orden },
     { campo: "esNinguna", valorNuevo: comando.esNinguna },
     { campo: "productoId", valorNuevo: ancla?.id ?? null },
+    // Carta «B», E3: solo si el alta trae descripción (sin ella no hay nada que auditar).
+    ...(comando.descripcionEnCarta ? [{ campo: "descripcionEnCarta", valorNuevo: comando.descripcionEnCarta }] : []),
   ];
   for (const c of cambiosDeLaOpcion) {
     await registrarCambioAuditado(tx, { entidad: "OpcionDeGrupo", entidadId: opcion.id, campo: c.campo, descripcion: descripcionDeLaOpcion, valorAnterior: null, valorNuevo: c.valorNuevo, actorId: actor.usuarioId, sucursalId: null });

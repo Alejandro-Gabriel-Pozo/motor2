@@ -26,6 +26,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
     // Fase 4 de la ola «precio y carta» (ADR-035): `modoDeVenta` («¿Cómo se vende?»: directo o por opción).
     campos: ["precioVenta", "precioConsignacion", "pasoVenta", "modoDeVenta", "factorConversion", "unidadStockId", "unidadCompraId", "seProduce", "esConsignacion", "proveedorConsignacionId"],
   },
+  // Proveedores (2026-11-04): corregir un proveedor deja una fila por columna que cambia entre el nombre y las dos marcas de qué le compramos (productos / servicios).
+  { archivo: "src/server/actions/catalogo/casos-de-uso/actualizar-proveedor.ts", entidad: "Proveedor", campos: ["nombre", "ofreceProductos", "ofreceServicios"] },
   // ADR-039: habilitar el mostrador de una sucursal deja su fila (la mesa creada, `Mesa.tipo`).
   { archivo: "src/server/actions/pos/casos-de-uso/habilitar-mostrador.ts", entidad: "Mesa", campos: ["tipo"] },
   {
@@ -39,7 +41,7 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   // Fase 4 de la ola «precio y carta» (ADR-035): + `prefijoEnCarta` («se lee en la carta como»).
   { archivo: "src/server/actions/catalogo/casos-de-uso/crear-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "tipo", "cantidadMinima", "cantidadMaxima", "prefijoEnCarta"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/editar-grupo-de-opciones.ts", entidad: "GrupoDeOpciones", campos: ["nombre", "cantidadMinima", "cantidadMaxima", "prefijoEnCarta"] },
-  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["nombre"] },
+  { archivo: "src/server/actions/catalogo/casos-de-uso/editar-opcion-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["nombre", "descripcionEnCarta"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/agregar-version-de-opcion.ts", entidad: "VersionDeOpcion", campos: ["numero", "tipoDeDiferencia", "diferenciaPrecio", "porcentaje", "factorEscala"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/apagar-opcion-en-sucursal.ts", entidad: "OpcionApagadaEnSucursal", campos: ["apagada"] },
   { archivo: "src/server/actions/catalogo/casos-de-uso/fijar-precio-local-de-opcion.ts", entidad: "PrecioLocalDeOpcion", campos: ["precio", "habilitado"] },
@@ -48,7 +50,9 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   // CARTA-MANT: «Agregar a la carta» un producto fuera de carta (de `null` a visible).
   { archivo: "src/server/actions/carta/casos-de-uso/agregar-producto-a-la-carta.ts", entidad: "ContenidoCartaProducto", campos: ["visibleEnCarta"] },
   // Fase 5 de la ola «precio y carta» (DEC-11): «Mostrar el nombre arriba» de un producto base con un solo eje (cómo se LEE en la carta pública). El resto del contenido sigue sin auditoría.
-  { archivo: "src/server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts", entidad: "ContenidoCartaProducto", campos: ["mostrarNombreArriba"] },
+  // «Nombre en la carta» (2026-11-04): cómo se llama el plato en la carta de la sucursal; guardar lo audita, y «Está bien así» lo copia del producto (audita).
+  { archivo: "src/server/actions/carta/casos-de-uso/confirmar-nombre-en-carta.ts", entidad: "ContenidoCartaProducto", campos: ["nombreEnCarta"] },
+  { archivo: "src/server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts", entidad: "ContenidoCartaProducto", campos: ["mostrarNombreArriba", "nombreEnCarta"] },
   // Interruptor «solo salón» de las promos (docs/diseno-promo-solo-salon-2026-10-26.md): lo que decide si una promo con su precio se publica en la carta pública; cada cambio queda con quién, cuándo y de qué a qué.
   { archivo: "src/server/actions/carta/casos-de-uso/guardar-solo-salon-promo-carta.ts", entidad: "PromoCarta", campos: ["soloSalon"] },
   // CARTA-MANT F3: «Ordenar» las secciones de la empresa, una fila por sección que cambió de lugar.

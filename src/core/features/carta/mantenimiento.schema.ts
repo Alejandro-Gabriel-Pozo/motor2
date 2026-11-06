@@ -22,7 +22,7 @@ export interface ComandoAgregarProductoALaCarta {
  */
 export type ResultadoAgregarProductoALaCarta = ResultadoCaso<
   { huboCambio: boolean },
-  "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "ES_ANCLA_DE_ADICIONAL" | "SECCION_NO_ENCONTRADA" | "SECCION_APAGADA" | "YA_TIENE_CONTENIDO" | "ES_MIEMBRO_DE_AGRUPADO"
+  "PRODUCTO_NO_ENCONTRADO" | "NO_ES_PV" | "ES_ANCLA_DE_ADICIONAL" | "SECCION_NO_ENCONTRADA" | "SECCION_APAGADA" | "YA_TIENE_CONTENIDO" | "ES_MIEMBRO_DE_AGRUPADO" | "NOMBRE_EN_USO"
 >;
 
 /**

@@ -1,3 +1,4 @@
+import type { EstadoDePago, MedioDePago } from "@/core/compras/public";
 import { SIN_PROVEEDOR } from "./compras-filtros";
 
 /**
@@ -51,7 +52,15 @@ export interface CompraRegistrada {
   cantidadProductos: number;
   /** E3a (ADR-041): la factura de proveedor de la que esta compra es una PARTE (sus líneas salen de sus renglones), o `null` si es una compra suelta. Una parte no se anula ni se corrige sola: se anula la factura entera. */
   facturaProveedorId: string | null;
+  /** Pagos X0: el estado de pago de esa factura (`null` si la compra es suelta, sin factura). `pagoVigente` solo existe en `PAGADA`. */
+  pago: PagoDeCompra | null;
   renglones: RenglonCompra[];
+}
+
+/** Pagos X0: cómo está pagada la factura de proveedor de una compra, para «Compras registradas». */
+export interface PagoDeCompra {
+  estado: EstadoDePago;
+  pagoVigente: { pagoId: string; dia: string; medio: MedioDePago } | null;
 }
 
 export interface PaginaCompras {

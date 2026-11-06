@@ -83,6 +83,8 @@ const O = [
   "compra_recibir",
   // E3a (decisión del dueño, 2026-10-27): proponer el reparto de una factura entre sucursales (de empresa, piso operario, semilla solo admin; el gerente la asigna en la matriz a quien reparte).
   "compra_repartir",
+  // Pagos X0 (2026-11-04): declarar y anular el pago de una factura de proveedor (dinero; de empresa, piso operario, semilla solo admin; el gerente la asigna a quien confirme los pagos).
+  "declarar_pago_compra",
   // GO-3b: cargar el plato del día de los menús en la sucursal (piso operario, semilla solo admin; delegable al encargado, D-5).
   "promo_menu_del_dia",
 ] as const satisfies readonly AccionClave[];
@@ -214,7 +216,8 @@ describe("GT-26 — las clases de claves (G gobierno, O operativas sensibles, L 
     // O 23 → 22: se retira `pos_limite_mesas_abiertas` (el límite de mesas abiertas por sucursal, decisión del dueño 2026-10-29).
     // A 61 → 60: se retira `notificar_alertas` (decisión del dueño, limpieza paquete A paso 3).
     // O 22 → 21 y L 33 → 34: `opcion_apagar_en_sucursal` pasa de O a L (su semilla suma `operador` en las empresas nuevas).
-    expect([G.length, O.length, L.length, A.length]).toEqual([14, 21, 34, 60]);
+    // O 21 → 22: Pagos X0 suma `declarar_pago_compra`.
+    expect([G.length, O.length, L.length, A.length]).toEqual([14, 22, 34, 60]);
   });
 
   it("toda clave del catálogo declara su clase, y toda clase declarada existe en el catálogo (las dos direcciones)", () => {

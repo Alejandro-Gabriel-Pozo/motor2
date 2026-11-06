@@ -238,6 +238,9 @@ export const ACCIONES = [
   // la migración 20261016100000 se la da al rol `admin` de cada empresa. E3a (decisión del dueño, 2026-10-27: «repartir todo a nivel operador, con auditoría y correcciones de administrador»): el piso baja a OPERARIO
   // (clase O: semilla solo admin; el gerente se la asigna en la matriz al rol de quien reparte, sin migración de datos). La pide «cargar factura» cuando alguna parte es de OTRA sucursal (la propone; la acepta la destino).
   { clave: "compra_repartir", modulo: "compras", descripcion: "Repartir una factura de proveedor entre sucursales y atender las facturas pendientes de reparto", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  // Pagos X0 (docs/diseno-pagos-x0-2026-11-04.md): declarar y anular el pago de una factura de proveedor «pendiente de pago». Es DINERO: no se reusa `proceso_compra`. De EMPRESA (la factura es un documento de la empresa, ADR-029),
+  // clase O (piso operario, semilla solo admin; el gerente la asigna en la matriz a quien confirme los pagos). La migración 20261104111000 se la da al rol `admin` de cada empresa.
+  { clave: "declarar_pago_compra", modulo: "compras", descripcion: "Declarar y anular el pago de una factura de proveedor", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Paquete 3, M3a (cambio del dueño, 2026-10-12): confirmar la RECEPCIÓN de la mercadería de la parte de UNA sucursal en una factura de proveedor ya repartida. El stock de una factura entra recién cuando la factura está
   // REPARTIDA (cabecera CONFIRMADA) Y la parte de esa sucursal está RECIBIDA. Es de la SUCURSAL (quien recibe es la sucursal), clase O (piso operario, semilla solo admin, delegable al encargado de la sucursal por configuración).
   // La migración 20261016100000 se la da al rol `admin` de cada empresa. Reservada hasta la Etapa C (la bandeja «mercadería por recibir» y su caso de uso).

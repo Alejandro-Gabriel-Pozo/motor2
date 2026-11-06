@@ -32,14 +32,17 @@ function configuracion(valor: unknown): ResultadoDato<OpcionDeConfiguracionFija[
   return aceptar(salida);
 }
 
-export function guardComandoAgregarEntradaDeCupo(entrada: { cupoId: unknown; productoId: unknown; opciones?: unknown }): ResultadoDato<ComandoAgregarEntradaDeCupo> {
+export function guardComandoAgregarEntradaDeCupo(entrada: { cupoId: unknown; productoId: unknown; opciones?: unknown; modoDeOpciones?: unknown }): ResultadoDato<ComandoAgregarEntradaDeCupo> {
   const cupoId = id(entrada.cupoId, "No se encontró ese lugar de la promo.");
   if (!cupoId.ok) return cupoId;
   const productoId = id(entrada.productoId, "Elegí un producto de venta.");
   if (!productoId.ok) return productoId;
   const opciones = configuracion(entrada.opciones);
   if (!opciones.ok) return opciones;
-  return aceptar({ cupoId: cupoId.valor, productoId: productoId.valor, opciones: opciones.valor });
+  // Ausente = `FIJAS` (lo de siempre); cualquier otro valor se rechaza.
+  const modo = entrada.modoDeOpciones === undefined || entrada.modoDeOpciones === null ? "FIJAS" : entrada.modoDeOpciones;
+  if (modo !== "FIJAS" && modo !== "A_ELEGIR") return rechazar("formato", "Elegí si las opciones de ese producto son fijas o las elige el mozo.");
+  return aceptar({ cupoId: cupoId.valor, productoId: productoId.valor, modoDeOpciones: modo, opciones: opciones.valor });
 }
 
 export function guardComandoActivarEntradaDeCupo(entrada: { entradaId: unknown; activa: unknown }): ResultadoDato<ComandoActivarEntradaDeCupo> {

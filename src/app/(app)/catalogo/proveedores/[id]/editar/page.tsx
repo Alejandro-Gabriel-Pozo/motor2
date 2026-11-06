@@ -29,6 +29,8 @@ export default async function EditarProveedorPage({ params }: { params: Promise<
     id: p.id,
     codigo: p.codigo,
     nombre: p.nombre,
+    ofreceProductos: p.ofreceProductos,
+    ofreceServicios: p.ofreceServicios,
     contacto: p.contacto ?? undefined,
     telefono: p.telefono ?? undefined,
     email: p.email ?? undefined,

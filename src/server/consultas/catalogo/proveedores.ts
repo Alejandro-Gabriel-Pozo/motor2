@@ -12,7 +12,7 @@ import { cargarOfertasDeProveedores } from "@/server/lecturas/catalogo/ofertas-d
  * Los datos del proveedor que dibujan su ficha y su formulario de edición (`proveedores`, piso administrador): todo menos las columnas internas (`empresaId`). Sigue siendo lo que
  * esa pantalla muestra, ni más ni menos: si hace falta un campo, se AGREGA acá (GT-3a, S-15).
  */
-const SELECT_DATOS_DE_PROVEEDOR = { id: true, codigo: true, nombre: true, contacto: true, telefono: true, email: true, cuit: true, condicionesPago: true, notas: true, activo: true } as const;
+const SELECT_DATOS_DE_PROVEEDOR = { id: true, codigo: true, nombre: true, contacto: true, telefono: true, email: true, cuit: true, condicionesPago: true, notas: true, activo: true, ofreceProductos: true, ofreceServicios: true } as const;
 
 /**
  * Ficha de un proveedor (`/catalogo/proveedores/[id]`): el proveedor con sus productos en consignación (sin orden explícito). `null` si no existe.

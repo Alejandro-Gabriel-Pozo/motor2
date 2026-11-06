@@ -72,6 +72,8 @@ export interface ComandoCrearOpcionDeGrupo {
   version: DatosDeVersionDeOpcion;
   /** Solo en un ADICIONAL (obligatoria ahí). */
   ancla: AnclaNueva | null;
+  /** Carta «B», E3: la descripción que lee solo la carta. Ausente = sin descripción; `null` = sin descripción. */
+  descripcionEnCarta?: string | null;
 }
 
 /**
@@ -88,6 +90,8 @@ export interface ComandoEditarOpcionDeGrupo {
   opcionId: string;
   versionEsperada: number;
   nombre: string;
+  /** Carta «B», E3: ausente = queda como está; `null` = se vacía; un texto = se escribe. */
+  descripcionEnCarta?: string | null;
 }
 
 export type ResultadoEditarOpcionDeGrupo = ResultadoCaso<
