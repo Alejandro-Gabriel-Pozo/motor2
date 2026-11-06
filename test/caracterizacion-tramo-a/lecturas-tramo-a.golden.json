@@ -257,6 +257,13 @@
           "ejemplar": 1
         },
         "estado": "vigente",
+        "corregibles": [
+          {
+            "operacionId": "op-v4",
+            "texto": "1.5 × Empanada",
+            "subtotal": 2025
+          }
+        ],
         "cliente": {
           "nombre": "Ana",
           "descuentoPorcentaje": 10
@@ -288,6 +295,18 @@
         },
         "corrigeA": null,
         "estado": "vigente",
+        "corregibles": [
+          {
+            "operacionId": "op-v1",
+            "texto": "1 × Pizza",
+            "subtotal": 12000
+          },
+          {
+            "operacionId": "op-v2",
+            "texto": "1 × Flan",
+            "subtotal": 3000
+          }
+        ],
         "cliente": null
       }
     ]
@@ -319,6 +338,13 @@
           "ejemplar": 1
         },
         "estado": "vigente",
+        "corregibles": [
+          {
+            "operacionId": "op-v4",
+            "texto": "1.5 × Empanada",
+            "subtotal": 2025
+          }
+        ],
         "cliente": {
           "nombre": "Ana",
           "descuentoPorcentaje": 10
