@@ -11,27 +11,26 @@ import { registrarFacturaProveedorCasoDeUso } from "../../src/server/actions/mov
 import { obtenerCostoActualPorMP } from "../../src/server/lecturas/reportes/comun";
 import { cargarLineasDelPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { calcularComprasDelPeriodo } from "../../src/core/reportes/public";
+import { DIA_MS, enElFuturo } from "../setup/tiempo";
 import { mediodiaDelDia, ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../../src/core/tiempo/zona-horaria";
 import type { ItemMovimientoInput } from "../../src/core/features/movimientos/movimiento.schema";
 
 /**
- * U0.1 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md §11 y §12.2): LÍNEA DE BASE Y CARACTERIZACIÓN, antes de tocar nada.
+ * U0.1 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md §11 y §12.2): LÍNEA DE BASE Y CARACTERIZACIÓN.
  *
- * Una compra de UNA sucursal, pagada ahora, se puede cargar por dos caminos: el viejo (`registrarMovimiento` COMPRA → `Operacion` suelta) y la factura de UNA parte al 100 % en la sucursal que carga
- * (`registrarFacturaProveedor`, `CONTADO_PAGADA`). La unificación (U0/U1) manda todo por el segundo; este test demuestra, con Postgres real, que para el mismo pedido los dos dejan LO MISMO en lo que
- * importa al negocio — las filas de Kardex, el saldo, el costo vigente (V-T1) y el gasto del período — y enumera, aparte, las únicas diferencias permitidas.
+ * Una compra de UNA sucursal, pagada ahora, se cargaba por dos caminos: `registrarMovimiento` COMPRA (una `Operacion` suelta) y la factura de UNA parte al 100 % en la sucursal que carga (`registrarFacturaProveedor`,
+ * `CONTADO_PAGADA`). Antes de U0 (PR #193) este test demostró, con Postgres real, que los dos dejaban LO MISMO en lo que importa al negocio: las filas de Kardex, el saldo, el costo vigente (V-T1) y el gasto del período,
+ * incluido el redondeo del precio por unidad (los dos parten de la misma línea calculada, ya a 4 decimales con ROUND_HALF_UP; el `toFixed(4)` de la factura es la identidad).
  *
- * Cada caso se corre en dos bases limpias y sembradas igual (una por camino) y se comparan las fotos normalizadas (por código de producto y nombre de sección, no por id).
+ * Desde U0 `registrarMovimiento` COMPRA es un adaptador que arma esa misma factura de una parte, así que el test queda como CERROJO de que el adaptador no desvía nada de la carga directa (mismas fotos normalizadas, sin
+ * ids) y como oráculo explícito del redondeo del precio por unidad. Cada caso se corre en dos bases limpias y sembradas igual y se comparan las fotos por código de producto y nombre de sección.
  *
- * DIFERENCIAS PERMITIDAS (las únicas; cada una tiene su afirmación abajo):
- *  D1. `MovimientoStock.facturaProveedorRenglonId`: la factura ata cada fila a su renglón; la compra simple, no.
- *  D2. Unidad y cantidad comprada: en la compra simple viven en `MovimientoStock.unidadCompraId/cantidadCompra`; en la factura, en el renglón (la fila queda en NULL).
- *  D3. La clave de reintento (y la huella): en la compra simple están en `Operacion`; en la factura, en la cabecera (la `Operacion` de la parte queda en NULL).
- *  D4. La factura crea además cabecera, renglones y parte RECIBIDA (la compra simple no crea nada de eso) y la cabecera nace `CONTADO_PAGADA`.
- *  D5. El mensaje: «Se guardaron N movimiento(s)…» vs «Factura cargada: N movimiento(s) entraron al stock de esta sucursal.» (U0.2 lo iguala).
- *
- * REDONDEO del precio por unidad (la duda del diseño, §1): los dos caminos parten de la MISMA `LineaCalculada` (`armarLineaMovimiento` → `precioPorUnidad`, ya a 4 decimales con ROUND_HALF_UP exacto); la
- * factura vuelve a pasarla por `Number(x.toFixed(4))`, que sobre un número que ya tiene ≤ 4 decimales es la identidad. Los casos de abajo (tercios, centésimos, medio centavo) lo comprueban en la base.
+ * DIFERENCIAS que U0 introdujo respecto de la compra simple de antes (las únicas; cada una tiene su afirmación abajo):
+ *  D1. `MovimientoStock.facturaProveedorRenglonId`: la fila de Kardex queda atada a su renglón.
+ *  D2. Unidad y cantidad comprada: viven en el renglón; la fila de Kardex queda en NULL.
+ *  D3. La clave de reintento (y la huella): en la cabecera de la factura; la `Operacion` de la parte queda en NULL.
+ *  D4. Además de la `Operacion`, queda una cabecera `CONFIRMADA`/`CARGA`/`CONTADO_PAGADA`, sus renglones y una parte `RECIBIDA` al 100 %.
+ *  D5. El mensaje no cambia: «Se guardaron N movimiento(s).» más los avisos.
  */
 const mediodiaDeHoy = () => mediodiaDelDia(diaDeCalendario(new Date(), ZONA_ARGENTINA), ZONA_ARGENTINA);
 const mediodiaHaceDias = (dias: number) => mediodiaDelDia(sumarDias(diaDeCalendario(new Date(), ZONA_ARGENTINA), -dias), ZONA_ARGENTINA);
@@ -79,7 +78,7 @@ interface CasoDeCaracterizacion {
   detalleLibre?: string;
 }
 
-const LOTE = new Date("2027-03-15T15:00:00.000Z");
+const LOTE = enElFuturo(120 * DIA_MS);
 const CASOS: CasoDeCaracterizacion[] = [
   { nombre: "una línea con cifras redondas", items: (p) => [{ productoId: p.MP_A!, cantidad: 10, precioTotal: 123.45, referenciaProveedor: REFERENCIA_DE_PRUEBA }] },
   { nombre: "tercios: 10 ÷ 3 = 3,3333 por unidad (el redondeo a 4 decimales)", items: (p) => [{ productoId: p.MP_A!, cantidad: 3, precioTotal: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }] },
@@ -98,14 +97,14 @@ const CASOS: CasoDeCaracterizacion[] = [
   { nombre: "entra a otra sección, con fecha de hace 9 días", diasAtras: 9, enOtraSeccion: true, items: (p) => [{ productoId: p.MP_B!, cantidad: 12, precioTotal: 480, referenciaProveedor: REFERENCIA_DE_PRUEBA }] },
 ];
 
-type Camino = "VIEJO" | "FACTURA_DE_UNA_PARTE";
+type Camino = "ADAPTADOR" | "FACTURA_DE_UNA_PARTE";
 
 async function cargar(camino: Camino, caso: CasoDeCaracterizacion, claveIdempotencia: string) {
   const fecha = caso.diasAtras ? mediodiaHaceDias(caso.diasAtras) : mediodiaDeHoy();
   const seccionId = caso.enOtraSeccion ? e.otraSeccionId : e.seccionId;
   const items = caso.items(e.productos);
   const nroFactura = "A-00001-00000123";
-  if (camino === "VIEJO") {
+  if (camino === "ADAPTADOR") {
     return registrarMovimientoCasoDeUso(actor(), { proceso: "COMPRA", fecha, seccionId, proveedorId: e.proveedorId, nroFactura, items, detalleLibre: caso.detalleLibre, claveIdempotencia });
   }
   return registrarFacturaProveedorCasoDeUso(actor(), {
@@ -152,11 +151,11 @@ async function foto() {
   return { kardex, operaciones, saldos, costo, gasto: { totalGastado: gasto.totalGastado, porProveedor: gasto.porProveedor.map((f) => ({ proveedor: f.proveedor, importe: f.importe, cantidadProductos: f.cantidadProductos, cantidadCompras: f.cantidadCompras, productos: f.productos })), hayComprasSinPrecio: gasto.hayComprasSinPrecio } };
 }
 
-describe("U0.1 caracterización: la misma compra por el camino viejo y por la factura de una parte deja lo mismo", () => {
+describe("U0.1 caracterización: la misma compra por el adaptador `registrarMovimiento` y por la factura de una parte deja lo mismo", () => {
   for (const caso of CASOS) {
     it(caso.nombre, async () => {
       await sembrarEntorno();
-      const viejo = await cargar("VIEJO", caso, randomUUID());
+      const viejo = await cargar("ADAPTADOR", caso, randomUUID());
       expect(viejo.ok, viejo.mensaje).toBe(true);
       const fotoViejo = await foto();
 
@@ -175,45 +174,34 @@ describe("U0.1 caracterización: la misma compra por el camino viejo y por la fa
   }
 });
 
-describe("U0.1 diferencias permitidas, enumeradas (D1 a D4): lo único que cambia entre los dos caminos", () => {
+describe("U0.1 lo que deja una compra de una sucursal desde U0 (D1 a D5), igual por el adaptador y por la carga directa", () => {
   it("D1 a D4 sobre una compra con unidad de compra distinta de la de stock", async () => {
     const caso = CASOS.find((c) => c.nombre.startsWith("unidad de compra"))!;
-    const claveViejo = randomUUID();
-    const claveNueva = randomUUID();
-
-    await sembrarEntorno();
-    expect((await cargar("VIEJO", caso, claveViejo)).ok).toBe(true);
-    const movViejo = await prisma.movimientoStock.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-    const opViejo = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-    expect(movViejo.facturaProveedorRenglonId, "D1 viejo: sin renglón").toBeNull();
-    expect([movViejo.unidadCompraId !== null, movViejo.cantidadCompra?.toFixed(4)], "D2 viejo: la unidad y la cantidad comprada viven en la fila de Kardex").toEqual([true, "3.0000"]);
-    expect([opViejo.claveIdempotencia, opViejo.payloadHash !== null], "D3 viejo: la clave vive en la Operacion").toEqual([claveViejo, true]);
-    expect(await prisma.facturaProveedor.count(), "D4 viejo: no hay factura").toBe(0);
-
-    await sembrarEntorno();
-    expect((await cargar("FACTURA_DE_UNA_PARTE", caso, claveNueva)).ok).toBe(true);
-    const movNuevo = await prisma.movimientoStock.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-    const opNueva = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-    const cabecera = await prisma.facturaProveedor.findFirstOrThrow({ include: { renglones: true, partes: true } });
-    expect(movNuevo.facturaProveedorRenglonId, "D1 nuevo: la fila apunta a su renglón").toBe(cabecera.renglones[0]!.id);
-    expect([movNuevo.unidadCompraId, movNuevo.cantidadCompra], "D2 nuevo: la fila queda en NULL").toEqual([null, null]);
-    expect([cabecera.renglones[0]!.unidadCompraId !== null, cabecera.renglones[0]!.cantidadCompra?.toFixed(4)], "D2 nuevo: lo comprado vive en el renglón").toEqual([true, "3.0000"]);
-    expect([opNueva.claveIdempotencia, opNueva.payloadHash], "D3 nuevo: la Operacion no lleva la clave").toEqual([null, null]);
-    expect(cabecera.claveIdempotencia, "D3 nuevo: la clave vive en la cabecera").toBe(claveNueva);
-    expect([cabecera.estado, cabecera.condicionPago, cabecera.partes.map((p) => [p.sucursalId, p.estadoRecepcion, p.operacionId === opNueva.id, p.porcentajeDeclaradoBp])], "D4 nuevo: cabecera CONFIRMADA, contado, una parte RECIBIDA al 100 % atada a la compra")
-      .toEqual(["CONFIRMADA", "CONTADO_PAGADA", [[e.sucursalId, "RECIBIDA", true, 10000]]]);
-    // El mismo número de factura y el mismo proveedor en la compra de la parte y en la cabecera (base de I-NUM).
-    expect([opNueva.nroFactura, opNueva.proveedorId]).toEqual([cabecera.nroFactura, cabecera.proveedorId]);
+    for (const camino of ["ADAPTADOR", "FACTURA_DE_UNA_PARTE"] as const) {
+      const clave = randomUUID();
+      await sembrarEntorno();
+      expect((await cargar(camino, caso, clave)).ok).toBe(true);
+      const mov = await prisma.movimientoStock.findFirstOrThrow({ where: { proceso: "COMPRA" } });
+      const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
+      const cabecera = await prisma.facturaProveedor.findFirstOrThrow({ include: { renglones: true, partes: true } });
+      expect(mov.facturaProveedorRenglonId, `${camino} D1: la fila apunta a su renglón`).toBe(cabecera.renglones[0]!.id);
+      expect([mov.unidadCompraId, mov.cantidadCompra], `${camino} D2: la fila queda en NULL`).toEqual([null, null]);
+      expect([cabecera.renglones[0]!.unidadCompraId !== null, cabecera.renglones[0]!.cantidadCompra?.toFixed(4)], `${camino} D2: lo comprado vive en el renglón`).toEqual([true, "3.0000"]);
+      expect([op.claveIdempotencia, op.payloadHash], `${camino} D3: la Operacion no lleva la clave`).toEqual([null, null]);
+      expect(cabecera.claveIdempotencia, `${camino} D3: la clave vive en la cabecera`).toBe(clave);
+      expect([cabecera.estado, cabecera.origen, cabecera.condicionPago, cabecera.partes.map((p) => [p.sucursalId, p.estadoRecepcion, p.operacionId === op.id, p.porcentajeDeclaradoBp])], `${camino} D4`)
+        .toEqual(["CONFIRMADA", "CARGA", "CONTADO_PAGADA", [[e.sucursalId, "RECIBIDA", true, 10000]]]);
+      // El mismo número de factura y el mismo proveedor en la compra de la parte y en la cabecera (base de I-NUM).
+      expect([op.nroFactura, op.proveedorId]).toEqual([cabecera.nroFactura, cabecera.proveedorId]);
+    }
   });
 
-  it("D5 el mensaje hoy difiere (U0.2 lo iguala): documenta los dos textos actuales", async () => {
+  it("D5 el mensaje es el de siempre por los dos caminos", async () => {
     const caso = CASOS[0]!;
-    await sembrarEntorno();
-    const viejo = await cargar("VIEJO", caso, randomUUID());
-    await sembrarEntorno();
-    const nueva = await cargar("FACTURA_DE_UNA_PARTE", caso, randomUUID());
-    expect(viejo.mensaje).toBe("Se guardaron 1 movimiento(s).");
-    expect(nueva.mensaje).toBe("Factura cargada: 1 movimiento(s) entraron al stock de esta sucursal.");
+    for (const camino of ["ADAPTADOR", "FACTURA_DE_UNA_PARTE"] as const) {
+      await sembrarEntorno();
+      expect((await cargar(camino, caso, randomUUID())).mensaje, camino).toBe("Se guardaron 1 movimiento(s).");
+    }
   });
 });
 
@@ -231,7 +219,7 @@ describe("U0.1 el precio por unidad, redondeo exacto en la base (la duda de §1)
   ];
   for (const [precioTotal, cantidad, esperado] of tabla) {
     it(`${precioTotal} ÷ ${cantidad} = ${esperado} por los dos caminos`, async () => {
-      for (const camino of ["VIEJO", "FACTURA_DE_UNA_PARTE"] as const) {
+      for (const camino of ["ADAPTADOR", "FACTURA_DE_UNA_PARTE"] as const) {
         await sembrarEntorno();
         const r = await cargar(camino, { nombre: "x", items: (p) => [{ productoId: p.MP_A!, cantidad, precioTotal, referenciaProveedor: REFERENCIA_DE_PRUEBA }] }, randomUUID());
         expect(r.ok, r.mensaje).toBe(true);

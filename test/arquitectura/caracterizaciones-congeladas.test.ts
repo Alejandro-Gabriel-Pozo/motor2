@@ -322,6 +322,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
       },
+      {
+        blob: "29bdccd3dbb70bd2169c9f5073c55b000968c1a7",
+        // El commit PADRE de este (2e810441, PR1 de «una sola compra») es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "2e810441",
+        motivo:
+          "U0 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md; CAMBIA SOLO LA PREPARACIÓN, no la venta): `registrarMovimiento` COMPRA es ahora una factura de UNA parte al 100 %% en la sucursal, pagada ahora. Cambian SOLO las líneas de las compras de preparación (34 OPERACION y 34 KARDEX de proceso COMPRA), en tres campos: la clave de reintento, la huella y el mensaje pasan de la Operacion a la cabecera de la factura (claveIdempotencia, payloadHash y resultadoMensaje de la Operacion quedan en null), la fila de Kardex gana su renglón (facturaProveedorRenglonId) y pierde unidadCompraId y cantidadCompra (viven en el renglón). Comparado línea por línea: ni una fila de venta, stock, costo ni importe cambia.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -435,6 +442,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "afdd6435",
         motivo:
           "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1): las líneas CUENTA_ITEM suman  (nadie tiene «Nombre en la carta» en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior; ninguna venta, KARDEX, stock, costo ni importe cambia.",
+      },
+      {
+        blob: "c557728410d10350b152b60a64c3dc0bca31cd3d",
+        // El commit PADRE de este (2e810441, PR1 de «una sola compra») es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "2e810441",
+        motivo:
+          "U0 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md; CAMBIA SOLO LA PREPARACIÓN, no la venta): `registrarMovimiento` COMPRA es ahora una factura de UNA parte al 100 %% en la sucursal, pagada ahora. Cambian las 115 líneas OPERACION y las KARDEX de proceso COMPRA de las compras de preparación, igual que en venta-matriz (clave, huella y mensaje a la cabecera de la factura; la fila de Kardex gana su renglón y pierde unidadCompraId y cantidadCompra). Más 115 líneas NUEVAS de AUDITORIA con entidad=FacturaProveedor («Factura de proveedor ... cargada en «Central»»): una por compra, porque toda compra ahora es una factura y su carga se audita. Verificado con diff: ninguna línea que no sea de proceso COMPRA ni esas 115 AUDITORIA cambia (venta, stock, costo e importes intactos).",
       },
     ],
   },

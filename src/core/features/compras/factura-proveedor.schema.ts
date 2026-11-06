@@ -43,11 +43,15 @@ export type CodigoRegistrarFacturaProveedor =
   | "FACTURA_DUPLICADA"
   | "REFERENCIA_PROVEEDOR_OBLIGATORIA"
   | "LINEA_INVALIDA"
+  | "SIN_LINEAS_VALIDAS"
   | "REPARTO_INVALIDO"
   | "SUCURSAL_NO_DISPONIBLE"
   | "PRODUCTO_NO_DISPONIBLE";
 
-export type DatosRegistrarFacturaProveedor = { repetida: true; facturaId: null } | { repetida: false; facturaId: string };
+/** Lo que devuelve una carga: si es un reenvío no trae nada nuevo; si no, la factura y, de la parte de la sucursal que carga (si tiene), su compra y cuántos movimientos entraron al stock. */
+export type DatosRegistrarFacturaProveedor =
+  | { repetida: true; facturaId: null; operacionPropiaId: null; movimientosPropios: null }
+  | { repetida: false; facturaId: string; operacionPropiaId: string | null; movimientosPropios: number };
 
 export type ResultadoRegistrarFacturaProveedor = ResultadoCaso<DatosRegistrarFacturaProveedor, CodigoRegistrarFacturaProveedor>;
 

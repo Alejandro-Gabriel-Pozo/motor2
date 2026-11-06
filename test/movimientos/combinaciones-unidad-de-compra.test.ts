@@ -148,18 +148,13 @@ describe("las 32 combinaciones del oráculo (U × M × R × F × T) contra la ba
       expect(Number(mov.cantidad)).toBe(stockEsperado);
       expect(mov.precioTotal.toFixed(2)).toBe("1000.00");
 
-      if (F === "COMPRA_SIMPLE") {
-        expect(mov.unidadCompraId).toBe(e.unidadDeCompra());
-        expect(mov.cantidadCompra?.toFixed(4)).toBe(e.cantidad.toFixed(4));
-        expect(await prisma.facturaProveedorRenglon.count(), "una compra simple no tiene renglón").toBe(0);
-      } else {
-        const renglon = await prisma.facturaProveedorRenglon.findFirstOrThrow({ where: { productoId: productos[e.clave]! } });
-        expect(renglon.unidadCompraId).toBe(e.unidadDeCompra());
-        expect(renglon.cantidadCompra?.toFixed(4)).toBe(e.cantidad.toFixed(4));
-        expect(mov.facturaProveedorRenglonId).toBe(renglon.id);
-        expect(mov.unidadCompraId, "la parte queda en NULL: se lee del renglón").toBeNull();
-        expect(mov.cantidadCompra).toBeNull();
-      }
+      // Desde U0 («una sola compra») la compra de una sucursal ES una factura de una parte: por los dos caminos lo comprado vive en el renglón y la línea del Kardex (la parte) queda en NULL.
+      const renglon = await prisma.facturaProveedorRenglon.findFirstOrThrow({ where: { productoId: productos[e.clave]! } });
+      expect(renglon.unidadCompraId).toBe(e.unidadDeCompra());
+      expect(renglon.cantidadCompra?.toFixed(4)).toBe(e.cantidad.toFixed(4));
+      expect(mov.facturaProveedorRenglonId).toBe(renglon.id);
+      expect(mov.unidadCompraId, "la parte queda en NULL: se lee del renglón").toBeNull();
+      expect(mov.cantidadCompra).toBeNull();
     }, 30_000);
   });
 });
@@ -172,9 +167,9 @@ describe("dimensiones que NO cambian el resultado (cada una equivale a lo que di
       items: [{ productoId: productos.IGUAL!, cantidad: 2, precioTotal: 500, unidadCompraId: pres.unidadCompraId, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: randomUUID(),
     });
     expect(r.ok, r.mensaje).toBe(true);
-    const mov = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: productos.IGUAL!, proceso: "COMPRA" } });
-    expect(mov.unidadCompraId).toBe(unidades.caja);
-    expect(mov.cantidadCompra?.toFixed(4)).toBe("2.0000");
+    const mov = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: productos.IGUAL!, proceso: "COMPRA" }, include: { facturaProveedorRenglon: true } });
+    expect(mov.facturaProveedorRenglon?.unidadCompraId).toBe(unidades.caja);
+    expect(mov.facturaProveedorRenglon?.cantidadCompra?.toFixed(4)).toBe("2.0000");
     expect(Number(mov.cantidad)).toBe(40);
   });
 
@@ -184,8 +179,8 @@ describe("dimensiones que NO cambian el resultado (cada una equivale a lo que di
       items: [{ productoId: productos.CAJA!, cantidad: 4, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: randomUUID(),
     });
     expect(r.ok, r.mensaje).toBe(true);
-    const mov = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: productos.CAJA!, proceso: "COMPRA" } });
-    expect(mov.cantidadCompra?.toFixed(4)).toBe("4.0000");
+    const mov = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: productos.CAJA!, proceso: "COMPRA" }, include: { facturaProveedorRenglon: true } });
+    expect(mov.facturaProveedorRenglon?.cantidadCompra?.toFixed(4)).toBe("4.0000");
     expect(Number(mov.cantidad)).toBe(100);
     expect(mov.precioTotal.toFixed(2)).toBe("0.00");
   });

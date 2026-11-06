@@ -14,6 +14,7 @@ import { MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/idemp
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
 import { AHORA_DE_LA_CORRIDA } from "../setup/tiempo";
 import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
+import { sembrarCompraSimpleDeAntes } from "../setup/compra-simple-de-antes";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 /** K1c: anular una compra ya confirmada (Postgres real, sin mocks de base). */
@@ -29,19 +30,18 @@ describe("anularCompra", () => {
 
   const hoy = () => new Date();
 
+  /** Una compra simple de ANTES de U0 (sin factura): la única que `anularCompra` todavía anula. U1 retira la acción y estas pruebas pasan a la anulación de la factura. */
   async function comprar(opciones: { cantidad?: number; precioTotal?: number; nroFactura?: string; lote?: Date; productoId?: string } = {}) {
-    const r = await registrarMovimiento({
-      proceso: "COMPRA",
-      fecha: hoy(),
+    const { operacionId } = await sembrarCompraSimpleDeAntes({
+      sucursalId,
       seccionId,
+      usuarioId: adminId,
       proveedorId,
       nroFactura: opciones.nroFactura ?? nroFacturaDePrueba(),
-      items: [{ productoId: opciones.productoId ?? harinaId, cantidad: opciones.cantidad ?? 10, precioTotal: opciones.precioTotal ?? 1000, loteVencimiento: opciones.lote, referenciaProveedor: REFERENCIA_DE_PRUEBA }],
-      claveIdempotencia: crypto.randomUUID(),
+      fecha: hoy(),
+      items: [{ productoId: opciones.productoId ?? harinaId, cantidad: opciones.cantidad ?? 10, precioTotal: opciones.precioTotal ?? 1000, loteVencimiento: opciones.lote ?? null }],
     });
-    expect(r.ok, r.mensaje).toBe(true);
-    // La operación de compra más reciente de esa factura.
-    return prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId, ...(opciones.nroFactura ? { nroFactura: opciones.nroFactura } : {}) }, orderBy: { creadoEn: "desc" } });
+    return prisma.operacion.findUniqueOrThrow({ where: { id: operacionId } });
   }
 
   async function consumir(cantidad: number, opciones: { lote?: Date | null; productoId?: string } = {}) {

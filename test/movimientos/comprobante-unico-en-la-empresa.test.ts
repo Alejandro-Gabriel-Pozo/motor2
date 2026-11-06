@@ -17,6 +17,8 @@ import { guardComandoRegistrarFacturaProveedor } from "../../src/core/features/c
 import type { DatosMovimientoInput } from "../../src/core/features/movimientos/movimiento.schema";
 import type { DatosFacturaProveedorInput } from "../../src/core/features/compras/factura-proveedor.schema";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
+import { anularCompraDeTest } from "../setup/anular-compra-de-prueba";
+import { sembrarCompraSimpleDeAntes } from "../setup/compra-simple-de-antes";
 
 /**
  * Etapa 1 de Compras (docs/diseno-compras-factura-unica-y-rechazo-2026-11-03.md, I1, I2, I5, I15): el mismo número del mismo proveedor se rechaza en TODA la empresa, venga como compra simple, como factura repartida o
@@ -136,7 +138,10 @@ describe("secuencial en la empresa", () => {
     expect((await cargar(s2, "B-23-237728")).ok, "otra letra").toBe(true);
     expect((await cargar(s2, "A-23-237728", { proveedorId: otroProveedorId })).ok, "otro proveedor").toBe(true);
     const original = await prisma.operacion.findFirstOrThrow({ where: { sucursalId: s1, nroFactura: "A-00023-00237728" } });
-    await prisma.operacion.update({ where: { id: original.id }, data: { anuladaEn: new Date(), anuladaPorId: adminId } });
+    // La anulación real es la de la factura entera (libera el número en la cabecera y en la compra de su parte).
+    __setCookieDeTestParaSucursal(s1);
+    await mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
+    expect((await anularCompraDeTest(original.id)).ok).toBe(true);
     expect((await cargar(s2, "A-23-237728")).ok, "la original anulada deja libre el número").toBe(true);
   });
 
@@ -158,7 +163,8 @@ describe("secuencial en la empresa", () => {
 describe("corrección", () => {
   it("corregir una compra de S2 al número de una compra vigente de S1 se rechaza con el mensaje único; con un número libre, pasa", async () => {
     expect((await cargar(s1, "A-23-300")).ok).toBe(true);
-    expect((await cargar(s2, "A-23-301")).ok).toBe(true);
+    // La que se corrige es una compra simple de ANTES de U0 (sin factura): la única que `corregirCompra` todavía corrige; U1 retira el caso de uso y la corrección pasa a la factura.
+    await sembrarCompraSimpleDeAntes({ sucursalId: s2, seccionId: sec2, usuarioId: adminId, proveedorId, nroFactura: "A-00023-00000301", items: [{ productoId: harinaId, cantidad: 10, precioTotal: 1000 }] });
     const deS2 = await prisma.operacion.findFirstOrThrow({ where: { sucursalId: s2, proceso: "COMPRA" } });
     const vista = { proveedorId, nroFactura: deS2.nroFactura ?? "", detalleLibre: deS2.detalleLibre ?? "" };
     const pedir = (nroFactura: string) => corregirCompraCasoDeUso(actorDe(s2), { operacionId: deS2.id, nueva: { ...vista, nroFactura }, esperado: vista });
@@ -167,7 +173,7 @@ describe("corrección", () => {
   });
 
   it("quitar el número o el proveedor de una compra se rechaza", async () => {
-    expect((await cargar(s1, "A-23-400")).ok).toBe(true);
+    await sembrarCompraSimpleDeAntes({ sucursalId: s1, seccionId: sec1, usuarioId: adminId, proveedorId, nroFactura: "A-00023-00000400", items: [{ productoId: harinaId, cantidad: 10, precioTotal: 1000 }] });
     const op = await prisma.operacion.findFirstOrThrow({ where: { sucursalId: s1, proceso: "COMPRA" } });
     const vista = { proveedorId, nroFactura: op.nroFactura ?? "", detalleLibre: op.detalleLibre ?? "" };
     const sinNumero = await corregirCompraCasoDeUso(actorDe(s1), { operacionId: op.id, nueva: { ...vista, nroFactura: "" }, esperado: vista });

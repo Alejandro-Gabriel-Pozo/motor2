@@ -54,14 +54,17 @@ function dbFalso(): Prisma.TransactionClient {
     proveedor: { findUnique: async () => ({ activo: true }) },
     // Una COMPRA (con proveedor y número) lee las compras candidatas del aviso C25 y busca el número en la empresa: el cliente falso responde que no hay ninguna.
     operacion: { findMany: async () => [] },
-    facturaProveedor: { count: async () => 0 },
+    // La carga de una COMPRA (una factura de una parte) lee primero si esa clave de reintento ya tiene una factura.
+    facturaProveedor: { count: async () => 0, findUnique: async () => null },
+    // Y lee las sucursales de las partes ajenas del reparto (ninguna, en una compra de una sucursal).
+    sucursal: { findMany: async () => [] },
     $queryRaw: async () => [],
   } as unknown as Prisma.TransactionClient;
 }
 
 function llamar(proceso: ProcesoGenerico, seccionId: string, extra: Partial<DatosMovimientoInput> = {}) {
   const transaccion = (async (fn: (tx: Prisma.TransactionClient) => Promise<unknown>) => fn(dbFalso())) as unknown as Transaccion;
-  const actor = { usuarioId: "u-1", sucursalId: SUCURSAL, sucursalNombre: "Central", db: dbFalso(), transaccion };
+  const actor = { usuarioId: "u-1", sucursalId: SUCURSAL, sucursalNombre: "Central", ahora: new Date(), db: dbFalso(), transaccion };
   return registrarMovimientoCasoDeUso(actor as unknown as Parameters<typeof registrarMovimientoCasoDeUso>[0], { ...base, proceso, seccionId, ...PROCESOS[proceso].extra, ...extra } as DatosMovimientoInput);
 }
 
