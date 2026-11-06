@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACCIONES, ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, type AccionClave } from "../../src/core/permisos/acciones";
+import { ACCIONES, ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, esAccionReservada, type AccionClave } from "../../src/core/permisos/acciones";
 import { capacidadEfectiva, accionesConfigurablesPorSucursal, esCapacidadSiempreHabilitada } from "../../src/core/permisos/capacidades-sucursal";
 import { accesoDeSucursal, decidirEnSucursal } from "../../src/core/permisos/decision-de-acceso";
 import { rolAlcanzaLaAccion } from "../../src/core/permisos/jerarquia";
@@ -116,14 +116,14 @@ describe("(b) las filas muertas no aparecen y las demás sí", () => {
   it("todas las demás siguen apareciendo, en el mismo orden", () => {
     const entrada = CLAVES.map((clave) => ({ clave }));
     const visibles = accionesConfigurablesPorSucursal(entrada).map((a) => a.clave as string);
-    expect(visibles).toEqual(CLAVES.filter((c) => !muertas.includes(c)));
-    expect(visibles.length).toBe(CLAVES.length - muertas.length);
+    expect(visibles).toEqual(CLAVES.filter((c) => !muertas.includes(c) && !esAccionReservada(c)));
+    expect(visibles.length).toBe(CLAVES.length - muertas.length - CLAVES.filter(esAccionReservada).length);
   });
 
-  it("la marca es la MISMA que usa el acceso: una fila se oculta si y solo si el acceso la da siempre por prendida", () => {
+  it("una fila se oculta si el acceso la da siempre por prendida (la misma marca que usa el acceso) o si está reservada", () => {
     for (const clave of CLAVES) {
       const aparece = accionesConfigurablesPorSucursal([{ clave }]).length === 1;
-      expect(aparece, clave).toBe(!esCapacidadSiempreHabilitada(clave));
+      expect(aparece, clave).toBe(!esCapacidadSiempreHabilitada(clave) && !esAccionReservada(clave)); // la reservada (`compra_recibir`) se oculta por otra marca (poda 2/2)
     }
   });
 

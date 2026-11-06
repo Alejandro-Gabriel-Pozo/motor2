@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { guardarPermisos } from "@/server/actions/permisos/permisos";
-import { nivelMinimoDeAccion, claveEnCatalogo } from "@/core/permisos/acciones";
+import { nivelMinimoDeAccion, claveEnCatalogo, esAccionSoloVer } from "@/core/permisos/acciones";
 import { etiquetaDelPiso } from "@/core/permisos/jerarquia";
 import {
   esCeldaFija,
@@ -254,7 +254,14 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
                   return (
                     <Fragment key={r.id}>
                       <td>{celda("ver", actual.puedeVer, cambiada && actual.puedeVer !== anterior.puedeVer)}</td>
-                      <td>{celda("editar", actual.puedeEditar, cambiada && actual.puedeEditar !== anterior.puedeEditar)}</td>
+                      {/* Las claves de solo ver (reportes) no tienen nada que editar: sin casilla (marca `soloVer` del catálogo). */}
+                      {esAccionSoloVer(a.clave) ? (
+                        <td className="text-tinta-tenue" title="Clave de solo ver: no hay nada que editar" aria-label={`${r.nombre}: ${a.clave}, editar: no aplica`}>
+                          —
+                        </td>
+                      ) : (
+                        <td>{celda("editar", actual.puedeEditar, cambiada && actual.puedeEditar !== anterior.puedeEditar)}</td>
+                      )}
                     </Fragment>
                   );
                 })}
@@ -265,6 +272,7 @@ export function PermisosMatriz({ acciones, roles, permisosIniciales }: { accione
       </div>
       <p className="text-xs text-tinta-tenue">
         Tocar «Editar» también prende «Ver», y sacar «Ver» saca «Editar» (Ver ⊇ Editar). «gestion_permisos», «gestion_roles», «gestion_usuarios», «activar_usuario_sucursal», «notas_usuario_sucursal» y «apagar_cuenta_empresa» siempre conservan Editar para el rol administrador (🔒). Las acciones con «Piso» no se le pueden dar a un rol de un nivel más bajo (🚫): las de piso «administrador» y «administrador de sistema» (el gobierno de la empresa: usuarios, roles, permisos, sucursales y auditoría) no se le dan a un rol de nivel operario, y las de piso «gerente» las tiene solo el gerente.
+        {" Las claves de solo ver (los reportes) no tienen «Editar»: se muestran con un guion."}
         {editando && " Lo marcado en amarillo es lo que cambiaste."}
       </p>
     </div>

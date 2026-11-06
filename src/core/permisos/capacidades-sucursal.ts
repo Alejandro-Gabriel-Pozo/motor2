@@ -1,4 +1,4 @@
-import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo } from "./acciones";
+import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, esAccionReservada } from "./acciones";
 
 // Las reglas PURAS de las capacidades por sucursal (la decisión). El LECTOR que trae las filas de `CapacidadSucursal` (`sucursalTieneCapacidad`, `capacidadesDeSucursal`) vive en
 // `server/acceso/capacidades-sucursal.ts` desde el Hito 5 (pieza 5.2, bloque 2, 4A-5): lo usan el gate y el precio local de la carta pública, y este archivo ya no conoce la base (P0).
@@ -50,8 +50,8 @@ export function capacidadEfectiva(accionClave: string, filas: readonly FilaDeCap
 /**
  * Las acciones que la pantalla de capacidades deja tocar (poda aprobada por el dueño el 2026-11-06, «los interruptores muertos hay que ocultarlos»): las que el acceso da
  * SIEMPRE por habilitadas (`esCapacidadSiempreHabilitada`: `capacidades_sucursal` y las claves de gobierno de accesos) no cambian nada al apagarlas, así que no se listan. Es la MISMA
- * marca que usa el acceso, no una lista aparte. Las claves que ya no están en el catálogo (restos de la base) tampoco se listan.
+ * marca que usa el acceso, no una lista aparte. Las RESERVADAS (`compra_recibir`, sin consumidores todavía) y las claves que ya no están en el catálogo (restos de la base) tampoco se listan.
  */
 export function accionesConfigurablesPorSucursal<T extends { clave: string }>(acciones: readonly T[]): T[] {
-  return acciones.filter((a) => claveEnCatalogo(a.clave) && !esCapacidadSiempreHabilitada(a.clave));
+  return acciones.filter((a) => claveEnCatalogo(a.clave) && !esAccionReservada(a.clave) && !esCapacidadSiempreHabilitada(a.clave));
 }
