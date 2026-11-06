@@ -1,10 +1,10 @@
 {
   "regla": "columnas-de-significado",
   "meta": "bajar a 0: toda columna de significado de un modelo de dinero, visibilidad o stock declara si afecta o no, con motivo (E2)",
-  "total": 82,
-  "entradas": 82,
+  "total": 68,
+  "entradas": 68,
   "porTipo": {
-    "sin-declarar": 82
+    "sin-declarar": 68
   },
   "cuentas": {
     "CentroDeCostos.activo": {
@@ -31,9 +31,6 @@
     "ConceptoDeGasto.codigo": {
       "sin-declarar": 1
     },
-    "ContenidoCartaProducto.especial": {
-      "sin-declarar": 1
-    },
     "ConteoFisico.fecha": {
       "sin-declarar": 1
     },
@@ -56,9 +53,6 @@
       "sin-declarar": 1
     },
     "Empresa.estado": {
-      "sin-declarar": 1
-    },
-    "EntradaDeCupo.claveConfiguracion": {
       "sin-declarar": 1
     },
     "FacturaProveedor.claveIdempotencia": {
@@ -94,15 +88,6 @@
     "FacturaProveedorSucursal.recibidaEn": {
       "sin-declarar": 1
     },
-    "GeneroCarta.activo": {
-      "sin-declarar": 1
-    },
-    "GrupoDeOpciones.prefijoEnCarta": {
-      "sin-declarar": 1
-    },
-    "GrupoDeOpciones.tipo": {
-      "sin-declarar": 1
-    },
     "GrupoDePrecio.activo": {
       "sin-declarar": 1
     },
@@ -110,12 +95,6 @@
       "sin-declarar": 1
     },
     "Insumo.activo": {
-      "sin-declarar": 1
-    },
-    "ItemAgrupadoCarta.activo": {
-      "sin-declarar": 1
-    },
-    "ItemAgrupadoCarta.especial": {
       "sin-declarar": 1
     },
     "MovimientoStock.facturaProveedorRenglonId": {
@@ -157,9 +136,6 @@
     "NotaCreditoProveedorLinea.origenImporte": {
       "sin-declarar": 1
     },
-    "OpcionDeGrupo.esNinguna": {
-      "sin-declarar": 1
-    },
     "OpcionElegidaEnLinea.cantidad": {
       "sin-declarar": 1
     },
@@ -185,21 +161,6 @@
       "sin-declarar": 1
     },
     "PlanDeCostos.codigo": {
-      "sin-declarar": 1
-    },
-    "Producto.tipo": {
-      "sin-declarar": 1
-    },
-    "ProductoAdmiteOpcion.cantidadMaxima": {
-      "sin-declarar": 1
-    },
-    "PromoCarta.activa": {
-      "sin-declarar": 1
-    },
-    "PromoCartaCupo.nombre": {
-      "sin-declarar": 1
-    },
-    "PromoCartaCupo.seccionCartaId": {
       "sin-declarar": 1
     },
     "Proveedor.activo": {
@@ -248,9 +209,6 @@
       "sin-declarar": 1
     },
     "Venta.fecha": {
-      "sin-declarar": 1
-    },
-    "VersionDeOpcion.numero": {
       "sin-declarar": 1
     }
   }
