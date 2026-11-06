@@ -1,0 +1,62 @@
+{
+ "capacidades": {
+  "activar_usuario_sucursal": [
+   406.5,
+   451.5
+  ],
+  "alta_producto": [
+   451.5,
+   496.5
+  ],
+  "apagar_cuenta_empresa": [
+   631.5,
+   676.5
+  ],
+  "compra_recibir": [
+   1486.5,
+   1531.5
+  ],
+  "gestion_permisos": [
+   1711.5,
+   1756.5
+  ],
+  "gestion_usuarios": [
+   1801.5,
+   1846.5
+  ],
+  "__cabecera": [
+   321,
+   361.5
+  ]
+ },
+ "matriz": {
+  "compra_recibir": [
+   2424.5,
+   2509.5
+  ],
+  "compra_repartir": [
+   2509.5,
+   2594.5
+  ],
+  "reporte_compras": [
+   6687.5,
+   6756.5
+  ],
+  "reporte_consolidado": [
+   6756.5,
+   6841.5
+  ],
+  "reporte_conteos": [
+   6841.5,
+   6894.5
+  ],
+  "reporte_costos": [
+   6894.5,
+   6963.5
+  ],
+  "__cabecera": [
+   289,
+   342.5
+  ]
+ }
+}

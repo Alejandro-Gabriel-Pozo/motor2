@@ -1,0 +1,38 @@
+{
+ "capacidades": {
+  "alta_producto": [
+   438.5,
+   515.5
+  ],
+  "__cabecera": [
+   353,
+   393.5
+  ]
+ },
+ "matriz": {
+  "compra_repartir": [
+   2424.5,
+   2509.5
+  ],
+  "reporte_compras": [
+   6671.5,
+   6740.5
+  ],
+  "reporte_consolidado": [
+   6740.5,
+   6825.5
+  ],
+  "reporte_conteos": [
+   6825.5,
+   6878.5
+  ],
+  "reporte_costos": [
+   6878.5,
+   6947.5
+  ],
+  "__cabecera": [
+   289,
+   342.5
+  ]
+ }
+}
