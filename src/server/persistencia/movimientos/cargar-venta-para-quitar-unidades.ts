@@ -21,7 +21,6 @@ export interface VentaParaQuitarUnidades {
     fecha: Date;
     clienteId: string | null;
     nroFactura: string | null;
-    seccionDestinoId: string | null;
     detalleLibre: string | null;
     usuarioId: string;
   };
@@ -51,7 +50,6 @@ export async function cargarVentaParaQuitarUnidades(
       fecha: operacion.fecha,
       clienteId: operacion.clienteId,
       nroFactura: operacion.nroFactura,
-      seccionDestinoId: operacion.seccionDestinoId,
       detalleLibre: operacion.detalleLibre,
       usuarioId: operacion.usuarioId,
     },

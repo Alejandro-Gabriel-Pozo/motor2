@@ -612,6 +612,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "E0 de la corrección por ajuste (PR2 #196, «Corregir una línea»): cada ticket de `pos.obtenerTicketsRecientes` suma el campo `corregibles` (las líneas vigentes que se pueden corregir: operación, texto y subtotal). Solo se AGREGA ese campo (26 líneas nuevas, ninguna cambia ni se borra); lo demás del ticket no cambia."
       },
+      {
+        blob: "8b2f4407516ead05a8183d88c9404bf7f7c83ccd",
+        // El commit PADRE de este (e9912e2b, E1 PR1 #181) es el último antes de la regeneración; el cambio es de E1 PR2 (quitar unidades de una línea).
+        commit: "e9912e2b",
+        motivo:
+          "E1 de la corrección por ajuste (PR2, «quitar unidades de una línea»): `pos.obtenerTicketsRecientes` lee, en una consulta más (`operacion.findMany`), las versiones de las ventas anuladas de la mesa para saber si otra venta las reemplaza (la cadena A → B). Solo cambia el RECUENTO de consultas de sus dos casos, de «1: cuenta.findMany×1» a «2: cuenta.findMany×1, operacion.findMany×1» (2 líneas); el resultado no cambia (ninguna venta del mundo de la caracterización fue reemplazada) y sin ventas anuladas la consulta extra no se hace.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {

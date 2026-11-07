@@ -21,6 +21,7 @@ export async function cargarVersionesDeVentas(db: Db, ventaIds: readonly string[
     const siguientes = await db.operacion.findMany({
       where: { reemplazaAOperacionId: { in: [...frontera.keys()] } },
       select: { id: true, reemplazaAOperacionId: true },
+      take: frontera.size, // el índice único deja una sola reemplazante por venta: nunca hay más filas que ventas en la frontera
     });
     const nuevaFrontera = new Map<string, string>();
     for (const s of siguientes) {
@@ -36,7 +37,7 @@ export async function cargarVersionesDeVentas(db: Db, ventaIds: readonly string[
   if (conReemplazo.length === 0) return new Map();
   const todas = conReemplazo.flatMap(([, ids]) => ids);
   const [operaciones, unidades] = await Promise.all([
-    db.operacion.findMany({ where: { id: { in: todas } }, select: { id: true, anuladaEn: true } }),
+    db.operacion.findMany({ where: { id: { in: todas } }, select: { id: true, anuladaEn: true }, take: todas.length }),
     db.movimientoStock.groupBy({ by: ["operacionId"], where: { operacionId: { in: todas }, proceso: "VENTA" }, _sum: { cantidad: true } }),
   ]);
   const anuladaEn = new Map(operaciones.map((o) => [o.id, o.anuladaEn]));
