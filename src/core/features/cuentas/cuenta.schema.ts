@@ -1,4 +1,5 @@
 import type { CodigoAnularVenta } from "@/core/features/ventas/venta.schema";
+import type { MotivoDeRechazoDeLaCorreccion } from "@/core/movimientos/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -117,3 +118,38 @@ export interface DatosCorregirLineaDeTicket {
 }
 
 export type ResultadoCorregirLineaDeTicket = ResultadoCaso<DatosCorregirLineaDeTicket, CodigoCorregirLineaDeTicket>;
+
+/**
+ * Comando «quitar unidades de una línea de una cuenta cerrada» (E1 de la corrección por ajuste, docs/diseno-correccion-por-ajuste-2026-11-06.md): «cobré 2 cervezas y la
+ * mesa tomó 1». YA validado por `guardComandoQuitarUnidadesDeLinea`. Mismo molde que `ComandoCorregirLineaDeTicket`, más:
+ *  - `unidadesAQuitar`: entero de 1 a (unidades - 1); quitar todas es anular la línea entera (`corregirLineaDeTicket`);
+ *  - `unidadesVistas`: cuántas unidades vendía la línea en la pantalla de la persona (guarda optimista: si otra persona ya la corrigió, no coincide).
+ * `operacionId` es la venta VIGENTE de la línea (la que devuelve la lista de líneas corregibles: la original, o la última corrección).
+ */
+export interface ComandoQuitarUnidadesDeLinea {
+  cuentaId: string;
+  operacionId: string;
+  unidadesAQuitar: number;
+  unidadesVistas: number;
+  motivo: string;
+  ejemplarVisto: number;
+  totalVisto: number;
+  claveIdempotencia: string;
+}
+
+/**
+ * Códigos de «quitar unidades»: los de la corrección de una línea entera, más los de la decisión pura (`MotivoDeRechazoDeLaCorreccion`: promo, adicionales, unidades inválidas,
+ * la venta cambió…) y `ALCANCE_TOTAL` (se pidió quitar todas las unidades: eso es anular la línea entera, otro botón).
+ */
+export type CodigoQuitarUnidadesDeLinea = CodigoCorregirLineaDeTicket | MotivoDeRechazoDeLaCorreccion | "ALCANCE_TOTAL";
+
+/** `datos` de quitar unidades: el ejemplar emitido, la venta nueva que reemplaza a la anterior y cuántas unidades quedan. `repetida`: un reenvío con la misma clave devolvió el mensaje original. */
+export interface DatosQuitarUnidadesDeLinea {
+  numero: number;
+  ejemplar: number;
+  ventaNuevaId: string | null;
+  unidadesQueQuedan: number;
+  repetida: boolean;
+}
+
+export type ResultadoQuitarUnidadesDeLinea = ResultadoCaso<DatosQuitarUnidadesDeLinea, CodigoQuitarUnidadesDeLinea>;
