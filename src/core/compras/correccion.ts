@@ -87,17 +87,16 @@ export function cabeceraCoincide(actual: CabeceraCompra, esperado: CabeceraCompr
   return actual.proveedorId === esperado.proveedorId && actual.nroFactura === esperado.nroFactura && actual.detalleLibre === esperado.detalleLibre;
 }
 
-/** Mensaje de éxito de una corrección (Task #41, Fase M): texto EXACTO que armaba en línea la Server Action `corregirCompra`. */
+/** Mensaje de éxito de una corrección. */
 export function mensajeCompraCorregida(cambios: readonly CambioDeCabecera[]): string {
   return `Compra corregida: ${cambios.map((c) => ETIQUETA_CAMPO[c.campo]).join(", ")}.`;
 }
 
 /**
- * Descripción de la fila de auditoría de UN campo corregido, con el texto EXACTO de antes. `nroFacturaAnterior` es el N.º que la compra
- * tenía ANTES de corregir (el que la identifica para quien lee el registro), no el nuevo.
+ * Descripción de la fila de auditoría de UN campo corregido. `nroFacturaAnterior` es el N.º que la factura tenía ANTES de corregir (el que la identifica para quien lee el registro), no el nuevo.
  */
 export function descripcionAuditoriaCorreccion(fecha: Date, nroFacturaAnterior: string | null, campo: CampoCabecera): string {
-  return `Compra del ${diaDeCalendario(fecha, ZONA_ARGENTINA)}${nroFacturaAnterior ? ` (factura ${nroFacturaAnterior})` : ""}: ${ETIQUETA_CAMPO[campo]}`;
+  return `Factura de proveedor del ${diaDeCalendario(fecha, ZONA_ARGENTINA)}${nroFacturaAnterior ? ` (factura ${nroFacturaAnterior})` : ""}: ${ETIQUETA_CAMPO[campo]}`;
 }
 
 const ETIQUETA_CAMPO: Record<CampoCabecera, string> = {

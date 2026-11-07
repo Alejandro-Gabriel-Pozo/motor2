@@ -2,7 +2,7 @@
  * Ejecutor del guion de 6 meses de "La Cuadra" (docs/planes-demo-y-claridad-reportes-2026-09-21.md §5, tramo 3): arma el
  * catálogo (sucursal, secciones, categorías, unidades, proveedores, productos, recetas — igual que
  * scripts/seed-demo-pizzeria.ts) y después recorre el `GuionDemo` de scripts/demo-seed/guion-la-cuadra.ts llamando a los
- * server actions REALES (registrarMovimiento/registrarVenta/registrarConteosFisicos/anularCompra/corregirCompra/
+ * server actions REALES (registrarMovimiento/registrarVenta/registrarConteosFisicos/anularFacturaProveedor/corregirFacturaProveedor/
  * guardarReceta) — nunca INSERTs directos, mismo criterio que el seed de 30 días.
  *
  * NUNCA corre contra Neon (guarda en vitest.seed-6-meses.config.ts, antes de que exista un cliente Prisma siquiera):
@@ -41,7 +41,7 @@ import { guardarRecetaACiegas as guardarReceta } from "../src/server/actions/cat
 import { registrarMovimiento } from "../src/server/actions/movimientos/movimientos";
 import { registrarVenta } from "../src/server/actions/movimientos/venta";
 import { registrarConteosFisicos } from "../src/server/actions/movimientos/conteo-fisico";
-import { anularCompra, corregirCompra } from "../src/server/actions/movimientos/compras";
+import { anularFacturaProveedor, corregirFacturaProveedor } from "../src/server/actions/movimientos/facturas-proveedor";
 import { setStockMinimoProducto } from "../src/server/actions/stock/stock-minimo";
 import type { ResultadoAccion } from "../src/server/actions/tipos";
 import { crearGeneradorAleatorio } from "./demo-seed/prng";
@@ -342,20 +342,26 @@ describe("seed de 6 meses — demo pizzería La Cuadra", () => {
         } else if (ev.tipo === "ANULAR_COMPRA") {
           const operacionId = operacionIdPorRef.get(ev.refCompra);
           if (!operacionId) fallos.push(`ANULAR_COMPRA ${ev.ref}: no se resolvió la compra "${ev.refCompra}"`);
-          else anotarSiFalla(`ANULAR_COMPRA ${ev.ref}`, await anularCompra(operacionId, crypto.randomUUID()));
+          else {
+            // Desde U1 toda compra es una factura: se anula la factura de esa compra (con motivo).
+            const parte = await prisma.facturaProveedorSucursal.findFirst({ where: { operacionId }, select: { facturaProveedorId: true } });
+            if (!parte) fallos.push(`ANULAR_COMPRA ${ev.ref}: la compra "${ev.refCompra}" no es la parte de una factura`);
+            else anotarSiFalla(`ANULAR_COMPRA ${ev.ref}`, await anularFacturaProveedor(parte.facturaProveedorId, "Anulada en la demo", crypto.randomUUID()));
+          }
         } else if (ev.tipo === "CORREGIR_COMPRA") {
           const operacionId = operacionIdPorRef.get(ev.refCompra);
           if (!operacionId) {
             fallos.push(`CORREGIR_COMPRA ${ev.ref}: no se resolvió la compra "${ev.refCompra}"`);
           } else {
-            const actual = await prisma.operacion.findUniqueOrThrow({ where: { id: operacionId } });
+            const parte = await prisma.facturaProveedorSucursal.findFirstOrThrow({ where: { operacionId }, select: { facturaProveedorId: true } });
+            const actual = await prisma.facturaProveedor.findUniqueOrThrow({ where: { id: parte.facturaProveedorId } });
             const esperadoCabecera = { proveedorId: actual.proveedorId, nroFactura: actual.nroFactura, detalleLibre: actual.detalleLibre };
             const nueva = {
               proveedorId: ev.proveedorCodigo ? (proveedorIdPorCodigo.get(ev.proveedorCodigo) ?? actual.proveedorId) : actual.proveedorId,
               nroFactura: ev.nroFactura ?? actual.nroFactura ?? "",
               detalleLibre: actual.detalleLibre ?? "",
             };
-            anotarSiFalla(`CORREGIR_COMPRA ${ev.ref}`, await corregirCompra(operacionId, nueva, esperadoCabecera));
+            anotarSiFalla(`CORREGIR_COMPRA ${ev.ref}`, await corregirFacturaProveedor(actual.id, nueva, esperadoCabecera));
           }
         }
       }

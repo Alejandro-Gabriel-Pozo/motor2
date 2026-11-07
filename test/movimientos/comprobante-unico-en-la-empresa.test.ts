@@ -10,13 +10,15 @@ import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-movimiento";
 import { registrarFacturaProveedorCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor";
-import { corregirCompraCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/corregir-compra";
+import { corregirFacturaProveedorCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/corregir-factura-proveedor";
+import { cargarCompraDeUnaParte } from "../setup/compra-de-prueba";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
 import { mediodiaDelDia, ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../../src/core/tiempo/zona-horaria";
 import { guardComandoRegistrarFacturaProveedor } from "../../src/core/features/compras/factura-proveedor.guard";
 import type { DatosMovimientoInput } from "../../src/core/features/movimientos/movimiento.schema";
 import type { DatosFacturaProveedorInput } from "../../src/core/features/compras/factura-proveedor.schema";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
+import { anularCompraDeTest } from "../setup/anular-compra-de-prueba";
 
 /**
  * Etapa 1 de Compras (docs/diseno-compras-factura-unica-y-rechazo-2026-11-03.md, I1, I2, I5, I15): el mismo número del mismo proveedor se rechaza en TODA la empresa, venga como compra simple, como factura repartida o
@@ -136,7 +138,10 @@ describe("secuencial en la empresa", () => {
     expect((await cargar(s2, "B-23-237728")).ok, "otra letra").toBe(true);
     expect((await cargar(s2, "A-23-237728", { proveedorId: otroProveedorId })).ok, "otro proveedor").toBe(true);
     const original = await prisma.operacion.findFirstOrThrow({ where: { sucursalId: s1, nroFactura: "A-00023-00237728" } });
-    await prisma.operacion.update({ where: { id: original.id }, data: { anuladaEn: new Date(), anuladaPorId: adminId } });
+    // La anulación real es la de la factura entera (libera el número en la cabecera y en la compra de su parte).
+    __setCookieDeTestParaSucursal(s1);
+    await mockearUsuarioActual({ id: adminId, email: "admin@test.com", nombre: null });
+    expect((await anularCompraDeTest(original.id)).ok).toBe(true);
     expect((await cargar(s2, "A-23-237728")).ok, "la original anulada deja libre el número").toBe(true);
   });
 
@@ -156,24 +161,24 @@ describe("secuencial en la empresa", () => {
 });
 
 describe("corrección", () => {
+  /** Corrige la factura de una compra de S2/S1 (desde U1, la corrección es la de la factura). */
+  const corregir = (sucursalId: string, facturaId: string, vista: { proveedorId: string | null; nroFactura: string | null; detalleLibre: string | null }, nueva: { proveedorId: string | null; nroFactura: string; detalleLibre: string }) =>
+    corregirFacturaProveedorCasoDeUso(actorDe(sucursalId) as never, { facturaId, nueva, esperado: vista });
+
   it("corregir una compra de S2 al número de una compra vigente de S1 se rechaza con el mensaje único; con un número libre, pasa", async () => {
     expect((await cargar(s1, "A-23-300")).ok).toBe(true);
-    expect((await cargar(s2, "A-23-301")).ok).toBe(true);
-    const deS2 = await prisma.operacion.findFirstOrThrow({ where: { sucursalId: s2, proceso: "COMPRA" } });
-    const vista = { proveedorId, nroFactura: deS2.nroFactura ?? "", detalleLibre: deS2.detalleLibre ?? "" };
-    const pedir = (nroFactura: string) => corregirCompraCasoDeUso(actorDe(s2), { operacionId: deS2.id, nueva: { ...vista, nroFactura }, esperado: vista });
+    const deS2 = await cargarCompraDeUnaParte(actorDe(s2), { seccionId: sec2, proveedorId, productoId: harinaId, nroFactura: "A-00023-00000301" });
+    const vista = { proveedorId, nroFactura: "A-00023-00000301", detalleLibre: "" };
+    const pedir = (nroFactura: string) => corregir(s2, deS2.facturaId, vista, { ...vista, nroFactura });
     expect(await pedir("A-23-300")).toEqual({ ok: false, codigo: "FACTURA_DUPLICADA", mensaje: MENSAJE_FACTURA_DUPLICADA });
     expect((await pedir("A-23-302")).ok).toBe(true);
   });
 
   it("quitar el número o el proveedor de una compra se rechaza", async () => {
-    expect((await cargar(s1, "A-23-400")).ok).toBe(true);
-    const op = await prisma.operacion.findFirstOrThrow({ where: { sucursalId: s1, proceso: "COMPRA" } });
-    const vista = { proveedorId, nroFactura: op.nroFactura ?? "", detalleLibre: op.detalleLibre ?? "" };
-    const sinNumero = await corregirCompraCasoDeUso(actorDe(s1), { operacionId: op.id, nueva: { ...vista, nroFactura: "" }, esperado: vista });
-    expect(sinNumero).toMatchObject({ ok: false, codigo: "ENTRADA_INVALIDA" });
-    const sinProveedor = await corregirCompraCasoDeUso(actorDe(s1), { operacionId: op.id, nueva: { ...vista, proveedorId: "" }, esperado: vista });
-    expect(sinProveedor).toEqual({ ok: false, codigo: "ENTRADA_INVALIDA", mensaje: "La compra tiene que tener proveedor." });
+    const op = await cargarCompraDeUnaParte(actorDe(s1), { seccionId: sec1, proveedorId, productoId: harinaId, nroFactura: "A-00023-00000400" });
+    const vista = { proveedorId, nroFactura: "A-00023-00000400", detalleLibre: "" };
+    expect(await corregir(s1, op.facturaId, vista, { ...vista, nroFactura: "" })).toMatchObject({ ok: false, codigo: "ENTRADA_INVALIDA" });
+    expect(await corregir(s1, op.facturaId, vista, { ...vista, proveedorId: "" })).toEqual({ ok: false, codigo: "ENTRADA_INVALIDA", mensaje: "La compra tiene que tener proveedor." });
   });
 });
 
