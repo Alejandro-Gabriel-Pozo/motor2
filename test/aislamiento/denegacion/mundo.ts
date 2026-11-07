@@ -86,6 +86,8 @@ export interface KitDeSucursal {
   cuentaId: string;
   /** La cuenta ya cerrada (con su ticket emitido). */
   cuentaCerradaId: string;
+  /** La Operacion VENTA vigente de una línea de la cuenta cerrada (lo que `corregirLineaDeTicket` anula; queda otra línea vigente, así que el ticket se puede emitir). */
+  ventaDelTicketId: string;
   /** Una cuenta abierta sin ítems (la mesa se puede liberar). */
   cuentaVaciaId: string;
   /** Una cuenta abierta con todo enviado a cocina (se puede cerrar), con una promo enviada. */
@@ -150,6 +152,7 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   mesaCerradaId: true,
   cuentaId: true,
   cuentaCerradaId: true,
+  ventaDelTicketId: true,
   cuentaVaciaId: true,
   cuentaEnviadaId: true,
   promoCuentaEnviadaId: true,
@@ -355,6 +358,9 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     data: { id: id("venta-ticket-anulada"), empresaId, sucursalId, proceso: "VENTA", fecha: enElPasado(HORA_MS), anuladaEn: enElPasado(HORA_MS / 2), usuarioId: miembro.id, detalleLibre: `Venta anulada del ticket ${marca}` },
   });
   await db.cuentaItem.create({ data: { id: id("item-cerrada"), empresaId, cuentaId: cuentaCerrada.id, productoId: k.productoPvId, cantidad: 1, precioUnitario: 1000, numeroEnvio: 1, operacionId: ventaDelTicket.id, creadoPorId: miembro.id } });
+  // E0 (corregir una línea): una TERCERA línea vigente de $500 (otra venta), para que anular la primera deje ticket que emitir (con una sola línea vigente se rechaza: «última línea»). El ticket vigente suma 1000 + 500.
+  const ventaDelTicketRestante = await db.operacion.create({ data: { id: id("venta-ticket-restante"), empresaId, sucursalId, proceso: "VENTA", fecha: enElPasado(HORA_MS), usuarioId: miembro.id, detalleLibre: `Venta restante del ticket ${marca}` } });
+  await db.cuentaItem.create({ data: { id: id("item-cerrada-restante"), empresaId, cuentaId: cuentaCerrada.id, productoId: k.productoPv2Id, cantidad: 1, precioUnitario: 500, numeroEnvio: 1, operacionId: ventaDelTicketRestante.id, creadoPorId: miembro.id } });
   await db.cuentaItem.create({ data: { id: id("item-cerrada-anulado"), empresaId, cuentaId: cuentaCerrada.id, productoId: k.productoPv2Id, cantidad: 1, precioUnitario: 1234, numeroEnvio: 1, operacionId: ventaDelTicketAnulada.id, creadoPorId: miembro.id } });
   // Una cuenta abierta SIN ítems (se puede liberar la mesa) y otra con todo ENVIADO a cocina, ítems y promo (se puede cerrar y se puede anular lo enviado): los controles positivos del POS necesitan estos estados.
   const mesa3 = await db.mesa.create({ data: { id: id("mesa-c"), empresaId, sucursalId, numero: 3 } });
@@ -534,6 +540,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     mesaCerradaId: mesa2.id,
     cuentaId: cuenta.id,
     cuentaCerradaId: cuentaCerrada.id,
+    ventaDelTicketId: ventaDelTicket.id,
     cuentaVaciaId: cuentaVacia.id,
     cuentaEnviadaId: cuentaEnviada.id,
     promoCuentaEnviadaId: promoCuentaEnviada.id,

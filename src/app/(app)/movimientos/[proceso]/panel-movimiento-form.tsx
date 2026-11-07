@@ -8,6 +8,7 @@ import { BloqueDeReparto, REPARTO_APAGADO, type EstadoDeReparto } from "./bloque
 import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
+import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
 import type { ProcesoUiConfig } from "@/core/movimientos/public";
 import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { SelectorProducto } from "@/components/selector-producto";
@@ -155,7 +156,7 @@ export function PanelMovimientoForm({
       delete resto[idx];
       return resto;
     });
-    if (!config.esCompraLike || !productoId) return;
+    if (!config.esCompraLike || !productoId || !PRESENTACIONES_VISIBLES) return;
     // `leer` nunca rechaza (atrapa el error y corre el callback de abajo) — fire-and-forget explícito, no una promesa sin manejar.
     void leer(
       () => listarPresentaciones(productoId),

@@ -11,6 +11,8 @@
  */
 export { cumplePaso, decimalesDelPaso, mensajeCantidadNoCumplePaso, validarPasoVenta } from "./venta-fraccionada";
 export { rendimientoEfectivo } from "./rendimiento-local";
+// Interruptor de las presentaciones de compra (decisión del dueño, 2026-11-06): apagadas, ni se ven ni se pueden escribir.
+export { MENSAJE_PRESENTACIONES_APAGADAS, PRESENTACIONES_VISIBLES } from "./presentaciones-visibles";
 export { creariaCicloEnArbol, textoCadenaDeGruposEn } from "./cadena-de-grupos";
 export type { NodoDeGrupo } from "./cadena-de-grupos";
 export { clasificarGruposNoComestibles } from "./no-comestibles";

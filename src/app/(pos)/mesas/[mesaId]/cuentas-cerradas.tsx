@@ -5,6 +5,7 @@ import { Boton } from "@/ui/primitivas/boton";
 import { formatearHora } from "@/core/tiempo/zona-horaria";
 import { useImpresion } from "./imprimir";
 import { EmitirTicketCorregido } from "./emitir-ticket-corregido";
+import { CorregirLinea } from "./corregir-linea";
 
 /**
  * «Cuentas cerradas» (docs/plan-imprimir-comanda-y-ticket-2026-09-25.md, B8): al pie de la pantalla de la mesa, libre o con cuenta
@@ -15,9 +16,9 @@ import { EmitirTicketCorregido } from "./emitir-ticket-corregido";
  *
  * Según el estado del ticket (`TicketDeCuenta.estado`): «vigente» se reimprime (aunque sea un ejemplar de corrección, 566-B);
  * «desactualizada» (se anuló una línea después de imprimirla) no se reimprime y habilita «Emitir ticket corregido»; «anulada», todo
- * deshabilitado.
+ * deshabilitado. «Corregir una línea» (E0 de la corrección por ajuste) anula una línea y emite el ticket corregido en un solo paso (`corregir-linea.tsx`).
  */
-export function CuentasCerradas({ tickets, puede, puedeCorregir, zonaHoraria }: { tickets: TicketDeCuenta[]; puede: boolean; puedeCorregir: boolean; zonaHoraria: string }) {
+export function CuentasCerradas({ tickets, puede, puedeCorregir, puedeCorregirLinea, zonaHoraria }: { tickets: TicketDeCuenta[]; puede: boolean; puedeCorregir: boolean; puedeCorregirLinea: boolean; zonaHoraria: string }) {
   const { reimprimirTicket } = useImpresion();
   if (!tickets.length) return null;
 
@@ -44,6 +45,7 @@ export function CuentasCerradas({ tickets, puede, puedeCorregir, zonaHoraria }: 
               </span>
               <span className="flex items-center gap-3">
                 {b.estado === "anulada" && <span className="text-sm font-semibold text-error">Venta anulada</span>}
+                <CorregirLinea ticket={b} hora={hora} puede={puedeCorregirLinea} />
                 <EmitirTicketCorregido ticket={b} hora={hora} puede={puedeCorregir} />
                 <Boton
                   variante="secundario"

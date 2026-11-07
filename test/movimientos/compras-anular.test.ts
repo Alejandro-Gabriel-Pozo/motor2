@@ -350,6 +350,6 @@ describe("anularCompra", () => {
     await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: harinaId, cantidad: 1, unidadId: unidadKgId }] } } });
     await registrarVenta({ fecha: hoy(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
-    expect((await anularVenta(venta.id)).ok).toBe(true);
+    expect((await anularVenta(venta.id, "Error de carga")).ok).toBe(true);
   });
 });

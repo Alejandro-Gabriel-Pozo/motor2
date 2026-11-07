@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_CUENTA_NO_ENCONTRADA } from "@/core/features/cuentas/cuenta.guard";
 import type { ComandoEmitirTicketCorregido, ResultadoEmitirTicketCorregido } from "@/core/features/cuentas/cuenta.schema";
@@ -39,47 +40,57 @@ export async function emitirTicketCorregidoCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
   comando: ComandoEmitirTicketCorregido
 ): Promise<ResultadoEmitirTicketCorregido> {
-  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoEmitirTicketCorregido> => {
-    const cuenta = await cargarCuentaParaCorregirTicket(tx, { cuentaId: comando.cuentaId, sucursalId: actor.sucursalId });
-    if (!cuenta) return fracaso("NO_ENCONTRADA", MENSAJE_CUENTA_NO_ENCONTRADA);
-    const puesto = frasesDePuesto(cuenta.mesaNumero);
-    if (!cuenta.cerradaEn) return fracaso("CUENTA_ABIERTA", `La cuenta ${puesto.del} todavía está abierta: no tiene ticket que corregir.`);
-    const [ultimo] = cuenta.ejemplares;
-    const original = cuenta.ejemplares.find((e) => e.ejemplar === 1);
-    if (!ultimo || !original) {
-      return fracaso("SIN_NUMERACION", `La cuenta ${puesto.del} se cerró antes de la numeración de tickets: no tiene ticket que corregir.`);
-    }
+  // `true`: dos emisiones simultáneas leen el mismo último ejemplar; la que pierde recibe el choque del ejemplar duplicado y, al repetir, ve el ticket ya
+  // vigente y responde `TICKET_VIGENTE` en vez de escapar como error de base.
+  return conTransaccionSerializable(actor.transaccion, (tx) => emitirTicketCorregidoEnTx(tx, actor, comando), undefined, undefined, true);
+}
 
-    const estado = estadoDeTicket(cuenta.items, ultimo.emitidoEn);
-    if (estado === "anulada" || !armarTicketVigente(cuenta.items, actor.ahora).lineas.length) return fracaso("VENTA_ANULADA", "La venta se anuló entera: no hay ticket que corregir.");
-    if (estado === "vigente") return fracaso("TICKET_VIGENTE", `El ticket N.º ${formatearNumeroTicket(ultimo)} ya refleja las anulaciones.`);
+/**
+ * El cuerpo de `emitirTicketCorregidoCasoDeUso` dentro de una transacción YA ABIERTA: lo usa también `corregirLineaDeTicketCasoDeUso` (anula la línea y emite el
+ * ticket en UNA sola transacción; ahí la cuenta se relee y ve la anulación recién escrita). Cada rechazo sale ANTES de escribir.
+ */
+export async function emitirTicketCorregidoEnTx(
+  tx: Prisma.TransactionClient,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "ahora">,
+  comando: ComandoEmitirTicketCorregido
+): Promise<ResultadoEmitirTicketCorregido> {
+  const cuenta = await cargarCuentaParaCorregirTicket(tx, { cuentaId: comando.cuentaId, sucursalId: actor.sucursalId });
+  if (!cuenta) return fracaso("NO_ENCONTRADA", MENSAJE_CUENTA_NO_ENCONTRADA);
+  const puesto = frasesDePuesto(cuenta.mesaNumero);
+  if (!cuenta.cerradaEn) return fracaso("CUENTA_ABIERTA", `La cuenta ${puesto.del} todavía está abierta: no tiene ticket que corregir.`);
+  const [ultimo] = cuenta.ejemplares;
+  const original = cuenta.ejemplares.find((e) => e.ejemplar === 1);
+  if (!ultimo || !original) {
+    return fracaso("SIN_NUMERACION", `La cuenta ${puesto.del} se cerró antes de la numeración de tickets: no tiene ticket que corregir.`);
+  }
 
-    const motivoValidado = validarMotivoAnulacion(comando.motivo);
-    if (!motivoValidado.ok) return fracaso("MOTIVO_INVALIDO", motivoValidado.mensaje);
+  const estado = estadoDeTicket(cuenta.items, ultimo.emitidoEn);
+  if (estado === "anulada" || !armarTicketVigente(cuenta.items, actor.ahora).lineas.length) return fracaso("VENTA_ANULADA", "La venta se anuló entera: no hay ticket que corregir.");
+  if (estado === "vigente") return fracaso("TICKET_VIGENTE", `El ticket N.º ${formatearNumeroTicket(ultimo)} ya refleja las anulaciones.`);
 
-    const nuevo = { numero: original.numero, ejemplar: ultimo.ejemplar + 1 };
-    const ejemplarId = await escribirEjemplarCorregido(tx, {
-      sucursalId: original.sucursalId,
-      cuentaId: cuenta.id,
-      ...nuevo,
-      emitidoEn: actor.ahora,
-      emitidoPorId: actor.usuarioId,
-      corrigeAId: original.id,
-      motivo: motivoValidado.motivo,
-    });
-    const [anterior, emitido, reemplazado] = [formatearNumeroTicket(ultimo), formatearNumeroTicket(nuevo), formatearNumeroTicket(original)];
-    await registrarCambioAuditado(tx, {
-      entidad: "Cuenta",
-      entidadId: cuenta.id,
-      descripcion: `${puesto.detalle}: ticket corregido N.º ${emitido} (reemplaza a N.º ${reemplazado}). Motivo: ${motivoValidado.motivo}`,
-      campo: "ejemplarTicket",
-      valorAnterior: anterior,
-      valorNuevo: emitido,
-      actorId: actor.usuarioId,
-      sucursalId: actor.sucursalId,
-    });
-    return exito(`Ticket N.º ${emitido} emitida: reemplaza a N.º ${reemplazado}.`, { ...nuevo, ejemplarId, corrigeAId: original.id });
-    // `true`: dos emisiones simultáneas leen el mismo último ejemplar; la que pierde recibe el choque del ejemplar duplicado y, al repetir, ve el ticket ya
-    // vigente y responde `TICKET_VIGENTE` en vez de escapar como error de base.
-  }, undefined, undefined, true);
+  const motivoValidado = validarMotivoAnulacion(comando.motivo);
+  if (!motivoValidado.ok) return fracaso("MOTIVO_INVALIDO", motivoValidado.mensaje);
+
+  const nuevo = { numero: original.numero, ejemplar: ultimo.ejemplar + 1 };
+  const ejemplarId = await escribirEjemplarCorregido(tx, {
+    sucursalId: original.sucursalId,
+    cuentaId: cuenta.id,
+    ...nuevo,
+    emitidoEn: actor.ahora,
+    emitidoPorId: actor.usuarioId,
+    corrigeAId: original.id,
+    motivo: motivoValidado.motivo,
+  });
+  const [anterior, emitido, reemplazado] = [formatearNumeroTicket(ultimo), formatearNumeroTicket(nuevo), formatearNumeroTicket(original)];
+  await registrarCambioAuditado(tx, {
+    entidad: "Cuenta",
+    entidadId: cuenta.id,
+    descripcion: `${puesto.detalle}: ticket corregido N.º ${emitido} (reemplaza a N.º ${reemplazado}). Motivo: ${motivoValidado.motivo}`,
+    campo: "ejemplarTicket",
+    valorAnterior: anterior,
+    valorNuevo: emitido,
+    actorId: actor.usuarioId,
+    sucursalId: actor.sucursalId,
+  });
+  return exito(`Ticket N.º ${emitido} emitida: reemplaza a N.º ${reemplazado}.`, { ...nuevo, ejemplarId, corrigeAId: original.id });
 }

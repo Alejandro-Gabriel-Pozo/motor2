@@ -449,6 +449,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/pos/cuenta-apertura.ts|liberarMesa": { cuentaId: (k) => k.cuentaVaciaId },
   "accion|actions/pos/cuenta-cierre.ts|cerrarCuenta": { cuentaId: (k) => k.cuentaEnviadaId },
   "accion|actions/pos/cuenta-cierre.ts|emitirTicketCorregido": { cuentaId: (k) => k.cuentaCerradaId },
+  // «Corregir una línea» (E0): la venta vigente de una línea de la cuenta cerrada y lo que «vio» la persona: el ticket 1-A y su total (1000 + 500 de las dos líneas vigentes del mundo).
+  "accion|actions/pos/cuenta-cierre.ts|corregirLineaDeTicket": { cuentaId: (k) => k.cuentaCerradaId, operacionId: (k) => k.ventaDelTicketId, ejemplarVisto: () => 1, totalVisto: () => 1500 },
   "accion|actions/movimientos/conteo-fisico.ts|cancelarConteoFisico": { conteoId: (k) => k.conteoResueltoId },
   "accion|actions/carta/items-agrupados.ts|agregarOpcionItemAgrupadoCarta": { productoId: (k) => k.productoPv2Id },
   // `versionVista` es la versión de la receta PROPIA que vio la persona: 0 = todavía no tiene.
