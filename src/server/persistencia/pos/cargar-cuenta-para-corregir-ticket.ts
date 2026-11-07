@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { cargarVersionesDeVentas } from "@/server/lecturas/pos/versiones-de-venta";
 import { configuracionDeItemLeido, cuentaConOpciones, type ItemConVenta } from "@/core/pos/public";
 
 /**
@@ -46,6 +47,8 @@ export async function cargarCuentaParaCorregirTicket(
   });
   if (!cuenta) return null;
   const conOpciones = cuentaConOpciones(cuenta.items);
+  // E1: las ventas corregidas quitando unidades (la B recién escrita en la misma transacción también se ve).
+  const versiones = await cargarVersionesDeVentas(tx, cuenta.items.flatMap((i) => (i.operacionId && i.operacion?.anuladaEn ? [i.operacionId] : [])));
   return {
     id: cuenta.id,
     mesaNumero: cuenta.mesa.numero,
@@ -59,6 +62,7 @@ export async function cargarCuentaParaCorregirTicket(
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
+      ...(i.operacionId && versiones.has(i.operacionId) ? { versionesDeLaVenta: versiones.get(i.operacionId) } : {}),
       ...configuracionDeItemLeido(conOpciones, i),
     })),
     ejemplares: cuenta.ejemplaresTicket.map((e) => ({ id: e.id, sucursalId: e.sucursalId, numero: e.numero, ejemplar: e.ejemplar, emitidoEn: e.emitidoEn })),

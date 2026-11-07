@@ -455,6 +455,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/pos/cuenta-cierre.ts|emitirTicketCorregido": { cuentaId: (k) => k.cuentaCerradaId },
   // «Corregir una línea» (E0): la venta vigente de una línea de la cuenta cerrada y lo que «vio» la persona: el ticket 1-A y su total (1000 + 500 de las dos líneas vigentes del mundo).
   "accion|actions/pos/cuenta-cierre.ts|corregirLineaDeTicket": { cuentaId: (k) => k.cuentaCerradaId, operacionId: (k) => k.ventaDelTicketId, ejemplarVisto: () => 1, totalVisto: () => 1500 },
+  // «Quitar unidades de una línea» (E1): la línea de 2 unidades de la cuenta cerrada (se quita 1) y lo que «vio» la persona: 2 unidades, el ticket 1-A y su total.
+  "accion|actions/pos/cuenta-cierre.ts|quitarUnidadesDeLinea": { cuentaId: (k) => k.cuentaCerradaId, operacionId: (k) => k.ventaConDosUnidadesDelTicketId, unidadesAQuitar: () => 1, unidadesVistas: () => 2, ejemplarVisto: () => 1, totalVisto: () => 1500 },
   "accion|actions/movimientos/conteo-fisico.ts|cancelarConteoFisico": { conteoId: (k) => k.conteoResueltoId },
   "accion|actions/carta/items-agrupados.ts|agregarOpcionItemAgrupadoCarta": { productoId: (k) => k.productoPv2Id },
   // `versionVista` es la versión de la receta PROPIA que vio la persona: 0 = todavía no tiene.
@@ -480,6 +482,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   // GO-2d: la misma grilla, para varios productos a la vez (el selector del POS).
   "lectura|lecturas/catalogo/precio-local-de-opciones.ts|preciosLocalesDeOpcionVigentesEnProductos": { productoIds: (k) => [k.productoConOpcionesId], precioLocalActivo: () => true },
   // GO-2d: «lo más pedido» del PV con opciones en la sucursal.
+  // E1 (quitar unidades): las versiones de las ventas de la cuenta cerrada (la lectura del ticket); con ids de otra empresa o sucursal no devuelve nada.
+  "lectura|lecturas/pos/versiones-de-venta.ts|cargarVersionesDeVentas": { ventaIds: (k) => [k.ventaDelTicketId] },
   "lectura|lecturas/pos/mas-pedidas.ts|configuracionesMasPedidasEnSucursal": { productoIds: (k) => [k.productoConOpcionesId] },
   // GO-2b: lo que admite para vender el PV con opciones (la vigente, los consumos, lo apagado en la sucursal) y la grilla de la sucursal para su MEDIDA en ABSOLUTO elegida.
   "lectura|lecturas/opciones/opciones-para-vender.ts|cargarOpcionesParaVender": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoConOpcionesId] }) },

@@ -105,6 +105,8 @@ export interface LineaCorregible {
  * la reemplazó la siguiente (o la anularon), null si es la vigente. La versión siguiente rige desde ese mismo instante.
  */
 export interface VersionDeVenta {
+  /** La Operacion VENTA de esa versión (la A original, la B que la reemplaza…): la última es la que hoy se puede volver a corregir o anular. */
+  operacionId: string;
   cantidad: number;
   anuladaEn: Date | null;
 }
@@ -151,7 +153,7 @@ export function armarTicketImpresoEn(items: readonly ItemConVenta[], impresaEn: 
  * se corrigió quitando unidades): el ticket toma la cantidad de la venta que REEMPLAZA a la original — los ítems de la línea siguen contando (nada se borró) y un ítem sintético
  * con la diferencia (negativo) deja la línea en las unidades de la versión que regía en `t`; si ninguna regía (se anuló entera), la línea no aparece.
  */
-function itemsVigentesEn(items: readonly ItemConVenta[], t: Date): ItemConVenta[] {
+export function itemsVigentesEn(items: readonly ItemConVenta[], t: Date): ItemConVenta[] {
   const salida: ItemConVenta[] = [];
   const diferenciaYaAgregada = new Set<string>();
   for (const item of items) {
@@ -358,7 +360,9 @@ export function lineasCorregibles(items: readonly ItemConVenta[], descuentoPorce
     const { lineas, total } = armarTicketVigente(grupo, ahora, descuentoPorcentaje);
     const [primera] = lineas;
     if (!primera) continue;
-    const operacionId = grupo.find((i) => !i.lineaPadreId)?.operacionId ?? grupo[0]!.operacionId!;
+    const principal = grupo.find((i) => !i.lineaPadreId) ?? grupo[0]!;
+    // Una línea ya corregida por unidades se vuelve a corregir (o se anula) sobre la venta que HOY rige, la última versión; los ítems siguen apuntando a la original.
+    const operacionId = principal.versionesDeLaVenta?.length ? principal.versionesDeLaVenta[principal.versionesDeLaVenta.length - 1]!.operacionId : principal.operacionId!;
     salida.push({ operacionId, texto: primera.promoCuentaId && !primera.indentado ? primera.producto : `${primera.cantidad} × ${primera.producto}`, subtotal: total });
   }
   return salida;
