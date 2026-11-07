@@ -104,7 +104,6 @@ const LECTORES: Readonly<Record<string, Lector>> = {
   "src/server/lecturas/permisos/gerencia.ts": I("Lectura interna del caso de uso de la gerencia (quién la tiene hoy): no llega a ninguna pantalla.", "User.email"),
   "src/server/lecturas/reportes/comun.ts": P("MovimientoStock.precioPorUnidadStock", "Producto.proveedorConsignacion"),
   "src/server/persistencia/compras/cargar-compra-para-anular.ts": I("Carga la compra que `anularCompra` revierte (el nombre del proveedor para el mensaje): la acción devuelve un ResultadoAccion.", "Operacion.proveedor"),
-  "src/server/persistencia/compras/cargar-compra-para-corregir.ts": I("Carga la compra que `corregirCompra` rehace (el proveedor, para repetirlo): la acción devuelve un ResultadoAccion.", "Operacion.proveedor"),
   "src/server/persistencia/compras/comprobante-en-la-empresa.ts": I("Etapa 1 de Compras (I2): compara el número de las compras vigentes del proveedor en TODA la empresa para rechazar un número repetido; devuelve solo un sí/no al caso de uso, nunca el dato ni la sucursal.", "Operacion.nroFactura"),
   "src/server/persistencia/compras/cargar-factura-proveedor.ts": I("E3a: carga la propuesta que `aceptarPropuestaDeFactura` copia al Kardex (el precio por unidad del renglón va a cada línea): la acción devuelve un ResultadoAccion, nunca el dato.", "FacturaProveedorRenglon.precioPorUnidadStock"),
   "src/server/persistencia/movimientos/cargar-validaciones-de-movimiento.ts": I(

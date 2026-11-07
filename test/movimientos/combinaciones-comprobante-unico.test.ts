@@ -11,7 +11,8 @@ import { datosDeFactura } from "../setup/factura-proveedor";
 import { leerOraculoDeComprobante, type OraculoDeComprobante } from "../setup/oraculo-comprobante-unico";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 import { registrarMovimientoCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/registrar-movimiento";
-import { corregirCompraCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/corregir-compra";
+import { corregirFacturaProveedorCasoDeUso } from "../../src/server/actions/movimientos/casos-de-uso/corregir-factura-proveedor";
+import { cargarCompraDeUnaParte } from "../setup/compra-de-prueba";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
 import { normalizarNumeroDeComprobante } from "../../src/core/compras/public";
 import { mediodiaDelDia, ZONA_ARGENTINA, diaDeCalendario } from "../../src/core/tiempo/zona-horaria";
@@ -28,7 +29,7 @@ import type { DatosMovimientoInput } from "../../src/core/features/movimientos/m
  *  - L: el existente se SIEMBRA DIRECTO en la base como dato ya guardado: CON_LETRA «A-00001-0000nnnn» o SIN_LETRA «0001-0000nnnn» (texto viejo, I15). La carga nueva se escribe siempre «A-1-nnnn».
  *  - P: quien carga ve (administrador) o no ve (rol sin ningún permiso) las compras de Norte. Solo con N = REPETIDO_OTRA_SUCURSAL hay un «otro lugar» real donde está el comprobante; en las demás filas P se aplica
  *    igual sobre Norte, una sucursal ajena irrelevante para ese escenario (el oráculo dice que P no cambia nada: este test lo comprueba también donde no tiene objeto, sin que sea un caso aparte).
- *  - O: COMPRA_NUEVA (`registrarMovimientoCasoDeUso`) o CORRECCION (`corregirCompraCasoDeUso` de OTRA compra vigente del mismo proveedor en Central, poniéndole ese número).
+ *  - O: COMPRA_NUEVA (`registrarMovimientoCasoDeUso`) o CORRECCION (`corregirFacturaProveedorCasoDeUso` de OTRA compra vigente —una factura de una parte— del mismo proveedor en Central, poniéndole ese número).
  */
 const oraculo: OraculoDeComprobante = leerOraculoDeComprobante();
 const mediodiaDeHoy = () => mediodiaDelDia(diaDeCalendario(new Date(), ZONA_ARGENTINA), ZONA_ARGENTINA);
@@ -111,11 +112,11 @@ beforeEach(async () => {
 
 type Resultado = { ok: boolean; codigo?: string; mensaje?: string };
 
-/** Corrige `operacionId` (una compra vigente de Central con otro número) poniéndole `nuevo`. */
-async function corregir(usuarioId: string, operacionId: string, nuevo: string): Promise<Resultado> {
-  const actual = await prisma.operacion.findUniqueOrThrow({ where: { id: operacionId } });
+/** Corrige la factura `facturaId` (una compra vigente de Central con otro número) poniéndole `nuevo`. */
+async function corregir(usuarioId: string, facturaId: string, nuevo: string): Promise<Resultado> {
+  const actual = await prisma.facturaProveedor.findUniqueOrThrow({ where: { id: facturaId } });
   const vista = { proveedorId, nroFactura: actual.nroFactura ?? "", detalleLibre: actual.detalleLibre ?? "" };
-  return corregirCompraCasoDeUso(actorDe(usuarioId, central), { operacionId, nueva: { ...vista, nroFactura: nuevo }, esperado: vista }) as Promise<Resultado>;
+  return corregirFacturaProveedorCasoDeUso(actorDe(usuarioId, central) as never, { facturaId, nueva: { ...vista, nroFactura: nuevo }, esperado: vista }) as Promise<Resultado>;
 }
 
 describe("las 32 combinaciones del oráculo (N × L × P × O) contra la base real", () => {
@@ -135,19 +136,19 @@ describe("las 32 combinaciones del oráculo (N × L × P × O) contra la base re
       const quien = P === "SI" ? usuarioVe : P === "NO" ? usuarioNoVe : null;
       if (quien === null) throw new Error(`Valor de P desconocido: ${P}`);
 
-      // O=CORRECCION: otra compra vigente del mismo proveedor en Central, con otro número.
-      const aCorregir = O === "CORRECCION" ? await sembrarCompra(central, `A-00002-${n8(n)}`) : null;
+      // O=CORRECCION: otra compra vigente del mismo proveedor en Central, con otro número (desde U1, una factura de una parte).
+      const aCorregir = O === "CORRECCION" ? await cargarCompraDeUnaParte(actorDe(adminId, central), { seccionId: seccionCentral, proveedorId, productoId: harinaId, nroFactura: `A-00002-${n8(n)}` }) : null;
       if (O !== "CORRECCION" && O !== "COMPRA_NUEVA") throw new Error(`Valor de O desconocido: ${O}`);
       const antes = await conteos();
-      const compraAntes = aCorregir ? await prisma.operacion.findUniqueOrThrow({ where: { id: aCorregir.id } }) : null;
+      const compraAntes = aCorregir ? await prisma.operacion.findUniqueOrThrow({ where: { id: aCorregir.operacionId } }) : null;
 
-      const r: Resultado = aCorregir ? await corregir(quien, aCorregir.id, numeroEscrito(n)) : await registrarMovimientoCasoDeUso(actorDe(quien, central), compra(numeroEscrito(n)));
+      const r: Resultado = aCorregir ? await corregir(quien, aCorregir.facturaId, numeroEscrito(n)) : await registrarMovimientoCasoDeUso(actorDe(quien, central), compra(numeroEscrito(n)));
       const despues = await conteos();
 
       if (Resultado === "ACEPTA") {
         expect(r.ok, r.mensaje).toBe(true);
         if (aCorregir) {
-          const corregida = await prisma.operacion.findUniqueOrThrow({ where: { id: aCorregir.id } });
+          const corregida = await prisma.operacion.findUniqueOrThrow({ where: { id: aCorregir.operacionId } });
           expect(normalizarNumeroDeComprobante(corregida.nroFactura ?? "")).toBe(normalizarNumeroDeComprobante(numeroEscrito(n)));
           expect(despues.operacion).toBe(antes.operacion);
           expect(despues.registroAuditoria).toBeGreaterThan(antes.registroAuditoria);
@@ -161,7 +162,7 @@ describe("las 32 combinaciones del oráculo (N × L × P × O) contra la base re
         expect(r.mensaje).not.toMatch(/Central|Norte/);
         expect(r.mensaje).not.toMatch(/\d{1,4}[-/]\d{1,2}[-/]\d{1,4}/);
         expect(despues, "no se escribe NADA").toEqual(antes);
-        if (aCorregir) expect(await prisma.operacion.findUniqueOrThrow({ where: { id: aCorregir.id } }), "la compra corregida queda intacta").toEqual(compraAntes);
+        if (aCorregir) expect(await prisma.operacion.findUniqueOrThrow({ where: { id: aCorregir.operacionId } }), "la compra corregida queda intacta").toEqual(compraAntes);
       } else {
         throw new Error(`Resultado desconocido en el oráculo: ${Resultado}`);
       }
@@ -212,8 +213,8 @@ describe("dimensiones que NO cambian el resultado (cada una equivale a lo que di
   });
 
   it("corregir una compra dejándole su mismo número acepta (la corrección excluye a la propia compra)", async () => {
-    const propia = await sembrarCompra(central, "A-00023-00237728");
-    const r = await corregir(usuarioVe, propia.id, "A-23-237728");
+    const propia = await cargarCompraDeUnaParte(actorDe(adminId, central), { seccionId: seccionCentral, proveedorId, productoId: harinaId, nroFactura: "A-00023-00237728" });
+    const r = await corregir(usuarioVe, propia.facturaId, "A-23-237728");
     expect(r.ok, r.mensaje).toBe(true);
   });
 

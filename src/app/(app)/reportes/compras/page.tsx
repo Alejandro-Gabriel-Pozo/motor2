@@ -8,7 +8,6 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { SIN_PROVEEDOR } from "@/core/reportes/public";
 import { listarComprasRegistradas } from "@/server/consultas/reportes/compras-registradas";
 import { listarProveedoresParaSelector } from "@/server/actions/catalogo/proveedores";
-import { BotonAnularCompra } from "./boton-anular-compra";
 import { BotonAnularFactura } from "./boton-anular-factura";
 import { PagoDeFactura } from "./pago-de-factura";
 import { FormularioCorregirCompra } from "./formulario-corregir-compra";
@@ -25,9 +24,9 @@ const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
 
 /**
  * Compras registradas, una fila por factura. Antes una compra solo se veía por el historial de un producto o por su ID de operación: no
- * había forma de ver qué se le compró a un proveedor, con qué factura, cuándo y por cuánto. Quien tiene el permiso `anular_compra` puede anular una
- * compra desde su detalle (K1c), y quien tiene `corregir_compra` puede corregir su cabecera (proveedor, N.º de factura y detalle; K1b). Los precios y las
- * cantidades no se editan: se anula la compra y se carga de nuevo.
+ * había forma de ver qué se le compró a un proveedor, con qué factura, cuándo y por cuánto. Toda compra es una factura (de una o más partes): quien tiene el permiso `anular_compra` la
+ * puede anular desde su detalle, con motivo (K1c), y quien tiene `corregir_compra` puede corregir sus datos (proveedor, N.º de factura y detalle; K1b). Los precios y las
+ * cantidades no se editan: se anula la factura y se carga de nuevo.
  */
 export default async function ComprasRegistradasPage({
   searchParams,
@@ -116,7 +115,9 @@ export default async function ComprasRegistradasPage({
             {cantidadAnuladas > 0 && ` (sin contar ${cantidadAnuladas} anulada(s))`}
           </p>
           <div className="flex flex-col gap-2">
-            {items.map((c) => (
+            {items.map((c) => {
+              const resumen = `del ${fechaCorta(c.fecha)}${c.proveedorNombre ? ` a ${c.proveedorNombre}` : ""}${c.nroFactura ? `, factura ${c.nroFactura}` : ""}`;
+              return (
               <details key={c.idOperacion} className="rounded border" data-compra={c.idOperacion}>
                 <summary className="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-sm">
                   <span className="w-24 tabular-nums">{fechaCorta(c.fecha)}</span>
@@ -184,9 +185,8 @@ export default async function ComprasRegistradasPage({
                       ver la operación
                     </EnlaceInterno>
                   </p>
-                  {c.facturaProveedorId && (
+                  {c.facturaProveedorId ? (
                     <div className="mt-2 flex flex-col gap-2">
-                      <p className="text-xs text-tinta-tenue">Es la parte de esta sucursal en una factura de proveedor: no se corrige ni se anula sola, se anula la factura entera (con todas sus partes).</p>
                       {c.pago && !c.anuladaEn && (
                         <PagoDeFactura
                           facturaId={c.facturaProveedorId}
@@ -194,40 +194,26 @@ export default async function ComprasRegistradasPage({
                           puedeDeclarar={puedeDeclararPago}
                           hoy={hoyArgentina}
                           desde={diaDeCalendario(c.fecha, ZONA_ARGENTINA)}
-                          resumen={`del ${fechaCorta(c.fecha)}${c.proveedorNombre ? ` de ${c.proveedorNombre}` : ""}${c.nroFactura ? `, N° ${c.nroFactura}` : ""}`}
+                          resumen={resumen}
                         />
                       )}
-                      {puedeAnular && (
-                        <BotonAnularFactura
-                          facturaId={c.facturaProveedorId}
-                          anulada={Boolean(c.anuladaEn)}
-                          resumen={`del ${fechaCorta(c.fecha)}${c.proveedorNombre ? ` de ${c.proveedorNombre}` : ""}${c.nroFactura ? `, N° ${c.nroFactura}` : ""}`}
-                        />
-                      )}
-                    </div>
-                  )}
-                  {!c.facturaProveedorId && (puedeAnular || (puedeCorregir && !c.anuladaEn)) && (
-                    <div className="mt-2 flex flex-col gap-2">
                       {puedeCorregir && !c.anuladaEn && (
                         <FormularioCorregirCompra
-                          idOperacion={c.idOperacion}
-                          resumen={`del ${fechaCorta(c.fecha)}${c.proveedorNombre ? ` a ${c.proveedorNombre}` : ""}${c.nroFactura ? `, factura ${c.nroFactura}` : ""}`}
+                          idFactura={c.facturaProveedorId}
+                          resumen={resumen}
                           proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre, activo: p.activo }))}
                           actual={{ proveedorId: c.proveedorId, nroFactura: c.nroFactura, detalleLibre: c.detalle }}
                         />
                       )}
-                      {puedeAnular && (
-                        <BotonAnularCompra
-                          idOperacion={c.idOperacion}
-                          anulada={Boolean(c.anuladaEn)}
-                          resumen={`del ${fechaCorta(c.fecha)}${c.proveedorNombre ? ` a ${c.proveedorNombre}` : ""}${c.nroFactura ? `, factura ${c.nroFactura}` : ""}`}
-                        />
-                      )}
+                      {puedeAnular && <BotonAnularFactura facturaId={c.facturaProveedorId} anulada={Boolean(c.anuladaEn)} resumen={resumen} />}
                     </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-tinta-tenue">Compra cargada antes de que toda compra fuera una factura: no tiene estado de pago (pendiente de completar) y ya no se anula ni se corrige desde acá.</p>
                   )}
                 </div>
               </details>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

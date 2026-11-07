@@ -54,14 +54,16 @@ beforeEach(async () => {
   proveedorId = (await prisma.proveedor.create({ data: { codigo: "PRV_1", nombre: "Molino SA" } })).id;
 });
 
-describe("compra simple con unidad de compra", () => {
+describe("compra de una sucursal (registrarMovimiento, factura de una parte) con unidad de compra", () => {
   it("guarda la unidad y lo comprado (3 cajas) junto al stock de siempre (75 kg)", async () => {
     const r = await registrarMovimientoCasoDeUso(actor(), compra("A-1-500001", randomUUID()));
     expect(r.ok, r.mensaje).toBe(true);
     const g = await guardado();
     expect(g.movimientos).toHaveLength(1);
-    expect(g.movimientos[0]!.unidadCompraId).toBe(cajaId);
-    expect(g.movimientos[0]!.cantidadCompra?.toFixed(4)).toBe("3.0000");
+    expect(g.renglones).toHaveLength(1);
+    expect(g.renglones[0]!.unidadCompraId, "lo comprado vive en el renglón de la factura").toBe(cajaId);
+    expect(g.renglones[0]!.cantidadCompra?.toFixed(4)).toBe("3.0000");
+    expect(g.movimientos[0]!.unidadCompraId, "y la parte queda en NULL").toBeNull();
     expect(Number(g.movimientos[0]!.cantidad)).toBe(75);
   });
 
@@ -74,7 +76,8 @@ describe("compra simple con unidad de compra", () => {
     const g = await guardado();
     expect(g.operaciones).toBe(1);
     expect(g.movimientos).toHaveLength(1);
-    expect(g.movimientos[0]!.cantidadCompra?.toFixed(4)).toBe("3.0000");
+    expect(g.facturas).toBe(1);
+    expect(g.renglones.map((r) => r.cantidadCompra?.toFixed(4))).toEqual(["3.0000"]);
   });
 
   it("CONCURRENCIA, misma clave: tres envíos a la vez escriben UNA sola compra (sin duplicar la unidad ni la cantidad)", async () => {
@@ -84,8 +87,8 @@ describe("compra simple con unidad de compra", () => {
     const g = await guardado();
     expect(g.operaciones).toBe(1);
     expect(g.movimientos).toHaveLength(1);
-    expect(g.movimientos[0]!.unidadCompraId).toBe(cajaId);
-    expect(g.movimientos[0]!.cantidadCompra?.toFixed(4)).toBe("3.0000");
+    expect(g.facturas).toBe(1);
+    expect(g.renglones.map((r) => r.cantidadCompra?.toFixed(4))).toEqual(["3.0000"]);
   });
 
   it("CONCURRENCIA, mismo comprobante con claves distintas: gana una, la otra se rechaza como duplicada y NO queda nada a medias", async () => {
@@ -95,7 +98,8 @@ describe("compra simple con unidad de compra", () => {
     const g = await guardado();
     expect(g.operaciones).toBe(1);
     expect(g.movimientos).toHaveLength(1);
-    expect(g.movimientos[0]!.cantidadCompra?.toFixed(4)).toBe("3.0000");
+    expect(g.facturas).toBe(1);
+    expect(g.renglones.map((r) => r.cantidadCompra?.toFixed(4))).toEqual(["3.0000"]);
   });
 
   it("CONCURRENCIA, comprobantes distintos: las dos se guardan, cada una con su propia unidad y cantidad", async () => {
@@ -103,7 +107,8 @@ describe("compra simple con unidad de compra", () => {
     expect(rs.every((r) => r.ok), JSON.stringify(rs)).toBe(true);
     const g = await guardado();
     expect(g.operaciones).toBe(2);
-    expect(g.movimientos.map((m) => m.cantidadCompra?.toFixed(4))).toEqual(["3.0000", "3.0000"]);
+    expect(g.facturas).toBe(2);
+    expect(g.renglones.map((r) => r.cantidadCompra?.toFixed(4))).toEqual(["3.0000", "3.0000"]);
   });
 });
 

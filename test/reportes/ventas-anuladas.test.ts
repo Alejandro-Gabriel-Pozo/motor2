@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarVenta, anularVenta } from "../../src/server/actions/movimientos/venta";
-import { anularCompra } from "../../src/server/actions/movimientos/compras";
+import { anularCompraDeTest } from "../setup/anular-compra-de-prueba";
 import { obtenerReportePorPeriodo } from "../../src/server/consultas/reportes/periodo";
 import { calcularRendimientoRecetasSimples } from "../../src/server/consultas/reportes/rendimiento-recetas";
 import { generarReporteHuecosCatalogo } from "../../src/server/consultas/reportes/huecos-catalogo";
@@ -199,7 +199,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
     it("anular una COMPRA no deja un ajuste de −10 kg", async () => {
       await comprarHarina("2026-08-05");
       const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-      expect((await anularCompra(compra.id, crypto.randomUUID())).ok).toBe(true);
+      expect((await anularCompraDeTest(compra.id)).ok).toBe(true);
 
       expect(await ajusteDeHarina()).toEqual({ suma: 0, sugerencia: null });
     });
@@ -228,7 +228,7 @@ describe("las ventas anuladas no cuentan en los reportes", () => {
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
     await anularVenta(venta, "Error de carga");
     // La compra ya no tiene todo su stock (parte se vendió y ya se devolvió con la anulación): con el stock repuesto se puede anular.
-    expect((await anularCompra(compra.id, crypto.randomUUID())).ok).toBe(true);
+    expect((await anularCompraDeTest(compra.id)).ok).toBe(true);
 
     const reversiones = await prisma.operacion.findMany({ where: { proceso: "AJUSTE" } });
     expect(reversiones).toHaveLength(2);

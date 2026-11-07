@@ -329,6 +329,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "E0 de la corrección por ajuste (PR1, f+b): anular una venta pide MOTIVO (queda en `motivoAnulacion` de la venta anulada) y el contra-asiento escribe `revierteAOperacionId` apuntando a ella. Cambian SOLO esos dos campos en las filas OPERACION de las anulaciones; ninguna línea de Kardex ni ningún otro campo cambia.",
       },
+      {
+        blob: "7b435e4ce696edb27018d471d4cf856a292c1b2d",
+        // El commit PADRE de este (2e810441, PR1 de «una sola compra») es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "2e810441",
+        motivo:
+          "U0 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md; CAMBIA SOLO LA PREPARACIÓN, no la venta): `registrarMovimiento` COMPRA es ahora una factura de UNA parte al 100 %% en la sucursal, pagada ahora. Cambian SOLO las líneas de las compras de preparación (34 OPERACION y 34 KARDEX de proceso COMPRA), en tres campos: la clave de reintento, la huella y el mensaje pasan de la Operacion a la cabecera de la factura (claveIdempotencia, payloadHash y resultadoMensaje de la Operacion quedan en null), la fila de Kardex gana su renglón (facturaProveedorRenglonId) y pierde unidadCompraId y cantidadCompra (viven en el renglón). Comparado línea por línea: ni una fila de venta, stock, costo ni importe cambia.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -449,6 +456,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "eac39a98",
         motivo:
           "E0 de la corrección por ajuste (PR1, f+b): igual que la matriz de la venta; cambian SOLO `motivoAnulacion` (venta anulada) y `revierteAOperacionId` (contra-asiento) en las filas OPERACION de las anulaciones.",
+      },
+      {
+        blob: "4bfbf46174437f40cec6f200537dd2d0586ac447",
+        // El commit PADRE de este (2e810441, PR1 de «una sola compra») es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "2e810441",
+        motivo:
+          "U0 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md; CAMBIA SOLO LA PREPARACIÓN, no la venta): `registrarMovimiento` COMPRA es ahora una factura de UNA parte al 100 %% en la sucursal, pagada ahora. Cambian las 115 líneas OPERACION y las KARDEX de proceso COMPRA de las compras de preparación, igual que en venta-matriz (clave, huella y mensaje a la cabecera de la factura; la fila de Kardex gana su renglón y pierde unidadCompraId y cantidadCompra). Más 115 líneas NUEVAS de AUDITORIA con entidad=FacturaProveedor («Factura de proveedor ... cargada en «Central»»): una por compra, porque toda compra ahora es una factura y su carga se audita. Verificado con diff: ninguna línea que no sea de proceso COMPRA ni esas 115 AUDITORIA cambia (venta, stock, costo e importes intactos).",
       },
     ],
   },

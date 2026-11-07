@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { corregirCompra, type CabeceraVista } from "@/server/actions/movimientos/compras";
+import { corregirFacturaProveedor, type CabeceraVista } from "@/server/actions/movimientos/facturas-proveedor";
 import { CampoNumeroDeComprobante } from "@/components/campo-numero-de-comprobante";
 import { PARTES_DE_NUMERO_VACIAS, estadoDelNumeroTecleado, partesDeNumeroGuardado, type PartesDeNumeroDeComprobante } from "@/core/datos/numero-comprobante";
 import { Aviso } from "@/ui/primitivas/aviso";
@@ -17,8 +17,8 @@ interface OpcionProveedor {
 }
 
 /**
- * «Corregir proveedor y factura» del detalle de una compra registrada (K1b). Corrige solo la CABECERA (proveedor, N.º de factura y detalle): las líneas
- * (precios y cantidades) no se tocan, y un precio mal cargado se arregla anulando la compra y cargándola de nuevo. El formulario lo dice para que nadie lo
+ * «Corregir datos» del detalle de una compra registrada (K1b; desde U1 de «una sola compra» corrige la FACTURA entera, con todas sus partes). Corrige solo la CABECERA (proveedor, N.º de factura y detalle): las líneas
+ * (precios y cantidades) no se tocan, y un precio mal cargado se arregla anulando la factura y cargándola de nuevo. El formulario lo dice para que nadie lo
  * busque acá.
  *
  * Teclado y lector de pantalla: al abrir, el foco va al primer campo; Escape cancela y el foco vuelve al botón que lo abrió (`Boton` no recibe `ref`: se busca
@@ -30,12 +30,13 @@ interface OpcionProveedor {
  * servidor no la pisa en silencio y lo avisa. Este componente sigue montado después de guardar (recibe la compra ya refrescada) para dejar el aviso de éxito.
  */
 export function FormularioCorregirCompra({
-  idOperacion,
+  idFactura,
   resumen,
   proveedores,
   actual,
 }: {
-  idOperacion: string;
+  /** La factura (la compra completa, con todas sus partes) cuyos datos se corrigen. */
+  idFactura: string;
   /** Identifica de cuál se trata cuando hay muchos botones iguales en la página (ej. «del 2026-09-21 a Molino SA, factura A-1»). */
   resumen: string;
   proveedores: OpcionProveedor[];
@@ -112,7 +113,7 @@ export function FormularioCorregirCompra({
       return;
     }
     startTransition(async () => {
-      const r = await corregirCompra(idOperacion, { proveedorId: proveedorId || null, nroFactura, detalleLibre }, esperado);
+      const r = await corregirFacturaProveedor(idFactura, { proveedorId: proveedorId || null, nroFactura, detalleLibre }, esperado);
       if (!r.ok) {
         setError(r.mensaje);
         return;

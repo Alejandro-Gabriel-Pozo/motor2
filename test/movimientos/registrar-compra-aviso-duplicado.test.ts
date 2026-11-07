@@ -38,7 +38,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
   let otroProveedorId: string;
 
   // Cada actor lleva el alcance que tiene en producción: SOLO su sucursal activa (ADR-028). Lo que el aviso C25 necesita leer de las OTRAS sucursales lo resuelve el código, no el actor del test.
-  const actor = (usuarioId: string, sucursalId: string, sucursalNombre: string) => ({ usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, sucursalNombre, ...baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }) });
+  const actor = (usuarioId: string, sucursalId: string, sucursalNombre: string) => ({ usuarioId, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId, sucursalNombre, ahora: new Date(), ...baseDeTest({ lectura: [sucursalId], escritura: [sucursalId] }) });
 
   const comprarEnCentral = (fecha: string, precioTotal: number | undefined, extra: { nroFactura?: string; proveedor?: string; claveIdempotencia?: string } = {}) =>
     registrarMovimientoCasoDeUso(actor(usuarioCentral, sucursalCentral, "Central"), {
@@ -282,7 +282,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     const observador = observarAlcances();
     try {
       const r = await registrarMovimientoCasoDeUso(
-        { usuarioId: usuarioNorte, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalNorte, sucursalNombre: "Norte", ...baseDeTest(alcance) },
+        { usuarioId: usuarioNorte, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalNorte, sucursalNombre: "Norte", ahora: new Date(), ...baseDeTest(alcance) },
         { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-13", ZONA_ARGENTINA), seccionId: seccionNorte, proveedorId, nroFactura: "A-00009-00000077", items: [{ productoId, cantidad: 10, precioTotal: 1500, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() },
       );
       expect(r.ok, r.mensaje).toBe(true);
@@ -320,7 +320,7 @@ describe("registrarMovimiento (Compra): aviso de posible factura repetida", () =
     const observador = observarAlcances();
     try {
       const r = await registrarMovimientoCasoDeUso(
-        { usuarioId: usuarioCentral, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalCentral, sucursalNombre: "Central", ...baseDeTest(alcance) },
+        { usuarioId: usuarioCentral, empresaId: EMPRESA_POR_DEFECTO_ID, sucursalId: sucursalCentral, sucursalNombre: "Central", ahora: new Date(), ...baseDeTest(alcance) },
         { proceso: "COMPRA", fecha: mediodiaDelDia("2026-09-12", ZONA_ARGENTINA), seccionId: seccionCentral, proveedorId, nroFactura: "A-00001-00001234", items: [{ productoId, cantidad: 10, precioTotal: 1500, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() },
       );
       expect(r.ok, r.mensaje).toBe(true);
