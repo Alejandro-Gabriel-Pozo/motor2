@@ -72,7 +72,9 @@ export async function corregirLineaDeTicketCasoDeUso(
         if (!ultimo || !cuenta.ejemplares.some((e) => e.ejemplar === 1)) {
           return fracaso("SIN_NUMERACION", `La cuenta ${puesto.del} se cerró antes de la numeración de tickets: no tiene ticket que corregir.`);
         }
-        if (!cuenta.items.some((i) => i.operacionId === operacionId)) return fracaso("LINEA_DE_OTRA_CUENTA", "Esa línea no es de esta cuenta.");
+        // La venta pedida es la VIGENTE de una línea: la suya, o (E1) la última corrección si la línea ya se corrigió quitando unidades.
+        const vigenteDe = (i: (typeof cuenta.items)[number]) => (i.versionesDeLaVenta?.length ? i.versionesDeLaVenta[i.versionesDeLaVenta.length - 1]!.operacionId : i.operacionId);
+        if (!cuenta.items.some((i) => vigenteDe(i) === operacionId)) return fracaso("LINEA_DE_OTRA_CUENTA", "Esa línea no es de esta cuenta.");
 
         // Guarda optimista: lo que la persona vio es lo guardado.
         const total = armarTicketVigente(cuenta.items, actor.ahora, cuenta.descuentoPorcentaje).total;

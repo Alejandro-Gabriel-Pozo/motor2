@@ -231,7 +231,7 @@
     "resultado": null
   },
   "pos.obtenerTicketsRecientes(Central, mesa 4)": {
-    "consultas": "1: cuenta.findMany×1",
+    "consultas": "2: cuenta.findMany×1, operacion.findMany×1",
     "resultado": [
       {
         "cuentaId": "c-cerrada-2",
@@ -312,7 +312,7 @@
     ]
   },
   "pos.obtenerTicketsRecientes(Central, mesa 4, límite 1)": {
-    "consultas": "1: cuenta.findMany×1",
+    "consultas": "2: cuenta.findMany×1, operacion.findMany×1",
     "resultado": [
       {
         "cuentaId": "c-cerrada-2",

@@ -25,6 +25,8 @@ export interface OperacionDeVentaAEscribir {
    * CREAR la operación: el disparador `Operacion_padre_inmutable_chk` rechaza cualquier UPDATE del padre, también de NULL a un valor. Ausente en todas las demás.
    */
   operacionPadreId?: string;
+  /** E1 de la corrección por ajuste: SOLO en la venta que REEMPLAZA a otra corregida quitándole unidades, la reemplazada (índice único: una venta se reemplaza una sola vez). Ausente en todas las demás. */
+  reemplazaAOperacionId?: string;
 }
 
 export async function escribirOperacionDeVenta(tx: Prisma.TransactionClient, datos: OperacionDeVentaAEscribir): Promise<{ id: string }> {

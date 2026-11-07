@@ -13,7 +13,7 @@ import { crearMesa, habilitarMostrador } from "../../src/server/actions/pos/mesa
 import { abrirCuenta, abrirCuentaDeMostrador, asignarClienteACuenta, corregirComensales, liberarMesa } from "../../src/server/actions/pos/cuenta-apertura";
 import { agregarItems, enviarACocina, quitarItemSinEnviar, quitarPromoSinEnviar } from "../../src/server/actions/pos/cuenta-pedido";
 import { anularItemEnviado, anularPromoEnviada } from "../../src/server/actions/pos/cuenta-anulacion";
-import { cerrarCuenta, corregirLineaDeTicket, emitirTicketCorregido } from "../../src/server/actions/pos/cuenta-cierre";
+import { cerrarCuenta, corregirLineaDeTicket, emitirTicketCorregido, quitarUnidadesDeLinea } from "../../src/server/actions/pos/cuenta-cierre";
 import { anularVenta, registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerMiNivelPermiso, requierePermisoVer } from "../../src/server/acceso/gate";
 import { ACCIONES, moduloDeAccion, type AccionClave, type AccionDeSucursal } from "../../src/core/permisos/acciones";
@@ -272,7 +272,7 @@ describe("S-22 · Carta apagada: el POS vende solo con los ítems sueltos, sin c
 
 /**
  * La parte de D2 que YA se cumplía (todas las claves `pos_*` y `proceso_venta` son del módulo Salón y el guard rechaza por módulo): este bloque la FIJA, puerta por
- * puerta, para que ningún cambio (una clave de otro módulo, un envoltorio que se cae) la rompa sin que un test lo vea. Las 19 llamadas: las 16 mutaciones del POS
+ * puerta, para que ningún cambio (una clave de otro módulo, un envoltorio que se cae) la rompa sin que un test lo vea. Las 20 llamadas: las 17 mutaciones del POS
  * (`pos-rechaza-sin-permiso.test.ts`), `agregarItems` también con una promo, la venta de mostrador y su anulación; más la lectura del mapa de mesas (la pantalla del POS).
  */
 describe("S-22 · Salón apagado: ninguna puerta del POS responde (se fija lo que ya se cumplía)", () => {
@@ -311,7 +311,7 @@ describe("S-22 · Salón apagado: ninguna puerta del POS responde (se fija lo qu
     };
   }
 
-  /** Las 19 llamadas. `clave`: la acción que el guard evalúa. */
+  /** Las 20 llamadas. `clave`: la acción que el guard evalúa. */
   const PUERTAS: { nombre: string; clave: AccionClave; llamar: (e: Escenario) => Promise<unknown> }[] = [
     { nombre: "crearMesa", clave: "pos_alta_mesa", llamar: () => crearMesa(50) },
     { nombre: "habilitarMostrador", clave: "pos_alta_mesa", llamar: () => habilitarMostrador() },
@@ -330,6 +330,7 @@ describe("S-22 · Salón apagado: ninguna puerta del POS responde (se fija lo qu
     { nombre: "cerrarCuenta", clave: "pos_cerrar_cuenta", llamar: (x) => cerrarCuenta(x.cuentaLista) },
     { nombre: "emitirTicketCorregido", clave: "pos_emitir_ticket_corregido", llamar: (x) => emitirTicketCorregido(x.cuentaConTicket, "Se anuló el flan") },
     { nombre: "corregirLineaDeTicket", clave: "anular_venta", llamar: (x) => corregirLineaDeTicket(x.cuentaConTicket, x.operacionDeVenta, "Se anuló el flan", 2, 9000, crypto.randomUUID()) },
+    { nombre: "quitarUnidadesDeLinea", clave: "anular_venta", llamar: (x) => quitarUnidadesDeLinea(x.cuentaConTicket, x.operacionDeVenta, 1, 2, "Se cobró de más", 2, 9000, crypto.randomUUID()) },
     { nombre: "registrarVenta (venta de mostrador)", clave: "proceso_venta", llamar: () => registrarVenta({ fecha: AHORA_DE_LA_CORRIDA, seccionId: s.seccion.id, ventas: [{ productoId: s.flan.id, cantidadVendida: 1 }] }) },
     { nombre: "anularVenta", clave: "anular_venta", llamar: (x) => anularVenta(x.operacionDeVenta, "Error de carga") },
   ];
@@ -387,9 +388,9 @@ describe("S-22 · Salón apagado: ninguna puerta del POS responde (se fija lo qu
     };
   });
 
-  it("son 19 puertas, sin repetir, y todas son del módulo Salón", () => {
-    expect(PUERTAS).toHaveLength(19);
-    expect(new Set(PUERTAS.map((p) => p.nombre)).size).toBe(19);
+  it("son 20 puertas, sin repetir, y todas son del módulo Salón", () => {
+    expect(PUERTAS).toHaveLength(20);
+    expect(new Set(PUERTAS.map((p) => p.nombre)).size).toBe(20);
     for (const p of PUERTAS) expect(moduloDeAccion(p.clave), p.nombre).toBe("salon");
   });
 
