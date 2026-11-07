@@ -140,6 +140,8 @@ export async function limpiarBaseDeTest() {
   await prismaAdmin.pagoDeFacturaProveedor.deleteMany();
   await prismaAdmin.anulacionDeFacturaProveedor.deleteMany();
   await prismaAdmin.facturaProveedor.deleteMany();
+  // E0 (corrección por ajuste): las reversiones apuntan a la operación que revierten (`revierteAOperacionId`, RESTRICT): primero ellas.
+  await prismaAdmin.operacion.deleteMany({ where: { revierteAOperacionId: { not: null } } });
   // GO-1d: las operaciones hijas (de los adicionales) referencian a su padre (RESTRICT): primero ellas.
   await prismaAdmin.operacion.deleteMany({ where: { operacionPadreId: { not: null } } });
   await prismaAdmin.operacion.deleteMany();

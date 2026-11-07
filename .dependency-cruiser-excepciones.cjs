@@ -441,6 +441,7 @@ const PERSISTENCIA_DE_OTRO_DOMINIO = [
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock.ts", motivo: MOTIVO_STOCK },
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/escribir-movimiento-de-stock.ts", motivo: MOTIVO_STOCK },
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/idempotencia.ts", motivo: MOTIVO_IDEMPOTENCIA },
+  { desde: "src/server/actions/pos/casos-de-uso/corregir-linea-de-ticket.ts", hacia: "src/server/persistencia/movimientos/idempotencia.ts", motivo: MOTIVO_IDEMPOTENCIA },
   { desde: "src/server/actions/traspasos/casos-de-uso/aceptar-traspaso.ts", hacia: "src/server/persistencia/movimientos/idempotencia.ts", motivo: MOTIVO_IDEMPOTENCIA },
   { desde: "src/server/actions/traspasos/casos-de-uso/confirmar-reingreso-de-traspaso.ts", hacia: "src/server/persistencia/movimientos/idempotencia.ts", motivo: MOTIVO_IDEMPOTENCIA },
 ];
@@ -463,6 +464,11 @@ const CASOS_DE_USO_IMPORTADOS_FUERA_DE_ACCIONES = [];
  * importa uno (`@/…`) sigue su auditoría como la de un paso compartido (`test/arquitectura/ficha-de-caso-de-uso.test.ts`).
  */
 const COMANDOS_PUBLICOS = [
+  {
+    ruta: "src/server/actions/movimientos/casos-de-uso/anular-venta.ts",
+    motivo:
+      "Decisión de diseño (E0 de la corrección por ajuste, docs/diseno-correccion-por-ajuste-2026-11-06.md): anular una venta es de Movimientos (dueño del Kardex y del contra-asiento). «Corregir una línea» del POS (corregir-linea-de-ticket.ts) invoca `anularVentaEnTx` dentro de SU transacción para anular la línea y emitir el ticket corregido de una sola vez (todo o nada), en vez de duplicar el contra-asiento o llamar a la persistencia de Movimientos.",
+  },
   {
     ruta: "src/server/actions/catalogo/casos-de-uso/registrar-vinculo-de-compra-en-tx.ts",
     motivo:

@@ -1218,6 +1218,7 @@
             },
             "payloadHash": "hash-de-la-anulacion-de-compra",
             "proceso": "AJUSTE",
+            "revierteAOperacionId": "compra-original",
             "sucursalId": "sucursal-origen",
             "usuarioId": "usuario"
           }
@@ -1265,7 +1266,8 @@
             "anuladaEn": {
               "$fecha": "2026-10-01T15:00:00.000Z"
             },
-            "anuladaPorId": "usuario"
+            "anuladaPorId": "usuario",
+            "motivoAnulacion": null
           },
           "where": {
             "id": "compra-original"
@@ -1310,7 +1312,7 @@
           "proveedorId": null,
           "reemplazaAOperacionId": null,
           "resultadoMensaje": "Compra anulada.",
-          "revierteAOperacionId": null,
+          "revierteAOperacionId": "compra-original",
           "seccionDestinoId": null,
           "sucursalId": "sucursal-origen",
           "usuarioId": "usuario",
@@ -1479,6 +1481,7 @@
             },
             "payloadHash": null,
             "proceso": "AJUSTE",
+            "revierteAOperacionId": "compra-original",
             "sucursalId": "sucursal-origen",
             "usuarioId": "usuario"
           }
@@ -1526,7 +1529,8 @@
             "anuladaEn": {
               "$fecha": "2026-10-01T15:00:00.000Z"
             },
-            "anuladaPorId": "usuario"
+            "anuladaPorId": "usuario",
+            "motivoAnulacion": null
           },
           "where": {
             "id": "compra-original"
@@ -1558,7 +1562,7 @@
           "proveedorId": null,
           "reemplazaAOperacionId": null,
           "resultadoMensaje": null,
-          "revierteAOperacionId": null,
+          "revierteAOperacionId": "compra-original",
           "seccionDestinoId": null,
           "sucursalId": "sucursal-origen",
           "usuarioId": "usuario",
@@ -1725,6 +1729,7 @@
               "$fecha": "2026-10-01T15:00:00.000Z"
             },
             "proceso": "AJUSTE",
+            "revierteAOperacionId": "venta-original",
             "sucursalId": "sucursal-origen",
             "usuarioId": "usuario"
           }
@@ -1774,7 +1779,8 @@
             "anuladaEn": {
               "$fecha": "2026-10-01T15:00:00.000Z"
             },
-            "anuladaPorId": "usuario"
+            "anuladaPorId": "usuario",
+            "motivoAnulacion": "Error de carga"
           },
           "where": {
             "id": "venta-original"
@@ -1806,7 +1812,7 @@
           "proveedorId": null,
           "reemplazaAOperacionId": null,
           "resultadoMensaje": null,
-          "revierteAOperacionId": null,
+          "revierteAOperacionId": "venta-original",
           "seccionDestinoId": null,
           "sucursalId": "sucursal-origen",
           "usuarioId": "usuario",
@@ -1826,7 +1832,7 @@
           },
           "id": "venta-original",
           "mermaPorAnulacionDeId": null,
-          "motivoAnulacion": null,
+          "motivoAnulacion": "Error de carga",
           "motivoId": null,
           "nroFactura": null,
           "operacionPadreId": null,

@@ -167,6 +167,8 @@ describe("persistencia del ticket corregido", () => {
       id: cuenta.id,
       mesaNumero: 4,
       cerradaEn,
+      // E0 (corregir una línea): el % de descuento de cliente congelado en la cuenta (null: sin cliente con descuento); lo usa quien compara el total que vio la persona.
+      descuentoPorcentaje: null,
       items: expect.arrayContaining([
         { productoId: s.flan.id, productoNombre: "Flan", cantidad: 1.5, precioUnitario: 3000.5, precioCartaUnitario: null, operacionId: venta.id, anuladaEn },
         { productoId: s.milanesa.id, productoNombre: "Milanesa", cantidad: 1, precioUnitario: 9000, precioCartaUnitario: null, operacionId: null, anuladaEn: null },

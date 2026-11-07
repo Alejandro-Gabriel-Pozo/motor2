@@ -134,7 +134,7 @@ beforeEach(async () => {
   const cierre = await cerrarCuenta(conTicket.id);
   if (!cierre.ok) throw new Error(cierre.mensaje);
   const flanVendido = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: conTicket.id, productoId: s.flan.id } });
-  const anulacion = await anularVenta(flanVendido.operacionId!);
+  const anulacion = await anularVenta(flanVendido.operacionId!, "Error de carga");
   if (!anulacion.ok) throw new Error(anulacion.mensaje);
 
   e = {

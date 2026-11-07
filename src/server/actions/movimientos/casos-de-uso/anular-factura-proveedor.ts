@@ -36,7 +36,7 @@ const MENSAJE_NO_ENCONTRADA = "No se encontró esa factura de proveedor.";
  *  2. dentro de UNA transacción SERIALIZABLE: I3 (la clave y la huella van en el registro de anulación); `SELECT … FOR UPDATE` de la cabecera (serializa contra la aceptación de una propuesta); anulada → «ya
  *     está anulada»; las partes que se ven tienen que ser las mismas del paso 1 (si una destino aceptó en el medio, se pide repetir); notas de crédito vigentes → rechazo (C29);
  *  3. cada parte se evalúa con las reglas de anular una compra (lo comprado sigue en stock, sin conteo posterior) ANTES de escribir nada: si una no se puede, no se anula ninguna;
- *  4. escribe la reversión de cada compra (la de siempre: AJUSTE con `revierteAOperacionId`), la cabecera anulada con la guarda `anuladaEn IS NULL`, el registro de anulación y la auditoría. Las propuestas
+ *  4. escribe la reversión de cada compra (la de siempre: AJUSTE; desde E0 de la corrección por ajuste `escribirContraAsiento` le escribe `revierteAOperacionId` apuntando a la compra anulada — antes este comentario lo decía y el código no lo hacía; el motivo de la anulación queda en el registro de la factura, no en cada compra), la cabecera anulada con la guarda `anuladaEn IS NULL`, el registro de anulación y la auditoría. Las propuestas
  *     pendientes no se tocan: las marca la anulación de su factura (ya no se aceptan ni aparecen en la bandeja).
  *
  * @contract Anula una factura de proveedor entera (todas sus partes recibidas) exactamente una vez por clave, o no anula nada.

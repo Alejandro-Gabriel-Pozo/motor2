@@ -80,9 +80,23 @@ export interface TicketDeCuenta {
   /** El ejemplar A que corrige el último ejemplar, si es una corrección (B, C…); null si el último es el A o no hay número. */
   corrigeA: NumeroDeTicket | null;
   estado: EstadoDeTicket;
+  /** Las líneas que hoy se pueden corregir (E0 de la corrección por ajuste): una por línea vendida que sigue vigente; ver `lineasCorregibles`. */
+  corregibles: LineaCorregible[];
   /** Cliente con descuento de la cuenta (Task #14), con el % YA CONGELADO (`Cuenta.descuentoPorcentaje`, nunca el actual del
    *  Cliente); null si no se le asignó ninguno. */
   cliente: { nombre: string; descuentoPorcentaje: number } | null;
+}
+
+/**
+ * Una línea que se puede corregir de una cuenta cerrada: la venta (`operacionId`) que se anula ENTERA. Una promo es UNA línea (se anula con todos sus componentes, y
+ * `operacionId` es el de uno de ellos); un adicional va con su producto y no es una línea aparte.
+ */
+export interface LineaCorregible {
+  operacionId: string;
+  /** Cómo se lee en la lista: «2 × Cerveza Patagonia» o el título de la promo. */
+  texto: string;
+  /** Lo que se cobró por la línea (con sus adicionales, o por la promo entera), con el descuento de cliente ya aplicado. */
+  subtotal: number;
 }
 
 /** Un ítem de la cuenta con la anulación de la Operacion VENTA que lo registró (null: vigente, o sin operación). */
@@ -270,6 +284,31 @@ export function armarTicket(
   return { lineas, total };
 }
 
+/**
+ * Las líneas VIGENTES de la cuenta que se pueden corregir, en el orden de la cuenta: una por Operacion VENTA (agrupa los ítems originales y sus espejos) con sus
+ * adicionales dentro; una promo es una sola línea. Las anuladas no aparecen. Puro: sale de los mismos ítems que arman el ticket, así que el subtotal es el cobrado.
+ */
+export function lineasCorregibles(items: readonly ItemConVenta[], descuentoPorcentaje: number | null): LineaCorregible[] {
+  const vigentes = items.filter((i) => i.operacionId !== null && i.anuladaEn === null);
+  const porId = new Map(items.flatMap((i) => (i.id !== undefined ? [[i.id, i] as const] : [])));
+  // La operación "dueña" de un ítem: la suya, o la de su producto si es un adicional (su venta se anula con la del producto).
+  const duenaDe = (i: ItemConVenta): string => (i.lineaPadreId ? (porId.get(i.lineaPadreId)?.operacionId ?? i.operacionId!) : i.operacionId!);
+  const grupos = new Map<string, ItemConVenta[]>();
+  for (const i of vigentes) {
+    const clave = i.promo ? `promo:${i.promo.promoCuentaId}` : `op:${duenaDe(i)}`;
+    grupos.set(clave, [...(grupos.get(clave) ?? []), i]);
+  }
+  const salida: LineaCorregible[] = [];
+  for (const grupo of grupos.values()) {
+    const { lineas, total } = armarTicketVigente(grupo, new Date(0), descuentoPorcentaje);
+    const [primera] = lineas;
+    if (!primera) continue;
+    const operacionId = grupo.find((i) => !i.lineaPadreId)?.operacionId ?? grupo[0]!.operacionId!;
+    salida.push({ operacionId, texto: primera.promoCuentaId && !primera.indentado ? primera.producto : `${primera.cantidad} × ${primera.producto}`, subtotal: total });
+  }
+  return salida;
+}
+
 /** Una cuenta cerrada con venta, tal como la lee la consulta (`server/consultas/pos/tickets.ts`): importes ya en números. */
 export interface CuentaCerradaLeida {
   id: string;
@@ -332,6 +371,7 @@ export function armarTicketsDeCuentas(cuentas: readonly CuentaCerradaLeida[], ah
       numero: ultimo ? { numero: ultimo.numero, ejemplar: ultimo.ejemplar } : null,
       corrigeA: ultimo?.corrigeA ?? null,
       estado: estadoDeTicket(items, ultimo?.emitidoEn ?? cerradaEn),
+      corregibles: lineasCorregibles(items, descuentoPorcentaje),
       cliente: cuenta.cliente && descuentoPorcentaje !== null ? { nombre: cuenta.cliente.nombre, descuentoPorcentaje } : null,
     };
   });
