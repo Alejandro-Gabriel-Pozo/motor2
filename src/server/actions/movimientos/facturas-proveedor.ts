@@ -1,12 +1,14 @@
 "use server";
 
-import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
+import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoCorregirFacturaProveedor, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
+import type { CabeceraVista as CabeceraVistaSchema, CorreccionCompraInput as CorreccionCompraInputSchema } from "@/core/features/compras/compra.schema";
 import type { DatosFacturaProveedorInput } from "@/core/features/compras/factura-proveedor.schema";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso, exigirTambienPermisoDeEmpresa } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
 import { aceptarPropuestaDeFacturaCasoDeUso } from "./casos-de-uso/aceptar-propuesta-de-factura";
 import { anularFacturaProveedorCasoDeUso } from "./casos-de-uso/anular-factura-proveedor";
+import { corregirFacturaProveedorCasoDeUso } from "./casos-de-uso/corregir-factura-proveedor";
 import { registrarFacturaProveedorCasoDeUso } from "./casos-de-uso/registrar-factura-proveedor";
 
 /**
@@ -45,5 +47,24 @@ export async function anularFacturaProveedor(facturaId: string, motivo: string, 
     const comando = guardComandoAnularFacturaProveedor({ facturaId, motivo, claveIdempotencia });
     if (!comando.ok) return error(comando.mensaje);
     return aResultadoAccion(await anularFacturaProveedorCasoDeUso(ctx, comando.valor));
+  });
+}
+
+/** Lo que se puede corregir de una factura ya cargada: solo la cabecera (proveedor, N.º de factura y detalle). Vive en `compra.schema.ts` (lo usa también el caso de uso). */
+export type CorreccionDeFacturaInput = CorreccionCompraInputSchema;
+
+/** Lo que la persona vio al abrir el formulario: la guarda optimista contra pisar una corrección hecha por otra persona. Vive en `compra.schema.ts`. */
+export type CabeceraVista = CabeceraVistaSchema;
+
+/**
+ * «Corregir datos» de la compra (U1 de «una sola compra»): proveedor, N.º de factura y detalle de la FACTURA entera, sin tocar renglones ni Kardex (un precio o una cantidad mal cargados se arreglan anulando la factura y cargándola de
+ * nuevo). Reemplaza a `corregirCompra`. Permiso `corregir_compra` en la sucursal activa y, dentro del caso de uso, en CADA sucursal donde ya entró una parte y en la que la cargó. Idempotente por estado: si ya tiene lo pedido, no hay
+ * nada que corregir. `esperado` es lo que la persona vio al abrir el formulario (guarda optimista).
+ */
+export async function corregirFacturaProveedor(facturaId: string, nueva: CorreccionDeFacturaInput, esperado: CabeceraVista): Promise<ResultadoAccion> {
+  return conPermiso("corregir_compra", async (ctx) => {
+    const comando = guardComandoCorregirFacturaProveedor({ facturaId, nueva, esperado });
+    if (!comando.ok) return error(comando.mensaje);
+    return aResultadoAccion(await corregirFacturaProveedorCasoDeUso(ctx, comando.valor));
   });
 }
