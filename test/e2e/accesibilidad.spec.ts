@@ -3,6 +3,7 @@ import { test as base, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { test as testAutenticado } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "../../src/core/carta/genero-e-item-agrupado";
 import { impresiones, interceptarImpresion } from "./fixtures/impresion";
 import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 import { crearMembresias, crearMembresia } from "../setup/membresia";
@@ -1392,6 +1393,7 @@ testAutenticado(
 testAutenticado(
   "pos/mesas/[mesaId]: «Agregar al pedido» por sección de carta en reposo, con un ítem agrupado desplegado, con una opción elegida y en modo oscuro, sin violaciones de axe",
   async ({ paginaAutenticada: page, sucursalId }) => {
+    testAutenticado.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GENERO_E_ITEM_AGRUPADO_VISIBLE = false en src/core/carta/genero-e-item-agrupado.ts): el POS no arma agrupados");
     // docs/plan-selector-carta-pos-2026-09-25.md, paso 6. Los dos casos de la mesa de arriba no siembran carta: sin ninguna sección de carta
     // el navegador no se dibuja (DP3) y axe nunca lo vería. Acá se siembra una sección con un suelto y un agrupado de dos opciones.
     const marca = Date.now();

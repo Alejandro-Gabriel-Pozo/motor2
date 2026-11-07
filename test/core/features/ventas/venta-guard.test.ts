@@ -4,13 +4,22 @@ import { guardComandoAnularVenta, guardComandoRegistrarVenta } from "../../../..
 
 /** Guard del comando «anular una venta» (src/core/features/ventas/venta.guard.ts; Task #41, Fase M): formato, puro. */
 describe("guardComandoAnularVenta", () => {
-  it("un operacionId string pasa tal cual (exista o no: eso lo decide el caso de uso)", () => {
-    expect(guardComandoAnularVenta({ operacionId: "op-1" })).toEqual({ ok: true, valor: { operacionId: "op-1" } });
-    expect(guardComandoAnularVenta({ operacionId: "" })).toEqual({ ok: true, valor: { operacionId: "" } });
+  it("un operacionId string con motivo pasa (exista o no: eso lo decide el caso de uso); el motivo se recorta", () => {
+    expect(guardComandoAnularVenta({ operacionId: "op-1", motivo: "  Cargada dos veces  " })).toEqual({ ok: true, valor: { operacionId: "op-1", motivo: "Cargada dos veces" } });
+    expect(guardComandoAnularVenta({ operacionId: "", motivo: "x" })).toEqual({ ok: true, valor: { operacionId: "", motivo: "x" } });
   });
 
   it.each([undefined, null, 42, { id: "op-1" }])("operacionId %j: el mismo mensaje que «no encontrada», sin llegar a la base", (operacionId) => {
-    expect(guardComandoAnularVenta({ operacionId })).toEqual({ ok: false, codigo: "formato", mensaje: "No se encontró esa operación en esta sucursal." });
+    expect(guardComandoAnularVenta({ operacionId, motivo: "Error de carga" })).toEqual({ ok: false, codigo: "formato", mensaje: "No se encontró esa operación en esta sucursal." });
+  });
+
+  it.each([undefined, null, "", "   ", 42])("motivo %j: obligatorio (E0 de la corrección por ajuste)", (motivo) => {
+    expect(guardComandoAnularVenta({ operacionId: "op-1", motivo })).toMatchObject({ ok: false, codigo: "vacio", mensaje: "Escribí el motivo de la anulación." });
+  });
+
+  it("motivo de 200 caracteres pasa; de 201, no (el CHECK de la base admite hasta 200)", () => {
+    expect(guardComandoAnularVenta({ operacionId: "op-1", motivo: "a".repeat(200) }).ok).toBe(true);
+    expect(guardComandoAnularVenta({ operacionId: "op-1", motivo: "a".repeat(201) })).toMatchObject({ ok: false, codigo: "largo" });
   });
 
   it("sin entrada: rechaza igual", () => {

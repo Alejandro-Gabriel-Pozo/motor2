@@ -189,7 +189,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       expect(venta.ok, venta.mensaje).toBe(true);
 
       const operacionVenta = await prisma.operacion.findFirstOrThrow({ where: { sucursalId, proceso: "VENTA" } });
-      const anulacion = await anularVenta(operacionVenta.id);
+      const anulacion = await anularVenta(operacionVenta.id, "Error de carga");
       expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
       // El saldo del insumo debe volver EXACTO al valor previo a la venta
@@ -225,7 +225,7 @@ describe("Auditoría — Pivote 4: costos acumulados, redondearMoneda, reversion
       expect(venta.ok, venta.mensaje).toBe(true);
 
       const operacionVenta = await prisma.operacion.findFirstOrThrow({ where: { sucursalId, proceso: "VENTA" } });
-      const anulacion = await anularVenta(operacionVenta.id);
+      const anulacion = await anularVenta(operacionVenta.id, "Error de carga");
       expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
       const saldoPost = await calcularSaldoTotal(mpInsumo.id, seccionId, prisma);

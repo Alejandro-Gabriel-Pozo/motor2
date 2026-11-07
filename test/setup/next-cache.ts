@@ -13,3 +13,6 @@ vi.mock("next/cache", async (importOriginal) => {
     refresh: () => {},
   };
 });
+
+// Poda de género e ítem agrupado (2026-11-06): los tests existentes corren con el interruptor ENCENDIDO (ver el archivo).
+import "./genero-e-item-agrupado-encendido";

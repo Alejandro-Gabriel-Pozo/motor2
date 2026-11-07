@@ -5,6 +5,7 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { actualizarCapacidad, listarCapacidades } from "@/server/actions/permisos/capacidades-sucursal";
 import type { AccionClave } from "@/core/permisos/acciones";
+import { capacidadEfectiva } from "@/core/permisos/capacidades-sucursal";
 import { AvisosDeAccion, FormConAviso } from "@/components/avisos-de-accion";
 
 export default async function CapacidadesSucursalPage() {
@@ -17,14 +18,12 @@ export default async function CapacidadesSucursalPage() {
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
   const { acciones, sucursales, capacidades } = await listarCapacidades();
-  const capacidadDe = (accionClave: string, sucursalId: string | null) =>
-    capacidades.find((c) => c.accionClave === accionClave && c.sucursalId === sucursalId);
 
   return (
     <AvisosDeAccion className="space-y-4">
       <h1 className="text-xl font-semibold">Capacidades por sucursal (matriz de la Central)</h1>
       <p className="text-xs text-tinta-tenue">
-        Columna &quot;Default&quot; = comportamiento para cualquier sucursal sin fila propia. Sin ninguna fila, la acción está habilitada.
+        Columna &quot;Default&quot; = comportamiento para cualquier sucursal sin fila propia. Sin ninguna fila, la acción está habilitada. Una sucursal sin fila propia toma el valor del Default: la casilla muestra ese valor y lo marca con «hereda del Default».
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -44,8 +43,8 @@ export default async function CapacidadesSucursalPage() {
               <tr key={a.clave} className="border-b">
                 <td className="py-2 pr-4">{a.clave}</td>
                 {[null, ...sucursales.map((s) => s.id)].map((sucursalId) => {
-                  const cap = capacidadDe(a.clave, sucursalId);
-                  const habilitado = cap ? cap.habilitado : true;
+                  // El valor EFECTIVO, con la misma regla que decide el acceso (`resolverCapacidad`): una sucursal sin fila propia toma el Default.
+                  const { habilitado, heredaDelDefault } = capacidadEfectiva(a.clave, capacidades, sucursalId);
                   return (
                     <Fragment key={sucursalId ?? "default"}>
                       <td>
@@ -57,6 +56,7 @@ export default async function CapacidadesSucursalPage() {
                         >
                           <button type="submit" aria-pressed={habilitado} aria-label={`${a.clave}: ${sucursalId ? (sucursales.find((s) => s.id === sucursalId)?.nombre ?? "sucursal") : "valor por defecto"}`}>{habilitado ? "✅" : "⛔"}</button>
                         </FormConAviso>
+                        {heredaDelDefault && <div className="text-xs text-tinta-tenue">hereda del Default</div>}
                       </td>
                     </Fragment>
                   );

@@ -1,7 +1,8 @@
 "use server";
 
 import { guardComandoActualizarCapacidad } from "@/core/features/permisos/capacidad.guard";
-import { claveEnCatalogo, type AccionClave } from "@/core/permisos/acciones";
+import type { AccionClave } from "@/core/permisos/acciones";
+import { accionesConfigurablesPorSucursal } from "@/core/permisos/capacidades-sucursal";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
@@ -13,11 +14,11 @@ import { actualizarCapacidadCasoDeUso } from "./casos-de-uso/actualizar-capacida
 export async function listarCapacidades() {
   const ctx = await requerirVerDeEmpresa("capacidades_sucursal");
   const [acciones, sucursales, capacidades] = await Promise.all([
-    ctx.db.accion.findMany({ where: { clave: { not: "capacidades_sucursal" } }, orderBy: { clave: "asc" } }),
+    ctx.db.accion.findMany({ orderBy: { clave: "asc" } }),
     ctx.db.sucursal.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     ctx.db.capacidadSucursal.findMany(),
   ]);
-  return { acciones: acciones.filter((a) => claveEnCatalogo(a.clave)), sucursales, capacidades };
+  return { acciones: accionesConfigurablesPorSucursal(acciones), sucursales, capacidades };
 }
 
 /**

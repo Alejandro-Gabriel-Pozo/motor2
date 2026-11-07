@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { armarTicketImpresoEn, armarTicketVigente, armarTicketsDeCuentas, estadoDeTicket, type CuentaCerradaLeida, type ItemConVenta, type VersionDeVenta } from "../../src/core/pos/ticket";
+import { lineasCorregibles, armarTicketImpresoEn, armarTicketVigente, armarTicketsDeCuentas, estadoDeTicket, type CuentaCerradaLeida, type ItemConVenta, type VersionDeVenta } from "../../src/core/pos/ticket";
 
 /** E1 (docs/diseno-correccion-por-ajuste-2026-11-06.md): el ticket vigente toma la cantidad de la venta que REEMPLAZA a la original. Mesa 1 con datos reales de la maqueta. */
 const T0 = new Date("2026-11-06T13:00:00Z"); // se cierra la cuenta e imprime 566-A
@@ -70,6 +70,22 @@ describe("ticket vigente con «reemplaza a»", () => {
     const original = { ...item("Cerveza Patagonia", 3, 14000, "op-cerveza", versiones, T1), id: "i1" };
     const espejo = { ...item("Cerveza Patagonia", -1, 14000, "op-cerveza", versiones, T1), id: "i2", anulaAItemId: "i1" };
     expect(armarTicketVigente([original, espejo], AHORA).lineas).toMatchObject([{ cantidad: 1, subtotal: 14000 }]);
+  });
+});
+
+describe("líneas corregibles (E0) con una venta reemplazada", () => {
+  it("la línea corregida por unidades sigue en la lista, con la cantidad y el subtotal de la versión vigente", () => {
+    const versiones: VersionDeVenta[] = [{ cantidad: 2, anuladaEn: T1 }, { cantidad: 1, anuladaEn: null }];
+    const r = lineasCorregibles([cerveza2(versiones, T1), brownie], null, AHORA);
+    expect(r).toEqual([
+      { operacionId: "op-cerveza", texto: "1 × Cerveza Patagonia", subtotal: 14000 },
+      { operacionId: "op-brownie", texto: "1 × Brownie", subtotal: 10000 },
+    ]);
+  });
+
+  it("si la última versión se anuló, la línea ya no se puede corregir", () => {
+    const versiones: VersionDeVenta[] = [{ cantidad: 2, anuladaEn: T1 }, { cantidad: 1, anuladaEn: T2 }];
+    expect(lineasCorregibles([cerveza2(versiones, T1)], null, AHORA)).toEqual([]);
   });
 });
 

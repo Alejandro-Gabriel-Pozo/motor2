@@ -52,7 +52,7 @@ describe("POS: concurrencia sobre una misma cuenta", () => {
     ]);
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
     const flan = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id, productoId: s.flan.id } });
-    expect((await anularVenta(flan.operacionId!)).ok).toBe(true);
+    expect((await anularVenta(flan.operacionId!, "Error de carga")).ok).toBe(true);
 
     const resultados = await Promise.all([emitirTicketCorregido(cuenta.id, "Cajero A"), emitirTicketCorregido(cuenta.id, "Cajero B")]);
     expect(resultados.filter((r) => r.ok)).toHaveLength(1);
