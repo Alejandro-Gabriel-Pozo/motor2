@@ -19,6 +19,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
+import { anularCompraDeTest } from "../setup/anular-compra-de-prueba";
 import { MENSAJE_FACTURA_DUPLICADA } from "../../src/core/movimientos/factura-unica";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
@@ -72,10 +73,9 @@ describe("Regresión: condición de carrera de factura de compra duplicada", () 
     // 10 pares de compras simultáneas con sembrado: en un runner o una máquina cargados pasan de los 5 s por defecto (en CI cortó a los 5000 ms con la parte 3 de 4 de Integración).
   }, 30_000);
 
-  /** Marca una compra ya cargada como anulada, directo en la base (la acción de anular se prueba aparte; acá solo importa el estado). */
+  /** Anula una compra ya cargada por la única anulación que hay (la de su factura entera): libera el número en las dos tablas. */
   async function anular(operacionId: string) {
-    const admin = await prisma.user.findFirstOrThrow();
-    await prisma.operacion.update({ where: { id: operacionId }, data: { anuladaEn: new Date(), anuladaPorId: admin.id } });
+    expect((await anularCompraDeTest(operacionId)).ok).toBe(true);
   }
 
   it("K1c: la factura de una compra ANULADA se puede volver a usar («anular y recargar» con el mismo número)", async () => {

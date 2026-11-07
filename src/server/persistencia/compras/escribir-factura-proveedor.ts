@@ -167,3 +167,20 @@ export async function escribirAnulacionDePago(
   });
   return r.count;
 }
+
+/**
+ * U1 de «una sola compra»: la CORRECCIÓN de los datos de una factura (proveedor, número, detalle), en el lugar, dentro de la transacción que ya tiene la cabecera bloqueada. Escribe la cabecera y COPIA el cambio a la compra de cada parte
+ * (invariante I-NUM: en toda parte vigente, `Operacion.nroFactura` y `Operacion.proveedorId` son los de su factura). El detalle se copia solo a las compras que lo tenían igual que la cabecera. Nunca toca renglones, partes ni Kardex.
+ */
+export async function escribirCorreccionDeFactura(
+  tx: Prisma.TransactionClient,
+  c: { facturaProveedorId: string; proveedorId: string; nroFactura: string | null; nroFacturaNormalizado: string | null; detalleLibre: string | null; detalleAnterior: string | null; operacionIds: readonly string[] }
+): Promise<void> {
+  await tx.facturaProveedor.update({
+    where: { id: c.facturaProveedorId },
+    data: { proveedorId: c.proveedorId, nroFactura: c.nroFactura, nroFacturaNormalizado: c.nroFacturaNormalizado, detalleLibre: c.detalleLibre },
+  });
+  if (!c.operacionIds.length) return;
+  await tx.operacion.updateMany({ where: { id: { in: [...c.operacionIds] } }, data: { proveedorId: c.proveedorId, nroFactura: c.nroFactura } });
+  await tx.operacion.updateMany({ where: { id: { in: [...c.operacionIds] }, detalleLibre: c.detalleAnterior }, data: { detalleLibre: c.detalleLibre } });
+}

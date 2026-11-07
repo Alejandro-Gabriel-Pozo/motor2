@@ -97,11 +97,9 @@ test("cargar una factura repartida, aceptar la parte desde la otra sucursal (sin
       await page.goto(`/reportes/compras?proveedorId=${proveedor.id}`);
       const tarjeta = page.locator(`[data-compra="${factura.partes[0].operacionId}"]`);
       await tarjeta.locator("summary").click();
-      await expect(tarjeta).toContainText("se anula la factura entera");
-      await expect(tarjeta.getByRole("button", { name: /^Anular compra/ })).toHaveCount(0);
-      await tarjeta.getByLabel("Motivo de la anulación de la factura").fill("carga de prueba");
-      await tarjeta.getByRole("button", { name: /^Anular la factura/ }).click();
-      await tarjeta.getByRole("button", { name: "Sí, anular la factura" }).click();
+      await tarjeta.getByLabel("Motivo de la anulación").fill("carga de prueba");
+      await tarjeta.getByRole("button", { name: /^Anular compra/ }).click();
+      await tarjeta.getByRole("button", { name: "Sí, anular" }).click();
       return tarjeta;
     };
     const sinPermisoAlla = await anularDesdeCompras();

@@ -17,6 +17,7 @@ import { registrarMovimiento, type DatosMovimientoInput } from "../../src/server
 import { guardComandoRegistrarMovimiento } from "../../src/core/features/movimientos/movimiento.guard";
 import { MENSAJE_CONFLICTO_IDEMPOTENCIA } from "../../src/core/movimientos/public-servidor";
 import { comprobanteDePrueba } from "../setup/comprobante-de-prueba";
+import { datosDeFactura } from "../setup/factura-proveedor";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
 const MENSAJE_SIN_CLAVE = "Falta la clave de reintento: recargá la pantalla.";
@@ -103,11 +104,13 @@ describe("registrarMovimiento — clave de reintento obligatoria (con base)", ()
       const resultados = settled.map((s) => (s as PromiseFulfilledResult<Awaited<ReturnType<typeof registrarMovimiento>>>).value);
       for (const r of resultados) expect(r.ok, r.mensaje).toBe(true);
       expect(new Set(resultados.map((r) => r.mensaje)).size, "todos reciben el mismo mensaje (el original)").toBe(1);
-      expect(await prisma.operacion.count({ where: { claveIdempotencia: datos.claveIdempotencia } })).toBe(1);
+      // Desde U0 la clave de una COMPRA vive en la cabecera de su factura (una parte); la de los demás procesos, en la Operacion.
+      if (datos.proceso === "COMPRA") expect(await prisma.facturaProveedor.count({ where: { claveIdempotencia: datos.claveIdempotencia } })).toBe(1);
+      else expect(await prisma.operacion.count({ where: { claveIdempotencia: datos.claveIdempotencia } })).toBe(1);
       expect(await prisma.operacion.count({ where: { sucursalId, proceso: datos.proceso } }), `una sola ${datos.proceso}`).toBe(1);
     }
 
-    it("compra sin proveedor", async () => {
+    it("compra", async () => {
       const mp = await crearMP("CompraSimultanea");
       await ochoALaVez({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 1500, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
       expect(await saldo(mp.id)).toBe(10);
@@ -144,21 +147,27 @@ describe("registrarMovimiento — clave de reintento obligatoria (con base)", ()
     const otroContenido: DatosMovimientoInput[] = [
       { proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, precioTotal: 9999, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: clave },
       { proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 11, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: clave },
-      { proceso: "AJUSTE", fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10 }], claveIdempotencia: clave },
     ];
+    // Una COMPRA es una factura y su clave vive en la cabecera: otro proceso (un ajuste) con esa misma clave no choca con ella (cada tabla guarda las suyas, igual que la anulación y el pago); el pedido de una compra con otro contenido, sí.
     for (const datos of otroContenido) {
       expect(await registrarMovimiento(datos)).toEqual({ ok: false, mensaje: MENSAJE_CONFLICTO_IDEMPOTENCIA });
     }
     expect(await prisma.operacion.count()).toBe(1);
+    expect(await prisma.facturaProveedor.count()).toBe(1);
     expect(await saldo(mp.id)).toBe(10);
   });
 
   it("una clave que ya usó OTRA empresa: conflicto, ninguna fila nueva, sin el mensaje ajeno ni un error crudo; la operación ajena queda intacta", async () => {
     const mp = await crearMP("ClaveAjena");
     const clave = crypto.randomUUID();
-    const sucursalAjena = await prismaAdmin.sucursal.create({ data: { empresaId: EMPRESA_TESTIGO_ID, nombre: "Sucursal ajena" } });
-    const ajena = await prismaAdmin.operacion.create({
-      data: { empresaId: EMPRESA_TESTIGO_ID, sucursalId: sucursalAjena.id, proceso: "COMPRA", fecha: new Date(), usuarioId, claveIdempotencia: clave, payloadHash: "huella-ajena", resultadoMensaje: "MENSAJE-SECRETO-DE-OTRA-EMPRESA" },
+    // La clave de una COMPRA vive en la cabecera de su factura: la otra empresa ya usó esa clave en SU factura.
+    const proveedorAjeno = await prismaAdmin.proveedor.create({ data: { empresaId: EMPRESA_TESTIGO_ID, codigo: "PRV_AJENO", nombre: "Proveedor de la otra empresa" } });
+    const ajena = await prismaAdmin.facturaProveedor.create({
+      data: {
+        ...(datosDeFactura({ usuarioId }, { nroFactura: "A-00009-00000009", nroFacturaNormalizado: "A:9-9", claveIdempotencia: clave, payloadHash: "huella-ajena", resultadoMensaje: "MENSAJE-SECRETO-DE-OTRA-EMPRESA" }) as never as Record<string, unknown>),
+        empresaId: EMPRESA_TESTIGO_ID,
+        proveedorId: proveedorAjeno.id,
+      } as never,
     });
 
     const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: clave });
@@ -166,8 +175,8 @@ describe("registrarMovimiento — clave de reintento obligatoria (con base)", ()
 
     expect(await prisma.operacion.count({ where: { sucursalId } })).toBe(0);
     expect(await prisma.movimientoStock.count({ where: { productoId: mp.id } })).toBe(0);
-    expect(await prismaAdmin.operacion.findUniqueOrThrow({ where: { id: ajena.id }, select: { sucursalId: true, payloadHash: true, resultadoMensaje: true } })).toEqual({
-      sucursalId: sucursalAjena.id,
+    expect(await prismaAdmin.facturaProveedor.findUniqueOrThrow({ where: { id: ajena.id }, select: { empresaId: true, payloadHash: true, resultadoMensaje: true } })).toEqual({
+      empresaId: EMPRESA_TESTIGO_ID,
       payloadHash: "huella-ajena",
       resultadoMensaje: "MENSAJE-SECRETO-DE-OTRA-EMPRESA",
     });

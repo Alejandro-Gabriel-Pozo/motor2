@@ -281,13 +281,13 @@ function problemasDelEnsanche(p: Puerta, d: Declaracion, texto: string, id: stri
  * `ensanches-de-alcance.test.ts`) tiene que estar en la acción o en la evidencia de una declaración `CABLEADO`. Un ensanche que ninguna forma de GT-4 declara no existe.
  */
 /**
- * E3a (ADR-041): los ensanches cuyo id de sucursal NO llega como parámetro sino de la base (lista CERRADA, con su clave y su motivo). Hoy uno: anular una factura de proveedor entera pide `anular_compra` EN CADA
+ * E3a (ADR-041): los ensanches cuyo id de sucursal NO llega como parámetro sino de la base (lista CERRADA, con su clave y su motivo). Hoy uno: anular o corregir los datos de una factura de proveedor entera pide `anular_compra` o `corregir_compra` EN CADA
  * sucursal donde ya entró una parte (la lista sale de una lectura de VERIFICACIÓN de `ensanches-de-alcance.test.ts`, que devuelve solo los ids) y recién entonces ensancha a ella. Evidencia por texto: el archivo
- * llama a `permisoYAlcanceEnSucursal(<ctx>, <id>, "<clave>")` solo con esa clave literal y lee las sucursales con `sucursalesConParteDeFactura`.
+ * llama a `permisoYAlcanceEnSucursal(<ctx>, <id>, "<clave>")` solo con una de sus claves literales y lee las sucursales con `sucursalesConParteDeFactura`.
  */
-const ENSANCHES_POR_DATO_DE_LA_BASE: Readonly<Record<string, { clave: string; lector: string; motivo: string }>> = {
-  "src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor.ts": {
-    clave: "anular_compra",
+const ENSANCHES_POR_DATO_DE_LA_BASE: Readonly<Record<string, { claves: readonly string[]; lector: string; motivo: string }>> = {
+  "src/server/actions/movimientos/casos-de-uso/permiso-en-las-sucursales-de-la-factura.ts": {
+    claves: ["anular_compra", "corregir_compra"],
     lector: "sucursalesConParteDeFactura",
     motivo: "anular una factura entera revierte la compra de cada parte en SU sucursal: la clave de anular se pide en cada una, después de leer en cuáles hay parte",
   },
@@ -420,7 +420,7 @@ describe("GT-4 (primera mitad): toda Server Action con un id de sucursal declara
       const codigo = leerDelDisco(ruta);
       const llamadas = [...codigo.matchAll(/permisoYAlcanceEnSucursal\(\s*\w+\s*,\s*\w+\s*,\s*"(\w+)"\s*\)/g)].map((m) => m[1]);
       expect(llamadas.length, `${ruta}: llama a permisoYAlcanceEnSucursal`).toBeGreaterThan(0);
-      expect(new Set(llamadas), `${ruta}: solo con la clave ${d.clave}`).toEqual(new Set([d.clave]));
+      expect(new Set(llamadas), `${ruta}: con las claves ${d.claves.join(" y ")}`).toEqual(new Set(d.claves));
       expect(codigo, `${ruta}: lee las sucursales con ${d.lector}`).toContain(`${d.lector}(`);
     }
   });
