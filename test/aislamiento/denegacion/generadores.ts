@@ -252,10 +252,11 @@ const completos: Record<string, Valor> = {
   "lectura|lecturas/catalogo/precio-local-de-opciones.ts|filaDePrecioLocalDeOpcion": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, productoId: k.productoConOpcionesId, opcionId: k.opcionMedidaId }],
 
   // --- movimientos, stock, traspasos ---
-  "accion|actions/movimientos/compras.ts|corregirCompra": (k, c) =>
+  // U1 de «una sola compra»: corregir los datos de la FACTURA (la única corrección de la compra); el id de la factura y el proveedor nuevo son los del cliente.
+  "accion|actions/movimientos/facturas-proveedor.ts|corregirFacturaProveedor": (k, c) =>
     conVariantes(
-      intento(c, ["compraId"], [k.compraId, { proveedorId: c.propio.proveedorId, nroFactura: "A-00001-00000099", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
-      intento(c, ["proveedorId"], [c.propio.compraId, { proveedorId: k.proveedorId, nroFactura: "A-00001-00000099", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
+      intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, { proveedorId: c.propio.proveedorId, nroFactura: "A-00001-00000099", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
+      intento(c, ["proveedorId"], [c.propio.facturaEnviadaId, { proveedorId: k.proveedorId, nroFactura: "A-00001-00000099", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
     ),
   "accion|actions/movimientos/conteo-fisico.ts|registrarConteosFisicos": (k, c) =>
     conVariantes(
@@ -536,8 +537,6 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/traspasos/traspasos.ts|rechazarSolicitudTransferencia": { id: (k) => k.traspasoId },
   "accion|actions/traspasos/traspasos.ts|rechazarTransferencia": { id: (k) => k.traspasoEntranteId },
   "accion|actions/traspasos/traspasos.ts|confirmarReingresoTransferencia": { id: (k) => k.traspasoRechazadoId },
-  // La compra principal ya tiene consumos posteriores (no se puede anular): se anula la que nadie tocó.
-  "accion|actions/movimientos/compras.ts|anularCompra": { operacionId: (k) => k.compraAnulableId },
 };
 
 const porArchivo: Record<string, Record<string, Valor>> = {

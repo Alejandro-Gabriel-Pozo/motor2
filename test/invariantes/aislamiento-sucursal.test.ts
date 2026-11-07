@@ -5,7 +5,8 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { anularCompra } from "../../src/server/actions/movimientos/compras";
+import { anularFacturaProveedor } from "../../src/server/actions/movimientos/facturas-proveedor";
+import { datosDeFactura, datosDeRenglon } from "../setup/factura-proveedor";
 import { listarPreciosLocales } from "../../src/server/actions/catalogo/precio-local";
 
 /**
@@ -20,8 +21,8 @@ import { listarPreciosLocales } from "../../src/server/actions/catalogo/precio-l
  *  1. `registrarMovimiento` con una `seccionId` de OTRA sucursal — la guarda "Fase 6" (auditoría de seguridad/contratos,
  *     ya presente en varios casos de uso de Task #41: registrar-movimiento.ts, reclasificar-stock.ts) rechaza ANTES de
  *     escribir nada, sin que importe si el resto del payload es válido.
- *  2. `anularCompra` sobre una Operacion COMPRA de OTRA sucursal — `cargarCompraParaAnular` filtra por `sucursalId`: la
- *     compra ajena da "no encontrada", nunca se anula. La compra de sucursal B se siembra directo con Prisma (sin mockear
+ *  2. `anularFacturaProveedor` sobre una factura cuya única parte es la compra de OTRA sucursal — el caso de uso pide `anular_compra` EN
+ *     cada sucursal con parte (`exigirPermisoEnLasSucursalesDeLaFactura`): sin membresía allá, se rechaza y nunca se anula. La compra de sucursal B se siembra directo con Prisma (sin mockear
  *     sesión de un segundo actor): cambiar de usuario mockeado A MITAD de un mismo test no tiene precedente en este repo
  *     (`obtenerContextoUsuario` usa `cache()` de React, pensado para memoizar por request — sembrar por Prisma evita esa
  *     duda por completo, sin necesitar resolverla).
@@ -74,25 +75,30 @@ describe("aislamiento entre sucursales", () => {
     expect(await prisma.operacion.count()).toBe(0);
   });
 
-  it("anularCompra rechaza una compra de otra sucursal, sin anularla", async () => {
+  it("anularFacturaProveedor rechaza una factura cuya parte es de otra sucursal, sin anularla", async () => {
     // Sembrado directo con Prisma (sin mockear un segundo actor) — ver el docstring del describe.
     const catalogo = await sembrarCatalogoBase();
     const seccionB = await sembrarSeccion(sucursalBId, "Depósito B");
     const mp = await sembrarProductoDisponible({ codigo: "MP_AISLAMIENTO", nombre: "Materia prima de aislamiento", tipo: "MP", unidadStockId: catalogo.kg.id }, sucursalBId);
     const usuarioB = await prisma.user.create({ data: { email: "admin-b@test.com" } });
+    const proveedor = await prisma.proveedor.create({ data: { codigo: "PRV_AISLAMIENTO", nombre: "Proveedor de aislamiento" } });
+    const factura = await prisma.facturaProveedor.create({ data: datosDeFactura({ usuarioId: usuarioB.id, proveedorId: proveedor.id }, { nroFactura: "A-00001-00000001", nroFacturaNormalizado: "A:1-1" }) as never });
+    const renglon = await prisma.facturaProveedorRenglon.create({ data: datosDeRenglon({ facturaProveedorId: factura.id, productoId: mp.id }) as never });
     const operacion = await prisma.operacion.create({
-      data: { sucursalId: sucursalBId, proceso: "COMPRA", fecha: new Date(), usuarioId: usuarioB.id },
+      data: { sucursalId: sucursalBId, proceso: "COMPRA", fecha: new Date(), usuarioId: usuarioB.id, proveedorId: proveedor.id, nroFactura: "A-00001-00000001" },
     });
     await prisma.movimientoStock.create({
-      data: { operacionId: operacion.id, productoId: mp.id, seccionId: seccionB.id, proceso: "COMPRA", cantidad: 5, detalle: "Compra de aislamiento", precioTotal: 100, precioPorUnidadStock: 20 },
+      data: { operacionId: operacion.id, productoId: mp.id, seccionId: seccionB.id, proceso: "COMPRA", cantidad: 5, detalle: "Compra de aislamiento", precioTotal: 100, precioPorUnidadStock: 20, facturaProveedorRenglonId: renglon.id },
     });
+    await prisma.facturaProveedorSucursal.create({ data: { facturaProveedorId: factura.id, sucursalId: sucursalBId, porcentajeDeclaradoBp: 10000, operacionId: operacion.id, estadoRecepcion: "RECIBIDA", recibidaEn: new Date(), recibidaPorId: usuarioB.id } as never });
 
     await mockearUsuarioActual(adminA);
-    const resultado = await anularCompra(operacion.id, crypto.randomUUID());
+    const resultado = await anularFacturaProveedor(factura.id, "Intento ajeno", crypto.randomUUID());
 
     expect(resultado.ok).toBe(false);
     const releida = await prisma.operacion.findUniqueOrThrow({ where: { id: operacion.id } });
     expect(releida.anuladaEn).toBeNull();
+    expect((await prisma.facturaProveedor.findUniqueOrThrow({ where: { id: factura.id } })).anuladaEn).toBeNull();
   });
 
   it("listarPreciosLocales de otra sucursal se rechaza al nivel de permiso, sin llegar a leer nada", async () => {

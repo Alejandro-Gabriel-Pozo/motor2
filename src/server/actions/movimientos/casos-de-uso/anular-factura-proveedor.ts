@@ -1,26 +1,19 @@
 import "server-only";
-import { evaluarAnulacion, evaluarPosterioresAAnularCompra } from "@/core/compras/public";
+import { decidirAnulacionDeFactura, evaluarAnulacion, evaluarPosterioresAAnularCompra } from "@/core/compras/public";
 import type { ComandoAnularFacturaProveedor, ResultadoAnularFacturaProveedor } from "@/core/features/compras/factura-proveedor.schema";
 import { detalleReversionDeCompra } from "@/core/movimientos/public";
 import { calcularPayloadHash, esChoqueDeClaveIdempotenciaDeFactura, MENSAJE_CONFLICTO_IDEMPOTENCIA } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
-import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
-import { permisoYAlcanceEnSucursal } from "@/server/actions/con-permiso";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { chequearIdempotencia } from "@/server/persistencia/movimientos/idempotencia";
 import { cargarReconciliacionesPosteriores } from "@/server/persistencia/movimientos/cargar-reconciliaciones-posteriores";
 import { cargarCompraParaAnular } from "@/server/persistencia/compras/cargar-compra-para-anular";
 import { escribirAnulacionDeCompra } from "@/server/persistencia/compras/escribir-anulacion-de-compra";
-import {
-  bloquearFactura,
-  cargarAnulacionPorClaveIdempotencia,
-  cargarPartesDeFactura,
-  sucursalesConParteDeFactura,
-  tieneNotasDeCreditoVigentes,
-} from "@/server/persistencia/compras/cargar-factura-proveedor";
+import { bloquearFactura, cargarAnulacionPorClaveIdempotencia, cargarPartesDeFactura, tieneNotasDeCreditoVigentes } from "@/server/persistencia/compras/cargar-factura-proveedor";
 import { escribirAnulacionDeFactura } from "@/server/persistencia/compras/escribir-factura-proveedor";
+import { exigirPermisoEnLasSucursalesDeLaFactura } from "./permiso-en-las-sucursales-de-la-factura";
 
 const MENSAJE_NO_ENCONTRADA = "No se encontró esa factura de proveedor.";
 
@@ -48,20 +41,10 @@ const MENSAJE_NO_ENCONTRADA = "No se encontró esa factura de proveedor.";
 export async function anularFacturaProveedorCasoDeUso(actor: ContextoDeAccion, comando: ComandoAnularFacturaProveedor): Promise<ResultadoAnularFacturaProveedor> {
   const payloadHash = calcularPayloadHash("ANULAR_FACTURA_PROVEEDOR", actor.sucursalId, { facturaId: comando.facturaId, motivo: comando.motivo });
 
-  // 1. Las sucursales donde ya entró una parte (solo sus ids, para el gate) y la clave de anular EN CADA UNA, antes de ensanchar.
-  const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
-  const { conParte: sucursalesConParte, queLaCargaron } = await sucursalesConParteDeFactura(verificacion.db, comando.facturaId);
-  let ctx: ContextoDeAccion = actor;
-  for (const sucursalId of [...new Set([...sucursalesConParte, ...queLaCargaron])].sort()) {
-    if (sucursalId === actor.sucursalId) continue;
-    const gate = await permisoYAlcanceEnSucursal(ctx, sucursalId, "anular_compra");
-    if (!gate.ok) {
-      // También la sucursal que CARGÓ la factura (aunque no se haya quedado con parte): sin esto, quien tiene `anular_compra` en cualquier sucursal anulaba la factura que otra cargó solo para terceras.
-      const porque = sucursalesConParte.includes(sucursalId) ? "una de sus partes ya entró al stock de otra sucursal" : "la cargó otra sucursal";
-      return fracaso("SIN_PERMISO_EN_SUCURSAL", `No podés anular esta factura: ${porque} donde no tenés permiso de anular compras. ${gate.mensaje}`);
-    }
-    ctx = gate.ctx;
-  }
+  // 1. El permiso de anular EN CADA sucursal donde ya entró una parte y en la que la cargó, antes de ensanchar el contexto.
+  const gate = await exigirPermisoEnLasSucursalesDeLaFactura(actor, comando.facturaId, "anular");
+  if (!gate.ok) return fracaso("SIN_PERMISO_EN_SUCURSAL", gate.mensaje);
+  const { ctx, sucursalesConParte } = gate;
 
   return conTransaccionSerializable(ctx.transaccion, async (tx): Promise<ResultadoAnularFacturaProveedor> => {
     const chequeo = await chequearIdempotencia(tx, comando.claveIdempotencia, payloadHash, cargarAnulacionPorClaveIdempotencia);
@@ -70,14 +53,15 @@ export async function anularFacturaProveedorCasoDeUso(actor: ContextoDeAccion, c
 
     const factura = await bloquearFactura(tx, comando.facturaId);
     if (!factura) return fracaso("NO_ENCONTRADA", MENSAJE_NO_ENCONTRADA);
-    if (factura.anuladaEn) return fracaso("YA_ANULADA", "La factura ya está anulada.");
+
+    const regla = decidirAnulacionDeFactura({ anulada: Boolean(factura.anuladaEn), notasVigentes: await tieneNotasDeCreditoVigentes(tx, factura.id) });
+    if (!regla.ok) return fracaso(regla.codigo, regla.mensaje);
 
     const partes = await cargarPartesDeFactura(tx, factura.id);
     const vistas = partes.map((p) => p.sucursalId).sort();
     if (vistas.join("|") !== [...sucursalesConParte].sort().join("|")) {
       return fracaso("CONFLICTO_IDEMPOTENCIA", "La factura cambió mientras la anulabas (otra sucursal aceptó su parte): volvé a intentarlo.");
     }
-    if (await tieneNotasDeCreditoVigentes(tx, factura.id)) return fracaso("CON_NOTAS_DE_CREDITO", "La factura tiene notas de crédito vigentes: primero hay que anularlas.");
 
     // 3. Todas las partes se evalúan ANTES de escribir: si una no se puede anular, no se anula ninguna.
     const aRevertir = [];

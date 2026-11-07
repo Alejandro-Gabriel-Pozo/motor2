@@ -33,7 +33,8 @@ function dbFalso(m: Maestros): Prisma.TransactionClient {
     // P2: las compras candidatas del aviso C25 se leen ANTES de abrir la transacción (con la base de verificación): el cliente falso responde que no hay ninguna.
     operacion: { findMany: async () => [] },
     // Una COMPRA busca su número en la empresa antes de seguir (cerrojo, facturas y compras): el cliente falso responde que no hay nada.
-    facturaProveedor: { count: async () => 0 },
+    // La carga de una COMPRA (una factura de una parte) lee primero si esa clave de reintento ya tiene una factura.
+    facturaProveedor: { count: async () => 0, findUnique: async () => null },
     $queryRaw: async () => [],
   } as unknown as Prisma.TransactionClient;
 }
@@ -51,7 +52,7 @@ function transaccionFalsa(dentro: Maestros | null) {
 
 function llamar(datos: Partial<DatosMovimientoInput> & { proceso: DatosMovimientoInput["proceso"] }, fuera: Maestros, dentro: Maestros | null) {
   const { transaccion, estado } = transaccionFalsa(dentro);
-  const actor = { usuarioId: "u-1", sucursalId: SUCURSAL, sucursalNombre: "Central", db: dbFalso(fuera), transaccion };
+  const actor = { usuarioId: "u-1", sucursalId: SUCURSAL, sucursalNombre: "Central", ahora: new Date(), db: dbFalso(fuera), transaccion };
   return registrarMovimientoCasoDeUso(actor as unknown as Parameters<typeof registrarMovimientoCasoDeUso>[0],{ ...base, ...datos } as DatosMovimientoInput).then((r) => ({ r, estado }));
 }
 
