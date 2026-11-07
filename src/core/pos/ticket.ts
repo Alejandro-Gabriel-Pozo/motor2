@@ -80,9 +80,38 @@ export interface TicketDeCuenta {
   /** El ejemplar A que corrige el último ejemplar, si es una corrección (B, C…); null si el último es el A o no hay número. */
   corrigeA: NumeroDeTicket | null;
   estado: EstadoDeTicket;
+  /** Las líneas que hoy se pueden corregir (E0 de la corrección por ajuste): una por línea vendida que sigue vigente; ver `lineasCorregibles`. */
+  corregibles: LineaCorregible[];
   /** Cliente con descuento de la cuenta (Task #14), con el % YA CONGELADO (`Cuenta.descuentoPorcentaje`, nunca el actual del
    *  Cliente); null si no se le asignó ninguno. */
   cliente: { nombre: string; descuentoPorcentaje: number } | null;
+}
+
+/**
+ * Una línea que se puede corregir de una cuenta cerrada: la venta (`operacionId`) que se anula ENTERA. Una promo es UNA línea (se anula con todos sus componentes, y
+ * `operacionId` es el de uno de ellos); un adicional va con su producto y no es una línea aparte.
+ */
+export interface LineaCorregible {
+  operacionId: string;
+  /** Cómo se lee en la lista: «2 × Cerveza Patagonia» o el título de la promo. */
+  texto: string;
+  /** Lo que se cobró por la línea (con sus adicionales, o por la promo entera), con el descuento de cliente ya aplicado. */
+  subtotal: number;
+}
+
+/**
+ * Una versión de la Operacion VENTA de una línea que se corrigió quitando unidades (E1, docs/diseno-correccion-por-ajuste-2026-11-06.md): la venta A original,
+ * la B que la reemplaza (`reemplazaAOperacionId`), la C que reemplaza a B… en ese orden. `cantidad` son las unidades que vende esa versión; `anuladaEn` es cuándo
+ * la reemplazó la siguiente (o la anularon), null si es la vigente. La versión siguiente rige desde ese mismo instante.
+ */
+export interface VersionDeVenta {
+  cantidad: number;
+  anuladaEn: Date | null;
+}
+
+/** Las unidades de la línea en el instante `t`: la de la primera versión que todavía regía (null si ninguna: se anuló entera). */
+function cantidadDeLaVersionEn(versiones: readonly VersionDeVenta[], t: Date): number | null {
+  return versiones.find((v) => v.anuladaEn === null || v.anuladaEn > t)?.cantidad ?? null;
 }
 
 /** Un ítem de la cuenta con la anulación de la Operacion VENTA que lo registró (null: vigente, o sin operación). */
@@ -96,6 +125,11 @@ export interface ItemConVenta extends ConfiguracionDeItemTicket {
   precioCartaUnitario?: number | null;
   operacionId: string | null;
   anuladaEn: Date | null;
+  /**
+   * E1: SOLO en un ítem cuya venta se corrigió quitando unidades (hay una venta B que reemplaza a la suya): la cadena de versiones de esa venta (A primero, la vigente
+   * al final). Ausente = el ítem de siempre (lo único que importa es `anuladaEn`). Todos los ítems de una misma línea traen la misma cadena.
+   */
+  versionesDeLaVenta?: readonly VersionDeVenta[];
   /** Task #16 (docs/plan-promo-combo-2026-09-26.md, paso 10): la promo de la que este ítem es un componente — AUSENTE en un
    *  suelto de siempre (nunca `null`: mismo criterio que `armarTicket`). Pasa TAL CUAL a `armarTicket` (mismo campo, mismo
    *  nombre). */
@@ -109,10 +143,36 @@ export interface ItemConVenta extends ConfiguracionDeItemTicket {
  * impresión no le resta nada a lo que ese papel mostró). Es la misma cuenta que hace `estadoDeTicket` para decidir «desactualizada».
  */
 export function armarTicketImpresoEn(items: readonly ItemConVenta[], impresaEn: Date, descuentoPorcentaje: number | null = null): { lineas: LineaDeTicket[]; total: number } {
-  return armarTicket(
-    items.filter((i) => i.anuladaEn === null || i.anuladaEn > impresaEn),
-    descuentoPorcentaje
-  );
+  return armarTicket(itemsVigentesEn(items, impresaEn), descuentoPorcentaje);
+}
+
+/**
+ * Los ítems que cuentan en el ticket del instante `t`. Sin versiones (lo de siempre): los de una venta no anulada, o anulada después de `t`. Con versiones (E1, la línea
+ * se corrigió quitando unidades): el ticket toma la cantidad de la venta que REEMPLAZA a la original — los ítems de la línea siguen contando (nada se borró) y un ítem sintético
+ * con la diferencia (negativo) deja la línea en las unidades de la versión que regía en `t`; si ninguna regía (se anuló entera), la línea no aparece.
+ */
+function itemsVigentesEn(items: readonly ItemConVenta[], t: Date): ItemConVenta[] {
+  const salida: ItemConVenta[] = [];
+  const diferenciaYaAgregada = new Set<string>();
+  for (const item of items) {
+    const versiones = item.versionesDeLaVenta;
+    if (!versiones || versiones.length === 0) {
+      if (item.anuladaEn === null || item.anuladaEn > t) salida.push(item);
+      continue;
+    }
+    const unidades = cantidadDeLaVersionEn(versiones, t);
+    if (unidades === null) continue;
+    salida.push(item);
+    const clave = item.operacionId ?? "";
+    if (diferenciaYaAgregada.has(clave)) continue;
+    diferenciaYaAgregada.add(clave);
+    const diferencia = unidades - versiones[0].cantidad;
+    if (diferencia === 0) continue;
+    // Se arma sobre el ítem original de la línea (no sobre un espejo), sin su id: es un ajuste de la cantidad, no un ítem de la cuenta.
+    const base = items.find((i) => i.operacionId === item.operacionId && !i.anulaAItemId) ?? item;
+    salida.push({ ...base, id: undefined, anulaAItemId: undefined, cantidad: diferencia });
+  }
+  return salida;
 }
 
 /**
@@ -125,11 +185,19 @@ export function armarTicketVigente(items: readonly ItemConVenta[], ahora: Date, 
 }
 
 /** Estado del último ejemplar impreso en `impresaEn` (sin número: el cierre de la cuenta), según las Operaciones VENTA de la cuenta. */
-export function estadoDeTicket(items: readonly Pick<ItemConVenta, "operacionId" | "anuladaEn">[], impresaEn: Date): EstadoDeTicket {
-  const anulacionPorOperacion = new Map(items.flatMap((i) => (i.operacionId ? [[i.operacionId, i.anuladaEn] as const] : [])));
+export function estadoDeTicket(items: readonly Pick<ItemConVenta, "operacionId" | "anuladaEn" | "versionesDeLaVenta">[], impresaEn: Date): EstadoDeTicket {
+  const anulacionPorOperacion = new Map(items.flatMap((i) => (i.operacionId ? [[i.operacionId, anulacionVigenteDe(i)] as const] : [])));
   const anulaciones = [...anulacionPorOperacion.values()];
   if (anulaciones.length > 0 && anulaciones.every((a) => a !== null)) return "anulada";
-  return anulaciones.some((a) => a !== null && a > impresaEn) ? "desactualizada" : "vigente";
+  // Una corrección por unidades reemplaza la venta (la original queda marcada): cada cambio de versión posterior a la impresión también deja el ejemplar «desactualizado».
+  const cambios = items.flatMap((i) => (i.operacionId ? (i.versionesDeLaVenta?.length ? i.versionesDeLaVenta.map((v) => v.anuladaEn) : [i.anuladaEn]) : []));
+  return cambios.some((a) => a !== null && a > impresaEn) ? "desactualizada" : "vigente";
+}
+
+/** Cuándo se anuló la venta que HOY rige para el ítem: la suya, o la de la última versión si se corrigió por unidades (la original reemplazada no cuenta como anulada). */
+function anulacionVigenteDe(i: Pick<ItemConVenta, "anuladaEn" | "versionesDeLaVenta">): Date | null {
+  const versiones = i.versionesDeLaVenta;
+  return versiones && versiones.length > 0 ? versiones[versiones.length - 1].anuladaEn : i.anuladaEn;
 }
 
 /** Un ítem con promo, para `armarTicket` (Task #16, paso 2.6/3): la promo de la que este ítem es un componente — `titulo` es
@@ -270,6 +338,32 @@ export function armarTicket(
   return { lineas, total };
 }
 
+/**
+ * Las líneas VIGENTES de la cuenta que se pueden corregir, en el orden de la cuenta: una por Operacion VENTA (agrupa los ítems originales y sus espejos) con sus
+ * adicionales dentro; una promo es una sola línea. Las anuladas no aparecen. Puro: sale de los mismos ítems que arman el ticket, así que el subtotal es el cobrado.
+ */
+export function lineasCorregibles(items: readonly ItemConVenta[], descuentoPorcentaje: number | null, ahora: Date = new Date(8.64e15)): LineaCorregible[] {
+  // E1: una línea corregida por unidades (su venta original quedó reemplazada) sigue vigente con la cantidad de la versión que rige; la que cuenta es la última versión.
+  const vigentes = items.filter((i) => i.operacionId !== null && anulacionVigenteDe(i) === null);
+  const porId = new Map(items.flatMap((i) => (i.id !== undefined ? [[i.id, i] as const] : [])));
+  // La operación "dueña" de un ítem: la suya, o la de su producto si es un adicional (su venta se anula con la del producto).
+  const duenaDe = (i: ItemConVenta): string => (i.lineaPadreId ? (porId.get(i.lineaPadreId)?.operacionId ?? i.operacionId!) : i.operacionId!);
+  const grupos = new Map<string, ItemConVenta[]>();
+  for (const i of vigentes) {
+    const clave = i.promo ? `promo:${i.promo.promoCuentaId}` : `op:${duenaDe(i)}`;
+    grupos.set(clave, [...(grupos.get(clave) ?? []), i]);
+  }
+  const salida: LineaCorregible[] = [];
+  for (const grupo of grupos.values()) {
+    const { lineas, total } = armarTicketVigente(grupo, ahora, descuentoPorcentaje);
+    const [primera] = lineas;
+    if (!primera) continue;
+    const operacionId = grupo.find((i) => !i.lineaPadreId)?.operacionId ?? grupo[0]!.operacionId!;
+    salida.push({ operacionId, texto: primera.promoCuentaId && !primera.indentado ? primera.producto : `${primera.cantidad} × ${primera.producto}`, subtotal: total });
+  }
+  return salida;
+}
+
 /** Una cuenta cerrada con venta, tal como la lee la consulta (`server/consultas/pos/tickets.ts`): importes ya en números. */
 export interface CuentaCerradaLeida {
   id: string;
@@ -285,7 +379,11 @@ export interface CuentaCerradaLeida {
     precioUnitario: number;
     precioCartaUnitario: number | null;
     operacionId: string | null;
-    operacion: { anuladaEn: Date | null } | null;
+    operacion: {
+      anuladaEn: Date | null;
+      /** E1: la cadena de versiones de la venta si se corrigió quitando unidades (ver `VersionDeVenta`); ausente en una venta que nadie reemplazó. */
+      versiones?: readonly VersionDeVenta[];
+    } | null;
     promoCuenta: { id: string; titulo: string } | null;
     /** GO-2b: el id, la configuración y la foto del ítem (opcionales: sin ellos, el ticket de siempre). */
     id?: string;
@@ -315,6 +413,7 @@ export function armarTicketsDeCuentas(cuentas: readonly CuentaCerradaLeida[], ah
       precioCartaUnitario: i.precioCartaUnitario,
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
+      ...(i.operacion?.versiones?.length ? { versionesDeLaVenta: i.operacion.versiones } : {}),
       promo: i.promoCuenta ? { promoCuentaId: i.promoCuenta.id, titulo: i.promoCuenta.titulo } : undefined,
       ...configuracionDeItemLeido(conOpciones, i),
     }));
@@ -328,10 +427,11 @@ export function armarTicketsDeCuentas(cuentas: readonly CuentaCerradaLeida[], ah
       mesero: nombreDelMesero(cuenta.abiertaPor),
       lineas,
       total,
-      ventaAnulada: items.some((i) => i.anuladaEn !== null),
+      ventaAnulada: items.some((i) => anulacionVigenteDe(i) !== null),
       numero: ultimo ? { numero: ultimo.numero, ejemplar: ultimo.ejemplar } : null,
       corrigeA: ultimo?.corrigeA ?? null,
       estado: estadoDeTicket(items, ultimo?.emitidoEn ?? cerradaEn),
+      corregibles: lineasCorregibles(items, descuentoPorcentaje, ahora),
       cliente: cuenta.cliente && descuentoPorcentaje !== null ? { nombre: cuenta.cliente.nombre, descuentoPorcentaje } : null,
     };
   });

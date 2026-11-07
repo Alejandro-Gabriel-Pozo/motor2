@@ -619,6 +619,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "«Nombre en la carta» (ADITIVO; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): el contenido de carta de cada producto en la administración (`cargarAdminCarta`, `contenido`) suma la clave `nombreEnCarta` (null en todo el mundo de la caracterización: nadie la cargó). Revisado con `git diff -U0`: solo 7 líneas `\"nombreEnCarta\": null` nuevas (más la coma de la línea anterior); ningún dato, precio ni conteo de consultas cambia (el selector del POS lee el nombre de la MISMA consulta del contenido que ya leía el género: sin consultas de más).",
       },
+      {
+        blob: "89ffdff00ee20527514b84a5612eb2ce528bfe76",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este (c3c1c37c, la integración con #196).
+        commit: "c3c1c37c",
+        motivo:
+          "E0 de la corrección por ajuste (PR2 #196, «Corregir una línea»): cada ticket de `pos.obtenerTicketsRecientes` suma el campo `corregibles` (las líneas vigentes que se pueden corregir: operación, texto y subtotal). Solo se AGREGA ese campo (26 líneas nuevas, ninguna cambia ni se borra); lo demás del ticket no cambia."
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {

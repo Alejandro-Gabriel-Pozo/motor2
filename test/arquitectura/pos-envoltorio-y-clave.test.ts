@@ -44,6 +44,8 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
   "cuenta-cierre.ts": {
     cerrarCuenta: { envoltorio: "conPermiso", clave: "pos_cerrar_cuenta" },
     emitirTicketCorregido: { envoltorio: "conPermiso", clave: "pos_emitir_ticket_corregido" },
+    // Pide además `pos_emitir_ticket_corregido` como primera sentencia de adentro (anula la línea Y emite el ticket); sin claves nuevas.
+    corregirLineaDeTicket: { envoltorio: "conPermiso", clave: "anular_venta" },
   },
 };
 
@@ -69,11 +71,11 @@ describe("POS: cada Server Action entra por su envoltorio y su clave", () => {
   // acción nueva del POS no ponía nada en rojo. Estas dos comprobaciones atan esa lista a la lista cerrada de acá (sin base).
   it("toda clave con que entra una acción del POS es del módulo Salón (con Salón apagado el gate la rechaza)", () => {
     const claves = Object.values(DECLARADAS).flatMap((fs) => Object.values(fs).map((d) => d.clave));
-    expect(claves.length).toBe(15);
+    expect(claves.length).toBe(16);
     for (const clave of claves) expect(moduloDeAccion(clave as AccionClave), clave).toBe("salon");
   });
 
-  it("el test de «Salón apagado» llama a CADA mutación del POS (una acción nueva del POS tiene que sumarse a sus 18 puertas)", () => {
+  it("el test de «Salón apagado» llama a CADA mutación del POS (una acción nueva del POS tiene que sumarse a sus 19 puertas)", () => {
     const fuente = readFileSync(join(__dirname, "../pos/modulos-apagados-en-el-pos.test.ts"), "utf8");
     const sinLlamar = Object.values(DECLARADAS)
       .flatMap((fs) => Object.keys(fs))
@@ -81,8 +83,8 @@ describe("POS: cada Server Action entra por su envoltorio y su clave", () => {
     expect(sinLlamar, "una mutación del POS que el test de «Salón apagado» no llama queda sin su caso").toEqual([]);
   });
 
-  it("son las 15 mutaciones del POS", () => {
-    expect(Object.values(DECLARADAS).reduce((n, fs) => n + Object.keys(fs).length, 0)).toBe(15);
+  it("son las 16 mutaciones del POS", () => {
+    expect(Object.values(DECLARADAS).reduce((n, fs) => n + Object.keys(fs).length, 0)).toBe(16);
   });
 
   it('los archivos "use server" de src/server/actions/pos son exactamente los declarados (una acción nueva del POS no queda afuera)', () => {

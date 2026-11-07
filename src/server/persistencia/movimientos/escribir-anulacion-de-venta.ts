@@ -26,6 +26,8 @@ export interface AnulacionDeVentaAEscribir {
   detalleLibre: string;
   /** Motivo de la anulación (obligatorio en la venta): queda en `Operacion.motivoAnulacion` de la venta original. */
   motivoAnulacion: string;
+  /** Solo la corrección de una línea (I3): la clave y la huella quedan en el contra-asiento de la venta pedida, para que un reenvío devuelva el mensaje original. */
+  idempotencia?: { claveIdempotencia: string; payloadHash: string };
   reversion: readonly LineaDeReversionDeVenta[];
 }
 
@@ -52,6 +54,7 @@ export async function escribirAnulacionDeVenta(
     ahora: anulacion.ahora,
     detalleLibre: anulacion.detalleLibre,
     motivoAnulacion: anulacion.motivoAnulacion,
+    ...(anulacion.idempotencia ? { idempotencia: anulacion.idempotencia } : {}),
     filas,
   });
 }
