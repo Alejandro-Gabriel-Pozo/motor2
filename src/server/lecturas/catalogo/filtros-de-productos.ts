@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { whereCartaDeSucursal } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, whereCartaDeSucursal } from "@/core/carta/public";
 import { FALTAS_FILTRABLES, whereDisponibleEn, whereDisponibleEnAlguna, type FaltaFiltrable, type FiltrosDeProductos } from "@/core/catalogo/public";
 import { accionesDelMenuQueElUsuarioPuedeVer, obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
 import { denegacionDeModuloDeAccion } from "@/server/acceso/modulos-de-empresa";
@@ -88,7 +88,7 @@ function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, falt
     // El estado «fuera» de la carta (`estadoDelProductoEnLaCarta`): un producto de venta (no el de respaldo) disponible acá, sin contenido de carta y sin grupo en esta sucursal.
     if (f.falta === "fuera-de-la-carta") {
       y.push({ tipo: "PV", opcionQueRespalda: { is: null }, ...whereDisponibleEn(ctx.sucursalId) });
-      y.push({ contenidosCarta: { none: whereCartaDeSucursal(ctx.sucursalId) }, opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(ctx.sucursalId) } });
+      y.push({ contenidosCarta: { none: whereCartaDeSucursal(ctx.sucursalId) }, ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(ctx.sucursalId) } } : {}) });
     }
   }
   return y;

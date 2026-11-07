@@ -6,6 +6,7 @@ import { MENSAJE_FALTA_SECCION_DE_CARTA, type ComandoGuardarContenidoCartaProduc
 import { exito, fracaso } from "@/core/resultado-caso";
 import { guardarContenidoDeProducto, tomarElProductoParaGuardarContenido, tomarLosNombresDeLaCarta } from "@/server/persistencia/carta/contenido-producto";
 import { buscarChoqueDeNombreEnLaCarta } from "@/server/lecturas/carta/choque-de-nombre";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "@/core/carta/public";
 import { validarGeneroCartaOpcional } from "../generos-compartido";
 import { esBaseConfigurable } from "@/core/opciones/public";
 
@@ -60,8 +61,9 @@ export async function guardarContenidoCartaProductoCasoDeUso(
     const seccion = await actor.db.seccionCarta.findUnique({ where: { id: seccionCartaId }, select: { id: true } });
     if (!seccion) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección de carta.");
   }
-  const genero = await validarGeneroCartaOpcional(actor.db, actor.sucursalId, datos.generoCartaId);
-  if (!genero.ok) return fracaso("GENERO_INVALIDO", genero.mensaje);
+  // Interruptor de género/ítem agrupado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): apagado, el género ni se valida ni se escribe — el que el producto ya tenía queda como estaba (se vuelve a leer al encender) y uno pedido a mano se ignora.
+  const genero = GENERO_E_ITEM_AGRUPADO_VISIBLE ? await validarGeneroCartaOpcional(actor.db, actor.sucursalId, datos.generoCartaId) : null;
+  if (genero && !genero.ok) return fracaso("GENERO_INVALIDO", genero.mensaje);
 
   const { mostrarNombreArriba } = datos;
   const data = {
@@ -71,7 +73,7 @@ export async function guardarContenidoCartaProductoCasoDeUso(
     tags,
     especial: datos.especial === true,
     orden,
-    generoCartaId: genero.valor,
+    ...(genero?.ok ? { generoCartaId: genero.valor } : {}),
     ...(mostrarNombreArriba !== undefined ? { mostrarNombreArriba } : {}),
     ...(nombreEnCarta !== undefined ? { nombreEnCarta } : {}),
   };
