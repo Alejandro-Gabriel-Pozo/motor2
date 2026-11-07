@@ -20,7 +20,7 @@ describe("lineasCorregibles", () => {
       null
     );
     expect(r).toEqual([
-      { operacionId: "op1", texto: "2 × Cerveza Patagonia", subtotal: 28000 },
+      { operacionId: "op1", texto: "2 × Cerveza Patagonia", subtotal: 28000, unidades: 2 },
       { operacionId: "op2", texto: "1 × Brownie", subtotal: 10000 },
     ]);
   });
@@ -30,7 +30,7 @@ describe("lineasCorregibles", () => {
       [item({ productoId: "ce", productoNombre: "Cerveza", operacionId: "op1", cantidad: 3, precioUnitario: 5000 }), item({ productoId: "ce", productoNombre: "Cerveza", operacionId: "op1", cantidad: -1, precioUnitario: 5000 })],
       null
     );
-    expect(r).toEqual([{ operacionId: "op1", texto: "2 × Cerveza", subtotal: 10000 }]);
+    expect(r).toEqual([{ operacionId: "op1", texto: "2 × Cerveza", subtotal: 10000, unidades: 2 }]);
   });
 
   it("una promo es UNA sola línea (el título y lo cobrado por todos sus componentes), aunque tenga dos ventas", () => {
@@ -44,7 +44,7 @@ describe("lineasCorregibles", () => {
       null
     );
     expect(r).toEqual([
-      { operacionId: "opA", texto: "Menú del día", subtotal: 10000 },
+      { operacionId: "opA", texto: "Menú del día", subtotal: 10000, sinCorreccionPorUnidades: "PROMO" },
       { operacionId: "opC", texto: "1 × Café", subtotal: 4000 },
     ]);
   });
@@ -52,6 +52,23 @@ describe("lineasCorregibles", () => {
   it("el descuento de cliente se aplica como en el ticket", () => {
     const r = lineasCorregibles([item({ productoId: "ca", productoNombre: "Café", operacionId: "op1", precioUnitario: 4000, precioCartaUnitario: 4000 })], 10);
     expect(r).toEqual([{ operacionId: "op1", texto: "1 × Café", subtotal: 3600 }]);
+  });
+
+  it("E1: solo una línea suelta de 2 o más unidades enteras se corrige por unidades; una línea con adicionales avisa que se corrige entera", () => {
+    const r = lineasCorregibles(
+      [
+        item({ id: "p", productoId: "ca", productoNombre: "Café", operacionId: "opCafe", cantidad: 2, precioUnitario: 4000 }),
+        item({ id: "a", lineaPadreId: "p", productoId: "le", productoNombre: "Leche de almendras", operacionId: "opAdicional", cantidad: 2, precioUnitario: 500 }),
+        item({ productoId: "br", productoNombre: "Brownie", operacionId: "opBrownie", cantidad: 1, precioUnitario: 10000 }),
+        item({ productoId: "ce", productoNombre: "Cerveza", operacionId: "opCerveza", cantidad: 3, precioUnitario: 14000 }),
+      ],
+      null
+    );
+    expect(r).toEqual([
+      { operacionId: "opCafe", texto: "2 × Café", subtotal: 9000, sinCorreccionPorUnidades: "ADICIONALES" },
+      { operacionId: "opBrownie", texto: "1 × Brownie", subtotal: 10000 },
+      { operacionId: "opCerveza", texto: "3 × Cerveza", subtotal: 42000, unidades: 3 },
+    ]);
   });
 
   it("sin ítems vigentes no hay nada que corregir", () => {

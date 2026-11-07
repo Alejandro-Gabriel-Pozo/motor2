@@ -97,6 +97,13 @@ export interface LineaCorregible {
   texto: string;
   /** Lo que se cobró por la línea (con sus adicionales, o por la promo entera), con el descuento de cliente ya aplicado. */
   subtotal: number;
+  /**
+   * E1 (quitar unidades): SOLO en una línea que se puede corregir quitándole unidades (suelta, sin adicionales y con 2 o más unidades enteras): cuántas vende hoy. Ausente
+   * en las demás, que se corrigen enteras.
+   */
+  unidades?: number;
+  /** E1: SOLO en una línea con 2 o más unidades que NO se corrige por unidades, por qué: una promo se corrige entera; una línea con adicionales, también (pendiente de completar). */
+  sinCorreccionPorUnidades?: "PROMO" | "ADICIONALES";
 }
 
 /**
@@ -363,7 +370,17 @@ export function lineasCorregibles(items: readonly ItemConVenta[], descuentoPorce
     const principal = grupo.find((i) => !i.lineaPadreId) ?? grupo[0]!;
     // Una línea ya corregida por unidades se vuelve a corregir (o se anula) sobre la venta que HOY rige, la última versión; los ítems siguen apuntando a la original.
     const operacionId = principal.versionesDeLaVenta?.length ? principal.versionesDeLaVenta[principal.versionesDeLaVenta.length - 1]!.operacionId : principal.operacionId!;
-    salida.push({ operacionId, texto: primera.promoCuentaId && !primera.indentado ? primera.producto : `${primera.cantidad} × ${primera.producto}`, subtotal: total });
+    const esPromo = grupo.some((i) => i.promo);
+    const conAdicionales = grupo.some((i) => i.lineaPadreId);
+    const unidades = primera.cantidad;
+    const porUnidades = !esPromo && !conAdicionales && Number.isInteger(unidades) && unidades >= 2;
+    salida.push({
+      operacionId,
+      texto: primera.promoCuentaId && !primera.indentado ? primera.producto : `${primera.cantidad} × ${primera.producto}`,
+      subtotal: total,
+      ...(porUnidades ? { unidades } : {}),
+      ...(!porUnidades && (esPromo || (conAdicionales && unidades >= 2)) ? { sinCorreccionPorUnidades: esPromo ? ("PROMO" as const) : ("ADICIONALES" as const) } : {}),
+    });
   }
   return salida;
 }
