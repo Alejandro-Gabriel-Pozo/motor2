@@ -1,6 +1,6 @@
 # Catálogo común por módulo — índice (2026-11-06)
 
-**Estado:** los 9 inventarios recibidos (compras sin su sección 10 al cierre). Auditoría cruzada: `docs/auditoria-catalogo-comun-2026-11-06.md`. Lo nutren 9 sesiones hijas (solo lectura), una por módulo, cada una en su rama `alegp/catalogo-<modulo>`. Esta sesión auditora copia cada archivo sin reescribirlo y arma la auditoría cruzada en `docs/auditoria-catalogo-comun-2026-11-06.md`. No se implementó ningún cambio al sistema.
+**Estado:** los 9 inventarios recibidos; la sección 10 de compras la escribió la sesión auditora el 2026-11-07, autorizada por el dueño. Auditoría cruzada: `docs/auditoria-catalogo-comun-2026-11-06.md`. Lo nutren 9 sesiones hijas (solo lectura), una por módulo, cada una en su rama `alegp/catalogo-<modulo>`. Esta sesión auditora copia cada archivo sin reescribirlo y arma la auditoría cruzada en `docs/auditoria-catalogo-comun-2026-11-06.md`. No se implementó ningún cambio al sistema.
 
 Diseño de partida: `docs/diseno-flujos-y-pasos-2026-11-06.md` (rama `alegp/diseno-flujos-y-pasos`, PR #165). Base: main `50c11538`.
 

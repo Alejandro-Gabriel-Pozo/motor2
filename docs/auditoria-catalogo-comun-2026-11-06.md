@@ -12,7 +12,7 @@
 - **NO VERIFICADO**: lo dice un informe y no se comprobó.
 - **REFUTADO**: el código dice otra cosa.
 
-**Pendiente:** el módulo compras-proveedores-pagos todavía no publicó su sección 10 («tamaño e identidad»). En «Módulos escondidos» queda marcado como PENDIENTE.
+**Sección 10 de compras:** la sesión de compras no la publicó. La escribió esta sesión auditora el 2026-11-07, con autorización del dueño transmitida por la sesión coordinadora, a partir de las secciones 1 a 9 de ese módulo y de mediciones propias (`docs/catalogo-por-modulo/compras-proveedores-pagos.md` §10).
 
 ---
 
@@ -232,7 +232,7 @@ Además:
 | h9 | Producción: catálogo de módulos y código | `produccion` es módulo vendible (`catalogo.ts:31`), pero no tiene un solo archivo propio: es `Operacion.proceso=PRODUCCION` dentro de movimientos | Desajuste registrado; quién manda es PENDIENTE (dueño) |
 | h10 | Clientes: catálogo (`clientes_basico`, soporte) y acceso §10 | Acceso dice que Clientes no es de su módulo sino de ventas y salón | Sin contradicción con el código: el catálogo ya lo trata como soporte aparte. Lo que discrepa es solo la carpeta |
 | h11 | El insumo de la sesión coordinadora («240 entradas en 11 cercos») y ui-y-pruebas («170 en 15») | | ui-y-pruebas (VERIFICADO, §f) |
-| h12 | Catálogo §10 y compras sobre Proveedores | Catálogo dice que Proveedores es módulo propio y vive en `catalogo/` por historia | PENDIENTE: compras todavía no publicó su sección 10 |
+| h12 | Catálogo §10 y compras §10 sobre Proveedores | Catálogo: Proveedores es módulo propio y vive en `catalogo/` por historia; «no concluyente» si es de compras | **Resuelta** (compras §10): es soporte compartido (`proveedores_basico`). Lo requieren compras, consignación y gastos, así que no es de compras ni de catálogo; solo el vínculo `ProveedorPorProducto` es de compras |
 
 ## i. Orden de atención propuesto (por riesgo de negocio, sin implementar)
 
@@ -282,7 +282,9 @@ El costo se estima en archivos a tocar; es orden de magnitud. Cada paso es chico
 | **Sistema de diseño** (`src/ui`) | ui-y-pruebas | — | **157 archivos** de afuera importan `@/ui`; `src/ui` solo se importa a sí mismo (3 imports de `@/ui/primitivas`). VERIFICADO | Capa propia y limpia; falta mover a ella Modal, CampoNumero y activar/desactivar |
 | **Gobernanza de reglas** (`test/arquitectura/contratos`) | ui-y-pruebas | — | ≥5 importadores de afuera, no 1 (h5) | Herramienta propia; debería absorber el motor de los cercos (§f) |
 | **Demo y siembras** | ui-y-pruebas | — | NO VERIFICADO | Herramienta propia |
-| **Proveedores** | catálogo | **Sí** (`proveedores_basico`) | — | **PENDIENTE**: compras no publicó su sección 10 (h12) |
+| **Proveedores** | catálogo y compras | **Sí** (`proveedores_basico`) | lo requieren 3 módulos (`catalogo.ts:27,29,37`). VERIFICADO | Soporte compartido; solo la carpeta (`catalogo/`) está fuera de lugar (h12) |
+| **Cuentas por pagar / tesorería** (pagos a proveedores) | compras §10 (auditor) | No (permiso `declarar_pago_compra` en `compras`, contexto empresa) | 12 archivos de `src/`. VERIFICADO | **Candidato futuro**: hoy es un pago binario sin importe; es módulo propio cuando exista el pago con importe, y serviría también a `gastos`. Pregunta para el dueño |
+| **Notas de crédito** e **IVA de compras** | compras §10 (auditor) | No | 0 escritores en `src/`. VERIFICADO | **Etapas sin construir, no módulos escondidos**: el IVA iría a `fiscal`, transversal; las notas de crédito, dentro de compras |
 | **Combinaciones GO-3a** | recetas | — | 0 referencias en `src/` (lo fija un test) | Módulo muerto: retirar (migración destructiva, requiere autorización) |
 
 ### j2. Mapa de módulos resultante (PROPUESTA)
@@ -296,8 +298,9 @@ El costo se estima en archivos a tocar; es orden de magnitud. Cada paso es chico
 | stock | sí | núcleo **Kardex** con un solo dueño (primitiva); conteo, alertas y reclasificación se quedan en stock | 6 dominios escriben `Operacion` |
 | traspasos | sí | sin cambio (ya está aislado) | 1 solo importador de afuera |
 | consignación | sí | sacarla de `reportes/` a su carpeta | permisos y actor propios; hoy mal ubicada |
-| compras | sí | absorbe «compras registradas» (hoy en reportes); **sección 10 pendiente** | reportes §10 |
-| proveedores básico | sí | PENDIENTE (h12) | — |
+| compras | sí | absorbe «compras registradas» (hoy en reportes); los casos de uso de compra, factura y pago salen de `actions/movimientos/` a una carpeta propia; notas de crédito e IVA quedan como etapas «pendiente de completar» | reportes §10, compras §10 |
+| proveedores básico | sí | carpeta propia (hoy en `catalogo/`) | lo requieren compras, consignación y gastos (h12) |
+| — | **cuentas por pagar** (futuro) | solo si el dueño lo confirma, cuando exista el pago con importe | compras §10 |
 | carta | sí | se le sacan promociones (carpeta); tema y portal se quedan | — |
 | promociones | sí | carpeta propia; su consumidor principal es el POS | carta §10 |
 | salón | sí | sin corte (ticket y mostrador son partes); `Venta` y `CombinacionEnLinea` sin escritor, para decidir o podar | salón §10 |
@@ -317,5 +320,5 @@ El costo se estima en archivos a tocar; es orden de magnitud. Cada paso es chico
 - Los puntos marcados NO VERIFICADO en las tablas, en especial los de T1, T2 y T3 que no se leyeron uno por uno: a3, a8, a9, a11 a a14, a16 a a18, b3, b6 y b8 a b14, c3 a c11, d1, d2, d4 a d6, d8, d9 y d11.
 - Escritores por SQL crudo, scripts o siembras de las columnas «sin escritor»: solo se buscó en `src/`.
 - Datos de producción: no se leyeron. Que existan ventas a $0, productos que se producen con «sin stock hoy» o insumos fusionados con sustitutos históricos es NO VERIFICADO.
-- Sección 10 de compras-proveedores-pagos: pendiente.
+- Sección 10 de compras: la escribió el auditor a partir del inventario de esa sesión y de conteos con `grep`, no con una herramienta de grafo.
 - No se corrió el gate: es un PR solo de documentos y el CI es el árbitro.
