@@ -70,6 +70,7 @@ export function PanelMovimientoForm({
   motivos,
   destinos,
   productoInicial,
+  correccion,
   reparto,
 }: {
   config: ProcesoUiConfig;
@@ -85,6 +86,8 @@ export function PanelMovimientoForm({
   destinos?: Opcion[];
   /** Deep-link accionable (ej. "Costo incompleto" en Reportes → Costos, "falta precio de este insumo") — precarga la primera fila con este producto en vez de arrancar vacía. */
   productoInicial?: { id: string; etiqueta: string };
+  /** E0 «Corregir este movimiento» (solo Ajuste): el Ajuste viene prellenado con la sección del original (si sigue activa) y el detalle que lo referencia; el producto va en `productoInicial`. */
+  correccion?: { seccionInicialId?: string; detalleInicial: string };
   /** E3a (ADR-041): solo en Compra y solo si quien carga puede repartir (`compra_repartir`) y hay otras sucursales activas: el interruptor «Repartir entre sucursales». */
   reparto?: { sucursalActiva: Opcion; otras: Opcion[] };
 }) {
@@ -95,13 +98,13 @@ export function PanelMovimientoForm({
   // aparte, no hay ambigüedad de "dónde ya está" que resolver — preseleccionar
   // ahorra un clic. exigeSeccion=true (Consumo/Ajuste/Merma/Dev. consignación/
   // Dev. proveedor): arranca vacío a propósito, nunca se adivina.
-  const [seccionId, setSeccionId] = useState(() => (config.exigeSeccion ? "" : (secciones[0]?.id ?? "")));
+  const [seccionId, setSeccionId] = useState(() => correccion?.seccionInicialId ?? (config.exigeSeccion ? "" : (secciones[0]?.id ?? "")));
   const [seccionDestinoId, setSeccionDestinoId] = useState("");
   const [proveedorId, setProveedorId] = useState("");
   const [nroFactura, setNroFactura] = useState("");
   const [motivoId, setMotivoId] = useState("");
   const [destinoId, setDestinoId] = useState("");
-  const [detalleLibre, setDetalleLibre] = useState("");
+  const [detalleLibre, setDetalleLibre] = useState(correccion?.detalleInicial ?? "");
   const [estadoReparto, setEstadoReparto] = useState<EstadoDeReparto>(REPARTO_APAGADO);
   const repartiendo = Boolean(reparto && estadoReparto.repartir);
   const [items, setItems] = useState<FilaItem[]>([
@@ -344,7 +347,12 @@ export function PanelMovimientoForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      {productoInicial && (
+      {productoInicial && correccion && (
+        <Aviso variante="advertencia">
+          Estás corrigiendo un movimiento de <strong>{productoInicial.etiqueta}</strong>. El movimiento original no se toca: este Ajuste es la diferencia, ya con signo (negativo baja el stock, positivo lo sube). Revisá la sección y completá la cantidad.
+        </Aviso>
+      )}
+      {productoInicial && !correccion && (
         <Aviso variante="advertencia">
           Viniste desde un reporte para cargar precio de <strong>{productoInicial.etiqueta}</strong> — completá depósito, cantidad y precio para resolverlo.
         </Aviso>
