@@ -6,11 +6,10 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, sembrarSeccion } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { anularCompra, corregirCompra } from "../../src/server/actions/movimientos/compras";
-import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { datosDeFactura, datosDeRenglon } from "../setup/factura-proveedor";
 import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
-import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
+import { sembrarCompraSimpleDeAntes } from "../setup/compra-simple-de-antes";
 
 /**
  * E3a, paso 6 (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md, invariante D8): la compra de UNA parte de una factura de proveedor (sus líneas del Kardex salen de un renglón,
@@ -79,12 +78,10 @@ describe("la compra de una parte de factura no se anula ni se corrige suelta (E3
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: compra.id } })).nroFactura).toBe("A-0001-00000077");
   });
 
-  it("una compra simple (sin renglón de factura) se sigue anulando como siempre", async () => {
-    const r1 = await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date(), seccionId, proveedorId, items: [{ productoId: harinaId, cantidad: 10, precioTotal: 100, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: randomUUID() });
-    expect(r1.ok, r1.mensaje).toBe(true);
-    const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId }, orderBy: { creadoEn: "desc" } });
+  it("una compra simple de ANTES de U0 (sin renglón de factura) se sigue anulando como siempre (U1 retira esta excepción junto con `anularCompra`)", async () => {
+    const { operacionId } = await sembrarCompraSimpleDeAntes({ sucursalId, seccionId, usuarioId: adminId, proveedorId, nroFactura: nroFacturaDePrueba(), items: [{ productoId: harinaId, cantidad: 10, precioTotal: 100 }] });
 
-    const r = await anularCompra(compra.id, randomUUID());
+    const r = await anularCompra(operacionId, randomUUID());
 
     expect(r.ok, r.mensaje).toBe(true);
     expect(await calcularSaldoTotal(harinaId, seccionId, prisma)).toBe(0);

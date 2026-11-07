@@ -437,7 +437,6 @@ const PERSISTENCIA_DE_OTRO_DOMINIO = [
   { desde: "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts", hacia: "src/server/persistencia/compras/cargar-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts", hacia: "src/server/persistencia/compras/escribir-factura-proveedor.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts", hacia: "src/server/persistencia/compras/comprobante-en-la-empresa.ts", motivo: MOTIVO_COMPRAS },
-  { desde: "src/server/actions/movimientos/casos-de-uso/registrar-movimiento.ts", hacia: "src/server/persistencia/compras/comprobante-en-la-empresa.ts", motivo: MOTIVO_COMPRAS },
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/cargar-producto-con-unidad-de-stock.ts", motivo: MOTIVO_STOCK },
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/escribir-movimiento-de-stock.ts", motivo: MOTIVO_STOCK },
   { desde: "src/server/actions/stock/casos-de-uso/reclasificar-stock.ts", hacia: "src/server/persistencia/movimientos/idempotencia.ts", motivo: MOTIVO_IDEMPOTENCIA },

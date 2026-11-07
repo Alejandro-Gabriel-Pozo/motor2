@@ -6,7 +6,7 @@ import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, se
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
 import { registrarUnConteoFisico } from "../setup/conteo-fisico-de-una-fila";
-import { anularCompra } from "../../src/server/actions/movimientos/compras";
+import { anularCompraDeTest } from "../setup/anular-compra-de-prueba";
 import { registrarVenta } from "../../src/server/actions/movimientos/venta";
 import { obtenerHistorialProducto, obtenerIngredientesRecetaVigente } from "../../src/server/consultas/reportes/historial-producto";
 import { ZONA_ARGENTINA, mediodiaDelDia } from "../../src/core/tiempo/zona-horaria";
@@ -125,12 +125,12 @@ describe("obtenerHistorialProducto", () => {
     expect(ajuste?.precioPorUnidadStock).toBe(0);
   });
 
-  it("después de anularCompra: la compra original queda anulada:true, y el contra-asiento AJUSTE aparece como su propia fila (anulada:false)", async () => {
+  it("después de anular la compra: la compra original queda anulada:true, y el contra-asiento AJUSTE aparece como su propia fila (anulada:false)", async () => {
     const r = await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: mediodia("2026-01-01"), seccionId, items: [{ productoId: mpId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     expect(r.ok, r.mensaje).toBe(true);
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId } });
 
-    const anulacion = await anularCompra(compra.id, crypto.randomUUID());
+    const anulacion = await anularCompraDeTest(compra.id);
     expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
     const historial = await obtenerHistorialProducto(sucursalId, mpId, undefined, undefined, undefined, prisma);

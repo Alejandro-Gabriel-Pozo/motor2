@@ -7,7 +7,9 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { crearMembresia } from "../setup/membresia";
 import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { anularCompra, corregirCompra } from "../../src/server/actions/movimientos/compras";
+import { corregirCompra } from "../../src/server/actions/movimientos/compras";
+import { anularCompraDeTest } from "../setup/anular-compra-de-prueba";
+import { sembrarCompraSimpleDeAntes } from "../setup/compra-simple-de-antes";
 import { upsertProveedorPorProducto } from "../../src/server/persistencia/catalogo/upsert-proveedor-por-producto";
 import { cargarOfertasDeProveedores } from "../../src/server/lecturas/catalogo/ofertas-de-proveedor";
 import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
@@ -210,19 +212,20 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       expect(await listarProductosDeProveedor(proveedorAId)).toEqual([]);
     });
 
-    it("una compra real anulada con la ACCIÓN `anularCompra` deja de aparecer", async () => {
+    it("una compra real anulada con la anulación de su factura deja de aparecer", async () => {
       await sembrarMotivosYDestinos();
       expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
       expect((await precioDe("Proveedor A"))?.precioPorUnidadStock).toBe(100);
 
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-      expect((await anularCompra(op.id, crypto.randomUUID())).ok).toBe(true);
+      expect((await anularCompraDeTest(op.id)).ok).toBe(true);
       expect(await precioDe("Proveedor A")).toBeUndefined();
     });
 
     it("corregir el proveedor de una compra MUEVE el precio al proveedor correcto", async () => {
       await sembrarMotivosYDestinos();
-      expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
+      // Una compra simple de ANTES de U0 (sin factura): es la única que `corregirCompra` todavía corrige; U1 retira la acción y la corrección pasa a la factura.
+      await sembrarCompraSimpleDeAntes({ sucursalId, seccionId, usuarioId: adminId, proveedorId: proveedorAId, nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), items: [{ productoId, cantidad: 10, precioTotal: 1000 }] });
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
       const r = await corregirCompra(op.id, { proveedorId: proveedorBId, nroFactura: op.nroFactura ?? "", detalleLibre: "" }, { proveedorId: op.proveedorId, nroFactura: op.nroFactura, detalleLibre: op.detalleLibre });
       expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
