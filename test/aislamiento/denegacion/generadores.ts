@@ -253,11 +253,14 @@ const completos: Record<string, Valor> = {
 
   // --- movimientos, stock, traspasos ---
   // U1 de «una sola compra»: corregir los datos de la FACTURA (la única corrección de la compra); el id de la factura y el proveedor nuevo son los del cliente.
-  "accion|actions/movimientos/facturas-proveedor.ts|corregirFacturaProveedor": (k, c) =>
-    conVariantes(
-      intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, { proveedorId: c.propio.proveedorId, nroFactura: "A-00001-00000099", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
-      intento(c, ["proveedorId"], [c.propio.facturaEnviadaId, { proveedorId: k.proveedorId, nroFactura: "A-00001-00000099", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
-    ),
+  "accion|actions/movimientos/facturas-proveedor.ts|corregirFacturaProveedor": (k, c) => {
+    // Lo que el mundo guardó de la factura propia «factura-enviada» (proveedor, número y sin detalle): es lo que «vio» quien corrige; la corrección cambia solo el detalle (un dato válido que llega a la lógica).
+    const visto = { proveedorId: c.propio.proveedorId, nroFactura: `Factura ${c.propio.marca} factura-enviada`, detalleLibre: "" };
+    return conVariantes(
+      intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, { ...visto, detalleLibre: "texto" }, visto]),
+      intento(c, ["proveedorId"], [c.propio.facturaEnviadaId, { ...visto, proveedorId: k.proveedorId }, visto]),
+    );
+  },
   "accion|actions/movimientos/conteo-fisico.ts|registrarConteosFisicos": (k, c) =>
     conVariantes(
       intento(c, ["productoId"], [[{ productoId: k.productoId, seccionId: c.propio.seccionId, conteoReal: 5, fechaConteo: hoy(), accion: "AJUSTAR" }]]),
