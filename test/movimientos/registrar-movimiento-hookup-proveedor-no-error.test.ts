@@ -87,6 +87,6 @@ describe("registrarMovimiento (Compra): el vínculo proveedor↔producto es part
     expect(await estado()).toEqual({ saldo: 10, operaciones: 1, vinculos: 1 });
     const vinculo = await prisma.proveedorPorProducto.findFirstOrThrow({ where: { productoId } });
     expect(vinculo.ultimaCompra.toISOString().slice(0, 10)).toBe("2026-09-20");
-    expect(Number(vinculo.precioPorUnidadStock)).toBe(100);
+    expect(Number(vinculo.precioPorUnidadStock)).toBe(0); // poda 2026-11-06: el vínculo ya no guarda el precio (queda en el Kardex)
   });
 });
