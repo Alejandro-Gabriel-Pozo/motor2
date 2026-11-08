@@ -25,6 +25,9 @@ import { Decimal } from "decimal.js";
  *  números de hasta 17 dígitos significativos y la suma de muchos de ellos. Empates alejándose del cero, igual que `NUMERIC`. */
 const D = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
 
+/** La moneda de TODO el dinero del sistema (poda del 2026-11-06, decisión del dueño): pesos argentinos, fija. La columna `Empresa.moneda` se guarda con este valor y no se pide al dar de alta una empresa. */
+export const MONEDA_FIJA = "ARS";
+
 /** `-0` → `0`; cualquier otro valor pasa igual. */
 function sinCeroNegativo(n: number): number {
   return n === 0 ? 0 : n;

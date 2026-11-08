@@ -464,6 +464,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   // `operacionId` por defecto es la compra; la venta lleva la suya.
   "accion|actions/movimientos/venta.ts|anularVenta": { operacionId: (k) => k.ventaId },
   "consulta|consultas/pos/tickets.ts|obtenerTicketsRecientes": { mesaId: (k) => k.mesaCerradaId },
+  // «Corregir este movimiento» (E0, g): el movimiento de la compra principal del mundo. Con el id de OTRA empresa o de otra sucursal la lectura da null; con el propio la ve.
+  "consulta|consultas/movimientos/movimiento-a-corregir.ts|obtenerMovimientoACorregir": { idMovimiento: (k) => k.movimientoCompraId },
   // OPCIONES-FACTOR: la pantalla de un grupo pide también la receta de referencia (la página lo decide por el «Ver» de las recetas) y solo la lee en un grupo de TAMAÑOS: se ejerce con el
   // tamaño del kit y CON la receta, el camino que lee más.
   "consulta|consultas/catalogo/opciones-de-venta.ts|cargarGrupoDelPanel": { grupoId: (k) => k.grupoMedidaId, conRecetaDeReferencia: () => true },

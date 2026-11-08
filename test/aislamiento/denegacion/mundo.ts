@@ -101,6 +101,8 @@ export interface KitDeSucursal {
   compraId: string;
   /** Una compra de una materia prima sin consumos posteriores (la única que se puede anular). */
   compraAnulableId: string;
+  /** Un movimiento de stock de la compra principal (lo que `obtenerMovimientoACorregir` lee para prellenar «Corregir este movimiento»). */
+  movimientoCompraId: string;
   ventaId: string;
   conteoId: string;
   /** Un conteo ya RESUELTO (el único que se puede cancelar). */
@@ -164,6 +166,7 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   promoCuentaId: true,
   compraId: true,
   compraAnulableId: true,
+  movimientoCompraId: true,
   ventaId: true,
   conteoId: true,
   conteoResueltoId: true,
@@ -385,7 +388,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const compra = await db.operacion.create({
     data: { id: id("compra"), empresaId, sucursalId, proceso: "COMPRA", fecha: enElPasado(2 * DIA_MS), proveedorId: k.proveedorId, nroFactura: `F-${marca}`, usuarioId: miembro.id, detalleLibre: `Compra ${marca}` },
   });
-  await db.movimientoStock.create({
+  const movimientoCompra = await db.movimientoStock.create({
     data: { id: id("mov-compra"), empresaId, operacionId: compra.id, productoId: k.productoId, seccionId: seccion.id, proceso: "COMPRA", cantidad: 10, loteVencimiento: new Date(Date.now() + 30 * DIA_MS), detalle: `Compra ${marca}`, precioTotal: 1000, precioPorUnidadStock: 100 },
   });
   // Una compra que SÍ se puede anular: de una materia prima que no se consumió ni se movió (la compra principal ya tiene consumos posteriores y «no se puede anular»).
@@ -557,6 +560,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     promoCuentaId: promoCuenta.id,
     compraId: compra.id,
     compraAnulableId: compraAnulable.id,
+    movimientoCompraId: movimientoCompra.id,
     ventaId: venta.id,
     conteoId: conteo.id,
     conteoResueltoId: conteoResuelto.id,

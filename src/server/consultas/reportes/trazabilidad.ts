@@ -67,7 +67,7 @@ export async function obtenerOperacionPorId(sucursalId: string, idOperacion: str
   };
 }
 
-/** Port de buscarOperacionesPorProducto (Reportes.js:1178-1197). */
+/** Port de buscarOperacionesPorProducto (Reportes.js:1178-1197). Una fila por operación, rotulada con el proceso de la operación (ver abajo). */
 export async function buscarOperacionesPorProducto(sucursalId: string, termino: string, db: Db): Promise<OperacionEncontrada[]> {
   const q = textoDeBusqueda(termino);
   if (!q) return [];
@@ -77,11 +77,13 @@ export async function buscarOperacionesPorProducto(sucursalId: string, termino: 
       seccion: { sucursalId },
       producto: { OR: [{ nombre: { contains: escaparComodinesLike(q), mode: "insensitive" } }, { codigo: { contains: escaparComodinesLike(q), mode: "insensitive" } }] },
     },
-    select: { operacionId: true, proceso: true, seccion: { select: { nombre: true } }, operacion: { select: { fecha: true } } },
+    select: { operacionId: true, seccion: { select: { nombre: true } }, operacion: { select: { fecha: true, proceso: true } } },
     orderBy: { operacion: { fecha: "desc" } },
     distinct: ["operacionId"],
     take: 50,
   });
 
-  return movimientos.map((m) => ({ idOperacion: m.operacionId, fecha: m.operacion.fecha, proceso: m.proceso, seccionNombre: m.seccion.nombre }));
+  // E0 (d): el rótulo es el proceso de la OPERACIÓN, no el del movimiento que la encontró: una venta tiene líneas VENTA (el producto) y CONSUMO (sus insumos), y `distinct` se quedaba con
+  // una cualquiera, así que al buscar «Brownie» la venta salía como «CONSUMO» y parecía que el buscador no listaba las ventas.
+  return movimientos.map((m) => ({ idOperacion: m.operacionId, fecha: m.operacion.fecha, proceso: m.operacion.proceso, seccionNombre: m.seccion.nombre }));
 }
