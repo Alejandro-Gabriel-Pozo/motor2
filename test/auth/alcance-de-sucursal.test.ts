@@ -18,7 +18,7 @@ import { conAlcanceEnSucursal, conEscrituraEnLaEmpresa, incluirSucursalCreadaEnL
 import { requerirVerAlgunaEnSucursal, requerirVerEnSucursal } from "../../src/server/actions/con-sesion";
 import { permisoYAlcanceEnSucursal } from "../../src/server/actions/con-permiso";
 import { darDeAltaProducto, darDeAltaProductoRapido } from "../../src/server/actions/catalogo/productos";
-import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 import { guardarVersionDeRecetaCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/guardar-version-de-receta";
 import { crearSucursalConAdminCasoDeUso } from "../../src/server/actions/auth/casos-de-uso/crear-sucursal-con-admin";
 import { actualizarCapacidadCasoDeUso } from "../../src/server/actions/permisos/casos-de-uso/actualizar-capacidad";

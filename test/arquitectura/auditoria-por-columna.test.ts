@@ -49,6 +49,8 @@ const COLUMNAS_AUDITADAS: { archivo: string; entidad: (typeof ENTIDADES_AUDITABL
   { archivo: "src/server/actions/catalogo/casos-de-uso/reordenar-opciones-de-grupo.ts", entidad: "OpcionDeGrupo", campos: ["orden"] },
   // CARTA-MANT: «Agregar a la carta» un producto fuera de carta (de `null` a visible).
   { archivo: "src/server/actions/carta/casos-de-uso/agregar-producto-a-la-carta.ts", entidad: "ContenidoCartaProducto", campos: ["visibleEnCarta"] },
+  // Poda del 2026-11-06: «Ocultar» / «Mostrar» es el único camino para sacar un producto de la carta; cada cambio de visibilidad deja su fila.
+  { archivo: "src/server/actions/carta/casos-de-uso/actualizar-visible-en-carta.ts", entidad: "ContenidoCartaProducto", campos: ["visibleEnCarta"] },
   // Fase 5 de la ola «precio y carta» (DEC-11): «Mostrar el nombre arriba» de un producto base con un solo eje (cómo se LEE en la carta pública). El resto del contenido sigue sin auditoría.
   // «Nombre en la carta» (2026-11-04): cómo se llama el plato en la carta de la sucursal; guardar lo audita, y «Está bien así» lo copia del producto (audita).
   { archivo: "src/server/actions/carta/casos-de-uso/confirmar-nombre-en-carta.ts", entidad: "ContenidoCartaProducto", campos: ["nombreEnCarta"] },
