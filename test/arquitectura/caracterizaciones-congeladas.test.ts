@@ -548,6 +548,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Lote 1b, hallazgo C (decisión del dueño, 2026-11-06; CAMBIA COMPORTAMIENTO: las ventas con importe $0 ya no se revalúan al precio de hoy, quedan «sin dato»). Cambia SOLO la forma, sin tocar ningún importe del escenario (no tiene ventas $0): `ventas` suma `lineasSinDato: 0` y pierde `estimado` en cada fila de `porProducto`; las filas del margen pierden `ingresoEstimado`; el resumen operativo cambia `hayEstimados: false` por `ventasSinDato: 0`; y cada fila del Consolidado suma `ventasSinDato: 0`. Revisado con `git diff`: solo esas líneas.",
       },
+      {
+        blob: "449c8abd2c0983f6c5d06d3cc86873db650522c4",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este (E0 PR3, d).
+        commit: "0ed02252",
+        motivo:
+          "E0 de la corrección por ajuste (PR3, d): el buscador de Trazabilidad por producto rotula cada operación con el proceso de la OPERACIÓN y no con el del movimiento que la encontró; seis ventas que salían como «CONSUMO» (la línea del insumo que `distinct` elegía) salen como «VENTA». Cambian solo esas seis líneas de `trazabilidad.buscarOperacionesPorProducto`."
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {
