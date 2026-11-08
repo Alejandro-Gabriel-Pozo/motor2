@@ -58,7 +58,7 @@ describe("guardarRecetaACiegas: solo desde scripts y tests", () => {
   it("ningún archivo de src/ ni de la consola la importa", () => {
     const todos = [...leer("src"), ...leer("plataforma/src")];
     expect(todos.length).toBeGreaterThan(300);
-    expect(importadores(todos), "guardarRecetaACiegas no se importa desde la aplicación: la acción pública es guardarReceta, con la versión esperada").toEqual([]);
+    expect(importadores(todos), "guardarRecetaACiegas no se importa desde la aplicación: la pantalla guarda con las acciones puntuales de recetas.ts, con la versión esperada").toEqual([]);
   });
 
   it("la importan los seeds de demo y los tests (la regla no quedó vacía)", () => {

@@ -12,7 +12,7 @@ import { actorDePrueba } from "../setup/opciones-de-venta";
 import { azarDelProceso } from "../../src/lib/azar";
 import { crearOpcionDeGrupoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/crear-opcion-de-grupo";
 import { fijarAdmisionDeGrupoEnProductoCasoDeUso } from "../../src/server/actions/catalogo/casos-de-uso/fijar-admision-de-grupo-en-producto";
-import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
+import { guardarRecetaACiegas as guardarReceta } from "../../src/server/actions/catalogo/receta-a-ciegas";
 import { actualizarDisponibilidadProducto } from "../../src/server/actions/catalogo/productos";
 
 /**
