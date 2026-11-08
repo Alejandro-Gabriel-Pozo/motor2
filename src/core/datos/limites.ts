@@ -5,6 +5,8 @@ import { aceptar, rechazar, type ResultadoDato } from "./resultado";
  * Topes de entrada de la auditoría de seguridad (S-22/S-23): un texto o un arreglo sin tope deja a un usuario con sesión inflar la base
  * o dejar un export inservible, y un número fuera del rango de su columna (`Int`, `Decimal(6,2)`) termina en un 500 en vez de un mensaje.
  */
+/** Largo máximo de un id que llega de afuera (un tope de pedido: un cuid o un uuid caben con holgura). Lo comparten los guards que validan ids con `esIdentificador`. */
+export const LARGO_MAXIMO_DE_ID = 64;
 export const LARGO_MAXIMO_NOTAS = 500;
 export const LARGO_MAXIMO_DETALLE = 200;
 export const LARGO_MAXIMO_CONTACTO = 120;

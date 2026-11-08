@@ -6,6 +6,7 @@ import { listarGruposDeOpciones, opcionesApagadasEnSucursal } from "@/server/lec
 import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import { saldosTeoricosEnSucursal } from "@/server/lecturas/movimientos/saldos";
 import type { Db } from "@/lib/db-tipos";
+import { grupoVigente } from "@/core/opciones/public";
 
 /**
  * Las CONSULTAS de lo que decide cada SUCURSAL sobre las opciones de venta (GO-2d; ADR-030 §5): la grilla del precio de un tamaño con precio propio y qué opciones están agotadas.
@@ -114,7 +115,7 @@ export async function cargarOpcionesDeLaSucursal(db: Db, sucursalId: string): Pr
   const insumoPorId = new Map(insumos.map((i) => [i.id, i]));
 
   const sinPoderVenderse = conGrupos.flatMap((p) => {
-    const vacios = (paraVender.get(p.id)?.grupos ?? []).filter((g) => g.admitido && g.activo && g.cantidadMinima > 0 && !g.opciones.some(opcionDisponible)).map((g) => g.nombre);
+    const vacios = (paraVender.get(p.id)?.grupos ?? []).filter((g) => grupoVigente(g) && g.cantidadMinima > 0 && !g.opciones.some(opcionDisponible)).map((g) => g.nombre);
     return vacios.length ? [{ productoId: p.id, nombre: p.nombre, grupos: vacios }] : [];
   });
 

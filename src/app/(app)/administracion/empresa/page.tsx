@@ -2,6 +2,7 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { formatearCuit } from "@/core/fiscal/public";
+import { MONEDA_FIJA } from "@/core/moneda";
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { obtenerPerfilDeEmpresa } from "@/server/consultas/empresa/perfil";
 
@@ -23,7 +24,7 @@ export default async function PerfilDeLaEmpresaPage() {
     { etiqueta: "Nombre", valor: perfil.nombre },
     { etiqueta: "CUIT", valor: perfil.cuit ? formatearCuit(perfil.cuit) : "Todavía no cargado" },
     { etiqueta: "Zona horaria", valor: perfil.zonaHoraria },
-    { etiqueta: "Moneda", valor: perfil.moneda },
+    { etiqueta: "Moneda", valor: `${MONEDA_FIJA} (peso argentino) · fija para todo el sistema` },
   ];
 
   return (

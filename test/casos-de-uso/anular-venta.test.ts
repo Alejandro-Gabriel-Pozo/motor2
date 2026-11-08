@@ -81,7 +81,7 @@ describe("anularVentaCasoDeUso", () => {
       ],
     });
 
-    const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+    const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
 
     expect(r.ok).toBe(true);
     if (!r.ok) return;
@@ -122,7 +122,7 @@ describe("anularVentaCasoDeUso", () => {
     const venta = await operacion({ lineas: [{ cantidad: -2, precioTotal: 200, precioPorUnidadStock: 100, detalle: "Venta de Harina" }] });
     const fija = enElPasado(3 * DIA_MS); // otra hora que la del reloj: tres días atrás
 
-    const r = await anularVentaCasoDeUso({ ...actor(), ahora: fija }, { operacionId: venta.id });
+    const r = await anularVentaCasoDeUso({ ...actor(), ahora: fija }, { operacionId: venta.id, motivo: "Error de carga" });
 
     expect(r.ok).toBe(true);
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toEqual(fija);
@@ -131,7 +131,7 @@ describe("anularVentaCasoDeUso", () => {
   it("P1 paso 7: el día de los textos guardados es el argentino — una venta de las 22:30 argentinas del 6/8 (01:30Z del 7/8) es «del 2026-08-06» en el contra-asiento y en la auditoría", async () => {
     const venta = await operacion({ fecha: new Date("2026-08-07T01:30:00Z"), nroFactura: "F-100" });
 
-    const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+    const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
 
     expect(r.ok).toBe(true);
     const reversion = await prisma.operacion.findFirstOrThrow({ where: { proceso: "AJUSTE", sucursalId } });
@@ -148,7 +148,7 @@ describe("anularVentaCasoDeUso", () => {
       ],
     });
 
-    const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+    const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
 
     expect(r).toMatchObject({ ok: true, mensaje: "Venta anulada. Se revirtieron 2 movimiento(s) de stock y la liquidación de consignación." });
     expect(r.ok && r.datos.huboLiquidacionConsignacion).toBe(true);
@@ -167,7 +167,7 @@ describe("anularVentaCasoDeUso", () => {
     await prisma.operacion.update({ where: { id: yaAnulada.id }, data: { anuladaEn: new Date("2026-08-07T12:00:00Z"), anuladaPorId: adminId } });
     const suelta = await operacion();
 
-    const r = await anularVentaCasoDeUso(actor(), { operacionId: pedida.id });
+    const r = await anularVentaCasoDeUso(actor(), { operacionId: pedida.id, motivo: "Error de carga" });
 
     expect(r.ok).toBe(true);
     if (!r.ok) return;
@@ -190,12 +190,12 @@ describe("anularVentaCasoDeUso", () => {
     const otra = await prisma.sucursal.create({ data: { nombre: "Otra sucursal" } });
     const venta = await operacion();
 
-    expect(await anularVentaCasoDeUso(actor(), { operacionId: "no-existe" })).toEqual({
+    expect(await anularVentaCasoDeUso(actor(), { operacionId: "no-existe", motivo: "Error de carga" })).toEqual({
       ok: false,
       codigo: "NO_ENCONTRADA",
       mensaje: "No se encontró esa operación en esta sucursal.",
     });
-    expect(await anularVentaCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ahora: new Date(), ...baseDe(otra.id) }, { operacionId: venta.id })).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
+    expect(await anularVentaCasoDeUso({ usuarioId: adminId, sucursalId: otra.id, ahora: new Date(), ...baseDe(otra.id) }, { operacionId: venta.id, motivo: "Error de carga" })).toMatchObject({ ok: false, codigo: "NO_ENCONTRADA" });
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toBeNull();
     expect(await prisma.registroAuditoria.count()).toBe(0);
   });
@@ -203,18 +203,51 @@ describe("anularVentaCasoDeUso", () => {
   it("NO_ES_VENTA: el mensaje nombra la operación pedida y su proceso (texto exacto de antes), sin escribir nada", async () => {
     const merma = await operacion({ proceso: "MERMA" });
 
-    const r = await anularVentaCasoDeUso(actor(), { operacionId: merma.id });
+    const r = await anularVentaCasoDeUso(actor(), { operacionId: merma.id, motivo: "Error de carga" });
 
     expect(r).toEqual({ ok: false, codigo: "NO_ES_VENTA", mensaje: `La operación "${merma.id}" no es una Venta — es "MERMA".` });
     expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(0);
     expect((await prisma.operacion.findUniqueOrThrow({ where: { id: merma.id } })).anuladaEn).toBeNull();
   });
 
+  it("E0: el motivo queda en la venta anulada y el contra-asiento apunta a ella (revierteAOperacionId); la hermana de promo y el contra-asiento de cada una también", async () => {
+    const suelta = await operacion();
+    const r = await anularVentaCasoDeUso(actor(), { operacionId: suelta.id, motivo: "Se cobró de más" });
+    expect(r.ok).toBe(true);
+    const anulada = await prisma.operacion.findUniqueOrThrow({ where: { id: suelta.id } });
+    expect(anulada.motivoAnulacion).toBe("Se cobró de más");
+    const reversion = await prisma.operacion.findFirstOrThrow({ where: { revierteAOperacionId: suelta.id } });
+    expect(reversion.proceso).toBe("AJUSTE");
+    // El contra-asiento en sí NO lleva motivo (el motivo vive en la operación anulada: el CHECK lo permite solo si está anulada).
+    expect(reversion.motivoAnulacion).toBeNull();
+  });
+
+  it("E0: una promo anulada deja el mismo motivo en cada componente y un contra-asiento enlazado por cada uno", async () => {
+    const promo = await promoCuenta();
+    const a = await operacion({ promoCuentaId: promo.id });
+    const b = await operacion({ promoCuentaId: promo.id });
+    const r = await anularVentaCasoDeUso(actor(), { operacionId: a.id, motivo: "Promo mal tomada" });
+    expect(r.ok).toBe(true);
+    for (const id of [a.id, b.id]) {
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id } })).motivoAnulacion).toBe("Promo mal tomada");
+      expect(await prisma.operacion.count({ where: { revierteAOperacionId: id, proceso: "AJUSTE" } })).toBe(1);
+    }
+  });
+
+  it("E0 (repetición): reenviar la misma anulación con otro motivo no pisa el motivo original ni escribe otro contra-asiento", async () => {
+    const venta = await operacion();
+    expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Primer motivo" })).ok).toBe(true);
+    const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Segundo motivo" });
+    expect(r).toEqual({ ok: false, codigo: "YA_ANULADA", mensaje: "Esta venta ya está anulada." });
+    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).motivoAnulacion).toBe("Primer motivo");
+    expect(await prisma.operacion.count({ where: { revierteAOperacionId: venta.id } })).toBe(1);
+  });
+
   it("YA_ANULADA: la segunda anulación no escribe otra reversión ni otra fila de auditoría", async () => {
     const venta = await operacion();
-    expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+    expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" })).ok).toBe(true);
 
-    const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+    const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
 
     expect(r).toEqual({ ok: false, codigo: "YA_ANULADA", mensaje: "Esta venta ya está anulada." });
     expect(await prisma.operacion.count({ where: { proceso: "AJUSTE" } })).toBe(1);
@@ -266,7 +299,7 @@ describe("anularVentaCasoDeUso", () => {
       await pausa();
       await contar(harinaId, 3);
 
-      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
 
       expect(r.ok).toBe(false);
       if (r.ok) return;
@@ -281,7 +314,7 @@ describe("anularVentaCasoDeUso", () => {
       await pausa();
       await contar(harinaId, 3, { fechaConteo: enElPasado(30 * DIA_MS) });
 
-      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
 
       expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
       await nadaEscrito(venta.id);
@@ -293,7 +326,7 @@ describe("anularVentaCasoDeUso", () => {
       const ajuste = await prisma.operacion.create({ data: { sucursalId, proceso: "AJUSTE", fecha: new Date(), usuarioId: adminId } });
       await prisma.movimientoStock.create({ data: { operacionId: ajuste.id, productoId: harinaId, seccionId, proceso: "AJUSTE", cantidad: 4, detalle: "Ajuste manual", precioTotal: 0, precioPorUnidadStock: 0 } });
 
-      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
 
       expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
       expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).anuladaEn).toBeNull();
@@ -315,7 +348,7 @@ describe("anularVentaCasoDeUso", () => {
       expect(Number(conteo.diferencia)).toBe(0);
       expect(await prisma.movimientoStock.count({ where: { conteoFisicoId: conteo.id } })).toBe(0);
 
-      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
 
       expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
       expect(r.ok === false && r.mensaje).toContain("Harina (Depósito)");
@@ -331,7 +364,7 @@ describe("anularVentaCasoDeUso", () => {
       expect(r0.ok, r0.ok ? "" : r0.mensaje).toBe(true);
       expect(await prisma.movimientoStock.count({ where: { conteoFisicoId: { not: null } } })).toBe(0);
 
-      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
 
       expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
       await nadaEscrito(venta.id);
@@ -342,7 +375,7 @@ describe("anularVentaCasoDeUso", () => {
       await pausa();
       const venta = await operacion();
 
-      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" })).ok).toBe(true);
     });
 
     it("ataque 2: venta que consumió una MP en consignación, pago al consignante posterior, y anular → PAGO_CONSIGNANTE_POSTERIOR sin escribir nada", async () => {
@@ -351,7 +384,7 @@ describe("anularVentaCasoDeUso", () => {
       const pago = await registrarPagoConsignanteCasoDeUso(comoA(), { proveedorId: consignante.id, importe: 30, fecha: new Date(), claveIdempotencia: crypto.randomUUID() });
       expect(pago.ok).toBe(true);
 
-      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
 
       expect(r.ok).toBe(false);
       if (r.ok) return;
@@ -365,7 +398,7 @@ describe("anularVentaCasoDeUso", () => {
       await pausa();
       await prisma.pagoConsignante.create({ data: { sucursalId, proveedorId: consignante.id, importe: 30, fecha: enElPasado(30 * DIA_MS), usuarioId: adminId } });
 
-      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
 
       expect(r).toMatchObject({ ok: false, codigo: "PAGO_CONSIGNANTE_POSTERIOR" });
       await nadaEscrito(venta.id);
@@ -381,7 +414,7 @@ describe("anularVentaCasoDeUso", () => {
       await pausa();
       await contar(queso.id, 0);
 
-      const r = await anularVentaCasoDeUso(actor(), { operacionId: pedida.id });
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: pedida.id, motivo: "Error de carga" });
 
       expect(r).toMatchObject({ ok: false, codigo: "CONTEO_POSTERIOR" });
       expect(r.ok === false && r.mensaje).toContain("Queso");
@@ -391,7 +424,7 @@ describe("anularVentaCasoDeUso", () => {
 
     it("control: sin nada posterior, la venta se anula como siempre", async () => {
       const venta = await operacion();
-      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id });
+      const r = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" });
       expect(r.ok).toBe(true);
     });
 
@@ -400,7 +433,7 @@ describe("anularVentaCasoDeUso", () => {
       await pausa();
       const venta = await operacion();
 
-      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" })).ok).toBe(true);
     });
 
     it("control: un conteo posterior de OTRO producto, o de la misma producto en OTRA sección, no la frena", async () => {
@@ -414,7 +447,7 @@ describe("anularVentaCasoDeUso", () => {
       await contar(otroProducto.id, 3);
       expect((await registrarConteoFisicoCasoDeUso(comoA(), { productoId: harinaId, seccionId: otraSeccion.id, conteoReal: 2, fechaConteo: new Date(), accion: "AJUSTAR" })).ok).toBe(true);
 
-      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" })).ok).toBe(true);
     });
 
     it("control: un conteo posterior CANCELADO (el ajuste y su reversión se anulan entre sí) no la frena", async () => {
@@ -423,15 +456,15 @@ describe("anularVentaCasoDeUso", () => {
       const conteo = await contar(harinaId, 3);
       expect((await cancelarConteoFisicoCasoDeUso(comoA(), conteo.id)).ok).toBe(true);
 
-      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" })).ok).toBe(true);
     });
 
     it("control: anular DOS ventas del mismo producto, una atrás de la otra: la reversión de la primera no cuenta como ajuste posterior de la segunda", async () => {
       const a = await operacion();
       const b = await operacion();
-      expect((await anularVentaCasoDeUso(actor(), { operacionId: a.id })).ok).toBe(true);
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: a.id, motivo: "Error de carga" })).ok).toBe(true);
 
-      expect((await anularVentaCasoDeUso(actor(), { operacionId: b.id })).ok).toBe(true);
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: b.id, motivo: "Error de carga" })).ok).toBe(true);
     });
 
     it("control: un pago a OTRO proveedor, o un pago ANTERIOR a la venta, no la frena", async () => {
@@ -444,7 +477,7 @@ describe("anularVentaCasoDeUso", () => {
       await pausa();
       await prisma.pagoConsignante.create({ data: { sucursalId, proveedorId: otro.id, importe: 10, fecha: new Date(), usuarioId: adminId } });
 
-      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" })).ok).toBe(true);
     });
 
     it("control: el pago al MISMO consignante anterior a la venta no la frena", async () => {
@@ -458,13 +491,13 @@ describe("anularVentaCasoDeUso", () => {
       const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date(), usuarioId: adminId } });
       await prisma.movimientoStock.create({ data: { operacionId: venta.id, productoId: copa.id, seccionId, proceso: "LIQUIDACION_CONSIGNACION", cantidad: 0, detalle: "Liquidación", precioTotal: 30, precioPorUnidadStock: 30 } });
 
-      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id })).ok).toBe(true);
+      expect((await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" })).ok).toBe(true);
     });
   });
 
   it("aResultadoAccion sobre el resultado del caso de uso: la pantalla recibe solo { ok, mensaje }", async () => {
     const venta = await operacion();
-    const r = aResultadoAccion(await anularVentaCasoDeUso(actor(), { operacionId: venta.id }));
+    const r = aResultadoAccion(await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" }));
     expect(Object.keys(r).sort()).toEqual(["mensaje", "ok"]);
   });
 });

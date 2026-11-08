@@ -1,6 +1,7 @@
 "use server";
 
 import { guardComandoActualizarOrdenOpcionItemAgrupadoCarta, guardComandoAgregarOpcionItemAgrupadoCarta, guardComandoGuardarItemAgrupadoCarta } from "@/core/features/carta/items-agrupados.guard";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO } from "@/core/carta/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, okConId, type ResultadoAccion, type ResultadoConId } from "../tipos";
@@ -64,6 +65,7 @@ export interface DatosItemAgrupadoCarta {
  */
 export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): Promise<ResultadoConId> {
   return conPermiso<ResultadoConId>("carta_items_agrupados", async (ctx) => {
+    if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) return error(MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO);
     const comando = guardComandoGuardarItemAgrupadoCarta(datos);
     if (!comando.ok) return error(comando.mensaje);
     const r = await guardarItemAgrupadoCartaCasoDeUso(ctx, comando.valor, { cartaCambio: () => revalidarCartasPublicas(ctx.empresaSlug) });
@@ -75,6 +77,7 @@ export async function guardarItemAgrupadoCarta(datos: DatosItemAgrupadoCarta): P
 /** Nunca se borra un ítem agrupado: se apaga (deja de salir en la carta, y sus opciones tampoco salen sueltas, D3). */
 export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: string, activo: boolean): Promise<ResultadoAccion> {
   return conPermiso("carta_items_agrupados", async (ctx) => {
+    if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) return error(MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO);
     const resultado = await actualizarActivoItemAgrupadoCartaCasoDeUso(ctx, { itemAgrupadoCartaId, activo });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
@@ -89,6 +92,7 @@ export async function actualizarActivoItemAgrupadoCarta(itemAgrupadoCartaId: str
  */
 export async function agregarOpcionItemAgrupadoCarta(itemAgrupadoCartaId: string, productoId: string, orden: number | string | null = null): Promise<ResultadoAccion> {
   return conPermiso("carta_items_agrupados", async (ctx) => {
+    if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) return error(MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO);
     // S-52: el guard se CALCULA acá (formato y rango del orden) pero su rechazo lo aplica el caso de uso después de leer el ítem, el producto y sus conflictos.
     const ordenValidado = guardComandoAgregarOpcionItemAgrupadoCarta({ orden });
     const resultado = await agregarOpcionItemAgrupadoCartaCasoDeUso(ctx, { itemAgrupadoCartaId, productoId, orden: ordenValidado });
@@ -99,6 +103,7 @@ export async function agregarOpcionItemAgrupadoCarta(itemAgrupadoCartaId: string
 
 export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, orden: number | string | null): Promise<ResultadoAccion> {
   return conPermiso("carta_items_agrupados", async (ctx) => {
+    if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) return error(MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO);
     const comando = guardComandoActualizarOrdenOpcionItemAgrupadoCarta({ opcionId, orden });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await actualizarOrdenOpcionItemAgrupadoCartaCasoDeUso(ctx, comando.valor);
@@ -110,6 +115,7 @@ export async function actualizarOrdenOpcionItemAgrupadoCarta(opcionId: string, o
 /** Saca un producto de su ítem agrupado: se borra solo la referencia. El producto y su ContenidoCartaProducto no se tocan (D3). */
 export async function quitarOpcionItemAgrupadoCarta(opcionId: string): Promise<ResultadoAccion> {
   return conPermiso("carta_items_agrupados", async (ctx) => {
+    if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) return error(MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO);
     const resultado = await quitarOpcionItemAgrupadoCartaCasoDeUso(ctx, { opcionId });
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);

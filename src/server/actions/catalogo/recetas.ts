@@ -41,58 +41,6 @@ export async function listarVersionesDeReceta(productoId: string) {
   return cargarHistorialDeVersiones(ctx.db, ALCANCE_CENTRAL, productoId, INCLUDE_RECETA_COMPLETA);
 }
 
-/**
- * Equivalente de guardarReceta (Catalogo.js:1711-1779): versionado
- * append-only real — NUNCA pisa ni borra una versión vieja. `version` se
- * calcula de forma optimista (MAX(version)+1).
- *
- * Qué evita pisar el cambio de otra persona (O.4, Hito 4, paso H4C-24): `versionEsperada`, que el caso de uso compara con la versión vigente DENTRO de su
- * transacción SERIALIZABLE; si alguien guardó en el medio, se rechaza sin escribir. El `@@unique([productoId, version])` con el reintento (`conReintento`, backoff
- * y jitter) NO es ese árbitro: solo ordena dos guardados A CIEGAS simultáneos que calcularon el mismo número de versión (el segundo queda encima, sin aviso).
- *
- * `pasos`/`cabecera` viajan en la MISMA versión que `items` — reemplazo
- * completo de los tres a la vez, igual criterio que ya tenían los
- * ingredientes (ver docs/grounding-ficha-tecnica-tandoor.md, "Interacción
- * con el versionado append-only"). Todo llamador puntual (agregar/editar/
- * quitar UN ingrediente o paso) tiene que mandar los tres completos —
- * `agregarIngredienteAReceta` y las funciones de pasos/cabecera de abajo
- * hacen ese round-trip por vos.
- *
- * `versionEsperada` (H7, Pureza Fase 4): la versión de la receta sobre la que quien llama armó este reemplazo (`0` = todavía no había). Si la receta ya va por otra, alguien guardó en el medio y
- * esto pisaría su cambio: se rechaza con un mensaje. Las funciones puntuales de abajo (agregar/editar/quitar un ingrediente o un paso, la cabecera) piden `versionVista`: la versión que la PANTALLA
- * mostraba cuando la persona armó su cambio (no la que se lee al ejecutar, que ya sería la nueva).
- *
- * O.1 (Hito 4, paso H4C-23, autorizado por el dueño): la versión es OBLIGATORIA en esta acción pública (un entero ≥ 0; `undefined`, `null` u omitida se rechazan con
- * «La versión de la receta que se esperaba no es válida.» — `guardComandoGuardarVersionDeReceta` con `exigirVersion`). El reemplazo completo a ciegas (seeds,
- * scripts, tests) ya no es alcanzable desde la red: vive en `guardarRecetaACiegas` (`./receta-a-ciegas.ts`, `server-only` y SIN `"use server"`).
- *
- * Desde la Task #41 (P1, docs/arquitectura-casos-de-uso-2026-09-27.md) esta Server Action es un adaptador fino: permiso
- * (`conPermiso`) → formato (`guardComandoGuardarVersionDeReceta`) → caso de uso (`casos-de-uso/guardar-version-de-receta.ts`:
- * validación, versionado con reintento, transacción SERIALIZABLE, arrastre de calibraciones locales y auditoría) →
- * `aResultadoAccion`. El resto de las funciones de este archivo (agregar/editar/quitar ingrediente o paso, cabecera) siguen
- * delegando en el mismo caso de uso por `guardarRecetaConPuerta` (S-52: con el guard de su puerta), sin migrar: por eso el archivo NO está en `ACCIONES_CON_CASO_DE_USO`.
- */
-export async function guardarReceta(
-  productoId: string,
-  items: IngredienteInput[],
-  pasos: PasoInput[],
-  cabecera: CabeceraRecetaInput,
-  versionEsperada: number
-): Promise<ResultadoAccion> {
-  return conPermisoDeEmpresa("guardar_receta", async (ctx) => {
-    // Desde la red puede llegar cualquier cosa: un `pasos`/`cabecera` ausente sigue valiendo «sin pasos» / «sin cabecera», como cuando tenían valor por defecto.
-    const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos: pasos ?? [], cabecera: cabecera ?? {}, versionEsperada }, { exigirVersion: true });
-    if (!comando.ok) return error(comando.mensaje);
-    const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, comando.valor);
-    // Sin esto la página no refleja el cambio en un navegador real hasta
-    // recargar a mano (ver src/server/actions/refrescar.ts) — detectado
-    // con Playwright, no con Vitest ni con los closures que ya hacían
-    // `redirect(volver)` tras un `ok` (una navegación real ya refresca sola).
-    if (resultado.ok) refrescarVistaSiHaceFalta();
-    return aResultadoAccion(resultado);
-  });
-}
-
 /** La etapa a la que pertenece el dato de una acción puntual, y lo que su guard decidió (S-52). */
 interface PuertaDeLaAccion {
   guard: PuertaDeReceta;
@@ -100,7 +48,7 @@ interface PuertaDeLaAccion {
 }
 
 /**
- * El cuerpo de `guardarReceta`, que también usan las acciones puntuales de abajo (agregar, editar o quitar UN ingrediente o paso, reordenar, insertar, la cabecera). No se exporta: este
+ * El reemplazo completo de la receta (desde la poda del 2026-11-06 ya no es una acción pública: el reemplazo a ciegas o con versión vive en `guardarRecetaACiegas`, solo servidor), que usan las acciones puntuales de abajo (agregar, editar o quitar UN ingrediente o paso, reordenar, insertar, la cabecera). No se exporta: este
  * archivo es `"use server"` y toda función exportada es un endpoint. Con `puerta` (S-52): dentro del permiso y antes de cualquier otra cosa se devuelve la etapa `inmediata` del guard de la
  * acción (el producto y la versión que vio la pantalla: lo mismo y en el mismo orden que `guardComandoGuardarVersionDeReceta`), y el rechazo del `rango` viaja al caso de uso, que lo aplica
  * después de leer el producto (un producto inexistente o no elegible gana sobre un dato fuera de rango).
@@ -132,7 +80,7 @@ async function guardarRecetaConPuerta(
 /**
  * Equivalente de agregarIngredienteAReceta (Catalogo.js:1817-1843): NO hace
  * un guardado parcial — lee la receta vigente completa, rechaza si el
- * insumo ya está, arma la unión, y delega en guardarReceta (que genera la
+ * insumo ya está, arma la unión, y delega en guardarRecetaConPuerta (que genera la
  * próxima versión con TODOS los ingredientes juntos, más los pasos y la
  * cabecera vigentes sin tocar).
  */
@@ -156,7 +104,7 @@ export async function agregarIngredienteAReceta(productoId: string, ingrediente:
  * de harina en vez de 100g" era Quitar (una versión) + Agregar de nuevo
  * (otra versión), dos pasos sueltos por un solo cambio real. Mismo
  * criterio que agregarIngredienteAReceta: lee la receta vigente completa,
- * reemplaza ese ingrediente puntual, y delega en guardarReceta.
+ * reemplaza ese ingrediente puntual, y delega en guardarRecetaConPuerta.
  */
 export async function actualizarIngredienteDeReceta(
   productoId: string,

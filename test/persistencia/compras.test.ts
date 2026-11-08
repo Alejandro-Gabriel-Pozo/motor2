@@ -3,8 +3,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { cargarCompraParaAnular } from "../../src/server/persistencia/compras/cargar-compra-para-anular";
 import { escribirAnulacionDeCompra } from "../../src/server/persistencia/compras/escribir-anulacion-de-compra";
-import { cargarCompraParaCorregir, cargarProveedorParaCorreccion } from "../../src/server/persistencia/compras/cargar-compra-para-corregir";
-import { escribirCorreccionDeCompra } from "../../src/server/persistencia/compras/escribir-correccion-de-compra";
+import { cargarProveedoresParaCorreccion } from "../../src/server/persistencia/compras/cargar-factura-proveedor";
+import { escribirCorreccionDeFactura } from "../../src/server/persistencia/compras/escribir-factura-proveedor";
+import { datosDeFactura, datosDeRenglon } from "../setup/factura-proveedor";
 import { registrarResultadoIdempotente } from "../../src/server/persistencia/movimientos/idempotencia";
 import { claveDeLote, construirReversion } from "../../src/core/compras/anulacion";
 
@@ -151,37 +152,47 @@ describe("persistencia de compras", () => {
     });
   });
 
-  describe("corrección", () => {
-    it("cargarCompraParaCorregir: cabecera actual y nombre del proveedor; null si es de otra sucursal", async () => {
+  describe("corrección de los datos de una factura", () => {
+    /** Una factura de una parte (cabecera, renglón, compra y parte) con el número y el detalle de la compra. */
+    async function facturaConSuCompra() {
       const op = await compra();
-      const c = await prisma.$transaction((tx) => cargarCompraParaCorregir(tx, { operacionId: op.id, sucursalId }));
-      expect(c).toEqual({
-        id: op.id,
-        proceso: "COMPRA",
-        anuladaEn: null,
-        fecha: op.fecha,
-        cabecera: { proveedorId, nroFactura: "A-0001", detalleLibre: "semanal" },
-        proveedorNombre: "Molino SA",
-        // E3a (paso 6): una compra suelta no es la parte de una factura de proveedor (esa no se corrige sola).
-        esDeFactura: false,
-      });
-      expect(await prisma.$transaction((tx) => cargarCompraParaCorregir(tx, { operacionId: op.id, sucursalId: otraSucursalId }))).toBeNull();
-    });
+      const factura = await prisma.facturaProveedor.create({ data: datosDeFactura({ usuarioId: adminId, proveedorId }, { nroFactura: "A-0001", nroFacturaNormalizado: "A:1", detalleLibre: "semanal" }) as never });
+      const renglon = await prisma.facturaProveedorRenglon.create({ data: datosDeRenglon({ facturaProveedorId: factura.id, productoId: harinaId }) as never });
+      await prisma.movimientoStock.updateMany({ where: { operacionId: op.id }, data: { facturaProveedorRenglonId: renglon.id } });
+      await prisma.facturaProveedorSucursal.create({ data: { facturaProveedorId: factura.id, sucursalId, porcentajeDeclaradoBp: 10000, operacionId: op.id, estadoRecepcion: "RECIBIDA", recibidaEn: new Date(), recibidaPorId: adminId } as never });
+      return { op, factura };
+    }
 
-    it("cargarProveedorParaCorreccion: nombre y activo, o null", async () => {
+    it("cargarProveedoresParaCorreccion: nombre y activo de cada proveedor pedido; los que no existen no salen", async () => {
       await prisma.proveedor.update({ where: { id: proveedorId }, data: { activo: false } });
-      expect(await prisma.$transaction((tx) => cargarProveedorParaCorreccion(tx, proveedorId))).toEqual({ nombre: "Molino SA", activo: false });
-      expect(await prisma.$transaction((tx) => cargarProveedorParaCorreccion(tx, "no-existe"))).toBeNull();
+      const r = await prisma.$transaction((tx) => cargarProveedoresParaCorreccion(tx, [proveedorId, "no-existe"]));
+      expect([...r.entries()]).toEqual([[proveedorId, { nombre: "Molino SA", activo: false }]]);
     });
 
-    it("escribirCorreccionDeCompra: actualiza los tres campos de la cabecera y no toca las líneas", async () => {
-      const op = await compra();
+    it("escribirCorreccionDeFactura: actualiza la cabecera y COPIA proveedor, número y detalle a la compra de la parte; no toca las líneas del Kardex", async () => {
+      const { op, factura } = await facturaConSuCompra();
+      const otro = await prisma.proveedor.create({ data: { codigo: "PRV_2", nombre: "Distribuidora Sur" } });
       const antes = await prisma.movimientoStock.findMany({ where: { operacionId: op.id }, orderBy: { id: "asc" } });
 
-      await prisma.$transaction((tx) => escribirCorreccionDeCompra(tx, op.id, { proveedorId: null, nroFactura: "B-2", detalleLibre: null }));
+      await prisma.$transaction((tx) =>
+        escribirCorreccionDeFactura(tx, { facturaProveedorId: factura.id, proveedorId: otro.id, nroFactura: "B-2", nroFacturaNormalizado: "B:2", detalleLibre: null, detalleAnterior: "semanal", operacionIds: [op.id] })
+      );
 
-      expect(await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).toMatchObject({ proveedorId: null, nroFactura: "B-2", detalleLibre: null });
+      expect(await prisma.facturaProveedor.findUniqueOrThrow({ where: { id: factura.id } })).toMatchObject({ proveedorId: otro.id, nroFactura: "B-2", nroFacturaNormalizado: "B:2", detalleLibre: null });
+      expect(await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).toMatchObject({ proveedorId: otro.id, nroFactura: "B-2", detalleLibre: null });
       expect(await prisma.movimientoStock.findMany({ where: { operacionId: op.id }, orderBy: { id: "asc" } })).toEqual(antes);
+    });
+
+    it("el detalle se copia solo a las compras que lo tenían igual que la cabecera: la que tiene otro detalle lo conserva", async () => {
+      const { op, factura } = await facturaConSuCompra();
+      await prisma.operacion.update({ where: { id: op.id }, data: { detalleLibre: "otro detalle propio" } });
+
+      await prisma.$transaction((tx) =>
+        escribirCorreccionDeFactura(tx, { facturaProveedorId: factura.id, proveedorId, nroFactura: "A-0001", nroFacturaNormalizado: "A:1", detalleLibre: "nuevo", detalleAnterior: "semanal", operacionIds: [op.id] })
+      );
+
+      expect((await prisma.facturaProveedor.findUniqueOrThrow({ where: { id: factura.id } })).detalleLibre).toBe("nuevo");
+      expect((await prisma.operacion.findUniqueOrThrow({ where: { id: op.id } })).detalleLibre).toBe("otro detalle propio");
     });
   });
 });

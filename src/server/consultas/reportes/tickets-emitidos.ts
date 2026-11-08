@@ -1,6 +1,7 @@
 import "server-only";
 import type { Db } from "@/lib/db-tipos";
-import { armarTicketImpresoEn, estadoDeTicket, claveDeLineaDeVenta, configuracionDeItemLeido, cuentaConOpciones, itemParaLineaDeVenta, lineasDeVenta, nombreDelMesero, type ItemConVenta } from "@/core/pos/public";
+import { cargarVersionesDeVentas } from "@/server/lecturas/pos/versiones-de-venta";
+import { armarTicketImpresoEn, estadoDeTicket, itemsVigentesEn, claveDeLineaDeVenta, configuracionDeItemLeido, cuentaConOpciones, itemParaLineaDeVenta, lineasDeVenta, nombreDelMesero, type ItemConVenta } from "@/core/pos/public";
 import { TAMANO_PAGINA_TICKETS, type FiltroTickets, type LineaTicketEmitido, type FilaTicketEmitido, type PaginaTickets } from "@/core/reportes/public";
 
 /** Las líneas NETAS del ticket «como se imprimió» en `impresaEn`, con el `operacionId` de cada una (misma agrupación que
@@ -14,7 +15,7 @@ import { TAMANO_PAGINA_TICKETS, type FiltroTickets, type LineaTicketEmitido, typ
  */
 function lineasConOperacion(items: readonly ItemConVenta[], impresaEn: Date, descuentoPorcentaje: number | null): LineaTicketEmitido[] {
   const { lineas } = armarTicketImpresoEn(items, impresaEn, descuentoPorcentaje);
-  const vigentes = items.filter((i) => i.anuladaEn === null || i.anuladaEn > impresaEn);
+  const vigentes = itemsVigentesEn(items, impresaEn);
   // GO-2b: la clave de siempre solo para las líneas SIN opciones; una línea configurada o un adicional toma la operación de sus propios ítems (como los enlazó el cierre).
   const operacionPorClave = new Map<string, string | null>();
   for (const i of vigentes) {
@@ -92,6 +93,9 @@ export async function listarTicketsEmitidos(sucursalId: string, filtro: FiltroTi
   const hayMas = ejemplares.length > TAMANO_PAGINA_TICKETS;
   const pagina = hayMas ? ejemplares.slice(0, TAMANO_PAGINA_TICKETS) : ejemplares;
 
+  // E1: las ventas que se corrigieron quitando unidades (la original quedó marcada y hay otra que la reemplaza).
+  const versiones = await cargarVersionesDeVentas(db, pagina.flatMap((e) => e.cuenta.items.flatMap((i) => (i.operacionId && i.operacion?.anuladaEn ? [i.operacionId] : []))));
+
   const items: FilaTicketEmitido[] = pagina.map((e) => {
     const conOpciones = cuentaConOpciones(e.cuenta.items);
     const items: ItemConVenta[] = e.cuenta.items.map((i) => ({
@@ -102,6 +106,7 @@ export async function listarTicketsEmitidos(sucursalId: string, filtro: FiltroTi
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
+      ...(i.operacionId && versiones.has(i.operacionId) ? { versionesDeLaVenta: versiones.get(i.operacionId) } : {}),
       promo: i.promoCuenta ? { promoCuentaId: i.promoCuenta.id, titulo: i.promoCuenta.titulo } : undefined,
       ...configuracionDeItemLeido(conOpciones, i),
     }));

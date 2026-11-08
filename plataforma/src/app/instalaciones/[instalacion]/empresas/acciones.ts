@@ -48,7 +48,6 @@ export async function darDeAlta(instalacionId: string, _: EstadoDeFormulario, fo
     nombre: texto(formData, "nombre"),
     slug: texto(formData, "slug"),
     zonaHoraria: texto(formData, "zonaHoraria"),
-    moneda: texto(formData, "moneda"),
     nombreSucursal: texto(formData, "nombreSucursal"),
     emailDuenio: texto(formData, "emailDuenio"),
   });

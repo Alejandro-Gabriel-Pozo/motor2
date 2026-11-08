@@ -42,7 +42,7 @@ describe("obtenerTicketsRecientes — estado derivado (vigente / desactualizada 
 
   it("anulación PARCIAL después de imprimir (una línea con anularVenta): desactualizada, y las líneas y el total son solo lo vigente", async () => {
     const { ventaFlan } = await cerrarMilanesaYFlan();
-    expect((await anularVenta(ventaFlan)).ok).toBe(true);
+    expect((await anularVenta(ventaFlan, "Error de carga")).ok).toBe(true);
 
     const ticket = await laTicket();
     expect(ticket).toMatchObject({ estado: "desactualizada", ventaAnulada: true, numero: { numero: 1, ejemplar: 1 }, corrigeA: null, total: 18000 });
@@ -51,13 +51,13 @@ describe("obtenerTicketsRecientes — estado derivado (vigente / desactualizada 
 
   it("anulación TOTAL (todas las operaciones): anulada, sin líneas vigentes", async () => {
     const { ventaMilanesa, ventaFlan } = await cerrarMilanesaYFlan();
-    for (const id of [ventaMilanesa, ventaFlan]) expect((await anularVenta(id)).ok).toBe(true);
+    for (const id of [ventaMilanesa, ventaFlan]) expect((await anularVenta(id, "Error de carga")).ok).toBe(true);
     expect(await laTicket()).toMatchObject({ estado: "anulada", ventaAnulada: true, lineas: [], total: 0 });
   });
 
   it("con el ejemplar B emitido después de la anulación: vigente otra vez, con su número y la referencia al A; una anulación posterior la vuelve a desactualizar", async () => {
     const { cuenta, ventaMilanesa, ventaFlan } = await cerrarMilanesaYFlan();
-    expect((await anularVenta(ventaFlan)).ok).toBe(true);
+    expect((await anularVenta(ventaFlan, "Error de carga")).ok).toBe(true);
     const a = await prisma.ejemplarTicket.findUniqueOrThrow({ where: { cuentaId_ejemplar: { cuentaId: cuenta.id, ejemplar: 1 } } });
     await prisma.ejemplarTicket.create({
       data: { sucursalId: s.sucursalId, cuentaId: cuenta.id, numero: a.numero, ejemplar: 2, corrigeAId: a.id, motivo: "No quiso el flan", emitidoPorId: s.admin.id, emitidoEn: new Date() },
@@ -65,7 +65,7 @@ describe("obtenerTicketsRecientes — estado derivado (vigente / desactualizada 
 
     expect(await laTicket()).toMatchObject({ estado: "vigente", ventaAnulada: true, numero: { numero: 1, ejemplar: 2 }, corrigeA: { numero: 1, ejemplar: 1 }, total: 18000 });
 
-    expect((await anularVenta(ventaMilanesa)).ok).toBe(true);
+    expect((await anularVenta(ventaMilanesa, "Error de carga")).ok).toBe(true);
     expect(await laTicket()).toMatchObject({ estado: "anulada", total: 0 });
   });
 
@@ -110,7 +110,7 @@ describe("obtenerTicketsRecientes — estado derivado (vigente / desactualizada 
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
     const itemMila = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id, productoId: s.milanesa.id } });
-    expect((await anularVenta(itemMila.operacionId!)).ok).toBe(true);
+    expect((await anularVenta(itemMila.operacionId!, "Error de carga")).ok).toBe(true);
 
     const itemFlan = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id, productoId: s.flan.id } });
     const operacionFlan = await prisma.operacion.findUniqueOrThrow({ where: { id: itemFlan.operacionId! } });

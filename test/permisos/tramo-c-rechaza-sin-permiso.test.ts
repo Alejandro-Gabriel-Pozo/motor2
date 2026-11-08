@@ -49,7 +49,6 @@ import { actualizarActivaSeccion, actualizarRespaldoSeccion, crearSeccion, renom
 import { eliminarFrecuenciaConteo, setFrecuenciaConteo } from "../../src/server/actions/stock/frecuencia-conteo";
 import { eliminarSeccionHabitual, setSeccionHabitual } from "../../src/server/actions/stock/seccion-habitual";
 import { eliminarStockMinimo, setStockMinimoProducto } from "../../src/server/actions/stock/stock-minimo";
-import { guardarReceta } from "../../src/server/actions/catalogo/recetas";
 import { actualizarActivaSeccionCarta, guardarSeccionCarta } from "../../src/server/actions/carta/secciones";
 import { actualizarActivoGeneroCarta, guardarGeneroCarta } from "../../src/server/actions/carta/generos";
 import { actualizarVisibleEnCarta, guardarContenidoCartaProducto } from "../../src/server/actions/carta/contenido-producto";
@@ -139,7 +138,6 @@ interface Mutacion {
   preparar?: (e: Escenario) => Promise<void>;
 }
 
-const linea = (e: Escenario, cantidad: number) => ({ insumoProductoId: e.harina000Id, cantidad, unidadId: e.kgId, mermaPorcentaje: 0 });
 
 const MUTACIONES: Mutacion[] = [
   // Dinero de carta (4.2).
@@ -223,8 +221,6 @@ const MUTACIONES: Mutacion[] = [
   { nombre: "eliminarSeccionHabitual", clave: "stock_seccion_habitual", contexto: "sucursal", llamar: (e) => eliminarSeccionHabitual(e.seccionHabitualId) },
   { nombre: "setStockMinimoProducto", clave: "stock_minimo", contexto: "sucursal", llamar: (e) => setStockMinimoProducto(e.harina000Id, 5) },
   { nombre: "eliminarStockMinimo", clave: "stock_minimo", contexto: "sucursal", llamar: (e) => eliminarStockMinimo(e.stockMinimoId) },
-  // O.1: la receta central.
-  { nombre: "guardarReceta", clave: "guardar_receta", contexto: "empresa", llamar: (e) => guardarReceta(e.fainaId, [linea(e, 0.1)], [], {}, 0) },
   // Hito 5, bloque D: la configuración de la carta (las 8 acciones que siguen sin caso de uso al arrancar el bloque).
   { nombre: "guardarSeccionCarta", clave: "carta_secciones", contexto: "empresa", llamar: () => guardarSeccionCarta({ nombre: "Postres" }) },
   { nombre: "actualizarActivaSeccionCarta", clave: "carta_secciones", contexto: "empresa", llamar: (e) => actualizarActivaSeccionCarta(e.seccionCartaId, false) },
@@ -460,13 +456,13 @@ async function rechazaSinTocarNada(actor: { id: string; email: string }, m: Muta
 const BAJO_EL_PISO = MUTACIONES.filter((m) => PISO.get(m.clave) === "administrador");
 const DE_SUCURSAL = MUTACIONES.filter((m) => m.contexto === "sucursal");
 
-describe("tramo C (carta, catálogo y stock): las 70 mutaciones rechazan sin el permiso y no cambian ninguna tabla", () => {
-  it("la lista son las 70 (las 51 de la pieza, guardarReceta, las 17 de configuración de la carta y guardarSoloSalonPromoCarta), con el contexto del catálogo y los pisos esperados", () => {
-    expect(MUTACIONES).toHaveLength(70);
-    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(70);
+describe("tramo C (carta, catálogo y stock): las 69 mutaciones rechazan sin el permiso y no cambian ninguna tabla", () => {
+  it("la lista son las 69 (las 51 de la pieza, las 17 de configuración de la carta y guardarSoloSalonPromoCarta), con el contexto del catálogo y los pisos esperados", () => {
+    expect(MUTACIONES).toHaveLength(69);
+    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(69);
     for (const m of MUTACIONES) expect(m.contexto, `${m.nombre}: el contexto declarado no es el del catálogo`).toBe(CONTEXTO.get(m.clave));
     // +1: guardarSoloSalonPromoCarta (carta_promo_definir, piso administrador).
-    expect(BAJO_EL_PISO.length).toBe(40 + 17);
+    expect(BAJO_EL_PISO.length).toBe(39 + 17);
     // 19 de la pieza original + 2 del bloque D (copiar la carta y el tema) + 9 que pasaron a contexto sucursal con S-10/D1 (géneros, contenido e ítems agrupados, O.59).
     expect(DE_SUCURSAL.length).toBe(19 + 2 + 9);
   });

@@ -35,6 +35,7 @@ describe("vínculo proveedor↔producto: dos compras simultáneas de sucursales 
         empresaId: EMPRESA_POR_DEFECTO_ID,
         sucursalId,
         sucursalNombre,
+        ahora: new Date(),
         db: prisma,
         transaccion: ((fn: Parameters<typeof prisma.$transaction>[0], opciones?: object) => prisma.$transaction(fn as never, opciones as never)) as never,
       });

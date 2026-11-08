@@ -1,10 +1,13 @@
 "use server";
 
-import { guardComandoCerrarCuenta, guardComandoEmitirTicketCorregido } from "@/core/features/cuentas/cuenta.guard";
+import { guardComandoCerrarCuenta, guardComandoCorregirLineaDeTicket, guardComandoEmitirTicketCorregido, guardComandoQuitarUnidadesDeLinea } from "@/core/features/cuentas/cuenta.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
+import { requierePermiso } from "@/server/acceso/gate";
 import { conPermiso } from "../con-permiso";
 import { error, ok, type ResultadoAccion, type ResultadoTicketCorregido } from "../tipos";
 import { cerrarCuentaCasoDeUso } from "./casos-de-uso/cerrar-cuenta";
+import { corregirLineaDeTicketCasoDeUso } from "./casos-de-uso/corregir-linea-de-ticket";
+import { quitarUnidadesDeLineaCasoDeUso } from "./casos-de-uso/quitar-unidades-de-linea";
 import { emitirTicketCorregidoCasoDeUso } from "./casos-de-uso/emitir-ticket-corregido";
 
 /**
@@ -76,6 +79,65 @@ export async function emitirTicketCorregido(cuentaId: string, motivo: string): P
     const r = await emitirTicketCorregidoCasoDeUso(ctx, comando.valor);
     // Como `aResultadoAccion`, pero la pantalla necesita además QUÉ ejemplar se emitió (para imprimirlo): solo `numero` y `ejemplar` de
     // `datos` — nunca los ids internos.
+    return r.ok ? { ...ok(r.mensaje), numero: r.datos.numero, ejemplar: r.datos.ejemplar } : error(r.mensaje);
+  });
+}
+
+/**
+ * «Corregir una línea» de una cuenta cerrada (E0 de la corrección por ajuste, docs/diseno-correccion-por-ajuste-2026-11-06.md): en UN paso y UNA transacción anula la
+ * línea ENTERA (`operacionId` = su Operacion VENTA; una promo se anula entera, un adicional va con su producto), guarda el motivo en la venta y emite el ticket
+ * corregido (el ejemplar siguiente, mismo número). Reemplaza el recorrido de tres pantallas (anular en Trazabilidad y después «Emitir ticket corregido»), que podía
+ * quedar a medias.
+ *
+ * Permisos: `anular_venta` (piso administrador, lo pide `conPermiso`) y TAMBIÉN `pos_emitir_ticket_corregido`, pedido acá como primera línea: son las dos cosas que
+ * hace. Sin claves nuevas. `ejemplarVisto` y `totalVisto` son lo que la persona tenía en pantalla (guarda optimista) y `claveIdempotencia` el UUID del diálogo (I3).
+ *
+ * Adaptador fino: permisos → formato (`guardComandoCorregirLineaDeTicket`) → caso de uso (`casos-de-uso/corregir-linea-de-ticket.ts`) → `{ ok, mensaje, numero, ejemplar }`.
+ */
+export async function corregirLineaDeTicket(
+  cuentaId: string,
+  operacionId: string,
+  motivo: string,
+  ejemplarVisto: number,
+  totalVisto: number,
+  claveIdempotencia: string
+): Promise<ResultadoTicketCorregido> {
+  return conPermiso("anular_venta", async (ctx) => {
+    const tambien = await requierePermiso(ctx.usuarioId, ctx.sucursalId, "pos_emitir_ticket_corregido", ctx.db);
+    if (!tambien.ok) return error(tambien.mensaje);
+    const comando = guardComandoCorregirLineaDeTicket({ cuentaId, operacionId, motivo, ejemplarVisto, totalVisto, claveIdempotencia });
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await corregirLineaDeTicketCasoDeUso(ctx, comando.valor);
+    return r.ok ? { ...ok(r.mensaje), numero: r.datos.numero, ejemplar: r.datos.ejemplar } : error(r.mensaje);
+  });
+}
+
+/**
+ * «Quitar unidades de una línea» de una cuenta cerrada (E1 de la corrección por ajuste, docs/diseno-correccion-por-ajuste-2026-11-06.md): «cobré 2 cervezas y la mesa tomó 1».
+ * En UN paso y UNA transacción reemplaza la venta de la línea por otra con las unidades que quedan (la quitada vuelve al stock), guarda el motivo y emite el ticket corregido
+ * (el ejemplar siguiente, mismo número). `operacionId` es la venta VIGENTE de la línea (la de la lista de líneas corregibles). Quitar todas las unidades es `corregirLineaDeTicket`.
+ *
+ * Mismos permisos que la corrección de la línea entera: `anular_venta` (piso administrador) y `pos_emitir_ticket_corregido`. Sin claves nuevas. `unidadesVistas`, `ejemplarVisto` y
+ * `totalVisto` son lo que la persona tenía en pantalla (guarda optimista) y `claveIdempotencia` el UUID del diálogo (I3).
+ *
+ * Adaptador fino: permisos → formato (`guardComandoQuitarUnidadesDeLinea`) → caso de uso (`casos-de-uso/quitar-unidades-de-linea.ts`) → `{ ok, mensaje, numero, ejemplar }`.
+ */
+export async function quitarUnidadesDeLinea(
+  cuentaId: string,
+  operacionId: string,
+  unidadesAQuitar: number,
+  unidadesVistas: number,
+  motivo: string,
+  ejemplarVisto: number,
+  totalVisto: number,
+  claveIdempotencia: string
+): Promise<ResultadoTicketCorregido> {
+  return conPermiso("anular_venta", async (ctx) => {
+    const tambien = await requierePermiso(ctx.usuarioId, ctx.sucursalId, "pos_emitir_ticket_corregido", ctx.db);
+    if (!tambien.ok) return error(tambien.mensaje);
+    const comando = guardComandoQuitarUnidadesDeLinea({ cuentaId, operacionId, unidadesAQuitar, unidadesVistas, motivo, ejemplarVisto, totalVisto, claveIdempotencia });
+    if (!comando.ok) return error(comando.mensaje);
+    const r = await quitarUnidadesDeLineaCasoDeUso(ctx, comando.valor);
     return r.ok ? { ...ok(r.mensaje), numero: r.datos.numero, ejemplar: r.datos.ejemplar } : error(r.mensaje);
   });
 }

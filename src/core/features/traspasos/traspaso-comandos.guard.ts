@@ -1,6 +1,6 @@
 import { texto } from "@/core/texto";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { LARGO_MAXIMO_DETALLE, validarTextoLibre } from "@/core/datos/limites";
 import { validarDetalleLibreDeOperacion } from "@/core/movimientos/public";
 import type {
@@ -73,9 +73,6 @@ export function guardComandoRechazarSolicitudTraspaso(entrada: unknown): Resulta
  * chequeos que tenían las Server Actions: primero el id, después la clave I3, después (aceptar) la sección.
  */
 
-/** Mismo texto que usaban `aceptarTransferencia` y `confirmarReingresoTransferencia` para una clave I3 que no es un UUID. */
-const MENSAJE_CLAVE_REINTENTO_INVALIDA = "Clave de reintento inválida.";
-
 /** Mismo texto que usaba `aceptarTransferencia` cuando la sección de destino no es de esta sucursal. */
 export const MENSAJE_SECCION_DESTINO_NO_PROPIA = "Elegí a qué sección propia entra.";
 
@@ -85,7 +82,7 @@ export const MENSAJE_SIN_SECCION_ORIGEN = "Este traspaso no tiene una sección d
 /** Clave I3: ausente (`undefined`) → sin clave (`null`); cualquier otra cosa que no sea un UUID (un `null` o un `""` también) → inválida, como antes. */
 function claveI3(claveIdempotencia: unknown): ResultadoDato<string | null> {
   if (claveIdempotencia === undefined) return aceptar(null);
-  return esClaveIdempotenciaValida(claveIdempotencia) ? aceptar(claveIdempotencia) : rechazar("formato", MENSAJE_CLAVE_REINTENTO_INVALIDA);
+  return esClaveIdempotenciaValida(claveIdempotencia) ? aceptar(claveIdempotencia) : rechazar("formato", MENSAJE_CLAVE_DE_REINTENTO_INVALIDA);
 }
 
 /**

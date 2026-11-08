@@ -3,10 +3,12 @@ import type { PrismaClient } from "@prisma/client";
 import { obtenerMiNivelPermisoEnAlgunaSucursal } from "@/server/acceso/gate";
 import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
+import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
 import { grupoConElPrecioFinal, obtenerProductoPorId, obtenerUnidadesDelProducto } from "@/server/consultas/catalogo/productos";
 import type { ComponentProps } from "react";
 import type { ProductoExistente, ProductoForm } from "./producto-form";
 import { cargarOpcionesFormularioProducto, conLasUnidadesDelProducto } from "./opciones-formulario";
+import { modoDeVentaDe } from "@/core/opciones/public";
 
 /** Los props del formulario de edición de un producto: todo menos la `key` (la pone quien lo dibuja). */
 export type PropsDeEdicionDelProducto = ComponentProps<typeof ProductoForm>;
@@ -53,8 +55,8 @@ export async function cargarEdicionDelProducto(
     precioConsignacion: p.precioConsignacion ? Number(p.precioConsignacion) : 0,
     observaciones: p.observaciones ?? undefined,
   };
-  const presentaciones: PresentacionOpcion[] = p.tipo === "MP" ? await listarPresentaciones(p.id) : [];
-  const venta = p.tipo === "PV" ? { modo: p.modoDeVenta === "BASE_CONFIGURABLE" ? ("BASE_CONFIGURABLE" as const) : ("DIRECTO" as const), grupoConPrecioFinal: await grupoConElPrecioFinal(p.id, ctx.db) } : undefined;
+  const presentaciones: PresentacionOpcion[] = PRESENTACIONES_VISIBLES && p.tipo === "MP" ? await listarPresentaciones(p.id) : [];
+  const venta = p.tipo === "PV" ? { modo: modoDeVentaDe(p.modoDeVenta), grupoConPrecioFinal: await grupoConElPrecioFinal(p.id, ctx.db) } : undefined;
 
   return {
     unidades,

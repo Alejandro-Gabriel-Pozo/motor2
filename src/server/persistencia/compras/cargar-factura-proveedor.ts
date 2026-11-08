@@ -27,6 +27,7 @@ export interface FacturaBloqueada {
   id: string;
   proveedorId: string;
   nroFactura: string | null;
+  detalleLibre: string | null;
   fecha: Date;
   anuladaEn: Date | null;
 }
@@ -37,7 +38,7 @@ export interface FacturaBloqueada {
  */
 export async function bloquearFactura(tx: Db, facturaProveedorId: string): Promise<FacturaBloqueada | null> {
   const filas = await tx.$queryRaw<FacturaBloqueada[]>`
-    SELECT "id", "proveedorId", "nroFactura", "fecha", "anuladaEn" FROM "FacturaProveedor" WHERE "id" = ${facturaProveedorId} FOR UPDATE`;
+    SELECT "id", "proveedorId", "nroFactura", "detalleLibre", "fecha", "anuladaEn" FROM "FacturaProveedor" WHERE "id" = ${facturaProveedorId} FOR UPDATE`;
   return filas[0] ?? null;
 }
 
@@ -125,6 +126,17 @@ export async function sucursalesConParteDeFactura(db: Db, facturaProveedorId: st
 /** ¿La factura tiene notas de crédito vigentes? (C29: anular una factura con notas vigentes se rechaza.) */
 export async function tieneNotasDeCreditoVigentes(tx: Db, facturaProveedorId: string): Promise<boolean> {
   return (await tx.notaCreditoProveedor.count({ where: { facturaProveedorId, anuladaEn: null } })) > 0;
+}
+
+/** ¿La factura tiene alguna nota de crédito, vigente o anulada? La base ata cada nota al proveedor de su factura (ON UPDATE RESTRICT): con cualquiera, no se puede cambiar el proveedor. */
+export async function tieneNotasDeCredito(tx: Db, facturaProveedorId: string): Promise<boolean> {
+  return (await tx.notaCreditoProveedor.count({ where: { facturaProveedorId } })) > 0;
+}
+
+/** Los proveedores pedidos (de la empresa: la RLS esconde los ajenos) con su nombre y si están activos: lo que necesita corregir el proveedor de una factura y auditarlo con el nombre. */
+export async function cargarProveedoresParaCorreccion(tx: Db, ids: readonly string[]): Promise<Map<string, { nombre: string; activo: boolean }>> {
+  const filas = await tx.proveedor.findMany({ where: { id: { in: [...ids] } }, select: { id: true, nombre: true, activo: true } });
+  return new Map(filas.map((f) => [f.id, { nombre: f.nombre, activo: f.activo }]));
 }
 
 /** Pagos X0: la huella y el mensaje del pago declarado que lleva esa clave de reintento (I3), o `null`. */

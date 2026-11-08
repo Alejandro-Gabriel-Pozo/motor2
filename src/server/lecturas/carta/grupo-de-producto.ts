@@ -1,6 +1,6 @@
 import "server-only";
 import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
-import { precioDeCarta, whereCartaDeSucursal, type GrupoDeProducto } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, precioDeCarta, whereCartaDeSucursal, type GrupoDeProducto } from "@/core/carta/public";
 import type { Db } from "@/lib/db-tipos";
 
 /**
@@ -11,6 +11,8 @@ import type { Db } from "@/lib/db-tipos";
  */
 /** `null` si el producto no está en ningún ítem agrupado. */
 export async function resolverGrupoDeProducto(productoId: string, sucursalId: string, db: Db): Promise<GrupoDeProducto | null> {
+  // Interruptor de ítem agrupado apagado: la carta ignora los agrupados, así que no hay hermanos a quienes ofrecer el mismo precio (nada que sincronizar).
+  if (!GENERO_E_ITEM_AGRUPADO_VISIBLE) return null;
   const opcion = await db.opcionItemAgrupadoCarta.findFirst({
     where: { productoId, ...whereCartaDeSucursal(sucursalId) },
     select: {
@@ -49,7 +51,7 @@ export async function resolverGrupoDeProducto(productoId: string, sucursalId: st
  * estar en ninguno (el renglón agrupado muestra su precio guardado, que no se cobra): lo mira la edición del producto al pasarlo a base, con todas las sucursales de la empresa y la fila del producto tomada.
  */
 export async function itemAgrupadoDelProductoEn(productoId: string, sucursalIds: readonly string[], db: Db): Promise<string | null> {
-  if (sucursalIds.length === 0) return null;
+  if (!GENERO_E_ITEM_AGRUPADO_VISIBLE || sucursalIds.length === 0) return null;
   const fila = await db.opcionItemAgrupadoCarta.findFirst({
     where: { productoId, OR: sucursalIds.map((sucursalId) => whereCartaDeSucursal(sucursalId)) },
     select: { itemAgrupadoCarta: { select: { nombre: true } } },

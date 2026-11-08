@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
+import { guardComandoAceptarParteDeFactura, guardComandoAnularFacturaProveedor, guardComandoCorregirFacturaProveedor, guardComandoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.guard";
 import { mediodiaDelDia, ZONA_ARGENTINA } from "@/core/tiempo/zona-horaria";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
 
@@ -69,5 +69,25 @@ describe("guardComandoAceptarParteDeFactura y guardComandoAnularFacturaProveedor
     expect(guardComandoAnularFacturaProveedor({ facturaId: "f", motivo: "   ", claveIdempotencia: CLAVE })).toMatchObject({ ok: false, mensaje: "Escribí el motivo de la anulación." });
     expect(guardComandoAnularFacturaProveedor({ facturaId: "f", motivo: "x".repeat(201), claveIdempotencia: CLAVE }).ok).toBe(false);
     expect(guardComandoAnularFacturaProveedor({ facturaId: "f", motivo: "ok" }).ok).toBe(false);
+  });
+});
+
+describe("guardComandoCorregirFacturaProveedor (U1 de «una sola compra»)", () => {
+  const nueva = { proveedorId: null, nroFactura: "A-1", detalleLibre: "" };
+  const esperado = { proveedorId: null, nroFactura: null, detalleLibre: null };
+
+  it("válida: la factura y los dos bloques pasan tal cual (los normaliza el caso de uso)", () => {
+    expect(guardComandoCorregirFacturaProveedor({ facturaId: "  f-1 ", nueva, esperado })).toStrictEqual({ ok: true, valor: { facturaId: "f-1", nueva, esperado } });
+  });
+
+  it.each([
+    { caso: "facturaId número", entrada: { facturaId: 123, nueva, esperado }, mensaje: "No se encontró la factura." },
+    { caso: "facturaId null", entrada: { facturaId: null, nueva, esperado }, mensaje: "No se encontró la factura." },
+    { caso: "facturaId undefined", entrada: { facturaId: undefined, nueva, esperado }, mensaje: "No se encontró la factura." },
+    { caso: "entrada null", entrada: null, mensaje: "No se encontró la factura." },
+    { caso: "sin lo pedido", entrada: { facturaId: "f", esperado }, mensaje: "Faltan los datos a corregir: recargá la pantalla." },
+    { caso: "sin lo que se vio", entrada: { facturaId: "f", nueva }, mensaje: "Faltan los datos a corregir: recargá la pantalla." },
+  ])("$caso → rechazo", ({ entrada, mensaje }) => {
+    expect(guardComandoCorregirFacturaProveedor(entrada)).toMatchObject({ ok: false, mensaje });
   });
 });

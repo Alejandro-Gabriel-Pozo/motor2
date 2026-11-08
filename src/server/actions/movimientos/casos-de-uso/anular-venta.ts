@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import type { ComandoAnularVenta, ResultadoAnularVenta } from "@/core/features/ventas/venta.schema";
@@ -16,13 +17,19 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { cargarHermanasDePromo, cargarHijasDeVenta, cargarPosterioresDeVentas, cargarVentaParaAnular } from "@/server/persistencia/movimientos/cargar-venta-para-anular";
 import { escribirAnulacionDeVenta } from "@/server/persistencia/movimientos/escribir-anulacion-de-venta";
 
+/** La clave I3 de quien anula DENTRO de otra transacción (la corrección de una línea): queda en el contra-asiento de la venta pedida. */
+export interface IdempotenciaDeAnulacion {
+  claveIdempotencia: string;
+  payloadHash: string;
+}
+
 /**
  * Caso de uso «anular una venta» (Task #41, Fase M — ver docs/arquitectura-casos-de-uso-2026-09-27.md). Es la orquestación que antes
  * vivía en línea en la Server Action `anularVenta` (src/server/actions/movimientos/venta.ts), en el MISMO orden y con los MISMOS textos;
  * la Server Action quedó como adaptador fino (permiso → guard → este caso de uso → `aResultadoAccion`).
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos (eso ya lo hizo `conPermiso("anular_venta")`) ni
- * valida formato (eso lo hizo `guardComandoAnularVenta`). Sin idempotencia I3: `anularVenta` nunca la tuvo (el doble clic lo arbitra el
+ * valida formato (eso lo hizo `guardComandoAnularVenta`, que desde E0 de la corrección por ajuste exige el MOTIVO, 1 a 200 caracteres: se guarda en `motivoAnulacion` de cada venta anulada, hermanas e hijas incluidas, y cada contra-asiento nace con `revierteAOperacionId`). Sin idempotencia I3: `anularVenta` nunca la tuvo (el doble clic lo arbitra el
  * aislamiento SERIALIZABLE, y el segundo intento responde «ya está anulada»).
  *
  * Todo corre dentro de UNA transacción SERIALIZABLE (`conTransaccionSerializable`, con reintento ante un conflicto de escritura):
@@ -49,65 +56,78 @@ export async function anularVentaCasoDeUso(
   actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "transaccion" | "ahora">,
   comando: ComandoAnularVenta
 ): Promise<ResultadoAnularVenta> {
-  const { operacionId } = comando;
+  return conTransaccionSerializable(actor.transaccion, (tx) => anularVentaEnTx(tx, actor, comando));
+}
 
-  return conTransaccionSerializable(actor.transaccion, async (tx): Promise<ResultadoAnularVenta> => {
-    const venta = await cargarVentaParaAnular(tx, { operacionId, sucursalId: actor.sucursalId });
-    if (!venta) return fracaso("NO_ENCONTRADA", MENSAJE_OPERACION_NO_ENCONTRADA);
+/**
+ * El cuerpo de `anularVentaCasoDeUso` dentro de una transacción YA ABIERTA (SERIALIZABLE): lo usa también `corregirLineaDeTicketCasoDeUso`, que anula la línea y
+ * emite el ticket corregido en UNA sola transacción. Un `fracaso(...)` sale ANTES de escribir nada; quien lo llama dentro de una transacción mayor decide si ya
+ * escribió algo (y entonces tiene que deshacerlo lanzando). `idempotencia` (opcional) deja la clave I3 en el contra-asiento de la venta pedida.
+ */
+export async function anularVentaEnTx(
+  tx: Prisma.TransactionClient,
+  actor: Pick<ContextoDeAccion, "usuarioId" | "sucursalId" | "ahora">,
+  comando: ComandoAnularVenta,
+  idempotencia?: IdempotenciaDeAnulacion
+): Promise<ResultadoAnularVenta> {
+  const { operacionId, motivo } = comando;
+  const venta = await cargarVentaParaAnular(tx, { operacionId, sucursalId: actor.sucursalId });
+  if (!venta) return fracaso("NO_ENCONTRADA", MENSAJE_OPERACION_NO_ENCONTRADA);
 
-    const evaluacion = evaluarAnulacionDeVenta(operacionId, venta);
-    if (!evaluacion.ok) return fracaso(evaluacion.motivo, evaluacion.mensaje);
+  const evaluacion = evaluarAnulacionDeVenta(operacionId, venta);
+  if (!evaluacion.ok) return fracaso(evaluacion.motivo, evaluacion.mensaje);
 
-    // GO-2b (ADR-030, v1): la venta de un adicional no se anula sola — se anula la de su producto, que se la lleva.
-    if (venta.operacionPadreId !== null) return fracaso("ES_ADICIONAL", "Esta venta es un adicional de otro producto: anulá la venta de ese producto y se anula con sus adicionales.");
+  // GO-2b (ADR-030, v1): la venta de un adicional no se anula sola — se anula la de su producto, que se la lleva.
+  if (venta.operacionPadreId !== null) return fracaso("ES_ADICIONAL", "Esta venta es un adicional de otro producto: anulá la venta de ese producto y se anula con sus adicionales.");
 
-    const hermanas = venta.promoCuentaId ? await cargarHermanasDePromo(tx, { promoCuentaId: venta.promoCuentaId, excluirOperacionId: venta.id }) : [];
-    // GO-2b: las hijas vigentes (los adicionales) se anulan con su producto, en esta misma transacción; se cargan completas solo si hay alguna.
-    const hijas = venta.hijasVigentes.length ? await cargarHijasDeVenta(tx, { ids: venta.hijasVigentes, sucursalId: actor.sucursalId }) : [];
-    const aAnular = [venta, ...hermanas, ...hijas];
+  const hermanas = venta.promoCuentaId ? await cargarHermanasDePromo(tx, { promoCuentaId: venta.promoCuentaId, excluirOperacionId: venta.id }) : [];
+  // GO-2b: las hijas vigentes (los adicionales) se anulan con su producto, en esta misma transacción; se cargan completas solo si hay alguna.
+  const hijas = venta.hijasVigentes.length ? await cargarHijasDeVenta(tx, { ids: venta.hijasVigentes, sucursalId: actor.sucursalId }) : [];
+  const aAnular = [venta, ...hermanas, ...hijas];
 
-    // S-03 / D7: si después de la venta (o de cualquiera de sus hermanas) hubo un conteo/ajuste del mismo producto y sección, o un pago al consignante de lo que
-    // consumió, anular la desharía a ciegas: se rechaza ANTES de escribir nada y se corrige con un ajuste.
-    const posteriores = evaluarPosterioresAAnularVenta(await cargarPosterioresDeVentas(tx, { ventas: aAnular, sucursalId: actor.sucursalId }));
-    if (!posteriores.ok) return fracaso(posteriores.motivo, posteriores.mensaje);
+  // S-03 / D7: si después de la venta (o de cualquiera de sus hermanas) hubo un conteo/ajuste del mismo producto y sección, o un pago al consignante de lo que
+  // consumió, anular la desharía a ciegas: se rechaza ANTES de escribir nada y se corrige con un ajuste.
+  const posteriores = evaluarPosterioresAAnularVenta(await cargarPosterioresDeVentas(tx, { ventas: aAnular, sucursalId: actor.sucursalId }));
+  if (!posteriores.ok) return fracaso(posteriores.motivo, posteriores.mensaje);
 
-    const ahora = actor.ahora;
-    let movimientosRevertidos = 0;
-    let huboLiquidacionConsignacion = false;
-    const reversionIds: string[] = [];
-    for (const op of aAnular) {
-      const reversion = construirReversionDeVenta(op.lineas);
-      const escrita = await escribirAnulacionDeVenta(tx, {
-        ventaId: op.id,
-        sucursalId: actor.sucursalId,
-        usuarioId: actor.usuarioId,
-        ahora,
-        detalleLibre: detalleReversionDeVenta(op.id, op.fecha),
-        reversion,
-      });
-      reversionIds.push(escrita.reversionId);
-      movimientosRevertidos += escrita.movimientos;
-      if (reversion.some((l) => l.proceso === "LIQUIDACION_CONSIGNACION")) huboLiquidacionConsignacion = true;
-
-      // Auditoría administrativa (igual que `anularCompra`): anular una venta mueve stock e ingreso, así que queda quién, cuándo y de cuál.
-      await registrarCambioAuditado(tx, {
-        entidad: "Operacion",
-        entidadId: op.id,
-        descripcion: descripcionAuditoriaAnulacionDeVenta(op.fecha, op.nroFactura, hermanas.length > 0),
-        campo: "anuladaEn",
-        valorAnterior: null,
-        valorNuevo: ahora.toISOString(),
-        actorId: actor.usuarioId,
-        sucursalId: actor.sucursalId,
-      });
-    }
-
-    return exito(mensajeVentaAnulada(movimientosRevertidos, huboLiquidacionConsignacion, hermanas.length ? 1 + hermanas.length : null, hijas.length), {
-      ventaId: venta.id,
-      operacionesAnuladas: aAnular.map((op) => op.id),
-      reversionIds,
-      movimientosRevertidos,
-      huboLiquidacionConsignacion,
+  const ahora = actor.ahora;
+  let movimientosRevertidos = 0;
+  let huboLiquidacionConsignacion = false;
+  const reversionIds: string[] = [];
+  for (const op of aAnular) {
+    const reversion = construirReversionDeVenta(op.lineas);
+    const escrita = await escribirAnulacionDeVenta(tx, {
+      ventaId: op.id,
+      sucursalId: actor.sucursalId,
+      usuarioId: actor.usuarioId,
+      ahora,
+      detalleLibre: detalleReversionDeVenta(op.id, op.fecha),
+      motivoAnulacion: motivo,
+      ...(idempotencia && op.id === venta.id ? { idempotencia } : {}),
+      reversion,
     });
+    reversionIds.push(escrita.reversionId);
+    movimientosRevertidos += escrita.movimientos;
+    if (reversion.some((l) => l.proceso === "LIQUIDACION_CONSIGNACION")) huboLiquidacionConsignacion = true;
+
+    // Auditoría administrativa (igual que `anularCompra`): anular una venta mueve stock e ingreso, así que queda quién, cuándo y de cuál.
+    await registrarCambioAuditado(tx, {
+      entidad: "Operacion",
+      entidadId: op.id,
+      descripcion: descripcionAuditoriaAnulacionDeVenta(op.fecha, op.nroFactura, hermanas.length > 0),
+      campo: "anuladaEn",
+      valorAnterior: null,
+      valorNuevo: ahora.toISOString(),
+      actorId: actor.usuarioId,
+      sucursalId: actor.sucursalId,
+    });
+  }
+
+  return exito(mensajeVentaAnulada(movimientosRevertidos, huboLiquidacionConsignacion, hermanas.length ? 1 + hermanas.length : null, hijas.length), {
+    ventaId: venta.id,
+    operacionesAnuladas: aAnular.map((op) => op.id),
+    reversionIds,
+    movimientosRevertidos,
+    huboLiquidacionConsignacion,
   });
 }

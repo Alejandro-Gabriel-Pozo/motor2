@@ -76,16 +76,16 @@ const USOS_PERMITIDOS_DE_OPERACION: UsoSobreOperacion[] = [
   {
     archivo: "src/server/persistencia/movimientos/escribir-contra-asiento.ts",
     operaciones: ["update"],
-    columnas: ["anuladaEn", "anuladaPorId"],
+    columnas: ["anuladaEn", "anuladaPorId", "motivoAnulacion"],
     motivo:
-      "Anular una compra o una venta (Hito 5, 5.4-A5: un solo escritor para las dos): marca la cabecera como anulada (`anuladaEn` = «no existió y se revirtió»); las líneas del Kardex se REVIERTEN con filas nuevas.",
+      "Anular una compra o una venta (Hito 5, 5.4-A5: un solo escritor para las dos): marca la cabecera como anulada (`anuladaEn` = «no existió y se revirtió») y, desde E0 de la corrección por ajuste, guarda el motivo (`motivoAnulacion`, solo la venta; el contra-asiento nace con `revierteAOperacionId`); las líneas del Kardex se REVIERTEN con filas nuevas.",
   },
   {
-    archivo: "src/server/persistencia/compras/escribir-correccion-de-compra.ts",
-    operaciones: ["update"],
+    archivo: "src/server/persistencia/compras/escribir-factura-proveedor.ts",
+    operaciones: ["updateMany"],
     columnas: ["proveedorId", "nroFactura", "detalleLibre"],
     motivo:
-      "DEUDA CONOCIDA (hallazgo H11 de la auditoría): corrige la cabecera de una compra EN EL LUGAR (auditada por campo). Los documentos nuevos (factura de proveedor, nota de crédito) se corrigen solo con versiones nuevas; esta excepción se elimina cuando las compras viejas pasen a ese modelo.",
+      "DEUDA CONOCIDA (hallazgo H11 de la auditoría): corrige los datos de la factura EN EL LUGAR y los copia a la compra de cada parte (U1 de «una sola compra»; auditada por campo). La corrección por reemplazo (U3, con migración) la elimina.",
   },
 ];
 
@@ -144,7 +144,7 @@ function leerArchivo(codigo: string, archivo: string): LecturaDeArchivo {
         if (MODELOS_SOLO_AGREGAN.includes(modelo)) {
           violaciones.push({ archivo, linea: linea(nodo), detalle: `${modelo}.${operacion}: esa tabla solo agrega filas (una corrección es una fila nueva)` });
         } else if (modelo === "operacion") {
-          usosDeOperacion.push({ archivo, operacion, linea: linea(nodo), columnas: operacion === "update" ? clavesDeData(nodo) : null });
+          usosDeOperacion.push({ archivo, operacion, linea: linea(nodo), columnas: operacion === "update" || operacion === "updateMany" ? clavesDeData(nodo) : null });
         }
       }
       revisarSql(nodo, operacion);

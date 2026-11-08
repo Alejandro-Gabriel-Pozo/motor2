@@ -5,6 +5,7 @@ import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { abrirComoRol, PERMISOS_MOZO } from "./fixtures/rol-pos";
 import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "../../src/core/carta/genero-e-item-agrupado";
 
 /**
  * «Agregar al pedido» por SECCIÓN DE CARTA en la pantalla de la mesa (docs/plan-selector-carta-pos-2026-09-25.md): la barra de
@@ -102,6 +103,7 @@ async function mesaConCuenta(sucursalId: string, numero: number) {
 }
 
 test("la barra sigue el orden de la carta con «Fuera de carta» al final; un agrupado despliega sus opciones disponibles y se agrega la opción elegida", async ({ paginaAutenticada: page, sucursalId }) => {
+  test.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GENERO_E_ITEM_AGRUPADO_VISIBLE = false en src/core/carta/genero-e-item-agrupado.ts): la carta y el POS no arman agrupados ni carpetas de género");
   const cat = await sembrarCarta(sucursalId);
   const { mesa, cuenta } = await mesaConCuenta(sucursalId, 981);
   try {
@@ -155,6 +157,7 @@ test("la barra sigue el orden de la carta con «Fuera de carta» al final; un ag
 });
 
 test("tocar un producto de la carta no envía el formulario: todos los botones del selector son type=button", async ({ paginaAutenticada: page, sucursalId }) => {
+  test.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GENERO_E_ITEM_AGRUPADO_VISIBLE = false en src/core/carta/genero-e-item-agrupado.ts): la carta y el POS no arman agrupados ni carpetas de género");
   const cat = await sembrarCarta(sucursalId);
   const { mesa, cuenta } = await mesaConCuenta(sucursalId, 982);
   try {
@@ -242,6 +245,7 @@ test("un PV sin carta está en «Fuera de carta» y se puede agregar", async ({ 
 });
 
 test("el mozo (sin permiso de carta) elige por sección de carta y agrega", async ({ browser, baseURL, sucursalId }) => {
+  test.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GENERO_E_ITEM_AGRUPADO_VISIBLE = false en src/core/carta/genero-e-item-agrupado.ts): la carta y el POS no arman agrupados ni carpetas de género");
   const cat = await sembrarCarta(sucursalId);
   const mesa = await prisma.mesa.create({ data: { sucursalId, numero: 985 } });
   const mozo = await abrirComoRol(browser, baseURL, sucursalId, PERMISOS_MOZO);
@@ -265,6 +269,7 @@ test("el mozo (sin permiso de carta) elige por sección de carta y agrega", asyn
 });
 
 test("a 1024px y a 390px, con un agrupado desplegado, no hay scroll horizontal", async ({ paginaAutenticada: page, sucursalId }) => {
+  test.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GENERO_E_ITEM_AGRUPADO_VISIBLE = false en src/core/carta/genero-e-item-agrupado.ts): la carta y el POS no arman agrupados ni carpetas de género");
   const cat = await sembrarCarta(sucursalId);
   const { mesa } = await mesaConCuenta(sucursalId, 986);
   try {
@@ -351,6 +356,7 @@ test("la carpeta de género se ve, se abre y muestra sueltos y agrupados; elegir
   paginaAutenticada: page,
   sucursalId,
 }) => {
+  test.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GENERO_E_ITEM_AGRUPADO_VISIBLE = false en src/core/carta/genero-e-item-agrupado.ts): la carta y el POS no arman agrupados ni carpetas de género");
   const cat = await sembrarCartaConGenero(sucursalId);
   const { mesa, cuenta } = await mesaConCuenta(sucursalId, 987);
   try {
@@ -395,6 +401,7 @@ test("la carpeta de género se ve, se abre y muestra sueltos y agrupados; elegir
 });
 
 test("accesibilidad: con la carpeta de género abierta, sin violaciones", async ({ paginaAutenticada: page, sucursalId }) => {
+  test.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GENERO_E_ITEM_AGRUPADO_VISIBLE = false en src/core/carta/genero-e-item-agrupado.ts): la carta y el POS no arman agrupados ni carpetas de género");
   const cat = await sembrarCartaConGenero(sucursalId);
   const { mesa } = await mesaConCuenta(sucursalId, 988);
   try {

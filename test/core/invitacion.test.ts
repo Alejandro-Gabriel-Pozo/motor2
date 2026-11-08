@@ -69,17 +69,17 @@ describe("altaDeEmpresaSchema", () => {
     nombre: "Hostería Sur",
     slug: "hosteria-sur",
     zonaHoraria: "America/Argentina/Buenos_Aires",
-    moneda: "ars",
     nombreSucursal: "Central",
     emailDuenio: " Dueno@Ejemplo.com ",
   };
 
-  it("normaliza moneda y email", () => {
+  it("normaliza el email; la moneda no se pide: queda fija en ARS y cualquier valor que llegue se ignora", () => {
     expect(altaDeEmpresaSchema.parse(base)).toMatchObject({ moneda: "ARS", emailDuenio: "dueno@ejemplo.com" });
+    expect(altaDeEmpresaSchema.parse({ ...base, moneda: "usd" }).moneda).toBe("ARS");
   });
 
-  it("rechaza zona inexistente, moneda de símbolo, sucursal vacía, email inválido y slug con espacios", () => {
-    for (const malo of [{ zonaHoraria: "America/Narnia" }, { moneda: "ar$" }, { nombreSucursal: "  " }, { emailDuenio: "no-es-email" }, { slug: "Mal Slug" }]) {
+  it("rechaza zona inexistente, sucursal vacía, email inválido y slug con espacios", () => {
+    for (const malo of [{ zonaHoraria: "America/Narnia" }, { nombreSucursal: "  " }, { emailDuenio: "no-es-email" }, { slug: "Mal Slug" }]) {
       expect(altaDeEmpresaSchema.safeParse({ ...base, ...malo }).success, JSON.stringify(malo)).toBe(false);
     }
   });

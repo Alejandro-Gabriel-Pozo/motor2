@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
  */
 const RAIZ = join(__dirname, "../../src");
 
-const MIGRADOS = ["app/(app)/traspasos/bandeja.tsx", "app/(app)/reportes/compras/boton-anular-compra.tsx"];
+const MIGRADOS = ["app/(app)/traspasos/bandeja.tsx", "app/(app)/reportes/compras/boton-anular-factura.tsx"];
 const ACCIONES_TRASPASOS = "server/actions/traspasos/traspasos.ts";
 const CASOS_DE_USO_TRASPASOS = "server/actions/traspasos/casos-de-uso";
 
