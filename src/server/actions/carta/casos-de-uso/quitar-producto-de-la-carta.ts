@@ -1,5 +1,5 @@
 import "server-only";
-import { whereCartaDeSucursal } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, whereCartaDeSucursal } from "@/core/carta/public";
 import type { ComandoQuitarProductoDeLaCarta, ResultadoQuitarProductoDeLaCarta } from "@/core/features/carta/mantenimiento.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -64,7 +64,8 @@ export async function quitarProductoDeLaCartaCasoDeUso(
     await registrarCambioAuditado(tx, { ...base, descripcion, campo: "nombreEnCarta", valorAnterior: c.nombreEnCarta });
     await borrarContenidoDeProducto(tx, { sucursalId: actor.sucursalId, productoId: comando.productoId });
 
-    const agrupado = producto.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre;
+    // Con el interruptor de ítem agrupado apagado la carta ignora los agrupados (`GENERO_E_ITEM_AGRUPADO_VISIBLE`).
+    const agrupado = GENERO_E_ITEM_AGRUPADO_VISIBLE ? producto.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre : undefined;
     return exito(
       agrupado
         ? `«${producto.nombre}» salió de la carta suelta; sigue saliendo dentro del agrupado «${agrupado}» (eso se maneja desde «Agrupados»).`

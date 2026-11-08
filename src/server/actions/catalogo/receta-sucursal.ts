@@ -44,7 +44,7 @@ import { volverALaRecetaCentralCasoDeUso } from "./casos-de-uso/volver-a-la-rece
  *
  * O.45 (cierre del Hito 4, mismo hueco que cerró O.1 en la central): la versión vista es OBLIGATORIA en las cinco. Antes `guardarEnLaPropia` llamaba al guard SIN
  * `exigirVersion`, así que una llamada armada a mano con `versionVista` `undefined`/`null` (u omitida) guardaba «a ciegas» sobre la serie propia, sin chequeo de
- * versión. Ahora cada una la valida con `versionVistaExigida` (el MISMO guard con `exigirVersion` y el MISMO texto que la acción pública `guardarReceta`: «La versión de
+ * versión. Ahora cada una la valida con `versionVistaExigida` (el MISMO guard con `exigirVersion` y el MISMO texto que las acciones públicas de la receta central: «La versión de
  * la receta que se esperaba no es válida.») DENTRO del envoltorio de permiso y ANTES de su primera lectura; la receta propia no tiene modo a ciegas (ningún seed,
  * script ni test lo usaba, así que no hay función interna como `guardarRecetaACiegas`).
  */

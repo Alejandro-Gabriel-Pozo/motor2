@@ -124,7 +124,7 @@ describe("obtenerTicketsRecientes", () => {
   it("después de anular la venta (anularVenta), el ticket queda marcado como de venta anulada", async () => {
     const cuenta = await cerrarUna(2);
     const item = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId: cuenta.id } });
-    expect((await anularVenta(item.operacionId!)).ok).toBe(true);
+    expect((await anularVenta(item.operacionId!, "Error de carga")).ok).toBe(true);
 
     const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma, undefined, new Date());
     expect(ticket).toMatchObject({ cuentaId: cuenta.id, ventaAnulada: true });

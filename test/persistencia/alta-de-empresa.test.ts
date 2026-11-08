@@ -12,7 +12,7 @@ import { darDeAltaEmpresa, invitarDeNuevo, listarEmpresas, reenviarInvitacion, r
  */
 const AUTOR = { adminId: "admin-1", adminEmail: "admin@plataforma.test", instalacionId: "prueba" };
 const AHORA = new Date("2026-10-04T12:00:00.000Z");
-const ALTA = { nombre: "Hostería Sur", slug: "hosteria-sur", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ars", nombreSucursal: "Central", emailDuenio: "Dueno@Gmail.com" };
+const ALTA = { nombre: "Hostería Sur", slug: "hosteria-sur", zonaHoraria: "America/Argentina/Buenos_Aires", nombreSucursal: "Central", emailDuenio: "Dueno@Gmail.com" };
 
 let enviados: MensajeDeCorreo[];
 let resultadoDelEnvio: ResultadoDeEnvio;
@@ -61,6 +61,12 @@ async function empresaDelAlta() {
 }
 
 describe("darDeAltaEmpresa", () => {
+  it("poda del 2026-11-06: la moneda ya no se pide; aunque llegue otra por la red, la empresa nace en ARS", async () => {
+    const r = await darDeAltaEmpresa(prismaAdmin, dependencias(), AUTOR, { ...ALTA, moneda: "USD" });
+    expect(r).toMatchObject({ ok: true });
+    expect((await empresaDelAlta()).moneda).toBe("ARS");
+  });
+
   it("crea la empresa en PROVISIONING sin CUIT, sembrada, con su sucursal y SIN gerente, y una invitación pendiente que guarda solo el hash", async () => {
     const r = await darDeAltaEmpresa(prismaAdmin, dependencias(), AUTOR, ALTA);
     expect(r).toMatchObject({ ok: true, enviado: true });
@@ -116,7 +122,6 @@ describe("darDeAltaEmpresa", () => {
     expect((await darDeAltaEmpresa(prismaAdmin, dependencias(), AUTOR, { ...ALTA, nombre: "Otra" })).ok).toBe(false); // mismo slug
     expect((await darDeAltaEmpresa(prismaAdmin, dependencias(), AUTOR, { ...ALTA, slug: "otra" })).ok).toBe(false); // mismo nombre
     expect((await darDeAltaEmpresa(prismaAdmin, dependencias(), AUTOR, { ...ALTA, nombre: "N", slug: "n", zonaHoraria: "America/Narnia" })).ok).toBe(false);
-    expect((await darDeAltaEmpresa(prismaAdmin, dependencias(), AUTOR, { ...ALTA, nombre: "N", slug: "n", moneda: "ar$" })).ok).toBe(false);
     expect((await darDeAltaEmpresa(prismaAdmin, dependencias(), AUTOR, { ...ALTA, nombre: "N", slug: "n", emailDuenio: "no-es-email" })).ok).toBe(false);
 
     expect(enviados).toEqual([]);

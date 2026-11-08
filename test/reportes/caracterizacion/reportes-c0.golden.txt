@@ -4572,17 +4572,17 @@
   consultas (1): movimientoStock.findMany×1
   resultado: [
     {fecha: Date(2026-03-10T18:00:00.000Z), idOperacion: "#58", proceso: "CONTROL", seccionNombre: "Depósito"},
-    {fecha: Date(2026-03-06T13:00:00.000Z), idOperacion: "#57", proceso: "CONSUMO", seccionNombre: "Depósito"},
+    {fecha: Date(2026-03-06T13:00:00.000Z), idOperacion: "#57", proceso: "VENTA", seccionNombre: "Depósito"},
     {fecha: Date(2026-03-04T12:00:00.000Z), idOperacion: "#56", proceso: "AJUSTE", seccionNombre: "Depósito"},
     {fecha: Date(2026-03-04T10:00:00.000Z), idOperacion: "#5", proceso: "COMPRA", seccionNombre: "Depósito"},
     {fecha: Date(2026-03-03T19:30:00.000Z), idOperacion: "#55", proceso: "AJUSTE", seccionNombre: "Depósito"},
-    {fecha: Date(2026-03-03T19:00:00.000Z), idOperacion: "#54", proceso: "CONSUMO", seccionNombre: "Depósito"},
-    {fecha: Date(2026-02-27T13:00:00.000Z), idOperacion: "#53", proceso: "CONSUMO", seccionNombre: "Depósito"},
+    {fecha: Date(2026-03-03T19:00:00.000Z), idOperacion: "#54", proceso: "VENTA", seccionNombre: "Depósito"},
+    {fecha: Date(2026-02-27T13:00:00.000Z), idOperacion: "#53", proceso: "VENTA", seccionNombre: "Depósito"},
     {fecha: Date(2026-02-24T10:00:00.000Z), idOperacion: "#14", proceso: "COMPRA", seccionNombre: "Depósito"},
-    {fecha: Date(2026-02-21T13:00:00.000Z), idOperacion: "#52", proceso: "CONSUMO", seccionNombre: "Depósito"},
-    {fecha: Date(2026-02-20T13:00:00.000Z), idOperacion: "#51", proceso: "CONSUMO", seccionNombre: "Depósito"},
+    {fecha: Date(2026-02-21T13:00:00.000Z), idOperacion: "#52", proceso: "VENTA", seccionNombre: "Depósito"},
+    {fecha: Date(2026-02-20T13:00:00.000Z), idOperacion: "#51", proceso: "VENTA", seccionNombre: "Depósito"},
     {fecha: Date(2026-02-18T18:00:00.000Z), idOperacion: "#50", proceso: "CONTROL", seccionNombre: "Depósito"},
-    {fecha: Date(2026-02-01T13:00:00.000Z), idOperacion: "#165", proceso: "CONSUMO", seccionNombre: "Depósito"},
+    {fecha: Date(2026-02-01T13:00:00.000Z), idOperacion: "#165", proceso: "VENTA", seccionNombre: "Depósito"},
     {fecha: Date(2026-01-22T10:00:00.000Z), idOperacion: "#28", proceso: "COMPRA", seccionNombre: "Depósito"}
   ]
 ### 41. valuacion.calcularValuacionInventario(Central)

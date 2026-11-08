@@ -1,6 +1,7 @@
 import "server-only";
 import { TICKETS_RECIENTES_POR_MESA, armarTicketsDeCuentas, type TicketDeCuenta } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
+import { cargarVersionesDeVentas } from "@/server/lecturas/pos/versiones-de-venta";
 
 /**
  * Las últimas cuentas cerradas CON VENTA de la mesa (al menos un ítem con `operacionId`: quedan afuera las liberadas sin ítems y las cerradas sin venta), de la más
@@ -42,6 +43,9 @@ export async function obtenerTicketsRecientes(
     },
   });
 
+  // E1: las ventas que se corrigieron quitando unidades (la original quedó marcada y hay otra que la reemplaza); sin ninguna, una sola consulta vacía.
+  const versiones = await cargarVersionesDeVentas(db, cuentas.flatMap((c) => c.items.flatMap((i) => (i.operacionId && i.operacion?.anuladaEn ? [i.operacionId] : []))));
+
   return armarTicketsDeCuentas(
     cuentas.map((c) => ({
       id: c.id,
@@ -57,7 +61,7 @@ export async function obtenerTicketsRecientes(
         precioUnitario: Number(i.precioUnitario),
         precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
         operacionId: i.operacionId,
-        operacion: i.operacion,
+        operacion: i.operacion && i.operacionId && versiones.has(i.operacionId) ? { ...i.operacion, versiones: versiones.get(i.operacionId) } : i.operacion,
         promoCuenta: i.promoCuenta,
         id: i.id,
         huellaOpciones: i.huellaOpciones,

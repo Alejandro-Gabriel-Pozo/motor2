@@ -37,8 +37,8 @@ export { armarSelectorCartaPos, opcionDeLaFila, pediblesDeEntrada } from "./sele
 export type { CupoDeEntradasSelectorCarta, EntradaCarpetaSelectorCarta, EntradaPromoSelectorCarta, EntradaSelectorCarta, GenerosSelectorCartaPos, ProductoPedible, PromoSelectorCartaPos, SelectorCartaPos } from "./selector-carta";
 export { SECCION_FUERA_DE_CARTA, estadoInicialSelectorCarta, reducirSelectorCarta } from "./selector-carta-estado";
 export type { AccionSelectorCarta, EstadoSelectorCarta } from "./selector-carta-estado";
-export { TICKETS_RECIENTES_POR_MESA, armarTicketImpresoEn, armarTicketsDeCuentas, configuracionDeItemLeido, cuentaConOpciones, estadoDeTicket, itemParaLineaDeVenta } from "./ticket";
-export type { EstadoDeTicket, ItemConVenta, LineaDeTicket, TicketDeCuenta } from "./ticket";
+export { TICKETS_RECIENTES_POR_MESA, armarTicketImpresoEn, armarTicketsDeCuentas, configuracionDeItemLeido, cuentaConOpciones, estadoDeTicket, itemParaLineaDeVenta, itemsVigentesEn } from "./ticket";
+export type { EstadoDeTicket, ItemConVenta, LineaDeTicket, TicketDeCuenta, VersionDeVenta } from "./ticket";
 // GO-2b (ADR-030): la forma de lo que un producto admite para venderse, que arma la lectura de las opciones para vender (`server/lecturas/opciones/`).
 export type { GrupoParaVender, OpcionParaVender } from "./linea-configurada";
 export { configuracionMinimaDeGruposEfectivos, opcionesPermitidasEfectivas } from "./opciones-permitidas-de-entrada";

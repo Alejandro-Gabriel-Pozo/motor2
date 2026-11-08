@@ -179,7 +179,7 @@ describe("venta: consumo de un insumo sustituto declarado en la línea de receta
     expect(await calcularSaldoTotal(ojoId, seccionId, prisma)).toBe(0.7);
 
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
-    const anulacion = await anularVenta(venta.id);
+    const anulacion = await anularVenta(venta.id, "Error de carga");
     expect(anulacion.ok, anulacion.mensaje).toBe(true);
     expect(await calcularSaldoTotal(ojoId, seccionId, prisma)).toBe(1);
     expect(await calcularSaldoTotal(bifeId, seccionId, prisma)).toBe(0);

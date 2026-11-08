@@ -1,6 +1,7 @@
 import { rendimientoEfectivo } from "@/core/catalogo/public";
 import { esBaseConfigurable } from "@/core/opciones/public";
 import type { ClasificacionNoComestibles } from "@/core/catalogo/public";
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 
 /**
  * Lo PURO de los reportes de costos (Pureza Fase 4, tramo A): los tipos del catálogo y del índice de recetas, y cómo se ARMAN el mapa de productos y el índice de recetas a partir
@@ -12,7 +13,7 @@ export interface InfoProductoReporte {
   id: string;
   codigo: string;
   nombre: string;
-  tipo: "MP" | "PV";
+  tipo: TipoProducto;
   /**
    * Disponible EN LA SUCURSAL de `sucursalId` (docs/plan-disponibilidad-por-sucursal-2026-09-23.md) — ya no es el
    * `Producto.activo` global. Sin `sucursalId` (reportes 100% de Catálogo Central, ver docstring de `construirMapaProductos`) es
@@ -50,7 +51,7 @@ export interface FilaDeProductoParaReporte {
   id: string;
   codigo: string;
   nombre: string;
-  tipo: "MP" | "PV";
+  tipo: TipoProducto;
   seProduce: boolean;
   precioVenta: unknown;
   categoriaId: string | null;

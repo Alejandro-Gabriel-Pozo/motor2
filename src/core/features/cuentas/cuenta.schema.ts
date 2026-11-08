@@ -1,3 +1,5 @@
+import type { CodigoAnularVenta } from "@/core/features/ventas/venta.schema";
+import type { MotivoDeRechazoDeLaCorreccion } from "@/core/movimientos/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
@@ -79,3 +81,75 @@ export interface DatosEmitirTicketCorregido {
 }
 
 export type ResultadoEmitirTicketCorregido = ResultadoCaso<DatosEmitirTicketCorregido, CodigoEmitirTicketCorregido>;
+
+/**
+ * Comando «corregir una línea de una cuenta cerrada» (E0 de la corrección por ajuste, 2026-11-06; docs/diseno-correccion-por-ajuste-2026-11-06.md): anula la línea
+ * ENTERA (`operacionId` = la Operacion VENTA de esa línea; una promo se anula entera y un adicional va con su producto), guarda el motivo en la venta y emite el
+ * ticket corregido, todo en UNA transacción. YA validado por `guardComandoCorregirLineaDeTicket`.
+ *  - `ejemplarVisto` y `totalVisto`: lo que la persona tenía en pantalla (el último ejemplar del ticket y su total). Si no coincide con lo guardado, no se corrige
+ *    («la cuenta cambió»): otra persona ya corrigió o anuló mientras tanto.
+ *  - `claveIdempotencia` (I3): UUID del diálogo, reenviado tal cual en los reintentos.
+ */
+export interface ComandoCorregirLineaDeTicket {
+  cuentaId: string;
+  operacionId: string;
+  motivo: string;
+  ejemplarVisto: number;
+  totalVisto: number;
+  claveIdempotencia: string;
+}
+
+/**
+ * Códigos propios de la corrección de una línea, además de los de «anular una venta» (`NO_ENCONTRADA` de la venta, `YA_ANULADA`, `ES_ADICIONAL`, `CONTEO_POSTERIOR`,
+ * `PAGO_CONSIGNANTE_POSTERIOR`…) y de «emitir ticket corregido» (`CUENTA_ABIERTA`, `SIN_NUMERACION`, `VENTA_ANULADA`):
+ *  - `CONFLICTO_IDEMPOTENCIA`: la misma clave con otro contenido;
+ *  - `LINEA_DE_OTRA_CUENTA`: la venta pedida no es de esta cuenta;
+ *  - `LA_CUENTA_CAMBIO`: lo que la persona vio ya no coincide con lo guardado (otro ejemplar o otro total);
+ *  - `ULTIMA_LINEA`: es la única línea que sigue vendida: no queda ticket que emitir (para anular la venta entera está «Anular venta»).
+ */
+export type CodigoCorregirLineaDeTicket = CodigoAnularVenta | CodigoEmitirTicketCorregido | "CONFLICTO_IDEMPOTENCIA" | "LINEA_DE_OTRA_CUENTA" | "LA_CUENTA_CAMBIO" | "ULTIMA_LINEA";
+
+/** `datos` de una corrección: el ejemplar emitido (para imprimirlo) y qué ventas se anularon. `repetida`: un reenvío con la misma clave devolvió el mensaje original. */
+export interface DatosCorregirLineaDeTicket {
+  numero: number;
+  ejemplar: number;
+  operacionesAnuladas: string[];
+  repetida: boolean;
+}
+
+export type ResultadoCorregirLineaDeTicket = ResultadoCaso<DatosCorregirLineaDeTicket, CodigoCorregirLineaDeTicket>;
+
+/**
+ * Comando «quitar unidades de una línea de una cuenta cerrada» (E1 de la corrección por ajuste, docs/diseno-correccion-por-ajuste-2026-11-06.md): «cobré 2 cervezas y la
+ * mesa tomó 1». YA validado por `guardComandoQuitarUnidadesDeLinea`. Mismo molde que `ComandoCorregirLineaDeTicket`, más:
+ *  - `unidadesAQuitar`: entero de 1 a (unidades - 1); quitar todas es anular la línea entera (`corregirLineaDeTicket`);
+ *  - `unidadesVistas`: cuántas unidades vendía la línea en la pantalla de la persona (guarda optimista: si otra persona ya la corrigió, no coincide).
+ * `operacionId` es la venta VIGENTE de la línea (la que devuelve la lista de líneas corregibles: la original, o la última corrección).
+ */
+export interface ComandoQuitarUnidadesDeLinea {
+  cuentaId: string;
+  operacionId: string;
+  unidadesAQuitar: number;
+  unidadesVistas: number;
+  motivo: string;
+  ejemplarVisto: number;
+  totalVisto: number;
+  claveIdempotencia: string;
+}
+
+/**
+ * Códigos de «quitar unidades»: los de la corrección de una línea entera, más los de la decisión pura (`MotivoDeRechazoDeLaCorreccion`: promo, adicionales, unidades inválidas,
+ * la venta cambió…) y `ALCANCE_TOTAL` (se pidió quitar todas las unidades: eso es anular la línea entera, otro botón).
+ */
+export type CodigoQuitarUnidadesDeLinea = CodigoCorregirLineaDeTicket | MotivoDeRechazoDeLaCorreccion | "ALCANCE_TOTAL";
+
+/** `datos` de quitar unidades: el ejemplar emitido, la venta nueva que reemplaza a la anterior y cuántas unidades quedan. `repetida`: un reenvío con la misma clave devolvió el mensaje original. */
+export interface DatosQuitarUnidadesDeLinea {
+  numero: number;
+  ejemplar: number;
+  ventaNuevaId: string | null;
+  unidadesQueQuedan: number;
+  repetida: boolean;
+}
+
+export type ResultadoQuitarUnidadesDeLinea = ResultadoCaso<DatosQuitarUnidadesDeLinea, CodigoQuitarUnidadesDeLinea>;

@@ -33,7 +33,7 @@ import { OtroIgual, OtroIgualProvider } from "./otro-igual";
  */
 export async function PantallaDelPuesto({ ctx, detalle, ahora, variante }: { ctx: ContextoUsuario; detalle: DetalleDeMesa; ahora: Date; variante: "mesa" | "mostrador" }) {
   const delMostrador = variante === "mostrador";
-  const [tomarPedido, abrirCuenta, enviarACocina, liberarMesa, asignarCliente, anularItem, cerrarCuenta, emitirCorregida, verReportesDinero, secciones, tickets] = await Promise.all([
+  const [tomarPedido, abrirCuenta, enviarACocina, liberarMesa, asignarCliente, anularItem, cerrarCuenta, emitirCorregida, anularVenta, verReportesDinero, secciones, tickets] = await Promise.all([
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_tomar_pedido", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_abrir_cuenta", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_enviar_a_cocina", ctx.db),
@@ -42,6 +42,7 @@ export async function PantallaDelPuesto({ ctx, detalle, ahora, variante }: { ctx
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_anular_item", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_cerrar_cuenta", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "pos_emitir_ticket_corregido", ctx.db),
+    obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "anular_venta", ctx.db),
     // El shell del POS no filtra `EnlaceInterno` (no hay AccionesVisiblesProvider acá): el link a «Tickets emitidos» se
     // condiciona a mano, del lado del servidor (Task #17).
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "reporte_tickets", ctx.db),
@@ -175,7 +176,7 @@ export async function PantallaDelPuesto({ ctx, detalle, ahora, variante }: { ctx
               </div>
             </div>
           )}
-          <CuentasCerradas tickets={tickets} puede={cerrarCuenta.editar} puedeCorregir={emitirCorregida.editar} zonaHoraria={ctx.empresaZonaHoraria} />
+          <CuentasCerradas tickets={tickets} puede={cerrarCuenta.editar} puedeCorregir={emitirCorregida.editar} puedeCorregirLinea={emitirCorregida.editar && anularVenta.editar} zonaHoraria={ctx.empresaZonaHoraria} />
           {verReportesDinero.ver && (
             <p className="mt-3 text-sm">
               <Link href={`/reportes/tickets?mesaId=${mesa.id}`} className="inline-flex min-h-11 items-center text-tinta-suave underline hover:text-tinta md:min-h-0">

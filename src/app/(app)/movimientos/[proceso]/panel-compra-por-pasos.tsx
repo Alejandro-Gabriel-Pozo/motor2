@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
+import type { ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
 import { registrarFacturaProveedor } from "@/server/actions/movimientos/facturas-proveedor";
 import { BloqueDeReparto, REPARTO_APAGADO, type EstadoDeReparto } from "./bloque-de-reparto";
 import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
@@ -47,7 +47,7 @@ import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 
 /**
  * La COMPRA por pasos (etapa 1 de Compras, paso 6; docs/diseno-compras-factura-unica-y-rechazo-2026-11-03.md §9): Factura → Qué compraste → Dónde entra → Pago → Revisar y confirmar. Solo la Compra usa esta pantalla;
- * los otros ocho procesos siguen con `PanelMovimientoForm`. Las mismas Server Actions de siempre (`registrarMovimiento`, y `registrarFacturaProveedor` si se reparte entre sucursales): el servidor revalida todo, lo que
+ * los otros ocho procesos siguen con `PanelMovimientoForm`. Toda compra se guarda con `registrarFacturaProveedor` (una factura de una o más partes: sin reparto, una parte del 100 % en esta sucursal): el servidor revalida todo, lo que
  * valida cada paso acá solo evita ir y volver. Lo que se puede calcular sin ambigüedad (códigos, precios por unidad) se muestra y NO se manda.
  *
  * El formulario va con `noValidate` y solo dibuja el paso actual: la validez nativa de un campo de otro paso no puede frenar el envío. Enter pasa al paso siguiente; confirmar es SIEMPRE el botón «Confirmar compra».
@@ -345,46 +345,22 @@ export function PanelCompraPorPasos({
     enviando.current = true;
     startTransition(async () => {
       try {
-        let resultado: { ok: boolean; mensaje: string };
-        if (repartiendo && reparto) {
-          const partes = estadoReparto.incluidas.map((sucursalId) => ({ sucursalId, valor: numeroDelCampo(estadoReparto.valores[sucursalId] ?? "") ?? Number.NaN }));
-          const conParteEnEsta = estadoReparto.incluidas.includes(reparto.sucursalActiva.id);
-          resultado = await registrarFacturaProveedor({
-            fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
-            proveedorId,
-            nroFactura,
-            seccionId: conParteEnEsta ? seccionId : undefined,
-            detalleLibre: detalleLibre || undefined,
-            items: itemsValidos,
-            reparto: { modo: estadoReparto.modo, partes },
-            ...(pendienteDePago ? { condicionPago: "PENDIENTE_DE_PAGO" as const } : {}),
-            claveIdempotencia,
-          });
-        } else if (pendienteDePago) {
-          // Pendiente de pago sin repartir: una factura con UNA parte del 100 % en esta sucursal (mismo stock y Kardex que la compra simple), para poder declararle el pago después.
-          resultado = await registrarFacturaProveedor({
-            fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
-            proveedorId,
-            nroFactura,
-            seccionId,
-            detalleLibre: detalleLibre || undefined,
-            items: itemsValidos,
-            reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: sucursalActivaId, valor: 100 }] },
-            condicionPago: "PENDIENTE_DE_PAGO",
-            claveIdempotencia,
-          });
-        } else {
-          resultado = await registrarMovimiento({
-            proceso: config.proceso,
-            fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
-            seccionId,
-            proveedorId,
-            nroFactura,
-            detalleLibre: detalleLibre || undefined,
-            items: itemsValidos,
-            claveIdempotencia,
-          });
-        }
+        // Toda compra es una factura de una o más partes (U0 de «una sola compra»): sin reparto, UNA parte del 100 % en esta sucursal; con reparto, las partes que se tipearon.
+        const partes = repartiendo && reparto
+          ? estadoReparto.incluidas.map((sucursalId) => ({ sucursalId, valor: numeroDelCampo(estadoReparto.valores[sucursalId] ?? "") ?? Number.NaN }))
+          : [{ sucursalId: sucursalActivaId, valor: 100 }];
+        const conParteEnEsta = partes.some((p) => p.sucursalId === sucursalActivaId);
+        const resultado = await registrarFacturaProveedor({
+          fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
+          proveedorId,
+          nroFactura,
+          seccionId: conParteEnEsta ? seccionId : undefined,
+          detalleLibre: detalleLibre || undefined,
+          items: itemsValidos,
+          reparto: { modo: repartiendo && reparto ? estadoReparto.modo : "PORCENTAJE", partes },
+          ...(pendienteDePago ? { condicionPago: "PENDIENTE_DE_PAGO" as const } : {}),
+          claveIdempotencia,
+        });
         setOk(resultado.ok);
         setMensaje(resultado.ok ? mensajeFinalDeCompra(resultado.mensaje, avisos) : resultado.mensaje);
         if (resultado.ok) {

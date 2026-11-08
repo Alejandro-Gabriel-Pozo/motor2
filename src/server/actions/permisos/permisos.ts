@@ -1,7 +1,7 @@
 "use server";
 
 import { guardComandoGuardarPermisos, type CambioDeMatriz } from "@/core/features/permisos/matriz.guard";
-import { claveEnCatalogo } from "@/core/permisos/acciones";
+import { accionesDeLaMatrizDePermisos } from "@/core/permisos/matriz";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conEdicionDePermisos } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
@@ -15,7 +15,7 @@ export async function listarMatrizPermisos() {
     ctx.db.rol.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
     ctx.db.permisoRol.findMany(),
   ]);
-  return { acciones: acciones.filter((a) => claveEnCatalogo(a.clave)), roles, permisos };
+  return { acciones: accionesDeLaMatrizDePermisos(acciones), roles, permisos };
 }
 
 /** Un cambio de la matriz (lo que la persona vio y lo que quiere). Vive en `core/features/permisos/matriz.guard.ts` (lo usa también el caso de uso). */

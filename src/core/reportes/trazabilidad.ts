@@ -31,3 +31,17 @@ export interface OperacionEncontrada {
   proceso: string;
   seccionNombre: string;
 }
+/**
+ * El detalle con que se PRELLENA el Ajuste que corrige un movimiento (E0 de la corrección por ajuste, «Corregir este movimiento»): la referencia al original, para que el Kardex
+ * diga qué corrige («Corrección del movimiento de COMPRA del 2026-11-03 · operación …»). El día lo pone quien llama (ya en hora argentina). Siempre cabe en el campo Detalle
+ * (200 caracteres): si el texto se pasara, se recorta el final y se conserva el comienzo, que es lo que identifica el movimiento.
+ */
+export function detalleDeCorreccionDeMovimiento(args: { proceso: string; dia: string; idOperacion: string }, largoMaximo = 200): string {
+  const texto = `Corrección del movimiento de ${args.proceso} del ${args.dia} · operación ${args.idOperacion}`;
+  return texto.length <= largoMaximo ? texto : texto.slice(0, largoMaximo);
+}
+
+/** El enlace de «Corregir este movimiento»: abre el Ajuste con el movimiento a corregir (el servidor lee el original; la URL lleva solo su id). */
+export function enlaceParaCorregirMovimiento(idMovimiento: string): string {
+  return `/movimientos/ajuste?corrige=${encodeURIComponent(idMovimiento)}`;
+}
