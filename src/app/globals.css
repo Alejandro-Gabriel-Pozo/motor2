@@ -688,3 +688,55 @@ html:has([data-carta-libro]) body {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
+
+/* Ficha de cocina imprimible (pedida por el dueño el 2026-11-08, docs/diseno-ficha-de-cocina-2026-11-08.md): la pantalla `/catalogo/recetas/[productoId]/ficha` marca su
+   contenido con `data-ficha-cocina` y sus controles de pantalla (volver, Imprimir) con `data-ficha-solo-pantalla`. Al imprimir, SOLO en una pantalla que tenga esa marca
+   (`body:has(...)`; Ctrl+P en cualquier otra no cambia nada, como el ticket y la carta):
+   - sin menú lateral, sin su botón de plegar, sin barra superior (la del shell, `AppShell`) ni los controles de pantalla;
+   - A4 vertical con página con nombre (`ficha-cocina`), márgenes de 12 mm;
+   - el contenedor del shell (flex, alto de pantalla) pasa a bloque de alto libre: así el papel corta limpio entre hojas, sin el hueco en blanco que deja un flex partido;
+   - un paso, un bloque de datos y una fila de ingredientes no se parten entre hojas (`break-inside: avoid`). Una receta normal entra en una hoja.
+   Negro sobre blanco, sin fondos; los tamaños de letra son los de la pantalla (clases de la escala de Tailwind del componente). */
+@page ficha-cocina {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  body:has([data-ficha-cocina]) {
+    display: block;
+    min-height: 0;
+    background: none;
+    color: black;
+  }
+  body:has([data-ficha-cocina]) aside,
+  body:has([data-ficha-cocina]) header,
+  body:has([data-ficha-cocina]) button[aria-label="Ocultar menú"],
+  body:has([data-ficha-cocina]) button[aria-label="Mostrar menú"],
+  body:has([data-ficha-cocina]) [data-ficha-solo-pantalla] {
+    display: none !important;
+  }
+  body:has([data-ficha-cocina]) div:has([data-ficha-cocina]) {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+  body:has([data-ficha-cocina]) main {
+    padding: 0 !important;
+  }
+  body:has([data-ficha-cocina]) [data-ficha-cocina] {
+    page: ficha-cocina;
+    max-width: none;
+    color: black;
+    background: none;
+  }
+  body:has([data-ficha-cocina]) .ficha-paso,
+  body:has([data-ficha-cocina]) .ficha-bloque,
+  body:has([data-ficha-cocina]) [data-ficha-cocina] tr {
+    break-inside: avoid;
+  }
+  body:has([data-ficha-cocina]) [data-ficha-cocina] thead {
+    display: table-header-group;
+  }
+}
