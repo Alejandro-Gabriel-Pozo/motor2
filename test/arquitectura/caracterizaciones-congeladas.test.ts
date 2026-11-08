@@ -464,6 +464,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "U0 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md; CAMBIA SOLO LA PREPARACIÓN, no la venta): `registrarMovimiento` COMPRA es ahora una factura de UNA parte al 100 %% en la sucursal, pagada ahora. Cambian las 115 líneas OPERACION y las KARDEX de proceso COMPRA de las compras de preparación, igual que en venta-matriz (clave, huella y mensaje a la cabecera de la factura; la fila de Kardex gana su renglón y pierde unidadCompraId y cantidadCompra). Más 115 líneas NUEVAS de AUDITORIA con entidad=FacturaProveedor («Factura de proveedor ... cargada en «Central»»): una por compra, porque toda compra ahora es una factura y su carga se audita. Verificado con diff: ninguna línea que no sea de proceso COMPRA ni esas 115 AUDITORIA cambia (venta, stock, costo e importes intactos).",
       },
+      {
+        blob: "6286ea6ea15e9dc04b332ffa588b30351d5d36a2",
+        // El commit PADRE de este (fab38319, «Merge pull request #192», la punta de `alegp/integrador-poda`) es el último antes del cambio; el golden se regenera en el merge siguiente.
+        commit: "fab38319",
+        motivo:
+          "Poda del precio del vínculo (decisión del dueño, 2026-11-06; CAMBIA SOLO LA AUDITORÍA DE PREPARACIÓN, no la venta): la compra deja de escribir el precio en `ProveedorPorProducto` y de auditarlo, así que desaparecen las 122 líneas AUDITORIA con entidad=ProveedorPorProducto (campo precioPorUnidadStock) que dejaban las compras de preparación. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1 sobre el código integrado: 122 líneas borradas, 0 agregadas, todas de esa entidad (comprobado línea por línea contra el golden anterior). NO cambia ninguna fila de venta, KARDEX, stock, costo ni importe."
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
