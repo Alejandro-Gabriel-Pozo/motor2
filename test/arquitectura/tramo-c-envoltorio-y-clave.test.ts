@@ -121,6 +121,9 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
     setStockMinimoProducto: SUC("stock_minimo"),
     eliminarStockMinimo: SUC("stock_minimo"),
   },
+  // Poda del 2026-11-06 (#192): `guardarReceta`, su única mutación con envoltorio, dejó de ser endpoint (pasó a `receta-a-ciegas.ts`, solo servidor). El archivo SIGUE bajo el guardián (sus lecturas y las acciones
+  // puntuales que delegan figuran en SIN_ENVOLTORIO, con su guarda): por eso queda declarado SIN mutaciones con envoltorio.
+  "catalogo/recetas.ts": {},
   // Hito 5, bloque D (5.4-D): las 8 acciones de configuración de la carta (20 funciones; solo `copiar-carta` y `tema` son de contexto sucursal).
   "carta/secciones.ts": {
     guardarSeccionCarta: EMP("carta_secciones"),
@@ -240,7 +243,7 @@ describe("tramo C (carta, catálogo y stock): cada Server Action entra por su en
     // + 1: `guardarSoloSalonPromoCarta` (docs/diseno-promo-solo-salon-2026-10-26.md), en `carta/promos.ts` (que ya estaba entre los 17 archivos).
     // Las 18 de configuración de la carta pasan a 19: `confirmarNombreEnCarta` («Está bien así», 2026-11-04), en `carta/contenido-producto.ts` (que ya estaba entre los archivos).
     expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 19);
-    expect(Object.keys(DECLARADAS)).toHaveLength(17 + 8);
+    expect(Object.keys(DECLARADAS).filter((a) => a !== "catalogo/recetas.ts")).toHaveLength(17 + 8);
     for (const f of RECETA_PROPIA_YA_MIGRADAS) expect(DECLARADAS["catalogo/receta-sucursal.ts"][f], f).toBeDefined();
     // Bloque D: de las 18, 7 son de empresa (secciones —con «Ordenar» de CARTA-MANT F3—, portal y registro público) y 11 de sucursal: copiar la carta y la del tema, y desde S-10/D1 (O.59) las 9 de géneros, contenido e ítems agrupados.
     const delBloqueD = ["carta/secciones.ts", "carta/generos.ts", "carta/contenido-producto.ts", "carta/items-agrupados.ts", "carta/portal-empresa.ts", "carta/registro-publico.ts", "carta/tema.ts", "carta/copiar-carta.ts"].flatMap((a) => Object.values(DECLARADAS[a]));
