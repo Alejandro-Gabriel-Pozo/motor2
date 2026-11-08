@@ -3,7 +3,9 @@
  * carpeta de rutas del POS, `(pos)/mesas/[mesaId]/`) para que un reporte de `(app)` (el reporte de tickets emitidos, Task #17)
  * también pueda formatear sin duplicar los `Intl.NumberFormat`. Las horas (con la zona de la empresa) viven en `core/tiempo`.
  */
-const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+import { MONEDA_FIJA } from "@/core/moneda";
+
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: MONEDA_FIJA, minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const CANTIDAD = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 4 });
 
 export function formatearMonto(n: number): string {

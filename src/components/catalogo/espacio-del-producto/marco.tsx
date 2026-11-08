@@ -3,6 +3,8 @@ import { rutaDelPaso, type PasoDeLaPortada, type PasoDelEspacio } from "@/core/c
 import { PestanasDeRuta, type PestanaDeRuta } from "@/ui/componentes/navegacion/pestanas-de-ruta";
 import { Enlace } from "@/ui/primitivas/enlace";
 import { Insignia } from "@/ui/primitivas/insignia";
+import { esBaseConfigurable, type ModoDeVenta } from "@/core/opciones/public";
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 
 /**
  * El MARCO del espacio del producto (Fase 6, 6.12; DEC-12): lo que comparten la portada del producto y sus pasos. Arriba, el volver a la lista, el nombre del producto (el `h1` de la pantalla), cómo se
@@ -16,9 +18,9 @@ export interface ProductoDelMarco {
   id: string;
   nombre: string;
   codigo: string;
-  tipo: "PV" | "MP";
+  tipo: TipoProducto;
   /** Solo un producto de venta se vende «Directo» o «Por opción»; una materia prima no lleva la insignia. */
-  modoDeVenta: "DIRECTO" | "BASE_CONFIGURABLE";
+  modoDeVenta: ModoDeVenta;
   disponibleAca: boolean;
   sucursalNombre: string;
   /**
@@ -64,7 +66,7 @@ export function MarcoDelEspacio({ producto, pasos, actual, children }: PropsDelM
                 {producto.codigo} · {producto.tipo === "MP" ? "Materia prima (MP)" : "Producto de venta (PV)"}
               </span>
             )}
-            {fichaVisible && producto.tipo === "PV" && <Insignia tono="neutro">{producto.modoDeVenta === "BASE_CONFIGURABLE" ? "Por opción" : "Directo"}</Insignia>}
+            {fichaVisible && producto.tipo === "PV" && <Insignia tono="neutro">{esBaseConfigurable(producto.modoDeVenta) ? "Por opción" : "Directo"}</Insignia>}
             <Insignia tono={producto.disponibleAca ? "ok" : "aviso"}>{producto.disponibleAca ? `Disponible en «${producto.sucursalNombre}»` : `No disponible en «${producto.sucursalNombre}»`}</Insignia>
           </p>
         </div>

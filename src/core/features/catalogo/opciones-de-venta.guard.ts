@@ -1,6 +1,6 @@
 import { esIdentificador } from "@/core/datos/identificador";
 import { validarImporte } from "@/core/datos/importe";
-import { ENTERO_MAXIMO_RAZONABLE, validarTopeDeLista } from "@/core/datos/limites";
+import { ENTERO_MAXIMO_RAZONABLE, validarTopeDeLista, LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
 import { validarNombreCatalogo } from "@/core/datos/nombre-catalogo";
 import { contextoDeCantidad, numeroDeEntrada, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 import { validarFactorDeEscala, validarPorcentajeDeDiferencia } from "@/core/datos/porcentaje-y-factor";
@@ -60,8 +60,6 @@ const MAXIMO_OPCIONES_POR_ADMISION = 100;
  * en la biblioteca (`/catalogo/opciones`), opción por opción.
  */
 export const MAX_OPCIONES_EN_UN_ALTA = 20;
-/** Tope de un id que llega del cliente (un cuid tiene 25). */
-const LARGO_MAXIMO_DE_ID = 64;
 /** Tope de una cantidad de consumo (`DECIMAL(14,4)`). */
 const CANTIDAD_DE_CONSUMO_MAXIMA = 1e10;
 

@@ -1,11 +1,12 @@
 import { MENSAJE_OPERACION_NO_ENCONTRADA } from "@/core/features/compras/compra.guard";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { CANTIDAD_MAXIMA } from "@/core/datos/cantidad";
-import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { validarFechaOperacion } from "@/core/datos/fecha-operacion";
 import { esIdentificador } from "@/core/datos/identificador";
 import { tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
-import { LARGO_MAXIMO_NRO_FACTURA, texto, validarLargoTexto } from "@/core/texto";
+import { LARGO_MAXIMO_MOTIVO_ANULACION, LARGO_MAXIMO_NRO_FACTURA, texto, validarLargoTexto } from "@/core/texto";
+import { validarTextoLibre } from "@/core/datos/limites";
 import type { ComandoAnularVenta, DatosVentaInput } from "./venta.schema";
 
 /**
@@ -20,9 +21,14 @@ import type { ComandoAnularVenta, DatosVentaInput } from "./venta.schema";
  * (un 500 para la pantalla). Un string —exista o no— pasa tal cual, y el caso de uso sigue respondiendo como siempre.
  */
 export function guardComandoAnularVenta(entrada: unknown): ResultadoDato<ComandoAnularVenta> {
-  const { operacionId } = (entrada ?? {}) as { operacionId?: unknown };
+  const { operacionId, motivo: motivoCrudo } = (entrada ?? {}) as { operacionId?: unknown; motivo?: unknown };
   if (typeof operacionId !== "string") return rechazar("formato", MENSAJE_OPERACION_NO_ENCONTRADA);
-  return aceptar({ operacionId });
+  // E0 (corrección por ajuste): el motivo es obligatorio, 1 a 200 caracteres (el CHECK `Operacion_motivo_anulacion_chk` lo exige en la base).
+  if (typeof motivoCrudo !== "string") return rechazar("vacio", "Escribí el motivo de la anulación.");
+  const motivo = validarTextoLibre(motivoCrudo, "El motivo", LARGO_MAXIMO_MOTIVO_ANULACION);
+  if (!motivo.ok) return rechazar(motivo.codigo, motivo.mensaje);
+  if (!motivo.valor) return rechazar("vacio", "Escribí el motivo de la anulación.");
+  return aceptar({ operacionId, motivo: motivo.valor });
 }
 
 /** Decimales de las columnas `Decimal(14,4)` de cantidades: lo que tenga más se redondea en silencio al guardar, así que se rechaza antes. */
@@ -42,7 +48,7 @@ export function guardComandoRegistrarVenta(entrada: unknown, ahora: Date): Resul
   const fecha = validarFechaOperacion(datos.fecha, ahora);
   if (!fecha.ok) return rechazar(fecha.codigo, fecha.mensaje);
   if (datos.claveIdempotencia !== undefined && !esClaveIdempotenciaValida(datos.claveIdempotencia)) {
-    return rechazar("formato", "Clave de reintento inválida.");
+    return rechazar("formato", MENSAJE_CLAVE_DE_REINTENTO_INVALIDA);
   }
   const errorLargoFactura = validarLargoTexto(datos.nroFactura, "El número de factura", LARGO_MAXIMO_NRO_FACTURA);
   if (errorLargoFactura) return rechazar("largo", errorLargoFactura);

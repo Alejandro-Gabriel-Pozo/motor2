@@ -4,16 +4,16 @@ import { describe, expect, it } from "vitest";
 import { evaluarConteo, type ParteDeResultado, type ResultadoPlaywright } from "../../scripts/conteo-e2e-reparto";
 
 /**
- * El E2E de la CI corre repartido en partes (`playwright test --shard=i/n`, una matriz de jobs; el job `conteo-e2e` junta los resultados). Este guardián cuida las dos mitades de ese reparto:
+ * El E2E de la CI corre repartido en partes (`playwright test --shard=i/n`, una matriz de jobs; el paso «Conteo de E2E» del job `gate` junta los resultados). Este guardián cuida las dos mitades de ese reparto:
  *
  *  1. EL WORKFLOW (`.github/workflows/ci.yml`, leído como texto, igual que los demás guardianes de la CI): la matriz `parte` del job `e2e` es 1…n correlativa y n coincide con `PARTES_E2E` (la cantidad que
- *     exige `conteo-e2e`); el reparto usa `--shard=${{ matrix.parte }}/${{ strategy.job-total }}`; `fail-fast: false` (una parte roja no cancela a las demás: se ven todos los rojos de una vez); cada parte sube
- *     artefactos con NOMBRE ÚNICO (`…-${{ matrix.parte }}`); `conteo-e2e` espera al `e2e`, corre siempre y llama al script del conteo; y el `Gate (requerido)` espera a TODOS los jobs y los exige en verde uno por uno.
+ *     exige el conteo del `gate`); el reparto usa `--shard=${{ matrix.parte }}/${{ strategy.job-total }}`; `fail-fast: false` (una parte roja no cancela a las demás: se ven todos los rojos de una vez); cada parte sube
+ *     artefactos con NOMBRE ÚNICO (`…-${{ matrix.parte }}`); el job `gate` (que conserva el nombre `Gate (requerido)`) espera a TODOS los demás jobs, los exige en verde uno por uno en su primer paso y después, con `if:` de integracion y e2e en success, descarga los resultados y corre el conteo de E2E (y el de Vitest); no queda ningún job de conteo aparte (cada job suelto volvía a la cola de runners).
  *  2. EL CONTEO (`scripts/conteo-e2e-reparto.ts`, con JSON sintéticos con la forma real del reporter de Playwright): una parte de menos o de más, un spec en dos partes, un spec o una prueba sin correr, una prueba
  *     repetida, cuentas que no cierran con el árbol del resultado y una prueba fallada ponen rojo el conteo; el reparto correcto da cero errores y la misma huella sea cual sea el orden en que llegan las partes.
  *
  * Mutaciones demostradas (sobre el texto real de ci.yml y sobre los JSON): n distinto entre la matriz y `PARTES_E2E`; sacar `fail-fast: false`; sacar el `--shard`; el mismo nombre de artefacto en todas las
- * partes; sacar `conteo-e2e` del `needs` del Gate o su comprobación en `success`; `conteo-e2e` sin `if: always()`; y cada chequeo del conteo con su caso (ver los `it`).
+ * partes; sacar `e2e` del `needs` del Gate o su comprobación en `success`; sacar el paso del conteo de E2E del `gate` o su `if:`; volver a separar el conteo en un job aparte; y cada chequeo del conteo con su caso (ver los `it`).
  */
 const RAIZ = join(__dirname, "../..");
 const leer = (ruta: string) => readFileSync(join(RAIZ, ruta), "utf8").replace(/\r\n/g, "\n");
@@ -33,12 +33,24 @@ function idsDeLosJobs(workflow: string): string[] {
   return [...desdeJobs.matchAll(/^  ([a-z0-9-]+):\s*$/gm)].map((m) => m[1]!);
 }
 
+/** Texto de un paso de un job: desde `      - name: <nombre>` hasta el siguiente paso con nombre (o el final). */
+function pasoDe(job: string, nombre: string): string {
+  const inicio = new RegExp(`^      - name: ${nombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "m").exec(job);
+  if (!inicio) return "";
+  const resto = job.slice(inicio.index + inicio[0].length);
+  const siguiente = /^      - name:/m.exec(resto);
+  return siguiente ? resto.slice(0, siguiente.index) : resto;
+}
+
+/** El `if:` de los pasos de conteo del gate: solo corren si integracion y e2e dieron success (si algo ya falló no aportan). */
+const CONDICION_DEL_CONTEO = /^        if: \$\{\{ needs\.integracion\.result == 'success' && needs\.e2e\.result == 'success' \}\}\s*$/m;
+
 /** Problemas del reparto del E2E en un `ci.yml` (texto). Lista vacía = bien. */
 function problemasDelWorkflow(workflow: string): string[] {
   const p: string[] = [];
   const e2e = trozoDeJob(workflow, "e2e");
-  const conteo = trozoDeJob(workflow, "conteo-e2e");
   const gate = trozoDeJob(workflow, "gate");
+  const conteo = pasoDe(gate, "Conteo de E2E (todas las partes)");
   if (!e2e) return ["no se encontró el job e2e"];
 
   const partes = /^\s+PARTES_E2E:\s*"?(\d+)"?\s*$/m.exec(workflow)?.[1];
@@ -60,16 +72,16 @@ function problemasDelWorkflow(workflow: string): string[] {
   const artefactos = [...e2e.matchAll(/uses: actions\/upload-artifact@\S+[^\n]*\n\s+with:\n\s+name: ([^\n]+)/g)].map((m) => m[1]!.trim());
   if (artefactos.length < 2) p.push("el job e2e no sube sus artefactos (resultado y trazas)");
   for (const nombre of artefactos) if (!nombre.includes("${{ matrix.parte }}")) p.push(`el artefacto «${nombre}» del job e2e no lleva \${{ matrix.parte }} en el nombre: las partes se pisarían`);
-  if (!/resultado-playwright-\$\{\{ matrix\.parte \}\}/.test(e2e)) p.push("el resultado de cada parte no se sube como `resultado-playwright-${{ matrix.parte }}` (lo descarga conteo-e2e)");
+  if (!/resultado-playwright-\$\{\{ matrix\.parte \}\}/.test(e2e)) p.push("el resultado de cada parte no se sube como `resultado-playwright-${{ matrix.parte }}` (lo descarga el conteo del gate)");
 
-  if (!conteo) p.push("falta el job conteo-e2e");
+  // El conteo del E2E vive en pasos del gate (no en un job aparte), y solo corre si integracion y e2e dieron success.
+  if (!conteo) p.push("falta el paso «Conteo de E2E (todas las partes)» en el job gate");
   else {
-    if (!/^    needs: \[e2e\]\s*$/m.test(conteo)) p.push("conteo-e2e no espera al job e2e (`needs: [e2e]`)");
-    if (!/^    if: always\(\)\s*$/m.test(conteo)) p.push("conteo-e2e no corre siempre (`if: always()`): con un e2e rojo el Gate vería un conteo omitido en vez de rojo");
-    if (!/pattern: resultado-playwright-\*/.test(conteo)) p.push("conteo-e2e no descarga los `resultado-playwright-*`");
-    if (!/playwright test --list --reporter=json/.test(conteo)) p.push("conteo-e2e no lista los specs de la suite entera con `playwright test --list --reporter=json`");
-    if (!/npx tsx scripts\/conteo-e2e\.ts \S+ \S+ "\$PARTES_E2E"\s*$/m.test(conteo)) p.push('conteo-e2e no corre scripts/conteo-e2e.ts con la cantidad de partes ("$PARTES_E2E")');
+    if (!CONDICION_DEL_CONTEO.test(conteo)) p.push("el paso del conteo de E2E no tiene el `if:` de integracion y e2e en success");
+    if (!/npx tsx scripts\/conteo-e2e\.ts \S+ \S+ "\$PARTES_E2E"\s*$/m.test(conteo)) p.push('el gate no corre scripts/conteo-e2e.ts con la cantidad de partes ("$PARTES_E2E")');
   }
+  if (!/pattern: resultado-playwright-\*/.test(gate)) p.push("el gate no descarga los `resultado-playwright-*`");
+  if (!/playwright test --list --reporter=json/.test(gate)) p.push("el gate no lista los specs de la suite entera con `playwright test --list --reporter=json`");
 
   // El Gate: espera a todos los jobs (menos él) y exige cada uno en `success`.
   const necesita = /^    needs: \[([^\]]*)\]\s*$/m.exec(gate)?.[1]?.split(",").map((x) => x.trim()).filter(Boolean) ?? [];
@@ -92,7 +104,7 @@ describe("CI: el E2E repartido en partes (workflow)", () => {
   });
 
   it("el E2E tiene más de una parte y los jobs del workflow son los esperados (el Gate cubre a todos)", () => {
-    expect(idsDeLosJobs(real).sort()).toEqual(["build", "conteo", "conteo-e2e", "e2e", "estatico", "gate", "integracion"]);
+    expect(idsDeLosJobs(real).sort()).toEqual(["build", "e2e", "estatico", "gate", "integracion"]);
   });
 
   it("la premisa del reparto: playwright.config.ts reparte por ARCHIVO (fullyParallel falso) y corre un worker por parte", () => {
@@ -152,34 +164,40 @@ describe("CI: el E2E repartido en partes (workflow)", () => {
     it("el mismo nombre de artefacto en todas las partes (se pisarían)", () => {
       expect(muta(/name: playwright-test-results-\$\{\{ matrix\.parte \}\}/, "name: playwright-test-results")).toContain("el artefacto «playwright-test-results» del job e2e no lleva ${{ matrix.parte }} en el nombre: las partes se pisarían");
     });
-    it("el resultado de la parte con otro nombre que el que descarga conteo-e2e", () => {
-      expect(muta(/name: resultado-playwright-\$\{\{ matrix\.parte \}\}/, "name: resultado-${{ matrix.parte }}")).toContain("el resultado de cada parte no se sube como `resultado-playwright-${{ matrix.parte }}` (lo descarga conteo-e2e)");
+    it("el resultado de la parte con otro nombre que el que descarga el conteo del gate", () => {
+      expect(muta(/name: resultado-playwright-\$\{\{ matrix\.parte \}\}/, "name: resultado-${{ matrix.parte }}")).toContain("el resultado de cada parte no se sube como `resultado-playwright-${{ matrix.parte }}` (lo descarga el conteo del gate)");
     });
-    it("conteo-e2e sin `if: always()`", () => {
-      const mutado = real.replace(/(  conteo-e2e:[\s\S]*?)    if: always\(\)\n/, "$1");
+    it("el paso del conteo de E2E sin su `if:` de integracion y e2e en success", () => {
+      const mutado = real.replace(/(      - name: Conteo de E2E \(todas las partes\)\n)        if: [^\n]*\n/, "$1");
       expect(mutado).not.toBe(real);
-      expect(problemasDelWorkflow(mutado)).toContain("conteo-e2e no corre siempre (`if: always()`): con un e2e rojo el Gate vería un conteo omitido en vez de rojo");
+      expect(problemasDelWorkflow(mutado)).toContain("el paso del conteo de E2E no tiene el `if:` de integracion y e2e en success");
     });
-    it("conteo-e2e sin correr el script", () => {
-      expect(muta(/npx tsx scripts\/conteo-e2e\.ts /, "echo ")).toContain('conteo-e2e no corre scripts/conteo-e2e.ts con la cantidad de partes ("$PARTES_E2E")');
+    it("el conteo de E2E sin correr el script", () => {
+      expect(muta(/npx tsx scripts\/conteo-e2e\.ts /, "echo ")).toContain('el gate no corre scripts/conteo-e2e.ts con la cantidad de partes ("$PARTES_E2E")');
     });
-    it("conteo-e2e sin pasarle la cantidad de partes al script (contaría contra cualquier cosa)", () => {
-      expect(muta(/(conteo-e2e\.ts partes-e2e lista-playwright\.json) "\$PARTES_E2E"/, "$1")).toContain('conteo-e2e no corre scripts/conteo-e2e.ts con la cantidad de partes ("$PARTES_E2E")');
+    it("el conteo de E2E sin pasarle la cantidad de partes al script (contaría contra cualquier cosa)", () => {
+      expect(muta(/(conteo-e2e\.ts partes-e2e lista-playwright\.json) "\$PARTES_E2E"/, "$1")).toContain('el gate no corre scripts/conteo-e2e.ts con la cantidad de partes ("$PARTES_E2E")');
     });
-    it("el job conteo-e2e borrado", () => {
-      const mutado = real.replace(/  conteo-e2e:[\s\S]*?(?=  gate:)/, "");
+    it("el paso del conteo de E2E borrado del gate", () => {
+      const mutado = real.replace(/      - name: Conteo de E2E \(todas las partes\)\n[\s\S]*$/, "");
+      expect(mutado).not.toBe(real);
+      expect(problemasDelWorkflow(mutado)).toContain("falta el paso «Conteo de E2E (todas las partes)» en el job gate");
+    });
+    it("el gate sin descargar los resultados de Playwright", () => {
+      expect(muta(/pattern: resultado-playwright-\*/, "pattern: otro-*")).toContain("el gate no descarga los `resultado-playwright-*`");
+    });
+    it("el conteo vuelve a ser un job aparte que el gate no espera", () => {
+      const mutado = real.replace(/  gate:\n/, "  conteo-e2e:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo conteo\n\n  gate:\n");
       expect(mutado).not.toBe(real);
       const problemas = problemasDelWorkflow(mutado);
-      expect(problemas).toContain("falta el job conteo-e2e");
+      expect(problemas).toContain("el Gate no espera al job conteo-e2e (needs)");
+      expect(problemas).toContain("el Gate no exige conteo-e2e en success");
     });
-    it("el Gate sin esperar a conteo-e2e", () => {
-      expect(muta(/needs: \[estatico, build, integracion, conteo, e2e, conteo-e2e\]/, "needs: [estatico, build, integracion, conteo, e2e]")).toContain("el Gate no espera al job conteo-e2e (needs)");
+    it("el Gate sin esperar a e2e", () => {
+      expect(muta(/needs: \[estatico, build, integracion, e2e\]/, "needs: [estatico, build, integracion]")).toContain("el Gate no espera al job e2e (needs)");
     });
     it("el Gate sin exigir e2e en success", () => {
       expect(muta(/ -a "\$\{\{ needs\.e2e\.result \}\}" = "success"/, "")).toContain("el Gate no exige e2e en success");
-    });
-    it("el Gate sin exigir conteo-e2e en success", () => {
-      expect(muta(/ -a "\$\{\{ needs\.conteo-e2e\.result \}\}" = "success"/, "")).toContain("el Gate no exige conteo-e2e en success");
     });
     it("el Gate renombrado", () => {
       expect(muta(/name: Gate \(requerido\)/, "name: Gate")).toContain("el job gate ya no se llama «Gate (requerido)»: la regla de la rama dejaría de encontrarlo");

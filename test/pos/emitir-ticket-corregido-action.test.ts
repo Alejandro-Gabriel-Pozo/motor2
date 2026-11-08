@@ -39,7 +39,7 @@ describe("emitirTicketCorregido (server action)", () => {
 
   it("después de anular una línea: emite el 1-B (mismo número, corrige al A, con motivo), lo audita y el ticket queda vigente con lo que sigue vendido", async () => {
     const { cuenta, ventaFlan } = await cerrarTresLineas();
-    expect((await anularVenta(ventaFlan)).ok).toBe(true);
+    expect((await anularVenta(ventaFlan, "Error de carga")).ok).toBe(true);
 
     const r = await emitirTicketCorregido(cuenta.id, "  No quiso el flan  ");
     expect(r).toEqual({ ok: true, mensaje: "Ticket N.º 1-B emitida: reemplaza a N.º 1-A.", numero: 1, ejemplar: 2 });
@@ -60,7 +60,7 @@ describe("emitirTicketCorregido (server action)", () => {
 
   it("una segunda emisión sin nuevas anulaciones se rechaza: el B ya las refleja, y no se escribe nada", async () => {
     const { cuenta, ventaFlan } = await cerrarTresLineas();
-    await anularVenta(ventaFlan);
+    await anularVenta(ventaFlan, "Error de carga");
     expect((await emitirTicketCorregido(cuenta.id, "No quiso el flan")).ok).toBe(true);
 
     expect(await emitirTicketCorregido(cuenta.id, "Otra vez")).toEqual({ ok: false, mensaje: "El ticket N.º 1-B ya refleja las anulaciones." });
@@ -70,9 +70,9 @@ describe("emitirTicketCorregido (server action)", () => {
 
   it("otra anulación después del B: el 1-C corrige también al A (nunca al B), y se audita B → C", async () => {
     const { cuenta, ventaFlan, ventaMila2 } = await cerrarTresLineas();
-    await anularVenta(ventaFlan);
+    await anularVenta(ventaFlan, "Error de carga");
     await emitirTicketCorregido(cuenta.id, "No quiso el flan");
-    expect((await anularVenta(ventaMila2)).ok).toBe(true);
+    expect((await anularVenta(ventaMila2, "Error de carga")).ok).toBe(true);
 
     expect(await emitirTicketCorregido(cuenta.id, "La segunda milanesa no salió")).toEqual({ ok: true, mensaje: "Ticket N.º 1-C emitida: reemplaza a N.º 1-A.", numero: 1, ejemplar: 3 });
     const [a, , c] = await ejemplaresDe(cuenta.id);
@@ -89,14 +89,14 @@ describe("emitirTicketCorregido (server action)", () => {
 
   it("con la venta anulada entera se rechaza: no hay ticket que corregir", async () => {
     const { cuenta, ventaMila, ventaFlan, ventaMila2 } = await cerrarTresLineas();
-    for (const id of [ventaMila, ventaFlan, ventaMila2]) await anularVenta(id);
+    for (const id of [ventaMila, ventaFlan, ventaMila2]) await anularVenta(id, "Error de carga");
     expect(await emitirTicketCorregido(cuenta.id, "Se anuló todo")).toEqual({ ok: false, mensaje: "La venta se anuló entera: no hay ticket que corregir." });
     expect(await ejemplaresDe(cuenta.id)).toHaveLength(1);
   });
 
   it("el motivo es obligatorio (mismo criterio que anular un ítem) y sin él no se escribe nada", async () => {
     const { cuenta, ventaFlan } = await cerrarTresLineas();
-    await anularVenta(ventaFlan);
+    await anularVenta(ventaFlan, "Error de carga");
     for (const motivo of ["", "   "]) expect(await emitirTicketCorregido(cuenta.id, motivo)).toEqual({ ok: false, mensaje: "Escribí el motivo de la anulación." });
     expect(await emitirTicketCorregido(cuenta.id, "x".repeat(201))).toEqual({ ok: false, mensaje: "El motivo no puede superar los 200 caracteres." });
     expect(await ejemplaresDe(cuenta.id)).toHaveLength(1);
@@ -162,7 +162,7 @@ describe("emitirTicketCorregido (server action)", () => {
 
   it("sin pos_emitir_ticket_corregido Editar no se puede: ni el mozo ni uno que solo lo VE; un cajero con solo ese permiso sí", async () => {
     const { cuenta, ventaFlan } = await cerrarTresLineas();
-    await anularVenta(ventaFlan);
+    await anularVenta(ventaFlan, "Error de carga");
     const mozo = await crearMozo(s.sucursalId);
     const soloVe = await crearUsuarioConRol(s.sucursalId, "cajero-solo-ve", [{ clave: "pos_emitir_ticket_corregido", ver: true, editar: false }]);
     for (const usuario of [mozo, soloVe]) {

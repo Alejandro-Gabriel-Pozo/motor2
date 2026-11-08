@@ -81,8 +81,9 @@ test("cargar una factura repartida, aceptar la parte desde la otra sucursal (sin
     await expect(propuesta).toContainText(`${producto.nombre}: 4 kg`);
     await expect(propuesta).toContainText(central.nombre);
     await expect(propuesta).not.toContainText("$");
-    await expect(propuesta).not.toContainText("400");
-    await expect(propuesta).not.toContainText("600");
+    // El importe real se vería como «$400»/«400,00»: se busca el número SOLO, sin dígitos pegados (el nombre del producto lleva `Date.now()`, que a veces contiene «400» o «600» y rompía este chequeo).
+    await expect(propuesta).not.toContainText(/(?<!\d)400(?!\d)/);
+    await expect(propuesta).not.toContainText(/(?<!\d)600(?!\d)/);
     await propuesta.getByRole("combobox", { name: "Depósito" }).selectOption({ label: seccionDestino.nombre });
     await propuesta.getByRole("button", { name: "Aceptar", exact: true }).click();
     await expect(op.page.getByText(/Parte aceptada: 1 movimiento/)).toBeVisible();
@@ -96,11 +97,9 @@ test("cargar una factura repartida, aceptar la parte desde la otra sucursal (sin
       await page.goto(`/reportes/compras?proveedorId=${proveedor.id}`);
       const tarjeta = page.locator(`[data-compra="${factura.partes[0].operacionId}"]`);
       await tarjeta.locator("summary").click();
-      await expect(tarjeta).toContainText("se anula la factura entera");
-      await expect(tarjeta.getByRole("button", { name: /^Anular compra/ })).toHaveCount(0);
-      await tarjeta.getByLabel("Motivo de la anulación de la factura").fill("carga de prueba");
-      await tarjeta.getByRole("button", { name: /^Anular la factura/ }).click();
-      await tarjeta.getByRole("button", { name: "Sí, anular la factura" }).click();
+      await tarjeta.getByLabel("Motivo de la anulación").fill("carga de prueba");
+      await tarjeta.getByRole("button", { name: /^Anular compra/ }).click();
+      await tarjeta.getByRole("button", { name: "Sí, anular" }).click();
       return tarjeta;
     };
     const sinPermisoAlla = await anularDesdeCompras();

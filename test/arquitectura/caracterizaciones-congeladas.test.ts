@@ -322,6 +322,20 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
       },
+      {
+        blob: "59f8f71c8420fd9abeb1f76e20f8ee65bf53d94e",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `eac39a98` (E0 f+b).
+        commit: "eac39a98",
+        motivo:
+          "E0 de la corrección por ajuste (PR1, f+b): anular una venta pide MOTIVO (queda en `motivoAnulacion` de la venta anulada) y el contra-asiento escribe `revierteAOperacionId` apuntando a ella. Cambian SOLO esos dos campos en las filas OPERACION de las anulaciones; ninguna línea de Kardex ni ningún otro campo cambia.",
+      },
+      {
+        blob: "7b435e4ce696edb27018d471d4cf856a292c1b2d",
+        // El commit PADRE de este (2e810441, PR1 de «una sola compra») es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "2e810441",
+        motivo:
+          "U0 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md; CAMBIA SOLO LA PREPARACIÓN, no la venta): `registrarMovimiento` COMPRA es ahora una factura de UNA parte al 100 %% en la sucursal, pagada ahora. Cambian SOLO las líneas de las compras de preparación (34 OPERACION y 34 KARDEX de proceso COMPRA), en tres campos: la clave de reintento, la huella y el mensaje pasan de la Operacion a la cabecera de la factura (claveIdempotencia, payloadHash y resultadoMensaje de la Operacion quedan en null), la fila de Kardex gana su renglón (facturaProveedorRenglonId) y pierde unidadCompraId y cantidadCompra (viven en el renglón). Comparado línea por línea: ni una fila de venta, stock, costo ni importe cambia.",
+      },
     ],
   },
   "test/movimientos/caracterizacion/venta-matriz-ampliada.golden.txt": {
@@ -436,6 +450,20 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1): las líneas CUENTA_ITEM suman  (nadie tiene «Nombre en la carta» en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior; ninguna venta, KARDEX, stock, costo ni importe cambia.",
       },
+      {
+        blob: "c9034474f828f29af1056624ae17f691509e5c79",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `eac39a98` (E0 f+b).
+        commit: "eac39a98",
+        motivo:
+          "E0 de la corrección por ajuste (PR1, f+b): igual que la matriz de la venta; cambian SOLO `motivoAnulacion` (venta anulada) y `revierteAOperacionId` (contra-asiento) en las filas OPERACION de las anulaciones.",
+      },
+      {
+        blob: "4bfbf46174437f40cec6f200537dd2d0586ac447",
+        // El commit PADRE de este (2e810441, PR1 de «una sola compra») es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "2e810441",
+        motivo:
+          "U0 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md; CAMBIA SOLO LA PREPARACIÓN, no la venta): `registrarMovimiento` COMPRA es ahora una factura de UNA parte al 100 %% en la sucursal, pagada ahora. Cambian las 115 líneas OPERACION y las KARDEX de proceso COMPRA de las compras de preparación, igual que en venta-matriz (clave, huella y mensaje a la cabecera de la factura; la fila de Kardex gana su renglón y pierde unidadCompraId y cantidadCompra). Más 115 líneas NUEVAS de AUDITORIA con entidad=FacturaProveedor («Factura de proveedor ... cargada en «Central»»): una por compra, porque toda compra ahora es una factura y su carga se audita. Verificado con diff: ninguna línea que no sea de proceso COMPRA ni esas 115 AUDITORIA cambia (venta, stock, costo e importes intactos).",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -520,6 +548,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Lote 1b, hallazgo C (decisión del dueño, 2026-11-06; CAMBIA COMPORTAMIENTO: las ventas con importe $0 ya no se revalúan al precio de hoy, quedan «sin dato»). Cambia SOLO la forma, sin tocar ningún importe del escenario (no tiene ventas $0): `ventas` suma `lineasSinDato: 0` y pierde `estimado` en cada fila de `porProducto`; las filas del margen pierden `ingresoEstimado`; el resumen operativo cambia `hayEstimados: false` por `ventasSinDato: 0`; y cada fila del Consolidado suma `ventasSinDato: 0`. Revisado con `git diff`: solo esas líneas.",
       },
+      {
+        blob: "449c8abd2c0983f6c5d06d3cc86873db650522c4",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este (E0 PR3, d).
+        commit: "0ed02252",
+        motivo:
+          "E0 de la corrección por ajuste (PR3, d): el buscador de Trazabilidad por producto rotula cada operación con el proceso de la OPERACIÓN y no con el del movimiento que la encontró; seis ventas que salían como «CONSUMO» (la línea del insumo que `distinct` elegía) salen como «VENTA». Cambian solo esas seis líneas de `trazabilidad.buscarOperacionesPorProducto`."
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {
@@ -590,6 +625,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "b762efe5",
         motivo:
           "«Nombre en la carta» (ADITIVO; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): el contenido de carta de cada producto en la administración (`cargarAdminCarta`, `contenido`) suma la clave `nombreEnCarta` (null en todo el mundo de la caracterización: nadie la cargó). Revisado con `git diff -U0`: solo 7 líneas `\"nombreEnCarta\": null` nuevas (más la coma de la línea anterior); ningún dato, precio ni conteo de consultas cambia (el selector del POS lee el nombre de la MISMA consulta del contenido que ya leía el género: sin consultas de más).",
+      },
+      {
+        blob: "89ffdff00ee20527514b84a5612eb2ce528bfe76",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este (c3c1c37c, la integración con #196).
+        commit: "c3c1c37c",
+        motivo:
+          "E0 de la corrección por ajuste (PR2 #196, «Corregir una línea»): cada ticket de `pos.obtenerTicketsRecientes` suma el campo `corregibles` (las líneas vigentes que se pueden corregir: operación, texto y subtotal). Solo se AGREGA ese campo (26 líneas nuevas, ninguna cambia ni se borra); lo demás del ticket no cambia."
+      },
+      {
+        blob: "8b2f4407516ead05a8183d88c9404bf7f7c83ccd",
+        // El commit PADRE de este (e9912e2b, E1 PR1 #181) es el último antes de la regeneración; el cambio es de E1 PR2 (quitar unidades de una línea).
+        commit: "e9912e2b",
+        motivo:
+          "E1 de la corrección por ajuste (PR2, «quitar unidades de una línea»): `pos.obtenerTicketsRecientes` lee, en una consulta más (`operacion.findMany`), las versiones de las ventas anuladas de la mesa para saber si otra venta las reemplaza (la cadena A → B). Solo cambia el RECUENTO de consultas de sus dos casos, de «1: cuenta.findMany×1» a «2: cuenta.findMany×1, operacion.findMany×1» (2 líneas); el resultado no cambia (ninguna venta del mundo de la caracterización fue reemplazada) y sin ventas anuladas la consulta extra no se hace.",
       },
     ],
   },
@@ -699,6 +748,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "d3088bf",
         motivo:
           "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
+      },
+      {
+        blob: "b68c265f09c5d834addb0428bb3422fa2f6324e7",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `eac39a98` (E0 f+b).
+        commit: "eac39a98",
+        motivo:
+          "E0 de la corrección por ajuste (PR1, f+b): el contra-asiento nace con `revierteAOperacionId` y el `update` de la original escribe `motivoAnulacion` (null en la compra, el motivo en la venta). Sin otros cambios.",
       },
     ],
   },

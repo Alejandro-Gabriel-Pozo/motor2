@@ -5,6 +5,7 @@ import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/c
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
 import { opcionesDeLosProductosDeLaCarta } from "@/server/lecturas/carta/opciones";
 import type { Db } from "@/lib/db-tipos";
+import { grupoVigente } from "@/core/opciones/public";
 
 /**
  * La VISTA PREVIA de UN producto en la carta de una sucursal (Fase 6, bloque 3, 6.18): cómo lo va a leer la carta pública, con las MISMAS lecturas y la MISMA proyección que ella y que el «Va a mostrar» de
@@ -21,7 +22,7 @@ export async function cargarVistaPreviaDeLaCarta(
   mostrarNombreArriba: boolean
 ): Promise<VistaPreviaDeLaCarta> {
   const grupos = (await opcionesDeLosProductosDeLaCarta(db, sucursalId, [producto.id])).get(producto.id) ?? [];
-  if (!grupos.some((g) => g.admitido && g.activo)) return { tipo: "sin-opciones" };
+  if (!grupos.some(grupoVigente)) return { tipo: "sin-opciones" };
   const precioLocalActivo = await precioLocalActivoEn(sucursalId, db);
   const [locales, grilla] = await Promise.all([
     preciosLocalesVigentes(sucursalId, db, [producto.id], precioLocalActivo),

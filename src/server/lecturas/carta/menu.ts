@@ -1,10 +1,10 @@
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { whereDisponibleEn } from "@/core/catalogo/public";
-import { armarMenuCarta, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, wherePromoOfrecidaEn, type AudienciaDePromo, type CartaV1, type MenuArmado } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, armarMenuCarta, precioDeCarta, precioDePromo, seleccionDeSucursalDePromo, whereCartaDeSucursal, wherePromoOfrecidaEn, type AudienciaDePromo, type CartaV1, type MenuArmado } from "@/core/carta/public";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { opcionesDeLosProductosDeLaCarta, type GrupoParaLaCarta } from "@/server/lecturas/carta/opciones";
 import { preciosLocalesDeOpcionVigentesEnProductos } from "@/server/lecturas/catalogo/precio-local-de-opciones";
-import { esBaseConfigurable } from "@/core/opciones/public";
+import { esBaseConfigurable, grupoVigente } from "@/core/opciones/public";
 import { cartaDeUnProducto, conGrillaDeLaSucursal } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
 
@@ -57,7 +57,7 @@ export async function resolverMenuCartaConDiagnostico(
 
   const [productos, secciones, promosLeidas, agrupados] = await Promise.all([
     db.producto.findMany({
-      where: { empresaId, tipo: "PV", ...whereDisponibleEn(sucursalId), contenidosCarta: { some: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true } }, opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } },
+      where: { empresaId, tipo: "PV", ...whereDisponibleEn(sucursalId), contenidosCarta: { some: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true } }, ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(sucursalId) } } : {}) },
       select: {
         id: true,
         nombre: true,
@@ -86,7 +86,10 @@ export async function resolverMenuCartaConDiagnostico(
           select: { id: true, seccionCartaId: true, titulo: true, descripcion: true, precio: true, orden: true, sucursales: seleccionDeSucursalDePromo(sucursalId) },
         })
       : Promise.resolve([]),
-    db.itemAgrupadoCarta.findMany({
+    // Interruptor de ítem agrupado apagado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): no se arma ningún ítem agrupado y sus opciones salen sueltas en su sección (arriba, el filtro «no es opción de un agrupado» se omite).
+    !GENERO_E_ITEM_AGRUPADO_VISIBLE
+      ? Promise.resolve([])
+      : db.itemAgrupadoCarta.findMany({
       where: { empresaId, activo: true, ...whereCartaDeSucursal(sucursalId) },
       select: {
         id: true,
@@ -121,7 +124,7 @@ export async function resolverMenuCartaConDiagnostico(
   const armarOpcionesDeProductos = (sinAgotadoHoy: boolean) => {
     const opcionesDeProductos = [...opcionesLeidas].flatMap(([productoId, gruposLeidos]) => {
       const p = productoPorId.get(productoId);
-      if (!p || !gruposLeidos.some((g) => g.admitido && g.activo)) return [];
+      if (!p || !gruposLeidos.some(grupoVigente)) return [];
       const grupos = conGrillaDeLaSucursal(
         gruposLeidos.map((g) => (sinAgotadoHoy ? { ...g, opciones: g.opciones.map((o) => ({ ...o, apagadaEnSucursal: false })) } : g)),
         grillaDeTamanos,

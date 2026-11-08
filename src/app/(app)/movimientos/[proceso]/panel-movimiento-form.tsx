@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
 import { useLeerServidor } from "@/lib/use-leer-servidor";
 import { listarPresentaciones, type PresentacionOpcion } from "@/server/actions/catalogo/productos";
+import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
 import type { ProcesoUiConfig } from "@/core/movimientos/public";
 import { LARGO_MAXIMO_NRO_FACTURA } from "@/core/texto";
 import { SelectorProducto } from "@/components/selector-producto";
@@ -58,6 +59,7 @@ export function PanelMovimientoForm({
   motivos,
   destinos,
   productoInicial,
+  correccion,
 }: {
   config: ProcesoUiConfig;
   secciones: Opcion[];
@@ -70,6 +72,8 @@ export function PanelMovimientoForm({
   destinos?: Opcion[];
   /** Deep-link accionable (ej. "Costo incompleto" en Reportes → Costos, "falta precio de este insumo") — precarga la primera fila con este producto en vez de arrancar vacía. */
   productoInicial?: { id: string; etiqueta: string };
+  /** E0 «Corregir este movimiento» (solo Ajuste): el Ajuste viene prellenado con la sección del original (si sigue activa) y el detalle que lo referencia; el producto va en `productoInicial`. */
+  correccion?: { seccionInicialId?: string; detalleInicial: string };
 }) {
   const router = useRouter();
   const [fecha, setFecha] = useState(hoyISO());
@@ -78,13 +82,13 @@ export function PanelMovimientoForm({
   // aparte, no hay ambigüedad de "dónde ya está" que resolver — preseleccionar
   // ahorra un clic. exigeSeccion=true (Consumo/Ajuste/Merma/Dev. consignación/
   // Dev. proveedor): arranca vacío a propósito, nunca se adivina.
-  const [seccionId, setSeccionId] = useState(() => (config.exigeSeccion ? "" : (secciones[0]?.id ?? "")));
+  const [seccionId, setSeccionId] = useState(() => correccion?.seccionInicialId ?? (config.exigeSeccion ? "" : (secciones[0]?.id ?? "")));
   const [seccionDestinoId, setSeccionDestinoId] = useState("");
   const [proveedorId, setProveedorId] = useState("");
   const [nroFactura, setNroFactura] = useState("");
   const [motivoId, setMotivoId] = useState("");
   const [destinoId, setDestinoId] = useState("");
-  const [detalleLibre, setDetalleLibre] = useState("");
+  const [detalleLibre, setDetalleLibre] = useState(correccion?.detalleInicial ?? "");
   const [items, setItems] = useState<FilaItem[]>([
     productoInicial ? { ...FILA_VACIA, productoId: productoInicial.id, etiquetaInicial: productoInicial.etiqueta } : { ...FILA_VACIA },
   ]);
@@ -120,7 +124,7 @@ export function PanelMovimientoForm({
       delete resto[idx];
       return resto;
     });
-    if (!config.esCompraLike || !productoId) return;
+    if (!config.esCompraLike || !productoId || !PRESENTACIONES_VISIBLES) return;
     // `leer` nunca rechaza (atrapa el error y corre el callback de abajo) — fire-and-forget explícito, no una promesa sin manejar.
     void leer(
       () => listarPresentaciones(productoId),
@@ -196,7 +200,12 @@ export function PanelMovimientoForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      {productoInicial && (
+      {productoInicial && correccion && (
+        <Aviso variante="advertencia">
+          Estás corrigiendo un movimiento de <strong>{productoInicial.etiqueta}</strong>. El movimiento original no se toca: este Ajuste es la diferencia, ya con signo (negativo baja el stock, positivo lo sube). Revisá la sección y completá la cantidad.
+        </Aviso>
+      )}
+      {productoInicial && !correccion && (
         <Aviso variante="advertencia">
           Viniste desde un reporte para cargar precio de <strong>{productoInicial.etiqueta}</strong> — completá depósito, cantidad y precio para resolverlo.
         </Aviso>

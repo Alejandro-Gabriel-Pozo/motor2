@@ -7,6 +7,7 @@ import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
 import { GestionPresentaciones } from "@/components/catalogo/gestion-presentaciones";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
+import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
@@ -24,6 +25,8 @@ import type { SincronizablePrecioGrupo } from "@/server/actions/tipos";
 import { crearInsumo } from "@/server/actions/catalogo/insumos";
 import { crearCategoriaProducto } from "@/server/actions/catalogo/categorias-producto";
 import { altaProveedor } from "@/server/actions/catalogo/proveedores";
+import { MODO_DE_VENTA, esBaseConfigurable, modoDeVentaDe, type ModoDeVenta } from "@/core/opciones/public";
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 
 interface Opcion {
   id: string;
@@ -93,14 +96,14 @@ export function ProductoForm({
    * tiene (sin él, «Por opción» se ve apagado con el motivo). Cambiarlo es de quien tiene `producto_campos_sensibles` (sin ella, solo lectura). Siendo base, el precio guardado se muestra en solo
    * lectura y el formulario NO lo manda (el servidor lo conserva y rechaza otro). La regla completa la decide el servidor al guardar.
    */
-  venta?: { modo: "DIRECTO" | "BASE_CONFIGURABLE"; grupoConPrecioFinal: string | null };
+  venta?: { modo: ModoDeVenta; grupoConPrecioFinal: string | null };
 }) {
   const router = useRouter();
   const [insumos, setInsumos] = useState(insumosIniciales);
   const [categorias, setCategorias] = useState(categoriasIniciales);
   const [proveedores, setProveedores] = useState(proveedoresIniciales);
 
-  const [tipo, setTipo] = useState<"MP" | "PV">(productoExistente?.tipo ?? "MP");
+  const [tipo, setTipo] = useState<TipoProducto>(productoExistente?.tipo ?? "MP");
   const [insumoId, setInsumoId] = useState(productoExistente?.insumoId ?? "");
   const [unidadStockId, setUnidadStockId] = useState(productoExistente?.unidadStockId ?? "");
   const [categoriaId, setCategoriaId] = useState(productoExistente?.categoriaId ?? "");
@@ -109,8 +112,8 @@ export function ProductoForm({
   // Default tildado (decisión 2 del dueño): lo común (insumos/platos compartidos) tiene cero fricción.
   const [activoEnTodas, setActivoEnTodas] = useState(true);
   // Fase 4: el modo elegido en el formulario (decide si se muestra el precio editable o el guardado en solo lectura).
-  const [modoDeVenta, setModoDeVenta] = useState<"DIRECTO" | "BASE_CONFIGURABLE">(venta?.modo ?? "DIRECTO");
-  const esBase = venta !== undefined && modoDeVenta === "BASE_CONFIGURABLE";
+  const [modoDeVenta, setModoDeVenta] = useState<ModoDeVenta>(venta?.modo ?? MODO_DE_VENTA.DIRECTO);
+  const esBase = venta !== undefined && esBaseConfigurable(modoDeVenta);
 
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -358,21 +361,21 @@ export function ProductoForm({
               leyenda="¿Cómo se vende?"
               nombre="modoDeVenta"
               valorInicial={venta.modo}
-              alCambiar={(valor) => setModoDeVenta(valor === "BASE_CONFIGURABLE" ? "BASE_CONFIGURABLE" : "DIRECTO")}
+              alCambiar={(valor) => setModoDeVenta(modoDeVentaDe(valor))}
               opciones={[
-                { valor: "DIRECTO", etiqueta: "Directo: tiene su precio" },
+                { valor: MODO_DE_VENTA.DIRECTO, etiqueta: "Directo: tiene su precio" },
                 {
-                  valor: "BASE_CONFIGURABLE",
+                  valor: MODO_DE_VENTA.BASE_CONFIGURABLE,
                   etiqueta: "Por opción: el precio final está en cada opción",
                   ayuda: venta.grupoConPrecioFinal ? `El precio final de cada opción está en «${venta.grupoConPrecioFinal}».` : undefined,
-                  deshabilitada: venta.modo !== "BASE_CONFIGURABLE" && venta.grupoConPrecioFinal === null,
+                  deshabilitada: !esBaseConfigurable(venta.modo) && venta.grupoConPrecioFinal === null,
                   motivo: "Para venderlo por opción, primero asignale un grupo de tamaños con el precio final de cada opción (en «Opciones de venta» del producto).",
                 },
               ]}
             />
           ) : (
             <ValorSoloLectura campo="modoDeVenta" etiqueta="¿Cómo se vende?">
-              {venta.modo === "BASE_CONFIGURABLE" ? "Por opción: el precio final está en cada opción" : "Directo: tiene su precio"}
+              {esBaseConfigurable(venta.modo) ? "Por opción: el precio final está en cada opción" : "Directo: tiene su precio"}
             </ValorSoloLectura>
           )}
         </div>
@@ -432,7 +435,7 @@ export function ProductoForm({
         </div>
       )}
 
-      {editando && tipo === "MP" && (
+      {PRESENTACIONES_VISIBLES && editando && tipo === "MP" && (
         <GestionPresentaciones
           productoId={productoExistente!.id}
           unidades={unidades.filter((u) => !u.inactiva)}

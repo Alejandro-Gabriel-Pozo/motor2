@@ -168,7 +168,7 @@ describe("el nombre de la línea contra Postgres: la foto manda", () => {
 
     // Se anula una línea de la venta y se corrige el ticket: el ejemplar nuevo sale con el mismo formato, el mismo número y lo que sigue vendido.
     const grande = await prisma.cuentaItem.findFirstOrThrow({ where: { cuentaId, huellaOpciones: { not: null }, opcionesElegidas: { some: { opcionId: c.grandeId } } } });
-    expect((await anularVenta(grande.operacionId!)).ok).toBe(true);
+    expect((await anularVenta(grande.operacionId!, "Error de carga")).ok).toBe(true);
     expect((await emitirTicketCorregido(cuentaId, "Se equivocó de mesa")).ok).toBe(true);
     const [corregido] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, db(), undefined, new Date());
     expect(corregido!.lineas.map((l) => [l.producto, l.subtotal])).toEqual([[NOMBRES[0], 1100]]);

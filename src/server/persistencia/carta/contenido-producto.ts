@@ -18,7 +18,8 @@ interface DatosDeContenidoDeCarta {
   tags: string[];
   especial: boolean;
   orden: number;
-  generoCartaId: string | null;
+  /** `undefined` = no se toca (Prisma ignora la clave; con el interruptor de género apagado el género que ya tenía queda como estaba). */
+  generoCartaId?: string | null;
   /** Fase 5 (DEC-11): el interruptor de un producto base con un solo eje. `undefined` = no se toca (Prisma ignora la clave). */
   mostrarNombreArriba?: boolean;
   /** «Nombre en la carta»: `undefined` = no se toca (Prisma ignora la clave); `null` = se vacía. */

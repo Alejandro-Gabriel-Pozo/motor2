@@ -45,6 +45,12 @@ const SIN_ENVOLTORIO_TODAVIA: Record<string, string> = {
     "\"Como aResultadoAccion, pero la pantalla necesita además QUÉ ejemplar se emitió — solo numero y ejemplar de datos, nunca los ids " +
     "internos\") — devuelve ResultadoTicketCorregido, no ResultadoAccion. Mismo criterio de aResultadoAccion (nunca ids internos), con 2 " +
     "campos extra elegidos a mano. Diseño permanente, no un olvido.",
+  "server/actions/pos/casos-de-uso/corregir-linea-de-ticket.ts":
+    "corregirLineaDeTicket (server/actions/pos/cuenta-cierre.ts; E0 de la corrección por ajuste) arma { ...ok(r.mensaje), numero: r.datos.numero, ejemplar: r.datos.ejemplar } a mano, igual que emitirTicketCorregido: " +
+    "devuelve ResultadoTicketCorregido, no ResultadoAccion — la pantalla necesita QUÉ ejemplar se emitió para imprimirlo; solo numero y ejemplar de datos, nunca los ids internos. Diseño permanente, no un olvido.",
+  "server/actions/pos/casos-de-uso/quitar-unidades-de-linea.ts":
+    "quitarUnidadesDeLinea (server/actions/pos/cuenta-cierre.ts; E1 de la corrección por ajuste) arma { ...ok(r.mensaje), numero: r.datos.numero, ejemplar: r.datos.ejemplar } a mano, igual que corregirLineaDeTicket: " +
+    "devuelve ResultadoTicketCorregido, no ResultadoAccion — la pantalla necesita QUÉ ejemplar se emitió para imprimirlo; solo numero y ejemplar de datos, nunca los ids internos. Diseño permanente, no un olvido.",
   "server/actions/pos/casos-de-uso/abrir-cuenta-de-mostrador.ts":
     "abrirCuentaDeMostrador (server/actions/pos/cuenta-apertura.ts; ADR-039, M1.4c) arma { ok, mensaje, cuentaId } a mano — devuelve ResultadoAbrirCuentaDeMostrador, no ResultadoAccion: el doble clic y dos cajeros tienen " +
     "que recibir la MISMA cuenta (su id) y las pruebas lo verifican. Mismo criterio que enviar-a-cocina.ts: un solo dato de `datos` (el id de la cuenta que el usuario ya ve), nunca el resto. Diseño permanente, no un olvido.",

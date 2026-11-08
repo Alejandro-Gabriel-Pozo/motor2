@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Estos tests ejercen las presentaciones de compra: corren con el interruptor ENCENDIDO (`PRESENTACIONES_VISIBLES`, decisión del dueño 2026-11-06). El estado apagado y la reversibilidad: `presentaciones-interruptor*.test.ts(x)`.
+vi.mock("../../src/core/catalogo/presentaciones-visibles", async (original) => ({ ...(await original<typeof import("../../src/core/catalogo/presentaciones-visibles")>()), PRESENTACIONES_VISIBLES: true }));
+
 vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() }));
 // Los efectos de Next se CUENTAN (no se ejecutan): un rechazo no refresca la vista ni revalida la carta pública.
 vi.mock("next/cache", () => ({ refresh: vi.fn(), revalidatePath: vi.fn() }));
