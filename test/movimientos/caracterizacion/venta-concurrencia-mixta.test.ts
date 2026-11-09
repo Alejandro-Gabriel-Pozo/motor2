@@ -64,7 +64,7 @@ describe("venta: concurrencia entre mostrador y POS, y doble anulación", () => 
     const antes = await saldoDe(s.muzzarella.id);
     expect(antes).toBeCloseTo(1.5, 6); // 2 − 2 × 0,25
 
-    const resultados = await Promise.all([anularVenta(operacion.id), anularVenta(operacion.id)]);
+    const resultados = await Promise.all([anularVenta(operacion.id, "Error de carga"), anularVenta(operacion.id, "Error de carga")]);
 
     expect(resultados.filter((r) => r.ok), JSON.stringify(resultados)).toHaveLength(1);
     expect(resultados.filter((r) => !r.ok).map((r) => r.mensaje)).toEqual(["Esta venta ya está anulada."]);

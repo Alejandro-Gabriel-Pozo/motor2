@@ -38,6 +38,17 @@ export interface AccionSemilla {
   nivelMinimo: NivelDeAccion;
   /** Roles que pueden EDITAR esta acción desde el arranque (seed). */
   rolesEditarSemilla: readonly ("admin" | "operador")[];
+  /**
+   * Clave de SOLO VER (poda del 2026-11-06): ningún caso de uso comprueba «Editar» sobre ella, así que la matriz de permisos no ofrece esa casilla. Es la ÚNICA marca: la
+   * pantalla la lee con `esAccionSoloVer`. No toca la decisión de acceso ni las filas de la base (una fila vieja con Editar queda inerte). Una clave nueva que parezca de solo ver
+   * (`reporte_*`, `ver_*`, `*_ver`) tiene que declarar acá si lleva «Editar» (`test/arquitectura/claves-de-solo-ver.test.ts`).
+   */
+  soloVer?: true;
+  /**
+   * Clave RESERVADA (poda del 2026-11-06): declarada para algo que todavía no se construyó y sin ningún consumidor en `src/`. Las matrices (permisos y capacidades) no la muestran
+   * hasta que exista su pantalla; en ese momento se quita esta marca (`test/arquitectura/toda-accion-se-usa.test.ts` y `claves-de-solo-ver.test.ts` lo exigen).
+   */
+  reservada?: true;
 }
 
 // `satisfies` (no una anotación `: readonly AccionSemilla[]`): la anotación anula el `as const` y `AccionClave` degenera en `string`.
@@ -150,33 +161,33 @@ export const ACCIONES = [
   // «Ver»: no hay nada que editar. Los reportes de dinero y de control tienen piso de administrador (un operario nunca los recibe); los
   // operativos son de operario, así que un rol de depósito los puede recibir. Las pantallas de /reportes que además operan (consignación)
   // siguen con la clave de su acción, con sus dos niveles (Fase 2b, D3): «Ver» muestra el reporte y solo «Editar» registra un pago.
-  { clave: "reporte_resumen", modulo: "stock", descripcion: "Ver el reporte «Resumen operativo»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_consolidado", modulo: "stock", descripcion: "Ver el reporte «Consolidado (mis sucursales)»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_periodo", modulo: "stock", descripcion: "Ver el reporte «Período»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_categorias", modulo: "stock", descripcion: "Ver el reporte «Por categoría»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_ventas_por_seccion", modulo: "salon", descripcion: "Ver el reporte «Por sección de carta»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_costos", modulo: "recetas", descripcion: "Ver el reporte «Costos y márgenes»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_compras", modulo: "compras", descripcion: "Ver el reporte «Compras registradas»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_rendimiento_recetas", modulo: "recetas", descripcion: "Ver el reporte «Rendimiento real de recetas»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_rendimiento_sucursal", modulo: "recetas", descripcion: "Ver el reporte «Rendimiento por sucursal»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_valuacion", modulo: "stock", descripcion: "Ver el reporte «Valuación de inventario»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_tickets", modulo: "salon", descripcion: "Ver el reporte «Tickets emitidos»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_descuentos_clientes", modulo: "salon", descripcion: "Ver el reporte «Descuentos por cliente»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_descuentos_productos", modulo: "salon", descripcion: "Ver el reporte «Descuentos de productos»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_margen_promociones", modulo: "promociones", descripcion: "Ver el reporte «Margen de promociones»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_historial_importes", modulo: "stock", descripcion: "Ver los datos comerciales (precios de compra y de venta, proveedor y N.º de factura) dentro del reporte «Historial de un producto»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_perdidas", modulo: "stock", descripcion: "Ver el reporte «Pérdidas»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_devoluciones", modulo: "stock", descripcion: "Ver el reporte «Devoluciones»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_diferencias", modulo: "stock", descripcion: "Ver el reporte «Diferencias de ajuste»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_vencimientos", modulo: "stock", descripcion: "Ver el reporte «Vencimientos»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_salud", modulo: "stock", descripcion: "Ver el reporte «Salud por producto»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_historial", modulo: "stock", descripcion: "Ver el reporte «Historial de un producto»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_trazabilidad", modulo: "stock", descripcion: "Ver el reporte «Trazabilidad por ID»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_rotacion_mesas", modulo: "salon", descripcion: "Ver el reporte «Rotación de mesas»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_sin_receta", modulo: "recetas", descripcion: "Ver el reporte «Ventas sin receta»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_insumos_sin_receta", modulo: "recetas", descripcion: "Ver el reporte «Insumos sin receta»", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "reporte_conteos", modulo: "stock", descripcion: "Ver el reporte «Conteos físicos»", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin", "operador"] },
-  { clave: "reporte_huecos_catalogo", modulo: "catalogo_basico", descripcion: "Ver el reporte «Huecos de catálogo»", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_resumen", modulo: "stock", descripcion: "Ver el reporte «Resumen operativo»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_consolidado", modulo: "stock", descripcion: "Ver el reporte «Consolidado (mis sucursales)»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_periodo", modulo: "stock", descripcion: "Ver el reporte «Período»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_categorias", modulo: "stock", descripcion: "Ver el reporte «Por categoría»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_ventas_por_seccion", modulo: "salon", descripcion: "Ver el reporte «Por sección de carta»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_costos", modulo: "recetas", descripcion: "Ver el reporte «Costos y márgenes»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_compras", modulo: "compras", descripcion: "Ver el reporte «Compras registradas»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_rendimiento_recetas", modulo: "recetas", descripcion: "Ver el reporte «Rendimiento real de recetas»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_rendimiento_sucursal", modulo: "recetas", descripcion: "Ver el reporte «Rendimiento por sucursal»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_valuacion", modulo: "stock", descripcion: "Ver el reporte «Valuación de inventario»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_tickets", modulo: "salon", descripcion: "Ver el reporte «Tickets emitidos»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_descuentos_clientes", modulo: "salon", descripcion: "Ver el reporte «Descuentos por cliente»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_descuentos_productos", modulo: "salon", descripcion: "Ver el reporte «Descuentos de productos»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_margen_promociones", modulo: "promociones", descripcion: "Ver el reporte «Margen de promociones»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_historial_importes", modulo: "stock", descripcion: "Ver los datos comerciales (precios de compra y de venta, proveedor y N.º de factura) dentro del reporte «Historial de un producto»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_perdidas", modulo: "stock", descripcion: "Ver el reporte «Pérdidas»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_devoluciones", modulo: "stock", descripcion: "Ver el reporte «Devoluciones»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_diferencias", modulo: "stock", descripcion: "Ver el reporte «Diferencias de ajuste»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_vencimientos", modulo: "stock", descripcion: "Ver el reporte «Vencimientos»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_salud", modulo: "stock", descripcion: "Ver el reporte «Salud por producto»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_historial", modulo: "stock", descripcion: "Ver el reporte «Historial de un producto»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_trazabilidad", modulo: "stock", descripcion: "Ver el reporte «Trazabilidad por ID»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_rotacion_mesas", modulo: "salon", descripcion: "Ver el reporte «Rotación de mesas»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_sin_receta", modulo: "recetas", descripcion: "Ver el reporte «Ventas sin receta»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_insumos_sin_receta", modulo: "recetas", descripcion: "Ver el reporte «Insumos sin receta»", contexto: "sucursal", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
+  { clave: "reporte_conteos", modulo: "stock", descripcion: "Ver el reporte «Conteos físicos»", contexto: "sucursal", nivelMinimo: "operario", soloVer: true, rolesEditarSemilla: ["admin", "operador"] },
+  { clave: "reporte_huecos_catalogo", modulo: "catalogo_basico", descripcion: "Ver el reporte «Huecos de catálogo»", contexto: "empresa", nivelMinimo: "administrador", soloVer: true, rolesEditarSemilla: ["admin"] },
   // Módulo POS (docs/plan-mapa-de-mesas-2026-09-24.md): Ver = abrir el mapa de mesas y entrar a una mesa; dar de alta mesas tiene su clave
   // (`pos_alta_mesa`; la de fijar el límite de mesas abiertas, `pos_limite_mesas_abiertas`, se retiró el 2026-10-29: la base la conserva hasta una migración de retiro). El operador de fábrica queda sin asignar, igual que
   // `anular_compra`; el rol «mozo» NO se crea en código: se crea desde /administracion/roles y se le dan las acciones desde la matriz de permisos.
@@ -238,10 +249,13 @@ export const ACCIONES = [
   // la migración 20261016100000 se la da al rol `admin` de cada empresa. E3a (decisión del dueño, 2026-10-27: «repartir todo a nivel operador, con auditoría y correcciones de administrador»): el piso baja a OPERARIO
   // (clase O: semilla solo admin; el gerente se la asigna en la matriz al rol de quien reparte, sin migración de datos). La pide «cargar factura» cuando alguna parte es de OTRA sucursal (la propone; la acepta la destino).
   { clave: "compra_repartir", modulo: "compras", descripcion: "Repartir una factura de proveedor entre sucursales y atender las facturas pendientes de reparto", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  // Pagos X0 (docs/diseno-pagos-x0-2026-11-04.md): declarar y anular el pago de una factura de proveedor «pendiente de pago». Es DINERO: no se reusa `proceso_compra`. De EMPRESA (la factura es un documento de la empresa, ADR-029),
+  // clase O (piso operario, semilla solo admin; el gerente la asigna en la matriz a quien confirme los pagos). La migración 20261104111000 se la da al rol `admin` de cada empresa.
+  { clave: "declarar_pago_compra", modulo: "compras", descripcion: "Declarar y anular el pago de una factura de proveedor", contexto: "empresa", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   // Paquete 3, M3a (cambio del dueño, 2026-10-12): confirmar la RECEPCIÓN de la mercadería de la parte de UNA sucursal en una factura de proveedor ya repartida. El stock de una factura entra recién cuando la factura está
   // REPARTIDA (cabecera CONFIRMADA) Y la parte de esa sucursal está RECIBIDA. Es de la SUCURSAL (quien recibe es la sucursal), clase O (piso operario, semilla solo admin, delegable al encargado de la sucursal por configuración).
   // La migración 20261016100000 se la da al rol `admin` de cada empresa. Reservada hasta la Etapa C (la bandeja «mercadería por recibir» y su caso de uso).
-  { clave: "compra_recibir", modulo: "compras", descripcion: "Confirmar la recepción de la mercadería de una factura de proveedor en la sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
+  { clave: "compra_recibir", modulo: "compras", descripcion: "Confirmar la recepción de la mercadería de una factura de proveedor en la sucursal", contexto: "sucursal", nivelMinimo: "operario", reservada: true, rolesEditarSemilla: ["admin"] },
   // GO-2a (ADR-030 §10): los grupos de opciones de venta (el «elemento configurable»). La base las tiene desde la migración de datos GO-1a (20261020100000), que se las dio al rol `admin` de cada
   // empresa; entran a ACCIONES con su guarda y su caso de uso, con la descripción IDÉNTICA a la de la base. Definir el catálogo y elegir qué admite cada producto son de la EMPRESA, piso administrador
   // (clase A, como `categorias` o `unidades`); apagar una opción en la sucursal es de la SUCURSAL, piso operario y semilla solo admin (clase O: el gerente la delega al encargado del turno). La grilla
@@ -269,6 +283,16 @@ const POR_CLAVE: ReadonlyMap<string, AccionSemilla> = new Map(ACCIONES.map((a) =
  */
 export function claveEnCatalogo(clave: string): clave is AccionClave {
   return POR_CLAVE.has(clave);
+}
+
+/** ¿Es una clave de solo ver (sin «Editar» que ofrecer en la matriz)? Una clave fuera del catálogo no lo es. */
+export function esAccionSoloVer(clave: string): boolean {
+  return POR_CLAVE.get(clave)?.soloVer === true;
+}
+
+/** ¿Es una clave reservada (sin consumidores todavía)? Las matrices no la muestran. */
+export function esAccionReservada(clave: string): boolean {
+  return POR_CLAVE.get(clave)?.reservada === true;
 }
 
 export function moduloDeAccion(clave: AccionClave): ModuloId {

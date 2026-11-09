@@ -15,16 +15,16 @@ import { escaparComodinesLike } from "@/core/texto";
  * transacción es SERIALIZABLE su foto se toma en la primera sentencia, ANTES del cerrojo: la segunda no ve a la primera aunque haya esperado, pero choca por serialización (P2034) al confirmar y
  * `conTransaccionSerializable` la reintenta con una foto nueva, y ahí SÍ ve el comprobante de la primera. El índice único de cada tabla queda como segunda barrera dentro de su alcance.
  *
- * `excluirOperacionId`: la compra que se está corrigiendo no cuenta contra sí misma.
+ * `excluirFacturaId`: la factura que se está corrigiendo no cuenta contra sí misma (ni su cabecera ni la compra de ninguna de sus partes).
  */
 export async function hayComprobanteVigenteEnLaEmpresa(
   tx: Prisma.TransactionClient,
-  args: { empresaId: string; proveedorId: string; nroFactura: string; excluirOperacionId?: string }
+  args: { empresaId: string; proveedorId: string; nroFactura: string; excluirFacturaId?: string }
 ): Promise<boolean> {
   const clave = normalizarNumeroDeComprobante(args.nroFactura);
   await tx.$queryRaw`SELECT 1 AS tomado FROM (SELECT pg_advisory_xact_lock(hashtext(${`comprobante:${args.empresaId}:${args.proveedorId}:${clave}`}))) AS cerrojo`;
 
-  const factura = await tx.facturaProveedor.count({ where: { proveedorId: args.proveedorId, nroFacturaNormalizado: clave, anuladaEn: null } });
+  const factura = await tx.facturaProveedor.count({ where: { proveedorId: args.proveedorId, nroFacturaNormalizado: clave, anuladaEn: null, ...(args.excluirFacturaId ? { id: { not: args.excluirFacturaId } } : {}) } });
   if (factura > 0) return true;
 
   // Para no traer todas las compras del proveedor: las que contienen el último grupo de dígitos del número (sin ceros a la izquierda); la comparación exacta se hace acá, normalizando cada una.
@@ -35,7 +35,7 @@ export async function hayComprobanteVigenteEnLaEmpresa(
       proveedorId: args.proveedorId,
       anuladaEn: null,
       nroFactura: ultimoGrupo ? { contains: escaparComodinesLike(ultimoGrupo) } : { not: null },
-      ...(args.excluirOperacionId ? { id: { not: args.excluirOperacionId } } : {}),
+      ...(args.excluirFacturaId ? { NOT: { facturaProveedorParte: { is: { facturaProveedorId: args.excluirFacturaId } } } } : {}),
     },
     select: { nroFactura: true },
   });

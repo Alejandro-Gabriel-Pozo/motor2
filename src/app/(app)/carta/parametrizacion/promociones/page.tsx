@@ -291,10 +291,16 @@ export default async function PromocionesDeCartaPage() {
                           {puedeDefinirPromos && (
                             <AgregarEntradaDeLugar
                               lugar={l.nombre}
+                              secciones={seccionesActivas.map((x) => ({ id: x.id, nombre: x.nombre }))}
                               productos={combos.productos}
-                              agregar={async (productoId: string, opciones: { opcionId: string; cantidad: number }[]) => {
+                              entradasActivas={l.entradas.filter((e) => e.activa).map((e) => ({ id: e.id, productoId: e.productoId }))}
+                              agregar={async (productoId: string, modoDeOpciones: "FIJAS" | "A_ELEGIR", opciones: { opcionId: string; cantidad: number }[]) => {
                                 "use server";
-                                return refrescarSiOk(await agregarEntradaDeCupo({ cupoId, productoId, opciones }));
+                                return refrescarSiOk(await agregarEntradaDeCupo({ cupoId, productoId, modoDeOpciones, opciones }));
+                              }}
+                              sacar={async (entradaId: string) => {
+                                "use server";
+                                return refrescarSiOk(await actualizarActivaEntradaDeCupo({ entradaId, activa: false }));
                               }}
                             />
                           )}

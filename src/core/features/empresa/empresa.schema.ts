@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MONEDA_FIJA } from "@/core/moneda";
 import { esZonaHorariaValida } from "@/core/tiempo/zona-horaria";
 
 /**
@@ -64,14 +65,10 @@ export function esTransicionValida(desde: EstadoEmpresa, hacia: EstadoEmpresa): 
 
 /**
  * Lo que pide el alta de la consola de plataforma (E5, ADR-020): la empresa, su primera sucursal y el email de quien va a ser su gerente. La empresa
- * nace `PROVISIONING`, sin CUIT ni módulos; el gerente aparece recién al aceptar su invitación. La moneda es ISO 4217 (tres letras mayúsculas).
+ * nace `PROVISIONING`, sin CUIT ni módulos; el gerente aparece recién al aceptar su invitación. La moneda no se pide (poda del 2026-11-06): es siempre `MONEDA_FIJA` (ARS); si llega una por la red, se ignora.
  */
 export const altaDeEmpresaSchema = crearEmpresaSchema.extend({
-  moneda: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z]{3}$/, "Tres letras, por ejemplo ARS."),
+  moneda: z.unknown().optional().transform(() => MONEDA_FIJA),
   nombreSucursal: z.string().trim().min(1, "Ponele nombre a la primera sucursal.").max(120),
   emailDuenio: z.string().trim().toLowerCase().pipe(z.email("Ese email no es válido.")),
 });

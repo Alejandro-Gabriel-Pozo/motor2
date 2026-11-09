@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import type { OfertaDeProveedor } from "@/core/features/catalogo/oferta-de-proveedor";
 import type { ValoresDeContactoDeProveedor } from "@/core/features/catalogo/proveedores.schema";
 
 /**
@@ -15,7 +16,7 @@ import type { ValoresDeContactoDeProveedor } from "@/core/features/catalogo/prov
  */
 export async function crearProveedorNuevo(
   db: Prisma.TransactionClient,
-  args: { codigo: string; nombre: string; valores: ValoresDeContactoDeProveedor },
+  args: { codigo: string; nombre: string; valores: ValoresDeContactoDeProveedor; oferta: OfertaDeProveedor },
 ): Promise<{ id: string; nombre: string }> {
   const { valores } = args;
   const creado = await db.proveedor.create({
@@ -28,6 +29,8 @@ export async function crearProveedorNuevo(
       cuit: valores.cuit,
       condicionesPago: valores.condicionesPago,
       notas: valores.notas,
+      ofreceProductos: args.oferta.ofreceProductos,
+      ofreceServicios: args.oferta.ofreceServicios,
     },
   });
   return { id: creado.id, nombre: creado.nombre };
@@ -40,18 +43,29 @@ export async function fijarActivoDeProveedor(db: Prisma.TransactionClient, args:
   return count > 0;
 }
 
-/** Reescribe los datos de contacto del proveedor (el nombre no se edita). Un CUIT que ya tiene otro proveedor hace lanzar el P2002 del índice único. */
-export async function guardarContactoDeProveedor(db: Prisma.TransactionClient, args: { id: string; valores: ValoresDeContactoDeProveedor }): Promise<void> {
+/**
+ * Reescribe el nombre, los datos de contacto y qué le compramos al proveedor, con CONTROL OPTIMISTA sobre el nombre: el `where` lleva `nombre = nombreActual` (el que el caso de uso
+ * acaba de leer), así que si otra edición lo cambió en el medio no toca ninguna fila y devuelve 0 (el caso de uso lo traduce a «cambió mientras lo editabas»). Un nombre o un CUIT que ya
+ * tiene otro proveedor hace lanzar el P2002 del índice único (el árbitro final). Va siempre dentro de la transacción del caso de uso.
+ */
+export async function guardarProveedor(
+  db: Prisma.TransactionClient,
+  args: { id: string; nombreActual: string; nombre: string; valores: ValoresDeContactoDeProveedor; oferta: OfertaDeProveedor }
+): Promise<number> {
   const { valores } = args;
-  await db.proveedor.update({
-    where: { id: args.id },
+  const { count } = await db.proveedor.updateMany({
+    where: { id: args.id, nombre: args.nombreActual },
     data: {
+      nombre: args.nombre,
       contacto: valores.contacto,
       telefono: valores.telefono,
       email: valores.email,
       cuit: valores.cuit,
       condicionesPago: valores.condicionesPago,
       notas: valores.notas,
+      ofreceProductos: args.oferta.ofreceProductos,
+      ofreceServicios: args.oferta.ofreceServicios,
     },
   });
+  return count;
 }

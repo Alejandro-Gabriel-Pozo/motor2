@@ -1,11 +1,14 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
-import { whereCartaDeSucursal } from "@/core/carta/public";
+import { mensajeDeChoqueDeNombre, whereCartaDeSucursal, type ChoqueDeNombre } from "@/core/carta/public";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { MENSAJE_FALTA_SECCION_DE_CARTA, type ComandoGuardarContenidoCartaProducto, type ResultadoGuardarContenidoCartaProducto } from "@/core/features/carta/contenido-producto.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { guardarContenidoDeProducto } from "@/server/persistencia/carta/contenido-producto";
+import { guardarContenidoDeProducto, tomarElProductoParaGuardarContenido, tomarLosNombresDeLaCarta } from "@/server/persistencia/carta/contenido-producto";
+import { buscarChoqueDeNombreEnLaCarta } from "@/server/lecturas/carta/choque-de-nombre";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "@/core/carta/public";
 import { validarGeneroCartaOpcional } from "../generos-compartido";
+import { esBaseConfigurable } from "@/core/opciones/public";
 
 /**
  * Caso de uso «guardar el contenido de carta de un producto de venta en la sucursal activa» (docs/plan-carta-catalogo-2026-09-24.md, M9; Hito 5, bloque D,
@@ -27,10 +30,14 @@ import { validarGeneroCartaOpcional } from "../generos-compartido";
  * que la escritura. Si el pedido no trae la clave, no se toca ni se audita. Repetir el mismo valor no deja otra fila (`registrarCambioAuditado` no anota lo que no cambió). El resto del contenido
  * (descripción, tags, ★, orden, sección, género) sigue sin auditoría, como antes.
  *
- * @contract Deja el contenido de carta del producto con los datos pedidos en la sucursal activa (una fila por par sucursal-producto), si cada dato es válido; con su auditoría si cambió «Mostrar el nombre arriba».
+ * «Nombre en la carta» (pedido del dueño, 2026-11-04; `docs/diseno-nombre-en-carta-2026-11-04.md`): el nombre de cara al cliente de ESTA sucursal. Ausente = no se toca; vacío = `null` (la carta usa el nombre interno). Se audita
+ * POR COLUMNA (`ContenidoCartaProducto.nombreEnCarta`, del valor que había —`null` si no había fila— al nuevo, con la sucursal) en la MISMA transacción; con un dato auditado el caso de uso toma antes la fila del producto
+ * (`FOR UPDATE`), así dos guardados a la vez se serializan y la cadena de auditoría encadena.
+ *
+ * @contract Deja el contenido de carta del producto con los datos pedidos en la sucursal activa (una fila por par sucursal-producto), si cada dato es válido; con su auditoría si cambió «Mostrar el nombre arriba» o «Nombre en la carta».
  * @idempotency Por estado — repetir el pedido vuelve a escribir los mismos valores sobre la misma fila (`upsert`) y no deja otra fila de auditoría.
  * @transaction `actor.transaccion` (READ COMMITTED): el valor anterior del interruptor, el `upsert` y su auditoría, juntos; las lecturas que validan van antes con `actor.db`, como antes.
- * @sideEffects registrarCambioAuditado (`ContenidoCartaProducto`, `mostrarNombreArriba`, con la sucursal) si cambió, en la misma transacción. La revalidación de la carta pública la hace la Server Action cuando sale bien.
+ * @sideEffects registrarCambioAuditado (`ContenidoCartaProducto`, `mostrarNombreArriba` y `nombreEnCarta`, con la sucursal) si cambió, en la misma transacción. La revalidación de la carta pública la hace la Server Action cuando sale bien.
  * @ficha permiso=carta_contenido_producto transaccion=SIMPLE idempotencia=POR_ESTADO auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
 export async function guardarContenidoCartaProductoCasoDeUso(
@@ -38,13 +45,13 @@ export async function guardarContenidoCartaProductoCasoDeUso(
   comando: ComandoGuardarContenidoCartaProducto,
 ): Promise<ResultadoGuardarContenidoCartaProducto> {
   const { productoId, datos, validados } = comando;
-  const producto = await actor.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true } });
+  const producto = await actor.db.producto.findUnique({ where: { id: productoId }, select: { nombre: true, tipo: true, modoDeVenta: true } });
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró el producto.");
   if (producto.tipo !== "PV") return fracaso("NO_ES_PV", "Solo un producto de venta (PV) puede ir en la carta.");
 
   // S-52: la descripción, los tags y el orden (en ese orden) los decidió `guardComandoGuardarContenidoCartaProducto`; su rechazo se aplica ACÁ, después de leer el producto.
   if (!validados.ok) return fracaso("DATO_INVALIDO", validados.mensaje);
-  const { descripcion, tags, orden } = validados.valor;
+  const { descripcion, tags, orden, nombreEnCarta } = validados.valor;
 
   const visibleEnCarta = datos.visibleEnCarta === true;
   const seccionCartaId = datos.seccionCartaId?.trim() || null;
@@ -54,8 +61,9 @@ export async function guardarContenidoCartaProductoCasoDeUso(
     const seccion = await actor.db.seccionCarta.findUnique({ where: { id: seccionCartaId }, select: { id: true } });
     if (!seccion) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección de carta.");
   }
-  const genero = await validarGeneroCartaOpcional(actor.db, actor.sucursalId, datos.generoCartaId);
-  if (!genero.ok) return fracaso("GENERO_INVALIDO", genero.mensaje);
+  // Interruptor de género/ítem agrupado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): apagado, el género ni se valida ni se escribe — el que el producto ya tenía queda como estaba (se vuelve a leer al encender) y uno pedido a mano se ignora.
+  const genero = GENERO_E_ITEM_AGRUPADO_VISIBLE ? await validarGeneroCartaOpcional(actor.db, actor.sucursalId, datos.generoCartaId) : null;
+  if (genero && !genero.ok) return fracaso("GENERO_INVALIDO", genero.mensaje);
 
   const { mostrarNombreArriba } = datos;
   const data = {
@@ -65,24 +73,60 @@ export async function guardarContenidoCartaProductoCasoDeUso(
     tags,
     especial: datos.especial === true,
     orden,
-    generoCartaId: genero.valor,
+    ...(genero?.ok ? { generoCartaId: genero.valor } : {}),
     ...(mostrarNombreArriba !== undefined ? { mostrarNombreArriba } : {}),
+    ...(nombreEnCarta !== undefined ? { nombreEnCarta } : {}),
   };
+  const entidadId = `${actor.sucursalId}:${productoId}`;
+  // Regla del dueño (2026-11-04): en la carta de una sucursal no hay dos cosas con el mismo nombre. Se chequea cuando el plato queda visible (con el candado de los nombres de la sucursal).
+  // El control corre solo si el plato va a quedar VISIBLE (oculto no molesta; se vuelve a chequear al mostrarlo) y no es una base (el cliente lee los rótulos de sus opciones, no su nombre).
+  const esBase = esBaseConfigurable(producto.modoDeVenta);
+  const conChequeoDeNombre = visibleEnCarta;
+  let choque: ChoqueDeNombre | null = null;
+  let nombreEfectivo = producto.nombre;
   await actor.transaccion(async (tx) => {
-    // El valor que había, leído en la transacción (por la relación del producto, en la carta de ESTA sucursal): sin fila, el default de la columna.
-    const actual = mostrarNombreArriba === undefined ? null : await tx.producto.findUnique({ where: { id: productoId }, select: { contenidosCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { mostrarNombreArriba: true } } } });
+    if (conChequeoDeNombre) await tomarLosNombresDeLaCarta(tx, actor.sucursalId);
+    // Con un dato que se audita (el interruptor o el nombre en la carta) se toma primero la fila del producto (`FOR UPDATE`): dos guardados a la vez se SERIALIZAN, el segundo lee el valor que dejó el primero y la
+    // cadena de auditoría encadena (el «antes» de uno es el «después» del otro); también evita que dos altas simultáneas del contenido de un producto sin fila choquen en el único.
+    const conAuditoria = mostrarNombreArriba !== undefined || nombreEnCarta !== undefined;
+    if (conAuditoria) await tomarElProductoParaGuardarContenido(tx, productoId);
+    // El valor que había, leído en la transacción (por la relación del producto, en la carta de ESTA sucursal): sin fila, el default de la columna (`false`) o sin nombre en la carta (`null`).
+    const actual = conAuditoria || conChequeoDeNombre ? await tx.producto.findUnique({ where: { id: productoId }, select: { contenidosCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { mostrarNombreArriba: true, nombreEnCarta: true } } } }) : null;
+    if (conChequeoDeNombre) {
+      const nombreDeLaCarta = (nombreEnCarta !== undefined ? nombreEnCarta : actual?.contenidosCarta[0]?.nombreEnCarta) ?? null;
+      nombreEfectivo = nombreDeLaCarta ?? producto.nombre;
+      // Una base sin nombre en la carta no ocupa ninguno (el cliente lee los rótulos de sus opciones); con uno, solo se compara con los nombres en la carta de los demás.
+      if (!esBase || nombreDeLaCarta !== null) {
+        choque = await buscarChoqueDeNombreEnLaCarta(tx, { sucursalId: actor.sucursalId, productoIdPropio: productoId, nombre: nombreEfectivo, soloNombresEnCarta: esBase });
+        if (choque) return;
+      }
+    }
     await guardarContenidoDeProducto(tx, { sucursalId: actor.sucursalId, productoId, datos: data });
-    if (mostrarNombreArriba === undefined) return;
-    await registrarCambioAuditado(tx, {
-      entidad: "ContenidoCartaProducto",
-      entidadId: `${actor.sucursalId}:${productoId}`,
-      campo: "mostrarNombreArriba",
-      descripcion: `Carta de «${actor.sucursalNombre}»: «${producto.nombre}» ${mostrarNombreArriba ? "con el nombre arriba" : "sin el nombre arriba (cada opción con su nombre)"}`,
-      valorAnterior: actual?.contenidosCarta[0]?.mostrarNombreArriba ?? false,
-      valorNuevo: mostrarNombreArriba,
-      actorId: actor.usuarioId,
-      sucursalId: actor.sucursalId,
-    });
+    if (mostrarNombreArriba !== undefined) {
+      await registrarCambioAuditado(tx, {
+        entidad: "ContenidoCartaProducto",
+        entidadId,
+        campo: "mostrarNombreArriba",
+        descripcion: `Carta de «${actor.sucursalNombre}»: «${producto.nombre}» ${mostrarNombreArriba ? "con el nombre arriba" : "sin el nombre arriba (cada opción con su nombre)"}`,
+        valorAnterior: actual?.contenidosCarta[0]?.mostrarNombreArriba ?? false,
+        valorNuevo: mostrarNombreArriba,
+        actorId: actor.usuarioId,
+        sucursalId: actor.sucursalId,
+      });
+    }
+    if (nombreEnCarta !== undefined) {
+      await registrarCambioAuditado(tx, {
+        entidad: "ContenidoCartaProducto",
+        entidadId,
+        campo: "nombreEnCarta",
+        descripcion: `Carta de «${actor.sucursalNombre}»: «${producto.nombre}» ${nombreEnCarta === null ? "sin nombre en la carta (usa el nombre del producto)" : "con nombre en la carta"}`,
+        valorAnterior: actual?.contenidosCarta[0]?.nombreEnCarta ?? null,
+        valorNuevo: nombreEnCarta,
+        actorId: actor.usuarioId,
+        sucursalId: actor.sucursalId,
+      });
+    }
   });
+  if (choque) return fracaso("NOMBRE_EN_USO", mensajeDeChoqueDeNombre(nombreEfectivo, choque, actor.sucursalNombre));
   return exito(`Carta: "${producto.nombre}" ${data.visibleEnCarta ? "se muestra" : "queda oculto"}.`, null);
 }

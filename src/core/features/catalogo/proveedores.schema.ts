@@ -1,4 +1,5 @@
 import type { ResultadoCaso } from "@/core/resultado-caso";
+import type { OfertaDeProveedor } from "./oferta-de-proveedor";
 
 /**
  * Tipos de la feature «proveedores» (Hito 4 de la pureza, bloque C de la pieza carta/catálogo/stock, paso H4C-14 — `docs/plan-hito-4-pureza.md` §3): los comandos y
@@ -34,6 +35,8 @@ export interface ValoresDeContactoDeProveedor {
 export interface ComandoAltaProveedor {
   nombre: string;
   valores: ValoresDeContactoDeProveedor;
+  /** Qué le compramos (ya validado: al menos una). El alta nueva nace «productos» si no se dice nada. */
+  oferta: OfertaDeProveedor;
 }
 
 /** El id y el nombre del proveedor creado, para el `ResultadoConId` de la Server Action (el alta inline del formulario de producto lo recibe por callback). */
@@ -65,12 +68,23 @@ export type ResultadoActualizarActivaProveedor = ResultadoCaso<null, "NO_ENCONTR
 export interface ComandoActualizarProveedor {
   proveedorId: string;
   datos: EntradaContactoDeProveedor;
+  /**
+   * El nombre nuevo (SIN validar). Ausente = el nombre no se toca. Si viene y es distinto del actual, `nombreEsperado` es obligatorio: el nombre que tenía la pantalla al abrirse, para detectar
+   * que otra persona lo cambió mientras se editaba (control optimista, sin migración).
+   */
+  nombre?: string;
+  nombreEsperado?: string;
+  /** Qué le compramos. Ausentes = no se tocan; si viene una sola, la otra queda como está. Al menos una tiene que quedar marcada. */
+  ofreceProductos?: boolean;
+  ofreceServicios?: boolean;
 }
 
 /**
  *  - `NO_ENCONTRADO`: no hay un proveedor con ese id;
- *  - `DATO_INVALIDO`: algún dato de contacto no es válido (largo, formato del email, CUIT);
+ *  - `DATO_INVALIDO`: algún dato no es válido (nombre, largo, formato del email, CUIT, ninguna de las dos casillas de «ofrece»);
+ *  - `NOMBRE_REPETIDO`: otro proveedor de la empresa ya se llama así (sin distinguir mayúsculas);
+ *  - `CAMBIO_CONCURRENTE`: el proveedor cambió mientras se editaba (otra persona le cambió el nombre antes);
  *  - `CUIT_REPETIDO`: otro proveedor de la empresa ya tiene ese CUIT;
- *  - `CHOQUE_DE_UNICIDAD`: el índice único saltó y no fue por el CUIT.
+ *  - `CHOQUE_DE_UNICIDAD`: el índice único saltó y no fue por el CUIT ni por el nombre.
  */
-export type ResultadoActualizarProveedor = ResultadoCaso<null, "NO_ENCONTRADO" | "DATO_INVALIDO" | "CUIT_REPETIDO" | "CHOQUE_DE_UNICIDAD">;
+export type ResultadoActualizarProveedor = ResultadoCaso<null, "NO_ENCONTRADO" | "DATO_INVALIDO" | "NOMBRE_REPETIDO" | "CAMBIO_CONCURRENTE" | "CUIT_REPETIDO" | "CHOQUE_DE_UNICIDAD">;

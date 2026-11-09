@@ -58,7 +58,7 @@ const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   promoCarta: ["vigenteDesde", "vigenteHasta", "diasDeSemana", "soloSalon"],
   // Fase 5 de la ola «precio y carta» (DEC-11): «Mostrar el nombre arriba» decide cómo se LEE en la carta pública un producto base (encabezado u oculto): toda escritura tiene su cadena de auditoría
   // (guardar el contenido audita la columna; «copiar carta» audita la copia entera).
-  contenidoCartaProducto: ["mostrarNombreArriba"],
+  contenidoCartaProducto: ["mostrarNombreArriba", "nombreEnCarta"],
   // (GO-3b sumaba acá la administración de las combinaciones —`combinacionDeProducto`, `grupoDePrecio`, `precioLocalDeCombinacion`—: se retiró con GO-3a en la Fase 3 de la ola «precio y carta».)
 };
 
@@ -97,6 +97,8 @@ const FUNCIONES_EXCEPTUADAS: Record<string, string> = {
   // E2 (ADR-040, punto 8): decisión de diseño, no deuda.
   "src/server/persistencia/traspasos/escribir-aprobacion-de-traspaso.ts|escribirAprobacionDeTraspaso":
     "La COPIA del costo del origen (`TraspasoSucursal.costoUnitarioOrigen`) al aprobar y enviar una solicitud: la escribe el sistema UNA vez (de NULL a la copia, en el paso SOLICITADA → ENVIADA que el guard de transición deja dar una sola vez), nadie la edita a mano y no hay valor anterior que se pierda. Su rastro es la salida del Kardex escrita en la misma transacción con el MISMO precio por unidad (quién, cuándo, cuánto). El envío directo la escribe al crear el traspaso y su caso de uso ya audita el alta.",
+  "src/server/persistencia/catalogo/upsert-proveedor-por-producto.ts|upsertProveedorPorProducto":
+    "Poda (decisión del dueño, 2026-11-06): el vínculo proveedor↔producto de una compra ya NO escribe dinero (el SQL no nombra `precioUnitario` ni `precioPorUnidadStock`, que quedan en su valor por defecto): solo la fecha de la última compra, la referencia del proveedor y la unidad. Cada precio de compra queda, inmutable, en el Kardex. El analizador lo ve como «cualquier escritura» porque es un INSERT crudo sobre un modelo con columnas de dinero; si la sentencia vuelve a nombrar una columna de precio, esta excepción hay que revisarla.",
   "src/server/persistencia/catalogo/unidades.ts|crearUnidadNueva":
     "Alta de una unidad nueva: todavía nada la usa, así que no hay un valor anterior ni cantidades cuyo significado cambie. Cada cambio posterior de sus decimales lo audita `actualizarDecimalesUnidad`.",
 };

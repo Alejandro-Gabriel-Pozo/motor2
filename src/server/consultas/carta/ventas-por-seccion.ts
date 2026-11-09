@@ -1,5 +1,5 @@
 import "server-only";
-import { whereCartaDeSucursal } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, whereCartaDeSucursal } from "@/core/carta/public";
 import { redondearMoneda } from "@/core/moneda";
 import type { Db } from "@/lib/db-tipos";
 import { cargarLineasDelPeriodo, type generarReporteVentasPorCategoria } from "@/server/consultas/reportes/periodo";
@@ -9,7 +9,7 @@ import { ZONA_ARGENTINA } from "@/core/tiempo/zona-horaria";
 /**
  * Ventas por SECCIÓN DE CARTA (docs/plan-carta-catalogo-2026-09-24.md, M4; rehecho a nivel de PRODUCTO en
  * docs/plan-carta-seccion-directa-2026-09-25.md, M5). Las mismas ventas que «Ventas por categoría» (mismo
- * `cargarLineasDelPeriodo` + `calcularVentasDelPeriodo`, mismo criterio de ventas reales/estimadas), agrupadas por la sección de carta donde el
+ * `cargarLineasDelPeriodo` + `calcularVentasDelPeriodo`, mismo criterio: importe real, o «sin dato» y fuera del total), agrupadas por la sección de carta donde el
  * cliente ve CADA producto EN LA CARTA PROPIA DE LA SUCURSAL (ADR-009, C3) — no por su categoría, que ya no ubica nada en la carta:
  *  - opción de un ítem agrupado → la sección del ítem agrupado (un producto agrupado sale solo ahí, D3);
  *  - si no, PV suelto con `ContenidoCartaProducto` visible y con sección → esa sección;
@@ -110,7 +110,7 @@ export function reagruparPorSeccion(rep: VentasParaSeccion, seccionPorProducto: 
 async function seccionesDeProductos(sucursalId: string, db: Db): Promise<Map<string, SeccionDeProducto>> {
   const seccion = { select: { nombre: true, orden: true } } as const;
   const filas = await db.producto.findMany({
-    where: { OR: [{ opcionesItemAgrupadoCarta: { some: whereCartaDeSucursal(sucursalId) } }, { contenidosCarta: { some: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, seccionCartaId: { not: null } } } }] },
+    where: { OR: [...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? [{ opcionesItemAgrupadoCarta: { some: whereCartaDeSucursal(sucursalId) } }] : []), { contenidosCarta: { some: { ...whereCartaDeSucursal(sucursalId), visibleEnCarta: true, seccionCartaId: { not: null } } } }] },
     select: {
       id: true,
       contenidosCarta: { where: whereCartaDeSucursal(sucursalId), take: 1, select: { visibleEnCarta: true, seccionCarta: seccion } },
@@ -121,7 +121,7 @@ async function seccionesDeProductos(sucursalId: string, db: Db): Promise<Map<str
   for (const f of filas) {
     // D3: un producto agrupado sale solo dentro de su ítem agrupado, aunque tenga contenido propio visible.
     const contenido = f.contenidosCarta[0];
-    const s = f.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.seccionCarta ?? (contenido?.visibleEnCarta ? contenido.seccionCarta : null);
+    const s = (GENERO_E_ITEM_AGRUPADO_VISIBLE ? f.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.seccionCarta : undefined) ?? (contenido?.visibleEnCarta ? contenido.seccionCarta : null);
     if (s) mapa.set(f.id, { nombre: s.nombre, orden: s.orden });
   }
   return mapa;
@@ -137,7 +137,7 @@ export async function generarReporteVentasPorSeccion(sucursalId: string, desde: 
     cargarLineasDelPeriodo(sucursalId, desde, hasta, { proceso: "VENTA" }, db, {}, zona),
     seccionesDeProductos(sucursalId, db),
   ]);
-  const ventas = calcularVentasDelPeriodo(items, productos);
+  const ventas = calcularVentasDelPeriodo(items);
   return reagruparPorSeccion(
     {
       desde: desdeRango,

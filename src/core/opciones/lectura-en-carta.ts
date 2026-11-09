@@ -128,6 +128,9 @@ export function opcionesDelEje<O extends { esNinguna: boolean }>(g: { tipo: Tipo
 /** El tope de «se lee en la carta como» (CHECK `GrupoDeOpciones_prefijo_en_carta_chk`). */
 export const LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA = 20;
 
+/** El tope de la descripción de una opción en la carta (CHECK `OpcionDeGrupo_descripcion_en_carta_chk`): una línea de hasta 120 caracteres. */
+export const LARGO_MAXIMO_DE_LA_DESCRIPCION_EN_CARTA = 120;
+
 /** Solo un grupo de VARIANTES o de MEDIDA se lee con prefijo (decisión del dueño): en una INCLUIDA o un ADICIONAL la carta lleva un rótulo («Guarnición:», «Extras:»), que es otra cosa. */
 export function admitePrefijoEnCarta(tipo: TipoDeGrupoDeOpciones): boolean {
   return tipo === "VARIANTE" || tipo === "MEDIDA";

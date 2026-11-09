@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { guardComandoAnularCompra, guardComandoCorregirCompra, guardLineaCompra, guardNroFacturaCompra } from "../../../../src/core/features/compras/compra.guard";
+import { guardLineaCompra, guardNroFacturaCompra, guardPesoRealPorMagnitud, type MagnitudDeUnidad } from "../../../../src/core/features/compras/compra.guard";
 
 /** Guard de la feature Compra/Devolución a proveedor (src/core/features/compras/compra.guard.ts): formato + normalización, puro. */
 
@@ -68,46 +68,28 @@ describe("guardNroFacturaCompra", () => {
   });
 });
 
-/**
- * Guard del comando «anular una compra» (Task #41, Fase M). Los mensajes se comparan EXACTOS: son los que devolvía la Server Action
- * `anularCompra` antes de pasar a su caso de uso (test/movimientos/compras-anular.test.ts, sin tocar, los sigue verificando de punta a punta).
- */
-describe("guardComandoAnularCompra", () => {
-  const UUID = "0b5c3a1e-7d2f-4c8a-9e61-2f3d4b5a6c7d";
-  const NO_ENCONTRADA = "No se encontró esa operación en esta sucursal.";
-  const CLAVE_INVALIDA = "Clave de reintento inválida.";
-  const CLAVE_FALTANTE = "Falta la clave de reintento: recargá la pantalla.";
+describe("guardPesoRealPorMagnitud (Compras etapa 2a: la cantidad real solo cuando la conversión cruza de tipo)", () => {
+  const MAGNITUDES: MagnitudDeUnidad[] = ["PESO", "VOLUMEN", "CANTIDAD"];
 
-  it.each([
-    { caso: "sin clave (undefined): obligatoria", entrada: { operacionId: "op-1", claveIdempotencia: undefined }, esperado: { ok: false, codigo: "vacio", mensaje: CLAVE_FALTANTE } },
-    { caso: "sin la propiedad clave: obligatoria", entrada: { operacionId: "op-1" }, esperado: { ok: false, codigo: "vacio", mensaje: CLAVE_FALTANTE } },
-    { caso: "válida, con clave UUID", entrada: { operacionId: "op-1", claveIdempotencia: UUID }, esperado: { ok: true, valor: { operacionId: "op-1", claveIdempotencia: UUID } } },
-    { caso: "clave que no es un UUID", entrada: { operacionId: "op-1", claveIdempotencia: "no-es-un-uuid" }, esperado: { ok: false, codigo: "formato", mensaje: CLAVE_INVALIDA } },
-    { caso: "clave vacía", entrada: { operacionId: "op-1", claveIdempotencia: "" }, esperado: { ok: false, codigo: "vacio", mensaje: CLAVE_FALTANTE } },
-    { caso: "clave null", entrada: { operacionId: "op-1", claveIdempotencia: null }, esperado: { ok: false, codigo: "vacio", mensaje: CLAVE_FALTANTE } },
-    { caso: "clave inválida Y operacionId no-string: primero la clave (mismo orden que antes)", entrada: { operacionId: 7, claveIdempotencia: "x" }, esperado: { ok: false, codigo: "formato", mensaje: CLAVE_INVALIDA } },
-    { caso: "operacionId número", entrada: { operacionId: 123, claveIdempotencia: UUID }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
-    { caso: "operacionId null", entrada: { operacionId: null, claveIdempotencia: UUID }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
-    { caso: "operacionId undefined (antes: Prisma ignoraba el filtro y tomaba la PRIMERA operación de la sucursal)", entrada: { operacionId: undefined, claveIdempotencia: UUID }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
-    { caso: "operacionId objeto", entrada: { operacionId: { id: "x" }, claveIdempotencia: UUID }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
-    { caso: "entrada null (sin clave: primero la clave)", entrada: null, esperado: { ok: false, codigo: "vacio", mensaje: CLAVE_FALTANTE } },
-  ])("$caso", ({ entrada, esperado }) => {
-    expect(guardComandoAnularCompra(entrada)).toStrictEqual(esperado);
+  it("recorre las 9 combinaciones de tipo de compra × tipo de stock: con cantidad real, solo acepta cuando son DISTINTOS", () => {
+    for (const compra of MAGNITUDES) {
+      for (const stock of MAGNITUDES) {
+        const r = guardPesoRealPorMagnitud("Harina", 12.4, compra, stock);
+        expect(r.ok, `${compra} → ${stock}`).toBe(compra !== stock);
+      }
+    }
   });
-});
 
-/** Guard del comando «corregir la cabecera de una compra» (Task #41, Fase M): solo el operacionId; nueva/esperado pasan tal cual. */
-describe("guardComandoCorregirCompra", () => {
-  const nueva = { proveedorId: null, nroFactura: "A-1", detalleLibre: "" };
-  const esperado = { proveedorId: null, nroFactura: null, detalleLibre: null };
-  const NO_ENCONTRADA = "No se encontró esa operación en esta sucursal.";
+  it("sin cantidad real (null) acepta siempre, sea cual sea el tipo", () => {
+    for (const compra of MAGNITUDES) for (const stock of MAGNITUDES) expect(guardPesoRealPorMagnitud("Harina", null, compra, stock), `${compra} → ${stock}`).toEqual({ ok: true, valor: null });
+  });
 
-  it.each([
-    { caso: "válida", entrada: { operacionId: "op-1", nueva, esperado }, esperado: { ok: true, valor: { operacionId: "op-1", nueva, esperado } } },
-    { caso: "operacionId número", entrada: { operacionId: 123, nueva, esperado }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
-    { caso: "operacionId null", entrada: { operacionId: null, nueva, esperado }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
-    { caso: "operacionId undefined", entrada: { operacionId: undefined, nueva, esperado }, esperado: { ok: false, codigo: "formato", mensaje: NO_ENCONTRADA } },
-  ])("$caso", ({ entrada, esperado: resultado }) => {
-    expect(guardComandoCorregirCompra(entrada)).toStrictEqual(resultado);
+  it("caja → kg y kg → unidades cruzan de tipo: aceptan; kg → g y caja → botella son del mismo tipo: rechazan con un mensaje que nombra el producto", () => {
+    expect(guardPesoRealPorMagnitud("Jamón", 12.4, "CANTIDAD", "PESO").ok).toBe(true);
+    expect(guardPesoRealPorMagnitud("Jamón", 3, "PESO", "CANTIDAD").ok).toBe(true);
+    expect(guardPesoRealPorMagnitud("Jamón", 12.4, "CANTIDAD", "VOLUMEN").ok).toBe(true);
+    const mal = guardPesoRealPorMagnitud("Jamón", 4.9, "PESO", "PESO");
+    expect(mal).toMatchObject({ ok: false, codigo: "regla" });
+    expect(!mal.ok && mal.mensaje).toMatch(/cantidad real de "Jamón".*mismo tipo/);
   });
 });

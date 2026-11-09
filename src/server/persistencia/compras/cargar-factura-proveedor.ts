@@ -27,6 +27,7 @@ export interface FacturaBloqueada {
   id: string;
   proveedorId: string;
   nroFactura: string | null;
+  detalleLibre: string | null;
   fecha: Date;
   anuladaEn: Date | null;
 }
@@ -37,7 +38,7 @@ export interface FacturaBloqueada {
  */
 export async function bloquearFactura(tx: Db, facturaProveedorId: string): Promise<FacturaBloqueada | null> {
   const filas = await tx.$queryRaw<FacturaBloqueada[]>`
-    SELECT "id", "proveedorId", "nroFactura", "fecha", "anuladaEn" FROM "FacturaProveedor" WHERE "id" = ${facturaProveedorId} FOR UPDATE`;
+    SELECT "id", "proveedorId", "nroFactura", "detalleLibre", "fecha", "anuladaEn" FROM "FacturaProveedor" WHERE "id" = ${facturaProveedorId} FOR UPDATE`;
   return filas[0] ?? null;
 }
 
@@ -125,4 +126,63 @@ export async function sucursalesConParteDeFactura(db: Db, facturaProveedorId: st
 /** ¿La factura tiene notas de crédito vigentes? (C29: anular una factura con notas vigentes se rechaza.) */
 export async function tieneNotasDeCreditoVigentes(tx: Db, facturaProveedorId: string): Promise<boolean> {
   return (await tx.notaCreditoProveedor.count({ where: { facturaProveedorId, anuladaEn: null } })) > 0;
+}
+
+/** ¿La factura tiene alguna nota de crédito, vigente o anulada? La base ata cada nota al proveedor de su factura (ON UPDATE RESTRICT): con cualquiera, no se puede cambiar el proveedor. */
+export async function tieneNotasDeCredito(tx: Db, facturaProveedorId: string): Promise<boolean> {
+  return (await tx.notaCreditoProveedor.count({ where: { facturaProveedorId } })) > 0;
+}
+
+/** Los proveedores pedidos (de la empresa: la RLS esconde los ajenos) con su nombre y si están activos: lo que necesita corregir el proveedor de una factura y auditarlo con el nombre. */
+export async function cargarProveedoresParaCorreccion(tx: Db, ids: readonly string[]): Promise<Map<string, { nombre: string; activo: boolean }>> {
+  const filas = await tx.proveedor.findMany({ where: { id: { in: [...ids] } }, select: { id: true, nombre: true, activo: true } });
+  return new Map(filas.map((f) => [f.id, { nombre: f.nombre, activo: f.activo }]));
+}
+
+/** Pagos X0: la huella y el mensaje del pago declarado que lleva esa clave de reintento (I3), o `null`. */
+export async function cargarPagoPorClaveIdempotencia(db: Db, claveIdempotencia: string): Promise<{ payloadHash: string | null; resultadoMensaje: string | null } | null> {
+  return db.pagoDeFacturaProveedor.findUnique({ where: { claveIdempotencia }, select: { payloadHash: true, resultadoMensaje: true } });
+}
+
+/** Pagos X0: la huella y el mensaje de la anulación de pago que lleva esa clave de reintento (I3), o `null`. */
+export async function cargarAnulacionDePagoPorClaveIdempotencia(db: Db, claveIdempotencia: string): Promise<{ payloadHash: string | null; resultadoMensaje: string | null } | null> {
+  return db.anulacionDePagoDeFacturaProveedor.findUnique({ where: { claveIdempotencia }, select: { payloadHash: true, resultadoMensaje: true } });
+}
+
+export interface FacturaBloqueadaParaPago {
+  id: string;
+  nroFactura: string | null;
+  fecha: Date;
+  anuladaEn: Date | null;
+  condicionPago: string;
+}
+
+/** Pagos X0: la cabecera con `SELECT … FOR UPDATE` (serializa dos declaraciones y la anulación de la factura) con la condición de pago. `null` si no existe en la empresa. */
+export async function bloquearFacturaParaPago(tx: Db, facturaProveedorId: string): Promise<FacturaBloqueadaParaPago | null> {
+  const filas = await tx.$queryRaw<FacturaBloqueadaParaPago[]>`
+    SELECT "id", "nroFactura", "fecha", "anuladaEn", "condicionPago" FROM "FacturaProveedor" WHERE "id" = ${facturaProveedorId} FOR UPDATE`;
+  return filas[0] ?? null;
+}
+
+/** Pagos X0: ¿la factura tiene un pago vigente (no anulado)? */
+export async function tienePagoVigenteLaFactura(tx: Db, facturaProveedorId: string): Promise<boolean> {
+  return (await tx.pagoDeFacturaProveedor.count({ where: { facturaProveedorId, anuladoEn: null } })) > 0;
+}
+
+export interface PagoParaAnular {
+  id: string;
+  facturaProveedorId: string;
+  nroFactura: string | null;
+  fechaPago: Date;
+  medio: string;
+  anuladoEn: Date | null;
+}
+
+/** Pagos X0: el pago con su factura (número), o `null` si no existe en la empresa. */
+export async function cargarPagoParaAnular(tx: Db, pagoId: string): Promise<PagoParaAnular | null> {
+  const p = await tx.pagoDeFacturaProveedor.findUnique({
+    where: { id: pagoId },
+    select: { id: true, facturaProveedorId: true, fechaPago: true, medio: true, anuladoEn: true, facturaProveedor: { select: { nroFactura: true } } },
+  });
+  return p ? { id: p.id, facturaProveedorId: p.facturaProveedorId, nroFactura: p.facturaProveedor.nroFactura, fechaPago: p.fechaPago, medio: p.medio, anuladoEn: p.anuladoEn } : null;
 }

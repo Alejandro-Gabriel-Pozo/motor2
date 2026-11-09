@@ -57,6 +57,9 @@ export const ENTIDADES_AUDITABLES = [
   // "ConteoFisico" (Pureza, decisión del dueño 2026-10-07): el alta de un conteo físico de stock — `entidadId` es el id del conteo, `campo: "conteoReal"`, `valorAnterior` el saldo del sistema
   // y `valorNuevo` lo contado, con `sucursalId`. Un conteo sin diferencia no deja fila (no cambia nada).
   "ConteoFisico",
+  // "Proveedor": corregir un proveedor (`actualizarProveedor`) — `entidadId` es el id del Proveedor, `campo` `nombre`, `ofreceProductos` u `ofreceServicios` (una fila por columna que cambia, con el antes
+  // y el después), `sucursalId` null (catálogo central). El contacto no deja fila.
+  "Proveedor",
   // "FacturaProveedor" (E3a, ADR-041): la carga de una factura de proveedor repartida (`campo: "reparto"`, el reparto por sucursal en `valorNuevo`), la aceptación de la parte de una sucursal destino (`campo: "parteAceptada"`)
   // y la anulación (`campo: "anuladaEn"`, con el motivo en la descripción) — `entidadId` es el id de la factura, `sucursalId` el de la sucursal de quien actúa (nunca la ajena).
   "FacturaProveedor",
@@ -65,6 +68,7 @@ export const ENTIDADES_AUDITABLES = [
   "TraspasoSucursal",
   // "ProveedorPorProducto" (Pureza, decisión del dueño 2026-10-08): el precio por unidad de stock que quedó en el vínculo proveedor↔producto tras una compra — `entidadId` es
   // `${productoId}:${proveedorId}:${unidadCompraId}`, `campo: "precioPorUnidadStock"`, `valorAnterior: null` si el par es nuevo, con la `sucursalId` de la compra.
+  // Poda (decisión del dueño, 2026-11-06): la compra YA NO escribe ese precio ni deja esta fila; las que ya existen son historia y se siguen leyendo. Sigue en la lista para esa historia.
   "ProveedorPorProducto",
   // "Insumo" (D-9, decisión del dueño 2026-10-07; Hito 4, H4C-10): renombrar un insumo (`campo: "nombre"`, del nombre anterior al nuevo) o fusionarlo con otro
   // (`campo: "fusion"`, sobre el insumo que DESAPARECE, del nombre de origen al de destino —si los dos nombres coinciden, cada uno con el id de su insumo, así

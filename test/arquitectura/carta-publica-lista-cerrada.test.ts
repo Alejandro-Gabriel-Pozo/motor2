@@ -38,7 +38,8 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   CategoriaProducto: ["nombre"],
   // Fase 5 de la ola «precio y carta» (DEC-11; decisión técnica aprobada por el dueño: «modo, prefijo y mostrarNombreArriba entran a la lista cerrada»): + `mostrarNombreArriba`, el interruptor de un
   // producto base con un solo eje (con título u oculto). Se LEE en el servidor para decidir la forma; no sale como campo propio (sale la forma ya resuelta, `presentacion`).
-  ContenidoCartaProducto: ["descripcion", "especial", "mostrarNombreArriba", "orden", "seccionCartaId", "tags"],
+  // «Nombre en la carta» (2026-11-04): `nombreEnCarta` es el `nombre` del plato en la carta pública de la sucursal (no sale como campo propio: reemplaza al nombre del producto en `nombre`).
+  ContenidoCartaProducto: ["descripcion", "especial", "mostrarNombreArriba", "nombreEnCarta", "orden", "seccionCartaId", "tags"],
   DescuentoProductoSucursal: ["porcentaje", "productoId"],
   Empresa: ["id", "nombre", "slug"],
   ItemAgrupadoCarta: ["descripcion", "especial", "id", "nombre", "opciones", "orden", "seccionCartaId", "tags"],
@@ -68,7 +69,8 @@ const PUBLICACION_CARTA: Readonly<Record<string, readonly string[]>> = {
   // («De carne»). Se LEE en el servidor; lo que sale es el rótulo ya armado.
   GrupoDeOpciones: ["activo", "cantidadMaxima", "cantidadMinima", "id", "nombre", "opciones", "prefijoEnCarta", "tipo"],
   OpcionApagadaEnSucursal: ["apagada"],
-  OpcionDeGrupo: ["activa", "apagadasEnSucursal", "esNinguna", "grupo", "grupoId", "id", "nombre", "orden", "productosQueLaAdmiten", "versiones"],
+  // Carta «B», E3 (2026-11-04): + `OpcionDeGrupo.descripcionEnCarta` (la descripción de la opción). Se LEE en el servidor y sale SOLO dentro de `aclaraciones[].descripciones` de la presentación (lo cierra `CLAVES_DE_LA_CARTA`).
+  OpcionDeGrupo: ["activa", "apagadasEnSucursal", "descripcionEnCarta", "esNinguna", "grupo", "grupoId", "id", "nombre", "orden", "productosQueLaAdmiten", "versiones"],
   PrecioLocalDeOpcion: ["habilitado", "opcion", "opcionId", "precio", "productoId"],
   // «Mostrar este grupo en la carta» (decisión del dueño, 2026-10-29: plato por plato): + `ProductoAdmiteGrupo.seMuestraEnCarta`, con el mismo criterio que `prefijoEnCarta` y `mostrarNombreArriba`: se LEE en el servidor y
   // decide qué grupos lee la carta (`seOcultaEnLaCarta`); no sale a la salida (la salida solo pierde la línea del grupo: lo cierra `CLAVES_DE_LA_CARTA`, sin claves nuevas).

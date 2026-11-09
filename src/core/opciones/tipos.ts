@@ -33,6 +33,8 @@ export type TipoDeDiferencia = (typeof TIPOS_DE_DIFERENCIA)[number];
  */
 export const MODOS_DE_VENTA = ["DIRECTO", "BASE_CONFIGURABLE"] as const;
 export type ModoDeVenta = (typeof MODOS_DE_VENTA)[number];
+/** Los valores con nombre, para escribirlos (un `where` de Prisma, una opción de pantalla) sin repetir el texto: el único lugar donde se escriben los literales (lo vigila `cerco-modo-de-venta`). */
+export const MODO_DE_VENTA = { DIRECTO: "DIRECTO", BASE_CONFIGURABLE: "BASE_CONFIGURABLE" } as const satisfies { [M in ModoDeVenta]: M };
 
 /** Una diferencia de precio ya resuelta (la del producto si la sobrescribe, si no la de la versión de la opción). El porcentaje es el de `DECIMAL(7,4)`: hasta 4 decimales. */
 export type DiferenciaDePrecio = { tipo: "MONTO"; monto: number } | { tipo: "PORCENTAJE"; porcentaje: number };
@@ -43,5 +45,8 @@ export const CANTIDAD_MAXIMA_DE_OPCION = 10;
 /** Tope del factor de escala de una MEDIDA (CHECK `factorEscala > 0 AND factorEscala <= 10`, `DECIMAL(8,4)`). */
 export const FACTOR_DE_ESCALA_MAXIMO = 10;
 
-/** Piso de un precio de lista y de un recargo: 0,01. Un importe de 0 en una línea de venta se lee como «venta vieja sin precio» (`core/moneda.ts`, `precioConDescuento`). */
-export const IMPORTE_MINIMO = 0.01;
+/** Paso entre el orden de un grupo (o de una opción) y el siguiente: una alta va al final y queda lugar para poner otra entre dos sin renumerar. Lo usan la pantalla y los casos de uso de alta y de reordenamiento. */
+export const PASO_DE_ORDEN = 10;
+
+/** Piso de un precio de lista y de un recargo: 0,01. Es el mismo piso de todo el sistema: vive en `core/moneda.ts` y se reexporta acá para los módulos de opciones. */
+export { IMPORTE_MINIMO } from "../moneda";

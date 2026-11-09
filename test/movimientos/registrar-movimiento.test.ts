@@ -616,12 +616,23 @@ describe("registrarMovimiento", () => {
       expect(await prisma.operacion.count()).toBe(0);
     });
 
-    it("peso real válido se usa como cantidad de stock; vacío (null) sigue sin peso real", async () => {
-      const mp = await crearMP("Carne");
+    // Compras etapa 2a: la cantidad real solo cruza de tipo (caja → kg). La Carne se compra en cajas (CANTIDAD) y se lleva en kg (PESO).
+    it("peso real válido se usa como cantidad de stock (cruzando de tipo: caja → kg); vacío (null) sigue sin peso real", async () => {
+      const caja = await prisma.unidad.create({ data: { nombre: "caja", magnitud: "CANTIDAD", decimales: 0 } });
+      const mp = await sembrarProductoDisponible({ codigo: "MP_CARNE", nombre: "Carne", tipo: "MP", unidadStockId: unidadKgId, insumoId, unidadCompraId: caja.id, factorConversion: "10" }, sucursalId);
       expect((await compra([{ productoId: mp.id, cantidad: 1, pesoReal: 2.35, referenciaProveedor: REFERENCIA_DE_PRUEBA }])).ok).toBe(true);
       expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(2.35);
       expect((await compra([{ productoId: mp.id, cantidad: 1, pesoReal: null, referenciaProveedor: REFERENCIA_DE_PRUEBA }])).ok).toBe(true);
-      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(3.35);
+      expect(await calcularSaldoTotal(mp.id, seccionAId, prisma)).toBe(12.35);
+    });
+
+    it("peso real con el MISMO tipo de unidad (kg → kg): el servidor lo rechaza sin escribir nada (sería una segunda fuente de verdad)", async () => {
+      const mp = await crearMP("Carne");
+      const r = await compra([{ productoId: mp.id, cantidad: 1, pesoReal: 2.35, referenciaProveedor: REFERENCIA_DE_PRUEBA }]);
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toMatch(/cantidad real.*mismo tipo/);
+      expect(await prisma.operacion.count()).toBe(0);
+      expect(await prisma.movimientoStock.count()).toBe(0);
     });
 
     // Etapa 1 de Compras: en la COMPRA el número es estructurado (ver comprobante-unico-en-la-empresa.test.ts); la Devolución a proveedor sigue con texto libre (`guardNroFacturaCompra`).

@@ -1,11 +1,12 @@
 import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { whereCartaDeSucursal } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, whereCartaDeSucursal } from "@/core/carta/public";
 import { FALTAS_FILTRABLES, whereDisponibleEn, whereDisponibleEnAlguna, type FaltaFiltrable, type FiltrosDeProductos } from "@/core/catalogo/public";
 import { accionesDelMenuQueElUsuarioPuedeVer, obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa } from "@/server/acceso/gate";
 import { denegacionDeModuloDeAccion } from "@/server/acceso/modulos-de-empresa";
 import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-de-producto";
 import { cargarOrigenDeStockDelCatalogo } from "@/server/lecturas/movimientos/origen-de-stock-del-catalogo";
+import { MODO_DE_VENTA } from "@/core/opciones/public";
 
 /**
  * Los filtros de la lista de Productos como `where` de Prisma (Fase 6, bloque 3, 3b). Todo se decide acá, en el servidor, sobre las tablas de la empresa del usuario (la RLS por empresa no se toca) y de
@@ -64,8 +65,8 @@ function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, falt
     case null:
       break;
   }
-  if (f.modo === "directo") y.push({ modoDeVenta: "DIRECTO" });
-  if (f.modo === "por-opcion") y.push({ modoDeVenta: "BASE_CONFIGURABLE" });
+  if (f.modo === "directo") y.push({ modoDeVenta: MODO_DE_VENTA.DIRECTO });
+  if (f.modo === "por-opcion") y.push({ modoDeVenta: MODO_DE_VENTA.BASE_CONFIGURABLE });
   switch (f.disponible) {
     case "aca":
       y.push(whereDisponibleEn(ctx.sucursalId));
@@ -83,11 +84,11 @@ function criteriosDeTabla(ctx: ContextoDeLosFiltros, f: FiltrosDeProductos, falt
       break;
   }
   if (f.falta && faltasPermitidas.includes(f.falta)) {
-    if (f.falta === "sin-precio") y.push({ tipo: "PV", opcionQueRespalda: { is: null }, modoDeVenta: "DIRECTO", precioVenta: { lte: 0 } });
+    if (f.falta === "sin-precio") y.push({ tipo: "PV", opcionQueRespalda: { is: null }, modoDeVenta: MODO_DE_VENTA.DIRECTO, precioVenta: { lte: 0 } });
     // El estado «fuera» de la carta (`estadoDelProductoEnLaCarta`): un producto de venta (no el de respaldo) disponible acá, sin contenido de carta y sin grupo en esta sucursal.
     if (f.falta === "fuera-de-la-carta") {
       y.push({ tipo: "PV", opcionQueRespalda: { is: null }, ...whereDisponibleEn(ctx.sucursalId) });
-      y.push({ contenidosCarta: { none: whereCartaDeSucursal(ctx.sucursalId) }, opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(ctx.sucursalId) } });
+      y.push({ contenidosCarta: { none: whereCartaDeSucursal(ctx.sucursalId) }, ...(GENERO_E_ITEM_AGRUPADO_VISIBLE ? { opcionesItemAgrupadoCarta: { none: whereCartaDeSucursal(ctx.sucursalId) } } : {}) });
     }
   }
   return y;

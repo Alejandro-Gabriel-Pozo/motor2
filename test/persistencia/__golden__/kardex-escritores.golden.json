@@ -92,6 +92,7 @@
           "cantidad": {
             "$decimal": "-3"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -112,7 +113,8 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": "traspaso"
+          "traspasoSucursalId": "traspaso",
+          "unidadCompraId": null
         }
       ],
       "traspasos": [
@@ -242,6 +244,7 @@
           "cantidad": {
             "$decimal": "-2.5"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -262,7 +265,8 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": "<op#1>"
+          "traspasoSucursalId": "<op#1>",
+          "unidadCompraId": null
         }
       ],
       "traspasos": [
@@ -400,6 +404,7 @@
           "cantidad": {
             "$decimal": "3"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -420,7 +425,8 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-destino",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": "traspaso"
+          "traspasoSucursalId": "traspaso",
+          "unidadCompraId": null
         }
       ],
       "traspasos": [
@@ -545,6 +551,7 @@
           "cantidad": {
             "$decimal": "3"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -565,7 +572,8 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-destino",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": "traspaso"
+          "traspasoSucursalId": "traspaso",
+          "unidadCompraId": null
         }
       ],
       "traspasos": [
@@ -689,6 +697,7 @@
           "cantidad": {
             "$decimal": "3"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -709,7 +718,8 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": "traspaso"
+          "traspasoSucursalId": "traspaso",
+          "unidadCompraId": null
         }
       ],
       "traspasos": [
@@ -839,6 +849,7 @@
           "cantidad": {
             "$decimal": "-2.5"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -859,7 +870,8 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": "<op#1>"
+          "traspasoSucursalId": "<op#1>",
+          "unidadCompraId": null
         }
       ],
       "traspasos": [
@@ -986,6 +998,7 @@
           "cantidad": {
             "$decimal": "3"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1006,7 +1019,8 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-destino",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": "traspaso"
+          "traspasoSucursalId": "traspaso",
+          "unidadCompraId": null
         }
       ],
       "traspasos": [
@@ -1132,6 +1146,7 @@
           "cantidad": {
             "$decimal": "3"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1152,7 +1167,8 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": "traspaso"
+          "traspasoSucursalId": "traspaso",
+          "unidadCompraId": null
         }
       ],
       "traspasos": [
@@ -1202,6 +1218,7 @@
             },
             "payloadHash": "hash-de-la-anulacion-de-compra",
             "proceso": "AJUSTE",
+            "revierteAOperacionId": "compra-original",
             "sucursalId": "sucursal-origen",
             "usuarioId": "usuario"
           }
@@ -1249,7 +1266,8 @@
             "anuladaEn": {
               "$fecha": "2026-10-01T15:00:00.000Z"
             },
-            "anuladaPorId": "usuario"
+            "anuladaPorId": "usuario",
+            "motivoAnulacion": null
           },
           "where": {
             "id": "compra-original"
@@ -1294,7 +1312,7 @@
           "proveedorId": null,
           "reemplazaAOperacionId": null,
           "resultadoMensaje": "Compra anulada.",
-          "revierteAOperacionId": null,
+          "revierteAOperacionId": "compra-original",
           "seccionDestinoId": null,
           "sucursalId": "sucursal-origen",
           "usuarioId": "usuario",
@@ -1336,6 +1354,7 @@
           "cantidad": {
             "$decimal": "-2.5"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1357,12 +1376,14 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         },
         {
           "cantidad": {
             "$decimal": "-4"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1382,12 +1403,14 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         },
         {
           "cantidad": {
             "$decimal": "2.5"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1409,12 +1432,14 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         },
         {
           "cantidad": {
             "$decimal": "4"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1434,7 +1459,8 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         }
       ],
       "traspasos": []
@@ -1455,6 +1481,7 @@
             },
             "payloadHash": null,
             "proceso": "AJUSTE",
+            "revierteAOperacionId": "compra-original",
             "sucursalId": "sucursal-origen",
             "usuarioId": "usuario"
           }
@@ -1502,7 +1529,8 @@
             "anuladaEn": {
               "$fecha": "2026-10-01T15:00:00.000Z"
             },
-            "anuladaPorId": "usuario"
+            "anuladaPorId": "usuario",
+            "motivoAnulacion": null
           },
           "where": {
             "id": "compra-original"
@@ -1534,7 +1562,7 @@
           "proveedorId": null,
           "reemplazaAOperacionId": null,
           "resultadoMensaje": null,
-          "revierteAOperacionId": null,
+          "revierteAOperacionId": "compra-original",
           "seccionDestinoId": null,
           "sucursalId": "sucursal-origen",
           "usuarioId": "usuario",
@@ -1576,6 +1604,7 @@
           "cantidad": {
             "$decimal": "-2.5"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1597,12 +1626,14 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         },
         {
           "cantidad": {
             "$decimal": "-4"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1622,12 +1653,14 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         },
         {
           "cantidad": {
             "$decimal": "2.5"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1649,12 +1682,14 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         },
         {
           "cantidad": {
             "$decimal": "4"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1674,7 +1709,8 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         }
       ],
       "traspasos": []
@@ -1693,6 +1729,7 @@
               "$fecha": "2026-10-01T15:00:00.000Z"
             },
             "proceso": "AJUSTE",
+            "revierteAOperacionId": "venta-original",
             "sucursalId": "sucursal-origen",
             "usuarioId": "usuario"
           }
@@ -1742,7 +1779,8 @@
             "anuladaEn": {
               "$fecha": "2026-10-01T15:00:00.000Z"
             },
-            "anuladaPorId": "usuario"
+            "anuladaPorId": "usuario",
+            "motivoAnulacion": "Error de carga"
           },
           "where": {
             "id": "venta-original"
@@ -1774,7 +1812,7 @@
           "proveedorId": null,
           "reemplazaAOperacionId": null,
           "resultadoMensaje": null,
-          "revierteAOperacionId": null,
+          "revierteAOperacionId": "venta-original",
           "seccionDestinoId": null,
           "sucursalId": "sucursal-origen",
           "usuarioId": "usuario",
@@ -1794,7 +1832,7 @@
           },
           "id": "venta-original",
           "mermaPorAnulacionDeId": null,
-          "motivoAnulacion": null,
+          "motivoAnulacion": "Error de carga",
           "motivoId": null,
           "nroFactura": null,
           "operacionPadreId": null,
@@ -1816,6 +1854,7 @@
           "cantidad": {
             "$decimal": "-1"
           },
+          "cantidadCompra": null,
           "cantidadExacta": {
             "$decimal": "-0.75"
           },
@@ -1837,12 +1876,14 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         },
         {
           "cantidad": {
             "$decimal": "-2"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1864,12 +1905,14 @@
           "productoId": "producto-pan",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         },
         {
           "cantidad": {
             "$decimal": "1"
           },
+          "cantidadCompra": null,
           "cantidadExacta": {
             "$decimal": "0.75"
           },
@@ -1891,12 +1934,14 @@
           "productoId": "producto-harina",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         },
         {
           "cantidad": {
             "$decimal": "2"
           },
+          "cantidadCompra": null,
           "cantidadExacta": null,
           "conteoFisicoId": null,
           "costoUnitarioVenta": null,
@@ -1918,7 +1963,8 @@
           "productoId": "producto-pan",
           "seccionId": "seccion-origen",
           "sustituyeAProductoId": null,
-          "traspasoSucursalId": null
+          "traspasoSucursalId": null,
+          "unidadCompraId": null
         }
       ],
       "traspasos": []

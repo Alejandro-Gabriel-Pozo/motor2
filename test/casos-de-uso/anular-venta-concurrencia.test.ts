@@ -57,7 +57,7 @@ describe("anularVentaCasoDeUso: concurrencia (caracterización de hoy, sin I3)",
     const venta = await operacion("VENTA", -2, new Date("2026-08-06T12:00:00Z"));
     expect(await saldoDeHarina()).toBe(STOCK_INICIAL - 2);
 
-    const resultados = await Promise.all([anularVentaCasoDeUso(actor(), { operacionId: venta.id }), anularVentaCasoDeUso(actor(), { operacionId: venta.id })]);
+    const resultados = await Promise.all([anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" }), anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "Error de carga" })]);
 
     const exitos = resultados.filter((r) => r.ok);
     const fracasos = resultados.filter((r) => !r.ok);
@@ -77,13 +77,27 @@ describe("anularVentaCasoDeUso: concurrencia (caracterización de hoy, sin I3)",
     expect(await saldoDeHarina()).toBe(STOCK_INICIAL);
   }, 60_000);
 
+  it("E0: ocho anulaciones a la vez de la MISMA venta dejan exactamente 1 contra-asiento enlazado, el motivo del que ganó y el stock devuelto una sola vez", async () => {
+    const venta = await operacion("VENTA", -2, new Date("2026-08-06T12:00:00Z"));
+
+    const resultados = await Promise.all(Array.from({ length: 8 }, (_, i) => anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: `Motivo ${i}` })));
+
+    expect(resultados.filter((r) => r.ok), JSON.stringify(resultados)).toHaveLength(1);
+    expect(resultados.filter((r) => !r.ok && r.codigo === "YA_ANULADA")).toHaveLength(7);
+    expect(await prisma.operacion.count({ where: { proceso: "AJUSTE", sucursalId } })).toBe(1);
+    expect(await prisma.operacion.count({ where: { revierteAOperacionId: venta.id } })).toBe(1);
+    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).motivoAnulacion).toMatch(/^Motivo \d$/);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion", entidadId: venta.id } })).toBe(1);
+    expect(await saldoDeHarina()).toBe(STOCK_INICIAL);
+  }, 60_000);
+
   it("promo: dos anulaciones a la vez de componentes distintos de la misma promo dan un solo juego de reversiones (una por componente) y una auditoría por componente", async () => {
     const promo = await promoCuenta();
     const componenteA = await operacion("VENTA", -2, new Date("2026-08-06T12:00:00Z"), promo.id);
     const componenteB = await operacion("VENTA", -3, new Date("2026-08-06T12:00:00Z"), promo.id);
     expect(await saldoDeHarina()).toBe(STOCK_INICIAL - 5);
 
-    const resultados = await Promise.all([anularVentaCasoDeUso(actor(), { operacionId: componenteA.id }), anularVentaCasoDeUso(actor(), { operacionId: componenteB.id })]);
+    const resultados = await Promise.all([anularVentaCasoDeUso(actor(), { operacionId: componenteA.id, motivo: "Error de carga" }), anularVentaCasoDeUso(actor(), { operacionId: componenteB.id, motivo: "Error de carga" })]);
 
     const exitos = resultados.filter((r) => r.ok);
     const fracasos = resultados.filter((r) => !r.ok);

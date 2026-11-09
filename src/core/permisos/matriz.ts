@@ -1,4 +1,4 @@
-import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, nivelMinimoDeAccion } from "./acciones";
+import { ACCIONES_QUE_REQUIEREN_ADMIN_SIEMPRE, claveEnCatalogo, esAccionReservada, nivelMinimoDeAccion } from "./acciones";
 import { esRolAdmin, etiquetaDelPiso, nivelAlcanzaElPiso, nivelDe, nivelDelRolFrenteAlPiso, rolAlcanzaLaAccion, type PersonaParaJerarquia } from "./jerarquia";
 
 /** Lo único que la matriz necesita saber de un rol: su clave (el nombre es de la empresa y se puede cambiar). */
@@ -18,6 +18,14 @@ export interface EstadoPermiso {
 
 /** Sin fila en la base, el rol no tiene ese permiso. */
 export const SIN_PERMISO: EstadoPermiso = { puedeVer: false, puedeEditar: false };
+
+/**
+ * Las acciones que muestra la matriz de permisos: las del catálogo vigente (los restos de la base no) menos las RESERVADAS (`compra_recibir`, sin consumidores hasta que exista
+ * su bandeja; poda del 2026-11-06). Solo cambia qué filas se listan: no toca la base ni la decisión de acceso.
+ */
+export function accionesDeLaMatrizDePermisos<T extends { clave: string }>(acciones: readonly T[]): T[] {
+  return acciones.filter((a) => claveEnCatalogo(a.clave) && !esAccionReservada(a.clave));
+}
 
 /** El Editar de esta celda no se puede quitar (rol administrador sobre una acción de gestión de accesos). */
 export function esCeldaFija(rol: RolDeMatriz, accionClave: string): boolean {

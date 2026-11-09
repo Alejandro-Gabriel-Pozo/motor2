@@ -13,6 +13,7 @@
         haySinPrecio: false,
         idOperacion: "#1",
         nroFactura: "A-0005",
+        pago: null,
         proveedorId: "#2",
         proveedorNombre: "Lácteos del Sur",
         renglones: [
@@ -52,6 +53,7 @@
         haySinPrecio: false,
         idOperacion: "#5",
         nroFactura: "M-102",
+        pago: null,
         proveedorId: "#6",
         proveedorNombre: "Molino Norte",
         renglones: [
@@ -80,6 +82,7 @@
         haySinPrecio: false,
         idOperacion: "#8",
         nroFactura: "E-8",
+        pago: null,
         proveedorId: "#9",
         proveedorNombre: "Envases SA",
         renglones: [
@@ -108,6 +111,7 @@
         haySinPrecio: false,
         idOperacion: "#11",
         nroFactura: "A-0004",
+        pago: null,
         proveedorId: "#2",
         proveedorNombre: "Lácteos del Sur",
         renglones: [
@@ -147,6 +151,7 @@
         haySinPrecio: false,
         idOperacion: "#14",
         nroFactura: "M-101",
+        pago: null,
         proveedorId: "#6",
         proveedorNombre: "Molino Norte",
         renglones: [
@@ -175,6 +180,7 @@
         haySinPrecio: false,
         idOperacion: "#16",
         nroFactura: "A-0003",
+        pago: null,
         proveedorId: "#2",
         proveedorNombre: "Lácteos del Sur",
         renglones: [
@@ -214,6 +220,7 @@
         haySinPrecio: true,
         idOperacion: "#19",
         nroFactura: "B-1",
+        pago: null,
         proveedorId: "#20",
         proveedorNombre: "Bodega Andina",
         renglones: [
@@ -242,6 +249,7 @@
         haySinPrecio: false,
         idOperacion: "#22",
         nroFactura: null,
+        pago: null,
         proveedorId: null,
         proveedorNombre: null,
         renglones: [
@@ -270,6 +278,7 @@
         haySinPrecio: false,
         idOperacion: "#24",
         nroFactura: "A-0002",
+        pago: null,
         proveedorId: "#2",
         proveedorNombre: "Lácteos del Sur",
         renglones: [
@@ -298,6 +307,7 @@
         haySinPrecio: false,
         idOperacion: "#26",
         nroFactura: "E-7",
+        pago: null,
         proveedorId: "#9",
         proveedorNombre: "Envases SA",
         renglones: [
@@ -326,6 +336,7 @@
         haySinPrecio: false,
         idOperacion: "#28",
         nroFactura: "M-100",
+        pago: null,
         proveedorId: "#6",
         proveedorNombre: "Molino Norte",
         renglones: [
@@ -354,6 +365,7 @@
         haySinPrecio: false,
         idOperacion: "#30",
         nroFactura: "A-0001",
+        pago: null,
         proveedorId: "#2",
         proveedorNombre: "Lácteos del Sur",
         renglones: [
@@ -1646,7 +1658,6 @@
         costoIncompleto: false,
         costoUnitario: 2802,
         ingreso: 105600,
-        ingresoEstimado: false,
         ingresoRealReconstruido: 21600,
         margen: 80382,
         margenPct: 76.1,
@@ -1663,7 +1674,6 @@
         costoIncompleto: true,
         costoUnitario: null,
         ingreso: 86800,
-        ingresoEstimado: false,
         ingresoRealReconstruido: 0,
         margen: null,
         margenPct: null,
@@ -1680,7 +1690,6 @@
         costoIncompleto: true,
         costoUnitario: null,
         ingreso: 22200,
-        ingresoEstimado: false,
         ingresoRealReconstruido: 0,
         margen: null,
         margenPct: null,
@@ -1697,7 +1706,6 @@
         costoIncompleto: true,
         costoUnitario: null,
         ingreso: 20100,
-        ingresoEstimado: false,
         ingresoRealReconstruido: 0,
         margen: null,
         margenPct: null,
@@ -3472,7 +3480,6 @@
           costoIncompleto: false,
           costoUnitario: 2802,
           ingreso: 105600,
-          ingresoEstimado: false,
           ingresoRealReconstruido: 21600,
           margen: 80382,
           margenPct: 76.1,
@@ -3489,7 +3496,6 @@
           costoIncompleto: true,
           costoUnitario: null,
           ingreso: 86800,
-          ingresoEstimado: false,
           ingresoRealReconstruido: 0,
           margen: null,
           margenPct: null,
@@ -3506,7 +3512,6 @@
           costoIncompleto: true,
           costoUnitario: null,
           ingreso: 22200,
-          ingresoEstimado: false,
           ingresoRealReconstruido: 0,
           margen: null,
           margenPct: null,
@@ -3523,7 +3528,6 @@
           costoIncompleto: true,
           costoUnitario: null,
           ingreso: 20100,
-          ingresoEstimado: false,
           ingresoRealReconstruido: 0,
           margen: null,
           margenPct: null,
@@ -3590,11 +3594,12 @@
     total: 74,
     ventas: {
       aviso: "Importe real registrado en cada venta (no una estimación).",
+      lineasSinDato: 0,
       porProducto: [
-        {cantidad: 9, estimado: false, importe: 105600, precioUnitario: 12000, producto: "Pizza muzzarella", productoId: "#34"},
-        {cantidad: 7, estimado: false, importe: 86800, precioUnitario: 14000, producto: "Pizza napolitana", productoId: "#35"},
-        {cantidad: 6, estimado: false, importe: 22200, precioUnitario: 3400, producto: "Flan", productoId: "#36"},
-        {cantidad: 7, estimado: false, importe: 20100, precioUnitario: 2400, producto: "Copa de vino", productoId: "#43"}
+        {cantidad: 9, importe: 105600, precioUnitario: 12000, producto: "Pizza muzzarella", productoId: "#34"},
+        {cantidad: 7, importe: 86800, precioUnitario: 14000, producto: "Pizza napolitana", productoId: "#35"},
+        {cantidad: 6, importe: 22200, precioUnitario: 3400, producto: "Flan", productoId: "#36"},
+        {cantidad: 7, importe: 20100, precioUnitario: 2400, producto: "Copa de vino", productoId: "#43"}
       ],
       totalFacturado: 234700
     }
@@ -4220,7 +4225,6 @@
       hasta: Date(2026-03-16T02:59:59.999Z),
       hayComprasSinPrecio: true,
       hayCostoIncompleto: true,
-      hayEstimados: false,
       ipcVencido: false,
       margenIPCPct: 76.1,
       margenIPCProvisorio: true,
@@ -4242,6 +4246,7 @@
         {importe: 5000, proveedor: "Envases SA"},
         {importe: 0, proveedor: "Bodega Andina"}
       ],
+      ventasSinDato: 0,
       ventasTotal: 234700
     },
     movimientos: {
@@ -4279,6 +4284,7 @@
       margenTotal: 209482,
       sucursalId: "#149",
       sucursalNombre: "Central",
+      ventasSinDato: 0,
       ventasTotal: 234700
     },
     {
@@ -4288,6 +4294,7 @@
       margenTotal: 13000,
       sucursalId: "#150",
       sucursalNombre: "Norte",
+      ventasSinDato: 0,
       ventasTotal: 13000
     }
   ]
@@ -4565,17 +4572,17 @@
   consultas (1): movimientoStock.findMany×1
   resultado: [
     {fecha: Date(2026-03-10T18:00:00.000Z), idOperacion: "#58", proceso: "CONTROL", seccionNombre: "Depósito"},
-    {fecha: Date(2026-03-06T13:00:00.000Z), idOperacion: "#57", proceso: "CONSUMO", seccionNombre: "Depósito"},
+    {fecha: Date(2026-03-06T13:00:00.000Z), idOperacion: "#57", proceso: "VENTA", seccionNombre: "Depósito"},
     {fecha: Date(2026-03-04T12:00:00.000Z), idOperacion: "#56", proceso: "AJUSTE", seccionNombre: "Depósito"},
     {fecha: Date(2026-03-04T10:00:00.000Z), idOperacion: "#5", proceso: "COMPRA", seccionNombre: "Depósito"},
     {fecha: Date(2026-03-03T19:30:00.000Z), idOperacion: "#55", proceso: "AJUSTE", seccionNombre: "Depósito"},
-    {fecha: Date(2026-03-03T19:00:00.000Z), idOperacion: "#54", proceso: "CONSUMO", seccionNombre: "Depósito"},
-    {fecha: Date(2026-02-27T13:00:00.000Z), idOperacion: "#53", proceso: "CONSUMO", seccionNombre: "Depósito"},
+    {fecha: Date(2026-03-03T19:00:00.000Z), idOperacion: "#54", proceso: "VENTA", seccionNombre: "Depósito"},
+    {fecha: Date(2026-02-27T13:00:00.000Z), idOperacion: "#53", proceso: "VENTA", seccionNombre: "Depósito"},
     {fecha: Date(2026-02-24T10:00:00.000Z), idOperacion: "#14", proceso: "COMPRA", seccionNombre: "Depósito"},
-    {fecha: Date(2026-02-21T13:00:00.000Z), idOperacion: "#52", proceso: "CONSUMO", seccionNombre: "Depósito"},
-    {fecha: Date(2026-02-20T13:00:00.000Z), idOperacion: "#51", proceso: "CONSUMO", seccionNombre: "Depósito"},
+    {fecha: Date(2026-02-21T13:00:00.000Z), idOperacion: "#52", proceso: "VENTA", seccionNombre: "Depósito"},
+    {fecha: Date(2026-02-20T13:00:00.000Z), idOperacion: "#51", proceso: "VENTA", seccionNombre: "Depósito"},
     {fecha: Date(2026-02-18T18:00:00.000Z), idOperacion: "#50", proceso: "CONTROL", seccionNombre: "Depósito"},
-    {fecha: Date(2026-02-01T13:00:00.000Z), idOperacion: "#165", proceso: "CONSUMO", seccionNombre: "Depósito"},
+    {fecha: Date(2026-02-01T13:00:00.000Z), idOperacion: "#165", proceso: "VENTA", seccionNombre: "Depósito"},
     {fecha: Date(2026-01-22T10:00:00.000Z), idOperacion: "#28", proceso: "COMPRA", seccionNombre: "Depósito"}
   ]
 ### 41. valuacion.calcularValuacionInventario(Central)

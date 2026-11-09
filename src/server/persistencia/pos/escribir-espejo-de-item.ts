@@ -39,6 +39,8 @@ export async function escribirEspejoDeItem(
     promo?: { promoCuentaId: string };
   }
 ): Promise<string> {
+  // El nombre congelado para el ticket del cliente se REPITE del original: si no, la anulación (que netea con él en la misma línea) lo pisaría con el nombre interno.
+  const congelado = await tx.cuentaItem.findUnique({ where: { id: args.original.id }, select: { nombreEnTicket: true } });
   const { id } = await tx.cuentaItem.create({
     data: {
       cuentaId: args.original.cuentaId,
@@ -46,6 +48,7 @@ export async function escribirEspejoDeItem(
       cantidad: -args.cantidadAnulada,
       precioUnitario: args.original.precioUnitario,
       precioCartaUnitario: args.original.precioCartaUnitario,
+      nombreEnTicket: congelado?.nombreEnTicket ?? null,
       numeroEnvio: args.original.numeroEnvio,
       anulaAItemId: args.original.id,
       motivoAnulacion: args.motivo,

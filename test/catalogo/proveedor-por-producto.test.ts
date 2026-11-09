@@ -7,7 +7,8 @@ import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { crearMembresia } from "../setup/membresia";
 import { obtenerComparativaPreciosPorInsumo, listarProductosDeProveedor } from "../../src/server/actions/catalogo/proveedor-por-producto";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { anularCompra, corregirCompra } from "../../src/server/actions/movimientos/compras";
+import { corregirCompraDeTest } from "../setup/corregir-compra-de-prueba";
+import { anularCompraDeTest } from "../setup/anular-compra-de-prueba";
 import { upsertProveedorPorProducto } from "../../src/server/persistencia/catalogo/upsert-proveedor-por-producto";
 import { cargarOfertasDeProveedores } from "../../src/server/lecturas/catalogo/ofertas-de-proveedor";
 import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
@@ -56,58 +57,46 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
   it("dos upserts concurrentes sobre la misma clave nunca crean dos filas", async () => {
     await Promise.all([
-      upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100 }),
-      upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 110, precioPorUnidadStock: 110 }),
+      upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, }),
+      upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, }),
     ]);
 
     const cantidad = await prisma.proveedorPorProducto.count({ where: { productoId, proveedorId: proveedorAId, unidadCompraId } });
     expect(cantidad).toBe(1);
   });
 
-  it("un precio 0 nunca pisa un precio bueno ya cargado", async () => {
-    await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 500, precioPorUnidadStock: 500 });
-    await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 0, precioPorUnidadStock: 0 });
-
+  it("el upsert ya no escribe el precio (poda 2026-11-06): las columnas de precio quedan en su valor por defecto", async () => {
+    await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, fechaCompra: new Date("2026-09-10") });
     const fila = await prisma.proveedorPorProducto.findUniqueOrThrow({
       where: { productoId_proveedorId_unidadCompraId: { productoId, proveedorId: proveedorAId, unidadCompraId } },
     });
-    expect(Number(fila.precioPorUnidadStock)).toBe(500);
+    expect([Number(fila.precioUnitario), Number(fila.precioPorUnidadStock)]).toEqual([0, 0]);
   });
 
-  describe("una compra con fecha atrasada no pisa el último precio (decisión del dueño, 2026-10-06; ERPNext hace lo mismo)", () => {
+  describe("una compra con fecha atrasada no retrocede `ultimaCompra` (decisión del dueño, 2026-10-06)", () => {
     const fila = () =>
       prisma.proveedorPorProducto.findUniqueOrThrow({ where: { productoId_proveedorId_unidadCompraId: { productoId, proveedorId: proveedorAId, unidadCompraId } } });
-    const comprar = (fechaCompra: string, precio: number) =>
-      upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: precio, precioPorUnidadStock: precio, fechaCompra: new Date(fechaCompra) });
+    const comprar = (fechaCompra: string, referenciaProveedor?: string) =>
+      upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, fechaCompra: new Date(fechaCompra), referenciaProveedor });
 
-    it("una compra MÁS VIEJA no cambia el precio ni retrocede `ultimaCompra`", async () => {
-      await comprar("2026-09-10", 500);
-      await comprar("2026-08-01", 300); // la factura de hace más de un mes, cargada hoy
-      const f = await fila();
-      expect(Number(f.precioPorUnidadStock)).toBe(500);
-      expect(f.ultimaCompra.toISOString().slice(0, 10)).toBe("2026-09-10");
+    it("una compra MÁS VIEJA no retrocede `ultimaCompra`", async () => {
+      await comprar("2026-09-10");
+      await comprar("2026-08-01"); // la factura de hace más de un mes, cargada hoy
+      expect((await fila()).ultimaCompra.toISOString().slice(0, 10)).toBe("2026-09-10");
     });
 
-    it("una compra MÁS NUEVA sí actualiza el precio y la fecha", async () => {
-      await comprar("2026-09-10", 500);
-      await comprar("2026-09-20", 650);
-      const f = await fila();
-      expect(Number(f.precioPorUnidadStock)).toBe(650);
-      expect(f.ultimaCompra.toISOString().slice(0, 10)).toBe("2026-09-20");
-    });
-
-    it("con la MISMA fecha gana la carga posterior", async () => {
-      await comprar("2026-09-10", 500);
-      await comprar("2026-09-10", 520);
-      expect(Number((await fila()).precioPorUnidadStock)).toBe(520);
+    it("una compra MÁS NUEVA sí avanza la fecha", async () => {
+      await comprar("2026-09-10");
+      await comprar("2026-09-20");
+      expect((await fila()).ultimaCompra.toISOString().slice(0, 10)).toBe("2026-09-20");
     });
 
     it("la referencia del proveedor tipeada en una compra vieja sí se guarda si no había una (un valor vacío nunca pisa)", async () => {
-      await comprar("2026-09-10", 500);
-      await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 300, precioPorUnidadStock: 300, fechaCompra: new Date("2026-08-01"), referenciaProveedor: "COD-77" });
+      await comprar("2026-09-10");
+      await comprar("2026-08-01", "COD-77");
       const f = await fila();
       expect(f.referenciaProveedor).toBe("COD-77");
-      expect(Number(f.precioPorUnidadStock)).toBe(500);
+      expect(f.ultimaCompra.toISOString().slice(0, 10)).toBe("2026-09-10");
     });
   });
 
@@ -115,18 +104,18 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
     await compra(productoId, proveedorAId, "2026-09-10", 0);
     await compra(productoId, proveedorBId, "2026-09-10", 500);
     // La unidad de compra sale de la tabla; el precio, del Kardex.
-    for (const p of [proveedorAId, proveedorBId]) await upsertProveedorPorProducto(prisma, { productoId, proveedorId: p, unidadCompraId, precioUnitario: 0, precioPorUnidadStock: 0 });
+    for (const p of [proveedorAId, proveedorBId]) await upsertProveedorPorProducto(prisma, { productoId, proveedorId: p, unidadCompraId, });
 
     const comparativa = await obtenerComparativaPreciosPorInsumo();
     const fila = comparativa.find((f) => f.insumo === "Harina"); // insumo sembrado en sembrarCatalogoBase
     expect(fila?.masBarato?.proveedorNombre).toBe("Proveedor B");
   });
 
-  it("un referenciaProveedor vacío nunca pisa uno ya cargado (mismo criterio que el precio)", async () => {
+  it("un referenciaProveedor vacío nunca pisa uno ya cargado ", async () => {
     await upsertProveedorPorProducto(prisma, {
-      productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100, referenciaProveedor: "ACE-5L",
+      productoId, proveedorId: proveedorAId, unidadCompraId, referenciaProveedor: "ACE-5L",
     });
-    await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 110, precioPorUnidadStock: 110 });
+    await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, });
 
     const fila = await prisma.proveedorPorProducto.findUniqueOrThrow({
       where: { productoId_proveedorId_unidadCompraId: { productoId, proveedorId: proveedorAId, unidadCompraId } },
@@ -136,10 +125,10 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
 
   it("referenciaProveedor se puede actualizar mandando un valor nuevo no vacío", async () => {
     await upsertProveedorPorProducto(prisma, {
-      productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100, referenciaProveedor: "ACE-5L",
+      productoId, proveedorId: proveedorAId, unidadCompraId, referenciaProveedor: "ACE-5L",
     });
     await upsertProveedorPorProducto(prisma, {
-      productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 110, precioPorUnidadStock: 110, referenciaProveedor: "ACEITE-BIDON-5",
+      productoId, proveedorId: proveedorAId, unidadCompraId, referenciaProveedor: "ACEITE-BIDON-5",
     });
 
     const fila = await prisma.proveedorPorProducto.findUniqueOrThrow({
@@ -156,7 +145,7 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       await compra(producto2.id, proveedorAId, "2026-02-01", 50);
       // A otro proveedor no debería aparecer en la lista de A.
       await compra(productoId, proveedorBId, "2026-03-01", 999);
-      await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 100, precioPorUnidadStock: 100, referenciaProveedor: "ACE-5L" });
+      await upsertProveedorPorProducto(prisma, { productoId, proveedorId: proveedorAId, unidadCompraId, referenciaProveedor: "ACE-5L" });
 
       const lista = await listarProductosDeProveedor(proveedorAId);
       expect(lista).toHaveLength(2);
@@ -210,13 +199,13 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       expect(await listarProductosDeProveedor(proveedorAId)).toEqual([]);
     });
 
-    it("una compra real anulada con la ACCIÓN `anularCompra` deja de aparecer", async () => {
+    it("una compra real anulada con la anulación de su factura deja de aparecer", async () => {
       await sembrarMotivosYDestinos();
       expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
       expect((await precioDe("Proveedor A"))?.precioPorUnidadStock).toBe(100);
 
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-      expect((await anularCompra(op.id, crypto.randomUUID())).ok).toBe(true);
+      expect((await anularCompraDeTest(op.id)).ok).toBe(true);
       expect(await precioDe("Proveedor A")).toBeUndefined();
     });
 
@@ -224,7 +213,7 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       await sembrarMotivosYDestinos();
       expect((await registrarMovimiento({ proceso: "COMPRA", nroFactura: nroFacturaDePrueba(), fecha: new Date("2026-09-20"), seccionId, proveedorId: proveedorAId, items: [{ productoId, cantidad: 10, precioTotal: 1000, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() })).ok).toBe(true);
       const op = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA" } });
-      const r = await corregirCompra(op.id, { proveedorId: proveedorBId, nroFactura: op.nroFactura ?? "", detalleLibre: "" }, { proveedorId: op.proveedorId, nroFactura: op.nroFactura, detalleLibre: op.detalleLibre });
+      const r = await corregirCompraDeTest(op.id, { proveedorId: proveedorBId });
       expect(r.ok, r.ok ? "" : r.mensaje).toBe(true);
 
       expect(await precioDe("Proveedor A")).toBeUndefined();
@@ -298,8 +287,8 @@ describe("ProveedorPorProducto (sin gate propio)", () => {
       const bolsa = await prisma.unidad.create({ data: { nombre: "bolsa", magnitud: "CANTIDAD", decimales: 0 } });
       await compra(productoId, proveedorAId, "2026-09-10", 500);
       // Fila VIEJA en kg, con referencia; fila NUEVA en bolsa, sin referencia.
-      await prisma.proveedorPorProducto.create({ data: { productoId, proveedorId: proveedorAId, unidadCompraId, precioUnitario: 500, precioPorUnidadStock: 500, ultimaCompra: new Date("2026-08-01"), referenciaProveedor: "ACE-5L" } });
-      await prisma.proveedorPorProducto.create({ data: { productoId, proveedorId: proveedorAId, unidadCompraId: bolsa.id, precioUnitario: 12500, precioPorUnidadStock: 500, ultimaCompra: new Date("2026-09-10") } });
+      await prisma.proveedorPorProducto.create({ data: { productoId, proveedorId: proveedorAId, unidadCompraId, ultimaCompra: new Date("2026-08-01"), referenciaProveedor: "ACE-5L" } });
+      await prisma.proveedorPorProducto.create({ data: { productoId, proveedorId: proveedorAId, unidadCompraId: bolsa.id, ultimaCompra: new Date("2026-09-10") } });
 
       const lista = await listarProductosDeProveedor(proveedorAId);
       expect(lista).toHaveLength(1);

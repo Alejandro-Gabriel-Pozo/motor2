@@ -3,7 +3,7 @@ import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { crearMembresia } from "../setup/membresia";
 import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
-import { prismaAdmin } from "../setup/cliente-duenio";
+import { borrarCabeceraSembrada, borrarFacturaSembrada, sembrarFacturaDeUnaParte } from "./fixtures/factura-de-una-parte";
 
 /**
  * Anular una compra desde «Compras registradas» (K1c). Se siembran las compras directo en la base, con un proveedor y un producto propios de cada prueba (marca
@@ -16,12 +16,9 @@ async function sembrarCompra(sucursalId: string, seccionId: string, opciones: { 
   const producto = await prisma.producto.create({ data: { codigo: `E2E-AN-${marca}`, nombre: `E2E Harina Anular ${marca}`, tipo: "MP", unidadStockId: unidad.id } });
   const proveedor = await prisma.proveedor.create({ data: { codigo: `PRV_E2E_AN_${marca}`, nombre: `E2E Proveedor Anular ${marca}` } });
   const factura = `E2E-AN-F-${marca}`;
-  const operacion = await prisma.operacion.create({
-    data: { sucursalId, proceso: "COMPRA", fecha: new Date("2026-08-10T12:00:00Z"), proveedorId: proveedor.id, nroFactura: factura, usuarioId: admin.id },
-  });
-  await prisma.movimientoStock.create({
-    data: { operacionId: operacion.id, productoId: producto.id, seccionId, proceso: "COMPRA", cantidad: 12, precioTotal: 360, precioPorUnidadStock: 30, detalle: "Compra" },
-  });
+  const sembrada = await sembrarFacturaDeUnaParte({ sucursalId, seccionId, proveedorId: proveedor.id, productoId: producto.id, usuarioId: admin.id, nroFactura: factura });
+  const operacion = { id: sembrada.operacionId };
+  const facturas = [sembrada.facturaId];
   if (opciones.consumirDeLo) {
     const consumo = await prisma.operacion.create({ data: { sucursalId, proceso: "CONSUMO", fecha: new Date("2026-08-11T12:00:00Z"), usuarioId: admin.id } });
     await prisma.movimientoStock.create({
@@ -31,15 +28,16 @@ async function sembrarCompra(sucursalId: string, seccionId: string, opciones: { 
   const limpiar = async () => {
     const reversiones = await prisma.operacion.findMany({ where: { detalleLibre: { contains: operacion.id } }, select: { id: true } });
     const ids = (await prisma.movimientoStock.findMany({ where: { productoId: producto.id }, select: { operacionId: true } })).map((m) => m.operacionId);
+    await borrarFacturaSembrada(facturas);
     await prisma.movimientoStock.deleteMany({ where: { productoId: producto.id } });
     await prisma.operacion.deleteMany({ where: { id: { in: [...new Set([...ids, ...reversiones.map((r) => r.id)])] } } });
-    await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "Operacion", entidadId: operacion.id } });
+    await borrarCabeceraSembrada(facturas);
     await prisma.producto.deleteMany({ where: { id: producto.id } });
     // Con FK compuesta la operación ya no queda con proveedor NULL al borrarlo (RESTRICT): también las compras sin movimientos (p. ej. la recarga).
     await prisma.operacion.deleteMany({ where: { proveedorId: proveedor.id } });
     await prisma.proveedor.deleteMany({ where: { id: proveedor.id } });
   };
-  return { marca, producto, proveedor, factura, operacion, limpiar };
+  return { marca, producto, proveedor, factura, operacion, facturaId: sembrada.facturaId, facturas, usuarioId: admin.id, seccionId, sucursalId, limpiar };
 }
 
 test("se anula una compra desde su detalle, con confirmación: el stock vuelve, queda marcada y su factura queda libre", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
@@ -50,6 +48,10 @@ test("se anula una compra desde su detalle, con confirmación: el stock vuelve, 
     await expect(tarjeta).toBeVisible();
     await expect(tarjeta).not.toContainText("Anulada");
     await tarjeta.locator("summary").click();
+
+    // Anular pide el motivo (queda en el registro de la anulación): sin él, el botón no se habilita.
+    await expect(tarjeta.getByRole("button", { name: /^Anular compra/ })).toBeDisabled();
+    await tarjeta.getByLabel("Motivo de la anulación").fill("Se cargó dos veces");
 
     // Confirmación: el aviso se anuncia (role="alert") y el foco va a «Cancelar», lo seguro en una acción que no se deshace.
     await tarjeta.getByRole("button", { name: /^Anular compra/ }).click();
@@ -67,10 +69,10 @@ test("se anula una compra desde su detalle, con confirmación: el stock vuelve, 
     // Confirmar.
     await tarjeta.getByRole("button", { name: /^Anular compra/ }).click();
     await tarjeta.getByRole("button", { name: "Sí, anular" }).click();
-    await expect(tarjeta.getByRole("status").filter({ hasText: "Compra anulada" })).toBeVisible();
+    await expect(tarjeta.getByRole("status").filter({ hasText: "Factura anulada" })).toBeVisible();
     await expect(tarjeta.getByRole("status")).toContainText(c.factura); // avisa que el número quedó libre
 
-    // La fila queda marcada como anulada, con el total tachado y sin el botón de anular.
+    // La fila queda marcada como anulada, con el total tachado y sin el botón de anular — SIN recargar la página (el botón desaparece apenas se anula).
     await expect(tarjeta.getByText("Anulada", { exact: true })).toBeVisible();
     await expect(tarjeta.getByRole("button", { name: /^Anular compra/ })).toHaveCount(0);
 
@@ -89,11 +91,9 @@ test("se anula una compra desde su detalle, con confirmación: el stock vuelve, 
     await expect(page.getByText(/suman \$0/)).toBeVisible();
 
     // La factura quedó libre: se puede volver a cargar con el mismo número.
-    const admin = await prisma.user.findUniqueOrThrow({ where: { email: "e2e-admin@local.test" } });
-    const recarga = await prisma.operacion.create({
-      data: { sucursalId, proceso: "COMPRA", fecha: new Date("2026-08-12T12:00:00Z"), proveedorId: c.proveedor.id, nroFactura: c.factura, usuarioId: admin.id },
-    });
-    expect(recarga.id).not.toBe(c.operacion.id);
+    const recarga = await sembrarFacturaDeUnaParte({ sucursalId: c.sucursalId, seccionId: c.seccionId, proveedorId: c.proveedor.id, productoId: c.producto.id, usuarioId: c.usuarioId, nroFactura: c.factura, fecha: new Date("2026-08-12T12:00:00Z") });
+    c.facturas.push(recarga.facturaId);
+    expect(recarga.operacionId).not.toBe(c.operacion.id);
   } finally {
     await c.limpiar();
   }
@@ -105,6 +105,7 @@ test("si lo comprado ya se consumió, la anulación se rechaza con un mensaje vi
     await page.goto(`/reportes/compras?proveedorId=${c.proveedor.id}`);
     const tarjeta = page.locator(`[data-compra="${c.operacion.id}"]`);
     await tarjeta.locator("summary").click();
+    await tarjeta.getByLabel("Motivo de la anulación").fill("Prueba");
     await tarjeta.getByRole("button", { name: /^Anular compra/ }).click();
     await tarjeta.getByRole("button", { name: "Sí, anular" }).click();
 

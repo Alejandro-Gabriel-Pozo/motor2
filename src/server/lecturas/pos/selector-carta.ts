@@ -1,8 +1,9 @@
 import "server-only";
 import { precioLocalActivoEn, preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { whereDisponibleEn } from "@/core/catalogo/public";
-import { WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, promoVigenteEl, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, aplicarDescuentoDeProducto, cuposDeSeccionActivos, precioDeCarta, precioDePromo, promoVigenteEl, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, whereCartaDeSucursal, nombreParaMostrar } from "@/core/carta/public";
 import { diaDeColumnaDate } from "@/core/tiempo/zona-horaria";
+import { cargarOpcionesParaVender } from "@/server/lecturas/opciones/opciones-para-vender";
 import { cargarEntradasDePromoParaVender, type CupoDeEntradasLeido } from "@/server/lecturas/pos/entradas-de-promo-para-vender";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { resolverMenuCarta } from "@/server/lecturas/carta/menu";
@@ -10,6 +11,7 @@ import { modulosDelPosDeSucursal, type ModulosDelPos } from "@/server/lecturas/p
 import { tieneStockReal } from "@/core/movimientos/public";
 import { armarSelectorCartaPos, esCupoFijo, type CupoDeEntradasSelectorCarta, type GenerosSelectorCartaPos, type ProductoPedible, type PromoSelectorCartaPos, type SelectorCartaPos } from "@/core/pos/public";
 import type { Db } from "@/lib/db-tipos";
+import { grupoVigente, opcionOfrecida } from "@/core/opciones/public";
 
 /**
  * Capa de LECTURA del selector por sección de carta del POS (docs/plan-selector-carta-pos-2026-09-25.md) y por carpeta de género
@@ -19,6 +21,8 @@ import type { Db } from "@/lib/db-tipos";
  *
  *  - La estructura: la carta pública de la sucursal, tal cual (`resolverMenuCarta`). Sucursal inactiva → `null` → todo a «Fuera de
  *    carta».
+ *  - La carta se pide CON las opciones de los productos (`conOpciones`, 2026-11-05): de ahí sale cómo la carta dibuja una base con el nombre oculto (sus renglones), que el selector del mozo muestra igual que el
+ *    cliente. Un producto que hoy no se puede pedir (grupo obligatorio sin opciones) la carta ya no lo ubica y cae a «Fuera de carta», donde el diálogo sigue diciendo «Sin opciones disponibles hoy».
  *  - Los pedibles: los PV disponibles en la sucursal (`whereDisponibleEn`, el mismo filtro que el buscador del POS y que valida
  *    `agregarItems`), con el precio que se congelaría al agregarlos: Precio Local habilitado o, si no, el global (`precioDeCarta`,
  *    paridad con `resolverPrecioVenta`, fijada por test/pos/selector-carta-consulta.test.ts).
@@ -68,8 +72,10 @@ export async function cargarSelectorCartaPos(
   // listas vacías y el `null` son exactamente lo que da una empresa que nunca cargó una carta.
   const conCarta = modulos.carta;
   const conPromos = conCarta && modulos.promociones;
+  // Interruptor de género/ítem agrupado apagado (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): el POS no agrupa por género (ni lee los géneros ni el de cada producto o agrupado) y la carta no arma agrupados: queda la lista plana de la sección.
+  const conGeneros = conCarta && GENERO_E_ITEM_AGRUPADO_VISIBLE;
   const [carta, productos, preciosLocales, descuentos, precioLocalActivo, generosActivos, contenidosConGenero, agrupadosConGenero, promosCarta] = await Promise.all([
-    conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido, "salon") : Promise.resolve(null),
+    conCarta ? resolverMenuCarta(sucursalId, db, ahora, precioLocalActivoLeido, "salon", true) : Promise.resolve(null),
     db.producto.findMany({
       where: { tipo: "PV", ...whereDisponibleEn(sucursalId) },
       select: { id: true, codigo: true, nombre: true, precioVenta: true, pasoVenta: true, seProduce: true, unidadStock: { select: { decimales: true } } },
@@ -78,9 +84,10 @@ export async function cargarSelectorCartaPos(
     // P18 / D18: el descuento de producto es de la Carta; sin el módulo no se lee y el precio mostrado es el de lista (el que `agregarItems` congela).
     conCarta ? descuentosDeProductoEnSucursal(sucursalId, db, undefined, precioLocalActivoLeido) : Promise.resolve(new Map<string, number>()),
     precioLocalActivoLeido,
-    conCarta ? db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }) : Promise.resolve([]),
-    conCarta ? db.contenidoCartaProducto.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true } }) : Promise.resolve([]),
-    conCarta ? db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, generoCartaId: true } }) : Promise.resolve([]),
+    conGeneros ? db.generoCarta.findMany({ where: { activo: true, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, nombre: true, orden: true } }) : Promise.resolve([]),
+    // El género y el «Nombre en la carta» (2026-11-04) salen de la MISMA lectura del contenido de la sucursal: ninguna consulta de más.
+    conCarta ? db.contenidoCartaProducto.findMany({ where: { OR: [...(conGeneros ? [{ generoCartaId: { not: null } }] : []), { nombreEnCarta: { not: null } }], ...whereCartaDeSucursal(sucursalId) }, select: { productoId: true, generoCartaId: true, nombreEnCarta: true } }) : Promise.resolve([]),
+    conGeneros ? db.itemAgrupadoCarta.findMany({ where: { generoCartaId: { not: null }, ...whereCartaDeSucursal(sucursalId) }, select: { id: true, generoCartaId: true } }) : Promise.resolve([]),
     // Sin el módulo Promociones no se lee ninguna promo (ni se ofrece ni se acepta).
     conPromos
       ? db.promoCarta.findMany({
@@ -108,6 +115,7 @@ export async function cargarSelectorCartaPos(
       : Promise.resolve([]),
   ]);
   const localPorProducto = preciosLocales;
+  const nombreEnCartaPorProducto = new Map(contenidosConGenero.flatMap((c) => (c.nombreEnCarta !== null ? [[c.productoId, c.nombreEnCarta] as const] : [])));
   const pedibles: ProductoPedible[] = productos.map((p) => {
     // Producto con descuento (Fase 2): el precio del pedible es el DESCONTADO (el que se congela al agregar); el de lista queda aparte para mostrarlo tachado.
     const aplicado = aplicarDescuentoDeProducto(precioDeCarta(Number(p.precioVenta), localPorProducto.get(p.id)), descuentos.get(p.id) ?? null);
@@ -115,6 +123,7 @@ export async function cargarSelectorCartaPos(
       productoId: p.id,
       codigo: p.codigo,
       nombre: p.nombre,
+      ...(nombreEnCartaPorProducto.has(p.id) ? { nombreEnCarta: nombreEnCartaPorProducto.get(p.id)! } : {}),
       precio: aplicado.precio,
       ...(aplicado.precioLista !== null ? { precioLista: aplicado.precioLista } : {}),
       decimales: p.unidadStock.decimales,
@@ -124,7 +133,7 @@ export async function cargarSelectorCartaPos(
   });
   const generos: GenerosSelectorCartaPos = {
     generos: generosActivos,
-    generoPorProducto: new Map(contenidosConGenero.map((c) => [c.productoId, c.generoCartaId!])),
+    generoPorProducto: new Map(contenidosConGenero.flatMap((c) => (conGeneros && c.generoCartaId !== null ? [[c.productoId, c.generoCartaId] as const] : []))),
     generoPorAgrupado: new Map(agrupadosConGenero.map((a) => [a.id, a.generoCartaId!])),
   };
   // GO-3b: con el día, solo las promos que valen hoy (su vigencia) y, de las que tienen cupos de entradas, sus entradas elegibles de hoy (la MISMA lectura que valida la venta).
@@ -143,6 +152,35 @@ export async function cargarSelectorCartaPos(
             .map(async (p) => [p.id, await cargarEntradasDePromoParaVender(db, { sucursalId, dia, cupos: cuposDeEntradasDe(p), precioLocalActivo: precioLocalActivoLeido })] as const)
         )
   );
+  // Promo «a elegir»: el plato se nombra para quien lo elige con `nombreParaMostrar` (la regla única de la administración de promos): una base con el nombre oculto, por los rótulos de su medida
+  // («Bife a criolla · Bife con chimichurri (BIFE-)»); si no, el nombre en la carta o el del producto. Solo se lee si hay alguna entrada «a elegir».
+  const productosAElegir = [...new Map([...entradasPorPromo.values()].flatMap((e) => [...e.aElegirPorEntrada.values()].map((a) => [a.productoId, a.producto.nombre] as const))).entries()];
+  const nombreAElegirPorProducto = new Map<string, string>();
+  if (productosAElegir.length > 0) {
+    const ids = productosAElegir.map(([id]) => id);
+    const [admitidos, contenidos] = await Promise.all([
+      cargarOpcionesParaVender(db, { sucursalId, productoIds: ids }),
+      db.contenidoCartaProducto.findMany({ where: { ...whereCartaDeSucursal(sucursalId), productoId: { in: ids } }, select: { productoId: true, nombreEnCarta: true, mostrarNombreArriba: true } }),
+    ]);
+    const medidaDe = (id: string) => admitidos.get(id)?.grupos.find((g) => g.tipo === "MEDIDA" && grupoVigente(g));
+    const prefijos = new Map(
+      (await db.grupoDeOpciones.findMany({ where: { id: { in: ids.flatMap((id) => medidaDe(id)?.grupoId ?? []) } }, select: { id: true, prefijoEnCarta: true } })).map((g) => [g.id, g.prefijoEnCarta] as const)
+    );
+    const contenidoDe = new Map(contenidos.map((c) => [c.productoId, c] as const));
+    for (const [id, nombre] of productosAElegir) {
+      const medida = medidaDe(id);
+      nombreAElegirPorProducto.set(
+        id,
+        nombreParaMostrar({
+          nombre,
+          nombreEnCarta: contenidoDe.get(id)?.nombreEnCarta ?? null,
+          esBase: admitidos.get(id)?.esBase ?? false,
+          mostrarNombreArriba: contenidoDe.get(id)?.mostrarNombreArriba ?? false,
+          medida: medida ? { prefijoEnCarta: prefijos.get(medida.grupoId) ?? null, opciones: medida.opciones.filter(opcionOfrecida) } : null,
+        })
+      );
+    }
+  }
   const promos: PromoSelectorCartaPos[] = promosDeHoy.flatMap((p): PromoSelectorCartaPos[] => {
     const entradas = entradasPorPromo.get(p.id);
     const deSeccion = new Map(cuposDeSeccionActivos(p.cupos).map((c) => [c.id, { seccionCartaId: c.seccionCartaId, nombreSeccion: c.seccionCarta.nombre, cantidadMinima: c.cantidadMinima, cantidadMaximaCupo: c.cantidadMaxima }]));
@@ -158,7 +196,7 @@ export async function cargarSelectorCartaPos(
         cantidadMinima: definicion.cantidadMinima,
         cantidadMaximaCupo: definicion.cantidadMaximaCupo,
         fijo: esCupoFijo(definicion),
-        entradas: [...definicion.entradas.values()].map((e) => ({ entradaId: e.entradaId, productoId: e.productoId, nombre: entradas.nombrePorEntrada.get(e.entradaId) ?? "", precioLista: entradas.precioCartaPorClave.get(e.claveComponente) ?? 0 })),
+        entradas: [...definicion.entradas.values()].map((e) => ({ entradaId: e.entradaId, productoId: e.productoId, nombre: (e.aElegir ? nombreAElegirPorProducto.get(e.productoId) : undefined) ?? entradas.nombrePorEntrada.get(e.entradaId) ?? "", precioLista: entradas.precioCartaPorClave.get(e.claveComponente) ?? 0, ...(e.aElegir ? { grupos: entradas.aElegirPorEntrada.get(e.entradaId)?.grupos ?? [] } : {}) })),
       };
       return [deEntradas];
     });

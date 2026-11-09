@@ -230,7 +230,7 @@ describe("anularVenta", () => {
     expect(saldoMpTrasVender).toBeCloseTo(10 - 3 * 0.2);
 
     const operacionVenta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", sucursalId } });
-    const resultado = await anularVenta(operacionVenta.id);
+    const resultado = await anularVenta(operacionVenta.id, "Error de carga");
     expect(resultado.ok, resultado.mensaje).toBe(true);
 
     expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBeCloseTo(10); // el consumo se revirtió del todo
@@ -254,7 +254,7 @@ describe("anularVenta", () => {
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
 
     const operacionVenta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", sucursalId } });
-    const resultado = await anularVenta(operacionVenta.id);
+    const resultado = await anularVenta(operacionVenta.id, "Error de carga");
     expect(resultado.ok, resultado.mensaje).toBe(true);
 
     const liquidaciones = await prisma.movimientoStock.findMany({ where: { productoId: mp.id, proceso: "LIQUIDACION_CONSIGNACION" } });
@@ -273,8 +273,8 @@ describe("anularVenta", () => {
     await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 1 }] });
     const operacionVenta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", sucursalId } });
 
-    expect((await anularVenta(operacionVenta.id)).ok).toBe(true);
-    const segundoIntento = await anularVenta(operacionVenta.id);
+    expect((await anularVenta(operacionVenta.id, "Error de carga")).ok).toBe(true);
+    const segundoIntento = await anularVenta(operacionVenta.id, "Error de carga");
     expect(segundoIntento.ok).toBe(false);
   });
 
@@ -283,7 +283,7 @@ describe("anularVenta", () => {
     await registrarMovimiento({ proceso: "COMPRA", ...(await comprobanteDePrueba()), fecha: new Date(), seccionId, items: [{ productoId: mp.id, cantidad: 10, referenciaProveedor: REFERENCIA_DE_PRUEBA }], claveIdempotencia: crypto.randomUUID() });
     const operacionCompra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId } });
 
-    const resultado = await anularVenta(operacionCompra.id);
+    const resultado = await anularVenta(operacionCompra.id, "Error de carga");
     expect(resultado.ok).toBe(false);
   });
 
@@ -302,7 +302,7 @@ describe("anularVenta", () => {
       data: { operacionId: operacionOtraSucursal.id, productoId: mp.id, seccionId: otraSeccion.id, proceso: "VENTA", cantidad: -1, detalle: "Venta", precioTotal: 100, precioPorUnidadStock: 100 },
     });
 
-    const resultado = await anularVenta(operacionOtraSucursal.id);
+    const resultado = await anularVenta(operacionOtraSucursal.id, "Error de carga");
     expect(resultado.ok).toBe(false);
 
     const sigueVigente = await prisma.operacion.findUniqueOrThrow({ where: { id: operacionOtraSucursal.id } });

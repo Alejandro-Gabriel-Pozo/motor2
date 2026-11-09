@@ -205,6 +205,10 @@ export default async function RecetaEditorPage({
               <IconoDeAccion id="historial" />
               Ver historial de versiones ({vigente.version})
             </Link>
+            <Link href={`${volver}/ficha`} className="text-sm text-tinta-tenue underline inline-flex items-center gap-1">
+              <IconoDeAccion id="ver" />
+              Ficha de cocina
+            </Link>
             <EnlaceInterno href={`/reportes/rendimiento-recetas?productoId=${producto.id}`} className="text-sm text-tinta-tenue underline inline-flex items-center gap-1">
               <IconoDeAccion id="ver" />
               Ver rendimiento real

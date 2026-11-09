@@ -44,10 +44,12 @@ export type ResultadoRegistrarVenta = ResultadoCaso<DatosRegistrarVenta, CodigoR
 /**
  * Comando «anular una venta» (Task #41, Fase M): lo que recibe el caso de uso `anularVentaCasoDeUso`
  * (src/server/actions/movimientos/casos-de-uso/anular-venta.ts), YA validado por `guardComandoAnularVenta`. Sin clave de idempotencia:
- * `anularVenta` nunca tuvo I3 (una segunda anulación responde «ya está anulada»), y este refactor no la agrega.
+ * `anularVenta` nunca tuvo I3 (una segunda anulación responde «ya está anulada»), y este refactor no la agrega. El `motivo` (E0 de la corrección por
+ * ajuste, 2026-11-06) es obligatorio, de 1 a 200 caracteres: queda en `Operacion.motivoAnulacion` de cada venta anulada.
  */
 export interface ComandoAnularVenta {
   operacionId: string;
+  motivo: string;
 }
 
 /** Por qué `evaluarAnulacionDeVenta` (src/core/movimientos/anulaciones.ts) rechaza una anulación: la unión tal cual la declara `ResultadoAnulacionDeVenta`. */

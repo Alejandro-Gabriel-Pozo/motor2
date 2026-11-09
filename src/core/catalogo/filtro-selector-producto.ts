@@ -22,4 +22,6 @@ export interface FiltroSelectorProducto {
   elegibleParaReceta?: boolean;
   /** true = solo productos en consignación (Devolución al consignante); false = excluirlos (Devolución a proveedor — nunca se "compró" algo en consignación). Sin definir = sin filtrar. */
   esConsignacion?: boolean;
+  /** Solo el buscador del POS (2026-11-04, decisión del dueño): además del nombre interno y el código, encuentra por el «Nombre en la carta» que el producto tiene EN LA SUCURSAL ACTIVA de quien busca (la sucursal sale del contexto del servidor, nunca de acá). */
+  tambienPorNombreDeCarta?: boolean;
 }

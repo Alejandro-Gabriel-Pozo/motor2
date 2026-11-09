@@ -7,13 +7,13 @@ import type { Prisma } from "@prisma/client";
  * borra: una entrada o un plato del día se desactiva (la app tiene UPDATE solo de `activa`, `orden`, `actualizadoEn` y, en el plato del día, `actualizadoPorId`).
  */
 
-/** Una entrada nueva de un lugar LISTA con su configuración fija (sus opciones, que solo se agregan). Devuelve el id. */
+/** Una entrada nueva de un lugar LISTA con su configuración fija o sus opciones permitidas (según `modoDeOpciones`; sus opciones solo se agregan). Devuelve el id. */
 export async function crearEntradaDeCupo(
   db: Prisma.TransactionClient,
-  args: { cupoId: string; productoId: string; claveConfiguracion: string; orden: number; opciones: readonly { opcionId: string; cantidad: number }[]; ahora: Date },
+  args: { cupoId: string; productoId: string; claveConfiguracion: string; modoDeOpciones: "FIJAS" | "A_ELEGIR"; orden: number; opciones: readonly { opcionId: string; cantidad: number }[]; ahora: Date },
 ): Promise<{ id: string }> {
   const creada = await db.entradaDeCupo.create({
-    data: { cupoId: args.cupoId, productoId: args.productoId, claveConfiguracion: args.claveConfiguracion, orden: args.orden, creadoEn: args.ahora, actualizadoEn: args.ahora },
+    data: { cupoId: args.cupoId, productoId: args.productoId, claveConfiguracion: args.claveConfiguracion, modoDeOpciones: args.modoDeOpciones, orden: args.orden, creadoEn: args.ahora, actualizadoEn: args.ahora },
     select: { id: true },
   });
   if (args.opciones.length) {

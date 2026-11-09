@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import type { OpcionDeConfiguracionFija } from "@/core/features/carta/combos.schema";
 import { fracaso, type Fracaso } from "@/core/resultado-caso";
-import { claveDeConfiguracionFija, rechazoDeComponenteDeCombo, revisarAlicuotasDeCombo, type CodigoDeComponenteDeCombo } from "@/core/pos/public";
+import { claveDeConfiguracionFija, configuracionMinimaDeGruposEfectivos, opcionesPermitidasEfectivas, rechazoDeComponenteDeCombo, revisarAlicuotasDeCombo, type CodigoDeComponenteDeCombo } from "@/core/pos/public";
 import { armarLineaConfigurada } from "@/core/pos/public-servidor";
 import { redondearMoneda } from "@/core/moneda";
 import { resolverPrecioVenta } from "@/server/lecturas/movimientos/precio-venta";
@@ -32,7 +32,7 @@ export interface ComponenteValidadoEnTx {
 export async function validarComponenteEnTx(
   tx: Tx,
   /** `precioDeLaSucursal`: el precio base es el de la sucursal (local si rige, `resolverPrecioVenta`), para lo que se carga en una sucursal (el plato del día); si no, el de la empresa. */
-  args: { sucursalId: string; productoId: string; opciones: readonly OpcionDeConfiguracionFija[]; etiqueta: string; precioDeLaSucursal?: boolean },
+  args: { sucursalId: string; productoId: string; opciones: readonly OpcionDeConfiguracionFija[]; etiqueta: string; precioDeLaSucursal?: boolean; modoDeOpciones?: "FIJAS" | "A_ELEGIR" },
 ): Promise<{ ok: true; componente: ComponenteValidadoEnTx } | Fracaso<CodigoDeValidacion>> {
   const producto = (await cargarProductosComoComponentes(tx, { sucursalId: args.sucursalId, productoIds: [args.productoId] })).get(args.productoId);
   if (!producto) return fracaso("PRODUCTO_NO_ENCONTRADO", "No se encontró ese producto.");
@@ -48,7 +48,25 @@ export async function validarComponenteEnTx(
   // Lo que descuenta la configuración fija sin la base (ventas con opciones, 2026-10-29): sin ella, `undefined` y la regla de siempre.
   let opcionesQueDescuentan: { insumos: number; nombres: readonly string[] } | undefined;
   const grupos = producto.opciones.grupos.map((g) => ({ ...g, opciones: g.opciones.map((o) => ({ ...o, apagadaEnSucursal: false })) }));
-  if (grupos.length > 0 || args.opciones.length > 0) {
+  if (args.modoDeOpciones === "A_ELEGIR") {
+    // Promo «a elegir» (enmienda de ADR-032 D-6): `args.opciones` son las PERMITIDAS. Tiene que haber al menos una; cada una tiene que ser de un grupo que el producto admite y nunca de un ADICIONAL (I6: el
+    // recargo rompería el precio fijo); y tiene que existir AL MENOS UNA configuración armable (I8): la mínima de los grupos efectivos con precio de referencia y origen de stock (D-8/D-9). La función de
+    // lo permitido efectivo es la misma que usa el selector y el servidor de la venta.
+    if (args.opciones.length === 0) return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}»: elegí al menos una opción permitida.`);
+    for (const permitida of args.opciones) {
+      const grupo = grupos.find((g) => g.opciones.some((o) => o.opcionId === permitida.opcionId));
+      if (!grupo) return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}» ${args.etiqueta}: una de las opciones permitidas no es de este producto.`);
+      if (grupo.tipo === "ADICIONAL") return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}»: una promo de precio fijo no lleva adicionales (se cobran aparte); sacá «${grupo.nombre}» de lo permitido.`);
+    }
+    const efectivos = opcionesPermitidasEfectivas(grupos, args.opciones);
+    if (!efectivos.ok) return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}»: ${efectivos.motivo}`);
+    const minima = armarLineaConfigurada({ grupos: efectivos.grupos, elegidas: configuracionMinimaDeGruposEfectivos(efectivos.grupos), precioBase, descuentoDeProducto: null, cantidad: 1 });
+    if (!minima.ok) return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}» ${args.etiqueta}: ${minima.mensaje}`);
+    if (minima.linea !== null) {
+      precioDeLista = minima.linea.precioUnitario;
+      if (minima.linea.fotos.length > 0) opcionesQueDescuentan = { insumos: minima.linea.insumosSinLaBase, nombres: minima.linea.fotos.map((f) => f.nombreOpcion) };
+    }
+  } else if (grupos.length > 0 || args.opciones.length > 0) {
     const armada = armarLineaConfigurada({ grupos, elegidas: args.opciones, precioBase, descuentoDeProducto: null, cantidad: 1 });
     if (!armada.ok) return fracaso("CONFIGURACION_INVALIDA", `«${producto.nombre}» ${args.etiqueta}: ${armada.mensaje}`);
     if (armada.linea !== null && armada.linea.adicionales.length > 0) {

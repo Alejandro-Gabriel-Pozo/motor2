@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { registrarMovimiento, type ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
+import type { ItemMovimientoInput } from "@/server/actions/movimientos/movimientos";
 import { registrarFacturaProveedor } from "@/server/actions/movimientos/facturas-proveedor";
 import { BloqueDeReparto, REPARTO_APAGADO, type EstadoDeReparto } from "./bloque-de-reparto";
 import { listarProductosDeProveedor } from "@/server/actions/catalogo/proveedor-por-producto";
@@ -47,7 +47,7 @@ import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 
 /**
  * La COMPRA por pasos (etapa 1 de Compras, paso 6; docs/diseno-compras-factura-unica-y-rechazo-2026-11-03.md §9): Factura → Qué compraste → Dónde entra → Pago → Revisar y confirmar. Solo la Compra usa esta pantalla;
- * los otros ocho procesos siguen con `PanelMovimientoForm`. Las mismas Server Actions de siempre (`registrarMovimiento`, y `registrarFacturaProveedor` si se reparte entre sucursales): el servidor revalida todo, lo que
+ * los otros ocho procesos siguen con `PanelMovimientoForm`. Toda compra se guarda con `registrarFacturaProveedor` (una factura de una o más partes: sin reparto, una parte del 100 % en esta sucursal): el servidor revalida todo, lo que
  * valida cada paso acá solo evita ir y volver. Lo que se puede calcular sin ambigüedad (códigos, precios por unidad) se muestra y NO se manda.
  *
  * El formulario va con `noValidate` y solo dibuja el paso actual: la validez nativa de un campo de otro paso no puede frenar el envío. Enter pasa al paso siguiente; confirmar es SIEMPRE el botón «Confirmar compra».
@@ -120,6 +120,7 @@ export function PanelCompraPorPasos({
   unidades,
   productoInicial,
   reparto,
+  sucursalActivaId,
 }: {
   config: ProcesoUiConfig;
   secciones: Opcion[];
@@ -130,6 +131,8 @@ export function PanelCompraPorPasos({
   productoInicial?: { id: string; etiqueta: string };
   /** E3a (ADR-041): solo si quien carga puede repartir y hay otras sucursales activas. */
   reparto?: { sucursalActiva: Opcion; otras: Opcion[] };
+  /** Pagos X0: la sucursal activa, para cargar una compra «pendiente de pago» sin repartir (queda como factura de proveedor con una sola parte, la de esta sucursal). */
+  sucursalActivaId: string;
 }) {
   const router = useRouter();
   const leer = useLeerServidor();
@@ -148,6 +151,8 @@ export function PanelCompraPorPasos({
   const [detalleLibre, setDetalleLibre] = useState("");
   const [estadoReparto, setEstadoReparto] = useState<EstadoDeReparto>(REPARTO_APAGADO);
   const repartiendo = Boolean(reparto && estadoReparto.repartir);
+  // Pagos X0: «pagada ahora» (como siempre) o «pendiente de pago» (se declara cuándo y cómo se pagó desde «Compras registradas»).
+  const [pendienteDePago, setPendienteDePago] = useState(false);
   const [items, setItems] = useState<FilaCompra[]>([productoInicial ? { ...FILA_VACIA, productoId: productoInicial.id, etiquetaInicial: productoInicial.etiqueta } : { ...FILA_VACIA }]);
   const [productosYaVinculados, setProductosYaVinculados] = useState<ReadonlySet<string>>(new Set());
   const [cargandoProveedor, setCargandoProveedor] = useState(false);
@@ -340,32 +345,22 @@ export function PanelCompraPorPasos({
     enviando.current = true;
     startTransition(async () => {
       try {
-        let resultado: { ok: boolean; mensaje: string };
-        if (repartiendo && reparto) {
-          const partes = estadoReparto.incluidas.map((sucursalId) => ({ sucursalId, valor: numeroDelCampo(estadoReparto.valores[sucursalId] ?? "") ?? Number.NaN }));
-          const conParteEnEsta = estadoReparto.incluidas.includes(reparto.sucursalActiva.id);
-          resultado = await registrarFacturaProveedor({
-            fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
-            proveedorId,
-            nroFactura,
-            seccionId: conParteEnEsta ? seccionId : undefined,
-            detalleLibre: detalleLibre || undefined,
-            items: itemsValidos,
-            reparto: { modo: estadoReparto.modo, partes },
-            claveIdempotencia,
-          });
-        } else {
-          resultado = await registrarMovimiento({
-            proceso: config.proceso,
-            fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
-            seccionId,
-            proveedorId,
-            nroFactura,
-            detalleLibre: detalleLibre || undefined,
-            items: itemsValidos,
-            claveIdempotencia,
-          });
-        }
+        // Toda compra es una factura de una o más partes (U0 de «una sola compra»): sin reparto, UNA parte del 100 % en esta sucursal; con reparto, las partes que se tipearon.
+        const partes = repartiendo && reparto
+          ? estadoReparto.incluidas.map((sucursalId) => ({ sucursalId, valor: numeroDelCampo(estadoReparto.valores[sucursalId] ?? "") ?? Number.NaN }))
+          : [{ sucursalId: sucursalActivaId, valor: 100 }];
+        const conParteEnEsta = partes.some((p) => p.sucursalId === sucursalActivaId);
+        const resultado = await registrarFacturaProveedor({
+          fecha: mediodiaDelDia(fecha, ZONA_ARGENTINA),
+          proveedorId,
+          nroFactura,
+          seccionId: conParteEnEsta ? seccionId : undefined,
+          detalleLibre: detalleLibre || undefined,
+          items: itemsValidos,
+          reparto: { modo: repartiendo && reparto ? estadoReparto.modo : "PORCENTAJE", partes },
+          ...(pendienteDePago ? { condicionPago: "PENDIENTE_DE_PAGO" as const } : {}),
+          claveIdempotencia,
+        });
         setOk(resultado.ok);
         setMensaje(resultado.ok ? mensajeFinalDeCompra(resultado.mensaje, avisos) : resultado.mensaje);
         if (resultado.ok) {
@@ -379,6 +374,7 @@ export function PanelCompraPorPasos({
           setInfoProveedor("");
           reiniciarFilas();
           setEstadoReparto(REPARTO_APAGADO);
+          setPendienteDePago(false);
           setClaveIdempotencia(crypto.randomUUID());
           router.refresh();
         }
@@ -574,12 +570,20 @@ export function PanelCompraPorPasos({
               </option>
             ))}
           </Selector>
-          {reparto && <BloqueDeReparto estado={estadoReparto} onCambio={setEstadoReparto} sucursalActiva={reparto.sucursalActiva} otras={reparto.otras} totalDeLaFactura={totalDeLaCompra} />}
+          {reparto && <BloqueDeReparto estado={estadoReparto} onCambio={setEstadoReparto} sucursalActiva={reparto.sucursalActiva} otras={reparto.otras} preciosDeLosRenglones={lineasAGuardar.map((f) => numeroDelCampo(f.importe) ?? 0)} />}
           <Campo etiqueta="Detalle (opcional)" value={detalleLibre} onChange={(e) => setDetalleLibre(e.target.value)} />
         </div>
       )}
 
-      {paso === "PAGO" && <p data-testid="pago-pendiente">Pendiente de completar: la forma y fecha de pago se cargan en una etapa posterior.</p>}
+      {paso === "PAGO" && (
+        <div className="flex flex-col gap-3" data-testid="paso-de-pago">
+          <Selector etiqueta="¿Se pagó ya?" value={pendienteDePago ? "PENDIENTE_DE_PAGO" : "CONTADO_PAGADA"} onChange={(e) => setPendienteDePago(e.target.value === "PENDIENTE_DE_PAGO")} data-testid="condicion-de-pago">
+            <option value="CONTADO_PAGADA">Pagada ahora</option>
+            <option value="PENDIENTE_DE_PAGO">Pendiente de pago</option>
+          </Selector>
+          {pendienteDePago && <p className="text-sm text-tinta-tenue">Cuando se pague, declaralo desde «Compras registradas» con la fecha y el medio de pago.</p>}
+        </div>
+      )}
 
       {paso === "REVISAR" && (
         <div className="flex flex-col gap-3" data-testid="resumen-de-compra">
@@ -592,6 +596,8 @@ export function PanelCompraPorPasos({
             <dd>{fecha}</dd>
             <dt className="font-medium">Depósito</dt>
             <dd>{secciones.find((s) => s.id === seccionId)?.nombre ?? "—"}</dd>
+            <dt className="font-medium">Pago</dt>
+            <dd data-testid="pago-del-resumen">{pendienteDePago ? "Pendiente de pago" : "Pagada ahora"}</dd>
             {repartiendo && reparto && (
               <>
                 <dt className="font-medium">Reparto</dt>

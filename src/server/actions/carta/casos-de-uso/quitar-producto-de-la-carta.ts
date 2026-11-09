@@ -1,5 +1,5 @@
 import "server-only";
-import { whereCartaDeSucursal } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, whereCartaDeSucursal } from "@/core/carta/public";
 import type { ComandoQuitarProductoDeLaCarta, ResultadoQuitarProductoDeLaCarta } from "@/core/features/carta/mantenimiento.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
@@ -13,7 +13,7 @@ import { borrarContenidoDeProducto } from "@/server/persistencia/carta/contenido
  *
  * Se BORRA la fila de `ContenidoCartaProducto` de esta sucursal: ninguna tabla la referencia (ella referencia al producto, la sección y el género), así que no deja nada colgado; el producto, su
  * disponibilidad, su precio local, su descuento y su lugar en un ítem agrupado son OTRAS filas y no se tocan (un miembro de un agrupado sigue saliendo dentro de él: lo dice el mensaje). Lo que la
- * fila tenía queda en la auditoría, un registro por dato (`visibleEnCarta`, `seccionCartaId`, `orden` y, si estaban cargados, `descripcion`, `tags`, `especial` y `generoCartaId`, del valor a `null`).
+ * fila tenía queda en la auditoría, un registro por dato (`visibleEnCarta`, `seccionCartaId`, `orden` y, si estaban cargados, `descripcion`, `tags`, `especial`, `generoCartaId` y `nombreEnCarta`, del valor a `null`).
  *
  * Dentro de UNA transacción SERIALIZABLE: lee el producto y su contenido en esta sucursal; sin contenido, éxito sin cambio (idempotente: quitar dos veces no hace nada); con algo cargado a mano
  * (descripción, tags, ★ o género) y sin `confirmado`, `HAY_DATOS_CARGADOS` sin borrar nada (la pantalla pregunta); si no, audita y borra. Agregar y quitar a la vez se ordenan (SERIALIZABLE aborta a
@@ -37,7 +37,7 @@ export async function quitarProductoDeLaCartaCasoDeUso(
         contenidosCarta: {
           where: whereCartaDeSucursal(actor.sucursalId),
           take: 1,
-          select: { visibleEnCarta: true, seccionCartaId: true, orden: true, descripcion: true, tags: true, especial: true, generoCartaId: true, seccionCarta: { select: { nombre: true } } },
+          select: { visibleEnCarta: true, seccionCartaId: true, orden: true, descripcion: true, tags: true, especial: true, generoCartaId: true, nombreEnCarta: true, seccionCarta: { select: { nombre: true } } },
         },
         opcionesItemAgrupadoCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { itemAgrupadoCarta: { select: { nombre: true } } } },
       },
@@ -46,7 +46,7 @@ export async function quitarProductoDeLaCartaCasoDeUso(
     const c = producto.contenidosCarta[0];
     if (!c) return exito(`«${producto.nombre}» ya estaba fuera de la carta en «${actor.sucursalNombre}».`, { huboCambio: false });
 
-    const cargado = [c.descripcion ? "la descripción" : null, c.tags.length ? "los tags" : null, c.especial ? "el ★ especial" : null, c.generoCartaId ? "el género" : null].filter((x): x is string => x !== null);
+    const cargado = [c.descripcion ? "la descripción" : null, c.tags.length ? "los tags" : null, c.especial ? "el ★ especial" : null, c.generoCartaId ? "el género" : null, c.nombreEnCarta ? "el nombre en la carta" : null].filter((x): x is string => x !== null);
     if (cargado.length && !comando.confirmado) {
       return fracaso("HAY_DATOS_CARGADOS", `«${producto.nombre}» tiene cargado ${cargado.join(", ")}: al quitarlo de la carta se pierde. Confirmá para quitarlo igual.`);
     }
@@ -60,9 +60,12 @@ export async function quitarProductoDeLaCartaCasoDeUso(
     await registrarCambioAuditado(tx, { ...base, descripcion, campo: "tags", valorAnterior: c.tags.length ? c.tags.join(", ") : null });
     await registrarCambioAuditado(tx, { ...base, descripcion, campo: "especial", valorAnterior: c.especial ? true : null });
     await registrarCambioAuditado(tx, { ...base, descripcion, campo: "generoCartaId", valorAnterior: c.generoCartaId });
+    // «Nombre en la carta» (2026-11-04): se borra la fila con su nombre, así que el nombre que tenía queda en la auditoría (del valor a `null`).
+    await registrarCambioAuditado(tx, { ...base, descripcion, campo: "nombreEnCarta", valorAnterior: c.nombreEnCarta });
     await borrarContenidoDeProducto(tx, { sucursalId: actor.sucursalId, productoId: comando.productoId });
 
-    const agrupado = producto.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre;
+    // Con el interruptor de ítem agrupado apagado la carta ignora los agrupados (`GENERO_E_ITEM_AGRUPADO_VISIBLE`).
+    const agrupado = GENERO_E_ITEM_AGRUPADO_VISIBLE ? producto.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre : undefined;
     return exito(
       agrupado
         ? `«${producto.nombre}» salió de la carta suelta; sigue saliendo dentro del agrupado «${agrupado}» (eso se maneja desde «Agrupados»).`

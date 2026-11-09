@@ -21,6 +21,8 @@ export interface CabeceraAEscribir {
   ahora: Date;
   claveIdempotencia: string;
   payloadHash: string;
+  /** Pagos X0: ausente = `CONTADO_PAGADA` (como siempre). */
+  condicionPago?: "CONTADO_PAGADA" | "PENDIENTE_DE_PAGO";
 }
 
 /** La cabecera nace CONFIRMADA: el reparto queda declarado completo al cargar (ADR-041); lo pendiente es la aceptación de cada destino. */
@@ -38,6 +40,7 @@ export async function escribirCabeceraDeFactura(tx: Prisma.TransactionClient, c:
       detalleLibre: c.detalleLibre,
       claveIdempotencia: c.claveIdempotencia,
       payloadHash: c.payloadHash,
+      condicionPago: c.condicionPago ?? "CONTADO_PAGADA",
       creadoPorId: c.usuarioId,
     },
     select: { id: true },
@@ -52,6 +55,9 @@ export interface RenglonAEscribir {
   loteVencimiento: Date | null;
   detalle: string;
   precioTotal: number;
+  /** Compras etapa 2a: la unidad en que se compró y cuántas (juntas o ninguna; la base lo exige). */
+  unidadCompraId: string | null;
+  cantidadCompra: number | null;
 }
 
 /** Los renglones en orden (desde 1). Devuelve sus ids en el mismo orden. */
@@ -59,7 +65,7 @@ export async function escribirRenglonesDeFactura(tx: Prisma.TransactionClient, f
   const ids: string[] = [];
   for (const [i, r] of renglones.entries()) {
     const fila = await tx.facturaProveedorRenglon.create({
-      data: { facturaProveedorId, orden: i + 1, naturaleza: "MERCADERIA", productoId: r.productoId, cantidadStock: r.cantidadStock, precioPorUnidadStock: r.precioPorUnidadStock, loteVencimiento: r.loteVencimiento, detalle: r.detalle, precioTotal: r.precioTotal },
+      data: { facturaProveedorId, orden: i + 1, naturaleza: "MERCADERIA", productoId: r.productoId, cantidadStock: r.cantidadStock, precioPorUnidadStock: r.precioPorUnidadStock, loteVencimiento: r.loteVencimiento, detalle: r.detalle, precioTotal: r.precioTotal, unidadCompraId: r.unidadCompraId, cantidadCompra: r.cantidadCompra },
       select: { id: true },
     });
     ids.push(fila.id);
@@ -136,4 +142,45 @@ export async function escribirAnulacionDeFactura(
     data: { facturaProveedorId: a.facturaProveedorId, motivo: a.motivo, claveIdempotencia: a.claveIdempotencia, payloadHash: a.payloadHash, resultadoMensaje: a.resultadoMensaje, creadoPorId: a.usuarioId },
   });
   return r.count;
+}
+
+/** Pagos X0: escribe el pago declarado (siempre nuevo; el índice parcial `PagoDeFacturaProveedor_vigente_key` impide un segundo vigente). `fechaPago` es el día (`AAAA-MM-DD`) como fecha de columna `DATE`. */
+export async function escribirPagoDeFactura(
+  tx: Prisma.TransactionClient,
+  p: { facturaProveedorId: string; fechaPago: Date; medio: string; usuarioId: string; claveIdempotencia: string; payloadHash: string; resultadoMensaje: string }
+): Promise<{ id: string }> {
+  return tx.pagoDeFacturaProveedor.create({
+    data: { facturaProveedorId: p.facturaProveedorId, fechaPago: p.fechaPago, medio: p.medio, creadoPorId: p.usuarioId, claveIdempotencia: p.claveIdempotencia, payloadHash: p.payloadHash, resultadoMensaje: p.resultadoMensaje },
+    select: { id: true },
+  });
+}
+
+/** Pagos X0: marca anulado el pago (guarda `anuladoEn IS NULL`: 0 = otra anulación ganó) y escribe la anulación como registro nuevo. Devuelve cuántos pagos tocó. */
+export async function escribirAnulacionDePago(
+  tx: Prisma.TransactionClient,
+  a: { pagoId: string; usuarioId: string; ahora: Date; motivo: string; claveIdempotencia: string; payloadHash: string; resultadoMensaje: string }
+): Promise<number> {
+  const r = await tx.pagoDeFacturaProveedor.updateMany({ where: { id: a.pagoId, anuladoEn: null }, data: { anuladoEn: a.ahora, anuladoPorId: a.usuarioId } });
+  if (r.count === 0) return 0;
+  await tx.anulacionDePagoDeFacturaProveedor.create({
+    data: { pagoId: a.pagoId, motivo: a.motivo, claveIdempotencia: a.claveIdempotencia, payloadHash: a.payloadHash, resultadoMensaje: a.resultadoMensaje, creadoPorId: a.usuarioId },
+  });
+  return r.count;
+}
+
+/**
+ * U1 de «una sola compra»: la CORRECCIÓN de los datos de una factura (proveedor, número, detalle), en el lugar, dentro de la transacción que ya tiene la cabecera bloqueada. Escribe la cabecera y COPIA el cambio a la compra de cada parte
+ * (invariante I-NUM: en toda parte vigente, `Operacion.nroFactura` y `Operacion.proveedorId` son los de su factura). El detalle se copia solo a las compras que lo tenían igual que la cabecera. Nunca toca renglones, partes ni Kardex.
+ */
+export async function escribirCorreccionDeFactura(
+  tx: Prisma.TransactionClient,
+  c: { facturaProveedorId: string; proveedorId: string; nroFactura: string | null; nroFacturaNormalizado: string | null; detalleLibre: string | null; detalleAnterior: string | null; operacionIds: readonly string[] }
+): Promise<void> {
+  await tx.facturaProveedor.update({
+    where: { id: c.facturaProveedorId },
+    data: { proveedorId: c.proveedorId, nroFactura: c.nroFactura, nroFacturaNormalizado: c.nroFacturaNormalizado, detalleLibre: c.detalleLibre },
+  });
+  if (!c.operacionIds.length) return;
+  await tx.operacion.updateMany({ where: { id: { in: [...c.operacionIds] } }, data: { proveedorId: c.proveedorId, nroFactura: c.nroFactura } });
+  await tx.operacion.updateMany({ where: { id: { in: [...c.operacionIds] }, detalleLibre: c.detalleAnterior }, data: { detalleLibre: c.detalleLibre } });
 }

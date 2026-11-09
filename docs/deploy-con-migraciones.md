@@ -600,6 +600,24 @@ Son ANTERIORES por nombre a la migración de retiro de GO-3a (`20261022100000…
 
 **M2 (varias cuentas abiertas a la vez): NO implementada, sin migraciones todavía.** Cuando se haga serán dos carpetas más (`claveApertura` y `etiqueta` con sus CHECK; el índice único parcial por mesa de salón y el retiro del viejo en la misma transacción), cada una con su propio OK.
 
+## Pagos X0: declarar el pago de una factura de proveedor (`PagoDeFacturaProveedor`, `AnulacionDePagoDeFacturaProveedor`, condición «pendiente de pago» y permiso `declarar_pago_compra`), 2 migraciones aditivas, un solo OK, en este orden
+
+> **NO APLICADA a ninguna base real.** Diseño: `docs/diseno-pagos-x0-2026-11-04.md`. La rama `alegp/pagos-x0-declarar-pago` solo ensayó el ciclo en bases locales; el respaldo, el ensayo en una rama de Neon y el despliegue los coordina quien tiene la autorización del dueño.
+
+Dos migraciones, las dos **ADITIVAS** (fase EXPANDIR) y cada una con su `down.sql`. El código anterior ignora todo: nunca escribe `PENDIENTE_DE_PAGO` ni lee las tablas nuevas, así que se pueden aplicar antes del deploy.
+
+| # | Migración | Qué agrega | Destructiva al bajar |
+|---|---|---|---|
+| 1 | `20261104110000_pago_de_factura_proveedor` | El CHECK `FacturaProveedor_condicion_pago_chk` pasa a admitir `CONTADO_PAGADA` y `PENDIENTE_DE_PAGO`; tablas `PagoDeFacturaProveedor` (índice único parcial `PagoDeFacturaProveedor_vigente_key`: un solo pago vigente por factura; UPDATE solo de `anuladoEn`/`anuladoPorId`) y `AnulacionDePagoDeFacturaProveedor`; RLS de empresa; `motor2_app` SELECT e INSERT, nunca DELETE | **No por sí sola**: el `down.sql` ABORTA si hay pagos, anulaciones de pago o facturas `PENDIENTE_DE_PAGO` (se perdería cuándo y cómo se pagó) |
+| 2 | `20261104111000_permiso_declarar_pago_compra` | La clave `declarar_pago_compra` (de empresa, piso operario, clase O) y su fila de `PermisoRol` para el rol `admin` de **cada empresa existente** (migración de DATOS, idempotente; patrón de M3a y M6.4) | **Solo la configuración**: el `down.sql` ABORTA si alguien configuró la clave a mano (otro rol, capacidad por sucursal o el admin con Ver/Editar apagado) |
+
+- **Chequeos antes (solo lectura):** (1) `migrate status`: faltan exactamente estas dos; (2) el rol `motor2_app` existe; (3) `SELECT count(*) FROM "Rol" WHERE "clave" = 'admin'` = cantidad de empresas (la migración 2 siembra a cada una); (4) respaldo en una rama de Neon.
+- **Chequeos después (solo lectura):** `pg_policies` de las dos tablas nuevas = 1 cada una (`aislamiento_empresa`); `has_table_privilege('motor2_app', '"PagoDeFacturaProveedor"', 'DELETE')` y `'UPDATE'` dan **false**; `has_column_privilege('motor2_app', '"PagoDeFacturaProveedor"', 'anuladoEn', 'UPDATE')` da **true** y con `'fechaPago'` da **false**; `SELECT count(*) FROM "PermisoRol" WHERE "accionClave" = 'declarar_pago_compra'` = cantidad de empresas; `SELECT count(*) FROM "FacturaProveedor" WHERE "condicionPago" = 'PENDIENTE_DE_PAGO'` = 0 hasta que se cargue la primera.
+- **Quién la tiene:** de fábrica solo el rol `admin`; el gerente se la asigna en la matriz de permisos a quien confirme los pagos (no hay migración por rol). Una empresa dada de alta después la recibe por el alta normal (la clave está en `ACCIONES`).
+- **Las columnas `FacturaProveedor.fechaPagoDeclarada` y `medioPagoDeclarado` quedan sin uso** (el pago declarado vive en `PagoDeFacturaProveedor`): candidatas a poda en X3.
+- **Reversa:** orden inverso (2 → 1), cada una con `psql -1 -v ON_ERROR_STOP=1 -f down.sql` como dueño; después `prisma migrate resolve --rolled-back <migración>`. **Revertir antes el código de X0** (con el código nuevo y las tablas o la clave borradas, cargar una compra pendiente o declarar un pago fallaría).
+- **Pruebas:** `test/aislamiento/x0-pago-de-factura-subir-bajar-subir.test.ts` (ciclo subir, bajar con datos y volver a subir, catálogo idéntico) y `test/permisos/migracion-permiso-declarar-pago-compra.test.ts` (siembra solo al admin de cada empresa, idempotencia y reversa); el comportamiento, en `test/pagos/`.
+
 ## Server Actions: clave de cifrado de los closures y versiones entre deploys
 
 > O.3 de la lista de control (`docs/pureza-integracion.md`; Hito 4, bloque D, paso G1 de `docs/plan-hito-4-pureza.md` §4). Solo documentación: no se tocó
