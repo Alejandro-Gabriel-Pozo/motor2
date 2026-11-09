@@ -1061,6 +1061,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Carta pública: el grupo de opciones de UN solo plato va debajo de ese plato (CAMBIA LO QUE VE EL CLIENTE, a propósito; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): en el bife (único plato con «Guarnición») desaparece la línea «Incluye 1 guarnicion · ver opciones ↓», el bloque «GUARNICION · ELEGÍS 1» pasa a ir justo debajo del plato (antes, al pie de la sección) y ya no dice «Con los platos que incluyen guarnicion»; consecuencia en las muestras de tipografía: desaparecen las dos líneas `aclaracion` (14px / 13.3333px), que solo existían por esa línea «Incluye…». Verificado con `git diff -U0`: ningún precio, nombre ni opción cambia; solo esas líneas y el lugar del bloque.",
       },
+      {
+        blob: "61267a91d914e7553925584323836ec0fea7089f",
+        // El commit PADRE de este (1d003129) es el último antes de la regeneración; el cambio es de «Qué consume cada opción» en la pestaña Opciones del producto (PR #217).
+        commit: "1d003129",
+        motivo:
+          "Cargar qué consume cada opción desde la pestaña Opciones del producto (ADITIVO, solo ADMINISTRACIÓN; la carta pública y el cobro idénticos; pedido del dueño del 2026-11-09, aprobado con capturas; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): la tarjeta de cada grupo de la pantalla de opciones de Pizzas (a 1280 y a 375 px) suma la sección «Qué consume cada opción» (una fila por opción con «pendiente de completar» y «Editar consumo»). Revisado con `git diff`: son 50 líneas agregadas, ninguna otra pantalla, precio ni tipografía cambia.",
+      },
     ],
   },
 };
