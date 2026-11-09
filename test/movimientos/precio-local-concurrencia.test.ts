@@ -97,7 +97,7 @@ describe("precio local: control del valor visto (A2)", () => {
     expect(await setPrecioLocalProducto(id, 1100, false, { precio: 1100, habilitado: true })).toMatchObject({ ok: true }); // ya estaba así
     expect(await setPrecioLocalProducto(id, 1200, false, { precio: 1100, habilitado: true })).toEqual({
       ok: false,
-      mensaje: 'El precio local de "Agua" cambió mientras lo editabas (ahora es $1.100, deshabilitado). Recargá la pantalla y volvé a hacer el cambio.',
+      mensaje: 'El precio local de "Agua" cambió mientras lo editabas (ahora es $\u00a01.100,00, deshabilitado). Recargá la pantalla y volvé a hacer el cambio.',
     });
     expect([await local(id), await auditorias(id)]).toEqual(["1100.00 (deshabilitado)", 0]);
   });

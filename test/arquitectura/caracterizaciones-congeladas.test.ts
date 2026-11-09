@@ -720,6 +720,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_VENTA_CON_OPCIONES=1): las líneas ITEM suman `nombreEnTicket=null` (nadie tiene «Nombre en la carta» en este mundo) y las fotos de opción suman `ocultaEnCarta=false`. Verificado por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior.",
       },
+      {
+        blob: "bb5374a2eaf5451ba9a87d34cd05a6ce003a7a87",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, 58f066f2 («WIP pausa: E-N salida»).
+        commit: "58f066f2",
+        motivo:
+          "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): el mensaje de cierre de cuenta del POS sale con 2 decimales («se registró la venta por $ 7.460 (con 10% de descuento…)» pasa a «$ 7.460,00»). Cambia 1 línea.",
+      },
     ],
   },
   "test/persistencia/__golden__/kardex-escritores.golden.json": {
