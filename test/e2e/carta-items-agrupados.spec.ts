@@ -64,7 +64,7 @@ test("crear un ítem agrupado, bloquear una opción de otro precio y publicarlo 
     await agregar.getByLabel(`Agregar producto a «${nombreItem}»`).selectOption(fanta.id);
     await agregar.getByRole("button", { name: "Agregar" }).click();
     await expect(agregar.getByRole("alert")).toHaveText(
-      `«${fanta.nombre}» cuesta $5.500 acá y «${nombreItem}» ya tiene opciones a $5.000: agrupá solo productos del mismo precio, o dejala aparte.`
+      `«${fanta.nombre}» cuesta $\u00a05.500,00 acá y «${nombreItem}» ya tiene opciones a $\u00a05.000,00: agrupá solo productos del mismo precio, o dejala aparte.`
     );
     await expect(agregar.locator(`option[value="${fanta.id}"]`)).toHaveCount(1);
     expect(await prisma.opcionItemAgrupadoCarta.findFirst({ where: { productoId: fanta.id } })).toBeNull();
@@ -132,7 +132,7 @@ test("crear un ítem agrupado eligiendo sus productos en el alta: entran los del
     await nuevo.getByLabel(/^Productos del ítem/).selectOption([coca.id, fanta.id, sprite.id, tonica.id]);
     await nuevo.getByRole("button", { name: "Crear ítem agrupado" }).click();
     await expect(nuevo.getByRole("status")).toHaveText(
-      `Ítem agrupado "${nombreItem}" creado con 3 de 4 productos. No entró: «${tonica.nombre}» cuesta $5.500 acá y «${nombreItem}» ya tiene opciones a $5.000: agrupá solo productos del mismo precio, o dejala aparte.`
+      `Ítem agrupado "${nombreItem}" creado con 3 de 4 productos. No entró: «${tonica.nombre}» cuesta $\u00a05.500,00 acá y «${nombreItem}» ya tiene opciones a $\u00a05.000,00: agrupá solo productos del mismo precio, o dejala aparte.`
     );
 
     const fila = page.locator(`[data-item-agrupado="${nombreItem}"]`);

@@ -320,7 +320,7 @@ describe("cerrarCuenta (server action)", () => {
     expect.soft((await obtenerMapaDeMesas(s.sucursalId, prisma, new Date())).mesas[0].total).toBe(370.37);
 
     const r = await cerrarCuenta(cuenta.id);
-    const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 });
     expect.soft(r.mensaje).toContain(MONEDA.format(370.37));
     const [venta] = await ventasDeLaMesa();
     expect.soft(Number(venta.movimientos.find((m) => m.proceso === "VENTA")!.precioTotal)).toBe(370.37);
@@ -342,7 +342,7 @@ describe("cerrarCuenta (server action)", () => {
     const r = await cerrarCuenta(cuenta.id);
     const registrado = (await ventasDeLaMesa()).flatMap((v) => v.movimientos).filter((m) => m.proceso === "VENTA").map((m) => Number(m.precioTotal));
     expect(registrado.sort((a, b) => a - b)).toEqual([370.37, 617.29]);
-    const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 });
     expect.soft(r.mensaje).toContain(MONEDA.format(987.66));
     const [ticket] = await obtenerTicketsRecientes(s.sucursalId, s.mesa.id, prisma, undefined, new Date());
     expect.soft(ticket.total).toBe(987.66);

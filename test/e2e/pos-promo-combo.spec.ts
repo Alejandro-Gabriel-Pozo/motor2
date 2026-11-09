@@ -22,7 +22,7 @@ import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-v
  * disponibilidad → productos.
  */
 
-const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const aviso = (page: Page) => page.locator('[role="status"][aria-live="polite"]');
 const barra = (page: Page) => page.getByRole("group", { name: "Secciones de la carta" });
 

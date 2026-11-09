@@ -492,7 +492,7 @@ test("«Anular» un ítem enviado: el foco va al motivo, Escape y el fondo cierr
   }
 });
 
-const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const HORA_AR = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Argentina/Buenos_Aires" });
 
 /** Una cuenta ya cerrada CON VENTA (sembrada directo: Operacion VENTA + ítems enlazados), cerrada en `cerradaEn`. */

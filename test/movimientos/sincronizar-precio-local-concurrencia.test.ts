@@ -55,7 +55,7 @@ describe("sincronizar el precio local de un ítem agrupado: control del valor vi
     await setPrecioLocalProducto(g.coca, 6000, true);
     expect(await sincronizarPrecioLocalGrupoCarta(sucursalId, [g.coca, g.sprite], 5500, true, { [g.coca]: 5000, [g.sprite]: 5000 })).toEqual({
       ok: false,
-      mensaje: `El precio de «${g.nombre(g.coca)}» en «Central» cambió desde que se ofreció igualarlo (ahora es $6.000): no se cambió ninguno. Recargá la pantalla y volvé a hacer el cambio.`,
+      mensaje: `El precio de «${g.nombre(g.coca)}» en «Central» cambió desde que se ofreció igualarlo (ahora es $\u00a06.000,00): no se cambió ninguno. Recargá la pantalla y volvé a hacer el cambio.`,
     });
     expect([await local(g.coca), await local(g.sprite)]).toEqual(["6000.00", null]);
   });

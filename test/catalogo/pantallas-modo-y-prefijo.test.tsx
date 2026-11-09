@@ -68,7 +68,7 @@ describe("C9: «¿Cómo se vende?» en el formulario del producto", () => {
     expect(radio(html, "BASE_CONFIGURABLE")).toContain('checked=""');
     expect(html).not.toContain('name="precioVenta"');
     expect(textoPlano(html)).toContain("Precio guardado (no se cobra)");
-    expect(textoPlano(html)).toContain("$18.000,00");
+    expect(textoPlano(html)).toMatch(/\$\s18\.000,00/);
     expect(html).toContain('href="/catalogo/productos/p1/opciones"');
   });
 

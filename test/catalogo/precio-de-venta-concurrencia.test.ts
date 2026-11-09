@@ -62,7 +62,7 @@ describe("precio de venta del producto: control del valor visto (A4)", () => {
     expect((await actualizarProducto(id, formulario("Pizza", 120, 100))).ok).toBe(true); // A sube el precio
     expect(await actualizarProducto(id, formulario("Pizza grande", 100, 100))).toEqual({
       ok: false,
-      mensaje: "Alguien cambió el precio de venta de «Pizza» mientras lo editabas (ahora es $120): no se guardó nada. Recargá la pantalla y volvé a hacer el cambio.",
+      mensaje: "Alguien cambió el precio de venta de «Pizza» mientras lo editabas (ahora es $\u00a0120,00): no se guardó nada. Recargá la pantalla y volvé a hacer el cambio.",
     });
     expect([await guardado(id), await auditoriasDePrecio(id)]).toEqual([{ nombre: "Pizza", precioVenta: 120 }, 1]);
   });
@@ -86,7 +86,7 @@ describe("precio de venta del producto: control del valor visto (A4)", () => {
 
   it("falla cerrado: cambiar el precio sin mandar el visto se rechaza; sin cambiar el precio, el visto no hace falta (ni se mira)", async () => {
     const id = await producto("Tarta");
-    expect(await actualizarProducto(id, formulario("Tarta", 200))).toMatchObject({ ok: false, mensaje: expect.stringContaining("(ahora es $100)") });
+    expect(await actualizarProducto(id, formulario("Tarta", 200))).toMatchObject({ ok: false, mensaje: expect.stringContaining("(ahora es $\u00a0100,00)") });
     expect(await actualizarProducto(id, formulario("Tarta", 200, Number.NaN))).toMatchObject({ ok: false, mensaje: expect.stringContaining("mientras lo editabas") });
     expect(await actualizarProducto(id, { ...formulario("Tarta", 200), precioVentaVisto: "100" as unknown as number })).toMatchObject({ ok: false });
     expect(await guardado(id)).toEqual({ nombre: "Tarta", precioVenta: 100 });

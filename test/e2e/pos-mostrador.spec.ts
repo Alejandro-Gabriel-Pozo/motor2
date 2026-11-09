@@ -17,7 +17,7 @@ import { formatearNumeroTicket } from "../../src/core/pos/numeracion-ticket";
  * puesto mostrador de la sucursal (habilitarlo es parte de lo que prueba el spec: se borra para que los demás specs encuentren el mapa como siempre). Lo sembrado de opciones no se borra (ver `fixtures/opciones.ts`).
  */
 
-const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const SECCION = "Depósito E2E";
 const aviso = (page: Page) => page.locator('[role="status"][aria-live="polite"]');
 const barra = (page: Page) => page.getByRole("group", { name: "Secciones de la carta" });

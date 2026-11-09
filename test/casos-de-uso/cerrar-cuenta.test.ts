@@ -36,7 +36,7 @@ describe("cerrarCuentaCasoDeUso", () => {
 
     const r = await cerrarCuentaCasoDeUso(actor(), { cuentaId: cuenta.id });
 
-    const total = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(21000);
+    const total = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(21000);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.mensaje).toBe(`Cuenta de la mesa 4 cerrada: se registró la venta por ${total}.`);
@@ -63,7 +63,7 @@ describe("cerrarCuentaCasoDeUso", () => {
 
     const r = await cerrarCuentaCasoDeUso(actor(), { cuentaId: cuenta.id });
 
-    const total = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(2700);
+    const total = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(2700);
     expect(r).toMatchObject({ ok: true, mensaje: `Cuenta de la mesa 4 cerrada: se registró la venta por ${total} (con 10% de descuento a «Fulano»).` });
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" } });
     expect(venta.clienteId).toBe(cliente.id);
