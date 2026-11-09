@@ -22,6 +22,8 @@ import { PrecioDeLaSucursal } from "@/components/catalogo/espacio-del-producto/p
 import { VistaPreviaDeLaCarta } from "@/components/catalogo/espacio-del-producto/vista-previa-de-la-carta";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { Aviso } from "@/ui/primitivas/aviso";
+import { EncabezadoDePagina } from "@/ui/componentes/estructura/encabezado-de-pagina";
+import { RejillaDeSecciones } from "@/ui/componentes/estructura/rejilla-de-secciones";
 import { Enlace } from "@/ui/primitivas/enlace";
 import { AdmisionDeGrupo } from "./admision-de-grupo";
 import { admisionDelFormulario } from "./admision-del-formulario";
@@ -111,6 +113,7 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
       producto={{ id: productoId, nombre: producto.nombre, codigo: productoDelEspacio.codigo, tipo: "PV", modoDeVenta: productoDelEspacio.modoDeVenta, disponibleAca: marco.disponibleAca, sucursalNombre: ctx.sucursalNombre }}
       pasos={marco.pasos}
       actual="opciones"
+      ancho="ancho"
     >
       <GrupoDeFormularios className="flex flex-col gap-6 pb-24">
         <AvisoConDeshacer>
@@ -154,6 +157,7 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
             </Aviso>
           ) : null}
 
+          <EncabezadoDePagina etiqueta="Acciones de las opciones">
           <div className="flex flex-wrap items-start gap-3">
             {puedeCrearGrupos ? <NuevoGrupoEnElProducto productoId={productoId} productoNombre={producto.nombre} referencia={referencia} precioDeLista={precioDeLista} /> : null}
             {paraAgregar.length > 0 ? (
@@ -180,6 +184,7 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
               <p className="self-center text-sm text-tinta-suave">Este producto ya tiene todos los grupos prendidos de la empresa.</p>
             )}
           </div>
+          </EncabezadoDePagina>
           {puedeCrearGrupos ? null : <p className="text-xs text-tinta-suave">Los grupos nuevos los crea quien arma las opciones.</p>}
           {hayGrupoIncluido ? <p className="text-xs text-tinta-suave">{'Para cobrar distinto una opción de un grupo "incluido", se archiva el grupo y se crea uno nuevo.'}</p> : null}
 
@@ -188,11 +193,12 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
               {quitados.length > 0 ? `«${producto.nombre}» no usa ningún grupo ahora: se vende con un toque. Los que tenía están abajo, en «Quitados de este producto».` : `«${producto.nombre}» todavía no admite opciones: se vende con un toque, como siempre.`}
             </Aviso>
           ) : (
-            enUso.map((g) => {
+            <RejillaDeSecciones>
+            {enUso.map((g) => {
               const grupoId = g.grupoId;
               const versionEsperada = g.fila.version;
               return (
-                <section key={g.grupoId} aria-label={`Grupo ${g.nombre}`} className="flex flex-col gap-3 rounded border border-borde p-4" data-admision-grupo={g.nombre}>
+                <section key={g.grupoId} aria-label={`Grupo ${g.nombre}`} className="flex min-w-0 flex-col gap-3 rounded border border-borde p-4" data-admision-grupo={g.nombre}>
                   <AdmisionDeGrupo
                     grupo={g}
                     referencia={referencia}
@@ -229,7 +235,8 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
                   </div>
                 </section>
               );
-            })
+            })}
+            </RejillaDeSecciones>
           )}
 
           {quitados.length > 0 && (

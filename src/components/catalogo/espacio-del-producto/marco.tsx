@@ -33,6 +33,11 @@ export interface PropsDelMarco {
   pasos: readonly PasoDeLaPortada[];
   /** La pantalla donde está el usuario: la portada (`Resumen`) o uno de los pasos. */
   actual: PasoDelEspacio | "portada";
+  /**
+   * Cuánto ancho ocupa el contenido: `angosto` (por defecto, una columna de 768 px: lo de siempre) o `ancho` (todo el ancho del contenedor de página, para las pantallas que reparten sus
+   * secciones en `RejillaDeSecciones`). Estructura de pantalla, etapa E-A: las pantallas se pasan a `ancho` de a una.
+   */
+  ancho?: "angosto" | "ancho";
   children: ReactNode;
 }
 
@@ -45,11 +50,11 @@ function pestanaDelPaso(paso: PasoDeLaPortada, actual: PropsDelMarco["actual"]):
   };
 }
 
-export function MarcoDelEspacio({ producto, pasos, actual, children }: PropsDelMarco) {
+export function MarcoDelEspacio({ producto, pasos, actual, ancho = "angosto", children }: PropsDelMarco) {
   const fichaVisible = producto.fichaVisible ?? true;
   const pestanas: PestanaDeRuta[] = [{ href: fichaVisible ? rutaDelPaso(producto.id, "portada") : null, texto: "Resumen", actual: actual === "portada" }, ...pasos.map((p) => pestanaDelPaso(p, actual))];
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className={`flex flex-col gap-6${ancho === "angosto" ? " max-w-3xl" : ""}`}>
       <header className="flex flex-col gap-3">
         {fichaVisible && (
           <p className="text-sm">

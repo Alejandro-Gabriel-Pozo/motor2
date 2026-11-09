@@ -23,6 +23,7 @@ import { secuenciaMoviendo, unidadesDeLectura } from "@/core/catalogo/public";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
 import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
+import { RejillaDeSecciones, SeccionDeRejilla } from "@/ui/componentes/estructura/rejilla-de-secciones";
 import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
 import {
   listarMpDisponiblesEnAlguna,
@@ -181,7 +182,7 @@ export default async function RecetaEditorPage({
   // Todos los formularios del editor (central y receta propia) en UN grupo (O.2): mientras uno guarda, los demás esperan en vez de salir con la versión que
   // la pantalla mostraba antes de ese cambio; al terminar, la respuesta de la acción trae la pantalla refrescada y el cambio siguiente sale con la nueva.
   const editor = (
-    <GrupoDeFormularios className="flex max-w-2xl flex-col gap-8">
+    <GrupoDeFormularios className="flex flex-col gap-8">
       <div>
         {!conMarco && (
           <Link href="/catalogo/recetas" className="text-sm underline">
@@ -212,6 +213,8 @@ export default async function RecetaEditorPage({
         )}
       </div>
 
+      <RejillaDeSecciones separacion="amplia">
+      <SeccionDeRejilla apilada>
       {vigente && (
         <div className="flex flex-col gap-2">
           <h2 className="font-medium">Ficha técnica</h2>
@@ -547,6 +550,8 @@ export default async function RecetaEditorPage({
         </FormConResultado>
       </AgregarColapsable>
 
+      </SeccionDeRejilla>
+      <SeccionDeRejilla apilada>
       {vigente && (
         <div className="flex flex-col gap-2">
           <h2 className="font-medium">Método de preparación</h2>
@@ -708,6 +713,9 @@ export default async function RecetaEditorPage({
         </div>
       )}
 
+      </SeccionDeRejilla>
+      </RejillaDeSecciones>
+
       <RecetaDeLaSucursal
         producto={{ id: producto.id, nombre: producto.nombre }}
         sucursalNombre={ctx.sucursalNombre}
@@ -738,6 +746,7 @@ export default async function RecetaEditorPage({
       }}
       pasos={marco.pasos}
       actual="receta"
+      ancho="ancho"
     >
       {editor}
     </MarcoDelEspacio>
