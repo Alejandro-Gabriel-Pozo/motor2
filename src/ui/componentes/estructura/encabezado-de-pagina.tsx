@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  */
 export function EncabezadoDePagina({ children, etiqueta }: { children: ReactNode; etiqueta: string }) {
   return (
-    <div role="group" aria-label={etiqueta} className="z-10 bg-papel md:sticky md:top-0 md:-mx-6 md:border-b md:border-borde md:px-6 md:py-3">
+    <div role="group" aria-label={etiqueta} className="z-10 bg-papel md:sticky md:top-0 print:static md:-mx-6 md:border-b md:border-borde md:px-6 md:py-3">
       {children}
     </div>
   );
