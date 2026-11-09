@@ -314,3 +314,59 @@ Alto a 1366×768 y 390×844 en «pantallas de 768 / 844 px» (— = pantalla con
 4. Encabezado del shell sin fijar en celular.
 5. Orden de etapas (E-B…E-H) y que el POS quede para el final.
 6. «Desde md: solo se desplaza el contenido» (el documento deja de desplazarse en escritorio).
+
+## 14. Ampliación 2026-11-09 (segunda aclaración del dueño): «información clara» y regla de números
+
+Estado general: **DISEÑO ESCRITO, SIN CÓDIGO** (se paró por la regla «si obliga a más de 10 pantallas o a una librería, parar y avisar»; ver §14.3). Todo es PROPUESTA salvo lo marcado CONFIRMADA.
+
+### 14.1 «Información clara» como piezas del estándar (el dueño aprobó el criterio; los textos son PROPUESTA hasta aprobar captura)
+
+| # | Pieza | Inventario real (lo que ya existe) | Propuesta | Estado |
+|---|---|---|---|---|
+| 1 | Jerarquía de texto de 4 niveles (título de página, sección, etiqueta, ayuda) | Hoy hay `text-xl font-semibold` (h1 del marco), `text-lg font-medium` (secciones), `font-medium` a secas (h2 de la receta), `text-sm`, y **157 ayudas** con `text-xs` + `text-tinta-suave/tenue`. Contraste medido: `tinta-suave` 5,55:1 sobre blanco / 5,31:1 sobre papel / **4,83:1 sobre `superficie-suave`**; `tinta-tenue` 4,79 / 4,58 / **4,17:1 sobre `superficie-suave` (no llega a 4,5)** | 4 clases/componentes únicos: `TituloDePagina` (xl/semibold), `TituloDeSeccion` (lg/medium), etiqueta (`text-sm font-medium`, ya en `Campo`) y `Ayuda` (`text-sm`, `tinta-suave`: ≥ 4,83:1 en todos los fondos; la ayuda sube de `text-xs` a `text-sm`). `tinta-tenue` queda solo sobre blanco/papel o se retira. Cerco de línea de base para los `text-xs` de ayuda | PROPUESTA |
+| 2 | Nombre primero, código después | Marco: «PV_MILA · Producto de venta (PV)» ya es secundario; el id largo (`cmw9c60du…`) aparece en URLs y puede aparecer en pantallas | En pantalla siempre el nombre; código/id secundario (`text-sm tinta-suave`) o detrás de «Copiar». Auditar los `{x.id}` visibles en una etapa propia | PROPUESTA (NO VERIFICADO cuántos ids se ven) |
+| 3 | UNA familia de estados con texto | `Insignia` (`src/ui/primitivas/insignia.tsx`): 5 tonos (neutro, ok, aviso, error, marca) y 9 usos; «Pendiente» ya sale de `marco.tsx`; el tono lo refuerza el texto | **No se crea una segunda familia**: se fijan 5 estados sobre `Insignia`: «Completo» (ok), «Pendiente de completar» (aviso), «Apagado» (neutro), «Anulado» (error), «Corregido» (marca). Una tabla estado→tono→texto en un solo archivo y cerco que rechace chips escritos a mano. La etiqueta «Pendiente» cortada a 375 px: la insignia pasa a `flex-shrink-0 whitespace-nowrap` y la pestaña permite 2 líneas | PROPUESTA |
+| 4 | Una acción principal por sección; secundarias discretas; destructivas separadas | `Boton` tiene variantes primario/secundario/enlace; «Quitar de este producto» hoy está junto a «+ Opción» | Regla de uso: 1 `primario` por sección, `secundario`/`enlace` el resto, destructivas a la derecha y separadas; con la barra fija (E-G) | PROPUESTA |
+| 5 | Sección plegable con resumen de una línea | No existe (`<details>` sin uso) | `SeccionPlegable` sobre `<details>/<summary>`: cerrada muestra el resumen («Proteína Milanesa · 3 opciones · 2 con consumo»), abierta el contenido; sin JS (servidor). Es la salida para bajar Opciones de 5,3 a ≈1,5 pantallas. **No construida en este PR** | PROPUESTA |
+| 6 | «Qué falta completar» al tope de la ficha | La portada del producto ya calcula `estado` de cada paso (`pendiente`) en `cargarMarcoDelEspacio` | Mostrar ese mismo cálculo arriba de cada pantalla del marco como lista corta con enlaces (receta, consumo de opciones, IVA, sección de carta). Sin tablas nuevas | PROPUESTA |
+
+### 14.2 Regla de números (CONFIRMADA por el dueño, con la corrección del mismo día)
+
+Texto del dueño: se muestra SIEMPRE `1.000,00`; al tipear solo dígitos y UNA coma; la tecla «.» **se ignora** con el aviso «Los decimales van con coma: 0,5»; un pegado con «.» **se rechaza entero** con el mismo aviso y el campo queda como estaba (sin heurísticas); el sistema agrega solo el punto de miles al mostrar; siempre se muestra el número entendido junto al campo; el servidor rechaza SIEMPRE un valor con «.» (decimal o miles); dinero exacto con 2 decimales y cantidades con los decimales de su unidad; tablas, reportes y fichas muestran el mismo formato; Excel sigue numérico.
+
+**Inventario (verificado en el código):**
+- `src/components/campo-numero.tsx` (`CampoNumero`, 37 archivos lo importan, 25 son pantallas) con `inputMode="decimal"` y tipos `importe | cantidad | entero | porcentaje`.
+- `src/core/datos/campo-numero-logica.ts` y `src/core/datos/numero-tecleado.ts`: el parser `interpretarNumeroTecleado` **acepta el punto como miles** («1.000.000», «21.000» = veintiún mil en un importe) y rechaza como ambiguo «1.205» en una cantidad con decimales; `numeroDelCampo` (27 archivos) y `numeroDeEntrada`/`validarImporte`/`validarCantidad` lo reutilizan en el servidor.
+- **El canal entre el campo y el servidor es el número CANÓNICO con punto decimal** (`"1234.56"`, `leerNumeroCanonico`, regex `^-?\d+(\.\d+)?$`): el `<input type="hidden">` lo lleva y el servidor lo lee. Es un formato de máquina, no lo que ve ni escribe la persona.
+- `src/core/moneda.ts` (decimal exacto con `decimal.js`, ARS, redondeo definido), `formatearMonto`/`MONEDA_FIJA` (es-AR).
+- Ramas del repo `campo-numero-al-tocar` y `fix/campo-numero-pos` (tocar y reemplazar el valor; no revisadas en detalle: NO VERIFICADO su contenido); PR #218 (guardia de unidad) no está en main.
+- Lo que muestran hoy las tablas (p. ej. Receta: `0.25`, `0.12` crudos con punto) no pasa por el formateador: es el «0.22 / 0,22» que vio el dueño.
+
+**Contradicciones con lo construido (hay que decidirlas, no adivinarlas):**
+1. El punto como miles que hoy acepta el parser contradice «el punto se ignora/rechaza».
+2. El **canal canónico con punto** contradice «el servidor rechaza siempre un valor con punto». O el canal pasa a coma (`"1234,56"`) y se cambia `leerNumeroCanonico`/`numeroDeEntrada` y los ≈27 archivos que parsean, o la regla del servidor se limita al texto que escribe una persona (API/Server Action con texto crudo) y se mantiene el canal canónico entre el campo y el servidor. Es una decisión de modelo de datos de entrada: **PENDIENTE del dueño** (una sola pregunta, §14.3).
+3. Un número que llega como `number` (no como texto) no tiene formato: la regla del servidor aplica solo a texto.
+
+**Teclado de celular con `inputmode="decimal"` (riesgo declarado):** en Android (Gboard) y iOS el teclado decimal muestra el separador **del idioma/región del teléfono**: con es-AR suele mostrar la coma, pero hay teclados y configuraciones de región (y algunos navegadores/teclados de terceros) que solo ofrecen «.» y ninguna coma. **NO VERIFICADO**: no hay celular real en el entorno de pruebas; lo anterior sale del conocimiento general de esos teclados, no de una prueba. Salida más barata que respeta la decisión del dueño (sin aceptar el punto): **PROPUESTA** `inputmode="decimal"` + un botón «,» propio junto al campo en celular (solo si el campo admite decimales y no es de tipo `entero`), que inserta la coma en el cursor; la tecla «.» seguiría ignorada con el aviso. Alternativas descartadas: `inputmode="text"` con patrón (teclado completo, peor uso en dinero) y solo el aviso (deja sin poder escribir decimales a quien no tiene coma).
+
+**Oráculo de combinaciones (escrito aparte del código, a escribir con el campo):** dimensiones = entrada (tecleado | pegado) × contiene «.» (sí | no) × contiene coma (sí | no) × unidad (0, 3 y 4 decimales; dinero = 2) × lado (cliente | servidor). Resultados esperados (todos PROPUESTA hasta el código):
+
+| Entrada | Lado | Tecleado | Pegado | Servidor (texto) |
+|---|---|---|---|---|
+| sin «.», sin coma (`1000`) | — | acepta; se muestra `1.000` (o `1.000,00` en dinero) | acepta | acepta |
+| sin «.», con una coma (`0,5`) | — | acepta (decimales ≤ los de la unidad) | acepta | acepta |
+| con «.», con o sin coma (`2.5`, `1.234,50`) | — | la tecla «.» se ignora + aviso | **se rechaza entero**, campo igual que antes + aviso | **rechaza** con el mismo mensaje |
+| dos comas (`1,2,3`) | — | la segunda coma se ignora | rechaza | rechaza |
+| más decimales que la unidad (`0,0605` con kg=3) | — | rechaza con el mensaje de la unidad | ídem | ídem |
+| unidad con 0 decimales y una coma (`2,5` en unidades) | — | la coma no se admite (campo `entero`) | rechaza | rechaza |
+
+### 14.3 Por qué se paró (regla «parar y avisar»)
+El mensaje del orquestador pide parar si esto «obliga a más de 10 pantallas o a una librería». Lo verificado: la regla de números **cambia el parser central y el canal de valor** que usan **37 archivos con `CampoNumero` (25 pantallas)** y **27 archivos con `numeroDelCampo`**, más los números que muestran tablas y reportes (decenas de pantallas). Es una etapa transversal propia (nombrada **E-N**, antes de E-B), no un agregado de este PR. En este PR **no se tocó código** por esta aclaración (ni el campo, ni el servidor, ni el chip de la Receta); queda este diseño.
+
+**Pregunta única al dueño (cambia el modelo de entrada):** ¿el servidor rechaza el punto en TODO texto numérico que le llegue (y entonces el campo manda coma al servidor y se reescribe el canal en los ≈27 archivos que lo parsean), o rechaza el punto solo en lo que escribe una persona y se conserva el canal canónico máquina↔servidor? Recomendación: lo segundo (el canal canónico es un contrato interno; el punto jamás llega a la persona).
+
+### 14.4 Plan de adopción ampliado
+| Etapa | Qué | Tamaño |
+|---|---|---|
+| **E-N** (antes de E-B) | Regla de números: parser (`numero-tecleado.ts`), `CampoNumero` (ignora «.», aviso, botón «,» en celular, número entendido), formateador único de salida (`formatearNumero` sobre `formatearMonto`), validación del servidor y oráculo; después, adopción en las 25 pantallas con campos y en las tablas (Receta primero) | ≈ 8 archivos de núcleo + 25 pantallas (varios PR) — **más de 10: requiere tu OK** |
+| **E-I** (junto a E-B) | Piezas de «información clara»: `TituloDePagina/TituloDeSeccion/Ayuda`, tabla estado→`Insignia`, `SeccionPlegable`, «Qué falta completar» | ≈ 6 archivos + adopción por familia |
