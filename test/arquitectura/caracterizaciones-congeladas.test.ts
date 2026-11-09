@@ -471,6 +471,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Poda del precio del vínculo (decisión del dueño, 2026-11-06; CAMBIA SOLO LA AUDITORÍA DE PREPARACIÓN, no la venta): la compra deja de escribir el precio en `ProveedorPorProducto` y de auditarlo, así que desaparecen las 122 líneas AUDITORIA con entidad=ProveedorPorProducto (campo precioPorUnidadStock) que dejaban las compras de preparación. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1 sobre el código integrado: 122 líneas borradas, 0 agregadas, todas de esa entidad (comprobado línea por línea contra el golden anterior). NO cambia ninguna fila de venta, KARDEX, stock, costo ni importe."
       },
+      {
+        blob: "85edd534da910f9af6467a27aa3682a0cafdf000",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, 58f066f2 («WIP pausa: E-N salida»).
+        commit: "58f066f2",
+        motivo:
+          "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, no cambia ningún valor, redondeo ni efecto): el mensaje de cierre de cuenta del POS sale con 2 decimales («se registró la venta por $ 40.200» pasa a «$ 40.200,00»). Cambia 1 línea.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -827,6 +834,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "a2068019",
         motivo:
           "Interruptor «solo salón» de las promos (migración 20261026120000_promo_carta_solo_salon; ADITIVO, no cambia comportamiento): la huella vuelca las filas de PromoCarta con todas sus columnas, y la columna nueva `PromoCarta.soloSalon` (default false) aparece como ` soloSalon=false` en cada fila PROMO (10 líneas). Verificado: quitando ` soloSalon=false` de cada línea, el contenido es IDÉNTICO al anterior (blob previo en el historial de esta entrada); ninguna otra línea, resultado ni conteo cambia. Se regeneró con `REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1`.",
+      },
+      {
+        blob: "63667d5ca2199f41b39fb6eb277c0145993562e7",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, 58f066f2 («WIP pausa: E-N salida»).
+        commit: "58f066f2",
+        motivo:
+          "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): el mensaje de «sincronizar precio global» sale con 2 decimales («actualizado a $11.000» pasa a «$ 11.000,00», con el espacio que no se parte de la moneda). Cambia 1 línea.",
       },
     ],
   },

@@ -1,36 +1,15 @@
 {
   "regla": "numero-sin-formato-central",
   "meta": "0 (cada pantalla muestra sus números con core/formato-de-numero.ts: «1.000,00», dinero con 2 decimales, unidad pegada); baja con cada etapa",
-  "total": 143,
-  "entradas": 63,
+  "total": 120,
+  "entradas": 46,
   "porTipo": {
     "intl-number-format": 2,
     "number-pelado": 2,
-    "to-fixed": 13,
-    "to-locale-string": 126
+    "to-fixed": 12,
+    "to-locale-string": 104
   },
   "cuentas": {
-    "src/app/(app)/carta/agrupados/page.tsx": {
-      "to-locale-string": 1
-    },
-    "src/app/(app)/carta/page.tsx": {
-      "to-locale-string": 1
-    },
-    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": {
-      "to-locale-string": 5
-    },
-    "src/app/(app)/catalogo/clientes/page.tsx": {
-      "to-locale-string": 1
-    },
-    "src/app/(app)/catalogo/margen-objetivo/page.tsx": {
-      "to-locale-string": 2
-    },
-    "src/app/(app)/catalogo/proveedores/[id]/page.tsx": {
-      "to-locale-string": 1
-    },
-    "src/app/(app)/catalogo/proveedores/comparativa/page.tsx": {
-      "to-fixed": 1
-    },
     "src/app/(app)/reportes/categorias/page.tsx": {
       "to-locale-string": 2
     },
@@ -126,12 +105,6 @@
     "src/app/(app)/reportes/ventas-por-seccion/tabla-seccion.tsx": {
       "to-locale-string": 1
     },
-    "src/components/carta/contenido-del-producto.tsx": {
-      "to-locale-string": 1
-    },
-    "src/components/carta/sincronizar-precio-grupo.tsx": {
-      "to-locale-string": 1
-    },
     "src/components/en-dolares.tsx": {
       "to-locale-string": 3
     },
@@ -159,43 +132,19 @@
     "src/core/opciones/huella-de-opciones.ts": {
       "to-fixed": 2
     },
-    "src/core/opciones/presentacion.ts": {
-      "to-locale-string": 1
-    },
     "src/core/reportes/periodo-alertas.ts": {
       "to-locale-string": 3
     },
     "src/server/actions/auth/casos-de-uso/actualizar-activo-sucursal.ts": {
       "number-pelado": 1
     },
-    "src/server/actions/carta/casos-de-uso/agregar-opcion-item-agrupado-carta.ts": {
-      "to-locale-string": 1
-    },
-    "src/server/actions/carta/casos-de-uso/guardar-precio-local-promo-carta.ts": {
-      "to-locale-string": 1
-    },
     "src/server/actions/catalogo/casos-de-uso/actualizar-decimales-unidad.ts": {
       "number-pelado": 1
-    },
-    "src/server/actions/catalogo/casos-de-uso/actualizar-producto.ts": {
-      "to-locale-string": 1
-    },
-    "src/server/actions/catalogo/casos-de-uso/set-precio-local-producto.ts": {
-      "to-locale-string": 1
-    },
-    "src/server/actions/catalogo/casos-de-uso/sincronizar-precio-grupo-carta.ts": {
-      "to-locale-string": 2
-    },
-    "src/server/actions/catalogo/casos-de-uso/sincronizar-precio-local-grupo-carta.ts": {
-      "to-locale-string": 1
     },
     "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts": {
       "to-fixed": 2
     },
     "src/server/actions/reportes/casos-de-uso/registrar-pago-consignante.ts": {
-      "to-locale-string": 1
-    },
-    "src/server/actions/stock/casos-de-uso/set-stock-minimo-producto.ts": {
       "to-locale-string": 1
     },
     "src/server/consultas/reportes/periodo-margen.ts": {
