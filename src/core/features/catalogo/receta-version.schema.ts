@@ -28,6 +28,16 @@ export interface ComandoGuardarVersionDeReceta {
    * valida todo con `validarIngredientes`/`validarPasos`/`validarCabecera` en su lugar de siempre.
    */
   puerta?: RechazoDeLaPuertaDeReceta | null;
+  /**
+   * Guardia de unidad (docs/diseno-guardia-de-unidad-receta-2026-11-09.md): la confirmación explícita de que una cantidad desproporcionada para la unidad de stock es la que se quiere. Llega del
+   * navegador: solo un `true` estricto confirma; ausente o cualquier otra cosa, no. Se ignora si ninguna cantidad es desproporcionada.
+   */
+  confirmaCantidadDesproporcionada?: boolean;
+  /**
+   * Solo para la carga en bloque (`guardarRecetaACiegas`: seeds, scripts y tests) y para las rutas que COPIAN lo ya aceptado (crear la receta propia desde la central, copiar la propia de otra
+   * sucursal): no pasan por la guardia de unidad. Ausente = se evalúa (una acción nueva queda protegida si se olvida).
+   */
+  omitirGuardiaDeUnidad?: boolean;
 }
 
 /** El rechazo de la puerta, con la etapa a la que pertenece el dato (es el código con el que vuelve del caso de uso). */
@@ -57,7 +67,9 @@ export type CodigoGuardarVersionDeReceta =
   | "INGREDIENTES_INVALIDOS"
   | "PASOS_INVALIDOS"
   | "CABECERA_INVALIDA"
-  | "VERSION_DESACTUALIZADA";
+  | "VERSION_DESACTUALIZADA"
+  // Guardia de unidad: una cantidad desproporcionada para la unidad de stock, sin la confirmación explícita (la pantalla ofrece confirmar).
+  | "CANTIDAD_DESPROPORCIONADA";
 
 /**
  * `datos` de un guardado exitoso. `calibracionesDescartadas`: una entrada por calibración local (`RendimientoLocalIngrediente`) que NO
