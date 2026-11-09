@@ -42,7 +42,7 @@ describe("TablaDeDatos", () => {
     expect(html).toContain("Compras registradas");
     expect([...html.matchAll(/<th [^>]*scope="col"/g)]).toHaveLength(4);
     // 2 filas de datos (la fila del encabezado lleva otra clase).
-    expect([...html.matchAll(/<tr class="border-b border-borde last:border-b-0 hover:bg-papel">/g)]).toHaveLength(2);
+    expect([...html.matchAll(/<tr class="border-b border-borde-control\/60 last:border-b-0 hover:bg-papel">/g)]).toHaveLength(2);
     expect(html).toContain("Molino Sur");
     expect(html).toContain("Lácteos del Valle");
   });
@@ -107,14 +107,14 @@ describe("TablaDeDatos", () => {
     expect(html).toMatch(/<div role="region" aria-label="Compras registradas" tabindex="0"/);
     expect(html).toContain("<caption");
     expect([...html.matchAll(/<th [^>]*scope="col"/g)]).toHaveLength(4);
-    expect([...html.matchAll(/<tr class="border-b border-borde last:border-b-0 hover:bg-papel">/g)]).toHaveLength(2);
+    expect([...html.matchAll(/<tr class="border-b border-borde-control\/60 last:border-b-0 hover:bg-papel">/g)]).toHaveLength(2);
     expect(html, "la columna solo-en-tabla sí está").toContain("pagada");
   });
 
   it("claseFila agrega clases a la fila de la tabla y a su tarjeta según el dato, y una fila sin clase no deja «undefined» ni espacios de más", () => {
     const html = dibujar(FILAS, COLUMNAS, { claseFila: (f) => (f.nota === "pendiente" ? "bg-aviso-tinte" : undefined) });
-    expect(html).toContain('<tr class="border-b border-borde last:border-b-0 hover:bg-papel bg-aviso-tinte">');
-    expect([...html.matchAll(/<tr class="border-b border-borde last:border-b-0 hover:bg-papel">/g)], "la otra fila queda como estaba").toHaveLength(1);
+    expect(html).toContain('<tr class="border-b border-borde-control/60 last:border-b-0 hover:bg-papel bg-aviso-tinte">');
+    expect([...html.matchAll(/<tr class="border-b border-borde-control\/60 last:border-b-0 hover:bg-papel">/g)], "la otra fila queda como estaba").toHaveLength(1);
     const tarjetas = [...html.matchAll(/<li class="([^"]*)"/g)].map((m) => m[1]);
     expect(tarjetas).toHaveLength(2);
     expect(tarjetas.filter((c) => c.includes("bg-aviso-tinte"))).toHaveLength(1);
@@ -143,7 +143,7 @@ describe("TablaDeDatos", () => {
     const todo = [dibujar(), dibujar(FILAS, COLUMNAS, { presentacionCelular: "tabla-con-scroll", orden: { columna: "fecha", sentido: "ascendente" } }), dibujar([])].join("\n");
     expect(todo).not.toMatch(COLOR_DE_ESCALA);
     expect(todo).toContain("text-tinta-suave");
-    expect(todo).toContain("border-borde");
+    expect(todo).toContain("border-borde-control/60");
   });
 
   describe("estilo de planilla (docs/diseno-estilo-de-planilla-2026-11-09.md)", () => {
@@ -151,11 +151,20 @@ describe("TablaDeDatos", () => {
 
     it("la tabla va en un contorno propio, con el encabezado en banda de fondo y mayúsculas chicas, y las filas separadas", () => {
       const html = dibujar();
-      expect(/<div role="region"[^>]*class="([^"]*)"/.exec(html)?.[1]).toContain("border-borde");
+      expect(/<div role="region"[^>]*class="([^"]*)"/.exec(html)?.[1]).toContain("border-borde-control/60");
       const encabezado = /<thead><tr class="([^"]*)"/.exec(html)?.[1] ?? "";
       expect(encabezado).toContain("bg-superficie-suave");
       expect(encabezado).toContain("uppercase");
       expect(html).toContain("hover:bg-papel");
+    });
+
+    it("la división entre celdas se nota: línea vertical entre columnas (encabezado y celdas) y entre pares de la tarjeta, con el borde de control, no el decorativo", () => {
+      const html = dibujar();
+      expect([...html.matchAll(/<th [^>]*class="[^"]*border-l border-borde-control\/60[^"]*first:border-l-0/g)]).toHaveLength(4);
+      expect([...html.matchAll(/<td class="[^"]*border-l border-borde-control\/60[^"]*first:border-l-0/g)]).toHaveLength(8);
+      const lista = /<ul aria-label="Compras registradas"[^>]*>([\s\S]*?)<\/ul>/.exec(html)?.[1] ?? "";
+      expect([...lista.matchAll(/<div class="grid [^"]*border-t[^"]*border-borde-control\/60/g)].length).toBeGreaterThanOrEqual(2);
+      expect(html, "el borde claro decorativo no separa celdas").not.toMatch(/border-borde[ "]/);
     });
 
     it("los números a la derecha llevan cifras de ancho fijo, en el encabezado y en la celda", () => {

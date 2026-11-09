@@ -50,6 +50,9 @@ export interface PropsDeTablaDeDatos<T> {
   orden?: { columna: string; sentido: "ascendente" | "descendente" };
 }
 
+/** Línea de separación de la planilla: el borde de los controles al 60 %, la que se ve a simple vista entre celdas (el `borde` claro es solo decorativo). */
+const BORDE = "border-borde-control/60";
+
 const ARIA_SORT = { ascendente: "ascending", descendente: "descending" } as const;
 const FLECHA = { ascendente: "▲", descendente: "▼" } as const;
 
@@ -84,11 +87,12 @@ export function TablaDeDatos<T>({ titulo, columnas, filas, claveDeFila, vacio, p
           {filas.map((fila) => (
             // La tarjeta nunca se sale de su caja, por angosta que quede (un nombre largo, o el menú lateral abierto en el celular): las palabras se cortan donde haga falta
             // (`overflow-wrap: anywhere`) y la columna del valor puede achicarse por debajo de su palabra más larga (`minmax(0, 1fr)`).
-            <li key={claveDeFila(fila)} className={unirClases("min-w-0 rounded border border-borde p-3 [overflow-wrap:anywhere]", claseFila?.(fila))}>
+            <li key={claveDeFila(fila)} className={unirClases("min-w-0 rounded border border-borde-control/60 p-3 [overflow-wrap:anywhere]", claseFila?.(fila))}>
               {columnaTitulo ? <p className="font-medium">{columnaTitulo.celda(fila)}</p> : null}
-              <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+              <dl className="mt-2 text-sm">
                 {columnasDeTarjeta.map((c) => (
-                  <div key={c.id} className="contents">
+                  // Cada par «etiqueta: valor» es una fila con su separador (la división entre celdas se nota también en la tarjeta); la etiqueta ocupa 2/5 y el valor 3/5, así los valores quedan alineados de tarjeta en tarjeta.
+                  <div key={c.id} className={`grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-3 border-t py-1.5 ${BORDE}`}>
                     <dt className="text-tinta-suave">{c.encabezado}</dt>
                     <dd className={c.alinear === "derecha" ? "text-right" : undefined}>{c.celda(fila)}</dd>
                   </div>
@@ -96,7 +100,7 @@ export function TablaDeDatos<T>({ titulo, columnas, filas, claveDeFila, vacio, p
               </dl>
               {columnaDeAccion ? (
                 // Pie de la tarjeta: las acciones a la vista, cada control con el toque de 44 px (los enlaces y botones de la celda se estiran a esa altura).
-                <div data-acciones-de-fila="" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-borde pt-2 text-sm [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center">
+                <div data-acciones-de-fila="" className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-borde-control/60 pt-2 text-sm [&_a]:inline-flex [&_a]:min-h-11 [&_a]:items-center">
                   {columnaDeAccion.celda(fila)}
                 </div>
               ) : null}
@@ -106,13 +110,13 @@ export function TablaDeDatos<T>({ titulo, columnas, filas, claveDeFila, vacio, p
       ) : null}
 
       {/* Desde sm: tabla (en celular, solo con `tabla-con-scroll`, que se desplaza hacia el costado). La región recibe foco para poder desplazarla con el teclado si el contenido igual no entra. */}
-      <div role="region" aria-label={titulo} tabIndex={0} className={`rounded border border-borde bg-superficie ${conTarjetas ? "hidden overflow-x-auto sm:block" : "overflow-x-auto"}`}>
+      <div role="region" aria-label={titulo} tabIndex={0} className={`rounded border border-borde-control/60 bg-superficie ${conTarjetas ? "hidden overflow-x-auto sm:block" : "overflow-x-auto"}`}>
         <table className={conTarjetas ? "w-full text-sm" : "w-full text-sm max-sm:min-w-max"}>
           <caption className="sr-only">{titulo}</caption>
           <thead>
-            <tr className="border-b border-borde bg-superficie-suave text-left text-xs uppercase tracking-wide text-tinta-suave">
+            <tr className="border-b border-borde-control/60 bg-superficie-suave text-left text-xs uppercase tracking-wide text-tinta-suave">
               {columnas.map((c) => (
-                <th key={c.id} scope="col" aria-sort={orden?.columna === c.id ? ARIA_SORT[orden.sentido] : undefined} className={unirClases("px-3 py-2 font-semibold", c.alinear === "derecha" ? "text-right" : undefined, c.accion ? "whitespace-nowrap" : undefined)}>
+                <th key={c.id} scope="col" aria-sort={orden?.columna === c.id ? ARIA_SORT[orden.sentido] : undefined} className={unirClases("border-l border-borde-control/60 px-3 py-2 font-semibold first:border-l-0", c.alinear === "derecha" ? "text-right" : undefined, c.accion ? "whitespace-nowrap" : undefined)}>
                   {c.encabezado}
                   {orden?.columna === c.id ? <span aria-hidden="true"> {FLECHA[orden.sentido]}</span> : null}
                 </th>
@@ -121,9 +125,9 @@ export function TablaDeDatos<T>({ titulo, columnas, filas, claveDeFila, vacio, p
           </thead>
           <tbody>
             {filas.map((fila) => (
-              <tr key={claveDeFila(fila)} className={unirClases("border-b border-borde last:border-b-0 hover:bg-papel", claseFila?.(fila))}>
+              <tr key={claveDeFila(fila)} className={unirClases("border-b border-borde-control/60 last:border-b-0 hover:bg-papel", claseFila?.(fila))}>
                 {columnas.map((c) => (
-                  <td key={c.id} className={unirClases("px-3 py-2.5 align-middle", c.alinear === "derecha" ? "text-right tabular-nums" : undefined, c.accion ? "whitespace-nowrap" : undefined)}>
+                  <td key={c.id} className={unirClases("border-l border-borde-control/60 px-3 py-2.5 align-middle first:border-l-0", c.alinear === "derecha" ? "text-right tabular-nums" : undefined, c.accion ? "whitespace-nowrap" : undefined)}>
                     {c.celda(fila)}
                   </td>
                 ))}

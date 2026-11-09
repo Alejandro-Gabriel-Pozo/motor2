@@ -13,7 +13,7 @@ describe("ApartadoDePlanilla", () => {
         <p>cuerpo</p>
       </ApartadoDePlanilla>,
     );
-    expect(html).toMatch(/<section aria-labelledby="([^"]+)"[^>]*class="[^"]*border-borde/);
+    expect(html).toMatch(/<section aria-labelledby="([^"]+)"[^>]*class="[^"]*border-borde-control\/60/);
     const id = /aria-labelledby="([^"]+)"/.exec(html)?.[1];
     expect(html).toContain(`<h2 id="${id}"`);
     expect(html).toContain("Lista de productos");
@@ -53,7 +53,7 @@ describe("BarraDeFiltros", () => {
     );
     expect(html).toContain("data-barra-de-filtros");
     expect(html).toContain("bg-superficie-suave");
-    expect(html).toContain("border-borde");
+    expect(html).toContain("border-borde-control/60");
     expect(html).toContain('<form role="search">');
   });
 });

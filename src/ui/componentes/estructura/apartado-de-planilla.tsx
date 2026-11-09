@@ -24,8 +24,8 @@ export function ApartadoDePlanilla({
 }) {
   const id = idDelTitulo ?? `apartado-${titulo.toLowerCase().replace(/[^a-z0-9áéíóúñ]+/g, "-").replace(/^-|-$/g, "")}`;
   return (
-    <section aria-labelledby={id} className="min-w-0 overflow-hidden rounded border border-borde bg-superficie">
-      <header className="flex flex-col gap-1 border-b border-borde bg-superficie px-4 py-3 md:flex-row md:items-baseline md:justify-between md:gap-4">
+    <section aria-labelledby={id} className="min-w-0 overflow-hidden rounded border border-borde-control/60 bg-superficie">
+      <header className="flex flex-col gap-1 border-b border-borde-control/60 bg-superficie px-4 py-3 md:flex-row md:items-baseline md:justify-between md:gap-4">
         <div className="min-w-0">
           <h2 id={id} className="font-semibold">
             {titulo}

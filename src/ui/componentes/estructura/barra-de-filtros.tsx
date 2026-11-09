@@ -5,5 +5,5 @@ import type { ReactNode } from "react";
  * ni sabe de filtros: aloja a `FiltrosDeLista` (u otro formulario GET) para que la pantalla no tenga los controles «pegados» a la tabla. Sin negocio ni estado; solo tokens y sin modo oscuro (DEC-04).
  */
 export function BarraDeFiltros({ children }: { children: ReactNode }) {
-  return <div data-barra-de-filtros="" className="rounded border border-borde bg-superficie-suave p-3">{children}</div>;
+  return <div data-barra-de-filtros="" className="rounded border border-borde-control/60 bg-superficie-suave p-3">{children}</div>;
 }
