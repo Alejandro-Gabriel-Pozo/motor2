@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { aplicarEdicion, formatearNumeroDelCampo, textoParaVer, valorAEmitir } from "@/core/datos/campo-numero-logica";
+import { aplicarEdicion, formatearNumeroDelCampo, origenDeLaEdicion, textoParaVer, valorAEmitir } from "@/core/datos/campo-numero-logica";
 import { contextoDeCantidad, interpretarNumeroTecleado, leerNumeroCanonico, numeroDeEntrada, type ContextoNumerico } from "@/core/datos/numero-tecleado";
 import { CODIGOS_AJENOS_A_LOS_NUMEROS, CODIGOS_DE_RECHAZO_DE_NUMEROS, CONTEXTOS, EDICIONES, FILAS, FILAS_DEL_SERVIDOR, TIPOS, VISTAS, type Esperado } from "./oraculo-numero-entrada";
 
@@ -115,5 +115,20 @@ describe("guardián · una dimensión nueva sin declarar hace fallar el test", (
     const AFECTAN = ["decimales", "permitirNegativo", "tipo"];
     const NO_AFECTAN = ["ariaLabel", "autoFocus", "ayuda", "className", "defaultValue", "errorDeRegla", "etiqueta", "id", "name", "onChange", "placeholder", "prefijo", "required", "sinEntendido", "tamano", "unidad", "value"];
     expect(nombres).toEqual([...AFECTAN, ...NO_AFECTAN].sort());
+  });
+});
+
+describe("oráculo · el origen de una edición según lo que manda el navegador (Android manda keyCode 229: la regla mira el texto, no las teclas)", () => {
+  it.each([
+    ["insertText", ".", "tecleado"], // teclado de escritorio y la mayoría de los de celular
+    ["insertCompositionText", ".", "tecleado"], // Gboard: una tecla como composición
+    ["insertText", "1.5", "pegado"], // varios caracteres de golpe
+    ["insertCompositionText", "12.", "pegado"], // composición de varios caracteres (se rechaza entero: queda lo que había, que es igual que ignorar la tecla al final)
+    ["insertFromPaste", "1.5", "pegado"],
+    ["insertFromDrop", "1.5", "pegado"],
+    ["insertReplacementText", "1.5", "pegado"], // autocompletado / sugerencia del teclado
+    [undefined, null, "pegado"], // un cambio sin InputEvent (relleno automático del navegador)
+  ] as const)("inputType %j con data %j → %s", (inputType, data, esperado) => {
+    expect(origenDeLaEdicion(inputType, data)).toBe(esperado);
   });
 });

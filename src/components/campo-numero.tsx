@@ -149,6 +149,22 @@ export function CampoNumero({
     entrada.current?.setCustomValidity(error ?? "");
   }, [error]);
 
+  // Primera línea de defensa contra el «.»: el evento nativo `beforeinput` (no el `keydown`: el teclado de Android manda keyCode 229 y `key` «Unidentified») se cancela si trae un «.» y se puede cancelar. Si el
+  // navegador no lo deja cancelar (algunas composiciones), el `onChange` de abajo lo saca igual (`aplicarEdicion`): el resultado es el mismo.
+  useEffect(() => {
+    const el = entrada.current;
+    if (!el) return;
+    const alEscribir = (e: Event) => {
+      const antes = e as InputEvent;
+      if (antes.cancelable && typeof antes.data === "string" && antes.data.includes(".")) {
+        antes.preventDefault();
+        setAvisoDelPunto(true);
+      }
+    };
+    el.addEventListener("beforeinput", alEscribir);
+    return () => el.removeEventListener("beforeinput", alEscribir);
+  }, []);
+
   // Con el texto crudo ya en el DOM: todo seleccionado (ver el comentario de arriba). Antes de pintar, así nada tecleado llega antes.
   useLayoutEffect(() => {
     const el = entrada.current;
