@@ -128,6 +128,11 @@ describe("el papel (@media print de globals.css, bloque «Ficha de cocina»)", (
     expect(BLOQUE).toMatch(/display: none !important;/);
   });
 
+  it("estructura de pantalla (E-A): en papel `<main>` deja de ser el área que se desplaza (alto automático, sin recorte) y el contenedor de página pierde relleno y ancho máximo", () => {
+    expect(BLOQUE).toMatch(/body:has\(\[data-ficha-cocina\]\) main \{[^}]*height: auto !important;[^}]*overflow: visible !important;/);
+    expect(BLOQUE).toMatch(/div:has\(\[data-ficha-cocina\]\) \{[^}]*padding: 0 !important;[^}]*max-width: none !important;/);
+  });
+
   it("corte limpio: el contenedor flex pasa a bloque de alto libre y un paso o bloque no se parte", () => {
     expect(BLOQUE).toMatch(/div:has\(\[data-ficha-cocina\]\) \{\s*display: block !important;\s*height: auto !important;/);
     expect(BLOQUE).toMatch(/\.ficha-paso,[\s\S]*break-inside: avoid;/);
