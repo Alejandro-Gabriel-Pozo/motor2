@@ -294,7 +294,10 @@ describe("crear un grupo sin salir del producto (6.14c)", () => {
       expect(rechazo({ opciones: [{ nombre: "A", importe: 100.123 }] })).toMatch(/como máximo 2 decimales/);
       expect(rechazo({ opciones: [{ nombre: "A", importe: 0 }] })).toMatch(/mayor que cero/);
       expect(rechazo({ opciones: [{ nombre: "A", importe: null }] })).toMatch(/Falta el importe/);
-      expect(rechazo({ opciones: [{ nombre: "A", importe: "mucho" }] })).toMatch(/no es un número válido/);
+      // regla de números 2026-11-09: un texto que no es el formato canónico se rechaza como «notación» (antes «no es un número válido»); también la coma y el punto de miles.
+      expect(rechazo({ opciones: [{ nombre: "A", importe: "mucho" }] })).toMatch(/Formato de número no admitido/);
+      expect(rechazo({ opciones: [{ nombre: "A", importe: "21,5" }] })).toMatch(/Formato de número no admitido/);
+      expect(rechazo({ opciones: [{ nombre: "A", importe: "1.234,50" }] })).toMatch(/Formato de número no admitido/);
       expect(rechazo({ opciones: [{ nombre: "A", importe: 1e13 }] })).toMatch(/demasiado grande/);
       expect(rechazo({ respuesta: "SUMA", opciones: [{ nombre: "A", importe: -1 }] })).toMatch(/no puede ser negativo/);
       expect(guardComandoCrearGrupoEnElProducto(entrada({ respuesta: "SUMA", opciones: [{ nombre: "A", importe: 0 }, { nombre: "B", importe: 0.01 }] })).ok).toBe(true);
