@@ -81,38 +81,6 @@ test.describe("celular (375 px, táctil)", () => {
     await expect(d.fila.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
     expect(await precioGuardado(sucursalId, d.productoId, d.opcionId)).toBe("1.5");
   });
-});
-
-test.describe("escritorio (clic y teclado)", () => {
-  test("hacer clic en un precio ya cargado y tipear uno nuevo lo REEMPLAZA, y se guarda el nuevo", async ({ paginaAutenticada: page, sucursalId }) => {
-    const d = await abrir(page, sucursalId);
-
-    await d.campo.click();
-    await expect.poll(() => seleccion(d.campo), { message: "todo el valor seleccionado tras el clic" }).toEqual({ valor: "0,02", inicio: 0, fin: 4 });
-    await page.keyboard.type("1,5");
-    await expect(d.campo, "lo tipeado reemplaza al valor anterior").toHaveValue("1,5");
-
-    await d.guardar.click();
-    await expect(d.fila.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
-    expect(await precioGuardado(sucursalId, d.productoId, d.opcionId)).toBe("1.5");
-  });
-
-  test("entrar al campo con el teclado (foco sin puntero, como Tab) y tipear también REEMPLAZA (antes quedaba «0.021,5» y se guardaba 21,5)", async ({ paginaAutenticada: page, sucursalId }) => {
-    const d = await abrir(page, sucursalId);
-
-    await d.campo.focus();
-    await expect.poll(() => seleccion(d.campo), { message: "todo el valor seleccionado al tomar el foco" }).toEqual({ valor: "0,02", inicio: 0, fin: 4 });
-    await page.keyboard.type("1,5");
-    await expect(d.campo).toHaveValue("1,5");
-
-    // Todo con el teclado: Tab sale del campo (que se muestra formateado) y llega a «Guardar»; Enter en el botón envía (Enter en el campo
-    // no envía a propósito, test/e2e/form-con-resultado-enter.spec.ts).
-    await page.keyboard.press("Tab");
-    await expect(d.guardar).toBeFocused();
-    await expect(d.campo).toHaveValue("1,50"); // un importe fuera del foco se ve siempre con 2 decimales (regla de números, 2026-11-09)
-    await page.keyboard.press("Enter");
-    await expect(d.fila.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
-    expect(await precioGuardado(sucursalId, d.productoId, d.opcionId)).toBe("1.5");
 
   // Gboard (Android) manda keydown con keyCode 229 / key «Unidentified»: la regla del «.» no puede depender de las teclas, sino del texto que entra. Se simula lo que dispara el teclado: el valor del campo
   // cambia y llega un evento `input` con `inputType` y `data` (composición de una tecla; un reemplazo de golpe, como el autocompletado).
@@ -158,5 +126,37 @@ test.describe("escritorio (clic y teclado)", () => {
     await expect(d.campo).toHaveValue("1234,");
     await expect(aviso).toHaveCount(0);
   });
+});
+
+test.describe("escritorio (clic y teclado)", () => {
+  test("hacer clic en un precio ya cargado y tipear uno nuevo lo REEMPLAZA, y se guarda el nuevo", async ({ paginaAutenticada: page, sucursalId }) => {
+    const d = await abrir(page, sucursalId);
+
+    await d.campo.click();
+    await expect.poll(() => seleccion(d.campo), { message: "todo el valor seleccionado tras el clic" }).toEqual({ valor: "0,02", inicio: 0, fin: 4 });
+    await page.keyboard.type("1,5");
+    await expect(d.campo, "lo tipeado reemplaza al valor anterior").toHaveValue("1,5");
+
+    await d.guardar.click();
+    await expect(d.fila.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
+    expect(await precioGuardado(sucursalId, d.productoId, d.opcionId)).toBe("1.5");
+  });
+
+  test("entrar al campo con el teclado (foco sin puntero, como Tab) y tipear también REEMPLAZA (antes quedaba «0.021,5» y se guardaba 21,5)", async ({ paginaAutenticada: page, sucursalId }) => {
+    const d = await abrir(page, sucursalId);
+
+    await d.campo.focus();
+    await expect.poll(() => seleccion(d.campo), { message: "todo el valor seleccionado al tomar el foco" }).toEqual({ valor: "0,02", inicio: 0, fin: 4 });
+    await page.keyboard.type("1,5");
+    await expect(d.campo).toHaveValue("1,5");
+
+    // Todo con el teclado: Tab sale del campo (que se muestra formateado) y llega a «Guardar»; Enter en el botón envía (Enter en el campo
+    // no envía a propósito, test/e2e/form-con-resultado-enter.spec.ts).
+    await page.keyboard.press("Tab");
+    await expect(d.guardar).toBeFocused();
+    await expect(d.campo).toHaveValue("1,50"); // un importe fuera del foco se ve siempre con 2 decimales (regla de números, 2026-11-09)
+    await page.keyboard.press("Enter");
+    await expect(d.fila.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
+    expect(await precioGuardado(sucursalId, d.productoId, d.opcionId)).toBe("1.5");
   });
 });
