@@ -122,14 +122,14 @@ export function RecetaDeLaSucursal({
                               cantidad: numeroDelCampo(String(formData.get("cantidad") ?? "")) ?? Number.NaN,
                               unidadId: String(formData.get("unidadId") ?? ""),
                               mermaPorcentaje: numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0,
-                            }, versionVista, habilitada);
+                            }, versionVista, habilitada, formData.get("confirmarDesproporcion") === "1");
                             if (resultado.ok) redirect(volver);
                             return resultado;
                           }}
                           className="flex flex-wrap items-end gap-2"
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
-                          <LecturaDeCantidad campoId={`cantidad-propia-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null}>
+                          <LecturaDeCantidad campoId={`cantidad-propia-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null} descripcion={{ insumo: ing.insumoProducto.nombre, producto: producto.nombre }}>
                             <CampoNumero
                               tipo="cantidad"
                               id={`cantidad-propia-${ing.id}`}
@@ -232,7 +232,7 @@ export function RecetaDeLaSucursal({
                 // U7 / D3: la unidad es la de stock de la MP elegida (el servidor la vuelve a comparar con la real al guardar).
                 unidadId: unidadDeStockPorMp[insumoProductoId] ?? "",
                 mermaPorcentaje: numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0,
-              }, versionVista, habilitada);
+              }, versionVista, habilitada, formData.get("confirmarDesproporcion") === "1");
             }}
             className="flex max-w-lg flex-col gap-2"
           >
@@ -243,6 +243,7 @@ export function RecetaDeLaSucursal({
               etiquetaCantidad="Cantidad en la receta propia"
               etiquetaMerma="Merma en la receta propia"
               lecturaPorUnidad={lecturaPorUnidad}
+              nombreDelProducto={producto.nombre}
             />
             <BotonDeServidor type="submit">
               Agregar a la receta propia

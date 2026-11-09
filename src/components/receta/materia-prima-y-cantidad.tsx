@@ -34,6 +34,7 @@ export function MateriaPrimaYCantidad({
   etiquetaCantidad,
   etiquetaMerma,
   lecturaPorUnidad,
+  nombreDelProducto,
 }: {
   /** El `id` del campo de cantidad (también lo usa `LecturaDeCantidad`). */
   idCantidad: string;
@@ -42,6 +43,8 @@ export function MateriaPrimaYCantidad({
   etiquetaMerma: string;
   /** La lectura en vivo de la cantidad por id de unidad (`unidadesDeLectura`, la arma la página). */
   lecturaPorUnidad: Record<string, UnidadDeLectura>;
+  /** El plato de la receta, para la frase llana de la lectura («… por cada unidad vendida de Milanesa»). */
+  nombreDelProducto: string;
 }) {
   const [elegida, setElegida] = useState<ProductoOpcionConUnidad | null>(null);
   const [productoId, setProductoId] = useState("");
@@ -81,7 +84,7 @@ export function MateriaPrimaYCantidad({
   }
 
   return (
-    <LecturaDeCantidad campoId={idCantidad} unidad={elegida ? (lecturaPorUnidad[elegida.unidadStock.id] ?? null) : null}>
+    <LecturaDeCantidad campoId={idCantidad} unidad={elegida ? (lecturaPorUnidad[elegida.unidadStock.id] ?? null) : null} descripcion={elegida ? { insumo: elegida.nombre, producto: nombreDelProducto } : undefined}>
       <div ref={caja} className="flex flex-col gap-2">
         <SelectorProducto
           id={idBuscador}

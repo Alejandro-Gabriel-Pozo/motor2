@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
-import type { ResultadoAccion } from "@/server/actions/tipos";
+import type { ResultadoConConfirmacion } from "@/server/actions/tipos";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { useGrupoDeFormularios } from "./grupo-de-formularios";
@@ -37,19 +37,29 @@ const AVISO_GRUPO_OCUPADO ="Esperá a que termine de guardarse el cambio anterio
  */
 const PIDE_RECARGAR = /Recargá la pantalla/;
 
+/**
+ * Guardia de unidad de las recetas (docs/diseno-guardia-de-unidad-receta-2026-11-09.md): cuando el servidor rechaza con `requiereConfirmacion` (una cantidad desproporcionada para la unidad de stock), junto al mensaje aparece «Sí, es esa cantidad: guardar»,
+ * que reenvía EL MISMO pedido (la copia de lo que se envió, no lo que haya en los campos ahora) con `confirmarDesproporcion=1`; la acción lo lee del `FormData` y el servidor solo acepta un `true` estricto.
+ * Si la persona toca cualquier campo después del aviso, el aviso se va: lo que confirmaría ya no es lo que se avisó.
+ */
+const CAMPO_DE_CONFIRMACION = "confirmarDesproporcion";
+
 export function FormConResultado({
   accion,
   children,
   className,
   ofrecerRecargar = false,
 }: {
-  accion: (formData: FormData) => Promise<ResultadoAccion>;
+  accion: (formData: FormData) => Promise<ResultadoConConfirmacion>;
   children: ReactNode;
   className?: string;
   /** GO-2d: ofrecer «Recargar» junto a un rechazo por otra persona que guardó antes (ver `PIDE_RECARGAR`). */
   ofrecerRecargar?: boolean;
 }) {
-  const [resultado, setResultado] = useState<ResultadoAccion | null>(null);
+  const [resultado, setResultado] = useState<ResultadoConConfirmacion | null>(null);
+  const formulario = useRef<HTMLFormElement>(null);
+  // Lo que se envió la última vez: el botón de confirmar reenvía exactamente eso.
+  const ultimoPedido = useRef<FormData | null>(null);
   const [pendiente, startTransition] = useTransition();
   const enviando = useRef(false);
   const refResultado = useRef<HTMLDivElement>(null);
@@ -69,8 +79,46 @@ export function FormConResultado({
 
   const enEspera = grupo !== null && esperaEnRonda === grupo.ronda;
 
+  function enviar(formData: FormData) {
+    const form = formulario.current;
+    if (!form || enviando.current) return;
+    // Otro formulario del grupo está guardando: este no envía (saldría con lo que la pantalla mostraba ANTES de ese cambio) y avisa.
+    if (grupo?.hayOtroGuardando()) {
+      setResultado(null);
+      setEsperaEnRonda(grupo.ronda);
+      return;
+    }
+    setEsperaEnRonda(null);
+    enviando.current = true;
+    liberarGrupo.current = grupo?.ocupar() ?? null;
+    ultimoPedido.current = formData;
+    setResultado(null);
+    startTransition(async () => {
+      try {
+        const r = await accion(formData);
+        setResultado(r);
+        if (r.ok) form.reset();
+      } finally {
+        enviando.current = false;
+        liberarGrupo.current?.();
+        liberarGrupo.current = null;
+      }
+    });
+  }
+
+  /** Reenvía el pedido que se rechazó por desproporcionado, con la confirmación explícita. */
+  function confirmar() {
+    const pedido = ultimoPedido.current;
+    if (!pedido) return;
+    const confirmado = new FormData();
+    pedido.forEach((valor, clave) => confirmado.append(clave, valor));
+    confirmado.set(CAMPO_DE_CONFIRMACION, "1");
+    enviar(confirmado);
+  }
+
   return (
     <form
+      ref={formulario}
       className={className}
       aria-busy={pendiente || undefined}
       onKeyDown={(e) => {
@@ -79,34 +127,15 @@ export function FormConResultado({
         if (el.tagName === "TEXTAREA" || (el.tagName === "BUTTON" && (el as HTMLButtonElement).type === "submit")) return;
         e.preventDefault();
       }}
+      // Tocar un campo después de un pedido de confirmación lo descarta (ver `CAMPO_DE_CONFIRMACION`).
+      onChange={() => {
+        if (resultado && !resultado.ok && "requiereConfirmacion" in resultado) setResultado(null);
+      }}
       // `onSubmit` y no `action={fn}`: React 19 resetea los campos de un <form action> tras CADA envío, aun con error, y la persona tenía que
       // volver a escribir todo para corregir una letra. Acá el formulario se limpia solo cuando la acción salió bien.
       onSubmit={(e) => {
         e.preventDefault();
-        if (enviando.current) return;
-        // Otro formulario del grupo está guardando: este no envía (saldría con lo que la pantalla mostraba ANTES de ese cambio) y avisa.
-        if (grupo?.hayOtroGuardando()) {
-          setResultado(null);
-          setEsperaEnRonda(grupo.ronda);
-          return;
-        }
-        setEsperaEnRonda(null);
-        enviando.current = true;
-        liberarGrupo.current = grupo?.ocupar() ?? null;
-        const form = e.currentTarget;
-        const formData = new FormData(form);
-        setResultado(null);
-        startTransition(async () => {
-          try {
-            const r = await accion(formData);
-            setResultado(r);
-            if (r.ok) form.reset();
-          } finally {
-            enviando.current = false;
-            liberarGrupo.current?.();
-            liberarGrupo.current = null;
-          }
-        });
+        enviar(new FormData(e.currentTarget));
       }}
     >
       {children}
@@ -121,8 +150,13 @@ export function FormConResultado({
         </Aviso>
       ) : (
         resultado && (
-          <Aviso ref={refResultado} variante={resultado.ok ? "exito" : "error"} forma="en-linea">
+          <Aviso ref={refResultado} variante={resultado.ok ? "exito" : "requiereConfirmacion" in resultado ? "advertencia" : "error"} forma="en-linea">
             {resultado.mensaje}
+            {!resultado.ok && "requiereConfirmacion" in resultado && (
+              <Boton variante="secundario" tamano="tactil" onClick={confirmar} className="mt-2 block" data-confirmar-desproporcion>
+                Sí, es esa cantidad: guardar
+              </Boton>
+            )}
             {ofrecerRecargar && !resultado.ok && PIDE_RECARGAR.test(resultado.mensaje) && (
               <Boton variante="secundario" tamano="tactil" onClick={() => window.location.reload()} className="ml-2">
                 Recargar
