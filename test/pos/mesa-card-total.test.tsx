@@ -27,15 +27,15 @@ describe("P19: el total de la tarjeta de la mesa muestra los centavos como el ti
     expect(plano(html)).not.toContain("1.235");
   });
 
-  it("un monto entero no cambia: 18400 sigue siendo «$ 18.400»", () => {
+  // Regla del dueño 2026-11-09 («1.000,00»): el dinero sale SIEMPRE con 2 decimales. Antes este caso fijaba «$ 18.400» (sin ceros); cambió solo el formato.
+  it("un monto entero también sale con 2 decimales: 18400 es «$ 18.400,00»", () => {
     const html = renderToStaticMarkup(<MesaCard {...base} estado="ocupada" total={18400} />);
-    expect(plano(html)).toContain("$ 18.400");
-    expect(plano(html)).not.toContain("18.400,");
+    expect(plano(html)).toContain("$ 18.400,00");
   });
 
-  it("0,5 muestra «0,5» (el formato del ticket: de 0 a 2 decimales)", () => {
+  it("0,5 muestra «0,50» (el formato del ticket: siempre 2 decimales)", () => {
     const html = renderToStaticMarkup(<MesaCard {...base} estado="en_pedido" total={0.5} />);
-    expect(plano(html)).toContain("0,5");
+    expect(plano(html)).toContain("0,50");
     expect(html).toContain(formatearMonto(0.5));
   });
 

@@ -9,6 +9,8 @@ import type { AccionClave } from "@/core/permisos/acciones";
 import { ESTADO_STOCK_CONSOLIDADO_LABEL as ESTADO_LABEL, ESTADO_STOCK_CONSOLIDADO_COLOR as ESTADO_COLOR } from "@/core/stock/public";
 import { calcularStockConsolidado } from "@/server/consultas/stock/consolidado";
 import { calcularStockEnTransito } from "@/server/consultas/stock/en-transito";
+import { formatearCantidad } from "@/core/formato-de-numero";
+import { CeldaNumerica } from "@/ui/componentes/datos/celda-numerica";
 
 const VER_STOCK: ReadonlySet<AccionClave> = new Set<AccionClave>(["ver_stock"]);
 
@@ -45,9 +47,9 @@ export default async function StockConsolidadoPage() {
             <thead>
               <tr className="border-b border-aviso text-left">
                 <th className="py-1">Producto</th>
-                <th>Por recibir (pendiente de aceptar acá)</th>
-                <th>Enviado (el destino todavía no aceptó)</th>
-                <th>Rechazado por el destino (pendiente de reingresar)</th>
+                <th className="text-right">Por recibir (pendiente de aceptar acá)</th>
+                <th className="text-right">Enviado (el destino todavía no aceptó)</th>
+                <th className="text-right">Rechazado por el destino (pendiente de reingresar)</th>
               </tr>
             </thead>
             <tbody>
@@ -56,9 +58,9 @@ export default async function StockConsolidadoPage() {
                   <td className="py-1">
                     {f.productoCodigo} — {f.productoNombre}
                   </td>
-                  <td>{f.porRecibir ? `${f.porRecibir} ${f.unidadStockNombre}` : "—"}</td>
-                  <td>{f.enviadoPorAceptar ? `${f.enviadoPorAceptar} ${f.unidadStockNombre}` : "—"}</td>
-                  <td>{f.pendienteDeReingreso ? `${f.pendienteDeReingreso} ${f.unidadStockNombre}` : "—"}</td>
+                  <CeldaNumerica>{f.porRecibir ? `${formatearCantidad(f.porRecibir)} ${f.unidadStockNombre}` : "—"}</CeldaNumerica>
+                  <CeldaNumerica>{f.enviadoPorAceptar ? `${formatearCantidad(f.enviadoPorAceptar)} ${f.unidadStockNombre}` : "—"}</CeldaNumerica>
+                  <CeldaNumerica>{f.pendienteDeReingreso ? `${formatearCantidad(f.pendienteDeReingreso)} ${f.unidadStockNombre}` : "—"}</CeldaNumerica>
                 </tr>
               ))}
             </tbody>
@@ -72,9 +74,9 @@ export default async function StockConsolidadoPage() {
             <th>Insumo</th>
             <th>Depósito</th>
             <th>Lote</th>
-            <th>Teórico</th>
-            <th>Último físico</th>
-            <th>Diferencia</th>
+            <th className="text-right">Teórico</th>
+            <th className="text-right">Último físico</th>
+            <th className="text-right">Diferencia</th>
             <th>Entradas/Salidas desde conteo</th>
             <th>Estado</th>
           </tr>
@@ -86,13 +88,13 @@ export default async function StockConsolidadoPage() {
               <td>{f.insumoNombre ?? "—"}</td>
               <td>{f.seccionNombre || "—"}</td>
               <td>{f.loteVencimiento || "—"}</td>
-              <td>{f.teorico} {f.unidadStockNombre}</td>
-              <td>{f.ultimoFisico ?? "—"}</td>
-              <td>{f.diferencia !== null ? (f.diferencia > 0 ? `+${f.diferencia}` : f.diferencia) : "—"}</td>
+              <CeldaNumerica>{formatearCantidad(f.teorico)} {f.unidadStockNombre}</CeldaNumerica>
+              <CeldaNumerica>{f.ultimoFisico === null || f.ultimoFisico === undefined ? "—" : formatearCantidad(f.ultimoFisico)}</CeldaNumerica>
+              <CeldaNumerica>{f.diferencia !== null ? (f.diferencia > 0 ? `+${formatearCantidad(f.diferencia)}` : formatearCantidad(f.diferencia)) : "—"}</CeldaNumerica>
               <td>
-                {f.entradasDesdeConteo > 0 && <span className="text-ok-tinta">+{f.entradasDesdeConteo}</span>}
+                {f.entradasDesdeConteo > 0 && <span className="text-ok-tinta">+{formatearCantidad(f.entradasDesdeConteo)}</span>}
                 {f.entradasDesdeConteo > 0 && f.salidasDesdeConteo > 0 && " / "}
-                {f.salidasDesdeConteo > 0 && <span className="text-error">−{f.salidasDesdeConteo}</span>}
+                {f.salidasDesdeConteo > 0 && <span className="text-error">−{formatearCantidad(f.salidasDesdeConteo)}</span>}
                 {!f.entradasDesdeConteo && !f.salidasDesdeConteo && "—"}
               </td>
               <td className={ESTADO_COLOR[f.estado]}>{ESTADO_LABEL[f.estado]}</td>

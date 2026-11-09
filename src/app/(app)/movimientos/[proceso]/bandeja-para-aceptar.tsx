@@ -8,6 +8,7 @@ import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { Selector } from "@/ui/primitivas/selector";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
+import { formatearCantidad } from "@/core/formato-de-numero";
 
 /**
  * E3a (ADR-041): «Para aceptar», las partes de facturas de proveedor que otra sucursal compró para ESTA sucursal. Muestra solo productos y cantidades (decisión del dueño, 2026-10-28: nada de importes ni de
@@ -53,7 +54,7 @@ function TarjetaDePropuesta({ propuesta, secciones }: { propuesta: PropuestaVist
       <ul className="list-disc pl-5 text-sm">
         {propuesta.renglones.map((r, i) => (
           <li key={i}>
-            {r.productoNombre}: {r.cantidadStock.toLocaleString("es-AR")} {r.unidadNombre}
+            {r.productoNombre}: {formatearCantidad(r.cantidadStock)} {r.unidadNombre}
           </li>
         ))}
       </ul>

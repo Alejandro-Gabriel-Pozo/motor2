@@ -11,6 +11,7 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
 import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { Selector } from "@/ui/primitivas/selector";
+import { formatearCantidad } from "@/core/formato-de-numero";
 
 const ESTADO_COLOR: Record<string, string> = {
   RESUELTO: "text-ok-tinta",
@@ -103,9 +104,9 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
                   <th className="py-2 pr-2">Fecha</th>
                   <th className="px-2">Producto</th>
                   <th className="px-2">Depósito</th>
-                  <th className="px-2">Sistema</th>
-                  <th className="px-2">Contado</th>
-                  <th className="px-2">Diferencia</th>
+                  <th className="px-2 text-right">Sistema</th>
+                  <th className="px-2 text-right">Contado</th>
+                  <th className="px-2 text-right">Diferencia</th>
                   <th className="px-2">Estado</th>
                   <th><span className="sr-only">Acciones</span></th>
                 </tr>
@@ -116,9 +117,9 @@ export default async function ConteoFisicoPage({ searchParams }: { searchParams:
                     <td className="py-2 pr-2">{diaDeCalendario(c.fecha, ctx.empresaZonaHoraria)}</td>
                     <td className="px-2">{c.producto.nombre}</td>
                     <td className="px-2">{c.seccion.nombre}</td>
-                    <td className="px-2">{Number(c.saldoSistema)}</td>
-                    <td className="px-2">{Number(c.conteoReal)}</td>
-                    <td className="px-2">{Number(c.diferencia) > 0 ? "+" : ""}{Number(c.diferencia)}</td>
+                    <td className="px-2 text-right tabular-nums whitespace-nowrap">{formatearCantidad(Number(c.saldoSistema))}</td>
+                    <td className="px-2 text-right tabular-nums whitespace-nowrap">{formatearCantidad(Number(c.conteoReal))}</td>
+                    <td className="px-2 text-right tabular-nums whitespace-nowrap">{Number(c.diferencia) > 0 ? "+" : ""}{formatearCantidad(Number(c.diferencia))}</td>
                     <td className={`px-2 ${ESTADO_COLOR[c.estado]}`}>{c.estado}</td>
                     <td className="px-2 py-2">
                       {c.estado === "PENDIENTE" && puedeResolverPendiente && <AccionesConteoPendiente conteoId={c.id} puedeAjustar={puedeAjustar} />}

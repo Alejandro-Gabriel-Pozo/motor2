@@ -7,6 +7,7 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { leerPrecioLocal } from "@/server/persistencia/catalogo/precio-local";
 import { guardarPrecioLocalEnTx } from "./guardar-precio-local-en-tx";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Caso de uso «fijar el precio local de un producto en la sucursal activa» (Hito 4 de la pureza, bloque 4.2, paso H4C-4 — `docs/plan-hito-4-pureza.md` §3). La
@@ -55,7 +56,7 @@ export async function setPrecioLocalProductoCasoDeUso(
 
       const vioLoMismo = esperado === null ? fila === null : fila !== null && mismosCentavos(fila.precio, esperado.precio) && fila.habilitado === esperado.habilitado;
       if (!vioLoMismo) {
-        const ahora = fila === null ? "ahora no tiene precio local" : `ahora es $${fila.precio.toLocaleString("es-AR")}${fila.habilitado ? "" : ", deshabilitado"}`;
+        const ahora = fila === null ? "ahora no tiene precio local" : `ahora es ${formatearMonto(fila.precio)}${fila.habilitado ? "" : ", deshabilitado"}`;
         return fracaso("PRECIO_DESACTUALIZADO", `El precio local de "${producto.nombre}" cambió mientras lo editabas (${ahora}). Recargá la pantalla y volvé a hacer el cambio.`);
       }
 

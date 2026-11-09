@@ -15,6 +15,8 @@ import { IconoDeAccion } from "@/components/iconos";
 import { claseDeBoton } from "@/ui/primitivas/boton";
 import { Enlace } from "@/ui/primitivas/enlace";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { formatearCantidad } from "@/core/formato-de-numero";
+import { CeldaNumerica } from "@/ui/componentes/datos/celda-numerica";
 
 export default async function StockMinimoPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"editar">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -47,7 +49,7 @@ export default async function StockMinimoPage({ searchParams }: { searchParams: 
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Insumo</th>
                 <th>Depósito</th>
-                <th>Mínimo</th>
+                <th className="text-right">Mínimo</th>
                 <th><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
@@ -56,7 +58,7 @@ export default async function StockMinimoPage({ searchParams }: { searchParams: 
                 <tr key={f.id} className="border-b">
                   <td className="py-2">{f.producto.nombre}</td>
                   <td>{donde(f)}</td>
-                  <td>{Number(f.minimo).toLocaleString("es-AR")}</td>
+                  <CeldaNumerica>{formatearCantidad(Number(f.minimo))}</CeldaNumerica>
                   <td>
                     {/* El flex va en un div y no en el <td>: un <td> con display:flex deja de ser celda de tabla y se desalinea de su columna. */}
                     {puedeEditar && (

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { formatearCantidad } from "@/core/formato-de-numero";
 import type { AvisoStockNegativo } from "@/core/movimientos/public-servidor";
 
 /**
@@ -18,10 +19,8 @@ import type { AvisoStockNegativo } from "@/core/movimientos/public-servidor";
 // (`cuentaAbiertaDeSucursal`) vivía acá; desde el Hito 4 (bloque 4.1, paso 13), con las 10 acciones del salón migradas, está en
 // server/persistencia/pos/cargar-cuenta-abierta.ts.
 
-/** Cantidad legible («1», «0,5»), para mensajes y descripciones de auditoría. */
-export function formatearCantidad(n: number): string {
-  return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 4 }).format(n);
-}
+/** Cantidad legible («1», «0,5»), para mensajes y descripciones de auditoría: el formateo de salida único (`core/formato-de-numero.ts`). */
+export { formatearCantidad };
 
 /** «"Muzzarella" en «Cocina» (tenía 0,5, se consumió 1,5, quedó en -1)»: el detalle de un insumo que quedó en negativo al cerrar una cuenta. */
 export function describirAviso(aviso: AvisoStockNegativo): string {

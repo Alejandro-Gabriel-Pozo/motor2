@@ -18,6 +18,7 @@ import { Boton } from "@/ui/primitivas/boton";
 import { Campo } from "@/ui/primitivas/campo";
 import { Selector } from "@/ui/primitivas/selector";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
+import { formatearCantidad } from "@/core/formato-de-numero";
 
 interface Opcion {
   id: string;
@@ -346,7 +347,7 @@ export function PanelMovimientoForm({
                       <option value="">Unidad de compra por defecto</option>
                       {presentacionesPorFila[idx].map((p) => (
                         <option key={p.id} value={p.unidadCompraId}>
-                          {p.unidadCompraNombre} (×{p.factorConversion})
+                          {p.unidadCompraNombre} (×{formatearCantidad(p.factorConversion)})
                         </option>
                       ))}
                     </Selector>

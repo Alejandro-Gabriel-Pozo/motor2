@@ -274,7 +274,7 @@ export function PanelCompraPorPasos({
           referenciaProveedor: p.referenciaProveedor ?? "",
           ultimaCompraTexto:
             p.ultimoPrecioPorUnidadStock > 0
-              ? `${p.origenDelPrecio === "EMPRESA" ? "última vez (otra sucursal)" : "última vez"}: $${p.ultimoPrecioPorUnidadStock.toLocaleString("es-AR")} / ${p.unidadStockNombre}`
+              ? `${p.origenDelPrecio === "EMPRESA" ? "última vez (otra sucursal)" : "última vez"}: ${formatearMonto(p.ultimoPrecioPorUnidadStock)} / ${p.unidadStockNombre}`
               : "",
         }))
       );

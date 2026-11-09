@@ -4,27 +4,25 @@ import { formatearMonto } from "../../src/core/pos/public";
 
 /**
  * Contratos compartidos, dinero: el formato de un monto del POS (el aviso «se registró la venta por $ 1.234,5») sale de UNA sola fuente, `formatearMonto` (src/core/pos/formato.ts).
- * `server/actions/pos/cuenta-comun.ts` tenía un `MONEDA` con las MISMAS opciones de `Intl.NumberFormat` (es-AR, ARS, 0 a 2 decimales): se sacó. Este test fija (1) que la salida de la
- * fuente única es la que daba el duplicado, importe por importe, y (2) que el duplicado no vuelve.
+ * `server/actions/pos/cuenta-comun.ts` tenía un `MONEDA` duplicado: se sacó. Este test fija (1) la salida de la fuente única y (2) que el duplicado no vuelve.
+ * Desde 2026-11-09 (regla del dueño «1.000,00») el dinero sale SIEMPRE con 2 decimales: la tabla cambió de «$ 1.000» a «$ 1.000,00» (solo formato; antes eran 0 a 2
+ * decimales) y se sacó la comparación con el duplicado viejo, que fijaba justo el formato anterior.
  */
 const NBSP = "\u00a0";
-/** Las opciones exactas del `MONEDA` que había en cuenta-comun.ts. */
-const COMO_ERA_EN_CUENTA_COMUN = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 const CASOS: [number, string][] = [
-  [0, `$${NBSP}0`],
-  [1000, `$${NBSP}1.000`],
-  [1234.5, `$${NBSP}1.234,5`],
-  [36000, `$${NBSP}36.000`],
+  [0, `$${NBSP}0,00`],
+  [1000, `$${NBSP}1.000,00`],
+  [1234.5, `$${NBSP}1.234,50`],
+  [36000, `$${NBSP}36.000,00`],
   [0.01, `$${NBSP}0,01`],
   [1234567.891, `$${NBSP}1.234.567,89`],
   [-1500.75, `-$${NBSP}1.500,75`],
 ];
 
 describe("formato de monto del POS: una sola fuente", () => {
-  it.each(CASOS)("formatearMonto(%s) = el formato argentino de siempre (punto de miles, coma decimal, $ delante) y coincide con el duplicado que había", (importe, esperado) => {
+  it.each(CASOS)("formatearMonto(%s) = punto de miles, coma decimal, 2 decimales y $ delante", (importe, esperado) => {
     expect(formatearMonto(importe)).toBe(esperado);
-    expect(formatearMonto(importe)).toBe(COMO_ERA_EN_CUENTA_COMUN.format(importe));
   });
 
   it("cuenta-comun.ts ya no define su propio formateador de moneda y el cierre de cuenta usa formatearMonto", () => {

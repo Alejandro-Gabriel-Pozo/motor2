@@ -10,6 +10,7 @@ import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { Campo } from "@/ui/primitivas/campo";
+import { formatearPorcentaje } from "@/core/formato-de-numero";
 
 /**
  * Catálogo de Clientes con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md): un único % fijo por cliente (D1, no
@@ -55,7 +56,7 @@ export default async function ClientesPage() {
             {clientes.map((c) => (
               <tr key={c.id} className="border-b align-top">
                 <td className="py-2">{c.nombre}</td>
-                <td className="text-right tabular-nums">{Number(c.descuentoPorcentaje).toLocaleString("es-AR")}%</td>
+                <td className="text-right tabular-nums">{formatearPorcentaje(Number(c.descuentoPorcentaje))}</td>
                 <td>{c.activo ? "Sí" : "No"}</td>
                 <td className="py-2">
                   {puedeEditar && (
