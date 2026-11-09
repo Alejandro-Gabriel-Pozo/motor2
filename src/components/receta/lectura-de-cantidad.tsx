@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { leerCantidadTecleada, type UnidadDeLectura } from "@/core/catalogo/public";
+import { leerCantidadTecleada, type DescripcionDeLectura, type UnidadDeLectura } from "@/core/catalogo/public";
 import { leerNumeroCanonico, textoParaEscribir } from "@/core/datos/numero-tecleado";
 
 /** Lo que ya estaba guardado (canónico, con punto decimal) como se escribe: con la coma, para leerlo con la misma regla que lo tecleado. Lo que no es canónico queda como está. */
@@ -26,12 +26,15 @@ export function LecturaDeCantidad({
   campoId,
   valorInicial = "",
   unidad = null,
+  descripcion,
   children,
 }: {
   campoId: string;
   valorInicial?: string;
   /** La unidad en la que se lee la cantidad: la de stock de la materia prima (la del ingrediente al editar; la de la materia prima elegida en el alta, `null` si todavía no hay). */
   unidad?: UnidadDeLectura | null;
+  /** De qué ingrediente y de qué plato es la cantidad: con eso se agrega la frase llana («Lleva 0,22 kg de Bife de nalga por cada unidad vendida de Milanesa»). Sin esto, solo la lectura de siempre. */
+  descripcion?: DescripcionDeLectura;
   children: ReactNode;
 }) {
   // null = la persona todavía no tipeó (se lee `valorInicial`, el valor guardado: dígitos y punto decimal).
@@ -58,7 +61,7 @@ export function LecturaDeCantidad({
   }, [campoId]);
 
   // Lo guardado llega como canónico («1.205» = 1,205); lo tecleado, tal cual se escribió. Se lee cada uno con su regla.
-  const lectura = leerCantidadTecleada(tecleado ?? textoParaEscribirDeLoGuardado(valorInicial), unidad);
+  const lectura = leerCantidadTecleada(tecleado ?? textoParaEscribirDeLoGuardado(valorInicial), unidad, descripcion);
 
   return (
     <div
@@ -75,6 +78,11 @@ export function LecturaDeCantidad({
           <p className="text-tinta-suave">
             <span className="sr-only">El sistema lee: </span>
             <span className="font-medium">{lectura.lectura}</span>
+          </p>
+        )}
+        {lectura.tipo === "valor" && lectura.frase && (
+          <p data-frase-de-cantidad className="text-tinta-suave">
+            {lectura.frase}
           </p>
         )}
       </div>
