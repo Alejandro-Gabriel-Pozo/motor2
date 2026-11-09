@@ -9,7 +9,9 @@ describe("validarFoodCostObjetivo", () => {
 
   it("vacío → null (sin objetivo propio)", () => {
     for (const v of [undefined, null, ""]) expect(validarFoodCostObjetivo(v)).toEqual({ ok: true, valor: null });
-    expect(validarFoodCostObjetivo("   ")).toMatchObject({ ok: false, codigo: "notacion" });
+    // regla de números 2026-11-09: vacío o solo espacios = vacío; el texto con contenido que no es canónico es «notación»
+    expect(validarFoodCostObjetivo("   ")).toEqual({ ok: true, valor: null });
+    expect(validarFoodCostObjetivo(" 33,3 ")).toMatchObject({ ok: false, codigo: "notacion" });
   });
 
   it("acepta un % entre 0 y 100, hasta 2 decimales, y texto canónico", () => {

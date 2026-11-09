@@ -12,8 +12,9 @@ describe("validarImporte", () => {
 
   it("vacío no obligatorio → null (sin precio)", () => {
     for (const v of [undefined, null, ""]) expect(validarImporte(v, precio)).toEqual({ ok: true, valor: null });
-    // el servidor es estricto: un texto de solo espacios no es vacío, es formato no admitido
-    expect(validarImporte("   ", precio)).toMatchObject({ ok: false, codigo: "notacion" });
+    // regla de números 2026-11-09: vacío o solo espacios = vacío (no hay nada que leer ni que adivinar); el texto con contenido que no es canónico sí es «notación»
+    expect(validarImporte("   ", precio)).toEqual({ ok: true, valor: null });
+    expect(validarImporte(" 1,5 ", precio)).toMatchObject({ ok: false, codigo: "notacion" });
   });
 
   it("vacío obligatorio → 'Falta el precio.'", () => {
