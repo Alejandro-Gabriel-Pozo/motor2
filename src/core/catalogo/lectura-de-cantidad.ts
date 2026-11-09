@@ -14,9 +14,9 @@ import { CONTEXTO_CANTIDAD_SIN_UNIDAD, interpretarNumeroTecleado } from "@/core/
  * solo se usa si las DOS unidades existen en el catálogo de la empresa con esa magnitud. Una unidad que no está acá («unidad», «caja», una
  * creada a mano) se muestra tal cual, sin convertir.
  */
-const PARES_DE_UNIDADES: ReadonlyArray<{ mayor: string; menor: string; magnitud: string; factor: number }> = [
-  { mayor: "kg", menor: "g", magnitud: "PESO", factor: 1000 },
-  { mayor: "l", menor: "ml", magnitud: "VOLUMEN", factor: 1000 },
+export const PARES_DE_UNIDADES: ReadonlyArray<{ mayor: string; menor: string; menorEnPalabras: string; magnitud: string; factor: number }> = [
+  { mayor: "kg", menor: "g", menorEnPalabras: "gramos", magnitud: "PESO", factor: 1000 },
+  { mayor: "l", menor: "ml", menorEnPalabras: "mililitros", magnitud: "VOLUMEN", factor: 1000 },
 ];
 
 /** Cómo se muestra una cantidad en una unidad: su nombre del catálogo y, si existe, la unidad menor a la que se pasa un valor entre 0 y 1. */
@@ -28,7 +28,13 @@ export interface UnidadDeLectura {
 type Lectura =
   | { tipo: "vacio" }
   | { tipo: "invalido"; mensaje: string }
-  | { tipo: "valor"; valor: number; lectura: string };
+  | { tipo: "valor"; valor: number; lectura: string; frase: string | null };
+
+/** De qué ingrediente y de qué plato se está leyendo la cantidad: con eso la lectura suma una frase en lenguaje llano (guardia de unidad, docs/diseno-guardia-de-unidad-receta-2026-11-09.md, nivel 9). */
+export interface DescripcionDeLectura {
+  insumo: string;
+  producto: string;
+}
 
 const clave = (nombre: string) => nombre.trim().toLowerCase();
 
@@ -45,7 +51,7 @@ export function unidadesDeLectura(catalogo: ReadonlyArray<{ id: string; nombre: 
 }
 
 /** Número en es-AR SIN separador de miles (un «3.000» en la lectura volvería a ser ambiguo) y sin el ruido del punto flotante. */
-function formatear(n: number): string {
+export function formatear(n: number): string {
   return n.toLocaleString("es-AR", { maximumFractionDigits: 10, useGrouping: false });
 }
 
@@ -56,9 +62,11 @@ function conUnidad(n: number, unidad: UnidadDeLectura | null): string {
 }
 
 /** Qué entendió el sistema de lo tecleado en el campo de cantidad, en la unidad de stock de la materia prima (`null` si todavía no se sabe cuál). */
-export function leerCantidadTecleada(texto: string, unidad: UnidadDeLectura | null): Lectura {
+export function leerCantidadTecleada(texto: string, unidad: UnidadDeLectura | null, descripcion?: DescripcionDeLectura): Lectura {
   const r = interpretarNumeroTecleado(texto, CONTEXTO_CANTIDAD_SIN_UNIDAD);
   if (!r.ok) return { tipo: "invalido", mensaje: r.mensaje };
   if (r.valor === null) return { tipo: "vacio" };
-  return { tipo: "valor", valor: r.valor, lectura: `= ${conUnidad(r.valor, unidad)}` };
+  // La frase en lenguaje llano va en la unidad de STOCK tal cual (la que la receta guarda), no convertida: «0,22 kg de Bife de nalga por cada unidad vendida de Milanesa».
+  const frase = unidad && descripcion ? `Lleva ${formatear(r.valor)} ${unidad.nombre} de ${descripcion.insumo} por cada unidad vendida de ${descripcion.producto}.` : null;
+  return { tipo: "valor", valor: r.valor, lectura: `= ${conUnidad(r.valor, unidad)}`, frase };
 }

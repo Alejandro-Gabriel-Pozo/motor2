@@ -11,6 +11,7 @@ import { cotizacionVencida } from "@/core/reportes/public";
 import { obtenerUltimaCotizacionSinRomper } from "@/server/consultas/reportes/cotizacion-dolar";
 import { reportarErrorUnaVez } from "@/lib/reportar-error";
 import { Aviso } from "@/ui/primitivas/aviso";
+import { ContenedorDePagina } from "@/ui/componentes/estructura/contenedor-de-pagina";
 import { BotonDeServidor } from "./boton-de-servidor";
 import { CotizacionEncabezado } from "./en-dolares";
 import { AccionesVisiblesProvider } from "./enlace-interno";
@@ -28,6 +29,11 @@ import { SelectorSucursal } from "./selector-sucursal";
  * visibles, más un encabezado angosto con quién sos y "Salir". El sidebar
  * es colapsable (SidebarColapsable) — antes no tenía ningún mecanismo de
  * achicarse, ni en desktop ni en mobile.
+ *
+ * ESTRUCTURA DE PANTALLA (docs/diseno-estructura-de-pantalla-1366x768-2026-11-09.md, E-A; números en `src/ui/componentes/estructura/reglas.ts`): desde `md` (768 px) el shell ocupa la
+ * ventana (`h-dvh`, sin fijar píxeles) y solo se desplaza `<main>`: el encabezado y el menú quedan fijos y las acciones de cada pantalla no quedan a páginas del título. Debajo de
+ * `md` se desplaza el documento, como siempre. `<main>` es `relative`: lo que va en `position: absolute` (el texto solo-lector `sr-only`) queda contenido en el área que se desplaza y no agranda el documento. Al imprimir vuelve a la altura automática (si no, solo se imprimiría lo visible). El contenido va en `ContenedorDePagina` (ancho máximo
+ * de 1280 px, relleno 16/24).
  */
 export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; children: React.ReactNode }) {
   // El menú solo muestra las pantallas que el rol puede ver (la página igual se protege por su cuenta: esto evita enlaces a «no tenés
@@ -51,7 +57,7 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
   }
 
   return (
-    <div className="flex flex-1">
+    <div className="flex flex-1 md:h-dvh md:flex-none md:overflow-hidden print:h-auto print:overflow-visible">
       <Suspense fallback={null}>
         <RecordarPantallaDeGestion sucursalId={ctx.sucursalId} />
       </Suspense>
@@ -59,8 +65,8 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
       {/* min-w-0: un ítem flex tiene `min-width: auto` (el ancho mínimo de su contenido) y, sin esto, una tabla ancha, aunque esté dentro de su propio
           `overflow-x-auto`, ensancha esta columna y con ella la PÁGINA entera (la matriz de permisos con varios roles llegaba a 1700 px). Con min-w-0 la
           columna se queda del ancho que sobra junto al menú y el scroll es el de la tabla. */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-borde bg-superficie px-6 py-3 text-sm text-tinta-suave">
+      <div className="flex min-w-0 flex-1 flex-col md:min-h-0">
+        <header className="flex flex-shrink-0 flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-borde bg-superficie px-6 py-3 text-sm text-tinta-suave">
           <MenuCelular grupos={grupos} hrefsDelMenu={hrefsDelMenu()} rutasDeUnaEntrada={rutasDeUnaEntradaVisibles(puedeVer)} />
           <CotizacionEncabezado cotizacion={cotizacion} />
           <span className="flex items-center gap-1">
@@ -89,15 +95,17 @@ export async function AppShell({ ctx, children }: { ctx: ContextoUsuario; childr
           </form>
         </header>
         {registro !== "CON_MODULOS" && (
-          <div className="px-6 pt-6">
+          <div className="flex-shrink-0 px-4 pt-4 md:px-6 md:pt-6">
             <Aviso variante="advertencia" forma="caja">
               Esta empresa todavía no tiene ningún módulo activo, por eso solo está disponible Administración. Pedile a quien administra la plataforma que active
               los módulos contratados.
             </Aviso>
           </div>
         )}
-        <main data-panel className="flex-1 p-6">
-          <AccionesVisiblesProvider acciones={[...puedeVer]}>{children}</AccionesVisiblesProvider>
+        <main data-panel className="relative flex-1 md:min-h-0 md:overflow-y-auto print:overflow-visible">
+          <ContenedorDePagina>
+            <AccionesVisiblesProvider acciones={[...puedeVer]}>{children}</AccionesVisiblesProvider>
+          </ContenedorDePagina>
         </main>
       </div>
     </div>

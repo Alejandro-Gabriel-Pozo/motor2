@@ -13,7 +13,7 @@ export function SelectorEmpresa({ empresas, actual }: { empresas: EmpresaDelUsua
       value={actual}
       disabled={pending}
       onChange={(e) => startTransition(() => cambiarEmpresaActiva(e.target.value))}
-      className="rounded border px-2 py-1 text-sm disabled:opacity-50"
+      className="min-h-11 rounded border px-2 py-1 text-sm disabled:opacity-50 md:min-h-0"
     >
       {empresas.map((e) => (
         <option key={e.empresaId} value={e.empresaId}>

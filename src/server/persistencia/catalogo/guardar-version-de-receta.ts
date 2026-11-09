@@ -47,8 +47,13 @@ export async function cargarUnidadesDeStockDeIngredientes(db: Prisma.Transaction
   const productos = await db.producto.findMany({ where: { id: { in: productoIds } }, select: { id: true, nombre: true, unidadStockId: true } });
   // Una `unidadId` que no es texto (el cliente la manda tal cual) no se consulta: no es la de stock, así que la comparación la rechaza igual.
   const unidadIds = [...new Set([...items.map((i) => i.unidadId).filter((u) => typeof u === "string"), ...productos.map((p) => p.unidadStockId)])];
-  const unidades = await db.unidad.findMany({ where: { id: { in: unidadIds } }, select: { id: true, nombre: true } });
-  return { productos: new Map(productos.map((p) => [p.id, p])), nombresDeUnidad: new Map(unidades.map((u) => [u.id, u.nombre])) };
+  const unidades = await db.unidad.findMany({ where: { id: { in: unidadIds } }, select: { id: true, nombre: true, magnitud: true } });
+  return {
+    productos: new Map(productos.map((p) => [p.id, p])),
+    nombresDeUnidad: new Map(unidades.map((u) => [u.id, u.nombre])),
+    // La guardia de unidad (docs/diseno-guardia-de-unidad-receta-2026-11-09.md) necesita también la magnitud de la unidad de stock.
+    unidades: new Map(unidades.map((u) => [u.id, { nombre: u.nombre, magnitud: u.magnitud as string }])),
+  };
 }
 
 const INCLUDE_ULTIMA_VERSION = {

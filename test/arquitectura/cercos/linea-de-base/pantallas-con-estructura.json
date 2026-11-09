@@ -1,0 +1,281 @@
+{
+  "regla": "pantallas-con-estructura",
+  "meta": "bajar a 0 al terminar la etapa E-H: toda pantalla de (app) y (pos) usa las piezas de src/ui/componentes/estructura",
+  "total": 90,
+  "entradas": 90,
+  "porTipo": {
+    "sin-estructura": 90
+  },
+  "cuentas": {
+    "src/app/(app)/administracion/auditoria/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/administracion/capacidades-sucursal/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/administracion/empresa/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/administracion/gerencia/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/administracion/permisos/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/administracion/roles/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/administracion/sucursales/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/administracion/usuarios/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/carta/agrupados/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/carta/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/carta/parametrizacion/apariencia/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/carta/parametrizacion/generos/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/carta/parametrizacion/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/carta/parametrizacion/secciones/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/carta/portal/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/carta/tema/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/categorias/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/clientes/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/insumos-grupos/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/margen-objetivo/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/opciones/limpiar/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/opciones/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/productos/[id]/datos/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/productos/[id]/en-la-carta/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/productos/[id]/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/productos/nuevo/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/productos/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/proveedores/[id]/editar/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/proveedores/[id]/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/proveedores/comparativa/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/proveedores/nuevo/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/proveedores/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/ficha/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/historial/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/recetas/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/catalogo/unidades/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/inicio/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/movimientos/[proceso]/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/movimientos/conteo-fisico/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/movimientos/destinos-consumo/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/movimientos/menu-del-dia/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/movimientos/motivos-merma/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/movimientos/opciones-agotadas/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/movimientos/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/movimientos/precio-local/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/movimientos/secciones/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/movimientos/venta/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/categorias/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/compras/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/consignacion/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/consolidado/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/conteos/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/costos/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/descuentos-clientes/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/descuentos-productos/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/devoluciones/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/diferencias/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/historial/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/huecos-catalogo/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/insumos-sin-receta/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/margen-promociones/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/perdidas/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/periodo/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/por-sucursal/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/rotacion-mesas/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/salud/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/sin-receta/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/tickets/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/trazabilidad/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/valuacion/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/vencimientos/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/reportes/ventas-por-seccion/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/stock/alertas/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/stock/configuracion/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/stock/consolidado/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/stock/conteo-frecuencia/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/stock/minimo/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/stock/por-familia/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/stock/reclasificar/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/stock/seccion-habitual/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/traspasos/enviar/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/traspasos/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(app)/traspasos/solicitar/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(pos)/mesas/[mesaId]/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(pos)/mesas/mostrador/page.tsx": {
+      "sin-estructura": 1
+    },
+    "src/app/(pos)/mesas/page.tsx": {
+      "sin-estructura": 1
+    }
+  }
+}

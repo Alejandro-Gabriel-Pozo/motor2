@@ -3,7 +3,8 @@ import { obtenerContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoDeEmpresa, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
-import { fijarAdmisionDeGrupoEnProducto, vincularGrupoEnProducto } from "@/server/actions/catalogo/opciones-de-venta";
+import { denegacionDeModuloDeAccion } from "@/server/acceso/modulos-de-empresa";
+import { agregarVersionDeOpcion, fijarAdmisionDeGrupoEnProducto, vincularGrupoEnProducto } from "@/server/actions/catalogo/opciones-de-venta";
 import { basesDeUnEjeEnLaCarta, nombreEnCartaDeUnProducto } from "@/server/consultas/carta/admin";
 import { nombreDeCarta } from "@/core/carta/public";
 import { cargarVistaPreviaDeLaCarta } from "@/server/consultas/carta/vista-previa-de-un-producto";
@@ -14,6 +15,8 @@ import { formatearMonto } from "@/core/pos/public";
 import { AvisoConDeshacer, BotonConDeshacer } from "@/components/aviso-con-deshacer";
 import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
 import { AgregarGrupoExistente } from "@/components/catalogo/agregar-grupo-existente";
+import { ConsumosDelGrupo } from "@/components/catalogo/consumos-del-grupo";
+import { consumosDelFormulario } from "@/components/catalogo/version-del-formulario";
 import { NuevaOpcionEnElGrupo } from "@/components/catalogo/nueva-opcion-en-el-grupo";
 import { NuevoGrupoEnElProducto } from "@/components/catalogo/nuevo-grupo-en-el-producto";
 import { ResumenDeOpciones } from "@/components/catalogo/resumen-de-opciones";
@@ -23,6 +26,8 @@ import { PrecioDeLaSucursal } from "@/components/catalogo/espacio-del-producto/p
 import { VistaPreviaDeLaCarta } from "@/components/catalogo/espacio-del-producto/vista-previa-de-la-carta";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { Aviso } from "@/ui/primitivas/aviso";
+import { EncabezadoDePagina } from "@/ui/componentes/estructura/encabezado-de-pagina";
+import { RejillaDeSecciones } from "@/ui/componentes/estructura/rejilla-de-secciones";
 import { Enlace } from "@/ui/primitivas/enlace";
 import { AdmisionDeGrupo } from "./admision-de-grupo";
 import { admisionDelFormulario } from "./admision-del-formulario";
@@ -76,11 +81,14 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
   }
   // El marco (la tira de pasos con su enlace y su estado). Las opciones ya están leídas: no se vuelven a leer. Y si el usuario además puede CREAR grupos (Editar de `opciones_definir`), se dibuja «+ Nuevo grupo».
   // También se pregunta si quien mira puede Editar el precio de la sucursal (`precio_local`, piso administrador, en la sucursal activa): sin esa clave no se dibuja el campo del precio (la acción la vuelve a exigir).
-  const [marco, puedeCrearGrupos, puedeEditarElPrecio] = await Promise.all([
+  const [marco, nivelOpcionesDefinir, puedeEditarElPrecio, sinRecetas] = await Promise.all([
     cargarMarcoDelEspacio(ctx, productoDelEspacio, { opciones: datos }),
-    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db).then((nivel) => nivel.editar),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "opciones_definir", ctx.db),
     obtenerMiNivelPermiso(ctx.usuarioId, ctx.sucursalId, "precio_local", ctx.db).then((nivel) => nivel.editar),
+    // Lo que consume una opción usa el módulo Recetas (D-3): sin él, el servidor rechaza consumos y la pantalla no ofrece el editor.
+    denegacionDeModuloDeAccion("guardar_receta", ctx.empresaId, ctx.db),
   ]);
+  const puedeCrearGrupos = nivelOpcionesDefinir.editar;
   const puedeEditarDatos = marco.pasos.some((p) => p.paso === "datos" && p.href !== null);
   // La vista previa de la carta (6.18): el «nombre arriba» es del contenido de carta del producto, así que solo se lee si quien mira puede abrir el paso «En la carta»; si no, se dibuja con el valor por defecto.
   const puedeVerLaCarta = marco.pasos.some((p) => p.paso === "en-la-carta" && p.href !== null);
@@ -88,6 +96,19 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
   // El «Nombre en la carta» es del mismo contenido de carta: solo se lee con el mismo permiso; si no, la vista previa usa el nombre del producto.
   const nombreEnCarta = puedeVerLaCarta ? await nombreEnCartaDeUnProducto(ctx.sucursalId, productoId, ctx.db) : null;
   const vistaPreviaDeLaCarta = await cargarVistaPreviaDeLaCarta(ctx.db, ctx.sucursalId, { id: productoId, precioVenta: productoDelEspacio.precioVenta, esBase: producto.esBase }, mostrarNombreArriba);
+  // Qué consume cada opción (diseño 2026-11-09): la MISMA acción que la Biblioteca (`agregarVersionDeOpcion`). Se reenvían la diferencia y el factor que rigen hoy, tal cual, y solo cambian las líneas de consumo.
+  const guardarConsumo = async (opcionId: string, numeroEsperado: number, tipoDeDiferencia: string, valorDeDiferencia: number, factorEscala: number | null, formData: FormData) => {
+    "use server";
+    return agregarVersionDeOpcion({
+      opcionId,
+      numeroEsperado,
+      version: {
+        diferencia: tipoDeDiferencia === "PORCENTAJE" ? { tipo: "PORCENTAJE", porcentaje: valorDeDiferencia } : { tipo: "MONTO", monto: valorDeDiferencia },
+        factorEscala,
+        consumos: consumosDelFormulario(formData),
+      },
+    });
+  };
   const enUso = admitidos.filter((g) => g.fila.activo);
   const quitados = admitidos.filter((g) => !g.fila.activo);
   // 6.15a: contra qué precio se lee lo que suma una opción (la lectura debajo de cada importe): lo más barato GUARDADO del grupo que fija el precio (una medida en ABSOLUTO reemplaza al precio base, en un
@@ -111,6 +132,7 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
       producto={{ id: productoId, nombre: producto.nombre, codigo: productoDelEspacio.codigo, tipo: "PV", modoDeVenta: productoDelEspacio.modoDeVenta, disponibleAca: marco.disponibleAca, sucursalNombre: ctx.sucursalNombre }}
       pasos={marco.pasos}
       actual="opciones"
+      ancho="ancho"
     >
       <GrupoDeFormularios className="flex flex-col gap-6 pb-24">
         <AvisoConDeshacer>
@@ -154,6 +176,7 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
             </Aviso>
           ) : null}
 
+          <EncabezadoDePagina etiqueta="Acciones de las opciones">
           <div className="flex flex-wrap items-start gap-3">
             {puedeCrearGrupos ? <NuevoGrupoEnElProducto productoId={productoId} productoNombre={producto.nombre} referencia={referencia} precioDeLista={precioDeLista} /> : null}
             {paraAgregar.length > 0 ? (
@@ -180,6 +203,7 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
               <p className="self-center text-sm text-tinta-suave">Este producto ya tiene todos los grupos prendidos de la empresa.</p>
             )}
           </div>
+          </EncabezadoDePagina>
           {puedeCrearGrupos ? null : <p className="text-xs text-tinta-suave">Los grupos nuevos los crea quien arma las opciones.</p>}
           {hayGrupoIncluido ? <p className="text-xs text-tinta-suave">{'Para cobrar distinto una opción de un grupo "incluido", se archiva el grupo y se crea uno nuevo.'}</p> : null}
 
@@ -188,11 +212,12 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
               {quitados.length > 0 ? `«${producto.nombre}» no usa ningún grupo ahora: se vende con un toque. Los que tenía están abajo, en «Quitados de este producto».` : `«${producto.nombre}» todavía no admite opciones: se vende con un toque, como siempre.`}
             </Aviso>
           ) : (
-            enUso.map((g) => {
+            <RejillaDeSecciones>
+            {enUso.map((g) => {
               const grupoId = g.grupoId;
               const versionEsperada = g.fila.version;
               return (
-                <section key={g.grupoId} aria-label={`Grupo ${g.nombre}`} className="flex flex-col gap-3 rounded border border-borde p-4" data-admision-grupo={g.nombre}>
+                <section key={g.grupoId} aria-label={`Grupo ${g.nombre}`} className="flex min-w-0 flex-col gap-3 rounded border border-borde p-4" data-admision-grupo={g.nombre}>
                   <AdmisionDeGrupo
                     grupo={g}
                     referencia={referencia}
@@ -201,6 +226,15 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
                       "use server";
                       return fijarAdmisionDeGrupoEnProducto({ productoId, grupoId, versionEsperada, ...admisionDelFormulario(formData) });
                     }}
+                  />
+                  <ConsumosDelGrupo
+                    grupo={{ id: grupoId, nombre: g.nombre, tipo: g.tipo, productosQueLoUsan: g.productosQueLoUsan }}
+                    opciones={g.opciones.filter((o) => o.activaEnEmpresa && o.fila?.activo === true)}
+                    insumos={datos.insumos}
+                    puedeEditarOpciones={puedeCrearGrupos}
+                    puedeVerOpciones={nivelOpcionesDefinir.ver}
+                    recetasActivas={!sinRecetas}
+                    guardar={guardarConsumo}
                   />
                   <div className="flex flex-wrap items-center gap-3 border-t border-borde pt-3">
                     {puedeCrearGrupos ? (
@@ -229,7 +263,8 @@ export default async function OpcionesDelProductoPage({ params }: { params: Prom
                   </div>
                 </section>
               );
-            })
+            })}
+            </RejillaDeSecciones>
           )}
 
           {quitados.length > 0 && (

@@ -23,6 +23,7 @@ import { secuenciaMoviendo, unidadesDeLectura } from "@/core/catalogo/public";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import { leerProductoDelEspacio } from "@/server/consultas/catalogo/espacio-del-producto";
 import { cargarMarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/datos-del-marco";
+import { RejillaDeSecciones, SeccionDeRejilla } from "@/ui/componentes/estructura/rejilla-de-secciones";
 import { MarcoDelEspacio } from "@/components/catalogo/espacio-del-producto/marco";
 import {
   listarMpDisponiblesEnAlguna,
@@ -183,7 +184,7 @@ export default async function RecetaEditorPage({
   // Todos los formularios del editor (central y receta propia) en UN grupo (O.2): mientras uno guarda, los demás esperan en vez de salir con la versión que
   // la pantalla mostraba antes de ese cambio; al terminar, la respuesta de la acción trae la pantalla refrescada y el cambio siguiente sale con la nueva.
   const editor = (
-    <GrupoDeFormularios className="flex max-w-2xl flex-col gap-8">
+    <GrupoDeFormularios className="flex flex-col gap-8">
       <div>
         {!conMarco && (
           <Link href="/catalogo/recetas" className="text-sm underline">
@@ -218,6 +219,8 @@ export default async function RecetaEditorPage({
         )}
       </div>
 
+      <RejillaDeSecciones separacion="amplia">
+      <SeccionDeRejilla apilada>
       {vigente && (
         <div className="flex flex-col gap-2">
           <h2 className="font-medium">Ficha técnica</h2>
@@ -402,7 +405,7 @@ export default async function RecetaEditorPage({
                               unidadId: String(formData.get("unidadId") ?? ""),
                               mermaPorcentaje: numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0,
                               insumoSustitutoIds: aceptaSustitutos ? formData.getAll("insumoSustitutoIds").map(String).filter((v) => v !== "") : undefined,
-                            }, versionVista);
+                            }, versionVista, formData.get("confirmarDesproporcion") === "1");
                             // Sale del modo edición al guardar — si no, `editar=` queda pegado en la URL y la fila se muestra siempre editable.
                             if (resultado.ok) redirect(volver);
                             return resultado;
@@ -410,7 +413,7 @@ export default async function RecetaEditorPage({
                           className="flex flex-wrap items-end gap-2"
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
-                          <LecturaDeCantidad campoId={`cantidad-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null}>
+                          <LecturaDeCantidad campoId={`cantidad-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null} descripcion={{ insumo: ing.insumoProducto.nombre, producto: producto.nombre }}>
                             <CampoNumero tipo="cantidad" id={`cantidad-${ing.id}`} name="cantidad" defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
                             {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
                             <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
@@ -539,18 +542,20 @@ export default async function RecetaEditorPage({
               // U7 / D3: la unidad es la de stock de la MP elegida (el servidor la vuelve a comparar con la real al guardar).
               unidadId: unidadDeStockPorMp[insumoProductoId] ?? "",
               mermaPorcentaje: numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0,
-            }, versionVista);
+            }, versionVista, formData.get("confirmarDesproporcion") === "1");
           }}
           className="flex max-w-lg flex-col gap-2"
         >
           <h3 className="font-medium">Agregar ingrediente (genera la próxima versión)</h3>
-          <MateriaPrimaYCantidad idCantidad="cantidad-ingrediente-nuevo" etiquetaMateriaPrima="Materia prima" etiquetaCantidad="Cantidad" etiquetaMerma="Merma" lecturaPorUnidad={lecturaPorUnidad} />
+          <MateriaPrimaYCantidad idCantidad="cantidad-ingrediente-nuevo" etiquetaMateriaPrima="Materia prima" etiquetaCantidad="Cantidad" etiquetaMerma="Merma" lecturaPorUnidad={lecturaPorUnidad} nombreDelProducto={producto.nombre} />
           <BotonDeServidor type="submit">
             Agregar
           </BotonDeServidor>
         </FormConResultado>
       </AgregarColapsable>
 
+      </SeccionDeRejilla>
+      <SeccionDeRejilla apilada>
       {vigente && (
         <div className="flex flex-col gap-2">
           <h2 className="font-medium">Método de preparación</h2>
@@ -712,6 +717,9 @@ export default async function RecetaEditorPage({
         </div>
       )}
 
+      </SeccionDeRejilla>
+      </RejillaDeSecciones>
+
       <RecetaDeLaSucursal
         producto={{ id: producto.id, nombre: producto.nombre }}
         sucursalNombre={ctx.sucursalNombre}
@@ -742,6 +750,7 @@ export default async function RecetaEditorPage({
       }}
       pasos={marco.pasos}
       actual="receta"
+      ancho="ancho"
     >
       {editor}
     </MarcoDelEspacio>

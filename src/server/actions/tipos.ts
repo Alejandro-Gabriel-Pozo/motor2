@@ -59,3 +59,9 @@ export function okConId(mensaje: string, id: string, nombre: string): ResultadoC
 export function error(mensaje: string): { ok: false; mensaje: string } {
   return { ok: false, mensaje };
 }
+
+/**
+ * Como ResultadoAccion, más `requiereConfirmacion` en UN rechazo: el de la guardia de unidad de las recetas (docs/diseno-guardia-de-unidad-receta-2026-11-09.md), cuando una cantidad es desproporcionada
+ * para la unidad de stock y el pedido no la confirmó. La pantalla (`FormConResultado`) ofrece entonces confirmar y reenvía el MISMO pedido con la confirmación. Es asignable a `ResultadoAccion`.
+ */
+export type ResultadoConConfirmacion = ResultadoAccion | { ok: false; mensaje: string; requiereConfirmacion: true };

@@ -20,7 +20,8 @@ import { conAlcanceEnSucursal } from "@/server/acceso/alcance";
 import { leerOrigenDeCopia } from "@/server/acceso/origen-de-copia";
 import { refrescarVistaSiHaceFalta } from "../refrescar";
 import { conPermiso } from "../con-permiso";
-import { error, type ResultadoAccion } from "../tipos";
+import { error, type ResultadoAccion, type ResultadoConConfirmacion } from "../tipos";
+import { conPedidoDeConfirmacion } from "./pedido-de-confirmacion";
 import { guardarVersionDeRecetaCasoDeUso, type DestinoDeVersionDeReceta } from "./casos-de-uso/guardar-version-de-receta";
 import { volverALaRecetaCentralCasoDeUso } from "./casos-de-uso/volver-a-la-receta-central";
 
@@ -51,6 +52,12 @@ import { volverALaRecetaCentralCasoDeUso } from "./casos-de-uso/volver-a-la-rece
 
 type OpcionesDeDestino = Omit<Extract<DestinoDeVersionDeReceta, { sucursalId: string }>, "sucursalId" | "habilitadaEsperada">;
 
+/** Guardia de unidad (docs/diseno-guardia-de-unidad-receta-2026-11-09.md): la confirmación que viaja con el pedido, o que la ruta COPIA lo ya aceptado y no se juzga (crear desde la central, copiar de otra sucursal). */
+interface OpcionesDeGuardiaDeUnidad {
+  confirmaCantidadDesproporcionada?: boolean;
+  omitirGuardiaDeUnidad?: boolean;
+}
+
 /** Cuando `habilitadaVista` no es un booleano (una llamada armada a mano: la pantalla siempre lo manda). */
 const MENSAJE_SIN_HABILITADA_VISTA = "No se pudo saber qué receta mostraba la pantalla. Recargá la pantalla y volvé a hacer el cambio.";
 
@@ -68,16 +75,20 @@ async function guardarEnLaPropia(
   base: RecetaCompleta,
   versionEsperada: number,
   habilitadaEsperada: boolean,
-  opciones: OpcionesDeDestino & { pasos?: PasoInput[]; puerta?: DatosDeLaPuerta } = {}
-): Promise<ResultadoAccion> {
-  const { pasos, puerta, ...destino } = opciones;
+  opciones: OpcionesDeDestino & OpcionesDeGuardiaDeUnidad & { pasos?: PasoInput[]; puerta?: DatosDeLaPuerta } = {}
+): Promise<ResultadoConConfirmacion> {
+  const { pasos, puerta, confirmaCantidadDesproporcionada, omitirGuardiaDeUnidad, ...destino } = opciones;
   const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos: pasos ?? mapPasosAInput(base), cabecera: mapCabeceraAInput(base), versionEsperada });
   if (!comando.ok) return error(comando.mensaje);
   if (typeof habilitadaEsperada !== "boolean") return error(MENSAJE_SIN_HABILITADA_VISTA);
   // S-52: el rechazo del rango del ingrediente (cantidad, merma…) viaja al caso de uso, que lo aplica después de leer el producto.
-  const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, puerta?.rechazoDelRango ? { ...comando.valor, puerta: puerta.rechazoDelRango } : comando.valor, { sucursalId: ctx.sucursalId, habilitadaEsperada, ...destino });
+  const resultado = await guardarVersionDeRecetaCasoDeUso(
+    ctx,
+    { ...comando.valor, ...(puerta?.rechazoDelRango ? { puerta: puerta.rechazoDelRango } : {}), confirmaCantidadDesproporcionada: confirmaCantidadDesproporcionada === true, omitirGuardiaDeUnidad: omitirGuardiaDeUnidad === true },
+    { sucursalId: ctx.sucursalId, habilitadaEsperada, ...destino }
+  );
   if (resultado.ok) refrescarVistaSiHaceFalta();
-  return aResultadoAccion(resultado);
+  return conPedidoDeConfirmacion(resultado, aResultadoAccion(resultado));
 }
 
 /** Crea la receta propia de la sucursal partiendo de la central vigente (una copia que de acá en más se edita por su lado). */
@@ -89,7 +100,7 @@ export async function crearRecetaPropiaDesdeLaCentral(productoId: string, versio
     if (estado.habilitada) return error("Esta sucursal ya tiene receta propia para este producto.");
     const central = await cargarRecetaVigente(ctx.db, ALCANCE_CENTRAL, productoId, { include: INCLUDE_RECETA_COMPLETA });
     if (!central) return error("Este producto no tiene receta central de la que partir: agregá el primer ingrediente para armar la receta de la sucursal desde cero.");
-    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(central), central, versionVista, habilitadaVista, { basadaEnVersionId: central.id });
+    return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(central), central, versionVista, habilitadaVista, { basadaEnVersionId: central.id, omitirGuardiaDeUnidad: true });
   });
 }
 
@@ -97,7 +108,7 @@ export async function crearRecetaPropiaDesdeLaCentral(productoId: string, versio
  * Agrega un ingrediente a la receta propia habilitada. Si la sucursal todavía no tiene una y el producto tampoco tiene receta central, la
  * crea desde cero con ese ingrediente; si hay central, hay que crear la propia desde ella primero (no se parte de una receta vacía por descuido).
  */
-export async function agregarIngredienteARecetaPropia(productoId: string, ingrediente: IngredienteInput, versionVista: number, habilitadaVista: boolean): Promise<ResultadoAccion> {
+export async function agregarIngredienteARecetaPropia(productoId: string, ingrediente: IngredienteInput, versionVista: number, habilitadaVista: boolean, confirmaCantidadDesproporcionada?: boolean): Promise<ResultadoConConfirmacion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
     // S-52: el guard de la puerta (producto y versión, forma y rango del ingrediente) se CALCULA acá; el producto y la versión se aplican de entrada (como `versionVistaExigida`, O.45), la forma antes de
     // usar el ingrediente y el rango en el caso de uso, después de leer el producto.
@@ -111,6 +122,7 @@ export async function agregarIngredienteARecetaPropia(productoId: string, ingred
     if (existentes.some((i) => i.insumoProductoId === ingrediente.insumoProductoId)) return error("Ese insumo ya está en la receta.");
     return guardarEnLaPropia(ctx, productoId, [...existentes, ingrediente], base, versionVista, habilitadaVista, {
       puerta: { rechazoDelRango: guard.rango.ok ? null : { codigo: "INGREDIENTES_INVALIDOS", mensaje: guard.rango.mensaje } },
+      confirmaCantidadDesproporcionada,
     });
   });
 }
@@ -121,8 +133,9 @@ export async function actualizarIngredienteDeRecetaPropia(
   insumoProductoId: string,
   cambios: { cantidad: number; unidadId: string; mermaPorcentaje?: number },
   versionVista: number,
-  habilitadaVista: boolean
-): Promise<ResultadoAccion> {
+  habilitadaVista: boolean,
+  confirmaCantidadDesproporcionada?: boolean
+): Promise<ResultadoConConfirmacion> {
   return conPermiso("receta_sucursal_editar", async (ctx) => {
     // S-52: el guard de la puerta (producto y versión, forma y rango de los cambios) se CALCULA acá; el producto y la versión se aplican de entrada (O.45), la forma de los cambios DESPUÉS de comprobar
     // que el insumo está en la receta, y el rango en el caso de uso, después de leer el producto.
@@ -136,6 +149,7 @@ export async function actualizarIngredienteDeRecetaPropia(
     const items = existentes.map((i) => (i.insumoProductoId === insumoProductoId ? { ...i, cantidad: cambios.cantidad, unidadId: cambios.unidadId, mermaPorcentaje: cambios.mermaPorcentaje ?? 0 } : i));
     return guardarEnLaPropia(ctx, productoId, items, estado.propia, versionVista, habilitadaVista, {
       puerta: { rechazoDelRango: guard.rango.ok ? null : { codigo: "INGREDIENTES_INVALIDOS", mensaje: guard.rango.mensaje } },
+      confirmaCantidadDesproporcionada,
     });
   });
 }
@@ -187,6 +201,7 @@ export async function copiarRecetaPropiaDeOtraSucursal(
     return guardarEnLaPropia(ctx, productoId, mapIngredientesAInput(estadoOrigen.propia), estadoOrigen.propia, versionVista, habilitadaVista, {
       basadaEnVersionId: estadoOrigen.propia.basadaEnVersionId,
       copiadaDeSucursal: origen.nombre,
+      omitirGuardiaDeUnidad: true,
     });
   });
 }
