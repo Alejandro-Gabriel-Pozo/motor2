@@ -74,7 +74,7 @@ export function SidebarColapsable({
             Motor2
           </Link>
         </div>
-        <div className="w-56">
+        <div className="min-h-0 w-56 flex-1 overflow-y-auto">
           <SidebarNav grupos={grupos} hrefsDelMenu={hrefsDelMenu} dosPaneles={dosPaneles} sucursalNombre={sucursalNombre} />
         </div>
       </aside>

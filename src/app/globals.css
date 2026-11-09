@@ -794,9 +794,17 @@ html:has([data-carta-libro]) body {
     height: auto !important;
     min-height: 0 !important;
     overflow: visible !important;
+    /* El relleno y el ancho máximo del contenedor de página (`ContenedorDePagina`) no van al papel: los márgenes son los de la hoja (@page). */
+    padding: 0 !important;
+    max-width: none !important;
   }
+  /* Estructura de pantalla (E-A): en pantalla `<main>` es el área que se desplaza (alto de la ventana, `overflow-y: auto`); en papel tiene que mostrar TODO el contenido, o la hoja
+     saldría cortada en la primera pantalla. */
   body:has([data-ficha-cocina]) main {
     padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
   body:has([data-ficha-cocina]) [data-ficha-cocina] {
     page: ficha-cocina;

@@ -15,7 +15,7 @@ export function SelectorSucursal({ membresias, actual }: { membresias: Membresia
       value={actual}
       disabled={pending}
       onChange={(e) => startTransition(() => cambiarSucursalActiva(e.target.value, pantallaActual))}
-      className="rounded border px-2 py-1 text-sm disabled:opacity-50"
+      className="min-h-11 rounded border px-2 py-1 text-sm disabled:opacity-50 md:min-h-0"
     >
       {membresias.map((m) => (
         <option key={m.sucursalId} value={m.sucursalId}>
