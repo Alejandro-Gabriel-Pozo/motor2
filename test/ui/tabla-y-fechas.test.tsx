@@ -42,7 +42,7 @@ describe("TablaDeDatos", () => {
     expect(html).toContain("Compras registradas");
     expect([...html.matchAll(/<th [^>]*scope="col"/g)]).toHaveLength(4);
     // 2 filas de datos (la fila del encabezado lleva otra clase).
-    expect([...html.matchAll(/<tr class="border-b">/g)]).toHaveLength(2);
+    expect([...html.matchAll(/<tr class="border-b border-borde last:border-b-0 hover:bg-papel">/g)]).toHaveLength(2);
     expect(html).toContain("Molino Sur");
     expect(html).toContain("Lácteos del Valle");
   });
@@ -107,14 +107,14 @@ describe("TablaDeDatos", () => {
     expect(html).toMatch(/<div role="region" aria-label="Compras registradas" tabindex="0"/);
     expect(html).toContain("<caption");
     expect([...html.matchAll(/<th [^>]*scope="col"/g)]).toHaveLength(4);
-    expect([...html.matchAll(/<tr class="border-b">/g)]).toHaveLength(2);
+    expect([...html.matchAll(/<tr class="border-b border-borde last:border-b-0 hover:bg-papel">/g)]).toHaveLength(2);
     expect(html, "la columna solo-en-tabla sí está").toContain("pagada");
   });
 
   it("claseFila agrega clases a la fila de la tabla y a su tarjeta según el dato, y una fila sin clase no deja «undefined» ni espacios de más", () => {
     const html = dibujar(FILAS, COLUMNAS, { claseFila: (f) => (f.nota === "pendiente" ? "bg-aviso-tinte" : undefined) });
-    expect(html).toContain('<tr class="border-b bg-aviso-tinte">');
-    expect([...html.matchAll(/<tr class="border-b">/g)], "la otra fila queda como estaba").toHaveLength(1);
+    expect(html).toContain('<tr class="border-b border-borde last:border-b-0 hover:bg-papel bg-aviso-tinte">');
+    expect([...html.matchAll(/<tr class="border-b border-borde last:border-b-0 hover:bg-papel">/g)], "la otra fila queda como estaba").toHaveLength(1);
     const tarjetas = [...html.matchAll(/<li class="([^"]*)"/g)].map((m) => m[1]);
     expect(tarjetas).toHaveLength(2);
     expect(tarjetas.filter((c) => c.includes("bg-aviso-tinte"))).toHaveLength(1);
@@ -144,6 +144,49 @@ describe("TablaDeDatos", () => {
     expect(todo).not.toMatch(COLOR_DE_ESCALA);
     expect(todo).toContain("text-tinta-suave");
     expect(todo).toContain("border-borde");
+  });
+
+  describe("estilo de planilla (docs/diseno-estilo-de-planilla-2026-11-09.md)", () => {
+    const ACCION: ColumnaDeTabla<Compra> = { id: "acciones", encabezado: "Acciones", accion: true, celda: (f) => <a href={`/c/${f.id}`}>Editar {f.proveedor}</a> };
+
+    it("la tabla va en un contorno propio, con el encabezado en banda de fondo y mayúsculas chicas, y las filas separadas", () => {
+      const html = dibujar();
+      expect(/<div role="region"[^>]*class="([^"]*)"/.exec(html)?.[1]).toContain("border-borde");
+      const encabezado = /<thead><tr class="([^"]*)"/.exec(html)?.[1] ?? "";
+      expect(encabezado).toContain("bg-superficie-suave");
+      expect(encabezado).toContain("uppercase");
+      expect(html).toContain("hover:bg-papel");
+    });
+
+    it("los números a la derecha llevan cifras de ancho fijo, en el encabezado y en la celda", () => {
+      const html = dibujar();
+      expect(html).toMatch(/<td class="[^"]*text-right tabular-nums[^"]*">\$ 1\.200,00/);
+    });
+
+    it("dimensión columna de acciones × presentación × filas: la acción nunca se pierde y va al final de la tabla / al pie de la tarjeta", () => {
+      for (const presentacionCelular of ["tarjetas", "tabla-con-scroll"] as const) {
+        const html = dibujar(FILAS, [...COLUMNAS, ACCION], { presentacionCelular });
+        const encabezados = [...html.matchAll(/<th [^>]*>([\s\S]*?)<\/th>/g)].map((m) => m[1]);
+        expect(encabezados.at(-1), presentacionCelular).toBe("Acciones");
+        expect([...html.matchAll(/Editar Molino Sur/g)].length, `${presentacionCelular}: una vez en la tabla (+ una en la tarjeta)`).toBe(presentacionCelular === "tarjetas" ? 2 : 1);
+        const tarjetas = [...html.matchAll(/<div data-acciones-de-fila=""[^>]*>([\s\S]*?)<\/div>/g)];
+        expect(tarjetas, presentacionCelular).toHaveLength(presentacionCelular === "tarjetas" ? 2 : 0);
+        for (const t of tarjetas) expect(t[0]).toContain("min-h-11");
+      }
+      expect(dibujar([], [...COLUMNAS, ACCION]), "sin filas no hay columna: queda el estado vacío").toContain(VACIO);
+    });
+
+    it("la columna de acciones no es la etiqueta de la tarjeta ni el título, y sin ella no hay pie de tarjeta", () => {
+      const conAccion = dibujar(FILAS, [...COLUMNAS, ACCION]);
+      const lista = /<ul aria-label="Compras registradas"[^>]*>([\s\S]*?)<\/ul>/.exec(conAccion)?.[1] ?? "";
+      expect(lista).not.toContain("<dt>Acciones");
+      expect(dibujar()).not.toContain("data-acciones-de-fila");
+    });
+
+    it("la columna de acciones tiene que ser la última y única (si no, se rechaza)", () => {
+      expect(() => dibujar(FILAS, [ACCION, ...COLUMNAS])).toThrow(/tiene que ser la última/);
+      expect(() => dibujar(FILAS, [...COLUMNAS, ACCION, { ...ACCION, id: "otra" }])).toThrow(/tiene que ser la última|solo puede haber/);
+    });
   });
 
   it("es un componente de servidor: no lleva «use client» ni usa hooks de estado (no manda JavaScript al navegador)", () => {

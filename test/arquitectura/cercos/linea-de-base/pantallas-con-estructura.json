@@ -1,10 +1,10 @@
 {
   "regla": "pantallas-con-estructura",
   "meta": "bajar a 0 al terminar la etapa E-H: toda pantalla de (app) y (pos) usa las piezas de src/ui/componentes/estructura",
-  "total": 90,
-  "entradas": 90,
+  "total": 88,
+  "entradas": 88,
   "porTipo": {
-    "sin-estructura": 90
+    "sin-estructura": 88
   },
   "cuentas": {
     "src/app/(app)/administracion/auditoria/page.tsx": {
@@ -76,9 +76,6 @@
     "src/app/(app)/catalogo/opciones/limpiar/page.tsx": {
       "sin-estructura": 1
     },
-    "src/app/(app)/catalogo/opciones/page.tsx": {
-      "sin-estructura": 1
-    },
     "src/app/(app)/catalogo/productos/[id]/datos/page.tsx": {
       "sin-estructura": 1
     },
@@ -89,9 +86,6 @@
       "sin-estructura": 1
     },
     "src/app/(app)/catalogo/productos/nuevo/page.tsx": {
-      "sin-estructura": 1
-    },
-    "src/app/(app)/catalogo/productos/page.tsx": {
       "sin-estructura": 1
     },
     "src/app/(app)/catalogo/proveedores/[id]/editar/page.tsx": {
