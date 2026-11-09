@@ -48,6 +48,15 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
   lista("tipografia", "2027-01-02"),
   lista("colores-de-escala", "2027-01-04"),
   lista("colores", "2027-01-05"),
+  // Estructura de pantalla (PR #219, 2026-11-09): las 90 pantallas se adoptan por etapas E-B…E-H (docs/diseno-estructura-de-pantalla-1366x768-2026-11-09.md, §12). Plazo máximo; se renueva con motivo si una etapa se atrasa.
+  {
+    regla: "pantallas-con-estructura",
+    inicio: "2026-11-09",
+    vence: "2027-01-08",
+    responsable: "dueño",
+    aprobacion: { por: "dueño", referencia: "PR #219" },
+    motivo: "Adopción del estándar de estructura de pantalla pantalla por pantalla, en las etapas E-B a E-H del diseño (propuesta de plazo: 60 días; la corrige el dueño).",
+  },
 ];
 
 /** Una lista de deuda del disco: cuántas entradas (archivos o modelos) tiene hoy. */

@@ -257,6 +257,31 @@
   [campo: «25.000»]
   Pizza bomba = $ 25.000
   [botón: Guardar «Tipos de Pizza»]
+  #### Qué consume cada opción
+  Pizza muzzarella
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza muzzarella»)]
+  Pizza de verduras asadas
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza de verduras asadas»)]
+  Pizza fugazzeta
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza fugazzeta»)]
+  Pizza napolitana
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza napolitana»)]
+  Pizza con papas fritas
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza con papas fritas»)]
+  Pizza bomba
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza bomba»)]
   [botón: + Opción (lector: «+ Opción en Tipos de Pizza»)]
   [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
   No se borra nada: lo que admite de cada opción queda guardado.
@@ -340,6 +365,31 @@
   [campo: «25.000»]
   Pizza bomba = $ 25.000
   [botón: Guardar «Tipos de Pizza»]
+  #### Qué consume cada opción
+  Pizza muzzarella
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza muzzarella»)]
+  Pizza de verduras asadas
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza de verduras asadas»)]
+  Pizza fugazzeta
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza fugazzeta»)]
+  Pizza napolitana
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza napolitana»)]
+  Pizza con papas fritas
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza con papas fritas»)]
+  Pizza bomba
+  pendiente de completar
+  Consumo: pendiente de completar.
+  [botón: Editar consumo (lector: «Editar consumo de Pizza bomba»)]
   [botón: + Opción (lector: «+ Opción en Tipos de Pizza»)]
   [botón: Quitar de este producto (lector: «Quitar Tipos de Pizza de este producto»)]
   No se borra nada: lo que admite de cada opción queda guardado.

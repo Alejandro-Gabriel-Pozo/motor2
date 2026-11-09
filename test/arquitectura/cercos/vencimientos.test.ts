@@ -31,7 +31,7 @@ describe("deuda de los cercos con fecha", () => {
   it("las fechas del registro real están escalonadas (no todas el mismo día) y dentro de los 60 días", () => {
     const fechas = VENCIMIENTOS_DE_LISTAS.map((v) => v.vence);
     expect(new Set(fechas).size).toBe(fechas.length);
-    expect(revisarVencimientos(VENCIMIENTOS_DE_LISTAS.map((v) => ({ regla: v.regla, entradas: 1 })), VENCIMIENTOS_DE_LISTAS, "2026-11-06").problemas).toEqual([]);
+    expect(revisarVencimientos(VENCIMIENTOS_DE_LISTAS.map((v) => ({ regla: v.regla, entradas: 1 })), VENCIMIENTOS_DE_LISTAS, "2026-11-09").problemas).toEqual([]);
   });
 
   it("verde con fecha vigente; vence hoy sigue vigente", () => {

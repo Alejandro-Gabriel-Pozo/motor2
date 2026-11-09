@@ -36,6 +36,10 @@ export type { TipoDeDiferencia } from "./tipos";
 // GO-2d (las pantallas de opciones de venta, ADR-030 «Pantallas»): los textos puros que comparten la administración, el selector del POS y la carta pública.
 export { ayudaDelTipoDeGrupo, espejoDeDiferencia, nombreDelTipoDeGrupo, resumenDeConsumos, textoDeDiferencia, textoDeLimites, textoDePorcentaje } from "./presentacion";
 
+// Pestaña Opciones de un producto: qué consume cada opción en lenguaje llano y cuándo se ofrece editarlo (puro; diseño `docs/diseno-consumo-de-opcion-en-el-producto-2026-11-09.md`).
+export { avisoDeGrupoCompartido, vistaDeConsumoDeOpcion } from "./consumo-en-el-producto";
+export type { EstadoDelConsumo, LineaDeConsumoParaLeer } from "./consumo-en-el-producto";
+
 // OPCIONES-LIMPIEZA (G2): «Limpiar» — los candidatos a archivar según un criterio y la vista previa de los productos afectados (puro; lo usa `/catalogo/opciones/limpiar`).
 export { CRITERIOS_DE_LIMPIEZA, candidatosALimpiar, productosAfectados } from "./limpieza";
 export type { CriterioDeLimpieza, GrupoParaLimpiar, OpcionParaLimpiar, VentasRecientes } from "./limpieza";

@@ -8,9 +8,15 @@
   color: var(--color-tinta);
   font-size: 15px;
   line-height: 1.4;
-  margin: -1.5rem;
+  /* Cancela el relleno del contenedor de página (`ContenedorDePagina`: 16 px en celular y 24 px desde `md`, `RELLENO_DEL_CONTENIDO` de `src/ui/componentes/estructura/reglas.ts`): si no coinciden, la carta se sale 8 px por la derecha a 375 px. */
+  margin: -1rem;
   padding-bottom: 96px;
   min-height: 70vh;
+}
+@media (min-width: 768px) {
+  .raiz {
+    margin: -1.5rem;
+  }
 }
 .raiz :focus-visible {
   outline: 3px solid var(--color-foco);
