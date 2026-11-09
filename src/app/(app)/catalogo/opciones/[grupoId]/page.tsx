@@ -13,6 +13,7 @@ import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
 import { AvisoConDeshacer, BotonConDeshacer } from "@/components/aviso-con-deshacer";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { versionDelFormulario } from "@/components/catalogo/version-del-formulario";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { GrupoDeFormularios } from "@/components/grupo-de-formularios";
@@ -23,7 +24,6 @@ import { AltaDeOpcion } from "./alta-de-opcion";
 import { CampoSeLeeEnLaCarta } from "./campo-se-lee-en-la-carta";
 import { CambiarPrecio } from "./cambiar-precio";
 import { OrdenarOpciones } from "./ordenar-opciones";
-import { versionDelFormulario } from "./version-del-formulario";
 
 /** «+ $ 400», «+ 16 %», «+ $ 600» (recargo) o «sin recargo»; en un tamaño, además, cuánto consume. */
 function precioDeLaOpcion(tipo: string, o: OpcionDelPanel, rige: CambioDeOpcionDelPanel | undefined = o.cambios[0]): string {

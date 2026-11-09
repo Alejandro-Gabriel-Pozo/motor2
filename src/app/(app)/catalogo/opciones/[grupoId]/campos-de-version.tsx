@@ -7,7 +7,7 @@ import { espejoDeDiferencia, textoDePorcentaje, type DiferenciaDePrecio, type Ti
 import { formatearMonto } from "@/core/pos/public";
 import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
 import { Insignia } from "@/ui/primitivas/insignia";
-import { EditorDeConsumos, type ConsumoEnEdicion, type InsumoParaConsumo } from "./editor-de-consumos";
+import { EditorDeConsumos, type ConsumoEnEdicion, type InsumoParaConsumo } from "@/components/catalogo/editor-de-consumos";
 import { LecturaDelFactor, type RecetaDeReferencia } from "./lectura-del-factor";
 
 /** El precio de referencia del espejo: el precio base del primer producto que usa el grupo, en la sucursal activa (lo calcula el servidor). */
