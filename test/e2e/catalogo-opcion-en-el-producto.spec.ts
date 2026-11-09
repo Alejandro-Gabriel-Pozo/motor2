@@ -51,7 +51,7 @@ for (const { ancho, alto } of [
 
     await ventana.getByRole("button", { name: "Agregar la opción" }).click();
     await expect(ventana).toBeHidden();
-    await expect(grupo.getByRole("status")).toContainText(`Listo: se agregó la opción «Avena» a «${p.grupoNombre}» de «${p.nombre}».`);
+    await expect(grupo.getByRole("status").filter({ hasText: "Listo:" })).toContainText(`Listo: se agregó la opción «Avena» a «${p.grupoNombre}» de «${p.nombre}».`);
 
     const opcion = await prisma.opcionDeGrupo.findFirstOrThrow({ where: { grupoId: p.leche.grupoId, nombre: "Avena" }, include: { versiones: true } });
     expect(Number(opcion.versiones[0]!.diferenciaPrecio)).toBe(200);

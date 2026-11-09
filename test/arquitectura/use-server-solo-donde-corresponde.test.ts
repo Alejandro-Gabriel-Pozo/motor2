@@ -26,7 +26,9 @@ const IMPORTADOS_PUROS: Record<string, string> = {
   secuenciaMoviendo: "@/core/catalogo/public",
   redirect: "next/navigation",
   // GO-2d: arma los datos de una versión de una opción (precio, factor y consumos) desde el FormData del formulario de la pantalla del grupo; no valida ni escribe (lo hace el guard).
-  versionDelFormulario: "./version-del-formulario",
+  versionDelFormulario: "@/components/catalogo/version-del-formulario",
+  // Pestaña Opciones del producto: solo las líneas de consumo de una opción (el JSON del editor), sin validar ni escribir.
+  consumosDelFormulario: "@/components/catalogo/version-del-formulario",
   // GO-2d: arma lo que admite un producto de un grupo desde el FormData de su formulario; tampoco valida ni escribe.
   admisionDelFormulario: "./admision-del-formulario",
   // GO-3b (U1): arma los lugares de entradas (lista y del día) desde el FormData del formulario de cupos de una promo; no valida ni escribe.
