@@ -78,3 +78,7 @@ export { NAV_CATALOGO, PESTANAS_DE_MAESTROS, PESTANAS_DE_PRODUCTOS, RUTAS_DE_LAS
 export type { PantallaDeCatalogo } from "./ui-config";
 // Fase 7 (M2): la búsqueda de un producto por nombre, código y, para quien puede, por cómo lo llama un proveedor (puro; la usan la lista de Productos y el buscador de producto).
 export { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, palabrasDeBusqueda } from "./busqueda-de-producto";
+
+// Ficha de cocina imprimible (2026-11-08): los datos puros que la pantalla `/catalogo/recetas/[id]/ficha` dibuja.
+export { PENDIENTE, armarFichaDeCocina } from "./ficha-de-cocina";
+export type { FichaDeCocina, RecetaParaFicha } from "./ficha-de-cocina";
