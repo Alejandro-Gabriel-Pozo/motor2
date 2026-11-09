@@ -51,7 +51,10 @@ describe("guardarDescuentoProducto", () => {
     expect(await prisma.descuentoProductoSucursal.findMany()).toMatchObject([{ productoId: pvId, sucursalId, porcentaje: expect.anything() }]);
     expect(Number((await prisma.descuentoProductoSucursal.findFirstOrThrow()).porcentaje)).toBe(15);
 
-    expect((await guardarDescuentoProducto(pvId, "20,5")).ok).toBe(true);
+    // el servidor lee solo el formato canónico (el CampoNumero manda «20.5»): la coma o el miles no entran y no cambian lo guardado
+    expect((await guardarDescuentoProducto(pvId, "20,5")).ok).toBe(false);
+    expect(Number((await prisma.descuentoProductoSucursal.findFirstOrThrow()).porcentaje)).toBe(15);
+    expect((await guardarDescuentoProducto(pvId, "20.5")).ok).toBe(true);
     const filas = await prisma.descuentoProductoSucursal.findMany();
     expect(filas).toHaveLength(1);
     expect(Number(filas[0].porcentaje)).toBe(20.5);

@@ -8,7 +8,7 @@ import { TablaDevolucionesClientes, TablaDevolucionesProveedor } from "./tabla-d
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
-import { Campo } from "@/ui/primitivas/campo";
+import { CampoNumero } from "@/components/campo-numero";
 
 export default async function DevolucionesPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"dias">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -31,7 +31,10 @@ export default async function DevolucionesPage({ searchParams }: { searchParams:
         <h1 className="mb-1 text-xl font-semibold">Devoluciones</h1>
         <form className="flex items-end gap-3 text-sm">
           <div className="w-24">
-            <Campo etiqueta="Días atrás" type="number" name="dias" min={1} defaultValue={dias} />
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Días atrás</span>
+              <CampoNumero tipo="entero" etiqueta="Los días" name="dias" defaultValue={String(dias)} />
+            </label>
           </div>
           <BotonDeServidor type="submit">Actualizar</BotonDeServidor>
         </form>

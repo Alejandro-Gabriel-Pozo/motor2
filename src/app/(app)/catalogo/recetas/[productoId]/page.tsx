@@ -406,7 +406,7 @@ export default async function RecetaEditorPage({
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
                           <LecturaDeCantidad campoId={`cantidad-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null}>
-                            <CampoNumero tipo="cantidad" id={`cantidad-${ing.id}`} name="cantidad" defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
+                            <CampoNumero tipo="cantidad" id={`cantidad-${ing.id}`} name="cantidad" sinEntendido defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
                             {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
                             <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
                             <span title="Unidad de stock de la materia prima" className="rounded border bg-superficie-suave px-2 py-1.5 text-sm">

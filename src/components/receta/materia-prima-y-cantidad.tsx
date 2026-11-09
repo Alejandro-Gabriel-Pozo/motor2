@@ -118,7 +118,7 @@ export function MateriaPrimaYCantidad({
       <p className="text-xs text-tinta-tenue">La cantidad se carga en la unidad de stock de la materia prima (la que se ve junto a la cantidad).</p>
       <div className="flex gap-2">
         <div className="flex flex-1 items-start gap-2">
-          <CampoNumero tipo="cantidad" id={idCantidad} name="cantidad" placeholder="Cantidad" ariaLabel={etiquetaCantidad} required className="flex-1" />
+          <CampoNumero tipo="cantidad" id={idCantidad} name="cantidad" sinEntendido placeholder="Cantidad" ariaLabel={etiquetaCantidad} required className="flex-1" />
           {elegida && (
             <span className="flex min-h-11 items-center md:min-h-9">
               <Insignia data-unidad-de-la-cantidad>{elegida.unidadStock.nombre}</Insignia>

@@ -7,7 +7,7 @@ import { requierePermisoVer } from "@/server/acceso/gate";
 import { TablaLotesVencimiento, TablaConciliacionVencimientos } from "./tabla-vencimientos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
-import { Campo } from "@/ui/primitivas/campo";
+import { CampoNumero } from "@/components/campo-numero";
 
 export default async function VencimientosPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"dias">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -30,7 +30,10 @@ export default async function VencimientosPage({ searchParams }: { searchParams:
         <h1 className="mb-1 text-xl font-semibold">Vencimientos</h1>
         <form className="flex items-end gap-3 text-sm">
           <div className="w-32">
-            <Campo etiqueta="Próximos (días)" type="number" name="dias" min={1} defaultValue={rep.diasUsados} />
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Próximos (días)</span>
+              <CampoNumero tipo="entero" etiqueta="Los días" name="dias" defaultValue={String(rep.diasUsados)} />
+            </label>
           </div>
           <BotonDeServidor type="submit">Actualizar</BotonDeServidor>
         </form>

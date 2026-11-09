@@ -11,11 +11,13 @@ describe("validarImporte", () => {
   });
 
   it("vacío no obligatorio → null (sin precio)", () => {
-    for (const v of [undefined, null, "", "   "]) expect(validarImporte(v, precio)).toEqual({ ok: true, valor: null });
+    for (const v of [undefined, null, ""]) expect(validarImporte(v, precio)).toEqual({ ok: true, valor: null });
+    // el servidor es estricto: un texto de solo espacios no es vacío, es formato no admitido
+    expect(validarImporte("   ", precio)).toMatchObject({ ok: false, codigo: "notacion" });
   });
 
   it("vacío obligatorio → 'Falta el precio.'", () => {
-    for (const v of [undefined, null, "", "   "]) {
+    for (const v of [undefined, null, ""]) {
       expect(validarImporte(v, { ...precio, obligatorio: true })).toEqual({ ok: false, codigo: "vacio", mensaje: "Falta el precio." });
     }
   });
@@ -54,12 +56,13 @@ describe("validarImporte", () => {
     expect(validarImporte(1e12 - 0.01, precio)).toEqual({ ok: true, valor: 1e12 - 0.01 });
   });
 
-  it("texto tecleado en es-AR", () => {
-    expect(validarImporte("1.234,56", precio)).toEqual({ ok: true, valor: 1234.56 });
-    expect(validarImporte("1.000.000", precio)).toEqual({ ok: true, valor: 1_000_000 });
-    expect(validarImporte("...,.,.,...", precio)).toEqual({ ok: false, codigo: "formato", mensaje: "El precio no es un número válido." });
-    expect(validarImporte("abc", precio)).toMatchObject({ ok: false, codigo: "formato" });
-    expect(validarImporte("12,345", precio)).toMatchObject({ ok: false, codigo: "decimales" });
+  it("texto que llega al servidor: solo canónico (dígitos y un punto decimal)", () => {
+    expect(validarImporte("1234.56", precio)).toEqual({ ok: true, valor: 1234.56 });
+    expect(validarImporte("1000000", precio)).toEqual({ ok: true, valor: 1_000_000 });
+    const notacion = { ok: false, codigo: "notacion", mensaje: "El precio: Formato de número no admitido (solo dígitos y un punto decimal, sin miles ni coma)." };
+    for (const t of ["1.234,56", "1,5", "12,345", "...,.,.,...", "abc", "1.000.000"]) expect(validarImporte(t, precio), t).toEqual(notacion);
+    expect(validarImporte("12.345", precio)).toMatchObject({ ok: false, codigo: "decimales" });
+    expect(validarImporte("21.000", precio)).toMatchObject({ ok: false, codigo: "decimales" });
     expect(validarImporte("-5", precio)).toMatchObject({ ok: false, codigo: "negativo" });
   });
 

@@ -17,6 +17,7 @@ import {
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
@@ -228,7 +229,10 @@ function ItemAgrupado({
                       }}
                       className="flex items-end gap-2"
                     >
-                      <Campo etiqueta={`Orden de «${o.nombre}»`} name="orden" type="number" step={1} defaultValue={o.orden} className="max-w-20" />
+                      <label className="flex flex-col gap-1">
+                        <span className="text-sm font-medium">Orden de «{o.nombre}»</span>
+                        <CampoNumero tipo="entero" etiqueta="El orden" name="orden" defaultValue={String(o.orden)} permitirNegativo className="max-w-20" />
+                      </label>
                       <BotonDeServidor type="submit" tamano="compacto">
                         Guardar orden
                       </BotonDeServidor>

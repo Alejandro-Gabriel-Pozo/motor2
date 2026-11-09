@@ -8,6 +8,7 @@ import { type EntradaVistaPreviaPortal, decidirLayoutPortal, resolverEstiloPorta
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
+import { CampoNumero } from "@/components/campo-numero";
 import { Campo } from "@/ui/primitivas/campo";
 import { CampoColor } from "./campo-color";
 
@@ -94,9 +95,10 @@ function CuerpoEditor({ valoresIniciales, empresaNombre, sucursales: guardadas, 
   const layout = useMemo(() => decidirLayoutPortal(sucursales, estilo.imagenFondo), [sucursales, estilo.imagenFondo]);
   const avisoMapa = avisoImagenSinMapa(Boolean(estilo.imagenFondo), layout.modo, sucursales.length);
 
+  // Se relee un instante después: el valor de un `CampoNumero` viaja por su campo oculto, que React actualiza recién al terminar este evento (leerlo acá daría el valor de una tecla atrás).
   const releer = (e: FormEvent<HTMLDivElement>) => {
     const form = e.currentTarget.closest("form");
-    if (form) setValores(leerValores(form));
+    if (form) setTimeout(() => setValores(leerValores(form)), 0);
   };
 
   const alPresionar = (e: PointerEventReact<HTMLDivElement>) => {
@@ -244,10 +246,17 @@ function CampoDeClave({ d, inicial, actual, aviso }: { d: DefinicionClavePortal;
       control = <CampoColor id={id} name={d.clave} inicial={inicial} etiqueta={d.etiqueta} placeholder={placeholder} ayuda={ayuda} error={error} />;
       break;
     case "porcentaje":
-      control = <Campo {...comun} type="number" min={0} max={100} step="0.01" placeholder={placeholder} />;
-      break;
     case "fraccion":
-      control = <Campo {...comun} type="number" min={0} max={1} step="0.05" placeholder={placeholder} />;
+      // Un número (0 a 100 o 0 a 1, con 2 decimales): `CampoNumero` lo escribe con coma y manda por el campo oculto el valor canónico (`0.4`) que el servidor lee. El rótulo, la ayuda y el error los dibuja la misma
+      // combinación de siempre; el rango lo dice `validarValorPortal` (`error`), ya no el `min`/`max` nativo.
+      control = (
+        <div className="flex flex-col gap-1">
+          <label htmlFor={id} className="text-sm font-medium">
+            {d.etiqueta}
+          </label>
+          <CampoNumero id={id} name={d.clave} tipo="porcentaje" decimales={2} etiqueta={d.etiqueta} defaultValue={inicial} placeholder={placeholder} ayuda={ayudaConAviso} errorDeRegla={error} />
+        </div>
+      );
       break;
     case "texto":
       control = <Campo {...comun} type="text" maxLength={d.maximo} placeholder={placeholder} />;

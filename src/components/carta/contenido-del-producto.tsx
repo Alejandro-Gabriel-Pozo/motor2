@@ -1,4 +1,5 @@
 import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { CampoNumero } from "@/components/campo-numero";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
@@ -185,7 +186,10 @@ export function ContenidoDelProducto({
               }}
               className="mt-3 flex flex-wrap items-end gap-2"
             >
-              <Campo etiqueta="Descuento en esta sucursal, % (vacío = sin descuento)" name="descuento" type="number" min={0} max={99.99} step="0.01" defaultValue={p.descuento ?? ""} />
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Descuento en esta sucursal, % (vacío = sin descuento)</span>
+                <CampoNumero tipo="porcentaje" decimales={2} etiqueta="El descuento" name="descuento" defaultValue={p.descuento === null ? "" : String(p.descuento)} />
+              </label>
               <BotonDeServidor type="submit">Guardar descuento de «{p.nombre}»</BotonDeServidor>
               {!precioLocalActivo && p.descuento !== null && <p className="w-full text-sm text-tinta-suave">No rige: el precio local está apagado en esta sucursal (se cobra el precio de lista).</p>}
             </FormConResultado>

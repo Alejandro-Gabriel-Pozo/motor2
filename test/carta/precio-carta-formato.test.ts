@@ -19,7 +19,9 @@ describe("O.43: precio de carta con coma (o sin forma de número)", () => {
     expect(validarPrecioCarta("12.5")).toEqual({ ok: true, valor: 12.5 });
     expect(validarPrecioCarta(-1)).toEqual({ ok: false, mensaje: "El precio no puede ser negativo." });
     expect(validarPrecioCarta("")).toEqual({ ok: false, mensaje: "Falta el precio." });
-    expect(validarPrecioCarta(Infinity)).toEqual({ ok: false, mensaje: "El precio no es un número válido." });
+    // regla de números 2026-11-09: ±Infinity y los textos no canónicos («1e3», «0x10», « 7 ») ya no se leen con Number(): son formato inválido
+    expect(validarPrecioCarta(Infinity)).toEqual({ ok: false, mensaje: MENSAJE_FORMATO });
+    for (const t of ["1e3", "0x10", " 7 ", "1.234,5", "5."]) expect(validarPrecioCarta(t), t).toEqual({ ok: false, mensaje: MENSAJE_FORMATO });
   });
 });
 

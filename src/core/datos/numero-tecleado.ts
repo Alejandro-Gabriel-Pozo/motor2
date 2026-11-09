@@ -1,20 +1,19 @@
 import { aceptar, rechazar, type ResultadoDato } from "./resultado";
 
 /**
- * Números tecleados y números de entrada (docs/plan-validacion-de-datos-2026-09-25.md; micro-paso 2c: decisiones-cerradas-2026-10-19, «REGLA NUMÉRICA FINAL — NOTACIÓN ARGENTINA»). Dos lectores, porque el mismo
+ * Números tecleados y números de entrada (docs/plan-validacion-de-datos-2026-09-25.md; docs/diseno-campo-numerico-entrada-2026-11-09.md, regla de números del dueño, 2026-11-09). Tres lectores, porque el mismo
  * texto significa cosas distintas según quién lo escribió:
- *  - `interpretarNumeroTecleado(texto, contexto)`: lo que la PERSONA escribe en un campo (coma decimal, punto de miles, ambiguo = error). Lo usan el campo en pantalla y la Server Action con el MISMO contexto.
- *  - `leerNumeroCanonico(texto)`: el «canal de valor» de `CampoNumero` (dígitos y un punto decimal).
+ *  - `interpretarNumeroTecleado(texto, contexto)`: lo que la PERSONA escribe o pega en un campo: dígitos y UNA coma decimal. El «.» NO existe en lo que se escribe (ni como miles ni como decimal): se rechaza con el aviso
+ *    `AVISO_DEL_PUNTO`. El sistema agrega el punto de miles solo, al mostrar.
+ *  - `leerNumeroCanonico(texto)`: el «canal de valor» de `CampoNumero` (dígitos y un punto decimal, formato de máquina).
+ *  - `numeroDeEntrada(valor, contexto)`: lo que llega a la Server Action. Un texto se acepta ÚNICAMENTE en el formato canónico estricto (dígitos y un punto decimal, sin miles ni coma): un pedido armado a mano no cuela ambigüedad.
  * Pura: sin React, Prisma ni `server-only`.
  */
 const MENSAJE_NUMERO_INVALIDO = "No es un número válido.";
 
 const RE_GRUPO_INICIAL = /^[1-9]\d{0,2}$/;
 const RE_GRUPO_MILES = /^\d{3}$/;
-
-function agrupacionDeMilesValida(partes: string[]): boolean {
-  return RE_GRUPO_INICIAL.test(partes[0]) && partes.slice(1).every((p) => RE_GRUPO_MILES.test(p));
-}
+const RE_SOLO_SEPARADORES_Y_DIGITOS = /^[\d.,]*$/;
 
 /**
  * Texto canónico de un número: dígitos, un solo punto decimal, sin notación exponencial ni separador de miles. Es lo que CampoNumero
@@ -31,6 +30,17 @@ export function textoCanonico(n: number): string {
   if (posicionPunto <= 0) return `${signo}0.${"0".repeat(-posicionPunto)}${digitos}`;
   if (posicionPunto >= digitos.length) return `${signo}${digitos}${"0".repeat(posicionPunto - digitos.length)}`;
   return `${signo}${digitos.slice(0, posicionPunto)}.${digitos.slice(posicionPunto)}`;
+}
+
+/**
+ * El número de un valor que un formulario le manda a la Server Action como texto (o ya como `number`), leído como el servidor SIEMPRE lee: solo el formato canónico (dígitos y un punto decimal, sin miles ni coma,
+ * sin exponente ni espacios). Lo que no lo es (o está vacío) es `NaN`, nunca un 0 ni una lectura adivinada: lo rechaza el validador con su mensaje. Es lo que reemplaza a `Number(texto)` en los validadores que leen `unknown`.
+ */
+export function numeroDeFormulario(valor: unknown): number {
+  if (typeof valor === "number") return Number.isFinite(valor) ? valor : Number.NaN;
+  if (typeof valor !== "string") return Number.NaN;
+  const r = leerNumeroCanonico(valor);
+  return r.ok && r.valor !== null ? r.valor : Number.NaN;
 }
 
 /**
@@ -55,15 +65,21 @@ export function tieneALoSumoDecimales(n: number, decimales: number): boolean {
 }
 
 /**
- * Número de una entrada de tipo desconocido (Server Action, script, seed), leída con el CONTEXTO del campo: `number` finito tal cual; texto por el parser de lo tecleado (`interpretarNumeroTecleado`: «21.000» es
- * veintiún mil en un importe y en una cantidad sin decimales, y ambiguo en una cantidad con decimales; nunca se adivina); `null`/`undefined`/texto vacío → `null`. Cualquier otra cosa (booleano, objeto, NaN, ±Infinity) es error de formato.
- * Base común de validarImporte, validarCantidad y los demás, que ponen su propio mensaje. El servidor no confía en el cliente: lo que llega como texto se lee con la misma regla que en la pantalla.
+ * Número de una entrada de tipo desconocido (Server Action, script, seed), leída con el CONTEXTO del campo: `number` finito tal cual; texto SOLO en el formato canónico estricto (`^-?\d+(\.\d+)?$`: dígitos y un punto
+ * decimal, sin miles, sin coma, sin espacios; es lo que `CampoNumero` manda por el campo oculto) y con a lo sumo los decimales del contexto, contados sobre el texto («21.000» en un importe son 3 decimales, no veintiún mil);
+ * `null`/`undefined`/texto vacío → `null`. Cualquier otra cosa (booleano, objeto, NaN, ±Infinity, «21,5», «1.234,50») es error de formato: el servidor no confía en el cliente ni adivina cómo lo escribió. Base común de
+ * validarImporte, validarCantidad y los demás, que ponen su propio mensaje.
  */
 export function numeroDeEntrada(valor: unknown, contexto: ContextoNumerico): ResultadoDato<number | null> {
   if (valor === null || valor === undefined) return aceptar(null);
   if (typeof valor === "number") return Number.isFinite(valor) ? aceptar(valor === 0 ? 0 : valor) : rechazar("formato", MENSAJE_NUMERO_INVALIDO);
-  if (typeof valor === "string") return interpretarNumeroTecleado(valor, contexto);
-  return rechazar("formato", MENSAJE_NUMERO_INVALIDO);
+  if (typeof valor !== "string") return rechazar("formato", MENSAJE_NUMERO_INVALIDO);
+  if (valor === "") return aceptar(null);
+  if (!RE_CANONICO.test(valor)) return rechazar("notacion", MENSAJE_NOTACION_DEL_SERVIDOR);
+  const decimales = valor.includes(".") ? valor.length - valor.indexOf(".") - 1 : 0;
+  if (decimales > contexto.decimales) return rechazar("decimales", mensajeDeDecimales(contexto));
+  const n = Number(valor);
+  return Number.isFinite(n) ? aceptar(n === 0 ? 0 : n) : rechazar("formato", MENSAJE_NUMERO_INVALIDO);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -71,103 +87,56 @@ export function numeroDeEntrada(valor: unknown, contexto: ContextoNumerico): Res
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Para qué es el número que se está leyendo: su TIPO y cuántos decimales admite. El contexto decide dos cosas: si «21.000» es miles o es ambiguo, y cuántas cifras decimales TECLEADAS se aceptan (las cuenta
- * sobre el texto, no sobre el valor: «21,000» tiene 3 aunque valga 21).
- *  - `importe`: plata, hasta 2 decimales (`DECIMALES_IMPORTE`). Un punto con tres cifras («21.000») es SIEMPRE miles: un importe nunca tiene tres decimales.
- *  - `cantidad`: lo que se cuenta, pesa o mide, con los decimales de su unidad (`Unidad.decimales`), y también un porcentaje o un factor (los de su columna). Con 1 o más decimales posibles, «1.205» puede ser 1,205
- *    o 1205 (en kg y l del sembrado, que tienen 2 decimales, también): no se adivina, es ambiguo. Sin decimales (g, ml, unidad) solo puede ser miles.
- * El tipo no sale de contar decimales: un importe y los kg del sembrado tienen los mismos 2, y «21.000» es miles en uno y ambiguo en el otro (un error de mil veces en el stock).
+ * Cuántos decimales admite el número que se está leyendo: los de su unidad o su columna (un importe, 2; una cantidad entera, 0). Cuenta las cifras TECLEADAS, no el valor: «21,000» tiene 3 aunque valga 21.
+ * Ya no hay un «tipo» que cambie la lectura: sin el punto de miles no existe el «21.000» que era miles en un importe y ambiguo en kilos.
  */
 export interface ContextoNumerico {
-  tipo: "importe" | "cantidad";
   decimales: number;
 }
 
 /** Un importe en pesos: hasta 2 decimales (`DECIMALES_IMPORTE`, el de las columnas `Decimal(14,2)`). */
-export const CONTEXTO_IMPORTE: ContextoNumerico = { tipo: "importe", decimales: 2 };
+export const CONTEXTO_IMPORTE: ContextoNumerico = { decimales: 2 };
 
-/** Una cantidad cuya unidad no se conoce: los 4 decimales de las columnas `Decimal(14,4)`, el máximo que admite el sistema. Con ese contexto «1.205» es ambiguo (error), nunca se adivina. */
-export const CONTEXTO_CANTIDAD_SIN_UNIDAD: ContextoNumerico = { tipo: "cantidad", decimales: 4 };
+/** Una cantidad cuya unidad no se conoce: los 4 decimales de las columnas `Decimal(14,4)`, el máximo que admite el sistema. */
+export const CONTEXTO_CANTIDAD_SIN_UNIDAD: ContextoNumerico = { decimales: 4 };
 
 /** El contexto de una cantidad en una unidad con `decimales` decimales (también el de un porcentaje o un factor, con los de su columna). */
 export function contextoDeCantidad(decimales: number): ContextoNumerico {
-  return { tipo: "cantidad", decimales };
+  return { decimales };
 }
 
-/**
- * ¿Un solo punto con tres cifras detrás («21.000», «1.205») es de MILES en este contexto? Sí en un importe y en una cantidad sin decimales (g, ml, unidad: no hay otra lectura posible). No en una cantidad con 1 o más
- * decimales: puede ser 1,205 o 1205 y no se adivina.
- */
-function elPuntoConTresCifrasEsMiles(contexto: ContextoNumerico): boolean {
-  return contexto.tipo === "importe" || contexto.decimales === 0;
-}
+/** El aviso del «.»: lo que se le dice a la persona cuando teclea o pega un punto en un campo numérico (decisión del dueño, 2026-11-09). */
+export const AVISO_DEL_PUNTO = "Los decimales van con coma: 0,5";
 
-const RE_SOLO_SEPARADORES_Y_DIGITOS = /^[\d.,]*$/;
+/** Lo que dice el servidor de un texto que no es el formato canónico (dígitos y un punto decimal). Un campo de pantalla nunca lo manda: es un pedido armado a mano. */
+export const MENSAJE_NOTACION_DEL_SERVIDOR = "Formato de número no admitido (solo dígitos y un punto decimal, sin miles ni coma).";
 
-/** «21,000»: casi seguro quiso decir veintiún mil. Las cifras juntas («21000») cuando el entero es de 1 a 3 dígitos sin cero inicial y sin puntos, y detrás de la coma hay EXACTAMENTE 3; si no, `null`. */
+/** «21,000»: casi seguro quiso decir veintiún mil. Las cifras juntas («21000») cuando el entero es de 1 a 3 dígitos sin cero inicial y detrás de la coma hay EXACTAMENTE 3; si no, `null`. */
 function cifrasDeUnaPistaDeMiles(izquierda: string, derecha: string): string | null {
-  return !izquierda.includes(".") && RE_GRUPO_INICIAL.test(izquierda) && RE_GRUPO_MILES.test(derecha) ? `${izquierda}${derecha}` : null;
+  return RE_GRUPO_INICIAL.test(izquierda) && RE_GRUPO_MILES.test(derecha) ? `${izquierda}${derecha}` : null;
 }
 
-/** La pista para un número tecleado con coma y tres cifras detrás («21,000» → «Para 21000 escribí 21000 o 21.000,00.»), o `null` si no corresponde. Sirve para los mensajes de decimales de los validadores. */
+/** La pista para un número tecleado con coma y tres cifras detrás («21,000» → «Para 21000 escribí 21000.»), o `null` si no corresponde. Sirve para los mensajes de decimales de los validadores. */
 export function pistaDeMiles(texto: unknown): string | null {
   if (typeof texto !== "string") return null;
   const m = /^\s*-?([^,]*),([^,]*)\s*$/.exec(texto);
   const cifras = m ? cifrasDeUnaPistaDeMiles(m[1], m[2].trim()) : null;
-  return cifras === null ? null : `Para ${cifras} escribí ${cifras} o ${formatearMilesParaPista(cifras)},00.`;
-}
-
-/** La coma es SIEMPRE el decimal; lo que va antes (si trae puntos) tiene que ser miles bien agrupados. */
-function separarConComa(cuerpo: string): { entero: string; decimal: string; pistaDeMiles: string | null } | null {
-  const partes = cuerpo.split(",");
-  if (partes.length !== 2) return null; // dos comas: no hay forma de que sean decimales
-  const [izquierda, derecha] = partes;
-  if (derecha.includes(".")) return null; // un punto DESPUÉS de la coma no es miles ni decimal («1,234.56»)
-  let entero = izquierda;
-  if (izquierda.includes(".")) {
-    const grupos = izquierda.split(".");
-    if (!agrupacionDeMilesValida(grupos)) return null;
-    entero = grupos.join("");
-  }
-  return { entero, decimal: derecha, pistaDeMiles: cifrasDeUnaPistaDeMiles(izquierda, derecha) };
-}
-
-type SinComa = { entero: string; decimal: string } | { ambiguo: { entero: string; decimal: string } } | null;
-
-/** Sin coma: el punto es miles (varios, o uno con exactamente 3 cifras que no admite lectura decimal) o decimal (uno con 1, 2 o 4 y más cifras, o con el entero en 0). */
-function separarSinComa(cuerpo: string, contexto: ContextoNumerico): SinComa {
-  const puntos = cuerpo.split(".").length - 1;
-  if (puntos === 0) return { entero: cuerpo, decimal: "" };
-  const partes = cuerpo.split(".");
-  if (puntos >= 2) return agrupacionDeMilesValida(partes) ? { entero: partes.join(""), decimal: "" } : null;
-  const [a, b] = partes;
-  if (b === "") return { entero: a, decimal: "" }; // «21.»: tecleo a medias, se ignora el separador
-  if (a === "") return { entero: "", decimal: b }; // «.5»
-  if (b.length === 3 && RE_GRUPO_INICIAL.test(a)) {
-    // «21.000» / «1.205»: miles en un importe y en una cantidad sin decimales; en una cantidad con decimales puede ser 1,205 o 1205 y no se adivina.
-    return elPuntoConTresCifrasEsMiles(contexto) ? { entero: a + b, decimal: "" } : { ambiguo: { entero: a, decimal: b } };
-  }
-  return { entero: a, decimal: b };
+  return cifras === null ? null : `Para ${cifras} escribí ${cifras}.`;
 }
 
 /** El aviso de la regla del decimal: cuántos admite el contexto. */
-function mensajeDeDecimales(contexto: ContextoNumerico, pistaDeMiles: string | null): string {
+function mensajeDeDecimales(contexto: ContextoNumerico, pista: string | null = null): string {
   const base = contexto.decimales === 0 ? "Tiene que ser un número entero." : `Admite como máximo ${contexto.decimales} ${contexto.decimales === 1 ? "decimal" : "decimales"}.`;
-  return pistaDeMiles === null ? base : `${base} Para ${pistaDeMiles} escribí ${pistaDeMiles} o ${formatearMilesParaPista(pistaDeMiles)},00.`;
-}
-
-/** «21000» → «21.000» (para la pista: lo escrito con miles es la forma que el parser lee como 21000 en un importe). */
-function formatearMilesParaPista(digitos: string): string {
-  return digitos.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return pista === null ? base : `${base} ${pista}`;
 }
 
 /**
- * Lee lo que la PERSONA escribió en un campo numérico, con la notación argentina (decisión del dueño, 2026-10-20): coma decimal siempre; punto de miles bien agrupado; un solo punto con 1 o 2 cifras es decimal («21.5»);
- * un solo punto con 3 cifras («21.000», «1.205») es miles en un importe y en una cantidad sin decimales (g, ml, unidad) y es AMBIGUO (error, no se adivina) en una cantidad con 1 o más decimales (kg, l, porcentajes); «0.125» es decimal; una coma seguida
- * de más cifras que los decimales del contexto es error de decimales («21,000» en un importe), contadas sobre lo tecleado. Un separador final sin cifras se ignora («5,», «21.»); «,5» y «.5» valen 0,5. Vacío → `null` (campo
- * sin cargar). Notación científica, símbolos, espacios y texto son error de formato; nada se borra en silencio ni se redondea.
+ * Lee lo que la PERSONA escribió o pegó en un campo numérico (regla de números del dueño, 2026-11-09): dígitos y UNA coma para los decimales, con un «-» al comienzo si el campo admite negativos. El «.» no se lee: con
+ * un punto en cualquier lugar («2.5», «1.234,50», «21.000») es error `punto` con `AVISO_DEL_PUNTO` (ni como decimal ni como miles: sin heurísticas, nunca se adivina). Una coma seguida de más cifras que los
+ * decimales del contexto es error de decimales («21,000» en un importe), contadas sobre lo tecleado. Un separador final sin cifras se ignora («5,»); «,5» vale 0,5. Vacío → `null` (campo sin cargar). Notación
+ * científica, símbolos, espacios, más de una coma y texto son error de formato; nada se borra en silencio ni se redondea.
  *
- * Errores: `formato` (no es un número), `ambiguo` («1.205» en kg: puede ser 1,205 o 1205) y `decimales` (más cifras decimales que las del contexto). Sirve igual en la pantalla y en el servidor.
+ * Errores: `punto`, `formato` (no es un número) y `decimales` (más cifras decimales que las del contexto). Sirve igual en la pantalla (el aviso al teclear lo decide `CampoNumero`) y para el texto que una persona escribió.
  */
 export function interpretarNumeroTecleado(texto: string, contexto: ContextoNumerico): ResultadoDato<number | null> {
   const t = String(texto ?? "").trim();
@@ -175,24 +144,11 @@ export function interpretarNumeroTecleado(texto: string, contexto: ContextoNumer
   const negativo = t.startsWith("-");
   const cuerpo = negativo ? t.slice(1) : t;
   if (!RE_SOLO_SEPARADORES_Y_DIGITOS.test(cuerpo) || !/\d/.test(cuerpo)) return rechazar("formato", MENSAJE_NUMERO_INVALIDO);
-
-  let entero: string;
-  let decimal: string;
-  let pistaDeMiles: string | null = null;
-  if (cuerpo.includes(",")) {
-    const separado = separarConComa(cuerpo);
-    if (!separado) return rechazar("formato", MENSAJE_NUMERO_INVALIDO);
-    ({ entero, decimal, pistaDeMiles } = separado);
-  } else {
-    const separado = separarSinComa(cuerpo, contexto);
-    if (!separado) return rechazar("formato", MENSAJE_NUMERO_INVALIDO);
-    if ("ambiguo" in separado) {
-      const { entero: a, decimal: b } = separado.ambiguo;
-      return rechazar("ambiguo", `¿${a},${b} o ${a}${b}? Escribí ${a}${b} o ${a},${b}.`);
-    }
-    ({ entero, decimal } = separado);
-  }
-  if (decimal.length > contexto.decimales) return rechazar("decimales", mensajeDeDecimales(contexto, pistaDeMiles));
+  if (cuerpo.includes(".")) return rechazar("punto", AVISO_DEL_PUNTO);
+  const partes = cuerpo.split(",");
+  if (partes.length > 2) return rechazar("formato", MENSAJE_NUMERO_INVALIDO); // dos comas: no hay forma de que sean decimales
+  const [entero, decimal = ""] = partes;
+  if (decimal.length > contexto.decimales) return rechazar("decimales", mensajeDeDecimales(contexto, pistaDeMiles(cuerpo)));
   const n = Number(`${negativo ? "-" : ""}${entero || "0"}${decimal ? `.${decimal}` : ""}`);
   if (!Number.isFinite(n)) return rechazar("formato", MENSAJE_NUMERO_INVALIDO);
   return aceptar(n === 0 ? 0 : n); // nunca -0
@@ -218,8 +174,8 @@ export function leerNumeroCanonico(texto: string): ResultadoDato<number | null> 
 export const MARCA_DE_NO_CANONICO = "\u200B";
 
 /**
- * El texto que `CampoNumero` emite cuando lo tecleado NO es un número válido: el mismo texto, pero que nunca se pueda leer como canónico. Hace falta porque algo inválido puede PARECER canónico («1.205» en un campo de
- * kilos es ambiguo, y como canónico valdría 1,205): sin la marca, un formulario que lee el canal con `Number()` o con `leerNumeroCanonico` mandaría ese 1,205 en silencio.
+ * El texto que `CampoNumero` emite cuando lo tecleado NO es un número válido: el mismo texto, pero que nunca se pueda leer como canónico. Hace falta porque algo inválido puede PARECER canónico (un valor que llegó por afuera, como «1.205» en un
+ * campo de kilos, valdría 1,205 como canónico): sin la marca, un formulario que lee el canal con `Number()` o con `leerNumeroCanonico` lo mandaría como número en silencio.
  */
 export function marcarNoCanonico(texto: string): string {
   return RE_CANONICO.test(texto) ? `${texto}${MARCA_DE_NO_CANONICO}` : texto;
@@ -231,27 +187,27 @@ export function sinMarcaDeNoCanonico(texto: string): string {
 }
 
 /**
- * Un número como se le muestra a quien lo va a EDITAR: el texto canónico con la COMA como decimal y sin separador de miles («1,205», «21000»). Con la regla de la notación argentina se lee
- * siempre como el mismo número (el canónico con punto, «1.205», se leería como ambiguo en un campo de kilos).
+ * Un número como se le muestra a quien lo va a EDITAR: el texto canónico con la COMA como decimal y sin separador de miles («1,205», «21000»). Sin punto, así lo que se edita es
+ * siempre lo que se puede teclear (el canónico con punto, «1.205», el campo lo rechazaría).
  */
 export function textoParaEscribir(n: number): string {
   return textoCanonico(n).replace(".", ",");
 }
 
 /**
- * El mensaje de un número tecleado que no se pudo leer, con el sujeto del campo cuando se lo conoce («El precio de venta admite como máximo 2 decimales. Para 100123 escribí 100123 o 100.123,00.»,
- * «El factor: ¿1,205 o 1205? Escribí 1205 o 1,205.», «La cantidad no es un número válido.»). Sin sujeto, el mensaje del parser tal cual. Lo usan el campo en pantalla y la validación del servidor.
+ * El mensaje de un número tecleado que no se pudo leer, con el sujeto del campo cuando se lo conoce («El precio de venta admite como máximo 2 decimales. Para 100123 escribí 100123.»,
+ * «El factor: Los decimales van con coma: 0,5», «La cantidad no es un número válido.»). Sin sujeto, el mensaje del parser tal cual. Lo usan el campo en pantalla y la validación del servidor.
  */
 export function mensajeDeNumeroRechazado(rechazo: { codigo: string; mensaje: string }, sujeto?: string): string {
   if (!sujeto) return rechazo.mensaje;
   if (rechazo.codigo === "formato") return `${sujeto} no es un número válido.`;
-  if (rechazo.codigo === "ambiguo") return `${sujeto}: ${rechazo.mensaje}`;
+  if (rechazo.codigo === "punto" || rechazo.codigo === "notacion") return `${sujeto}: ${rechazo.mensaje}`;
   return `${sujeto} ${rechazo.mensaje.charAt(0).toLowerCase()}${rechazo.mensaje.slice(1)}`;
 }
 
 /**
- * El rechazo de un número de entrada que no se pudo leer, para los validadores del servidor (y de la pantalla): el código del parser y el mensaje con el sujeto («El precio no es un número válido.», «El factor: ¿1,205 o 1205?
- * Escribí 1205 o 1,205.»). Los errores de DECIMALES llevan el mensaje propio de cada validador (`mensajeDeDecimales`: el de la unidad, el de la columna…) y, si el texto era «21,000», la pista de cómo escribir
+ * El rechazo de un número de entrada que no se pudo leer, para los validadores del servidor (y de la pantalla): el código del parser y el mensaje con el sujeto («El precio no es un número válido.», «El factor: Los decimales van
+ * con coma: 0,5»). Los errores de DECIMALES llevan el mensaje propio de cada validador (`mensajeDeDecimales`: el de la unidad, el de la columna…) y, si el texto era «21,000», la pista de cómo escribir
  * veintiún mil.
  */
 export function rechazoDeNumeroDeEntrada(rechazo: { codigo: string; mensaje: string }, sujeto: string, mensajeDeDecimales: string, valor: unknown): ResultadoDato<never> {
@@ -259,5 +215,6 @@ export function rechazoDeNumeroDeEntrada(rechazo: { codigo: string; mensaje: str
     const pista = pistaDeMiles(valor);
     return rechazar("decimales", pista === null ? mensajeDeDecimales : `${mensajeDeDecimales} ${pista}`);
   }
-  return rechazar(rechazo.codigo === "ambiguo" ? "ambiguo" : "formato", mensajeDeNumeroRechazado(rechazo, sujeto));
+  const codigo = rechazo.codigo === "punto" || rechazo.codigo === "notacion" ? rechazo.codigo : "formato";
+  return rechazar(codigo, mensajeDeNumeroRechazado(rechazo, sujeto));
 }

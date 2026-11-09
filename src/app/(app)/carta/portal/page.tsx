@@ -12,6 +12,7 @@ import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa } 
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { CampoNumero } from "@/components/campo-numero";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { EditorPortal } from "@/components/carta/editor-portal";
 import { Campo } from "@/ui/primitivas/campo";
@@ -175,7 +176,10 @@ function SucursalEnPortal({ sucursal: s, empresaSlug, puedeEditar }: { sucursal:
           >
             <Campo etiqueta="Slug (dirección /carta/<slug>)" name="slug" required defaultValue={p.slug} pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={60} />
             <Campo etiqueta="Etiqueta (opcional, si no se usa el nombre)" name="etiqueta" defaultValue={p.etiqueta ?? ""} placeholder={s.nombre} maxLength={80} />
-            <Campo etiqueta="Orden en el portal" name="orden" type="number" step={1} defaultValue={p.orden} />
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Orden en el portal</span>
+              <CampoNumero tipo="entero" etiqueta="El orden" name="orden" defaultValue={String(p.orden)} permitirNegativo />
+            </label>
             <div className="sm:col-span-2">
               <Campo etiqueta="Subtítulo en el portal (público, opcional)" name="subtituloPortal" defaultValue={p.subtituloPortal ?? ""} placeholder="Frente al lago" maxLength={200} />
             </div>
@@ -203,5 +207,10 @@ function SucursalEnPortal({ sucursal: s, empresaSlug, puedeEditar }: { sucursal:
 }
 
 function CampoPosicion({ nombre, etiqueta, valor }: { nombre: string; etiqueta: string; valor: number | null }) {
-  return <Campo etiqueta={etiqueta} name={nombre} type="number" min={0} max={100} step="0.01" defaultValue={valor ?? ""} className="max-w-24" />;
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-sm font-medium">{etiqueta}</span>
+      <CampoNumero tipo="porcentaje" decimales={2} etiqueta={etiqueta} name={nombre} defaultValue={valor === null ? "" : String(valor)} className="max-w-24" />
+    </label>
+  );
 }

@@ -10,28 +10,25 @@ const KG = contextoDeCantidad(3);
 const ENTERA = contextoDeCantidad(0);
 
 describe("contextoDelCampo", () => {
-  it("un importe admite 2 decimales; una cantidad, los de su unidad; sin tipo o sin decimales, los 4 de las columnas (nunca se adivina «1.205»)", () => {
+  it("un importe admite 2 decimales; una cantidad, los de su unidad; sin tipo o sin decimales, los 4 de las columnas", () => {
     expect(contextoDelCampo("importe", undefined)).toEqual(CONTEXTO_IMPORTE);
     expect(contextoDelCampo("importe", 5)).toEqual(CONTEXTO_IMPORTE); // `decimales` es de las cantidades
-    expect(contextoDelCampo("cantidad", 3)).toEqual({ tipo: "cantidad", decimales: 3 });
-    expect(contextoDelCampo("cantidad", 0)).toEqual({ tipo: "cantidad", decimales: 0 });
+    expect(contextoDelCampo("cantidad", 3)).toEqual({ decimales: 3 });
+    expect(contextoDelCampo("cantidad", 0)).toEqual({ decimales: 0 });
     expect(contextoDelCampo("cantidad", undefined)).toEqual(CONTEXTO_CANTIDAD_SIN_UNIDAD);
-    expect(contextoDelCampo("entero", undefined)).toEqual({ tipo: "cantidad", decimales: 0 });
-    expect(contextoDelCampo("entero", 3)).toEqual({ tipo: "cantidad", decimales: 0 }); // un entero nunca tiene decimales
+    expect(contextoDelCampo("entero", undefined)).toEqual({ decimales: 0 });
+    expect(contextoDelCampo("entero", 3)).toEqual({ decimales: 0 }); // un entero nunca tiene decimales
     expect(contextoDelCampo("porcentaje", undefined)).toEqual(CONTEXTO_CANTIDAD_SIN_UNIDAD);
-    expect(contextoDelCampo("porcentaje", 2)).toEqual({ tipo: "cantidad", decimales: 2 });
+    expect(contextoDelCampo("porcentaje", 2)).toEqual({ decimales: 2 });
   });
 });
 
 describe("valorAEmitir — lo que sale del campo al tipear", () => {
   it.each([
-    ["21.000", CONTEXTO_IMPORTE, "21000"], // veintiún mil: en un importe el punto con tres cifras es de miles
     ["21,5", CONTEXTO_IMPORTE, "21.5"],
-    ["1.234,56", CONTEXTO_IMPORTE, "1234.56"],
     ["0,5", KG, "0.5"],
     ["1,205", KG, "1.205"], // canónico: el punto es el decimal
-    ["1.205", ENTERA, "1205"],
-    ["1.205", CONTEXTO_IMPORTE, "1205"], // en un importe, miles
+    ["1205", ENTERA, "1205"],
     [" 5 ", KG, "5"],
     ["5,", KG, "5"],
     ["", KG, ""],
@@ -41,54 +38,25 @@ describe("valorAEmitir — lo que sale del campo al tipear", () => {
   });
 
   it("lo que no es un número sale TAL CUAL (nunca vacío ni 0), así un required lo cuenta como cargado y el servidor lo rechaza", () => {
-    for (const t of ["abc", "21,000", "1e3", "1,234.56", "5-3"]) expect(valorAEmitir(t, CONTEXTO_IMPORTE), t).toBe(t);
+    for (const t of ["abc", "21,000", "1e3", "1,234.56", "5-3", "1.234,56"]) expect(valorAEmitir(t, CONTEXTO_IMPORTE), t).toBe(t);
   });
 
-  it("«1.205» en kilos es ambiguo y PARECE canónico (1,205): sale marcado, y ni el lector canónico ni Number() lo leen", () => {
-    const emitido = valorAEmitir("1.205", KG);
-    expect(emitido).toBe(`1.205${MARCA_DE_NO_CANONICO}`);
+  it("un texto con «.» que llegó por afuera y PARECE canónico («1.5» en una unidad entera: error de decimales) sale marcado, y ni el lector canónico ni Number() lo leen", () => {
+    const emitido = valorAEmitir("1.5", ENTERA);
+    expect(emitido).toBe(`1.5${MARCA_DE_NO_CANONICO}`);
     expect(leerNumeroCanonico(emitido).ok).toBe(false);
     expect(Number(emitido)).toBeNaN();
-  });
-
-  it("«1.5» en una unidad entera (error de decimales) también parece canónico: sale marcado", () => {
-    expect(valorAEmitir("1.5", ENTERA)).toBe(`1.5${MARCA_DE_NO_CANONICO}`);
-  });
-});
-
-describe("el tipo del campo manda (riesgo de stock): «1.205» en kg y l del sembrado (2 decimales) NO es 1205", () => {
-  const KG_DEL_SEMBRADO = contextoDelCampo("cantidad", 2); // prisma/seed.ts: kg y l con 2 decimales, los mismos que un importe
-
-  it("el campo de kg/l (tipo cantidad, 2 decimales) no emite 1205: sale marcado como no canónico y el error es el ambiguo", () => {
-    const emitido = valorAEmitir("1.205", KG_DEL_SEMBRADO);
-    expect(emitido).toBe(`1.205${MARCA_DE_NO_CANONICO}`);
-    expect(leerNumeroCanonico(emitido).ok).toBe(false);
-    expect(errorDelCampo(emitido, KG_DEL_SEMBRADO, { tipo: "cantidad", etiqueta: "El peso" })).toEqual({ origen: "tecleado", mensaje: "El peso: ¿1,205 o 1205? Escribí 1205 o 1,205." });
-  });
-
-  it("el mismo texto en un importe es 1205, y en g (0 decimales) también", () => {
-    expect(valorAEmitir("1.205", contextoDelCampo("importe", undefined))).toBe("1205");
-    expect(valorAEmitir("1.205", contextoDelCampo("cantidad", 0))).toBe("1205");
-  });
-
-  it("«21.000» en un importe es 21000 y en kg del sembrado es ambiguo", () => {
-    expect(valorAEmitir("21.000", contextoDelCampo("importe", undefined))).toBe("21000");
-    expect(valorAEmitir("21.000", KG_DEL_SEMBRADO)).toBe(`21.000${MARCA_DE_NO_CANONICO}`);
-  });
-
-  it("«0.125» y «1,205» en una unidad de 3 decimales valen 0,125 y 1,205", () => {
-    expect(valorAEmitir("0.125", KG)).toBe("0.125");
-    expect(valorAEmitir("1,205", KG)).toBe("1.205");
   });
 });
 
 describe("textoParaVer y textoParaEditar", () => {
   it("al salir del campo se ve el número en es-AR; al entrar, con coma y sin miles", () => {
-    // El agrupado de miles de los números de 4 cifras depende del ICU del entorno: se acepta con o sin separador.
-    expect(textoParaVer("1234.5")).toMatch(/^1\.?234,5$/);
-    expect(textoParaVer("21000")).toBe("21.000");
-    expect(textoParaVer("0.5")).toBe("0,5");
-    expect(textoParaVer("")).toBe("");
+    // Siempre con punto de miles (no depende del ICU del entorno) y, en un importe, con 2 decimales.
+    expect(textoParaVer("1234.5", "cantidad")).toBe("1.234,5");
+    expect(textoParaVer("1000", "importe")).toBe("1.000,00");
+    expect(textoParaVer("21000", "cantidad")).toBe("21.000");
+    expect(textoParaVer("0.5", "cantidad")).toBe("0,5");
+    expect(textoParaVer("", "importe")).toBe("");
     expect(textoParaEditar("1.205")).toBe("1,205");
     expect(textoParaEditar("21000")).toBe("21000");
     expect(textoParaEditar("-0.5")).toBe("-0,5");
@@ -96,7 +64,7 @@ describe("textoParaVer y textoParaEditar", () => {
   });
 
   it("un texto que no era un número se muestra como se escribió, sin la marca", () => {
-    for (const f of [textoParaVer, textoParaEditar]) {
+    for (const f of [(v: string) => textoParaVer(v, "cantidad"), textoParaEditar]) {
       expect(f(`1.205${MARCA_DE_NO_CANONICO}`)).toBe("1.205");
       expect(f("abc")).toBe("abc");
       expect(f("21,000")).toBe("21,000");
@@ -119,17 +87,17 @@ describe("textoParaVer y textoParaEditar", () => {
 
 describe("errorDelCampo — por qué el valor no sirve", () => {
   it("lo que se tecleó y no se entiende dice cómo escribirlo, con el sujeto del tipo, y es del origen «tecleado» (se muestra junto al campo)", () => {
-    expect(errorDelCampo(`1.205${MARCA_DE_NO_CANONICO}`, KG, { tipo: "cantidad" })).toEqual({ origen: "tecleado", mensaje: "La cantidad: ¿1,205 o 1205? Escribí 1205 o 1,205." });
+    expect(errorDelCampo("1,2345", KG, { tipo: "cantidad" })).toEqual({ origen: "tecleado", mensaje: "La cantidad admite como máximo 3 decimales." });
     expect(errorDelCampo("abc", CONTEXTO_IMPORTE, { tipo: "importe" })).toEqual({ origen: "tecleado", mensaje: "El importe no es un número válido." });
     expect(errorDelCampo("1,5", ENTERA, { tipo: "entero" })).toEqual({ origen: "tecleado", mensaje: "El valor tiene que ser un número entero." });
     expect(errorDelCampo("abc", KG, { tipo: "porcentaje" })).toEqual({ origen: "tecleado", mensaje: "El porcentaje no es un número válido." });
   });
 
   it("con etiqueta, el mensaje lleva el sujeto del campo, como el de la Server Action", () => {
-    expect(errorDelCampo(`1.205${MARCA_DE_NO_CANONICO}`, KG, { tipo: "cantidad", etiqueta: "El factor" })).toEqual({ origen: "tecleado", mensaje: "El factor: ¿1,205 o 1205? Escribí 1205 o 1,205." });
+    expect(errorDelCampo("1,2345", KG, { tipo: "cantidad", etiqueta: "El factor" })).toEqual({ origen: "tecleado", mensaje: "El factor admite como máximo 3 decimales." });
     expect(errorDelCampo("21,000", CONTEXTO_IMPORTE, { tipo: "importe", etiqueta: "El precio de venta" })).toEqual({
       origen: "tecleado",
-      mensaje: "El precio de venta admite como máximo 2 decimales. Para 21000 escribí 21000 o 21.000,00.",
+      mensaje: "El precio de venta admite como máximo 2 decimales. Para 21000 escribí 21000.",
     });
     expect(errorDelCampo("abc", CONTEXTO_IMPORTE, { tipo: "importe" })).toEqual({ origen: "tecleado", mensaje: "El importe no es un número válido." });
     expect(errorDelCampo("1,5", ENTERA, { tipo: "cantidad" })).toEqual({ origen: "tecleado", mensaje: "La cantidad tiene que ser un número entero." });

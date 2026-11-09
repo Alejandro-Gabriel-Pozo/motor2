@@ -7,20 +7,20 @@ import { CONTEXTO_CANTIDAD_SIN_UNIDAD, CONTEXTO_IMPORTE, contextoDeCantidad, int
  * probarla con casos y propiedades; el componente solo conecta esto con el DOM.
  *
  * Dos textos distintos circulan por un campo numérico y no se mezclan:
- *  - lo que la persona TECLEA: notación argentina, se lee con `interpretarNumeroTecleado` y el contexto del campo;
+ *  - lo que la persona TECLEA o PEGA: dígitos y UNA coma, se lee con `interpretarNumeroTecleado` y el contexto del campo (el «.» no existe: `aplicarEdicion`);
  *  - el «canal de valor» (lo que el campo emite, y lo que los formularios y la base le pasan: `value`, `defaultValue`, el campo oculto): dígitos y un punto decimal (`leerNumeroCanonico`).
  */
 
 /**
  * El TIPO de dato que recibe un campo numérico (lo declara cada uso de `CampoNumero`; es obligatorio y lo bloquea el compilador, lote 6.33):
- *  - `importe`: plata, hasta 2 decimales («21.000» es veintiún mil).
- *  - `cantidad`: lo que se cuenta, pesa o mide, con los decimales de su unidad (`decimales`; sin ellos, los 4 de las columnas `Decimal(14,4)`: «1.205» es ambiguo, nunca se adivina).
+ *  - `importe`: plata, hasta 2 decimales.
+ *  - `cantidad`: lo que se cuenta, pesa o mide, con los decimales de su unidad (`decimales`; sin ellos, los 4 de las columnas `Decimal(14,4)`).
  *  - `entero`: un número sin decimales (minutos, días, el número de una mesa). Es una cantidad de 0 decimales.
  *  - `porcentaje`: un porcentaje (merma, diferencia de precio), con los 4 decimales de su columna salvo que se diga otra cosa.
  */
 export type TipoDeCampoNumerico = "importe" | "cantidad" | "entero" | "porcentaje";
 
-/** El contexto del campo: un importe (2 decimales), un entero (0), una cantidad o un porcentaje (los de su unidad o columna, o, sin `decimales`, los 4: el máximo, así «1.205» nunca se adivina). */
+/** El contexto del campo: un importe (2 decimales), un entero (0), una cantidad o un porcentaje (los de su unidad o columna, o, sin `decimales`, los 4: el máximo). */
 export function contextoDelCampo(tipo: TipoDeCampoNumerico, decimales: number | undefined): ContextoNumerico {
   if (tipo === "importe") return CONTEXTO_IMPORTE;
   if (tipo === "entero") return contextoDeCantidad(0);
@@ -45,11 +45,67 @@ export function valorAEmitir(texto: string, contexto: ContextoNumerico): string 
   return r.valor === null ? "" : textoCanonico(r.valor);
 }
 
-/** Cómo se ve el valor del canal cuando el campo no tiene el foco: un número válido en es-AR; lo demás, lo que se escribió (sin la marca, que no se ve). */
-export function textoParaVer(valor: string): string {
+/** «1234567» → «1.234.567»: el punto de miles lo agrega el sistema al mostrar (nunca se escribe). Sin `toLocaleString`: el de es-AR no agrupa los números de 4 cifras («1234»), y el dueño quiere «1.000,00» siempre. */
+function conPuntosDeMiles(entero: string): string {
+  return entero.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+/**
+ * Un número como lo muestra el sistema: punto de miles, coma decimal, sin redondear ni esconder cifras (se ven las que tiene). Un `importe` siempre con 2 decimales («1.000,00»); lo demás, los que tenga
+ * («1.234,5», «60»). Es el formato del campo: el de las tablas y los reportes es de otro módulo (formateo de salida).
+ */
+export function formatearNumeroDelCampo(n: number, tipo: TipoDeCampoNumerico): string {
+  const [entero, decimal = ""] = textoCanonico(Math.abs(n)).split(".");
+  const decimales = tipo === "importe" ? decimal.padEnd(2, "0") : decimal;
+  return `${n < 0 ? "-" : ""}${conPuntosDeMiles(entero)}${decimales ? `,${decimales}` : ""}`;
+}
+
+/** Cómo se ve el valor del canal cuando el campo no tiene el foco: un número válido con puntos de miles y coma decimal; lo demás, lo que se escribió (sin la marca, que no se ve). */
+export function textoParaVer(valor: string, tipo: TipoDeCampoNumerico): string {
   const r = leerNumeroCanonico(valor);
   if (!r.ok) return sinMarcaDeNoCanonico(valor);
-  return r.valor === null ? "" : r.valor.toLocaleString("es-AR", { maximumFractionDigits: 4 });
+  return r.valor === null ? "" : formatearNumeroDelCampo(r.valor, tipo);
+}
+
+/**
+ * El número ENTENDIDO que se muestra junto al campo («= 1.234,50», «= $ 1.234,50», «= 60 g»): lo que el sistema va a guardar, en el formato de pantalla. `null` si el campo está vacío o lo tecleado no es un número
+ * (en ese caso habla el error). Se calcula desde el valor EMITIDO, nunca desde el texto crudo.
+ */
+export function textoEntendido(valor: string, tipo: TipoDeCampoNumerico, unidad?: string): string | null {
+  const r = leerNumeroCanonico(valor);
+  if (!r.ok || r.valor === null) return null;
+  const numero = formatearNumeroDelCampo(r.valor, tipo);
+  return `= ${tipo === "importe" ? "$ " : ""}${numero}${unidad ? ` ${unidad}` : ""}`;
+}
+
+/** De dónde vino un cambio del texto del campo: una tecla (un carácter) o algo que entra de golpe (pegado, arrastrado, autocompletado, reemplazo). */
+export type OrigenDeLaEdicion = "tecleado" | "pegado";
+
+/** El origen de un cambio, según el `inputType` y el `data` del evento `input` del navegador: solo un carácter insertado por teclado (o por el teclado del celular) es «tecleado»; todo lo demás, «pegado». */
+export function origenDeLaEdicion(inputType: string | undefined, data: string | null | undefined): OrigenDeLaEdicion {
+  const porTeclado = inputType === "insertText" || inputType === "insertCompositionText";
+  return porTeclado && data?.length === 1 ? "tecleado" : "pegado";
+}
+
+export interface ResultadoDeLaEdicion {
+  /** El texto que queda en el campo. */
+  texto: string;
+  /** Dónde queda el cursor (`null` = al final: se rechazó todo y el campo vuelve a como estaba). */
+  cursor: number | null;
+  /** true si se mostró el aviso del «.» (se ignoró la tecla o se rechazó el pegado). */
+  avisoDelPunto: boolean;
+}
+
+/**
+ * La regla del «.» al ESCRIBIR (decisión del dueño, 2026-11-09): el campo numérico no acepta el punto. Una tecla «.» se ignora (el resto de lo escrito queda y el cursor no se corre) y se avisa; un pegado,
+ * arrastre o autocompletado que trae un «.» se rechaza ENTERO (el campo queda como estaba) y se avisa: sin heurísticas, nunca se adivina si «1.234» eran mil doscientos o uno con coma. Sin «.», el texto pasa tal cual.
+ * `anterior` es el texto antes del cambio; `nuevo`, el que dejó el navegador; `cursor`, su `selectionStart`.
+ */
+export function aplicarEdicion(anterior: string, nuevo: string, origen: OrigenDeLaEdicion, cursor: number | null): ResultadoDeLaEdicion {
+  if (!nuevo.includes(".")) return { texto: nuevo, cursor, avisoDelPunto: false };
+  if (origen === "pegado") return { texto: anterior, cursor: null, avisoDelPunto: true };
+  const puntosAntesDelCursor = cursor === null ? 0 : nuevo.slice(0, cursor).split(".").length - 1;
+  return { texto: nuevo.replaceAll(".", ""), cursor: cursor === null ? null : cursor - puntosAntesDelCursor, avisoDelPunto: true };
 }
 
 /**

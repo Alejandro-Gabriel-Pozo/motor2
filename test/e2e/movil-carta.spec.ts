@@ -87,7 +87,7 @@ test("administración de la carta en celular (375 px): formularios de promo sin 
     await expect(promo.locator('[data-cupo-lugar="Plato del día"]')).toHaveCount(1);
     for (const fila of await filas.all()) {
       const cajaFila = (await fila.boundingBox())!;
-      for (const input of await fila.locator('input[type="number"]').all()) {
+      for (const input of await fila.locator('input[inputmode="decimal"]').all()) {
         const c = (await input.boundingBox())!;
         expect.soft(c.x + c.width, "cupo: mín./máx. dentro de la pantalla").toBeLessThanOrEqual(375);
         expect.soft(c.x, "cupo: mín./máx. dentro de su fila").toBeGreaterThanOrEqual(cajaFila.x - 1);
