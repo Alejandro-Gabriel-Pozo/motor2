@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { describirCambioVersionReceta, describirCopiaDeRecetaPropia, describirDescarteArrastre, describirRecetaPropiaGuardada } from "@/core/catalogo/public";
-import { validarCabecera, validarIngredientes, validarPasos, validarUnidadDeIngredientes } from "@/core/catalogo/public";
+import { juzgarCantidadesDeIngredientes, validarCabecera, validarIngredientes, validarPasos, validarUnidadDeIngredientes } from "@/core/catalogo/public";
 import { esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
 import { cargarDatosParaValidarReceta } from "@/server/persistencia/catalogo/cargar-datos-para-validar-receta";
 import { MENSAJE_PRODUCTO_NO_ENCONTRADO } from "@/core/features/catalogo/receta-version.guard";
@@ -47,6 +47,8 @@ import {
  *          (cantidad y merma, en la sucursal de la calibración). Un cambio de cantidad/merma CENTRAL no descarta nada;
  *        - auditoría de la versión nueva (D6(b), paso 2): `RecetaVersion`/`version`, `sucursalId` siempre `null` (Catálogo Central);
  *     (si la serie ya va por una versión distinta de `comando.versionEsperada`, se corta acá con `VERSION_DESACTUALIZADA` y no se escribe nada);
+ *     a''. GUARDIA DE UNIDAD (docs/diseno-guardia-de-unidad-receta-2026-11-09.md): si la cantidad de un ingrediente NUEVO o CAMBIADO es desproporcionada para su unidad de stock (100 kg de pan rallado por unidad vendida) y el pedido no trae la confirmación
+ *        explícita (`confirmaCantidadDesproporcionada === true`), se corta con `CANTIDAD_DESPROPORCIONADA` y no se escribe nada. No aplica a «Se produce» ni a las rutas que declaran `omitirGuardiaDeUnidad` (carga a ciegas, copias);
  *  4. el mensaje de éxito, con el aviso de las calibraciones descartadas si hubo.
  *
  * RECETA PROPIA (ADR-009, receta propia por sucursal): con `destino.sucursalId` el caso de uso guarda en la serie PROPIA de esa sucursal en vez de la central —
@@ -177,6 +179,21 @@ export async function guardarVersionDeRecetaCasoDeUso(
         const invalidoUnidad = validarUnidadDeIngredientes(items, unidadesDeStock.productos, unidadesDeStock.nombresDeUnidad);
         if (invalidoUnidad) {
           rechazo.resultado = fracaso("INGREDIENTES_INVALIDOS", invalidoUnidad);
+          return;
+        }
+        // Guardia de unidad (docs/diseno-guardia-de-unidad-receta-2026-11-09.md): una cantidad desproporcionada para la unidad de stock (100 kg de pan rallado por unidad vendida) se rechaza salvo confirmación
+        // explícita en ESTE pedido. Solo se juzgan los ingredientes nuevos o cambiados respecto de `ultima` (lo ya guardado no se re-juzga). Sin escribir nada, como los rechazos de arriba.
+        const desproporcionada = juzgarCantidadesDeIngredientes({
+          items,
+          producto: { nombre: producto.nombre, seProduce: producto.seProduce },
+          vigentes: new Map((ultima?.ingredientes ?? []).map((i) => [i.insumoProductoId, { cantidad: Number(i.cantidad), unidadId: i.unidadId }])),
+          productos: unidadesDeStock.productos,
+          unidades: unidadesDeStock.unidades,
+          confirmada: comando.confirmaCantidadDesproporcionada,
+          omitir: comando.omitirGuardiaDeUnidad === true,
+        });
+        if (desproporcionada) {
+          rechazo.resultado = fracaso("CANTIDAD_DESPROPORCIONADA", desproporcionada);
           return;
         }
         version = versionActual + 1;
