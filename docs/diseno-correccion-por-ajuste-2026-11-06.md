@@ -2,6 +2,8 @@
 
 **Estado del documento:** diseño en papel para el dueño. Salvo donde se indica otra cosa, todo es PROPUESTA. No se implementó nada, no hay migraciones y no se corrió ningún test. Lo preparó un agente de planificación (Opus), que leyó `main` (`50c11538`), la rama `origin/alegp/diseno-flujos-y-pasos`, la rama de la maqueta `origin/alegp/tmp-capturas-correcciones` y la copia local de `motor2-docs` (último commit `582484a`, 2026-11-06).
 
+**Actualización 2026-11-09:** E2 («renglón de compra suelta») y E3 («factura repartida o pendiente de pago») quedaron **reemplazados** por `docs/diseno-correccion-de-renglon-de-factura-2026-11-09.md`: desde que toda compra es una factura (U0, `docs/diseno-una-sola-compra-2026-11-06.md`) son un solo caso, «corregir un renglón de la factura» (E2a una parte, E2b repartida). Lo que dicen E2 y E3 más abajo se conserva como historia y ya no es la propuesta vigente; E0, E1, las decisiones 1 a 6 y la frontera con la nota de crédito siguen vigentes.
+
 **Estados que se usan:** CONFIRMADA (lo dijo el dueño), PROPUESTA, PENDIENTE y NO VERIFICADO. Cuando una afirmación sale del código se marca VERIFICADO y se cita el archivo y la línea.
 
 **Decisiones del dueño que este diseño respeta (2026-11-06, CONFIRMADAS):**
