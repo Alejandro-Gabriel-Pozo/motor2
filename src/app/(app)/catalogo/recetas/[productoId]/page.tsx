@@ -401,7 +401,7 @@ export default async function RecetaEditorPage({
                               unidadId: String(formData.get("unidadId") ?? ""),
                               mermaPorcentaje: numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0,
                               insumoSustitutoIds: aceptaSustitutos ? formData.getAll("insumoSustitutoIds").map(String).filter((v) => v !== "") : undefined,
-                            }, versionVista);
+                            }, versionVista, formData.get("confirmarDesproporcion") === "1");
                             // Sale del modo edición al guardar — si no, `editar=` queda pegado en la URL y la fila se muestra siempre editable.
                             if (resultado.ok) redirect(volver);
                             return resultado;
@@ -409,7 +409,7 @@ export default async function RecetaEditorPage({
                           className="flex flex-wrap items-end gap-2"
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
-                          <LecturaDeCantidad campoId={`cantidad-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null}>
+                          <LecturaDeCantidad campoId={`cantidad-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null} descripcion={{ insumo: ing.insumoProducto.nombre, producto: producto.nombre }}>
                             <CampoNumero tipo="cantidad" id={`cantidad-${ing.id}`} name="cantidad" defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
                             {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
                             <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
@@ -539,12 +539,12 @@ export default async function RecetaEditorPage({
               // U7 / D3: la unidad es la de stock de la MP elegida (el servidor la vuelve a comparar con la real al guardar).
               unidadId: unidadDeStockPorMp[insumoProductoId] ?? "",
               mermaPorcentaje: numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0,
-            }, versionVista);
+            }, versionVista, formData.get("confirmarDesproporcion") === "1");
           }}
           className="flex max-w-lg flex-col gap-2"
         >
           <h3 className="font-medium">Agregar ingrediente (genera la próxima versión)</h3>
-          <MateriaPrimaYCantidad idCantidad="cantidad-ingrediente-nuevo" etiquetaMateriaPrima="Materia prima" etiquetaCantidad="Cantidad" etiquetaMerma="Merma" lecturaPorUnidad={lecturaPorUnidad} />
+          <MateriaPrimaYCantidad idCantidad="cantidad-ingrediente-nuevo" etiquetaMateriaPrima="Materia prima" etiquetaCantidad="Cantidad" etiquetaMerma="Merma" lecturaPorUnidad={lecturaPorUnidad} nombreDelProducto={producto.nombre} />
           <BotonDeServidor type="submit">
             Agregar
           </BotonDeServidor>

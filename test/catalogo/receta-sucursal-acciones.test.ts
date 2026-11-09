@@ -137,7 +137,7 @@ describe("receta propia por sucursal: acciones", () => {
 
     it("agregar, actualizar y quitar generan versiones de la serie propia (numeradas por su cuenta); la central no se mueve", async () => {
       expect((await agregarIngredienteARecetaPropia(pv.id, linea(tomate.id, 3), await versionPropia(pv.id), await habilitadaPropia(pv.id))).ok).toBe(true);
-      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 5, unidadId: kgId, mermaPorcentaje: 20 }, await versionPropia(pv.id), await habilitadaPropia(pv.id))).ok).toBe(true);
+      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 4, unidadId: kgId, mermaPorcentaje: 20 }, await versionPropia(pv.id), await habilitadaPropia(pv.id))).ok).toBe(true); // la guardia de unidad (docs/diseno-guardia-de-unidad-receta-2026-11-09.md) juzga desde 5 kg: este test es de versiones, no de cantidades
       expect((await quitarIngredienteDeRecetaPropia(pv.id, harina.id, await versionPropia(pv.id), await habilitadaPropia(pv.id))).ok).toBe(true);
 
       const versiones = await propias(centralId);
@@ -146,7 +146,7 @@ describe("receta propia por sucursal: acciones", () => {
       const vigente = versiones[3];
       expect(idsDe(vigente)).toEqual([queso.id, tomate.id].sort());
       const q = vigente.ingredientes.find((i) => i.insumoProductoId === queso.id);
-      expect([Number(q?.cantidad), Number(q?.mermaPorcentaje)]).toEqual([5, 20]);
+      expect([Number(q?.cantidad), Number(q?.mermaPorcentaje)]).toEqual([4, 20]);
 
       const central = await centrales();
       expect(central.map((v) => v.version)).toEqual([1]);
@@ -221,10 +221,10 @@ describe("receta propia por sucursal: acciones", () => {
   describe("la receta efectiva y el aviso «la central cambió»", () => {
     it("con la propia habilitada rige la propia en esa sucursal; en las otras, la central", async () => {
       expect((await crearRecetaPropiaDesdeLaCentral(pv.id, await versionPropia(pv.id), await habilitadaPropia(pv.id))).ok).toBe(true);
-      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 8, unidadId: kgId }, await versionPropia(pv.id), await habilitadaPropia(pv.id))).ok).toBe(true);
+      expect((await actualizarIngredienteDeRecetaPropia(pv.id, queso.id, { cantidad: 3, unidadId: kgId }, await versionPropia(pv.id), await habilitadaPropia(pv.id))).ok).toBe(true);
       const deCentral = await cargarRecetaVigente(prisma, alcanceDeSucursal(centralId), pv.id, { include: { ingredientes: true } });
       expect(deCentral).toMatchObject({ sucursalId: centralId, version: 2 });
-      expect(Number(deCentral?.ingredientes.find((i) => i.insumoProductoId === queso.id)?.cantidad)).toBe(8);
+      expect(Number(deCentral?.ingredientes.find((i) => i.insumoProductoId === queso.id)?.cantidad)).toBe(3);
       expect(await cargarRecetaVigente(prisma, alcanceDeSucursal(norteId), pv.id, {})).toMatchObject({ sucursalId: null, version: 1 });
       expect(await cargarRecetaVigente(prisma, ALCANCE_CENTRAL, pv.id, {})).toMatchObject({ sucursalId: null, version: 1 });
     });
