@@ -1,6 +1,6 @@
 import { intento, variantes, type ContextoDeArgumentos, type Generadores, type Kit, type Valor } from "./argumentos";
 import { DIA_DEL_PLATO_DEL_MUNDO } from "./mundo";
-import { sumarDias } from "../../../src/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../../../src/core/tiempo/zona-horaria";
 import { nroFacturaDePrueba } from "../../setup/comprobante-de-prueba";
 import { REFERENCIA_DE_PRUEBA } from "../../setup/referencia-de-prueba";
 
@@ -95,6 +95,8 @@ const completos: Record<string, Valor> = {
       intento(c, ["seccionCartaId"], [c.propio.productoPvId, { visibleEnCarta: true, seccionCartaId: k.seccionCartaId, generoCartaId: c.propio.generoCartaId, descripcion: "texto" }]),
       intento(c, ["generoCartaId"], [c.propio.productoPvId, { visibleEnCarta: true, seccionCartaId: c.propio.seccionCartaId, generoCartaId: k.generoCartaId, descripcion: "texto" }]),
     ),
+  // «Está bien así» (2026-11-04): el PV con opciones del mundo está VISIBLE en la carta de la sucursal con el nombre de carta sin decidir; el control positivo lo confirma.
+  "accion|actions/carta/contenido-producto.ts|confirmarNombreEnCarta": (k) => [k.productoConOpcionesId],
   // CARTA-MANT: «Agregar a la carta» (eco de la sucursal primero). El `pv2` del mundo está disponible en S1 y SIN contenido de carta (el `pv` tiene uno oculto): el control positivo lo agrega.
   "accion|actions/carta/mantenimiento.ts|agregarProductoALaCarta": (k, c) =>
     conVariantes(
@@ -181,11 +183,6 @@ const completos: Record<string, Valor> = {
   "accion|actions/catalogo/proveedores.ts|altaProveedor": () => [{ nombre: "Proveedor nuevo" }],
   "accion|actions/catalogo/proveedores.ts|actualizarProveedor": (k) => [k.proveedorId, { contacto: "contacto nuevo" }],
   "accion|actions/catalogo/unidades.ts|crearUnidad": () => [{ nombre: "Unidad nueva", magnitud: "PESO" }],
-  "accion|actions/catalogo/recetas.ts|guardarReceta": (k, c) =>
-    conVariantes(
-      intento(c, ["productoPvId"], [k.productoPvId, [ingrediente(k, c.propio.productoId)], [{ orden: 1, instruccion: "Mezclar" }], {}, 1]),
-      intento(c, ["productoId", "unidadId"], [c.propio.productoPvId, [ingrediente(k)], [{ orden: 1, instruccion: "Mezclar" }], {}, 1]),
-    ),
   "accion|actions/catalogo/recetas.ts|agregarIngredienteAReceta": (k, c) =>
     conVariantes(intento(c, ["productoPvId"], [k.productoPvId, ingrediente(k, c.propio.productoMp3Id), 1]), intento(c, ["productoMp3Id", "unidadId"], [c.propio.productoPvId, ingrediente(k, k.productoMp3Id), 1])),
   "accion|actions/catalogo/recetas.ts|actualizarIngredienteDeReceta": (k) => [k.productoPvId, k.productoId, { cantidad: 2, unidadId: k.unidadId }, 1],
@@ -250,11 +247,15 @@ const completos: Record<string, Valor> = {
   "lectura|lecturas/catalogo/precio-local-de-opciones.ts|filaDePrecioLocalDeOpcion": (k, c) => [c.db, { sucursalId: c.propio.sucursalId, productoId: k.productoConOpcionesId, opcionId: k.opcionMedidaId }],
 
   // --- movimientos, stock, traspasos ---
-  "accion|actions/movimientos/compras.ts|corregirCompra": (k, c) =>
-    conVariantes(
-      intento(c, ["compraId"], [k.compraId, { proveedorId: c.propio.proveedorId, nroFactura: "A-00001-00000099", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
-      intento(c, ["proveedorId"], [c.propio.compraId, { proveedorId: k.proveedorId, nroFactura: "A-00001-00000099", detalleLibre: "texto" }, { proveedorId: c.propio.proveedorId, nroFactura: `F-${c.propio.marca}`, detalleLibre: `Compra ${c.propio.marca}` }]),
-    ),
+  // U1 de «una sola compra»: corregir los datos de la FACTURA (la única corrección de la compra); el id de la factura y el proveedor nuevo son los del cliente.
+  "accion|actions/movimientos/facturas-proveedor.ts|corregirFacturaProveedor": (k, c) => {
+    // Lo que el mundo guardó de la factura propia «factura-enviada» (proveedor, número y sin detalle): es lo que «vio» quien corrige; la corrección cambia solo el detalle (un dato válido que llega a la lógica).
+    const visto = { proveedorId: c.propio.proveedorId, nroFactura: `Factura ${c.propio.marca} factura-enviada`, detalleLibre: "" };
+    return conVariantes(
+      intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, { ...visto, detalleLibre: "texto" }, visto]),
+      intento(c, ["proveedorId"], [c.propio.facturaEnviadaId, { ...visto, proveedorId: k.proveedorId }, visto]),
+    );
+  },
   "accion|actions/movimientos/conteo-fisico.ts|registrarConteosFisicos": (k, c) =>
     conVariantes(
       intento(c, ["productoId"], [[{ productoId: k.productoId, seccionId: c.propio.seccionId, conteoReal: 5, fechaConteo: hoy(), accion: "AJUSTAR" }]]),
@@ -332,6 +333,11 @@ const completos: Record<string, Valor> = {
     ),
   // Anular: la factura que cargó la sucursal ajena (la cabecera es de la empresa: la defensa es pedir `anular_compra` en la sucursal que la cargó y en cada una con parte).
   "accion|actions/movimientos/facturas-proveedor.ts|anularFacturaProveedor": (k, c) => intento(c, ["facturaEnviadaId"], [k.facturaEnviadaId, "motivo de prueba", crypto.randomUUID()]),
+  // Pagos X0: declarar y anular el pago. La clave es de EMPRESA (`declarar_pago_compra`) y la cabecera de la factura es de la empresa: la defensa es la RLS (la factura o el pago de otra empresa no existe para quien pide) y el permiso. La
+  // factura que se paga es una «pendiente de pago» sin pago; el pago que se anula es el vigente de otra factura (el mundo siembra las dos). La fecha es HOY en Argentina (nunca anterior al día de la factura, que es ayer).
+  "accion|actions/movimientos/pagos-factura-proveedor.ts|declararPagoDeFacturaProveedor": (k, c) =>
+    intento(c, ["facturaPendienteDePagoId"], [k.facturaPendienteDePagoId, diaDeCalendario(new Date(), ZONA_ARGENTINA), "EFECTIVO", crypto.randomUUID()]),
+  "accion|actions/movimientos/pagos-factura-proveedor.ts|anularPagoDeFacturaProveedor": (k, c) => intento(c, ["pagoDeFacturaId"], [k.pagoDeFacturaId, "motivo de prueba", crypto.randomUUID()]),
 
   // --- consultas de las páginas y lecturas (el contexto —sucursal activa, empresa, usuario, hora, db— es el propio; los ids del cliente, los ajenos) ---
   // Las candidatas son las sucursales con carta propia; la consulta tiene que dejar afuera las que u1 no ve (S2, S3, las de otra empresa).
@@ -442,6 +448,10 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/pos/cuenta-apertura.ts|liberarMesa": { cuentaId: (k) => k.cuentaVaciaId },
   "accion|actions/pos/cuenta-cierre.ts|cerrarCuenta": { cuentaId: (k) => k.cuentaEnviadaId },
   "accion|actions/pos/cuenta-cierre.ts|emitirTicketCorregido": { cuentaId: (k) => k.cuentaCerradaId },
+  // «Corregir una línea» (E0): la venta vigente de una línea de la cuenta cerrada y lo que «vio» la persona: el ticket 1-A y su total (1000 + 500 de las dos líneas vigentes del mundo).
+  "accion|actions/pos/cuenta-cierre.ts|corregirLineaDeTicket": { cuentaId: (k) => k.cuentaCerradaId, operacionId: (k) => k.ventaDelTicketId, ejemplarVisto: () => 1, totalVisto: () => 1500 },
+  // «Quitar unidades de una línea» (E1): la línea de 2 unidades de la cuenta cerrada (se quita 1) y lo que «vio» la persona: 2 unidades, el ticket 1-A y su total.
+  "accion|actions/pos/cuenta-cierre.ts|quitarUnidadesDeLinea": { cuentaId: (k) => k.cuentaCerradaId, operacionId: (k) => k.ventaConDosUnidadesDelTicketId, unidadesAQuitar: () => 1, unidadesVistas: () => 2, ejemplarVisto: () => 1, totalVisto: () => 1500 },
   "accion|actions/movimientos/conteo-fisico.ts|cancelarConteoFisico": { conteoId: (k) => k.conteoResueltoId },
   "accion|actions/carta/items-agrupados.ts|agregarOpcionItemAgrupadoCarta": { productoId: (k) => k.productoPv2Id },
   // `versionVista` es la versión de la receta PROPIA que vio la persona: 0 = todavía no tiene.
@@ -449,6 +459,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   // `operacionId` por defecto es la compra; la venta lleva la suya.
   "accion|actions/movimientos/venta.ts|anularVenta": { operacionId: (k) => k.ventaId },
   "consulta|consultas/pos/tickets.ts|obtenerTicketsRecientes": { mesaId: (k) => k.mesaCerradaId },
+  // «Corregir este movimiento» (E0, g): el movimiento de la compra principal del mundo. Con el id de OTRA empresa o de otra sucursal la lectura da null; con el propio la ve.
+  "consulta|consultas/movimientos/movimiento-a-corregir.ts|obtenerMovimientoACorregir": { idMovimiento: (k) => k.movimientoCompraId },
   // OPCIONES-FACTOR: la pantalla de un grupo pide también la receta de referencia (la página lo decide por el «Ver» de las recetas) y solo la lee en un grupo de TAMAÑOS: se ejerce con el
   // tamaño del kit y CON la receta, el camino que lee más.
   "consulta|consultas/catalogo/opciones-de-venta.ts|cargarGrupoDelPanel": { grupoId: (k) => k.grupoMedidaId, conRecetaDeReferencia: () => true },
@@ -467,6 +479,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   // GO-2d: la misma grilla, para varios productos a la vez (el selector del POS).
   "lectura|lecturas/catalogo/precio-local-de-opciones.ts|preciosLocalesDeOpcionVigentesEnProductos": { productoIds: (k) => [k.productoConOpcionesId], precioLocalActivo: () => true },
   // GO-2d: «lo más pedido» del PV con opciones en la sucursal.
+  // E1 (quitar unidades): las versiones de las ventas de la cuenta cerrada (la lectura del ticket); con ids de otra empresa o sucursal no devuelve nada.
+  "lectura|lecturas/pos/versiones-de-venta.ts|cargarVersionesDeVentas": { ventaIds: (k) => [k.ventaDelTicketId] },
   "lectura|lecturas/pos/mas-pedidas.ts|configuracionesMasPedidasEnSucursal": { productoIds: (k) => [k.productoConOpcionesId] },
   // GO-2b: lo que admite para vender el PV con opciones (la vigente, los consumos, lo apagado en la sucursal) y la grilla de la sucursal para su MEDIDA en ABSOLUTO elegida.
   "lectura|lecturas/opciones/opciones-para-vender.ts|cargarOpcionesParaVender": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoConOpcionesId] }) },
@@ -475,6 +489,8 @@ const parametros: Record<string, Record<string, Valor>> = {
     elegidas: (k) => [{ productoId: k.productoConOpcionesId, opcionIds: [k.opcionMedidaId] }],
   },
   // GO-3b: los componentes de un combo (el PV con receta) y las alícuotas de todo lo que el combo puede tener (la sección de carta, la lista y el plato del día; la carta de la sucursal activa).
+  "lectura|lecturas/carta/choque-de-nombre.ts|buscarChoqueDeNombreEnLaCarta": { args: (k) => ({ sucursalId: k.sucursalId, productoIdPropio: k.productoPvId, nombre: "Nombre de prueba" }) },
+  "lectura|lecturas/carta/nombres-para-el-ticket.ts|cargarNombresDeCartaParaElTicket": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoPvId] }) },
   "lectura|lecturas/carta/componentes-de-promo.ts|cargarProductosComoComponentes": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoPvId] }) },
   "lectura|lecturas/carta/componentes-de-promo.ts|cargarAlicuotasPosiblesDeLugares": {
     lugares: (k) => ({ seccionCartaIds: [k.seccionCartaId], cupoListaIds: [k.cupoListaId], cupoDelDiaIds: [k.cupoDelDiaId] }),
@@ -525,8 +541,6 @@ const parametros: Record<string, Record<string, Valor>> = {
   "accion|actions/traspasos/traspasos.ts|rechazarSolicitudTransferencia": { id: (k) => k.traspasoId },
   "accion|actions/traspasos/traspasos.ts|rechazarTransferencia": { id: (k) => k.traspasoEntranteId },
   "accion|actions/traspasos/traspasos.ts|confirmarReingresoTransferencia": { id: (k) => k.traspasoRechazadoId },
-  // La compra principal ya tiene consumos posteriores (no se puede anular): se anula la que nadie tocó.
-  "accion|actions/movimientos/compras.ts|anularCompra": { operacionId: (k) => k.compraAnulableId },
 };
 
 const porArchivo: Record<string, Record<string, Valor>> = {

@@ -7,9 +7,7 @@ import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { actualizarOpcionDeGrupo } from "@/server/persistencia/catalogo/opciones-de-venta";
 import { cargarGrupoEnTx } from "./opciones-de-venta-en-tx";
-
-/** Paso entre un orden y el siguiente: deja lugar para que un alta caiga entre dos opciones sin renumerar las demás. */
-const PASO_DE_ORDEN = 10;
+import { PASO_DE_ORDEN } from "@/core/opciones/public";
 
 /**
  * Caso de uso «ordenar las opciones de un grupo» (GO-2d, el «mover tocando» de la pantalla del grupo): fija el orden de TODAS las opciones del grupo de una sola vez, en una

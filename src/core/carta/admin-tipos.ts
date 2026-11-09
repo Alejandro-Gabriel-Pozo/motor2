@@ -31,7 +31,7 @@ export interface ProductoCartaAdmin {
   /** % de descuento CONFIGURADO de este producto EN esta sucursal (producto con descuento, 2026-10-01), o null. Rige solo con `precioLocalActivo` (R1). */
   descuento: number | null;
   contenido:
-    | { visibleEnCarta: boolean; seccionCartaId: string | null; descripcion: string | null; tags: string[]; especial: boolean; orden: number; generoCartaId: string | null }
+    | { visibleEnCarta: boolean; seccionCartaId: string | null; descripcion: string | null; tags: string[]; especial: boolean; orden: number; generoCartaId: string | null; nombreEnCarta: string | null }
     | null;
   /** Nombre del ítem agrupado donde está (docs/plan-agrupacion-items-carta-2026-09-24.md, M6), o null: si está, sale solo ahí. */
   agrupadoEn: string | null;
@@ -269,6 +269,8 @@ export interface EntradaDeLugarAdmin {
   activa: boolean;
   productoId: string;
   nombre: string;
+  /** `A_ELEGIR`: las opciones de la entrada son las PERMITIDAS y el mozo elige entre ellas (no es una configuración fija). */
+  modoDeOpciones: "FIJAS" | "A_ELEGIR";
 }
 
 /** Un lugar de entradas de una promo: LISTA («Bebida»: se elige de una lista; con una sola entrada y mínimo = máximo, viene FIJO) o DEL_DIA («Plato del día»: lo carga cada sucursal por día). */
@@ -294,8 +296,27 @@ export interface VigenciaDePromoAdmin {
 /** Un producto de venta que se puede sumar a una lista, con los grupos de UNA sola elección que admite (para fijar su configuración). */
 export interface ProductoParaEntrada {
   productoId: string;
+  /** El nombre interno (`Producto.nombre`). */
   nombre: string;
+  /** Cómo se llama para quien arma: una base con el nombre oculto, por los rótulos de su medida con el nombre interno entre paréntesis; si no, el nombre en la carta o el interno (`nombreParaMostrar`). */
+  nombreParaMostrar: string;
   grupos: { grupoId: string; nombre: string; obligatorio: boolean; opciones: { opcionId: string; nombre: string }[] }[];
+  /** La sección de la carta de ESTA sucursal donde se ubica (suelto o dentro de un ítem agrupado); `null` = «no está en la carta». Solo es la fuente para tildar: no es una regla viva. */
+  seccionCartaId: string | null;
+  /** El rubro del producto (`CategoriaProducto`), para el atajo «tildar todos los de la categoría»; `null` = sin categoría. */
+  categoria: { id: string; nombre: string } | null;
+  /** Todos los grupos que admite, para «el mozo elige» (promo a elegir): con los límites del grupo (solo lectura) y las opciones activas. Un ADICIONAL va marcado: no entra en una promo de precio fijo. */
+  gruposAElegir: GrupoParaElegirAdmin[];
+}
+
+/** Un grupo de opciones de un producto, tal como lo muestra la pantalla de «el mozo elige» (límites en solo lectura). */
+interface GrupoParaElegirAdmin {
+  grupoId: string;
+  nombre: string;
+  adicional: boolean;
+  cantidadMinima: number;
+  cantidadMaxima: number;
+  opciones: { opcionId: string; nombre: string }[];
 }
 
 export interface CombosDeLaCarta {

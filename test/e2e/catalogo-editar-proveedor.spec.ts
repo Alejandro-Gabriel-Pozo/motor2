@@ -10,9 +10,9 @@ import { prisma } from "./fixtures/db";
  * test/e2e/catalogo-editar-producto.spec.ts, mismo criterio para Productos.
  *
  * Lo que queda por probar es que la pantalla de edición carga TODOS los
- * datos del proveedor, y que el nombre se muestra pero no es editable.
+ * datos del proveedor, incluido el nombre, que desde el 2026-11-04 SE PUEDE corregir (ver catalogo-proveedor-nombre-y-oferta.spec.ts).
  */
-test("la edición carga todos los datos del proveedor, y el nombre se muestra sin ser editable", async ({ paginaAutenticada: page }) => {
+test("la edición carga todos los datos del proveedor, y el nombre es un campo editable", async ({ paginaAutenticada: page }) => {
   const sufijo = Date.now();
   const proveedor = await prisma.proveedor.create({
     data: {
@@ -29,8 +29,9 @@ test("la edición carga todos los datos del proveedor, y el nombre se muestra si
 
   await page.goto(`/catalogo/proveedores/${proveedor.id}/editar`);
 
-  await expect(page.locator('input[name="nombre"]')).toHaveCount(0);
-  await expect(page.getByText(proveedor.nombre, { exact: true })).toBeVisible();
+  await expect(page.locator('input[name="nombre"]')).toHaveValue(proveedor.nombre);
+  await expect(page.locator('input[name="ofreceProductos"]')).toBeChecked();
+  await expect(page.locator('input[name="ofreceServicios"]')).not.toBeChecked();
   await expect(page.locator('input[name="contacto"]')).toHaveValue("Contacto X");
   await expect(page.locator('input[name="telefono"]')).toHaveValue("11-1234-5678");
   await expect(page.locator('input[name="email"]')).toHaveValue("proveedor@ejemplo.com");

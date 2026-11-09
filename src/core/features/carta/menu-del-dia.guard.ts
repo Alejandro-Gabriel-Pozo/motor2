@@ -2,6 +2,7 @@ import { esIdentificador } from "@/core/datos/identificador";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { MENSAJE_SUCURSAL_CAMBIADA } from "@/core/features/catalogo/opciones-por-sucursal.guard";
 import type { ComandoAgregarPlatoDelDia, ComandoCopiarMenuDelDiaAnterior, ComandoQuitarPlatoDelDia } from "./menu-del-dia.schema";
+import { LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
 
 /**
  * Guard de la feature «menú del día» (GO-3b, ADR-032). Formato del comando, ANTES de tocar la base; lo llama la Server Action DENTRO de su `conPermiso("promo_menu_del_dia", …)`. Puro.
@@ -11,7 +12,6 @@ import type { ComandoAgregarPlatoDelDia, ComandoCopiarMenuDelDiaAnterior, Comand
  * fecha esté entre hoy y hoy + 13 lo decide el caso de uso (necesita «hoy», de la zona de la empresa).
  */
 
-const LARGO_MAXIMO_DE_ID = 64;
 
 function id(valor: unknown, mensaje: string): ResultadoDato<string> {
   return esIdentificador(valor) && valor.length <= LARGO_MAXIMO_DE_ID ? aceptar(valor) : rechazar("formato", mensaje);

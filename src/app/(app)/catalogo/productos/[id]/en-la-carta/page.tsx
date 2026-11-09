@@ -13,6 +13,8 @@ import { ContenidoDelProducto, type UbicacionEnCarta } from "@/components/carta/
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { Aviso } from "@/ui/primitivas/aviso";
+import { estadoDelNombreDeCarta, nombreDeCarta } from "@/core/carta/public";
+import { esBaseConfigurable } from "@/core/opciones/public";
 
 /**
  * Paso 4 del espacio del producto, «En la carta» (Fase 6, 6.17c; DEC-12): publicar el producto en la carta de la sucursal SIN salir del espacio. Es la ficha de carta del producto de siempre (`ContenidoDelProducto`,
@@ -54,7 +56,7 @@ export default async function EnLaCartaDelProductoPage({ params }: { params: Pro
     : [null, null];
   const admin = datos?.productos[0] ?? null;
   // 6.18: cómo lo va a leer la carta pública, con el «nombre arriba» que tiene guardado (esta pantalla ya exige `carta_ver`).
-  const vistaPrevia = admin ? await cargarVistaPreviaDeLaCarta(ctx.db, ctx.sucursalId, { id: producto.id, precioVenta: producto.precioVenta, esBase: producto.modoDeVenta === "BASE_CONFIGURABLE" }, basesDeUnEje?.get(producto.id) ?? false) : null;
+  const vistaPrevia = admin ? await cargarVistaPreviaDeLaCarta(ctx.db, ctx.sucursalId, { id: producto.id, precioVenta: producto.precioVenta, esBase: esBaseConfigurable(producto.modoDeVenta) }, basesDeUnEje?.get(producto.id) ?? false) : null;
   const ubicacion: UbicacionEnCarta | null = datos && {
     secciones: datos.secciones.map((x) => ({ id: x.id, nombre: x.nombre, activa: x.activa })),
     cantidadPorSeccion: Object.fromEntries(datos.secciones.map((x) => [x.id, x.cantidadItems])),
@@ -107,10 +109,11 @@ export default async function EnLaCartaDelProductoPage({ params }: { params: Pro
                 precioLocalActivo={datos?.precioLocalActivo ?? false}
                 sucursalId={ctx.sucursalId}
                 mostrarNombreArriba={basesDeUnEje?.get(producto.id)}
+                nombreDeCartaPendiente={admin.contenido?.visibleEnCarta === true && !esBaseConfigurable(producto.modoDeVenta) && estadoDelNombreDeCarta(producto, admin.contenido) === "pendiente"}
                 abierto
               />
             </ul>
-            {vistaPrevia && <VistaPreviaDeLaCarta nombre={producto.nombre} sucursalNombre={ctx.sucursalNombre} vista={vistaPrevia} />}
+            {vistaPrevia && <VistaPreviaDeLaCarta nombre={nombreDeCarta(producto, admin.contenido)} sucursalNombre={ctx.sucursalNombre} vista={vistaPrevia} />}
           </>
         )}
       </section>

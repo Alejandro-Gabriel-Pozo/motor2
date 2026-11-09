@@ -33,6 +33,17 @@ const VIAS_DE_VENTA: readonly { ruta: string; motivo: string }[] = [
   },
 ];
 
+/**
+ * Quién más escribe la Operacion de una venta (`escribirOperacionDeVenta`) aparte del núcleo: una lista CERRADA, con motivo. No son «vías que venden»: reescriben una venta que YA pasó la barrera.
+ */
+const ESCRITORES_DE_CABECERA_DE_VENTA_FUERA_DEL_NUCLEO: readonly { ruta: string; motivo: string }[] = [
+  {
+    ruta: "server/persistencia/movimientos/escribir-venta-corregida.ts",
+    motivo:
+      "E1 de la corrección por ajuste (docs/diseno-correccion-por-ajuste-2026-11-06.md): la venta B que REEMPLAZA a una venta A corregida quitándole unidades. Copia las filas de una venta que ya pasó por el núcleo (con sus opciones y precios congelados), con MENOS unidades, y nunca vende un producto nuevo ni a otro precio; el comando que la escribe es `reemplazarVentaConMenosUnidadesEnTx` (Movimientos).",
+  },
+];
+
 function archivosFuente(dir: string): string[] {
   return readdirSync(dir).flatMap((nombre) => {
     const ruta = join(dir, nombre);
@@ -107,7 +118,8 @@ describe("la venta exige las opciones obligatorias en toda vía", () => {
 
   it("(1) solo el núcleo arma una línea de venta y escribe la Operacion de una venta: ninguna vía vende por su cuenta", () => {
     expect(llamadas("armarLinea")).toEqual([NUCLEO]);
-    expect(llamadas("escribirOperacionDeVenta")).toEqual([NUCLEO]);
+    expect(llamadas("escribirOperacionDeVenta").sort()).toEqual([NUCLEO, ...ESCRITORES_DE_CABECERA_DE_VENTA_FUERA_DEL_NUCLEO.map((e) => e.ruta)].sort());
+    for (const e of ESCRITORES_DE_CABECERA_DE_VENTA_FUERA_DEL_NUCLEO) expect(e.motivo.length, e.ruta).toBeGreaterThan(40);
   });
 
   it("(2) las vías que llaman al núcleo son exactamente las declaradas, con motivo (en las dos direcciones)", () => {

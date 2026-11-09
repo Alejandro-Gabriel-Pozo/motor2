@@ -86,6 +86,10 @@ export interface KitDeSucursal {
   cuentaId: string;
   /** La cuenta ya cerrada (con su ticket emitido). */
   cuentaCerradaId: string;
+  /** La Operacion VENTA vigente de una línea de la cuenta cerrada (lo que `corregirLineaDeTicket` anula; queda otra línea vigente, así que el ticket se puede emitir). */
+  ventaDelTicketId: string;
+  /** E1 (quitar unidades): la Operacion VENTA de una línea de la cuenta cerrada que vende 2 unidades (con su fila de Kardex), de la que se puede quitar 1. */
+  ventaConDosUnidadesDelTicketId: string;
   /** Una cuenta abierta sin ítems (la mesa se puede liberar). */
   cuentaVaciaId: string;
   /** Una cuenta abierta con todo enviado a cocina (se puede cerrar), con una promo enviada. */
@@ -97,6 +101,8 @@ export interface KitDeSucursal {
   compraId: string;
   /** Una compra de una materia prima sin consumos posteriores (la única que se puede anular). */
   compraAnulableId: string;
+  /** Un movimiento de stock de la compra principal (lo que `obtenerMovimientoACorregir` lee para prellenar «Corregir este movimiento»). */
+  movimientoCompraId: string;
   ventaId: string;
   conteoId: string;
   /** Un conteo ya RESUELTO (el único que se puede cancelar). */
@@ -113,6 +119,10 @@ export interface KitDeSucursal {
   facturaEnviadaId: string;
   /** E3a: la propuesta PENDIENTE que la vecina le hizo a ESTA sucursal (la acepta esta sucursal). */
   propuestaParaAceptarId: string;
+  /** Pagos X0: una factura de proveedor «pendiente de pago» sin pago (a esa se le declara el pago). */
+  facturaPendienteDePagoId: string;
+  /** Pagos X0: un pago VIGENTE de otra factura pendiente de pago (ese se anula). */
+  pagoDeFacturaId: string;
   pagoConsignanteId: string;
   precioLocalId: string;
   frecuenciaId: string;
@@ -146,6 +156,8 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   mesaCerradaId: true,
   cuentaId: true,
   cuentaCerradaId: true,
+  ventaDelTicketId: true,
+  ventaConDosUnidadesDelTicketId: true,
   cuentaVaciaId: true,
   cuentaEnviadaId: true,
   promoCuentaEnviadaId: true,
@@ -154,6 +166,7 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   promoCuentaId: true,
   compraId: true,
   compraAnulableId: true,
+  movimientoCompraId: true,
   ventaId: true,
   conteoId: true,
   conteoResueltoId: true,
@@ -164,6 +177,8 @@ const CAMPOS_DE_SUCURSAL_REGISTRO: Record<keyof KitDeSucursal, true> = {
   traspasoPedidoId: true,
   facturaEnviadaId: true,
   propuestaParaAceptarId: true,
+  facturaPendienteDePagoId: true,
+  pagoDeFacturaId: true,
   pagoConsignanteId: true,
   precioLocalId: true,
   frecuenciaId: true,
@@ -349,6 +364,13 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     data: { id: id("venta-ticket-anulada"), empresaId, sucursalId, proceso: "VENTA", fecha: enElPasado(HORA_MS), anuladaEn: enElPasado(HORA_MS / 2), usuarioId: miembro.id, detalleLibre: `Venta anulada del ticket ${marca}` },
   });
   await db.cuentaItem.create({ data: { id: id("item-cerrada"), empresaId, cuentaId: cuentaCerrada.id, productoId: k.productoPvId, cantidad: 1, precioUnitario: 1000, numeroEnvio: 1, operacionId: ventaDelTicket.id, creadoPorId: miembro.id } });
+  // E0 (corregir una línea): una TERCERA línea vigente de $500 (otra venta), para que anular la primera deje ticket que emitir (con una sola línea vigente se rechaza: «última línea»). El ticket vigente suma 1000 + 500.
+  const ventaDelTicketRestante = await db.operacion.create({ data: { id: id("venta-ticket-restante"), empresaId, sucursalId, proceso: "VENTA", fecha: enElPasado(HORA_MS), usuarioId: miembro.id, detalleLibre: `Venta restante del ticket ${marca}` } });
+  // E1 (quitar unidades): esa línea restante vende 2 unidades a $250 (mismo importe, $500) y lleva su fila de Kardex, para que el control positivo de «quitar unidades» pueda quitar 1.
+  await db.cuentaItem.create({ data: { id: id("item-cerrada-restante"), empresaId, cuentaId: cuentaCerrada.id, productoId: k.productoPv2Id, cantidad: 2, precioUnitario: 250, numeroEnvio: 1, operacionId: ventaDelTicketRestante.id, creadoPorId: miembro.id } });
+  await db.movimientoStock.create({
+    data: { id: id("venta-ticket-restante-kardex"), empresaId, operacionId: ventaDelTicketRestante.id, productoId: k.productoPv2Id, seccionId: seccion.id, proceso: "VENTA", cantidad: -2, detalle: `Venta restante del ticket ${marca}`, precioTotal: 500, precioPorUnidadStock: 250 },
+  });
   await db.cuentaItem.create({ data: { id: id("item-cerrada-anulado"), empresaId, cuentaId: cuentaCerrada.id, productoId: k.productoPv2Id, cantidad: 1, precioUnitario: 1234, numeroEnvio: 1, operacionId: ventaDelTicketAnulada.id, creadoPorId: miembro.id } });
   // Una cuenta abierta SIN ítems (se puede liberar la mesa) y otra con todo ENVIADO a cocina, ítems y promo (se puede cerrar y se puede anular lo enviado): los controles positivos del POS necesitan estos estados.
   const mesa3 = await db.mesa.create({ data: { id: id("mesa-c"), empresaId, sucursalId, numero: 3 } });
@@ -366,7 +388,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const compra = await db.operacion.create({
     data: { id: id("compra"), empresaId, sucursalId, proceso: "COMPRA", fecha: enElPasado(2 * DIA_MS), proveedorId: k.proveedorId, nroFactura: `F-${marca}`, usuarioId: miembro.id, detalleLibre: `Compra ${marca}` },
   });
-  await db.movimientoStock.create({
+  const movimientoCompra = await db.movimientoStock.create({
     data: { id: id("mov-compra"), empresaId, operacionId: compra.id, productoId: k.productoId, seccionId: seccion.id, proceso: "COMPRA", cantidad: 10, loteVencimiento: new Date(Date.now() + 30 * DIA_MS), detalle: `Compra ${marca}`, precioTotal: 1000, precioPorUnidadStock: 100 },
   });
   // Una compra que SÍ se puede anular: de una materia prima que no se consumió ni se movió (la compra principal ya tiene consumos posteriores y «no se puede anular»).
@@ -464,6 +486,17 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     });
     facturasE3a[sufijo] = { facturaId: factura.id, propuestaId: propuesta.id };
   }
+  // Pagos X0: dos facturas «pendiente de pago» de la empresa (sin propuestas): una sin pago, para declararle uno, y otra con un pago vigente, para anularlo. El día de la factura es ayer; el pago, de ayer.
+  const facturasPendientes: Record<string, string> = {};
+  for (const sufijo of ["factura-pendiente-de-pago", "factura-con-pago"]) {
+    const factura = await db.facturaProveedor.create({
+      data: { id: id(sufijo), empresaId, proveedorId: k.proveedorId, nroFactura: `Factura ${marca} ${sufijo}`, nroFacturaNormalizado: id(sufijo), fecha: enElPasado(DIA_MS), importeTotal: 100, condicionPago: "PENDIENTE_DE_PAGO", estado: "CONFIRMADA", confirmadaEn: enElPasado(DIA_MS), confirmadaPorId: miembro.id, creadoPorId: miembro.id },
+    });
+    facturasPendientes[sufijo] = factura.id;
+  }
+  const pagoDeFactura = await db.pagoDeFacturaProveedor.create({
+    data: { id: id("pago-de-factura"), empresaId, facturaProveedorId: facturasPendientes["factura-con-pago"]!, fechaPago: enElPasado(DIA_MS), medio: "TRANSFERENCIA", claveIdempotencia: id("pago-de-factura-clave"), payloadHash: "h", resultadoMensaje: "Pago declarado.", creadoPorId: miembro.id },
+  });
   const pago = await db.pagoConsignante.create({ data: { id: id("pago"), empresaId, sucursalId, proveedorId: k.proveedorId, importe: 500, fecha: enElPasado(DIA_MS), notas: `Pago ${marca}`, usuarioId: miembro.id } });
 
   // Configuración por sucursal.
@@ -485,7 +518,9 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
   const opcion = await db.opcionItemAgrupadoCarta.create({ data: { id: id("opcion"), empresaId, sucursalId, itemAgrupadoCartaId: itemAgrupado.id, productoId: k.productoPvId } });
   await db.contenidoCartaProducto.create({ data: { id: id("contenido"), empresaId, sucursalId, productoId: k.productoMp2Id, visibleEnCarta: true, seccionCartaId: k.seccionCartaId, descripcion: `Contenido ${marca}`, generoCartaId: genero.id } });
   // Contenido de carta del PV (oculto: el control positivo de «mostrar en la carta» lo muestra), posición en el mapa del portal y un tema con una clave válida (un tema vacío no se puede aplicar).
-  await db.contenidoCartaProducto.create({ data: { id: id("contenido-pv"), empresaId, sucursalId, productoId: k.productoPvId, visibleEnCarta: false, seccionCartaId: k.seccionCartaId, descripcion: `Contenido PV ${marca}`, generoCartaId: genero.id } });
+  // «Está bien así» (2026-11-04): un PV VISIBLE en la carta de la sucursal con el nombre de carta sin decidir (`NULL`): el control positivo de `confirmarNombreEnCarta` lo confirma. Sin fila de otro producto que lo use como nombre.
+  await db.contenidoCartaProducto.create({ data: { id: id("contenido-pv-opciones"), empresaId, sucursalId, productoId: k.productoConOpcionesId, visibleEnCarta: true, seccionCartaId: k.seccionCartaId, descripcion: `Contenido PV con opciones ${marca}`, generoCartaId: genero.id } });
+  await db.contenidoCartaProducto.create({ data: { id: id("contenido-pv"), empresaId, sucursalId, productoId: k.productoPvId, visibleEnCarta: false, seccionCartaId: k.seccionCartaId, descripcion: `Contenido PV ${marca}`, generoCartaId: genero.id, nombreEnCarta: `Nombre de carta ${marca}` } });
   await db.sucursalPublica.create({ data: { id: id("publica"), empresaId, sucursalId, slug: id("slug").toLowerCase(), etiqueta: `Etiqueta ${marca}`, publicada: true, posX: 50, posY: 50, posW: 10, posH: 5 } });
   await db.temaCartaSucursal.create({ data: { id: id("tema"), empresaId, sucursalId, valores: { restaurante_nombre: `Restaurante ${marca}` }, aplicarEnCarta: false } });
   await db.capacidadSucursal.create({ data: { id: id("capacidad"), empresaId, accionClave: "carta_tema", sucursalId, habilitado: true } });
@@ -515,6 +550,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     mesaCerradaId: mesa2.id,
     cuentaId: cuenta.id,
     cuentaCerradaId: cuentaCerrada.id,
+    ventaDelTicketId: ventaDelTicket.id,
+    ventaConDosUnidadesDelTicketId: ventaDelTicketRestante.id,
     cuentaVaciaId: cuentaVacia.id,
     cuentaEnviadaId: cuentaEnviada.id,
     promoCuentaEnviadaId: promoCuentaEnviada.id,
@@ -523,6 +560,7 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     promoCuentaId: promoCuenta.id,
     compraId: compra.id,
     compraAnulableId: compraAnulable.id,
+    movimientoCompraId: movimientoCompra.id,
     ventaId: venta.id,
     conteoId: conteo.id,
     conteoResueltoId: conteoResuelto.id,
@@ -533,6 +571,8 @@ async function sembrarContenido(marca: string, k: KitDeEmpresa, sucursalId: stri
     traspasoPedidoId: traspasoPedido.id,
     facturaEnviadaId: facturasE3a["factura-enviada"].facturaId,
     propuestaParaAceptarId: facturasE3a["factura-para-aceptar"].propuestaId,
+    facturaPendienteDePagoId: facturasPendientes["factura-pendiente-de-pago"]!,
+    pagoDeFacturaId: pagoDeFactura.id,
     pagoConsignanteId: pago.id,
     precioLocalId: precioLocal.id,
     frecuenciaId: frecuencia.id,

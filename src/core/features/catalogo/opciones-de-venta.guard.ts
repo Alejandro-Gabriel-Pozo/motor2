@@ -1,13 +1,14 @@
 import { esIdentificador } from "@/core/datos/identificador";
 import { validarImporte } from "@/core/datos/importe";
-import { ENTERO_MAXIMO_RAZONABLE, validarTopeDeLista } from "@/core/datos/limites";
+import { ENTERO_MAXIMO_RAZONABLE, validarTopeDeLista, LARGO_MAXIMO_DE_ID } from "@/core/datos/limites";
 import { validarNombreCatalogo } from "@/core/datos/nombre-catalogo";
 import { contextoDeCantidad, numeroDeEntrada, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 import { validarFactorDeEscala, validarPorcentajeDeDiferencia } from "@/core/datos/porcentaje-y-factor";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
-import { validarTextoCatalogo } from "@/core/texto";
+import { RE_TEXTO_CATALOGO, validarTextoCatalogo } from "@/core/texto";
 import {
   CANTIDAD_MAXIMA_DE_OPCION,
+  LARGO_MAXIMO_DE_LA_DESCRIPCION_EN_CARTA,
   LARGO_MAXIMO_DEL_PREFIJO_EN_CARTA,
   MENSAJE_PREFIJO_SOLO_VARIANTE_O_MEDIDA,
   admitePrefijoEnCarta,
@@ -59,8 +60,6 @@ const MAXIMO_OPCIONES_POR_ADMISION = 100;
  * en la biblioteca (`/catalogo/opciones`), opción por opción.
  */
 export const MAX_OPCIONES_EN_UN_ALTA = 20;
-/** Tope de un id que llega del cliente (un cuid tiene 25). */
-const LARGO_MAXIMO_DE_ID = 64;
 /** Tope de una cantidad de consumo (`DECIMAL(14,4)`). */
 const CANTIDAD_DE_CONSUMO_MAXIMA = 1e10;
 
@@ -243,6 +242,25 @@ export function guardComandoEditarGrupoDeOpciones(entrada: {
 
 // ───────────────────────────── Opciones y versiones ─────────────────────────────
 
+/**
+ * Carta «B», E3: la descripción de una opción en la carta («lechuga, tomate, cebolla»). Ausente (`undefined`) queda ausente (editar otra cosa no la toca); `null`, vacío o solo espacios es «sin descripción»
+ * (`null`); si no, UNA línea (sin saltos), sin espacios a los costados (no se recorta: se avisa), de hasta 120 caracteres y con el juego de caracteres del catálogo (letras, números, espacios y `- . , ( ) % & / ' _`:
+ * nunca HTML). El CHECK `OpcionDeGrupo_descripcion_en_carta_chk` de la base repite el tope, los costados y los saltos.
+ */
+function descripcionEnCarta(valor: unknown): ResultadoDato<string | null | undefined> {
+  if (valor === undefined) return aceptar(undefined);
+  if (valor === null) return aceptar(null);
+  const etiqueta = "La descripción";
+  if (typeof valor !== "string") return rechazar("formato", `${etiqueta} no es un texto válido.`);
+  if (valor.trim() === "") return aceptar(null);
+  if (/[\r\n]/.test(valor)) return rechazar("formato", `${etiqueta} va en una sola línea: sacá los saltos de línea.`);
+  if (valor !== valor.trim()) return rechazar("formato", `${etiqueta} no puede empezar ni terminar con espacios: borralos y volvé a guardar.`);
+  if (Array.from(valor).length > LARGO_MAXIMO_DE_LA_DESCRIPCION_EN_CARTA) return rechazar("largo", `${etiqueta} tiene hasta ${LARGO_MAXIMO_DE_LA_DESCRIPCION_EN_CARTA} caracteres: acortala.`);
+  if (!RE_TEXTO_CATALOGO.test(valor)) return rechazar("formato", `${etiqueta} tiene caracteres no permitidos. Se admiten letras, números, espacios y - . , ( ) % & / '`);
+  if (valor.startsWith("-")) return rechazar("formato", `${etiqueta} no puede empezar con "-".`);
+  return aceptar(valor);
+}
+
 export function guardComandoCrearOpcionDeGrupo(entrada: {
   grupoId: unknown;
   nombre: unknown;
@@ -250,6 +268,7 @@ export function guardComandoCrearOpcionDeGrupo(entrada: {
   esNinguna: unknown;
   version: unknown;
   ancla: unknown;
+  descripcionEnCarta?: unknown;
 }): ResultadoDato<ComandoCrearOpcionDeGrupo> {
   const grupoId = id(entrada.grupoId, MENSAJE_GRUPO_NO_ENCONTRADO);
   if (!grupoId.ok) return grupoId;
@@ -268,17 +287,21 @@ export function guardComandoCrearOpcionDeGrupo(entrada: {
     if (!unidad.ok) return unidad;
     ancla = { unidadStockId: unidad.valor };
   }
-  return aceptar({ grupoId: grupoId.valor, nombre: n.valor, orden: orden.valor, esNinguna: esNinguna.valor, version: version.valor, ancla });
+  const descripcion = descripcionEnCarta(entrada.descripcionEnCarta);
+  if (!descripcion.ok) return descripcion;
+  return aceptar({ grupoId: grupoId.valor, nombre: n.valor, orden: orden.valor, esNinguna: esNinguna.valor, version: version.valor, ancla, ...(descripcion.valor === undefined ? {} : { descripcionEnCarta: descripcion.valor }) });
 }
 
-export function guardComandoEditarOpcionDeGrupo(entrada: { opcionId: unknown; versionEsperada: unknown; nombre: unknown }): ResultadoDato<ComandoEditarOpcionDeGrupo> {
+export function guardComandoEditarOpcionDeGrupo(entrada: { opcionId: unknown; versionEsperada: unknown; nombre: unknown; descripcionEnCarta?: unknown }): ResultadoDato<ComandoEditarOpcionDeGrupo> {
   const opcionId = id(entrada.opcionId, MENSAJE_OPCION_NO_ENCONTRADA);
   if (!opcionId.ok) return opcionId;
   const version = versionEsperada(entrada.versionEsperada, 1);
   if (!version.ok) return version;
   const n = nombre(entrada.nombre, "El nombre de la opción");
   if (!n.ok) return n;
-  return aceptar({ opcionId: opcionId.valor, versionEsperada: version.valor, nombre: n.valor });
+  const descripcion = descripcionEnCarta(entrada.descripcionEnCarta);
+  if (!descripcion.ok) return descripcion;
+  return aceptar({ opcionId: opcionId.valor, versionEsperada: version.valor, nombre: n.valor, ...(descripcion.valor === undefined ? {} : { descripcionEnCarta: descripcion.valor }) });
 }
 
 export function guardComandoAgregarVersionDeOpcion(entrada: { opcionId: unknown; numeroEsperado: unknown; version: unknown }): ResultadoDato<ComandoAgregarVersionDeOpcion> {

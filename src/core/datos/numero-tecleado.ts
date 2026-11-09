@@ -67,14 +67,14 @@ export function tieneALoSumoDecimales(n: number, decimales: number): boolean {
 /**
  * Número de una entrada de tipo desconocido (Server Action, script, seed), leída con el CONTEXTO del campo: `number` finito tal cual; texto SOLO en el formato canónico estricto (`^-?\d+(\.\d+)?$`: dígitos y un punto
  * decimal, sin miles, sin coma, sin espacios; es lo que `CampoNumero` manda por el campo oculto) y con a lo sumo los decimales del contexto, contados sobre el texto («21.000» en un importe son 3 decimales, no veintiún mil);
- * `null`/`undefined`/texto vacío → `null`. Cualquier otra cosa (booleano, objeto, NaN, ±Infinity, «21,5», «1.234,50») es error de formato: el servidor no confía en el cliente ni adivina cómo lo escribió. Base común de
+ * `null`/`undefined`/texto vacío o de solo espacios → `null`. Cualquier otra cosa (booleano, objeto, NaN, ±Infinity, «21,5», «1.234,50») es error de formato: el servidor no confía en el cliente ni adivina cómo lo escribió. Base común de
  * validarImporte, validarCantidad y los demás, que ponen su propio mensaje.
  */
 export function numeroDeEntrada(valor: unknown, contexto: ContextoNumerico): ResultadoDato<number | null> {
   if (valor === null || valor === undefined) return aceptar(null);
   if (typeof valor === "number") return Number.isFinite(valor) ? aceptar(valor === 0 ? 0 : valor) : rechazar("formato", MENSAJE_NUMERO_INVALIDO);
   if (typeof valor !== "string") return rechazar("formato", MENSAJE_NUMERO_INVALIDO);
-  if (valor === "") return aceptar(null);
+  if (valor.trim() === "") return aceptar(null); // vacío o solo espacios: sin valor (no hay nada que leer ni que adivinar)
   if (!RE_CANONICO.test(valor)) return rechazar("notacion", MENSAJE_NOTACION_DEL_SERVIDOR);
   const decimales = valor.includes(".") ? valor.length - valor.indexOf(".") - 1 : 0;
   if (decimales > contexto.decimales) return rechazar("decimales", mensajeDeDecimales(contexto));

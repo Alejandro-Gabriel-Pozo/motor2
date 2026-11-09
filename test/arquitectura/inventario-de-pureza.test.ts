@@ -98,8 +98,8 @@ describe("analizador de pureza: niveles", () => {
 
 describe("analizador de pureza: capas y modelos", () => {
   it("capaDeArchivo clasifica por ruta (la más específica primero)", () => {
-    expect(capaDeArchivo("src/server/actions/movimientos/casos-de-uso/anular-compra.ts")).toBe("server/casos-de-uso");
-    expect(capaDeArchivo("src/server/actions/movimientos/compras.ts")).toBe("server/actions");
+    expect(capaDeArchivo("src/server/actions/movimientos/casos-de-uso/anular-factura-proveedor.ts")).toBe("server/casos-de-uso");
+    expect(capaDeArchivo("src/server/actions/movimientos/facturas-proveedor.ts")).toBe("server/actions");
     expect(capaDeArchivo("src/core/features/compras/compra.schema.ts")).toBe("core/features");
     expect(capaDeArchivo("src/core/moneda.ts")).toBe("core");
     expect(capaDeArchivo("plataforma/src/servidor/modulos.ts")).toBe("plataforma/servidor");

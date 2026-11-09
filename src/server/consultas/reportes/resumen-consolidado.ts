@@ -65,6 +65,7 @@ export async function obtenerResumenConsolidado(
       sucursalId: s.id,
       sucursalNombre: s.nombre,
       ventasTotal: financieros[i].ventasTotal,
+      ventasSinDato: financieros[i].ventasSinDato,
       margenTotal: financieros[i].margenTotal,
       gastadoTotal: financieros[i].gastadoTotal,
       alertasCriticas: alertas.criticos,
@@ -83,12 +84,12 @@ async function financieroDeLaSucursal(
   { items, productos }: { items: ItemPeriodo[]; productos: Map<string, InfoProductoReporte> },
   costosActuales: Map<string, CostoMP>,
   db: Db
-): Promise<{ ventasTotal: number; margenTotal: number; gastadoTotal: number }> {
-  const ventas = calcularVentasDelPeriodo(items, productos);
+): Promise<{ ventasTotal: number; ventasSinDato: number; margenTotal: number; gastadoTotal: number }> {
+  const ventas = calcularVentasDelPeriodo(items);
   const compras = calcularComprasDelPeriodo(items, productos);
   // El costo de HOY de cada plato (receta efectiva de la sucursal + su costo de reposición, ya leído), sin objetivos: lo mismo que usa el margen del período.
   const { margenTotal } = calcularMargenNominalDelPeriodo(ventas, await calcularCostosYMargenes(sucursalId, db, productos, undefined, undefined, costosActuales));
-  return { ventasTotal: ventas.totalFacturado, margenTotal, gastadoTotal: compras.totalGastado };
+  return { ventasTotal: ventas.totalFacturado, ventasSinDato: ventas.lineasSinDato, margenTotal, gastadoTotal: compras.totalGastado };
 }
 
 /**

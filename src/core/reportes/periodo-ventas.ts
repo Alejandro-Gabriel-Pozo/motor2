@@ -1,5 +1,4 @@
-import { importeDeLinea, redondearMoneda } from "@/core/moneda";
-import { type InfoProductoReporte } from "./comun";
+import { redondearMoneda } from "@/core/moneda";
 import { redondearCantidad } from "./redondeo";
 import type { ItemPeriodo } from "./periodo-tipos";
 
@@ -9,52 +8,52 @@ export interface FilaVentaProducto {
   cantidad: number;
   importe: number;
   precioUnitario: number;
-  estimado: boolean;
 }
 export interface VentasDelPeriodo {
   totalFacturado: number;
   porProducto: FilaVentaProducto[];
+  /** Ventas no anuladas con importe $0: «sin dato». Quedan FUERA del total y de `porProducto` (nunca se estiman); acá solo se cuentan para avisarlo. */
+  lineasSinDato: number;
   aviso: string;
 }
 
+/** El aviso de las ventas «sin dato» (importe $0), el MISMO texto en todos los reportes. Vacío cuando no hay ninguna. */
+export function avisoDeVentasSinDato(lineasSinDato: number): string {
+  if (lineasSinDato <= 0) return "";
+  return `${lineasSinDato} ${lineasSinDato === 1 ? "venta sin importe registrado queda" : "ventas sin importe registrado quedan"} FUERA de estos totales (sin dato): no se estiman al precio de hoy.`;
+}
+
 /**
- * Port de calcularVentasDelPeriodo_ (Reportes.js:190-229). Una línea con
- * Precio Total > 0 es el importe REAL de esa venta puntual; una con 0 es
- * una venta vieja sin precio guardado por línea y se estima al precio de
- * venta VIGENTE (ya resuelto con Precio Local — ver construirMapaProductos)
- * — marcada `estimado` para que la UI no la confunda con un importe real.
+ * Port de calcularVentasDelPeriodo_ (Reportes.js:190-229), con la decisión del dueño del 2026-11-06 (lote 1b, hallazgo C): las ventas quedan CONGELADAS. Una línea con Precio Total > 0 es el importe REAL
+ * de esa venta puntual; una con 0 significa «sin dato» y nada más: NO se revalúa al precio de venta de hoy, no suma al total ni a las filas (igual que el margen Real, que ya la excluye) y se cuenta
+ * en `lineasSinDato` para que la pantalla lo diga. El total nunca depende del precio de lista vigente.
  */
-export function calcularVentasDelPeriodo(items: ItemPeriodo[], productos: Map<string, InfoProductoReporte>): VentasDelPeriodo {
-  const porProducto = new Map<string, { producto: string; cantidad: number; importe: number; precioUnitario: number; estimado: boolean }>();
+export function calcularVentasDelPeriodo(items: ItemPeriodo[]): VentasDelPeriodo {
+  const porProducto = new Map<string, { producto: string; cantidad: number; importe: number; precioUnitario: number }>();
   let totalFacturado = 0;
+  let lineasSinDato = 0;
 
   for (const r of items) {
     if (r.proceso !== "VENTA" || r.anulada) continue;
-    const esReal = r.precioTotal > 0;
-    const precioVentaVigente = productos.get(r.productoId)?.precioVenta ?? 0;
-    // La línea estimada se redondea a centavos ANTES de sumar (como el importe de cualquier línea de un ticket: `importeDeLinea`, en decimal exacto). Sumar los productos sin redondear y redondear
-    // una sola vez al final difería por un centavo en 7 de cada 20.000 totales (medición 2.8, 2026-10-08; decisión del dueño de aplicar el arreglo).
-    const importe = esReal ? r.precioTotal : importeDeLinea(r.cantidad, precioVentaVigente);
-    const precioUnitario = esReal ? r.precioPorUnidadStock : precioVentaVigente;
-    totalFacturado += importe;
+    if (!(r.precioTotal > 0)) {
+      lineasSinDato += 1;
+      continue;
+    }
+    totalFacturado += r.precioTotal;
 
-    if (!porProducto.has(r.productoId)) porProducto.set(r.productoId, { producto: r.productoNombre, cantidad: 0, importe: 0, precioUnitario, estimado: false });
+    if (!porProducto.has(r.productoId)) porProducto.set(r.productoId, { producto: r.productoNombre, cantidad: 0, importe: 0, precioUnitario: r.precioPorUnidadStock });
     const acc = porProducto.get(r.productoId)!;
     acc.cantidad += r.cantidad;
-    acc.importe += importe;
-    acc.precioUnitario = precioUnitario;
-    if (!esReal) acc.estimado = true;
+    acc.importe += r.precioTotal;
+    acc.precioUnitario = r.precioPorUnidadStock;
   }
-
-  const hayEstimados = Array.from(porProducto.values()).some((v) => v.estimado);
 
   return {
     totalFacturado: redondearMoneda(totalFacturado),
     porProducto: Array.from(porProducto.entries())
       .map(([productoId, v]) => ({ productoId, ...v, cantidad: redondearCantidad(v.cantidad), importe: redondearMoneda(v.importe) }))
       .sort((a, b) => b.importe - a.importe),
-    aviso: hayEstimados
-      ? "Incluye ventas cargadas ANTES de guardar el precio real por línea: se valorizan al precio de venta VIGENTE hoy (marcadas como estimadas)."
-      : "Importe real registrado en cada venta (no una estimación).",
+    lineasSinDato,
+    aviso: lineasSinDato > 0 ? avisoDeVentasSinDato(lineasSinDato) : "Importe real registrado en cada venta (no una estimación).",
   };
 }

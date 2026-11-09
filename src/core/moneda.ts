@@ -25,6 +25,9 @@ import { Decimal } from "decimal.js";
  *  números de hasta 17 dígitos significativos y la suma de muchos de ellos. Empates alejándose del cero, igual que `NUMERIC`. */
 const D = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
 
+/** La moneda de TODO el dinero del sistema (poda del 2026-11-06, decisión del dueño): pesos argentinos, fija. La columna `Empresa.moneda` se guarda con este valor y no se pide al dar de alta una empresa. */
+export const MONEDA_FIJA = "ARS";
+
 /** `-0` → `0`; cualquier otro valor pasa igual. */
 function sinCeroNegativo(n: number): number {
   return n === 0 ? 0 : n;
@@ -77,6 +80,12 @@ export function porcentajeDeImporte(importe: number, porcentaje: number): number
   return aCentavos(new D(importe).times(porcentaje).dividedBy(100));
 }
 
+/** Piso de un importe cobrado por unidad: $0,01. Un importe de 0 en una línea de venta se lee como «venta vieja sin precio» (ver `precioConDescuento`). LA ÚNICA fuente del piso (promos, componentes de combo, opciones, descuentos). */
+export const IMPORTE_MINIMO = 0.01;
+
+/** El piso escrito para un mensaje al usuario («$0,01»), derivado de `IMPORTE_MINIMO`. */
+export const IMPORTE_MINIMO_TEXTO = `$${IMPORTE_MINIMO.toFixed(2).replace(".", ",")}`;
+
 /**
  * Precio COBRADO a un cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 6): aplica `porcentaje` (0 a
  * menor que 100 — lo valida `validarPorcentajeDescuento`, src/core/datos/porcentaje-descuento.ts, no este módulo) sobre `precioLista`
@@ -97,7 +106,7 @@ export function precioConDescuento(precioLista: number, porcentaje: number | nul
   if (!porcentaje || !Number.isFinite(porcentaje)) return precioLista;
   if (!Number.isFinite(precioLista) || precioLista <= 0) return precioLista;
   const conDescuento = aCentavos(new D(precioLista).times(new D(100).minus(porcentaje).dividedBy(100)));
-  return conDescuento > 0 ? conDescuento : 0.01;
+  return conDescuento > 0 ? conDescuento : IMPORTE_MINIMO;
 }
 
 /**

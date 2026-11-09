@@ -2,7 +2,7 @@ import "server-only";
 import { rechazoDeReferenciaNoEncontrada } from "@/core/datos/errores-de-base";
 import { MENSAJE_OPCION_NO_ENCONTRADA } from "@/core/features/catalogo/opciones-de-venta.guard";
 import type { ComandoAgregarVersionDeOpcion, ResultadoAgregarVersionDeOpcion } from "@/core/features/catalogo/opciones-de-venta.schema";
-import { contenidoDeVersionIgual, validarConsumos, validarVersion } from "@/core/opciones/public";
+import { MODO_DE_VENTA, contenidoDeVersionIgual, validarConsumos, validarVersion } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { denegacionDeModuloDeAccion } from "@/server/acceso/modulos-de-empresa";
@@ -70,7 +70,7 @@ export async function agregarVersionDeOpcionCasoDeUso(
               opcionId: opcion.id,
               activo: true,
               tipoDeDiferencia: null,
-              producto: { modoDeVenta: "BASE_CONFIGURABLE", gruposAdmitidos: { some: { grupoId: opcion.grupoId, activo: true, OR: [{ modoPrecio: null }, { modoPrecio: { not: "ABSOLUTO" } }] } } },
+              producto: { modoDeVenta: MODO_DE_VENTA.BASE_CONFIGURABLE, gruposAdmitidos: { some: { grupoId: opcion.grupoId, activo: true, OR: [{ modoPrecio: null }, { modoPrecio: { not: "ABSOLUTO" } }] } } },
             },
             select: { producto: { select: { nombre: true } } },
           });

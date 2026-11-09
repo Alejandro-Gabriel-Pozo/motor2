@@ -231,7 +231,7 @@
     "resultado": null
   },
   "pos.obtenerTicketsRecientes(Central, mesa 4)": {
-    "consultas": "1: cuenta.findMany×1",
+    "consultas": "2: cuenta.findMany×1, operacion.findMany×1",
     "resultado": [
       {
         "cuentaId": "c-cerrada-2",
@@ -257,6 +257,13 @@
           "ejemplar": 1
         },
         "estado": "vigente",
+        "corregibles": [
+          {
+            "operacionId": "op-v4",
+            "texto": "1.5 × Empanada",
+            "subtotal": 2025
+          }
+        ],
         "cliente": {
           "nombre": "Ana",
           "descuentoPorcentaje": 10
@@ -288,12 +295,24 @@
         },
         "corrigeA": null,
         "estado": "vigente",
+        "corregibles": [
+          {
+            "operacionId": "op-v1",
+            "texto": "1 × Pizza",
+            "subtotal": 12000
+          },
+          {
+            "operacionId": "op-v2",
+            "texto": "1 × Flan",
+            "subtotal": 3000
+          }
+        ],
         "cliente": null
       }
     ]
   },
   "pos.obtenerTicketsRecientes(Central, mesa 4, límite 1)": {
-    "consultas": "1: cuenta.findMany×1",
+    "consultas": "2: cuenta.findMany×1, operacion.findMany×1",
     "resultado": [
       {
         "cuentaId": "c-cerrada-2",
@@ -319,6 +338,13 @@
           "ejemplar": 1
         },
         "estado": "vigente",
+        "corregibles": [
+          {
+            "operacionId": "op-v4",
+            "texto": "1.5 × Empanada",
+            "subtotal": 2025
+          }
+        ],
         "cliente": {
           "nombre": "Ana",
           "descuentoPorcentaje": 10
@@ -709,7 +735,8 @@
             "tags": [],
             "especial": false,
             "orden": 1,
-            "generoCartaId": "gen-viejo"
+            "generoCartaId": "gen-viejo",
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": null
@@ -727,7 +754,8 @@
             "tags": [],
             "especial": false,
             "orden": 0,
-            "generoCartaId": null
+            "generoCartaId": null,
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": null
@@ -745,7 +773,8 @@
             "tags": [],
             "especial": false,
             "orden": 0,
-            "generoCartaId": null
+            "generoCartaId": null,
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": null
@@ -766,7 +795,8 @@
             ],
             "especial": true,
             "orden": 2,
-            "generoCartaId": "gen-veggie"
+            "generoCartaId": "gen-veggie",
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": "Veggie"
@@ -794,7 +824,8 @@
             "tags": [],
             "especial": false,
             "orden": 0,
-            "generoCartaId": null
+            "generoCartaId": null,
+            "nombreEnCarta": null
           },
           "agrupadoEn": "Tragos",
           "generoCarta": null
@@ -946,7 +977,8 @@
             "tags": [],
             "especial": false,
             "orden": 0,
-            "generoCartaId": null
+            "generoCartaId": null,
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": null
@@ -974,7 +1006,8 @@
             "tags": [],
             "especial": false,
             "orden": 0,
-            "generoCartaId": "gen-norte"
+            "generoCartaId": "gen-norte",
+            "nombreEnCarta": null
           },
           "agrupadoEn": null,
           "generoCarta": "Norteño"

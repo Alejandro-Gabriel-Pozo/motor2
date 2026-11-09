@@ -50,6 +50,7 @@ describe("resolverImpresion: ticket de cierre", () => {
     numero: null,
     corrigeA: null,
     estado: ventaAnulada ? "anulada" : "vigente",
+    corregibles: [],
     cliente: null,
   });
 
@@ -79,6 +80,7 @@ describe("resolverImpresion: ticket corregido", () => {
     numero: { numero: 566, ejemplar },
     corrigeA: ejemplar > 1 ? { numero: 566, ejemplar: 1 } : null,
     estado,
+    corregibles: [],
     cliente: null,
   });
   const pedido = { tipo: "ticket-correccion", cuentaId: "c1", ejemplar: 2 } as const;

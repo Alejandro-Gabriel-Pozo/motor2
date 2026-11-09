@@ -163,7 +163,7 @@ describe("Consumo de MP en venta fraccionada: sin error de redondeo acumulado (T
 
     // La primera Operacion de proceso VENTA es la de v1 (una Operacion por línea; acá una sola línea por llamada).
     const operacionV1 = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA" }, orderBy: { creadoEn: "asc" } });
-    const anulacion = await anularVenta(operacionV1.id);
+    const anulacion = await anularVenta(operacionV1.id, "Error de carga");
     expect(anulacion.ok, anulacion.mensaje).toBe(true);
 
     const v3 = await registrarVenta({ fecha: new Date(), seccionId, ventas: [{ productoId: pv.id, cantidadVendida: 0.5 }] });

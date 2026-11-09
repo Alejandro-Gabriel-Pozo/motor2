@@ -1,11 +1,13 @@
-import { texto } from "@/core/texto";
-import { esDetalleReservadoParaReversiones } from "@/core/movimientos/public";
+import { texto, LARGO_MAXIMO_MOTIVO_ANULACION } from "@/core/texto";
+import { validarDetalleLibreDeOperacion } from "@/core/movimientos/public";
 import { validarFechaDeCompra } from "@/core/datos/fecha-operacion";
-import { esClaveIdempotenciaValida } from "@/core/datos/clave-idempotencia";
+import { esClaveIdempotenciaValida, MENSAJE_CLAVE_DE_REINTENTO_INVALIDA } from "@/core/datos/clave-idempotencia";
 import { guardComprobanteDeCompra } from "./compra.guard";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
-import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, DatosFacturaProveedorInput } from "./factura-proveedor.schema";
+import { esCondicionDePago, esMedioDePago } from "@/core/compras/public";
+import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal } from "@/core/tiempo/zona-horaria";
+import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, ComandoAnularPagoDeFactura, ComandoCorregirFacturaProveedor, ComandoDeclararPagoDeFactura, DatosFacturaProveedorInput } from "./factura-proveedor.schema";
 
 /**
  * E3a: guards de formato de los tres comandos de la factura de proveedor (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md). Puros, sin base ni permisos: corren dentro de
@@ -15,12 +17,9 @@ import type { ComandoAceptarParteDeFactura, ComandoAnularFacturaProveedor, Datos
 /** Cuántas sucursales puede tener un reparto: un tope de pedido, no una regla de negocio. */
 const MAXIMO_SUCURSALES_EN_UN_REPARTO = 50;
 
-/** El motivo de una anulación: 1 a 200 caracteres con al menos uno visible (el mismo largo que el motivo de anulación de la nota de crédito, ADR-029 §12). */
-const LARGO_MAXIMO_MOTIVO_ANULACION = 200;
-
 function claveObligatoria(clave: unknown): ResultadoDato<string> {
   if (clave === undefined || clave === null || clave === "") return rechazar("vacio", "Falta la clave de reintento: recargá la pantalla.");
-  if (!esClaveIdempotenciaValida(clave)) return rechazar("formato", "Clave de reintento inválida.");
+  if (!esClaveIdempotenciaValida(clave)) return rechazar("formato", MENSAJE_CLAVE_DE_REINTENTO_INVALIDA);
   return aceptar(clave);
 }
 
@@ -39,9 +38,8 @@ export function guardComandoRegistrarFacturaProveedor(entrada: unknown, ahora: D
     const referencia = validarTextoLibre((item as { referenciaProveedor?: unknown }).referenciaProveedor, "La referencia del proveedor", LARGO_MAXIMO_DETALLE);
     if (!referencia.ok) return rechazar(referencia.codigo, referencia.mensaje);
   }
-  const detalle = validarTextoLibre(e.detalleLibre, "El detalle", LARGO_MAXIMO_DETALLE);
+  const detalle = validarDetalleLibreDeOperacion(e.detalleLibre);
   if (!detalle.ok) return rechazar(detalle.codigo, detalle.mensaje);
-  if (typeof e.detalleLibre === "string" && esDetalleReservadoParaReversiones(e.detalleLibre)) return rechazar("formato", "Ese detalle está reservado para las anulaciones: escribilo de otra forma.");
   const fecha = validarFechaDeCompra(e.fecha, ahora);
   if (!fecha.ok) return rechazar(fecha.codigo, fecha.mensaje);
 
@@ -64,6 +62,8 @@ export function guardComandoRegistrarFacturaProveedor(entrada: unknown, ahora: D
   const numero = guardComprobanteDeCompra(typeof e.nroFactura === "string" ? e.nroFactura : null);
   if (!numero.ok) return rechazar(numero.codigo, numero.mensaje);
   if (vistas.has(sucursalActivaId) && !texto(e.seccionId)) return rechazar("vacio", "Elegí la sección donde entra la parte de esta sucursal.");
+
+  if (e.condicionPago !== undefined && !esCondicionDePago(e.condicionPago)) return rechazar("formato", "Elegí si la factura se pagó ahora o queda pendiente de pago.");
 
   const clave = claveObligatoria(e.claveIdempotencia);
   if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
@@ -92,4 +92,43 @@ export function guardComandoAnularFacturaProveedor(entrada: unknown): ResultadoD
   const clave = claveObligatoria(e.claveIdempotencia);
   if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
   return aceptar({ facturaId: texto(e.facturaId), motivo: motivo.valor, claveIdempotencia: clave.valor });
+}
+
+/**
+ * U1 «Corregir datos de la factura»: solo la factura. `nueva` y `esperado` pasan tal cual: los normaliza `normalizarCorreccion` (core/compras/correccion.ts) en el caso de uso, que ya tolera `null`/`undefined` en cada campo.
+ * El formato del número y la regla «con proveedor» las valida `validarCorreccion` sobre lo que cambia (una factura vieja con texto libre no se traba por un campo que no se tocó).
+ */
+export function guardComandoCorregirFacturaProveedor(entrada: unknown): ResultadoDato<ComandoCorregirFacturaProveedor> {
+  const e = (entrada ?? {}) as Partial<Record<keyof ComandoCorregirFacturaProveedor, unknown>>;
+  if (typeof e.facturaId !== "string" || !texto(e.facturaId)) return rechazar("formato", "No se encontró la factura.");
+  if (typeof e.nueva !== "object" || e.nueva === null || typeof e.esperado !== "object" || e.esperado === null) return rechazar("formato", "Faltan los datos a corregir: recargá la pantalla.");
+  return aceptar({ facturaId: texto(e.facturaId), nueva: e.nueva as ComandoCorregirFacturaProveedor["nueva"], esperado: e.esperado as ComandoCorregirFacturaProveedor["esperado"] });
+}
+
+/**
+ * Pagos X0 «Declarar pago»: la factura, el día del pago (texto `AAAA-MM-DD` real, no posterior a HOY en Argentina) y el medio (lista cerrada). El piso (no anterior al día de la factura) y el resto lo decide el caso de uso, que conoce la
+ * factura. El «hoy» sale del reloj que pasa quien llama (el del servidor), nunca del cliente.
+ */
+export function guardComandoDeclararPagoDeFactura(entrada: unknown, ahora: Date): ResultadoDato<ComandoDeclararPagoDeFactura> {
+  const e = (entrada ?? {}) as Partial<Record<keyof ComandoDeclararPagoDeFactura, unknown>>;
+  if (!texto(e.facturaId)) return rechazar("vacio", "No se encontró la factura.");
+  if (e.fechaPago === undefined || e.fechaPago === null || e.fechaPago === "") return rechazar("vacio", "Elegí la fecha en que se pagó.");
+  if (!esDiaISOReal(e.fechaPago)) return rechazar("formato", "La fecha del pago no es válida.");
+  if (e.fechaPago > diaDeCalendario(ahora, ZONA_ARGENTINA)) return rechazar("rango", "La fecha del pago no puede ser posterior a hoy.");
+  if (!esMedioDePago(e.medio)) return rechazar("formato", "Elegí cómo se pagó.");
+  const clave = claveObligatoria(e.claveIdempotencia);
+  if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
+  return aceptar({ facturaId: texto(e.facturaId), fechaPago: e.fechaPago, medio: e.medio, claveIdempotencia: clave.valor });
+}
+
+/** Pagos X0 «Anular pago declarado»: el pago y el motivo (obligatorio, 1 a 200 caracteres). */
+export function guardComandoAnularPagoDeFactura(entrada: unknown): ResultadoDato<ComandoAnularPagoDeFactura> {
+  const e = (entrada ?? {}) as Partial<Record<keyof ComandoAnularPagoDeFactura, unknown>>;
+  if (!texto(e.pagoId)) return rechazar("vacio", "No se encontró el pago.");
+  const motivo = validarTextoLibre(e.motivo, "El motivo", LARGO_MAXIMO_MOTIVO_ANULACION);
+  if (!motivo.ok) return rechazar(motivo.codigo, motivo.mensaje);
+  if (!motivo.valor) return rechazar("vacio", "Escribí el motivo de la anulación del pago.");
+  const clave = claveObligatoria(e.claveIdempotencia);
+  if (!clave.ok) return rechazar(clave.codigo, clave.mensaje);
+  return aceptar({ pagoId: texto(e.pagoId), motivo: motivo.valor, claveIdempotencia: clave.valor });
 }

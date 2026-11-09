@@ -27,7 +27,7 @@ export async function listarProveedores(soloActivos = false) {
   const ctx = await requerirVerDeEmpresa("proveedores");
   return ctx.db.proveedor.findMany({
     where: soloActivos ? { activo: true } : {},
-    select: { id: true, codigo: true, nombre: true, contacto: true, activo: true },
+    select: { id: true, codigo: true, nombre: true, contacto: true, activo: true, ofreceProductos: true, ofreceServicios: true },
     orderBy: { nombre: "asc" },
   });
 }
@@ -54,6 +54,9 @@ export async function listarProveedoresParaSelector(soloActivos = false): Promis
 
 export interface DatosProveedor {
   nombre: string;
+  /** Qué le compramos. Ausentes en el alta = «productos» como siempre; al menos una marcada. */
+  ofreceProductos?: boolean;
+  ofreceServicios?: boolean;
   contacto?: string;
   telefono?: string;
   email?: string;
@@ -98,17 +101,18 @@ export async function actualizarActivaProveedor(proveedorId: string, activo: boo
 }
 
 /**
- * Antes solo existía alta (altaProveedor) y Activar/Desactivar — no había
- * forma de corregir contacto/teléfono/email/CUIT/condiciones de pago de un
- * proveedor ya creado. El nombre no se edita acá a propósito (mismo
- * criterio de identidad que Insumo/Producto): para eso está
- * renombrarOFusionarInsumo-style, fuera del alcance de este hallazgo.
+ * Corregir un proveedor: el nombre (con `nombreEsperado`, el que vio la pantalla, para detectar que otra persona lo cambió en el medio), los datos de contacto y qué le compramos
+ * (`ofreceProductos`/`ofreceServicios`; ausentes = no se tocan). El nombre ya NO es de solo lectura: un proveedor se referencia siempre por su id, así que cargarlo mal se corrige.
  *
- * Desde el Hito 4 (H4C-14): permiso → caso de uso (`casos-de-uso/actualizar-proveedor.ts`: leer el proveedor, validar, CUIT libre, escribir y la carrera) →
- * `aResultadoAccion`. Sin guard (`SIN_GUARD`: la acción leía el proveedor ANTES de validar).
+ * Permiso (`conPermisoDeEmpresa("proveedores")`, el mismo de siempre) → caso de uso (`casos-de-uso/actualizar-proveedor.ts`: una transacción serializable que lee, valida, comprueba el
+ * nombre esperado y que esté libre, escribe y audita) → `aResultadoAccion`. Sin guard (`SIN_GUARD`: el caso de uso lee el proveedor ANTES de validar, así que uno inexistente gana sobre un dato inválido).
  */
-export async function actualizarProveedor(proveedorId: string, datos: Omit<DatosProveedor, "nombre">): Promise<ResultadoAccion> {
+export async function actualizarProveedor(
+  proveedorId: string,
+  datos: Omit<DatosProveedor, "nombre" | "ofreceProductos" | "ofreceServicios"> & { nombre?: string; nombreEsperado?: string; ofreceProductos?: boolean; ofreceServicios?: boolean }
+): Promise<ResultadoAccion> {
   return conPermisoDeEmpresa("proveedores", async (ctx) => {
-    return aResultadoAccion(await actualizarProveedorCasoDeUso(ctx, { proveedorId, datos }));
+    const { nombre, nombreEsperado, ofreceProductos, ofreceServicios, ...contacto } = datos;
+    return aResultadoAccion(await actualizarProveedorCasoDeUso(ctx, { proveedorId, datos: contacto, nombre, nombreEsperado, ofreceProductos, ofreceServicios }));
   });
 }

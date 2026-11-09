@@ -120,7 +120,7 @@ describe("la migración deja las tres tablas, la columna del Kardex, los índice
       WHERE contype = 'f' AND ((SELECT relname::text FROM pg_class WHERE oid = conrelid) = ANY(${[...TABLAS]}::text[]) OR conname::text = 'MovimientoStock_empresaId_facturaProveedorRenglonId_fkey') ORDER BY 1`;
     expect(fks.map((f) => f.conname).sort()).toEqual([
       "FacturaProveedor_anuladaPorId_fkey", "FacturaProveedor_confirmadaPorId_fkey", "FacturaProveedor_creadoPorId_fkey", "FacturaProveedor_empresaId_fkey", "FacturaProveedor_empresaId_proveedorId_fkey",
-      "FacturaProveedorRenglon_empresaId_conceptoGastoId_fkey", "FacturaProveedorRenglon_empresaId_facturaProveedorId_fkey", "FacturaProveedorRenglon_empresaId_fkey", "FacturaProveedorRenglon_empresaId_productoId_fkey",
+      "FacturaProveedorRenglon_empresaId_conceptoGastoId_fkey", "FacturaProveedorRenglon_empresaId_facturaProveedorId_fkey", "FacturaProveedorRenglon_empresaId_fkey", "FacturaProveedorRenglon_empresaId_productoId_fkey", "FacturaProveedorRenglon_empresaId_unidadCompraId_fkey",
       "FacturaProveedorSucursal_empresaId_facturaProveedorId_fkey", "FacturaProveedorSucursal_empresaId_fkey", "FacturaProveedorSucursal_empresaId_operacionId_fkey", "FacturaProveedorSucursal_empresaId_sucursalId_fkey",
       "FacturaProveedorSucursal_recibidaPorId_fkey",
       "MovimientoStock_empresaId_facturaProveedorRenglonId_fkey",

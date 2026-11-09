@@ -17,7 +17,8 @@ import { cartaDeUnProducto, resumenDePrecios, tablaDePreciosParaLaCarta, vistaPr
  *    una versión con precio»); en cualquier otro caso la salida es idéntica, byte a byte, a la del interruptor prendido.
  *  - O3 forma: si se oculta, la presentación es la del producto SIN ese grupo; «no se puede pedir» se sigue calculando con el producto completo (un grupo oculto obligatorio agotado saca al plato).
  *  - O4 agotado: con un grupo obligatorio y todas sus opciones agotadas hoy, el plato no aparece en la carta en pantalla y SÍ en la impresa (DEC-20), oculto o no.
- *  - O5 POS, stock, ticket y reportes no dependen del interruptor (los grupos con el interruptor apagado o prendido arman la misma línea y el mismo resumen).
+ *  - O5 POS, stock, ticket y reportes no dependen del interruptor (los grupos con el interruptor apagado o prendido arman la misma línea y el mismo resumen). ÚNICA excepción (2026-11-05): la marca congelada
+ *    `ocultaEnCarta` de la foto, que es la que hace que el ticket del CLIENTE (no la comanda, no el stock, no los reportes) omita lo que la carta no leía; sale exactamente cuando el oráculo oculta el grupo.
  */
 
 const monto = (m: number): DiferenciaDePrecio => ({ tipo: "MONTO", monto: m });
@@ -245,7 +246,14 @@ describe("Combinaciones de «Mostrar este grupo en la carta» contra el oráculo
       const gNo = gruposDe(c, false, true);
       const elegidas = elegidasDe(gSi);
       const entradaDeLinea = (grupos: GrupoDeLaCarta[]) => ({ grupos, elegidas, precioBase: PRECIO_BASE, descuentoDeProducto: c.descuento, cantidad: 2 });
-      expect(armarLineaConfigurada(entradaDeLinea(gNo)), etiqueta).toEqual(armarLineaConfigurada(entradaDeLinea(gSi)));
+      // La única diferencia de la línea es la marca CONGELADA `ocultaEnCarta` de la foto (2026-11-05, ticket del cliente): sale del oráculo, y es lo único que el interruptor mueve.
+      const marcas = (r: ReturnType<typeof armarLineaConfigurada>) => (r.ok && r.linea ? [...r.linea.fotos, ...r.linea.adicionales.map((a) => a.foto)].map((f) => [f.grupoId, f.ocultaEnCarta]) : []);
+      const sinMarca = (r: ReturnType<typeof armarLineaConfigurada>) => JSON.parse(JSON.stringify(r, (clave, valor) => (clave === "ocultaEnCarta" ? undefined : valor)));
+      const lineaNo = armarLineaConfigurada(entradaDeLinea(gNo));
+      const lineaSi = armarLineaConfigurada(entradaDeLinea(gSi));
+      expect(sinMarca(lineaNo), etiqueta).toEqual(sinMarca(lineaSi));
+      expect(marcas(lineaSi).filter(([, oculta]) => oculta), `${etiqueta}: prendido, nada se marca`).toEqual([]);
+      expect(marcas(lineaNo).filter(([, oculta]) => oculta).map(([g]) => g), `${etiqueta}: apagado, se marca el grupo oculto y solo si el oráculo lo oculta`).toEqual(ocultar && marcas(lineaNo).some(([g]) => g === "g-x") ? ["g-x"] : []);
       expect(vistaPreviaDeConfiguracion(entradaDeLinea(gNo)), etiqueta).toEqual(vistaPreviaDeConfiguracion(entradaDeLinea(gSi)));
       expect(resumenDePrecios({ grupos: gNo, precioBase: PRECIO_BASE, descuentoDeProducto: c.descuento, esBase }), etiqueta).toEqual(resumenDePrecios({ grupos: gSi, precioBase: PRECIO_BASE, descuentoDeProducto: c.descuento, esBase }));
     }
@@ -267,7 +275,7 @@ const agotada = (o: OpcionParaVender): OpcionParaVender => ({ ...o, apagadaEnSuc
 describe("Filas literales del bife (el caso del dueño): la salida esperada está escrita a mano", () => {
   const fila = (caso: string, grupos: GrupoDeLaCarta[], esperado: unknown, p = BIFE) => ({ caso, grupos, esperado, p });
   const FILAS = [
-    fila("1. Corte como incluida, mostrado: una línea «Corte: …»", [corte("INCLUIDA")], { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Corte", opciones: ["ojo de bife", "bife de chorizo"] }] }),
+    fila("1. Corte como incluida, mostrado: una línea «Corte: …»", [corte("INCLUIDA")], { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Corte", opciones: ["ojo de bife", "bife de chorizo"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 }] }),
     fila("2. Corte como incluida, oculto: «Bife $X» sin aclaraciones", [corte("INCLUIDA", { seMuestraEnCarta: false })], { forma: "simple", aclaraciones: [] }),
     fila("3. Corte como variante obligatoria, oculto: «Bife $X» sin aclaraciones", [corte("VARIANTE", { seMuestraEnCarta: false })], { forma: "simple", aclaraciones: [] }),
     fila("4. Corte como variante opcional (0..1), oculto: sin aclaraciones", [corte("VARIANTE", { seMuestraEnCarta: false, cantidadMinima: 0 })], { forma: "simple", aclaraciones: [] }),
@@ -285,7 +293,7 @@ describe("Filas literales del bife (el caso del dueño): la salida esperada est�
     fila(
       "8. Corte oculto y Guarnición mostrada: queda solo la línea de la guarnición",
       [corte("INCLUIDA", { seMuestraEnCarta: false }), guarnicion()],
-      { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas", "puré"] }] }
+      { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnición", opciones: ["ensalada", "papas fritas", "puré"], descripciones: [null, null, null], cantidadMinima: 1, cantidadMaxima: 1 }] }
     ),
     fila(
       "9. Corte oculto y un ADICIONAL «Extras»: el adicional sigue con su recargo",
@@ -314,7 +322,7 @@ describe("Filas literales del bife (el caso del dueño): la salida esperada est�
         titulo: false,
         columnas: [],
         filas: [{ rotulo: "A criolla", celdas: [30000] }, { rotulo: "Con chimichurri", celdas: [30000] }],
-        aclaraciones: [{ tipo: "eleccion", rotulo: "Guarniciones", opciones: ["ensalada", "papas fritas"] }],
+        aclaraciones: [{ tipo: "eleccion", rotulo: "Guarniciones", opciones: ["ensalada", "papas fritas"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 }],
       },
       { precioBase: 0, esBase: true, descuentoDeProducto: null }
     ),

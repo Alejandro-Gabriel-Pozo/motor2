@@ -1,3 +1,4 @@
+import { IMPORTE_MINIMO } from "@/core/moneda";
 import { rechazoSinOrigenDeStock } from "@/core/movimientos/public";
 
 /**
@@ -10,9 +11,6 @@ import { rechazoSinOrigenDeStock } from "@/core/movimientos/public";
  *    y manda a Catálogo → Recetas: para cocinar algo nuevo se da de alta el PV y se arma su receta.
  * El orden de los chequeos es ese (el primero que falla gana).
  */
-
-/** El precio de referencia mínimo: el piso de $ 0,01 por unidad del prorrateo. */
-const PRECIO_DE_REFERENCIA_MINIMO = 0.01;
 
 export type CodigoDeComponenteDeCombo = "PRODUCTO_INVALIDO" | "COMPONENTE_SIN_PRECIO_DE_REFERENCIA" | "COMPONENTE_SIN_RECETA";
 
@@ -45,7 +43,7 @@ function mensajeComponenteSinReceta(nombre: string): string {
 export function rechazoDeComponenteDeCombo(p: ProductoComoComponente): RechazoDeComponente | null {
   if (p.tipo !== "PV") return { codigo: "PRODUCTO_INVALIDO", mensaje: `«${p.nombre}» no puede entrar a un combo: solo productos de venta (PV).` };
   if (p.esAnclaDeAdicional) return { codigo: "PRODUCTO_INVALIDO", mensaje: `«${p.nombre}» se vende solo como adicional de otro producto: no puede entrar a un combo.` };
-  if (!Number.isFinite(p.precioDeReferencia) || p.precioDeReferencia < PRECIO_DE_REFERENCIA_MINIMO) {
+  if (!Number.isFinite(p.precioDeReferencia) || p.precioDeReferencia < IMPORTE_MINIMO) {
     return {
       codigo: "COMPONENTE_SIN_PRECIO_DE_REFERENCIA",
       mensaje: `«${p.nombre}» no tiene precio de venta: cargale uno en Catálogo (aunque no se venda suelto), así el combo puede repartir su precio.`,

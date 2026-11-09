@@ -2,6 +2,7 @@ import { aplicarDescuentoDeProducto } from "@/core/carta/public";
 import { consumoDeLineaConfigurada, type ConsumoDeOpcionParaVender, type CodigoDeErrorDeConsumo, type OpcionConConsumo } from "@/core/movimientos/public";
 import { huellaDeOpciones } from "@/core/opciones/public-servidor";
 import { opcionParaPrecio } from "./opcion-para-precio";
+import { gruposOcultosEnLaCarta } from "./grupos-ocultos-en-la-carta";
 import {
   componerPrecioDeLinea,
   validarOpcionesElegidas,
@@ -39,6 +40,11 @@ import {
 export interface OpcionParaVender extends OpcionPermitida {
   /** `OpcionDeGrupo.orden`. */
   orden: number;
+  /**
+   * Carta «B», E3: `OpcionDeGrupo.descripcionEnCarta`. La lee SOLO la carta (`lecturas/carta/opciones.ts` la carga y `tablaDePreciosParaLaCarta` la pasa a la forma): la venta, el POS, el ticket, la comanda, el stock y
+   * los reportes no la cargan (queda ausente) y la foto de la venta (`OpcionElegidaEnLinea`) no la copia. Ausente o `null` = sin descripción.
+   */
+  descripcionEnCarta?: string | null;
   /** `OpcionDeGrupo.productoId`: el producto ANCLA de un adicional (`null` en las demás y en «ninguna»). */
   productoAnclaId: string | null;
   /** La diferencia de la versión vigente (`VersionDeOpcion`: siempre tiene una, MONTO o PORCENTAJE). */
@@ -60,6 +66,8 @@ export interface GrupoParaVender extends Omit<GrupoPermitido, "opciones"> {
   orden: number;
   modoPrecio: ModoDePrecioDeMedida | null;
   opciones: readonly OpcionParaVender[];
+  /** El interruptor «Mostrar este grupo en la carta» de `ProductoAdmiteGrupo` (ausente = se muestra). */
+  seMuestraEnCarta?: boolean;
 }
 
 /** La FOTO de una opción elegida: las columnas de `OpcionElegidaEnLinea`, tal cual se escriben. */
@@ -77,6 +85,8 @@ export interface FotoDeOpcion {
   importeUnitario: number;
   precioDeSucursal: boolean;
   factorEscala: number | null;
+  /** La carta no la lee (grupo apagado en la carta y sin precio): el ticket del cliente tampoco la imprime. Se congela al vender. */
+  ocultaEnCarta: boolean;
   /** El lugar en la lista de permitidos (grupo, opción): con él se rearma el orden del consumo al cerrar. */
   orden: number;
 }
@@ -169,6 +179,7 @@ export function armarLineaConfigurada(entrada: EntradaLineaConfigurada): Resulta
   });
   if (!consumo.ok) return { ok: false, codigo: consumo.codigo, mensaje: consumo.mensaje };
 
+  const ocultosEnLaCarta = gruposOcultosEnLaCarta(grupos);
   const fotoDe = (e: (typeof queCuentan)[number], detalle: (typeof precio.precio.dentroDelPrecio)[number]): FotoDeOpcion => ({
     grupoId: e.grupo.grupoId,
     opcionId: e.opcion.opcionId,
@@ -183,6 +194,7 @@ export function armarLineaConfigurada(entrada: EntradaLineaConfigurada): Resulta
     importeUnitario: detalle.importeUnitario,
     precioDeSucursal: detalle.precioDeSucursal,
     factorEscala: detalle.factorEscala,
+    ocultaEnCarta: ocultosEnLaCarta.has(e.grupo.grupoId),
     orden: e.orden,
   });
   const porOpcion = new Map(queCuentan.map((e) => [e.opcion.opcionId, e]));

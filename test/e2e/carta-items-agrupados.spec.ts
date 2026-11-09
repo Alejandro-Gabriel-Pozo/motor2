@@ -1,6 +1,10 @@
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { menuCartaPublicado } from "./fixtures/carta-menu";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE } from "../../src/core/carta/genero-e-item-agrupado";
+
+// Interruptor de género e ítem agrupado: mientras esté apagado, este spec no corre (encendido vuelve a correr entero).
+test.skip(!GENERO_E_ITEM_AGRUPADO_VISIBLE, "género e ítem agrupado ocultos (GENERO_E_ITEM_AGRUPADO_VISIBLE = false en src/core/carta/genero-e-item-agrupado.ts): la carta y el POS no arman agrupados ni carpetas de género");
 
 /**
  * Ítems agrupados de la carta (/carta/agrupados, docs/plan-agrupacion-items-carta-2026-09-24.md, M7) de punta a punta,

@@ -43,6 +43,7 @@ export interface FotoAEscribir {
   importeUnitario: number;
   precioDeSucursal: boolean;
   factorEscala: number | null;
+  ocultaEnCarta: boolean;
   orden: number;
 }
 
@@ -64,6 +65,8 @@ export async function escribirLineaConfigurada(
       precioUnitario: number;
       precioCartaUnitario: number | null;
       huellaOpciones: string | null;
+      /** El «Nombre en la carta» de la sucursal al vender (congelado para el ticket del cliente), o `null` si el producto no lo tiene. */
+      nombreEnTicket?: string | null;
       fotos: readonly FotoAEscribir[];
       /** GO-3b: la PromoCuenta de la que la línea es componente (un combo con una entrada configurada). */
       promoCuentaId?: string;
@@ -80,6 +83,7 @@ export async function escribirLineaConfigurada(
       precioUnitario: linea.precioUnitario,
       precioCartaUnitario: linea.precioCartaUnitario,
       huellaOpciones: linea.huellaOpciones,
+      nombreEnTicket: linea.nombreEnTicket ?? null,
       numeroEnvio: null,
       creadoPorId,
       ...(linea.promoCuentaId ? { promoCuentaId: linea.promoCuentaId } : {}),

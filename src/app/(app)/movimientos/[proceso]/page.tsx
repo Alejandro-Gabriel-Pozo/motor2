@@ -9,6 +9,8 @@ import { listarUnidadesActivas } from "@/server/actions/catalogo/unidades";
 import { listarSeccionesActivas } from "@/server/actions/movimientos/secciones";
 import { listarMotivosMermaActivos, listarDestinosConsumoActivos } from "@/server/actions/movimientos/motivos";
 import { obtenerProductoOpcion } from "@/server/consultas/catalogo/productos";
+import { obtenerMovimientoACorregir } from "@/server/consultas/movimientos/movimiento-a-corregir";
+import { detalleDeCorreccionDeMovimiento } from "@/core/reportes/public";
 import { seccionesDesactivadas } from "@/server/consultas/movimientos/secciones-desactivadas";
 import { FilaDeMovimientos } from "@/components/fila-de-movimientos";
 import { listarOtrasSucursalesParaReparto, listarPropuestasEnviadas, listarPropuestasParaAceptar } from "@/server/consultas/movimientos/facturas-proveedor";
@@ -25,7 +27,7 @@ export default async function MovimientoPage({
   searchParams,
 }: {
   params: Promise<{ proceso: string }>;
-  searchParams: Promise<ParametrosDeUrl<"productoId">>;
+  searchParams: Promise<ParametrosDeUrl<"productoId" | "corrige">>;
 }) {
   const { proceso: slug } = await params;
   const config = obtenerConfigProceso(slug);
@@ -42,7 +44,10 @@ export default async function MovimientoPage({
   const gate = await requierePermisoVer(ctx.usuarioId, ctx.sucursalId, accionClave, ctx.db);
   if (!gate.ok) return <p className="text-error">{gate.mensaje}</p>;
 
-  const { productoId } = unicosDeUrl(await searchParams);
+  const { productoId: productoIdDeUrl, corrige } = unicosDeUrl(await searchParams);
+  // E0 (g) «Corregir este movimiento»: solo el Ajuste lo admite. El servidor lee el movimiento original (de ESTA sucursal) y de ahí salen el producto, la sección y la referencia del detalle: la URL lleva solo su id.
+  const aCorregir = config.proceso === "AJUSTE" && corrige ? await obtenerMovimientoACorregir(ctx.sucursalId, corrige, ctx.db) : null;
+  const productoId = aCorregir?.productoId ?? productoIdDeUrl;
 
   const [secciones, desactivadas, proveedores, unidades, motivos, destinos, productoInicial] = await Promise.all([
     listarSeccionesActivas(ctx.sucursalId),
@@ -73,6 +78,9 @@ export default async function MovimientoPage({
       ])
     : [[], [], [], { ver: false, editar: false }];
   const dia = (f: Date) => diaDeCalendario(f, ZONA_ARGENTINA);
+  // La sección del original solo se precarga si sigue activa en esta sucursal (si no, la persona elige: nunca se adivina).
+  const seccionInicialId = aCorregir && secciones.some((s) => s.id === aCorregir.seccionId) ? aCorregir.seccionId : undefined;
+  const detalleInicial = aCorregir ? detalleDeCorreccionDeMovimiento({ proceso: aCorregir.procesoDelMovimiento, dia: dia(aCorregir.fechaDeLaOperacion), idOperacion: aCorregir.idOperacion }) : undefined;
   const hoy = dia(new Date());
   const diasEntre = (desde: string, hasta: string) => Math.max(0, Math.round((Date.parse(hasta) - Date.parse(desde)) / 86_400_000));
 
@@ -107,6 +115,7 @@ export default async function MovimientoPage({
             unidades={unidades.map((u) => ({ id: u.id, nombre: u.nombre }))}
             productoInicial={productoInicial ? { id: productoInicial.id, etiqueta: `${productoInicial.codigo} — ${productoInicial.nombre}` } : undefined}
             reparto={nivelReparto.editar && otrasSucursales.length ? { sucursalActiva: { id: ctx.sucursalId, nombre: ctx.sucursalNombre }, otras: otrasSucursales } : undefined}
+            sucursalActivaId={ctx.sucursalId}
           />
         ) : (
           <PanelMovimientoForm
@@ -114,11 +123,10 @@ export default async function MovimientoPage({
             secciones={secciones.map((s) => ({ id: s.id, nombre: s.nombre }))}
             seccionesDesactivadas={desactivadas}
             proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
-            unidades={unidades.map((u) => ({ id: u.id, nombre: u.nombre }))}
             motivos={motivos.map((m) => ({ id: m.id, nombre: m.nombre }))}
             destinos={destinos.map((d) => ({ id: d.id, nombre: d.nombre }))}
             productoInicial={productoInicial ? { id: productoInicial.id, etiqueta: `${productoInicial.codigo} — ${productoInicial.nombre}` } : undefined}
-            reparto={esCompra && nivelReparto.editar && otrasSucursales.length ? { sucursalActiva: { id: ctx.sucursalId, nombre: ctx.sucursalNombre }, otras: otrasSucursales } : undefined}
+            correccion={aCorregir ? { seccionInicialId, detalleInicial: detalleInicial ?? "" } : undefined}
           />
         )}
       </div>

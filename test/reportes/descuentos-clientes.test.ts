@@ -127,7 +127,7 @@ describe("obtenerReporteDescuentosClientes", () => {
     expect((await cerrarCuenta(cuenta.id)).ok).toBe(true);
 
     const venta = await prisma.operacion.findFirstOrThrow({ where: { proceso: "VENTA", clienteId } });
-    expect((await anularVenta(venta.id)).ok).toBe(true);
+    expect((await anularVenta(venta.id, "Error de carga")).ok).toBe(true);
 
     const rep = await obtenerReporteDescuentosClientes(s.sucursalId, desde, hasta, prisma);
     expect(rep.clientes).toEqual([]);

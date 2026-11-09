@@ -24,6 +24,16 @@ export function aCentavos(importe: number): number {
   return new D(importe).times(100).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber();
 }
 
+/**
+ * Cuánto FALTA repartir, en enteros y con la misma aritmética del servidor (`repartirFactura`): en modo IMPORTE, centavos (Σ de cada renglón en centavos − Σ de cada importe en centavos); en modo
+ * PORCENTAJE, puntos básicos (10000 − Σ de cada porcentaje en puntos básicos). Positivo = falta, negativo = sobra, 0 = cierra. La pantalla la usa para avisar y el servidor para rechazar: no pueden diferir.
+ */
+export function faltaRepartir(modo: ModoDeReparto, preciosDeRenglones: readonly number[], valores: readonly number[]): number {
+  const suma = (xs: readonly number[]) => xs.reduce((s, v) => s + v, 0);
+  if (modo === "IMPORTE") return suma(preciosDeRenglones.map(aCentavos)) - suma(valores.map(aCentavos));
+  return 10000 - suma(valores.map(aCentavos));
+}
+
 /** `total` (entero ≥ 0) en partes enteras proporcionales a `pesos` (≥ 0), por MAYOR RESIDUO; a igual resto gana el índice más bajo. Sin ningún peso positivo, partes iguales. */
 export function repartirEnteros(total: number, pesos: readonly number[]): number[] {
   if (pesos.length === 0) return [];
@@ -106,7 +116,7 @@ export function repartirFactura(renglones: readonly RenglonARepartir[], modo: Mo
   if (modo === "IMPORTE") {
     if (totalCentavos === 0) return { ok: false, mensaje: "La factura suma $0: para repartirla por importe tiene que tener un total." };
     presupuestos = valores.map(aCentavos);
-    const diferencia = totalCentavos - presupuestos.reduce((s, v) => s + v, 0);
+    const diferencia = faltaRepartir("IMPORTE", renglones.map((r) => r.precioTotal), valores);
     if (diferencia !== 0) {
       const pesos = new D(Math.abs(diferencia)).dividedBy(100).toFixed(2);
       return { ok: false, mensaje: diferencia > 0 ? `Los importes de las sucursales no llegan al total: faltan $${pesos}.` : `Los importes de las sucursales pasan el total: sobran $${pesos}.` };

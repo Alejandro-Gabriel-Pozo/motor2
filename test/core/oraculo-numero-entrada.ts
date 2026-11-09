@@ -143,4 +143,4 @@ export const CODIGOS_DE_RECHAZO_DE_NUMEROS: Readonly<Record<string, string>> = {
 };
 
 /** Los códigos de `CodigoDato` que NO son de números (no cambian esta regla). */
-export const CODIGOS_AJENOS_A_LOS_NUMEROS: readonly string[] = ["vacio", "negativo", "cero", "rango", "largo", "sin_alfanumerico", "caracteres", "verificador"];
+export const CODIGOS_AJENOS_A_LOS_NUMEROS: readonly string[] = ["vacio", "negativo", "cero", "rango", "largo", "sin_alfanumerico", "caracteres", "verificador", "regla"];

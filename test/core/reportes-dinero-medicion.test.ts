@@ -14,15 +14,13 @@ import type { ItemPeriodo } from "../../src/core/reportes/periodo-tipos";
  * realistas (importes en centavos, cantidades con hasta 3 decimales, hasta cientos de líneas), y fija el resultado de la medición:
  *  - con importes que ya vienen en centavos (lo que guarda la base en `precioTotal`) la suma en `number` redondeada a centavos es IGUAL a la exacta, siempre (la grilla de centavos es exacta
  *    hasta ~2^53 centavos y el error acumulado de sumar cientos de líneas queda varios órdenes de magnitud por debajo de medio centavo);
- *  - con ventas ESTIMADAS (sin precio guardado: cantidad × precio vigente) el producto tiene hasta 5 decimales. MEDIDO antes del arreglo (20.000 totales de hasta 200 líneas, 2026-10-08): sumar los
- *    productos sin redondear y redondear una sola vez al final difería del exacto por UN centavo en 7 totales (0,035 %). El dueño aprobó el arreglo (2026-10-08): `calcularVentasDelPeriodo` redondea
- *    cada línea estimada con `importeDeLinea` (decimal exacto) antes de sumar, como el importe de cualquier línea de un ticket, y desde entonces el total es IGUAL a la suma exacta de esos importes.
+ *  - las ventas ya NO se estiman (decisión del dueño, 2026-11-06): una línea con importe $0 es «sin dato» y queda fuera (test/core/ventas-del-periodo-sin-dato.test.ts); antes la medición del
+ *    2026-10-08 de las estimadas (cantidad × precio vigente) llevó a redondear cada línea con `importeDeLinea`.
  *    No hace falta migrar los reportes a Decimal: si en algún reporte aparecieran diferencias en importes ya en centavos, recién ahí se abre ese paso.
  * Funciones puras: sin Postgres.
  */
 
 const centavos = fc.integer({ min: 1, max: 100_000_000 }).map((c) => c / 100); // hasta $1.000.000,00
-const precioDeVenta = fc.integer({ min: 100, max: 5_000_000 }).map((c) => c / 100);
 const cantidad = fc.integer({ min: 1, max: 50_000 }).map((m) => m / 1000); // hasta 50 con 3 decimales
 
 function item(base: Partial<ItemPeriodo> & Pick<ItemPeriodo, "proceso" | "productoId">): ItemPeriodo {
@@ -72,32 +70,13 @@ describe("dinero en core/reportes, medido contra el cálculo exacto (Decimal)", 
     fc.assert(
       fc.property(fc.array(fc.record({ importe: centavos, cantidad, producto: fc.constantFrom("p1", "p2", "p3") }), { minLength: 1, maxLength: 400 }), (lineas) => {
         const items = lineas.map((l) => item({ proceso: "VENTA", productoId: l.producto, cantidad: l.cantidad, precioTotal: l.importe, precioPorUnidadStock: l.importe / l.cantidad }));
-        const r = calcularVentasDelPeriodo(items, productos({ p1: 1, p2: 1, p3: 1 }));
+        const r = calcularVentasDelPeriodo(items);
         expect(r.totalFacturado).toBe(exactoARedondeado(lineas.reduce((s, l) => s.plus(new Decimal(l.importe)), new Decimal(0))));
         for (const f of r.porProducto) {
           expect(f.importe).toBe(exactoARedondeado(lineas.filter((l) => l.producto === f.productoId).reduce((s, l) => s.plus(new Decimal(l.importe)), new Decimal(0))));
         }
       }),
       { numRuns: 400 },
-    );
-  });
-
-  it("ventas ESTIMADAS, caso fijo: dos líneas de medio centavo (0,5 × $0,01) suman $0,02, como dos importes de ticket redondeados cada uno (antes del arreglo daba $0,01)", () => {
-    const items = [item({ proceso: "VENTA", productoId: "a", cantidad: 0.5 }), item({ proceso: "VENTA", productoId: "b", cantidad: 0.5 })];
-    const r = calcularVentasDelPeriodo(items, productos({ a: 0.01, b: 0.01 }));
-    expect(r.totalFacturado).toBe(0.02);
-    expect(r.porProducto.map((f) => f.importe)).toEqual([0.01, 0.01]);
-  });
-
-  it("ventas ESTIMADAS (cantidad × precio vigente): cada línea se redondea a centavos con `importeDeLinea` y el total es IGUAL a la suma exacta de esos importes (antes diferían por un centavo en 7 de 20.000)", () => {
-    fc.assert(
-      fc.property(fc.array(fc.record({ cantidad, precio: precioDeVenta }), { minLength: 1, maxLength: 200 }), (lineas) => {
-        const items = lineas.map((l, i) => item({ proceso: "VENTA", productoId: `p${i}`, cantidad: l.cantidad, precioTotal: 0 }));
-        const r = calcularVentasDelPeriodo(items, productos(Object.fromEntries(lineas.map((l, i) => [`p${i}`, l.precio]))));
-        const exacto = exactoARedondeado(lineas.reduce((s, l) => s.plus(new Decimal(l.cantidad).times(new Decimal(l.precio)).toDecimalPlaces(2, Decimal.ROUND_HALF_UP)), new Decimal(0)));
-        expect(r.totalFacturado, `total ${r.totalFacturado} vs exacto ${exacto}`).toBe(exacto);
-      }),
-      { numRuns: 3000 },
     );
   });
 });

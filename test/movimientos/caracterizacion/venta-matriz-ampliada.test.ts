@@ -302,7 +302,7 @@ describe("Caracterización ampliada de la venta: cinco jornadas con filas y traz
   const venderEnMostrador = (titulo: string, datos: DatosVentaInput) =>
     pasoCasoDeUso(titulo, (transaccion) => registrarVentaCasoDeUso({ ...actor, transaccion }, datos));
   const anular = (titulo: string, operacionId: string) =>
-    pasoCasoDeUso(titulo, (transaccion, ahora) => anularVentaCasoDeUso({ usuarioId, sucursalId, transaccion, ahora }, { operacionId }));
+    pasoCasoDeUso(titulo, (transaccion, ahora) => anularVentaCasoDeUso({ usuarioId, sucursalId, transaccion, ahora }, { operacionId, motivo: "Error de carga" }));
   const cerrar = (titulo: string, cuentaId: string) =>
     pasoCasoDeUso(titulo, (transaccion, ahora) => cerrarCuentaCasoDeUso({ ...actor, email: "admin@test.com", transaccion, ahora }, { cuentaId }));
 

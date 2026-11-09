@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { cargarVersionesDeVentas } from "@/server/lecturas/pos/versiones-de-venta";
 import { configuracionDeItemLeido, cuentaConOpciones, type ItemConVenta } from "@/core/pos/public";
 
 /**
@@ -22,6 +23,8 @@ export interface CuentaParaCorregirTicket {
   id: string;
   mesaNumero: number;
   cerradaEn: Date | null;
+  /** El % de descuento de cliente CONGELADO en la cuenta (`Cuenta.descuentoPorcentaje`); null sin cliente con descuento. Lo usa quien compara el total que vio la persona. */
+  descuentoPorcentaje: number | null;
   /** Los ítems con la anulación de su Operacion VENTA (`anuladaEn`), en la forma de `estadoDeTicket`/`armarTicketVigente` (core/pos/ticket.ts). */
   items: ItemConVenta[];
   /** Los ejemplares del ticket, del ÚLTIMO al primero (`ejemplar` descendente); vacío si se cerró antes de la numeración. */
@@ -38,24 +41,28 @@ export async function cargarCuentaParaCorregirTicket(
     include: {
       mesa: { select: { numero: true } },
       // GO-2b: la versión del adicional (de su foto) y lo que compone el nombre de la línea, anidados en la misma consulta, en el orden congelado de la venta.
-      items: { include: { producto: { select: { nombre: true, modoDeVenta: true } }, operacion: { select: { anuladaEn: true } }, opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } } } },
+      items: { include: { producto: { select: { nombre: true, modoDeVenta: true } }, operacion: { select: { anuladaEn: true } }, opcionesElegidas: { orderBy: [{ orden: "asc" }, { id: "asc" }], select: { nombreOpcion: true, tipoGrupo: true, versionDeOpcionId: true, cantidad: true, ocultaEnCarta: true, grupo: { select: { prefijoEnCarta: true } }, opcion: { select: { esNinguna: true } } } } } },
       ejemplaresTicket: { orderBy: { ejemplar: "desc" } },
     },
   });
   if (!cuenta) return null;
   const conOpciones = cuentaConOpciones(cuenta.items);
+  // E1: las ventas corregidas quitando unidades (la B recién escrita en la misma transacción también se ve).
+  const versiones = await cargarVersionesDeVentas(tx, cuenta.items.flatMap((i) => (i.operacionId && i.operacion?.anuladaEn ? [i.operacionId] : [])));
   return {
     id: cuenta.id,
     mesaNumero: cuenta.mesa.numero,
     cerradaEn: cuenta.cerradaEn,
+    descuentoPorcentaje: cuenta.descuentoPorcentaje !== null ? Number(cuenta.descuentoPorcentaje) : null,
     items: cuenta.items.map((i) => ({
       productoId: i.productoId,
-      productoNombre: i.producto.nombre,
+      productoNombre: i.nombreEnTicket ?? i.producto.nombre,
       cantidad: Number(i.cantidad),
       precioUnitario: Number(i.precioUnitario),
       precioCartaUnitario: i.precioCartaUnitario !== null ? Number(i.precioCartaUnitario) : null,
       operacionId: i.operacionId,
       anuladaEn: i.operacion?.anuladaEn ?? null,
+      ...(i.operacionId && versiones.has(i.operacionId) ? { versionesDeLaVenta: versiones.get(i.operacionId) } : {}),
       ...configuracionDeItemLeido(conOpciones, i),
     })),
     ejemplares: cuenta.ejemplaresTicket.map((e) => ({ id: e.id, sucursalId: e.sucursalId, numero: e.numero, ejemplar: e.ejemplar, emitidoEn: e.emitidoEn })),

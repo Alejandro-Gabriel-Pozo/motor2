@@ -54,7 +54,7 @@ export async function grupoConElMismoNombre(tx: Tx, nombre: string, exceptoId: s
 export async function opcionConElMismoNombre(tx: Tx, grupoId: string, nombre: string, exceptoId: string | null) {
   return tx.opcionDeGrupo.findFirst({
     where: { grupoId, nombre: { equals: nombre, mode: "insensitive" }, ...(exceptoId ? { id: { not: exceptoId } } : {}) },
-    select: { id: true, nombre: true, esNinguna: true, productoId: true },
+    select: { id: true, nombre: true, esNinguna: true, productoId: true, descripcionEnCarta: true },
   });
 }
 
@@ -143,13 +143,15 @@ export interface OpcionEnTx {
   esNinguna: boolean;
   productoId: string | null;
   version: number;
+  /** Carta «B», E3: la descripción que lee solo la carta (`null` = sin descripción). */
+  descripcionEnCarta: string | null;
   grupo: { nombre: string; tipo: TipoDeGrupoDeOpciones };
 }
 
 export async function cargarOpcionEnTx(tx: Tx, opcionId: string): Promise<OpcionEnTx | null> {
   const o = await tx.opcionDeGrupo.findFirst({
     where: { id: opcionId },
-    select: { id: true, grupoId: true, nombre: true, orden: true, activa: true, esNinguna: true, productoId: true, version: true, grupo: { select: { nombre: true, tipo: true } } },
+    select: { id: true, grupoId: true, nombre: true, orden: true, activa: true, esNinguna: true, productoId: true, version: true, descripcionEnCarta: true, grupo: { select: { nombre: true, tipo: true } } },
   });
   return o ? { ...o, grupo: { nombre: o.grupo.nombre, tipo: o.grupo.tipo as TipoDeGrupoDeOpciones } } : null;
 }

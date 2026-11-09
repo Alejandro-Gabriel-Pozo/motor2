@@ -1,7 +1,17 @@
 import "server-only";
 import { texto } from "@/core/texto";
+import { redondearMoneda } from "@/core/moneda";
+import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "@/core/tiempo/zona-horaria";
 import { mensajeReferenciaProveedorObligatoria } from "@/core/features/compras/compra.guard";
-import { normalizarNumeroDeComprobante, repartirFactura, type RepartoDeFactura } from "@/core/compras/public";
+import {
+  DIAS_DE_VENTANA_DE_DUPLICADO,
+  avisoDePosibleDuplicado,
+  normalizarNumeroDeComprobante,
+  posiblesDuplicados,
+  repartirFactura,
+  type CompraCandidata,
+  type RepartoDeFactura,
+} from "@/core/compras/public";
 import type { DatosMovimientoInput } from "@/core/features/movimientos/movimiento.schema";
 import type { DatosFacturaProveedorInput, ResultadoRegistrarFacturaProveedor } from "@/core/features/compras/factura-proveedor.schema";
 import { mensajeSeccionDesactivada } from "@/core/features/movimientos/secciones.guard";
@@ -17,10 +27,11 @@ import {
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
+import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { obtenerSeccionPropia } from "@/server/lecturas/movimientos/saldos";
-import { cargarProveedor } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
+import { cargarComprasParaAvisoDeDuplicado, cargarProveedor } from "@/server/persistencia/movimientos/cargar-validaciones-de-movimiento";
 import { escribirLineasDeMovimientoStock, escribirOperacionDeStock } from "@/server/persistencia/movimientos/escribir-movimiento-de-stock";
 import { chequearIdempotencia } from "@/server/persistencia/movimientos/idempotencia";
 import { crearCacheProducto } from "@/server/persistencia/movimientos/producto-cache";
@@ -74,16 +85,32 @@ export async function registrarFacturaProveedorCasoDeUso(
   // Un reenvío de una carga que YA se hizo tiene que devolver su mensaje, no el «ya hay una factura con ese número» (la factura repetida es ella misma). El chequeo que vale es el de adentro de la
   // transacción; este solo evita abrirla de más.
   const previa = decidirIdempotencia(await cargarFacturaPorClaveIdempotencia(actor.db, datos.claveIdempotencia), payloadHash);
-  if (previa.estado === "duplicado") return exito(previa.mensaje, { repetida: true, facturaId: null });
+  if (previa.estado === "duplicado") return exito(previa.mensaje, { repetida: true, facturaId: null, operacionPropiaId: null, movimientosPropios: null });
   if (previa.estado === "conflicto") return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
 
   const nroFactura = texto(datos.nroFactura) || null;
   const nroFacturaNormalizado = nroFactura ? normalizarNumeroDeComprobante(nroFactura) : null;
 
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
+
+  // Aviso C25 (posible factura repetida; NO bloquea), parte 1, para TODA carga (antes solo la tenía la compra simple). La VERIFICACIÓN abarca toda la empresa pero el aviso no muestra datos de otra sucursal (P2, decisión del dueño):
+  // las compras candidatas se leen ACÁ, antes de abrir la transacción (la compra nueva todavía no existe, así que no se compara contra sí misma), con la base de VERIFICACIÓN, y se mira en cuáles de las sucursales de esas
+  // compras puede ver compras quien carga (`proceso_compra`): el texto da el día solo de esas.
+  const diaDeLaCompra = diaDeCalendario(datos.fecha, ZONA_ARGENTINA);
+  const candidatasDelAviso: CompraCandidata[] = await cargarComprasParaAvisoDeDuplicado(verificacion.db, {
+    proveedorId: datos.proveedorId,
+    desde: sumarDias(diaDeLaCompra, -DIAS_DE_VENTANA_DE_DUPLICADO),
+    hasta: sumarDias(diaDeLaCompra, DIAS_DE_VENTANA_DE_DUPLICADO),
+  });
+  const sucursalesAjenasDelAviso = [...new Set(candidatasDelAviso.map((c) => c.sucursalId))].filter((id) => id !== actor.sucursalId);
+  const sucursalesQueVeQuienCarga: ReadonlySet<string> = new Set([
+    actor.sucursalId,
+    ...(sucursalesAjenasDelAviso.length ? await sucursalesDondeElUsuarioPuedeVer(actor.usuarioId, sucursalesAjenasDelAviso, "proceso_compra", actor.db) : []),
+  ]);
+
   return conTransaccionSerializable(verificacion.transaccion, async (tx): Promise<ResultadoRegistrarFacturaProveedor> => {
     const chequeo = await chequearIdempotencia(tx, datos.claveIdempotencia, payloadHash, cargarFacturaPorClaveIdempotencia);
-    if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { repetida: true, facturaId: null });
+    if (chequeo.estado === "duplicado") return exito(chequeo.mensaje, { repetida: true, facturaId: null, operacionPropiaId: null, movimientosPropios: null });
     if (chequeo.estado === "conflicto") return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
 
     // I2 (etapa 1 de Compras): el número no puede estar ya cargado en la empresa, ni como otra factura ni como compra simple de cualquier sucursal. Sí/no; el mensaje no dice dónde está.
@@ -111,7 +138,7 @@ export async function registrarFacturaProveedorCasoDeUso(
       const producto = await obtenerProducto(armado.linea.productoId);
       lineas.push({ linea: armado.linea, nombre: producto?.nombre ?? "", decimales: producto?.unidadStock.decimales ?? 0 });
     }
-    if (!lineas.length) return fracaso("LINEA_INVALIDA", "Ninguna línea tiene una cantidad válida.");
+    if (!lineas.length) return fracaso("SIN_LINEAS_VALIDAS", "Ninguna línea tiene una cantidad válida.");
 
     // CU7/I12: misma regla que la compra simple — en la PRIMERA compra de un producto a este proveedor hay que escribir cómo lo llama (alcanza con que una línea del mismo producto nuevo la traiga). Antes de escribir nada.
     const vinculados = await productosConVinculoConElProveedor(tx, datos.proveedorId, lineas.map((l) => l.linea.productoId));
@@ -138,6 +165,7 @@ export async function registrarFacturaProveedorCasoDeUso(
       ahora: actor.ahora,
       claveIdempotencia: datos.claveIdempotencia,
       payloadHash,
+      condicionPago: datos.condicionPago,
     });
     const renglonIds = await escribirRenglonesDeFactura(
       tx,
@@ -149,10 +177,14 @@ export async function registrarFacturaProveedorCasoDeUso(
         loteVencimiento: linea.loteVencimiento,
         detalle: linea.detalle,
         precioTotal: linea.precioTotal,
+        // Compras etapa 2a: lo comprado vive en el renglón; las partes (movimientos) quedan en NULL y lo leen de acá.
+        unidadCompraId: linea.unidadCompraId,
+        cantidadCompra: linea.cantidadCompra,
       }))
     );
 
     let movimientosPropios = 0;
+    let operacionPropiaId: string | null = null;
     for (const [j, parte] of partes.entries()) {
       const celdas = reparto.celdas.map((fila, i) => ({ i, celda: fila[j]! })).filter(({ celda }) => celda.cantidadStock > 0);
       if (parte.sucursalId === actor.sucursalId) {
@@ -186,6 +218,7 @@ export async function registrarFacturaProveedorCasoDeUso(
           }))
         );
         movimientosPropios = escritas.movimientos;
+        operacionPropiaId = operacion.id;
         await escribirParteRecibida(tx, {
           facturaProveedorId: factura.id,
           sucursalId: actor.sucursalId,
@@ -209,12 +242,10 @@ export async function registrarFacturaProveedorCasoDeUso(
     // El vínculo proveedor↔producto (comparativa de precios, ficha del proveedor y la referencia con que el proveedor llama al producto), una vez por renglón, como en la compra simple.
     for (const { linea } of lineas) {
       if (!linea.unidadCompraId) continue;
-      await registrarVinculoDeCompraEnTx(tx, actor, {
+      await registrarVinculoDeCompraEnTx(tx, {
         productoId: linea.productoId,
         proveedorId: datos.proveedorId,
         unidadCompraId: linea.unidadCompraId,
-        precioUnitario: linea.precioUnitario,
-        precioPorUnidadStock: linea.precioPorUnidadStock,
         fechaCompra: datos.fecha,
         referenciaProveedor: linea.referenciaProveedor,
       });
@@ -224,7 +255,7 @@ export async function registrarFacturaProveedorCasoDeUso(
     await registrarCambioAuditado(tx, {
       entidad: "FacturaProveedor",
       entidadId: factura.id,
-      descripcion: `Factura de proveedor${nroFactura ? ` ${nroFactura}` : ""} cargada en «${actor.sucursalNombre}» y repartida`,
+      descripcion: `Factura de proveedor${nroFactura ? ` ${nroFactura}` : ""} cargada en «${actor.sucursalNombre}»${partes.length > 1 ? " y repartida" : ""}`,
       campo: "reparto",
       valorAnterior: null,
       valorNuevo: partes.map((p, j) => ({ sucursal: nombres.get(p.sucursalId) ?? p.sucursalId, importe: reparto.partes[j]!.importe, porcentajeDeclaradoBp: reparto.partes[j]!.porcentajeDeclaradoBp, estado: p.sucursalId === actor.sucursalId ? "RECIBIDA" : "PROPUESTA" })),
@@ -232,15 +263,26 @@ export async function registrarFacturaProveedorCasoDeUso(
       sucursalId: actor.sucursalId,
     });
 
-    const mensaje = mensajeDeCarga(movimientosPropios, ajenas.map((p) => nombres.get(p.sucursalId) ?? ""));
+    // Aviso C25, parte 2: el texto, con las candidatas ya leídas arriba (antes de escribir). El importe es el TOTAL de la factura contra la compra de cada parte (S5 del diseño: en una repartida puede no avisar, y no bloquea nunca).
+    // El mensaje (con el aviso) se guarda para la idempotencia: un reintento con la misma clave devuelve el mismo texto.
+    const aviso = avisoDePosibleDuplicado(posiblesDuplicados({ proveedorId: datos.proveedorId, dia: diaDeLaCompra, importe: redondearMoneda(reparto.total) }, candidatasDelAviso), actor.sucursalId, sucursalesQueVeQuienCarga);
+    const avisoConversion = lineas.some((l) => l.linea.huboConversion) ? " Algunas cantidades se convirtieron automáticamente de unidad de compra a unidad de stock." : "";
+    const mensaje = mensajeDeCarga({
+      movimientosPropios,
+      destinos: ajenas.map((p) => nombres.get(p.sucursalId) ?? ""),
+      pendienteDePago: datos.condicionPago === "PENDIENTE_DE_PAGO",
+      unaSolaParte: partes.length === 1 && Boolean(propia),
+      avisoConversion,
+      avisoDuplicado: aviso ? ` ${aviso}` : "",
+    });
     await registrarResultadoDeFactura(tx, factura.id, mensaje);
-    return exito(mensaje, { repetida: false, facturaId: factura.id });
+    return exito(mensaje, { repetida: false, facturaId: factura.id, operacionPropiaId, movimientosPropios });
   }, undefined, undefined, true).catch(async (e): Promise<ResultadoRegistrarFacturaProveedor> => {
     if (esChoqueDeFacturaDeProveedorUnica(e)) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
     if (esChoqueDeFacturaUnica(e)) return fracaso("FACTURA_DUPLICADA", MENSAJE_FACTURA_DUPLICADA);
     if (esChoqueDeClaveIdempotenciaDeFactura(e)) {
       const ganador = await cargarFacturaPorClaveIdempotencia(actor.db, datos.claveIdempotencia);
-      if (ganador && ganador.payloadHash === payloadHash && ganador.resultadoMensaje !== null) return exito(ganador.resultadoMensaje, { repetida: true, facturaId: null });
+      if (ganador && ganador.payloadHash === payloadHash && ganador.resultadoMensaje !== null) return exito(ganador.resultadoMensaje, { repetida: true, facturaId: null, operacionPropiaId: null, movimientosPropios: null });
       return fracaso("CONFLICTO_IDEMPOTENCIA", MENSAJE_CONFLICTO_IDEMPOTENCIA);
     }
     throw e;
@@ -258,8 +300,14 @@ function verificarSumas(reparto: Extract<RepartoDeFactura, { ok: true }>, renglo
   if (bp !== 10000 || !renglonesOk) throw new Error("registrarFacturaProveedor: el reparto no cierra (puntos básicos o sumas por renglón); no se escribe nada.");
 }
 
-function mensajeDeCarga(movimientosPropios: number, destinos: readonly string[]): string {
-  const propia = movimientosPropios ? `Factura cargada: ${movimientosPropios} movimiento(s) entraron al stock de esta sucursal.` : "Factura cargada.";
-  if (!destinos.length) return propia;
-  return `${propia} Quedan para aceptar las partes de: ${destinos.map((d) => `«${d}»`).join(", ")} (cada sucursal la acepta desde su Compra; hasta entonces no cuenta en su stock ni en su gasto).`;
+/**
+ * El mensaje de la carga. Una factura de UNA sola parte (la compra de una sucursal) conserva el texto de siempre de la compra: «Se guardaron N movimiento(s).» más los avisos (conversión de unidad, posible repetida y,
+ * si quedó pendiente, cómo declarar el pago). Una repartida dice qué entró acá y qué partes quedan para aceptar en cada destino.
+ */
+function mensajeDeCarga(m: { movimientosPropios: number; destinos: readonly string[]; pendienteDePago: boolean; unaSolaParte: boolean; avisoConversion: string; avisoDuplicado: string }): string {
+  const pendiente = m.pendienteDePago ? " Quedó pendiente de pago: declaralo desde «Compras registradas» cuando se pague." : "";
+  if (m.unaSolaParte && !m.destinos.length) return `Se guardaron ${m.movimientosPropios} movimiento(s).${m.avisoConversion}${pendiente}${m.avisoDuplicado}`;
+  const propia = (m.movimientosPropios ? `Factura cargada: ${m.movimientosPropios} movimiento(s) entraron al stock de esta sucursal.` : "Factura cargada.") + pendiente;
+  if (!m.destinos.length) return `${propia}${m.avisoDuplicado}`;
+  return `${propia} Quedan para aceptar las partes de: ${m.destinos.map((d) => `«${d}»`).join(", ")} (cada sucursal la acepta desde su Compra; hasta entonces no cuenta en su stock ni en su gasto).${m.avisoDuplicado}`;
 }

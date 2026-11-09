@@ -7,7 +7,8 @@ import { registrarVentaEnTx } from "@/server/actions/movimientos/casos-de-uso/re
 import { chequearIdempotencia } from "@/server/persistencia/movimientos/idempotencia";
 import { rechazoDeReferenciaNoEncontrada } from "@/core/datos/errores-de-base";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { LARGO_MAXIMO_DETALLE, MAXIMO_LINEAS_POR_OPERACION, validarTextoLibre, validarTopeDeLista } from "@/core/datos/limites";
+import { MAXIMO_LINEAS_POR_OPERACION, validarTopeDeLista } from "@/core/datos/limites";
+import { validarDetalleLibreDeOperacion } from "@/core/movimientos/public";
 
 /**
  * Caso de uso «registrar una venta de mostrador» — SOLO la parte transaccional (Task #41, Fase M; docs/arquitectura-casos-de-uso-2026-09-27.md).
@@ -41,7 +42,7 @@ export async function registrarVentaCasoDeUso(
 ): Promise<ResultadoRegistrarVenta> {
   const excedeLineas = validarTopeDeLista(datos.ventas, "Los productos", MAXIMO_LINEAS_POR_OPERACION);
   if (excedeLineas) return fracaso("VENTA_RECHAZADA", excedeLineas);
-  const detalle = validarTextoLibre(datos.detalle, "El detalle", LARGO_MAXIMO_DETALLE);
+  const detalle = validarDetalleLibreDeOperacion(datos.detalle);
   if (!detalle.ok) return fracaso("VENTA_RECHAZADA", detalle.mensaje);
   try {
     return await registrarVentaEnTransaccion(actor, datos);

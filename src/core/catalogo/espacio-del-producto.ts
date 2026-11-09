@@ -1,3 +1,6 @@
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
+import { esBaseConfigurable, type ModoDeVenta } from "@/core/opciones/public";
+
 /**
  * El ESPACIO DEL PRODUCTO (Fase 6, paso 6.9b; DEC-12): el recorrido de pasos por el que se arma y se mantiene UN producto sin salir de él. Puro: no lee nada. Dice qué pasos tiene un
  * producto según su TIPO, a qué ruta lleva cada uno, qué le falta a cada paso (los «pendientes») y qué pasos puede abrir quien mira, así la pantalla del marco dibuja las pestañas sin
@@ -42,7 +45,7 @@ export function rutaDelPaso(productoId: string, paso: PasoDelEspacio | "portada"
 
 /** Lo que define QUÉ pasos tiene un producto: su tipo y dos banderas. */
 export interface FormaDelProducto {
-  tipo: "PV" | "MP";
+  tipo: TipoProducto;
   /** Solo una materia prima con `seProduce` tiene receta propia. */
   seProduce: boolean;
   /** El producto interno que respalda el stock de un adicional (ADR-030): se vende solo como adicional y no se maneja con los pasos de venta. */
@@ -60,7 +63,7 @@ export type EstadoEnLaCarta = "visible" | "oculto" | "fuera" | "agrupado" | "no-
  * consulta ni se hizo) o el paso no corresponde al tipo; el estado de ese paso es `sin-dato`.
  */
 export interface HechosDelProducto extends FormaDelProducto {
-  modoDeVenta: "DIRECTO" | "BASE_CONFIGURABLE";
+  modoDeVenta: ModoDeVenta;
   precioDeVenta: number;
   /** `vendibleAca`: el resumen de precios dice que se puede vender hoy en la sucursal activa (`vistaPrevia.vendible`). */
   opciones: { vendibleAca: boolean } | null;
@@ -84,7 +87,7 @@ function pasoCorrespondeAlProducto(forma: FormaDelProducto, paso: PasoDelEspacio
 function estadoDeDatos(h: HechosDelProducto): EstadoDelPaso {
   if (h.esAnclaDeAdicional) return { tipo: "listo", texto: "Producto de respaldo de un adicional" };
   if (h.tipo === "MP") return { tipo: "listo", texto: "Materia prima" };
-  if (h.modoDeVenta === "BASE_CONFIGURABLE") return { tipo: "listo", texto: "Se vende por opción" };
+  if (esBaseConfigurable(h.modoDeVenta)) return { tipo: "listo", texto: "Se vende por opción" };
   if (!(h.precioDeVenta > 0)) return { tipo: "pendiente", texto: "Falta el precio de venta" };
   return { tipo: "listo", texto: "Se vende directo" };
 }
@@ -92,7 +95,7 @@ function estadoDeDatos(h: HechosDelProducto): EstadoDelPaso {
 function estadoDeOpciones(h: HechosDelProducto): EstadoDelPaso {
   if (h.opciones === null) return SIN_DATO;
   if (!h.opciones.vendibleAca) return { tipo: "pendiente", texto: "Hoy no se puede vender acá: revisá las opciones y sus precios" };
-  return { tipo: "listo", texto: h.modoDeVenta === "BASE_CONFIGURABLE" ? "El precio sale de las opciones" : "Opciones al día" };
+  return { tipo: "listo", texto: esBaseConfigurable(h.modoDeVenta) ? "El precio sale de las opciones" : "Opciones al día" };
 }
 
 function estadoDeReceta(h: HechosDelProducto): EstadoDelPaso {

@@ -31,7 +31,7 @@ export {
   OPERACION_QUE_NO_ES_REVERSION_POR_ANULACION,
   detalleReversionDeCompra,
   detalleReversionDeVenta,
-  esDetalleReservadoParaReversiones,
+  validarDetalleLibreDeOperacion,
   evaluarAnulacionDeVenta,
   evaluarPosterioresAAnularVenta,
   evaluarPosterioresACancelarConteo,
@@ -63,3 +63,6 @@ export { CODIGO_PRODUCTO_SIN_RECETA, rechazoSinOrigenDeStock } from "./origen-de
 
 // Fase 4 de la ola «precio y carta» (ADR-035): el rechazo de una línea suelta de un producto que se vende por opción (el agregado de ítems del POS lo usa como defensa; el núcleo de la venta, como barrera).
 export { mensajeBaseSinOpcion } from "./opciones-obligatorias";
+// E1 de la corrección por ajuste (docs/diseno-correccion-por-ajuste-2026-11-06.md): quitar unidades de una línea de un ticket cerrado.
+export { copiarVentaConMenosUnidades, evaluarCorreccionPorUnidades, unidadesVendidas } from "./correccion-por-unidades";
+export type { LineaParaCorregir, MotivoDeRechazoDeLaCorreccion } from "./correccion-por-unidades";

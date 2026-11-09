@@ -1,6 +1,7 @@
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
 import { validarContactoDeProveedor } from "./contacto-de-proveedor";
 import { nombreDeCatalogo } from "./nombre-de-catalogo";
+import { validarOferta } from "./oferta-de-proveedor";
 import type { ComandoAltaProveedor, EntradaContactoDeProveedor } from "./proveedores.schema";
 
 /**
@@ -19,10 +20,14 @@ export const MENSAJE_PROVEEDOR_NO_ENCONTRADO = "No se encontró ese proveedor.";
  * textos y en el MISMO orden: el nombre (recortado, no vacío, charset y largo de catálogo) y después los datos de contacto (`validarContactoDeProveedor`). Que el
  * nombre y el CUIT estén libres lo resuelve el caso de uso.
  */
-export function guardComandoAltaProveedor(entrada: { nombre: unknown } & EntradaContactoDeProveedor): ResultadoDato<ComandoAltaProveedor> {
+export function guardComandoAltaProveedor(entrada: { nombre: unknown; ofreceProductos?: unknown; ofreceServicios?: unknown } & EntradaContactoDeProveedor): ResultadoDato<ComandoAltaProveedor> {
   const nombre = nombreDeCatalogo(entrada.nombre, "El nombre no puede estar vacío.", "El nombre");
   if (!nombre.ok) return rechazar(nombre.codigo, nombre.mensaje);
   const valores = validarContactoDeProveedor(entrada);
   if (!valores.ok) return rechazar(valores.codigo, valores.mensaje);
-  return aceptar({ nombre: nombre.valor, valores: valores.valor });
+  // Qué le compramos: sin decir nada, el alta nace «productos» como siempre (los scripts y el alta rápida del producto no lo mandan); si se dice, al menos una marca.
+  const dijoOferta = entrada.ofreceProductos !== undefined || entrada.ofreceServicios !== undefined;
+  const oferta = dijoOferta ? validarOferta(entrada.ofreceProductos, entrada.ofreceServicios) : validarOferta(true, false);
+  if (!oferta.ok) return rechazar(oferta.codigo, oferta.mensaje);
+  return aceptar({ nombre: nombre.valor, valores: valores.valor, oferta: oferta.valor });
 }

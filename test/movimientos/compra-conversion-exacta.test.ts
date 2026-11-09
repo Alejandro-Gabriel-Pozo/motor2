@@ -5,7 +5,7 @@ vi.mock("../../src/server/sesion/session", () => ({ getUsuarioActual: vi.fn() })
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarSeccion, sembrarProductoDisponible, crearUsuarioConMembresia, prisma } from "../setup/test-db";
 import { mockearUsuarioActual } from "../setup/mock-sesion";
 import { registrarMovimiento } from "../../src/server/actions/movimientos/movimientos";
-import { anularCompra } from "../../src/server/actions/movimientos/compras";
+import { anularCompraDeTest } from "../setup/anular-compra-de-prueba";
 import { calcularSaldoTotal } from "../setup/saldo-de-seccion";
 import { nroFacturaDePrueba } from "../setup/comprobante-de-prueba";
 import { REFERENCIA_DE_PRUEBA } from "../setup/referencia-de-prueba";
@@ -57,10 +57,9 @@ describe("compra con factor de conversión decimal: cuentas exactas de punta a p
     const linea = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id } });
     expect(linea.cantidad.toFixed(4)).toBe("1.0100");
     expect(linea.precioTotal.toFixed(2)).toBe("10.00");
-    // `precioUnitario` (10 ÷ 1 comprada) no vive en MovimientoStock: lo guarda el vínculo con el proveedor.
-    const vinculo = await prisma.proveedorPorProducto.findFirstOrThrow({ where: { productoId: mp.id, proveedorId } });
-    expect(vinculo.precioUnitario.toFixed(4)).toBe("10.0000");
-    expect(vinculo.precioPorUnidadStock.toFixed(4)).toBe("9.9010");
+    // El precio por unidad COMPRADA (10 ÷ 1) ya no se guarda en el vínculo (poda 2026-11-06): se deriva del renglón de la factura (precio total ÷ cantidad comprada; la compra es una factura de una parte).
+    const renglon = await prisma.facturaProveedorRenglon.findFirstOrThrow({ where: { productoId: mp.id } });
+    expect(renglon.precioTotal.div(renglon.cantidadCompra!).toFixed(4)).toBe("10.0000");
     expect(linea.precioPorUnidadStock.toFixed(4)).toBe("9.9010"); // 10 ÷ 1,01 = 9,900990… → 9,9010
     expect(linea.detalle).toBe("1 × 1.005 = 1.005 kg");
     expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(1.01);
@@ -75,9 +74,8 @@ describe("compra con factor de conversión decimal: cuentas exactas de punta a p
 
     const linea = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id } });
     expect(linea.cantidad.toFixed(4)).toBe("0.3000");
-    const vinculo = await prisma.proveedorPorProducto.findFirstOrThrow({ where: { productoId: mp.id, proveedorId } });
-    expect(vinculo.precioUnitario.toFixed(4)).toBe("33.3667"); // 100,10 ÷ 3
-    expect(vinculo.precioPorUnidadStock.toFixed(4)).toBe("333.6667");
+    const renglon = await prisma.facturaProveedorRenglon.findFirstOrThrow({ where: { productoId: mp.id } });
+    expect(renglon.precioTotal.div(renglon.cantidadCompra!).toFixed(4)).toBe("33.3667"); // 100,10 ÷ 3, derivado del renglón (el vínculo ya no guarda el precio)
     expect(linea.precioPorUnidadStock.toFixed(4)).toBe("333.6667"); // 100,10 ÷ 0,3
     expect(linea.detalle).toBe("3 × 0.1 = 0.3 kg");
   });
@@ -93,7 +91,8 @@ describe("compra con factor de conversión decimal: cuentas exactas de punta a p
     expect(segunda.ok, segunda.mensaje).toBe(true);
     expect(segunda.mensaje).toBe(primera.mensaje); // el mensaje ORIGINAL
 
-    expect(await prisma.operacion.count({ where: { claveIdempotencia: clave } })).toBe(1);
+    expect(await prisma.facturaProveedor.count({ where: { claveIdempotencia: clave } }), "la clave vive en la cabecera de la factura").toBe(1);
+    expect(await prisma.operacion.count({ where: { proceso: "COMPRA" } })).toBe(1);
     const lineas = await prisma.movimientoStock.findMany({ where: { productoId: mp.id } });
     expect(lineas).toHaveLength(1);
     expect(lineas[0].cantidad.toFixed(4)).toBe("1.0100");
@@ -107,7 +106,7 @@ describe("compra con factor de conversión decimal: cuentas exactas de punta a p
     expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(0.3);
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId } });
 
-    const anulada = await anularCompra(compra.id, crypto.randomUUID());
+    const anulada = await anularCompraDeTest(compra.id);
     expect(anulada.ok, anulada.mensaje).toBe(true);
 
     expect(await calcularSaldoTotal(mp.id, seccionId, prisma)).toBe(0);
@@ -123,7 +122,7 @@ describe("compra con factor de conversión decimal: cuentas exactas de punta a p
     expect(r.ok, r.mensaje).toBe(true);
     const compra = await prisma.operacion.findFirstOrThrow({ where: { proceso: "COMPRA", sucursalId } });
 
-    const anulada = await anularCompra(compra.id, crypto.randomUUID());
+    const anulada = await anularCompraDeTest(compra.id);
     expect(anulada.ok, anulada.mensaje).toBe(true);
 
     const reversion = await prisma.movimientoStock.findFirstOrThrow({ where: { productoId: mp.id, proceso: "AJUSTE" } });

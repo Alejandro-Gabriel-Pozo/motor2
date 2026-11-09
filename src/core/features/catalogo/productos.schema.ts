@@ -1,3 +1,4 @@
+import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
 import type { ResultadoDato } from "@/core/datos/resultado";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import type { ResultadoCaso } from "@/core/resultado-caso";
@@ -17,7 +18,7 @@ import type { ResultadoCaso } from "@/core/resultado-caso";
 export interface EntradaProducto {
   codigo?: string;
   nombre: string;
-  tipo: "MP" | "PV";
+  tipo: TipoProducto;
   categoriaId?: string | null;
   unidadCompraId?: string | null;
   unidadStockId: string;

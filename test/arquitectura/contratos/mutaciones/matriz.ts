@@ -642,11 +642,11 @@ function invariantesDelGuardian(base: BaseDeMutacion): Invariante[] {
           esp("cumplimiento", "prueba-sin-sufijo-test", "test/arquitectura/contratos/contratos-guardian.ts", lineaDelDescribe, "no termina en `.test.ts`"),
         ]),
         texto("evasion", { ruta: ci, de: "  pull_request:\n    branches: [main]\n", a: "  pull_request:\n    branches: [main]\n    paths-ignore: ['test/**']\n", donde: "paths-ignore" }, elCi, esp("cumplimiento", "ci-filtro-de-rutas", ci, "calculada", "paths-ignore"), [regCi]),
-        texto("evasion", { ruta: ci, de: "NODE_OPTIONS: --max-old-space-size=4096", a: 'NODE_OPTIONS: --max-old-space-size=4096\n          CREAR_CERCOS: "1"', donde: "CREAR_CERCOS" }, elCi, esp("cumplimiento", "ci-variable-prohibida", ci, "calculada", "CREAR_CERCOS"), [regCi]),
+        texto("evasion", { ruta: ci, de: "NODE_OPTIONS: --max-old-space-size=8192", a: 'NODE_OPTIONS: --max-old-space-size=8192\n          CREAR_CERCOS: "1"', donde: "CREAR_CERCOS" }, elCi, esp("cumplimiento", "ci-variable-prohibida", ci, "calculada", "CREAR_CERCOS"), [regCi]),
         texto("evasion", { ruta: "package.json", de: '"test": "vitest run",', a: '"test": "vitest run --passWithNoTests",', donde: '"test": "vitest run --pass' }, elPaquete, esp("cumplimiento", "script-distinto", "package.json", "calculada", "vitest run --passWithNoTests"), [regPaquete]),
         // G7: sin `forbidOnly` un `test.only` en un spec de Playwright pasa en el CI sin avisar; y un gate que no espera a `estatico` deja pasar la corrida aunque el guardián (y su evidencia) falle.
         texto("evasion", { ruta: "playwright.config.ts", de: "  forbidOnly: !!process.env.CI,\n", a: "", donde: "export default defineConfig({" }, elPlaywright, esp("cumplimiento", "playwright-sin-forbidonly", "playwright.config.ts", "calculada", "forbidOnly"), [regPlaywright]),
-        texto("evasion", { ruta: ci, de: "needs: [estatico, build, integracion, conteo, e2e, conteo-e2e]", a: "needs: [build, integracion, conteo, e2e, conteo-e2e]", donde: "needs: [build, integracion, conteo, e2e, conteo-e2e]" }, elCi, esp("cumplimiento", "ci-gate-sin-needs", ci, "calculada", "el gate no espera al job `estatico`"), [regCi]),
+        texto("evasion", { ruta: ci, de: "needs: [estatico, build, integracion, e2e]", a: "needs: [build, integracion, e2e]", donde: "needs: [build, integracion, e2e]" }, elCi, esp("cumplimiento", "ci-gate-sin-needs", ci, "calculada", "el gate no espera al job `estatico`"), [regCi]),
       ],
       noAplica: [{ clase: "duplicacion", motivo: "duplicar el guardián no lo neutraliza: dos copias del test hacen lo mismo y nada se evade" }],
     });

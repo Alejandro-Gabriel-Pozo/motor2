@@ -1,11 +1,13 @@
 import "server-only";
-import { ordenAlFinalDeLaSeccion, whereCartaDeSucursal } from "@/core/carta/public";
+import { GENERO_E_ITEM_AGRUPADO_VISIBLE, mensajeDeChoqueDeNombre, ordenAlFinalDeLaSeccion, whereCartaDeSucursal } from "@/core/carta/public";
 import type { ComandoAgregarProductoALaCarta, ResultadoAgregarProductoALaCarta } from "@/core/features/carta/mantenimiento.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
-import { crearContenidoVisibleDeProducto } from "@/server/persistencia/carta/contenido-producto";
+import { buscarChoqueDeNombreEnLaCarta } from "@/server/lecturas/carta/choque-de-nombre";
+import { crearContenidoVisibleDeProducto, tomarLosNombresDeLaCarta } from "@/server/persistencia/carta/contenido-producto";
+import { esBaseConfigurable } from "@/core/opciones/public";
 
 /**
  * Caso de uso «agregar a la carta» un producto que estaba FUERA de carta (CARTA-MANT; ADR-034): lo publica de un toque en la sección elegida, visible y AL FINAL de ella, en la
@@ -41,6 +43,7 @@ export async function agregarProductoALaCartaCasoDeUso(
         select: {
           nombre: true,
           tipo: true,
+          modoDeVenta: true,
           opcionQueRespalda: { select: { id: true } },
           contenidosCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { visibleEnCarta: true, seccionCartaId: true } },
           opcionesItemAgrupadoCarta: { where: whereCartaDeSucursal(actor.sucursalId), take: 1, select: { itemAgrupadoCarta: { select: { nombre: true } } } },
@@ -51,7 +54,8 @@ export async function agregarProductoALaCartaCasoDeUso(
       if (producto.opcionQueRespalda) return fracaso("ES_ANCLA_DE_ADICIONAL", `«${producto.nombre}» es el producto de respaldo de un adicional: se vende solo como adicional, no va suelto en la carta.`);
 
       // D3: un PV agrupado sale en la carta SOLO dentro de su ítem agrupado; suelto no se mostraría y quedaría duplicado. Se saca o se suma desde «Agrupados».
-      const agrupado = producto.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre;
+      // Con el interruptor de ítem agrupado apagado la carta ignora los agrupados (`GENERO_E_ITEM_AGRUPADO_VISIBLE`): el producto sale suelto, así que no es «miembro de agrupado».
+      const agrupado = GENERO_E_ITEM_AGRUPADO_VISIBLE ? producto.opcionesItemAgrupadoCarta[0]?.itemAgrupadoCarta.nombre : undefined;
       if (agrupado) return fracaso("ES_MIEMBRO_DE_AGRUPADO", `«${producto.nombre}» ya sale en la carta dentro del agrupado «${agrupado}»: se maneja desde «Agrupados».`);
 
       const seccion = await tx.seccionCarta.findUnique({ where: { id: comando.seccionCartaId }, select: { id: true, nombre: true, activa: true } });
@@ -63,6 +67,15 @@ export async function agregarProductoALaCartaCasoDeUso(
         return fracaso("YA_TIENE_CONTENIDO", `«${producto.nombre}» ya tiene contenido de carta en «${actor.sucursalNombre}»: mostralo o cambiale la sección desde su ficha.`);
       }
       if (!seccion.activa) return fracaso("SECCION_APAGADA", `La sección «${seccion.nombre}» está apagada: no saldría en la carta. Prendela o elegí otra.`);
+
+      // Regla del dueño (2026-11-04): en la carta de una sucursal no hay dos cosas con el mismo nombre. Sale con su nombre de producto (no tiene contenido todavía): con el candado de los nombres de la sucursal, se
+      // busca si ya lo usa otro plato (por su nombre en la carta o por el del producto), un ítem agrupado o una promo.
+      // (Una base no ocupa un nombre en esta etapa: el cliente lee los rótulos de sus opciones.)
+      if (!esBaseConfigurable(producto.modoDeVenta)) {
+        await tomarLosNombresDeLaCarta(tx, actor.sucursalId);
+        const choque = await buscarChoqueDeNombreEnLaCarta(tx, { sucursalId: actor.sucursalId, productoIdPropio: comando.productoId, nombre: producto.nombre });
+        if (choque) return fracaso("NOMBRE_EN_USO", mensajeDeChoqueDeNombre(producto.nombre, choque, actor.sucursalNombre));
+      }
 
       const [contenidos, agrupados] = await Promise.all([
         tx.contenidoCartaProducto.findMany({ where: { ...whereCartaDeSucursal(actor.sucursalId), seccionCartaId: seccion.id }, select: { orden: true } }),

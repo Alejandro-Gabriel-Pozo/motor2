@@ -12,10 +12,16 @@ export type { CartaV1 } from "./armar-menu";
 // S-25: lo único que la carta pública entrega a un anónimo (la carta armada SIN los ids internos) y la proyección que la arma; ver `carta-publica.ts`.
 export type { AclaracionCartaPublica, CartaPublicaV1, ItemCartaPublico, PromoCartaPublica, SeccionCartaPublica } from "./carta-publica";
 export { partirLaAclaracion, pieDeLaCartaImpresa, recargoEnPesos, textoDeLaAclaracion } from "./texto-de-la-carta";
+export { cantidadDeLaParte, conectorDeLaParte, detalleDelBloque, incluyeDeLaSeccion, nombresDeLosPlatosDelItem, restoDeLaParte, textoDeIncluye, textoDeLasOpciones, textoDeVaCon, textoDelTitulo, vaConDelBloque } from "./incluye-en-carta";
+export type { BloqueDeOpciones, ParteDeIncluye } from "./incluye-en-carta";
 export { VERSION_DE_LA_CARTA_EN_CACHE, etiquetaDeCacheDeCartasPublicas, proyectarCartaPublica } from "./carta-publica";
-export { precioDeCarta } from "./armar-menu";
+export { nombreDeCarta, precioDeCarta } from "./armar-menu";
+export { nombreParaMostrar } from "./nombre-para-mostrar";
+export { buscarChoqueEntreNombres, claveDeNombreDeCarta, estadoDelNombreDeCarta, mensajeDeChoqueDeNombre, type ChoqueDeNombre, type NombreUsadoEnLaCarta } from "./nombre-en-carta";
 export { precioDePromo, seleccionDeSucursalDePromo, wherePromoOfrecidaEn, type AudienciaDePromo } from "./promo-sucursal";
 // GO-3 (ADR-032): los tipos de cupo y la lectura tolerante del primer despliegue (solo los cupos de sección activos; una promo con un cupo activo de tipo nuevo no se ofrece).
+export { ORIGEN_FUERA_DE_LA_CARTA, borradorInicial, categoriasDe, comandoDeProducto, origenInferido, productosDelOrigen, tieneOpciones } from "./armar-lugar-de-lista";
+export type { BorradorDeProducto } from "./armar-lugar-de-lista";
 export { SUMAR_LUGAR_DE_LISTA_VISIBLE, WHERE_CUPO_ACTIVO_DE_TIPO_NUEVO, WHERE_CUPO_DE_SECCION_ACTIVO, cuposDeSeccionActivos } from "./cupos-de-promo";
 export type { TipoDeCupo } from "./cupos-de-promo";
 // GO-3b (D3): la administración de los cupos sin borrar (la clave natural de cada cupo y la diferencia contra lo que hay) y los tipos de cupo para el guard.
@@ -84,6 +90,8 @@ export { TODOS_LOS_DIAS, VIGENCIA_DE_PROMO_VISIBLE, mascaraDeDias, promoVigenteE
 export type { VigenciaDePromo } from "./vigencia-de-promo";
 // GO-3b (ADR-032, D-1): la fecha del menú del día (de hoy a hoy + 13, en la zona de la empresa).
 export { DIAS_DE_ANTICIPACION_DEL_MENU, MENSAJE_MENU_DEL_DIA_APAGADO, MENU_DEL_DIA_VISIBLE, lugarDelDiaApagado, validarFechaDeMenuDelDia } from "./menu-del-dia";
+// Poda 2026-11-06: el interruptor de género de carta e ítem agrupado (ver `genero-e-item-agrupado.ts`).
+export { GENERO_E_ITEM_AGRUPADO_VISIBLE, MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO } from "./genero-e-item-agrupado";
 // Fase 7, DEC-24: el grupo Carta del menú (tres entradas), sus filas de pestañas y las rutas que cuelgan de cada entrada.
 export {
   NAV_CARTA,

@@ -124,6 +124,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Semilla de `opcion_apagar_en_sucursal` (decisión del dueño, limpieza paquete A paso 3b; CAMBIA COMPORTAMIENTO a propósito en las empresas NUEVAS): la clave pasa de [admin] a [admin, operador] (clase O a L; piso operario intacto). Cambia SOLO lo que dice esa clave para el usuario «operador» (y los roles que lo incluyen): sale de los grupos de SIN_PERMISO/`ver=false editar=false` y entra a los de `ok`/`ver=true editar=true`/`sucursalesDondeElUsuarioPuedeVer`; el resto son movimientos de orden de la clave dentro de las listas. Ninguna respuesta de otra clave cambia. Revisado con `git diff --word-diff`.",
       },
+      {
+        blob: "476335882b111a8d02307eee107a7e557b5dc7e5",
+        // El commit PADRE de este (562b3ab) es el último antes del cambio; el golden se regenera en el commit siguiente (Pagos X0).
+        commit: "562b3ab",
+        motivo:
+          "Pagos X0 (ADITIVO; la clave es nueva y nadie la tenía): `declarar_pago_compra` (empresa, piso operario, clase O, semilla solo `admin`) aparece en las listas de claves de cada bloque y registro (112 líneas, todas del mismo tipo: se suma esa clave junto a `compra_repartir`). Revisado con `git diff --word-diff`: ninguna otra respuesta del guard cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-login.golden.txt": {
@@ -238,6 +245,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Semilla de `opcion_apagar_en_sucursal` (decisión del dueño, limpieza paquete A paso 3b; CAMBIA COMPORTAMIENTO a propósito en las empresas NUEVAS): la fila PERMISO del operador pasa de `ver=false editar=false` a `ver=true editar=true` en cada uno de los dos registros. Ninguna otra línea cambia.",
       },
+      {
+        blob: "f6a51eb01e20fae06a14c4f227afac5b331d9a99",
+        // El commit PADRE de este (56a6acc) es el último antes del cambio; el golden se regenera en el commit siguiente (Pagos X0).
+        commit: "56a6acc",
+        motivo:
+          "Pagos X0 (ADITIVO; clave nueva): `ACCIONES 129 a 130` y las dos filas `PERMISO` de `declarar_pago_compra` (admin ver=true editar=true; operador sin Ver ni Editar). Revisado con `git diff`: solo se suman esas tres líneas; ningún otro permiso ni rol cambia.",
+      },
     ],
   },
   "test/auth/caracterizacion/huella-de-aceptacion.golden.txt": {
@@ -300,6 +314,27 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "54154ec",
         motivo:
           "Etapa 1 de Compras: las compras del escenario llevan proveedor y N.º de factura obligatorios (CAMBIA SOLO LA PREPARACIÓN). Cambia SOLO `nroFactura` (null a `A-00001-0000000N`) y `proveedorId` (null a `id#1`) en las 34 líneas OPERACION de proceso COMPRA; ningún importe, stock, costo, venta, lectura ni escritura cambia. Verificado línea a línea por programa: todas las líneas distintas son OPERACION COMPRA y difieren solo en esas dos columnas.",
+      },
+      {
+        blob: "37ac0cf03a18776e07b4e029af83f3955a0ab972",
+        // El commit PADRE de este (d3088bf, con la migración y el código de Compras 2a) es el último antes de regenerar; el golden se regenera en el commit siguiente.
+        commit: "d3088bf",
+        motivo:
+          "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
+      },
+      {
+        blob: "59f8f71c8420fd9abeb1f76e20f8ee65bf53d94e",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `eac39a98` (E0 f+b).
+        commit: "eac39a98",
+        motivo:
+          "E0 de la corrección por ajuste (PR1, f+b): anular una venta pide MOTIVO (queda en `motivoAnulacion` de la venta anulada) y el contra-asiento escribe `revierteAOperacionId` apuntando a ella. Cambian SOLO esos dos campos en las filas OPERACION de las anulaciones; ninguna línea de Kardex ni ningún otro campo cambia.",
+      },
+      {
+        blob: "7b435e4ce696edb27018d471d4cf856a292c1b2d",
+        // El commit PADRE de este (2e810441, PR1 de «una sola compra») es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "2e810441",
+        motivo:
+          "U0 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md; CAMBIA SOLO LA PREPARACIÓN, no la venta): `registrarMovimiento` COMPRA es ahora una factura de UNA parte al 100 %% en la sucursal, pagada ahora. Cambian SOLO las líneas de las compras de preparación (34 OPERACION y 34 KARDEX de proceso COMPRA), en tres campos: la clave de reintento, la huella y el mensaje pasan de la Operacion a la cabecera de la factura (claveIdempotencia, payloadHash y resultadoMensaje de la Operacion quedan en null), la fila de Kardex gana su renglón (facturaProveedorRenglonId) y pierde unidadCompraId y cantidadCompra (viven en el renglón). Comparado línea por línea: ni una fila de venta, stock, costo ni importe cambia.",
       },
     ],
   },
@@ -401,6 +436,41 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Compras etapa 1 (CAMBIA SOLO LO QUE REGISTRA LA COMPRA DEL ESCENARIO, no la venta): una COMPRA ahora exige proveedor y N.º de comprobante estructurado, así que las 115 líneas OPERACION (las de las compras de preparación de las cinco jornadas; ninguna compra queda sin proveedor) pasan de `proveedorId=null nroFactura=null` a `proveedorId=id#1 nroFactura=A-00001-00000001` (y siguientes): son SOLO esos dos campos, comparados campo por campo contra la versión anterior (cero otros campos cambian en esas líneas). Más 122 líneas NUEVAS de AUDITORIA con entidad=ProveedorPorProducto («Precio de ... con el proveedor \"Proveedor de pruebas\" (compra)», campo precioPorUnidadStock): son consecuencia de que la compra ahora lleva proveedor obligatorio, que crea/actualiza el vínculo proveedor-producto y lo audita. NO cambia ninguna fila de venta, KARDEX, stock, costo ni importe (las 115 líneas borradas son las 115 OPERACION y nada más; las 237 agregadas son esas 115 y las 122 AUDITORIA). La referencia que ahora carga la compra (`referenciaProveedor`, REFERENCIA_DE_PRUEBA) no aparece en ninguna línea del golden (no se vuelca ninguna columna de ProveedorPorProducto). Diff guardado: golden-venta-matriz-ampliada.diff (237 agregadas, 115 borradas).",
       },
+      {
+        blob: "dadbaf08bb45293357081676d8126da8e0ba2286",
+        // El commit PADRE de este (d3088bf, con la migración y el código de Compras 2a) es el último antes de regenerar; el golden se regenera en el commit siguiente.
+        commit: "d3088bf",
+        motivo:
+          "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
+      },
+      {
+        blob: "ee91a6fb40311a29d978444e17c2dabff135ef80",
+        // El commit PADRE de este (afdd6435) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "afdd6435",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1): las líneas CUENTA_ITEM suman  (nadie tiene «Nombre en la carta» en este mundo). Verificado por programa: sin esa columna el contenido es IDÉNTICO al blob anterior; ninguna venta, KARDEX, stock, costo ni importe cambia.",
+      },
+      {
+        blob: "c9034474f828f29af1056624ae17f691509e5c79",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `eac39a98` (E0 f+b).
+        commit: "eac39a98",
+        motivo:
+          "E0 de la corrección por ajuste (PR1, f+b): igual que la matriz de la venta; cambian SOLO `motivoAnulacion` (venta anulada) y `revierteAOperacionId` (contra-asiento) en las filas OPERACION de las anulaciones.",
+      },
+      {
+        blob: "4bfbf46174437f40cec6f200537dd2d0586ac447",
+        // El commit PADRE de este (2e810441, PR1 de «una sola compra») es el último antes del cambio; el golden se regenera en el commit siguiente.
+        commit: "2e810441",
+        motivo:
+          "U0 de «una sola compra» (docs/diseno-una-sola-compra-2026-11-06.md; CAMBIA SOLO LA PREPARACIÓN, no la venta): `registrarMovimiento` COMPRA es ahora una factura de UNA parte al 100 %% en la sucursal, pagada ahora. Cambian las 115 líneas OPERACION y las KARDEX de proceso COMPRA de las compras de preparación, igual que en venta-matriz (clave, huella y mensaje a la cabecera de la factura; la fila de Kardex gana su renglón y pierde unidadCompraId y cantidadCompra). Más 115 líneas NUEVAS de AUDITORIA con entidad=FacturaProveedor («Factura de proveedor ... cargada en «Central»»): una por compra, porque toda compra ahora es una factura y su carga se audita. Verificado con diff: ninguna línea que no sea de proceso COMPRA ni esas 115 AUDITORIA cambia (venta, stock, costo e importes intactos).",
+      },
+      {
+        blob: "6286ea6ea15e9dc04b332ffa588b30351d5d36a2",
+        // El commit PADRE de este (fab38319, «Merge pull request #192», la punta de `alegp/integrador-poda`) es el último antes del cambio; el golden se regenera en el merge siguiente.
+        commit: "fab38319",
+        motivo:
+          "Poda del precio del vínculo (decisión del dueño, 2026-11-06; CAMBIA SOLO LA AUDITORÍA DE PREPARACIÓN, no la venta): la compra deja de escribir el precio en `ProveedorPorProducto` y de auditarlo, así que desaparecen las 122 líneas AUDITORIA con entidad=ProveedorPorProducto (campo precioPorUnidadStock) que dejaban las compras de preparación. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1 sobre el código integrado: 122 líneas borradas, 0 agregadas, todas de esa entidad (comprobado línea por línea contra el golden anterior). NO cambia ninguna fila de venta, KARDEX, stock, costo ni importe."
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -471,6 +541,27 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Paquete de limpieza de deuda A, paso 2 (c) (retira código sin uso, sin cambio de comportamiento): `buscarProductoParaHistorial` no tenía ningún llamador en `src/` (el filtro del historial usa `SelectorProducto`), así que se borra junto con su caso de la caracterización. Cambia SOLO que desaparece la entrada «13. historial-producto.buscarProductoParaHistorial(Central, «pizza»)» (6 líneas: encabezado, consultas y resultado) y que las entradas siguientes bajan un número (14 → 13, 15 → 14, etc.): 33 líneas agregadas y 40 quitadas, las 33 agregadas son solo el encabezado `### N.` renumerado. Ninguna consulta ni resultado de otra entrada cambia.",
       },
+      {
+        blob: "4b13af82ff1748dbbd2961977a92a6771e41b742",
+        // El commit PADRE de este (56a6acc) es el último antes del cambio; el golden se regenera en el commit siguiente (Pagos X0).
+        commit: "56a6acc",
+        motivo:
+          "Pagos X0 (ADITIVO; no cambia ningún importe ni conteo de consultas): cada compra de «Compras registradas» suma el campo `pago: null` (sin factura de proveedor no hay estado de pago). Revisado con `git diff`: solo suma esas líneas.",
+      },
+      {
+        blob: "5c93d6784a88871230661954f6159610fe861b9c",
+        // El commit PADRE de este es el último antes del cambio; el golden se regenera en el commit de «Ventas del período: importe $0 es sin dato» de la rama alegp/deuda-lote1b-ceros-y-reparto (PR #168).
+        commit: "50c1153",
+        motivo:
+          "Lote 1b, hallazgo C (decisión del dueño, 2026-11-06; CAMBIA COMPORTAMIENTO: las ventas con importe $0 ya no se revalúan al precio de hoy, quedan «sin dato»). Cambia SOLO la forma, sin tocar ningún importe del escenario (no tiene ventas $0): `ventas` suma `lineasSinDato: 0` y pierde `estimado` en cada fila de `porProducto`; las filas del margen pierden `ingresoEstimado`; el resumen operativo cambia `hayEstimados: false` por `ventasSinDato: 0`; y cada fila del Consolidado suma `ventasSinDato: 0`. Revisado con `git diff`: solo esas líneas.",
+      },
+      {
+        blob: "449c8abd2c0983f6c5d06d3cc86873db650522c4",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este (E0 PR3, d).
+        commit: "0ed02252",
+        motivo:
+          "E0 de la corrección por ajuste (PR3, d): el buscador de Trazabilidad por producto rotula cada operación con el proceso de la OPERACIÓN y no con el del movimiento que la encontró; seis ventas que salían como «CONSUMO» (la línea del insumo que `distinct` elegía) salen como «VENTA». Cambian solo esas seis líneas de `trazabilidad.buscarOperacionesPorProducto`."
+      },
     ],
   },
   "test/caracterizacion-tramo-a/lecturas-tramo-a.golden.json": {
@@ -535,6 +626,27 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Decisión del dueño 2026-10-29: modelo unificado de la carta (paso 3, roles de letra; SOLO ESTILO DE LA CARTA, ningún dato ni precio): se retiran los roles `rotulo` (sustituido por Producto, jerarquía única) y `tamano` (fusionado en `columna`) de la escala, así que las variables CSS de la carta dejan de traer `--carta-fs-rotulo`, `--carta-fs-tamano` y sus dos pares en papel. Revisado con `git diff -U0`: cambian SOLO esas 4 líneas en cada una de las 2 apariciones del bloque `variablesCss` (8 líneas quitadas, ninguna agregada); nada de lo que lee o devuelve una lectura de datos cambia.",
       },
+      {
+        blob: "72d6e9c040cdcd31944933dbbaa4ccee31f9d272",
+        // El commit PADRE de este (b762efe5) es el último antes de la regeneración; el cambio es de «Nombre en la carta» (pedido del dueño, 2026-11-04).
+        commit: "b762efe5",
+        motivo:
+          "«Nombre en la carta» (ADITIVO; regenerado con REGENERAR_CARACTERIZACION_TRAMO_A=1): el contenido de carta de cada producto en la administración (`cargarAdminCarta`, `contenido`) suma la clave `nombreEnCarta` (null en todo el mundo de la caracterización: nadie la cargó). Revisado con `git diff -U0`: solo 7 líneas `\"nombreEnCarta\": null` nuevas (más la coma de la línea anterior); ningún dato, precio ni conteo de consultas cambia (el selector del POS lee el nombre de la MISMA consulta del contenido que ya leía el género: sin consultas de más).",
+      },
+      {
+        blob: "89ffdff00ee20527514b84a5612eb2ce528bfe76",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este (c3c1c37c, la integración con #196).
+        commit: "c3c1c37c",
+        motivo:
+          "E0 de la corrección por ajuste (PR2 #196, «Corregir una línea»): cada ticket de `pos.obtenerTicketsRecientes` suma el campo `corregibles` (las líneas vigentes que se pueden corregir: operación, texto y subtotal). Solo se AGREGA ese campo (26 líneas nuevas, ninguna cambia ni se borra); lo demás del ticket no cambia."
+      },
+      {
+        blob: "8b2f4407516ead05a8183d88c9404bf7f7c83ccd",
+        // El commit PADRE de este (e9912e2b, E1 PR1 #181) es el último antes de la regeneración; el cambio es de E1 PR2 (quitar unidades de una línea).
+        commit: "e9912e2b",
+        motivo:
+          "E1 de la corrección por ajuste (PR2, «quitar unidades de una línea»): `pos.obtenerTicketsRecientes` lee, en una consulta más (`operacion.findMany`), las versiones de las ventas anuladas de la mesa para saber si otra venta las reemplaza (la cadena A → B). Solo cambia el RECUENTO de consultas de sus dos casos, de «1: cuenta.findMany×1» a «2: cuenta.findMany×1, operacion.findMany×1» (2 líneas); el resultado no cambia (ninguna venta del mundo de la caracterización fue reemplazada) y sin ventas anuladas la consulta extra no se hace.",
+      },
     ],
   },
   "test/pos/caracterizacion/huella-del-pos.golden.txt": {
@@ -564,6 +676,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Retiro del límite de mesas abiertas por sucursal (decisión del dueño 2026-10-29, Task #13 §2; CAMBIA COMPORTAMIENTO a propósito): se quita la acción `actualizarMaxMesasAbiertas` y el chequeo del límite dentro de `abrirCuenta`. El escenario ya no fija límites (salen los pasos A4 a A7 y B8 a B10; F4 y G1 sin esa acción) y las líneas SUCURSAL ya no vuelcan `maxMesasAbiertas`. Los resultados y las filas de las demás acciones (apertura, idempotencia de reabrir, comensales, cliente, pedido, mozo y operador) no cambian.",
       },
+      {
+        blob: "38b6a812b6778f7a4abb64f8994603a150dbb8d2",
+        // El commit PADRE de este (a8f5e55e) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "a8f5e55e",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_HUELLA_DEL_POS=1): las líneas ITEM suman `nombreEnTicket=null` (nadie tiene «Nombre en la carta» en este mundo) y las fotos de opción suman `ocultaEnCarta=false`. Verificado por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior.",
+      },
     ],
   },
   "test/pos/caracterizacion/venta-con-opciones.golden.txt": {
@@ -579,6 +698,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "b1cd4c8",
         motivo:
           "RECETA (ADR-033; CAMBIA COMPORTAMIENTO, decisión del dueño del 2026-10-13: «sin receta no se vende»): el flan del fixture del salón ahora tiene su receta de reventa (1 unidad de «Flan (reventa)», con stock), así que su venta CONSUME. Diff revisado línea a línea: UNA sola línea nueva, el MOVIMIENTO CONSUMO de `flanReventa` (-1, op1, sección salon); las demás filas son idénticas salvo el número correlativo `movN` de los movimientos, que se corre en uno. Ningún resultado, consulta, precio ni fila de la cuenta cambia.",
+      },
+      {
+        blob: "60da9f16c1dc894f301059b6c41bbe45df5f51d6",
+        // El commit PADRE de este (d3088bf, con la migración y el código de Compras 2a) es el último antes de regenerar; el golden se regenera en el commit siguiente.
+        commit: "d3088bf",
+        motivo:
+          "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
+      },
+      {
+        blob: "efa65999faf6b0d100368064cacb35e3b8d1cf22",
+        // El commit PADRE de este (a8f5e55e) es el último antes de la regeneración; el cambio es del ticket del cliente (pedido del dueño, 2026-11-05).
+        commit: "a8f5e55e",
+        motivo:
+          "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_VENTA_CON_OPCIONES=1): las líneas ITEM suman `nombreEnTicket=null` (nadie tiene «Nombre en la carta» en este mundo) y las fotos de opción suman `ocultaEnCarta=false`. Verificado por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior.",
       },
     ],
   },
@@ -615,6 +748,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "79927ec9",
         motivo:
           "E2 «el costo viaja con el traspaso» (ADR-040; CAMBIA COMPORTAMIENTO por decisión del dueño del 2026-10-27, columna `TraspasoSucursal.costoUnitarioOrigen` autorizada). Regenerado con `REGENERAR_HUELLA_KARDEX=1`. Los 8 casos de antes pasan `costoUnitarioOrigen: null` (sin costo conocido): sus escrituras y filas solo SUMAN la clave `costoUnitarioOrigen` en null (en el `data` del alta o del `update` del traspaso y en cada fila volcada de `TraspasoSucursal`); verificado por programa (quitando esa clave en null, cada caso es IDÉNTICO al blob anterior, con el mismo orden de casos; precios de las líneas en 0 como antes). Se suman 3 casos nuevos al final de los traspasos: envío directo con costo 100,04 (salida -2,5 por $250,10), aceptación con la copia 100,04 (entrada 3 por $300,12) y reingreso con la copia 0,3333 (3 por $1,00: 0,9999 redondeado una sola vez); en los tres el traspaso queda con su copia.",
+      },
+      {
+        blob: "65c482d1cc393b4bb33023b9c1fd753d746f08cf",
+        // El commit PADRE de este (d3088bf, con la migración y el código de Compras 2a) es el último antes de regenerar; el golden se regenera en el commit siguiente.
+        commit: "d3088bf",
+        motivo:
+          "Compras etapa 2a (migración 20261104100000; NO cambia comportamiento): MovimientoStock gana dos columnas, unidadCompraId y cantidadCompra, y el volcado las muestra en TODAS las filas (en NULL salvo en las COMPRA, que ahora guardan la unidad comprada y cuántas). Verificado: sacando esas dos columnas el golden es idéntico al anterior (importes, cantidades, stock y costos no se tocan).",
+      },
+      {
+        blob: "b68c265f09c5d834addb0428bb3422fa2f6324e7",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, `eac39a98` (E0 f+b).
+        commit: "eac39a98",
+        motivo:
+          "E0 de la corrección por ajuste (PR1, f+b): el contra-asiento nace con `revierteAOperacionId` y el `update` de la original escribe `motivoAnulacion` (null en la compra, el motivo en la venta). Sin otros cambios.",
       },
     ],
   },
@@ -723,6 +870,20 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "68f5701a",
         motivo:
           "Decisión del dueño 2026-10-29: modelo unificado de la carta (paso 4, regla de filas; SOLO CARTA, el COBRO idéntico): una VARIANTE obligatoria de una sola elección sin costo ni prefijo es el eje de filas de un producto DIRECTO que tiene un tamaño que define el precio (la grilla del café sin un prefijo artificial); una base y un producto sin tamaño la siguen leyendo como aclaración. Revisado con `git diff -U0`: cambia UNA sola línea, la `presentacion` de la «Milanesas (M1)» directa del catálogo de referencia (tamaño Simple/Napolitana + «Milanesas de» carne/pollo sin costo ni prefijo): pasa de una fila con la aclaración «Milanesas de» a la grilla Carne/Pollo × Simple/Napolitana, con los mismos precios; de `## COBRO` en adelante nada cambia y `precios.golden.txt` no se mueve.",
+      },
+      {
+        blob: "ef06b73ddef540812719f1d6cb345f2da14abbbf",
+        // El commit PADRE de este (c45d56c5) es el último antes del cambio; el golden se regenera en el commit siguiente (carta B, etapa E1).
+        commit: "c45d56c5",
+        motivo:
+          "Carta B (E1; ADITIVO, solo CARTA, el COBRO idéntico): la forma que la carta le da a una elección (`aclaraciones` de tipo «eleccion») trae los límites de lo que se elige, `cantidadMinima` y `cantidadMaxima`, para que la carta muestre «elegís de A a B» y «opcional, hasta N». Revisado con `git diff -U0`: cambia SOLO la línea `presentacion` de «Bife a la criolla» (la elección «Guarnicion» suma `\"cantidadMinima\":1,\"cantidadMaxima\":1`); de `## COBRO` en adelante nada cambia.",
+      },
+      {
+        blob: "c919e0749f71b401cad0f5bb8630d552c217f647",
+        // El commit PADRE de este (a7ffb2e1) es el último antes del cambio; el golden se regenera en el commit siguiente (carta B, etapa E3).
+        commit: "a7ffb2e1",
+        motivo:
+          "Carta B (E3; ADITIVO, solo CARTA, el COBRO idéntico): la forma que la carta le da a una elección (`aclaraciones` de tipo «eleccion») trae `descripciones`, la descripción de cada opción alineada con `opciones` (`null` = sin descripción; en este catálogo ninguna tiene). Revisado con `git diff -U0`: cambia SOLO la línea `presentacion` de «Bife a la criolla» (la elección «Guarnicion» suma `\"descripciones\":[null,null,null]`); de `## COBRO` en adelante nada cambia.",
       },
     ],
   },
@@ -850,6 +1011,55 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "aff7f403",
         motivo:
           "Integración de ramas, decisiones del dueño 2026-10-29 (NO cambia contenido propio de la carta: es la SUMA de dos ramas que regeneraron o no este golden sin conocerse). La rama `carta-unificada` regeneró esta línea de base con la ficha de producto que ofrecía el descuento por producto; la rama `deuda-paquete-b` apagó ese descuento con el interruptor `DESCUENTO_POR_PRODUCTO_VISIBLE = false` (decisión del dueño 2026-10-29) sin tocar este golden porque no lo regenera. Regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 sobre el árbol integrado contra motor2_ct_e2e local. Revisado con `git diff -U0`: cambian SOLO 42 líneas, todas BORRADAS y todas del descuento en la ficha de producto del admin (por cada producto, a 375 y a 1280 px: «Descuento en esta sucursal, % (vacío = sin descuento)», «[campo: vacío]» y «[botón: Guardar descuento de «…»]»); no se agrega ninguna línea y la carta pública (texto y tipografía) queda idéntica.",
+      },
+      {
+        blob: "c21c405bf59c192c4422a5181baf6f48b09c3868",
+        // El commit PADRE de este (29c40392) es el último antes de la regeneración; los cambios son de la carta B (E1).
+        commit: "29c40392",
+        motivo:
+          "Carta B (E1; CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04 con maquetas): cada plato muestra «Incluye …» debajo del nombre, las opciones que se repiten en todos los platos de una sección van en un bloque al pie de la sección (se retira el rótulo «En todos») y la lista de cada sección es alcanzable con teclado. Regenerado por la sesión de la etapa E1 (commit e58bc9b8, «golden de la línea de base»); el CI de la PR lo compara contra el navegador.",
+      },
+      {
+        blob: "089202b4191331531201c147522244252465785f",
+        // El commit PADRE de este (dea003a4) es el último antes de la regeneración; los cambios son de la carta B (E3).
+        commit: "dea003a4",
+        motivo:
+          "Carta B (E3; ADITIVO, SOLO la pantalla de administración del grupo): cada opción suma el formulario «Descripción en la carta (opcional)» con su botón «Guardar descripción» y su ayuda («Solo se ve en la carta: no sale en el ticket, ni en la comanda ni en el POS»). Revisado con `git diff -U0`: 48 líneas agregadas, ninguna quitada; la carta pública (texto y tipografía) y las demás pantallas quedan idénticas, porque el catálogo sembrado no tiene descripciones.",
+      },
+      {
+        blob: "b7c7c6cf767dad72fe350e7c4f429f8c9049e180",
+        // El commit PADRE de este (aa43542b) es el último antes de la regeneración; el cambio es de la carta B (E2).
+        commit: "aa43542b",
+        motivo:
+          "Carta B (E2; CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04, invitación «5+2»): la línea «Incluye …» de un plato con elecciones termina en « · elegí abajo ↓» y su palabra es un botón. Revisado con `git diff -U0`: cambian 6 líneas (3 por ancho, 375 y 1280 px) y TODAS son el texto de «Bife a la criolla» (`incluye`, `texto visible` y el texto plano de la página); ninguna otra pantalla ni precio cambia.",
+      },
+      {
+        blob: "86ac8d3b2277fbb4b51b714ce93e27d138e90894",
+        // El commit PADRE de este (e3bb94d6) es el último antes de la regeneración; los cambios son de dos pedidos del dueño del 2026-11-04 que van en la misma rama: «Nombre en la carta» (administración) y «cada plato dice cuántas lleva» (carta B).
+        commit: "e3bb94d6",
+        motivo:
+          "«Nombre en la carta» y carta B con cantidades (CAMBIO VISUAL DELIBERADO, decisiones del dueño del 2026-11-04; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). (1) Carta pública: «Incluye guarnicion · elegí abajo ↓» pasa a «Incluye 1 guarnicion · elegí abajo ↓» (opción A de «elegís 1») y el pie del bloque pasa de «Con los platos que dicen «Incluye guarnicion»» a «Con los platos que incluyen guarnicion»: cambian los renglones `incluye`, `texto visible` y el texto plano de la página de «Bife a la criolla», a 375 y 1280 px. (2) ADMINISTRACIÓN (ADITIVO): la ficha «En la carta» de cada producto de «Carta › Parametrización › Secciones» suma el campo «Nombre en la carta (opcional)» con su ayuda (7 productos × 2 anchos = 14 apariciones). Revisado con `git diff -U0`: ninguna otra pantalla, precio ni tipografía cambia. Si el dueño descarta el commit de las cantidades, hay que regenerar este golden de nuevo (solo cambian las líneas del punto 1).",
+      },
+      {
+        blob: "c26ac3b87260737495a792f9c1fde94b8486cfd6",
+        // El commit PADRE de este (ed55a378) es el último antes de la regeneración; el cambio es de texto de la carta pública pedido por el dueño (2026-11-04).
+        commit: "ed55a378",
+        motivo:
+          "Carta pública, cambio de TEXTO (CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-04; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): la carta pública no toma pedidos (el mozo elige en el POS), así que el cue de la línea «Incluye …» pasa de «· elegí abajo ↓» a «· ver opciones ↓». Revisado con `git diff -U0`: cambian 6 líneas (3 por ancho, 375 y 1280 px) y TODAS son el texto de «Bife a la criolla» (`incluye`, `texto visible` y el texto plano de la página); ninguna otra pantalla, precio ni tipografía cambia.",
+      },
+      {
+        blob: "29fbe1b1228aabc568a86acdb155326f03248868",
+        // El commit PADRE de este (e9ce889) es el último antes de la regeneración; el cambio es de texto de la ficha del producto pedido por el dueño (2026-11-05).
+        commit: "e9ce889",
+        motivo:
+          "Ficha del producto → «En la carta», cambio de TEXTO (CAMBIO VISUAL DELIBERADO, decisión del dueño del 2026-11-05, PR del selector del mozo; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): bajo «Nombre en la carta (opcional)» de un producto base con el interruptor «Mostrar el nombre del producto arriba» se suma la frase fija «Solo se usa si elegís «Sí: … arriba». Con «No», cada opción sale sola con su nombre.». Cambian SOLO 2 líneas del golden (las de la ayuda de ese campo, en las dos pantallas de opciones de Pizzas de la ficha); ninguna otra pantalla ni la carta pública se tocan.",
+      },
+      {
+        blob: "9dbf2caf16f1b017469806c5601dd31008adb520",
+        // El commit PADRE de este (22b2b958) es el último antes de la regeneración; el cambio es de «opciones debajo del plato» (pedido del dueño, 2026-11-05).
+        commit: "22b2b958",
+        motivo:
+          "Carta pública: el grupo de opciones de UN solo plato va debajo de ese plato (CAMBIA LO QUE VE EL CLIENTE, a propósito; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): en el bife (único plato con «Guarnición») desaparece la línea «Incluye 1 guarnicion · ver opciones ↓», el bloque «GUARNICION · ELEGÍS 1» pasa a ir justo debajo del plato (antes, al pie de la sección) y ya no dice «Con los platos que incluyen guarnicion»; consecuencia en las muestras de tipografía: desaparecen las dos líneas `aclaracion` (14px / 13.3333px), que solo existían por esa línea «Incluye…». Verificado con `git diff -U0`: ningún precio, nombre ni opción cambia; solo esas líneas y el lugar del bloque.",
       },
     ],
   },
