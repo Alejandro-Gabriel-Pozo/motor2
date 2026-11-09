@@ -171,7 +171,7 @@ test("un rol que solo VE la carta ve los ítems agrupados y sus opciones en /car
     await expect(datos).toContainText(`Descripción del ítem ${carta.marca}`);
     await expect(datos).toContainText("Bien fría");
     await expect(datos).toContainText(carta.seccion.nombre);
-    await expect(item.locator(`[data-opcion-agrupada="${carta.agrupado.nombre}"]`)).toContainText("$4.200 acá");
+    await expect(item.locator(`[data-opcion-agrupada="${carta.agrupado.nombre}"]`)).toContainText("$ 4.200,00 acá");
 
     await expect(main.locator("input, textarea, select"), "no tenía que haber ningún campo editable").toHaveCount(0);
     await expect(main.getByRole("button", { name: BOTONES_DE_EDICION }), "no tenía que haber botones de edición").toHaveCount(0);

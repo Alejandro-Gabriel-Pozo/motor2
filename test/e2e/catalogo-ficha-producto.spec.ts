@@ -36,7 +36,7 @@ test("la lista lleva a la ficha, que muestra los datos y los enlaces a los repor
 
   await expect(page.getByRole("heading", { name: producto.nombre })).toBeVisible();
   await expect(page.getByText(`E2E Categoría Ficha ${sufijo}`)).toBeVisible();
-  await expect(page.getByText("$4.500")).toBeVisible();
+  await expect(page.getByText("$ 4.500,00")).toBeVisible();
   await expect(page.getByText("Observación de la ficha")).toBeVisible();
   // Es solo lectura: no hay formulario, y los enlaces a los reportes que ya existen están.
   await expect(page.locator("main form")).toHaveCount(0);

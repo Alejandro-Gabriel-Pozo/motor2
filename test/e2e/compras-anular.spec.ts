@@ -88,7 +88,7 @@ test("se anula una compra desde su detalle, con confirmación: el stock vuelve, 
     const recargada = page.locator(`[data-compra="${c.operacion.id}"]`);
     await expect(recargada.getByText("Anulada", { exact: true })).toBeVisible();
     await expect(page.getByText(/sin contar 1 anulada/)).toBeVisible();
-    await expect(page.getByText(/suman \$0/)).toBeVisible();
+    await expect(page.getByText(/suman \$\s?0,00/)).toBeVisible();
 
     // La factura quedó libre: se puede volver a cargar con el mismo número.
     const recarga = await sembrarFacturaDeUnaParte({ sucursalId: c.sucursalId, seccionId: c.seccionId, proveedorId: c.proveedor.id, productoId: c.producto.id, usuarioId: c.usuarioId, nroFactura: c.factura, fecha: new Date("2026-08-12T12:00:00Z") });

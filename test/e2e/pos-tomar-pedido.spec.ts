@@ -154,7 +154,7 @@ test("flujo completo: abrir la cuenta, agregar, enviar a cocina, anular con moti
     await expect(cierre.getByRole("combobox")).toHaveCount(0);
     await expect(cierre.getByRole("button", { name: "Cerrar y registrar la venta" })).toBeFocused();
     await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
-    await expect(aviso(page)).toHaveText(/^Cuenta de la mesa 961 cerrada: se registró la venta por \$\s?12\.000\.$/);
+    await expect(aviso(page)).toHaveText(/^Cuenta de la mesa 961 cerrada: se registró la venta por \$\s?12\.000,00\.$/);
     await expect(page.getByText("La mesa está libre.")).toBeVisible();
     // El ticket del cliente sale sola: el consumo final (lo anulado ya no está), con el total cobrado.
     await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda", "anulacion", "ticket"]);
@@ -772,7 +772,7 @@ test("«Cerrar cuenta»: el foco va a «Cerrar y registrar la venta», Escape, e
 
     liberar();
     await expect(dialogo).toBeHidden();
-    await expect(aviso(page)).toHaveText(/^Cuenta de la mesa 974 cerrada: se registró la venta por \$\s?18\.000\.$/);
+    await expect(aviso(page)).toHaveText(/^Cuenta de la mesa 974 cerrada: se registró la venta por \$\s?18\.000,00\.$/);
     expect(vistas, "un doble clic manda UNA sola acción").toHaveLength(1);
     expect((await prisma.cuenta.findUniqueOrThrow({ where: { id: cuenta.id } })).cerradaEn).not.toBeNull();
     expect(await ventas(), "una sola venta").toBe(1);

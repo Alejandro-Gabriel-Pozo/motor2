@@ -37,7 +37,7 @@ test("asignar un tamaño con precio propio: la vista previa muestra los precios 
   const grupo = page.locator(`[data-admision-grupo='E2E Tamaño ficha ${m}']`);
   await expect(grupo).toBeVisible();
   // Arranca con «diferencia sobre el precio base» y las tres opciones admitidas: todas al precio base.
-  await expect(page.locator("[data-resumen-de-opciones]")).toContainText("Chico $ 2.500 · Mediano $ 2.500 · Grande $ 2.500");
+  await expect(page.locator("[data-resumen-de-opciones]")).toContainText("Chico $ 2.500,00 · Mediano $ 2.500,00 · Grande $ 2.500,00");
 
   await grupo.getByRole("radio", { name: "Precio propio por tamaño" }).check();
   await grupo.getByLabel("Precio de Chico en este producto").fill("2500");
@@ -46,8 +46,8 @@ test("asignar un tamaño con precio propio: la vista previa muestra los precios 
   await grupo.getByRole("button", { name: `Guardar «E2E Tamaño ficha ${m}»` }).click();
   await expect(grupo.getByRole("status").filter({ hasText: "como pediste" })).toBeVisible();
   const resumen = page.locator("[data-resumen-de-opciones]");
-  await expect(resumen).toContainText("Chico $ 2.500 · Mediano $ 2.800 · Grande $ 3.100");
-  await expect(resumen).toContainText("desde $ 2.500");
+  await expect(resumen).toContainText("Chico $ 2.500,00 · Mediano $ 2.800,00 · Grande $ 3.100,00");
+  await expect(resumen).toContainText("desde $ 2.500,00");
   expect((await prisma.productoAdmiteGrupo.findFirstOrThrow({ where: { productoId: producto.id } })).modoPrecio).toBe("ABSOLUTO");
   expect((await prisma.productoAdmiteOpcion.findMany({ where: { productoId: producto.id }, orderBy: { precioAbsoluto: "asc" } })).map((o) => Number(o.precioAbsoluto))).toEqual([2500, 2800, 3100]);
   expect((await new AxeBuilder({ page }).analyze()).violations, "pantalla de edición").toEqual([]);
@@ -55,7 +55,7 @@ test("asignar un tamaño con precio propio: la vista previa muestra los precios 
   // La ficha muestra lo mismo, solo para leer, con el enlace para editar (el admin tiene la clave).
   await page.goto(`/catalogo/productos/${producto.id}`);
   const seccion = page.getByRole("region", { name: "Opciones de venta" });
-  await expect(seccion).toContainText("Chico $ 2.500 · Mediano $ 2.800 · Grande $ 3.100");
+  await expect(seccion).toContainText("Chico $ 2.500,00 · Mediano $ 2.800,00 · Grande $ 3.100,00");
   await expect(seccion.getByRole("link", { name: "Editar opciones" })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations, "ficha").toEqual([]);
 
@@ -77,7 +77,7 @@ test("dos pestañas sobre lo que admite el producto: la vieja se rechaza con «R
   await enA.getByLabel("Diferencia en pesos de Almendras").fill("450");
   await enA.getByRole("button", { name: /^Guardar/ }).click();
   await expect(enA.getByRole("status").filter({ hasText: "como pediste" })).toBeVisible();
-  await expect(pestañaA.locator("[data-resumen-de-opciones]")).toContainText("Almendras + $ 450");
+  await expect(pestañaA.locator("[data-resumen-de-opciones]")).toContainText("Almendras + $ 450,00");
 
   const enB = pestañaB.locator(`[data-admision-grupo='E2E Leche ficha ${m}']`);
   await enB.getByLabel("Máximo en este producto").fill("1");
@@ -100,7 +100,7 @@ test("quien solo ve el catálogo: la ficha muestra las opciones sin «Editar opc
   try {
     await page.goto(`/catalogo/productos/${productoId}`);
     const seccion = page.getByRole("region", { name: "Opciones de venta" });
-    await expect(seccion).toContainText("Huevo frito + $ 600 c/u");
+    await expect(seccion).toContainText("Huevo frito + $ 600,00 c/u");
     await expect(seccion.getByRole("link", { name: "Editar opciones" })).toHaveCount(0);
     await page.goto(`/catalogo/productos/${productoId}/opciones`);
     await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
