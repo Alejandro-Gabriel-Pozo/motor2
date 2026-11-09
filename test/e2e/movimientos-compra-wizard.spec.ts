@@ -276,7 +276,7 @@ test("un importe '...,.,.,...' no se guarda como 0: el campo lo marca y no se re
   const producto = await prepararCompraDeUnProducto(page, sucursalId);
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
   const importe = page.locator("label:has-text('Importe con IVA') input").first();
-  await importe.fill("...,.,.,...");
+  await importe.fill("1,2,3"); // dos comas: no es un número (el «.» ya no se escribe: se ignora o se rechaza)
 
   expect(await importe.evaluate((e: HTMLInputElement) => e.validity.customError), "el importe tiene que quedar inválido").toBe(true);
   expect(await importe.evaluate((e: HTMLInputElement) => e.validationMessage)).toBe("El importe no es un número válido.");

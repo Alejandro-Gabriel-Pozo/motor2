@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import type { Locator } from "@playwright/test";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { SUMAR_LUGAR_DE_LISTA_VISIBLE } from "../../src/core/carta/cupos-de-promo";
@@ -52,6 +53,9 @@ async function sembrar(sucursalId: string) {
   };
 }
 
+/** El control VISIBLE de un campo por su `name`: un campo numérico (`CampoNumero`) lleva el `name` en su `<input type="hidden">` y lo que se ve y se toca es el `<input inputmode="decimal">` de al lado. */
+const porNombre = (dentro: Locator, nombre: string) => dentro.locator(`[name="${nombre}"]:not([type=hidden]), div:has(> input[type=hidden][name="${nombre}"]) input[inputmode="decimal"]`);
+
 test("administración de la carta en celular (375 px): formularios de promo sin desborde, campos y botones de 44 px, pares apilados, cupos legibles", async ({ paginaAutenticada: page, sucursalId }) => {
   const d = await sembrar(sucursalId);
   try {
@@ -69,7 +73,7 @@ test("administración de la carta en celular (375 px): formularios de promo sin 
     const formEdicion = promo.locator("form", { has: page.getByRole("button", { name: "Guardar promo" }) });
     const nueva = page.locator("form", { has: page.getByRole("button", { name: "Crear promo" }) });
     for (const [nombre, form] of [["edición de la promo", formEdicion], ["Nueva promo", nueva]] as const) {
-      const caja = async (campo: string) => (await form.locator(`[name="${campo}"]`).boundingBox())!;
+      const caja = async (campo: string) => (await porNombre(form, campo).boundingBox())!;
       const [titulo, seccion, precio, orden] = [await caja("titulo"), await caja("seccionCartaId"), await caja("precio"), await caja("orden")];
       expect.soft(seccion.y, `${nombre}: «Sección de carta» debajo de «Título» (no al lado)`).toBeGreaterThan(titulo.y + titulo.height - 1);
       expect.soft(orden.y, `${nombre}: «Orden» debajo de «Precio» (no al lado)`).toBeGreaterThan(precio.y + precio.height - 1);
@@ -96,7 +100,7 @@ test("administración de la carta en celular (375 px): formularios de promo sin 
     await capturar(page, "carta-cupos");
     const sumar = promo.locator("fieldset", { hasText: "Sumar un lugar" });
     if (SUMAR_LUGAR_DE_LISTA_VISIBLE || MENU_DEL_DIA_VISIBLE) {
-      const [tipo, nombre, min, max] = await Promise.all(["nuevo_lugar_tipo", "nuevo_lugar_nombre", "nuevo_lugar_min", "nuevo_lugar_max"].map(async (n) => (await sumar.locator(`[name="${n}"]`).boundingBox())!));
+      const [tipo, nombre, min, max] = await Promise.all(["nuevo_lugar_tipo", "nuevo_lugar_nombre", "nuevo_lugar_min", "nuevo_lugar_max"].map(async (n) => (await porNombre(sumar, n).boundingBox())!));
       expect.soft(nombre.y, "«Nombre» del lugar nuevo debajo de «Tipo»").toBeGreaterThan(tipo.y + tipo.height - 1);
       expect.soft(Math.abs(min.y - max.y), "mín. y máx. del lugar nuevo, en el mismo renglón").toBeLessThan(2);
     } else {

@@ -158,7 +158,7 @@ export function CampoNumero({
   const entendido = enFoco && !sinEntendido ? textoEntendido(valorReal, tipo, unidad) : null;
 
   return (
-    <div className={className}>
+    <div className={className ? `relative ${className}` : "relative"}>
       {name && <input type="hidden" name={name} value={valorReal} onChange={() => {}} />}
       {/* `Campo` dibuja el <input> (aspecto, foco, 44 px en celular). No dibuja `<label>`: el nombre lo pone `ariaLabel` o la etiqueta de afuera que envuelve al campo o se ata por `htmlFor`
           (la regla `campos-con-nombre` lo verifica en cada uso). `etiqueta` NO se le pasa: es el sujeto del mensaje de error, no un rótulo. Lo que se tecleó y no es un número en el
@@ -216,15 +216,21 @@ export function CampoNumero({
           setTexto(textoParaVer(valorReal, tipo));
         }}
       />
-      {avisoDelPunto && (
-        <Aviso variante="advertencia" forma="en-linea">
-          {AVISO_DEL_PUNTO}
-        </Aviso>
-      )}
-      {entendido && (
-        <p aria-live="polite" className="mt-1 text-sm text-tinta-suave">
-          {entendido}
-        </p>
+      {/* El aviso y el «= …» NO ocupan lugar en la página (`absolute`): aparecen al tomar el foco y se van al salir, y si empujaran lo de abajo, el clic en un botón o una casilla que está justo debajo del campo
+          (que primero le saca el foco) caería en otro lado. `pointer-events-none`: nunca tapan un clic. */}
+      {(avisoDelPunto || entendido) && (
+        <div className="pointer-events-none absolute left-0 top-full z-10 mt-0.5 flex flex-col whitespace-nowrap rounded bg-superficie px-1">
+          {avisoDelPunto && (
+            <Aviso variante="advertencia" forma="en-linea">
+              {AVISO_DEL_PUNTO}
+            </Aviso>
+          )}
+          {entendido && (
+            <p aria-live="polite" className="text-sm text-tinta-suave">
+              {entendido}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

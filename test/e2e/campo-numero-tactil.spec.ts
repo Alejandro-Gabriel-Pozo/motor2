@@ -109,7 +109,7 @@ test.describe("escritorio (clic y teclado)", () => {
     // no envía a propósito, test/e2e/form-con-resultado-enter.spec.ts).
     await page.keyboard.press("Tab");
     await expect(d.guardar).toBeFocused();
-    await expect(d.campo).toHaveValue("1,5");
+    await expect(d.campo).toHaveValue("1,50"); // un importe fuera del foco se ve siempre con 2 decimales (regla de números, 2026-11-09)
     await page.keyboard.press("Enter");
     await expect(d.fila.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
     expect(await precioGuardado(sucursalId, d.productoId, d.opcionId)).toBe("1.5");
