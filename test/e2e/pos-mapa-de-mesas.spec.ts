@@ -74,12 +74,12 @@ test("el mapa muestra las mesas con sus datos reales: métricas, tarjetas de los
 
     await expect(tarjeta(page, 902)).toContainText("En pedido");
     await expect(tarjeta(page, 902)).toContainText("1 producto sin enviar");
-    await expect(tarjeta(page, 902)).toContainText(/\$\s?18\.400/);
+    await expect(tarjeta(page, 902)).toContainText(/\$\s?18\.400,00/);
 
     // Mozo sin nombre → la parte local del email. Total: 2 × 15.000 + 11.900 = 41.900. Envíos 1 y 2 → dos pedidos enviados.
     await expect(tarjeta(page, 903)).toContainText(/e2e-admin · hace 4\d min/);
     await expect(tarjeta(page, 903)).toContainText("2 pedidos enviados");
-    await expect(tarjeta(page, 903)).toContainText(/\$\s?41\.900/);
+    await expect(tarjeta(page, 903)).toContainText(/\$\s?41\.900,00/);
 
     // Filtro por estado: por la URL, con el conteo en cada pestaña.
     const filtros = page.getByRole("navigation", { name: "Filtrar por estado" });

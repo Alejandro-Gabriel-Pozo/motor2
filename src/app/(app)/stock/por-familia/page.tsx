@@ -7,6 +7,7 @@ import { FilaDeStock } from "@/components/fila-de-stock";
 import { PESTANAS_DE_EXISTENCIAS } from "@/core/stock/public";
 import type { AccionClave } from "@/core/permisos/acciones";
 import { calcularStockPorFamilia } from "@/server/consultas/stock/por-familia";
+import { formatearCantidad } from "@/core/formato-de-numero";
 
 const VER_STOCK: ReadonlySet<AccionClave> = new Set<AccionClave>(["ver_stock"]);
 
@@ -53,7 +54,7 @@ export default async function StockPorFamiliaPage() {
                     Unidades mezcladas
                   </span>
                 ) : (
-                  `${f.saldo} ${f.unidadStockNombre ?? ""}`
+                  `${formatearCantidad(f.saldo)} ${f.unidadStockNombre ?? ""}`
                 )}
               </td>
               <td className="text-tinta-tenue">{f.productos.join(", ")}</td>

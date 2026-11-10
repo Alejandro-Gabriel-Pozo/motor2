@@ -40,12 +40,12 @@ test("editar el precio de un producto agrupado ofrece aplicarlo a sus hermanos y
     await page.getByRole("button", { name: "Guardar cambios" }).click();
 
     const bloque = page.locator(`[data-sincronizar-precio-grupo="${item.nombre}"]`);
-    await expect(bloque).toContainText(`«${item.nombre}» tiene 2 opciones más a otro precio: ${coca.nombre} ($5.000), ${sprite.nombre} ($5.000). ¿Aplicar $5.500 también?`);
+    await expect(bloque).toContainText(`«${item.nombre}» tiene 2 opciones más a otro precio: ${coca.nombre} ($ 5.000,00), ${sprite.nombre} ($ 5.000,00). ¿Aplicar $ 5.500,00 también?`);
     // Ya quedó guardado Fanta, y todavía nada más.
     expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: fanta.id } })).precioVenta)).toBe(5500);
     expect(Number((await prisma.producto.findUniqueOrThrow({ where: { id: coca.id } })).precioVenta)).toBe(5000);
 
-    await bloque.getByRole("button", { name: "Aplicar $5.500 también" }).click();
+    await bloque.getByRole("button", { name: "Aplicar $ 5.500,00 también" }).click();
     await page.waitForURL(new RegExp(`/catalogo/productos/${fanta.id}\\?guardado=cambios$`));
 
     const s = (await menuCartaPublicado(sucursalId)).secciones.find((x) => x.id === seccion.id);

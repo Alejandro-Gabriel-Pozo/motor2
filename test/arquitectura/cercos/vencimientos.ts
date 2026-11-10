@@ -49,6 +49,8 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
   lista("tipografia", "2027-01-02"),
   lista("colores-de-escala", "2027-01-04"),
   lista("colores", "2027-01-05"),
+  // PROPUESTA (E-N salida, 2026-11-09): deuda nueva al crear el guardián de números mostrados sin la función central; se declara sin pagarla toda en esta etapa. La aprobación queda PENDIENTE del dueño al mergear el PR de la etapa.
+  lista("numero-sin-formato-central", "2027-01-03", { por: "dueño (pendiente de aprobar al mergear el PR)", referencia: "commit 58f066f2" }, "Deuda nueva al crear el guardián «número mostrado sin la función central» (regla de números del dueño, 2026-11-09): reportes, carta pública y mensajes de periodo pasan a la función central en las etapas siguientes (propuesta, la corrige el dueño)."),
   // Estructura de pantalla (PR #219, 2026-11-09): las 90 pantallas se adoptan por etapas E-B…E-H (docs/diseno-estructura-de-pantalla-1366x768-2026-11-09.md, §12). Plazo máximo; se renueva con motivo si una etapa se atrasa.
   {
     regla: "pantallas-con-estructura",

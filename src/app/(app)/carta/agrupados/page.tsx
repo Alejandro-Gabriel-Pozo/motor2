@@ -26,6 +26,7 @@ import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
 import { Selector } from "@/ui/primitivas/selector";
 import type { UbicacionEnCarta } from "@/components/carta/contenido-del-producto";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Ítems agrupados de la carta (docs/plan-agrupacion-items-carta-2026-09-24.md, M7): un renglón visible ("Gaseosa 500 CC") que
@@ -46,7 +47,7 @@ const refrescarSiOk = (r: ResultadoAccion) => {
   if (r.ok) refrescarVistaSiHaceFalta();
   return r;
 };
-const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
+const pesos = formatearMonto;
 
 const CLASE_AVISO = "rounded border border-aviso p-3 text-sm";
 

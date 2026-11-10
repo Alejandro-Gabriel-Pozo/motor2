@@ -9,12 +9,13 @@ import { cambioDePrecio, type CambioDePrecio } from "@/core/catalogo/public";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import type { PrecioLocalDeProductoVisto } from "@/core/features/catalogo/precio-local.schema";
 import { formatearMonto } from "@/core/pos/public";
+import { formatearPorcentaje } from "@/core/formato-de-numero";
 import { setPrecioLocalProducto, sincronizarPrecioLocalGrupoCarta } from "@/server/actions/catalogo/precio-local";
 import type { ResultadoConSincronizable, SincronizablePrecioGrupo } from "@/server/actions/tipos";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 
-const porciento = (p: number) => `${p > 0 ? "+" : ""}${p.toLocaleString("es-AR", { maximumFractionDigits: 1 })} %`;
+const porciento = (p: number) => `${p > 0 ? "+" : ""}${formatearPorcentaje(p)}`;
 
 /** «$ 18.000 → $ 22.000 (+22,2 %)»: el antes y el después de lo que se está por guardar (siempre se muestra, decisión del dueño). */
 export function textoDelCambio(c: CambioDePrecio): string {

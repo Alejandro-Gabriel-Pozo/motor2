@@ -17,7 +17,7 @@ import { cerrarCuenta } from "../../src/server/actions/pos/cuenta-cierre";
 let s: Awaited<ReturnType<typeof sembrarSalon>>;
 let c: CafeDelSalon;
 let cuentaId: string;
-const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 beforeEach(async () => {
   await limpiarBaseDeTest();

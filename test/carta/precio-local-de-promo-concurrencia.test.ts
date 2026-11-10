@@ -72,9 +72,9 @@ describe("precio local de una promo: control del valor visto (A6)", () => {
     const id = await promo(1200);
     expect(await guardarPrecioLocalPromoCarta(id, "1300", 900)).toEqual({
       ok: false,
-      mensaje: `El precio de "Promo ${n - 1}" en esta sucursal cambió mientras lo editabas (ahora es $1.200). Recargá la pantalla y volvé a hacer el cambio.`,
+      mensaje: `El precio de "Promo ${n - 1}" en esta sucursal cambió mientras lo editabas (ahora es $\u00a01.200,00). Recargá la pantalla y volvé a hacer el cambio.`,
     });
-    expect(await guardarPrecioLocalPromoCarta(id, "1300")).toMatchObject({ ok: false, mensaje: expect.stringContaining("(ahora es $1.200)") });
+    expect(await guardarPrecioLocalPromoCarta(id, "1300")).toMatchObject({ ok: false, mensaje: expect.stringContaining("(ahora es $\u00a01.200,00)") });
     expect(await guardarPrecioLocalPromoCarta(id, null)).toMatchObject({ ok: false });
     const otra = await promo(null);
     expect(await guardarPrecioLocalPromoCarta(otra, "1300", 900)).toMatchObject({ ok: false, mensaje: expect.stringContaining("(ahora rige el de la empresa)") });

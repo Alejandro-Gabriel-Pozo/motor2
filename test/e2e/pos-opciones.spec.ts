@@ -77,7 +77,7 @@ test("sin opciones entra con un toque; con opciones: «desde» y «Opciones», e
     await seccionDe(page, d.seccion.nombre).getByRole("button", { name: new RegExp(`^${d.nombreMedialuna}`) }).click();
     await expect(page.locator(`[data-linea-por-agregar="${d.nombreMedialuna}"]`)).toBeVisible();
 
-    await expect(cafe).toContainText("desde $ 2.200 · Opciones");
+    await expect(cafe).toContainText("desde $ 2.200,00 · Opciones");
     await expect(cafe).toHaveAttribute("aria-haspopup", "dialog");
     await cafe.click();
     const dialogo = page.getByRole("dialog", { name: d.nombreCafe });
@@ -86,24 +86,24 @@ test("sin opciones entra con un toque; con opciones: «desde» y «Opciones», e
     await expect(agregar).toBeDisabled();
     await expect(dialogo.locator("[data-total-opciones]")).toHaveText(`Falta elegir: E2E Tamaño POS ${d.m}`);
     // Tamaños con su precio final; la variante con su recargo; lo agotado, deshabilitado; lo que el sistema registra en 0, marcado (y se puede elegir igual).
-    await expect(dialogo.getByText("Mediano").locator("xpath=ancestor::label")).toContainText("$ 2.500");
+    await expect(dialogo.getByText("Mediano").locator("xpath=ancestor::label")).toContainText("$ 2.500,00");
     await expect(dialogo.getByRole("radio", { name: /Cortado/ })).toBeDisabled();
     await expect(dialogo.getByText("Cortado").locator("xpath=ancestor::label")).toContainText("Agotada hoy");
     await expect(dialogo.getByText("Con leche").locator("xpath=ancestor::label")).toContainText(`Sistema: stock 0 de ${d.leche.nombre}`);
     await dialogo.getByRole("radio", { name: /Mediano/ }).check();
-    await expect(agregar).toHaveText("Agregar · $ 2.500");
+    await expect(agregar).toHaveText("Agregar · $ 2.500,00");
     await dialogo.getByRole("radio", { name: /Con leche/ }).check();
     await dialogo.getByRole("button", { name: "Sumar uno de Medialuna extra" }).click();
     await dialogo.getByRole("button", { name: "Sumar una unidad" }).click();
     // 2 × (2.500 + 400) + 2 × 600 = 7.000.
-    await expect(agregar).toHaveText("Agregar · $ 7.000");
-    await expect(dialogo.locator("[data-total-opciones]")).toContainText("2 × $ 2.900 + Medialuna extra 2 × $ 600");
+    await expect(agregar).toHaveText("Agregar · $ 7.000,00");
+    await expect(dialogo.locator("[data-total-opciones]")).toContainText("2 × $ 2.900,00 + Medialuna extra 2 × $ 600,00");
     expect((await new AxeBuilder({ page }).analyze()).violations, "con el diálogo abierto").toEqual([]);
     await agregar.click();
     await expect(dialogo).toBeHidden();
     const linea = page.locator(`[data-linea-por-agregar="${d.nombreCafe} · Mediano · Con leche"]`);
     await expect(linea).toContainText("+ Medialuna extra ×1");
-    await expect(linea).toContainText("$ 7.000");
+    await expect(linea).toContainText("$ 7.000,00");
 
     await page.getByRole("button", { name: "Agregar 2 al pedido" }).click();
     await expect(page.locator(`[data-linea-por-agregar]`)).toHaveCount(0);
@@ -130,7 +130,7 @@ test("teclado: Enter abre, las flechas recorren los tamaños, Escape cierra y el
     await dialogo.getByRole("radio", { name: /Chico/ }).focus();
     await page.keyboard.press("ArrowDown");
     await expect(dialogo.getByRole("radio", { name: /Mediano/ })).toBeChecked();
-    await expect(dialogo.getByRole("button", { name: /^Agregar/ })).toHaveText("Agregar · $ 2.500");
+    await expect(dialogo.getByRole("button", { name: /^Agregar/ })).toHaveText("Agregar · $ 2.500,00");
     await page.keyboard.press("Escape");
     await expect(dialogo).toBeHidden();
     await expect(cafe).toBeFocused();
@@ -159,7 +159,7 @@ test("si el precio de una opción cambia entre elegir y pedir, el servidor no co
     await page.getByRole("group", { name: "Secciones de la carta" }).getByRole("button", { name: d.seccion.nombre }).click();
     await seccionDe(page, d.seccion.nombre).getByRole("button", { name: new RegExp(`^${d.nombreCafe}`) }).click();
     await page.getByRole("dialog", { name: d.nombreCafe }).getByRole("radio", { name: /Grande/ }).check();
-    await expect(page.getByRole("dialog", { name: d.nombreCafe }).getByRole("button", { name: /^Agregar/ })).toHaveText("Agregar · $ 3.000");
+    await expect(page.getByRole("dialog", { name: d.nombreCafe }).getByRole("button", { name: /^Agregar/ })).toHaveText("Agregar · $ 3.000,00");
     await page.getByRole("dialog", { name: d.nombreCafe }).getByRole("button", { name: /^Agregar/ }).click();
     await page.getByRole("button", { name: "Agregar 1 al pedido" }).dblclick();
     await expect(page.locator(`[data-linea-por-agregar]`)).toHaveCount(0);

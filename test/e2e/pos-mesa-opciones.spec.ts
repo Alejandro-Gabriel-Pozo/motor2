@@ -88,9 +88,9 @@ test("la mesa muestra las opciones y el adicional bajo su producto; la comanda l
     await expect(linea).toContainText(`1 × ${d.nombreCafe} grande`);
     const adicional = linea.locator(`[data-adicional-sin-enviar="${d.nombreAncla}"]`);
     await expect(adicional).toContainText(`+ 1 × ${d.nombreAncla}`);
-    await expect(adicional).toContainText("$ 600");
+    await expect(adicional).toContainText("$ 600,00");
     await expect(adicional.getByRole("button")).toHaveCount(0);
-    await expect(linea).toContainText("$ 2.800");
+    await expect(linea).toContainText("$ 2.800,00");
     expect((await new AxeBuilder({ page }).analyze()).violations, "sin enviar con opciones").toEqual([]);
 
     await page.getByRole("button", { name: "Enviar a cocina" }).click();
@@ -103,7 +103,7 @@ test("la mesa muestra las opciones y el adicional bajo su producto; la comanda l
 
     const enviado = page.locator(`[data-item-enviado="${d.nombreCafe}"]`);
     await expect(enviado).toContainText(`1 × ${d.nombreCafe} grande`);
-    await expect(enviado.locator(`[data-adicional-enviado="${d.nombreAncla}"]`)).toContainText("$ 600");
+    await expect(enviado.locator(`[data-adicional-enviado="${d.nombreAncla}"]`)).toContainText("$ 600,00");
     await expect(enviado.locator(`[data-adicional-enviado="${d.nombreAncla}"]`).getByRole("button")).toHaveCount(0);
     expect((await new AxeBuilder({ page }).analyze()).violations, "envío con opciones").toEqual([]);
 
@@ -118,8 +118,8 @@ test("la mesa muestra las opciones y el adicional bajo su producto; la comanda l
     // El adicional en su línea con su precio: se busca el texto tal cual (sin armar una expresión regular con el nombre, que habría que escapar entera).
     const adicionalEnTicket = ticket.indexOf(`+ 1 × ${d.nombreAncla}`);
     expect(adicionalEnTicket, "el adicional va en su propia línea").toBeGreaterThan(-1);
-    expect(ticket.slice(adicionalEnTicket + `+ 1 × ${d.nombreAncla}`.length)).toMatch(/^\s*\$\s?600 c\/u/);
-    expect(ticket).toMatch(/TOTAL\s*\$\s?3\.400/);
+    expect(ticket.slice(adicionalEnTicket + `+ 1 × ${d.nombreAncla}`.length)).toMatch(/^\s*\$\s?600,00 c\/u/);
+    expect(ticket).toMatch(/TOTAL\s*\$\s?3\.400,00/);
   } finally {
     await d.limpiar();
   }
@@ -135,7 +135,7 @@ test("«Quitar» un producto con adicionales pide confirmar y se los lleva; «Ot
     await linea.getByRole("button", { name: `Otro igual a ${d.nombreCafe}` }).click();
     const dialogo = page.getByRole("dialog", { name: d.nombreCafe });
     await expect(dialogo.getByRole("radio", { name: /Grande/ })).toBeChecked();
-    await expect(dialogo.getByRole("button", { name: /^Agregar/ })).toHaveText("Agregar · $ 3.400");
+    await expect(dialogo.getByRole("button", { name: /^Agregar/ })).toHaveText("Agregar · $ 3.400,00");
     expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo desde «Otro igual»").toEqual([]);
     await dialogo.getByRole("button", { name: /^Agregar/ }).click();
     await expect(page.locator(`[data-linea-por-agregar="${d.nombreCafe} · Grande"]`)).toContainText("+ Medialuna extra ×1");
@@ -171,7 +171,7 @@ test("«Anular» un producto ya enviado avisa que arrastra sus adicionales y los
     await expect(dialogo).toHaveCount(0);
     const adicional = page.locator(`[data-adicional-enviado="${d.nombreAncla}"]`);
     await expect(adicional).toContainText("Anulado");
-    await expect(page.locator("[data-total-cuenta]")).toContainText(/\$\s?0/);
+    await expect(page.locator("[data-total-cuenta]")).toContainText(/\$\s?0,00/);
     await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda", "anulacion"]);
     expect((await impresiones(page))[1]!.texto).toContain(`1 × ${d.nombreCafe} grande`);
   } finally {
@@ -197,7 +197,7 @@ test("paso 9: «Lo más pedido acá» precarga lo que más se pidió en la sucur
     await expect(masPedido.getByRole("button")).toHaveText(["Grande"]);
     await masPedido.getByRole("button", { name: "Grande" }).click();
     await expect(dialogo.getByRole("radio", { name: /Grande/ })).toBeChecked();
-    await expect(dialogo.getByRole("button", { name: /^Agregar/ })).toHaveText("Agregar · $ 2.800");
+    await expect(dialogo.getByRole("button", { name: /^Agregar/ })).toHaveText("Agregar · $ 2.800,00");
     expect((await new AxeBuilder({ page }).analyze()).violations, "diálogo con lo más pedido").toEqual([]);
     await page.keyboard.press("Escape");
     await expect(dialogo).toBeHidden();

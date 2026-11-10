@@ -15,6 +15,7 @@ import { Boton } from "@/ui/primitivas/boton";
 import { Campo } from "@/ui/primitivas/campo";
 import { Selector } from "@/ui/primitivas/selector";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
+import { formatearCantidad } from "@/core/formato-de-numero";
 
 const ACCIONES: { value: AccionConteo; label: string; titulo: string }[] = [
   { value: "AJUSTAR", label: "Ajustar", titulo: "Escribe el movimiento de corrección ahora — el stock queda en lo contado." },
@@ -277,11 +278,11 @@ export function ConteoFisicoGrid({ seccionId, filasBase, puedeAjustar }: { secci
                       (f.loteVencimiento ?? (f.esTotalDeLotes ? "Todos los lotes (total)" : "—"))
                     )}
                   </td>
-                  <td className="px-2 text-right">{f.saldoSistema}</td>
+                  <td className="px-2 text-right tabular-nums whitespace-nowrap">{formatearCantidad(f.saldoSistema)}</td>
                   <td className="w-28 px-2">
                     <CampoNumero tipo="cantidad" value={estado.conteoReal} onChange={(v) => actualizarEstado(f.key, { conteoReal: v })} ariaLabel={`Contado de ${f.etiqueta}`} tamano="compacto" />
                   </td>
-                  <td className={`px-2 text-right ${diferencia ? "font-medium" : ""}`}>{diferencia === null ? "—" : diferencia > 0 ? `+${diferencia}` : diferencia}</td>
+                  <td className={`px-2 text-right tabular-nums whitespace-nowrap ${diferencia ? "font-medium" : ""}`}>{diferencia === null ? "—" : diferencia > 0 ? `+${formatearCantidad(diferencia)}` : formatearCantidad(diferencia)}</td>
                   <td className="px-2">
                     <Selector
                       etiqueta={`Acción de ${f.etiqueta}`}

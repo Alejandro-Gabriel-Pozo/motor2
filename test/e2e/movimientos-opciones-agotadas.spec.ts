@@ -107,7 +107,7 @@ test("precios por tamaño en esta sucursal: se carga uno propio y se vuelve al d
   const grandeId = tamano.opciones["Grande"]!.opcionId;
   await page.goto("/movimientos/precio-local");
   const fila = page.locator(`[data-tamano='E2E Café local ${m} · Grande']`);
-  await expect(fila).toContainText("$ 3.100");
+  await expect(fila).toContainText("$ 3.100,00");
   await fila.getByLabel(`Precio de E2E Café local ${m} · Grande en esta sucursal`).fill("3000");
   await fila.getByRole("button", { name: "Guardar" }).click();
   await expect(fila.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();

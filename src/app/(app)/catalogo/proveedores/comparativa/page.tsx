@@ -4,6 +4,8 @@ import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/li
 import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { obtenerComparativaPreciosPorInsumo } from "@/server/actions/catalogo/proveedor-por-producto";
 import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { formatearMonto } from "@/core/formato-de-numero";
+import { CeldaNumerica } from "@/ui/componentes/datos/celda-numerica";
 
 export default async function ComparativaPreciosPage() {
   const ctx = await obtenerContextoUsuario();
@@ -39,7 +41,7 @@ export default async function ComparativaPreciosPage() {
               {fila.todas.map((oferta, i) => (
                 <tr key={i} className={oferta === fila.masBarato ? "font-medium text-ok-tinta" : ""}>
                   <td>{oferta.proveedorNombre}</td>
-                  <td>{oferta.precioPorUnidadStock > 0 ? oferta.precioPorUnidadStock.toFixed(2) : "sin precio"}</td>
+                  <CeldaNumerica>{oferta.precioPorUnidadStock > 0 ? formatearMonto(oferta.precioPorUnidadStock) : "sin precio"}</CeldaNumerica>
                   <td>{oferta.unidadCompraNombre}</td>
                   <td>{diaDeCalendario(new Date(oferta.ultimaCompra), ctx.empresaZonaHoraria).split("-").reverse().join("/")}</td>
                 </tr>

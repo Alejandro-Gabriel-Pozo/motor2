@@ -9,6 +9,7 @@ import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local"
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { leerPrecioLocal } from "@/server/persistencia/catalogo/precio-local";
 import { guardarPrecioLocalEnTx } from "./guardar-precio-local-en-tx";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Caso de uso «aplicar el mismo precio local a los productos de UN ítem agrupado de la carta» (Hito 4 de la pureza, bloque 4.2, paso H4C-4 —
@@ -61,7 +62,7 @@ export async function sincronizarPrecioLocalGrupoCartaCasoDeUso(
         if (visto === undefined || !mismosCentavos(hoy, visto)) {
           return fracaso(
             "PRECIO_DESACTUALIZADO",
-            `El precio de «${p.nombre}» en «${actor.sucursalNombre}» cambió desde que se ofreció igualarlo (ahora es $${hoy.toLocaleString("es-AR")}): no se cambió ninguno. Recargá la pantalla y volvé a hacer el cambio.`,
+            `El precio de «${p.nombre}» en «${actor.sucursalNombre}» cambió desde que se ofreció igualarlo (ahora es ${formatearMonto(hoy)}): no se cambió ninguno. Recargá la pantalla y volvé a hacer el cambio.`,
           );
         }
         aEscribir.push({ id: p.id, nombre: p.nombre });

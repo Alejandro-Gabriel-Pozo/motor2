@@ -90,21 +90,21 @@ describe("precio local: control del valor visto (A2)", () => {
     const id = await conLocal("Agua", 1100);
     expect(await setPrecioLocalProducto(id, 1300, true, { precio: 1000, habilitado: true })).toEqual({
       ok: false,
-      mensaje: 'El precio local de "Agua" cambió mientras lo editabas (ahora es $1.100). Recargá la pantalla y volvé a hacer el cambio.',
+      mensaje: 'El precio local de "Agua" cambió mientras lo editabas (ahora es $\u00a01.100,00). Recargá la pantalla y volvé a hacer el cambio.',
     });
     // Habilitar/Deshabilitar desde la fila con el estado viejo: el otro ya lo había deshabilitado.
     await prisma.precioLocalProducto.update({ where: { sucursalId_productoId: { sucursalId, productoId: id } }, data: { habilitado: false } });
     expect(await setPrecioLocalProducto(id, 1100, false, { precio: 1100, habilitado: true })).toMatchObject({ ok: true }); // ya estaba así
     expect(await setPrecioLocalProducto(id, 1200, false, { precio: 1100, habilitado: true })).toEqual({
       ok: false,
-      mensaje: 'El precio local de "Agua" cambió mientras lo editabas (ahora es $1.100, deshabilitado). Recargá la pantalla y volvé a hacer el cambio.',
+      mensaje: 'El precio local de "Agua" cambió mientras lo editabas (ahora es $\u00a01.100,00, deshabilitado). Recargá la pantalla y volvé a hacer el cambio.',
     });
     expect([await local(id), await auditorias(id)]).toEqual(["1100.00 (deshabilitado)", 0]);
   });
 
   it("falla cerrado: sin valor visto («no había») y con una fila en la base → no pisa; con «había» y sin fila → tampoco crea", async () => {
     const id = await conLocal("Pomelo", 1000);
-    expect(await setPrecioLocalProducto(id, 900, true)).toMatchObject({ ok: false, mensaje: expect.stringContaining("cambió mientras lo editabas (ahora es $1.000)") });
+    expect(await setPrecioLocalProducto(id, 900, true)).toMatchObject({ ok: false, mensaje: expect.stringContaining("cambió mientras lo editabas (ahora es $\u00a01.000,00)") });
     const otro = await producto("Limón");
     expect(await setPrecioLocalProducto(otro, 900, true, { precio: 800, habilitado: true })).toMatchObject({ ok: false, mensaje: expect.stringContaining("(ahora no tiene precio local)") });
     expect([await local(id), await local(otro)]).toEqual(["1000.00", null]);

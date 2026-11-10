@@ -106,7 +106,7 @@ export function TablaDeDatos<T>({ titulo, columnas, filas, claveDeFila, vacio, p
             {filas.map((fila) => (
               <tr key={claveDeFila(fila)} className={unirClases("border-b", claseFila?.(fila))}>
                 {columnas.map((c) => (
-                  <td key={c.id} className={`py-2 pr-3 ${c.alinear === "derecha" ? "text-right" : ""}`}>
+                  <td key={c.id} className={`py-2 pr-3 ${c.alinear === "derecha" ? "text-right tabular-nums whitespace-nowrap" : ""}`}>
                     {c.celda(fila)}
                   </td>
                 ))}

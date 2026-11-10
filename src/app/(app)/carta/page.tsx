@@ -23,6 +23,7 @@ import { EncabezadoDeCarta } from "./encabezado-de-carta";
 import { NombresDeCartaPendientes } from "./nombres-de-carta-pendientes";
 import { MantenimientoDeCarta, type PestanaDeMantenimiento } from "./mantenimiento-de-carta";
 import s from "./carta-mant.module.css";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * La carta de la sucursal, Carta › Hoy (CARTA-MANT, ADR-034; DEC-24): lo de todos los días, en dos niveles —«Hoy» (lo que se acabó) y «Visibilidad» (qué se muestra de forma estable, y al final
@@ -42,7 +43,7 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 };
 
 const PESTANAS: readonly PestanaDeMantenimiento[] = ["hoy", "visibilidad"];
-const pesos = (n: number) => `$ ${n.toLocaleString("es-AR")}`;
+const pesos = formatearMonto;
 
 export default async function CartaPage({ searchParams }: { searchParams: Promise<{ [clave: string]: string | string[] | undefined }> }) {
   const ctx = await obtenerContextoUsuario();

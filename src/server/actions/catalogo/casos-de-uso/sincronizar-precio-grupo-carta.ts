@@ -9,6 +9,7 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import { exito, fracaso } from "@/core/resultado-caso";
 import { resolverGrupoDeProducto } from "@/server/lecturas/carta/grupo-de-producto";
 import { fijarPrecioVentaDeProducto } from "@/server/persistencia/catalogo/productos";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Caso de uso «aplicar el mismo precio de venta GLOBAL a varios productos de UN mismo ítem agrupado de la carta» (el paso que ofrece `actualizarProducto` con
@@ -61,7 +62,7 @@ export async function sincronizarPrecioGrupoCartaCasoDeUso(
       if (visto === undefined || !mismosCentavos(guardado, visto)) {
         return fracaso(
           "PRECIO_DESACTUALIZADO",
-          `El precio de venta de «${p.nombre}» cambió desde que se ofreció igualarlo (ahora es $${guardado.toLocaleString("es-AR")}): no se cambió ninguno. Recargá la pantalla y volvé a hacer el cambio.`,
+          `El precio de venta de «${p.nombre}» cambió desde que se ofreció igualarlo (ahora es ${formatearMonto(guardado)}): no se cambió ninguno. Recargá la pantalla y volvé a hacer el cambio.`,
         );
       }
       aCambiar.push({ id: p.id, nombre: p.nombre, anterior: guardado });
@@ -75,6 +76,6 @@ export async function sincronizarPrecioGrupoCartaCasoDeUso(
         valorAnterior: p.anterior, valorNuevo: precio, actorId: actor.usuarioId,
       });
     }
-    return exito(`Precio de venta de ${productos.map((p) => `"${p.nombre}"`).join(", ")} actualizado a $${precio.toLocaleString("es-AR")} («${grupo.nombreItem}»).`, null);
+    return exito(`Precio de venta de ${productos.map((p) => `"${p.nombre}"`).join(", ")} actualizado a ${formatearMonto(precio)} («${grupo.nombreItem}»).`, null);
   });
 }
