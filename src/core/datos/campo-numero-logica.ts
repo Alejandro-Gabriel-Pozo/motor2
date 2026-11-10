@@ -47,7 +47,10 @@ export function valorAEmitir(texto: string, contexto: ContextoNumerico): string 
 
 /** «1234567» → «1.234.567»: el punto de miles lo agrega el sistema al mostrar (nunca se escribe). Sin `toLocaleString`: el de es-AR no agrupa los números de 4 cifras («1234»), y el dueño quiere «1.000,00» siempre. */
 function conPuntosDeMiles(entero: string): string {
-  return entero.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  // En grupos de a tres desde la derecha, recorriendo una sola vez (un `replace` con lookahead `(\d{3})+(?!\d)` es cuadrático sobre un texto largo).
+  const grupos: string[] = [];
+  for (let fin = entero.length; fin > 0; fin -= 3) grupos.push(entero.slice(Math.max(0, fin - 3), fin));
+  return grupos.reverse().join(".");
 }
 
 /**

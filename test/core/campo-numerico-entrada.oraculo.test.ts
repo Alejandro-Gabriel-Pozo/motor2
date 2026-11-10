@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { aplicarEdicion, formatearNumeroDelCampo, origenDeLaEdicion, textoParaVer, valorAEmitir } from "@/core/datos/campo-numero-logica";
-import { contextoDeCantidad, interpretarNumeroTecleado, leerNumeroCanonico, numeroDeEntrada, type ContextoNumerico } from "@/core/datos/numero-tecleado";
+import { contextoDeCantidad, interpretarNumeroTecleado, leerNumeroCanonico, numeroDeEntrada, pistaDeMiles, type ContextoNumerico } from "@/core/datos/numero-tecleado";
 import { CODIGOS_AJENOS_A_LOS_NUMEROS, CODIGOS_DE_RECHAZO_DE_NUMEROS, CONTEXTOS, EDICIONES, FILAS, FILAS_DEL_SERVIDOR, TIPOS, VISTAS, type Esperado } from "./oraculo-numero-entrada";
 
 /**
@@ -130,5 +130,17 @@ describe("oráculo · el origen de una edición según lo que manda el navegador
     [undefined, null, "pegado"], // un cambio sin InputEvent (relleno automático del navegador)
   ] as const)("inputType %j con data %j → %s", (inputType, data, esperado) => {
     expect(origenDeLaEdicion(inputType, data)).toBe(esperado);
+  });
+});
+
+describe("oráculo · textos largos (sin regex cuadráticas: ReDoS)", () => {
+  it("agrupar miles de un número larguísimo y leer una pista sobre un texto largo es instantáneo", () => {
+    const inicio = Date.now();
+    const largo = "9".repeat(200_000);
+    expect(formatearNumeroDelCampo(Number("1" + "0".repeat(20)), "entero")).toBe("100.000.000.000.000.000.000");
+    expect(textoParaVer(largo, "cantidad").length).toBeGreaterThan(0); // no es un número finito representable: se ve tal cual, sin colgarse
+    expect(pistaDeMiles(" ".repeat(200_000) + "x," + " ".repeat(200_000))).toBeNull();
+    expect(interpretarNumeroTecleado("1".repeat(200_000) + ".", contexto(2))).toMatchObject({ ok: false, codigo: "punto" });
+    expect(Date.now() - inicio).toBeLessThan(2000);
   });
 });

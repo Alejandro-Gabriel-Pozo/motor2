@@ -119,8 +119,10 @@ function cifrasDeUnaPistaDeMiles(izquierda: string, derecha: string): string | n
 /** La pista para un número tecleado con coma y tres cifras detrás («21,000» → «Para 21000 escribí 21000.»), o `null` si no corresponde. Sirve para los mensajes de decimales de los validadores. */
 export function pistaDeMiles(texto: unknown): string | null {
   if (typeof texto !== "string") return null;
-  const m = /^\s*-?([^,]*),([^,]*)\s*$/.exec(texto);
-  const cifras = m ? cifrasDeUnaPistaDeMiles(m[1], m[2].trim()) : null;
+  // Sin regex con `\s*` pegado a `[^,]*` (ambiguo: cuadrático sobre un texto largo): se recorta, se saca un «-» inicial y se parte en la coma.
+  const t = texto.trim();
+  const partes = (t.startsWith("-") ? t.slice(1) : t).split(",");
+  const cifras = partes.length === 2 ? cifrasDeUnaPistaDeMiles(partes[0], partes[1].trim()) : null;
   return cifras === null ? null : `Para ${cifras} escribí ${cifras}.`;
 }
 

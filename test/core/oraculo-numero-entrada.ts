@@ -53,6 +53,9 @@ export const FILAS: readonly Fila[] = [
   { texto: "1.205", tienePunto: true, tieneComa: false, campo: mismoEnTodos({ rechazo: "punto" }) },
   { texto: "1.234,50", tienePunto: true, tieneComa: true, campo: mismoEnTodos({ rechazo: "punto" }) },
   { texto: "1,234.50", tienePunto: true, tieneComa: true, campo: mismoEnTodos({ rechazo: "punto" }) },
+  { texto: "1.2.3", tienePunto: true, tieneComa: false, campo: mismoEnTodos({ rechazo: "punto" }) },
+  { texto: "1..", tienePunto: true, tieneComa: false, campo: mismoEnTodos({ rechazo: "punto" }) },
+  { texto: "1..2", tienePunto: true, tieneComa: false, campo: mismoEnTodos({ rechazo: "punto" }) },
 ];
 
 /** El SERVIDOR lee un texto solo si es canónico (dígitos y un punto decimal): se prueba con estos textos, por contexto. */
@@ -105,6 +108,8 @@ export const EDICIONES: readonly Edicion[] = [
   { caso: "pegado «1.234»", origen: "pegado", anterior: "7", nuevo: "71.234", cursor: 6, texto: "7", cursorFinal: null, aviso: true },
   { caso: "pegado «1.234,50» sobre el campo vacío", origen: "pegado", anterior: "", nuevo: "1.234,50", cursor: 8, texto: "", cursorFinal: null, aviso: true },
   { caso: "pegado «0.5»", origen: "pegado", anterior: "", nuevo: "0.5", cursor: 3, texto: "", cursorFinal: null, aviso: true },
+  { caso: "tecla «.» repetida en el medio («1..2»: se quitan todas)", origen: "tecleado", anterior: "12", nuevo: "1..2", cursor: 3, texto: "12", cursorFinal: 1, aviso: true },
+  { caso: "pegado «1.2.3»", origen: "pegado", anterior: "7", nuevo: "71.2.3", cursor: 6, texto: "7", cursorFinal: null, aviso: true },
   { caso: "pegado «1234,5» (sin punto: se acepta)", origen: "pegado", anterior: "", nuevo: "1234,5", cursor: 6, texto: "1234,5", cursorFinal: 6, aviso: false },
 ];
 
