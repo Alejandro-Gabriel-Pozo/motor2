@@ -101,10 +101,10 @@ describe("la escala de letra única (DEC-35)", () => {
 });
 
 describe("el ancho de las columnas de precio de las tablas (modelo unificado)", () => {
-  it("todas miden lo mismo: clamp(4.5rem, 16cqw, 9rem) contra el ítem (un `<col>` no respeta un porcentaje en Chrome); 72 px como mínimo", () => {
+  it("todas miden lo mismo: clamp(6rem, 22cqw, 9rem) contra el ítem (un `<col>` no respeta un porcentaje en Chrome); 96 px como mínimo (cabe «$ 12.500,00»: regla del dueño 2026-11-10, dinero con 2 decimales)", () => {
     expect(CSS).toMatch(/\.carta-shell \.carta-tabla \{\s*container-type: inline-size;\s*\}/);
-    expect(CSS).toMatch(/\.carta-shell \.carta-col-precio \{\s*width: clamp\(4\.5rem, 16cqw, 9rem\);\s*\}/);
-    expect(parseFloat("4.5rem") * 16).toBe(72);
+    expect(CSS).toMatch(/\.carta-shell \.carta-col-precio \{\s*width: clamp\(6rem, 22cqw, 9rem\);\s*\}/);
+    expect(parseFloat("6rem") * 16).toBe(96);
   });
 });
 
