@@ -163,8 +163,8 @@ describe("C10: un café con tamaño y preparación obligatoria sale como tabla d
     const texto = (fragmento: string) => fragmento.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     expect(tabla.match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map(texto)).toEqual(["Chico", "Mediano", "Grande"]);
     expect(tabla.match(/<th scope="row"[^>]*>[\s\S]*?<\/th>/g)?.map(texto)).toEqual(["Solo", "Cortado", "Lágrima", "Con leche"]);
-    const precios = [...tabla.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1]);
-    expect(precios).toEqual(["$ 4.000,00", "$ 4.100,00", "$ 4.300,00", "$ 4.000,00", "$ 4.100,00", "$ 4.300,00", "$ 4.200,00", "$ 4.300,00", "$ 4.500,00", "$ 4.300,00", "$ 4.400,00", "$ 4.600,00"]);
+    const precios = [...tabla.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1]!.replace(/\s/g, " "));
+    expect(precios).toEqual(["$ 4.000,00", "$ 4.100,00", "$ 4.300,00", "$ 4.000,00", "$ 4.100,00", "$ 4.300,00", "$ 4.200,00", "$ 4.300,00", "$ 4.500,00", "$ 4.300,00", "$ 4.400,00", "$ 4.600,00"]);
     // El café de referencia, en su propia fila de la sección, no se mezcla con la tabla.
     expect(li).not.toContain("Preparación del café");
   });

@@ -285,12 +285,12 @@ body:has(main[data-panel]) {
 }
 /* La línea fina que separa filas o bloques de la carta (un trazo del color de la tinta, atenuado hacia el fondo). */
 /* El ancho de las columnas de precio de una tabla de la carta (Chico | Mediano | Grande): el MISMO en toda la carta, así las columnas de productos distintos quedan en la misma vertical. Un `<col>` no respeta
-   un porcentaje en Chrome: se mide contra el contenedor (`cqw`, el `li` de la tabla). Mínimo 80 px (a 375 px caben tres columnas con «12.500,00»; con los 2 decimales que manda la regla del dueño del 2026-11-10, en una columna angosta el «$» pasa arriba del número en vez de desbordar la tabla); tope 144 px. */
+   un porcentaje en Chrome: se mide contra el contenedor (`cqw`, el `li` de la tabla). Mínimo 72 px; tope 144 px. Con los 2 decimales de la regla del dueño (2026-11-10) «$ 12.500,00» no entra en 72 px: la celda deja que el «$» pase arriba del número y, en último caso, corta el texto (`overflow-wrap: anywhere`) en vez de ensanchar la tabla. */
 .carta-shell .carta-tabla {
   container-type: inline-size;
 }
 .carta-shell .carta-col-precio {
-  width: clamp(5rem, 18cqw, 9rem);
+  width: clamp(4.5rem, 16cqw, 9rem);
 }
 .carta-shell .carta-linea-fina {
   border-bottom: 1px solid color-mix(in oklch, var(--carta-ink) 28%, var(--carta-bg));

@@ -452,7 +452,7 @@ function FilasDeOpcion({ nombre, filas, colorPrecio }: { nombre: string; filas: 
 function CeldaDePrecio({ precio, color }: { precio: number | null; color: string }) {
   return (
     <>
-      <span aria-hidden={precio === null ? "true" : undefined} data-rol="opcion-precio" className="carta-rol-opcion-precio carta-titulo" style={{ color: precio === null ? "var(--carta-ink-soft)" : color }}>
+      <span aria-hidden={precio === null ? "true" : undefined} data-rol="opcion-precio" className="carta-rol-opcion-precio carta-titulo" style={{ color: precio === null ? "var(--carta-ink-soft)" : color, overflowWrap: "anywhere" }}>
         {precio === null ? "–" : formatearPrecioCarta(precio).replace("\u00a0", " ")}
       </span>
       {precio === null && <span className="sr-only">no se ofrece</span>}
@@ -486,7 +486,7 @@ function TablaDelItem({ item, p, colores, incluye, posicion, sinLinea }: { sinLi
             <tr>
               <td />
               {p.columnas.map((r, c) => (
-                <th key={`col-${c}`} scope="col" data-rol="columna" className="carta-rol-columna pb-1 pl-1 pt-1 text-right align-bottom">
+                <th key={`col-${c}`} scope="col" data-rol="columna" className="carta-rol-columna pb-1 pl-1 pt-1 text-right align-bottom" style={{ overflowWrap: "anywhere" }}>
                   {r}
                 </th>
               ))}
