@@ -7,6 +7,7 @@ Estados: **CONFIRMADA** (la dijo el dueño), **PROPUESTA** (la propone el ingeni
 - **Necesidad** (quién y dónde está escrita): pedido del dueño, 2026-11-10 — «Copiar de otra sucursal» solo funciona sobre una carta VACÍA (`copiar-carta-de-sucursal.ts`: «Esta sucursal ya tiene carta propia: solo se puede copiar sobre una carta vacía»). El dueño configuró cosas en la sucursal destino y no puede copiar. Eligió la opción **REEMPLAZAR**. — CONFIRMADA.
 - La copia sobre carta vacía sigue exactamente igual (mismos textos, misma auditoría, mismo permiso). — CONFIRMADA (pedido del dueño).
 - Forma más barata (regla «primero la opción más barata»): se reutiliza el caso de uso de la copia y sus tres funciones de escritura; no se crea tabla, columna ni permiso. **Sin migración.** — VERIFICADA EN CÓDIGO (ver N6).
+- La descripción del permiso `carta_copiar_de_sucursal` («…solo sobre una carta vacía») NO se cambió: está duplicada en una migración de datos y cambiarla exigiría una migración (no autorizada). Queda anotado como pendiente cosmético.
 - Fuera de alcance: «deshacer» en pantalla, reemplazo parcial (solo géneros, solo productos), reemplazar promos/cupos/tema/secciones. — CONFIRMADA por omisión (el dueño no los pidió).
 
 ## N2 · Actores y contexto
@@ -71,7 +72,7 @@ Estados: **CONFIRMADA** (la dijo el dueño), **PROPUESTA** (la propone el ingeni
 
 ## N9 · Consultas y experiencia
 
-- El resumen de lo que se elimina sale de conteos de ESTA sucursal; el de lo que se copia, del conteo ya existente por sucursal (`estadoCartaPropia`, ahora con géneros e ítems agrupados además de productos). Cantidades como enteros, sin dinero en pantalla.
+- El resumen de lo que se elimina sale de conteos de ESTA sucursal; el de lo que se copia, de la misma consulta nueva `cuentasDeCartaPropiaPorSucursal` (conteo por la relación de `Sucursal`, con la base ampliada a la lectura de los orígenes que la página ya ofrece; `estadoCartaPropia` no se tocó para no mover la caracterización congelada). Cantidades como enteros, sin dinero en pantalla.
 - «¿Qué pasa si…?» en la tabla de abajo.
 
 ### Tabla «¿qué pasa si…?»
