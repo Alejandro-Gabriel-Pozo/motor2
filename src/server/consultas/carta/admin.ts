@@ -12,6 +12,7 @@ import type { Db } from "@/lib/db-tipos";
 import type { PrismaClient } from "@prisma/client";
 import { sucursalesDondeElUsuarioPuedeVer } from "@/server/acceso/gate";
 import { MODO_DE_VENTA } from "@/core/opciones/public";
+import type { CuentaDeCarta } from "@/core/features/carta/reemplazar-carta";
 
 /** Las secciones de carta (orden, nombre) con cuántos ítems ya tiene cada una (`cantidadItems`, DA6). */
 async function seccionesConCantidad(sucursalId: string, db: Db): Promise<SeccionCartaAdmin[]> {
@@ -62,6 +63,19 @@ async function estadoCartaPropia(sucursalId: string, db: Db): Promise<{ cartaVac
     cartaVacia: propia ? !tiene(propia) : true,
     sucursalesConCarta: sucursales.filter((s) => s.id !== sucursalId && tiene(s)).map((s) => ({ id: s.id, nombre: s.nombre, cantidadProductos: s._count.contenidosCarta })),
   };
+}
+
+/**
+ * Cuánto tiene la carta propia de cada sucursal pedida (productos con contenido, ítems agrupados y géneros): lo que muestra la confirmación de «Reemplazar con la carta de otra sucursal» (lo que se
+ * ELIMINA del destino y lo que se COPIA del origen). Va por el conteo de la relación de `Sucursal` (como `estadoCartaPropia`), nunca por los modelos de la carta; las de otras sucursales solo se
+ * leen con la base ensanchada a su lectura (M.3-A5) y la página solo pide las que ya ofrece como origen.
+ */
+export async function cuentasDeCartaPropiaPorSucursal(sucursalIds: readonly string[], db: Db): Promise<Map<string, CuentaDeCarta>> {
+  const sucursales = await db.sucursal.findMany({
+    where: { id: { in: [...sucursalIds] } },
+    select: { id: true, _count: { select: { contenidosCarta: true, generosCarta: true, itemsAgrupadosCarta: true } } },
+  });
+  return new Map(sucursales.map((s) => [s.id, { productos: s._count.contenidosCarta, itemsAgrupados: s._count.itemsAgrupadosCarta, generos: s._count.generosCarta }]));
 }
 
 /**

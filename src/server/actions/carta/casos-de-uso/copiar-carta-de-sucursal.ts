@@ -1,6 +1,8 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { claveDeNombreDeCarta, whereCartaDeSucursal, wherePromoOfrecidaEn } from "@/core/carta/public";
+import { cartaCopiadaPara, type CartaDeSucursal } from "@/core/features/carta/reemplazar-carta";
 import type { ComandoCopiarCartaDeSucursal, ResultadoCopiarCartaDeSucursal } from "@/core/features/carta/copiar-carta.schema";
 import { esConflictoDeEscritura } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -60,71 +62,22 @@ export async function copiarCartaDeSucursalCasoDeUso(
     ]);
     if (contenidosPropios + generosPropios + itemsPropios > 0) return fracaso("CARTA_PROPIA_EXISTENTE", "Esta sucursal ya tiene carta propia: solo se puede copiar sobre una carta vacía.");
 
-    const [generos, items, contenidos] = await Promise.all([
-      tx.generoCarta.findMany({ where: whereCartaDeSucursal(sucursalOrigenId), orderBy: [{ orden: "asc" }, { creadoEn: "asc" }, { id: "asc" }] }),
-      tx.itemAgrupadoCarta.findMany({ where: whereCartaDeSucursal(sucursalOrigenId), include: { opciones: { orderBy: [{ orden: "asc" }, { id: "asc" }] } }, orderBy: [{ creadoEn: "asc" }, { id: "asc" }] }),
-      tx.contenidoCartaProducto.findMany({ where: whereCartaDeSucursal(sucursalOrigenId), orderBy: { id: "asc" } }),
-    ]);
+    const origenLeido = await leerCartaDeSucursal(tx, sucursalOrigenId);
+    const { generos, items, contenidos } = origenLeido;
     if (generos.length + items.length + contenidos.length === 0) return fracaso("ORIGEN_SIN_CARTA", `«${origen.nombre}» no tiene carta propia: no hay nada que copiar.`);
 
-    const generoNuevo = new Map<string, string>();
-    for (const g of generos) {
-      const nuevo = await copiarGeneroDeCarta(tx, { sucursalId: actor.sucursalId, nombre: g.nombre, orden: g.orden, activo: g.activo });
-      generoNuevo.set(g.id, nuevo.id);
-    }
     // Regla del dueño (2026-11-04): en una carta no hay dos cosas con el mismo nombre. Los «Nombre en la carta» del origen no chocan entre sí (el origen ya cumple la regla), pero la sucursal destino puede tener
     // una promo propia (las promos no se copian) con ese nombre: ese nombre NO se copia (el plato sale con el de su producto) y se informa; la copia entera sigue.
-    const promosDelDestino = await tx.promoCarta.findMany({ where: wherePromoOfrecidaEn(actor.sucursalId, "salon"), select: { titulo: true } });
-    const titulosDePromo = new Set(promosDelDestino.map((p) => claveDeNombreDeCarta(p.titulo)));
-    const sinCopiarElNombre = contenidos.filter((c) => c.nombreEnCarta !== null && titulosDePromo.has(claveDeNombreDeCarta(c.nombreEnCarta)));
-    const remapearGenero = (id: string | null) => (id ? (generoNuevo.get(id) ?? null) : null);
-
-    for (const it of items) {
-      const nuevo = await copiarItemAgrupadoDeCarta(tx, {
-        sucursalId: actor.sucursalId,
-        nombre: it.nombre,
-        seccionCartaId: it.seccionCartaId,
-        descripcion: it.descripcion,
-        tags: it.tags,
-        especial: it.especial,
-        orden: it.orden,
-        activo: it.activo,
-        generoCartaId: remapearGenero(it.generoCartaId),
-      });
-      if (it.opciones.length > 0) {
-        await copiarOpcionesDeItemAgrupado(tx, { sucursalId: actor.sucursalId, itemAgrupadoCartaId: nuevo.id, opciones: it.opciones });
-      }
-    }
-
-    if (contenidos.length > 0) {
-      await copiarContenidosDeCarta(tx, {
-        sucursalId: actor.sucursalId,
-        contenidos: contenidos.map((c) => ({
-          productoId: c.productoId,
-          visibleEnCarta: c.visibleEnCarta,
-          seccionCartaId: c.seccionCartaId,
-          descripcion: c.descripcion,
-          tags: c.tags,
-          especial: c.especial,
-          orden: c.orden,
-          generoCartaId: remapearGenero(c.generoCartaId),
-          // Fase 5 (DEC-11): «Mostrar el nombre arriba» es del contenido de la sucursal: se copia como el resto.
-          mostrarNombreArriba: c.mostrarNombreArriba,
-          // «Nombre en la carta» (2026-11-04): también es del contenido de la sucursal; «copiar carta» lo copia como el resto.
-          nombreEnCarta: sinCopiarElNombre.includes(c) ? null : c.nombreEnCarta,
-        })),
-      });
-    }
-
-    await registrarCambioAuditado(tx, {
-      entidad: "CartaSucursal",
-      entidadId: actor.sucursalId,
-      campo: "cartaPropia",
-      descripcion: `Carta de «${actor.sucursalNombre}»: copiada de «${origen.nombre}» (${contenidos.length} productos, ${items.length} ítems agrupados, ${generos.length} géneros)`,
-      valorAnterior: null,
-      valorNuevo: `copiada de ${origen.nombre}`,
-      actorId: actor.usuarioId,
+    const { carta, sinCopiarElNombre } = cartaCopiadaPara(origenLeido, await titulosDePromoDeLaSucursal(tx, actor.sucursalId));
+    await escribirCartaCopiada(tx, {
       sucursalId: actor.sucursalId,
+      carta,
+      auditoria: {
+        descripcion: `Carta de «${actor.sucursalNombre}»: copiada de «${origen.nombre}» (${contenidos.length} productos, ${items.length} ítems agrupados, ${generos.length} géneros)`,
+        valorAnterior: null,
+        valorNuevo: `copiada de ${origen.nombre}`,
+        actorId: actor.usuarioId,
+      },
     });
     const aviso = sinCopiarElNombre.length > 0 ? ` No se copió el nombre en la carta de ${sinCopiarElNombre.length} plato(s) porque una promo de esta sucursal ya se llama igual: ${sinCopiarElNombre.map((c) => `«${c.nombreEnCarta}»`).join(", ")}.` : "";
     return exito(`Se copió la carta de «${origen.nombre}» a «${actor.sucursalNombre}»: ${contenidos.length} productos, ${items.length} ítems agrupados y ${generos.length} géneros.${aviso}`, {
@@ -137,4 +90,76 @@ export async function copiarCartaDeSucursalCasoDeUso(
     if (esConflictoDeEscritura(e)) return fracaso("CARTA_CAMBIO", "La carta cambió mientras la copiabas; recargá e intentá de nuevo.");
     throw e;
   });
+}
+
+/** Lo que la carta propia de una sucursal tiene hoy (géneros, ítems agrupados con sus opciones y contenidos), en el orden en que se copia. Lo usan la copia y «reemplazar» (`reemplazar-carta-de-sucursal.ts`). */
+export async function leerCartaDeSucursal(tx: Prisma.TransactionClient, sucursalId: string): Promise<CartaDeSucursal> {
+  const [generos, items, contenidos] = await Promise.all([
+    tx.generoCarta.findMany({ where: whereCartaDeSucursal(sucursalId), orderBy: [{ orden: "asc" }, { creadoEn: "asc" }, { id: "asc" }] }),
+    tx.itemAgrupadoCarta.findMany({ where: whereCartaDeSucursal(sucursalId), include: { opciones: { orderBy: [{ orden: "asc" }, { id: "asc" }] } }, orderBy: [{ creadoEn: "asc" }, { id: "asc" }] }),
+    tx.contenidoCartaProducto.findMany({ where: whereCartaDeSucursal(sucursalId), orderBy: { id: "asc" } }),
+  ]);
+  return { generos, items, contenidos };
+}
+
+/** Las CLAVES de nombre (`claveDeNombreDeCarta`) de las promos que la sucursal ofrece en el salón: sus títulos no se pueden repetir como «Nombre en la carta». */
+export async function titulosDePromoDeLaSucursal(tx: Prisma.TransactionClient, sucursalId: string): Promise<Set<string>> {
+  const promos = await tx.promoCarta.findMany({ where: wherePromoOfrecidaEn(sucursalId, "salon"), select: { titulo: true } });
+  return new Set(promos.map((p) => claveDeNombreDeCarta(p.titulo)));
+}
+
+/**
+ * Escribe `carta` (ya con el «Nombre en la carta» resuelto por `cartaCopiadaPara`) en la carta de `sucursalId`: los géneros (uno por uno), los ítems agrupados con sus opciones (uno por uno, con el género
+ * reapuntado) y los contenidos (de una vez, con el género reapuntado), y deja la fila de auditoría (`CartaSucursal.cartaPropia`, con el `tx`: la auditoría de la copia y la de «reemplazar» salen siempre de acá, así
+ * quien llama a la escritura audita). Supone la carta del destino vacía de lo que se escribe (la copia lo comprueba; «reemplazar» la borra antes).
+ */
+export async function escribirCartaCopiada(
+  tx: Prisma.TransactionClient,
+  { sucursalId, carta, auditoria }: { sucursalId: string; carta: CartaDeSucursal; auditoria: { descripcion: string; valorAnterior: string | null; valorNuevo: string; actorId: string } },
+): Promise<void> {
+  const generoNuevo = new Map<string, string>();
+  for (const g of carta.generos) {
+    const nuevo = await copiarGeneroDeCarta(tx, { sucursalId, nombre: g.nombre, orden: g.orden, activo: g.activo });
+    generoNuevo.set(g.id, nuevo.id);
+  }
+  const remapearGenero = (id: string | null) => (id ? (generoNuevo.get(id) ?? null) : null);
+
+  for (const it of carta.items) {
+    const nuevo = await copiarItemAgrupadoDeCarta(tx, {
+      sucursalId,
+      nombre: it.nombre,
+      seccionCartaId: it.seccionCartaId,
+      descripcion: it.descripcion,
+      tags: it.tags,
+      especial: it.especial,
+      orden: it.orden,
+      activo: it.activo,
+      generoCartaId: remapearGenero(it.generoCartaId),
+    });
+    if (it.opciones.length > 0) {
+      await copiarOpcionesDeItemAgrupado(tx, { sucursalId, itemAgrupadoCartaId: nuevo.id, opciones: it.opciones });
+    }
+  }
+
+  if (carta.contenidos.length > 0) {
+    await copiarContenidosDeCarta(tx, {
+      sucursalId,
+      contenidos: carta.contenidos.map((c) => ({
+        productoId: c.productoId,
+        visibleEnCarta: c.visibleEnCarta,
+        seccionCartaId: c.seccionCartaId,
+        descripcion: c.descripcion,
+        tags: c.tags,
+        especial: c.especial,
+        orden: c.orden,
+        generoCartaId: remapearGenero(c.generoCartaId),
+        // Fase 5 (DEC-11): «Mostrar el nombre arriba» es del contenido de la sucursal: se copia como el resto.
+        mostrarNombreArriba: c.mostrarNombreArriba,
+        // «Nombre en la carta» (2026-11-04): también es del contenido de la sucursal; se copia como el resto (salvo que choque con una promo: ya resuelto en `carta`).
+        nombreEnCarta: c.nombreEnCarta,
+      })),
+    });
+  }
+
+  await registrarCambioAuditado(tx, { entidad: "CartaSucursal", entidadId: sucursalId, campo: "cartaPropia", ...auditoria, sucursalId });
 }

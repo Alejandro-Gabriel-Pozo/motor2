@@ -121,6 +121,8 @@ const VALORES: Readonly<Record<string, Valor>> = {
   sirveDeRespaldoEnVentas: () => false,
   habilitadaVista: () => true,
   confirmado: () => true,
+  // 2026-11-10: la confirmación escrita de «reemplazar la carta» es el NOMBRE de la sucursal activa; la puerta se ejerce parada en la sucursal vacía (S4, `EN_LA_SUCURSAL_VACIA`). Con otro texto el guard rechazaría antes de mirar el origen y el verde no probaría nada.
+  nombreEscrito: () => "Sucursal Cuatro",
   confirmarFusion: () => true,
   soloActivos: () => false,
   nombre: () => "Nombre nuevo",

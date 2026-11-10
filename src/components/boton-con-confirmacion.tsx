@@ -39,6 +39,7 @@ export function BotonConConfirmacion({
   alSalirBien,
   hecho = false,
   deshabilitado = false,
+  confirmarDeshabilitado = false,
   claseDisparador = "self-start",
 }: {
   /** El texto del botón que abre la confirmación: «Cancelar solicitud». */
@@ -60,6 +61,8 @@ export function BotonConConfirmacion({
   hecho?: boolean;
   /** Otra acción de la misma fila está en curso: el disparador (y la confirmación) quedan deshabilitados. */
   deshabilitado?: boolean;
+  /** Solo el botón de CONFIRMAR queda deshabilitado (el disparador y «Volver» siguen vivos): p. ej. hasta que se escriba el nombre que exige una acción destructiva (el `aviso` puede llevar ese campo). */
+  confirmarDeshabilitado?: boolean;
   /**
    * Clases que se SUMAN al disparador (por defecto, su ubicación en la columna). El aspecto lo da `Boton` (`enlace-peligro`); lo que una pantalla agrega acá
    * se apila encima: las que hoy pasan colores propios (la bandeja de traspasos, «Copiar la carta», la tabla de usuarios) conservan su color, borde y relleno
@@ -137,7 +140,7 @@ export function BotonConConfirmacion({
           {aviso}
         </Aviso>
         <div className="flex flex-wrap gap-x-3 gap-y-1">
-          <Boton variante="enlace-peligro" tamano="en-fila" aria-describedby={idAviso} disabled={pending || deshabilitado} onClick={confirmar}>
+          <Boton variante="enlace-peligro" tamano="en-fila" aria-describedby={idAviso} disabled={pending || deshabilitado || confirmarDeshabilitado} onClick={confirmar}>
             {pending ? etiquetaEnCurso : etiquetaConfirmar}
           </Boton>
           <Boton id={idVolver} variante="enlace" tamano="en-fila" aria-describedby={idAviso} disabled={pending} onClick={cancelar}>

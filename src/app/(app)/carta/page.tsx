@@ -6,7 +6,7 @@ import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
 import { lecturaEnSucursalesVisibles } from "@/server/acceso/alcance";
 import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, requierePermisoVerDeAlguna } from "@/server/acceso/gate";
-import { cargarAdminCarta, listarPlatosSinNombreDeCarta, origenesDeCopiaVisibles } from "@/server/consultas/carta/admin";
+import { cargarAdminCarta, cuentasDeCartaPropiaPorSucursal, listarPlatosSinNombreDeCarta, origenesDeCopiaVisibles } from "@/server/consultas/carta/admin";
 import { cargarCartaParaMantener } from "@/server/consultas/carta/mantenimiento";
 import { saldosDeLosIngredientesDeLosPlatos } from "@/server/consultas/carta/avisos-de-stock";
 import { agregarProductoALaCarta, fijarDisponibilidadDeHoy, quitarProductoDeLaCarta } from "@/server/actions/carta/mantenimiento";
@@ -18,6 +18,7 @@ import { PESTANAS_DE_CARTA, primeraPantallaVisible } from "@/core/carta/public";
 import { formatearCantidad } from "@/core/pos/public";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
+import { ReemplazarCartaDeSucursal } from "@/components/carta/reemplazar-carta-de-sucursal";
 import { FilaDeCarta } from "@/components/fila-de-carta";
 import { EncabezadoDeCarta } from "./encabezado-de-carta";
 import { NombresDeCartaPendientes } from "./nombres-de-carta-pendientes";
@@ -78,7 +79,11 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
   const origenes = puedeCopiarCarta ? await lecturaEnSucursalesVisibles(ctx, "carta_ver") : ctx;
   const [datos, carta, sinNombreDeCarta] = await Promise.all([cargarAdminCarta(ctx.sucursalId, origenes.db, new Date()), cargarCartaParaMantener(ctx.db, ctx.sucursalId), listarPlatosSinNombreDeCarta(ctx.sucursalId, ctx.db)]);
   // S-07 (O.56): solo se ofrecen de origen las sucursales donde el usuario tiene membresía y el «Ver» de la carta (las demás ni se nombran).
-  const origenesDeCopia = datos.cartaVacia && puedeCopiarCarta ? await origenesDeCopiaVisibles(ctx.usuarioId, datos.sucursalesConCarta, ctx.db) : [];
+  const origenesDeCopia = puedeCopiarCarta ? await origenesDeCopiaVisibles(ctx.usuarioId, datos.sucursalesConCarta, ctx.db) : [];
+  // «Reemplazar con la carta de otra sucursal» (2026-11-10): con la carta propia YA armada. Lo que se elimina (esta sucursal) y lo que se copia (cada origen) se cuenta con la base ampliada a su lectura.
+  const cuentasDeCarta = !datos.cartaVacia && puedeCopiarCarta ? await cuentasDeCartaPropiaPorSucursal([ctx.sucursalId, ...origenesDeCopia.map((o) => o.id)], origenes.db) : null;
+  const cuentaDeEstaSucursal = cuentasDeCarta?.get(ctx.sucursalId) ?? { productos: 0, itemsAgrupados: 0, generos: 0 };
+  const origenesParaReemplazar = origenesDeCopia.map((o) => ({ id: o.id, nombre: o.nombre, cuenta: cuentasDeCarta?.get(o.id) ?? { productos: o.cantidadProductos, itemsAgrupados: 0, generos: 0 } }));
   // GO-2d (el stock teórico AVISA, NUNCA BLOQUEA): de los productos que se muestran en la carta, los ingredientes que el sistema registra en 0 o menos acá. No saca nada de la carta.
   const saldos = await saldosDeLosIngredientesDeLosPlatos(
     ctx.db,
@@ -119,6 +124,17 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
               )}
               {puedeCopiarCarta && <CopiarCartaDeSucursal origenes={origenesDeCopia} />}
             </section>
+          )}
+
+          {!datos.cartaVacia && puedeCopiarCarta && (
+            <details className={`${s.tarjeta} ${s.irAParte}`} data-reemplazar-carta-seccion>
+              <summary className="cursor-pointer text-sm font-medium max-md:flex max-md:min-h-11 max-md:items-center">Reemplazar con la carta de otra sucursal</summary>
+              <p className={s.ayuda}>
+                Si tu carta quedó mal armada, podés reemplazarla entera con la de otra sucursal: se eliminan los productos, géneros e ítems agrupados de esta carta y se copian los de la otra. Las promos, los cupos, las
+                secciones y los precios no se tocan.
+              </p>
+              <ReemplazarCartaDeSucursal origenes={origenesParaReemplazar} destino={{ nombre: ctx.sucursalNombre, cuenta: cuentaDeEstaSucursal }} />
+            </details>
           )}
 
           {datos.visiblesSinSeccion.length > 0 && (

@@ -1,10 +1,11 @@
 "use server";
 
-import { guardComandoCopiarCartaDeSucursal } from "@/core/features/carta/copiar-carta.guard";
+import { guardComandoCopiarCartaDeSucursal, guardComandoReemplazarCartaDeSucursal } from "@/core/features/carta/copiar-carta.guard";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
 import { copiarCartaDeSucursalCasoDeUso } from "./casos-de-uso/copiar-carta-de-sucursal";
+import { reemplazarCartaDeSucursalCasoDeUso } from "./casos-de-uso/reemplazar-carta-de-sucursal";
 import { revalidarCartasPublicas } from "./revalidar";
 
 /**
@@ -31,6 +32,25 @@ export async function copiarCartaDeSucursal(sucursalOrigenId: string, confirmado
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await copiarCartaDeSucursalCasoDeUso(ctx, comando.valor);
     if (resultado.ok) revalidarCartasPublicas(ctx.empresaSlug);
+    return aResultadoAccion(resultado);
+  });
+}
+
+/**
+ * Reemplaza la carta PROPIA de la sucursal activa con la de otra sucursal (pedido del dueño, 2026-11-10; `docs/diseno-reemplazar-carta-de-sucursal-2026-11-10.md`): géneros, ítems agrupados con sus
+ * opciones y contenidos de producto del destino se ELIMINAN y se copian los del origen. No toca promos, cupos, secciones, tema ni nada de otra sucursal; el origen no se modifica. Es la hermana de
+ * `copiarCartaDeSucursal` (que sigue copiando solo sobre una carta vacía) y usa la MISMA clave de permiso, `carta_copiar_de_sucursal` (no hay clave nueva).
+ *
+ * La confirmación fuerte es escribir el nombre de la sucursal activa (`nombreEscrito`): la comprueba el servidor (`guardComandoReemplazarCartaDeSucursal`, dentro del envoltorio: el permiso rechaza primero).
+ * Nunca recibe el destino por parámetro (siempre `ctx.sucursalId`). Adaptador fino, como la copia: permiso → guard → caso de uso (`casos-de-uso/reemplazar-carta-de-sucursal.ts`: transacción SERIALIZABLE,
+ * borrado y copia, auditoría con la foto de lo eliminado) → revalidar la carta pública solo si hubo cambio → `aResultadoAccion`. Misma decisión M1(b) que la copia: la revalidación no se captura.
+ */
+export async function reemplazarCartaDeSucursal(sucursalOrigenId: string, nombreEscrito: string): Promise<ResultadoAccion> {
+  return conPermiso("carta_copiar_de_sucursal", async (ctx) => {
+    const comando = guardComandoReemplazarCartaDeSucursal({ sucursalOrigenId, nombreEscrito, sucursalActivaId: ctx.sucursalId, sucursalActivaNombre: ctx.sucursalNombre });
+    if (!comando.ok) return error(comando.mensaje);
+    const resultado = await reemplazarCartaDeSucursalCasoDeUso(ctx, comando.valor);
+    if (resultado.ok && resultado.datos.huboCambio) revalidarCartasPublicas(ctx.empresaSlug);
     return aResultadoAccion(resultado);
   });
 }

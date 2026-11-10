@@ -24,6 +24,8 @@ const LISTA_CERRADA: Record<string, string> = {
   "src/server/actions/carta/casos-de-uso/actualizar-visible-en-carta.ts": "administración: mostrar un plato comprueba su nombre efectivo contra la carta (sin nombres repetidos)",
   "src/server/actions/carta/casos-de-uso/confirmar-nombre-en-carta.ts": "administración: «Está bien así» (con auditoría por columna)",
   "src/server/actions/carta/casos-de-uso/copiar-carta-de-sucursal.ts": "administración: la copia de carta lo lleva",
+  "src/server/actions/carta/casos-de-uso/reemplazar-carta-de-sucursal.ts": "administración: reemplazar la carta con la de otra sucursal lo lleva igual que la copia (y lo guarda en la foto de auditoría de lo eliminado)",
+  "src/core/features/carta/reemplazar-carta.ts": "administración: la firma, la proyección de la copia y la foto de auditoría de «reemplazar la carta» lo llevan como el resto de las columnas copiables",
   "src/server/actions/carta/casos-de-uso/guardar-contenido-carta-producto.ts": "administración: el único que lo escribe (con auditoría por columna)",
   "src/server/actions/carta/casos-de-uso/quitar-producto-de-la-carta.ts": "administración: audita lo que se pierde al quitar",
   "src/server/actions/carta/contenido-producto.ts": "administración: la acción",

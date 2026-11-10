@@ -161,6 +161,7 @@ const DECLARADAS: Record<string, Record<string, { envoltorio: Envoltorio; clave:
   },
   "carta/copiar-carta.ts": {
     copiarCartaDeSucursal: SUC("carta_copiar_de_sucursal"),
+    reemplazarCartaDeSucursal: SUC("carta_copiar_de_sucursal"),
   },
 };
 
@@ -242,13 +243,14 @@ describe("tramo C (carta, catálogo y stock): cada Server Action entra por su en
     const total = Object.values(DECLARADAS).reduce((n, fs) => n + Object.keys(fs).length, 0);
     // + 1: `guardarSoloSalonPromoCarta` (docs/diseno-promo-solo-salon-2026-10-26.md), en `carta/promos.ts` (que ya estaba entre los 17 archivos).
     // Las 18 de configuración de la carta pasan a 19: `confirmarNombreEnCarta` («Está bien así», 2026-11-04), en `carta/contenido-producto.ts` (que ya estaba entre los archivos).
-    expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 19);
+    // Pasan a 20: `reemplazarCartaDeSucursal` (2026-11-10), en `carta/copiar-carta.ts` (que ya estaba entre los archivos).
+    expect(total).toBe(51 + 1 + RECETA_PROPIA_YA_MIGRADAS.length + 20);
     expect(Object.keys(DECLARADAS).filter((a) => a !== "catalogo/recetas.ts")).toHaveLength(17 + 8);
     for (const f of RECETA_PROPIA_YA_MIGRADAS) expect(DECLARADAS["catalogo/receta-sucursal.ts"][f], f).toBeDefined();
     // Bloque D: de las 18, 7 son de empresa (secciones —con «Ordenar» de CARTA-MANT F3—, portal y registro público) y 11 de sucursal: copiar la carta y la del tema, y desde S-10/D1 (O.59) las 9 de géneros, contenido e ítems agrupados.
     const delBloqueD = ["carta/secciones.ts", "carta/generos.ts", "carta/contenido-producto.ts", "carta/items-agrupados.ts", "carta/portal-empresa.ts", "carta/registro-publico.ts", "carta/tema.ts", "carta/copiar-carta.ts"].flatMap((a) => Object.values(DECLARADAS[a]));
-    expect(delBloqueD).toHaveLength(19);
-    expect(delBloqueD.filter((d) => d.envoltorio === "conPermiso")).toHaveLength(12);
+    expect(delBloqueD).toHaveLength(20);
+    expect(delBloqueD.filter((d) => d.envoltorio === "conPermiso")).toHaveLength(13);
   });
 });
 

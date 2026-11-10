@@ -89,3 +89,16 @@ export async function copiarContenidosDeCarta(
     })),
   });
 }
+
+/**
+ * Borra la carta PROPIA de la sucursal (`OpcionItemAgrupadoCarta`, `ContenidoCartaProducto`, `ItemAgrupadoCarta` y `GeneroCarta`, en ese orden: la opción depende del ítem con RESTRICT; el contenido y el ítem
+ * apuntan al género con SET NULL) para «reemplazar la carta con la de otra sucursal» (2026-11-10). Ninguna otra tabla referencia estas filas (ventas, promos, cupos, menú del día y combos referencian
+ * productos). Solo las filas de la sucursal dada; lo llama el caso de uso `reemplazar-carta-de-sucursal.ts` con el `tx` de su transacción SERIALIZABLE, DESPUÉS de auditar la foto de lo que se borra.
+ */
+export async function borrarCartaPropiaDeSucursal(tx: Prisma.TransactionClient, args: { sucursalId: string }): Promise<{ opciones: number; contenidos: number; items: number; generos: number }> {
+  const opciones = (await tx.opcionItemAgrupadoCarta.deleteMany({ where: { sucursalId: args.sucursalId } })).count;
+  const contenidos = (await tx.contenidoCartaProducto.deleteMany({ where: { sucursalId: args.sucursalId } })).count;
+  const items = (await tx.itemAgrupadoCarta.deleteMany({ where: { sucursalId: args.sucursalId } })).count;
+  const generos = (await tx.generoCarta.deleteMany({ where: { sucursalId: args.sucursalId } })).count;
+  return { opciones, contenidos, items, generos };
+}
