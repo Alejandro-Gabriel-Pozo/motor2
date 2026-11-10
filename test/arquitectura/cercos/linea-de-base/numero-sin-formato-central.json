@@ -1,13 +1,13 @@
 {
   "regla": "numero-sin-formato-central",
   "meta": "0 (cada pantalla muestra sus números con core/formato-de-numero.ts: «1.000,00», dinero con 2 decimales, unidad pegada); baja con cada etapa",
-  "total": 120,
-  "entradas": 46,
+  "total": 119,
+  "entradas": 45,
   "porTipo": {
     "intl-number-format": 2,
     "number-pelado": 2,
     "to-fixed": 12,
-    "to-locale-string": 104
+    "to-locale-string": 103
   },
   "cuentas": {
     "src/app/(app)/reportes/categorias/page.tsx": {
@@ -116,9 +116,6 @@
     },
     "src/core/compras/reparto-de-factura.ts": {
       "to-fixed": 2
-    },
-    "src/core/datos/campo-numero-logica.ts": {
-      "to-locale-string": 1
     },
     "src/core/moneda.ts": {
       "to-fixed": 1
