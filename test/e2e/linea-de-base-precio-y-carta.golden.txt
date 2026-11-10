@@ -14,47 +14,47 @@
   04 Bebidas
 ### Sección «Pizzas» (banda «01 / 04»)
   ÍTEM «Pizza muzzarella | Pizza de verduras asadas | Pizza fugazzeta | Pizza napolitana | Pizza con papas fritas» · forma: lista-sin-encabezado · precio del renglón: (ninguno)
-    filas: «Pizza muzzarella $ 18.000,00» «Pizza de verduras asadas $ 20.000,00» «Pizza fugazzeta $ 22.000,00» «Pizza napolitana $ 22.000,00» «Pizza con papas fritas $ 25.000,00»
-    texto visible: «Pizza muzzarella» «$ 18.000,00» «Pizza de verduras asadas» «$ 20.000,00» «Pizza fugazzeta» «$ 22.000,00» «Pizza napolitana» «$ 22.000,00» «Pizza con papas fritas» «$ 25.000,00»
+    filas: «Pizza muzzarella $ 18.000» «Pizza de verduras asadas $ 20.000» «Pizza fugazzeta $ 22.000» «Pizza napolitana $ 22.000» «Pizza con papas fritas $ 25.000»
+    texto visible: «Pizza muzzarella» «$ 18.000» «Pizza de verduras asadas» «$ 20.000» «Pizza fugazzeta» «$ 22.000» «Pizza napolitana» «$ 22.000» «Pizza con papas fritas» «$ 25.000»
 ### Sección «Platos» (banda «02 / 04»)
   ÍTEM «Milanesas» · forma: tabla · precio del renglón: (ninguno)
     tabla: columnas «Simple» «Napolitana»
-      fila: De carne | $ 20.000,00 | $ 25.000,00
-      fila: De pollo | $ 20.000,00 | $ 25.000,00
-    texto visible: «Milanesas» «Simple Napolitana» «De carne $ 20.000,00 $ 25.000,00» «De pollo $ 20.000,00 $ 25.000,00»
-  ÍTEM «Bife a la criolla» · forma: simple · precio del renglón: «$ 20.000,00»
-    debajo: «Extras extra de papas +$ 2.000,00 huevo frito +$ 1.500,00»
-    texto visible: «Bife a la criolla» «$ 20.000,00» «Extras» «extra de papas» «+$ 2.000,00» «huevo frito» «+$ 1.500,00»
+      fila: De carne | $ 20.000 | $ 25.000
+      fila: De pollo | $ 20.000 | $ 25.000
+    texto visible: «Milanesas» «Simple Napolitana» «De carne $ 20.000 $ 25.000» «De pollo $ 20.000 $ 25.000»
+  ÍTEM «Bife a la criolla» · forma: simple · precio del renglón: «$ 20.000»
+    debajo: «Extras extra de papas +$ 2.000 huevo frito +$ 1.500»
+    texto visible: «Bife a la criolla» «$ 20.000» «Extras» «extra de papas» «+$ 2.000» «huevo frito» «+$ 1.500»
   ÍTEM «GUARNICION · ELEGÍS 1» · forma: bloque de opciones · precio del renglón: (ninguno)
     texto visible: «GUARNICION · ELEGÍS 1» «ensalada · papas fritas · puré»
-  ÍTEM «Wok de verduras» · forma: sin opciones · precio del renglón: «$ 19.000,00»
-    texto visible: «Wok de verduras» «$ 19.000,00»
+  ÍTEM «Wok de verduras» · forma: sin opciones · precio del renglón: «$ 19.000»
+    texto visible: «Wok de verduras» «$ 19.000»
 ### Sección «Cafetería» (banda «03 / 04»)
   ÍTEM «Café» · forma: tabla · precio del renglón: (ninguno)
     tabla: columnas «Chico» «Mediano» «Grande»
-      fila: Café | $ 4.000,00 | $ 4.100,00 | $ 4.300,00
-    debajo: «Preparación del café Sin cargo: solo · cortado lágrima +$ 200,00 con leche +$ 300,00»
-    texto visible: «Café» «Chico Mediano Grande» «Café» «$ 4.000,00 $ 4.100,00 $ 4.300,00» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$ 200,00» «con leche» «+$ 300,00»
+      fila: Café | $ 4.000 | $ 4.100 | $ 4.300
+    debajo: «Preparación del café Sin cargo: solo · cortado lágrima +$ 200 con leche +$ 300»
+    texto visible: «Café» «Chico Mediano Grande» «Café» «$ 4.000 $ 4.100 $ 4.300» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$ 200» «con leche» «+$ 300»
   ÍTEM «Café de especialidad» · forma: tabla · precio del renglón: (ninguno)
     tabla: columnas «Chico» «Mediano» «Grande»
-      fila: Solo | $ 4.000,00 | $ 4.100,00 | $ 4.300,00
-      fila: Cortado | $ 4.000,00 | $ 4.100,00 | $ 4.300,00
-      fila: Lágrima | $ 4.200,00 | $ 4.300,00 | $ 4.500,00
-      fila: Con leche | $ 4.300,00 | $ 4.400,00 | $ 4.600,00
-    texto visible: «Café de especialidad» «Chico Mediano Grande» «Solo $ 4.000,00 $ 4.100,00 $ 4.300,00» «Cortado $ 4.000,00 $ 4.100,00 $ 4.300,00» «Lágrima $ 4.200,00 $ 4.300,00 $ 4.500,00» «Con leche $ 4.300,00 $ 4.400,00 $ 4.600,00»
+      fila: Solo | $ 4.000 | $ 4.100 | $ 4.300
+      fila: Cortado | $ 4.000 | $ 4.100 | $ 4.300
+      fila: Lágrima | $ 4.200 | $ 4.300 | $ 4.500
+      fila: Con leche | $ 4.300 | $ 4.400 | $ 4.600
+    texto visible: «Café de especialidad» «Chico Mediano Grande» «Solo $ 4.000 $ 4.100 $ 4.300» «Cortado $ 4.000 $ 4.100 $ 4.300» «Lágrima $ 4.200 $ 4.300 $ 4.500» «Con leche $ 4.300 $ 4.400 $ 4.600»
 ### Sección «Bebidas» (banda «04 / 04»)
-  ÍTEM «Gaseosa 500 cc» · forma: sin opciones · precio del renglón: «$ 4.000,00»
-    texto visible: «Gaseosa 500 cc» «$ 4.000,00»
+  ÍTEM «Gaseosa 500 cc» · forma: sin opciones · precio del renglón: «$ 4.000»
+    texto visible: «Gaseosa 500 cc» «$ 4.000»
 ### Barra de navegación (en la portada)
   botón «Página anterior» (deshabilitado)
   botón «Página siguiente»
 ### Texto plano de cada página (innerText, una línea por renglón)
   [1 portada] «L» «LB Precio y carta»
   [2 índice] «Índice» «01» «Pizzas» «02» «Platos» «03» «Cafetería» «04» «Bebidas»
-  [3 sección] «01 / 04» «Pizzas» «Pizza muzzarella» «$ 18.000,00» «Pizza de verduras asadas» «$ 20.000,00» «Pizza fugazzeta» «$ 22.000,00» «Pizza napolitana» «$ 22.000,00» «Pizza con papas fritas» «$ 25.000,00»
-  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple Napolitana» «De carne $ 20.000,00 $ 25.000,00» «De pollo $ 20.000,00 $ 25.000,00» «Bife a la criolla» «$ 20.000,00» «Extras» «extra de papas» «+$ 2.000,00» «huevo frito» «+$ 1.500,00» «GUARNICION · ELEGÍS 1» «ensalada · papas fritas · puré» «Wok de verduras» «$ 19.000,00»
-  [5 sección] «03 / 04» «Cafetería» «Café» «Chico Mediano Grande» «Café» «$ 4.000,00 $ 4.100,00 $ 4.300,00» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$ 200,00» «con leche» «+$ 300,00» «Café de especialidad» «Chico Mediano Grande» «Solo $ 4.000,00 $ 4.100,00 $ 4.300,00» «Cortado $ 4.000,00 $ 4.100,00 $ 4.300,00» «Lágrima $ 4.200,00 $ 4.300,00 $ 4.500,00» «Con leche $ 4.300,00 $ 4.400,00 $ 4.600,00»
-  [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$ 4.000,00»
+  [3 sección] «01 / 04» «Pizzas» «Pizza muzzarella» «$ 18.000» «Pizza de verduras asadas» «$ 20.000» «Pizza fugazzeta» «$ 22.000» «Pizza napolitana» «$ 22.000» «Pizza con papas fritas» «$ 25.000»
+  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple Napolitana» «De carne $ 20.000 $ 25.000» «De pollo $ 20.000 $ 25.000» «Bife a la criolla» «$ 20.000» «Extras» «extra de papas» «+$ 2.000» «huevo frito» «+$ 1.500» «GUARNICION · ELEGÍS 1» «ensalada · papas fritas · puré» «Wok de verduras» «$ 19.000»
+  [5 sección] «03 / 04» «Cafetería» «Café» «Chico Mediano Grande» «Café» «$ 4.000 $ 4.100 $ 4.300» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$ 200» «con leche» «+$ 300» «Café de especialidad» «Chico Mediano Grande» «Solo $ 4.000 $ 4.100 $ 4.300» «Cortado $ 4.000 $ 4.100 $ 4.300» «Lágrima $ 4.200 $ 4.300 $ 4.500» «Con leche $ 4.300 $ 4.400 $ 4.600»
+  [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$ 4.000»
 ### Tipografía computada (getComputedStyle: fontSize / fontWeight)
   barra superior · volver (enlace): 12px / 300
   portada · nombre (h1): 27.2px / 500
@@ -110,47 +110,47 @@
   04 Bebidas
 ### Sección «Pizzas» (banda «01 / 04»)
   ÍTEM «Pizza muzzarella | Pizza de verduras asadas | Pizza fugazzeta | Pizza napolitana | Pizza con papas fritas» · forma: lista-sin-encabezado · precio del renglón: (ninguno)
-    filas: «Pizza muzzarella $ 18.000,00» «Pizza de verduras asadas $ 20.000,00» «Pizza fugazzeta $ 22.000,00» «Pizza napolitana $ 22.000,00» «Pizza con papas fritas $ 25.000,00»
-    texto visible: «Pizza muzzarella» «$ 18.000,00» «Pizza de verduras asadas» «$ 20.000,00» «Pizza fugazzeta» «$ 22.000,00» «Pizza napolitana» «$ 22.000,00» «Pizza con papas fritas» «$ 25.000,00»
+    filas: «Pizza muzzarella $ 18.000» «Pizza de verduras asadas $ 20.000» «Pizza fugazzeta $ 22.000» «Pizza napolitana $ 22.000» «Pizza con papas fritas $ 25.000»
+    texto visible: «Pizza muzzarella» «$ 18.000» «Pizza de verduras asadas» «$ 20.000» «Pizza fugazzeta» «$ 22.000» «Pizza napolitana» «$ 22.000» «Pizza con papas fritas» «$ 25.000»
 ### Sección «Platos» (banda «02 / 04»)
   ÍTEM «Milanesas» · forma: tabla · precio del renglón: (ninguno)
     tabla: columnas «Simple» «Napolitana»
-      fila: De carne | $ 20.000,00 | $ 25.000,00
-      fila: De pollo | $ 20.000,00 | $ 25.000,00
-    texto visible: «Milanesas» «Simple Napolitana» «De carne $ 20.000,00 $ 25.000,00» «De pollo $ 20.000,00 $ 25.000,00»
-  ÍTEM «Bife a la criolla» · forma: simple · precio del renglón: «$ 20.000,00»
-    debajo: «Extras extra de papas +$ 2.000,00 huevo frito +$ 1.500,00»
-    texto visible: «Bife a la criolla» «$ 20.000,00» «Extras» «extra de papas» «+$ 2.000,00» «huevo frito» «+$ 1.500,00»
+      fila: De carne | $ 20.000 | $ 25.000
+      fila: De pollo | $ 20.000 | $ 25.000
+    texto visible: «Milanesas» «Simple Napolitana» «De carne $ 20.000 $ 25.000» «De pollo $ 20.000 $ 25.000»
+  ÍTEM «Bife a la criolla» · forma: simple · precio del renglón: «$ 20.000»
+    debajo: «Extras extra de papas +$ 2.000 huevo frito +$ 1.500»
+    texto visible: «Bife a la criolla» «$ 20.000» «Extras» «extra de papas» «+$ 2.000» «huevo frito» «+$ 1.500»
   ÍTEM «GUARNICION · ELEGÍS 1» · forma: bloque de opciones · precio del renglón: (ninguno)
     texto visible: «GUARNICION · ELEGÍS 1» «ensalada · papas fritas · puré»
-  ÍTEM «Wok de verduras» · forma: sin opciones · precio del renglón: «$ 19.000,00»
-    texto visible: «Wok de verduras» «$ 19.000,00»
+  ÍTEM «Wok de verduras» · forma: sin opciones · precio del renglón: «$ 19.000»
+    texto visible: «Wok de verduras» «$ 19.000»
 ### Sección «Cafetería» (banda «03 / 04»)
   ÍTEM «Café» · forma: tabla · precio del renglón: (ninguno)
     tabla: columnas «Chico» «Mediano» «Grande»
-      fila: Café | $ 4.000,00 | $ 4.100,00 | $ 4.300,00
-    debajo: «Preparación del café Sin cargo: solo · cortado lágrima +$ 200,00 con leche +$ 300,00»
-    texto visible: «Café» «Chico Mediano Grande» «Café» «$ 4.000,00 $ 4.100,00 $ 4.300,00» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$ 200,00» «con leche» «+$ 300,00»
+      fila: Café | $ 4.000 | $ 4.100 | $ 4.300
+    debajo: «Preparación del café Sin cargo: solo · cortado lágrima +$ 200 con leche +$ 300»
+    texto visible: «Café» «Chico Mediano Grande» «Café» «$ 4.000 $ 4.100 $ 4.300» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$ 200» «con leche» «+$ 300»
   ÍTEM «Café de especialidad» · forma: tabla · precio del renglón: (ninguno)
     tabla: columnas «Chico» «Mediano» «Grande»
-      fila: Solo | $ 4.000,00 | $ 4.100,00 | $ 4.300,00
-      fila: Cortado | $ 4.000,00 | $ 4.100,00 | $ 4.300,00
-      fila: Lágrima | $ 4.200,00 | $ 4.300,00 | $ 4.500,00
-      fila: Con leche | $ 4.300,00 | $ 4.400,00 | $ 4.600,00
-    texto visible: «Café de especialidad» «Chico Mediano Grande» «Solo $ 4.000,00 $ 4.100,00 $ 4.300,00» «Cortado $ 4.000,00 $ 4.100,00 $ 4.300,00» «Lágrima $ 4.200,00 $ 4.300,00 $ 4.500,00» «Con leche $ 4.300,00 $ 4.400,00 $ 4.600,00»
+      fila: Solo | $ 4.000 | $ 4.100 | $ 4.300
+      fila: Cortado | $ 4.000 | $ 4.100 | $ 4.300
+      fila: Lágrima | $ 4.200 | $ 4.300 | $ 4.500
+      fila: Con leche | $ 4.300 | $ 4.400 | $ 4.600
+    texto visible: «Café de especialidad» «Chico Mediano Grande» «Solo $ 4.000 $ 4.100 $ 4.300» «Cortado $ 4.000 $ 4.100 $ 4.300» «Lágrima $ 4.200 $ 4.300 $ 4.500» «Con leche $ 4.300 $ 4.400 $ 4.600»
 ### Sección «Bebidas» (banda «04 / 04»)
-  ÍTEM «Gaseosa 500 cc» · forma: sin opciones · precio del renglón: «$ 4.000,00»
-    texto visible: «Gaseosa 500 cc» «$ 4.000,00»
+  ÍTEM «Gaseosa 500 cc» · forma: sin opciones · precio del renglón: «$ 4.000»
+    texto visible: «Gaseosa 500 cc» «$ 4.000»
 ### Barra de navegación (en la portada)
   botón «Página anterior» (deshabilitado)
   botón «Página siguiente»
 ### Texto plano de cada página (innerText, una línea por renglón)
   [1 portada] «L» «LB Precio y carta»
   [2 índice] «Índice» «01» «Pizzas» «02» «Platos» «03» «Cafetería» «04» «Bebidas»
-  [3 sección] «01 / 04» «Pizzas» «Pizza muzzarella» «$ 18.000,00» «Pizza de verduras asadas» «$ 20.000,00» «Pizza fugazzeta» «$ 22.000,00» «Pizza napolitana» «$ 22.000,00» «Pizza con papas fritas» «$ 25.000,00»
-  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple Napolitana» «De carne $ 20.000,00 $ 25.000,00» «De pollo $ 20.000,00 $ 25.000,00» «Bife a la criolla» «$ 20.000,00» «Extras» «extra de papas» «+$ 2.000,00» «huevo frito» «+$ 1.500,00» «GUARNICION · ELEGÍS 1» «ensalada · papas fritas · puré» «Wok de verduras» «$ 19.000,00»
-  [5 sección] «03 / 04» «Cafetería» «Café» «Chico Mediano Grande» «Café» «$ 4.000,00 $ 4.100,00 $ 4.300,00» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$ 200,00» «con leche» «+$ 300,00» «Café de especialidad» «Chico Mediano Grande» «Solo $ 4.000,00 $ 4.100,00 $ 4.300,00» «Cortado $ 4.000,00 $ 4.100,00 $ 4.300,00» «Lágrima $ 4.200,00 $ 4.300,00 $ 4.500,00» «Con leche $ 4.300,00 $ 4.400,00 $ 4.600,00»
-  [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$ 4.000,00»
+  [3 sección] «01 / 04» «Pizzas» «Pizza muzzarella» «$ 18.000» «Pizza de verduras asadas» «$ 20.000» «Pizza fugazzeta» «$ 22.000» «Pizza napolitana» «$ 22.000» «Pizza con papas fritas» «$ 25.000»
+  [4 sección] «02 / 04» «Platos» «Milanesas» «Simple Napolitana» «De carne $ 20.000 $ 25.000» «De pollo $ 20.000 $ 25.000» «Bife a la criolla» «$ 20.000» «Extras» «extra de papas» «+$ 2.000» «huevo frito» «+$ 1.500» «GUARNICION · ELEGÍS 1» «ensalada · papas fritas · puré» «Wok de verduras» «$ 19.000»
+  [5 sección] «03 / 04» «Cafetería» «Café» «Chico Mediano Grande» «Café» «$ 4.000 $ 4.100 $ 4.300» «Preparación del café» «Sin cargo: solo · cortado» «lágrima» «+$ 200» «con leche» «+$ 300» «Café de especialidad» «Chico Mediano Grande» «Solo $ 4.000 $ 4.100 $ 4.300» «Cortado $ 4.000 $ 4.100 $ 4.300» «Lágrima $ 4.200 $ 4.300 $ 4.500» «Con leche $ 4.300 $ 4.400 $ 4.600»
+  [6 sección] «04 / 04» «Bebidas» «Gaseosa 500 cc» «$ 4.000»
 ### Tipografía computada (getComputedStyle: fontSize / fontWeight)
   barra superior · volver (enlace): 12px / 300
   portada · nombre (h1): 33.6px / 500
@@ -288,15 +288,15 @@
   ### Cómo se va a ver en la carta
   Con el precio de lista de «LB Precio y carta», sin descuentos. Es la forma que le da la carta pública; si cambia algo arriba, se actualiza al guardar.
   ### Pizza muzzarella
-  $ 18.000,00
+  $ 18.000
   ### Pizza de verduras asadas
-  $ 20.000,00
+  $ 20.000
   ### Pizza fugazzeta
-  $ 22.000,00
+  $ 22.000
   ### Pizza napolitana
-  $ 22.000,00
+  $ 22.000
   ### Pizza con papas fritas
-  $ 25.000,00
+  $ 25.000
   ### [lector: Así se cobra]
   Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000,00
   Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000,00 · Pizza de verduras asadas $ 20.000,00 · Pizza fugazzeta $ 22.000,00 · Pizza napolitana $ 22.000,00 · Pizza con papas fritas $ 25.000,00
@@ -396,15 +396,15 @@
   ### Cómo se va a ver en la carta
   Con el precio de lista de «LB Precio y carta», sin descuentos. Es la forma que le da la carta pública; si cambia algo arriba, se actualiza al guardar.
   ### Pizza muzzarella
-  $ 18.000,00
+  $ 18.000
   ### Pizza de verduras asadas
-  $ 20.000,00
+  $ 20.000
   ### Pizza fugazzeta
-  $ 22.000,00
+  $ 22.000
   ### Pizza napolitana
-  $ 22.000,00
+  $ 22.000
   ### Pizza con papas fritas
-  $ 25.000,00
+  $ 25.000
   ### [lector: Así se cobra]
   Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000,00
   Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000,00 · Pizza de verduras asadas $ 20.000,00 · Pizza fugazzeta $ 22.000,00 · Pizza napolitana $ 22.000,00 · Pizza con papas fritas $ 25.000,00
