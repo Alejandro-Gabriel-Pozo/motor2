@@ -206,7 +206,7 @@
   [enlace: En la carta]
   ## Opciones y precio
   Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en la [enlace: Biblioteca de opciones].
-  Se vende por opción: el precio guardado ($ 18.000) no se cobra, rige el precio final de cada opción. El precio de cada sucursal se cambia en [enlace: Precio local].
+  Se vende por opción: el precio guardado ($ 18.000,00) no se cobra, rige el precio final de cada opción. El precio de cada sucursal se cambia en [enlace: Precio local].
   [botón: + Nuevo grupo]
   [botón: Agregar un grupo existente]
   ### Tipos de Pizza
@@ -225,37 +225,37 @@
   [lector: Precio de Pizza muzzarella en este producto]
   $
   [campo: «18.000»]
-  Pizza muzzarella = $ 18.000
+  Pizza muzzarella = $ 18.000,00
   [x]
   Pizza de verduras asadas
   [lector: Precio de Pizza de verduras asadas en este producto]
   $
   [campo: «20.000»]
-  Pizza de verduras asadas = $ 20.000
+  Pizza de verduras asadas = $ 20.000,00
   [x]
   Pizza fugazzeta
   [lector: Precio de Pizza fugazzeta en este producto]
   $
   [campo: «22.000»]
-  Pizza fugazzeta = $ 22.000
+  Pizza fugazzeta = $ 22.000,00
   [x]
   Pizza napolitana
   [lector: Precio de Pizza napolitana en este producto]
   $
   [campo: «22.000»]
-  Pizza napolitana = $ 22.000
+  Pizza napolitana = $ 22.000,00
   [x]
   Pizza con papas fritas
   [lector: Precio de Pizza con papas fritas en este producto]
   $
   [campo: «25.000»]
-  Pizza con papas fritas = $ 25.000
+  Pizza con papas fritas = $ 25.000,00
   [x]
   Pizza bomba
   [lector: Precio de Pizza bomba en este producto]
   $
   [campo: «25.000»]
-  Pizza bomba = $ 25.000
+  Pizza bomba = $ 25.000,00
   [botón: Guardar «Tipos de Pizza»]
   #### Qué consume cada opción
   Pizza muzzarella
@@ -298,8 +298,8 @@
   ### Pizza con papas fritas
   $25.000
   ### [lector: Así se cobra]
-  Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000
-  Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000 · Pizza de verduras asadas $ 20.000 · Pizza fugazzeta $ 22.000 · Pizza napolitana $ 22.000 · Pizza con papas fritas $ 25.000
+  Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000,00
+  Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000,00 · Pizza de verduras asadas $ 20.000,00 · Pizza fugazzeta $ 22.000,00 · Pizza napolitana $ 22.000,00 · Pizza con papas fritas $ 25.000,00
 
 ## ADMINISTRACIÓN a 375 px: Opciones de venta del producto «Pizzas» (/catalogo/productos/<id de Pizzas>/opciones)
   [enlace: ← Productos]
@@ -314,7 +314,7 @@
   [enlace: En la carta]
   ## Opciones y precio
   Qué se elige al venderlo y cómo cambia el precio. Los grupos y sus opciones se arman en la [enlace: Biblioteca de opciones].
-  Se vende por opción: el precio guardado ($ 18.000) no se cobra, rige el precio final de cada opción. El precio de cada sucursal se cambia en [enlace: Precio local].
+  Se vende por opción: el precio guardado ($ 18.000,00) no se cobra, rige el precio final de cada opción. El precio de cada sucursal se cambia en [enlace: Precio local].
   [botón: + Nuevo grupo]
   [botón: Agregar un grupo existente]
   ### Tipos de Pizza
@@ -333,37 +333,37 @@
   [lector: Precio de Pizza muzzarella en este producto]
   $
   [campo: «18.000»]
-  Pizza muzzarella = $ 18.000
+  Pizza muzzarella = $ 18.000,00
   [x]
   Pizza de verduras asadas
   [lector: Precio de Pizza de verduras asadas en este producto]
   $
   [campo: «20.000»]
-  Pizza de verduras asadas = $ 20.000
+  Pizza de verduras asadas = $ 20.000,00
   [x]
   Pizza fugazzeta
   [lector: Precio de Pizza fugazzeta en este producto]
   $
   [campo: «22.000»]
-  Pizza fugazzeta = $ 22.000
+  Pizza fugazzeta = $ 22.000,00
   [x]
   Pizza napolitana
   [lector: Precio de Pizza napolitana en este producto]
   $
   [campo: «22.000»]
-  Pizza napolitana = $ 22.000
+  Pizza napolitana = $ 22.000,00
   [x]
   Pizza con papas fritas
   [lector: Precio de Pizza con papas fritas en este producto]
   $
   [campo: «25.000»]
-  Pizza con papas fritas = $ 25.000
+  Pizza con papas fritas = $ 25.000,00
   [x]
   Pizza bomba
   [lector: Precio de Pizza bomba en este producto]
   $
   [campo: «25.000»]
-  Pizza bomba = $ 25.000
+  Pizza bomba = $ 25.000,00
   [botón: Guardar «Tipos de Pizza»]
   #### Qué consume cada opción
   Pizza muzzarella
@@ -406,8 +406,8 @@
   ### Pizza con papas fritas
   $25.000
   ### [lector: Así se cobra]
-  Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000
-  Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000 · Pizza de verduras asadas $ 20.000 · Pizza fugazzeta $ 22.000 · Pizza napolitana $ 22.000 · Pizza con papas fritas $ 25.000
+  Así se cobra en «LB Precio y carta» (precio de lista, sin descuentos) · desde $ 18.000,00
+  Tipos de Pizza (Tamaño · Elegí 1): Pizza muzzarella $ 18.000,00 · Pizza de verduras asadas $ 20.000,00 · Pizza fugazzeta $ 22.000,00 · Pizza napolitana $ 22.000,00 · Pizza con papas fritas $ 25.000,00
 
 ## ADMINISTRACIÓN a 1280 px: Grupo de opciones «Tipos de Pizza» (/catalogo/opciones/<id de Tipos de Pizza>)
   [enlace: ← Biblioteca de opciones]
@@ -734,7 +734,7 @@
     ▾
     Pizzas
     1 producto
-    ▾ Pizzas · Pizzas · $18.000 · se muestra
+    ▾ Pizzas · Pizzas · $ 18.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -764,7 +764,7 @@
     ▾
     Platos
     3 productos
-    ▾ Milanesas · Platos · $20.000 · se muestra
+    ▾ Milanesas · Platos · $ 20.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -785,7 +785,7 @@
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Milanesas»]
     [botón: Quitar «Milanesas» de la carta (vuelve a «Fuera de carta»)]
-    ▾ Bife a la criolla · Platos · $20.000 · se muestra
+    ▾ Bife a la criolla · Platos · $ 20.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -806,7 +806,7 @@
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Bife a la criolla»]
     [botón: Quitar «Bife a la criolla» de la carta (vuelve a «Fuera de carta»)]
-    ▾ Wok de verduras · Platos · $19.000 · se muestra
+    ▾ Wok de verduras · Platos · $ 19.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -831,7 +831,7 @@
     ▾
     Cafetería
     2 productos
-    ▾ Café · Cafetería · $4.000 · se muestra
+    ▾ Café · Cafetería · $ 4.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -852,7 +852,7 @@
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Café»]
     [botón: Quitar «Café» de la carta (vuelve a «Fuera de carta»)]
-    ▾ Café de especialidad · Cafetería · $4.000 · se muestra
+    ▾ Café de especialidad · Cafetería · $ 4.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -877,7 +877,7 @@
     ▾
     Bebidas
     1 producto
-    ▾ Gaseosa 500 cc · Bebidas · $4.000 · se muestra
+    ▾ Gaseosa 500 cc · Bebidas · $ 4.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -1018,7 +1018,7 @@
     ▾
     Pizzas
     1 producto
-    ▾ Pizzas · Pizzas · $18.000 · se muestra
+    ▾ Pizzas · Pizzas · $ 18.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -1048,7 +1048,7 @@
     ▾
     Platos
     3 productos
-    ▾ Milanesas · Platos · $20.000 · se muestra
+    ▾ Milanesas · Platos · $ 20.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -1069,7 +1069,7 @@
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Milanesas»]
     [botón: Quitar «Milanesas» de la carta (vuelve a «Fuera de carta»)]
-    ▾ Bife a la criolla · Platos · $20.000 · se muestra
+    ▾ Bife a la criolla · Platos · $ 20.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -1090,7 +1090,7 @@
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Bife a la criolla»]
     [botón: Quitar «Bife a la criolla» de la carta (vuelve a «Fuera de carta»)]
-    ▾ Wok de verduras · Platos · $19.000 · se muestra
+    ▾ Wok de verduras · Platos · $ 19.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -1115,7 +1115,7 @@
     ▾
     Cafetería
     2 productos
-    ▾ Café · Cafetería · $4.000 · se muestra
+    ▾ Café · Cafetería · $ 4.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -1136,7 +1136,7 @@
     [campo: vacío, ayuda «Regional, Sin TACC»]
     [botón: Guardar contenido de «Café»]
     [botón: Quitar «Café» de la carta (vuelve a «Fuera de carta»)]
-    ▾ Café de especialidad · Cafetería · $4.000 · se muestra
+    ▾ Café de especialidad · Cafetería · $ 4.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta
@@ -1161,7 +1161,7 @@
     ▾
     Bebidas
     1 producto
-    ▾ Gaseosa 500 cc · Bebidas · $4.000 · se muestra
+    ▾ Gaseosa 500 cc · Bebidas · $ 4.000,00 · se muestra
     [enlace: Abrir en el producto]
     [x]
     Se muestra en la carta

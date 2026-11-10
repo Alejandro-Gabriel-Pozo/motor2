@@ -1089,6 +1089,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Cargar qué consume cada opción desde la pestaña Opciones del producto (ADITIVO, solo ADMINISTRACIÓN; la carta pública y el cobro idénticos; pedido del dueño del 2026-11-09, aprobado con capturas; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): la tarjeta de cada grupo de la pantalla de opciones de Pizzas (a 1280 y a 375 px) suma la sección «Qué consume cada opción» (una fila por opción con «pendiente de completar» y «Editar consumo»). Revisado con `git diff`: son 50 líneas agregadas, ninguna otra pantalla, precio ni tipografía cambia.",
       },
+      {
+        blob: "149399e72d0defc44552bf739e75a0d4b8bb1921",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, 912a9a2a («specs e2e que fijaban el formato viejo»).
+        commit: "912a9a2a",
+        motivo:
+          "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, comprobado: sin «,00» y sin el espacio tras «$» las líneas viejas y nuevas son idénticas): los importes de las pantallas de ADMINISTRACIÓN (resumen «Así se cobra», lectura de precio de cada opción, vista previa de la carta en el catálogo) salen con 2 decimales («$ 18.000» pasa a «$ 18.000,00»; «$18.000» pasa a «$ 18.000,00»). Cambia 32 líneas por ancho (64 en total). La carta PÚBLICA del cliente NO cambia (no hay ninguna línea suya en el diff).",
+      },
     ],
   },
 };
