@@ -159,7 +159,7 @@ describe("Server Actions de ítems agrupados", () => {
       const rechazo = await agregarOpcionItemAgrupadoCarta(agId, ids.fanta);
       expect(rechazo).toEqual({
         ok: false,
-        mensaje: "«Fanta 500cc» cuesta $5.500 acá y «Gaseosa 500 CC» ya tiene opciones a $5.000: agrupá solo productos del mismo precio, o dejala aparte.",
+        mensaje: "«Fanta 500cc» cuesta $\u00a05.500,00 acá y «Gaseosa 500 CC» ya tiene opciones a $\u00a05.000,00: agrupá solo productos del mismo precio, o dejala aparte.",
       });
       expect(await prisma.opcionItemAgrupadoCarta.count({ where: { itemAgrupadoCartaId: agId } })).toBe(2);
       expect(await prisma.opcionItemAgrupadoCarta.findFirst({ where: { productoId: ids.fanta } })).toBeNull();
@@ -178,7 +178,7 @@ describe("Server Actions de ítems agrupados", () => {
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.fanta)).ok).toBe(true);
       // Sprite tiene $5000 global pero un local habilitado de $6000 acá: no coincide.
       await prisma.precioLocalProducto.create({ data: { sucursalId, productoId: ids.sprite, precio: 6000, habilitado: true } });
-      expect((await agregarOpcionItemAgrupadoCarta(agId, ids.sprite)).mensaje).toMatch(/^«Sprite 500cc» cuesta \$6\.000 acá/);
+      expect((await agregarOpcionItemAgrupadoCarta(agId, ids.sprite)).mensaje).toMatch(/^«Sprite 500cc» cuesta \$\u00a06\.000,00 acá/);
       // Deshabilitado: vuelve a valer el global ($5000) y entra.
       await prisma.precioLocalProducto.updateMany({ where: { productoId: ids.sprite }, data: { habilitado: false } });
       expect((await agregarOpcionItemAgrupadoCarta(agId, ids.sprite)).ok).toBe(true);
@@ -277,7 +277,7 @@ describe("Server Actions de ítems agrupados", () => {
       const r = await guardarItemAgrupadoCarta({ nombre: "Gaseosa 500 CC", seccionCartaId: sBebidas, productoIds: [ids.coca, ids.fanta, ids.sprite] });
       expect(r.ok).toBe(true);
       expect(r.mensaje).toBe(
-        'Ítem agrupado "Gaseosa 500 CC" creado con 2 de 3 productos. No entró: «Fanta 500cc» cuesta $5.500 acá y «Gaseosa 500 CC» ya tiene opciones a $5.000: agrupá solo productos del mismo precio, o dejala aparte.'
+        'Ítem agrupado "Gaseosa 500 CC" creado con 2 de 3 productos. No entró: «Fanta 500cc» cuesta $\u00a05.500,00 acá y «Gaseosa 500 CC» ya tiene opciones a $\u00a05.000,00: agrupá solo productos del mismo precio, o dejala aparte.'
       );
       expect(await opcionesDe(r.ok ? r.id : "")).toEqual([
         [ids.coca, 0],

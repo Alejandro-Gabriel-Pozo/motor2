@@ -24,7 +24,7 @@ describe("obtenerTicketsRecientes", () => {
     await entrarComo(s.admin);
   });
 
-  const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   /** Una cuenta enviada a cocina y cerrada con venta en la mesa 4. */
   async function cerrarUna(cantidad: number) {

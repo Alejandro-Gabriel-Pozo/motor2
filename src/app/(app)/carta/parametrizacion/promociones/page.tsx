@@ -31,6 +31,7 @@ import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoNumero } from "@/components/campo-numero";
 import { Casilla } from "@/ui/primitivas/casilla";
+import { formatearCantidad, formatearMonto } from "@/core/formato-de-numero";
 
 /** Ayudantes puros de los closures "use server" de esta página (locales a propósito: `use-server-solo-donde-corresponde` solo los acepta definidos en el mismo archivo). */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
@@ -97,7 +98,7 @@ export default async function PromocionesDeCartaPage() {
               <li key={pr.id} className="rounded border p-3" data-promo-carta={pr.titulo}>
                 <details>
                   <summary className="cursor-pointer text-sm max-md:min-h-11 max-md:py-2">
-                    <span className="font-medium">{pr.titulo}</span> · ${pr.precioAca.toLocaleString("es-AR")}
+                    <span className="font-medium">{pr.titulo}</span> · {formatearMonto(pr.precioAca)}
                     {pr.precioLocal !== null ? (datos.precioLocalActivo ? " (precio de esta sucursal)" : " (no rige: precio local apagado)") : ""} · {pr.seccionCarta} ·{" "}
                     {!pr.activa ? "apagada en toda la empresa" : pr.prendidaAca ? "prendida acá" : "apagada acá"} ·{" "}
                     {combo.soloSalon ? "solo salón · " : ""}
@@ -133,7 +134,7 @@ export default async function PromocionesDeCartaPage() {
                       <Dato etiqueta="Descripción" ancho>
                         {pr.descripcion}
                       </Dato>
-                      <Dato etiqueta="Precio de la empresa">${pr.precio.toLocaleString("es-AR")}</Dato>
+                      <Dato etiqueta="Precio de la empresa">{formatearMonto(pr.precio)}</Dato>
                       <Dato etiqueta="Orden">{pr.orden}</Dato>
                     </DatosSoloLectura>
                   )}
@@ -161,7 +162,7 @@ export default async function PromocionesDeCartaPage() {
                   ) : (
                     <DatosSoloLectura className="mt-3">
                       <Dato etiqueta="Precio en esta sucursal">
-                        {pr.precioLocal !== null ? `$${pr.precioLocal.toLocaleString("es-AR")}${datos.precioLocalActivo ? "" : " (no rige: precio local apagado)"}` : "El de la empresa"}
+                        {pr.precioLocal !== null ? `${formatearMonto(pr.precioLocal)}${datos.precioLocalActivo ? "" : " (no rige: precio local apagado)"}` : "El de la empresa"}
                       </Dato>
                     </DatosSoloLectura>
                   )}
@@ -209,8 +210,8 @@ export default async function PromocionesDeCartaPage() {
                           return (
                             <p className="text-xs text-tinta-tenue" data-aviso-peor-caso={pr.titulo}>
                               Con los cupos de hoy, el peor caso son {unidadesEnElPeorCaso} unidad{unidadesEnElPeorCaso === 1 ? "" : "es"} y el precio mínimo permitido es $
-                              {minimo.toLocaleString("es-AR")}
-                              {holgura > 0 ? ` — hay $${holgura.toLocaleString("es-AR")} de margen antes de ese piso si subís algún máximo.` : "."}
+                              {formatearCantidad(minimo)}
+                              {holgura > 0 ? ` — hay ${formatearMonto(holgura)} de margen antes de ese piso si subís algún máximo.` : "."}
                             </p>
                           );
                         })()}

@@ -8,8 +8,9 @@ import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosConfiguradosEnSucursal } from "@/server/lecturas/carta/descuentos";
 import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { crearOpcionDeItemAgrupado } from "@/server/persistencia/carta/items-agrupados";
+import { formatearMonto } from "@/core/formato-de-numero";
 
-const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
+const pesos = formatearMonto;
 
 /** El mensaje cuando el producto ya está en un ítem agrupado (el mismo u otro) de la sucursal: un producto va en a lo sumo uno (D2). `null` si no está en ninguno. */
 async function mensajeYaAgrupado(db: ContextoUsuario["db"], sucursalId: string, productoId: string, productoNombre: string, itemAgrupadoCartaId: string): Promise<string | null> {

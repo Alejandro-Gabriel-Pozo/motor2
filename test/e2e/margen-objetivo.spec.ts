@@ -28,7 +28,7 @@ test("el admin fija el objetivo de la empresa y el de una categoría, y Costos c
 
     // Sin objetivo cargado rige el 40 % por defecto: con el costo en $4000 sobre $10.000 está justo, no alto.
     await page.goto("/reportes/costos");
-    await expect(fila).toContainText("$10.000");
+    await expect(fila).toContainText("$ 10.000,00");
     await expect(fila.getByText("Food cost alto")).toHaveCount(0);
 
     // Objetivo de la empresa: 30 % → el mismo plato pasa a «Food cost alto» y el precio mínimo sube a $4000 ÷ 0,30 redondeado hacia arriba.
@@ -38,8 +38,8 @@ test("el admin fija el objetivo de la empresa y el de una categoría, y Costos c
     await page.locator("section", { hasText: "De toda la empresa" }).getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByText("Food cost objetivo de la empresa: 30 %.")).toBeVisible();
     await page.goto("/reportes/costos");
-    await expect(fila).toContainText("30%");
-    await expect(fila).toContainText("$13.333,34");
+    await expect(fila).toContainText("30 %");
+    await expect(fila).toContainText("$ 13.333,34");
     await expect(fila.getByText("Food cost alto")).toBeVisible();
 
     // Objetivo de la categoría del plato: 50 % → gana sobre el de la empresa y el plato vuelve a estar bien.
@@ -49,8 +49,8 @@ test("el admin fija el objetivo de la empresa y el de una categoría, y Costos c
     await filaCategoria.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByText(`Food cost objetivo de la categoría «${categoria.nombre}»: 50 %.`)).toBeVisible();
     await page.goto("/reportes/costos");
-    await expect(fila).toContainText("50%");
-    await expect(fila).toContainText("$8.000");
+    await expect(fila).toContainText("50 %");
+    await expect(fila).toContainText("$ 8.000,00");
     await expect(fila.getByText("Food cost alto")).toHaveCount(0);
 
     // Un valor fuera de rango se rechaza con su mensaje y no cambia nada.

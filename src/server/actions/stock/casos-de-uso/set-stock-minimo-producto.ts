@@ -5,6 +5,7 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cambiarMinimoSiSigueComoSeVio, guardarMinimoDeSeccion, guardarMinimoGlobal, leerMinimo } from "@/server/persistencia/stock/stock-minimo";
 import { decidirCambioDeMinimo } from "@/core/stock/public";
+import { formatearCantidad } from "@/core/formato-de-numero";
 
 /**
  * Caso de uso «fijar el stock mínimo de un producto en la sucursal activa, global o de una sección» (port de setStockMinimoProducto_, Catalogo.js:1982-2008; Hito 4
@@ -84,7 +85,7 @@ export async function setStockMinimoProductoCasoDeUso(
 }
 
 /** Cómo se lee un mínimo en un mensaje: «12» o «1,5» (es-AR), o «sin cargar» si la fila ya no existe. */
-const textoDelMinimo = (valor: number | null) => (valor === null ? "sin cargar" : valor.toLocaleString("es-AR", { maximumFractionDigits: 4 }));
+const textoDelMinimo = (valor: number | null) => (valor === null ? "sin cargar" : formatearCantidad(valor));
 
 type ResultadoDelCambio = { tipo: "CAMBIADO" | "SIN_CAMBIO" } | { tipo: "CAMBIO_AJENO"; actual: number | null };
 

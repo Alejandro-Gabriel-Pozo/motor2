@@ -66,7 +66,7 @@ describe("textoDeDiferencia", () => {
     expect(textoDeDiferencia({ tipo: "PORCENTAJE", porcentaje: -12.5 }, formatearMonto)).toBe("− 12,5 %");
     expect(textoDeDiferencia({ tipo: "PORCENTAJE", porcentaje: 0 }, formatearMonto)).toBe("sin recargo");
     expect(textoDePorcentaje(7.125)).toBe("7,125");
-    expect(textoDePorcentaje(1234.5)).toBe("1234,5");
+    expect(textoDePorcentaje(1234.5)).toBe("1.234,5");
   });
 });
 

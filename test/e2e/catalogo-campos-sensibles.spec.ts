@@ -169,7 +169,7 @@ test("sin la clave, el precio de un producto de venta es solo lectura y un cambi
   try {
     await page.goto(`/catalogo/productos/${pv.id}/datos`);
     await expect(page.locator('input[name="nombre"]')).toHaveValue(pv.nombre);
-    await expect(soloLectura(page, "precioVenta")).toContainText("$100");
+    await expect(soloLectura(page, "precioVenta")).toContainText("$ 100,00");
     await expect(page.getByLabel("Precio de venta", { exact: true })).toHaveCount(0);
     await expect(aviso(page)).toBeVisible();
 
@@ -206,7 +206,7 @@ test("sin la clave, el alta se ve como la crea el servidor (precio 0, factor 1, 
     await expect(sinPoderVender(page)).toHaveCount(0);
 
     await page.getByLabel("Producto de venta (PV)").check();
-    await expect(soloLectura(page, "precioVenta")).toContainText("$0");
+    await expect(soloLectura(page, "precioVenta")).toContainText("$ 0,00");
     await expect(page.getByLabel("Precio de venta", { exact: true })).toHaveCount(0);
     // M.2-A4: un PV sin la clave nace sin precio, así que NO se puede vender: el tilde se ve apagado y sin poder cambiarse, y un aviso (visible, no una ayuda gris) lo dice.
     await expect(page.getByLabel("Activo en todas las sucursales")).toBeDisabled();

@@ -149,7 +149,7 @@ export function TablaReporte<T>({ columnas, filas, claveFila, sinFilasTexto = "S
             {filasOrdenadas.map((f, i) => (
               <tr key={claveFila(f, i)} className={`border-b ${claseFila?.(f) ?? ""}`}>
                 {columnas.map((c) => (
-                  <td key={c.clave} className={`px-2 py-1 first:pl-0 ${c.alinear === "derecha" ? "text-right" : ""}`}>
+                  <td key={c.clave} className={`px-2 py-1 first:pl-0 ${c.alinear === "derecha" ? "text-right tabular-nums whitespace-nowrap" : ""}`}>
                     {c.render(f)}
                   </td>
                 ))}

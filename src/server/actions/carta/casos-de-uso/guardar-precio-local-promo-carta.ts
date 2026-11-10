@@ -8,6 +8,7 @@ import { mismosCentavos } from "@/core/datos/importe";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { fijarPrecioLocalDePromo } from "@/server/persistencia/carta/promos";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Caso de uso «fijar el precio de una promo en la sucursal activa» (Hito 4 de la pureza, bloque 4.2, paso H4C-2 — `docs/plan-hito-4-pureza.md` §3). Es el cuerpo
@@ -63,7 +64,7 @@ export async function guardarPrecioLocalPromoCartaCasoDeUso(
     if (fila && mismosCentavos(precioAnterior, valor)) return listo;
     if (!precioVisto.ok) return fracaso("PRECIO_INVALIDO", precioVisto.mensaje);
     if (!mismosCentavos(precioAnterior, precioVisto.valor)) {
-      const ahora = precioAnterior === null ? "ahora rige el de la empresa" : `ahora es $${precioAnterior.toLocaleString("es-AR")}`;
+      const ahora = precioAnterior === null ? "ahora rige el de la empresa" : `ahora es ${formatearMonto(precioAnterior)}`;
       return fracaso("PRECIO_DESACTUALIZADO", `El precio de "${promo.titulo}" en esta sucursal cambió mientras lo editabas (${ahora}). Recargá la pantalla y volvé a hacer el cambio.`);
     }
     await fijarPrecioLocalDePromo(tx, { promoCartaId, sucursalId: actor.sucursalId, precioLocal: valor });

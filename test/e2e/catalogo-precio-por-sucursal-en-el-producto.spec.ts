@@ -46,7 +46,7 @@ for (const { ancho, alto } of [
       await expect(editor.getByRole("button", { name: "Guardar el precio" }), "sin cambio no hay nada que guardar").toBeDisabled();
 
       await campo.fill("20000");
-      await expect(editor.locator("[data-cambio-de-precio]")).toContainText(/\$\s*18\.000 → \$\s*20\.000 \(\+11,1 %\)/);
+      await expect(editor.locator("[data-cambio-de-precio]")).toContainText(/\$\s*18\.000,00 → \$\s*20\.000,00 \(\+11,11 %\)/);
       await expectSinDesborde(page, `${ancho} px: el paso 2 con el precio de la sucursal`);
       if (ancho === 375) await expectObjetivosTactiles(editor.getByRole("button"), `${ancho} px: los botones del precio de la sucursal`);
       expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 con el precio editable").toEqual([]);
@@ -54,12 +54,12 @@ for (const { ancho, alto } of [
       await editor.getByRole("button", { name: "Guardar el precio" }).click();
       await expect(editor.getByRole("status")).toContainText(/Precio local de .* fijado en 20000/);
       expect(await filaLocal(sucursalId, p.id)).toEqual({ precio: 20000, habilitado: true });
-      await expect(page.locator("[data-precio-de-la-sucursal]")).toContainText(/\$\s*20\.000/);
+      await expect(page.locator("[data-precio-de-la-sucursal]")).toContainText(/\$\s*20\.000,00/);
 
       await editor.getByRole("button", { name: /^Volver al precio global/ }).click();
       await expect(editor.getByRole("button", { name: /^Volver al precio global/ })).toHaveCount(0);
       expect(await filaLocal(sucursalId, p.id)).toEqual({ precio: 20000, habilitado: false });
-      await expect(editor).toContainText(/Hay un precio local guardado \(\$\s*20\.000\) pero deshabilitado/);
+      await expect(editor).toContainText(/Hay un precio local guardado \(\$\s*20\.000,00\) pero deshabilitado/);
     });
 
     test("un cambio de MÁS de 30 % pide confirmar: «Volver» no escribe, «Sí, guardar el precio» sí", async ({ paginaAutenticada: page, sucursalId }) => {
@@ -71,10 +71,10 @@ for (const { ancho, alto } of [
       await expect(editor.getByRole("button", { name: "Guardar el precio" })).toHaveAttribute("type", "submit");
 
       await editor.getByRole("textbox", { name: /^Precio en «/ }).fill("30000");
-      await expect(editor.locator("[data-cambio-de-precio]")).toContainText(/\$\s*18\.000 → \$\s*30\.000 \(\+66,7 %\)/);
+      await expect(editor.locator("[data-cambio-de-precio]")).toContainText(/\$\s*18\.000,00 → \$\s*30\.000,00 \(\+66,67 %\)/);
       await editor.getByRole("button", { name: "Guardar el precio" }).click();
       const aviso = editor.getByRole("alert").filter({ hasText: "El precio cambia más de 30 %" });
-      await expect(aviso).toContainText(/\$\s*18\.000 → \$\s*30\.000/);
+      await expect(aviso).toContainText(/\$\s*18\.000,00 → \$\s*30\.000,00/);
       await expect(editor.getByRole("button", { name: "Volver", exact: true })).toBeFocused();
       expect((await new AxeBuilder({ page }).analyze()).violations, "la confirmación del cambio de más de 30 %").toEqual([]);
 

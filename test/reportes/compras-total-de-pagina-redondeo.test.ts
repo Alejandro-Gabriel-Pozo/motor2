@@ -77,18 +77,18 @@ describe("el total de la página de Compras redondea con la función oficial (em
 
   it("una compra de 1,005 suma $1,01 (no $1)", async () => {
     mocks.compras = [compra("op1", 1.005)];
-    expect(await lineaDeTotal()).toContain("suman $1,01");
+    expect(await lineaDeTotal()).toContain("suman $\u00a01,01");
   });
 
   it("una compra de 128,045 suma $128,05 (no $128,04)", async () => {
     mocks.compras = [compra("op1", 128.045)];
-    expect(await lineaDeTotal()).toContain("suman $128,05");
+    expect(await lineaDeTotal()).toContain("suman $\u00a0128,05");
   });
 
   it("las compras anuladas siguen sin sumar y el total de enteros no cambia", async () => {
     mocks.compras = [compra("op1", 1000), compra("op2", 2500), compra("op3", 999999, true)];
     const linea = await lineaDeTotal();
-    expect(linea).toContain("suman $3.500");
+    expect(linea).toContain("suman $\u00a03.500,00");
     expect(linea).toContain("sin contar 1 anulada(s)");
   });
 });

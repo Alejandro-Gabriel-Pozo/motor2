@@ -21,6 +21,8 @@ import {
 } from "@/server/actions/catalogo/receta-sucursal";
 import type { listarSucursalesConRecetaPropia, obtenerEstadoDeRecetaPropia } from "@/server/consultas/catalogo/receta-propia";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
+import { formatearCantidadConUnidad, formatearPorcentaje } from "@/core/formato-de-numero";
+import { CeldaNumerica } from "@/ui/componentes/datos/celda-numerica";
 
 type EstadoDeRecetaPropia = Awaited<ReturnType<typeof obtenerEstadoDeRecetaPropia>>;
 
@@ -96,9 +98,8 @@ export function RecetaDeLaSucursal({
             <thead>
               <tr>
                 <th scope="col">Ingrediente</th>
-                <th scope="col">Cantidad</th>
-                <th scope="col">Unidad</th>
-                <th scope="col">Merma %</th>
+                <th scope="col" className="text-right">Cantidad</th>
+                <th scope="col" className="text-right">Merma</th>
                 {puede.editar && <th scope="col">Acciones</th>}
               </tr>
             </thead>
@@ -171,9 +172,8 @@ export function RecetaDeLaSucursal({
                             </Aviso>
                           )}
                         </td>
-                        <td>{Number(ing.cantidad)}</td>
-                        <td>{ing.unidad.nombre}</td>
-                        <td>{Number(ing.mermaPorcentaje)}</td>
+                        <CeldaNumerica>{formatearCantidadConUnidad(Number(ing.cantidad), ing.unidad.nombre, ing.unidad.decimales)}</CeldaNumerica>
+                        <CeldaNumerica>{formatearPorcentaje(Number(ing.mermaPorcentaje))}</CeldaNumerica>
                         {puede.editar && (
                           <td>
                             {/* flex-wrap: en un celular angosto «Editar» y «Quitar» se apilan en vez de ensanchar la tabla (igual que en la receta central). */}

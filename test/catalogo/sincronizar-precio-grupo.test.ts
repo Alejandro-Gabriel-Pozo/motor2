@@ -120,7 +120,7 @@ describe("sincronizar el precio de un grupo de la carta", () => {
     it("sincronizarPrecioGrupoCarta aplica el precio SOLO a los productoIds pasados, con su auditoría; la carta ya no avisa", async () => {
       await actualizarProducto(ids.fanta, { ...datosPV("Fanta 500cc", 5500), precioVentaVisto: 5000 });
       const r = await sincronizarPrecioGrupoCarta([ids.coca, ids.sprite], 5500, { [ids.coca]: 5000, [ids.sprite]: 5000 });
-      expect(r).toEqual({ ok: true, mensaje: 'Precio de venta de "Coca-Cola 500cc", "Sprite 500cc" actualizado a $5.500 («Gaseosa 500 CC»).' });
+      expect(r).toEqual({ ok: true, mensaje: 'Precio de venta de "Coca-Cola 500cc", "Sprite 500cc" actualizado a $\u00a05.500,00 («Gaseosa 500 CC»).' });
       expect(await precioVenta(ids.coca)).toBe(5500);
       expect(await precioVenta(ids.sprite)).toBe(5500);
       // Nada fuera de la lista: otro grupo y un suelto quedan igual.

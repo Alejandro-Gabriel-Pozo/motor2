@@ -180,7 +180,7 @@ describe("ítems agrupados de la carta: mensajes, orden de los chequeos, sucursa
       // El grupo ya tiene opciones a $5.000 y a $5.500 (se armó por fuera de la acción): ni siquiera uno de $5.000 entra, y el mensaje da el rango.
       expect(await agregarOpcionItemAgrupadoCarta(mio, ids.sprite, 2)).toEqual({
         ok: false,
-        mensaje: "«Sprite 500cc» cuesta $5.000 acá y «Gaseosa» ya tiene opciones a $5.000 a $5.500: agrupá solo productos del mismo precio, o dejala aparte.",
+        mensaje: "«Sprite 500cc» cuesta $\u00a05.000,00 acá y «Gaseosa» ya tiene opciones a $\u00a05.000,00 a $\u00a05.500,00: agrupá solo productos del mismo precio, o dejala aparte.",
       });
       // Un grupo con un solo precio lo nombra una vez.
       const parejo = await itemEn(sucursalId, "Parejo");
@@ -188,7 +188,7 @@ describe("ítems agrupados de la carta: mensajes, orden de los chequeos, sucursa
       await prisma.producto.update({ where: { id: ids.sprite }, data: { precioVenta: 5700 } });
       expect(await agregarOpcionItemAgrupadoCarta(parejo, ids.sprite)).toEqual({
         ok: false,
-        mensaje: "«Sprite 500cc» cuesta $5.700 acá y «Parejo» ya tiene opciones a $5.000: agrupá solo productos del mismo precio, o dejala aparte.",
+        mensaje: "«Sprite 500cc» cuesta $\u00a05.700,00 acá y «Parejo» ya tiene opciones a $\u00a05.000,00: agrupá solo productos del mismo precio, o dejala aparte.",
       });
       expect(revalidaciones()).toBe(0);
       expect(await prisma.opcionItemAgrupadoCarta.count()).toBe(3);

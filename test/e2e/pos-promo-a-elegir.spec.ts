@@ -9,7 +9,7 @@ import { sembrarBifeAElegir } from "./fixtures/promo-a-elegir";
  * (el producto admite «Ojo de bife»; la promo no: no aparece). «Agregar promo» espera a que cada unidad cumpla los mínimos de sus grupos; el precio de la promo es el mismo elija lo que elija ($ 55.000); lo
  * elegido queda congelado en la línea. Celular (375 px) sin desborde horizontal y axe con las opciones abiertas. El servidor (PR A) es la defensa real; esto prueba la comodidad del selector.
  */
-const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 async function abrirArmarPromo(page: Page, d: Awaited<ReturnType<typeof sembrarBifeAElegir>>) {
   await page.goto(`/mesas/${d.mesa.id}`);

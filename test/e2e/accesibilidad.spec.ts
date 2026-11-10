@@ -548,7 +548,7 @@ testAutenticado(
     await nueva.getByLabel(/^Se lee en la carta como/).fill("Con");
     await nueva.getByLabel("Nombre de la opción 1").fill("Queso");
     await nueva.getByLabel("Importe que suma la opción 1").fill("500");
-    await expect(nueva).toContainText(/Chico con Queso = \$\s*2\.500 \+ \$\s*500 = \$\s*3\.000/);
+    await expect(nueva).toContainText(/Chico con Queso = \$\s*2\.500,00 \+ \$\s*500,00 = \$\s*3\.000,00/);
     expect((await new AxeBuilder({ page }).analyze()).violations, "paso 2 con la ventana «+ Nuevo grupo» abierta (un grupo que suma, con sus lecturas)").toEqual([]);
   },
 );

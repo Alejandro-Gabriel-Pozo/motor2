@@ -369,7 +369,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
     await m.llenar(tarjeta.getByLabel("Precio de Napolitana en este producto"), "23500", "escribir el precio nuevo de «Napolitana»");
     await m.clic(tarjeta.getByRole("button", { name: `Guardar «${base.nombreGrupo}»` }), "tocar «Guardar» del grupo");
     await m.ver("se guardó el grupo", () => expect(tarjeta.getByRole("status").filter({ hasText: "como pediste" })).toBeVisible());
-    await m.ver("el precio nuevo se ve en «Así se cobra»", () => expect(page.locator("[data-resumen-de-opciones]")).toContainText("Napolitana $ 23.500"));
+    await m.ver("el precio nuevo se ve en «Así se cobra»", () => expect(page.locator("[data-resumen-de-opciones]")).toContainText("Napolitana $ 23.500,00"));
 
     const medicion = m.resultado(true);
     const fila = await prisma.productoAdmiteOpcion.findUniqueOrThrow({ where: { productoId_opcionId: { productoId: base.productoId, opcionId } } });

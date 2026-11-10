@@ -19,8 +19,9 @@ import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 import { Campo } from "@/ui/primitivas/campo";
 import { Enlace } from "@/ui/primitivas/enlace";
 import { Selector } from "@/ui/primitivas/selector";
+import { formatearCantidad, formatearMonto } from "@/core/formato-de-numero";
 
-const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
+const plata = formatearMonto;
 
 /**
  * Compras registradas, una fila por factura. Antes una compra solo se veía por el historial de un producto o por su ID de operación: no
@@ -168,7 +169,7 @@ export default async function ComprasRegistradasPage({
                             {l.productoCodigo} — {l.productoNombre}
                           </td>
                           <td className="px-2 py-1 text-right tabular-nums">
-                            {l.cantidad.toLocaleString("es-AR")} {l.unidad}
+                            {formatearCantidad(l.cantidad)} {l.unidad}
                           </td>
                           <td className="px-2 py-1">{l.loteVencimiento ? fechaDeLote(l.loteVencimiento) : "—"}</td>
                           <td className="px-2 py-1 text-right tabular-nums">{l.precioTotal > 0 ? plata(l.precioTotal) : <span className="text-aviso-tinta">sin precio</span>}</td>

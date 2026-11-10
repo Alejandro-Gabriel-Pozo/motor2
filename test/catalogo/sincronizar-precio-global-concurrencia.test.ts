@@ -50,7 +50,7 @@ describe("sincronizar el precio de venta de un ítem agrupado: control del valor
     expect((await actualizarProducto(g.coca, datos(`Coca ${g.i}`, 6000, 5000))).ok).toBe(true);
     expect(await sincronizarPrecioGrupoCarta([g.coca, g.sprite], 5500, { [g.coca]: 5000, [g.sprite]: 5000 })).toEqual({
       ok: false,
-      mensaje: `El precio de venta de «Coca ${g.i}» cambió desde que se ofreció igualarlo (ahora es $6.000): no se cambió ninguno. Recargá la pantalla y volvé a hacer el cambio.`,
+      mensaje: `El precio de venta de «Coca ${g.i}» cambió desde que se ofreció igualarlo (ahora es $\u00a06.000,00): no se cambió ninguno. Recargá la pantalla y volvé a hacer el cambio.`,
     });
     expect([await precios([g.coca, g.sprite]), await auditorias([g.sprite])]).toEqual([[6000, 5000], 0]);
   });
@@ -65,7 +65,7 @@ describe("sincronizar el precio de venta de un ítem agrupado: control del valor
   it("IDEMPOTENTE: el mismo «Aplicar también» dos veces → el mismo éxito, una sola escritura y sin auditoría nueva", async () => {
     const g = await grupo();
     const pedido = () => sincronizarPrecioGrupoCarta([g.coca, g.sprite], 5500, { [g.coca]: 5000, [g.sprite]: 5000 });
-    const mensaje = `Precio de venta de "Coca ${g.i}", "Sprite ${g.i}" actualizado a $5.500 («${g.nombreItem}»).`;
+    const mensaje = `Precio de venta de "Coca ${g.i}", "Sprite ${g.i}" actualizado a $\u00a05.500,00 («${g.nombreItem}»).`;
     expect(await pedido()).toEqual({ ok: true, mensaje });
     expect(await pedido()).toEqual({ ok: true, mensaje });
     expect([await precios([g.coca, g.sprite]), await auditorias([g.coca, g.sprite])]).toEqual([[5500, 5500], 2]);

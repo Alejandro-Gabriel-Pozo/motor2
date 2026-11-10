@@ -1,3 +1,4 @@
+import { CeldaNumerica } from "@/ui/componentes/datos/celda-numerica";
 import { PENDIENTE, type FichaDeCocina } from "@/core/catalogo/public";
 
 /**
@@ -57,16 +58,18 @@ export function FichaDeCocinaVista({ ficha }: { ficha: FichaDeCocina }) {
                 <th scope="col" className="py-1">
                   Ingrediente
                 </th>
-                <th scope="col">Cantidad</th>
-                <th scope="col">Unidad</th>
+                <th scope="col" className="text-right">
+                  Cantidad
+                </th>
               </tr>
             </thead>
             <tbody>
               {ficha.ingredientes.map((i, indice) => (
                 <tr key={indice} className="border-b border-borde">
                   <td className="py-1">{i.nombre}</td>
-                  <td>{i.cantidad}</td>
-                  <td>{i.unidad}</td>
+                  <CeldaNumerica>
+                    {i.cantidad} {i.unidad}
+                  </CeldaNumerica>
                 </tr>
               ))}
             </tbody>

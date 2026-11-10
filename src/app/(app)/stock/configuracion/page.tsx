@@ -9,6 +9,7 @@ import { listarFrecuenciasConteo } from "@/server/actions/stock/frecuencia-conte
 import { EDITORES_DE_PARAMETROS, PESTANAS_DE_CONFIGURACION, RUTA_CONFIGURACION, armarParametrosPorInsumo, type ParametrosDeUnInsumo } from "@/core/stock/public";
 import { FilaDeStock } from "@/components/fila-de-stock";
 import { EnlaceInterno } from "@/components/enlace-interno";
+import { formatearCantidad } from "@/core/formato-de-numero";
 
 /** El aspecto de un enlace de texto (el de la primitiva `Enlace`): `EnlaceInterno` no agrega estilo propio. */
 const CLASE_DE_ENLACE = "text-tinta-suave underline hover:text-tinta";
@@ -137,7 +138,7 @@ function FilaDeParametros({
         <td className="py-2">
           {f.minimoGlobal ? (
             <>
-              {f.minimoGlobal.minimo.toLocaleString("es-AR")}
+              {formatearCantidad(f.minimoGlobal.minimo)}
               {edita.minimo && <Cambiar href={`/stock/minimo?editar=${f.minimoGlobal.id}`} dato="el stock mínimo" insumo={f.productoNombre} />}
             </>
           ) : (
@@ -153,7 +154,7 @@ function FilaDeParametros({
             <ul className="flex flex-col gap-0.5">
               {f.minimosPorDeposito.map((m) => (
                 <li key={m.id}>
-                  {m.deposito}: {m.minimo.toLocaleString("es-AR")}
+                  {m.deposito}: {formatearCantidad(m.minimo)}
                   {edita.minimo && <Cambiar href={`/stock/minimo?editar=${m.id}`} dato={`el mínimo en ${m.deposito}`} insumo={f.productoNombre} />}
                 </li>
               ))}

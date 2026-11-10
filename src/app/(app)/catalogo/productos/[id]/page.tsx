@@ -20,8 +20,9 @@ import { TablaDeDatos } from "@/ui/componentes/datos/tabla-de-datos";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { claseDeBoton } from "@/ui/primitivas/boton";
 import { esBaseConfigurable, modoDeVentaDe } from "@/core/opciones/public";
+import { formatearCantidad, formatearMonto } from "@/core/formato-de-numero";
 
-const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
+const plata = formatearMonto;
 
 function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
@@ -138,7 +139,7 @@ export default async function FichaProductoPage({
           <Dato etiqueta="Unidad de stock">{p.unidadStock.nombre}</Dato>
           <Dato etiqueta="Unidad de compra">{p.unidadCompra?.nombre ?? <SinValor>—</SinValor>}</Dato>
           <Dato etiqueta="Factor de conversión">
-            {Number(p.factorConversion).toLocaleString("es-AR")} {p.unidadStock.nombre} por {p.unidadCompra?.nombre ?? "unidad de compra"}
+            {formatearCantidad(Number(p.factorConversion))} {p.unidadStock.nombre} por {p.unidadCompra?.nombre ?? "unidad de compra"}
           </Dato>
           {/* Fase 4 (ADR-035): de una base no se cobra el precio guardado: la ficha dice cómo se vende y lo muestra como guardado. */}
           {p.tipo === "PV" &&
@@ -151,7 +152,7 @@ export default async function FichaProductoPage({
             ))}
           {p.tipo === "PV" && (
             <Dato etiqueta="Venta fraccionada">
-              {p.pasoVenta !== null ? `Se vende de a ${Number(p.pasoVenta).toLocaleString("es-AR")}` : <SinValor>No — se vende de a una unidad entera</SinValor>}
+              {p.pasoVenta !== null ? `Se vende de a ${formatearCantidad(Number(p.pasoVenta))}` : <SinValor>No — se vende de a una unidad entera</SinValor>}
             </Dato>
           )}
           {p.tipo === "PV" && (
@@ -234,7 +235,7 @@ export default async function FichaProductoPage({
           <ul className="rounded border border-borde p-4 text-sm">
             {presentaciones.map((pr) => (
               <li key={pr.id} className={pr.activa ? "" : "text-tinta-suave"}>
-                {pr.unidadCompraNombre} — {pr.factorConversion.toLocaleString("es-AR")} {p.unidadStock.nombre} cada una{pr.activa ? "" : " (inactiva)"}
+                {pr.unidadCompraNombre} — {formatearCantidad(pr.factorConversion)} {p.unidadStock.nombre} cada una{pr.activa ? "" : " (inactiva)"}
               </li>
             ))}
           </ul>

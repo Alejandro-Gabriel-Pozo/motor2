@@ -27,6 +27,7 @@ import { crearCategoriaProducto } from "@/server/actions/catalogo/categorias-pro
 import { altaProveedor } from "@/server/actions/catalogo/proveedores";
 import { MODO_DE_VENTA, esBaseConfigurable, modoDeVentaDe, type ModoDeVenta } from "@/core/opciones/public";
 import type { TipoProducto } from "@/core/datos/enumerados-del-esquema";
+import { formatearCantidad, formatearMonto } from "@/core/formato-de-numero";
 
 interface Opcion {
   id: string;
@@ -52,7 +53,7 @@ export interface ProductoExistente extends DatosProducto {
 type DatosSensibles = Pick<DatosProducto, CampoSensibleDelProducto>;
 
 /** Plata siempre con dos decimales ($3.200,00, $1.234,50): es dinero, y «$1.234,5» se lee mal. */
-const pesos = (n: number) => `$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const pesos = formatearMonto;
 
 export function ProductoForm({
   unidades,
@@ -345,7 +346,7 @@ export function ProductoForm({
           />
         ) : (
           <ValorSoloLectura campo="factorConversion" etiqueta="Factor de conversión (unidades de stock por unidad de compra)">
-            {(productoExistente?.factorConversion ?? 1).toLocaleString("es-AR")}
+            {formatearCantidad(productoExistente?.factorConversion ?? 1)}
           </ValorSoloLectura>
         )}
         <AyudaCampo>

@@ -17,7 +17,7 @@ import { formatearNumeroTicket } from "../../src/core/pos/numeracion-ticket";
  * puesto mostrador de la sucursal (habilitarlo es parte de lo que prueba el spec: se borra para que los demás specs encuentren el mapa como siempre). Lo sembrado de opciones no se borra (ver `fixtures/opciones.ts`).
  */
 
-const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const SECCION = "Depósito E2E";
 const aviso = (page: Page) => page.locator('[role="status"][aria-live="polite"]');
 const barra = (page: Page) => page.getByRole("group", { name: "Secciones de la carta" });
@@ -137,7 +137,7 @@ test("el mostrador: habilitar, abrir sin comensales, pedir, cliente con %, envia
     const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mostrador" });
     await expect(cierre).toContainText("Se registra la venta y la cuenta queda cerrada.");
     await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
-    await expect(aviso(page)).toHaveText(/^Cuenta del mostrador cerrada: se registró la venta por \$\s?18\.900 \(con 10% de descuento a «.+»\)\.$/);
+    await expect(aviso(page)).toHaveText(/^Cuenta del mostrador cerrada: se registró la venta por \$\s?18\.900,00 \(con 10% de descuento a «.+»\)\.$/);
     await expect(page.getByText("No hay una cuenta abierta en el mostrador.")).toBeVisible();
 
     // El ticket sale solo, con el rótulo del mostrador y el número que quedó en la base.
@@ -227,7 +227,7 @@ test("el mostrador vende lo mismo que el salón: un café con opciones y una pro
     await expect(aviso(page)).toContainText("Se agregó");
     const linea = page.locator(`[data-item-sin-enviar="${nombreCafe}"]`);
     await expect(linea).toContainText(`1 × ${nombreCafe} grande`);
-    await expect(linea.locator(`[data-adicional-sin-enviar="${ancla.nombre}"]`)).toContainText("$ 600");
+    await expect(linea.locator(`[data-adicional-sin-enviar="${ancla.nombre}"]`)).toContainText("$ 600,00");
 
     // La promo armada: un componente del cupo, agregada por su precio.
     await barra(page).getByRole("button", { name: entradas.nombre }).click();
@@ -257,7 +257,7 @@ test("el mostrador vende lo mismo que el salón: un café con opciones y una pro
     await expect.poll(async () => (await impresiones(page)).map((i) => i.tipo)).toEqual(["comanda", "ticket"]);
     const ticket = (await impresiones(page))[1]!.texto;
     expect(ticket).toContain(`1 × ${nombreCafe} grande`);
-    expect(ticket).toMatch(/TOTAL\s*\$\s?7\.400/);
+    expect(ticket).toMatch(/TOTAL\s*\$\s?7\.400,00/);
     const ejemplar = await prisma.ejemplarTicket.findFirstOrThrow({ where: { cuenta: { mesa: { sucursalId, tipo: "MOSTRADOR" } } } });
     expect(ejemplar.ejemplar).toBe(1);
     expect(await prisma.promoCuenta.count({ where: { cuenta: { mesa: { sucursalId, tipo: "MOSTRADOR" } } } })).toBe(1);

@@ -80,7 +80,7 @@ async function sembrarCarta(sucursalId: string) {
   };
 }
 
-const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const aviso = (page: Page) => page.locator('[role="status"][aria-live="polite"]');
 
 /** «Abrir cuenta» pasando por el modal de comensales (docs/plan-comensales-y-limite-mesas-2026-09-26.md): botón rápido 1-6 + confirmar. */

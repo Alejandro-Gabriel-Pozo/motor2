@@ -16,6 +16,8 @@ import {
   listarPresentaciones,
   type PresentacionOpcion,
 } from "@/server/actions/catalogo/productos";
+import { formatearCantidad } from "@/core/formato-de-numero";
+import { CeldaNumerica } from "@/ui/componentes/datos/celda-numerica";
 
 interface Opcion {
   id: string;
@@ -107,7 +109,7 @@ export function GestionPresentaciones({
             {presentaciones.map((p) => (
               <tr key={p.id} className="border-b">
                 <td className="py-1">{p.unidadCompraNombre}</td>
-                <td>{p.factorConversion}</td>
+                <CeldaNumerica>{formatearCantidad(p.factorConversion)}</CeldaNumerica>
                 <td>{p.activa ? "Sí" : "No"}</td>
                 <td>
                   <Boton variante="enlace" tamano="en-fila" disabled={pending} onClick={() => toggle(p)}>

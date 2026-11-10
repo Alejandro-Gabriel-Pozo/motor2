@@ -28,7 +28,7 @@ test("el listado muestra la factura con sus líneas, filtra por proveedor y se l
   const tarjeta = page.locator(`[data-compra="${operacion.id}"]`);
   await expect(tarjeta).toBeVisible();
   await expect(tarjeta).toContainText(`Factura ${factura}`);
-  await expect(tarjeta).toContainText("$360");
+  await expect(tarjeta).toContainText("$ 360,00");
   await expect(page.locator(`[data-compra="${sinProveedor.id}"]`)).toHaveCount(0); // el filtro por proveedor deja afuera a las demás
 
   // El detalle de las líneas está dentro de la fila, desplegable.

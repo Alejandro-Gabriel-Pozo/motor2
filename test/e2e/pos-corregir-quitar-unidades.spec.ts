@@ -67,7 +67,7 @@ test("quitar 1 de 3 unidades: − / +, vista previa, «toda la línea» y motivo
     await page.goto(`/mesas/${s.mesa.id}`);
     await expect(page.getByRole("heading", { name: "Cuentas cerradas" })).toBeVisible();
     await expect(page.getByText(`N.º ${s.numero}-A`)).toBeVisible();
-    await expect(page.getByText("$ 17.000").first()).toBeVisible();
+    await expect(page.getByText("$ 17.000,00").first()).toBeVisible();
 
     await page.getByRole("button", { name: /^Corregir una línea/ }).click();
     const dialogo = page.getByRole("dialog", { name: /Corregir una línea/ });
@@ -81,13 +81,13 @@ test("quitar 1 de 3 unidades: − / +, vista previa, «toda la línea» y motivo
     await expect(dialogo.getByText("¿Qué corregís de esa línea?")).toBeVisible();
     await expect(dialogo.getByText("Unidades a quitar (de 3)")).toBeVisible();
     await expect(dialogo.getByText("Queda 2 × E2E Gaseosa Quitar", { exact: false })).toBeVisible();
-    await expect(dialogo.getByText("Total del ticket corregido").locator("..").getByText("$ 12.000")).toBeVisible();
+    await expect(dialogo.getByText("Total del ticket corregido").locator("..").getByText("$ 12.000,00")).toBeVisible();
 
     // − y + respetan los límites: de 1 a (unidades − 1).
     await expect(dialogo.getByRole("button", { name: "Quitar una unidad menos" })).toBeDisabled();
     await dialogo.getByRole("button", { name: "Quitar una unidad más" }).click();
     await expect(dialogo.getByText("Queda 1 × E2E Gaseosa Quitar", { exact: false })).toBeVisible();
-    await expect(dialogo.getByText("Total del ticket corregido").locator("..").getByText("$ 7.000")).toBeVisible();
+    await expect(dialogo.getByText("Total del ticket corregido").locator("..").getByText("$ 7.000,00")).toBeVisible();
     await expect(dialogo.getByRole("button", { name: "Quitar una unidad más" })).toBeDisabled();
     await dialogo.getByRole("button", { name: "Quitar una unidad menos" }).click();
     await expect(dialogo.getByText("Queda 2 × E2E Gaseosa Quitar", { exact: false })).toBeVisible();
@@ -95,7 +95,7 @@ test("quitar 1 de 3 unidades: − / +, vista previa, «toda la línea» y motivo
     // «Toda la línea»: sin selector de unidades, el total corregido es sin la línea; se puede volver a «algunas unidades».
     await dialogo.locator("label", { hasText: "Quitar toda la línea" }).click();
     await expect(dialogo.getByText("Unidades a quitar (de 3)")).toHaveCount(0);
-    await expect(dialogo.getByText("Total del ticket corregido").locator("..").getByText("$ 2.000")).toBeVisible();
+    await expect(dialogo.getByText("Total del ticket corregido").locator("..").getByText("$ 2.000,00")).toBeVisible();
     await dialogo.locator("label", { hasText: "Quitar solo algunas unidades" }).click();
     await expect(dialogo.getByText("Unidades a quitar (de 3)")).toBeVisible();
 
@@ -109,7 +109,7 @@ test("quitar 1 de 3 unidades: − / +, vista previa, «toda la línea» y motivo
     // El 1-B aparece SIN recargar, con el total corregido, y se mandó a imprimir.
     await expect(dialogo).toBeHidden();
     await expect(page.getByText(`N.º ${s.numero}-B`).first()).toBeVisible();
-    await expect(page.getByText("$ 12.000").first()).toBeVisible();
+    await expect(page.getByText("$ 12.000,00").first()).toBeVisible();
     await expect.poll(async () => (await impresiones(page)).length).toBeGreaterThan(0);
 
     // En la base: la original marcada con el motivo, su contra-asiento, UNA venta nueva con 2 unidades y $10.000, el 1-B que corrige al 1-A y la auditoría de las unidades.
@@ -146,7 +146,7 @@ test("la línea de 1 unidad se corrige entera (sin elegir unidades) y la última
     const dialogo = page.getByRole("dialog", { name: /Corregir una línea/ });
     await dialogo.locator("label", { hasText: "1 × E2E Flan Quitar" }).first().click();
     await expect(dialogo.getByText("¿Qué corregís de esa línea?")).toHaveCount(0);
-    await expect(dialogo.getByText("Total del ticket corregido").locator("..").getByText("$ 15.000")).toBeVisible();
+    await expect(dialogo.getByText("Total del ticket corregido").locator("..").getByText("$ 15.000,00")).toBeVisible();
     await dialogo.getByLabel("Motivo (obligatorio)").fill("No se pidió el flan");
     await dialogo.getByRole("button", { name: "Corregir e imprimir" }).click();
     await expect(dialogo).toBeHidden();

@@ -14,6 +14,7 @@ import type { PrecioLocalDeProductoVisto } from "@/core/features/catalogo/precio
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { Casilla } from "@/ui/primitivas/casilla";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * `sucursalId`: la sucursal activa que ve la pantalla (la acción de sincronizar la vuelve a comparar con la del servidor). `preciosLocales`: el precio local que
@@ -82,10 +83,10 @@ export function PrecioLocalForm({ sucursalId, preciosLocales }: { sucursalId: st
 
       {productoId && (
         <p className="text-xs text-tinta-tenue">
-          {precioGlobal !== null && <span className="block">Precio global actual: ${precioGlobal.toLocaleString("es-AR")}</span>}
+          {precioGlobal !== null && <span className="block">Precio global actual: {formatearMonto(precioGlobal)}</span>}
           <span className="block">
             {precioLocalActual
-              ? `Precio local actual: $${precioLocalActual.precio.toLocaleString("es-AR")}${precioLocalActual.habilitado ? "" : " (deshabilitado)"}`
+              ? `Precio local actual: ${formatearMonto(precioLocalActual.precio)}${precioLocalActual.habilitado ? "" : " (deshabilitado)"}`
               : "Sin precio local en esta sucursal."}
           </span>
         </p>

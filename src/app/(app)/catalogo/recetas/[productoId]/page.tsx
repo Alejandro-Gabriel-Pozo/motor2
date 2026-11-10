@@ -47,6 +47,8 @@ import { IconoDeAccion } from "@/components/iconos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { listarSucursalesConRecetaPropia, obtenerEstadoDeRecetaPropia } from "@/server/consultas/catalogo/receta-propia";
 import { RecetaDeLaSucursal } from "./receta-de-la-sucursal";
+import { formatearCantidad, formatearCantidadConUnidad, formatearPorcentaje } from "@/core/formato-de-numero";
+import { CeldaNumerica } from "@/ui/componentes/datos/celda-numerica";
 
 export default async function RecetaEditorPage({
   params,
@@ -347,9 +349,9 @@ export default async function RecetaEditorPage({
           ) : (
             (() => {
               const detalles: string[] = [];
-              if (vigente.rendimientoCantidad != null) detalles.push(`Rendimiento: ${Number(vigente.rendimientoCantidad)} ${vigente.rendimientoUnidad?.nombre ?? ""}`.trim());
+              if (vigente.rendimientoCantidad != null) detalles.push(`Rendimiento: ${formatearCantidad(Number(vigente.rendimientoCantidad), vigente.rendimientoUnidad?.decimales)} ${vigente.rendimientoUnidad?.nombre ?? ""}`.trim());
               if (vigente.racionesCantidad != null) detalles.push(`Raciones: ${vigente.racionesCantidad}`);
-              if (vigente.racionTamano != null) detalles.push(`Tamaño de ración: ${Number(vigente.racionTamano)} ${vigente.racionUnidad?.nombre ?? ""}`.trim());
+              if (vigente.racionTamano != null) detalles.push(`Tamaño de ración: ${formatearCantidad(Number(vigente.racionTamano), vigente.racionUnidad?.decimales)} ${vigente.racionUnidad?.nombre ?? ""}`.trim());
               if (vigente.tiempoPreparacionMinutos != null) detalles.push(`Prep.: ${vigente.tiempoPreparacionMinutos} min`);
               if (vigente.tiempoCoccionMinutos != null) detalles.push(`Cocción: ${vigente.tiempoCoccionMinutos} min`);
               return (
@@ -377,9 +379,8 @@ export default async function RecetaEditorPage({
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Ingrediente</th>
-                <th>Cantidad</th>
-                <th>Unidad</th>
-                <th>Merma %</th>
+                <th className="text-right">Cantidad</th>
+                <th className="text-right">Merma</th>
                 <th><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
@@ -498,9 +499,8 @@ export default async function RecetaEditorPage({
                             </p>
                           )}
                         </td>
-                        <td>{Number(ing.cantidad)}</td>
-                        <td>{ing.unidad.nombre}</td>
-                        <td>{Number(ing.mermaPorcentaje)}</td>
+                        <CeldaNumerica>{formatearCantidadConUnidad(Number(ing.cantidad), ing.unidad.nombre, ing.unidad.decimales)}</CeldaNumerica>
+                        <CeldaNumerica>{formatearPorcentaje(Number(ing.mermaPorcentaje))}</CeldaNumerica>
                         <td>
                           {/* flex-wrap: en un celular angosto «Editar» y «Quitar» se apilan en vez de ensanchar la tabla más allá de la pantalla. */}
                           <div className="flex flex-wrap gap-x-3">

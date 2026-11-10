@@ -1,17 +1,6 @@
 /**
- * Formatos de la pantalla de la mesa (compartidos por la página y sus componentes de cliente). Vive en `core/pos` (y no en la
- * carpeta de rutas del POS, `(pos)/mesas/[mesaId]/`) para que un reporte de `(app)` (el reporte de tickets emitidos, Task #17)
- * también pueda formatear sin duplicar los `Intl.NumberFormat`. Las horas (con la zona de la empresa) viven en `core/tiempo`.
+ * Formatos de la pantalla de la mesa. Desde 2026-11-09 el formateo de salida de números es UNO solo y vive en `core/formato-de-numero.ts` (regla del
+ * dueño «1.000,00»); estas dos funciones se reexportan acá porque el POS y los reportes las importan de `@/core/pos/public`. Las horas (con la zona de la
+ * empresa) viven en `core/tiempo`.
  */
-import { MONEDA_FIJA } from "@/core/moneda";
-
-const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: MONEDA_FIJA, minimumFractionDigits: 0, maximumFractionDigits: 2 });
-const CANTIDAD = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 4 });
-
-export function formatearMonto(n: number): string {
-  return MONEDA.format(n);
-}
-
-export function formatearCantidad(n: number): string {
-  return CANTIDAD.format(n);
-}
+export { formatearMonto, formatearCantidad } from "@/core/formato-de-numero";

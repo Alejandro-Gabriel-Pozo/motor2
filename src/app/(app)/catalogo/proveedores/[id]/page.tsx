@@ -12,8 +12,9 @@ import { etiquetaDeOferta } from "@/core/features/catalogo/oferta-de-proveedor";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { claseDeBoton } from "@/ui/primitivas/boton";
+import { formatearMonto } from "@/core/formato-de-numero";
 
-const plata = (n: number) => `$${n.toLocaleString("es-AR")}`;
+const plata = formatearMonto;
 
 function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (

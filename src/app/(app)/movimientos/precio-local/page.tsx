@@ -84,8 +84,8 @@ export default async function PrecioLocalPage() {
                   return (
                     <tr key={p.id} role="row" className={FILA}>
                       <td role="cell" className="py-2 pr-3 max-md:py-1 max-md:font-medium">{p.producto.nombre}</td>
-                      <td role="cell" data-label="Precio local" className={`pr-3 ${CELDA}`}>{precio}</td>
-                      <td role="cell" data-label="Precio global" className={`pr-3 ${CELDA}`}>{Number(p.producto.precioVenta)}</td>
+                      <td role="cell" data-label="Precio local" className={`pr-3 ${CELDA}`}>{formatearMonto(precio)}</td>
+                      <td role="cell" data-label="Precio global" className={`pr-3 ${CELDA}`}>{formatearMonto(Number(p.producto.precioVenta))}</td>
                       <td role="cell" data-label="Habilitado" className={`pr-3 ${CELDA}`}>{habilitado ? "Sí" : "No"}</td>
                       <td role="cell" className="max-md:block">
                         {puedeEditar && (

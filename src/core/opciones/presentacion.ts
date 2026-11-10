@@ -1,6 +1,7 @@
 import { Decimal } from "decimal.js";
 import { porcentajeDeImporte } from "@/core/moneda";
 import type { DiferenciaDePrecio, TipoDeGrupoDeOpciones } from "./tipos";
+import { formatearCantidad as cantidadCentral } from "../formato-de-numero";
 
 /**
  * Los TEXTOS de las pantallas de opciones de venta (GO-2d; ADR-030, «Pantallas»): cómo se nombra cada tipo de grupo, cómo se leen sus límites y cómo se explica una diferencia
@@ -67,7 +68,7 @@ export function textoDeDiferencia(diferencia: DiferenciaDePrecio | null, formate
 
 /** Un porcentaje con coma decimal y hasta 4 decimales, sin ceros a la derecha: 16 → «16», 12,5 → «12,5». */
 export function textoDePorcentaje(porcentaje: number): string {
-  return porcentaje.toLocaleString("es-AR", { maximumFractionDigits: 4, useGrouping: false });
+  return cantidadCentral(porcentaje, 4);
 }
 
 /**
