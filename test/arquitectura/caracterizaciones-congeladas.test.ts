@@ -1068,6 +1068,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Cargar qué consume cada opción desde la pestaña Opciones del producto (ADITIVO, solo ADMINISTRACIÓN; la carta pública y el cobro idénticos; pedido del dueño del 2026-11-09, aprobado con capturas; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): la tarjeta de cada grupo de la pantalla de opciones de Pizzas (a 1280 y a 375 px) suma la sección «Qué consume cada opción» (una fila por opción con «pendiente de completar» y «Editar consumo»). Revisado con `git diff`: son 50 líneas agregadas, ninguna otra pantalla, precio ni tipografía cambia.",
       },
+      {
+        blob: "e3bd0ad7451d2269c16420a32f886f59b7b4a2f2",
+        // El commit PADRE de este (0d739848) es el último antes de la regeneración; el cambio es de la regla de números del campo (CampoNumero).
+        commit: "0d739848",
+        motivo:
+          "Regla de números 2026-11-09: el campo numérico muestra miles con punto y el importe con 2 decimales (CAMBIA SOLO ADMINISTRACIÓN, regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). Cambian SOLO las líneas `[campo: «…»]` de los precios de las pantallas de administración (por ejemplo «18.000» pasa a «18.000,00»): 14 líneas; la carta pública, el cobro y el resto de las pantallas quedan idénticos byte a byte. El spec enmascara ahora el campo visible de «Orden» (el `name=orden` pasó al hidden).",
+      },
     ],
   },
 };
