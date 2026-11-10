@@ -24,7 +24,7 @@ describe("piso de precio de una promo", () => {
 
   it("el mensaje nombra la promo, el precio, las unidades y el mínimo", () => {
     expect(mensajePisoDePromo("Menú del día", 0.02, { minimo: 0.03, unidades: 3 })).toBe(
-      'El precio de "Menú del día" ($ 0,02) no alcanza el piso de $ 0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $ 0,03). Subí el precio o bajá los máximos.',
+      'El precio de "Menú del día" ($ 0,02) no alcanza el piso de $ 0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $ 0,03). Subí el precio o bajá los máximos.',
     );
   });
 });

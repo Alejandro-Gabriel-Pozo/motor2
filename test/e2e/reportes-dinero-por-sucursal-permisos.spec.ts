@@ -110,7 +110,7 @@ test("consolidado: suma las dos sucursales donde el rol puede ver el dinero y de
     await expect(page.getByRole("cell", { name: datos[1].nombre })).toBeVisible();
     await expect(page.getByRole("cell", { name: datos[2].nombre })).toHaveCount(0);
     await expect(page.getByText("Ventas del mes (las 2 sucursales)")).toBeVisible();
-    await expect(page.getByText("Ventas del mes (las 2 sucursales)").locator("xpath=following-sibling::p")).toHaveText("$10.000");
+    await expect(page.getByText("Ventas del mes (las 2 sucursales)").locator("xpath=following-sibling::p")).toHaveText("$ 10.000,00");
   } finally {
     await contexto.close();
     await prisma.session.deleteMany({ where: { userId: usuario.id } });

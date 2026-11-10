@@ -56,9 +56,9 @@ describe("los textos de la forma (compartidos con la vista previa de la administ
   it("una elección se une con «o» (y «u» delante de o/ho); unos extras, con comas y lo que suma cada uno", () => {
     expect(textoDeLaAclaracion({ tipo: "eleccion", rotulo: "Guarnicion", opciones: ["ensalada", "papas fritas", "puré"] })).toBe("ensalada, papas fritas o puré");
     expect(textoDeLaAclaracion({ tipo: "eleccion", rotulo: "Cocción", opciones: ["jugoso", "horneado"] })).toBe("jugoso u horneado");
-    expect(textoDeLaAclaracion({ tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "extra de papas", recargo: 2000 }, { nombre: "huevo frito", recargo: 1500 }] })).toBe("extra de papas +$2.000, huevo frito +$1.500");
-    expect(textoDeLaAclaracion({ tipo: "extras", rotulo: "Preparación", opciones: [{ nombre: "solo", recargo: 0 }, { nombre: "con leche", recargo: 300 }, { nombre: "sin azúcar", recargo: -100 }] })).toBe("solo, con leche +$300, sin azúcar −$100");
-    expect(recargoEnPesos(-300)).toBe("−$300");
+    expect(textoDeLaAclaracion({ tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "extra de papas", recargo: 2000 }, { nombre: "huevo frito", recargo: 1500 }] })).toBe("extra de papas +$ 2.000,00, huevo frito +$ 1.500,00");
+    expect(textoDeLaAclaracion({ tipo: "extras", rotulo: "Preparación", opciones: [{ nombre: "solo", recargo: 0 }, { nombre: "con leche", recargo: 300 }, { nombre: "sin azúcar", recargo: -100 }] })).toBe("solo, con leche +$ 300,00, sin azúcar −$ 100,00");
+    expect(recargoEnPesos(-300)).toBe("−$ 300,00");
   });
 
   it("partirLaAclaracion: una elección es una línea con las opciones unidas por « · » (sin prefijo, sin «o») y nada con recargo", () => {
@@ -106,8 +106,8 @@ describe("8a: forma simple (el bife: su precio y las aclaraciones debajo)", () =
   it("el nombre (h3, rol Producto) con su precio (rol Precio), la descripción, lo que incluye (carta «B») y un grupo con precio por aclaración, con la etiqueta (sin dos puntos) en Aclaración 600", () => {
     expect(html).toMatch(/^<li data-forma="simple"/);
     expect(html).toMatch(/<h3 data-rol="producto"[^>]*>Bife a la criolla<\/h3>/);
-    expect(html).toMatch(/data-rol="precio"[^>]*>\$20\.000<\/span>/);
-    expect(texto(html)).toBe("Bife a la criolla $20.000 Con salsa criolla Extras extra de papas +$2.000 huevo frito +$1.500");
+    expect(html).toMatch(/data-rol="precio"[^>]*>\$ 20\.000,00<\/span>/);
+    expect(texto(html)).toBe("Bife a la criolla $ 20.000,00 Con salsa criolla Extras extra de papas +$ 2.000,00 huevo frito +$ 1.500,00");
     expect(html.match(/<div data-aclaracion="/g)).toHaveLength(1);
     expect(html).toMatch(/<p data-rol="aclaracion-rotulo" class="carta-rol-aclaracion-rotulo"[^>]*>Extras<\/p>/);
   });
@@ -128,7 +128,7 @@ describe("8a: forma simple (el bife: su precio y las aclaraciones debajo)", () =
     expect(extras).toMatch(/<ul aria-label="Extras" data-recargos-carta/);
     expect(extras.match(/<li[\s>]/g)).toHaveLength(2);
     expect(extras.match(/data-rol="opcion" class="carta-rol-opcion[ "]/g)).toHaveLength(2);
-    expect([...extras.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["+$2.000", "+$1.500"]);
+    expect([...extras.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["+$ 2.000,00", "+$ 1.500,00"]);
   });
 
   it("sin las listas de antes (ni tamaños, ni pastillas, ni «Adicionales:»), aunque el ítem traiga también `grupos` y `opcionesSinCosto`", () => {
@@ -194,7 +194,7 @@ describe("8b: tabla de un eje (el café con variantes, el submarino sin ellas, e
     expect(html.match(/<table/g)).toHaveLength(3);
     expect(html).not.toContain("data-tanda");
     expect(filaCon(html, "Té").match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map((h) => texto(h))).toEqual(["Taza", "Jarra"]);
-    expect(texto(filaCon(html, "Submarino"))).toBe("Submarino Chico Mediano Grande $5.000 $5.500 $6.000");
+    expect(texto(filaCon(html, "Submarino"))).toBe("Submarino Chico Mediano Grande $ 5.000,00 $ 5.500,00 $ 6.000,00");
   });
 
   it("el título protagoniza: un h3 (rol Producto) con su línea fina ANTES de la tabla; el descuento a la derecha del nombre, una sola vez; la ★ en el especial", () => {
@@ -212,7 +212,7 @@ describe("8b: tabla de un eje (el café con variantes, el submarino sin ellas, e
     const filas = dibujar([tabla("Pizzas", [], [{ rotulo: "Chica", celdas: [18000] }, { rotulo: "Grande", celdas: [24000] }])]);
     expect(filas.match(/<col class="carta-col-precio"/g)).toHaveLength(1);
     expect(filas).not.toContain("<thead");
-    expect(texto(filaCon(filas, "Pizzas"))).toBe("Pizzas Chica $18.000 Grande $24.000");
+    expect(texto(filaCon(filas, "Pizzas"))).toBe("Pizzas Chica $ 18.000,00 Grande $ 24.000,00");
   });
 });
 
@@ -261,7 +261,7 @@ describe("8c: tabla de dos ejes (la milanesa: Simple | Napolitana × De carne / 
   });
 
   it("las filas no se juntan aunque cuesten igual (DEC-10); «–» donde no se ofrece; sin «desde»; debajo, la descripción y las aclaraciones", () => {
-    expect(texto(html)).toBe("Milanesas Simple Napolitana De carne $20.000 $25.000 De pollo $20.000 $25.000 De trucha $23.000 – Con papas");
+    expect(texto(html)).toBe("Milanesas Simple Napolitana De carne $ 20.000,00 $ 25.000,00 De pollo $ 20.000,00 $ 25.000,00 De trucha $ 23.000,00 – Con papas");
     expect(html).not.toMatch(/desde/i);
     expect(html).toContain('<span class="sr-only">no se ofrece</span>');
   });
@@ -288,9 +288,9 @@ describe("8d: la base de un eje (las pizzas): oculta por defecto, cada opción c
     const html = filaCon(dibujar([pizzas(false)]), "Pizza muzzarella");
     expect(html).toMatch(/^<li data-forma="lista-sin-encabezado"/);
     expect(html.match(/<h3 data-rol="producto"[^>]*>([^<]*)<\/h3>/g)?.map((h) => texto(h))).toEqual(["Pizza muzzarella", "Pizza napolitana"]);
-    expect([...html.matchAll(/data-rol="precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$18.000", "$22.000"]);
+    expect([...html.matchAll(/data-rol="precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$ 18.000,00", "$ 22.000,00"]);
     // Carta «B»: cada plato dice lo que incluye (el rótulo «En todos» se retiró); las opciones de la masa van al pie de la sección.
-    expect(texto(html)).toBe("Pizza muzzarella $18.000 Incluye 1 masa · ver opciones ↓ Pizza napolitana $22.000 Incluye 1 masa · ver opciones ↓");
+    expect(texto(html)).toBe("Pizza muzzarella $ 18.000,00 Incluye 1 masa · ver opciones ↓ Pizza napolitana $ 22.000,00 Incluye 1 masa · ver opciones ↓");
     expect(html).toMatch(/<ul aria-label="Pizzas" data-filas-carta/);
     expect(html).not.toMatch(/>Pizzas</);
     expect(html).not.toContain("<table");
@@ -302,9 +302,9 @@ describe("8d: la base de un eje (las pizzas): oculta por defecto, cada opción c
     expect(html).toMatch(/^<li data-forma="tabla"/);
     expect(html).toMatch(/<div class="carta-linea-fina[^"]*"><h3 data-rol="producto"[^>]*>Pizzas<\/h3>/);
     expect(html.match(/<span data-rol="opcion" class="carta-rol-opcion[^"]*"[^>]*>([^<]*)<\/span>/g)?.map((h) => texto(h))).toEqual(["Pizza muzzarella", "Pizza napolitana"]);
-    expect([...html.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$18.000", "$22.000"]);
+    expect([...html.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$ 18.000,00", "$ 22.000,00"]);
     expect(html).not.toContain("<thead");
-    expect(texto(html)).toBe("Pizzas Pizza muzzarella $18.000 Pizza napolitana $22.000 A la piedra veggie");
+    expect(texto(html)).toBe("Pizzas Pizza muzzarella $ 18.000,00 Pizza napolitana $ 22.000,00 A la piedra veggie");
   });
 
   it("carta «B»: el rótulo «En todos» se retiró; CADA plato de la base dice lo que incluye (una línea bajo cada uno) y el pie de la sección nombra las opciones", () => {
@@ -348,7 +348,7 @@ describe("paso 9: sin forma (lo que la carta no puede leer exacto, o una carta g
   const html = filaCon(dibujar([cafe]), "Café");
 
   it("los tamaños como filas de opción (sin el precio al lado del nombre), lo que no cambia nada y lo que suma como aclaraciones debajo", () => {
-    expect(texto(html)).toBe("Café Chico $2.500 Grande $3.100 Preparación: Solo o Cortado Adicionales: Medialuna +$600, Sin azúcar −$100");
+    expect(texto(html)).toBe("Café Chico $ 2.500,00 Grande $ 3.100,00 Preparación: Solo o Cortado Adicionales: Medialuna +$ 600,00, Sin azúcar −$ 100,00");
     expect(html).toMatch(/<ul aria-label="Tamaño" data-filas-carta/);
     expect(html).not.toMatch(/data-rol="precio"/);
   });
@@ -364,7 +364,7 @@ describe("paso 9: sin forma (lo que la carta no puede leer exacto, o una carta g
 
   it("un ítem sin opciones, el renglón de siempre", () => {
     const flan = filaCon(dibujar([item({ nombre: "Flan", precio: 3200 })]), "Flan");
-    expect(texto(flan)).toBe("Flan $3.200");
+    expect(texto(flan)).toBe("Flan $ 3.200,00");
   });
 });
 

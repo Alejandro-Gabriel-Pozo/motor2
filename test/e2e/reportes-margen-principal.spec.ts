@@ -25,19 +25,19 @@ test("«Ganancia de lo vendido» muestra el margen Real (congelado), no el nomin
   await prisma.recetaVersion.create({ data: { productoId: pv.id, version: 1, ingredientes: { create: [{ insumoProductoId: mp.id, cantidad: 1, unidadId: kg.id }] } } });
 
   const operaciones: string[] = [];
-  // Compra e insumo a $5/kg, en la ventana: costo congelado de la venta.
+  // Compra e insumo a $ 5,00/kg, en la ventana: costo congelado de la venta.
   const compraVieja = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: new Date("2024-05-01T12:00:00Z"), usuarioId: admin.id } });
   operaciones.push(compraVieja.id);
   await prisma.movimientoStock.create({
     data: { operacionId: compraVieja.id, productoId: mp.id, seccionId, proceso: "COMPRA", cantidad: 10, detalle: "Compra", precioTotal: 50, precioPorUnidadStock: 5 },
   });
-  // Venta CON costo congelado explícito ($5 × 1kg = $5) — no depende de reconstrucción, aísla lo que este test quiere medir.
+  // Venta CON costo congelado explícito ($ 5,00 × 1kg = $ 5,00) — no depende de reconstrucción, aísla lo que este test quiere medir.
   const venta = await prisma.operacion.create({ data: { sucursalId, proceso: "VENTA", fecha: new Date("2024-05-02T12:00:00Z"), usuarioId: admin.id } });
   operaciones.push(venta.id);
   await prisma.movimientoStock.create({
     data: { operacionId: venta.id, productoId: pv.id, seccionId, proceso: "VENTA", cantidad: -1, detalle: "Venta", precioTotal: 100, precioPorUnidadStock: 100, costoUnitarioVenta: 5 },
   });
-  // Compra de HOY a $50/kg: sube el costo de REPOSICIÓN actual del insumo — mueve el margen nominal, no el Real (ya congelado) ni el costo de lo vendido (fuera de la ventana).
+  // Compra de HOY a $ 50,00/kg: sube el costo de REPOSICIÓN actual del insumo — mueve el margen nominal, no el Real (ya congelado) ni el costo de lo vendido (fuera de la ventana).
   const compraHoy = await prisma.operacion.create({ data: { sucursalId, proceso: "COMPRA", fecha: new Date(), usuarioId: admin.id } });
   operaciones.push(compraHoy.id);
   await prisma.movimientoStock.create({
@@ -48,18 +48,18 @@ test("«Ganancia de lo vendido» muestra el margen Real (congelado), no el nomin
     await page.goto("/reportes/periodo?desde=2024-05-01&hasta=2024-05-03");
     await expect(page.getByRole("heading", { name: "Reporte por período" })).toBeVisible();
 
-    // La cifra principal es el Real: $95 (100 de venta − 5 de costo congelado), 95%. NO el nominal ($50, 50%).
+    // La cifra principal es el Real: $ 95,00 (100 de venta − 5 de costo congelado), 95%. NO el nominal ($ 50,00, 50%).
     const tarjetaMargen = page.getByText("Ganancia de lo vendido").locator("..");
-    await expect(tarjetaMargen).toContainText("$95");
+    await expect(tarjetaMargen).toContainText("$ 95,00");
     await expect(tarjetaMargen).toContainText("95%");
-    await expect(tarjetaMargen).not.toContainText("$50 (50%)");
+    await expect(tarjetaMargen).not.toContainText("$ 50,00 (50%)");
 
-    // Costo de lo vendido: $5 (5%) — coincide con la identidad costoDeLoVendidoTotal ≈ ingresoConCostoReal − margenRealTotal (100 − 95 = 5).
+    // Costo de lo vendido: $ 5,00 (5%) — coincide con la identidad costoDeLoVendidoTotal ≈ ingresoConCostoReal − margenRealTotal (100 − 95 = 5).
     const consumo = page.locator("[data-costo-de-lo-vendido]");
-    await expect(consumo).toContainText("$5 (5%)");
+    await expect(consumo).toContainText("$ 5,00 (5%)");
     await expect(consumo).not.toContainText("reconstruido"); // costo congelado explícito, no reconstruido
 
-    // Plegado por defecto: el nominal ($50, más alto por el costo de reposición de HOY) no se ve todavía.
+    // Plegado por defecto: el nominal ($ 50,00, más alto por el costo de reposición de HOY) no se ve todavía.
     const detalle = page.locator("details").filter({ hasText: "Otras formas de ver el margen" });
     await expect(detalle).toHaveJSProperty("open", false);
     await expect(detalle.getByText("Si repusieras hoy")).not.toBeVisible();
@@ -67,7 +67,7 @@ test("«Ganancia de lo vendido» muestra el margen Real (congelado), no el nomin
     await detalle.locator("summary").click();
     await expect(detalle).toHaveJSProperty("open", true);
     await expect(detalle.getByText("Si repusieras hoy")).toBeVisible();
-    await expect(detalle).toContainText("$50");
+    await expect(detalle).toContainText("$ 50,00");
     await expect(detalle).toContainText("(50%)");
   } finally {
     await prisma.movimientoStock.deleteMany({ where: { productoId: { in: [mp.id, pv.id] } } });

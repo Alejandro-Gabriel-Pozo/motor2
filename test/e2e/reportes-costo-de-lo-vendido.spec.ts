@@ -8,11 +8,11 @@ import AxeBuilder from "@axe-core/playwright";
  * El reporte agrega sobre TODA la sucursal, y otros specs dejan compras y ventas en 2026-08 y en «hoy»: por eso esta prueba usa una VENTANA DE FECHAS PROPIA
  * (marzo de 2024, que ningún otro spec toca) y un importe exacto que solo esta siembra puede producir. Se siembra directo en la base (marca única, se limpia).
  *
- * Datos: un kg de harina cuesta $5; un pan lleva 2 kg → cuesta $10 y se vende a $100.
+ * Datos: un kg de harina cuesta $ 5,00; un pan lleva 2 kg → cuesta $ 10,00 y se vende a $ 100,00.
  *  - venta del 2/3, ANTES de cualquier compra: no se puede costear (queda afuera y baja la cobertura);
- *  - compra del 5/3: 10 kg por $50;
- *  - venta del 6/3: no guardó su costo, pero se reconstruye con la compra ($10) → «reconstruido».
- * Resultado: costo de lo vendido $10 sobre $100 costeables (10 %), cobertura 50 % de lo vendido → «parcial».
+ *  - compra del 5/3: 10 kg por $ 50,00;
+ *  - venta del 6/3: no guardó su costo, pero se reconstruye con la compra ($ 10,00) → «reconstruido».
+ * Resultado: costo de lo vendido $ 10,00 sobre $ 100,00 costeables (10 %), cobertura 50 % de lo vendido → «parcial».
  */
 async function sembrar(sucursalId: string, seccionId: string) {
   const marca = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -60,13 +60,13 @@ test("Período muestra el desembolso y el consumo por separado, con «reconstrui
     const consumo = page.locator("[data-costo-de-lo-vendido]");
     await expect(consumo).toBeVisible();
     await expect(consumo).toContainText("Costo de lo vendido (consumo):");
-    await expect(consumo).toContainText("$10 (10%)"); // $10 de costo sobre los $100 costeables
+    await expect(consumo).toContainText("$ 10,00 (10%)"); // $ 10,00 de costo sobre los $ 100,00 costeables
     await expect(consumo).toContainText("· reconstruido"); // la venta del 6/3 no guardó su costo
     await expect(consumo).toContainText("· parcial (cubre 50% de lo vendido)"); // la del 2/3, anterior a toda compra, no se pudo costear
 
     // El aviso explica la diferencia con el ratio de compras y qué no se pudo costear.
     await expect(consumo.locator("[title]").first()).toHaveAttribute("title", /Mide CONSUMO, a diferencia de Compras\/Ventas/);
-    await expect(consumo.locator("[title]").first()).toHaveAttribute("title", /Cubre \$100 de \$200 vendidos \(50 %\)/);
+    await expect(consumo.locator("[title]").first()).toHaveAttribute("title", /Cubre \$ 100,00 de \$ 200,00 vendidos \(50 %\)/);
   } finally {
     await limpiar();
   }

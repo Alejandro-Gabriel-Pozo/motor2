@@ -56,11 +56,11 @@ describe("repartirFactura: las pruebas obligatorias del dueño", () => {
 
 describe("repartirFactura: rechazos", () => {
   it("importes que no suman el total: dice cuánto falta o sobra", () => {
-    expect(repartirFactura([renglon(100)], "IMPORTE", [60, 30])).toEqual({ ok: false, mensaje: "Los importes de las sucursales no llegan al total: faltan $10.00." });
-    expect(repartirFactura([renglon(100)], "IMPORTE", [60, 50])).toEqual({ ok: false, mensaje: "Los importes de las sucursales pasan el total: sobran $10.00." });
+    expect(repartirFactura([renglon(100)], "IMPORTE", [60, 30])).toEqual({ ok: false, mensaje: "Los importes de las sucursales no llegan al total: faltan $ 10,00." });
+    expect(repartirFactura([renglon(100)], "IMPORTE", [60, 50])).toEqual({ ok: false, mensaje: "Los importes de las sucursales pasan el total: sobran $ 10,00." });
   });
   it("porcentajes que no suman 100, o con más de dos decimales", () => {
-    expect(repartirFactura([renglon(100)], "PORCENTAJE", [50, 49.99])).toMatchObject({ ok: false, mensaje: expect.stringContaining("suman 99.99 %") });
+    expect(repartirFactura([renglon(100)], "PORCENTAJE", [50, 49.99])).toMatchObject({ ok: false, mensaje: expect.stringContaining("suman 99,99 %") });
     expect(repartirFactura([renglon(100)], "PORCENTAJE", [50.001, 49.999])).toMatchObject({ ok: false, mensaje: expect.stringContaining("dos decimales") });
   });
   it("total 0 con importes, valores en cero o negativos, sin renglones o sin sucursales", () => {

@@ -160,7 +160,7 @@
   AUDITORIA actorId=admin campo=cantidadMinima descripcion=Promo "Menú del día": cupo de la sección "Postres", cantidad mínima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:postres sucursalId=null valorAnterior=null valorNuevo=1
   AUDITORIA actorId=admin campo=cantidadMaxima descripcion=Promo "Menú del día": cupo de la sección "Postres", cantidad máxima empresaId=empresa entidad=PromoCartaCupo entidadId=menu:postres sucursalId=null valorAnterior=null valorNuevo=1
 ### promo: precio local por debajo del piso (3 unidades)
-  resultado: {"ok":false,"mensaje":"El precio de \"Menú del día\" ($0.02) no alcanza el piso de $0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $0.03). Subí el precio o bajá los máximos."}
+  resultado: {"ok":false,"mensaje":"El precio de \"Menú del día\" ($ 0,02) no alcanza el piso de $ 0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $ 0,03). Subí el precio o bajá los máximos."}
   efectos: revalidarCartasPublicas=0 refrescar=0
 ### promo: precio local justo en el piso
   resultado: {"ok":true,"mensaje":"Precio de \"Menú del día\" en esta sucursal: $0.05."}
@@ -169,10 +169,10 @@
   + PROMO_SUCURSAL promoSucursal1 activa=true empresaId=empresa precioLocal=0.05 promoCartaId=menu sucursalId=central
   AUDITORIA actorId=admin campo=precioLocal descripcion=Promo "Menú del día": precio en esta sucursal empresaId=empresa entidad=PromoCartaSucursal entidadId=menu:central sucursalId=central valorAnterior=null valorNuevo=0.05
 ### promo: cupos que dejan el precio local bajo el piso
-  resultado: {"ok":false,"mensaje":"El precio local de \"Menú del día\" en alguna sucursal no alcanza el piso de $0,01 por unidad en el peor caso (10 unidades si se elige el máximo de cada cupo: hace falta al menos $0.1). Subí ese precio local o bajá los máximos."}
+  resultado: {"ok":false,"mensaje":"El precio local de \"Menú del día\" en alguna sucursal no alcanza el piso de $ 0,01 por unidad en el peor caso (10 unidades si se elige el máximo de cada cupo: hace falta al menos $ 0,10). Subí ese precio local o bajá los máximos."}
   efectos: revalidarCartasPublicas=0 refrescar=0
 ### promo: precio de la empresa bajo el piso de sus cupos (desde O.42 la edición mira el piso: se rechaza)
-  resultado: {"ok":false,"mensaje":"El precio de \"Menú del día\" ($0.01) no alcanza el piso de $0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $0.03). Subí el precio o bajá los máximos."}
+  resultado: {"ok":false,"mensaje":"El precio de \"Menú del día\" ($ 0,01) no alcanza el piso de $ 0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $ 0,03). Subí el precio o bajá los máximos."}
   efectos: revalidarCartasPublicas=0 refrescar=0
 ### promo: cupos con la sección repetida
   resultado: {"ok":false,"mensaje":"No se puede repetir la misma sección de carta en dos cupos de la misma promo."}
