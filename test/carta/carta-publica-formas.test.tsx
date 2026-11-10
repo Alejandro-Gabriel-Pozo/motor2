@@ -302,7 +302,7 @@ describe("8d: la base de un eje (las pizzas): oculta por defecto, cada opción c
     expect(html).toMatch(/^<li data-forma="tabla"/);
     expect(html).toMatch(/<div class="carta-linea-fina[^"]*"><h3 data-rol="producto"[^>]*>Pizzas<\/h3>/);
     expect(html.match(/<span data-rol="opcion" class="carta-rol-opcion[^"]*"[^>]*>([^<]*)<\/span>/g)?.map((h) => texto(h))).toEqual(["Pizza muzzarella", "Pizza napolitana"]);
-    expect([...html.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$ 18.000,00", "$ 22.000,00"]);
+    expect([...html.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(["$ 18.000,00", "$ 22.000,00"]);
     expect(html).not.toContain("<thead");
     expect(texto(html)).toBe("Pizzas Pizza muzzarella $ 18.000,00 Pizza napolitana $ 22.000,00 A la piedra veggie");
   });

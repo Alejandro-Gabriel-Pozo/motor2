@@ -101,9 +101,9 @@ describe("la escala de letra única (DEC-35)", () => {
 });
 
 describe("el ancho de las columnas de precio de las tablas (modelo unificado)", () => {
-  it("todas miden lo mismo: clamp(4.5rem, 16cqw, 9rem) contra el ítem (un `<col>` no respeta un porcentaje en Chrome); 72 px como mínimo", () => {
+  it("todas miden lo mismo salvo que un importe largo pida más: clamp(4.5rem, 16cqw, 9rem) contra el ítem (un `<col>` no respeta un porcentaje en Chrome), 72 px como mínimo, ensanchada hasta lo que mide el importe más largo de la tabla (el precio no se parte: hotfix 2026-11-10) y nunca más que lo que deja libre un rótulo de 72 px", () => {
     expect(CSS).toMatch(/\.carta-shell \.carta-tabla \{\s*container-type: inline-size;\s*\}/);
-    expect(CSS).toMatch(/\.carta-shell \.carta-col-precio \{\s*width: clamp\(4\.5rem, 16cqw, 9rem\);\s*\}/);
+    expect(CSS).toMatch(/\.carta-shell \.carta-col-precio \{\s*width: min\(\s*max\(clamp\(4\.5rem, 16cqw, 9rem\), calc\(var\(--carta-fs-opcion\) \* 0\.62 \* var\(--carta-largo-precio, 0\) \+ 0\.5rem\)\),\s*calc\(\(100cqw - 4\.5rem\) \/ var\(--carta-columnas, 1\)\)\s*\);\s*\}/);
     expect(parseFloat("4.5rem") * 16).toBe(72);
   });
 });

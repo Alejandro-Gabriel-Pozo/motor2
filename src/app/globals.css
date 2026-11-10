@@ -285,12 +285,18 @@ body:has(main[data-panel]) {
 }
 /* La línea fina que separa filas o bloques de la carta (un trazo del color de la tinta, atenuado hacia el fondo). */
 /* El ancho de las columnas de precio de una tabla de la carta (Chico | Mediano | Grande): el MISMO en toda la carta, así las columnas de productos distintos quedan en la misma vertical. Un `<col>` no respeta
-   un porcentaje en Chrome: se mide contra el contenedor (`cqw`, el `li` de la tabla). Mínimo 72 px; tope 144 px. Con los 2 decimales de la regla del dueño (2026-11-10) «$ 12.500,00» no entra en 72 px: la celda deja que el «$» pase arriba del número y, en último caso, corta el texto (`overflow-wrap: anywhere`) en vez de ensanchar la tabla. */
+   un porcentaje en Chrome: se mide contra el contenedor (`cqw`, el `li` de la tabla). Mínimo 72 px; tope 144 px. Con los 2 decimales de la regla del dueño (2026-11-10) un precio como «$ 128.500,00» es más
+   ancho que eso y NO puede partirse dentro del número: la columna se ensancha hasta lo que mide el importe más largo de ESA tabla (`--carta-largo-precio`, en caracteres, por `--carta-fs-opcion` del texto de
+   la celda; 0,62 em por caracter y 0,5 rem de margen), y nunca más que lo que deja libre un rótulo de 72 px repartido entre las columnas (`--carta-columnas`): si ni así entra (tres columnas a 320 px), el
+   «$» de ESA tabla pasa arriba del número como último recurso (`seccion.tsx`, `puedeCortar`; las cifras no se cortan). */
 .carta-shell .carta-tabla {
   container-type: inline-size;
 }
 .carta-shell .carta-col-precio {
-  width: clamp(4.5rem, 16cqw, 9rem);
+  width: min(
+    max(clamp(4.5rem, 16cqw, 9rem), calc(var(--carta-fs-opcion) * 0.62 * var(--carta-largo-precio, 0) + 0.5rem)),
+    calc((100cqw - 4.5rem) / var(--carta-columnas, 1))
+  );
 }
 .carta-shell .carta-linea-fina {
   border-bottom: 1px solid color-mix(in oklch, var(--carta-ink) 28%, var(--carta-bg));
