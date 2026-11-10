@@ -1,5 +1,7 @@
 # ADR-038: Números tecleados, tipos de dato declarados y bloqueantes
 
+> **Superado en parte (2026-11-09, regla de números del dueño; `docs/diseno-campo-numerico-entrada-2026-11-09.md`):** lo que una persona escribe o pega ya NO admite el punto (ni como miles ni como decimal: se ignora la tecla o se rechaza el pegado con el aviso «Los decimales van con coma: 0,5»), por lo que desaparecen la lectura de «21.000» como miles y el error «ambiguo»; el servidor lee de un texto solo el formato canónico (dígitos y un punto decimal). Lo demás (canal de valor, tipos declarados) sigue vigente. El texto de abajo es el histórico.
+
 > Redactado el 2026-10-22 (rama `alegp/stoic-davinci-185dm4`, Fase 6: micro-paso «2c», el analizador numérico, y lote 6.33, «tipos de dato declarados y bloqueantes»). **Estado: implementado en el código. Sin migraciones.** La regla numérica la decidió el dueño el 2026-10-20 («Notación argentina + mostrar lo que entendió»). Las decisiones abiertas están al final.
 
 ## Contexto

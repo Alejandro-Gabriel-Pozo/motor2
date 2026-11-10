@@ -11,14 +11,19 @@ export function versionDelFormulario(fd: FormData): { diferencia: unknown; facto
   const tipo = String(fd.get("tipoDiferencia") ?? "MONTO");
   const diferencia = tipo === "PORCENTAJE" ? { tipo: "PORCENTAJE", porcentaje: valor } : { tipo: "MONTO", monto: valor };
   const factorTexto = String(fd.get("factorEscala") ?? "").trim();
+  return { diferencia, factorEscala: factorTexto === "" ? null : numeroDelCampo(factorTexto), consumos: consumosDelFormulario(fd) };
+}
+
+/**
+ * Solo las líneas de consumo del campo oculto `consumos` de `EditorDeConsumos` (JSON), para la pantalla que cambia ÚNICAMENTE el consumo de una opción y manda la diferencia y el factor vigentes tal
+ * cual (la pestaña Opciones del producto). Tampoco valida: uno que no se puede leer llega como texto y el guard lo rechaza. Sin campo = sin consumos.
+ */
+export function consumosDelFormulario(fd: FormData): unknown {
   const crudo = String(fd.get("consumos") ?? "").trim();
-  let consumos: unknown = [];
-  if (crudo) {
-    try {
-      consumos = JSON.parse(crudo) as unknown;
-    } catch {
-      consumos = crudo;
-    }
+  if (!crudo) return [];
+  try {
+    return JSON.parse(crudo) as unknown;
+  } catch {
+    return crudo;
   }
-  return { diferencia, factorEscala: factorTexto === "" ? null : numeroDelCampo(factorTexto), consumos };
 }

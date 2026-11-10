@@ -23,30 +23,29 @@ describe("CampoNumero dibuja la primitiva Campo", () => {
     expect(entrada).toContain("aria-describedby=");
   });
 
-  it("2c: «1.205» en un campo de kilos (marcado como lo deja el campo al tipearlo) es ambiguo y lo dice con las dos lecturas; en una unidad entera no", () => {
-    const ambiguo = renderToStaticMarkup(<CampoNumero value={`1.205${MARCA_DE_NO_CANONICO}`} tipo="cantidad" decimales={3} ariaLabel="Kilos" />);
-    expect(ambiguo).toContain("La cantidad: ¿1,205 o 1205? Escribí 1205 o 1,205.");
-    expect(entradaVisible(ambiguo)).toContain('aria-invalid="true"');
-    // La marca no se ve en el campo.
-    expect(entradaVisible(ambiguo)).not.toContain(MARCA_DE_NO_CANONICO);
-  });
-
-  it("2c, riesgo de stock: «1.205» en un campo de kg o l del sembrado (cantidad de 2 decimales, como un importe) es ambiguo y lo dice; en g (0 decimales) y en un importe no hay error", () => {
-    const kg = renderToStaticMarkup(<CampoNumero value={`1.205${MARCA_DE_NO_CANONICO}`} tipo="cantidad" decimales={2} ariaLabel="Kilos" />);
-    expect(kg).toContain("La cantidad: ¿1,205 o 1205? Escribí 1205 o 1,205.");
-    expect(entradaVisible(kg)).toContain('aria-invalid="true"');
-    // Lo que emite un campo de g o de importe para «1.205» es 1205 (canónico, sin marca): se ve «1.205» y sin error.
-    const g = renderToStaticMarkup(<CampoNumero value="1205" tipo="cantidad" decimales={0} ariaLabel="Gramos" />);
-    const importe = renderToStaticMarkup(<CampoNumero value="1205" tipo="importe" etiqueta="El precio" ariaLabel="Precio" />);
-    for (const html of [g, importe]) {
-      expect(html).not.toContain('role="alert"');
-      expect(entradaVisible(html)).toContain('value="1.205"');
+  // regla de números 2026-11-09: ya no existe el «ambiguo» ni el punto de miles. Un «.» en lo que quedó en el campo (un valor que llegó por afuera, marcado como lo deja el campo) es siempre el aviso de la coma.
+  it("«1.205» en un campo de kilos (marcado como lo deja el campo) lleva un punto: dice que los decimales van con coma, en cualquier cantidad de decimales; la marca no se ve", () => {
+    for (const decimales of [3, 2, 0]) {
+      const html = renderToStaticMarkup(<CampoNumero value={`1.205${MARCA_DE_NO_CANONICO}`} tipo="cantidad" decimales={decimales} ariaLabel="Kilos" />);
+      expect(html, `${decimales} decimales`).toContain("La cantidad: Los decimales van con coma: 0,5");
+      expect(entradaVisible(html)).toContain('aria-invalid="true"');
+      expect(html).not.toContain("¿1,205 o 1205?");
+      expect(entradaVisible(html)).not.toContain(MARCA_DE_NO_CANONICO);
     }
   });
 
-  it("2c: «21,000» en un importe dice que admite 2 decimales y cómo escribir veintiún mil", () => {
+  it("lo que emite un campo para 1205 se ve con punto de miles («1.205» en cantidad, «1.205,00» en un importe) y sin error", () => {
+    const g = renderToStaticMarkup(<CampoNumero value="1205" tipo="cantidad" decimales={0} ariaLabel="Gramos" />);
+    const importe = renderToStaticMarkup(<CampoNumero value="1205" tipo="importe" etiqueta="El precio" ariaLabel="Precio" />);
+    for (const html of [g, importe]) expect(html).not.toContain('role="alert"');
+    expect(entradaVisible(g)).toContain('value="1.205"');
+    expect(entradaVisible(importe)).toContain('value="1.205,00"'); // el importe siempre con 2 decimales
+  });
+
+  it("«21,000» en un importe dice que admite 2 decimales y cómo escribir veintiún mil (sin ofrecer el punto)", () => {
     const html = renderToStaticMarkup(<CampoNumero value="21,000" tipo="importe" etiqueta="El precio" ariaLabel="Precio" />);
-    expect(html).toContain("El precio admite como máximo 2 decimales. Para 21000 escribí 21000 o 21.000,00.");
+    expect(html).toContain("El precio admite como máximo 2 decimales. Para 21000 escribí 21000.");
+    expect(html).not.toContain("21.000,00");
   });
 
   it("un valor del canal que no cumple la regla (negativo en un importe) marca el campo pero no dibuja mensaje: lo frena la validez nativa y lo dice el servidor", () => {
@@ -133,12 +132,13 @@ describe("CampoNumero dibuja la primitiva Campo", () => {
     expect(clasesDe(entradaVisible(renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" ariaLabel="n" />)))).toEqual(expect.arrayContaining(["min-h-11", "md:min-h-9"]));
   });
 
-  it("className va al contenedor (no al input) y el contenedor ya no es `relative` (el prefijo lo ubica Campo); sin className no queda un class vacío", () => {
+  // regla de números 2026-11-09: el contenedor vuelve a ser `relative` (ancla el «= …» y el aviso del punto, que son `absolute`); el prefijo lo sigue ubicando Campo.
+  it("className va al contenedor (no al input), junto a `relative` (ancla el aviso y el «= …»); sin className queda solo `relative`, sin un class vacío", () => {
     const con = renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" className="w-28" ariaLabel="n" />);
-    expect(con.startsWith('<div class="w-28">')).toBe(true);
+    expect(con.startsWith('<div class="relative w-28">')).toBe(true);
     expect(clasesDe(entradaVisible(con))).not.toContain("w-28");
     const sin = renderToStaticMarkup(<CampoNumero tipo="cantidad" value="1" ariaLabel="n" />);
-    expect(sin.startsWith("<div>")).toBe(true);
-    expect(sin).not.toMatch(/<div class="relative/);
+    expect(sin.startsWith('<div class="relative">')).toBe(true);
+    expect(sin).not.toContain('class=""');
   });
 });

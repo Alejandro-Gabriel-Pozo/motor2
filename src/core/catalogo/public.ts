@@ -21,7 +21,9 @@ export type { FiltroSelectorProducto } from "./filtro-selector-producto";
 export { aplicarSecuencia, esPermutacionExacta, insertarEnPosicion, secuenciaMoviendo } from "./pasos-receta";
 // Lectura en vivo de la cantidad de un ingrediente («= 300 g», aviso de «3.000»): la arma la página y la muestra components/receta/lectura-de-cantidad.tsx.
 export { leerCantidadTecleada, unidadesDeLectura } from "./lectura-de-cantidad";
-export type { UnidadDeLectura } from "./lectura-de-cantidad";
+export type { DescripcionDeLectura, UnidadDeLectura } from "./lectura-de-cantidad";
+// Guardia de unidad de las recetas (docs/diseno-guardia-de-unidad-receta-2026-11-09.md): lo desproporcionado se rechaza salvo confirmación.
+export { juzgarCantidadesDeIngredientes } from "./guardia-de-unidad";
 export { filtrarPreciosLocalesVigentes } from "./precio-local";
 export { cambioDePrecio } from "./cambio-de-precio";
 export type { CambioDePrecio } from "./cambio-de-precio";

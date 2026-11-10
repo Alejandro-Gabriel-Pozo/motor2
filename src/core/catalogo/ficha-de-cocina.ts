@@ -1,3 +1,4 @@
+import { formatearCantidad } from "../formato-de-numero";
 import { ZONA_ARGENTINA, formatearFechaHora } from "../tiempo/zona-horaria";
 
 /**
@@ -8,13 +9,16 @@ import { ZONA_ARGENTINA, formatearFechaHora } from "../tiempo/zona-horaria";
  * que viajen al papel aunque la fila que llega de la base los traiga. Lo que falta no se inventa: una sección vacía se omite o dice «pendiente de completar» (`PENDIENTE`).
  */
 
+/** La unidad de una cantidad: su nombre y, si se conocen, sus decimales (`Unidad.decimales`: hasta cuántos admite la cantidad). */
+type UnidadDeFicha = { nombre: string; decimales?: number };
+
 /** Un `Decimal` de la base, sin conocer Prisma (mismo tipo estructural que `receta-a-input.ts`). */
 type DecimalLeido = { toString(): string } | number;
 
 /** La versión de receta que rige en la sucursal, con SOLO lo que la ficha dibuja (la fila de `INCLUDE_RECETA_COMPLETA` se le asigna tal cual). */
 export interface RecetaParaFicha {
   version: number;
-  ingredientes: readonly { cantidad: DecimalLeido; unidad: { nombre: string }; insumoProducto: { nombre: string } }[];
+  ingredientes: readonly { cantidad: DecimalLeido; unidad: UnidadDeFicha; insumoProducto: { nombre: string } }[];
   pasos: readonly {
     orden: number;
     nombre: string | null;
@@ -23,10 +27,10 @@ export interface RecetaParaFicha {
     ingredientes: readonly { recetaIngrediente: { insumoProducto: { nombre: string } } }[];
   }[];
   rendimientoCantidad: DecimalLeido | null;
-  rendimientoUnidad: { nombre: string } | null;
+  rendimientoUnidad: UnidadDeFicha | null;
   racionesCantidad: number | null;
   racionTamano: DecimalLeido | null;
-  racionUnidad: { nombre: string } | null;
+  racionUnidad: UnidadDeFicha | null;
   tiempoPreparacionMinutos: number | null;
   tiempoCoccionMinutos: number | null;
   comentarios: string | null;
@@ -70,9 +74,9 @@ export interface FichaDeCocina {
 /** El texto de lo que falta cargar: nunca se inventa un valor en su lugar. */
 export const PENDIENTE = "pendiente de completar";
 
-/** Una cantidad en texto rioplatense: 0,22 · 0,005 · 1 (sin ceros de relleno). */
-function cantidadEnTexto(valor: DecimalLeido): string {
-  return String(Number(valor)).replace(".", ",");
+/** Una cantidad en texto rioplatense: 0,22 · 0,005 · 1 · 1.250 (sin ceros de relleno; formateo de salida único, `core/formato-de-numero.ts`). */
+function cantidadEnTexto(valor: DecimalLeido, unidad: { decimales?: number } | null): string {
+  return formatearCantidad(Number(valor), unidad?.decimales);
 }
 
 function renglones(texto: string | null): string[] {
@@ -82,9 +86,9 @@ function renglones(texto: string | null): string[] {
     .filter((r) => r !== "");
 }
 
-function conUnidad(cantidad: DecimalLeido | null, unidad: { nombre: string } | null): string | null {
+function conUnidad(cantidad: DecimalLeido | null, unidad: UnidadDeFicha | null): string | null {
   if (cantidad === null) return null;
-  return `${cantidadEnTexto(cantidad)}${unidad ? ` ${unidad.nombre}` : ""}`;
+  return `${cantidadEnTexto(cantidad, unidad)}${unidad ? ` ${unidad.nombre}` : ""}`;
 }
 
 export function armarFichaDeCocina(entrada: EntradaDeFichaDeCocina): FichaDeCocina {
@@ -92,7 +96,7 @@ export function armarFichaDeCocina(entrada: EntradaDeFichaDeCocina): FichaDeCoci
   const datos: { rotulo: string; valor: string }[] = [];
   const rendimiento = conUnidad(receta.rendimientoCantidad, receta.rendimientoUnidad);
   if (rendimiento !== null) datos.push({ rotulo: "Rendimiento", valor: rendimiento });
-  if (receta.racionesCantidad !== null) datos.push({ rotulo: "Raciones", valor: String(receta.racionesCantidad) });
+  if (receta.racionesCantidad !== null) datos.push({ rotulo: "Raciones", valor: formatearCantidad(receta.racionesCantidad, 0) });
   const racion = conUnidad(receta.racionTamano, receta.racionUnidad);
   if (racion !== null) datos.push({ rotulo: "Tamaño de ración", valor: racion });
   if (receta.tiempoPreparacionMinutos !== null) datos.push({ rotulo: "Preparación", valor: `${receta.tiempoPreparacionMinutos} min` });
@@ -115,7 +119,7 @@ export function armarFichaDeCocina(entrada: EntradaDeFichaDeCocina): FichaDeCoci
     impresaEn: formatearFechaHora(entrada.ahora, ZONA_ARGENTINA),
     datos,
     fichaTecnicaPendiente: datos.length === 0,
-    ingredientes: receta.ingredientes.map((i) => ({ nombre: i.insumoProducto.nombre, cantidad: cantidadEnTexto(i.cantidad), unidad: i.unidad.nombre })),
+    ingredientes: receta.ingredientes.map((i) => ({ nombre: i.insumoProducto.nombre, cantidad: cantidadEnTexto(i.cantidad, i.unidad), unidad: i.unidad.nombre })),
     ingredientesPendientes: receta.ingredientes.length === 0,
     pasos,
     pasosPendientes: pasos.length === 0,

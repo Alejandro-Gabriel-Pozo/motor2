@@ -10,6 +10,8 @@ import { PESTANAS_DE_EXISTENCIAS, filaDeMinimoQueRige } from "@/core/stock/publi
 import type { AccionClave } from "@/core/permisos/acciones";
 import { calcularAlertasStock } from "@/server/consultas/stock/alertas";
 import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { formatearCantidad } from "@/core/formato-de-numero";
+import { CeldaNumerica } from "@/ui/componentes/datos/celda-numerica";
 
 const VER_STOCK: ReadonlySet<AccionClave> = new Set<AccionClave>(["ver_stock"]);
 
@@ -49,9 +51,9 @@ export default async function AlertasStockPage() {
           <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Insumo</th>
             <th>Depósito</th>
-            <th>Saldo actual</th>
-            <th>Mínimo</th>
-            <th>Diferencia</th>
+            <th className="text-right">Saldo actual</th>
+            <th className="text-right">Mínimo</th>
+            <th className="text-right">Diferencia</th>
             <th>Estado</th>
             <th>Último movimiento</th>
             {cambiaMinimo && (
@@ -70,9 +72,9 @@ export default async function AlertasStockPage() {
                   {a.productoCodigo} — {a.productoNombre}
                 </td>
                 <td>{a.seccionNombre}</td>
-                <td>{a.saldoActual}</td>
-                <td>{a.stockMinimo}</td>
-                <td>{a.diferencia}</td>
+                <CeldaNumerica>{formatearCantidad(a.saldoActual)}</CeldaNumerica>
+                <CeldaNumerica>{formatearCantidad(a.stockMinimo)}</CeldaNumerica>
+                <CeldaNumerica>{formatearCantidad(a.diferencia)}</CeldaNumerica>
                 <td className={a.estado === "CRITICO" ? "text-error font-medium" : "text-aviso-tinta"}>{a.estado === "CRITICO" ? "Crítico" : "Bajo"}</td>
                 <td className="text-tinta-tenue">{a.ultimaFecha ? diaDeCalendario(a.ultimaFecha, ctx.empresaZonaHoraria) : "—"}</td>
                 {cambiaMinimo && (

@@ -22,7 +22,7 @@ import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-v
  * disponibilidad → productos.
  */
 
-const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const MONEDA = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const aviso = (page: Page) => page.locator('[role="status"][aria-live="polite"]');
 const barra = (page: Page) => page.getByRole("group", { name: "Secciones de la carta" });
 
@@ -214,7 +214,7 @@ test("armar la promo con los dos cupos, agregarla, enviarla a cocina y cerrar la
     const cierre = page.getByRole("dialog", { name: "Cerrar cuenta · Mesa 992" });
     await expect(cierre.locator("[data-total-cierre]")).toContainText(MONEDA.format(4000));
     await cierre.getByRole("button", { name: "Cerrar y registrar la venta" }).click();
-    await expect(aviso(page)).toHaveText(new RegExp(`^Cuenta de la mesa 992 cerrada: se registró la venta por \\$\\s?4\\.000\\.$`));
+    await expect(aviso(page)).toHaveText(new RegExp(`^Cuenta de la mesa 992 cerrada: se registró la venta por \\$\\s?4\\.000,00\\.$`));
     await expect(page.getByText("La mesa está libre.")).toBeVisible();
 
     // D4/paso 7: una Operacion VENTA por componente, TODAS con el mismo promoCuentaId — nunca una sola por la promo entera.

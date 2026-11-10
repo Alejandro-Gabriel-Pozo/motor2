@@ -48,13 +48,13 @@ test("justo en el 40 % es OK y un punto más es «Food cost alto»; la columna m
     await expect(page.getByRole("columnheader", { name: /^Food cost objetivo/ })).toBeVisible();
 
     const filaJusto = page.locator("tr", { hasText: platos.justo.nombre });
-    await expect(filaJusto).toContainText("40%");
-    await expect(filaJusto).toContainText("$10.000"); // precio para food cost 40 %: $4000 ÷ 0,40
+    await expect(filaJusto).toContainText("40 %");
+    await expect(filaJusto).toContainText("$ 10.000,00"); // precio para food cost 40 %: $4000 ÷ 0,40
     await expect(filaJusto.getByText("Food cost alto")).toHaveCount(0);
 
     const filaPasado = page.locator("tr", { hasText: platos.pasado.nombre });
-    await expect(filaPasado).toContainText("41%");
-    await expect(filaPasado).toContainText("$10.250"); // $4100 ÷ 0,40
+    await expect(filaPasado).toContainText("41 %");
+    await expect(filaPasado).toContainText("$ 10.250,00"); // $4100 ÷ 0,40
     await expect(filaPasado.getByText("Food cost alto")).toBeVisible();
   } finally {
     await limpiarPlatos(platos, [operacion]);
@@ -70,16 +70,16 @@ test("el objetivo es el mismo pero se evalúa con el costo de cada sucursal: el 
   try {
     await page.goto("/reportes/costos");
     const filaCentral = page.locator("tr", { hasText: platos.justo.nombre });
-    await expect(filaCentral).toContainText("40%");
-    await expect(filaCentral).toContainText("$10.000");
+    await expect(filaCentral).toContainText("40 %");
+    await expect(filaCentral).toContainText("$ 10.000,00");
     await expect(filaCentral.getByText("Food cost alto")).toHaveCount(0);
 
     await page.getByLabel("Sucursal activa").selectOption(segunda.id);
     await page.waitForURL((url) => url.pathname === "/reportes/costos");
     await expect(page.getByLabel("Sucursal activa")).toHaveValue(segunda.id);
     const filaSegunda = page.locator("tr", { hasText: platos.justo.nombre });
-    await expect(filaSegunda).toContainText("50%");
-    await expect(filaSegunda).toContainText("$12.500"); // $5000 ÷ 0,40
+    await expect(filaSegunda).toContainText("50 %");
+    await expect(filaSegunda).toContainText("$ 12.500,00"); // $5000 ÷ 0,40
     await expect(filaSegunda.getByText("Food cost alto")).toBeVisible();
   } finally {
     await prisma.movimientoStock.deleteMany({ where: { seccionId: seccionSegunda.id } });

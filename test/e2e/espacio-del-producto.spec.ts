@@ -66,7 +66,7 @@ for (const { ancho, alto } of [
         await ventana.getByLabel(`Nombre de la opción ${i + 1}`).fill(nombre);
         await ventana.getByLabel(`Precio final de la opción ${i + 1}`).fill(precio);
       }
-      await expect(ventana).toContainText(/Napolitana = \$\s*22\.000/);
+      await expect(ventana).toContainText(/Napolitana = \$\s*22\.000,00/);
       await expectSinDesborde(page, `${ancho} px: la ventana «+ Nuevo grupo» llena`);
       await capturar(page, `espacio-paso2-ventana-nuevo-grupo-${ancho}`);
       if (ancho < 768) {
@@ -78,7 +78,7 @@ for (const { ancho, alto } of [
       await expect(ventana).toBeHidden();
       await expect(page.getByRole("status").filter({ hasText: `«${tamano}» se agregó` })).toBeVisible();
       await expect(page.locator(`[data-admision-grupo='${tamano}']`)).toBeVisible();
-      await expect(page.locator("[data-resumen-de-opciones]")).toContainText("Simple $ 18.000 · Napolitana $ 22.000 · Especial $ 25.000");
+      await expect(page.locator("[data-resumen-de-opciones]")).toContainText("Simple $ 18.000,00 · Napolitana $ 22.000,00 · Especial $ 25.000,00");
 
       const grupo = await prisma.grupoDeOpciones.findFirstOrThrow({ where: { nombre: tamano }, include: { opciones: true } });
       expect(grupo.tipo).toBe("MEDIDA");
@@ -398,7 +398,7 @@ for (const { ancho, alto } of [
     await ventana.getByLabel("Nombre de la opción 1").fill("Queso");
     await ventana.getByLabel("Importe que suma la opción 1").fill("500");
     await expect(ventana).toContainText("Sin prefijo: cada opción se lee con su nombre.");
-    await expect(ventana).toContainText(/Con Queso = \$\s*18\.000 \+ \$\s*500 = \$\s*18\.500/);
+    await expect(ventana).toContainText(/Con Queso = \$\s*18\.000,00 \+ \$\s*500,00 = \$\s*18\.500,00/);
     await ventana.getByRole("button", { name: "Crear grupo", exact: true }).click();
     await expect(page.locator(`[data-admision-grupo='${nombre}']`)).toBeVisible();
     const grupo = await prisma.grupoDeOpciones.findFirstOrThrow({ where: { nombre }, select: { tipo: true, prefijoEnCarta: true } });

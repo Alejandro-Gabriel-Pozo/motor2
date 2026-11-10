@@ -223,9 +223,11 @@ describe("guardComandoCrearOpcionEnElProducto: formato y rango", () => {
     });
   });
 
-  it("el importe lleva a lo sumo 2 decimales, no es negativo y se lee con la regla del campo: «21.000» son veintiún mil y «21,000» se rechaza", () => {
-    expect(guardComandoCrearOpcionEnElProducto({ ...ok, importe: "21.000" })).toMatchObject({ ok: true, valor: { importe: 21000 } });
-    for (const malo of [-1, "21,000", 1.234, Number.NaN, Infinity, "abc", {}, true]) expect(guardComandoCrearOpcionEnElProducto({ ...ok, importe: malo }).ok, String(malo)).toBe(false);
+  // regla de números 2026-11-09: el servidor lee un texto solo en formato canónico y cuenta los decimales sobre el texto: «21000» y «21.5» pasan; «21.000» son 3 decimales, y «21,000» o «1.234,50» no son canónicos.
+  it("el importe lleva a lo sumo 2 decimales, no es negativo y se lee con el formato canónico: «21000» y «21.5» pasan; «21.000» (3 decimales), «21,000» y «1.234,50» se rechazan", () => {
+    expect(guardComandoCrearOpcionEnElProducto({ ...ok, importe: "21000" })).toMatchObject({ ok: true, valor: { importe: 21000 } });
+    expect(guardComandoCrearOpcionEnElProducto({ ...ok, importe: "21.5" })).toMatchObject({ ok: true, valor: { importe: 21.5 } });
+    for (const malo of [-1, "21.000", "21,000", "1.234,50", 1.234, Number.NaN, Infinity, "abc", {}, true]) expect(guardComandoCrearOpcionEnElProducto({ ...ok, importe: malo }).ok, String(malo)).toBe(false);
     expect(guardComandoCrearOpcionEnElProducto({ ...ok, importe: "" })).toMatchObject({ ok: true, valor: { importe: null } });
   });
 

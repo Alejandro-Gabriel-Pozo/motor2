@@ -88,3 +88,13 @@ describe("estructura de pantalla: las piezas usan los puntos de corte de reglas.
     expect(html).not.toMatch(/(?<![\w:-])sticky/);
   });
 });
+
+describe("estructura de pantalla: lo que cancela el relleno del contenedor de página tiene que coincidir con él", () => {
+  it("la carta (`.raiz` de carta-mant.module.css) usa margen negativo igual al relleno: 16 px en celular y 24 px desde md (si no, se sale 8 px a 375 px)", () => {
+    const css = readFileSync(join(__dirname, "../../src/app/(app)/carta/carta-mant.module.css"), "utf8");
+    const rem = (px: number) => `${px / 16}rem`.replace(/^1\.0rem$/, "1rem");
+    expect(css).toMatch(new RegExp(`\\.raiz \\{[^}]*margin: -${rem(rellenoDelContenido(390))};`));
+    expect(css).toMatch(new RegExp(`@media \\(min-width: ${PUNTOS_DE_CORTE.md}px\\) \\{\\s*\\.raiz \\{\\s*margin: -${rem(rellenoDelContenido(PUNTOS_DE_CORTE.md))};`));
+  });
+});
+

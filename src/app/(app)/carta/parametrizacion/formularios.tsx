@@ -1,4 +1,5 @@
 import { MENU_DEL_DIA_VISIBLE, SUMAR_LUGAR_DE_LISTA_VISIBLE, VIGENCIA_DE_PROMO_VISIBLE, type LugarDeCombo, type ProductoParaMantener, type VigenciaDePromoAdmin } from "@/core/carta/public";
+import { CampoNumero } from "@/components/campo-numero";
 import { AreaDeTexto } from "@/ui/primitivas/area-de-texto";
 import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
@@ -77,7 +78,10 @@ export function CamposSeccion({
         <AreaDeTexto etiqueta="Descripción (opcional)" name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} />
       </div>
       <Campo etiqueta="Imagen (URL https, opcional)" name="imagenUrl" type="url" defaultValue={valores?.imagenUrl ?? ""} placeholder="https://…" />
-      <Campo etiqueta="Orden" name="orden" type="number" step={1} defaultValue={valores?.orden ?? ordenSugerido} />
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Orden</span>
+        <CampoNumero tipo="entero" etiqueta="El orden" name="orden" defaultValue={String(valores?.orden ?? ordenSugerido)} permitirNegativo />
+      </label>
     </>
   );
 }
@@ -93,7 +97,10 @@ export function CamposGenero({
   return (
     <>
       <Campo etiqueta="Nombre" name="nombre" required defaultValue={valores?.nombre ?? ""} placeholder="Cerveza" />
-      <Campo etiqueta="Orden" name="orden" type="number" step={1} defaultValue={valores?.orden ?? ordenSugerido} />
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Orden</span>
+        <CampoNumero tipo="entero" etiqueta="El orden" name="orden" defaultValue={String(valores?.orden ?? ordenSugerido)} permitirNegativo />
+      </label>
     </>
   );
 }
@@ -120,8 +127,16 @@ export function CamposPromo({
       <div className="sm:col-span-2">
         <AreaDeTexto etiqueta="Descripción (opcional)" name="descripcion" rows={2} defaultValue={valores?.descripcion ?? ""} />
       </div>
-      <Campo etiqueta="Precio" name="precio" type="number" min={0} step="0.01" required defaultValue={valores?.precio ?? ""} />
-      <Campo etiqueta="Orden" name="orden" type="number" step={1} defaultValue={valores?.orden ?? 0} />
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium">
+          Precio<span aria-hidden="true"> *</span>
+        </span>
+        <CampoNumero tipo="importe" etiqueta="El precio" name="precio" prefijo="$" required defaultValue={valores ? String(valores.precio) : ""} />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Orden</span>
+        <CampoNumero tipo="entero" etiqueta="El orden" name="orden" defaultValue={String(valores?.orden ?? 0)} permitirNegativo />
+      </label>
     </>
   );
 }
@@ -210,11 +225,11 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           </div>
           <label className={CLASE_CANTIDAD_DE_CUPO}>
             mín.
-            <Campo nombradoPorFuera type="number" name={`lugar_min_${l.id}`} min={0} step={1} defaultValue={l.cantidadMinima} className={CLASE_NUMERO} />
+            <CampoNumero tipo="entero" etiqueta="El mínimo" name={`lugar_min_${l.id}`} defaultValue={String(l.cantidadMinima)} className={CLASE_NUMERO} />
           </label>
           <label className={CLASE_CANTIDAD_DE_CUPO}>
             máx.
-            <Campo nombradoPorFuera type="number" name={`lugar_max_${l.id}`} min={1} step={1} defaultValue={l.cantidadMaxima} className={CLASE_NUMERO} />
+            <CampoNumero tipo="entero" etiqueta="El máximo" name={`lugar_max_${l.id}`} defaultValue={String(l.cantidadMaxima)} className={CLASE_NUMERO} />
           </label>
         </div>
       ))}
@@ -231,8 +246,14 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           <div className="col-span-2">
             <Campo etiqueta="Nombre" name="nuevo_lugar_nombre" maxLength={80} placeholder="Ej.: Bebida" />
           </div>
-          <Campo etiqueta="mín." type="number" name="nuevo_lugar_min" min={0} step={1} defaultValue={1} className={CLASE_NUMERO} />
-          <Campo etiqueta="máx." type="number" name="nuevo_lugar_max" min={1} step={1} defaultValue={1} className={CLASE_NUMERO} />
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">mín.</span>
+            <CampoNumero tipo="entero" etiqueta="El mínimo" name="nuevo_lugar_min" defaultValue="1" className={CLASE_NUMERO} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">máx.</span>
+            <CampoNumero tipo="entero" etiqueta="El máximo" name="nuevo_lugar_max" defaultValue="1" className={CLASE_NUMERO} />
+          </label>
         </fieldset>
       )}
     </div>
@@ -258,11 +279,11 @@ export function CamposCupos({
             </div>
             <label className={CLASE_CANTIDAD_DE_CUPO}>
               mín.
-              <Campo nombradoPorFuera type="number" name={`min_${s.id}`} min={0} step={1} defaultValue={g?.cantidadMinima ?? 0} className={CLASE_NUMERO} />
+              <CampoNumero tipo="entero" etiqueta="El mínimo" name={`min_${s.id}`} defaultValue={String(g?.cantidadMinima ?? 0)} className={CLASE_NUMERO} />
             </label>
             <label className={CLASE_CANTIDAD_DE_CUPO}>
               máx.
-              <Campo nombradoPorFuera type="number" name={`max_${s.id}`} min={1} step={1} defaultValue={g?.cantidadMaxima ?? 1} className={CLASE_NUMERO} />
+              <CampoNumero tipo="entero" etiqueta="El máximo" name={`max_${s.id}`} defaultValue={String(g?.cantidadMaxima ?? 1)} className={CLASE_NUMERO} />
             </label>
           </div>
         );

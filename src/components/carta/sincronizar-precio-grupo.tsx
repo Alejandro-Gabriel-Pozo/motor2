@@ -4,8 +4,9 @@ import { useState, useTransition } from "react";
 import type { ResultadoAccion, SincronizablePrecioGrupo } from "@/server/actions/tipos";
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
+import { formatearMonto } from "@/core/formato-de-numero";
 
-const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
+const pesos = formatearMonto;
 
 /**
  * Después de guardar un precio (Catálogo o Precio Local) de un producto que está en un ítem agrupado de la carta, ofrece aplicar el

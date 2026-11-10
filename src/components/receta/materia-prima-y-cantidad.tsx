@@ -34,6 +34,7 @@ export function MateriaPrimaYCantidad({
   etiquetaCantidad,
   etiquetaMerma,
   lecturaPorUnidad,
+  nombreDelProducto,
 }: {
   /** El `id` del campo de cantidad (también lo usa `LecturaDeCantidad`). */
   idCantidad: string;
@@ -42,6 +43,8 @@ export function MateriaPrimaYCantidad({
   etiquetaMerma: string;
   /** La lectura en vivo de la cantidad por id de unidad (`unidadesDeLectura`, la arma la página). */
   lecturaPorUnidad: Record<string, UnidadDeLectura>;
+  /** El plato de la receta, para la frase llana de la lectura («… por cada unidad vendida de Milanesa»). */
+  nombreDelProducto: string;
 }) {
   const [elegida, setElegida] = useState<ProductoOpcionConUnidad | null>(null);
   const [productoId, setProductoId] = useState("");
@@ -81,7 +84,7 @@ export function MateriaPrimaYCantidad({
   }
 
   return (
-    <LecturaDeCantidad campoId={idCantidad} unidad={elegida ? (lecturaPorUnidad[elegida.unidadStock.id] ?? null) : null}>
+    <LecturaDeCantidad campoId={idCantidad} unidad={elegida ? (lecturaPorUnidad[elegida.unidadStock.id] ?? null) : null} descripcion={elegida ? { insumo: elegida.nombre, producto: nombreDelProducto } : undefined}>
       <div ref={caja} className="flex flex-col gap-2">
         <SelectorProducto
           id={idBuscador}
@@ -118,7 +121,7 @@ export function MateriaPrimaYCantidad({
       <p className="text-xs text-tinta-tenue">La cantidad se carga en la unidad de stock de la materia prima (la que se ve junto a la cantidad).</p>
       <div className="flex gap-2">
         <div className="flex flex-1 items-start gap-2">
-          <CampoNumero tipo="cantidad" id={idCantidad} name="cantidad" placeholder="Cantidad" ariaLabel={etiquetaCantidad} required className="flex-1" />
+          <CampoNumero tipo="cantidad" id={idCantidad} name="cantidad" sinEntendido placeholder="Cantidad" ariaLabel={etiquetaCantidad} required className="flex-1" />
           {elegida && (
             <span className="flex min-h-11 items-center md:min-h-9">
               <Insignia data-unidad-de-la-cantidad>{elegida.unidadStock.nombre}</Insignia>

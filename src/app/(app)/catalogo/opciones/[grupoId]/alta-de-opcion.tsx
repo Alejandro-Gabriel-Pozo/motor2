@@ -9,7 +9,7 @@ import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
 import { Selector } from "@/ui/primitivas/selector";
 import { CamposDeVersion, type ReferenciaDePrecio } from "./campos-de-version";
-import type { InsumoParaConsumo } from "./editor-de-consumos";
+import type { InsumoParaConsumo } from "@/components/catalogo/editor-de-consumos";
 import type { RecetaDeReferencia } from "./lectura-del-factor";
 
 /**

@@ -6,6 +6,8 @@ import { requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
 import { listarVersionesDeReceta } from "@/server/actions/catalogo/recetas";
 import { obtenerProductoPorId } from "@/server/consultas/catalogo/productos";
 import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
+import { formatearCantidad, formatearCantidadConUnidad, formatearPorcentaje } from "@/core/formato-de-numero";
+import { CeldaNumerica } from "@/ui/componentes/datos/celda-numerica";
 
 /**
  * Historial de versiones — separado del editor, mismo criterio que
@@ -67,9 +69,9 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
               </h2>
               {(() => {
                 const detalles: string[] = [];
-                if (v.rendimientoCantidad != null) detalles.push(`Rendimiento: ${Number(v.rendimientoCantidad)} ${v.rendimientoUnidad?.nombre ?? ""}`.trim());
+                if (v.rendimientoCantidad != null) detalles.push(`Rendimiento: ${formatearCantidad(Number(v.rendimientoCantidad), v.rendimientoUnidad?.decimales)} ${v.rendimientoUnidad?.nombre ?? ""}`.trim());
                 if (v.racionesCantidad != null) detalles.push(`Raciones: ${v.racionesCantidad}`);
-                if (v.racionTamano != null) detalles.push(`Tamaño de ración: ${Number(v.racionTamano)} ${v.racionUnidad?.nombre ?? ""}`.trim());
+                if (v.racionTamano != null) detalles.push(`Tamaño de ración: ${formatearCantidad(Number(v.racionTamano), v.racionUnidad?.decimales)} ${v.racionUnidad?.nombre ?? ""}`.trim());
                 if (v.tiempoPreparacionMinutos != null) detalles.push(`Prep.: ${v.tiempoPreparacionMinutos} min`);
                 if (v.tiempoCoccionMinutos != null) detalles.push(`Cocción: ${v.tiempoCoccionMinutos} min`);
                 return detalles.length > 0 ? <p className="mb-2 text-xs text-tinta-tenue">{detalles.join(" — ")}</p> : null;
@@ -80,9 +82,8 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
                 <thead>
                   <tr className="border-b text-left text-tinta-tenue">
                     <th className="py-1">Ingrediente</th>
-                    <th>Cantidad</th>
-                    <th>Unidad</th>
-                    <th>Merma %</th>
+                    <th className="text-right">Cantidad</th>
+                    <th className="text-right">Merma</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -94,9 +95,8 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
                           <p className="text-xs text-tinta-tenue">Sustitutos: {ing.sustitutos.map((s) => s.insumoSustituto.nombre).join(" → ")}</p>
                         )}
                       </td>
-                      <td>{Number(ing.cantidad)}</td>
-                      <td>{ing.unidad.nombre}</td>
-                      <td>{Number(ing.mermaPorcentaje)}</td>
+                      <CeldaNumerica>{formatearCantidadConUnidad(Number(ing.cantidad), ing.unidad.nombre, ing.unidad.decimales)}</CeldaNumerica>
+                      <CeldaNumerica>{formatearPorcentaje(Number(ing.mermaPorcentaje))}</CeldaNumerica>
                     </tr>
                   ))}
                 </tbody>

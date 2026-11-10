@@ -14,6 +14,9 @@ vi.mock("../../src/core/carta/public", async (original) => ({
     return interruptor.visible;
   },
 }));
+
+/** Escapa TODOS los caracteres especiales de una regex (incluida la barra invertida), para armar una regex con un texto literal. */
+const escaparRegex = (texto: string): string => texto.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 import { ContenidoDelProducto } from "../../src/components/carta/contenido-del-producto";
 
 /**
@@ -50,11 +53,18 @@ describe("ContenidoDelProducto: el formulario de quien puede editar", () => {
   const html = dibujar(producto());
 
   it("cada control lleva su etiqueta atada (htmlFor/id) con el texto de siempre", () => {
-    for (const etiqueta of ["Se muestra en la carta", "Especial (★)", "Género (opcional)", "Descripción (opcional)", "Tags (separados por coma)", "Descuento en esta sucursal, % (vacío = sin descuento)"]) {
-      const m = new RegExp(`<label for="([^"]+)"[^>]*>${etiqueta.replace(/[()★]/g, "\\$&")}</label>`).exec(html);
+    for (const etiqueta of ["Se muestra en la carta", "Especial (★)", "Género (opcional)", "Descripción (opcional)", "Tags (separados por coma)"]) {
+      const m = new RegExp(`<label for="([^"]+)"[^>]*>${escaparRegex(etiqueta)}</label>`).exec(html);
       expect(m, `etiqueta «${etiqueta}»`).not.toBeNull();
       expect(html, `control de «${etiqueta}»`).toMatch(new RegExp(`id="${m![1]}"`));
     }
+  });
+
+  it("el descuento usa CampoNumero dentro de un <label> envolvente (sin htmlFor/id): el texto de siempre y el campo con su name", () => {
+    const etiqueta = "Descuento en esta sucursal, % (vacío = sin descuento)";
+    const m = new RegExp(`<label[^>]*>\\s*<span[^>]*>${escaparRegex(etiqueta)}</span>([\\s\\S]*?)</label>`).exec(html);
+    expect(m, `etiqueta «${etiqueta}»`).not.toBeNull();
+    expect(m![1], "el campo del descuento va dentro de su etiqueta").toContain('name="descuento"');
   });
 
   it("conserva los name que lee la acción y los botones con su texto", () => {

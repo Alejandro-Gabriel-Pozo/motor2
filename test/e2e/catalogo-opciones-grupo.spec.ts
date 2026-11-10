@@ -53,13 +53,13 @@ test("alta de una opción con recargo: el espejo de referencia y una sola fila a
   await expect(page.locator("[data-espejo]")).toContainText("referencia");
   await page.getByRole("radio", { name: "Porcentaje" }).check();
   await page.getByLabel("Diferencia en porcentaje").fill("10");
-  await expect(page.locator("[data-espejo]")).toContainText("≈ + $ 250");
+  await expect(page.locator("[data-espejo]")).toContainText("≈ + $ 250,00");
   expect((await new AxeBuilder({ page }).analyze()).violations, "alta abierta").toEqual([]);
   await page.getByRole("radio", { name: "Monto en pesos" }).check();
   await page.getByLabel("Diferencia en pesos").fill("400");
   await page.getByRole("button", { name: "Agregar opción" }).dblclick();
   await expect(page.getByRole("status").filter({ hasText: /creada|ya existía/i }).first()).toBeVisible();
-  await expect(page.locator("[data-opcion='Con leche']")).toContainText("+ $ 400");
+  await expect(page.locator("[data-opcion='Con leche']")).toContainText("+ $ 400,00");
   const filas = await prisma.opcionDeGrupo.findMany({ where: { grupoId: g.grupoId, nombre: "Con leche" }, select: { versiones: { select: { tipoDeDiferencia: true, diferenciaPrecio: true } } } });
   expect(filas.map((f) => f.versiones.map((v) => [v.tipoDeDiferencia, Number(v.diferenciaPrecio)]))).toEqual([[["MONTO", 400]]]);
 
@@ -108,7 +108,7 @@ test("archivar una opción es un toque, sin confirmar: el aviso con «Deshacer»
   const g = await sembrarGrupo({ nombre: `E2E Tamaño ${m}`, tipo: "MEDIDA", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Chico", monto: -300, factorEscala: 0.75 }, { nombre: "Grande", monto: 500, factorEscala: 1.5 }] });
   await page.goto(`/catalogo/opciones/${g.grupoId}`);
   const chico = page.locator("[data-opcion='Chico']");
-  await expect(chico).toContainText("− $ 300");
+  await expect(chico).toContainText("− $ 300,00");
   await expect(chico).toContainText("consume ×0,75");
   await expect(chico).toContainText(/Rige desde \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} · cargó/);
   // OPCIONES-LIMPIEZA: archivar no pide confirmación (se deshace con un toque); la opción sale de la lista y queda en «Opciones archivadas».
@@ -138,10 +138,10 @@ test("cambiar precio o consumo: de monto a porcentaje con su espejo, REEMPLAZA s
   const fila = page.locator("[data-opcion='Almendras']");
   await fila.getByRole("button", { name: "Cambiar precio o consumo de Almendras" }).click();
   // Arranca con lo que rige: 300 pesos.
-  await expect(fila.getByLabel("Diferencia en pesos")).toHaveValue("300");
+  await expect(fila.getByLabel("Diferencia en pesos")).toHaveValue("300,00"); // regla de números 2026-11-09: importe con 2 decimales
   await fila.getByRole("radio", { name: "Porcentaje" }).check();
   await fila.getByLabel("Diferencia en porcentaje").fill("15");
-  await expect(fila.locator("[data-espejo]")).toContainText("≈ + $ 300 sobre el precio base");
+  await expect(fila.locator("[data-espejo]")).toContainText("≈ + $ 300,00 sobre el precio base");
   // Un REEMPLAZA sin el ingrediente que reemplaza: el servidor lo rechaza y no carga nada.
   await fila.getByRole("button", { name: "+ Agregar línea de consumo" }).click();
   await fila.getByLabel("Línea 1", { exact: true }).selectOption("REEMPLAZA");
@@ -166,7 +166,7 @@ test("cambiar precio o consumo: de monto a porcentaje con su espejo, REEMPLAZA s
   await expect(fila).toContainText(`reemplaza ${leche.nombre} por 0,2 l de ${almendras.nombre}`);
   await expect(fila).toContainText(`Rige desde ${formatearFechaHora(versiones[0]!.creadoEn, "America/Argentina/Buenos_Aires")}`);
   await fila.getByText("Cambios de precio anteriores (1)").click();
-  await expect(fila).toContainText("+ $ 300");
+  await expect(fila).toContainText("+ $ 300,00");
 
   // La otra pestaña sigue mostrando el cambio 1: su cambio se rechaza y ofrece «Recargar».
   const filaVieja = otra.locator("[data-opcion='Almendras']");

@@ -471,6 +471,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Poda del precio del vínculo (decisión del dueño, 2026-11-06; CAMBIA SOLO LA AUDITORÍA DE PREPARACIÓN, no la venta): la compra deja de escribir el precio en `ProveedorPorProducto` y de auditarlo, así que desaparecen las 122 líneas AUDITORIA con entidad=ProveedorPorProducto (campo precioPorUnidadStock) que dejaban las compras de preparación. Regenerado con REGENERAR_CARACTERIZACION_DE_VENTA_AMPLIADA=1 sobre el código integrado: 122 líneas borradas, 0 agregadas, todas de esa entidad (comprobado línea por línea contra el golden anterior). NO cambia ninguna fila de venta, KARDEX, stock, costo ni importe."
       },
+      {
+        blob: "85edd534da910f9af6467a27aa3682a0cafdf000",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, 58f066f2 («WIP pausa: E-N salida»).
+        commit: "58f066f2",
+        motivo:
+          "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, no cambia ningún valor, redondeo ni efecto): el mensaje de cierre de cuenta del POS sale con 2 decimales («se registró la venta por $ 40.200» pasa a «$ 40.200,00»). Cambia 1 línea.",
+      },
     ],
   },
   "test/reportes/caracterizacion/reportes-c0.golden.txt": {
@@ -713,6 +720,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Ticket del cliente con el nombre de la carta y sin lo oculto (ADITIVO; migración 20261105100000_ticket_nombre_y_oculto_en_carta; regenerado con REGENERAR_VENTA_CON_OPCIONES=1): las líneas ITEM suman `nombreEnTicket=null` (nadie tiene «Nombre en la carta» en este mundo) y las fotos de opción suman `ocultaEnCarta=false`. Verificado por programa: sin esas dos columnas el contenido es IDÉNTICO al blob anterior.",
       },
+      {
+        blob: "bb5374a2eaf5451ba9a87d34cd05a6ce003a7a87",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, 58f066f2 («WIP pausa: E-N salida»).
+        commit: "58f066f2",
+        motivo:
+          "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): el mensaje de cierre de cuenta del POS sale con 2 decimales («se registró la venta por $ 7.460 (con 10% de descuento…)» pasa a «$ 7.460,00»). Cambia 1 línea.",
+      },
     ],
   },
   "test/persistencia/__golden__/kardex-escritores.golden.json": {
@@ -827,6 +841,13 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "a2068019",
         motivo:
           "Interruptor «solo salón» de las promos (migración 20261026120000_promo_carta_solo_salon; ADITIVO, no cambia comportamiento): la huella vuelca las filas de PromoCarta con todas sus columnas, y la columna nueva `PromoCarta.soloSalon` (default false) aparece como ` soloSalon=false` en cada fila PROMO (10 líneas). Verificado: quitando ` soloSalon=false` de cada línea, el contenido es IDÉNTICO al anterior (blob previo en el historial de esta entrada); ninguna otra línea, resultado ni conteo cambia. Se regeneró con `REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1`.",
+      },
+      {
+        blob: "63667d5ca2199f41b39fb6eb277c0145993562e7",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, 58f066f2 («WIP pausa: E-N salida»).
+        commit: "58f066f2",
+        motivo:
+          "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): el mensaje de «sincronizar precio global» sale con 2 decimales («actualizado a $11.000» pasa a «$ 11.000,00», con el espacio que no se parte de la moneda). Cambia 1 línea.",
       },
     ],
   },
@@ -1060,6 +1081,27 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "22b2b958",
         motivo:
           "Carta pública: el grupo de opciones de UN solo plato va debajo de ese plato (CAMBIA LO QUE VE EL CLIENTE, a propósito; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1): en el bife (único plato con «Guarnición») desaparece la línea «Incluye 1 guarnicion · ver opciones ↓», el bloque «GUARNICION · ELEGÍS 1» pasa a ir justo debajo del plato (antes, al pie de la sección) y ya no dice «Con los platos que incluyen guarnicion»; consecuencia en las muestras de tipografía: desaparecen las dos líneas `aclaracion` (14px / 13.3333px), que solo existían por esa línea «Incluye…». Verificado con `git diff -U0`: ningún precio, nombre ni opción cambia; solo esas líneas y el lugar del bloque.",
+      },
+      {
+        blob: "61267a91d914e7553925584323836ec0fea7089f",
+        // El commit PADRE de este (1d003129) es el último antes de la regeneración; el cambio es de «Qué consume cada opción» en la pestaña Opciones del producto (PR #217).
+        commit: "1d003129",
+        motivo:
+          "Cargar qué consume cada opción desde la pestaña Opciones del producto (ADITIVO, solo ADMINISTRACIÓN; la carta pública y el cobro idénticos; pedido del dueño del 2026-11-09, aprobado con capturas; regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local): la tarjeta de cada grupo de la pantalla de opciones de Pizzas (a 1280 y a 375 px) suma la sección «Qué consume cada opción» (una fila por opción con «pendiente de completar» y «Editar consumo»). Revisado con `git diff`: son 50 líneas agregadas, ninguna otra pantalla, precio ni tipografía cambia.",
+      },
+      {
+        blob: "149399e72d0defc44552bf739e75a0d4b8bb1921",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, 912a9a2a («specs e2e que fijaban el formato viejo»).
+        commit: "912a9a2a",
+        motivo:
+          "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, comprobado: sin «,00» y sin el espacio tras «$» las líneas viejas y nuevas son idénticas): los importes de las pantallas de ADMINISTRACIÓN (resumen «Así se cobra», lectura de precio de cada opción, vista previa de la carta en el catálogo) salen con 2 decimales («$ 18.000» pasa a «$ 18.000,00»; «$18.000» pasa a «$ 18.000,00»). Cambia 32 líneas por ancho (64 en total). La carta PÚBLICA del cliente NO cambia (no hay ninguna línea suya en el diff).",
+      },
+      {
+        blob: "531d6ed083087f09ca4c7fe7cacabfc86735e44e",
+        // El commit PADRE de este (e695b570) es el último antes de la regeneración; el cambio es de la regla de números del campo (CampoNumero).
+        commit: "e695b570",
+        motivo:
+          "Regla de números 2026-11-09: el campo numérico muestra miles con punto y el importe con 2 decimales (CAMBIA SOLO ADMINISTRACIÓN, regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). Cambian SOLO las líneas `[campo: «…»]` de los precios de las pantallas de administración (por ejemplo «18.000» pasa a «18.000,00»): 14 líneas; la carta pública, el cobro y el resto de las pantallas quedan idénticos byte a byte. El spec enmascara ahora el campo visible de «Orden» (el `name=orden` pasó al hidden).",
       },
     ],
   },

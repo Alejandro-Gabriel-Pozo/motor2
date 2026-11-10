@@ -74,8 +74,8 @@ test("CONTROL, con Carta prendida: el selector ofrece el precio descontado con l
     await page.goto(`/mesas/${mesa.id}`);
     await expect(page.locator("main h1")).toHaveText("Mesa 971");
     const boton = page.locator(`[data-producto-carta="${producto.id}"]`);
-    await expect(boton).toContainText(/\$\s?2\.550/);
-    await expect(boton.locator("[data-precio-lista]")).toContainText(/\$\s?3\.000/);
+    await expect(boton).toContainText(/\$\s?2\.550,00/);
+    await expect(boton.locator("[data-precio-lista]")).toContainText(/\$\s?3\.000,00/);
 
     await boton.click();
     await page.getByRole("button", { name: "Agregar 1 al pedido", exact: true }).click();
@@ -109,7 +109,7 @@ test("con Carta APAGADA: el selector ofrece el precio de lista sin tachado, la c
     // El detalle muestra el precio de lista (sin tachado) y el total de la cuenta es el de lista.
     const fila = page.locator(`[data-item-sin-enviar="${producto.nombre}"]`);
     await expect(fila).toBeVisible();
-    await expect(fila).toContainText(/\$\s?3\.000/);
+    await expect(fila).toContainText(/\$\s?3\.000,00/);
     await expect(fila.locator("[data-precio-lista]")).toHaveCount(0);
     await expect(page.locator("[data-total-cuenta]")).toContainText(/3\.000/);
     await expect(page.locator("[data-total-cuenta]")).not.toContainText(/2\.550/);

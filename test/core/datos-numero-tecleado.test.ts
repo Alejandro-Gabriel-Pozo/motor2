@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  AVISO_DEL_PUNTO,
   CONTEXTO_IMPORTE,
+  MENSAJE_NOTACION_DEL_SERVIDOR,
+  numeroDeFormulario,
   contextoDeCantidad,
   leerNumeroCanonico,
   mensajeDeNumeroRechazado,
@@ -106,24 +109,33 @@ describe("numeroDeEntrada — el servidor lee un texto con el MISMO contexto que
     for (const raro of [Number.NaN, Infinity, true, {}, [], "abc"]) expect(numeroDeEntrada(raro, CONTEXTO_IMPORTE).ok, String(raro)).toBe(false);
   });
 
-  it("un texto «21.000»: veintiún mil en un importe (el servidor ya no lo lee como 21) y ambiguo en una cantidad de 3 decimales", () => {
-    expect(numeroDeEntrada("21.000", CONTEXTO_IMPORTE)).toEqual({ ok: true, valor: 21000 });
-    expect(numeroDeEntrada("21.000", contextoDeCantidad(3))).toMatchObject({ ok: false, codigo: "ambiguo" });
-    expect(numeroDeEntrada("21,000", CONTEXTO_IMPORTE)).toMatchObject({ ok: false, codigo: "decimales" });
+  it("un texto solo se acepta canónico: «21.000» NO es veintiún mil (son 3 decimales) y «21,5» o «1.234,50» se rechazan con claridad", () => {
+    expect(numeroDeEntrada("21.000", CONTEXTO_IMPORTE)).toMatchObject({ ok: false, codigo: "decimales" });
+    expect(numeroDeEntrada("21.000", contextoDeCantidad(3))).toEqual({ ok: true, valor: 21 });
+    expect(numeroDeEntrada("21,5", CONTEXTO_IMPORTE)).toMatchObject({ ok: false, codigo: "notacion" });
+    expect(numeroDeEntrada("1.234,50", CONTEXTO_IMPORTE)).toMatchObject({ ok: false, codigo: "notacion", mensaje: MENSAJE_NOTACION_DEL_SERVIDOR });
+  });
+});
+
+describe("numeroDeFormulario — la lectura estricta de los validadores que reciben `unknown`", () => {
+  it("canónico y number → el número; vacío, coma, miles, exponente, espacios, hexadecimal y cualquier otra cosa → NaN (nunca 0)", () => {
+    expect(numeroDeFormulario("12.5")).toBe(12.5);
+    expect(numeroDeFormulario(7)).toBe(7);
+    for (const t of ["", "12,5", "1.000,5", "1e3", " 5", "0x10", "abc", null, undefined, {}, Infinity]) expect(numeroDeFormulario(t), String(t)).toBeNaN();
   });
 });
 
 describe("mensajes de un número que no se pudo leer", () => {
-  it("con sujeto: «no es un número válido», el ambiguo con sus dos lecturas y los decimales con el sujeto adelante; sin sujeto, el del parser", () => {
+  it("con sujeto: «no es un número válido», el aviso del punto y los decimales con el sujeto adelante; sin sujeto, el del parser", () => {
     expect(mensajeDeNumeroRechazado({ codigo: "formato", mensaje: "No es un número válido." }, "El precio")).toBe("El precio no es un número válido.");
-    expect(mensajeDeNumeroRechazado({ codigo: "ambiguo", mensaje: "¿1,205 o 1205? Escribí 1205 o 1,205." }, "El factor")).toBe("El factor: ¿1,205 o 1205? Escribí 1205 o 1,205.");
+    expect(mensajeDeNumeroRechazado({ codigo: "punto", mensaje: AVISO_DEL_PUNTO }, "El factor")).toBe("El factor: Los decimales van con coma: 0,5");
     expect(mensajeDeNumeroRechazado({ codigo: "decimales", mensaje: "Admite como máximo 2 decimales." }, "El precio")).toBe("El precio admite como máximo 2 decimales.");
     expect(mensajeDeNumeroRechazado({ codigo: "decimales", mensaje: "Admite como máximo 2 decimales." })).toBe("Admite como máximo 2 decimales.");
   });
 
   it("pistaDeMiles: solo para «a,bbb» con a de 1 a 3 cifras sin cero inicial", () => {
-    expect(pistaDeMiles("21,000")).toBe("Para 21000 escribí 21000 o 21.000,00.");
-    expect(pistaDeMiles(" -1,205 ")).toBe("Para 1205 escribí 1205 o 1.205,00.");
+    expect(pistaDeMiles("21,000")).toBe("Para 21000 escribí 21000.");
+    expect(pistaDeMiles(" -1,205 ")).toBe("Para 1205 escribí 1205.");
     for (const t of ["21,00", "0,125", "1.234,567", "1234,567", "21.000", "abc", 21, null]) expect(pistaDeMiles(t), String(t)).toBeNull();
   });
 
@@ -132,7 +144,7 @@ describe("mensajes de un número que no se pudo leer", () => {
     expect(rechazoDeNumeroDeEntrada(decimales, "El precio", "El precio admite como máximo 2 decimales.", "21,000")).toEqual({
       ok: false,
       codigo: "decimales",
-      mensaje: "El precio admite como máximo 2 decimales. Para 21000 escribí 21000 o 21.000,00.",
+      mensaje: "El precio admite como máximo 2 decimales. Para 21000 escribí 21000.",
     });
     expect(rechazoDeNumeroDeEntrada(decimales, "El precio", "El precio admite como máximo 2 decimales.", "0,555")).toMatchObject({ mensaje: "El precio admite como máximo 2 decimales." });
     expect(rechazoDeNumeroDeEntrada({ codigo: "formato", mensaje: "No es un número válido." }, "El precio", "x", "abc")).toEqual({ ok: false, codigo: "formato", mensaje: "El precio no es un número válido." });

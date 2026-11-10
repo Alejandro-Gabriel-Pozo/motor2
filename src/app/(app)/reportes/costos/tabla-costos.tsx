@@ -3,6 +3,7 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { type FilaCostoProducto, type FilaImpactoInsumo, resolverAccionFaltante, FOOD_COST_OBJETIVO_PCT } from "@/core/reportes/public";
+import { formatearMonto, formatearPorcentaje } from "@/core/formato-de-numero";
 
 const LABEL_ESTADO: Record<string, string> = {
   MARGEN_NEGATIVO: "Margen negativo",
@@ -34,15 +35,15 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
       </EnlaceInterno>
     ),
   },
-  { clave: "precioVenta", etiqueta: "Precio venta", alinear: "derecha", valor: (p) => p.precioVenta, render: (p) => (p.estado === "POR_OPCION" ? "Por opción" : `$${p.precioVenta.toLocaleString("es-AR")}`) },
-  { clave: "costo", etiqueta: "Costo", alinear: "derecha", valor: (p) => p.costo, render: (p) => (p.costo === null ? "—" : `$${p.costo.toLocaleString("es-AR")}`) },
+  { clave: "precioVenta", etiqueta: "Precio venta", alinear: "derecha", valor: (p) => p.precioVenta, render: (p) => (p.estado === "POR_OPCION" ? "Por opción" : formatearMonto(p.precioVenta)) },
+  { clave: "costo", etiqueta: "Costo", alinear: "derecha", valor: (p) => p.costo, render: (p) => formatearMonto(p.costo) },
   {
     clave: "margen",
     etiqueta: "Margen",
     ayuda: AYUDA_MARGEN,
     alinear: "derecha",
     valor: (p) => p.margen,
-    render: (p) => (p.margen === null ? "—" : `$${p.margen.toLocaleString("es-AR")} (${p.margenPct}%)`),
+    render: (p) => (p.margen === null ? "—" : `${formatearMonto(p.margen)} (${formatearPorcentaje(p.margenPct)})`),
   },
   {
     clave: "foodCost",
@@ -50,7 +51,7 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
     ayuda: AYUDA_FOOD_COST,
     alinear: "derecha",
     valor: (p) => p.foodCostPct,
-    render: (p) => (p.foodCostPct === null ? "—" : `${p.foodCostPct}%`),
+    render: (p) => formatearPorcentaje(p.foodCostPct),
   },
   {
     clave: "objetivo",
@@ -58,7 +59,7 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
     ayuda: AYUDA_OBJETIVO,
     alinear: "derecha",
     valor: (p) => p.objetivoFoodCostPct,
-    render: (p) => `${p.objetivoFoodCostPct}%`,
+    render: (p) => formatearPorcentaje(p.objetivoFoodCostPct),
   },
   {
     clave: "precioSugerido",
@@ -66,7 +67,7 @@ const COLUMNAS_PRODUCTOS: ColumnaReporte<FilaCostoProducto>[] = [
     ayuda: AYUDA_PRECIO_SUGERIDO,
     alinear: "derecha",
     valor: (p) => p.precioSugerido,
-    render: (p) => (p.precioSugerido === null ? "—" : `$${p.precioSugerido.toLocaleString("es-AR")}`),
+    render: (p) => formatearMonto(p.precioSugerido),
   },
   {
     clave: "estado",
@@ -95,14 +96,14 @@ const COLUMNAS_INSUMOS: ColumnaReporte<FilaImpactoInsumo>[] = [
     etiqueta: "Costo acumulado",
     alinear: "derecha",
     valor: (i) => i.costoAcumulado,
-    render: (i) => `$${i.costoAcumulado.toLocaleString("es-AR")}`,
+    render: (i) => formatearMonto(i.costoAcumulado),
   },
   {
     clave: "costoUnitario",
     etiqueta: "Costo unitario",
     alinear: "derecha",
     valor: (i) => i.costoUnitario,
-    render: (i) => (i.costoUnitario === null ? "—" : `$${i.costoUnitario.toLocaleString("es-AR")}`),
+    render: (i) => formatearMonto(i.costoUnitario),
   },
   { clave: "proveedor", etiqueta: "Proveedor", valor: (i) => i.proveedorNombre ?? "", render: (i) => i.proveedorNombre ?? "—" },
 ];

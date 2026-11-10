@@ -127,7 +127,7 @@ export function TablaDeDatos<T>({ titulo, columnas, filas, claveDeFila, vacio, p
             {filas.map((fila) => (
               <tr key={claveDeFila(fila)} className={unirClases("border-b border-borde-control/60 last:border-b-0 hover:bg-papel", claseFila?.(fila))}>
                 {columnas.map((c) => (
-                  <td key={c.id} className={unirClases("border-l border-borde-control/60 px-3 py-2.5 align-middle first:border-l-0", c.alinear === "derecha" ? "text-right tabular-nums" : undefined, c.accion ? "whitespace-nowrap" : undefined)}>
+                  <td key={c.id} className={unirClases("border-l border-borde-control/60 px-3 py-2.5 align-middle first:border-l-0", c.alinear === "derecha" ? "text-right tabular-nums whitespace-nowrap" : undefined, c.accion ? "whitespace-nowrap" : undefined)}>
                     {c.celda(fila)}
                   </td>
                 ))}

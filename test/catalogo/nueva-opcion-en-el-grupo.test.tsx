@@ -61,7 +61,8 @@ describe("el formulario de la ventana: lo que pide según el grupo", () => {
     const t = texto(html);
     expect(t).toContain("Nombre de la opción");
     expect(t).toContain("Cuánto suma");
-    expect(html).toMatch(/id="importe-de-la-opcion-nueva"[^>]*value="0"/);
+    // regla de números 2026-11-09: el importe se ve siempre con 2 decimales («0,00»); lo que emite sigue siendo 0.
+    expect(html).toMatch(/id="importe-de-la-opcion-nueva"[^>]*value="0,00"/);
     expect(t).not.toContain("Unidad para el stock");
     expect(t).toContain("Agregar la opción");
   });
@@ -69,7 +70,7 @@ describe("el formulario de la ventana: lo que pide según el grupo", () => {
   it("una medida en precio propio: «Precio final de la opción» (sin valor de partida)", () => {
     const html = dibujar("precio-final");
     expect(texto(html)).toContain("Precio final de la opción");
-    expect(html).not.toMatch(/id="importe-de-la-opcion-nueva"[^>]*value="0"/);
+    expect(html).not.toMatch(/id="importe-de-la-opcion-nueva"[^>]*value="0,00"/);
   });
 
   it("un extra (adicional): «Cuánto cobra», la unidad del respaldo con sus opciones y «Agregar el extra»", () => {

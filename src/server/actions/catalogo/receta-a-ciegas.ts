@@ -23,7 +23,8 @@ export async function guardarRecetaACiegas(productoId: string, items: Ingredient
   return conPermisoDeEmpresa("guardar_receta", async (ctx) => {
     const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos, cabecera, versionEsperada });
     if (!comando.ok) return error(comando.mensaje);
-    const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, comando.valor);
+    // Guardia de unidad (docs/diseno-guardia-de-unidad-receta-2026-11-09.md, R5): la carga en bloque (seeds, scripts, tests) no pasa por ella — no hay pantalla donde confirmar.
+    const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, { ...comando.valor, omitirGuardiaDeUnidad: true });
     if (resultado.ok) refrescarVistaSiHaceFalta();
     return aResultadoAccion(resultado);
   });

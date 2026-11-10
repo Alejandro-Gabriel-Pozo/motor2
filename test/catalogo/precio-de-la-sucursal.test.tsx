@@ -22,7 +22,7 @@ describe("PrecioDeLaSucursal: lo que dibuja", () => {
     const t = texto(html);
     expect(t).toContain("Precio en «Centro»");
     expect(html).toMatch(/<label[^>]*>\s*Precio en «Centro»\s*<\/label>/);
-    expect(html).toContain('value="18.000"');
+    expect(html).toContain('value="18.000,00"'); // regla de números 2026-11-09: el importe se ve siempre con 2 decimales
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>\s*Guardar el precio\s*<\/button>/);
   });
 
@@ -34,13 +34,13 @@ describe("PrecioDeLaSucursal: lo que dibuja", () => {
 
   it("con el precio local habilitado ofrece «Volver al precio global» con el precio global, y no el aviso del deshabilitado", () => {
     const t = texto(dibujar({ precioVigente: 20000, guardado: { precio: 20000, habilitado: true } }));
-    expect(t).toMatch(/Volver al precio global \(\$\s*18\.000\)/);
+    expect(t).toMatch(/Volver al precio global \(\$\s*18\.000,00\)/);
     expect(t).not.toContain("deshabilitado");
   });
 
   it("con el precio local guardado pero deshabilitado lo dice, y no ofrece volver (ya rige el global)", () => {
     const t = texto(dibujar({ guardado: { precio: 25000, habilitado: false } }));
-    expect(t).toMatch(/Hay un precio local guardado \(\$\s*25\.000\) pero deshabilitado: rige el precio global/);
+    expect(t).toMatch(/Hay un precio local guardado \(\$\s*25\.000,00\) pero deshabilitado: rige el precio global/);
     expect(t).not.toContain("Volver al precio global");
   });
 
@@ -52,7 +52,7 @@ describe("PrecioDeLaSucursal: lo que dibuja", () => {
 
 describe("textoDelCambio: el «antes → después»", () => {
   it("monto antes → monto después y el porcentaje con signo", () => {
-    expect(textoDelCambio(cambioDePrecio(18000, 22000))).toMatch(/^\$\s*18\.000 → \$\s*22\.000 \(\+22,2 %\)$/);
+    expect(textoDelCambio(cambioDePrecio(18000, 22000))).toMatch(/^\$\s*18\.000,00 → \$\s*22\.000,00 \(\+22,22 %\)$/);
     expect(textoDelCambio(cambioDePrecio(20000, 15000))).toMatch(/\(-25 %\)$/);
   });
 

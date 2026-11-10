@@ -13,6 +13,7 @@ import { listarCategoriasActivas } from "@/server/consultas/catalogo/categorias"
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { Campo } from "@/ui/primitivas/campo";
+import { formatearPorcentaje } from "@/core/formato-de-numero";
 
 /**
  * Catálogo › Maestros › Margen objetivo (DEC-13). Ver ≠ escribir (DEC-33): los campos se dibujan con el «Editar» de `margen_objetivo_editar` (la clave de `guardarMargenObjetivo`); quien solo ve lee los
@@ -68,7 +69,7 @@ export default async function MargenObjetivoPage() {
           </FormConResultado>
         ) : (
           <p className="text-sm">
-            Food cost objetivo: {(objetivos.empresaPct ?? FOOD_COST_OBJETIVO_PCT).toLocaleString("es-AR")} %{objetivos.empresaPct === null ? " (el que rige por defecto)" : ""}
+            Food cost objetivo: {formatearPorcentaje(objetivos.empresaPct ?? FOOD_COST_OBJETIVO_PCT)}{objetivos.empresaPct === null ? " (el que rige por defecto)" : ""}
           </p>
         )}
       </section>
@@ -116,7 +117,7 @@ export default async function MargenObjetivoPage() {
                           </div>
                         </FormConResultado>
                       ) : objetivos.porCategoria.has(c.id) ? (
-                        `${objetivos.porCategoria.get(c.id)?.toLocaleString("es-AR")} %`
+                        formatearPorcentaje(objetivos.porCategoria.get(c.id))
                       ) : (
                         <span className="text-tinta-tenue">El de la empresa</span>
                       )}

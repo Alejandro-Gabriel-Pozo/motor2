@@ -20,7 +20,7 @@ describe("LecturaDePrecio", () => {
       referencia: { opcion: "Napolitana", precio: 25000 },
     });
     const html = dibujar(lectura);
-    expect(texto(html)).toBe("Napolitana con Trucha = $ 25.000 + $ 3.000 = $ 28.000");
+    expect(texto(html)).toBe("Napolitana con Trucha = $ 25.000,00 + $ 3.000,00 = $ 28.000,00");
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain('data-tono="lectura"');
   });

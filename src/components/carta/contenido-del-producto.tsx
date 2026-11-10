@@ -1,4 +1,5 @@
 import { BotonDeServidor } from "@/components/boton-de-servidor";
+import { CampoNumero } from "@/components/campo-numero";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
@@ -14,6 +15,7 @@ import { Campo } from "@/ui/primitivas/campo";
 import { Casilla } from "@/ui/primitivas/casilla";
 import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
 import { Selector } from "@/ui/primitivas/selector";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * El CONTENIDO DE CARTA de UN producto de venta (Fase 6, paso 6.17a; antes `ContenidoProducto` de `carta/parametrizacion/formularios.tsx`): su ficha plegable con descripción, tags, ★, género,
@@ -96,7 +98,7 @@ export function ContenidoDelProducto({
     <li className="rounded border p-3" data-contenido-carta={p.nombre}>
       <details open={abierto || undefined}>
         <summary className="cursor-pointer text-sm max-md:min-h-11 max-md:py-2">
-          <span className="font-medium">{p.nombre}</span> · {p.seccionCarta ?? "sin sección de carta"} · ${p.precio.toLocaleString("es-AR")} ·{" "}
+          <span className="font-medium">{p.nombre}</span> · {p.seccionCarta ?? "sin sección de carta"} · {formatearMonto(p.precio)} ·{" "}
           {estado}
           {p.contenido?.especial ? " · ★" : ""}
           {p.generoCarta ? ` · ${p.generoCarta}` : ""}
@@ -200,7 +202,10 @@ export function ContenidoDelProducto({
               }}
               className="mt-3 flex flex-wrap items-end gap-2"
             >
-              <Campo etiqueta="Descuento en esta sucursal, % (vacío = sin descuento)" name="descuento" type="number" min={0} max={99.99} step="0.01" defaultValue={p.descuento ?? ""} />
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Descuento en esta sucursal, % (vacío = sin descuento)</span>
+                <CampoNumero tipo="porcentaje" decimales={2} etiqueta="El descuento" name="descuento" defaultValue={p.descuento === null ? "" : String(p.descuento)} />
+              </label>
               <BotonDeServidor type="submit">Guardar descuento de «{p.nombre}»</BotonDeServidor>
               {!precioLocalActivo && p.descuento !== null && <p className="w-full text-sm text-tinta-suave">No rige: el precio local está apagado en esta sucursal (se cobra el precio de lista).</p>}
             </FormConResultado>

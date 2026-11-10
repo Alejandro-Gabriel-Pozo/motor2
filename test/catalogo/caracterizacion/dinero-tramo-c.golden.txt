@@ -336,7 +336,7 @@
   resultado: {"ok":false,"mensaje":"El tipo no se puede cambiar — este producto ya es \"PV\". Dado de baja y creá uno nuevo si necesitás el otro tipo."}
   efectos: revalidarCartasPublicas=0 refrescar=0
 ### sincronizar precio global: Pizza y Fainá a $11000
-  resultado: {"ok":true,"mensaje":"Precio de venta de \"Fainá\", \"Pizza\" actualizado a $11.000 («Para picar»)."}
+  resultado: {"ok":true,"mensaje":"Precio de venta de \"Fainá\", \"Pizza\" actualizado a $ 11.000,00 («Para picar»)."}
   efectos: revalidarCartasPublicas=1 refrescar=0
   - PRODUCTO faina alicuotaIvaCompra=null alicuotaIvaVenta=null categoriaId=null codigo=PV_FAINA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null modoDeVenta=DIRECTO nombre=Fainá observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=5200 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad
   + PRODUCTO faina alicuotaIvaCompra=null alicuotaIvaVenta=null categoriaId=null codigo=PV_FAINA creadoEn=<fecha> empresaId=empresa esConsignacion=false factorConversion=1 insumoId=null modoDeVenta=DIRECTO nombre=Fainá observaciones=null pasoVenta=null precioConsignacion=0 precioVenta=11000 proveedorConsignacionId=null seProduce=false tipo=PV unidadCompraId=null unidadStockId=unidad

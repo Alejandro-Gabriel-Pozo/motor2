@@ -15,6 +15,7 @@ import { productoTieneHistoria, productoTieneLiquidaciones } from "@/server/lect
 import { itemAgrupadoDelProductoEn } from "@/server/lecturas/carta/grupo-de-producto";
 import { actualizarCamposDeProducto, tomarFilaDeProducto } from "@/server/persistencia/catalogo/productos";
 import { admisionesParaSerBase } from "./opciones-de-venta-en-tx";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Caso de uso «editar un producto del catálogo» (Hito 4 de la pureza, bloque 4.3, paso H4C-13 — `docs/plan-hito-4-pureza.md` §3). Es el cuerpo que antes vivía en
@@ -200,7 +201,7 @@ async function actualizarProductoEnTransaccion(
       if (typeof visto !== "number" || !mismosCentavos(visto, precioGuardado)) {
         return fracaso(
           "PRECIO_DESACTUALIZADO",
-          `Alguien cambió el precio de venta de «${existente.nombre}» mientras lo editabas (ahora es $${precioGuardado.toLocaleString("es-AR")}): no se guardó nada. Recargá la pantalla y volvé a hacer el cambio.`,
+          `Alguien cambió el precio de venta de «${existente.nombre}» mientras lo editabas (ahora es ${formatearMonto(precioGuardado)}): no se guardó nada. Recargá la pantalla y volvé a hacer el cambio.`,
         );
       }
     }

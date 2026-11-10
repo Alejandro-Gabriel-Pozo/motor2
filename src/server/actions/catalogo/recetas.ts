@@ -20,7 +20,8 @@ import {
 import type { PuertaDeReceta, RechazoDeLaPuertaDeReceta } from "@/core/features/catalogo/receta-version.schema";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermisoDeEmpresa } from "../con-permiso";
-import { error, ok, type ResultadoAccion } from "../tipos";
+import { error, ok, type ResultadoAccion, type ResultadoConConfirmacion } from "../tipos";
+import { conPedidoDeConfirmacion } from "./pedido-de-confirmacion";
 import { requerirVerDeEmpresa } from "../con-sesion";
 import { guardarVersionDeRecetaCasoDeUso } from "./casos-de-uso/guardar-version-de-receta";
 
@@ -59,21 +60,23 @@ async function guardarRecetaConPuerta(
   pasos: PasoInput[],
   cabecera: CabeceraRecetaInput,
   versionEsperada: number,
-  puerta: PuertaDeLaAccion | null
-): Promise<ResultadoAccion> {
+  puerta: PuertaDeLaAccion | null,
+  confirmaCantidadDesproporcionada?: boolean
+): Promise<ResultadoConConfirmacion> {
   return conPermisoDeEmpresa("guardar_receta", async (ctx) => {
     if (puerta && !puerta.guard.inmediata.ok) return error(puerta.guard.inmediata.mensaje);
     // Desde la red puede llegar cualquier cosa: un `pasos`/`cabecera` ausente sigue valiendo «sin pasos» / «sin cabecera», como cuando tenían valor por defecto.
     const comando = guardComandoGuardarVersionDeReceta({ productoId, items, pasos: pasos ?? [], cabecera: cabecera ?? {}, versionEsperada }, { exigirVersion: true });
     if (!comando.ok) return error(comando.mensaje);
     const rechazoDeLaPuerta = puerta && !puerta.guard.rango.ok ? { codigo: puerta.etapa, mensaje: puerta.guard.rango.mensaje } : null;
-    const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, rechazoDeLaPuerta ? { ...comando.valor, puerta: rechazoDeLaPuerta } : comando.valor);
+    // Guardia de unidad (docs/diseno-guardia-de-unidad-receta-2026-11-09.md): la confirmación viaja con el pedido; solo un `true` estricto confirma y la valida el caso de uso.
+    const resultado = await guardarVersionDeRecetaCasoDeUso(ctx, { ...comando.valor, ...(rechazoDeLaPuerta ? { puerta: rechazoDeLaPuerta } : {}), confirmaCantidadDesproporcionada: confirmaCantidadDesproporcionada === true });
     // Sin esto la página no refleja el cambio en un navegador real hasta
     // recargar a mano (ver src/server/actions/refrescar.ts) — detectado
     // con Playwright, no con Vitest ni con los closures que ya hacían
     // `redirect(volver)` tras un `ok` (una navegación real ya refresca sola).
     if (resultado.ok) refrescarVistaSiHaceFalta();
-    return aResultadoAccion(resultado);
+    return conPedidoDeConfirmacion(resultado, aResultadoAccion(resultado));
   });
 }
 
@@ -84,7 +87,7 @@ async function guardarRecetaConPuerta(
  * próxima versión con TODOS los ingredientes juntos, más los pasos y la
  * cabecera vigentes sin tocar).
  */
-export async function agregarIngredienteAReceta(productoId: string, ingrediente: IngredienteInput, versionVista: number): Promise<ResultadoAccion> {
+export async function agregarIngredienteAReceta(productoId: string, ingrediente: IngredienteInput, versionVista: number, confirmaCantidadDesproporcionada?: boolean): Promise<ResultadoConConfirmacion> {
   // S-52: el guard de la puerta (forma y rango del ingrediente, producto y versión) se CALCULA acá; cada etapa se aplica en su lugar (ver `guardarRecetaConPuerta`).
   const guard = guardComandoAgregarIngredienteAReceta({ productoId, ingrediente, versionVista });
   if (!guard.forma.ok) return error(guard.forma.mensaje);
@@ -95,7 +98,7 @@ export async function agregarIngredienteAReceta(productoId: string, ingrediente:
     return error("Ese insumo ya está en la receta.");
   }
 
-  return guardarRecetaConPuerta(productoId, [...existentes, ingrediente], mapPasosAInput(vigente), mapCabeceraAInput(vigente), versionVista, { guard, etapa: "INGREDIENTES_INVALIDOS" });
+  return guardarRecetaConPuerta(productoId, [...existentes, ingrediente], mapPasosAInput(vigente), mapCabeceraAInput(vigente), versionVista, { guard, etapa: "INGREDIENTES_INVALIDOS" }, confirmaCantidadDesproporcionada);
 }
 
 /**
@@ -110,8 +113,9 @@ export async function actualizarIngredienteDeReceta(
   productoId: string,
   insumoProductoId: string,
   cambios: { cantidad: number; unidadId: string; mermaPorcentaje?: number; insumoSustitutoIds?: string[] },
-  versionVista: number
-): Promise<ResultadoAccion> {
+  versionVista: number,
+  confirmaCantidadDesproporcionada?: boolean
+): Promise<ResultadoConConfirmacion> {
   const guard = guardComandoActualizarIngredienteDeReceta({ productoId, cambios, versionVista });
   const vigente = await obtenerRecetaVigente(productoId);
   const existentes = mapIngredientesAInput(vigente);
@@ -137,7 +141,7 @@ export async function actualizarIngredienteDeReceta(
       : i
   );
 
-  return guardarRecetaConPuerta(productoId, items, mapPasosAInput(vigente), mapCabeceraAInput(vigente), versionVista, { guard, etapa: "INGREDIENTES_INVALIDOS" });
+  return guardarRecetaConPuerta(productoId, items, mapPasosAInput(vigente), mapCabeceraAInput(vigente), versionVista, { guard, etapa: "INGREDIENTES_INVALIDOS" }, confirmaCantidadDesproporcionada);
 }
 
 /**

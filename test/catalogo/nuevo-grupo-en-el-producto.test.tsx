@@ -109,7 +109,7 @@ describe("el formulario según la respuesta", () => {
     const html = dibujar(form({ respuesta: "PRECIO_FINAL", prefijo: "De", filas: [["Chico", "2500"], ["Mediano", ""], ["", ""]] }));
     expect(html).toContain("Precio final de la opción 1");
     expect(html).toContain("Precio final de la opción 3");
-    expect(texto(html)).toContain("Chico = $ 2.500");
+    expect(texto(html)).toContain("Chico = $ 2.500,00");
     expect(texto(html)).toContain("Falta el precio final de «Mediano»");
     expect(html).toContain("Se lee en la carta como");
     expect(texto(html)).toContain("En la carta se verá: De chico · De mediano");
@@ -122,7 +122,7 @@ describe("el formulario según la respuesta", () => {
     expect(texto(sinBase)).not.toContain("Trucha =");
     expect(texto(sinBase)).not.toContain("Trucha con");
     const conBase = dibujar(form({ respuesta: "SUMA", filas }), { referencia: { opcion: "Napolitana", precio: 25000 } });
-    expect(texto(conBase)).toContain("Napolitana con Trucha = $ 25.000 + $ 3.000 = $ 28.000");
+    expect(texto(conBase)).toContain("Napolitana con Trucha = $ 25.000,00 + $ 3.000,00 = $ 28.000,00");
   });
 
   it("sin prefijo, «Se lee en la carta como» dice que cada opción se lee con su nombre", () => {

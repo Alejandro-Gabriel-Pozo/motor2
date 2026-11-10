@@ -218,6 +218,11 @@ export interface OpcionAdmitidaDelPanel {
   /** La diferencia del cambio de precio vigente de la opción (`null` si no tiene ninguno cargado). */
   diferenciaDeLaOpcion: DiferenciaDePrecio | null;
   fila: { version: number; cantidadMaxima: number; precioAbsoluto: number | null; diferencia: DiferenciaDePrecio | null; activo: boolean } | null;
+  /**
+   * Lo que la opción cobra y CONSUME hoy: su versión vigente (la que la pestaña Opciones muestra y sobre la que carga el siguiente cambio de consumo, con `numero` como el esperado). `null` si la opción
+   * todavía no tiene ninguna versión. Es de la opción (la comparten todos los productos del grupo), no de este producto.
+   */
+  vigente: { numero: number; diferencia: DiferenciaDePrecio; factorEscala: number | null; consumos: ConsumoDelPanel[] } | null;
 }
 
 /**
@@ -239,6 +244,8 @@ export interface GrupoAdmitidoDelPanel {
   enLaCarta: EnLaCartaDelGrupo;
   /** Con `no-se-muestra-pero-cambia-el-precio`: las opciones ofrecidas que cambian el precio (vacío en los otros casos). */
   queCambianElPrecio: string[];
+  /** Los productos que usan el grupo (filas activas), por nombre y contando a este: con más de uno, cambiar el consumo de una opción los afecta a todos. */
+  productosQueLoUsan: { id: string; nombre: string }[];
   opciones: OpcionAdmitidaDelPanel[];
 }
 
@@ -273,6 +280,8 @@ export interface OpcionesDelProductoDelPanel {
   precioGlobal: number;
   /** Las unidades activas, para el producto de respaldo de un extra nuevo («+ Extra» en un grupo de adicionales). */
   unidades: { id: string; nombre: string }[];
+  /** Las materias primas de la empresa, para elegir el insumo de un consumo (el consumo va siempre en su unidad de stock): las mismas que ofrece la Biblioteca. */
+  insumos: { id: string; nombre: string; unidadNombre: string; decimales: number }[];
   /** El precio local del producto en la sucursal activa tal como está guardado (habilitado o no) y si la sucursal usa precio propio: lo que vio quien lo edita. Solo lo dibuja quien tiene `precio_local`. */
   precioLocal: { guardado: { precio: number; habilitado: boolean } | null; capacidadActiva: boolean };
 }
@@ -289,14 +298,22 @@ const diferenciaDeFila = (tipo: string | null, monto: number | null, porcentaje:
 export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucursalId: string): Promise<OpcionesDelProductoDelPanel | null> {
   const producto = await db.producto.findFirst({ where: { id: productoId }, select: { id: true, nombre: true, tipo: true, precioVenta: true, modoDeVenta: true, opcionQueRespalda: { select: { id: true } } } });
   if (!producto) return null;
-  const [filas, catalogo, paraVender, locales, precioLocal, unidades] = await Promise.all([
+  const [filas, catalogo, paraVender, locales, precioLocal, unidades, insumos, usosDeLosGrupos] = await Promise.all([
     cargarAdmisionDeProducto(db, productoId),
     listarGruposDeOpciones(db, { incluirInactivos: true }),
     cargarOpcionesParaVender(db, { sucursalId, productoIds: [productoId] }),
     preciosLocalesVigentes(sucursalId, db, [productoId]),
     precioLocalGuardadoDe(sucursalId, db, productoId),
     db.unidad.findMany({ where: { activa: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
+    // Lo que consume cada opción (diseño 2026-11-09): las materias primas con su unidad de stock (para nombrar cada insumo y para elegirlo al editar) y quiénes usan cada grupo, en dos lecturas para todo el producto (sin N+1).
+    db.producto.findMany({ where: { tipo: "MP" }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true, unidadStock: { select: { nombre: true, decimales: true } } } }),
+    db.productoAdmiteGrupo.findMany({ where: { activo: true, grupo: { productosQueLoAdmiten: { some: { productoId } } } }, select: { grupoId: true, producto: { select: { id: true, nombre: true } } } }),
   ]);
+  const insumoPorId = new Map(insumos.map((i) => [i.id, i]));
+  const idsDeUnidades = [...new Set(catalogo.flatMap((g) => g.opciones.flatMap((o) => (o.vigente ? o.vigente.consumos.map((c) => c.unidadId) : []))))];
+  const unidadesDeConsumos = new Map((idsDeUnidades.length ? await db.unidad.findMany({ where: { id: { in: idsDeUnidades } }, select: { id: true, nombre: true } }) : []).map((u) => [u.id, u.nombre]));
+  const productosPorGrupo = new Map<string, { id: string; nombre: string }[]>();
+  for (const u of usosDeLosGrupos) productosPorGrupo.set(u.grupoId, [...(productosPorGrupo.get(u.grupoId) ?? []), u.producto]);
   const precioBase = locales.get(productoId)?.precio ?? Number(producto.precioVenta);
   // La grilla de la sucursal, para TODAS las medidas en precio propio del producto (la vista previa muestra cada tamaño).
   const delProducto = paraVender.get(productoId);
@@ -318,6 +335,24 @@ export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucu
         activaEnEmpresa: o.activa,
         esNinguna: o.esNinguna,
         diferenciaDeLaOpcion: o.vigente ? diferenciaDeFila(o.vigente.tipoDeDiferencia, o.vigente.diferenciaPrecio, o.vigente.porcentaje) : null,
+        vigente: o.vigente
+          ? {
+              numero: o.vigente.numero,
+              diferencia: diferenciaDe(o.vigente),
+              factorEscala: o.vigente.factorEscala,
+              consumos: o.vigente.consumos.map((c) => ({
+                efecto: c.efecto as ConsumoDelPanel["efecto"],
+                insumoProductoId: c.insumoProductoId,
+                insumoNombre: insumoPorId.get(c.insumoProductoId)?.nombre ?? "un insumo",
+                reemplazaAProductoId: c.reemplazaAProductoId,
+                reemplazaNombre: c.reemplazaAProductoId ? (insumoPorId.get(c.reemplazaAProductoId)?.nombre ?? "un insumo") : null,
+                cantidad: c.cantidad,
+                unidadNombre: unidadesDeConsumos.get(c.unidadId) ?? "",
+                mermaPorcentaje: c.mermaPorcentaje,
+                escalaConLaMedida: c.escalaConLaMedida,
+              })),
+            }
+          : null,
         fila: fo ? { version: fo.version, cantidadMaxima: fo.cantidadMaxima, precioAbsoluto: fo.precioAbsoluto, diferencia: diferenciaDeFila(fo.tipoDeDiferencia, fo.diferenciaPrecio, fo.porcentaje), activo: fo.activo } : null,
       };
     });
@@ -331,6 +366,7 @@ export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucu
         cantidadMaximaDelGrupo: g.cantidadMaxima,
         fila: { version: f.version, orden: f.orden, cantidadMinima: f.cantidadMinima, cantidadMaxima: f.cantidadMaxima, modoPrecio: f.modoPrecio as ModoDePrecioDeMedida | null, activo: f.activo, seMuestraEnCarta: f.seMuestraEnCarta },
         ...estadoEnLaCarta({ tipo, seMuestraEnCarta: f.seMuestraEnCarta, opciones }),
+        productosQueLoUsan: (productosPorGrupo.get(g.id) ?? []).sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
         opciones,
       },
     ];
@@ -346,6 +382,7 @@ export async function cargarOpcionesDelProducto(db: Db, productoId: string, sucu
     precioBase,
     precioGlobal: Number(producto.precioVenta),
     unidades,
+    insumos: insumos.map((i) => ({ id: i.id, nombre: i.nombre, unidadNombre: i.unidadStock.nombre, decimales: i.unidadStock.decimales })),
     precioLocal,
   };
 }

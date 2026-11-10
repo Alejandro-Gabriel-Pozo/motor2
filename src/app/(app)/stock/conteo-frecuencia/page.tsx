@@ -18,6 +18,7 @@ import { claseDeBoton } from "@/ui/primitivas/boton";
 import { Enlace } from "@/ui/primitivas/enlace";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { rangoDeDias } from "@/core/tiempo/zona-horaria";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Agenda de conteo físico periódico por sucursal × producto (decisión 2 de
@@ -83,7 +84,7 @@ export default async function ConteoFrecuenciaPage({ searchParams }: { searchPar
                 {sugerenciasSinAgenda.map((s) => (
                   <li key={s.productoId} className="flex items-center justify-between gap-2">
                     <span>
-                      {s.nombre} {s.importe !== undefined && <span className="text-tinta-tenue">(${s.importe.toLocaleString("es-AR")})</span>}
+                      {s.nombre} {s.importe !== undefined && <span className="text-tinta-tenue">({formatearMonto(s.importe)})</span>}
                     </span>
                     <Enlace href={`/stock/conteo-frecuencia?sugerido=${s.productoId}`}>Agendar semanal</Enlace>
                   </li>

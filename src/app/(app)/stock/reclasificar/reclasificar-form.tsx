@@ -14,6 +14,7 @@ import { Campo } from "@/ui/primitivas/campo";
 import { Selector } from "@/ui/primitivas/selector";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 import { ZONA_ARGENTINA, diaDeCalendario, esDiaISOReal, fechaDeColumnaDate, mediodiaDelDia } from "@/core/tiempo/zona-horaria";
+import { formatearCantidad } from "@/core/formato-de-numero";
 
 interface FilaDestino {
   seccionId: string;
@@ -191,7 +192,7 @@ export function ReclasificarForm({ secciones }: { secciones: { id: string; nombr
 
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">
-          Destinos (la suma tiene que ser exacta al disponible{disponible != null ? `: ${disponible}` : ""})
+          Destinos (la suma tiene que ser exacta al disponible{disponible != null ? `: ${formatearCantidad(disponible)}` : ""})
         </span>
         {destinos.map((d, idx) => (
           <div key={idx} className="flex flex-wrap items-end gap-2 rounded border p-2">

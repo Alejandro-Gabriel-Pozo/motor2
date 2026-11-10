@@ -6,7 +6,7 @@ import type { DiferenciaDePrecio, TipoDeGrupoDeOpciones } from "@/core/opciones/
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { Boton } from "@/ui/primitivas/boton";
 import { CamposDeVersion, type ReferenciaDePrecio } from "./campos-de-version";
-import type { ConsumoEnEdicion, InsumoParaConsumo } from "./editor-de-consumos";
+import type { ConsumoEnEdicion, InsumoParaConsumo } from "@/components/catalogo/editor-de-consumos";
 import type { RecetaDeReferencia } from "./lectura-del-factor";
 
 /**

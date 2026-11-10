@@ -47,6 +47,8 @@ import { IconoDeAccion } from "@/components/iconos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { listarSucursalesConRecetaPropia, obtenerEstadoDeRecetaPropia } from "@/server/consultas/catalogo/receta-propia";
 import { RecetaDeLaSucursal } from "./receta-de-la-sucursal";
+import { formatearCantidad, formatearCantidadConUnidad, formatearPorcentaje } from "@/core/formato-de-numero";
+import { CeldaNumerica } from "@/ui/componentes/datos/celda-numerica";
 
 export default async function RecetaEditorPage({
   params,
@@ -347,9 +349,9 @@ export default async function RecetaEditorPage({
           ) : (
             (() => {
               const detalles: string[] = [];
-              if (vigente.rendimientoCantidad != null) detalles.push(`Rendimiento: ${Number(vigente.rendimientoCantidad)} ${vigente.rendimientoUnidad?.nombre ?? ""}`.trim());
+              if (vigente.rendimientoCantidad != null) detalles.push(`Rendimiento: ${formatearCantidad(Number(vigente.rendimientoCantidad), vigente.rendimientoUnidad?.decimales)} ${vigente.rendimientoUnidad?.nombre ?? ""}`.trim());
               if (vigente.racionesCantidad != null) detalles.push(`Raciones: ${vigente.racionesCantidad}`);
-              if (vigente.racionTamano != null) detalles.push(`Tamaño de ración: ${Number(vigente.racionTamano)} ${vigente.racionUnidad?.nombre ?? ""}`.trim());
+              if (vigente.racionTamano != null) detalles.push(`Tamaño de ración: ${formatearCantidad(Number(vigente.racionTamano), vigente.racionUnidad?.decimales)} ${vigente.racionUnidad?.nombre ?? ""}`.trim());
               if (vigente.tiempoPreparacionMinutos != null) detalles.push(`Prep.: ${vigente.tiempoPreparacionMinutos} min`);
               if (vigente.tiempoCoccionMinutos != null) detalles.push(`Cocción: ${vigente.tiempoCoccionMinutos} min`);
               return (
@@ -377,9 +379,8 @@ export default async function RecetaEditorPage({
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Ingrediente</th>
-                <th>Cantidad</th>
-                <th>Unidad</th>
-                <th>Merma %</th>
+                <th className="text-right">Cantidad</th>
+                <th className="text-right">Merma</th>
                 <th><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
@@ -404,7 +405,7 @@ export default async function RecetaEditorPage({
                               unidadId: String(formData.get("unidadId") ?? ""),
                               mermaPorcentaje: numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0,
                               insumoSustitutoIds: aceptaSustitutos ? formData.getAll("insumoSustitutoIds").map(String).filter((v) => v !== "") : undefined,
-                            }, versionVista);
+                            }, versionVista, formData.get("confirmarDesproporcion") === "1");
                             // Sale del modo edición al guardar — si no, `editar=` queda pegado en la URL y la fila se muestra siempre editable.
                             if (resultado.ok) redirect(volver);
                             return resultado;
@@ -412,8 +413,8 @@ export default async function RecetaEditorPage({
                           className="flex flex-wrap items-end gap-2"
                         >
                           <span className="text-sm font-medium">{ing.insumoProducto.nombre}</span>
-                          <LecturaDeCantidad campoId={`cantidad-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null}>
-                            <CampoNumero tipo="cantidad" id={`cantidad-${ing.id}`} name="cantidad" defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
+                          <LecturaDeCantidad campoId={`cantidad-${ing.id}`} valorInicial={String(Number(ing.cantidad))} unidad={lecturaPorUnidad[ing.insumoProducto.unidadStockId] ?? null} descripcion={{ insumo: ing.insumoProducto.nombre, producto: producto.nombre }}>
+                            <CampoNumero tipo="cantidad" id={`cantidad-${ing.id}`} name="cantidad" sinEntendido defaultValue={String(Number(ing.cantidad))} required ariaLabel="Cantidad" className="w-28" />
                             {/* Unidad FIJA: la de stock de la MP (el servidor la exige y la relee al guardar). */}
                             <input type="hidden" name="unidadId" value={ing.insumoProducto.unidadStockId} />
                             <span title="Unidad de stock de la materia prima" className="rounded border bg-superficie-suave px-2 py-1.5 text-sm">
@@ -498,9 +499,8 @@ export default async function RecetaEditorPage({
                             </p>
                           )}
                         </td>
-                        <td>{Number(ing.cantidad)}</td>
-                        <td>{ing.unidad.nombre}</td>
-                        <td>{Number(ing.mermaPorcentaje)}</td>
+                        <CeldaNumerica>{formatearCantidadConUnidad(Number(ing.cantidad), ing.unidad.nombre, ing.unidad.decimales)}</CeldaNumerica>
+                        <CeldaNumerica>{formatearPorcentaje(Number(ing.mermaPorcentaje))}</CeldaNumerica>
                         <td>
                           {/* flex-wrap: en un celular angosto «Editar» y «Quitar» se apilan en vez de ensanchar la tabla más allá de la pantalla. */}
                           <div className="flex flex-wrap gap-x-3">
@@ -542,12 +542,12 @@ export default async function RecetaEditorPage({
               // U7 / D3: la unidad es la de stock de la MP elegida (el servidor la vuelve a comparar con la real al guardar).
               unidadId: unidadDeStockPorMp[insumoProductoId] ?? "",
               mermaPorcentaje: numeroDelCampo(String(formData.get("mermaPorcentaje") ?? "")) ?? 0,
-            }, versionVista);
+            }, versionVista, formData.get("confirmarDesproporcion") === "1");
           }}
           className="flex max-w-lg flex-col gap-2"
         >
           <h3 className="font-medium">Agregar ingrediente (genera la próxima versión)</h3>
-          <MateriaPrimaYCantidad idCantidad="cantidad-ingrediente-nuevo" etiquetaMateriaPrima="Materia prima" etiquetaCantidad="Cantidad" etiquetaMerma="Merma" lecturaPorUnidad={lecturaPorUnidad} />
+          <MateriaPrimaYCantidad idCantidad="cantidad-ingrediente-nuevo" etiquetaMateriaPrima="Materia prima" etiquetaCantidad="Cantidad" etiquetaMerma="Merma" lecturaPorUnidad={lecturaPorUnidad} nombreDelProducto={producto.nombre} />
           <BotonDeServidor type="submit">
             Agregar
           </BotonDeServidor>

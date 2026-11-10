@@ -99,7 +99,7 @@ describe("AdmisionDeGrupo: lo que el formulario sigue mandando (los name que lee
     expect(html).toContain("Tope de Trucha");
     expect(html).toContain("Cómo se cobra Trucha en este producto");
     expect(html).toContain("Cómo se cobra Queso en este producto");
-    expect(texto(html)).toContain("La de la opción (+ $ 800)");
+    expect(texto(html)).toContain("La de la opción (+ $ 800,00)");
     expect(html).not.toContain("Cómo se cobra el tamaño en este producto");
   });
 
@@ -119,8 +119,8 @@ describe("AdmisionDeGrupo: lo que el formulario sigue mandando (los name que lee
 describe("AdmisionDeGrupo: la lectura del precio debajo de cada importe", () => {
   it("un tamaño con precio propio: «Napolitana = $ 25.000» (precio final) y la región en vivo de cada fila", () => {
     const html = dibujar(tamanos);
-    expect(texto(html)).toContain("Napolitana = $ 25.000");
-    expect(texto(html)).toContain("Muzzarella = $ 18.000");
+    expect(texto(html)).toContain("Napolitana = $ 25.000,00");
+    expect(texto(html)).toContain("Muzzarella = $ 18.000,00");
     expect((html.match(/aria-live="polite"/g) ?? []).length).toBe(3);
   });
 
@@ -130,15 +130,15 @@ describe("AdmisionDeGrupo: la lectura del precio debajo de cada importe", () => 
   });
 
   it("un extra con su monto propio se lee contra la opción más barata guardada del grupo que fija el precio", () => {
-    expect(texto(dibujar(extras, { referencia: NAPOLITANA }))).toContain("Muzzarella con Trucha = $ 18.000 + $ 3.000 = $ 21.000");
+    expect(texto(dibujar(extras, { referencia: NAPOLITANA }))).toContain("Muzzarella con Trucha = $ 18.000,00 + $ 3.000,00 = $ 21.000,00");
   });
 
   it("el extra que usa la diferencia de la opción se lee con esa diferencia", () => {
-    expect(texto(dibujar(extras, { referencia: NAPOLITANA }))).toContain("Muzzarella con Queso = $ 18.000 + $ 800 = $ 18.800");
+    expect(texto(dibujar(extras, { referencia: NAPOLITANA }))).toContain("Muzzarella con Queso = $ 18.000,00 + $ 800,00 = $ 18.800,00");
   });
 
   it("sin referencia, en un directo se suma sobre el precio de lista: «Con Trucha = $ 8.000 + $ 3.000 = $ 11.000»", () => {
-    expect(texto(dibujar(extras, { precioDeLista: 8000 }))).toContain("Con Trucha = $ 8.000 + $ 3.000 = $ 11.000");
+    expect(texto(dibujar(extras, { precioDeLista: 8000 }))).toContain("Con Trucha = $ 8.000,00 + $ 3.000,00 = $ 11.000,00");
   });
 
   it("sin referencia ni precio de lista (se vende por opción y todavía no tiene precio final) no se lee lo que suma, y no hay error del compositor", () => {

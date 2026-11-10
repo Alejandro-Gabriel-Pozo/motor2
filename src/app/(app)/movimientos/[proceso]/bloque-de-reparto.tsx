@@ -5,6 +5,7 @@ import { faltaRepartir } from "@/core/compras/public";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { Casilla } from "@/ui/primitivas/casilla";
 import { OpcionesExcluyentes } from "@/ui/primitivas/opciones-excluyentes";
+import { formatearMonto, formatearPorcentaje } from "@/core/formato-de-numero";
 
 /**
  * E3a (ADR-041): el bloque «Repartir entre sucursales» de la pantalla de Compra (la opción barata del diseño, §11.1: la misma pantalla, con un interruptor). Se marca qué sucursales llevan parte y cuánto
@@ -21,7 +22,7 @@ export interface EstadoDeReparto {
 
 export const REPARTO_APAGADO: EstadoDeReparto = { repartir: false, modo: "IMPORTE", valores: {}, incluidas: [] };
 
-const plata = (n: number) => `$${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const plata = formatearMonto;
 
 export function BloqueDeReparto({
   estado,
@@ -43,7 +44,7 @@ export function BloqueDeReparto({
   // La MISMA cuenta que el servidor (`faltaRepartir`, enteros): centavos en modo importe, puntos básicos (centésimas de %) en modo porcentaje. Positivo = falta, negativo = sobra.
   const faltante = faltaRepartir(estado.modo, preciosDeLosRenglones, estado.incluidas.map((id) => numeroDelCampo(estado.valores[id] ?? "") ?? 0));
   const diferencia = faltante / 100;
-  const texto = estado.modo === "IMPORTE" ? plata(Math.abs(diferencia)) : `${Math.abs(diferencia).toLocaleString("es-AR")} %`;
+  const texto = estado.modo === "IMPORTE" ? plata(Math.abs(diferencia)) : formatearPorcentaje(Math.abs(diferencia));
 
   return (
     <fieldset className="flex flex-col gap-2 rounded border p-3" data-testid="bloque-reparto">
