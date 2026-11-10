@@ -574,14 +574,7 @@ const CONGELADAS: Record<string, Congelada> = {
         // Un commit no puede llevar su propio hash: es el commit PADRE de este, aacfb7b2 (merge de #222 en alegp/dinero-mostrado-central).
         commit: "aacfb7b2",
         motivo:
-          "Regla del dueño (2026-11-10, «si es dinero no puede quedar como deuda»: todo el dinero mostrado sale de `formatearMonto`; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): los avisos y alertas de texto del reporte de período («Cubre $125.700 de $234.700», «RECONSTRUIDO: $21.600…», «No se pudo costear $109.000», «+$3.405,01», «costo +$392») pasan a «$ 125.700,00», «$ 21.600,00», «$ 109.000,00», «+$ 3.405,01», «+$ 392,00» (espacio que no se parte). Cambian 10 líneas de mensajes; ninguna cifra de datos.",
-      },
-      {
-        blob: "8120302121a38498eb14f9337085d6da94770a4f",
-        // Un commit no puede llevar su propio hash: es el commit PADRE de este, aacfb7b2 (merge de #222 en alegp/dinero-mostrado-central).
-        commit: "aacfb7b2",
-        motivo:
-          "Regla del dueño (2026-11-10, «si es dinero no puede quedar como deuda»: todo el dinero mostrado sale de `formatearMonto`; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): los avisos y alertas de texto del reporte de período («Cubre $125.700 de $234.700», «RECONSTRUIDO: $21.600…», «No se pudo costear $109.000», «+$3.405,01», «costo +$392») pasan a «$ 125.700,00», «$ 21.600,00», «$ 109.000,00», «+$ 3.405,01», «+$ 392,00» (espacio que no se parte). Cambian 10 líneas de mensajes; ninguna cifra de datos.",
+          "Regla del dueño (2026-11-10, «si es dinero no puede quedar como deuda»: todo el dinero mostrado sale de `formatearMonto`; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): los avisos y alertas de texto del reporte de período («Cubre $125.700 de $234.700», «RECONSTRUIDO: $21.600…», «No se pudo costear $109.000», «+$3.405,01», «costo +$392») pasan a «$ 125.700,00», «$ 21.600,00», «$ 109.000,00», «+$ 3.405,01», «+$ 392,00» (espacio que no se parte). Cambian 10 líneas de mensajes; ninguna cifra de datos. Además una alerta se parte en 4 líneas por el ancho del serializador del golden (mismo contenido, verificado contra el golden anterior).",
       },
     ],
   },
@@ -868,14 +861,7 @@ const CONGELADAS: Record<string, Congelada> = {
         // Un commit no puede llevar su propio hash: es el commit PADRE de este, aacfb7b2 (merge de #222 en alegp/dinero-mostrado-central).
         commit: "aacfb7b2",
         motivo:
-          "Regla del dueño (2026-11-10, dinero siempre con 2 decimales vía `formatearMonto`; SOLO FORMATO, no cambia ningún valor ni el rechazo): los 3 mensajes del piso de la promo («$0.02», «$0,01», «$0.03», «$0.1») salen como «$ 0,02», «$ 0,01», «$ 0,03», «$ 0,10». Cambian 3 líneas.",
-      },
-      {
-        blob: "9a53a9585a7258053a40561b98fc4ac4553686e7",
-        // Un commit no puede llevar su propio hash: es el commit PADRE de este, aacfb7b2 (merge de #222 en alegp/dinero-mostrado-central).
-        commit: "aacfb7b2",
-        motivo:
-          "Regla del dueño (2026-11-10, dinero siempre con 2 decimales vía `formatearMonto`; SOLO FORMATO, no cambia ningún valor ni el rechazo): los 3 mensajes del piso de la promo («$0.02», «$0,01», «$0.03», «$0.1») salen como «$ 0,02», «$ 0,01», «$ 0,03», «$ 0,10». Cambian 3 líneas.",
+          "Regla del dueño (2026-11-10, dinero siempre con 2 decimales vía `formatearMonto`; SOLO FORMATO, no cambia ningún valor ni el rechazo): los 3 mensajes del piso de la promo («$0.02», «$0,01», «$0.03», «$0.1») salen como «$ 0,02», «$ 0,01», «$ 0,03», «$ 0,10». Cambian 7 líneas: las 3 del piso y las 4 de «Precio de … en esta sucursal: $7000.» (y $9000, $0.05), que pasan a «$ 7.000,00.», «$ 9.000,00.», «$ 0,05.»; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1 contra Postgres local.",
       },
     ],
   },
@@ -1130,13 +1116,6 @@ const CONGELADAS: Record<string, Congelada> = {
         commit: "e695b570",
         motivo:
           "Regla de números 2026-11-09: el campo numérico muestra miles con punto y el importe con 2 decimales (CAMBIA SOLO ADMINISTRACIÓN, regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). Cambian SOLO las líneas `[campo: «…»]` de los precios de las pantallas de administración (por ejemplo «18.000» pasa a «18.000,00»): 14 líneas; la carta pública, el cobro y el resto de las pantallas quedan idénticos byte a byte. El spec enmascara ahora el campo visible de «Orden» (el `name=orden` pasó al hidden).",
-      },
-      {
-        blob: "2ae1459ed45273685c64a4f1fd258d5ce666fbe7",
-        // Un commit no puede llevar su propio hash: es el commit PADRE de este, aacfb7b2 (merge de #222 en alegp/dinero-mostrado-central).
-        commit: "aacfb7b2",
-        motivo:
-          "Regla del dueño (2026-11-10, dinero siempre con 2 decimales vía `formatearMonto`, también en la CARTA PÚBLICA; cambio visible para el cliente final, SOLO FORMATO): los precios de la carta pública pasan de «$18.000» / «+$2.000» a «$ 18.000,00» / «+$ 2.000,00» (el texto visible se normaliza con espacios comunes). No cambia ningún valor ni forma de la carta; cambian solo las líneas con precios.",
       },
       {
         blob: "2ae1459ed45273685c64a4f1fd258d5ce666fbe7",
