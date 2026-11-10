@@ -9,6 +9,7 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
 import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { CampoNumero } from "@/components/campo-numero";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 export default async function PerdidasPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"dias">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -39,8 +40,7 @@ export default async function PerdidasPage({ searchParams }: { searchParams: Pro
           <BotonDeServidor type="submit">Actualizar</BotonDeServidor>
         </form>
         <p className="mt-2 text-sm text-tinta-tenue">
-          Desde {diaDeCalendario(rep.desde, ctx.empresaZonaHoraria)} — merma total: ${rep.totalMerma.toLocaleString("es-AR")}, consumo interno total: $
-          {rep.totalConsumo.toLocaleString("es-AR")}.
+          Desde {diaDeCalendario(rep.desde, ctx.empresaZonaHoraria)} — merma total: {formatearMonto(rep.totalMerma)}, consumo interno total: {formatearMonto(rep.totalConsumo)}.
         </p>
         {rep.hayCostoIncompleto && <p className="text-xs text-aviso-tinta">Algún producto no tiene costo de reposición conocido: no se suma al valor total.</p>}
       </div>

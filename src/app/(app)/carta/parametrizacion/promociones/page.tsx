@@ -31,7 +31,7 @@ import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { CampoNumero } from "@/components/campo-numero";
 import { Casilla } from "@/ui/primitivas/casilla";
-import { formatearCantidad, formatearMonto } from "@/core/formato-de-numero";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /** Ayudantes puros de los closures "use server" de esta página (locales a propósito: `use-server-solo-donde-corresponde` solo los acepta definidos en el mismo archivo). */
 const campo = (fd: FormData, nombre: string) => String(fd.get(nombre) ?? "");
@@ -209,8 +209,7 @@ export default async function PromocionesDeCartaPage() {
                           const holgura = pr.precio - minimo;
                           return (
                             <p className="text-xs text-tinta-tenue" data-aviso-peor-caso={pr.titulo}>
-                              Con los cupos de hoy, el peor caso son {unidadesEnElPeorCaso} unidad{unidadesEnElPeorCaso === 1 ? "" : "es"} y el precio mínimo permitido es $
-                              {formatearCantidad(minimo)}
+                              Con los cupos de hoy, el peor caso son {unidadesEnElPeorCaso} unidad{unidadesEnElPeorCaso === 1 ? "" : "es"} y el precio mínimo permitido es {formatearMonto(minimo)}
                               {holgura > 0 ? ` — hay ${formatearMonto(holgura)} de margen antes de ese piso si subís algún máximo.` : "."}
                             </p>
                           );

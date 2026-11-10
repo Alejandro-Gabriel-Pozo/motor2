@@ -8,9 +8,9 @@ import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 /**
  * «Mostrar este grupo en la carta» (decisión del dueño, 2026-10-29: plato por plato), en la pantalla de un producto (`/catalogo/productos/[id]/opciones`, Editar de `producto_opciones_admitidas`):
  * el caso del dueño («vendo solo Bife y le pregunto al cliente si quiere ojo de bife o bife de chorizo, pero que no salga en la carta»). A 1280 y a 375 px, con axe:
- *  - destildar «Mostrar este grupo en la carta» y guardar: la tarjeta dice «no se muestra en la carta», la vista previa pierde la línea «Corte:» y la carta pública muestra solo «Bife $20.000»;
+ *  - destildar «Mostrar este grupo en la carta» y guardar: la tarjeta dice «no se muestra en la carta», la vista previa pierde la línea «Corte:» y la carta pública muestra solo «Bife $ 20.000,00»;
  *  - recargar: la casilla sigue destildada; una sola fila de auditoría del interruptor;
- *  - con el grupo oculto, cargar +$2.000 a «Ojo de bife» en la misma tarjeta se rechaza y explica cuál opción cambia el precio;
+ *  - con el grupo oculto, cargar +$ 2.000,00 a «Ojo de bife» en la misma tarjeta se rechaza y explica cuál opción cambia el precio;
  *  - un recargo posterior desde otro camino (la Biblioteca) no se bloquea: la pantalla avisa en amarillo y vuelve a salir sola cuando el recargo vuelve a 0;
  *  - dos pestañas: la vieja se rechaza con «cambió mientras lo editabas».
  * Lo sembrado de opciones no se borra (ver `fixtures/opciones.ts`).
@@ -18,7 +18,7 @@ import { sembrarGrupo, sembrarProductoConOpciones } from "./fixtures/opciones";
 const EMPRESA = "e2e";
 const marca = () => `${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
 
-/** El bife del dueño: un producto de $20.000 con el grupo «Corte» (variante obligatoria, sin recargo), publicado en una carta propia de la sucursal. */
+/** El bife del dueño: un producto de $ 20.000,00 con el grupo «Corte» (variante obligatoria, sin recargo), publicado en una carta propia de la sucursal. */
 async function sembrarBife(m: string, sucursalId: string, opciones: { ocultoDeEntrada?: boolean } = {}) {
   const corte = await sembrarGrupo({ nombre: `E2E Corte ${m}`, tipo: "VARIANTE", cantidadMinima: 1, cantidadMaxima: 1, marca: m, opciones: [{ nombre: "Ojo de bife" }, { nombre: "Bife de chorizo" }] });
   const nombre = `E2E Bife ${m}`;
@@ -37,7 +37,7 @@ const tarjeta = (page: Page, grupoNombre: string) => page.locator(`[data-admisio
 const vistaPrevia = (page: Page) => page.locator("[data-vista-previa-de-la-carta]");
 
 for (const ancho of [1280, 375]) {
-  test(`a ${ancho} px: destildar «Mostrar este grupo en la carta», guardar, recargar; la vista previa y la carta pública muestran solo «Bife $20.000»`, async ({ paginaAutenticada: page, sucursalId }) => {
+  test(`a ${ancho} px: destildar «Mostrar este grupo en la carta», guardar, recargar; la vista previa y la carta pública muestran solo «Bife $ 20.000,00»`, async ({ paginaAutenticada: page, sucursalId }) => {
     await page.setViewportSize({ width: ancho, height: 900 });
     const m = marca();
     const bife = await sembrarBife(m, sucursalId);
@@ -63,11 +63,11 @@ for (const ancho of [1280, 375]) {
     const grupoFila = await prisma.productoAdmiteGrupo.findFirstOrThrow({ where: { productoId: bife.productoId }, select: { id: true } });
     expect(await prisma.registroAuditoria.count({ where: { entidad: "ProductoAdmiteGrupo", entidadId: grupoFila.id, campo: "seMuestraEnCarta" } })).toBe(1);
 
-    // La carta pública (el guardado invalidó su caché): «Bife $20.000», sin la línea del corte.
+    // La carta pública (el guardado invalidó su caché): «Bife $ 20.000,00», sin la línea del corte.
     await page.goto(`/carta-publica/${EMPRESA}/${bife.slug}`);
     await page.getByRole("button", { name: new RegExp(bife.seccionNombre) }).click();
     const item = page.locator("li", { has: page.getByRole("heading", { name: bife.nombre }) });
-    await expect(item).toContainText("$20.000");
+    await expect(item).toContainText("$ 20.000,00");
     await expect(item).not.toContainText("Corte");
     await expect(item).not.toContainText("ojo de bife");
     expect((await new AxeBuilder({ page }).analyze()).violations, "la carta pública").toEqual([]);
@@ -83,7 +83,7 @@ for (const ancho of [1280, 375]) {
   });
 }
 
-test("con el grupo oculto, cargar +$2.000 a «Ojo de bife» en la misma tarjeta se rechaza y dice cuál opción cambia el precio", async ({ paginaAutenticada: page, sucursalId }) => {
+test("con el grupo oculto, cargar +$ 2.000,00 a «Ojo de bife» en la misma tarjeta se rechaza y dice cuál opción cambia el precio", async ({ paginaAutenticada: page, sucursalId }) => {
   const m = marca();
   const bife = await sembrarBife(m, sucursalId, { ocultoDeEntrada: true });
   await page.goto(`/catalogo/productos/${bife.productoId}/opciones`);

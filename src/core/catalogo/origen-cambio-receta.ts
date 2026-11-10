@@ -1,3 +1,4 @@
+import { formatearCantidad } from "@/core/formato-de-numero";
 /**
  * Funciones puras de auditoría de calibración por sucursal (docs/plan-rendimiento-receta-por-sucursal-2026-09-26.md, paso
  * 6, D6(a)/D6(c)) — sin Prisma, para poder testearlas sin base.
@@ -73,7 +74,7 @@ function describirOrigen(origen: OrigenNormalizado | null, guardado?: { cantidad
   if (origen.tipo === "sugerencia_pool") {
     if (origen.platos !== null) detalle.push(`insumo compartido por ${origen.platos} plato(s)`);
     if (origen.semanas !== null) detalle.push(fraseSemanas(origen.semanas));
-    if (origen.ajusteR2 !== null) detalle.push(`ajuste R² ${origen.ajusteR2.toFixed(2)}`);
+    if (origen.ajusteR2 !== null) detalle.push(`ajuste R² ${formatearCantidad(origen.ajusteR2, 2)}`);
   } else {
     const guardadoTxt = guardado?.cantidad !== null && guardado?.cantidad !== undefined ? `, guardado ${guardado.cantidad}` : "";
     if (origen.sugerido !== null) detalle.push(`sugerido ${origen.sugerido}${guardadoTxt}`);

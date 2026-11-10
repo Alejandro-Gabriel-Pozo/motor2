@@ -1,6 +1,7 @@
 "use client";
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 export interface FilaCategoriaDeSeccion {
   categoria: string;
@@ -11,7 +12,7 @@ export interface FilaCategoriaDeSeccion {
 const COLUMNAS: ColumnaReporte<FilaCategoriaDeSeccion>[] = [
   { clave: "categoria", etiqueta: "Categoría", valor: (c) => c.categoria, render: (c) => c.categoria },
   { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (c) => c.cantidad, render: (c) => c.cantidad },
-  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (c) => c.importe, render: (c) => `$${c.importe.toLocaleString("es-AR")}` },
+  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (c) => c.importe, render: (c) => `${formatearMonto(c.importe)}` },
 ];
 
 export function TablaCategoriasDeSeccion({ filas, nombreExport }: { filas: FilaCategoriaDeSeccion[]; nombreExport: string }) {

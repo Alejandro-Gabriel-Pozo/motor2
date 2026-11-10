@@ -37,6 +37,15 @@ describe("formateo de salida de números: guardián de dimensiones", () => {
     expect(Object.keys(modulo).sort()).toEqual(Object.keys(EXPORTACIONES_DECLARADAS).sort());
   });
 
+  it("formatearDolares: siempre 2 decimales, sin símbolo, punto de miles, «—» sin dato; IMPORTE_MINIMO_TEXTO es «$ 0,01»", () => {
+    expect(modulo.formatearDolares(1234.5)).toBe("1.234,50");
+    expect(modulo.formatearDolares(0)).toBe("0,00");
+    expect(modulo.formatearDolares(-5)).toBe("-5,00");
+    expect(modulo.formatearDolares(1.005)).toBe("1,01");
+    expect(modulo.formatearDolares(null)).toBe(SIN_DATO);
+    expect(modulo.IMPORTE_MINIMO_TEXTO).toBe("$\u00a00,01");
+  });
+
   it("SIN_DATO es «—»", () => {
     expect(modulo.SIN_DATO).toBe(SIN_DATO);
   });

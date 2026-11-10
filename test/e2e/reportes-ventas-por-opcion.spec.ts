@@ -44,12 +44,12 @@ test("Período muestra «Ventas por opción» con unidades, importe, costo y mar
     await expect(coca).toBeVisible();
     // Producto, Grupo, Opción, Unidades, Importe, Costo al vender, Margen.
     await expect(coca.getByRole("cell").nth(3)).toHaveText("2");
-    await expect(coca.getByRole("cell").nth(4)).toHaveText("$5.000");
-    await expect(coca.getByRole("cell").nth(5)).toHaveText("$1.400");
-    await expect(coca.getByRole("cell").nth(6)).toHaveText("$3.600 (72%)");
+    await expect(coca.getByRole("cell").nth(4)).toHaveText("$ 5.000,00");
+    await expect(coca.getByRole("cell").nth(5)).toHaveText("$ 1.400,00");
+    await expect(coca.getByRole("cell").nth(6)).toHaveText("$ 3.600,00 (72%)");
     const fanta = page.getByRole("row", { name: new RegExp(`${nombre}.*Fanta ${m}`) });
     await expect(fanta.getByRole("cell").nth(3)).toHaveText("1");
-    await expect(fanta.getByRole("cell").nth(4)).toHaveText("$2.500");
+    await expect(fanta.getByRole("cell").nth(4)).toHaveText("$ 2.500,00");
     await expect(fanta.getByRole("cell").nth(5)).toContainText("costo incompleto (1 de 1 ventas sin costo guardado)");
     expect((await new AxeBuilder({ page }).analyze()).violations, "con «Ventas por opción» llena").toEqual([]);
 

@@ -2,6 +2,7 @@
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaMargenPromocion } from "@/core/reportes/public";
+import { formatearEntero, formatearMonto } from "@/core/formato-de-numero";
 
 const AYUDA_MARGEN =
   'Costo congelado al momento de cada venta, o reconstruido con el historial de compras cuando no se guardó (mismo criterio que Período/Descuentos por cliente). "parcial" si algún componente de esa promo no se pudo costear así.';
@@ -10,7 +11,7 @@ function celdaMargen(valor: number | null, pct: number | null, reconstruido: boo
   if (valor === null) return <span className="text-tinta-tenue">—</span>;
   return (
     <>
-      ${valor.toLocaleString("es-AR")} ({pct}%)
+      {formatearMonto(valor)} ({pct}%)
       {reconstruido ? " · reconstruido" : ""}
       {!completo && <span className="text-aviso-tinta"> · parcial</span>}
     </>
@@ -29,16 +30,16 @@ const COLUMNAS: ColumnaReporte<FilaMargenPromocion>[] = [
       </>
     ),
   },
-  { clave: "cantidadInstancias", etiqueta: "Vendida", alinear: "derecha", valor: (f) => f.cantidadInstancias, render: (f) => `${f.cantidadInstancias.toLocaleString("es-AR")} veces` },
-  { clave: "ingresoALista", etiqueta: "A precio de carta", alinear: "derecha", valor: (f) => f.ingresoALista, render: (f) => `$${f.ingresoALista.toLocaleString("es-AR")}` },
-  { clave: "ingresoCobrado", etiqueta: "Cobrado", alinear: "derecha", valor: (f) => f.ingresoCobrado, render: (f) => `$${f.ingresoCobrado.toLocaleString("es-AR")}` },
+  { clave: "cantidadInstancias", etiqueta: "Vendida", alinear: "derecha", valor: (f) => f.cantidadInstancias, render: (f) => `${formatearEntero(f.cantidadInstancias)} veces` },
+  { clave: "ingresoALista", etiqueta: "A precio de carta", alinear: "derecha", valor: (f) => f.ingresoALista, render: (f) => `${formatearMonto(f.ingresoALista)}` },
+  { clave: "ingresoCobrado", etiqueta: "Cobrado", alinear: "derecha", valor: (f) => f.ingresoCobrado, render: (f) => `${formatearMonto(f.ingresoCobrado)}` },
   {
     clave: "ahorroCliente",
     etiqueta: "Ahorro del cliente",
     alinear: "derecha",
     valor: (f) => f.ahorroCliente,
     ayuda: "A precio de carta menos cobrado: lo que el cliente se ahorró por llevar el combo en vez de pedir cada cosa suelta (D3) — no es un descuento aparte, es la promo misma.",
-    render: (f) => `$${f.ahorroCliente.toLocaleString("es-AR")}${f.ahorroClientePct !== null ? ` (${f.ahorroClientePct}%)` : ""}`,
+    render: (f) => `${formatearMonto(f.ahorroCliente)}${f.ahorroClientePct !== null ? ` (${f.ahorroClientePct}%)` : ""}`,
   },
   {
     clave: "margenReal",

@@ -8,6 +8,7 @@ import { obtenerReporteDescuentosProductos } from "@/server/consultas/reportes/d
 import { SelectorRango } from "@/components/selector-rango";
 import { TablaDescuentosProductos } from "./tabla-descuentos-productos";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Descuentos de productos (Fase 2 de promociones): cuánto se ahorraron los clientes en el rango por el descuento porcentual que la carta le pone a un
@@ -42,8 +43,7 @@ export default async function DescuentosProductosPage({ searchParams }: { search
       <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
 
       <h2 className="text-sm font-medium">
-        ${rep.ahorro.toLocaleString("es-AR")} de ahorro{rep.descuentoEfectivoPct !== null ? ` (${rep.descuentoEfectivoPct}% del precio de lista)` : ""} — $
-        {rep.importeALista.toLocaleString("es-AR")} de lista → ${rep.importeCobrado.toLocaleString("es-AR")} cobrados
+        {formatearMonto(rep.ahorro)} de ahorro{rep.descuentoEfectivoPct !== null ? ` (${rep.descuentoEfectivoPct}% del precio de lista)` : ""} — {formatearMonto(rep.importeALista)} de lista → {formatearMonto(rep.importeCobrado)} cobrados
       </h2>
 
       <TablaDescuentosProductos filas={rep.productos} />

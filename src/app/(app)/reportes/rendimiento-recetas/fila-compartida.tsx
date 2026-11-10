@@ -12,6 +12,7 @@ import { ETIQUETA_ROTULO, desvioEsNotable, type RotuloLinea, type MetodoRendimie
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
+import { formatearCantidad, formatearMonto } from "@/core/formato-de-numero";
 // rendimiento-conciliado.ts es puro (sin @/lib/db) — importable desde un componente cliente sin arrastrar Prisma al bundle. Ver el docstring de este mapa en fila-simple.tsx.
 
 const ETIQUETA_METODO: Record<MetodoRendimiento, string> = {
@@ -146,7 +147,7 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
             </Aviso>
             <p className="text-xs text-tinta-tenue">
               Insumo compartido por {cantidadPlatosEnPool} plato(s) · {semanasConDatos} semana(s) con datos
-              {r2 !== null && ` · ajuste R² ${r2.toFixed(2)}`}.
+              {r2 !== null && ` · ajuste R² ${formatearCantidad(r2, 2)}`}.
               {rotulo && ` ${AYUDA_ROTULO[rotulo]}`}
             </p>
             <p className="text-xs text-tinta-tenue">
@@ -251,7 +252,7 @@ export function FilaRendimientoCompartida(props: FilaRendimientoCompartidaProps)
       <td className={`px-2 py-2 ${claseImpacto(impactoPesos)}`}>
         {impactoPesos !== null ? (
           <>
-            {impactoPesos > 0 ? "+" : ""}${impactoPesos.toLocaleString("es-AR")}
+            {impactoPesos > 0 ? "+" : ""}{formatearMonto(impactoPesos)}
           </>
         ) : (
           <span className="text-tinta-tenue">{sinCosto ? "sin costo conocido" : "—"}</span>

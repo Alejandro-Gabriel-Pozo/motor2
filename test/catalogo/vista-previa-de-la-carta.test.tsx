@@ -38,7 +38,7 @@ describe("VistaPreviaDeLaCarta", () => {
     expect(html.match(/<th scope="col"/g)).toHaveLength(2);
     const t = texto(html);
     expect(t).toContain("Café Chico Grande");
-    expect(t).toContain("$4.000");
+    expect(t).toContain("$ 4.000,00");
     // Carta «B»: el plato dice «Incluye 1 preparación» y el pie de la sección nombra las opciones (la misma función que la carta pública).
     expect(t).toContain("Incluye 1 preparación");
     expect(t).toContain("Preparación · elegís 1 solo · cortado");
@@ -48,21 +48,21 @@ describe("VistaPreviaDeLaCarta", () => {
   it("tabla de dos ejes: columnas, filas con encabezado de fila y un precio por celda", () => {
     const html = dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: ["Simple", "Napolitana"], filas: [{ rotulo: "De carne", celdas: [20000, 25000] }], aclaraciones: [] } });
     expect(html).toContain('<th scope="row"');
-    expect(texto(html)).toMatch(/De carne \$20\.000 \$25\.000/);
+    expect(texto(html)).toMatch(/De carne \$ 20\.000,00 \$ 25\.000,00/);
   });
 
   it("una columna de precios: con el nombre arriba (el nombre es el título) o la base oculta (cada opción como un plato, sin nombre)", () => {
     const filas = [{ rotulo: "Muzzarella", celdas: [18000] }];
-    expect(texto(dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: [], filas, aclaraciones: [] } }))).toContain("Café Muzzarella $18.000");
+    expect(texto(dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: true, columnas: [], filas, aclaraciones: [] } }))).toContain("Café Muzzarella $ 18.000,00");
     const oculta = texto(dibujar({ tipo: "forma", presentacion: { forma: "tabla", titulo: false, columnas: [], filas, aclaraciones: [] } }));
-    expect(oculta).toContain("Muzzarella $18.000");
+    expect(oculta).toContain("Muzzarella $ 18.000,00");
     expect(oculta).not.toContain("Café Muzzarella");
   });
 
   it("simple: el producto con su precio y lo que se lee debajo (los extras con su recargo)", () => {
     const t = texto(dibujar({ tipo: "forma", presentacion: { forma: "simple", aclaraciones: [{ tipo: "extras", rotulo: "Extras", opciones: [{ nombre: "huevo", recargo: 1500 }] }] } }));
     expect(t).toContain("Café con su precio.");
-    expect(t).toContain("Extras: huevo +$1.500");
+    expect(t).toContain("Extras: huevo +$ 1.500,00");
   });
 
   it("solo dibuja: ni formularios, ni botones, ni enlaces, ni modo oscuro", () => {

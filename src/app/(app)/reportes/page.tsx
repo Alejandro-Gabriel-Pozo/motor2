@@ -12,6 +12,7 @@ import { EnDolares } from "@/components/en-dolares";
 import { SelectorRango } from "@/components/selector-rango";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 export default async function ReportesResumenPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -49,7 +50,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
             Ventas
             <AyudaIcono texto={r.financiero.avisoVentas} />
           </p>
-          <p className="text-lg font-semibold">${r.financiero.ventasTotal.toLocaleString("es-AR")}</p>
+          <p className="text-lg font-semibold">{formatearMonto(r.financiero.ventasTotal)}</p>
           <EnDolares pesos={r.financiero.ventasTotal} cotizacion={cotizacion} />
           {r.financiero.ventasSinDato > 0 && <p className="text-xs text-aviso-tinta">{r.financiero.ventasSinDato} {r.financiero.ventasSinDato === 1 ? "venta sin dato" : "ventas sin dato"} (fuera del total)</p>}
         </div>
@@ -59,7 +60,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
             <dt className="text-xs text-tinta-tenue">Ganancia de lo vendido</dt>
             <dd className="text-lg font-semibold">
               {r.financiero.margenRealTotal !== null
-                ? `$${r.financiero.margenRealTotal.toLocaleString("es-AR")} (${r.financiero.margenRealPct}%)${r.financiero.margenRealReconstruido ? " · reconstruido" : ""}`
+                ? `${formatearMonto(r.financiero.margenRealTotal)} (${r.financiero.margenRealPct}%)${r.financiero.margenRealReconstruido ? " · reconstruido" : ""}`
                 : "sin datos todavía"}
             </dd>
             <dd className="text-xs text-tinta-tenue">{r.financiero.avisoMargenReal}</dd>
@@ -78,7 +79,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
               <div>
                 <dt className="font-medium text-tinta-suave">Si repusieras hoy</dt>
                 <dd>
-                  ${r.financiero.margenTotal.toLocaleString("es-AR")} {r.financiero.margenPct !== null && `(${r.financiero.margenPct}%)`}
+                  {formatearMonto(r.financiero.margenTotal)} {r.financiero.margenPct !== null && `(${r.financiero.margenPct}%)`}
                 </dd>
                 <dd className="text-tinta-tenue">{r.financiero.avisoMargen}</dd>
               </div>
@@ -86,7 +87,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
                 <dt className="font-medium text-tinta-suave">Ajustada por inflación (IPC)</dt>
                 <dd>
                   {r.financiero.margenIPCTotal !== null
-                    ? `$${r.financiero.margenIPCTotal.toLocaleString("es-AR")} (${r.financiero.margenIPCPct}%)${r.financiero.ipcVencido ? " · IPC desactualizado" : r.financiero.margenIPCProvisorio ? " · provisorio" : ""}`
+                    ? `${formatearMonto(r.financiero.margenIPCTotal)} (${r.financiero.margenIPCPct}%)${r.financiero.ipcVencido ? " · IPC desactualizado" : r.financiero.margenIPCProvisorio ? " · provisorio" : ""}`
                     : "sin datos todavía"}
                 </dd>
                 <dd className="text-tinta-tenue">{r.financiero.avisoMargenIPC}</dd>
@@ -99,7 +100,7 @@ export default async function ReportesResumenPage({ searchParams }: { searchPara
             Gastado en compras
             <AyudaIcono texto={r.financiero.avisoCompras} />
           </p>
-          <p className="text-lg font-semibold">${r.financiero.gastadoTotal.toLocaleString("es-AR")}</p>
+          <p className="text-lg font-semibold">{formatearMonto(r.financiero.gastadoTotal)}</p>
           <EnDolares pesos={r.financiero.gastadoTotal} cotizacion={cotizacion} />
         </div>
         <div className="rounded border p-4">

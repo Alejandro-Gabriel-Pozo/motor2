@@ -1,125 +1,13 @@
 {
   "regla": "numero-sin-formato-central",
   "meta": "0 (cada pantalla muestra sus números con core/formato-de-numero.ts: «1.000,00», dinero con 2 decimales, unidad pegada); baja con cada etapa",
-  "total": 119,
-  "entradas": 45,
+  "total": 8,
+  "entradas": 6,
   "porTipo": {
-    "intl-number-format": 2,
     "number-pelado": 2,
-    "to-fixed": 12,
-    "to-locale-string": 103
+    "to-fixed": 6
   },
   "cuentas": {
-    "src/app/(app)/reportes/categorias/page.tsx": {
-      "to-locale-string": 2
-    },
-    "src/app/(app)/reportes/categorias/tabla-categorias.tsx": {
-      "to-locale-string": 1
-    },
-    "src/app/(app)/reportes/consignacion/tabla-consignacion.tsx": {
-      "to-locale-string": 3
-    },
-    "src/app/(app)/reportes/consolidado/page.tsx": {
-      "to-locale-string": 3
-    },
-    "src/app/(app)/reportes/consolidado/tabla-consolidado.tsx": {
-      "to-locale-string": 3
-    },
-    "src/app/(app)/reportes/descuentos-clientes/page.tsx": {
-      "to-locale-string": 3
-    },
-    "src/app/(app)/reportes/descuentos-clientes/tabla-descuentos-clientes.tsx": {
-      "to-locale-string": 5
-    },
-    "src/app/(app)/reportes/descuentos-productos/page.tsx": {
-      "to-locale-string": 3
-    },
-    "src/app/(app)/reportes/descuentos-productos/tabla-descuentos-productos.tsx": {
-      "to-locale-string": 4
-    },
-    "src/app/(app)/reportes/devoluciones/page.tsx": {
-      "to-locale-string": 3
-    },
-    "src/app/(app)/reportes/devoluciones/tabla-devoluciones.tsx": {
-      "to-locale-string": 1
-    },
-    "src/app/(app)/reportes/historial/como-se-compro.tsx": {
-      "to-locale-string": 4
-    },
-    "src/app/(app)/reportes/historial/como-se-vendio.tsx": {
-      "to-locale-string": 2
-    },
-    "src/app/(app)/reportes/margen-promociones/page.tsx": {
-      "to-locale-string": 4
-    },
-    "src/app/(app)/reportes/margen-promociones/tabla-margen-promociones.tsx": {
-      "to-locale-string": 5
-    },
-    "src/app/(app)/reportes/page.tsx": {
-      "to-locale-string": 5
-    },
-    "src/app/(app)/reportes/perdidas/page.tsx": {
-      "to-locale-string": 2
-    },
-    "src/app/(app)/reportes/perdidas/tabla-perdidas.tsx": {
-      "to-locale-string": 1
-    },
-    "src/app/(app)/reportes/periodo/grafico-gasto-grupo.tsx": {
-      "to-locale-string": 2
-    },
-    "src/app/(app)/reportes/periodo/page.tsx": {
-      "to-locale-string": 7
-    },
-    "src/app/(app)/reportes/periodo/tabla-periodo.tsx": {
-      "to-locale-string": 12
-    },
-    "src/app/(app)/reportes/rendimiento-recetas/fila-compartida.tsx": {
-      "to-fixed": 1,
-      "to-locale-string": 1
-    },
-    "src/app/(app)/reportes/rendimiento-recetas/fila-simple.tsx": {
-      "to-locale-string": 1
-    },
-    "src/app/(app)/reportes/rendimiento-recetas/page.tsx": {
-      "to-fixed": 1
-    },
-    "src/app/(app)/reportes/rotacion-mesas/page.tsx": {
-      "intl-number-format": 2,
-      "to-locale-string": 2
-    },
-    "src/app/(app)/reportes/tabla-resumen.tsx": {
-      "to-locale-string": 2
-    },
-    "src/app/(app)/reportes/tickets/page.tsx": {
-      "to-locale-string": 1
-    },
-    "src/app/(app)/reportes/valuacion/page.tsx": {
-      "to-locale-string": 1
-    },
-    "src/app/(app)/reportes/valuacion/tabla-valuacion.tsx": {
-      "to-locale-string": 2
-    },
-    "src/app/(app)/reportes/ventas-por-seccion/page.tsx": {
-      "to-locale-string": 2
-    },
-    "src/app/(app)/reportes/ventas-por-seccion/tabla-seccion.tsx": {
-      "to-locale-string": 1
-    },
-    "src/components/en-dolares.tsx": {
-      "to-locale-string": 3
-    },
-    "src/core/carta/precio-carta.ts": {
-      "to-locale-string": 1
-    },
-    "src/core/catalogo/origen-cambio-receta.ts": {
-      "to-fixed": 1
-    },
-    "src/core/compras/reparto-de-factura.ts": {
-      "to-fixed": 2
-    },
-    "src/core/moneda.ts": {
-      "to-fixed": 1
-    },
     "src/core/opciones/componer-precio-de-linea.ts": {
       "to-fixed": 1
     },
@@ -129,9 +17,6 @@
     "src/core/opciones/huella-de-opciones.ts": {
       "to-fixed": 2
     },
-    "src/core/reportes/periodo-alertas.ts": {
-      "to-locale-string": 3
-    },
     "src/server/actions/auth/casos-de-uso/actualizar-activo-sucursal.ts": {
       "number-pelado": 1
     },
@@ -140,12 +25,6 @@
     },
     "src/server/actions/movimientos/casos-de-uso/registrar-factura-proveedor.ts": {
       "to-fixed": 2
-    },
-    "src/server/actions/reportes/casos-de-uso/registrar-pago-consignante.ts": {
-      "to-locale-string": 1
-    },
-    "src/server/consultas/reportes/periodo-margen.ts": {
-      "to-locale-string": 7
     }
   }
 }

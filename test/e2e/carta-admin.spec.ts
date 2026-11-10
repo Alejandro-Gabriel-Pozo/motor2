@@ -98,8 +98,8 @@ test("cargar la carta desde el admin la publica en la carta pública", async ({ 
     await expect(filaPromo.getByText("Armable — 1 cupo")).toBeVisible();
 
     // Paso 13 (opcional, no bloqueante): con máximo 2, el peor caso son 2 unidades — el piso de D3 es $0,02, muy por debajo del
-    // precio de esta promo ($25.000): el aviso lo dice, sin bloquear nada (guardarCuposPromoCarta ya lo hace duro si se cruza).
-    await expect(filaPromo.locator(`[data-aviso-peor-caso="${nombrePromo}"]`)).toContainText("el peor caso son 2 unidades y el precio mínimo permitido es $0,02");
+    // precio de esta promo ($ 25.000,00): el aviso lo dice, sin bloquear nada (guardarCuposPromoCarta ya lo hace duro si se cruza).
+    await expect(filaPromo.locator(`[data-aviso-peor-caso="${nombrePromo}"]`)).toContainText("el peor caso son 2 unidades y el precio mínimo permitido es $ 0,02");
     await expect(filaPromo.locator(`[data-aviso-peor-caso="${nombrePromo}"]`)).toContainText("de margen antes de ese piso si subís algún máximo");
 
     const carta2 = await menuCartaPublicado(sucursalId);

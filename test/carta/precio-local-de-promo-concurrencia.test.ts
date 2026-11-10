@@ -61,8 +61,8 @@ describe("precio local de una promo: control del valor visto (A6)", () => {
 
   it("IDEMPOTENTE: repetir el pedido con el valor visto de antes → el mismo éxito, sin escribir ni auditar de nuevo (también la vuelta al de la empresa)", async () => {
     const id = await promo(900);
-    expect(await guardarPrecioLocalPromoCarta(id, "1100", 900)).toEqual({ ok: true, mensaje: `Precio de "Promo ${n - 1}" en esta sucursal: $1100.` });
-    expect(await guardarPrecioLocalPromoCarta(id, "1100", 900)).toEqual({ ok: true, mensaje: `Precio de "Promo ${n - 1}" en esta sucursal: $1100.` });
+    expect(await guardarPrecioLocalPromoCarta(id, "1100", 900)).toEqual({ ok: true, mensaje: `Precio de "Promo ${n - 1}" en esta sucursal: $ 1.100,00.` });
+    expect(await guardarPrecioLocalPromoCarta(id, "1100", 900)).toEqual({ ok: true, mensaje: `Precio de "Promo ${n - 1}" en esta sucursal: $ 1.100,00.` });
     expect(await guardarPrecioLocalPromoCarta(id, null, 1100)).toMatchObject({ ok: true });
     expect(await guardarPrecioLocalPromoCarta(id, null, 1100)).toMatchObject({ ok: true });
     expect([await local(id), await auditorias(id)]).toEqual([null, 2]);

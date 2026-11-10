@@ -7,6 +7,7 @@ import { calcularCostosYMargenes } from "@/server/lecturas/reportes/costos";
 import { cargarSerieIPC } from "@/server/lecturas/reportes/serie-ipc";
 import { calcularMargenRealDelPeriodo } from "@/server/consultas/reportes/margen-real";
 import type { FilaMargenProducto, MargenDelPeriodo } from "@/core/reportes/public";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Port de calcularMargenDelPeriodo_ (Reportes.js:304-352). LIMITACIÓN a
@@ -138,9 +139,9 @@ export async function calcularMargenDelPeriodo(
             : 'Costo congelado al momento exacto de cada venta (sin el descalce temporal de "Margen" arriba).'
         }${
           ingresoRealReconstruido > 0
-            ? ` RECONSTRUIDO: $${redondearMoneda(ingresoRealReconstruido).toLocaleString("es-AR")} de lo vendido no guardó su costo al venderse y se lo calculó con el historial de compras (el precio de la compra más reciente de cada insumo hasta ese día) y la receta de hoy: es una aproximación.`
+            ? ` RECONSTRUIDO: ${formatearMonto(redondearMoneda(ingresoRealReconstruido))} de lo vendido no guardó su costo al venderse y se lo calculó con el historial de compras (el precio de la compra más reciente de cada insumo hasta ese día) y la receta de hoy: es una aproximación.`
             : ""
-        }${ingresoSinCostoReal > 0 ? ` No se pudo costear $${redondearMoneda(ingresoSinCostoReal).toLocaleString("es-AR")} (algún insumo sin compras hasta ese día, o el plato sin receta).` : ""}${avisoVentasSinPrecio}`
+        }${ingresoSinCostoReal > 0 ? ` No se pudo costear ${formatearMonto(redondearMoneda(ingresoSinCostoReal))} (algún insumo sin compras hasta ese día, o el plato sin receta).` : ""}${avisoVentasSinPrecio}`
       : `No hay ventas que se puedan costear al día de la venta (ninguna guardó su costo y falta el historial de compras de algún insumo).${avisoVentasSinPrecio}`,
     ventasSinPrecioExcluidas,
     costoDeLoVendidoTotal: hayCostoReal ? redondearMoneda(costoRealTotal) : null,
@@ -150,7 +151,7 @@ export async function calcularMargenDelPeriodo(
       ? "Costo real de lo que se vendió: el costo congelado al momento de cada venta (o reconstruido con el historial de compras cuando la venta no lo guardó), dividido por lo vendido que se pudo costear — no por el total facturado. " +
         "Mide CONSUMO, a diferencia de Compras/Ventas, que mide desembolso. " +
         "Incluye el packaging y la limpieza que estén en la receta, a diferencia del ratio de compras y del «Food cost %» de Costos y márgenes, que los dejan afuera. " +
-        `Cubre $${redondearMoneda(ingresoConCostoReal).toLocaleString("es-AR")} de $${redondearMoneda(baseCobertura).toLocaleString("es-AR")} vendidos (${coberturaCostoRealPct} %)${ingresoSinCostoReal > 0 ? "; el resto no se pudo costear (algún insumo sin compras hasta ese día, o el plato sin receta)" : ""}.${avisoVentasSinPrecio}`
+        `Cubre ${formatearMonto(redondearMoneda(ingresoConCostoReal))} de ${formatearMonto(redondearMoneda(baseCobertura))} vendidos (${coberturaCostoRealPct} %)${ingresoSinCostoReal > 0 ? "; el resto no se pudo costear (algún insumo sin compras hasta ese día, o el plato sin receta)" : ""}.${avisoVentasSinPrecio}`
       : `Todavía no hay ventas que se puedan costear: ninguna guardó su costo y falta el historial de compras de algún insumo (o el plato no tiene receta).${avisoVentasSinPrecio}`,
     margenIPCTotal,
     margenIPCPctTotal: margenIPCTotal !== null && ingresoAjustadoIPCTotal > 0 ? Math.round((margenIPCTotal / ingresoAjustadoIPCTotal) * 1000) / 10 : null,
@@ -160,7 +161,7 @@ export async function calcularMargenDelPeriodo(
     ingresoProvisorioIPC: redondearMoneda(ingresoProvisorioIPC),
     antiguedadIPC,
     avisoIPC: ingresoConIPC > 0
-      ? `${textoBaseAvisoIPC}${ingresoSinIPC > 0 ? ` Cubre $${redondearMoneda(ingresoConIPC).toLocaleString("es-AR")} de $${ingresoTotal.toLocaleString("es-AR")} — el resto es de un producto con costo incompleto o de un mes que falta en la serie del IPC.` : ""}${ingresoProvisorioIPC > 0 ? ` PROVISORIO: $${redondearMoneda(ingresoProvisorioIPC).toLocaleString("es-AR")} son de un mes que el INDEC todavía no publicó; se los trata como hechos en ${serieIPC.ultimoMes} (el último publicado), sin inflación entre medio.${serieVencida ? "" : " Se corrige solo cuando se publique."}` : ""}`
+      ? `${textoBaseAvisoIPC}${ingresoSinIPC > 0 ? ` Cubre ${formatearMonto(redondearMoneda(ingresoConIPC))} de ${formatearMonto(ingresoTotal)} — el resto es de un producto con costo incompleto o de un mes que falta en la serie del IPC.` : ""}${ingresoProvisorioIPC > 0 ? ` PROVISORIO: ${formatearMonto(redondearMoneda(ingresoProvisorioIPC))} son de un mes que el INDEC todavía no publicó; se los trata como hechos en ${serieIPC.ultimoMes} (el último publicado), sin inflación entre medio.${serieVencida ? "" : " Se corrige solo cuando se publique."}` : ""}`
       : "Todavía no hay índice de IPC sincronizado (o ninguna venta del rango cae en un mes ya sincronizado).",
   };
 }

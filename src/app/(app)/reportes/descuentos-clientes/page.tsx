@@ -8,6 +8,7 @@ import { obtenerReporteDescuentosClientes } from "@/server/consultas/reportes/de
 import { SelectorRango } from "@/components/selector-rango";
 import { TablaDescuentosClientes } from "./tabla-descuentos-clientes";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Descuentos por cliente (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 10 — último del plan): cuánto se "regaló"
@@ -46,8 +47,7 @@ export default async function DescuentosClientesPage({ searchParams }: { searchP
       <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
 
       <h2 className="text-sm font-medium">
-        ${rep.totalDescontado.toLocaleString("es-AR")} descontados{rep.descuentoEfectivoPct !== null ? ` (${rep.descuentoEfectivoPct}% del precio de lista)` : ""} — $
-        {rep.ingresoALista.toLocaleString("es-AR")} de lista → ${rep.ingresoCobrado.toLocaleString("es-AR")} cobrados
+        {formatearMonto(rep.totalDescontado)} descontados{rep.descuentoEfectivoPct !== null ? ` (${rep.descuentoEfectivoPct}% del precio de lista)` : ""} — {formatearMonto(rep.ingresoALista)} de lista → {formatearMonto(rep.ingresoCobrado)} cobrados
       </h2>
       <p className="mb-2 text-xs text-tinta-tenue">{rep.aviso}</p>
 

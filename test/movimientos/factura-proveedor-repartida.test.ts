@@ -187,7 +187,7 @@ describe("cargar factura", () => {
     const r = await registrarFacturaProveedor(factura({ nroFactura: "A-00001-00000088", items: [{ productoId: bolsa.id, cantidad: 1, precioTotal: 90, referenciaProveedor: REFERENCIA_DE_PRUEBA }], reparto: { modo: "PORCENTAJE", partes: [{ sucursalId: s3, valor: 33.33 }, { sucursalId: s4, valor: 33.33 }, { sucursalId: s6, valor: 33.34 }] } }));
     expect(r.mensaje).toContain("«Bolsa 25 kg» no se puede partir");
     const noSuma = await registrarFacturaProveedor(factura({ nroFactura: "A-00001-00000089", reparto: { modo: "IMPORTE", partes: [{ sucursalId: s3, valor: 2_000_000 }, { sucursalId: s4, valor: 900_000 }] } }));
-    expect(noSuma.mensaje).toBe("Los importes de las sucursales no llegan al total: faltan $100000.00.");
+    expect(noSuma.mensaje).toBe("Los importes de las sucursales no llegan al total: faltan $ 100.000,00.");
   });
 });
 

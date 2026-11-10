@@ -3,6 +3,7 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { SIN_PROVEEDOR, type FilaVentaPorOpcion, type FilaMargenProducto, type FilaCompraPorProveedor, type FilaGastoPorInsumo, type FilaPrecioInsumo, type FilaImpactoRecetaPorPeriodo } from "@/core/reportes/public";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
+import { formatearMonto, formatearEntero } from "@/core/formato-de-numero";
 
 const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
   {
@@ -16,14 +17,14 @@ const COLUMNAS_VENTAS: ColumnaReporte<FilaMargenProducto>[] = [
     ),
   },
   { clave: "cantidad", etiqueta: "Cantidad", alinear: "derecha", valor: (v) => v.cantidad, render: (v) => v.cantidad },
-  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (v) => v.ingreso, render: (v) => `$${v.ingreso.toLocaleString("es-AR")}` },
+  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (v) => v.ingreso, render: (v) => `${formatearMonto(v.ingreso)}` },
   {
     clave: "margen",
     etiqueta: "Margen teórico",
     alinear: "derecha",
     valor: (v) => v.margen,
     render: (v) => {
-      if (v.margen !== null) return `$${v.margen.toLocaleString("es-AR")} (${v.margenPct}%)`;
+      if (v.margen !== null) return `${formatearMonto(v.margen)} (${v.margenPct}%)`;
       if (v.accionFaltante) {
         return (
           <EnlaceInterno href={v.accionFaltante.href} className="text-aviso-tinta underline">
@@ -66,7 +67,7 @@ function columnasCompras(desde?: string, hasta?: string): ColumnaReporte<FilaCom
     render: (p) => p.cantidadCompras,
     ayuda: "Cantidad de compras (facturas/remitos) distintas cargadas a este proveedor en el rango de fechas elegido.",
   },
-  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (p) => p.importe, render: (p) => `$${p.importe.toLocaleString("es-AR")}` },
+  { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (p) => p.importe, render: (p) => `${formatearMonto(p.importe)}` },
   ];
 }
 
@@ -77,14 +78,14 @@ export function TablaVentasPorProducto({ filas }: { filas: FilaMargenProducto[] 
 }
 
 /** Centavos enteros a pesos para MOSTRAR (la cuenta se hizo en centavos). */
-const pesos = (centavos: number) => `$${(centavos / 100).toLocaleString("es-AR")}`;
+const pesos = (centavos: number) => formatearMonto(centavos / 100);
 
 // Ventas con opciones (2026-10-29): una fila por (producto, grupo, opción). El margen solo cuando todas las ventas de la fila guardaron su costo al vender.
 const COLUMNAS_VENTAS_POR_OPCION: ColumnaReporte<FilaVentaPorOpcion>[] = [
   { clave: "producto", etiqueta: "Producto", valor: (f) => f.producto, render: (f) => f.producto },
   { clave: "grupo", etiqueta: "Grupo", valor: (f) => f.grupo, render: (f) => f.grupo },
   { clave: "opcion", etiqueta: "Opción", valor: (f) => f.opcion, render: (f) => f.opcion },
-  { clave: "unidades", etiqueta: "Unidades", alinear: "derecha", valor: (f) => f.unidades, render: (f) => f.unidades.toLocaleString("es-AR") },
+  { clave: "unidades", etiqueta: "Unidades", alinear: "derecha", valor: (f) => f.unidades, render: (f) => formatearEntero(f.unidades) },
   { clave: "importe", etiqueta: "Importe", alinear: "derecha", valor: (f) => f.importeCentavos / 100, render: (f) => pesos(f.importeCentavos) },
   {
     clave: "costo",
@@ -132,7 +133,7 @@ export function TablaComprasPorProveedor({ filas, desde, hasta }: { filas: FilaC
 const COLUMNAS_GASTO_INSUMO: ColumnaReporte<FilaGastoPorInsumo>[] = [
   { clave: "insumo", etiqueta: "Insumo", valor: (f) => f.insumo, render: (f) => f.insumo },
   { clave: "grupo", etiqueta: "Categoría", valor: (f) => f.grupo, render: (f) => f.grupo ?? <span className="text-tinta-suave">Sin categoría</span> },
-  { clave: "importe", etiqueta: "Gastado", alinear: "derecha", valor: (f) => f.importe, render: (f) => `$${f.importe.toLocaleString("es-AR")}` },
+  { clave: "importe", etiqueta: "Gastado", alinear: "derecha", valor: (f) => f.importe, render: (f) => `${formatearMonto(f.importe)}` },
   {
     clave: "porcentaje",
     etiqueta: "% del gasto",
@@ -208,7 +209,7 @@ const COLUMNAS_PRECIO_INSUMO: ColumnaReporte<FilaPrecioInsumo>[] = [
     etiqueta: "$/unidad este período",
     alinear: "derecha",
     valor: (f) => f.precioUnitarioPromedio,
-    render: (f) => `$${f.precioUnitarioPromedio.toLocaleString("es-AR")}`,
+    render: (f) => `${formatearMonto(f.precioUnitarioPromedio)}`,
     ayuda: "Promedio ponderado por cantidad de todas las compras de este insumo en el período elegido.",
   },
   {
@@ -216,7 +217,7 @@ const COLUMNAS_PRECIO_INSUMO: ColumnaReporte<FilaPrecioInsumo>[] = [
     etiqueta: "$/unidad antes",
     alinear: "derecha",
     valor: (f) => f.precioUnitarioAnterior,
-    render: (f) => (f.precioUnitarioAnterior !== null ? `$${f.precioUnitarioAnterior.toLocaleString("es-AR")}` : <span className="text-tinta-tenue">primera compra</span>),
+    render: (f) => (f.precioUnitarioAnterior !== null ? `${formatearMonto(f.precioUnitarioAnterior)}` : <span className="text-tinta-tenue">primera compra</span>),
     ayuda: "Precio de la última compra de este insumo ANTES de que empezara el período elegido — el punto de comparación.",
   },
   {
@@ -234,7 +235,7 @@ const COLUMNAS_PRECIO_INSUMO: ColumnaReporte<FilaPrecioInsumo>[] = [
     render: (f) =>
       f.deltaImpacto !== null ? (
         <span className={claseDelta(f.deltaImpacto)}>
-          {f.deltaImpacto > 0 ? "+" : ""}${f.deltaImpacto.toLocaleString("es-AR")}
+          {f.deltaImpacto > 0 ? "+" : ""}{formatearMonto(f.deltaImpacto)}
         </span>
       ) : (
         <span className="text-tinta-tenue">—</span>
@@ -266,14 +267,14 @@ const COLUMNAS_IMPACTO_RECETA: ColumnaReporte<FilaImpactoRecetaPorPeriodo>[] = [
       </EnlaceInterno>
     ),
   },
-  { clave: "costoAntes", etiqueta: "Costo antes", alinear: "derecha", valor: (f) => f.costoAntes, render: (f) => `$${f.costoAntes.toLocaleString("es-AR")}` },
-  { clave: "costoActual", etiqueta: "Costo ahora", alinear: "derecha", valor: (f) => f.costoActual, render: (f) => `$${f.costoActual.toLocaleString("es-AR")}` },
+  { clave: "costoAntes", etiqueta: "Costo antes", alinear: "derecha", valor: (f) => f.costoAntes, render: (f) => `${formatearMonto(f.costoAntes)}` },
+  { clave: "costoActual", etiqueta: "Costo ahora", alinear: "derecha", valor: (f) => f.costoActual, render: (f) => `${formatearMonto(f.costoActual)}` },
   {
     clave: "delta",
     etiqueta: "Δ costo",
     alinear: "derecha",
     valor: (f) => f.deltaCosto,
-    render: (f) => <span className={claseDelta(f.deltaCosto)}>{f.deltaCosto > 0 ? "+" : ""}${f.deltaCosto.toLocaleString("es-AR")}</span>,
+    render: (f) => <span className={claseDelta(f.deltaCosto)}>{f.deltaCosto > 0 ? "+" : ""}{formatearMonto(f.deltaCosto)}</span>,
     ayuda: "Cuánto le pega a este plato el cambio de precio de sus insumos (directo o a través de un intermedio 'se produce', ej. una masa premezclada) — reusa el mismo costeo recursivo que Costos y márgenes, no un cálculo aparte.",
   },
   {

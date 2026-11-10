@@ -57,7 +57,7 @@ describe("O.42: editar una promo respeta el piso de sus cupos", () => {
     expect(r).toEqual({
       ok: false,
       mensaje:
-        'El precio de "Menú barato" ($0.02) no alcanza el piso de $0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $0.03). Subí el precio o bajá los máximos.',
+        'El precio de "Menú barato" ($ 0,02) no alcanza el piso de $ 0,01 por unidad en el peor caso (3 unidades si se elige el máximo de cada cupo: hace falta al menos $ 0,03). Subí el precio o bajá los máximos.',
     });
     expect(await promo()).toEqual(antes);
     expect(await prismaAdmin.registroAuditoria.count()).toBe(0);

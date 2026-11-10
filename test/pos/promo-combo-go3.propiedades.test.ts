@@ -25,6 +25,20 @@ import * as anterior from "./oraculos/promo-combo-anterior";
  * Mutaciones demostradas: agrupar por `productoId` en vez de por `claveComponente` (cae la 3) y dejar de copiar `claveComponente` a la fila (cae la 3).
  */
 
+/**
+ * Regla del dueño 2026-11-10 (dinero siempre con 2 decimales): el ORÁCULO CONGELADO escribe los importes del mensaje de rechazo del piso como «$0.02» y la versión de hoy como «$ 0,02».
+ * La paridad que importa es la de VALORES (filas, orden, centavos, y los importes que nombra el mensaje): acá cada «$ importe» del mensaje se reemplaza por su valor numérico, así
+ * el oráculo no se edita y solo se ignora el FORMATO del importe (es-AR con miles y coma, o el crudo de antes).
+ */
+function conImportesPorValor<T extends { ok: boolean }>(r: T): unknown {
+  if (!("mensaje" in r) || typeof (r as { mensaje: unknown }).mensaje !== "string") return r;
+  const mensaje = (r as unknown as { mensaje: string }).mensaje.replace(/\$[\s ]*(\d[\d.,]*)/g, (_todo, n: string) => {
+    const valor = n.includes(",") ? Number(n.replace(/\./g, "").replace(",", ".")) : Number(n);
+    return `$<${valor}>`;
+  });
+  return { ...r, mensaje };
+}
+
 const SECCIONES = ["sec-a", "sec-b", "sec-c"] as const;
 const PRODUCTOS = ["p1", "p2", "p3", "p4", "p5", "mp-ajena"] as const;
 
@@ -64,7 +78,7 @@ describe("paridad con la versión anterior (oráculo copiado): sin cupos nuevos,
   it("prorratearPrecioPromo: mismo resultado (filas, orden y centavos) para cualquier precio y cualquier lista de componentes sin clave de componente", () => {
     fc.assert(
       fc.property(precioArb, fc.array(componenteArb, { maxLength: 6 }), (precio, componentes) => {
-        expect(prorratearPrecioPromo(precio, componentes)).toEqual(anterior.prorratearPrecioPromo(precio, componentes));
+        expect(conImportesPorValor(prorratearPrecioPromo(precio, componentes))).toEqual(conImportesPorValor(anterior.prorratearPrecioPromo(precio, componentes)));
       }),
       { numRuns: 1000 },
     );

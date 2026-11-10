@@ -1,6 +1,7 @@
 import { esNumeroFinito } from "@/core/numero";
-import { IMPORTE_MINIMO, IMPORTE_MINIMO_TEXTO, importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda";
+import { IMPORTE_MINIMO, importeDeLinea, redondearMoneda, repartirImporte } from "@/core/moneda";
 import type { TipoDeCupo } from "@/core/carta/public";
+import { IMPORTE_MINIMO_TEXTO, formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Núcleo PURO de las promos armables ("menú fijo"/combo) del POS (Task #16, docs/plan-promo-combo-2026-09-26.md). Sin Prisma:
@@ -410,7 +411,7 @@ export function prorratearPrecioPromo(precioPromo: number, componentes: readonly
   const n = unidades.length;
   const minimo = precioMinimoPromo(componentes);
   if (redondearMoneda(precioPromo) < minimo) {
-    return { ok: false, mensaje: `El precio de la promo ($${precioPromo}) no alcanza el piso de ${IMPORTE_MINIMO_TEXTO} por unidad (${n} unidades: mínimo $${minimo}).` };
+    return { ok: false, mensaje: `El precio de la promo (${formatearMonto(precioPromo)}) no alcanza el piso de ${IMPORTE_MINIMO_TEXTO} por unidad (${n} unidades: mínimo ${formatearMonto(minimo)}).` };
   }
 
   const pesos = unidades.map((u) => u.peso);

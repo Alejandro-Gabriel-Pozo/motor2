@@ -563,11 +563,18 @@ const CONGELADAS: Record<string, Congelada> = {
           "Lote 1b, hallazgo C (decisión del dueño, 2026-11-06; CAMBIA COMPORTAMIENTO: las ventas con importe $0 ya no se revalúan al precio de hoy, quedan «sin dato»). Cambia SOLO la forma, sin tocar ningún importe del escenario (no tiene ventas $0): `ventas` suma `lineasSinDato: 0` y pierde `estimado` en cada fila de `porProducto`; las filas del margen pierden `ingresoEstimado`; el resumen operativo cambia `hayEstimados: false` por `ventasSinDato: 0`; y cada fila del Consolidado suma `ventasSinDato: 0`. Revisado con `git diff`: solo esas líneas.",
       },
       {
-        blob: "449c8abd2c0983f6c5d06d3cc86873db650522c4",
+        blob: "8120302121a38498eb14f9337085d6da94770a4f",
         // Un commit no puede llevar su propio hash: es el commit PADRE de este (E0 PR3, d).
         commit: "0ed02252",
         motivo:
           "E0 de la corrección por ajuste (PR3, d): el buscador de Trazabilidad por producto rotula cada operación con el proceso de la OPERACIÓN y no con el del movimiento que la encontró; seis ventas que salían como «CONSUMO» (la línea del insumo que `distinct` elegía) salen como «VENTA». Cambian solo esas seis líneas de `trazabilidad.buscarOperacionesPorProducto`."
+      },
+      {
+        blob: "26090b673b5ae8116e6a065f0bf2402410681e0c",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, aacfb7b2 (merge de #222 en alegp/dinero-mostrado-central).
+        commit: "aacfb7b2",
+        motivo:
+          "Regla del dueño (2026-11-10, «si es dinero no puede quedar como deuda»: todo el dinero mostrado sale de `formatearMonto`; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): los avisos y alertas de texto del reporte de período («Cubre $125.700 de $234.700», «RECONSTRUIDO: $21.600…», «No se pudo costear $109.000», «+$3.405,01», «costo +$392») pasan a «$ 125.700,00», «$ 21.600,00», «$ 109.000,00», «+$ 3.405,01», «+$ 392,00» (espacio que no se parte). Cambian 10 líneas de mensajes; ninguna cifra de datos. Además una alerta se parte en 4 líneas por el ancho del serializador del golden (mismo contenido, verificado contra el golden anterior).",
       },
     ],
   },
@@ -843,11 +850,18 @@ const CONGELADAS: Record<string, Congelada> = {
           "Interruptor «solo salón» de las promos (migración 20261026120000_promo_carta_solo_salon; ADITIVO, no cambia comportamiento): la huella vuelca las filas de PromoCarta con todas sus columnas, y la columna nueva `PromoCarta.soloSalon` (default false) aparece como ` soloSalon=false` en cada fila PROMO (10 líneas). Verificado: quitando ` soloSalon=false` de cada línea, el contenido es IDÉNTICO al anterior (blob previo en el historial de esta entrada); ninguna otra línea, resultado ni conteo cambia. Se regeneró con `REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1`.",
       },
       {
-        blob: "63667d5ca2199f41b39fb6eb277c0145993562e7",
+        blob: "9a53a9585a7258053a40561b98fc4ac4553686e7",
         // Un commit no puede llevar su propio hash: es el commit PADRE de este, 58f066f2 («WIP pausa: E-N salida»).
         commit: "58f066f2",
         motivo:
           "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): el mensaje de «sincronizar precio global» sale con 2 decimales («actualizado a $11.000» pasa a «$ 11.000,00», con el espacio que no se parte de la moneda). Cambia 1 línea.",
+      },
+      {
+        blob: "593b653fb8f4b8ce3a12de87247954a971b32fe5",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, aacfb7b2 (merge de #222 en alegp/dinero-mostrado-central).
+        commit: "aacfb7b2",
+        motivo:
+          "Regla del dueño (2026-11-10, dinero siempre con 2 decimales vía `formatearMonto`; SOLO FORMATO, no cambia ningún valor ni el rechazo): los 3 mensajes del piso de la promo («$0.02», «$0,01», «$0.03», «$0.1») salen como «$ 0,02», «$ 0,01», «$ 0,03», «$ 0,10». Cambian 7 líneas: las 3 del piso y las 4 de «Precio de … en esta sucursal: $7000.» (y $9000, $0.05), que pasan a «$ 7.000,00.», «$ 9.000,00.», «$ 0,05.»; regenerado con REGENERAR_HUELLA_DE_DINERO_TRAMO_C=1 contra Postgres local.",
       },
     ],
   },
@@ -1097,11 +1111,18 @@ const CONGELADAS: Record<string, Congelada> = {
           "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, comprobado: sin «,00» y sin el espacio tras «$» las líneas viejas y nuevas son idénticas): los importes de las pantallas de ADMINISTRACIÓN (resumen «Así se cobra», lectura de precio de cada opción, vista previa de la carta en el catálogo) salen con 2 decimales («$ 18.000» pasa a «$ 18.000,00»; «$18.000» pasa a «$ 18.000,00»). Cambia 32 líneas por ancho (64 en total). La carta PÚBLICA del cliente NO cambia (no hay ninguna línea suya en el diff).",
       },
       {
-        blob: "531d6ed083087f09ca4c7fe7cacabfc86735e44e",
+        blob: "2ae1459ed45273685c64a4f1fd258d5ce666fbe7",
         // El commit PADRE de este (e695b570) es el último antes de la regeneración; el cambio es de la regla de números del campo (CampoNumero).
         commit: "e695b570",
         motivo:
           "Regla de números 2026-11-09: el campo numérico muestra miles con punto y el importe con 2 decimales (CAMBIA SOLO ADMINISTRACIÓN, regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). Cambian SOLO las líneas `[campo: «…»]` de los precios de las pantallas de administración (por ejemplo «18.000» pasa a «18.000,00»): 14 líneas; la carta pública, el cobro y el resto de las pantallas quedan idénticos byte a byte. El spec enmascara ahora el campo visible de «Orden» (el `name=orden` pasó al hidden).",
+      },
+      {
+        blob: "2ae1459ed45273685c64a4f1fd258d5ce666fbe7",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, aacfb7b2 (merge de #222 en alegp/dinero-mostrado-central).
+        commit: "aacfb7b2",
+        motivo:
+          "Regla del dueño (2026-11-10, dinero siempre con 2 decimales vía `formatearMonto`, también en la CARTA PÚBLICA; cambio visible para el cliente final, SOLO FORMATO): los precios de la carta pública pasan de «$18.000» / «+$2.000» a «$ 18.000,00» / «+$ 2.000,00» (el texto visible se normaliza con espacios comunes). No cambia ningún valor ni forma de la carta; cambian solo las líneas con precios.",
       },
     ],
   },

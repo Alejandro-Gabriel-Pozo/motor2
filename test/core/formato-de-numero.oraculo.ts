@@ -12,7 +12,9 @@ import { Decimal } from "decimal.js";
 export const EXPORTACIONES_DECLARADAS = {
   SIN_DATO: "constante: lo que sale cuando no hay dato",
   DECIMALES_DE_CANTIDAD_SIN_UNIDAD: "constante: decimales máximos de una cantidad sin unidad conocida",
+  IMPORTE_MINIMO_TEXTO: "constante: el piso de $ 0,01 escrito para un mensaje (dinero, vía formatearMonto)",
   formatearMonto: "tipo dinero",
+  formatearDolares: "tipo dinero en USD: 2 decimales, sin símbolo (conversión informativa de EnDolares); probado aparte en el test",
   formatearCantidad: "tipo cantidad",
   formatearCantidadConUnidad: "tipo cantidad con unidad",
   formatearEntero: "tipo entero",

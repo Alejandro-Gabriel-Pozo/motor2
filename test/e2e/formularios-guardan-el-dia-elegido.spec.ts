@@ -113,7 +113,7 @@ test.describe(`con el navegador en ${zona}`, () => {
 
       // Y la pantalla de Consignación, con el período D..D, lo cuenta (cierra el último día en la zona de la empresa): Pagado $137, no $0 ni la fila ausente.
       await page.goto(`/reportes/consignacion?desde=${DIA}&hasta=${DIA}`);
-      await expect(page.getByRole("row", { name: new RegExp(`${consignante.nombre}\\s+\\$0\\s+\\$137\\b`) })).toBeVisible();
+      await expect(page.getByRole("row", { name: new RegExp(`${consignante.nombre}\\s+\\$ 0,00\\s+\\$ 137,00\\b`) })).toBeVisible();
       // El día anterior no lo incluye: el consignante ni aparece en ese período.
       await page.goto(`/reportes/consignacion?desde=${sumarDias(DIA, -1)}&hasta=${sumarDias(DIA, -1)}`);
       await expect(page.getByRole("row", { name: new RegExp(consignante.nombre) })).toHaveCount(0);

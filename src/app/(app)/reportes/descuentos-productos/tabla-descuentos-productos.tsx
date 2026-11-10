@@ -2,18 +2,19 @@
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaDescuentoProducto } from "@/core/reportes/public";
+import { formatearMonto, formatearEntero } from "@/core/formato-de-numero";
 
 const COLUMNAS: ColumnaReporte<FilaDescuentoProducto>[] = [
   { clave: "producto", etiqueta: "Producto", valor: (f) => f.producto, render: (f) => f.producto },
-  { clave: "unidades", etiqueta: "Unidades", alinear: "derecha", valor: (f) => f.unidades, render: (f) => f.unidades.toLocaleString("es-AR") },
-  { clave: "importeALista", etiqueta: "A precio de lista", alinear: "derecha", valor: (f) => f.importeALista, render: (f) => `$${f.importeALista.toLocaleString("es-AR")}` },
-  { clave: "importeCobrado", etiqueta: "Cobrado", alinear: "derecha", valor: (f) => f.importeCobrado, render: (f) => `$${f.importeCobrado.toLocaleString("es-AR")}` },
+  { clave: "unidades", etiqueta: "Unidades", alinear: "derecha", valor: (f) => f.unidades, render: (f) => formatearEntero(f.unidades) },
+  { clave: "importeALista", etiqueta: "A precio de lista", alinear: "derecha", valor: (f) => f.importeALista, render: (f) => `${formatearMonto(f.importeALista)}` },
+  { clave: "importeCobrado", etiqueta: "Cobrado", alinear: "derecha", valor: (f) => f.importeCobrado, render: (f) => `${formatearMonto(f.importeCobrado)}` },
   {
     clave: "ahorro",
     etiqueta: "Ahorro",
     alinear: "derecha",
     valor: (f) => f.ahorro,
-    render: (f) => `$${f.ahorro.toLocaleString("es-AR")}${f.descuentoEfectivoPct !== null ? ` (${f.descuentoEfectivoPct}%)` : ""}`,
+    render: (f) => `${formatearMonto(f.ahorro)}${f.descuentoEfectivoPct !== null ? ` (${f.descuentoEfectivoPct}%)` : ""}`,
   },
 ];
 

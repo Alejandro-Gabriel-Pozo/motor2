@@ -8,8 +8,8 @@ import { prisma } from "./fixtures/db";
  * falta pasar por el POS entero: el prorrateo en sí ya lo cubre test/pos/promo-combo.test.ts, y el motor de este reporte
  * test/reportes/margen-promociones.test.ts).
  *
- * VENTANA DE FECHAS PROPIA (mayo de 2024, que ningún otro spec toca): la Pizza (carta $12.000) y el Flan (carta $3.000) se
- * cobran prorrateados a $9.600/$2.400 dentro de una promo de $12.000 — $3.000 (20%) de ahorro para el cliente contra pedirlos
+ * VENTANA DE FECHAS PROPIA (mayo de 2024, que ningún otro spec toca): la Pizza (carta $ 12.000,00) y el Flan (carta $ 3.000,00) se
+ * cobran prorrateados a $ 9.600,00/$ 2.400,00 dentro de una promo de $ 12.000,00 — $ 3.000,00 (20%) de ahorro para el cliente contra pedirlos
  * sueltos (D3).
  */
 async function sembrar(sucursalId: string, seccionId: string) {
@@ -66,15 +66,15 @@ test("muestra la promo con su ingreso a lista, lo cobrado y el ahorro del client
     await page.goto(VENTANA);
     await expect(page.getByRole("heading", { name: "Margen de promociones" })).toBeVisible();
     await expect(page.getByText("1 promos vendidas")).toBeVisible();
-    await expect(page.getByText("$15.000 de carta")).toBeVisible();
-    await expect(page.getByText("$12.000 cobrados")).toBeVisible();
-    await expect(page.getByText("$3.000 de ahorro para el cliente")).toBeVisible();
+    await expect(page.getByText("$ 15.000,00 de carta")).toBeVisible();
+    await expect(page.getByText("$ 12.000,00 cobrados")).toBeVisible();
+    await expect(page.getByText("$ 3.000,00 de ahorro para el cliente")).toBeVisible();
 
     const fila = page.getByRole("row", { name: new RegExp(titulo) });
     await expect(fila).toContainText("1 veces");
-    await expect(fila).toContainText("$15.000");
-    await expect(fila).toContainText("$12.000");
-    await expect(fila).toContainText("$3.000 (20%)");
+    await expect(fila).toContainText("$ 15.000,00");
+    await expect(fila).toContainText("$ 12.000,00");
+    await expect(fila).toContainText("$ 3.000,00 (20%)");
   } finally {
     await limpiar();
   }

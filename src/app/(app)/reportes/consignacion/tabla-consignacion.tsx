@@ -4,12 +4,13 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import { RegistrarPagoConsignante } from "./registrar-pago-consignante";
 import type { FilaDebidoConsignante, FilaStockSinVenderConsignacion } from "@/core/reportes/public";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 const COLUMNAS_DEBIDO: ColumnaReporte<FilaDebidoConsignante>[] = [
   { clave: "proveedor", etiqueta: "Proveedor", valor: (d) => d.proveedor, render: (d) => d.proveedor },
-  { clave: "liquidado", etiqueta: "Liquidado", alinear: "derecha", valor: (d) => d.liquidado, render: (d) => `$${d.liquidado.toLocaleString("es-AR")}` },
-  { clave: "pagado", etiqueta: "Pagado", alinear: "derecha", valor: (d) => d.pagado, render: (d) => `$${d.pagado.toLocaleString("es-AR")}` },
-  { clave: "importe", etiqueta: "Saldo debido", alinear: "derecha", valor: (d) => d.importe, render: (d) => `$${d.importe.toLocaleString("es-AR")}` },
+  { clave: "liquidado", etiqueta: "Liquidado", alinear: "derecha", valor: (d) => d.liquidado, render: (d) => `${formatearMonto(d.liquidado)}` },
+  { clave: "pagado", etiqueta: "Pagado", alinear: "derecha", valor: (d) => d.pagado, render: (d) => `${formatearMonto(d.pagado)}` },
+  { clave: "importe", etiqueta: "Saldo debido", alinear: "derecha", valor: (d) => d.importe, render: (d) => `${formatearMonto(d.importe)}` },
 ];
 
 /** «Registrar pago»: solo para quien tiene «Editar» de `pagar_consignante` (Fase 2b, D3; la acción lo vuelve a exigir en el servidor). */

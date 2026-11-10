@@ -1,4 +1,5 @@
 import { Decimal } from "decimal.js";
+import { formatearMonto, formatearPorcentaje } from "@/core/formato-de-numero";
 
 /**
  * E3a: el reparto EXACTO de una factura de proveedor de mercadería entre sucursales (docs/diseno-factura-de-proveedor-e3a-2026-10-27.md, §4 y nivel 5, D1 a D3, D9, D11, D12).
@@ -118,15 +119,15 @@ export function repartirFactura(renglones: readonly RenglonARepartir[], modo: Mo
     presupuestos = valores.map(aCentavos);
     const diferencia = faltaRepartir("IMPORTE", renglones.map((r) => r.precioTotal), valores);
     if (diferencia !== 0) {
-      const pesos = new D(Math.abs(diferencia)).dividedBy(100).toFixed(2);
-      return { ok: false, mensaje: diferencia > 0 ? `Los importes de las sucursales no llegan al total: faltan $${pesos}.` : `Los importes de las sucursales pasan el total: sobran $${pesos}.` };
+      const pesos = formatearMonto(new D(Math.abs(diferencia)).dividedBy(100).toNumber());
+      return { ok: false, mensaje: diferencia > 0 ? `Los importes de las sucursales no llegan al total: faltan ${pesos}.` : `Los importes de las sucursales pasan el total: sobran ${pesos}.` };
     }
     bp = puntosBasicosConPiso(presupuestos);
   } else {
     bp = valores.map((v) => new D(v).times(100).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber());
     if (valores.some((v, j) => !new D(v).times(100).equals(bp[j]!))) return { ok: false, mensaje: "Los porcentajes admiten hasta dos decimales." };
     const suma = bp.reduce((s, v) => s + v, 0);
-    if (suma !== 10000) return { ok: false, mensaje: `Los porcentajes tienen que sumar 100 %: suman ${new D(suma).dividedBy(100).toFixed(2)} %.` };
+    if (suma !== 10000) return { ok: false, mensaje: `Los porcentajes tienen que sumar 100 %: suman ${formatearPorcentaje(new D(suma).dividedBy(100).toNumber())}.` };
     presupuestos = repartirEnteros(totalCentavos, bp);
   }
 

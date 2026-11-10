@@ -105,7 +105,7 @@ describe("costo de lo vendido (consumo) del período", () => {
     expect(margen.costoDeLoVendidoPctTotal).toBe(10);
     expect(margen.costoDeLoVendidoPctTotal).not.toBeCloseTo((margen.costoDeLoVendidoTotal! / ventas.totalFacturado) * 100, 1);
     expect(margen.costoDeLoVendidoPctTotal).toBeCloseTo((margen.costoDeLoVendidoTotal! / margen.ingresoConCostoReal) * 100, 1);
-    expect(margen.avisoCostoDeLoVendido).toContain("Cubre $100 de $200 vendidos (50 %)");
+    expect(margen.avisoCostoDeLoVendido).toContain("Cubre $ 100,00 de $ 200,00 vendidos (50 %)");
     expect(margen.avisoCostoDeLoVendido).toContain("no se pudo costear");
   });
 

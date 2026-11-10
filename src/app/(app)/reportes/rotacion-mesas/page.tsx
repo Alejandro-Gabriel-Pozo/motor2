@@ -7,9 +7,7 @@ import { generarReporteRotacionMesas } from "@/server/consultas/reportes/rotacio
 import { SelectorRango } from "@/components/selector-rango";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { Aviso } from "@/ui/primitivas/aviso";
-
-const MINUTOS = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
-const UNO = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
+import { formatearCantidad, formatearEntero } from "@/core/formato-de-numero";
 
 /**
  * Reporte de rotación de mesas (módulo POS, docs/plan-comensales-y-limite-mesas-2026-09-26.md): comensales/cuenta promedio,
@@ -45,7 +43,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
 
       {rep.truncado && (
         <Aviso variante="advertencia" data-aviso-truncado="">
-          El rango tiene más de {MAXIMO_DE_CUENTAS_EN_ROTACION.toLocaleString("es-AR")} cuentas: estos números son de las primeras {MAXIMO_DE_CUENTAS_EN_ROTACION.toLocaleString("es-AR")}, no de todo el rango. Elegí un rango más corto
+          El rango tiene más de {formatearEntero(MAXIMO_DE_CUENTAS_EN_ROTACION)} cuentas: estos números son de las primeras {formatearEntero(MAXIMO_DE_CUENTAS_EN_ROTACION)}, no de todo el rango. Elegí un rango más corto
           para verlo completo.
         </Aviso>
       )}
@@ -54,13 +52,13 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
         <div className="rounded border p-4">
           <p className="text-xs text-tinta-tenue">Comensales por cuenta</p>
           <p data-metrica="comensales-promedio" className="text-lg font-semibold">
-            {rep.comensalesPromedio !== null ? UNO.format(rep.comensalesPromedio) : "—"}
+            {rep.comensalesPromedio !== null ? formatearCantidad(rep.comensalesPromedio, 1) : "—"}
           </p>
         </div>
         <div className="rounded border p-4">
           <p className="text-xs text-tinta-tenue">Duración de mesa</p>
           <p data-metrica="duracion-promedio" className="text-lg font-semibold">
-            {rep.duracionPromedioMin !== null ? `${MINUTOS.format(rep.duracionPromedioMin)} min` : "—"}
+            {rep.duracionPromedioMin !== null ? `${formatearEntero(rep.duracionPromedioMin)} min` : "—"}
           </p>
         </div>
         <div className="rounded border p-4">
@@ -98,8 +96,8 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
                 <tr key={f.hora} data-franja={f.hora} className="border-b">
                   <td className="py-2">{String(f.hora).padStart(2, "0")}:00</td>
                   <td>{f.cantidad}</td>
-                  <td>{f.comensalesPromedio !== null ? UNO.format(f.comensalesPromedio) : "—"}</td>
-                  <td>{f.duracionPromedioMin !== null ? `${MINUTOS.format(f.duracionPromedioMin)} min` : "—"}</td>
+                  <td>{f.comensalesPromedio !== null ? formatearCantidad(f.comensalesPromedio, 1) : "—"}</td>
+                  <td>{f.duracionPromedioMin !== null ? `${formatearEntero(f.duracionPromedioMin)} min` : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -127,7 +125,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
                 <tr key={g.grupo} data-grupo={g.grupo} className="border-b">
                   <td className="py-2">{g.grupo}</td>
                   <td>{g.cantidad}</td>
-                  <td>{g.duracionPromedioMin !== null ? `${MINUTOS.format(g.duracionPromedioMin)} min` : "—"}</td>
+                  <td>{g.duracionPromedioMin !== null ? `${formatearEntero(g.duracionPromedioMin)} min` : "—"}</td>
                 </tr>
               ))}
             </tbody>

@@ -1,4 +1,4 @@
-import { IMPORTE_MINIMO_TEXTO } from "@/core/moneda";
+import { IMPORTE_MINIMO_TEXTO, formatearMonto } from "@/core/formato-de-numero";
 import { precioMinimoPromo } from "@/core/pos/public";
 
 /**
@@ -29,8 +29,8 @@ export function pisoDePrecioDePromo(cupos: readonly { cantidadMaxima: number }[]
 /** El mensaje del rechazo cuando `precio` no alcanza el piso: nombra la promo, el precio, las unidades del peor caso y el mínimo. */
 export function mensajePisoDePromo(titulo: string, precio: number, piso: PisoDePromo): string {
   return (
-    `El precio de "${titulo}" ($${precio}) no alcanza el piso de ${IMPORTE_MINIMO_TEXTO} por unidad en el peor caso ` +
-    `(${piso.unidades} unidades si se elige el máximo de cada cupo: hace falta al menos $${piso.minimo}). Subí el precio o bajá los máximos.`
+    `El precio de "${titulo}" (${formatearMonto(precio)}) no alcanza el piso de ${IMPORTE_MINIMO_TEXTO} por unidad en el peor caso ` +
+    `(${piso.unidades} unidades si se elige el máximo de cada cupo: hace falta al menos ${formatearMonto(piso.minimo)}). Subí el precio o bajá los máximos.`
   );
 }
 
@@ -38,6 +38,6 @@ export function mensajePisoDePromo(titulo: string, precio: number, piso: PisoDeP
 export function mensajePisoLocalDePromo(titulo: string, piso: PisoDePromo): string {
   return (
     `El precio local de "${titulo}" en alguna sucursal no alcanza el piso de ${IMPORTE_MINIMO_TEXTO} por unidad en el peor caso ` +
-    `(${piso.unidades} unidades si se elige el máximo de cada cupo: hace falta al menos $${piso.minimo}). Subí ese precio local o bajá los máximos.`
+    `(${piso.unidades} unidades si se elige el máximo de cada cupo: hace falta al menos ${formatearMonto(piso.minimo)}). Subí ese precio local o bajá los máximos.`
   );
 }
