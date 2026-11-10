@@ -1,0 +1,110 @@
+{
+  "regla": "tablas-a-mano",
+  "meta": "bajar a 0 al terminar las etapas E-B…E-G: toda tabla de datos usa TablaDeDatos (las matrices y la ficha impresa, con excepción y motivo)",
+  "total": 38,
+  "entradas": 33,
+  "porTipo": {
+    "table-a-mano": 38
+  },
+  "cuentas": {
+    "src/app/(app)/administracion/capacidades-sucursal/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/administracion/permisos/permisos-matriz.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/administracion/roles/roles-tabla.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/administracion/sucursales/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/administracion/usuarios/usuarios-tabla.tsx": {
+      "table-a-mano": 2
+    },
+    "src/app/(app)/catalogo/categorias/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/catalogo/clientes/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/catalogo/insumos-grupos/page.tsx": {
+      "table-a-mano": 2
+    },
+    "src/app/(app)/catalogo/margen-objetivo/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/catalogo/productos/[id]/opciones/admision-de-grupo.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/catalogo/proveedores/[id]/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/catalogo/proveedores/comparativa/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/catalogo/proveedores/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/historial/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/receta-de-la-sucursal.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/catalogo/recetas/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/catalogo/unidades/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/movimientos/conteo-fisico/conteo-fisico-grid.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/movimientos/conteo-fisico/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/movimientos/precio-local/page.tsx": {
+      "table-a-mano": 2
+    },
+    "src/app/(app)/movimientos/secciones/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/reportes/compras/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/reportes/rendimiento-recetas/page.tsx": {
+      "table-a-mano": 2
+    },
+    "src/app/(app)/reportes/rotacion-mesas/page.tsx": {
+      "table-a-mano": 2
+    },
+    "src/app/(app)/reportes/tickets/page.tsx": {
+      "table-a-mano": 1
+    },
+    "src/app/(app)/traspasos/bandeja.tsx": {
+      "table-a-mano": 1
+    },
+    "src/components/carta-publica/seccion.tsx": {
+      "table-a-mano": 1
+    },
+    "src/components/catalogo/ficha-de-cocina/ficha-de-cocina-vista.tsx": {
+      "table-a-mano": 1
+    },
+    "src/components/catalogo/gestion-presentaciones.tsx": {
+      "table-a-mano": 1
+    },
+    "src/components/stock/panel-de-maestro-simple.tsx": {
+      "table-a-mano": 1
+    },
+    "src/components/stock/tabla-de-stock.tsx": {
+      "table-a-mano": 1
+    },
+    "src/components/tabla-reporte.tsx": {
+      "table-a-mano": 1
+    }
+  }
+}

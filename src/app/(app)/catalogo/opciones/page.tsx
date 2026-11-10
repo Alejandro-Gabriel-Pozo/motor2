@@ -10,6 +10,7 @@ import { nombreDelTipoDeGrupo, textoDeLimites } from "@/core/opciones/public";
 import { AgregarColapsable } from "@/components/agregar-colapsable";
 import { AvisoConDeshacer, BotonConDeshacer } from "@/components/aviso-con-deshacer";
 import { TablaDeDatos, type ColumnaDeTabla } from "@/ui/componentes/datos/tabla-de-datos";
+import { ApartadoDePlanilla } from "@/ui/componentes/estructura/apartado-de-planilla";
 import { AltaDeGrupo } from "./alta-de-grupo";
 
 /**
@@ -78,26 +79,28 @@ export default async function OpcionesDeVentaPage() {
           </Link>
         )}
 
-        <TablaDeDatos
-          titulo="Grupos de opciones"
-          columnas={columnas}
-          filas={enUso}
-          claveDeFila={(g) => g.id}
-          vacio={
-            archivados.length > 0
-              ? "No hay grupos en uso: los que había están archivados (abajo)."
-              : puedeEditar
-                ? "Todavía no hay grupos de opciones. Creá el primero con «Nuevo grupo»."
-                : "Todavía no hay grupos de opciones."
-          }
-        />
+        <ApartadoDePlanilla titulo="Grupos en uso" descripcion="Entrá a un grupo para ver sus opciones y sus cambios de precio.">
+          <TablaDeDatos
+            titulo="Grupos de opciones"
+            columnas={columnas}
+            filas={enUso}
+            claveDeFila={(g) => g.id}
+            vacio={
+              archivados.length > 0
+                ? "No hay grupos en uso: los que había están archivados (abajo)."
+                : puedeEditar
+                  ? "Todavía no hay grupos de opciones. Creá el primero con «Nuevo grupo»."
+                  : "Todavía no hay grupos de opciones."
+            }
+          />
+        </ApartadoDePlanilla>
 
         {archivados.length > 0 && (
-          <section aria-labelledby="titulo-archivados" className="flex flex-col gap-2">
-            <h2 id="titulo-archivados" className="font-medium">
-              Archivados ({archivados.length})
-            </h2>
-            <p className="text-sm text-tinta-suave">No se ofrecen en ningún producto ni en la carta. Lo ya vendido queda como se vendió. Restaurar los vuelve a ofrecer donde estaban.</p>
+          <ApartadoDePlanilla
+            titulo={`Archivados (${archivados.length})`}
+            idDelTitulo="titulo-archivados"
+            descripcion="No se ofrecen en ningún producto ni en la carta. Lo ya vendido queda como se vendió. Restaurar los vuelve a ofrecer donde estaban."
+          >
             <ul aria-label="Grupos archivados" className="flex flex-col gap-2">
               {archivados.map((g) => {
                 const grupoId = g.id;
@@ -127,7 +130,7 @@ export default async function OpcionesDeVentaPage() {
                 );
               })}
             </ul>
-          </section>
+          </ApartadoDePlanilla>
         )}
 
         {puedeEditar && (

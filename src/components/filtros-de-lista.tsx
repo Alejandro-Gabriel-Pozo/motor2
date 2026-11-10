@@ -37,7 +37,7 @@ export function FiltrosDeLista({ accion, etiquetaDeLaBusqueda, marcadorDeLaBusqu
   // La clave, que cambia con los valores vigentes, vuelve a armar el formulario con lo que dice la URL.
   const clave = JSON.stringify([busqueda, ...filtros.map((f) => f.valor)]);
   return (
-    <form key={clave} method="get" action={accion} role="search" aria-label="Buscar y filtrar" className="mb-4 space-y-3">
+    <form key={clave} method="get" action={accion} role="search" aria-label="Buscar y filtrar" className="space-y-3">
       <div className="max-w-md">
         <Campo etiqueta={etiquetaDeLaBusqueda} type="text" name="q" defaultValue={busqueda} placeholder={marcadorDeLaBusqueda} />
       </div>
