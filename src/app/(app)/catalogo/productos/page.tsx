@@ -22,6 +22,9 @@ import {
   hayFiltrosDeProductos,
   leerFiltrosDeProductos,
 } from "@/core/catalogo/public";
+import { TablaDeDatos, type ColumnaDeTabla } from "@/ui/componentes/datos/tabla-de-datos";
+import { ApartadoDePlanilla } from "@/ui/componentes/estructura/apartado-de-planilla";
+import { BarraDeFiltros } from "@/ui/componentes/estructura/barra-de-filtros";
 import { FiltrosDeLista } from "@/components/filtros-de-lista";
 import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
 import { PESTANAS_DE_PRODUCTOS } from "@/core/catalogo/public";
@@ -61,9 +64,61 @@ export default async function ProductosPage({
   // GO-2d: la etiqueta «Opciones: Tamaño, Leche» de cada producto de la página (una sola lectura).
   const gruposDeOpciones = await gruposDeOpcionesPorProducto(ctx.db, pagina.items.map((p) => p.id));
 
+  // Columna de acciones solo si el usuario puede alguna (cortesía de la interfaz: el servidor vuelve a exigir cada permiso).
+  const columnas: ColumnaDeTabla<(typeof pagina.items)[number]>[] = [
+    { id: "codigo", encabezado: "Código", celda: (p) => p.codigo },
+    {
+      id: "nombre",
+      encabezado: "Nombre",
+      titulo: true,
+      celda: (p) => (
+        <>
+          <Link href={`/catalogo/productos/${p.id}`} className="underline">
+            {p.nombre}
+          </Link>
+          {gruposDeOpciones.has(p.id) && (
+            <Insignia className="ml-2" data-etiqueta-opciones>{`Opciones: ${gruposDeOpciones.get(p.id)!.join(", ")}`}</Insignia>
+          )}
+        </>
+      ),
+    },
+    { id: "tipo", encabezado: "Tipo", celda: (p) => p.tipo },
+    { id: "disponible", encabezado: "Disponible acá", celda: (p) => (p.disponibleAca ? "Sí" : "No") },
+    { id: "sucursales", encabezado: "Sucursales", alinear: "derecha", celda: (p) => `${p.sucursalesDisponibles} de ${p.totalSucursales}` },
+    ...(puedeEditarProducto || puedeCambiarDisponibilidad
+      ? [
+          {
+            id: "acciones",
+            encabezado: "Acciones",
+            accion: true,
+            celda: (p: (typeof pagina.items)[number]) => (
+              <div className="flex items-center gap-3">
+                {puedeEditarProducto && (
+                  <Link href={`/catalogo/productos/${p.id}/datos`} className="text-sm underline inline-flex items-center gap-1">
+                    <IconoDeAccion id="editar" />
+                    Editar
+                  </Link>
+                )}
+                {puedeCambiarDisponibilidad && (
+                  <ActivarDesactivarFila
+                    activo={p.disponibleAca}
+                    aviso="Desactivar lo saca de los selectores, del stock consolidado y de la valuación de esta sucursal; en las demás no cambia nada. El historial se conserva. Si algo todavía depende de él acá (recetas vigentes, saldo), no se deja desactivar."
+                    accion={async () => {
+                      "use server";
+                      return actualizarDisponibilidadProducto(p.id, !p.disponibleAca);
+                    }}
+                  />
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ];
+
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-xl font-semibold">Productos</h1>
         {puedeDarDeAlta && (
           <EnlaceInterno href="/catalogo/productos/nuevo" className={claseDeBoton()}>
@@ -71,85 +126,35 @@ export default async function ProductosPage({
           </EnlaceInterno>
         )}
       </div>
-      <div className="mb-4">
+      <div>
         <FilaDeCatalogo ctx={ctx} etiqueta="Qué mirar de los productos" pestanas={PESTANAS_DE_PRODUCTOS} ruta="/catalogo/productos" />
       </div>
-      <FiltrosDeLista
-        accion="/catalogo/productos"
-        etiquetaDeLaBusqueda={porReferencia ? "Buscar por nombre, código o cómo lo llama el proveedor" : "Buscar por nombre o código"}
-        marcadorDeLaBusqueda={porReferencia ? "Nombre, código o lo que dice la factura…" : "Buscar por código o nombre…"}
-        busqueda={filtros.q}
-        hayFiltros={hayFiltrosDeProductos(filtros)}
-        filtros={[
-          { nombre: "tipo", etiqueta: "Tipo", valor: filtros.tipo ?? "", opciones: TIPOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_TIPO[v] })) },
-          { nombre: "modo", etiqueta: "Cómo se vende", valor: filtros.modo ?? "", opciones: MODOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_MODO[v] })) },
-          { nombre: "disponible", etiqueta: "Disponibilidad", valor: filtros.disponible ?? "", opciones: DISPONIBILIDADES_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_DISPONIBILIDAD[v] })) },
-          { nombre: "falta", etiqueta: "Le falta algo", valor: filtros.falta ?? "", opciones: faltas.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_FALTA[v] })) },
-        ]}
-      />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-tinta-tenue">
-              <th className="py-2">Código</th>
-              <th>Nombre</th>
-              <th>Tipo</th>
-              <th>Disponible acá</th>
-              <th>Sucursales</th>
-              <th><span className="sr-only">Acciones</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {pagina.items.map((p) => (
-              <tr key={p.id} className="border-b">
-                <td className="py-2">{p.codigo}</td>
-                <td>
-                  <Link href={`/catalogo/productos/${p.id}`} className="underline">
-                    {p.nombre}
-                  </Link>
-                  {gruposDeOpciones.has(p.id) && (
-                    <Insignia className="ml-2" data-etiqueta-opciones>{`Opciones: ${gruposDeOpciones.get(p.id)!.join(", ")}`}</Insignia>
-                  )}
-                </td>
-                <td>{p.tipo}</td>
-                <td>{p.disponibleAca ? "Sí" : "No"}</td>
-                <td>{p.sucursalesDisponibles} de {p.totalSucursales}</td>
-                <td className="py-2">
-                  {(puedeEditarProducto || puedeCambiarDisponibilidad) && (
-                    <div className="flex items-start gap-3">
-                      {puedeEditarProducto && (
-                        <Link href={`/catalogo/productos/${p.id}/datos`} className="text-sm underline inline-flex items-center gap-1">
-                          <IconoDeAccion id="editar" />
-                          Editar
-                        </Link>
-                      )}
-                      {puedeCambiarDisponibilidad && (
-                        <ActivarDesactivarFila
-                          activo={p.disponibleAca}
-                          aviso="Desactivar lo saca de los selectores, del stock consolidado y de la valuación de esta sucursal; en las demás no cambia nada. El historial se conserva. Si algo todavía depende de él acá (recetas vigentes, saldo), no se deja desactivar."
-                          accion={async () => {
-                            "use server";
-                            return actualizarDisponibilidadProducto(p.id, !p.disponibleAca);
-                          }}
-                        />
-                      )}
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {!pagina.items.length && (
-              <tr>
-                <td className="py-2 text-tinta-tenue" colSpan={6}>
-                  Sin productos{hayFiltrosDeProductos(filtros) ? " que coincidan con la búsqueda y los filtros" : ""}.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <ApartadoDePlanilla titulo="Lista de productos" descripcion="Buscá por nombre o código, filtrá por tipo o disponibilidad y operá cada producto desde su fila.">
+        <BarraDeFiltros>
+          <FiltrosDeLista
+            accion="/catalogo/productos"
+            etiquetaDeLaBusqueda={porReferencia ? "Buscar por nombre, código o cómo lo llama el proveedor" : "Buscar por nombre o código"}
+            marcadorDeLaBusqueda={porReferencia ? "Nombre, código o lo que dice la factura…" : "Buscar por código o nombre…"}
+            busqueda={filtros.q}
+            hayFiltros={hayFiltrosDeProductos(filtros)}
+            filtros={[
+              { nombre: "tipo", etiqueta: "Tipo", valor: filtros.tipo ?? "", opciones: TIPOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_TIPO[v] })) },
+              { nombre: "modo", etiqueta: "Cómo se vende", valor: filtros.modo ?? "", opciones: MODOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_MODO[v] })) },
+              { nombre: "disponible", etiqueta: "Disponibilidad", valor: filtros.disponible ?? "", opciones: DISPONIBILIDADES_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_DISPONIBILIDAD[v] })) },
+              { nombre: "falta", etiqueta: "Le falta algo", valor: filtros.falta ?? "", opciones: faltas.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_FALTA[v] })) },
+            ]}
+          />
+        </BarraDeFiltros>
+        <TablaDeDatos
+          titulo="Productos"
+          columnas={columnas}
+          filas={pagina.items}
+          claveDeFila={(p) => p.id}
+          vacio={`Sin productos${hayFiltrosDeProductos(filtros) ? " que coincidan con la búsqueda y los filtros" : ""}.`}
+        />
+      </ApartadoDePlanilla>
       {pagina.nextCursor && (
-        <Link href={`/catalogo/productos?${consultaDeLosFiltros(filtros, pagina.nextCursor)}`} className="mt-3 inline-block text-sm underline">
+        <Link href={`/catalogo/productos?${consultaDeLosFiltros(filtros, pagina.nextCursor)}`} className="inline-block text-sm underline">
           Página siguiente →
         </Link>
       )}

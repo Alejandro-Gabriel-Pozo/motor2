@@ -59,6 +59,15 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
     aprobacion: { por: "dueño", referencia: "PR #219" },
     motivo: "Adopción del estándar de estructura de pantalla pantalla por pantalla, en las etapas E-B a E-H del diseño (propuesta de plazo: 60 días; la corrige el dueño).",
   },
+  // Estilo de planilla (PR #220, E-P aprobado el 2026-11-09): las tablas escritas a mano migran a TablaDeDatos por etapas E-B…E-G (docs/diseno-estilo-de-planilla-2026-11-09.md). Plazo máximo, desde el 2026-11-09.
+  {
+    regla: "tablas-a-mano",
+    inicio: "2026-11-09",
+    vence: "2027-01-07",
+    responsable: "dueño",
+    aprobacion: { por: "dueño", referencia: "PR #220" },
+    motivo: "Adopción del estilo de planilla por etapas E-B a E-G: cada tabla escrita a mano pasa a TablaDeDatos (propuesta de plazo: 60 días; la corrige el dueño).",
+  },
 ];
 
 /** Una lista de deuda del disco: cuántas entradas (archivos o modelos) tiene hoy. */
