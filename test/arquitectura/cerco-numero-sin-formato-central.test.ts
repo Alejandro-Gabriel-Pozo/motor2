@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, sep } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { arbolDe, medirPorArchivo, type Cerco } from "./cercos/trinquete";
@@ -110,6 +111,30 @@ describe("cierre del dinero mostrado: lo que queda en la línea de base no es di
 
   it("el detector cuenta un «$» escrito a mano delante de una interpolación", () => {
     expect(contarNumerosSinFormatoCentral("export const m = (n: number) => `Faltan $${n} y ${n}`;", "x.ts")["signo-pesos-pelado"]).toBe(1);
+  });
+});
+
+/**
+ * EXCEPCIÓN DECLARADA, no deuda (decisión del dueño, 2026-11-10: «visualmente debería aparecer el ,00 solo si hay decimales que mostrar»): la CARTA PÚBLICA del cliente final escribe el dinero con
+ * `formatearMontoCarta` («$ 15.000» entero, «$ 1.234,50» con centavos). Vive en la función central (`core/formato-de-numero.ts`), así que el cerco de arriba la acepta; lo que se vigila acá es que NO
+ * se use fuera de la carta: el resto del sistema sigue con `formatearMonto` («siempre 2 decimales») hasta que el dueño diga otra cosa.
+ */
+function archivosDeCodigo(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const ruta = join(dir, e.name);
+    if (e.isDirectory()) return e.name === "node_modules" || e.name === ".next" ? [] : archivosDeCodigo(ruta);
+    return /\.(ts|tsx)$/.test(e.name) ? [ruta] : [];
+  });
+}
+
+describe("dinero de la carta pública: formatearMontoCarta solo se usa en la carta", () => {
+  const PERMITIDOS = ["src/core/formato-de-numero.ts", "src/core/carta/precio-carta.ts"];
+  it("ningún archivo de src/ ni de plataforma/src/ fuera de la carta la nombra", () => {
+    const fuera = ["src", "plataforma/src"]
+      .flatMap((raiz) => archivosDeCodigo(raiz))
+      .map((r) => r.split(sep).join("/"))
+      .filter((r) => !PERMITIDOS.includes(r) && readFileSync(r, "utf8").includes("formatearMontoCarta"));
+    expect(fuera, "el dinero fuera de la carta pública va por formatearMonto («siempre 2 decimales»)").toEqual([]);
   });
 });
 

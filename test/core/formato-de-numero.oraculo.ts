@@ -14,6 +14,7 @@ export const EXPORTACIONES_DECLARADAS = {
   DECIMALES_DE_CANTIDAD_SIN_UNIDAD: "constante: decimales máximos de una cantidad sin unidad conocida",
   IMPORTE_MINIMO_TEXTO: "constante: el piso de $ 0,01 escrito para un mensaje (dinero, vía formatearMonto)",
   formatearMonto: "tipo dinero",
+  formatearMontoCarta: "tipo dinero de la carta pública: como dinero, sin «,00» si el importe es entero; probado aparte (describe «dinero de la carta») contra el oráculo de dinero",
   formatearDolares: "tipo dinero en USD: 2 decimales, sin símbolo (conversión informativa de EnDolares); probado aparte en el test",
   formatearCantidad: "tipo cantidad",
   formatearCantidadConUnidad: "tipo cantidad con unidad",

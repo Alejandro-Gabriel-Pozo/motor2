@@ -45,6 +45,15 @@ const DINERO = new Intl.NumberFormat("es-AR", {
   signDisplay: "negative",
 });
 
+const DINERO_ENTERO = new Intl.NumberFormat("es-AR", {
+  style: "currency",
+  currency: MONEDA_FIJA,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+  useGrouping: "always",
+  signDisplay: "negative",
+});
+
 const DOLARES = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: "always", signDisplay: "negative" });
 
 const formatosDeNumero = new Map<number, Intl.NumberFormat>();
@@ -65,6 +74,17 @@ function decimalesValidos(decimales: number | undefined): number {
 /** «$ 1.000,00». Siempre 2 decimales; moneda ARS. */
 export function formatearMonto(n: Valor): string {
   return esDato(n) ? DINERO.format(redondearMoneda(n)) : SIN_DATO;
+}
+
+/**
+ * «$ 15.000» / «$ 1.234,50»: el dinero de la CARTA PÚBLICA (decisión del dueño, 2026-11-10: «el ,00 solo si hay decimales que mostrar»). Importe entero (ya redondeado a centavos con `redondearMoneda`, el mismo
+ * redondeo que `formatearMonto`) sin decimales; con centavos, SIEMPRE 2 (nunca 1: «$ 0,50»). Es SOLO presentación y SOLO para la carta del cliente final (`core/carta/precio-carta.ts`): el resto del sistema sigue
+ * con `formatearMonto` («siempre 2 decimales») hasta que el dueño diga otra cosa. Lo vigila `test/arquitectura/cerco-numero-sin-formato-central.test.ts` (no se usa fuera de la carta).
+ */
+export function formatearMontoCarta(n: Valor): string {
+  if (!esDato(n)) return SIN_DATO;
+  const redondeado = redondearMoneda(n);
+  return Number.isInteger(redondeado) ? DINERO_ENTERO.format(redondeado) : DINERO.format(redondeado);
 }
 
 /**

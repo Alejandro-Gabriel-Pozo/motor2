@@ -57,6 +57,51 @@ describe("formateo de salida de números: la tabla de casos escritos", () => {
   });
 });
 
+describe("dinero de la carta pública (decisión del dueño 2026-11-10: el «,00» solo si hay decimales que mostrar)", () => {
+  const NBSP = "\u00a0";
+  it("casos escritos: entero sin decimales; con centavos, siempre 2; nunca 1 decimal; redondea como el dinero; sin dato «—»", () => {
+    const esperado: [number | null | undefined, string][] = [
+      [0, "$" + NBSP + "0"],
+      [0.01, "$" + NBSP + "0,01"],
+      [0.5, "$" + NBSP + "0,50"],
+      [1, "$" + NBSP + "1"],
+      [999.99, "$" + NBSP + "999,99"],
+      [1000, "$" + NBSP + "1.000"],
+      [15000, "$" + NBSP + "15.000"],
+      [128500, "$" + NBSP + "128.500"],
+      [128500.5, "$" + NBSP + "128.500,50"],
+      [1234.5, "$" + NBSP + "1.234,50"],
+      [1.005, "$" + NBSP + "1,01"],
+      [0.004, "$" + NBSP + "0"],
+      [999.995, "$" + NBSP + "1.000"],
+      [-5, "-$" + NBSP + "5"],
+      [-0.5, "-$" + NBSP + "0,50"],
+      [-0.001, "$" + NBSP + "0"],
+      [null, SIN_DATO],
+      [undefined, SIN_DATO],
+      [Number.NaN, SIN_DATO],
+      [Number.POSITIVE_INFINITY, SIN_DATO],
+    ];
+    for (const [valor, texto] of esperado) expect(modulo.formatearMontoCarta(valor), "formatearMontoCarta(" + String(valor) + ")").toBe(texto);
+  });
+
+  it("todas las magnitudes × signos: es el oráculo del dinero con el «,00» final quitado (y solo ese)", () => {
+    const distintas: string[] = [];
+    for (const magnitud of MAGNITUDES) {
+      for (const signo of SIGNOS) {
+        const n = Number((signo === "-" ? "-" : "") + magnitud);
+        const dinero = referencia("dinero", magnitud, signo, undefined);
+        const esperado = dinero.endsWith(",00") ? dinero.slice(0, -3) : dinero;
+        const obtenido = modulo.formatearMontoCarta(n);
+        if (obtenido !== esperado) distintas.push(signo + magnitud + ": salió «" + obtenido + "», el oráculo dice «" + esperado + "»");
+        // Nunca un solo decimal: o ninguno o dos.
+        expect(/,\d$/.test(obtenido), signo + magnitud + " con un solo decimal: «" + obtenido + "»").toBe(false);
+      }
+    }
+    expect(distintas).toEqual([]);
+  });
+});
+
 describe("formateo de salida de números: todas las combinaciones contra el oráculo", () => {
   const combinaciones = TIPOS.flatMap((tipo) =>
     MAGNITUDES.flatMap((magnitud) => SIGNOS.flatMap((signo) => DECIMALES_DE_UNIDAD.map((decimales) => ({ tipo, magnitud, signo, decimales })))),
