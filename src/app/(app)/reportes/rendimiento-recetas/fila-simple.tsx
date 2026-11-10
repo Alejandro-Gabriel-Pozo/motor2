@@ -12,6 +12,7 @@ import { ETIQUETA_ROTULO, desvioEsNotable, explicarConfianza, type Confianza, ty
 import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
+import { formatearMonto } from "@/core/formato-de-numero";
 // rendimiento-conciliado.ts es puro (sin @/lib/db, ver su propio docstring) — importable desde un componente cliente sin arrastrar Prisma al bundle.
 
 /** Mismo criterio de "fecha corta" que compras/page.tsx (`fechaCorta`) — YYYY-MM-DD, no se reinventa un formato nuevo acá. */
@@ -298,7 +299,7 @@ export function FilaRendimientoSimple(props: FilaRendimientoSimpleProps) {
       <td className={`px-2 py-2 ${claseImpacto(impactoPesos)}`}>
         {impactoPesos !== null ? (
           <>
-            {impactoPesos > 0 ? "+" : ""}${impactoPesos.toLocaleString("es-AR")}
+            {impactoPesos > 0 ? "+" : ""}{formatearMonto(impactoPesos)}
           </>
         ) : (
           <span className="text-tinta-tenue">{sinCosto ? "sin costo conocido" : "—"}</span>

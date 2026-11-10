@@ -5,6 +5,7 @@ import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-aud
 import { exito, fracaso } from "@/core/resultado-caso";
 import type { ComandoRegistrarPagoConsignante, ResultadoRegistrarPagoConsignante } from "@/core/features/reportes/pago-consignante.schema";
 import { cargarPagoConsignantePorClave, cargarProveedorActivo, crearPagoConsignante, esConsignanteDeAlgunProducto } from "@/server/persistencia/reportes/pago-consignante";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Caso de uso «registrar un pago a un proveedor de consignación» (Task #41, Fase M, M14 —
@@ -61,7 +62,7 @@ export async function registrarPagoConsignanteCasoDeUso(
         return fracaso("PROVEEDOR_NO_ES_CONSIGNANTE", `"${proveedor.nombre}" no es el proveedor de consignación de ningún producto: no hay deuda de consignación que pagarle.`);
       }
 
-      const mensaje = `Pago de $${comando.importe.toLocaleString("es-AR")} a "${proveedor.nombre}" registrado.`;
+      const mensaje = `Pago de ${formatearMonto(comando.importe)} a "${proveedor.nombre}" registrado.`;
 
       const pago = await crearPagoConsignante(tx, {
         sucursalId: actor.sucursalId,

@@ -12,6 +12,7 @@ import { FilaRendimientoSimple } from "./fila-simple";
 import { FilaRendimientoCompartida } from "./fila-compartida";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { diaDeCalendario, sumarDias, fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
+import { formatearCantidad } from "@/core/formato-de-numero";
 
 const AYUDA_RENDIMIENTO_REAL =
   "«Medido» (con dos Conteos Físicos que cubren el insumo, al principio y al final del tramo): el consumo real, sumado directo del Kardex entre esos dos conteos ÷ lo vendido en ese mismo tramo — una medición, no una estimación. «Estimado» (sin esos dos conteos): total comprado ÷ total vendido en el rango elegido — asume que lo que se compra en la ventana es lo que se consume en la ventana, algo que no siempre es cierto si comprás por lote (ej. caja x12). El método de esta fila se muestra debajo del número.";
@@ -225,7 +226,7 @@ export default async function RendimientoRecetasPage({
                 <p className="mb-1 text-sm">
                   <strong>{filas[0].insumoONombre}</strong> — {filas[0].cantidadPlatosEnPool} platos,{" "}
                   {filas[0].semanasConDatos} {filas[0].metodo === "CONTEO" ? "intervalos entre anclas de conteo" : "semanas con datos"}
-                  {filas[0].resoluble && filas[0].r2 !== null && ` — ajuste R² ${filas[0].r2.toFixed(2)}`}
+                  {filas[0].resoluble && filas[0].r2 !== null && ` — ajuste R² ${formatearCantidad(filas[0].r2, 2)}`}
                   {" — "}
                   {filas[0].metodo === "CONTEO" ? "medido (Conteo Físico)" : "estimado (compras)"}
                 </p>

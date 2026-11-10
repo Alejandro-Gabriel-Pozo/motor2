@@ -59,7 +59,7 @@ export async function guardarPrecioLocalPromoCartaCasoDeUso(
     const previa = await tx.promoCarta.findUnique({ where: { id: promoCartaId }, select: { sucursales: seleccionDeSucursalDePromo(actor.sucursalId) } });
     const fila = previa?.sucursales[0];
     const precioAnterior = fila?.precioLocal != null ? Number(fila.precioLocal) : null;
-    const listo = exito(valor === null ? `"${promo.titulo}" vuelve al precio de la empresa en esta sucursal.` : `Precio de "${promo.titulo}" en esta sucursal: $${valor}.`, null);
+    const listo = exito(valor === null ? `"${promo.titulo}" vuelve al precio de la empresa en esta sucursal.` : `Precio de "${promo.titulo}" en esta sucursal: ${formatearMonto(valor)}.`, null);
     // Control del valor visto (A6): ya estaba así (solo con la fila: sin ella, se crea apagada como siempre) → nada que escribir; si no, lo que vio la pantalla tiene que ser lo que hay.
     if (fila && mismosCentavos(precioAnterior, valor)) return listo;
     if (!precioVisto.ok) return fracaso("PRECIO_INVALIDO", precioVisto.mensaje);

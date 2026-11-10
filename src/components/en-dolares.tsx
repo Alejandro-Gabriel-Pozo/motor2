@@ -1,11 +1,12 @@
 import type { UltimaCotizacion } from "@/core/reportes/public";
 import { pesosADolares } from "@/core/reportes/public";
+import { formatearDolares, formatearMonto } from "@/core/formato-de-numero";
 
 const formatoFecha = (f: Date) => f.toISOString().slice(0, 10).split("-").reverse().join("/");
 
 /** Texto que explica de dónde sale un importe en dólares: la cotización y su fecha. */
 function textoCotizacion(c: UltimaCotizacion): string {
-  return `Dólar ${c.fuente === "BNA" ? "oficial Banco Nación" : "BCRA"} (venta) $${c.venta.toLocaleString("es-AR")} del ${formatoFecha(c.fecha)}`;
+  return `Dólar ${c.fuente === "BNA" ? "oficial Banco Nación" : "BCRA"} (venta) ${formatearMonto(c.venta)} del ${formatoFecha(c.fecha)}`;
 }
 
 /**
@@ -17,7 +18,7 @@ export function EnDolares({ pesos, cotizacion, className }: { pesos: number; cot
   const usd = pesosADolares(pesos, cotizacion.venta);
   return (
     <span className={className ?? "text-xs text-tinta-tenue"} title={`${textoCotizacion(cotizacion)}. Conversión a la cotización de hoy, no a la del día de cada operación.`}>
-      ≈ US$ {usd.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      ≈ US$ {formatearDolares(usd)}
     </span>
   );
 }
@@ -25,7 +26,7 @@ export function EnDolares({ pesos, cotizacion, className }: { pesos: number; cot
 /** Cotización para el encabezado: «USD BNA compra / venta · fecha». */
 export function CotizacionEncabezado({ cotizacion }: { cotizacion: UltimaCotizacion | null }) {
   if (!cotizacion) return null;
-  const valor = (n: number) => n.toLocaleString("es-AR");
+  const valor = formatearMonto;
   return (
     <span className="whitespace-nowrap" title={textoCotizacion(cotizacion)} data-cotizacion-dolar="">
       USD {cotizacion.fuente}: {cotizacion.compra !== null ? `${valor(cotizacion.compra)} / ` : ""}

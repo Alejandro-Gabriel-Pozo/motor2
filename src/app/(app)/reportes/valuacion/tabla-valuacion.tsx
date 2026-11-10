@@ -2,6 +2,7 @@
 
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaValuacionInventario } from "@/core/reportes/public";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 const COLUMNAS_CON_COSTO: ColumnaReporte<FilaValuacionInventario>[] = [
   {
@@ -25,8 +26,8 @@ const COLUMNAS_CON_COSTO: ColumnaReporte<FilaValuacionInventario>[] = [
       </>
     ),
   },
-  { clave: "costoUnitario", etiqueta: "Costo unitario", alinear: "derecha", valor: (f) => f.costoUnitario, render: (f) => `$${f.costoUnitario!.toLocaleString("es-AR")}` },
-  { clave: "valor", etiqueta: "Valor", alinear: "derecha", valor: (f) => f.valor, render: (f) => <span className="font-medium">${f.valor!.toLocaleString("es-AR")}</span> },
+  { clave: "costoUnitario", etiqueta: "Costo unitario", alinear: "derecha", valor: (f) => f.costoUnitario, render: (f) => `${formatearMonto(f.costoUnitario!)}` },
+  { clave: "valor", etiqueta: "Valor", alinear: "derecha", valor: (f) => f.valor, render: (f) => <span className="font-medium">{formatearMonto(f.valor!)}</span> },
   { clave: "proveedor", etiqueta: "Proveedor", valor: (f) => f.proveedorNombre, render: (f) => f.proveedorNombre ?? "—" },
 ];
 

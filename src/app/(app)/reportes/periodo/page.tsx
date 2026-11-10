@@ -15,6 +15,7 @@ import { EnDolares } from "@/components/en-dolares";
 import { SelectorRango } from "@/components/selector-rango";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 export default async function PeriodoPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -56,7 +57,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             Ventas
             <AyudaIcono texto={rep.ventas.aviso} />
           </p>
-          <p className="text-lg font-semibold">${rep.ventas.totalFacturado.toLocaleString("es-AR")}</p>
+          <p className="text-lg font-semibold">{formatearMonto(rep.ventas.totalFacturado)}</p>
           <EnDolares pesos={rep.ventas.totalFacturado} cotizacion={cotizacion} />
         </div>
         {/*
@@ -72,7 +73,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             <dt className="text-xs text-tinta-tenue">Ganancia de lo vendido</dt>
             <dd className="text-lg font-semibold">
               {rep.margen.margenRealTotal !== null
-                ? `$${rep.margen.margenRealTotal.toLocaleString("es-AR")} (${rep.margen.margenRealPctTotal}%)${rep.margen.ingresoRealReconstruido > 0 ? " · reconstruido" : ""}`
+                ? `${formatearMonto(rep.margen.margenRealTotal)} (${rep.margen.margenRealPctTotal}%)${rep.margen.ingresoRealReconstruido > 0 ? " · reconstruido" : ""}`
                 : "sin datos todavía"}
             </dd>
             <dd className="text-xs text-tinta-tenue">{rep.margen.avisoReal}</dd>
@@ -83,7 +84,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             <dd className="flex flex-wrap items-center text-sm">
               {rep.margen.costoDeLoVendidoTotal !== null ? (
                 <>
-                  ${rep.margen.costoDeLoVendidoTotal.toLocaleString("es-AR")} ({rep.margen.costoDeLoVendidoPctTotal}%)
+                  {formatearMonto(rep.margen.costoDeLoVendidoTotal)} ({rep.margen.costoDeLoVendidoPctTotal}%)
                   {rep.margen.ingresoRealReconstruido > 0 && " · reconstruido"}
                   {rep.margen.coberturaCostoRealPct !== null && rep.margen.coberturaCostoRealPct < 100 && (
                     <span className="ml-1 text-aviso-tinta">· parcial (cubre {rep.margen.coberturaCostoRealPct}% de lo vendido)</span>
@@ -101,7 +102,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
               <div>
                 <dt className="font-medium text-tinta-suave">Si repusieras hoy</dt>
                 <dd>
-                  ${rep.margen.margenTotal.toLocaleString("es-AR")} {rep.margen.margenPctTotal !== null && `(${rep.margen.margenPctTotal}%)`}
+                  {formatearMonto(rep.margen.margenTotal)} {rep.margen.margenPctTotal !== null && `(${rep.margen.margenPctTotal}%)`}
                 </dd>
                 <dd className="text-tinta-tenue">{rep.margen.aviso}</dd>
               </div>
@@ -109,7 +110,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
                 <dt className="font-medium text-tinta-suave">Ajustada por inflación (IPC)</dt>
                 <dd>
                   {rep.margen.margenIPCTotal !== null
-                    ? `$${rep.margen.margenIPCTotal.toLocaleString("es-AR")} (${rep.margen.margenIPCPctTotal}%)${rep.margen.antiguedadIPC.estado === "vencida" ? " · IPC desactualizado" : rep.margen.ingresoProvisorioIPC > 0 ? " · provisorio" : ""}`
+                    ? `${formatearMonto(rep.margen.margenIPCTotal)} (${rep.margen.margenIPCPctTotal}%)${rep.margen.antiguedadIPC.estado === "vencida" ? " · IPC desactualizado" : rep.margen.ingresoProvisorioIPC > 0 ? " · provisorio" : ""}`
                     : "sin datos todavía"}
                 </dd>
                 <dd className="text-tinta-tenue">{rep.margen.avisoIPC}</dd>
@@ -122,7 +123,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
             Compras
             <AyudaIcono texto={rep.compras.aviso} />
           </p>
-          <p className="text-lg font-semibold">${rep.compras.totalGastado.toLocaleString("es-AR")}</p>
+          <p className="text-lg font-semibold">{formatearMonto(rep.compras.totalGastado)}</p>
           <EnDolares pesos={rep.compras.totalGastado} cotizacion={cotizacion} />
           <p className="mt-1 flex items-center text-xs text-tinta-tenue">
             Compras / Ventas (desembolso): {rep.ratioGastoVentas.porcentaje !== null ? `${rep.ratioGastoVentas.porcentaje}% de lo vendido${rep.ratioGastoVentas.excluyeNoComestibles ? " (comida y bebida)" : ""}` : "sin ventas en el período"}
@@ -136,7 +137,7 @@ export default async function PeriodoPage({ searchParams }: { searchParams: Prom
           </p>
           {rep.ratioGastoVentas.excluyeNoComestibles && rep.ratioGastoVentas.gastoNoComestibles > 0 && (
             <p className="mt-1 text-xs text-tinta-tenue">
-              No comestibles (packaging, limpieza): ${rep.ratioGastoVentas.gastoNoComestibles.toLocaleString("es-AR")}, fuera de ese porcentaje
+              No comestibles (packaging, limpieza): {formatearMonto(rep.ratioGastoVentas.gastoNoComestibles)}, fuera de ese porcentaje
             </p>
           )}
         </div>

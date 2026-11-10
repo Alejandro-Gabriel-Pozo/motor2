@@ -3,6 +3,7 @@ import type { RatioGastoVentas } from "./periodo-ratio";
 import type { GastoPorInsumoDelPeriodo } from "./periodo-compras";
 import type { FilaPrecioInsumo } from "./periodo-precios";
 import type { ResumenFueraDeObjetivo } from "./margen-objetivo";
+import { formatearMonto, formatearCantidad } from "@/core/formato-de-numero";
 
 export interface FilaAlertaDigest {
   texto: string;
@@ -53,7 +54,7 @@ export function generarDigestAlertas(
     const sube = top.deltaImpacto! > 0;
     alertas.push({
       severidad: sube ? "alta" : "media",
-      texto: `"${top.insumo}" es lo que más ${sube ? "te encareció" : "te abarató"} las compras: ${sube ? "+" : ""}$${top.deltaImpacto!.toLocaleString("es-AR")} (${top.deltaPct! > 0 ? "+" : ""}${top.deltaPct}%) sobre lo que compraste este período.`,
+      texto: `"${top.insumo}" es lo que más ${sube ? "te encareció" : "te abarató"} las compras: ${sube ? "+" : ""}${formatearMonto(top.deltaImpacto!)} (${top.deltaPct! > 0 ? "+" : ""}${top.deltaPct}%) sobre lo que compraste este período.`,
     });
   }
 
@@ -63,7 +64,7 @@ export function generarDigestAlertas(
     const empeoro = plato.deltaCosto > 0; // costo subió = le pegó de verdad; costo bajó = mejoró el margen, no es algo "golpeado"
     alertas.push({
       severidad: empeoro ? "alta" : "media",
-      texto: `El plato que más se ${empeoro ? "encareció" : "abarató"} por estos cambios es "${plato.productoNombre}": costo ${empeoro ? "+" : ""}$${plato.deltaCosto.toLocaleString("es-AR")}${pctTexto}.`,
+      texto: `El plato que más se ${empeoro ? "encareció" : "abarató"} por estos cambios es "${plato.productoNombre}": costo ${empeoro ? "+" : ""}${formatearMonto(plato.deltaCosto)}${pctTexto}.`,
     });
   }
 
@@ -79,7 +80,7 @@ export function generarDigestAlertas(
 
   if (fueraDeObjetivo) {
     const { cantidad, peor } = fueraDeObjetivo;
-    const pct = (n: number) => n.toLocaleString("es-AR");
+    const pct = (n: number) => formatearCantidad(n, 2);
     alertas.push({
       severidad: "media",
       destino: "costos",

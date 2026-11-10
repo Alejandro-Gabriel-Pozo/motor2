@@ -5,6 +5,7 @@ import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaCompraHistorial, ResumenCompras } from "@/core/reportes/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ZONA_ARGENTINA, diaDeCalendario } from "@/core/tiempo/zona-horaria";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 function armarProsa(r: ResumenCompras, unidad: string, mostrarDinero: boolean): string {
   if (r.cantidadCompras === 0) return "Sin compras en el rango elegido.";
@@ -14,7 +15,7 @@ function armarProsa(r: ResumenCompras, unidad: string, mostrarDinero: boolean): 
   if (r.proveedores.length === 1) partes.push(`siempre a ${r.proveedores[0]}`);
   else if (r.proveedores.length > 1) partes.push(`a ${r.proveedores.length} proveedores distintos`);
   if (mostrarDinero && r.precioMin !== null && r.precioMax !== null) {
-    partes.push(r.precioMin === r.precioMax ? `siempre a $${r.precioMin.toLocaleString("es-AR")}` : `entre $${r.precioMin.toLocaleString("es-AR")} y $${r.precioMax.toLocaleString("es-AR")}`);
+    partes.push(r.precioMin === r.precioMax ? `siempre a ${formatearMonto(r.precioMin)}` : `entre ${formatearMonto(r.precioMin)} y ${formatearMonto(r.precioMax)}`);
   }
   return `${partes[0]}: ${partes.slice(1).join(", ")}.`;
 }
@@ -33,7 +34,7 @@ function columnas(mostrarDinero: boolean, zona: string): ColumnaReporte<FilaComp
       { clave: "factura", etiqueta: "N.º de factura", valor: (f) => f.nroFactura, render: (f) => f.nroFactura ?? "—" }
     );
     base.push(
-      { clave: "precio", etiqueta: "Precio por unidad de stock", alinear: "derecha", valor: (f) => f.precioPorUnidadStock, render: (f) => (f.precioPorUnidadStock !== null ? `$${f.precioPorUnidadStock.toLocaleString("es-AR")}` : "—") },
+      { clave: "precio", etiqueta: "Precio por unidad de stock", alinear: "derecha", valor: (f) => f.precioPorUnidadStock, render: (f) => (f.precioPorUnidadStock !== null ? `${formatearMonto(f.precioPorUnidadStock)}` : "—") },
       {
         clave: "variacion",
         etiqueta: "Variación vs. la compra anterior",

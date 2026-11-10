@@ -2,6 +2,7 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 import type { FilaGastoPorGrupo } from "@/core/reportes/public";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * "¿En qué se me va la plata?" (Grocy "Spendings", ver docs/grounding-
@@ -24,11 +25,11 @@ export function GraficoGastoPorGrupo({ filas }: { filas: FilaGastoPorGrupo[] }) 
           <XAxis type="number" stroke="currentColor" tick={{ fill: "currentColor" }} />
           <YAxis type="category" dataKey="grupo" stroke="currentColor" tick={{ fill: "currentColor" }} width={110} />
           <Tooltip
-            formatter={(value) => [`$${Number(value).toLocaleString("es-AR")}`, "Gastado"]}
+            formatter={(value) => [`${formatearMonto(Number(value))}`, "Gastado"]}
             contentStyle={{ background: "var(--color-superficie)", color: "var(--color-tinta)", border: "1px solid currentColor" }}
           />
           <Bar dataKey="importe" fill="var(--color-marca)" radius={[0, 4, 4, 0]}>
-            <LabelList dataKey="importe" position="right" formatter={(v: React.ReactNode) => `$${Number(v).toLocaleString("es-AR")}`} fill="currentColor" fontSize={11} />
+            <LabelList dataKey="importe" position="right" formatter={(v: React.ReactNode) => `${formatearMonto(Number(v))}`} fill="currentColor" fontSize={11} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>

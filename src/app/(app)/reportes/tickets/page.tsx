@@ -12,6 +12,7 @@ import { formatearFechaHora } from "@/core/tiempo/zona-horaria";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { CampoFecha } from "@/ui/componentes/selectores/campo-fecha";
 import { Enlace } from "@/ui/primitivas/enlace";
+import { formatearCantidad } from "@/core/formato-de-numero";
 
 /**
  * Tickets emitidos (Task #17 del backlog): antes de esta pantalla, «Cuentas cerradas» (al pie de una mesa) mostraba como mucho
@@ -142,7 +143,7 @@ function FilaTicket({ ticket: b, zonaHoraria }: { ticket: Awaited<ReturnType<typ
             {b.detalle.lineas.map((l, i) => (
               <tr key={`${l.producto}|${l.precioUnitario}|${i}`} className="border-b last:border-0">
                 <td className="px-2 py-1">{l.producto}</td>
-                <td className="px-2 py-1 text-right tabular-nums">{l.cantidad.toLocaleString("es-AR")}</td>
+                <td className="px-2 py-1 text-right tabular-nums">{formatearCantidad(l.cantidad)}</td>
                 <td className="px-2 py-1 text-right tabular-nums">
                   {l.precioListaUnitario !== undefined && <span className="mr-1 text-tinta-tenue line-through">{formatearMonto(l.precioListaUnitario)}</span>}
                   {formatearMonto(l.precioUnitario)}

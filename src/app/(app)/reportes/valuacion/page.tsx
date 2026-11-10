@@ -6,6 +6,7 @@ import { obtenerUltimaCotizacionSinRomper } from "@/server/consultas/reportes/co
 import { calcularValuacionInventario } from "@/server/consultas/reportes/valuacion";
 import { EnDolares } from "@/components/en-dolares";
 import { TablaValuacionConCosto, TablaValuacionSinCosto } from "./tabla-valuacion";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 export default async function ValuacionPage() {
   const ctx = await obtenerContextoUsuario();
@@ -32,7 +33,7 @@ export default async function ValuacionPage() {
 
       <div className="rounded border px-4 py-3">
         <div className="text-xs uppercase text-tinta-tenue">Total valorizado</div>
-        <div className="text-2xl font-semibold">${rep.totalValorizado.toLocaleString("es-AR")}</div>
+        <div className="text-2xl font-semibold">{formatearMonto(rep.totalValorizado)}</div>
         <EnDolares pesos={rep.totalValorizado} cotizacion={cotizacion} className="text-sm text-tinta-tenue" />
         {rep.cantidadSinCosto > 0 && (
           <div className="mt-1 text-xs text-aviso-tinta">

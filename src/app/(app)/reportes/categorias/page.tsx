@@ -8,6 +8,7 @@ import { TablaProductosCategoria } from "./tabla-categorias";
 import { SelectorRango } from "@/components/selector-rango";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 export default async function CategoriasPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"desde" | "hasta" | "rango">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -29,13 +30,13 @@ export default async function CategoriasPage({ searchParams }: { searchParams: P
       <div>
         <h1 className="mb-1 text-xl font-semibold">Ventas por categoría</h1>
         <SelectorRango opcion={rango.opcion} desdeISO={desdeStr} hastaISO={hastaStr} recortadoDesde={rango.recortadoDesde} />
-        <p className="mt-2 text-sm text-tinta-tenue">Total facturado: ${rep.totalFacturado.toLocaleString("es-AR")}</p>
+        <p className="mt-2 text-sm text-tinta-tenue">Total facturado: {formatearMonto(rep.totalFacturado)}</p>
       </div>
 
       {rep.porCategoria.map((c) => (
         <div key={c.categoria}>
           <h2 className="mb-2 text-sm font-medium">
-            {c.categoria} — ${c.importe.toLocaleString("es-AR")} ({c.cantidad} unid.)
+            {c.categoria} — {formatearMonto(c.importe)} ({c.cantidad} unid.)
           </h2>
           <TablaProductosCategoria filas={c.productos} nombreExport={`ventas-categoria-${c.categoria}`} />
         </div>

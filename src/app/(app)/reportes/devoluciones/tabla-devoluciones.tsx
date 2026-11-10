@@ -3,6 +3,7 @@
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { TablaReporte, type ColumnaReporte } from "@/components/tabla-reporte";
 import type { FilaDevolucionProducto } from "@/core/reportes/public";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 const COLUMNAS: ColumnaReporte<FilaDevolucionProducto>[] = [
   { clave: "producto", etiqueta: "Producto", valor: (p) => p.producto, render: (p) => p.producto },
@@ -18,7 +19,7 @@ const COLUMNAS: ColumnaReporte<FilaDevolucionProducto>[] = [
           {p.accionFaltante.etiqueta}
         </EnlaceInterno>
       ) : (
-        `$${p.valor.toLocaleString("es-AR")}`
+        `${formatearMonto(p.valor)}`
       ),
   },
 ];

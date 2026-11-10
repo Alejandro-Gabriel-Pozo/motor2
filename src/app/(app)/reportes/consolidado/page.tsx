@@ -7,6 +7,7 @@ import { avisoDeVentasSinDato } from "@/core/reportes/public";
 import { obtenerResumenConsolidado } from "@/server/consultas/reportes/resumen-consolidado";
 import { TablaConsolidado } from "./tabla-consolidado";
 import { EnlaceInterno } from "@/components/enlace-interno";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 export default async function ConsolidadoPage() {
   const ctx = await obtenerContextoUsuario();
@@ -61,16 +62,16 @@ export default async function ConsolidadoPage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded border p-4">
           <p className="text-xs text-tinta-tenue">Ventas del mes (las {filas.length} sucursales)</p>
-          <p className="text-lg font-semibold">${totales.ventasTotal.toLocaleString("es-AR")}</p>
+          <p className="text-lg font-semibold">{formatearMonto(totales.ventasTotal)}</p>
           {totales.ventasSinDato > 0 && <p className="text-xs text-aviso-tinta">{avisoDeVentasSinDato(totales.ventasSinDato)}</p>}
         </div>
         <div className="rounded border p-4">
           <p className="text-xs text-tinta-tenue">Margen del mes (las {filas.length} sucursales)</p>
-          <p className="text-lg font-semibold">${totales.margenTotal.toLocaleString("es-AR")}</p>
+          <p className="text-lg font-semibold">{formatearMonto(totales.margenTotal)}</p>
         </div>
         <div className="rounded border p-4">
           <p className="text-xs text-tinta-tenue">Gastado en compras (las {filas.length} sucursales)</p>
-          <p className="text-lg font-semibold">${totales.gastadoTotal.toLocaleString("es-AR")}</p>
+          <p className="text-lg font-semibold">{formatearMonto(totales.gastadoTotal)}</p>
         </div>
       </div>
 

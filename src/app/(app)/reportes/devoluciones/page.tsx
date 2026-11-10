@@ -9,6 +9,7 @@ import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-ur
 import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { Campo } from "@/ui/primitivas/campo";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 export default async function DevolucionesPage({ searchParams }: { searchParams: Promise<ParametrosDeUrl<"dias">> }) {
   const ctx = await obtenerContextoUsuario();
@@ -36,8 +37,7 @@ export default async function DevolucionesPage({ searchParams }: { searchParams:
           <BotonDeServidor type="submit">Actualizar</BotonDeServidor>
         </form>
         <p className="mt-2 text-sm text-tinta-tenue">
-          Desde {diaDeCalendario(rep.desde, ctx.empresaZonaHoraria)} — devuelto por clientes: ${rep.totalCliente.toLocaleString("es-AR")}, a proveedores: $
-          {rep.totalProveedor.toLocaleString("es-AR")}.
+          Desde {diaDeCalendario(rep.desde, ctx.empresaZonaHoraria)} — devuelto por clientes: {formatearMonto(rep.totalCliente)}, a proveedores: {formatearMonto(rep.totalProveedor)}.
         </p>
       </div>
 
@@ -51,7 +51,7 @@ export default async function DevolucionesPage({ searchParams }: { searchParams:
         {rep.proveedores.map((p) => (
           <div key={p.proveedor} className="mb-3">
             <p className="text-sm font-medium">
-              {p.proveedor} — ${p.valor.toLocaleString("es-AR")}
+              {p.proveedor} — {formatearMonto(p.valor)}
             </p>
             <TablaDevolucionesProveedor filas={p.productos} nombreExport={`devoluciones-${p.proveedor}`} />
           </div>

@@ -8,6 +8,7 @@ import { obtenerReporteMargenPromociones } from "@/server/consultas/reportes/mar
 import { SelectorRango } from "@/components/selector-rango";
 import { TablaMargenPromociones } from "./tabla-margen-promociones";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
+import { formatearMonto, formatearEntero } from "@/core/formato-de-numero";
 
 /**
  * Margen de promociones armables (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 12): por cada promo de carta, cuánto
@@ -46,8 +47,7 @@ export default async function MargenPromocionesPage({ searchParams }: { searchPa
       <SelectorRango opcion={rango.opcion} desdeISO={rango.desdeISO} hastaISO={rango.hastaISO} recortadoDesde={rango.recortadoDesde} />
 
       <h2 className="text-sm font-medium">
-        {rep.cantidadInstancias.toLocaleString("es-AR")} promos vendidas — ${rep.ingresoALista.toLocaleString("es-AR")} de carta → $
-        {rep.ingresoCobrado.toLocaleString("es-AR")} cobrados (${rep.ahorroCliente.toLocaleString("es-AR")} de ahorro para el cliente)
+        {formatearEntero(rep.cantidadInstancias)} promos vendidas — {formatearMonto(rep.ingresoALista)} de carta → {formatearMonto(rep.ingresoCobrado)} cobrados ({formatearMonto(rep.ahorroCliente)} de ahorro para el cliente)
       </h2>
       <p className="mb-2 text-xs text-tinta-tenue">{rep.aviso}</p>
 

@@ -8,6 +8,7 @@ import { TablaCategoriasDeSeccion } from "./tabla-seccion";
 import { SelectorRango } from "@/components/selector-rango";
 import { unicosDeUrl, type ParametrosDeUrl } from "@/core/datos/parametros-de-url";
 import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
+import { formatearMonto } from "@/core/formato-de-numero";
 
 /**
  * Ventas por sección de carta (docs/plan-carta-catalogo-2026-09-24.md, M7): las mismas ventas que «Por categoría», agrupadas
@@ -34,13 +35,13 @@ export default async function VentasPorSeccionPage({ searchParams }: { searchPar
       <div>
         <h1 className="mb-1 text-xl font-semibold">Ventas por sección de carta</h1>
         <SelectorRango opcion={rango.opcion} desdeISO={desdeStr} hastaISO={hastaStr} recortadoDesde={rango.recortadoDesde} />
-        <p className="mt-2 text-sm text-tinta-tenue">Total facturado: ${rep.totalFacturado.toLocaleString("es-AR")}</p>
+        <p className="mt-2 text-sm text-tinta-tenue">Total facturado: {formatearMonto(rep.totalFacturado)}</p>
       </div>
 
       {rep.porSeccion.map((s) => (
         <div key={s.seccion}>
           <h2 className="mb-2 text-sm font-medium">
-            {s.seccion} — ${s.importe.toLocaleString("es-AR")} ({s.cantidad} unid.)
+            {s.seccion} — {formatearMonto(s.importe)} ({s.cantidad} unid.)
           </h2>
           <TablaCategoriasDeSeccion filas={s.categorias.map((c) => ({ categoria: c.categoria, cantidad: c.cantidad, importe: c.importe }))} nombreExport={`ventas-seccion-${s.seccion}`} />
         </div>

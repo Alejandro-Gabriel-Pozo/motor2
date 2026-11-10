@@ -19,7 +19,7 @@
  *  - Negativo con «-» delante; un resto que redondea a cero sale «0» sin signo (`signDisplay: "negative"`).
  *  - `null`, `undefined`, `NaN` y `±Infinity` salen «—» (`SIN_DATO`).
  */
-import { MONEDA_FIJA, redondearMoneda } from "@/core/moneda";
+import { IMPORTE_MINIMO, MONEDA_FIJA, redondearMoneda } from "@/core/moneda";
 
 /** Lo que se muestra cuando no hay dato (nunca un 0 inventado). Es el patrón que ya usaban los reportes. */
 export const SIN_DATO = "—";
@@ -45,6 +45,8 @@ const DINERO = new Intl.NumberFormat("es-AR", {
   signDisplay: "negative",
 });
 
+const DOLARES = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: "always", signDisplay: "negative" });
+
 const formatosDeNumero = new Map<number, Intl.NumberFormat>();
 function formatoConDecimales(decimales: number): Intl.NumberFormat {
   let f = formatosDeNumero.get(decimales);
@@ -63,6 +65,14 @@ function decimalesValidos(decimales: number | undefined): number {
 /** «$ 1.000,00». Siempre 2 decimales; moneda ARS. */
 export function formatearMonto(n: Valor): string {
   return esDato(n) ? DINERO.format(redondearMoneda(n)) : SIN_DATO;
+}
+
+/**
+ * «1.234,56»: un importe EN DÓLARES (la conversión informativa de `EnDolares`; el sistema opera en pesos, `MONEDA_FIJA`). Siempre 2 decimales, sin símbolo (la pantalla pone «US$»).
+ * Es la única salida de dinero que no es ARS; se redondea con `redondearMoneda` (misma regla de empates que los pesos).
+ */
+export function formatearDolares(n: Valor): string {
+  return esDato(n) ? DOLARES.format(redondearMoneda(n)) : SIN_DATO;
 }
 
 /** «1.000,5»: hasta `decimales` (los de la unidad), sin ceros de relleno. Sin `decimales`: hasta 4. */
@@ -84,3 +94,6 @@ export function formatearEntero(n: Valor): string {
 export function formatearPorcentaje(n: Valor): string {
   return esDato(n) ? `${formatoConDecimales(2).format(n)}${PEGADO}%` : SIN_DATO;
 }
+
+/** El piso de un importe cobrado por unidad escrito para un mensaje al usuario («$ 0,01»), derivado de `IMPORTE_MINIMO` (la única fuente del piso, `core/moneda.ts`). */
+export const IMPORTE_MINIMO_TEXTO = formatearMonto(IMPORTE_MINIMO);
