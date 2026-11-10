@@ -62,7 +62,7 @@ import {
 import { guardarPortalEmpresa } from "../../src/server/actions/carta/portal-empresa";
 import { agregarSucursalAlPortal, guardarSucursalPublica, moverSucursalEnMapa } from "../../src/server/actions/carta/registro-publico";
 import { guardarTemaCarta } from "../../src/server/actions/carta/tema";
-import { copiarCartaDeSucursal } from "../../src/server/actions/carta/copiar-carta";
+import { copiarCartaDeSucursal, reemplazarCartaDeSucursal } from "../../src/server/actions/carta/copiar-carta";
 
 /**
  * Red del Hito 4, pieza «carta, catálogo y stock» (paso H4C-0.1 de `docs/plan-hito-4-pureza.md` §3), ANTES de mover ninguna de sus acciones a un caso de uso:
@@ -267,6 +267,16 @@ const MUTACIONES: Mutacion[] = [
       await prisma.generoCarta.create({ data: { sucursalId: e.norteId, nombre: "Carta de Norte" } });
     },
   },
+  {
+    // 2026-11-10: la hermana destructiva de la copia (misma clave). Sin el envoltorio reemplazaría la carta de Central con la de Norte: Norte tiene una propia y el nombre escrito es el de la sucursal activa.
+    nombre: "reemplazarCartaDeSucursal",
+    clave: "carta_copiar_de_sucursal",
+    contexto: "sucursal",
+    llamar: (e) => reemplazarCartaDeSucursal(e.norteId, "Central"),
+    preparar: async (e) => {
+      await prisma.generoCarta.create({ data: { sucursalId: e.norteId, nombre: "Carta de Norte" } });
+    },
+  },
 ];
 
 /** El piso de cada clave, del catálogo (`core/permisos/acciones.ts`). */
@@ -457,14 +467,15 @@ const BAJO_EL_PISO = MUTACIONES.filter((m) => PISO.get(m.clave) === "administrad
 const DE_SUCURSAL = MUTACIONES.filter((m) => m.contexto === "sucursal");
 
 describe("tramo C (carta, catálogo y stock): las 69 mutaciones rechazan sin el permiso y no cambian ninguna tabla", () => {
-  it("la lista son las 69 (las 51 de la pieza, las 17 de configuración de la carta y guardarSoloSalonPromoCarta), con el contexto del catálogo y los pisos esperados", () => {
-    expect(MUTACIONES).toHaveLength(69);
-    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(69);
+  it("la lista son las 70 (las 51 de la pieza, las 17 de configuración de la carta, guardarSoloSalonPromoCarta y reemplazarCartaDeSucursal), con el contexto del catálogo y los pisos esperados", () => {
+    expect(MUTACIONES).toHaveLength(70);
+    expect(new Set(MUTACIONES.map((m) => m.nombre)).size).toBe(70);
     for (const m of MUTACIONES) expect(m.contexto, `${m.nombre}: el contexto declarado no es el del catálogo`).toBe(CONTEXTO.get(m.clave));
     // +1: guardarSoloSalonPromoCarta (carta_promo_definir, piso administrador).
-    expect(BAJO_EL_PISO.length).toBe(39 + 17);
+    expect(BAJO_EL_PISO.length).toBe(39 + 17 + 1);
     // 19 de la pieza original + 2 del bloque D (copiar la carta y el tema) + 9 que pasaron a contexto sucursal con S-10/D1 (géneros, contenido e ítems agrupados, O.59).
-    expect(DE_SUCURSAL.length).toBe(19 + 2 + 9);
+    // +1: reemplazarCartaDeSucursal (2026-11-10).
+    expect(DE_SUCURSAL.length).toBe(19 + 2 + 9 + 1);
   });
 
   it.each(MUTACIONES.map((m) => [m.nombre, m] as const))("un rol sin ninguna fila: %s rechaza con el texto del guard", async (_n, m) => {

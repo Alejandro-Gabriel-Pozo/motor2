@@ -91,6 +91,13 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     evidencia: "src/server/actions/carta/casos-de-uso/copiar-carta-de-sucursal.ts",
     motivo: "S-07 (O.56): el origen se lee con membresía vigente y «Ver» de la carta ALLÍ (`leerOrigenDeCopia` en el caso de uso); recién después se ensancha la LECTURA a esa sucursal (`conAlcanceEnSucursal`, M.3-A5), nunca la escritura",
   },
+  "carta/copiar-carta.ts|reemplazarCartaDeSucursal": {
+    ata: "MEMBRESIA_EN_ORIGEN",
+    clave: "carta_ver",
+    ensanche: "CABLEADO",
+    evidencia: "src/server/actions/carta/casos-de-uso/reemplazar-carta-de-sucursal.ts",
+    motivo: "2026-11-10: igual que la copia (S-07, O.56): el origen se lee con membresía vigente y «Ver» de la carta ALLÍ (`leerOrigenDeCopia`); recién después se ensancha la LECTURA a esa sucursal (`conAlcanceEnSucursal`), nunca la escritura (el destino es siempre la sucursal activa)",
+  },
   "carta/registro-publico.ts|agregarSucursalAlPortal": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa): administra el registro de todas sus sucursales" },
   "carta/registro-publico.ts|guardarSucursalPublica": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },
   "carta/registro-publico.ts|moverSucursalEnMapa": { ata: "EMPRESA_RLS", motivo: "el portal es de la empresa (`carta_portal`, clave de empresa)" },

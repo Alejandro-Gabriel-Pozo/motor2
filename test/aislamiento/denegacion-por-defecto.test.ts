@@ -52,7 +52,7 @@ const MAXIMOS = {
   // Sube a propósito de 32 a 33 con la integración de Catálogo: la búsqueda por la referencia del proveedor devuelve solo un booleano, igual que su par de las faltas filtrables.
   SIN_MARCA_PROPIA: 33,
   OK_SIN_EFECTO_POR_DISENO: 2,
-  EN_LA_SUCURSAL_VACIA: 1,
+  EN_LA_SUCURSAL_VACIA: 2,
 } as const;
 
 describe("GT-3b: la matriz de denegación por defecto cubre todo el inventario", () => {

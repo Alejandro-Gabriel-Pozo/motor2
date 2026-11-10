@@ -209,7 +209,7 @@ export const ACCIONES = [
   { clave: "receta_sucursal_editar", modulo: "recetas", descripcion: "Crear o editar la receta propia de esta sucursal", contexto: "sucursal", nivelMinimo: "operario", rolesEditarSemilla: ["admin"] },
   { clave: "receta_sucursal_copiar", modulo: "recetas", descripcion: "Copiar a esta sucursal la receta propia de otra sucursal", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   { clave: "receta_sucursal_volver_central", modulo: "recetas", descripcion: "Volver la receta de esta sucursal a la central", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
-  { clave: "carta_copiar_de_sucursal", modulo: "carta", descripcion: "Copiar a esta sucursal la carta propia de otra sucursal (solo sobre una carta vacía)", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
+  { clave: "carta_copiar_de_sucursal", modulo: "carta", descripcion: "Copiar a esta sucursal la carta propia de otra sucursal (sobre una carta vacía) o reemplazar la carta de esta sucursal con la de otra", contexto: "sucursal", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },
   // Cliente con descuento (Task #14, docs/plan-clientes-descuento-2026-09-26.md, punto 9): 'clientes' administra el catálogo (alta,
   // edición del %, activar/desactivar), mismo criterio admin-only que el resto del catálogo (proveedores, categorías, ...).
   { clave: "clientes", modulo: "clientes_basico", descripcion: "Administrar el catálogo de Clientes y su % de descuento", contexto: "empresa", nivelMinimo: "administrador", rolesEditarSemilla: ["admin"] },

@@ -22,6 +22,7 @@ export const CONTEXTO_DECLARADO: Readonly<Record<string, { contexto: "empresa" |
  */
 export const EN_LA_SUCURSAL_VACIA: Readonly<Record<string, string>> = {
   "accion|actions/carta/copiar-carta.ts|copiarCartaDeSucursal": "solo se copia sobre una carta vacía: en S1 (que tiene carta) rechaza por «ya tiene carta propia» antes de mirar el origen",
+  "accion|actions/carta/copiar-carta.ts|reemplazarCartaDeSucursal": "el control positivo necesita un origen con carta al que u1 acceda y distinto del destino: parada en S4 (vacía, donde u1 es administrador) reemplaza con la carta de S1; el nombre escrito es el de S4 (`nombreEscrito` en argumentos.ts)",
 };
 
 /** Escenarios que no aplican a una puerta, con el motivo. `<puerta>|<escenario>` → por qué. */
