@@ -66,7 +66,7 @@ test("Período muestra el desembolso y el consumo por separado, con «reconstrui
 
     // El aviso explica la diferencia con el ratio de compras y qué no se pudo costear.
     await expect(consumo.locator("[title]").first()).toHaveAttribute("title", /Mide CONSUMO, a diferencia de Compras\/Ventas/);
-    await expect(consumo.locator("[title]").first()).toHaveAttribute("title", /Cubre \$ 100,00 de \$ 200,00 vendidos \(50 %\)/);
+    await expect(consumo.locator("[title]").first()).toHaveAttribute("title", /Cubre \$\s100,00 de \$\s200,00 vendidos \(50 %\)/);
   } finally {
     await limpiar();
   }

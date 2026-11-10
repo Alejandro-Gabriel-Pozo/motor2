@@ -93,7 +93,7 @@ describe("S-25: la carta pública no emite ids internos", () => {
     expect(html).toContain("Bife");
     // Fase 5 («carta pareja»): el punto es una variante obligatoria que suma («A punto +$100»), así que el bife se lee como una TABLA con el nombre arriba: una fila por punto con su precio
     // final (con el 10 % de descuento ya aplicado). Todo sin ids.
-    expect(html).toMatch(/<li data-forma="tabla"[^>]*>.*<table data-tabla-carta="true" aria-label="Bife"[^>]*>.*Jugoso.*\$900.*A punto.*\$990.*Bien cocido.*\$900/);
+    expect(html).toMatch(/<li data-forma="tabla"[^>]*>.*<table data-tabla-carta="true" aria-label="Bife"[^>]*>.*Jugoso.*\$ 900,00.*A punto.*\$ 990,00.*Bien cocido.*\$ 900,00/);
     expect(html).toContain('data-ir-a="seccion-0"');
     for (const [clase, id] of Object.entries(ids)) expect(html, `el HTML contiene el id de ${clase}`).not.toContain(id);
     expect(html).not.toMatch(CUID);

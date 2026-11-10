@@ -15,7 +15,7 @@ test("el encabezado muestra la cotización más reciente y el Resumen expresa lo
   try {
     await page.goto("/catalogo/categorias"); // cualquier pantalla: el encabezado es de todas
     const encabezado = page.locator("[data-cotizacion-dolar]");
-    await expect(encabezado).toContainText("USD BNA: 1.485 / 1.535 · 05/01");
+    await expect(encabezado).toContainText("USD BNA: $ 1.485,00 / $ 1.535,00 · 05/01");
     await expect(encabezado).toHaveAttribute("title", /Banco Nación.*1\.535.*05\/01\/2099/);
 
     await page.goto("/reportes");

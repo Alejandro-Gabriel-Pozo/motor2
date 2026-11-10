@@ -1829,7 +1829,10 @@
     desde: Date(2026-02-16T03:00:00.000Z),
     digest: [
       {severidad: "alta", texto: "\"Queso\" es lo que más te encareció las compras: +$ 3.405,01 (+9.2%) sobre lo que compraste este período."},
-      {severidad: "alta", texto: "El plato que más se encareció por estos cambios es \"Pizza muzzarella\": costo +$ 392,00 (food cost 18.4% → 21.3%)."},
+      {
+        severidad: "alta",
+        texto: "El plato que más se encareció por estos cambios es \"Pizza muzzarella\": costo +$ 392,00 (food cost 18.4% → 21.3%)."
+      },
       {severidad: "media", texto: "Compras/Ventas bajó de 394.6% a 19.8% respecto al período anterior."},
       {severidad: "media", texto: "2 de 4 insumos concentran el 80% de lo que gastaste en Compras este período."}
     ],

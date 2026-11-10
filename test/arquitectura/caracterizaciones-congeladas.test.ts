@@ -570,7 +570,7 @@ const CONGELADAS: Record<string, Congelada> = {
           "E0 de la corrección por ajuste (PR3, d): el buscador de Trazabilidad por producto rotula cada operación con el proceso de la OPERACIÓN y no con el del movimiento que la encontró; seis ventas que salían como «CONSUMO» (la línea del insumo que `distinct` elegía) salen como «VENTA». Cambian solo esas seis líneas de `trazabilidad.buscarOperacionesPorProducto`."
       },
       {
-        blob: "8120302121a38498eb14f9337085d6da94770a4f",
+        blob: "26090b673b5ae8116e6a065f0bf2402410681e0c",
         // Un commit no puede llevar su propio hash: es el commit PADRE de este, aacfb7b2 (merge de #222 en alegp/dinero-mostrado-central).
         commit: "aacfb7b2",
         motivo:
@@ -864,7 +864,7 @@ const CONGELADAS: Record<string, Congelada> = {
           "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, no cambia ningún valor, redondeo, fila ni auditoría): el mensaje de «sincronizar precio global» sale con 2 decimales («actualizado a $11.000» pasa a «$ 11.000,00», con el espacio que no se parte de la moneda). Cambia 1 línea.",
       },
       {
-        blob: "9a53a9585a7258053a40561b98fc4ac4553686e7",
+        blob: "593b653fb8f4b8ce3a12de87247954a971b32fe5",
         // Un commit no puede llevar su propio hash: es el commit PADRE de este, aacfb7b2 (merge de #222 en alegp/dinero-mostrado-central).
         commit: "aacfb7b2",
         motivo:

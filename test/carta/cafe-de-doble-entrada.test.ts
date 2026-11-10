@@ -18,9 +18,9 @@ import { Seccion } from "../../src/components/carta-publica/seccion";
 
 /**
  * Fase 5 de la ola «precio y carta», paso C10: un café de especialidad con TAMAÑO y PREPARACIÓN OBLIGATORIA sale en la carta como TABLA DE DOBLE ENTRADA con precios FINALES, contra Postgres.
- *  - «Café de especialidad» es un producto DIRECTO (no base) en «Cafetería», con el MISMO grupo de tamaño que el café del catálogo de referencia (MEDIDA en ABSOLUTO: Chico $4.000, Mediano $4.100,
- *    Grande $4.300; el precio por tamaño vive en la admisión del producto) y un grupo propio «Preparación obligatoria» (VARIANTE 1..1, sin prefijo en la carta): Solo +$0, Cortado +$0,
- *    Lágrima +$200, Con leche +$300 (MONTO);
+ *  - «Café de especialidad» es un producto DIRECTO (no base) en «Cafetería», con el MISMO grupo de tamaño que el café del catálogo de referencia (MEDIDA en ABSOLUTO: Chico $ 4.000,00, Mediano $ 4.100,00,
+ *    Grande $ 4.300,00; el precio por tamaño vive en la admisión del producto) y un grupo propio «Preparación obligatoria» (VARIANTE 1..1, sin prefijo en la carta): Solo +$ 0,00, Cortado +$ 0,00,
+ *    Lágrima +$ 200,00, Con leche +$ 300,00 (MONTO);
  *  - la carta lee de la base la forma «tabla» (título = el nombre, filas = las preparaciones, columnas = los tamaños) y cada celda es la composición precio del tamaño + diferencia de la preparación,
  *    calculada por la regla de la venta (`tablaDePreciosParaLaCarta`), la misma que cobra la caja: acá se compara las 12 celdas con lo que cobra `agregarItems`, la acción real del POS;
  *  - las filas no se juntan aunque cuesten igual (Solo y Cortado);
@@ -164,7 +164,7 @@ describe("C10: un café con tamaño y preparación obligatoria sale como tabla d
     expect(tabla.match(/<th scope="col"[^>]*>([^<]*)<\/th>/g)?.map(texto)).toEqual(["Chico", "Mediano", "Grande"]);
     expect(tabla.match(/<th scope="row"[^>]*>[\s\S]*?<\/th>/g)?.map(texto)).toEqual(["Solo", "Cortado", "Lágrima", "Con leche"]);
     const precios = [...tabla.matchAll(/data-rol="opcion-precio"[^>]*>([^<]*)<\/span>/g)].map((m) => m[1]);
-    expect(precios).toEqual(["$4.000", "$4.100", "$4.300", "$4.000", "$4.100", "$4.300", "$4.200", "$4.300", "$4.500", "$4.300", "$4.400", "$4.600"]);
+    expect(precios).toEqual(["$ 4.000,00", "$ 4.100,00", "$ 4.300,00", "$ 4.000,00", "$ 4.100,00", "$ 4.300,00", "$ 4.200,00", "$ 4.300,00", "$ 4.500,00", "$ 4.300,00", "$ 4.400,00", "$ 4.600,00"]);
     // El café de referencia, en su propia fila de la sección, no se mezcla con la tabla.
     expect(li).not.toContain("Preparación del café");
   });

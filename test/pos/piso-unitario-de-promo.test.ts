@@ -37,7 +37,7 @@ describe("piso unitario: una sola constante", () => {
     expect(justo?.codigo).not.toBe("COMPONENTE_SIN_PRECIO_DE_REFERENCIA");
   });
   it("el mensaje al usuario nombra el piso", () => {
-    expect(mensajePisoDePromo("Combo", 0.01, { minimo: 0.05, unidades: 5 })).toContain("$0,01");
+    expect(mensajePisoDePromo("Combo", 0.01, { minimo: 0.05, unidades: 5 })).toContain("$ 0,01");
   });
 });
 
