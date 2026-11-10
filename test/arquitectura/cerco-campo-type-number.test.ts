@@ -8,7 +8,7 @@ import { probarCerco } from "./cercos/probar-cerco";
  * que lo lee con la notación argentina, lo valida con la misma regla que la Server Action y no deja pasar lo que no es un número. `<input type="number">` (o `<Campo type="number">`) no hace nada de eso: acepta la
  * notación del navegador, «1,5» según el idioma, `e` y flechitas de spinner. Cuenta, por archivo, los `<input>` y `<Campo>` con `type="number"` escritos FUERA de `src/ui/` (en `src/` y en la consola,
  * `plataforma/src/`). Mira el AST: un comentario, un string o el `type="number"` del eje de un gráfico (`<XAxis type="number">`) no cuentan.
- * Meta: 0 (cada uno pasa a `CampoNumero` con su tipo). Hoy es deuda declarada, con su motivo por archivo.
+ * Meta: 0 (cada uno pasa a `CampoNumero` con su tipo). Llegó a 0 el 2026-11-09 (regla de números del dueño: migración de los 23 campos); ya no hay deuda declarada.
  *
  * Mecanismo, regeneración (`BAJAR_CERCOS=1`) y excepciones: `test/arquitectura/cercos/trinquete.ts`.
  */
@@ -32,26 +32,11 @@ function contarTypeNumber(fuente: string, ruta: string): Record<string, number> 
   return cuenta;
 }
 
-const A_ENTERO = (donde: string) => `${donde}: un número entero escrito con \`type="number"\`; pasa a \`CampoNumero tipo="entero"\` (el parser argentino y la validación del tipo, no la notación del navegador).`;
-const A_PORCENTAJE = (donde: string) => `${donde}: un porcentaje escrito con \`type="number"\`; pasa a \`CampoNumero tipo="porcentaje"\`.`;
-
 const CERCO_TYPE_NUMBER: Cerco = {
   regla: "campo-type-number",
   meta: "0 (lote 6.33: todo número tecleado es un CampoNumero con su tipo declarado)",
   medir: medirPorArchivo({ raices: ["src", "plataforma/src"], extensiones: [".tsx", ".jsx"], incluir: (ruta) => !ruta.startsWith("src/ui/"), contar: contarTypeNumber }),
-  motivos: {
-    "src/app/(app)/carta/agrupados/page.tsx": A_ENTERO("El orden de un agrupado de la carta"),
-    "src/app/(app)/carta/parametrizacion/formularios.tsx": A_ENTERO("Orden, mínimos y máximos de los lugares de la carta") + " Incluye el precio de un ítem (importe).",
-    "src/app/(app)/carta/portal/page.tsx": A_ENTERO("El orden en el portal") + " Incluye los porcentajes del portal (porcentaje).",
-    "src/app/(app)/catalogo/unidades/page.tsx": A_ENTERO("Los decimales de una unidad (0 a 6)"),
-    "src/app/(app)/reportes/devoluciones/page.tsx": A_ENTERO("«Días atrás» del reporte"),
-    "src/app/(app)/reportes/perdidas/page.tsx": A_ENTERO("«Días atrás» del reporte"),
-    "src/app/(app)/reportes/vencimientos/page.tsx": A_ENTERO("«Próximos (días)» del reporte"),
-    "src/components/carta/contenido-del-producto.tsx": A_PORCENTAJE("El descuento en esta sucursal"),
-    "src/components/carta/editor-portal.tsx": A_PORCENTAJE("Porcentajes y opacidad del editor del portal"),
-    "src/components/carta/editor-tema.tsx": A_PORCENTAJE("Porcentajes y topes del editor del tema"),
-    "src/components/carta/seccion-y-orden.tsx": A_ENTERO("El orden de una sección dentro de la carta"),
-  },
+  motivos: {},
 };
 
 describe("cerco «campo type=number»: el detector", () => {

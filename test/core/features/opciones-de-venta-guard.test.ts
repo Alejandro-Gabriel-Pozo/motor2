@@ -30,7 +30,9 @@ const VERSION = { diferencia: { tipo: "MONTO", monto: 150 }, factorEscala: null,
 
 describe("validadores centrales: porcentaje de diferencia y factor de escala", () => {
   it("porcentaje: -100 < p ≤ 999,9999 y hasta 4 decimales; se rechaza, no se redondea", () => {
-    expect(validarPorcentajeDeDiferencia("12,5", { etiqueta: "El porcentaje" })).toEqual({ ok: true, valor: 12.5 });
+    // regla de números 2026-11-09: un texto llega al servidor solo en formato canónico (punto decimal); «12,5» (lo que se escribe en pantalla) se rechaza.
+    expect(validarPorcentajeDeDiferencia("12.5", { etiqueta: "El porcentaje" })).toEqual({ ok: true, valor: 12.5 });
+    expect(validarPorcentajeDeDiferencia("12,5", { etiqueta: "El porcentaje" })).toMatchObject({ ok: false, codigo: "notacion" });
     expect(validarPorcentajeDeDiferencia(-99.9999, { etiqueta: "El porcentaje" })).toEqual({ ok: true, valor: -99.9999 });
     expect(validarPorcentajeDeDiferencia(999.9999, { etiqueta: "El porcentaje" })).toEqual({ ok: true, valor: 999.9999 });
     expect(validarPorcentajeDeDiferencia(null, { etiqueta: "El porcentaje", obligatorio: false })).toEqual({ ok: true, valor: null });
@@ -104,7 +106,9 @@ describe("guardComandoCrearOpcionDeGrupo, guardComandoEditarOpcionDeGrupo y guar
       },
     });
     expect(guardComandoCrearOpcionDeGrupo({ ...alta, ancla: { unidadStockId: "u1" } })).toMatchObject({ ok: true, valor: { ancla: { unidadStockId: "u1" } } });
-    expect(guardComandoCrearOpcionDeGrupo({ ...alta, version: { ...VERSION, diferencia: { tipo: "PORCENTAJE", porcentaje: "8,5" } } })).toMatchObject({ ok: true, valor: { version: { diferencia: { tipo: "PORCENTAJE", porcentaje: 8.5 } } } });
+    // regla de números 2026-11-09: el porcentaje de texto va en formato canónico («8.5»); «8,5» se rechaza en el servidor.
+    expect(guardComandoCrearOpcionDeGrupo({ ...alta, version: { ...VERSION, diferencia: { tipo: "PORCENTAJE", porcentaje: "8,5" } } })).toMatchObject({ ok: false });
+    expect(guardComandoCrearOpcionDeGrupo({ ...alta, version: { ...VERSION, diferencia: { tipo: "PORCENTAJE", porcentaje: "8.5" } } })).toMatchObject({ ok: true, valor: { version: { diferencia: { tipo: "PORCENTAJE", porcentaje: 8.5 } } } });
   });
 
   it("la diferencia: monto con 3 decimales, porcentaje de -100, de 1000, con 5 decimales, o sin tipo, se rechaza", () => {

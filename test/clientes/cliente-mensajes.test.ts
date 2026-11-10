@@ -34,7 +34,9 @@ describe("clientes: mensajes, orden de los chequeos y refresco", () => {
     expect(await altaCliente("  ", 150)).toEqual({ ok: false, mensaje: "El nombre del cliente no puede estar vacío." });
     expect(await altaCliente("Fulano", 150)).toEqual({ ok: false, mensaje: "El % de descuento tiene que ser menor que 100 %." });
     expect(await altaCliente("Fulano", "")).toEqual({ ok: false, mensaje: "Falta el % de descuento." });
-    expect(await altaCliente("  Fulano  ", "7,5")).toMatchObject({ ok: true, mensaje: 'Cliente "Fulano" creado, con 7.5% de descuento.', nombre: "Fulano" });
+    // Regla de números 2026-11-09: el servidor acepta de un texto SOLO el formato canónico (punto decimal); «7,5» se rechaza.
+    expect(await altaCliente("Fulano", "7,5")).toMatchObject({ ok: false });
+    expect(await altaCliente("  Fulano  ", "7.5")).toMatchObject({ ok: true, mensaje: 'Cliente "Fulano" creado, con 7.5% de descuento.', nombre: "Fulano" });
     expect(refrescos()).toBe(0);
   });
 

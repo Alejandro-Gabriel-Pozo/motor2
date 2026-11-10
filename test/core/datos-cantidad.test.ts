@@ -60,7 +60,7 @@ describe("validarCantidad", () => {
     expect(validarCantidad(-1.255, kg, { ...cantidad, permitirNegativo: true })).toMatchObject({ ok: false, codigo: "decimales" });
   });
 
-  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, true, {}, "abc", "1,2,3"])("rechaza %s como formato inválido", (v) => {
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, true, {}])("rechaza %s como formato inválido", (v) => {
     expect(validarCantidad(v, kg, { etiqueta: 'La cantidad de "Harina"' })).toEqual({
       ok: false,
       codigo: "formato",
@@ -68,12 +68,21 @@ describe("validarCantidad", () => {
     });
   });
 
-  it("texto tecleado en es-AR", () => {
-    expect(validarCantidad("1,25", kg, cantidad)).toEqual({ ok: true, valor: 1.25 });
-    expect(validarCantidad("1.000", un, cantidad)).toEqual({ ok: true, valor: 1000 }); // 2c: en una unidad entera, un punto con tres cifras es de miles
-    expect(validarCantidad("1.000", { nombre: "kg", decimales: 3 }, cantidad)).toMatchObject({ ok: false, codigo: "ambiguo" }); // con 3 decimales no se adivina
-    expect(validarCantidad("1,5", un, cantidad)).toMatchObject({ ok: false, codigo: "decimales" });
+  it.each(["abc", "1,2,3", "1,25", "1.000,5"])("rechaza el texto %s por notación (no canónico)", (v) => {
+    expect(validarCantidad(v, kg, { etiqueta: 'La cantidad de "Harina"' })).toEqual({
+      ok: false,
+      codigo: "notacion",
+      mensaje: 'La cantidad de "Harina": Formato de número no admitido (solo dígitos y un punto decimal, sin miles ni coma).',
+    });
+  });
+
+  it("texto que llega al servidor: solo canónico, los decimales se cuentan sobre el texto", () => {
+    expect(validarCantidad("1.25", kg, cantidad)).toEqual({ ok: true, valor: 1.25 });
+    expect(validarCantidad("1000", un, cantidad)).toEqual({ ok: true, valor: 1000 });
+    expect(validarCantidad("1.000", { nombre: "kg", decimales: 3 }, cantidad)).toEqual({ ok: true, valor: 1 }); // el punto es siempre decimal
+    expect(validarCantidad("1.000", un, cantidad)).toMatchObject({ ok: false, codigo: "decimales" }); // ya no es «mil»
     expect(validarCantidad("1.5", un, cantidad)).toMatchObject({ ok: false, codigo: "decimales" });
-    expect(validarCantidad("1.000.000", un, cantidad)).toEqual({ ok: true, valor: 1_000_000 });
+    expect(validarCantidad("1,5", un, cantidad)).toMatchObject({ ok: false, codigo: "notacion" });
+    expect(validarCantidad("1.000.000", un, cantidad)).toMatchObject({ ok: false, codigo: "notacion" });
   });
 });

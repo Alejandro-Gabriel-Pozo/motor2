@@ -276,7 +276,7 @@ test("un importe '...,.,.,...' no se guarda como 0: el campo lo marca y no se re
   const producto = await prepararCompraDeUnProducto(page, sucursalId);
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
   const importe = page.locator("label:has-text('Importe con IVA') input").first();
-  await importe.fill("...,.,.,...");
+  await importe.fill("1,2,3"); // dos comas: no es un número (el «.» ya no se escribe: se ignora o se rechaza)
 
   expect(await importe.evaluate((e: HTMLInputElement) => e.validity.customError), "el importe tiene que quedar inválido").toBe(true);
   expect(await importe.evaluate((e: HTMLInputElement) => e.validationMessage)).toBe("El importe no es un número válido.");
@@ -289,10 +289,10 @@ test("un importe '...,.,.,...' no se guarda como 0: el campo lo marca y no se re
   expect(await prisma.movimientoStock.count({ where: { productoId: producto.id } }), "no tenía que registrarse ninguna compra").toBe(0);
 });
 
-test("un importe '1.000.000' (miles en es-AR) se guarda como 1000000", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
+test("un importe '1000000' se guarda como 1000000 (el campo ya no acepta el punto de miles: tipeado se ignora, pegado se rechaza)", async ({ paginaAutenticada: page, sucursalId, seccionId }) => {
   const producto = await prepararCompraDeUnProducto(page, sucursalId);
   const seccion = await prisma.seccion.findUniqueOrThrow({ where: { id: seccionId } });
-  await page.locator("label:has-text('Importe con IVA') input").first().fill("1.000.000");
+  await page.locator("label:has-text('Importe con IVA') input").first().fill("1000000");
   await irARevisar(page, seccion.nombre);
   await confirmarCompra(page);
 

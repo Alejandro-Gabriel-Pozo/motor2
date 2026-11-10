@@ -42,7 +42,6 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
   lista("dueno-unico-por-modelo", "2026-12-08"),
   lista("casos-de-uso-en-guardianes", "2026-12-11"),
   lista("fecha-de-texto-a-mano", "2026-12-15"),
-  lista("campo-type-number", "2026-12-18"),
   lista("inputmode-numerico-a-mano", "2026-12-22"),
   lista("controles-a-mano", "2026-12-28"),
   lista("dialogos-y-avisos-a-mano", "2026-12-30"),
@@ -50,7 +49,7 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
   lista("colores-de-escala", "2027-01-04"),
   lista("colores", "2027-01-05"),
   // PROPUESTA (E-N salida, 2026-11-09): deuda nueva al crear el guardián de números mostrados sin la función central; se declara sin pagarla toda en esta etapa. La aprobación queda PENDIENTE del dueño al mergear el PR de la etapa.
-  lista("numero-sin-formato-central", "2027-01-03", { por: "dueño (pendiente de aprobar al mergear el PR)", referencia: "commit 58f066f2" }, "Deuda que queda del guardián «número mostrado sin la función central» tras cerrar TODO el dinero mostrado (decisión del dueño, 2026-11-10: «si es dinero no puede quedar como deuda»; 120 → 9 usos en 7 archivos): solo entrada (campo-numero-logica, dueña E-N), cálculo interno (huella, validación de factor) y cantidades/factores en mensajes. Clasificación en docs/diseno-dinero-mostrado-2026-11-10.md; los archivos están declarados con motivo en el test del guardián."),
+  lista("numero-sin-formato-central", "2027-01-03", { por: "dueño (pendiente de aprobar al mergear el PR)", referencia: "commit 58f066f2" }, "Deuda que queda del guardián «número mostrado sin la función central» tras cerrar TODO el dinero mostrado (decisión del dueño, 2026-11-10: «si es dinero no puede quedar como deuda»; 120 → 8 usos en 6 archivos): solo cálculo interno (huella, validación de factor) y cantidades/factores en mensajes. Clasificación en docs/diseno-dinero-mostrado-2026-11-10.md; los archivos están declarados con motivo en el test del guardián."),
   // Estructura de pantalla (PR #219, 2026-11-09): las 90 pantallas se adoptan por etapas E-B…E-H (docs/diseno-estructura-de-pantalla-1366x768-2026-11-09.md, §12). Plazo máximo; se renueva con motivo si una etapa se atrasa.
   {
     regla: "pantallas-con-estructura",

@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, type ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import { ordenSugeridoAlElegirSeccion } from "@/core/carta/public";
-import { Campo } from "@/ui/primitivas/campo";
+import { CampoNumero } from "@/components/campo-numero";
 import { Selector } from "@/ui/primitivas/selector";
 
 /**
@@ -33,11 +33,12 @@ export function SeccionYOrden({
   /** Mostrar "— elegí una —" (alta, o un contenido que puede quedar sin sección). */
   conOpcionVacia?: boolean;
 }) {
-  const orden = useRef<HTMLInputElement>(null);
+  // El orden va controlado: al elegir otra sección se sugiere el siguiente lugar (antes se escribía directo en el <input>, que `CampoNumero` ya no es).
+  const [orden, setOrden] = useState(String(guardado?.orden ?? 0));
 
   const alCambiarSeccion = (e: ChangeEvent<HTMLSelectElement>) => {
     const sugerido = ordenSugeridoAlElegirSeccion(e.currentTarget.value, guardado, cantidadPorSeccion);
-    if (sugerido !== null && orden.current) orden.current.value = String(sugerido);
+    if (sugerido !== null) setOrden(String(sugerido));
   };
 
   return (
@@ -51,7 +52,10 @@ export function SeccionYOrden({
           </option>
         ))}
       </Selector>
-      <Campo etiqueta="Orden dentro de su sección" ref={orden} name="orden" type="number" step={1} defaultValue={guardado?.orden ?? 0} />
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Orden dentro de su sección</span>
+        <CampoNumero tipo="entero" etiqueta="El orden" name="orden" value={orden} onChange={setOrden} permitirNegativo />
+      </label>
     </>
   );
 }

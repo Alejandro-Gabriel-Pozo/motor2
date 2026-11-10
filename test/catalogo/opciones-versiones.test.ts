@@ -183,7 +183,10 @@ describe("opciones, versiones y consumos (GO-2a)", () => {
 
   describe("las Server Actions: la clave en el servidor y el guard", () => {
     it("el admin crea, edita y versiona; el operador (sin `opciones_definir`) recibe el rechazo y no se escribe nada", async () => {
-      expect(await crearOpcionDeGrupo({ grupoId: e.grupoVarianteId, nombre: "Soja", orden: 3, esNinguna: false, ancla: null, version: { diferencia: { tipo: "MONTO", monto: "90,5" }, factorEscala: null, consumos: [] } })).toMatchObject({ ok: true });
+      // regla de números 2026-11-09: el servidor lee un texto solo en formato canónico («90.5»); «90,5» es lo que se escribe en pantalla y llegado así se rechaza sin escribir nada.
+      expect(await crearOpcionDeGrupo({ grupoId: e.grupoVarianteId, nombre: "Soja", orden: 3, esNinguna: false, ancla: null, version: { diferencia: { tipo: "MONTO", monto: "90,5" }, factorEscala: null, consumos: [] } })).toMatchObject({ ok: false });
+      expect(await prisma.opcionDeGrupo.count({ where: { nombre: "Soja" } })).toBe(0);
+      expect(await crearOpcionDeGrupo({ grupoId: e.grupoVarianteId, nombre: "Soja", orden: 3, esNinguna: false, ancla: null, version: { diferencia: { tipo: "MONTO", monto: "90.5" }, factorEscala: null, consumos: [] } })).toMatchObject({ ok: true });
       const soja = await prisma.opcionDeGrupo.findFirstOrThrow({ where: { nombre: "Soja" }, include: { versiones: true } });
       expect(Number(soja.versiones[0]!.diferenciaPrecio)).toBe(90.5);
       expect(await editarOpcionDeGrupo({ opcionId: soja.id, versionEsperada: 1, nombre: "Soja" })).toMatchObject({ ok: true });

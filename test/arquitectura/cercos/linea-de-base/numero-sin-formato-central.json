@@ -1,17 +1,13 @@
 {
   "regla": "numero-sin-formato-central",
   "meta": "0 (cada pantalla muestra sus números con core/formato-de-numero.ts: «1.000,00», dinero con 2 decimales, unidad pegada); baja con cada etapa",
-  "total": 9,
-  "entradas": 7,
+  "total": 8,
+  "entradas": 6,
   "porTipo": {
     "number-pelado": 2,
-    "to-fixed": 6,
-    "to-locale-string": 1
+    "to-fixed": 6
   },
   "cuentas": {
-    "src/core/datos/campo-numero-logica.ts": {
-      "to-locale-string": 1
-    },
     "src/core/opciones/componer-precio-de-linea.ts": {
       "to-fixed": 1
     },

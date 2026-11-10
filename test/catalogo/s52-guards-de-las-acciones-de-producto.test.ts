@@ -45,7 +45,10 @@ describe("S-52: los guards de la puerta de las acciones de producto y de present
       [-1, "El factor de conversión tiene que ser mayor que cero."],
       [0, "El factor de conversión tiene que ser mayor que cero."],
       [1e308, "El factor de conversión es demasiado grande."],
-      ["abc", "El factor de conversión no es un número válido."],
+      // regla de números 2026-11-09: un texto que no es canónico (como «abc») es «notación» y dice cómo se lee un texto en el servidor; un objeto sigue siendo «no es un número válido».
+      ["abc", "El factor de conversión: Formato de número no admitido (solo dígitos y un punto decimal, sin miles ni coma)."],
+      ["1,5", "El factor de conversión: Formato de número no admitido (solo dígitos y un punto decimal, sin miles ni coma)."],
+      ["1.234,5", "El factor de conversión: Formato de número no admitido (solo dígitos y un punto decimal, sin miles ni coma)."],
       [{}, "El factor de conversión no es un número válido."],
       [1.234, "El factor de conversión admite como máximo 2 decimales (unidad \"kg\")."],
     ];
@@ -141,7 +144,8 @@ describe("S-52: los guards de la puerta de las acciones de producto y de present
       expect(await agregar(harinaId, gId, -1)).toEqual({ ok: false, mensaje: "El factor de conversión tiene que ser mayor que cero." });
       expect(await agregar(harinaId, gId, 0)).toEqual({ ok: false, mensaje: "El factor de conversión tiene que ser mayor que cero." });
       expect(await agregar(harinaId, gId, 1e308)).toEqual({ ok: false, mensaje: "El factor de conversión es demasiado grande." });
-      expect(await agregar(harinaId, gId, "abc")).toEqual({ ok: false, mensaje: "El factor de conversión no es un número válido." });
+      // regla de números 2026-11-09: «abc», «1,5» y «1.234,5» no son el formato canónico del servidor.
+      for (const texto of ["abc", "1,5", "1.234,5"]) expect(await agregar(harinaId, gId, texto)).toEqual({ ok: false, mensaje: "El factor de conversión: Formato de número no admitido (solo dígitos y un punto decimal, sin miles ni coma)." });
       expect(await agregar(harinaId, gId, {})).toEqual({ ok: false, mensaje: "El factor de conversión no es un número válido." });
       expect(await agregar(harinaId, gId, undefined)).toEqual({ ok: false, mensaje: "Falta el factor de conversión." });
       expect(await prisma.presentacion.count()).toBe(0);

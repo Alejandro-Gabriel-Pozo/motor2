@@ -57,7 +57,6 @@ export function contarNumerosSinFormatoCentral(fuente: string, ruta: string): Re
  * hace fallar el test: tiene que migrarse a `core/formato-de-numero.ts` o declararse con motivo.
  */
 export const RESTANTES_DECLARADOS_NO_DINERO: Record<string, string> = {
-  "src/core/datos/campo-numero-logica.ts": "ENTRADA (lo que se TECLEA; dueña: sesión E-N entrada). No es salida.",
   "src/core/opciones/componer-precio-de-linea.ts": "Validación interna: compara el factor de escala redondeado a 4 decimales; no se muestra.",
   "src/core/opciones/factor-de-escala.ts": "Un FACTOR (1,3 = 30 % más), no dinero.",
   "src/core/opciones/huella-de-opciones.ts": "Cálculo interno: huella canónica (hash) de opciones; nunca se muestra.",

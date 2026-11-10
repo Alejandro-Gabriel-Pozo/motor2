@@ -42,7 +42,7 @@ for (const { ancho, alto } of [
     await grupo.getByRole("button", { name: `+ Opción en ${p.grupoNombre}` }).click();
     const ventana = page.getByRole("dialog", { name: `Nueva opción en «${p.grupoNombre}» de «${p.nombre}»` });
     await expect(ventana.getByLabel(/^Nombre de la opción/)).toBeFocused();
-    await expect(ventana.getByLabel(/^Cuánto suma/), "lo que suma arranca en 0").toHaveValue(/^0$/);
+    await expect(ventana.getByLabel(/^Cuánto suma/), "lo que suma arranca en 0 (regla de números 2026-11-09: un importe se ve con 2 decimales)").toHaveValue("0,00");
     await ventana.getByLabel(/^Nombre de la opción/).fill("Avena");
     await ventana.getByLabel(/^Cuánto suma/).fill("200");
     await expectSinDesborde(page, `${ancho} px: la ventana «+ Opción»`);

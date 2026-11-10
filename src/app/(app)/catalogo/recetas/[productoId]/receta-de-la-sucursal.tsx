@@ -134,6 +134,7 @@ export function RecetaDeLaSucursal({
                             <CampoNumero
                               tipo="cantidad"
                               id={`cantidad-propia-${ing.id}`}
+                              sinEntendido
                               name="cantidad"
                               defaultValue={String(Number(ing.cantidad))}
                               required

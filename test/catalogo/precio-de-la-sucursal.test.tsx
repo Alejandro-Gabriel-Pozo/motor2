@@ -22,7 +22,7 @@ describe("PrecioDeLaSucursal: lo que dibuja", () => {
     const t = texto(html);
     expect(t).toContain("Precio en «Centro»");
     expect(html).toMatch(/<label[^>]*>\s*Precio en «Centro»\s*<\/label>/);
-    expect(html).toContain('value="18.000"');
+    expect(html).toContain('value="18.000,00"'); // regla de números 2026-11-09: el importe se ve siempre con 2 decimales
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>\s*Guardar el precio\s*<\/button>/);
   });
 

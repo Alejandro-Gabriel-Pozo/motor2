@@ -7,6 +7,7 @@ import { FormConResultado } from "@/components/form-con-resultado";
 import { resolverEstiloCarta, CLAVES_TEMA_V1, validarValorTema, ZONAS_TEMA, type DefinicionClaveTema } from "@/core/carta/public";
 import type { ResultadoAccion } from "@/server/actions/tipos";
 import { Boton } from "@/ui/primitivas/boton";
+import { CampoNumero } from "@/components/campo-numero";
 import { Campo } from "@/ui/primitivas/campo";
 import { Selector } from "@/ui/primitivas/selector";
 import { CampoColor } from "./campo-color";
@@ -57,9 +58,10 @@ function CuerpoEditor({ valoresIniciales, soloLectura }: { valoresIniciales: Rea
   const [valores, setValores] = useState<Record<string, string>>(() => Object.fromEntries(CLAVES_TEMA_V1.map((d) => [d.clave, valoresIniciales[d.clave] ?? ""])));
   const estilo = useMemo(() => resolverEstiloCarta(valores), [valores]);
 
+  // Se relee un instante después: el valor de un `CampoNumero` viaja por su campo oculto, que React actualiza recién al terminar este evento (leerlo acá daría el valor de una tecla atrás).
   const releer = (e: FormEvent<HTMLDivElement>) => {
     const form = e.currentTarget.closest("form");
-    if (form) setValores(leerValores(form));
+    if (form) setTimeout(() => setValores(leerValores(form)), 0);
   };
 
   return (
@@ -156,10 +158,16 @@ function CampoDeClave({ d, inicial, actual }: { d: DefinicionClaveTema; inicial:
       );
       break;
     case "porcentaje":
-      control = <Campo {...comun} type="number" min={0} max={100} step="0.01" placeholder={placeholder} />;
-      break;
     case "opacidad":
-      control = <Campo {...comun} type="number" min={1} max={100} step={1} placeholder={placeholder} />;
+      // Un número (0 a 100 con 2 decimales, o un entero de 1 a 100): `CampoNumero` lo escribe con coma y manda por el campo oculto el valor canónico que el servidor lee. El rango lo dice `validarValorTema` (`error`).
+      control = (
+        <div className="flex flex-col gap-1">
+          <label htmlFor={id} className="text-sm font-medium">
+            {d.etiqueta}
+          </label>
+          <CampoNumero id={id} name={d.clave} tipo={d.tipo === "opacidad" ? "entero" : "porcentaje"} decimales={d.tipo === "opacidad" ? undefined : 2} etiqueta={d.etiqueta} defaultValue={inicial} placeholder={placeholder} ayuda={ayuda} errorDeRegla={error} />
+        </div>
+      );
       break;
     case "texto":
       control = <Campo {...comun} type="text" maxLength={d.maximo} placeholder={placeholder} />;

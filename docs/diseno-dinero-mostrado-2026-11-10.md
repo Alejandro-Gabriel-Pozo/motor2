@@ -34,7 +34,7 @@ Sin cambios de permisos ni de contratos de acción: los `mensaje` de los resulta
 Las tablas ordenan por el valor numérico (`valor:`), no por el texto: el formato no altera el orden. Las celdas de dinero ya llevan `whitespace-nowrap`. Exportaciones a Excel: siguen mandando el valor numérico.
 
 ## 10. Pruebas, migración y operación
-- **Guardián** (`test/arquitectura/cerco-numero-sin-formato-central.test.ts`): línea de base 120 → 9 usos en 7 archivos; nuevo tipo `signo-pesos-pelado` (un «$» escrito a mano delante de una interpolación, que el guardián anterior no veía); nuevo test de cierre: todo archivo que queda en la línea de base está declarado como no-dinero con motivo (`RESTANTES_DECLARADOS_NO_DINERO`). Un dinero nuevo sin formato central hace fallar el cerco (sube la cuenta) o el cierre (archivo sin declarar).
+- **Guardián** (`test/arquitectura/cerco-numero-sin-formato-central.test.ts`): línea de base 120 → 8 usos en 6 archivos; nuevo tipo `signo-pesos-pelado` (un «$» escrito a mano delante de una interpolación, que el guardián anterior no veía); nuevo test de cierre: todo archivo que queda en la línea de base está declarado como no-dinero con motivo (`RESTANTES_DECLARADOS_NO_DINERO`). Un dinero nuevo sin formato central hace fallar el cerco (sube la cuenta) o el cierre (archivo sin declarar).
 - **Dimensiones cuyas combinaciones cambian lo mostrado:** (a) valor: negativo / cero / positivo / `null` / con más de 2 decimales (empate de redondeo); (b) contexto: celda de tabla / texto corrido / mensaje de servidor / gráfico / carta pública; (c) moneda: ARS / USD. Oráculo: tests de `formato-de-numero` (ya existen, #221) + los textos esperados de los mensajes. No se agregan combinaciones nuevas: no se creó ninguna dimensión de producto.
 - **Tablas «¿qué pasa si…?»:** repetición/concurrencia/permisos/reintento: no aplican (puro). Datos faltantes: «—» (y «costo incompleto» donde ya existía). Valor con más de 2 decimales: se redondea ARS (empate lejos del cero). Importe negativo: «-$ 5,00». Cambio de redondeo: no hay.
 - Migración: ninguna. Reversible: revertir el PR.
@@ -45,11 +45,11 @@ Las tablas ordenan por el valor numérico (`valor:`), no por el texto: el format
 |---|---|---|
 | DINERO mostrado | **96** | Migrados a `formatearMonto` / `formatearDolares`: reportes (período, valuación, consolidado, categorías, consignación, devoluciones, descuentos clientes y productos, pérdidas, ventas por sección, margen de promociones, tabla-resumen, historial, rendimiento de recetas, gráfico de gasto por grupo), `EnDolares`, carta pública, mensajes (`registrar-pago-consignante`, `periodo-margen`, `periodo-alertas`, `reparto-de-factura`, piso de $0,01) |
 | Cantidad / porcentaje / conteo mostrado | **15** | Migrados porque eran triviales y estaban en la misma línea: `formatearEntero` (ventas, unidades, promos vendidas, tope de cuentas, minutos), `formatearCantidad` (cantidad del ticket, comensales promedio, R²), `formatearPorcentaje` (suma de porcentajes del reparto), cantidad de las alertas |
-| Entrada tecleada | 1 | `campo-numero-logica.ts`: dueña la sesión E-N; no se toca |
+| Entrada tecleada | 1 | `campo-numero-logica.ts`: lo resolvió #222 (E-N entrada) al mergear main; ya no está en la línea de base |
 | Cálculo interno, no mostrado | 5 | `huella-de-opciones` (2, hash), `componer-precio-de-linea` (validación del factor), `registrar-factura-proveedor` (2, redondeo a 4 decimales antes de guardar). Verificado en el código: no llegan a pantalla ni a un mensaje |
 | Factor, no dinero | 1 | `factor-de-escala.ts` («1,3»: texto de la comparación) |
 | Cantidad en un mensaje (no trivial de unir con su unidad) | 2 | `actualizar-activo-sucursal`, `actualizar-decimales-unidad`: quedan con el vencimiento 2027-01-03 |
-| **Total** | **120** → quedan **9** | |
+| **Total** | **120** → quedan **8** | |
 
 **Dinero escrito a mano que el guardián anterior no veía** (`$${x}`; también corregido): piso de promo (3 lugares en `piso-de-promo.ts`, 2 en `promo-combo.ts`), `guardar-precio-local-promo-carta`, `reparto-de-factura` (faltan/sobran), `IMPORTE_MINIMO_TEXTO`.
 

@@ -39,7 +39,7 @@ test("agregar, chocar slugs, guardar y despublicar (apagar) desde el portal de s
     // 3. Guardar subtítulo y posición de A, y publicarla.
     await filaA.locator("summary").click();
     await filaA.getByLabel("Subtítulo en el portal (público, opcional)").fill("Frente al lago");
-    await filaA.getByLabel("x (centro)").fill("12.5");
+    await filaA.getByLabel("x (centro)").fill("12,5");
     await filaA.getByLabel("y (centro)").fill("40");
     await filaA.getByLabel("Ancho").fill("8");
     await filaA.getByLabel("Publicada en el portal").check();

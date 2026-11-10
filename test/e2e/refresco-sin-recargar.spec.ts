@@ -119,9 +119,11 @@ test("unidades: crear, cambiar decimales y desactivar se ven sin recargar la pá
   await expect(fila).toHaveCount(1);
 
   // Decimales: el valor guardado se ve en el input (su atributo `value` cambia solo si la pantalla se vuelve a renderizar).
-  await fila.locator('input[name="decimales"]').fill("5");
+  // Regla de números 2026-11-09: el `name` está en un hidden (valor canónico); se escribe en el campo visible (`inputmode="decimal"`).
+  await fila.locator('input[inputmode="decimal"]').fill("5");
   await fila.getByRole("button", { name: "Guardar", exact: true }).click();
   await expect(fila.locator('input[name="decimales"]')).toHaveAttribute("value", "5");
+  await expect(fila.locator('input[inputmode="decimal"]')).toHaveValue("5");
 
   await fila.getByRole("button", { name: "Desactivar", exact: true }).click();
   await expect(fila.getByRole("cell", { name: "No", exact: true })).toBeVisible();

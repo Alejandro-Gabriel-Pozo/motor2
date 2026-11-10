@@ -64,7 +64,9 @@ describe("margen objetivo configurable", () => {
   describe("guardarMargenObjetivo", () => {
     it("fija, cambia y borra el objetivo de la empresa: siempre una sola fila sin categoría", async () => {
       expect((await guardarMargenObjetivo(null, 30)).ok).toBe(true);
-      expect((await guardarMargenObjetivo(null, "35,5")).ok).toBe(true);
+      // regla de números 2026-11-09: el servidor lee solo el formato canónico («35.5»); la coma la escribe una persona en la pantalla y el campo la manda como punto.
+      expect((await guardarMargenObjetivo(null, "35,5")).ok, "con coma llega solo si alguien arma el pedido a mano: se rechaza").toBe(false);
+      expect((await guardarMargenObjetivo(null, "35.5")).ok).toBe(true);
       const filas = await prisma.margenObjetivo.findMany();
       expect(filas).toHaveLength(1);
       expect(filas[0]).toMatchObject({ categoriaId: null });

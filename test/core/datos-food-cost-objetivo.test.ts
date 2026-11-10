@@ -8,12 +8,16 @@ describe("validarFoodCostObjetivo", () => {
   });
 
   it("vacío → null (sin objetivo propio)", () => {
-    for (const v of [undefined, null, "", "   "]) expect(validarFoodCostObjetivo(v)).toEqual({ ok: true, valor: null });
+    for (const v of [undefined, null, ""]) expect(validarFoodCostObjetivo(v)).toEqual({ ok: true, valor: null });
+    // regla de números 2026-11-09: vacío o solo espacios = vacío; el texto con contenido que no es canónico es «notación»
+    expect(validarFoodCostObjetivo("   ")).toEqual({ ok: true, valor: null });
+    expect(validarFoodCostObjetivo(" 33,3 ")).toMatchObject({ ok: false, codigo: "notacion" });
   });
 
-  it("acepta un % entre 0 y 100, hasta 2 decimales, y texto es-AR", () => {
+  it("acepta un % entre 0 y 100, hasta 2 decimales, y texto canónico", () => {
     for (const n of [0.01, 25, 33.33, 40, 99.99]) expect(validarFoodCostObjetivo(n)).toEqual({ ok: true, valor: n });
-    expect(validarFoodCostObjetivo("32,5")).toEqual({ ok: true, valor: 32.5 });
+    expect(validarFoodCostObjetivo("32.5")).toEqual({ ok: true, valor: 32.5 });
+    expect(validarFoodCostObjetivo("32,5")).toMatchObject({ ok: false, codigo: "notacion" });
   });
 
   it.each([0, -1, -0.5, "0", "-10"])("rechaza %s (tiene que ser mayor que 0)", (v) => {
@@ -24,11 +28,15 @@ describe("validarFoodCostObjetivo", () => {
     expect(validarFoodCostObjetivo(v)).toMatchObject({ ok: false, codigo: "rango" });
   });
 
-  it.each([12.345, 40.001, "33,333"])("rechaza %s: más de 2 decimales", (v) => {
+  it.each([12.345, 40.001, "33.333"])("rechaza %s: más de 2 decimales", (v) => {
     expect(validarFoodCostObjetivo(v)).toMatchObject({ ok: false, codigo: "decimales" });
   });
 
-  it.each([Number.NaN, Number.POSITIVE_INFINITY, "abc", true, {}, []])("rechaza %s como formato inválido", (v) => {
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, true, {}, []])("rechaza %s como formato inválido", (v) => {
     expect(validarFoodCostObjetivo(v)).toMatchObject({ ok: false, codigo: "formato" });
+  });
+
+  it.each(["abc", "33,3", "1.234,5"])("rechaza el texto %s por notación (no canónico)", (v) => {
+    expect(validarFoodCostObjetivo(v)).toMatchObject({ ok: false, codigo: "notacion" });
   });
 });

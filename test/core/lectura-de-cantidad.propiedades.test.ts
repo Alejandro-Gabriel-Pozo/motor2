@@ -5,7 +5,7 @@ import { CONTEXTO_CANTIDAD_SIN_UNIDAD, interpretarNumeroTecleado } from "@/core/
 
 /**
  * Propiedades de la lectura en vivo de una cantidad (src/core/catalogo/lectura-de-cantidad.ts). Los textos se arman VÁLIDOS por construcción
- * (dígitos y separadores en las formas que acepta el parser), así cada propiedad dice algo de un caso que el operario puede tipear. Puro: sin base.
+ * (dígitos y UNA coma, lo único que acepta el parser desde la regla de números 2026-11-09), así cada propiedad dice algo de un caso que el operario puede tipear. Puro: sin base.
  */
 const RUNS = { numRuns: 1000 };
 const KG = unidadesDeLectura([
@@ -14,7 +14,6 @@ const KG = unidadesDeLectura([
 ]).kg;
 const CONTEXTO_KG = CONTEXTO_CANTIDAD_SIN_UNIDAD;
 
-const separador = fc.constantFrom(".", ",");
 const tresDigitos = fc.integer({ min: 0, max: 999 }).map((n) => String(n).padStart(3, "0"));
 
 function lecturaDe(texto: string) {
@@ -28,7 +27,7 @@ describe("lectura de cantidad (propiedades)", () => {
     const texto = fc.oneof(
       fc.integer({ min: 0, max: 99_999 }).map(String),
       fc.tuple(fc.integer({ min: 0, max: 9999 }), fc.integer({ min: 0, max: 99 })).map(([e, d]) => `${e},${d}`),
-      fc.tuple(fc.integer({ min: 1, max: 999 }), tresDigitos, tresDigitos).map(([a, b, c]) => `${a}.${b}.${c}`)
+      fc.tuple(fc.integer({ min: 1, max: 999 }), tresDigitos, tresDigitos).map(([a, b, c]) => `${a}${b}${c}`)
     );
     fc.assert(
       fc.property(texto, (t) => {
@@ -40,21 +39,27 @@ describe("lectura de cantidad (propiedades)", () => {
     );
   });
 
-  it("un punto con 1 a 3 dígitos antes y exactamente 3 después NUNCA se adivina en kilos: es inválido y dice las dos lecturas", () => {
+  // regla de números 2026-11-09: antes «1.205» era ambiguo (miles o decimal); ahora CUALQUIER punto es el aviso de la coma, nunca se adivina.
+  it("cualquier texto con un punto es inválido con el aviso de la coma, sin importar cuántas cifras haya antes o después", () => {
+    const conPunto = fc.oneof(
+      fc.tuple(fc.integer({ min: 0, max: 999 }), tresDigitos).map(([e, d]) => `${e}.${d}`),
+      fc.tuple(fc.integer({ min: 0, max: 99_999 }), fc.integer({ min: 0, max: 99 })).map(([e, d]) => `${e}.${d}`),
+      fc.tuple(fc.integer({ min: 1, max: 999 }), tresDigitos, tresDigitos).map(([a, b, c]) => `${a}.${b}.${c}`),
+      fc.tuple(fc.integer({ min: 1, max: 999 }), tresDigitos, fc.integer({ min: 0, max: 99 })).map(([a, b, c]) => `${a}.${b},${c}`)
+    );
     fc.assert(
-      fc.property(fc.integer({ min: 1, max: 999 }), tresDigitos, (entero, decimales) => {
-        const r = leerCantidadTecleada(`${entero}.${decimales}`, KG);
-        expect(r).toEqual({ tipo: "invalido", mensaje: `¿${entero},${decimales} o ${entero}${decimales}? Escribí ${entero}${decimales} o ${entero},${decimales}.` });
+      fc.property(conPunto, (t) => {
+        expect(leerCantidadTecleada(t, KG)).toEqual({ tipo: "invalido", mensaje: "Los decimales van con coma: 0,5" });
       }),
       RUNS
     );
   });
 
-  it("con coma, o con miles bien agrupados, o sin separador, siempre se entiende", () => {
+  it("con coma o sin separador, siempre se entiende", () => {
     const sinAmbiguedad = fc.oneof(
       fc.integer({ min: 0, max: 10_000_000 }).map(String),
       fc.tuple(fc.integer({ min: 0, max: 9999 }), fc.integer({ min: 0, max: 999 })).map(([e, d]) => `${e},${String(d).padStart(3, "0")}`),
-      fc.tuple(fc.integer({ min: 1, max: 999 }), separador.filter((s) => s === "."), tresDigitos, tresDigitos).map(([a, s, b, c]) => `${a}${s}${b}${s}${c}`)
+      fc.tuple(fc.integer({ min: 1, max: 999 }), tresDigitos, tresDigitos).map(([a, b, c]) => `${a}${b}${c}`)
     );
     fc.assert(
       fc.property(sinAmbiguedad, (t) => {
