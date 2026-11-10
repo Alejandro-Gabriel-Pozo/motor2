@@ -8,6 +8,20 @@ import { aCentavos, faltaRepartir, repartirFactura, type RenglonARepartir } from
  */
 const renglon = (precioTotal: number): RenglonARepartir => ({ nombre: "Harina", precioTotal, cantidadStock: 1000, decimales: 2 });
 
+/** Oráculo del formato de salida, escrito aparte de `formato-de-numero.ts` (regla del dueño 2026-11-09/10): «$ 1.234,50» con espacio que no se parte, siempre 2 decimales. */
+function conMiles(entero: string): string {
+  return entero.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+function pesosEsAR(n: number): string {
+  const [entero, decimales] = n.toFixed(2).split(".");
+  return `$\u00a0${conMiles(entero!)},${decimales}`;
+}
+/** Porcentaje: hasta 2 decimales, sin ceros de relleno, coma decimal. */
+function porcentajeEsAR(n: number): string {
+  const [entero, decimales] = String(Number(n.toFixed(2))).split(".");
+  return decimales ? `${conMiles(entero!)},${decimales}` : conMiles(entero!);
+}
+
 describe("faltaRepartir: la pantalla coincide con el servidor", () => {
   it("33,33 + 33,33 + 33,34 cierra en cero", () => {
     expect(faltaRepartir("PORCENTAJE", [100], [33.33, 33.33, 33.34])).toBe(0);
@@ -46,8 +60,8 @@ describe("faltaRepartir: la pantalla coincide con el servidor", () => {
           } else {
             expect(r.ok).toBe(false);
             if (r.ok) return;
-            const pesos = (Math.abs(falta) / 100).toFixed(2);
-            expect(r.mensaje).toContain(falta > 0 ? `faltan $${pesos}` : `sobran $${pesos}`);
+            const pesos = pesosEsAR(Math.abs(falta) / 100);
+            expect(r.mensaje).toContain(falta > 0 ? `faltan ${pesos}` : `sobran ${pesos}`);
           }
         }
       ),
@@ -63,7 +77,7 @@ describe("faltaRepartir: la pantalla coincide con el servidor", () => {
         const r = repartirFactura([renglon(1000)], "PORCENTAJE", vs);
         const rechazoPorSuma = !r.ok && /tienen que sumar 100/.test(r.mensaje);
         expect(rechazoPorSuma).toBe(falta !== 0);
-        if (!r.ok && rechazoPorSuma) expect(r.mensaje).toContain(`suman ${((10000 - falta) / 100).toFixed(2)} %`);
+        if (!r.ok && rechazoPorSuma) expect(r.mensaje).toContain(`suman ${porcentajeEsAR((10000 - falta) / 100)} %`);
       }),
       { numRuns: 500 }
     );
