@@ -133,7 +133,7 @@ describe("vistaPreviaDeOpciones («Va a mostrar: …» de «Agregar a la carta»
         ],
         sinCosto: [{ grupo: "Guarnición", opciones: ["Papas fritas", "Puré"] }],
       })
-    ).toBe("Va a mostrar: Tamaño: Chica $ 9.000,00, Grande $ 10.500,00 · Extras: Huevo +$ 800,00, Sin pan −$ 300,00 · Guarnición: Papas fritas, Puré.");
+    ).toBe("Va a mostrar: Tamaño: Chica $ 9.000, Grande $ 10.500 · Extras: Huevo +$ 800, Sin pan −$ 300 · Guarnición: Papas fritas, Puré.");
     expect(vistaPreviaDeOpciones(true, { grupos: [], sinCosto: [] })).toBe("Sin opciones para elegir (las que tiene no cambian nada en la carta).");
   });
 });

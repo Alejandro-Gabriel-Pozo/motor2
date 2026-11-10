@@ -129,9 +129,9 @@ test.describe("carta de una sucursal", () => {
       // Ir a la sección desde el índice.
       await page.getByRole("button", { name: new RegExp(seccion.nombre) }).click();
       await expect(page.getByText(producto.nombre)).toBeVisible();
-      await expect(page.getByText("$ 12.345,00")).toBeVisible();
+      await expect(page.getByText("$ 12.345")).toBeVisible();
       await expect(page.getByText(promo.titulo)).toBeVisible();
-      await expect(page.getByText("$ 5.000,00")).toBeVisible();
+      await expect(page.getByText("$ 5.000")).toBeVisible();
     } finally {
       await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });
       await prisma.promoCartaSucursal.deleteMany({ where: { promoCarta: { id: promo.id } } });
@@ -167,8 +167,8 @@ test.describe("carta de una sucursal", () => {
       await page.goto(`/carta-publica/${EMPRESA}/${slug}`);
       await page.getByRole("button", { name: new RegExp(seccion.nombre) }).click();
       await expect(page.getByText(producto.nombre)).toBeVisible();
-      await expect(page.getByText("$ 11.111,00")).toBeVisible();
-      await expect(page.getByText("$ 22.222,00")).toHaveCount(0);
+      await expect(page.getByText("$ 11.111")).toBeVisible();
+      await expect(page.getByText("$ 22.222")).toHaveCount(0);
 
       // La carta está cacheada (ISR): reactivar la capacidad desde el admin tiene que invalidarla, no esperar los 5 minutos.
       await paginaAutenticada.goto("/administracion/capacidades-sucursal");
@@ -182,8 +182,8 @@ test.describe("carta de una sucursal", () => {
 
       await page.goto(`/carta-publica/${EMPRESA}/${slug}`);
       await page.getByRole("button", { name: new RegExp(seccion.nombre) }).click();
-      await expect(page.getByText("$ 22.222,00")).toBeVisible();
-      await expect(page.getByText("$ 11.111,00")).toHaveCount(0);
+      await expect(page.getByText("$ 22.222")).toBeVisible();
+      await expect(page.getByText("$ 11.111")).toHaveCount(0);
     } finally {
       await prismaAdmin.usuarioEmpresa.updateMany({ where: { empresaId: sucursal.empresaId, rolEmpresa: "gerente" }, data: { rolEmpresa: null } });
       await prisma.capacidadSucursal.deleteMany({ where: { accionClave: "precio_local", sucursalId } });
@@ -235,8 +235,8 @@ test.describe("carta de una sucursal", () => {
         await expect(tabla).toBeVisible();
         await expect(tabla.getByRole("columnheader")).toHaveText(["Chico", "Mediano", "Grande"]);
         await expect(tabla.getByRole("rowheader")).toHaveText(["Solo", "Flat white", "Cortado", "Con leche"]);
-        await expect(tabla.getByRole("row", { name: /^Solo/ }).getByRole("cell")).toHaveText(["$ 2.500,00", "$ 2.800,00", "$ 3.100,00"]);
-        await expect(tabla.getByRole("row", { name: /^Con leche/ }).getByRole("cell")).toHaveText(["$ 2.900,00", "$ 3.200,00", "$ 3.500,00"]);
+        await expect(tabla.getByRole("row", { name: /^Solo/ }).getByRole("cell")).toHaveText(["$ 2.500", "$ 2.800", "$ 3.100"]);
+        await expect(tabla.getByRole("row", { name: /^Con leche/ }).getByRole("cell")).toHaveText(["$ 2.900", "$ 3.200", "$ 3.500"]);
         await expect(filas.cafe).not.toContainText("desde");
         await expect(filas.cafe).not.toContainText("Ver opciones");
         expect(await filas.cafe.locator("details").count(), "ningún desplegable").toBe(0);
@@ -244,11 +244,11 @@ test.describe("carta de una sucursal", () => {
         const extrasCafe = filas.cafe.locator(`[data-aclaracion='Extras ${m}']`);
         await expect(extrasCafe.locator("[data-rol=aclaracion-rotulo]")).toHaveText(`Extras ${m}`);
         await expect(extrasCafe.locator("[data-rol=opcion]")).toHaveText(["medialuna", "shot"]);
-        await expect(extrasCafe.locator("[data-rol=opcion-precio]")).toHaveText(["+$ 600,00", "+$ 500,00"]);
+        await expect(extrasCafe.locator("[data-rol=opcion-precio]")).toHaveText(["+$ 600", "+$ 500"]);
         await expect(filas.cafe.locator("[data-tamanos-carta], [data-suma-carta], [data-opciones-sin-costo]")).toHaveCount(0);
         // La milanesa (Fase 5, forma «simple»; carta «B» de 2026-11-04): su precio base de siempre; su guarnición es de UN solo plato de la sección, así que va DEBAJO del plato (2026-11-05), sin la línea
         // «Incluye…» ni «Con los platos que incluyen…»; sus opciones («papas fritas · puré · ensalada», sin la «ninguna») sin «Ver opciones» ni desplegable; el flan, un producto común.
-        await expect(filas.milanesa).toContainText("$ 9.500,00");
+        await expect(filas.milanesa).toContainText("$ 9.500");
         await expect(filas.milanesa.locator("[data-incluye]")).toHaveCount(0);
         const bloqueGuarnicion = page.locator(`[data-bloque-de-opciones='Guarnición ${m}']`);
         await expect(bloqueGuarnicion).toBeVisible();
@@ -260,7 +260,7 @@ test.describe("carta de una sucursal", () => {
         await expect(filas.milanesa).not.toContainText("Sin guarnición");
         expect(await filas.milanesa.locator("details").count(), "ningún desplegable").toBe(0);
         await expect(filas.milanesa.locator("[data-tamanos-carta], [data-suma-carta]")).toHaveCount(0);
-        await expect(filas.flan).toContainText("$ 3.200,00");
+        await expect(filas.flan).toContainText("$ 3.200");
         await expect(filas.flan.locator("[data-opciones-sin-costo]")).toHaveCount(0);
         await expect(page.locator("body")).not.toContainText("Sin guarnición");
         // Legibilidad (escala única, DEC-35; jerarquía única del modelo unificado): el nombre de la tabla y el del flan son 19 px (rol Producto); las filas de la tabla (las opciones) y sus precios, 16 px
@@ -287,7 +287,7 @@ test.describe("carta de una sucursal", () => {
       const despues = await abrir();
       // La columna agotada en todo el producto desaparece de la tabla.
       await expect(despues.cafe.locator("table").getByRole("columnheader")).toHaveText(["Chico", "Grande"]);
-      await expect(despues.cafe.locator("table").getByRole("row", { name: /^Solo/ }).getByRole("cell")).toHaveText(["$ 2.500,00", "$ 3.100,00"]);
+      await expect(despues.cafe.locator("table").getByRole("row", { name: /^Solo/ }).getByRole("cell")).toHaveText(["$ 2.500", "$ 3.100"]);
       await expect(despues.cafe).not.toContainText("Mediano");
     } finally {
       await prisma.sucursalPublica.deleteMany({ where: { sucursalId } });

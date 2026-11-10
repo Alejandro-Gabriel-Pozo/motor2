@@ -1124,6 +1124,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Regla del dueño (2026-11-10, dinero siempre con 2 decimales vía `formatearMonto`, también en la CARTA PÚBLICA; cambio visible para el cliente final, SOLO FORMATO): los precios de la carta pública pasan de «$18.000» / «+$2.000» a «$ 18.000,00» / «+$ 2.000,00» (el texto visible se normaliza con espacios comunes). No cambia ningún valor ni forma de la carta; cambian solo las líneas con precios.",
       },
+      {
+        blob: "5058cff650bc3612e26abf32eb477313c136c428",
+        // Un commit no puede llevar su propio hash: es el commit PADRE de este, ed7fd6c4 (hotfix de la carta pública).
+        commit: "ed7fd6c4",
+        motivo:
+          "Decisión del dueño (2026-11-10, «el ,00 solo si hay decimales que mostrar»; SOLO FORMATO de la CARTA PÚBLICA, no cambia ningún valor, forma ni orden): los precios de la carta pública pasan de «$ 18.000,00» / «+$ 2.000,00» a «$ 18.000» / «+$ 2.000» (importe entero sin decimales; con centavos saldrían 2: «$ 1.234,50»). Cambian solo las líneas con precios de la carta (58). Regenerado a partir del golden anterior a #223 (con «$18.000») aplicando el formato nuevo (el texto visible se normaliza con espacios comunes), no corrido contra el navegador.",
+      },
     ],
   },
 };

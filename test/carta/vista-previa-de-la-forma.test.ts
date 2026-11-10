@@ -18,14 +18,14 @@ describe("vistaPreviaDeLaForma (puro)", () => {
     expect(vistaPreviaDeLaForma("Bife", { forma: "simple", aclaraciones: [{ tipo: "eleccion", rotulo: "Guarnicion", opciones: ["ensalada", "puré"], descripciones: [null, null], cantidadMinima: 1, cantidadMaxima: 1 }] })).toBe(
       "Va a mostrar «Bife» con su precio · Incluye 1 guarnicion · Guarnicion · elegís 1: ensalada · puré. Con los platos que incluyen guarnicion.",
     );
-    expect(vistaPreviaDeLaForma("Café", { forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [4000, null] }], aclaraciones: [] })).toBe("Va a mostrar una tabla «Café» (Chico / Grande): $ 4.000,00 / –.");
+    expect(vistaPreviaDeLaForma("Café", { forma: "tabla", titulo: true, columnas: ["Chico", "Grande"], filas: [{ rotulo: null, celdas: [4000, null] }], aclaraciones: [] })).toBe("Va a mostrar una tabla «Café» (Chico / Grande): $ 4.000 / –.");
     expect(
       vistaPreviaDeLaForma("Milanesas", { forma: "tabla", titulo: true, columnas: ["Simple", "Napolitana"], filas: [{ rotulo: "De carne", celdas: [20000, 25000] }], aclaraciones: [] }),
-    ).toBe("Va a mostrar una tabla «Milanesas» (Simple / Napolitana): De carne $ 20.000,00 / $ 25.000,00.");
+    ).toBe("Va a mostrar una tabla «Milanesas» (Simple / Napolitana): De carne $ 20.000 / $ 25.000.");
     expect(vistaPreviaDeLaForma("Pizzas", { forma: "tabla", titulo: false, columnas: [], filas: [{ rotulo: "Pizza muzzarella", celdas: [18000] }], aclaraciones: [] })).toBe(
-      "Va a mostrar cada opción como un plato: Pizza muzzarella $ 18.000,00.",
+      "Va a mostrar cada opción como un plato: Pizza muzzarella $ 18.000.",
     );
-    expect(vistaPreviaDeLaForma("Pizzas", { forma: "tabla", titulo: true, columnas: [], filas: [{ rotulo: "Muzzarella", celdas: [18000] }], aclaraciones: [] })).toBe("Va a mostrar «Pizzas» y debajo: Muzzarella $ 18.000,00.");
+    expect(vistaPreviaDeLaForma("Pizzas", { forma: "tabla", titulo: true, columnas: [], filas: [{ rotulo: "Muzzarella", celdas: [18000] }], aclaraciones: [] })).toBe("Va a mostrar «Pizzas» y debajo: Muzzarella $ 18.000.");
   });
 
 });
@@ -52,12 +52,12 @@ describe("«Va a mostrar» de «Agregar a la carta», contra Postgres", () => {
     const carta = await cargarCartaParaMantener(prisma, s.sucursalId);
     const vista = (nombre: string) => carta.fueraDeCarta.find((p) => p.nombre === nombre)?.vistaPrevia;
     expect(vista("Pizzas")).toBe(
-      "Va a mostrar cada opción como un plato: Pizza muzzarella $ 18.000,00, Pizza de verduras asadas $ 20.000,00, Pizza fugazzeta $ 22.000,00, Pizza napolitana $ 22.000,00, Pizza con papas fritas $ 25.000,00, Pizza bomba $ 25.000,00.",
+      "Va a mostrar cada opción como un plato: Pizza muzzarella $ 18.000, Pizza de verduras asadas $ 20.000, Pizza fugazzeta $ 22.000, Pizza napolitana $ 22.000, Pizza con papas fritas $ 25.000, Pizza bomba $ 25.000.",
     );
-    expect(vista("Milanesas")).toBe("Va a mostrar una tabla «Milanesas» (Simple / Napolitana): De carne $ 20.000,00 / $ 25.000,00; De pollo $ 20.000,00 / $ 25.000,00.");
-    expect(vista("Café")).toMatch(/^Va a mostrar una tabla «Café» \(Chico \/ Mediano \/ Grande\): \$ 4\.000,00 \/ \$ 4\.100,00 \/ \$ 4\.300,00 · Preparación del café: /);
+    expect(vista("Milanesas")).toBe("Va a mostrar una tabla «Milanesas» (Simple / Napolitana): De carne $ 20.000 / $ 25.000; De pollo $ 20.000 / $ 25.000.");
+    expect(vista("Café")).toMatch(/^Va a mostrar una tabla «Café» \(Chico \/ Mediano \/ Grande\): \$ 4\.000 \/ \$ 4\.100 \/ \$ 4\.300 · Preparación del café: /);
     expect(vista("Bife a la criolla")).toBe(
-      "Va a mostrar «Bife a la criolla» con su precio · Incluye 1 guarnicion · Extras: extra de papas +$ 2.000,00, huevo frito +$ 1.500,00 · Guarnicion · elegís 1: ensalada · papas fritas · puré. Con los platos que incluyen guarnicion.",
+      "Va a mostrar «Bife a la criolla» con su precio · Incluye 1 guarnicion · Extras: extra de papas +$ 2.000, huevo frito +$ 1.500 · Guarnicion · elegís 1: ensalada · papas fritas · puré. Con los platos que incluyen guarnicion.",
     );
   });
 });

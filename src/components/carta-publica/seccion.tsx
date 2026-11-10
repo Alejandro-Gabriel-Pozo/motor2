@@ -126,7 +126,7 @@ function NombreDelItem({ item, colores }: { item: ItemCartaPublico; colores: Col
 function PrecioDelRenglon({ item, color }: { item: ItemCartaPublico; color: string }) {
   if (item.precioLista === undefined) {
     return (
-      <span data-rol="precio" className="carta-rol-precio shrink-0 carta-titulo" style={{ color }}>
+      <span data-rol="precio" className="carta-rol-precio shrink-0 whitespace-nowrap carta-titulo" style={{ color }}>
         {formatearPrecioCarta(item.precio)}
       </span>
     );
@@ -307,7 +307,7 @@ function GruposDeOpciones({ aclaraciones, colores }: { aclaraciones: readonly Ac
                 <span data-rol="opcion" className="carta-rol-opcion min-w-0" style={{ overflowWrap: "anywhere" }}>
                   {r.nombre}
                 </span>
-                <span data-rol="opcion-precio" className="carta-rol-opcion-precio shrink-0 carta-titulo" style={{ color: colores.precio }}>
+                <span data-rol="opcion-precio" className="carta-rol-opcion-precio shrink-0 whitespace-nowrap carta-titulo" style={{ color: colores.precio }}>
                   {recargoEnPesos(r.recargo)}
                 </span>
               </li>
@@ -412,7 +412,7 @@ function FilasComoPlatos({ nombre, filas, colores, incluye, interactiva }: { nom
             <h3 data-rol="producto" className="carta-rol-producto min-w-0 flex-1 carta-titulo" style={{ color: colores.nombre, overflowWrap: "anywhere" }}>
               {f.rotulo}
             </h3>
-            <span data-rol="precio" className="carta-rol-precio shrink-0 carta-titulo" style={{ color: colores.precio }}>
+            <span data-rol="precio" className="carta-rol-precio shrink-0 whitespace-nowrap carta-titulo" style={{ color: colores.precio }}>
               {formatearPrecioCarta(f.precio)}
             </span>
           </div>
@@ -436,7 +436,7 @@ function FilasDeOpcion({ nombre, filas, colorPrecio }: { nombre: string; filas: 
             {f.rotulo}
           </span>
           <span aria-hidden="true" className="min-w-3 flex-1 -translate-y-1 border-b-[1.5px] border-dotted" style={{ borderColor: "color-mix(in oklch, var(--carta-ink-soft) 55%, transparent)" }} />
-          <span data-rol="opcion-precio" className="carta-rol-opcion-precio shrink-0 carta-titulo" style={{ color: colorPrecio }}>
+          <span data-rol="opcion-precio" className="carta-rol-opcion-precio shrink-0 whitespace-nowrap carta-titulo" style={{ color: colorPrecio }}>
             {formatearPrecioCarta(f.precio)}
           </span>
         </li>
@@ -449,11 +449,13 @@ function FilasDeOpcion({ nombre, filas, colorPrecio }: { nombre: string; filas: 
  * Una celda de precio de una tabla (rol Opción precio), o «–» donde el producto no ofrece esa opción (con «no se ofrece» para el lector de pantalla: no depende de ver la raya). Las clases van escritas
  * enteras: el cerco de tipografía y Tailwind las necesitan visibles.
  */
-function CeldaDePrecio({ precio, color }: { precio: number | null; color: string }) {
+function CeldaDePrecio({ precio, color, puedeCortar }: { precio: number | null; color: string; puedeCortar: boolean }) {
+  // Un precio NUNCA se parte dentro del número (el «$ 28.000,00» va entero, con el espacio que no se parte): cede el nombre de la fila, no el importe. La única excepción es la tabla con VARIAS
+  // columnas de precio (`puedeCortar`), y solo como último recurso (cuando ni con la columna ensanchada hasta lo que mide el importe alcanza el ancho): el «$» pasa arriba del número; las cifras no se cortan.
   return (
     <>
-      <span aria-hidden={precio === null ? "true" : undefined} data-rol="opcion-precio" className="carta-rol-opcion-precio carta-titulo" style={{ color: precio === null ? "var(--carta-ink-soft)" : color, overflowWrap: "anywhere" }}>
-        {precio === null ? "–" : formatearPrecioCarta(precio).replace("\u00a0", " ")}
+      <span aria-hidden={precio === null ? "true" : undefined} data-rol="opcion-precio" className="carta-rol-opcion-precio carta-titulo" style={{ color: precio === null ? "var(--carta-ink-soft)" : color, ...(puedeCortar ? {} : { whiteSpace: "nowrap" }) }}>
+        {precio === null ? "–" : puedeCortar ? formatearPrecioCarta(precio).replace("\u00a0", " ") : formatearPrecioCarta(precio)}
       </span>
       {precio === null && <span className="sr-only">no se ofrece</span>}
     </>
@@ -468,13 +470,18 @@ function CeldaDePrecio({ precio, color }: { precio: number | null; color: string
  * Debajo, la descripción, los tags y las aclaraciones.
  */
 function TablaDelItem({ item, p, colores, incluye, posicion, sinLinea }: { sinLinea?: { readonly borderBottomWidth: 0 }; item: ItemCartaPublico; p: Extract<NonNullable<ItemCartaPublico["presentacion"]>, { forma: "tabla" }>; colores: ColoresDelItem; incluye: readonly ParteDeIncluye[]; posicion?: number }) {
+  const columnasDePrecio = Math.max(1, p.columnas.length);
+  const puedeCortar = columnasDePrecio >= 2;
+  // Lo que mide el importe más largo de la tabla (en caracteres): la columna de precio se ensancha hasta ahí (`--carta-largo-precio`, `globals.css`) para que ningún precio se parta.
+  const largoDePrecio = Math.max(0, ...p.filas.flatMap((f) => f.celdas.filter((c): c is number => c !== null).map((c) => formatearPrecioCarta(c).length)));
+  const medidasDeLaTabla = { "--carta-largo-precio": largoDePrecio, "--carta-columnas": columnasDePrecio } as React.CSSProperties;
   return (
     <li data-forma="tabla" data-plato={posicion} className="carta-tabla pb-2.5 pt-3.5" style={sinLinea}>
       <div className="carta-linea-fina flex items-baseline justify-between gap-3 pb-1.5">
         <NombreDelItem item={item} colores={colores} />
         {item.descuentoPorcentaje !== undefined && <AvisoDeDescuento porcentaje={item.descuentoPorcentaje} color={colores.precio} />}
       </div>
-      <table data-tabla-carta aria-label={item.nombre} className="mb-0.5 w-full table-fixed border-collapse">
+      <table data-tabla-carta aria-label={item.nombre} className="mb-0.5 w-full table-fixed border-collapse" style={medidasDeLaTabla}>
         <colgroup>
           <col />
           {Array.from({ length: Math.max(1, p.columnas.length) }, (_, c) => (
@@ -486,7 +493,7 @@ function TablaDelItem({ item, p, colores, incluye, posicion, sinLinea }: { sinLi
             <tr>
               <td />
               {p.columnas.map((r, c) => (
-                <th key={`col-${c}`} scope="col" data-rol="columna" className="carta-rol-columna pb-1 pl-1 pt-1 text-right align-bottom" style={{ overflowWrap: "anywhere" }}>
+                <th key={`col-${c}`} scope="col" data-rol="columna" className="carta-rol-columna pb-1 pl-1 pt-1 text-right align-bottom">
                   {r}
                 </th>
               ))}
@@ -506,8 +513,8 @@ function TablaDelItem({ item, p, colores, incluye, posicion, sinLinea }: { sinLi
                 )}
               </th>
               {f.celdas.map((precio, c) => (
-                <td key={`celda-${c}`} className="py-1.5 pl-1 text-right align-baseline">
-                  <CeldaDePrecio precio={precio} color={colores.precio} />
+                <td key={`celda-${c}`} className={puedeCortar ? "py-1.5 pl-1 text-right align-baseline" : "whitespace-nowrap py-1.5 pl-1 text-right align-baseline"}>
+                  <CeldaDePrecio precio={precio} color={colores.precio} puedeCortar={puedeCortar} />
                 </td>
               ))}
             </tr>
@@ -577,7 +584,7 @@ function PromoFila({ promo }: { promo: PromoCartaPublica }) {
         <h3 data-rol="producto" className="carta-rol-producto min-w-0 flex-1 carta-titulo">
           {promo.titulo}
         </h3>
-        <span data-rol="precio" className="carta-rol-precio shrink-0 carta-titulo" style={{ color: "var(--carta-primary)" }}>
+        <span data-rol="precio" className="carta-rol-precio shrink-0 whitespace-nowrap carta-titulo" style={{ color: "var(--carta-primary)" }}>
           {formatearPrecioCarta(promo.precio)}
         </span>
       </div>

@@ -1,4 +1,4 @@
-import { formatearMonto } from "@/core/formato-de-numero";
+import { formatearMontoCarta } from "@/core/formato-de-numero";
 
 /**
  * ADR-006 (`docs/adr/ADR-006-carta-como-modulo-interno.md`), Fase 3: formatea un precio de la carta pública con la
@@ -7,6 +7,6 @@ import { formatearMonto } from "@/core/formato-de-numero";
  * mismas 3 claves fijas — acá no hace falta el parámetro, ya son constantes.
  */
 export function formatearPrecioCarta(precio: number): string {
-  // Regla del dueño 2026-11-10: el dinero siempre sale por `formatearMonto` («$ 3.500,00»), también en la carta pública (cambio visible para el cliente final).
-  return formatearMonto(precio);
+  // Regla del dueño 2026-11-10: la carta pública del cliente final sale por `formatearMontoCarta`: «$ 3.500» si el importe es entero y «$ 3.500,50» con centavos (decisión del dueño: el «,00» solo si hay decimales que mostrar).
+  return formatearMontoCarta(precio);
 }
