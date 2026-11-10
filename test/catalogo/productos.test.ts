@@ -460,8 +460,13 @@ describe("productos", () => {
   });
 
   describe("lo que se guarda es lo validado, no el valor crudo del POST", () => {
-    it("un precio de venta tecleado en es-AR («1.234,5») se guarda normalizado (1234.5)", async () => {
-      const r = await darDeAltaProducto({ nombre: "Pizza tecleada", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: "1.234,5" as never });
+    // regla de números 2026-11-09: el servidor lee un texto solo en formato canónico; el es-AR («1.234,5») ya no llega y se rechaza sin crear nada.
+    it("un precio de venta de texto en formato canónico («1234.5») se guarda como número (1234.5); el es-AR («1.234,5») se rechaza", async () => {
+      const mal = await darDeAltaProducto({ nombre: "Pizza es-AR", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: "1.234,5" as never });
+      expect(mal.ok).toBe(false);
+      expect(mal.mensaje).toMatch(/Formato de número no admitido/);
+      expect(await prisma.producto.count({ where: { nombre: "Pizza es-AR" } })).toBe(0);
+      const r = await darDeAltaProducto({ nombre: "Pizza tecleada", tipo: "PV", unidadStockId: unidadGId, factorConversion: 1, precioVenta: "1234.5" as never });
       expect(r.ok, r.mensaje).toBe(true);
       const creado = await prisma.producto.findFirstOrThrow({ where: { nombre: "Pizza tecleada" } });
       expect(Number(creado.precioVenta)).toBe(1234.5);

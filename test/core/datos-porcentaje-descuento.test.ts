@@ -54,9 +54,12 @@ describe("validarPorcentajeDescuento", () => {
     }
   );
 
-  it("texto tecleado en es-AR", () => {
-    expect(validarPorcentajeDescuento("15,5")).toEqual({ ok: true, valor: 15.5 });
-    expect(validarPorcentajeDescuento("abc")).toMatchObject({ ok: false, codigo: "formato" });
+  // regla de números 2026-11-09: el servidor lee de un texto SOLO el formato canónico (un punto decimal); la coma de «15,5» es lo que escribe la persona en pantalla y nunca llega así al servidor.
+  it("texto de entrada: solo el formato canónico (un punto decimal); la coma y el punto de miles se rechazan", () => {
+    expect(validarPorcentajeDescuento("15.5")).toEqual({ ok: true, valor: 15.5 });
+    expect(validarPorcentajeDescuento("15,5")).toMatchObject({ ok: false, codigo: "notacion" });
+    expect(validarPorcentajeDescuento("1.234,5")).toMatchObject({ ok: false, codigo: "notacion" });
+    expect(validarPorcentajeDescuento("abc")).toMatchObject({ ok: false, codigo: "notacion" }); // texto que no es canónico: «notacion» (antes «formato»)
     expect(validarPorcentajeDescuento("-5")).toMatchObject({ ok: false, codigo: "negativo" });
   });
 });

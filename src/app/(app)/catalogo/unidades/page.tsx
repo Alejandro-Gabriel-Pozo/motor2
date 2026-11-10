@@ -16,6 +16,8 @@ import {
 } from "@/server/actions/catalogo/unidades";
 import { BotonDeServidor } from "@/components/boton-de-servidor";
 import { FormConResultado } from "@/components/form-con-resultado";
+import { CampoNumero } from "@/components/campo-numero";
+import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { Campo } from "@/ui/primitivas/campo";
 import { Selector } from "@/ui/primitivas/selector";
 
@@ -71,14 +73,14 @@ export default async function UnidadesPage() {
                       accion={async (formData: FormData) => {
                         "use server";
                         // Vacío → NaN (la acción lo rechaza); con `Number("")` llegaría como 0 y se guardaría sin avisar.
-                        const bruto = String(formData.get("decimales") ?? "").trim();
-                        return actualizarDecimalesUnidad(u.id, bruto === "" ? NaN : Number(bruto));
+                        // `numeroDelCampo`: lee el valor canónico que manda `CampoNumero` (vacío o texto inválido → NaN).
+                        return actualizarDecimalesUnidad(u.id, numeroDelCampo(String(formData.get("decimales") ?? "").trim()) ?? Number.NaN);
                       }}
                       className="space-y-1"
                     >
                       <div className="flex items-center gap-1">
                         <div className="w-20">
-                          <Campo name="decimales" type="number" required aria-label={`Decimales de ${u.nombre}`} min={0} max={6} defaultValue={u.decimales} />
+                          <CampoNumero tipo="entero" etiqueta="Los decimales" name="decimales" required ariaLabel={`Decimales de ${u.nombre}`} defaultValue={String(u.decimales)} />
                         </div>
                         <BotonDeServidor type="submit" variante="enlace" tamano="en-fila">
                           Guardar

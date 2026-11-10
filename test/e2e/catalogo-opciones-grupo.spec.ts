@@ -138,7 +138,7 @@ test("cambiar precio o consumo: de monto a porcentaje con su espejo, REEMPLAZA s
   const fila = page.locator("[data-opcion='Almendras']");
   await fila.getByRole("button", { name: "Cambiar precio o consumo de Almendras" }).click();
   // Arranca con lo que rige: 300 pesos.
-  await expect(fila.getByLabel("Diferencia en pesos")).toHaveValue("300");
+  await expect(fila.getByLabel("Diferencia en pesos")).toHaveValue("300,00"); // regla de números 2026-11-09: importe con 2 decimales
   await fila.getByRole("radio", { name: "Porcentaje" }).check();
   await fila.getByLabel("Diferencia en porcentaje").fill("15");
   await expect(fila.locator("[data-espejo]")).toContainText("≈ + $ 300,00 sobre el precio base");

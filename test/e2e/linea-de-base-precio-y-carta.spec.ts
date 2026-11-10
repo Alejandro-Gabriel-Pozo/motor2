@@ -283,7 +283,7 @@ function volcarAdmin(page: Page, secciones: readonly string[] | null): Promise<{
       }
       // El «Orden» sugerido de una sección nueva es la cantidad de secciones de la empresa.
       for (const form of raiz.querySelectorAll("form")) {
-        if ([...form.querySelectorAll("button")].some((b) => norm(b.textContent ?? "") === "Crear sección")) form.querySelector("input[name=orden]")?.setAttribute("data-lb-variable", "");
+        if ([...form.querySelectorAll("button")].some((b) => norm(b.textContent ?? "") === "Crear sección")) form.querySelector("input[name=orden]")?.parentElement?.querySelector("input[inputmode=decimal]")?.setAttribute("data-lb-variable", ""); // regla de números 2026-11-09: `name=orden` es el hidden; el que se ve es el hermano de `inputmode=decimal`
       }
     }
 

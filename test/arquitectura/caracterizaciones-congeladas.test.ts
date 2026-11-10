@@ -1096,6 +1096,13 @@ const CONGELADAS: Record<string, Congelada> = {
         motivo:
           "Regla de números del dueño (2026-11-09, «1.000,00»; SOLO FORMATO, comprobado: sin «,00» y sin el espacio tras «$» las líneas viejas y nuevas son idénticas): los importes de las pantallas de ADMINISTRACIÓN (resumen «Así se cobra», lectura de precio de cada opción, vista previa de la carta en el catálogo) salen con 2 decimales («$ 18.000» pasa a «$ 18.000,00»; «$18.000» pasa a «$ 18.000,00»). Cambia 32 líneas por ancho (64 en total). La carta PÚBLICA del cliente NO cambia (no hay ninguna línea suya en el diff).",
       },
+      {
+        blob: "531d6ed083087f09ca4c7fe7cacabfc86735e44e",
+        // El commit PADRE de este (e695b570) es el último antes de la regeneración; el cambio es de la regla de números del campo (CampoNumero).
+        commit: "e695b570",
+        motivo:
+          "Regla de números 2026-11-09: el campo numérico muestra miles con punto y el importe con 2 decimales (CAMBIA SOLO ADMINISTRACIÓN, regenerado con REGENERAR_LB_PRECIO_Y_CARTA=1 contra motor2_e2e local). Cambian SOLO las líneas `[campo: «…»]` de los precios de las pantallas de administración (por ejemplo «18.000» pasa a «18.000,00»): 14 líneas; la carta pública, el cobro y el resto de las pantallas quedan idénticos byte a byte. El spec enmascara ahora el campo visible de «Orden» (el `name=orden` pasó al hidden).",
+      },
     ],
   },
 };

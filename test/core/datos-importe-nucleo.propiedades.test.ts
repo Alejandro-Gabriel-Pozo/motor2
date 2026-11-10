@@ -54,10 +54,19 @@ function esImporteVistoViejo(v: unknown): v is number {
 }
 
 type ResultadoCarta = { ok: true; valor: number } | { ok: false; mensaje: string };
-/** `src/core/carta/validaciones.ts` (`validarPrecioCarta`, completo: parseo con `Number()`, orden de los chequeos y mensajes). */
+/**
+ * `src/core/carta/validaciones.ts` (`validarPrecioCarta`, completo: orden de los chequeos y mensajes de siempre). Regla de números del 2026-11-09: lo único que cambió es el PARSEO, que ya no es `Number()`:
+ * un `number` finito vale tal cual, un texto vale solo si es canónico estricto (`^-?\d+(\.\d+)?$`, escrito acá aparte del código) y todo lo demás (±Infinity, «1e3», «0x10», « 7 », booleanos, objetos) es NaN.
+ */
+const CANONICO = /^-?\d+(\.\d+)?$/;
+function parseoDelServidor(valor: unknown): number {
+  if (typeof valor === "number") return Number.isFinite(valor) ? valor : Number.NaN;
+  if (typeof valor === "string") return CANONICO.test(valor) ? Number(valor) + 0 : Number.NaN; // «-0» como texto vale 0 (el «+ 0» evita el -0)
+  return Number.NaN;
+}
 function validarPrecioCartaViejo(valor: unknown): ResultadoCarta {
   if (valor === null || valor === undefined || texto(valor) === "") return { ok: false, mensaje: "Falta el precio." };
-  const n = Number(valor);
+  const n = parseoDelServidor(valor);
   if (Number.isNaN(n)) return { ok: false, mensaje: "El precio no tiene un formato válido: usá el punto como separador decimal (por ejemplo, 12.5)." };
   if (!(n >= 0)) return { ok: false, mensaje: "El precio no puede ser negativo." };
   if (!esNumeroFinito(n) || n >= 1e12) return { ok: false, mensaje: "El precio no es un número válido." };
@@ -167,7 +176,7 @@ describe("equivalencia en el código que se usa: el guard del pedido y validarPr
     );
   });
 
-  it("validarPrecioCarta da el MISMO resultado y el MISMO mensaje que antes", () => {
+  it("validarPrecioCarta da el MISMO resultado y el MISMO mensaje que antes (con el parseo canónico estricto de la regla de números)", () => {
     fc.assert(
       fc.property(VALORES_DE_ENTRADA, (v) => {
         expect(validarPrecioCarta(v)).toEqual(validarPrecioCartaViejo(v));

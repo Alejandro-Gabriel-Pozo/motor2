@@ -270,7 +270,9 @@ describe("Huella de dinero del tramo C", () => {
 
     // ── A. Descuento de producto (sucursal activa: Central) ────────────────────────────────────────────────────────────────────────────────────────────
     await paso("descuento: alta del 15 % al Flan", await guardarDescuentoProducto(flan.id, 15));
-    await paso("descuento: cambio a «20,5»", await guardarDescuentoProducto(flan.id, "20,5"));
+    // regla de números 2026-11-09: el servidor lee un texto solo en formato canónico, así que el escenario manda «20.5» (el nombre del paso queda igual para no tocar la huella); el «20,5» de pantalla se rechaza sin escribir (se verifica sin paso, para que la huella no cambie).
+    expect(await guardarDescuentoProducto(flan.id, "20,5")).toMatchObject({ ok: false });
+    await paso("descuento: cambio a «20,5»", await guardarDescuentoProducto(flan.id, "20.5"));
     await paso("descuento: sin cambios (20.5 otra vez)", await guardarDescuentoProducto(flan.id, 20.5));
     await paso("descuento: borrar (null)", await guardarDescuentoProducto(flan.id, null));
     await paso("descuento: borrar lo que no tenía (null)", await guardarDescuentoProducto(flan.id, null));
@@ -403,11 +405,15 @@ describe("Huella de dinero del tramo C", () => {
     await paso("cliente: alta repetida", await altaCliente("fulano", 5));
     await paso("cliente: % inválido", await altaCliente("Mengano", 150));
     const fulano = await prisma.cliente.findFirstOrThrow({ where: { nombre: "Fulano" } });
-    await paso("cliente: Fulano pasa a 12,5 %", await actualizarCliente(fulano.id, "Fulano", "12,5"));
+    // regla de números 2026-11-09: texto canónico («12.5»); el «12,5» se rechaza sin escribir (fuera de la huella).
+    expect(await actualizarCliente(fulano.id, "Fulano", "12,5")).toMatchObject({ ok: false });
+    await paso("cliente: Fulano pasa a 12,5 %", await actualizarCliente(fulano.id, "Fulano", "12.5"));
     await paso("cliente: Fulano cambia de nombre", await actualizarCliente(fulano.id, "Fulano Pérez", 12.5));
     await paso("margen: alta del objetivo de la empresa (30 %)", await guardarMargenObjetivo(null, 30));
     await paso("margen: el mismo objetivo", await guardarMargenObjetivo(null, "30"));
-    await paso("margen: cambio a 32,5 %", await guardarMargenObjetivo(null, "32,5"));
+    // regla de números 2026-11-09: texto canónico («32.5»); el «32,5» se rechaza sin escribir (fuera de la huella).
+    expect(await guardarMargenObjetivo(null, "32,5")).toMatchObject({ ok: false });
+    await paso("margen: cambio a 32,5 %", await guardarMargenObjetivo(null, "32.5"));
     await paso("margen: objetivo de la categoría Pastas", await guardarMargenObjetivo(categoria.id, 25));
     await paso("margen: borrar el de la empresa", await guardarMargenObjetivo(null, null));
     await paso("margen: borrar lo que no tenía", await guardarMargenObjetivo(null, ""));

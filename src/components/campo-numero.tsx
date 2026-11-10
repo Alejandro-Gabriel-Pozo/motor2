@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { contextoDelCampo, errorDelCampo, textoParaEditar, textoParaVer, valorAEmitir, type TipoDeCampoNumerico } from "@/core/datos/campo-numero-logica";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { aplicarEdicion, contextoDelCampo, errorDelCampo, origenDeLaEdicion, textoEntendido, textoParaEditar, textoParaVer, valorAEmitir, type TipoDeCampoNumerico } from "@/core/datos/campo-numero-logica";
+import { AVISO_DEL_PUNTO } from "@/core/datos/numero-tecleado";
+import { Aviso } from "@/ui/primitivas/aviso";
 import { Campo } from "@/ui/primitivas/campo";
 
 interface Props {
@@ -35,6 +37,14 @@ interface Props {
   /** Solo `tipo="cantidad"` y `tipo="porcentaje"`: decimales que admite la unidad o la columna (sin ellos, los 4 de las columnas `Decimal(14,4)`). */
   decimales?: number;
   permitirNegativo?: boolean;
+  /** Ej. "g": la unidad del número, para el «= 60 g» que se muestra junto al campo mientras se edita. */
+  unidad?: string;
+  /** Texto fijo bajo el campo (lo dibuja `Campo`, atado con `aria-describedby`). */
+  ayuda?: ReactNode;
+  /** Un error de regla de NEGOCIO que calcula quien usa el campo («No es válido: tiene que ser un número entre 0 y 1»): se dice junto al campo, como el de lo tecleado, y marca el campo. No frena el envío (lo frena el servidor). */
+  errorDeRegla?: ReactNode;
+  /** No muestra el «= …» junto al campo: solo para quien ya lo muestra por su cuenta (la lectura en vivo de la cantidad de la receta, que además convierte de unidad). */
+  sinEntendido?: boolean;
 }
 
 /**
@@ -66,16 +76,16 @@ interface Props {
  *    ese primer toque y solo si no se arrastró una selección propia: con el
  *    campo ya enfocado, tocar de nuevo ubica el cursor como siempre.
  *
- * Lo tecleado se interpreta con el parser central `interpretarNumeroTecleado` (src/core/datos/numero-tecleado.ts, micro-paso 2c) y el CONTEXTO del campo: un importe admite 2 decimales, una
- * cantidad los de su unidad (`decimales`) y, sin `tipo`, los 4 de las columnas `Decimal(14,4)`. Notación argentina: la coma es el decimal; el punto agrupa miles bien formados («1.000.000») y
- * un solo punto con tres cifras («21.000») es miles en un importe y en una cantidad sin decimales (g, ml, unidad) y AMBIGUO (error, no se adivina) en una cantidad con decimales, también en los kg y l del sembrado («1.205» kg: ¿1,205 o
- * 1205?). Lo que no se entiende se dice junto al campo, con cómo escribirlo; nada se borra en silencio.
+ * Lo tecleado se interpreta con el parser central `interpretarNumeroTecleado` (src/core/datos/numero-tecleado.ts) y el CONTEXTO del campo: un importe admite 2 decimales, una cantidad los de su unidad
+ * (`decimales`) y, sin `tipo`, los 4 de las columnas `Decimal(14,4)`. REGLA DE NÚMEROS (dueño, 2026-11-09; docs/diseno-campo-numerico-entrada-2026-11-09.md): se escriben solo dígitos y UNA coma para los decimales;
+ * el «.» no se acepta. Una tecla «.» se ignora y se avisa junto al campo («Los decimales van con coma: 0,5»); un pegado, arrastre o autocompletado con «.» se rechaza ENTERO y el campo queda como estaba (`aplicarEdicion`).
+ * El sistema agrega el punto de miles al mostrar («1.000,00») y, mientras se edita, dice el número entendido («= 1.000,00», «= 60 g»). Lo que no se entiende se dice junto al campo, con cómo escribirlo; nada se borra en silencio.
  *
  * Lo que el campo EMITE (`onChange` / el `<input type="hidden">`) es el «canal de valor» (`leerNumeroCanonico`):
  *  - vacío → "";
  *  - un número válido → su texto canónico ("1234.56": dígitos y un solo punto, que ACÁ es siempre el decimal);
- *  - un texto que no es número → el texto TAL CUAL (nunca "" ni "0"), y si ese texto PARECE canónico («1.205» ambiguo) con una marca que lo vuelve ilegible como canónico
- *    (`marcarNoCanonico`), así nadie lo lee como 1,205 en silencio. Un `required` o un `!== ""` lo cuentan como cargado.
+ *  - un texto que no es número → el texto TAL CUAL (nunca "" ni "0"), y si ese texto PARECE canónico («1.5» en una unidad entera) con una marca que lo vuelve ilegible como canónico
+ *    (`marcarNoCanonico`), así nadie lo lee como número en silencio. Un `required` o un `!== ""` lo cuentan como cargado.
  * Con un texto inválido el campo queda `invalido` (`aria-invalid` y borde de error), dice el error debajo y usa `setCustomValidity(mensaje)`: el navegador frena el envío del formulario
  * (validación nativa, antes del evento `submit`). La validez se calcula desde el valor EMITIDO, no desde el texto formateado que se ve.
  */
@@ -101,13 +111,19 @@ export function CampoNumero({
   decimales,
   permitirNegativo,
   autoFocus,
+  unidad,
+  sinEntendido,
+  ayuda,
+  errorDeRegla,
 }: Props) {
   const controlado = value !== undefined;
   const [interno, setInterno] = useState(defaultValue ?? "");
   const valorReal = controlado ? (value ?? "") : interno;
 
-  const [texto, setTexto] = useState(() => textoParaVer(valorReal));
+  const [texto, setTexto] = useState(() => textoParaVer(valorReal, tipo));
   const [enFoco, setEnFoco] = useState(false);
+  // true desde que se ignoró o rechazó un «.» hasta la siguiente edición sin punto o la salida del campo.
+  const [avisoDelPunto, setAvisoDelPunto] = useState(false);
   // Reformatea cuando `valorReal` cambia desde AFUERA (ej. reset tras
   // submit) mientras el campo no tiene foco — ajustar estado durante el
   // render en vez de en un efecto (mismo criterio que onFocus/onBlur más
@@ -117,7 +133,7 @@ export function CampoNumero({
   const [valorRealSincronizado, setValorRealSincronizado] = useState(valorReal);
   if (!enFoco && valorReal !== valorRealSincronizado) {
     setValorRealSincronizado(valorReal);
-    setTexto(textoParaVer(valorReal));
+    setTexto(textoParaVer(valorReal, tipo));
   }
 
   // Validez nativa: se sincroniza el DOM (setCustomValidity no es estado de React) desde el valor emitido.
@@ -133,14 +149,32 @@ export function CampoNumero({
     entrada.current?.setCustomValidity(error ?? "");
   }, [error]);
 
+  // Primera línea de defensa contra el «.»: el evento nativo `beforeinput` (no el `keydown`: el teclado de Android manda keyCode 229 y `key` «Unidentified») se cancela si trae un «.» y se puede cancelar. Si el
+  // navegador no lo deja cancelar (algunas composiciones), el `onChange` de abajo lo saca igual (`aplicarEdicion`): el resultado es el mismo.
+  useEffect(() => {
+    const el = entrada.current;
+    if (!el) return;
+    const alEscribir = (e: Event) => {
+      const antes = e as InputEvent;
+      if (antes.cancelable && typeof antes.data === "string" && antes.data.includes(".")) {
+        antes.preventDefault();
+        setAvisoDelPunto(true);
+      }
+    };
+    el.addEventListener("beforeinput", alEscribir);
+    return () => el.removeEventListener("beforeinput", alEscribir);
+  }, []);
+
   // Con el texto crudo ya en el DOM: todo seleccionado (ver el comentario de arriba). Antes de pintar, así nada tecleado llega antes.
   useLayoutEffect(() => {
     const el = entrada.current;
     if (enFoco && el && document.activeElement === el) seleccionarTodo(el);
   }, [enFoco]);
 
+  const entendido = enFoco && !sinEntendido ? textoEntendido(valorReal, tipo, unidad) : null;
+
   return (
-    <div className={className}>
+    <div className={className ? `relative ${className}` : "relative"}>
       {name && <input type="hidden" name={name} value={valorReal} onChange={() => {}} />}
       {/* `Campo` dibuja el <input> (aspecto, foco, 44 px en celular). No dibuja `<label>`: el nombre lo pone `ariaLabel` o la etiqueta de afuera que envuelve al campo o se ata por `htmlFor`
           (la regla `campos-con-nombre` lo verifica en cada uso). `etiqueta` NO se le pasa: es el sujeto del mensaje de error, no un rótulo. Lo que se tecleó y no es un número en el
@@ -156,8 +190,9 @@ export function CampoNumero({
         placeholder={placeholder}
         required={required}
         autoFocus={autoFocus}
-        invalido={error !== null}
-        error={errorTecleado}
+        invalido={error !== null || Boolean(errorDeRegla)}
+        ayuda={ayuda}
+        error={errorTecleado ?? errorDeRegla}
         tamano={tamano}
         alinear="fin"
         prefijo={prefijo}
@@ -178,17 +213,41 @@ export function CampoNumero({
           }
         }}
         onChange={(e) => {
-          setTexto(e.target.value);
-          const emitido = valorAEmitir(e.target.value, contexto);
+          const nativo = e.nativeEvent as Partial<InputEvent>;
+          const edicion = aplicarEdicion(texto, e.target.value, origenDeLaEdicion(nativo.inputType, nativo.data), e.target.selectionStart);
+          setAvisoDelPunto(edicion.avisoDelPunto);
+          const el = e.target;
+          const cursor = edicion.avisoDelPunto ? edicion.cursor : null;
+          // Tras ignorar un «.» React deja el cursor al final del texto: se lo devuelve a donde estaba la tecla, ya terminado el evento (React restaura el valor del campo controlado al final del manejador).
+          if (cursor !== null) queueMicrotask(() => document.activeElement === el && el.setSelectionRange(cursor, cursor));
+          setTexto(edicion.texto);
+          const emitido = valorAEmitir(edicion.texto, contexto);
           if (controlado) onChange?.(emitido);
           else setInterno(emitido);
         }}
         onBlur={() => {
           punteroDaElFoco.current = false;
           setEnFoco(false);
-          setTexto(textoParaVer(valorReal));
+          setAvisoDelPunto(false);
+          setTexto(textoParaVer(valorReal, tipo));
         }}
       />
+      {/* El aviso y el «= …» NO ocupan lugar en la página (`absolute`): aparecen al tomar el foco y se van al salir, y si empujaran lo de abajo, el clic en un botón o una casilla que está justo debajo del campo
+          (que primero le saca el foco) caería en otro lado. `pointer-events-none`: nunca tapan un clic. */}
+      {(avisoDelPunto || entendido) && (
+        <div className="pointer-events-none absolute left-0 top-full z-10 mt-0.5 flex flex-col whitespace-nowrap rounded bg-superficie px-1">
+          {avisoDelPunto && (
+            <Aviso variante="advertencia" forma="en-linea">
+              {AVISO_DEL_PUNTO}
+            </Aviso>
+          )}
+          {entendido && (
+            <p aria-live="polite" className="text-sm text-tinta-suave">
+              {entendido}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

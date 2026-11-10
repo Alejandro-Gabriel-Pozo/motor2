@@ -81,6 +81,51 @@ test.describe("celular (375 px, táctil)", () => {
     await expect(d.fila.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
     expect(await precioGuardado(sucursalId, d.productoId, d.opcionId)).toBe("1.5");
   });
+
+  // Gboard (Android) manda keydown con keyCode 229 / key «Unidentified»: la regla del «.» no puede depender de las teclas, sino del texto que entra. Se simula lo que dispara el teclado: el valor del campo
+  // cambia y llega un evento `input` con `inputType` y `data` (composición de una tecla; un reemplazo de golpe, como el autocompletado).
+  test("el teclado del celular manda «.» como composición o reemplazo (sin keydown): el campo queda sin «.», con el aviso y sin correr el cursor", async ({ paginaAutenticada: page, sucursalId }) => {
+    const d = await abrir(page, sucursalId);
+    await d.campo.tap();
+    await d.campo.fill("");
+    await page.keyboard.type("12");
+    await expect(d.campo).toHaveValue("12");
+
+    const entrada = (valorNuevo: string, cursor: number, inputType: string, data: string) =>
+      d.campo.evaluate(
+        (el, a) => {
+          const campo = el as HTMLInputElement;
+          const poner = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+          poner.call(campo, a.valorNuevo);
+          campo.setSelectionRange(a.cursor, a.cursor);
+          campo.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: a.inputType, data: a.data }));
+        },
+        { valorNuevo, cursor, inputType, data }
+      );
+    const aviso = page.getByRole("status").filter({ hasText: "Los decimales van con coma: 0,5" });
+
+    // Una tecla «.» al final, como composición (Gboard con keyCode 229): se ignora y se avisa.
+    await entrada("12.", 3, "insertCompositionText", ".");
+    await expect(d.campo).toHaveValue("12");
+    await expect(aviso).toBeVisible();
+
+    // Una tecla «.» en el medio, como insertText sin keydown: se ignora y el cursor queda donde estaba la tecla.
+    await d.campo.press("ControlOrMeta+A");
+    await page.keyboard.type("1234");
+    await entrada("12.34", 3, "insertText", ".");
+    await expect(d.campo).toHaveValue("1234");
+    expect(await seleccion(d.campo)).toMatchObject({ inicio: 2, fin: 2 });
+
+    // Un reemplazo de golpe con «.» (autocompletado / sugerencia del teclado): se rechaza entero, el campo queda como estaba.
+    await entrada("1.5", 3, "insertReplacementText", "1.5");
+    await expect(d.campo).toHaveValue("1234");
+    await expect(aviso).toBeVisible();
+
+    // Sin «.» el campo sigue andando: la coma entra y el aviso se va.
+    await entrada("1234,", 5, "insertText", ",");
+    await expect(d.campo).toHaveValue("1234,");
+    await expect(aviso).toHaveCount(0);
+  });
 });
 
 test.describe("escritorio (clic y teclado)", () => {
@@ -109,7 +154,7 @@ test.describe("escritorio (clic y teclado)", () => {
     // no envía a propósito, test/e2e/form-con-resultado-enter.spec.ts).
     await page.keyboard.press("Tab");
     await expect(d.guardar).toBeFocused();
-    await expect(d.campo).toHaveValue("1,5");
+    await expect(d.campo).toHaveValue("1,50"); // un importe fuera del foco se ve siempre con 2 decimales (regla de números, 2026-11-09)
     await page.keyboard.press("Enter");
     await expect(d.fila.getByRole("status").filter({ hasText: "guardado" })).toBeVisible();
     expect(await precioGuardado(sucursalId, d.productoId, d.opcionId)).toBe("1.5");

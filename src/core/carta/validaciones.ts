@@ -1,7 +1,7 @@
 import { texto, validarLargoTexto, validarTextoCatalogo } from "@/core/texto";
 import { esNumeroFinito } from "@/core/numero";
 import { IMPORTE_MAXIMO } from "@/core/datos/importe";
-import { tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
+import { numeroDeFormulario, tieneALoSumoDecimales } from "@/core/datos/numero-tecleado";
 import { urlImagenSegura } from "./armar-menu";
 
 /**
@@ -91,7 +91,7 @@ export function validarNombreGeneroCarta(valor: unknown): Resultado<string> {
 /** Orden: entero (puede ser negativo, para subir algo sin renumerar), vacío → 0. */
 export function validarOrdenCarta(valor: unknown): Resultado<number> {
   if (valor === null || valor === undefined || texto(valor) === "") return { ok: true, valor: 0 };
-  const n = Number(valor);
+  const n = numeroDeFormulario(valor);
   if (!Number.isInteger(n) || Math.abs(n) > 100_000) return { ok: false, mensaje: "El orden tiene que ser un número entero." };
   return { ok: true, valor: n };
 }
@@ -99,12 +99,12 @@ export function validarOrdenCarta(valor: unknown): Resultado<number> {
 /**
  * Precio de una promo: número finito, >= 0, con a lo sumo 2 decimales (se guarda como Decimal(14, 2)).
  *
- * O.43 (Hito 4, bloque D; aprobado por el dueño, criterio conservador): `Number(...)` NO acepta la coma decimal y eso NO cambia (el parseo es el de siempre); lo
- * que cambió es el mensaje de lo que no tiene forma de número («12,5», «abc»): antes caía en `!(n >= 0)` y decía «no puede ser negativo».
+ * O.43 (Hito 4, bloque D) el mensaje de lo que no tiene forma de número («12,5», «abc») es propio. Regla de números (2026-11-09): el servidor lee SOLO el formato canónico (`numeroDeFormulario`: dígitos y un punto
+ * decimal; lo manda `CampoNumero`), ya no `Number(...)`, que aceptaba «1e3», «0x10» o espacios.
  */
 export function validarPrecioCarta(valor: unknown): Resultado<number> {
   if (valor === null || valor === undefined || texto(valor) === "") return { ok: false, mensaje: "Falta el precio." };
-  const n = Number(valor);
+  const n = numeroDeFormulario(valor);
   if (Number.isNaN(n)) return { ok: false, mensaje: "El precio no tiene un formato válido: usá el punto como separador decimal (por ejemplo, 12.5)." };
   if (!(n >= 0)) return { ok: false, mensaje: "El precio no puede ser negativo." };
   if (!esNumeroFinito(n) || n >= IMPORTE_MAXIMO) return { ok: false, mensaje: "El precio no es un número válido." };
@@ -124,7 +124,7 @@ export function validarCantidadCupoPromo(valor: unknown, etiqueta: string, valor
     if (valorSiVacio !== undefined) return { ok: true, valor: valorSiVacio };
     return { ok: false, mensaje: `Falta ${etiqueta}.` };
   }
-  const n = Number(v);
+  const n = numeroDeFormulario(v);
   if (!Number.isInteger(n) || n < 0 || n > 999) return { ok: false, mensaje: `${etiqueta} tiene que ser un número entero entre 0 y 999.` };
   return { ok: true, valor: n };
 }

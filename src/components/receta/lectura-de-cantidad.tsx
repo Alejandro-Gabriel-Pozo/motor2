@@ -69,7 +69,8 @@ export function LecturaDeCantidad({
       className="contents"
       onChange={(e) => {
         const origen: EventTarget = e.target;
-        if (origen instanceof HTMLInputElement && origen.id === campoId) setTecleado(origen.value);
+        // Un instante después: si el campo rechaza el cambio (un pegado con «.»), vuelve a su texto anterior recién al terminar este evento, y la lectura tiene que seguir a lo que QUEDÓ en el campo.
+        if (origen instanceof HTMLInputElement && origen.id === campoId) setTimeout(() => setTecleado(origen.value), 0);
       }}
     >
       {children}

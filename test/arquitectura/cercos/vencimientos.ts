@@ -42,7 +42,6 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
   lista("dueno-unico-por-modelo", "2026-12-08"),
   lista("casos-de-uso-en-guardianes", "2026-12-11"),
   lista("fecha-de-texto-a-mano", "2026-12-15"),
-  lista("campo-type-number", "2026-12-18"),
   lista("inputmode-numerico-a-mano", "2026-12-22"),
   lista("controles-a-mano", "2026-12-28"),
   lista("dialogos-y-avisos-a-mano", "2026-12-30"),
