@@ -80,7 +80,8 @@ test("un rol CON producto_editar sí abre /datos y ve el formulario con el nombr
 test("un rol que solo VE productos no tiene enlace «Editar» en la lista ni el paso «Qué se vende» como enlace en la ficha", async ({ browser, baseURL, sucursalId }) => {
   const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, {});
-  const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/datos"]`);
+  // `:visible`: la lista dibuja la fila dos veces (tarjeta de celular y tabla) y CSS oculta una; el enlace que importa es el que se ve.
+  const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/datos"]:visible`);
   try {
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
     await expect(page.getByRole("link", { name: producto.nombre })).toBeVisible(); // la fila está: es la lista, no un mensaje de permiso
@@ -110,7 +111,7 @@ test("un rol CON producto_editar y producto_disponibilidad ve «Editar» en la l
   // Contraespejo: impide «arreglarlo» escondiendo el enlace para todos.
   const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true, disponibilidad: true });
-  const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/datos"]`);
+  const enlaceEditar = page.locator(`a[href="/catalogo/productos/${producto.id}/datos"]:visible`);
   try {
     await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
     await expect(enlaceEditar).toHaveCount(1);
@@ -132,7 +133,7 @@ test("un rol CON producto_editar y producto_disponibilidad ve «Editar» en la l
 
 test("«Editar» y «Desactivar» son permisos separados: cada uno muestra solo su control", async ({ browser, baseURL, sucursalId }) => {
   const producto = await crearProducto(Date.now(), sucursalId);
-  const enlaceEditar = (page: import("@playwright/test").Page) => page.locator(`a[href="/catalogo/productos/${producto.id}/datos"]`);
+  const enlaceEditar = (page: import("@playwright/test").Page) => page.locator(`a[href="/catalogo/productos/${producto.id}/datos"]:visible`);
   const soloEditar = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true });
   const soloDisponibilidad = await abrirComoRol(browser, baseURL, sucursalId, { disponibilidad: true });
   try {
