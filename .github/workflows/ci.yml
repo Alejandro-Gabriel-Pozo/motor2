@@ -58,8 +58,8 @@ jobs:
       MOTOR2_E2E_DATABASE_URL: postgresql://motor2:ci-duenio-descartable@localhost:5432/motor2_e2e
       MOTOR2_E2E_APP_DATABASE_URL: postgresql://motor2_app:ci-app-descartable@localhost:5432/motor2_e2e
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -77,7 +77,7 @@ jobs:
           CONTRATOS_EVIDENCIA: resultado-contratos.json
       # La evidencia queda como artefacto de la corrida. Sin `if` ni `continue-on-error`, y con `if-no-files-found: error`: si el ejecutor no la dejó, este paso falla (y `cumplimiento.ts` exige que el paso exista).
       - name: Evidencia de contratos (artefacto)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: resultado-contratos
           path: resultado-contratos.json
@@ -116,8 +116,8 @@ jobs:
       # M.3-A8: igual que en `integracion` (el guardián del rol de pruebas pide la misma forma en todo job que prepara la base); el build no siembra nada.
       MOTOR2_PRUEBAS_DATABASE_URL: postgresql://motor2_app_pruebas:ci-pruebas-descartable@localhost:5432/motor2_dev
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -175,8 +175,8 @@ jobs:
       # M.3-A8: con esta URL (rol de pruebas, MISMA base) siembran los fixtures de Vitest; el código bajo prueba usa DATABASE_URL (motor2_app).
       MOTOR2_PRUEBAS_DATABASE_URL: postgresql://motor2_app_pruebas:ci-pruebas-descartable@localhost:5432/motor2_dev
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -222,7 +222,7 @@ jobs:
       # El resultado de ESTA parte, para que el `gate` junte todas. `if-no-files-found: ignore`: si la parte no llegó a escribirlo, el conteo del `gate` falla por la cantidad de resultados (y lo dice).
       - name: Resultado de Vitest de esta parte (artefacto)
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: resultado-vitest-${{ matrix.parte }}
           path: resultado-vitest.json
@@ -271,8 +271,8 @@ jobs:
       # Control: la lista de `matrix.parte` y PARTES_E2E dicen lo mismo. Si no, `--shard=i/n` repartiría en otra cantidad de partes que las que el conteo del `gate` espera y habría specs sin correr. Va primero: falla en segundos.
       - name: Control de la cantidad de partes
         run: test "${{ strategy.job-total }}" = "$PARTES_E2E"
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -303,7 +303,7 @@ jobs:
       # El resultado de ESTA parte, para que el `gate` junte todas. `if-no-files-found: ignore`: si la parte no llegó a escribirlo, el conteo del `gate` falla por la cantidad de resultados (y lo dice).
       - name: Resultado de Playwright (artefacto)
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: resultado-playwright-${{ matrix.parte }}
           path: resultado-playwright.json
@@ -311,7 +311,7 @@ jobs:
           retention-days: 7
       - name: Trazas de los specs que fallaron
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-test-results-${{ matrix.parte }}
           path: test-results/
@@ -343,10 +343,10 @@ jobs:
           test "${{ needs.estatico.result }}" = "success" -a "${{ needs.build.result }}" = "success" -a "${{ needs.integracion.result }}" = "success" -a "${{ needs.e2e.result }}" = "success"
       - name: Checkout
         if: ${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Node
         if: ${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -355,7 +355,7 @@ jobs:
         run: npm ci
       - name: Resultados de Vitest (todas las partes)
         if: ${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: resultado-vitest-*
           path: partes
@@ -421,7 +421,7 @@ jobs:
           EOF
       - name: Resultados de Playwright (todas las partes)
         if: ${{ needs.integracion.result == 'success' && needs.e2e.result == 'success' }}
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: resultado-playwright-*
           path: partes-e2e
