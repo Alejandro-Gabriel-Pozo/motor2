@@ -56,7 +56,7 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
     inicio: "2026-11-11",
     vence: "2027-01-09",
     responsable: "dueño",
-    aprobacion: { por: "dueño (pendiente de aprobar al mergear el PR)", referencia: "PR #228" },
+    aprobacion: { por: "dueño (pendiente de aprobar al mergear el PR)", referencia: "PR #229" },
     motivo: "Validaciones por lista de prohibidos heredadas al instalar el cerco «Todo nace cerrado»: cada una pasa a declarar lo permitido en un trabajo aparte (propuesta de plazo: 60 días; la corrige el dueño).",
   },
   // Estructura de pantalla (PR #219, 2026-11-09): las 90 pantallas se adoptan por etapas E-B…E-H (docs/diseno-estructura-de-pantalla-1366x768-2026-11-09.md, §12). Plazo máximo; se renueva con motivo si una etapa se atrasa.
