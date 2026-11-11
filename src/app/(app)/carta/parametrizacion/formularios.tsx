@@ -233,7 +233,7 @@ export function CamposLugares({ lugares }: { lugares: LugarDeCombo[] }) {
           </label>
         </div>
       ))}
-      {/* Decisión del dueño (2026-10-28): «Sumar un lugar» queda oculto (`SUMAR_LUGAR_DE_LISTA_VISIBLE`); aparece solo si algún interruptor ofrece un tipo de lugar. */}
+      {/* «Sumar un lugar» (`SUMAR_LUGAR_DE_LISTA_VISIBLE`: apagado el 2026-10-28, vuelto a prender el 2026-11-11 por el pedido del «Menú ejecutivo»); aparece solo si algún interruptor ofrece un tipo de lugar. */}
       {(SUMAR_LUGAR_DE_LISTA_VISIBLE || MENU_DEL_DIA_VISIBLE) && (
         <fieldset className="mt-1 grid min-w-0 grid-cols-2 gap-2 text-sm sm:flex sm:flex-wrap sm:items-end">
           <legend className="mb-1 text-sm">Sumar un lugar (opcional)</legend>

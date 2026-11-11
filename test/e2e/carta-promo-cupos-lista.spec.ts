@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
-import { SUMAR_LUGAR_DE_LISTA_VISIBLE } from "../../src/core/carta/cupos-de-promo";
+import { ajustarCeldasDelAdmin } from "./fixtures/admin-con-filas";
 import { VIGENCIA_DE_PROMO_VISIBLE } from "../../src/core/carta/vigencia-de-promo";
 import { prismaAdmin } from "../setup/cliente-duenio";
 import { borrarRecetasDeReventa, darRecetaDeReventa } from "../setup/receta-de-venta";
@@ -48,15 +48,9 @@ test("un lugar «lista» con su entrada (queda fijo); volver a guardar los cupos
     await page.goto("/carta/parametrizacion/promociones");
     const promo = page.locator(`[data-promo-carta="${d.titulo}"]`);
     await promo.locator("summary").first().click();
-    if (SUMAR_LUGAR_DE_LISTA_VISIBLE) {
-      await promo.locator('input[name="nuevo_lugar_nombre"]').fill("Bebida");
-      await promo.getByRole("button", { name: "Guardar cupos" }).dblclick();
-    } else {
-      // Decisión del dueño (2026-10-28): «Sumar un lugar» está oculto en la pantalla (`SUMAR_LUGAR_DE_LISTA_VISIBLE`). El lugar se siembra como si ya existiera: lo que sigue (sumarle un producto,
-      // volver a guardar, destildarlo) es lo que la pantalla sigue permitiendo con los lugares que ya existían.
-      await expect(promo.locator('input[name="nuevo_lugar_nombre"]')).toHaveCount(0);
-      await prisma.promoCartaCupo.create({ data: { promoCartaId: d.promo.id, tipo: "LISTA", nombre: "Bebida", cantidadMinima: 1, cantidadMaxima: 1, orden: 1 } });
-    }
+    // «Sumar un lugar» está prendido desde el 2026-11-11 (`SUMAR_LUGAR_DE_LISTA_VISIBLE`): el lugar se crea desde la pantalla (con doble clic: no se duplica).
+    await promo.locator('input[name="nuevo_lugar_nombre"]').fill("Bebida");
+    await promo.getByRole("button", { name: "Guardar cupos" }).dblclick();
     await expect.poll(async () => prisma.promoCartaCupo.count({ where: { promoCartaId: d.promo.id, tipo: "LISTA", activo: true } })).toBe(1);
 
     await page.reload();
@@ -67,7 +61,7 @@ test("un lugar «lista» con su entrada (queda fijo); volver a guardar los cupos
     await agregar.getByLabel(/De dónde salen los productos/).selectOption("FUERA");
     await agregar.getByRole("checkbox", { name: d.gaseosa.nombre }).check();
     await agregar.getByRole("button", { name: "Sumar" }).click();
-    await expect(agregar.getByRole("status")).toBeVisible();
+    await expect(agregar.getByRole("status").filter({ hasText: "quedó como" })).toBeVisible();
     await expect.poll(async () => prisma.entradaDeCupo.count({ where: { cupo: { promoCartaId: d.promo.id } } })).toBe(1);
 
     await page.reload();
@@ -100,6 +94,56 @@ test("un lugar «lista» con su entrada (queda fijo); volver a guardar los cupos
     await expect.poll(async () => prisma.promoCartaCupo.count({ where: { promoCartaId: d.promo.id, tipo: "LISTA", activo: true } })).toBe(0);
     expect(await prisma.entradaDeCupo.count({ where: { cupo: { promoCartaId: d.promo.id } } })).toBe(1);
   } finally {
+    await d.limpiar();
+  }
+});
+
+/**
+ * «Sumar un lugar» (2026-11-11, pedido del «Menú ejecutivo»): en Cupos de una promo se crea un lugar de LISTA con nombre, mín. y máx., se guarda y queda a la vista con «Sin entradas todavía…», en
+ * escritorio (1366×768) y en celular (390 px). Sin el permiso de definir promos (`carta_promo_definir`, solo «Ver») la pantalla no ofrece nada de eso.
+ */
+for (const [nombre, tamano] of [["escritorio 1366×768", { width: 1366, height: 768 }], ["celular 390 px", { width: 390, height: 844 }]] as const) {
+  test(`«Sumar un lugar» crea un lugar de lista con mín. y máx. y queda sin entradas (${nombre})`, async ({ paginaAutenticada: page, sucursalId }) => {
+    const d = await sembrar(sucursalId);
+    try {
+      await page.setViewportSize(tamano);
+      await page.goto("/carta/parametrizacion/promociones");
+      const promo = page.locator(`[data-promo-carta="${d.titulo}"]`);
+      await promo.locator("summary").first().click();
+      const fila = promo.locator("fieldset", { hasText: "Sumar un lugar" });
+      await expect(fila.getByText("Sumar un lugar (opcional)")).toBeVisible();
+      await expect(fila.locator('select[name="nuevo_lugar_tipo"]')).toHaveValue("LISTA");
+      await expect(fila.locator('select[name="nuevo_lugar_tipo"] option')).toHaveText(["Lista de productos"]);
+      await fila.locator('input[name="nuevo_lugar_nombre"]').fill("Plato ejecutivo");
+      await fila.getByRole("textbox", { name: "mín." }).fill("1");
+      await fila.getByRole("textbox", { name: "máx." }).fill("2");
+      await promo.getByRole("button", { name: "Guardar cupos" }).click();
+      await expect.poll(async () => prisma.promoCartaCupo.count({ where: { promoCartaId: d.promo.id, tipo: "LISTA", nombre: "Plato ejecutivo", activo: true, cantidadMinima: 1, cantidadMaxima: 2 } })).toBe(1);
+
+      await page.reload();
+      const otraVez = page.locator(`[data-promo-carta="${d.titulo}"]`);
+      await otraVez.locator("summary").first().click();
+      await expect(otraVez.locator('[data-cupo-lugar="Plato ejecutivo"]')).toHaveCount(1);
+      await expect(otraVez.locator('[data-lugar-de-combo="Plato ejecutivo"]')).toContainText("Sin entradas todavía");
+      expect((await new AxeBuilder({ page }).include(`[data-promo-carta="${d.titulo}"]`).analyze()).violations).toEqual([]);
+    } finally {
+      await d.limpiar();
+    }
+  });
+}
+
+test("sin el permiso de definir promos, la pantalla no ofrece «Sumar un lugar»", async ({ paginaAutenticada: page, sucursalId }) => {
+  const d = await sembrar(sucursalId);
+  const admin = await ajustarCeldasDelAdmin({ carta_promo_definir: { puedeVer: true, puedeEditar: false } });
+  try {
+    await page.goto("/carta/parametrizacion/promociones");
+    const promo = page.locator(`[data-promo-carta="${d.titulo}"]`);
+    await promo.locator("summary").first().click();
+    await expect(promo.getByText("Sumar un lugar")).toHaveCount(0);
+    await expect(promo.locator('input[name="nuevo_lugar_nombre"]')).toHaveCount(0);
+    await expect(promo.getByRole("button", { name: "Guardar cupos" })).toHaveCount(0);
+  } finally {
+    await admin.restaurar();
     await d.limpiar();
   }
 });

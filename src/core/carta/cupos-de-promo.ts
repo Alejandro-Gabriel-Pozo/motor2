@@ -12,12 +12,13 @@ export const TIPOS_DE_CUPO = ["SECCION", "LISTA", "DEL_DIA"] as const;
 export type TipoDeCupo = (typeof TIPOS_DE_CUPO)[number];
 
 /**
- * INTERRUPTOR de «Sumar un lugar» de lista en el formulario de cupos de una promo (decisión del dueño, 2026-10-28: «es algo obsoleto: es más fácil agregar la sección del otro lado y tildarla»; en
- * producción hay 0 lugares de lista y 0 del día, solo cupos de sección). Mismo patrón que `MENU_DEL_DIA_VISIBLE` (`menu-del-dia.ts`): una sola constante. Con `false`, la pantalla no ofrece sumar
- * un lugar de LISTA nuevo; los lugares que ya existieran se siguen mostrando y editando, y NO se toca el servidor ni se borra nada (el formulario de «Sumar un lugar» aparece solo si alguno de los
- * dos interruptores ofrece un tipo). Para volver a encenderlo: poner `true`. Lo comprueba `test/carta/sumar-lugar-interruptor.test.tsx` (los dos estados).
+ * INTERRUPTOR de «Sumar un lugar» de lista en el formulario de cupos de una promo. Mismo patrón que `MENU_DEL_DIA_VISIBLE` (`menu-del-dia.ts`): una sola constante. Historia: el 2026-10-28 el dueño lo
+ * apagó («es algo obsoleto: es más fácil agregar la sección del otro lado y tildarla»; en producción había 0 lugares de lista y 0 del día). El 2026-11-11 el dueño REVISÓ esa decisión, solo para este caso:
+ * quiere armar el «Menú ejecutivo» con un lugar de lista cuyas entradas las elige el mozo con tamaño (etapa N1 de la promo «a elegir»), y un cupo de SECCIÓN nunca lleva entradas. Con `true` la pantalla
+ * ofrece «Sumar un lugar» (lista de productos); el servidor no cambió (siempre aceptó el tipo LISTA) y los cupos de sección siguen igual. Para volver a apagarlo: poner `false`. Lo comprueba
+ * `test/carta/sumar-lugar-interruptor.test.tsx` (los dos estados).
  */
-export const SUMAR_LUGAR_DE_LISTA_VISIBLE: boolean = false;
+export const SUMAR_LUGAR_DE_LISTA_VISIBLE: boolean = true;
 
 /** El filtro de Prisma de los cupos que este despliegue sabe leer: de sección y activos. */
 export const WHERE_CUPO_DE_SECCION_ACTIVO = { tipo: "SECCION", activo: true } as const;
