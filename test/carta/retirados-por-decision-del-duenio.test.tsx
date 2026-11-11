@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => undefined }) }));
 
-import { BloqueDeVigencia, CamposLugares } from "../../src/app/(app)/carta/parametrizacion/formularios";
+import { BloqueDeVigencia } from "../../src/app/(app)/carta/parametrizacion/formularios";
 import { MantenimientoDeCarta } from "../../src/app/(app)/carta/mantenimiento-de-carta";
 
 /**
@@ -13,21 +13,13 @@ import { MantenimientoDeCarta } from "../../src/app/(app)/carta/mantenimiento-de
  * en rojo y la lista de abajo dice por qué se retiró: volver a tenerlo es una decisión del dueño, con su diseño (docs/diseno-modulo-carta-2026-10-28.md).
  *
  * RETIRADOS POR DECISIÓN DEL DUEÑO:
- *  1. «Sumar un lugar» (tipo + nombre + mín./máx.) en los cupos de una promo — 2026-10-28: «es algo obsoleto: es más fácil agregar la sección del otro lado y tildarla»; en producción 0 lugares de lista y
- *     0 del día. Oculto con `SUMAR_LUGAR_DE_LISTA_VISIBLE` (reversible; el servidor no cambió).
+ *  1. (YA NO RETIRADO) «Sumar un lugar» en los cupos de una promo: se apagó el 2026-10-28 y el dueño lo VOLVIÓ A PRENDER el 2026-11-11 (pedido del «Menú ejecutivo» con «el mozo elige»); su prueba
+ *     ahora es `test/carta/sumar-lugar-interruptor.test.tsx` (los dos estados). La numeración de abajo se conserva.
  *  2. El bloque «Vigencia» de una promo (Desde, Hasta, «Días en que vale») — 2026-10-20 (aplicado el 2026-10-28): «la promoción NO tiene vigencia desde/hasta, ni días: se maneja con ACTIVAR/DESACTIVAR».
  *     Oculto con `VIGENCIA_DE_PROMO_VISIBLE` (reversible; columnas y filtro del POS intactos hasta una migración autorizada).
  *  3. El ajuste MASIVO de precios de la carta («Precios» de Carta › Hoy: por sección o en toda la empresa) — decidido el 2026-10-20 («borrarlo si no se extrañaba»), BORRADO el 2026-10-28: apagado solo
  *     escondía la pantalla y el servidor seguía aceptando `ajustarPreciosDeLaCarta` y `ajustarPreciosDeLaEmpresa`. Los precios se cambian en Catálogo y en Promociones.
  */
-
-describe("1. «Sumar un lugar» no aparece en los cupos de una promo (retirado el 2026-10-28)", () => {
-  it("sin lugares, el formulario de cupos no tiene ni la fila ni sus campos", () => {
-    const html = renderToStaticMarkup(<CamposLugares lugares={[]} />);
-    expect(html).not.toContain("Sumar un lugar");
-    for (const campo of ["nuevo_lugar_tipo", "nuevo_lugar_nombre", "nuevo_lugar_min", "nuevo_lugar_max"]) expect(html, campo).not.toContain(`name="${campo}"`);
-  });
-});
 
 describe("2. El bloque «Vigencia» no aparece en una promo (retirado el 2026-10-20, aplicado el 2026-10-28)", () => {
   it("una promo sin vigencia no muestra el título, las fechas, los días ni «Guardar vigencia»", () => {

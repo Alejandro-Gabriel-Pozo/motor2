@@ -197,7 +197,7 @@ export default async function PromocionesDeCartaPage() {
                     >
                       <p className="text-sm text-tinta-tenue">
                         Las partes de la promo se arman tildando secciones de la carta: de cada sección tildada el mozo elige entre «mín.» y «máx.» productos (para que elija más, subí el «máx.»). Para un
-                        grupo propio, como «Bebida», creá la sección en Carta › Secciones y géneros y tildala acá.
+                        grupo propio, como «Bebida», creá la sección en Carta › Secciones y géneros y tildala acá, o sumá abajo un lugar con su propia lista de productos.
                       </p>
                       {/* Paso 13 (opcional, no bloqueante): con los cupos YA guardados, cuánta holgura hay hoy antes de tocar el piso de
                           $0,01 por unidad en el peor caso (D3) — guardarCuposPromoCarta rechaza de una si un cambio lo cruza; esto avisa

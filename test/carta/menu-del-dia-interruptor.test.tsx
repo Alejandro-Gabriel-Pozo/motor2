@@ -63,7 +63,7 @@ describe("menú del día APAGADO (decisión del dueño 2026-10-20)", () => {
   it("el formulario de la promo no ofrece «Plato del día» para un lugar nuevo, pero sigue listando el lugar del día que ya existía", () => {
     const html = formularioDeLugares(CamposLugares);
     expect(html).not.toContain('<option value="DEL_DIA"');
-    // La opción «Lista de productos» la gobierna su propio interruptor (`SUMAR_LUGAR_DE_LISTA_VISIBLE`, test/carta/sumar-lugar-interruptor.test.tsx).
+    // La opción «Lista de productos» la gobierna su propio interruptor (`SUMAR_LUGAR_DE_LISTA_VISIBLE`, encendido desde el 2026-11-11; test/carta/sumar-lugar-interruptor.test.tsx).
     expect(html).toContain('data-cupo-lugar="Plato del día"');
   });
 
@@ -167,7 +167,7 @@ describe("menú del día ENCENDIDO (reversibilidad: con el interruptor en true v
 
   it("el formulario vuelve a ofrecer «Plato del día»", async () => {
     const { formulario } = await conInterruptorEncendido();
-    // Con «Sumar un lugar» de lista apagado (`SUMAR_LUGAR_DE_LISTA_VISIBLE`), «Plato del día» es la única opción y queda elegida.
+    // Con «Sumar un lugar» de lista encendido (`SUMAR_LUGAR_DE_LISTA_VISIBLE`, desde el 2026-11-11), «Plato del día» se suma a «Lista de productos» (que queda elegida por defecto).
     expect(formularioDeLugares(formulario)).toMatch(/<option value="DEL_DIA"( selected="")?>Plato del día<\/option>/);
   });
 });
