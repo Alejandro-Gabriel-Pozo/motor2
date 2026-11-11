@@ -50,6 +50,15 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
   lista("colores", "2027-01-05"),
   // PROPUESTA (E-N salida, 2026-11-09): deuda nueva al crear el guardián de números mostrados sin la función central; se declara sin pagarla toda en esta etapa. La aprobación queda PENDIENTE del dueño al mergear el PR de la etapa.
   lista("numero-sin-formato-central", "2027-01-03", { por: "dueño (pendiente de aprobar al mergear el PR)", referencia: "commit 58f066f2" }, "Deuda que queda del guardián «número mostrado sin la función central» tras cerrar TODO el dinero mostrado (decisión del dueño, 2026-11-10: «si es dinero no puede quedar como deuda»; 120 → 8 usos en 6 archivos): solo cálculo interno (huella, validación de factor) y cantidades/factores en mensajes. Clasificación en docs/diseno-dinero-mostrado-2026-11-10.md; los archivos están declarados con motivo en el test del guardián."),
+  // «Todo nace cerrado» (PR 1, 2026-11-11): deuda que ya existía al instalar el guardián de validaciones por lista de prohibidos (21 en 19 archivos); se declara sin pagarla (corregirla es un trabajo aparte), plazo máximo desde el 2026-11-11.
+  {
+    regla: "lista-de-prohibidos",
+    inicio: "2026-11-11",
+    vence: "2027-01-09",
+    responsable: "dueño",
+    aprobacion: { por: "dueño (pendiente de aprobar al mergear el PR)", referencia: "PR #228" },
+    motivo: "Validaciones por lista de prohibidos heredadas al instalar el cerco «Todo nace cerrado»: cada una pasa a declarar lo permitido en un trabajo aparte (propuesta de plazo: 60 días; la corrige el dueño).",
+  },
   // Estructura de pantalla (PR #219, 2026-11-09): las 90 pantallas se adoptan por etapas E-B…E-H (docs/diseno-estructura-de-pantalla-1366x768-2026-11-09.md, §12). Plazo máximo; se renueva con motivo si una etapa se atrasa.
   {
     regla: "pantallas-con-estructura",
