@@ -17,11 +17,11 @@ Marcas de verdad: **(V)** verificado en el código de hoy (Motor2 o Pedernal, co
 3. La ficha guarda **solo quién es** la persona o la empresa. Lo que es de un rol (las condiciones de pago del proveedor, el % de descuento del salón) sigue en su propia ficha y **apunta** a la Parte. Así lo hace Pedernal.
 4. Primer paso propuesto (el más barato que se puede usar): **la ficha de parte para los proveedores**. Cada proveedor de hoy recibe su Parte copiando lo que ya tiene; nada de lo que funciona se rompe.
 5. Lo que no se sabe no se inventa: si un proveedor no tiene CUIT, su ficha queda «pendiente de completar» (persona o empresa sin declarar).
-6. **Los clientes de hoy no se copian solos**, porque en su mayoría no son personas: son perfiles de descuento («Residente 15 %», «Empleado 25 %», ISSN). Eso es la **pregunta clave 1**.
+6. **Los clientes de hoy pasan a tener su ficha** (D9, opción B del dueño: «se le cargará la ficha»): hoy son sobre todo perfiles de descuento («Residente 15 %», «Empleado 25 %», ISSN) y hay que cargar la ficha de cada persona o empresa; **dónde queda el porcentaje** es la **pregunta clave 1** (nueva). Las preguntas 2 y 3 quedaron resueltas (D10 y D11).
 7. Dos altas del mismo CUIT al mismo tiempo dejan **una sola** ficha; un reintento no duplica.
 8. Cada etapa se puede deshacer (`down.sql`) mientras no haya datos nuevos que se perderían; lo que borre algo se avisa antes, con los datos a la vista.
 9. Hay **5 reglas donde Motor2 daría otro resultado que Pedernal** (§6.2): las marco para que decidas si se igualan.
-10. Preguntas clave: 3 (§7). El resto son supuestos de una línea que podés corregir.
+10. Preguntas clave: 1 abierta (§7, dónde queda el %); las otras dos las resolvió el dueño (D10, D11). El resto son supuestos de una línea que podés corregir.
 
 ---
 
@@ -37,13 +37,16 @@ Marcas de verdad: **(V)** verificado en el código de hoy (Motor2 o Pedernal, co
 | D6 | 2026-11-12 | «eso habrá que adaptarlo si es necesario y poder mejorarlo; Pedernal no lo tiene en su primera versión, y es muy distinto a sacarlo» | auditoría §9.1 | La consignación (que Pedernal no tiene) se conserva y se adapta a la Parte | **CONFIRMADA** |
 | D7 | 2026-10-26 | «Una persona puede ser agente de varias empresas (N:M), con un solo vínculo vigente por par; en el POS se elige la empresa» (respuesta 2, «lo recomendado») | `docs/diseno-clientes-convenios-…-2026-10-26.md` §H | Regla del vínculo «Agente de» | **CONFIRMADA** |
 | D8 | 2026-10-05 | «…un buscador con códigos por cliente: 00 Consumidor final 0 %, 01 Residente 15 %, 02 ISSN 18 %, 03 EPEN (…es empresa pero no tiene descuento), 04 Empleado 25 %.» | `motor2-docs/_planes/_decisiones-del-dueno-2026-10-05.md`, fila 3 | Lo que hoy es un «Cliente» incluye perfiles que no son personas | **CONFIRMADA** como descripción; su efecto en la Parte es la **pregunta clave 1** |
+| D9 | 2026-11-12 | «Me parece que B es la correcta. Si es un empleado y hay que cargarle la ficha, bueno, se le cargará la ficha. Si es un residente, se le cargará la ficha. Si es una empresa que tiene descuento especial, se le cargará la ficha. Y así quedará sentado. De paso, cada vez que se tenga que facturar a una de esas personas, ya queda cargado.» | chat del dueño con la sesión de la auditoría (respuesta a la pregunta clave 1, opción B) | Todo cliente (empleado, residente, empresa con descuento especial) tiene su ficha de parte; no quedan «perfiles» sin ficha | **CONFIRMADA** (qué se hace con el % es la pregunta clave 1, nueva) |
+| D10 | 2026-11-12 | «Lo mismo que Pedernal en 2.» | mismo chat (pregunta clave 2) | Quién da de alta, edita y desactiva fichas: igual que Pedernal (el operario busca, da de alta y edita; solo el administrador o el gerente desactiva) | **CONFIRMADA** |
+| D11 | 2026-11-12 | «En 3 también lo mismo.» | mismo chat (pregunta clave 3) | El nombre puede repetirse en la Parte, como en Pedernal (solo el documento no se repite; se avisa «posible duplicado»); el único de `Proveedor.nombre` se retira en P4, con aviso | **CONFIRMADA** |
 | — | — | Autorización de la migración | — | Ninguna tabla se crea sin ella | **PENDIENTE** |
 
 ---
 
 ## 1. Escalera de diseño (10 niveles)
 
-**Compuerta:** los niveles 6 a 10 están escritos en papel, pero **no se migra nada** hasta que los niveles 1 a 5 estén confirmados (hoy: 1 confirmado; 2–5 con partes PROPUESTA y tres preguntas clave abiertas) y el dueño dé la autorización expresa de migración.
+**Compuerta:** los niveles 6 a 10 están escritos en papel, pero **no se migra nada** hasta que los niveles 1 a 5 estén confirmados (hoy: 1 confirmado; 2–5 con partes PROPUESTA y una pregunta clave abierta (dónde queda el %)) y el dueño dé la autorización expresa de migración.
 
 ### Nivel 1. Propósito y alcance — CONFIRMADA (D1, D2)
 - **Necesidad:** una sola ficha para quien le vende o le compra al negocio, con los datos que pide la facturación y la vida diaria (documento, IVA, domicilio, contacto), igual a Pedernal. Quién la pidió: el dueño, 2026-11-12 (D1, D2).
@@ -67,7 +70,7 @@ Marcas de verdad: **(V)** verificado en el código de hoy (Motor2 o Pedernal, co
 | CU5 | Ver y completar la ficha de un proveedor existente («pendiente de completar») | P1 |
 | CU6 | Vincular / desvincular «Contacto» (con cargo opcional) | P2 |
 | CU7 | Vincular / desvincular «Agente de» (persona → empresa) | P2 |
-| CU8 | Ligar un perfil de descuento (Cliente de hoy) a una parte | P3, depende de la pregunta clave 1 |
+| CU8 | Cargar la ficha de un cliente (empleado, residente, empresa con descuento especial) y ligarla a su cliente | P3 (D9); el % depende de la pregunta clave 1 |
 | — | Unir duplicados | **No aplica** en este diseño (ver §3.6) |
 
 ### Nivel 4. Conceptos y ciclo de vida — PROPUESTA (salvo lo citado)
@@ -152,7 +155,7 @@ Además, `npm run medir-cuit` (ya existe, `scripts/medir-cuit.ts`, solo lectura)
 ### 2.5 Cómo conviven lo viejo y lo nuevo durante la transición (PROPUESTA)
 - **Una sola fuente por dato en cada momento.** Mientras un proveedor no tenga Parte, sus datos se leen de `Proveedor` como hoy. Desde que la tiene (la etapa P1 se la da a todos en la misma migración), **la identidad se lee y se escribe en la Parte**; las columnas viejas de `Proveedor` (`nombre`, `cuit`, `telefono`, `email`, `notas`, `condicionIva`) dejan de escribirse salvo `nombre`, que se **copia** en la misma transacción mientras haya lecturas de reportes que lo usan (se retira en P4).
 - **Nada cambia para la compra, la consignación ni los reportes:** siguen apuntando a `Proveedor.id`. La Parte se suma **al lado**, con `Proveedor.parteId`.
-- **Cliente no se toca en P1.** Los perfiles de descuento siguen funcionando igual (Cuenta, % congelado). Qué pasa con ellos es la pregunta clave 1.
+- **Cliente no se toca en P1.** Los perfiles de descuento siguen funcionando igual (Cuenta, % congelado). En P3 (D9) cada cliente pasa a tener su ficha; dónde queda el % es la pregunta clave 1.
 - **Unicidad del nombre:** hoy el nombre de proveedor es único; en Pedernal el nombre de la parte **no** es único. Mientras `Proveedor.nombre` exista, su único sigue vigente (pregunta clave 3).
 
 ---
@@ -378,7 +381,7 @@ Esto es la «FK con discriminador» que Motor2 ya usa (ADR-029 §10–11, citado
 
 **`Proveedor`** (P1, columnas nuevas): `parteId text NULL` + FK `(empresaId, parteId) → Parte(empresaId, id)` + único `(empresaId, parteId)` (I18). En P4 pasa a NOT NULL.
 
-**`Cliente`** (P3, solo si la pregunta clave 1 lo confirma): `parteId text NULL` con FK compuesta. Sin único (varios perfiles podrían ser de la misma empresa: PENDIENTE).
+**`Cliente`** (P3, D9): `parteId text NULL` con FK compuesta; los clientes de hoy quedan «pendiente de completar» (NULL) hasta cargarles la ficha y todo cliente nuevo se carga con su ficha. Sin único (una misma empresa podría tener varios descuentos: PENDIENTE).
 
 **Función SQL** (P1): `cuit_valido(text) RETURNS boolean IMMUTABLE`, `search_path` fijo, sin `SECURITY DEFINER`, con el mismo algoritmo que `esCuitValido` (`src/core/fiscal/cuit.ts`) y un test de paridad que compara las dos con miles de casos (como Pedernal).
 
@@ -392,7 +395,7 @@ Esto es la «FK con discriminador» que Motor2 ya usa (ADR-029 §10–11, citado
 |---|---|---|---|---|
 | **P1 «Ficha del proveedor»** (la más barata que se puede usar) | `cuit_valido()`; tabla `Parte` con RLS y privilegios; `Proveedor.parteId` + FK + único; copia de cada proveedor a su Parte (§5.5) | Casos de uso alta/edición/desactivar/buscar Parte; la pantalla de proveedor muestra y edita la ficha | Quita la FK, la columna `parteId`, la tabla y la función. **Se niega** (`RAISE`) si hay partes **no** migradas (`migradaDe IS NULL`) o ediciones posteriores, salvo confirmación explícita con `SET LOCAL`, como la reversión de Pedernal | Sí mientras nadie haya cargado datos nuevos; después, pierde lo cargado (se avisa) |
 | **P2 «Vínculos»** | `ParteVinculo` | Vincular/desvincular Contacto y Agente de desde la ficha | Quita la tabla (mismo resguardo) | Igual |
-| **P3 «Perfiles de cliente»** | Según la pregunta clave 1: `Cliente.parteId` (opción A) | Ligar un perfil a una parte | Quita la columna | Sí |
+| **P3 «Fichas de cliente»** (D9, opción B) | `Cliente.parteId` | Cargar la ficha de cada cliente y ligarla; el mostrador elige a la persona o empresa | Quita la columna | Sí |
 | **P4 «Retiro de lo viejo»** (destructiva, **con aviso previo y datos a la vista**) | `Proveedor.parteId` NOT NULL; borrar `Proveedor.telefono/email/cuit/notas/condicionIva` (y `contacto` si el dueño lo aprueba); migrar lecturas de reportes a `Parte.nombre` | Lecturas | Recrea las columnas y las rellena desde la Parte | Sí en estructura; el dato vuelve desde la Parte |
 
 Orden de despliegue (como el precedente `solo_salon`): la migración va **antes** que el código; el código nuevo tolera que `parteId` sea nulo hasta que la copia termine.
@@ -470,18 +473,15 @@ Iguales en ambos (no hay que tocarlas): documento único por empresa incluso ent
 
 ## 7. Preguntas abiertas para el dueño
 
-**Pregunta clave 1 (datos y dinero): ¿qué son los «clientes» de hoy?**
-> Hoy un «cliente» de Motor2 es, sobre todo, un **perfil de descuento** del salón: «Residente 15 %», «Empleado 25 %», «ISSN 18 %», «EPEN» (lo dijiste el 2026-10-05). Pedernal guarda en la ficha solo **quién es** la persona o la empresa, y el descuento va aparte.
-> - **A (recomendada, la más barata):** los perfiles siguen como están (el mozo los elige igual, el % se congela igual) y a cada uno se le puede **ligar** una ficha de parte cuando es una persona o empresa real (ISSN, EPEN). «Residente» o «Empleado» quedan sin ficha. Nada cambia en la plata.
-> - **B:** cada cliente de hoy se convierte en una ficha de parte y el descuento se mueve a otro lugar. Cambia cómo se elige el descuento en el POS; hay que rediseñarlo.
+**Pregunta clave 1 (datos y dinero): ¿dónde queda el porcentaje de descuento, ahora que cada cliente tiene su ficha (D9)?** — NUEVA, PENDIENTE
+> El dueño eligió la opción B: cada empleado, residente o empresa con descuento especial tiene su ficha. Pedernal guarda en la ficha solo **quién es** y el descuento va aparte (X11 de la auditoría). Hoy el % vive en el cliente (`Cliente.descuentoPorcentaje`) y se **congela** en cada cuenta (`Cuenta.descuentoPorcentaje`); eso no cambia.
+> - **A (recomendada, la más barata):** el % sigue en la fila `Cliente` de cada persona o empresa (que ahora apunta a su ficha). Para cambiarle el % a todos los residentes habría que editar uno por uno.
+> - **B:** los perfiles de hoy («Residente 15 %», «Empleado 25 %», «ISSN 18 %», «EPEN») pasan a ser **categorías de descuento** y cada persona o empresa se asigna a una; cambiar el % de la categoría lo cambia para todos. Es una tabla más y cambia cómo se elige en el mostrador.
+> En los dos casos «Consumidor final» (00, 0 %) sigue sin ficha. Los clientes de hoy se conservan tal cual y quedan «pendiente de completar» hasta cargarles la ficha.
 
-**Pregunta clave 2 (permisos): ¿quién da de alta, edita y desactiva fichas?**
-> En Pedernal el **operario** busca, da de alta y edita (también vincula contactos), y solo el **administrador o el gerente** desactiva (V: `capacidades/permisos/empresa.ts:203-209`). En Motor2 hoy los clientes los administra solo el administrador; el alta de proveedor la puede hacer el operario; editar o desactivar un proveedor, solo el administrador.
-> Recomendación: igual que Pedernal (por D2/D5), con claves nuevas de empresa (`partes_ver`, `partes_editar`, `partes_desactivar`) en el módulo `proveedores_basico` para P1.
+**Pregunta clave 2 (permisos):** RESUELTA por D10: igual que Pedernal. Claves nuevas de empresa (`partes_ver`, `partes_editar`, `partes_desactivar`) en el módulo `proveedores_basico` para P1.
 
-**Pregunta clave 3 (datos): ¿el nombre puede repetirse?**
-> En Pedernal dos fichas pueden llamarse igual (solo el documento no se repite); se avisa «posible duplicado». En Motor2 hoy dos proveedores no pueden llamarse igual.
-> Recomendación: igual que Pedernal en la Parte; el único de `Proveedor.nombre` se retira en P4 (con aviso). Hasta entonces sigue el de hoy.
+**Pregunta clave 3 (datos):** RESUELTA por D11: el nombre puede repetirse en la Parte (igual que Pedernal, con aviso de «posible duplicado»); el único de `Proveedor.nombre` se retira en P4 (con aviso); hasta entonces sigue el de hoy.
 
 **Requisito, no pregunta:** autorización expresa para migrar P1 (toca `prisma/`), y lectura de producción para §2.4 (ya autorizada: «5.-Si»).
 
