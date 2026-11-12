@@ -413,6 +413,26 @@ Orden por costo. Cada paso es un PR chico y reversible, con el gate de 8 comando
 9. ¿Habilitás la lectura de `ZuluHub-ERP` para repetir el contraste contra el código real? ¿Y `motor2-docs` en este entorno?
 10. ¿Aprobás la fecha de vencimiento del guardián de listas de prohibidos (consta «pendiente de aprobar al mergear el PR #229»)?
 
+## 9.0 Respuestas del dueño (2026-11-12, después de la entrega de la Fase 1)
+
+Textuales: «tabla única; 1.-Si; 2.-entiendo y no importa, es por seguridad. 3.- iguales. 4.- que sigan sin entrar. 5.-Si. 6.- SI. 7.- parte del sistema.- 9-SI, incluso la revisión de las pantallas. 10- Si». (La 8 no se respondió: sigue abierta.)
+
+| Pregunta | Respuesta | Estado | Consecuencia |
+|---|---|---|---|
+| Clave: ¿tabla única «Parte» o columnas sobre Cliente y Proveedor? | **Tabla única** | **CONFIRMADA** | La etapa «Ficha de parte» se diseña como una sola tabla con roles (cliente, proveedor, consignante). La migración sigue necesitando autorización expresa (`prisma/`) y el diseño de 10 niveles antes de tocar tablas |
+| 1. Condición de IVA de la ficha = receptor (11), aparte de la del emisor (3) | Sí | **CONFIRMADA** | Dos conceptos, dos listas; no se reutiliza `Empresa.condicionIva` |
+| 2. «Todo nace cerrado» también para promo, ítem agrupado, grupo de opciones y «activo en todas las sucursales» | «Entiendo y no importa, es por seguridad» | **CONFIRMADA** | D2–D6 pasan a ser decisión tomada. Cada uno es un cambio de producto: se hace como paso propio, con aviso del efecto sobre lo ya cargado |
+| 3. ¿Motor2 conserva recargos en %, negativos, tope «hasta N» y adicional como línea hija? | «Iguales» | **CONFIRMADA la dirección** (igual que Pedernal). **Alcance de ejecución PENDIENTE**: quitar capacidades que hoy tienen datos es destructivo; antes hay que leer qué hay cargado y qué hace cada una con el precio | Etapa posterior con nombre «Alinear opciones y recargos»; no entra en los pasos aprobados |
+| 4. Caracteres `¿ ¡ ? ! $` en nombres | «Que sigan sin entrar» | **CONFIRMADA** | X24 descartado: no se cambia `RE_TEXTO_CATALOGO` |
+| 5. Pasos 1–8 y 12–14; lectura de producción en solo lectura para 10 y 11 | Sí | **CONFIRMADA** | Se aprueban esos pasos. La lectura de producción queda autorizada; **no** se autorizó todavía ninguna migración: 10 y 11 siguen sin ejecutarse hasta tener esa autorización expresa |
+| 6. Marca: un color por sucursal y uno por empresa, resto derivado | Sí | **CONFIRMADA** | Paso 9 aprobado (con aviso de lo que se pierde de las 39 claves actuales) |
+| 7. Consola `plataforma/` | Parte del sistema | **CONFIRMADA** | Paso nuevo 15: llevar su paleta (azul propio) a los tokens del sistema |
+| 8. Sin receta / cero | (sin respuesta) | PENDIENTE | Pregunta abierta |
+| 9. Leer `ZuluHub-ERP` y `motor2-docs`, incluida la revisión de pantallas | Sí | **CONFIRMADA** | Hecho: ver el anexo G (código real de Pedernal) y el anexo H (`motor2-docs`) |
+| 10. Vencimiento del guardián de listas de prohibidos (2027-01-09) | Sí | **CONFIRMADA** | Aprobación registrada; se puede reemplazar «pendiente de aprobar al mergear el PR #229» por la aprobación real en el paso 6 |
+
+Pasos aprobados para la Fase 2: **1, 2, 3, 4, 6, 7, 8, 9, 12, 14 y 15**. Esperan: **5** (el PR #230 en vuelo toca `promo-combo.ts`); **10 y 11** (falta autorización expresa de migración); **13** (decisión fiscal sobre los productos ya cargados «sin declarar»).
+
 ---
 
 ## 10. Riesgos que aparecieron en el camino (no eran lo pedido; anotados sin arreglar)
