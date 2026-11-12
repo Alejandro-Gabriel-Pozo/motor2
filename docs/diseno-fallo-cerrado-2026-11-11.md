@@ -44,3 +44,10 @@ Pedido del dueño, 2026-11-11 (CONFIRMADO), en el encargo de esta sesión: «La 
 
 ## Línea de base inicial
 21 validaciones en 19 archivos (el encargo estimaba 20 en 18 con otra copia del detector; la diferencia es un archivo de 1 hallazgo, ver el cuerpo del PR). Se declaran, no se corrigen aquí.
+
+## PR 2 — Tope de 400 líneas por archivo (2026-11-12)
+- Necesidad: pedido del orquestador al dueño (2026-11-12), como segundo PR de «Todo nace cerrado»: un archivo no crece sin que alguien lo decida. CONFIRMADA como pedido; el valor 400 es el del pedido.
+- Alcance: archivos `.ts` y `.tsx` de `src/` (no `plataforma/src/`, `scripts/` ni `test/`). PROPUESTA (el pedido habla de `src/`).
+- Mecanismo: cerco de trinquete `tope-de-lineas` que cuenta, por archivo, las líneas que se pasa de 400 (como `wc -l`). Contar el exceso impide que un archivo ya grande siga creciendo. PROPUESTA.
+- Línea de base: 18 archivos (el mayor, `rendimiento-recetas.ts`, 876 líneas) = 2187 líneas de exceso. Deuda con vencimiento ≤ 60 días; partirlos queda fuera de alcance.
+- ¿Qué pasa si…? Un archivo nuevo de 401 líneas: falla. Un archivo en la línea de base crece: falla. Se parte: la cuenta baja y el cerco pide bajar la línea de base (`BAJAR_CERCOS=1`). Vence el plazo: falla hasta renovar con motivo y aprobación.
