@@ -297,8 +297,7 @@ export function precioDeCarta(precioVenta: number, local: { precio: number; habi
 }
 
 /**
- * La carta mete la URL en `backgroundImage: url(${url})` sin escapar (restaurant-menu-design,
- * components/carta-section-image.tsx): una comilla, un paréntesis o un espacio rompen ese CSS o lo dejan inyectable. Solo
+ * La carta mete la URL en `backgroundImage: url(${url})` sin escapar (restaurant-menu-design, components/carta-section-image.tsx): una comilla, un paréntesis o un espacio rompen ese CSS o lo dejan inyectable. Solo
  * pasa `https://` con un host y la forma de `url-https.ts` (solo caracteres ASCII de una URL); cualquier otra cosa → null.
  */
 export function urlImagenSegura(url: string | null | undefined): string | null {
