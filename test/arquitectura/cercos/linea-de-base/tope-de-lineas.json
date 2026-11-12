@@ -1,0 +1,65 @@
+{
+  "regla": "tope-de-lineas",
+  "meta": "0 (ningún archivo de src/ pasa de 400 líneas: cada uno se parte por responsabilidad en un trabajo aparte)",
+  "total": 2230,
+  "entradas": 18,
+  "porTipo": {
+    "lineas-sobre-400": 2230
+  },
+  "cuentas": {
+    "src/app/(app)/carta/agrupados/page.tsx": {
+      "lineas-sobre-400": 4
+    },
+    "src/app/(app)/carta/mantenimiento-de-carta.tsx": {
+      "lineas-sobre-400": 69
+    },
+    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": {
+      "lineas-sobre-400": 9
+    },
+    "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": {
+      "lineas-sobre-400": 10
+    },
+    "src/app/(app)/catalogo/productos/producto-form.tsx": {
+      "lineas-sobre-400": 153
+    },
+    "src/app/(app)/catalogo/recetas/[productoId]/page.tsx": {
+      "lineas-sobre-400": 358
+    },
+    "src/app/(app)/movimientos/[proceso]/panel-compra-por-pasos.tsx": {
+      "lineas-sobre-400": 284
+    },
+    "src/components/carta-publica/seccion.tsx": {
+      "lineas-sobre-400": 198
+    },
+    "src/core/carta/armar-menu.ts": {
+      "lineas-sobre-400": 106
+    },
+    "src/core/features/catalogo/opciones-de-venta.guard.ts": {
+      "lineas-sobre-400": 160
+    },
+    "src/core/movimientos/origen-venta.ts": {
+      "lineas-sobre-400": 16
+    },
+    "src/core/opciones/validar-configuracion.ts": {
+      "lineas-sobre-400": 24
+    },
+    "src/core/pos/promo-combo.ts": {
+      "lineas-sobre-400": 85
+    },
+    "src/core/pos/ticket.ts": {
+      "lineas-sobre-400": 59
+    },
+    "src/server/actions/catalogo/productos.ts": {
+      "lineas-sobre-400": 185
+    },
+    "src/server/consultas/carta/admin.ts": {
+      "lineas-sobre-400": 32
+    },
+    "src/server/consultas/catalogo/opciones-de-venta.ts": {
+      "lineas-sobre-400": 1
+    },
+    "src/server/consultas/reportes/rendimiento-recetas.ts": {
+      "lineas-sobre-400": 477
+    }
+  }
+}
