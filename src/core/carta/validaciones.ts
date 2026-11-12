@@ -52,12 +52,28 @@ export function normalizarTagsCarta(valor: readonly string[] | string | null | u
   return { ok: true, valor: tags };
 }
 
-/** Texto libre opcional (descripción, título): vacío → null; si no, recortado y con largo máximo. */
-export function validarTextoLibreCarta(valor: unknown, etiqueta: string, maximo: number): Resultado<string | null> {
-  const v = texto(valor);
+/**
+ * Lo que se admite en un texto libre de la carta (todo termina en la carta PÚBLICA): letras, marcas (acentos), números, puntuación, símbolos (incluye emoji como 🍕 o ★) y espacios; en un texto de
+ * varias líneas, también el salto de línea. Es una lista de PERMITIDOS (regla «todo nace cerrado», 2026-11-11): los controles (incluido el NUL, que rompe Postgres), los caracteres de ancho cero,
+ * los de dirección de texto (bidi, que permiten falsificar cómo se lee un título) y los separadores de línea no entran. Un emoji compuesto con el unidor de ancho cero (👨‍🍳) tampoco.
+ */
+const RE_TEXTO_LIBRE_UNA_LINEA = /^[\p{L}\p{M}\p{N}\p{P}\p{S}\p{Zs}]+$/u;
+const RE_TEXTO_LIBRE_VARIAS_LINEAS = /^[\p{L}\p{M}\p{N}\p{P}\p{S}\p{Zs}\n]+$/u;
+
+/**
+ * Texto libre opcional (descripción, título, etiqueta): vacío → null; si no, recortado, con largo máximo y con el juego de caracteres permitido. `multilinea` es solo para las áreas de texto
+ * (descripciones): el navegador manda los saltos como `\r\n` y acá se guardan como `\n`; en un texto de una línea un salto de línea no se admite.
+ */
+export function validarTextoLibreCarta(valor: unknown, etiqueta: string, maximo: number, opciones: { multilinea?: boolean } = {}): Resultado<string | null> {
+  const multilinea = opciones.multilinea === true;
+  const crudo = texto(valor);
+  const v = multilinea ? crudo.replace(/\r\n?/g, "\n") : crudo;
   if (!v) return { ok: true, valor: null };
   const errorLargo = validarLargoTexto(v, etiqueta, maximo);
   if (errorLargo) return { ok: false, mensaje: errorLargo };
+  if (!(multilinea ? RE_TEXTO_LIBRE_VARIAS_LINEAS : RE_TEXTO_LIBRE_UNA_LINEA).test(v)) {
+    return { ok: false, mensaje: `${etiqueta} tiene caracteres no permitidos: se admiten letras, números, signos de puntuación, símbolos y espacios${multilinea ? " (y saltos de línea)" : ", en una sola línea"}.` };
+  }
   return { ok: true, valor: v };
 }
 
