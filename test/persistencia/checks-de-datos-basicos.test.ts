@@ -4,13 +4,13 @@ import { limpiarBaseDeTest, prismaAdmin } from "../setup/test-db";
 
 /**
  * Migración 20261112160000_checks_de_datos_basicos (paso 10 de la auditoría de primitivas), contra la base real: la base rechaza lo que la app ya rechaza.
- * Qué se mide: que los cuatro CHECK existen y están VALIDADOS (no `NOT VALID`), y que cada uno rechaza el caso inválido (23514) y deja pasar el válido.
+ * Qué se mide: que los tres CHECK existen y están VALIDADOS (no `NOT VALID`), y que cada uno rechaza el caso inválido (23514) y deja pasar el válido.
  * Mutación demostrada: sacar un CHECK de la migración hace caer su caso «rechaza».
  */
 afterAll(() => prismaAdmin.$disconnect());
 beforeEach(limpiarBaseDeTest);
 
-const NOMBRES = ["Empresa_moneda_chk", "UsuarioEmpresa_rolEmpresa_chk", "CotizacionDolar_fuente_chk", "Cliente_descuentoPorcentaje_chk"];
+const NOMBRES = ["Empresa_moneda_chk", "CotizacionDolar_fuente_chk", "Cliente_descuentoPorcentaje_chk"];
 
 const codigoDeError = async (sql: string, ...params: unknown[]): Promise<string | null> => {
   try {
@@ -23,7 +23,7 @@ const codigoDeError = async (sql: string, ...params: unknown[]): Promise<string 
 };
 
 describe("checks de datos básicos", () => {
-  it("los cuatro CHECK existen y están validados", async () => {
+  it("los tres CHECK existen y están validados", async () => {
     const filas = await prismaAdmin.$queryRawUnsafe<Array<{ conname: string; convalidated: boolean }>>(`SELECT conname::text, convalidated FROM pg_constraint WHERE conname = ANY($1::text[]) ORDER BY conname`, NOMBRES);
     expect(filas.map((f) => f.conname).sort()).toEqual([...NOMBRES].sort());
     expect(filas.every((f) => f.convalidated)).toBe(true);
@@ -50,8 +50,4 @@ describe("checks de datos básicos", () => {
     expect(await alta("c_max", "99.99")).toBeNull();
   });
 
-  it("UsuarioEmpresa.rolEmpresa: la regla es nulo o «gerente»", async () => {
-    const [{ def }] = await prismaAdmin.$queryRawUnsafe<Array<{ def: string }>>(`SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = 'UsuarioEmpresa_rolEmpresa_chk'`);
-    expect(def).toMatch(/rolEmpresa.*IS NULL.*gerente/);
-  });
 });

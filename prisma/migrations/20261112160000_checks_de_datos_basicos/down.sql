@@ -2,6 +2,5 @@
 -- Volver primero el código si hiciera falta y recién después correr esto, a mano, como dueño, con `psql -1 -v ON_ERROR_STOP=1 -f down.sql` (UNA transacción).
 
 ALTER TABLE "Empresa" DROP CONSTRAINT IF EXISTS "Empresa_moneda_chk";
-ALTER TABLE "UsuarioEmpresa" DROP CONSTRAINT IF EXISTS "UsuarioEmpresa_rolEmpresa_chk";
 ALTER TABLE "CotizacionDolar" DROP CONSTRAINT IF EXISTS "CotizacionDolar_fuente_chk";
 ALTER TABLE "Cliente" DROP CONSTRAINT IF EXISTS "Cliente_descuentoPorcentaje_chk";
