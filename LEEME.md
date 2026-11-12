@@ -363,3 +363,67 @@ Gancia — $ 9.000
 Gin tonic — $ 12.000
 Whisky — $ 13.000
 ```
+
+---
+
+# ETAPA 2 — «DESPUÉS»: cada producto vendible es una línea de la carta
+
+Pedido del orquestador (en nombre del dueño). Capturas en `capturas/despues/` (`-m` = 375×844, `-d` = 1366×768). Mismas reglas que el «antes»: pantallas reales, datos reales, base local descartable, nada en producción, sin migraciones, nada en `main`.
+
+## Cómo se armó
+- Código: el del PR #233 (`fc6b583`, «Está bien así» y lista de pendientes apagados) levantado en local, SIN tocarlo, contra una COPIA de la base del «antes» (`motor2_despues`). Las capturas `l-sin-PR-*` usan `main` (`a0ca384`) contra esos mismos datos, para ver qué cambia el PR.
+- Datos: los mismos 3 platos del «antes» en Huinganco, cargados por pantallas existentes como cada plato = un producto. **SUPUESTO A:** solo Huinganco y solo estos 3 platos (no se recargaron las bases de las otras sucursales). **SUPUESTO B:** «cada producto vendible = una línea de la carta» se cargó así: «Bife a criolla» y «Bife con chimichurri» (30.000 c/u), «Milanesa» (20.000) y «Milanesa napolitana» (25.000), «Café chico» (4.000), «Café mediano» (4.100) y «Café grande» (4.300): 7 productos DIRECTO, nombre de carta = nombre del producto (sin «Nombre en la carta», sin «nombre arriba», sin prefijo). La carne/proteína y la guarnición del bife, la proteína de la milanesa y la variante del café siguen siendo grupos de opciones «incluidas sin costo» ya existentes (se reutilizaron, no se cargó ninguna opción nueva). **SUPUESTO C:** las 3 bases viejas (BIFE-, PV-MILANESAS, Café) se sacaron de la carta de Huinganco para no duplicar (3 pantallas más); siguen existiendo en el catálogo. **SUPUESTO D:** igual que en el «antes», se cargó en la base LOCAL una receta de reventa a cada producto nuevo solo para poder vender (la receta real de cada uno quedó «Pendiente»).
+- Venta de ensayo repetida (Huinganco, Mesa 01): 1 Bife con chimichurri (corte «Bife de chorizo» + «Papas fritas»), 1 Milanesa («Carne»), 1 Café mediano («Café cortado»), enviada a cocina y cerrada. En `f4` la lista «Cuentas cerradas» muestra el N.º 1-A (venta del «antes», $ 54.100) y el N.º 2-A ($ 108.200): este último es una corrida repetida de mi script de captura, no una venta real.
+
+## (1) Cuánto hay que cargar — ANTES vs DESPUÉS
+| | ANTES (hoy, los 3 platos de Huinganco) | DESPUÉS (un producto por línea) |
+|---|---|---|
+| Productos de venta | 3 (BIFE-, PV-MILANESAS, Café) | **7** (+4) |
+| Grupos vinculados a los productos | 7 (bife 3, milanesa 2, café 2) | 9 (bife 2+2, milanesa 1+1, café 1+1+1) |
+| Opciones vinculadas a los productos | 18 | 26 |
+| Precios cargados | 7 (uno por opción de «Preparación» / «Tamaño») | 7 (uno por producto) |
+| «Nombre en la carta» a cargar | 0 en Huinganco (en Ovejas PV-MILANESAS tiene «Milanesas») | 0 |
+| «Platos sin nombre de carta» (lista de pendientes) | 0 | **Con el PR #233: 0.** Sin el PR, con estos datos: **7** y 7 «Está bien así» (o 7 nombres a escribir): ver `l-sin-PR-carta-hoy-*` |
+| Qué ve el cliente | Café: tabla 4 variantes × 3 tamaños (12 precios) | Café: 3 líneas (chico/mediano/grande) + «Incluye 1 variante café · ver opciones ↓» |
+| Pantallas visitadas (medido) | no medido (ver nota) | **31** (4 por producto × 7 + 3 para sacar las bases viejas) |
+| Acciones medidas (clics / textos / listas / casillas / guardados) | no medido | **58 / 28 / 23 / 7 / 33** (por producto: bife 10 clics y 5 guardados; milanesa y café 7 clics y 4 guardados; 4 textos y 3 a 4 listas cada uno) |
+- Recorrido de cada producto nuevo (medido): Catálogo › Productos › Nuevo (tipo, código, nombre, unidad) → «Qué se vende» (precio) → «Opciones y precio» (por cada grupo: «Agregar un grupo existente», elegir, «Agregar», y «Guardar»; en el bife y la milanesa se destilda «Mostrar este grupo en la carta» para el corte/proteína) → «En la carta» (se muestra, sección, orden, «Guardar contenido»).
+- **Nota sobre el ANTES:** intenté medir el mismo recorrido para las 3 bases y lo corté: el modo «Por opción» queda deshabilitado hasta que el producto tiene grupos cargados (el orden del recorrido es otro) y los precios se cargan fila por fila en cada grupo. Por eso las filas «no medido» son honestas: lo que sí es comparable son las cantidades de datos (productos, grupos, opciones, precios). Con las bases ya cargadas el ANTES no requiere recarga: lo que cuesta es MANTENERLAS (ver `e-opciones-*` del «antes», 6 a 9 campos y 5 a 14 apariciones de «pendiente» por producto).
+- Para sacar una base de la carta (SUPUESTO C): En la carta › destildar «Se muestra en la carta» › Guardar: 3 pantallas, 3 casillas, 3 clics.
+
+## (2) POS: «familia» y opciones ocultas en el ticket
+- **Familia (variantes de un mismo plato).** En el POS los 3 cafés salen como 3 botones sueltos en la sección (`j-pos-cafeteria-sin-familia-*`), ordenados por «Orden»: con mis valores 0, 1 y 2 el «Café grande» quedó DESPUÉS de «Pastelería del día» porque los órdenes chocan con los platos que ya estaban (hay que cuidar la numeración). La carpeta del selector (género, «Café») NO se puede armar hoy: los géneros y los ítems agrupados están apagados por interruptor y la pantalla lo dice: «Los géneros y los ítems agrupados de la carta están apagados por ahora: se resuelven con las opciones de venta.» (`k-generos-crear-cafe-*`; el selector «Género» de la ficha sale deshabilitado). O sea: con el modelo nuevo la «familia» NO se resuelve con pantallas existentes; en el ANTES la familia era el propio producto base (un botón por opción, con su nombre; Café es UN producto con tamaño y variante dentro del diálogo).
+- **Opciones que hoy se ocultan en el ticket.** Siguen haciendo falta, igual que antes: el corte del bife y la proteína de la milanesa son grupos «incluidos sin costo» que la cocina necesita y el cliente no necesita ver. En el «después» se resuelve con la MISMA casilla («Mostrar este grupo en la carta» destildada, 4 productos: 4 casillas). La comanda muestra «bife de chorizo · papas fritas», «carne»; el ticket del cliente «papas fritas» y nada más: idéntico al «antes» (`g-comanda-impresa-*`, `g-ticket-impreso-*`). El modelo nuevo no lo reemplaza: son cosas distintas (nombre de la línea vs. qué elige el cliente dentro de ella).
+- Diálogo de opciones: en el «después» el bife/milanesa ya no pide elegir la «Preparación» (es el propio plato); el café ya no pide «Tamaño» (es el propio plato) y sigue pidiendo la variante. «Por agregar» ahora se nombra con el nombre de la línea («Bife con chimichurri · Bife de chorizo · Papas fritas», `f3`) en vez de «BIFE- · Bife de chorizo · Bife con chimichurri · Papas fritas»: sale mejor.
+
+## (3) Copiar receta / ficha técnica — qué hay hoy
+- **Existe:** en la pantalla de la receta de un producto, «Receta de esta sucursal»: «Copiar la receta propia de otra sucursal» (el MISMO producto, de una sucursal a otra); la «Ficha técnica» (campo de texto de la receta, «Sin ficha técnica cargada · Editar») y la «Ficha de cocina» imprimible (`/catalogo/recetas/<id>/ficha`). Ver `i-receta-*`.
+- **No encontré** (búsqueda en pantallas y código por «copiar», «duplicar» y «clonar»): copiar la receta o la ficha técnica DE UN PRODUCTO A OTRO (Milanesa → Milanesa napolitana; Café chico → mediano → grande) ni duplicar un producto con sus grupos y su carta. Con el modelo nuevo cada uno de los 7 productos necesita SU receta y SU ficha: 7 recetas contra 3 hoy. **SUPUESTO E:** para la receta no hay atajo con pantallas existentes: se carga ingrediente por ingrediente en cada producto.
+- En el «antes» el consumo se cargaba por opción en la Biblioteca de opciones (compartido entre productos: el grupo «Guarnición» lo usan 7 productos en el «antes» y 9 con los 2 nuevos, y la pantalla lo avisa), por eso hoy cada opción dice «pendiente de completar» en «Qué consume cada opción».
+
+## Carta pública: qué cambia (texto renglón por renglón, Huinganco)
+Solo cambian estas líneas (el resto de la carta es idéntico):
+```
+ANTES  Café (tabla)  Chico | Mediano | Grande
+                     Café solo / cortado / lagrima / c/ leche   $ 4.000 | $ 4.100 | $ 4.300   (4 filas)
+DESPUÉS Café chico — $ 4.000
+        Incluye 1 variante café · ver opciones ↓
+        Café mediano — $ 4.100
+        Incluye 1 variante café · ver opciones ↓
+        Café grande — $ 4.300
+        Incluye 1 variante café · ver opciones ↓
+        (más, al final: «VARIANTE CAFÉ · ELEGÍS 1 — café solo · café cortado · café lagrima · café c/ leche»)
+```
+Bife y milanesa se ven igual en la carta pública («Bife con chimichurri — $ 30.000 · Incluye 1 guarnición», «Milanesa — $ 20.000»); lo único es el ORDEN del bife con chimichurri (mi «Orden» 1 chocó con otro plato). Observación: el nombre interno del grupo («variante café», en minúscula) aparece tal cual en la carta pública del «después»; para cambiarlo hay que renombrar el grupo en la Biblioteca de opciones (afecta a todos los que lo usan).
+
+## (4) Lo que NO se pudo hacer sin código (para que decida el dueño)
+1. **Agrupar las variantes en una «familia»** (género «Café» en el POS): apagado por interruptor (`GENERO_E_ITEM_AGRUPADO_VISIBLE`); encenderlo es un cambio de código de una línea, pero es una decisión de producto.
+2. **Copiar receta / ficha técnica de un producto a otro** y **duplicar un producto** (con sus grupos, precio y carta): no existen pantallas para eso.
+3. **Alta de varios productos de una vez:** 7 productos = 31 pantallas; no hay carga por planilla ni «crear 3 productos parecidos».
+4. **Ordenar sin chocar:** el «Orden» es un número a mano por producto; no hay «ponelo después de…» ni arrastrar (los 3 cafés quedaron mezclados con la pastelería).
+5. **Que la carta pública agrupe las 3 líneas de café en una tabla** como hoy: con el modelo nuevo salen como líneas sueltas (la tabla de tamaños desaparece).
+6. **Probar la lista «sin nombre de carta» con y sin el PR en la MISMA pantalla:** se hizo con dos servidores (main y PR) contra la misma base; no hay forma de verlo en una sola pantalla.
+- Recargar las bases de las otras sucursales y de otros platos NO se hizo (SUPUESTO A). Pregunta para el orquestador (modelo de datos): si el «después» va, ¿la «familia» pasa a ser un género encendido o se acepta que el café salga como 3 líneas sueltas?
+
+## Qué capturas hay (carpeta `capturas/despues/`)
+`a-`, `b-`, `c-`: Carta › Hoy, Visibilidad y Secciones de Huinganco con el PR #233 · `d-en-la-carta-*`, `e-opciones-*` de «Bife a criolla», «Milanesa» y «Café mediano» · `f1`..`f4`: POS · `g-*`: comanda y ticket impresos · `h-carta-publica-huinganco-laminaNN-*`: carta pública (00 portada, 01 índice, 04 Platos principales, 05 Clásicos, 13 Cafetería) · `i-receta-*`: pantalla de receta de PV-MILANESAS (base) y de «Milanesa napolitana» (nueva) · `j-pos-cafeteria-sin-familia-*` · `k-generos-crear-cafe-*` (mensaje de géneros apagados) · `l-sin-PR-*`: Carta › Hoy y ficha «En la carta» SIN el PR #233, con los datos del «después» (lista de 7 platos pendientes con «Está bien así»).
