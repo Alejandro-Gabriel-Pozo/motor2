@@ -12,14 +12,16 @@ Anexos (informes completos con `archivo:línea`, en `docs/auditoria-primitivas-p
 | D | Diseño visual: tokens, colores sueltos, marca, guardianes, mobile-first |
 | E | Lo que dicen los documentos de Pedernal (primitivas, ficha de parte, catálogo, invariantes, diseño, comparaciones, 20 contradicciones internas) |
 | F | «Todo nace cerrado»: línea de base, defaults que abren, textos sin forma, columnas sin CHECK |
+| G | Contraste contra el CÓDIGO real de Pedernal (55 afirmaciones con veredicto y `archivo:línea`) |
+| H | `motor2-docs`: planes y decisiones aprobadas contra lo que el código tiene |
 | (fuera del repo) | 33 capturas a 375 px, entregadas aparte: un PNG dentro de `docs/` rompe el guardián de clasificación de rutas (la regla `documentacion` solo admite `.md`) y ampliarla es un cambio de configuración fuera del alcance de esta fase. Limitaciones en el punto 0.3 |
 
 ---
 
 ## 0. Límites de esta auditoría (leer primero)
 
-1. **No pude leer el código de Pedernal.** El permiso para agregar `ZuluHub-ERP` fue denegado por el sistema; solo pude agregar `ZuluHub-docs`. Todo lo que digo de Pedernal sale de sus documentos y está marcado **DOC, NO VERIFICADO contra código**. Esto importa: el pedido era verificar contra su código real. Si el dueño habilita el acceso de lectura a `ZuluHub-ERP`, hay que repetir el contraste de la sección 4 (es una pasada corta, ya está armada la lista de qué mirar).
-2. **El repo `motor2-docs` no está en esta máquina.** AGENTS.md manda revisarlo antes de auditar un módulo (planes aprobados, ADR, decisiones del dueño). Las brechas «documento ↔ código» se midieron contra `docs/` del propio repo. Puede haber planes aprobados allá que el código todavía no tiene.
+1. **Actualización (después de tu OK):** pude leer el código real de Pedernal (`ZuluHub-ERP`, HEAD `83ff127`, solo lectura) y contrastarlo con sus documentos: ver el anexo G y la sección 4.5. Lo que dice **«DOC»** en las secciones 2 a 4 salió de documentos; la sección 4.5 lista qué resultó verificado y qué resultó falso o desactualizado. No levanté la app de Pedernal (solo lectura de código y de sus pruebas). Lo que el dueño vio en Pedernal sobre grillas y familias (ver 4.6) está verificado solo contra los documentos de migración de la carta.
+2. **`motor2-docs`** (leído después de tu OK, anexo H) llega hasta el 2026-11-06; lo posterior vive en `docs/` de este repo. Planes aprobados que el código no tiene: domicilio estructurado de empresa, sucursal y punto de venta (2026-10-03), `Cliente.codigo` con buscador por código en el POS (2026-10-05), alícuota de IVA en el producto (2026-10-06/08, la columna existe y nadie la escribe).
 3. **Capturas con datos de prueba, no con los datos reales del dueño.** No hay acceso de lectura a producción desde acá. Se levantó una base local descartable con los fixtures de los tests (pizzas, «LB Precio y carta»). **Esto no cumple la regla de maquetas con datos reales del dueño**; sirve para medir ancho y desborde a 375 px, no para que el dueño apruebe nada. Los seeds de demo del proyecto están rotos (ver anexo D §6) y no pude usarlos.
 4. **No corrí el gate de 8 comandos**: este PR es solo documentos. Se corrió únicamente lo que se indica en el punto 11.
 5. **Los números de Pedernal son los que sus documentos dicen sobre el 8–12/11.** Sus documentos se contradicen entre sí en 20 puntos (anexo E §7); donde importa lo señalo.
@@ -226,6 +228,39 @@ Convención: **V** = lado Motor2 verificado en el código de hoy; **D** = solo d
 ### 4.4 Defectos de los prototipos de Pedernal que Motor2 ya evita (para no copiarlos)
 
 Según los documentos de Pedernal (D): `1234.50` se lee como $123.450 en un prototipo; cambiar «precio por» de Caja a Kg infla $258.500 a $6.074.750; doble clic en «Cobrar» cobra directo. Motor2 trata el número con una función central (ADR-038: pregunta cuando es ambiguo, «Se entendió: $ 21.000,00») y deshabilita el botón mientras corre. **No hay que traer esos defectos** al unificar.
+
+### 4.5 Verificación contra el código real de Pedernal (anexo G)
+
+**Verificado en código** (coincide con los documentos): la ficha de parte (`0034_clientes.sql`: naturaleza, 6 tipos de documento, 11 condiciones de IVA, DNI y pasaporte 6–9, jurídica solo CUIT o ID extranjero, único de documento incluso entre inactivas, `idempotencia_alta`, domicilio argentino o `dom_texto` ≤300, nota ≤2000, vínculos como dato con dos banderas, **RLS con `FORCE`**, auditoría sin valores, sin acción de anonimizar); el catálogo (`0025_catalogo.sql`: 9 tablas, 5 clases, `se_vende` generada, 8 alícuotas, precio solo inserción con `precio_vigente`, `recargo ≥ 0`, `se_muestra_en_carta` default `false`); el dinero (`calcularRenglones`: `3 × 9,95` al 10 % da 80,60 repartido 26,87 / 26,87 / 26,86, y `2.260,00 = 1.950,23 + 309,77`; redondeo una vez sobre el total y reparto por restos mayores; 217 + 28 pruebas pasan); el tema de 4 tokens `#rrggbb` con contraste 4,5 y 3, sin modo oscuro; **0 colores sueltos en 59 CSS de pantallas**.
+
+**Pantallas reales de Pedernal**: 27 páginas en `apps/web` y 9 en la consola, solo facturación, configuración fiscal, cuenta, sucursal, ingreso y carta. Caja, ventas, stock, catálogo, clientes, compras, salón, comandas y producción son **solo servidor** (0 imports desde `apps/`). La carta pública que sirve la web es un **falso con cartas inventadas** (`apps/web/servidor/vidriera.ts`) aunque ya existe la migración `0043_carta_publica.sql`. Mobile: CSS con `min-width`, tarjetas en celular y tabla desde 64 rem, pruebas a **390 × 844** (no a 375).
+
+**Falso o desactualizado en los documentos de Pedernal:**
+
+| # | El documento decía | El código real |
+|---|---|---|
+| 1 | Teléfono con forma `^\+?[0-9 ()./-]{6,30}$` y 6–15 dígitos | 1–40 caracteres imprimibles, sin mínimo de dígitos: `<b>x</b>` pasa (es una lista de prohibidos) |
+| 2 | Nombre de parte con `texto_fiscal_valido` | `texto_de_catalogo_valido`, que la migración 0043 redefine **admitiendo `¿ ¡ ? ! % $`** en el catálogo y el directorio; razón social, domicilio y notas siguen sin esos signos |
+| 3 | Importe máximo 999.999.999,99 | Vale solo en caja y en lo que teclea el vendedor. Hay **4 topes**: comprobante fiscal 9.999.999.999.999,99; precio de catálogo < 1e12; precio unitario 10^18 − 1 micropesos |
+| 4 | Carta pública «sin código» | Existe la migración (`carta_publica`, `disponibilidad_de_producto`); la web sirve un falso |
+| 5 | `¿ ¡ ? ! % $` pendiente (Q3) | Ya decidido y en código; solo en catálogo (probado con 13 cadenas, informe G §2.3) |
+| 6 | «375 px primero» | Todo usa 390 × 844; 375 no aparece |
+| 7 | 16 checks de CI | Gate de 6 pasos (`npm run gate`: tipos, lint, format, arquitectura, knip, test) y CI de 13 jobs (mutación, gitleaks, zizmor…) |
+| 8 | Color libre por sucursal o empresa con control de contraste; logo y nombre por sucursal | **No encontrado**: solo tema por marca/host (4 tokens) más un «aspecto» de 5 listas cerradas |
+| 9 | Radios `RECTO\|REDONDEADO` | `RECTA\|SUAVE\|REDONDEADA` |
+| 10 | Prueba de paridad «carta = caja al centavo para toda combinación» | No existe todavía (solo `tienePrecioParaLaCarta`) |
+| 11 | Cerco `cerco-…` y `vencimientos.ts` | `lista-de-permitidos.test.ts` con deuda en `arquitectura/deuda/`; el caso `/\p{Cc}/u` de `datos-fiscales.ts` sigue (24 archivos, 44 prohibidos, vence 2027-01-05) |
+| 12 | Test «26,87/26,87/26,86» en `calcular-ticket.test.ts:28` | Asserta 8,96 / 8,96 / 8,95; el ejemplo real está en `calculo-de-renglones.test.ts:121` |
+
+**Consecuencias para este documento**: (a) las filas del oráculo con Pedernal «D» sobre la ficha, el catálogo, la alícuota y el reparto de dinero pasan a **verificadas en código**; (b) O1/O3: Pedernal **sí** admite `¿ ¡ ? ! % $` en nombres de catálogo y Motor2 sigue sin admitirlos **por decisión tuya (respuesta 4)**: es una diferencia deliberada, no un defecto; (c) O24: el tope de importe no es uno solo en Pedernal; (d) el oráculo O26 queda como paso 12 con los números ya verificados del lado Pedernal (80,60 / 26,87 / 26,87 / 26,86; 1.950,23 + 309,77); (e) la «marca libre» no está construida en Pedernal: el paso 9 de Motor2 se diseña sin tenerla de referencia; (f) el cerco de fallo cerrado de Pedernal arrastra **la misma deuda que el de Motor2** (24 archivos contra 21).
+
+### 4.6 Grillas y familias (lo que el dueño vio en Pedernal; sin verificar contra código)
+
+Según la especificación de migración de la carta de Pedernal (§12.6–12.11 y §12.19, **solo documento**):
+
+- **Grilla**: la forma de la carta sale de los datos. Hay columnas solo cuando un producto tiene un eje de **tamaño** de hasta 3 opciones (los cafés); el resto va en línea simple. Sirve para medidas, no para otras variantes. Wok y milanesa son platos distintos, cada uno con su receta; **en Motor2 «Wok con pollo / con carne» está armado como opciones para que salga en grilla**, en Pedernal no se arma como variante. Café 3 tamaños × 4 tipos: forma A (4 productos con 3 tamaños cada uno), recomendada, porque los 4 cafés valen lo mismo por tamaño.
+- **Familia**: productos agrupados bajo un nombre con el **precio cargado una sola vez**; cambiarlo es una acción que escribe ese precio en cada miembro en una sola transacción. Dos interruptores independientes («agrupar en la carta», «agrupar en el POS»). Cada producto está en una familia como máximo.
+- Estado: **visto por el dueño en Pedernal; NO VERIFICADO contra su código**. No entra en los pasos aprobados; es parte de la etapa posterior «Alinear opciones y recargos» (respuesta 3: «iguales»), porque cambia cómo se modelan los productos de Motor2 que hoy son opciones.
 
 ---
 
