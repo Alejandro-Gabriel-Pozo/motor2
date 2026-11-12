@@ -56,7 +56,7 @@ export default async function RecetasPage() {
         </div>
       ) : (
         <CajaDesplazable etiqueta="Tabla de recetas">
-          <div className="overflow-x-auto"><table className="w-full max-w-2xl text-sm">
+          <table className="w-full max-w-2xl text-sm">
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Producto</th>
@@ -82,7 +82,7 @@ export default async function RecetasPage() {
                 );
               })}
             </tbody>
-          </table></div>
+          </table>
         </CajaDesplazable>
       )}
     </div>

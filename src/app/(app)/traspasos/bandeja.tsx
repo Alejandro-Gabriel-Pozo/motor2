@@ -335,7 +335,7 @@ export function Bandeja({
 
       <div>
         <h2 className="mb-2 text-sm font-medium">Historial</h2>
-        <div className="overflow-x-auto"><table className="w-full text-sm">
+        <div role="region" aria-label="Historial de traspasos" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
               <th className="py-1">Fecha</th>

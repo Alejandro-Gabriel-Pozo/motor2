@@ -96,7 +96,7 @@ export function GestionPresentaciones({
       </AyudaCampo>
 
       {presentaciones.length > 0 && (
-        <div className="overflow-x-auto"><table className="w-full text-xs">
+        <div role="region" aria-label="Presentaciones del producto" tabIndex={0} className="overflow-x-auto"><table className="w-full text-xs">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
               <th className="py-1">Unidad de compra</th>

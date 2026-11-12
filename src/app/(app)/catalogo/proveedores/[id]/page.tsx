@@ -112,7 +112,7 @@ export default async function FichaProveedorPage({
           <>
             <p className="mb-2 text-sm text-tinta-tenue">Cómo llama este proveedor a cada producto en su factura, y a qué producto del sistema corresponde.</p>
             <CajaDesplazable etiqueta="Tabla de lo que se le compra">
-              <div className="overflow-x-auto"><table className="w-full text-sm">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-tinta-tenue">
                     <th scope="col" className="py-1 pr-3">
@@ -147,7 +147,7 @@ export default async function FichaProveedorPage({
                     </tr>
                   ))}
                 </tbody>
-              </table></div>
+              </table>
             </CajaDesplazable>
           </>
         )}

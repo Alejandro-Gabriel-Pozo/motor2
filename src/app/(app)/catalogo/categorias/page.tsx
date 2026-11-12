@@ -44,7 +44,7 @@ export default async function CategoriasPage() {
       </div>
 
       <CajaDesplazable etiqueta="Tabla de categorías">
-        <div className="overflow-x-auto"><table className="w-full text-sm">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Nombre</th>
@@ -82,7 +82,7 @@ export default async function CategoriasPage() {
               </tr>
             )}
           </tbody>
-        </table></div>
+        </table>
       </CajaDesplazable>
 
       {puedeDarDeAlta && (
