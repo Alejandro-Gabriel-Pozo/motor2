@@ -33,7 +33,7 @@ export interface ItemParaAgregar {
 /** Una promo armada por el mozo, para el tercer parámetro de `agregarItems` (Task #16, docs/plan-promo-combo-2026-09-26.md, paso 8a). */
 export interface PromoParaAgregar {
   promoCartaId: string;
-  /** Por sección (la de siempre) o, GO-3b, por cupo de entradas (`{ cupoId, elegidos: [{ entradaId, cantidad, opciones? }] }`; `opciones` solo en una entrada «a elegir»). Un componente fijo no se manda: lo completa el servidor. */
+  /** Por sección (la de siempre) o, GO-3b, por cupo de entradas (`{ cupoId, elegidos: [{ entradaId, cantidad, opciones? }] }`; `opciones` solo en una entrada «a elegir»; y, diseño 2026-11-11, en una fila `{ productoId, cantidad, opciones? }` de un plato con opciones de una parte de sección). Un componente fijo no se manda: lo completa el servidor. */
   elecciones: EleccionDePromo[];
   /** GO-3b (ADR-032): el precio de la promo que vio el mozo (opcional). Si ya no es el de hoy, `PROMO_CAMBIO`: nunca se cobra distinto de lo que se vio. */
   precioEsperado?: number;
@@ -62,7 +62,7 @@ export interface ComandoAgregarItems {
  *  - `PROMO_INVALIDA`: una promo no existe o no está disponible, su elección no cumple los cupos, o no se puede prorratear.
  *  - GO-2b (ADR-030), después de los chequeos de producto de cada ítem: `OPCION_CAMBIO` (una opción cambió de versión desde que el mozo la eligió),
  *    `OPCIONES_INVALIDAS` (lo elegido no cumple lo que el producto admite, su precio o su consumo están mal configurados, o con los adicionales se pasa el tope de
- *    líneas) y `PROMO_CON_OPCIONES` (un componente de una promo tiene un grupo obligatorio: en v1 los componentes no llevan opciones).
+ *    líneas) y `PROMO_CON_OPCIONES` (un componente de una parte de sección no se puede armar: un adicional obligatorio, o un grupo obligatorio sin opciones activas; los platos con opciones elegibles las llevan en su fila, diseño 2026-11-11).
  *  - RECETA (ADR-033): `PRODUCTO_SIN_RECETA` — un ítem suelto (después de sus chequeos de producto) o un componente de una promo no tiene receta vigente en la sucursal ni stock propio.
  *  - GO-3b (ADR-032): `PRECIO_CAMBIO` (el precio de lista que vio el mozo ya no es el de hoy). (`COMBINACION_NO_DISPONIBLE` se retiró con GO-3a en la Fase 3 de la ola «precio y carta».)
  *  - GO-3b, en cada promo (después de encontrarla): `PROMO_CAMBIO` (su precio de hoy no es el que vio el mozo), `MENU_DEL_DIA_SIN_CARGAR` (un lugar del día sin plato de hoy),
