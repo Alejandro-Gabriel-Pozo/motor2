@@ -127,7 +127,7 @@ describe("M.2: el alta de un producto con precio, factor o unidad de compra es d
 });
 
 /**
- * M.2-A4 (A, hallazgo importante de la auditoría de P6; SUPUESTO declarado, el dueño lo corrige si no): sin `producto_campos_sensibles` el alta fija el precio en 0 (D-2), pero un producto de venta
+ * M.2-A4 (A, hallazgo importante de la auditoría de P6; DEC-0001, ACEPTADA por el dueño el 2026-11-11, ver docs/registro-de-decisiones.md): sin `producto_campos_sensibles` el alta fija el precio en 0 (D-2), pero un producto de venta
  * nace «disponible en todas las sucursales» y el POS lista todo PV disponible: quedaba a la venta a $0. Ahora, sin la clave, un PV nace NO disponible para vender (filas de disponibilidad con
  * `disponible: false`, sin importar el tilde) hasta que alguien con la clave le cargue el precio y alguien con `producto_disponibilidad` lo active. Una MP no se vende: su alta no cambia.
  */
