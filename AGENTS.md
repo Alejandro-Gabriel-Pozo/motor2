@@ -90,7 +90,7 @@ Ningún agente ni sesión anidada agrega al producto algo que el dueño no pidi�
 - **I8 Lo técnico interno** (pruebas, guardianes, reorganizar, arreglos de seguridad) sigue con la autonomía del 2026-10-08, siempre dentro de lo pedido.
 - **I9 Las aceptaciones no vencen solas;** solo las revoca el dueño con una cita nueva, y un PR propio saca lo revocado.
 
-Estados de una DEC: `PENDIENTE_DE_OK` → `ACEPTADA` | `CORREGIDA` | `REVOCADA`, siempre con la cita del dueño. Los PR de Dependabot están exentos (PROPUESTA, pendiente de confirmar). La plantilla `docs/pull_request_template.md` ordena el resumen que lee el dueño. El registro `docs/registro-de-decisiones.md` y su guardián llegan con E2, y el chequeo del cuerpo del PR con E3; hasta E2 los supuestos los controla la revisión del orquestador. Límite honesto: una máquina no puede saber si una cita es realmente del dueño, solo que está y tiene forma.
+Estados de una DEC: `PENDIENTE_DE_OK` → `ACEPTADA` | `CORREGIDA` | `REVOCADA`, siempre con la cita del dueño. Los PR de Dependabot están exentos (PROPUESTA, pendiente de confirmar). La plantilla `docs/pull_request_template.md` ordena el resumen que lee el dueño. El registro `docs/registro-de-decisiones.md` y su guardián (`test/arquitectura/registro-de-decisiones.test.ts`: todo `SUPUESTO` del código lleva `(DEC-NNNN)` con su entrada, tope de 10 pendientes) existen desde E2; el chequeo del cuerpo del PR llega con E3 y hasta entonces lo controla la revisión del orquestador. Límite honesto: una máquina no puede saber si una cita es realmente del dueño, solo que está y tiene forma.
 
 ## Exploración con Explore
 
