@@ -156,7 +156,7 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 | Sin `alta_producto` | Rechazo antes de leer. |
 
 ## Nivel 6 — Historia y persistencia (sin tablas nuevas)
-- **Migración: ninguna.** E1, E2 y E3 escriben solo en tablas que ya existen (`RecetaVersion` y sus hijas, `ProductoAdmiteGrupo`, `ProductoAdmiteOpcion`); no se crea ninguna tabla «a ciegas».
+- **Migración: ninguna.** E4 (y las piezas E1, E2 y E3 que compone) escribe solo en tablas que ya existen (`RecetaVersion` y sus hijas, `ProductoAdmiteGrupo`, `ProductoAdmiteOpcion`); no se crea ninguna tabla «a ciegas».
 - **Trazabilidad (quién, cuándo, de qué a cuál):** el registro de auditoría existente (`registrarCambioAuditado`, mismo patrón que `describirCopiaDeRecetaPropia`): «Versión N de la receta de <destino> creada por copia de <origen> (versión M)»; y una fila por columna cambiada en los vínculos de opciones. La versión de la receta ya es append-only: no se borra ni se anula nada; revertir = copiar otra vez o volver a guardar.
 - **Punto de extensión previsto (NO se migra ahora):** una columna opcional `copiadaDeRecetaVersionId` en `RecetaVersion` (relación opcional, solo agrega) si más adelante hace falta un reporte «de dónde viene esta receta» sin leer la auditoría. Hoy la necesidad no está escrita: queda como etapa con nombre.
 - Dinero: sin columnas nuevas; los importes que se copian (si se decide) son los que ya tiene el origen, con su moneda de empresa.
@@ -186,7 +186,7 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 - El número exacto depende de cuántos ingredientes tenga la receta del bife: **no está medido porque en producción no hay recetas cargadas** (0 filas). Medirlo con una receta real es parte de la prueba de aceptación de E1.
 
 ## Nivel 10 — Pruebas, migración y operación
-- **Migración:** ninguna (E1 a E3). Operación: nada que sincronizar; reversible por construcción (las versiones y vínculos se pueden volver a editar).
+- **Migración:** ninguna (E4 y sus piezas). Operación: nada que sincronizar; reversible por construcción (las versiones y vínculos se pueden volver a editar).
 - **Combinaciones (regla del dueño, 2026-10-28):** dimensiones que cambian lo que se copia o se rechaza, con tabla esperada escrita aparte del código y un test que las recorre:
   - C1: {destino con / sin receta} × {origen con / sin receta} × {tipo de destino: PV, MP «Se produce», MP común} × {ingredientes todos disponibles / alguno dado de baja} × {permiso `guardar_receta`: sí / no} × {confirmación de pisar: sí / no} (96 combinaciones, exhaustivo).
   - C2: {destino con / sin los mismos grupos} × {grupo del origen activo / archivado} × {opción activa / inactiva} × {precio por opción: sí / no} × {permiso: sí / no}.
