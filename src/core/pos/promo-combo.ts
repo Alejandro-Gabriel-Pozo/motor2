@@ -25,12 +25,23 @@ export interface CupoPromoDefinicion {
   cantidadMaximaCupo: number;
   /** Los mismos elegibles que el selector del POS ofrece en esta sección (D5). */
   elegibles: ReadonlySet<string>;
+  /**
+   * Diseño 2026-11-11 (parte «Toda la sección», 3α): los elegibles cuyo plato tiene opciones que el mozo elige (los que `clasificarPlatoDeSeccion` da como `CON_OPCIONES`; subconjunto de `elegibles`: un
+   * id que no esté en `elegibles` nunca se puede elegir). Ausente o vacío = nadie elige opciones, y el resultado es IDÉNTICO al de antes. De un plato de esta lista, cada fila de la elección es UNA configuración
+   * (sus opciones y sus unidades), igual que en una entrada «a elegir».
+   */
+  conOpciones?: ReadonlySet<string>;
 }
 
 export interface ProductoElegidoEnCupo {
   productoId: string;
   /** Unidades enteras de este producto dentro del cupo (≥ 1: un producto con 0 simplemente no aparece en la elección). */
   cantidad: number;
+  /**
+   * Solo en un plato de sección con opciones (`CupoPromoDefinicion.conOpciones`): las opciones de ESTA fila (puede ir vacío si todos sus grupos son opcionales). En cualquier otro plato `opciones` no va: se rechaza.
+   * La validación de las opciones contra lo elegible (`armarComponenteDeSeccion`) la hace quien arma el componente, dentro de la transacción.
+   */
+  opciones?: readonly OpcionDeEleccionDePromo[];
 }
 
 export interface EleccionDeCupo {
@@ -231,6 +242,13 @@ export function validarYAplanarEleccionPromo(cupos: readonly CupoDePromo[], elec
     if (typeof seccionCartaId !== "string" || !Array.isArray(elegidos)) return formaRota;
     for (const el of elegidos as readonly unknown[]) {
       if (typeof el !== "object" || el === null || typeof (el as Partial<ProductoElegidoEnCupo>).productoId !== "string") return formaRota;
+      const opciones = (el as Partial<ProductoElegidoEnCupo>).opciones;
+      if (opciones !== undefined) {
+        if (!Array.isArray(opciones)) return formaRota;
+        for (const o of opciones as readonly unknown[]) {
+          if (typeof o !== "object" || o === null || typeof (o as Partial<OpcionDeEleccionDePromo>).opcionId !== "string" || typeof (o as Partial<OpcionDeEleccionDePromo>).versionDeOpcionId !== "string") return formaRota;
+        }
+      }
     }
     if (!seccionesDeCupo.has(seccionCartaId)) return { ok: false, mensaje: "La elección incluye una sección que no es parte de esta promo." };
     if (eleccionPorSeccion.has(seccionCartaId)) return { ok: false, mensaje: "La elección repite una sección de la promo: se elige una sola vez por cupo." };
@@ -247,6 +265,7 @@ export function validarYAplanarEleccionPromo(cupos: readonly CupoDePromo[], elec
     }
     const elegidos = eleccionPorSeccion.get(cupo.seccionCartaId)?.elegidos ?? [];
     const productosYaElegidos = new Set<string>();
+    const configuracionesYaElegidas = new Set<string>();
     let total = 0;
     for (const el of elegidos) {
       if (!Number.isInteger(el.cantidad) || el.cantidad <= 0) {
@@ -254,6 +273,30 @@ export function validarYAplanarEleccionPromo(cupos: readonly CupoDePromo[], elec
       }
       if (!cupo.elegibles.has(el.productoId)) {
         return { ok: false, mensaje: `Ese producto no es una opción válida de "${cupo.nombreSeccion}" en esta promo.` };
+      }
+      if (cupo.conOpciones?.has(el.productoId) === true) {
+        // Un plato con opciones: cada fila es UNA configuración (sus opciones y sus unidades). El mismo plato puede repetirse con otra configuración (o venir en una fila de 2 unidades), nunca con la misma.
+        const opciones = el.opciones ?? [];
+        const canonico = claveDeConfiguracion(opciones);
+        if (canonico === null) return { ok: false, mensaje: `Las opciones elegidas en "${cupo.nombreSeccion}" repiten una opción o tienen una cantidad fuera de 1 a 10.` };
+        const identidad = `${el.productoId}|${canonico}`;
+        if (configuracionesYaElegidas.has(identidad)) {
+          return { ok: false, mensaje: `Un producto está repetido en "${cupo.nombreSeccion}" con las mismas opciones: la cantidad se elige en una sola fila.` };
+        }
+        configuracionesYaElegidas.add(identidad);
+        total += el.cantidad;
+        // Sin opciones elegidas la clave es la del producto con marca (`producto#`), nunca la del producto pelado (la de un plato sin opciones): el reparto busca el precio de lista por ella.
+        componentes.push({
+          productoId: el.productoId,
+          cantidad: el.cantidad,
+          claveComponente: claveDeComponente(el.productoId, { forma: "configurada", claveConfiguracion: canonico }),
+          opciones: opciones.map((o) => ({ opcionId: o.opcionId, cantidad: o.cantidad, versionDeOpcionId: o.versionDeOpcionId })),
+        });
+        continue;
+      }
+      // Un plato sin opciones no deja elegirlas: lo que mande de más se rechaza (nunca se ignora en silencio).
+      if (el.opciones !== undefined) {
+        return { ok: false, mensaje: `Ese producto de "${cupo.nombreSeccion}" no lleva opciones en esta promo: no se eligen opciones.` };
       }
       if (productosYaElegidos.has(el.productoId)) {
         return { ok: false, mensaje: `Un producto está repetido en "${cupo.nombreSeccion}": la cantidad se elige en una sola fila.` };
