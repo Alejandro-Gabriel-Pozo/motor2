@@ -103,7 +103,7 @@ export function MesaCard(props: MesaCardProps) {
           <div className="flex flex-col gap-2 @[14rem]:flex-row">
             <Link
               href={href}
-              className="flex w-full min-w-0 items-center justify-center rounded-lg border border-borde py-[9px] text-sm font-semibold hover:bg-black/[0.03] max-md:min-h-11"
+              className="flex w-full min-w-0 items-center justify-center rounded-lg border border-borde py-[9px] text-sm font-semibold hover:bg-superficie-suave max-md:min-h-11"
             >
               Ver pedidos
               <IndicadorDeEnlace />
