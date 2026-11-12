@@ -4,7 +4,7 @@ import { EnlaceInterno } from "@/components/enlace-interno";
 import { FormConResultado } from "@/components/form-con-resultado";
 import { SeccionYOrden } from "@/components/carta/seccion-y-orden";
 import { Dato, DatosSoloLectura } from "@/components/carta/datos-solo-lectura";
-import { DESCUENTO_POR_PRODUCTO_VISIBLE, type ProductoCartaAdmin } from "@/core/carta/public";
+import { DESCUENTO_POR_PRODUCTO_VISIBLE, ESTA_BIEN_ASI_VISIBLE, type ProductoCartaAdmin } from "@/core/carta/public";
 import { guardarContenidoCartaProducto } from "@/server/actions/carta/contenido-producto";
 import { guardarDescuentoProducto } from "@/server/actions/carta/descuento-producto";
 import { quitarProductoDeLaCarta } from "@/server/actions/carta/mantenimiento";
@@ -174,7 +174,7 @@ export function ContenidoDelProducto({
                 maxLength={80}
                 defaultValue={p.contenido?.nombreEnCarta ?? ""}
                 placeholder={p.nombre}
-                ayuda={`${nombreDeCartaPendiente ? "Pendiente de completar: hoy la carta usa el nombre del producto. " : ""}Así lo ven el cliente y el mozo en esta sucursal. Vacío = se usa el nombre del producto. No cambia la comanda ni los reportes.${mostrarNombreArriba !== undefined ? " Solo se usa si elegís «Sí: … arriba». Con «No», cada opción sale sola con su nombre." : ""}`}
+                ayuda={`${ESTA_BIEN_ASI_VISIBLE && nombreDeCartaPendiente ? "Pendiente de completar: hoy la carta usa el nombre del producto. " : ""}Así lo ven el cliente y el mozo en esta sucursal. Vacío = se usa el nombre del producto. No cambia la comanda ni los reportes.${mostrarNombreArriba !== undefined ? " Solo se usa si elegís «Sí: … arriba». Con «No», cada opción sale sola con su nombre." : ""}`}
               />
             </div>
             <div className="sm:col-span-2">
