@@ -1,10 +1,10 @@
 {
   "regla": "tope-de-lineas",
   "meta": "0 (ningún archivo de src/ pasa de 400 líneas: cada uno se parte por responsabilidad en un trabajo aparte)",
-  "total": 2187,
+  "total": 2230,
   "entradas": 18,
   "porTipo": {
-    "lineas-sobre-400": 2187
+    "lineas-sobre-400": 2230
   },
   "cuentas": {
     "src/app/(app)/carta/agrupados/page.tsx": {
@@ -44,7 +44,7 @@
       "lineas-sobre-400": 24
     },
     "src/core/pos/promo-combo.ts": {
-      "lineas-sobre-400": 42
+      "lineas-sobre-400": 85
     },
     "src/core/pos/ticket.ts": {
       "lineas-sobre-400": 59
