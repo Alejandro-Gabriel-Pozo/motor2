@@ -469,6 +469,21 @@ Textuales: «tabla única; 1.-Si; 2.-entiendo y no importa, es por seguridad. 3.
 
 Pasos aprobados para la Fase 2: **1, 2, 3, 4, 6, 7, 8, 9, 12, 14 y 15**. Esperan: **5** (el PR #230 en vuelo toca `promo-combo.ts`); **10 y 11** (falta autorización expresa de migración); **13** (decisión fiscal sobre los productos ya cargados «sin declarar»).
 
+### 9.1 Dirección confirmada por el dueño (2026-11-12, mensaje posterior)
+
+Textual: «Quiero tener lo mismo que en Pedernal salvo [el tema de] Kysely, acá estamos usando Prisma y lo mantengo; su catálogo es mejor, el sistema es más cerrado y corto, sin cosas sueltas.»
+
+| Punto | Estado | Qué implica |
+|---|---|---|
+| Objetivo: Motor2 igual a Pedernal (modelo de datos y reglas), **excepto la capa de acceso a datos: Prisma se mantiene** (Pedernal usa Kysely) | **CONFIRMADA** | Todo lo de la sección 5.1 que tenía «decisión del dueño» pendiente (X11–X18, X20–X23, X31) pasa a tener la **dirección** resuelta: igualar a Pedernal. Esto confirma y extiende la respuesta 3 («iguales») |
+| «Su catálogo es mejor» | **CONFIRMADA** | El catálogo de Pedernal es el modelo de referencia: 5 clases inmutables, `se_vende` calculado, alícuota obligatoria para vender, precio por empresa y sucursal solo inserción con vigencia por instante, recargo ≥ 0 en monto, grupos propios del producto, `se_muestra_en_carta` que nace en «no», familias y grilla |
+| «Más cerrado y corto, sin cosas sueltas» | **CONFIRMADA** (criterio) | Es la regla de poda aplicada al revés: lo que Motor2 tiene y Pedernal no, **y no resuelve una necesidad escrita, es candidato a salir** (tablas sin escritor, opciones que dan el mismo resultado, claves de tema por decenas) |
+| Lo que cambia en cada etapa | Sigue valiendo | Cada etapa se diseña con la escalera de 10 niveles **antes** de tocar tablas, con migraciones aditivas y reversibles, y **autorización expresa por tocar `prisma/`**. Nada destructivo sin aviso previo con datos reales a la vista |
+
+**Lo que NO se asume de esta frase** (queda como pregunta abierta, no como supuesto): si «lo mismo» alcanza también a funciones de Motor2 que Pedernal decidió **no tener** en su primera versión y que Motor2 **ya usa**: promos con cupos y «toda la sección», menú del día, género/agrupado, descuento tachado, consignación, traspasos con aprobación, la mayoría de los 26 reportes. Borrar funciones en uso es destructivo; se decide una por una, con aviso.
+
+Etapas que quedan ordenadas por esta dirección (todas **PROPUESTA** de orden; cada una con su documento de diseño antes de migrar): (1) los pasos chicos ya aprobados; (2) «Ficha de parte» con tabla única; (3) «Catálogo igual a Pedernal»: clases, `se_vende`, alícuota, precio vigente por instante, recargos y opciones, familias y grilla; (4) poda de lo suelto (14 tablas sin escritor y las 6 de combinaciones, columnas sin uso); (5) acercar las funciones que Pedernal no tiene, según la respuesta a la pregunta de arriba.
+
 ---
 
 ## 10. Riesgos que aparecieron en el camino (no eran lo pedido; anotados sin arreglar)
