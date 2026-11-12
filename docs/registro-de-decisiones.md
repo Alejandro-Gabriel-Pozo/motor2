@@ -33,3 +33,39 @@ Regla del dueño «Lo que el dueño no pidió no entra» (2026-11-11, `AGENTS.md
 - **Costo de revertir:** mover un archivo a `.github/`, cambiar su ruta en `AGENTS.md` y, para que el guardián de clasificación pase, ampliar esa regla en `clasificacion.ts` con la aprobación del dueño en `aprobaciones.ts`.
 - **Dónde:** `docs/pull_request_template.md`
 - **Estado:** PENDIENTE_DE_OK
+
+### DEC-0003
+- **Fecha:** 2026-11-12
+- **Quién:** la sesión Sonnet que armó la etapa E1b de partes de promo con opciones (PR #237).
+- **Qué decidió:** el servidor arma con `armarComponenteDeSeccion` solo los platos de una parte de sección que llevan opciones; los platos sin opciones conservan el chequeo de hoy (peso = precio de carta, `sinReceta`, `PROMO_CON_OPCIONES`), así un precio guardado en 0 sigue pasando y pesando $0 como hasta ahora.
+- **Por qué:** la función entera exigiría además precio de referencia de $0,01 o más y producto de venta al plato sin opciones, y eso cambiaría en silencio lo que hoy se acepta sin que el dueño lo haya pedido.
+- **Costo de revertir:** ninguno para lo de hoy; adoptar la función para todos los platos es cambiar una condición del bucle de componentes de sección (un cambio chico y su prueba).
+- **Dónde:** `src/server/actions/pos/casos-de-uso/agregar-items.ts`, `src/server/actions/pos/casos-de-uso/promo-seccion-con-opciones.ts`
+- **Estado:** PENDIENTE_DE_OK
+
+### DEC-0004
+- **Fecha:** 2026-11-12
+- **Quién:** la sesión Sonnet que armó la etapa E1b de partes de promo con opciones (PR #237).
+- **Qué decidió:** qué platos de una parte de sección llevan opciones se calcula en el caso de uso de agregar ítems con las opciones que ya se leen para el pedido, sin una lectura nueva en la carga de la promo.
+- **Por qué:** `test/pos/agregar-items-consultas.test.ts` fija la cantidad de consultas y no se edita; la misma función pura (`conOpcionesDeLasSecciones`) es la que usará el selector en la etapa de pantalla.
+- **Costo de revertir:** bajo: mover el cálculo a `cargarPromoCartaParaAgregar`, lo que obliga a cambiar el conteo congelado de consultas.
+- **Dónde:** `src/server/actions/pos/casos-de-uso/agregar-items.ts`, `src/core/pos/plato-de-seccion.ts`
+- **Estado:** PENDIENTE_DE_OK
+
+### DEC-0005
+- **Fecha:** 2026-11-12
+- **Quién:** la sesión Sonnet que armó la etapa E1b de partes de promo con opciones (PR #237).
+- **Qué decidió:** un plato de sección que no se puede armar (adicional obligatorio, o grupo obligatorio sin opciones activas) elegido CON opciones se rechaza como `PROMO_INVALIDA` (no se ofrece con opciones) y elegido sin ellas como `PROMO_CON_OPCIONES` («pedilo suelto»).
+- **Por qué:** el diseño dice que ese plato no se ofrece y que `PROMO_CON_OPCIONES` queda solo para lo no armable; no fija el código de rechazo cuando igual llegan opciones.
+- **Costo de revertir:** bajo: cambiar el código o el mensaje de ese rechazo y su prueba.
+- **Dónde:** `src/core/pos/promo-combo.ts`, `test/pos/promo-seccion-con-opciones.test.ts`
+- **Estado:** PENDIENTE_DE_OK
+
+### DEC-0006
+- **Fecha:** 2026-11-12
+- **Quién:** la sesión Sonnet que armó la etapa E1b de partes de promo con opciones (PR #237).
+- **Qué decidió:** el rechazo de un plato de sección con opciones por falta de origen de stock en la configuración elegida sale como `ENTRADA_NO_DISPONIBLE`, igual que en una lista «el mozo elige», y no como `PRODUCTO_SIN_RECETA`.
+- **Por qué:** se reutiliza `armarConfiguracionDeEntradaAElegir`, que ya devuelve ese código; la pantalla ya lo entiende para las listas.
+- **Costo de revertir:** bajo: mapear ese código a `PRODUCTO_SIN_RECETA` en el armado de los platos de sección y ajustar su prueba.
+- **Dónde:** `src/core/pos/plato-de-seccion.ts`, `src/server/actions/pos/casos-de-uso/promo-seccion-con-opciones.ts`
+- **Estado:** PENDIENTE_DE_OK
