@@ -66,6 +66,11 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     ensanche: "CABLEADO",
     motivo: "`input.sucursalId` es la sucursal donde se agrega al usuario: si no es la activa, la acción pide `gestion_usuarios` EN ESA sucursal y, solo si se aprueba, ensancha lectura y escritura a ella (`permisoYAlcanceEnSucursal`) antes del caso de uso",
   },
+  "catalogo/duplicar-producto.ts|duplicarProducto": {
+    ata: "EMPRESA_RLS",
+    motivo:
+      "`entrada.sucursalDeLaRecetaId` es la sucursal de la que se toma la receta vigente del original (`null` = la Central): `alta_producto` es una clave de empresa y la receta de OTRA sucursal solo se LEE, con la misma regla que copiar de otra sucursal (S-07, O.56): el caso de uso la pasa por `leerOrigenDeCopia(…, \"receta_sucursal_copiar\")` (membresía vigente y «Ver» allí) antes de leer nada; lo que se escribe es el producto nuevo, de la empresa, y nunca una fila de esa sucursal",
+  },
   "catalogo/rendimiento-local.ts|fijarRendimientoLocal": {
     ata: "SUCURSAL_ACTIVA",
     motivo: "`origen.sucursalCalculoId` es la sucursal con que se calculó la sugerencia: el guard del formato lo compara con la activa (`sucursalActivaId: ctx.sucursalId`) y rechaza otra; la escritura es siempre en la activa",

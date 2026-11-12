@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { obtenerContextoUsuario } from "@/server/sesion/contexto";
+import { obtenerContextoUsuario, type ContextoUsuario } from "@/server/sesion/contexto";
 import { irAlLogin } from "@/server/sesion/ir-al-login";
 import { MENSAJE_DEMASIADAS_LECTURAS, lecturaSinCupo } from "@/server/actions/limitador-de-lecturas";
-import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal, requierePermisoVerDeEmpresa } from "@/server/acceso/gate";
+import { obtenerMiNivelPermiso, obtenerMiNivelPermisoDeEmpresa, obtenerMiNivelPermisoEnAlgunaSucursal, requierePermisoVerDeEmpresa, sucursalesVisiblesPara } from "@/server/acceso/gate";
+import { puedeEditarCamposSensiblesDelProducto } from "@/server/acceso/campos-sensibles-de-producto";
+import { denegacionDeModuloDeAccion } from "@/server/acceso/modulos-de-empresa";
+import { duplicarProducto } from "@/server/actions/catalogo/duplicar-producto";
+import { leerResumenParaDuplicar } from "@/server/consultas/catalogo/duplicar-producto";
+import { DuplicarProducto } from "@/components/catalogo/duplicar-producto";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
 import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
@@ -31,6 +36,21 @@ function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactN
       <dd className="text-sm">{children}</dd>
     </div>
   );
+}
+
+/** Lo que el diálogo «Duplicar» necesita saber de quien mira y del original (`null` si quien mira no puede crear productos: el botón no se ofrece). Cortesía de la interfaz. */
+async function cargarLoQuePideDuplicar(ctx: ContextoUsuario, productoId: string) {
+  const alta = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
+  if (!alta.editar) return null;
+  const [receta, sinModuloDeRecetas, opciones, puedeFijarPrecio, sucursalesDeLaReceta, resumen] = await Promise.all([
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db),
+    denegacionDeModuloDeAccion("guardar_receta", ctx.empresaId, ctx.db),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_opciones_admitidas", ctx.db),
+    puedeEditarCamposSensiblesDelProducto(ctx),
+    sucursalesVisiblesPara(ctx, "receta_sucursal_copiar"),
+    leerResumenParaDuplicar(ctx.db, productoId),
+  ]);
+  return { puedeCopiarReceta: receta.editar && !sinModuloDeRecetas, puedeCopiarOpciones: opciones.editar, puedeFijarPrecio, sucursalesDeLaReceta, resumen };
 }
 
 const SinValor = ({ children }: { children: React.ReactNode }) => <span className="text-tinta-suave">{children}</span>;
@@ -87,6 +107,10 @@ export default async function FichaProductoPage({
   const disponibleAca = disponibilidadPorSucursal.find((d) => d.sucursalId === ctx.sucursalId)?.disponible ?? false;
   const esDeRespaldo = opcionesDeVenta?.producto.esAnclaDeAdicional ?? false;
 
+  // «Duplicar» (E4): el botón es cortesía de la interfaz (se ofrece a quien puede crear productos); el servidor vuelve a pedir `alta_producto` y, según lo que se copie, `guardar_receta` y
+  // `producto_opciones_admitidas`, y decide el precio con `producto_campos_sensibles`. El producto de respaldo de un adicional lo maneja el sistema y no se duplica.
+  const duplicar = esDeRespaldo ? null : await cargarLoQuePideDuplicar(ctx, p.id);
+
   const productoDelEspacio: ProductoDelEspacio = {
     id: p.id,
     nombre: p.nombre,
@@ -104,6 +128,21 @@ export default async function FichaProductoPage({
   const cuerpo = (
     <>
       {guardado && <Aviso variante="exito">{guardado === "alta" ? "Producto creado." : "Cambios guardados."}</Aviso>}
+
+      {duplicar && (
+        <div className="flex justify-end">
+          <DuplicarProducto
+            origen={{ id: p.id, nombre: p.nombre, esDeVenta: p.tipo === "PV", esBase: esBaseConfigurable(p.modoDeVenta), precioVenta: Number(p.precioVenta) }}
+            tieneReceta={duplicar.resumen.tieneReceta}
+            opciones={duplicar.resumen.opciones}
+            puedeCopiarReceta={duplicar.puedeCopiarReceta}
+            puedeCopiarOpciones={duplicar.puedeCopiarOpciones}
+            puedeFijarPrecio={duplicar.puedeFijarPrecio}
+            sucursalesDeLaReceta={duplicar.sucursalesDeLaReceta}
+            accion={duplicarProducto}
+          />
+        </div>
+      )}
 
       {pendientes.length > 0 && (
         <section aria-labelledby="titulo-pendientes">

@@ -141,6 +141,11 @@ const PAGINAS_CON_LECTURAS_O_PERSISTENCIA = [];
  */
 const ACCIONES_CON_CASO_DE_USO = [
   {
+    ruta: "src/server/actions/catalogo/duplicar-producto.ts",
+    motivo:
+      "«Duplicar producto» (E4, docs/diseno-duplicar-producto-2026-11-12.md): duplicarProducto → catalogo/casos-de-uso/duplicar-producto.ts (una sola transacción SERIALIZABLE con reintento del código autogenerado, idempotencia por el id del producto nuevo, lecturas del original en server/persistencia/catalogo/duplicar-producto.ts, escrituras reusadas de la receta, las opciones y la disponibilidad, y la auditoría de quién duplicó a partir de cuál). La acción pide alta_producto, guardar_receta y producto_opciones_admitidas según lo que se copie, el formato lo valida guardComandoDuplicarProducto y arma el ResultadoConId. El archivo nace migrado: no tiene ninguna otra función.",
+  },
+  {
     ruta: "src/server/actions/auth/invitacion.ts",
     motivo:
       "Hito 3, B3-5 + B3-7: aceptarMiInvitacion → auth/casos-de-uso/aceptar-invitacion-de-gerente.ts y aceptarMiInvitacionDeUsuario → auth/casos-de-uso/aceptar-invitacion-de-usuario.ts (transacción serializable, revalidación, persistencia y auditoría viven en el caso de uso). abrirInvitacion solo lee la invitación y escribe la cookie: no escribe la base.",
