@@ -73,7 +73,7 @@ La carta pública lee la marca y los derivados como variables CSS (como hoy `--c
 
 Con este diseño dejan de poder elegirse por separado 30 de los 31 colores del tema (nombre del ítem, precio, descripción, tags, ítems especiales, títulos y números del índice, banda de sección, flechas, íconos y botón de volver) y 7 de los 8 del portal. Pasan a derivarse de la marca y de los tokens del sistema.
 
-## Pregunta abierta para el dueño (la clave: cambia lo que ya está publicado)
+## Respuesta del dueño (la clave: cambia lo que ya está publicado) — 2026-11-12: opción A, «conservan hasta que se reediten»
 
 **Las cartas que hoy tienen colores sueltos cargados, ¿conservan esa apariencia hasta que su dueño las reedite (recomendado), o se pasan de una vez a la marca derivada?**
 
@@ -86,6 +86,6 @@ Con este diseño dejan de poder elegirse por separado 30 de los 31 colores del t
 |---|---|
 | Un color de marca por sucursal y uno por empresa; el resto derivado | **CONFIRMADA** (dueño, 2026-11-12) |
 | Los 6 invariantes M1–M6 | PROPUESTA |
-| Qué hacer con las cartas publicadas (A o B) | **PENDIENTE** (pregunta de arriba) |
+| Qué hacer con las cartas publicadas | **CONFIRMADA: opción A** (dueño, 2026-11-12: «conservan hasta que se reediten») |
 | Versión del tema contra ediciones simultáneas | PENDIENTE (necesita migración: autorización expresa) |
 | Datos reales de cuántas cartas usan cada clave | NO VERIFICADO (no hay acceso a producción desde esta sesión) |
