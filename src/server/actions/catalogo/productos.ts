@@ -11,6 +11,7 @@ import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeProductos, necesitaLaEmpresaEntera, MENSAJE_PRESENTACIONES_APAGADAS, PRESENTACIONES_VISIBLES, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
 import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
+import type { AlicuotaIva } from "@/core/fiscal/public";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE, MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO, ofrecerSincronizarPrecio } from "@/core/carta/public";
@@ -313,6 +314,12 @@ export interface DatosProducto {
   proveedorConsignacionId?: string | null;
   precioConsignacion?: number;
   /**
+   * Alícuota de IVA del producto (paso 13, `docs/diseno-alicuota-iva-del-producto-2026-11-12.md`): la de VENTA solo en un PV, la de COMPRA solo en una MP; `null` = «sin declarar», `undefined` = no viene (en la edición,
+   * queda como estaba). Cambiarla (o fijarla en el alta) exige `producto_campos_sensibles`. Valor de `ALICUOTAS_IVA`: cualquier otro se rechaza en el servidor.
+   */
+  alicuotaIvaVenta?: AlicuotaIva | null;
+  alicuotaIvaCompra?: AlicuotaIva | null;
+  /**
    * Tilde del alta (decisión 2 del dueño, docs/plan-disponibilidad-por-sucursal-2026-09-23.md §4): `true`/ausente (default) →
    * activo en TODAS las sucursales que existen hoy — el caso común, cero fricción. `false` explícito → activo SOLO en la
    * sucursal desde la que se da de alta; las demás lo activan a mano cuando lo necesiten.
@@ -337,6 +344,11 @@ export type DatosProductoEdicion = Omit<DatosProducto, CampoSensibleDelProducto>
      * «por opción» exige la regla de la base; lo decide el caso de uso.
      */
     modoDeVenta?: ModoDeVenta;
+    /**
+     * La alícuota de IVA que mostraba el formulario al abrirse (la de venta en un PV, la de compra en una MP; `null` = «sin declarar»): mismo patrón que `precioVentaVisto`. Si la alícuota cambia y esta ya no es la
+     * guardada (otra persona la cambió mientras se editaba), o no viene, no se guarda nada (`ALICUOTA_DESACTUALIZADA`).
+     */
+    alicuotaVista?: AlicuotaIva | null;
   };
 
 /**
