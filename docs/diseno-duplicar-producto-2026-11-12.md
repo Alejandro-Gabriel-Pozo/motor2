@@ -74,7 +74,7 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 | Sustitutos del ingrediente | **Sí** | — | Sí | Si el insumo sustituto está inactivo, rechaza como un ingrediente dado de baja |
 | Pasos y su tabla paso↔ingrediente | **Sí** | — | Sí | Se reconstruyen contra los ingredientes NUEVOS de la copia (no se reutilizan ids) |
 | Ficha técnica (cabecera: rendimiento, raciones, tamaño de ración, tiempos, comentarios, presentación, notas, equipamiento) | **Sí** | — | Sí | Viaja en la misma versión |
-| Receta de la sucursal elegida como origen (la que rige allá: la propia habilitada, si no la central) | **Sí** (ver «Elegir el origen») | — | Sí | **CONFIRMADA** la elección de sucursal; PROPUESTA que se copie «la que rige allá» (pregunta abierta A) |
+| Receta vigente del producto elegido, en la sucursal elegida como origen (la Central cuenta como una sucursal más; si la sucursal no tiene receta propia, la que rige allá es la central) | **Sí** (ver «Elegir el origen») | — | Sí | **CONFIRMADA** (el dueño, 2026-11-12): la vigente en ese momento, no una anterior |
 | Calibraciones de rendimiento local del ORIGEN | No | — | No | Las del destino siguen el arrastre existente (por insumo y unidad) |
 | Grupos admitidos (`orden`, mínimo, máximo, modo de precio, «Mostrar este grupo en la carta») | — | **Sí** (solo los activos) | Sí | Un grupo archivado en la biblioteca no se copia y se avisa «N grupos archivados no se copiaron» |
 | Opciones admitidas (activas; cantidad máxima) | — | **Sí** | Sí | Compartidas, no copiadas |
@@ -93,7 +93,7 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 6. **Sin precio sin permiso ni aviso**: lo que mueve dinero se muestra antes de guardar.
 7. **Aislamiento y autorización**: empresa y permisos los resuelve el servidor en cada comando; origen y destino deben ser de la empresa activa y visibles para quien copia.
 8. **Trazabilidad**: toda copia deja quién, cuándo, de qué producto (y versión) a cuál (nivel 6).
-9. **Toda acción que pisa datos muestra antes su resultado y pide aceptación** (CONFIRMADA, el dueño, 2026-11-12: «esta es una acción que tiene determinado resultado, ¿lo aceptás?»). Una ventana de confirmación dice qué se va a sobrescribir (por ejemplo «la receta vigente de <destino>, versión 3, pasará a ser la copia; la anterior queda en el historial»), qué se copia y qué no, y recién con el «Aceptar» se escribe. Vale para pisar la receta y la ficha técnica, y para pisar grupos de opciones ya vinculados.
+9. **Toda acción que pisa datos muestra antes su resultado y pide aceptación** (CONFIRMADA, el dueño, 2026-11-12: «esta es una acción que tiene determinado resultado, ¿lo aceptás?»). Una ventana de confirmación dice qué se va a sobrescribir (por ejemplo «la receta vigente de <destino>, versión 3, pasará a ser la copia; la anterior queda en el historial»), qué se copia y qué no, y recién con el «Aceptar» se escribe. Vale para cualquier acción futura que pise datos. **«Duplicar» no pisa nada** (el producto nuevo nace vacío), así que no dispara esa ventana; sí muestra qué se va a copiar y qué no antes de crear.
 
 ### Estado de las decisiones (compuerta niveles 1 a 5)
 | Decisión | Estado |
@@ -107,10 +107,11 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 | Precio de lista del duplicado: se copia como punto de partida editable (Pedernal §12.12), mostrado antes de guardar; con la regla de permisos de Motor2 (sin `producto_campos_sensibles` nace en 0 y apagado) | CONFIRMADA en lo general («como lo tiene Pedernal»); el detalle de permisos es PROPUESTA |
 | Precio por opción en la copia de opciones (recargos): se copian con el resto, como en Pedernal | CONFIRMADA en lo general; PROPUESTA el aviso «incluye N precios» |
 | Nombre propio obligatorio y no repetido (E3/E4) | PROPUESTA (es la regla del alta actual) |
-| Elegir el origen con un modal: primero la sucursal, luego el producto | CONFIRMADA (el dueño, 2026-11-12) |
+| Elegir el origen con un modal: primero la sucursal (la Central también cuenta como una) y luego el producto | CONFIRMADA (el dueño, 2026-11-12) |
+| Se copia la receta VIGENTE en ese momento del producto elegido, nunca una versión anterior | CONFIRMADA (el dueño, 2026-11-12) |
 | «En la carta» no se copia | CONFIRMADA (el dueño, 2026-11-12) |
 | Se copian precio y toda la información de cada opción | CONFIRMADA (el dueño, 2026-11-12) |
-| Si el destino ya tiene el dato, se SOBRESCRIBE (receta y ficha técnica, grupos de opciones ya vinculados), siempre tras una ventana que muestra el resultado y pide aceptación | CONFIRMADA (el dueño, 2026-11-12). Difiere de `copiarOpciones` de Pedernal, que no pisa |
+| **Donde Motor2 difiera de Pedernal, se adapta para coincidir** (el dueño, 2026-11-12). Por eso «Duplicar» crea un producto NUEVO y vacío: no hay nada que sobrescribir; y si algún día se copia sobre un producto que ya existe, se hace como `copiarOpciones` de Pedernal: **suma lo que falta (grupos por nombre) y no pisa lo que el destino ya tiene** | CONFIRMADA (el dueño, 2026-11-12). Reemplaza la respuesta anterior «sobrescribir» |
 | Avisar «hay pasos para revisar» al copiar la receta | CONFIRMADA (el dueño, 2026-11-12) |
 | Hace falta cambiar el ingrediente de una línea (la salsa, la proteína) | CONFIRMADA la necesidad (el dueño, 2026-11-12); PROPUESTA que se entregue junto con «Duplicar» o inmediatamente después (E4b) |
 | Pedernal: «Duplicar» (ficha + opciones + receta + precio de empresa editable) aprobado como pedido 11/11; sin construir; `copiarOpciones` sí construido | CONFIRMADA (leído en `ZuluHub-docs` y `ZuluHub-ERP`, 2026-11-12) |
@@ -142,7 +143,7 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 |---|---|
 | Repetición / doble clic | Por estado: lo que el destino ya tiene vinculado no se vuelve a crear ni auditar; el segundo pedido dice «no había nada para sumar». |
 | Concurrencia: dos usuarios copian al mismo destino | SERIALIZABLE con choque de único `(productoId, grupoId)` y `(productoId, opcionId)`; el reintento da el resultado de negocio (patrón de `fijar-admision-de-grupo-en-producto`). |
-| El destino ya admite alguno de los grupos (solo si se hace la copia sobre un producto existente, pregunta abierta B) | **Se sobrescribe** con el del origen (CONFIRMADA), tras la ventana que lista qué se pisa y pide aceptación; sin aceptación no se escribe nada. Qué pasa con los grupos que el origen no tiene: pregunta abierta C. En «Duplicar» el destino es nuevo: no aplica. |
+| El destino ya admite alguno de los grupos (solo si algún día se copia sobre un producto existente; **no es parte de «Duplicar»**) | **No se pisa:** se suman solo los grupos que faltan, por nombre, como `copiarOpciones` de Pedernal; la respuesta lista los que ya estaban. El destino que tiene grupos que el origen no tiene los conserva. |
 | Opciones compartidas vs copiadas | Compartidas (mismos grupos y opciones de la biblioteca). El aviso de confirmación lo dice: «cambiar el nombre o el consumo de una opción afecta a los N productos que la usan». |
 | Grupo o opción archivados en la biblioteca | No se copian y se avisa cuántos quedaron afuera. |
 | Grupo con precio por opción (dinero) | Se copia con su precio (CONFIRMADA); la confirmación muestra cuántos precios se copiarían. |
@@ -161,8 +162,8 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 | El mismo `duplicadoId` con otro origen u otro nombre | Rechazo `ID_REUTILIZADO` (patrón de `copiarOpciones` de Pedernal); con el mismo origen y nombre devuelve el producto ya creado (`yaExistia`). |
 | Sin `alta_producto` | Rechazo antes de leer. |
 
-### Elegir el origen (CONFIRMADA en lo general, el dueño, 2026-11-12)
-«Primero un modal de filtro que diga de qué sucursal querés buscar el producto a copiar, y seleccionar.» Se elige **primero la sucursal** y **después el producto** de esa sucursal. Con una sola sucursal el primer paso se omite (el dueño: «es otro tema»). Reglas que ya existen y se respetan (S-07, `copiarRecetaPropiaDeOtraSucursal`): solo se ofrecen las sucursales donde quien copia tiene membresía y «Ver» de `receta_sucursal_copiar`; el producto se ve bajo la regla de disponibilidad por sucursal; el servidor lo vuelve a verificar al guardar (el pedido no trae el permiso). Qué receta se copia: **la que rige en la sucursal elegida** (la propia habilitada, si no la central). Es PROPUESTA mía (pregunta abierta A).
+### Elegir el origen (CONFIRMADA, el dueño, 2026-11-12)
+«Primero un modal de filtro que diga de qué sucursal querés buscar el producto a copiar, y seleccionar.» Se elige **primero la sucursal** y **después el producto**. **La Central cuenta como una sucursal más** (puede tener receta o no). Con una sola sucursal el primer paso se omite. **Se copia la receta VIGENTE en ese momento** del producto elegido en esa sucursal (nunca una versión anterior); si esa sucursal no tiene receta propia, la que rige allá es la central. Reglas que ya existen y se respetan (S-07, `copiarRecetaPropiaDeOtraSucursal`): solo se ofrecen las sucursales donde quien copia tiene membresía y «Ver» de `receta_sucursal_copiar`; el producto se ve bajo la regla de disponibilidad por sucursal; el servidor lo vuelve a verificar al guardar.
 
 ## Nivel 6 — Historia y persistencia (sin tablas nuevas)
 - **Migración: ninguna.** E4 (y las piezas E1, E2 y E3 que compone) escribe solo en tablas que ya existen (`RecetaVersion` y sus hijas, `ProductoAdmiteGrupo`, `ProductoAdmiteOpcion`); no se crea ninguna tabla «a ciegas».
@@ -205,13 +206,9 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 - **Verificación antes de integrar (gate de AGENTS.md):** `npx tsc --noEmit`, `npm run lint`, `npm run arquitectura`, `npm run analizar:muerto`, `npm test`, `npm run build`, `npm run plataforma:build` y `npm run test:e2e`, todos limpios en la misma corrida; más un e2e de aceptación con el bife (copiar receta y comprobar que las dos recetas son independientes).
 - **Quién escribe el código (regla del dueño, 2026-11-04):** Sonnet; Opus y Fable planifican, revisan y verifican.
 
-## Preguntas abiertas (no son supuestos)
-**Respondidas por el dueño el 2026-11-12** (ver «Estado de las decisiones»): ficha técnica ya escrita en el destino (se sobrescribe, con ventana de aceptación), qué sucursal es el origen (modal: sucursal y después producto), «En la carta» (no se copia), precio por opción (se copia con toda la información), aviso de pasos copiados (sí) y cambiar el ingrediente (hace falta).
-
-Quedan abiertas:
-- **A. Qué receta se copia de la sucursal elegida:** propongo «la que rige allá» (la propia habilitada de esa sucursal; si no tiene, la central). ¿Es eso lo que querés?
-- **B. En «Duplicar» el producto nuevo está vacío:** no hay nada que sobrescribir. La regla de «sobrescribir» aplica solo si además querés poder **copiar sobre un producto que ya existe** (como el «Copiar de otro producto» de Pedernal, que ahí suma sin pisar). ¿Querés esa segunda acción, o alcanza con «Duplicar»?
-- **C. Al sobrescribir grupos de opciones** (solo si se hace B): los grupos que el destino ya tiene y el origen también se pisan con los del origen. Los grupos que el destino tiene y el origen NO tiene, ¿se quedan o se sacan? Propongo que se queden.
+## Preguntas abiertas
+**Ninguna pendiente.** Respondidas por el dueño el 2026-11-12 (ver «Estado de las decisiones»): receta con ficha técnica en el destino (en «Duplicar» el destino es nuevo, nada que sobrescribir); sucursal de origen (modal: sucursal y después producto; la Central cuenta como una); receta que se copia (la vigente en ese momento); «En la carta» (no se copia); precio por opción (se copia con toda la información); aviso de pasos copiados (sí); cambiar el ingrediente (hace falta); y la regla general «donde difiera de Pedernal, se adapta para coincidir».
+- **Una lectura mía a confirmar en la revisión del PR (no bloquea):** «si la sucursal elegida no tiene receta propia, se copia la central, que es la que rige allá».
 
 ## Pregunta clave
 La que quedaba abierta («¿el duplicado nace con el mismo precio de lista o vacío?») la respondió el dueño con «como lo tiene Pedernal»: el precio de la empresa se copia **como punto de partida editable** y se muestra antes de guardar. En Motor2 se aplica con la regla de permisos vigente: con `producto_campos_sensibles` nace con ese precio; sin la clave nace en 0 y apagado y la pantalla lo dice. **Sin pregunta clave pendiente.**
