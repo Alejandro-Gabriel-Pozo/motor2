@@ -302,8 +302,7 @@ export function precioDeCarta(precioVenta: number, local: { precio: number; habi
  * pasa `https://` con un host, sin espacios, comillas, paréntesis, barras invertidas ni `<>`; cualquier otra cosa → null.
  */
 export function urlImagenSegura(url: string | null | undefined): string | null {
-  if (!url) return null;
-  const u = url.trim();
+  const u = url?.trim() ?? "";
   if (!esUrlHttpsPermitida(u)) return null;
   try {
     const parsed = new URL(u);
