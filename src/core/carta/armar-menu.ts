@@ -22,6 +22,7 @@
 // Contrato público v1 (lo que viaja a restaurant-menu-design). Cambiar una forma = subir `version`.
 // ---------------------------------------------------------------------------------------------------------------------
 
+import { esUrlHttpsPermitida } from "@/core/datos/url";
 import { aplicarDescuentoDeProducto } from "./descuento-producto";
 import { opcionesParaLaCarta, type GrupoCartaV1, type OpcionesSinCostoCartaV1, type ResumenDePreciosParaCarta } from "./opciones-en-carta";
 import { FILAS_SUGERIDAS_EN_CARTA, presentacionDelProducto, type PresentacionCartaV1, type TablaDePreciosParaCarta } from "./presentacion-en-carta";
@@ -303,7 +304,7 @@ export function precioDeCarta(precioVenta: number, local: { precio: number; habi
 export function urlImagenSegura(url: string | null | undefined): string | null {
   if (!url) return null;
   const u = url.trim();
-  if (!/^https:\/\/[^\s"'()\\<>`]+$/i.test(u)) return null;
+  if (!esUrlHttpsPermitida(u)) return null;
   try {
     const parsed = new URL(u);
     if (parsed.protocol !== "https:" || !parsed.hostname) return null;
