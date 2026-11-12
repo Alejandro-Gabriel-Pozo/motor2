@@ -1,6 +1,7 @@
 "use server";
 
 import { guardComandoConfirmarNombreEnCarta, guardComandoGuardarContenidoCartaProducto } from "@/core/features/carta/contenido-producto.guard";
+import { ESTA_BIEN_ASI_VISIBLE, MENSAJE_ESTA_BIEN_ASI_APAGADO } from "@/core/carta/public";
 import { aResultadoAccion } from "@/core/resultado-caso";
 import { conPermiso } from "../con-permiso";
 import { error, type ResultadoAccion } from "../tipos";
@@ -69,6 +70,8 @@ export async function actualizarVisibleEnCarta(productoId: string, visibleEnCart
  */
 export async function confirmarNombreEnCarta(productoId: string): Promise<ResultadoAccion> {
   return conPermiso("carta_contenido_producto", async (ctx) => {
+    // Interruptor apagado (2026-11-11): rechaza DESPUÉS del permiso, sin escribir ni auditar.
+    if (!ESTA_BIEN_ASI_VISIBLE) return error(MENSAJE_ESTA_BIEN_ASI_APAGADO);
     const comando = guardComandoConfirmarNombreEnCarta({ productoId });
     if (!comando.ok) return error(comando.mensaje);
     const resultado = await confirmarNombreEnCartaCasoDeUso(ctx, comando.valor);

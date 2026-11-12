@@ -90,6 +90,8 @@ export { TODOS_LOS_DIAS, VIGENCIA_DE_PROMO_VISIBLE, mascaraDeDias, promoVigenteE
 export type { VigenciaDePromo } from "./vigencia-de-promo";
 // GO-3b (ADR-032, D-1): la fecha del menú del día (de hoy a hoy + 13, en la zona de la empresa).
 export { DIAS_DE_ANTICIPACION_DEL_MENU, MENSAJE_MENU_DEL_DIA_APAGADO, MENU_DEL_DIA_VISIBLE, lugarDelDiaApagado, validarFechaDeMenuDelDia } from "./menu-del-dia";
+// Poda 2026-11-11: el interruptor de «Está bien así» y la lista de pendientes (ver `esta-bien-asi.ts`).
+export { ESTA_BIEN_ASI_VISIBLE, MENSAJE_ESTA_BIEN_ASI_APAGADO } from "./esta-bien-asi";
 // Poda 2026-11-06: el interruptor de género de carta e ítem agrupado (ver `genero-e-item-agrupado.ts`).
 export { GENERO_E_ITEM_AGRUPADO_VISIBLE, MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO } from "./genero-e-item-agrupado";
 // Fase 7, DEC-24: el grupo Carta del menú (tres entradas), sus filas de pestañas y las rutas que cuelgan de cada entrada.

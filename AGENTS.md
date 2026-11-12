@@ -76,6 +76,22 @@ Toda maqueta o captura que se le muestre al dueño para aprobar es la **pantalla
 - Las maquetas HTML anteriores al 2026-11-05 (carpeta `_maquetas/` de `motor2-docs`) quedan como antecedente; la de promos, ya aprobada, se respeta.
 - Detalle y motivo: `motor2-docs/memoria-claude/feedback-maquetas-con-datos-y-pantallas-reales.md`.
 
+## Lo que el dueño no pidió no entra (regla del dueño, 2026-11-11)
+
+Ningún agente ni sesión anidada agrega al producto algo que el dueño no pidió. Lo puede **sugerir** (en el PR, nunca en código) y puede **registrar decisiones chicas** que esperan su OK, como en Pedernal. Caso real que la motiva: en promociones aparecieron «días de disponibilidad» que el dueño nunca pidió y hubo que borrarlos. Diseño y decisiones citadas (fecha y palabras del dueño): `docs/diseno-aceptacion-del-dueno-2026-11-11.md`. «Producto» = lo que ven o usan las personas: campos, opciones, textos, reglas de negocio, funciones, permisos y valores por defecto.
+
+- **I1 Aceptación válida.** Solo del dueño, con fecha AAAA-MM-DD, texto literal entre « » y fuente localizable. No valen «lo aprobó el orquestador», «lo decidió la sesión», «el padre lo autorizó» ni «confirmada por omisión». Previene: que un agente se autorice solo. Chequeo: apartado «Pedido y aceptación del dueño» de la plantilla de PR.
+- **I2 Silencio no es aceptación.** Una decisión pendiente no se presenta como definitiva, se cuenta y no desaparece sola; lo que no es decisión (una mejora) y no tiene pedido no entra. Previene: funciones «por las dudas». Chequeo: cada renglón de «Qué entra al producto» lleva su cita.
+- **I3 Las sugerencias no son código.** Van en «Sugerencias (no implementadas)» o en `docs/`; ningún rastro en `src/`, `prisma/` ni `test/`. Previene: «implementado esperando OK». Chequeo: revisión del orquestador sobre el diff.
+- **I4 Un `SUPUESTO` en el código solo existe como `SUPUESTO(DEC-n)` con su entrada en el registro de decisiones.** Previene: decisiones de negocio escondidas en comentarios. Chequeo: guardián de E2; hasta entonces, la revisión del orquestador.
+- **I5 Se pregunta antes** lo que cambia qué se construye, el comportamiento, los datos, el dinero, los permisos, los textos que ve el cliente o la prioridad (UNA pregunta; las partes no ambiguas avanzan, regla del 2026-10-28). La decisión registrada (DEC) es solo para lo que no se puede frenar. Previene: construir sobre una interpretación propia.
+- **I6 Tope de 10 DEC pendientes abiertas;** con 10 no se agrega una nueva, se pregunta. Las de más de 14 días van primero en el resumen de cada PR (apartado «Decisiones mías que esperan tu OK», la más vieja primero, con su costo de revertir). Previene: que el registro se vuelva el lugar donde nadie revisa (en Pedernal, 79 de 80 sin revisar).
+- **I7 Una DEC nunca suma funcionalidad, campos ni opciones:** solo elige la opción más chica y reversible dentro de lo pedido, necesaria para terminar. Una mejora es sugerencia, no DEC.
+- **I8 Lo técnico interno** (pruebas, guardianes, reorganizar, arreglos de seguridad) sigue con la autonomía del 2026-10-08, siempre dentro de lo pedido.
+- **I9 Las aceptaciones no vencen solas;** solo las revoca el dueño con una cita nueva, y un PR propio saca lo revocado.
+
+Estados de una DEC: `PENDIENTE_DE_OK` → `ACEPTADA` | `CORREGIDA` | `REVOCADA`, siempre con la cita del dueño. Los PR de Dependabot están exentos (PROPUESTA, pendiente de confirmar). La plantilla `docs/pull_request_template.md` ordena el resumen que lee el dueño. El registro `docs/registro-de-decisiones.md` y su guardián llegan con E2, y el chequeo del cuerpo del PR con E3; hasta E2 los supuestos los controla la revisión del orquestador. Límite honesto: una máquina no puede saber si una cita es realmente del dueño, solo que está y tiene forma.
+
 ## Exploración con Explore
 
 Antes de tocar código en una tarea que obliga a ubicar algo en más de ~10 archivos

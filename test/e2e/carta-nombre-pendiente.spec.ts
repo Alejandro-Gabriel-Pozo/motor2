@@ -2,6 +2,10 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./fixtures/auth";
 import { prisma } from "./fixtures/db";
 import { prismaAdmin } from "../setup/cliente-duenio";
+import { ESTA_BIEN_ASI_VISIBLE } from "../../src/core/carta/esta-bien-asi";
+
+// Interruptor de «Está bien así»: mientras esté apagado, este spec no corre (encendido vuelve a correr entero).
+test.skip(!ESTA_BIEN_ASI_VISIBLE, "«Está bien así» apagado (ESTA_BIEN_ASI_VISIBLE = false en src/core/carta/esta-bien-asi.ts): Carta › Hoy no dibuja la lista de platos sin nombre de carta");
 
 /**
  * «Platos de la carta sin nombre de carta» y «Está bien así» (confirmado por el dueño, 2026-11-04; `docs/diseno-nombre-en-carta-2026-11-04.md`, §11 F), a 375 px de ancho, con el servidor de producción y la
