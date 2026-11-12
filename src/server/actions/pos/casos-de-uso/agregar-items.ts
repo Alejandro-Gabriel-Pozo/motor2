@@ -12,7 +12,8 @@ import { validarCantidadPedido } from "@/core/pos/cantidad-pedido";
 import { componentesDeEleccion, prorratearPrecioPromo, validarYAplanarEleccionPromo, type ComponentePromoElegido, type FilaPromoProrrateada } from "@/core/pos/promo-combo";
 import { MAXIMO_ITEMS_POR_AGREGADO } from "@/core/pos/cantidad-pedido";
 import { armarLineaConfigurada, type LineaConfigurada } from "@/core/pos/linea-configurada";
-import { armarComponenteDeSeccion, armarConfiguracionDeEntradaAElegir, conOpcionesDeLasSecciones } from "@/core/pos/public-servidor";
+import { armarConfiguracionDeEntradaAElegir, conOpcionesDeLasSecciones } from "@/core/pos/public-servidor";
+import { armarPlatosDeSeccionConOpciones, opcionesDeLasFilasDeSeccion } from "./promo-seccion-con-opciones";
 import { validarOpcionesElegidas } from "@/core/opciones/public";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { descuentosDeProductoEnSucursal } from "@/server/lecturas/carta/descuentos";
@@ -117,16 +118,8 @@ export async function agregarItemsCasoDeUso(
       await cargarOpcionesParaVender(tx, { sucursalId: actor.sucursalId, productoIds: productoIdsDelPedido }),
       [
         ...items_.flatMap((i) => (typeof i?.productoId === "string" && Array.isArray(i.opciones) ? [{ productoId: i.productoId, opcionIds: i.opciones.map((o) => o.opcionId) }] : [])),
-        // Diseño 2026-11-11 (E1b): las opciones que el mozo elige en una fila de una parte de SECCIÓN de una promo (la forma la valida `validarYAplanarEleccionPromo` después; acá solo se piden las filas bien formadas).
-        ...promos_.flatMap((p) =>
-          (Array.isArray(p?.elecciones) ? p.elecciones : []).flatMap((e) =>
-            (Array.isArray(e?.elegidos) ? e.elegidos : []).flatMap((el) =>
-              el !== null && typeof el === "object" && "productoId" in el && typeof el.productoId === "string" && Array.isArray(el.opciones)
-                ? [{ productoId: el.productoId, opcionIds: el.opciones.flatMap((o: { opcionId?: unknown } | null) => (typeof o?.opcionId === "string" ? [o.opcionId] : [])) }]
-                : []
-            )
-          )
-        ),
+        // Diseño 2026-11-11 (E1b): también las opciones que el mozo elige en las filas de las partes de SECCIÓN de las promos.
+        ...opcionesDeLasFilasDeSeccion(promos_),
       ]
     );
 
@@ -248,30 +241,9 @@ export async function agregarItemsCasoDeUso(
         precioCartaPorClave.set(c.claveComponente, armada.precioDeLista);
         if (armada.linea) lineaPorClave.set(c.claveComponente, armada.linea);
       }
-      // Diseño 2026-11-11 (E1b): lo que el mozo eligió en un plato con opciones de una parte de SECCIÓN se arma igual, dentro de la transacción: opciones entre las elegibles (nunca un adicional), versión vigente,
-      // mínimos y máximos del grupo y origen de stock de la configuración elegida. Pesa en el reparto con el precio de lista de ESA configuración (nunca el guardado); el precio de la promo no cambia. Un plato sin
-      // opciones (como hasta ahora) no pasa por acá.
-      for (const c of validacion.componentes) {
-        if (c.entradaId !== undefined || c.opciones === undefined || c.claveComponente === undefined) continue;
-        const admite = opcionesLeidas.get(c.productoId);
-        const producto = await tx.producto.findUnique({ where: { id: c.productoId }, select: { nombre: true, tipo: true, precioVenta: true } });
-        if (!admite || !producto) return fracaso("ENTRADA_NO_DISPONIBLE", `«${def.titulo}»: uno de sus productos ya no está disponible.`);
-        const origen = origenDeStock.get(c.productoId);
-        const precioBase = redondearMoneda(await resolverPrecioVenta(actor.sucursalId, c.productoId, Number(producto.precioVenta), tx));
-        const armado = armarComponenteDeSeccion(
-          {
-            productoId: c.productoId,
-            producto: { nombre: producto.nombre, tipo: producto.tipo, esAnclaDeAdicional: admite.anclaDeOpcionId !== null, seProduce: origen?.seProduce ?? false, ingredientesDeLaRecetaVigente: origen?.ingredientesDeLaRecetaVigente ?? 0 },
-            precioBase,
-            precioGuardado: def.precioCartaPorProducto.get(c.productoId) ?? 0,
-            gruposDelProducto: admite.grupos,
-          },
-          c.opciones,
-        );
-        if (!armado.ok) return fracaso(armado.codigo, `«${def.titulo}»: ${armado.mensaje}`);
-        precioCartaPorClave.set(c.claveComponente, armado.precioDeLista);
-        if (armado.linea) lineaPorClave.set(c.claveComponente, armado.linea);
-      }
+      // Diseño 2026-11-11 (E1b): lo que el mozo eligió en un plato con opciones de una parte de SECCIÓN se arma igual, dentro de la transacción (`promo-seccion-con-opciones.ts`): pesa con la lista de ESA configuración.
+      const deSeccion = await armarPlatosDeSeccionConOpciones(tx, { sucursalId: actor.sucursalId, titulo: def.titulo, componentes: validacion.componentes, opcionesLeidas, origenDeStock, precioCartaPorProducto: def.precioCartaPorProducto, precioCartaPorClave, lineaPorClave });
+      if (!deSeccion.ok) return fracaso(deSeccion.codigo, deSeccion.mensaje);
       // Un componente de un cupo de entradas pesa con el precio de lista de SU entrada (por `claveComponente`: con su configuración); uno de sección, con el de siempre.
       // Si la clave de un componente de entradas no está en el mapa de precios, el plato pesaría $0 en el reparto: se rechaza sin escribir nada (nunca un cero silencioso).
       const componentes: ((typeof validacion.componentes)[number] & { precioCarta: number })[] = [];
