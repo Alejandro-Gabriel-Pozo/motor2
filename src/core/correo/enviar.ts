@@ -1,3 +1,4 @@
+import { esTextoDeUnaLinea } from "@/core/texto";
 import { configuracionDelCanal, type ConfiguracionDeCanal } from "./configuracion";
 import { esDireccionValida } from "./direcciones";
 import { crearEnviadorDeConsola, crearEnviadorEnMemoria, crearEnviadorSinConfigurar, type EnviadorEnMemoria } from "./locales";
@@ -34,16 +35,15 @@ export function crearEnviadorDelCanal(canal: CanalDeCorreo, source: Entorno, cre
 
 const MAXIMO_DE_DESTINATARIOS = 50;
 const MAXIMO_DEL_TEXTO = 100_000;
-const UNA_LINEA = /^[^\r\n]+$/;
 
 /** Lo que el proveedor rechazaría igual, cortado acá: devuelve el problema, o `null` si el mensaje está bien. */
 function problemaDelMensaje(m: MensajeDeCorreo): string | null {
   if (m.para.length === 0 || m.para.length > MAXIMO_DE_DESTINATARIOS) return `entre 1 y ${MAXIMO_DE_DESTINATARIOS} destinatarios`;
   if (!m.para.every(esDireccionValida)) return "destinatario inválido";
   if (m.responderA !== undefined && !esDireccionValida(m.responderA)) return "dirección de respuesta inválida";
-  if (!UNA_LINEA.test(m.asunto) || m.asunto.length > 200) return "asunto vacío, de más de 200 caracteres o con saltos de línea";
+  if (m.asunto === "" || !esTextoDeUnaLinea(m.asunto) || m.asunto.length > 200) return "asunto vacío, de más de 200 caracteres o con saltos de línea o caracteres no permitidos";
   if (m.texto.trim() === "" || m.texto.length > MAXIMO_DEL_TEXTO) return "texto vacío o demasiado largo";
-  if (m.claveDeIdempotencia !== undefined && (!UNA_LINEA.test(m.claveDeIdempotencia) || m.claveDeIdempotencia.length > 256)) return "clave de idempotencia inválida";
+  if (m.claveDeIdempotencia !== undefined && (m.claveDeIdempotencia === "" || !esTextoDeUnaLinea(m.claveDeIdempotencia) || m.claveDeIdempotencia.length > 256)) return "clave de idempotencia inválida";
   return null;
 }
 

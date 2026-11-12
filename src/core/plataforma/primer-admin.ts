@@ -1,3 +1,4 @@
+import { esDireccionValida } from "@/core/correo/direcciones";
 import { cifrarSecreto } from "./cifrado";
 import { generarCodigosDeRecuperacion, hashDeCodigoDeRecuperacion } from "./codigos";
 import { normalizarEmail } from "./email-reservado";
@@ -50,13 +51,11 @@ export class InstalacionNoRevisableError extends Error {
   }
 }
 
-const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 /** El email normalizado y el nombre sin espacios, o el error de validación (el mismo mensaje y el mismo orden que siempre: primero el email, después el nombre). */
 export function validarAltaDeAdmin(entrada: { email: string; nombre: string }): { email: string; nombre: string } {
   const email = normalizarEmail(entrada.email);
   const nombre = entrada.nombre.trim();
-  if (!EMAIL_VALIDO.test(email)) throw new AdminDePlataformaInvalidoError("El email no es válido.");
+  if (!esDireccionValida(email)) throw new AdminDePlataformaInvalidoError("El email no es válido.");
   if (nombre.length === 0) throw new AdminDePlataformaInvalidoError("Falta el nombre.");
   return { email, nombre };
 }

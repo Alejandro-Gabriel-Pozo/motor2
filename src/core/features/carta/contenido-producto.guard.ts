@@ -24,10 +24,9 @@ export function validarNombreEnCarta(valor: unknown): ResultadoDato<string | nul
   const etiqueta = "«Nombre en la carta»";
   if (typeof valor !== "string") return rechazar("formato", `${etiqueta} no es un texto válido.`);
   if (valor.trim() === "") return aceptar(null);
-  if (/[\r\n]/.test(valor)) return rechazar("formato", `${etiqueta} va en una sola línea: sacá los saltos de línea.`);
   if (valor !== valor.trim()) return rechazar("formato", `${etiqueta} no puede empezar ni terminar con espacios: borralos y volvé a guardar.`);
   if (Array.from(valor).length > LARGO_MAXIMO_DEL_NOMBRE_EN_CARTA) return rechazar("largo", `${etiqueta} tiene hasta ${LARGO_MAXIMO_DEL_NOMBRE_EN_CARTA} caracteres: acortalo.`);
-  if (!RE_TEXTO_CATALOGO.test(valor)) return rechazar("formato", `${etiqueta} tiene caracteres no permitidos. Se admiten letras, números, espacios y - . , ( ) % & / '`);
+  if (!RE_TEXTO_CATALOGO.test(valor)) return rechazar("formato", `${etiqueta} tiene caracteres no permitidos (va en una sola línea: sin saltos de línea). Se admiten letras, números, espacios y - . , ( ) % & / '`);
   if (valor.startsWith("-")) return rechazar("formato", `${etiqueta} no puede empezar con "-".`);
   return aceptar(valor);
 }

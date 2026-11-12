@@ -51,3 +51,15 @@ Pedido del dueño, 2026-11-11 (CONFIRMADO), en el encargo de esta sesión: «La 
 - Mecanismo: cerco de trinquete `tope-de-lineas` que cuenta, por archivo, las líneas que se pasa de 400 (como `wc -l`). Contar el exceso impide que un archivo ya grande siga creciendo. PROPUESTA.
 - Línea de base: 18 archivos (el mayor, `rendimiento-recetas.ts`, 876 líneas) = 2187 líneas de exceso. Deuda con vencimiento ≤ 60 días; partirlos queda fuera de alcance.
 - ¿Qué pasa si…? Un archivo nuevo de 401 líneas: falla. Un archivo en la línea de base crece: falla. Se parte: la cuenta baja y el cerco pide bajar la línea de base (`BAJAR_CERCOS=1`). Vence el plazo: falla hasta renovar con motivo y aprobación.
+
+## PR 3 — Se pagan las 21 validaciones por lista de prohibidos (2026-11-12)
+- Necesidad: pedido del dueño, 2026-11-12 («Hacé la 1: corregí las validaciones por lista de prohibidos», respuesta a la lista de trabajos aparte del PR 2). CONFIRMADA.
+- Qué se hizo: cada validación heredada pasó a declarar lo que se PERMITE; la línea de base quedó en 0 y se sacó su vencimiento.
+- Supuestos PROPUESTOS (los corrige el dueño; todos ENDURECEN, ninguno suma funciones):
+  1. URL de imagen (`https://`): solo ASCII de una URL (`url-https.ts`); ya no entran caracteres fuera de ASCII sin codificar, invisibles ni corchetes. Antes `metadatos.ts` y `css-valores.ts` aceptaban casi todo menos espacios.
+  2. Correo: parte local de letras, números y `. _ % + -` (hasta 64) y dominio de etiquetas ASCII (254 en total); ya no entran direcciones con eñe/acentos sin punycode ni con `'`, `!`, `#`, etc. El remitente «Nombre <dirección>»: el nombre admite letras, marcas, números, espacio y `. , & ' ( ) _ -`.
+  3. Texto de UNA línea (`esTextoDeUnaLinea`): letras, marcas, números, puntuación, símbolos (emojis incluidos), espacio y espacio de no separación. Lo usan el tipo «texto» del tema, el asunto y la clave de idempotencia del mail, y el path servible (un segmento decodificado con control o invisible → 404). Los emojis compuestos con unión de ancho cero ya no entran en esos campos.
+  4. Ids de opción de un combo, de producto en una ruta y clave de Resend (`re_…`): `[A-Za-z0-9_-]`.
+  5. «Nombre en la carta» y descripción de opción: el salto de línea lo rechaza la lista de permitidos del catálogo que ya existía; el mensaje ahora dice «va en una sola línea» dentro del aviso de caracteres no permitidos.
+- Excepción declarada (una): `src/core/texto.ts` (`quitarCaracteresInadmisibles`) es un sanitizador que quita NUL y sustitutos sueltos; no valida, y listar lo que se quita es su razón de ser.
+- ¿Qué pasa si…? Dato ya guardado que el nuevo criterio rechazaría (p. ej. una URL con eñe): sigue guardado; solo se rechaza al volver a guardarlo o al mostrarlo si la carta lo revalida (la carta ya revalida las URL con `urlImagenSegura`: sin imagen en vez de error). Lo existente no se migra.

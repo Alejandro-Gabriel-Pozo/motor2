@@ -1,3 +1,4 @@
+import { tieneFormaDeUrlHttps } from "./url-https";
 import type { Resultado } from "./validaciones";
 
 /**
@@ -159,9 +160,9 @@ const RE_USUARIO_RED: Record<"instagram" | "facebook", RegExp> = {
   facebook: /^([A-Za-z0-9.-]{1,50})$/,
 };
 
-/** URL `https://` bien formada, sin espacios, comillas ni `<>\``, hasta `maximo` caracteres; devuelve la URL parseada o null. */
+/** URL `https://` con la forma de `url-https.ts` y un host, hasta `maximo` caracteres; devuelve la URL parseada o null. */
 function urlHttpsSegura(v: string, maximo: number): URL | null {
-  if (v.length > maximo || !/^https:\/\/[^\s"'<>`\\]+$/i.test(v)) return null;
+  if (v.length > maximo || !tieneFormaDeUrlHttps(v)) return null;
   try {
     const u = new URL(v);
     return u.protocol === "https:" && u.hostname ? u : null;

@@ -266,7 +266,7 @@ export function nivelDePureza(s: SenalesDeFuente): NivelDePureza {
 /** Capa de un archivo según su ruta (relativa a la raíz del repo, con `/`). El orden importa: la primera que coincide gana. */
 export function capaDeArchivo(ruta: string): string {
   const reglas: [RegExp, string][] = [
-    [/^src\/server\/actions\/[^/]+\/casos-de-uso\//, "server/casos-de-uso"],
+    [/^src\/server\/actions\/[a-z0-9-]+\/casos-de-uso\//, "server/casos-de-uso"],
     [/^src\/server\/actions\//, "server/actions"],
     [/^src\/server\/consultas\//, "server/consultas"],
     [/^src\/server\/lecturas\//, "server/lecturas"],

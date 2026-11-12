@@ -19,7 +19,7 @@ export function rutaInternaSegura(valor: string | null | undefined): string | nu
   if (!valor.startsWith("/") || valor.startsWith("//") || valor.startsWith("/\\")) return null;
   // Solo ASCII imprimible (sin espacios ni caracteres de control) y sin barras invertidas, en ninguna parte. Un carácter fuera de
   // ASCII no saca del sitio, pero un `Location` con un code point mayor a 255 hace lanzar a Node y `/login` respondía 500.
-  if (/[^\x21-\x7e]|\\/.test(valor)) return null;
+  if (!/^[\x21-\x5b\x5d-\x7e]+$/.test(valor)) return null;
 
   // Debe seguir siendo una ruta del mismo origen una vez interpretada.
   let url: URL;
