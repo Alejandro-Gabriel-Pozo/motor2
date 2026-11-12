@@ -13,7 +13,7 @@ import { ContenidoDelProducto, type UbicacionEnCarta } from "@/components/carta/
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { Aviso } from "@/ui/primitivas/aviso";
-import { estadoDelNombreDeCarta, nombreDeCarta } from "@/core/carta/public";
+import { ESTA_BIEN_ASI_VISIBLE, estadoDelNombreDeCarta, nombreDeCarta } from "@/core/carta/public";
 import { esBaseConfigurable } from "@/core/opciones/public";
 
 /**
@@ -109,7 +109,7 @@ export default async function EnLaCartaDelProductoPage({ params }: { params: Pro
                 precioLocalActivo={datos?.precioLocalActivo ?? false}
                 sucursalId={ctx.sucursalId}
                 mostrarNombreArriba={basesDeUnEje?.get(producto.id)}
-                nombreDeCartaPendiente={admin.contenido?.visibleEnCarta === true && !esBaseConfigurable(producto.modoDeVenta) && estadoDelNombreDeCarta(producto, admin.contenido) === "pendiente"}
+                nombreDeCartaPendiente={ESTA_BIEN_ASI_VISIBLE && admin.contenido?.visibleEnCarta === true && !esBaseConfigurable(producto.modoDeVenta) && estadoDelNombreDeCarta(producto, admin.contenido) === "pendiente"}
                 abierto
               />
             </ul>
