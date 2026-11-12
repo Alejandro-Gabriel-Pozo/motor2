@@ -14,7 +14,7 @@ import { actualizarVisibleEnCarta, confirmarNombreEnCarta } from "@/server/actio
 import { actualizarActivaSeccionCarta } from "@/server/actions/carta/secciones";
 import { refrescarVistaSiHaceFalta } from "@/server/actions/refrescar";
 import type { ResultadoAccion } from "@/server/actions/tipos";
-import { PESTANAS_DE_CARTA, primeraPantallaVisible } from "@/core/carta/public";
+import { ESTA_BIEN_ASI_VISIBLE, PESTANAS_DE_CARTA, primeraPantallaVisible } from "@/core/carta/public";
 import { formatearCantidad } from "@/core/pos/public";
 import { AvisoSoloLectura } from "@/components/carta/datos-solo-lectura";
 import { CopiarCartaDeSucursal } from "@/components/carta/copiar-carta-de-sucursal";
@@ -77,7 +77,7 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
   // M.3-A5: de dónde se puede copiar se lee de las OTRAS sucursales (`cargarAdminCarta` cuenta la carta propia de cada una): solo quien puede copiar la carta ensancha la LECTURA a las sucursales donde el
   // rol ve `carta_ver` (el mismo «Ver» que exige `leerOrigenDeCopia` al copiar). Todo lo demás que lee esa consulta está atado a `ctx.sucursalId`, así que la base ampliada no cambia lo que muestra.
   const origenes = puedeCopiarCarta ? await lecturaEnSucursalesVisibles(ctx, "carta_ver") : ctx;
-  const [datos, carta, sinNombreDeCarta] = await Promise.all([cargarAdminCarta(ctx.sucursalId, origenes.db, new Date()), cargarCartaParaMantener(ctx.db, ctx.sucursalId), listarPlatosSinNombreDeCarta(ctx.sucursalId, ctx.db)]);
+  const [datos, carta, sinNombreDeCarta] = await Promise.all([cargarAdminCarta(ctx.sucursalId, origenes.db, new Date()), cargarCartaParaMantener(ctx.db, ctx.sucursalId), ESTA_BIEN_ASI_VISIBLE ? listarPlatosSinNombreDeCarta(ctx.sucursalId, ctx.db) : Promise.resolve([])]);
   // S-07 (O.56): solo se ofrecen de origen las sucursales donde el usuario tiene membresía y el «Ver» de la carta (las demás ni se nombran).
   const origenesDeCopia = puedeCopiarCarta ? await origenesDeCopiaVisibles(ctx.usuarioId, datos.sucursalesConCarta, ctx.db) : [];
   // «Reemplazar con la carta de otra sucursal» (2026-11-10): con la carta propia YA armada. Lo que se elimina (esta sucursal) y lo que se copia (cada origen) se cuenta con la base ampliada a su lectura.
@@ -142,14 +142,16 @@ export default async function CartaPage({ searchParams }: { searchParams: Promis
               <b>Visibles pero sin sección de carta activa (no salen en la carta):</b> {datos.visiblesSinSeccion.map((p) => p.nombre).join(", ")}.
             </div>
           )}
-          <NombresDeCartaPendientes
-            platos={sinNombreDeCarta}
-            puedeEditar={puede.contenido}
-            confirmar={async (productoId: string) => {
-              "use server";
-              return refrescarSiOk(await confirmarNombreEnCarta(productoId));
-            }}
-          />
+          {ESTA_BIEN_ASI_VISIBLE && (
+            <NombresDeCartaPendientes
+              platos={sinNombreDeCarta}
+              puedeEditar={puede.contenido}
+              confirmar={async (productoId: string) => {
+                "use server";
+                return refrescarSiOk(await confirmarNombreEnCarta(productoId));
+              }}
+            />
+          )}
           {sinStock.size > 0 && (
             <div className={s.nota} data-avisos-de-stock>
               <b>El sistema registra stock 0 de un ingrediente (siguen en la carta):</b>
