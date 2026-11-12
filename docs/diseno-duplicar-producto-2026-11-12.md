@@ -2,9 +2,11 @@
 
 Método: escalera de diseño de 10 niveles (AGENTS.md). Estados: **CONFIRMADA** (lo dijo el dueño), **PROPUESTA** (supuesto declarado, el dueño lo corrige), **PENDIENTE**, **NO VERIFICADA**.
 **Solo diseño:** este documento no trae código, ni tablas, ni migración. La compuerta (niveles 1 a 5 confirmados antes de tocar el nivel 6) queda abierta: lo que sigue de «PROPUESTA» lo decide el dueño.
+**Decisión del dueño (2026-11-12, chat): «Esperá al Duplicar completo; COMO LO TIENE PEDERNAL».** El destino es UNA etapa, «Duplicar producto» (E4), igual que la especificación de Pedernal. Las piezas más chicas (E1 a E3) se describen para entender el costo, pero **no se entregan por separado**.
 
 ## Necesidad (quién, cuándo, dónde está escrita)
 - El dueño, 2026-11-12 (chat con el orquestador): «no se supone que si cambia la receta, es otro producto en pedernal?; so lo que puede quedar es se genera 1 y el otro le copia la receta y cambia lo que tiene que cambiar y son 2 productos distintos y punto». **CONFIRMADA**: «Bife a criolla» y «Bife con chimichurri» son DOS productos distintos; el segundo se genera copiando la receta del primero y cambiando lo que haga falta.
+- **CONFIRMADA (2026-11-12, chat): «Esperá al Duplicar completo; COMO LO TIENE PEDERNAL».** El dueño descartó ir por partes: se construye «Duplicar producto» entero (ficha, opciones, receta y ficha técnica, precio como punto de partida editable, nombre propio obligatorio), con las reglas de seguridad de la especificación de Pedernal (§12.12): id que manda la aplicación, una sola transacción, auditoría de quién duplicó a partir de cuál.
 - Evidencia de costo medida (rama `alegp/tmp-capturas-antes-despues-carta`, `LEEME.md`, «ETAPA 2», 2026-11-12): cargar el segundo bife desde cero = 4 pantallas, 19 acciones (10 clics, 4 textos, 4 listas, 1 casilla; 5 guardados entre los clics) SIN contar receta ni ficha técnica; y no existe forma de copiarlas de un producto a otro.
 - Regla de alcance (AGENTS.md): se pide copiar de un producto a otro la **ficha, receta, ficha técnica y opciones vinculadas**. No se pide copiar la carta, precios por sucursal, stock, proveedores ni nada más: no se suma.
 
@@ -40,9 +42,7 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 | **E3 — «Nuevo producto parecido a…»** | El alta (la existente) se abre precargada con los datos de otro producto; el nombre queda vacío y obligatorio | 0 (parámetro de la pantalla «Nuevo producto») | **Ninguna nueva**: guarda por la acción de alta de siempre | Categoría, unidad, factor, modo de venta, alícuota: ≈ 2 a 3 acciones | Bajo: es solo lectura precargada |
 | **E4 — Botón «Duplicar» (todo junto)** | Un diálogo: nombre obligatorio + qué copiar → crea el producto, copia receta, ficha y opciones | 1 diálogo | Una acción que compone alta + E1 + E2 | De 19 acciones + receta a ≈ 3 (nombre, casillas, «Duplicar») + los datos propios de la carta | **Alto**: «todo o nada» choca con el alta actual (sin transacción a propósito) y obliga a decidir el precio |
 
-**Lo que el dueño espera (Pedernal, §12.12 y §12.18) es «Duplicar» (E4) más «cambiar la línea del ingrediente».** E1 a E3 son el camino más barato para llegar ahí por partes, usando lo que ya existe; la decisión de cuánto esperar es del dueño (pregunta abierta 6).
-
-**Propuesta (PROPUESTA):** empezar por **E1** (es lo que el dueño pidió con sus palabras —«le copia la receta»— y es lo que más pesa: la receta y la ficha técnica no tienen atajo hoy y se cargan a mano en cada producto), seguir con **E3** y **E2**, y dejar **E4 «Duplicar»** como etapa con nombre, solo si E1 a E3 no alcanzan. Un solo diseño de comando (más abajo) sirve a las cuatro etapas: E4 no agrega reglas nuevas, solo orquesta. Así el dinero (precio de lista) y la atomicidad entre «crear producto» y «copiar» quedan fuera de las primeras etapas: E1 y E2 operan sobre productos que YA existen, con su precio ya cargado por quien tiene permiso.
+**Decisión del dueño: esperar a E4 («Duplicar» completo), como Pedernal.** La regla «primero la opción más barata» sugería empezar por E1 (copiar la receta); el dueño la reemplazó con su decisión del 2026-11-12. Lo que sigue vale igual: E1, E2 y E3 son las **piezas** que E4 compone (leer el origen, copiar receta y ficha, vincular opciones, precargar el alta), y el diseño de sus comandos (niveles 3 a 10) es el de E4. Lo que cambia es que **no se entregan por separado**: la primera entrega es «Duplicar». «Cambiar el ingrediente de una línea» (el ejemplo de la salsa o la proteína) es el paso inmediato siguiente, **E4b**, como pide Pedernal en §12.18 (pedido a la etapa de recetas); queda con nombre, sin construir, hasta que el dueño lo pida.
 
 ---
 
@@ -99,12 +99,13 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 |---|---|
 | Bife a criolla y Bife con chimichurri son 2 productos distintos | CONFIRMADA |
 | Se genera uno y el otro le copia la receta y cambia lo que haga falta | CONFIRMADA |
-| Copiar también ficha técnica y opciones vinculadas | PROPUESTA (el orquestador lo pide; falta que el dueño lo confirme) |
-| Empezar por E1 (copiar receta), luego E3 y E2, y dejar «Duplicar» (E4) como etapa posterior | PROPUESTA |
+| Copiar también ficha técnica, receta y opciones vinculadas | CONFIRMADA («como lo tiene Pedernal»: ficha + opciones + receta) |
+| Esperar al «Duplicar» completo (E4), como Pedernal; no entregar E1 a E3 por separado | CONFIRMADA (el dueño, 2026-11-12, chat) |
 | La copia es independiente del origen (sin vínculo vivo) | PROPUESTA |
 | Qué se copia / no se copia (tabla de arriba) | PROPUESTA |
 | Copiar solo la receta central (no la propia de sucursal) | PENDIENTE (pregunta abierta 2) |
-| Precio por opción y precio de lista en la copia | PENDIENTE (pregunta clave y abierta 4) |
+| Precio de lista del duplicado: se copia como punto de partida editable (Pedernal §12.12), mostrado antes de guardar; con la regla de permisos de Motor2 (sin `producto_campos_sensibles` nace en 0 y apagado) | CONFIRMADA en lo general («como lo tiene Pedernal»); el detalle de permisos es PROPUESTA |
+| Precio por opción en la copia de opciones (recargos): se copian con el resto, como en Pedernal | CONFIRMADA en lo general; PROPUESTA el aviso «incluye N precios» |
 | Nombre propio obligatorio y no repetido (E3/E4) | PROPUESTA (es la regla del alta actual) |
 | Pedernal: «Duplicar» (ficha + opciones + receta + precio de empresa editable) aprobado como pedido 11/11; sin construir; `copiarOpciones` sí construido | CONFIRMADA (leído en `ZuluHub-docs` y `ZuluHub-ERP`, 2026-11-12) |
 | Cambiar el ingrediente de una línea al duplicar (el ejemplo de la proteína o la salsa) | PROPUESTA (pedido de Pedernal §12.18, sin especificar en Motor2) |
@@ -149,8 +150,9 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 | Doble clic en «Duplicar» | `claveDeIdempotencia` + índice único del nombre: se crea UN producto; el segundo pedido devuelve el producto ya creado. |
 | Nombre repetido | Rechazo antes de crear (regla del alta: un producto disponible con ese nombre ya existe; índice único). Nombre vacío: rechazo (obligatorio). |
 | Dos usuarios duplican a la vez con el mismo nombre | El índice único del nombre deja pasar a uno; el otro recibe «ya existe». |
-| Falla a mitad (ya se creó el producto, falla la copia) | **A resolver al pasar a E4:** el alta de hoy no usa transacción a propósito (reintento del código autogenerado). Salida PROPUESTA: crear el producto apagado (invisible e inofensivo, como hoy) y hacer la copia en UNA transacción; si falla, el producto vacío queda apagado y se informa. El «todo o nada» estricto exige rediseñar el alta: por eso E4 es la etapa grande. |
-| Sin `producto_campos_sensibles` | El producto nace con precio 0 y apagado (regla M.2-A4 vigente): se dice en pantalla. |
+| Falla a mitad (ya se creó el producto, falla la copia) | **No puede pasar a medias:** el alta y la copia van en UNA transacción SERIALIZABLE. El código autogenerado del alta usa el reintento de TODA la transacción (`conReintento`, como `guardar-version-de-receta`): si el código choca, se descarta el intento y se repite entero con otro; no hace falta el alta sin transacción de hoy. Si algo falla, no queda ni el producto vacío. |
+| Sin `producto_campos_sensibles` | El producto nace con precio 0 y apagado (regla M.2-A4 vigente): se dice en pantalla; con la clave nace con el precio del original (editable) y la disponibilidad que pida el tilde. |
+| El mismo `duplicadoId` con otro origen u otro nombre | Rechazo `ID_REUTILIZADO` (patrón de `copiarOpciones` de Pedernal); con el mismo origen y nombre devuelve el producto ya creado (`yaExistia`). |
 | Sin `alta_producto` | Rechazo antes de leer. |
 
 ## Nivel 6 — Historia y persistencia (sin tablas nuevas)
@@ -200,16 +202,15 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 4. **Precio por opción:** en los grupos con precio (por ejemplo la «Preparación» de una milanesa: 20.000 / 25.000), ¿se copian los precios o se copian los grupos y cada precio se carga a mano? Hoy: pendiente; la confirmación siempre los muestra.
 5. **Copiar opciones: ¿sumar o reemplazar?** Hoy se propone sumar lo que falta sin pisar lo que el destino ya admite.
 
-6. **¿Esperar a «Duplicar» completo (E4) o ir por partes (E1 primero)?** El dueño espera la experiencia de Pedernal («copio un bife y le cambio la salsa»): E4. E1 a E3 llegan a eso por partes y con menos riesgo, pero el dueño tiene que crear antes el producto vacío.
+6. ~~¿Esperar a «Duplicar» completo o ir por partes?~~ **Resuelta (2026-11-12): esperar a «Duplicar» completo, como Pedernal.**
 7. **Aviso de pasos copiados:** al copiar la receta, ¿avisar «hay pasos para revisar» (como pide Pedernal §12.19) cuando algún paso nombra un ingrediente?
 8. **Cambiar el ingrediente de una línea:** ¿alcanza con quitar y agregar en la pantalla de la receta, o hace falta un «Cambiar ingrediente» por línea (como la maqueta de Pedernal)?
 
-## Pregunta clave (la que cambia el dinero y el modelo)
-**Al duplicar un producto (E4), ¿el nuevo nace con el mismo precio de lista que el original o vacío para completar?** E1, E2 y E3 no la necesitan (operan sobre productos que ya tienen su precio). Pedernal propone copiar el precio de la empresa «como punto de partida editable» (supuesto de su sesión, no confirmado por el dueño en detalle). Propuesta para Motor2 si hace falta responder: nace con el mismo precio solo si quien duplica tiene `producto_campos_sensibles`, y la pantalla lo muestra antes de guardar; sin esa clave nace en 0 y apagado, como el alta de hoy.
+## Pregunta clave
+La que quedaba abierta («¿el duplicado nace con el mismo precio de lista o vacío?») la respondió el dueño con «como lo tiene Pedernal»: el precio de la empresa se copia **como punto de partida editable** y se muestra antes de guardar. En Motor2 se aplica con la regla de permisos vigente: con `producto_campos_sensibles` nace con ese precio; sin la clave nace en 0 y apagado y la pantalla lo dice. **Sin pregunta clave pendiente.**
 
 ## Etapas con nombre
-- **E1 — Copiar receta y ficha técnica entre productos.** La más barata, la primera.
-- **E3 — Nuevo producto parecido a…** (alta precargada).
-- **E2 — Copiar opciones entre productos.**
-- **E4 — Duplicar producto.** La grande: orquesta E3 + E1 + E2 en una acción, con la decisión del precio y el «todo o nada» del alta. Solo si E1 a E3 no alcanzan.
+- **E4 — Duplicar producto (la que se construye primero).** Botón «Duplicar» en la ficha: abre el producto nuevo con el nombre vacío y obligatorio, y copia ficha, opciones, receta y ficha técnica y el precio como punto de partida, en una sola transacción, con id que manda la aplicación y auditoría de quién duplicó a partir de cuál. Compone internamente las piezas E3 (alta precargada), E1 (receta y ficha técnica) y E2 (opciones).
+- **E4b — Cambiar el ingrediente de una línea de la receta** (el ejemplo de la salsa o de la proteína; §12.18 de Pedernal): sin construir hasta que el dueño lo pida.
+- **Aviso de pasos copiados** («hay pasos para revisar»): propuesto por Pedernal (§12.19); queda como pregunta abierta 7.
 - **Posteriores (sin necesidad escrita hoy):** columna `copiadaDeRecetaVersionId`; copiar carta; copiar entre sucursales de recetas propias.
