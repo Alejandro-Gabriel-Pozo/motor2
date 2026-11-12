@@ -8,7 +8,7 @@ import { GestionPresentaciones } from "@/components/catalogo/gestion-presentacio
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
 import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
-import { ALICUOTAS_IVA, type AlicuotaIva } from "@/core/fiscal/public";
+import { CampoAlicuotaIva, alicuotasDelFormulario } from "./campo-alicuota-iva";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
 import { AvisoAltaSinPrecio, AvisoCamposSensibles, ValorSoloLectura } from "@/components/catalogo/campos-sensibles-solo-lectura";
@@ -49,24 +49,6 @@ export interface ProductoExistente extends DatosProducto {
   id: string;
   codigo: string;
 }
-
-/**
- * Paso 13 (alícuota de IVA del producto): cómo se llama cada alícuota en la pantalla. `Record<AlicuotaIva, …>` es exhaustivo a propósito: una alícuota nueva en `ALICUOTAS_IVA` no compila hasta que se le pone nombre acá.
- * El orden del selector es el de `ALICUOTAS_IVA`.
- */
-const ETIQUETA_DE_ALICUOTA: Record<AlicuotaIva, string> = {
-  IVA_0: "IVA 0 %",
-  IVA_2_5: "IVA 2,5 %",
-  IVA_5: "IVA 5 %",
-  IVA_10_5: "IVA 10,5 %",
-  IVA_21: "IVA 21 %",
-  IVA_27: "IVA 27 %",
-  EXENTO: "Exento",
-  NO_GRAVADO: "No gravado",
-};
-
-/** La alícuota elegida en el selector puesta en su tipo: una de la lista, o `null` («sin declarar») si está vacío. */
-const alicuotaElegida = (valor: string): AlicuotaIva | null => ((ALICUOTAS_IVA as readonly string[]).includes(valor) ? (valor as AlicuotaIva) : null);
 
 /** M.2: los cuatro datos del producto que protege `producto_campos_sensibles` (el precio de venta, el factor de conversión y las dos unidades). */
 type DatosSensibles = Pick<DatosProducto, CampoSensibleDelProducto>;
@@ -127,10 +109,6 @@ export function ProductoForm({
   const [insumoId, setInsumoId] = useState(productoExistente?.insumoId ?? "");
   const [unidadStockId, setUnidadStockId] = useState(productoExistente?.unidadStockId ?? "");
   const [categoriaId, setCategoriaId] = useState(productoExistente?.categoriaId ?? "");
-  // Paso 13: la alícuota de IVA del producto (la de venta en un PV, la de compra en una MP). Vacía = «sin declarar»: nada viene preelegido.
-  const alicuotaGuardada = (tipo === "PV" ? productoExistente?.alicuotaIvaVenta : productoExistente?.alicuotaIvaCompra) ?? null;
-  const [alicuota, setAlicuota] = useState<string>(alicuotaGuardada ?? "");
-  const etiquetaDeLaAlicuota = tipo === "PV" ? "IVA de venta" : "IVA de compra";
   const [esConsignacion, setEsConsignacion] = useState(productoExistente?.esConsignacion ?? false);
   const [proveedorConsignacionId, setProveedorConsignacionId] = useState(productoExistente?.proveedorConsignacionId ?? "");
   // Default tildado (decisión 2 del dueño): lo común (insumos/platos compartidos) tiene cero fricción.
@@ -175,11 +153,6 @@ export function ProductoForm({
         const { precioVenta: _precioDelFormulario, ...delFormularioSinPrecio } = delFormulario;
         void _precioDelFormulario;
         const sensiblesDeLaEdicion: Partial<DatosSensibles> = puedeEditarCamposSensibles ? (esBase ? delFormularioSinPrecio : delFormulario) : {};
-        // Paso 13: la alícuota solo viaja con la clave fina (como el precio): en el alta, si se eligió una; en la edición, SIEMPRE la del tipo (aunque esté vacía = «sin declarar») junto con la que se mostraba (`alicuotaVista`).
-        const elegida = alicuotaElegida(alicuota);
-        const delTipo = (valor: AlicuotaIva | null): Pick<DatosProducto, "alicuotaIvaVenta" | "alicuotaIvaCompra"> => (tipo === "PV" ? { alicuotaIvaVenta: valor } : { alicuotaIvaCompra: valor });
-        const alicuotaDelAlta = puedeEditarCamposSensibles && elegida !== null ? delTipo(elegida) : {};
-        const alicuotaDeLaEdicion = puedeEditarCamposSensibles ? { ...delTipo(elegida), alicuotaVista: alicuotaGuardada } : {};
         const datos: Omit<DatosProducto, CampoSensibleDelProducto> = {
           codigo: editando ? undefined : texto(form.get("codigo")) || undefined,
           nombre: texto(form.get("nombre")),
@@ -198,19 +171,17 @@ export function ProductoForm({
           observaciones: texto(form.get("observaciones")) || undefined,
           activoEnTodasLasSucursales: editando ? undefined : activoEnTodas,
         };
-
         startTransition(async () => {
           const resultado = editando
             ? // El precio que mostraba el formulario (control del valor visto): si otra persona lo cambió mientras se editaba, el servidor no pisa su cambio y pide recargar.
               await actualizarProducto(productoExistente!.id, {
                 ...datos,
-                ...sensiblesDeLaEdicion,
-                ...alicuotaDeLaEdicion,
+                ...sensiblesDeLaEdicion, ...alicuotasDelFormulario(form, tipo, productoExistente, puedeEditarCamposSensibles).deLaEdicion,
                 precioVentaVisto: productoExistente!.precioVenta,
                 // Fase 4: el modo solo lo manda quien puede cambiarlo (sin la clave, «no viene» es «queda como estaba»).
                 ...(venta && puedeEditarCamposSensibles ? { modoDeVenta } : {}),
               })
-            : await darDeAltaProducto({ ...datos, ...sensiblesDelAlta, ...alicuotaDelAlta });
+            : await darDeAltaProducto({ ...datos, ...sensiblesDelAlta, ...alicuotasDelFormulario(form, tipo, undefined, puedeEditarCamposSensibles).delAlta });
           setMensaje(resultado.mensaje);
           setSincronizable(null);
           // Al guardar se vuelve a la ficha del producto, que muestra el aviso de que se guardó (antes se volvía a la lista y el cartel se perdía).
@@ -242,11 +213,7 @@ export function ProductoForm({
           leyenda={<span className="sr-only">Tipo de producto</span>}
           nombre="tipoRadio"
           valorInicial={tipo}
-          alCambiar={(valor) => {
-            setTipo(valor === "PV" ? "PV" : "MP");
-            // La alícuota de venta (PV) y la de compra (MP) son datos distintos: al cambiar de tipo no se arrastra la elegida.
-            setAlicuota("");
-          }}
+          alCambiar={(valor) => setTipo(valor === "PV" ? "PV" : "MP")}
           opciones={[
             { valor: "MP", etiqueta: "Materia prima (MP)" },
             { valor: "PV", etiqueta: "Producto de venta (PV)" },
@@ -446,33 +413,7 @@ export function ProductoForm({
             {pesos(productoExistente?.precioVenta ?? 0)}
           </ValorSoloLectura>
         ))}
-
-      {/* Paso 13: «IVA de venta» (PV) o «IVA de compra» (MP). Nada preelegido; vacío = «sin declarar», y la pantalla lo dice. Sin la clave fina, solo lectura. */}
-      <div className="flex flex-col gap-1" data-alicuota-iva={tipo === "PV" ? "venta" : "compra"}>
-        {puedeEditarCamposSensibles ? (
-          <Selector etiqueta={etiquetaDeLaAlicuota} name="alicuotaIva" value={alicuota} onChange={(e) => setAlicuota(e.target.value)}>
-            <option value="">Sin declarar</option>
-            {ALICUOTAS_IVA.map((a) => (
-              <option key={a} value={a}>
-                {ETIQUETA_DE_ALICUOTA[a]}
-              </option>
-            ))}
-          </Selector>
-        ) : (
-          <>
-            <ValorSoloLectura campo="alicuotaIva" etiqueta={etiquetaDeLaAlicuota}>
-              {alicuotaGuardada ? ETIQUETA_DE_ALICUOTA[alicuotaGuardada] : "Pendiente de completar"}
-            </ValorSoloLectura>
-            <AyudaCampo>Para cambiarla hace falta el mismo permiso que para el precio de venta.</AyudaCampo>
-          </>
-        )}
-        {puedeEditarCamposSensibles && alicuota === "" && (
-          <p className="text-xs text-tinta-tenue" data-alicuota-pendiente>
-            Pendiente de completar
-          </p>
-        )}
-      </div>
-
+      <CampoAlicuotaIva key={tipo} tipo={tipo} existente={productoExistente} puedeEditar={puedeEditarCamposSensibles} />
       {!puedeEditarCamposSensibles && (
         <AvisoCamposSensibles>
           {editando ? "Se muestran los valores guardados; el resto de los datos del producto se puede editar." : "El producto se crea con precio $0, factor 1 y sin unidad de compra; después lo completa quien tenga ese permiso."}
