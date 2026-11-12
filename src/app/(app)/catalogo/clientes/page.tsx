@@ -41,7 +41,7 @@ export default async function ClientesPage() {
       {!puedeEditar && <AvisoSoloLecturaDeCatalogo que="los clientes con descuento" />}
 
       <CajaDesplazable etiqueta="Tabla de clientes con descuento">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Nombre</th>
@@ -103,7 +103,7 @@ export default async function ClientesPage() {
               </tr>
             )}
           </tbody>
-        </table>
+        </table></div>
       </CajaDesplazable>
 
       {puedeEditar && (

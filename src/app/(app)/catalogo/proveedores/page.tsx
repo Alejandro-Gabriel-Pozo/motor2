@@ -58,7 +58,7 @@ export default async function ProveedoresPage() {
       {!puedeEditar && !puedeDarDeAlta && <AvisoSoloLecturaDeCatalogo que="los proveedores" />}
 
       <CajaDesplazable etiqueta="Tabla de proveedores">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Código</th>
@@ -112,7 +112,7 @@ export default async function ProveedoresPage() {
               </tr>
             )}
           </tbody>
-        </table>
+        </table></div>
       </CajaDesplazable>
     </div>
   );

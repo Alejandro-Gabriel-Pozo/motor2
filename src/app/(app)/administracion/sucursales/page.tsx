@@ -30,7 +30,7 @@ export default async function SucursalesPage() {
     <div className="space-y-8">
       <h1 className="text-xl font-semibold">Sucursales</h1>
 
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto"><table className="w-full min-w-[36rem] text-sm">
         <thead>
           <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Nombre</th>
@@ -78,7 +78,7 @@ export default async function SucursalesPage() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
 
       {alta.editar && (
       <FormConResultado

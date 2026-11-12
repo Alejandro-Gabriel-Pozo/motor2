@@ -82,7 +82,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
         {rep.porFranjaHoraria.length === 0 ? (
           <p className="text-sm text-tinta-tenue">Sin cuentas atendidas en este rango.</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Hora (Argentina)</th>
@@ -101,7 +101,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
 
@@ -112,7 +112,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
         {rep.porTamanoGrupo.length === 0 ? (
           <p className="text-sm text-tinta-tenue">Sin datos de comensales en este rango.</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Comensales</th>
@@ -129,7 +129,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
     </div>

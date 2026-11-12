@@ -78,7 +78,7 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
               })()}
               {v.comentarios && <p className="mb-2 text-xs text-tinta-tenue">Comentarios: {v.comentarios}</p>}
 
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-tinta-tenue">
                     <th className="py-1">Ingrediente</th>
@@ -100,7 +100,7 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
 
               {v.pasos.length > 0 && (
                 <div className="mt-3">

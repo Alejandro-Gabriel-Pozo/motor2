@@ -151,7 +151,7 @@ export default async function ComprasRegistradasPage({
                   </span>
                 </summary>
                 <div className="border-t px-3 py-2">
-                  <table className="w-full text-sm">
+                  <div className="overflow-x-auto"><table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-tinta-tenue">
                         <th className="px-2 py-1 font-normal">Producto</th>
@@ -178,7 +178,7 @@ export default async function ComprasRegistradasPage({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                   <p className="mt-2 text-xs text-tinta-tenue">
                     Cargada por {c.cargadaPor}
                     {c.detalle ? ` · ${c.detalle}` : ""} ·{" "}

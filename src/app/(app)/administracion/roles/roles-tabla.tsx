@@ -56,7 +56,7 @@ export function RolesTabla({ rolesIniciales, puedeRenombrar }: { rolesIniciales:
 
   return (
     <div className="space-y-4">
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto"><table className="w-full min-w-[36rem] text-sm">
         <thead>
           <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Nombre</th>
@@ -110,7 +110,7 @@ export function RolesTabla({ rolesIniciales, puedeRenombrar }: { rolesIniciales:
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
 
       <form action={crear} className="flex max-w-md gap-2">
         <div className="flex-1">

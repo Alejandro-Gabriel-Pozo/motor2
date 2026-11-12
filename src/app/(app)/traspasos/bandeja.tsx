@@ -335,7 +335,7 @@ export function Bandeja({
 
       <div>
         <h2 className="mb-2 text-sm font-medium">Historial</h2>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
               <th className="py-1">Fecha</th>
@@ -379,7 +379,7 @@ export function Bandeja({
               </tr>
             )}
           </tbody>
-        </table>
+        </table></div>
         {nextCursorHistorial && (
           <p className="mt-2 text-sm">
             <Enlace href={`/traspasos?cursor=${nextCursorHistorial}`}>Página siguiente →</Enlace>

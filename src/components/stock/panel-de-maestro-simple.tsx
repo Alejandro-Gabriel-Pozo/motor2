@@ -47,7 +47,7 @@ export function PanelDeMaestroSimple({
       {!puedeEditar && <AvisoSoloLecturaDeStock que={quePuedeVer} />}
 
       <section className="space-y-4">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Nombre</th>
@@ -76,7 +76,7 @@ export function PanelDeMaestroSimple({
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
 
         {puedeEditar && (
           <FormConResultado accion={crear} className="max-w-md space-y-1">

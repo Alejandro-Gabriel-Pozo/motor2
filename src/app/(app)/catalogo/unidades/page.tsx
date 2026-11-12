@@ -52,7 +52,7 @@ export default async function UnidadesPage() {
       </div>
 
       <CajaDesplazable etiqueta="Tabla de unidades de medida">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
               <th className="py-2">Nombre</th>
@@ -110,7 +110,7 @@ export default async function UnidadesPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </CajaDesplazable>
 
       {puedeEditar && (

@@ -127,7 +127,7 @@ function FilaTicket({ ticket: b, zonaHoraria }: { ticket: Awaited<ReturnType<typ
             </>
           )}
         </p>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-tinta-tenue">
               <th className="px-2 py-1 font-normal">Producto</th>
@@ -161,7 +161,7 @@ function FilaTicket({ ticket: b, zonaHoraria }: { ticket: Awaited<ReturnType<typ
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </details>
   );

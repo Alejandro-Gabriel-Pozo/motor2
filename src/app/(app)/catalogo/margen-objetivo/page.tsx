@@ -80,7 +80,7 @@ export default async function MargenObjetivoPage() {
           <p className="text-sm text-tinta-tenue">Todavía no hay categorías activas.</p>
         ) : (
           <CajaDesplazable etiqueta="Tabla del margen objetivo por categoría">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-tinta-tenue">
                   <th className="py-2">Categoría</th>
@@ -125,7 +125,7 @@ export default async function MargenObjetivoPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </CajaDesplazable>
         )}
       </section>

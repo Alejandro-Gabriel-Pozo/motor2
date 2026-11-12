@@ -52,7 +52,7 @@ export function FichaDeCocinaVista({ ficha }: { ficha: FichaDeCocina }) {
         {ficha.ingredientesPendientes ? (
           <p className="text-sm">Ingredientes: {PENDIENTE}.</p>
         ) : (
-          <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-borde">
                 <th scope="col" className="py-1">
@@ -73,7 +73,7 @@ export function FichaDeCocinaVista({ ficha }: { ficha: FichaDeCocina }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
 

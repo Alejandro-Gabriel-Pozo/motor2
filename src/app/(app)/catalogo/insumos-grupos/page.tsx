@@ -82,7 +82,7 @@ export default async function InsumosGruposPage() {
               sección y se pintaba ENCIMA de la de grupos (que viene después en el DOM), que se quedaba con los clics de «Desactivar». Mismo patrón que
               capacidades-sucursal y permisos-matriz. Lo cubre test/e2e/catalogo-insumos-grupos-maquetacion.spec.ts: sacar este contenedor reintroduce el bug. */}
           <CajaDesplazable etiqueta="Tabla de insumos">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-tinta-tenue">
                   <th className="px-2 py-2 first:pl-0">Nombre</th>
@@ -153,7 +153,7 @@ export default async function InsumosGruposPage() {
                   </tr>
                 )}
               </tbody>
-            </table>
+            </table></div>
           </CajaDesplazable>
 
           {puedeDarDeAlta && (
@@ -181,7 +181,7 @@ export default async function InsumosGruposPage() {
         <section className="space-y-6">
           <h2 className="text-lg font-semibold">Árbol de grupos</h2>
           <CajaDesplazable etiqueta="Tabla del árbol de grupos">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-tinta-tenue">
                   <th className="px-2 py-2 first:pl-0">Cadena</th>
@@ -219,7 +219,7 @@ export default async function InsumosGruposPage() {
                   </tr>
                 )}
               </tbody>
-            </table>
+            </table></div>
           </CajaDesplazable>
 
           {puedeEditarGrupos && (

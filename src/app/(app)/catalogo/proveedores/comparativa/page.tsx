@@ -28,7 +28,7 @@ export default async function ComparativaPreciosPage() {
             <h2 className="font-medium">{fila.insumo}</h2>
             {fila.grupo && <span className="text-xs text-tinta-tenue">{fila.grupo}</span>}
           </div>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr className="text-left text-tinta-tenue">
                 <th>Proveedor</th>
@@ -47,7 +47,7 @@ export default async function ComparativaPreciosPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       ))}
     </div>
