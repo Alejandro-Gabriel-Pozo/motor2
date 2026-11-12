@@ -9,7 +9,7 @@
  *  - la dirección entera, hasta 254 caracteres.
  * Sin espacios, saltos de línea, comillas dobles, `<`, `>`, `,`, `;`, `(`, `)`, `[`, `]` ni barra invertida: no hay forma de colar un segundo destinatario ni un encabezado.
  */
-export const LARGO_MAXIMO_DE_UN_EMAIL = 254;
+const LARGO_MAXIMO_DE_UN_EMAIL = 254;
 const LARGO_MAXIMO_PARTE_LOCAL = 64;
 const RE_PARTE_LOCAL = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/;
 const RE_ETIQUETA_DE_DOMINIO = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
