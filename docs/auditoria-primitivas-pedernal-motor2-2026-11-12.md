@@ -491,6 +491,8 @@ Etapas que quedan ordenadas por esta dirección (todas **PROPUESTA** de orden; c
 
 ## 9.2 Estado de la Fase 2 (2026-11-12): un PR por paso aprobado
 
+Los PR #239, #240, #241 y #249 modifican el mismo archivo de línea de base del guardián (`lista-de-prohibidos.json`): al integrar el segundo en adelante hay que regenerarla con `BAJAR_CERCOS=1`.
+
 Todos en borrador, cada uno con el apartado «Decisiones mías que esperan tu OK» y su gate local (el gate completo y los e2e los corre el CI de GitHub: la suite local completa no es práctica, más de 1.200 archivos contra base).
 
 | Paso | PR | Qué deja |
@@ -499,15 +501,16 @@ Todos en borrador, cada uno con el apartado «Decisiones mías que esperan tu OK
 | 2 | #239 | Textos de la carta con lista de permitidos (CI verde) |
 | 3 | #240 | Un solo validador de correo (CI verde en el segundo intento: un test de concurrencia inestable de `main`, anotado) |
 | 4 | #241 | Un solo validador de direcciones web (CI verde) |
+| 5 | #249 | Opción de promo, asunto del correo, clave de Resend y ruta para volver con lista de permitidos (el PR #230 ya está en `main`; el #237 no toca `promo-combo.ts`) |
 | 6 | #242 | Aprobación real del vencimiento del guardián |
 | 7 | #243 | 22 tablas con scroll horizontal en celular y guardián de tablas sin scroll |
 | 8 | #244 | Dos colores sueltos pasan a tokens; la línea de base de colores de escala llega a 0 |
-| 9 | #248 | **Solo diseño** (cambia cartas ya publicadas): marca por sucursal y empresa, con una pregunta clave |
+| 9 | #248 | **Solo diseño** (cambia cartas ya publicadas): marca por sucursal y empresa. El dueño eligió la opción A: las cartas publicadas conservan sus colores hasta que se reediten |
 | 12 | #245 | Oráculo de dinero: Motor2 da $80,64 donde Pedernal da $80,60 (4 centavos en un ticket de $89,55) |
 | 14 | #247 | Catálogo de primitivas (112 modelos) e invariantes (125) con guardián |
 | 15 | #246 | La consola usa la paleta del sistema, con un test que las mantiene iguales |
 
-Siguen esperando: **5** (el PR #237 de promos en vuelo), **10 y 11** (autorización de migración), **13** (decisión fiscal) y el **menú del día** (paso propio, primero ocultar y después borrar con aviso).
+Siguen esperando: **10 y 11** (autorización de migración), **13** (decisión fiscal) y el **menú del día** (paso propio, primero ocultar y después borrar con aviso).
 
 ---
 
