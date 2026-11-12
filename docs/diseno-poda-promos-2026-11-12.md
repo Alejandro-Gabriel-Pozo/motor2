@@ -176,6 +176,31 @@ Dimensiones cuyas combinaciones cambian dinero, visibilidad o stock, y qué pasa
 - **#249 (auditoría) toca `promo-combo.ts`:** la poda también (rama `DEL_DIA`, `MENU_DEL_DIA_SIN_CARGAR`, `CodigoDeEleccionDePromo`). **PROPUESTA:** que #249 mergee primero y el PR 2 del tiempo 1 se base en `main` actualizado. **NO VERIFICADO** el contenido de #249 desde esta sesión.
 - E1a/E1b ya están en `main` (#230, #237); `promo-combo.ts` ya tiene los campos nuevos de «Toda la sección»; la poda no los toca.
 
+### 6.1 Orden de PR y archivos que toca cada uno (para detectar conflictos)
+
+Orden fijado por el dueño (vía el orquestador, 2026-11-12): **1)** la cadena de la auditoría entra primero en `main` (incluye #249); **2)** recién después la poda T1 (solo con el OK del dueño a este diseño y el aviso «#249 en main»); **3)** E1c (pantalla del mozo) y E2 (armado «solo estos platos» en el admin).
+
+Lo que **sí** se leyó de los PR abiertos (archivos de `get_files`, 2026-11-12): #249, #254, #250, #251, #238, #239. De los demás (#240 a #248, #252, #253, #255) **NO VERIFICADO** qué archivos tocan; antes de cada PR de la poda se repite el cruce contra los que sigan abiertos.
+
+| Orden | PR | Qué toca (lo que importa para la poda) |
+|---|---|---|
+| 1a | #250 «CHECK en la base (paso 10)» | Migración `20261112160000_checks_de_datos_basicos`; `test/aislamiento/m1-mostrador-subir-bajar-subir.test.ts` (lista de migraciones posteriores) |
+| 1b | #251 «Nombre único sin mayúsculas (paso 11)» | Migración `20261112170000_nombre_unico_sin_mayusculas`; `guardar-seccion-carta.ts`, casos de uso de clientes; el mismo `m1-mostrador-subir-bajar-subir.test.ts` |
+| 1c | #238 / #239 (pasos 1 y 2) | `src/components/carta/contenido-del-producto.tsx`; `src/core/carta/validaciones.ts`; `src/core/features/carta/{contenido-producto,items-agrupados,promos,secciones}.guard.ts` |
+| 1d | #249 (paso 5) y #254 (PR 3, «todo nace cerrado») | **#249 y #254 tocan la misma línea de `src/core/pos/promo-combo.ts`** (`claveDeConfiguracion`, con regex distintas: se pisan entre ellas, no con la poda); #254 además toca `AGENTS.md`, `src/core/carta/*` (armar-menu, tema, css-valores, url-https…), `src/core/correo/*`, `src/core/texto.ts`, `src/env.ts` y las líneas de base `test/arquitectura/cercos/linea-de-base/{lista-de-prohibidos,tope-de-lineas}.json` y `cercos/vencimientos.ts` |
+| 2a | Poda T1 / PR 1 (vigencia) | Borra `core/carta/vigencia-de-promo.ts`, `guardar-vigencia-promo-carta.ts` y sus tests; edita `core/carta/public.ts`, `admin-tipos.ts`, `features/carta/combos.guard.ts`, `core/tiempo/zona-horaria.ts`, `server/actions/carta/combos.ts`, `server/consultas/carta/combos.ts`, `server/persistencia/carta/combos.ts`, `lecturas/pos/promo-para-agregar.ts`, `lecturas/pos/selector-carta.ts`, `carta/parametrizacion/formularios.tsx` y `promociones/page.tsx`, `permisos/auditoria.ts` (solo comentario), `guardas/columnas-de-significado.ts`, `visibilidad-de-promos-matriz.test.ts`, ADR-032 |
+| 2b | Poda T1 / PR 2 (menú del día) | Lo de §1.2 más `core/pos/promo-combo.ts`, `agregar-items.ts`, `entradas-de-promo-para-vender.ts`, `armar-promo.tsx`, `armar-promo-estado.ts`, `selector-carta.ts` (core), `cuenta-pedido.schema.ts`, `features/carta/promos.guard.ts`, `ui-config.ts`, tests y e2e del menú; **baja** `promo-combo.ts` y `agregar-items.ts`, así que regenera `tope-de-lineas.json` |
+| 2c | Poda T1 / PR 3 (campos) | `persistencia/carta/combos.ts` |
+| 2d (más adelante) | Poda T2 (migración) | Migración nueva (fecha posterior a `20261112170000`), `down.sql`, `prisma/schema.prisma`, `core/carta/cupos-de-promo.ts` (`TIPOS_DE_CUPO`), `core/permisos/acciones.ts`, guardianes y tests de migración (§5) |
+| 3 | E1c y E2 | Pantalla del POS (`armar-promo*.tsx`, `selector-carta`) y admin (`formularios.tsx`, `promociones/page.tsx`, `guardar-cupos-promo-carta.ts`): **los mismos archivos que 2a y 2b** |
+
+Conflictos detectados y cómo se evitan:
+1. **`promo-combo.ts`:** la poda (2b) borra las ramas `DEL_DIA`/`MENU_DEL_DIA_SIN_CARGAR` (partes distintas del archivo a la línea 160 que cambian #249/#254). Se espera textualmente limpio; igual, 2b se hace con `main` ya actualizado con #249 y #254, nunca antes.
+2. **`tope-de-lineas.json` y `vencimientos.ts`:** #254 los edita y 2b baja el tope. La línea de base **no se edita a mano**: se regenera con `BAJAR_CERCOS=1` después de rebasar sobre `main`.
+3. **`features/carta/promos.guard.ts`:** lo edita #239 (descripción multilínea) y 2b (tipo `DEL_DIA`); hunks distintos, se rebasa después de #239.
+4. **Migraciones:** #250 y #251 agregan migraciones y las anotan en la lista de `m1-mostrador-subir-bajar-subir.test.ts`; la de T2 va **después** de ellas (fecha mayor) y se agrega a esa misma lista. Es el punto de conflicto más probable entre todos los PR con migración.
+5. **E1c/E2:** tocan los mismos archivos de pantalla que 2a y 2b; por eso el orden recomendado es 2a/2b antes de E1c/E2 (§8).
+
 ## 7. Auditoría previa por base (obligatoria antes de cada tiempo)
 
 Solo lectura; correr como dueño en **cada** base (principal, `zuluhub-demo` y toda otra con datos). Pegar el resultado en el PR del tiempo; si alguna cifra no es 0, **se frena y se pregunta al dueño**.
