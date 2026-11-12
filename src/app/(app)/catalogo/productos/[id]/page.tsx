@@ -38,21 +38,6 @@ function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactN
   );
 }
 
-/** Lo que el diálogo «Duplicar» necesita saber de quien mira y del original (`null` si quien mira no puede crear productos: el botón no se ofrece). Cortesía de la interfaz. */
-async function cargarLoQuePideDuplicar(ctx: ContextoUsuario, productoId: string) {
-  const alta = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
-  if (!alta.editar) return null;
-  const [receta, sinModuloDeRecetas, opciones, puedeFijarPrecio, sucursalesDeLaReceta, resumen] = await Promise.all([
-    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db),
-    denegacionDeModuloDeAccion("guardar_receta", ctx.empresaId, ctx.db),
-    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_opciones_admitidas", ctx.db),
-    puedeEditarCamposSensiblesDelProducto(ctx),
-    sucursalesVisiblesPara(ctx, "receta_sucursal_copiar"),
-    leerResumenParaDuplicar(ctx.db, productoId),
-  ]);
-  return { puedeCopiarReceta: receta.editar && !sinModuloDeRecetas, puedeCopiarOpciones: opciones.editar, puedeFijarPrecio, sucursalesDeLaReceta, resumen };
-}
-
 const SinValor = ({ children }: { children: React.ReactNode }) => <span className="text-tinta-suave">{children}</span>;
 
 /**
@@ -354,4 +339,19 @@ export default async function FichaProductoPage({
       {cuerpo}
     </div>
   );
+}
+
+/** Lo que el diálogo «Duplicar» necesita saber de quien mira y del original (`null` si quien mira no puede crear productos: el botón no se ofrece). Cortesía de la interfaz. */
+async function cargarLoQuePideDuplicar(ctx: ContextoUsuario, productoId: string) {
+  const alta = await obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "alta_producto", ctx.db);
+  if (!alta.editar) return null;
+  const [receta, sinModuloDeRecetas, opciones, puedeFijarPrecio, sucursalesDeLaReceta, resumen] = await Promise.all([
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "guardar_receta", ctx.db),
+    denegacionDeModuloDeAccion("guardar_receta", ctx.empresaId, ctx.db),
+    obtenerMiNivelPermisoDeEmpresa(ctx.usuarioId, ctx.empresaId, "producto_opciones_admitidas", ctx.db),
+    puedeEditarCamposSensiblesDelProducto(ctx),
+    sucursalesVisiblesPara(ctx, "receta_sucursal_copiar"),
+    leerResumenParaDuplicar(ctx.db, productoId),
+  ]);
+  return { puedeCopiarReceta: receta.editar && !sinModuloDeRecetas, puedeCopiarOpciones: opciones.editar, puedeFijarPrecio, sucursalesDeLaReceta, resumen };
 }

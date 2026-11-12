@@ -42,6 +42,13 @@ export interface PropsDeDuplicarProducto {
 
 const CENTRAL = "";
 
+/** Un identificador al azar para el producto nuevo. `randomUUID` solo existe en un contexto seguro (https o localhost); sin él, 16 bytes al azar en hexadecimal (el servidor acepta de 16 a 64 letras, números, guiones y guiones bajos). */
+function nuevoIdDeDuplicado(): string {
+  const c = globalThis.crypto;
+  if (typeof c.randomUUID === "function") return c.randomUUID();
+  return Array.from(c.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /**
  * «Duplicar» de la ficha del producto (etapa E4 de `docs/diseno-duplicar-producto-2026-11-12.md`): un diálogo que crea un producto NUEVO a partir de este, con nombre propio OBLIGATORIO (vacío al abrir) y copia lo que se tilde — la
  * receta con su ficha técnica y las opciones vinculadas —, más el precio de lista como punto de partida editable. Antes de confirmar dice qué se copia y qué no.
@@ -67,7 +74,7 @@ export function DuplicarProducto({ origen, tieneReceta, opciones, puedeCopiarRec
   }, [abierto]);
 
   function abrir() {
-    setDuplicadoId(crypto.randomUUID());
+    setDuplicadoId(nuevoIdDeDuplicado());
     setCreado(null);
     setCopiarReceta(puedeRecibirReceta);
     setAbierto(true);
