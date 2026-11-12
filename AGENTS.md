@@ -49,6 +49,14 @@ Todo módulo o feature nuevo (compras, reservas, ventas, caja, clientes, lo que 
 - Alcance de la petición (regla del dueño, 2026-10-28): el agente hace SOLO lo que se pide y no asume nada ni suma funciones que nadie pidió (un cupo extra, días de disponibilidad, opciones «por las dudas»). Si la petición es ambigua, no hace nada hasta resolver la ambigüedad con UNA pregunta; mientras tanto deja constancia como pregunta abierta, no como supuesto. Antes de construir se verifica que la necesidad esté escrita (quién la pidió y cuándo); si hay una forma más simple con lo que ya existe (subir el cupo original, apagar los días que no valen), se propone esa.
 - El documento de diseño vive en `docs/diseno-<modulo>-AAAA-MM-DD.md` (ver el piloto de clientes, convenios y facturación externa).
 
+## Todo nace cerrado (regla del dueño, 2026-11-11)
+
+Todo se diseña denegando por defecto: nada se habilita sin declararlo, autorizarlo y dejar rastro; ante un error o una duda el sistema cierra, no abre.
+
+- Producto: una promo nace sin secciones tildadas; tildar una sección no tilda sus platos; nada «viene tildado» salvo decisión explícita. Así toda decisión es adrede (palabras del dueño: «yo creo una promoción y nace sin ninguna sección tildada… Esto me asegura de que toda decisión sea adrede. Lo mismo con el código»).
+- Código: la validación de un dato declara lo que se PERMITE (conjunto, largo, forma), nunca lo que se prohíbe. Una lista de prohibidos deja pasar todo lo que nadie pensó en prohibir. Caso real (Pedernal, proyecto hermano): `/\p{Cc}/u` en `datos-fiscales.ts` solo rechazaba controles y dejaba pasar invisibles y `<>`.
+- Chequeo mecánico: `test/arquitectura/cerco-lista-de-permitidos.test.ts` (detector en `cerco-lista-de-permitidos-apoyo.ts`, con sus LÍMITES, un ejemplo cada uno, en el encabezado; una violación inyectada por cada forma en `cerco-lista-de-permitidos-evasiones.test.ts`). Es un cerco de trinquete: lo que ya existe es deuda con vencimiento (`test/arquitectura/cercos/vencimientos.ts`, máximo 60 días) y no puede subir. Es una alarma para errores honestos, no un límite de seguridad. Diseño: `docs/diseno-fallo-cerrado-2026-11-11.md`.
+
 ## Quién escribe código (regla del dueño, 2026-11-04)
 
 Los modelos **Opus** y **Fable** (cualquier versión) **no escriben código** en este proyecto: planifican, revisan y verifican. El código (`src/`, `test/`, `prisma/`, `scripts/` y la configuración) lo escribe **Sonnet**.
