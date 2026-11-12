@@ -59,6 +59,15 @@ export const VENCIMIENTOS_DE_LISTAS: readonly VencimientoDeLista[] = [
     aprobacion: { por: "dueño", referencia: "PR #236" },
     motivo: "Validaciones por lista de prohibidos heredadas al instalar el cerco «Todo nace cerrado»: cada una pasa a declarar lo permitido en un trabajo aparte (propuesta de plazo: 60 días; la corrige el dueño).",
   },
+  // «Todo nace cerrado» (PR 2, 2026-11-12): deuda que ya existía al instalar el tope de 400 líneas por archivo de `src/` (18 archivos, uno de más de 800); se declara sin pagarla (partirlos es un trabajo aparte), plazo máximo desde el 2026-11-12.
+  {
+    regla: "tope-de-lineas",
+    inicio: "2026-11-12",
+    vence: "2027-01-10",
+    responsable: "dueño",
+    aprobacion: { por: "dueño (pendiente de aprobar al mergear el PR)", referencia: "PR #234" },
+    motivo: "Archivos de src/ que ya pasaban de 400 líneas al instalar el cerco: cada uno se parte por responsabilidad en un trabajo aparte (propuesta de plazo: 60 días; la corrige el dueño).",
+  },
   // Estructura de pantalla (PR #219, 2026-11-09): las 90 pantallas se adoptan por etapas E-B…E-H (docs/diseno-estructura-de-pantalla-1366x768-2026-11-09.md, §12). Plazo máximo; se renueva con motivo si una etapa se atrasa.
   {
     regla: "pantallas-con-estructura",
