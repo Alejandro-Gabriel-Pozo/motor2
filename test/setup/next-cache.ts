@@ -16,3 +16,5 @@ vi.mock("next/cache", async (importOriginal) => {
 
 // Poda de género e ítem agrupado (2026-11-06): los tests existentes corren con el interruptor ENCENDIDO (ver el archivo).
 import "./genero-e-item-agrupado-encendido";
+// «Está bien así» apagado en producción (2026-11-11): los tests existentes corren con el interruptor ENCENDIDO (ver el archivo).
+import "./esta-bien-asi-encendido";
