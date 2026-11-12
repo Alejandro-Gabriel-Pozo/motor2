@@ -4,6 +4,8 @@ Estado: **solo diseño, sin código ni migración.** Nada de esto se aplica hast
 
 Pedido del dueño (CONFIRMADA): a la pregunta del orquestador «¿borramos la vigencia, los días de la semana, el menú del día y los campos muertos que enumeré?» contestó «Si» — 2026-11-12 — chat con el orquestador. Antecedentes escritos del dueño: revocó la vigencia el 2026-10-20 (noche; anotado en el documento del 2026-10-22) («la promoción NO tiene vigencia desde/hasta, ni carga por fecha», `docs/pendientes-sesion-2026-10-22.md:81-95`) y descartó el menú del día («se descarta como flujo normal la carga por fecha y sucursal», ídem `:77-81`); ambas quedaron **ocultas por interruptor** (`VIGENCIA_DE_PROMO_VISIBLE = false`, `MENU_DEL_DIA_VISIBLE = false`) y hoy son código muerto detrás de un `false`.
 
+Antecedente de segunda mano (**PROPUESTA hasta que el dueño lo confirme directo**; el orquestador lo transcribió del chat de la sesión de auditoría, 2026-11-12): «Sí, también las promos plato del día. Solo queda la parte como promoción. Sin eso, plato del día, sin menú del día, nada de eso.» Según la regla I1 de `AGENTS.md` no vale como aceptación hasta que llegue directo con su fuente; acá solo orienta el alcance (ver §1.6 y §8).
+
 Regla de poda (`AGENTS.md`, 2026-10-28): se prefiere achicar antes que mantener opciones que nadie pidió; primero ocultar, después borrar, con aviso al dueño. Esto es el segundo paso.
 
 ## 0. Resumen para el dueño (lenguaje de proceso)
@@ -58,6 +60,13 @@ Verificado SIN usos: `scripts/`, `plataforma/src`, `prisma/seed.ts`, SQL crudo d
 - **`ENTRADA_NO_DISPONIBLE` se queda** (también la usa el cupo `LISTA` y las partes «el mozo elige»); se va solo **`MENU_DEL_DIA_SIN_CARGAR`**.
 - `diaDeColumnaDate`, `fechaDeColumnaDate` y `diaDeCalendario` los usan otros módulos (compras, reportes, conteo): se quedan. `diaDeLaSemana` (`core/tiempo/zona-horaria.ts`) solo la usa la vigencia: queda sin consumidor y `npm run analizar:muerto` la va a marcar (se borra en el mismo cambio).
 - El parámetro `dia` de `cargarPromoCartaParaAgregar` y `cargarEntradasDePromoParaVender` solo existe para la vigencia y el plato del día: se puede sacar. `empresaZonaHoraria` en el `actor` de `agregarItemsCasoDeUso` queda sin uso en este caso de uso (PROPUESTA: sacarlo solo si `tsc`/knip lo exigen; no refactorizar de más).
+
+### 1.6 «Plato del día» como promo: qué cubre la poda
+
+- **Cubierto por la poda:** el «plato del día» **como lugar de una promo** es el cupo de tipo `DEL_DIA` (con su tabla `EntradaDelDiaDeCupo` por fecha y sucursal, su permiso y su pantalla). Todo eso sale (§1.2). Es exactamente lo que la cita de segunda mano describe como «plato del día» y «menú del día».
+- **NO es lo mismo y queda:** una promo cualquiera que el dueño decida llamar «Plato del día» (título libre) con cupos `SECCION` o `LISTA` sigue siendo una promo normal; la poda no mira títulos.
+- **Promos ya creadas con un lugar `DEL_DIA`:** 0 en la base principal (medido por el orquestador, 2026-11-12); las demás bases **NO VERIFICADAS**. La consulta de §7 (punto 2) las cuenta antes de cada tiempo. **Si alguna base tuviera alguna, se frena y se le pregunta al dueño qué hacer con ella** (convertir ese lugar en uno `LISTA` con los mismos platos, o dar de baja la promo): no se decide en este diseño. Mientras tanto el comportamiento seguro ya existe: un cupo activo de tipo desconocido hace que su promo no se ofrezca (falla cerrado, nunca se vende mal).
+- **«Solo queda la parte como promoción»:** consistente con lo que el sistema ya hace (una promo se arma de partes: lugares `SECCION` y `LISTA`); la poda no agrega ni cambia nada ahí. Si el dueño quiso decir algo más (unificar los dos tipos de parte), es la pregunta abierta de §8.
 
 ## 2. Escalera de diseño (niveles 1 a 10)
 
@@ -224,6 +233,8 @@ Medido por el orquestador el 2026-11-12 (solo lectura) en la base principal (pro
 ## 8. Preguntas abiertas y hallazgos
 
 - **Pregunta clave (una):** el tiempo 1, ¿lo hacemos antes de E1c/E2 (recomendado: menos conflictos y menos código en las pantallas que se van a reescribir) o después de ellas?
+- **Abierta (sin supuesto; no se hace nada hasta que el dueño conteste):** «Solo queda la parte como promoción» ¿implica también **unificar `SECCION` y `LISTA` en un solo concepto de parte**? Hoy el diseño aprobado de E0 (#227, «Toda la sección | Solo estos platos») ya los presenta como UNA sola elección en la pantalla, pero en la base siguen siendo dos tipos de cupo (`SECCION` y `LISTA`, alternativa A de #227: sin migración). Unificarlos en el modelo sería un cambio de datos aparte (columna/CHECK, migración con aviso expreso) y **no forma parte de esta poda**. La poda deja `TIPOS_DE_CUPO = ['SECCION','LISTA']` tal cual.
+- **Abierta:** la cita del dueño sobre el plato del día llegó de segunda mano; hasta que la confirme directo se trata como PROPUESTA (el pedido CONFIRMADO de la poda sigue siendo el «Si» del 2026-11-12 a la lista enumerada por el orquestador).
 - Abierta (sin supuesto): `docs/` de `motor2-docs` (`_planes/`, ADR) **no se revisó** (no está en el alcance de esta sesión); puede haber un plan aprobado que dependa de la vigencia o del menú del día.
 - Abierta: ¿conviene conservar las filas históricas de `RegistroAuditoria` con la entidad `EntradaDelDiaDeCupo` y los campos de vigencia? **PROPUESTA: sí, no se tocan** (la auditoría solo se agrega); las etiquetas de `auditoria.ts` se mantienen para poder mostrarlas.
 - Hallazgo (sin tocar): `PROMO_CAMBIO` no es de la vigencia (ver §1.5); borrarlo por error quitaría la guarda de precio.
