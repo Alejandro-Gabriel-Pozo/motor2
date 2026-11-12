@@ -115,7 +115,7 @@ export function UsuariosTabla({
         </Aviso>
       )}
 
-      <div role="region" aria-label="Usuarios de la sucursal" tabIndex={0} className="overflow-x-auto"><table className="w-full min-w-[36rem] text-sm">
+      <div role="group" aria-label="Usuarios de la sucursal" tabIndex={0} className="overflow-x-auto"><table className="w-full min-w-[36rem] text-sm">
         <caption className="sr-only">Usuarios de la sucursal</caption>
         <thead>
           <tr className="border-b text-left text-tinta-tenue">
@@ -164,7 +164,7 @@ export function UsuariosTabla({
         {invitaciones.length === 0 ? (
           <p className="text-sm text-tinta-tenue">No hay invitaciones pendientes. Las personas nuevas aparecen acá hasta que aceptan.</p>
         ) : (
-          <div role="region" aria-label="Invitaciones pendientes" tabIndex={0} className="overflow-x-auto"><table className="w-full min-w-[36rem] text-sm">
+          <div role="group" aria-label="Invitaciones pendientes" tabIndex={0} className="overflow-x-auto"><table className="w-full min-w-[36rem] text-sm">
             <caption className="sr-only">Invitaciones pendientes de esta sucursal</caption>
             <thead>
               <tr className="border-b text-left text-tinta-tenue">

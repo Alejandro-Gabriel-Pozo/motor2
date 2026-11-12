@@ -78,7 +78,7 @@ export default async function HistorialRecetaPage({ params }: { params: Promise<
               })()}
               {v.comentarios && <p className="mb-2 text-xs text-tinta-tenue">Comentarios: {v.comentarios}</p>}
 
-              <div role="region" aria-label="Historial de versiones de la receta" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
+              <div role="group" aria-label="Historial de versiones de la receta" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-tinta-tenue">
                     <th className="py-1">Ingrediente</th>

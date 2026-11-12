@@ -151,7 +151,7 @@ export default async function ComprasRegistradasPage({
                   </span>
                 </summary>
                 <div className="border-t px-3 py-2">
-                  <div role="region" aria-label="Renglones de la compra" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
+                  <div role="group" aria-label="Renglones de la compra" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-tinta-tenue">
                         <th className="px-2 py-1 font-normal">Producto</th>

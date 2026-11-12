@@ -56,7 +56,7 @@ export function RolesTabla({ rolesIniciales, puedeRenombrar }: { rolesIniciales:
 
   return (
     <div className="space-y-4">
-      <div role="region" aria-label="Roles" tabIndex={0} className="overflow-x-auto"><table className="w-full min-w-[36rem] text-sm">
+      <div role="group" aria-label="Roles" tabIndex={0} className="overflow-x-auto"><table className="w-full min-w-[36rem] text-sm">
         <thead>
           <tr className="border-b text-left text-tinta-tenue">
             <th className="py-2">Nombre</th>

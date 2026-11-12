@@ -179,7 +179,7 @@ export function AdmisionDeGrupo({
           ]}
         />
       )}
-      <div role="region" aria-label="Opciones del grupo en el producto" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
+      <div role="group" aria-label="Opciones del grupo en el producto" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
         <caption className="sr-only">Opciones de {grupo.nombre} en este producto</caption>
         <thead>
           <tr className="border-b text-left text-tinta-suave">

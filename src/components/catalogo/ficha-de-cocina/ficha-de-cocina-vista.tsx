@@ -52,7 +52,7 @@ export function FichaDeCocinaVista({ ficha }: { ficha: FichaDeCocina }) {
         {ficha.ingredientesPendientes ? (
           <p className="text-sm">Ingredientes: {PENDIENTE}.</p>
         ) : (
-          <div role="region" aria-label="Ingredientes de la ficha de cocina" tabIndex={0} className="overflow-x-auto"><table className="w-full text-left text-sm">
+          <div role="group" aria-label="Ingredientes de la ficha de cocina" tabIndex={0} className="overflow-x-auto"><table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-borde">
                 <th scope="col" className="py-1">

@@ -82,7 +82,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
         {rep.porFranjaHoraria.length === 0 ? (
           <p className="text-sm text-tinta-tenue">Sin cuentas atendidas en este rango.</p>
         ) : (
-          <div role="region" aria-label="Rotación de mesas por franja" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
+          <div role="group" aria-label="Rotación de mesas por franja" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Hora (Argentina)</th>
@@ -112,7 +112,7 @@ export default async function RotacionMesasPage({ searchParams }: { searchParams
         {rep.porTamanoGrupo.length === 0 ? (
           <p className="text-sm text-tinta-tenue">Sin datos de comensales en este rango.</p>
         ) : (
-          <div role="region" aria-label="Rotación de mesas por grupo" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
+          <div role="group" aria-label="Rotación de mesas por grupo" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Comensales</th>
