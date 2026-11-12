@@ -152,7 +152,7 @@ Lo que GO-2b escribió para cumplir «lo que GO-2 hereda», sin migraciones, sin
 6. **Ordenar las opciones de un grupo** es una acción nueva y atómica (`reordenarOpcionesDeGrupo`, `src/server/actions/catalogo/casos-de-uso/reordenar-opciones-de-grupo.ts`): una sola transacción, con la versión de cada opción y una auditoría por opción movida; la «ninguna» nunca va primera.
 7. **Los mensajes no dicen «versión»**: «cambio de precio», «otra persona lo guardó antes. Recargá la pantalla» (con el botón «Recargar»).
 8. **«Precios por tamaño en esta sucursal»** muestra también el precio cargado de un producto que ya no está disponible acá, para poder sacarlo.
-9. **En una promo** (v1) un producto con un grupo obligatorio se ve con «Con tamaño: pedilo suelto» y sin «+», como ya exigía el servidor.
+9. **En una promo** (v1) un producto con un grupo obligatorio se ve con «Con tamaño: pedilo suelto» y sin «+», como ya exigía el servidor. **Enmienda 2026-11-11 (dueño, `docs/diseno-promo-parte-de-seccion-2026-11-11.md` §5.5): en una parte de promo armada por SECCIÓN el mozo elige las opciones del plato (obligatorias y opcionales, nunca adicionales); «pedilo suelto» queda solo para lo que no se puede armar (un adicional obligatorio, un grupo obligatorio sin opciones activas). La pantalla se adapta en la etapa E1c.**
 
 ### CARTA-B y CARTA-C: la carta pública muestra lo que cambia el precio y, aparte, lo que no cuesta nada (2026-10-14; decisión del dueño, variante B «lista clásica» y pastillas)
 
