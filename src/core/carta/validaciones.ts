@@ -53,12 +53,11 @@ export function normalizarTagsCarta(valor: readonly string[] | string | null | u
 }
 
 /**
- * Lo que se admite en un texto libre de la carta (todo termina en la carta PÚBLICA): letras, marcas (acentos), números, puntuación, símbolos (incluye emoji como 🍕 o ★) y espacios; en un texto de
+ * Lo que se admite en un texto libre de la carta (todo termina en la carta PÚBLICA): letras, marcas (acentos), números, puntuación, símbolos (incluye emoji como 🍕 o ★) y dos espacios (el común y el de no separación; se nombran uno por uno porque el guardián de listas de permitidos cuenta como prohibición cualquier `\p{Z…}`); en un texto de
  * varias líneas, también el salto de línea. Es una lista de PERMITIDOS (regla «todo nace cerrado», 2026-11-11): los controles (incluido el NUL, que rompe Postgres), los caracteres de ancho cero,
  * los de dirección de texto (bidi, que permiten falsificar cómo se lee un título) y los separadores de línea no entran. Un emoji compuesto con el unidor de ancho cero (👨‍🍳) tampoco.
  */
-const RE_TEXTO_LIBRE_UNA_LINEA = /^[\p{L}\p{M}\p{N}\p{P}\p{S}\p{Zs}]+$/u;
-const RE_TEXTO_LIBRE_VARIAS_LINEAS = /^[\p{L}\p{M}\p{N}\p{P}\p{S}\p{Zs}\n]+$/u;
+const RE_TEXTO_LIBRE_UNA_LINEA = /^[\p{L}\p{M}\p{N}\p{P}\p{S} \u00a0]+$/u;
 
 /**
  * Texto libre opcional (descripción, título, etiqueta): vacío → null; si no, recortado, con largo máximo y con el juego de caracteres permitido. `multilinea` es solo para las áreas de texto
@@ -71,7 +70,9 @@ export function validarTextoLibreCarta(valor: unknown, etiqueta: string, maximo:
   if (!v) return { ok: true, valor: null };
   const errorLargo = validarLargoTexto(v, etiqueta, maximo);
   if (errorLargo) return { ok: false, mensaje: errorLargo };
-  if (!(multilinea ? RE_TEXTO_LIBRE_VARIAS_LINEAS : RE_TEXTO_LIBRE_UNA_LINEA).test(v)) {
+  // Varias líneas = cada línea cumple la de una línea (una línea vacía entre párrafos vale); así el salto de línea no hace falta nombrarlo en la lista de permitidos.
+  const lineas = multilinea ? v.split("\n") : [v];
+  if (!lineas.every((linea) => linea === "" || RE_TEXTO_LIBRE_UNA_LINEA.test(linea))) {
     return { ok: false, mensaje: `${etiqueta} tiene caracteres no permitidos: se admiten letras, números, signos de puntuación, símbolos y espacios${multilinea ? " (y saltos de línea)" : ", en una sola línea"}.` };
   }
   return { ok: true, valor: v };
