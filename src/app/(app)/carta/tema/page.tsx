@@ -26,14 +26,14 @@ const refrescarSiOk = (r: ResultadoAccion) => {
 };
 
 /** Las 65 claves del catálogo, como texto (un campo vacío llega como ""; guardarTemaCarta lo omite). */
-const valoresDelFormulario = (fd: FormData) => Object.fromEntries(CLAVES_TEMA_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
+const clavesDelFormulario = (fd: FormData) => Object.fromEntries(CLAVES_TEMA_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
 
 /**
  * Los valores del formulario, con la INTENCIÓN de los botones del color de marca (decisión del dueño, 2026-11-13: «Botón explícito»): «pasar» fija la marca elegida y el marcador `marca_derivada = «si»`;
  * «volver» quita solo el marcador (los colores sueltos no se tocan); sin intención («Guardar tema») es el guardado de siempre. El servidor revalida todo (M1, M2 y M3) en el guard.
  */
-function valoresConLaIntencion(fd: FormData): Record<string, string> {
-  const valores = valoresDelFormulario(fd);
+function valoresDelFormulario(fd: FormData): Record<string, string> {
+  const valores = clavesDelFormulario(fd);
   const intencion = String(fd.get("intencion") ?? "");
   if (intencion === "pasar") return { ...valores, color_marca: String(fd.get("marca_elegida") ?? ""), marca_derivada: "si" };
   if (intencion === "volver") return { ...valores, marca_derivada: "" };
@@ -93,7 +93,7 @@ export default async function TemaCartaPage() {
         soloLectura={!puedeEditar}
         accion={async (fd: FormData) => {
           "use server";
-          return refrescarSiOk(await guardarTemaCarta(sucursalId, valoresConLaIntencion(fd)));
+          return refrescarSiOk(await guardarTemaCarta(sucursalId, valoresDelFormulario(fd)));
         }}
       />
     </div>

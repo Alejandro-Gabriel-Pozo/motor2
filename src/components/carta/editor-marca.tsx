@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, type MouseEvent } from "react";
 import { CartaVista } from "@/components/carta-publica/carta-vista";
 import { clasesFuentesCarta } from "@/components/carta-publica/fuente-carta";
 import { resolverEstiloCarta, validarMarcaParaGuardar } from "@/core/carta/public";
+import { Aviso } from "@/ui/primitivas/aviso";
 import { Boton } from "@/ui/primitivas/boton";
 import { CARTA_EJEMPLO } from "./carta-ejemplo";
 
@@ -63,9 +64,9 @@ export function SeccionMarca({ modoMarca, marcaInicial, valores, soloLectura }: 
           {marca || "Sin elegir"}
         </span>
       </div>
-      <p role="status" className={`text-sm ${evaluacion && !evaluacion.ok ? "text-error" : "text-tinta-tenue"}`} data-aviso-marca>
+      <Aviso variante={!evaluacion ? "informacion" : evaluacion.ok ? "exito" : "advertencia"} forma="en-linea" data-aviso-marca>
         {!evaluacion ? "Elegí un color para ver cómo queda." : evaluacion.ok ? "Este color se lee bien." : evaluacion.mensaje}
-      </p>
+      </Aviso>
 
       {estilo && (
         <div className="w-full max-w-[375px]" data-vista-previa-marca-caja inert aria-hidden="true">
