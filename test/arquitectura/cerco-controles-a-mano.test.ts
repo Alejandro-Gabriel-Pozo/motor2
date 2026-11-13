@@ -50,6 +50,7 @@ const CERCO_CONTROLES: Cerco = {
     { ruta: "src/components/carta-publica/seccion.tsx", motivo: "Carta del cliente (invitación «5+2», E2): la palabra «guarnición» o «salsa» de la línea «Incluye …» es un botón EN LÍNEA con el texto de la frase (hereda su tipografía, su color y lleva un subrayado punteado con `--carta-primary`); ninguna variante de `Boton` (tokens de la interfaz, caja y relleno propios) sirve para una palabra dentro de un renglón." },
     { ruta: "src/components/carta/editor-tema.tsx", motivo: "El `hidden` conserva el marcador `marca_derivada` al guardar el tema: `guardarTemaCarta` reemplaza TODO lo guardado y el marcador no tiene campo propio en el editor genérico (lo maneja la sección «Color de marca»)." },
     { ruta: "src/components/carta/editor-marca.tsx", motivo: "Color de marca de la carta: `<input type=\"color\">` no tiene primitiva (mismo criterio que `campo-color.tsx`: el navegador dibuja su selector), y los dos `hidden` llevan al formulario del tema la intención del botón («pasar»/«volver») y el color elegido; no son controles que se vean." },
+    { ruta: "src/components/carta/editor-portal.tsx", motivo: "El `hidden` conserva el marcador `portal_marca_derivada` al guardar la apariencia del portal: `guardarPortalEmpresa` reemplaza TODO lo guardado y el marcador no tiene campo propio en el editor genérico (lo maneja la sección «Color de marca»)." },
   ],
 };
 

@@ -34,7 +34,20 @@ const refrescarSiOk = (r: ResultadoAccion) => {
   return r;
 };
 
-const valoresDelFormulario = (fd: FormData) => Object.fromEntries(CLAVES_PORTAL_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
+const clavesDelFormulario = (fd: FormData) => Object.fromEntries(CLAVES_PORTAL_V1.map((d) => [d.clave, String(fd.get(d.clave) ?? "")]));
+
+/**
+ * Los valores del formulario, con la INTENCIÓN de los botones del color de marca del portal (decisiones del dueño, 2026-11-13: «Botón explícito (Recomendada)» y «Lo elige quien administra, al pasar el portal
+ * (Recomendada)»): «pasar» activa el marcador `portal_marca_derivada` (con el color elegido, que viaja en `portal_color_marca`); «volver» lo quita (los colores sueltos no se tocan); sin intención («Guardar
+ * apariencia») es el guardado de siempre. El servidor revalida todo (M1, M2 y M3) en el guard.
+ */
+function valoresDelFormulario(fd: FormData): Record<string, string> {
+  const valores = clavesDelFormulario(fd);
+  const intencion = String(fd.get("intencion") ?? "");
+  if (intencion === "pasar") return { ...valores, portal_marca_derivada: "si" };
+  if (intencion === "volver") return { ...valores, portal_marca_derivada: "" };
+  return valores;
+}
 
 /** El enlace a la carta pública (otro sitio, en otra pestaña): el aspecto de `Enlace` (`ui/primitivas/enlace.tsx`), que no se usa acá porque el destino es una URL absoluta y no una pantalla de la aplicación. */
 const CLASE_ENLACE_EXTERNO = "text-tinta-suave underline hover:text-tinta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco";
