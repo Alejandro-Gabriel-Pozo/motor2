@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, prisma } from "../setup/test-db";
 import { detalleDeLaLista } from "../../src/server/consultas/catalogo/detalle-de-la-lista";
+import { seccionDeCartaDeLosProductos } from "../../src/server/consultas/carta/seccion-de-productos";
 
 /**
  * El precio y la clase de cada fila de la lista de Productos (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D1), contra Postgres real: el precio es el de la sucursal ACTIVA (el propio vigente o el central),
@@ -28,11 +29,11 @@ describe("detalleDeLaLista", () => {
     const salsa = await prisma.producto.create({ data: { codigo: "MP_PRE5", nombre: "Salsa", tipo: "MP", unidadStockId: unidadKgId, seProduce: true } });
 
     const d = await detalleDeLaLista(prisma, sucursalId, [directo.id, sin.id, porOpcion.id, harina.id, salsa.id]);
-    expect(d.get(directo.id)).toEqual({ precio: "$ 9.500,00", clase: "venta", seccion: null });
-    expect(d.get(sin.id)).toEqual({ precio: "Sin precio", clase: "venta", seccion: null });
-    expect(d.get(porOpcion.id)).toEqual({ precio: "Según medida", clase: "venta", seccion: null });
-    expect(d.get(harina.id)).toEqual({ precio: null, clase: "materia-prima", seccion: null });
-    expect(d.get(salsa.id)).toEqual({ precio: null, clase: "se-produce", seccion: null });
+    expect(d.get(directo.id)).toEqual({ precio: "$ 9.500,00", clase: "venta" });
+    expect(d.get(sin.id)).toEqual({ precio: "Sin precio", clase: "venta" });
+    expect(d.get(porOpcion.id)).toEqual({ precio: "Según medida", clase: "venta" });
+    expect(d.get(harina.id)).toEqual({ precio: null, clase: "materia-prima" });
+    expect(d.get(salsa.id)).toEqual({ precio: null, clase: "se-produce" });
   });
 
   it("con la capacidad precio_local prendida rige el de ESTA sucursal; apagada, el central; el de otra sucursal nunca se mezcla", async () => {
@@ -45,18 +46,17 @@ describe("detalleDeLaLista", () => {
     expect((await detalleDeLaLista(prisma, sucursalId, [p.id])).get(p.id)!.precio).toBe("$ 1.000,00");
   });
 
-  it("la sección de la carta es la de ESTA sucursal: «—» si se vende y no la tiene, nada para lo que no se vende y nada si no se pide", async () => {
+  it("la sección de la carta es la de ESTA sucursal: solo figuran los que la tienen; ni la de otra sucursal ni la de otra empresa", async () => {
     const conSeccion = await sembrarProductoDisponible({ codigo: "PV_SEC1", nombre: "En platos", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     const sinSeccion = await sembrarProductoDisponible({ codigo: "PV_SEC2", nombre: "Sin sección", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
     const soloEnOtra = await sembrarProductoDisponible({ codigo: "PV_SEC3", nombre: "Carta de otra", tipo: "PV", unidadStockId: unidadKgId, precioVenta: 100 }, sucursalId);
-    const harina = await sembrarProductoDisponible({ codigo: "MP_SEC4", nombre: "Harina", tipo: "MP", unidadStockId: unidadKgId }, sucursalId);
     const platos = await prisma.seccionCarta.create({ data: { nombre: "Platos" } });
     await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: conSeccion.id, visibleEnCarta: true, seccionCartaId: platos.id } });
+    await prisma.contenidoCartaProducto.create({ data: { sucursalId, productoId: sinSeccion.id, visibleEnCarta: false, seccionCartaId: null } });
     await prisma.contenidoCartaProducto.create({ data: { sucursalId: otraSucursalId, productoId: soloEnOtra.id, visibleEnCarta: true, seccionCartaId: platos.id } });
-    const ids = [conSeccion.id, sinSeccion.id, soloEnOtra.id, harina.id];
-    const d = await detalleDeLaLista(prisma, sucursalId, ids, true);
-    expect([d.get(conSeccion.id)!.seccion, d.get(sinSeccion.id)!.seccion, d.get(soloEnOtra.id)!.seccion, d.get(harina.id)!.seccion]).toEqual(["Platos", "—", "—", null]);
-    for (const id of ids) expect((await detalleDeLaLista(prisma, sucursalId, ids)).get(id)!.seccion).toBeNull();
+    const m = await seccionDeCartaDeLosProductos(prisma, sucursalId, [conSeccion.id, sinSeccion.id, soloEnOtra.id]);
+    expect([...m.entries()]).toEqual([[conSeccion.id, "Platos"]]);
+    expect((await seccionDeCartaDeLosProductos(prisma, sucursalId, [])).size).toBe(0);
   });
 
   it("sin ids no consulta nada", async () => {

@@ -50,8 +50,8 @@ const MAXIMOS = {
   CONTEXTO_DECLARADO: 1,
   // Sube a propósito de 31 a 32 con E3a: el selector de sucursales para repartir una factura, igual que los dos de traspasos.
   // Sube a propósito de 32 a 33 con la integración de Catálogo: la búsqueda por la referencia del proveedor devuelve solo un booleano, igual que su par de las faltas filtrables.
-  // Sube a propósito de 34 a 36 con Productos P1: la marca «Falta completar» y el precio y la clase de cada fila de la lista devuelven solo lo que se les pasa (ids), sin texto libre.
-  SIN_MARCA_PROPIA: 36,
+  // Sube a propósito de 34 a 37 con Productos P1: la marca «Falta completar», el precio y la clase, y la sección de la carta de cada fila de la lista devuelven solo lo que se les pasa (ids), sin texto libre propio.
+  SIN_MARCA_PROPIA: 37,
   OK_SIN_EFECTO_POR_DISENO: 2,
   EN_LA_SUCURSAL_VACIA: 2,
 } as const;

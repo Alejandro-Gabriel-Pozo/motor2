@@ -73,14 +73,14 @@ async function condicionDeFaltaCompletar(ctx: ContextoDeLosFiltros, db: PrismaCl
 }
 
 /**
- * De estos ids (los de una página de la lista), los que están en «Falta completar»: disponibles en alguna sucursal y con alguna falta que quien mira puede ver. Con `db` de verificación (la disponibilidad «en alguna»
- * cruza sucursales). Solo mira los ids dados: nunca devuelve uno que no se le pasó.
+ * De estos ids (los de una página de la lista), los que tienen alguna falta que quien mira puede ver: la marca «Falta completar» de su fila. Quien llama pasa solo los que están disponibles en alguna sucursal (la
+ * página ya lo sabe: «Desactivado» no se marca como «Falta completar»). Solo mira los ids dados: nunca devuelve uno que no se le pasó.
  */
-export async function idsQueFaltaCompletar(ctx: ContextoDeLosFiltros, db: PrismaClient, ids: readonly string[]): Promise<ReadonlySet<string>> {
+export async function idsConFaltas(ctx: ContextoDeLosFiltros, ids: readonly string[]): Promise<ReadonlySet<string>> {
   if (ids.length === 0) return new Set();
   const permitidas = await faltasQueSePuedenFiltrar(ctx);
   const base: Prisma.ProductoWhereInput[] = [{ id: { in: [...ids] } }];
-  const filas = await db.producto.findMany({ where: { AND: [...base, whereDisponibleEnAlguna(), await condicionDeFaltaCompletar(ctx, db, permitidas, base)] }, select: { id: true } });
+  const filas = await ctx.db.producto.findMany({ where: { AND: [...base, await condicionDeFaltaCompletar(ctx, ctx.db, permitidas, base)] }, select: { id: true } });
   return new Set(filas.map((f) => f.id));
 }
 

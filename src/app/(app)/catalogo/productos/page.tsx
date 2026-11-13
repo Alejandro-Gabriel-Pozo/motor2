@@ -26,7 +26,8 @@ import { BarraDeFiltros } from "@/ui/componentes/estructura/barra-de-filtros";
 import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
 import { FiltrosDeLaListaDeProductos } from "@/components/catalogo/filtros-de-la-lista-de-productos";
 import { PESTANAS_DE_PRODUCTOS } from "@/core/catalogo/public";
-import { buscaPorReferenciaDelProveedorEnLaLista, faltasQueSePuedenFiltrarEnLaLista, productosQueFaltaCompletarEnLaPagina } from "@/server/consultas/catalogo/filtros-de-productos";
+import { buscaPorReferenciaDelProveedorEnLaLista, faltasQueSePuedenFiltrarEnLaLista, productosConFaltaEnLaPagina } from "@/server/consultas/catalogo/filtros-de-productos";
+import { seccionDeCartaDeLosProductos } from "@/server/consultas/carta/seccion-de-productos";
 import { detalleDeLaLista } from "@/server/consultas/catalogo/detalle-de-la-lista";
 
 /**
@@ -55,9 +56,11 @@ export default async function ProductosPage({
   const pagina = await listarProductosPagina(cursor, filtros.q, filtros);
   // El precio de la sucursal activa y la clase de cada fila (dos consultas para toda la página).
   const ids = pagina.items.map((p) => p.id);
-  const detalle = await detalleDeLaLista(ctx.db, ctx.sucursalId, ids, faltas.includes("fuera-de-la-carta"));
+  const detalle = await detalleDeLaLista(ctx.db, ctx.sucursalId, ids);
+  // La sección de la carta de cada fila, solo si quien mira ve la carta (el mismo permiso y módulo del filtro «Fuera de la carta»).
+  const secciones = faltas.includes("fuera-de-la-carta") ? await seccionDeCartaDeLosProductos(ctx.db, ctx.sucursalId, ids) : null;
   // La marca «Falta completar» de cada fila: lo que quien mira puede ver que le falta (el mismo cálculo del filtro «Estado»).
-  const faltaCompletar = await productosQueFaltaCompletarEnLaPagina(ctx, ids);
+  const faltaCompletar = await productosConFaltaEnLaPagina(ctx, pagina.items.filter((p) => p.sucursalesDisponibles > 0).map((p) => p.id));
 
   return (
     <div className="flex flex-col gap-4">
@@ -103,7 +106,7 @@ export default async function ProductosPage({
                 {p.sucursalesDisponibles > 0 && faltaCompletar.has(p.id) && <Insignia tono="aviso">Falta completar</Insignia>}
               </div>
               <div className="flex items-start justify-between gap-3 text-sm text-tinta-suave">
-                <span>{ETIQUETA_DEL_TIPO[detalle.get(p.id)!.clase]}{detalle.get(p.id)!.seccion !== null && ` · ${detalle.get(p.id)!.seccion}`}</span>
+                <span>{ETIQUETA_DEL_TIPO[detalle.get(p.id)!.clase]}{secciones !== null && detalle.get(p.id)!.clase === "venta" && ` · ${secciones.get(p.id) ?? "—"}`}</span>
                 {detalle.get(p.id)!.precio !== null && <span className="shrink-0 font-medium tabular-nums text-tinta">{detalle.get(p.id)!.precio}</span>}
               </div>
             </li>

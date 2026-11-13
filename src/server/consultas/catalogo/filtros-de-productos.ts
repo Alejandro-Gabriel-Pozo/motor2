@@ -1,7 +1,6 @@
 import "server-only";
 import type { FaltaFiltrable } from "@/core/catalogo/public";
-import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
-import { faltasQueSePuedenFiltrar, idsQueFaltaCompletar, puedeBuscarPorReferenciaDelProveedor, type ContextoDeLosFiltros } from "@/server/lecturas/catalogo/filtros-de-productos";
+import { faltasQueSePuedenFiltrar, idsConFaltas, puedeBuscarPorReferenciaDelProveedor, type ContextoDeLosFiltros } from "@/server/lecturas/catalogo/filtros-de-productos";
 
 /**
  * Qué «le falta algo» puede pedir quien mira la lista de Productos (Fase 6, bloque 3, 3b). La página lo pide acá (las páginas leen por `server/consultas`); el cálculo es el de la lectura compartida, el
@@ -17,10 +16,9 @@ export async function buscaPorReferenciaDelProveedorEnLaLista(ctx: ContextoDeLos
 }
 
 /**
- * De los productos de una página de la lista, los que están en «Falta completar» (disponibles en alguna sucursal y con alguna falta que quien mira puede ver): la marca de su fila. Lee con la base de verificación
- * (la disponibilidad «en alguna» cruza sucursales) y solo devuelve ids de los que se le pasaron; no muestra ninguna fila ajena.
+ * De los productos de una página de la lista que están disponibles en alguna sucursal, los que tienen alguna falta que quien mira puede ver: la marca «Falta completar» de su fila (el mismo cálculo del filtro «Estado»).
+ * Solo devuelve ids de los que se le pasaron; no muestra ninguna fila ajena.
  */
-export async function productosQueFaltaCompletarEnLaPagina(ctx: ContextoDeLosFiltros & { alcance?: unknown }, ids: readonly string[]): Promise<ReadonlySet<string>> {
-  const verificacion = await lecturaDeVerificacionEnLaEmpresa(ctx as Parameters<typeof lecturaDeVerificacionEnLaEmpresa>[0] & ContextoDeLosFiltros);
-  return idsQueFaltaCompletar(ctx, verificacion.db, ids);
+export async function productosConFaltaEnLaPagina(ctx: ContextoDeLosFiltros, ids: readonly string[]): Promise<ReadonlySet<string>> {
+  return idsConFaltas(ctx, ids);
 }
