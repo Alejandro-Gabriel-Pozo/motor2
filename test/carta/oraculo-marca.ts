@@ -60,6 +60,7 @@ export const CLAVES_DE_COLOR_DEL_TEMA: Readonly<Record<string, DestinoDeClaveDeC
 };
 
 export const CLAVES_DE_COLOR_DEL_PORTAL: Readonly<Record<string, DestinoDeClaveDeColor>> = {
+  portal_color_marca: "marca",
   portal_header_bg: "se-retira-de-la-lectura",
   portal_header_color: "se-retira-de-la-lectura",
   portal_etiqueta_color: "se-retira-de-la-lectura",

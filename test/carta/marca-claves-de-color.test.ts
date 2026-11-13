@@ -20,9 +20,10 @@ describe("claves de color del catálogo de la carta: todas declaradas en el orá
     expect(clavesDeColor(CLAVES_PORTAL_V1), "una clave de color nueva (o quitada) del portal: declarala en test/carta/oraculo-marca.ts").toEqual(Object.keys(CLAVES_DE_COLOR_DEL_PORTAL).sort());
   });
 
-  it("hoy: 23 claves de color en el tema (una es la marca) y 12 en el portal", () => {
+  it("hoy: 23 claves de color en el tema (una es la marca) y 13 en el portal (una es la marca)", () => {
     expect(Object.keys(CLAVES_DE_COLOR_DEL_TEMA)).toHaveLength(23);
     expect(Object.values(CLAVES_DE_COLOR_DEL_TEMA).filter((d) => d === "marca")).toHaveLength(1);
-    expect(Object.keys(CLAVES_DE_COLOR_DEL_PORTAL)).toHaveLength(12);
+    expect(Object.keys(CLAVES_DE_COLOR_DEL_PORTAL)).toHaveLength(13);
+    expect(Object.values(CLAVES_DE_COLOR_DEL_PORTAL).filter((d) => d === "marca")).toHaveLength(1);
   });
 });
