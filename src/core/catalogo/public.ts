@@ -84,3 +84,5 @@ export { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, palabrasDeBusq
 // Ficha de cocina imprimible (2026-11-08): los datos puros que la pantalla `/catalogo/recetas/[id]/ficha` dibuja.
 export { PENDIENTE, armarFichaDeCocina } from "./ficha-de-cocina";
 export type { FichaDeCocina, RecetaParaFicha } from "./ficha-de-cocina";
+// «Duplicar producto» (E4, docs/diseno-duplicar-producto-2026-11-12.md): lo que el diálogo de la ficha dice que no se copia (puro; las demás reglas las lee el caso de uso).
+export { LO_QUE_NO_SE_COPIA } from "./duplicar-producto";

@@ -134,6 +134,13 @@ const DECLARADAS: Readonly<Record<string, Declaracion>> = {
     puertas: ["catalogo/productos.ts|darDeAltaProductoRapido"],
     motivo: "el producto es del catálogo central de la empresa: su alta siembra la disponibilidad (`DisponibilidadProducto`, disponible) en las sucursales activas; no elige ni cambia datos de una sucursal",
   },
+  "catalogo/casos-de-uso/duplicar-producto.ts": {
+    ata: "EMPRESA_ENTERA",
+    ensanches: ["ESCRITURA_EN_LA_EMPRESA"],
+    puertas: ["catalogo/duplicar-producto.ts|duplicarProducto"],
+    motivo:
+      "el producto nuevo es del catálogo central de la empresa: «Duplicar» siembra su disponibilidad (`DisponibilidadProducto`) en las sucursales activas, como el alta, y escribe su receta CENTRAL (`sucursalId` null, versión 1); la receta de otra sucursal solo se LEE (con membresía y «Ver» de `receta_sucursal_copiar` allí, S-07), no se escribe ni se elige ninguna fila de una sucursal",
+  },
   "catalogo/casos-de-uso/guardar-version-de-receta.ts": {
     ata: "EMPRESA_ENTERA",
     ensanches: ["ESCRITURA_EN_LA_EMPRESA"],

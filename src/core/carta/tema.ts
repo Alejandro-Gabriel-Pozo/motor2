@@ -1,3 +1,4 @@
+import { esTextoDeUnaLinea } from "@/core/texto";
 import { sanitizeCssColor } from "./color-css";
 import {
   validarAltoBanda,
@@ -218,7 +219,6 @@ export interface TemaCartaV1 {
 // ---------------------------------------------------------------------------------------------------------------------------
 
 const MAXIMO_COLOR = 100;
-const RE_CONTROL = /[\u0000-\u001f\u007f]/;
 const MAXIMO_ERRORES_JUNTOS = 5;
 
 function validarColor(v: string, definicion: TipoValorTema): Resultado<string> {
@@ -267,7 +267,7 @@ export function validarValorDefinicion(v: string, d: TipoValorTema & { etiqueta:
     case "urlHttps":
       return validarUrlHttps(v);
     case "texto": {
-      if (RE_CONTROL.test(v)) return { ok: false, mensaje: "tiene caracteres de control (saltos de línea, tabulaciones…)" };
+      if (!esTextoDeUnaLinea(v)) return { ok: false, mensaje: "tiene caracteres no permitidos (saltos de línea, tabulaciones, caracteres invisibles…)" };
       const r = validarTextoLibreCarta(v, d.etiqueta, d.maximo);
       if (!r.ok) return { ok: false, mensaje: `no puede superar los ${d.maximo} caracteres` };
       return { ok: true, valor: r.valor ?? "" };

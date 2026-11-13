@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { intento, variantes, type ContextoDeArgumentos, type Generadores, type Kit, type Valor } from "./argumentos";
 import { DIA_DEL_PLATO_DEL_MUNDO } from "./mundo";
 import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../../../src/core/tiempo/zona-horaria";
@@ -179,6 +180,13 @@ const completos: Record<string, Valor> = {
       intento(c, ["categoriaId"], [{ ...propios(c), nombre: "Producto nuevo", categoriaId: k.categoriaId }]),
       intento(c, ["insumoId"], [{ ...propios(c), nombre: "Producto nuevo", insumoId: k.insumoId }]),
       intento(c, ["unidad2Id"], [{ ...propios(c), nombre: "Producto nuevo", unidadCompraId: k.unidad2Id }]),
+    ),
+  // «Duplicar producto» (E4): llegan del cliente el producto original y la sucursal de la que se toma la receta (el id del producto nuevo es un UUID fresco, nunca ajeno). Una variante por cada id ajeno: con el producto ajeno
+  // rechaza «No se encontró el producto.»; con la sucursal ajena (una receta de OTRA sucursal, pidiendo copiar la receta de un PV propio) rechaza con el acceso a esa sucursal. Con todo propio, el control positivo duplica de verdad.
+  "accion|actions/catalogo/duplicar-producto.ts|duplicarProducto": (k, c) =>
+    conVariantes(
+      intento(c, ["productoId"], [{ duplicadoId: randomUUID(), origenId: k.productoId, nombre: "Producto duplicado ZZ", copiarReceta: false, copiarOpciones: false, sucursalDeLaRecetaId: null }]),
+      intento(c, ["sucursalId"], [{ duplicadoId: randomUUID(), origenId: c.propio.productoPvId, nombre: "Producto duplicado ZZ", copiarReceta: true, copiarOpciones: false, sucursalDeLaRecetaId: k.sucursalId }]),
     ),
   "accion|actions/catalogo/proveedores.ts|altaProveedor": () => [{ nombre: "Proveedor nuevo" }],
   "accion|actions/catalogo/proveedores.ts|actualizarProveedor": (k) => [k.proveedorId, { contacto: "contacto nuevo" }],
@@ -514,6 +522,8 @@ const parametros: Record<string, Record<string, Valor>> = {
   // GO-3b (F6): la pantalla «Menú del día» (el día del plato del mundo).
   "consulta|consultas/carta/menu-del-dia.ts|cargarMenuDelDia": { args: (k) => ({ sucursalId: k.sucursalId, ahora: new Date(), zonaHoraria: "America/Argentina/Buenos_Aires", fecha: DIA_DEL_PLATO_DEL_MUNDO }) },
   "consulta|consultas/pos/selector-carta.ts|cargarSelectorCartaDeLaMesa": { zonaHoraria: () => "America/Argentina/Buenos_Aires" },
+  // El resumen del diálogo «Duplicar»: si el original tiene receta y cuántas opciones admite. El PV con opciones del mundo es el que devuelve algo propio (una MP sin receta ni opciones daría el resumen vacío, que no distingue un propio de un ajeno).
+  "consulta|consultas/catalogo/duplicar-producto.ts|leerResumenParaDuplicar": { productoId: (k) => k.productoConOpcionesId },
   "consulta|consultas/catalogo/productos.ts|obtenerFichaProducto": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoOpcion": { id: (k) => k.productoId },
   "consulta|consultas/catalogo/productos.ts|obtenerProductoPorId": { id: (k) => k.productoId },
