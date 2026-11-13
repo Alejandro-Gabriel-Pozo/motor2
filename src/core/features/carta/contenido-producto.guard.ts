@@ -37,7 +37,7 @@ export function guardComandoGuardarContenidoCartaProducto(entrada: { datos: unkn
   if (typeof datos !== "object" || datos === null || Array.isArray(datos)) return rechazar("formato", "Los datos del contenido de la carta no son válidos.");
   const d = datos as { descripcion?: unknown; tags?: unknown; orden?: unknown; seccionCartaId?: unknown; generoCartaId?: unknown; mostrarNombreArriba?: unknown; nombreEnCarta?: unknown };
 
-  const descripcion = validarTextoLibreCarta(d.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
+  const descripcion = validarTextoLibreCarta(d.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA, { multilinea: true });
   if (!descripcion.ok) return rechazar("largo", descripcion.mensaje);
   const tags = normalizarTagsCarta(d.tags as readonly string[] | string | null | undefined);
   if (!tags.ok) return rechazar("formato", tags.mensaje);

@@ -1,10 +1,10 @@
 {
   "regla": "lista-de-prohibidos",
   "meta": "0 (la validación declara lo permitido: conjunto, largo, forma; trabajo aparte del PR que instala el guardián)",
-  "total": 17,
-  "entradas": 15,
+  "total": 14,
+  "entradas": 13,
   "porTipo": {
-    "lista-de-prohibidos": 17
+    "lista-de-prohibidos": 14
   },
   "cuentas": {
     "scripts/arquitectura/analizar-fuente.ts": {
@@ -29,9 +29,6 @@
       "lista-de-prohibidos": 1
     },
     "src/core/correo/direcciones.ts": {
-      "lista-de-prohibidos": 2
-    },
-    "src/core/datos/limites.ts": {
       "lista-de-prohibidos": 1
     },
     "src/core/features/carta/contenido-producto.guard.ts": {
@@ -41,9 +38,6 @@
       "lista-de-prohibidos": 1
     },
     "src/core/navegacion/estructura.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/plataforma/primer-admin.ts": {
       "lista-de-prohibidos": 1
     },
     "src/core/seguridad/ruta-servible.ts": {

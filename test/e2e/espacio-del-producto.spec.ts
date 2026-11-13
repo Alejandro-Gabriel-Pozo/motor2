@@ -207,6 +207,8 @@ for (const { ancho, alto } of [
       await capturar(page, `espacio-paso4-en-la-carta-${ancho}`);
       expect((await new AxeBuilder({ page }).analyze()).violations, `${ancho} px: el paso «En la carta»`).toEqual([]);
       await ficha.getByLabel(/^Sección de carta/).selectOption({ label: carta.seccion.nombre });
+      // Todo nace cerrado (2026-11-11): mostrarlo en la carta es una decisión adrede, la casilla viene sin tildar.
+      await ficha.getByLabel("Se muestra en la carta").check();
       await ficha.getByRole("button", { name: `Guardar contenido de «${carta.producto.nombre}»` }).click();
       await expect(ficha.getByRole("status")).toHaveText(`Carta: "${carta.producto.nombre}" se muestra.`);
 
