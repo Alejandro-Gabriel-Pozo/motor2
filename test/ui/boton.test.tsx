@@ -48,7 +48,7 @@ const TAMANOS: Readonly<Record<TamanoDeBoton, string>> = {
   compacto: "min-h-11 px-3 text-sm md:min-h-8",
   chico: "min-h-11 px-2 text-xs md:min-h-7",
   tactil: "min-h-11 px-3 text-sm",
-  "en-fila": "min-h-11 text-sm md:min-h-0",
+  "en-fila": "min-h-11 min-w-11 px-2 text-sm md:min-h-0 md:min-w-0 md:px-0",
 };
 /** Los tamaños que bajan de alto desde `md:`; `tactil` mide 44 px en cualquier ancho. */
 const TAMANOS_QUE_BAJAN: readonly TamanoDeBoton[] = ["normal", "compacto", "chico", "en-fila"];
@@ -116,11 +116,12 @@ describe("Boton: variantes y tamaños", () => {
     }
   });
 
-  it("tamano en-fila: 44 px en celular y la altura del texto desde md:, sin ningún relleno horizontal (la fila de escritorio no crece)", () => {
+  it("tamano en-fila: 44 × 44 px en celular (relleno de 8 px) y, desde md:, la altura del texto sin ningún relleno horizontal ni ancho mínimo (la fila de escritorio no crece)", () => {
     for (const variante of Object.keys(VARIANTES) as VarianteDeBoton[]) {
       const dibujadas = claseDeBoton(variante, "en-fila").split(" ");
       expect(dibujadas.filter((c) => /min-h-/.test(c)), variante).toEqual(["min-h-11", "md:min-h-0"]);
-      expect(dibujadas.filter((c) => /^(md:)?p[xylrtb]?-/.test(c)), `${variante}: sin relleno propio`).toEqual([]);
+      expect(dibujadas.filter((c) => /min-w-/.test(c)), `${variante}: ancho mínimo`).toEqual(["min-w-11", "md:min-w-0"]);
+      expect(dibujadas.filter((c) => /^(md:)?p[xylrtb]?-/.test(c)), `${variante}: relleno propio (solo en celular)`).toEqual(["px-2", "md:px-0"]);
     }
   });
 

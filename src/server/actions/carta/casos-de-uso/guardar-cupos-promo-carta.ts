@@ -1,14 +1,13 @@
 import "server-only";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { mensajePisoDePromo, mensajePisoLocalDePromo, pisoDePrecioDePromo } from "@/core/carta/piso-de-promo";
-import { claveNaturalDeCupo, diferenciaDeCupos, MENU_DEL_DIA_VISIBLE, lugarDelDiaApagado, type CupoExistente, type CupoPedido, type TipoDeCupo } from "@/core/carta/public";
+import { claveNaturalDeCupo, diferenciaDeCupos, type CupoExistente, type CupoPedido, type TipoDeCupo } from "@/core/carta/public";
 import type { ComandoGuardarCuposPromoCarta, ResultadoGuardarCuposPromoCarta } from "@/core/features/carta/promos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
 import { registrarCambioAuditado } from "@/server/auditoria/registrar-cambio-auditado";
 import { cambiarCupoDePromo, crearCupoDePromo, darDeBajaCupoDePromo } from "@/server/persistencia/carta/promos";
-import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { revisarAlicuotasEnTx } from "./componentes-de-combo-en-tx";
 import { sucursalesDeLaEmpresa } from "@/server/lecturas/carta/componentes-de-promo";
 
@@ -31,7 +30,7 @@ import { sucursalesDeLaEmpresa } from "@/server/lecturas/carta/componentes-de-pr
  * al estado pedido (`diferenciaDeCupos`, `core/carta/cupos-de-promo.ts`): lo que sigue se cambia en el lugar, lo que vuelve se reactiva, lo que no vino se da de baja (`activo = false`)
  * y lo nuevo se crea. Lee TODOS los cupos de la promo (también los dados de baja: un nombre dado de baja sigue ocupado y se reactiva, no se duplica). La auditoría es la misma de
  * siempre para los de sección (`entidadId` `${promoCartaId}:${seccionCartaId}`; una baja se registra como antes, con el nuevo `null`; volver de una baja, con el anterior `null`) y,
- * para los de entradas, con el id del cupo (`${promoCartaId}:${cupoId}`: la fila ya no cambia de id). Las entradas de una lista y los platos del día no se tocan acá.
+ * para los de entradas, con el id del cupo (`${promoCartaId}:${cupoId}`: la fila ya no cambia de id). Las entradas de una lista no se tocan acá.
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos.
  *
@@ -99,18 +98,14 @@ export async function guardarCuposPromoCartaCasoDeUso(
 
       const diferencia = diferenciaDeCupos(existentes, cuposValidados);
       if (!diferencia.ok) return fracaso("CUPO_INVALIDO", diferencia.mensaje);
-      // Interruptor del menú del día (`MENU_DEL_DIA_VISIBLE`, decisión del dueño 2026-10-20): apagado, no se suma un lugar del día (nuevo o reactivado), aunque el pedido venga armado a mano.
-      const menuDelDiaApagado = lugarDelDiaApagado(diferencia.diferencia, MENU_DEL_DIA_VISIBLE);
-      if (menuDelDiaApagado) return fracaso("CUPO_INVALIDO", menuDelDiaApagado);
       const { crear, cambiar, darDeBaja } = diferencia.diferencia;
 
-      // GO-3b (D-2): todos los componentes POSIBLES del combo con los lugares pedidos (los productos de sus secciones, las opciones activas de sus listas y los platos del día de hoy en adelante)
+      // GO-3b (D-2): todos los componentes POSIBLES del combo con los lugares pedidos (los productos de sus secciones, y las opciones activas de sus listas)
       // no pueden mezclar alícuotas de IVA declaradas distintas. Un lugar nuevo todavía no tiene opciones: cuenta lo que ya existe con su clave.
       const existentePorClave = new Map(existentes.map((c) => [claveNaturalDeCupo(c), c.id]));
       const idsDe = (tipo: TipoDeCupo) => cuposValidados.filter((c) => c.tipo === tipo).flatMap((c) => existentePorClave.get(claveNaturalDeCupo(c)) ?? []);
       const alicuotas = await revisarAlicuotasEnTx(tx, {
-        lugares: { seccionCartaIds: [...seccionIds], cupoListaIds: idsDe("LISTA"), cupoDelDiaIds: idsDe("DEL_DIA") },
-        desdeDia: diaDeCalendario(actor.ahora, actor.empresaZonaHoraria),
+        lugares: { seccionCartaIds: [...seccionIds], cupoListaIds: idsDe("LISTA") },
         sucursalIds: await sucursalesDeLaEmpresa(tx, actor.empresaId),
         producto: null,
       });

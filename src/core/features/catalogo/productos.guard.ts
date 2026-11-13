@@ -3,6 +3,7 @@ import { validarCantidad } from "@/core/datos/cantidad";
 import { validarImporte, validarImportesVistosPorId } from "@/core/datos/importe";
 import { LARGO_MAXIMO_NOTAS, validarTextoLibre } from "@/core/datos/limites";
 import { aceptar, rechazar, type ResultadoDato } from "@/core/datos/resultado";
+import { ALICUOTAS_IVA, type AlicuotaIva } from "@/core/fiscal/public";
 import { esNumeroEstricto } from "@/core/numero";
 import { texto, validarTextoCatalogo } from "@/core/texto";
 import { nombreDeCatalogo } from "./nombre-de-catalogo";
@@ -25,6 +26,13 @@ import type { ComandoDarDeAltaProductoRapido, ComandoSincronizarPrecioGrupoCarta
  */
 export const MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES =
   "No tenés permiso para cambiar el precio de venta, el factor de conversión ni las unidades del producto. Si no los tocaste, puede que otra persona los haya cambiado mientras editabas: recargá la página.";
+
+/**
+ * Paso 13 (alícuota de IVA del producto): el rechazo de quien cambia la alícuota sin `producto_campos_sensibles`. Aparte del de arriba (que enumera otros campos y lo asertan los tests de esos campos): la alícuota es un dato
+ * fiscal que mueve plata, así que se protege con la misma clave que el precio. La segunda frase cubre al que NO la tocó y recibe el rechazo porque otra persona la cambió mientras editaba.
+ */
+export const MENSAJE_SIN_PERMISO_ALICUOTA_IVA =
+  "No tenés permiso para cambiar la alícuota de IVA del producto. Si no la tocaste, puede que otra persona la haya cambiado mientras editabas: recargá la página.";
 
 /** O.44: el «no encontrado» de activar o desactivar una presentación de compra con un id que no existe (o de otra empresa). */
 export const MENSAJE_PRESENTACION_NO_ENCONTRADA = "No se encontró la presentación.";
@@ -146,4 +154,32 @@ export function guardComandoAgregarPresentacionAlternativa(entrada: { productoId
         : aceptar(null);
   const f = validarCantidad(entrada.factorConversion, { nombre: "", decimales: DECIMALES_MAXIMOS_DE_UNIDAD }, { etiqueta: "El factor de conversión", obligatorio: true });
   return { ids, factor: f.ok ? aceptar(null) : rechazar(f.codigo, f.mensaje) };
+}
+
+
+/**
+ * La alícuota de IVA como la guarda la base (texto con CHECK) puesta en su tipo: una de `ALICUOTAS_IVA`, o `null` («sin declarar») si no es ninguna (nunca supone una). Lista de lo PERMITIDO: lo que no está, es `null`.
+ */
+export function alicuotaIvaDelProducto(valor: unknown): AlicuotaIva | null {
+  return typeof valor === "string" && (ALICUOTAS_IVA as readonly string[]).includes(valor) ? (valor as AlicuotaIva) : null;
+}
+
+/**
+ * Guard de la alícuota de IVA de un producto (paso 13, `docs/diseno-alicuota-iva-del-producto-2026-11-12.md`; invariantes I1 e I2), con lo que mandó el cliente, SIN mirar la base. `tipo` es el del producto (en la edición, el guardado):
+ *  - I1: cada alícuota que viene es una de `ALICUOTAS_IVA` o `null` («sin declarar»); `undefined` es «no viene». Cualquier otra cosa (un texto fuera de la lista, uno vacío, un número, un objeto) se rechaza;
+ *  - I2: la de VENTA solo en un PV y la de COMPRA solo en una MP. En el tipo equivocado solo se admite que no venga o venga `null` (no escribe nada: el caso de uso escribe únicamente la del tipo del producto).
+ * Lista de lo permitido, no de lo prohibido: ante un tipo que no es MP ni PV, no se admite ninguna alícuota.
+ */
+export function guardAlicuotaIvaDelProducto(entrada: { tipo: unknown; alicuotaIvaVenta?: unknown; alicuotaIvaCompra?: unknown }): ResultadoDato<null> {
+  const esValida = (valor: unknown) => valor === undefined || valor === null || alicuotaIvaDelProducto(valor) !== null;
+  if (!esValida(entrada.alicuotaIvaVenta) || !esValida(entrada.alicuotaIvaCompra)) {
+    return rechazar("formato", "La alícuota de IVA no es una de las admitidas: elegí una de la lista, o dejala sin declarar.");
+  }
+  if (entrada.tipo !== "PV" && entrada.alicuotaIvaVenta !== undefined && entrada.alicuotaIvaVenta !== null) {
+    return rechazar("formato", "El «IVA de venta» solo se carga en un producto de venta (PV).");
+  }
+  if (entrada.tipo !== "MP" && entrada.alicuotaIvaCompra !== undefined && entrada.alicuotaIvaCompra !== null) {
+    return rechazar("formato", "El «IVA de compra» solo se carga en una materia prima (MP).");
+  }
+  return aceptar(null);
 }

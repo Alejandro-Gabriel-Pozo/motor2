@@ -43,19 +43,20 @@ const COLUMNAS_DE_SIGNIFICADO: Record<string, string[] | "*"> = {
   // S-05 (GT-5, T14, M-3 de la auditoría intermedia): las columnas que cambian el SIGNIFICADO de las cantidades y de la deuda de un producto (el factor y las unidades con que se cuenta, si se
   // produce, y el consignante). No son `Decimal` salvo el factor: la regla de dinero no veía las demás. Toda escritura de una de ellas tiene que tener su cadena de auditoría.
   // Fase 4 de la ola «precio y carta» (ADR-035): `modoDeVenta` decide si se cobra el precio guardado o el de cada opción (no es `Decimal`).
-  producto: ["factorConversion", "unidadStockId", "unidadCompraId", "esConsignacion", "proveedorConsignacionId", "seProduce", "modoDeVenta"],
+  // Paso 13 (2026-11-12): las alícuotas de IVA de venta y de compra del producto (`String?` con CHECK, no `Decimal`): deciden con qué IVA se factura una venta y se computa una compra.
+  producto: ["factorConversion", "unidadStockId", "unidadCompraId", "esConsignacion", "proveedorConsignacionId", "seProduce", "modoDeVenta", "alicuotaIvaVenta", "alicuotaIvaCompra"],
   // GO-2a (ADR-030): lo que cambia qué se puede elegir y qué se cobra en una venta con opciones sin ser un `Decimal`. Lo que admite un producto y el apagado por sucursal, en cualquier escritura; del
   // grupo, las cantidades y si está activo; de la opción, si está activa. `versionDeOpcion` y `consumoDeOpcion` NO son «su propia historia»: tienen `Decimal` y su cadena audita (como `RecetaVersion`).
   productoAdmiteGrupo: "*",
   opcionApagadaEnSucursal: "*",
   grupoDeOpciones: ["cantidadMinima", "cantidadMaxima", "activo"],
   opcionDeGrupo: ["activa"],
-  // GO-3b (ADR-032): lo que cambia QUÉ entra en un combo por su precio sin ser `Decimal`: las opciones de un lugar LISTA (y su configuración fija), los platos del día y la vigencia de la promo.
+  // GO-3b (ADR-032): lo que cambia QUÉ entra en un combo por su precio sin ser `Decimal`: las opciones de un lugar LISTA (y su configuración fija), y los platos del día (la vigencia de la promo se borró del código el 2026-11-13).
   entradaDeCupo: "*",
   opcionDeEntradaDeCupo: "*",
   entradaDelDiaDeCupo: "*",
   // Interruptor «solo salón» (docs/diseno-promo-solo-salon-2026-10-26.md): decide si la promo (con su precio) se publica en la carta pública; no es `Decimal`.
-  promoCarta: ["vigenteDesde", "vigenteHasta", "diasDeSemana", "soloSalon"],
+  promoCarta: ["soloSalon"],
   // Fase 5 de la ola «precio y carta» (DEC-11): «Mostrar el nombre arriba» decide cómo se LEE en la carta pública un producto base (encabezado u oculto): toda escritura tiene su cadena de auditoría
   // (guardar el contenido audita la columna; «copiar carta» audita la copia entera).
   contenidoCartaProducto: ["mostrarNombreArriba", "nombreEnCarta"],

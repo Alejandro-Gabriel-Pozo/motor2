@@ -273,24 +273,16 @@ export interface EntradaDeLugarAdmin {
   modoDeOpciones: "FIJAS" | "A_ELEGIR";
 }
 
-/** Un lugar de entradas de una promo: LISTA («Bebida»: se elige de una lista; con una sola entrada y mínimo = máximo, viene FIJO) o DEL_DIA («Plato del día»: lo carga cada sucursal por día). */
+/** Un lugar de entradas de una promo: LISTA («Bebida»: se elige de una lista; con una sola entrada y mínimo = máximo, viene FIJO). */
 export interface LugarDeCombo {
   id: string;
-  tipo: "LISTA" | "DEL_DIA";
+  tipo: "LISTA";
   nombre: string;
   cantidadMinima: number;
   cantidadMaxima: number;
   orden: number;
-  /** Solo en un LISTA (un DEL_DIA no tiene entradas fijas: sus platos se cargan por día en «Menú del día»). */
+  /** Las entradas de la lista. */
   entradas: EntradaDeLugarAdmin[];
-}
-
-/** La vigencia de una promo, con la versión que vio la pantalla (control optimista). Días de la semana: máscara, bit 0 = lunes; `null` = todos. */
-export interface VigenciaDePromoAdmin {
-  version: number;
-  vigenteDesde: string | null;
-  vigenteHasta: string | null;
-  diasDeSemana: number | null;
 }
 
 /** Un producto de venta que se puede sumar a una lista, con los grupos de UNA sola elección que admite (para fijar su configuración). */
@@ -320,7 +312,7 @@ interface GrupoParaElegirAdmin {
 }
 
 export interface CombosDeLaCarta {
-  /** `soloSalon`: la promo se vende desde el POS pero no aparece en la carta pública (docs/diseno-promo-solo-salon-2026-10-26.md); su versión de control es la de la vigencia. */
-  porPromo: Record<string, { lugares: LugarDeCombo[]; vigencia: VigenciaDePromoAdmin; soloSalon: boolean }>;
+  /** `soloSalon`: la promo se vende desde el POS pero no aparece en la carta pública (docs/diseno-promo-solo-salon-2026-10-26.md); `version` es la versión de control optimista de la promo (`PromoCarta.version`) que vio la pantalla. */
+  porPromo: Record<string, { lugares: LugarDeCombo[]; version: number; soloSalon: boolean }>;
   productos: ProductoParaEntrada[];
 }

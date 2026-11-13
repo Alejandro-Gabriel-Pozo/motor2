@@ -75,7 +75,10 @@ describe("Casilla", () => {
     for (const clase of ["border-borde-control", "bg-superficie", "text-tinta", "focus-visible:outline-foco", "disabled:bg-superficie-suave"]) expect(casilla, clase).toContain(clase);
     const etiqueta = clasesDe(html, "label");
     for (const clase of ["text-tinta", "min-h-11", "md:min-h-9", "peer-disabled:text-tinta-tenue"]) expect(etiqueta, clase).toContain(clase);
-    expect(html).toContain('<div class="flex min-h-11 items-center gap-2 md:min-h-9">');
+    expect(html).toContain('<div class="isolate flex min-h-11 items-center gap-2 md:min-h-9">');
+    // El área táctil: la etiqueta se extiende bajo el cuadradito (-ml-7 pl-7) y el cuadradito va encima (relative z-10), así un clic sobre él le llega a él y no a la etiqueta.
+    for (const clase of ["-ml-7", "pl-7"]) expect(etiqueta, clase).toContain(clase);
+    for (const clase of ["relative", "z-10"]) expect(casilla, clase).toContain(clase);
     const conError = clasesDe(renderToStaticMarkup(<Casilla etiqueta="x" error="mal" />), "input");
     expect(conError).toContain("border-error");
     expect(conError).not.toContain("border-borde-control");

@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoActualizarProducto, EntradaProducto, ResultadoActualizarProducto } from "@/core/features/catalogo/productos.schema";
-import { guardComandoDatosDeProducto, MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
+import { guardAlicuotaIvaDelProducto, guardComandoDatosDeProducto, MENSAJE_SIN_PERMISO_ALICUOTA_IVA, MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";
 import { mismosCentavos } from "@/core/datos/importe";
 import { MODOS_DE_VENTA, esBaseConfigurable, rechazoDeBaseConfigurable, rechazoDelProductoComoBase, type AdmisionParaSerBase } from "@/core/opciones/public";
@@ -58,16 +58,22 @@ import { formatearMonto } from "@/core/formato-de-numero";
  * produce» o «es consignación» (`BASE_INVALIDA`; el CHECK de la base repite lo de «se produce»). Volver a DIRECTO se puede siempre, y en el mismo envío el precio nuevo se acepta (con el control del
  * precio visto). Cada cambio de modo deja su fila de auditoría (`modoDeVenta`).
  *
+ * ALÍCUOTA DE IVA (paso 13 de la auditoría 2026-11-12, `docs/diseno-alicuota-iva-del-producto-2026-11-12.md`; pedido del dueño del 2026-11-12, «Sí, hacemos A»): «IVA de venta» (`datos.alicuotaIvaVenta`, solo un PV) o «IVA de compra»
+ * (`datos.alicuotaIvaCompra`, solo una MP). Una de `ALICUOTAS_IVA` o `null` («sin declarar»); `undefined` = no viene = queda como estaba. `guardAlicuotaIvaDelProducto` (lista cerrada y tipo contra campo) la rechaza con
+ * `DATOS_INVALIDOS` antes de escribir; solo se escribe la del tipo del producto. Cambiarla es de quien tiene `producto_campos_sensibles` (sin ella, `SIN_PERMISO_CAMPOS_SENSIBLES`). Control del valor visto como el del precio:
+ * si la alícuota cambia, la que mostraba el formulario (`datos.alicuotaVista`) tiene que ser la guardada; si no (otra persona la cambió, o no vino), `ALICUOTA_DESACTUALIZADA` y no se guarda nada. Repetir el mismo guardado no
+ * escribe ni audita de nuevo. Cada cambio deja su fila de auditoría (`alicuotaIvaVenta` / `alicuotaIvaCompra`) en la misma transacción.
+ *
  * La Server Action quedó como adaptador (`conPermisoDeEmpresa("producto_editar")` → este caso de uso → `aResultadoAccion` → si salió bien, revalidar la carta
  * pública y DESPUÉS, si el precio de venta cambió (`datos.precioAnterior`/`precioNuevo`), ofrecer sincronizarlo con los hermanos del ítem agrupado —
  * `sincronizable`, docs/plan-agrupacion-items-carta-2026-09-24.md, D11/M8—, como antes). Sin guard: la validación lee la unidad de stock a mitad de camino.
  *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos.
  *
- * @contract Deja el producto con los datos pedidos (sin cambiar su tipo, ni su unidad de stock si ya tiene historia, ni su consignante si ya tiene liquidaciones, ni su costo de consignación sin el permiso, ni su precio de venta, factor, unidades y modo de venta sin la clave fina, ni su precio de venta si cambió desde que se abrió el formulario o si se vende por opción, ni lo deja «por opción» sin cumplir la regla de la base) y una fila de auditoría por cada uno de sus valores de mayor impacto que cambió: todo o nada. Lo sensible que no viene queda como estaba.
- * @idempotency Optimista — el precio de venta visto se compara dentro de la transacción cuando el precio cambia; repetir el mismo pedido no cambia nada (sin filas de auditoría nuevas), y con un precio visto viejo da `PRECIO_DESACTUALIZADO`.
+ * @contract Deja el producto con los datos pedidos (sin cambiar su tipo, ni su unidad de stock si ya tiene historia, ni su consignante si ya tiene liquidaciones, ni su costo de consignación sin el permiso, ni su precio de venta, factor, unidades y modo de venta ni alícuota de IVA sin la clave fina, ni su precio de venta si cambió desde que se abrió el formulario o si se vende por opción, ni lo deja «por opción» sin cumplir la regla de la base, ni su alícuota de IVA si cambió desde que se abrió el formulario o no es de la lista cerrada y del tipo del producto) y una fila de auditoría por cada uno de sus valores de mayor impacto que cambió: todo o nada. Lo sensible que no viene queda como estaba.
+ * @idempotency Optimista — el precio de venta visto y la alícuota vista se comparan dentro de la transacción cuando el precio o la alícuota cambian; repetir el mismo pedido no cambia nada (sin filas de auditoría nuevas), y con un precio visto viejo da `PRECIO_DESACTUALIZADO` y con una alícuota vista vieja, `ALICUOTA_DESACTUALIZADA`.
  * @transaction conTransaccionSerializable (SERIALIZABLE) sobre la base de verificación: la lectura del producto, la validación, la pregunta por su historia, el `update` y sus auditorías, todo junto.
- * @sideEffects registrarCambioAuditado (Producto.precioVenta, .precioConsignacion, .pasoVenta, .modoDeVenta, .factorConversion, .unidadStockId, .unidadCompraId, .seProduce, .esConsignacion y .proveedorConsignacionId, del anterior al nuevo), en la misma transacción. La revalidación de
+ * @sideEffects registrarCambioAuditado (Producto.precioVenta, .precioConsignacion, .pasoVenta, .modoDeVenta, .alicuotaIvaVenta, .alicuotaIvaCompra, .factorConversion, .unidadStockId, .unidadCompraId, .seProduce, .esConsignacion y .proveedorConsignacionId, del anterior al nuevo), en la misma transacción. La revalidación de
  *   la carta pública y el `sincronizable` los hace la Server Action.
  * @ficha permiso=producto_editar transaccion=SERIALIZABLE idempotencia=OPTIMISTA auditoria=REGISTRO_AUDITORIA reloj=INYECTADO periodo=NO_APLICA
  */
@@ -156,6 +162,14 @@ async function actualizarProductoEnTransaccion(
     const nuevos = datosParaGuardar(datos, validado.numeros);
     const nombreActual = texto(datos.nombre);
 
+    // Alícuota de IVA (paso 13): lista cerrada y tipo contra campo (I1, I2), con el tipo GUARDADO (ya se comprobó que el formulario trae el mismo). Solo se escribe la del tipo del producto; un valor que no viene (`undefined`) queda como estaba.
+    const alicuotaValida = guardAlicuotaIvaDelProducto({ tipo: existente.tipo, alicuotaIvaVenta: pedidos.alicuotaIvaVenta, alicuotaIvaCompra: pedidos.alicuotaIvaCompra });
+    if (!alicuotaValida.ok) return fracaso("DATOS_INVALIDOS", alicuotaValida.mensaje);
+    const campoDeAlicuota = existente.tipo === "PV" ? "alicuotaIvaVenta" : "alicuotaIvaCompra";
+    const alicuotaGuardada = existente[campoDeAlicuota];
+    const alicuotaPedida = pedidos[campoDeAlicuota];
+    const cambiaLaAlicuota = alicuotaPedida !== undefined && alicuotaPedida !== alicuotaGuardada;
+
     // M.2: cambiar el precio de venta, el factor de conversión o una unidad exige `producto_campos_sensibles`. Se compara lo NORMALIZADO (`nuevos`: lo que se escribiría) contra la fila leída ACÁ
     // ADENTRO, en la misma transacción que el `update`: mandar el mismo valor no es un cambio, y lo que otra persona cambió mientras este editaba se ve como cambio (el mensaje lo avisa). Va ANTES de
     // `UNIDAD_CON_HISTORIA`, de `CONSIGNANTE_CON_HISTORIA` y del `update`: quien no tiene la clave no se entera de si el producto tiene historia.
@@ -167,6 +181,8 @@ async function actualizarProductoEnTransaccion(
         nuevos.unidadCompraId !== existente.unidadCompraId ||
         modoNuevo !== existente.modoDeVenta;
       if (cambiaUnCampoSensible) return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES);
+      // Paso 13 (I3): la alícuota de IVA, con su propio mensaje (el de arriba enumera otros campos).
+      if (cambiaLaAlicuota) return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_ALICUOTA_IVA);
     }
 
     // Fase 4 (ADR-035): la base configurable. Pasar a base toma la fila del producto ANTES de leer lo que admite (los escritores de admisiones la toman también) y valida la regla con lo leído acá.
@@ -206,6 +222,15 @@ async function actualizarProductoEnTransaccion(
       }
     }
 
+    // Control del valor visto de la alícuota de IVA (paso 13; mismo patrón que el precio): si la alícuota cambia, la que mostraba el formulario tiene que ser la guardada. Sin la clave fina no se llega acá con una alícuota
+    // distinta (es `SIN_PERMISO_CAMPOS_SENSIBLES`, arriba). Una alícuota vista ausente cuenta como «no coincide» (falla cerrado); `null` es «sin declarar» y coincide con una guardada sin declarar.
+    if (cambiaLaAlicuota && (pedidos.alicuotaVista === undefined || pedidos.alicuotaVista !== alicuotaGuardada)) {
+      return fracaso(
+        "ALICUOTA_DESACTUALIZADA",
+        `Alguien cambió la alícuota de IVA de «${existente.nombre}» mientras lo editabas: no se guardó nada. Recargá la pantalla y volvé a hacer el cambio.`,
+      );
+    }
+
     // CAT-1: la unidad de stock es inmutable una vez que el producto tiene historia, igual que el tipo (reinterpretaría en silencio todas las cantidades guardadas).
     if (nuevos.unidadStockId !== existente.unidadStockId && (await productoTieneHistoria(tx, productoId))) {
       return fracaso(
@@ -227,7 +252,9 @@ async function actualizarProductoEnTransaccion(
     const { precioVenta, factorConversion, unidadStockId, unidadCompraId, ...sinCamposSensibles } = nuevos;
     void [precioVenta, factorConversion, unidadStockId, unidadCompraId];
     // El modo de venta solo lo escribe quien tiene la clave fina (sin ella, ya se comprobó arriba que es el guardado).
-    await actualizarCamposDeProducto(tx, { id: productoId, campos: comando.puedeEditarCamposSensibles ? { ...nuevos, modoDeVenta: modoNuevo } : sinCamposSensibles });
+    // La alícuota de IVA (paso 13) solo la escribe quien tiene la clave fina y solo si cambió (sin ella, ya se comprobó arriba que no cambia): la del tipo del producto, nunca la otra.
+    const alicuotaAEscribir = cambiaLaAlicuota ? (campoDeAlicuota === "alicuotaIvaVenta" ? { alicuotaIvaVenta: alicuotaPedida ?? null } : { alicuotaIvaCompra: alicuotaPedida ?? null }) : {};
+    await actualizarCamposDeProducto(tx, { id: productoId, campos: comando.puedeEditarCamposSensibles ? { ...nuevos, modoDeVenta: modoNuevo, ...alicuotaAEscribir } : sinCamposSensibles });
 
     // Auditoría administrativa (A3, Pivote 6) — los precios, que son los campos de mayor impacto de negocio/control interno (ver
     // docs/auditoria-motor2-fase6-seguridad-2026-09-18.md)...
@@ -246,6 +273,17 @@ async function actualizarProductoEnTransaccion(
       entidad: "Producto", entidadId: productoId, campo: "modoDeVenta",
       descripcion: `Producto "${nombreActual}": cómo se vende (${esBaseConfigurable(modoNuevo) ? "por opción" : "directo"})`,
       valorAnterior: existente.modoDeVenta, valorNuevo: modoNuevo, actorId: actor.usuarioId,
+    });
+    // Paso 13: la alícuota de IVA de venta / de compra (decide con qué IVA se factura la venta o se computa la compra): una fila por cada una que cambió, del anterior al nuevo (no-op si no cambió).
+    await registrarCambioAuditado(tx, {
+      entidad: "Producto", entidadId: productoId, campo: "alicuotaIvaVenta",
+      descripcion: `Producto "${nombreActual}": alícuota de IVA de venta`,
+      valorAnterior: existente.alicuotaIvaVenta, valorNuevo: cambiaLaAlicuota && campoDeAlicuota === "alicuotaIvaVenta" ? (alicuotaPedida ?? null) : existente.alicuotaIvaVenta, actorId: actor.usuarioId,
+    });
+    await registrarCambioAuditado(tx, {
+      entidad: "Producto", entidadId: productoId, campo: "alicuotaIvaCompra",
+      descripcion: `Producto "${nombreActual}": alícuota de IVA de compra`,
+      valorAnterior: existente.alicuotaIvaCompra, valorNuevo: cambiaLaAlicuota && campoDeAlicuota === "alicuotaIvaCompra" ? (alicuotaPedida ?? null) : existente.alicuotaIvaCompra, actorId: actor.usuarioId,
     });
     // Venta fraccionada (Task #25): se audita igual que el resto de los campos de mayor impacto de negocio.
     await registrarCambioAuditado(tx, {

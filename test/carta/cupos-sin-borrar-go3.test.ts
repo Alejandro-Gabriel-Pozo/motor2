@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Este archivo caracteriza los lugares del día con el menú del día ENCENDIDO (lo de antes del interruptor `MENU_DEL_DIA_VISIBLE`, apagado por decisión del dueño 2026-10-20): así sigue
-// probando que encenderlo restituye todo. El estado apagado lo prueba `menu-del-dia-interruptor.test.tsx`.
-vi.mock("../../src/core/carta/menu-del-dia", async (original) => ({ ...(await original<typeof import("../../src/core/carta/menu-del-dia")>()), MENU_DEL_DIA_VISIBLE: true }));
 import { guardarCuposPromoCartaCasoDeUso } from "../../src/server/actions/carta/casos-de-uso/guardar-cupos-promo-carta";
 import { guardComandoGuardarCuposPromoCarta } from "../../src/core/features/carta/promos.guard";
 import { diferenciaDeCupos } from "../../src/core/carta/public";
@@ -10,13 +7,14 @@ import { crearUsuarioConMembresia, limpiarBaseDeTest, prisma, prismaAdmin, prism
 import { actorDePrueba } from "../setup/opciones-de-venta";
 
 /**
- * GO-3b (ADR-032, paso D3): guardar los cupos de una promo YA NO BORRA. Cada cupo tiene su clave natural (la sección en un SECCION; el nombre sin mayúsculas en un LISTA o DEL_DIA) y guardar es
+ * GO-3b (ADR-032, paso D3): guardar los cupos de una promo YA NO BORRA. Cada cupo tiene su clave natural (la sección en un SECCION; el nombre sin mayúsculas en un LISTA) y guardar es
  * llevar las filas al estado pedido: lo que sigue se cambia en el lugar, lo que vuelve se reactiva (la MISMA fila), lo que no vino se da de baja (`activo = false`) y lo nuevo se crea. Las
  * entradas de una lista siguen colgando de su cupo aunque se dé de baja. La auditoría de los cupos de sección no cambia (`cupos-promo-auditados.test.ts`, mismos `entidadId`).
  *
  * Mutaciones demostradas (rojo y revertidas): borrar los cupos que no vienen en vez de darlos de baja (rojo: «da de baja sin borrar» y «la misma fila vuelve»); no leer los dados de baja
  * (rojo: «la misma fila vuelve», «otro tipo» y la concurrencia, por el único del nombre). Sacar `tambienChoqueDeUnico` NO la pone en rojo (verificado dos veces): bajo SERIALIZABLE Postgres
  * informa el choque del mismo cupo nuevo como 40001, que ya se reintenta; queda encendido como defensa por si llega como 23505.
+ * Poda 2026-11-13: el lugar «del día» (DEL_DIA) ya no se crea (el guard lo rechaza); un DEL_DIA que quedó guardado de antes se trata como cualquier otro cupo que no vino: se da de baja.
  */
 const ITERACIONES = 10;
 
@@ -62,16 +60,16 @@ describe("los cupos de una promo se guardan sin borrar (GO-3b, D3)", () => {
       descripcion: f.descripcion,
     }));
 
-  const tresLugares = () => [
+  const dosLugares = () => [
     { seccionCartaId: entradasId, cantidadMinima: 1, cantidadMaxima: 1 },
     { tipo: "LISTA", nombre: "Postre", cantidadMinima: 1, cantidadMaxima: 1 },
-    { tipo: "DEL_DIA", nombre: "Plato del día", cantidadMinima: 1, cantidadMaxima: 1 },
   ];
+  /** Un lugar «del día» que quedó guardado de antes de la poda (el código ya no lo crea). */
+  const lugarDelDiaHeredado = (nombre: string, activo = true) => prisma.promoCartaCupo.create({ data: { promoCartaId, tipo: "DEL_DIA", nombre, cantidadMinima: 1, cantidadMaxima: 1, orden: 9, activo } });
 
-  it("crea los tres tipos de lugar; un SECCION sin tipo es el de siempre", async () => {
-    expect(await guardar(tresLugares())).toMatchObject({ ok: true });
+  it("crea los dos tipos de lugar; un SECCION sin tipo es el de siempre", async () => {
+    expect(await guardar(dosLugares())).toMatchObject({ ok: true });
     expect(await cuposDeLaPromo()).toEqual([
-      { tipo: "DEL_DIA", seccionCartaId: null, nombre: "Plato del día", activo: true, cantidadMinima: 1, cantidadMaxima: 1 },
       { tipo: "LISTA", seccionCartaId: null, nombre: "Postre", activo: true, cantidadMinima: 1, cantidadMaxima: 1 },
       { tipo: "SECCION", seccionCartaId: entradasId, nombre: null, activo: true, cantidadMinima: 1, cantidadMaxima: 1 },
     ]);
@@ -86,13 +84,13 @@ describe("los cupos de una promo se guardan sin borrar (GO-3b, D3)", () => {
   });
 
   it("lo que no vino se DA DE BAJA sin borrar (con sus entradas colgando): nuevo null en la auditoría", async () => {
-    expect(await guardar(tresLugares())).toMatchObject({ ok: true });
+    expect(await guardar(dosLugares())).toMatchObject({ ok: true });
     const lista = await prismaAdmin.promoCartaCupo.findFirstOrThrow({ where: { promoCartaId, tipo: "LISTA" } });
     await prisma.entradaDeCupo.create({ data: { cupoId: lista.id, productoId: milanesaId } });
     await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "PromoCartaCupo" } });
 
     expect(await guardar([{ seccionCartaId: entradasId, cantidadMinima: 1, cantidadMaxima: 1 }])).toMatchObject({ ok: true });
-    expect((await cuposDeLaPromo()).map((c) => [c.tipo, c.activo])).toEqual([["DEL_DIA", false], ["LISTA", false], ["SECCION", true]]);
+    expect((await cuposDeLaPromo()).map((c) => [c.tipo, c.activo])).toEqual([["LISTA", false], ["SECCION", true]]);
     expect(await prisma.entradaDeCupo.count({ where: { cupoId: lista.id } })).toBe(1);
     expect((await auditoria()).filter((f) => f.entidadId === `${promoCartaId}:${lista.id}`).map((f) => [f.campo, f.valorAnterior, f.valorNuevo, f.actorId])).toEqual([
       ["cantidadMinima", "1", null, adminId],
@@ -101,7 +99,7 @@ describe("los cupos de una promo se guardan sin borrar (GO-3b, D3)", () => {
   });
 
   it("volver a pedir un lugar dado de baja (aunque cambie mayúsculas) reactiva LA MISMA fila: anterior null", async () => {
-    expect(await guardar(tresLugares())).toMatchObject({ ok: true });
+    expect(await guardar(dosLugares())).toMatchObject({ ok: true });
     const lista = await prismaAdmin.promoCartaCupo.findFirstOrThrow({ where: { promoCartaId, tipo: "LISTA" } });
     expect(await guardar([])).toMatchObject({ ok: true });
     expect((await cuposDeLaPromo()).every((c) => !c.activo)).toBe(true);
@@ -116,31 +114,34 @@ describe("los cupos de una promo se guardan sin borrar (GO-3b, D3)", () => {
     ]);
   });
 
-  it("un nombre ocupado por un lugar de OTRO tipo (aunque esté dado de baja) se rechaza sin escribir nada", async () => {
-    expect(await guardar(tresLugares())).toMatchObject({ ok: true });
-    expect(await guardar([])).toMatchObject({ ok: true });
-    const antes = await cuposDeLaPromo();
+  it("un lugar «del día» heredado se da de baja al guardar sin él (sin borrar); y su nombre, aunque esté dado de baja, no se puede usar en un lugar de otro tipo", async () => {
+    const heredado = await lugarDelDiaHeredado("Plato del día");
+    expect(await guardar(dosLugares())).toMatchObject({ ok: true });
+    expect((await cuposDeLaPromo()).map((c) => [c.tipo, c.nombre, c.activo])).toEqual([["DEL_DIA", "Plato del día", false], ["LISTA", "Postre", true], ["SECCION", null, true]]);
+    expect(await prismaAdmin.promoCartaCupo.count({ where: { id: heredado.id } })).toBe(1);
     await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "PromoCartaCupo" } });
-    expect(await guardar([{ tipo: "DEL_DIA", nombre: "Postre", cantidadMinima: 1, cantidadMaxima: 1 }])).toMatchObject({ ok: false, codigo: "CUPO_INVALIDO" });
+    await prisma.promoCartaCupo.update({ where: { id: heredado.id }, data: { nombre: "Ocupado" } });
+    const antes = await cuposDeLaPromo();
+    expect(await guardar([{ tipo: "LISTA", nombre: "Ocupado", cantidadMinima: 1, cantidadMaxima: 1 }])).toMatchObject({ ok: false, codigo: "CUPO_INVALIDO" });
     expect(await cuposDeLaPromo()).toEqual(antes);
     expect(await auditoria()).toEqual([]);
   });
 
   it("idempotencia por estado: el mismo pedido dos veces no escribe ni audita la segunda", async () => {
-    expect(await guardar(tresLugares())).toMatchObject({ ok: true });
+    expect(await guardar(dosLugares())).toMatchObject({ ok: true });
     await prismaAdmin.registroAuditoria.deleteMany({ where: { entidad: "PromoCartaCupo" } });
     const antes = await prismaAdmin.promoCartaCupo.findMany({ where: { promoCartaId }, orderBy: { id: "asc" } });
-    expect(await guardar(tresLugares())).toMatchObject({ ok: true });
+    expect(await guardar(dosLugares())).toMatchObject({ ok: true });
     expect(await prismaAdmin.promoCartaCupo.findMany({ where: { promoCartaId }, orderBy: { id: "asc" } })).toEqual(antes);
     expect(await auditoria()).toEqual([]);
   });
 
   it("el piso cuenta los lugares de todos los tipos (un componente fijo cuenta como su máximo)", async () => {
-    await prisma.promoCarta.update({ where: { id: promoCartaId }, data: { precio: 0.02 } });
-    expect(await guardar(tresLugares())).toMatchObject({ ok: false, codigo: "BAJO_EL_PISO" });
+    await prisma.promoCarta.update({ where: { id: promoCartaId }, data: { precio: 0.01 } });
+    expect(await guardar(dosLugares())).toMatchObject({ ok: false, codigo: "BAJO_EL_PISO" });
     expect(await cuposDeLaPromo()).toEqual([]);
-    await prisma.promoCarta.update({ where: { id: promoCartaId }, data: { precio: 0.03 } });
-    expect(await guardar(tresLugares())).toMatchObject({ ok: true });
+    await prisma.promoCarta.update({ where: { id: promoCartaId }, data: { precio: 0.02 } });
+    expect(await guardar(dosLugares())).toMatchObject({ ok: true });
   });
 
   it("concurrencia real: dos guardados distintos a la vez nunca duplican un lugar y la cadena de la auditoría queda coherente (loop de 10)", async () => {
@@ -185,7 +186,7 @@ describe("la diferencia de cupos (puro, GO-3b D3)", () => {
       [
         { tipo: "LISTA", seccionCartaId: null, nombre: "postre", cantidadMinima: 1, cantidadMaxima: 1, orden: 0 },
         { tipo: "LISTA", seccionCartaId: null, nombre: "Bebida", cantidadMinima: 1, cantidadMaxima: 1, orden: 1 },
-        { tipo: "DEL_DIA", seccionCartaId: null, nombre: "Plato", cantidadMinima: 1, cantidadMaxima: 1, orden: 2 },
+        { tipo: "LISTA", seccionCartaId: null, nombre: "Plato", cantidadMinima: 1, cantidadMaxima: 1, orden: 2 },
       ],
     );
     expect(r.ok).toBe(true);
@@ -211,7 +212,9 @@ describe("el guard de los cupos con tipo (GO-3b D3)", () => {
     expect(g([{ tipo: "LISTA", cantidadMaxima: 1 }]).ok).toBe(false);
     expect(g([{ tipo: "LISTA", nombre: "   ", cantidadMaxima: 1 }]).ok).toBe(false);
     expect(g([{ tipo: "LISTA", nombre: "x".repeat(81), cantidadMaxima: 1 }]).ok).toBe(false);
-    expect(g([{ tipo: "LISTA", nombre: "Postre", cantidadMaxima: 1 }, { tipo: "DEL_DIA", nombre: "POSTRE", cantidadMaxima: 1 }]).ok).toBe(false);
+    expect(g([{ tipo: "LISTA", nombre: "Postre", cantidadMaxima: 1 }, { tipo: "LISTA", nombre: "POSTRE", cantidadMaxima: 1 }]).ok).toBe(false);
+    // Poda 2026-11-13: el lugar «del día» ya no se acepta (ni solo ni con otro nombre).
+    expect(g([{ tipo: "DEL_DIA", nombre: "Plato del día", cantidadMaxima: 1 }]).ok).toBe(false);
     expect(g([{ tipo: "LISTA", nombre: "Postre", seccionCartaId: "s1", cantidadMaxima: 1 }]).ok).toBe(false);
     expect(g([{ seccionCartaId: "s1", nombre: "Postre", cantidadMaxima: 1 }]).ok).toBe(false);
   });

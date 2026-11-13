@@ -86,7 +86,7 @@ export type ResultadoActivarPromoCarta = ResultadoCaso<null, "PROMO_NO_ENCONTRAD
 
 /**
  * Un cupo YA validado por `guardComandoGuardarCuposPromoCarta` (S-52): la sección elegida, el mínimo y el máximo enteros, y su posición. GO-3b (D3): con su `tipo`; un cupo SECCION
- * lleva `seccionCartaId` (y `nombre` null), uno LISTA o DEL_DIA lleva `nombre` (y `seccionCartaId` null).
+ * lleva `seccionCartaId` (y `nombre` null), uno LISTA lleva `nombre` (y `seccionCartaId` null).
  */
 export type CupoValidadoPromoCarta = CupoPedido;
 
