@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { limpiarBaseDeTest, sembrarBase, sembrarCatalogoBase, sembrarProductoDisponible, prisma } from "../setup/test-db";
-import { detalleDeLaLista } from "../../src/server/lecturas/catalogo/detalle-de-la-lista";
+import { detalleDeLaLista } from "../../src/server/consultas/catalogo/detalle-de-la-lista";
 
 /**
  * El precio y la clase de cada fila de la lista de Productos (docs/diseno-productos-igual-a-pedernal-2026-11-13.md, D1), contra Postgres real: el precio es el de la sucursal ACTIVA (el propio vigente o el central),

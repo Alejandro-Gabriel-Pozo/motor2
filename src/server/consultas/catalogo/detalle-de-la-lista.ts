@@ -1,6 +1,7 @@
+import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { claseDelProducto, textoDelPrecioEnLaLista, type TipoFiltrable } from "@/core/catalogo/public";
-import { preciosLocalesVigentes } from "./precio-local";
+import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 

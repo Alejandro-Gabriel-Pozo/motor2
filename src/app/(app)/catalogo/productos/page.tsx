@@ -28,7 +28,7 @@ import { FilaDeCatalogo } from "@/components/fila-de-catalogo";
 import { FiltrosDeLaListaDeProductos } from "@/components/catalogo/filtros-de-la-lista-de-productos";
 import { PESTANAS_DE_PRODUCTOS } from "@/core/catalogo/public";
 import { buscaPorReferenciaDelProveedorEnLaLista, faltasQueSePuedenFiltrarEnLaLista } from "@/server/consultas/catalogo/filtros-de-productos";
-import { detalleDeLaLista } from "@/server/lecturas/catalogo/detalle-de-la-lista";
+import { detalleDeLaLista } from "@/server/consultas/catalogo/detalle-de-la-lista";
 import { gruposDeOpcionesPorProducto } from "@/server/consultas/catalogo/opciones-de-venta";
 
 /**
