@@ -112,7 +112,15 @@ Lo hace el dueño; el asistente de desarrollo no ve credenciales ni corre nada c
 3. **Si alguna clave de Resend de producción cumple la forma nueva** (sección 2): el asistente no ve las variables.
 4. **Cuánto tarda** la validación de los CHECK y la creación de los índices sobre los datos reales: no se midió (hoy son pocas filas; en la medición del 2026-10-12 la base tenía 1 empresa y 50 productos).
 
-## 8. Pendientes que no son de este checklist
+## 8. Lo que ya está en `main` y viaja en el mismo deploy (código, sin migración)
 
-- Las decisiones DEC-0011 y DEC-0012 esperan el OK del dueño (cuerpo del PR #249).
-- #255 (alícuota de IVA, **sin migración**), #252 (ficha de parte, solo diseño, **sin autorización de migrar**) y #256 (menú del día) no entran en este despliegue.
+Verificado el 2026-11-13 sobre `main` en `a172974a`: desde #251 **no entró ninguna migración nueva** (`prisma/` sin cambios) y `src/env.ts` solo cambió en #249 (la clave de Resend). Lo que sí viaja:
+
+- **#254 «Todo nace cerrado (PR 3)»**: las 11 validaciones que quedaban por lista de prohibidos pasan a declarar lo permitido. Es código; un dato guardado que ya no cumpla se rechaza **recién al volver a guardarlo**. Qué cambia exactamente: cuerpo del PR #254 (no lo revisé para este documento: NO VERIFICADO).
+- **#257 «Duplicar producto» (E4)**: copiar ficha, receta y opciones a un producto nuevo. Trae tres decisiones **a la espera del OK del dueño** en `docs/registro-de-decisiones.md`: **DEC-0007** (el duplicado nace disponible en todas las sucursales si quien duplica tiene `producto_campos_sensibles`, y apagado en todas si no), **DEC-0008** (un original que se vende por opción se duplica con precio guardado en $0 y exige esa clave) y **DEC-0009** (el selector «Sacar la receta de» arranca en «Central»). Costo de revertir cada una: bajo o muy bajo, sin migración.
+  - **Prueba del dueño** (con datos reales, a 375 px si se captura): duplicar «Bife a criolla» como «Bife con chimichurri». Resultado esperado: aparece un producto nuevo con la ficha, la receta y las opciones del original, **con la disponibilidad que dice DEC-0007** (disponible en todas las sucursales si el usuario tiene `producto_campos_sensibles`; apagado en todas si no) y sin tocar el original. Duplicar dos veces seguidas con el mismo nombre debe dar «ya existe» y no dos productos.
+
+## 9. Pendientes que no son de este checklist
+
+- Las decisiones **DEC-0011 y DEC-0012** (cuerpo del PR #249; **no figuran todavía en `docs/registro-de-decisiones.md`**: NO VERIFICADO el motivo) esperan el OK del dueño, igual que DEC-0007, DEC-0008 y DEC-0009.
+- #255 (alícuota de IVA, **sin migración**; espera la respuesta del dueño a la pregunta de permisos A/B/C), #252 (ficha de parte, solo diseño, **sin autorización de migrar**; espera su respuesta a «¿un cliente por ficha?» y a las reglas de §6.2) y #256 (menú del día) no entran en este despliegue.
