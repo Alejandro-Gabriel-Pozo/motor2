@@ -40,6 +40,7 @@ export { formatearPrecioCarta } from "./precio-carta";
 export { whereCartaDeSucursal } from "./carta-de-sucursal";
 export type { EstiloCarta } from "./estilo";
 export { resolverEstiloCarta } from "./estilo";
+export { colorDeTextoLegible } from "./color-css";
 export { variablesDeLaEscala } from "./escala";
 export type { EstiloPortal } from "./portal";
 export { decidirLayoutPortal, resolverEstiloPortal } from "./portal";

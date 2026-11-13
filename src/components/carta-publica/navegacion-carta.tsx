@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { EstiloCarta } from "@/core/carta/public";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { hayMasParaVer } from "./aviso-scroll";
+import { MARCA_PARA_TEXTO } from "./colores-del-item";
 import { IconFacebook, IconInstagram, IconMaps, IconWhatsApp } from "./iconos";
 
 /**
@@ -200,7 +201,7 @@ export function NavegacionCarta({ children, paginas, hrefVolver, volver, colorIc
                   type="button"
                   onClick={() => irAId("indice")}
                   className="carta-rol-etiqueta flex h-9 min-w-[80px] items-center justify-center gap-1.5 rounded-full px-4 uppercase tracking-[0.3em]"
-                  style={{ backgroundColor: "color-mix(in oklch, var(--carta-primary) 12%, transparent)", color: "var(--carta-primary)" }}
+                  style={{ backgroundColor: "color-mix(in oklch, var(--carta-primary) 12%, transparent)", color: MARCA_PARA_TEXTO }}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -257,7 +258,7 @@ const ESTILO_FLECHA = {
 } as const;
 
 const ESTILO_TOPBAR = { backgroundColor: "color-mix(in oklch, var(--carta-bg) 88%, transparent)" } as const;
-const CLASE_TOPBAR = "carta-borde absolute left-0 right-0 top-0 z-40 flex h-10 items-center justify-between border-b px-3 backdrop-blur-sm";
+const CLASE_TOPBAR = "carta-borde absolute left-0 right-0 top-0 z-40 flex h-[2.8125rem] items-center justify-between border-b px-3 backdrop-blur-sm";
 const CLASE_VOLVER = "font-light uppercase tracking-[0.3em]";
 
 // Con `topbar_back_color` cargado el color es FINAL (sin la opacidad decorativa); sin él, el gris tenue de siempre.
@@ -278,7 +279,7 @@ function Topbar({ embebida, hrefVolver, volver }: { embebida: boolean; hrefVolve
   return (
     <header data-carta-topbar className={CLASE_TOPBAR} style={ESTILO_TOPBAR}>
       {hrefVolver ? (
-        <Link href={hrefVolver} className={`${CLASE_VOLVER} transition-opacity hover:opacity-90`} style={estiloVolver(volver)}>
+        <Link href={hrefVolver} className={`${CLASE_VOLVER} flex h-full items-center transition-opacity hover:opacity-90`} style={estiloVolver(volver)}>
           {volver.etiqueta}
         </Link>
       ) : (
@@ -288,7 +289,7 @@ function Topbar({ embebida, hrefVolver, volver }: { embebida: boolean; hrefVolve
         type="button"
         onClick={() => window.print()}
         aria-label="Imprimir carta"
-        className="flex h-8 w-8 items-center justify-center rounded-full opacity-50 transition-opacity hover:opacity-90"
+        className="flex h-11 w-11 items-center justify-center rounded-full opacity-50 transition-opacity hover:opacity-90"
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
           <path d="M6 9V2h12v7" />

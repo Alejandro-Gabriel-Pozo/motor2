@@ -1,4 +1,5 @@
 import { pieDeLaCartaImpresa, type CartaPublicaV1, type EstiloCarta } from "@/core/carta/public";
+import { MARCA_PARA_TEXTO } from "./colores-del-item";
 import { NavegacionCarta, type PaginaCarta, type RedSocial } from "./navegacion-carta";
 import { Portada } from "./portada";
 import { Seccion } from "./seccion";
@@ -59,7 +60,7 @@ export function CartaVista({
 
       <div className="carta-pagina flex flex-col px-6 sm:px-10">
         {estilo.valores.carta_texto_indice_etiqueta && (
-          <p className="mb-0.5 mt-4 font-light uppercase tracking-[0.5em]" style={{ fontSize: estilo.valores.carta_fuente_indice_etiqueta, color: "var(--carta-primary)" }}>
+          <p className="mb-0.5 mt-4 font-light uppercase tracking-[0.5em]" style={{ fontSize: estilo.valores.carta_fuente_indice_etiqueta, color: MARCA_PARA_TEXTO }}>
             {estilo.valores.carta_texto_indice_etiqueta}
           </p>
         )}
@@ -72,9 +73,9 @@ export function CartaVista({
               <button
                 type="button"
                 data-ir-a={paginaDeSeccion(i)}
-                className="group flex w-full items-baseline gap-2.5 py-3 text-left transition-opacity hover:opacity-80"
+                className="group flex min-h-11 w-full items-baseline gap-2.5 py-3 text-left transition-opacity hover:opacity-80"
               >
-                <span className="w-7 shrink-0 font-light tabular-nums" style={{ fontSize: estilo.valores.carta_fuente_indice_numero, color: c.indiceNumeros ?? "var(--carta-primary)" }}>
+                <span className="w-7 shrink-0 font-light tabular-nums" style={{ fontSize: estilo.valores.carta_fuente_indice_numero, color: c.indiceNumeros ?? MARCA_PARA_TEXTO }}>
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <span
