@@ -134,6 +134,15 @@ Ya decidido y respetado: Duplicar (E4) hecho; ficha de «parte» única (`docs/d
 | 4 | ¿Entra «Ocultar»? | «Sí, entra» | **CONFIRMADA** | Requiere migración (M3): solo diseño, queda para después con autorización expresa |
 | 9 | ¿Por dónde se arranca? | «Sí, empezar por la lista y la ficha» | **CONFIRMADA** | Primero los cambios sin base de datos: lista (P1) y ficha de 3 pestañas (P2); después los demás, de a un PR chico, con capturas a 375 px antes de cada merge |
 
+
+**Respondidas por el dueño el 2026-11-13 para las fases 2 y 3** (chat dueño ↔ orquestador; preguntas con opciones, cita literal):
+
+| Pregunta | Respuesta | Estado | Qué fija |
+|---|---|---|---|
+| Lista de tarjetas sin tabla, sin «Código» ni «Sucursales N de M» en la fila | «Sí, como Pedernal (Recomendada)» | **CONFIRMADA** | **Relaja la regla de estilo de planilla del 2026-11-09 solo para la lista de Productos** (apartado y banda de filtros se mantienen; la fila es la de Pedernal). Código y «Sucursales N de M» siguen en la ficha |
+| Ficha de 3 pestañas: «Resumen» eliminado, «Qué falta» arriba de Datos, disponibilidad por sucursal y «Duplicar» abajo de Datos, «Receta» y «En la carta» como dos enlaces chicos bajo las pestañas | «Sí, así provisorio (Recomendada)» | **CONFIRMADA (provisoria)** | La pregunta 6 (receta y «En la carta» dentro de la ficha o fuera) **sigue PENDIENTE** |
+| «Elaborado» = materia prima que se produce | (supuesto declarado) | **PROPUESTA** | A confirmar por el dueño junto con las 5 clases cuando se diseñe la migración M1 |
+
 **Siguen PENDIENTES (no se asumen):**
 3. Departamento (M2): ¿entra la clasificación con «vigente desde»? ¿Convive con «Categoría» o la reemplaza?
 5. Lo que Pedernal no muestra en la ficha y motor2 sí (hermanar insumos, consignación, observaciones, factor de conversión, producto de respaldo de un adicional): ¿se oculta, se mueve o se mantiene?
