@@ -51,20 +51,21 @@ for (const { ancho, alto } of [
         await expect(formulario).toBeVisible();
         await capturar(page, `filtros-de-productos-${ancho}`);
 
-        // El «¿Qué es?» son chips (enlaces): conservan la búsqueda y marcan el vigente.
-        const chips = page.getByRole("navigation", { name: "¿Qué es?" });
-        await chips.getByRole("link", { name: "Materia prima", exact: true }).click();
+        // «¿Qué es?» es un selector: «Aplicar filtros» conserva la búsqueda y la dirección dice el valor.
+        await formulario.getByLabel("¿Qué es?").selectOption("materia-prima");
+        await formulario.getByRole("button", { name: "Aplicar filtros" }).click();
         await expect(page).toHaveURL(/tipo=materia-prima/);
         await expect(filas).toHaveCount(1);
         await expect(filas.first()).toContainText(harina.nombre);
-        await expect(chips.getByRole("link", { name: "Materia prima", exact: true })).toHaveAttribute("aria-current", "page");
+        await expect(formulario.getByLabel("¿Qué es?")).toHaveValue("materia-prima");
         await expect(formulario.getByLabel(/^Buscar por nombre/)).toHaveValue(m);
 
-        await chips.getByRole("link", { name: "Todos" }).click();
+        await formulario.getByLabel("¿Qué es?").selectOption("");
+        await formulario.getByRole("button", { name: "Aplicar filtros" }).click();
         await expect(filas).toHaveCount(3);
         await formulario.getByText("Más filtros").click();
         await formulario.getByLabel("Le falta algo").selectOption("sin-precio");
-        await formulario.getByRole("button", { name: "Buscar" }).click();
+        await formulario.getByRole("button", { name: "Aplicar filtros" }).click();
         await expect(filas).toHaveCount(1);
         await expect(filas.first()).toContainText(sinPrecio.nombre);
         await expect(page.getByText(pizza.nombre)).toHaveCount(0);
@@ -72,7 +73,6 @@ for (const { ancho, alto } of [
         if (ancho === 375) {
           await expectSinDesborde(page, "lista de Productos filtrada a 375 px");
           await expectObjetivosTactiles(formulario.locator("input, select, button"), "controles de los filtros");
-          await expectObjetivosTactiles(chips.getByRole("link"), "chips del «¿Qué es?»");
         }
 
         await page.getByRole("link", { name: "Limpiar filtros" }).click();
@@ -92,8 +92,7 @@ test("Enter en la búsqueda filtra, y un valor raro en la URL no rompe: la lista
   try {
     await page.goto(`/catalogo/productos?q=${m}&tipo=%27%3B+DROP+TABLE&modo=x&disponible=todos&falta=mucho`);
     await expect(page.locator("li[data-producto]")).toHaveCount(3);
-    for (const nombre of ["Tipo", "Cómo se vende", "Disponibilidad", "Le falta algo"]) await expect(page.getByLabel(nombre)).toHaveValue("");
-    await expect(page.getByRole("navigation", { name: "¿Qué es?" }).getByRole("link", { name: "Todos" })).toHaveAttribute("aria-current", "page");
+    for (const nombre of ["¿Qué es?", "Estado", "Cómo se vende", "Le falta algo"]) await expect(page.getByLabel(nombre)).toHaveValue("");
     const busqueda = page.getByLabel(/^Buscar por nombre/);
     await busqueda.fill(`Pizza ${m}`);
     await busqueda.press("Enter");

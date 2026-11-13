@@ -35,7 +35,7 @@ test("escritorio 1366×768: Productos en apartado, filtros en banda aparte y la 
   expect(cajaBanda.y + cajaBanda.height).toBeLessThan(cajaLista.y);
 
   const fila = lista.getByRole("listitem").filter({ hasText: nombre });
-  await expect(fila.getByRole("link", { name: "Editar" })).toBeVisible();
+  await expect(fila.getByRole("link", { name: nombre })).toBeVisible();
   expect(await sinDesborde(page)).toBe(true);
 });
 
@@ -50,14 +50,14 @@ test("escritorio 1366×768: Biblioteca de opciones con apartados y la tabla con 
   expect(await sinDesborde(page)).toBe(true);
 });
 
-test("celular 390×844: Productos en tarjetas con la acción a la vista (44 px) y sin desborde horizontal", async ({ paginaAutenticada: page }) => {
+test("celular 390×844: Productos en tarjetas con el enlace a la ficha a la vista (44 px) y sin desborde horizontal", async ({ paginaAutenticada: page }) => {
   const { nombre } = await sembrar();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/catalogo/productos?q=${encodeURIComponent(nombre)}`);
   await expect(page.getByRole("table", { name: "Productos" })).toHaveCount(0); // la tabla está oculta (display:none) y sale del árbol de accesibilidad
   const tarjeta = page.getByRole("list", { name: "Productos" }).getByRole("listitem").filter({ hasText: nombre });
   await expect(tarjeta).toBeVisible();
-  const editar = tarjeta.getByRole("link", { name: "Editar" });
+  const editar = tarjeta.getByRole("link", { name: nombre });
   await expect(editar).toBeVisible();
   expect((await editar.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   expect(await sinDesborde(page)).toBe(true);

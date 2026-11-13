@@ -58,21 +58,27 @@ test("ficha: desactivar se bloquea si un plato disponible acá lo usa; sin ese u
   }
 });
 
-test("lista: el botón Desactivar/Activar pone y saca el aviso «Desactivado» de su fila sin recargar", async ({ paginaAutenticada: page, sucursalId }) => {
+test("lista: desactivar desde la ficha pone el aviso «Desactivado» en la fila, y reactivar lo saca", async ({ paginaAutenticada: page, sucursalId }) => {
   const { mp, limpiar } = await sembrar(Date.now(), false, sucursalId);
   try {
-    await page.goto(`/catalogo/productos?q=${encodeURIComponent(mp.nombre)}`);
+    const url = `/catalogo/productos?q=${encodeURIComponent(mp.nombre)}`;
+    await page.goto(url);
     const fila = page.locator("li[data-producto]", { hasText: mp.nombre });
     await expect(fila.getByText("Desactivado", { exact: true })).toHaveCount(0);
-    await page.evaluate(() => ((window as unknown as { __marca: number }).__marca = 1));
+    await expect(fila.getByRole("button")).toHaveCount(0); // la fila no tiene botones: se actúa en la ficha
 
-    await fila.getByRole("button", { name: "Desactivar", exact: true }).click();
-    await fila.getByRole("button", { name: "Sí, desactivar" }).click();
+    await fila.getByRole("link", { name: mp.nombre }).click();
+    await page.getByRole("button", { name: "Desactivar", exact: true }).click();
+    await page.getByRole("button", { name: "Sí, desactivar" }).click();
+    await expect(page.getByText(/No disponible en/)).toBeVisible();
+    await page.goto(url);
     await expect(fila.getByText("Desactivado", { exact: true })).toBeVisible();
 
-    await fila.getByRole("button", { name: "Activar", exact: true }).click();
+    await fila.getByRole("link", { name: mp.nombre }).click();
+    await page.getByRole("button", { name: "Activar", exact: true }).click();
+    await expect(page.getByText(/Disponible en/)).toBeVisible();
+    await page.goto(url);
     await expect(fila.getByText("Desactivado", { exact: true })).toHaveCount(0);
-    expect(await page.evaluate(() => (window as unknown as { __marca?: number }).__marca), "la página se recargó").toBe(1);
   } finally {
     await limpiar();
   }
