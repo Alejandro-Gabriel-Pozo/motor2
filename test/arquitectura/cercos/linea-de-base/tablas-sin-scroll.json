@@ -1,0 +1,8 @@
+{
+  "regla": "tablas-sin-scroll",
+  "meta": "0: toda tabla escrita a mano va dentro de un contenedor con scroll horizontal, o se migra a TablaDeDatos",
+  "total": 0,
+  "entradas": 0,
+  "porTipo": {},
+  "cuentas": {}
+}
