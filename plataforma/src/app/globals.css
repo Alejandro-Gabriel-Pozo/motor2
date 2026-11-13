@@ -1,13 +1,15 @@
 :root {
   color-scheme: light;
-  --fondo: #f6f7f9;
-  --superficie: #ffffff;
-  --texto: #1b1f24;
-  --texto-suave: #4b5563;
-  --borde: #c7ccd4;
-  --acento: #1d4ed8;
-  --acento-texto: #ffffff;
-  --error: #b42318;
+  /* La paleta de la consola es la del sistema (decisión del dueño, 2026-11-12: «parte del sistema»): cada valor es el de un token de `src/app/globals.css` (`@theme static`, contrato
+     `tokens-visuales`). La consola es otra app y no puede importar ese archivo, así que repite los valores; `test/arquitectura/paleta-de-la-consola.test.ts` falla si dejan de coincidir. */
+  --fondo: #FAFAF8; /* --color-papel */
+  --superficie: #FFFFFF; /* --color-superficie */
+  --texto: #1C1B19; /* --color-tinta */
+  --texto-suave: #6B6862; /* --color-tinta-suave */
+  --borde: #8A857C; /* --color-borde-control */
+  --acento: #A8431F; /* --color-marca */
+  --acento-texto: #FFFFFF; /* --color-superficie */
+  --error: #A63D3D; /* --color-error */
 }
 
 * {

@@ -1,3 +1,4 @@
+import { esUrlHttpsPermitida } from "@/core/datos/url";
 import { MARCA_PUBLICA } from "./marca";
 
 /**
@@ -83,5 +84,5 @@ export function descripcionDelPortal(etiquetasDeSucursales: readonly string[]): 
 /** La URL de una imagen cargada por el comercio, solo si es https (lo que ya exige el validador de imágenes del tema y del portal); cualquier otra cosa, sin imagen. */
 export function imagenParaCompartir(url: string | null | undefined): string | null {
   const limpia = url?.trim();
-  return limpia && /^https:\/\/[^\s]+$/i.test(limpia) ? limpia : null;
+  return limpia && esUrlHttpsPermitida(limpia) ? limpia : null;
 }

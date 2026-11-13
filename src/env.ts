@@ -29,7 +29,7 @@ import { esRemitenteValido } from "./core/correo/direcciones";
  * Fuera de este schema a propósito: `NODE_ENV`/`NEXT_RUNTIME` (los fija Next.js/Node, nunca el usuario) y
  * `MOTOR2_SIN_DOLAR_AUTOMATICO`/`MOTOR2_E2E_DATABASE_URL` (flags de test/e2e, no configuración de la app en sí).
  */
-const claveDeResend = z.string().regex(/^re_\S+$/, "no parece una clave de Resend");
+const claveDeResend = z.string().regex(/^re_[A-Za-z0-9_]+$/, "no parece una clave de Resend");
 const remitente = z.string().refine(esRemitenteValido, "no es un remitente válido (ana@dominio.com o Nombre <ana@dominio.com>)");
 
 const envSchema = z.object({
