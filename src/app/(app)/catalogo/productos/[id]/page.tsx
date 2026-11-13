@@ -202,6 +202,7 @@ export default async function FichaProductoPage({
           )}
         </dl>
       </section>
+      )}
 
       {esDeRespaldo && <p className="text-sm text-tinta-suave">Este es el producto interno que respalda el stock de un adicional: lo maneja el sistema y se vende solo como adicional.</p>}
 
