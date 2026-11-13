@@ -18,7 +18,7 @@ const EMPRESA = "movil-consola-e2e";
 test.beforeAll(async () => {
   await leerDeLaBase(async (db) => {
     await db.empresa.deleteMany({ where: { id: EMPRESA } });
-    await db.empresa.create({ data: { id: EMPRESA, nombre: "Hoteles del Neuquén de prueba móvil", slug: EMPRESA, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE", cuit: "30714589642" } });
+    await db.empresa.create({ data: { id: EMPRESA, nombre: "Empresa B de prueba móvil", slug: EMPRESA, zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE", cuit: "30714589642" } });
   });
 });
 
@@ -33,7 +33,7 @@ test("consola en celular (375 px): la tarjeta cabe, cada empresa es una tarjeta 
   await ingresarALaConsola(page, CONSOLA!);
   await page.goto(`${CONSOLA}/instalaciones/${INSTALACION_A}/empresas`);
   await expect(page.getByRole("heading", { name: /Empresas · / })).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Ver Hoteles del Neuquén de prueba móvil/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Ver Empresa B de prueba móvil/ })).toBeVisible();
   await expectSinDesborde(page, "consola, empresas");
   await capturar(page, "consola-empresas");
 

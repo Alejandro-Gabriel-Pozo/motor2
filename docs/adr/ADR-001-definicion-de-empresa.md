@@ -8,8 +8,7 @@
 
 ## Contexto
 
-Motor2 hoy es un solo negocio con varias sucursales (Varvarco, Huinganco, Las
-Ovejas, Manzano Amargo, Los Miches). El objetivo de la segunda
+Motor2 hoy es un solo negocio con varias sucursales. El objetivo de la segunda
 refactorización es evolucionarlo a varias empresas independientes en la
 misma base, con aislamiento garantizado por diseño — no por un `WHERE` que
 alguien recuerda escribir.

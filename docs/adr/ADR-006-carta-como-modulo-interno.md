@@ -147,7 +147,7 @@ wildcard `*.<dominio>` sirve a toda empresa nueva sin tocar nada.
 
 ## Add-on CARTA_EMPRESA_UNICA: la carta de una empresa en el dominio base, sin slug
 
-Para una instalación de una sola empresa (hoy stockhneuquen, `carta.hotelesdelneuquen.com.ar`) se quiere `https://<base>/` (portal) y `https://<base>/<sucursal>` (carta) sin el slug de la empresa en la URL. Es un **módulo opcional, apagado por defecto**: sin la variable el comportamiento es el de siempre.
+Para una instalación de una sola empresa (hoy empresab, `carta.empresab.com.ar`) se quiere `https://<base>/` (portal) y `https://<base>/<sucursal>` (carta) sin el slug de la empresa en la URL. Es un **módulo opcional, apagado por defecto**: sin la variable el comportamiento es el de siempre.
 
 - **Variables:** `CARTA_EMPRESA_UNICA=<slug>` junto con `CARTA_DOMINIO_BASE=<base>`. Ambas se leen AL COMPILAR (`next.config.ts`); `instrumentation.ts` falla el arranque en entorno estricto si el valor de arranque difiere del compilado (`validarEmpresaUnicaAlArrancar`, en `src/env.ts` junto a su par de `CARTA_DOMINIO_BASE`). Un slug inválido, o el add-on sin dominio base, rompe el build (falla cerrado).
 - **Código:** `src/core/carta/carta-empresa-unica.ts` (puro) arma las reglas; `next.config.ts` las suma a `rewrites()` y `redirects()`; `src/proxy.ts` solo agrega que el host base EXACTO (sin punto final, sin prefijos) pase la misma lista de paths permitidos que un host de carta; el portal de administración arma sus links con `urlCartaPublicaConEmpresaUnica`.

@@ -68,7 +68,7 @@ Los modelos **Opus** y **Fable** (cualquier versión) **no escriben código** en
 
 ## Maquetas con pantallas y datos reales (regla del dueño, 2026-11-05)
 
-Toda maqueta o captura que se le muestre al dueño para aprobar es la **pantalla real del sistema con datos reales de su empresa** (el bife, el jugo Fresli, sus proveedores y precios), no un dibujo HTML armado aparte con datos inventados: así se pierde el contexto y no se entiende.
+Toda maqueta o captura que se le muestre al dueño para aprobar es la **pantalla real del sistema con datos reales de su empresa** (el bife, un jugo de marca, sus proveedores y precios), no un dibujo HTML armado aparte con datos inventados: así se pierde el contexto y no se entiende.
 
 - Si la pantalla todavía no existe, se arma la pantalla real mínima en una rama (sin migración ni lógica extra) y se captura sobre datos reales.
 - Los datos reales se leen de producción solo en lectura, o se copian a una base local descartable; nunca se escribe en producción para una maqueta. Los datos de prueba con sufijos numéricos no sirven para que el dueño apruebe: confunden.

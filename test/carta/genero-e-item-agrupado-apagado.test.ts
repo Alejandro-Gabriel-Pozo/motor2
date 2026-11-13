@@ -54,25 +54,25 @@ describe("género e ítem agrupado APAGADOS, con datos cargados (contra Postgres
     expect(await guardarContenidoCartaProducto(s.ids.cafe, { visibleEnCarta: true, seccionCartaId: s.bebidas, descripcion: "Espresso", orden: 1 })).toMatchObject({ ok: true });
     expect(await generoDelCafe()).toBe(s.generos!.agua);
     // Un pedido armado a mano con OTRO género se ignora (ni se valida ni se escribe).
-    expect(await guardarContenidoCartaProducto(s.ids.cafe, { visibleEnCarta: true, seccionCartaId: s.bebidas, descripcion: "Espresso", orden: 1, generoCartaId: s.generos!.huinganco })).toMatchObject({ ok: true });
+    expect(await guardarContenidoCartaProducto(s.ids.cafe, { visibleEnCarta: true, seccionCartaId: s.bebidas, descripcion: "Espresso", orden: 1, generoCartaId: s.generos!.cordillera })).toMatchObject({ ok: true });
     expect(await generoDelCafe()).toBe(s.generos!.agua);
     // Un producto sin contenido previo queda sin género.
-    expect(await guardarContenidoCartaProducto(s.ids.huinganco, { visibleEnCarta: true, seccionCartaId: s.bebidas, orden: 9, generoCartaId: s.generos!.agua })).toMatchObject({ ok: true });
-    expect(await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: s.ids.huinganco } })).toMatchObject({ generoCartaId: null });
+    expect(await guardarContenidoCartaProducto(s.ids.cordillera, { visibleEnCarta: true, seccionCartaId: s.bebidas, orden: 9, generoCartaId: s.generos!.agua })).toMatchObject({ ok: true });
+    expect(await prisma.contenidoCartaProducto.findFirstOrThrow({ where: { productoId: s.ids.cordillera } })).toMatchObject({ generoCartaId: null });
   });
 
   it("«aplicar el mismo precio» a los hermanos del agrupado no se ofrece (no hay grupo) ni se ejecuta: precios intactos", async () => {
     expect(await resolverGrupoDeProducto(s.ids.patagonia, s.sucursalId, prisma)).toBeNull();
     expect(await itemAgrupadoDelProductoEn(s.ids.patagonia, [s.sucursalId], prisma)).toBeNull();
     const antes = await fotoDeLaEstructura();
-    const vistos = { [s.ids.patagonia]: 14000, [s.ids.huinganco]: 14000 };
-    expect(await sincronizarPrecioGrupoCarta([s.ids.patagonia, s.ids.huinganco], 15000, vistos)).toEqual({ ok: false, mensaje: MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO });
+    const vistos = { [s.ids.patagonia]: 14000, [s.ids.cordillera]: 14000 };
+    expect(await sincronizarPrecioGrupoCarta([s.ids.patagonia, s.ids.cordillera], 15000, vistos)).toEqual({ ok: false, mensaje: MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO });
     expect(await fotoDeLaEstructura()).toBe(antes);
   });
 
   it("agregar y quitar un producto de la carta no lo trata como 'miembro de un agrupado' (la carta ignora los agrupados)", async () => {
-    // La Cerveza Huinganco está en el agrupado oculto y sin contenido: se agrega suelta a Bebidas sin chocar con «ES_MIEMBRO_DE_AGRUPADO».
-    const alta = await agregarProductoALaCarta({ sucursalId: s.sucursalId, productoId: s.ids.huinganco, seccionCartaId: s.bebidas });
+    // La Cerveza Cordillera está en el agrupado oculto y sin contenido: se agrega suelta a Bebidas sin chocar con «ES_MIEMBRO_DE_AGRUPADO».
+    const alta = await agregarProductoALaCarta({ sucursalId: s.sucursalId, productoId: s.ids.cordillera, seccionCartaId: s.bebidas });
     expect(alta, alta.mensaje).toMatchObject({ ok: true });
     const baja = await quitarProductoDeLaCarta({ sucursalId: s.sucursalId, productoId: s.ids.patagonia, confirmado: true });
     expect(baja.mensaje).toContain("volvió a «Fuera de carta»");

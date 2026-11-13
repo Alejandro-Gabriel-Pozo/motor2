@@ -2,7 +2,7 @@
 
 Documento de la **Fase 0** de la hoja de ruta «Motor2: resultado esperado» (decisiones DEC-01 a DEC-36 de la sesión del 2026-10-19). Fija, ANTES de tocar nada, tres cosas:
 el estado del gate, lo que el sistema cobra y muestra hoy, y los inventarios sobre los que se apoyan las fases siguientes. Todo lo que dice «VERIFICADO» se leyó en el código o se ejecutó; las
-cifras de producción vienen de consultas de solo lectura del 2026-10-19 (proyecto Neon `inventario-api`, rama `main`: 1 empresa, 6 sucursales, 51 productos de venta).
+cifras de producción vienen de consultas de solo lectura del 2026-10-19 (proyecto Neon `inventario-api`, rama `main`: N empresa, N sucursales, N productos de venta).
 
 Esta fase **no cambia ninguna pantalla ni ningún comportamiento**. Los tests que agrega congelan lo que existe, incluidas las divergencias que hoy son errores (ver «Divergencias que la línea de base
 congela sin corregir»): están ahí para que, cuando una fase posterior las corrija, el cambio quede escrito y declarado en `test/arquitectura/caracterizaciones-congeladas.test.ts`.

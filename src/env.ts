@@ -100,7 +100,7 @@ const entornoEstricto = (source: Record<string, string | undefined>) => source.V
  */
 export function escapesProhibidosEnProduccion(source: Record<string, string | undefined>): string[] {
   const produccion = source.VERCEL_ENV === "production";
-  // S-32: `MOTOR2_ROL_ESTRICTO=0` está prohibido en CUALQUIER despliegue de Vercel, no solo en Producción: el Preview de `stockhneuquen` comparte la base de producción (ADR-007) y un
+  // S-32: `MOTOR2_ROL_ESTRICTO=0` está prohibido en CUALQUIER despliegue de Vercel, no solo en Producción: el Preview de `empresab` comparte la base de producción (ADR-007) y un
   // entorno menos confiable no puede ejecutar con el privilegio de uno más confiable. Fuera de Vercel, quien pide el entorno estricto (`MOTOR2_ENTORNO_ESTRICTO=1`: un despliegue propio)
   // tampoco puede dejar apagado el aislamiento por empresa.
   if (!estaEnVercel(source) && source.MOTOR2_ENTORNO_ESTRICTO !== "1") return [];

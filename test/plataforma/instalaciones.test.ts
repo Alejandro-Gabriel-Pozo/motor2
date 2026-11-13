@@ -20,13 +20,13 @@ const BASE = {
   PLATAFORMA_CLAVE_TOTP: randomBytes(32).toString("base64"),
   PLATAFORMA_URL_APP: "https://zuluhub.ejemplo.test",
 };
-const ADICIONAL = [{ id: "stockhneuquen", nombre: "Stock Neuquén", urlApp: "https://stock.ejemplo.test" }];
+const ADICIONAL = [{ id: "empresab", nombre: "Empresa B", urlApp: "https://stock.ejemplo.test" }];
 const CON_ADICIONAL = {
   ...BASE,
   PLATAFORMA_INSTALACION_ID: "zuluhub",
   PLATAFORMA_INSTALACION_NOMBRE: "Zuluhub",
   PLATAFORMA_INSTALACIONES_ADICIONALES: JSON.stringify(ADICIONAL),
-  PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN: url("ep-stock.c-2.us-west-2.aws.neon.tech", "neondb", ROL_DE_PLATAFORMA, "clave-secreta-dos"),
+  PLATAFORMA_DATABASE_URL_EMPRESAB: url("ep-stock.c-2.us-west-2.aws.neon.tech", "neondb", ROL_DE_PLATAFORMA, "clave-secreta-dos"),
 };
 
 function mensaje(entorno: Record<string, string | undefined>): string {
@@ -46,11 +46,11 @@ describe("leerInstalaciones", () => {
   it("con una adicional: la principal primero, con su id y nombre, y la adicional con su propia conexión y su propia dirección de app", () => {
     const [principal, stock] = leerInstalaciones(CON_ADICIONAL);
     expect(principal).toMatchObject({ id: "zuluhub", nombre: "Zuluhub", principal: true, urlApp: "https://zuluhub.ejemplo.test" });
-    expect(stock).toMatchObject({ id: "stockhneuquen", nombre: "Stock Neuquén", principal: false, urlApp: "https://stock.ejemplo.test", databaseUrl: CON_ADICIONAL.PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN });
+    expect(stock).toMatchObject({ id: "empresab", nombre: "Empresa B", principal: false, urlApp: "https://stock.ejemplo.test", databaseUrl: CON_ADICIONAL.PLATAFORMA_DATABASE_URL_EMPRESAB });
   });
 
   it("el nombre de la variable de conexión sale del id en mayúsculas", () => {
-    expect(variableDeConexionDe("stockhneuquen")).toBe("PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN");
+    expect(variableDeConexionDe("empresab")).toBe("PLATAFORMA_DATABASE_URL_EMPRESAB");
   });
 
   it("un JSON inválido da un mensaje que nombra la variable y NO repite el texto", () => {
@@ -65,35 +65,35 @@ describe("leerInstalaciones", () => {
     expect(m).not.toContain("clave-filtrable");
   });
 
-  it.each([["con mayúsculas", "Stock"], ["con guion", "stock-neuquen"], ["demasiado corto", "s"], ["empieza con dígito", "1stock"], ["vacío", ""]])("rechaza un id %s", (_n, id) => {
+  it.each([["con mayúsculas", "Stock"], ["con guion", "empresa-b"], ["demasiado corto", "s"], ["empieza con dígito", "1stock"], ["vacío", ""]])("rechaza un id %s", (_n, id) => {
     expect(mensaje({ ...CON_ADICIONAL, PLATAFORMA_INSTALACIONES_ADICIONALES: JSON.stringify([{ ...ADICIONAL[0], id }]) })).toContain("PLATAFORMA_INSTALACIONES_ADICIONALES");
   });
 
   it("rechaza un id repetido o igual al de la principal", () => {
-    expect(mensaje({ ...CON_ADICIONAL, PLATAFORMA_INSTALACIONES_ADICIONALES: JSON.stringify([{ ...ADICIONAL[0], id: "zuluhub" }]), PLATAFORMA_DATABASE_URL_ZULUHUB: CON_ADICIONAL.PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN })).toContain("ids repetidos");
+    expect(mensaje({ ...CON_ADICIONAL, PLATAFORMA_INSTALACIONES_ADICIONALES: JSON.stringify([{ ...ADICIONAL[0], id: "zuluhub" }]), PLATAFORMA_DATABASE_URL_ZULUHUB: CON_ADICIONAL.PLATAFORMA_DATABASE_URL_EMPRESAB })).toContain("ids repetidos");
   });
 
   it("si falta la conexión de una adicional, el mensaje nombra la variable que falta", () => {
-    const sin = { ...CON_ADICIONAL, PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN: undefined };
-    expect(mensaje(sin)).toContain("PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN");
+    const sin = { ...CON_ADICIONAL, PLATAFORMA_DATABASE_URL_EMPRESAB: undefined };
+    expect(mensaje(sin)).toContain("PLATAFORMA_DATABASE_URL_EMPRESAB");
   });
 
   it("rechaza una conexión adicional que no es del rol de plataforma, sin repetir la clave", () => {
-    const m = mensaje({ ...CON_ADICIONAL, PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN: url("ep-stock.c-2.us-west-2.aws.neon.tech", "neondb", "motor2", "clave-del-duenio") });
-    expect(m).toContain("PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN");
+    const m = mensaje({ ...CON_ADICIONAL, PLATAFORMA_DATABASE_URL_EMPRESAB: url("ep-stock.c-2.us-west-2.aws.neon.tech", "neondb", "motor2", "clave-del-duenio") });
+    expect(m).toContain("PLATAFORMA_DATABASE_URL_EMPRESAB");
     expect(m).toContain(ROL_DE_PLATAFORMA);
     expect(m).not.toContain("clave-del-duenio");
   });
 
   it("rechaza dos instalaciones que apuntan a la misma base, aunque una use el pooler de Neon", () => {
     // Mutación: sacar la normalización del `-pooler` (o el control de bases repetidas) pone este test en rojo.
-    const igual = { ...CON_ADICIONAL, PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN: url("ep-principal-pooler.c-6.us-east-2.aws.neon.tech") };
+    const igual = { ...CON_ADICIONAL, PLATAFORMA_DATABASE_URL_EMPRESAB: url("ep-principal-pooler.c-6.us-east-2.aws.neon.tech") };
     expect(mensaje(igual)).toContain("misma base");
-    expect(mensaje({ ...CON_ADICIONAL, PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN: BASE.PLATAFORMA_DATABASE_URL })).toContain("misma base");
+    expect(mensaje({ ...CON_ADICIONAL, PLATAFORMA_DATABASE_URL_EMPRESAB: BASE.PLATAFORMA_DATABASE_URL })).toContain("misma base");
   });
 
   it("dos bases distintas en el mismo servidor (otro nombre de base) son válidas", () => {
-    expect(leerInstalaciones({ ...CON_ADICIONAL, PLATAFORMA_DATABASE_URL_STOCKHNEUQUEN: url("ep-principal.c-6.us-east-2.aws.neon.tech", "otra_base") })).toHaveLength(2);
+    expect(leerInstalaciones({ ...CON_ADICIONAL, PLATAFORMA_DATABASE_URL_EMPRESAB: url("ep-principal.c-6.us-east-2.aws.neon.tech", "otra_base") })).toHaveLength(2);
   });
 
   it("rechaza direcciones de app repetidas o inválidas", () => {
@@ -115,7 +115,7 @@ describe("instalacionPorId", () => {
   const lista = leerInstalaciones(CON_ADICIONAL);
 
   it("devuelve la coincidencia EXACTA", () => {
-    expect(instalacionPorId(lista, "stockhneuquen")?.nombre).toBe("Stock Neuquén");
+    expect(instalacionPorId(lista, "empresab")?.nombre).toBe("Empresa B");
     expect(instalacionPorId(lista, "zuluhub")?.principal).toBe(true);
   });
 
@@ -164,7 +164,7 @@ describe("resumen del inicio", () => {
 
   it("una base que falla o no responde no afecta a las demás: solo su tarjeta dice «caída»", async () => {
     const r = await resumenDeInstalaciones([zulu, stock], async (i) => {
-      if (i.id === "stockhneuquen") throw new Error("la base no responde");
+      if (i.id === "empresab") throw new Error("la base no responde");
       return { pendientes: 3, migraciones: null };
     });
     expect(r).toEqual([{ instalacion: zulu, estado: "ok", pendientes: 3, atraso: null }, { instalacion: stock, estado: "caida" }]);
@@ -173,7 +173,7 @@ describe("resumen del inicio", () => {
   it("una base que NO responde nunca se da por caída recién al tope de tiempo, sin colgar el inicio", async () => {
     // Mutación: sacar el tope (conTiempoLimite) cuelga este test.
     const colgada = new Promise<{ pendientes: number; migraciones: null }>(() => {});
-    const r = await resumenDeInstalaciones([zulu, stock], async (i) => (i.id === "stockhneuquen" ? colgada : { pendientes: 1, migraciones: null }), 30);
+    const r = await resumenDeInstalaciones([zulu, stock], async (i) => (i.id === "empresab" ? colgada : { pendientes: 1, migraciones: null }), 30);
     expect(r.map((x) => x.estado)).toEqual(["ok", "caida"]);
   });
 
@@ -258,9 +258,9 @@ describe("rutas", () => {
     expect(rutaDeEmpresas("zuluhub")).toBe("/instalaciones/zuluhub/empresas");
     expect(rutaDeEmpresas("zuluhub", "todas")).toBe("/instalaciones/zuluhub/empresas");
     expect(rutaDeEmpresas("zuluhub", "cuit-pendiente")).toBe("/instalaciones/zuluhub/empresas?filtro=cuit-pendiente");
-    expect(rutaDeAlta("stockhneuquen")).toBe("/instalaciones/stockhneuquen/empresas/nueva");
-    expect(rutaDeEmpresa("stockhneuquen", "abc123")).toBe("/instalaciones/stockhneuquen/empresas/abc123");
-    expect(rutaDeEmpresa("stockhneuquen", "abc123", "modulos")).toBe("/instalaciones/stockhneuquen/empresas/abc123/modulos");
+    expect(rutaDeAlta("empresab")).toBe("/instalaciones/empresab/empresas/nueva");
+    expect(rutaDeEmpresa("empresab", "abc123")).toBe("/instalaciones/empresab/empresas/abc123");
+    expect(rutaDeEmpresa("empresab", "abc123", "modulos")).toBe("/instalaciones/empresab/empresas/abc123/modulos");
   });
 
   it("escapa lo que no es seguro en un segmento", () => {

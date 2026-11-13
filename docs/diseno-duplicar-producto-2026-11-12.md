@@ -33,7 +33,7 @@ Fuentes leídas: `ZuluHub-docs/11-especificaciones/migracion-de-la-carta-de-moto
 **Qué cambia para Motor2.** (1) El orquestador tenía razón en que el código de Pedernal solo trae «copiar opciones»; pero el pedido aprobado de Pedernal es **«Duplicar» completo** (ficha + opciones + receta + ficha técnica), y es lo que el dueño espera: «copio un bife y le cambio la salsa». (2) La diferencia de modelo importa: en Motor2 las opciones se **vinculan** a la biblioteca (compartidas), no se copian; la parte «copia independiente» de Pedernal en Motor2 corresponde a la **receta**, que sí es propia de cada producto. (3) «Cambiar la salsa» en Motor2 = cambiar el insumo de una línea de la receta: hoy `actualizarIngredienteDeReceta` cambia cantidad, unidad y merma del MISMO insumo; cambiar el insumo es **quitar y agregar** (**NO VERIFICADA** la secuencia exacta en pantalla): hay que sumarlo a la etapa de receta como «cambiar el ingrediente de una línea».
 
 ## Primero la opción más barata
-Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **ESTIMADO, no medido**, para «Bife con chimichurri» copiando de «Bife a criolla» en Huinganco; la medida de hoy es la de arriba (19 acciones en 4 pantallas, sin receta ni ficha).
+Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **ESTIMADO, no medido**, para «Bife con chimichurri» copiando de «Bife a criolla» en Cordillera; la medida de hoy es la de arriba (19 acciones en 4 pantallas, sin receta ni ficha).
 
 | | Qué agrega | Pantallas nuevas | Escritura nueva | Qué se ahorra (bife) | Riesgo |
 |---|---|---|---|---|---|
@@ -187,7 +187,7 @@ Tres formas de resolverlo, de menor a mayor costo. Estimaciones de acciones = **
 
 ## Nivel 9 — Consultas y experiencia
 - La confirmación SIEMPRE muestra qué se copia y qué no («se copian: 4 ingredientes, 3 pasos, la ficha técnica; no se copian: precios, carta, disponibilidad»), y si el destino ya tiene receta, su versión vigente y que quedará en el historial.
-- Estimación de pantallas y acciones (ESTIMADO) para el bife de Huinganco, «Bife con chimichurri» copiando de «Bife a criolla» (caso de prueba con las pantallas reales de la rama `alegp/tmp-capturas-antes-despues-carta`):
+- Estimación de pantallas y acciones (ESTIMADO) para el bife de Cordillera, «Bife con chimichurri» copiando de «Bife a criolla» (caso de prueba con las pantallas reales de la rama `alegp/tmp-capturas-antes-despues-carta`):
 
 | | Hoy (medido) | Con E1 (copiar receta) | E1 + E3 + E2 | E4 «Duplicar» |
 |---|---|---|---|---|
