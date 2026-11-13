@@ -10,7 +10,7 @@ import { puedeBuscarPorReferenciaDelProveedor, whereDeLosProductos } from "@/ser
 import { buscarProductosPorPalabras } from "@/server/lecturas/catalogo/busqueda-de-producto";
 import { disponibilidadDeProductos } from "@/server/lecturas/catalogo/disponibilidad";
 import { combinarTramosDeProductos, esCoincidenciaExactaDeCodigo, leerFiltrosDeProductos, necesitaLaEmpresaEntera, MENSAJE_PRESENTACIONES_APAGADAS, PRESENTACIONES_VISIBLES, type EntradaDeFiltrosDeProductos, whereDisponibleEn, whereDisponibleEnAlguna, type FiltroSelectorProducto } from "@/core/catalogo/public";
-import type { CampoSensibleDelProducto } from "@/core/features/catalogo/productos.schema";
+import type { CampoSensibleDelProducto, EntradaEdicionProducto, EntradaProducto } from "@/core/features/catalogo/productos.schema";
 import type { ModoDeVenta } from "@/core/opciones/public";
 import { guardComandoAgregarPresentacionAlternativa, guardComandoDarDeAltaProductoRapido, guardComandoDatosDeProducto, guardComandoSincronizarPrecioGrupoCarta } from "@/core/features/catalogo/productos.guard";
 import { GENERO_E_ITEM_AGRUPADO_VISIBLE, MENSAJE_GENERO_E_ITEM_AGRUPADO_APAGADO, ofrecerSincronizarPrecio } from "@/core/carta/public";
@@ -290,7 +290,7 @@ export async function listarProductosPagina(cursor?: string, termino?: string, f
   };
 }
 
-export interface DatosProducto {
+export interface DatosProducto extends Pick<EntradaProducto, "alicuotaIvaVenta" | "alicuotaIvaCompra"> {
   codigo?: string;
   nombre: string;
   tipo: TipoProducto;
@@ -326,7 +326,7 @@ export interface DatosProducto {
  * (`darDeAltaProducto`) los sigue pidiendo.
  */
 export type DatosProductoEdicion = Omit<DatosProducto, CampoSensibleDelProducto> &
-  Partial<Pick<DatosProducto, CampoSensibleDelProducto>> & {
+  Partial<Pick<DatosProducto, CampoSensibleDelProducto>> & Pick<EntradaEdicionProducto, "alicuotaVista"> & {
     /**
      * El precio de venta que mostraba el formulario al abrirse (ola «precio y carta», Fase 2, paso A4): si el precio cambia y este ya no es el guardado (otra persona lo cambió mientras se editaba), no
      * se guarda nada y el mensaje pide recargar. Si no viene y el precio cambia, también (falla cerrado).
