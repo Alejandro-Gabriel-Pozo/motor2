@@ -237,3 +237,55 @@ Carpeta motor2 (29 pantallas): `/tmp/claude-0/-home-user-motor2/c9147c71-5143-55
 - Pedido: el dueño, 2026-11-13, chat con el orquestador: «La creación o edición o todo lo relacionado a los productos. Como verás usa menos texto.»
 - Ninguna función nueva se suma por iniciativa de este documento: todo lo de §6 sale de un estado de la maqueta aprobada de Pedernal. Lo que motor2 tiene y Pedernal no (consignación, hermanar, «respaldo de un adicional») **no se quita**: se pregunta (Q5).
 - Sugerencias (no implementadas): ninguna.
+
+## 9. P3 — Presentaciones de compra («Cómo se compra»), SOLO DISEÑO (2026-11-13)
+
+Estado: **PROPUESTA** salvo lo marcado CONFIRMADA. No se toca el interruptor `PRESENTACIONES_VISIBLES` ni `prisma/`. Toda migración de esta sección **requiere autorización expresa** del dueño.
+
+**Decisión del dueño (CONFIRMADA, chat con el orquestador, 2026-11-13):** «El de Pedernal: presentación por producto» («caja x6» y «caja x12» son dos presentaciones; la oferta del proveedor apunta a la presentación). El diseño del 03/11 (envase por proveedor, `docs/diseno-envase-de-compra-en-el-vinculo-2026-11-03.md`) queda REVOCADO.
+
+### 9.1 Estado actual contra Pedernal (verificado en el código real el 2026-11-13)
+
+| # | Tema | Motor2 hoy (`Presentacion`) | Pedernal (`presentacion_de_producto`) |
+|---|---|---|---|
+| 1 | Qué es el envase | Una `Unidad` (p. ej. «caja») + factor; único por (producto, unidad): «caja x6» y «caja x12» no caben como dos presentaciones | Nombre libre de hasta 80, único por producto sin distinguir mayúsculas |
+| 2 | Cantidad en unidad base | `factorConversion`, editable con auditoría y permiso de campos sensibles | Fija (>0, 4 decimales); «otra cantidad es otra presentación», no se edita |
+| 3 | Peso variable | No existe | Marca «de peso variable» + peso aproximado |
+| 4 | Oferta del proveedor | Apunta al producto (y, según el diseño revocado del 03/11, iba a apuntar al vínculo) | Apunta a la presentación |
+| 5 | Clases comprables | Solo materia prima (`tipo = MP`) | Materia prima, insumo y reventa |
+
+Lo que **coincide**: la presentación ya es por producto (no por proveedor) y su cantidad se expresa en la unidad base. Hoy el interruptor está apagado (poda): la ficha no las muestra y las acciones de crear/activar/desactivar devuelven «apagado». Con el interruptor encendido hoy se mostraría el modelo viejo, no el de Pedernal.
+
+### 9.2 Etapas (cada una aditiva y reversible; cada migración con autorización expresa)
+
+1. **Migración aditiva de `Presentacion`**: `nombre` (texto ≤80, obligatorio para las nuevas; las existentes se rellenan con el nombre de su unidad), unicidad (producto, nombre sin mayúsculas) con índice nuevo que convive con el viejo, `pesoVariable` (booleano, falso por defecto) y `pesoAproximado` (decimal opcional, obligatorio solo si `pesoVariable`; CHECK en la base). Sin borrar columnas ni la unicidad vieja. Cantidad inmutable: la acción de editar el factor pasa a rechazar cuando ya hay compras (hoy `FACTOR_CON_USO`) y, en esta etapa, para todas.
+2. **La oferta del proveedor apunta a la presentación**: columna opcional `presentacionId` en la oferta (`ProveedorPorProducto`), con la regla de que, si está, la unidad y el factor salen de la presentación. Compras sin presentación siguen como hoy.
+3. **Recién después**: `PRESENTACIONES_VISIBLES = true` (revisando las pruebas de congelación y los golden que hoy fijan «apagado»), que prende la pestaña «Cómo se compra» (ya armada en P2) y la gestión en la ficha.
+4. **Clases comprables insumo y reventa**: cuando exista su migración de clases (decisión 2 del §8).
+
+### 9.3 Qué cambia para el usuario
+Quien edita productos podrá nombrar cada forma de compra («Caja x12»), indicar cuántas unidades base trae y, si pesa distinto cada vez, marcarla «de peso variable» con su peso aproximado; en la compra se elige la presentación y entra a stock la cantidad convertida a la unidad base (nunca «la caja»). Hasta la etapa 3 no se ve nada nuevo.
+
+### 9.4 Qué se hace con las presentaciones ya cargadas
+Hoy el interruptor está apagado: puede haber filas viejas. Antes de la etapa 1 hay que contarlas en la base real **en solo lectura** (lo hace el orquestador si el dueño lo pide) y decidir fila por fila: se conservan con `nombre` = nombre de la unidad y `pesoVariable = falso`. Ninguna se borra. Las compras ya hechas no se reescriben (el stock y el costo ya están en unidad base).
+
+### 9.5 Reversión
+Etapas 1 y 2: columnas nuevas opcionales y un índice nuevo; revertir es quitar el índice y las columnas sin perder nada de lo viejo. Etapa 3: poner el interruptor en `false`.
+
+### 9.6 Tabla «¿qué pasa si…?» (comando «agregar presentación»)
+
+| Caso | Resultado esperado |
+|---|---|
+| Se repite (clic doble, reintento) | Un solo registro: único (producto, nombre sin mayúsculas); la segunda llamada responde «ya existe» sin duplicar |
+| Dos personas agregan el mismo nombre a la vez | Gana la primera por la restricción única; la otra recibe el rechazo, sin estado a medias |
+| Producto no comprable (clase) | Se rechaza en el servidor con motivo |
+| Cantidad ≤ 0 o más de 4 decimales | Se rechaza |
+| Peso variable sin peso aproximado | Se rechaza (y la base lo impide con CHECK) |
+| Sin permiso de editar productos | Se rechaza en el servidor; la pantalla no ofrece el botón |
+| Otra empresa | Aislada por empresa (RLS y filtro en el servidor) |
+
+### 9.7 Pruebas
+Concurrencia (dos altas con el mismo nombre) e idempotencia (misma alta repetida) del comando; oráculo de combinaciones clase × peso variable × permiso; guardián de que el interruptor apagado no muestre la pestaña ni la gestión (ya existe) y de que encendido sí.
+
+### 9.8 Pregunta abierta para el dueño
+Ninguna bloqueante: la decisión de fondo ya está tomada. Queda la **autorización expresa de la migración de la etapa 1** (columnas `nombre`, `pesoVariable`, `pesoAproximado` y un índice único nuevo).
