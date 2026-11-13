@@ -190,3 +190,110 @@ describe("entradasVistaPreviaPortal", () => {
     ]);
   });
 });
+
+describe("Server Action guardarPortalEmpresa: modo marca (`portal_marca_derivada = «si»` exige una marca que se lea: M1, M2 y M3)", () => {
+  let operadorRolId: string;
+  let centralId: string;
+
+  beforeEach(async () => {
+    await limpiarBaseDeTest();
+    const base = await sembrarBase();
+    centralId = base.sucursal.id;
+    operadorRolId = base.operador.id;
+    const admin = await crearUsuarioConMembresia({ email: "admin@test.com", sucursalId: centralId, rolId: base.admin.id });
+    await mockearUsuarioActual({ id: admin.id, email: admin.email, nombre: null });
+  });
+
+  const guardado = async () => (await prisma.portalCartaEmpresa.findFirst())?.valores;
+  const SUELTOS = { portal_header_bg: "#e5dfdf", portal_card_bg: "transparent", portal_titulo: "Nuestras sucursales" };
+
+  it("una marca válida se guarda con el marcador, junto a los colores sueltos (que no se pierden)", async () => {
+    const r = await guardarPortalEmpresa({ ...SUELTOS, portal_color_marca: "#5c57a2", portal_marca_derivada: "si" });
+    expect(r.ok).toBe(true);
+    expect(await guardado()).toEqual({ ...SUELTOS, portal_color_marca: "#5c57a2", portal_marca_derivada: "si" });
+  });
+
+  it.each([
+    ["#ffcb69", "casi no se distingue del fondo"],
+    ["#96bbbb", "casi no se distingue del fondo"],
+    ["#797d62", "no se lee bien"],
+    ["#d32f2f", "no se lee bien"],
+  ])("la marca %s se rechaza con un mensaje que dice qué hacer, sin escribir nada", async (marca, motivo) => {
+    await guardarPortalEmpresa({ portal_titulo: "Original" });
+    const r = await guardarPortalEmpresa({ ...SUELTOS, portal_color_marca: marca, portal_marca_derivada: "si" });
+    expect(r.ok).toBe(false);
+    expect(r.mensaje).toContain("Color de marca del portal: ");
+    expect(r.mensaje).toContain(motivo);
+    expect(r.mensaje).toMatch(/Elegí uno más/);
+    expect(await guardado()).toEqual({ portal_titulo: "Original" });
+  });
+
+  it.each(["", "#5C57A2", "#fff", "red", "rgb(92, 87, 162)", "oklch(0.5 0.1 30)"])("con el marcador, una marca %j (no #rrggbb en minúsculas) se rechaza sin escribir", async (marca) => {
+    const r = await guardarPortalEmpresa({ portal_color_marca: marca, portal_marca_derivada: "si" });
+    expect(r.ok).toBe(false);
+    expect(r.mensaje).toContain("Color de marca del portal: ");
+    expect(await prisma.portalCartaEmpresa.count()).toBe(0);
+  });
+
+  it("con el marcador y sin ninguna marca cargada se rechaza (no se asume ningún color)", async () => {
+    const r = await guardarPortalEmpresa({ ...SUELTOS, portal_marca_derivada: "si" });
+    expect(r.ok).toBe(false);
+    expect(await prisma.portalCartaEmpresa.count()).toBe(0);
+  });
+
+  it("sin el marcador, el guardado de siempre no cambia: una marca de bajo contraste o en cualquier formato se acepta", async () => {
+    expect((await guardarPortalEmpresa({ portal_color_marca: "#ffcb69" })).ok).toBe(true);
+    expect((await guardarPortalEmpresa({ portal_color_marca: "rgb(255, 203, 105)" })).ok).toBe(true);
+    expect((await guardarPortalEmpresa({ portal_color_marca: "red", portal_marca_derivada: "" })).ok).toBe(true);
+  });
+
+  it("ida y vuelta: pasar a la marca y volver deja `valores` igual que antes (byte a byte), sin el marcador y con los colores sueltos intactos", async () => {
+    const antes = { ...SUELTOS, portal_color_marca: "#5c57a2" };
+    await guardarPortalEmpresa(antes);
+    const valoresAntes = JSON.stringify(await guardado());
+    await guardarPortalEmpresa({ ...antes, portal_marca_derivada: "si" });
+    expect(await guardado()).toEqual({ ...antes, portal_marca_derivada: "si" });
+    await guardarPortalEmpresa({ ...antes, portal_marca_derivada: "" });
+    expect(JSON.stringify(await guardado())).toBe(valoresAntes);
+  });
+
+  it("idempotente: pasar dos veces a la misma marca deja una fila con los mismos valores; a la vez (carrera) también", async () => {
+    const valores = { ...SUELTOS, portal_color_marca: "#5c57a2", portal_marca_derivada: "si" };
+    expect((await guardarPortalEmpresa(valores)).ok).toBe(true);
+    expect((await guardarPortalEmpresa(valores)).ok).toBe(true);
+    const dos = await Promise.all([guardarPortalEmpresa(valores), guardarPortalEmpresa(valores)]);
+    expect(dos.map((r) => r.ok)).toEqual([true, true]);
+    expect(await prisma.portalCartaEmpresa.count()).toBe(1);
+    expect(await guardado()).toEqual(valores);
+  });
+
+  it("carrera del PRIMER guardado (tabla vacía) con valores distintos (pasar y volver a la vez): una fila, estado válido, sin error de la base", async () => {
+    const marcada = { ...SUELTOS, portal_color_marca: "#5c57a2", portal_marca_derivada: "si" };
+    const clasica = { ...SUELTOS, portal_color_marca: "#5c57a2", portal_marca_derivada: "" };
+    const resultados = await Promise.all([guardarPortalEmpresa(marcada), guardarPortalEmpresa(clasica)]);
+    expect(resultados.map((r) => r.ok)).toEqual([true, true]);
+    expect(await prisma.portalCartaEmpresa.count()).toBe(1);
+    // Gana uno de los dos, entero (nunca una mezcla): con el marcador o sin él (los vacíos no se guardan).
+    expect([marcada, { ...SUELTOS, portal_color_marca: "#5c57a2" }]).toContainEqual(await guardado());
+  });
+
+  it("sin el permiso `carta_portal` no se puede pasar a marca (el operador arranca sin él)", async () => {
+    const operador = await crearUsuarioConMembresia({ email: "operador2@test.com", sucursalId: centralId, rolId: operadorRolId });
+    await mockearUsuarioActual({ id: operador.id, email: operador.email, nombre: null });
+    const r = await guardarPortalEmpresa({ portal_color_marca: "#5c57a2", portal_marca_derivada: "si" });
+    expect(r.ok).toBe(false);
+    expect(r.mensaje).toMatch(/No tenés permiso/);
+    expect(await prisma.portalCartaEmpresa.count()).toBe(0);
+  });
+
+  it("aislamiento entre empresas: pasar a marca no toca el portal de otra empresa", async () => {
+    await prismaAdmin.empresa.create({ data: { id: "norte", nombre: "Norte", slug: "norte", zonaHoraria: "America/Argentina/Buenos_Aires", moneda: "ARS", estado: "ACTIVE" } });
+    await activarTodosLosModulos("norte");
+    await prismaAdmin.portalCartaEmpresa.create({ data: { empresaId: "norte", valores: { portal_titulo: "Norte" } } });
+    await guardarPortalEmpresa({ portal_color_marca: "#5c57a2", portal_marca_derivada: "si" });
+    expect(await prismaAdmin.portalCartaEmpresa.findMany({ orderBy: { empresaId: "asc" }, select: { empresaId: true, valores: true } })).toEqual([
+      { empresaId: EMPRESA_POR_DEFECTO_ID, valores: { portal_color_marca: "#5c57a2", portal_marca_derivada: "si" } },
+      { empresaId: "norte", valores: { portal_titulo: "Norte" } },
+    ]);
+  });
+});
