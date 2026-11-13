@@ -1,6 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import type { ComandoGuardarSeccionCarta, ResultadoGuardarSeccionCarta } from "@/core/features/carta/secciones.schema";
+import { esChoqueDeIndiceUnico } from "@/core/movimientos/public-servidor";
 import { exito, fracaso } from "@/core/resultado-caso";
 import { cambiarDatosDeSeccionCarta, crearSeccionDeCarta } from "@/server/persistencia/carta/secciones";
 
@@ -32,9 +33,20 @@ export async function guardarSeccionCartaCasoDeUso(actor: Pick<ContextoUsuario, 
   if (comando.id) {
     const existente = await actor.db.seccionCarta.findUnique({ where: { id: comando.id } });
     if (!existente) return fracaso("SECCION_NO_ENCONTRADA", "No se encontró la sección de carta.");
-    const s = await cambiarDatosDeSeccionCarta(actor.db, { id: comando.id, ...data });
-    return exito(`Sección de carta "${s.nombre}" guardada.`, s);
+    // Carrera: el índice único sobre lower(nombre) deja pasar una sola escritura del mismo nombre; la que pierde se rechaza igual que el chequeo de arriba.
+    try {
+      const s = await cambiarDatosDeSeccionCarta(actor.db, { id: comando.id, ...data });
+      return exito(`Sección de carta "${s.nombre}" guardada.`, s);
+    } catch (e) {
+      if (esChoqueDeIndiceUnico(e)) return fracaso("NOMBRE_REPETIDO", `Ya existe la sección de carta "${comando.nombre}".`);
+      throw e;
+    }
   }
-  const s = await crearSeccionDeCarta(actor.db, data);
-  return exito(`Sección de carta "${s.nombre}" creada.`, s);
+  try {
+    const s = await crearSeccionDeCarta(actor.db, data);
+    return exito(`Sección de carta "${s.nombre}" creada.`, s);
+  } catch (e) {
+    if (esChoqueDeIndiceUnico(e)) return fracaso("NOMBRE_REPETIDO", `Ya existe la sección de carta "${comando.nombre}".`);
+    throw e;
+  }
 }
