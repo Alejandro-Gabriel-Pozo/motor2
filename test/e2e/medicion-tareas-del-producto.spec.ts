@@ -332,12 +332,11 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
 
     // 3) Pasarlo a «Por opción»: el paso 1 está en la tira.
     await m.clic(pasos.getByRole("link", { name: "Datos" }), "tocar «Datos» (la ficha)");
-    await m.clic(page.getByRole("link", { name: "Editar datos" }), "tocar «Editar datos»");
-    await m.ver("se abre la edición", () => expect(page.getByText(`Editar "${producto}"`)).toBeVisible());
+    await m.ver("se abre la edición", () => expect(page.getByRole("heading", { level: 1, name: producto })).toBeVisible());
     await m.marcar(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ }), "elegir «Por opción»");
     await m.clic(page.getByRole("button", { name: "Guardar cambios" }), "tocar «Guardar cambios»");
     await m.ver("se llega a la ficha ya como base", () => expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=cambios/));
-    await m.ver("la ficha dice «Se vende por opción»", () => expect(page.locator("[data-se-vende-por-opcion]")).toBeVisible());
+    await m.ver("la ficha dice «Por opción»", () => expect(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ })).toBeChecked());
 
     const medicion = m.resultado(true);
     const guardado = await prisma.producto.findFirstOrThrow({ where: { nombre: producto }, select: { id: true, modoDeVenta: true } });
@@ -364,7 +363,7 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
 
     await m.ir(`/catalogo/productos/${base.productoId}`, "abrir la ficha del producto");
     await m.ver("la ficha es la del producto", () => expect(page.getByRole("heading", { name: base.nombre, level: 1 })).toBeVisible());
-    await m.clic(page.getByRole("link", { name: "Editar opciones" }), "tocar «Editar opciones»");
+    await m.clic(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: /^Opciones/ }), "tocar la pestaña «Opciones»");
     await m.ver("se abren las opciones de venta del producto (el paso «Opciones y precio»)", () => expect(page.getByRole("heading", { level: 2, name: "Opciones" })).toBeVisible());
     const tarjeta = page.locator(`[data-admision-grupo='${base.nombreGrupo}']`);
     await m.llenar(tarjeta.getByLabel("Precio de Napolitana en este producto"), "23500", "escribir el precio nuevo de «Napolitana»");

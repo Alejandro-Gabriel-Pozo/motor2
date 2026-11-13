@@ -486,7 +486,7 @@ testAutenticado("catalogo/productos/[id]/datos: el formulario de edición sin vi
   const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-ED-${marca}`, nombre: `E2E A11y Editar ${marca}`, tipo: "MP", unidadStockId: kg.id } });
   try {
     await page.goto(`/catalogo/productos/${producto.id}/datos`);
-    await conTitulo(page, /Editar/);
+    await conTitulo(page, producto.nombre);
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
     expect((await new AxeBuilder({ page }).analyze()).violations, "edición de materia prima").toEqual([]);
   } finally {
@@ -500,7 +500,7 @@ testAutenticado("catalogo/productos/[id]/datos de un producto de venta: sin viol
   const producto = await prisma.producto.create({ data: { codigo: `E2E-A11Y-DPV-${marca}`, nombre: `E2E A11y Datos PV ${marca}`, tipo: "PV", unidadStockId: kg.id, precioVenta: 3200 } });
   try {
     await page.goto(`/catalogo/productos/${producto.id}/datos`);
-    await conTitulo(page, /Editar/);
+    await conTitulo(page, producto.nombre);
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
     expect((await new AxeBuilder({ page }).analyze()).violations, "datos de un producto de venta").toEqual([]);
   } finally {

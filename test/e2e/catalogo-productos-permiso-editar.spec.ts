@@ -49,13 +49,14 @@ async function crearProducto(marca: number, sucursalId: string) {
   return producto;
 }
 
-test("un rol que solo VE productos no abre /datos (el paso 1) por URL directa: no se dibuja el formulario", async ({ browser, baseURL, sucursalId }) => {
+test("un rol que solo VE productos abre /datos (lleva a la ficha) y los campos están apagados, sin «Guardar»", async ({ browser, baseURL, sucursalId }) => {
   const producto = await crearProducto(Date.now(), sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, {});
   try {
     await page.goto(`/catalogo/productos/${producto.id}/datos`);
-    await expect(page.getByText(/No tenés permiso/).first()).toBeVisible();
-    await expect(page.locator('input[name="nombre"]'), "el formulario del paso 1 no tenía que llegar a dibujarse").toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}$`));
+    await expect(page.locator('input[name="nombre"]')).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Guardar cambios" })).toHaveCount(0);
   } finally {
     await limpiar();
     await prisma.disponibilidadProducto.deleteMany({ where: { productoId: producto.id } });
@@ -93,7 +94,9 @@ test("un rol que solo VE productos no tiene enlace «Editar» en la lista ni «E
     await expect(enlaceEditar, "«Editar datos» de la ficha no tenía que ser un enlace").toHaveCount(0);
     await expect(page.getByRole("button", { name: /^(Des)?[Aa]ctivar$/ }), "«Desactivar» de la ficha no tenía que mostrarse").toHaveCount(0);
     // La portada del espacio de quien solo ve: sin formularios, y los pasos como texto sin enlace (las pestañas Datos y Precios las abre quien ve el catálogo).
-    await expect(page.locator("main form")).toHaveCount(0);
+    // Quien solo ve recibe los mismos campos, apagados y sin «Guardar» (la barrera es el servidor).
+    await expect(page.locator('input[name="nombre"]')).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Guardar cambios" })).toHaveCount(0);
     const pasos = page.getByRole("navigation", { name: "Pasos del producto" });
     await expect(pasos.getByRole("link")).toHaveText(["Datos", "Precios"]);
     for (const titulo of ["Opciones", "Receta", "En la carta"]) await expect(pasos.getByText(titulo, { exact: true }), `el paso «${titulo}» se ve como texto`).toBeVisible();
@@ -118,11 +121,10 @@ test("un rol CON producto_editar y producto_disponibilidad ve «Editar» en la l
     await expect(page.getByRole("button", { name: "Desactivar", exact: true })).toBeVisible();
 
     await page.goto(`/catalogo/productos/${producto.id}`);
-    await expect(enlaceEditar).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Desactivar", exact: true })).toBeVisible();
     // Contraespejo del caso de solo ver: «Editar datos» ES el enlace al formulario, y quien edita lo ve.
-    await expect(page.getByRole("link", { name: "Editar datos" })).toHaveAttribute("href", `/catalogo/productos/${producto.id}/datos`);
-    await enlaceEditar.click();
+    await expect(page.locator('input[name="nombre"]')).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Guardar cambios" })).toBeVisible();
     await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
   } finally {
     await limpiar();
@@ -133,18 +135,17 @@ test("un rol CON producto_editar y producto_disponibilidad ve «Editar» en la l
 
 test("«Editar» y «Desactivar» son permisos separados: cada uno muestra solo su control", async ({ browser, baseURL, sucursalId }) => {
   const producto = await crearProducto(Date.now(), sucursalId);
-  const enlaceEditar = (page: import("@playwright/test").Page) => page.locator(`a[href="/catalogo/productos/${producto.id}/datos"]:visible`);
   const soloEditar = await abrirComoRol(browser, baseURL, sucursalId, { editarProducto: true });
   const soloDisponibilidad = await abrirComoRol(browser, baseURL, sucursalId, { disponibilidad: true });
   try {
     await soloEditar.page.goto(`/catalogo/productos/${producto.id}`);
     await expect(soloEditar.page.getByRole("heading", { name: producto.nombre })).toBeVisible();
-    await expect(enlaceEditar(soloEditar.page)).toHaveCount(1);
+    await expect(soloEditar.page.getByRole("button", { name: "Guardar cambios" })).toBeVisible();
     await expect(soloEditar.page.getByRole("button", { name: /^(Des)?[Aa]ctivar$/ }), "sin producto_disponibilidad no hay «Desactivar»").toHaveCount(0);
 
     await soloDisponibilidad.page.goto(`/catalogo/productos/${producto.id}`);
     await expect(soloDisponibilidad.page.getByRole("heading", { name: producto.nombre })).toBeVisible();
-    await expect(enlaceEditar(soloDisponibilidad.page), "sin producto_editar no hay «Editar»").toHaveCount(0);
+    await expect(soloDisponibilidad.page.getByRole("button", { name: "Guardar cambios" }), "sin producto_editar no hay «Guardar»").toHaveCount(0);
     await expect(soloDisponibilidad.page.getByRole("button", { name: "Desactivar", exact: true })).toBeVisible();
   } finally {
     await soloEditar.limpiar();

@@ -31,7 +31,7 @@ test("al tocar «Editar» en la lista, la pantalla de edición carga TODOS los d
   await page.goto(`/catalogo/productos?q=${encodeURIComponent(producto.nombre)}`);
   await page.getByRole("row", { name: new RegExp(producto.codigo) }).getByRole("link", { name: "Editar", exact: true }).click();
   await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
-  await expect(page.getByText(`Editar "${producto.nombre}"`)).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: producto.nombre })).toBeVisible();
 
   // Todos los campos tienen que reflejar el producto, no solo los que siguen a `defaultValue`.
   await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);

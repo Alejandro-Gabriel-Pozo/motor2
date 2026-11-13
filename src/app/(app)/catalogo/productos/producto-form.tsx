@@ -68,7 +68,13 @@ export function ProductoForm({
   cantidadSucursales,
   nombreSucursalActual,
   venta,
+  soloLectura = false,
+  sinEncabezado = false,
 }: {
+  /** La ficha ya dice el nombre en su título: el formulario no repite «Editar "nombre"». */
+  sinEncabezado?: boolean;
+  /** Quien ve el catálogo pero no puede editar (`producto_editar`) ve los mismos campos, apagados y sin «Guardar»: es cortesía de la pantalla; la barrera es el servidor, que exige el permiso al guardar. */
+  soloLectura?: boolean;
   unidades: OpcionUnidad[];
   insumosIniciales: Opcion[];
   categoriasIniciales: Opcion[];
@@ -197,7 +203,8 @@ export function ProductoForm({
       }}
       className="flex max-w-xl flex-col gap-3"
     >
-      <h2 className="font-medium">{editando ? `Editar "${productoExistente!.nombre}"` : "Nuevo producto"}</h2>
+      <fieldset disabled={soloLectura} className="contents">
+      {sinEncabezado ? null : <h2 className="font-medium">{editando ? `Editar "${productoExistente!.nombre}"` : "Nuevo producto"}</h2>}
 
       {editando ? (
         <div className="flex flex-col gap-1">
@@ -541,9 +548,12 @@ export function ProductoForm({
           } alTerminar={() => irALaFicha(productoExistente.id)} />
       )}
 
-      <Boton type="submit" disabled={pending}>
-        {pending ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}
-      </Boton>
+      {soloLectura ? null : (
+        <Boton type="submit" disabled={pending}>
+          {pending ? "Guardando..." : editando ? "Guardar cambios" : "Crear producto"}
+        </Boton>
+      )}
+      </fieldset>
     </form>
   );
 }

@@ -35,11 +35,11 @@ test("la lista lleva a la ficha, que muestra los datos y los enlaces a los repor
   await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}$`));
 
   await expect(page.getByRole("heading", { name: producto.nombre })).toBeVisible();
-  await expect(page.getByText(`E2E Categoría Ficha ${sufijo}`)).toBeVisible();
-  await expect(page.getByText("$ 4.500,00")).toBeVisible();
-  await expect(page.getByText("Observación de la ficha")).toBeVisible();
-  // Es solo lectura: no hay formulario, y los enlaces a los reportes que ya existen están.
-  await expect(page.locator("main form")).toHaveCount(0);
+  // La pestaña Datos es el formulario con los datos cargados.
+  await expect(page.locator("select option:checked", { hasText: `E2E Categoría Ficha ${sufijo}` })).toHaveCount(1);
+  await expect(page.getByRole("textbox", { name: "Precio de venta" })).toHaveValue(/4\.?500/);
+  await expect(page.locator('textarea[name="observaciones"]')).toHaveValue("Observación de la ficha");
+  // Los enlaces a los reportes que ya existen están.
   await expect(page.locator(`a[href="/reportes/historial?productoId=${producto.id}"]`)).toHaveCount(1);
   await expect(page.locator('a[href="/reportes/costos"]').first()).toBeVisible();
   // La receta es un paso del espacio (una pestaña del marco): el enlace es UNO, no dos.
@@ -63,10 +63,10 @@ test("la ficha de un producto de venta es la portada del espacio: el nombre es e
   await expect(page.getByText(/no tiene receta: armala en Catálogo/)).toBeVisible();
   // Contraespejo: Datos y Precios están completos (tiene precio): no son un pendiente.
   await expect(pasos.getByRole("link", { name: "Precios" })).not.toContainText("Pendiente");
-  // «Editar datos» lleva al formulario de los datos, con el nombre cargado.
-  await page.getByRole("link", { name: "Editar datos" }).click();
-  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
+  // La pestaña Datos ES el formulario de los datos, con el nombre cargado (y el enlace viejo /datos lleva a la misma pantalla).
   await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
+  await page.goto(`/catalogo/productos/${producto.id}/datos`);
+  await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}$`));
   await expect(page.getByRole("navigation", { name: "Pasos del producto" }).getByRole("link", { name: "Datos" })).toHaveAttribute("aria-current", "page");
 });
 
@@ -114,16 +114,14 @@ test("editar y guardar vuelve a la ficha con el aviso, y la ficha muestra lo nue
   const producto = await crearProducto(sufijo);
 
   await page.goto(`/catalogo/productos/${producto.id}`);
-  // El enlace al editor es «Editar datos» de la ficha.
-  await page.getByRole("link", { name: "Editar datos" }).click();
-  await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}/datos$`));
+  // El editor está en la ficha misma (pestaña Datos).
 
   const nuevoNombre = `E2E Ficha Editado ${sufijo}`;
   await page.locator('input[name="nombre"]').fill(nuevoNombre);
   await page.getByRole("button", { name: "Guardar cambios" }).click();
 
   await page.waitForURL(new RegExp(`/catalogo/productos/${producto.id}\\?guardado=cambios$`));
-  await expect(page.getByRole("status")).toHaveText("Cambios guardados.");
+  await expect(page.getByRole("status")).toContainText("actualizado");
   await expect(page.getByRole("heading", { name: nuevoNombre })).toBeVisible();
   expect((await prisma.producto.findUniqueOrThrow({ where: { id: producto.id } })).nombre).toBe(nuevoNombre);
 });

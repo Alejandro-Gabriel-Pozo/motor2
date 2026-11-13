@@ -370,7 +370,7 @@ for (const { ancho, alto } of [
     await page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ }).check();
     await page.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(page).toHaveURL(/\/catalogo\/productos\/[^/?]+\?guardado=cambios/);
-    await expect(page.locator("[data-se-vende-por-opcion]")).toBeVisible();
+    await expect(page.getByRole("group", { name: "¿Cómo se vende?" }).getByRole("radio", { name: /Por opción/ })).toBeChecked();
 
     // 4) El paso 2, ya sin pendientes: ni la insignia en la tira ni el aviso de «Por opción».
     await pasos.getByRole("link", { name: /^Opciones/ }).click();
@@ -413,7 +413,7 @@ for (const { ancho, alto } of [
   });
 }
 
-test("quien solo VE productos: la portada sin formularios y los pasos como texto; por URL, «No tenés permiso» en los pasos 1 y 2", async ({ browser, baseURL, sucursalId }) => {
+test("quien solo VE productos: la portada sin formularios y los pasos como texto; por URL, «No tenés permiso» en Opciones y En la carta", async ({ browser, baseURL, sucursalId }) => {
   const m = marca();
   const producto = await productoDirecto(m, sucursalId);
   const { page, limpiar } = await abrirComoRol(browser, baseURL, sucursalId, { producto_ver_catalogo: "ver" });
@@ -424,9 +424,14 @@ test("quien solo VE productos: la portada sin formularios y los pasos como texto
     // Quien solo ve abre Datos (la pantalla en la que está) y Precios; los pasos que no puede abrir quedan como texto.
     await expect(pasos.getByRole("link")).toHaveCount(2);
     for (const titulo of ["Datos", "Precios", "Opciones"]) await expect(pasos).toContainText(titulo);
-    await expect(page.locator("main input, main textarea, main select"), "la portada no tiene formularios").toHaveCount(0);
+    // La pestaña Datos trae los mismos campos que quien edita, apagados y sin «Guardar».
+    await expect(page.locator("main input:enabled, main textarea:enabled, main select:enabled"), "ningún campo editable").toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Guardar cambios" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Editar opciones" })).toHaveCount(0);
-    for (const ruta of ["datos", "opciones", "en-la-carta"]) {
+    // /datos ya no es una pantalla aparte: lleva a la ficha (donde los campos están apagados).
+    await page.goto(`/catalogo/productos/${producto.id}/datos`);
+    await expect(page).toHaveURL(new RegExp(`/catalogo/productos/${producto.id}$`));
+    for (const ruta of ["opciones", "en-la-carta"]) {
       await page.goto(`/catalogo/productos/${producto.id}/${ruta}`);
       await expect(page.getByText(/No tenés permiso/).first(), ruta).toBeVisible();
       await expect(page.locator("main input, main textarea, main select, main [data-admision-grupo]"), `${ruta}: no se dibuja ningún formulario`).toHaveCount(0);
