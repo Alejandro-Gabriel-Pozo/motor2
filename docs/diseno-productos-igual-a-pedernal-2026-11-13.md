@@ -123,17 +123,26 @@ La sesión `session_01FWp2kfQWf5BWX1eaD9dN4k` ya tiene (según el encargo del or
 
 Ya decidido y respetado: Duplicar (E4) hecho; ficha de «parte» única (`docs/diseno-parte-2026-11-12.md`); poda de promos en curso (#260); `docs/diseno-consumo-de-opcion-en-el-producto-2026-11-09.md` para el consumo.
 
-## 8. Preguntas abiertas para el dueño (no son supuestos)
+## 8. Decisiones del dueño y preguntas que siguen abiertas
 
-1. **Café: ¿una variante o dos ejes?** La decisión 78 (13/10, DOC) dice «un producto con hasta dos ejes (tipo y tamaño) y un precio por combinación». La maqueta aprobada de Pedernal de hoy dice «un producto admite una sola variante… no hay precio propio por combinación: si una combinación necesita otro precio, es otro producto». Son incompatibles. ¿Cuál rige para motor2? (Cambia el modelo de precios; `PrecioLocalDeCombinacion` ya existe.) **PENDIENTE.**
-2. **Clases:** ¿motor2 pasa a las 5 clases de Pedernal (Materia prima, Insumo, Reventa, Elaborado, Producto vendible) o se queda con 3 (las que ya existen)? Insumo y Reventa requieren M1.
-3. **Departamento:** ¿entra la clasificación con «vigente desde» (M2)? Hoy «Categoría» (rubro con margen objetivo) es otra cosa; ¿conviven o se reemplaza (en Pedernal «Categoría» se reemplazó, dueño 12/11, DOC)?
-4. **Ocultar:** ¿entra «Ocultar» (local y toda la empresa) como en Pedernal (M3)?
-5. **Lo que Pedernal no muestra en la ficha** y motor2 sí (hermanar insumos, consignación, observaciones, factor de conversión, «producto de respaldo de un adicional»): ¿se ocultan, se mueven a otra pantalla o se mantienen? (Regla de poda: se declara qué necesidad resuelve cada una antes de ocultarla; no se quita nada sin aviso.)
-6. **Pestañas «Receta» y «En la carta»:** ¿dentro de la ficha (como hoy) o fuera, como en Pedernal?
-7. **Sección de la carta:** Pedernal la tiene como un solo campo en Datos; motor2 la tiene por sucursal. ¿Una sola o por sucursal?
-8. **Fracciones y peso («Cómo se vende»):** ¿se reemplaza el «paso de venta» libre por porciones elegidas (½, ¼, ⅛) y peso kilo/gramo (D6)? ¿Y la conversión de precios al cambiar de unidad?
-9. **Capturas sobre datos reales:** ¿hace falta una pasada sobre la copia de Neon con Huinganco y el resto de tu catálogo antes de aprobar? (esta sesión no la hizo).
+**Respondidas por el dueño el 2026-11-13** (chat del dueño con el orquestador; preguntas con opciones, cita literal de la opción elegida):
+
+| # | Pregunta | Respuesta (cita literal) | Estado | Qué fija |
+|---|---|---|---|---|
+| 1 | Café: ¿una variante o dos ejes? | «Decisión 78: dos ejes con precio por combinación» | **CONFIRMADA** | Un producto, tipo × tamaño, precio por combinación. **Diverge deliberadamente** de la maqueta de Pedernal de hoy («una sola variante»). Se pide que **Pedernal actualice su maqueta**, no motor2. La fila D10 queda como divergencia confirmada, no como pendiente |
+| 2 | ¿Qué clases? | «Las 5 de Pedernal» | **CONFIRMADA** | Producto vendible, reventa, materia prima, insumo, elaborado. **Requiere migración (M1): NO se escribe.** M1 queda en diseño hasta autorización expresa; el nivel 6 solo con los niveles 1 a 5 confirmados |
+| 4 | ¿Entra «Ocultar»? | «Sí, entra» | **CONFIRMADA** | Requiere migración (M3): solo diseño, queda para después con autorización expresa |
+| 9 | ¿Por dónde se arranca? | «Sí, empezar por la lista y la ficha» | **CONFIRMADA** | Primero los cambios sin base de datos: lista (P1) y ficha de 3 pestañas (P2); después los demás, de a un PR chico, con capturas a 375 px antes de cada merge |
+
+**Siguen PENDIENTES (no se asumen):**
+3. Departamento (M2): ¿entra la clasificación con «vigente desde»? ¿Convive con «Categoría» o la reemplaza?
+5. Lo que Pedernal no muestra en la ficha y motor2 sí (hermanar insumos, consignación, observaciones, factor de conversión, producto de respaldo de un adicional): ¿se oculta, se mueve o se mantiene?
+6. Receta y «En la carta»: ¿dentro de la ficha o fuera?
+7. Sección de la carta: ¿única o por sucursal?
+8. «Cómo se vende»: ¿porciones ½ ¼ ⅛ y peso en lugar del paso libre? ¿Y la conversión de precios al cambiar de unidad?
+9b. ¿Capturas sobre la copia de Neon?
+
+*(El texto original de las preguntas 1, 2 y 4 queda arriba, en D2, D5 a D7 y D10, como contexto.)*
 
 ## 9. Capturas (a 375 px; fuera del repositorio)
 
