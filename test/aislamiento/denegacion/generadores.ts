@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { intento, variantes, type ContextoDeArgumentos, type Generadores, type Kit, type Valor } from "./argumentos";
-import { DIA_DEL_PLATO_DEL_MUNDO } from "./mundo";
-import { ZONA_ARGENTINA, diaDeCalendario, sumarDias } from "../../../src/core/tiempo/zona-horaria";
+import { ZONA_ARGENTINA, diaDeCalendario } from "../../../src/core/tiempo/zona-horaria";
 import { nroFacturaDePrueba } from "../../setup/comprobante-de-prueba";
 import { REFERENCIA_DE_PRUEBA } from "../../setup/referencia-de-prueba";
 
@@ -144,19 +143,6 @@ const completos: Record<string, Valor> = {
   "accion|actions/carta/combos.ts|actualizarActivaEntradaDeCupo": (k) => [{ entradaId: k.entradaDeCupoId, activa: false }],
   // Interruptor «solo salón» (docs/diseno-promo-solo-salon-2026-10-26.md): la promo AJENA (la del otro mundo), con la versión sembrada (1): no se encuentra, no se toca.
   "accion|actions/carta/promos.ts|guardarSoloSalonPromoCarta": (k) => [{ promoCartaId: k.promoComboId, versionEsperada: 1, soloSalon: true }],
-  // GO-3b: el menú del día de la sucursal (eco de la sucursal primero). Cargar el `pv2` (con receta, disponible) el día del plato del mundo; quitar el plato del mundo; copiarlo al día siguiente.
-  "accion|actions/carta/menu-del-dia.ts|agregarPlatoDelDia": (k, c) =>
-    conVariantes(
-      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, cupoId: c.propio.cupoDelDiaId, fecha: DIA_DEL_PLATO_DEL_MUNDO, productoId: c.propio.productoPv2Id }]),
-      intento(c, ["cupoDelDiaId"], [{ sucursalId: c.propio.sucursalId, cupoId: k.cupoDelDiaId, fecha: DIA_DEL_PLATO_DEL_MUNDO, productoId: c.propio.productoPv2Id }]),
-      intento(c, ["productoPv2Id"], [{ sucursalId: c.propio.sucursalId, cupoId: c.propio.cupoDelDiaId, fecha: DIA_DEL_PLATO_DEL_MUNDO, productoId: k.productoPv2Id }]),
-    ),
-  "accion|actions/carta/menu-del-dia.ts|quitarPlatoDelDia": (k, c) =>
-    conVariantes(
-      intento(c, ["sucursalId"], [{ sucursalId: k.sucursalId, platoId: c.propio.platoDelDiaId }]),
-      intento(c, ["platoDelDiaId"], [{ sucursalId: c.propio.sucursalId, platoId: k.platoDelDiaId }]),
-    ),
-  "accion|actions/carta/menu-del-dia.ts|copiarMenuDelDiaAnterior": (k) => [{ sucursalId: k.sucursalId, fecha: sumarDias(DIA_DEL_PLATO_DEL_MUNDO, 1) }],
   "accion|actions/carta/registro-publico.ts|guardarSucursalPublica": (k) => [k.sucursalId, { slug: "slug-nuevo", publicada: true }],
   "accion|actions/carta/secciones.ts|guardarSeccionCarta": (k) => [{ id: k.seccionCartaId, nombre: "Nombre nuevo" }],
   // CARTA-MANT F3: la empresa del mundo tiene UNA sección de carta (orden 0): el control positivo la deja en su lugar (éxito sin cambio); con la de otra empresa, «No se encontró…».
@@ -495,31 +481,24 @@ const parametros: Record<string, Record<string, Valor>> = {
     opciones: (k) => new Map([[k.productoConOpcionesId, { grupos: [medidaParaVender(k)], anclaDeOpcionId: null }]]),
     elegidas: (k) => [{ productoId: k.productoConOpcionesId, opcionIds: [k.opcionMedidaId] }],
   },
-  // GO-3b: los componentes de un combo (el PV con receta) y las alícuotas de todo lo que el combo puede tener (la sección de carta, la lista y el plato del día; la carta de la sucursal activa).
+  // GO-3b: los componentes de un combo (el PV con receta) y las alícuotas de todo lo que el combo puede tener (la sección de carta y la lista; la carta de la sucursal activa).
   "lectura|lecturas/carta/choque-de-nombre.ts|buscarChoqueDeNombreEnLaCarta": { args: (k) => ({ sucursalId: k.sucursalId, productoIdPropio: k.productoPvId, nombre: "Nombre de prueba" }) },
   "lectura|lecturas/carta/nombres-para-el-ticket.ts|cargarNombresDeCartaParaElTicket": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoPvId] }) },
   "lectura|lecturas/carta/componentes-de-promo.ts|cargarProductosComoComponentes": { args: (k) => ({ sucursalId: k.sucursalId, productoIds: [k.productoPvId] }) },
   "lectura|lecturas/carta/componentes-de-promo.ts|cargarAlicuotasPosiblesDeLugares": {
-    lugares: (k) => ({ seccionCartaIds: [k.seccionCartaId], cupoListaIds: [k.cupoListaId], cupoDelDiaIds: [k.cupoDelDiaId] }),
-    args: (_k, c) => ({ desdeDia: "2000-01-01", sucursalIds: [c.propio.sucursalId] }),
+    lugares: (k) => ({ seccionCartaIds: [k.seccionCartaId], cupoListaIds: [k.cupoListaId] }),
+    args: (_k, c) => ({ sucursalIds: [c.propio.sucursalId] }),
   },
-  // GO-3b (F5): los cupos de entradas del combo de la empresa tal como se venden el día del plato del mundo (I2) y ese día para la promo a agregar (vigencia y platos del día).
+  // GO-3b (F5): los cupos de entradas del combo de la empresa tal como se venden hoy (I2).
   "lectura|lecturas/pos/entradas-de-promo-para-vender.ts|cargarEntradasDePromoParaVender": {
     args: (k) => ({
       sucursalId: k.sucursalId,
-      dia: DIA_DEL_PLATO_DEL_MUNDO,
-      cupos: [
-        { id: k.cupoListaId, tipo: "LISTA", nombre: "Entrada", cantidadMinima: 1, cantidadMaxima: 1 },
-        { id: k.cupoDelDiaId, tipo: "DEL_DIA", nombre: "Plato", cantidadMinima: 1, cantidadMaxima: 1 },
-      ],
+      cupos: [{ id: k.cupoListaId, tipo: "LISTA", nombre: "Entrada", cantidadMinima: 1, cantidadMaxima: 1 }],
       precioLocalActivo: true,
     }),
   },
-  "lectura|lecturas/pos/promo-para-agregar.ts|cargarPromoCartaParaAgregar": { dia: () => DIA_DEL_PLATO_DEL_MUNDO },
-  // GO-3b (U5): el selector de la mesa con el día (o la zona) ofrece también los combos con cupos de entradas.
-  "lectura|lecturas/pos/selector-carta.ts|cargarSelectorCartaPos": { dia: () => DIA_DEL_PLATO_DEL_MUNDO },
-  // GO-3b (F6): la pantalla «Menú del día» (el día del plato del mundo).
-  "consulta|consultas/carta/menu-del-dia.ts|cargarMenuDelDia": { args: (k) => ({ sucursalId: k.sucursalId, ahora: new Date(), zonaHoraria: "America/Argentina/Buenos_Aires", fecha: DIA_DEL_PLATO_DEL_MUNDO }) },
+  // GO-3b (U5): el selector de la mesa con las entradas ofrece también los combos con cupos de entradas.
+  "lectura|lecturas/pos/selector-carta.ts|cargarSelectorCartaPos": { conEntradas: () => true },
   "consulta|consultas/pos/selector-carta.ts|cargarSelectorCartaDeLaMesa": { zonaHoraria: () => "America/Argentina/Buenos_Aires" },
   // El resumen del diálogo «Duplicar»: si el original tiene receta y cuántas opciones admite. El PV con opciones del mundo es el que devuelve algo propio (una MP sin receta ni opciones daría el resumen vacío, que no distingue un propio de un ajeno).
   "consulta|consultas/catalogo/duplicar-producto.ts|leerResumenParaDuplicar": { productoId: (k) => k.productoConOpcionesId },

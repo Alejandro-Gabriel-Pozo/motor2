@@ -1,7 +1,6 @@
 import "server-only";
 import type { ComandoActivarEntradaDeCupo, ResultadoActivarEntradaDeCupo } from "@/core/features/carta/combos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
-import { diaDeCalendario } from "@/core/tiempo/zona-horaria";
 import { conTransaccionSerializable } from "@/lib/transaccion-serializable";
 import type { ContextoDeAccion } from "@/server/actions/tipos";
 import { lecturaDeVerificacionEnLaEmpresa } from "@/server/acceso/alcance";
@@ -51,7 +50,6 @@ export async function actualizarActivaEntradaDeCupoCasoDeUso(
       if (!validado.ok) return validado;
       const alicuotas = await revisarAlicuotasEnTx(tx, {
         lugares: await cargarLugaresActivosDePromo(tx, entrada.cupo.promoCartaId),
-        desdeDia: diaDeCalendario(actor.ahora, actor.empresaZonaHoraria),
         sucursalIds: await sucursalesDeLaEmpresa(tx, actor.empresaId),
         producto: validado.componente.producto,
       });

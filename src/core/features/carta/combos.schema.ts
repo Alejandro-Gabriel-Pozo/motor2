@@ -1,8 +1,8 @@
 import type { ResultadoCaso } from "@/core/resultado-caso";
 
 /**
- * Tipos de la feature «combos y menú del día» (GO-3b, ADR-032): las ENTRADAS de un lugar LISTA (un producto de venta, aunque no esté en la carta, con una configuración fija opcional de
- * opciones), la VIGENCIA de una promo (fechas y días de la semana, con control optimista) y los PLATOS DEL DÍA de un lugar DEL_DIA en la sucursal activa. Los comandos llegan ya validados
+ * Tipos de la feature «combos» (GO-3b, ADR-032): las ENTRADAS de un lugar LISTA (un producto de venta, aunque no esté en la carta, con una configuración fija opcional de
+ * opciones). Los comandos llegan ya validados
  * de forma por su guard (`combos.guard.ts`); lo que depende de la base lo decide el caso de uso.
  */
 

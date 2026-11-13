@@ -273,15 +273,15 @@ export interface EntradaDeLugarAdmin {
   modoDeOpciones: "FIJAS" | "A_ELEGIR";
 }
 
-/** Un lugar de entradas de una promo: LISTA («Bebida»: se elige de una lista; con una sola entrada y mínimo = máximo, viene FIJO) o DEL_DIA («Plato del día»: lo carga cada sucursal por día). */
+/** Un lugar de entradas de una promo: LISTA («Bebida»: se elige de una lista; con una sola entrada y mínimo = máximo, viene FIJO). */
 export interface LugarDeCombo {
   id: string;
-  tipo: "LISTA" | "DEL_DIA";
+  tipo: "LISTA";
   nombre: string;
   cantidadMinima: number;
   cantidadMaxima: number;
   orden: number;
-  /** Solo en un LISTA (un DEL_DIA no tiene entradas fijas: sus platos se cargan por día en «Menú del día»). */
+  /** Las entradas de la lista. */
   entradas: EntradaDeLugarAdmin[];
 }
 

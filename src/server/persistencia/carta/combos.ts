@@ -2,9 +2,9 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 
 /**
- * Escrituras de los COMBOS y del MENÚ DEL DÍA (GO-3b, ADR-032; mismo contrato que el resto de `server/persistencia/`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio). Las
+ * Escrituras de los COMBOS (GO-3b, ADR-032; mismo contrato que el resto de `server/persistencia/`: el cliente es el PRIMER parámetro, `data` literal, sin reglas de negocio). Las
  * llaman los casos de uso de `src/server/actions/carta/casos-de-uso/`, que deciden la transacción y auditan (la persistencia no audita: `escrituras-auditadas.test.ts` exige la cadena). Nada se
- * borra: una entrada o un plato del día se desactiva (la app tiene UPDATE solo de `activa`, `orden`, `actualizadoEn` y, en el plato del día, `actualizadoPorId`).
+ * borra: una entrada se desactiva (la app tiene UPDATE solo de `activa`, `orden` y `actualizadoEn`).
  */
 
 /** Una entrada nueva de un lugar LISTA con su configuración fija o sus opciones permitidas (según `modoDeOpciones`; sus opciones solo se agregan). Devuelve el id. */
@@ -25,21 +25,4 @@ export async function crearEntradaDeCupo(
 /** Prende o apaga una entrada de un lugar LISTA. */
 export async function fijarActivaDeEntradaDeCupo(db: Prisma.TransactionClient, args: { id: string; activa: boolean; ahora: Date }): Promise<void> {
   await db.entradaDeCupo.update({ where: { id: args.id }, data: { activa: args.activa, actualizadoEn: args.ahora } });
-}
-
-/** Un plato del día nuevo de un lugar DEL_DIA en UNA sucursal y fecha. Devuelve el id. */
-export async function crearPlatoDelDia(
-  db: Prisma.TransactionClient,
-  args: { cupoId: string; sucursalId: string; fecha: Date; productoId: string; actualizadoPorId: string; ahora: Date },
-): Promise<{ id: string }> {
-  const creado = await db.entradaDelDiaDeCupo.create({
-    data: { cupoId: args.cupoId, sucursalId: args.sucursalId, fecha: args.fecha, productoId: args.productoId, actualizadoPorId: args.actualizadoPorId, creadoEn: args.ahora, actualizadoEn: args.ahora },
-    select: { id: true },
-  });
-  return { id: creado.id };
-}
-
-/** Prende o apaga un plato del día (quién lo hizo y cuándo quedan en la fila). */
-export async function fijarActivaDePlatoDelDia(db: Prisma.TransactionClient, args: { id: string; activa: boolean; actualizadoPorId: string; ahora: Date }): Promise<void> {
-  await db.entradaDelDiaDeCupo.update({ where: { id: args.id }, data: { activa: args.activa, actualizadoPorId: args.actualizadoPorId, actualizadoEn: args.ahora } });
 }

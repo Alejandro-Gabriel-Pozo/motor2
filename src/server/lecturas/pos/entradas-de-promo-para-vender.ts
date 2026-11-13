@@ -5,19 +5,18 @@ import { whereDisponibleEn } from "@/core/catalogo/public";
 import { redondearMoneda } from "@/core/moneda";
 import { claveDeComponente, configuracionMinimaDeGruposEfectivos, opcionesPermitidasEfectivas, rechazoDeComponenteDeCombo, type ComponenteConAlicuota, type CupoDeEntradasDefinicion, type EntradaElegibleDeCupo, type LineaConfigurada } from "@/core/pos/public";
 import { armarLineaConfigurada, type EntradaAElegirLeida } from "@/core/pos/public-servidor";
-import { fechaDeColumnaDate } from "@/core/tiempo/zona-horaria";
 import { preciosLocalesVigentes } from "@/server/lecturas/catalogo/precio-local";
 import { cargarProductosComoComponentes } from "@/server/lecturas/carta/componentes-de-promo";
 import { completarPreciosDeSucursal } from "@/server/lecturas/opciones/opciones-para-vender";
 
 /**
- * GO-3b (ADR-032, frente D, F5 paso I2): los cupos de ENTRADAS de una promo (LISTA y DEL_DIA) tal como se pueden vender HOY en la sucursal, para `cargarPromoCartaParaAgregar`. SIEMPRE con el `tx` de
+ * GO-3b (ADR-032, frente D, F5 paso I2): los cupos de ENTRADAS de una promo (LISTA) tal como se pueden vender HOY en la sucursal, para `cargarPromoCartaParaAgregar`. SIEMPRE con el `tx` de
  * quien llama (la transacción SERIALIZABLE de agregar ítems: lo que decide se lee adentro).
  *
- * Una entrada es ELEGIBLE hoy si (lo que no cumple se deja afuera y, si el mozo la eligió, `ENTRADA_NO_DISPONIBLE`; un DEL_DIA sin ninguna, `MENU_DEL_DIA_SIN_CARGAR`):
- *  - LISTA: la `EntradaDeCupo` está activa; DEL_DIA: la `EntradaDelDiaDeCupo` está activa, es de ESTA sucursal y de la fecha `dia` (el día de calendario de la zona de la empresa);
+ * Una entrada es ELEGIBLE hoy si (lo que no cumple se deja afuera y, si el mozo la eligió, `ENTRADA_NO_DISPONIBLE`):
+ *  - la `EntradaDeCupo` está activa;
  *  - su producto está DISPONIBLE en la sucursal y sigue pudiendo ser componente (`rechazoDeComponenteDeCombo`: PV, no ancla, precio de referencia, receta vigente en ESTA sucursal, stock propio u opciones fijas que descuentan algún insumo);
- *  - su configuración fija (si la lleva; un DEL_DIA nunca) se arma hoy con `armarLineaConfigurada`, igual que una línea suelta: versión vigente de cada opción, apagado en ESTA sucursal y sin
+ *  - su configuración fija (si la lleva) se arma hoy con `armarLineaConfigurada`, igual que una línea suelta: versión vigente de cada opción, apagado en ESTA sucursal y sin
  *    adicionales. Un producto con un grupo obligatorio y sin configuración tampoco se arma: afuera.
  * El precio de LISTA de cada entrada (la referencia del prorrateo, D-8) es el de la sucursal (precio local si rige) compuesto con su configuración, SIN el descuento de producto (dentro de una
  * promo no aplica). Se agrupa por `claveComponente` (`claveDeComponenteConfigurado`): dos configuraciones del mismo producto son dos líneas distintas.
@@ -32,7 +31,7 @@ type Tx = Prisma.TransactionClient;
 
 export interface CupoDeEntradasLeido {
   id: string;
-  tipo: "LISTA" | "DEL_DIA";
+  tipo: "LISTA";
   nombre: string;
   cantidadMinima: number;
   cantidadMaxima: number;
@@ -55,30 +54,17 @@ export interface EntradasDePromoParaVender {
 
 export async function cargarEntradasDePromoParaVender(
   tx: Tx,
-  args: { sucursalId: string; dia: string; cupos: readonly CupoDeEntradasLeido[]; precioLocalActivo: boolean | Promise<boolean> },
+  args: { sucursalId: string; cupos: readonly CupoDeEntradasLeido[]; precioLocalActivo: boolean | Promise<boolean> },
 ): Promise<EntradasDePromoParaVender> {
-  const listaIds = args.cupos.filter((c) => c.tipo === "LISTA").map((c) => c.id);
-  const delDiaIds = args.cupos.filter((c) => c.tipo === "DEL_DIA").map((c) => c.id);
-  const [deLista, delDia] = await Promise.all([
-    listaIds.length
-      ? tx.entradaDeCupo.findMany({
-          where: { cupoId: { in: listaIds }, activa: true },
-          select: { id: true, cupoId: true, productoId: true, claveConfiguracion: true, modoDeOpciones: true, opciones: { select: { opcionId: true, cantidad: true }, orderBy: [{ creadoEn: "asc" }, { id: "asc" }] } },
-          orderBy: [{ orden: "asc" }, { creadoEn: "asc" }, { id: "asc" }],
-        })
-      : Promise.resolve([]),
-    delDiaIds.length
-      ? tx.entradaDelDiaDeCupo.findMany({
-          where: { cupoId: { in: delDiaIds }, sucursalId: args.sucursalId, fecha: fechaDeColumnaDate(args.dia), activa: true },
-          select: { id: true, cupoId: true, productoId: true },
-          orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
-        })
-      : Promise.resolve([]),
-  ]);
-  const entradas = [
-    ...deLista.map((e) => ({ id: e.id, cupoId: e.cupoId, productoId: e.productoId, claveConfiguracion: e.claveConfiguracion, aElegir: e.modoDeOpciones === "A_ELEGIR", opciones: e.opciones })),
-    ...delDia.map((e) => ({ id: e.id, cupoId: e.cupoId, productoId: e.productoId, claveConfiguracion: "", aElegir: false, opciones: [] as { opcionId: string; cantidad: number }[] })),
-  ];
+  const listaIds = args.cupos.map((c) => c.id);
+  const deLista = listaIds.length
+    ? await tx.entradaDeCupo.findMany({
+        where: { cupoId: { in: listaIds }, activa: true },
+        select: { id: true, cupoId: true, productoId: true, claveConfiguracion: true, modoDeOpciones: true, opciones: { select: { opcionId: true, cantidad: true }, orderBy: [{ creadoEn: "asc" }, { id: "asc" }] } },
+        orderBy: [{ orden: "asc" }, { creadoEn: "asc" }, { id: "asc" }],
+      })
+    : [];
+  const entradas = deLista.map((e) => ({ id: e.id, cupoId: e.cupoId, productoId: e.productoId, claveConfiguracion: e.claveConfiguracion, aElegir: e.modoDeOpciones === "A_ELEGIR", opciones: e.opciones }));
   const productoIds = [...new Set(entradas.map((e) => e.productoId))];
   const [productos, disponibles, locales] = await Promise.all([
     cargarProductosComoComponentes(tx, { sucursalId: args.sucursalId, productoIds }),

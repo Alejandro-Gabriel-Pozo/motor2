@@ -152,7 +152,7 @@ export function rangoDeDias(desde: Date, hasta: Date, zona: string): { desde: Da
   return { desde: inicioDelDia(diaDeCalendario(desde, ZONA_UTC), zona), hasta: finDelDia(diaDeCalendario(hasta, ZONA_UTC), zona) };
 }
 
-// GO-3b (ADR-032): las columnas DATE de los combos (`EntradaDelDiaDeCupo.fecha`) guardan un día de calendario SIN hora. Prisma las lee y escribe como
+// GO-3b (ADR-032): las columnas DATE guardan un día de calendario SIN hora. Prisma las lee y escribe como
 // `Date` a las 00:00 UTC de ese día: estas dos son la única traducción entre ese `Date` y el día «AAAA-MM-DD» (ya en la zona de la empresa: no se convierte de zona).
 
 /** El `Date` con que se escribe un día «AAAA-MM-DD» en una columna DATE (00:00 UTC de ese día). */

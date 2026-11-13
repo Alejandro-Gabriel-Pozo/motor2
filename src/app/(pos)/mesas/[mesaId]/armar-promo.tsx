@@ -22,7 +22,7 @@ import { OpcionesDeUnidad } from "./armar-promo-opciones";
  * GO-2d (ADR-030): un producto con un grupo de opciones obligatorio se ve con su aviso («Con tamaño: pedilo suelto») y sin «+»: en una promo todavía no lleva opciones y el
  * servidor lo rechazaría (`PROMO_CON_OPCIONES`).
  *
- * GO-3b (ADR-032): un cupo de ENTRADAS (LISTA o DEL_DIA) muestra sus entradas de hoy por su nombre con la configuración («Café · Mediano · Almendras») y se elige con los mismos −/+; un
+ * GO-3b (ADR-032): un cupo de ENTRADAS (LISTA) muestra sus entradas de hoy por su nombre con la configuración («Café · Mediano · Almendras») y se elige con los mismos −/+; un
  * cupo FIJO se ve como «Viene con: …», sin botones (lo completa el servidor); un lugar del día sin plato cargado lo dice y no deja confirmar. Lo de los productos con opciones (`noSeArman`) no
  * aplica a una entrada: su configuración ya viene fijada.
  *
@@ -71,7 +71,7 @@ export function ArmarPromo({
                     {cupo.entradas[0].nombre}
                   </p>
                 ) : elegibles.length === 0 ? (
-                  <p className="text-sm text-tinta-suave">{"cupoId" in cupo && cupo.tipo === "DEL_DIA" ? "Todavía no se cargó el plato de hoy." : "Nada disponible para elegir acá ahora."}</p>
+                  <p className="text-sm text-tinta-suave">Nada disponible para elegir acá ahora.</p>
                 ) : (
                   <ul className="flex flex-col divide-y divide-borde">
                     {elegibles.map((p) => {
