@@ -128,14 +128,14 @@ describe("mensaje al rechazar: dice el problema y qué hacer", () => {
   it("texto ilegible: dice el contraste que tiene, el que hace falta y qué hacer", () => {
     const mensaje = mensajeDeMarca(evaluacion(4.09, 7, ["TEXTO_SOBRE_MARCA"]));
     expect(mensaje).toContain("4,09:1");
-    expect(mensaje).toContain("hace falta 4,50:1");
+    expect(mensaje).toContain("hace falta 4,5:1");
     expect(mensaje).toContain("Elegí uno más claro o más oscuro");
   });
 
   it("marca que se pierde en el fondo: lo dice y qué hacer", () => {
     const mensaje = mensajeDeMarca(evaluacion(7, 2.07, ["MARCA_SOBRE_FONDO"]));
     expect(mensaje).toContain("2,07:1");
-    expect(mensaje).toContain("hace falta 3,00:1");
+    expect(mensaje).toContain("hace falta 3:1");
     expect(mensaje).toContain("Elegí uno más fuerte");
   });
 

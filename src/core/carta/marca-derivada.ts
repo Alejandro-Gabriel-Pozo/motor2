@@ -1,3 +1,4 @@
+import { formatearCantidad } from "../formato-de-numero";
 import { rgbDeColorCss } from "./color-css";
 
 /**
@@ -120,7 +121,7 @@ export function evaluarMarca(marca: Canales, fondo: Canales): EvaluacionDeMarca 
 
 /** «4,09» y no «4,1»: se trunca (nunca se muestra un número que redondea hacia arriba hasta el mínimo que no se alcanzó). */
 // El 1e-9 compensa el error de coma flotante (2,07 * 100 da 206,99999…) sin cambiar el sentido: nunca sube un número hasta un mínimo que no se alcanzó.
-const texto = (n: number) => (Math.floor(n * 100 + 1e-9) / 100).toFixed(2).replace(".", ",");
+const texto = (n: number) => formatearCantidad(Math.floor(n * 100 + 1e-9) / 100, 2);
 
 /** Qué decirle a quien eligió el color cuando se rechaza: el problema y qué hacer. Vacío si no hay problemas. */
 export function mensajeDeMarca(evaluacion: EvaluacionDeMarca): string {
