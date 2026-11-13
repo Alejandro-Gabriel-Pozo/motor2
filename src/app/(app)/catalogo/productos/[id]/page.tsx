@@ -11,6 +11,7 @@ import { leerResumenParaDuplicar } from "@/server/consultas/catalogo/duplicar-pr
 import { ProductoForm } from "../producto-form";
 import { cargarEdicionDelProducto } from "../datos-de-edicion";
 import { DuplicarProducto } from "@/components/catalogo/duplicar-producto";
+import { OBSERVACIONES_VISIBLES } from "@/core/catalogo/public";
 import { EnlaceInterno } from "@/components/enlace-interno";
 import { Enlace } from "@/ui/primitivas/enlace";
 import { ActivarDesactivarFila } from "@/components/activar-desactivar-fila";
@@ -194,7 +195,7 @@ export default async function FichaProductoPage({
               "No"
             )}
           </Dato>
-          {p.observaciones && (
+          {OBSERVACIONES_VISIBLES && p.observaciones && (
             <div className="sm:col-span-2">
               <Dato etiqueta="Observaciones">{p.observaciones}</Dato>
             </div>

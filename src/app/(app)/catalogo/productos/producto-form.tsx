@@ -7,7 +7,7 @@ import { AsistenteHermanar } from "@/components/catalogo/asistente-hermanar";
 import { GestionPresentaciones } from "@/components/catalogo/gestion-presentaciones";
 import { CampoNumero } from "@/components/campo-numero";
 import { AyudaCampo } from "@/components/ayuda-campo";
-import { PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
+import { OBSERVACIONES_VISIBLES, PRESENTACIONES_VISIBLES } from "@/core/catalogo/public";
 import { CampoAlicuotaIva, alicuotasDelFormulario } from "./campo-alicuota-iva";
 import { numeroDelCampo } from "@/core/datos/numero-tecleado";
 import { SincronizarPrecioGrupo } from "@/components/carta/sincronizar-precio-grupo";
@@ -530,7 +530,7 @@ export function ProductoForm({
         </>
       )}
 
-      <AreaDeTexto etiqueta="Observaciones" etiquetaOculta name="observaciones" placeholder="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} />
+      {OBSERVACIONES_VISIBLES && <AreaDeTexto etiqueta="Observaciones" etiquetaOculta name="observaciones" placeholder="Observaciones" defaultValue={productoExistente?.observaciones ?? ""} />}
 
       {mensaje && (
         <Aviso variante={mensaje.startsWith("Producto") ? "exito" : "error"} forma="en-linea">

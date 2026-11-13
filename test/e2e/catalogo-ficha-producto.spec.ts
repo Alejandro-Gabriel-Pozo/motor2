@@ -38,7 +38,7 @@ test("la lista lleva a la ficha, que muestra los datos y los enlaces a los repor
   // La pestaña Datos es el formulario con los datos cargados.
   await expect(page.locator("select option:checked", { hasText: `E2E Categoría Ficha ${sufijo}` })).toHaveCount(1);
   await expect(page.getByRole("textbox", { name: "Precio de venta" })).toHaveValue(/4\.?500/);
-  await expect(page.locator('textarea[name="observaciones"]')).toHaveValue("Observación de la ficha");
+  await expect(page.locator('textarea[name="observaciones"]')).toHaveCount(0); // oculto con el interruptor; el dato queda guardado
   // Los enlaces a los reportes que ya existen están.
   await expect(page.locator(`a[href="/reportes/historial?productoId=${producto.id}"]`)).toHaveCount(1);
   await expect(page.locator('a[href="/reportes/costos"]').first()).toBeVisible();

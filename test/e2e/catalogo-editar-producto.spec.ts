@@ -35,7 +35,8 @@ test("al tocar «Editar» en la lista, la pantalla de edición carga TODOS los d
 
   // Todos los campos tienen que reflejar el producto, no solo los que siguen a `defaultValue`.
   await expect(page.locator('input[name="nombre"]')).toHaveValue(producto.nombre);
-  await expect(page.locator('textarea[name="observaciones"]')).toHaveValue("Observación E2E");
+  // «Observaciones» está oculto con el interruptor (dueño, 2026-11-13): el campo no se dibuja, el dato sigue en la base.
+  await expect(page.locator('textarea[name="observaciones"]')).toHaveCount(0);
   await expect(page.locator("select").first().locator("option:checked")).toHaveText(categoria.nombre);
   await expect(page.locator("select[required] option:checked")).toHaveText("unidad");
   await expect(page.locator('input[name="precioVenta"]')).toHaveValue("3200");
