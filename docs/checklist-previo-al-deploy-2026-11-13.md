@@ -2,6 +2,8 @@
 
 Estado: **documento de operación, sin código ni migraciones nuevas.** Nada de lo que está acá se ejecutó. **Producción congelada** (orden del dueño, 2026-11-12, vía el orquestador): ni deploy, ni migración aplicada, ni escritura en ninguna base de producción ni en las variables de Vercel. Las migraciones ya están en `main` (#250 y #251, integradas el 2026-11-13) pero **no se aplicaron en ninguna base**.
 
+Cuándo se despliega (el dueño, 2026-11-12, chat del dueño con el orquestador): «Cuando todos los cambios estén en main, es que vamos a desplegar. Sin cambios, prefiero mantener la versión vieja que quedó estable. Y ya cuando estén todas las decisiones que podamos ejecutar todo el trabajo en conjunto y decir, ok, las pantallas quedaron bien, es mobile first, es igual a pedernal. Ahí recién desplegamos.» Este checklist **no** dispara ningún deploy: es el plan para cuando el dueño lo decida.
+
 Autorización: el dueño autorizó **integrar** las migraciones («Sí, autoricé las migraciones; que la sesión integre en orden», 2026-11-12, vía el orquestador) y confirmó el merge de #250 y #251 sin aplicarlos («Si te di permiso», 2026-11-13, chat del dueño con el orquestador). **La autorización expresa para APLICARLAS en una base real no existe todavía** (PENDIENTE): hace falta una por base, dicha por el dueño. Este checklist es el plan para pedirla y ejecutarla; no la reemplaza.
 
 Este documento complementa a `docs/deploy-con-migraciones.md` (el flujo general: `con-env.mjs`, `npm run migrar:aprobar`, el build que verifica y no migra, Instant Rollback). Acá solo va lo propio de estas dos migraciones.
@@ -62,6 +64,8 @@ printf %s "$CORREO_OPERATIVO_RESEND_API_KEY" | grep -Eq '^re_[A-Za-z0-9_]+$' && 
 ## 3. Ensayo general (rama de Neon, copia de la base)
 
 Lo hace el dueño; el asistente de desarrollo no ve credenciales ni corre nada contra Neon (`deploy-con-migraciones.md`).
+
+Sobre el ensayo general y la base de producción (el dueño, 2026-11-12, chat del dueño con el orquestador): «Bueno, sí, el ensayo general puede ser. Siempre y cuando no afectemos la base de producción de Stockage Neuquén. Porque mañana, mañana se presenta la carta como existe hoy, digamos.» **Condición innegociable:** el ensayo corre solo en una rama de Neon **copia** (nunca en la base de producción de stockhneuquen, ni con el Preview, que comparte esa base) y no se escribe nada en producción ni en sus variables de Vercel. Si algún paso del ensayo exigiera tocar esa base, se frena y se le pregunta al dueño.
 
 1. Rama de **respaldo** de Neon de la base destino (es el rollback del DEPLOY: código viejo + base vieja).
 2. Rama de **ensayo** (otra copia). En ella: las consultas de la sección 1, y después `node scripts/operaciones/con-env.mjs <env de ensayo> -- npx prisma migrate deploy`.
