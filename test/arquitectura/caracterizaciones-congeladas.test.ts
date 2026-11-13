@@ -663,7 +663,7 @@ const CONGELADAS: Record<string, Congelada> = {
       },
       {
         blob: "b779dd7f781331df96c83a1da28af298b4a4c1fd",
-        commit: "50b1596a",
+        commit: "52fa5a3e",
         motivo:
           "Marca de la carta, PR B (paso 9; decisión del dueño 2026-11-13, «Botón explícito (Recomendada)»): el catálogo del tema suma la llave `marca_derivada` (el marcador del modo marca, nace vacío) y la lectura de la carta pública la trae en `valores`. Cambia SOLO eso: dos líneas `\"marca_derivada\": \"\"` (una por cada carta resuelta); ningún conteo de consultas ni ningún otro valor. Sin el marcador la carta se ve exactamente igual (lo prueba test/carta/marca-sin-cambio.test.ts con las cinco cartas reales).",
       },
