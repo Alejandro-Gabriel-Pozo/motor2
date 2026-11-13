@@ -76,7 +76,7 @@ export function FiltrosDeLaListaDeProductos({ accion, filtros, clases, estados, 
         </BotonDeServidor>
         {hayFiltros && (
           <p className="text-sm">
-            <Enlace href={accion}>Limpiar filtros</Enlace>
+            <Enlace href={accion} variante="suelto">Limpiar filtros</Enlace>
           </p>
         )}
       </div>
