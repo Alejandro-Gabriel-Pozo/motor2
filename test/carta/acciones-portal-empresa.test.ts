@@ -25,6 +25,9 @@ function valorDeMuestra(d: DefinicionClavePortal): string {
       return "Texto";
     case "imagen":
       return "https://cdn.example.com/x.png";
+    case "enum":
+      // `portal_marca_derivada` es el único enum sin default («nace cerrado»): su único valor es «si».
+      return d.opciones[0];
     default:
       throw new Error(`sin muestra para ${d.clave}`);
   }

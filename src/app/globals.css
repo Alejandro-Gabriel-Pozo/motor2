@@ -438,6 +438,20 @@ body:has(main[data-panel]) {
 .carta-shell .portal-card-flecha {
   color: var(--portal-card-flecha-color, currentColor);
 }
+/* Modo marca del portal (`data-modo-marca`, `resolverEstiloPortal`): las tarjetas SOBRE EL MAPA son zonas tocables transparentes encima de la imagen (decisión del dueño 2026-11-13: «Siguen transparentes
+   (Recomendada)»); la marca solo pinta el borde y la flecha de las tarjetas de la grilla. */
+.carta-shell .portal[data-modo-marca] .portal-card-mapa,
+.carta-shell .portal[data-modo-marca] .portal-card-mapa:hover,
+.carta-shell .portal[data-modo-marca] .portal-card-mapa:focus-visible {
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+  box-shadow: none;
+}
+.carta-shell .portal[data-modo-marca] .portal-card-mapa .portal-card-notas,
+.carta-shell .portal[data-modo-marca] .portal-card-mapa .portal-card-flecha {
+  color: transparent;
+}
 .carta-shell .portal-footer {
   color: var(--carta-ink-soft);
 }
