@@ -12,6 +12,16 @@ import { PORTAL_REAL, TEMAS_REALES } from "./marca-sin-cambio-fixtures";
  */
 const GOLDEN: Record<string, unknown> = JSON.parse(readFileSync(join(__dirname, "marca-sin-cambio.golden.json"), "utf8"));
 const comoJson = (valor: unknown) => JSON.parse(JSON.stringify(valor));
+/** Portal: las ÚNICAS diferencias permitidas respecto del golden son las dos claves nuevas en `valores` (vacías mientras nadie apriete el botón) y que no aparece `modoMarca`. */
+function portalSinLasClavesNuevas(estilo: { valores: Record<string, string> }) {
+  const copia = comoJson(estilo);
+  expect(copia.valores.portal_color_marca, "sin marcador, la clave nueva sale vacía").toBe("");
+  expect(copia.valores.portal_marca_derivada, "sin marcador, la clave nueva sale vacía").toBe("");
+  expect(copia, "sin marcador no hay `modoMarca`").not.toHaveProperty("modoMarca");
+  delete copia.valores.portal_color_marca;
+  delete copia.valores.portal_marca_derivada;
+  return copia;
+}
 /** La ÚNICA diferencia permitida respecto del golden: la clave nueva `marca_derivada` en `valores` (vacía mientras nadie apriete el botón). */
 function sinElMarcador(estilo: { valores: Record<string, string> }) {
   const copia = comoJson(estilo);
@@ -34,8 +44,8 @@ describe("sin el marcador `marca_derivada`, ninguna carta publicada cambia", () 
   });
 
   it("el portal real y el portal sin configurar: igual que antes", () => {
-    expect(comoJson(resolverEstiloPortal(PORTAL_REAL))).toEqual(GOLDEN.portal);
-    expect(comoJson(resolverEstiloPortal({}))).toEqual(GOLDEN["portal sin config"]);
+    expect(portalSinLasClavesNuevas(resolverEstiloPortal(PORTAL_REAL))).toEqual(GOLDEN.portal);
+    expect(portalSinLasClavesNuevas(resolverEstiloPortal({}))).toEqual(GOLDEN["portal sin config"]);
   });
 
   it("un marcador que no es exactamente «si» (vacío, «no», «SI», «sí», espacios, basura) tampoco cambia nada", () => {
