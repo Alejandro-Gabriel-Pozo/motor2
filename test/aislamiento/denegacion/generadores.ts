@@ -359,6 +359,8 @@ const completos: Record<string, Valor> = {
   ],
   // Fase 6, bloque 3 (6.18): la vista previa de UN producto en la carta de la sucursal activa. El producto llega ya leído por la página (acá armado a mano con el id del kit): con el id de OTRA empresa o sucursal no trae nada.
   "consulta|consultas/carta/vista-previa-de-un-producto.ts|cargarVistaPreviaDeLaCarta": (k, c) => [c.db, c.propio.sucursalId, { id: k.productoConOpcionesId, precioVenta: 1000, esBase: false }, false],
+  // Productos P1: el precio y la clase de cada fila de la lista. Los ids llegan de la página; con ids de OTRA empresa o sucursal no devuelve nada (no hay fila que mostrar).
+  "consulta|consultas/catalogo/detalle-de-la-lista.ts|detalleDeLaLista": (k, c) => [c.db, c.propio.sucursalId, [k.productoPvId]],
   // Fase 6, bloque 3 (3b): qué «le falta algo» ofrece la lista de Productos a quien mira (por permisos y módulos del usuario y la empresa del contexto).
   "consulta|consultas/catalogo/filtros-de-productos.ts|faltasQueSePuedenFiltrarEnLaLista": (_k, c) => [contextoPropio(c)],
   "lectura|lecturas/catalogo/filtros-de-productos.ts|faltasQueSePuedenFiltrar": (_k, c) => [contextoPropio(c)],
