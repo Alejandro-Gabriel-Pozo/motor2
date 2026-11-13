@@ -1,7 +1,7 @@
 import "server-only";
 import type { ContextoUsuario } from "@/server/sesion/contexto";
 import { crearConCodigoAutogenerado, esErrorDeUnicidad } from "@/core/catalogo/public-servidor";
-import { MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
+import { guardAlicuotaIvaDelProducto, MENSAJE_SIN_PERMISO_ALICUOTA_IVA, MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES } from "@/core/features/catalogo/productos.guard";
 import { rechazoDeReferenciaDeProducto } from "@/core/features/catalogo/referencias-de-producto";
 import type { EntradaProducto, PuertaDeDatosDeProducto, ResultadoDarDeAltaProducto } from "@/core/features/catalogo/productos.schema";
 import { exito, fracaso } from "@/core/resultado-caso";
@@ -39,6 +39,10 @@ import { crearProductoNuevo, sembrarDisponibilidadDeProductoNuevo } from "@/serv
  * y alguien con `producto_disponibilidad` lo active: se siembra la disponibilidad APAGADA (`disponible: false`) en las sucursales que pedía el tilde, y el POS y la carta pública (que listan solo lo disponible) no lo
  * ofrecen. Una materia prima no se vende: no cambia.
  *
+ * ALÍCUOTA DE IVA (paso 13, `docs/diseno-alicuota-iva-del-producto-2026-11-12.md`; DEC-b: opcional y nace vacía): el formulario del alta puede traer «IVA de venta» (solo un PV) o «IVA de compra» (solo una MP). Se valida con
+ * `guardAlicuotaIvaDelProducto` (lista cerrada y tipo contra campo: `DATOS_INVALIDOS`) y, sin `producto_campos_sensibles`, una alícuota distinta de «sin declarar» es `SIN_PERMISO_CAMPOS_SENSIBLES` (fallo cerrado, como el
+ * precio). Sin alícuota el producto nace «sin declarar» (NULL). Como el precio, el alta no deja fila de auditoría de ella (no hay valor anterior); cada cambio posterior lo audita la edición.
+ *
  * `import "server-only"` y SIN `"use server"`: no es un endpoint. No chequea permisos. No lee el azar por su cuenta: lo recibe (`azar`).
  *
  * @contract Crea el producto (con un código único) y lo deja disponible donde pide el tilde (un PV sin `producto_campos_sensibles`, en ninguna), salvo que los datos no sean válidos o ya haya uno disponible con ese nombre; devuelve su id y su nombre.
@@ -74,11 +78,18 @@ export async function darDeAltaProductoCasoDeUso(
     const traeUnidadDeCompra = Boolean(datos.unidadCompraId);
     if (traePrecio || traeFactor || traeUnidadDeCompra) return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_CAMPOS_SENSIBLES);
   }
+  // Paso 13 (I3): una alícuota de IVA distinta de «sin declarar» es del que tiene la clave fina (fallo cerrado, antes de leer nada). Aparte del rechazo de arriba, que enumera otros campos.
+  if (!puedeEditarCamposSensibles && ((datos.alicuotaIvaVenta ?? null) !== null || (datos.alicuotaIvaCompra ?? null) !== null)) {
+    return fracaso("SIN_PERMISO_CAMPOS_SENSIBLES", MENSAJE_SIN_PERMISO_ALICUOTA_IVA);
+  }
   // P2 (RLS por sucursal): el nombre repetido y la unidad mezclada del insumo se preguntan por «alguna sucursal» (`whereDisponibleEnAlguna`): esa lectura corre con la base de VERIFICACIÓN (lectura en toda la empresa, escritura como estaba)
   // para no dar «no hay» cuando la disponibilidad que lo contradice está en otra sucursal. Solo devuelve un mensaje: no muestra nada de otra sucursal.
   const verificacion = await lecturaDeVerificacionEnLaEmpresa(actor);
   const validado = await validarDatosDeProducto(verificacion.db, datos, undefined, puerta);
   if ("error" in validado) return fracaso("DATOS_INVALIDOS", validado.error);
+  // Paso 13 (I1, I2): la alícuota de IVA, de la lista cerrada y del tipo del producto.
+  const alicuotaValida = guardAlicuotaIvaDelProducto({ tipo: datos.tipo, alicuotaIvaVenta: datos.alicuotaIvaVenta, alicuotaIvaCompra: datos.alicuotaIvaCompra });
+  if (!alicuotaValida.ok) return fracaso("DATOS_INVALIDOS", alicuotaValida.mensaje);
   // M.2-A4: un PV sin la clave nace sin precio y apagado (ver arriba). Repetir el envío no crea otro: el índice único del nombre (sin distinguir mayúsculas) de la base lo rechaza aunque el primero no esté disponible.
   const naceApagado = datos.tipo === "PV" && !puedeEditarCamposSensibles;
 
@@ -86,7 +97,17 @@ export async function darDeAltaProductoCasoDeUso(
     const producto = await crearConCodigoAutogenerado(
       datos.tipo,
       datos.codigo,
-      (codigo) => crearProductoNuevo(actor.db, { codigo, tipo: datos.tipo, campos: datosParaGuardar(datos, validado.numeros) }),
+      (codigo) =>
+        crearProductoNuevo(actor.db, {
+          codigo,
+          tipo: datos.tipo,
+          // La alícuota solo si viene con valor y es la del tipo (ya validado arriba); sin ella el producto nace «sin declarar».
+          campos: {
+            ...datosParaGuardar(datos, validado.numeros),
+            ...(datos.tipo === "PV" && datos.alicuotaIvaVenta ? { alicuotaIvaVenta: datos.alicuotaIvaVenta } : {}),
+            ...(datos.tipo === "MP" && datos.alicuotaIvaCompra ? { alicuotaIvaCompra: datos.alicuotaIvaCompra } : {}),
+          },
+        }),
       azar,
     );
     // M.3-A6: «todas las sucursales» es una escritura de EMPRESA ENTERA (`EMPRESA_ENTERA` de GT-4): la siembra necesita escribir en cada una, así que se ensancha a la lista cerrada de las sucursales
