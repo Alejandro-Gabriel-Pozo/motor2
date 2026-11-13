@@ -1761,6 +1761,8 @@
         "portal_etiqueta_color": "",
         "portal_titulo": "Nuestras sucursales",
         "portal_titulo_color": "",
+        "portal_color_marca": "",
+        "portal_marca_derivada": "",
         "portal_fondo_color": "",
         "portal_bg_image_url": "",
         "portal_bg_proporcion": "1080/1533",
