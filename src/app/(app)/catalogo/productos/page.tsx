@@ -12,7 +12,6 @@ import {
   DISPONIBILIDADES_FILTRABLES,
   ESTADOS_FILTRABLES,
   ETIQUETA_DEL_ESTADO,
-  ETIQUETA_DE_LA_DISPONIBILIDAD,
   ETIQUETA_DE_LA_FALTA,
   ETIQUETA_DEL_MODO,
   ETIQUETA_DEL_TIPO,
@@ -56,7 +55,7 @@ export default async function ProductosPage({
   const pagina = await listarProductosPagina(cursor, filtros.q, filtros);
   // El precio de la sucursal activa y la clase de cada fila (dos consultas para toda la página).
   const ids = pagina.items.map((p) => p.id);
-  const detalle = await detalleDeLaLista(ctx.db, ctx.sucursalId, ids);
+  const detalle = await detalleDeLaLista(ctx.db, ctx.sucursalId, ids, faltas.includes("fuera-de-la-carta"));
   // La marca «Falta completar» de cada fila: lo que quien mira puede ver que le falta (el mismo cálculo del filtro «Estado»).
   const faltaCompletar = await productosQueFaltaCompletarEnLaPagina(ctx, ids);
 
@@ -85,7 +84,7 @@ export default async function ProductosPage({
         hayFiltros={hayFiltrosDeProductos(filtros)}
         masFiltros={[
           { nombre: "modo", etiqueta: "Cómo se vende", valor: filtros.modo ?? "", opciones: MODOS_FILTRABLES.map((v) => ({ valor: v, etiqueta: ETIQUETA_DEL_MODO[v] })) },
-          { nombre: "disponible", etiqueta: "En esta sucursal", valor: filtros.disponible === "aca" || filtros.disponible === "no-aca" ? filtros.disponible : "", opciones: DISPONIBILIDADES_FILTRABLES.filter((v) => v === "aca" || v === "no-aca").map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_DISPONIBILIDAD[v] })) },
+          { nombre: "disponible", etiqueta: "En esta sucursal", valor: filtros.disponible === "aca" || filtros.disponible === "no-aca" ? filtros.disponible : "", opciones: DISPONIBILIDADES_FILTRABLES.filter((v) => v === "aca" || v === "no-aca").map((v) => ({ valor: v, etiqueta: v === "aca" ? "Disponible" : "No disponible" })) },
           { nombre: "falta", etiqueta: "Le falta algo", valor: filtros.falta ?? "", opciones: faltas.map((v) => ({ valor: v, etiqueta: ETIQUETA_DE_LA_FALTA[v] })) },
         ]}
       />
@@ -104,7 +103,7 @@ export default async function ProductosPage({
                 {p.sucursalesDisponibles > 0 && faltaCompletar.has(p.id) && <Insignia tono="aviso">Falta completar</Insignia>}
               </div>
               <div className="flex items-start justify-between gap-3 text-sm text-tinta-suave">
-                <span>{ETIQUETA_DEL_TIPO[detalle.get(p.id)!.clase]}</span>
+                <span>{ETIQUETA_DEL_TIPO[detalle.get(p.id)!.clase]}{detalle.get(p.id)!.seccion !== null && ` · ${detalle.get(p.id)!.seccion}`}</span>
                 {detalle.get(p.id)!.precio !== null && <span className="shrink-0 font-medium tabular-nums text-tinta">{detalle.get(p.id)!.precio}</span>}
               </div>
             </li>

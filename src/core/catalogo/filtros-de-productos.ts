@@ -69,12 +69,6 @@ export const ETIQUETA_DEL_TIPO: Record<TipoFiltrable, string> = {
   respaldo: "Respaldo de un adicional",
 };
 export const ETIQUETA_DEL_MODO: Record<ModoFiltrable, string> = { directo: "Directo (tiene su precio)", "por-opcion": "Por opción (el precio está en cada opción)" };
-export const ETIQUETA_DE_LA_DISPONIBILIDAD: Record<DisponibilidadFiltrable, string> = {
-  aca: "Disponible en esta sucursal",
-  "no-aca": "No disponible en esta sucursal",
-  "en-alguna": "Activo: disponible en alguna sucursal",
-  "en-ninguna": "Inactivo: no disponible en ninguna sucursal",
-};
 export const ETIQUETA_DE_LA_FALTA: Record<FaltaFiltrable, string> = {
   "sin-precio": "Sin precio de venta",
   "sin-receta": "Sin receta",
