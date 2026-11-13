@@ -178,17 +178,26 @@ function parseOklch(v: string): [number, number, number] | null {
  * Para formatos no parseables devuelve null → se usa el valor de globals.css.
  */
 export function resolvePrimaryForeground(color: string): string | null {
+  const rgb = rgbDeColorCss(color)
+  if (!rgb) return null
+
+  return inkFromLuminance(relativeLuminance(rgb[0], rgb[1], rgb[2]))
+}
+
+/**
+ * Los canales [r,g,b] (0 a 255) de un color en cualquier formato legible (#rgb, #rrggbb, rgb(), rgba(), hsl(), hsla(), oklch()), o null si no se puede leer
+ * (nombres CSS, funciones que no se parsean, texto cualquiera). Es la misma cadena de parsers que ya usaba `resolvePrimaryForeground`; se extrajo para que la
+ * marca de la carta (`marca-derivada.ts`) lea los colores ya guardados con EXACTAMENTE el mismo criterio. No cambia ningún resultado existente.
+ */
+export function rgbDeColorCss(color: string): [number, number, number] | null {
   if (!color) return null
   const v = color.trim()
 
-  const rgb =
+  return (
     parseHex(v) ??
     parseRgb(v) ??
     parseHsl(v) ??
     parseOklch(v)
-
-  if (!rgb) return null
-
-  return inkFromLuminance(relativeLuminance(rgb[0], rgb[1], rgb[2]))
+  )
 }
 
