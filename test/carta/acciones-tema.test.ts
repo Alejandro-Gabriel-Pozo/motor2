@@ -33,6 +33,9 @@ function valorDeMuestra(d: DefinicionClaveTema): string {
       return "5492941234567";
     case "urlHttps":
       return "https://maps.app.goo.gl/x";
+    case "enum":
+      // `marca_derivada` es el único enum sin default («nace cerrado»): su único valor es «si».
+      return d.opciones[0];
     default:
       throw new Error(`sin muestra para ${d.clave}`);
   }
@@ -54,13 +57,13 @@ describe("Server Actions del tema de la carta", () => {
 
   const guardado = async () => (await prisma.temaCartaSucursal.findFirst({ where: { sucursalId: centralId } }))?.valores;
 
-  it("guarda las 64 claves válidas y queda aplicado (guardar = aplicar)", async () => {
-    expect(Object.keys(TODAS_VALIDAS)).toHaveLength(64);
+  it("guarda las 65 claves válidas y queda aplicado (guardar = aplicar)", async () => {
+    expect(Object.keys(TODAS_VALIDAS)).toHaveLength(65);
     const r = await guardarTemaCarta(centralId, TODAS_VALIDAS);
-    expect(r).toEqual({ ok: true, mensaje: 'Tema de "Central" guardado (64 valores cargados; el resto usa el default de la carta). Está aplicado: la carta toma los cambios en hasta 5 minutos.' });
+    expect(r).toEqual({ ok: true, mensaje: 'Tema de "Central" guardado (65 valores cargados; el resto usa el default de la carta). Está aplicado: la carta toma los cambios en hasta 5 minutos.' });
     const fila = await prisma.temaCartaSucursal.findFirstOrThrow({ where: { sucursalId: centralId } });
     expect(fila.aplicarEnCarta).toBe(true);
-    expect(Object.keys(fila.valores as object)).toHaveLength(64);
+    expect(Object.keys(fila.valores as object)).toHaveLength(65);
     expect(fila.valores).toEqual(TODAS_VALIDAS);
   });
 
