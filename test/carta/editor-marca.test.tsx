@@ -65,3 +65,41 @@ describe("SeccionMarca: estado inicial", () => {
     expect(h).toMatch(/<input[^>]*type="color"[^>]*disabled=""/);
   });
 });
+
+describe("SeccionMarca en el portal de la empresa (`portal`): su color viaja por `portal_color_marca` y la vista previa es la del portal", () => {
+  const vistaPrevia = (marca: string) => <p data-vista-del-portal>{marca}</p>;
+  const htmlPortal = (p: Partial<Parameters<typeof SeccionMarca>[0]> = {}) =>
+    renderToStaticMarkup(<SeccionMarca modoMarca={false} marcaInicial="" valores={{}} soloLectura={false} portal={{ vistaPrevia }} {...p} />);
+
+  it("sin color: botón «Pasar» deshabilitado, sin vista previa, textos del portal", () => {
+    const h = htmlPortal();
+    expect(h).toContain("Este portal usa los colores sueltos de abajo, como siempre.");
+    expect(h).toContain("las tarjetas sobre el mapa siguen transparentes");
+    expect(h).toMatch(/<button[^>]*disabled=""[^>]*data-accion-marca="pasar"/);
+    expect(h).not.toContain("data-vista-del-portal");
+    expect(h).toMatch(/<input[^>]*type="hidden"[^>]*name="portal_color_marca"/);
+    expect(h).not.toContain('name="marca_elegida"');
+  });
+
+  it("con un color que se lee bien: campo escondido con la marca, vista previa del portal y botón habilitado", () => {
+    const h = htmlPortal({ marcaInicial: "#5c57a2" });
+    expect(h).toMatch(/<input[^>]*type="hidden"[^>]*name="portal_color_marca"[^>]*value="#5c57a2"/);
+    expect(h).toMatch(/data-vista-del-portal[^>]*>#5c57a2/);
+    expect(h).not.toMatch(/<button[^>]*disabled=""[^>]*data-accion-marca="pasar"/);
+  });
+
+  it("en modo marca: «Guardar color de marca» y «Volver a mis colores anteriores», con el texto del portal", () => {
+    const h = htmlPortal({ modoMarca: true, marcaInicial: "#5c57a2" });
+    expect(h).toContain("Este portal usa el color de marca: el resto se calcula solo.");
+    expect(h).toContain("Mientras el portal use el color de marca");
+    expect(h).toContain("Guardar color de marca");
+    expect(h).toContain("Volver a mis colores anteriores");
+  });
+
+  it("la sección de la carta sigue igual (campo `marca_elegida`, textos de la carta)", () => {
+    const h = html({ modoMarca: true, marcaInicial: "#5c57a2" });
+    expect(h).toContain('name="marca_elegida"');
+    expect(h).toContain("Esta carta usa el color de marca");
+    expect(h).toContain("Mientras la carta use el color de marca");
+  });
+});
