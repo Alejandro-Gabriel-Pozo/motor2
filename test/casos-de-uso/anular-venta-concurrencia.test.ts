@@ -91,6 +91,50 @@ describe("anularVentaCasoDeUso: concurrencia (caracterización de hoy, sin I3)",
     expect(await saldoDeHarina()).toBe(STOCK_INICIAL);
   }, 60_000);
 
+  it("DETERMINISTA: el choque contra el índice único del contra-asiento (P2002: la otra anulación ya confirmó) se repite y responde YA_ANULADA, no el error de la base", async () => {
+    const venta = await operacion("VENTA", -2, new Date("2026-08-06T12:00:00Z"));
+    const base = actor();
+    let abrirLaPuerta!: () => void;
+    const puerta = new Promise<void>((r) => (abrirLaPuerta = r));
+    let tomoSuFoto!: () => void;
+    const fotoTomada = new Promise<void>((r) => (tomoSuFoto = r));
+
+    // B: su PRIMER intento toma la foto de la base y se detiene, con la venta todavía vigente en su foto. Cuando sigue, escribe SU contra-asiento sin haber leído antes ese índice (la forma del choque que
+    // hace Postgres con P2002 «unique_violation» en vez de 40001 «conflicto de escritura»: ocurre a veces en la corrida real según el momento de cada lectura; acá se fija para que no dependa del azar).
+    // Los reintentos ya no esperan ni chocan.
+    let intento = 0;
+    const transaccionDeB = Object.assign(
+      <T,>(fn: Parameters<typeof base.transaccion>[0], opciones?: Parameters<typeof base.transaccion>[1]) =>
+        base.transaccion(async (tx) => {
+          if (++intento === 1) {
+            await tx.$queryRaw`SELECT 1`;
+            tomoSuFoto();
+            await puerta;
+            await tx.operacion.create({ data: { sucursalId, proceso: "AJUSTE", fecha: new Date("2026-08-06T12:00:00Z"), usuarioId: adminId, revierteAOperacionId: venta.id } });
+          }
+          return fn(tx);
+        }, opciones) as Promise<T>,
+      { aleatorio: base.transaccion.aleatorio }
+    );
+    const anulacionB = anularVentaCasoDeUso({ ...actor(), transaccion: transaccionDeB } as ReturnType<typeof actor>, { operacionId: venta.id, motivo: "B" });
+    await fotoTomada;
+
+    // A: anula la MISMA venta y CONFIRMA, mientras B sigue con su foto vieja.
+    const resultadoA = await anularVentaCasoDeUso(actor(), { operacionId: venta.id, motivo: "A" });
+    expect(resultadoA.ok, JSON.stringify(resultadoA)).toBe(true);
+
+    abrirLaPuerta();
+    const resultadoB = await anulacionB;
+
+    // Sin repetir ante el choque de unicidad, B lanzaba PrismaClientKnownRequestError P2002 (Operacion_empresaId_revierteAOperacionId_key) en vez de este resultado limpio.
+    expect(resultadoB).toEqual({ ok: false, codigo: "YA_ANULADA", mensaje: "Esta venta ya está anulada." });
+    expect(intento, "B repitió (su primer intento chocó)").toBeGreaterThanOrEqual(2);
+    expect(await prisma.operacion.count({ where: { revierteAOperacionId: venta.id } })).toBe(1);
+    expect(await prisma.registroAuditoria.count({ where: { entidad: "Operacion", entidadId: venta.id } })).toBe(1);
+    expect((await prisma.operacion.findUniqueOrThrow({ where: { id: venta.id } })).motivoAnulacion).toBe("A");
+    expect(await saldoDeHarina()).toBe(STOCK_INICIAL);
+  }, 60_000);
+
   it("promo: dos anulaciones a la vez de componentes distintos de la misma promo dan un solo juego de reversiones (una por componente) y una auditoría por componente", async () => {
     const promo = await promoCuenta();
     const componenteA = await operacion("VENTA", -2, new Date("2026-08-06T12:00:00Z"), promo.id);
