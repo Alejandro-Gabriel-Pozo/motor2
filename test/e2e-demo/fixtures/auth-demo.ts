@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { test as base, type Page } from "@playwright/test";
 import { prisma } from "../../../src/lib/db";
+import { emailAdminDeLaDemo } from "../../../scripts/demo-seed/admin-de-la-demo";
 
 /**
  * Auth para el proyecto Playwright de la demo (§5, docs/planes-demo-y-claridad-reportes-2026-09-21.md, tramo 5: "proyecto
@@ -10,7 +11,7 @@ import { prisma } from "../../../src/lib/db";
  * poder navegar páginas protegidas sin pasar por Google OAuth.
  */
 const NOMBRE_SUCURSAL = "La Cuadra";
-const EMAIL_ADMIN = "alepogabriel@gmail.com";
+const EMAIL_ADMIN = emailAdminDeLaDemo(process.env);
 
 async function crearSesionAdminDemo() {
   const sucursal = await prisma.sucursal.findFirst({ where: { nombre: NOMBRE_SUCURSAL } });
