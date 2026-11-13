@@ -1,10 +1,10 @@
 {
   "regla": "tope-de-lineas",
   "meta": "0 (ningún archivo de src/ pasa de 400 líneas: cada uno se parte por responsabilidad en un trabajo aparte)",
-  "total": 2229,
-  "entradas": 18,
+  "total": 2220,
+  "entradas": 17,
   "porTipo": {
-    "lineas-sobre-400": 2229
+    "lineas-sobre-400": 2220
   },
   "cuentas": {
     "src/app/(app)/carta/agrupados/page.tsx": {
@@ -12,9 +12,6 @@
     },
     "src/app/(app)/carta/mantenimiento-de-carta.tsx": {
       "lineas-sobre-400": 69
-    },
-    "src/app/(app)/carta/parametrizacion/promociones/page.tsx": {
-      "lineas-sobre-400": 9
     },
     "src/app/(app)/catalogo/opciones/[grupoId]/page.tsx": {
       "lineas-sobre-400": 10
