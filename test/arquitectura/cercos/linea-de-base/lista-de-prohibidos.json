@@ -1,41 +1,8 @@
 {
   "regla": "lista-de-prohibidos",
-  "meta": "0 (la validación declara lo permitido: conjunto, largo, forma; trabajo aparte del PR que instala el guardián)",
-  "total": 11,
-  "entradas": 10,
-  "porTipo": {
-    "lista-de-prohibidos": 11
-  },
-  "cuentas": {
-    "scripts/arquitectura/analizar-fuente.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/carta/color-css.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/carta/portal.ts": {
-      "lista-de-prohibidos": 2
-    },
-    "src/core/carta/tema.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/correo/direcciones.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/features/carta/contenido-producto.guard.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/features/catalogo/opciones-de-venta.guard.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/navegacion/estructura.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/seguridad/ruta-servible.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/texto.ts": {
-      "lista-de-prohibidos": 1
-    }
-  }
+  "meta": "0 (la validación declara lo permitido: conjunto, largo, forma). Alcanzada en el PR 3; ninguna entrada nueva",
+  "total": 0,
+  "entradas": 0,
+  "porTipo": {},
+  "cuentas": {}
 }
