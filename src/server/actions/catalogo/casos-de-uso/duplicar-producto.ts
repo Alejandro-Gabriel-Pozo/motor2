@@ -175,7 +175,7 @@ export async function duplicarProductoCasoDeUso(
         // 6. El precio y la ficha: con la clave se copian el precio, el factor y la unidad de compra; sin ella, los valores neutros del alta (M.2). Un original por opción se crea «Directo» y pasa a base al final, cuando sus
         // opciones ya están (así el control del precio de lista de cada grupo no se hace contra un precio guardado que en una base no se cobra).
         const esDeVenta = origen.tipo === "PV";
-        // Un original por opción (su precio guardado no se cobra: rige el de cada opción) nace con precio guardado 0: así el control del precio de lista de cada grupo, que se hace contra el precio guardado, no juzga una
+        // SUPUESTO(DEC-0008): un original por opción (su precio guardado no se cobra: rige el de cada opción) nace con precio guardado 0: así el control del precio de lista de cada grupo, que se hace contra el precio guardado, no juzga una
         // opción contra un número que en una base nunca se cobra.
         const precioFinal = esBase ? 0 : puedeEditarCamposSensibles ? (comando.precioVenta ?? Number(origen.precioVenta)) : 0;
         const precio: PrecioDelDuplicado = esBase
@@ -205,7 +205,7 @@ export async function duplicarProductoCasoDeUso(
           pasoVenta: origen.pasoVenta,
           seProduce: origen.seProduce,
         });
-        // Un producto de venta sin la clave nace APAGADO en todas las sucursales (M.2-A4); con ella (o una materia prima), disponible en todas, como el alta con el tilde por defecto.
+        // SUPUESTO(DEC-0007): sin tilde en pantalla; disponible en todas con la clave, apagado sin ella. Un producto de venta sin la clave nace APAGADO en todas las sucursales (M.2-A4); con ella (o una materia prima), disponible en todas, como el alta con el tilde por defecto.
         await sembrarDisponibilidadDeProductoNuevo(tx, { productoId: comando.duplicadoId, sucursalIds: base.sucursalIdsDeLaEmpresa, disponible: !(esDeVenta && !puedeEditarCamposSensibles) });
 
         // 7. La receta como versión 1 de la serie central del producto nuevo (los pasos y su tabla paso↔ingrediente se reconstruyen contra los ingredientes nuevos).

@@ -40,6 +40,7 @@ export interface PropsDeDuplicarProducto {
   }) => Promise<ResultadoConId>;
 }
 
+// SUPUESTO(DEC-0009): la receta se saca por defecto de Central, no de la sucursal activa.
 const CENTRAL = "";
 
 /** Un identificador al azar para el producto nuevo. `randomUUID` solo existe en un contexto seguro (https o localhost); sin él, 16 bytes al azar en hexadecimal (el servidor acepta de 16 a 64 letras, números, guiones y guiones bajos). */
