@@ -68,7 +68,7 @@ export async function agregarEntradaDeCupoCasoDeUso(
 
       let entradaId: string;
       if (existente) {
-        await fijarActivaDeEntradaDeCupo(tx, { id: existente.id, activa: true, ahora: actor.ahora });
+        await fijarActivaDeEntradaDeCupo(tx, { id: existente.id, activa: true });
         entradaId = existente.id;
       } else {
         const ultima = await tx.entradaDeCupo.aggregate({ where: { cupoId: cupo.id }, _max: { orden: true } });

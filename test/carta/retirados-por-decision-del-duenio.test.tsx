@@ -21,6 +21,8 @@ import { MantenimientoDeCarta } from "../../src/app/(app)/carta/mantenimiento-de
  *     `MENU_DEL_DIA_SIN_CARGAR`) — pedido del dueño, confirmado el 2026-11-13 junto con la poda («OK, poda antes (Recomendada)», `docs/diseno-poda-promos-2026-11-12.md` §8). BORRADO del código el
  *     2026-11-13 (poda de promos, tiempo 1). La tabla `EntradaDelDiaDeCupo`, el tipo de cupo `DEL_DIA` en `TIPOS_DE_CUPO` y su CHECK, y el permiso `promo_menu_del_dia` se conservan hasta el tiempo 2
  *     (migración con aviso expreso del dueño); un lugar `DEL_DIA` ya guardado hace que su promo no se ofrezca (falla cerrado).
+ *  5. Los campos sin lector de las promos (poda de promos, tiempo 1, PR 3; mismo pedido del dueño del 2026-11-13): el código ya no escribe `EntradaDeCupo.actualizadoEn` (nadie lo lee; la base lo llena con su
+ *     DEFAULT al crear). La columna se borra en el tiempo 2. `PromoCarta.creadoEn` ya no se nombra en `src/` (solo lo escribía el DEFAULT).
  *  3. El ajuste MASIVO de precios de la carta («Precios» de Carta › Hoy: por sección o en toda la empresa) — decidido el 2026-10-20 («borrarlo si no se extrañaba»), BORRADO el 2026-10-28: apagado solo
  *     escondía la pantalla y el servidor seguía aceptando `ajustarPreciosDeLaCarta` y `ajustarPreciosDeLaEmpresa`. Los precios se cambian en Catálogo y en Promociones.
  */
@@ -104,5 +106,14 @@ describe("4. El plato del día no existe en el código (borrado el 2026-11-13)",
 
   it("no existe ninguna pantalla, caso de uso ni consulta del menú del día", () => {
     expect(archivosDe(RAIZ).filter((ruta) => /menu-del-dia|plato-del-dia/.test(ruta))).toEqual([]);
+  });
+});
+
+describe("5. Los campos sin lector de las promos no se escriben (poda 2026-11-13, PR 3)", () => {
+  it("la persistencia de los combos no escribe `actualizadoEn` de la entrada de un lugar (solo lo escribe el DEFAULT de la base)", () => {
+    const codigo = readFileSync(join(__dirname, "../../src/server/persistencia/carta/combos.ts"), "utf8");
+    // Se ignoran los comentarios: acá importa lo que se ESCRIBE (`data: { ... }`).
+    const sinComentarios = codigo.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(sinComentarios).not.toMatch(/actualizadoEn/);
   });
 });

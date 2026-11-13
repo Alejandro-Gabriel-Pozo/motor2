@@ -56,7 +56,7 @@ export async function actualizarActivaEntradaDeCupoCasoDeUso(
       if (!alicuotas.ok) return alicuotas;
     }
 
-    await fijarActivaDeEntradaDeCupo(tx, { id: entrada.id, activa: comando.activa, ahora: actor.ahora });
+    await fijarActivaDeEntradaDeCupo(tx, { id: entrada.id, activa: comando.activa });
     await registrarCambioAuditado(tx, {
       entidad: "EntradaDeCupo",
       entidadId: entrada.id,
