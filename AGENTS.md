@@ -106,3 +106,13 @@ con el nivel de profundidad que corresponda ("medium" o "very thorough").
 - Archivo conocido o búsqueda corta: leer directo, sin Explore.
 - Varias búsquedas independientes: lanzarlas en paralelo.
 
+
+## Paridad con Pedernal (regla del dueño, 2026-11-13)
+
+Motor2 tiene que ser igual a Pedernal (el proyecto hermano) en todo. Palabras del dueño, en el chat con el orquestador, 2026-11-13: «Necesitamos ser iguales [a Pedernal] en todo. Por la salvedad de que nosotros usamos Prisma… no es que hay que copiar código, pero sí tiene que ser idéntico… El resultado tiene que ser el mismo y sobre todo de las mismas formas, salvo porque nosotros usamos Prisma.»
+
+- Criterio: mismo RESULTADO y misma FORMA (reglas, nombres, mensajes, orden de pasos, errores). No se copia código: se reproduce el comportamiento. Solo cambia lo que imponen Prisma, RLS o los datos ya existentes en producción.
+- Referencia: la versión CORREGIDA y actual de Pedernal (repositorio ZuluHub-ERP y su documentación ZuluHub-docs), no un recuerdo ni una copia vieja: antes de diseñar, auditar o cerrar un módulo se hace `git fetch` y se lee lo vigente, incluidas las correcciones recientes de Pedernal.
+- Toda diferencia con Pedernal se declara con su motivo (qué impone Prisma/RLS/datos existentes, o qué decidió el dueño con su cita) en el documento de diseño del módulo y en el PR; una diferencia sin motivo es un defecto.
+- Seguimiento de lo que Pedernal cambia y de las diferencias declaradas: `motor2-docs`, rama `alegp/stoic-davinci-185dm4`, carpeta `seguimiento-de-pedernal/`.
+- Esta regla no suma funciones: igualar a Pedernal no autoriza a construir algo que el dueño no pidió («Lo que el dueño no pidió no entra» sigue vigente); sirve para decidir CÓMO se construye lo pedido.
