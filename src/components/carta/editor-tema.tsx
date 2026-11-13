@@ -66,11 +66,12 @@ function CuerpoEditor({ valoresIniciales, soloLectura }: { valoresIniciales: Rea
 
   return (
     <div onInput={releer} onChange={releer} className="flex flex-col gap-4">
+      <input type="hidden" name={CLAVE_DEL_MARCADOR} defaultValue={valoresIniciales[CLAVE_DEL_MARCADOR] ?? ""} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         {/* Solo los CAMPOS se deshabilitan (DEC-33): la vista previa queda fuera, para que se siga recorriendo con el teclado. */}
         <fieldset disabled={soloLectura} className="flex min-w-0 flex-col gap-2" data-solo-lectura={soloLectura ? "" : undefined}>
           {ZONAS_TEMA.map((zona, i) => {
-            const campos = CLAVES_TEMA_V1.filter((d) => d.zona === zona);
+            const campos = CLAVES_TEMA_V1.filter((d) => d.zona === zona && d.clave !== CLAVE_DEL_MARCADOR);
             const cargados = campos.filter((d) => valores[d.clave]?.trim()).length;
             return (
               <details key={zona} open={i === 0} className="rounded border p-3" data-zona-tema={zona}>
@@ -103,6 +104,9 @@ function CuerpoEditor({ valoresIniciales, soloLectura }: { valoresIniciales: Rea
     </div>
   );
 }
+
+/** El marcador del modo marca (`marca_derivada`) NO es un campo de este formulario: lo escribe un botón aparte. Viaja escondido para que guardar los colores no lo borre (esta acción reemplaza TODO lo guardado). */
+const CLAVE_DEL_MARCADOR = "marca_derivada";
 
 const ETIQUETAS_OPCION: Record<string, string> = {
   left: "izquierda",
