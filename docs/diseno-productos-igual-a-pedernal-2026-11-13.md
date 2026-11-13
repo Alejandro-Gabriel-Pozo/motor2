@@ -146,6 +146,8 @@ Ya decidido y respetado: Duplicar (E4) hecho; ficha de «parte» única (`docs/d
 **Siguen PENDIENTES (no se asumen):**
 3. Departamento (M2): ¿entra la clasificación con «vigente desde»? ¿Convive con «Categoría» o la reemplaza?
 5. Lo que Pedernal no muestra en la ficha y motor2 sí (hermanar insumos, consignación, observaciones, factor de conversión, producto de respaldo de un adicional): ¿se oculta, se mueve o se mantiene?
+PENDIENTE — «Cómo se compra» (diferencia con Pedernal, SIN motivo de Prisma/RLS): Pedernal tiene la pestaña «Cómo se compra» con las presentaciones de compra (clases que se compran). Motor2 las tiene ocultas por una poda anterior (`PRESENTACIONES_VISIBLES = false`, `src/core/catalogo/presentaciones-visibles.ts`): la ficha no las muestra y las acciones devuelven «apagado». Pregunta para el dueño: ¿volver a mostrarlas? Si sí, se prende el interruptor y la sección «Presentaciones de compra» (hoy bajo Datos) pasa a ser la pestaña «Cómo se compra». Decisión del orquestador (2026-11-13): no se construye la pestaña ahora (sería UI muerta detrás de un interruptor apagado).
+
 6. Receta y «En la carta»: ¿dentro de la ficha o fuera?
    - Dato de Pedernal (verificado el 2026-11-13 en zuluhub-erp `main` 59e47a4 y en la maqueta `productos.html`): la ficha tiene las pestañas Datos, Precios, Opciones y «Cómo se compra» (esta, solo para las clases que se compran). NO tiene «Receta» ni «En la carta»: la receta es otro módulo y la carta se arma en su propia pantalla; en la ficha solo aparece «Sección de la carta» como un campo de Datos. En Motor2 P2 quedan como enlaces con su «Pendiente» hasta que el dueño responda (orquestador, 2026-11-13: «no los borres»).
 7. Sección de la carta: ¿única o por sucursal?
