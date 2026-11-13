@@ -393,6 +393,8 @@ test.describe("medición de las tareas del producto (el espacio) contra el umbra
       await m.ver("se abre el paso «En la carta»", () => expect(page.getByRole("heading", { level: 2, name: /^En la carta de «/ })).toBeVisible());
       const ficha = page.locator(`[data-contenido-carta="${base.nombre}"]`);
       await m.elegir(ficha.getByLabel(/^Sección de carta/), seccion.nombre, "elegir la sección de la carta");
+      // Todo nace cerrado (2026-11-11): «Se muestra en la carta» viene sin tildar y mostrarlo es una decisión adrede. Un clic más, dentro del umbral (ANTES: 6 clics).
+      await m.marcar(ficha.getByLabel("Se muestra en la carta"), "tildar «Se muestra en la carta»");
       await m.clic(ficha.getByRole("button", { name: `Guardar contenido de «${base.nombre}»` }), "tocar «Guardar contenido»");
       await m.ver("el aviso dice que se muestra en la carta", () => expect(ficha.getByRole("status")).toHaveText(`Carta: "${base.nombre}" se muestra.`));
 

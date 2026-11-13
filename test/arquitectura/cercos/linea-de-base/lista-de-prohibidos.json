@@ -1,25 +1,16 @@
 {
   "regla": "lista-de-prohibidos",
   "meta": "0 (la validación declara lo permitido: conjunto, largo, forma; trabajo aparte del PR que instala el guardián)",
-  "total": 21,
-  "entradas": 19,
+  "total": 11,
+  "entradas": 10,
   "porTipo": {
-    "lista-de-prohibidos": 21
+    "lista-de-prohibidos": 11
   },
   "cuentas": {
     "scripts/arquitectura/analizar-fuente.ts": {
       "lista-de-prohibidos": 1
     },
-    "src/core/carta/armar-menu.ts": {
-      "lista-de-prohibidos": 1
-    },
     "src/core/carta/color-css.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/carta/css-valores.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/carta/metadatos.ts": {
       "lista-de-prohibidos": 1
     },
     "src/core/carta/portal.ts": {
@@ -29,12 +20,6 @@
       "lista-de-prohibidos": 1
     },
     "src/core/correo/direcciones.ts": {
-      "lista-de-prohibidos": 2
-    },
-    "src/core/correo/enviar.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/datos/limites.ts": {
       "lista-de-prohibidos": 1
     },
     "src/core/features/carta/contenido-producto.guard.ts": {
@@ -46,22 +31,10 @@
     "src/core/navegacion/estructura.ts": {
       "lista-de-prohibidos": 1
     },
-    "src/core/navegacion/volver.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/plataforma/primer-admin.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/core/pos/promo-combo.ts": {
-      "lista-de-prohibidos": 1
-    },
     "src/core/seguridad/ruta-servible.ts": {
       "lista-de-prohibidos": 1
     },
     "src/core/texto.ts": {
-      "lista-de-prohibidos": 1
-    },
-    "src/env.ts": {
       "lista-de-prohibidos": 1
     }
   }

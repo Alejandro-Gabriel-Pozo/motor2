@@ -144,7 +144,7 @@ export function ContenidoDelProducto({
             }}
             className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"
           >
-            <Casilla name="visibleEnCarta" defaultChecked={p.contenido?.visibleEnCarta ?? true} etiqueta="Se muestra en la carta" />
+            <Casilla name="visibleEnCarta" defaultChecked={p.contenido?.visibleEnCarta ?? false} etiqueta="Se muestra en la carta" />
             <Casilla name="especial" defaultChecked={p.contenido?.especial ?? false} etiqueta="Especial (★)" />
             <SeccionYOrden
               secciones={ubicacion.secciones}
