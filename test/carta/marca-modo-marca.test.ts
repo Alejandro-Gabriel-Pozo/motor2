@@ -85,9 +85,11 @@ describe("el marcador es una clave del catálogo, no un color", () => {
 });
 
 describe("la marca es de elementos, el texto usa la tinta del sistema (decisión del dueño, 2026-11-13: «Marca 3:1 y textos con tinta del sistema (Recomendada)»)", () => {
-  it("en modo marca, `--carta-primary-texto` es la tinta del sistema; sin marcador no existe (sigue valiendo la marca)", () => {
+  it("en modo marca, `--carta-primary-texto` es la tinta del sistema (aunque la marca no llegue a 4,5:1); sin marcador es la corrección del PR-A de celular (#265) o no existe", () => {
     expect(resolverEstiloCarta(ENTRADA).variablesCss["--carta-primary-texto"]).toBe("var(--carta-ink)");
-    expect(resolverEstiloCarta(TEMAS_REALES.violeta).variablesCss["--carta-primary-texto"]).toBeUndefined();
+    expect(resolverEstiloCarta({ ...TEMAS_REALES.violeta, marca_derivada: "si" }).variablesCss["--carta-primary-texto"]).toBe("var(--carta-ink)");
+    // Sin marcador manda el modo clásico: violeta (#5c57a2 sobre #181818) no llega a 4,5:1 y el PR-A de celular acerca la marca a la tinta.
+    expect(resolverEstiloCarta(TEMAS_REALES.violeta).variablesCss["--carta-primary-texto"]).toBe("rgb(130, 126, 181)");
     expect(resolverEstiloCarta({}).variablesCss["--carta-primary-texto"]).toBeUndefined();
   });
 });

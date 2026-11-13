@@ -183,84 +183,6 @@
   "familiaTipografica": "playfair",
   "tintaBase": null
  },
- "portal": {
-  "variablesCss": {
-   "--portal-header-bg": "#e5dfdf",
-   "--portal-card-bg": "transparent",
-   "--portal-card-border": "transparent",
-   "--portal-card-border-hover": "transparent",
-   "--portal-card-color": "transparent",
-   "--portal-card-color-hover": "transparent",
-   "--portal-card-notas-color": "transparent",
-   "--portal-card-flecha-color": "transparent",
-   "--portal-card-fuente-label": "clamp(0.75rem, 2.2vw, 0.95rem)",
-   "--portal-card-fuente-notas": "clamp(0.7rem, 1.8vw, 0.75rem)",
-   "--portal-card-alto-defecto": "6"
-  },
-  "valores": {
-   "empresa_logo_url": "",
-   "portal_header_bg": "#e5dfdf",
-   "portal_header_color": "",
-   "portal_etiqueta": "",
-   "portal_etiqueta_color": "",
-   "portal_titulo": "",
-   "portal_titulo_color": "",
-   "portal_fondo_color": "",
-   "portal_bg_image_url": "",
-   "portal_bg_proporcion": "1080/1533",
-   "portal_bg_overlay": "0",
-   "portal_card_bg": "transparent",
-   "portal_card_border": "transparent",
-   "portal_card_border_hover": "transparent",
-   "portal_card_color": "transparent",
-   "portal_card_color_hover": "transparent",
-   "portal_card_notas_color": "transparent",
-   "portal_card_flecha_color": "transparent",
-   "portal_card_fuente_label": "clamp(0.75rem, 2.2vw, 0.95rem)",
-   "portal_card_fuente_notas": "clamp(0.7rem, 1.8vw, 0.75rem)",
-   "portal_card_alto_defecto": "6",
-   "footer_texto_derechos": ""
-  },
-  "imagenFondo": null,
-  "overlay": 0,
-  "proporcion": "1080/1533",
-  "altoTarjetaPct": 6
- },
- "portal sin config": {
-  "variablesCss": {
-   "--portal-card-fuente-label": "clamp(0.75rem, 2.2vw, 0.95rem)",
-   "--portal-card-fuente-notas": "clamp(0.7rem, 1.8vw, 0.75rem)",
-   "--portal-card-alto-defecto": "6"
-  },
-  "valores": {
-   "empresa_logo_url": "",
-   "portal_header_bg": "",
-   "portal_header_color": "",
-   "portal_etiqueta": "",
-   "portal_etiqueta_color": "",
-   "portal_titulo": "",
-   "portal_titulo_color": "",
-   "portal_fondo_color": "",
-   "portal_bg_image_url": "",
-   "portal_bg_proporcion": "1080/1533",
-   "portal_bg_overlay": "0",
-   "portal_card_bg": "",
-   "portal_card_border": "",
-   "portal_card_border_hover": "",
-   "portal_card_color": "",
-   "portal_card_color_hover": "",
-   "portal_card_notas_color": "",
-   "portal_card_flecha_color": "",
-   "portal_card_fuente_label": "clamp(0.75rem, 2.2vw, 0.95rem)",
-   "portal_card_fuente_notas": "clamp(0.7rem, 1.8vw, 0.75rem)",
-   "portal_card_alto_defecto": "6",
-   "footer_texto_derechos": ""
-  },
-  "imagenFondo": null,
-  "overlay": 0,
-  "proporcion": "1080/1533",
-  "altoTarjetaPct": 6
- },
  "violeta": {
   "variablesCss": {
    "--carta-restaurante-nombre": "",
@@ -341,7 +263,8 @@
    "--carta-fs-etiqueta-impresa": "9pt",
    "--carta-fs-titulo-impresa": "16pt",
    "--carta-fs-columna-impresa": "11pt",
-   "--carta-fs-eleccion-impresa": "10.5pt"
+   "--carta-fs-eleccion-impresa": "10.5pt",
+   "--carta-primary-texto": "rgb(130, 126, 181)"
   },
   "valores": {
    "restaurante_nombre": "",
@@ -525,7 +448,8 @@
    "--carta-fs-etiqueta-impresa": "9pt",
    "--carta-fs-titulo-impresa": "16pt",
    "--carta-fs-columna-impresa": "11pt",
-   "--carta-fs-eleccion-impresa": "10.5pt"
+   "--carta-fs-eleccion-impresa": "10.5pt",
+   "--carta-primary-texto": "rgb(127, 131, 105)"
   },
   "valores": {
    "restaurante_nombre": "",
@@ -1180,5 +1104,83 @@
   },
   "familiaTipografica": "playfair",
   "tintaBase": "oklch(0.96 0.005 80)"
+ },
+ "portal": {
+  "variablesCss": {
+   "--portal-header-bg": "#e5dfdf",
+   "--portal-card-bg": "transparent",
+   "--portal-card-border": "transparent",
+   "--portal-card-border-hover": "transparent",
+   "--portal-card-color": "transparent",
+   "--portal-card-color-hover": "transparent",
+   "--portal-card-notas-color": "transparent",
+   "--portal-card-flecha-color": "transparent",
+   "--portal-card-fuente-label": "clamp(0.75rem, 2.2vw, 0.95rem)",
+   "--portal-card-fuente-notas": "clamp(0.7rem, 1.8vw, 0.75rem)",
+   "--portal-card-alto-defecto": "6"
+  },
+  "valores": {
+   "empresa_logo_url": "",
+   "portal_header_bg": "#e5dfdf",
+   "portal_header_color": "",
+   "portal_etiqueta": "",
+   "portal_etiqueta_color": "",
+   "portal_titulo": "",
+   "portal_titulo_color": "",
+   "portal_fondo_color": "",
+   "portal_bg_image_url": "",
+   "portal_bg_proporcion": "1080/1533",
+   "portal_bg_overlay": "0",
+   "portal_card_bg": "transparent",
+   "portal_card_border": "transparent",
+   "portal_card_border_hover": "transparent",
+   "portal_card_color": "transparent",
+   "portal_card_color_hover": "transparent",
+   "portal_card_notas_color": "transparent",
+   "portal_card_flecha_color": "transparent",
+   "portal_card_fuente_label": "clamp(0.75rem, 2.2vw, 0.95rem)",
+   "portal_card_fuente_notas": "clamp(0.7rem, 1.8vw, 0.75rem)",
+   "portal_card_alto_defecto": "6",
+   "footer_texto_derechos": ""
+  },
+  "imagenFondo": null,
+  "overlay": 0,
+  "proporcion": "1080/1533",
+  "altoTarjetaPct": 6
+ },
+ "portal sin config": {
+  "variablesCss": {
+   "--portal-card-fuente-label": "clamp(0.75rem, 2.2vw, 0.95rem)",
+   "--portal-card-fuente-notas": "clamp(0.7rem, 1.8vw, 0.75rem)",
+   "--portal-card-alto-defecto": "6"
+  },
+  "valores": {
+   "empresa_logo_url": "",
+   "portal_header_bg": "",
+   "portal_header_color": "",
+   "portal_etiqueta": "",
+   "portal_etiqueta_color": "",
+   "portal_titulo": "",
+   "portal_titulo_color": "",
+   "portal_fondo_color": "",
+   "portal_bg_image_url": "",
+   "portal_bg_proporcion": "1080/1533",
+   "portal_bg_overlay": "0",
+   "portal_card_bg": "",
+   "portal_card_border": "",
+   "portal_card_border_hover": "",
+   "portal_card_color": "",
+   "portal_card_color_hover": "",
+   "portal_card_notas_color": "",
+   "portal_card_flecha_color": "",
+   "portal_card_fuente_label": "clamp(0.75rem, 2.2vw, 0.95rem)",
+   "portal_card_fuente_notas": "clamp(0.7rem, 1.8vw, 0.75rem)",
+   "portal_card_alto_defecto": "6",
+   "footer_texto_derechos": ""
+  },
+  "imagenFondo": null,
+  "overlay": 0,
+  "proporcion": "1080/1533",
+  "altoTarjetaPct": 6
  }
 }

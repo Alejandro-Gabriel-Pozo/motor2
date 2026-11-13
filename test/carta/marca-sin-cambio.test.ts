@@ -7,7 +7,7 @@ import { PORTAL_REAL, TEMAS_REALES } from "./marca-sin-cambio-fixtures";
 
 /**
  * PRUEBA «SIN CAMBIO» (opción A del diseño de la marca: «conservan hasta que se reediten», 2026-11-13): el estilo resuelto de las cinco cartas reales de hoy y del portal real, SIN el marcador `marca_derivada`, tiene que
- * ser EXACTAMENTE el de antes de que existiera la marca derivada. El archivo `.golden.json` se generó con el código anterior a este cambio (`resolverEstiloCarta`/`resolverEstiloPortal` sin modo marca): si esta prueba
+ * ser EXACTAMENTE el de antes de que existiera la marca derivada. El archivo `.golden.json` se generó con el código de `main` SIN modo marca (`resolverEstiloCarta`/`resolverEstiloPortal`; regenerado sobre el PR-A de celular #265, cuya única diferencia declarada es `--carta-primary-texto` en violeta y oliva): si esta prueba
  * se pone roja, una carta publicada cambió de aspecto sin que nadie la reeditara.
  */
 const GOLDEN: Record<string, unknown> = JSON.parse(readFileSync(join(__dirname, "marca-sin-cambio.golden.json"), "utf8"));
