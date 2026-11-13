@@ -1,9 +1,9 @@
-import { esDireccionValida } from "@/core/correo/direcciones";
 import { cifrarSecreto } from "./cifrado";
 import { generarCodigosDeRecuperacion, hashDeCodigoDeRecuperacion } from "./codigos";
 import { normalizarEmail } from "./email-reservado";
 import { generarSecretoTotp, uriOtpauth } from "./totp";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
+import { esEmailValido } from "@/core/datos/email";
 
 /**
  * El cálculo PURO del alta de un administrador de plataforma (ADR-012 §2, ADR-019): validar la entrada, armar los mensajes de conflicto y generar el material del alta (id,
@@ -55,7 +55,7 @@ export class InstalacionNoRevisableError extends Error {
 export function validarAltaDeAdmin(entrada: { email: string; nombre: string }): { email: string; nombre: string } {
   const email = normalizarEmail(entrada.email);
   const nombre = entrada.nombre.trim();
-  if (!esDireccionValida(email)) throw new AdminDePlataformaInvalidoError("El email no es válido.");
+  if (!esEmailValido(email)) throw new AdminDePlataformaInvalidoError("El email no es válido.");
   if (nombre.length === 0) throw new AdminDePlataformaInvalidoError("Falta el nombre.");
   return { email, nombre };
 }

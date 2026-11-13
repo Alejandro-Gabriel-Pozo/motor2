@@ -22,7 +22,7 @@ export function esPathServible(pathname: string): boolean {
     } catch {
       return false;
     }
-    if (!esTextoDeUnaLinea(decodificado)) return false;
+    if (segmento !== "" && !esTextoDeUnaLinea(decodificado)) return false;
     if (esCartaPublica && decodificado.includes("%")) return false;
   }
   return true;

@@ -3,6 +3,7 @@ import { rechazoDeComponenteDeCombo } from "./componente-de-combo";
 import { armarConfiguracionDeEntradaAElegir, type EntradaAElegirLeida } from "./configuracion-de-entrada-a-elegir";
 import type { GrupoParaVender, LineaConfigurada } from "./linea-configurada";
 import { opcionesPermitidasEfectivas } from "./opciones-permitidas-de-entrada";
+import type { CupoDePromo } from "./promo-combo";
 
 /**
  * Un plato dentro de una parte de promo «Toda la sección» (diseño 2026-11-11, docs/diseno-promo-parte-de-seccion-2026-11-11.md, alternativa 3α, invariantes I3, I4, I7 e I8). Funciones PURAS: sin lecturas,
@@ -80,4 +81,22 @@ export function armarComponenteDeSeccion(plato: PlatoDeSeccionLeido, opciones: r
   );
   if (!armada.ok) return armada;
   return { ok: true, linea: armada.linea, precioDeLista: armada.precioDeLista };
+}
+
+/**
+ * A cada cupo de SECCIÓN de una promo le pone `conOpciones`: sus elegibles que `clasificarPlatoDeSeccion` da como `CON_OPCIONES` (los que el mozo arma eligiendo opciones). Es la UNA regla de qué se ofrece con opciones, la
+ * misma para el selector y para el servidor (I5): `gruposDelProducto` es lo que admite cada producto en la sucursal (`cargarOpcionesParaVender`); un producto que no está en el mapa se trata como sin grupos (y no se
+ * elige con opciones). Devuelve cupos NUEVOS (no muta los recibidos); los de entradas (LISTA y DEL_DIA) pasan tal cual. Un plato que NO se ofrece (`NO_SE_OFRECE`) no entra a `conOpciones`: sigue como hoy, sin opciones,
+ * y quien arma la promo lo rechaza (`PROMO_CON_OPCIONES`: «pedilo suelto»).
+ */
+export function conOpcionesDeLasSecciones(cupos: readonly CupoDePromo[], gruposDelProducto: ReadonlyMap<string, readonly GrupoParaVender[]>): CupoDePromo[] {
+  return cupos.map((cupo) => {
+    if (!("seccionCartaId" in cupo)) return cupo;
+    const conOpciones = new Set<string>();
+    for (const productoId of cupo.elegibles) {
+      const grupos = gruposDelProducto.get(productoId);
+      if (grupos !== undefined && clasificarPlatoDeSeccion(grupos).tipo === "CON_OPCIONES") conOpciones.add(productoId);
+    }
+    return { ...cupo, conOpciones };
+  });
 }

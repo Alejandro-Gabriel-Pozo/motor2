@@ -1,15 +1,11 @@
-/**
- * Lo PERMITIDO en una dirección de correo (regla «Todo nace cerrado»): una parte local de letras, números y `. _ % + -` (hasta 64), una `@` y un dominio de etiquetas de letras, números y `-` separadas
- * por puntos (al menos dos etiquetas, cada una de hasta 63 y sin empezar ni terminar con `-`). Solo ASCII: un dominio con eñe o acentos llega en punycode. Todo lo demás (espacios, comillas, comas,
- * paréntesis, `<>`, caracteres de control, caracteres fuera de ASCII) no es una dirección.
- */
-const DIRECCION = /^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
-const REMITENTE_CON_NOMBRE = /^([\p{L}\p{M}\p{N} .,&'()_-]+)<([A-Za-z0-9._%+@-]+)>$/u;
-const LARGO_MAXIMO_DE_DIRECCION = 254;
+import { esEmailValido } from "@/core/datos/email";
+
+/** «Nombre <dirección>»: el nombre admite letras, marcas, números, espacio y `. , & ' ( ) _ -`; lo de entre `<>` solo caracteres de una dirección (la forma exacta la decide `esEmailValido`). */
+const REMITENTE_CON_NOMBRE = /^([\p{L}\p{M}\p{N} .,&'()_-]+)<([A-Za-z0-9!#$%&'*+/=?^_`{|}~.@-]+)>$/u;
 
 /** Una dirección sola (`ana@ejemplo.com`): sin nombre, sin saltos de línea ni separadores. */
 export function esDireccionValida(texto: string): boolean {
-  return texto.length <= LARGO_MAXIMO_DE_DIRECCION && DIRECCION.test(texto);
+  return esEmailValido(texto);
 }
 
 function direccionDelRemitente(remitente: string): string | null {

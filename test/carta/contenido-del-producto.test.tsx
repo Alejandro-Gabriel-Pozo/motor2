@@ -154,3 +154,24 @@ describe("ContenidoDelProducto: interruptor del descuento por producto (decisió
     }
   });
 });
+
+describe("ContenidoDelProducto: todo nace cerrado (regla del dueño 2026-11-11)", () => {
+  /** La etiqueta «Se muestra en la carta» apunta por `for` al `id` de su casilla; se busca ese `<input>` y se mira si viene tildado. */
+  function casillaVisible(html: string): string {
+    const etiqueta = /<label for="([^"]+)"[^>]*>Se muestra en la carta<\/label>/.exec(html);
+    expect(etiqueta, "etiqueta «Se muestra en la carta»").not.toBeNull();
+    const control = new RegExp(`<input[^>]*id="${etiqueta![1]}"[^>]*>`).exec(html);
+    expect(control, "casilla de «Se muestra en la carta»").not.toBeNull();
+    return control![0];
+  }
+
+  it("un producto SIN contenido de carta abre con «Se muestra en la carta» sin tildar: mostrarlo es una decisión adrede", () => {
+    expect(casillaVisible(dibujar(producto({ contenido: null })))).not.toMatch(/checked/);
+  });
+
+  it("un producto con contenido conserva lo guardado: visible viene tildado y no visible, sin tildar", () => {
+    const base = producto().contenido!;
+    expect(casillaVisible(dibujar(producto({ contenido: { ...base, visibleEnCarta: true } })))).toMatch(/checked/);
+    expect(casillaVisible(dibujar(producto({ contenido: { ...base, visibleEnCarta: false } })))).not.toMatch(/checked/);
+  });
+});

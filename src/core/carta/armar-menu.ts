@@ -22,8 +22,8 @@
 // Contrato público v1 (lo que viaja a restaurant-menu-design). Cambiar una forma = subir `version`.
 // ---------------------------------------------------------------------------------------------------------------------
 
+import { esUrlHttpsPermitida } from "@/core/datos/url";
 import { aplicarDescuentoDeProducto } from "./descuento-producto";
-import { tieneFormaDeUrlHttps } from "./url-https";
 import { opcionesParaLaCarta, type GrupoCartaV1, type OpcionesSinCostoCartaV1, type ResumenDePreciosParaCarta } from "./opciones-en-carta";
 import { FILAS_SUGERIDAS_EN_CARTA, presentacionDelProducto, type PresentacionCartaV1, type TablaDePreciosParaCarta } from "./presentacion-en-carta";
 
@@ -297,13 +297,13 @@ export function precioDeCarta(precioVenta: number, local: { precio: number; habi
 }
 
 /**
- * La carta mete la URL en `backgroundImage: url(${url})` sin escapar (restaurant-menu-design, components/carta-section-image.tsx): una comilla, un paréntesis o un espacio rompen ese CSS o lo dejan inyectable. Solo
- * pasa `https://` con un host y la forma de `url-https.ts` (solo caracteres ASCII de una URL); cualquier otra cosa → null.
+ * La carta mete la URL en `backgroundImage: url(${url})` sin escapar (restaurant-menu-design,
+ * components/carta-section-image.tsx): una comilla, un paréntesis o un espacio rompen ese CSS o lo dejan inyectable. Solo
+ * pasa `https://` con un host, sin espacios, comillas, paréntesis, barras invertidas ni `<>`; cualquier otra cosa → null.
  */
 export function urlImagenSegura(url: string | null | undefined): string | null {
-  if (!url) return null;
-  const u = url.trim();
-  if (!tieneFormaDeUrlHttps(u)) return null;
+  const u = url?.trim() ?? "";
+  if (!esUrlHttpsPermitida(u)) return null;
   try {
     const parsed = new URL(u);
     if (parsed.protocol !== "https:" || !parsed.hostname) return null;

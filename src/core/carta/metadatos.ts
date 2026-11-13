@@ -1,5 +1,5 @@
+import { esUrlHttpsPermitida } from "@/core/datos/url";
 import { MARCA_PUBLICA } from "./marca";
-import { tieneFormaDeUrlHttps } from "./url-https";
 
 /**
  * Metadatos de la parte PÚBLICA de la carta (título, descripción, datos para compartir en redes y buscadores). PURO: arma textos a partir de datos, no lee `process.env`
@@ -84,5 +84,5 @@ export function descripcionDelPortal(etiquetasDeSucursales: readonly string[]): 
 /** La URL de una imagen cargada por el comercio, solo si es https (lo que ya exige el validador de imágenes del tema y del portal); cualquier otra cosa, sin imagen. */
 export function imagenParaCompartir(url: string | null | undefined): string | null {
   const limpia = url?.trim();
-  return limpia && tieneFormaDeUrlHttps(limpia) ? limpia : null;
+  return limpia && esUrlHttpsPermitida(limpia) ? limpia : null;
 }

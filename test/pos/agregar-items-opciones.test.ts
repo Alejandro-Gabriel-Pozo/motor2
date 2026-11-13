@@ -135,7 +135,7 @@ describe("agregar ítems con opciones (GO-2b)", () => {
     });
   });
 
-  describe("promos (v1: los componentes no llevan opciones)", () => {
+  describe("promos (un componente sin opciones elegidas: lo que no se puede armar se rechaza)", () => {
     async function promoConCafe() {
       const bebidas = await prisma.seccionCarta.create({ data: { nombre: "Bebidas" } });
       const postres = await prisma.seccionCarta.create({ data: { nombre: "Postres" } });
@@ -159,7 +159,15 @@ describe("agregar ítems con opciones (GO-2b)", () => {
       ];
     }
 
-    it("un componente con un grupo obligatorio (el tamaño del café) rechaza la promo con PROMO_CON_OPCIONES y no escribe nada", async () => {
+    it("un componente con un grupo obligatorio (el tamaño del café) elegido SIN opciones rechaza la promo (OPCIONES_INVALIDAS: «Elegí…», diseño 2026-11-11) y no escribe nada", async () => {
+      const r = await agregar([], await promoConCafe());
+      expect(r).toMatchObject({ ok: false, codigo: "OPCIONES_INVALIDAS" });
+      expect(await prisma.cuentaItem.count({ where: { cuentaId } })).toBe(0);
+      expect(await prisma.promoCuenta.count()).toBe(0);
+    });
+
+    it("un componente con un adicional OBLIGATORIO no se puede armar en la promo: sigue siendo PROMO_CON_OPCIONES («pedilo suelto») y no escribe nada", async () => {
+      await prisma.productoAdmiteGrupo.updateMany({ where: { productoId: c.cafeId, grupoId: c.grupoExtrasId }, data: { cantidadMinima: 1 } });
       const r = await agregar([], await promoConCafe());
       expect(r).toMatchObject({ ok: false, codigo: "PROMO_CON_OPCIONES" });
       expect(await prisma.cuentaItem.count({ where: { cuentaId } })).toBe(0);

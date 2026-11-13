@@ -375,7 +375,7 @@ export default async function RecetaEditorPage({
       {vigente && (
         <div className="flex flex-col gap-2">
           <h2 className="font-medium">Ingredientes</h2>
-          <table className="w-full text-sm">
+          <div role="group" aria-label="Ingredientes de la receta" tabIndex={0} className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-tinta-tenue">
                 <th className="py-2">Ingrediente</th>
@@ -527,7 +527,7 @@ export default async function RecetaEditorPage({
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 

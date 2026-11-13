@@ -62,12 +62,12 @@ export const LARGO_MAXIMO_TEXTO_CATALOGO = 80;
 
 /**
  * Lo PERMITIDO en un texto de UNA línea (regla «Todo nace cerrado»): letras, marcas (acentos), números, puntuación, símbolos (incluidos los emojis), el espacio y el espacio de no separación. Quedan
- * afuera los saltos de línea, las tabulaciones y demás caracteres de control, los separadores de línea y párrafo y los caracteres invisibles (de ancho cero, de orden de bytes, de dirección). Puede ser
- * vacío: quien necesite al menos un carácter lo pide aparte.
+ * afuera los saltos de línea, las tabulaciones y demás caracteres de control, los separadores de línea y párrafo y los caracteres invisibles (de ancho cero, de orden de bytes, de dirección). NO puede ser
+ * vacío (al menos un carácter): quien admite el vacío lo maneja aparte.
  */
-const RE_TEXTO_DE_UNA_LINEA = /^[\p{L}\p{M}\p{N}\p{P}\p{S} \u00a0]*$/u;
+const RE_TEXTO_DE_UNA_LINEA = /^[\p{L}\p{M}\p{N}\p{P}\p{S} \u00a0]+$/u;
 
-/** ¿Es un texto de una sola línea con solo lo permitido (ver `RE_TEXTO_DE_UNA_LINEA`)? El vacío cumple. */
+/** ¿Es un texto de una sola línea con solo lo permitido (ver `RE_TEXTO_DE_UNA_LINEA`)? El vacío NO cumple. */
 export function esTextoDeUnaLinea(v: string): boolean {
   return RE_TEXTO_DE_UNA_LINEA.test(v);
 }

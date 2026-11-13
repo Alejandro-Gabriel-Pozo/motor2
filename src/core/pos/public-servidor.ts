@@ -8,3 +8,5 @@ export { armarLineaConfigurada } from "./linea-configurada";
 // Promo «a elegir» (ADR-032 D-6 enmendada, 2026-11-05): armar lo que el mozo eligió dentro de una entrada «a elegir», contra lo permitido (usa `armarLineaConfigurada`, por eso va acá y no en `public.ts`).
 export { armarConfiguracionDeEntradaAElegir } from "./configuracion-de-entrada-a-elegir";
 export type { EntradaAElegirLeida } from "./configuracion-de-entrada-a-elegir";
+// Promo «Toda la sección» con opciones (diseño 2026-11-11, E1b): qué platos de una parte de sección se arman eligiendo opciones y cómo se arma cada uno (usa `armarLineaConfigurada`, por eso va acá).
+export { armarComponenteDeSeccion, conOpcionesDeLasSecciones } from "./plato-de-seccion";
