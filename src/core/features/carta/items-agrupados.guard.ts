@@ -34,7 +34,7 @@ interface EntradaItemAgrupadoCarta {
 export function guardComandoGuardarItemAgrupadoCarta(datos: EntradaItemAgrupadoCarta): ResultadoDato<ComandoGuardarItemAgrupadoCarta> {
   const nombre = validarNombreItemAgrupadoCarta(datos.nombre);
   if (!nombre.ok) return rechazar("formato", nombre.mensaje);
-  const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
+  const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA, { multilinea: true });
   if (!descripcion.ok) return rechazar("largo", descripcion.mensaje);
   const tags = normalizarTagsCarta(datos.tags);
   if (!tags.ok) return rechazar("formato", tags.mensaje);

@@ -34,7 +34,7 @@ export function guardComandoGuardarPromoCarta(datos: EntradaPromoCarta): Resulta
   const titulo = validarTextoLibreCarta(datos.titulo, "El título", LARGO_MAXIMO_TITULO_CARTA);
   if (!titulo.ok) return rechazar("largo", titulo.mensaje);
   if (!titulo.valor) return rechazar("vacio", "La promo necesita un título.");
-  const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA);
+  const descripcion = validarTextoLibreCarta(datos.descripcion, "La descripción", LARGO_MAXIMO_DESCRIPCION_CARTA, { multilinea: true });
   if (!descripcion.ok) return rechazar("largo", descripcion.mensaje);
   const precio = validarPrecioCarta(datos.precio);
   if (!precio.ok) return rechazar("formato", precio.mensaje);

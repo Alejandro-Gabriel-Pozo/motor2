@@ -3,6 +3,7 @@ import { generarCodigosDeRecuperacion, hashDeCodigoDeRecuperacion } from "./codi
 import { normalizarEmail } from "./email-reservado";
 import { generarSecretoTotp, uriOtpauth } from "./totp";
 import type { FuenteDeAzar } from "@/core/seguridad/azar";
+import { esEmailValido } from "@/core/datos/email";
 
 /**
  * El cálculo PURO del alta de un administrador de plataforma (ADR-012 §2, ADR-019): validar la entrada, armar los mensajes de conflicto y generar el material del alta (id,
@@ -50,13 +51,11 @@ export class InstalacionNoRevisableError extends Error {
   }
 }
 
-const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 /** El email normalizado y el nombre sin espacios, o el error de validación (el mismo mensaje y el mismo orden que siempre: primero el email, después el nombre). */
 export function validarAltaDeAdmin(entrada: { email: string; nombre: string }): { email: string; nombre: string } {
   const email = normalizarEmail(entrada.email);
   const nombre = entrada.nombre.trim();
-  if (!EMAIL_VALIDO.test(email)) throw new AdminDePlataformaInvalidoError("El email no es válido.");
+  if (!esEmailValido(email)) throw new AdminDePlataformaInvalidoError("El email no es válido.");
   if (nombre.length === 0) throw new AdminDePlataformaInvalidoError("Falta el nombre.");
   return { email, nombre };
 }

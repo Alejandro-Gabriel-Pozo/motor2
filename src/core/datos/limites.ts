@@ -1,5 +1,6 @@
 import { texto } from "@/core/texto";
 import { aceptar, rechazar, type ResultadoDato } from "./resultado";
+import { esEmailValido } from "./email";
 
 /**
  * Topes de entrada de la auditoría de seguridad (S-22/S-23): un texto o un arreglo sin tope deja a un usuario con sesión inflar la base
@@ -31,8 +32,6 @@ export const MERMA_PORCENTAJE_MAXIMA = 1000;
 /** `StockMinimoProducto.minimo` es `Decimal(14,4)`. */
 export const STOCK_MINIMO_MAXIMO = 1e9;
 
-const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 /** Texto libre opcional recortado: vacío → `null`; más largo que `maximo` → rechazo con código `largo`. */
 export function validarTextoLibre(valor: unknown, etiqueta: string, maximo: number): ResultadoDato<string | null> {
   const v = texto(valor);
@@ -46,7 +45,7 @@ export function validarEmailOpcional(valor: unknown, etiqueta = "El email"): Res
   const v = texto(valor);
   if (!v) return aceptar(null);
   if (v.length > LARGO_MAXIMO_EMAIL) return rechazar("largo", `${etiqueta} no puede superar los ${LARGO_MAXIMO_EMAIL} caracteres.`);
-  if (!RE_EMAIL.test(v)) return rechazar("formato", `${etiqueta} no tiene un formato válido.`);
+  if (!esEmailValido(v)) return rechazar("formato", `${etiqueta} no tiene un formato válido.`);
   return aceptar(v);
 }
 

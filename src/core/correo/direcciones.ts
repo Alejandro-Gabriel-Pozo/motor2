@@ -1,9 +1,10 @@
-const DIRECCION = /^[^\s@<>"',;()[\]\\]+@([^\s@<>"',;()[\]\\.]+(?:\.[^\s@<>"',;()[\]\\.]+)+)$/;
+import { esEmailValido } from "@/core/datos/email";
+
 const REMITENTE_CON_NOMBRE = /^([^<>@\r\n"]+)<(\S+)>$/;
 
 /** Una dirección sola (`ana@ejemplo.com`): sin nombre, sin saltos de línea ni separadores. */
 export function esDireccionValida(texto: string): boolean {
-  return DIRECCION.test(texto);
+  return esEmailValido(texto);
 }
 
 function direccionDelRemitente(remitente: string): string | null {
