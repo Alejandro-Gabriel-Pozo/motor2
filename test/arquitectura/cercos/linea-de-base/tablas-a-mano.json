@@ -1,10 +1,10 @@
 {
   "regla": "tablas-a-mano",
   "meta": "bajar a 0 al terminar las etapas E-B…E-G: toda tabla de datos usa TablaDeDatos (las matrices y la ficha impresa, con excepción y motivo)",
-  "total": 38,
-  "entradas": 33,
+  "total": 37,
+  "entradas": 32,
   "porTipo": {
-    "table-a-mano": 38
+    "table-a-mano": 37
   },
   "cuentas": {
     "src/app/(app)/administracion/capacidades-sucursal/page.tsx": {
@@ -83,9 +83,6 @@
       "table-a-mano": 2
     },
     "src/app/(app)/reportes/tickets/page.tsx": {
-      "table-a-mano": 1
-    },
-    "src/app/(app)/traspasos/bandeja.tsx": {
       "table-a-mano": 1
     },
     "src/components/carta-publica/seccion.tsx": {

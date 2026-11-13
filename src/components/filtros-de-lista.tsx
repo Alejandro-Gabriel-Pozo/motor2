@@ -59,7 +59,7 @@ export function FiltrosDeLista({ accion, etiquetaDeLaBusqueda, marcadorDeLaBusqu
         </BotonDeServidor>
         {hayFiltros && (
           <p className="text-sm">
-            <Enlace href={accion}>Limpiar filtros</Enlace>
+            <Enlace href={accion} variante="suelto">Limpiar filtros</Enlace>
           </p>
         )}
       </div>
